@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>S2 lab</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #111; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+      /* A 1920x1080 logical slide shown scaled down, the way the editor Stage shows it. */
+      #stage { position: absolute; left: 24px; top: 24px; width: 1920px; height: 1080px; transform-origin: 0 0; transform: scale(0.5); }
+      #slide { width: 1920px; height: 1080px; background: linear-gradient(135deg, #1e1b4b, #4f46e5 60%, #06b6d4); color: #fff; position: relative; overflow: hidden; }
+      #slide h1 { position: absolute; inset-inline-start: 96px; top: 120px; margin: 0; font-size: 140px; font-weight: 800; }
+      #slide p { position: absolute; inset-inline-start: 96px; top: 340px; margin: 0; font-size: 56px; }
+      #slide .card { position: absolute; inset-inline-end: 96px; bottom: 96px; width: 620px; height: 360px; border-radius: 32px; background: #fff; color: #1e1b4b; box-shadow: 0 30px 80px rgb(0 0 0 / 0.45); display: grid; place-items: center; font-size: 96px; font-weight: 800; direction: ltr; }
+      #log { position: absolute; left: 24px; bottom: 12px; color: #9ca3af; font: 12px Consolas, monospace; direction: ltr; white-space: pre; }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="slide">
+        <h1>שלום Slidr</h1>
+        <p>שקף בדיקה לגשר ה-Agent: עברית עם English מעורב, 2026.</p>
+        <div class="card">DOM-5824</div>
+      </div>
+    </div>
+    <div id="log"></div>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

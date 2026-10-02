@@ -1,0 +1,22 @@
+[package]
+name = "s2-mcp-bridge"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Standalone: not a member of the product workspace.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "time", "sync", "net", "fs"] }
+anyhow = "1"
+rmcp = { version = "3.5.0", features = ["server", "transport-streamable-http-server"] }
+axum = "0.8.9"
+webview2-com = "0.39"
+windows-core = "0.62"

@@ -1,0 +1,2 @@
+# Standalone install: this spike is its own pnpm root, deliberately not a member of the Slidr workspace.
+packages: []

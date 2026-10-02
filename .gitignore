@@ -1,0 +1,27 @@
+node_modules/
+dist/
+target/
+*.tsbuildinfo
+
+# Tauri generated schemas
+**/src-tauri/gen/
+
+# Test output
+test-results/
+playwright-report/
+coverage/
+
+# Spike run output (measurements are copied into the ADRs)
+spikes/**/out/
+
+# Local
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+
+# Generated spike fixtures (rebuild with fixtures/build.mjs)
+spikes/s5-agent-import/fixtures/*.html
+# Spike run logs
+spikes/**/out-run*.txt

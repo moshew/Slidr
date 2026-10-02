@@ -1,0 +1,40 @@
+{
+  "name": "slidr-spike-s6-bidi-text",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "description": "WG0-S6 feasibility spike: TipTap bidi rich text editing inside a CSS-transform-scaled slide",
+  "scripts": {
+    "dev": "vite --port 5176 --strictPort",
+    "manual": "vite --port 5176 --strictPort --open \"/?s=0.64&bubble=body\"",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "measure": "node tests/run.ts",
+    "summary": "node tests/summary.ts",
+    "spike": "tsc --noEmit && node tests/run.ts"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
+    "@fontsource/heebo": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/extension-bubble-menu": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/pngjs": "^6.0.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "playwright-core": "^1.63.0",
+    "pngjs": "^7.0.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.2"
+  }
+}

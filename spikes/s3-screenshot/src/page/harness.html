@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="he">
+  <head>
+    <meta charset="utf-8" />
+    <title>S3 harness</title>
+    <!-- Fonts are bundled locally (@fontsource); nothing is fetched from the network. -->
+    <link rel="stylesheet" href="/node_modules/@fontsource/heebo/400.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/heebo/700.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/inter/400.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/inter/600.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource/frank-ruhl-libre/500.css" />
+    <style>
+      /* "Application-level" CSS: lives outside the slide subtree, the way theme variables and
+         app stylesheets would in the editor. */
+      :root {
+        --color-accent: #7c3aed;
+        --color-ink: #1e1b4b;
+        --font-heading: 'Heebo', 'Inter', sans-serif;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #1f2430;
+        overflow: hidden;
+      }
+      #stage {
+        position: absolute;
+      }
+      #scaler {
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 0 0;
+      }
+      .slide {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #fff;
+      }
+      /* Document-level rule that styles SVG children inside a slide (see the css slide). */
+      .doc-icon .a {
+        fill: #dc2626;
+        stroke: #7f1d1d;
+        stroke-width: 1.5;
+      }
+      /* Editor selection overlay: screen coordinates, outside the slide (RND-02). */
+      #overlay {
+        position: absolute;
+        pointer-events: none;
+        border: 2px dashed #38bdf8;
+        box-sizing: border-box;
+      }
+      #overlay i {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: #fff;
+        border: 2px solid #0284c7;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="scaler">
+        <div id="slide" class="slide"></div>
+      </div>
+    </div>
+    <script type="module" src="./harness.js"></script>
+  </body>
+</html>

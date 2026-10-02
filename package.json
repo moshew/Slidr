@@ -1,0 +1,35 @@
+{
+  "name": "slidr",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @slidr/desktop dev",
+    "tauri": "pnpm --filter @slidr/desktop tauri",
+    "build": "pnpm --filter @slidr/desktop build",
+    "typecheck": "tsc --noEmit && pnpm -r --workspace-concurrency=4 typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "e2e": "pnpm --filter @slidr/desktop e2e",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
+    "check:all": "pnpm check && pnpm check:rust"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.3",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
+  }
+}

@@ -1,0 +1,4 @@
+# Spikes are deliberately not members: each one is a standalone install under spikes/<name>.
+packages:
+  - apps/*
+  - packages/*

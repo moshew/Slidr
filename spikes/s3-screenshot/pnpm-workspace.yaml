@@ -1,0 +1,4 @@
+# Standalone install: this file makes pnpm treat spikes/s3-screenshot as its own root,
+# so nothing here touches the repo-level workspace or lockfile.
+packages:
+  - .

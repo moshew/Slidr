@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Spike S2 main window",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

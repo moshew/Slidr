@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>S3 asset generator</title>
+  </head>
+  <body>
+    <script>
+      // Generates the local test assets (no network): a photo-like JPEG, four smaller JPEGs,
+      // a transparent PNG, a video poster PNG and a one-second WebM. Deterministic PRNG, so the
+      // images are the same on every run on the same browser build.
+      function rng(seed) {
+        let s = seed >>> 0;
+        return () => {
+          s = (s + 0x6d2b79f5) | 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function landscape(w, h, seed, hue) {
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const g = c.getContext('2d');
+        const rand = rng(seed);
+        const sky = g.createLinearGradient(0, 0, 0, h * 0.7);
+        sky.addColorStop(0, `hsl(${hue}, 70%, 32%)`);
+        sky.addColorStop(0.6, `hsl(${hue + 25}, 75%, 62%)`);
+        sky.addColorStop(1, `hsl(${hue + 50}, 90%, 78%)`);
+        g.fillStyle = sky;
+        g.fillRect(0, 0, w, h);
+        // sun with glow
+        const sx = w * (0.2 + rand() * 0.6);
+        const sy = h * (0.25 + rand() * 0.15);
+        const sun = g.createRadialGradient(sx, sy, 0, sx, sy, h * 0.45);
+        sun.addColorStop(0, 'rgba(255,250,220,1)');
+        sun.addColorStop(0.08, 'rgba(255,235,170,.95)');
+        sun.addColorStop(1, 'rgba(255,200,120,0)');
+        g.fillStyle = sun;
+        g.fillRect(0, 0, w, h);
+        // clouds
+        for (let i = 0; i < 40; i++) {
+          g.fillStyle = `rgba(255,255,255,${0.04 + rand() * 0.08})`;
+          g.beginPath();
+          g.ellipse(rand() * w, rand() * h * 0.45, 60 + rand() * 220, 14 + rand() * 40, 0, 0, Math.PI * 2);
+          g.fill();
+        }
+        // mountain ridges
+        for (let layer = 0; layer < 4; layer++) {
+          const base = h * (0.5 + layer * 0.12);
+          g.beginPath();
+          g.moveTo(0, h);
+          let y = base;
+          for (let x = 0; x <= w; x += w / 60) {
+            y += (rand() - 0.5) * h * 0.06;
+            y = Math.min(base + h * 0.08, Math.max(base - h * 0.14, y));
+            g.lineTo(x, y);
+          }
+          g.lineTo(w, h);
+          g.closePath();
+          g.fillStyle = `hsl(${hue + 140 + layer * 12}, ${28 + layer * 8}%, ${44 - layer * 9}%)`;
+          g.fill();
+        }
+        // trees / detail
+        for (let i = 0; i < 260; i++) {
+          const x = rand() * w;
+          const y = h * (0.82 + rand() * 0.18);
+          const s = 8 + rand() * 26;
+          g.fillStyle = `hsl(${hue + 150 + rand() * 30}, 45%, ${10 + rand() * 14}%)`;
+          g.beginPath();
+          g.moveTo(x, y - s * 2);
+          g.lineTo(x - s * 0.6, y);
+          g.lineTo(x + s * 0.6, y);
+          g.closePath();
+          g.fill();
+        }
+        // sensor grain
+        const img = g.getImageData(0, 0, w, h);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const n = (rand() - 0.5) * 22;
+          d[i] += n;
+          d[i + 1] += n;
+          d[i + 2] += n;
+        }
+        g.putImageData(img, 0, 0);
+        return c;
+      }
+
+      function starPng() {
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const g = c.getContext('2d');
+        g.translate(128, 128);
+        g.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 ? 48 : 112;
+          const a = (Math.PI / 5) * i - Math.PI / 2;
+          g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        g.closePath();
+        const grad = g.createLinearGradient(-112, -112, 112, 112);
+        grad.addColorStop(0, '#fde047');
+        grad.addColorStop(1, '#f97316');
+        g.fillStyle = grad;
+        g.fill();
+        g.lineWidth = 6;
+        g.strokeStyle = '#7c2d12';
+        g.stroke();
+        return c;
+      }
+
+      function labelled(w, h, bg1, bg2, text) {
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        const g = c.getContext('2d');
+        const grad = g.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, bg1);
+        grad.addColorStop(1, bg2);
+        g.fillStyle = grad;
+        g.fillRect(0, 0, w, h);
+        g.strokeStyle = 'rgba(255,255,255,.35)';
+        g.lineWidth = 6;
+        for (let i = -h; i < w; i += 48) {
+          g.beginPath();
+          g.moveTo(i, h);
+          g.lineTo(i + h, 0);
+          g.stroke();
+        }
+        g.fillStyle = '#fff';
+        g.font = 'bold 64px Segoe UI, Arial, sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(text, w / 2, h / 2);
+        return c;
+      }
+
+      const b64 = (blob) =>
+        new Promise((resolve) => {
+          const r = new FileReader();
+          r.onloadend = () => resolve(String(r.result).split(',')[1]);
+          r.readAsDataURL(blob);
+        });
+      const toBlob = (c, type, q) => new Promise((resolve) => c.toBlob(resolve, type, q));
+
+      async function recordVideo() {
+        const c = labelled(640, 360, '#0f766e', '#1d4ed8', 'VIDEO FRAME');
+        const g = c.getContext('2d');
+        const stream = c.captureStream(30);
+        const rec = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 2500000 });
+        const chunks = [];
+        rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        const done = new Promise((resolve) => (rec.onstop = resolve));
+        rec.start();
+        const t0 = performance.now();
+        // Repaint one (invisible) pixel per tick so the stream keeps emitting frames
+        // while every frame stays visually identical.
+        await new Promise((resolve) => {
+          const timer = setInterval(() => {
+            g.fillStyle = '#0f766e';
+            g.fillRect(0, 0, 1, 1);
+            if (performance.now() - t0 > 1200) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 33);
+        });
+        rec.stop();
+        await done;
+        return new Blob(chunks, { type: 'video/webm' });
+      }
+
+      window.genAssets = async () => {
+        const out = {};
+        out['photo.jpg'] = await b64(await toBlob(landscape(1600, 1067, 7, 215), 'image/jpeg', 0.86));
+        const hues = [10, 95, 190, 290];
+        for (let i = 0; i < 4; i++) {
+          out[`thumb-${i + 1}.jpg`] = await b64(
+            await toBlob(landscape(640, 480, 100 + i, hues[i]), 'image/jpeg', 0.84),
+          );
+        }
+        out['star.png'] = await b64(await toBlob(starPng(), 'image/png'));
+        out['poster.png'] = await b64(
+          await toBlob(labelled(640, 360, '#9d174d', '#c2410c', 'POSTER'), 'image/png'),
+        );
+        out['clip.webm'] = await b64(await recordVideo());
+        return out;
+      };
+    </script>
+  </body>
+</html>

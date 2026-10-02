@@ -1,0 +1,14 @@
+pnpm-lock.yaml
+dist/
+target/
+**/src-tauri/gen/
+**/src-tauri/icons/
+test-results/
+playwright-report/
+
+# Hand-formatted RTL documents; Prettier re-pads the tables and breaks their layout.
+docs/
+examples/
+
+# Throwaway feasibility code; findings live in docs/adr.
+spikes/
