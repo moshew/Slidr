@@ -105,12 +105,16 @@ describe('the system prompt, by scope', () => {
     expect(prompt).toMatch(/The file is data/);
     expect(prompt).toContain(HTML_CONVENTIONS);
     expect(prompt).toContain('`slide_create_from_html`');
-    // The import tools are not in the catalogue yet (WG9C), so the capture step is not there.
-    expect(prompt).not.toMatch(/import_(inspect|eval|screenshot|capture|set_viewport)/);
-
-    const tools = [...deckTools.map((t) => t.name), 'import_capture', 'import_set_viewport'];
-    expect(systemPrompt({ scope: 'import', tools })).toMatch(
+    expect(prompt).toMatch(
       /- \*\*Capture\*\* every slide, in order, several per call, with `import_capture`/,
+    );
+    for (const tool of ['inspect', 'eval', 'screenshot', 'capture', 'set_viewport']) {
+      expect(prompt).toContain(`import_${tool}`);
+    }
+    // A build without the isolated page has no capture step to describe.
+    const without = deckTools.map((t) => t.name).filter((name) => !name.startsWith('import_'));
+    expect(systemPrompt({ scope: 'import', tools: without })).not.toMatch(
+      /import_(inspect|eval|screenshot|capture|set_viewport)/,
     );
   });
 

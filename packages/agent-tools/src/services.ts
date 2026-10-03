@@ -271,6 +271,52 @@ export interface OptionsService {
   }): Promise<void>;
 }
 
+/** Which element of the imported page: a CSS selector, or JavaScript that evaluates to it. */
+export interface ImportTarget {
+  selector?: string;
+  js?: string;
+}
+
+/** A slide the import captured, already checked by the app (SPEC 13.3). */
+export interface ImportedSlide {
+  /** The slide, with ids that are free in the deck. */
+  slide: Slide;
+  /** The assets it uses and the fonts the file brought. The tool registers them first. */
+  assets: AssetMeta[];
+  /** Share of the content that became regular elements, and of the text that is in text elements. */
+  editability: number;
+  textEditability: number;
+  /** The fidelity guard: the slide looks like the source; the comparison was exact. */
+  faithful: boolean;
+  exact: boolean;
+  /** The whole slide is one html element. */
+  wholeSlideHtml: boolean;
+  /** The size of the captured element in the source, in CSS px. */
+  source: { width: number; height: number };
+  notes: string[];
+}
+
+/**
+ * WG9-T15, T16: the isolated page an imported HTML file runs in (SPEC 13.2). The file's scripts
+ * run there, without network and without the app. What comes back from it is data.
+ */
+export interface HtmlImportService {
+  /** Page facts and an outline of the live DOM, as text. */
+  inspect(request: ImportTarget & { depth?: number; maxNodes?: number }): Promise<string>;
+  /** Runs the body of an async function in the page; its result as JSON text. */
+  evaluate(code: string): Promise<string>;
+  screenshot(request: ImportTarget & { maxWidth?: number }): Promise<PngImage>;
+  /** Resizes the page; says what it is now. */
+  setViewport(size: { width: number; height: number }): Promise<string>;
+  /** Copies an element of the page and converts it into a slide for `deck`. Changes nothing. */
+  capture(
+    deck: Deck,
+    request: ImportTarget & { before?: string; waitMs?: number },
+  ): Promise<ImportedSlide>;
+  /** The slide entered the deck: the app keeps what it measured, for the import report. */
+  captured?(slide: ImportedSlide): void;
+}
+
 export interface Services {
   ui?: UiPort;
   capture?: CaptureService;
@@ -282,6 +328,7 @@ export interface Services {
   stock?: StockService;
   icons?: IconService;
   options?: OptionsService;
+  importer?: HtmlImportService;
 }
 
 export type ServiceName = keyof Services;

@@ -21,9 +21,8 @@ const SCOPES: ScopeKind[] = ['deck', 'slide', 'object', 'import'];
 const catalogue = deckTools.map((tool) => tool.name);
 
 /**
- * The import tools of SPEC 13.2 (WG9C). The import module is written for them, but the
- * catalogue does not have them yet, so today no prompt names them. When they are added, the
- * second test fails: delete them from this list, and the other tests hold them to their scopes.
+ * The import tools of SPEC 13.2 (WG9C). The import module is their guide: they exist in an
+ * import session only, so the tool guide, which every session gets, does not name them.
  */
 const PLANNED = [
   'import_inspect',
@@ -78,8 +77,8 @@ describe('the prompt against the catalogue', () => {
     expect(unknown).toEqual([]);
   });
 
-  it('expects the import tools, which the catalogue does not have yet', () => {
-    expect(PLANNED.filter((name) => catalogue.includes(name))).toEqual([]);
+  it('names every import tool of the catalogue in the import module', () => {
+    expect(sorted(catalogue.filter((name) => name.startsWith('import_')))).toEqual(sorted(PLANNED));
     const needed = SCOPE_MODULES.import.flatMap((part) =>
       typeof part === 'string' ? [] : part.needs,
     );
@@ -88,7 +87,11 @@ describe('the prompt against the catalogue', () => {
 
   it('has a place in the guide for every tool of the catalogue', () => {
     const guide = TOOL_GUIDE.flatMap((part) => (typeof part === 'string' ? [] : part.needs));
-    expect(catalogue.filter((name) => !guide.includes(name))).toEqual([]);
+    expect(catalogue.filter((name) => !guide.includes(name) && !PLANNED.includes(name))).toEqual(
+      [],
+    );
+    // The guide is for every session; a tool of one kind of session is in that session's module.
+    expect(PLANNED.filter((name) => guide.includes(name))).toEqual([]);
   });
 
   it('names tools only in entries, and an entry needs exactly the tools it names', () => {

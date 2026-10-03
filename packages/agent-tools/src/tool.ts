@@ -77,6 +77,11 @@ export interface ToolDef<S extends z.ZodType = z.ZodType> {
   readonly scopes: readonly ScopeKind[];
   /** Whether the tool changes the deck. Write tools get the write summary and lint findings. */
   readonly writes: boolean;
+  /**
+   * False for a write tool whose slides the design check does not judge: an import brings in
+   * the user's own design (SPEC 13.3), and its result carries no lint findings.
+   */
+  readonly lint?: false;
   /** The tool is registered only when this service is provided. */
   readonly requires?: ServiceName;
   /**

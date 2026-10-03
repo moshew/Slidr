@@ -247,7 +247,7 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
             ? summarizeWrite(before, after, affected)
             : summarizeWrite(bus.deck, bus.deck, NOTHING);
         Object.assign(data, summary);
-        if (services.lint && summary.slides.length > 0) {
+        if (services.lint && tool.lint !== false && summary.slides.length > 0) {
           const live = new Set(bus.deck.slides.map((s) => s.id));
           const slides = summary.slides.filter((id) => live.has(id));
           try {

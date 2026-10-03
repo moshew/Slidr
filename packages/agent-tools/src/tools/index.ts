@@ -2,6 +2,13 @@ import type { ToolDef } from '../tool';
 import { animationSet, chartSet, tableSet, textSet } from './content';
 import { deckApplyOps, themeUpdate, uiNavigate } from './deck';
 import { elementAdd, elementDelete, elementsArrange, elementUpdate } from './elements';
+import {
+  importCapture,
+  importEval,
+  importInspect,
+  importScreenshot,
+  importSetViewport,
+} from './import';
 import { outlinePropose } from './outline';
 import { deckGetOutline, deckGetTheme, elementGet, selectionGet, slideGet } from './read';
 import {
@@ -66,5 +73,10 @@ export const deckTools: readonly ToolDef[] = [
   deckLint,
   uiPresentOptions,
   uiNavigate,
+  importInspect,
+  importEval,
+  importScreenshot,
+  importSetViewport,
+  importCapture,
   outlinePropose,
 ];
