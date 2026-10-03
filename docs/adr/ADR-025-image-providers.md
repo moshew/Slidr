@@ -350,6 +350,6 @@ cargo test -p slidr real_cli_cancel -- --ignored --nocapture               # 1 i
   - `Cargo.toml`, `error.rs`, `packages/**` ו-`harness/**` לא שונו.
   - ה-worktree `../Slidr-images` והענף `wg12-images` לא היו קיימים, ונוצרו מ-`main` ב-`5934544`.
   - **הכניסה ל-`main` (2026-10-03):** הענף עבר rebase על `3653379`, שכבר כולל את m2-core ואת wg7-templates, ואז fast-forward. הייתה התנגשות אחת, ב-`lib.rs`: m2-core ו-WG12 הוסיפו שורת `app.manage` באותו מקום, ושתיהן נשארו. אחרי ה-rebase `pnpm check:all` ירוק: 834 בדיקות TypeScript ו-121 בדיקות Rust. המספרים בסעיף "בדיקות" למעלה הם מלפני ה-rebase.
-  - **עדיין לא נעשה ב-`main`:** סעיף התוצאות לא הודבק ב-PLAN, ו-ADR-025 לא נוסף לרשימת ה-ADRs ב-README.
+  - **אחרי הכניסה:** סעיף התוצאות נמצא ב-PLAN, בסוף פרק WG12, ו-ADR-025 נמצא ברשימת ה-ADRs ב-README.
 
 </div>
