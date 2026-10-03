@@ -33,6 +33,7 @@ import { BackgroundTool } from '../objects/BackgroundTool';
 import { openPanel, PanelId, setAiTab, useDeck, useEditor } from '../shell';
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
 import { useThread } from './Chat';
+import { DeckLook } from './DeckLook';
 import { switchLayoutCommands } from './layout';
 import { aiOf } from './runtime';
 import { useObjectScope, useSlideScope } from './scopes';
@@ -241,13 +242,8 @@ export function DeckActions() {
         <Row id="deck.improve" icon={WandSparkles} label={t('actions.improve')} runner={runner} />
         <Row id="deck.fix" icon={ScanEye} label={t('actions.fixFindings')} runner={runner} />
       </Section>
-      {/* The place of the template gallery, the palette and the font pair (WG7). */}
-      <Section title={t('actions.templates.title')}>
-        <p className="flex items-start gap-2 px-2 text-sm text-ui-fg-muted">
-          <Icon icon={LayoutTemplate} className="mt-0.5" />
-          {t('actions.templates.body')}
-        </p>
-      </Section>
+      {/* The template gallery, the palettes and the font pairs: the user's own edits, not AI. */}
+      <DeckLook />
     </Tab>
   );
 }

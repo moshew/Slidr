@@ -39,6 +39,70 @@ export const he = {
     stop: 'עצירה',
     follow: 'מעקב אחרי השקף הנבנה',
     hint: 'Enter לשליחה · Shift+Enter לשורה חדשה',
+    attach: 'צירוף קובץ או תמונה',
+    attached: 'הקבצים המצורפים להודעה',
+    remove: 'הסרת {{name}}',
+    model: 'מודל ורמת מאמץ',
+  },
+  picker: {
+    models: 'מודל',
+    effort: 'רמת מאמץ',
+    default: 'ברירת המחדל',
+    hint: 'חל מההודעה הבאה',
+    efforts: {
+      low: 'נמוכה',
+      medium: 'בינונית',
+      high: 'גבוהה',
+      xhigh: 'גבוהה מאוד',
+      max: 'מרבית',
+    },
+  },
+  conversations: {
+    list: 'השיחות של הכלי הזה',
+    new: 'שיחה חדשה',
+    untitled: 'שיחה חדשה',
+    heading: 'שיחות',
+  },
+  usage: {
+    turn: '{{tokens}} tokens · {{cost}} · {{time}}',
+    turnNoCost: '{{tokens}} tokens · {{time}}',
+    total: 'עלות השיחה: {{cost}}',
+    totalTokens: 'השיחה עד כאן: {{tokens}} tokens',
+    detail:
+      'קלט {{input}} · פלט {{output}} · נקרא מהמטמון {{cacheRead}} · נכתב למטמון {{cacheWrite}}',
+    seconds: '{{n}} שנ׳',
+  },
+  outline: {
+    title: 'מתווה מוצע',
+    count: 'שקפים: {{count}}',
+    approve: 'אישור ובנייה',
+    reject: 'לא לבנות',
+    rejected: 'המתווה נדחה, ושום דבר לא נבנה.',
+    hint: "אפשר גם לכתוב תיקונים בצ'אט.",
+  },
+  suggest: {
+    title: 'הצעות לפתיחה',
+    deck: {
+      topic: { label: 'מצגת מנושא', prompt: 'בנה מצגת של 8 שקפים על ' },
+      document: {
+        label: 'מצגת ממסמך',
+        prompt: 'בנה מצגת מהמסמך המצורף, עם שקף לכל רעיון מרכזי.',
+      },
+      improve: {
+        label: 'שיפור המצגת הזו',
+        prompt: 'עבור על המצגת, מצא את השקפים החלשים בה ועצב אותם מחדש.',
+      },
+    },
+    slide: {
+      redesign: { label: 'עיצוב מחדש', prompt: 'עצב את השקף מחדש, בלי לשנות את מה שהוא אומר.' },
+      shorten: { label: 'קיצור', prompt: 'קצר את הטקסט בשקף למה שחייבים לקרוא.' },
+      visual: { label: 'ויזואליה', prompt: 'הוסף לשקף אלמנט חזותי שנושא את המסר.' },
+    },
+    object: {
+      reword: { label: 'ניסוח אחר', prompt: 'הצע 4 ניסוחים אחרים.' },
+      shorten: { label: 'קיצור', prompt: 'קצר לחצי, בלי לאבד את המסר.' },
+      tone: { label: 'טון', prompt: 'נסח מחדש בטון ' },
+    },
   },
   you: 'אתם',
   agent: 'Agent',
@@ -163,6 +227,7 @@ export const he = {
     deck_lint: 'בדיקת עיצוב למצגת',
     ui_navigate: 'מעבר לשקף',
     ui_present_options: 'הצגת חלופות',
+    outline_propose: 'הצעת מתווה',
   },
   toolOnSlide: '{{label}} · שקף {{n}}',
   toolOther: 'הפעלת כלי: {{name}}',
@@ -197,6 +262,35 @@ export const he = {
       other: 'החלופה לא נוצרה',
     },
   },
+  look: {
+    hint: 'ריחוף מציג על השקף · לחיצה מחילה',
+    current: 'בשימוש במצגת',
+    template: {
+      title: 'תבנית',
+      builtIn: 'מובנית',
+      personal: 'אישית',
+      undo: 'החלפת תבנית',
+    },
+    palette: {
+      title: 'פלטת צבעים',
+      sample: 'אב',
+      undo: 'החלפת פלטת הצבעים',
+      names: {
+        basic: 'בסיסית',
+        ocean: 'ים',
+        sage: 'מרווה',
+        rose: 'ורד',
+        graphite: 'גרפיט',
+        forest: 'יער',
+        plum: 'שזיף',
+      },
+    },
+    fonts: {
+      title: 'זוג גופנים',
+      undo: 'החלפת זוג הגופנים',
+      pair: 'כותרות: {{heading}} · גוף: {{body}}',
+    },
+  },
   action: {
     other: 'פעולה',
     deck: {
@@ -229,6 +323,12 @@ export const he = {
     },
     image: {
       alternatives: '{{count}} תמונות חלופיות',
+    },
+    template: {
+      create: 'יצירת תבנית ב-AI',
+    },
+    outline: {
+      approve: 'אישור המתווה',
     },
   },
   actions: {
@@ -280,11 +380,21 @@ export const he = {
       confident: 'בטוח',
       plain: 'פשוט',
     },
-    busy: 'ה-Agent באמצע תור. הפעולות יחזרו כשיסיים.',
-    templates: {
-      title: 'תבנית, פלטה וגופנים',
-      body: 'גלריית התבניות, פלטת הצבעים וזוג הגופנים יופיעו כאן עם ספריית התבניות.',
+    template: {
+      title: 'תבנית חדשה',
+      open: 'יצירת תבנית ב-AI',
+      description: 'איך התבנית צריכה להיראות?',
+      url: 'כתובת אתר שהתבנית תיראה כמוהו',
+      logo: 'לוגו',
+      chooseLogo: 'בחירת לוגו',
+      files: 'תמונה או קובץ HTML לדוגמה',
+      addFile: 'הוספת קובץ',
+      fromDeck: 'לפי העיצוב של המצגת הזו',
+      create: 'הכנת טיוטה',
+      hint: "ה-Agent קורא את המקורות, מכין טיוטה ומציג אותה בצ'אט. שום דבר לא נשמר עד שתשמרו.",
+      needSource: 'תנו לפחות מקור אחד: תיאור, כתובת, לוגו, קובץ או המצגת הזו.',
     },
+    busy: 'ה-Agent באמצע תור. הפעולות יחזרו כשיסיים.',
     noActions: {
       title: 'אין עדיין פעולות מוכנות לסוג הזה',
       body: "אפשר לבקש כל שינוי בצ'אט.",
@@ -338,6 +448,73 @@ export const en = {
     stop: 'Stop',
     follow: 'Follow the slide being built',
     hint: 'Enter to send · Shift+Enter for a new line',
+    attach: 'Attach a file or an image',
+    attached: 'The files attached to the message',
+    remove: 'Remove {{name}}',
+    model: 'Model and effort',
+  },
+  picker: {
+    models: 'Model',
+    effort: 'Effort',
+    default: 'The default',
+    hint: 'Takes effect from the next message',
+    efforts: {
+      low: 'Low',
+      medium: 'Medium',
+      high: 'High',
+      xhigh: 'Very high',
+      max: 'Maximum',
+    },
+  },
+  conversations: {
+    list: 'The conversations of this tool',
+    new: 'New conversation',
+    untitled: 'New conversation',
+    heading: 'Conversations',
+  },
+  usage: {
+    turn: '{{tokens}} tokens · {{cost}} · {{time}}',
+    turnNoCost: '{{tokens}} tokens · {{time}}',
+    total: 'Cost of the conversation: {{cost}}',
+    totalTokens: 'The conversation so far: {{tokens}} tokens',
+    detail:
+      'Input {{input}} · output {{output}} · cache read {{cacheRead}} · cache written {{cacheWrite}}',
+    seconds: '{{n}}s',
+  },
+  outline: {
+    title: 'Proposed outline',
+    count: 'Slides: {{count}}',
+    approve: 'Approve and build',
+    reject: 'Do not build',
+    rejected: 'The outline was turned down, and nothing was built.',
+    hint: 'You can also type corrections in the chat.',
+  },
+  suggest: {
+    title: 'Ways to start',
+    deck: {
+      topic: { label: 'A deck from a topic', prompt: 'Build a deck of 8 slides about ' },
+      document: {
+        label: 'A deck from a document',
+        prompt: 'Build a deck from the attached document, with a slide for each main idea.',
+      },
+      improve: {
+        label: 'Improve this deck',
+        prompt: 'Go over the deck, find its weak slides and redesign them.',
+      },
+    },
+    slide: {
+      redesign: {
+        label: 'Redesign',
+        prompt: 'Redesign the slide without changing what it says.',
+      },
+      shorten: { label: 'Shorten', prompt: 'Shorten the text on the slide to what must be read.' },
+      visual: { label: 'A visual', prompt: 'Add a visual element that carries the message.' },
+    },
+    object: {
+      reword: { label: 'Another wording', prompt: 'Offer 4 other wordings.' },
+      shorten: { label: 'Shorten', prompt: 'Cut it to half without losing the message.' },
+      tone: { label: 'Tone', prompt: 'Rewrite it in a tone that is ' },
+    },
   },
   you: 'You',
   agent: 'Agent',
@@ -464,6 +641,7 @@ export const en = {
     deck_lint: 'Checking the design of the deck',
     ui_navigate: 'Going to a slide',
     ui_present_options: 'Showing options',
+    outline_propose: 'Proposing an outline',
   },
   toolOnSlide: '{{label}} · slide {{n}}',
   toolOther: 'Running a tool: {{name}}',
@@ -498,6 +676,35 @@ export const en = {
       other: 'This option was not made',
     },
   },
+  look: {
+    hint: 'Hover to see it on the slide · click to apply',
+    current: 'In use in the deck',
+    template: {
+      title: 'Template',
+      builtIn: 'Built-in',
+      personal: 'Personal',
+      undo: 'Switch template',
+    },
+    palette: {
+      title: 'Colour palette',
+      sample: 'Aa',
+      undo: 'Change the colour palette',
+      names: {
+        basic: 'Basic',
+        ocean: 'Ocean',
+        sage: 'Sage',
+        rose: 'Rose',
+        graphite: 'Graphite',
+        forest: 'Forest',
+        plum: 'Plum',
+      },
+    },
+    fonts: {
+      title: 'Font pair',
+      undo: 'Change the font pair',
+      pair: 'Headings: {{heading}} · Body: {{body}}',
+    },
+  },
   action: {
     other: 'Action',
     deck: {
@@ -530,6 +737,12 @@ export const en = {
     },
     image: {
       alternatives: '{{count}} alternative images',
+    },
+    template: {
+      create: 'Make a template with AI',
+    },
+    outline: {
+      approve: 'Approve the outline',
     },
   },
   actions: {
@@ -581,11 +794,22 @@ export const en = {
       confident: 'confident',
       plain: 'plain',
     },
-    busy: 'The agent is in the middle of a turn. The actions come back when it is done.',
-    templates: {
-      title: 'Template, palette and fonts',
-      body: 'The template gallery, the colour palette and the font pair will be here with the template library.',
+    template: {
+      title: 'A new template',
+      open: 'Make a template with AI',
+      description: 'What should the template look like?',
+      url: 'A site the template should look like',
+      logo: 'Logo',
+      chooseLogo: 'Choose a logo',
+      files: 'A picture or an HTML file to go by',
+      addFile: 'Add a file',
+      fromDeck: 'By the design of this deck',
+      create: 'Make a draft',
+      hint: 'The agent reads the sources, makes a draft and shows it in the chat. Nothing is saved until you save it.',
+      needSource:
+        'Give at least one source: a description, an address, a logo, a file or this deck.',
     },
+    busy: 'The agent is in the middle of a turn. The actions come back when it is done.',
     noActions: {
       title: 'No ready-made actions for this kind yet',
       body: 'You can ask for any change in the chat.',

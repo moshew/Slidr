@@ -238,9 +238,7 @@ test('the object tool follows the selection, and offers the actions of its kind'
   expect(errors).toEqual([]);
 });
 
-test('the deck tool: its actions, and the place of what waits for the template library', async ({
-  page,
-}) => {
+test('the deck tool: its actions, and the look of the deck beside them', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page, { script: 'deck-build' });
   await openTool(page, 'ai.deck', 'actions');
@@ -248,7 +246,10 @@ test('the deck tool: its actions, and the place of what waits for the template l
   for (const id of ['translate', 'shorten', 'notes', 'improve', 'fix']) {
     await expect(actions.locator(`[data-action="deck.${id}"]`)).toBeEnabled();
   }
-  await expect(actions).toContainText('גלריית התבניות, פלטת הצבעים וזוג הגופנים');
+  // The template gallery, the palettes and the font pairs (aifinish-look.spec.ts drives them).
+  for (const name of ['template', 'palette', 'fonts']) {
+    await expect(actions.locator(`section[data-look="${name}"]`)).toBeVisible();
+  }
 
   // The language of a translation is chosen beside its button.
   await actions.getByRole('combobox', { name: 'שפת היעד' }).click();

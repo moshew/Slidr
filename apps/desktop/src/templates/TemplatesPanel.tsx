@@ -1,18 +1,5 @@
-import {
-  createDeck,
-  createElement,
-  createSlide as blankSlide,
-  richText,
-  TextStyleRef,
-  type AssetMeta,
-  type ColorToken,
-  type Deck,
-  type FontPair,
-  type Slide,
-  type TextStyle,
-} from '@slidr/model';
+import { TextStyleRef, type ColorToken, type FontPair, type TextStyle } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
-import { createSlide, deckFromTemplate, type Template } from '@slidr/templates';
 import {
   Button,
   ColorPicker,
@@ -48,7 +35,7 @@ import {
   turnDeck,
 } from './actions';
 import { library } from './app';
-import { coverPicture, coverUrl } from './covers';
+import { coverAsset, coverOf } from './covers';
 import type { LibraryEntry } from './library';
 
 /*
@@ -79,44 +66,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       {children}
     </section>
   );
-}
-
-/** Where a cover loads a picture from: the app's own file, or a personal template's. */
-const coverAsset = (asset: AssetMeta) => coverUrl(asset) ?? library.assetUrl(asset);
-
-/**
- * One slide that shows a template: its opening layout with the template's name on it, and the
- * photograph of a built-in template that opens with one.
- */
-function coverOf(template: Template, like: Deck): { deck: Deck; slide: Slide } {
-  const deck = deckFromTemplate(template, { lang: like.meta.lang, dir: like.meta.dir });
-  const first = deck.layouts[0];
-  if (first) {
-    const title = richText(template.theme.name, { dir: 'auto' });
-    const has = (role: string) => first.placeholders.some((p) => p.role === role);
-    const picture = has('image') ? coverPicture(template.theme.id) : undefined;
-    if (picture) deck.assets[picture.id] = picture;
-    const { slide } = createSlide(deck, {
-      layoutId: first.id,
-      content: {
-        ...(has('title') ? { title } : {}),
-        ...(picture ? { image: { assetId: picture.id } } : {}),
-      },
-    });
-    return { deck, slide };
-  }
-  // A template without layouts (saved from a plain deck): its name in its own display style.
-  const plain = createDeck({ lang: like.meta.lang, dir: like.meta.dir, theme: template.theme });
-  const slide = blankSlide({
-    elements: [
-      createElement.text({
-        frame: { x: 160, y: 380, w: 1600, h: 320 },
-        vAlign: 'middle',
-        content: richText(template.theme.name, { align: 'center', styleRef: 'display' }),
-      }),
-    ],
-  });
-  return { deck: plain, slide };
 }
 
 function TemplateCard({

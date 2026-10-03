@@ -473,7 +473,7 @@ function layouts(): Layout[] {
         ...foot('chart').placeholders,
       ],
       decorations: [
-        rect('d_zerem_chart_rule', atEnd(96, 534, 512, 1), solid(token('text', 0.14))),
+        rect('d_zerem_chart_split', atEnd(96, 534, 512, 1), solid(token('text', 0.14))),
         ...foot('chart').decorations,
       ],
     },
