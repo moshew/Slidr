@@ -31,7 +31,15 @@ import {
   Square,
   Trash2,
 } from '@slidr/ui/icons';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeck, useEditor, useSelection } from '../shell';
 import {
@@ -109,31 +117,38 @@ export function AnimationsPanel() {
   const playing = usePreview((s) => (s.slideId === slide?.id ? s.group : null));
   /** The row whose settings are open. */
   const [open, setOpen] = useState<OpenRow | null>(null);
-  /** The groups as the runtime has them, read from the slide the Stage drew. */
-  const [groups, setGroups] = useState<readonly TimelineGroup[] | null>(null);
+  /** The groups as the runtime has them, read from the slide the Stage drew, and of which slide. */
+  const [drawn, setDrawn] = useState<{ slide: Slide; groups: readonly TimelineGroup[] } | null>(
+    null,
+  );
   /** A step to play once the list has caught up with a change to it. */
   const autoplay = useRef<string | null>(null);
 
   // The preview is this panel's: it ends with it.
   useEffect(() => stopPreview, []);
 
-  useEffect(() => {
+  // Before the browser paints: the Stage has drawn the slide in the same pass, and the list is
+  // never shown with the groups of the slide as it was a moment ago.
+  useLayoutEffect(() => {
     if (!slide) return;
     let frame = 0;
     const read = () => {
       const next = stageGroups(slide.id, slide.timeline, size);
-      setGroups(next);
+      setDrawn({ slide, groups: next });
       const stepId = autoplay.current;
       autoplay.current = null;
       const group = stepId ? next.findIndex((g) => g.parts.some((p) => p.stepId === stepId)) : -1;
       if (group >= 0) void playPreview(editor, [group]);
     };
-    // The Stage draws the slide in the same pass; right after a start it may not have yet.
+    // Right after a start the Stage may not have a size yet, and so no slide.
     if (stageSlide(slide.id)) read();
     else frame = requestAnimationFrame(read);
     return () => cancelAnimationFrame(frame);
   }, [editor, slide, size]);
 
+  // Until the slide on the Stage has been read, the schedule alone: by trigger, a step by
+  // paragraph counted as one.
+  const groups = drawn && drawn.slide === slide ? drawn.groups : null;
   const list = useMemo(
     () =>
       slide ? timelineList(slide.timeline, groups ?? scheduledGroups(slide.timeline)) : undefined,
