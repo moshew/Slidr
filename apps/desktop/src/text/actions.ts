@@ -5,8 +5,10 @@ import {
   type CommandBus,
   type ElementPatch,
   type Insets,
+  type CellRef,
   type RichText,
   type ShapeElement,
+  type TableElement,
   type TextElement,
 } from '@slidr/model';
 import type { EditorView } from '@tiptap/pm/view';
@@ -14,6 +16,7 @@ import type { EditorView } from '@tiptap/pm/view';
 import { stageElement } from '../shell/stageDom';
 import { refitPatches } from '../stage/groups';
 import { indexElements } from '../stage/space';
+import { cellsWritten } from './cellScope';
 import {
   changeMarksTr,
   changeParagraphsTr,
@@ -44,33 +47,55 @@ import { normalizeRichText, sameValue } from './richTextDoc';
  *   the editor writes the result to the model as it writes typing, as an undo step of its own.
  * - `element`: a text box or a shape is selected and not being edited. A change goes to all of
  *   its text, as one `text.set`.
+ * - `cells`: cells of a table are selected and none is being edited (WG6). A change goes to all
+ *   the text of each of them, as one `element.update`. A cell that is being edited is an `editor`
+ *   target like any other text.
  */
 
 interface TargetBase {
   bus: CommandBus;
   slideId: string;
-  element: TextElement | ShapeElement;
 }
 
 export type TextTarget =
-  (TargetBase & { kind: 'editor'; view: EditorView }) | (TargetBase & { kind: 'element' });
+  | (TargetBase & {
+      kind: 'editor';
+      view: EditorView;
+      element: TextElement | ShapeElement | TableElement;
+    })
+  | (TargetBase & { kind: 'element'; element: TextElement | ShapeElement })
+  | (TargetBase & { kind: 'cells'; element: TableElement; cells: readonly CellRef[] });
 
 /** One undo step. Changes that share a `txId` are one step (a drag in the colour picker). */
 export type Step = StepMeta;
 
 const NO_TEXT: RichText = { paragraphs: [] };
 
+/** The texts of the cells of a `cells` target, in their order. */
+function cellContents(target: TextTarget & { kind: 'cells' }): RichText[] {
+  return target.cells.flatMap(({ row, col }) => {
+    const cell = target.element.cells[row]?.[col];
+    return cell ? [cell.content] : [];
+  });
+}
+
 /** The text a target's formatting is read from. */
 export function sampleTarget(target: TextTarget): TextSample {
-  return target.kind === 'editor'
-    ? sampleState(target.view.state)
-    : sampleRichText(target.element.content ?? NO_TEXT);
+  if (target.kind === 'editor') return sampleState(target.view.state);
+  if (target.kind === 'element') return sampleRichText(target.element.content ?? NO_TEXT);
+  const samples = cellContents(target).map(sampleRichText);
+  return {
+    paragraphs: samples.flatMap((sample) => sample.paragraphs),
+    spans: samples.flatMap((sample) => sample.spans),
+  };
 }
 
 const formats = new WeakMap<object, { ctx: FormatContext; format: TextFormat }>();
 
 /** The current formatting of a target. Cached by the text it was read from, which is immutable. */
 export function formatOf(target: TextTarget, ctx: FormatContext): TextFormat {
+  // Several cells have no one object to cache by; reading them again is cheap.
+  if (target.kind === 'cells') return readFormat(sampleTarget(target), ctx);
   const key: object =
     target.kind === 'editor' ? target.view.state : (target.element.content ?? NO_TEXT);
   const cached = formats.get(key);
@@ -114,7 +139,7 @@ export function syncGrowHeight(
   });
 }
 
-function setText(target: TextTarget, content: RichText, step: Step): void {
+function setText(target: TextTarget & { kind: 'element' }, content: RichText, step: Step): void {
   const { bus, slideId, element } = target;
   if (sameValue(content, normalizeRichText(element.content ?? NO_TEXT))) return;
   const txId = step.txId ?? newId('tx');
@@ -125,11 +150,40 @@ function setText(target: TextTarget, content: RichText, step: Step): void {
   syncGrowHeight(bus, element.id, txId);
 }
 
+/** Changes the text of every cell of a `cells` target, as one change to the table. */
+function setCells(
+  target: TextTarget & { kind: 'cells' },
+  map: (content: RichText) => RichText,
+  step: Step,
+): void {
+  const { bus, slideId, element } = target;
+  const picked = new Set(target.cells.map(({ row, col }) => `${row},${col}`));
+  let changed = false;
+  const cells = element.cells.map((row, r) =>
+    row.map((cell, c) => {
+      if (!picked.has(`${r},${c}`)) return cell;
+      const content = map(cell.content);
+      if (sameValue(content, normalizeRichText(cell.content))) return cell;
+      changed = true;
+      return { ...cell, content };
+    }),
+  );
+  if (!changed) return;
+  const txId = step.txId ?? newId('tx');
+  bus.dispatch(updateElement(slideId, element.id, { cells }), {
+    txId,
+    label: step.label ?? 'Format',
+  });
+  cellsWritten(bus, element.id, txId);
+}
+
 /** Makes a marks change: to the editor's selection, or to all the text of the element. */
 export function changeMarks(target: TextTarget, change: MarksChange, step: Step = {}): void {
   if (target.kind === 'editor') {
     const { view } = target;
     view.dispatch(changeMarksTr(view.state, change).setMeta(STEP_META, step));
+  } else if (target.kind === 'cells') {
+    setCells(target, (content) => mapMarks(content, change), step);
   } else {
     setText(target, mapMarks(target.element.content ?? NO_TEXT, change), step);
   }
@@ -144,6 +198,8 @@ export function changeParagraphs(
   if (target.kind === 'editor') {
     const { view } = target;
     view.dispatch(changeParagraphsTr(view.state, change).setMeta(STEP_META, step));
+  } else if (target.kind === 'cells') {
+    setCells(target, (content) => mapParagraphs(content, change), step);
   } else {
     setText(target, mapParagraphs(target.element.content ?? NO_TEXT, change), step);
   }

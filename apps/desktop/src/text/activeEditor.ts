@@ -1,3 +1,4 @@
+import type { CellRef } from '@slidr/model';
 import type { Editor as TextEditorInstance } from '@tiptap/core';
 import { createStore } from 'zustand/vanilla';
 
@@ -11,6 +12,8 @@ export interface ActiveEditor {
   editor: TextEditorInstance;
   slideId: string;
   elementId: string;
+  /** For a table: the cell whose text the editor is open on. */
+  cell?: CellRef;
 }
 
 interface ActiveEditorState {

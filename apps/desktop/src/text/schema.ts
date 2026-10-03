@@ -38,6 +38,9 @@ export interface TextSchemaOptions {
   styleRef: TextStyleRef;
   /** False keeps every paragraph on one line. */
   wrap: boolean;
+  /** Over the text style's colour and weight, as in a table's header row (`TextDefaults`). */
+  color?: string;
+  weight?: number;
 }
 
 interface AttributeSpec {
@@ -95,6 +98,8 @@ const SlidrParagraph = Node.create<TextSchemaOptions>({
       ...paragraphStyle({ ...p, runs: [] }, theme, {
         styleRef: this.options.styleRef,
         wrap: this.options.wrap,
+        color: this.options.color,
+        weight: this.options.weight,
       }),
       ...(p.list ? { paddingInlineStart: `${p.list.level * LEVEL_EM + MARKER_EM}em` } : {}),
     };

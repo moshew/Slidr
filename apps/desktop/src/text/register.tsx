@@ -71,7 +71,7 @@ function onText(run: (target: TextTarget, ctx: FormatContext, step: Step) => voi
   return (editor: Editor) => {
     const target = resolveTarget(editor);
     if (!target) return false;
-    run(target, formatContext(editor), { label: i18n.t('text:step.format') });
+    run(target, formatContext(editor, target), { label: i18n.t('text:step.format') });
     return true;
   };
 }

@@ -1,4 +1,4 @@
-import { findElement, findSlide, newId } from '@slidr/model';
+import { expandRange, findElement, findSlide, fullRange, newId, rangeCells } from '@slidr/model';
 import {
   cx,
   IconButton,
@@ -22,6 +22,7 @@ import { create, useStore } from 'zustand';
 import { focusStage, useDeck, useEditor, useSelection, type Editor } from '../../shell';
 import { formatOf, type TextTarget } from '../actions';
 import { activeEditor, editorFor } from '../activeEditor';
+import { cellScope } from '../cellScope';
 import type { FormatContext, TextFormat } from '../format';
 
 /* What the text tools of row B share: the target, the focus, and their layout. */
@@ -30,24 +31,46 @@ import type { FormatContext, TextFormat } from '../format';
 
 /**
  * What a formatting command acts on now (ADR-013): the text editor's selection while a text box or
- * a shape is being edited, or all the text of the one selected text box or shape. Null otherwise.
+ * a shape is being edited, or all the text of the one selected text box or shape. For a table it
+ * is the editor open in one of its cells, or else the text of its selected cells: the ones the
+ * table area names (`cellScope`), and all of them when the table is selected as a whole. Null
+ * otherwise.
  */
 export function resolveTarget({ bus, selection }: Editor): TextTarget | null {
   const { currentSlideId, selectedElementIds, editingElementId } = selection.getState();
   const slide = currentSlideId ? findSlide(bus.deck, currentSlideId) : undefined;
   const id = editingElementId ?? (selectedElementIds.length === 1 ? selectedElementIds[0] : null);
   const element = slide && id ? findElement(slide, id) : undefined;
-  if (!slide || !element || (element.type !== 'text' && element.type !== 'shape')) return null;
-  const base = { bus, slideId: slide.id, element };
+  if (!slide || !element) return null;
+  const base = { bus, slideId: slide.id };
   const active = editingElementId ? editorFor(editingElementId) : null;
+  if (element.type === 'table') {
+    if (active) return { ...base, kind: 'editor', view: active.editor.view, element };
+    const { scope } = cellScope.getState();
+    const inScope = scope?.elementId === element.id && editingElementId === element.id;
+    // The range is kept inside the table: an undo may have taken rows or columns away under it.
+    const whole = fullRange(element);
+    const range = inScope
+      ? expandRange(element, {
+          row0: Math.min(scope.range.row0, whole.row1),
+          col0: Math.min(scope.range.col0, whole.col1),
+          row1: Math.min(scope.range.row1, whole.row1),
+          col1: Math.min(scope.range.col1, whole.col1),
+        })
+      : whole;
+    return { ...base, kind: 'cells', element, cells: rangeCells(element, range) };
+  }
+  if (element.type !== 'text' && element.type !== 'shape') return null;
   // For the moment between "editing" and the editor being there, the element stands in.
   return active
-    ? { ...base, kind: 'editor', view: active.editor.view }
-    : { ...base, kind: 'element' };
+    ? { ...base, kind: 'editor', view: active.editor.view, element }
+    : { ...base, kind: 'element', element };
 }
 
-export function formatContext({ bus }: Editor): FormatContext {
-  return { theme: bus.deck.theme, dir: bus.deck.meta.dir };
+/** The theme and the direction text is formatted against: the deck's, and in a table the table's. */
+export function formatContext({ bus }: Editor, target?: TextTarget | null): FormatContext {
+  const dir = target?.element.type === 'table' ? target.element.dir : bus.deck.meta.dir;
+  return { theme: bus.deck.theme, dir };
 }
 
 export interface Text {
@@ -67,9 +90,10 @@ export function useText(): Text | null {
   useSelection((s) => s.selectedElementIds);
   useSelection((s) => s.editingElementId);
   useStore(activeEditor, (s) => s.version);
+  useStore(cellScope, (s) => s.scope);
   const target = resolveTarget(editor);
   if (!target) return null;
-  const ctx = formatContext(editor);
+  const ctx = formatContext(editor, target);
   return { target, format: formatOf(target, ctx), ctx, editing: target.kind === 'editor' };
 }
 
