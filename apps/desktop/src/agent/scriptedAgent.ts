@@ -265,11 +265,9 @@ export function createScriptedAgent(
     },
 
     send(sessionId, turn) {
-      let current: Session;
-      try {
-        current = session(sessionId);
-      } catch (error) {
-        return Promise.reject(error);
+      const current = sessions.get(sessionId);
+      if (!current) {
+        return Promise.reject(new AgentError('unknown_session', `no session ${sessionId}`));
       }
       if (current.busy) {
         return Promise.reject(new AgentError('busy', 'a turn is still running in this session'));
