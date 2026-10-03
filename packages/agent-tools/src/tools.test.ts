@@ -313,6 +313,27 @@ describe('content tools', () => {
     ]);
   });
 
+  it('text_set lets a one-line box from HTML wrap once its text is longer', async () => {
+    const { call, bus, nextTurn } = setup(hebrewDeck());
+    const id = 'e_he_hero_title';
+    await ok(call('element_update', { elementId: id, patch: { wrap: false } }));
+    const before = element<TextElement>(bus.deck, id).content;
+
+    // Shorter text still fits the box that was measured to the old one.
+    await ok(call('text_set', { elementId: id, markdown: 'קצר' }));
+    expect(element<TextElement>(bus.deck, id).wrap).toBe(false);
+
+    const turn = nextTurn();
+    await ok(call('text_set', { elementId: id, markdown: 'כותרת ארוכה בהרבה מזו שנמדדה לתיבה' }));
+    expect(element<TextElement>(bus.deck, id).wrap).toBe(true);
+    // The text and the wrapping are one change: one undo takes both back.
+    expect(bus.undoTransaction(turn.txId)).toBe(true);
+    expect(element<TextElement>(bus.deck, id)).toMatchObject({ wrap: false });
+    expect(element<TextElement>(bus.deck, id).content).not.toEqual(before);
+    expect(bus.redo()).toBe(true);
+    expect(element<TextElement>(bus.deck, id).wrap).toBe(true);
+  });
+
   it('text_set takes RichText, a table cell, and refuses what holds no text', async () => {
     const { call, bus } = setup(allElementsDeck());
     const content = { paragraphs: [{ dir: 'ltr', align: 'center', runs: [{ text: 'Raw' }] }] };

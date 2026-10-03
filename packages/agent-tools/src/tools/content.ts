@@ -11,6 +11,7 @@ import {
   insertCols,
   insertRows,
   newId,
+  plainText,
   RichText,
   tableFromGrid,
   tableSizes,
@@ -104,8 +105,18 @@ export const textSet = defineTool({
         ...(element.type === 'table' && !input.dir ? { dir: 'auto' as const } : {}),
         defaultAlign: element.type === 'shape' ? 'center' : 'start',
       });
+    // A one-line text box that came from HTML is as wide as its glyphs and told not to wrap, so
+    // that it looks exactly as written (ADR-005). Longer text would run out of it sideways, and
+    // often off the slide: from here on the box wraps.
+    const wraps =
+      element.type === 'text' &&
+      element.wrap === false &&
+      plainText(content).length > plainText(element.content).length;
     ctx.write([
       { type: 'text.set', slideId: slide.id, elementId, content, ...(cell ? { cell } : {}) },
+      ...(wraps
+        ? [{ type: 'element.update' as const, slideId: slide.id, elementId, patch: { wrap: true } }]
+        : []),
     ]);
     return {};
   },
