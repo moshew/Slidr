@@ -101,5 +101,6 @@ describe('HTML copies', () => {
     // The computed-style copy is the fallback for markup that cannot travel; it holds for most.
     expect(same.computed.length).toBeGreaterThanOrEqual(6);
     expect(bytesOf.markup).toBeLessThan(bytesOf.computed);
-  });
+    // Twelve fixtures, two copies each: about 10 s alone, and more when the machine is busy.
+  }, 60_000);
 });
