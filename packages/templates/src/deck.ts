@@ -11,7 +11,15 @@ import {
 } from '@slidr/model';
 import { copyJson, equalJson } from './json';
 import { mirrorBackground, mirrorElement, mirrorLayout } from './mirror';
-import { followPatch, matchLayout, movesOf, relayout, sitsOn, type Move } from './relayout';
+import {
+  adoptLayout,
+  followPatch,
+  matchLayout,
+  movesOf,
+  relayout,
+  sitsOn,
+  type Move,
+} from './relayout';
 import { layoutsFor, type Template } from './template';
 
 /*
@@ -30,17 +38,23 @@ import { layoutsFor, type Template } from './template';
  *   placeholder in the new layout stays where it is.
  * - A slide whose archetype the template does not have keeps its layout, which stays in the deck
  *   after the template's own and follows the new theme through its tokens.
- * - A slide without a layout only follows the theme.
+ * - A slide without a layout takes the layout of its archetype when that layout has a place for
+ *   everything on it (see `adoptLayout`); otherwise it only follows the theme.
  *
  * Switching back gives the deck back, for everything that followed the template.
  */
 export function applyTemplate(deck: Deck, template: Template): Command[] {
   const next = layoutsFor(template, deck.meta.dir);
   const moving: { slideId: string; to: Layout; updates: Command[] }[] = [];
+  const adopting: typeof moving = [];
   const kept = new Set<string>();
   for (const slide of deck.slides) {
     const from = deck.layouts.find((layout) => layout.id === slide.layoutId);
-    if (!from) continue;
+    if (!from) {
+      const adopted = adoptLayout(slide, next);
+      if (adopted) adopting.push({ slideId: slide.id, to: adopted.layout, updates: adopted.updates });
+      continue;
+    }
     const to = matchLayout(slide, from, next);
     if (to) moving.push({ slideId: slide.id, to, updates: relayout(slide, from, to) });
     else kept.add(from.id);
@@ -68,6 +82,9 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
     // `layout.remove` took the layout off its slides, so each one is put on its new layout.
     if (replaced) commands.push({ type: 'slide.update', slideId, patch: { layoutId: to.id } });
     commands.push(...updates);
+  }
+  for (const { slideId, to, updates } of adopting) {
+    commands.push({ type: 'slide.update', slideId, patch: { layoutId: to.id } }, ...updates);
   }
   return commands;
 }

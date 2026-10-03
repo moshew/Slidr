@@ -245,6 +245,84 @@ describe('applyTemplate', () => {
     expect(after.layouts).toEqual(night.layouts);
   });
 
+  describe('a slide without a layout that knows its archetype', () => {
+    /** A slide as HTML conversion leaves one: an archetype, roles, frames of its own. */
+    const written = (elements: Element[]): Deck => ({
+      ...hebrewDeck(),
+      slides: [{ id: 's_html', archetype: 'quote', elements, timeline: [] }],
+    });
+    const quote = createElement.text({
+      id: 'e_quote',
+      role: 'quote',
+      frame: box(200, 300, 900, 200),
+      vAlign: 'top',
+      content: richText('אמרה', { align: 'center', styleRef: 'title' }),
+    });
+    const who = createElement.text({
+      id: 'e_who',
+      role: 'attribution',
+      frame: box(200, 600, 900, 60),
+      content: richText('מי אמר'),
+    });
+
+    it('takes the layout of its archetype when everything on it has a place there', () => {
+      const deck = written([quote, who]);
+      const paper = paperTemplate();
+      const target = layoutsFor(paper, 'rtl').find((l) => l.archetype === 'quote')!;
+      const bus = run(deck, applyTemplate(deck, paper));
+      const [slide] = bus.deck.slides;
+
+      expect(slide!.layoutId).toBe(target.id);
+      const seat = (role: string) => target.placeholders.find((p) => p.role === role)!;
+      expect(text(bus.deck, 'e_quote')).toMatchObject({
+        frame: seat('quote').frame,
+        vAlign: seat('quote').vAlign ?? 'top',
+      });
+      expect(text(bus.deck, 'e_quote').content.paragraphs[0]).toMatchObject({
+        align: seat('quote').align ?? 'start',
+        styleRef: seat('quote').styleRef,
+        runs: [{ text: 'אמרה' }],
+      });
+      expect(text(bus.deck, 'e_who').frame).toEqual(seat('attribution').frame);
+
+      expect(bus.undoStack).toHaveLength(1);
+      bus.undo();
+      expect(bus.deck).toEqual(deck);
+    });
+
+    it('is left alone when something on it has no place in the layout', () => {
+      // A card behind the text is part of the slide's own design: the text must not leave it.
+      const card = createElement.shape({ id: 'e_card', frame: box(160, 260, 1000, 460) });
+      const deck = written([card, quote, who]);
+      const after = run(deck, applyTemplate(deck, paperTemplate())).deck;
+      expect(after.slides).toBe(deck.slides);
+
+      // And so is a slide with more elements of a role than the layout has placeholders:
+      // two quotes for one place, or an attribution for a layout that has none.
+      const second = { ...quote, id: 'e_quote2' };
+      const crowded = written([quote, second, who]);
+      expect(run(crowded, applyTemplate(crowded, paperTemplate())).deck.slides).toBe(
+        crowded.slides,
+      );
+      const unseated = written([quote, who]);
+      expect(run(unseated, applyTemplate(unseated, nightTemplate())).deck.slides).toBe(
+        unseated.slides,
+      );
+    });
+
+    it('stays without a layout when it has no archetype, or the template has none of it', () => {
+      const plain = written([quote, who]);
+      delete plain.slides[0]!.archetype;
+      expect(run(plain, applyTemplate(plain, paperTemplate())).deck.slides).toBe(plain.slides);
+
+      const timeline = written([quote, who]);
+      timeline.slides[0]!.archetype = 'team';
+      expect(run(timeline, applyTemplate(timeline, paperTemplate())).deck.slides).toBe(
+        timeline.slides,
+      );
+    });
+  });
+
   it("registers the template's assets the deck does not have", () => {
     const logo: AssetMeta = {
       id: 'b'.repeat(64),

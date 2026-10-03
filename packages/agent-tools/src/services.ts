@@ -61,7 +61,8 @@ export interface LayoutService {
     deck: Deck,
     request: {
       layoutId: string;
-      content: Partial<Record<PlaceholderRole, RoleContent>>;
+      /** A list fills the placeholders of a role that repeats (three cards), in order. */
+      content: Partial<Record<PlaceholderRole, RoleContent | RoleContent[]>>;
       name?: string;
     },
   ): Promise<Slide>;

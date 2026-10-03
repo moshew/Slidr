@@ -125,13 +125,13 @@ const RoleContent = z.union([
 export const slideCreate = defineTool({
   name: 'slide_create',
   description:
-    'A new slide from a layout of the deck (deck_get_theme lists them), with content placed by placeholder role. Returns `slideId` and the ids created.',
+    'A new slide from a layout of the deck (deck_get_theme lists them), with content placed by placeholder role. A role the layout has several placeholders of (three cards, four steps) takes a list, one value per placeholder in order. Returns `slideId` and the ids created.',
   input: z.strictObject({
     layoutId: Id,
     content: z
-      .partialRecord(PlaceholderRole, RoleContent)
+      .partialRecord(PlaceholderRole, z.union([RoleContent, z.array(RoleContent).min(1)]))
       .describe(
-        'By role: Markdown text, {"assetId"} for an image, or {"imagePrompt"} for a placeholder to generate.',
+        'By role: Markdown text, {"assetId"} for an image, or {"imagePrompt"} for a placeholder to generate; or a list of them for a role that repeats.',
       ),
     name: z.string().min(1).optional(),
     afterSlideId: afterSlide('at the end'),

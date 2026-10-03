@@ -1,6 +1,11 @@
-import { DeckApiError, markdownToRichText, type LayoutService } from '@slidr/agent-tools';
+import {
+  DeckApiError,
+  markdownToRichText,
+  type LayoutService,
+  type RoleContent,
+} from '@slidr/agent-tools';
 import type { Layout, PlaceholderRole } from '@slidr/model';
-import { createSlide, type LayoutContent } from '@slidr/templates';
+import { createSlide, type LayoutContent, type RoleFill } from '@slidr/templates';
 
 /** The roles of a layout as the agent should read them: `title, body ×3, image`. */
 function describeRoles(layout: Layout): string {
@@ -20,13 +25,12 @@ export function createLayoutService(): LayoutService {
   return {
     createSlide: (deck, { layoutId, content, name }) =>
       Promise.resolve().then(() => {
+        const fill = (value: RoleContent): RoleFill =>
+          typeof value === 'string' ? markdownToRichText(value, { deckDir: deck.meta.dir }) : value;
         const fills: LayoutContent = {};
         for (const [role, value] of Object.entries(content)) {
           if (value === undefined) continue;
-          fills[role as PlaceholderRole] =
-            typeof value === 'string'
-              ? markdownToRichText(value, { deckDir: deck.meta.dir })
-              : value;
+          fills[role as PlaceholderRole] = Array.isArray(value) ? value.map(fill) : fill(value);
         }
         const { slide, unplaced } = createSlide(deck, {
           layoutId,
@@ -40,9 +44,9 @@ export function createLayoutService(): LayoutService {
             `Layout "${layoutId}" has no place for the content of: ${unplaced.join(', ')}. ` +
               `Its placeholders: ${layout ? describeRoles(layout) : 'none'}. ` +
               'A text role takes Markdown, image and logo take {"assetId"} or {"imagePrompt"}, ' +
-              'and a role takes one value, which goes to its first placeholder; a chart, a table ' +
-              'and the rest of a repeated role are filled after the slide is made (chart_set, ' +
-              'table_set, text_set). Nothing was created.',
+              'and a role with several placeholders takes a list, one value for each in order; ' +
+              'a chart and a table are filled after the slide is made (chart_set, table_set). ' +
+              'Nothing was created.',
           );
         }
         return slide;

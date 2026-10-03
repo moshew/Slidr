@@ -141,6 +141,64 @@ export function relayout(slide: Slide, from: Layout, to: Layout): CommandOf<'ele
   return commands;
 }
 
+/**
+ * A slide without a layout taking one for the first time: the layout of its archetype
+ * (`Slide.archetype`, which a slide written as HTML carries), and each element on the
+ * placeholder of its role.
+ *
+ * Such a slide was designed as a whole, so a layout is taken only when it has a seat for
+ * everything on the slide: every top-level element has a role, and the layout has a placeholder
+ * for each. A slide with anything else on it (a card behind its text, a drawing) would keep
+ * those where they were while its text moved away from them, so it is left as it is and only
+ * follows the theme. Undefined when no layout takes the slide.
+ */
+export function adoptLayout(
+  slide: Slide,
+  candidates: readonly Layout[],
+): { layout: Layout; updates: CommandOf<'element.update'>[] } | undefined {
+  if (slide.archetype === undefined) return undefined;
+  const wanted = roleCounts(slide.elements);
+  const seated = [...wanted.values()].reduce((sum, count) => sum + count, 0);
+  if (seated !== slide.elements.length) return undefined;
+  const layout = candidates.find((candidate) => {
+    if (candidate.archetype !== slide.archetype) return false;
+    const seats = roleCounts(candidate.placeholders);
+    return [...wanted].every(([role, count]) => count <= (seats.get(role) ?? 0));
+  });
+  if (!layout) return undefined;
+
+  const seats = byRole(layout.placeholders);
+  const taken = new Map<PlaceholderRole, number>();
+  const updates: CommandOf<'element.update'>[] = [];
+  for (const element of slide.elements) {
+    const role = element.role!;
+    const ordinal = taken.get(role) ?? 0;
+    taken.set(role, ordinal + 1);
+    const to = seats.get(role)![ordinal]!;
+    // There is no placeholder the element came from, so it takes everything the new one gives.
+    const patch: Record<string, unknown> = {};
+    if (!sameFrame(element.frame, to.frame)) patch.frame = { ...to.frame };
+    if (element.type === 'text') {
+      const vAlign = to.vAlign ?? 'top';
+      if (element.vAlign !== vAlign) patch.vAlign = vAlign;
+      const align = to.align ?? 'start';
+      const paragraphs = element.content.paragraphs.map((paragraph) => {
+        const next = { ...paragraph, align };
+        if (to.styleRef) next.styleRef = to.styleRef;
+        else delete next.styleRef;
+        return next;
+      });
+      if (JSON.stringify(paragraphs) !== JSON.stringify(element.content.paragraphs)) {
+        patch.content = { paragraphs };
+      }
+    }
+    if (Object.keys(patch).length > 0) {
+      updates.push({ type: 'element.update', slideId: slide.id, elementId: element.id, patch });
+    }
+  }
+  return { layout, updates };
+}
+
 function roleCounts(items: readonly { role?: PlaceholderRole }[]): Map<PlaceholderRole, number> {
   return new Map([...byRole(items)].map(([role, group]) => [role, group.length]));
 }

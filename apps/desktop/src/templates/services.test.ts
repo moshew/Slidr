@@ -1,5 +1,5 @@
 import { createDeckApi, startTurn, type ToolResult } from '@slidr/agent-tools';
-import { CommandBus, type AssetMeta, type Deck } from '@slidr/model';
+import { CommandBus, plainText, type AssetMeta, type Deck } from '@slidr/model';
 import { deckFromTemplate, layoutsFor } from '@slidr/templates';
 import { nightTemplate, paperTemplate } from '@slidr/templates/fixtures';
 import { describe, expect, it } from 'vitest';
@@ -106,6 +106,33 @@ describe('slide_create over the layout service', () => {
       layoutId: 'l_paper_hero',
       elements: [{ role: 'title' }, { role: 'subtitle' }, { role: 'image', prompt: 'A calm sea' }],
     });
+  });
+
+  it('fills every placeholder of a role that repeats from a list', async () => {
+    const deck = deckFromTemplate(paperTemplate(), { lang: 'en' });
+    const { bus, call } = setup(deck);
+    await ok(
+      call('slide_create', {
+        layoutId: 'l_paper_cards3',
+        content: { title: 'How it works', body: ['Plan', '**Build**', 'Ship'] },
+      }),
+    );
+    const [, ...cards] = bus.deck.slides.at(-1)!.elements;
+    expect(cards.map((card) => (card.type === 'text' ? plainText(card.content) : ''))).toEqual([
+      'Plan',
+      'Build',
+      'Ship',
+    ]);
+    // One step for the whole slide, whatever the number of values.
+    expect(bus.undoStack).toHaveLength(1);
+
+    const tooMany = await failed(
+      call('slide_create', {
+        layoutId: 'l_paper_cards3',
+        content: { body: ['One', 'Two', 'Three', 'Four'] },
+      }),
+    );
+    expect(tooMany.message).toContain('no place for the content of: body');
   });
 
   it('refuses content the layout has no place for, and says what the layout has', async () => {
