@@ -17,13 +17,28 @@ export interface Screen {
 
 function windowScreen(): Screen {
   let full = false;
+  /** The window was maximized when it went full screen, and goes back to that. */
+  let wasMaximized = false;
   return {
     get full() {
       return full;
     },
     set: async (next) => {
+      if (next === full) return full;
+      const appWindow = getCurrentWindow();
       try {
-        await getCurrentWindow().setFullscreen(next);
+        if (next) {
+          // A maximized window without an OS frame keeps the room it leaves for the taskbar
+          // when it is told to go full screen (measured: the page stays 1920x1032 on a 1080
+          // screen). Restored first, it takes the whole screen.
+          wasMaximized = await appWindow.isMaximized();
+          if (wasMaximized) await appWindow.toggleMaximize();
+          await appWindow.setFullscreen(true);
+        } else {
+          await appWindow.setFullscreen(false);
+          if (wasMaximized) await appWindow.toggleMaximize();
+          wasMaximized = false;
+        }
         full = next;
       } catch (error) {
         // Without the permission the show still runs, in the window as it is.
