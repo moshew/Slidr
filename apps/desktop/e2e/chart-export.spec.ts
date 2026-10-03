@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import type { ExportResult } from '@slidr/html-export';
+import { openApp, setCurrentSlide, show } from './runtime-app-helpers';
 import {
   idle,
   isVisible,
@@ -356,5 +357,95 @@ test.describe('what an export does with the chart library', () => {
     expect(await columnHeights(filePage, 'e_chart_step')).toEqual(now);
     expect(now).toHaveLength(4);
     await close();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+
+test.describe('a chart in the app', () => {
+  test.use({ viewport: { width: 1920, height: 1032 } });
+
+  test('present mode draws the charts, and a chart on a step waits for its key', async ({
+    page,
+  }) => {
+    const noErrors = watchErrors(page);
+    await openApp(page, { deck: 'charts-rtl', lang: 'he' });
+    await setCurrentSlide(page, 's_chart_stepped');
+    await page.keyboard.press('Shift+F5');
+    const view = await show(page);
+    const chart = view.locator(`${element('e_chart_step')} [data-slidr-chart-box] svg`);
+    await expect(chart).toHaveCount(1);
+    // Before its step the chart is not there, though its slide is.
+    const visible = () =>
+      page.evaluate(
+        (selector) => getComputedStyle(document.querySelector(selector)!).visibility === 'visible',
+        `[data-testid="present"] ${element('e_chart_step')}`,
+      );
+    expect(await visible()).toBe(false);
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(visible).toBe(true);
+    await idle(page);
+    // The show is the app's own page, with its stylesheet around the slide: the chart is whole.
+    const columns = await page.evaluate(
+      (selector) => {
+        const svg = document.querySelector(`${selector} [data-slidr-chart-box] svg`);
+        return Array.from(svg?.querySelectorAll('path') ?? []).filter(
+          (path) => path.getAttribute('fill') === '#2f5bea',
+        ).length;
+      },
+      `[data-testid="present"] ${element('e_chart_step')}`,
+    );
+    expect(columns).toBeGreaterThanOrEqual(4);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('present')).toHaveCount(0);
+    noErrors();
+  });
+
+  test('the Stage redraws a chart when its data, its type or the theme changes, and not when it moves', async ({
+    page,
+  }) => {
+    await openApp(page, { deck: 'charts', lang: 'en' });
+    const onStage = page
+      .getByTestId('stage-frame')
+      .locator(`${element('e_chart_column')} [data-slidr-chart-box] svg`);
+    await expect(onStage).toHaveCount(1);
+    const drawing = () => onStage.evaluate((svg) => svg.outerHTML);
+    const stamp = () =>
+      onStage.evaluate((svg) => ((svg as { stamp?: number }).stamp ??= Math.random()));
+    const before = await drawing();
+    const node = await stamp();
+
+    const update = (patch: Record<string, unknown>) =>
+      page.evaluate((p) => {
+        const { bus, selection } = window.slidr!;
+        const slideId = selection.getState().currentSlideId!;
+        bus.dispatch({ type: 'element.update', slideId, elementId: 'e_chart_column', patch: p });
+      }, patch);
+
+    // A move is not another picture: the same node holds the same drawing.
+    await update({ frame: { x: 60, y: 60, w: 888, h: 484 } });
+    await page.waitForTimeout(150);
+    expect(await drawing()).toBe(before);
+    expect(await stamp()).toBe(node);
+
+    // Another type draws other marks, in the same chart instance.
+    await update({ chartType: 'line' });
+    await expect.poll(drawing).not.toBe(before);
+    const asLine = await drawing();
+    expect(asLine).toContain('stroke="#2f5bea"');
+
+    // The theme's palette reaches a chart only by a redraw: its colours are literals.
+    await page.evaluate(() => {
+      const { bus } = window.slidr!;
+      bus.dispatch({
+        type: 'theme.update',
+        patch: { colors: { ...bus.deck.theme.colors, chart: ['#aa0000', '#00aa00'] } },
+      });
+    });
+    await expect.poll(drawing).toContain('stroke="#aa0000"');
+
+    // Each of the three changes is one step back.
+    await page.evaluate(() => window.slidr!.bus.undo());
+    await expect.poll(drawing).toBe(asLine);
   });
 });
