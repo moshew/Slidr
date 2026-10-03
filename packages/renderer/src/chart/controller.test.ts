@@ -131,7 +131,7 @@ describe('chartController', () => {
     controller.dispose();
   });
 
-  it('remembers a cue that came before the engine did', async () => {
+  it('remembers a cue that came before the engine did', () => {
     const { engine } = fakeEngine();
     const controller = chartController(host, true, () => Promise.resolve(engine));
     const cue: ChartCue = { state: 'play', delay: 0, duration: 500 };
