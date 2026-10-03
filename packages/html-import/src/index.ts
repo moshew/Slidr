@@ -16,3 +16,14 @@ export {
 } from './engine';
 export { openSandbox, type Sandbox, type SandboxOptions } from './sandbox';
 export type { ConversionHost } from './host';
+export {
+  createImportPage,
+  type ImportCapture,
+  type ImportCaptureRequest,
+  type ImportPage,
+  type ImportPageOptions,
+  type ImportPicture,
+  type ImportTarget,
+  type ImportViewport,
+} from './importPage';
+export type { AppFontFace } from './sourceFonts';
