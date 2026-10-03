@@ -2,6 +2,7 @@ import { createDeck, createSlide } from '@slidr/model';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 import { exportFileName, fontFamilyName, formatBytes, ltr, planExport } from './exportDeck';
+import { en, he } from './messages';
 import { warningText } from './warnings';
 
 const deck = createDeck({
@@ -73,18 +74,33 @@ describe('warningText', () => {
   const t = ((key: string, values?: { name?: string }) =>
     `${key}(${values?.name ?? ''})`) as unknown as TFunction<'export'>;
 
-  it('says the warnings a user can act on in the language of the UI', () => {
+  it('says a warning in the language of the UI, by its code', () => {
     // The file name is kept apart from the Hebrew around it, to be read left to right.
-    expect(warningText(t, 'Asset clip.mp4 could not be read')).toBe(
-      `warning.assetUnreadable(${ltr('clip.mp4')})`,
-    );
-    expect(ltr('clip.mp4')).toHaveLength('clip.mp4'.length + 2);
     expect(
-      warningText(t, 'This browser cannot write shadow roots: HTML elements lost their content'),
-    ).toBe('warning.noShadowRoots()');
+      warningText(t, {
+        code: 'asset-unreadable',
+        subject: 'clip.mp4',
+        message: 'Asset clip.mp4 could not be read',
+      }),
+    ).toBe(`warning.assetUnreadable(${ltr('clip.mp4')})`);
+    expect(ltr('clip.mp4')).toHaveLength('clip.mp4'.length + 2);
+    expect(warningText(t, { code: 'shadow-roots', message: 'No shadow roots' })).toBe(
+      'warning.noShadowRoots()',
+    );
   });
 
-  it('shows any other warning as the package wrote it', () => {
-    expect(warningText(t, 'Something new')).toBe('Something new');
+  it('has a string in both languages for every code', () => {
+    const codes = [
+      'asset-unreadable',
+      'font-unreadable',
+      'font-whole',
+      'fonts-whole',
+      'shadow-roots',
+    ] as const;
+    for (const code of codes) {
+      const key = warningText(t, { code, message: '' }).replace(/^warning\.|\(.*$/g, '');
+      expect(he.warning, key).toHaveProperty(key);
+      expect(en.warning, key).toHaveProperty(key);
+    }
   });
 });

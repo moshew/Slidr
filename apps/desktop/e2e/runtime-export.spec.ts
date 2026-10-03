@@ -112,7 +112,13 @@ test.describe('the reference deck', () => {
     const { result } = exported;
     expect(result.slides).toBe(9);
     // The deck's video has no file behind it in the fixtures; nothing else is missing.
-    expect(result.warnings).toEqual(['Asset clip.mp4 could not be read']);
+    expect(result.warnings).toEqual([
+      {
+        code: 'asset-unreadable',
+        subject: 'clip.mp4',
+        message: 'Asset clip.mp4 could not be read',
+      },
+    ]);
     expect(result.html).not.toMatch(/blob:|https?:\/\/localhost/);
     expect(result.html).not.toMatch(/<link\b|<script[^>]+src=/);
     expect(result.bytes).toBeLessThan(4 * 1024 * 1024);

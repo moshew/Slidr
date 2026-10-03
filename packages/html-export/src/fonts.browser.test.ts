@@ -157,7 +157,11 @@ describe('without WebAssembly', () => {
       );
       const { css, fonts, warnings } = await embedFonts(host);
       expect(warnings).toEqual([
-        'The fonts went in whole: what cuts them down to the characters in use could not be loaded',
+        {
+          code: 'fonts-whole',
+          message:
+            'The fonts went in whole: what cuts them down to the characters in use could not be loaded',
+        },
       ]);
       expect(
         fonts.map((font) => [font.family, font.subset, font.bytes === font.originalBytes]),
@@ -388,7 +392,11 @@ describe('embedFonts', () => {
     await document.fonts.ready;
     const { css, fonts, warnings } = await embedFonts(host);
     expect(warnings).toEqual([
-      'Font T Woff went in whole: it could not be cut down to the characters in use',
+      {
+        code: 'font-whole',
+        subject: 'T Woff',
+        message: 'Font T Woff went in whole: it could not be cut down to the characters in use',
+      },
     ]);
     expect(fonts).toMatchObject([{ family: 'T Woff', subset: false }]);
     expect(fonts[0]?.bytes).toBe(fonts[0]?.originalBytes);

@@ -9,6 +9,7 @@ import {
 } from './fontsMatch';
 import type { SubsetFont, SubsetRequest } from './fontsSubset';
 import { collectText } from './fontsText';
+import type { ExportWarning } from './warnings';
 
 /**
  * Fonts inside the file (WG9-T09): the faces the rendered slides use, cut down to the characters
@@ -43,7 +44,7 @@ export interface EmbeddedFonts {
   css: string;
   fonts: EmbeddedFont[];
   /** What could not be embedded as asked, e.g. a face that went in whole. */
-  warnings: string[];
+  warnings: ExportWarning[];
 }
 
 interface Rule {
@@ -198,7 +199,12 @@ export async function embedFonts(host: HTMLElement): Promise<EmbeddedFonts> {
     const bytes = files[i];
     if (bytes) return [{ ...entry, bytes }];
     // Only a font installed on this computer (`local()`), or a file that is gone.
-    result.warnings.push(`Font ${nameOf(entry.face)} could not be read: it is not in the file`);
+    const subject = nameOf(entry.face);
+    result.warnings.push({
+      code: 'font-unreadable',
+      subject,
+      message: `Font ${subject} could not be read: it is not in the file`,
+    });
     return [];
   });
   if (!fonts.length) return result;
@@ -222,9 +228,11 @@ export async function embedFonts(host: HTMLElement): Promise<EmbeddedFonts> {
   } catch {
     subsetter = false;
     cut = requests.map(() => undefined);
-    result.warnings.push(
-      'The fonts went in whole: what cuts them down to the characters in use could not be loaded',
-    );
+    result.warnings.push({
+      code: 'fonts-whole',
+      message:
+        'The fonts went in whole: what cuts them down to the characters in use could not be loaded',
+    });
   }
 
   const css: string[] = [];
@@ -245,9 +253,12 @@ export async function embedFonts(host: HTMLElement): Promise<EmbeddedFonts> {
       css.push(fontFaceCss(face, { uri: await dataUri(bytes, type.mime), format: type.format }));
       size = bytes.byteLength;
       if (subsetter) {
-        result.warnings.push(
-          `Font ${nameOf(face)} went in whole: it could not be cut down to the characters in use`,
-        );
+        const subject = nameOf(face);
+        result.warnings.push({
+          code: 'font-whole',
+          subject,
+          message: `Font ${subject} went in whole: it could not be cut down to the characters in use`,
+        });
       }
     }
     result.fonts.push({

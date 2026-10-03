@@ -4,6 +4,7 @@ import { embedAsset, measureNeeds, typed, type EmbeddedAsset, type LoadedAsset }
 import { buildDocument } from './document';
 import { embedFonts, type EmbeddedFont } from './fonts';
 import { markHeadings, persistMediaState, renderSlides } from './render';
+import type { ExportWarning } from './warnings';
 
 export interface ExportOptions {
   /** The bytes of an asset, or undefined when the deck's asset cannot be read. */
@@ -39,7 +40,7 @@ export interface ExportResult {
   /** The faces `embedFonts` put in the file; empty when the host supplied `fontCss`. */
   fonts: EmbeddedFont[];
   /** What could not be exported as it is in the deck. */
-  warnings: string[];
+  warnings: ExportWarning[];
 }
 
 function escapeRegExp(text: string): string {
@@ -55,7 +56,7 @@ function escapeRegExp(text: string): string {
  */
 export async function exportHtml(deck: Deck, options: ExportOptions): Promise<ExportResult> {
   const doc = options.document ?? document;
-  const warnings: string[] = [];
+  const warnings: ExportWarning[] = [];
   const only = options.slideIds ? new Set(options.slideIds) : undefined;
   const slides = deck.slides.filter(
     (slide) => (options.includeHidden || !slide.hidden) && (!only || only.has(slide.id)),
@@ -71,8 +72,14 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       if (!meta) return;
       const blob = await options.loadAsset(meta).catch(() => undefined);
       if (!blob) {
-        if (meta.kind !== 'font')
-          warnings.push(`Asset ${meta.name ?? meta.file} could not be read`);
+        if (meta.kind !== 'font') {
+          const subject = meta.name ?? meta.file;
+          warnings.push({
+            code: 'asset-unreadable',
+            subject,
+            message: `Asset ${subject} could not be read`,
+          });
+        }
         return;
       }
       const sized = typed(blob, meta);
@@ -103,7 +110,10 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
         markup = rendered.host.getHTML({ serializableShadowRoots: true });
       } else {
         markup = rendered.host.innerHTML;
-        warnings.push('This browser cannot write shadow roots: HTML elements lost their content');
+        warnings.push({
+          code: 'shadow-roots',
+          message: 'This browser cannot write shadow roots: HTML elements lost their content',
+        });
       }
     } finally {
       rendered.dispose();
