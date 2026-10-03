@@ -131,9 +131,10 @@ impl HarnessManager {
     }
 
     /// Stores a file the user attached to a chat (CHT-U05) in the folder of its thread, under
-    /// `attachments/`, where the agent's own file tool reads it. Returns the file's path
-    /// relative to the session's working directory. The same file under the same name is stored
-    /// once; another file of that name gets a number.
+    /// `attachments/`: the working directory of the thread's sessions, where the agent's own
+    /// file tool reads it. Returns the file's path relative to that directory, which is its
+    /// name. The same file under the same name is stored once; another file of that name gets a
+    /// number.
     pub fn attach(&self, thread: &str, name: &str, bytes: &[u8]) -> Result<String> {
         if bytes.len() > MAX_ATTACHMENT_BYTES {
             return Err(AgentError::invalid_input(format!(
@@ -162,7 +163,7 @@ impl HarnessManager {
                 Err(_) => std::fs::write(&path, bytes)
                     .map_err(|e| AgentError::io("write the attachment", &e))?,
             }
-            return Ok(format!("{ATTACHMENTS_DIR}/{file}"));
+            return Ok(file);
         }
         Err(AgentError::invalid_input(format!(
             "too many attachments named {name:?} in this conversation"
@@ -631,8 +632,14 @@ mod tests {
         let dir = tempfile::tempdir()?;
         let manager = manager(dir.path())?;
         let stored = manager.attach("deck1/thread1", "C:\\Users\\me\\לוגו החברה.png", b"png")?;
-        assert_eq!(stored, "attachments/לוגו החברה.png");
-        let on_disk = dir.path().join("deck1").join("thread1").join(&stored);
+        // Where a session of the thread runs, the file is under its name.
+        assert_eq!(stored, "לוגו החברה.png");
+        let on_disk = dir
+            .path()
+            .join("deck1")
+            .join("thread1")
+            .join("attachments")
+            .join(&stored);
         assert_eq!(std::fs::read(on_disk)?, b"png");
         // The same file again is the same file; another file of that name gets a number.
         assert_eq!(
@@ -641,17 +648,14 @@ mod tests {
         );
         assert_eq!(
             manager.attach("deck1/thread1", "לוגו החברה.png", b"other")?,
-            "attachments/לוגו החברה-2.png"
+            "לוגו החברה-2.png"
         );
         // A name cannot leave the folder, and a thread key cannot leave the root.
         assert_eq!(
             manager.attach("deck1/thread1", "../../evil<1>.html", b"x")?,
-            "attachments/evil_1_.html"
+            "evil_1_.html"
         );
-        assert_eq!(
-            manager.attach("deck1/thread1", "..", b"x")?,
-            "attachments/file"
-        );
+        assert_eq!(manager.attach("deck1/thread1", "..", b"x")?, "file");
         assert_eq!(
             manager
                 .attach("../deck1", "a.txt", b"x")

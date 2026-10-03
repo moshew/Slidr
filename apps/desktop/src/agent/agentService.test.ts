@@ -848,7 +848,7 @@ describe('the files of a message (CHT-U05)', () => {
       attach: (thread, file) => {
         if (extra.fail) return Promise.reject(new AgentError('io', 'the disk is full'));
         attached.push({ thread, name: file.name, bytes: file.bytes.length });
-        return Promise.resolve(`attachments/${file.name}`);
+        return Promise.resolve(file.name);
       },
     });
     const made = setup({ talk }, { wrap, storeImage: () => Promise.resolve(asset) });
@@ -869,8 +869,8 @@ describe('the files of a message (CHT-U05)', () => {
     const block = turn!.context!.slice(turn!.context!.indexOf('<slidr_attachments>'));
     expect(block.split('\n').slice(0, 3)).toEqual([
       '<slidr_attachments>',
-      `file: {"name":"logo.png","path":"attachments/logo.png","kind":"image","asset_id":"${asset.id}","use":"logo"}`,
-      'file: {"name":"brief.md","path":"attachments/brief.md","kind":"file"}',
+      `file: {"name":"logo.png","path":"logo.png","kind":"image","asset_id":"${asset.id}","use":"logo"}`,
+      'file: {"name":"brief.md","path":"brief.md","kind":"file"}',
     ]);
     // The picture is shown to a harness that takes pictures; the document is only on disk.
     expect(turn!.images).toEqual([{ mediaType: 'image/png', data: 'AQID' }]);
