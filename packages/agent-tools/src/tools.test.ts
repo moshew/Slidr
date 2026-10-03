@@ -314,24 +314,26 @@ describe('content tools', () => {
   });
 
   it('text_set lets a one-line box from HTML wrap once its text is longer', async () => {
-    const { call, bus, nextTurn } = setup(hebrewDeck());
+    const session = setup(hebrewDeck());
+    const { call, bus } = session;
     const id = 'e_he_hero_title';
+    const title = () => element<TextElement>(bus.deck, id);
     await ok(call('element_update', { elementId: id, patch: { wrap: false } }));
-    const before = element<TextElement>(bus.deck, id).content;
 
     // Shorter text still fits the box that was measured to the old one.
     await ok(call('text_set', { elementId: id, markdown: 'קצר' }));
-    expect(element<TextElement>(bus.deck, id).wrap).toBe(false);
+    expect(title().wrap).toBe(false);
 
-    const turn = nextTurn();
+    const turn = session.nextTurn();
     await ok(call('text_set', { elementId: id, markdown: 'כותרת ארוכה בהרבה מזו שנמדדה לתיבה' }));
-    expect(element<TextElement>(bus.deck, id).wrap).toBe(true);
-    // The text and the wrapping are one change: one undo takes both back.
+    expect(title().wrap).toBe(true);
+    // The text and the wrapping are one change: one undo takes both back, one redo brings both.
     expect(bus.undoTransaction(turn.txId)).toBe(true);
-    expect(element<TextElement>(bus.deck, id)).toMatchObject({ wrap: false });
-    expect(element<TextElement>(bus.deck, id).content).not.toEqual(before);
+    expect(title().wrap).toBe(false);
+    expect(plainText(title().content)).toBe('קצר');
     expect(bus.redo()).toBe(true);
-    expect(element<TextElement>(bus.deck, id).wrap).toBe(true);
+    expect(title().wrap).toBe(true);
+    expect(plainText(title().content)).toBe('כותרת ארוכה בהרבה מזו שנמדדה לתיבה');
   });
 
   it('text_set takes RichText, a table cell, and refuses what holds no text', async () => {

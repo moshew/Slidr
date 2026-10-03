@@ -10,14 +10,16 @@ import {
   PlaceholderRole,
   rotatedBounds,
   unionBounds,
+  walkElements,
   type AssetMeta,
   type Command,
   type Deck,
   type Element,
+  type Slide,
 } from '@slidr/model';
 import { z } from 'zod';
 import { getElement, getSlide, slideNumber } from '../lookup';
-import type { PngImage, StoredImage } from '../services';
+import type { HtmlSlideConversion, PngImage, StoredImage } from '../services';
 import { DeckApiError, defineTool, type ToolContext } from '../tool';
 import { afterSlide, indexAfter } from './shared';
 
@@ -25,7 +27,31 @@ const Id = z.string().min(1);
 const ALL = ['deck', 'slide', 'object'] as const;
 
 const HTML_HELP =
-  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute). Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> a placeholder to generate later; <i data-icon="lucide:rocket"> an icon; <div data-chart=\'{...}\'> an editable chart; data-name and data-role name elements; data-anim gives an entrance by preset name; data-keep-html keeps a subtree as HTML; data-archetype on the root states the kind of slide.';
+  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute), and give every block of text a definite width. Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> an empty placeholder for an image to generate; data-name and data-role name elements; data-anim gives an entrance by preset name; data-keep-html keeps a subtree as HTML; data-archetype on the root states the kind of slide. <i data-icon="lucide:rocket"> places an icon when the icon library is available. <div data-chart=\'{...}\'> makes a chart element, which this version draws as a labelled placeholder: draw data from boxes and text instead.';
+
+/**
+ * The image placeholders of a slide (`data-image-prompt`), for the result of an HTML write: the
+ * ids `image_generate` takes. The ids a write creates say nothing of their kind, and an agent
+ * left to guess handed the image tool a text box (ADR-042).
+ */
+function imagePlaceholders(slide: Slide): { elementId: string; prompt: string }[] {
+  return [...walkElements(slide.elements)].flatMap((element) =>
+    element.type === 'image' && !element.assetId && element.prompt
+      ? [{ elementId: element.id, prompt: element.prompt }]
+      : [],
+  );
+}
+
+/** What both HTML writes report of a conversion. */
+function conversionData(slideId: string, result: HtmlSlideConversion): Record<string, unknown> {
+  const placeholders = imagePlaceholders(result.slide);
+  return {
+    slideId,
+    editability: result.editability,
+    notes: result.notes,
+    ...(placeholders.length > 0 ? { imagePlaceholders: placeholders } : {}),
+  };
+}
 
 const registerAssets = (assets: readonly AssetMeta[]): Command[] =>
   assets.map((asset) => ({ type: 'asset.add', asset }));
@@ -153,7 +179,7 @@ export const slideCreateFromHtml = defineTool({
       { type: 'slide.add', slide: result.slide, index },
     ]);
     return {
-      data: { slideId: result.slide.id, editability: result.editability, notes: result.notes },
+      data: conversionData(result.slide.id, result),
       images: await renderIfPossible(ctx, result.slide.id),
     };
   },
@@ -191,7 +217,7 @@ export const slideReplaceFromHtml = defineTool({
     );
     ctx.write(commands);
     return {
-      data: { slideId, editability: result.editability, notes: result.notes },
+      data: conversionData(slideId, result),
       images: await renderIfPossible(ctx, slideId),
     };
   },

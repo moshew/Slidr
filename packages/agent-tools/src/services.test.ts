@@ -156,6 +156,38 @@ describe('conversion', () => {
     expect(result.images).toEqual([png]);
   });
 
+  it('an HTML write names the image placeholders it left, for image_generate', async () => {
+    const frame = { x: 0, y: 0, w: 800, h: 600 };
+    const withImages: ConversionService = {
+      ...conversion,
+      htmlToSlide: () =>
+        Promise.resolve({
+          slide: createSlide({
+            id: newId('s'),
+            elements: [
+              createElement.text({ id: 'e_title', frame, content: { paragraphs: [] } }),
+              createElement.image({ id: 'e_photo', frame, prompt: 'a clinic reception' }),
+              // An image that already has its picture is not waiting for one.
+              createElement.image({ id: 'e_logo', frame, assetId: 'a'.repeat(64) }),
+            ],
+          }),
+          assets: [asset('a')],
+          editability: 1,
+          notes: [],
+        }),
+    };
+    const { call } = setup(hebrewDeck(), { conversion: withImages });
+    const created = await ok(call('slide_create_from_html', { html: '<div>x</div>' }));
+    expect(created.imagePlaceholders).toEqual([
+      { elementId: 'e_photo', prompt: 'a clinic reception' },
+    ]);
+    // A slide without placeholders says nothing of them.
+    const plain = setup(hebrewDeck(), { conversion });
+    expect(
+      await ok(plain.call('slide_create_from_html', { html: '<div>x</div>' })),
+    ).not.toHaveProperty('imagePlaceholders');
+  });
+
   it('slide_replace_from_html replaces the content and keeps the slide', async () => {
     const { call, bus } = setup(
       allElementsDeck(),
