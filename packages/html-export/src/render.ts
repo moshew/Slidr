@@ -1,5 +1,5 @@
 import { walkElements, type Deck, type Paragraph, type Slide } from '@slidr/model';
-import { SlideRenderer, type AssetResolver } from '@slidr/renderer';
+import { chartsSettled, SlideRenderer, type AssetResolver } from '@slidr/renderer';
 import type { AnimationStep, Transition } from '@slidr/runtime';
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
@@ -44,6 +44,8 @@ export function* everyElement(root: ParentNode): Generator<Element> {
  */
 async function settle(host: HTMLElement): Promise<void> {
   const doc = host.ownerDocument;
+  // A chart is drawn after its library and its fonts have loaded: the file gets its picture.
+  await chartsSettled();
   await doc.fonts.ready;
   const images = Array.from(everyElement(host)).filter(
     (el): el is HTMLImageElement => el instanceof HTMLImageElement && Boolean(el.src),

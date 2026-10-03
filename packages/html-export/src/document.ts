@@ -16,6 +16,11 @@ export interface DocumentParts {
   fontCss: string;
   /** The runtime bundle. */
   script: string;
+  /**
+   * The chart engine with its library, for a deck that has charts (EXP-12). It comes before the
+   * runtime: the charts are listening when the player gives the first slide its cues.
+   */
+  chartScript?: string | undefined;
 }
 
 function escapeHtml(text: string): string {
@@ -67,6 +72,7 @@ export function buildDocument(parts: DocumentParts): string {
     `<div class="${VIEWPORT_CLASS}"><div class="${STAGE_CLASS}" data-width="${size.w}" data-height="${size.h}">`,
     parts.slides,
     '</div></div>',
+    parts.chartScript ? `<script data-slidr-charts>${inline(parts.chartScript)}</script>` : '',
     `<script>${inline(parts.script)}</script>`,
     '</body>',
     '</html>',

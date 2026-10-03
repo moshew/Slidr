@@ -1,4 +1,5 @@
 import { referencedAssetIds, type AssetMeta, type Deck } from '@slidr/model';
+import { CHART_SELECTOR, CHART_STILL } from '@slidr/runtime';
 import { playerBundle } from '@slidr/runtime/bundle';
 import { embedAsset, measureNeeds, typed, type EmbeddedAsset, type LoadedAsset } from './assets';
 import { buildDocument } from './document';
@@ -39,6 +40,8 @@ export interface ExportResult {
   assets: EmbeddedAsset[];
   /** The faces `embedFonts` put in the file; empty when the host supplied `fontCss`. */
   fonts: EmbeddedFont[];
+  /** The charts in the file, and the bytes of the chart library they brought with them. */
+  charts: { count: number; bytes: number };
   /** What could not be exported as it is in the deck. */
   warnings: ExportWarning[];
 }
@@ -95,8 +98,13 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
     let needs: ReturnType<typeof measureNeeds>;
     let fontCss = '';
     let fonts: EmbeddedFont[] = [];
+    let chartCount = 0;
     try {
       needs = measureNeeds(rendered.host, assets);
+      const charts = Array.from(rendered.host.querySelectorAll(CHART_SELECTOR));
+      chartCount = charts.length;
+      // Without animations a chart is shown whole, like everything else on its slide.
+      if (!animations) for (const chart of charts) chart.setAttribute(CHART_STILL, '');
       if (options.fontCss) fontCss = await options.fontCss();
       else {
         const embedded = await embedFonts(rendered.host);
@@ -132,6 +140,11 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       markup = markup.replace(urls, (url) => uris.get(url) ?? url);
     }
 
+    // The chart library goes into a file only with a chart to draw (EXP-12), and is loaded
+    // here only then: a deck without charts never pays for it.
+    const chartScript = chartCount
+      ? (await import('@slidr/renderer/chart-bundle')).chartBundle
+      : undefined;
     const html = buildDocument({
       title: deck.meta.title,
       lang: deck.meta.lang,
@@ -140,6 +153,7 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       slides: markup,
       fontCss,
       script: playerBundle,
+      chartScript,
     });
     return {
       html,
@@ -147,6 +161,7 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       slides: slides.length,
       assets: embedded.map((e) => e.report),
       fonts,
+      charts: { count: chartCount, bytes: chartScript ? new Blob([chartScript]).size : 0 },
       warnings,
     };
   } finally {
