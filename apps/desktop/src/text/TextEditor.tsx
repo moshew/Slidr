@@ -200,6 +200,7 @@ export function TextEditor({
           wrap: element.type === 'text' ? (element.wrap ?? true) : true,
           color: defaults?.color,
           weight: defaults?.weight,
+          alignTo: defaults?.alignTo,
         }),
         Extension.create({
           name: 'slidrKeys',
@@ -331,7 +332,7 @@ export function TextEditor({
         }
       },
     },
-    [theme, defaults?.color, defaults?.weight],
+    [theme, defaults?.color, defaults?.weight, defaults?.alignTo],
   );
 
   useEffect(() => {

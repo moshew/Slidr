@@ -191,6 +191,53 @@ test('a merged cell spans the grid lines of the cells it covers', async () => {
   expect(cells['2,2']).toMatchObject({ left: 300, top: 200, right: 600, bottom: 300 });
 });
 
+test('in a right-to-left table, text that reads left to right starts on the right too', async () => {
+  const table = createElement.table({
+    id: 'e_table',
+    frame: { x: 100, y: 100, w: 800, h: 200 },
+    rows: [100, 100],
+    cols: [400, 400],
+    dir: 'rtl',
+    style: { headerRow: false, bandedRows: false, firstColumn: false },
+    cells: [
+      [cell('רבעון', { borders: {} }), cell('Q1 2026', { borders: {} })],
+      [
+        // A paragraph with a direction of its own keeps its own start.
+        { content: richText('Explicit', { dir: 'ltr' }), borders: {} },
+        cell('+4%', { borders: {} }),
+      ],
+    ],
+  });
+  const slide = createSlide({ elements: [table] });
+  const deck = createDeck({ lang: 'he', slides: [slide] });
+  const offscreen = await renderSlideOffscreen({ deck, slide });
+  try {
+    const edges = (row: number, col: number) => {
+      const td = offscreen.root.querySelector<HTMLElement>(
+        `td[data-row="${row}"][data-col="${col}"]`,
+      )!;
+      const box = td.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(td.querySelector('p')!);
+      const text = range.getBoundingClientRect();
+      // The cell's padding is 20 on each side.
+      return { left: text.left - box.left - 20, right: box.right - 20 - text.right };
+    };
+    // Hebrew, Latin and a bare number: all on the right edge of their column.
+    expect(edges(0, 0).right).toBeLessThan(1);
+    expect(edges(0, 1).right).toBeLessThan(1);
+    expect(edges(1, 1).right).toBeLessThan(1);
+    expect(edges(0, 1).left).toBeGreaterThan(100);
+    // The paragraph that says "left to right" itself starts on the left.
+    expect(edges(1, 0).left).toBeLessThan(1);
+    // And the Latin text is laid out left to right, not turned around.
+    const latin = offscreen.root.querySelector('td[data-row="0"][data-col="1"] p')!;
+    expect(latin.getAttribute('dir')).toBe('ltr');
+  } finally {
+    offscreen.dispose();
+  }
+});
+
 test('every table style keeps its lines inside the frame', async () => {
   for (const style of tableStyles) {
     const table = createElement.table({

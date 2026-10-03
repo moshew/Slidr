@@ -94,7 +94,11 @@ export function useText(): Text | null {
   const target = resolveTarget(editor);
   if (!target) return null;
   const ctx = formatContext(editor, target);
-  return { target, format: formatOf(target, ctx), ctx, editing: target.kind === 'editor' };
+  let format = formatOf(target, ctx);
+  // In a table the sides of the alignment are the table's (`TextDefaults.alignTo`): the
+  // alignment buttons name them by its direction, whichever way a cell's own text reads.
+  if (target.element.type === 'table') format = { ...format, direction: target.element.dir };
+  return { target, format, ctx, editing: target.kind === 'editor' };
 }
 
 /* ---------------------------------------------------------------- focus */

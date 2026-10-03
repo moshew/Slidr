@@ -164,7 +164,7 @@ export function cellLook(table: TableElement, row: number, col: number): CellLoo
 
 /** The defaults of the text in a cell, for the renderer and for the editor that takes its place. */
 export function cellTextDefaults(table: TableElement, row: number, col: number): TextDefaults {
-  return { styleRef: 'body', wrap: true, ...cellLook(table, row, col).text };
+  return { styleRef: 'body', wrap: true, alignTo: table.dir, ...cellLook(table, row, col).text };
 }
 
 const width = (stroke: Stroke | undefined) => (stroke && stroke.width > 0 ? stroke.width : 0);

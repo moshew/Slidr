@@ -5,7 +5,9 @@ import {
   type TableCell,
   type TableElement,
 } from '@slidr/model';
+import { createBaseTheme, type Paragraph } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
+import { paragraphStyle } from './text';
 import {
   cellLook,
   cellTextDefaults,
@@ -59,6 +61,7 @@ describe('table styles', () => {
     expect(cellTextDefaults(t, 0, 1)).toEqual({
       styleRef: 'body',
       wrap: true,
+      alignTo: 'ltr',
       color: 'var(--color-bg)',
       weight: 600,
     });
@@ -110,6 +113,40 @@ describe('table styles', () => {
       right: outline,
       bottom: outline,
     });
+  });
+});
+
+describe('text in a cell', () => {
+  const theme = createBaseTheme();
+  const paragraph = (extra: Partial<Paragraph>): Paragraph => ({
+    dir: 'auto',
+    align: 'start',
+    runs: [{ text: 'Q1' }],
+    ...extra,
+  });
+  const align = (p: Paragraph, alignTo?: 'rtl' | 'ltr') =>
+    paragraphStyle(p, theme, { styleRef: 'body', wrap: true, alignTo }).textAlign;
+
+  it('aligns a paragraph of no direction of its own by the direction of the table', () => {
+    // "Q1" in a Hebrew table reads left to right, and sits where its column starts: on the right.
+    expect(align(paragraph({}), 'rtl')).toBe('right');
+    expect(align(paragraph({ align: 'end' }), 'rtl')).toBe('left');
+    expect(align(paragraph({}), 'ltr')).toBe('left');
+    expect(align(paragraph({ align: 'end' }), 'ltr')).toBe('right');
+    expect(align(paragraph({ align: 'center' }), 'rtl')).toBe('center');
+    expect(align(paragraph({ align: 'justify' }), 'rtl')).toBe('justify');
+  });
+
+  it('leaves a paragraph with a direction of its own, and text outside a table, as they are', () => {
+    expect(align(paragraph({ dir: 'ltr' }), 'rtl')).toBe('start');
+    expect(align(paragraph({ dir: 'rtl', align: 'end' }), 'ltr')).toBe('end');
+    expect(align(paragraph({}))).toBe('start');
+    expect(align(paragraph({ align: 'end' }))).toBe('end');
+  });
+
+  it('is told the direction of its table', () => {
+    const rtl = table({ dir: 'rtl', style: NO_STYLE });
+    expect(cellTextDefaults(rtl, 1, 0)).toEqual({ styleRef: 'body', wrap: true, alignTo: 'rtl' });
   });
 });
 

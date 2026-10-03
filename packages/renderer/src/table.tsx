@@ -76,7 +76,7 @@ export function TableView({ element: e }: { element: TableElement }) {
                     <RichTextView
                       content={cell.content}
                       theme={ctx.theme}
-                      defaults={{ styleRef: 'body', wrap: true, ...look.text }}
+                      defaults={{ styleRef: 'body', wrap: true, alignTo: e.dir, ...look.text }}
                       dir={e.dir}
                     />
                   )}

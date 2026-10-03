@@ -106,6 +106,21 @@ export interface TextDefaults {
   /** Overrides the text style's colour and weight, e.g. in a table's header row. Marks still win. */
   color?: string;
   weight?: number;
+  /** In a table cell: the direction of the table, which `dir: auto` paragraphs are aligned by. */
+  alignTo?: Direction;
+}
+
+/**
+ * The side the lines of a paragraph are aligned to. `start` and `end` are sides of the
+ * paragraph's own direction, as in CSS. In a table cell (`alignTo`) a `dir: auto` paragraph
+ * takes them from the table instead: its text still reads its own way, but it sits on the side
+ * its column starts from. So a column of a Hebrew table has one edge, whether a cell says "רבעון"
+ * or "Q1". A paragraph with a direction of its own keeps its own sides.
+ */
+function alignment(p: Paragraph, defaults: TextDefaults): CSSProperties['textAlign'] {
+  const { align } = p;
+  if (!defaults.alignTo || p.dir !== 'auto' || (align !== 'start' && align !== 'end')) return align;
+  return (align === 'start') === (defaults.alignTo === 'ltr') ? 'left' : 'right';
 }
 
 /** The style of a paragraph. The text editor (WG4) uses it too, so text does not move on entering it. */
@@ -122,7 +137,7 @@ export function paragraphStyle(p: Paragraph, theme: Theme, defaults: TextDefault
     letterSpacing: ts.letterSpacing ?? 'normal',
     color: defaults.color ?? colorCss(ts.color),
     textTransform: ts.case === 'upper' ? 'uppercase' : ts.case === 'lower' ? 'lowercase' : 'none',
-    textAlign: p.align,
+    textAlign: alignment(p, defaults),
     textIndent: !p.list && p.indent ? p.indent : 0,
     paddingBlockStart: p.spaceBefore || undefined,
     paddingBlockEnd: p.spaceAfter || undefined,

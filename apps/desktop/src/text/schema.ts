@@ -1,4 +1,4 @@
-import type { Paragraph, TextStyleRef, Theme } from '@slidr/model';
+import type { Direction, Paragraph, TextStyleRef, Theme } from '@slidr/model';
 import { LEVEL_EM, MARKER_EM, paragraphStyle, runStyle } from '@slidr/renderer';
 import { Mark, Node, type AnyExtension } from '@tiptap/core';
 import type { CSSProperties } from 'react';
@@ -41,6 +41,8 @@ export interface TextSchemaOptions {
   /** Over the text style's colour and weight, as in a table's header row (`TextDefaults`). */
   color?: string;
   weight?: number;
+  /** In a table cell: the direction of the table, which `dir: auto` paragraphs are aligned by. */
+  alignTo?: Direction;
 }
 
 interface AttributeSpec {
@@ -100,6 +102,7 @@ const SlidrParagraph = Node.create<TextSchemaOptions>({
         wrap: this.options.wrap,
         color: this.options.color,
         weight: this.options.weight,
+        alignTo: this.options.alignTo,
       }),
       ...(p.list ? { paddingInlineStart: `${p.list.level * LEVEL_EM + MARKER_EM}em` } : {}),
     };
