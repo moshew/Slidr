@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { isTauri } from '@tauri-apps/api/core';
 import { App } from './App';
 import { tauriStorage } from './document/tauriStorage';
+import { registerBuiltinFonts } from './fonts';
 import { currentLanguage } from './i18n';
 import { createEditor, type Editor } from './shell/editor';
 import { startDocument } from './shell/fileActions';
@@ -14,6 +15,9 @@ import { syncTheme } from './shell/store';
 
 syncTheme();
 blockNativeContextMenu();
+// The fonts decks are set in (ADR-009): without them the Stage draws every slide in a fallback
+// font, while the capture window, which registers them, shows the agent the real one.
+registerBuiltinFonts();
 
 const editor = createEditor({
   lang: currentLanguage(),
