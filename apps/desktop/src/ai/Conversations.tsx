@@ -73,12 +73,15 @@ export function ConversationBar({ scope, thread }: { scope: SessionScope; thread
                 value={conversation.id}
                 data-conversation={conversation.id}
               >
-                <span dir="auto">{titleOf(conversation)}</span>
-                {conversation.updatedAt && (
-                  <span className="ms-2 text-xs text-ui-fg-muted">
-                    {when(conversation.updatedAt)}
+                {/* Two lines: a long first message is cut, and when it was said stays whole. */}
+                <span className="flex min-w-0 flex-col">
+                  <span dir="auto" className="truncate">
+                    {titleOf(conversation)}
                   </span>
-                )}
+                  {conversation.updatedAt && (
+                    <span className="text-xs text-ui-fg-muted">{when(conversation.updatedAt)}</span>
+                  )}
+                </span>
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
