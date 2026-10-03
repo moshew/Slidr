@@ -212,18 +212,20 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
     };
   }
 
-  const widths = xs.slice(1).map((x, i) => round((x - xs[i]!) * toSlide));
-  const heights = ys.slice(1).map((y, i) => round((y - ys[i]!) * toSlide));
   // A cell's box runs from the middle of one collapsed border to the middle of the next, and
   // the table's own box also holds the outer halves of the borders around it. The renderer
-  // gives each row its share of the frame's height, so the frame is as tall as the rows are
-  // together; the outer border at the bottom then lies just past it, where the source drew it.
+  // draws those borders inside the frame (`tableLayout`): the frame is the table's own box, and
+  // the first and the last row and column reach its edges.
   const outer = el.getBoundingClientRect();
+  const gridX = [outer.left, ...xs.slice(1, -1), outer.right];
+  const gridY = [outer.top, ...ys.slice(1, -1), outer.bottom];
+  const widths = gridX.slice(1).map((x, i) => round((x - gridX[i]!) * toSlide));
+  const heights = gridY.slice(1).map((y, i) => round((y - gridY[i]!) * toSlide));
   const frame = ctx.toFrame({
     left: outer.left,
     top: outer.top,
     width: outer.width,
-    height: ys[lines]! - ys[0]!,
+    height: outer.height,
   });
   // A column the browser fitted exactly to its text must not come out a hair narrower and wrap it.
   frame.w = round(frame.w + 0.1);

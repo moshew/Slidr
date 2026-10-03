@@ -10,7 +10,6 @@ import type {
   ShapeElement,
   Stroke,
   SvgElement,
-  TableElement,
   TextElement,
   VideoElement,
 } from '@slidr/model';
@@ -27,7 +26,7 @@ import {
 } from 'react';
 import { domId, useRenderContext, type RenderContext } from './context';
 import { num, passthroughStyle } from './css';
-import { FillLayer, fillStyle } from './fill';
+import { FillLayer } from './fill';
 import {
   isBoxPreset,
   pathBounds,
@@ -39,7 +38,8 @@ import {
 import { Icon } from './icons';
 import { frameDocument, prepareSvg, resolveAssetRefs } from './markup';
 import { parseFragment, sanitizeFragment } from './sanitize';
-import { RichTextView, TextBox } from './text';
+import { TableView } from './table';
+import { TextBox } from './text';
 import { colorCss, shadowCss } from './theme';
 
 const FILL_PARENT: CSSProperties = { position: 'absolute', inset: 0, margin: 0, padding: 0 };
@@ -757,101 +757,6 @@ function HtmlView({ element: e }: { element: HtmlElement }) {
         <ShadowContent e={e} style={content} />
       )}
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------------------------
-// Table
-
-const CELL_PADDING = { top: 12, right: 20, bottom: 12, left: 20 };
-const V_ALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' } as const;
-
-function strokeCss(stroke: Stroke | undefined): string | undefined {
-  if (!stroke || stroke.width <= 0) return undefined;
-  return `${stroke.width}px ${stroke.dash ?? 'solid'} ${colorCss(stroke.color)}`;
-}
-
-/**
- * A table as a real `<table>` (ADR-005: a table taken apart into boxes loses its look). Row heights
- * and column widths scale to the frame. Without explicit cell styling it gets a plain default
- * look; template table styles (TBL-04) are WG6.
- */
-function TableView({ element: e }: { element: TableElement }) {
-  const ctx = useRenderContext();
-  const totalW = e.cols.reduce((a, b) => a + b, 0) || 1;
-  const totalH = e.rows.reduce((a, b) => a + b, 0) || 1;
-  const sy = e.frame.h / totalH;
-  const rule = '1px solid color-mix(in srgb, var(--color-muted) 35%, transparent)';
-  return (
-    <table
-      style={{
-        width: '100%',
-        height: '100%',
-        margin: 0,
-        borderCollapse: 'collapse',
-        borderSpacing: 0,
-        tableLayout: 'fixed',
-        direction: e.dir,
-      }}
-    >
-      <colgroup>
-        {e.cols.map((c, i) => (
-          <col key={i} style={{ width: `${num((c / totalW) * 100, 4)}%` }} />
-        ))}
-      </colgroup>
-      <tbody>
-        {e.cells.map((row, r) => (
-          <tr key={r} style={{ height: num((e.rows[r] ?? 0) * sy, 3) }}>
-            {row.map((cell, c) => {
-              if (cell.merged) return null;
-              const header = e.style.headerRow && r === 0;
-              const firstColumn = e.style.firstColumn && c === 0;
-              const banded =
-                e.style.bandedRows && !header && (r - (e.style.headerRow ? 1 : 0)) % 2 === 1;
-              const fill =
-                cell.fill ??
-                (header
-                  ? ({ kind: 'solid', color: { token: 'primary' } } as const)
-                  : banded
-                    ? ({ kind: 'solid', color: { token: 'surface' } } as const)
-                    : undefined);
-              const pad = cell.padding ?? CELL_PADDING;
-              const b = cell.borders;
-              return (
-                <td
-                  key={c}
-                  rowSpan={cell.rowSpan}
-                  colSpan={cell.colSpan}
-                  style={{
-                    margin: 0,
-                    padding: `${pad.top}px ${pad.right}px ${pad.bottom}px ${pad.left}px`,
-                    verticalAlign: V_ALIGN[cell.vAlign ?? 'middle'],
-                    overflow: 'hidden',
-                    ...(fill ? fillStyle(fill, ctx) : {}),
-                    borderTop: strokeCss(b?.top),
-                    borderRight: strokeCss(b?.right),
-                    borderBottom: strokeCss(b?.bottom) ?? (b ? undefined : rule),
-                    borderLeft: strokeCss(b?.left),
-                  }}
-                >
-                  <RichTextView
-                    content={cell.content}
-                    theme={ctx.theme}
-                    defaults={{
-                      styleRef: 'body',
-                      wrap: true,
-                      ...(header && !cell.fill ? { color: 'var(--color-bg)', weight: 600 } : {}),
-                      ...(firstColumn && !header ? { weight: 600 } : {}),
-                    }}
-                    dir={e.dir}
-                  />
-                </td>
-              );
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 

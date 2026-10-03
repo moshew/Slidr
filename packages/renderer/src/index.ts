@@ -1,8 +1,9 @@
 // SlideRenderer and the element renderers: model -> DOM (SPEC 7, ADR-009).
 export { SlideRenderer, ScaledSlide, type SlideRendererProps } from './SlideRenderer';
-export type { AssetResolver, ElementSlot, RenderMode, TextSlot } from './context';
+export type { AssetResolver, CellSlot, ElementSlot, RenderMode, TextSlot } from './context';
 export {
   colorCss,
+  familyCss,
   fontStack,
   hebrewFace,
   hebrewFaces,
@@ -10,6 +11,16 @@ export {
   themeVariablesCss,
 } from './theme';
 export { fillStyle } from './fill';
+export {
+  cellLook,
+  cellTextDefaults,
+  tableEdges,
+  tableLayout,
+  tableStyle,
+  tableStyles,
+  type CellLook,
+  type TableStyle,
+} from './tableStyle';
 export { presetPath, scalePath, shapePresets, isBoxPreset, type ShapePath } from './geometry';
 export { imagePlacement, linePath } from './elements';
 export {

@@ -3,6 +3,7 @@ import { useMemo, type CSSProperties } from 'react';
 import {
   RenderContextValue,
   type AssetResolver,
+  type CellSlot,
   type ElementSlot,
   type RenderContext,
   type RenderMode,
@@ -28,6 +29,8 @@ export interface SlideRendererProps {
   slot?: ElementSlot;
   /** Puts the host's content (the text editor) in a text box. Keep it stable. */
   textSlot?: TextSlot;
+  /** Puts the host's content (the text editor) in a table cell. Keep it stable. */
+  cellSlot?: CellSlot;
   className?: string;
   /** Applied to the slide root, after the renderer's own styles. */
   style?: CSSProperties;
@@ -49,6 +52,7 @@ export function SlideRenderer({
   resolveAsset,
   slot,
   textSlot,
+  cellSlot,
   className,
   style,
 }: SlideRendererProps) {
@@ -66,8 +70,9 @@ export function SlideRenderer({
       },
       slot,
       textSlot,
+      cellSlot,
     }),
-    [theme, mode, meta.dir, meta.lang, assets, resolveAsset, slot, textSlot],
+    [theme, mode, meta.dir, meta.lang, assets, resolveAsset, slot, textSlot, cellSlot],
   );
   const vars = useMemo(() => themeVariables(theme), [theme]);
   const fontFaces = useMemo(

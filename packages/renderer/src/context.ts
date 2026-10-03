@@ -1,4 +1,12 @@
-import type { AssetMeta, Direction, Element, ShapeElement, TextElement, Theme } from '@slidr/model';
+import type {
+  AssetMeta,
+  Direction,
+  Element,
+  ShapeElement,
+  TableElement,
+  TextElement,
+  Theme,
+} from '@slidr/model';
 import { createContext, useContext, type ReactNode } from 'react';
 
 /**
@@ -29,6 +37,12 @@ export type ElementSlot = (element: Element, rendered: ReactNode) => ReactNode;
  */
 export type TextSlot = (element: TextElement | ShapeElement) => ReactNode | undefined;
 
+/**
+ * The same for one cell of a table: the host's content takes the place of the cell's text, inside
+ * the cell, which keeps its padding, alignment, fill and borders (WG6). `undefined` keeps the text.
+ */
+export type CellSlot = (table: TableElement, row: number, col: number) => ReactNode | undefined;
+
 export interface RenderContext {
   theme: Theme;
   mode: RenderMode;
@@ -40,6 +54,7 @@ export interface RenderContext {
   asset: (assetId: string) => AssetMeta | undefined;
   slot?: ElementSlot;
   textSlot?: TextSlot;
+  cellSlot?: CellSlot;
 }
 
 export const RenderContextValue = createContext<RenderContext | null>(null);
