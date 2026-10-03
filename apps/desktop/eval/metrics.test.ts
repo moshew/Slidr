@@ -176,6 +176,13 @@ describe('the score of a request', () => {
     expect(score.editability).toBeCloseTo(0.875);
   });
 
+  it('leaves a plain slide the request did not touch to the user', () => {
+    const edit = scoreRequest({ before: deck, deck, entries: [], tools: [], findings: [] });
+    expect(edit.slides[2]?.titleAndBullets).toBe(true);
+    expect(edit.titleAndBullets).toEqual([]);
+    expect(edit.gate.judged).toBe(0);
+  });
+
   it('follows the HTML writes: how many, how they converted, which came back clean', () => {
     expect(score.conversions).toEqual({
       writes: 4,

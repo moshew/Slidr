@@ -69,6 +69,7 @@ export interface RequestScore {
   };
   /** The mean of the slides' editability. */
   editability: number;
+  /** Among the slides the request created or changed: a slide it left alone is the user's. */
   titleAndBullets: string[];
   emoji: string[];
   conversions: {
@@ -242,7 +243,9 @@ export function scoreRequest({ before, deck, entries, tools, findings }: ScoreIn
     },
     editability:
       slides.length === 0 ? 1 : slides.reduce((sum, s) => sum + s.editability, 0) / slides.length,
-    titleAndBullets: slides.filter((s) => s.titleAndBullets).map((s) => s.id),
+    titleAndBullets: slides
+      .filter((s) => s.titleAndBullets && judged.includes(s.id))
+      .map((s) => s.id),
     emoji: slides.filter((s) => s.emoji).map((s) => s.id),
     conversions: {
       writes: writes.length,
