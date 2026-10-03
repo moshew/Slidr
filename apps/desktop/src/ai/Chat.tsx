@@ -383,7 +383,8 @@ function AssistantTurn({
         part.type === 'text' ? (
           <MarkdownView key={i} text={part.text} />
         ) : part.type === 'tool' ? (
-          <ToolChip key={part.id} part={part} />
+          // A harness may reuse a call id in a later round of the same run.
+          <ToolChip key={`${part.id}-${i}`} part={part} />
         ) : (
           <GateLine key={`gate-${part.round}`} part={part} />
         ),

@@ -14,7 +14,12 @@ import {
   type SessionConfig,
   type UserTurn,
 } from './agent';
-import { AgentService, type AgentSettings, type ChatThread } from './agentService';
+import {
+  AgentService,
+  type AgentServiceOptions,
+  type AgentSettings,
+  type ChatThread,
+} from './agentService';
 import { createScriptedAgent, type Script, type ScriptStep } from './scriptedAgent';
 import {
   memoryTranscripts,
@@ -124,6 +129,7 @@ function setup(
     speed?: number;
     bus?: CommandBus;
     wrap?: (client: AgentClient) => AgentClient;
+    brief?: AgentServiceOptions['brief'];
   } = {},
 ) {
   const bus =
@@ -151,6 +157,7 @@ function setup(
     transcripts,
     settings: () => ({ harnessId: 'mock', ...options.settings }),
     onSlideTouched: (slideId) => touched.push(slideId),
+    ...(options.brief ? { brief: options.brief } : {}),
     now: () => new Date(2026, 9, 3, 12, 0, 0),
   });
   return { bus, service, seen, transcripts, touched, thread: service.thread({ kind: 'deck' }) };
@@ -556,5 +563,105 @@ describe('stopping and failing', () => {
     expect(seen.starts).toHaveLength(2);
     expect(seen.starts[1]!.thread).toBe(`${bus.deck.id}/deck`);
     expect(seen.starts[1]!.thread).not.toBe(seen.starts[0]!.thread);
+  });
+});
+
+describe('an action, and the brief of a session', () => {
+  const talk = script([say('Done.'), done()]);
+  const SLIDE = { kind: 'slide', slideId: 's_1' } as const;
+
+  it('keeps the action a message stands for, and names the turn after it', async () => {
+    const rename = script([call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }), done()]);
+    const { bus, thread, transcripts, seen } = setup({ rename });
+    await thread.send('<slidr_action>\naction: "slide.notes"\n</slidr_action>', {
+      action: { id: 'slide.notes', params: { language: 'Hebrew' } },
+      label: 'Speaker notes',
+    });
+    await settled(thread);
+
+    // The agent gets the message; the chat and the file keep what it stands for.
+    expect(seen.sends[0]!.text).toContain('<slidr_action>');
+    const [user] = thread.store.getState().entries;
+    expect(user).toMatchObject({
+      type: 'user',
+      action: { id: 'slide.notes', params: { language: 'Hebrew' } },
+    });
+    expect(parseTranscript(transcripts.files.get('deck.jsonl')!)[0]).toEqual(user);
+    expect(bus.undoStack.at(-1)).toMatchObject({ label: 'Speaker notes' });
+  });
+
+  it('sends the brief after the context block, with its picture', async () => {
+    const asked: { kind: string; fresh: boolean }[] = [];
+    const { service, seen } = setup(
+      { talk },
+      {
+        brief: (scope, { fresh }) => {
+          asked.push({ kind: scope.kind, fresh });
+          return Promise.resolve({
+            text: '<slidr_session>\nslide: {}\n</slidr_session>',
+            images: [{ mediaType: 'image/png', data: 'AAAA' }],
+          });
+        },
+      },
+    );
+    const thread = service.thread(SLIDE);
+    await ask(thread, 'Shorten this');
+    await ask(thread, 'More');
+
+    expect(seen.sends[0]!.context).toMatch(
+      /^<slidr_context>[\s\S]*<\/slidr_context>\n<slidr_session>\nslide: \{\}\n<\/slidr_session>$/,
+    );
+    expect(seen.sends[0]!.images).toEqual([{ mediaType: 'image/png', data: 'AAAA' }]);
+    // The conversation starts with the first turn; after it the agent has been told.
+    expect(asked).toEqual([
+      { kind: 'slide', fresh: true },
+      { kind: 'slide', fresh: false },
+    ]);
+  });
+
+  it('sends a turn as it is when there is nothing to tell, or the brief fails', async () => {
+    let answer: 'nothing' | 'fails' = 'nothing';
+    const { service, seen } = setup(
+      { talk },
+      {
+        brief: () =>
+          answer === 'nothing' ? Promise.resolve(null) : Promise.reject(new Error('no picture')),
+      },
+    );
+    const thread = service.thread(SLIDE);
+    await ask(thread, 'First');
+    answer = 'fails';
+    const entry = await ask(thread, 'Second');
+
+    expect(entry.outcome).toBe('completed');
+    for (const send of seen.sends) {
+      expect(send.context).toMatch(/<\/slidr_context>$/);
+      expect(send.images).toBeUndefined();
+    }
+  });
+
+  it('is told again from the start when the conversation could not be resumed', async () => {
+    const files = new Map<string, string>();
+    const first = setup({ talk }, { files, brief: () => Promise.resolve(null) });
+    await ask(first.service.thread(SLIDE), 'Hello');
+    await first.service.dispose();
+
+    // The deck is opened again: the conversation resumes, so the agent has been told already.
+    const fresh: boolean[] = [];
+    const second = setup(
+      { talk },
+      {
+        files,
+        brief: (_scope, turn) => {
+          fresh.push(turn.fresh);
+          return Promise.resolve(null);
+        },
+      },
+    );
+    const thread = second.service.thread(SLIDE);
+    await thread.load();
+    await ask(thread, 'Again');
+    expect(second.seen.starts[0]!.config.resume).toBeTruthy();
+    expect(fresh).toEqual([false]);
   });
 });

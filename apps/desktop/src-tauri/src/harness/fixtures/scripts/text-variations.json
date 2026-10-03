@@ -1,5 +1,5 @@
 {
-  "description": "An object chat on a text element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"four other wordings\" with ui_present_options: four text cards for the session's element, which the app previews and applies. Turn 2 is a direct edit: it asks which element is selected and shortens its text with text_set. Hand-written, with the timing of slide-chat.",
+  "description": "An object chat on a text element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"four other wordings\" with ui_present_options: four text cards for the session's element, which the app previews and applies. Turn 2 is a direct edit: it asks which element is selected, shortens its text with text_set and looks at the slide, as the design check expects of a turn that changed one. Hand-written, with the timing of slide-chat.",
   "turns": [
     [
       {
@@ -87,6 +87,19 @@
             "$ref": "selection_1.selectedElements.0.id"
           },
           "markdown": "תוכנית 2027"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "render_1",
+        "name": "slide_render",
+        "source": "app",
+        "input": {
+          "slideId": {
+            "$ref": "selection_1.currentSlide.id"
+          }
         },
         "call": true
       },
