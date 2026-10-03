@@ -146,12 +146,13 @@ export interface DraftedLayout {
 /** What the design lint found on a layout of a draft, filled with a text. */
 export interface DraftFinding {
   layout: string;
-  /** The direction of the deck the layout was tried in: as drawn, and mirrored. */
+  /** The direction of the deck the layout was tried in: as drawn, or mirrored. */
   dir: 'rtl' | 'ltr';
   /**
-   * What filled the layout: the sample it was drawn with, or the app's own short words for each
-   * role in the language of that direction. A deck writes what it likes, and a text of another
-   * length lands elsewhere in its box.
+   * What filled the layout: the sample it was drawn with, in the direction it was drawn for, or
+   * the app's own short words for each role, in Hebrew (right-to-left) and in English
+   * (left-to-right). A deck writes what it likes, and a text of another length lands elsewhere
+   * in its box.
    */
   text: 'sample' | 'other';
   rule: string;

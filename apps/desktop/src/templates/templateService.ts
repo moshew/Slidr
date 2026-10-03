@@ -179,11 +179,12 @@ export function createTemplateService(source: TemplateSource): TemplateService {
           ...(sampleText ? { fallback: (role) => sampleText(role, language) } : {}),
         });
       const sample = sampled(dir, lang);
-      const mirrored = dir === 'rtl' ? sampled('ltr', 'en') : sampled('rtl', 'he');
       // A template is accepted when no layout of it has a lint error in Hebrew or in English
-      // (WG7), whatever a deck writes into it. So the layouts are tried with their own sample,
-      // as drawn and mirrored, and with the app's short words for each role in both languages:
-      // text of another length lands elsewhere in its box, perhaps over what the layout drew.
+      // (WG7), whatever a deck writes into it. So the layouts are tried with their own sample as
+      // drawn, and with the app's short words for each role in both languages, the other one on
+      // the mirrored layouts: text of another length lands elsewhere in its box, perhaps over
+      // what the layout drew. The sample itself is not tried mirrored: Hebrew set in a
+      // left-to-right deck is measured a space wider than it reads (see ADR-054).
       const other = (direction: typeof dir, language: string) =>
         sampleDeckOf(
           draft.template,
@@ -197,13 +198,13 @@ export function createTemplateService(source: TemplateSource): TemplateService {
         );
       const tries: { deck: Deck; text: DraftFinding['text'] }[] = [
         { deck: sample, text: 'sample' },
-        { deck: mirrored, text: 'sample' },
         ...(sampleText
           ? [
               { deck: other('rtl', 'he'), text: 'other' as const },
               { deck: other('ltr', 'en'), text: 'other' as const },
             ]
-          : []),
+          : // Without words of its own the app can still try the other direction.
+            [{ deck: sampled(dir === 'rtl' ? 'ltr' : 'rtl', lang), text: 'sample' as const }]),
       ];
 
       const findings: DraftFinding[] = [];
