@@ -37,7 +37,11 @@ export function* everyElement(root: ParentNode): Generator<Element> {
   }
 }
 
-/** Resolves once the slides show what they will show: fonts in, text measured again after them. */
+/**
+ * Resolves once the slides show what they will show: fonts in, text measured again after them.
+ * Not the renderer's `settle`: that one waits for every frame of the document to load, and an
+ * export writes a frame's `srcdoc` out without needing it loaded.
+ */
 async function settle(host: HTMLElement): Promise<void> {
   const doc = host.ownerDocument;
   await doc.fonts.ready;

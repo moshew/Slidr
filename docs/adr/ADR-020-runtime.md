@@ -159,8 +159,7 @@ viewport                 any box; the stage is fitted into it, letterboxed
 
 ## השלכות
 
-- **ה-branch יצא מ-`0004502`**, לפני שסבב הסגירה של M1 נכנס ל-`main`. ה-renderer השתנה שם מאז (`dir` מפורש לכל פסקה, ו-`dir="ltr"` על runs של מספרים). המבנה שה-runtime נשען עליו (`p` / `li`, run אחד עם צומת טקסט אחד, סמן רשימה) לא השתנה, אבל אחרי המיזוג צריך להריץ שוב את שתי חבילות הבדיקה.
-
+- **איך ה-branch נכנס ל-`main`.** `m5-runtime` יצא מ-`0004502`, לפני סבב הסגירה של M1, ועבר rebase על `main` כפי שהיה אחרי `m2-core`, `wg7-templates` ו-`wg12-images`, בלי התנגשויות, גם לא ב-`pnpm-lock.yaml`. ה-renderer השתנה ב-`main` בינתיים (`dir` מפורש לכל פסקה, `dir="ltr"` על runs של מספרים, גופן עברי ראשון בזוג). המבנה שה-runtime נשען עליו (`p` / `li`, run אחד עם צומת טקסט אחד, סמן רשימה) לא השתנה. מעל `641daf7`, ה-commit האחרון ב-`main` ששינה קוד לפני המיזוג, רצו שוב `pnpm check` (898 בדיקות), `pnpm test:browser` (68) ושתי חבילות ה-Playwright של ה-runtime ושל הייצוא (26), וכולן עברו. בריצה אחת מתוך חמש של `test:browser` נכשלה בדיקה של `packages/html-import` (`copies.browser.test.ts`), שה-branch לא נוגע בה; בארבע האחרות היא עברה. בדיקות Rust לא רצו: ה-branch לא נוגע ב-Rust.
 - **האפליקציה עוד לא תלויה ב-`@slidr/runtime` וב-`@slidr/html-export`.** דף הפיתוח מייבא אותם בנתיב יחסי. מי שמחבר את T04 עד T06 מוסיף אותם ל-`apps/desktop/package.json`.
 - **אחרי כל שינוי ב-`packages/runtime/src`** צריך `pnpm --filter @slidr/runtime bundle`. הבדיקה `bundle.test.ts` נכשלת אחרת. הבנייה משתמשת ב-Vite של האפליקציה, כך שלחבילה אין תלות משלה.
 - **T04 (פאנל אנימציות):** תצוגה מקדימה היא `createTimeline` על שורש השקף שב-Stage, `play(group)`, ובסוף `clear()`. מספר הצעדים בא מ-`clicks`.
