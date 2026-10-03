@@ -409,7 +409,13 @@ function serve(runDir) {
       });
       return;
     }
-    const file = normalize(join(root, path === '/' ? 'review.html' : path));
+    if (path === '/') {
+      // Written anew for every visit, so the page opens with the scores as they are on disk.
+      response.writeHead(200, { 'Content-Type': TYPES['.html'] });
+      response.end(reviewHtml(root));
+      return;
+    }
+    const file = normalize(join(root, path));
     if (!file.startsWith(root + sep) || !existsSync(file) || !statSync(file).isFile()) {
       response.writeHead(404).end();
       return;
