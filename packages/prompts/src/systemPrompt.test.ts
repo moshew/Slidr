@@ -270,13 +270,14 @@ describe('what the prompt must say for itself, having replaced the harness promp
 });
 
 describe('size', () => {
-  // In characters, about 4 to a token: roughly a tenth above what was measured on 2026-10-03
-  // (ADR-019). The prompt is sent with every request; growing it should be a decision.
+  // In characters, about 4 to a token. The prompt is sent with every request; growing it should be
+  // a decision. The limits were raised once, when the prompt was tuned against the evaluation
+  // set (ADR-042): they are roughly a tenth above what that tuning left.
   const LIMITS: Record<ScopeKind, number> = {
-    deck: 28_000,
-    slide: 26_000,
-    object: 20_000,
-    import: 30_000,
+    deck: 33_000,
+    slide: 31_000,
+    object: 23_000,
+    import: 35_000,
   };
 
   it.each(SCOPES)('a %s prompt stays within its budget', (scope) => {

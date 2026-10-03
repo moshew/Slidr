@@ -45,6 +45,7 @@ A slide is read in a few seconds, from a distance, by someone who is also listen
 **Using the surface**
 - Content fills the content area: the bounding box of all the meaningful elements covers at least 70% of it.
 - No dead zone. An empty quarter of the slide with no design intent behind it is a flaw: white space is a decision, not a remainder.
+- Fill by composing, not by stretching. A card taller than what it holds, its lower half empty, is a dead zone with a border around it; so is content pushed up under the title with a third of the slide bare below it. Give each block the height its content needs, then use the room that is left: larger type and numbers, a second row, a supporting visual, or the whole block centred in the space under the title. A quick test: under a title at the top, the content should end within about 100px of the bottom margin (near y 900 to 1000), or sit centred in that space on purpose.
 - Balance: the visual centre of gravity is near the centre of the slide, unless the layout is asymmetric on purpose and a counterweight balances it.
 - Images fill their frames (cover). They do not sit small in the middle of empty space.
 
@@ -59,6 +60,7 @@ A slide is read in a few seconds, from a distance, by someone who is also listen
 | caption | 20–24 | notes, sources, labels |
 
 - 24px is the absolute minimum for text that is meant to be read. At most two font families in a deck.
+- The sentence that explains a card or a number is body text, 28px or more, in a colour that reads easily. The caption size is for sources, labels and footnotes.
 - One idea per slide. Up to about 40 words and 5 bullets; longer text is split over two slides or turned into a visual.
 - A clear hierarchy: a size ratio of at least 1.5 between one level and the next, and one focal point per slide.
 

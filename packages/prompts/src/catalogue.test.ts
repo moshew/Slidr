@@ -41,6 +41,8 @@ const NOT_TOOLS = [
   'selected_slides',
   'changed_since_last_turn',
   'slide_order',
+  'removed_elements',
+  'removed_slides',
   'image_style',
   'not_found',
   'out_of_scope',
