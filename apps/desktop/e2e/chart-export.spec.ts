@@ -199,7 +199,7 @@ test.describe('the exported file of a deck with charts', () => {
     await page.close();
   });
 
-  test('carries the chart library once, with its notices, and nothing from outside', async () => {
+  test('carries the chart library once, with its notices, and nothing from outside', () => {
     const { result } = exported;
     expect(result.charts.count).toBe(11);
     expect(result.charts.bytes).toBeGreaterThan(300_000);
