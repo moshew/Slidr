@@ -21,6 +21,8 @@ import {
 } from '@slidr/model';
 import { shapePresets } from '../geometry';
 
+export { chartDeck } from './chartDeck';
+
 const NOW = new Date('2026-10-03T08:00:00.000Z');
 
 export const referenceAssets = {

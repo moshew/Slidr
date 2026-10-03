@@ -5,13 +5,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./fixtures": "./src/fixtures/referenceDeck.ts"
+    "./fixtures": "./src/fixtures/referenceDeck.ts",
+    "./chart-bundle": "./src/chart/bundle.generated.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "chart-bundle": "pnpm --filter @slidr/desktop exec vite build --config ../../packages/renderer/scripts/chartBundle.config.mjs"
   },
   "dependencies": {
-    "@slidr/model": "workspace:*"
+    "@slidr/model": "workspace:*",
+    "echarts": "6.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

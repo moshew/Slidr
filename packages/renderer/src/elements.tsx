@@ -1,6 +1,5 @@
 import type {
   AudioElement,
-  ChartElement,
   Element,
   GroupElement,
   HtmlElement,
@@ -24,6 +23,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { ChartView } from './chart/view';
 import { domId, useRenderContext, type HtmlEditing, type RenderContext } from './context';
 import { num, passthroughStyle } from './css';
 import { FillLayer } from './fill';
@@ -798,33 +798,6 @@ function HtmlView({ element: e }: { element: HtmlElement }) {
       ) : (
         <ShadowContent e={e} style={content} />
       )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------------------------
-// Chart: a labelled placeholder until the chart renderer (WG6-T05).
-
-function ChartView({ element: e }: { element: ChartElement }) {
-  const size = Math.min(e.frame.w, e.frame.h) * 0.25;
-  return (
-    <div
-      data-slidr-placeholder="chart"
-      style={{
-        ...FILL_PARENT,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        backgroundColor: 'color-mix(in srgb, var(--color-surface) 70%, transparent)',
-        color: 'var(--color-muted)',
-        fontFamily: 'var(--font-body)',
-        fontSize: Math.max(14, Math.min(28, size / 3)),
-      }}
-    >
-      <Icon name="chart" size={Math.min(size, 96)} style={{ color: 'var(--color-primary)' }} />
-      <span>{e.options.title ?? e.chartType}</span>
     </div>
   );
 }

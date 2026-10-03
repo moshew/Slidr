@@ -6,6 +6,8 @@
  *   the deck the review file is exported from.
  * - `probe`: three small slides with short, known timelines, for the end-to-end tests.
  * - `auto`: two slides that advance by themselves.
+ * - `charts`: the eight chart types, a chart that builds on a click and one that builds with its
+ *   slide (WG6-T08). `charts-rtl` is the same deck in Hebrew.
  *
  * `-rtl` after a name gives the same deck in a right-to-left document.
  */
@@ -22,7 +24,7 @@ import {
 } from '@slidr/model';
 import { fixtureDecks } from '@slidr/model/fixtures';
 import { shapePresets } from '@slidr/renderer';
-import { referenceDeck } from '@slidr/renderer/fixtures';
+import { chartDeck, referenceDeck } from '@slidr/renderer/fixtures';
 
 type StepInit = Partial<AnimationStep> & Pick<AnimationStep, 'elementId' | 'preset'>;
 
@@ -633,6 +635,9 @@ const BASE: Record<string, () => Deck> = {
   probe: probeDeck,
   auto: autoDeck,
   'all-elements': fixtureDecks.allElementsDeck,
+  charts: () => chartDeck('ltr'),
+  // Its own texts, not the left-to-right deck turned around.
+  'charts-rtl': () => chartDeck('rtl'),
 };
 
 export const deckNames = [
@@ -642,9 +647,13 @@ export const deckNames = [
   'probe-rtl',
   'auto',
   'all-elements',
+  'charts',
+  'charts-rtl',
 ];
 
 export function deckByName(name: string): Deck | undefined {
+  const own = BASE[name];
+  if (own) return own();
   const base = BASE[name.replace(/-rtl$/, '')];
   if (!base) return undefined;
   return name.endsWith('-rtl') ? rtl(base()) : base();

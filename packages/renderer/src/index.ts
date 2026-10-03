@@ -45,6 +45,9 @@ export {
 export { sanitizeMarkup } from './sanitize';
 export { scopeSlideCss } from './css';
 export { settle } from './settle';
+export { chartsSettled } from './chart/controller';
+export { CHART_ATTRIBUTE, CHART_EVENT, type ChartCue } from './chart/cue';
+export { chartSpec, type ChartSpec } from './chart/spec';
 export { renderSlideOffscreen, type OffscreenOptions, type OffscreenSlide } from './offscreen';
 export {
   measureSlide,

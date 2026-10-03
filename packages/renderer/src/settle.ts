@@ -1,6 +1,8 @@
+import { chartsSettled } from './chart/controller';
+
 /**
  * Resolves once a rendered slide shows what it will show (RND-05): fonts loaded, images decoded,
- * frames loaded, and text re-measured after the last font. Whoever pictures or measures the
+ * frames loaded, charts drawn, and text re-measured after the last font. Whoever pictures or measures the
  * rendered DOM waits for it first: the capture page, the visual regression pages, lint and the
  * HTML conversion's comparison.
  */
@@ -16,6 +18,9 @@ export async function settle(doc: Document = document): Promise<void> {
         setTimeout(resolve, 2000);
       }),
   );
+  // A chart is drawn by a library that is loaded when the first chart is shown, in fonts it
+  // asks for itself: it is not there yet when React has rendered.
+  await chartsSettled();
   await doc.fonts.ready;
   await Promise.all(
     images(doc).map((img) => (img.src ? img.decode().catch(() => undefined) : Promise.resolve())),
@@ -29,6 +34,8 @@ export async function settle(doc: Document = document): Promise<void> {
     setTimeout(resolve, FRAMES_FALLBACK_MS);
   });
   await doc.fonts.ready;
+  // A chart that was asked for in the meantime (a render after the first) is waited for as well.
+  await chartsSettled();
 }
 
 const FRAMES_FALLBACK_MS = 250;

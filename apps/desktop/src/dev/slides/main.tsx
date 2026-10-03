@@ -9,7 +9,7 @@
 import type { AssetMeta, Deck } from '@slidr/model';
 import { fixtureDecks } from '@slidr/model/fixtures';
 import { ScaledSlide, SlideRenderer, type RenderMode } from '@slidr/renderer';
-import { referenceDeck } from '@slidr/renderer/fixtures';
+import { chartDeck, referenceDeck } from '@slidr/renderer/fixtures';
 import { StrictMode, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { settle } from '../../capture/settle';
@@ -22,6 +22,8 @@ const decks: Record<string, () => Deck> = {
   english: fixtureDecks.englishDeck,
   mixed: fixtureDecks.mixedDeck,
   'all-elements': fixtureDecks.allElementsDeck,
+  charts: () => chartDeck('ltr'),
+  'charts-rtl': () => chartDeck('rtl'),
 };
 
 const resolveAsset = (asset: AssetMeta) => testAssetUrl(asset.id);
