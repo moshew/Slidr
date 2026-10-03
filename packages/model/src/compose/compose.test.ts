@@ -391,8 +391,9 @@ describe('slideFromLayout', () => {
     expect(after.slides[1]!.id).toBe(slide.id);
   });
 
-  it('skips placeholders it has no element for, takes their alignment, and reports a missing layout', () => {
+  it('gives a chart and a table their elements, skips the slide number, and reports a missing layout', () => {
     const deck = createDeck({
+      lang: 'he',
       layouts: [
         {
           id: 'l_chart',
@@ -407,6 +408,7 @@ describe('slideFromLayout', () => {
               vAlign: 'middle',
             },
             { id: 'p_chart', role: 'chart', frame: box(0, 200, 800, 600) },
+            { id: 'p_table', role: 'table', frame: box(900, 200, 900, 600) },
             { id: 'p_number', role: 'slideNumber', frame: box(0, 900, 100, 50) },
             { id: 'p_logo', role: 'logo', frame: box(1700, 900, 120, 60) },
           ],
@@ -416,10 +418,27 @@ describe('slideFromLayout', () => {
     });
     const { slide, index } = slideFromLayout(deck, 'l_chart');
     expect(index).toBeUndefined();
-    expect(slide.elements.map((e) => e.role)).toEqual(['title', 'logo']);
+    // One element per placeholder, in their order; nothing shows a slide number yet.
+    expect(slide.elements.map((e) => [e.type, e.role])).toEqual([
+      ['text', 'title'],
+      ['chart', 'chart'],
+      ['table', 'table'],
+      ['image', 'logo'],
+    ]);
     expect(slide.elements[0]).toMatchObject({
       vAlign: 'middle',
       content: { paragraphs: [{ align: 'center' }] },
+    });
+    expect(slide.elements[1]).toMatchObject({
+      frame: box(0, 200, 800, 600),
+      data: { categories: [], series: [] },
+    });
+    // An empty grid that fills the placeholder, with its columns in the deck's direction.
+    expect(slide.elements[2]).toMatchObject({
+      frame: box(900, 200, 900, 600),
+      rows: [200, 200, 200],
+      cols: [300, 300, 300],
+      dir: 'rtl',
     });
     apply(deck, [{ type: 'slide.add', slide }]);
     expect(() => slideFromLayout(deck, 'l_gone')).toThrow(CommandError);

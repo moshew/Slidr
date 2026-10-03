@@ -17,6 +17,14 @@ const TEXT_ROLES: ReadonlySet<PlaceholderRole> = new Set([
 /** Placeholder roles that hold a picture. */
 const IMAGE_ROLES: ReadonlySet<PlaceholderRole> = new Set(['image', 'logo']);
 
+/** Rows and columns of the table a table placeholder starts with. */
+const TABLE_SIZE = 3;
+
+/** `count` equal parts of a length; never zero, which a table does not accept. */
+function equalParts(length: number, count: number): number[] {
+  return Array.from({ length: count }, () => Math.max(length / count, 1));
+}
+
 export interface SlideFromLayoutOptions {
   /** Position of the new slide in the deck. Default: at the end. */
   index?: number;
@@ -24,12 +32,13 @@ export interface SlideFromLayoutOptions {
 }
 
 /**
- * A `slide.add` with a new slide of a layout (SLD-01): an empty text box for each text
- * placeholder, carrying its role, text style and alignment, and an empty image frame for each
- * picture placeholder. The decorations and the background stay with the layout, which the slide
- * points at, so the renderer draws them. Placeholders for a chart, a table or the slide number
- * give nothing yet: filling a layout with content by role, and mirroring it for the other
- * direction, is the layout engine's job (WG7-T02).
+ * A `slide.add` with a new slide of a layout (SLD-01), with one empty element for each
+ * placeholder, in the order of the placeholders: a text box carrying the role, text style and
+ * alignment, an image frame, a chart without data, or a table of empty cells in the deck's
+ * direction. The decorations and the background stay with the layout, which the slide points at,
+ * so the renderer draws them. A placeholder for the slide number gives nothing: no element shows
+ * the number of its slide yet (SLD-04). Filling the elements with content by role, and layouts
+ * for the other direction, are the layout engine's (`@slidr/templates`).
  */
 export function slideFromLayout(
   deck: Deck,
@@ -54,6 +63,30 @@ export function slideFromLayout(
       );
     } else if (IMAGE_ROLES.has(role)) {
       elements.push(createElement.image({ id: fresh('e'), role, frame: { ...frame } }));
+    } else if (role === 'chart') {
+      elements.push(
+        createElement.chart({
+          id: fresh('e'),
+          role,
+          frame: { ...frame },
+          chartType: 'column',
+          data: { categories: [], series: [] },
+        }),
+      );
+    } else if (role === 'table') {
+      const rows = equalParts(frame.h, TABLE_SIZE);
+      const cols = equalParts(frame.w, TABLE_SIZE);
+      elements.push(
+        createElement.table({
+          id: fresh('e'),
+          role,
+          frame: { ...frame },
+          rows,
+          cols,
+          dir: deck.meta.dir,
+          cells: rows.map(() => cols.map(() => ({ content: richText('') }))),
+        }),
+      );
     }
   }
   return {
