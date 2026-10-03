@@ -292,6 +292,9 @@ importers:
       '@slidr/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
+      '@slidr/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       '@slidr/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -437,6 +440,9 @@ importers:
       '@slidr/model':
         specifier: workspace:*
         version: link:../model
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
 
   packages/ui:
     dependencies:

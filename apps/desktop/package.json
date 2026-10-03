@@ -41,6 +41,7 @@
     "@slidr/model": "workspace:*",
     "@slidr/prompts": "workspace:*",
     "@slidr/renderer": "workspace:*",
+    "@slidr/templates": "workspace:*",
     "@slidr/ui": "workspace:*",
     "@tauri-apps/api": "^2.12.1",
     "@tauri-apps/plugin-dialog": "^2.8.1",
