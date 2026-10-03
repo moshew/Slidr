@@ -80,7 +80,9 @@
 
 `registerBuiltinFonts()` נקרא רק בחלון הצילום ובדפי הפיתוח. ADR-009 אומר שהאפליקציה קוראת לו בעלייה, אבל הקריאה לא הייתה. בחלון הראשי היו רשומים רק גופני הממשק ("Inter Variable", "Heebo Variable"), ושקף שמבקש "Inter" או "Heebo" נפל לגופן של המחשב באותו שם, או לגופן מערכת. ה-Agent, שרואה את השקף בחלון הצילום, ראה גופן אחר ממה שהמשתמש ראה.
 
-זה חסם את המסלול: הצגה בגופן הלא נכון, וייצוא בלי גופנים להטמיע. התיקון הוא קובץ אחד, `apps/desktop/src/fonts/register.ts`, שנטען עם שאר התחומים דרך `shell/plugins.ts`. אחריו: 322 מתוך 323 בדיקות ה-E2E הקיימות עוברות בלי שינוי (האחת קשורה לכלי המעבר, לא לגופנים).
+זה חסם את המסלול: הצגה בגופן הלא נכון, וייצוא בלי גופנים להטמיע. על הענף תיקנתי את זה בקובץ משלי (`src/fonts/register.ts`), ואחריו 322 מתוך 323 בדיקות ה-E2E הקיימות עברו בלי שינוי (האחת קשורה לכלי המעבר, לא לגופנים).
+
+**מסלול A מצא ותיקן את אותו באג במקביל**, ב-`main.tsx` (`08a79d7`), והתיקון שלו נכנס ל-`main` קודם. ב-rebase הורדתי את ה-commit שלי: התיקון שנשאר הוא שלו, והקובץ `src/fonts/register.ts` אינו קיים.
 
 ## מדידות
 
@@ -169,7 +171,6 @@
 - **CSP (SEC-05), כשייקבע:** `script-src` צריך `'wasm-unsafe-eval'` בשביל הצמצום, ו-`blob:` ב-`img-src`, `font-src` ו-`media-src` בשביל הרינדור של הייצוא (ADR-021). היום `csp` הוא `null`.
 - **ADR-021** מתאר את התחליף הזמני לגופנים ואת 1.32 MB; ADR-032 מחליף את הסעיף ההוא.
 - **`src/objects/background.ts`:** "החלה על הכול" של רקע משווה לפי JSON, ונשאר פעיל כשסדר המפתחות שונה (ADR-031, "ממצאים").
-- **ADR-009** אומר שהאפליקציה רושמת את הגופנים בעלייה. עכשיו זה נכון, דרך `src/fonts/register.ts`.
 
 ## החלטות שמחכות לך
 
@@ -192,7 +193,6 @@
 | `packages/agent-tools/package.json` | תלות ב-`@slidr/runtime` |
 | `packages/agent-tools/src/tools/content.ts` | `animation_set` בלבד |
 | `packages/agent-tools/src/tools.test.ts` | שתי בדיקות ל-`animation_set` |
-| `apps/desktop/src/fonts/register.ts` | קובץ חדש: רישום הגופנים המובנים בחלון הראשי |
 | `apps/desktop/e2e/objects-background.spec.ts` | בדיקה אחת ציפתה שכפתור "מעבר" הוא עדיין placeholder מושבת; עכשיו היא מצפה שהוא פעיל |
 | `apps/desktop/e2e/runtime-app-helpers.ts` | קובץ חדש, לבדיקות של המסלול |
 | `pnpm-lock.yaml` | נוצר על ידי pnpm: ה-importers של `apps/desktop`, `packages/agent-tools` ו-`packages/html-export`, והחבילות החדשות של ADR-032 |
@@ -200,6 +200,23 @@
 `Cargo.lock` לא השתנה. ב-`e2e/runtime.playwright.config.ts` (שלי) נוספו `workers: 3`, ומשתנה הסביבה `SLIDR_E2E=app`, שמריץ את שאר בדיקות האפליקציה על פורט 1437 במקום 1420. כך worktree מריץ את כל ה-E2E בלי לגעת בפורט של ה-checkout הראשי.
 
 **בדיקות ה-Playwright החדשות** נקראות `runtime-*.spec.ts`, ולכן הן רצות גם בקונפיגורציה הראשית (`playwright.config.ts`). `runtime-export-browsers.spec.ts` מדלג כש-Firefox ו-WebKit של Playwright לא מותקנים.
+
+## איך ה-branch נכנס ל-`main`
+
+- **rebase, ואז fast-forward.** `m5-present` יצא מ-`36aeda7`. בינתיים נכנס ל-`main` מסלול A (11 commits, עד `5349a45`). ה-rebase עבר בלי התנגשות אחת: הקובץ המשותף היחיד היה `lib.rs`, ושתי התוספות בו במקומות שונים. `pnpm-lock.yaml` לא השתנה ב-`main` בינתיים.
+- **commit אחד הוסר ב-rebase:** רישום הגופנים בחלון הראשי, שמסלול A כבר תיקן (ראה "באג שנמצא בדרך").
+- **נבדק על הענף אחרי ה-rebase, לפני שנגעתי ב-`main`:**
+
+| מה | תוצאה |
+|---|---|
+| `pnpm check` | עובר; 1022 בדיקות unit |
+| `pnpm check:rust` | עובר; 132 בדיקות |
+| `pnpm test:browser` | 84 עוברות, בריצה השנייה (ראה למטה) |
+| Playwright של המסלול, פורט 1437 | 70 עוברות |
+| שאר ה-E2E של האפליקציה, על אותו פורט | 352 עוברות, כולל הבדיקות החדשות של מסלול A |
+
+- **`pnpm test:browser` נכשל בריצה הראשונה אחרי ה-rebase:** 8 מתוך 13 קבצים לא עלו ("iframe did not become ready within 60000ms"), ו-32 בדיקות עברו. בריצה חוזרת מיד אחריה, לבד, עלו כולם ועברו 84. זו הייתה הריצה הראשונה אחרי שהתלויות של ה-worktree השתנו; את הסיבה לא חקרתי.
+- **לא הורץ אחרי ה-rebase:** החלון האמיתי של Tauri. הוא נבדק על הענף לפני ה-rebase, והקוד של המסלול לא השתנה בו.
 
 ## זמן סוכן, כפי שנמדד
 
