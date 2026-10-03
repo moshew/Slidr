@@ -8,7 +8,15 @@ import { pathBounds, presetPath, scalePath, shapePresets, transformPath } from '
 import { normalizeColor, prepareSvg } from './markup';
 import { sanitizeMarkup } from './sanitize';
 import { firstStrong, listMarkers, paragraphDirection, readsAsNumber } from './text';
-import { colorCss, fontStack, hebrewFace, hebrewFaces, themeVariables } from './theme';
+import {
+  colorCss,
+  familyCss,
+  fontStack,
+  hebrewFace,
+  hebrewFaces,
+  runFontStack,
+  themeVariables,
+} from './theme';
 
 describe('css', () => {
   it('maps CSS property names to React style keys', () => {
@@ -65,6 +73,20 @@ describe('theme', () => {
       '"Heebo::hebrew", "Inter", "Heebo", sans-serif',
     );
     expect(fontStack({ he: 'Rubik', latin: 'Rubik' })).toBe('"Rubik", sans-serif');
+  });
+
+  it('writes a generic family as the keyword it is, and any other family in quotes', () => {
+    expect(familyCss('monospace')).toBe('monospace');
+    expect(familyCss(' Sans-Serif ')).toBe('sans-serif');
+    expect(familyCss('system-ui')).toBe('system-ui');
+    expect(familyCss('Courier New')).toBe('"Courier New"');
+    // A family that only starts like a keyword is a name.
+    expect(familyCss('Serif Pro')).toBe('"Serif Pro"');
+    expect(runFontStack('monospace', 'body')).toBe('monospace, var(--font-body)');
+    expect(runFontStack('Inter', 'heading')).toBe('"Inter", var(--font-heading)');
+    expect(fontStack({ he: 'Heebo', latin: 'serif' })).toBe(
+      '"Heebo::hebrew", serif, "Heebo", sans-serif',
+    );
   });
 
   it('names the Hebrew subsets of the registered faces as Hebrew-only faces', () => {

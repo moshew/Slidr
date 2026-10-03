@@ -44,13 +44,42 @@ export function hebrewFaces<T extends { family: string; unicodeRange?: string }>
  * and the Latin family comes first, which is right whenever it has no Hebrew.
  */
 export function fontStack(pair: FontPair): string {
-  const names = pair.latin === pair.he ? [pair.latin] : [hebrewFace(pair.he), pair.latin, pair.he];
-  return [...names.map(cssString), 'sans-serif'].join(', ');
+  const names =
+    pair.latin === pair.he
+      ? [familyCss(pair.latin)]
+      : [cssString(hebrewFace(pair.he)), familyCss(pair.latin), familyCss(pair.he)];
+  return [...names, 'sans-serif'].join(', ');
+}
+
+/** The generic families of CSS: keywords, which name no font when they are written in quotes. */
+const GENERIC_FAMILIES = new Set([
+  'serif',
+  'sans-serif',
+  'monospace',
+  'cursive',
+  'fantasy',
+  'system-ui',
+  'ui-serif',
+  'ui-sans-serif',
+  'ui-monospace',
+  'ui-rounded',
+  'emoji',
+  'math',
+  'fangsong',
+]);
+
+/**
+ * A font family as CSS: a quoted name, or a generic family as the keyword it is. Imported text
+ * keeps whatever the source used (SPEC 5.9), and `"monospace"` in quotes is a family nobody has.
+ */
+export function familyCss(family: string): string {
+  const keyword = family.trim().toLowerCase();
+  return GENERIC_FAMILIES.has(keyword) ? keyword : cssString(family);
 }
 
 /** One family with the role's stack behind it, so a run in a Latin face keeps Hebrew covered. */
 export function runFontStack(font: string, role: TextStyle['font']): string {
-  return `${cssString(font)}, var(--font-${role})`;
+  return `${familyCss(font)}, var(--font-${role})`;
 }
 
 export function shadowCss(shadow: Shadow): string {
