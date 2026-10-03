@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { PanelId } from './registry';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
+export type AiTab = 'chat' | 'actions';
 
 /** The shell's own state: layout, view and appearance. Not part of the document. */
 export interface ShellState {
@@ -10,6 +11,8 @@ export interface ShellState {
   activePanel: string;
   /** False when the Tool Panel is collapsed (UI-02); the Activity Bar stays. */
   panelOpen: boolean;
+  /** The tab an AI tool shows (SPEC 4.3). One for the three tools: they share a frame. */
+  aiTab: AiTab;
   /** Tool Panel width as a share of the window, once the user drags the splitter. */
   panelShare: number | null;
   /** The zoom the user picked: fit to the Stage, or a scale (1 = 100%). */
@@ -24,6 +27,7 @@ export const useShell = create<ShellState>()(
     (): ShellState => ({
       activePanel: PanelId.aiDeck,
       panelOpen: true,
+      aiTab: 'chat',
       panelShare: null,
       zoom: 'fit',
       viewScale: 1,
@@ -43,9 +47,13 @@ export const useShell = create<ShellState>()(
   ),
 );
 
-/** Shows a panel in the Tool Panel, opening it if it was collapsed. */
-export function openPanel(id: string): void {
-  useShell.setState({ activePanel: id, panelOpen: true });
+/** Shows a panel in the Tool Panel, opening it if it was collapsed; an AI tool, on a tab. */
+export function openPanel(id: string, tab?: AiTab): void {
+  useShell.setState({ activePanel: id, panelOpen: true, ...(tab ? { aiTab: tab } : {}) });
+}
+
+export function setAiTab(aiTab: AiTab): void {
+  useShell.setState({ aiTab });
 }
 
 /** The Activity Bar click: the open panel collapses, any other one opens. */

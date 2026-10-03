@@ -18,6 +18,17 @@ const kindOfType: Record<Element['type'], SelectionKind> = {
   group: 'group',
 };
 
+/** The selection kinds that get an "AI" entry to the object tool (SPEC 4.2, 4.4). */
+export const aiKinds: ReadonlySet<SelectionKind> = new Set([
+  'text',
+  'image',
+  'shape',
+  'table',
+  'chart',
+  'html',
+  'group',
+]);
+
 /** The row B kind of one element. */
 export function elementKind(element: Element): SelectionKind {
   return kindOfType[element.type];

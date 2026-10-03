@@ -1,12 +1,14 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cx, Spinner } from '@slidr/ui';
 import { useDeck, useFile, useSelection } from './editor';
+import { useStatusItem } from './registry';
 import { useShell } from './store';
 
 /**
  * The status bar (UI-07): slide n of total, zoom and save state at the start; the agent's state
- * and the design-check count at the end. The last two are placeholders until WG10 and WG7.
+ * and the design-check count at the end. The agent's state is drawn by the area that runs it
+ * (`registerStatusItem`); the design-check count is a placeholder until WG7.
  */
 export function StatusBar() {
   const { t } = useTranslation();
@@ -14,6 +16,8 @@ export function StatusBar() {
   const current = useSelection((s) => s.currentSlideId);
   const scale = useShell((s) => s.viewScale);
   const index = slides.findIndex((s) => s.id === current);
+  const Agent = useStatusItem('agent');
+  const Lint = useStatusItem('lint');
 
   return (
     <footer
@@ -30,17 +34,44 @@ export function StatusBar() {
       </span>
       <SaveState />
       <div className="flex-1" />
-      <Item dot="bg-ui-fg-subtle">{t('status.agentIdle')}</Item>
-      <Item dot="bg-ui-success-fg">{t('status.lintNone')}</Item>
+      {Agent ? (
+        <Registered render={Agent} />
+      ) : (
+        <StatusItem dot="bg-ui-fg-subtle">{t('status.agentIdle')}</StatusItem>
+      )}
+      {Lint ? (
+        <Registered render={Lint} />
+      ) : (
+        <StatusItem dot="bg-ui-success-fg">{t('status.lintNone')}</StatusItem>
+      )}
     </footer>
   );
 }
 
-function Item({ dot, children }: { dot?: string; children: ReactNode }) {
+/** A part of the bar that another area draws. */
+function Registered({ render: Render }: { render: ComponentType }) {
+  return <Render />;
+}
+
+/** One state in the status bar: a dot in the colour of the state, or a spinner, and a few words. */
+export function StatusItem({
+  dot,
+  busy = false,
+  children,
+}: {
+  dot?: string;
+  /** Something is running: a spinner takes the dot's place. */
+  busy?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <span className="flex items-center gap-1.5">
-      {dot && <span aria-hidden className={cx('size-1.5 rounded-full', dot)} />}
-      {children}
+    <span className="flex min-w-0 items-center gap-1.5">
+      {busy ? (
+        <Spinner className="size-3" />
+      ) : (
+        dot && <span aria-hidden className={cx('size-1.5 shrink-0 rounded-full', dot)} />
+      )}
+      <span className="truncate">{children}</span>
     </span>
   );
 }
@@ -50,9 +81,8 @@ function SaveState() {
   const { path, dirty, busy } = useFile((s) => s);
   if (busy === 'saving') {
     return (
-      <span data-testid="status-save" className="flex items-center gap-1.5">
-        <Spinner className="size-3" />
-        {t('status.saving')}
+      <span data-testid="status-save">
+        <StatusItem busy>{t('status.saving')}</StatusItem>
       </span>
     );
   }
@@ -63,7 +93,7 @@ function SaveState() {
       : ['bg-ui-fg-subtle', t('status.neverSaved')];
   return (
     <span data-testid="status-save">
-      <Item dot={dot}>{label}</Item>
+      <StatusItem dot={dot}>{label}</StatusItem>
     </span>
   );
 }

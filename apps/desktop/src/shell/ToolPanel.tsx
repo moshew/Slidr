@@ -29,7 +29,7 @@ import {
   type ToolPanelDefinition,
 } from './registry';
 import { elementKind } from './selection';
-import { setPanelOpen, setPanelShare, useShell } from './store';
+import { setAiTab, setPanelOpen, setPanelShare, useShell } from './store';
 
 /**
  * The Tool Panel (SPEC 4.1–4.3) with its splitter. It keeps the panel between 25% and 45% of the
@@ -186,6 +186,7 @@ function ToolPanelView({ panel }: { panel: ToolPanelDefinition }) {
 /** The frame shared by the three AI tools (SPEC 4.3): title, scope chip, Chat and Actions. */
 function AiPanelView({ panel }: { panel: AiPanelDefinition }) {
   const { t } = useTranslation();
+  const tab = useShell((s) => s.aiTab);
   const { chat: Chat, actions: Actions } = panel;
   return (
     <section
@@ -197,15 +198,18 @@ function AiPanelView({ panel }: { panel: AiPanelDefinition }) {
       <div className="px-4 pb-3">
         <ScopeChip scope={panel.scope} />
       </div>
-      <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setAiTab(value === 'actions' ? 'actions' : 'chat')}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         <TabsList className="px-4">
           <TabsTrigger value="chat">{t('panels.chat')}</TabsTrigger>
           <TabsTrigger value="actions">{t('panels.actions')}</TabsTrigger>
         </TabsList>
-        <TabsContent value="chat" className="min-h-0 flex-1">
-          <ScrollArea className="h-full">
-            <Chat />
-          </ScrollArea>
+        {/* A chat scrolls its own messages and keeps its composer in place: it gets the room. */}
+        <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
+          <Chat />
         </TabsContent>
         <TabsContent value="actions" className="min-h-0 flex-1">
           <ScrollArea className="h-full">

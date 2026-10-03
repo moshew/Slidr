@@ -135,6 +135,7 @@ export const he = {
     newSlide: 'שקף חדש',
     slide: 'שקף {{n}}',
     insert: 'הוספה',
+    preview: 'תצוגה מקדימה',
   },
 } as const;
 

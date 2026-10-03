@@ -135,5 +135,6 @@ export const en: Messages<typeof he> = {
     newSlide: 'New slide',
     slide: 'Slide {{n}}',
     insert: 'Insert',
+    preview: 'Preview',
   },
 };

@@ -57,7 +57,7 @@ import {
   type ActionPopoverProps,
   type ToolAction,
 } from './registry';
-import { selectionKind, type SelectionKind } from './selection';
+import { aiKinds, selectionKind, type SelectionKind } from './selection';
 import { openPanel, setZoom, useShell } from './store';
 
 /** Top Tools (SPEC 4.4): row A is fixed, row B follows the selection. */
@@ -331,17 +331,6 @@ const kindIcons: Record<SelectionKind, LucideIcon> = {
   group: Shapes,
   multiple: Shapes,
 };
-
-/** The selection kinds that get the "AI" button at the end of row B (SPEC 4.4). */
-const aiKinds = new Set<SelectionKind>([
-  'text',
-  'image',
-  'shape',
-  'table',
-  'chart',
-  'html',
-  'group',
-]);
 
 function useSelectionKind(): { kind: SelectionKind; count: number } {
   const deck = useDeck((s) => s.deck);

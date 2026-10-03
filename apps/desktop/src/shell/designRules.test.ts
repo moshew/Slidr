@@ -19,6 +19,7 @@ const scanned = [
   'apps/desktop/src/text',
   'apps/desktop/src/objects',
   'apps/desktop/src/arrange',
+  'apps/desktop/src/ai',
 ].filter((dir) => existsSync(join(root, dir)));
 
 /** Drawn on the slide, not in the app's chrome. */

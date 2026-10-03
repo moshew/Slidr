@@ -232,10 +232,31 @@ export function shortcutsFor(keys: string): ShortcutDefinition[] {
     .reverse();
 }
 
+/* ---------------------------------------------------------------- status bar */
+
+/**
+ * A part of the status bar that another area draws (UI-07): the agent's state, the count of
+ * design findings. Until its area registers, the shell shows a resting state in its place.
+ */
+export interface StatusItemDefinition extends Registered {
+  id: 'agent' | 'lint';
+  render: ComponentType;
+}
+
+const statusItems = createRegistry<StatusItemDefinition>();
+
+export const registerStatusItem = statusItems.register;
+
+/** The component an area registered for a part of the status bar, when one did. */
+export function useStatusItem(id: StatusItemDefinition['id']): ComponentType | undefined {
+  return useStore(statusItems.store, (s) => s.items.find((item) => item.id === id)?.render);
+}
+
 /** For tests: the registries' stores. */
 export const registries = {
   panels: panels.store,
   contextTools: contextTools.store,
   actions: actions.store,
   shortcuts: shortcuts.store,
+  statusItems: statusItems.store,
 };
