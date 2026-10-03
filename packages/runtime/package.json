@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./bundle": "./src/bundle.generated.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bundle": "pnpm --filter @slidr/desktop exec vite build --config ../../packages/runtime/scripts/bundle.config.mjs"
   }
 }
