@@ -22,7 +22,7 @@ use std::{fmt, sync::Arc};
 
 use async_trait::async_trait;
 
-pub use manager::HarnessManager;
+pub use manager::{ATTACHMENTS, HarnessManager};
 pub use registry::builtin;
 #[allow(unused_imports)]
 // The whole contract is public, whether or not this crate uses each part.

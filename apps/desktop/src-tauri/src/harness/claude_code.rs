@@ -324,7 +324,7 @@ impl SessionFiles {
         Self {
             system: dir.join("system.md"),
             tools: dir.join("mcp.json"),
-            attachments: dir.join("attachments"),
+            attachments: dir.join(crate::harness::ATTACHMENTS),
         }
     }
 

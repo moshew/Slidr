@@ -7,6 +7,7 @@ mod commands;
 mod error;
 mod harness;
 mod image_providers;
+mod import_window;
 mod net;
 mod secrets;
 mod settings;
@@ -40,10 +41,13 @@ pub fn run() {
             app.manage(Arc::new(templates::TemplateStore::new(&root)));
             app.manage(Arc::new(storage::Storage::new(root)));
             app.manage(Arc::new(capture::CaptureService::new()));
+            app.manage(Arc::new(import_window::ImportService::new()));
             Ok(())
         })
         .on_window_event(capture::on_window_event)
-        .invoke_handler(tauri::generate_handler![
+        .on_window_event(import_window::on_window_event)
+        // Every app command passes the gate: the import window may call only its own few.
+        .invoke_handler(import_window::gate(tauri::generate_handler![
             commands::storage_new,
             commands::storage_open,
             commands::storage_write_deck,
@@ -99,7 +103,16 @@ pub fn run() {
             stock::ipc::stock_search,
             stock::ipc::stock_thumbnail,
             stock::ipc::stock_import,
-        ])
+            import_window::import_open,
+            import_window::import_run_job,
+            import_window::import_blocked,
+            import_window::import_close,
+            import_window::import_page_loaded,
+            import_window::import_job_take,
+            import_window::import_job_done,
+            import_window::import_source,
+            import_window::import_store_asset,
+        ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");
 }

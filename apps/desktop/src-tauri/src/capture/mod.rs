@@ -33,7 +33,8 @@
 //! that calls it, one pixel per CSS pixel.
 
 #[cfg(windows)]
-#[allow(unsafe_code)] // The COM call into WebView2 (ADR-003, "מחיר"); the only `unsafe` in the app.
+#[allow(unsafe_code)]
+// The COM call into WebView2 (ADR-003, "מחיר"); `import_window/network.rs` is the other.
 mod webview2;
 
 use std::{

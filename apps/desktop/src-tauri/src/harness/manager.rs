@@ -15,6 +15,9 @@ use super::{
 
 /// Longest thread key, in bytes.
 const MAX_THREAD_KEY: usize = 200;
+/// The folder inside a session's folder that its agent runs in and may read (the adapters'
+/// working directory). Files for the agent go here.
+pub const ATTACHMENTS: &str = "attachments";
 
 /// Where the files a user attached to a chat are kept, inside the folder of its thread.
 const ATTACHMENTS_DIR: &str = "attachments";
@@ -53,6 +56,12 @@ impl HarnessManager {
     /// The registered harnesses, in registration order.
     pub fn descriptors(&self) -> Vec<HarnessDescriptor> {
         self.harnesses.iter().map(|h| h.descriptor()).collect()
+    }
+
+    /// Where the agent of `thread` reads files from. An HTML import puts the file being
+    /// imported there before the session starts (SPEC 13.2).
+    pub fn attachments_dir(&self, thread: &str) -> Result<PathBuf> {
+        Ok(thread_dir(&self.root, thread)?.join(ATTACHMENTS))
     }
 
     /// Checks one harness (AGT-03).
