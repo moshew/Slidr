@@ -315,3 +315,50 @@ describe('labels', () => {
     expect([0, 7, 18.5, 92, 250, 2600].map(roundUp)).toEqual([1, 10, 20, 100, 250, 5000]);
   });
 });
+
+describe('what is written around a chart', () => {
+  it('ends a right-aligned title at the right edge, and starts a left-aligned one at the left', () => {
+    const titled = (dir: 'rtl' | 'ltr') =>
+      part(chartOption(spec({ options: { ...chart().options, title: 'T' } }, dir), still), 'title');
+    // With an alignment of its own the library reads `left` as the point the text is aligned at.
+    expect(titled('ltr')).toMatchObject({ textAlign: 'left' });
+    expect(titled('ltr').left).toBeLessThan(20);
+    expect(titled('rtl')).toMatchObject({ textAlign: 'right' });
+    expect(titled('rtl').left).toBeGreaterThan(880);
+    expect(titled('rtl').right).toBeUndefined();
+  });
+
+  it('names the slices beside a pie that has no legend, and only their shares beside one that has', () => {
+    const pie = (legend: boolean) =>
+      series(
+        chartOption(
+          spec({
+            chartType: 'pie',
+            options: {
+              ...chart().options,
+              labels: true,
+              legend: { show: legend, position: 'bottom' },
+            },
+          }),
+          still,
+        ),
+      )[0]!;
+    const text = (legend: boolean) =>
+      ((pie(legend).label as Part).formatter as (p: unknown) => string)({
+        dataIndex: 1,
+        percent: 67,
+      });
+    expect(text(true)).toBe('67%');
+    expect(text(false)).toBe('Q2 67%');
+    // The names take room beside the circle: it is smaller.
+    const radius = (legend: boolean) => (pie(legend).radius as [number, number])[1];
+    expect((pie(false).label as Part).overflow).toBe('none');
+    expect(radius(false)).toBeGreaterThan(50);
+  });
+
+  it('does not let a few columns in a wide chart stand as thin posts', () => {
+    const wide = chartOption(spec({ frame: { x: 0, y: 0, w: 1700, h: 600 } }), still);
+    const narrow = chartOption(spec({ frame: { x: 0, y: 0, w: 500, h: 400 } }), still);
+    expect(series(wide)[0]?.barMaxWidth).toBeGreaterThan(series(narrow)[0]?.barMaxWidth as number);
+  });
+});

@@ -157,8 +157,9 @@ function layout(spec: ChartSpec, measure: Measure): Layout {
     out.title = {
       text: label(spec.title),
       top: pad,
-      // The title starts where the deck's text starts.
-      ...(rtl ? { right: pad, textAlign: 'right' } : { left: pad, textAlign: 'left' }),
+      // The title starts where the deck's text starts. With an alignment of its own the library
+      // takes `left` as the point the text is aligned at: the right end of a right-aligned title.
+      ...(rtl ? { left: w - pad, textAlign: 'right' } : { left: pad, textAlign: 'left' }),
       padding: 0,
       textStyle: {
         color: colors.text,
@@ -365,7 +366,8 @@ function cartesian(spec: ChartSpec, plot: Box, live: boolean): Built {
           ...base,
           type: 'bar',
           data: values,
-          barMaxWidth: Math.round(font.size * 5),
+          // A few columns in a wide chart are broad, not thin posts far apart.
+          barMaxWidth: Math.round(Math.max(font.size * 5, (lying ? spec.h : spec.w) * 0.14)),
           barGap: '12%',
           barCategoryGap: '32%',
           itemStyle: { color, borderRadius: 3 },
@@ -396,23 +398,51 @@ function cartesian(spec: ChartSpec, plot: Box, live: boolean): Built {
   };
 }
 
-/** The middle and the radius of what a plot box leaves for a round chart, in slide pixels. */
-function circle(spec: ChartSpec, plot: Box, margin: number) {
+/**
+ * The middle and the radius of what a plot box leaves for a round chart, in slide pixels, with
+ * room beside it and above it for what is written around it.
+ */
+function circle(spec: ChartSpec, plot: Box, beside: number, above: number) {
   const width = Math.max(spec.w - plot.left - plot.right, 1);
   const height = Math.max(spec.h - plot.top - plot.bottom, 1);
   return {
     center: [plot.left + width / 2, plot.top + height / 2],
-    radius: Math.max(Math.min(width, height) / 2 - margin, 1),
+    radius: Math.max(Math.min(width / 2 - beside, height / 2 - above), 1),
   };
 }
 
-function round(spec: ChartSpec, plot: Box, live: boolean): Built {
+function round(spec: ChartSpec, plot: Box, live: boolean, measure: Measure): Built {
   const { font, colors } = spec;
   const format = numberFormat(spec.lang);
   const donut = spec.type === 'donut';
   // A pie shows one series. A donut shows each series as a ring, the first one innermost.
   const rings = donut ? spec.series : spec.series.slice(0, 1);
-  const { center, radius } = circle(spec, plot, spec.labels ? font.size * 2.2 : font.size * 0.2);
+  const outerRing = rings[rings.length - 1];
+  const share = (percent: number) => `${format(percent)}%`;
+  // Beside the outer ring: the share of each slice, and its name when no legend names it.
+  const named = (i: number, percent: number) =>
+    label(`${spec.categories[i] ?? ''} ${share(percent)}`);
+  const total = (outerRing?.values ?? []).reduce<number>((sum, v) => sum + Math.max(v ?? 0, 0), 0);
+  const percents = spec.categories.map((_, i) =>
+    total > 0 ? (Math.max(outerRing?.values[i] ?? 0, 0) / total) * 100 : 0,
+  );
+  const textFont = { family: font.family, size: font.size, weight: 400 };
+  const widest = (text: (i: number, percent: number) => string) =>
+    Math.max(0, ...percents.map((percent, i) => measure(text(i, Math.round(percent)), textFont)));
+  const room = Math.max(spec.w - plot.left - plot.right, 1);
+  // Names are written out only where they leave the circle most of the width.
+  const withNames = !spec.legend.show && widest(named) < room * 0.22;
+  const text = withNames ? named : (_: number, percent: number) => share(percent);
+  const line = { length: font.size * 0.4, length2: font.size * 0.5 };
+  const beside = spec.labels
+    ? widest(text) + line.length + line.length2 + font.size * 0.6
+    : font.size * 0.2;
+  const { center, radius } = circle(
+    spec,
+    plot,
+    beside,
+    spec.labels ? font.size * 1.5 : font.size * 0.2,
+  );
   const hole = donut ? radius * 0.56 : 0;
   const band = (radius - hole) / Math.max(rings.length, 1);
   const series = rings.map((ring, r) => {
@@ -428,19 +458,20 @@ function round(spec: ChartSpec, plot: Box, live: boolean): Built {
       avoidLabelOverlap: true,
       itemStyle: { borderColor: colors.bg, borderWidth: 2 },
       emphasis: live ? { scaleSize: 6 } : { disabled: true },
-      // The shares are written beside the outer ring; the legend names the slices.
       label: {
         show: spec.labels && outer,
         position: 'outside',
         color: colors.muted,
         fontFamily: font.family,
         fontSize: font.size,
-        formatter: ({ percent }: { percent?: number }) => `${format(percent ?? 0)}%`,
+        // The room was measured for the whole label: it is never cut.
+        overflow: 'none',
+        formatter: ({ dataIndex, percent }: { dataIndex: number; percent?: number }) =>
+          text(dataIndex, percent ?? 0),
       },
       labelLine: {
         show: spec.labels && outer,
-        length: font.size * 0.4,
-        length2: font.size * 0.5,
+        ...line,
         lineStyle: { color: colors.line, width: 1.5 },
       },
       data: spec.categories.map((category, i) => ({
@@ -453,7 +484,7 @@ function round(spec: ChartSpec, plot: Box, live: boolean): Built {
   return { tooltip: 'item', parts: { series } };
 }
 
-function radar(spec: ChartSpec, plot: Box, live: boolean): Built {
+function radar(spec: ChartSpec, plot: Box, live: boolean, measure: Measure): Built {
   const { font, colors, axes } = spec;
   const format = numberFormat(spec.lang);
   const values = spec.series.flatMap((s) => s.values.filter((v): v is number => v !== null));
@@ -464,7 +495,19 @@ function radar(spec: ChartSpec, plot: Box, live: boolean): Built {
     tooltip: 'item',
     parts: {
       radar: {
-        ...circle(spec, plot, font.size * 1.9),
+        // The names of the spokes stand around the web: room for the widest beside it.
+        ...circle(
+          spec,
+          plot,
+          Math.max(
+            0,
+            ...spec.categories.map((category) =>
+              measure(label(category), { family: font.family, size: font.size, weight: 400 }),
+            ),
+          ) +
+            font.size * 0.8,
+          font.size * 1.9,
+        ),
         startAngle: 90,
         // The spokes are read in the direction of the deck.
         clockwise: spec.dir !== 'rtl',
@@ -578,9 +621,9 @@ export function chartOption(
   const { plot, title, legend } = layout(spec, measure);
   const built =
     spec.type === 'radar'
-      ? radar(spec, plot, motion.live)
+      ? radar(spec, plot, motion.live, measure)
       : isRound(spec)
-        ? round(spec, plot, motion.live)
+        ? round(spec, plot, motion.live, measure)
         : cartesian(spec, plot, motion.live);
   const bars = spec.type === 'column' || spec.type === 'bar';
   return {
