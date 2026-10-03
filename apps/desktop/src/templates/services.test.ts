@@ -2,6 +2,7 @@ import {
   createDeckApi,
   startTurn,
   type ConversionService,
+  type LintFinding,
   type ToolResult,
 } from '@slidr/agent-tools';
 import {
@@ -297,7 +298,10 @@ describe('drafting a template (WG7-T11a)', () => {
             lint: (tried, slideIds) => {
               linted.push(`${tried.meta.dir}:${slideIds.length}`);
               const first = slideIds[0]!;
-              return Promise.resolve([
+              // The app's own word where the sample's was: the layout is tried with other text.
+              const [title] = tried.slides[0]!.elements;
+              const other = title?.type === 'text' && plainText(title.content) === 'Title';
+              return Promise.resolve<LintFinding[]>([
                 {
                   rule: 'L01',
                   severity: 'error',
@@ -312,6 +316,17 @@ describe('drafting a template (WG7-T11a)', () => {
                   elementIds: [],
                   message: 'wordy',
                 },
+                ...(other && tried.meta.dir === 'ltr'
+                  ? [
+                      {
+                        rule: 'L05',
+                        severity: 'error' as const,
+                        slideId: first,
+                        elementIds: [],
+                        message: 'unreadable',
+                      },
+                    ]
+                  : []),
               ]);
             },
           },
@@ -377,11 +392,22 @@ describe('drafting a template (WG7-T11a)', () => {
         editability: 0.75,
       },
     ]);
-    // The lint ran on the sample as drawn and mirrored; the rule about the sample's words is left out.
-    expect(linted).toEqual(['ltr:2', 'rtl:2']);
+    // The lint ran on the sample as drawn and mirrored, and on the app's own words in Hebrew and
+    // in English. The rule about how much a slide says is left out, and what the sample already
+    // showed of a layout is said once.
+    expect(linted).toEqual(['ltr:2', 'rtl:2', 'rtl:2', 'ltr:2']);
+    const overflows = { layout: 'Opening', rule: 'L01', severity: 'error', message: 'overflows' };
     expect(result.data.findings).toEqual([
-      { layout: 'Opening', dir: 'ltr', rule: 'L01', severity: 'error', message: 'overflows' },
-      { layout: 'Opening', dir: 'rtl', rule: 'L01', severity: 'error', message: 'overflows' },
+      { ...overflows, dir: 'ltr', text: 'sample' },
+      { ...overflows, dir: 'rtl', text: 'sample' },
+      {
+        layout: 'Opening',
+        dir: 'ltr',
+        text: 'other',
+        rule: 'L05',
+        severity: 'error',
+        message: 'unreadable',
+      },
     ]);
     expect(result.data.notes).toEqual(['Layout "Cards": a ring stayed HTML']);
     expect(result.images).toEqual([{ mimeType: 'image/png', data: 'sheet-of-2' }]);

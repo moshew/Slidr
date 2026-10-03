@@ -106,7 +106,7 @@ export const ACTIONS = define({
         ...(p.url ? ['the site at the address in `url`, which you read with your web tools'] : []),
         ...(p.fromDeck ? ['the open deck: its theme, and how its slides look'] : []),
       ];
-      return `Make a template${sources.length > 0 ? ` from ${sources.join('; ')}` : ''}. Files the user attached are listed with this message: one marked as the logo is the template's logo, to be drawn by the layouts; a picture is a reference for the look; an HTML file is a deck or a page whose design the template should follow. Read every source before you draw anything, then draft the template as the section on making a template describes, look at the sheet that comes back and fix what the design lint found. Nothing is saved: the app shows the draft to the user, who saves it or asks for changes. End with two or three lines on what you took from each source and what you chose where the sources were silent.`;
+      return `Make a template${sources.length > 0 ? ` from ${sources.join('; ')}` : ''}. Files the user attached are listed with this message: one marked as the logo is the template's logo, to be drawn by the layouts; a picture is a reference for the look; an HTML file is a deck or a page whose design the template should follow. Read every source before you draw anything, then draft the template as the section on making a template describes, look at the sheet that comes back and fix what the design lint found. Nothing is saved: the app shows the draft to the user, who saves it or asks for changes. End with two or three lines, in the language of \`reply_in\` whatever language the sources are in, on what you took from each source and what you chose where the sources were silent.`;
     },
   },
   'outline.approve': {

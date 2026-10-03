@@ -180,21 +180,47 @@ export function createTemplateService(source: TemplateSource): TemplateService {
         });
       const sample = sampled(dir, lang);
       const mirrored = dir === 'rtl' ? sampled('ltr', 'en') : sampled('rtl', 'he');
+      // A template is accepted when no layout of it has a lint error in Hebrew or in English
+      // (WG7), whatever a deck writes into it. So the layouts are tried with their own sample,
+      // as drawn and mirrored, and with the app's short words for each role in both languages:
+      // text of another length lands elsewhere in its box, perhaps over what the layout drew.
+      const other = (direction: typeof dir, language: string) =>
+        sampleDeckOf(
+          draft.template,
+          {},
+          {
+            dir: direction,
+            lang: language,
+            assets,
+            fallback: (role) => sampleText?.(role, language),
+          },
+        );
+      const tries: { deck: Deck; text: DraftFinding['text'] }[] = [
+        { deck: sample, text: 'sample' },
+        { deck: mirrored, text: 'sample' },
+        ...(sampleText
+          ? [
+              { deck: other('rtl', 'he'), text: 'other' as const },
+              { deck: other('ltr', 'en'), text: 'other' as const },
+            ]
+          : []),
+      ];
 
       const findings: DraftFinding[] = [];
-      for (const tried of lint ? [sample, mirrored] : []) {
+      for (const { deck: tried, text } of lint ? tries : []) {
         const nameOf = new Map(tried.slides.map((slide) => [slide.id, slide.name ?? slide.id]));
         try {
           const found = await lint!.lint(tried, [...nameOf.keys()], 'all');
           for (const { slideId, rule, severity, message } of found) {
             if (OF_THE_SAMPLE.has(rule)) continue;
-            findings.push({
-              layout: nameOf.get(slideId) ?? slideId,
-              dir: tried.meta.dir,
-              rule,
-              severity,
-              message,
-            });
+            const layout = nameOf.get(slideId) ?? slideId;
+            const { dir: direction } = tried.meta;
+            // What the sample already showed of a layout in a direction is said once.
+            const said = findings.some(
+              (f) =>
+                f.text !== text && f.layout === layout && f.dir === direction && f.rule === rule,
+            );
+            if (!said) findings.push({ layout, dir: direction, text, rule, severity, message });
           }
         } catch (error) {
           notes.push(`The design lint could not run on the draft: ${String(error)}`);
