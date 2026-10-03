@@ -280,7 +280,10 @@ impl ImageProvider for CodexCli {
                 transparent: false,
                 // Four processes at once is what was measured (ADR-004).
                 max_parallel: 4,
+                quality: false,
             },
+            // It runs on the CLI's own sign-in.
+            key: None,
         }
     }
 

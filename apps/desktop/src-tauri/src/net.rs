@@ -1,4 +1,4 @@
-//! The app's own calls to the web (ADR-051, ADR-052): the one place that makes an HTTP client.
+//! The app's own calls to the web (ADR-051): the one place that makes an HTTP client.
 //!
 //! Everything else the app does stays on the machine; an agent's CLI and an image CLI are
 //! processes of their own. What goes through here is a provider that is a web API (images made

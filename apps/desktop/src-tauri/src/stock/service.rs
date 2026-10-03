@@ -255,6 +255,7 @@ mod tests {
                 name: "Library".into(),
                 home_url: "https://example.com/library".into(),
                 license: "Library License".into(),
+                key: None,
             }
         }
 

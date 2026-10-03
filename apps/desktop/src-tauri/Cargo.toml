@@ -47,7 +47,7 @@ axum = { version = "0.8.9", default-features = false, features = ["tokio", "http
 # API keys in the credential store of the operating system (SEC-04, ADR-051): the Windows
 # Credential Manager, the macOS Keychain, the Secret Service on Linux.
 keyring = "4.2"
-# HTTPS for what is a web API (ADR-051, ADR-052): images made with the user's key, stock photos.
+# HTTPS for what is a web API (ADR-051): images made with the user's key, stock photos.
 # TLS is the operating system's (SChannel on Windows), so no TLS library is built; HTTP/1 only.
 reqwest = { version = "0.13.5", default-features = false, features = ["native-tls", "json", "multipart", "query", "system-proxy"] }
 # Decodes, scales and encodes pictures for an edit that keeps the pixels outside its mask (ADR-051).

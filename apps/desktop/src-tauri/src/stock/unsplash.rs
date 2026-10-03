@@ -1,4 +1,4 @@
-//! Unsplash (GEN-08, ADR-052), as its documentation and API guidelines describe it.
+//! Unsplash (GEN-08, ADR-051), as its documentation and API guidelines describe it.
 //!
 //! ```text
 //! search:  GET https://api.unsplash.com/search/photos?query=…      Authorization: Client-ID <key>
@@ -191,6 +191,7 @@ impl StockProvider for Unsplash {
             name: NAME.into(),
             home_url: referral("https://unsplash.com/"),
             license: "Unsplash License".into(),
+            key: Some(SecretName::Unsplash),
         }
     }
 

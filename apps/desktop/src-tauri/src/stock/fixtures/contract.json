@@ -12,6 +12,7 @@
       "name": "Other",
       "homeUrl": "https://other.example.com",
       "license": "Other License",
+      "key": "pexels",
       "state": "no_key"
     }
   ],
@@ -80,7 +81,10 @@
     "io",
     "internal"
   ],
-  "error": { "kind": "no_key", "message": "No Example key is stored. The user can enter one in Settings." },
+  "error": {
+    "kind": "no_key",
+    "message": "No Example key is stored. The user can enter one in Settings."
+  },
   "secrets": [
     { "name": "openai-api", "present": true },
     { "name": "unsplash", "present": false },

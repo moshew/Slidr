@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     assets::ImportedAsset,
     error::{AppError, ErrorKind},
+    secrets::SecretName,
 };
 
 /// Result of every image operation.
@@ -56,6 +57,10 @@ pub struct ProviderDescriptor {
     /// Display name.
     pub name: String,
     pub capabilities: Capabilities,
+    /// The key the provider needs, for one that calls a web API with the user's key. The
+    /// settings screen offers a field for it; `probe` says whether the key works.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key: Option<SecretName>,
 }
 
 /// Feature flags of a provider.
@@ -70,6 +75,9 @@ pub struct Capabilities {
     pub transparent: bool,
     /// How many images the provider makes at once; the rest of a job waits its turn.
     pub max_parallel: u32,
+    /// The provider reads the `quality` of the image settings (low, medium, high, auto):
+    /// what an image costs and how long it takes.
+    pub quality: bool,
 }
 
 /// How a provider edits.
@@ -412,11 +420,17 @@ mod tests {
                 mask,
                 transparent: false,
                 max_parallel,
+                quality: false,
             },
+            key: None,
         };
+        // A provider that is a web API: it needs a key, and takes a quality.
+        let mut exact = descriptor("exact", "Exact", EditSupport::Exact, true, 2);
+        exact.key = Some(SecretName::OpenaiApi);
+        exact.capabilities.quality = true;
         let descriptors = [
             descriptor("example", "Example", EditSupport::Regenerate, false, 4),
-            descriptor("exact", "Exact", EditSupport::Exact, true, 2),
+            exact,
             descriptor("plain", "Plain", EditSupport::None, false, 1),
         ];
         assert_eq!(serde_json::to_value(descriptors)?, contract["descriptors"]);

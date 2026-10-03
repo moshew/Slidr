@@ -6,6 +6,7 @@ import contract from '../../src-tauri/src/image_providers/fixtures/contract.json
 import type { AssetService } from '../document/assets';
 import type { DocumentService } from '../document/documentService';
 import type { ImportedAsset } from '../document/storage';
+import { SECRET_NAMES } from '../settings/settings';
 import { createAppImages } from './appImages';
 import { createImageService } from './imageService';
 import {
@@ -25,6 +26,7 @@ import {
   type ImageProviderStatus,
 } from './images';
 import { memoryImages } from './memoryImages';
+import { memorySettings, type MemorySettings } from '../settings/memorySettings';
 import { BLANK_PREVIEW } from './preview';
 import { tauriImages } from './tauriImages';
 
@@ -119,12 +121,20 @@ describe('the IPC contract (src-tauri/src/image_providers/fixtures/contract.json
       'mask',
       'transparent',
       'maxParallel',
+      'quality',
     ];
     const edits: EditSupport[] = ['regenerate', 'exact', 'none'];
     for (const d of contract.descriptors) {
-      expect(sorted(Object.keys(d))).toEqual(sorted(descriptor));
+      // `key` is there only for a provider that needs one.
+      const optional: keyof ImageProviderDescriptor = 'key';
+      expect(sorted(Object.keys(d).filter((field) => field !== optional))).toEqual(
+        sorted(descriptor),
+      );
       expect(sorted(Object.keys(d.capabilities))).toEqual(sorted(capabilities));
     }
+    const keys = contract.descriptors.flatMap((d) => ('key' in d ? [d.key] : []));
+    expect(keys).toEqual(['openai-api']);
+    expect(SECRET_NAMES).toEqual(expect.arrayContaining(keys));
     expect(contract.descriptors.map((d) => d.capabilities.edit)).toEqual(edits);
     const status: (keyof ImageProviderStatus)[] = ['state', 'version', 'account', 'detail'];
     const states: ImageProviderState[] = ['ready', 'not_installed', 'not_logged_in', 'unavailable'];
@@ -391,10 +401,10 @@ describe('createImageService', () => {
     if (!result.ok) throw new Error(result.error.message);
     expect(result.images).toEqual([png, png]);
     // Both images are assets of the deck; the first one fills the placeholder.
-    expect(bus.deck.assets['b'.repeat(64)]).toMatchObject({
-      origin: 'ai',
-      lineage: { provider: 'example', prompt: 'a blue gradient' },
-    });
+    const first = bus.deck.assets['b'.repeat(64)];
+    expect(first).toMatchObject({ origin: 'ai', lineage: { provider: 'example' } });
+    // The prompt kept with the asset is the one that was sent: the tool added the palette.
+    expect(first?.lineage?.prompt).toMatch(/^a blue gradient\n\nThe presentation's palette is /);
     expect(bus.deck.assets['c'.repeat(64)]).toBeDefined();
     expect(findElementInDeck(bus.deck, 'e_image_pending')?.element).toMatchObject({
       assetId: 'b'.repeat(64),
@@ -472,7 +482,7 @@ describe('memoryImages', () => {
     };
   }
 
-  function client(delayMs = 20) {
+  function client(delayMs = 20, settings?: MemorySettings) {
     const painted: { width: number; height: number; seed: number }[] = [];
     const images = memoryImages(fakeAssets(), {
       delayMs,
@@ -480,6 +490,7 @@ describe('memoryImages', () => {
         painted.push(placeholder);
         return Promise.resolve(new Blob([`p${placeholder.seed}`], { type: 'image/png' }));
       },
+      ...(settings ? { settings } : {}),
     });
     return { images, painted };
   }
@@ -496,9 +507,53 @@ describe('memoryImages', () => {
     expect(painted.map((p) => [p.width, p.height])).toEqual(Array(3).fill([360, 640]));
     expect(events.filter((e) => e.type === 'started')).toHaveLength(3);
     expect(events.filter((e) => e.type === 'finished')).toHaveLength(3);
-    expect(await images.providers()).toEqual([
-      expect.objectContaining({ id: await images.defaultProvider() }),
-    ]);
+    // The first provider is the default until another is chosen.
+    expect((await images.providers()).map((p) => p.id)).toEqual(['mock', 'mock-api']);
+    expect(await images.defaultProvider()).toBe('mock');
+  });
+
+  it('has a provider that needs a key, and makes images where the settings say', async () => {
+    const settings = memorySettings();
+    const { images } = client(5, settings);
+    const run = (provider?: string) =>
+      images.generate(crypto.randomUUID(), 'none', {
+        prompt: 'a barn',
+        count: 1,
+        aspect: '1:1',
+        ...(provider ? { provider } : {}),
+      });
+    const statusOf = async (result: Promise<ImageJobResult>) => {
+      const [outcome] = (await result).images;
+      return outcome?.status === 'failed' ? outcome.error.kind : outcome?.status;
+    };
+
+    // Without its key the provider says so, and makes nothing.
+    expect(await images.probe('mock-api')).toMatchObject({ state: 'not_logged_in' });
+    expect(await statusOf(run('mock-api'))).toBe('not_logged_in');
+    expect(await images.probe('mock')).toMatchObject({ state: 'ready' });
+
+    await settings.setSecret('openai-api', 'sk-test-0123456789');
+    expect(await images.probe('mock-api')).toMatchObject({ state: 'ready', account: 'API key' });
+
+    // The choice is kept in the settings, next to what else the section holds, and a job that
+    // names no provider goes where it says.
+    await settings.write('images', { quality: 'high' });
+    expect((await run()).provider).toBe('mock');
+    await images.setDefaultProvider('mock-api');
+    expect((await settings.read()).images).toEqual({
+      quality: 'high',
+      defaultProvider: 'mock-api',
+    });
+    expect(await images.defaultProvider()).toBe('mock-api');
+    const made = await run();
+    expect(made.provider).toBe('mock-api');
+    expect(await statusOf(Promise.resolve(made))).toBe('stored');
+    // A job that names a provider still goes there.
+    expect((await run('mock')).provider).toBe('mock');
+
+    // The key removed: the same job fails again, at once.
+    await settings.deleteSecret('openai-api');
+    expect(await statusOf(run())).toBe('not_logged_in');
   });
 
   it('fails as the prompt asks, and stops a job that is cancelled', async () => {

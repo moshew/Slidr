@@ -365,7 +365,9 @@ impl ImageProvider for OpenAiApi {
                 // The service can leave the background out, but a job cannot ask for it yet.
                 transparent: false,
                 max_parallel: 4,
+                quality: true,
             },
+            key: Some(SecretName::OpenaiApi),
         }
     }
 
@@ -590,7 +592,8 @@ mod tests {
         let descriptor = provider.descriptor();
         assert_eq!(descriptor.id, "openai-api");
         assert_eq!(descriptor.capabilities.edit, EditSupport::Exact);
-        assert!(descriptor.capabilities.mask);
+        assert!(descriptor.capabilities.mask && descriptor.capabilities.quality);
+        assert_eq!(descriptor.key, Some(SecretName::OpenaiApi));
     }
 
     #[tokio::test]

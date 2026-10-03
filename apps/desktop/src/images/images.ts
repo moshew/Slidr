@@ -8,6 +8,7 @@
  * it. Nothing here names a particular provider: the UI knows descriptors, jobs and outcomes only.
  */
 import type { ImportedAsset } from '../document/storage';
+import type { SecretName } from '../settings/settings';
 
 /** The shape of the picture (GEN-05). A provider gets as close as it can. */
 export const IMAGE_ASPECTS = ['16:9', '4:3', '1:1', '3:4', '9:16'] as const;
@@ -29,6 +30,8 @@ export interface ImageCapabilities {
   transparent: boolean;
   /** How many images the provider makes at once; the rest of a job waits its turn. */
   maxParallel: number;
+  /** The provider reads the `quality` of the image settings: what an image costs and takes. */
+  quality: boolean;
 }
 
 export interface ImageProviderDescriptor {
@@ -36,6 +39,8 @@ export interface ImageProviderDescriptor {
   id: string;
   name: string;
   capabilities: ImageCapabilities;
+  /** The key the provider needs, when it calls a web API with the user's own key. */
+  key?: SecretName;
 }
 
 export type ImageProviderState = 'ready' | 'not_installed' | 'not_logged_in' | 'unavailable';

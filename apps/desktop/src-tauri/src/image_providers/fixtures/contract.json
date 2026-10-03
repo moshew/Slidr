@@ -73,18 +73,32 @@
         "edit": "regenerate",
         "mask": false,
         "transparent": false,
-        "maxParallel": 4
+        "maxParallel": 4,
+        "quality": false
       }
     },
     {
       "id": "exact",
       "name": "Exact",
-      "capabilities": { "edit": "exact", "mask": true, "transparent": false, "maxParallel": 2 }
+      "capabilities": {
+        "edit": "exact",
+        "mask": true,
+        "transparent": false,
+        "maxParallel": 2,
+        "quality": true
+      },
+      "key": "openai-api"
     },
     {
       "id": "plain",
       "name": "Plain",
-      "capabilities": { "edit": "none", "mask": false, "transparent": false, "maxParallel": 1 }
+      "capabilities": {
+        "edit": "none",
+        "mask": false,
+        "transparent": false,
+        "maxParallel": 1,
+        "quality": false
+      }
     }
   ],
   "statuses": [

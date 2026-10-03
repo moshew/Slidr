@@ -24,6 +24,7 @@ import type { AssetMeta, Deck } from '@slidr/model';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import type { AssetService } from '../document/assets';
 import { tauriStorage } from '../document/tauriStorage';
+import { iconMarkup } from '../media/icons/library';
 
 /** One call of the conversion service, with the deck it was made on. */
 export type ConversionJob =
@@ -51,8 +52,8 @@ function assetFileName(info: { mime: string; name?: string }): string {
 
 /**
  * What the engine needs from the app, in the window it runs in: pictures of that window through
- * `capture_clip`, assets in the open workspace, and the asset protocol to load them from.
- * `icon` waits for the icon library (WG5-T11).
+ * `capture_clip`, assets in the open workspace, the asset protocol to load them from, and the
+ * icon library for `data-icon` (WG5-T11).
  */
 export function workspaceConversionHost(workspace: {
   id: string | null;
@@ -78,6 +79,7 @@ export function workspaceConversionHost(workspace: {
     },
     resolveAsset: (asset: AssetMeta) =>
       workspace.assetsDir ? convertFileSrc(`${workspace.assetsDir}/${asset.file}`) : undefined,
+    icon: iconMarkup,
   };
 }
 
@@ -149,5 +151,6 @@ export function pageConversion(assets: AssetService): ConversionService {
     storeAsset: (bytes, info) =>
       assets.import(new File([bytes], assetFileName(info), { type: info.mime }), 'import'),
     resolveAsset: (asset) => assets.url(asset),
+    icon: iconMarkup,
   });
 }

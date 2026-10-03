@@ -1,4 +1,4 @@
-//! Stock photos (SPEC 11.9, GEN-08, ADR-052): one interface over photo libraries that are web
+//! Stock photos (SPEC 11.9, GEN-08, ADR-051): one interface over photo libraries that are web
 //! APIs, so the rest of the app knows sources, photos and credits, never a particular library.
 //!
 //! ```text
@@ -34,6 +34,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{AppError, ErrorKind},
     net,
+    secrets::SecretName,
 };
 
 pub use registry::builtin;
@@ -90,6 +91,9 @@ pub struct SourceDescriptor {
     pub home_url: String,
     /// The name of the licence its photos come under, kept with every asset.
     pub license: String,
+    /// The key the source needs; the settings screen offers a field for it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key: Option<SecretName>,
 }
 
 /// Whether a source can be searched.
@@ -413,7 +417,7 @@ mod tests {
     use super::*;
     use crate::{
         assets::{AssetKind, ImportedAsset},
-        secrets::{SecretName, SecretStatus},
+        secrets::SecretStatus,
     };
 
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
@@ -447,6 +451,7 @@ mod tests {
                 name: name.into(),
                 home_url: home.into(),
                 license: format!("{name} License"),
+                key: (state == SourceState::NoKey).then_some(SecretName::Pexels),
             },
             state,
         };

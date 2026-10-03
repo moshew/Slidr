@@ -126,7 +126,9 @@ impl ImageProvider for MockProvider {
                 mask: true,
                 transparent: false,
                 max_parallel: self.max_parallel,
+                quality: false,
             },
+            key: None,
         }
     }
 

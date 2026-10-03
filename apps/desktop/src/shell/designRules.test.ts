@@ -20,12 +20,20 @@ const scanned = [
   'apps/desktop/src/objects',
   'apps/desktop/src/arrange',
   'apps/desktop/src/ai',
+  'apps/desktop/src/settings',
+  'apps/desktop/src/images',
+  'apps/desktop/src/media',
 ].filter((dir) => existsSync(join(root, dir)));
 
-/** Drawn on the slide, not in the app's chrome. */
+/**
+ * Drawn on the slide, not in the app's chrome; and the stand-ins of a plain browser page, which
+ * paint the pictures a provider or a photo library would return.
+ */
 const onSlide = new Set([
   'apps/desktop/src/text/TextEditor.tsx',
   'apps/desktop/src/text/schema.ts',
+  'apps/desktop/src/images/memoryImages.ts',
+  'apps/desktop/src/media/memoryStock.ts',
 ]);
 /** The colour picker's maths: the one place that writes colours (see the file). */
 const colourMaths = 'packages/ui/src/color.ts';

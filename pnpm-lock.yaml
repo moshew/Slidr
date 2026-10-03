@@ -338,6 +338,9 @@ importers:
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
+      '@tabler/icons':
+        specifier: ^3.48.0
+        version: 3.48.0
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.2(@types/node@26.6.3)(jiti@2.7.0))
@@ -356,6 +359,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.1
         version: 6.1.1(vite@8.3.2(@types/node@26.6.3)(jiti@2.7.0))
+      lucide-static:
+        specifier: ^1.50.0
+        version: 1.50.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
@@ -1559,6 +1565,9 @@ packages:
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
 
+  '@tabler/icons@3.48.0':
+    resolution: {integrity: sha512-lQk06gVHNVBnJp0UOgtth54mcZBJM7rdYKsAxKOProj1bbSAx+/xiuOWfHlyvgdL3M+Y+I0HINrjHa3ygp8eXQ==}
+
   '@tailwindcss/node@4.3.3':
     resolution: {integrity: sha512-/T8IKEsf9VTU6tLjgC7+sv2mOPtQxzE2jMw7u4Tt40Tx+QSZxpzh95/H6cMKoja9XuW7iMdLJYBB0o9G1CaAgg==}
 
@@ -2386,6 +2395,9 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  lucide-static@1.50.0:
+    resolution: {integrity: sha512-Pge6F5Au0bEBvjaeBIjfU5PsmA43FHdM3s5g3rYqSNWvBO3o7WwDSNQSavwX76z/OoSCjwSVbQpGA9lqKud/WA==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -3938,6 +3950,8 @@ snapshots:
 
   '@rolldown/pluginutils@1.0.1': {}
 
+  '@tabler/icons@3.48.0': {}
+
   '@tailwindcss/node@4.3.3':
     dependencies:
       '@jridgewell/remapping': 2.3.5
@@ -4699,6 +4713,8 @@ snapshots:
       react: 19.3.0
     optionalDependencies:
       '@types/react': 19.3.0
+
+  lucide-static@1.50.0: {}
 
   magic-string@0.30.21:
     dependencies:

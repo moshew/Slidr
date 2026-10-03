@@ -105,7 +105,7 @@ pub fn run() {
 }
 
 /// The settings and the keys, and what reads them: the image providers and the photo libraries
-/// (ADR-051, ADR-052).
+/// (ADR-051).
 fn manage_media(app: &tauri::App, root: &std::path::Path) {
     let settings = Arc::new(settings::Settings::open(root.join("settings.json")));
     // Keys are kept under the app's identifier, so a development copy has keys of its own and

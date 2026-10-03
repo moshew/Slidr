@@ -112,6 +112,15 @@ export function createImageService(options: ImageServiceOptions): AgentImageServ
         ),
       ),
 
+    // What a call goes to now: read every time, since the user can change it between calls.
+    describe: async () => {
+      const [id, providers] = await Promise.all([client.defaultProvider(), client.providers()]);
+      const provider = providers.find((p) => p.id === id);
+      if (!provider) throw new ImageError('unknown_provider', `unknown image provider: ${id}`);
+      const { edit, mask } = provider.capabilities;
+      return { name: provider.name, edit, mask };
+    },
+
     cancel: async () => {
       await Promise.all([...running].map((jobId) => client.cancel(jobId)));
     },

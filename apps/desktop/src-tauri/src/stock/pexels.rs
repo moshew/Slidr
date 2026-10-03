@@ -1,4 +1,4 @@
-//! Pexels (GEN-08, ADR-052), as its documentation describes it.
+//! Pexels (GEN-08, ADR-051), as its documentation describes it.
 //!
 //! ```text
 //! search:  GET https://api.pexels.com/v1/search?query=…     Authorization: <key>
@@ -129,6 +129,7 @@ impl StockProvider for Pexels {
             name: NAME.into(),
             home_url: "https://www.pexels.com".into(),
             license: "Pexels License".into(),
+            key: Some(SecretName::Pexels),
         }
     }
 

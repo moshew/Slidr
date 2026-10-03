@@ -35,6 +35,7 @@ import {
 import { createCaptureService } from '../capture/deckCapture';
 import { createAppImages, type AppImages } from '../images/appImages';
 import { createLintService } from '../lint/deckLint';
+import { mediaServices } from '../media/services';
 import type { Editor } from '../shell';
 import { createLayoutService } from '../templates/layoutService';
 import { followDirection } from '../templates/actions';
@@ -182,8 +183,10 @@ function createAi(editor: Editor): AiRuntime {
 
   const capture = inApp ? createCaptureService(workspaceId) : pageCapture();
 
-  // Every service the app has today (ADR-011), one to a line. `icons` and `stock` are not built.
+  // Every service the app has today (ADR-011), one to a line.
   const services: Services = {
+    // Stock photos and the icon library (ADR-051).
+    ...mediaServices(editor),
     ui: {
       selection,
       navigate: ({ slideId, elementIds }) =>

@@ -105,6 +105,7 @@ impl StockProvider for MockStock {
             name: "Mock photos".into(),
             home_url: "https://example.com/mock-photos".into(),
             license: "Mock License".into(),
+            key: None,
         }
     }
 

@@ -1,5 +1,7 @@
 import type { AssetService } from '../document/assets';
 import type { DocumentService } from '../document/documentService';
+import { pageSettings } from '../settings/store';
+import type { Editor } from '../shell/editor';
 import { createImageService, type AgentImageService } from './imageService';
 import type { ImageClient, ImageEvent } from './images';
 import { memoryImages } from './memoryImages';
@@ -25,7 +27,8 @@ export function createAppImages(
   assets: AssetService,
   onEvent?: (jobId: string, event: ImageEvent) => void,
 ): AppImages {
-  const client = document ? tauriImages : memoryImages(assets);
+  // The page's own settings hold the choice of provider, so every client of a page agrees on it.
+  const client = document ? tauriImages : memoryImages(assets, { settings: pageSettings });
   // In memory there is one store and no workspace; the id only has to be there.
   const workspaceId = () => (document ? (document.workspace?.id ?? null) : 'memory');
   const service = createImageService({
@@ -38,4 +41,19 @@ export function createAppImages(
     ...(onEvent ? { onEvent } : {}),
   });
   return { client, service, workspaceId };
+}
+
+const ofEditor = new WeakMap<Editor, AppImages>();
+
+/**
+ * The images of an editing window, for the app's own screens: the settings, the media panel.
+ * The agent's tools have a service of their own, which reports its jobs to the gallery.
+ */
+export function imagesOf(editor: Editor): AppImages {
+  let images = ofEditor.get(editor);
+  if (!images) {
+    images = createAppImages(editor.document, editor.assets);
+    ofEditor.set(editor, images);
+  }
+  return images;
 }

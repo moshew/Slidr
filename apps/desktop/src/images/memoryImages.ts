@@ -1,4 +1,5 @@
 import type { AssetService } from '../document/assets';
+import type { MemorySettings } from '../settings/memorySettings';
 import {
   ImageError,
   type ImageClient,
@@ -7,6 +8,7 @@ import {
   type ImageJobResult,
   type ImageOutcome,
   type ImageProviderDescriptor,
+  type ImageProviderStatus,
 } from './images';
 
 /** A placeholder picture to paint: its size, and what sets its colours. */
@@ -21,13 +23,33 @@ export interface MemoryImagesOptions {
   delayMs?: number;
   /** Paints a placeholder. The default draws a gradient on a canvas, which tests do not have. */
   paint?: (placeholder: Placeholder) => Promise<Blob>;
+  /**
+   * The page's settings: where the choice of default provider is kept, and where the provider
+   * that needs a key finds out whether one is stored. Without it the choice is kept here.
+   */
+  settings?: MemorySettings;
 }
 
+/** The provider every page has: no key, like a provider that runs on a CLI's own sign-in. */
 const DESCRIPTOR: ImageProviderDescriptor = {
   id: 'mock',
   name: 'Mock images',
-  capabilities: { edit: 'exact', mask: true, transparent: false, maxParallel: 4 },
+  capabilities: { edit: 'exact', mask: true, transparent: false, maxParallel: 4, quality: false },
 };
+
+/**
+ * A second provider, in the place of one that is a web API: it needs the user's key and takes
+ * a quality, so the settings screen has both kinds to show, and a change of provider can be
+ * followed to where an image was made.
+ */
+const KEYED: ImageProviderDescriptor = {
+  id: 'mock-api',
+  name: 'Mock API',
+  capabilities: { edit: 'exact', mask: true, transparent: false, maxParallel: 4, quality: true },
+  key: 'openai-api',
+};
+
+const PROVIDERS = [DESCRIPTOR, KEYED];
 
 /** The longer side of a placeholder, in pixels. */
 const LONG_SIDE = 640;
@@ -41,6 +63,8 @@ const FAILURES: [string, ImageErrorKind][] = [
   ['mock:timeout', 'timeout'],
   ['mock:fail', 'generation_failed'],
 ];
+
+const NO_KEY = 'No key is stored for this provider. The user can enter one in Settings.';
 
 const hue = (seed: number, turn: number) => (seed * 47 + turn * 151) % 360;
 
@@ -66,19 +90,46 @@ function sizeOf(width: number, height: number): { width: number; height: number 
 }
 
 /**
- * The image providers without the Rust core: in a plain browser (the Vite page, Playwright), one
- * provider that paints placeholder pictures and stores them through the page's `AssetService`.
+ * The image providers without the Rust core: in a plain browser (the Vite page, Playwright),
+ * providers that paint placeholder pictures and store them through the page's `AssetService`.
  * The browser's counterpart of the Rust mock provider: each image is a gradient of the requested
  * shape, different from the others, and the same words in the prompt pick a failure
  * (`mock:quota`, `mock:not_logged_in`, `mock:not_installed`, `mock:timeout`, `mock:fail`,
  * `mock:flaky` for every third image, `mock:hang` for one only a cancel ends).
+ *
+ * There are two: `mock`, which is ready at once, and `mock-api`, which needs a key from the
+ * page's settings, as a provider that is a web API does.
  */
 export function memoryImages(assets: AssetService, options: MemoryImagesOptions = {}): ImageClient {
   const delayMs = options.delayMs ?? 1500;
   const paint = options.paint ?? paintGradient;
+  const { settings } = options;
   /** The running jobs, each with what cancels it. */
   const jobs = new Map<string, AbortController>();
   let made = 0;
+  /** The choice of default when there are no settings to keep it in. */
+  let chosen: string | null = null;
+
+  const known = (id: string) => PROVIDERS.some((provider) => provider.id === id);
+  const hasKey = (provider: ImageProviderDescriptor) =>
+    !provider.key || (settings?.hasSecret(provider.key) ?? false);
+
+  async function defaultProvider(): Promise<string> {
+    const stored = settings ? (await settings.read()).images : undefined;
+    const id =
+      typeof stored === 'object' && stored !== null && 'defaultProvider' in stored
+        ? stored.defaultProvider
+        : chosen;
+    return typeof id === 'string' && known(id) ? id : DESCRIPTOR.id;
+  }
+
+  /** The provider a job names, or the default one. */
+  async function providerOf(id: string | null | undefined): Promise<ImageProviderDescriptor> {
+    const wanted = id ?? (await defaultProvider());
+    const provider = PROVIDERS.find((p) => p.id === wanted);
+    if (!provider) throw new ImageError('unknown_provider', `unknown image provider: ${wanted}`);
+    return provider;
+  }
 
   /** Waits, unless the job is cancelled first. */
   const wait = (ms: number, signal: AbortSignal) =>
@@ -92,10 +143,17 @@ export function memoryImages(assets: AssetService, options: MemoryImagesOptions 
       });
     });
 
-  async function one(text: string, size: Placeholder, signal: AbortSignal): Promise<ImageOutcome> {
+  async function one(
+    provider: ImageProviderDescriptor,
+    text: string,
+    size: Placeholder,
+    signal: AbortSignal,
+  ): Promise<ImageOutcome> {
     const serial = made++;
     const began = Date.now();
     try {
+      // Checked for every image, as the real provider reads its key on every call.
+      if (!hasKey(provider)) throw new ImageError('not_logged_in', NO_KEY);
       await wait(
         text.includes('mock:hang') ? 2 ** 31 - 1 : delayMs * (1 + (serial % 4) / 4),
         signal,
@@ -120,6 +178,7 @@ export function memoryImages(assets: AssetService, options: MemoryImagesOptions 
 
   async function run(
     jobId: string,
+    providerId: string | null | undefined,
     text: string,
     count: number,
     size: { width: number; height: number },
@@ -132,41 +191,52 @@ export function memoryImages(assets: AssetService, options: MemoryImagesOptions 
     if (jobs.has(jobId)) {
       throw new ImageError('invalid_input', `a job with the id ${jobId} is already running`);
     }
+    // Entered before anything is awaited, so a cancel right after the call finds the job.
     const job = new AbortController();
     jobs.set(jobId, job);
     const seed = [...text].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 9973, 7);
     try {
+      const provider = await providerOf(providerId);
       const images = await Promise.all(
         Array.from({ length: count }, async (_, index) => {
           onEvent?.({ type: 'started', index });
-          const outcome = await one(text, { ...size, seed }, job.signal);
+          const outcome = await one(provider, text, { ...size, seed }, job.signal);
           onEvent?.({ type: 'finished', index, outcome });
           return outcome;
         }),
       );
-      return { provider: DESCRIPTOR.id, images };
+      return { provider: provider.id, images };
     } finally {
       jobs.delete(jobId);
     }
   }
 
   return {
-    providers: () => Promise.resolve([DESCRIPTOR]),
-    probe: () => Promise.resolve({ state: 'ready', version: null, account: null, detail: null }),
-    defaultProvider: () => Promise.resolve(DESCRIPTOR.id),
-    setDefaultProvider: (providerId) =>
-      providerId === DESCRIPTOR.id
-        ? Promise.resolve()
-        : Promise.reject(
-            new ImageError('unknown_provider', `unknown image provider: ${providerId}`),
-          ),
+    providers: () => Promise.resolve(PROVIDERS),
+    probe: async (providerId): Promise<ImageProviderStatus> => {
+      const provider = await providerOf(providerId);
+      return hasKey(provider)
+        ? { state: 'ready', version: null, account: provider.key ? 'API key' : null, detail: null }
+        : { state: 'not_logged_in', version: null, account: null, detail: NO_KEY };
+    },
+    defaultProvider,
+    setDefaultProvider: async (providerId) => {
+      if (!known(providerId)) {
+        throw new ImageError('unknown_provider', `unknown image provider: ${providerId}`);
+      }
+      chosen = providerId;
+      if (!settings) return;
+      const stored = (await settings.read()).images;
+      const section = typeof stored === 'object' && stored !== null ? stored : {};
+      await settings.write('images', { ...section, defaultProvider: providerId });
+    },
     generate: (jobId, _workspaceId, job, onEvent) => {
       const [width, height] = job.aspect.split(':').map(Number) as [number, number];
-      return run(jobId, job.prompt, job.count, sizeOf(width, height), onEvent);
+      return run(jobId, job.provider, job.prompt, job.count, sizeOf(width, height), onEvent);
     },
     // The source is not read: the placeholder is wide whatever the source was.
     edit: (jobId, _workspaceId, job, onEvent) =>
-      run(jobId, job.instruction, job.count, sizeOf(16, 9), onEvent),
+      run(jobId, job.provider, job.instruction, job.count, sizeOf(16, 9), onEvent),
     cancel: (jobId) => {
       jobs.get(jobId)?.abort();
       return Promise.resolve();
