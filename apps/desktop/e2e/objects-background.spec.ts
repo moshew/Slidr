@@ -50,13 +50,12 @@ test.beforeEach(async ({ page }) => {
   await expect(row(page)).toHaveAttribute('data-selection', 'none');
 });
 
-test('the real tool replaces the placeholder; layout and transition are left alone', async ({
-  page,
-}) => {
+test('the real tool replaces the placeholder; layout is left alone', async ({ page }) => {
   const button = row(page).getByRole('button', { name: 'רקע', exact: true });
   await expect(button).toBeEnabled();
   await expect(row(page).getByRole('button', { name: 'פריסה' })).toBeDisabled();
-  await expect(row(page).getByRole('button', { name: 'מעבר' })).toBeDisabled();
+  // The transition is a real tool too (src/animations).
+  await expect(row(page).getByRole('button', { name: 'מעבר' })).toBeEnabled();
   // Background first, as SPEC 4.4 lists the row.
   const names = await row(page).getByRole('button').allInnerTexts();
   expect(names.slice(0, 3)).toEqual(['רקע', 'פריסה', 'מעבר']);

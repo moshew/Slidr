@@ -69,7 +69,11 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
   const [awake, setAwake] = useState(false);
   const [onBar, setOnBar] = useState(false);
 
+  const exiting = useRef(false);
   const exit = useCallback(() => {
+    // A second Esc while the window is still leaving full screen is the same exit.
+    if (exiting.current) return;
+    exiting.current = true;
     const at = player.current?.state.slide ?? start;
     void (screen.current?.set(false) ?? Promise.resolve()).then(() => onExit(at));
   }, [onExit, start]);
