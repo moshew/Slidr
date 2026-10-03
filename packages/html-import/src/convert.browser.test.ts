@@ -335,6 +335,18 @@ describe('fills, pictures and CSS without a field', () => {
       /^@font-face \{ font-family: "Fixture Mono"; src: local\("Courier New"\); \}$/,
     );
   });
+
+  it('gives each stretch of text the family of the list that draws it', async () => {
+    const r = await convert('font list', fixtures.fontList);
+    expect(r.editability).toBe(1);
+    expect(
+      runs(byText(r, 'שלב')).map((run) => [run.text, (run.marks as { font?: string }).font]),
+    ).toEqual([
+      ['שלב', 'Arial'],
+      [' 2 ', 'Fixture Latin'],
+      ['בתהליך', 'Arial'],
+    ]);
+  });
 });
 
 describe('what the browser paints, and in which order', () => {
@@ -361,21 +373,57 @@ describe('what the browser paints, and in which order', () => {
     expect(r.slide.elements).toHaveLength(2);
   });
 
-  it('keeps boxes drawn by pseudo-elements as HTML and reads generated text', async () => {
+  it('places the boxes pseudo-elements draw, and reads generated text', async () => {
     const r = await convert('pseudo-elements', fixtures.pseudo);
-    // The bar of the heading has no box to measure: the heading's own box stays HTML, its text converts.
+    // The bar of the heading is where its offsets put it: a shape of its own.
+    const filled = (value: string) =>
+      shapes(r).find((e) => JSON.stringify(fillColor(e)) === JSON.stringify({ value }))!;
+    const bar = filled('#dc2626');
+    expect(bar.frame).toEqual({ x: 120, y: 130, w: 12, h: 68 });
+    expect(bar.effects?.radius).toBe(6);
+    expect(byText(r, 'A bar drawn by CSS').frame.x).toBe(160);
+    // The sheen over the card is drawn after the card's text, as the browser draws it, and is
+    // cut to the corners the card cuts it to: the card's 16px less its 2px border.
+    const order = r.slide.elements.map((e) => e.id);
+    const sheen = shapes(r).find((e) => e.fill.kind === 'linear')!;
+    const card = filled('#f8fafc');
+    expect(sheen.frame).toEqual({
+      x: card.frame.x + 2,
+      y: card.frame.y + 2,
+      w: card.frame.w - 4,
+      h: card.frame.h - 4,
+    });
+    expect(sheen.effects?.radius).toBe(14);
+    expect(order.indexOf(card.id)).toBeLessThan(order.indexOf(byText(r, 'Under a sheen').id));
+    expect(order.indexOf(sheen.id)).toBeGreaterThan(order.indexOf(byText(r, 'Under a sheen').id));
+    // The rule under the second heading is slanted, and offsets do not say where that puts
+    // it: the heading's own box stays HTML, and its text converts.
     const kept = r.slide.elements.filter((e) => e.type === 'html');
     expect(kept).toHaveLength(1);
-    expect(kept[0]!.markup).toContain('<h1');
-    expect(kept[0]!.markup).not.toContain('A bar drawn by CSS');
-    expect(byText(r, 'A bar drawn by CSS').frame.x).toBe(160);
+    expect(kept[0]!.markup).toContain('<h2');
+    expect(kept[0]!.markup).not.toContain('A slanted rule');
+    expect(textOf(byText(r, 'A slanted rule'))).toBe('A slanted rule');
     expect(runs(byText(r, 'First do this'))).toEqual([
       { text: '→ ', marks: { font: 'Arial', size: 40, color: { value: '#dc2626' } } },
       { text: 'First do this', marks: { font: 'Arial', size: 40, color: { value: '#111111' } } },
     ]);
     expect(textOf(byText(r, 'Make it simple'))).toBe('Make it simple ”');
-    expect(r.editability).toBe(0.8);
+    // Seven things became elements and one stayed HTML; the pseudo-elements are not counted.
+    expect(r.editability).toBe(0.875);
     expect(r.textEditability).toBe(1);
+  });
+
+  it('keeps an element whole when a pseudo-element only HTML can draw lies over its content', async () => {
+    const r = await convert('pseudo-element over content', fixtures.pseudoOver);
+    const kept = r.slide.elements.filter((e) => e.type === 'html');
+    expect(kept).toHaveLength(2);
+    // The first card is one picture: its text is under the wash, and stays in the HTML.
+    expect(kept[0]!.markup).toContain('Washed over');
+    expect(r.notes.join('\n')).toContain('a pseudo-element drawn over the content');
+    // In the second the text is lifted above the wash: only the card's own box stays HTML.
+    expect(kept[1]!.markup).not.toContain('Lifted above');
+    expect(textOf(byText(r, 'Lifted above'))).toBe('Lifted above');
+    expect(r.guard.rounds).toBe(1);
   });
 
   it('converts content inside a scaled stage, and says the comparison was not exact', async () => {

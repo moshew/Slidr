@@ -58,6 +58,7 @@ import {
   zKeyOf,
   type Paint,
   type ZKey,
+  zKeyIn,
 } from './measure';
 import { readTable } from './table';
 import {
@@ -68,6 +69,16 @@ import {
   readTextBlock,
   type TextTheme,
 } from './text';
+
+/** Whether a fill hides everything under it. */
+export function opaqueFill(fill: Fill): boolean {
+  const solid = (c: { alpha?: number }) => c.alpha === undefined || c.alpha >= 1;
+  if (fill.kind === 'solid') return solid(fill.color);
+  if (fill.kind === 'linear' || fill.kind === 'radial' || fill.kind === 'conic') {
+    return fill.stops.every((s) => solid(s.color));
+  }
+  return false;
+}
 
 /** One proposed element and the part of the source it stands for. */
 export interface Item {
@@ -102,6 +113,8 @@ export interface Item {
   reason?: string;
   /** The `data-anim` preset the element enters with, and the group it enters in. */
   anim?: { preset: string; group: number };
+  /** The element stands for this pseudo-element of the node, not for the node's own box. */
+  pseudo?: '::before' | '::after';
 }
 
 export interface Space {
@@ -305,6 +318,9 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       right: ((l.right - rootRect.left) / viewScale) * k + space.offX,
       top: ((l.top - rootRect.top) / viewScale) * k + space.offY,
       bottom: ((l.bottom - rootRect.top) / viewScale) * k + space.offY,
+      ...(l.base === undefined
+        ? {}
+        : { base: ((l.base - rootRect.top) / viewScale) * k + space.offY }),
     }));
   const scaled = () => Math.abs(kl / k - 1) > 1e-6;
   const color: TextTheme['color'] = (css, node, property, pseudo) =>
@@ -437,15 +453,6 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     return { css: scalePx(cs.boxShadow, kl), inset };
   };
 
-  const opaqueFill = (fill: Fill): boolean => {
-    const solid = (c: { alpha?: number }) => c.alpha === undefined || c.alpha >= 1;
-    if (fill.kind === 'solid') return solid(fill.color);
-    if (fill.kind === 'linear' || fill.kind === 'radial' || fill.kind === 'conic') {
-      return fill.stops.every((s) => solid(s.color));
-    }
-    return false;
-  };
-
   /** The background of a box as a fill; `unsupported` when only the original markup can draw it. */
   const fillOf = (
     el: Element,
@@ -522,8 +529,17 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     };
   };
 
-  /** A painted box as a shape; undefined when the box needs its own markup to look right. */
-  const shapeFor = (el: Element, cs: CSSStyleDeclaration, paint: Paint, r: DOMRect) => {
+  /**
+   * A painted box as a shape; undefined when the box needs its own markup to look right.
+   * `clipRadius`: the corners something around the box cuts it to, when it has none itself.
+   */
+  const shapeFor = (
+    el: Element,
+    cs: CSSStyleDeclaration,
+    paint: Paint,
+    r: DOMRect,
+    clipRadius = 0,
+  ) => {
     const effects = boxEffects(cs);
     if (effects.transform === 'other') return undefined;
     const rect = snapRect(r, Math.abs(vl - 1) > 1e-6);
@@ -543,6 +559,7 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       box,
     );
     if (corners.kind === 'px') radius = round(corners.value * kl);
+    else if (corners.kind === 'none' && clipRadius > 0) radius = round(clipRadius * kl);
     else if (corners.kind === 'ellipse') preset = 'ellipse';
     else if (corners.kind === 'css') {
       css['border-radius'] = scalePx(corners.value, kl);
@@ -1018,6 +1035,84 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     return false;
   };
 
+  /**
+   * Where a pseudo-element's box is, for the one kind that can be told without measuring:
+   * empty, absolutely positioned in its own element, and not transformed. Its used offsets and
+   * size say where the browser put it. `radius`: the corners the element cuts it to.
+   * `nothing`: it has no area, or lies wholly outside what its element clips to, and no
+   * shadow of it could show.
+   */
+  const pseudoPlace = (
+    cs: CSSStyleDeclaration,
+    r: DOMRect,
+    pcs: CSSStyleDeclaration,
+  ): { rect: DOMRect; radius: number } | 'nothing' | undefined => {
+    if (pcs.content !== '""' || pcs.position !== 'absolute' || pcs.transform !== 'none') {
+      return undefined;
+    }
+    // The offsets count from the element only when it is what the pseudo-element is placed in.
+    if (cs.position === 'static' && cs.transform === 'none') return undefined;
+    if (cs.display === 'inline') return undefined;
+    const used = (value: string) => (/^-?[\d.]+px$/.test(value) ? parseFloat(value) : NaN);
+    const outer = pcs.boxSizing === 'border-box' ? 0 : 1;
+    const w =
+      used(pcs.width) +
+      outer *
+        (px(pcs.paddingLeft) +
+          px(pcs.paddingRight) +
+          px(pcs.borderLeftWidth) +
+          px(pcs.borderRightWidth));
+    const h =
+      used(pcs.height) +
+      outer *
+        (px(pcs.paddingTop) +
+          px(pcs.paddingBottom) +
+          px(pcs.borderTopWidth) +
+          px(pcs.borderBottomWidth));
+    const left = used(pcs.left) + px(pcs.marginLeft);
+    const top = used(pcs.top) + px(pcs.marginTop);
+    if (![w, h, left, top].every(Number.isFinite)) return undefined;
+    const bare = pcs.boxShadow === 'none' && pcs.outlineStyle === 'none';
+    if (w <= 0 || h <= 0) return bare ? 'nothing' : undefined;
+    const box = paddingBox(cs, r);
+    const rect = new DOMRect(box.left + left * vl, box.top + top * vl, w * vl, h * vl);
+    if (cs.overflowX === 'visible' && cs.overflowY === 'visible') return { rect, radius: 0 };
+    // An element that clips cuts its pseudo-element too: at its edges, and at its corners.
+    if (bare && cs.overflowX !== 'visible' && cs.overflowY !== 'visible' && !overlaps(rect, box)) {
+      return 'nothing';
+    }
+    if (!within(rect, box)) return undefined;
+    const corners = cornerRadius(
+      [
+        cs.borderTopLeftRadius,
+        cs.borderTopRightRadius,
+        cs.borderBottomRightRadius,
+        cs.borderBottomLeftRadius,
+      ],
+      { w: r.width / vl, h: r.height / vl },
+    );
+    if (corners.kind === 'none') return { rect, radius: 0 };
+    const borders = [
+      cs.borderTopWidth,
+      cs.borderRightWidth,
+      cs.borderBottomWidth,
+      cs.borderLeftWidth,
+    ].map(px);
+    if (
+      corners.kind === 'px' &&
+      within(box, rect) &&
+      borders.every((width) => width === borders[0])
+    ) {
+      // It fills the box inside the borders: cut to the same corners, less the border.
+      return { rect, radius: Math.max(0, corners.value - borders[0]!) };
+    }
+    // Anywhere else it is whole only when it keeps out of the corners.
+    const reach = corners.kind === 'px' ? corners.value * vl : Math.min(r.width, r.height) / 2;
+    const nearX = rect.left < r.left + reach || rect.right > r.right - reach;
+    const nearY = rect.top < r.top + reach || rect.bottom > r.bottom - reach;
+    return nearX && nearY ? undefined : { rect, radius: 0 };
+  };
+
   // ------------------------------------------------------------------------------- the walk
 
   const walk = (el: Element, inherited: Inherited, isRoot: boolean): void => {
@@ -1116,8 +1211,19 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     const textFill =
       (cs.getPropertyValue('-webkit-background-clip') || cs.backgroundClip) === 'text';
     const painted = paint.any && !(textFill && !paint.border && !paint.shadow);
-    const pseudoBox =
-      !boxless && (pseudoKind(el, '::before') === 'box' || pseudoKind(el, '::after') === 'box');
+    // A pseudo-element that shows nothing as the page stands (one that waits outside its
+    // element for a hover, or sweeps across it now and then) is not there.
+    const pseudos = boxless
+      ? []
+      : (['::before', '::after'] as const).filter((which) => {
+          if (pseudoKind(el, which) !== 'box') return false;
+          const pcs = styleOf(el, which);
+          if (pseudoPlace(cs, r, pcs) !== 'nothing') return true;
+          const note =
+            'A pseudo-element that shows nothing while the page is still was left out, and its animation with it.';
+          if (pcs.animationName !== 'none' && !notes.includes(note)) notes.push(note);
+          return false;
+        });
     const children = composedChildren(el).filter(
       (c) => !neverRendered(c) && styleOf(c).display !== 'none',
     );
@@ -1132,7 +1238,7 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       // Effects that apply to a subtree as one picture. One element can carry them itself;
       // several elements cannot share them, so such a subtree stays HTML.
       const effects = boxEffects(cs);
-      const single = (empty && !pseudoBox) || (textBlock && !painted && !pseudoBox);
+      const single = pseudos.length === 0 && (empty || (textBlock && !painted));
       const effect =
         effects.transform === 'other'
           ? 'a transform'
@@ -1174,10 +1280,65 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       }
     }
 
+    // A pseudo-element the browser placed by its own offsets is a shape at that place, in its
+    // own turn in paint order. Any other has no box to measure: the element's own box stays
+    // HTML, and what is in it is still converted.
+    const queued = proposal.pending.length;
+    const places = pseudos.map((which) => {
+      const place = pseudoPlace(cs, r, styleOf(el, which));
+      return place === 'nothing' ? undefined : place;
+    });
+    const placed = places.every((place) => place)
+      ? pseudos.map((which, i) => {
+          const pcs = styleOf(el, which);
+          const shape = shapeFor(el, pcs, ownPaint(pcs), places[i]!.rect, places[i]!.radius);
+          return shape ? { which, pcs, shape } : undefined;
+        })
+      : [undefined];
+    const pseudoBox = pseudos.length > 0 && placed.some((p) => !p);
+    if (pseudoBox) {
+      proposal.pending.length = queued;
+      // One that is drawn over what the element holds cannot be left under it with the box.
+      const content = [
+        ...children.filter((c) => styleOf(c).position === 'static'),
+        ...(hasOwnText(el) ? [el] : []),
+      ].map((node) => {
+        if (node !== el) return node.getBoundingClientRect();
+        const range = el.ownerDocument.createRange();
+        range.selectNodeContents(el);
+        return range.getBoundingClientRect();
+      });
+      const over = pseudos.some((which, i) => {
+        const place = places[i];
+        return (
+          place !== undefined &&
+          !(Number(styleOf(el, which).zIndex) < 0) &&
+          content.some((b) => b.width > 0 && b.height > 0 && overlaps(b, place.rect))
+        );
+      });
+      if (over && !isRoot) {
+        htmlFor(el, true, 'a pseudo-element drawn over the content', own);
+        return;
+      }
+    }
+    const pseudoShape = (which: '::before' | '::after') => {
+      const found = pseudoBox ? undefined : placed.find((p) => p?.which === which);
+      if (!found) return;
+      const { pcs, shape } = found;
+      // Not counted as content: nothing counts a pseudo-element when it stays HTML either.
+      const item = emit(
+        shape.element,
+        el,
+        'box',
+        grow(shape.region, shadowReach(pcs) * vl),
+        { z: zKeyIn(pcs, cs.display, z, visit++), opacity, ...(anim ? { anim } : {}) },
+        { pseudo: which, units: 0 },
+      );
+      item.element.opacity = round(opacity * parseFloat(pcs.opacity));
+    };
+
     const both = textBlock && (painted || pseudoBox);
     if (painted || pseudoBox) {
-      // Pseudo-elements have no box to measure: the element's own box stays HTML, and what is
-      // in it is still converted.
       const shape = pseudoBox ? undefined : shapeFor(el, cs, paint, r);
       if (shape) {
         // The name is for what holds the content: the text when the node is a text block.
@@ -1196,14 +1357,17 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       }
     }
 
+    pseudoShape('::before');
     if (textBlock) {
       const item = textFor(el, cs, inner);
       if (item === 'unsupported') {
-        // The box above already stands for the node's paint; the text needs the whole node.
-        const index = items.findIndex((i) => i.node === el);
-        if (index >= 0) items.splice(index, 1);
+        // What was emitted above stands for the node's paint; the text needs the whole node.
+        for (let i = items.length - 1; i >= 0; i--) if (items[i]!.node === el) items.splice(i, 1);
         htmlFor(el, true, 'text the model cannot hold', own);
-      } else if (item) item.element.opacity = round(opacity);
+        return;
+      }
+      if (item) item.element.opacity = round(opacity);
+      pseudoShape('::after');
       return;
     }
 
@@ -1216,6 +1380,7 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       }
     }
     down();
+    pseudoShape('::after');
   };
 
   const archetype = (

@@ -466,6 +466,11 @@ export interface Line {
   right: number;
   top: number;
   bottom: number;
+  /**
+   * Where the baseline is, when the font the box was laid out in is known. Text of two fonts
+   * on one line shares a baseline, and neither the tops of its boxes nor their bottoms.
+   */
+  base?: number;
 }
 
 /**
@@ -485,8 +490,9 @@ export function groupLines(rects: readonly Line[]): Line[] {
       line.right = Math.max(line.right, r.right);
       line.top = Math.min(line.top, r.top);
       line.bottom = Math.max(line.bottom, r.bottom);
+      if (line.base === undefined && r.base !== undefined) line.base = r.base;
     } else {
-      lines.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+      lines.push({ ...r });
     }
   }
   return lines.sort((p, q) => p.top - q.top);
@@ -549,11 +555,15 @@ export function compareLines(
   const tolX = (line: Line) => Math.max(1.5, 0.004 * (line.right - line.left));
   const off = source.map((s, i) => {
     const c = converted[i]!;
+    // Where both baselines are known they say how far down the line is: a line the source
+    // drew in one box and the converted slide in the boxes of two fonts differs in top and
+    // bottom without being anywhere else.
+    const down = s.base !== undefined && c.base !== undefined ? c.base - s.base : undefined;
     return {
       left: c.left - s.left,
       right: c.right - s.right,
-      top: c.top - s.top,
-      bottom: c.bottom - s.bottom,
+      top: down ?? c.top - s.top,
+      bottom: down ?? c.bottom - s.bottom,
     };
   });
   const within = off.every(
@@ -568,8 +578,10 @@ export function compareLines(
   const pitch = (): LineVerdict | undefined => {
     if (source.length < 2) return undefined;
     const last = source.length - 1;
-    const sourcePitch = (source[last]!.top - source[0]!.top) / last;
-    const convertedPitch = (converted[last]!.top - converted[0]!.top) / last;
+    const based = [...source, ...converted].every((line) => line.base !== undefined);
+    const at = (line: Line) => (based ? line.base! : line.top);
+    const sourcePitch = (at(source[last]!) - at(source[0]!)) / last;
+    const convertedPitch = (at(converted[last]!) - at(converted[0]!)) / last;
     const sameAcross = off.every(
       (d, i) =>
         Math.max(Math.abs(d.left - first.left), Math.abs(d.right - first.left)) <= tolX(source[i]!),

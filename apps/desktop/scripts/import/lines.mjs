@@ -1,12 +1,13 @@
 // Development probe: for the first text the guard calls different, the line boxes of the source
 // and of the converted text, and how the converted text is styled.
+//   node scripts/import/lines.mjs "<selector>" ["<js to run first>"] [class of the text to look at]
 import { connect } from './cdp.mjs';
-const [selector, before] = process.argv.slice(2);
+const [selector, before, match] = process.argv.slice(2);
 const { browser, importPage } = await connect();
 const page = importPage();
 const ROOT = '/@fs/C:/Users/Moshe/Documents/Projects/Slidr-import/packages';
 const out = await page.evaluate(
-  async ({ selector, before, ROOT }) => {
+  async ({ selector, before, match, ROOT }) => {
     const { startConversion, mountSlide } = await import(`${ROOT}/html-import/src/engine.ts`);
     const { createDeck } = await import(`${ROOT}/model/src/index.ts`);
     const { host, page } = window.__slidrImport;
@@ -24,7 +25,10 @@ const out = await page.evaluate(
       fontFaces: false,
     });
     const verdict = await conversion.judge();
-    const bad = verdict.bad.find((b) => b.item.element.type === 'text');
+    const bad = verdict.bad.find(
+      (b) =>
+        b.item.element.type === 'text' && (!match || String(b.item.node.className).includes(match)),
+    );
     if (!bad) return { none: true };
     const rects = (node) => {
       const range = node.ownerDocument.createRange();
@@ -98,7 +102,7 @@ const out = await page.evaluate(
     conversion.dispose();
     return result;
   },
-  { selector, before, ROOT },
+  { selector, before, match, ROOT },
 );
 console.log(JSON.stringify(out, null, 1));
 await browser.close();

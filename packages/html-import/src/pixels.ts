@@ -108,6 +108,9 @@ export interface Ownership {
  * in paint order, so that is the one on top). The outermost ring is not judged: the picture
  * is cut on whole pixels and the slide rarely is, so the edge row mixes the slide with
  * whatever lies outside it. Pixels inside `ignored` boxes are not judged either.
+ *
+ * `leaves`: whether a region leaves a pixel to the region under it. What shows through a
+ * region is the look of what lies under it, and a difference there is judged as that is.
  */
 export function attribute(
   mask: Uint8Array,
@@ -115,6 +118,7 @@ export function attribute(
   height: number,
   regions: readonly Box[],
   ignored: readonly Box[] = [],
+  leaves?: (above: number, under: number) => boolean,
 ): Ownership {
   const owner = new Int32Array(width * height).fill(-1);
   const paint = (box: Box, value: number) => {
@@ -123,7 +127,16 @@ export function attribute(
     const x1 = Math.min(width, Math.ceil(box.x + box.w));
     const y1 = Math.min(height, Math.ceil(box.y + box.h));
     if (x1 <= x0) return;
-    for (let y = y0; y < y1; y++) owner.fill(value, y * width + x0, y * width + x1);
+    for (let y = y0; y < y1; y++) {
+      if (!leaves || value < 0) {
+        owner.fill(value, y * width + x0, y * width + x1);
+        continue;
+      }
+      for (let i = y * width + x0; i < y * width + x1; i++) {
+        const under = owner[i]!;
+        if (under < 0 || !leaves(value, under)) owner[i] = value;
+      }
+    }
   };
   regions.forEach((box, index) => paint(box, index));
   for (const box of ignored) paint(box, -2);

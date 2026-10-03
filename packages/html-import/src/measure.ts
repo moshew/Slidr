@@ -129,7 +129,7 @@ export function ownPaint(cs: CSSStyleDeclaration): Paint {
 
 /**
  * A pseudo-element that shows something: `text` when it is plain inline text the text model
- * can hold as a run, `box` when it paints or is positioned, which nothing can measure.
+ * can hold as a run, `box` when it paints or is positioned: a box no node stands for.
  */
 export function pseudoKind(el: Element, which: '::before' | '::after'): 'text' | 'box' | undefined {
   const cs = styleOf(el, which);
@@ -162,9 +162,18 @@ export interface ZKey {
 }
 
 export function zKeyOf(el: Element, cs: CSSStyleDeclaration, inherited: ZKey, seq: number): ZKey {
-  const positioned = cs.position !== 'static';
   const parent = composedParent(el);
-  const parentDisplay = parent ? styleOf(parent).display : '';
+  return zKeyIn(cs, parent ? styleOf(parent).display : '', inherited, seq);
+}
+
+/** The same for a box that is not a node of its own: a pseudo-element, in its element. */
+export function zKeyIn(
+  cs: CSSStyleDeclaration,
+  parentDisplay: string,
+  inherited: ZKey,
+  seq: number,
+): ZKey {
+  const positioned = cs.position !== 'static';
   const zApplies = positioned || /flex|grid/.test(parentDisplay);
   const context =
     (zApplies && cs.zIndex !== 'auto') ||
@@ -253,6 +262,37 @@ export function contentRect(el: Element, cs: CSSStyleDeclaration, scale: number)
   };
 }
 
+const baselines = new WeakMap<Document, Map<string, number | undefined>>();
+
+/**
+ * How far down the box of text in this font its baseline is: the share of the ascent in the
+ * box. The box of a piece of text is the ascent and descent of the first font of the list the
+ * document has, whichever font draws the letters. The browser rounds both to whole pixels at
+ * the size the text is laid out at, which under a CSS zoom is not the size its style says.
+ */
+function baselineShare(el: Element): number | undefined {
+  const doc = el.ownerDocument;
+  const cs = styleOf(el);
+  const zoom = (el as Element & { currentCSSZoom?: number }).currentCSSZoom ?? 1;
+  const font = `${cs.fontStyle} ${cs.fontWeight} ${px(cs.fontSize) * zoom}px ${cs.fontFamily}`;
+  let known = baselines.get(doc);
+  if (!known) {
+    known = new Map();
+    baselines.set(doc, known);
+  }
+  if (known.has(font)) return known.get(font);
+  const ctx = doc.createElement('canvas').getContext('2d');
+  let share: number | undefined;
+  if (ctx) {
+    ctx.font = font;
+    const metrics = ctx.measureText('x');
+    const height = metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent;
+    if (height > 0) share = metrics.fontBoundingBoxAscent / height;
+  }
+  known.set(font, share);
+  return share;
+}
+
 /**
  * The boxes of the words of the text under `node`, in viewport pixels of its document.
  * Words, not whole runs: a space where a line wraps has a box in `pre-wrap` text and none in
@@ -265,12 +305,19 @@ export function wordRects(node: Node, skip?: (el: Element) => boolean): Line[] {
   const visit = (n: Node) => {
     if (isText(n)) {
       const words = n.data.matchAll(/\S+/g);
+      const share = n.parentElement ? baselineShare(n.parentElement) : undefined;
       for (const word of words) {
         range.setStart(n, word.index);
         range.setEnd(n, word.index + word[0].length);
         for (const r of Array.from(range.getClientRects())) {
           if (r.width > 0 && r.height > 0) {
-            rects.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+            rects.push({
+              left: r.left,
+              right: r.right,
+              top: r.top,
+              bottom: r.bottom,
+              ...(share === undefined ? {} : { base: r.top + r.height * share }),
+            });
           }
         }
       }

@@ -2,8 +2,8 @@
 // still shows /dev/gallery.html, which touches no storage. Then opens the app itself.
 import { APP, connect } from './cdp.mjs';
 
-const { browser, find } = await connect();
-const page = find('/dev/gallery.html') ?? find(APP);
+const { browser, find, main } = await connect();
+const page = find('/dev/gallery.html') ?? main();
 if (!page) throw new Error('the app window was not found over CDP');
 const dirs = await page.evaluate(async () => {
   const invoke = window.__TAURI_INTERNALS__.invoke;

@@ -4,13 +4,14 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { connect } from './cdp.mjs';
 
-const [selector, outDir, before] = process.argv.slice(2);
+// [pair]: "a,b" compares picture a with picture b instead of the source with the last.
+const [selector, outDir, before, skip, pair] = process.argv.slice(2);
 const { browser, importPage } = await connect();
 const page = importPage();
 if (!page) throw new Error('the import window is not open');
 const ROOT = '/@fs/C:/Users/Moshe/Documents/Projects/Slidr-import/packages';
 const out = await page.evaluate(
-  async ({ selector, before, ROOT }) => {
+  async ({ selector, before, skip, pair, ROOT }) => {
     const { startConversion } = await import(`${ROOT}/html-import/src/engine.ts`);
     const { host, page } = window.__slidrImport;
     if (!document.querySelector('iframe[data-slidr-import]')) await page.load();
@@ -27,20 +28,27 @@ const out = await page.evaluate(
         return blob;
       },
     };
-    const conversion = await startConversion(root, {
-      deck: await (
-        await import('/scripts/import/in-page/deckWithFonts.js')
-      ).deckWithFonts(root.ownerDocument, host),
-      host: spy,
-      foreign: true,
-      behind: 'page',
-      fontFaces: false,
-    });
+    let conversion;
+    try {
+      conversion = await startConversion(root, {
+        deck: await (
+          await import('/scripts/import/in-page/deckWithFonts.js')
+        ).deckWithFonts(root.ownerDocument, host),
+        host: spy,
+        foreign: true,
+        behind: 'page',
+        fontFaces: false,
+      });
+    } catch (error) {
+      return { failed: error?.message ?? JSON.stringify(error), crops: [] };
+    }
     const verdict = await conversion.judge();
-    const source = await createImageBitmap(shots[1]);
-    const converted = await createImageBitmap(shots[shots.length - 1]);
+    // Two pictures of what is behind the element come first, then the element itself.
+    const [a, b] = pair ? pair.split(',').map(Number) : [2, shots.length - 1];
+    const source = await createImageBitmap(shots[a]);
+    const converted = await createImageBitmap(shots[b]);
     const crops = [];
-    for (const { item, why } of verdict.bad.slice(0, 4)) {
+    for (const { item, why } of verdict.bad.slice(Number(skip) || 0, (Number(skip) || 0) + 6)) {
       const r = item.region;
       const pad = 6;
       const x = Math.max(0, Math.floor(r.x - pad)),
@@ -61,13 +69,17 @@ const out = await page.evaluate(
       bctx.drawImage(converted, x, y, w, h, 0, 0, w, h);
       const da = actx.getImageData(0, 0, w, h),
         db = bctx.getImageData(0, 0, w, h);
+      let worst = 0;
+      let over = 0;
       for (let i = 0; i < da.data.length; i += 4) {
         const d = Math.max(
           Math.abs(da.data[i] - db.data[i]),
           Math.abs(da.data[i + 1] - db.data[i + 1]),
           Math.abs(da.data[i + 2] - db.data[i + 2]),
         );
-        const v = Math.min(255, d * 6);
+        if (d > worst) worst = d;
+        if (d > 7) over++;
+        const v = d > 7 ? 255 : Math.min(255, d * 20);
         da.data[i] = v;
         da.data[i + 1] = v;
         da.data[i + 2] = v;
@@ -83,6 +95,13 @@ const out = await page.evaluate(
       const e = item.element;
       crops.push({
         why,
+        worst,
+        over,
+        node:
+          item.node.localName +
+          '.' +
+          String(item.node.className).slice(0, 30) +
+          (item.pseudo ?? ''),
         type: e.type,
         text: (item.node.textContent ?? '').trim().slice(0, 60),
         frame: e.frame,
@@ -110,10 +129,51 @@ const out = await page.evaluate(
         data: btoa(s),
       });
     }
+    // For the first item: how many of its pixels each picture taken differs from the source in.
+    const against = [];
+    if (verdict.bad[0]) {
+      const r = verdict.bad[0].item.region;
+      const pixels = async (blob) => {
+        const bitmap = await createImageBitmap(blob);
+        const canvas = new OffscreenCanvas(Math.ceil(r.w), Math.ceil(r.h));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, -Math.floor(r.x), -Math.floor(r.y));
+        return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      };
+      const base = await pixels(shots[2]);
+      for (const shot of shots) {
+        const data = await pixels(shot);
+        let over = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const d = Math.max(
+            Math.abs(data[i] - base[i]),
+            Math.abs(data[i + 1] - base[i + 1]),
+            Math.abs(data[i + 2] - base[i + 2]),
+          );
+          if (d > 7) over++;
+        }
+        against.push(over);
+      }
+    }
     conversion.dispose();
-    return { faithful: verdict.faithful, bad: verdict.bad.length, crops };
+    return {
+      against,
+      faithful: verdict.faithful,
+      bad: verdict.bad.map(
+        (b) =>
+          b.item.element.type +
+          ' ' +
+          b.item.node.localName +
+          '.' +
+          String(b.item.node.className).slice(0, 24) +
+          (b.item.pseudo ?? '') +
+          ': ' +
+          b.why,
+      ),
+      crops,
+    };
   },
-  { selector, before, ROOT },
+  { selector, before, skip, pair, ROOT },
 );
 mkdirSync(outDir, { recursive: true });
 out.crops.forEach((crop, i) => {

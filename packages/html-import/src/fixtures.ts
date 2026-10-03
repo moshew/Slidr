@@ -173,7 +173,10 @@ export const hidden = `
   <p class="off">Off the slide</p>
 </div>`;
 
-/** Pseudo-elements: generated text, and boxes that only CSS draws. */
+/**
+ * Pseudo-elements: generated text, and boxes that only CSS draws. The bar and the sheen are
+ * placed by their own offsets; the slanted rule under the second heading is not.
+ */
 export const pseudo = `
 <style>
   .slide { ${SLIDE}; background: #fff; font-family: Arial, sans-serif; color: #111; padding: 120px; }
@@ -183,12 +186,50 @@ export const pseudo = `
   .step::before { content: "→ "; color: #dc2626; }
   blockquote { margin: 60px 0 0; font-size: 48px; line-height: 1.4; font-style: italic; }
   blockquote::after { content: " ”"; }
+  .card { position: relative; overflow: hidden; width: 700px; margin: 60px 0 0; padding: 30px 40px; box-sizing: border-box; background: #f8fafc; border: 2px solid #94a3b8; border-radius: 16px; }
+  .card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(37, 99, 235, 0.35), transparent); }
+  .card p { margin: 0; font-size: 44px; line-height: 1.3; font-weight: 700; }
+  h2 { position: relative; margin: 50px 0 0; padding-bottom: 24px; font-size: 44px; line-height: 1.2; }
+  h2::after { content: ""; position: absolute; left: 4px; bottom: 0; width: 160px; height: 8px; background: #2563eb; transform: skewX(-30deg); }
 </style>
 <div class="slide">
   <h1>A bar drawn by CSS</h1>
   <p class="step">First do this</p>
   <p class="step">Then do that</p>
   <blockquote>Make it simple</blockquote>
+  <div class="card"><p>Under a sheen</p></div>
+  <h2>A slanted rule</h2>
+</div>`;
+
+/**
+ * A font list that opens with a family that has no Hebrew: the browser draws the Hebrew
+ * letters with the next family, and the digits and spaces with the first.
+ */
+export const fontList = `
+<style>
+  @font-face { font-family: "Fixture Latin"; src: local("Courier New"); unicode-range: U+0000-00FF; }
+  .slide { ${SLIDE}; background: #fff; color: #111; padding: 120px; }
+  p { margin: 0; direction: rtl; font-family: "Fixture Latin", Arial, sans-serif; font-size: 60px; line-height: 1.3; }
+</style>
+<div class="slide">
+  <p>שלב 2 בתהליך</p>
+</div>`;
+
+/**
+ * A pseudo-element over the content that no shape can draw (its layers are blended): the card
+ * is one picture. The card beside it lifts its content above the same wash, and converts.
+ */
+export const pseudoOver = `
+<style>
+  .slide { ${SLIDE}; background: #fff; font-family: Arial, sans-serif; color: #111; padding: 120px; display: flex; gap: 80px; align-items: flex-start; }
+  .card { position: relative; width: 600px; padding: 40px; box-sizing: border-box; background: #fef3c7; }
+  .card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#1d4ed8, #1d4ed8), linear-gradient(90deg, #fff, #000); background-blend-mode: multiply; opacity: 0.3; }
+  .card p { margin: 0; font-size: 48px; line-height: 1.3; font-weight: 700; }
+  .lifted p { position: relative; }
+</style>
+<div class="slide">
+  <div class="card"><p>Washed over</p></div>
+  <div class="card lifted"><p>Lifted above</p></div>
 </div>`;
 
 /** A table by its tags, and the same layout made of divs: both are tables to the browser. */

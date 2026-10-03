@@ -103,6 +103,23 @@ describe('whose pixels differ', () => {
     expect(owned.all).toHaveLength(4);
   });
 
+  it('leaves a pixel to the region underneath when the one on top shows it through', () => {
+    const card = { x: 2, y: 2, w: 30, h: 20 };
+    const text = { x: 5, y: 5, w: 10, h: 5 };
+    const sheen = { x: 3, y: 3, w: 28, h: 18 };
+    // The sheen (2) leaves pixels to the text (1), and takes the card's (0) as any region does.
+    const owned = attribute(
+      mask([6, 6], [20, 15]),
+      width,
+      height,
+      [card, text, sheen],
+      [],
+      (above, under) => above === 2 && under === 1,
+    );
+    expect(Array.from(owned.owned)).toEqual([30 * 20 - 28 * 18, 50, 28 * 18 - 50]);
+    expect(Array.from(owned.differing)).toEqual([0, 1, 1]);
+  });
+
   it('does not judge the outermost ring, nor ignored boxes', () => {
     const region = { x: 0, y: 0, w: width, h: height };
     const owned = attribute(

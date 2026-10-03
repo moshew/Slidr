@@ -104,7 +104,34 @@ function clippedBackground(cs: CSSStyleDeclaration, scale: number): Record<strin
   };
 }
 
-const availability = new WeakMap<Document, Map<string, boolean>>();
+interface FontProbe {
+  /** The width of the text set in the font list, or undefined where nothing can measure. */
+  width(font: string, text: string): number | undefined;
+  available: Map<string, boolean>;
+  has: Map<string, boolean>;
+}
+
+const probes = new WeakMap<Document, FontProbe>();
+
+function probeOf(doc: Document): FontProbe {
+  let probe = probes.get(doc);
+  if (!probe) {
+    const ctx = doc.createElement('canvas').getContext('2d');
+    probe = {
+      width: (font, text) => {
+        if (!ctx) return undefined;
+        ctx.font = font;
+        return ctx.measureText(text).width;
+      },
+      available: new Map(),
+      has: new Map(),
+    };
+    probes.set(doc, probe);
+  }
+  return probe;
+}
+
+const quoted = (name: string) => `"${name.replace(/["\\]/g, '\\$&')}"`;
 
 /**
  * Whether the document can draw text in the family: a named family that is neither installed
@@ -112,28 +139,63 @@ const availability = new WeakMap<Document, Map<string, boolean>>();
  */
 function familyAvailable(name: string, doc: Document): boolean {
   if (isGenericFamily(name)) return true;
-  let known = availability.get(doc);
-  if (!known) {
-    known = new Map<string, boolean>();
-    availability.set(doc, known);
-  }
-  const cached = known.get(name);
+  const probe = probeOf(doc);
+  const cached = probe.available.get(name);
   if (cached !== undefined) return cached;
-  const ctx = doc.createElement('canvas').getContext('2d');
-  let found = true;
-  if (ctx) {
-    const sample = 'mmmmmmmmmmlli שלום 0123';
-    const width = (font: string) => {
-      ctx.font = `72px ${font}`;
-      return ctx.measureText(sample).width;
-    };
-    const quoted = `"${name.replace(/["\\]/g, '\\$&')}"`;
-    found =
-      width(`${quoted}, monospace`) !== width('monospace') ||
-      width(`${quoted}, serif`) !== width('serif');
-  }
-  known.set(name, found);
+  const sample = 'mmmmmmmmmmlli שלום 0123';
+  const found =
+    probe.width(`72px ${quoted(name)}, monospace`, sample) !==
+      probe.width('72px monospace', sample) ||
+    probe.width(`72px ${quoted(name)}, serif`, sample) !== probe.width('72px serif', sample);
+  probe.available.set(name, found);
   return found;
+}
+
+/**
+ * Whether the family has a glyph of its own for the character. With one, what comes after the
+ * family in the list makes no difference to how the character is drawn; without one, the
+ * character is as wide as whatever comes after. `face`: the style and weight asked for; the
+ * faces of one family do not all hold the same letters (Segoe UI has Hebrew, its Black has not).
+ */
+function familyHas(name: string, char: string, face: string, doc: Document): boolean {
+  if (isGenericFamily(name)) return true;
+  const probe = probeOf(doc);
+  const key = `${face}\n${name}\n${char}`;
+  const cached = probe.has.get(key);
+  if (cached !== undefined) return cached;
+  const [a, b, c] = ['monospace', 'serif', 'sans-serif'].map((after) =>
+    probe.width(`${face} 72px ${quoted(name)}, ${after}`, char),
+  );
+  const found = a === b && b === c;
+  probe.has.set(key, found);
+  return found;
+}
+
+/** Characters that are drawn with the one before them, whatever font has them. */
+const JOINS_PREVIOUS = /^(?:\p{M}|\u200c|\u200d|\ufe0e|\ufe0f)$/u;
+
+/**
+ * The run, cut where the family that draws it changes. The browser takes each character from
+ * the first family of the list that has it: Hebrew in a list that opens with a Latin-only
+ * font is drawn by a later one. A font mark names one family, so each stretch gets its own.
+ */
+function byFamily(run: RawRun, doc: Document): RawRun[] {
+  const families = run.look.families.filter((family) => familyAvailable(family, doc));
+  if (families.length < 2) return [run];
+  const cut: RawRun[] = [];
+  const face = `${run.look.italic ? 'italic' : 'normal'} ${run.look.weight}`;
+  let font: string | undefined;
+  for (const char of run.text) {
+    const family =
+      font !== undefined && JOINS_PREVIOUS.test(char)
+        ? font
+        : (families.find((f) => familyHas(f, char, face, doc)) ?? font ?? families[0]!);
+    const last = cut[cut.length - 1];
+    if (last && family === font) last.text += char;
+    else cut.push({ ...run, text: char, look: { ...run.look, font: family } });
+    font = family;
+  }
+  return cut.length > 0 ? cut : [run];
 }
 
 /** How the browser shows the text of an element, in slide pixels. */
@@ -374,7 +436,10 @@ export function readTextBlock(
         raw.map((r) => r.text),
         raw.map((r) => r.br),
       );
-  const kept = raw.map((r, i) => ({ ...r, text: texts[i]! })).filter((r) => r.text !== '');
+  const kept = raw
+    .map((r, i) => ({ ...r, text: texts[i]! }))
+    .filter((r) => r.text !== '')
+    .flatMap((r) => (r.br ? [r] : byFamily(r, owner.ownerDocument)));
   if (kept.every((r) => r.br)) return { unsupported: 'no visible text' };
 
   // The style is chosen for the run that holds most of the text.

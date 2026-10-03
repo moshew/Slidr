@@ -21,7 +21,7 @@ import {
 } from '@slidr/model';
 import { renderSlideOffscreen, themeVariables } from '@slidr/renderer';
 import { compareLines, round, wrapsDifferently, type Line } from './css';
-import { htmlItem, propose, type Item, type Proposal } from './convert';
+import { htmlItem, opaqueFill, propose, type Item, type Proposal } from './convert';
 import type { ConversionHost, Rect } from './host';
 import { BASE_STYLE_ATTRIBUTE, copySubtree, disposeCopyBaseline } from './htmlCopy';
 import { composedParent, isElement, isInside, styleOf, textLines, viewportOffset } from './measure';
@@ -137,6 +137,12 @@ const BAD_MIN_PIXELS = 6;
  * 0.4% of the box on correct conversions. A table is mostly text, placed by its columns.
  */
 const BAD_TEXT_SHARE = 0.01;
+/**
+ * A short text has few pixels, and one glyph that fell on the other side of a pixel is more
+ * than 1% of them. Up to this share, a text whose lines sit right is asked about again on the
+ * coarse picture: a glyph a pixel over is gone there, another weight, colour or font is not.
+ */
+const GLYPH_SHIFT_SHARE = 0.04;
 /** Pictures are compared at half resolution: edge noise of boxes and glyphs averages out. */
 const FINE = 2;
 /** Elements drawn through a scale are judged on a coarser picture, which raster noise does not reach. */
@@ -152,6 +158,10 @@ const CLUSTER_CELL = 12;
 const CLUSTER_MIN_PIXELS = 12;
 /** A text box sits right when its lines are within this many pixels of the source's. */
 const SETTLED = 0.04;
+/** How far past the middle of a pixel a baseline is pushed to land on the source's row, in source px. */
+const ROW_NUDGE = 0.03;
+/** On the source's pixel row, a baseline this far from the source's draws the same glyphs. */
+const ROW_SETTLED = 0.1;
 /** An opacity that changes no pixel by more than a level and makes the browser draw text in grey. */
 const SAME_ANTIALIASING = '0.999';
 /** How often a text box is moved to where its lines belong before it counts as different. */
@@ -712,6 +722,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
               right: (l.right - at.left) / scale,
               top: (l.top - at.top) / scale,
               bottom: (l.bottom - at.top) / scale,
+              ...(l.base === undefined ? {} : { base: (l.base - at.top) / scale }),
             })),
           );
         }
@@ -769,13 +780,33 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         const verdict = compareLines(item.lines, measured, true);
         // Glyphs are drawn on whole pixel rows, so a box a fraction of a pixel off can draw
         // its text a whole row off: the box is moved until its lines sit exactly.
-        const off =
-          verdict.kind === 'same' && Math.abs(verdict.dx) + Math.abs(verdict.dy) > SETTLED;
+        // Where the baselines are known it is the row itself that is asked about. A baseline a
+        // hair past the middle of a pixel puts the glyphs on the next row, however close the
+        // box is: such a box is pushed just past the source's side, and stays there.
+        const [sourceRow, row] =
+          verdict.kind === 'same'
+            ? [item.lines[0]?.base, measured[0]?.base].map((base) =>
+                base === undefined ? undefined : pixelRow(base),
+              )
+            : [];
+        const known = sourceRow !== undefined && row !== undefined;
+        const settled =
+          verdict.kind === 'same' &&
+          (known
+            ? sourceRow === row &&
+              Math.abs(verdict.dx) <= SETTLED &&
+              Math.abs(verdict.dy) <= ROW_SETTLED
+            : Math.abs(verdict.dx) + Math.abs(verdict.dy) <= SETTLED);
+        const past =
+          verdict.kind === 'same' && known && sourceRow !== row && Math.abs(verdict.dy) <= SETTLED
+            ? (sourceRow < row ? ROW_NUDGE : -ROW_NUDGE) * space.k
+            : 0;
+        const off = verdict.kind === 'same' && !settled;
         if (verdict.kind === 'shifted' || off) {
           item.element.frame = {
             ...item.element.frame,
             x: round(item.element.frame.x - verdict.dx),
-            y: round(item.element.frame.y - verdict.dy),
+            y: round(item.element.frame.y - verdict.dy - past),
           };
           fits.set(item, tries + 1);
           moved = true;
@@ -797,6 +828,10 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     }
   };
 
+  /** The row of the comparison picture a height on the slide falls on. */
+  const pixelRow = (y: number): number =>
+    Math.round((((y - space.offY) / space.k) * space.viewScale + origin.y) * density);
+
   /** A rectangle of the source document in pixels of the comparison picture at a resolution. */
   const toPicture = (rect: Rect, factor: number): Box => ({
     x: ((rect.x + offset.x - clip.x) * density) / factor,
@@ -808,22 +843,71 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   /** What one rendering of the proposal looks like next to the source. */
   const assess = (rendered: Rendered, picture: Picture): Verdict => {
     const items = proposal.items;
+    // Text under a shape that lets it show through (a sheen over a card) is still the text's
+    // to answer for: it is judged as text is, and drawn again in grey when that is the
+    // difference. Owned by the shape, a row of glyphs a shade off would cost the whole card.
+    const showsThrough = items.map(
+      ({ element }) =>
+        element.type === 'shape' && (element.opacity < 1 || !opaqueFill(element.fill)),
+    );
+    const textual = items.map(
+      (item) =>
+        item.element.type === 'text' ||
+        item.element.type === 'table' ||
+        (item.element.type === 'html' && item.chars > 0),
+    );
+    const leaves = (above: number, under: number) => showsThrough[above]! && textual[under]!;
+
+    /** Why a text does not sit as the source's does, read off the geometry of its lines. */
+    const misplaced = items.map((item) => {
+      const real = rendered.real.get(item);
+      const shown = rendered.shown.get(item);
+      if (item.exempt || !item.lines || !real || !shown) return undefined;
+      const wraps = wrapsDifferently(item.lines, real);
+      if (wraps) return wraps;
+      const verdict = compareLines(item.lines, shown);
+      if (verdict.kind === 'different') return verdict.why;
+      return verdict.kind === 'same' ? undefined : 'its lines sit elsewhere';
+    });
+    // A text that wraps or sits differently draws its glyphs over its neighbours. Until it is
+    // put right, the pixels around it are not held against what lies under or beside it: the
+    // next round judges them. Held against them, one label in the wrong font costs its card.
+    const toSource = (line: Line): Rect => ({
+      x: ((line.left - space.offX) / space.k) * space.viewScale + space.rootRect.left,
+      y: ((line.top - space.offY) / space.k) * space.viewScale + space.rootRect.top,
+      w: ((line.right - line.left) / space.k) * space.viewScale,
+      h: ((line.bottom - line.top) / space.k) * space.viewScale,
+    });
+    const SPILL = 4;
+    const spill = items.flatMap((item, index) => {
+      if (!misplaced[index]) return [];
+      const boxes = [item.region, ...(rendered.shown.get(item) ?? []).map(toSource)];
+      const left = Math.min(...boxes.map((b) => b.x)) - SPILL;
+      const top = Math.min(...boxes.map((b) => b.y)) - SPILL;
+      const right = Math.max(...boxes.map((b) => b.x + b.w)) + SPILL;
+      const bottom = Math.max(...boxes.map((b) => b.y + b.h)) + SPILL;
+      return [{ x: left, y: top, w: right - left, h: bottom - top }];
+    });
     const at = (factor: number, threshold: number) => {
       const a = downsample(sourcePicture, factor);
       const b = downsample(picture, factor);
       const mask = differingPixels(a, b, threshold);
       const width = Math.min(a.width, b.width);
       const height = Math.min(a.height, b.height);
-      const ignored = items.flatMap((item) => [
-        ...(item.exempt ? [toPicture(item.region, factor)] : []),
-        ...(item.ignored ?? []).map((r) => toPicture(r, factor)),
-      ]);
+      const ignored = [
+        ...items.flatMap((item) => [
+          ...(item.exempt ? [toPicture(item.region, factor)] : []),
+          ...(item.ignored ?? []).map((r) => toPicture(r, factor)),
+        ]),
+        ...spill.map((r) => toPicture(r, factor)),
+      ];
       const owned = attribute(
         mask,
         width,
         height,
         items.map((item) => toPicture(item.region, factor)),
         ignored,
+        leaves,
       );
       return { mask, width, height, ...owned };
     };
@@ -841,16 +925,8 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     const bad: Verdict['bad'] = [];
     items.forEach((item, index) => {
       if (item.exempt) return;
-      let why: string | undefined;
+      let why = misplaced[index];
       const type = item.element.type;
-      const real = rendered.real.get(item);
-      const shown = rendered.shown.get(item);
-      if (item.lines && real && shown) {
-        const verdict = compareLines(item.lines, shown);
-        why = wrapsDifferently(item.lines, real);
-        if (!why && verdict.kind === 'different') why = verdict.why;
-        else if (!why && verdict.kind !== 'same') why = 'its lines sit elsewhere';
-      }
       if (why) {
         // wraps or sits elsewhere
       } else if (item.scaled || rootScaled || onLayer(item)) {
@@ -880,8 +956,15 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         const least = textual ? 2 * BAD_MIN_PIXELS : BAD_MIN_PIXELS;
         const share = textual ? BAD_TEXT_SHARE : BAD_SHARE;
         const local = textual ? undefined : dense.find((c) => c.owner === index);
-        if (strict.differing[index]! > Math.max(least, share * strict.owned[index]!)) {
-          why = `looks different (${strict.differing[index]} of ${strict.owned[index]} pixels)`;
+        const differing = strict.differing[index]!;
+        const owned = strict.owned[index]!;
+        const glyphShift =
+          textual &&
+          differing <= GLYPH_SHIFT_SHARE * owned &&
+          coarse.differing[index]! <=
+            Math.max(COARSE_MIN_PIXELS, COARSE_SHARE * coarse.owned[index]!);
+        if (differing > Math.max(least, share * owned) && !glyphShift) {
+          why = `looks different (${differing} of ${owned} pixels)`;
         } else if (local) {
           why = `looks different in one place (${local.pixels} pixels)`;
         }
@@ -1039,6 +1122,14 @@ export async function startConversion(root: Element, options: ConvertOptions): P
           // A copy that still differs: widen to what contains it.
           const parent = item.node === root ? root : (composedParent(item.node) ?? root);
           await replace(parent, true, `${item.reason ?? 'html'}: ${why}`);
+        } else if (
+          item.covers === 'box' &&
+          proposal.items.some((i) => i.node === item.node && i.pseudo)
+        ) {
+          // The element's own markup draws its pseudo-elements with its box: once one of
+          // them is not right as a shape, it is the whole element or nothing.
+          const what = item.pseudo ? 'a pseudo-element' : 'a box';
+          await replace(item.node, true, `${what} that ${why}`);
         } else if (item.covers === 'box' && attempt(item.node, 'box')) {
           await replace(item.node, false, `a box that ${why}`, item);
         } else {
