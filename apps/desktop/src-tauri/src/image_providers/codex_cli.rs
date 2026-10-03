@@ -59,6 +59,8 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 /// An image takes 43 to 95 seconds (ADR-004). Past this the process is taken for hung and ended.
 const RUN_TIMEOUT: Duration = Duration::from_secs(240);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
+/// How long the rest of stderr is waited for once the process has ended.
+const STDERR_GRACE: Duration = Duration::from_secs(2);
 /// stderr lines kept for the error message when the process dies.
 const STDERR_LINES: usize = 12;
 /// Length of the CLI's own words in an error message, in characters.
@@ -236,7 +238,13 @@ impl CodexCli {
             // nothing running by the time this call returns.
             let _ = child.kill().await;
         }
-        let stderr = stderr.await.unwrap_or_default();
+        // The pipe closes with the process. A helper the CLI started could hold it open past
+        // that; the call does not wait on one.
+        let stderr = timeout(STDERR_GRACE, stderr)
+            .await
+            .ok()
+            .and_then(|tail| tail.ok())
+            .unwrap_or_default();
 
         let folder = transcript
             .thread_id
