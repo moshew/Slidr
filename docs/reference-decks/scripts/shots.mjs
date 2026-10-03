@@ -1,5 +1,6 @@
 // Pictures of the reference decks, for review (not kept in git):
-//   node docs/reference-decks/scripts/shots.mjs [deck ...]
+//   node docs/reference-decks/scripts/shots.mjs [deck ...]      the decks
+//   node docs/reference-decks/scripts/shots.mjs index [deck ...] the index page, deck by deck
 // Each slide at 1920x1080 and one contact sheet per deck, under
 // apps/desktop/test-results/templates/reference/.
 import { mkdirSync } from 'node:fs';
@@ -9,10 +10,40 @@ import { chromium } from 'playwright';
 import { deckFiles, readDeck, root } from './decks.mjs';
 
 const out = join(root, '..', '..', 'apps', 'desktop', 'test-results', 'templates', 'reference');
-const wanted = process.argv.slice(2);
+mkdirSync(out, { recursive: true });
+const args = process.argv.slice(2);
+const index = args[0] === 'index';
+const wanted = index ? args.slice(1) : args;
 const files = deckFiles().filter((file) => wanted.length === 0 || wanted.includes(readDeck(file).id));
 
 const browser = await chromium.launch({ channel: 'msedge' });
+
+if (index) {
+  // The index page as the user sees it: originals and rebuilt slides side by side.
+  const page = await browser.newPage({
+    viewport: { width: 1920, height: 1200 },
+    deviceScaleFactor: 2,
+  });
+  await page.goto(pathToFileURL(join(root, 'index.html')).href);
+  await page.evaluate(() => document.fonts.ready);
+  for (const file of files) {
+    const deck = readDeck(file);
+    const section = page.locator(`section.deck-${deck.id.replace(/\W/g, '-')}`);
+    if ((await section.count()) === 0) continue;
+    // Pair by pair at twice the size, so that a rebuilt slide can be read next to its original.
+    const pairs = section.locator('.pair');
+    const count = await pairs.count();
+    mkdirSync(join(out, `index-${deck.id}`), { recursive: true });
+    for (let i = 0; i < count; i++) {
+      const name = String(i + 1).padStart(2, '0');
+      await pairs.nth(i).screenshot({ path: join(out, `index-${deck.id}`, `${name}.png`) });
+    }
+    console.log(`index: ${deck.id}, ${count} pairs`);
+  }
+  await browser.close();
+  process.exit(0);
+}
+
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 for (const file of files) {
   const deck = readDeck(file);

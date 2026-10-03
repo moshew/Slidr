@@ -1,5 +1,6 @@
 import type {
   CommandOf,
+  Direction,
   Element,
   Frame,
   Layout,
@@ -7,6 +8,7 @@ import type {
   PlaceholderRole,
   Slide,
 } from '@slidr/model';
+import { seatAlign } from './align';
 
 /*
  * Moving a slide from one layout to another (SPEC 5.5): the layout is found by archetype, and the
@@ -155,6 +157,7 @@ export function relayout(slide: Slide, from: Layout, to: Layout): CommandOf<'ele
 export function adoptLayout(
   slide: Slide,
   candidates: readonly Layout[],
+  deckDir: Direction,
 ): { layout: Layout; updates: CommandOf<'element.update'>[] } | undefined {
   if (slide.archetype === undefined) return undefined;
   const wanted = roleCounts(slide.elements);
@@ -181,9 +184,8 @@ export function adoptLayout(
     if (element.type === 'text') {
       const vAlign = to.vAlign ?? 'top';
       if (element.vAlign !== vAlign) patch.vAlign = vAlign;
-      const align = to.align ?? 'start';
       const paragraphs = element.content.paragraphs.map((paragraph) => {
-        const next = { ...paragraph, align };
+        const next = { ...paragraph, align: seatAlign(to.align ?? 'start', paragraph, deckDir) };
         if (to.styleRef) next.styleRef = to.styleRef;
         else delete next.styleRef;
         return next;

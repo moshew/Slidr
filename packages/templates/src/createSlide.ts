@@ -8,6 +8,7 @@ import {
   type RichText,
   type Slide,
 } from '@slidr/model';
+import { seatAlign } from './align';
 
 /** What goes into one placeholder: text, an asset of the deck, or a prompt for an image to make. */
 export type RoleFill = RichText | { assetId: string } | { imagePrompt: string };
@@ -38,13 +39,18 @@ export interface CreatedSlide {
 const isList = (value: RoleFill | readonly RoleFill[]): value is readonly RoleFill[] =>
   Array.isArray(value);
 
-/** The text takes its look from the placeholder: the layout decides alignment and text style. */
-function styled(content: RichText, placeholder: Placeholder): RichText {
+/**
+ * The text takes its look from the placeholder: the layout decides the text style and the side
+ * the text sits on. The side is the deck's, so a paragraph that reads the other way is aligned
+ * to its own end (see `seatAlign`).
+ */
+function styled(content: RichText, placeholder: Placeholder, deck: Deck): RichText {
   const { align, styleRef } = placeholder;
   return {
     paragraphs: content.paragraphs.map((paragraph) => ({
       ...paragraph,
-      ...(align ? { align } : {}),
+      // A placeholder that states no alignment leaves the text its own.
+      ...(align ? { align: seatAlign(align, paragraph, deck.meta.dir) } : {}),
       ...(styleRef ? { styleRef } : {}),
     })),
   };
@@ -55,7 +61,7 @@ function fill(element: Element, placeholder: Placeholder, value: RoleFill, deck:
   if ('paragraphs' in value) {
     if (element.type !== 'text') return false;
     // Text without a paragraph leaves the empty one the placeholder came with.
-    if (value.paragraphs.length > 0) element.content = styled(value, placeholder);
+    if (value.paragraphs.length > 0) element.content = styled(value, placeholder, deck);
     return true;
   }
   if (element.type !== 'image') return false;

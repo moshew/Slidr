@@ -51,7 +51,7 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
   for (const slide of deck.slides) {
     const from = deck.layouts.find((layout) => layout.id === slide.layoutId);
     if (!from) {
-      const adopted = adoptLayout(slide, next);
+      const adopted = adoptLayout(slide, next, deck.meta.dir);
       if (adopted) adopting.push({ slideId: slide.id, to: adopted.layout, updates: adopted.updates });
       continue;
     }

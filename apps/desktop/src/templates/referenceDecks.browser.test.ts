@@ -15,7 +15,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { commands, page } from 'vitest/browser';
 import { registerBuiltinFonts } from '../fonts';
 import { createLintService } from '../lint/deckLint';
-import { referenceAssets, referenceDecks, type ReferenceDeck } from './referenceDecks';
+import { pictureAssets, pictureUrl } from './pictures';
+import { referenceDecks, type ReferenceDeck } from './referenceDecks';
 
 interface SlideReport {
   id: string;
@@ -25,6 +26,8 @@ interface SlideReport {
   editability: number;
   /** Elements by type, nested ones included. */
   elements: Record<string, number>;
+  /** What the slide's own background is filled with, when it has one. */
+  background?: string;
   notes: string[];
   lint: Pick<LintFinding, 'rule' | 'severity' | 'message'>[];
   ms: number;
@@ -64,15 +67,14 @@ afterAll(async () => {
 });
 
 async function measure(reference: ReferenceDeck): Promise<DeckReport> {
-  const { assets, resolve } = await referenceAssets();
-  const host = { ...testHost(), resolveAsset: resolve };
+  const host = { ...testHost(), resolveAsset: pictureUrl };
   const conversion = createConversionService(host);
-  const lint = createLintService(resolve);
+  const lint = createLintService(pictureUrl);
   const theme = builtInThemes[reference.template];
   if (!theme) throw new Error(`no theme for "${reference.template}"`);
   const empty: Deck = {
     ...createDeck({ lang: reference.lang, dir: reference.dir, theme }),
-    assets,
+    assets: pictureAssets,
   };
 
   const slides: SlideReport[] = [];
@@ -89,6 +91,7 @@ async function measure(reference: ReferenceDeck): Promise<DeckReport> {
       title: source.title,
       editability: converted.editability,
       elements: countTypes(converted.slide),
+      ...(converted.slide.background ? { background: converted.slide.background.fill.kind } : {}),
       notes: converted.notes,
       lint: findings.map(({ rule, severity, message }) => ({ rule, severity, message })),
       ms,
