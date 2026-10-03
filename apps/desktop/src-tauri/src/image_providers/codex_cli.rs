@@ -1330,7 +1330,9 @@ mod tests {
         let storage = Arc::new(Storage::new(root.path().to_path_buf()));
         let workspace = storage.new_workspace()?.id;
         let service = Arc::new(ImageService::new(
-            root.path().join("image-providers.json"),
+            Arc::new(crate::settings::Settings::open(
+                root.path().join("settings.json"),
+            )),
             vec![Arc::new(CodexCli::new())],
         ));
         Ok(Real {

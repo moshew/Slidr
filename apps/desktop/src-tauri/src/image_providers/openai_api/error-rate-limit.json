@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "You are sending requests too quickly. Slow down and retry after the indicated time.",
+    "type": "rate_limit_error",
+    "param": null,
+    "code": "slow_down"
+  }
+}

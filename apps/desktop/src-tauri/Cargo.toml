@@ -44,13 +44,22 @@ async-trait = "0.1"
 rmcp = { version = "3.5.0", default-features = false, features = ["server", "transport-streamable-http-server"] }
 # Serves the bridge on 127.0.0.1 and carries its auth layer. HTTP/1 only, no extractors.
 axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1"] }
+# API keys in the credential store of the operating system (SEC-04, ADR-051): the Windows
+# Credential Manager, the macOS Keychain, the Secret Service on Linux.
+keyring = "4.2"
+# HTTPS for what is a web API (ADR-051, ADR-052): images made with the user's key, stock photos.
+# TLS is the operating system's (SChannel on Windows), so no TLS library is built; HTTP/1 only.
+reqwest = { version = "0.13.5", default-features = false, features = ["native-tls", "json", "multipart", "query", "system-proxy"] }
+# Decodes, scales and encodes pictures for an edit that keeps the pixels outside its mask (ADR-051).
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
+# The pictures an image API returns inside JSON; and, on Windows, the PNG of a slide capture.
+base64 = "0.22"
 
 # Slide capture (ADR-003): Page.captureScreenshot through the WebView2 DevTools protocol. The
-# versions wry already uses, so nothing new is built; base64 decodes the PNG the protocol returns.
+# versions wry already uses, so nothing new is built.
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
 windows-core = "0.62"
-base64 = "0.22"
 
 [dev-dependencies]
 tempfile = "3.27.0"

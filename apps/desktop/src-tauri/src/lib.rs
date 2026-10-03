@@ -7,6 +7,10 @@ mod commands;
 mod error;
 mod harness;
 mod image_providers;
+mod net;
+mod secrets;
+mod settings;
+mod stock;
 mod storage;
 mod templates;
 // The tool bridge. Its folder is the one place that names the protocol it speaks to agents
@@ -32,10 +36,7 @@ pub fn run() {
                 harness::builtin(),
             )));
             app.manage(tool_bridge::ToolBridge::new());
-            app.manage(Arc::new(image_providers::ImageService::new(
-                root.join("image-providers.json"),
-                image_providers::builtin(),
-            )));
+            manage_media(app, &root);
             app.manage(Arc::new(templates::TemplateStore::new(&root)));
             app.manage(Arc::new(storage::Storage::new(root)));
             app.manage(Arc::new(capture::CaptureService::new()));
@@ -88,7 +89,40 @@ pub fn run() {
             templates::template_store_read_asset,
             templates::template_store_write_asset,
             harness::ipc::agent_attach,
+            settings::ipc::settings_read,
+            settings::ipc::settings_write,
+            secrets::ipc::secret_status,
+            secrets::ipc::secret_set,
+            secrets::ipc::secret_delete,
+            stock::ipc::stock_sources,
+            stock::ipc::stock_default_source,
+            stock::ipc::stock_search,
+            stock::ipc::stock_thumbnail,
+            stock::ipc::stock_import,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");
+}
+
+/// The settings and the keys, and what reads them: the image providers and the photo libraries
+/// (ADR-051, ADR-052).
+fn manage_media(app: &tauri::App, root: &std::path::Path) {
+    let settings = Arc::new(settings::Settings::open(root.join("settings.json")));
+    // Keys are kept under the app's identifier, so a development copy has keys of its own and
+    // never reads or replaces the user's.
+    let secrets = Arc::new(secrets::Secrets::new(secrets::Keychain::new(
+        app.config().identifier.clone(),
+    )));
+    let images = image_providers::ImageService::new(
+        Arc::clone(&settings),
+        image_providers::builtin(&secrets, &settings),
+    );
+    images.adopt_legacy_choice(&root.join("image-providers.json"));
+    app.manage(Arc::new(images));
+    app.manage(Arc::new(stock::StockService::new(
+        Arc::clone(&settings),
+        stock::builtin(&secrets),
+    )));
+    app.manage(settings);
+    app.manage(secrets);
 }

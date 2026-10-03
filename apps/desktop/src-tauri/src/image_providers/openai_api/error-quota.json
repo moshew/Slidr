@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Your prepaid credit balance is exhausted. Add credits to continue using the API.",
+    "type": "insufficient_quota",
+    "param": null,
+    "code": "credit_balance_exhausted"
+  }
+}

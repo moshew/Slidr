@@ -1,6 +1,6 @@
 //! Jobs: `count` images in parallel, each with its own status, cancellable as one (GEN-04);
 //! storing what the providers make as assets of the workspace; and the default provider
-//! (GEN-01).
+//! (GEN-01), which is the `images` section of the app's settings.
 
 use std::{
     collections::HashMap,
@@ -10,7 +10,8 @@ use std::{
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde_json::{Value, json};
 use tokio::{
     sync::{Semaphore, watch},
     time::Instant,
@@ -23,6 +24,7 @@ use super::{
 };
 use crate::{
     assets::{self, ImportedAsset},
+    settings::Settings,
     storage::Storage,
 };
 
@@ -30,14 +32,14 @@ use crate::{
 const MAX_COUNT: u32 = 8;
 /// Longest job id, in bytes.
 const MAX_JOB_ID: usize = 64;
+/// The section of the app's settings this service owns.
+const SECTION: &str = "images";
 
 /// Owns the providers and the running jobs. Shared by the IPC commands; testable without Tauri.
 pub struct ImageService {
     providers: Vec<Slot>,
-    /// Where the default provider is kept: `<app_data>/image-providers.json`.
-    settings_file: PathBuf,
-    /// The user's choice; `None` until there is one.
-    default: Mutex<Option<String>>,
+    /// Where the user's choice of default provider is kept, in the section `images`.
+    settings: Arc<Settings>,
     /// The running jobs, each with the sender that cancels it.
     jobs: Mutex<HashMap<String, watch::Sender<bool>>>,
 }
@@ -49,10 +51,10 @@ struct Slot {
     free: Arc<Semaphore>,
 }
 
-/// `image-providers.json`.
-#[derive(Debug, Default, Serialize, Deserialize)]
+/// The `images` section of the settings, as far as this service reads it.
+#[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
-struct Settings {
+struct Choice {
     default_provider: Option<String>,
 }
 
@@ -66,12 +68,7 @@ type Deliver = Arc<dyn Fn(ImageEvent) + Send + Sync>;
 
 impl ImageService {
     /// A service over `providers`; the first is the default until the user picks another.
-    pub fn new(settings_file: PathBuf, providers: Vec<Arc<dyn ImageProvider>>) -> Self {
-        // No file, or one that does not parse, is "no choice yet".
-        let saved = fs::read(&settings_file)
-            .ok()
-            .and_then(|bytes| serde_json::from_slice::<Settings>(&bytes).ok())
-            .and_then(|settings| settings.default_provider);
+    pub fn new(settings: Arc<Settings>, providers: Vec<Arc<dyn ImageProvider>>) -> Self {
         let providers = providers
             .into_iter()
             .map(|provider| {
@@ -88,10 +85,26 @@ impl ImageService {
             .collect();
         Self {
             providers,
-            settings_file,
-            default: Mutex::new(saved),
+            settings,
             jobs: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Takes the choice an earlier version kept in a file of its own
+    /// (`<app_data>/image-providers.json`) into the settings, once, and removes the file.
+    pub fn adopt_legacy_choice(&self, legacy_file: &Path) {
+        let Ok(bytes) = fs::read(legacy_file) else {
+            return;
+        };
+        let chosen = self.settings.read::<Choice>(SECTION).default_provider;
+        let legacy = serde_json::from_slice::<Choice>(&bytes)
+            .ok()
+            .and_then(|choice| choice.default_provider);
+        if let (None, Some(id)) = (chosen, legacy) {
+            // Best effort: a choice that cannot be carried over is a default to pick again.
+            let _ = self.remember(&id);
+        }
+        let _ = fs::remove_file(legacy_file);
     }
 
     /// The registered providers, in registration order.
@@ -116,17 +129,17 @@ impl ImageService {
     /// Makes `provider_id` the default and remembers it across runs.
     pub fn set_default_provider(&self, provider_id: &str) -> Result<()> {
         let id = self.slot(Some(provider_id))?.descriptor.id.clone();
-        let settings = Settings {
-            default_provider: Some(id.clone()),
+        self.remember(&id)
+    }
+
+    /// Writes the choice into the settings, next to whatever else the section holds.
+    fn remember(&self, id: &str) -> Result<()> {
+        let mut section = match self.settings.all().remove(SECTION) {
+            Some(Value::Object(section)) => section,
+            _ => serde_json::Map::new(),
         };
-        let json = serde_json::to_vec_pretty(&settings).map_err(ImageError::internal)?;
-        let saving = |e: std::io::Error| ImageError::io("save the default image provider", &e);
-        if let Some(dir) = self.settings_file.parent() {
-            fs::create_dir_all(dir).map_err(saving)?;
-        }
-        fs::write(&self.settings_file, json).map_err(saving)?;
-        *lock(&self.default) = Some(id);
-        Ok(())
+        section.insert("defaultProvider".into(), json!(id));
+        Ok(self.settings.write(SECTION, Value::Object(section))?)
     }
 
     /// Generates `job.count` images and stores each as an asset of the workspace. Returns when
@@ -317,7 +330,10 @@ impl ImageService {
         let find = |id: &str| self.providers.iter().find(|slot| slot.descriptor.id == id);
         let found = match id {
             Some(id) => find(id),
-            None => lock(&self.default)
+            None => self
+                .settings
+                .read::<Choice>(SECTION)
+                .default_provider
                 .as_deref()
                 .and_then(find)
                 .or_else(|| self.providers.first()),
@@ -487,7 +503,7 @@ mod tests {
         let workspace = storage.new_workspace()?;
         let mock = MockProvider::new(DELAY).with_parallel(parallel);
         let service = Arc::new(ImageService::new(
-            root.path().join("image-providers.json"),
+            Arc::new(Settings::open(root.path().join("settings.json"))),
             vec![Arc::new(mock)],
         ));
         let (sender, events) = mpsc::unbounded_channel();
@@ -795,7 +811,7 @@ mod tests {
         let source = assets::import_bytes(&assets_dir, None, &assets::tiny_png(800, 800))?;
         let mask = assets::import_bytes(&assets_dir, None, &assets::tiny_png(800, 801))?;
         let service = ImageService::new(
-            root.path().join("image-providers.json"),
+            Arc::new(Settings::open(root.path().join("settings.json"))),
             vec![Arc::new(Redrawing(MockProvider::new(DELAY)))],
         );
         let edit = |mask: Option<String>| EditJob {
@@ -892,9 +908,10 @@ mod tests {
     #[test]
     fn the_default_provider_is_remembered() -> TestResult {
         let root = tempfile::tempdir()?;
-        let file = root.path().join("data").join("image-providers.json");
-        let service =
-            |providers: Vec<Arc<dyn ImageProvider>>| ImageService::new(file.clone(), providers);
+        let file = root.path().join("data").join("settings.json");
+        let service = |providers: Vec<Arc<dyn ImageProvider>>| {
+            ImageService::new(Arc::new(Settings::open(file.clone())), providers)
+        };
         let both = || -> Vec<Arc<dyn ImageProvider>> {
             vec![
                 Arc::new(Redrawing(MockProvider::new(DELAY))),
@@ -935,6 +952,39 @@ mod tests {
         // A damaged file is "no choice yet".
         fs::write(&file, b"{ not json")?;
         assert_eq!(service(both()).default_provider()?, "redrawing");
+        Ok(())
+    }
+
+    #[test]
+    fn the_choice_sits_in_the_settings_next_to_the_other_image_options() -> TestResult {
+        let root = tempfile::tempdir()?;
+        let settings = Arc::new(Settings::open(root.path().join("settings.json")));
+        settings.write("images", json!({ "quality": "high" }))?;
+        let providers: Vec<Arc<dyn ImageProvider>> = vec![
+            Arc::new(Redrawing(MockProvider::new(DELAY))),
+            Arc::new(MockProvider::new(DELAY)),
+        ];
+        let service = ImageService::new(Arc::clone(&settings), providers);
+
+        // The choice an earlier version kept in a file of its own is taken over, once.
+        let legacy = root.path().join("image-providers.json");
+        fs::write(&legacy, br#"{ "defaultProvider": "mock" }"#)?;
+        service.adopt_legacy_choice(&legacy);
+        assert_eq!(service.default_provider()?, "mock");
+        assert!(!legacy.exists());
+        assert_eq!(
+            settings.all().get("images"),
+            Some(&json!({ "quality": "high", "defaultProvider": "mock" }))
+        );
+
+        // A choice made since is not replaced by an old file that turns up again.
+        service.set_default_provider("redrawing")?;
+        fs::write(&legacy, br#"{ "defaultProvider": "mock" }"#)?;
+        service.adopt_legacy_choice(&legacy);
+        assert_eq!(service.default_provider()?, "redrawing");
+        // The webview writes the same section; the service reads what is there now.
+        settings.write("images", json!({ "defaultProvider": "mock" }))?;
+        assert_eq!(service.default_provider()?, "mock");
         Ok(())
     }
 }

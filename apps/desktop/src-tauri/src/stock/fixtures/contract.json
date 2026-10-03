@@ -1,0 +1,89 @@
+{
+  "sources": [
+    {
+      "id": "example",
+      "name": "Example",
+      "homeUrl": "https://example.com/?utm_source=slidr&utm_medium=referral",
+      "license": "Example License",
+      "state": "ready"
+    },
+    {
+      "id": "other",
+      "name": "Other",
+      "homeUrl": "https://other.example.com",
+      "license": "Other License",
+      "state": "no_key"
+    }
+  ],
+  "queries": [
+    { "query": "wheat field" },
+    { "query": "harbour at dawn", "page": 3, "perPage": 12, "orientation": "portrait" }
+  ],
+  "results": {
+    "source": "example",
+    "photos": [
+      {
+        "id": "eOLpJytrbsQ",
+        "source": "example",
+        "width": 4000,
+        "height": 3000,
+        "color": "#A7A2A1",
+        "description": "A man drinking a coffee.",
+        "author": "Jeff Sheldon",
+        "authorUrl": "https://example.com/@ugmonk?utm_source=slidr&utm_medium=referral",
+        "pageUrl": "https://example.com/photos/eOLpJytrbsQ?utm_source=slidr&utm_medium=referral"
+      },
+      {
+        "id": "3573351",
+        "source": "example",
+        "width": 3066,
+        "height": 3968,
+        "color": null,
+        "description": null,
+        "author": "Lukas Rodriguez",
+        "authorUrl": "https://example.com/@lukas",
+        "pageUrl": "https://example.com/photo/3573351/"
+      }
+    ],
+    "total": 133,
+    "page": 1,
+    "hasMore": true
+  },
+  "imported": {
+    "asset": {
+      "id": "abababababababababababababababababababababababababababababababab",
+      "file": "abababababababababababababababababababababababababababababababab.jpg",
+      "mime": "image/jpeg",
+      "kind": "image",
+      "bytes": 612044,
+      "width": 2400.0,
+      "height": 1800.0,
+      "name": "example-eOLpJytrbsQ"
+    },
+    "attribution": {
+      "author": "Jeff Sheldon",
+      "url": "https://example.com/@ugmonk?utm_source=slidr&utm_medium=referral",
+      "license": "Example License"
+    },
+    "description": "A man drinking a coffee."
+  },
+  "errorKinds": [
+    "unknown_source",
+    "no_key",
+    "invalid_key",
+    "rate_limit",
+    "invalid_input",
+    "not_found",
+    "unknown_workspace",
+    "network",
+    "failed",
+    "io",
+    "internal"
+  ],
+  "error": { "kind": "no_key", "message": "No Example key is stored. The user can enter one in Settings." },
+  "secrets": [
+    { "name": "openai-api", "present": true },
+    { "name": "unsplash", "present": false },
+    { "name": "pexels", "present": false }
+  ]
+}

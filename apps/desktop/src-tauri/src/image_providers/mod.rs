@@ -14,7 +14,10 @@
 //!
 //! Providers live next to this file; [`registry`] is the only place that names them. The mock
 //! provider ([`mock`]) draws placeholder pictures, for tests and for UI work without cost.
+//! [`exact_edit`] is what a provider that edits through a web service lays around its call, so
+//! that the edit keeps the pixels it was not asked to change.
 
+mod exact_edit;
 pub mod ipc;
 mod mock;
 mod registry;
