@@ -1,0 +1,166 @@
+<!--
+  A slide a model wrote that the conversion engine kept as one html element (ADR-048): three
+  cards in a flex row, each with a number in a circle and a line of text. There is no chart in
+  it. From the second run of the data requests of the evaluation set on 2026-10-04 (request
+  10-edit-existing, Sonnet), in the real app, on the base theme:
+    editability 0
+    "Kept as HTML: the slide could not be matched element by element."
+
+  The agent wrote this slide five times. The first write converted whole (editability 1): the
+  same markup with a circle of 96px, a number of 48px, text of 44px, a padding of 48px, cards of
+  640px and a margin of 48px over the text. This is the second write, where only those sizes
+  grew (120px, 64px, 52px, 56px, 620px, 64px). It and the three after it, which differ from it
+  in small ways, all came back as html, and the deck ended with this slide as html.
+
+  Not reduced further: which of the sizes tips it was not looked for.
+-->
+<div
+  dir="rtl"
+  lang="he"
+  data-archetype="process"
+  style="
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+    background: var(--color-surface);
+    font-family: var(--font-body);
+    overflow: hidden;
+  "
+>
+  <div
+    data-role="title"
+    data-name="כותרת"
+    style="
+      position: absolute;
+      right: 96px;
+      top: 80px;
+      width: 1400px;
+      font-family: var(--font-heading);
+      font-size: 72px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--color-text);
+    "
+  >
+    מה עבד טוב
+  </div>
+  <div style="position: absolute; right: 96px; top: 280px; width: 1728px; display: flex; gap: 32px">
+    <div
+      style="
+        flex: 1;
+        height: 620px;
+        background: var(--color-bg);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 56px;
+        box-sizing: border-box;
+      "
+    >
+      <div
+        style="
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: var(--color-primary);
+          color: #fff;
+          font-size: 64px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        1
+      </div>
+      <div
+        style="
+          font-size: 52px;
+          font-weight: 600;
+          line-height: 1.25;
+          margin-top: 64px;
+          color: var(--color-text);
+        "
+      >
+        צוות משולב של לוגיסטיקה ו-IT מהיום הראשון
+      </div>
+    </div>
+    <div
+      style="
+        flex: 1;
+        height: 620px;
+        background: var(--color-bg);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 56px;
+        box-sizing: border-box;
+      "
+    >
+      <div
+        style="
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: var(--color-secondary);
+          color: var(--color-text);
+          font-size: 64px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        2
+      </div>
+      <div
+        style="
+          font-size: 52px;
+          font-weight: 600;
+          line-height: 1.25;
+          margin-top: 64px;
+          color: var(--color-text);
+        "
+      >
+        מעבר בגלים, לפי קטגוריית מוצר
+      </div>
+    </div>
+    <div
+      style="
+        flex: 1;
+        height: 620px;
+        background: var(--color-bg);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        padding: 56px;
+        box-sizing: border-box;
+      "
+    >
+      <div
+        style="
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: var(--color-accent);
+          color: var(--color-text);
+          font-size: 64px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        3
+      </div>
+      <div
+        style="
+          font-size: 52px;
+          font-weight: 600;
+          line-height: 1.25;
+          margin-top: 64px;
+          color: var(--color-text);
+        "
+      >
+        הדרכה של כל המחסנאים לפני המעבר
+      </div>
+    </div>
+  </div>
+</div>
