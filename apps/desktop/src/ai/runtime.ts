@@ -82,6 +82,32 @@ export function agentSettings(): StoredSettings {
   }
 }
 
+/** Counts the changes to the agent's settings, so that whoever shows them draws again. */
+const settingsChanges = create(() => ({ count: 0 }));
+
+/**
+ * Changes some of the agent's settings, where they are kept (`slidr.agent`): the picker of the
+ * chat today, the settings screen when there is one. A value of `undefined` clears the setting,
+ * so its default stands again. A session reads them when it starts and at every turn's start.
+ */
+export function setAgentSettings(patch: Partial<StoredSettings>): void {
+  const next = Object.fromEntries(
+    Object.entries({ ...agentSettings(), ...patch }).filter(([, value]) => value !== undefined),
+  );
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  } catch {
+    // Not remembered: the choice cannot hold without storage.
+  }
+  settingsChanges.setState(({ count }) => ({ count: count + 1 }));
+}
+
+/** The agent's settings, for a component that shows them. */
+export function useAgentSettings(): StoredSettings {
+  settingsChanges((state) => state.count);
+  return agentSettings();
+}
+
 /** Shows a slide on the Stage and, when given, selects elements on it. */
 export function navigateTo(editor: Editor, target: ToolTarget): void {
   const deck = editor.bus.deck;

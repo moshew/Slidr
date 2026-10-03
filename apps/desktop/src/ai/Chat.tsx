@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ClipboardEvent,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
@@ -16,12 +17,16 @@ import {
   ChevronDown,
   CircleAlert,
   CircleStop,
+  FileText,
+  Image as ImageIcon,
   LocateFixed,
+  Paperclip,
   ScanEye,
   Sparkles,
   Square,
   TriangleAlert,
   Undo2,
+  X,
   Zap,
 } from '@slidr/ui/icons';
 import {
@@ -36,24 +41,31 @@ import {
   Textarea,
   Toggle,
 } from '@slidr/ui';
-import type { Activity, ChatThread } from '../agent/agentService';
+import { threadIdOf, type Activity, type Attachment, type ChatThread } from '../agent/agentService';
 import type {
   AssistantEntry,
   ChatProblem,
+  EntryAttachment,
   GatePart,
   GateReport,
   ToolPart,
   ToolTarget,
   UserEntry,
 } from '../agent/transcript';
+import { pickFiles } from '../objects/insert';
 import { ask, useDeck, useEditor } from '../shell';
 import { TemplateDraftCard } from '../templates/DraftCard';
 import { actionLabel } from './actionLabels';
+import { accepted, ATTACHABLE, pastedFiles, readAttachment } from './attachments';
+import { ConversationBar } from './Conversations';
 import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
+import { ModelPicker } from './ModelPicker';
+import { OutlineCard } from './Outline';
 import { agentOf, aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
 import { activityLabel, targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
+import { formatCost, formatTokens, tokensOf } from './usage';
 
 /*
  * The chat of an AI tool (SPEC 11.8, WG11-T01): the conversation as it streams, a chip for
@@ -67,11 +79,16 @@ import { activityLabel, targetSlideNumber, toolIcon, toolLabel } from './toolLab
  */
 export function useThread(scope: SessionScope): ChatThread {
   const editor = useEditor();
-  const { sessions } = aiOf(editor);
+  const { agent, sessions } = aiOf(editor);
   const key = JSON.stringify(scope);
+  // A scope may keep several conversations (CHT-U07): the panel shows the one chosen.
+  const id = useStore(agent.shown, (shown) => shown[threadIdOf(scope)] ?? threadIdOf(scope));
   // The scope is compared by value: a caller may build it anew on every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const thread = useMemo(() => sessions.thread(scope), [sessions, key]);
+  const thread = useMemo(() => sessions.thread(scope, id), [sessions, key, id]);
+  // A deck that is opened again picks up at the conversation that was written in last.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => void agent.restore(scope), [agent, key]);
   useEffect(() => sessions.show(thread), [sessions, thread]);
   return thread;
 }
@@ -299,19 +316,66 @@ function ProblemCard({ problem }: { problem: ChatProblem }) {
 
 /* ---------------------------------------------------------------- a turn */
 
+/** A file of a message: its name, and whether it is a picture. */
+function FileChip({
+  file,
+  onRemove,
+}: {
+  file: Pick<EntryAttachment, 'name' | 'kind'>;
+  onRemove?: () => void;
+}) {
+  const { t } = useTranslation('ai');
+  return (
+    <span
+      data-testid="attachment"
+      data-kind={file.kind}
+      className="flex h-control-sm max-w-full items-center gap-1.5 rounded-control border border-ui-line ps-2 pe-1 text-xs text-ui-fg"
+    >
+      <Icon icon={file.kind === 'image' ? ImageIcon : FileText} className="text-ui-fg-muted" />
+      <span dir="auto" className="min-w-0 truncate pe-1">
+        {file.name}
+      </span>
+      {onRemove && (
+        <IconButton
+          icon={X}
+          size="sm"
+          label={t('composer.remove', { name: file.name })}
+          noTooltip
+          className="-me-0.5 size-5"
+          onClick={onRemove}
+        />
+      )}
+    </span>
+  );
+}
+
 /** What the user asked: their words, or the name of the action they pressed (SPEC 4.3). */
 function UserMessage({ entry }: { entry: UserEntry }) {
   const { t } = useTranslation('ai');
+  const words = entry.action ? actionLabel(t, entry.action) : entry.text;
   return (
     <div
-      dir={entry.action ? undefined : 'auto'}
       aria-label={t('you')}
       data-testid="chat-user"
       data-action={entry.action?.id}
-      className="ms-10 flex items-start gap-2 self-end rounded-panel bg-ui-accent-soft px-3 py-2 text-start text-md leading-6 whitespace-pre-wrap wrap-anywhere text-ui-fg"
+      className="ms-10 flex max-w-full flex-col gap-1.5 self-end rounded-panel bg-ui-accent-soft px-3 py-2 text-ui-fg"
     >
-      {entry.action && <Icon icon={Zap} className="mt-1 text-ui-accent-fg" />}
-      {entry.action ? actionLabel(t, entry.action) : entry.text}
+      {words && (
+        <div
+          dir={entry.action ? undefined : 'auto'}
+          className="flex items-start gap-2 text-start text-md leading-6 whitespace-pre-wrap wrap-anywhere"
+        >
+          {entry.action && <Icon icon={Zap} className="mt-1 text-ui-accent-fg" />}
+          {words}
+        </div>
+      )}
+      {entry.attachments && entry.attachments.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {entry.attachments.map((file, i) => (
+            <FileChip key={i} file={file} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -363,13 +427,37 @@ function UndoTurn({ txId, disabled }: { txId: string; disabled: boolean }) {
   );
 }
 
+/** What a turn used, as the harness reported it (CHT-U06). */
+function TurnUsage({ entry }: { entry: AssistantEntry }) {
+  const { t } = useTranslation('ai');
+  if (!entry.outcome || !entry.usage) return null;
+  const tokens = formatTokens(tokensOf(entry.usage));
+  const time = t('usage.seconds', { n: Math.round((entry.durationMs ?? 0) / 1000) });
+  return (
+    <p
+      data-testid="turn-usage"
+      data-cost={typeof entry.costUsd === 'number' ? entry.costUsd : undefined}
+      className="text-xs text-ui-fg-subtle"
+    >
+      {typeof entry.costUsd === 'number'
+        ? t('usage.turn', { tokens, cost: formatCost(entry.costUsd), time })
+        : t('usage.turnNoCost', { tokens, time })}
+    </p>
+  );
+}
+
 function AssistantTurn({
   entry,
   busy,
+  last,
+  thread,
   onRetry,
 }: {
   entry: AssistantEntry;
   busy: boolean;
+  /** Nothing was said after this turn: what it offered still waits for an answer. */
+  last: boolean;
+  thread: ChatThread;
   onRetry: () => void;
 }) {
   const { t } = useTranslation('ai');
@@ -383,6 +471,15 @@ function AssistantTurn({
       {entry.parts.map((part, i) =>
         part.type === 'text' ? (
           <MarkdownView key={i} text={part.text} />
+        ) : part.type === 'tool' && part.name === 'outline_propose' && part.state !== 'failed' ? (
+          // An outline is shown as what it is, not as a chip (AID-03).
+          <OutlineCard
+            key={`${part.id}-${i}`}
+            part={part}
+            entryId={entry.id}
+            thread={thread}
+            open={last && !busy && entry.outcome === 'completed'}
+          />
         ) : part.type === 'tool' ? (
           // A harness may reuse a call id in a later round of the same run.
           <ToolChip key={`${part.id}-${i}`} part={part} />
@@ -399,6 +496,7 @@ function AssistantTurn({
         </p>
       )}
       {entry.txId && entry.outcome && <UndoTurn txId={entry.txId} disabled={busy} />}
+      <TurnUsage entry={entry} />
     </article>
   );
 }
@@ -428,25 +526,45 @@ function Composer({
   scope,
   busy,
   stopping,
+  text,
+  onText,
   onSend,
   onStop,
 }: {
   scope: SessionScope['kind'];
   busy: boolean;
   stopping: boolean;
-  onSend: (text: string) => void;
+  /** What is typed: the chat holds it, so that a suggestion can put words here. */
+  text: string;
+  onText: (text: string) => void;
+  onSend: (text: string, files: Attachment[]) => void;
   onStop: () => void;
 }) {
   const { t } = useTranslation('ai');
-  const [text, setText] = useState('');
+  const [files, setFiles] = useState<Attachment[]>([]);
   const follow = useAiPreferences((s) => s.follow);
   const field = useRef<HTMLTextAreaElement>(null);
-  const ready = text.trim().length > 0 && !busy;
+  const ready = (text.trim().length > 0 || files.length > 0) && !busy;
   const send = () => {
     if (!ready) return;
-    onSend(text);
-    setText('');
+    onSend(text, files);
+    onText('');
+    setFiles([]);
     field.current?.focus();
+  };
+  /** Takes files into the message: as many as it still has room for (CHT-U05). */
+  const add = async (offered: readonly File[]) => {
+    const read = await Promise.all(
+      accepted(offered, files.length).map((file) => readAttachment(file)),
+    );
+    if (read.length > 0) setFiles((before) => [...before, ...read]);
+  };
+  const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    // A pasted screenshot is a file; pasted words stay the field's own business.
+    const pasted = pastedFiles(event.clipboardData, files.length);
+    if (pasted.length === 0) return;
+    event.preventDefault();
+    void add(pasted);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter sends; with Shift it is a new line. While an IME composes, Enter is the IME's.
@@ -455,7 +573,23 @@ function Composer({
     send();
   };
   return (
-    <div className="shrink-0 px-4 pt-2 pb-4">
+    <div className="flex shrink-0 flex-col gap-1.5 px-4 pt-2 pb-4">
+      {files.length > 0 && (
+        <div
+          role="list"
+          aria-label={t('composer.attached')}
+          data-testid="composer-files"
+          className="flex flex-wrap gap-1"
+        >
+          {files.map((file, i) => (
+            <FileChip
+              key={i}
+              file={{ name: file.name, kind: file.mime.startsWith('image/') ? 'image' : 'file' }}
+              onRemove={() => setFiles((before) => before.filter((_, at) => at !== i))}
+            />
+          ))}
+        </div>
+      )}
       <Textarea
         ref={field}
         // The text finds its own direction; the placeholder keeps the panel's.
@@ -464,10 +598,18 @@ function Composer({
         aria-label={t('composer.label')}
         placeholder={t(`composer.placeholder.${scope}`)}
         data-testid="chat-input"
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => onText(event.target.value)}
         onKeyDown={onKeyDown}
+        onPaste={onPaste}
         footer={
           <div className="flex items-center gap-1">
+            <IconButton
+              icon={Paperclip}
+              size="sm"
+              label={t('composer.attach')}
+              data-testid="chat-attach"
+              onClick={() => void pickFiles(ATTACHABLE, true).then(add)}
+            />
             <Toggle
               icon={LocateFixed}
               size="sm"
@@ -475,6 +617,7 @@ function Composer({
               pressed={follow}
               onPressedChange={setFollow}
             />
+            <ModelPicker />
             <span className="min-w-0 flex-1" />
             {busy ? (
               <IconButton
@@ -535,28 +678,82 @@ function Loading() {
   );
 }
 
+/** Ready-made openings for an empty chat, by what the tool works on (CHT-U08). */
+const SUGGESTIONS = {
+  deck: ['topic', 'document', 'improve'],
+  slide: ['redesign', 'shorten', 'visual'],
+  object: ['reword', 'shorten', 'tone'],
+} as const;
+
+/** Each puts its words into the composer, for the user to finish or to send as they are. */
+function Suggestions({
+  scope,
+  onPick,
+}: {
+  scope: SessionScope['kind'];
+  onPick: (prompt: string) => void;
+}) {
+  const { t } = useTranslation('ai');
+  if (scope === 'import') return null;
+  const of = (name: string, part: 'label' | 'prompt') =>
+    t(`suggest.${scope}.${name}.${part}` as 'suggest.deck.topic.label');
+  return (
+    <div
+      role="group"
+      aria-label={t('suggest.title')}
+      data-testid="chat-suggestions"
+      className="flex flex-wrap justify-center gap-1.5 px-4 pb-4"
+    >
+      {SUGGESTIONS[scope].map((name) => (
+        <Button
+          key={name}
+          variant="soft"
+          size="sm"
+          data-suggestion={name}
+          onClick={() => onPick(of(name, 'prompt'))}
+        >
+          {of(name, 'label')}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export function Chat({ scope }: { scope: SessionScope }) {
   const { t } = useTranslation('ai');
   const thread = useThread(scope);
   const state = useStore(thread.store);
   const { frame, onScroll, stick } = useStickToEnd(state);
+  const [draft, setDraft] = useState('');
+  const pick = (prompt: string) => {
+    setDraft(prompt);
+    // The caret goes after the words, where an opening that ends mid-sentence is finished.
+    requestAnimationFrame(() => {
+      const field = document.querySelector<HTMLTextAreaElement>('[data-testid="chat-input"]');
+      field?.focus();
+      field?.setSelectionRange(prompt.length, prompt.length);
+    });
+  };
 
   let content: ReactNode;
   if (!state.ready) {
     content = <Loading />;
   } else if (state.entries.length === 0) {
     content = (
-      <EmptyState
-        icon={Sparkles}
-        title={t(`empty.${scope.kind}.title`)}
-        description={t(`empty.${scope.kind}.body`)}
-        className="min-h-64"
-      />
+      <>
+        <EmptyState
+          icon={Sparkles}
+          title={t(`empty.${scope.kind}.title`)}
+          description={t(`empty.${scope.kind}.body`)}
+          className="min-h-56"
+        />
+        <Suggestions scope={scope.kind} onPick={pick} />
+      </>
     );
   } else {
     content = (
       <div className="flex flex-col gap-4 px-4 pt-1 pb-3">
-        {state.entries.map((entry) =>
+        {state.entries.map((entry, index) =>
           entry.type === 'user' ? (
             <UserMessage key={entry.id} entry={entry} />
           ) : (
@@ -564,6 +761,8 @@ export function Chat({ scope }: { scope: SessionScope }) {
               key={entry.id}
               entry={entry}
               busy={state.busy}
+              last={index === state.entries.length - 1}
+              thread={thread}
               onRetry={() => void thread.retryFixes(entry.id)}
             />
           ),
@@ -575,7 +774,13 @@ export function Chat({ scope }: { scope: SessionScope }) {
 
   return (
     // The messages scroll; the options the agent offered and the composer stay in place.
-    <div data-testid="chat" data-scope={scope.kind} className="flex min-h-0 flex-1 flex-col">
+    <div
+      data-testid="chat"
+      data-scope={scope.kind}
+      data-thread={thread.id}
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <ConversationBar scope={scope} thread={thread} />
       <div ref={frame} onScrollCapture={onScroll} className="flex min-h-0 flex-1 flex-col">
         <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
       </div>
@@ -586,9 +791,11 @@ export function Chat({ scope }: { scope: SessionScope }) {
         scope={scope.kind}
         busy={state.busy}
         stopping={state.stopping}
-        onSend={(text) => {
+        text={draft}
+        onText={setDraft}
+        onSend={(text, files) => {
           stick();
-          void thread.send(text);
+          void thread.send(text, files.length > 0 ? { attachments: files } : {});
         }}
         onStop={() => void thread.stop()}
       />
