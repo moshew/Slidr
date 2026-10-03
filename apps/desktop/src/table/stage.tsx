@@ -171,7 +171,8 @@ function CellEditor({ bus, slideId, table, cell, theme, caret, onExit }: CellEdi
       }
       return true;
     };
-    return { Tab: () => step(1), 'Shift-Tab': () => step(-1) };
+    // Esc while a line is dragged takes the drag back; any other time it is the editor's.
+    return { Tab: () => step(1), 'Shift-Tab': () => step(-1), Escape: cancelLineDrag };
   }, [bus, slideId, tableId, row, col]);
 
   return (
@@ -212,6 +213,14 @@ let lineDrag: LineDrag | null = null;
 /** The handlers of the overlay set the drag through this: a component assigns to nothing outside it. */
 function setLineDrag(drag: LineDrag | null): void {
   lineDrag = drag;
+}
+
+/** Takes back the drag of a line that is under way, leaving no undo step. False when none is. */
+function cancelLineDrag(): boolean {
+  if (!lineDrag) return false;
+  lineDrag.bus.rollback(lineDrag.txId);
+  lineDrag = null;
+  return true;
 }
 
 const sameCell = (a: CellRef, b: CellRef) => a.row === b.row && a.col === b.col;
@@ -344,7 +353,8 @@ function TableOverlay({
     setLineDrag(null);
     // A narrower column wraps its text, and a row cannot be shorter than its text.
     fitRows(bus, drag.table.id, drag.txId);
-    focus();
+    // A cell that is being typed in kept the keyboard through the drag, and keeps it.
+    if (!tableSession.getState().typing) focus();
   };
 
   const sizes = tableSizes(table);
@@ -569,9 +579,7 @@ export function useTableStage({
       // Esc takes back the drag of a line, and nothing else.
       if (event.key !== 'Escape') return false;
       event.preventDefault();
-      lineDrag.bus.rollback(lineDrag.txId);
-      setLineDrag(null);
-      return true;
+      return cancelLineDrag();
     }
     if (!inside) {
       if (event.key !== 'Enter' || !isTable(single) || single.locked || editingId) return false;
@@ -584,12 +592,15 @@ export function useTableStage({
     const now = tableSession.getState();
     if (now.typing || !slideId) return false;
     const table = inside.element;
-    const at = anchorOf(table, sessionCell(table, now.focus));
+    // The active cell is the one the selection began at: keys act from it. Shift moves the
+    // other end of the selection instead.
+    const at = anchorOf(table, sessionCell(table, now.anchor));
+    const reach = anchorOf(table, sessionCell(table, now.focus));
     const side = ARROWS[event.key];
     let taken = true;
     if (side) {
       // The arrows are screen directions: in a right-to-left table "left" is the next column.
-      const next = neighbourCell(table, at, side);
+      const next = neighbourCell(table, event.shiftKey ? reach : at, side);
       if (next) selectCells(event.shiftKey ? now.anchor : next, next);
     } else if (event.key === 'Tab') {
       const next = nextCell(table, at, event.shiftKey ? -1 : 1);

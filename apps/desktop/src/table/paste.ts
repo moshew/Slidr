@@ -287,14 +287,11 @@ function rectangular(rows: string[][], source: 'tsv' | 'csv'): PastedGrid {
 /**
  * Delimited text. Tabs make it TSV (what Excel puts in text/plain). Otherwise CSV with ';' or
  * ',' when the text looks like a table: at least two columns in every non-empty line and the
- * same count in all of them, and at least two lines unless `force`. Quoted fields
- * ("a ""b"" c", with delimiters and line breaks inside) as in RFC 4180, for both. Undefined
- * when the text is not tabular.
+ * same count in all of them, and at least two lines: one line with a comma is a sentence far
+ * more often than it is a row. Quoted fields ("a ""b"" c", with delimiters and line breaks
+ * inside) as in RFC 4180, for both. Undefined when the text is not tabular.
  */
-export function gridFromText(
-  text: string,
-  options: { force?: boolean } = {},
-): PastedGrid | undefined {
+export function gridFromText(text: string): PastedGrid | undefined {
   // A file read as text may start with a byte order mark.
   const source = text.startsWith(String.fromCodePoint(0xfeff)) ? text.slice(1) : text;
   if (source.includes('\t')) {
@@ -307,26 +304,17 @@ export function gridFromText(
   for (const delimiter of [';', ',']) {
     const rows = records(source, delimiter).filter((row) => !isEmptyLine(row));
     const width = rows[0]?.length ?? 0;
-    const tabular =
-      width >= 2 &&
-      rows.length >= (options.force ? 1 : 2) &&
-      rows.every((row) => row.length === width);
+    const tabular = width >= 2 && rows.length >= 2 && rows.every((row) => row.length === width);
     if (tabular) return rectangular(rows, 'csv');
   }
   return undefined;
 }
 
-/**
- * What a paste holds as a table: the HTML table when there is one, else the text. `force` is for
- * a paste into a selected table, where any delimited text is taken (see `gridFromText`).
- */
-export function clipboardGrid(
-  data: { html?: string; text?: string },
-  options: { force?: boolean } = {},
-): PastedGrid | undefined {
+/** What a paste holds as a table: the HTML table when there is one, else the text. */
+export function clipboardGrid(data: { html?: string; text?: string }): PastedGrid | undefined {
   return (
     (data.html ? gridFromHtml(data.html) : undefined) ??
-    (data.text ? gridFromText(data.text, options) : undefined)
+    (data.text ? gridFromText(data.text) : undefined)
   );
 }
 

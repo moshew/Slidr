@@ -387,11 +387,16 @@ function FillTool({ target }: { target: TableTarget }) {
 
 const NEW_BORDER: Stroke = { color: { token: 'text' }, width: 2 };
 
-/** A border the selected cells already have, to start the pen from. */
+/**
+ * A border the selected cells have of their own, to start the pen from. Not one their table
+ * style gives them: the rule of a style is faint, and borders drawn with it would hardly show.
+ */
 function borderOf(target: TableTarget): Stroke | undefined {
   for (const cell of target.cells) {
-    const { top, right, bottom, left } = cellLook(target.table, cell.row, cell.col).borders;
-    const found = [top, right, bottom, left].find((stroke) => stroke && stroke.width > 0);
+    const own = cellAt(target.table, cell).borders;
+    const found =
+      own &&
+      [own.top, own.right, own.bottom, own.left].find((stroke) => stroke && stroke.width > 0);
     if (found) return found;
   }
   return undefined;

@@ -457,16 +457,12 @@ describe('a table in clipboard text', () => {
     expect(gridFromText('Dear all, welcome\nBest regards, Dana')?.source).toBe('csv');
   });
 
-  it('takes one delimited line when forced, and still nothing without a delimiter', () => {
-    // Fields are taken as they are (RFC 4180): the space after the comma is part of the cell.
-    expect(gridFromText('Hello, world', { force: true })?.cells).toEqual([['Hello', ' world']]);
-    expect(gridFromText('a;b;c', { force: true })).toEqual({
-      cells: [['a', 'b', 'c']],
-      merges: [],
-      source: 'csv',
-    });
-    expect(gridFromText('just a line', { force: true })).toBeUndefined();
-    expect(gridFromText('a,b\nc', { force: true })).toBeUndefined();
+  it('takes no single line for a table, whatever delimiters it has', () => {
+    // A line with a comma is a sentence far more often than a row; a tab is what makes one.
+    expect(gridFromText('Hello, world')).toBeUndefined();
+    expect(gridFromText('a;b;c')).toBeUndefined();
+    expect(gridFromText('a,b\nc')).toBeUndefined();
+    expect(gridFromText('a\tb')?.cells).toEqual([['a', 'b']]);
   });
 });
 
@@ -487,9 +483,8 @@ describe('what a paste holds as a table', () => {
     expect(clipboardGrid({ text: 'a,b\nc,d' })?.source).toBe('csv');
   });
 
-  it('passes `force` on to the text, and gives nothing for a paste that is not a table', () => {
+  it('gives nothing for a paste that is not a table', () => {
     expect(clipboardGrid({ text: 'a,b' })).toBeUndefined();
-    expect(clipboardGrid({ text: 'a,b' }, { force: true })?.cells).toEqual([['a', 'b']]);
     expect(clipboardGrid({ html: '<p>Hello, world</p>', text: 'Hello, world' })).toBeUndefined();
     expect(clipboardGrid({})).toBeUndefined();
     expect(clipboardGrid({ html: '', text: '' })).toBeUndefined();

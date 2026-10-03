@@ -7,7 +7,7 @@ import {
   tableText,
   type TableElement,
 } from '@slidr/model';
-import { SLIDR_MIME } from '../arrange/clip';
+import { SLIDR_MIME, textBoxFor } from '../arrange/clip';
 import { i18n } from '../i18n';
 import { focusStage, getEditor, type Editor } from '../shell';
 import { SLIDR_TEXT_MIME } from '../text/paste';
@@ -85,6 +85,22 @@ export function pasteTable(editor: Editor, grid: PastedGrid): void {
   focusStage();
 }
 
+/** Text that is no table, as the one cell it is: for a paste among the cells of a table. */
+function cellGrid(text: string): PastedGrid | undefined {
+  const cell = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+  return cell.trim() === '' ? undefined : { cells: [[cell]], merges: [], source: 'tsv' };
+}
+
+/** A text box for one cell of text, as the arrange area makes one of plain text. One undo step. */
+function pasteTextBox(editor: Editor, text: string): void {
+  const { bus, selection } = editor;
+  const slideId = selection.getState().currentSlideId;
+  const element = textBoxFor(text, bus.deck);
+  if (!slideId || !element) return;
+  bus.dispatch({ type: 'element.add', slideId, element }, { label: label('paste') });
+  selection.getState().selectElements([element.id]);
+}
+
 function onPaste(event: ClipboardEvent): void {
   const data = event.clipboardData;
   if (!data || event.defaultPrevented) return;
@@ -97,17 +113,26 @@ function onPaste(event: ClipboardEvent): void {
   // Another element is being edited in place (the text of an `html` element, the crop of an
   // image): what is pasted there is not a table for the slide.
   if (editor.selection.getState().editingElementId && !target?.inside) return;
-  const grid = clipboardGrid(
-    { html: data.getData('text/html'), text: data.getData('text/plain') },
-    // In a selected table every delimited text is meant for its cells.
-    { force: Boolean(target) && !typing },
-  );
+  const text = data.getData('text/plain');
+  const grid =
+    clipboardGrid({ html: data.getData('text/html'), text }) ??
+    // Among the cells of a table, text that is no table is the text of the selected cell.
+    (target?.inside && !typing ? cellGrid(text) : undefined);
   if (!grid) return;
   const many = cellCount(grid) > 1;
   // In a cell's text one cell of text is text: the editor pastes it at the caret.
   if (typing && (!many || data.getData(SLIDR_TEXT_MIME))) return;
   // On the slide one cell is not a table: it becomes a text box, as plain text does.
-  if (!target && !many) return;
+  if (!target && !many) {
+    // The arrange area makes it, unless Excel's picture of the cell came along: the Stage would
+    // paste that picture as an image before the arrange area saw the text.
+    const cell = grid.cells[0]?.[0];
+    if (data.files.length === 0 || !cell) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pasteTextBox(editor, cell);
+    return;
+  }
   event.preventDefault();
   event.stopPropagation();
   pasteTable(editor, grid);

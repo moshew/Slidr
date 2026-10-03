@@ -81,6 +81,11 @@ export function fitRows(bus: CommandBus, elementId: string, txId: string): void 
     const found = findElementInDeck(bus.deck, elementId);
     const dom = stageElement(elementId);
     if (!found || found.element.type !== 'table' || !dom) return;
+    // With reduced motion the UI makes every change of a style a transition of a millisecond
+    // (`theme.css`), and while one runs the table is laid out as it was before the change.
+    for (const motion of dom.getAnimations({ subtree: true })) {
+      if (motion instanceof CSSTransition) motion.finish();
+    }
     // `offsetHeight` is the laid-out height in slide pixels, whatever the zoom and the rotation.
     const rows = dom.querySelectorAll<HTMLElement>(':scope > table > tbody > tr');
     const patch = fittedRows(

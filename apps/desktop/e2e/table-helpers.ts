@@ -5,7 +5,10 @@ import type { TableCell, TableElement } from '@slidr/model';
 
 interface Harness {
   bus: {
-    deck: { slides: { id: string; elements: { id: string; type: string }[] }[] };
+    deck: {
+      size: { w: number; h: number };
+      slides: { id: string; elements: { id: string; type: string }[] }[];
+    };
     undoStack: unknown[];
     dispatch(command: unknown, options?: unknown): unknown;
     undo(): boolean;
@@ -211,6 +214,183 @@ export async function oneUndoStep(
   await page.evaluate(() => (window as unknown as { slidr: Harness }).slidr.bus.redo());
   expect(await table(page, id)).toEqual(after);
   return after;
+}
+
+export const undo = (page: Page) =>
+  page.evaluate(() => (window as unknown as { slidr: Harness }).slidr.bus.undo());
+
+export const redo = (page: Page) =>
+  page.evaluate(() => (window as unknown as { slidr: Harness }).slidr.bus.redo());
+
+/* ---------------------------------------------------------------- the selected cells */
+
+interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The Stage marks exactly the cells from `from` to `to` as selected (one cell when `to` is left
+ * out). It draws the mark a frame after the key or the click, so this waits for it.
+ */
+export async function expectSelection(
+  page: Page,
+  id: string,
+  from: [number, number],
+  to: [number, number] = from,
+): Promise<void> {
+  await expect(async () => {
+    const mark: Box = await stage(page)
+      .locator('[data-table-selection]')
+      .evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return { left: box.left, top: box.top, width: box.width, height: box.height };
+      });
+    const boxes = await Promise.all(
+      [from, to].map(([r, c]) => cellOnStage(page, id, r, c).boundingBox()),
+    );
+    const left = Math.min(...boxes.map((b) => b!.x));
+    const top = Math.min(...boxes.map((b) => b!.y));
+    const right = Math.max(...boxes.map((b) => b!.x + b!.width));
+    const bottom = Math.max(...boxes.map((b) => b!.y + b!.height));
+    const cells: Box = { left, top, width: right - left, height: bottom - top };
+    // The mark is placed by the model, the cells by the browser: a pixel is rounding.
+    for (const key of ['left', 'top', 'width', 'height'] as const) {
+      expect(Math.abs(mark[key] - cells[key]), key).toBeLessThan(1.5);
+    }
+  }).toPass({ timeout: 3000 });
+}
+
+/** Goes into a table and selects one cell, without typing in it: a double-click, then Esc. */
+export async function selectCell(page: Page, id: string, row: number, col: number): Promise<void> {
+  await typeInCell(page, id, row, col);
+  await page.keyboard.press('Escape');
+  await expect(stage(page).locator('[data-table-selection]')).toBeVisible();
+}
+
+/** Leaves a table whose cells are selected: Esc. The table stays selected, as an object. */
+export async function leaveTable(page: Page): Promise<void> {
+  await page.keyboard.press('Escape');
+  await expect.poll(() => editingId(page)).toBeNull();
+  await expect(stage(page).locator('[data-table-overlay]')).toHaveAttribute('data-mode', 'object');
+}
+
+/** Selects the cells from one to another: into the first, then Shift+click on the second. */
+export async function selectRange(
+  page: Page,
+  id: string,
+  from: [number, number],
+  to: [number, number],
+): Promise<void> {
+  await selectCell(page, id, from[0], from[1]);
+  const at = await cellCenter(page, id, to[0], to[1]);
+  await page.keyboard.down('Shift');
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.up('Shift');
+  await expectSelection(page, id, from, to);
+}
+
+/* ---------------------------------------------------------------- the pointer */
+
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * Presses at a point and moves to another in steps, as a hand would, and leaves the button down:
+ * a test then presses Esc, or lets go with `page.mouse.up()`. The table follows a drag once a
+ * frame, so the last step waits for one.
+ */
+export async function dragTo(page: Page, from: ScreenPoint, to: ScreenPoint): Promise<void> {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  const count = 6;
+  for (let i = 1; i <= count; i++) {
+    await page.mouse.move(
+      from.x + ((to.x - from.x) * i) / count,
+      from.y + ((to.y - from.y) * i) / count,
+    );
+    await page.waitForTimeout(20);
+  }
+  await settled(page);
+}
+
+/** A whole drag: press, move, let go. */
+export async function drag(page: Page, from: ScreenPoint, to: ScreenPoint): Promise<void> {
+  await dragTo(page, from, to);
+  await page.mouse.up();
+}
+
+/** The middle of what a locator shows, on the screen. */
+export async function centerOf(target: Locator): Promise<ScreenPoint> {
+  const box = await target.boundingBox();
+  if (!box) throw new Error('Nothing is drawn there');
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/** The line after a column or below a row, which a drag moves. */
+export const lineOf = (page: Page, kind: 'col' | 'row', index: number): Locator =>
+  stage(page).locator(`[data-${kind}-line="${index}"]`);
+
+/** How many screen pixels a slide pixel is on the Stage now. */
+export async function stageScale(page: Page): Promise<number> {
+  const box = await page.getByTestId('stage-frame').boundingBox();
+  const width = await page.evaluate(
+    () => (window as unknown as { slidr: Harness }).slidr.bus.deck.size.w,
+  );
+  return box!.width / width;
+}
+
+/* ---------------------------------------------------------------- the clipboard */
+
+export interface Clip {
+  /** Clipboard formats and their text: `text/html`, `text/plain`. */
+  data: Record<string, string>;
+  /** Also a picture file, as Excel puts a picture of the copied range next to its text. */
+  picture?: boolean;
+}
+
+/**
+ * Sends a `paste` event to the focused element, as Ctrl+V would. The event carries its own data,
+ * so the clipboard of the machine, which every test and every other program shares, is not
+ * involved. False when the app took the paste (it prevents the default).
+ */
+export function paste(page: Page, clip: Clip): Promise<boolean> {
+  return page.evaluate(async ({ data, picture }) => {
+    const clipboardData = new DataTransfer();
+    for (const [type, text] of Object.entries(data)) clipboardData.setData(type, text);
+    if (picture) {
+      // A real PNG: if it were taken for an image, an image is what would appear.
+      const canvas = document.createElement('canvas');
+      [canvas.width, canvas.height] = [240, 120];
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = '#2f5bea';
+      context.fillRect(0, 0, 240, 120);
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), 'image/png'),
+      );
+      clipboardData.items.add(new File([blob], 'image.png', { type: 'image/png' }));
+    }
+    const target = document.activeElement ?? document.body;
+    return target.dispatchEvent(
+      new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }),
+    );
+  }, clip);
+}
+
+/** Sends a `copy` or `cut` event to the focused element, and returns what the app put on it. */
+export function copy(page: Page, type: 'copy' | 'cut' = 'copy'): Promise<Record<string, string>> {
+  return page.evaluate((eventType) => {
+    const clipboardData = new DataTransfer();
+    const target = document.activeElement ?? document.body;
+    target.dispatchEvent(
+      new ClipboardEvent(eventType, { clipboardData, bubbles: true, cancelable: true }),
+    );
+    return Object.fromEntries(clipboardData.types.map((t) => [t, clipboardData.getData(t)]));
+  }, type);
 }
 
 void harness;
