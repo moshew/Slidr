@@ -8,7 +8,7 @@ import { pathBounds, presetPath, scalePath, shapePresets, transformPath } from '
 import { normalizeColor, prepareSvg } from './markup';
 import { sanitizeMarkup } from './sanitize';
 import { firstStrong, listMarkers, paragraphDirection, readsAsNumber } from './text';
-import { colorCss, fontStack, themeVariables } from './theme';
+import { colorCss, fontStack, hebrewFace, hebrewFaces, themeVariables } from './theme';
 
 describe('css', () => {
   it('maps CSS property names to React style keys', () => {
@@ -60,9 +60,33 @@ describe('theme', () => {
     expect(colorCss({ token: 'text', alpha: 0 })).toBe('transparent');
   });
 
-  it('puts the Latin face before the Hebrew one', () => {
-    expect(fontStack({ he: 'Heebo', latin: 'Inter' })).toBe('"Inter", "Heebo", sans-serif');
+  it('gives each script its face: the Hebrew-only face, the Latin family, the Hebrew family', () => {
+    expect(fontStack({ he: 'Heebo', latin: 'Inter' })).toBe(
+      '"Heebo::hebrew", "Inter", "Heebo", sans-serif',
+    );
     expect(fontStack({ he: 'Rubik', latin: 'Rubik' })).toBe('"Rubik", sans-serif');
+  });
+
+  it('names the Hebrew subsets of the registered faces as Hebrew-only faces', () => {
+    const faces = [
+      {
+        family: 'Heebo',
+        weight: '100 900',
+        url: 'he.woff2',
+        unicodeRange: 'U+0590-05FF,U+200C-2010',
+      },
+      { family: 'Heebo', weight: '100 900', url: 'latin.woff2', unicodeRange: 'U+0000-00FF' },
+      { family: 'Whole', weight: '400', url: 'whole.woff2' },
+    ];
+    // Narrowed to the Hebrew letters, so the face takes nothing a Latin family should draw.
+    expect(hebrewFaces(faces)).toEqual([
+      {
+        family: hebrewFace('Heebo'),
+        weight: '100 900',
+        url: 'he.woff2',
+        unicodeRange: 'U+0590-05FF,U+20AA,U+FB1D-FB4F',
+      },
+    ]);
   });
 
   it('exposes the theme as the variables HTML is written against', () => {

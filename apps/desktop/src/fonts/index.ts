@@ -1,3 +1,4 @@
+import { hebrewFaces } from '@slidr/renderer';
 import { builtinFaces, builtinFamilies, type BuiltinFace } from './builtinFonts.generated';
 
 export { builtinFamilies };
@@ -24,13 +25,15 @@ const STYLE_ID = 'slidr-builtin-fonts';
 /**
  * Registers the built-in font library (SPEC appendix B) under the family names decks use. Nothing
  * is downloaded until text uses a face: browsers load `@font-face` files on demand, per
- * `unicode-range` subset (RND-05).
+ * `unicode-range` subset (RND-05). The Hebrew subsets are registered again as Hebrew-only faces,
+ * which the renderer puts first in a font pair, so Hebrew text gets the pair's Hebrew font even
+ * when the Latin one has Hebrew letters too (SPEC 5.5).
  */
 export function registerBuiltinFonts(doc: Document = document): void {
   if (doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = builtinFaces.map(faceRule).join('\n');
+  style.textContent = [...builtinFaces, ...hebrewFaces(builtinFaces)].map(faceRule).join('\n');
   doc.head.append(style);
 }
 

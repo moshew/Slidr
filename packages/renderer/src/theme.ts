@@ -14,15 +14,37 @@ export function colorCss(color: Color): string {
   return `color-mix(in srgb, ${base} ${num(alpha * 100, 2)}%, transparent)`;
 }
 
+/** The Hebrew letters, the shekel sign and the Hebrew presentation forms. */
+const HEBREW_RANGE = 'U+0590-05FF,U+20AA,U+FB1D-FB4F';
+
+/** The name of a family's Hebrew-only face: its Hebrew letters and nothing else. */
+export function hebrewFace(family: string): string {
+  return `${family}::hebrew`;
+}
+
 /**
- * A font family list where each script gets the face meant for it (SPEC 5.5). The Latin face
- * comes first: Latin faces rarely carry Hebrew glyphs, so Hebrew text falls through to the
- * Hebrew face, while Hebrew faces usually do carry Latin and would otherwise take it over.
- * A Latin face that has Hebrew glyphs keeps them; per-script `unicode-range` faces (WG2-T02)
- * are the full answer.
+ * The faces to register a second time as Hebrew-only faces: of the faces a host registers, those
+ * whose `unicode-range` holds the Hebrew block, renamed and narrowed to it. `fontStack` names
+ * these faces, so a host that knows the files of its fonts registers them next to the originals.
+ */
+export function hebrewFaces<T extends { family: string; unicodeRange?: string }>(
+  faces: readonly T[],
+): T[] {
+  return faces
+    .filter((face) => face.unicodeRange?.includes('U+0590-05FF'))
+    .map((face) => ({ ...face, family: hebrewFace(face.family), unicodeRange: HEBREW_RANGE }));
+}
+
+/**
+ * A font family list where each script gets the face meant for it (SPEC 5.5). The Hebrew-only
+ * face of the Hebrew family comes first and takes the Hebrew letters; then the Latin family, for
+ * everything else; then the whole Hebrew family behind it. Without the first, a Latin family that
+ * has Hebrew letters of its own (Rubik, Open Sans, Arial) would take the Hebrew text too. Where
+ * nobody registered that face (a system font, a font that came as an asset) the name is skipped
+ * and the Latin family comes first, which is right whenever it has no Hebrew.
  */
 export function fontStack(pair: FontPair): string {
-  const names = pair.latin === pair.he ? [pair.latin] : [pair.latin, pair.he];
+  const names = pair.latin === pair.he ? [pair.latin] : [hebrewFace(pair.he), pair.latin, pair.he];
   return [...names.map(cssString), 'sans-serif'].join(', ');
 }
 

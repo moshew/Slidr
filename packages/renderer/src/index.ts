@@ -1,7 +1,14 @@
 // SlideRenderer and the element renderers: model -> DOM (SPEC 7, ADR-009).
 export { SlideRenderer, ScaledSlide, type SlideRendererProps } from './SlideRenderer';
 export type { AssetResolver, ElementSlot, RenderMode, TextSlot } from './context';
-export { colorCss, fontStack, themeVariables, themeVariablesCss } from './theme';
+export {
+  colorCss,
+  fontStack,
+  hebrewFace,
+  hebrewFaces,
+  themeVariables,
+  themeVariablesCss,
+} from './theme';
 export { fillStyle } from './fill';
 export { presetPath, scalePath, shapePresets, isBoxPreset, type ShapePath } from './geometry';
 export { imagePlacement, linePath } from './elements';
