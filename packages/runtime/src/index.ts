@@ -29,6 +29,14 @@ export {
 } from './player';
 export { bindControls, toggleFullscreen, type ControlOptions } from './controls';
 export {
+  CHART_BUILD_MS,
+  CHART_EVENT,
+  CHART_SELECTOR,
+  CHART_STILL,
+  type ChartBuild,
+  type ChartCue,
+} from './charts';
+export {
   boot,
   readSlides,
   READY_CLASS,

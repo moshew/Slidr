@@ -1,3 +1,10 @@
+import {
+  CHART_BUILD_MIN_MS,
+  CHART_BUILD_MS,
+  chartNodes,
+  cueChart,
+  type ChartBuild,
+} from './charts';
 import { safeEasing, slideDirection, travel, type Dir } from './direction';
 import { findPreset, inlinePreset, toKeyframes, type Box, type Preset } from './presets';
 import { schedule, type Group } from './schedule';
@@ -17,6 +24,9 @@ import type { AnimationStep, Size, Trigger, Warn } from './types';
  * its entrance, or one that has left. That set is known for every point of the timeline in
  * advance, so going back a step, or arriving at a slide from the one after it, sets the state
  * directly instead of replaying anything.
+ *
+ * A chart is the one thing on a slide that animates itself: the runtime tells it when to build,
+ * and where it stands before and after (see `charts.ts`).
  */
 /** One step's share of a group. A step animated by paragraph has a part for every paragraph. */
 export interface TimelinePart {
@@ -180,6 +190,32 @@ function hiddenStates(groups: readonly Group[], effects: readonly Effect[]): Set
   return states;
 }
 
+/**
+ * When each chart of the slide builds: on the first entrance of the element it is in, over the
+ * length of that step, or with the lead-in when nothing brings its element in.
+ */
+function chartBuilds(
+  root: HTMLElement,
+  groups: readonly Group[],
+  effects: readonly Effect[],
+): ChartBuild[] {
+  return chartNodes(root).map((node) => {
+    for (const [group, { slots }] of groups.entries()) {
+      for (const slot of slots) {
+        const effect = effects[slot.index] as Effect;
+        if (effect.kind !== 'entrance' || effect.by !== 'self') continue;
+        if (!effect.target.contains(node)) continue;
+        const duration = Math.max(effect.step.duration, CHART_BUILD_MIN_MS);
+        return { node, group, start: slot.start, duration };
+      }
+    }
+    return { node, group: 0, start: 0, duration: CHART_BUILD_MS };
+  });
+}
+
+/** The library that draws a chart runs on its own clock: the group ends a little after it. */
+const CHART_SLACK_MS = 50;
+
 function hide(node: HTMLElement, from: number, to: number): Animation | undefined {
   if (to <= from) return undefined;
   const hidden = { visibility: ['hidden', 'hidden'] };
@@ -208,6 +244,14 @@ export function createTimeline(
   const effects = resolveEffects(root, steps, warn);
   const groups = schedule(effects);
   const states = hiddenStates(groups, effects);
+  const builds = chartBuilds(root, groups, effects);
+  /** How long a group lasts, the charts that build in it included. */
+  const lengthOf = (index: number): number =>
+    builds.reduce(
+      (length, build) =>
+        build.group === index ? Math.max(length, build.start + build.duration) : length,
+      groups[index]?.duration ?? 0,
+    );
   const holds = new Map<HTMLElement, Animation>();
   let run: Run | undefined;
 
@@ -218,7 +262,8 @@ export function createTimeline(
     current.resolve();
   }
 
-  function clear(): void {
+  /** Ends what is playing and lets go of what is hidden. */
+  function stop(): void {
     if (run) {
       const current = run;
       run = undefined;
@@ -228,12 +273,21 @@ export function createTimeline(
     holds.clear();
   }
 
+  function clear(): void {
+    stop();
+    for (const build of builds) cueChart(build.node, { state: 'rest' });
+  }
+
   function apply(done: number): void {
-    clear();
+    stop();
     const state = states[Math.min(Math.max(done, 0), states.length - 1)] as Set<HTMLElement>;
     for (const node of state) {
       const hold = hide(node, 0, Infinity);
       if (hold) holds.set(node, hold);
+    }
+    // A chart whose group has played is whole; one whose group is still to come waits.
+    for (const build of builds) {
+      cueChart(build.node, { state: done > build.group ? 'rest' : 'wait' });
     }
   }
 
@@ -326,19 +380,28 @@ export function createTimeline(
         );
       });
     }
+
+    for (const build of builds) {
+      if (build.group !== index) continue;
+      const { node, start: delay, duration } = build;
+      cueChart(node, { state: 'play', delay, duration });
+      // An animation of nothing, as long as the build: the group lasts until the chart is
+      // drawn, and ending the group early ends the build with it.
+      add(node.animate([], { delay, duration: duration + CHART_SLACK_MS }));
+    }
   }
 
   return {
     clicks: groups.length - 1,
-    groups: groups.map((group) => ({
-      duration: group.duration,
+    groups: groups.map((group, index) => ({
+      duration: lengthOf(index),
       parts: group.slots.map((slot) => ({
         stepId: (effects[slot.index] as Effect).step.id,
         start: slot.start,
         end: slot.end,
       })),
     })),
-    duration: (group) => groups[group]?.duration ?? 0,
+    duration: lengthOf,
     apply,
     get playing() {
       return run !== undefined;
@@ -346,7 +409,7 @@ export function createTimeline(
     play(index) {
       const group = groups[index];
       apply(index);
-      if (!group || !group.slots.length) {
+      if (!group || (!group.slots.length && !builds.some((build) => build.group === index))) {
         apply(index + 1);
         return Promise.resolve();
       }
