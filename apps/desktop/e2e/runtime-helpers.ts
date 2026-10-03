@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
-import type { ExportResult } from '../../../packages/html-export/src';
-import type { Player, PlayerState } from '../../../packages/runtime/src';
+import type { ExportResult } from '@slidr/html-export';
+import type { Player, PlayerState } from '@slidr/runtime';
 
 // Helpers for the runtime and export suites (WG8, WG9B): the dev page /dev/runtime.html, and
 // files exported from it. Both expose the same player: the page as `slidrDev.player`, a file as

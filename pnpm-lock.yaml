@@ -277,6 +277,9 @@ importers:
       '@slidr/agent-tools':
         specifier: workspace:*
         version: link:../../packages/agent-tools
+      '@slidr/html-export':
+        specifier: workspace:*
+        version: link:../../packages/html-export
       '@slidr/html-import':
         specifier: workspace:*
         version: link:../../packages/html-import
@@ -292,6 +295,9 @@ importers:
       '@slidr/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
+      '@slidr/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@slidr/templates':
         specifier: workspace:*
         version: link:../../packages/templates

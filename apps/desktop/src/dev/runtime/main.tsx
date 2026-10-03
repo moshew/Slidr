@@ -8,18 +8,12 @@
  * same runtime inside. `data-ready` on <html> says the player has started; `window.slidrDev`
  * hands the player and the export to the end-to-end tests.
  */
+import { exportHtml, type ExportResult } from '@slidr/html-export';
 import type { AssetMeta, Deck } from '@slidr/model';
 import { SlideRenderer } from '@slidr/renderer';
+import { bindControls, createPlayer, type Player, type PlayerState } from '@slidr/runtime';
 import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-// The app does not depend on these two packages yet, so the page reaches them by path.
-import { exportHtml, type ExportResult } from '../../../../../packages/html-export/src';
-import {
-  bindControls,
-  createPlayer,
-  type Player,
-  type PlayerState,
-} from '../../../../../packages/runtime/src';
 import { settle } from '../../capture/settle';
 import { registerBuiltinFonts } from '../../fonts';
 import { testAssetUrl } from '../slides/testAssets';

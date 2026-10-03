@@ -57,9 +57,14 @@ async function settle(host: HTMLElement): Promise<void> {
 }
 
 /** The attributes the runtime reads a slide's animations from (see `readSlides` in the runtime). */
-function sectionProps(slide: Slide, index: number): Record<string, string | undefined> {
-  const transition: Transition | undefined = slide.transition;
-  const timeline: readonly AnimationStep[] = slide.timeline;
+function sectionProps(
+  slide: Slide,
+  index: number,
+  animations: boolean,
+): Record<string, string | undefined> {
+  // Without animations a slide carries neither: it is shown whole, and left on a click or a key.
+  const transition: Transition | undefined = animations ? slide.transition : undefined;
+  const timeline: readonly AnimationStep[] = animations ? slide.timeline : [];
   return {
     className: 'slide',
     'data-slide': slide.id,
@@ -76,6 +81,7 @@ export async function renderSlides(
   deck: Deck,
   slides: readonly Slide[],
   resolveAsset: AssetResolver,
+  animations = true,
 ): Promise<RenderedSlides> {
   const host = doc.createElement('div');
   host.setAttribute('aria-hidden', 'true');
@@ -98,7 +104,7 @@ export async function renderSlides(
         slides.map((slide, i) =>
           createElement(
             'section',
-            { key: slide.id, ...sectionProps(slide, i) },
+            { key: slide.id, ...sectionProps(slide, i, animations) },
             createElement(SlideRenderer, { deck, slide, mode: 'present', resolveAsset }),
           ),
         ),

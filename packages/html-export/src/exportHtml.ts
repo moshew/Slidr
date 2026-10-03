@@ -2,6 +2,7 @@ import { referencedAssetIds, type AssetMeta, type Deck } from '@slidr/model';
 import { playerBundle } from '@slidr/runtime/bundle';
 import { embedAsset, measureNeeds, typed, type EmbeddedAsset, type LoadedAsset } from './assets';
 import { buildDocument } from './document';
+import { embedFonts, type EmbeddedFont } from './fonts';
 import { markHeadings, persistMediaState, renderSlides } from './render';
 
 export interface ExportOptions {
@@ -9,12 +10,17 @@ export interface ExportOptions {
   loadAsset: (asset: AssetMeta) => Promise<Blob | undefined>;
   /**
    * `@font-face` rules for the fonts the slides use that are not assets of the deck, i.e. the
-   * built-in library. Called once the slides are drawn and their fonts have loaded, so the host
-   * can see which faces were needed. Embedding and subsetting them is WG9-T09.
+   * built-in library. Called once the slides are drawn and their fonts have loaded. Without it
+   * the export embeds the faces the page has loaded itself, cut down to the characters in use
+   * (`embedFonts`); a host passes this only to take that over.
    */
   fontCss?: () => Promise<string>;
+  /** Only these slides, in the order of the deck. Default: all of them. */
+  slideIds?: readonly string[];
   /** Hidden slides are left out unless this is set. */
   includeHidden?: boolean;
+  /** `false` leaves the transitions and the animations out: every slide is shown whole. */
+  animations?: boolean;
   /** The highest device pixel ratio pictures stay sharp at. Default 2. */
   pixelRatio?: number;
   /** WebP quality of re-encoded pictures, 0..1. Default 0.9. */
@@ -30,6 +36,8 @@ export interface ExportResult {
   bytes: number;
   slides: number;
   assets: EmbeddedAsset[];
+  /** The faces `embedFonts` put in the file; empty when the host supplied `fontCss`. */
+  fonts: EmbeddedFont[];
   /** What could not be exported as it is in the deck. */
   warnings: string[];
 }
@@ -48,8 +56,12 @@ function escapeRegExp(text: string): string {
 export async function exportHtml(deck: Deck, options: ExportOptions): Promise<ExportResult> {
   const doc = options.document ?? document;
   const warnings: string[] = [];
-  const slides = deck.slides.filter((slide) => options.includeHidden || !slide.hidden);
+  const only = options.slideIds ? new Set(options.slideIds) : undefined;
+  const slides = deck.slides.filter(
+    (slide) => (options.includeHidden || !slide.hidden) && (!only || only.has(slide.id)),
+  );
   const exported: Deck = { ...deck, slides };
+  const animations = options.animations !== false;
 
   // The assets the exported slides use, under object URLs for the time of the rendering.
   const loaded = new Map<string, LoadedAsset>();
@@ -71,13 +83,20 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
   const resolveAsset = (asset: AssetMeta) => loaded.get(asset.id)?.url;
 
   try {
-    const rendered = await renderSlides(doc, exported, slides, resolveAsset);
+    const rendered = await renderSlides(doc, exported, slides, resolveAsset, animations);
     let markup: string;
     let needs: ReturnType<typeof measureNeeds>;
     let fontCss = '';
+    let fonts: EmbeddedFont[] = [];
     try {
       needs = measureNeeds(rendered.host, assets);
-      fontCss = (await options.fontCss?.()) ?? '';
+      if (options.fontCss) fontCss = await options.fontCss();
+      else {
+        const embedded = await embedFonts(rendered.host);
+        fontCss = embedded.css;
+        fonts = embedded.fonts;
+        warnings.push(...embedded.warnings);
+      }
       markHeadings(rendered.host, slides);
       persistMediaState(rendered.host);
       if (typeof rendered.host.getHTML === 'function') {
@@ -117,6 +136,7 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       bytes: new Blob([html]).size,
       slides: slides.length,
       assets: embedded.map((e) => e.report),
+      fonts,
       warnings,
     };
   } finally {

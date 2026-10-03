@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import type { ExportResult } from '../../../packages/html-export/src';
+import type { ExportResult } from '@slidr/html-export';
 import {
   differingShare,
   element,
