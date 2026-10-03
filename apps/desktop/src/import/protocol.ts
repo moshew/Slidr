@@ -15,6 +15,7 @@ export type ImportJob =
   | { kind: 'evaluate'; code: string }
   | { kind: 'screenshot'; request: ImportTarget & { maxWidth?: number } }
   | { kind: 'viewport'; size: ImportViewport }
+  | { kind: 'refused' }
   | { kind: 'capture'; request: ImportCaptureRequest };
 
 /** A picture as a job returns it: the PNG in base64. */
@@ -54,6 +55,8 @@ export async function runImportJob(page: ImportPage, job: ImportJob): Promise<un
     }
     case 'viewport':
       return page.setViewport(job.size);
+    case 'refused':
+      return page.refused();
     case 'capture':
       return page.capture(job.request);
   }

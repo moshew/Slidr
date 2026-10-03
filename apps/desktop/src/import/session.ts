@@ -195,16 +195,35 @@ export function createImporter(editor: Editor): HtmlImportService {
   };
 }
 
-/** Reads what the isolated page was refused so far into the session's record. */
+const MAX_BLOCKED = 200;
+const MAX_BLOCKED_CHARS = 300;
+
+/**
+ * Reads what the isolated page was refused so far into the session's record. Two lists make
+ * it. The page's content policy stops a request before it leaves the page, and the browser
+ * reports it to the page: that list comes back through a job, and is text from an untrusted
+ * window like everything else from there. What the policy lets through is refused by Rust,
+ * which writes it down itself. Neither is lost when the other cannot be read.
+ */
 export async function refreshBlocked(): Promise<string[]> {
-  if (!isTauri() || !importState.getState().file) return importState.getState().blocked;
-  try {
-    const blocked = await invoke<string[]>('import_blocked');
-    importState.setState({ blocked });
-    return blocked;
-  } catch {
-    return importState.getState().blocked;
+  const before = importState.getState();
+  if (!isTauri() || !before.file) return before.blocked;
+  const [fromRust, fromPage] = await Promise.all([
+    invoke<unknown>('import_blocked').catch(() => []),
+    before.open
+      ? invoke<unknown>('import_run_job', { job: { kind: 'refused' } }).catch(() => [])
+      : Promise.resolve([]),
+  ]);
+  const seen = new Set(before.blocked);
+  for (const list of [fromPage, fromRust]) {
+    if (!Array.isArray(list)) continue;
+    for (const address of list) {
+      if (typeof address === 'string' && address) seen.add(address.slice(0, MAX_BLOCKED_CHARS));
+    }
   }
+  const blocked = Array.from(seen).slice(0, MAX_BLOCKED);
+  importState.setState({ blocked });
+  return blocked;
 }
 
 /* ------------------------------------------------------------ starting and ending */

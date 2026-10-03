@@ -178,9 +178,16 @@ const tried = await page.evaluate(async (base) => {
 
 await new Promise((resolve) => setTimeout(resolve, 2500));
 const blocked = await main().evaluate(() => window.__TAURI_INTERNALS__.invoke('import_blocked'));
+// What the page's own policy stopped before Rust was asked, as the browser reported it.
+const refused = await main().evaluate(() =>
+  window.__TAURI_INTERNALS__.invoke('import_run_job', { job: { kind: 'refused' } }),
+);
 for (const [name, result] of Object.entries(tried)) console.log(`${name.padEnd(28)} ${result}`);
 console.log(`\nthe server on ${base} saw ${seen.length} requests:`);
 for (const line of seen) console.log(`  ${line}`);
+console.log("\nthe page's policy refused:");
+for (const url of refused.filter((u) => u.startsWith(base)))
+  console.log(`  ${url.slice(base.length)}`);
 console.log('\nRust wrote down as refused:');
 for (const url of blocked.filter((u) => u.startsWith(base)))
   console.log(`  ${url.slice(base.length)}`);

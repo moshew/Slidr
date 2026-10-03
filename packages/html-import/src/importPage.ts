@@ -83,6 +83,12 @@ export interface ImportPage {
   screenshot(request: ImportTarget & { maxWidth?: number }): Promise<ImportPicture>;
   setViewport(size: ImportViewport): Promise<string>;
   capture(request: ImportCaptureRequest): Promise<ImportCapture>;
+  /**
+   * The addresses the page's content policy refused to load so far, oldest first: what the
+   * browser itself reports for the file's document and the frames in it. Empty where the
+   * page that holds the file has no such policy.
+   */
+  refused(): string[];
   dispose(): void;
 }
 
@@ -99,6 +105,53 @@ const MAX_RESULT_CHARS = 20_000;
 const MAX_STRING_CHARS = 2_000;
 const MAX_ITEMS = 200;
 const FRAMES_FALLBACK_MS = 250;
+const MAX_REFUSED = 200;
+const MAX_REFUSED_CHARS = 300;
+
+/** A report of the browser about a request its content policy refused. */
+interface PolicyReport {
+  body?: { blockedURL?: unknown } | null;
+}
+interface PolicyObserver {
+  observe(): void;
+  takeRecords(): PolicyReport[];
+  disconnect(): void;
+}
+type PolicyObserverClass = new (
+  callback: () => void,
+  options: { types: string[]; buffered: boolean },
+) => PolicyObserver;
+
+/**
+ * What the browser refused in a window and the frames in it. It keeps its reports for an
+ * observer that asks later (`buffered`), so a request made by the file's first script is
+ * here too, and the file has no way to take one back.
+ */
+function refusedIn(view: Window, out: Set<string>): void {
+  const Observer = (view as unknown as { ReportingObserver?: PolicyObserverClass })
+    .ReportingObserver;
+  if (Observer) {
+    const observer = new Observer(() => undefined, { types: ['csp-violation'], buffered: true });
+    observer.observe();
+    for (const report of observer.takeRecords()) {
+      const address = report.body?.blockedURL;
+      // Inline code and `eval` are reported by a word, not by an address.
+      if (typeof address === 'string' && /^[a-z][a-z0-9+.-]*:\/\//i.test(address)) {
+        out.add(address.slice(0, MAX_REFUSED_CHARS));
+      }
+    }
+    observer.disconnect();
+  }
+  for (let i = 0; i < view.frames.length; i++) {
+    try {
+      const inner = view.frames[i];
+      // A frame of another origin throws here; it has reports of its own nobody can read.
+      if (inner?.document) refusedIn(inner, out);
+    } catch {
+      continue;
+    }
+  }
+}
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -656,6 +709,20 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
         },
         ms: result.ms,
       };
+    },
+
+    refused() {
+      if (!frame) return [];
+      // The page that holds the frame is asked too: the file can reach it, and a request it
+      // makes from there is reported there. Its frames, the file's among them, come with it.
+      const holder = frame.ownerDocument.defaultView;
+      const found = new Set<string>();
+      try {
+        if (holder) refusedIn(holder, found);
+      } catch {
+        // A page in the middle of loading has no window to ask yet.
+      }
+      return Array.from(found).slice(0, MAX_REFUSED);
     },
 
     dispose() {

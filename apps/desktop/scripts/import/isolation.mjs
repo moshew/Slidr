@@ -204,20 +204,29 @@ for (const [name, result] of Object.entries(tried)) {
 const kept = await editor.evaluate(async () => ({
   agent: localStorage.getItem('slidr.agent'),
   blocked: await window.__TAURI_INTERNALS__.invoke('import_blocked'),
+  // What the page's policy stopped before Rust was asked, as the browser reported it.
+  refused: await window.__TAURI_INTERNALS__.invoke('import_run_job', { job: { kind: 'refused' } }),
   windows: await window.__TAURI_INTERNALS__.invoke('plugin:window|get_all_windows'),
 }));
 note('the editor window: localStorage slidr.agent', kept.agent, kept.agent !== null);
 note('windows of the app', kept.windows.join(', '), kept.windows.includes('import'));
-const probes = kept.blocked.filter((url) =>
-  /probe|beacon|echo\.websocket|asset\.localhost|localhost:1420|example\./.test(url),
+const isProbe = (url) =>
+  /probe|beacon|echo\.websocket|asset\.localhost|localhost:1420|example\./.test(url);
+const probes = kept.blocked.filter(isProbe);
+const stopped = kept.refused.filter(isProbe);
+note(
+  'refused requests that were written down',
+  `${stopped.length} by the page's policy, ${probes.length} by Rust`,
+  new Set([...stopped, ...probes]).size >= 7,
 );
-note('refused requests Rust wrote down', `${probes.length} of the probes`, probes.length >= 7);
 const alive = await page.evaluate(() =>
   Boolean(document.querySelector('iframe[data-slidr-import]')?.contentDocument),
 );
 note('the import page after all that', alive ? 'alive, the file still loaded' : 'GONE', alive);
 
 for (const row of rows) console.log(`${row.ok ? 'ok  ' : 'FAIL'} ${row.what} -> ${row.result}`);
+console.log("\nrefused by the page's policy, as the browser reported them:");
+for (const url of stopped) console.log(`  ${url}`);
 console.log('\nrefused, as Rust recorded them:');
 for (const url of probes) console.log(`  ${url}`);
 const failed = rows.filter((row) => !row.ok);
