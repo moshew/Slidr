@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@slidr/model": "workspace:*"
+    "@slidr/model": "workspace:*",
+    "zod": "^4.6.5"
   }
 }

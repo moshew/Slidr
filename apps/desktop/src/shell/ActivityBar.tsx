@@ -1,0 +1,63 @@
+import { useTranslation } from 'react-i18next';
+import { cx, Icon, Tooltip } from '@slidr/ui';
+import { usePanels, type PanelDefinition } from './registry';
+import { togglePanel, useShell } from './store';
+
+/**
+ * The Activity Bar (SPEC 4.2) at the outer edge of the AI area: the AI tools, the other
+ * panels, and settings at the bottom. Clicking the open panel collapses the Tool Panel.
+ */
+export function ActivityBar() {
+  const { t } = useTranslation();
+  const panels = usePanels();
+  const slot = (name: PanelDefinition['slot']) => panels.filter((p) => p.slot === name);
+
+  return (
+    <nav
+      aria-label={t('panels.tools')}
+      data-testid="activity-bar"
+      className="flex w-activitybar shrink-0 flex-col items-center gap-4 border-e border-ui-line bg-ui-chrome py-2"
+    >
+      <Section panels={slot('ai')} />
+      <Section panels={slot('tools')} />
+      <div className="flex-1" />
+      <Section panels={slot('footer')} />
+    </nav>
+  );
+}
+
+function Section({ panels }: { panels: PanelDefinition[] }) {
+  if (panels.length === 0) return null;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      {panels.map((panel) => (
+        <Item key={panel.id} panel={panel} />
+      ))}
+    </div>
+  );
+}
+
+function Item({ panel }: { panel: PanelDefinition }) {
+  const { t } = useTranslation();
+  const active = useShell((s) => s.panelOpen && s.activePanel === panel.id);
+  const label = t(panel.title);
+  return (
+    <Tooltip content={label} shortcut={panel.shortcut} side="end">
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={active}
+        data-panel={panel.id}
+        onClick={() => togglePanel(panel.id)}
+        className={cx(
+          'inline-flex size-10 cursor-default items-center justify-center rounded-control transition-colors',
+          active
+            ? 'bg-ui-accent-soft text-ui-accent-fg'
+            : 'text-ui-fg-muted hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed',
+        )}
+      >
+        <Icon icon={panel.icon} size="md" />
+      </button>
+    </Tooltip>
+  );
+}

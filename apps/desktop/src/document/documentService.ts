@@ -1,0 +1,242 @@
+import {
+  loadDeck,
+  migrations,
+  prepareForSave,
+  type AssetMeta,
+  type CommandBus,
+  type Deck,
+  type LoadedDeck,
+  type Migration,
+} from '@slidr/model';
+import type {
+  ImportedAsset,
+  OpenedDeck,
+  RecoverableWorkspace,
+  SavedDeck,
+  Storage,
+  Workspace,
+} from './storage';
+
+export interface DocumentServiceOptions {
+  /** Quiet time after the last change before the workspace is written (DOC-03). */
+  autosaveDelayMs?: number;
+  /** An autosave that failed. The deck in memory is intact; the next change tries again. */
+  onAutosaveError?: (error: unknown) => void;
+  /** Schema migrations; the model's own by default. */
+  migrations?: Record<number, Migration>;
+}
+
+/**
+ * The open document: which file and workspace the deck in the bus belongs to, whether it has
+ * unsaved changes, and the new / open / save / save-as / recover flows (DOC-01..05). It knows
+ * nothing of menus and dialogs; the shell asks for paths and calls in.
+ */
+export class DocumentService {
+  readonly bus: CommandBus;
+  readonly #storage: Storage;
+  readonly #autosaveDelayMs: number;
+  readonly #onAutosaveError: (error: unknown) => void;
+  readonly #migrations: Record<number, Migration>;
+  #workspace: Workspace | null = null;
+  #revision = 0;
+  #savedRevision = 0;
+  #autosavedRevision = 0;
+  #timer: ReturnType<typeof setTimeout> | undefined;
+  /** Storage calls run one at a time, so an older autosave never lands after a newer save. */
+  #queue: Promise<void> = Promise.resolve();
+
+  constructor(storage: Storage, bus: CommandBus, options: DocumentServiceOptions = {}) {
+    this.#storage = storage;
+    this.bus = bus;
+    this.#autosaveDelayMs = options.autosaveDelayMs ?? 3000;
+    this.#onAutosaveError = options.onAutosaveError ?? ((error) => console.error(error));
+    this.#migrations = options.migrations ?? migrations;
+    bus.subscribe((event) => {
+      if (event.kind === 'reset') return;
+      this.#revision++;
+      this.#scheduleAutosave();
+    });
+  }
+
+  get workspace(): Workspace | null {
+    return this.#workspace;
+  }
+
+  /** The `.slidr` file, or null for a deck that was never saved. */
+  get path(): string | null {
+    return this.#workspace?.sourcePath ?? null;
+  }
+
+  /** There are changes that are not in the `.slidr` file. */
+  get dirty(): boolean {
+    return this.#revision !== this.#savedRevision;
+  }
+
+  /** Starts a new, unsaved document with the given deck. */
+  async create(deck: Deck): Promise<void> {
+    const workspace = await this.#storage.create();
+    this.#replace(workspace, deck, false);
+  }
+
+  /**
+   * Opens a `.slidr` file. A file from an older version is migrated, after a copy of the
+   * original is put aside (DOC-04).
+   */
+  async open(path: string): Promise<{ migratedFrom?: number }> {
+    const opened = await this.#storage.open(path);
+    // The file itself is untouched, so a workspace that fails to load can simply go.
+    const loaded = await this.#load(opened, true);
+    if (loaded.migratedFrom !== undefined) {
+      await this.#storage.backup(path, `v${loaded.migratedFrom}`);
+    }
+    this.#replace(opened.workspace, loaded.deck, false);
+    return loaded.migratedFrom === undefined ? {} : { migratedFrom: loaded.migratedFrom };
+  }
+
+  /** Workspaces with unsaved changes that a crash left behind. */
+  listRecoverable(): Promise<RecoverableWorkspace[]> {
+    return this.#storage.listRecoverable();
+  }
+
+  /** Reopens a workspace a crash left behind. Its changes count as unsaved. */
+  async recover(workspaceId: string): Promise<void> {
+    const opened = await this.#storage.recover(workspaceId);
+    // A leftover that fails to load is the only copy of that work: never delete it here.
+    const { deck } = await this.#load(opened, false);
+    this.#replace(opened.workspace, deck, true);
+  }
+
+  /** Discards a workspace a crash left behind. */
+  discardRecoverable(workspaceId: string): Promise<void> {
+    return this.#storage.close(workspaceId);
+  }
+
+  /** Saves to the document's file. A deck that was never saved needs `saveAs`. */
+  save(): Promise<SavedDeck> {
+    const path = this.path;
+    if (!path) return Promise.reject(new Error('The deck has no file yet; use saveAs.'));
+    return this.saveAs(path);
+  }
+
+  /**
+   * Saves to a file, which becomes the document's file. The result lists assets the deck refers
+   * to that the workspace does not have; the file is written without them.
+   */
+  async saveAs(path: string): Promise<SavedDeck> {
+    const workspace = this.#requireWorkspace();
+    this.#cancelAutosave();
+    const revision = this.#revision;
+    const deck = prepareForSave(this.bus.deck);
+    const deckJson = JSON.stringify(deck);
+    const saved = await this.#enqueue(() =>
+      this.#storage.save(workspace.id, path, deckJson, deck.meta.title),
+    );
+    if (this.#workspace?.id === workspace.id) {
+      this.#workspace = { ...this.#workspace, sourcePath: saved.path };
+      this.#savedRevision = revision;
+      this.#autosavedRevision = Math.max(this.#autosavedRevision, revision);
+    }
+    return saved;
+  }
+
+  /** Writes pending changes to the workspace now instead of after the quiet time. */
+  async flush(): Promise<void> {
+    this.#cancelAutosave();
+    const workspace = this.#workspace;
+    if (!workspace || this.#revision === this.#autosavedRevision) return;
+    const revision = this.#revision;
+    const deck = this.bus.deck;
+    await this.#enqueue(() =>
+      this.#storage.writeDeck(workspace.id, JSON.stringify(deck), deck.meta.title),
+    );
+    if (this.#workspace?.id === workspace.id) {
+      this.#autosavedRevision = Math.max(this.#autosavedRevision, revision);
+    }
+  }
+
+  /** Closes the document and deletes its workspace. Unsaved changes are lost: ask first. */
+  async close(): Promise<void> {
+    this.#cancelAutosave();
+    const workspace = this.#workspace;
+    this.#workspace = null;
+    if (workspace) await this.#enqueue(() => this.#storage.close(workspace.id));
+  }
+
+  /**
+   * Stores a file in the workspace and returns its entry for the asset table. The caller
+   * dispatches `asset.add` in the same transaction as the element that uses it.
+   */
+  async importAssetFile(path: string, origin: AssetMeta['origin'] = 'upload'): Promise<AssetMeta> {
+    const workspace = this.#requireWorkspace();
+    const imported = await this.#storage.importAssetFile(workspace.id, path);
+    return toAssetMeta(imported, origin, path.split(/[\\/]/).at(-1));
+  }
+
+  async importAssetBytes(
+    name: string,
+    bytes: Uint8Array,
+    origin: AssetMeta['origin'] = 'upload',
+  ): Promise<AssetMeta> {
+    const workspace = this.#requireWorkspace();
+    const imported = await this.#storage.importAssetBytes(workspace.id, name, bytes);
+    return toAssetMeta(imported, origin, name);
+  }
+
+  async #load(opened: OpenedDeck, discardOnFailure: boolean): Promise<LoadedDeck> {
+    try {
+      return loadDeck(JSON.parse(opened.deckJson), this.#migrations);
+    } catch (error) {
+      if (discardOnFailure) await this.#storage.close(opened.workspace.id);
+      throw error;
+    }
+  }
+
+  #replace(workspace: Workspace, deck: Deck, unsaved: boolean): void {
+    const previous = this.#workspace;
+    this.#cancelAutosave();
+    this.#workspace = workspace;
+    this.bus.reset(deck);
+    this.#revision = unsaved ? 1 : 0;
+    this.#savedRevision = 0;
+    this.#autosavedRevision = this.#revision;
+    if (previous && previous.id !== workspace.id) {
+      void this.#enqueue(() => this.#storage.close(previous.id)).catch(this.#onAutosaveError);
+    }
+  }
+
+  #requireWorkspace(): Workspace {
+    if (!this.#workspace) throw new Error('No document is open.');
+    return this.#workspace;
+  }
+
+  #scheduleAutosave(): void {
+    if (!this.#workspace) return;
+    this.#cancelAutosave();
+    this.#timer = setTimeout(() => {
+      this.#timer = undefined;
+      this.flush().catch(this.#onAutosaveError);
+    }, this.#autosaveDelayMs);
+  }
+
+  #cancelAutosave(): void {
+    if (this.#timer !== undefined) clearTimeout(this.#timer);
+    this.#timer = undefined;
+  }
+
+  #enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.#queue.then(task, task);
+    this.#queue = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+}
+
+function toAssetMeta(
+  imported: ImportedAsset,
+  origin: AssetMeta['origin'],
+  name: string | undefined,
+): AssetMeta {
+  return { ...imported, origin, ...(name ? { name } : {}) };
+}

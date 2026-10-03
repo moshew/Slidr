@@ -1,0 +1,133 @@
+{
+  "description": "A deck chat in three turns, hand-written in the shape of the recorded CLI streams (timing from spike WG0-S1: about a second to the first text, short tool round trips). Turn 1 builds an opening slide with two app tool calls and looks at it; turn 2 is a long streamed Hebrew reply, for testing interrupt; turn 3 uses the harness's web search.",
+  "turns": [
+    [
+      { "delayMs": 700, "type": "thinking_delta", "text": "" },
+      { "delayMs": 250, "type": "text_delta", "text": "I'll build an opening " },
+      { "delayMs": 40, "type": "text_delta", "text": "slide with the deck title " },
+      { "delayMs": 40, "type": "text_delta", "text": "and a short subtitle." },
+      {
+        "delayMs": 900,
+        "type": "tool_call_started",
+        "id": "call_1",
+        "name": "slide_create_from_html",
+        "source": "app",
+        "input": {
+          "index": 0,
+          "html": "<section style=\"width:1920px;height:1080px;display:flex;flex-direction:column;justify-content:center;padding:160px;background:var(--color-background)\"><h1 data-role=\"title\" style=\"font:700 120px var(--font-heading);color:var(--color-primary)\">Work plan 2027</h1><p data-role=\"subtitle\" style=\"font:400 48px var(--font-body)\">Three moves for the year ahead</p></section>"
+        }
+      },
+      {
+        "delayMs": 180,
+        "type": "tool_call_finished",
+        "id": "call_1",
+        "ok": true,
+        "summary": "created slide s_k3x9a2bq at index 0: 2 text elements, editable 100%, lint: no findings"
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "call_2",
+        "name": "slide_render",
+        "source": "app",
+        "input": { "slideId": "s_k3x9a2bq" }
+      },
+      {
+        "delayMs": 160,
+        "type": "tool_call_finished",
+        "id": "call_2",
+        "ok": true,
+        "summary": "[image]"
+      },
+      { "delayMs": 900, "type": "text_delta", "text": "The opening slide is " },
+      { "delayMs": 40, "type": "text_delta", "text": "in place: the title " },
+      { "delayMs": 40, "type": "text_delta", "text": "**Work plan 2027** over " },
+      { "delayMs": 40, "type": "text_delta", "text": "a one-line subtitle, both " },
+      { "delayMs": 40, "type": "text_delta", "text": "in the theme's fonts." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 418,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 1210
+        },
+        "costUsd": 0.0061,
+        "durationMs": 4110
+      }
+    ],
+    [
+      { "delayMs": 1100, "type": "text_delta", "text": "הנה עשרה רעיונות " },
+      { "delayMs": 60, "type": "text_delta", "text": "לשקפים הבאים:\n\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "1. מפת הדרכים " },
+      { "delayMs": 60, "type": "text_delta", "text": "לרבעון הראשון\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "2. שלושת המהלכים " },
+      { "delayMs": 60, "type": "text_delta", "text": "המרכזיים\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "3. למה עכשיו: " },
+      { "delayMs": 60, "type": "text_delta", "text": "נתוני השוק\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "4. המדד המרכזי " },
+      { "delayMs": 60, "type": "text_delta", "text": "והיעד שלו\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "5. ציר זמן " },
+      { "delayMs": 60, "type": "text_delta", "text": "לפי חודשים\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "6. הצוות " },
+      { "delayMs": 60, "type": "text_delta", "text": "ותחומי האחריות\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "7. תקציב " },
+      { "delayMs": 60, "type": "text_delta", "text": "וחלוקת משאבים\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "8. סיכונים " },
+      { "delayMs": 60, "type": "text_delta", "text": "ודרכי התמודדות\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "9. ציטוט " },
+      { "delayMs": 60, "type": "text_delta", "text": "מלקוח\n" },
+      { "delayMs": 300, "type": "text_delta", "text": "10. סיכום " },
+      { "delayMs": 60, "type": "text_delta", "text": "וקריאה לפעולה" },
+      {
+        "delayMs": 80,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 212,
+          "cacheReadTokens": 8293,
+          "cacheWriteTokens": 431
+        },
+        "costUsd": 0.0024,
+        "durationMs": 5000
+      }
+    ],
+    [
+      { "delayMs": 900, "type": "text_delta", "text": "Let me check the latest figure." },
+      {
+        "delayMs": 500,
+        "type": "tool_call_started",
+        "id": "call_3",
+        "name": "WebSearch",
+        "source": "harness",
+        "input": { "query": "global presentation software market size 2026" }
+      },
+      {
+        "delayMs": 2400,
+        "type": "tool_call_finished",
+        "id": "call_3",
+        "ok": true,
+        "summary": "Web search results for query: \"global presentation software market size 2026\" (10 results)"
+      },
+      { "delayMs": 1200, "type": "text_delta", "text": "I found a 2026 estimate " },
+      { "delayMs": 40, "type": "text_delta", "text": "and noted the source in " },
+      { "delayMs": 40, "type": "text_delta", "text": "the slide's speaker notes." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 21,
+          "outputTokens": 260,
+          "cacheReadTokens": 9120,
+          "cacheWriteTokens": 2930
+        },
+        "costUsd": 0.0112,
+        "durationMs": 5140
+      }
+    ]
+  ]
+}

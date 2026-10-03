@@ -2,7 +2,11 @@
 
 # Slidr — מפרט מוצר וארכיטקטורה (SPEC)
 
-גרסה 0.5 · 2026-10-02 · סטטוס: טיוטה לאישור · מסמך משלים: [PLAN.md](PLAN.md)
+גרסה 0.7 · 2026-10-03 · סטטוס: טיוטה לאישור · מסמך משלים: [PLAN.md](PLAN.md)
+
+שינויים ב-0.7 (אמצע M1, ADR-008 עד ADR-012): 7.2 הפניה לחוזה ה-renderer · 11.2 ההבדלים בממשק ה-harness · 11.4 הפניה לקטלוג המיושם ושתי הערות · 11.6 ה-prompt של שיחה שחודשה · 14.1 בלי react-moveable.
+
+שינויים ב-0.6 (WG1, ראה [ADR-007](adr/ADR-007-model-and-commands.md)): 5.2 סדר השיקוף והסיבוב · 5.3 ארבעה שדות שהסכמה קבעה אחרת (`html.styles` ו-`natural`, `text.wrap`, `image.prompt`, `Fill` מסוג `css`) · 5.7 מתי נכס נחשב בשימוש · פרק 6 הפניה לקטלוג ה-commands.
 
 שינויים ב-0.5 (תוצאות M0, ראה [adr/](adr/)): 11.3 שורת הפקודה של Claude Code והנקודות שנסגרו · 11.6 ה-system prompt מחליף את זה של ה-CLI · 13.2 `import_set_viewport` ולכידה של כמה שקפים בקריאה.
 
@@ -313,8 +317,8 @@ interface ElementBase {
   name?: string;                      // human/agent-readable, e.g. "hero-image"
   role?: PlaceholderRole;             // title | subtitle | body | image | ...
   frame: { x: number; y: number; w: number; h: number };
-  rotation: number;                   // degrees, around frame center
-  flipH?: boolean; flipV?: boolean;
+  rotation: number;                   // degrees, clockwise, around frame center
+  flipH?: boolean; flipV?: boolean;   // mirrored inside the box, before the rotation
   opacity: number;                    // 0..1
   locked?: boolean; hidden?: boolean;
   effects?: { shadow?: Shadow; blur?: number; radius?: number };
@@ -333,8 +337,8 @@ type ElementType =
 
 | סוג | שדות עיקריים | הערות |
 |---|---|---|
-| `text` | `content: RichText`, `autoFit` (none / shrink / growHeight), `vAlign`, `padding`, `columns` | ראה 5.4 |
-| `image` | `assetId`, `crop` (מלבן מנורמל 0..1), `fit` (cover/contain/fill), `mask`, `adjust` (brightness, contrast, saturation, temperature, blur, grayscale, hue), `filterPreset`, `border`, `alt` | לא הרסני: הנכס המקורי נשמר תמיד |
+| `text` | `content: RichText`, `autoFit` (none / shrink / growHeight), `vAlign`, `padding`, `columns`, `wrap` | ראה 5.4. `wrap: false` משאיר כל פסקה בשורה אחת (טקסט מיובא, ADR-005) |
+| `image` | `assetId?`, `prompt?`, `crop` (מלבן מנורמל 0..1), `fit` (cover/contain/fill), `mask`, `adjust` (brightness, contrast, saturation, temperature, blur, grayscale, hue), `filterPreset`, `border`, `alt` | לא הרסני: הנכס המקורי נשמר תמיד. בלי `assetId` זה placeholder שמחכה לתמונה לפי `prompt` (11.5) |
 | `shape` | `geometry` (preset או path), `fill`, `stroke`, `content?: RichText` | כ-40 צורות מוכנות |
 | `line` | `points`, `stroke`, `startHead`, `endHead`, `curve` | קו, חץ, עקומה |
 | `svg` | `assetId` או `markup`, `colorOverrides` | אייקונים ואיורים וקטוריים; צביעה מחדש לפי tokens |
@@ -343,9 +347,11 @@ type ElementType =
 | `chart` | `chartType`, `data` (categories, series), `options` (legend, axes, labels, palette) | bar, column, line, area, pie, donut, scatter, radar |
 | `video` | `assetId`, `poster`, `autoplay`, `loop`, `muted`, `trim`, `volume` | |
 | `audio` | `assetId`, `autoplay`, `loop`, `trim`, `volume`, `showControls` | |
-| `html` | `markup`, `css`, `hasScripts` | כל HTML/CSS/JS כמו שהוא. אובייקט מן המניין: זז, משנה גודל, מסתובב, מונפש ונערך (8.9) |
+| `html` | `markup`, `styles`, `hasScripts`, `natural` | כל HTML/CSS/JS כמו שהוא. אובייקט מן המניין: זז, משנה גודל, מסתובב, מונפש ונערך (8.9). `styles` הוא ה-stylesheet של התוכן (השדה `css` שבבסיס מעצב את התיבה); `natural` הוא הגודל שבו התוכן נפרס, והוא מוקטן למסגרת ולא נפרס מחדש (ADR-005) |
 
-טיפוסי עזר: `Fill` = solid / linear / radial / conic gradient / image / none. `Background` = `Fill` + שכבת overlay + טשטוש והכהיה לתמונת רקע. `Color` = token או ערך מפורש עם alpha.
+טיפוסי עזר: `Fill` = solid / linear / radial / conic gradient / image / none / css (כל ערך CSS שאין לו צורה במודל, כמו שהוא). `Background` = `Fill` + שכבת overlay + טשטוש והכהיה לתמונת רקע. `Color` = token או ערך מפורש עם alpha.
+
+הסכמות עצמן (Zod) נמצאות ב-`packages/model/src/schema/`, והן מקור האמת; ADR-007 מתעד את ההבדלים מהטבלה הזו.
 
 ### 5.4 מודל הטקסט
 
@@ -454,7 +460,7 @@ interface Transition {
 
 - אחסון לפי תוכן: שם הקובץ הוא ה-sha256 שלו. אותו קובץ לא נשמר פעמיים.
 - `AssetMeta`: mime, מידות, גודל, מקור (upload / stock / ai / import), ייחוס ורישיון (לסטוק), ושושלת (`parentAssetId`, prompt, ספק) לתמונות AI.
-- נכס שאין אליו הפניה נמחק רק בשמירה, לא מיד — כדי ש-undo יעבוד.
+- נכס שאין אליו הפניה נמחק רק בשמירה, לא מיד — כדי ש-undo יעבוד. "הפניה" היא כל מופע של מזהה הנכס במצגת, גם בתוך markup של אובייקט `html` או בשדה `css`. גופנים משמשים לפי שם משפחה ולכן לא נמחקים בשמירה (ADR-007).
 - **גופנים הם נכסים.** גופן שהגיע עם קובץ מיובא (WOFF2 מוטמע) או שהמשתמש הוסיף נשמר בקובץ המצגת, נטען ב-renderer כמו גופן מובנה, ומוטמע בייצוא. כך מצגת מיובאת נראית זהה גם במחשב שהגופן לא מותקן בו.
 
 ### 5.8 פורמט הקובץ `‎.slidr`
@@ -533,6 +539,8 @@ deck.slidr
 
 אותו סט commands משמש את הממשק ואת ה-Agent. אין נתיב כתיבה נפרד ל-AI, ולכן כל מה שה-AI עושה ניתן לביטול ונראה בהיסטוריה.
 
+קטלוג ה-commands (19), הכללים של כל אחד, אופן ה-transactions וההיסטוריה מתועדים ב-[ADR-007](adr/ADR-007-model-and-commands.md).
+
 ---
 
 ## 7. מנוע הרינדור
@@ -565,6 +573,8 @@ deck.slidr
 | RND-06 | אובייקט `html` בלי scripts מרונדר ב-Shadow DOM (בידוד סגנונות, זול גם ב-100 תמונות ממוזערות). עם scripts — ב-iframe עם sandbox, בלי גישה לאפליקציה | P0 |
 | RND-07 | שדה `css` של אובייקט מוחל כמו שהוא על האלמנט המרונדר; `css` של שקף מוזרק כ-stylesheet בתחום השקף | P0 |
 | RND-08 | משתני ה-Theme (`--color-*`, `--font-*`) זמינים גם בתוך אובייקטי `html`, כך שהחלפת תבנית משפיעה גם עליהם | P0 |
+
+ה-API של הרכיב, המצבים (`edit`, `thumbnail`, `present`), סימון האובייקטים ב-DOM (`data-element-id`) וההחלטות שהרינדור קיבל במקום שבו המודל שתק מתועדים ב-[ADR-009](adr/ADR-009-slide-renderer.md).
 
 ---
 
@@ -949,6 +959,8 @@ pub enum AgentEvent {
 | AGT-07 | תהליך סשן לא פעיל נסגר אחרי כמה דקות ומתחדש לפי מזהה בהודעה הבאה | P1 |
 | AGT-08 | יומן אבחון: אירועי harness גולמיים וקריאות כלים, לצפייה ממסך ההגדרות | P1 |
 
+הממשק שנבנה ([ADR-010](adr/ADR-010-agent-harness.md)) שונה מהסקיצה בכמה מקומות: נקודת הכלים היא `tool_endpoint` ולא `mcp` (המילה נשארת בתוך המתאם); במקום `allowed_tools` יש `web_access`, כי שמות הכלים המובנים שייכים ל-harness; `TurnCompleted` נושא `outcome` (הושלם, נעצר, נכשל) ו-`ToolCallStarted` נושא `source` (כלי של האפליקציה או של ה-harness); ולשגיאות יש סט סגור של סוגים.
+
 ### 11.3 מתאם Claude Code CLI
 
 התהליך מופעל מ-Rust כתהליך ארוך-חיים לכל סשן, עם זרימת JSON דו-כיוונית:
@@ -1065,6 +1077,8 @@ env = no CLAUDE* / ANTHROPIC* variables;  Windows: CREATE_NO_WINDOW
 
 כל כלי כתיבה מחזיר: מזהים שנוצרו או שונו, וממצאי lint של השקפים שהושפעו.
 
+הקטלוג המיושם, צורות התוצאה והשגיאה, תת-השפה של Markdown ב-`text_set` וכללי שומר ההיקף מתועדים ב-[ADR-011](adr/ADR-011-deck-api.md). שתי הערות לקטלוג: `stock_search` כותב (הוא רושם את התוצאות כנכסים כדי שה-Agent ימקם אותן לפי מזהה); ו-`element_convert` בהיקף O סותר את MCP-05, כי ההמרה מוחקת את האובייקט ומוסיפה אחרים. זה יוכרע עם WG9A.
+
 ### 11.5 נתיב היצירה ב-HTML
 
 מודלי שפה מעצבים הכי טוב ב-HTML/CSS. לכן נתיב היצירה הראשי של שקף חדש הוא `slide_create_from_html`: ה-Agent כותב שקף כ-HTML/CSS ב-1920×1080, והאפליקציה ממירה אותו לאובייקטים **באותו מנוע המרה של ייבוא HTML** (פרק 13). מנוע אחד משרת גם את הייבוא וגם את ה-AI.
@@ -1086,7 +1100,7 @@ env = no CLAUDE* / ANTHROPIC* variables;  Windows: CREATE_NO_WINDOW
 
 ### 11.6 הרכבת ה-prompt וההקשר
 
-ה-system prompt מורכב ממודולים קבועים, זהים לכל harness. במתאם Claude Code הוא **מחליף** את ה-prompt המובנה של ה-CLI ואינו מתווסף אליו (ADR-001):
+ה-system prompt מורכב ממודולים קבועים, זהים לכל harness. במתאם Claude Code הוא **מחליף** את ה-prompt המובנה של ה-CLI ואינו מתווסף אליו (ADR-001). Claude Code שומר את ה-system prompt של הבקשה הראשונה ומשתמש בו גם אחרי resume (`--system-prompt-snapshot`, ADR-010), ולכן שינוי במודולים לא מגיע לשיחה שחודשה; מה שמשתנה בין תורות עובר בבלוק ההקשר:
 
 1. **תפקיד וכללי עבודה:** מעצב מצגות; לקרוא לפני שכותבים; לשנות את המינימום הנדרש; לא ליצור מחדש שקף כשאפשר לעדכן.
 2. **הנחיות העיצוב** (9.1) במלואן.
@@ -1345,7 +1359,7 @@ interface ImageProvider {
 | סכמות | Zod (מקור אמת) → טיפוסים + JSON Schema |
 | UI | Tailwind CSS (מאפיינים לוגיים ל-RTL) + Radix UI |
 | עריכת טקסט | TipTap / ProseMirror |
-| טרנספורמציות | react-moveable (גרירה, שינוי גודל, סיבוב, הצמדה) + מצב חיתוך בקוד עצמי |
+| טרנספורמציות | קוד עצמי: גיאומטריה טהורה עם בדיקות לגרירה, שינוי גודל וסיבוב, הצמדה ומצב חיתוך (ADR-012; react-moveable נבחן ולא נדרש) |
 | גרפים | ECharts (SVG renderer) |
 | אנימציה | Web Animations API |
 | i18n | i18next |

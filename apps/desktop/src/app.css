@@ -1,0 +1,7 @@
+/* The app's stylesheet: Tailwind with the Slidr design tokens (packages/ui/src/theme.css). */
+@import 'tailwindcss';
+@import '@slidr/ui/theme.css';
+
+#root {
+  height: 100%;
+}

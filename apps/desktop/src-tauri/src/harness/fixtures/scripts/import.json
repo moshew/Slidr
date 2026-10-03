@@ -1,0 +1,339 @@
+{
+  "description": "An HTML import session: the agent inspects a hand-written six-slide Hebrew deck, captures every slide in one call and sets the deck language. Derived from a real CLI transcript (spike WG0-S5, 2026-10-02): the tool calls, results, text, usage, cost and timing are as recorded; the text is re-chunked into deltas, since that run did not stream partial messages.",
+  "turns": [
+    [
+      {
+        "delayMs": 1250,
+        "type": "tool_call_started",
+        "id": "toolu_017JdrJ4rGhTYyuPhiZqigYj",
+        "name": "import_inspect",
+        "source": "app",
+        "input": {
+          "depth": 3
+        }
+      },
+      {
+        "delayMs": 6,
+        "type": "tool_call_started",
+        "id": "toolu_01WdJ5SbuNUaEEiNpqgg68d7",
+        "name": "deck_get_outline",
+        "source": "app",
+        "input": {}
+      },
+      {
+        "delayMs": 20,
+        "type": "tool_call_finished",
+        "id": "toolu_017JdrJ4rGhTYyuPhiZqigYj",
+        "ok": true,
+        "summary": "PAGE\n{\n \"title\": \"תוכנית עבודה 2027\",\n \"lang\": \"he\",\n \"dir\": \"rtl\",\n \"viewport\": \"1920x1080\",\n \"scroll\": \"1920x1080\",\n \"elements\": 68,\n \"scripts\": 1,\n \"stylesheets\": [\n  \"<style> (28 rules)\"\n ],\n \"cssRules\": 28,\n \"fontFaceRules\": 0,\n \"keyframesRules\": 0,\n \"fontsLoaded\": [],\n \"fontsDeclared\": 0,\n \"ro…"
+      },
+      {
+        "delayMs": 6,
+        "type": "tool_call_finished",
+        "id": "toolu_01WdJ5SbuNUaEEiNpqgg68d7",
+        "ok": true,
+        "summary": "title: null\nlang: null dir: null\n(no slides yet)"
+      },
+      {
+        "delayMs": 1070,
+        "type": "text_delta",
+        "text": "Six slides, shown by "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "toggling `.current` (display none "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "otherwise). Stage is 1280x720 "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "and sits unscaled in "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "the viewport."
+      },
+      {
+        "delayMs": 2149,
+        "type": "tool_call_started",
+        "id": "toolu_01KigNURdqsQmyNiDkMMRAq5",
+        "name": "import_capture",
+        "source": "app",
+        "input": {
+          "slides": [
+            {
+              "name": "Cover",
+              "js": "document.querySelectorAll('.slide')[0]",
+              "before": "document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('current',i==0))"
+            },
+            {
+              "name": "Three moves",
+              "js": "document.querySelectorAll('.slide')[1]",
+              "before": "document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('current',i==1))"
+            },
+            {
+              "name": "Why now",
+              "js": "document.querySelectorAll('.slide')[2]",
+              "before": "document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('current',i==2))"
+            },
+            {
+              "name": "Key metric",
+              "js": "document.querySelectorAll('.slide')[3]",
+              "before": "document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('current',i==3))"
+            },
+            {
+              "name": "Timeline",
+              "js": "document.querySelectorAll('.slide')[4]",
+              "before": "document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('current',i==4))"
+            },
+            {
+              "name": "Quote",
+              "js": "document.querySelectorAll('.slide')[5]",
+              "before": "document.querySelectorAll('.slide').forEach((s,i)=>s.classList.toggle('current',i==5))"
+            }
+          ]
+        }
+      },
+      {
+        "delayMs": 352,
+        "type": "tool_call_started",
+        "id": "toolu_01P19M9KrSxHSrJsiSx3LCkz",
+        "name": "deck_update",
+        "source": "app",
+        "input": {
+          "title": "תוכנית עבודה 2027",
+          "lang": "he",
+          "dir": "rtl"
+        }
+      },
+      {
+        "delayMs": 4179,
+        "type": "tool_call_finished",
+        "id": "toolu_01KigNURdqsQmyNiDkMMRAq5",
+        "ok": true,
+        "summary": "#1 s1 \"Cover\": faithful | editable 100% (text 100%) | 3 text, 1 shape | source 1280x720\n#2 s2 \"Three moves\": faithful | editable 60% (text 100%) | 6 text, 4 html | source 1280x720\n     HTML objects: li (pseudo-element); li (pseudo-element); li (pseudo-element); li (pseudo-element)\n#3 s3 \"Why now\": f…"
+      },
+      {
+        "delayMs": 7,
+        "type": "tool_call_finished",
+        "id": "toolu_01P19M9KrSxHSrJsiSx3LCkz",
+        "ok": true,
+        "summary": "deck updated"
+      },
+      {
+        "delayMs": 1772,
+        "type": "text_delta",
+        "text": "I imported all 6 "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "slides as a Hebrew, "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "right-to-left deck titled \"תוכנית "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "עבודה 2027\". Four of "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "them are fully editable. "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "Slides 2 and 5 "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "are not.\n\n- "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "**Slide 1, cover:** fully "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "editable.\n- **Slide 2, "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "\"Three moves\":** the text "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "is editable, but the "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "four bullet markers are "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "HTML objects. They come "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "from list-item pseudo-elements, which "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "can't be converted.\n- "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "**Slide 3, \"Why now\":** "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "fully editable.\n- **Slide "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "4, \"Key metric\":** fully "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "editable.\n- **Slide 5, "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "timeline:** the whole slide "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "is a single HTML "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "object, so none of "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "the table is editable. "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "The app's converted table "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "looked slightly different from "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "the original (71 of "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "6,336 pixels), so it "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "kept the original as "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "HTML.\n- **Slide 6, "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "quote:** fully editable.\n\n"
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "I didn't set speaker "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "notes, and I didn't "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "look at any renders. "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "The deck has no "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "speaker notes that I "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "saw.\n\nThe page "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "showed the slides at "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "1280x720 at 100%, so "
+      },
+      {
+        "delayMs": 35,
+        "type": "text_delta",
+        "text": "no scaling was needed."
+      },
+      {
+        "delayMs": 150,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 6,
+          "outputTokens": 1097,
+          "cacheReadTokens": 16387,
+          "cacheWriteTokens": 9914
+        },
+        "costUsd": 0.0539154,
+        "durationMs": 12431
+      }
+    ]
+  ]
+}

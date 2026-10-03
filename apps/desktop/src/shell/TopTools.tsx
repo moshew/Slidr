@@ -1,0 +1,365 @@
+import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  ChartColumn,
+  ChevronDown,
+  Clapperboard,
+  FilePlus,
+  FolderOpen,
+  History,
+  Image,
+  Play,
+  RectangleHorizontal,
+  Redo2,
+  Save,
+  Shapes,
+  Share,
+  Slash,
+  Sparkles,
+  Sticker,
+  Table,
+  Type,
+  Undo2,
+  type LucideIcon,
+} from '@slidr/ui/icons';
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  Icon,
+  IconButton,
+} from '@slidr/ui';
+import type { RecentFile } from '../document/storage';
+import { useDeck, useEditor, useFile, useSelection } from './editor';
+import {
+  newDocument,
+  openDocument,
+  recentFiles,
+  saveDocument,
+  saveDocumentAs,
+} from './fileActions';
+import { PanelId, useAction, useContextTools, type ToolAction } from './registry';
+import { selectionKind, type SelectionKind } from './selection';
+import { openPanel, setZoom, useShell } from './store';
+
+/** Top Tools (SPEC 4.4): row A is fixed, row B follows the selection. */
+export function TopTools() {
+  return (
+    <div className="shrink-0 bg-ui-panel">
+      <RowA />
+      <RowB />
+    </div>
+  );
+}
+
+function Group({ children, label }: { children: ReactNode; label?: string }) {
+  return (
+    <div role="group" aria-label={label} className="flex items-center gap-0.5">
+      {children}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- row A */
+
+const inserts: { action: ToolAction; icon: LucideIcon; label: string }[] = [
+  { action: 'insert.text', icon: Type, label: 'tools.insertText' },
+  { action: 'insert.image', icon: Image, label: 'tools.insertImage' },
+  { action: 'insert.shape', icon: Shapes, label: 'tools.insertShape' },
+  { action: 'insert.line', icon: Slash, label: 'tools.insertLine' },
+  { action: 'insert.table', icon: Table, label: 'tools.insertTable' },
+  { action: 'insert.chart', icon: ChartColumn, label: 'tools.insertChart' },
+  { action: 'insert.media', icon: Clapperboard, label: 'tools.insertMedia' },
+  { action: 'insert.icon', icon: Sticker, label: 'tools.insertIcon' },
+];
+
+function RowA() {
+  const { t } = useTranslation();
+  return (
+    <div
+      role="toolbar"
+      aria-label={t('panels.tools')}
+      data-testid="top-tools-a"
+      className="flex h-toolbar-a items-center gap-4 border-b border-ui-line px-3"
+    >
+      <FileMenu />
+      <UndoRedo />
+      <Group>
+        {inserts.map((insert) => (
+          <ActionButton key={insert.action} {...insert} />
+        ))}
+      </Group>
+      <div className="flex-1" />
+      <ZoomMenu />
+      <div className="flex items-center gap-2">
+        <Button variant="soft" icon={Sparkles} onClick={() => openPanel(PanelId.aiSlide)}>
+          {t('tools.aiSlide')}
+        </Button>
+        <ExportButton />
+        <PresentButton />
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  action,
+  icon,
+  label,
+}: {
+  action: ToolAction;
+  icon: LucideIcon;
+  label: string;
+}) {
+  const { t } = useTranslation();
+  const run = useAction(action);
+  return <IconButton icon={icon} label={t(label)} disabled={!run} onClick={run} />;
+}
+
+function ExportButton() {
+  const { t } = useTranslation();
+  const run = useAction('export');
+  return <IconButton icon={Share} label={t('tools.export')} disabled={!run} onClick={run} />;
+}
+
+function PresentButton() {
+  const { t } = useTranslation();
+  const run = useAction('present');
+  return (
+    <Button variant="primary" icon={Play} disabled={!run} onClick={run}>
+      {t('tools.present')}
+    </Button>
+  );
+}
+
+function UndoRedo() {
+  const { t } = useTranslation();
+  const { bus } = useEditor();
+  const canUndo = useDeck((s) => s.canUndo);
+  const canRedo = useDeck((s) => s.canRedo);
+  return (
+    <Group>
+      <IconButton
+        icon={Undo2}
+        mirror
+        label={t('tools.undo')}
+        shortcut="Ctrl+Z"
+        disabled={!canUndo}
+        onClick={() => bus.undo()}
+      />
+      <IconButton
+        icon={Redo2}
+        mirror
+        label={t('tools.redo')}
+        shortcut="Ctrl+Y"
+        disabled={!canRedo}
+        onClick={() => bus.redo()}
+      />
+    </Group>
+  );
+}
+
+function FileMenu() {
+  const { t } = useTranslation();
+  const editor = useEditor();
+  const busy = useFile((s) => s.busy);
+  const [recent, setRecent] = useState<RecentFile[] | null>(null);
+  const hasStorage = editor.document !== null;
+
+  return (
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open && hasStorage) void recentFiles(editor).then(setRecent);
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" iconEnd={ChevronDown} loading={busy !== null}>
+          {t('file.menu')}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
+          icon={FilePlus}
+          shortcut="Ctrl+N"
+          onSelect={() => void newDocument(editor)}
+        >
+          {t('file.new')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          icon={FolderOpen}
+          shortcut="Ctrl+O"
+          disabled={!hasStorage}
+          onSelect={() => void openDocument(editor)}
+        >
+          {t('file.open')}
+        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger icon={History} disabled={!hasStorage}>
+            {t('file.recent')}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="max-w-96">
+            {recent?.length ? (
+              recent.slice(0, 10).map((file) => (
+                <DropdownMenuItem
+                  key={file.path}
+                  disabled={!file.exists}
+                  hint={file.exists ? undefined : t('file.missing')}
+                  onSelect={() => void openDocument(editor, file.path)}
+                >
+                  {file.title || file.path.split(/[\\/]/).at(-1)}
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem disabled>{t('file.noRecent')}</DropdownMenuItem>
+            )}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          icon={Save}
+          shortcut="Ctrl+S"
+          disabled={!hasStorage}
+          onSelect={() => void saveDocument(editor)}
+        >
+          {t('file.save')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          shortcut="Ctrl+Shift+S"
+          disabled={!hasStorage}
+          onSelect={() => void saveDocumentAs(editor)}
+          className="ps-8"
+        >
+          {t('file.saveAs')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const zoomSteps = [0.5, 1, 2];
+
+function ZoomMenu() {
+  const { t } = useTranslation();
+  const zoom = useShell((s) => s.zoom);
+  const viewScale = useShell((s) => s.viewScale);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          iconEnd={ChevronDown}
+          aria-label={t('tools.zoom')}
+          className="tabular-nums"
+        >
+          {Math.round(viewScale * 100)}%
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuRadioGroup
+          value={String(zoom)}
+          onValueChange={(value) => setZoom(value === 'fit' ? 'fit' : Number(value))}
+        >
+          <DropdownMenuRadioItem value="fit" shortcut="Ctrl+0">
+            {t('tools.zoomFit')}
+          </DropdownMenuRadioItem>
+          {zoomSteps.map((step) => (
+            <DropdownMenuRadioItem key={step} value={String(step)}>
+              {step * 100}%
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/* ---------------------------------------------------------------- row B */
+
+const kindIcons: Record<SelectionKind, LucideIcon> = {
+  none: RectangleHorizontal,
+  text: Type,
+  image: Image,
+  shape: Shapes,
+  table: Table,
+  chart: ChartColumn,
+  media: Clapperboard,
+  html: Sticker,
+  group: Shapes,
+  multiple: Shapes,
+};
+
+/** The selection kinds that get the "AI" button at the end of row B (SPEC 4.4). */
+const aiKinds = new Set<SelectionKind>([
+  'text',
+  'image',
+  'shape',
+  'table',
+  'chart',
+  'html',
+  'group',
+]);
+
+function useSelectionKind(): { kind: SelectionKind; count: number } {
+  const deck = useDeck((s) => s.deck);
+  const slideId = useSelection((s) => s.currentSlideId);
+  const elementIds = useSelection((s) => s.selectedElementIds);
+  return { kind: selectionKind(deck, slideId, elementIds), count: elementIds.length };
+}
+
+function RowB() {
+  const { t } = useTranslation();
+  const { kind, count } = useSelectionKind();
+  const groups = useContextTools(kind);
+  const label =
+    kind === 'multiple' ? t('selection.multiple', { n: count }) : t(`selection.${kind}`);
+
+  return (
+    <div
+      role="toolbar"
+      aria-label={t('tools.contextTools')}
+      data-testid="top-tools-b"
+      data-selection={kind}
+      className="flex h-toolbar-b items-center gap-4 border-b border-ui-line px-3"
+    >
+      <span
+        data-testid="selection-label"
+        className="flex items-center gap-1.5 ps-1 text-sm font-medium text-ui-fg"
+      >
+        <Icon icon={kindIcons[kind]} className="text-ui-fg-muted" />
+        {label}
+      </span>
+      {groups.map((group) => (
+        <Group key={group[0]?.group}>
+          {group.map(({ id, render: Tool }) => (
+            <Tool key={id} kind={kind} />
+          ))}
+        </Group>
+      ))}
+      {kind === 'none' ? (
+        <Button variant="soft" size="sm" icon={Sparkles} onClick={() => openPanel(PanelId.aiSlide)}>
+          {t('tools.aiSlide')}
+        </Button>
+      ) : (
+        aiKinds.has(kind) && (
+          <Button
+            variant="soft"
+            size="sm"
+            icon={Sparkles}
+            aria-label={t('tools.aiObject')}
+            onClick={() => openPanel(PanelId.aiObject)}
+          >
+            {t('tools.ai')}
+          </Button>
+        )
+      )}
+    </div>
+  );
+}

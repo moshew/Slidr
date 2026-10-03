@@ -1,5 +1,16 @@
 import { z } from 'zod';
-import { AssetId, Color, CssPassthrough, Fill, Frame, Id, Insets, Point, Shadow, Stroke } from './primitives';
+import {
+  AssetId,
+  Color,
+  CssPassthrough,
+  Fill,
+  Frame,
+  Id,
+  Insets,
+  Point,
+  Shadow,
+  Stroke,
+} from './primitives';
 import { RichText } from './text';
 
 /** What a placeholder or an element is for. Layout switching maps content by role (SPEC 5.5). */
@@ -35,8 +46,9 @@ const base = {
   name: z.string().min(1).optional(),
   role: PlaceholderRole.optional(),
   frame: Frame,
-  /** Degrees, around the centre of the frame. */
+  /** Degrees, clockwise, around the centre of the frame. */
   rotation: z.number(),
+  /** Mirroring happens in the element's own box, before the rotation. */
   flipH: z.boolean().optional(),
   flipV: z.boolean().optional(),
   opacity: z.number().min(0).max(1),
@@ -87,7 +99,14 @@ export const ImageElement = z.strictObject({
   /** What to generate for this placeholder (SPEC 11.5, `data-image-prompt`). */
   prompt: z.string().min(1).optional(),
   /** Visible part of the original, normalised 0..1. The original is never altered (IMG-12). */
-  crop: z.strictObject({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() }).optional(),
+  crop: z
+    .strictObject({
+      x: z.number(),
+      y: z.number(),
+      w: z.number().positive(),
+      h: z.number().positive(),
+    })
+    .optional(),
   fit: z.enum(['cover', 'contain', 'fill']),
   mask: ImageMask.optional(),
   adjust: ImageAdjust.optional(),
@@ -98,9 +117,17 @@ export const ImageElement = z.strictObject({
 export type ImageElement = z.infer<typeof ImageElement>;
 
 const Geometry = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('preset'), preset: z.string().min(1), adjust: z.array(z.number()).optional() }),
+  z.strictObject({
+    kind: z.literal('preset'),
+    preset: z.string().min(1),
+    adjust: z.array(z.number()).optional(),
+  }),
   /** SVG path data in a box of the given size, stretched to the frame. */
-  z.strictObject({ kind: z.literal('path'), d: z.string().min(1), viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }) }),
+  z.strictObject({
+    kind: z.literal('path'),
+    d: z.string().min(1),
+    viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
+  }),
 ]);
 
 export const ShapeElement = z.strictObject({
@@ -136,7 +163,9 @@ export const SvgElement = z
     /** Source colour -> replacement, so icons and illustrations can follow the theme. */
     colorOverrides: z.record(z.string().min(1), Color).optional(),
   })
-  .refine((e) => Boolean(e.assetId) !== Boolean(e.markup), { message: 'an svg element has either assetId or markup' });
+  .refine((e) => Boolean(e.assetId) !== Boolean(e.markup), {
+    message: 'an svg element has either assetId or markup',
+  });
 export type SvgElement = z.infer<typeof SvgElement>;
 
 const CellBorders = z.strictObject({
@@ -177,12 +206,24 @@ export const TableElement = z
       styleId: z.string().min(1).optional(),
     }),
   })
-  .refine((t) => t.cells.length === t.rows.length && t.cells.every((row) => row.length === t.cols.length), {
-    message: 'cells must be a rows x cols grid',
-  });
+  .refine(
+    (t) => t.cells.length === t.rows.length && t.cells.every((row) => row.length === t.cols.length),
+    {
+      message: 'cells must be a rows x cols grid',
+    },
+  );
 export type TableElement = z.infer<typeof TableElement>;
 
-export const ChartType = z.enum(['column', 'bar', 'line', 'area', 'pie', 'donut', 'scatter', 'radar']);
+export const ChartType = z.enum([
+  'column',
+  'bar',
+  'line',
+  'area',
+  'pie',
+  'donut',
+  'scatter',
+  'radar',
+]);
 export type ChartType = z.infer<typeof ChartType>;
 
 const ChartSeries = z.strictObject({
@@ -209,7 +250,10 @@ export const ChartElement = z.strictObject({
   data: z.strictObject({ categories: z.array(z.string()), series: z.array(ChartSeries) }),
   options: z.strictObject({
     title: z.string().optional(),
-    legend: z.strictObject({ show: z.boolean(), position: z.enum(['top', 'bottom', 'start', 'end']) }),
+    legend: z.strictObject({
+      show: z.boolean(),
+      position: z.enum(['top', 'bottom', 'start', 'end']),
+    }),
     axes: z.strictObject({ x: ChartAxis, y: ChartAxis }),
     labels: z.boolean(),
     /** Overrides the theme's chart palette. */
@@ -225,7 +269,12 @@ export const VideoElement = z.strictObject({
   type: z.literal('video'),
   assetId: AssetId,
   /** A chosen frame of the video, or a separate image. */
-  poster: z.union([z.strictObject({ timeMs: z.number().nonnegative() }), z.strictObject({ assetId: AssetId })]).optional(),
+  poster: z
+    .union([
+      z.strictObject({ timeMs: z.number().nonnegative() }),
+      z.strictObject({ assetId: AssetId }),
+    ])
+    .optional(),
   autoplay: z.boolean(),
   loop: z.boolean(),
   muted: z.boolean(),
@@ -281,10 +330,12 @@ const LeafElement = z.discriminatedUnion('type', [
 ]);
 type LeafElement = z.infer<typeof LeafElement>;
 
-const baseObject = z.strictObject(base);
+/** The fields shared by every element type. */
+export const ElementBase = z.strictObject(base);
+export type ElementBase = z.infer<typeof ElementBase>;
 
 // The recursion has to be spelled out for TypeScript: a schema cannot infer its own type.
-export interface GroupElement extends z.infer<typeof baseObject> {
+export interface GroupElement extends ElementBase {
   type: 'group';
   /** Frames of the children are relative to the group's frame. */
   children: Element[];
@@ -299,5 +350,32 @@ export const GroupElement: z.ZodType<GroupElement> = z.strictObject({
 
 export const Element: z.ZodType<Element> = z.union([LeafElement, GroupElement]);
 
-export const ElementType = z.enum(['text', 'image', 'shape', 'line', 'svg', 'group', 'table', 'chart', 'video', 'audio', 'html']);
+export const ElementType = z.enum([
+  'text',
+  'image',
+  'shape',
+  'line',
+  'svg',
+  'group',
+  'table',
+  'chart',
+  'video',
+  'audio',
+  'html',
+]);
 export type ElementType = z.infer<typeof ElementType>;
+
+/** The schema of one element type. Validating against it gives sharper errors than `Element`. */
+export const elementSchemas: Record<ElementType, z.ZodType<Element>> = {
+  text: TextElement,
+  image: ImageElement,
+  shape: ShapeElement,
+  line: LineElement,
+  svg: SvgElement,
+  group: GroupElement,
+  table: TableElement,
+  chart: ChartElement,
+  video: VideoElement,
+  audio: AudioElement,
+  html: HtmlElement,
+};

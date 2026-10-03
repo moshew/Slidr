@@ -3,5 +3,13 @@
   "identifier": "default",
   "description": "Main window. Kept minimal (SEC-05): add a permission only with the feature that needs it.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close"
+  ]
 }

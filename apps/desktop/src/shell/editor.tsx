@@ -1,0 +1,102 @@
+import { createContext, useContext, type ReactNode } from 'react';
+import { createStore, useStore, type StoreApi } from 'zustand';
+import {
+  CommandBus,
+  createDeck,
+  createDeckStore,
+  createSelectionStore,
+  createSlide,
+  type Deck,
+  type DeckState,
+  type DeckStore,
+  type SelectionState,
+  type SelectionStore,
+} from '@slidr/model';
+import { DocumentService } from '../document/documentService';
+import type { Storage } from '../document/storage';
+
+/** The open document as the shell shows it: title bar, status bar, File menu. */
+export interface FileState {
+  /** The `.slidr` file, or null for a deck that was never saved. */
+  path: string | null;
+  /** There are changes that are not in the file. */
+  dirty: boolean;
+  busy: 'opening' | 'saving' | null;
+}
+
+/**
+ * One editing window: the command bus and the stores built on it (ADR-007), and the document
+ * service that ties the deck to a file. Other areas reach it with `useEditor()`.
+ */
+export interface Editor {
+  bus: CommandBus;
+  deck: DeckStore;
+  selection: SelectionStore;
+  /** Files and workspaces. Null in a plain browser (Playwright, the Vite page): no Tauri core. */
+  document: DocumentService | null;
+  /** The storage under the document service; the shell reads the recent files from it. */
+  storage: Storage | null;
+  file: StoreApi<FileState>;
+}
+
+/** A new deck: one empty slide, in the language of the UI. */
+export function newDeck(lang: string): Deck {
+  return createDeck({ lang, slides: [createSlide()] });
+}
+
+export function createEditor(options: { lang: string; storage: Storage | null }): Editor {
+  const bus = new CommandBus(newDeck(options.lang));
+  // Created before the subscription below, so `dirty` is current when it runs.
+  const document = options.storage
+    ? new DocumentService(options.storage, bus, {
+        onAutosaveError: (error) => console.error('Autosave failed', error),
+      })
+    : null;
+  const file = createStore<FileState>(() => ({ path: null, dirty: false, busy: null }));
+  bus.subscribe((event) => {
+    file.setState({ dirty: document ? document.dirty : event.kind !== 'reset' });
+  });
+  return {
+    bus,
+    deck: createDeckStore(bus),
+    selection: createSelectionStore(bus),
+    document,
+    storage: options.storage,
+    file,
+  };
+}
+
+/** Brings the file state in line with the document service after a file operation. */
+export function syncFileState(editor: Editor): void {
+  const { document } = editor;
+  editor.file.setState(
+    document ? { path: document.path, dirty: document.dirty, busy: null } : { busy: null },
+  );
+}
+
+/* ---------------------------------------------------------------- React */
+
+const EditorContext = createContext<Editor | null>(null);
+
+export function EditorProvider({ editor, children }: { editor: Editor; children: ReactNode }) {
+  return <EditorContext value={editor}>{children}</EditorContext>;
+}
+
+export function useEditor(): Editor {
+  const editor = useContext(EditorContext);
+  if (!editor) throw new Error('useEditor needs an <EditorProvider>.');
+  return editor;
+}
+
+/** Reads from the deck store; re-renders when the selected value changes. */
+export function useDeck<T>(selector: (state: DeckState) => T): T {
+  return useStore(useEditor().deck, selector);
+}
+
+export function useSelection<T>(selector: (state: SelectionState) => T): T {
+  return useStore(useEditor().selection, selector);
+}
+
+export function useFile<T>(selector: (state: FileState) => T): T {
+  return useStore(useEditor().file, selector);
+}

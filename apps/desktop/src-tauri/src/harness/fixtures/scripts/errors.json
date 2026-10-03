@@ -1,0 +1,88 @@
+{
+  "description": "Error states for the chat (CHT-U09), one per turn: a tool call that fails and the agent recovers; a usage limit that ends the turn; a session whose agent did not receive the app's tools. Hand-written; the shapes are those the adapters emit.",
+  "turns": [
+    [
+      { "delayMs": 900, "type": "text_delta", "text": "Updating the title on slide 4." },
+      {
+        "delayMs": 500,
+        "type": "tool_call_started",
+        "id": "call_1",
+        "name": "element_update",
+        "source": "app",
+        "input": { "elementId": "e_31x0pq7m", "patch": { "name": "title" } }
+      },
+      {
+        "delayMs": 40,
+        "type": "tool_call_finished",
+        "id": "call_1",
+        "ok": false,
+        "summary": "not_found: element e_31x0pq7m does not exist; it may have been deleted"
+      },
+      {
+        "delayMs": 700,
+        "type": "tool_call_started",
+        "id": "call_2",
+        "name": "slide_get",
+        "source": "app",
+        "input": { "slideId": "s_4" }
+      },
+      {
+        "delayMs": 30,
+        "type": "tool_call_finished",
+        "id": "call_2",
+        "ok": true,
+        "summary": "slide s_4 \"Key metric\": 4 elements"
+      },
+      {
+        "delayMs": 800,
+        "type": "text_delta",
+        "text": " The title was removed in the meantime, so I left the slide as it is."
+      },
+      {
+        "delayMs": 50,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 14,
+          "outputTokens": 190,
+          "cacheReadTokens": 7400,
+          "cacheWriteTokens": 380
+        },
+        "costUsd": 0.0031,
+        "durationMs": 3070
+      }
+    ],
+    [
+      {
+        "delayMs": 600,
+        "type": "error",
+        "kind": "quota",
+        "message": "usage limit reached (five_hour); resets at 2026-10-03T18:00:00Z",
+        "recoverable": true
+      },
+      {
+        "delayMs": 20,
+        "type": "turn_completed",
+        "outcome": "failed",
+        "costUsd": null,
+        "durationMs": 620
+      }
+    ],
+    [
+      {
+        "delayMs": 800,
+        "type": "error",
+        "kind": "tools_unavailable",
+        "message": "the agent started without the app's tools; the turn was stopped",
+        "recoverable": false
+      },
+      {
+        "delayMs": 15,
+        "type": "turn_completed",
+        "outcome": "interrupted",
+        "costUsd": 0,
+        "durationMs": 815
+      }
+    ]
+  ]
+}

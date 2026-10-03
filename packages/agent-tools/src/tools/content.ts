@@ -1,0 +1,376 @@
+import {
+  AnimationStep,
+  ChartElement,
+  ChartType,
+  Color,
+  createElement,
+  Frame,
+  newId,
+  RichText,
+  TextStyleRef,
+  type Deck,
+  type Paragraph,
+  type TableCell,
+} from '@slidr/model';
+import { z } from 'zod';
+import { getElement, getSlide } from '../lookup';
+import { markdownToRichText } from '../markdown';
+import { DeckApiError, defineTool } from '../tool';
+import { about, freshElementId } from './shared';
+
+const Id = z.string().min(1);
+
+const MARKDOWN_HELP =
+  'Markdown subset: one paragraph per line (blank lines only separate; end a line with \\ for a line break inside the paragraph); "- " bullets and "1. " numbered items, nested by indenting; **bold**, *italic*, ~~strike~~, ==highlight==, [text](url); \\ before a punctuation mark makes it literal. Nothing else: headings, quotes and code stay plain text.';
+
+const DIR_HELP =
+  'Direction of every paragraph. Default: each paragraph takes the deck direction, unless all its letters are of the other direction (an English line in a Hebrew deck).';
+
+function textOptions(deck: Deck, previous: RichText | undefined, input: TextFormat) {
+  return {
+    deckDir: deck.meta.dir,
+    previous,
+    ...(input.dir ? { dir: input.dir } : {}),
+    ...(input.style ? { styleRef: input.style } : {}),
+    ...(input.align ? { align: input.align } : {}),
+  };
+}
+
+interface TextFormat {
+  dir?: Paragraph['dir'];
+  style?: TextStyleRef;
+  align?: Paragraph['align'];
+}
+
+export const textSet = defineTool({
+  name: 'text_set',
+  description: `Replaces the text of a text box, a shape, or one table cell, from Markdown or as RichText JSON. New paragraphs keep the formatting of the text they replace (style, alignment, spacing, colour), so restyling is rarely needed. ${MARKDOWN_HELP} Returns the ids changed.`,
+  input: z.strictObject({
+    elementId: Id,
+    slideId: Id.optional(),
+    markdown: z.string().optional().describe('The new text. Give this or richText.'),
+    richText: about(RichText, 'The new text as RichText JSON, for full control.').optional(),
+    cell: z
+      .strictObject({ row: z.number().int().nonnegative(), col: z.number().int().nonnegative() })
+      .optional()
+      .describe('For a table: the cell, counted from 0.'),
+    style: TextStyleRef.optional().describe(
+      'Theme text style for every paragraph (Markdown only).',
+    ),
+    align: z
+      .enum(['start', 'center', 'end', 'justify'])
+      .optional()
+      .describe('Alignment of every paragraph (Markdown only); start follows the direction.'),
+    dir: z.enum(['rtl', 'ltr', 'auto']).optional().describe(`${DIR_HELP} Markdown only.`),
+  }),
+  scopes: ['deck', 'slide', 'object'],
+  writes: true,
+  run(input, ctx) {
+    const { elementId, slideId, markdown, richText, cell } = input;
+    if ((markdown === undefined) === (richText === undefined)) {
+      throw new DeckApiError('invalid_input', 'Give exactly one of markdown and richText.');
+    }
+    const { slide, element } = getElement(ctx.deck, elementId, slideId);
+    let previous: RichText | undefined;
+    if (element.type === 'table') {
+      if (!cell) throw new DeckApiError('invalid_input', 'A table needs `cell` to set text.');
+      previous = element.cells[cell.row]?.[cell.col]?.content;
+    } else if (element.type === 'text' || element.type === 'shape') {
+      previous = element.content;
+    } else {
+      throw new DeckApiError(
+        'invalid_state',
+        `Element "${elementId}" is a ${element.type}, which holds no text.`,
+      );
+    }
+    const content =
+      richText ??
+      markdownToRichText(markdown!, {
+        ...textOptions(ctx.deck, previous, input),
+        defaultAlign: element.type === 'shape' ? 'center' : 'start',
+      });
+    ctx.write([
+      { type: 'text.set', slideId: slide.id, elementId, content, ...(cell ? { cell } : {}) },
+    ]);
+    return {};
+  },
+});
+
+const ChartSeries = ChartElement.shape.data.shape.series.element;
+const ChartOptions = ChartElement.shape.options.shape;
+
+function evenSizes(total: number, count: number): number[] {
+  return Array.from({ length: count }, () => total / count);
+}
+
+export const tableSet = defineTool({
+  name: 'table_set',
+  description: `Sets the data and design of a table, or creates one when elementId is absent (then slideId and frame are required). Cells are Markdown (the subset of text_set); a cell keeps the formatting of the text it replaces. Changing the number of rows or columns spreads them evenly unless sizes are given. Returns \`elementId\` and the ids created or changed.`,
+  input: z.strictObject({
+    elementId: Id.optional().describe('The table to change. Absent: create a new table.'),
+    slideId: Id.optional(),
+    frame: about(Frame, 'For a new table: position and size in slide pixels.').optional(),
+    cells: z
+      .array(z.array(z.string()))
+      .optional()
+      .describe('Rows of cells, each cell in Markdown. All rows need the same length.'),
+    colWidths: z.array(z.number().positive()).optional().describe('In slide pixels.'),
+    rowHeights: z.array(z.number().positive()).optional().describe('In slide pixels.'),
+    headerRow: z.boolean().optional(),
+    bandedRows: z.boolean().optional(),
+    firstColumn: z.boolean().optional(),
+    dir: z
+      .enum(['rtl', 'ltr'])
+      .optional()
+      .describe('Column order. Default for a new table: the deck direction.'),
+  }),
+  scopes: ['deck', 'slide', 'object'],
+  writes: true,
+  run(input, ctx) {
+    const { deck } = ctx;
+    const existing = input.elementId ? getElement(deck, input.elementId, input.slideId) : undefined;
+    if (existing && existing.element.type !== 'table') {
+      throw new DeckApiError('invalid_state', `Element "${input.elementId}" is not a table.`);
+    }
+    const table = existing?.element.type === 'table' ? existing.element : undefined;
+    if (!table && (!input.slideId || !input.frame || !input.cells)) {
+      throw new DeckApiError(
+        'invalid_input',
+        'A new table needs slideId, frame and cells (or give the elementId of an existing table).',
+      );
+    }
+    const slideId = existing?.slide.id ?? getSlide(deck, input.slideId!).id;
+    const frame = table?.frame ?? input.frame!;
+
+    const texts = input.cells;
+    const rowCount = texts?.length ?? table!.rows.length;
+    const colCount = texts?.[0]?.length ?? table!.cols.length;
+    if (texts && (rowCount === 0 || colCount === 0 || texts.some((r) => r.length !== colCount))) {
+      throw new DeckApiError(
+        'invalid_input',
+        'cells must be a non-empty grid: every row the same length.',
+      );
+    }
+    const sizes = (
+      given: number[] | undefined,
+      old: number[] | undefined,
+      count: number,
+      total: number,
+      what: string,
+    ) => {
+      if (given && given.length !== count) {
+        throw new DeckApiError(
+          'invalid_input',
+          `${what} has ${given.length} entries for ${count}.`,
+        );
+      }
+      return given ?? (old?.length === count ? old : evenSizes(total, count));
+    };
+    const cols = sizes(input.colWidths, table?.cols, colCount, frame.w, 'colWidths');
+    const rows = sizes(input.rowHeights, table?.rows, rowCount, frame.h, 'rowHeights');
+    const sameGrid = table && table.rows.length === rowCount && table.cols.length === colCount;
+
+    const cells: TableCell[][] = [];
+    for (let r = 0; r < rowCount; r++) {
+      const row: TableCell[] = [];
+      for (let c = 0; c < colCount; c++) {
+        // A new row or column looks like the last one of the old grid.
+        const like =
+          table?.cells[Math.min(r, table.rows.length - 1)]?.[Math.min(c, table.cols.length - 1)];
+        const {
+          rowSpan: _r,
+          colSpan: _c,
+          merged: _m,
+          ...look
+        } = like ?? { content: { paragraphs: [] } };
+        const base: TableCell = sameGrid && like ? { ...like } : look;
+        const text = texts?.[r]?.[c];
+        row.push(
+          text === undefined
+            ? base
+            : {
+                ...base,
+                content: markdownToRichText(text, {
+                  deckDir: deck.meta.dir,
+                  previous: like?.content,
+                }),
+              },
+        );
+      }
+      cells.push(row);
+    }
+
+    const style = {
+      ...(table?.style ?? { headerRow: true, bandedRows: false, firstColumn: false }),
+      ...(input.headerRow !== undefined ? { headerRow: input.headerRow } : {}),
+      ...(input.bandedRows !== undefined ? { bandedRows: input.bandedRows } : {}),
+      ...(input.firstColumn !== undefined ? { firstColumn: input.firstColumn } : {}),
+    };
+    const fields = {
+      frame: { ...frame, w: cols.reduce((a, b) => a + b, 0), h: rows.reduce((a, b) => a + b, 0) },
+      rows,
+      cols,
+      cells,
+      style,
+      dir: input.dir ?? table?.dir ?? deck.meta.dir,
+    };
+    if (table) {
+      ctx.write([{ type: 'element.update', slideId, elementId: table.id, patch: fields }]);
+      return { data: { elementId: table.id } };
+    }
+    const element = createElement.table({ ...fields, id: freshElementId(deck) });
+    ctx.write([{ type: 'element.add', slideId, element }]);
+    return { data: { elementId: element.id } };
+  },
+});
+
+export const chartSet = defineTool({
+  name: 'chart_set',
+  description:
+    'Sets the data and options of a chart, or creates one when elementId is absent (then slideId, frame, chartType, categories and series are required). Omitted fields keep their value; options are merged key by key. Each series has one value per category (null for a gap). Returns `elementId` and the ids created or changed.',
+  input: z.strictObject({
+    elementId: Id.optional().describe('The chart to change. Absent: create a new chart.'),
+    slideId: Id.optional(),
+    frame: about(Frame, 'For a new chart: position and size in slide pixels.').optional(),
+    chartType: ChartType.optional(),
+    categories: z.array(z.string()).optional(),
+    series: z.array(ChartSeries).optional(),
+    title: z.string().nullable().optional().describe('null removes the title.'),
+    legend: ChartOptions.legend.optional(),
+    axes: ChartOptions.axes.optional(),
+    labels: z.boolean().optional().describe('Show value labels on the data.'),
+    palette: z
+      .array(Color)
+      .nullable()
+      .optional()
+      .describe('Series colours; null goes back to the theme chart palette.'),
+  }),
+  scopes: ['deck', 'slide', 'object'],
+  writes: true,
+  run(input, ctx) {
+    const existing = input.elementId
+      ? getElement(ctx.deck, input.elementId, input.slideId)
+      : undefined;
+    if (existing && existing.element.type !== 'chart') {
+      throw new DeckApiError('invalid_state', `Element "${input.elementId}" is not a chart.`);
+    }
+    const chart = existing?.element.type === 'chart' ? existing.element : undefined;
+    if (
+      !chart &&
+      (!input.slideId || !input.frame || !input.chartType || !input.categories || !input.series)
+    ) {
+      throw new DeckApiError(
+        'invalid_input',
+        'A new chart needs slideId, frame, chartType, categories and series (or the elementId of an existing chart).',
+      );
+    }
+    const data = {
+      categories: input.categories ?? chart!.data.categories,
+      series: input.series ?? chart!.data.series,
+    };
+    for (const s of data.series) {
+      if (!s.points && s.values.length !== data.categories.length) {
+        throw new DeckApiError(
+          'invalid_input',
+          `Series "${s.name}" has ${s.values.length} values for ${data.categories.length} categories.`,
+        );
+      }
+    }
+    const chartType = input.chartType ?? chart!.chartType;
+    const frame = chart?.frame ?? input.frame!;
+    const options: Record<string, unknown> = {
+      ...(chart?.options ?? createElement.chart({ frame, chartType, data }).options),
+    };
+    for (const key of ['title', 'legend', 'axes', 'labels', 'palette'] as const) {
+      const value = input[key];
+      if (value === null) delete options[key];
+      else if (value !== undefined) options[key] = value;
+    }
+    if (chart) {
+      ctx.write([
+        {
+          type: 'element.update',
+          slideId: existing!.slide.id,
+          elementId: chart.id,
+          patch: { chartType, data, options },
+        },
+      ]);
+      return { data: { elementId: chart.id } };
+    }
+    const slideId = getSlide(ctx.deck, input.slideId!).id;
+    const element = {
+      ...createElement.chart({ id: freshElementId(ctx.deck), frame, chartType, data }),
+      options,
+    } as ChartElement;
+    ctx.write([{ type: 'element.add', slideId, element }]);
+    return { data: { elementId: element.id } };
+  },
+});
+
+const StepInput = AnimationStep.partial({
+  id: true,
+  trigger: true,
+  category: true,
+  duration: true,
+  delay: true,
+  easing: true,
+});
+
+export const animationSet = defineTool({
+  name: 'animation_set',
+  description:
+    "Sets the animation timeline of a slide, in play order. With elementIds, only the steps of those elements are replaced and the rest of the timeline stays (in an object session this is the default, for the session's elements). Step defaults: trigger onClick, category entrance, duration 500 ms, delay 0, easing ease-out, new id. Returns the ids changed.",
+  input: z.strictObject({
+    slideId: Id,
+    steps: z
+      .array(StepInput)
+      .describe(
+        'Each step animates one element of the slide. preset: fade, flyIn, zoom, wipe, rise, pulse, ...; trigger: onClick, withPrevious or afterPrevious.',
+      ),
+    elementIds: z
+      .array(Id)
+      .optional()
+      .describe(
+        'Replace only the steps of these elements; the new steps go where their first old step was.',
+      ),
+  }),
+  scopes: ['deck', 'slide', 'object'],
+  writes: true,
+  run({ slideId, steps, elementIds }, ctx) {
+    const slide = getSlide(ctx.deck, slideId);
+    const scope = ctx.turn.scope;
+    const only = elementIds ?? (scope.kind === 'object' ? scope.elementIds : undefined);
+    const taken = new Set(slide.timeline.map((s) => s.id));
+    const fresh = steps.map((step) => {
+      const id = step.id ?? newId('a', (candidate) => taken.has(candidate));
+      taken.add(id);
+      return {
+        trigger: 'onClick' as const,
+        category: 'entrance' as const,
+        duration: 500,
+        delay: 0,
+        easing: 'ease-out',
+        ...step,
+        id,
+      };
+    });
+    let timeline = fresh;
+    if (only) {
+      const replaced = new Set(only);
+      const outside = fresh.find((step) => !replaced.has(step.elementId));
+      if (outside) {
+        throw new DeckApiError(
+          'invalid_input',
+          `Step for element "${outside.elementId}" is not among elementIds.`,
+        );
+      }
+      const at = slide.timeline.findIndex((step) => replaced.has(step.elementId));
+      const kept = slide.timeline.filter((step) => !replaced.has(step.elementId));
+      // Every step before the first replaced one is kept, so `at` is also its place in `kept`.
+      const insertAt = at < 0 ? kept.length : at;
+      timeline = [...kept.slice(0, insertAt), ...fresh, ...kept.slice(insertAt)];
+    }
+    ctx.write([{ type: 'slide.setTimeline', slideId, timeline }]);
+    return { data: { stepIds: fresh.map((s) => s.id) } };
+  },
+});

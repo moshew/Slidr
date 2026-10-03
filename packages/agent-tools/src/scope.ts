@@ -1,0 +1,96 @@
+import { walkElements, type Command, type Deck, type Slide } from '@slidr/model';
+
+/**
+ * What an agent session works on (SPEC 11.2, 11.7). The same shape as `Scope` in the app's
+ * agent client, so a session's scope passes through unchanged.
+ */
+export type SessionScope =
+  | { kind: 'deck' }
+  | { kind: 'slide'; slideId: string }
+  | { kind: 'object'; slideId: string; elementIds: readonly string[] }
+  /** An HTML import session (SPEC 13). It has the rights of a deck session. */
+  | { kind: 'import'; file?: string };
+
+export type ScopeKind = SessionScope['kind'];
+
+/**
+ * Whether a tool can be called in a session. Tools list the scopes of the catalogue
+ * (SPEC 11.4: D, S, O); an import session gets every deck tool, plus the tools that name
+ * `import` themselves.
+ */
+export function availableIn(scopes: readonly ScopeKind[], kind: ScopeKind): boolean {
+  return scopes.includes(kind) || (kind === 'import' && scopes.includes('deck'));
+}
+
+export function describeScope(scope: SessionScope): string {
+  switch (scope.kind) {
+    case 'deck':
+      return 'a deck session';
+    case 'import':
+      return 'an import session';
+    case 'slide':
+      return `a slide session, limited to slide "${scope.slideId}"`;
+    case 'object':
+      return `an object session, limited to element(s) ${scope.elementIds
+        .map((id) => `"${id}"`)
+        .join(', ')} on slide "${scope.slideId}"`;
+  }
+}
+
+/** The elements an object session may change: its own and everything inside them. */
+function writableElements(slide: Slide | undefined, elementIds: readonly string[]): Set<string> {
+  const ids = new Set(elementIds);
+  if (!slide) return ids;
+  for (const element of walkElements(slide.elements)) {
+    if (ids.has(element.id) && element.type === 'group') {
+      for (const inside of walkElements(element.children)) ids.add(inside.id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * The scope guard for writes (SPEC 11.4): undefined when every command stays inside the
+ * session's scope, otherwise why not. Reads are never limited. A deck or import session may
+ * do anything. A slide session may change only its slide and what is on it. An object session
+ * may change only its elements (and their children): their fields, their text, and their own
+ * animation steps. Registering an asset is allowed everywhere: it changes no slide, and the
+ * image tools need it in every scope.
+ */
+export function checkWrite(
+  scope: SessionScope,
+  commands: readonly Command[],
+  deck: Deck,
+): string | undefined {
+  if (scope.kind === 'deck' || scope.kind === 'import') return undefined;
+  const where = describeScope(scope);
+  const slide = deck.slides.find((s) => s.id === scope.slideId);
+  const writable = scope.kind === 'object' ? writableElements(slide, scope.elementIds) : undefined;
+
+  for (const command of commands) {
+    if (command.type === 'asset.add') continue;
+    if (!('slideId' in command)) {
+      return `${command.type} changes the whole deck, which is outside ${where}.`;
+    }
+    if (command.slideId !== scope.slideId) {
+      return `This would change slide "${command.slideId}", which is outside ${where}.`;
+    }
+    if (!writable) continue;
+
+    if (command.type === 'element.update' || command.type === 'text.set') {
+      if (!writable.has(command.elementId)) {
+        return `This would change element "${command.elementId}", which is outside ${where}.`;
+      }
+    } else if (command.type === 'slide.setTimeline') {
+      // Steps of other elements must stay exactly as they are, in the same order.
+      const others = (steps: readonly { elementId: string }[]) =>
+        JSON.stringify(steps.filter((step) => !writable.has(step.elementId)));
+      if (others(command.timeline) !== others(slide?.timeline ?? [])) {
+        return `This would change animation steps of other elements, which is outside ${where}.`;
+      }
+    } else {
+      return `${command.type} is not allowed in ${where}: it may change only the fields, text and animation of its elements.`;
+    }
+  }
+  return undefined;
+}

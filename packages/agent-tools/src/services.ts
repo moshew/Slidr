@@ -1,0 +1,225 @@
+/**
+ * What the Deck API needs from the rest of the app. Each service is optional: a tool that
+ * needs one is registered only when it is provided, so the API works today with the model
+ * alone and grows as the work groups deliver. Every service gets the deck it should work on,
+ * so it renders, lints or converts exactly the state the tool saw.
+ */
+import type {
+  AssetMeta,
+  Command,
+  Deck,
+  Element,
+  PlaceholderRole,
+  SelectionState,
+  Slide,
+} from '@slidr/model';
+
+/** A PNG for the agent to look at, base64 encoded (SPEC 11.4: tools return image content). */
+export interface PngImage {
+  mimeType: 'image/png';
+  /** Base64 of the PNG file, without a `data:` prefix. */
+  data: string;
+  width?: number;
+  height?: number;
+}
+
+/** The user's selection, as the app's `SelectionStore` holds it (CMD-05). */
+export type SelectionSnapshot = Pick<
+  SelectionState,
+  'currentSlideId' | 'selectedSlideIds' | 'selectedElementIds' | 'editingElementId'
+>;
+
+/** The editor around the deck. Filled by WG3 / WG11 from `SelectionStore` and the stage. */
+export interface UiPort {
+  selection(): SelectionSnapshot;
+  /** Shows a slide on the stage and, optionally, selects elements on it. */
+  navigate(target: { slideId: string; elementIds?: readonly string[] }): void;
+}
+
+/** WG2-T08: slide capture in the hidden capture window (ADR-003), in the stage's `edit` mode. */
+export interface CaptureService {
+  /** One slide, `width` pixels wide (16:9). */
+  renderSlide(deck: Deck, slideId: string, options: { width: number }): Promise<PngImage>;
+  /** Thumbnails of the slides in a grid, each labelled with its number in the deck. */
+  renderContactSheet(
+    deck: Deck,
+    slideIds: readonly string[],
+    options: { columns: number; width: number },
+  ): Promise<PngImage>;
+}
+
+/** What goes into a placeholder: Markdown text (see `text_set`), an asset, or an image prompt. */
+export type RoleContent = string | { assetId: string } | { imagePrompt: string };
+
+/** WG7-T02: the layout engine. */
+export interface LayoutService {
+  /**
+   * A new slide from a layout: its placeholders become elements, filled by role. Ids are new
+   * and free in `deck`. The tool adds the slide; the service changes nothing.
+   */
+  createSlide(
+    deck: Deck,
+    request: {
+      layoutId: string;
+      content: Partial<Record<PlaceholderRole, RoleContent>>;
+      name?: string;
+    },
+  ): Promise<Slide>;
+}
+
+/** The result of converting HTML into model elements (SPEC 11.5). */
+export interface HtmlSlideConversion {
+  /** The slide with new ids: elements, background, slide `css`, timeline from `data-anim`. */
+  slide: Slide;
+  /** Assets the conversion stored (images, fonts). The tool registers them before the slide. */
+  assets: AssetMeta[];
+  /** Share of the content that became regular elements, 0..1; the rest stayed `html`. */
+  editability: number;
+  /** What the agent should know: content kept as `html`, missing assets, unknown tokens, ... */
+  notes: string[];
+}
+
+export interface ElementConversion {
+  /** The elements that replace the converted one, with new ids, in z-order. */
+  elements: Element[];
+  assets: AssetMeta[];
+  editability: number;
+  notes: string[];
+}
+
+/** WG9A: the HTML conversion engine, shared with HTML import (SPEC ch. 13). */
+export interface ConversionService {
+  /** Converts a slide written as HTML/CSS at 1920x1080 (`<style>` allowed inside). */
+  htmlToSlide(deck: Deck, request: { html: string; name?: string }): Promise<HtmlSlideConversion>;
+  /** `elements`: breaks an `html` element into regular ones. `html`: the opposite. */
+  convertElement(
+    deck: Deck,
+    request: { slideId: string; elementId: string; to: 'elements' | 'html' },
+  ): Promise<ElementConversion>;
+}
+
+export interface LintFinding {
+  /** `L01` ... `L16` (SPEC 9.2, QG-04). */
+  rule: string;
+  severity: 'error' | 'warning' | 'info';
+  slideId: string;
+  elementIds: string[];
+  message: string;
+}
+
+/** WG7-T05: design lint. It measures the rendered DOM (LNT-02), hence async. */
+export interface LintService {
+  /**
+   * `agent`: the rules returned after every write (L01–L07, L13, L16; LNT-04, QG-03, QG-04).
+   * `all`: every rule, for `slide_lint` and `deck_lint`.
+   */
+  lint(deck: Deck, slideIds: readonly string[], rules: 'agent' | 'all'): Promise<LintFinding[]>;
+}
+
+export interface TemplateSummary {
+  id: string;
+  name: string;
+  description?: string;
+  /** Saved by the user (THM-05, THM-09), not built in. */
+  personal: boolean;
+}
+
+/** A layout written as HTML with `data-role` on its placeholders (THM-06). */
+export interface LayoutDraft {
+  name: string;
+  archetype: string;
+  html: string;
+}
+
+/** WG7-T03 (switching) and WG7-T11a (AI templates). */
+export interface TemplateService {
+  list(): Promise<TemplateSummary[]>;
+  /**
+   * The commands that switch the deck to a template as one step (THM-04): theme, layouts, and
+   * slides mapped to the new layouts by archetype and role.
+   */
+  applyCommands(deck: Deck, templateId: string): Promise<Command[]>;
+  /** A draft template from theme tokens and layouts in HTML; not saved, not applied. */
+  create(
+    deck: Deck,
+    request: { name: string; theme: Record<string, unknown>; layouts: LayoutDraft[] },
+  ): Promise<{ templateId: string; preview: PngImage; notes: string[] }>;
+  /** Saves a draft, or the deck's own theme and layouts when `templateId` is absent. */
+  save(
+    deck: Deck,
+    request: { templateId?: string; name: string; setDefault: boolean },
+  ): Promise<{ templateId: string }>;
+}
+
+/** An image the service stored as an asset, with a preview for the agent. */
+export interface StoredImage {
+  asset: AssetMeta;
+  preview: PngImage;
+}
+
+export type ImageAspect = '16:9' | '4:3' | '1:1' | '3:4' | '9:16';
+
+/** WG12-T01, T04, T05: AI images and local image processing. */
+export interface ImageService {
+  generate(request: { prompt: string; count: number; aspect: ImageAspect }): Promise<StoredImage[]>;
+  edit(request: {
+    assetId: string;
+    instruction: string;
+    maskAssetId?: string;
+    count: number;
+  }): Promise<StoredImage[]>;
+  process(request: { assetId: string; operation: 'removeBackground' }): Promise<StoredImage>;
+}
+
+/** WG12-T06: stock photos. The best matches are stored as assets, with attribution. */
+export interface StockService {
+  search(request: {
+    query: string;
+    count: number;
+    orientation?: 'landscape' | 'portrait' | 'square';
+  }): Promise<StoredImage[]>;
+}
+
+/** WG5-T11: the icon library. */
+export interface IconService {
+  search(request: {
+    query: string;
+    count: number;
+  }): Promise<{ id: string; name: string; svg: string }[]>;
+}
+
+/** A card the user can pick (AIS-03, AIO-02, AIO-03). */
+export interface OptionCard {
+  label: string;
+  /** A text variation, in Markdown. */
+  text?: string;
+  /** An image variation. */
+  assetId?: string;
+  /** A slide variation, in HTML as for `slide_create_from_html`. */
+  html?: string;
+}
+
+/** WG11-T08: the variations gallery. The app applies the user's pick, not the agent. */
+export interface OptionsService {
+  present(request: {
+    kind: 'text' | 'image' | 'layout';
+    target: { slideId: string; elementId?: string };
+    prompt?: string;
+    options: OptionCard[];
+  }): Promise<void>;
+}
+
+export interface Services {
+  ui?: UiPort;
+  capture?: CaptureService;
+  layouts?: LayoutService;
+  conversion?: ConversionService;
+  lint?: LintService;
+  templates?: TemplateService;
+  images?: ImageService;
+  stock?: StockService;
+  icons?: IconService;
+  options?: OptionsService;
+}
+
+export type ServiceName = keyof Services;

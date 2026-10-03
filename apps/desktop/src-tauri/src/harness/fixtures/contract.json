@@ -1,0 +1,108 @@
+{
+  "events": [
+    { "type": "session_started", "nativeSessionId": "b2969d29", "model": "sonnet" },
+    { "type": "text_delta", "text": "Adding a slide." },
+    { "type": "thinking_delta", "text": "" },
+    {
+      "type": "tool_call_started",
+      "id": "call_1",
+      "name": "slide_create_from_html",
+      "source": "app",
+      "input": { "index": 0, "html": "<section></section>" }
+    },
+    {
+      "type": "tool_call_started",
+      "id": "call_2",
+      "name": "WebSearch",
+      "source": "harness",
+      "input": { "query": "market size" }
+    },
+    { "type": "tool_call_finished", "id": "call_1", "ok": true, "summary": "created s_1" },
+    {
+      "type": "turn_completed",
+      "outcome": "completed",
+      "usage": {
+        "inputTokens": 10,
+        "outputTokens": 60,
+        "cacheReadTokens": 6223,
+        "cacheWriteTokens": 860
+      },
+      "costUsd": 0.0026,
+      "durationMs": 1032
+    },
+    {
+      "type": "turn_completed",
+      "outcome": "interrupted",
+      "usage": { "inputTokens": 0, "outputTokens": 0, "cacheReadTokens": 0, "cacheWriteTokens": 0 },
+      "costUsd": null,
+      "durationMs": 1390
+    },
+    { "type": "error", "kind": "quota", "message": "usage limit reached", "recoverable": true },
+    { "type": "exited", "code": 0 },
+    { "type": "exited", "code": null }
+  ],
+  "errorKinds": [
+    "unknown_harness",
+    "unknown_session",
+    "busy",
+    "invalid_input",
+    "not_installed",
+    "not_logged_in",
+    "quota",
+    "tools_unavailable",
+    "resume_failed",
+    "process_exited",
+    "turn_failed",
+    "io",
+    "internal"
+  ],
+  "error": { "kind": "busy", "message": "a turn is still running in this session" },
+  "descriptor": {
+    "id": "example",
+    "name": "Example",
+    "capabilities": {
+      "streaming": true,
+      "resume": true,
+      "interrupt": true,
+      "imageInput": true,
+      "toolEndpoint": false,
+      "thinking": false
+    },
+    "models": [{ "id": "fast", "label": "Fast" }],
+    "defaultModel": null,
+    "effortLevels": ["low", "high"]
+  },
+  "statuses": [
+    { "state": "ready", "version": "2.1.287", "account": "web (max)", "detail": null },
+    { "state": "not_installed", "version": null, "account": null, "detail": "Install it." },
+    { "state": "not_logged_in", "version": "2.1.287", "account": null, "detail": "Sign in." },
+    { "state": "unavailable", "version": null, "account": null, "detail": "timed out" }
+  ],
+  "configs": [
+    { "scope": { "kind": "deck" }, "systemPrompt": "You build slides." },
+    {
+      "scope": { "kind": "slide", "slideId": "s_1" },
+      "systemPrompt": "p",
+      "toolEndpoint": { "url": "http://127.0.0.1:5000/t/k", "token": "secret" },
+      "webAccess": false,
+      "model": "sonnet",
+      "effort": "high",
+      "resume": "b2969d29"
+    },
+    {
+      "scope": { "kind": "object", "slideId": "s_1", "elementIds": ["e_1", "e_2"] },
+      "systemPrompt": "p",
+      "toolEndpoint": null,
+      "model": null
+    },
+    { "scope": { "kind": "import", "file": "C:/decks/plan.html" }, "systemPrompt": "p" }
+  ],
+  "turns": [
+    { "text": "Make an opening slide" },
+    {
+      "text": "Like this",
+      "context": "<slidr_context>scope: slide</slidr_context>",
+      "images": [{ "mediaType": "image/png", "data": "iVBORw0KGgo=" }]
+    }
+  ]
+}

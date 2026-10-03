@@ -17,6 +17,37 @@ workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# .slidr archives; deflate through the pure-Rust zlib-rs backend, nothing else.
+zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+# Asset ids (content hashes).
+sha2 = "0.10"
+# Asset type from the content's magic bytes.
+infer = "0.22"
+# Image dimensions from the header only.
+imagesize = { version = "0.15.0", default-features = false, features = ["bmp", "gif", "heif", "ico", "jpeg", "png", "tiff", "webp"] }
+# Workspace ids and temp file names.
+uuid = { version = "1", features = ["v4"] }
+# The file name header of asset_import_bytes.
+percent-encoding = "2"
+# Agent harnesses: the CLI child process and its pipes, the session locks and turn state, the
+# interrupt and close timeouts, select!. Already in the tree through Tauri, whose runtime it is.
+tokio = { version = "1", features = ["process", "io-util", "sync", "time", "macros", "rt", "fs"] }
+# `dyn AgentHarness` / `dyn AgentSession` with async methods; native async fn in traits is not
+# dyn-compatible yet. Its proc-macro dependencies are already in the tree through serde.
+async-trait = "0.1"
+
+# Slide capture (ADR-003): Page.captureScreenshot through the WebView2 DevTools protocol. The
+# versions wry already uses, so nothing new is built; base64 decodes the PNG the protocol returns.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"
+base64 = "0.22"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+# Paused virtual time, so the mock harness's scripted delays run instantly and deterministically.
+tokio = { version = "1", features = ["test-util"] }

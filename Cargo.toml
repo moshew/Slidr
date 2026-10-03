@@ -10,7 +10,9 @@ rust-version = "1.90"
 license = "UNLICENSED"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# `deny`, not `forbid`: the slide capture calls WebView2 over COM, which takes `unsafe`. Its one
+# submodule carries an explicit `#[allow(unsafe_code)]` (ADR-003, "מחיר"); nothing else may.
+unsafe_code = "deny"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

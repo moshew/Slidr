@@ -4,7 +4,8 @@ import { Background, Color, Frame, Id, Shadow } from './primitives';
 import { TextStyleRef } from './text';
 
 /** A font per script, so Hebrew and Latin text each get the face meant for them (SPEC 5.5). */
-const FontPair = z.strictObject({ he: z.string().min(1), latin: z.string().min(1) });
+export const FontPair = z.strictObject({ he: z.string().min(1), latin: z.string().min(1) });
+export type FontPair = z.infer<typeof FontPair>;
 
 export const TextStyle = z.strictObject({
   font: z.enum(['heading', 'body']),

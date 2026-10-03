@@ -1,0 +1,103 @@
+import { Command, commandDefs, locateElement, type CommandType } from '@slidr/model';
+import { z } from 'zod';
+import { formatZodError } from '../errors';
+import { getSlide } from '../lookup';
+import { DeckApiError, defineTool } from '../tool';
+
+export const themeUpdate = defineTool({
+  name: 'theme_update',
+  description:
+    'Changes theme tokens for the whole deck: everything that uses a token follows. colors, fonts and textStyles are merged key by key; the other fields are replaced whole. Returns `deck: ["theme"]` and lint findings.',
+  input: commandDefs['theme.update'].schema.shape.patch,
+  scopes: ['deck'],
+  writes: true,
+  run(patch, ctx) {
+    if (Object.keys(patch).length === 0) {
+      throw new DeckApiError('invalid_input', 'Nothing to change: give at least one field.');
+    }
+    ctx.write([{ type: 'theme.update', patch }]);
+    return {};
+  },
+});
+
+const COMMAND_TYPES = Object.keys(commandDefs) as [CommandType, ...CommandType[]];
+
+/**
+ * The shapes of the commands, in short. The full union as JSON Schema is about 40 KB, and the
+ * agent knows the element, slide and RichText shapes from the other tools; each op is still
+ * validated against the model's `Command` schema, with the path of any bad field.
+ */
+const OPS_HELP = [
+  'Each op is one model command: {"type": ..., ...fields}. Fields named patch replace each given field whole; null removes an optional field.',
+  'element.update {slideId, elementId, patch}',
+  'text.set {slideId, elementId, content: RichText, cell?: {row, col}}',
+  'element.add {slideId, element, parentId?, index?}',
+  'element.remove {slideId, elementIds}',
+  'element.reorder {slideId, elementIds, to: "front" | "back" | "forward" | "backward" | {index}}',
+  'element.group {slideId, elementIds, groupId (new id), name?}',
+  'element.ungroup {slideId, groupId}',
+  'slide.add {slide (full slide JSON with new ids), index?}',
+  'slide.remove {slideIds}',
+  'slide.move {slideIds, toIndex (counted without the moved slides)}',
+  'slide.update {slideId, patch: {name, layoutId, background, notes, transition, hidden, css}}',
+  'slide.setTimeline {slideId, timeline: AnimationStep[]}',
+  'deck.setMeta {patch: {title, lang, dir, imageStyle}}',
+  'theme.update {patch: as theme_update}',
+  'theme.replace {theme}',
+  'layout.add {layout, index?} / layout.update {layoutId, patch} / layout.remove {layoutId}',
+  'asset.add {asset}',
+].join('\n');
+
+export const deckApplyOps = defineTool({
+  name: 'deck_apply_ops',
+  description:
+    'Applies several model commands atomically, as one change: all of them, or none when one is refused (the error names it). Later commands see the effect of earlier ones. Use it for changes that must not be seen half done. Returns the ids created, changed and removed.',
+  input: z.strictObject({
+    ops: z
+      .array(z.looseObject({ type: z.enum(COMMAND_TYPES) }))
+      .min(1)
+      .describe(OPS_HELP),
+  }),
+  scopes: ['deck', 'slide'],
+  writes: true,
+  run({ ops }, ctx) {
+    const commands = ops.map((op, i) => {
+      const parsed = Command.safeParse(op);
+      if (!parsed.success) {
+        throw new DeckApiError(
+          'invalid_input',
+          `Invalid input for deck_apply_ops:\n${formatZodError(parsed.error, ['ops', i])}`,
+        );
+      }
+      return parsed.data;
+    });
+    ctx.write(commands);
+    return {};
+  },
+});
+
+export const uiNavigate = defineTool({
+  name: 'ui_navigate',
+  description:
+    'Shows a slide to the user on the stage and, optionally, selects elements on it, so the user sees what you are talking about. Changes nothing in the deck. Returns the slide id.',
+  input: z.strictObject({
+    slideId: z.string().min(1),
+    elementIds: z.array(z.string().min(1)).optional(),
+  }),
+  scopes: ['deck', 'slide', 'object'],
+  writes: false,
+  requires: 'ui',
+  run({ slideId, elementIds }, { deck, services }) {
+    const slide = getSlide(deck, slideId);
+    for (const id of elementIds ?? []) {
+      if (!locateElement(slide.elements, id)) {
+        throw new DeckApiError(
+          'not_found',
+          `Element "${id}" is not on slide "${slideId}". It may have been deleted.`,
+        );
+      }
+    }
+    services.ui!.navigate({ slideId, ...(elementIds ? { elementIds } : {}) });
+    return { data: { slideId } };
+  },
+});

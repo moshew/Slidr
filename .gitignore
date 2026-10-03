@@ -1,6 +1,7 @@
 node_modules/
 dist/
 target/
+examples/
 *.tsbuildinfo
 
 # Tauri generated schemas

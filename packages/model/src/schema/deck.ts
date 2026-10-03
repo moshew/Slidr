@@ -5,7 +5,7 @@ import { AssetId, Background, Direction, Id, SLIDE_HEIGHT, SLIDE_WIDTH } from '.
 import { RichText } from './text';
 import { Layout, Theme } from './theme';
 
-/** Bumped whenever a stored deck needs a migration to load (see migrations.ts). */
+/** Bumped whenever a stored deck needs a migration to load (see ../migrations.ts). */
 export const SCHEMA_VERSION = 1;
 
 export const AssetMeta = z.strictObject({
@@ -21,11 +21,29 @@ export const AssetMeta = z.strictObject({
   durationMs: z.number().nonnegative().optional(),
   origin: z.enum(['upload', 'stock', 'ai', 'import']),
   name: z.string().optional(),
-  attribution: z.strictObject({ author: z.string().optional(), url: z.string().optional(), license: z.string().optional() }).optional(),
+  attribution: z
+    .strictObject({
+      author: z.string().optional(),
+      url: z.string().optional(),
+      license: z.string().optional(),
+    })
+    .optional(),
   /** Where an AI image came from. */
-  lineage: z.strictObject({ parentAssetId: AssetId.optional(), prompt: z.string().optional(), provider: z.string().optional() }).optional(),
+  lineage: z
+    .strictObject({
+      parentAssetId: AssetId.optional(),
+      prompt: z.string().optional(),
+      provider: z.string().optional(),
+    })
+    .optional(),
   /** For fonts: how the renderer registers the face. */
-  font: z.strictObject({ family: z.string().min(1), weight: z.string().min(1), style: z.string().min(1) }).optional(),
+  font: z
+    .strictObject({
+      family: z.string().min(1),
+      weight: z.string().min(1),
+      style: z.string().min(1),
+    })
+    .optional(),
 });
 export type AssetMeta = z.infer<typeof AssetMeta>;
 

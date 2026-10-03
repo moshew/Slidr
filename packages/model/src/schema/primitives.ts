@@ -11,7 +11,15 @@ export const Direction = z.enum(['rtl', 'ltr']);
 export type Direction = z.infer<typeof Direction>;
 
 /** Colours a theme defines. An element that uses a token follows the theme (SPEC 5.1). */
-export const ColorToken = z.enum(['bg', 'surface', 'text', 'muted', 'primary', 'secondary', 'accent']);
+export const ColorToken = z.enum([
+  'bg',
+  'surface',
+  'text',
+  'muted',
+  'primary',
+  'secondary',
+  'accent',
+]);
 export type ColorToken = z.infer<typeof ColorToken>;
 
 const Alpha = z.number().min(0).max(1);
@@ -56,7 +64,12 @@ export const Fill = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('solid'), color: Color }),
   z.strictObject({ kind: z.literal('linear'), angle: z.number(), stops: Stops }),
   z.strictObject({ kind: z.literal('radial'), stops: Stops, center: Center.optional() }),
-  z.strictObject({ kind: z.literal('conic'), angle: z.number(), stops: Stops, center: Center.optional() }),
+  z.strictObject({
+    kind: z.literal('conic'),
+    angle: z.number(),
+    stops: Stops,
+    center: Center.optional(),
+  }),
   z.strictObject({
     kind: z.literal('image'),
     assetId: AssetId,

@@ -1,0 +1,1050 @@
+import type {
+  AudioElement,
+  ChartElement,
+  Element,
+  GroupElement,
+  HtmlElement,
+  ImageElement,
+  LineElement,
+  Point,
+  ShapeElement,
+  Stroke,
+  SvgElement,
+  TableElement,
+  TextElement,
+  VideoElement,
+} from '@slidr/model';
+import {
+  memo,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+import { domId, useRenderContext, type RenderContext } from './context';
+import { num, passthroughStyle } from './css';
+import { FillLayer, fillStyle } from './fill';
+import {
+  isBoxPreset,
+  pathBounds,
+  presetPath,
+  scalePath,
+  transformPath,
+  type ShapePath,
+} from './geometry';
+import { Icon } from './icons';
+import { frameDocument, prepareSvg, resolveAssetRefs } from './markup';
+import { parseFragment, sanitizeFragment } from './sanitize';
+import { RichTextView, TextBox } from './text';
+import { colorCss, shadowCss } from './theme';
+
+const FILL_PARENT: CSSProperties = { position: 'absolute', inset: 0, margin: 0, padding: 0 };
+
+/** Mirroring happens inside the element's box, under the rotation of the box (ADR-007). */
+function flipTransform(e: Element): string | undefined {
+  if (!e.flipH && !e.flipV) return undefined;
+  return `scale(${e.flipH ? -1 : 1}, ${e.flipV ? -1 : 1})`;
+}
+
+/** Whether pointer events may reach the inside of an element (see `RenderMode`). */
+function interactive(ctx: RenderContext): boolean {
+  return ctx.mode === 'present';
+}
+
+/**
+ * The positioned, rotated box every element has. A shadow follows what is drawn, not the box:
+ * `drop-shadow` shadows a text box's glyphs and a shape's outline. Only a shadow with spread,
+ * which `drop-shadow` cannot draw, falls back to the box's own `box-shadow`.
+ */
+function boxStyle(e: Element): CSSProperties {
+  const { x, y, w, h } = e.frame;
+  const style: CSSProperties = {
+    position: 'absolute',
+    left: x,
+    top: y,
+    width: w,
+    height: h,
+    margin: 0,
+    padding: 0,
+    boxSizing: 'border-box',
+  };
+  if (e.rotation) style.transform = `rotate(${num(e.rotation)}deg)`;
+  if (e.opacity < 1) style.opacity = e.opacity;
+  const filters: string[] = [];
+  const shadow = e.effects?.shadow;
+  if (shadow?.spread) style.boxShadow = shadowCss(shadow);
+  else if (shadow) {
+    filters.push(
+      `drop-shadow(${shadow.x}px ${shadow.y}px ${shadow.blur}px ${colorCss(shadow.color)})`,
+    );
+  }
+  if (e.effects?.blur) filters.push(`blur(${e.effects.blur}px)`);
+  if (filters.length) style.filter = filters.join(' ');
+  if (e.effects?.radius) style.borderRadius = e.effects.radius;
+  // A growing box is as tall as its text; the editor writes that height back to the frame.
+  if (e.type === 'text' && e.autoFit === 'growHeight') style.height = 'auto';
+  // Media and placeholders stay inside their frame. HTML is clipped only to round its corners:
+  // anything it draws outside its box, such as a shadow, is part of how it looks (SPEC 5.9).
+  if (e.type === 'video' || e.type === 'chart' || (e.type === 'html' && e.effects?.radius)) {
+    style.overflow = 'hidden';
+  }
+  return style;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Text
+
+function TextView({ element: e }: { element: TextElement }) {
+  const ctx = useRenderContext();
+  return (
+    <TextBox
+      content={e.content}
+      vAlign={e.vAlign}
+      padding={e.padding}
+      autoFit={e.autoFit}
+      columns={e.columns}
+      wrap={e.wrap}
+    >
+      {ctx.textSlot?.(e)}
+    </TextBox>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Image
+
+/**
+ * Where the whole original image goes so that its `crop` region fills the frame by `fit` (IMG-03,
+ * IMG-04). The original is never cut: the frame clips it. Needs the asset's pixel size.
+ */
+export function imagePlacement(
+  frame: { w: number; h: number },
+  natural: { w: number; h: number },
+  crop: ImageElement['crop'],
+  fit: ImageElement['fit'],
+): { left: number; top: number; width: number; height: number } {
+  const c = crop ?? { x: 0, y: 0, w: 1, h: 1 };
+  const cw = c.w * natural.w;
+  const ch = c.h * natural.h;
+  let sx: number;
+  let sy: number;
+  if (fit === 'fill') {
+    sx = frame.w / cw;
+    sy = frame.h / ch;
+  } else {
+    const s =
+      fit === 'cover' ? Math.max(frame.w / cw, frame.h / ch) : Math.min(frame.w / cw, frame.h / ch);
+    sx = s;
+    sy = s;
+  }
+  const offX = (frame.w - cw * sx) / 2;
+  const offY = (frame.h - ch * sy) / 2;
+  return {
+    left: num(offX - c.x * natural.w * sx, 3),
+    top: num(offY - c.y * natural.h * sy, 3),
+    width: num(natural.w * sx, 3),
+    height: num(natural.h * sy, 3),
+  };
+}
+
+/**
+ * CSS filters for `adjust` (IMG-06). brightness, contrast and saturation are multipliers
+ * (1 = untouched), hue is in degrees, blur in slide pixels, grayscale 0..1, and temperature -1..1
+ * (warmer above 0), which CSS has no filter for and an SVG colour matrix draws.
+ */
+function adjustFilter(adjust: ImageElement['adjust'], temperatureId: string): string | undefined {
+  if (!adjust) return undefined;
+  const parts: string[] = [];
+  if (adjust.temperature) parts.push(`url(#${temperatureId})`);
+  if (adjust.brightness !== undefined && adjust.brightness !== 1)
+    parts.push(`brightness(${adjust.brightness})`);
+  if (adjust.contrast !== undefined && adjust.contrast !== 1)
+    parts.push(`contrast(${adjust.contrast})`);
+  if (adjust.saturation !== undefined && adjust.saturation !== 1)
+    parts.push(`saturate(${adjust.saturation})`);
+  if (adjust.hue) parts.push(`hue-rotate(${adjust.hue}deg)`);
+  if (adjust.grayscale) parts.push(`grayscale(${adjust.grayscale})`);
+  if (adjust.blur) parts.push(`blur(${adjust.blur}px)`);
+  return parts.length ? parts.join(' ') : undefined;
+}
+
+function TemperatureFilter({ id, t }: { id: string; t: number }) {
+  const r = num(1 + 0.25 * t, 3);
+  const b = num(1 - 0.25 * t, 3);
+  return (
+    <svg aria-hidden width="0" height="0" style={{ position: 'absolute' }}>
+      <filter id={id} colorInterpolationFilters="sRGB">
+        <feColorMatrix type="matrix" values={`${r} 0 0 0 0 0 1 0 0 0 0 0 ${b} 0 0 0 0 0 1 0`} />
+      </filter>
+    </svg>
+  );
+}
+
+/** The clip of an image's frame: its mask, or else the element's corner radius (IMG-05, IMG-08). */
+function imageClip(e: ImageElement): {
+  style: CSSProperties;
+  path?: ShapePath;
+  radius?: number | string;
+} {
+  const mask = e.mask;
+  if (mask?.kind === 'ellipse') return { style: { borderRadius: '50%' }, radius: '50%' };
+  if (mask?.kind === 'rounded')
+    return { style: { borderRadius: mask.radius }, radius: mask.radius };
+  if (mask?.kind === 'shape') {
+    const path = presetPath(mask.preset, e.frame.w, e.frame.h);
+    if (path) return { style: { clipPath: `path('${path.d}')` }, path };
+  }
+  const r = e.effects?.radius;
+  return r ? { style: { borderRadius: r }, radius: r } : { style: {} };
+}
+
+function BoxStroke({ stroke, radius }: { stroke: Stroke; radius?: number | string }) {
+  if (stroke.width <= 0) return null;
+  const color = colorCss(stroke.color);
+  const dashed = stroke.dash && stroke.dash !== 'solid';
+  // A solid outline is an inset shadow: a border is snapped to whole device pixels (ADR-005).
+  return (
+    <div
+      aria-hidden
+      style={{
+        ...FILL_PARENT,
+        boxSizing: 'border-box',
+        borderRadius: radius,
+        pointerEvents: 'none',
+        ...(dashed
+          ? { border: `${stroke.width}px ${stroke.dash} ${color}` }
+          : { boxShadow: `inset 0 0 0 ${stroke.width}px ${color}` }),
+      }}
+    />
+  );
+}
+
+function dashArray(stroke: Stroke): string | undefined {
+  const w = Math.max(stroke.width, 0.5);
+  if (stroke.dash === 'dashed') return `${num(w * 4)} ${num(w * 3)}`;
+  if (stroke.dash === 'dotted')
+    return stroke.cap === 'round' ? `0 ${num(w * 2)}` : `${num(w)} ${num(w)}`;
+  return undefined;
+}
+
+/**
+ * The outline of a path. A closed shape is stroked inside its edge, like a CSS border, so the shape
+ * never draws outside its frame: twice the width, clipped to the shape. Open paths are stroked
+ * on the line.
+ */
+function PathStroke({
+  path,
+  stroke,
+  w,
+  h,
+  clipId,
+}: {
+  path: ShapePath;
+  stroke: Stroke;
+  w: number;
+  h: number;
+  clipId: string;
+}) {
+  if (stroke.width <= 0) return null;
+  return (
+    <svg
+      aria-hidden
+      width={Math.max(w, 1)}
+      height={Math.max(h, 1)}
+      style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', pointerEvents: 'none' }}
+    >
+      {path.closed ? (
+        <defs>
+          <clipPath id={clipId}>
+            <path d={path.d} />
+          </clipPath>
+        </defs>
+      ) : null}
+      <path
+        d={path.d}
+        clipPath={path.closed ? `url(#${clipId})` : undefined}
+        style={{
+          fill: 'none',
+          stroke: colorCss(stroke.color),
+          strokeWidth: path.closed ? stroke.width * 2 : stroke.width,
+          strokeDasharray: dashArray(stroke),
+          strokeLinecap: stroke.cap ?? (stroke.dash === 'dotted' ? 'round' : 'butt'),
+          strokeLinejoin: stroke.join ?? 'miter',
+        }}
+      />
+    </svg>
+  );
+}
+
+function PendingImage({ e, ctx }: { e: ImageElement; ctx: RenderContext }) {
+  const showHint = ctx.mode !== 'present';
+  const size = Math.min(e.frame.w, e.frame.h) * 0.22;
+  return (
+    <div
+      data-slidr-placeholder="image"
+      title={e.prompt}
+      style={{
+        ...FILL_PARENT,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'var(--color-surface)',
+        color: 'color-mix(in srgb, var(--color-muted) 70%, transparent)',
+      }}
+    >
+      {showHint && size >= 12 ? <Icon name="image" size={Math.min(size, 96)} /> : null}
+    </div>
+  );
+}
+
+function ImageView({ element: e }: { element: ImageElement }) {
+  const ctx = useRenderContext();
+  const reactId = useId();
+  const clip = imageClip(e);
+  const url = e.assetId ? ctx.assetUrl(e.assetId) : undefined;
+  const meta = e.assetId ? ctx.asset(e.assetId) : undefined;
+  const temperatureId = domId(reactId, 'temperature');
+  const filter = adjustFilter(e.adjust, temperatureId);
+  const imgBase: CSSProperties = {
+    position: 'absolute',
+    display: 'block',
+    margin: 0,
+    padding: 0,
+    border: 0,
+    maxWidth: 'none',
+    maxHeight: 'none',
+    userSelect: 'none',
+    filter,
+  };
+  let img: ReactNode = null;
+  if (url) {
+    const placement =
+      meta?.width && meta.height
+        ? imagePlacement(e.frame, { w: meta.width, h: meta.height }, e.crop, e.fit)
+        : undefined;
+    img = (
+      <img
+        src={url}
+        alt={e.alt ?? ''}
+        draggable={false}
+        decoding="async"
+        style={
+          placement
+            ? { ...imgBase, ...placement }
+            : { ...imgBase, left: 0, top: 0, width: '100%', height: '100%', objectFit: e.fit }
+        }
+      />
+    );
+  }
+  return (
+    <div style={{ ...FILL_PARENT, overflow: 'hidden', ...clip.style, transform: flipTransform(e) }}>
+      {e.adjust?.temperature ? (
+        <TemperatureFilter id={temperatureId} t={e.adjust.temperature} />
+      ) : null}
+      {e.assetId ? img : <PendingImage e={e} ctx={ctx} />}
+      {e.border ? (
+        clip.path ? (
+          <PathStroke
+            path={clip.path}
+            stroke={e.border}
+            w={e.frame.w}
+            h={e.frame.h}
+            clipId={domId(reactId, 'border')}
+          />
+        ) : (
+          <BoxStroke stroke={e.border} radius={clip.radius} />
+        )
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Shape
+
+const EMPTY_TEXT = { paragraphs: [] };
+
+/** Text inside a shape keeps clear of the outline, like other editors' default insets. */
+const SHAPE_TEXT_PADDING = { top: 8, right: 16, bottom: 8, left: 16 };
+
+function shapePath(e: ShapeElement): ShapePath {
+  const { w, h } = e.frame;
+  const g = e.geometry;
+  if (g.kind === 'path')
+    return {
+      d: scalePath(g.d, w / g.viewBox.w, h / g.viewBox.h),
+      closed: /z\s*$/i.test(g.d.trim()),
+    };
+  return presetPath(g.preset, w, h, g.adjust) ?? (presetPath('rect', w, h) as ShapePath);
+}
+
+/**
+ * The fill layer of a path, clipped to it. A path may reach past the frame (a speech bubble's tail):
+ * then the layer grows to the path's bounds, since a layer cannot paint outside itself.
+ */
+function pathFillStyle(d: string, w: number, h: number): CSSProperties {
+  const b = pathBounds(d);
+  const left = Math.min(0, b.x);
+  const top = Math.min(0, b.y);
+  const right = Math.max(w, b.x + b.w);
+  const bottom = Math.max(h, b.y + b.h);
+  if (left === 0 && top === 0 && right === w && bottom === h) return { clipPath: `path('${d}')` };
+  return {
+    inset: 'auto',
+    left,
+    top,
+    width: right - left,
+    height: bottom - top,
+    clipPath: `path('${transformPath(d, 1, 1, -left, -top)}')`,
+  };
+}
+
+function ShapeView({ element: e }: { element: ShapeElement }) {
+  const ctx = useRenderContext();
+  // A shape without text still takes the editor, to add text to it (SHP-04).
+  const slotted = ctx.textSlot?.(e);
+  const reactId = useId();
+  const { w, h } = e.frame;
+  const g = e.geometry;
+  let geometry: ReactNode;
+  if (g.kind === 'preset' && isBoxPreset(g.preset)) {
+    const radius =
+      g.preset === 'ellipse'
+        ? '50%'
+        : g.preset === 'roundRect'
+          ? num(Math.min(Math.max(g.adjust?.[0] ?? 0.1667, 0), 0.5) * Math.min(w, h), 3)
+          : e.effects?.radius;
+    geometry = (
+      <div
+        style={{
+          ...FILL_PARENT,
+          overflow: 'hidden',
+          borderRadius: radius,
+          transform: flipTransform(e),
+        }}
+      >
+        <FillLayer fill={e.fill} ctx={ctx} />
+        {e.stroke ? <BoxStroke stroke={e.stroke} radius={radius} /> : null}
+      </div>
+    );
+  } else {
+    const path = shapePath(e);
+    geometry = (
+      <div style={{ ...FILL_PARENT, transform: flipTransform(e) }}>
+        {path.closed ? (
+          <FillLayer fill={e.fill} ctx={ctx} style={pathFillStyle(path.d, w, h)} />
+        ) : null}
+        {e.stroke ? (
+          <PathStroke path={path} stroke={e.stroke} w={w} h={h} clipId={domId(reactId, 'stroke')} />
+        ) : null}
+      </div>
+    );
+  }
+  return (
+    <>
+      {geometry}
+      {e.content || slotted !== undefined ? (
+        <div style={FILL_PARENT}>
+          <TextBox
+            content={e.content ?? EMPTY_TEXT}
+            vAlign="middle"
+            padding={SHAPE_TEXT_PADDING}
+            autoFit="none"
+          >
+            {slotted}
+          </TextBox>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Line
+
+type Head = LineElement['startHead'];
+
+/** Size of a line head in slide pixels: four times the stroke, never smaller than 10. */
+function headSize(stroke: Stroke): number {
+  return Math.max(10, stroke.width * 4);
+}
+
+function moveToward(from: Point, to: Point, amount: number): Point {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return from;
+  const d = Math.min(amount, len * 0.9);
+  return { x: from.x + (dx / len) * d, y: from.y + (dy / len) * d };
+}
+
+/** The line ends where a filled triangle head starts, so the stroke does not poke past its tip. */
+function trimForHeads(points: Point[], e: LineElement): Point[] {
+  const size = headSize(e.stroke);
+  const out = [...points];
+  const n = out.length;
+  const horizontalEnds = e.curve !== 'straight' && n === 2;
+  const toward = (end: number, next: number): Point => {
+    const p = out[end] as Point;
+    const q = out[next] as Point;
+    // Elbow and curved lines leave their ends horizontally.
+    return horizontalEnds ? moveToward(p, { x: q.x, y: p.y }, size) : moveToward(p, q, size);
+  };
+  if (e.startHead === 'triangle') out[0] = toward(0, 1);
+  if (e.endHead === 'triangle') out[n - 1] = toward(n - 1, n - 2);
+  return out;
+}
+
+export function linePath(points: readonly Point[], curve: LineElement['curve']): string {
+  const p = points.map((pt) => ({ x: num(pt.x, 2), y: num(pt.y, 2) }));
+  const first = p[0] as Point;
+  const last = p[p.length - 1] as Point;
+  if (curve === 'elbow') {
+    if (p.length === 2) {
+      const mx = num((first.x + last.x) / 2, 2);
+      return `M${first.x} ${first.y} H${mx} V${last.y} H${last.x}`;
+    }
+    return `M${first.x} ${first.y} ${p
+      .slice(1)
+      .map((pt) => `H${pt.x} V${pt.y}`)
+      .join(' ')}`;
+  }
+  if (curve === 'curved') {
+    if (p.length === 2) {
+      const mx = num((first.x + last.x) / 2, 2);
+      return `M${first.x} ${first.y} C${mx} ${first.y} ${mx} ${last.y} ${last.x} ${last.y}`;
+    }
+    // Catmull-Rom through every point, as cubic Béziers.
+    let d = `M${first.x} ${first.y}`;
+    for (let i = 0; i < p.length - 1; i++) {
+      const p0 = p[i - 1] ?? p[i]!;
+      const p1 = p[i]!;
+      const p2 = p[i + 1]!;
+      const p3 = p[i + 2] ?? p2;
+      const c1 = { x: num(p1.x + (p2.x - p0.x) / 6, 2), y: num(p1.y + (p2.y - p0.y) / 6, 2) };
+      const c2 = { x: num(p2.x - (p3.x - p1.x) / 6, 2), y: num(p2.y - (p3.y - p1.y) / 6, 2) };
+      d += ` C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p2.x} ${p2.y}`;
+    }
+    return d;
+  }
+  return `M${first.x} ${first.y} ${p
+    .slice(1)
+    .map((pt) => `L${pt.x} ${pt.y}`)
+    .join(' ')}`;
+}
+
+function HeadMarker({
+  id,
+  head,
+  stroke,
+}: {
+  id: string;
+  head: Exclude<Head, 'none'>;
+  stroke: Stroke;
+}) {
+  const s = headSize(stroke);
+  const color = colorCss(stroke.color);
+  const filled = { fill: color, stroke: 'none' };
+  let shape: ReactNode;
+  let refX = s / 2;
+  switch (head) {
+    case 'triangle':
+      // The path stops at the base (see trimForHeads), so the base sits on the end point.
+      shape = <path d={`M0 0 L${s} ${s / 2} L0 ${s} Z`} style={filled} />;
+      refX = 0;
+      break;
+    case 'arrow':
+      shape = (
+        <path
+          d={`M${s * 0.15} ${s * 0.1} L${s} ${s / 2} L${s * 0.15} ${s * 0.9}`}
+          style={{
+            fill: 'none',
+            stroke: color,
+            strokeWidth: stroke.width,
+            strokeLinejoin: 'miter',
+            strokeLinecap: 'butt',
+          }}
+        />
+      );
+      refX = s;
+      break;
+    case 'circle':
+      shape = <circle cx={s / 2} cy={s / 2} r={s / 2} style={filled} />;
+      break;
+    case 'diamond':
+      shape = <path d={`M0 ${s / 2} L${s / 2} 0 L${s} ${s / 2} L${s / 2} ${s} Z`} style={filled} />;
+      break;
+    case 'bar':
+      shape = (
+        <rect x={s / 2 - stroke.width / 2} y={0} width={stroke.width} height={s} style={filled} />
+      );
+      break;
+  }
+  return (
+    <marker
+      id={id}
+      viewBox={`0 0 ${s} ${s}`}
+      markerWidth={s}
+      markerHeight={s}
+      markerUnits="userSpaceOnUse"
+      refX={refX}
+      refY={s / 2}
+      orient="auto-start-reverse"
+      overflow="visible"
+    >
+      {shape}
+    </marker>
+  );
+}
+
+function LineView({ element: e }: { element: LineElement }) {
+  const reactId = useId();
+  const startId = domId(reactId, 'start');
+  const endId = domId(reactId, 'end');
+  const d = linePath(trimForHeads(e.points, e), e.curve);
+  return (
+    <svg
+      aria-hidden
+      width={Math.max(e.frame.w, 1)}
+      height={Math.max(e.frame.h, 1)}
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        overflow: 'visible',
+        transform: flipTransform(e),
+      }}
+    >
+      {e.startHead !== 'none' || e.endHead !== 'none' ? (
+        <defs>
+          {e.startHead !== 'none' ? (
+            <HeadMarker id={startId} head={e.startHead} stroke={e.stroke} />
+          ) : null}
+          {e.endHead !== 'none' ? (
+            <HeadMarker id={endId} head={e.endHead} stroke={e.stroke} />
+          ) : null}
+        </defs>
+      ) : null}
+      <path
+        d={d}
+        markerStart={e.startHead !== 'none' ? `url(#${startId})` : undefined}
+        markerEnd={e.endHead !== 'none' ? `url(#${endId})` : undefined}
+        style={{
+          fill: 'none',
+          stroke: colorCss(e.stroke.color),
+          strokeWidth: e.stroke.width,
+          strokeDasharray: dashArray(e.stroke),
+          strokeLinecap: e.stroke.cap ?? (e.stroke.dash === 'dotted' ? 'round' : 'butt'),
+          strokeLinejoin: e.stroke.join ?? 'round',
+        }}
+      />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// SVG
+
+function SvgView({ element: e }: { element: SvgElement }) {
+  const ctx = useRenderContext();
+  const markup = useMemo(
+    () => (e.markup ? prepareSvg(e.markup, e.colorOverrides) : undefined),
+    [e.markup, e.colorOverrides],
+  );
+  const style: CSSProperties = { ...FILL_PARENT, transform: flipTransform(e) };
+  if (markup !== undefined)
+    return <div style={style} dangerouslySetInnerHTML={{ __html: markup }} />;
+  // An SVG asset is drawn as an image. Its colours cannot be overridden that way (SHP-06, WG5-T10).
+  const url = e.assetId ? ctx.assetUrl(e.assetId) : undefined;
+  return url ? (
+    <img
+      src={url}
+      alt=""
+      draggable={false}
+      style={{
+        ...style,
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        maxWidth: 'none',
+        border: 0,
+      }}
+    />
+  ) : null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// HTML
+
+/**
+ * HTML without scripts, in a shadow root: its stylesheet stays inside, the slide's theme variables
+ * and text style reach in by inheritance (RND-06, RND-08). The root is serializable, so an export
+ * can write it out as a declarative shadow root.
+ */
+function ShadowContent({ e, style }: { e: HtmlElement; style: CSSProperties }) {
+  const ctx = useRenderContext();
+  const host = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const root = el.shadowRoot ?? el.attachShadow({ mode: 'open', serializable: true });
+    const fragment = parseFragment(e.markup);
+    sanitizeFragment(fragment);
+    resolveAssetRefs(fragment, ctx);
+    root.replaceChildren();
+    if (e.styles) {
+      const sheet = document.createElement('style');
+      sheet.textContent = e.styles;
+      root.append(sheet);
+    }
+    root.append(fragment);
+  }, [e.markup, e.styles, ctx]);
+  return <div ref={host} data-slidr-html="shadow" style={style} />;
+}
+
+function FrameContent({ e, style }: { e: HtmlElement; style: CSSProperties }) {
+  const ctx = useRenderContext();
+  const doc = useMemo(
+    () => frameDocument(e, ctx, e.natural ?? { w: e.frame.w, h: e.frame.h }),
+    [e, ctx],
+  );
+  return (
+    <iframe
+      data-slidr-html="frame"
+      title={e.name ?? 'HTML'}
+      // Never same-origin: the frame cannot reach the editor or Tauri (SEC-03). Thumbnails do not run scripts.
+      sandbox={ctx.mode === 'thumbnail' ? '' : 'allow-scripts'}
+      srcDoc={doc}
+      loading="eager"
+      style={{
+        ...style,
+        border: 0,
+        display: 'block',
+        background: 'transparent',
+        colorScheme: 'normal',
+      }}
+    />
+  );
+}
+
+function HtmlView({ element: e }: { element: HtmlElement }) {
+  const ctx = useRenderContext();
+  // Laid out at its natural size and scaled to the frame, never reflowed (ADR-005).
+  const natural = e.natural ?? { w: e.frame.w, h: e.frame.h };
+  const sx = natural.w ? e.frame.w / natural.w : 1;
+  const sy = natural.h ? e.frame.h / natural.h : 1;
+  const content: CSSProperties = {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: natural.w,
+    height: natural.h,
+    margin: 0,
+    padding: 0,
+    transformOrigin: '0 0',
+    transform: sx !== 1 || sy !== 1 ? `scale(${num(sx, 6)}, ${num(sy, 6)})` : undefined,
+    pointerEvents: interactive(ctx) ? 'auto' : 'none',
+  };
+  return (
+    <div style={{ ...FILL_PARENT, transform: flipTransform(e) }}>
+      {e.hasScripts ? (
+        <FrameContent e={e} style={content} />
+      ) : (
+        <ShadowContent e={e} style={content} />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Table
+
+const CELL_PADDING = { top: 12, right: 20, bottom: 12, left: 20 };
+const V_ALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' } as const;
+
+function strokeCss(stroke: Stroke | undefined): string | undefined {
+  if (!stroke || stroke.width <= 0) return undefined;
+  return `${stroke.width}px ${stroke.dash ?? 'solid'} ${colorCss(stroke.color)}`;
+}
+
+/**
+ * A table as a real `<table>` (ADR-005: a table taken apart into boxes loses its look). Row heights
+ * and column widths scale to the frame. Without explicit cell styling it gets a plain default
+ * look; template table styles (TBL-04) are WG6.
+ */
+function TableView({ element: e }: { element: TableElement }) {
+  const ctx = useRenderContext();
+  const totalW = e.cols.reduce((a, b) => a + b, 0) || 1;
+  const totalH = e.rows.reduce((a, b) => a + b, 0) || 1;
+  const sy = e.frame.h / totalH;
+  const rule = '1px solid color-mix(in srgb, var(--color-muted) 35%, transparent)';
+  return (
+    <table
+      style={{
+        width: '100%',
+        height: '100%',
+        margin: 0,
+        borderCollapse: 'collapse',
+        borderSpacing: 0,
+        tableLayout: 'fixed',
+        direction: e.dir,
+      }}
+    >
+      <colgroup>
+        {e.cols.map((c, i) => (
+          <col key={i} style={{ width: `${num((c / totalW) * 100, 4)}%` }} />
+        ))}
+      </colgroup>
+      <tbody>
+        {e.cells.map((row, r) => (
+          <tr key={r} style={{ height: num((e.rows[r] ?? 0) * sy, 3) }}>
+            {row.map((cell, c) => {
+              if (cell.merged) return null;
+              const header = e.style.headerRow && r === 0;
+              const firstColumn = e.style.firstColumn && c === 0;
+              const banded =
+                e.style.bandedRows && !header && (r - (e.style.headerRow ? 1 : 0)) % 2 === 1;
+              const fill =
+                cell.fill ??
+                (header
+                  ? ({ kind: 'solid', color: { token: 'primary' } } as const)
+                  : banded
+                    ? ({ kind: 'solid', color: { token: 'surface' } } as const)
+                    : undefined);
+              const pad = cell.padding ?? CELL_PADDING;
+              const b = cell.borders;
+              return (
+                <td
+                  key={c}
+                  rowSpan={cell.rowSpan}
+                  colSpan={cell.colSpan}
+                  style={{
+                    margin: 0,
+                    padding: `${pad.top}px ${pad.right}px ${pad.bottom}px ${pad.left}px`,
+                    verticalAlign: V_ALIGN[cell.vAlign ?? 'middle'],
+                    overflow: 'hidden',
+                    ...(fill ? fillStyle(fill, ctx) : {}),
+                    borderTop: strokeCss(b?.top),
+                    borderRight: strokeCss(b?.right),
+                    borderBottom: strokeCss(b?.bottom) ?? (b ? undefined : rule),
+                    borderLeft: strokeCss(b?.left),
+                  }}
+                >
+                  <RichTextView
+                    content={cell.content}
+                    theme={ctx.theme}
+                    defaults={{
+                      styleRef: 'body',
+                      wrap: true,
+                      ...(header && !cell.fill ? { color: 'var(--color-bg)', weight: 600 } : {}),
+                      ...(firstColumn && !header ? { weight: 600 } : {}),
+                    }}
+                  />
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Chart: a labelled placeholder until the chart renderer (WG6-T05).
+
+function ChartView({ element: e }: { element: ChartElement }) {
+  const size = Math.min(e.frame.w, e.frame.h) * 0.25;
+  return (
+    <div
+      data-slidr-placeholder="chart"
+      style={{
+        ...FILL_PARENT,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        backgroundColor: 'color-mix(in srgb, var(--color-surface) 70%, transparent)',
+        color: 'var(--color-muted)',
+        fontFamily: 'var(--font-body)',
+        fontSize: Math.max(14, Math.min(28, size / 3)),
+      }}
+    >
+      <Icon name="chart" size={Math.min(size, 96)} style={{ color: 'var(--color-primary)' }} />
+      <span>{e.options.title ?? e.chartType}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Video and audio
+
+function mediaFragment(trim: VideoElement['trim']): string {
+  if (!trim) return '';
+  return `#t=${num(trim.startMs / 1000, 3)},${num(trim.endMs / 1000, 3)}`;
+}
+
+function useVolume(ref: RefObject<HTMLMediaElement | null>, volume: number) {
+  useEffect(() => {
+    if (ref.current) ref.current.volume = volume;
+  }, [ref, volume]);
+}
+
+function VideoView({ element: e }: { element: VideoElement }) {
+  const ctx = useRenderContext();
+  const ref = useRef<HTMLVideoElement>(null);
+  useVolume(ref, e.volume);
+  const url = ctx.assetUrl(e.assetId);
+  const present = ctx.mode === 'present';
+  const poster = e.poster && 'assetId' in e.poster ? ctx.assetUrl(e.poster.assetId) : undefined;
+  // Outside presentation a video shows its poster frame: a chosen time, or the start of the trim.
+  const stillAt = e.poster && 'timeMs' in e.poster ? e.poster.timeMs : (e.trim?.startMs ?? 0);
+  const src = url
+    ? present
+      ? url + mediaFragment(e.trim)
+      : `${url}#t=${num(stillAt / 1000, 3)}`
+    : undefined;
+  return (
+    <video
+      ref={ref}
+      src={src}
+      poster={poster}
+      muted={e.muted || !present}
+      loop={present && e.loop}
+      autoPlay={present && e.autoplay}
+      playsInline
+      preload="metadata"
+      style={{
+        ...FILL_PARENT,
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        background: '#000',
+        transform: flipTransform(e),
+        pointerEvents: present ? 'auto' : 'none',
+      }}
+    />
+  );
+}
+
+function AudioView({ element: e }: { element: AudioElement }) {
+  const ctx = useRenderContext();
+  const ref = useRef<HTMLAudioElement>(null);
+  useVolume(ref, e.volume);
+  const url = ctx.assetUrl(e.assetId);
+  if (ctx.mode === 'present') {
+    return (
+      <audio
+        ref={ref}
+        src={url ? url + mediaFragment(e.trim) : undefined}
+        controls={e.showControls}
+        autoPlay={e.autoplay}
+        loop={e.loop}
+        style={{
+          ...FILL_PARENT,
+          width: '100%',
+          height: '100%',
+          display: e.showControls ? 'block' : 'none',
+        }}
+      />
+    );
+  }
+  // In the editor an audio clip has no picture of its own: it shows as a chip.
+  const size = Math.min(e.frame.h * 0.5, 48);
+  return (
+    <div
+      data-slidr-placeholder="audio"
+      style={{
+        ...FILL_PARENT,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: Math.min(e.frame.h / 2, 32),
+        backgroundColor: 'var(--color-surface)',
+        color: 'var(--color-primary)',
+      }}
+    >
+      <Icon name="audio" size={size} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Group and dispatch
+
+function GroupView({ element: e, decoration }: { element: GroupElement; decoration: boolean }) {
+  return (
+    <div style={{ ...FILL_PARENT, transform: flipTransform(e) }}>
+      {e.children.map((child) => (
+        <ElementView key={child.id} element={child} decoration={decoration} />
+      ))}
+    </div>
+  );
+}
+
+function inner(e: Element, decoration: boolean): ReactNode {
+  switch (e.type) {
+    case 'text':
+      return <TextView element={e} />;
+    case 'image':
+      return <ImageView element={e} />;
+    case 'shape':
+      return <ShapeView element={e} />;
+    case 'line':
+      return <LineView element={e} />;
+    case 'svg':
+      return <SvgView element={e} />;
+    case 'group':
+      return <GroupView element={e} decoration={decoration} />;
+    case 'table':
+      return <TableView element={e} />;
+    case 'chart':
+      return <ChartView element={e} />;
+    case 'video':
+      return <VideoView element={e} />;
+    case 'audio':
+      return <AudioView element={e} />;
+    case 'html':
+      return <HtmlView element={e} />;
+  }
+}
+
+/**
+ * One element and everything inside it. Memoised on the element object: the model keeps the
+ * identity of elements a change did not touch (ADR-007), so an edit re-renders only what it changed.
+ *
+ * The root carries `data-element-id` and `data-element-type`; hit-testing, lint, the animation
+ * runtime and capture find elements by them. Layout decorations carry `data-decoration-id`
+ * instead, so they are not picked as slide content.
+ */
+export const ElementView = memo(function ElementView({
+  element,
+  decoration = false,
+}: {
+  element: Element;
+  decoration?: boolean;
+}) {
+  const ctx = useRenderContext();
+  if (element.hidden) return null;
+  const ids = decoration
+    ? { 'data-decoration-id': element.id }
+    : { 'data-element-id': element.id, 'data-element-type': element.type };
+  const rendered = (
+    <div
+      {...ids}
+      data-name={element.name}
+      data-link-kind={element.link?.kind}
+      data-link-target={element.link?.target}
+      style={{ ...boxStyle(element), ...passthroughStyle(element.css) }}
+    >
+      {inner(element, decoration)}
+    </div>
+  );
+  return ctx.slot && !decoration ? <>{ctx.slot(element, rendered)}</> : rendered;
+});
