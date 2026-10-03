@@ -152,6 +152,8 @@ const CLUSTER_CELL = 12;
 const CLUSTER_MIN_PIXELS = 12;
 /** A text box sits right when its lines are within this many pixels of the source's. */
 const SETTLED = 0.04;
+/** An opacity that changes no pixel by more than a level and makes the browser draw text in grey. */
+const SAME_ANTIALIASING = '0.999';
 /** How often a text box is moved to where its lines belong before it counts as different. */
 const MAX_TEXT_FITS = 5;
 
@@ -168,6 +170,42 @@ function twoFrames(): Promise<void> {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
     setTimeout(resolve, FRAMES_FALLBACK_MS);
   });
+}
+
+/**
+ * Whether the browser is likely to draw the element on a layer of its own: something on it or
+ * above it in the source asks for one (a 3D context, a perspective, `will-change`, a filter, a
+ * transform that is more than a move by whole pixels). The compositor places such a layer, and
+ * the text on it, a fraction of a pixel away from where plain layout would put the same text,
+ * so two pictures of it never agree pixel for pixel however right the conversion is. Such
+ * content is judged the way content shown through a scale is (ADR-005): on a coarser picture.
+ */
+function layered(el: Element): boolean {
+  for (let node: Element | undefined = el; node; node = composedParent(node)) {
+    if (asksForLayer(node)) return true;
+  }
+  return false;
+}
+
+/** How many elements of a subtree are looked at for one that asks for a layer. */
+const MAX_LAYER_SEARCH = 4000;
+
+function asksForLayer(node: Element): boolean {
+  const cs = styleOf(node);
+  if (
+    cs.perspective !== 'none' ||
+    cs.transformStyle === 'preserve-3d' ||
+    cs.backfaceVisibility === 'hidden' ||
+    /transform|opacity|filter|contents/.test(cs.willChange) ||
+    (cs.filter !== 'none' && cs.filter !== '') ||
+    (cs.backdropFilter !== 'none' && cs.backdropFilter !== '')
+  ) {
+    return true;
+  }
+  if (cs.transform === 'none') return false;
+  const m = new DOMMatrix(cs.transform);
+  const whole = (v: number) => Math.abs(v - Math.round(v)) < 0.01;
+  return !(m.is2D && m.a === 1 && m.b === 0 && m.c === 0 && m.d === 1 && whole(m.e) && whole(m.f));
 }
 
 async function decode(blob: Blob): Promise<Picture> {
@@ -548,6 +586,17 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   for (const item of proposal.items) await fillHtml(item);
 
   const sourcePicture = await take();
+  // The same anti-aliasing on both sides. A browser draws text with coloured sub-pixels where
+  // it sits on an opaque layer of its page, and in grey where the layer is see-through, moved
+  // by a transform or under an effect: it depends on how a page happens to be composited, not
+  // on how it looks. Text the source drew in grey (a deck that keeps its slides on transparent
+  // layers over a separate background gets that) would be drawn with coloured edges on the
+  // converted slide: every glyph "different", and nothing wrong. Which the source did cannot
+  // be asked, so it is tried: a text that fails on its pixels alone is drawn once more under
+  // an opacity a hair below 1, which makes the browser draw it in grey and changes no pixel
+  // by more than a level, and is judged again.
+  const grey = new Set<Item>();
+  const triedGrey = new Set<Item>();
   // One page pixel per picture pixel is asked for; a host that gives more is scaled to.
   const density = sourcePicture.width / clip.width;
 
@@ -597,6 +646,24 @@ export async function startConversion(root: Element, options: ConvertOptions): P
 
   const fits = new Map<Item, number>();
   const rootScaled = Math.abs(space.viewScale - 1) > 1e-6;
+  // Asked once per item: the answer is about the source, which the guard does not change.
+  const layer = new Map<Item, boolean>();
+  const onLayer = (item: Item): boolean => {
+    let known = layer.get(item);
+    if (known === undefined) {
+      known =
+        options.foreign &&
+        (layered(item.node) ||
+          // An HTML copy of a subtree holds whatever is on a layer inside it.
+          (item.element.type === 'html' &&
+            item.covers === 'subtree' &&
+            Array.from(item.node.querySelectorAll('*'))
+              .slice(0, MAX_LAYER_SEARCH)
+              .some(asksForLayer)));
+      layer.set(item, known);
+    }
+    return known;
+  };
   const zoomed = rootScaled || Math.abs(space.k - 1) > 1e-6;
 
   const place: Placement = {
@@ -622,6 +689,13 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   const render = async (fit: boolean): Promise<Rendered> => {
     const mounted = await mountSlide(renderDeck(), assemble(), host, place);
     try {
+      for (const item of proposal.items) {
+        if (item.element.opacity !== 1 || !grey.has(item)) continue;
+        const dom = mounted.root.querySelector<HTMLElement>(
+          `[data-element-id="${item.element.id}"]`,
+        );
+        if (dom) dom.style.opacity = SAME_ANTIALIASING;
+      }
       freezeAnimations(document);
       const measure = (): Map<Item, Line[]> => {
         const at = mounted.root.getBoundingClientRect();
@@ -658,6 +732,26 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         if (dom) dom.style.willChange = 'transform';
       }
       mounted.likeSource();
+      // An HTML element is laid out at its natural size and brought to its frame by a
+      // transform; shown like the source, the slide around it is zoomed back down by the same
+      // factor. The two do not cancel in the browser: under a zoom a hairline stays a whole
+      // device pixel wide, so the 1px rules of a table come out half as thick again and every
+      // row a fraction taller. For the comparison the element takes the zoom in place of the
+      // transform, and lays out in the source's own px, as the source did.
+      if (Math.abs(space.k - 1) > 1e-6) {
+        for (const item of proposal.items) {
+          const e = item.element;
+          if (e.type !== 'html' || !e.natural) continue;
+          const own = e.frame.w / e.natural.w;
+          if (Math.abs(own - space.k) > 1e-3 * space.k) continue;
+          const content = mounted.root.querySelector<HTMLElement>(
+            `[data-element-id="${e.id}"] [data-slidr-html]`,
+          );
+          if (!content) continue;
+          content.style.transform = 'none';
+          content.style.zoom = String(space.k);
+        }
+      }
       const shown = zoomed ? measure() : real;
       let moved = false;
       for (const item of proposal.items) {
@@ -711,14 +805,8 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     h: (rect.h * density) / factor,
   });
 
-  const judge = async ({ fit = true }: { fit?: boolean } = {}): Promise<Verdict> => {
-    let rendered = await render(fit);
-    // Text boxes that moved are rendered again before anything is compared.
-    for (let i = 0; i < MAX_TEXT_FITS && rendered.moved; i++) rendered = await render(fit);
-    if (!rendered.picture) rendered = await render(false);
-    const picture = rendered.picture;
-    if (!picture) throw new Error('The converted slide could not be pictured.');
-
+  /** What one rendering of the proposal looks like next to the source. */
+  const assess = (rendered: Rendered, picture: Picture): Verdict => {
     const items = proposal.items;
     const at = (factor: number, threshold: number) => {
       const a = downsample(sourcePicture, factor);
@@ -765,11 +853,13 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       }
       if (why) {
         // wraps or sits elsewhere
-      } else if (item.scaled || rootScaled) {
+      } else if (item.scaled || rootScaled || onLayer(item)) {
         // The source drew this through a scale the model cannot repeat step for step, so its
         // pixels carry raster noise: judged on the coarse picture.
-        if (type === 'text' || type === 'html') {
-          const share = type === 'text' ? SCALED_TEXT_SHARE : COARSE_SHARE;
+        if (type === 'text' || type === 'html' || type === 'table') {
+          // A table is mostly text, and so is an HTML copy that holds any.
+          const textual = type !== 'html' || item.chars > 0;
+          const share = textual ? SCALED_TEXT_SHARE : COARSE_SHARE;
           if (
             coarse.differing[index]! > Math.max(COARSE_MIN_PIXELS, share * coarse.owned[index]!)
           ) {
@@ -814,6 +904,40 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     let diffPixels = 0;
     for (const v of fine.mask) diffPixels += v;
     return { faithful: bad.length === 0 && loose.length === 0, bad, loose, diffPixels };
+  };
+
+  const pictured = async (fit: boolean): Promise<{ rendered: Rendered; picture: Picture }> => {
+    let rendered = await render(fit);
+    // Text boxes that moved are rendered again before anything is compared.
+    for (let i = 0; i < MAX_TEXT_FITS && rendered.moved; i++) rendered = await render(fit);
+    if (!rendered.picture) rendered = await render(false);
+    const picture = rendered.picture;
+    if (!picture) throw new Error('The converted slide could not be pictured.');
+    return { rendered, picture };
+  };
+
+  const judge = async ({ fit = true }: { fit?: boolean } = {}): Promise<Verdict> => {
+    const first = await pictured(fit);
+    const verdict = assess(first.rendered, first.picture);
+    if (!options.foreign) return verdict;
+    // Text that sits where it should and still differs in its pixels may only be anti-aliased
+    // the other way: drawn once more in grey, and kept that way where it then matches.
+    const again = verdict.bad
+      .filter(({ item, why }) => {
+        const type = item.element.type;
+        const textual = type === 'text' || type === 'table' || (type === 'html' && item.chars > 0);
+        return textual && why.startsWith('looks different') && !triedGrey.has(item);
+      })
+      .map(({ item }) => item);
+    if (again.length === 0) return verdict;
+    for (const item of again) {
+      triedGrey.add(item);
+      grey.add(item);
+    }
+    const second = await pictured(false);
+    const retried = assess(second.rendered, second.picture);
+    for (const { item } of retried.bad) if (again.includes(item)) grey.delete(item);
+    return retried.bad.length <= verdict.bad.length ? retried : verdict;
   };
 
   /** The smallest element under the root whose box holds the rectangle. */
@@ -937,7 +1061,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       faithful: verdict.faithful,
       rounds: Math.min(round, MAX_ROUNDS),
       diffPixels: verdict.diffPixels,
-      exact: !rootScaled && !proposal.items.some((i) => i.scaled),
+      exact: !rootScaled && !proposal.items.some((i) => i.scaled || onLayer(i)),
       fallbacks,
       wholeSlide,
     };
@@ -980,7 +1104,13 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     };
   };
 
-  return { proposal, judge, guard, result, dispose: disposeCopyBaseline };
+  return {
+    proposal,
+    judge,
+    guard,
+    result,
+    dispose: disposeCopyBaseline,
+  };
 }
 
 /** Converts the subtree under `root`: measure, propose, guard. See `startConversion`. */

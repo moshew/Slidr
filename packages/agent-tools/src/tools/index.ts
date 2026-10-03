@@ -73,10 +73,10 @@ export const deckTools: readonly ToolDef[] = [
   deckLint,
   uiPresentOptions,
   uiNavigate,
+  outlinePropose,
   importInspect,
   importEval,
   importScreenshot,
   importSetViewport,
   importCapture,
-  outlinePropose,
 ];

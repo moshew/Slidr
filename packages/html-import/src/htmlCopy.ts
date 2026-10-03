@@ -232,7 +232,7 @@ function windowUnits(doc: Document): WindowUnits | undefined {
 
 /** A length in a unit of the window or of the root, outside URLs and strings. */
 const WINDOW_LENGTH =
-  /url\([^)]*\)|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|(?<![\w-])(-?(?:\d+\.?\d*|\.\d+))(rem|[sld]?v(?:min|max|w|h|i|b))\b/gi;
+  /url\([^)]*\)|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|(?<![\w#-])(-?(?:\d+\.?\d*|\.\d+))(rem|[sld]?v(?:min|max|w|h|i|b))\b/gi;
 
 /**
  * Declarations with their window-relative lengths (`vw`, `vh`, `vmin`, `vmax` and their small,

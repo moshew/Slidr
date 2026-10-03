@@ -66,9 +66,13 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
   // The renderer's table has collapsed borders and no room between its cells.
   if (!collapsed && (px(tableCs.borderSpacing) > 0 || ownPaint(tableCs).border)) return undefined;
   if (pseudoKind(el, '::before') || pseudoKind(el, '::after')) return undefined;
-  // The table's own box (a background, a frame around it) is not a field of the model's table.
+  // The table's own box (a picture behind it, a frame or a shadow around it) is not a field of
+  // the model's table. A plain colour behind collapsed cells is: it shows through every cell
+  // that has no colour of its own, so it is those cells' fill.
   const tablePaint = ownPaint(tableCs);
-  if (tablePaint.background || tablePaint.shadow) return undefined;
+  if (tablePaint.shadow || tableCs.backgroundImage !== 'none') return undefined;
+  const behind = tablePaint.background ? tableCs.backgroundColor : undefined;
+  if (behind && (!collapsed || px(tableCs.borderTopLeftRadius) > 0)) return undefined;
 
   const rows: Element[] = [];
   for (const child of composedChildren(el).filter(shown)) {
@@ -154,10 +158,16 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
       if (blockLines.length === 0) return true;
       const first = blockLines[0]!;
       const last = blockLines[blockLines.length - 1]!;
+      // A row is as tall as its text, so a cell's text needs the height of its line as the
+      // source drew it. Several lines give it by their spacing. One line of `line-height:
+      // normal` gives it by its own box, which is the height the font asks for; left unsaid,
+      // the theme's line height would stand in and every row would come out taller.
       const pitch =
         blockLines.length > 1
           ? ((last.top - first.top) / (blockLines.length - 1)) * toSlide
-          : undefined;
+          : style.lineHeight === 'normal'
+            ? (first.bottom - first.top) * toSlide
+            : undefined;
       const found = readTextBlock(block, block, style, kl, pitch, undefined, text);
       if ('unsupported' in found) return found.unsupported === 'no visible text';
       if (Object.keys(found.css).length > 0) return false;
@@ -178,7 +188,10 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
 
     // A cell without a colour of its own shows its row's.
     const own = alphaOf(cs.backgroundColor) > 0;
-    const background = own ? cs.backgroundColor : styleOf(row).backgroundColor;
+    const ofRow = styleOf(row).backgroundColor;
+    const background = own ? cs.backgroundColor : alphaOf(ofRow) > 0 || !behind ? ofRow : behind;
+    // A colour that only tints what is behind it would need both; the model's cell has one fill.
+    if (behind && alphaOf(background) < 1 && background !== behind) return undefined;
     const top = stroke(cell, cs, 'Top');
     const right = stroke(cell, cs, 'Right');
     const bottom = stroke(cell, cs, 'Bottom');
@@ -200,7 +213,11 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
         ? {
             fill: {
               kind: 'solid',
-              color: text.color(background, own ? cell : row, 'background-color'),
+              color: text.color(
+                background,
+                own ? cell : background === behind ? el : row,
+                'background-color',
+              ),
             },
           }
         : {}),
@@ -225,7 +242,14 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
   // one that another cell covers: `merged` without a cell that spans over it is not a table.
   for (let r = 0; r < lines; r++) {
     for (let c = 0; c < columns; c++) {
-      if (!covered[r]![c]) cells[r]![c] = { content: { paragraphs: [] }, borders: {} };
+      if (covered[r]![c]) continue;
+      cells[r]![c] = {
+        content: { paragraphs: [] },
+        borders: {},
+        ...(behind
+          ? { fill: { kind: 'solid', color: text.color(behind, el, 'background-color') } }
+          : {}),
+      };
     }
   }
 

@@ -247,7 +247,10 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
             ? summarizeWrite(before, after, affected)
             : summarizeWrite(bus.deck, bus.deck, NOTHING);
         Object.assign(data, summary);
-        if (services.lint && tool.lint !== false && summary.slides.length > 0) {
+        // An import session brings in the user's own design (SPEC 13.3): what it writes is not
+        // judged as it goes. slide_lint and deck_lint are there to ask.
+        const judged = tool.lint !== false && turn.scope.kind !== 'import';
+        if (services.lint && judged && summary.slides.length > 0) {
           const live = new Set(bus.deck.slides.map((s) => s.id));
           const slides = summary.slides.filter((id) => live.has(id));
           try {

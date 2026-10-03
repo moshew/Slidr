@@ -14,6 +14,7 @@ import type { AssetMeta, Deck, Slide } from '@slidr/model';
 import { settle } from '@slidr/renderer';
 import { convertSubtree, type GuardReport } from './engine';
 import type { ConversionHost } from './host';
+import { drawnOver, nameOf } from './drawnOver';
 import { composedChildNodes, composedChildren, viewportOffset } from './measure';
 import { createSourceFonts, type AppFontFace } from './sourceFonts';
 
@@ -441,9 +442,19 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
     if (target.js) {
       let value: unknown;
       try {
-        value = (new view.Function(`return (${target.js}\n);`) as () => unknown)();
+        let find: () => unknown;
+        try {
+          find = new view.Function(`return (${target.js}\n);`) as () => unknown;
+        } catch {
+          // Not one expression: taken as the body of a function that returns the element.
+          find = new view.Function(target.js) as () => unknown;
+        }
+        value = find();
       } catch (error) {
-        throw new Error(`"js" failed: ${thrown(error)}`, { cause: error });
+        throw new Error(
+          `"js" failed: ${thrown(error)}. It is one expression for the element, or statements that return it; what changes the page belongs in \`before\`.`,
+          { cause: error },
+        );
       }
       if (!value || (value as { nodeType?: number }).nodeType !== 1) {
         throw new Error('"js" did not evaluate to an Element.');
@@ -593,6 +604,15 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
       if (!inViewport(at)) {
         throw new Error(
           `The element is ${Math.round(at.width)}x${Math.round(at.height)} CSS px at ${Math.round(at.left)},${Math.round(at.top)}, and the page's viewport is ${viewport.width}x${viewport.height}: part of it lies outside the viewport and cannot be pictured. Set a viewport that holds it, or capture a smaller element.`,
+        );
+      }
+
+      const over = drawnOver(root);
+      if (over.length > 0) {
+        const named = over.slice(0, 6).map(nameOf).join('; ');
+        const more = over.length > 6 ? `; and ${over.length - 6} more` : '';
+        throw new Error(
+          `Drawn over the element without being part of it: ${named}${more}. A capture would not look like the page. If this is player chrome (a counter, arrows, a progress bar), hide it in \`before\`; if it belongs to the slide, capture an element that contains it.`,
         );
       }
 

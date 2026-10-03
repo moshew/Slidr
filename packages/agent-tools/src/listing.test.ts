@@ -18,13 +18,14 @@ const everything = Object.fromEntries(
     'stock',
     'icons',
     'options',
+    'importer',
   ].map((name) => [name, {}]),
 ) as Services;
 
 const api = createDeckApi(new CommandBus(hebrewDeck()), everything);
 
 describe('the catalogue', () => {
-  it('has every tool of SPEC 11.4, once, in snake_case', () => {
+  it('has every tool of SPEC 11.4 and of SPEC 13.2, once, in snake_case', () => {
     expect(deckTools.map((t) => t.name)).toEqual([
       'deck_get_outline',
       'deck_get_theme',
@@ -65,13 +66,24 @@ describe('the catalogue', () => {
       'ui_present_options',
       'ui_navigate',
       'outline_propose',
+      'import_inspect',
+      'import_eval',
+      'import_screenshot',
+      'import_set_viewport',
+      'import_capture',
     ]);
   });
 
   it('gives the scopes of the catalogue', () => {
     const names = (scope: 'deck' | 'slide' | 'object' | 'import') =>
       api.list(scope).map((t) => t.name);
-    expect(names('import')).toEqual(names('deck'));
+    // An import session has every tool of a deck session, and the import tools after them.
+    const importOnly = names('import').filter((name) => name.startsWith('import_'));
+    expect(importOnly).toHaveLength(5);
+    expect(names('import')).toEqual([...names('deck'), ...importOnly]);
+    for (const scope of ['deck', 'slide', 'object'] as const) {
+      expect(names(scope).filter((name) => name.startsWith('import_'))).toEqual([]);
+    }
     expect(names('deck')).not.toContain('ui_present_options');
     expect(names('slide')).toEqual(
       expect.arrayContaining([

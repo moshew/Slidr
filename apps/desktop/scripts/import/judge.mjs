@@ -14,7 +14,6 @@ const ROOT = '/@fs/C:/Users/Moshe/Documents/Projects/Slidr-import/packages';
 const out = await page.evaluate(
   async ({ selector, before, ROOT }) => {
     const { startConversion } = await import(`${ROOT}/html-import/src/engine.ts`);
-    const { createDeck } = await import(`${ROOT}/model/src/index.ts`);
     const { host } = window.__slidrImport;
     if (!document.querySelector('iframe[data-slidr-import]'))
       await window.__slidrImport.page.load();
@@ -24,7 +23,9 @@ const out = await page.evaluate(
     await new Promise((r) => setTimeout(r, 400));
     const root = doc.querySelector(selector);
     const conversion = await startConversion(root, {
-      deck: createDeck({ lang: 'en' }),
+      deck: await (
+        await import('/scripts/import/in-page/deckWithFonts.js')
+      ).deckWithFonts(root.ownerDocument, host),
       host,
       foreign: true,
       behind: 'page',

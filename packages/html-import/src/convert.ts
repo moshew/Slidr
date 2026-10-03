@@ -264,13 +264,18 @@ export function propose(root: Element, options: WalkOptions): Proposal {
   // Scale factors stay exact: rounding 0.9021 to 0.9 moves a whole slide by 4px (ADR-005).
   const viewScale = rootRect.width / logicalW;
   const k = options.placement?.k ?? Math.min(deck.size.w / logicalW, deck.size.h / logicalH);
+  // Centred on the slide, a whole number of the source's own pixels in from the edge. Half a
+  // source pixel there (a page 1265px wide beside a scrollbar gives one) would put every box
+  // of the converted slide between two pixels when it is shown at the source's size, and the
+  // browser would round its text to the other side.
+  const centred = (room: number) => Math.round(room / 2 / k) * k;
   const space: Space = {
     root,
     rootRect,
     viewScale,
     k,
-    offX: options.placement?.x ?? (deck.size.w - logicalW * k) / 2,
-    offY: options.placement?.y ?? (deck.size.h - logicalH * k) / 2,
+    offX: options.placement?.x ?? centred(deck.size.w - logicalW * k),
+    offY: options.placement?.y ?? centred(deck.size.h - logicalH * k),
   };
   const fillsSlide =
     Math.abs(space.offX) < 0.5 &&

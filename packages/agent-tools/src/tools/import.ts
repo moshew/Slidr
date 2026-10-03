@@ -173,7 +173,7 @@ function slideReport(deck: Deck, imported: ImportedSlide): Record<string, unknow
 export const importCapture = defineTool({
   name: 'import_capture',
   description:
-    'Captures elements of the page as slides, in the order given, and appends them to the deck. For each: runs `before` (optional JavaScript, as in import_eval) to bring the slide into its final state, waits, then copies the element with the styles, images and fonts it uses, converts what it can into editable elements, compares the result with the source, and keeps as html whatever did not convert faithfully. Returns `captured`, with for each slide its id and number, `faithful`, the share that became editable, element counts and remarks; a slide that could not be captured is reported with the reason. A long call stops early and says which slides are left: call again for those.',
+    'Captures elements of the page as slides, in the order given, and appends them to the deck. For each: runs `before` (optional JavaScript, as in import_eval) to bring the slide into its final state, waits, then copies the element with the styles, images and fonts it uses, converts what it can into editable elements, compares the result with the source, and keeps as html whatever did not convert faithfully. Returns `captured`, with for each slide its id and number, `faithful`, the share that became editable, element counts and remarks; a slide that could not be captured is reported with the reason (among them: the page draws something over the element that is not part of it). A long call stops early and says which slides are left: call again for those.',
   input: z.strictObject({
     slides: z
       .array(
