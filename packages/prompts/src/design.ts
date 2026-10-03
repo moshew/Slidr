@@ -60,7 +60,6 @@ A slide is read in a few seconds, from a distance, by someone who is also listen
 | caption | 20–24 | notes, sources, labels |
 
 - 24px is the absolute minimum for text that is meant to be read. At most two font families in a deck.
-- The sentence that explains a card or a number is body text, 28px or more, in a colour that reads easily. The caption size is for sources, labels and footnotes.
 - One idea per slide. Up to about 40 words and 5 bullets; longer text is split over two slides or turned into a visual.
 - A clear hierarchy: a size ratio of at least 1.5 between one level and the next, and one focal point per slide.
 
@@ -86,7 +85,7 @@ A slide may go without a visual element (an image, a chart, an icon, a meaningfu
 - One transition type for the deck, or one per section. Lists and cards enter staggered.
 
 **Accessibility**
-- Contrast to WCAG AA: 4.5:1 for regular text, 3:1 for large text (above 48px).
+- Contrast to WCAG AA: 4.5:1 for regular text, 3:1 for large text (above 48px). The app measures it on the rendered slide, so settle it before you write: mid-tone colours, as accent and secondary colours usually are, fail both as the colour of text on a light background, even at display size, and as a fill under white text. Keep them for shapes, bars and lines, and for text on a dark background; on a mid-tone fill, write in the theme's dark text colour. Text made paler with opacity loses contrast the same way.
 
 **Before you call a slide done**, look at it and ask:
 - Is there one clear focal point, and is it what the eye meets first?

@@ -1,0 +1,42 @@
+<!--
+  The smallest slide found that sends the conversion engine to its whole-slide html fallback
+  (ADR-042). It is one label as a model writes it: positioned from the inline end, with no width,
+  so its box shrinks around the word and starts on a fraction of a pixel.
+
+  In the real app, on the base theme (2026-10-03):
+    editability 0
+    "Kept as HTML: text that looks different (36 of 760 pixels): looks different (18 of 735 pixels)."
+
+  What makes it convert (editability 1): a `width` on the label, or both `left` and `right`;
+  36px in place of 28px; weight 400 or 600 in place of 700; the word "הבעיה" in place of "השוק".
+  The same label as a flex item stays html alone, without taking the slide with it.
+
+  From the baseline run of the evaluation set: 8 of the 16 HTML writes of the investor deck came
+  back with editability 0 for this reason.
+-->
+<div
+  dir="rtl"
+  lang="he"
+  style="
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+    background: var(--color-text);
+    font-family: var(--font-body);
+    color: #fff;
+  "
+>
+  <div
+    style="
+      position: absolute;
+      right: 96px;
+      top: 80px;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-accent);
+    "
+  >
+    השוק
+  </div>
+</div>
