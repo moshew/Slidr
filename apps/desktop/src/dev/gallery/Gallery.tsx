@@ -64,6 +64,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Textarea,
   TextField,
   Toggle,
   Tooltip,
@@ -432,6 +433,11 @@ function Fields({ c }: { c: Copy }) {
         error={c.fieldError}
       />
       <Input defaultValue={c.fieldPlaceholder} disabled />
+      <Textarea aria-label={c.fieldLabel} placeholder={c.fieldPlaceholder} />
+      <Textarea
+        aria-label={c.fieldLabel}
+        defaultValue={`${c.fieldPlaceholder}\n${c.fieldHint}\n${c.fieldPlaceholder}`}
+      />
     </Card>
   );
 }
