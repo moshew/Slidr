@@ -190,6 +190,8 @@ function ImageStyle() {
         placeholder={t('ai.stylePlaceholder')}
         aria-label={t('ai.style')}
         rows={2}
+        // A style is often written in English, by the user or by the agent.
+        dir="auto"
         data-testid="image-style"
       />
       <p className="text-xs text-ui-fg-muted">{t('ai.styleHint')}</p>
