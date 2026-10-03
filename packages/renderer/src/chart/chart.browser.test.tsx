@@ -1,3 +1,4 @@
+import { createDeck, createElement, createSlide } from '@slidr/model';
 import { hebrewDeck } from '@slidr/model/fixtures';
 import { expect, test, vi } from 'vitest';
 import { chartDeck } from '../fixtures/chartDeck';
@@ -19,6 +20,31 @@ test('a slide without a chart does not load the chart library', async () => {
   expect(offscreen.root.querySelector('[data-slidr-chart]')).toBeNull();
   expect(engineLoaded()).toBe(false);
   offscreen.dispose();
+});
+
+test('a chart without data is a mark of its place in the editor, and nothing in a show', async () => {
+  // What a layout's chart placeholder is until someone fills it (`compose/layout.ts`).
+  const empty = createElement.chart({
+    id: 'e_empty',
+    frame: { x: 200, y: 200, w: 800, h: 480 },
+    chartType: 'column',
+    data: { categories: [], series: [] },
+  });
+  const deck = createDeck({ slides: [createSlide({ id: 's_empty', elements: [empty] })] });
+  const slide = deck.slides[0]!;
+
+  const edited = await renderSlideOffscreen({ deck, slide });
+  const mark = edited.root.querySelector('[data-element-id="e_empty"] [data-slidr-placeholder]');
+  expect(mark?.getAttribute('data-slidr-placeholder')).toBe('chart');
+  expect(mark?.querySelector('svg')).not.toBeNull();
+  expect(edited.root.querySelector('[data-slidr-chart]')).toBeNull();
+  edited.dispose();
+
+  const shown = await renderSlideOffscreen({ deck, slide, mode: 'present' });
+  expect(shown.root.querySelector('[data-element-id="e_empty"]')?.childElementCount).toBe(0);
+  shown.dispose();
+  // Nothing to draw, so the library was not asked for.
+  expect(engineLoaded()).toBe(false);
 });
 
 test('a slide with charts has settled only when they are drawn', async () => {

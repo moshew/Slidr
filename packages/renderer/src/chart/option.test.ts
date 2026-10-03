@@ -387,3 +387,30 @@ describe('a chart on a dark slide', () => {
     expect(chartSpec({ ...source, ink: 'var(--other)' }, ctx).colors.text).toBe('var(--other)');
   });
 });
+
+describe('a chart without data', () => {
+  const types = ['column', 'bar', 'line', 'area', 'pie', 'donut', 'scatter', 'radar'] as const;
+  const empties: ChartElement['data'][] = [
+    { categories: [], series: [] },
+    { categories: [], series: [{ name: 'Series', values: [] }] },
+    { categories: ['a', 'b'], series: [] },
+    { categories: ['a'], series: [{ name: '', values: [null] }] },
+  ];
+
+  it('still gives an option the library can draw: no number that is not one', () => {
+    for (const chartType of types) {
+      for (const data of empties) {
+        for (const labels of [false, true]) {
+          const option = chartOption(
+            spec({ chartType, data, options: { ...chart().options, labels } }),
+            still,
+          );
+          const json = JSON.stringify(option, (_, value: unknown) =>
+            typeof value === 'number' && !Number.isFinite(value) ? 'NOT A NUMBER' : value,
+          );
+          expect(json, `${chartType} ${JSON.stringify(data)}`).not.toContain('NOT A NUMBER');
+        }
+      }
+    }
+  });
+});
