@@ -181,6 +181,27 @@ describe('the score of a request', () => {
     expect(edit.slides[2]?.titleAndBullets).toBe(true);
     expect(edit.titleAndBullets).toEqual([]);
     expect(edit.gate.judged).toBe(0);
+
+    // Reworded, not redesigned: the design check judges the slide, and its look is still the user's.
+    const reworded = deckOf(empty, first, { ...second, name: 'קוצר' }, third);
+    const shortened = scoreRequest({
+      before: deck,
+      deck: reworded,
+      entries: [],
+      tools: [],
+      findings: [],
+    });
+    expect(shortened.gate.judged).toBe(1);
+    expect(shortened.titleAndBullets).toEqual([]);
+    // Written anew as HTML and still a title and bullets: that one is the agent's.
+    const rewritten = scoreRequest({
+      before: deck,
+      deck: reworded,
+      entries: [],
+      tools: [{ ...htmlWrite('s_2'), name: 'slide_replace_from_html' }],
+      findings: [],
+    });
+    expect(rewritten.titleAndBullets).toEqual(['s_2']);
   });
 
   it('follows the HTML writes: how many, how they converted, which came back clean', () => {
