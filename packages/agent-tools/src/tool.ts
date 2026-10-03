@@ -79,6 +79,11 @@ export interface ToolDef<S extends z.ZodType = z.ZodType> {
   readonly writes: boolean;
   /** The tool is registered only when this service is provided. */
   readonly requires?: ServiceName;
+  /**
+   * How long a call may take, in milliseconds, for a tool that needs more than the 60 seconds a
+   * transport gives a call by default (SPEC 11.4): generating an image takes about a minute.
+   */
+  readonly timeoutMs?: number;
   run(input: z.output<S>, ctx: ToolContext): ToolOutput | Promise<ToolOutput>;
 }
 

@@ -30,6 +30,8 @@ export interface ToolListing {
   inputSchema: JsonSchema;
   scopes: readonly ScopeKind[];
   writes: boolean;
+  /** Present when the tool may take longer than a transport's default limit for a call. */
+  timeoutMs?: number;
 }
 
 export interface DeckApi {
@@ -181,6 +183,7 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
           inputSchema,
           scopes: tool.scopes,
           writes: tool.writes,
+          ...(tool.timeoutMs ? { timeoutMs: tool.timeoutMs } : {}),
         };
       });
   }

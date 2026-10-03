@@ -66,6 +66,10 @@ const INTERRUPT_GRACE: Duration = Duration::from_secs(1);
 /// EOF on stdin ends the process in about 330ms (ADR-001); past this, it is killed.
 const CLOSE_GRACE: Duration = Duration::from_secs(5);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
+/// The CLI gives up on a tool call after 60 seconds unless this variable says otherwise (ADR-002,
+/// finding 5). The tool endpoint already limits every call by its tool's own time limit, so the
+/// CLI only has to wait longer than the longest of those: ten minutes.
+const TOOL_TIMEOUT_ENV: (&str, &str) = ("MCP_TOOL_TIMEOUT", "600000");
 /// Length of a tool result's summary, in characters.
 const SUMMARY_CHARS: usize = 300;
 /// stderr lines kept for the error message when the process dies.
@@ -225,6 +229,7 @@ impl AgentHarness for ClaudeCodeHarness {
         let mut command = tokio::process::Command::from(self.command());
         command
             .args(args(&config, &files))
+            .env(TOOL_TIMEOUT_ENV.0, TOOL_TIMEOUT_ENV.1)
             .current_dir(&files.attachments)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

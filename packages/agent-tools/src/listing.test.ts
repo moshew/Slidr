@@ -124,6 +124,14 @@ describe('tool definitions for a transport adapter', () => {
     expect(total).toBeLessThan(90_000);
   });
 
+  it('give the image tools more time than a call gets by default', () => {
+    const slow = listing.filter((t) => t.timeoutMs !== undefined);
+    expect(slow.map((t) => [t.name, t.timeoutMs])).toEqual([
+      ['image_generate', 300_000],
+      ['image_edit', 300_000],
+    ]);
+  });
+
   it('never mention the wire protocol (API-02)', () => {
     expect(JSON.stringify(listing).toLowerCase()).not.toContain(['m', 'c', 'p'].join(''));
   });

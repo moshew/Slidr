@@ -408,6 +408,12 @@ function placeImages(
   };
 }
 
+/**
+ * A provider takes about 50 seconds for one image and up to 90 for four side by side (ADR-025):
+ * past the 60 seconds a tool call gets by default.
+ */
+const IMAGE_TIMEOUT_MS = 300_000;
+
 export const imageGenerate = defineTool({
   name: 'image_generate',
   description:
@@ -421,6 +427,7 @@ export const imageGenerate = defineTool({
   scopes: ALL,
   writes: true,
   requires: 'images',
+  timeoutMs: IMAGE_TIMEOUT_MS,
   async run({ prompt, count, aspect, elementId }, ctx) {
     const target = elementId ? sourceAsset(ctx.deck, { elementId }) : {};
     const images = await ctx.services.images!.generate({
@@ -446,6 +453,7 @@ export const imageEdit = defineTool({
   scopes: ALL,
   writes: true,
   requires: 'images',
+  timeoutMs: IMAGE_TIMEOUT_MS,
   async run({ elementId, assetId, instruction, maskAssetId, count }, ctx) {
     const source = sourceAsset(ctx.deck, { elementId, assetId });
     if (!source.assetId)
