@@ -13,6 +13,9 @@ import slideChat from '../../src-tauri/src/harness/fixtures/scripts/slide-chat.j
 import slideRedesign from '../../src-tauri/src/harness/fixtures/scripts/slide-redesign.json';
 import templateCreate from '../../src-tauri/src/harness/fixtures/scripts/template-create.json';
 import textVariations from '../../src-tauri/src/harness/fixtures/scripts/text-variations.json';
+// An import session on e2e/import-set/handwritten.html, for the import panel's suites. It is
+// not one of the Rust mock's: its tool calls need the import page, which the mock does not drive.
+import importHandwritten from '../../e2e/import-set/handwritten.script.json';
 import { createScriptedAgent, type Script, type ScriptedAgent } from './scriptedAgent';
 
 /** The first is the default, as in the Rust mock's list. */
@@ -27,6 +30,7 @@ const SCRIPTS: Record<string, Script> = {
   'image-alternatives': imageAlternatives,
   'template-create': templateCreate,
   outline,
+  'import-handwritten': importHandwritten,
 };
 
 export function pageAgent(speed: number): ScriptedAgent {

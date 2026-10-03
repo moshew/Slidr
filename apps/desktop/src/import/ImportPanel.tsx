@@ -126,12 +126,25 @@ function Start({ onChoose }: { onChoose: (source: ImportSource, confirm: boolean
 
 /* ---------------------------------------------------------------- the report */
 
-function Figure({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
+/**
+ * `words`: the value is a phrase in the language of the UI ("6 of 6") and reads in its
+ * direction. A bare number, a percentage or a price reads left to right in both.
+ */
+function Figure({
+  label,
+  value,
+  tone,
+  words,
+}: {
+  label: string;
+  value: string;
+  tone?: 'good' | 'bad';
+  words?: boolean;
+}) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5 rounded-panel border border-ui-line px-3 py-2">
       <div className="truncate text-xs text-ui-fg-muted">{label}</div>
       <div
-        dir="ltr"
         className={cx(
           'text-start text-md font-semibold tabular-nums',
           tone === 'good' && 'text-ui-success-fg',
@@ -139,7 +152,8 @@ function Figure({ label, value, tone }: { label: string; value: string; tone?: '
           !tone && 'text-ui-fg',
         )}
       >
-        {value}
+        {/* The value starts where the label starts; only its own characters keep their order. */}
+        {words ? value : <bdi dir="ltr">{value}</bdi>}
       </div>
     </div>
   );
@@ -245,6 +259,7 @@ function Report({ report, onOpen }: { report: ImportReport; onOpen: (slideId: st
           label={t('report.faithful')}
           value={t('report.of', { n: report.faithful, total })}
           tone={report.faithful === total ? 'good' : 'bad'}
+          words
         />
         <Figure
           label={t('report.editable')}
@@ -260,6 +275,7 @@ function Report({ report, onOpen }: { report: ImportReport; onOpen: (slideId: st
         <Figure
           label={t('report.cost')}
           value={report.costUsd === null ? t('report.unknown') : `$${report.costUsd.toFixed(2)}`}
+          words={report.costUsd === null}
         />
       </div>
       <ul className="flex flex-col">
