@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Larder: one grocery list for the whole household</title>
+<meta name="description" content="Larder keeps one shared grocery list and a weekly meal plan for everyone at home.">
+<style>
+  :root {
+    --ink: #1f2a24;
+    --soft: #5c6b62;
+    --cream: #fbf7ef;
+    --paper: #ffffff;
+    --leaf: #2f7d4f;
+    --leaf-dark: #1f5a38;
+    --leaf-pale: #e4f1e7;
+    --tomato: #e4572e;
+    --butter: #f6c85f;
+    --rule: #e6dfd1;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--cream);
+  }
+
+  h1, h2, h3 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  p { margin: 0; }
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  .kicker {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--leaf);
+    margin-bottom: 14px;
+  }
+
+  .button {
+    display: inline-block;
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 17px;
+    text-decoration: none;
+    background: var(--leaf);
+    color: #fff;
+    border: 2px solid var(--leaf);
+  }
+
+  .button.ghost { background: transparent; color: var(--leaf-dark); }
+  .button.light { background: #fff; color: var(--leaf-dark); border-color: #fff; }
+
+  /* ---------- header ---------- */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(251, 247, 239, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  header .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: Georgia, serif;
+    font-size: 26px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .logo svg { width: 32px; height: 32px; }
+
+  nav { display: flex; align-items: center; gap: 32px; font-size: 16px; }
+  nav a { text-decoration: none; color: var(--soft); }
+  nav a.button { color: #fff; padding: 9px 20px; font-size: 15px; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 72px 0 80px; overflow: hidden; }
+
+  .hero .wrap {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 64px;
+    align-items: center;
+  }
+
+  .hero h1 { font-size: 68px; letter-spacing: -0.01em; }
+  .hero h1 em { font-style: italic; color: var(--leaf); }
+
+  .hero .sub {
+    margin: 26px 0 36px;
+    font-size: 22px;
+    color: var(--soft);
+    max-width: 520px;
+  }
+
+  .hero .actions { display: flex; gap: 14px; }
+
+  .hero .note { margin-top: 20px; font-size: 15px; color: var(--soft); }
+
+  .phone {
+    justify-self: center;
+    width: 340px;
+    padding: 14px;
+    border-radius: 44px;
+    background: #23302a;
+    box-shadow: 0 40px 80px -30px rgba(31, 42, 36, 0.55), 24px 24px 0 var(--butter);
+    transform: rotate(3deg);
+  }
+
+  .screen {
+    border-radius: 32px;
+    background: var(--paper);
+    padding: 26px 22px 30px;
+    font-size: 16px;
+  }
+
+  .screen h4 { margin: 0 0 4px; font-size: 22px; font-family: Georgia, serif; }
+  .screen small { color: var(--soft); }
+
+  .list { list-style: none; margin: 20px 0 0; padding: 0; }
+
+  .list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .list li::before {
+    content: "";
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid #c9c2b2;
+  }
+
+  .list li.done { color: #a5a89f; text-decoration: line-through; }
+  .list li.done::before { background: var(--leaf); border-color: var(--leaf); }
+
+  .list li span {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--leaf-pale);
+    color: var(--leaf-dark);
+    text-decoration: none;
+  }
+
+  /* ---------- press ---------- */
+  .press {
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 26px 0;
+    background: var(--paper);
+  }
+
+  .press .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #9a9d93;
+    font-family: Georgia, serif;
+    font-size: 22px;
+    font-style: italic;
+  }
+
+  .press .label {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-style: normal;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* ---------- features ---------- */
+  .features { padding: 80px 0; }
+
+  .section-head { max-width: 680px; margin-bottom: 44px; }
+  .section-head h2 { font-size: 46px; }
+  .section-head p { margin-top: 18px; font-size: 20px; color: var(--soft); }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+  }
+
+  .feature {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 20px;
+    padding: 32px 30px 34px;
+  }
+
+  .feature svg {
+    width: 48px;
+    height: 48px;
+    padding: 11px;
+    border-radius: 14px;
+    background: var(--leaf-pale);
+    stroke: var(--leaf-dark);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .feature h3 { font-size: 23px; margin: 22px 0 10px; }
+  .feature p { color: var(--soft); font-size: 17px; }
+
+  /* ---------- how it works ---------- */
+  .how { background: var(--paper); padding: 80px 0 24px; border-top: 1px solid var(--rule); }
+
+  .step {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+    margin-bottom: 64px;
+  }
+
+  .step:nth-of-type(even) .art { order: -1; }
+
+  .step .n {
+    display: inline-block;
+    font-family: Georgia, serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--tomato);
+    border-bottom: 3px solid var(--tomato);
+    margin-bottom: 18px;
+  }
+
+  .step h3 { font-size: 34px; margin-bottom: 16px; }
+  .step p { color: var(--soft); font-size: 19px; }
+  .step ul { margin: 18px 0 0; padding-left: 22px; color: var(--soft); }
+  .step li { margin-bottom: 6px; }
+
+  .art {
+    border-radius: 24px;
+    padding: 36px;
+    background: var(--leaf-pale);
+  }
+
+  .art.warm { background: #fdeede; }
+  .art.sun { background: #fdf3d3; }
+
+  .bubble {
+    max-width: 78%;
+    padding: 14px 18px;
+    border-radius: 18px 18px 18px 4px;
+    background: #fff;
+    margin-bottom: 12px;
+    font-size: 17px;
+    box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.3);
+  }
+
+  .bubble.me {
+    margin-left: auto;
+    border-radius: 18px 18px 4px 18px;
+    background: var(--leaf);
+    color: #fff;
+  }
+
+  .bubble b { display: block; font-size: 13px; opacity: 0.7; }
+
+  .week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .week div {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 4px 14px;
+    min-height: 150px;
+  }
+
+  .week b { display: block; color: var(--tomato); margin-bottom: 8px; }
+  .week i { display: block; font-style: normal; background: #fdeede; border-radius: 6px; padding: 4px 2px; margin-top: 6px; }
+
+  .aisles { display: flex; flex-direction: column; gap: 12px; }
+
+  .aisle {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 18px;
+    font-size: 17px;
+  }
+
+  .aisle b {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--butter);
+    display: grid;
+    place-items: center;
+    font-size: 15px;
+  }
+
+  .aisle span { margin-left: auto; color: var(--soft); font-size: 14px; }
+
+  /* ---------- numbers ---------- */
+  .numbers { background: var(--leaf-dark); color: #fff; padding: 72px 0; }
+
+  .numbers .wrap {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    text-align: center;
+  }
+
+  .numbers strong {
+    display: block;
+    font-family: Georgia, serif;
+    font-size: 60px;
+    line-height: 1.1;
+    color: var(--butter);
+  }
+
+  .numbers span { font-size: 17px; opacity: 0.85; }
+
+  /* ---------- voices ---------- */
+  .voices { padding: 80px 0; }
+
+  .voice-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  figure {
+    margin: 0;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 20px;
+    padding: 32px;
+  }
+
+  figure blockquote { margin: 0 0 24px; font-size: 19px; }
+
+  figure.big blockquote {
+    font-family: Georgia, serif;
+    font-size: 28px;
+    line-height: 1.4;
+  }
+
+  figcaption { display: flex; align-items: center; gap: 14px; font-size: 15px; color: var(--soft); }
+  figcaption b { display: block; color: var(--ink); font-size: 16px; }
+
+  .avatar {
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 700;
+    background: var(--tomato);
+  }
+
+  .avatar.b { background: var(--leaf); }
+  .avatar.c { background: #7a5ea8; }
+
+  /* ---------- pricing ---------- */
+  .pricing { background: var(--paper); border-top: 1px solid var(--rule); padding: 80px 0 88px; }
+
+  .pricing .section-head { margin-left: auto; margin-right: auto; text-align: center; }
+
+  .plans {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    align-items: stretch;
+  }
+
+  .plan {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--rule);
+    border-radius: 24px;
+    padding: 36px 32px;
+    background: var(--cream);
+  }
+
+  .plan.featured {
+    background: var(--leaf-dark);
+    color: #fff;
+    border-color: var(--leaf-dark);
+    box-shadow: 0 30px 60px -30px rgba(31, 90, 56, 0.7);
+  }
+
+  .plan .tag {
+    position: absolute;
+    top: -14px;
+    right: 28px;
+    background: var(--butter);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 999px;
+  }
+
+  .plan h3 { font-size: 26px; }
+  .plan .for { font-size: 16px; opacity: 0.75; margin-top: 6px; min-height: 52px; }
+
+  .price { font-family: Georgia, serif; font-size: 56px; font-weight: 700; margin: 18px 0 2px; }
+  .price small { font-family: "Segoe UI", system-ui, sans-serif; font-size: 16px; font-weight: 400; opacity: 0.75; }
+
+  .plan ul { list-style: none; margin: 24px 0 32px; padding: 0; flex: 1; }
+
+  .plan li {
+    padding: 9px 0 9px 30px;
+    font-size: 16px;
+    border-top: 1px solid rgba(128, 128, 128, 0.2);
+    background: no-repeat 0 14px / 18px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M3 9.5l4 4 8-9' fill='none' stroke='%232f7d4f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  .plan.featured li {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M3 9.5l4 4 8-9' fill='none' stroke='%23f6c85f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  .plan .button { text-align: center; }
+
+  .fine { text-align: center; margin-top: 32px; font-size: 15px; color: var(--soft); }
+
+  /* ---------- footer ---------- */
+  footer { background: #1b241f; color: #c4cbc5; padding: 64px 0 32px; font-size: 15px; }
+
+  footer .cols {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 1fr;
+    gap: 48px;
+    padding-bottom: 48px;
+  }
+
+  footer .logo { color: #fff; margin-bottom: 14px; }
+  footer h4 { margin: 0 0 14px; color: #fff; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; }
+  footer ul { list-style: none; margin: 0; padding: 0; }
+  footer li { margin-bottom: 8px; }
+  footer a { text-decoration: none; }
+
+  footer .legal {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-top: 24px;
+    font-size: 14px;
+    color: #8d968f;
+  }
+
+  @media (max-width: 900px) {
+    .hero .wrap, .step, .voice-grid, .plans, .feature-grid { grid-template-columns: 1fr; }
+    .numbers .wrap, footer .cols { grid-template-columns: 1fr 1fr; }
+    .hero h1 { font-size: 46px; }
+    nav a:not(.button) { display: none; }
+    .step:nth-of-type(even) .art { order: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="#top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="12" fill="#e4572e"/><path d="M16 8c0-4 3-6 6-6-1 4-3 6-6 6z" fill="#2f7d4f"/></svg>
+      Larder
+    </a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a class="button" href="#pricing">Get the app</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <p class="kicker">Shared grocery list and meal planner</p>
+        <h1>One list for the whole household. <em>No more second trips.</em></h1>
+        <p class="sub">Larder keeps a single grocery list that everyone at home can add to, and turns your weekly meal plan into the things you actually need to buy.</p>
+        <div class="actions">
+          <a class="button" href="#pricing">Start free</a>
+          <a class="button ghost" href="#how">See how it works</a>
+        </div>
+        <p class="note">Free for two people. Works on iPhone, Android and the web.</p>
+      </div>
+      <div class="phone">
+        <div class="screen">
+          <h4>Saturday shop</h4>
+          <small>4 of 9 picked up · shared with Maya, Tom</small>
+          <ul class="list">
+            <li class="done">Oat milk <span>Maya</span></li>
+            <li class="done">Sourdough loaf</li>
+            <li class="done">Cherry tomatoes</li>
+            <li class="done">Eggs, a dozen <span>Tom</span></li>
+            <li>Basmati rice, 1 kg</li>
+            <li>Fresh coriander <span>Thu curry</span></li>
+            <li>Greek yoghurt</li>
+            <li>Dishwasher tablets <span>Tom</span></li>
+            <li>Lemons, 4</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="press">
+    <div class="wrap">
+      <span class="label">As written up in</span>
+      <span>The Weekend Table</span>
+      <span>Home &amp; Hearth</span>
+      <span>Kitchen Quarterly</span>
+      <span>The Thrifty Cook</span>
+      <span>Appwise</span>
+    </div>
+  </div>
+
+  <div class="features" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">What it does</p>
+        <h2>Everything between &ldquo;we are out of milk&rdquo; and dinner on the table</h2>
+        <p>Six small things that add up to fewer forgotten items, less food in the bin and a shorter time in the shop.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature">
+          <svg viewBox="0 0 24 24"><path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="3.5"/><path d="M21 20v-2a4 4 0 0 0-3-3.8M16 3.6a3.5 3.5 0 0 1 0 6.8"/></svg>
+          <h3>Shared in real time</h3>
+          <p>Anyone at home adds an item and it shows up on every phone within a second, with their name next to it.</p>
+        </div>
+        <div class="feature">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+          <h3>Weekly meal plan</h3>
+          <p>Drag recipes onto the days of the week. The ingredients you do not already have land on the list.</p>
+        </div>
+        <div class="feature">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="2"/></svg>
+          <h3>Sorted by aisle</h3>
+          <p>The list reorders itself to match the layout of your usual shop, so you walk it once from door to till.</p>
+        </div>
+        <div class="feature">
+          <svg viewBox="0 0 24 24"><path d="M6 2.5h12l1 6H5l1-6zM5 8.5v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-11"/><path d="M9.5 13h5"/></svg>
+          <h3>Pantry memory</h3>
+          <p>Larder remembers what you bought and roughly how long it lasts, and suggests the staples before they run out.</p>
+        </div>
+        <div class="feature">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 6.5v6l3.5 2"/></svg>
+          <h3>Use-it-first reminders</h3>
+          <p>A nudge on Wednesday about the spinach from Saturday, with two recipes that would finish it.</p>
+        </div>
+        <div class="feature">
+          <svg viewBox="0 0 24 24"><path d="M12 2.5v19M17 6.5H9.5a3 3 0 0 0 0 6h5a3 3 0 0 1 0 6H6.5"/></svg>
+          <h3>Budget at a glance</h3>
+          <p>Snap the receipt and see what the week cost, by category, next to the four weeks before it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how" id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">How it works</p>
+        <h2>Three habits, about five minutes a week</h2>
+      </div>
+
+      <div class="step">
+        <div>
+          <span class="n">Step one</span>
+          <h3>Everyone adds as they notice</h3>
+          <p>The last of the coffee, the school bake sale, the thing for the neighbour. Say it, type it or scan the barcode on the empty packet.</p>
+          <ul>
+            <li>Voice entry from the lock screen</li>
+            <li>Duplicates merge on their own</li>
+            <li>Notes and photos for the tricky items</li>
+          </ul>
+        </div>
+        <div class="art">
+          <div class="bubble"><b>Tom</b>Added dishwasher tablets</div>
+          <div class="bubble me"><b>You</b>Can you get the lemon ones this time?</div>
+          <div class="bubble"><b>Maya</b>Added oat milk × 2</div>
+          <div class="bubble"><b>Larder</b>Eggs are probably running low. Add a dozen?</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <span class="n">Step two</span>
+          <h3>Plan the week on Sunday</h3>
+          <p>Pick five dinners from your saved recipes or paste a link to a new one. Larder works out the quantities for the number of people eating each night.</p>
+        </div>
+        <div class="art warm">
+          <div class="week">
+            <div><b>Mon</b><i>Lentil soup</i></div>
+            <div><b>Tue</b><i>Fish tacos</i></div>
+            <div><b>Wed</b><i>Spinach pie</i></div>
+            <div><b>Thu</b><i>Chicken curry</i><i>Rice</i></div>
+            <div><b>Fri</b><i>Pizza night</i></div>
+            <div><b>Sat</b></div>
+            <div><b>Sun</b><i>Roast veg</i><i>Couscous</i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <span class="n">Step three</span>
+          <h3>Shop once, in order</h3>
+          <p>Whoever is nearest the shop opens the list. Items are grouped by aisle and tick off for everyone as they go into the trolley, so nobody buys the same thing twice.</p>
+          <ul>
+            <li>Works without signal inside the shop</li>
+            <li>Split the list between two people in one tap</li>
+          </ul>
+        </div>
+        <div class="art sun">
+          <div class="aisles">
+            <div class="aisle"><b>1</b>Fruit and vegetables<span>5 items</span></div>
+            <div class="aisle"><b>2</b>Bakery<span>1 item</span></div>
+            <div class="aisle"><b>4</b>Dairy and eggs<span>3 items</span></div>
+            <div class="aisle"><b>7</b>Rice, pasta and tins<span>2 items</span></div>
+            <div class="aisle"><b>11</b>Household<span>1 item</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="numbers">
+    <div class="wrap">
+      <div><strong>310,000</strong><span>households use Larder every week</span></div>
+      <div><strong>23%</strong><span>less food thrown away after three months</span></div>
+      <div><strong>1.4</strong><span>shop visits a week, down from 2.6</span></div>
+      <div><strong>4.8 / 5</strong><span>average rating across both app stores</span></div>
+    </div>
+  </div>
+
+  <div class="voices">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">From people who use it</p>
+        <h2>Fewer texts that say &ldquo;did you get the&hellip;&rdquo;</h2>
+      </div>
+      <div class="voice-grid">
+        <figure class="big">
+          <blockquote>We are five people with three different schedules. Before Larder the fridge had four open jars of the same pesto. Now the list is just there, and whoever passes the shop picks it up.</blockquote>
+          <figcaption><span class="avatar">PR</span><span><b>Priya R.</b>Household of five, Leeds</span></figcaption>
+        </figure>
+        <figure>
+          <blockquote>The aisle order sounds like a gimmick until you finish a full weekly shop in twenty-five minutes.</blockquote>
+          <figcaption><span class="avatar b">DK</span><span><b>Daniel K.</b>Shops for two</span></figcaption>
+        </figure>
+        <figure>
+          <blockquote>My flatmates finally add things themselves instead of telling me on the stairs.</blockquote>
+          <figcaption><span class="avatar c">SO</span><span><b>Sofia O.</b>Shared flat, four people</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+
+  <div class="pricing" id="pricing">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker">Pricing</p>
+        <h2>Free for two. One price for the whole house.</h2>
+        <p>No adverts and no selling of shopping data on any plan.</p>
+      </div>
+      <div class="plans">
+        <div class="plan">
+          <h3>Pair</h3>
+          <p class="for">For couples and flatmates who want one list.</p>
+          <p class="price">$0</p>
+          <ul>
+            <li>2 people</li>
+            <li>1 shared list</li>
+            <li>Sorted by aisle</li>
+            <li>10 saved recipes</li>
+          </ul>
+          <a class="button ghost" href="#top">Start free</a>
+        </div>
+        <div class="plan featured">
+          <span class="tag">Most chosen</span>
+          <h3>Household</h3>
+          <p class="for">For families and shared homes that plan the week.</p>
+          <p class="price">$4 <small>per month, for everyone</small></p>
+          <ul>
+            <li>Up to 8 people</li>
+            <li>Unlimited lists</li>
+            <li>Weekly meal plan</li>
+            <li>Pantry memory and reminders</li>
+            <li>Unlimited recipes</li>
+            <li>Receipt scanning and budget</li>
+          </ul>
+          <a class="button light" href="#top">Try 30 days free</a>
+        </div>
+        <div class="plan">
+          <h3>Two homes</h3>
+          <p class="for">For families who shop for grandparents or a second address.</p>
+          <p class="price">$7 <small>per month</small></p>
+          <ul>
+            <li>Everything in Household</li>
+            <li>Up to 16 people</li>
+            <li>Separate pantries per home</li>
+            <li>Delivery hand-off to 3 supermarkets</li>
+          </ul>
+          <a class="button ghost" href="#top">Try 30 days free</a>
+        </div>
+      </div>
+      <p class="fine">Prices in US dollars. Cancel any time; your lists stay readable on the free plan.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="logo" href="#top">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="12" fill="#e4572e"/><path d="M16 8c0-4 3-6 6-6-1 4-3 6-6 6z" fill="#2f7d4f"/></svg>
+          Larder
+        </a>
+        <p>A small team in Bristol that got tired of buying a third jar of cumin.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li>What is new</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li>About</li>
+          <li>Journal</li>
+          <li>Careers</li>
+          <li>Press kit</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Help</h4>
+        <ul>
+          <li>Questions</li>
+          <li>Contact</li>
+          <li>Privacy</li>
+          <li>Terms</li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <span>&copy; 2026 Larder Labs Ltd. All rights reserved.</span>
+      <span>Made with leftovers.</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

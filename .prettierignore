@@ -12,3 +12,6 @@ examples/
 
 # Throwaway feasibility code; findings live in docs/adr.
 spikes/
+
+# Decks the HTML import is tested on: kept as their authors (or tools) wrote them.
+apps/desktop/e2e/import-set/**/*.html

@@ -47,6 +47,13 @@ export default tseslint.config(
     languageOptions: { globals: globals.node },
   },
 
+  // Development scripts that drive the running app over the DevTools protocol: Node, with code
+  // for the app's pages inside.
+  {
+    files: ['apps/desktop/scripts/import/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+
   // Dependency rule of SPEC 14.2: `model` stands alone and never touches React or the DOM.
   {
     files: ['packages/model/src/**/*.ts'],

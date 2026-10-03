@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+		/>
+
+		<title>Caching 101: making a slow API feel fast</title>
+
+		<link rel="stylesheet" href="dist/reset.css" />
+		<link rel="stylesheet" href="dist/reveal.css" />
+		<link rel="stylesheet" href="dist/theme/black.css" />
+
+		<style>
+			.reveal table.compare { font-size: 0.75em; margin-top: 30px; }
+			.reveal table.compare th { color: #42affa; }
+			.reveal .small { font-size: 0.6em; color: #aaa; }
+			.reveal pre code { padding: 18px 22px; max-height: 520px; font-size: 1.05em; line-height: 1.35; }
+			.reveal blockquote.big { width: 86%; font-size: 1.25em; background: none; box-shadow: none; }
+			.reveal .tiers { display: flex; gap: 18px; margin-top: 36px; }
+			.reveal .tiers div {
+				flex: 1;
+				padding: 22px 12px;
+				border: 2px solid #42affa;
+				border-radius: 10px;
+				font-size: 0.7em;
+			}
+			.reveal .tiers b { display: block; font-size: 1.3em; margin-bottom: 8px; color: #42affa; }
+		</style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<h1>Caching 101</h1>
+					<h3>Making a slow API feel fast</h3>
+					<p class="small">Dana Levi &middot; Backend Guild, May 2026</p>
+					<aside class="notes">
+						Welcome. Twenty minutes, questions at the end. Ask how many people have shipped a cache
+						bug to production: usually most of the room.
+					</aside>
+				</section>
+
+				<section>
+					<h2>When is a cache worth it?</h2>
+					<ul>
+						<li class="fragment">The same question is asked again and again</li>
+						<li class="fragment">The answer changes rarely</li>
+						<li class="fragment">Computing it is slow or costs money</li>
+						<li class="fragment">A slightly old answer is acceptable</li>
+					</ul>
+					<aside class="notes">
+						Reveal the four conditions one by one. Stress the last one: if stale data is never
+						acceptable, a cache is the wrong tool and the query itself has to get faster.
+					</aside>
+				</section>
+
+				<section>
+					<section>
+						<h2>Where a cache can live</h2>
+						<div class="tiers">
+							<div><b>Browser</b>HTTP headers, per user</div>
+							<div><b>CDN</b>Shared, close to the user</div>
+							<div><b>Application</b>Memory or Redis</div>
+							<div><b>Database</b>Materialised views</div>
+						</div>
+						<p class="small">Press the down arrow for the application tier in detail</p>
+					</section>
+					<section>
+						<h2>In-process or shared?</h2>
+						<table class="compare">
+							<thead>
+								<tr>
+									<th></th>
+									<th>In-process</th>
+									<th>Shared (Redis)</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>Lookup time</td>
+									<td>under 1 &micro;s</td>
+									<td>about 1 ms</td>
+								</tr>
+								<tr>
+									<td>Survives a deploy</td>
+									<td>No</td>
+									<td>Yes</td>
+								</tr>
+								<tr>
+									<td>Same answer on every server</td>
+									<td>No</td>
+									<td>Yes</td>
+								</tr>
+								<tr>
+									<td>Extra moving parts</td>
+									<td>None</td>
+									<td>One more service</td>
+								</tr>
+							</tbody>
+						</table>
+					</section>
+				</section>
+
+				<section>
+					<h2>Cache-aside in a dozen lines</h2>
+					<pre><code>async function getProfile(userId) {
+  const key = `profile:${userId}`;
+
+  const cached = await redis.get(key);
+  if (cached) return JSON.parse(cached);
+
+  const profile = await db.loadProfile(userId);
+  await redis.set(key, JSON.stringify(profile), { EX: 300 });
+  return profile;
+}
+
+async function updateProfile(userId, changes) {
+  await db.saveProfile(userId, changes);
+  await redis.del(`profile:${userId}`);
+}</code></pre>
+				</section>
+
+				<section data-background-gradient="linear-gradient(135deg, #0b486b 0%, #3b8686 55%, #79bd9a 100%)">
+					<h2>The hard part</h2>
+					<blockquote class="big">
+						&ldquo;There are only two hard things in computer science: cache invalidation and naming
+						things.&rdquo;
+					</blockquote>
+					<p class="small" style="color: #fff">Phil Karlton</p>
+				</section>
+
+				<section>
+					<h2>Choosing a TTL</h2>
+					<table class="compare">
+						<thead>
+							<tr>
+								<th>Data</th>
+								<th>TTL</th>
+								<th>Why</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>Country list</td>
+								<td>24 hours</td>
+								<td>Changes a few times a year</td>
+							</tr>
+							<tr>
+								<td>User profile</td>
+								<td>5 minutes</td>
+								<td>Deleted on every write anyway</td>
+							</tr>
+							<tr>
+								<td>Search results</td>
+								<td>30 seconds</td>
+								<td>Fresh enough, absorbs bursts</td>
+							</tr>
+							<tr>
+								<td>Account balance</td>
+								<td>Do not cache</td>
+								<td>A stale answer is a wrong answer</td>
+							</tr>
+						</tbody>
+					</table>
+					<aside class="notes">
+						The TTL is a business decision, not a technical one. Ask the product owner how old the
+						answer may be, then pick the longest value they accept.
+					</aside>
+				</section>
+
+				<section>
+					<h2>Takeaways</h2>
+					<ol>
+						<li>Measure first, cache second</li>
+						<li>Start with the tier closest to the user</li>
+						<li>Decide how stale is acceptable before writing code</li>
+						<li>Delete on write, expire on a timer</li>
+					</ol>
+					<h3 style="margin-top: 50px">Questions?</h3>
+				</section>
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="dist/plugin/notes.js"></script>
+		<script>
+			Reveal.initialize({
+				hash: true,
+				plugins: [RevealNotes],
+			});
+		</script>
+	</body>
+</html>
