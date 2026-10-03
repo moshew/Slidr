@@ -206,7 +206,7 @@ interface Run {
   entryId: string;
   /** What the turn was started with, to send again if the session has to start over. */
   message: string;
-  /** Every write of the run, follow-up rounds included, is this one transaction (MCP-07). */
+  /** Every write of the run, follow-up rounds included, is this one transaction (D8). */
   turn: Turn | null;
   watch: TurnWatch;
   /** Follow-ups the design check has sent. */
