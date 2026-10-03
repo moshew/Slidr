@@ -408,3 +408,36 @@ test('a press on the cell beside its text keeps the editor, with the caret in th
   expect((await texts(page))[1]![1]).toBe('1.2M?');
   expect((await table(page)).frame).toEqual({ x: 360, y: 240, w: 1200, h: 480 });
 });
+
+test('a character typed on a selected cell starts its text over, in its formatting', async ({
+  page,
+}) => {
+  await openApp(page);
+  const id = await addTable(page, {
+    dir: 'rtl',
+    texts: [
+      ['שם', 'ערך'],
+      ['ישן', '12'],
+    ],
+  });
+  await typeInCell(page, id, 1, 0);
+  // Bold, so that there is formatting to keep.
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+b');
+  await page.keyboard.press('Escape');
+  const before = await steps(page);
+
+  // The first character opens the editor; the ones after it are typed into it. (Playwright
+  // sends a key press only for a character of the US layout, so the first one is Latin.)
+  await page.keyboard.press('N');
+  await expect(stage(page).locator('[data-text-editor]')).toBeFocused();
+  await page.keyboard.type('ew חדש');
+  expect(await typingCell(page)).toBe('1,0');
+  const cell = (await table(page)).cells[1]![0]!;
+  expect(cell.content.paragraphs).toHaveLength(1);
+  expect(cell.content.paragraphs[0]!.runs).toEqual([{ text: 'New חדש', marks: { weight: 700 } }]);
+  // The whole of it is one burst of typing: one undo step.
+  expect(await steps(page)).toBe(before + 1);
+  await page.keyboard.press('Control+z');
+  expect((await texts(page))[1]![0]).toBe('ישן');
+});

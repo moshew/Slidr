@@ -57,6 +57,11 @@ export interface TextEditorProps {
   /** Without `caretAt`: the caret at the end of the text (the default), or all of it selected. */
   select?: 'end' | 'all';
   /**
+   * What was typed to open the editor (a character on a selected table cell): it takes the place
+   * of all the text, in the formatting the text had, as the first of the typing that follows.
+   */
+  replaceWith?: string;
+  /**
    * Keys the host takes before the editor does, by their ProseMirror names: Tab between the cells
    * of a table. A handler that returns false leaves the key to the editor.
    */
@@ -67,6 +72,8 @@ export interface TextEditorProps {
 
 /** A pause in typing longer than this starts a new undo step (ADR-006). */
 const BURST_MS = 650;
+/** How long after it opened with a typed character the editor is still settling its selection. */
+const OPENING_MS = 200;
 
 const NO_TEXT: RichText = { paragraphs: [] };
 
@@ -150,6 +157,7 @@ export function TextEditor({
   theme,
   caretAt,
   select = 'end',
+  replaceWith,
   keys,
   onExit,
 }: TextEditorProps) {
@@ -157,6 +165,8 @@ export function TextEditor({
   const exitRef = useRef(onExit);
   const keysRef = useRef(keys);
   const burst = useRef<{ txId: string; at: number } | null>(null);
+  /** When the editor opened with a typed character (`replaceWith`); 0 when it did not. */
+  const openedTyping = useRef(0);
   /** What the editor last wrote to the model, to tell our own changes from undo or the agent's. */
   const written = useRef<string>(signature(normalizeRichText(editedText(element, cell))));
 
@@ -263,8 +273,11 @@ export function TextEditor({
         },
       },
       onSelectionUpdate: ({ transaction }) => {
-        // Moving the caret ends the typing burst.
-        if (!transaction.docChanged) burst.current = null;
+        // Moving the caret ends the typing burst. Not the selection the browser reports as the
+        // editor takes the focus, right after it opened with a typed character: that character
+        // and the typing that follows it are one burst.
+        const opening = performance.now() - openedTyping.current < OPENING_MS;
+        if (!transaction.docChanged && !opening) burst.current = null;
       },
       onTransaction: ({ transaction }) => {
         // So does a formatting change, also one that only sets what is typed next.
@@ -308,6 +321,14 @@ export function TextEditor({
           else ed.view.dispatch(ed.state.tr.setSelection(TextSelection.near(at)));
         } else if (select === 'all') ed.commands.selectAll();
         ed.commands.focus(pos || select === 'all' ? null : 'end');
+        if (replaceWith) {
+          // From the start of the first line to the end of the last: the first paragraph stays,
+          // with its direction and alignment, and the new text takes the marks of the old.
+          const { doc, tr } = ed.state;
+          const all = TextSelection.create(doc, 1, doc.content.size - 1);
+          openedTyping.current = performance.now();
+          ed.view.dispatch(tr.setSelection(all).insertText(replaceWith));
+        }
       },
     },
     [theme, defaults?.color, defaults?.weight],

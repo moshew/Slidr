@@ -183,8 +183,9 @@ function CellEditor({ bus, slideId, table, cell, theme, caret, onExit }: CellEdi
         element={table}
         cell={cell}
         theme={theme}
-        caretAt={typeof caret === 'object' ? caret : undefined}
+        caretAt={typeof caret === 'object' && 'x' in caret ? caret : undefined}
         select={caret === 'all' ? 'all' : 'end'}
+        replaceWith={typeof caret === 'object' && 'typed' in caret ? caret.typed : undefined}
         keys={keys}
         onExit={onExit}
       />
@@ -607,6 +608,16 @@ export function useTableStage({
     } else if ((event.ctrlKey || event.metaKey) && event.code === 'KeyA') {
       const all = fullRange(table);
       selectCells({ row: all.row0, col: all.col0 }, { row: all.row1, col: all.col1 });
+    } else if (
+      event.key.length === 1 &&
+      event.key !== ' ' &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      // A character typed on a selected cell starts its text over, as in a spreadsheet. The
+      // space is the Stage's (it pans).
+      typeIn(at, { typed: event.key });
     } else taken = false;
     if (taken) event.preventDefault();
     return taken;

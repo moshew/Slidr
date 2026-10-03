@@ -17,8 +17,12 @@ import { cellScope } from '../text/cellScope';
  * part of the document and not of undo (CMD-05).
  */
 
-/** Where the caret goes when the text editor opens in a cell: a point on the screen, or by rule. */
-export type Caret = { x: number; y: number } | 'all' | 'end';
+/**
+ * How the text editor opens in a cell: with the caret at a point of the screen or at the end of
+ * the text, with all the text selected, or with a character that was typed on the selected cell,
+ * which starts the cell's text over.
+ */
+export type Caret = { x: number; y: number } | { typed: string } | 'all' | 'end';
 
 export interface TableSession {
   /** The table this is about. It counts only while that table is `editingElementId`. */
