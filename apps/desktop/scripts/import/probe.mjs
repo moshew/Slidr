@@ -56,7 +56,7 @@ const result = await page.evaluate(
 );
 
 if (result.shot?.data) {
-  writeFileSync(process.env.SHOT ?? 'probe.png', Buffer.from(result.shot.data, 'base64'));
+  if (process.env.SHOT) writeFileSync(process.env.SHOT, Buffer.from(result.shot.data, 'base64'));
   result.shot.data = `(${result.shot.data.length} base64 chars)`;
 }
 console.log(JSON.stringify(result, null, 1));

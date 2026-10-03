@@ -117,8 +117,15 @@ export function checkCapture(value: unknown, deck: Deck): ImportedSlide {
     textEditability: value.textEditability,
     faithful: guard.faithful,
     exact: guard.exact,
-    wholeSlideHtml: guard.wholeSlide,
-    source: { width: source.width, height: source.height },
+    // Read off the slide itself: the guard says so only when it gave up on the slide as its
+    // last step, and a slide can end up as one html element by other roads.
+    wholeSlideHtml:
+      slide.elements.length > 0 && slide.elements.every((element) => element.type === 'html'),
+    source: {
+      width: source.width,
+      height: source.height,
+      ...(isSize(source.scale) ? { scale: source.scale } : {}),
+    },
     notes: notes.slice(0, MAX_NOTES).map((note) => note.slice(0, MAX_NOTE)),
   };
 }

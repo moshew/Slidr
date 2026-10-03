@@ -32,7 +32,7 @@ const FILES = [
   { name: 'canvas-animations', path: `${SET}/canvas-animations.html`, slides: 6 },
   { name: 'long-page', path: `${SET}/long-page.html`, slides: null, confirm: true },
   { name: 'photo-tour', path: `${SET}/photo-tour.html`, slides: 7 },
-  { name: 'devops', path: `${USER}/devops.html`, slides: 18 },
+  { name: 'devops', path: `${USER}/devops.html`, slides: 9 },
 ];
 
 const outDir = here('../../test-results/import/runs');

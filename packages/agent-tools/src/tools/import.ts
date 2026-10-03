@@ -141,22 +141,28 @@ function slideReport(deck: Deck, imported: ImportedSlide): Record<string, unknow
     );
   }
   if (!imported.exact) {
+    const scale = source.scale ?? 1;
     remarks.push(
-      'The source shows this content through a scale, so it was compared approximately. Bring the deck to 100% (its own setting, or import_set_viewport at the design size) for an exact check.',
+      Math.abs(scale - 1) > 0.001
+        ? `The page shows this slide at ${Math.round(scale * 1000) / 10}% of its own size, so it was compared approximately. At 100% the comparison is exact and more of the slide becomes editable: use the deck's own setting, or import_set_viewport with the viewport divided by ${scale}.`
+        : 'The source draws this content through a scale or on a layer of its own, so it was compared approximately.',
     );
   }
   if (imported.wholeSlideHtml) {
-    remarks.push('Kept as one html element: it could not be matched element by element.');
+    remarks.push(
+      imported.exact
+        ? 'Nothing became an editable element: the slide is html only.'
+        : 'Nothing became an editable element: the slide is html only. A slide shown through a scale often ends this way: bring the deck to 100%, then capture it again with `replaces`.',
+    );
   }
   if (!imported.faithful) {
     remarks.push('Does not look exactly like the source: look at it with slide_render.');
   }
   const kept = imported.notes.filter((note) => note.startsWith('Kept as HTML'));
   const others = imported.notes.filter((note) => !note.startsWith('Kept as HTML'));
-  if (!imported.wholeSlideHtml) {
-    remarks.push(...kept.slice(0, 6));
-    if (kept.length > 6) remarks.push(`… and ${kept.length - 6} more regions kept as html.`);
-  }
+  const shown = imported.wholeSlideHtml ? 1 : 6;
+  remarks.push(...kept.slice(0, shown));
+  if (kept.length > shown) remarks.push(`… and ${kept.length - shown} more regions kept as html.`);
   remarks.push(...others.slice(0, 6));
   return {
     number: deck.slides.findIndex((s) => s.id === slide.id) + 1,
@@ -184,6 +190,12 @@ export const importCapture = defineTool({
             .optional()
             .describe('JavaScript to run first: bring this slide into view in its final state.'),
           name: z.string().optional().describe('A short name for the slide.'),
+          replaces: z
+            .string()
+            .optional()
+            .describe(
+              'The id of a slide of the deck that this capture takes the place of. For capturing a slide again once the page was put right: the new slide stands where the old one stood, and the old one is removed.',
+            ),
           notes: z
             .string()
             .optional()
@@ -214,13 +226,23 @@ export const importCapture = defineTool({
         left = slides.length - index;
         break;
       }
-      const { name, notes, ...where } = request;
+      const { name, notes, replaces, ...where } = request;
       try {
+        const replaced = replaces ? ctx.deck.slides.findIndex((s) => s.id === replaces) : -1;
+        if (replaces && replaced < 0) {
+          throw new Error(`No slide ${replaces} in the deck to replace. Nothing was captured.`);
+        }
         const captured = await importer.capture(ctx.deck, where);
+        // A slide captured again keeps the name and the notes the first capture was given.
+        const old = replaced >= 0 ? ctx.deck.slides[replaced] : undefined;
         const slide: Slide = {
           ...captured.slide,
-          ...(name ? { name } : {}),
-          ...(notes ? { notes: markdownToRichText(notes, { deckDir: ctx.deck.meta.dir }) } : {}),
+          ...(name ? { name } : old?.name ? { name: old.name } : {}),
+          ...(notes
+            ? { notes: markdownToRichText(notes, { deckDir: ctx.deck.meta.dir }) }
+            : old?.notes
+              ? { notes: old.notes }
+              : {}),
         };
         const imported = { ...captured, slide };
         const placeholder = untouchedOnlySlide(ctx.deck);
@@ -228,9 +250,10 @@ export const importCapture = defineTool({
           ...imported.assets
             .filter((asset) => !ctx.deck.assets[asset.id])
             .map((asset): Command => ({ type: 'asset.add', asset })),
-          { type: 'slide.add', slide },
+          old ? { type: 'slide.add', slide, index: replaced } : { type: 'slide.add', slide },
         ];
-        if (placeholder) commands.push({ type: 'slide.remove', slideIds: [placeholder.id] });
+        if (old) commands.push({ type: 'slide.remove', slideIds: [old.id] });
+        else if (placeholder) commands.push({ type: 'slide.remove', slideIds: [placeholder.id] });
         ctx.write(commands);
         importer.captured?.(imported);
         reports.push(slideReport(ctx.deck, imported));

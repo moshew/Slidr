@@ -289,10 +289,13 @@ export interface ImportedSlide {
   /** The fidelity guard: the slide looks like the source; the comparison was exact. */
   faithful: boolean;
   exact: boolean;
-  /** The whole slide is one html element. */
+  /** Nothing on the slide became a regular element: it is html only. */
   wholeSlideHtml: boolean;
-  /** The size of the captured element in the source, in CSS px. */
-  source: { width: number; height: number };
+  /**
+   * The size of the captured element on the page, in CSS px, and the scale the page shows it
+   * through (1 when it is shown at its own size).
+   */
+  source: { width: number; height: number; scale?: number };
   notes: string[];
 }
 

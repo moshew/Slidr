@@ -59,7 +59,13 @@ const page = createImportPage({
   appFonts: builtinFaces.map((face) => ({ ...face, url: new URL(face.url, location.href).href })),
 });
 
-const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
+/** What went wrong, in words: a command of the app fails with `{ kind, message }`, not an Error. */
+const message = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  const failed = error as { message?: unknown } | null;
+  if (typeof failed?.message === 'string') return failed.message;
+  return typeof error === 'string' ? error : JSON.stringify(error);
+};
 
 // One job at a time: there is one file, and one surface the pictures are taken of.
 let last: Promise<unknown> = Promise.resolve();

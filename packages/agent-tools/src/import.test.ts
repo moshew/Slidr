@@ -164,20 +164,78 @@ describe('import_capture', () => {
       capture: vi
         .fn()
         .mockResolvedValueOnce(captured({ source: { width: 900, height: 900 } }))
+        .mockResolvedValueOnce(
+          captured({ exact: false, source: { width: 921.6, height: 672, scale: 0.96 } }),
+        )
         .mockResolvedValueOnce(captured({ exact: false }))
-        .mockResolvedValueOnce(captured({ faithful: false, wholeSlideHtml: true, notes: [] })),
+        .mockResolvedValueOnce(
+          captured({
+            faithful: false,
+            exact: false,
+            wholeSlideHtml: true,
+            source: { width: 1536, height: 864, scale: 0.8 },
+            notes: [
+              'Kept as HTML (element e_1): a difference no element explains (1984 pixels).',
+              'Kept as HTML (element e_2): a pseudo-element.',
+            ],
+          }),
+        ),
     });
     const { call } = setup(hebrewDeck(), { importer: service }, IMPORT);
     const data = await ok(
-      call('import_capture', { slides: [{ selector: 'a' }, { selector: 'b' }, { selector: 'c' }] }),
+      call('import_capture', {
+        slides: [{ selector: 'a' }, { selector: 'b' }, { selector: 'c' }, { selector: 'd' }],
+      }),
     );
     const remarks = (data.captured as { remarks: string[] }[]).map((slide) =>
       slide.remarks.join(' '),
     );
     expect(remarks[0]).toMatch(/900x900 \(1\.00:1, not 16:9\): check that it is the whole slide/);
-    expect(remarks[1]).toMatch(/compared approximately\. Bring the deck to 100%/);
-    expect(remarks[2]).toMatch(/Kept as one html element/);
-    expect(remarks[2]).toMatch(/look at it with slide_render/);
+    // The scale the page shows the slide through is said, so that it can be undone.
+    expect(remarks[1]).toMatch(
+      /shows this slide at 96% of its own size, so it was compared approximately\. .* import_set_viewport with the viewport divided by 0\.96/,
+    );
+    expect(remarks[2]).toMatch(/through a scale or on a layer of its own/);
+    // A slide that is html only says so, with the first reason and what to try.
+    expect(remarks[3]).toMatch(
+      /Nothing became an editable element: the slide is html only\. .* capture it again with `replaces`/,
+    );
+    expect(remarks[3]).toMatch(/look at it with slide_render/);
+    expect(remarks[3]).toMatch(/a difference no element explains \(1984 pixels\)\. … and 1 more/);
+  });
+
+  it('captures a slide again in the place of the first capture', async () => {
+    const fresh = createDeck({ lang: 'he', slides: [createSlide()] });
+    const service = importer();
+    const { bus, call } = setup(fresh, { importer: service }, IMPORT);
+    await ok(
+      call('import_capture', {
+        slides: [
+          { selector: 'a', name: 'One' },
+          { selector: 'b', name: 'Two', notes: 'Say hello.' },
+          { selector: 'c', name: 'Three' },
+        ],
+      }),
+    );
+    const second = bus.deck.slides[1]!;
+    const data = await ok(
+      call('import_capture', { slides: [{ selector: 'b', replaces: second.id }] }),
+    );
+    // It stands where the old one stood, under the same name and with the same notes.
+    expect(bus.deck.slides.map((slide) => slide.name)).toEqual(['One', 'Two', 'Three']);
+    expect(bus.deck.slides[1]!.id).not.toBe(second.id);
+    expect(bus.deck.slides[1]!.notes).toEqual(second.notes);
+    expect(data.captured).toEqual([expect.objectContaining({ number: 2, name: 'Two' })]);
+    expect(data.slidesInDeck).toBe(3);
+
+    // A slide that is not there is said, and nothing is captured for it.
+    const missing = await ok(
+      call('import_capture', { slides: [{ selector: 'b', replaces: 's_gone' }] }),
+    );
+    const [refused] = missing.captured as { error: string }[];
+    expect(refused?.error).toMatch(/No slide s_gone in the deck/);
+    expect(bus.deck.slides).toHaveLength(3);
+    expect(service.capture).toHaveBeenCalledTimes(4);
   });
 
   it('replaces the untouched slide a new deck starts with, and only that', async () => {

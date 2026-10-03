@@ -78,6 +78,27 @@ describe('checkCapture', () => {
     expect(slide.assets).toEqual([asset]);
   });
 
+  it('reads off the slide itself that nothing on it became a regular element', () => {
+    // The guard reports `wholeSlide` only when giving up on the slide was its last step; a
+    // slide can end up as html alone by other roads, and the page's word is not taken for it.
+    const htmlOnly = createSlide({
+      id: 's_html',
+      elements: [
+        createElement.html({ id: 'e_all', frame: { x: 0, y: 0, w: 1920, h: 1080 }, markup: '' }),
+      ],
+    });
+    const slide = checkCapture(
+      capture({ slide: htmlOnly, source: { width: 1536, height: 864, scale: 0.8 } }),
+      deck(),
+    );
+    expect(slide.wholeSlideHtml).toBe(true);
+    // The scale the page showed it through comes along, for the agent to undo.
+    expect(slide.source).toEqual({ width: 1536, height: 864, scale: 0.8 });
+    expect(
+      checkCapture(capture({ source: { width: 10, height: 10, scale: 'big' } }), deck()).source,
+    ).toEqual({ width: 10, height: 10 });
+  });
+
   it('refuses what is not a slide of the model', () => {
     const bad: Record<string, unknown>[] = [
       capture({ slide: { id: 's_x' } }),
