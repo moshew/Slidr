@@ -4,7 +4,7 @@ Slidr is a desktop presentation editor in which the AI is a full editing partner
 
 It is a Tauri app (Rust + React/TypeScript) for Windows 11, with a Hebrew and English interface and first-class support for right-to-left and mixed-direction content.
 
-> **Status: early development.** Milestone M1 (the basic editor) is in progress. The AI chat is not wired into the app yet. See [Status](#status).
+> **Status: early development.** Milestone M1 (the basic editor) is built and waiting for review. Engines for later milestones exist as packages, but the AI chat is not wired into the app yet. See [Status](#status).
 
 ## The idea
 
@@ -19,18 +19,27 @@ Out of scope: PowerPoint (`.pptx`) compatibility, cloud accounts and real-time c
 
 ## Status
 
-The work is split into eight milestones, M0 to M7 ([docs/PLAN.md](docs/PLAN.md)). M0 (feasibility) is done; M1 (basic editor) is in progress.
+The work is split into eight milestones, M0 to M7 ([docs/PLAN.md](docs/PLAN.md)). M0 (feasibility) is done. M1 (basic editor) is built and waiting for its design review. Parts of M2 to M5 were built alongside it as engines; none of them is wired into the app yet.
 
-In the repository today:
+In the app today:
 
 - **Model** — Zod schemas for deck, slide, element, theme and layout; every change goes through an undoable command; store, history and migrations.
 - **Storage** — the `.slidr` archive, atomic saves, backups, recent files and content-addressed assets, on the Rust side.
 - **Renderer** — `SlideRenderer`, the one component that draws a slide everywhere, covered by visual regression tests.
 - **Design system and shell** — tokens and components in light and dark themes, custom title bar, activity bar and panels, in both directions.
-- **Stage and filmstrip** — select, drag, resize, rotate and snap; in-place text editing for mixed Hebrew and English.
-- **Agent platform** — the harness layer with a Claude Code CLI adapter and a mock harness, the Deck API tool catalogue, and native slide capture through WebView2.
+- **Stage and filmstrip** — select, drag, resize, rotate and snap; image crop, line editing and working inside a group; arranging objects and managing slides.
+- **Text and objects** — in-place text editing and formatting for mixed Hebrew and English, paste from Word and the browser; shapes, images, fill, outline, effects and the slide background.
 
-Not there yet: the AI chat panels and the MCP bridge that connects the agent to the app (M2), templates and design lint (M2), HTML import (M3), image generation and stock assets (M4), animations, present mode and HTML export (M5), live charts and media (M6).
+Built and tested, not wired into the app yet:
+
+- **Agent platform** — the harness layer with a Claude Code CLI adapter and a mock harness, the Deck API tool catalogue, native slide capture through WebView2, the tool bridge that connects an external agent to the Deck API, and the system prompt modules.
+- **HTML conversion** — the engine that turns an HTML slide into editable objects, with a fidelity guard that keeps the look unchanged.
+- **Design lint** — the engine and the rules whose findings go back to the agent.
+- **Template engine** — layouts in both directions, a slide from a layout, and switching templates.
+- **Runtime and HTML export** — the player, transitions and animation presets, and a deck exported as one self-contained HTML file.
+- **Image providers** — the provider contract and service on the Rust side, with a Codex CLI provider.
+
+Not there yet: the AI chat panels and the quality gate (M2), the first templates and the template editor (M2), the HTML import tools and wizard (M3), the image generation UI and stock assets (M4), the animation panel, present mode and the export dialog (M5), live charts and media (M6).
 
 ## Getting started
 
@@ -54,6 +63,7 @@ With the dev server running, a few pages are useful on their own:
 | `/dev/gallery.html`              | Every design-system component, in both themes and both directions |
 | `/dev/slides.html`               | The renderer's reference decks                                    |
 | `/dev/stage.html?deck=reference` | The stage and filmstrip on a real deck                            |
+| `/dev/runtime.html`              | The runtime player and the HTML export on the reference deck      |
 
 ## Checks
 
@@ -61,6 +71,7 @@ With the dev server running, a few pages are useful on their own:
 pnpm check        # typecheck, ESLint, Prettier, unit tests (Vitest)
 pnpm check:rust   # rustfmt, Clippy, cargo test
 pnpm check:all    # both
+pnpm test:browser # unit tests that need a real browser (Vitest in headless Edge)
 pnpm e2e          # Playwright end-to-end and visual regression
 ```
 
@@ -68,16 +79,21 @@ The end-to-end tests run against the Vite frontend with the Tauri IPC mocked, in
 
 ## Repository layout
 
-| Path                                                                             | Contents                                                                                                                                               |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [apps/desktop/](apps/desktop/)                                                   | The app: React frontend in `src/` (shell, stage, text editing, i18n, capture), Tauri backend in `src-tauri/` (storage, assets, capture, agent harness) |
-| [packages/model/](packages/model/)                                               | Deck schema, commands, store, history, migrations                                                                                                      |
-| [packages/renderer/](packages/renderer/)                                         | `SlideRenderer` and the reference decks                                                                                                                |
-| [packages/ui/](packages/ui/)                                                     | Design system: tokens, theme and components                                                                                                            |
-| [packages/agent-tools/](packages/agent-tools/)                                   | The Deck API: tool catalogue, scope guard, transport-independent                                                                                       |
-| `packages/runtime`, `templates`, `lint`, `prompts`, `html-import`, `html-export` | Placeholders for later milestones                                                                                                                      |
-| [spikes/](spikes/)                                                               | The six M0 feasibility spikes. Standalone, throwaway code; the findings are in the ADRs                                                                |
-| [docs/](docs/)                                                                   | Spec, plan and architecture decision records                                                                                                           |
+| Path                                           | Contents                                                                                                                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [apps/desktop/](apps/desktop/)                 | The app: React frontend in `src/` (shell, stage, text editing, i18n, capture), Tauri backend in `src-tauri/` (storage, assets, capture, agent harness, tool bridge, image providers) |
+| [packages/model/](packages/model/)             | Deck schema, commands, store, history, migrations                                                                                                                                    |
+| [packages/renderer/](packages/renderer/)       | `SlideRenderer` and the reference decks                                                                                                                                              |
+| [packages/ui/](packages/ui/)                   | Design system: tokens, theme and components                                                                                                                                          |
+| [packages/agent-tools/](packages/agent-tools/) | The Deck API: tool catalogue, scope guard, transport-independent                                                                                                                     |
+| [packages/templates/](packages/templates/)     | Template schema and engine: layouts in both directions, a slide from a layout, switching templates                                                                                   |
+| [packages/lint/](packages/lint/)               | Design lint: the engine and its rules                                                                                                                                                |
+| [packages/prompts/](packages/prompts/)         | The system prompt per scope and each turn's context block                                                                                                                            |
+| [packages/html-import/](packages/html-import/) | The HTML conversion engine and its fidelity guard                                                                                                                                    |
+| [packages/runtime/](packages/runtime/)         | The player, transitions and animation presets; no dependencies                                                                                                                       |
+| [packages/html-export/](packages/html-export/) | Export of a deck as one self-contained HTML file                                                                                                                                     |
+| [spikes/](spikes/)                             | The six M0 feasibility spikes. Standalone, throwaway code; the findings are in the ADRs                                                                                              |
+| [docs/](docs/)                                 | Spec, plan and architecture decision records                                                                                                                                         |
 
 ## Documentation
 
