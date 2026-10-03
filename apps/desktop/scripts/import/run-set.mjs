@@ -67,7 +67,7 @@ for (const file of FILES) {
   console.log(
     [
       file.name.padEnd(18),
-      `slides ${report.rows.length}/${file.slides ?? '?'} (deck ${deck.slides.length})`,
+      `slides ${report.rows.length}/${file.slides ?? '?'} (deck ${deck.slides.length}, rebuilt ${report.rows.length - (report.measured ?? report.rows.length)})`,
       `faithful ${report.faithful}`,
       `approx ${report.approximate}`,
       `editable ${percent(report.medianEditability)}`,

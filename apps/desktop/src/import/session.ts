@@ -26,6 +26,8 @@ export interface SlideRecord {
   kept: string[];
   /** The size of the captured element in the source, in CSS px. */
   source: { width: number; height: number };
+  /** The elements the capture put on the slide, to tell a slide that was rebuilt since. */
+  elementIds: string[];
 }
 
 export interface ImportState {
@@ -61,6 +63,7 @@ function recordOf(slide: ImportedSlide): SlideRecord {
       .filter((note) => KEPT.test(note))
       .map((note) => note.replace(KEPT, '').replace(/\.$/, '')),
     source: slide.source,
+    elementIds: slide.slide.elements.map((element) => element.id),
   };
 }
 

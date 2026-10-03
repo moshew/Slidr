@@ -17,6 +17,7 @@ const record = (over: Partial<SlideRecord> = {}): SlideRecord => ({
   textEditability: 1,
   kept: [],
   source: { width: 1280, height: 720 },
+  elementIds: [],
   ...over,
 });
 
@@ -74,6 +75,33 @@ describe('buildReport', () => {
       wholeHtml: 1,
       medianEditability: 0.25,
       medianTextEditability: 0.95,
+    });
+  });
+
+  it('leaves a slide that was redesigned since its capture out of the figures', () => {
+    const kept = createSlide({ id: 's_kept' });
+    const redone = createSlide({ id: 's_redone' });
+    const deck = createDeck({ lang: 'he', slides: [kept, redone] });
+    const report = buildReport(
+      state({
+        s_kept: record({ editability: 0.6, elementIds: [] }),
+        // Captured as one HTML element that failed the guard; nothing of it is on the slide now.
+        s_redone: record({
+          faithful: false,
+          wholeSlideHtml: true,
+          editability: 0,
+          elementIds: ['e_gone'],
+        }),
+      }),
+      deck,
+      [],
+    );
+    expect(report.rows.map((row) => row.rebuilt)).toEqual([false, true]);
+    expect(report).toMatchObject({
+      measured: 1,
+      faithful: 1,
+      wholeHtml: 0,
+      medianEditability: 0.6,
     });
   });
 

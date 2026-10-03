@@ -12,11 +12,18 @@ export interface ReportRow extends SlideRecord {
   /** The slide's place in the deck, from 1. */
   number: number;
   name?: string;
+  /**
+   * Nothing the capture put on the slide is on it any more: it was redesigned since, by the
+   * agent or by hand, and the measurements are of what it replaced.
+   */
+  rebuilt: boolean;
 }
 
 export interface ImportReport {
   /** The imported slides that are still in the deck, in deck order. */
   rows: ReportRow[];
+  /** Slides that still hold what was captured; the figures below are about these. */
+  measured: number;
   faithful: number;
   /** Slides that were compared through a scale, and so only approximately. */
   approximate: number;
@@ -49,13 +56,16 @@ export function buildReport(
   deck.slides.forEach((slide, index) => {
     const record = state.records[slide.id];
     if (!record) return;
+    const captured = new Set(record.elementIds);
     rows.push({
       ...record,
       slideId: slide.id,
       number: index + 1,
       ...(slide.name ? { name: slide.name } : {}),
+      rebuilt: captured.size > 0 && !slide.elements.some((element) => captured.has(element.id)),
     });
   });
+  const measured = rows.filter((row) => !row.rebuilt);
   let durationMs = 0;
   let costUsd: number | null = 0;
   let turns = 0;
@@ -67,11 +77,12 @@ export function buildReport(
   }
   return {
     rows,
-    faithful: rows.filter((row) => row.faithful).length,
-    approximate: rows.filter((row) => !row.exact).length,
-    medianEditability: median(rows.map((row) => row.editability)),
-    medianTextEditability: median(rows.map((row) => row.textEditability)),
-    wholeHtml: rows.filter((row) => row.wholeSlideHtml).length,
+    measured: measured.length,
+    faithful: measured.filter((row) => row.faithful).length,
+    approximate: measured.filter((row) => !row.exact).length,
+    medianEditability: median(measured.map((row) => row.editability)),
+    medianTextEditability: median(measured.map((row) => row.textEditability)),
+    wholeHtml: measured.filter((row) => row.wholeSlideHtml).length,
     durationMs,
     costUsd: turns === 0 ? null : costUsd,
     turns,

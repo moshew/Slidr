@@ -8,6 +8,7 @@ import {
   FileInput,
   FilePlus,
   ListChecks,
+  Pencil,
   ShieldCheck,
   TriangleAlert,
   WifiOff,
@@ -147,15 +148,18 @@ function Figure({ label, value, tone }: { label: string; value: string; tone?: '
 function Row({ row, onOpen }: { row: ReportRow; onOpen: () => void }) {
   const { t } = useTranslation('import');
   const [open, setOpen] = useState(false);
-  const details = [
-    t('report.textPercent', { n: percent(row.textEditability) }),
-    ...(row.wholeSlideHtml
-      ? [t('report.whole')]
-      : row.kept.length > 0
-        ? [t('report.kept', { n: row.kept.length })]
-        : []),
-    ...(row.exact ? [] : [t('report.approximate')]),
-  ];
+  // A slide that was redesigned since its capture has no measurements of its own.
+  const details = row.rebuilt
+    ? [t('report.rebuilt')]
+    : [
+        t('report.textPercent', { n: percent(row.textEditability) }),
+        ...(row.wholeSlideHtml
+          ? [t('report.whole')]
+          : row.kept.length > 0
+            ? [t('report.kept', { n: row.kept.length })]
+            : []),
+        ...(row.exact ? [] : [t('report.approximate')]),
+      ];
   return (
     <li className="border-b border-ui-line last:border-b-0" data-testid="import-row">
       <button
@@ -172,20 +176,26 @@ function Row({ row, onOpen }: { row: ReportRow; onOpen: () => void }) {
           </span>
           <span className="block truncate text-xs text-ui-fg-muted">{details.join(' · ')}</span>
         </span>
-        <span className="shrink-0 text-sm font-medium text-ui-fg tabular-nums">
-          {t('report.editablePercent', { n: percent(row.editability) })}
-        </span>
-        <span className="inline-flex shrink-0">
-          <Icon
-            icon={row.faithful ? CircleCheck : TriangleAlert}
-            className={row.faithful ? 'text-ui-success-fg' : 'text-ui-danger-fg'}
-          />
-          <span className="sr-only">
-            {t(row.faithful ? 'report.rowFaithful' : 'report.rowUnfaithful')}
-          </span>
-        </span>
+        {row.rebuilt ? (
+          <Icon icon={Pencil} className="shrink-0 text-ui-fg-muted" />
+        ) : (
+          <>
+            <span className="shrink-0 text-sm font-medium text-ui-fg tabular-nums">
+              {t('report.editablePercent', { n: percent(row.editability) })}
+            </span>
+            <span className="inline-flex shrink-0">
+              <Icon
+                icon={row.faithful ? CircleCheck : TriangleAlert}
+                className={row.faithful ? 'text-ui-success-fg' : 'text-ui-danger-fg'}
+              />
+              <span className="sr-only">
+                {t(row.faithful ? 'report.rowFaithful' : 'report.rowUnfaithful')}
+              </span>
+            </span>
+          </>
+        )}
       </button>
-      {row.kept.length > 0 && (
+      {!row.rebuilt && row.kept.length > 0 && (
         <div className="ps-10 pe-1 pb-2">
           <button
             type="button"
@@ -225,11 +235,12 @@ function Report({ report, onOpen }: { report: ImportReport; onOpen: (slideId: st
       />
     );
   }
-  const total = report.rows.length;
+  // The figures are about the slides that still hold what was captured.
+  const total = report.measured;
   return (
     <div className="flex flex-col gap-4 px-4 pt-3 pb-6" data-testid="import-report">
       <div className="grid grid-cols-2 gap-2">
-        <Figure label={t('report.slides')} value={String(total)} />
+        <Figure label={t('report.slides')} value={String(report.rows.length)} />
         <Figure
           label={t('report.faithful')}
           value={t('report.of', { n: report.faithful, total })}
