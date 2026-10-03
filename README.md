@@ -4,7 +4,7 @@ Slidr is a desktop presentation editor in which the AI is a full editing partner
 
 It is a Tauri app (Rust + React/TypeScript) for Windows 11, with a Hebrew and English interface and first-class support for right-to-left and mixed-direction content.
 
-> **Status: early development.** Milestone M1 (the basic editor) is built and waiting for review. Engines for later milestones exist as packages, but the AI chat is not wired into the app yet. See [Status](#status).
+> **Status: early development.** The editor, the AI chat for the whole deck, tables, animations, present mode and HTML export all run in the app. None of it has passed its design review yet, and the slide and object AI tools, the templates and HTML import are still to come. See [Status](#status).
 
 ## The idea
 
@@ -19,27 +19,34 @@ Out of scope: PowerPoint (`.pptx`) compatibility, cloud accounts and real-time c
 
 ## Status
 
-The work is split into eight milestones, M0 to M7 ([docs/PLAN.md](docs/PLAN.md)). M0 (feasibility) is done. M1 (basic editor) is built and waiting for its design review. Parts of M2 to M5 were built alongside it as engines; none of them is wired into the app yet.
+The work is split into eight milestones, M0 to M7 ([docs/PLAN.md](docs/PLAN.md)). M0 (feasibility) is done. Everything built since then is waiting for its design review, so no later milestone is closed yet: M1 (basic editor) and M5 (animations and export) are built in full, M2 (first AI) runs end to end but has no templates, and M3 (HTML import) has its editor side only.
 
 In the app today:
 
 - **Model** — Zod schemas for deck, slide, element, theme and layout; every change goes through an undoable command; store, history and migrations.
-- **Storage** — the `.slidr` archive, atomic saves, backups, recent files and content-addressed assets, on the Rust side.
+- **Storage** — the `.slidr` archive, atomic saves, backups, recent files and content-addressed assets, on the Rust side. The chat transcript is saved inside the file.
 - **Renderer** — `SlideRenderer`, the one component that draws a slide everywhere, covered by visual regression tests.
 - **Design system and shell** — tokens and components in light and dark themes, custom title bar, activity bar and panels, in both directions.
 - **Stage and filmstrip** — select, drag, resize, rotate and snap; image crop, line editing and working inside a group; arranging objects and managing slides.
-- **Text and objects** — in-place text editing and formatting for mixed Hebrew and English, paste from Word and the browser; shapes, images, fill, outline, effects and the slide background.
+- **Text and objects** — in-place text editing and formatting for mixed Hebrew and English, paste from Word and the browser; shapes, images, fill, outline, effects and the slide background; editing the text inside an HTML object without touching its structure.
+- **Tables** — insert a table and edit its cells in place with the same text editor; add, delete and resize rows and columns, merge and split cells; six table styles, cell fill and borders; paste from Excel, Google Sheets, Word and CSV; right-to-left tables.
+- **AI chat for the deck** — ask for a deck in the chat panel and watch the slides appear as the agent builds them. Each message is one undo step, a quality gate sends the agent back to fix what the design lint finds, and the conversation continues when the file is reopened. It runs on Claude Code CLI; in tests a scripted mock takes its place.
+- **Animations and transitions** — an animations panel with the slide's timeline, a transition tool, and previews played by the same runtime that plays the exported file.
+- **Present mode** — full screen on the current display, with keyboard and mouse navigation, a black or white screen, and jumping to a slide by number.
+- **HTML export** — an export dialog that writes one self-contained HTML file: images resized and re-encoded, fonts cut down to the characters in use, animations included. The file is checked in Edge, Firefox and Playwright's WebKit; real Safari has not been tried.
 
-Built and tested, not wired into the app yet:
+Working behind the chat:
 
-- **Agent platform** — the harness layer with a Claude Code CLI adapter and a mock harness, the Deck API tool catalogue, native slide capture through WebView2, the tool bridge that connects an external agent to the Deck API, and the system prompt modules.
-- **HTML conversion** — the engine that turns an HTML slide into editable objects, with a fidelity guard that keeps the look unchanged.
-- **Design lint** — the engine and the rules whose findings go back to the agent.
-- **Template engine** — layouts in both directions, a slide from a layout, and switching templates.
-- **Runtime and HTML export** — the player, transitions and animation presets, and a deck exported as one self-contained HTML file.
-- **Image providers** — the provider contract and service on the Rust side, with a Codex CLI provider.
+- **Agent platform** — the harness layer with a Claude Code CLI adapter and a mock harness, the Deck API tool catalogue, the tool bridge that connects an external agent to the Deck API, native slide capture through WebView2, and the system prompt modules.
+- **HTML conversion** — the engine that turns an HTML slide the agent writes into editable objects, with a fidelity guard that keeps the look unchanged. In the app it runs in the hidden capture window.
+- **Design lint** — the engine and the rules whose findings go back to the agent after every write and at the end of every turn. There is no lint panel for the user yet.
 
-Not there yet: the AI chat panels and the quality gate (M2), the first templates and the template editor (M2), the HTML import tools and wizard (M3), the image generation UI and stock assets (M4), the animation panel, present mode and the export dialog (M5), live charts and media (M6).
+Built and tested, with nothing to use them from yet:
+
+- **Template engine** — layouts in both directions, a slide from a layout, and switching templates. No templates ship yet, and there is no gallery or template editor.
+- **Image providers** — the provider contract and service on the Rust side, with a Codex CLI provider. The agent can call them; there is no image gallery or provider setting.
+
+Not there yet: the slide and object AI tools and the ready-made actions (M2, M4), the first templates and the template editor (M2), a settings screen for the harness, the model and the providers, the HTML import tools and wizard (M3), the image generation UI, stock assets and icons (M4), live charts, video and audio (M6).
 
 ## Getting started
 
@@ -49,6 +56,7 @@ Prerequisites:
 - Node.js 22 or later and pnpm 12.
 - Rust 1.90 or later with the MSVC toolchain (Visual Studio Build Tools, C++ workload).
 - Microsoft Edge, for the end-to-end tests.
+- Claude Code CLI, installed and logged in, for the AI chat. The rest of the editor works without it.
 
 ```sh
 pnpm install
@@ -77,23 +85,33 @@ pnpm e2e          # Playwright end-to-end and visual regression
 
 The end-to-end tests run against the Vite frontend with the Tauri IPC mocked, in the installed Edge (the same Chromium engine WebView2 uses). The screenshot baselines are Windows-only.
 
+`pnpm e2e` uses the dev server on port 1420. A second working tree can run the suites against a dev server and a port of its own, from `apps/desktop`:
+
+```sh
+pnpm exec playwright test -c e2e/tables.playwright.config.ts   # the whole suite, port 1461
+pnpm exec playwright test -c e2e/runtime.playwright.config.ts  # player, animations, present mode and export, port 1437
+pnpm exec playwright test -c e2e/agent.playwright.config.ts    # the AI chat, port 1441
+```
+
+The export suite also opens the exported file in Firefox and WebKit. Those two checks are skipped unless Playwright's own browsers are installed (`pnpm exec playwright install firefox webkit`, from `apps/desktop`).
+
 ## Repository layout
 
-| Path                                           | Contents                                                                                                                                                                             |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [apps/desktop/](apps/desktop/)                 | The app: React frontend in `src/` (shell, stage, text editing, i18n, capture), Tauri backend in `src-tauri/` (storage, assets, capture, agent harness, tool bridge, image providers) |
-| [packages/model/](packages/model/)             | Deck schema, commands, store, history, migrations                                                                                                                                    |
-| [packages/renderer/](packages/renderer/)       | `SlideRenderer` and the reference decks                                                                                                                                              |
-| [packages/ui/](packages/ui/)                   | Design system: tokens, theme and components                                                                                                                                          |
-| [packages/agent-tools/](packages/agent-tools/) | The Deck API: tool catalogue, scope guard, transport-independent                                                                                                                     |
-| [packages/templates/](packages/templates/)     | Template schema and engine: layouts in both directions, a slide from a layout, switching templates                                                                                   |
-| [packages/lint/](packages/lint/)               | Design lint: the engine and its rules                                                                                                                                                |
-| [packages/prompts/](packages/prompts/)         | The system prompt per scope and each turn's context block                                                                                                                            |
-| [packages/html-import/](packages/html-import/) | The HTML conversion engine and its fidelity guard                                                                                                                                    |
-| [packages/runtime/](packages/runtime/)         | The player, transitions and animation presets; no dependencies                                                                                                                       |
-| [packages/html-export/](packages/html-export/) | Export of a deck as one self-contained HTML file                                                                                                                                     |
-| [spikes/](spikes/)                             | The six M0 feasibility spikes. Standalone, throwaway code; the findings are in the ADRs                                                                                              |
-| [docs/](docs/)                                 | Spec, plan and architecture decision records                                                                                                                                         |
+| Path                                           | Contents                                                                                                                                                                                                                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [apps/desktop/](apps/desktop/)                 | The app: React frontend in `src/` (shell, stage, text, objects, tables, animations, present mode, export, AI chat and agent service, i18n, capture), Tauri backend in `src-tauri/` (storage, assets, capture, agent harness, tool bridge, image providers) |
+| [packages/model/](packages/model/)             | Deck schema, commands, store, history, migrations                                                                                                                                                                                                          |
+| [packages/renderer/](packages/renderer/)       | `SlideRenderer` and the reference decks                                                                                                                                                                                                                    |
+| [packages/ui/](packages/ui/)                   | Design system: tokens, theme and components                                                                                                                                                                                                                |
+| [packages/agent-tools/](packages/agent-tools/) | The Deck API: tool catalogue, scope guard, transport-independent                                                                                                                                                                                           |
+| [packages/templates/](packages/templates/)     | Template schema and engine: layouts in both directions, a slide from a layout, switching templates                                                                                                                                                         |
+| [packages/lint/](packages/lint/)               | Design lint: the engine and its rules                                                                                                                                                                                                                      |
+| [packages/prompts/](packages/prompts/)         | The system prompt per scope and each turn's context block                                                                                                                                                                                                  |
+| [packages/html-import/](packages/html-import/) | The HTML conversion engine and its fidelity guard                                                                                                                                                                                                          |
+| [packages/runtime/](packages/runtime/)         | The player, transitions and animation presets; no dependencies                                                                                                                                                                                             |
+| [packages/html-export/](packages/html-export/) | Export of a deck as one self-contained HTML file                                                                                                                                                                                                           |
+| [spikes/](spikes/)                             | The six M0 feasibility spikes. Standalone, throwaway code; the findings are in the ADRs                                                                                                                                                                    |
+| [docs/](docs/)                                 | Spec, plan and architecture decision records                                                                                                                                                                                                               |
 
 ## Documentation
 
@@ -127,6 +145,12 @@ The design documents are written in Hebrew.
   - [ADR-023](docs/adr/ADR-023-template-engine.md) — The template engine: templates, layouts in both directions, a slide from a layout, and switching templates
   - [ADR-025](docs/adr/ADR-025-image-providers.md) — Image providers: the contract, the service, and the `codex-cli` provider
   - [ADR-026](docs/adr/ADR-026-m2-core-integration.md) — M2 core: the shared infrastructure, the integration, and what is missing before the app runs it
+  - [ADR-027](docs/adr/ADR-027-agent-in-the-app.md) — The agent in the app: conversion in the capture window, the agent service, the quality gate, the transcript and the chat
+  - [ADR-030](docs/adr/ADR-030-present-mode.md) — Present mode, and wiring animations and export into the app
+  - [ADR-031](docs/adr/ADR-031-animations-panel.md) — The animations panel and the transition tool
+  - [ADR-032](docs/adr/ADR-032-export-dialog-and-fonts.md) — The export dialog, and fonts in the exported file
+  - [ADR-033](docs/adr/ADR-033-tables.md) — Tables: editing on the Stage, the row B tools, paste, and two renderer fixes
+  - [ADR-034](docs/adr/ADR-034-html-text-editing.md) — Editing text in place inside an `html` object
 
 ## License
 
