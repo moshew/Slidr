@@ -110,3 +110,28 @@ export function createSlide(
   const unplaced = [...waiting].filter(([, values]) => values.length > 0).map(([role]) => role);
   return { slide, unplaced };
 }
+
+/**
+ * A new slide from a layout with content given placeholder by placeholder, in the layout's
+ * order. This is how the sample of a template is built from layouts as they were drawn: by role
+ * a list cannot say "nothing in the first card, a picture in the second". Content a placeholder
+ * cannot hold is left out.
+ */
+export function fillLayout(
+  deck: Deck,
+  request: { layoutId: string; fills: readonly (RoleFill | undefined)[]; name?: string },
+  options: { random?: () => number } = {},
+): Slide {
+  const { slide } = slideFromLayout(deck, request.layoutId, options);
+  if (request.name) slide.name = request.name;
+  const layout = deck.layouts.find((l) => l.id === request.layoutId);
+  let next = 0;
+  for (const [index, placeholder] of (layout?.placeholders ?? []).entries()) {
+    const element = slide.elements[next];
+    if (element?.role !== placeholder.role) continue;
+    next++;
+    const value = request.fills[index];
+    if (value) fill(element, placeholder, value, deck);
+  }
+  return slide;
+}

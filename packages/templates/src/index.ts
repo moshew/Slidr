@@ -5,6 +5,7 @@ export { Template, layoutsFor } from './template';
 export { mirrorElement, mirrorLayout } from './mirror';
 export {
   createSlide,
+  fillLayout,
   type CreatedSlide,
   type CreateSlideRequest,
   type LayoutContent,
@@ -18,3 +19,13 @@ export {
   type DeckFromTemplateOptions,
 } from './deck';
 export { matchLayout, relayout } from './relayout';
+export {
+  draftTemplate,
+  layoutFromSlide,
+  sampleDeckOf,
+  themeFrom,
+  type Draft,
+  type DraftInput,
+  type DrawnLayout,
+  type LayoutFromSlide,
+} from './draft';
