@@ -189,6 +189,64 @@ test('the show takes the whole screen, and leaving full screen ends it', async (
   await expect(view).toHaveCount(0);
 });
 
+test('a question of the app over the show keeps its keys, and the show goes on', async ({
+  page,
+}) => {
+  await openApp(page, { deck: 'probe' });
+  // As in the app, where it is the window that fills the screen and not the show's element: a
+  // browser's own full screen draws nothing but that element.
+  await page.evaluate(async () => {
+    const path = '/src/present/present.tsx';
+    const present = (await import(/* @vite-ignore */ path)) as {
+      startPresenting: (
+        editor: unknown,
+        options: { from: 'first'; fullscreen: boolean },
+      ) => boolean;
+    };
+    present.startPresenting(window.slidr, { from: 'first', fullscreen: false });
+  });
+  const view = await show(page);
+  await idle(page);
+  // What the close guard does when the window is closed with unsaved changes.
+  await page.evaluate(async () => {
+    const path = '/src/shell/dialogs.tsx';
+    const dialogs = (await import(/* @vite-ignore */ path)) as {
+      ask: (request: {
+        title: string;
+        actions: { id: string; label: string }[];
+        cancelId: string;
+      }) => Promise<string>;
+    };
+    void dialogs.ask({
+      title: 'Save the changes?',
+      actions: [
+        { id: 'cancel', label: 'Cancel' },
+        { id: 'save', label: 'Save' },
+      ],
+      cancelId: 'cancel',
+    });
+  });
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  // The question is drawn over the show, and can be clicked.
+  const box = (await dialog.boundingBox())!;
+  const top = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x!, y!)?.closest('[role="dialog"]') !== null,
+    [box.x + box.width / 2, box.y + 16],
+  );
+  expect(top).toBe(true);
+  // Its keys are its own: an arrow is not a step, and Esc answers it instead of ending the show.
+  await page.keyboard.press('ArrowRight');
+  expect(await showState(page)).toEqual({ slide: 0, step: 0 });
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(view).toHaveCount(1);
+  await page.keyboard.press('ArrowRight');
+  expect(await showState(page)).toEqual({ slide: 0, step: 1 });
+  await page.keyboard.press('Escape');
+  await expect(view).toHaveCount(0);
+});
+
 test('an RTL deck plays mirrored, in a window whose UI is English', async ({ page }) => {
   await openApp(page, { deck: 'probe-rtl', lang: 'en' });
   await page.keyboard.press('F5');
