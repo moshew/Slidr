@@ -1,0 +1,114 @@
+{
+  "description": "A slide chat in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"redesign this slide\" with ui_present_options: three whole-slide designs in HTML (a split with a colour panel, three cards, a big number), which the app converts, shows as thumbnails, previews and applies. Turn 2 writes speaker notes for the slide the user is on. Hand-written, with the timing of slide-chat.",
+  "turns": [
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 900,
+        "type": "tool_call_started",
+        "id": "options_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "layout",
+          "prompt": "שלושה עיצובים לשקף",
+          "options": [
+            {
+              "label": "טקסט מול לוח צבע",
+              "html": "<div data-archetype=\"textImage\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;overflow:hidden;font-family:var(--font-body);background:var(--color-bg);color:var(--color-text);display:flex\"><div style=\"flex:1;display:flex;flex-direction:column;justify-content:center;gap:40px;padding:140px 120px\"><h1 data-role=\"title\" style=\"margin:0;font:700 96px/1.1 var(--font-heading);color:var(--color-primary)\">שלושת היעדים של 2027</h1><p data-role=\"body\" style=\"margin:0;font:400 40px/1.5 var(--font-body)\">להשיק את העורך החדש, לקצר את זמן הטעינה בחצי, ולהגיע לאלף משתמשים פעילים.</p></div><div data-name=\"לוח צבע\" style=\"width:720px;background:var(--color-primary)\"></div></div>"
+            },
+            {
+              "label": "שלושה כרטיסים",
+              "html": "<div data-archetype=\"cards\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;overflow:hidden;font-family:var(--font-body);background:var(--color-bg);color:var(--color-text);padding:120px;box-sizing:border-box\"><h1 data-role=\"title\" style=\"margin:0 0 80px;font:700 84px/1.1 var(--font-heading);color:var(--color-primary)\">שלושת היעדים של 2027</h1><div style=\"display:flex;gap:48px\"><div data-name=\"כרטיס 1\" style=\"flex:1;height:520px;padding:56px;box-sizing:border-box;border-radius:32px;background:var(--color-surface)\"><div style=\"font:700 120px/1 var(--font-heading);color:var(--color-accent)\">1</div><p style=\"margin:48px 0 0;font:500 44px/1.35 var(--font-body)\">להשיק את העורך החדש</p></div><div data-name=\"כרטיס 2\" style=\"flex:1;height:520px;padding:56px;box-sizing:border-box;border-radius:32px;background:var(--color-surface)\"><div style=\"font:700 120px/1 var(--font-heading);color:var(--color-accent)\">2</div><p style=\"margin:48px 0 0;font:500 44px/1.35 var(--font-body)\">לקצר את זמן הטעינה בחצי</p></div><div data-name=\"כרטיס 3\" style=\"flex:1;height:520px;padding:56px;box-sizing:border-box;border-radius:32px;background:var(--color-surface)\"><div style=\"font:700 120px/1 var(--font-heading);color:var(--color-accent)\">3</div><p style=\"margin:48px 0 0;font:500 44px/1.35 var(--font-body)\">אלף משתמשים פעילים</p></div></div></div>"
+            },
+            {
+              "label": "מספר גדול",
+              "html": "<div data-archetype=\"bigNumber\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;overflow:hidden;font-family:var(--font-body);background:var(--color-bg);color:var(--color-text);display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--color-primary);color:var(--color-bg)\"><div data-role=\"number\" style=\"font:800 420px/1 var(--font-heading)\">3</div><h1 data-role=\"title\" style=\"margin:24px 0 0;font:700 88px/1.2 var(--font-heading)\">יעדים לשנת 2027</h1><p data-role=\"caption\" style=\"margin:32px 0 0;font:400 40px/1.4 var(--font-body)\">עורך חדש · טעינה מהירה פי שניים · אלף משתמשים</p></div>"
+            }
+          ]
+        },
+        "call": true
+      },
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "שלושה עיצובים "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "לאותו תוכן. "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "ריחוף מראה כל אחד על השקף."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 240,
+          "cacheReadTokens": 6120,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0126,
+        "durationMs": 5200
+      }
+    ],
+    [
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "selection_1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "notes_1",
+        "name": "slide_update",
+        "source": "app",
+        "input": {
+          "slideId": {
+            "$ref": "selection_1.currentSlide.id"
+          },
+          "notes": "לפתוח בכך שכל שלושת היעדים נמדדים, ולהגיד מי אחראי על כל אחד."
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "כתבתי הערות דובר "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "לשקף."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 240,
+          "cacheReadTokens": 6120,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0031,
+        "durationMs": 1900
+      }
+    ]
+  ]
+}

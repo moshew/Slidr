@@ -1,0 +1,121 @@
+{
+  "description": "An object chat on an image element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"generate alternatives\": image_generate with a count of four and no element id, so the images are stored without being placed, and then ui_present_options with the four assets, taken from the first call's result. The app shows each image as its job finishes, and replaces the element's image with the one the user picks. Turn 2 is a short reply. Hand-written, with the timing of slide-chat.",
+  "turns": [
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 250,
+        "type": "text_delta",
+        "text": "יוצר ארבע חלופות "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "בסגנון של המצגת."
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "images_1",
+        "name": "image_generate",
+        "source": "app",
+        "input": {
+          "prompt": "A calm harbour at dawn, soft light, wide composition, muted blue and warm orange palette",
+          "count": 4,
+          "aspect": "16:9"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "options_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "image",
+          "prompt": "ארבע חלופות לתמונה",
+          "options": [
+            {
+              "label": "נמל בזריחה",
+              "assetId": {
+                "$ref": "images_1.assets.0.assetId"
+              }
+            },
+            {
+              "label": "מבט רחב",
+              "assetId": {
+                "$ref": "images_1.assets.1.assetId"
+              }
+            },
+            {
+              "label": "גוונים חמים",
+              "assetId": {
+                "$ref": "images_1.assets.2.assetId"
+              }
+            },
+            {
+              "label": "גוונים קרים",
+              "assetId": {
+                "$ref": "images_1.assets.3.assetId"
+              }
+            }
+          ]
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "ארבע חלופות מוכנות. "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "בחרו אחת והיא תיכנס למסגרת."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 240,
+          "cacheReadTokens": 6120,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0052,
+        "durationMs": 9000
+      }
+    ],
+    [
+      {
+        "delayMs": 700,
+        "type": "text_delta",
+        "text": "אפשר לבקש עוד חלופות, "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "או לתאר מה לשנות."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 240,
+          "cacheReadTokens": 6120,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0012,
+        "durationMs": 900
+      }
+    ]
+  ]
+}

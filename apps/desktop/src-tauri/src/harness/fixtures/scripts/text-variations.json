@@ -1,0 +1,118 @@
+{
+  "description": "An object chat on a text element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"four other wordings\" with ui_present_options: four text cards for the session's element, which the app previews and applies. Turn 2 is a direct edit: it asks which element is selected and shortens its text with text_set. Hand-written, with the timing of slide-chat.",
+  "turns": [
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 700,
+        "type": "tool_call_started",
+        "id": "options_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "text",
+          "prompt": "ארבעה ניסוחים לכותרת",
+          "options": [
+            {
+              "label": "ישיר",
+              "text": "תוכנית העבודה שלנו ל-2027"
+            },
+            {
+              "label": "שאלה",
+              "text": "לאן אנחנו הולכים ב-2027?"
+            },
+            {
+              "label": "מספר",
+              "text": "שלושה מהלכים לשנת 2027"
+            },
+            {
+              "label": "תועלת",
+              "text": "2027: צמיחה שמתחילה **בתכנון**"
+            }
+          ]
+        },
+        "call": true
+      },
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "ארבעה ניסוחים, "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "כל אחד מזווית אחרת. "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "בחרו את זה שמתאים."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 240,
+          "cacheReadTokens": 6120,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0041,
+        "durationMs": 2600
+      }
+    ],
+    [
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "selection_1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "text_1",
+        "name": "text_set",
+        "source": "app",
+        "input": {
+          "elementId": {
+            "$ref": "selection_1.selectedElements.0.id"
+          },
+          "markdown": "תוכנית 2027"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "קיצרתי את הכותרת "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "לשתי מילים."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 240,
+          "cacheReadTokens": 6120,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0033,
+        "durationMs": 2100
+      }
+    ]
+  ]
+}
