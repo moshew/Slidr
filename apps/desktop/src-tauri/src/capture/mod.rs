@@ -15,6 +15,22 @@
 //! up: text at an untransformed 100% is drawn with LCD anti-aliasing, which the editor never
 //! shows (ADR-003 condition 6). A browser flag would do the same, but every window shares one
 //! WebView2 environment, so it would change the editor too.
+//!
+//! The same window runs jobs for the main one (ADR-027): work that has to draw on a page and
+//! take pictures of it, which the user must not see happen in the editor. The HTML conversion
+//! engine is the one job today. Rust carries a job to the page and its answer back, and knows
+//! nothing of what is in either:
+//!
+//! ```text
+//! capture_run_job ──► CaptureService (the same one-at-a-time turn as captures)
+//!   1. the window, as above
+//!   2. eval window.__slidrJob(id)                 ──►  page: capture_job_take(id) ──► the job
+//!   3. while it works, the page pictures itself:   ◄──  capture_clip(rect, dpr)
+//!   4. wait for capture_job_done(id, result | error)
+//! ```
+//!
+//! `capture_clip` is on its own a command of any window: a PNG of a rectangle of the webview
+//! that calls it, one pixel per CSS pixel.
 
 #[cfg(windows)]
 #[allow(unsafe_code)] // The COM call into WebView2 (ADR-003, "מחיר"); the only `unsafe` in the app.
@@ -59,6 +75,11 @@ const PAGE_LOAD_TIMEOUT: Duration = Duration::from_secs(20);
 const READY_TIMEOUT: Duration = Duration::from_secs(10);
 /// One DevTools call.
 const SCREENSHOT_TIMEOUT: Duration = Duration::from_secs(10);
+/// A job answers within this, or fails. Under the 60 s a tool call may take (ADR-022), so the
+/// agent reads why its call failed instead of a timeout.
+const JOB_TIMEOUT: Duration = Duration::from_secs(50);
+/// The longest side of a clip, in CSS px: four slides side by side.
+const MAX_CLIP_SIDE: f64 = 7680.0;
 
 pub type Result<T> = std::result::Result<T, CaptureError>;
 
@@ -204,6 +225,67 @@ struct Ready {
     error: Option<String>,
 }
 
+/// A job in the capture page: what the page takes, and who waits for its answer.
+struct Job {
+    id: u64,
+    /// Handed to the page once, by `capture_job_take`.
+    payload: Option<Value>,
+    done: oneshot::Sender<std::result::Result<Value, String>>,
+}
+
+/// A rectangle of a page, in CSS px of its viewport.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+pub struct ClipRect {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+impl ClipRect {
+    fn validate(&self) -> Result<()> {
+        let sides = [self.width, self.height];
+        let corner = [self.x, self.y];
+        let ok = sides.iter().all(|s| (1.0..=MAX_CLIP_SIDE).contains(s))
+            && corner.iter().all(|c| (0.0..=MAX_CLIP_SIDE).contains(c));
+        if ok {
+            Ok(())
+        } else {
+            Err(CaptureError::invalid(format!(
+                "the clip {self:?} is not a rectangle of 1..={MAX_CLIP_SIDE} px on the page"
+            )))
+        }
+    }
+}
+
+/// `Page.captureScreenshot` parameters for a rectangle of a page as it is: one pixel per CSS
+/// pixel at any display scale (ADR-003 condition 4), also where the page is larger than its
+/// window.
+fn clip_params(rect: ClipRect, device_pixel_ratio: f64) -> Value {
+    json!({
+        "format": "png",
+        "fromSurface": true,
+        "captureBeyondViewport": true,
+        "optimizeForSpeed": true,
+        "clip": {
+            "x": rect.x,
+            "y": rect.y,
+            "width": rect.width,
+            "height": rect.height,
+            "scale": 1.0 / device_pixel_ratio,
+        },
+    })
+}
+
+/// The display scale a page reported, or 1 when it reported nonsense.
+fn display_scale(device_pixel_ratio: f64) -> f64 {
+    if device_pixel_ratio.is_finite() && device_pixel_ratio > 0.0 {
+        device_pixel_ratio
+    } else {
+        1.0
+    }
+}
+
 /// What a capture needs from its window. The app's is the hidden webview; the tests' a fake.
 trait Surface {
     fn exists(&self) -> bool;
@@ -221,6 +303,8 @@ pub struct CaptureService {
     loaded: watch::Sender<bool>,
     /// The request waiting for its `capture_ready`.
     pending: Mutex<Option<(u64, oneshot::Sender<Ready>)>>,
+    /// The job the page is working on.
+    job: Mutex<Option<Job>>,
     next_id: AtomicU64,
 }
 
@@ -236,6 +320,7 @@ impl CaptureService {
             turn: tokio::sync::Mutex::new(()),
             loaded: watch::Sender::new(false),
             pending: Mutex::new(None),
+            job: Mutex::new(None),
             next_id: AtomicU64::new(1),
         }
     }
@@ -251,21 +336,7 @@ impl CaptureService {
         request.validate()?;
         let width = check_width(width)?;
         let _turn = self.turn.lock().await;
-
-        if !surface.exists() {
-            self.loaded.send_replace(false);
-            surface.create()?;
-        }
-        let mut loaded = self.loaded.subscribe();
-        if timeout(PAGE_LOAD_TIMEOUT, loaded.wait_for(|loaded| *loaded))
-            .await
-            .is_err()
-        {
-            return Err(CaptureError::new(
-                CaptureErrorKind::Timeout,
-                format!("the capture page did not load within {PAGE_LOAD_TIMEOUT:?}"),
-            ));
-        }
+        self.ensure_page(surface).await?;
 
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (sender, receiver) = oneshot::channel();
@@ -285,14 +356,92 @@ impl CaptureService {
         if let Some(error) = ready.error {
             return Err(CaptureError::new(CaptureErrorKind::RenderFailed, error));
         }
-        let dpr = if ready.device_pixel_ratio > 0.0 {
-            ready.device_pixel_ratio
-        } else {
-            1.0
-        };
+        let dpr = display_scale(ready.device_pixel_ratio);
         surface
             .screenshot(screenshot_params(width, dpr, fast))
             .await
+    }
+
+    /// The window, created on first use, with its page loaded. Called with the turn held.
+    async fn ensure_page<S: Surface>(&self, surface: &S) -> Result<()> {
+        if !surface.exists() {
+            self.loaded.send_replace(false);
+            surface.create()?;
+        }
+        let mut loaded = self.loaded.subscribe();
+        if timeout(PAGE_LOAD_TIMEOUT, loaded.wait_for(|loaded| *loaded))
+            .await
+            .is_err()
+        {
+            return Err(CaptureError::new(
+                CaptureErrorKind::Timeout,
+                format!("the capture page did not load within {PAGE_LOAD_TIMEOUT:?}"),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Runs a job in the capture page and returns the page's answer. `job` is the main window's
+    /// and is not read here; the page receives it with the workspace's `assets/` folder beside
+    /// it. Jobs and captures share the window, so they run one at a time.
+    async fn run_job<S: Surface>(
+        &self,
+        surface: &S,
+        job: Value,
+        assets_dir: Option<&Path>,
+    ) -> Result<Value> {
+        let _turn = self.turn.lock().await;
+        self.ensure_page(surface).await?;
+
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let (sender, receiver) = oneshot::channel();
+        let payload = json!({
+            "job": job,
+            "assetsDir": assets_dir.map(|dir| dir.to_string_lossy()),
+        });
+        *lock(&self.job) = Some(Job {
+            id,
+            payload: Some(payload),
+            done: sender,
+        });
+        // Only the id travels in the script: a job can be megabytes of HTML, and the page
+        // fetches it over IPC.
+        surface.deliver(format!("window.__slidrJob({id})"))?;
+        match timeout(JOB_TIMEOUT, receiver).await {
+            Ok(Ok(Ok(result))) => Ok(result),
+            Ok(Ok(Err(error))) => Err(CaptureError::new(CaptureErrorKind::RenderFailed, error)),
+            Ok(Err(_)) => Err(CaptureError::internal("the job's answer was dropped")),
+            Err(_) => {
+                lock(&self.job).take();
+                Err(CaptureError::new(
+                    CaptureErrorKind::Timeout,
+                    format!("the capture page did not finish the job within {JOB_TIMEOUT:?}"),
+                ))
+            }
+        }
+    }
+
+    /// The job the page was told about, handed over once.
+    fn take_job(&self, id: u64) -> Result<Value> {
+        match lock(&self.job).as_mut() {
+            Some(job) if job.id == id => job
+                .payload
+                .take()
+                .ok_or_else(|| CaptureError::invalid(format!("job {id} was already taken"))),
+            _ => Err(CaptureError::invalid(format!(
+                "job {id} is not waiting: it timed out, or was never started"
+            ))),
+        }
+    }
+
+    /// The page's answer to a job. One for a job that already timed out is dropped.
+    fn finish_job(&self, id: u64, outcome: std::result::Result<Value, String>) {
+        let mut job = lock(&self.job);
+        if job.as_ref().is_some_and(|waiting| waiting.id == id)
+            && let Some(job) = job.take()
+        {
+            let _ = job.done.send(outcome);
+        }
     }
 
     fn page_loaded(&self) {
@@ -353,34 +502,38 @@ impl Surface for AppSurface<'_> {
             .map_err(|e| CaptureError::internal(format!("could not reach the capture page: {e}")))
     }
 
-    #[cfg(windows)]
     async fn screenshot(&self, params: Value) -> Result<Vec<u8>> {
         let window = self
             .app
             .get_webview_window(CAPTURE_LABEL)
             .ok_or_else(|| CaptureError::internal("the capture window is gone"))?;
-        let result = webview2::call(
-            &window,
-            "Page.captureScreenshot",
-            &params,
-            SCREENSHOT_TIMEOUT,
-        )
-        .await
-        .map_err(|e| CaptureError::new(CaptureErrorKind::CaptureFailed, e))?;
-        let data = result["data"].as_str().ok_or_else(|| {
-            CaptureError::new(
-                CaptureErrorKind::CaptureFailed,
-                "the screenshot has no data",
-            )
-        })?;
-        webview2::decode_png(data)
-            .map_err(|e| CaptureError::new(CaptureErrorKind::CaptureFailed, e))
+        screenshot(&window, params).await
     }
+}
 
-    #[cfg(not(windows))]
-    async fn screenshot(&self, _params: Value) -> Result<Vec<u8>> {
-        Err(unsupported())
-    }
+/// `Page.captureScreenshot` of a window's webview, as PNG bytes.
+#[cfg(windows)]
+async fn screenshot(window: &tauri::WebviewWindow, params: Value) -> Result<Vec<u8>> {
+    let result = webview2::call(
+        window,
+        "Page.captureScreenshot",
+        &params,
+        SCREENSHOT_TIMEOUT,
+    )
+    .await
+    .map_err(|e| CaptureError::new(CaptureErrorKind::CaptureFailed, e))?;
+    let data = result["data"].as_str().ok_or_else(|| {
+        CaptureError::new(
+            CaptureErrorKind::CaptureFailed,
+            "the screenshot has no data",
+        )
+    })?;
+    webview2::decode_png(data).map_err(|e| CaptureError::new(CaptureErrorKind::CaptureFailed, e))
+}
+
+#[cfg(not(windows))]
+async fn screenshot(_window: &tauri::WebviewWindow, _params: Value) -> Result<Vec<u8>> {
+    Err(unsupported())
 }
 
 fn unsupported() -> CaptureError {
@@ -453,6 +606,80 @@ pub fn capture_ready(
         },
     );
     Ok(())
+}
+
+/// `capture_run_job({ job, workspaceId? })`: runs a job in the capture page (an HTML conversion,
+/// ADR-027) and returns its result. `workspaceId` names the open workspace whose `assets/` the
+/// job reads and stores in.
+#[tauri::command]
+pub async fn capture_run_job(
+    app: AppHandle,
+    service: State<'_, Arc<CaptureService>>,
+    storage: State<'_, Arc<Storage>>,
+    job: Value,
+    workspace_id: Option<String>,
+) -> Result<Value> {
+    if cfg!(not(windows)) {
+        return Err(unsupported());
+    }
+    let assets_dir = match &workspace_id {
+        Some(id) => Some(
+            storage
+                .assets_dir(id)
+                .map_err(|e| CaptureError::new(CaptureErrorKind::UnknownWorkspace, e.message))?,
+        ),
+        None => None,
+    };
+    service
+        .run_job(&AppSurface { app: &app }, job, assets_dir.as_deref())
+        .await
+}
+
+/// `capture_job_take({ id })`: from the capture page, the job it was told about:
+/// `{ job, assetsDir }`.
+#[tauri::command]
+pub fn capture_job_take(
+    webview: tauri::Webview,
+    service: State<'_, Arc<CaptureService>>,
+    id: u64,
+) -> Result<Value> {
+    from_capture_page(&webview)?;
+    service.take_job(id)
+}
+
+/// `capture_job_done({ id, result?, error? })`: from the capture page, the job's answer.
+#[tauri::command]
+pub fn capture_job_done(
+    webview: tauri::Webview,
+    service: State<'_, Arc<CaptureService>>,
+    id: u64,
+    result: Option<Value>,
+    error: Option<String>,
+) -> Result<()> {
+    from_capture_page(&webview)?;
+    service.finish_job(
+        id,
+        match error {
+            Some(error) => Err(error),
+            None => Ok(result.unwrap_or(Value::Null)),
+        },
+    );
+    Ok(())
+}
+
+/// `capture_clip({ rect, dpr })`: a PNG of a rectangle of the webview that calls it, one pixel
+/// per CSS pixel. `rect` is in CSS px of the page; `dpr` is the page's `devicePixelRatio`. The
+/// answer is the raw bytes, not JSON. This is what the conversion engine's host pictures its
+/// work surface with (ADR-017), in whichever window the engine runs.
+#[tauri::command]
+pub async fn capture_clip(
+    window: tauri::WebviewWindow,
+    rect: ClipRect,
+    dpr: f64,
+) -> Result<Response> {
+    rect.validate()?;
+    let png = screenshot(&window, clip_params(rect, display_scale(dpr))).await?;
+    Ok(Response::new(png))
 }
 
 fn from_capture_page(webview: &tauri::Webview) -> Result<()> {
@@ -752,6 +979,171 @@ mod tests {
             scripts.try_recv().is_err(),
             "nothing was sent for a bad request"
         );
+        Ok(())
+    }
+
+    /// A clip is the page as it is: one picture pixel per CSS pixel at any display scale.
+    #[test]
+    fn clips_are_one_pixel_per_css_pixel() {
+        let slide = ClipRect {
+            x: 0.0,
+            y: 0.0,
+            width: 1920.0,
+            height: 1080.0,
+        };
+        assert!(slide.validate().is_ok());
+        assert_eq!(
+            clip_params(slide, 1.25),
+            json!({
+                "format": "png", "fromSurface": true, "captureBeyondViewport": true,
+                "optimizeForSpeed": true,
+                "clip": { "x": 0.0, "y": 0.0, "width": 1920.0, "height": 1080.0, "scale": 0.8 }
+            })
+        );
+        assert_eq!(clip_params(slide, 1.0)["clip"]["scale"], 1.0);
+        for bad in [
+            ClipRect {
+                width: 0.0,
+                ..slide
+            },
+            ClipRect {
+                height: -4.0,
+                ..slide
+            },
+            ClipRect { x: -1.0, ..slide },
+            ClipRect {
+                width: f64::NAN,
+                ..slide
+            },
+            ClipRect {
+                y: f64::INFINITY,
+                ..slide
+            },
+            ClipRect {
+                width: MAX_CLIP_SIDE + 1.0,
+                ..slide
+            },
+        ] {
+            assert_eq!(
+                bad.validate().err().map(|e| e.kind),
+                Some(CaptureErrorKind::InvalidInput),
+                "{bad:?}"
+            );
+        }
+        assert!((display_scale(1.5) - 1.5).abs() < f64::EPSILON);
+        for nonsense in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert!((display_scale(nonsense) - 1.0).abs() < f64::EPSILON);
+        }
+    }
+
+    fn job_id(script: &str) -> u64 {
+        script
+            .strip_prefix("window.__slidrJob(")
+            .and_then(|rest| rest.strip_suffix(')'))
+            .and_then(|id| id.parse().ok())
+            .unwrap_or(0)
+    }
+
+    /// A job reaches the page by id, is taken once with the assets folder beside it, and its
+    /// answer, or its failure, comes back to whoever asked.
+    #[tokio::test(start_paused = true)]
+    async fn a_job_goes_to_the_page_and_its_answer_comes_back() -> TestResult {
+        let service = CaptureService::new();
+        let (surface, mut scripts) = FakeSurface::new();
+        let job = json!({ "kind": "htmlToSlide", "html": "<p>שלום</p>" });
+
+        let run = service.run_job(&surface, job.clone(), Some(Path::new("C:/w/assets")));
+        let page = async {
+            service.page_loaded();
+            let script = scripts.recv().await.unwrap_or_default();
+            // The script names the job; the job itself travels over IPC.
+            assert!(!script.contains("htmlToSlide"), "{script}");
+            let id = job_id(&script);
+            let taken = service.take_job(id);
+            assert_eq!(
+                taken.ok(),
+                Some(json!({ "job": job, "assetsDir": "C:/w/assets" }))
+            );
+            assert!(service.take_job(id).is_err(), "a job is taken once");
+            assert!(service.take_job(id + 1).is_err());
+            service.finish_job(id + 1, Ok(json!("someone else's")));
+            service.finish_job(id, Ok(json!({ "slide": { "id": "s_1" } })));
+        };
+        let (done, ()) = tokio::join!(run, page);
+        assert_eq!(done?, json!({ "slide": { "id": "s_1" } }));
+        assert_eq!(surface.created.get(), 1);
+
+        let run = service.run_job(&surface, job.clone(), None);
+        let page = async {
+            let id = job_id(&scripts.recv().await.unwrap_or_default());
+            assert_eq!(
+                service.take_job(id).ok(),
+                Some(json!({ "job": job, "assetsDir": null }))
+            );
+            service.finish_job(id, Err("the sandbox frame did not load".into()));
+        };
+        let (failed, ()) = tokio::join!(run, page);
+        assert_eq!(
+            failed.err(),
+            Some(CaptureError::new(
+                CaptureErrorKind::RenderFailed,
+                "the sandbox frame did not load"
+            ))
+        );
+        Ok(())
+    }
+
+    /// A page that never answers fails the job in time, and its late answer is dropped.
+    #[tokio::test(start_paused = true)]
+    async fn a_job_the_page_never_finishes_times_out() -> TestResult {
+        let service = CaptureService::new();
+        let (surface, mut scripts) = FakeSurface::new();
+        service.page_loaded();
+        surface.exists.set(true);
+
+        let started = tokio::time::Instant::now();
+        let stuck = service.run_job(&surface, json!({}), None).await;
+        assert_eq!(stuck.err().map(|e| e.kind), Some(CaptureErrorKind::Timeout));
+        assert!(started.elapsed() >= JOB_TIMEOUT);
+        let late = job_id(&scripts.recv().await.unwrap_or_default());
+        assert!(
+            service.take_job(late).is_err(),
+            "a timed-out job is not handed out"
+        );
+
+        let next = service.run_job(&surface, json!({}), None);
+        let page = async {
+            service.finish_job(late, Ok(json!("late")));
+            let id = job_id(&scripts.recv().await.unwrap_or_default());
+            service.finish_job(id, Ok(json!("in time")));
+        };
+        let (next, ()) = tokio::join!(next, page);
+        assert_eq!(next?, json!("in time"));
+        Ok(())
+    }
+
+    /// There is one window: a capture asked for while a job runs waits for the job.
+    #[tokio::test(start_paused = true)]
+    async fn jobs_and_captures_take_turns() -> TestResult {
+        let service = CaptureService::new();
+        let (surface, mut scripts) = FakeSurface::new();
+        service.page_loaded();
+        surface.exists.set(true);
+        let request = one_slide();
+
+        let job = service.run_job(&surface, json!({}), None);
+        let capture = service.capture(&surface, &request, None, 960, true);
+        let page = async {
+            let script = scripts.recv().await.unwrap_or_default();
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            assert!(scripts.try_recv().is_err(), "the capture waits for the job");
+            service.finish_job(job_id(&script), Ok(Value::Null));
+            let script = scripts.recv().await.unwrap_or_default();
+            service.ready(request_id(&script), ready(1.0));
+        };
+        let (job, capture, ()) = tokio::join!(job, capture, page);
+        assert_eq!(job?, Value::Null);
+        assert_eq!(capture?, b"1.0");
         Ok(())
     }
 }

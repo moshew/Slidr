@@ -73,6 +73,10 @@ pub fn run() {
             capture::capture_slide,
             capture::capture_page_loaded,
             capture::capture_ready,
+            capture::capture_clip,
+            capture::capture_run_job,
+            capture::capture_job_take,
+            capture::capture_job_done,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

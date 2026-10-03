@@ -8,6 +8,7 @@ import { ScaledSlide } from '@slidr/renderer';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import { listenForConversionJobs } from '../agent/conversionPage';
 import { registerBuiltinFonts } from '../fonts';
 import { SURFACE_WIDTH, type PageRequest } from './protocol';
 import { settle } from './settle';
@@ -48,8 +49,19 @@ async function draw(request: PageRequest): Promise<void> {
   if (renderError !== null) throw new Error(message(renderError));
 }
 
+// One thing at a time on this page: a slide drawn for a capture, or a job that draws a work
+// surface of its own over it (ADR-027).
+let last: Promise<unknown> = Promise.resolve();
+function inTurn<T>(work: () => Promise<T>): Promise<T> {
+  const run = last.then(work, work);
+  last = run.catch(() => undefined);
+  return run;
+}
+
+listenForConversionJobs(inTurn);
+
 window.__slidrCapture = (id, request) => {
-  void draw(request).then(
+  void inTurn(() => draw(request)).then(
     () => invoke('capture_ready', { id, dpr: window.devicePixelRatio, error: null }),
     (error: unknown) =>
       invoke('capture_ready', { id, dpr: window.devicePixelRatio, error: message(error) }),
