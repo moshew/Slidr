@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./fixtures": "./src/fixtures/index.ts"
+    "./fixtures": "./src/fixtures/index.ts",
+    "./builtin": "./src/builtin/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
