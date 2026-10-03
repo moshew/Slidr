@@ -85,7 +85,7 @@ export type AgentEvent =
 export type Scope =
   | { kind: 'deck' }
   | { kind: 'slide'; slideId: string }
-  | { kind: 'object'; slideId: string; elementIds: string[] }
+  | { kind: 'object'; slideId: string; elementIds: readonly string[] }
   /** An HTML import session; `file` is the source file. */
   | { kind: 'import'; file: string };
 

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import contract from '../../src-tauri/src/harness/fixtures/contract.json';
+import deckBuildScript from '../../src-tauri/src/harness/fixtures/scripts/deck-build.json';
 import errorsScript from '../../src-tauri/src/harness/fixtures/scripts/errors.json';
+import gateStuckScript from '../../src-tauri/src/harness/fixtures/scripts/gate-stuck.json';
 import importScript from '../../src-tauri/src/harness/fixtures/scripts/import.json';
+import qualityGateScript from '../../src-tauri/src/harness/fixtures/scripts/quality-gate.json';
 import slideChatScript from '../../src-tauri/src/harness/fixtures/scripts/slide-chat.json';
 import {
   AGENT_ERROR_KINDS,
@@ -147,7 +150,15 @@ describe('the IPC contract (src-tauri/src/harness/fixtures/contract.json)', () =
   });
 
   it('the mock harness scripts hold only events the UI knows', () => {
-    for (const script of [importScript, slideChatScript, errorsScript]) {
+    const scripts: { turns: object[][] }[] = [
+      importScript,
+      slideChatScript,
+      errorsScript,
+      deckBuildScript,
+      qualityGateScript,
+      gateStuckScript,
+    ];
+    for (const script of scripts) {
       for (const turn of script.turns) {
         for (const step of turn) {
           // `call` marks a tool call the mock carries out; it is the script's, not the event's.
@@ -156,7 +167,7 @@ describe('the IPC contract (src-tauri/src/harness/fixtures/contract.json)', () =
           expect([undefined, true]).toContain(call);
           expectEvent(event, false);
         }
-        expect(turn.at(-1)?.type).toBe('turn_completed');
+        expect(turn.at(-1)).toMatchObject({ type: 'turn_completed' });
       }
     }
   });
