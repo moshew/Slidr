@@ -6,6 +6,7 @@ import {
   FileText,
   Globe,
   Image,
+  LayoutGrid,
   Palette,
   Pencil,
   Plus,
@@ -16,6 +17,7 @@ import {
   type LucideIcon,
 } from '@slidr/ui/icons';
 import type { ToolSource } from '../agent/agent';
+import type { Activity } from '../agent/agentService';
 import type { ToolTarget } from '../agent/transcript';
 import { he } from './messages';
 
@@ -79,6 +81,7 @@ export function toolIcon(call: Call): LucideIcon {
     return kind === 'file' ? FileText : kind === 'other' ? Wrench : Globe;
   }
   if (/render/.test(name)) return Eye;
+  if (/present_options/.test(name)) return LayoutGrid;
   if (/lint/.test(name)) return ScanEye;
   if (/^(image|stock|icon)_/.test(name)) return Image;
   if (/^(theme|template)_/.test(name)) return Palette;
@@ -88,4 +91,15 @@ export function toolIcon(call: Call): LucideIcon {
   if (/_get/.test(name)) return BookOpen;
   if (/update|_set$|arrange|reorder|apply/.test(name)) return Pencil;
   return Wrench;
+}
+
+/** What the agent is doing right now, in the user's words (CHT-U03). */
+export function activityLabel(
+  t: TFunction<'ai'>,
+  activity: Activity | null,
+  slideNumber: number,
+): string {
+  if (!activity) return t('activity.thinking');
+  if (activity.kind === 'tool') return `${toolLabel(t, activity, slideNumber)}…`;
+  return t(`activity.${activity.kind}`);
 }

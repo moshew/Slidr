@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -21,6 +22,7 @@ import {
   Square,
   TriangleAlert,
   Undo2,
+  Zap,
 } from '@slidr/ui/icons';
 import {
   Button,
@@ -31,6 +33,7 @@ import {
   ScrollArea,
   Skeleton,
   Spinner,
+  Textarea,
   Toggle,
 } from '@slidr/ui';
 import type { Activity, ChatThread } from '../agent/agentService';
@@ -41,12 +44,15 @@ import type {
   GateReport,
   ToolPart,
   ToolTarget,
+  UserEntry,
 } from '../agent/transcript';
 import { ask, useDeck, useEditor } from '../shell';
+import { actionLabel } from './actionLabels';
+import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
-import { agentOf, navigateTo, setFollow, useAiPreferences } from './runtime';
-import { targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
+import { agentOf, aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
+import { activityLabel, targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
 
 /*
  * The chat of an AI tool (SPEC 11.8, WG11-T01): the conversation as it streams, a chip for
@@ -54,13 +60,19 @@ import { targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
  * every turn that changed the deck, and a card that says what to do when the agent cannot run.
  */
 
-/** The thread of a scope in the open deck. */
-function useThread(scope: SessionScope): ChatThread {
+/**
+ * The thread of a scope in the open deck. The panel that shows it is where the scope's session
+ * lives: the chat of a slide or an object the panel has moved on from lets its session go.
+ */
+export function useThread(scope: SessionScope): ChatThread {
   const editor = useEditor();
+  const { sessions } = aiOf(editor);
   const key = JSON.stringify(scope);
   // The scope is compared by value: a caller may build it anew on every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => agentOf(editor).thread(scope), [editor, key]);
+  const thread = useMemo(() => sessions.thread(scope), [sessions, key]);
+  useEffect(() => sessions.show(thread), [sessions, thread]);
+  return thread;
 }
 
 /* ---------------------------------------------------------------- tool chips */
@@ -286,6 +298,23 @@ function ProblemCard({ problem }: { problem: ChatProblem }) {
 
 /* ---------------------------------------------------------------- a turn */
 
+/** What the user asked: their words, or the name of the action they pressed (SPEC 4.3). */
+function UserMessage({ entry }: { entry: UserEntry }) {
+  const { t } = useTranslation('ai');
+  return (
+    <div
+      dir={entry.action ? undefined : 'auto'}
+      aria-label={t('you')}
+      data-testid="chat-user"
+      data-action={entry.action?.id}
+      className="ms-10 flex items-start gap-2 self-end rounded-panel bg-ui-accent-soft px-3 py-2 text-start text-md leading-6 whitespace-pre-wrap wrap-anywhere text-ui-fg"
+    >
+      {entry.action && <Icon icon={Zap} className="mt-1 text-ui-accent-fg" />}
+      {entry.action ? actionLabel(t, entry.action) : entry.text}
+    </div>
+  );
+}
+
 /** Turns that were on the undo stack while this window was open: only those say "undone". */
 const undoable = new Set<string>();
 
@@ -380,13 +409,7 @@ function Working({ activity, stopping }: { activity: Activity | null; stopping: 
   const slideNumber = useDeck((s) =>
     activity?.kind === 'tool' ? targetSlideNumber(s.deck, activity.target) : 0,
   );
-  const label = stopping
-    ? t('activity.stopping')
-    : !activity
-      ? t('activity.thinking')
-      : activity.kind === 'tool'
-        ? `${toolLabel(t, activity, slideNumber)}…`
-        : t(`activity.${activity.kind}`);
+  const label = stopping ? t('activity.stopping') : activityLabel(t, activity, slideNumber);
   return (
     <div
       role="status"
@@ -400,11 +423,13 @@ function Working({ activity, stopping }: { activity: Activity | null; stopping: 
 }
 
 function Composer({
+  scope,
   busy,
   stopping,
   onSend,
   onStop,
 }: {
+  scope: SessionScope['kind'];
   busy: boolean;
   stopping: boolean;
   onSend: (text: string) => void;
@@ -429,58 +454,51 @@ function Composer({
   };
   return (
     <div className="shrink-0 px-4 pt-2 pb-4">
-      <div
-        className={cx(
-          'flex flex-col gap-1 rounded-panel border border-ui-line-strong bg-ui-field p-1.5 transition-colors',
-          'focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ui-focus hover:border-ui-fg-subtle',
-        )}
-      >
-        <textarea
-          ref={field}
-          // The text finds its own direction; the placeholder keeps the panel's.
-          dir={text ? 'auto' : undefined}
-          rows={1}
-          value={text}
-          aria-label={t('composer.label')}
-          placeholder={t('composer.placeholder')}
-          data-testid="chat-input"
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={onKeyDown}
-          className="field-sizing-content max-h-40 min-h-10 w-full resize-none bg-transparent px-2 py-1.5 text-md leading-6 text-ui-fg outline-none placeholder:text-ui-fg-muted focus-visible:outline-none"
-        />
-        <div className="flex items-center gap-1">
-          <Toggle
-            icon={LocateFixed}
-            size="sm"
-            label={t('composer.follow')}
-            pressed={follow}
-            onPressedChange={setFollow}
-          />
-          <span className="min-w-0 flex-1" />
-          {busy ? (
-            <IconButton
-              icon={Square}
+      <Textarea
+        ref={field}
+        // The text finds its own direction; the placeholder keeps the panel's.
+        dir={text ? 'auto' : undefined}
+        value={text}
+        aria-label={t('composer.label')}
+        placeholder={t(`composer.placeholder.${scope}`)}
+        data-testid="chat-input"
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={onKeyDown}
+        footer={
+          <div className="flex items-center gap-1">
+            <Toggle
+              icon={LocateFixed}
               size="sm"
-              variant="secondary"
-              label={t('composer.stop')}
-              loading={stopping}
-              data-testid="chat-stop"
-              onClick={onStop}
+              label={t('composer.follow')}
+              pressed={follow}
+              onPressedChange={setFollow}
             />
-          ) : (
-            <IconButton
-              icon={ArrowUp}
-              size="sm"
-              variant="primary"
-              label={t('composer.send')}
-              shortcut="Enter"
-              disabled={!ready}
-              data-testid="chat-send"
-              onClick={send}
-            />
-          )}
-        </div>
-      </div>
+            <span className="min-w-0 flex-1" />
+            {busy ? (
+              <IconButton
+                icon={Square}
+                size="sm"
+                variant="secondary"
+                label={t('composer.stop')}
+                loading={stopping}
+                data-testid="chat-stop"
+                onClick={onStop}
+              />
+            ) : (
+              <IconButton
+                icon={ArrowUp}
+                size="sm"
+                variant="primary"
+                label={t('composer.send')}
+                shortcut="Enter"
+                disabled={!ready}
+                data-testid="chat-send"
+                onClick={send}
+              />
+            )}
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -528,9 +546,9 @@ export function Chat({ scope }: { scope: SessionScope }) {
     content = (
       <EmptyState
         icon={Sparkles}
-        title={t('empty.title')}
-        description={t('empty.body')}
-        className="min-h-80"
+        title={t(`empty.${scope.kind}.title`)}
+        description={t(`empty.${scope.kind}.body`)}
+        className="min-h-64"
       />
     );
   } else {
@@ -538,15 +556,7 @@ export function Chat({ scope }: { scope: SessionScope }) {
       <div className="flex flex-col gap-4 px-4 pt-1 pb-3">
         {state.entries.map((entry) =>
           entry.type === 'user' ? (
-            <div
-              key={entry.id}
-              dir="auto"
-              aria-label={t('you')}
-              data-testid="chat-user"
-              className="ms-10 self-end rounded-panel bg-ui-accent-soft px-3 py-2 text-start text-md leading-6 whitespace-pre-wrap wrap-anywhere text-ui-fg"
-            >
-              {entry.text}
-            </div>
+            <UserMessage key={entry.id} entry={entry} />
           ) : (
             <AssistantTurn
               key={entry.id}
@@ -562,14 +572,14 @@ export function Chat({ scope }: { scope: SessionScope }) {
   }
 
   return (
-    // The shell puts every panel's chat in a scroll area of its own. A chat scrolls its
-    // messages and keeps its composer in place, so it lays itself over that frame instead of
-    // flowing inside it.
-    <div data-testid="chat" className="absolute inset-0 flex flex-col">
+    // The messages scroll; the options the agent offered and the composer stay in place.
+    <div data-testid="chat" data-scope={scope.kind} className="flex min-h-0 flex-1 flex-col">
       <div ref={frame} onScrollCapture={onScroll} className="flex min-h-0 flex-1 flex-col">
         <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
       </div>
+      <Gallery scope={scope} />
       <Composer
+        scope={scope.kind}
         busy={state.busy}
         stopping={state.stopping}
         onSend={(text) => {
