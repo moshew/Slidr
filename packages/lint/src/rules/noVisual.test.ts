@@ -107,6 +107,16 @@ describe('L16: a slide without a visual element', () => {
     expect(withVisual(html('<div class="card"><img data-asset="x" alt=""></div>'))).toEqual([]);
     expect(withVisual(html('<svg viewBox="0 0 24 24"></svg>'))).toEqual([]);
     expect(withVisual(html('<div id="chart"></div>', true))).toEqual([]);
+    // A painted box is a card or a bar, whether the paint is inline or in a style block.
+    expect(withVisual(html('<div style="background: var(--color-primary)">Plan</div>'))).toEqual(
+      [],
+    );
+    expect(
+      withVisual(html('<style>.card { box-shadow: var(--shadow) }</style><p class="card">A</p>')),
+    ).toEqual([]);
+    expect(
+      withVisual(html('<p style="color: red; border-radius: 8px">Only text</p>')),
+    ).toHaveLength(1);
   });
 
   it('counts a photo behind the slide, from the slide, its layout or the theme', () => {
