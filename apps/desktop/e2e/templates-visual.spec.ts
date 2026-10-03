@@ -78,7 +78,7 @@ for (const { lang, theme, viewport, name } of states) {
     const chooser = page.waitForEvent('filechooser');
     await page.getByTestId('logo-choose').click();
     await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_LOGO });
-    await expect(panel(page).locator('img')).toHaveCount(1);
+    await expect(page.getByTestId('logo-preview').locator('img')).toHaveCount(1);
     await panel(page)
       .getByRole('textbox')
       .last()

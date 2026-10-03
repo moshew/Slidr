@@ -4,6 +4,7 @@ import {
   createSlide as blankSlide,
   richText,
   TextStyleRef,
+  type AssetMeta,
   type ColorToken,
   type Deck,
   type FontPair,
@@ -47,6 +48,7 @@ import {
   turnDeck,
 } from './actions';
 import { library } from './app';
+import { coverPicture, coverUrl } from './covers';
 import type { LibraryEntry } from './library';
 
 /*
@@ -79,16 +81,27 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** One slide that shows a template: its opening layout with the template's name on it. */
+/** Where a cover loads a picture from: the app's own file, or a personal template's. */
+const coverAsset = (asset: AssetMeta) => coverUrl(asset) ?? library.assetUrl(asset);
+
+/**
+ * One slide that shows a template: its opening layout with the template's name on it, and the
+ * photograph of a built-in template that opens with one.
+ */
 function coverOf(template: Template, like: Deck): { deck: Deck; slide: Slide } {
   const deck = deckFromTemplate(template, { lang: like.meta.lang, dir: like.meta.dir });
   const first = deck.layouts[0];
   if (first) {
     const title = richText(template.theme.name, { dir: 'auto' });
-    const hasTitle = first.placeholders.some((p) => p.role === 'title');
+    const has = (role: string) => first.placeholders.some((p) => p.role === role);
+    const picture = has('image') ? coverPicture(template.theme.id) : undefined;
+    if (picture) deck.assets[picture.id] = picture;
     const { slide } = createSlide(deck, {
       layoutId: first.id,
-      content: hasTitle ? { title } : {},
+      content: {
+        ...(has('title') ? { title } : {}),
+        ...(picture ? { image: { assetId: picture.id } } : {}),
+      },
     });
     return { deck, slide };
   }
@@ -167,7 +180,7 @@ function TemplateCard({
             slide={cover.slide}
             mode="thumbnail"
             width={width}
-            resolveAsset={library.assetUrl}
+            resolveAsset={coverAsset}
           />
         )}
       </div>
@@ -440,7 +453,10 @@ function Logo() {
   return (
     <Section title={t('logo.title')}>
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-24 shrink-0 items-center justify-center rounded-control border border-ui-line bg-ui-field p-1.5">
+        <div
+          data-testid="logo-preview"
+          className="flex h-12 w-24 shrink-0 items-center justify-center rounded-control border border-ui-line bg-ui-field p-1.5"
+        >
           {url && !hidden ? (
             <img src={url} alt="" className="max-h-full max-w-full object-contain" />
           ) : (

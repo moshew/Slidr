@@ -28,6 +28,13 @@ test('the library offers the built-in templates, and switching to one is one und
   const errors = collectErrors(page);
   await openTemplates(page);
   await expect(card(page, 'zerem')).toBeVisible();
+  // A template that opens with a photograph shows it on its cover.
+  for (const id of ['shvil', 'tzuk']) {
+    const photo = card(page, id).locator('img').first();
+    await expect
+      .poll(() => photo.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(0);
+  }
   const before = await deck(page);
   expect(before.theme.id).toBe('basic');
 
