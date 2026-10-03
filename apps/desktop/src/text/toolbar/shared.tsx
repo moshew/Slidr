@@ -19,7 +19,7 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { create, useStore } from 'zustand';
-import { useDeck, useEditor, useSelection, type Editor } from '../../shell';
+import { focusStage, useDeck, useEditor, useSelection, type Editor } from '../../shell';
 import { formatOf, type TextTarget } from '../actions';
 import { activeEditor, editorFor } from '../activeEditor';
 import type { FormatContext, TextFormat } from '../format';
@@ -83,10 +83,7 @@ export function useText(): Text | null {
 export function returnFocus(): void {
   const { active } = activeEditor.getState();
   if (active && !active.editor.isDestroyed) active.editor.view.focus();
-  else
-    document
-      .querySelector<HTMLElement>('[data-testid="stage-surface"]')
-      ?.focus({ preventScroll: true });
+  else focusStage();
 }
 
 /**
@@ -221,25 +218,9 @@ export function PopoverTool({
   );
 }
 
-/**
- * An on / off button of the text tools: small, and a click on it leaves the focus in the text.
- *
- * The pressed look is given here by `aria-pressed`. The design system's `Toggle` styles it by
- * `data-state="on"`, which its own tooltip overwrites with the tooltip's state, so a pressed
- * toggle looks like any other (reported to the owner of `@slidr/ui`).
- */
-export function TextToggle({ className, ...props }: ToggleProps) {
-  return (
-    <Toggle
-      size="sm"
-      onMouseDown={keepFocus}
-      className={cx(
-        'aria-pressed:bg-ui-accent-soft aria-pressed:text-ui-accent-fg aria-pressed:hover:bg-ui-accent-soft-hover',
-        className,
-      )}
-      {...props}
-    />
-  );
+/** An on / off button of the text tools: small, and a click on it leaves the focus in the text. */
+export function TextToggle(props: ToggleProps) {
+  return <Toggle size="sm" onMouseDown={keepFocus} {...props} />;
 }
 
 /** A control beside its label, in a popover. */

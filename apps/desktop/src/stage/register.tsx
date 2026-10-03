@@ -114,9 +114,6 @@ function CropToggle() {
       icon={Crop}
       label={t('crop.toggle')}
       size="sm"
-      // The tooltip around a Toggle takes over its `data-state`, so the pressed look hangs on
-      // `aria-pressed` here.
-      className="aria-pressed:bg-ui-accent-soft aria-pressed:text-ui-accent-fg"
       pressed={target.cropping}
       disabled={!target.view}
       onPressedChange={(on) => {

@@ -150,10 +150,11 @@ test.describe('typing', () => {
     // No text yet: the caret starts on the side of the deck's direction.
     await expect(p).toHaveAttribute('dir', 'rtl');
 
-    // Digits and punctuation are not strong: the browser lays such a line out from the left.
+    // Digits and punctuation are not strong: such a line keeps the deck's direction, so the caret
+    // does not jump to the other side while a number is typed.
     await page.keyboard.type('12. ');
-    await expect(p).toHaveAttribute('dir', 'auto');
-    expect(await directions(page)).toEqual(['ltr']);
+    await expect(p).toHaveAttribute('dir', 'rtl');
+    expect(await directions(page)).toEqual(['rtl']);
     // The first letter decides.
     await page.keyboard.type('ש');
     expect(await directions(page)).toEqual(['rtl']);
@@ -487,17 +488,65 @@ test.describe('list markers', () => {
     expect(englishMarker!.x).toBeLessThan(english[0]!.left);
   });
 
-  // The renderer draws the marker inside the `dir="auto"` item without a direction of its own, so
-  // the "a" of the marker is the first strong character and the Hebrew item is laid out left to
-  // right; the editor then moves it when editing starts. To fix in packages/renderer (text.tsx,
-  // `Marker`): give the marker the resolved direction of its paragraph. See the report of WG4.
-  test.fixme('the Stage draws a lettered Hebrew dir-auto item right to left, as the editor does', async ({
+  // The renderer resolves `auto` itself (`paragraphDirection`), from the item's own text: the "a"
+  // of the marker is not part of it.
+  test('the Stage draws a lettered Hebrew dir-auto item right to left, as the editor does', async ({
     page,
   }) => {
     await open(page, lettered('auto'));
     await page.keyboard.press('Escape');
     const item = page.getByTestId('stage-surface').locator(`[data-element-id="${ID}"] li`).nth(1);
     expect(await item.evaluate((node) => getComputedStyle(node).direction)).toBe('rtl');
+  });
+});
+
+test.describe('figures in a Hebrew deck', () => {
+  /** The box of the paragraph and of each character, on the Stage or in the editor. */
+  const layout = (page: Page) =>
+    page
+      .getByTestId('stage-surface')
+      .locator(`[data-element-id="${ID}"] p`)
+      .first()
+      .evaluate((p) => {
+        const chars: number[] = [];
+        const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          for (let i = 0; i < (node.nodeValue ?? '').length; i++) {
+            const range = document.createRange();
+            range.setStart(node, i);
+            range.setEnd(node, i + 1);
+            chars.push(range.getBoundingClientRect().left);
+          }
+        }
+        const box = p.getBoundingClientRect();
+        return {
+          left: box.left,
+          right: box.right,
+          direction: getComputedStyle(p).direction,
+          chars,
+        };
+      });
+
+  test('a number sits on the right and still reads from the left, on the Stage and in the editor', async ({
+    page,
+  }) => {
+    await open(page, [para('+4%')]);
+    await page.keyboard.press('Escape');
+    for (const editing of [false, true]) {
+      if (editing) await edit(page, ID);
+      const { right, direction, chars } = await layout(page);
+      // On the deck's side: the paragraph is right to left, and the text ends at its right edge.
+      expect(direction).toBe('rtl');
+      expect(right - Math.max(...chars)).toBeLessThan(60);
+      // "+", "4", "%" from left to right: the sign is not thrown to the other end.
+      expect(chars[0]!).toBeLessThan(chars[1]!);
+      expect(chars[1]!).toBeLessThan(chars[2]!);
+    }
+    // The first letter makes it ordinary text again, laid out by that letter.
+    await move(page, 'End');
+    await page.keyboard.type(' growth');
+    expect(await directions(page)).toEqual(['ltr']);
+    expect(await plain(page, ID)).toBe('+4% growth');
   });
 });
 

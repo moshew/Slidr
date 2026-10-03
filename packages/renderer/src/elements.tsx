@@ -843,6 +843,7 @@ function TableView({ element: e }: { element: TableElement }) {
                       ...(header && !cell.fill ? { color: 'var(--color-bg)', weight: 600 } : {}),
                       ...(firstColumn && !header ? { weight: 600 } : {}),
                     }}
+                    dir={e.dir}
                   />
                 </td>
               );

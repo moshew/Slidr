@@ -54,9 +54,10 @@ describe('the direction of a paragraph', () => {
     expect(resolveDirection('auto', '3 דברים', 'ltr')).toBe('rtl');
   });
 
-  it('is left to right for text without letters, as the browser lays out dir="auto"', () => {
-    expect(resolveDirection('auto', '2026', 'rtl')).toBe('ltr');
-    expect(resolveDirection('auto', '...', 'rtl')).toBe('ltr');
+  it('is the deck direction for text without letters, unlike the browser’s dir="auto"', () => {
+    expect(resolveDirection('auto', '2026', 'rtl')).toBe('rtl');
+    expect(resolveDirection('auto', '87%', 'rtl')).toBe('rtl');
+    expect(resolveDirection('auto', '...', 'ltr')).toBe('ltr');
   });
 
   it('is the deck direction for a line without text', () => {

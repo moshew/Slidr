@@ -1,5 +1,5 @@
 import { plainText, type Direction, type ListInfo, type Marks, type RichText } from '@slidr/model';
-import { colorCss, listMarkers, MARKER_EM, runStyle } from '@slidr/renderer';
+import { colorCss, listMarkers, MARKER_EM, readsAsNumber, runStyle } from '@slidr/renderer';
 import type { JSONContent } from '@tiptap/core';
 import { Slice, type Node as PmNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
@@ -30,8 +30,9 @@ function firstMarks(node: PmNode): Marks | undefined {
  * - List markers, as widgets the caret skips. A marker carries the direction of its paragraph
  *   itself, so that a lettered marker ("a.") is not the first strong character of a `dir: auto`
  *   paragraph and does not turn a Hebrew list item around.
- * - A `dir: auto` line without text takes the deck's direction, so the caret of a new Hebrew text
- *   box starts on the right; with text, the browser resolves `auto` itself.
+ * - A `dir: auto` line gets the direction the renderer gives it (`paragraphDirection`): by its
+ *   first letter, and the deck's direction when it has none, so the caret of a new Hebrew text
+ *   box starts on the right and stays there while a number is typed.
  * - An empty line that keeps formatting is as tall as its text would be.
  */
 export function decorationsPlugin(emptyDir: () => Direction): Plugin {
@@ -50,16 +51,18 @@ export function decorationsPlugin(emptyDir: () => Direction): Plugin {
         nodes.forEach(({ node, pos }, i) => {
           const empty = node.content.size === 0;
           const fallback = emptyDir();
+          const dir = resolveDirection(paragraphProps(node).dir, node.textContent, fallback);
           if (node.attrs.dir === 'auto') {
-            decorations.push(
-              Decoration.node(pos, pos + node.nodeSize, { dir: empty ? fallback : 'auto' }),
-            );
+            decorations.push(Decoration.node(pos, pos + node.nodeSize, { dir }));
+            // Figures only, in a Hebrew deck: on the deck's side, but read from the left, run by
+            // run, as the renderer draws them (`readsAsNumber`).
+            if (readsAsNumber('auto', node.textContent, fallback))
+              decorations.push(Decoration.inline(pos + 1, pos + node.nodeSize - 1, { dir: 'ltr' }));
           }
           const first = firstMarks(node);
           const list = node.attrs.list as ListInfo | null;
           const text = markers[i];
           if (list && text !== undefined) {
-            const dir = resolveDirection(paragraphProps(node).dir, node.textContent, fallback);
             const color = list.color ?? first?.color;
             const style = cssText({
               display: 'inline-block',

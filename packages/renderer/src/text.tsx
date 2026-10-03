@@ -1,4 +1,5 @@
 import type {
+  Direction,
   Insets,
   ListInfo,
   Marks,
@@ -156,19 +157,85 @@ export function runStyle(
   return style;
 }
 
+/** Letters of the scripts written right to left. */
+const RTL_LETTER =
+  /[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}]/u;
+const LETTER = /\p{L}/u;
+// The invisible direction marks, by code point so that they can be seen in the source.
+const RLM = String.fromCodePoint(0x200f);
+const ALM = String.fromCodePoint(0x061c);
+const LRM = String.fromCodePoint(0x200e);
+
+/**
+ * The direction of the first strong character, as `dir="auto"` finds it: letters are strong,
+ * digits, punctuation, spaces and emoji are not. Undefined when the text has no strong character.
+ */
+export function firstStrong(text: string): Direction | undefined {
+  for (const char of text) {
+    if (char === RLM || char === ALM) return 'rtl';
+    if (char === LRM) return 'ltr';
+    if (LETTER.test(char)) return RTL_LETTER.test(char) ? 'rtl' : 'ltr';
+  }
+  return undefined;
+}
+
+/**
+ * The direction a paragraph is laid out in. `auto` follows the first strong character of its own
+ * text. Text without one (a figure, "87%", an empty line) has nothing to go by and takes
+ * `fallback`, the direction of the deck: in a Hebrew deck a lone number sits on the right, and a
+ * list keeps its bullets on one side.
+ *
+ * The renderer writes the result as an explicit `dir`, never `dir="auto"`: the browser's own
+ * `auto` falls back to left-to-right, and it counts a list marker ("a.") as part of the text.
+ * The text editor uses this function too, so text does not turn when editing starts.
+ */
+export function paragraphDirection(
+  dir: Paragraph['dir'],
+  text: string,
+  fallback: Direction,
+): Direction {
+  if (dir !== 'auto') return dir;
+  return firstStrong(text) ?? fallback;
+}
+
+/**
+ * A `dir: auto` paragraph of figures only ("+4%", "12.10.2026") in a right-to-left deck. It sits
+ * on the deck's side, like the text around it, but it reads left to right, as every number does:
+ * laid out right to left, "+4%" would be drawn "4%+". Each of its runs is drawn as a left-to-right
+ * island (`dir="ltr"`); the text editor does the same, run by run.
+ */
+export function readsAsNumber(dir: Paragraph['dir'], text: string, fallback: Direction): boolean {
+  return dir === 'auto' && fallback === 'rtl' && text !== '' && firstStrong(text) === undefined;
+}
+
+const paragraphText = (p: Paragraph) => p.runs.map((r) => r.text).join('');
+
 const LINK_STYLE: CSSProperties = { color: 'inherit', textDecoration: 'inherit' };
 
-function RunView({ run, role }: { run: Run; role: 'heading' | 'body' }) {
+function RunView({ run, role, ltr }: { run: Run; role: 'heading' | 'body'; ltr: boolean }) {
   const style = runStyle(run.marks, role);
+  const dir = ltr ? 'ltr' : undefined;
   const link = run.marks?.link;
   if (link) {
     return (
-      <a href={link} target="_blank" rel="noopener noreferrer" style={{ ...LINK_STYLE, ...style }}>
+      <a
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        dir={dir}
+        style={{ ...LINK_STYLE, ...style }}
+      >
         {run.text}
       </a>
     );
   }
-  return style ? <span style={style}>{run.text}</span> : <>{run.text}</>;
+  return style || ltr ? (
+    <span dir={dir} style={style}>
+      {run.text}
+    </span>
+  ) : (
+    <>{run.text}</>
+  );
 }
 
 function Marker({ text, list, firstRun }: { text: string; list: ListInfo; firstRun?: Run }) {
@@ -194,7 +261,7 @@ function Marker({ text, list, firstRun }: { text: string; list: ListInfo; firstR
   );
 }
 
-function paragraphContent(p: Paragraph, role: 'heading' | 'body'): ReactNode {
+function paragraphContent(p: Paragraph, role: 'heading' | 'body', ltr: boolean): ReactNode {
   const empty = p.runs.every((r) => r.text === '');
   if (empty) {
     // An empty line still has the height of its text: a line break, in the first run's marks.
@@ -207,7 +274,7 @@ function paragraphContent(p: Paragraph, role: 'heading' | 'body'): ReactNode {
       <br />
     );
   }
-  return p.runs.map((run, i) => <RunView key={i} run={run} role={role} />);
+  return p.runs.map((run, i) => <RunView key={i} run={run} role={role} ltr={ltr} />);
 }
 
 /** The paragraphs of a rich text, without a box around them. */
@@ -215,12 +282,17 @@ export function RichTextView({
   content,
   theme,
   defaults,
+  dir,
 }: {
   content: RichText;
   theme: Theme;
   defaults: TextDefaults;
+  /** The direction of a `dir: auto` paragraph without letters: the deck's, or the table's. */
+  dir: Direction;
 }) {
   const markers = listMarkers(content.paragraphs);
+  const direction = (p: Paragraph) => paragraphDirection(p.dir, paragraphText(p), dir);
+  const number = (p: Paragraph) => readsAsNumber(p.dir, paragraphText(p), dir);
   const out: ReactNode[] = [];
   let i = 0;
   while (i < content.paragraphs.length) {
@@ -228,8 +300,8 @@ export function RichTextView({
     if (!first.list) {
       const role = theme.textStyles[first.styleRef ?? defaults.styleRef].font;
       out.push(
-        <p key={i} dir={first.dir} style={paragraphStyle(first, theme, defaults)}>
-          {paragraphContent(first, role)}
+        <p key={i} dir={direction(first)} style={paragraphStyle(first, theme, defaults)}>
+          {paragraphContent(first, role, number(first))}
         </p>,
       );
       i++;
@@ -244,7 +316,7 @@ export function RichTextView({
       items.push(
         <li
           key={i}
-          dir={p.dir}
+          dir={direction(p)}
           style={{
             ...paragraphStyle(p, theme, defaults),
             display: 'block',
@@ -253,7 +325,7 @@ export function RichTextView({
           }}
         >
           <Marker text={markers[i] ?? ''} list={p.list} firstRun={p.runs[0]} />
-          {paragraphContent(p, role)}
+          {paragraphContent(p, role, number(p))}
         </li>,
       );
       i++;
@@ -387,6 +459,7 @@ export function TextBox({
               content={content}
               theme={ctx.theme}
               defaults={{ styleRef, wrap: wrap ?? true }}
+              dir={ctx.dir}
             />
           )}
         </div>

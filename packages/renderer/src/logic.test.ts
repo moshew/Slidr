@@ -7,7 +7,7 @@ import { referenceDeck } from './fixtures/referenceDeck';
 import { pathBounds, presetPath, scalePath, shapePresets, transformPath } from './geometry';
 import { normalizeColor, prepareSvg } from './markup';
 import { sanitizeMarkup } from './sanitize';
-import { listMarkers } from './text';
+import { firstStrong, listMarkers, paragraphDirection, readsAsNumber } from './text';
 import { colorCss, fontStack, themeVariables } from './theme';
 
 describe('css', () => {
@@ -162,6 +162,40 @@ describe('lists', () => {
   it('uses a bullet per level, and a custom glyph when given', () => {
     const custom: Paragraph = { ...p('bullet'), list: { kind: 'bullet', level: 0, glyph: '→' } };
     expect(listMarkers([p('bullet'), p('bullet', 1), custom])).toEqual(['•', '◦', '→']);
+  });
+});
+
+describe('paragraph direction', () => {
+  it('finds the first strong character: letters, not digits, punctuation or emoji', () => {
+    expect(firstStrong('שלום world')).toBe('rtl');
+    expect(firstStrong('Hello עולם')).toBe('ltr');
+    expect(firstStrong('123 שלום')).toBe('rtl');
+    expect(firstStrong('(1) hello')).toBe('ltr');
+    expect(firstStrong('مرحبا')).toBe('rtl');
+    expect(firstStrong('Привет')).toBe('ltr');
+    expect(firstStrong('😀 ok')).toBe('ltr');
+    expect(firstStrong('87%')).toBeUndefined();
+    expect(firstStrong('')).toBeUndefined();
+  });
+
+  it('keeps an explicit direction, and resolves auto by the text, then by the deck', () => {
+    expect(paragraphDirection('rtl', 'Hello', 'ltr')).toBe('rtl');
+    expect(paragraphDirection('ltr', 'שלום', 'rtl')).toBe('ltr');
+    expect(paragraphDirection('auto', 'שלום world', 'ltr')).toBe('rtl');
+    expect(paragraphDirection('auto', 'Hello עולם', 'rtl')).toBe('ltr');
+    expect(paragraphDirection('auto', '+4%', 'rtl')).toBe('rtl');
+    expect(paragraphDirection('auto', '+4%', 'ltr')).toBe('ltr');
+    expect(paragraphDirection('auto', '', 'rtl')).toBe('rtl');
+  });
+
+  it('reads figures left to right in a right-to-left deck, and nothing else', () => {
+    expect(readsAsNumber('auto', '+4%', 'rtl')).toBe(true);
+    expect(readsAsNumber('auto', '12.10.2026', 'rtl')).toBe(true);
+    expect(readsAsNumber('auto', '+4%', 'ltr')).toBe(false);
+    expect(readsAsNumber('auto', '4% צמיחה', 'rtl')).toBe(false);
+    expect(readsAsNumber('auto', '', 'rtl')).toBe(false);
+    // An explicit direction is the author's: it is drawn as it is.
+    expect(readsAsNumber('rtl', '+4%', 'rtl')).toBe(false);
   });
 });
 

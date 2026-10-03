@@ -6,8 +6,11 @@ export { fillStyle } from './fill';
 export { presetPath, scalePath, shapePresets, isBoxPreset, type ShapePath } from './geometry';
 export { imagePlacement, linePath } from './elements';
 export {
+  firstStrong,
   listMarkers,
+  paragraphDirection,
   paragraphStyle,
+  readsAsNumber,
   runStyle,
   MARKER_EM,
   LEVEL_EM,

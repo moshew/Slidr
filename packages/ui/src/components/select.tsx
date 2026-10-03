@@ -24,6 +24,8 @@ export interface SelectProps<T extends string> {
   variant?: 'field' | 'ghost';
   size?: 'sm' | 'md';
   disabled?: boolean;
+  /** Where the focus goes when the list closes, e.g. back to the text being edited. */
+  onCloseAutoFocus?: (event: Event) => void;
   /** Classes for the trigger, e.g. its width. */
   className?: string;
 }
@@ -37,6 +39,7 @@ export function Select<T extends string>({
   variant = 'field',
   size = 'md',
   disabled = false,
+  onCloseAutoFocus,
   className,
   ...aria
 }: SelectProps<T>) {
@@ -71,6 +74,7 @@ export function Select<T extends string>({
           position="popper"
           sideOffset={6}
           collisionPadding={8}
+          onCloseAutoFocus={onCloseAutoFocus}
           className="z-50 max-h-(--radix-select-content-available-height) min-w-(--radix-select-trigger-width) animate-overlay-in overflow-hidden rounded-panel border border-ui-line bg-ui-raised text-sm text-ui-fg shadow-overlay"
         >
           <RadixSelect.Viewport className="p-1">

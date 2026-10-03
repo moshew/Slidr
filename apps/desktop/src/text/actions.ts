@@ -3,12 +3,17 @@ import {
   newId,
   updateElement,
   type CommandBus,
+  type ElementPatch,
   type Insets,
   type RichText,
   type ShapeElement,
   type TextElement,
 } from '@slidr/model';
 import type { EditorView } from '@tiptap/pm/view';
+// By file, not through the shell's index: these are plain functions, and the index loads the app.
+import { stageElement } from '../shell/stageDom';
+import { refitPatches } from '../stage/groups';
+import { indexElements } from '../stage/space';
 import {
   changeMarksTr,
   changeParagraphsTr,
@@ -75,24 +80,18 @@ export function formatOf(target: TextTarget, ctx: FormatContext): TextFormat {
   return format;
 }
 
-/** The rendered box of an element on the Stage. */
-function stageBox(elementId: string): HTMLElement | null {
-  return document.querySelector<HTMLElement>(
-    `[data-testid="stage-surface"] [data-element-id="${CSS.escape(elementId)}"]`,
-  );
-}
-
 /**
  * A text box that grows with its text (`autoFit: growHeight`) is drawn as tall as its content. This
  * writes that height to the frame, in the undo step of the change that caused it, so the handles
- * and snapping work against the real box. The box is measured once it has been drawn, and again
- * when a font the change asked for has loaded.
+ * and snapping work against the real box. The groups around the box are refitted with it, as the
+ * Stage refits them after its own gestures (ADR-016). The box is measured once it has been drawn,
+ * and again when a font the change asked for has loaded.
  */
 export function syncGrowHeight(
   bus: CommandBus,
   elementId: string,
   txId: string,
-  box: () => HTMLElement | null = () => stageBox(elementId),
+  box: () => HTMLElement | null = () => stageElement(elementId),
 ): void {
   const measure = () => {
     const found = findElementInDeck(bus.deck, elementId);
@@ -102,7 +101,12 @@ export function syncGrowHeight(
     const h = Math.round(dom.offsetHeight);
     const { frame } = found.element;
     if (h <= 0 || Math.abs(h - frame.h) < 1) return;
-    bus.dispatch(updateElement(found.slide.id, elementId, { frame: { ...frame, h } }), { txId });
+    const path = indexElements(found.slide.elements).get(elementId)?.path ?? [];
+    const patches = refitPatches(path, new Map([[elementId, { frame: { ...frame, h } }]]));
+    bus.batch(
+      [...patches].map(([id, patch]) => updateElement(found.slide.id, id, patch as ElementPatch)),
+      { txId },
+    );
   };
   requestAnimationFrame(() => {
     measure();
