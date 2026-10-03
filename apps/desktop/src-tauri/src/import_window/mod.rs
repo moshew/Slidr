@@ -511,16 +511,23 @@ impl Surface for AppSurface<'_> {
     }
 }
 
+/// The origin the app's own pages are served from: the dev server while developing, and
+/// otherwise where WebView2 serves the bundled files. (The window itself cannot be asked: it
+/// has no address until its first navigation commits.)
+#[cfg(windows)]
+fn home_origin(app: &AppHandle) -> String {
+    match &app.config().build.dev_url {
+        Some(url) if tauri::is_dev() => url.origin().ascii_serialization(),
+        _ => "http://tauri.localhost".into(),
+    }
+}
+
 #[cfg(windows)]
 async fn block_network(
     window: &tauri::WebviewWindow,
     blocked: Arc<Mutex<Vec<String>>>,
 ) -> Result<()> {
-    let home = window
-        .url()
-        .map_err(|e| ImportError::internal(format!("the import window has no URL: {e}")))?
-        .origin()
-        .ascii_serialization();
+    let home = home_origin(window.app_handle());
     network::block(window, move |url| {
         let allowed = request_allowed(&home, url);
         if !allowed {
