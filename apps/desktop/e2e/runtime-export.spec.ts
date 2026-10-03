@@ -16,7 +16,7 @@ import {
   type ShowWindow,
 } from './runtime-helpers';
 
-// The HTML export (WG9-T07, T08, T10, T11): decks are exported from the dev page, written to
+// The HTML export (WG9-T07 to T11): decks are exported from the dev page, written to
 // disk, and opened as files, with no server behind them.
 //
 // The files stay in packages/html-export/test-results (ignored by git). `reference-deck.html` is
@@ -57,6 +57,46 @@ async function openFile(page: Page, url: string): Promise<string[]> {
   await page.goto(url);
   await page.waitForSelector('html.slidr-ready');
   return outside;
+}
+
+interface DomNode {
+  nodeId: number;
+  nodeType: number;
+  attributes?: string[];
+  children?: DomNode[];
+  shadowRoots?: DomNode[];
+}
+
+/**
+ * How many glyphs each font draws in the slides of a page, as the engine itself reports it. A
+ * font of the page is told from one of the system: a character that a subset lacks is drawn by
+ * a system font, which the eye may miss in a small caption.
+ */
+async function glyphsByFont(page: Page): Promise<Record<string, number>> {
+  // Every slide is laid out, so that all of the text has been shaped.
+  await page.addStyleTag({ content: 'section[data-slide] { display: block !important; }' });
+  await page.evaluate(() => document.fonts.ready);
+  const session = await page.context().newCDPSession(page);
+  await session.send('DOM.enable');
+  await session.send('CSS.enable');
+  const { root } = await session.send('DOM.getDocument', { depth: -1, pierce: true });
+  const glyphs: Record<string, number> = {};
+  const visit = async (node: DomNode, inSlide: boolean): Promise<void> => {
+    const here = inSlide || Boolean(node.attributes?.includes('data-slide'));
+    if (here && node.children?.some((child) => child.nodeType === 3)) {
+      const { fonts } = await session.send('CSS.getPlatformFontsForNode', { nodeId: node.nodeId });
+      for (const font of fonts) {
+        const name = `${font.familyName} (${font.isCustomFont ? 'of the page' : 'of the system'})`;
+        glyphs[name] = (glyphs[name] ?? 0) + font.glyphCount;
+      }
+    }
+    for (const child of [...(node.children ?? []), ...(node.shadowRoots ?? [])]) {
+      await visit(child, here);
+    }
+  };
+  await visit(root, false);
+  await session.detach();
+  return glyphs;
 }
 
 test.describe('the reference deck', () => {
@@ -102,6 +142,55 @@ test.describe('the reference deck', () => {
     // The portrait is 1200 wide and shown 400 wide at most: two pixels per slide pixel are kept.
     // The landscape is shown cropped to a quarter, so it needs every pixel it has.
     expect(widths).toEqual([800, 1440, 2400]);
+  });
+
+  test('fonts are inside, cut down to the characters the slides draw', () => {
+    const { fonts, html } = exported.result;
+    // One slide shows all 23 families of the library. Heebo, the Hebrew font of the deck's font
+    // pair, is there once more as the pair's Hebrew-only face.
+    const families = new Set(fonts.map((font) => font.family));
+    expect(families.size).toBe(24);
+    expect(families.has('Heebo::hebrew')).toBe(true);
+    for (const font of fonts) {
+      expect(font.subset, font.family).toBe(true);
+      expect(font.characters, font.family).toBeGreaterThan(0);
+      expect(font.bytes, font.family).toBeLessThan(font.originalBytes);
+    }
+    // Whole, the files of these 46 faces are close to a megabyte. (Measured: 989 kB, and 167 kB
+    // cut down. What is left is a font for every face and weight, and the hinting of 22 faces.)
+    const sum = (key: 'bytes' | 'originalBytes') => fonts.reduce((n, font) => n + font[key], 0);
+    expect(sum('originalBytes')).toBeGreaterThan(900_000);
+    expect(sum('bytes')).toBeLessThan(185_000);
+    // No variable font is left in the file: each is a static font for every weight it is drawn
+    // at, since not every engine draws the weights of a variable font.
+    const inter = (style: string) => fonts.find((f) => f.family === 'Inter' && f.style === style);
+    expect(inter('italic')?.weight).toBe('400');
+    expect(inter('normal')?.weight).toBe('400, 600, 700, 800');
+    const ranges = fonts.map((font) => font.weight).filter((weight) => /^\d+ \d+$/.test(weight));
+    expect(ranges).toEqual([]);
+
+    const css = /<style data-slidr-fonts>([\s\S]*?)<\/style>/.exec(html)?.[1] ?? '';
+    const rules = css.match(/@font-face/g)?.length ?? 0;
+    expect(rules).toBe(fonts.reduce((n, font) => n + font.weight.split(', ').length, 0));
+    expect(css.match(/url\("data:font\/woff2;base64,[^"]+"\) format\("woff2"\)/g)).toHaveLength(
+      rules,
+    );
+    expect(css).not.toMatch(/font-weight: \d+ \d+;/);
+  });
+
+  test('every glyph is drawn by the font that draws it in the editor', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    const live = await context.newPage();
+    const file = await context.newPage();
+    await openDeck(live, 'reference', '&bare');
+    await openFile(file, exported.url);
+    const inEditor = await glyphsByFont(live);
+    const inFile = await glyphsByFont(file);
+    expect(inFile).toEqual(inEditor);
+    // All 23 families draw, each from the file.
+    const embedded = Object.keys(inFile).filter((name) => name.endsWith('(of the page)'));
+    expect(embedded.length).toBeGreaterThanOrEqual(23);
+    await context.close();
   });
 
   test('text is real text: headings, lists, and the right direction', async ({ page }) => {
@@ -169,8 +258,9 @@ test.describe('the reference deck', () => {
       const d = await shoot(file, slide, entered, '.slidr-stage');
       shares[`${slide} drawn`] = await differingShare(file, c, d);
     }
-    // Re-encoded pictures differ in a few pixels; anything misplaced or missing differs in many.
-    // (Measured: at most 0.012% of the pixels. A blank 400x200 frame is 1.6%.)
+    // Re-encoded pictures differ in a few pixels, and so does text in a static font that was cut
+    // from a variable one at another weight than its default; anything misplaced or missing
+    // differs in many. (Measured: at most 0.02% of the pixels. A blank 400x200 frame is 1.6%.)
     for (const [name, share] of Object.entries(shares)) {
       expect(share, `slide ${name}`).toBeLessThan(0.001);
     }

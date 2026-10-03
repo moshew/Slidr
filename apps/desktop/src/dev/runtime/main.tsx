@@ -18,7 +18,6 @@ import { settle } from '../../capture/settle';
 import { registerBuiltinFonts } from '../../fonts';
 import { testAssetUrl } from '../slides/testAssets';
 import { deckByName, deckNames } from './decks';
-import { loadedFontCss } from './fonts';
 
 declare global {
   interface Window {
@@ -37,7 +36,7 @@ const loadAsset = async (asset: AssetMeta): Promise<Blob | undefined> => {
   return url ? (await fetch(url)).blob() : undefined;
 };
 
-const exportDeck = (deck: Deck) => exportHtml(deck, { loadAsset, fontCss: loadedFontCss });
+const exportDeck = (deck: Deck) => exportHtml(deck, { loadAsset });
 
 const kB = (bytes: number) => `${(bytes / 1024).toFixed(0)} kB`;
 
