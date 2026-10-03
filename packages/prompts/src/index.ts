@@ -5,3 +5,14 @@
 export { systemPrompt, type SystemPromptInput } from './systemPrompt';
 export { contextBlock, type ContextInput } from './context';
 export { QUALITY_GATE_TAG, qualityGateMessage, type QualityGateInput } from './gate';
+export {
+  ACTION_TAG,
+  ACTIONS,
+  actionMessage,
+  isActionId,
+  type ActionDef,
+  type ActionId,
+  type ActionMessageInput,
+  type ActionParams,
+} from './actions';
+export { SESSION_TAG, sessionBrief, type SessionBriefInput } from './brief';
