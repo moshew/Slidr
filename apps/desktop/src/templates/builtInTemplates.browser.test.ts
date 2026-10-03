@@ -128,6 +128,29 @@ describe.each(templates.map((template) => [template.theme.id, template] as const
         expect(found.filter((f) => !/ L01 e_(he|en)_hero_title$/.test(f))).toEqual([]);
       },
     );
+
+    test(
+      'the same opening slide, once it names its archetype, takes the layout and leaves no error',
+      { timeout: 120_000 },
+      async () => {
+        const found: string[] = [];
+        for (const make of [fixtureDecks.hebrewDeck, fixtureDecks.englishDeck]) {
+          const before = make();
+          // What `slide_create_from_html` writes on a slide (ADR-026), and a slide drawn by
+          // hand lacks: with it the title moves to the template's own frame.
+          before.slides[0]!.archetype = 'hero';
+          const bus = new CommandBus(before, { validate: true });
+          bus.batch(applyTemplate(before, template));
+          const opening = bus.deck.slides[0]!;
+          expect(template.layouts.find((l) => l.id === opening.layoutId)?.archetype).toBe('hero');
+          const findings = await lint.lint(bus.deck, [opening.id], 'all');
+          found.push(...errors(findings).map(brief));
+          bus.undo();
+          expect(bus.deck).toEqual(before);
+        }
+        expect(found).toEqual([]);
+      },
+    );
   },
 );
 
