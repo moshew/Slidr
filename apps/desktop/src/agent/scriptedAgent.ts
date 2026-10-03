@@ -264,6 +264,9 @@ export function createScriptedAgent(
       return Promise.resolve(sessionId);
     },
 
+    // There is no session folder here: the file is taken, and its place is the one Rust gives.
+    attach: (_thread, file) => Promise.resolve(`attachments/${file.name}`),
+
     send(sessionId, turn) {
       const current = sessions.get(sessionId);
       if (!current) {

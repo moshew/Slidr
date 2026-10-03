@@ -68,6 +68,14 @@ export interface EntryAction {
   params?: Record<string, string | number>;
 }
 
+/** A file the user sent with a message (CHT-U05), as the chat shows it afterwards. */
+export interface EntryAttachment {
+  name: string;
+  kind: 'image' | 'file';
+  /** For a picture: the id it has among the deck's assets, so the chat can show it. */
+  assetId?: string;
+}
+
 export interface UserEntry {
   type: 'user';
   id: string;
@@ -76,6 +84,7 @@ export interface UserEntry {
   text: string;
   /** The action the message stands for: the chat shows its name, and `text` is what was sent. */
   action?: EntryAction;
+  attachments?: EntryAttachment[];
 }
 
 /** Everything the agent did for one user message, the design check's rounds included. */
@@ -107,6 +116,8 @@ export interface ThreadRecord {
   /** What resumes the conversation on that harness (AGT-05: used for nothing else). */
   nativeSessionId?: string;
   updatedAt?: string;
+  /** The start of the conversation's first message, for the list of conversations (CHT-U07). */
+  title?: string;
 }
 
 /** Where the chats of the open document are kept. */
@@ -117,6 +128,8 @@ export interface TranscriptStore {
   append(threadId: string, entries: readonly ChatEntry[]): Promise<void>;
   /** Replaces the thread's record in the index. */
   setRecord(threadId: string, record: ThreadRecord): Promise<void>;
+  /** Every thread the index knows, by id: what the list of conversations is made from. */
+  records(): Promise<Record<string, ThreadRecord>>;
 }
 
 const INDEX_FILE = 'threads.json';
@@ -199,6 +212,7 @@ export function workspaceTranscripts(workspaceId: () => string | null): Transcri
       };
     },
     append: (threadId, entries) => write(fileOf(threadId), serializeTranscript(entries), true),
+    records: async () => parseIndex(await read(INDEX_FILE)).threads,
     setRecord(threadId, record) {
       const run = last.then(async () => {
         const index = parseIndex(await read(INDEX_FILE));
@@ -227,6 +241,7 @@ export function memoryTranscripts(
       files.set(file, (files.get(file) ?? '') + serializeTranscript(entries));
       return Promise.resolve();
     },
+    records: () => Promise.resolve(parseIndex(files.get(INDEX_FILE) ?? null).threads),
     setRecord(threadId, record) {
       const index = parseIndex(files.get(INDEX_FILE) ?? null);
       index.threads[threadId] = record;

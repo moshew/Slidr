@@ -191,6 +191,12 @@ export interface AgentClient {
     config: SessionConfig,
     onEvent: (event: AgentEvent) => void,
   ): Promise<string>;
+  /**
+   * Stores a file the user attached to a chat with its conversation (`thread` as in `start`),
+   * where the agent's own file tool reads it (CHT-U05). Returns the file's path relative to the
+   * session's working directory.
+   */
+  attach(thread: string, file: { name: string; bytes: Uint8Array }): Promise<string>;
   /** Starts a turn; rejects with `busy` while one runs. */
   send(sessionId: string, turn: UserTurn): Promise<void>;
   /** Stops the running turn; it ends with `turn_completed` (`interrupted`). */

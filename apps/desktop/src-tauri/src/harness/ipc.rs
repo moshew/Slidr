@@ -6,7 +6,11 @@
 
 use std::sync::Arc;
 
-use tauri::{State, ipc::Channel};
+use percent_encoding::percent_decode_str;
+use tauri::{
+    State,
+    ipc::{Channel, InvokeBody, Request},
+};
 
 use super::{
     AgentError, AgentEvent, HarnessDescriptor, HarnessManager, HarnessStatus, Result,
@@ -109,4 +113,30 @@ pub async fn agent_chat_write(
 ) -> Result<()> {
     let dir = workspace_dir(&storage, &workspace_id)?;
     off_main(move || transcript::write(&dir, &file, &text, append)).await
+}
+
+/// `agent_attach`: stores a file the user attached to a chat with the conversation it belongs
+/// to (CHT-U05), and returns its path relative to the session's working directory. The body is
+/// the raw bytes; the thread key and the file name travel as the headers `x-thread` and
+/// `x-file-name`, percent-encoded, as in `asset_import_bytes`.
+#[tauri::command]
+pub async fn agent_attach(manager: Manager<'_>, request: Request<'_>) -> Result<String> {
+    let header = |name: &str| -> Result<String> {
+        let invalid = || AgentError::invalid_input(format!("missing or malformed header {name}"));
+        let value = request.headers().get(name).ok_or_else(invalid)?;
+        let value = value.to_str().map_err(|_| invalid())?;
+        percent_decode_str(value)
+            .decode_utf8()
+            .map(std::borrow::Cow::into_owned)
+            .map_err(|_| invalid())
+    };
+    let thread = header("x-thread")?;
+    let name = header("x-file-name")?;
+    let bytes = match request.body() {
+        InvokeBody::Raw(bytes) => bytes.clone(),
+        InvokeBody::Json(value) => serde_json::from_value(value.clone())
+            .map_err(|e| AgentError::invalid_input(format!("the body is not bytes: {e}")))?,
+    };
+    let manager = Arc::clone(&manager);
+    off_main(move || manager.attach(&thread, &name, &bytes)).await
 }

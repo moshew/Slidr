@@ -16,6 +16,15 @@ use super::{
 /// Longest thread key, in bytes.
 const MAX_THREAD_KEY: usize = 200;
 
+/// Where the files a user attached to a chat are kept, inside the folder of its thread.
+const ATTACHMENTS_DIR: &str = "attachments";
+/// The largest file a chat takes. A deck of scanned pages is tens of megabytes; more is a mistake.
+const MAX_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
+/// Longest file name of an attachment, in characters.
+const MAX_ATTACHMENT_NAME: usize = 120;
+/// How many different files of one name a conversation keeps.
+const MAX_SAME_NAME: usize = 99;
+
 /// Owns the harnesses and the open sessions. Shared by the IPC commands; testable without Tauri.
 pub struct HarnessManager {
     harnesses: Vec<Arc<dyn AgentHarness>>,
@@ -121,6 +130,45 @@ impl HarnessManager {
         result
     }
 
+    /// Stores a file the user attached to a chat (CHT-U05) in the folder of its thread, under
+    /// `attachments/`, where the agent's own file tool reads it. Returns the file's path
+    /// relative to the session's working directory. The same file under the same name is stored
+    /// once; another file of that name gets a number.
+    pub fn attach(&self, thread: &str, name: &str, bytes: &[u8]) -> Result<String> {
+        if bytes.len() > MAX_ATTACHMENT_BYTES {
+            return Err(AgentError::invalid_input(format!(
+                "the attachment is {} bytes; the limit is {MAX_ATTACHMENT_BYTES}",
+                bytes.len()
+            )));
+        }
+        let dir = thread_dir(&self.root, thread)?.join(ATTACHMENTS_DIR);
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| AgentError::io("create the attachments folder", &e))?;
+        let name = attachment_name(name);
+        let (stem, extension) = match name.rsplit_once('.') {
+            Some((stem, extension)) if !stem.is_empty() => (stem, format!(".{extension}")),
+            _ => (name.as_str(), String::new()),
+        };
+        for n in 1..=MAX_SAME_NAME {
+            let file = if n == 1 {
+                name.clone()
+            } else {
+                format!("{stem}-{n}{extension}")
+            };
+            let path = dir.join(&file);
+            match std::fs::read(&path) {
+                Ok(existing) if existing == bytes => {}
+                Ok(_) => continue,
+                Err(_) => std::fs::write(&path, bytes)
+                    .map_err(|e| AgentError::io("write the attachment", &e))?,
+            }
+            return Ok(format!("{ATTACHMENTS_DIR}/{file}"));
+        }
+        Err(AgentError::invalid_input(format!(
+            "too many attachments named {name:?} in this conversation"
+        )))
+    }
+
     /// The id to resume a session with, once the harness reported one.
     #[allow(
         dead_code,
@@ -182,6 +230,33 @@ fn thread_dir(root: &Path, thread: &str) -> Result<PathBuf> {
     Ok(thread
         .split('/')
         .fold(root.to_path_buf(), |dir, s| dir.join(s)))
+}
+
+/// A file name for an attachment: the name the user's file had, with whatever could leave the
+/// folder or confuse a shell replaced. Letters of any script stay, so a Hebrew name is kept.
+fn attachment_name(name: &str) -> String {
+    let base = name.rsplit(['/', '\\']).next().unwrap_or(name);
+    let mut clean: String = base
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || matches!(c, '.' | '-' | '_' | ' ') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    clean = clean.trim().trim_start_matches('.').to_owned();
+    if clean.chars().count() > MAX_ATTACHMENT_NAME {
+        // Keep the end: that is where the extension is.
+        let skip = clean.chars().count() - MAX_ATTACHMENT_NAME;
+        clean = clean.chars().skip(skip).collect();
+    }
+    if clean.is_empty() {
+        "file".to_owned()
+    } else {
+        clean
+    }
 }
 
 /// Sits between a session and its listener, and keeps the stream to the contract of
@@ -547,6 +622,42 @@ mod tests {
         assert_eq!(
             thread_dir(root, "01JABC/main_1")?,
             root.join("01JABC").join("main_1")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn attachments_go_under_the_thread_and_keep_their_names() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let manager = manager(dir.path())?;
+        let stored = manager.attach("deck1/thread1", "C:\\Users\\me\\לוגו החברה.png", b"png")?;
+        assert_eq!(stored, "attachments/לוגו החברה.png");
+        let on_disk = dir.path().join("deck1").join("thread1").join(&stored);
+        assert_eq!(std::fs::read(on_disk)?, b"png");
+        // The same file again is the same file; another file of that name gets a number.
+        assert_eq!(
+            manager.attach("deck1/thread1", "לוגו החברה.png", b"png")?,
+            stored
+        );
+        assert_eq!(
+            manager.attach("deck1/thread1", "לוגו החברה.png", b"other")?,
+            "attachments/לוגו החברה-2.png"
+        );
+        // A name cannot leave the folder, and a thread key cannot leave the root.
+        assert_eq!(
+            manager.attach("deck1/thread1", "../../evil<1>.html", b"x")?,
+            "attachments/evil_1_.html"
+        );
+        assert_eq!(
+            manager.attach("deck1/thread1", "..", b"x")?,
+            "attachments/file"
+        );
+        assert_eq!(
+            manager
+                .attach("../deck1", "a.txt", b"x")
+                .err()
+                .map(|e| e.kind),
+            Some(AgentErrorKind::InvalidInput)
         );
         Ok(())
     }

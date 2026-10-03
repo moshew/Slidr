@@ -24,8 +24,22 @@ import {
   type ToolResult,
   type Turn,
 } from '@slidr/agent-tools';
-import { ChangeDigest, findSlide, type ChangeEvent, type CommandBus } from '@slidr/model';
-import { contextBlock, qualityGateMessage, systemPrompt } from '@slidr/prompts';
+import {
+  ChangeDigest,
+  findSlide,
+  type AssetMeta,
+  type ChangeEvent,
+  type CommandBus,
+} from '@slidr/model';
+import {
+  attachmentsBlock,
+  contextBlock,
+  conversationSummary,
+  qualityGateMessage,
+  systemPrompt,
+  type AttachedFile,
+  type Exchange,
+} from '@slidr/prompts';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import {
   AgentError,
@@ -46,6 +60,7 @@ import type {
   ChatEntry,
   ChatProblem,
   EntryAction,
+  EntryAttachment,
   GateReport,
   ThreadRecord,
   ToolPart,
@@ -65,7 +80,16 @@ export interface AgentSettings {
   webAccess?: boolean;
   /** The design check at the end of a turn (SPEC 9.4). On unless turned off. */
   qualityGate?: boolean;
+  /**
+   * What a deck chat does with a deck asked for by its subject alone (AID-03): `first` shows an
+   * outline for the user to approve before anything is built, `build` builds at once. `first`
+   * unless set.
+   */
+  outline?: 'first' | 'build';
 }
+
+/** What `outline` is when nobody set it. The one switch of the outline flow (WG11-T05). */
+export const DEFAULT_OUTLINE: NonNullable<AgentSettings['outline']> = 'first';
 
 export interface AgentServiceOptions {
   client: AgentClient;
@@ -91,7 +115,22 @@ export interface AgentServiceOptions {
    * the agent has not been told anything yet.
    */
   brief?: (scope: SessionScope, turn: { fresh: boolean }) => Promise<TurnBrief | null>;
+  /**
+   * Stores a picture the user attached with the open document, so that the agent can place it
+   * on a slide; returns its entry for the asset table. Absent where there is nowhere to keep it.
+   */
+  storeImage?: (file: Attachment) => Promise<AssetMeta | undefined>;
   now?: () => Date;
+}
+
+/** A file the user sends with a message (CHT-U05): a document to read, a picture to look at. */
+export interface Attachment {
+  name: string;
+  /** The media type as the browser reported it; empty when it did not. */
+  mime: string;
+  bytes: Uint8Array;
+  /** What the form it was chosen in called it, when it said: "logo". */
+  use?: string;
 }
 
 /** What `brief` adds to a turn. */
@@ -108,6 +147,16 @@ export interface SendOptions {
   action?: EntryAction;
   /** The turn's name in the undo history; the message's first line when absent. */
   label?: string;
+  attachments?: readonly Attachment[];
+}
+
+/** A conversation of a scope, for the list of conversations (CHT-U07). */
+export interface Conversation {
+  /** The id of its thread. */
+  id: string;
+  /** The start of its first message; `action:<id>` when that was a button. Absent while empty. */
+  title?: string;
+  updatedAt?: string;
 }
 
 /** What the agent is doing right now (CHT-U03). */
@@ -199,6 +248,25 @@ function entryId(): string {
   return `m_${crypto.randomUUID().replaceAll('-', '').slice(0, 12)}`;
 }
 
+/** What the harness is told when a message is only its attachments: a turn needs words. */
+const ATTACHED_ONLY = 'See the files attached to this message.';
+
+/** The pictures a harness can be shown, by media type. */
+const SHOWN = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+/** A picture larger than this is not shown to the model; it is still attached as a file. */
+const MAX_SHOWN_BYTES = 5 * 1024 * 1024;
+/** How much of a conversation's first message its title keeps. */
+const TITLE_CHARS = 80;
+
+function base64(bytes: Uint8Array): string {
+  let binary = '';
+  // In pieces: one call with a megabyte of arguments overflows the stack.
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
 const NO_USAGE: Usage = {
   inputTokens: 0,
   outputTokens: 0,
@@ -228,6 +296,23 @@ interface Session {
   imageInput: boolean;
   /** The conversation began with this session and no turn has been sent on it yet. */
   fresh: boolean;
+  /** The settings it was started with: other settings need another session. */
+  settings: string;
+}
+
+/** What of the settings a session is started with, as one string to compare. */
+function sessionSettings({ harnessId, model, effort, webAccess }: AgentSettings): string {
+  return JSON.stringify([harnessId ?? null, model ?? null, effort ?? null, webAccess ?? true]);
+}
+
+/** The files of a message as the turn carries them. */
+interface Attached {
+  /** The `<slidr_attachments>` block. */
+  block: string;
+  /** The pictures among them, for a harness that takes pictures. */
+  images: ImageAttachment[];
+  /** Pictures stored with the document, to register in the deck inside the turn. */
+  assets: AssetMeta[];
 }
 
 /** One user message being answered: the agent's turn and the design check's rounds after it. */
@@ -235,6 +320,7 @@ interface Run {
   entryId: string;
   /** What the turn was started with, to send again if the session has to start over. */
   message: string;
+  attached?: Attached;
   /** The turn's name in the undo history. */
   label?: string;
   /** Every write of the run, follow-up rounds included, is this one transaction (D8). */
@@ -276,11 +362,16 @@ export class ChatThread {
   #results: (Pairing & { target: ToolTarget | undefined })[] = [];
   #loading: Promise<void> | null = null;
 
-  constructor(service: AgentService, options: AgentServiceOptions, scope: SessionScope) {
+  constructor(
+    service: AgentService,
+    options: AgentServiceOptions,
+    scope: SessionScope,
+    id: string = threadIdOf(scope),
+  ) {
     this.#service = service;
     this.#options = options;
     this.scope = scope;
-    this.id = threadIdOf(scope);
+    this.id = id;
     this.#record = { scope };
     this.store = createStore<ThreadState>(() => ({
       ready: false,
@@ -345,17 +436,90 @@ export class ChatThread {
   /** Sends a user message and starts the agent's turn. Ignored while a turn runs. */
   async send(message: string, options: SendOptions = {}): Promise<void> {
     const trimmed = message.trim();
-    if (!trimmed || this.store.getState().busy) return;
+    const files = options.attachments ?? [];
+    if ((!trimmed && files.length === 0) || this.store.getState().busy) return;
+    // Taken at once: storing the files takes a moment, and a second send must not slip in.
+    this.store.setState({ busy: true, stopping: false, activity: { kind: 'starting' } });
+    let attached: Attached | undefined;
+    let shown: EntryAttachment[] = [];
+    let failure: unknown;
+    try {
+      if (files.length > 0) ({ attached, shown } = await this.#attach(files));
+    } catch (error) {
+      failure = error;
+      shown = files.map(({ name, mime }) => ({
+        name,
+        kind: mime.startsWith('image/') ? 'image' : 'file',
+      }));
+    }
     const user: UserEntry = {
       type: 'user',
       id: entryId(),
       at: this.#now(),
       text: trimmed,
       ...(options.action ? { action: options.action } : {}),
+      ...(shown.length > 0 ? { attachments: shown } : {}),
     };
     this.store.setState((state) => ({ entries: [...state.entries, user] }));
     this.#persist([user]);
-    await this.#begin(trimmed, new TurnWatch(), 0, undefined, options.label);
+    if (!this.#record.title) {
+      const title = options.action ? `action:${options.action.id}` : trimmed || shown[0]?.name;
+      this.#record = {
+        ...this.#record,
+        ...(title ? { title: [...title].slice(0, TITLE_CHARS).join('') } : {}),
+        updatedAt: this.#now(),
+      };
+      this.#saveRecord();
+    }
+    await this.#begin(
+      trimmed || ATTACHED_ONLY,
+      new TurnWatch(),
+      0,
+      undefined,
+      options.label,
+      attached,
+      failure,
+    );
+  }
+
+  /**
+   * Puts the files of a message where the agent finds them: each in the folder of the
+   * conversation, for its file tool, and a picture also with the document, so it can be placed
+   * on a slide by its asset id.
+   */
+  async #attach(
+    files: readonly Attachment[],
+  ): Promise<{ attached: Attached; shown: EntryAttachment[] }> {
+    const { client, bus, storeImage } = this.#options;
+    const listed: AttachedFile[] = [];
+    const shown: EntryAttachment[] = [];
+    const images: ImageAttachment[] = [];
+    const assets: AssetMeta[] = [];
+    for (const file of files) {
+      const path = await client.attach(`${bus.deck.id}/${this.id}`, file);
+      const picture = file.mime.startsWith('image/');
+      const asset = picture ? await storeImage?.(file).catch(() => undefined) : undefined;
+      if (asset) assets.push(asset);
+      listed.push({
+        name: file.name,
+        path,
+        kind: picture ? 'image' : 'file',
+        ...(asset ? { assetId: asset.id } : {}),
+        ...(file.use ? { use: file.use } : {}),
+      });
+      shown.push({
+        name: file.name,
+        kind: picture ? 'image' : 'file',
+        ...(asset ? { assetId: asset.id } : {}),
+      });
+      if (SHOWN.has(file.mime) && file.bytes.length <= MAX_SHOWN_BYTES) {
+        images.push({
+          mediaType: file.mime as ImageAttachment['mediaType'],
+          data: base64(file.bytes),
+        });
+      }
+    }
+    return { attached: { block: attachmentsBlock(listed), images, assets }, shown };
   }
 
   /**
@@ -412,7 +576,19 @@ export class ChatThread {
   noteChange(event: ChangeEvent): void {
     const run = this.#run;
     if (!run?.turn || event.txId !== run.turn.txId) return;
-    run.wrote = true;
+    const { affected } = event;
+    // Registering a picture the user attached changes nothing they can see: a turn that did
+    // only that has nothing to undo.
+    if (
+      affected.slides.length > 0 ||
+      affected.elements.length > 0 ||
+      affected.layouts.length > 0 ||
+      affected.meta ||
+      affected.theme ||
+      affected.slideOrder
+    ) {
+      run.wrote = true;
+    }
     run.watch.changed(event);
     const touched = event.affected.slides.findLast((id) => findSlide(event.deck, id));
     if (touched) this.#options.onSlideTouched?.(touched);
@@ -473,6 +649,8 @@ export class ChatThread {
     round: number,
     first?: AssistantPart,
     label?: string,
+    attached?: Attached,
+    failure?: unknown,
   ) {
     const entry: AssistantEntry = {
       type: 'assistant',
@@ -484,6 +662,7 @@ export class ChatThread {
       entryId: entry.id,
       message,
       ...(label ? { label } : {}),
+      ...(attached ? { attached } : {}),
       turn: null,
       watch,
       round,
@@ -504,12 +683,27 @@ export class ChatThread {
       stopping: false,
       activity: { kind: 'starting' },
     }));
+    if (failure !== undefined) {
+      // The files could not be stored: the message is in the chat, and so is the reason.
+      run.problem = problemOf(failure);
+      this.#finish(run, 'failed');
+      return;
+    }
     await this.#startTurn(run);
   }
 
   /** Opens a session if the thread has none, and sends the run's message as a turn. */
   async #startTurn(run: Run): Promise<void> {
     try {
+      // Another model or effort was chosen since the session began (CHT-U06): the conversation
+      // goes on in a session started with it. Only between turns of the user's, never under a
+      // follow-up of the design check.
+      const open = this.#session;
+      if (open && !run.turn && open.settings !== sessionSettings(this.#settings())) {
+        this.#session = null;
+        await this.#endSession(open);
+        if (this.#run !== run) return;
+      }
       const session = this.#session ?? (await this.#openSession());
       if (this.#run !== run) return;
       if (run.stopRequested) {
@@ -518,17 +712,28 @@ export class ChatThread {
       }
       const label = run.label ?? run.message.split('\n')[0]?.slice(0, 60);
       run.turn ??= startTurn(session.sessionKey, this.scope, label ? { label } : {});
+      this.#registerAssets(run);
       // A brief that fails is a turn without one: the agent reads what it needs with its tools.
       const brief = await this.#options
         .brief?.(this.scope, { fresh: session.fresh })
         .catch(() => null);
       if (this.#run !== run) return;
+      // A session that starts in the middle of a conversation is told what was said (AGT-06).
+      const summary = session.fresh ? this.#summary(run) : '';
       session.fresh = false;
-      const context = this.#context(session);
+      const context = [
+        this.#context(session),
+        summary,
+        brief?.text ?? '',
+        run.attached?.block ?? '',
+      ].filter(Boolean);
+      const images = session.imageInput
+        ? [...(brief?.images ?? []), ...(run.attached?.images ?? [])]
+        : [];
       await this.#options.client.send(session.sessionId, {
         text: run.message,
-        context: brief ? `${context}\n${brief.text}` : context,
-        ...(brief && session.imageInput && brief.images.length > 0 ? { images: brief.images } : {}),
+        context: context.join('\n'),
+        ...(images.length > 0 ? { images } : {}),
       });
       if (this.#run === run) this.store.setState({ activity: { kind: 'thinking' } });
     } catch (error) {
@@ -547,7 +752,60 @@ export class ChatThread {
       // The same id the turn is started with: the digest leaves out the session's own writes.
       changes: this.#service.digest.take(session.sessionKey),
       ...(now ? { now: now() } : {}),
+      ...(this.scope.kind === 'deck'
+        ? { outline: this.#settings().outline ?? DEFAULT_OUTLINE }
+        : {}),
     });
+  }
+
+  /** The pictures of the message join the deck's assets inside the turn, so undo takes them too. */
+  #registerAssets(run: Run): void {
+    const { bus } = this.#options;
+    const assets = (run.attached?.assets ?? []).filter((asset) => !bus.deck.assets[asset.id]);
+    if (!run.turn || assets.length === 0) return;
+    bus.batch(
+      assets.map((asset) => ({ type: 'asset.add', asset })),
+      { actor: run.turn.actor, txId: run.turn.txId, ...(run.label ? { label: run.label } : {}) },
+    );
+  }
+
+  /**
+   * What was said in this conversation before the run, for a session that does not remember
+   * it: the transcript the deck keeps, as exchanges. Empty when the run opens the conversation.
+   */
+  #summary(run: Run): string {
+    const entries = this.store.getState().entries;
+    const end = entries.findIndex((entry) => entry.id === run.entryId);
+    const before = entries.slice(0, end < 0 ? entries.length : end);
+    // The message being answered is not history.
+    if (before.at(-1)?.type === 'user') before.pop();
+    const exchanges: Exchange[] = [];
+    for (const entry of before) {
+      if (entry.type === 'user') {
+        const said = entry.action ? `(pressed the "${entry.action.id}" action)` : entry.text;
+        const files = entry.attachments?.map((file) => file.name).join(', ');
+        exchanges.push({
+          user: files ? `${said} [attached: ${files}]` : said,
+          reply: '',
+          tools: [],
+        });
+        continue;
+      }
+      // A turn the app began itself (a retry of the design check) has no message of its own.
+      if (exchanges.length === 0) {
+        exchanges.push({ user: '(a follow-up of the app)', reply: '', tools: [] });
+      }
+      const last = exchanges[exchanges.length - 1]!;
+      const reply = entry.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []));
+      const tools = entry.parts.flatMap((part) => (part.type === 'tool' ? [part.name] : []));
+      exchanges[exchanges.length - 1] = {
+        user: last.user,
+        reply: [last.reply, ...reply].filter(Boolean).join('\n'),
+        tools: [...last.tools, ...tools],
+        ...(entry.outcome && entry.outcome !== 'completed' ? { outcome: entry.outcome } : {}),
+      };
+    }
+    return conversationSummary(exchanges);
   }
 
   async #openSession(): Promise<Session> {
@@ -595,6 +853,7 @@ export class ChatThread {
       canLook: names.includes('slide_render'),
       imageInput: harness.capabilities.imageInput,
       fresh: !resume,
+      settings: sessionSettings(settings),
     });
     this.#service.digest.track(sessionKey);
     this.#session = session;
@@ -681,9 +940,13 @@ export class ChatThread {
         if (!run) return;
         if (event.kind === 'resume_failed') {
           // The conversation is not on this machine, or not on this harness any more: go on
-          // in a fresh session, which knows the deck but not what was said (AGT-06 is P1).
+          // in a fresh session, which is told what was said from the deck's own record (AGT-06).
           run.startOver = true;
-          this.#record = { scope: this.scope };
+          this.#record = {
+            scope: this.scope,
+            ...(this.#record.title ? { title: this.#record.title } : {}),
+            updatedAt: this.#now(),
+          };
           this.#saveRecord();
         } else {
           run.problem = { kind: event.kind, message: event.message };
@@ -798,6 +1061,8 @@ export class ChatThread {
     this.store.setState({ busy: false, stopping: false, activity: null });
     const entry = this.store.getState().entries.find((e) => e.id === run.entryId);
     if (entry) this.#persist([entry]);
+    this.#record = { ...this.#record, updatedAt: this.#now() };
+    this.#saveRecord();
   }
 
   /** A chip appeared: give it the target of its result, if the result is already in. */
@@ -853,6 +1118,14 @@ export function threadIdOf(scope: SessionScope): string {
 export class AgentService {
   /** What changed behind each session's back since its last turn (CMD-08). */
   readonly digest: ChangeDigest;
+  /**
+   * The conversation each scope shows, under the id of the scope's first thread; a scope that
+   * is absent shows that first thread.
+   */
+  readonly shown: StoreApi<Record<string, string>> = createStore<Record<string, string>>(
+    () => ({}),
+  );
+  readonly #restored = new Set<string>();
   readonly #options: AgentServiceOptions;
   readonly #threads = new Map<string, ChatThread>();
   #bridge: Promise<ToolBridge> | null = null;
@@ -871,16 +1144,85 @@ export class AgentService {
     });
   }
 
-  /** The chat of a scope in the open deck; made, and read from the deck, on first use. */
-  thread(scope: SessionScope): ChatThread {
-    const id = threadIdOf(scope);
+  /**
+   * The chat of a scope in the open deck; made, and read from the deck, on first use. A scope
+   * may have several conversations (CHT-U07): without an id this is the one it shows now.
+   */
+  thread(scope: SessionScope, id: string = this.#shownId(scope)): ChatThread {
     let thread = this.#threads.get(id);
     if (!thread) {
-      thread = new ChatThread(this, this.#options, scope);
+      thread = new ChatThread(this, this.#options, scope, id);
       this.#threads.set(id, thread);
       void thread.load();
     }
     return thread;
+  }
+
+  #shownId(scope: SessionScope): string {
+    const first = threadIdOf(scope);
+    return this.shown.getState()[first] ?? first;
+  }
+
+  /**
+   * The conversations the deck keeps of a scope, the latest first, with the one the scope shows
+   * among them even while it is empty.
+   */
+  async conversations(scope: SessionScope): Promise<Conversation[]> {
+    const first = threadIdOf(scope);
+    const records = await this.#options.transcripts.records().catch(() => ({}));
+    const list: Conversation[] = [];
+    for (const [id, record] of Object.entries(records)) {
+      // The index is a file: a record of no scope is skipped, not fatal.
+      if (typeof record.scope !== 'object' || record.scope === null) continue;
+      if (threadIdOf(record.scope) !== first) continue;
+      list.push({
+        id,
+        ...(record.title ? { title: record.title } : {}),
+        ...(record.updatedAt ? { updatedAt: record.updatedAt } : {}),
+      });
+    }
+    const shown = this.#shownId(scope);
+    if (!list.some((conversation) => conversation.id === shown)) list.push({ id: shown });
+    // A conversation nobody wrote in yet is the newest of all.
+    const time = (conversation: Conversation) => conversation.updatedAt ?? '9';
+    return list.sort((a, b) => time(b).localeCompare(time(a)));
+  }
+
+  /** Starts a conversation of the scope beside the ones it has, and shows it. */
+  newConversation(scope: SessionScope): ChatThread {
+    const first = threadIdOf(scope);
+    let id = `${first}-c${Date.now().toString(36)}`;
+    while (this.#threads.has(id)) id += 'x';
+    return this.showConversation(scope, id);
+  }
+
+  /** Shows one of the scope's conversations in its panel. */
+  showConversation(scope: SessionScope, id: string): ChatThread {
+    this.shown.setState({ [threadIdOf(scope)]: id });
+    return this.thread(scope, id);
+  }
+
+  /**
+   * Shows the conversation of the scope that was written in last: where a deck that is opened
+   * again picks up. Once for each scope of a deck, and never over a choice the user made.
+   */
+  async restore(scope: SessionScope): Promise<void> {
+    const first = threadIdOf(scope);
+    if (this.#restored.has(first)) return;
+    this.#restored.add(first);
+    const latest = (await this.conversations(scope)).find((conversation) => conversation.updatedAt);
+    if (latest && latest.id !== first && this.shown.getState()[first] === undefined) {
+      this.shown.setState({ [first]: latest.id });
+    }
+  }
+
+  /** The harnesses the app offers, for a picker of harness, model and effort (CHT-U06). */
+  harnesses(): Promise<HarnessDescriptor[]> {
+    this.#harnesses ??= this.#options.client.harnesses().catch((error: unknown) => {
+      this.#harnesses = null;
+      throw error;
+    });
+    return this.#harnesses;
   }
 
   /**
@@ -908,11 +1250,7 @@ export class AgentService {
 
   /** The harness to run on: the one asked for, or the first the app offers. */
   async harness(harnessId: string | undefined): Promise<HarnessDescriptor> {
-    this.#harnesses ??= this.#options.client.harnesses().catch((error: unknown) => {
-      this.#harnesses = null;
-      throw error;
-    });
-    const harnesses = await this.#harnesses;
+    const harnesses = await this.harnesses();
     const harness = harnessId ? harnesses.find((h) => h.id === harnessId) : harnesses[0];
     if (!harness) {
       throw new AgentError(
@@ -945,8 +1283,11 @@ export class AgentService {
    * about ids the new deck does not have, and goes.
    */
   #reset(): void {
+    this.shown.setState({}, true);
+    this.#restored.clear();
     for (const [id, thread] of this.#threads) {
-      if (thread.scope.kind === 'deck') {
+      // Of the deck's conversations the first is the one a panel holds from the start.
+      if (id === threadIdOf(thread.scope) && thread.scope.kind === 'deck') {
         thread.reset();
       } else {
         this.#threads.delete(id);

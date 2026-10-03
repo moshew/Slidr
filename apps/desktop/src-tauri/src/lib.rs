@@ -87,6 +87,7 @@ pub fn run() {
             templates::template_store_remove,
             templates::template_store_read_asset,
             templates::template_store_write_asset,
+            harness::ipc::agent_attach,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

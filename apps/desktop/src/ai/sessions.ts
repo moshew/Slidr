@@ -9,11 +9,14 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { AgentService, ChatThread } from '../agent/agentService';
 
 export interface Sessions {
-  /** The chat of a scope; from then on its work counts in `working`. */
-  thread: (scope: SessionScope) => ChatThread;
   /**
-   * The chat a slide or object panel shows now. The one the panel showed before lets go of its
-   * session once it is idle.
+   * The chat of a scope: the conversation it shows, or the one named. From then on its work
+   * counts in `working`.
+   */
+  thread: (scope: SessionScope, id?: string) => ChatThread;
+  /**
+   * The chat a panel shows now. The one the panel showed before (another slide, another
+   * selection, another conversation) lets go of its session once it is idle.
    */
   show: (thread: ChatThread) => void;
   /** The chats with a turn running, for the status bar. */
@@ -49,8 +52,8 @@ export function createSessions(agent: AgentService): Sessions {
 
   return {
     working,
-    thread(scope) {
-      const thread = agent.thread(scope);
+    thread(scope, id) {
+      const thread = agent.thread(scope, id);
       if (!watched.has(thread)) {
         watched.add(thread);
         thread.store.subscribe(refresh);
@@ -60,7 +63,7 @@ export function createSessions(agent: AgentService): Sessions {
     },
     show(thread) {
       const { kind } = thread.scope;
-      if (kind === 'deck' || kind === 'import') return;
+      if (kind === 'import') return;
       const before = shown.get(kind);
       if (before === thread) return;
       shown.set(kind, thread);

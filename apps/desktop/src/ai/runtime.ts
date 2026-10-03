@@ -111,6 +111,7 @@ function pageHarness(): { client: AgentClient; connectBridge: typeof connectTool
       harnesses: async () => (await loaded).client.harnesses(),
       probe: async (id) => (await loaded).client.probe(id),
       start: async (...args) => (await loaded).client.start(...args),
+      attach: async (...args) => (await loaded).client.attach(...args),
       send: async (...args) => (await loaded).client.send(...args),
       interrupt: async (id) => (await loaded).client.interrupt(id),
       close: async (id) => (await loaded).client.close(id),
@@ -152,7 +153,9 @@ function createAi(editor: Editor): AiRuntime {
     return { currentSlideId, selectedSlideIds, selectedElementIds, editingElementId };
   };
 
-  // Every service the app has today (ADR-011). `icons` and `stock` are not built.
+  const capture = inApp ? createCaptureService(workspaceId) : pageCapture();
+
+  // Every service the app has today (ADR-011), one to a line. `icons` and `stock` are not built.
   const services: Services = {
     ui: {
       selection,
@@ -161,10 +164,11 @@ function createAi(editor: Editor): AiRuntime {
     },
     lint,
     layouts: createLayoutService(),
-    templates: appTemplateService(editor),
+    // Drafting a template converts its layouts, lints them and takes their picture.
+    templates: appTemplateService(editor, { conversion, lint, capture }),
     images: images.service,
     options: gallery.service,
-    capture: inApp ? createCaptureService(workspaceId) : pageCapture(),
+    capture,
     conversion,
   };
   const deckApi = createDeckApi(editor.bus, services);
@@ -192,6 +196,7 @@ function createAi(editor: Editor): AiRuntime {
     read: (threadId) => storeOf(threadId).read(threadId),
     append: (threadId, entries) => storeOf(threadId).append(threadId, entries),
     setRecord: (threadId, record) => storeOf(threadId).setRecord(threadId, record),
+    records: async () => ({ ...(await passing.records()), ...(await kept.records()) }),
   };
 
   /** The slide each slide or object chat was last told about. A deck is immutable, so a slide
@@ -228,6 +233,9 @@ function createAi(editor: Editor): AiRuntime {
     transcripts,
     settings: agentSettings,
     brief,
+    // A picture sent with a message is kept with the document, so the agent can place it.
+    storeImage: ({ name, mime, bytes }) =>
+      editor.assets.import(new File([bytes.slice()], name, { type: mime })),
     onSlideTouched: (slideId) => {
       // Not while the user is typing into a text box: moving the Stage would end their edit.
       if (!useAiPreferences.getState().follow) return;

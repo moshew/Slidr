@@ -1,4 +1,4 @@
-import { Channel, invoke, type InvokeArgs } from '@tauri-apps/api/core';
+import { Channel, invoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core';
 import {
   AGENT_ERROR_KINDS,
   AgentError,
@@ -29,9 +29,9 @@ function toAgentError(error: unknown): AgentError {
   return new AgentError('internal', error instanceof Error ? error.message : String(error));
 }
 
-async function call<T>(command: string, args?: InvokeArgs): Promise<T> {
+async function call<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
   try {
-    return await invoke<T>(command, args);
+    return await (options ? invoke<T>(command, args, options) : invoke<T>(command, args));
   } catch (error) {
     throw toAgentError(error);
   }
@@ -48,6 +48,11 @@ export const tauriAgent: AgentClient = {
       thread,
       config,
       onEvent: new Channel<AgentEvent>(onEvent),
+    }),
+  // The bytes go as the raw body, the thread and the name as headers: a file is not JSON.
+  attach: (thread, file) =>
+    call<string>('agent_attach', file.bytes, {
+      headers: { 'x-thread': thread, 'x-file-name': encodeURIComponent(file.name) },
     }),
   send: async (sessionId, turn) => {
     await call('agent_send', { sessionId, turn });
