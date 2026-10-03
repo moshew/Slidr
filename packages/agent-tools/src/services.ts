@@ -207,6 +207,18 @@ export interface StoredImage {
 
 export type ImageAspect = '16:9' | '4:3' | '1:1' | '3:4' | '9:16';
 
+/**
+ * The image provider a call goes to, as far as a tool's result should say (ADR-025): its name,
+ * and what its `edit` does to the source. `regenerate`: a new image drawn after it, with no
+ * pixel kept. `exact`: the source with only what was asked changed.
+ */
+export interface ImageProviderInfo {
+  name: string;
+  edit: 'none' | 'regenerate' | 'exact';
+  /** `edit` can be confined to a mask. */
+  mask: boolean;
+}
+
 /** WG12-T01, T04, T05: AI images and local image processing. */
 export interface ImageService {
   generate(request: { prompt: string; count: number; aspect: ImageAspect }): Promise<StoredImage[]>;
@@ -217,6 +229,8 @@ export interface ImageService {
     count: number;
   }): Promise<StoredImage[]>;
   process(request: { assetId: string; operation: 'removeBackground' }): Promise<StoredImage>;
+  /** The provider in use now. Optional: a service that has one provider need not say. */
+  describe?(): Promise<ImageProviderInfo>;
 }
 
 /** WG12-T06: stock photos. The best matches are stored as assets, with attribution. */

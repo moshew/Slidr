@@ -25,4 +25,11 @@ export {
 export { formatZodError, toToolError } from './errors';
 export { markdownToRichText, paragraphDir, parseInline, type MarkdownOptions } from './markdown';
 export { deckTools } from './tools';
+export {
+  closestAspect,
+  imagePlaceholders,
+  slidePlaceholders,
+  styledPrompt,
+  type ImagePlaceholder,
+} from './images';
 export type * from './services';

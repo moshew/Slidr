@@ -378,6 +378,170 @@ describe('layouts, templates, images, options', () => {
     expect(empty.message).toMatch(/returned no image/);
   });
 
+  it('image_generate takes prompt and shape from a placeholder, and adds the deck style', async () => {
+    const generate = vi.fn((_request: { prompt: string; count: number; aspect: string }) =>
+      Promise.resolve([{ asset: asset('b'), preview: png }]),
+    );
+    const images: ImageService = {
+      generate,
+      edit: () => Promise.resolve([]),
+      process: () => Promise.reject(new Error('unused')),
+    };
+    const deck = allElementsDeck();
+    deck.meta.imageStyle = 'Flat vector illustration, soft light.';
+    const { call, bus } = setup(deck, { images });
+
+    // No prompt: the placeholder's own. No aspect: the frame's (380 by 214 is nearest to 16:9).
+    await ok(call('image_generate', { elementId: 'e_image_pending' }));
+    const sent = generate.mock.calls[0]![0];
+    expect(sent.prompt.split('\n')[0]).toBe('An abstract blue gradient, soft light');
+    expect(sent.prompt).toContain(
+      'Style, shared by every image of this presentation: Flat vector illustration, soft light.',
+    );
+    expect(sent.prompt).toContain(`primary ${deck.theme.colors.primary.toUpperCase()}`);
+    expect(sent).toMatchObject({ count: 1, aspect: '16:9' });
+    expect(findElementInDeck(bus.deck, 'e_image_pending')!.element).toMatchObject({
+      assetId: 'b'.repeat(64),
+    });
+
+    // A prompt that already quotes the style is not given it twice; a given aspect stands.
+    await ok(
+      call('image_generate', {
+        prompt: 'A harbour. Flat vector illustration, soft light.',
+        aspect: '1:1',
+      }),
+    );
+    const second = generate.mock.calls[1]![0];
+    expect(second.prompt).not.toContain('Style, shared');
+    expect(second.aspect).toBe('1:1');
+
+    // Neither a prompt nor an element that carries one.
+    expect((await failed(call('image_generate', {}))).code).toBe('invalid_input');
+    expect(
+      (await failed(call('image_generate', { elementId: 'e_image_pending' }))).message,
+    ).toMatch(/carries no image prompt/);
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it('image_fill_placeholders fills every placeholder that carries a prompt, as one change', async () => {
+    const deck = allElementsDeck();
+    // A second placeholder on another slide, a tall one, and one without a prompt.
+    deck.slides.push(
+      createSlide({
+        id: 's_more',
+        elements: [
+          createElement.image({
+            id: 'e_tall',
+            frame: { x: 0, y: 0, w: 400, h: 900 },
+            prompt: 'A lighthouse at dusk',
+          }),
+          createElement.image({ id: 'e_bare', frame: { x: 500, y: 0, w: 400, h: 300 } }),
+        ],
+      }),
+    );
+    /** Ids for the images made, clear of the ids the fixture deck already has. */
+    const MADE = 'pqrstuvwxyz';
+    let made = 0;
+    const generate = vi.fn((request: { prompt: string; aspect: string }) => {
+      if (request.prompt.includes('lighthouse') && made > 5) {
+        return Promise.reject(new Error('The usage limit was reached.'));
+      }
+      made += 1;
+      return Promise.resolve([{ asset: asset(MADE[made - 1]!), preview: png }]);
+    });
+    const images: ImageService = {
+      generate,
+      edit: () => Promise.resolve([]),
+      process: () => Promise.reject(new Error('unused')),
+    };
+    const { call, bus, nextTurn } = setup(deck, { images });
+    const before = bus.undoStack.length;
+
+    const result = await call('image_fill_placeholders');
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.data.filled).toEqual([
+      { slideId: 's_all', elementId: 'e_image_pending', assetId: 'p'.repeat(64) },
+      { slideId: 's_more', elementId: 'e_tall', assetId: 'q'.repeat(64) },
+    ]);
+    expect(result.data).toMatchObject({ failed: [], remaining: 0 });
+    expect(result.images).toHaveLength(2);
+    // Each from its own prompt, at the shape of its frame.
+    expect(generate.mock.calls.map(([r]) => [r.prompt.split('\n')[0], r.aspect])).toEqual([
+      ['An abstract blue gradient, soft light', '16:9'],
+      ['A lighthouse at dusk', '9:16'],
+    ]);
+    expect(findElementInDeck(bus.deck, 'e_tall')!.element).toMatchObject({
+      assetId: 'q'.repeat(64),
+    });
+    expect(findElementInDeck(bus.deck, 'e_bare')!.element).not.toHaveProperty('assetId');
+    // One undo step for the turn.
+    expect(bus.undoStack.length).toBe(before + 1);
+    bus.undo();
+    expect(findElementInDeck(bus.deck, 'e_tall')!.element).toMatchObject({
+      prompt: 'A lighthouse at dusk',
+    });
+    expect(bus.deck.assets).not.toHaveProperty('q'.repeat(64));
+
+    // Nothing waits: nothing is generated. One slide only: only its placeholders.
+    bus.redo();
+    nextTurn();
+    expect(await ok(call('image_fill_placeholders'))).toMatchObject({ filled: [], remaining: 0 });
+    bus.undo();
+    nextTurn();
+    const one = await ok(call('image_fill_placeholders', { slideId: 's_more' }));
+    expect(one.filled).toEqual([
+      { slideId: 's_more', elementId: 'e_tall', assetId: 'r'.repeat(64) },
+    ]);
+    expect((await failed(call('image_fill_placeholders', { slideId: 's_none' }))).code).toBe(
+      'not_found',
+    );
+
+    // A slide session fills its own slide; an image that fails is reported and the rest stand.
+    made = 6;
+    nextTurn({ kind: 'slide', slideId: 's_all' });
+    const own = await ok(call('image_fill_placeholders'));
+    expect(own.filled).toEqual([
+      { slideId: 's_all', elementId: 'e_image_pending', assetId: 'v'.repeat(64) },
+    ]);
+  });
+
+  it('image_fill_placeholders fails when no image could be made', async () => {
+    const images: ImageService = {
+      generate: () => Promise.reject(new Error('Codex is not signed in.')),
+      edit: () => Promise.resolve([]),
+      process: () => Promise.reject(new Error('unused')),
+    };
+    const { call, bus } = setup(allElementsDeck(), { images });
+    const before = bus.deck;
+    expect(await failed(call('image_fill_placeholders'))).toEqual({
+      code: 'failed',
+      message: 'Codex is not signed in.',
+    });
+    expect(bus.deck).toBe(before);
+  });
+
+  it('image_edit says which kind of edit the provider in use made', async () => {
+    const edit = vi.fn(() => Promise.resolve([{ asset: asset('d'), preview: png }]));
+    const images: ImageService = {
+      generate: () => Promise.resolve([]),
+      edit,
+      process: () => Promise.reject(new Error('unused')),
+      describe: () => Promise.resolve({ name: 'Redrawing', edit: 'regenerate', mask: false }),
+    };
+    const { call } = setup(allElementsDeck(), { images });
+    const data = await ok(
+      call('image_edit', { elementId: 'e_image', instruction: 'make it night' }),
+    );
+    expect(data).toMatchObject({ provider: 'Redrawing', edit: 'regenerate' });
+    expect(data.assets).toEqual([{ assetId: 'd'.repeat(64), width: 1024, height: 576 }]);
+
+    // A service that cannot say leaves the result as it was.
+    const silent: ImageService = { ...images, describe: undefined };
+    const quiet = setup(allElementsDeck(), { images: silent });
+    const bare = await ok(quiet.call('image_edit', { elementId: 'e_image', instruction: 'x' }));
+    expect(bare).not.toHaveProperty('edit');
+  });
+
   it('ui_present_options targets the session element', async () => {
     const present = vi.fn(() => Promise.resolve());
     const options: OptionsService = { present };

@@ -10,7 +10,6 @@ import {
   PlaceholderRole,
   rotatedBounds,
   unionBounds,
-  walkElements,
   type AssetMeta,
   type Command,
   type Deck,
@@ -18,6 +17,7 @@ import {
   type Slide,
 } from '@slidr/model';
 import { z } from 'zod';
+import { closestAspect, imagePlaceholders, slidePlaceholders, styledPrompt } from '../images';
 import { getElement, getSlide, slideNumber } from '../lookup';
 import type { HtmlSlideConversion, PngImage, StoredImage } from '../services';
 import { DeckApiError, defineTool, type ToolContext } from '../tool';
@@ -27,24 +27,20 @@ const Id = z.string().min(1);
 const ALL = ['deck', 'slide', 'object'] as const;
 
 const HTML_HELP =
-  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute), and give every block of text a definite width. Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> an empty placeholder for an image to generate; data-name and data-role name elements; data-anim gives an entrance by preset name; data-keep-html keeps a subtree as HTML; data-archetype on the root states the kind of slide. <i data-icon="lucide:rocket"> places an icon when the icon library is available. <div data-chart=\'{...}\'> makes a chart element, which this version draws as a labelled placeholder: draw data from boxes and text instead.';
+  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute), and give every block of text a definite width. Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> an empty placeholder for an image to generate; data-name and data-role name elements; data-anim gives an entrance by preset name; data-keep-html keeps a subtree as HTML; data-archetype on the root states the kind of slide. <i data-icon="lucide:rocket"></i> places an icon of the built-in library by its id (icon_search finds ids, when it is among your tools), sized by font-size and coloured by color. <div data-chart=\'{...}\'> makes a chart element, which this version draws as a labelled placeholder: draw data from boxes and text instead.';
 
 /**
  * The image placeholders of a slide (`data-image-prompt`), for the result of an HTML write: the
  * ids `image_generate` takes. The ids a write creates say nothing of their kind, and an agent
  * left to guess handed the image tool a text box (ADR-042).
  */
-function imagePlaceholders(slide: Slide): { elementId: string; prompt: string }[] {
-  return [...walkElements(slide.elements)].flatMap((element) =>
-    element.type === 'image' && !element.assetId && element.prompt
-      ? [{ elementId: element.id, prompt: element.prompt }]
-      : [],
-  );
+function placeholdersOf(slide: Slide): { elementId: string; prompt: string }[] {
+  return slidePlaceholders(slide).map(({ elementId, prompt }) => ({ elementId, prompt }));
 }
 
 /** What both HTML writes report of a conversion. */
 function conversionData(slideId: string, result: HtmlSlideConversion): Record<string, unknown> {
-  const placeholders = imagePlaceholders(result.slide);
+  const placeholders = placeholdersOf(result.slide);
   return {
     slideId,
     editability: result.editability,
@@ -409,8 +405,18 @@ export const templateSave = defineTool({
   },
 });
 
+/** What an image tool works on: an image element with what it holds, or an asset alone. */
+interface ImageTarget {
+  slideId?: string;
+  elementId?: string;
+  assetId?: string;
+  /** The prompt a placeholder carries. */
+  prompt?: string;
+  frame?: { w: number; h: number };
+}
+
 /** The asset of an image element, or the given asset; one of the two is required. */
-function sourceAsset(deck: Deck, input: { elementId?: string; assetId?: string }) {
+function sourceAsset(deck: Deck, input: { elementId?: string; assetId?: string }): ImageTarget {
   if (input.elementId) {
     const { slide, element } = getElement(deck, input.elementId);
     if (element.type !== 'image') {
@@ -419,7 +425,13 @@ function sourceAsset(deck: Deck, input: { elementId?: string; assetId?: string }
         `Element "${input.elementId}" is a ${element.type}, not an image.`,
       );
     }
-    return { slideId: slide.id, elementId: element.id, assetId: element.assetId };
+    return {
+      slideId: slide.id,
+      elementId: element.id,
+      ...(element.assetId ? { assetId: element.assetId } : {}),
+      ...(element.prompt ? { prompt: element.prompt } : {}),
+      frame: element.frame,
+    };
   }
   if (!input.assetId) throw new DeckApiError('invalid_input', 'Give elementId or assetId.');
   if (!deck.assets[input.assetId]) {
@@ -470,11 +482,18 @@ const IMAGE_TIMEOUT_MS = 300_000;
 export const imageGenerate = defineTool({
   name: 'image_generate',
   description:
-    "Generates images from a prompt and adds them to the deck's assets. Include the deck's image style and palette in the prompt. With elementId (an image element, e.g. a placeholder), the first image goes into it, keeping its frame and crop. Returns `assets` (ids, sizes) and previews.",
+    "Generates images from a prompt and adds them to the deck's assets. Say what the image shows; the app adds the deck's image style and palette to every prompt, so the images of one deck belong together. With elementId (an image element, e.g. a placeholder), the first image goes into it, keeping its frame and crop; a placeholder carries a prompt of its own, which is used when you give none. Returns `assets` (ids, sizes) and previews.",
   input: z.strictObject({
-    prompt: z.string().min(1),
+    prompt: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('What the image shows. Optional for a placeholder that carries a prompt.'),
     count: z.number().int().min(1).max(4).optional().describe('Default 1.'),
-    aspect: z.enum(['16:9', '4:3', '1:1', '3:4', '9:16']).optional().describe('Default 16:9.'),
+    aspect: z
+      .enum(['16:9', '4:3', '1:1', '3:4', '9:16'])
+      .optional()
+      .describe("Default: the one nearest to the element's frame, or 16:9 without an element."),
     elementId: Id.optional(),
   }),
   scopes: ALL,
@@ -482,20 +501,106 @@ export const imageGenerate = defineTool({
   requires: 'images',
   timeoutMs: IMAGE_TIMEOUT_MS,
   async run({ prompt, count, aspect, elementId }, ctx) {
-    const target = elementId ? sourceAsset(ctx.deck, { elementId }) : {};
+    const target: ImageTarget = elementId ? sourceAsset(ctx.deck, { elementId }) : {};
+    const subject = prompt ?? target.prompt;
+    if (!subject) {
+      throw new DeckApiError(
+        'invalid_input',
+        elementId
+          ? `Element "${elementId}" carries no image prompt: give \`prompt\`.`
+          : 'Give `prompt`: what the image shows.',
+      );
+    }
     const images = await ctx.services.images!.generate({
-      prompt,
+      prompt: styledPrompt(ctx.deck, subject),
       count: count ?? 1,
-      aspect: aspect ?? '16:9',
+      aspect: aspect ?? (target.frame ? closestAspect(target.frame) : '16:9'),
     });
     return placeImages(ctx, images, target);
+  },
+});
+
+/** Most placeholders one call fills: two rounds of a provider that makes four at a time. */
+const MAX_FILL = 8;
+
+export const imageFillPlaceholders = defineTool({
+  name: 'image_fill_placeholders',
+  description: `Generates an image for every image placeholder that carries a prompt (the ones <img data-image-prompt="..."> leaves), each from its own prompt with the deck's image style and palette, at the aspect nearest to its frame, and puts each into its placeholder. The images are made side by side, so several placeholders take little longer than one. With slideId, only that slide; without it, the whole deck. At most ${MAX_FILL} per call. Returns \`filled\` (slide, element and asset ids), \`failed\` (element ids with the reason), \`remaining\` (placeholders left for another call) and previews.`,
+  input: z.strictObject({
+    slideId: Id.optional().describe('Default: every slide; in a slide session, its slide.'),
+  }),
+  scopes: ['deck', 'slide'],
+  writes: true,
+  requires: 'images',
+  timeoutMs: IMAGE_TIMEOUT_MS,
+  async run({ slideId }, ctx) {
+    const { scope } = ctx.turn;
+    const only = slideId ?? (scope.kind === 'slide' ? scope.slideId : undefined);
+    if (only) getSlide(ctx.deck, only);
+    const waiting = imagePlaceholders(ctx.deck, only ? [only] : undefined);
+    const batch = waiting.slice(0, MAX_FILL);
+    if (batch.length === 0) return { data: { filled: [], failed: [], remaining: 0 } };
+
+    const images = ctx.services.images!;
+    const settled = await Promise.allSettled(
+      batch.map((placeholder) =>
+        images.generate({
+          prompt: styledPrompt(ctx.deck, placeholder.prompt),
+          count: 1,
+          aspect: closestAspect(placeholder.frame),
+        }),
+      ),
+    );
+    const filled: { slideId: string; elementId: string; image: StoredImage }[] = [];
+    const failed: { elementId: string; reason: string }[] = [];
+    settled.forEach((outcome, i) => {
+      const { slideId: slide, elementId } = batch[i]!;
+      const image = outcome.status === 'fulfilled' ? outcome.value[0] : undefined;
+      if (image) filled.push({ slideId: slide, elementId, image });
+      else {
+        const reason =
+          outcome.status === 'rejected' && outcome.reason instanceof Error
+            ? outcome.reason.message
+            : 'The image service returned no image.';
+        failed.push({ elementId, reason });
+      }
+    });
+    // Nothing was made: the first reason is the answer, as for one image.
+    if (filled.length === 0) throw new DeckApiError('failed', failed[0]!.reason);
+
+    // The deck may have changed while the images were made: a placeholder that is gone, or
+    // was filled by the user in the meantime, is left alone, and its image stays an asset.
+    const still = new Set(imagePlaceholders(ctx.deck).map((p) => p.elementId));
+    ctx.write([
+      ...registerAssets(filled.map(({ image }) => image.asset)),
+      ...filled
+        .filter(({ elementId }) => still.has(elementId))
+        .map(({ slideId: slide, elementId, image }): Command => ({
+          type: 'element.update',
+          slideId: slide,
+          elementId,
+          patch: { assetId: image.asset.id, prompt: null },
+        })),
+    ]);
+    return {
+      data: {
+        filled: filled.map(({ slideId: slide, elementId, image }) => ({
+          slideId: slide,
+          elementId,
+          assetId: image.asset.id,
+        })),
+        failed,
+        remaining: waiting.length - batch.length,
+      },
+      images: filled.map(({ image }) => image.preview),
+    };
   },
 });
 
 export const imageEdit = defineTool({
   name: 'image_edit',
   description:
-    'Edits an image by instruction (optionally inside a mask), as new assets; the original stays. With elementId, the first result replaces the image in the element, keeping frame and crop. Returns `assets` and previews.',
+    'Edits an image by instruction, as new assets; the original stays. With elementId, the first result replaces the image in the element, keeping frame and crop. What an edit is depends on the image provider the user chose in Settings, and the result says which it was (`edit`). An "exact" provider changes what the instruction asks and returns the image at its own size; with maskAssetId (an image whose transparent area is where the change may happen) every pixel outside the mask is kept as it was. A "regenerate" provider draws a new image after the original: the composition is similar, no pixel is kept, small details move, and a mask is refused. So with a regenerating provider do not promise a local fix: say that the image will be redrawn, or that exact edits need the other provider. Returns `assets`, `provider`, `edit` and previews.',
   input: z.strictObject({
     elementId: Id.optional().describe('An image element. Give this or assetId.'),
     assetId: Id.optional(),
@@ -511,13 +616,20 @@ export const imageEdit = defineTool({
     const source = sourceAsset(ctx.deck, { elementId, assetId });
     if (!source.assetId)
       throw new DeckApiError('invalid_state', 'The image element has no image yet.');
-    const images = await ctx.services.images!.edit({
+    const service = ctx.services.images!;
+    const images = await service.edit({
       assetId: source.assetId,
       instruction,
       ...(maskAssetId ? { maskAssetId } : {}),
       count: count ?? 1,
     });
-    return placeImages(ctx, images, source);
+    const placed = placeImages(ctx, images, source);
+    // Which kind of edit it was: the same call is a touch-up with one provider and a redraw
+    // with another, and only the app knows which one the user has chosen.
+    const provider = await service.describe?.().catch(() => undefined);
+    return provider
+      ? { ...placed, data: { ...placed.data, provider: provider.name, edit: provider.edit } }
+      : placed;
   },
 });
 
@@ -545,9 +657,9 @@ export const imageProcess = defineTool({
 export const stockSearch = defineTool({
   name: 'stock_search',
   description:
-    "Searches stock photos and adds the best matches to the deck's assets (not to a slide), with attribution. Place one with element_add or element_update (assetId); unused ones are dropped on save. Returns `assets` and previews.",
+    "Searches stock photos and adds the best matches to the deck's assets (not to a slide), with attribution. Place one with element_add or element_update (assetId); unused ones are dropped on save. The photo libraries index English, so write the query in English whatever the deck's language. Returns `assets` (ids, sizes, and whom each photo is credited to) and previews.",
   input: z.strictObject({
-    query: z.string().min(1),
+    query: z.string().min(1).describe('A few English words: what the photo shows.'),
     count: z.number().int().min(1).max(8).optional().describe('Default 4.'),
     orientation: z.enum(['landscape', 'portrait', 'square']).optional(),
   }),
@@ -568,7 +680,7 @@ export const stockSearch = defineTool({
 export const iconSearch = defineTool({
   name: 'icon_search',
   description:
-    'Searches the icon library (Hebrew or English). Returns `icons`: id (as in data-icon="lucide:rocket"), name and SVG markup, ready for an svg element or for HTML.',
+    'Searches the built-in icon library (Lucide and Tabler: line icons of one style) by a word or two, in Hebrew or English. Returns `icons`: id (as in data-icon="lucide:rocket"), name and SVG markup drawn in currentColor, ready for HTML or for an svg element.',
   input: z.strictObject({
     query: z.string().min(1),
     count: z.number().int().min(1).max(24).optional().describe('Default 8.'),

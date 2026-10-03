@@ -55,6 +55,7 @@ describe('the catalogue', () => {
       'template_save',
       'deck_apply_ops',
       'image_generate',
+      'image_fill_placeholders',
       'image_edit',
       'image_process',
       'stock_search',
@@ -130,6 +131,7 @@ describe('tool definitions for a transport adapter', () => {
     expect(slow.map((t) => [t.name, t.timeoutMs])).toEqual([
       ['template_create', 180_000],
       ['image_generate', 300_000],
+      ['image_fill_placeholders', 300_000],
       ['image_edit', 300_000],
     ]);
   });
