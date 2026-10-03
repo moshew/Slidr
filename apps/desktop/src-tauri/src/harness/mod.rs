@@ -15,6 +15,7 @@ pub mod ipc;
 mod manager;
 mod mock;
 mod registry;
+mod transcript;
 mod types;
 
 use std::{fmt, sync::Arc};

@@ -9,8 +9,10 @@ use std::sync::Arc;
 use tauri::{State, ipc::Channel};
 
 use super::{
-    AgentEvent, HarnessDescriptor, HarnessManager, HarnessStatus, Result, SessionConfig, UserTurn,
+    AgentError, AgentEvent, HarnessDescriptor, HarnessManager, HarnessStatus, Result,
+    SessionConfig, UserTurn, transcript,
 };
+use crate::storage::Storage;
 
 type Manager<'a> = State<'a, Arc<HarnessManager>>;
 
@@ -59,4 +61,52 @@ pub async fn agent_interrupt(manager: Manager<'_>, session_id: String) -> Result
 #[tauri::command]
 pub async fn agent_close(manager: Manager<'_>, session_id: String) -> Result<()> {
     manager.close(&session_id).await
+}
+
+/// The folder of a workspace open in this process.
+fn workspace_dir(storage: &Storage, workspace_id: &str) -> Result<std::path::PathBuf> {
+    let assets = storage
+        .assets_dir(workspace_id)
+        .map_err(|e| AgentError::invalid_input(e.message))?;
+    assets
+        .parent()
+        .map(std::path::Path::to_path_buf)
+        .ok_or_else(|| AgentError::internal("the assets folder has no parent"))
+}
+
+/// Runs blocking file work off the async runtime's threads.
+async fn off_main<T, F>(task: F) -> Result<T>
+where
+    F: FnOnce() -> Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(task)
+        .await
+        .map_err(AgentError::internal)?
+}
+
+/// `agent_chat_read({ workspaceId, file })`: the text of `chat/<file>` in the workspace of the
+/// open deck (AGT-05), or `null` when the deck has none.
+#[tauri::command]
+pub async fn agent_chat_read(
+    storage: State<'_, Arc<Storage>>,
+    workspace_id: String,
+    file: String,
+) -> Result<Option<String>> {
+    let dir = workspace_dir(&storage, &workspace_id)?;
+    off_main(move || transcript::read(&dir, &file)).await
+}
+
+/// `agent_chat_write({ workspaceId, file, text, append })`: adds `text` to the end of
+/// `chat/<file>`, or replaces the file with it.
+#[tauri::command]
+pub async fn agent_chat_write(
+    storage: State<'_, Arc<Storage>>,
+    workspace_id: String,
+    file: String,
+    text: String,
+    append: bool,
+) -> Result<()> {
+    let dir = workspace_dir(&storage, &workspace_id)?;
+    off_main(move || transcript::write(&dir, &file, &text, append)).await
 }

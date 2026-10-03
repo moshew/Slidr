@@ -1,0 +1,91 @@
+{
+  "description": "The design check at work (SPEC 9.4): turn 1 builds an opening slide whose title is one line of 200px text that runs off the slide, and says it is done; the app's follow-up is turn 2, in which the agent replaces the slide with one that fits. The second turn takes the slide id from the first one's result. Hand-written.",
+  "turns": [
+    [
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "בונה שקף פתיחה."
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "gate_1",
+        "name": "slide_create_from_html",
+        "source": "app",
+        "input": {
+          "html": "<div data-archetype=\"hero\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body)\"><div data-name=\"panel\" style=\"position:absolute;left:120px;top:140px;width:640px;height:800px;border-radius:40px;background:var(--color-primary)\"></div><div data-name=\"disc\" style=\"position:absolute;left:260px;top:360px;width:360px;height:360px;border-radius:50%;background:var(--color-accent)\"></div><h1 data-role=\"title\" style=\"position:absolute;right:140px;top:250px;margin:0;white-space:nowrap;font-size:200px;line-height:1.1;font-weight:800;color:var(--color-text);font-family:var(--font-heading)\">תוכנית העבודה המלאה לשנת 2027</h1><p data-role=\"subtitle\" style=\"position:absolute;right:140px;top:560px;width:900px;margin:0;font-size:44px;line-height:1.4;color:var(--color-muted)\">שלושה מהלכים שיובילו את השנה הבאה</p><p data-role=\"caption\" style=\"position:absolute;right:140px;top:860px;margin:0;font-size:28px;line-height:1.4;color:var(--color-muted)\">הנהלה · רבעון רביעי 2026</p></div>",
+          "name": "פתיחה"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "שקף הפתיחה מוכן."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 350,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0045,
+        "durationMs": 2600
+      }
+    ],
+    [
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "הכותרת חורגת מהשקף. "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "מקטין אותה ושובר לשתי שורות."
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "gate_2",
+        "name": "slide_replace_from_html",
+        "source": "app",
+        "input": {
+          "slideId": {
+            "$ref": "gate_1.slideId"
+          },
+          "html": "<div data-archetype=\"hero\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body)\"><div data-name=\"panel\" style=\"position:absolute;left:120px;top:140px;width:640px;height:800px;border-radius:40px;background:var(--color-primary)\"></div><div data-name=\"disc\" style=\"position:absolute;left:260px;top:360px;width:360px;height:360px;border-radius:50%;background:var(--color-accent)\"></div><h1 data-role=\"title\" style=\"position:absolute;right:140px;top:250px;width:900px;margin:0;font-size:112px;line-height:1.1;font-weight:800;color:var(--color-text);font-family:var(--font-heading)\">תוכנית העבודה לשנת 2027</h1><p data-role=\"subtitle\" style=\"position:absolute;right:140px;top:560px;width:900px;margin:0;font-size:44px;line-height:1.4;color:var(--color-muted)\">שלושה מהלכים שיובילו את השנה הבאה</p><p data-role=\"caption\" style=\"position:absolute;right:140px;top:860px;margin:0;font-size:28px;line-height:1.4;color:var(--color-muted)\">הנהלה · רבעון רביעי 2026</p></div>"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "תיקנתי: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "הכותרת נכנסת עכשיו בשתי שורות."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 330,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0043,
+        "durationMs": 2500
+      }
+    ]
+  ]
+}

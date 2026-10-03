@@ -1,0 +1,131 @@
+{
+  "description": "The design check giving up (QG-05): turn 1 builds the same overflowing opening slide as quality-gate; in turns 2 and 3, the two follow-ups, the agent changes nothing, so the findings are left for the user; turn 4, sent by \"try to fix again\", fixes the slide. Hand-written.",
+  "turns": [
+    [
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "בונה שקף פתיחה."
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "stuck_1",
+        "name": "slide_create_from_html",
+        "source": "app",
+        "input": {
+          "html": "<div data-archetype=\"hero\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body)\"><div data-name=\"panel\" style=\"position:absolute;left:120px;top:140px;width:640px;height:800px;border-radius:40px;background:var(--color-primary)\"></div><div data-name=\"disc\" style=\"position:absolute;left:260px;top:360px;width:360px;height:360px;border-radius:50%;background:var(--color-accent)\"></div><h1 data-role=\"title\" style=\"position:absolute;right:140px;top:250px;margin:0;white-space:nowrap;font-size:200px;line-height:1.1;font-weight:800;color:var(--color-text);font-family:var(--font-heading)\">תוכנית העבודה המלאה לשנת 2027</h1><p data-role=\"subtitle\" style=\"position:absolute;right:140px;top:560px;width:900px;margin:0;font-size:44px;line-height:1.4;color:var(--color-muted)\">שלושה מהלכים שיובילו את השנה הבאה</p><p data-role=\"caption\" style=\"position:absolute;right:140px;top:860px;margin:0;font-size:28px;line-height:1.4;color:var(--color-muted)\">הנהלה · רבעון רביעי 2026</p></div>",
+          "name": "פתיחה"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "שקף הפתיחה מוכן."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 350,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0045,
+        "durationMs": 2600
+      }
+    ],
+    [
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "ניסיתי לקצר, "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "אבל הכותרת עדיין ארוכה מדי."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 90,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0012,
+        "durationMs": 900
+      }
+    ],
+    [
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "לא הצלחתי להכניס את הכותרת לשקף."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 80,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0011,
+        "durationMs": 800
+      }
+    ],
+    [
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "מנסה שוב: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "שובר את הכותרת לשתי שורות."
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "stuck_2",
+        "name": "slide_replace_from_html",
+        "source": "app",
+        "input": {
+          "slideId": {
+            "$ref": "stuck_1.slideId"
+          },
+          "html": "<div data-archetype=\"hero\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body)\"><div data-name=\"panel\" style=\"position:absolute;left:120px;top:140px;width:640px;height:800px;border-radius:40px;background:var(--color-primary)\"></div><div data-name=\"disc\" style=\"position:absolute;left:260px;top:360px;width:360px;height:360px;border-radius:50%;background:var(--color-accent)\"></div><h1 data-role=\"title\" style=\"position:absolute;right:140px;top:250px;width:900px;margin:0;font-size:112px;line-height:1.1;font-weight:800;color:var(--color-text);font-family:var(--font-heading)\">תוכנית העבודה לשנת 2027</h1><p data-role=\"subtitle\" style=\"position:absolute;right:140px;top:560px;width:900px;margin:0;font-size:44px;line-height:1.4;color:var(--color-muted)\">שלושה מהלכים שיובילו את השנה הבאה</p><p data-role=\"caption\" style=\"position:absolute;right:140px;top:860px;margin:0;font-size:28px;line-height:1.4;color:var(--color-muted)\">הנהלה · רבעון רביעי 2026</p></div>"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "עכשיו הכותרת בתוך השקף."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 330,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0043,
+        "durationMs": 2500
+      }
+    ]
+  ]
+}

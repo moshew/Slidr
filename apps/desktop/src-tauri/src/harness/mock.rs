@@ -27,8 +27,16 @@
 //! Such a step is carried out. The mock calls the tool through the session's tool endpoint as a
 //! real agent would, waits for the answer, and emits the call's `tool_call_finished` from it;
 //! the script holds none for that id. This is how a scripted turn changes the deck.
+//!
+//! A carried-out call can use what an earlier one returned, as an agent reads an id out of a
+//! result: `{ "$ref": "t1.slideId" }` anywhere in its input stands for the value at that path
+//! in the JSON result of call `t1` of the same session (`t1.created.0` for a list item).
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    time::Duration,
+};
 
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -45,14 +53,29 @@ use crate::tool_bridge::{self, Content};
 /// Length of a carried-out call's summary, in characters: what the real adapters keep.
 const SUMMARY_CHARS: usize = 300;
 
+/// The key of a reference to an earlier call's result.
+const REF_KEY: &str = "$ref";
+
 /// The scripts built into the app, by name.
-const BUILTIN: [(&str, &str); 3] = [
+const BUILTIN: [(&str, &str); 6] = [
     ("import", include_str!("fixtures/scripts/import.json")),
     (
         "slide-chat",
         include_str!("fixtures/scripts/slide-chat.json"),
     ),
     ("errors", include_str!("fixtures/scripts/errors.json")),
+    (
+        "deck-build",
+        include_str!("fixtures/scripts/deck-build.json"),
+    ),
+    (
+        "quality-gate",
+        include_str!("fixtures/scripts/quality-gate.json"),
+    ),
+    (
+        "gate-stuck",
+        include_str!("fixtures/scripts/gate-stuck.json"),
+    ),
 ];
 
 /// One recorded conversation.
@@ -133,18 +156,61 @@ impl Script {
     }
 }
 
-/// Carries out a scripted call through the session's tool endpoint, and reports how it went as
-/// the call's `tool_call_finished`.
+/// What the carried-out calls of a session returned, by call id: the JSON of each result.
+type Results = Arc<Mutex<HashMap<String, Value>>>;
+
+/// `input` with every `{ "$ref": "<call id>.<path>" }` replaced by the value at that path in the
+/// result of that earlier call. Fails when a reference leads nowhere.
+fn resolve_refs(
+    input: &Value,
+    results: &HashMap<String, Value>,
+) -> std::result::Result<Value, String> {
+    match input {
+        Value::Object(map) => {
+            if let (1, Some(Value::String(reference))) = (map.len(), map.get(REF_KEY)) {
+                let mut path = reference.split('.');
+                let call = path.next().unwrap_or_default();
+                let mut value = results.get(call);
+                for key in path {
+                    value = value.and_then(|v| match key.parse::<usize>() {
+                        Ok(index) if v.is_array() => v.get(index),
+                        _ => v.get(key),
+                    });
+                }
+                return value.cloned().ok_or_else(|| {
+                    format!(
+                        "the script refers to {reference:?}, which no earlier call of the session \
+                         returned"
+                    )
+                });
+            }
+            map.iter()
+                .map(|(key, value)| Ok((key.clone(), resolve_refs(value, results)?)))
+                .collect::<std::result::Result<_, String>>()
+                .map(Value::Object)
+        }
+        Value::Array(items) => items
+            .iter()
+            .map(|item| resolve_refs(item, results))
+            .collect::<std::result::Result<_, String>>()
+            .map(Value::Array),
+        other => Ok(other.clone()),
+    }
+}
+
+/// Carries out a scripted call through the session's tool endpoint. Returns how it went, as the
+/// call's `tool_call_finished`, and the JSON the tool answered with, when it answered with JSON.
 async fn carry_out(
     endpoint: Option<&ToolEndpoint>,
     id: &str,
     name: &str,
     input: &Value,
-) -> AgentEvent {
+) -> (AgentEvent, Option<Value>) {
     let reply = match endpoint {
         Some(endpoint) => tool_bridge::call_tool(&endpoint.url, &endpoint.token, name, input).await,
         None => Err("the session has no tool endpoint".to_owned()),
     };
+    let mut result = None;
     let (ok, summary) = match reply {
         Ok(reply) => {
             let parts: Vec<&str> = reply
@@ -155,20 +221,77 @@ async fn carry_out(
                     Content::Image { .. } => "[image]",
                 })
                 .collect();
+            if !reply.is_error {
+                result = parts
+                    .first()
+                    .and_then(|text| serde_json::from_str(text).ok());
+            }
             (!reply.is_error, parts.join("\n"))
         }
         Err(message) => (false, message),
     };
-    let summary = if summary.chars().count() <= SUMMARY_CHARS {
+    let finished = AgentEvent::ToolCallFinished {
+        id: id.to_owned(),
+        ok,
+        summary: shorten(summary),
+    };
+    (finished, result)
+}
+
+/// A summary as long as the real adapters keep it.
+fn shorten(summary: String) -> String {
+    if summary.chars().count() <= SUMMARY_CHARS {
         summary
     } else {
         summary.chars().take(SUMMARY_CHARS).chain(['…']).collect()
-    };
-    AgentEvent::ToolCallFinished {
-        id: id.to_owned(),
-        ok,
-        summary,
     }
+}
+
+/// Plays a step that is a carried-out call: the call with its references filled in, then its
+/// result.
+async fn play_call(
+    sink: &EventSink,
+    endpoint: Option<&ToolEndpoint>,
+    results: &Results,
+    event: &AgentEvent,
+) {
+    let AgentEvent::ToolCallStarted {
+        id,
+        name,
+        source,
+        input,
+    } = event
+    else {
+        return;
+    };
+    let resolved = resolve_refs(input, &lock(results));
+    let input = match resolved {
+        Ok(input) => input,
+        Err(message) => {
+            sink.emit(event.clone());
+            sink.emit(AgentEvent::ToolCallFinished {
+                id: id.clone(),
+                ok: false,
+                summary: shorten(message),
+            });
+            return;
+        }
+    };
+    sink.emit(AgentEvent::ToolCallStarted {
+        id: id.clone(),
+        name: name.clone(),
+        source: *source,
+        input: input.clone(),
+    });
+    let (finished, result) = carry_out(endpoint, id, name, &input).await;
+    if let Some(result) = result {
+        lock(results).insert(id.clone(), result);
+    }
+    sink.emit(finished);
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// The scripted harness. Its "models" are its scripts.
@@ -253,6 +376,7 @@ impl AgentHarness for MockHarness {
                 .resume
                 .unwrap_or_else(|| format!("mock-{}", uuid::Uuid::new_v4().simple())),
             tool_endpoint: config.tool_endpoint,
+            results: Results::default(),
             sink,
             started: false,
             next_turn: 0,
@@ -267,6 +391,8 @@ struct MockSession {
     native_id: String,
     /// Where carried-out calls go.
     tool_endpoint: Option<ToolEndpoint>,
+    /// What they returned, for the calls after them.
+    results: Results,
     sink: EventSink,
     started: bool,
     next_turn: usize,
@@ -310,19 +436,17 @@ impl AgentSession for MockSession {
         let script = Arc::clone(&self.script);
         let sink = self.sink.clone();
         let endpoint = self.tool_endpoint.clone();
+        let results = Arc::clone(&self.results);
         let (stop, stopped) = oneshot::channel::<()>();
         let task = tokio::spawn(async move {
             let began = Instant::now();
             let play = async {
                 for step in script.turns.get(index).into_iter().flatten() {
                     tokio::time::sleep(Duration::from_millis(step.delay_ms)).await;
-                    sink.emit(step.event.clone());
-                    if let AgentEvent::ToolCallStarted {
-                        id, name, input, ..
-                    } = &step.event
-                        && step.call
-                    {
-                        sink.emit(carry_out(endpoint.as_ref(), id, name, input).await);
+                    if step.call {
+                        play_call(&sink, endpoint.as_ref(), &results, &step.event).await;
+                    } else {
+                        sink.emit(step.event.clone());
                     }
                 }
             };
@@ -645,7 +769,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_carried_out_call_without_a_tool_endpoint_fails() {
-        let finished = carry_out(None, "t1", "slide_get", &Value::Null).await;
+        let (finished, result) = carry_out(None, "t1", "slide_get", &Value::Null).await;
         assert_eq!(
             finished,
             AgentEvent::ToolCallFinished {
@@ -654,5 +778,152 @@ mod tests {
                 summary: "the session has no tool endpoint".into()
             }
         );
+        assert_eq!(result, None);
+    }
+
+    /// A reference stands for a value of an earlier result, wherever it sits in the input.
+    #[test]
+    fn references_take_values_from_earlier_results() {
+        use serde_json::json;
+
+        let results = HashMap::from([(
+            "t1".to_owned(),
+            json!({ "slideId": "s_1", "created": ["s_1", "e_1", "e_2"], "n": { "deep": 7 } }),
+        )]);
+        let input = json!({
+            "slideId": { "$ref": "t1.slideId" },
+            "ids": [{ "$ref": "t1.created.2" }, "e_9"],
+            "nested": { "value": { "$ref": "t1.n.deep" } },
+            "text": "$ref is only a key",
+            "kept": { "$ref": "t1.slideId", "other": 1 },
+        });
+        assert_eq!(
+            resolve_refs(&input, &results),
+            Ok(json!({
+                "slideId": "s_1",
+                "ids": ["e_2", "e_9"],
+                "nested": { "value": 7 },
+                "text": "$ref is only a key",
+                "kept": { "$ref": "t1.slideId", "other": 1 },
+            }))
+        );
+        for missing in [
+            "t2.slideId",
+            "t1.nothing",
+            "t1.created.9",
+            "t1.slideId.deeper",
+        ] {
+            let bad = json!({ "slideId": { "$ref": missing } });
+            assert!(resolve_refs(&bad, &results).is_err(), "{missing}");
+        }
+    }
+
+    /// Two turns of one session: the second turn's call writes to the slide the first one made.
+    #[tokio::test]
+    async fn a_later_call_uses_what_an_earlier_one_returned() -> TestResult {
+        use serde_json::json;
+
+        use crate::{
+            harness::HarnessManager,
+            tool_bridge::{ToolBridge, ToolDef, ToolReply},
+        };
+
+        let script = Script::parse(
+            &json!({
+                "description": "a slide is made, then replaced by id in the next turn",
+                "turns": [
+                    [
+                        { "type": "tool_call_started", "id": "t1", "name": "slide_create",
+                          "input": { "html": "<p>" }, "call": true },
+                        { "type": "turn_completed", "outcome": "completed", "costUsd": 0.0,
+                          "durationMs": 1 }
+                    ],
+                    [
+                        { "type": "tool_call_started", "id": "t2", "name": "slide_replace",
+                          "input": { "slideId": { "$ref": "t1.slideId" } }, "call": true },
+                        { "type": "tool_call_started", "id": "t3", "name": "slide_replace",
+                          "input": { "slideId": { "$ref": "t9.slideId" } }, "call": true },
+                        { "type": "turn_completed", "outcome": "completed", "costUsd": 0.0,
+                          "durationMs": 1 }
+                    ]
+                ]
+            })
+            .to_string(),
+        )?;
+
+        let bridge = ToolBridge::new();
+        let webview = Arc::downgrade(&bridge);
+        let inputs = Arc::new(Mutex::new(Vec::new()));
+        let received = Arc::clone(&inputs);
+        bridge.connect(move |call| {
+            lock(&received).push(call.input.clone());
+            let reply = ToolReply {
+                content: vec![Content::Text {
+                    text: json!({ "slideId": "s_made" }).to_string(),
+                }],
+                is_error: false,
+            };
+            webview
+                .upgrade()
+                .is_some_and(|bridge| bridge.reply(&call.call_id, reply))
+        });
+        let tool = |name: &str| ToolDef {
+            name: name.into(),
+            description: String::new(),
+            input_schema: serde_json::Map::new(),
+            timeout_ms: None,
+        };
+        let endpoint = bridge
+            .open(vec![tool("slide_create"), tool("slide_replace")])
+            .await?;
+
+        let root = tempfile::tempdir()?;
+        let harness = MockHarness::new(vec![("refs".to_owned(), script)]);
+        let manager = HarnessManager::new(root.path().into(), vec![Arc::new(harness)]);
+        let mut config = SessionConfig::new(Scope::Deck, "", PathBuf::new());
+        config.tool_endpoint = Some(ToolEndpoint {
+            url: endpoint.url.clone(),
+            token: endpoint.token.clone(),
+        });
+        let (sender, mut events) = tokio::sync::mpsc::unbounded_channel();
+        let id = manager
+            .start("mock", "deck/thread", config, move |event| {
+                let _ = sender.send(event);
+            })
+            .await?;
+
+        let mut seen = Vec::new();
+        for text in ["make a slide", "now replace it"] {
+            manager.send(&id, UserTurn::text(text)).await?;
+            while let Some(event) =
+                tokio::time::timeout(Duration::from_secs(10), events.recv()).await?
+            {
+                let end = matches!(event, AgentEvent::TurnCompleted { .. });
+                seen.push(event);
+                if end {
+                    break;
+                }
+            }
+        }
+        manager.close(&id).await?;
+
+        // The webview got the id, not the reference.
+        assert_eq!(
+            *lock(&inputs),
+            [json!({ "html": "<p>" }), json!({ "slideId": "s_made" })]
+        );
+        // And so did the chat: the call is shown as it was made.
+        assert!(seen.iter().any(|event| matches!(
+            event,
+            AgentEvent::ToolCallStarted { id, input, .. }
+                if id == "t2" && input == &json!({ "slideId": "s_made" })
+        )));
+        // A reference that leads nowhere fails the call without making it.
+        assert!(seen.iter().any(|event| matches!(
+            event,
+            AgentEvent::ToolCallFinished { id, ok: false, summary }
+                if id == "t3" && summary.contains("t9.slideId")
+        )));
+        Ok(())
     }
 }

@@ -1,0 +1,181 @@
+{
+  "description": "A deck chat in Hebrew whose tool calls are carried out (\"call\": true), so the deck really changes: turn 1 builds an opening slide from HTML; turn 2 adds a big-number slide after it and writes its speaker notes, taking the slide ids from the earlier results; turn 3 is a reply in Markdown, with a list, emphasis and code. Hand-written, with the timing of slide-chat.",
+  "turns": [
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 250,
+        "type": "text_delta",
+        "text": "בונה שקף פתיחה: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "כותרת גדולה "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "מול לוח בצבע המותג."
+      },
+      {
+        "delayMs": 700,
+        "type": "tool_call_started",
+        "id": "build_1",
+        "name": "slide_create_from_html",
+        "source": "app",
+        "input": {
+          "html": "<div data-archetype=\"hero\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body)\"><div data-name=\"panel\" style=\"position:absolute;left:120px;top:140px;width:640px;height:800px;border-radius:40px;background:var(--color-primary)\"></div><div data-name=\"disc\" style=\"position:absolute;left:260px;top:360px;width:360px;height:360px;border-radius:50%;background:var(--color-accent)\"></div><h1 data-role=\"title\" style=\"position:absolute;right:140px;top:250px;width:900px;margin:0;font-size:112px;line-height:1.1;font-weight:800;color:var(--color-text);font-family:var(--font-heading)\">תוכנית העבודה לשנת 2027</h1><p data-role=\"subtitle\" style=\"position:absolute;right:140px;top:560px;width:900px;margin:0;font-size:44px;line-height:1.4;color:var(--color-muted)\">שלושה מהלכים שיובילו את השנה הבאה</p><p data-role=\"caption\" style=\"position:absolute;right:140px;top:860px;margin:0;font-size:28px;line-height:1.4;color:var(--color-muted)\">הנהלה · רבעון רביעי 2026</p></div>",
+          "name": "פתיחה"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 600,
+        "type": "text_delta",
+        "text": "שקף הפתיחה מוכן: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "הכותרת **תוכנית העבודה לשנת 2027** "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "ומתחתיה משפט משנה."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 412,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0058,
+        "durationMs": 3900
+      }
+    ],
+    [
+      {
+        "delayMs": 700,
+        "type": "text_delta",
+        "text": "מוסיף שקף עם "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "המספר המרכזי."
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "build_2",
+        "name": "slide_create_from_html",
+        "source": "app",
+        "input": {
+          "html": "<div data-archetype=\"bigNumber\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body)\"><div data-name=\"card\" style=\"position:absolute;left:96px;top:80px;width:1728px;height:920px;border-radius:32px;background:var(--color-surface)\"></div><div data-name=\"bar-1\" style=\"position:absolute;left:220px;top:560px;width:140px;height:320px;border-radius:20px;background:color-mix(in srgb, var(--color-primary) 35%, transparent)\"></div><div data-name=\"bar-2\" style=\"position:absolute;left:400px;top:420px;width:140px;height:460px;border-radius:20px;background:color-mix(in srgb, var(--color-primary) 60%, transparent)\"></div><div data-name=\"bar-3\" style=\"position:absolute;left:580px;top:260px;width:140px;height:620px;border-radius:20px;background:var(--color-primary)\"></div><h2 data-role=\"title\" style=\"position:absolute;right:176px;top:160px;margin:0;font-size:72px;line-height:1.2;font-weight:700;color:var(--color-text);font-family:var(--font-heading)\">צמיחה בהכנסות</h2><div data-role=\"number\" style=\"position:absolute;right:176px;top:330px;font-size:240px;line-height:1;font-weight:800;color:var(--color-primary)\">87%</div><p data-role=\"body\" style=\"position:absolute;right:176px;top:660px;width:1100px;margin:0;font-size:36px;line-height:1.5;color:var(--color-text)\">גידול שנתי לעומת 2025, בכל שלושת קווי המוצר.</p></div>",
+          "name": "צמיחה",
+          "afterSlideId": {
+            "$ref": "build_1.slideId"
+          }
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "build_3",
+        "name": "slide_update",
+        "source": "app",
+        "input": {
+          "slideId": {
+            "$ref": "build_2.slideId"
+          },
+          "notes": "להדגיש: הגידול הוא בכל שלושת קווי המוצר, לא רק בקו הוותיק."
+        },
+        "call": true
+      },
+      {
+        "delayMs": 500,
+        "type": "text_delta",
+        "text": "נוסף שקף מספר "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "אחרי הפתיחה, "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "עם הערות דובר."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 388,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0049,
+        "durationMs": 3300
+      }
+    ],
+    [
+      {
+        "delayMs": 800,
+        "type": "text_delta",
+        "text": "אלה שלושת השקפים שהייתי מוסיף עכשיו:\n\n"
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "1. **מפת דרכים** לפי רבעונים, בארכיטיפ `timeline`\n"
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "2. **שלושת המהלכים**, ככרטיסים\n"
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "3. **סיכום וצעדים הבאים**\n\n"
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "רוצה שאבנה אותם? "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "אפשר גם רק את הראשון."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 160,
+          "cacheReadTokens": 7083,
+          "cacheWriteTokens": 310
+        },
+        "costUsd": 0.0021,
+        "durationMs": 1500
+      }
+    ]
+  ]
+}

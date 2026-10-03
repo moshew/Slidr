@@ -77,6 +77,8 @@ pub fn run() {
             capture::capture_run_job,
             capture::capture_job_take,
             capture::capture_job_done,
+            harness::ipc::agent_chat_read,
+            harness::ipc::agent_chat_write,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");
