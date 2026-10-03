@@ -26,6 +26,7 @@ export {
   themeFrom,
   type Draft,
   type DraftInput,
+  type DrawnBox,
   type DrawnLayout,
   type LayoutFromSlide,
 } from './draft';

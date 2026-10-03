@@ -161,3 +161,18 @@ export function draftColours(
     };
   }, TEMPLATES);
 }
+
+/** The heights of the placeholders of a role in a layout of the draft the chat shows. */
+export function draftHeights(page: Page, archetype: string, role: string): Promise<number[]> {
+  return page.evaluate(
+    async ([path, kind, wanted]) => {
+      const { drafts } = (await import(/* @vite-ignore */ path!)) as typeof TemplatesApp;
+      const { drafts: all, shown } = drafts.state.getState();
+      const layout = all
+        .find((d) => d.id === shown)
+        ?.template.layouts.find((l) => l.archetype === kind);
+      return (layout?.placeholders ?? []).filter((p) => p.role === wanted).map((p) => p.frame.h);
+    },
+    [TEMPLATES, archetype, role],
+  );
+}

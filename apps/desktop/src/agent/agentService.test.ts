@@ -130,6 +130,7 @@ function setup(
     bus?: CommandBus;
     wrap?: (client: AgentClient) => AgentClient;
     brief?: AgentServiceOptions['brief'];
+    storeImage?: AgentServiceOptions['storeImage'];
   } = {},
 ) {
   const bus =
@@ -158,6 +159,7 @@ function setup(
     settings: () => ({ harnessId: 'mock', ...options.settings }),
     onSlideTouched: (slideId) => touched.push(slideId),
     ...(options.brief ? { brief: options.brief } : {}),
+    ...(options.storeImage ? { storeImage: options.storeImage } : {}),
     now: () => new Date(2026, 9, 3, 12, 0, 0),
   });
   return { bus, service, seen, transcripts, touched, thread: service.thread({ kind: 'deck' }) };
@@ -663,5 +665,356 @@ describe('an action, and the brief of a session', () => {
     await ask(thread, 'Again');
     expect(second.seen.starts[0]!.config.resume).toBeTruthy();
     expect(fresh).toEqual([false]);
+  });
+});
+
+describe('a session that cannot remember its conversation (AGT-06)', () => {
+  const talk = script([say('שלום.'), done()], [say('ועוד.'), done()]);
+
+  /** A harness that has no conversation to resume: the turn fails, and the session ends. */
+  function forgetful() {
+    const lost = new Map<string, (event: AgentEvent) => void>();
+    return (client: AgentClient): AgentClient => ({
+      ...client,
+      start: (harnessId, thread, config, onEvent) => {
+        if (!config.resume) return client.start(harnessId, thread, config, onEvent);
+        return client
+          .start(harnessId, thread, config, () => undefined)
+          .then((sessionId) => {
+            lost.set(sessionId, onEvent);
+            return sessionId;
+          });
+      },
+      send: (sessionId, turn) => {
+        const emit = lost.get(sessionId);
+        if (!emit) return client.send(sessionId, turn);
+        const events: AgentEvent[] = [
+          { type: 'error', kind: 'resume_failed', message: 'No conversation', recoverable: false },
+          {
+            type: 'turn_completed',
+            outcome: 'failed',
+            usage: NO_USAGE,
+            costUsd: null,
+            durationMs: 0,
+          },
+          { type: 'exited', code: 1 },
+        ];
+        queueMicrotask(() => events.forEach(emit));
+        return Promise.resolve();
+      },
+    });
+  }
+
+  it('is told what was said, from the transcript the deck keeps', async () => {
+    const rename = script(
+      [
+        call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }),
+        say('שיניתי את השם.'),
+        done(),
+      ],
+      [say('בבקשה.'), done()],
+    );
+    const first = setup({ rename });
+    await ask(first.thread, 'קרא לשקף הראשון Intro');
+    const files = new Map(first.transcripts.files);
+
+    // The deck on another machine: the harness there has never heard of the conversation.
+    const again = setup({ rename }, { files, wrap: forgetful() });
+    await again.thread.load();
+    const entry = await ask(again.thread, 'תודה');
+    expect(entry).toMatchObject({ outcome: 'completed' });
+    expect(entry.problem).toBeUndefined();
+    expect(again.seen.starts.map((s) => Boolean(s.config.resume))).toEqual([true, false]);
+
+    // The turn that failed to resume carried no record; the one that started over does.
+    const [resumed, fresh] = again.seen.sends;
+    expect(resumed!.context).not.toContain('<slidr_conversation>');
+    expect(fresh!.text).toBe('תודה');
+    const record = fresh!.context!.slice(fresh!.context!.indexOf('<slidr_conversation>'));
+    expect(record.split('\n')).toEqual([
+      '<slidr_conversation>',
+      expect.stringMatching(/^This session continues a conversation it has no memory of/),
+      'user: "קרא לשקף הראשון Intro"',
+      'you: {"said":"שיניתי את השם.","did":["slide_update"]}',
+      expect.stringMatching(/^Take it as what was asked and what was done/),
+      '</slidr_conversation>',
+    ]);
+    // The message being answered is not part of the record, and the context block comes first.
+    expect(record).not.toContain('תודה');
+    expect(fresh!.context).toMatch(/^<slidr_context>/);
+
+    // From here the session remembers: the next turn carries no record.
+    await ask(again.thread, 'ועוד משהו');
+    expect(again.seen.sends.at(-1)!.context).not.toContain('<slidr_conversation>');
+  });
+
+  it('is told nothing when the conversation begins with it, or resumes', async () => {
+    const first = setup({ talk });
+    await ask(first.thread, 'היי');
+    expect(first.seen.sends[0]!.context).not.toContain('<slidr_conversation>');
+
+    const again = setup({ talk }, { files: new Map(first.transcripts.files) });
+    await again.thread.load();
+    await ask(again.thread, 'שוב');
+    expect(again.seen.starts[0]!.config.resume).toBeTruthy();
+    expect(again.seen.sends[0]!.context).not.toContain('<slidr_conversation>');
+  });
+
+  it('is told when the harness changed, since a conversation resumes only where it was held', async () => {
+    const first = setup({ talk });
+    await ask(first.thread, 'היי');
+    const files = new Map(first.transcripts.files);
+    const index = JSON.parse(files.get('threads.json')!) as {
+      threads: Record<string, { harnessId: string }>;
+    };
+    index.threads.deck!.harnessId = 'another-harness';
+    files.set('threads.json', JSON.stringify(index));
+
+    const again = setup({ talk }, { files });
+    await again.thread.load();
+    await ask(again.thread, 'שוב');
+    expect(again.seen.starts[0]!.config.resume).toBeUndefined();
+    expect(again.seen.sends[0]!.context).toContain('user: "היי"');
+    expect(again.seen.sends[0]!.context).toContain('you: {"said":"שלום."}');
+  });
+});
+
+describe('the model of the next turn (CHT-U06)', () => {
+  const a = script([say('A1.'), done()], [say('A2.'), done()]);
+  const b = script([say('B1.'), done()]);
+
+  it('starts the session again on the new model, and resumes the conversation there', async () => {
+    const settings: AgentSettings = { model: 'a' };
+    const { thread, seen } = setup({ a, b }, { settings });
+    await ask(thread, 'one');
+    // The same settings: the same session.
+    await ask(thread, 'two');
+    expect(seen.starts).toHaveLength(1);
+    expect(seen.closed).toHaveLength(0);
+
+    settings.model = 'b';
+    const entry = await ask(thread, 'three');
+    expect(entry.parts).toEqual([{ type: 'text', text: 'B1.' }]);
+    expect(seen.closed).toHaveLength(1);
+    expect(seen.starts.map((s) => s.config.model)).toEqual(['a', 'b']);
+    expect(seen.starts[1]!.config.resume).toMatch(/^mock-/);
+    // Resumed, so the agent remembers: no record of the conversation goes with the turn.
+    expect(seen.sends.at(-1)!.context).not.toContain('<slidr_conversation>');
+    expect(thread.store.getState().entries).toHaveLength(6);
+  });
+
+  it('counts effort and web access as settings of a session too', async () => {
+    const settings: AgentSettings = { model: 'a' };
+    const { thread, seen } = setup({ a }, { settings });
+    await ask(thread, 'one');
+    settings.effort = 'high';
+    await ask(thread, 'two');
+    settings.webAccess = false;
+    await ask(thread, 'three');
+    expect(seen.starts.map((s) => [s.config.effort ?? null, s.config.webAccess])).toEqual([
+      [null, true],
+      ['high', true],
+      ['high', false],
+    ]);
+    // The design check is read at the end of each turn: changing it needs no new session.
+    settings.qualityGate = false;
+    await ask(thread, 'four');
+    expect(seen.starts).toHaveLength(3);
+  });
+});
+
+describe('the files of a message (CHT-U05)', () => {
+  const talk = script([say('Done.'), done()]);
+  const png = {
+    name: 'logo.png',
+    mime: 'image/png',
+    bytes: new Uint8Array([1, 2, 3]),
+    use: 'logo',
+  };
+  const doc = { name: 'brief.md', mime: 'text/markdown', bytes: new Uint8Array([35, 32, 72]) };
+  const asset = {
+    id: 'c'.repeat(64),
+    file: `${'c'.repeat(64)}.png`,
+    mime: 'image/png',
+    kind: 'image' as const,
+    bytes: 3,
+    origin: 'upload' as const,
+  };
+
+  function attaching(extra: { fail?: boolean } = {}) {
+    const attached: { thread: string; name: string; bytes: number }[] = [];
+    const wrap = (client: AgentClient): AgentClient => ({
+      ...client,
+      attach: (thread, file) => {
+        if (extra.fail) return Promise.reject(new AgentError('io', 'the disk is full'));
+        attached.push({ thread, name: file.name, bytes: file.bytes.length });
+        return Promise.resolve(`attachments/${file.name}`);
+      },
+    });
+    const made = setup({ talk }, { wrap, storeImage: () => Promise.resolve(asset) });
+    return { ...made, attached };
+  }
+
+  it('go to the conversation and, a picture, to the deck; the turn is told where each is', async () => {
+    const { bus, thread, seen, attached } = attaching();
+    await thread.send('Use this logo', { attachments: [png, doc] });
+    await settled(thread);
+
+    expect(attached).toEqual([
+      { thread: `${bus.deck.id}/deck`, name: 'logo.png', bytes: 3 },
+      { thread: `${bus.deck.id}/deck`, name: 'brief.md', bytes: 3 },
+    ]);
+    const [turn] = seen.sends;
+    expect(turn!.text).toBe('Use this logo');
+    const block = turn!.context!.slice(turn!.context!.indexOf('<slidr_attachments>'));
+    expect(block.split('\n').slice(0, 3)).toEqual([
+      '<slidr_attachments>',
+      `file: {"name":"logo.png","path":"attachments/logo.png","kind":"image","asset_id":"${asset.id}","use":"logo"}`,
+      'file: {"name":"brief.md","path":"attachments/brief.md","kind":"file"}',
+    ]);
+    // The picture is shown to a harness that takes pictures; the document is only on disk.
+    expect(turn!.images).toEqual([{ mediaType: 'image/png', data: 'AQID' }]);
+
+    // The picture is among the deck's assets, registered inside the turn...
+    expect(bus.deck.assets[asset.id]).toEqual(asset);
+    const [user, reply] = thread.store.getState().entries;
+    expect(user).toMatchObject({
+      type: 'user',
+      text: 'Use this logo',
+      attachments: [
+        { name: 'logo.png', kind: 'image', assetId: asset.id },
+        { name: 'brief.md', kind: 'file' },
+      ],
+    });
+    // ...and a turn that did nothing else has nothing for "undo changes" to take back.
+    expect(reply).toMatchObject({ type: 'assistant', outcome: 'completed' });
+    expect((reply as AssistantEntry).txId).toBeUndefined();
+  });
+
+  it('may be the whole message', async () => {
+    const { service, thread, seen } = attaching();
+    await thread.send('  ', { attachments: [doc] });
+    await settled(thread);
+    // A turn needs words: the harness gets a line of the app's, the chat shows the file alone.
+    expect(seen.sends[0]!.text).toBe('See the files attached to this message.');
+    expect(thread.store.getState().entries[0]).toMatchObject({ text: '', attachments: [{}] });
+    // Its conversation is named after the file.
+    expect((await service.conversations({ kind: 'deck' }))[0]!.title).toBe('brief.md');
+  });
+
+  it('that could not be stored fail the turn where the user sees why', async () => {
+    const { thread, seen } = attaching({ fail: true });
+    await thread.send('Use this', { attachments: [doc] });
+    await settled(thread);
+    expect(seen.sends).toHaveLength(0);
+    const [user, reply] = thread.store.getState().entries;
+    expect(user).toMatchObject({ text: 'Use this', attachments: [{ name: 'brief.md' }] });
+    expect(reply).toMatchObject({
+      outcome: 'failed',
+      problem: { kind: 'io', message: 'the disk is full' },
+    });
+    expect(thread.store.getState().busy).toBe(false);
+  });
+});
+
+describe('the conversations of a scope (CHT-U07)', () => {
+  const talk = script([say('One.'), done()], [say('Two.'), done()]);
+  const DECK = { kind: 'deck' } as const;
+
+  it('are several: a new one beside the first, each with its own transcript and session', async () => {
+    const { service, seen, transcripts } = setup({ talk });
+    const first = service.thread(DECK);
+    await ask(first, 'The first conversation, about the plan');
+
+    const second = service.newConversation(DECK);
+    expect(second).not.toBe(first);
+    expect(second.id).toMatch(/^deck-c[0-9a-z]+$/);
+    expect(service.thread(DECK)).toBe(second);
+    expect(second.store.getState().entries).toEqual([]);
+    await ask(second, 'Another subject');
+    // Its own session, started fresh under its own thread key.
+    expect(seen.starts.map((s) => s.thread.split('/')[1])).toEqual(['deck', second.id]);
+    expect(seen.starts[1]!.config.resume).toBeUndefined();
+    expect(parseTranscript(transcripts.files.get(`${second.id}.jsonl`) ?? '')).toHaveLength(2);
+    expect(parseTranscript(transcripts.files.get('deck.jsonl') ?? '')).toHaveLength(2);
+
+    // The list: the latest first, each under the start of its first message.
+    const list = await service.conversations(DECK);
+    expect(list.map((c) => [c.id, c.title])).toEqual(
+      expect.arrayContaining([
+        ['deck', 'The first conversation, about the plan'],
+        [second.id, 'Another subject'],
+      ]),
+    );
+    expect(list).toHaveLength(2);
+
+    // Going back shows the first again, as it was.
+    expect(service.showConversation(DECK, 'deck')).toBe(first);
+    expect(service.thread(DECK)).toBe(first);
+    expect(first.store.getState().entries).toHaveLength(2);
+    // A slide has conversations of its own, and none of the deck's.
+    expect(await service.conversations({ kind: 'slide', slideId: 's_1' })).toEqual([
+      { id: 'slide-s_1' },
+    ]);
+  });
+
+  it('a deck that is opened again shows the conversation that was written in last', async () => {
+    let now = new Date(2026, 9, 3, 12, 0, 0);
+    const bus = new CommandBus(createDeck({ slides: [createSlide({ id: 's_1' })] }));
+    const files = new Map<string, string>();
+    const open = () => {
+      const agent = createScriptedAgent({ talk }, { speed: 0 });
+      return new AgentService({
+        client: agent.client,
+        connectBridge: agent.connectBridge,
+        bus,
+        api: createDeckApi(bus),
+        selection: () => ({
+          currentSlideId: 's_1',
+          selectedSlideIds: [],
+          selectedElementIds: [],
+          editingElementId: null,
+        }),
+        transcripts: memoryTranscripts(files),
+        settings: () => ({ harnessId: 'mock' }),
+        now: () => now,
+      });
+    };
+    const before = open();
+    await ask(before.thread(DECK), 'First');
+    now = new Date(2026, 9, 3, 13, 0, 0);
+    const later = before.newConversation(DECK);
+    await ask(later, 'Second');
+    await before.dispose();
+
+    const after = open();
+    expect(after.thread(DECK).id).toBe('deck');
+    await after.restore(DECK);
+    expect(after.thread(DECK).id).toBe(later.id);
+    await after.thread(DECK).load();
+    expect(after.thread(DECK).store.getState().entries).toHaveLength(2);
+    // Restoring happens once: it never moves the user off a conversation they chose.
+    after.showConversation(DECK, 'deck');
+    await after.restore(DECK);
+    expect(after.thread(DECK).id).toBe('deck');
+  });
+});
+
+describe('the outline setting (AID-03)', () => {
+  const talk = script([say('Done.'), done()]);
+
+  it('travels in the context block of a deck session, and is an outline first unless set', async () => {
+    const settings: AgentSettings = {};
+    const { service, thread, seen } = setup({ talk }, { settings });
+    await ask(thread, 'A deck about the plan');
+    expect(seen.sends[0]!.context).toContain('\noutline: "first"\n');
+
+    settings.outline = 'build';
+    await ask(thread, 'Another');
+    expect(seen.sends[1]!.context).toContain('\noutline: "build"\n');
+    // The setting is the deck chat's: a slide session is told nothing of outlines.
+    const slide = service.thread({ kind: 'slide', slideId: 's_1' });
+    await ask(slide, 'Shorten this');
+    expect(seen.sends[2]!.context).not.toContain('outline:');
   });
 });

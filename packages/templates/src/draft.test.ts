@@ -231,6 +231,78 @@ describe('layoutFromSlide', () => {
   });
 });
 
+describe('the room of a placeholder', () => {
+  // A converted text is as tall as its words. The box it was drawn in says how much room the
+  // designer left: that is the placeholder.
+  const text = (id: string, role: 'title' | 'body' | 'caption', frame: Element['frame']) =>
+    createElement.text({ id, role, frame, content: richText('One line', { styleRef: 'body' }) });
+  const drawn = (elements: Element[], boxes: DrawnLayout['boxes']): DrawnLayout => ({
+    name: 'Card',
+    archetype: 'cards',
+    slide: blankSlide({ elements }),
+    ...(boxes ? { boxes } : {}),
+  });
+  const frames = (layout: DrawnLayout) =>
+    layoutFromSlide(layout, { id: 'l_x_1', theme }).layout.placeholders.map((p) => [
+      p.role,
+      p.frame,
+      p.vAlign,
+    ]);
+
+  it('is the box the text was drawn in, with the text seated where it sat', () => {
+    const elements = [
+      text('e_top', 'body', { x: 136, y: 450, w: 472, h: 48 }),
+      text('e_mid', 'title', { x: 96, y: 500.2, w: 900, h: 88 }),
+      text('e_low', 'caption', { x: 96, y: 969, w: 900, h: 31 }),
+    ];
+    expect(
+      frames(
+        drawn(elements, [
+          { role: 'body', frame: { x: 136, y: 450, w: 472, h: 360 } },
+          { role: 'title', frame: { x: 96, y: 400, w: 900, h: 288.4 } },
+          { role: 'caption', frame: { x: 96, y: 900, w: 900, h: 100 } },
+        ]),
+      ),
+    ).toEqual([
+      ['body', { x: 136, y: 450, w: 472, h: 360 }, 'top'],
+      ['title', { x: 96, y: 400, w: 900, h: 288 }, 'middle'],
+      ['caption', { x: 96, y: 900, w: 900, h: 100 }, 'bottom'],
+    ]);
+  });
+
+  it('starts at the text when the box holds it under a padding', () => {
+    const elements = [text('e_body', 'body', { x: 136, y: 490, w: 472, h: 48 })];
+    expect(
+      frames(drawn(elements, [{ role: 'body', frame: { x: 136, y: 450, w: 472, h: 360 } }])),
+    ).toEqual([['body', { x: 136, y: 490, w: 472, h: 320 }, 'top']]);
+  });
+
+  it('stays the converted frame when no box of its role holds it, and uses each box once', () => {
+    const elements = [
+      text('e_a', 'body', { x: 136, y: 450, w: 472, h: 48 }),
+      text('e_b', 'body', { x: 724, y: 450, w: 472, h: 48 }),
+      text('e_c', 'body', { x: 1312, y: 450, w: 472, h: 48 }),
+    ];
+    const boxes = [
+      // In the order of the drawing, which need not be the order of the elements.
+      { role: 'body', frame: { x: 724, y: 450, w: 472, h: 300 } },
+      { role: 'body', frame: { x: 136, y: 450, w: 472, h: 360 } },
+      // Another column: nobody's box. And a box of another role in the right place.
+      { role: 'body', frame: { x: 0, y: 0, w: 472, h: 360 } },
+      { role: 'title', frame: { x: 1312, y: 450, w: 472, h: 360 } },
+    ];
+    expect(frames(drawn(elements, boxes))).toEqual([
+      ['body', { x: 136, y: 450, w: 472, h: 360 }, 'top'],
+      ['body', { x: 724, y: 450, w: 472, h: 300 }, 'top'],
+      ['body', { x: 1312, y: 450, w: 472, h: 48 }, 'top'],
+    ]);
+    // Without boxes every placeholder is the converted frame, as before.
+    expect(
+      frames(drawn(elements, undefined)).map(([, frame]) => (frame as Element['frame']).h),
+    ).toEqual([48, 48, 48]);
+  });
+});
+
 describe('themeFrom', () => {
   it('merges a patch as theme.update does, and takes the id and the name', () => {
     const made = themeFrom(

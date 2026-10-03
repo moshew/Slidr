@@ -5,6 +5,7 @@ import {
   deck,
   draft,
   draftColours,
+  draftHeights,
   LOGO,
   messages,
   openApp,
@@ -50,6 +51,9 @@ test('a template from a description and a logo is previewed, saved, and a new de
   await expect(draft(page).getByTestId('draft-layout').first()).toContainText('פתיחה');
   await expect(draft(page).getByTestId('draft-name')).toHaveValue('חימר');
   await expect(draft(page)).not.toHaveAttribute('data-saved', /.+/);
+  // A placeholder has the room it was drawn with (310px for the body of a card), though its
+  // sample is two lines: the HTML is measured as drawn, not as the conversion sizes its text.
+  expect(await draftHeights(page, 'cards', 'body')).toEqual([310, 310, 310]);
   // The layouts draw the logo that was attached, by its asset.
   await expect(draft(page).getByTestId('draft-layout').first().locator('img')).toHaveCount(1);
 

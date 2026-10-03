@@ -15,6 +15,7 @@ import type { Editor } from '../shell';
 import { copyAssets, saveDraft, templateFromDeck } from './actions';
 import { TemplateDrafts } from './drafts';
 import { TemplateLibrary, type PrefsStorage } from './library';
+import { measureRoles } from './measureRoles';
 import { memoryTemplateStore, tauriTemplateStore } from './store';
 import { createTemplateService } from './templateService';
 
@@ -72,6 +73,7 @@ export function appTemplateService(editor: Editor, tools?: DraftingTools): Templ
           drafting: {
             ...tools,
             drafts,
+            measure: (html, deck) => measureRoles(html, deck, (asset) => editor.assets.url(asset)),
             sampleText: (role, lang) => {
               const key = `templates:sample.${role}`;
               return i18n.exists(key) ? i18n.t(key, { lng: lang }) : undefined;

@@ -33,11 +33,23 @@ import { copyJson } from './json';
 import { layoutsFor, type Template } from './template';
 
 /** A layout as its designer drew it. */
+/** The box a part with a role was drawn in: what its designer gave it, not what its text fills. */
+export interface DrawnBox {
+  role: string;
+  frame: Frame;
+}
+
 export interface DrawnLayout {
   name: string;
   archetype: Archetype;
   /** The layout as a slide: its placeholders are the elements with a role. */
   slide: Slide;
+  /**
+   * The boxes of the parts with a role, in the order they were drawn, when whoever converted the
+   * drawing could measure them. A converted text is as tall as its words; its placeholder has to
+   * be as tall as the room the designer left for words.
+   */
+  boxes?: readonly DrawnBox[];
 }
 
 export interface LayoutFromSlide {
@@ -82,6 +94,36 @@ function covers(a: Frame, b: Frame): boolean {
 
 /** A size this close to a style's is that style: rendering lands on fractions of a pixel. */
 const SAME_SIZE = 0.5;
+
+/** How far a converted text may sit from the box it was drawn in and still be that box's text. */
+const BOX_SLACK = 6;
+
+/**
+ * The frame and the vertical alignment of a text placeholder, from the box its text was drawn
+ * in. The text is somewhere inside its box: at its top, at its bottom or in its middle, which
+ * is how the placeholder then seats what a deck puts into it. A text that sits elsewhere in the
+ * box (under a padding) keeps its own top and takes the room below it.
+ */
+function roomOf(text: Frame, box: Frame): Pick<Placeholder, 'frame' | 'vAlign'> | undefined {
+  const inside =
+    Math.abs(text.x - box.x) <= BOX_SLACK &&
+    Math.abs(text.w - box.w) <= BOX_SLACK &&
+    text.y >= box.y - BOX_SLACK &&
+    text.y + text.h <= box.y + box.h + BOX_SLACK;
+  if (!inside) return undefined;
+  const above = text.y - box.y;
+  const below = box.y + box.h - (text.y + text.h);
+  const round = (frame: Frame): Frame => ({
+    x: Math.round(frame.x),
+    y: Math.round(frame.y),
+    w: Math.round(frame.w),
+    h: Math.round(frame.h),
+  });
+  if (above <= BOX_SLACK) return { frame: round(box), vAlign: 'top' };
+  if (below <= BOX_SLACK) return { frame: round(box), vAlign: 'bottom' };
+  if (Math.abs(above - below) <= BOX_SLACK) return { frame: round(box), vAlign: 'middle' };
+  return { frame: round({ ...box, y: text.y, h: box.y + box.h - text.y }), vAlign: 'top' };
+}
 
 const isPlaceholderRole = (element: Element) =>
   element.role !== undefined && element.role !== 'logo';
@@ -147,10 +189,22 @@ function decorationOf(element: Element, prefix: string, counter: { n: number }):
  * placeholder is always at the top of its layout. The slide is not changed.
  */
 export function layoutFromSlide(
-  { name, archetype, slide }: DrawnLayout,
+  { name, archetype, slide, boxes: boxes_ }: DrawnLayout,
   options: { id: string; theme: Theme },
 ): LayoutFromSlide {
   const { id, theme } = options;
+  // The drawn boxes, each used once: the first of its role that the converted text sits in.
+  const boxes = [...(boxes_ ?? [])];
+  const room = (role: PlaceholderRole, text: Frame) => {
+    for (const [index, box] of boxes.entries()) {
+      if (box.role !== role) continue;
+      const found = roomOf(text, box.frame);
+      if (!found) continue;
+      boxes.splice(index, 1);
+      return found;
+    }
+    return undefined;
+  };
   const placeholders: Placeholder[] = [];
   const fills: (RoleFill | undefined)[] = [];
   const decorations: Element[] = [];
@@ -197,10 +251,15 @@ export function layoutFromSlide(
             );
           }
           const first = element.content.paragraphs[0];
+          const drawn = room(role, frame);
           place(
             role,
-            frame,
-            { styleRef: style.ref, align: alignOf(first), vAlign: element.vAlign },
+            drawn?.frame ?? frame,
+            {
+              styleRef: style.ref,
+              align: alignOf(first),
+              vAlign: drawn?.vAlign ?? element.vAlign,
+            },
             plain(element.content),
           );
         } else {

@@ -21,6 +21,7 @@ import {
   draftTemplate,
   sampleDeckOf,
   themeFrom,
+  type DrawnBox,
   type DrawnLayout,
   type Template,
 } from '@slidr/templates';
@@ -34,6 +35,12 @@ export interface Drafting {
   conversion: ConversionService;
   lint?: LintService;
   capture?: CaptureService;
+  /**
+   * The boxes the parts with a role were drawn in, in the order of the HTML: the conversion
+   * measures a text by its words, and a placeholder needs the room its designer left for them.
+   * Absent where the app cannot lay the HTML out; then a placeholder is as tall as its sample.
+   */
+  measure?: (html: string, deck: Deck) => Promise<DrawnBox[]>;
   /** The words a text placeholder shows when its layout carries no sample: a role, in a language. */
   sampleText?: (role: PlaceholderRole, lang: string) => string | undefined;
   /** Keeps a draft as a personal template under a name; returns the id it has in the library. */
@@ -107,7 +114,7 @@ export function createTemplateService(source: TemplateSource): TemplateService {
     create: async (deck, { name, theme: tokens, layouts, basedOn }) => {
       const { drafting } = source;
       if (!drafting) return notBuilt('Drafting a template', 'it needs the HTML conversion');
-      const { drafts, conversion, lint, capture, sampleText } = drafting;
+      const { drafts, conversion, lint, capture, sampleText, measure } = drafting;
 
       const earlier = basedOn ? drafts.get(basedOn) : undefined;
       const base = earlier?.template ?? (basedOn ? find(basedOn) : undefined);
@@ -140,10 +147,13 @@ export function createTemplateService(source: TemplateSource): TemplateService {
           name: layout.name,
         });
         for (const asset of result.assets) assets[asset.id] = asset;
+        // A measurement that fails costs the placeholders their height, not the draft.
+        const boxes = await measure?.(layout.html, scratch).catch(() => undefined);
         drawn.push({
           name: layout.name,
           archetype: layout.archetype as DrawnLayout['archetype'],
           slide: result.slide,
+          ...(boxes ? { boxes } : {}),
         });
         editability.set(layout.name, result.editability);
         notes.push(...result.notes.map((note) => `Layout "${layout.name}": ${note}`));

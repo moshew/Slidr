@@ -320,6 +320,16 @@ describe('drafting a template (WG7-T11a)', () => {
             renderContactSheet: (_deck, slideIds) =>
               Promise.resolve({ mimeType: 'image/png', data: `sheet-of-${slideIds.length}` }),
           },
+          // The room the designer left in each card, which the converted text does not show.
+          measure: (html) =>
+            Promise.resolve(
+              html === 'cards'
+                ? [0, 1, 2].map((i) => ({
+                    role: 'body',
+                    frame: { x: 96 + i * 592, y: 320, w: 544, h: 520 },
+                  }))
+                : [],
+            ),
           sampleText: (role) => (role === 'title' ? 'Title' : undefined),
           save: (draft, request) => {
             saved.push({ id: draft.id, ...request });
@@ -388,6 +398,10 @@ describe('drafting a template (WG7-T11a)', () => {
     expect(draft.template.layouts[0]!.decorations.map((d) => d.role)).toEqual([undefined, 'logo']);
     expect(Object.keys(draft.template.assets ?? {})).toEqual([PHOTO.id]);
     expect(draft.sample.slides.map((slide) => slide.name)).toEqual(['Opening', 'Cards']);
+    // A placeholder is as tall as the box it was drawn in, not as its one line of sample.
+    expect(draft.template.layouts[1]!.placeholders.map((p) => p.frame.h)).toEqual([
+      120, 520, 520, 520,
+    ]);
     const [title] = draft.sample.slides[0]!.elements;
     expect(title?.type === 'text' && plainText(title.content)).toBe('The year ahead');
   });

@@ -17,7 +17,14 @@ import {
   type Paragraph,
   type Slide,
 } from '@slidr/model';
-import { applyTemplate, deckFromTemplate } from '@slidr/templates';
+import { actionMessage, type ActionId, type ActionParams } from '@slidr/prompts';
+import {
+  applyTemplate,
+  deckFromTemplate,
+  sampleDeckOf,
+  type Draft,
+  type Template,
+} from '@slidr/templates';
 import { invoke } from '@tauri-apps/api/core';
 import { appDataDir } from '@tauri-apps/api/path';
 import type { AgentSettings } from '../src/agent/agentService';
@@ -26,7 +33,8 @@ import { agentOf } from '../src/ai/runtime';
 import { captureSlide } from '../src/capture/client';
 import { createLintService } from '../src/lint/deckLint';
 import { newDeck, syncFileState, type Editor } from '../src/shell/editor';
-import { library } from '../src/templates/app';
+import { i18n } from '../src/i18n';
+import { drafts, library } from '../src/templates/app';
 import { scoreRequest, toolRecord, type RequestScore, type ToolRecord } from './metrics';
 
 export interface PrepareOptions {
@@ -283,7 +291,127 @@ export async function close(): Promise<void> {
   await editor().document?.close();
 }
 
-const api = { dataDir, prepare, send, stop, status, collect, png, save, close };
+/** What the lint says of one layout of a template, filled, in one language. */
+export interface LayoutCheck {
+  /** `sample`: what the layouts were drawn with. `generic`: the app's own words for each role. */
+  content: 'sample' | 'generic';
+  lang: 'he' | 'en';
+  layout: string;
+  rule: string;
+  severity: LintFinding['severity'];
+  message: string;
+}
+
+/**
+ * Every layout of a template through the real lint, in Hebrew (right-to-left) and in English
+ * (left-to-right): the acceptance criterion of a template (WG7), for one the agent made. The
+ * layouts are filled twice: with the sample they were drawn with, and with the app's short
+ * words for each role in the language of the deck.
+ */
+async function checkTemplate(template: Template, fills: Draft['fills']): Promise<LayoutCheck[]> {
+  const { bus, assets } = editor();
+  const lint = createLintService((asset) => assets.url(asset));
+  const found: LayoutCheck[] = [];
+  for (const content of ['sample', 'generic'] as const) {
+    for (const [lang, dir] of [
+      ['he', 'rtl'],
+      ['en', 'ltr'],
+    ] as const) {
+      const deck = sampleDeckOf(template, content === 'sample' ? fills : {}, {
+        dir,
+        lang,
+        assets: bus.deck.assets,
+        fallback: (role) => {
+          const key = `templates:sample.${role}`;
+          return i18n.exists(key) ? i18n.t(key, { lng: lang }) : undefined;
+        },
+      });
+      const names = new Map(deck.slides.map((slide) => [slide.id, slide.name ?? slide.id]));
+      for (const finding of await lint.lint(deck, [...names.keys()], 'all')) {
+        found.push({
+          content,
+          lang,
+          layout: names.get(finding.slideId) ?? finding.slideId,
+          rule: finding.rule,
+          severity: finding.severity,
+          message: finding.message,
+        });
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * The template the agent drafted last (the one the chat shows, or the latest), with what the
+ * lint says of each of its layouts in both languages. Null when nothing was drafted.
+ */
+export async function draftReport() {
+  const { drafts: all, shown } = drafts.state.getState();
+  const draft = all.find((d) => d.id === shown) ?? all.at(-1);
+  if (!draft) return null;
+  return {
+    id: draft.id,
+    drafts: all.length,
+    savedAs: draft.savedAs ?? null,
+    name: draft.template.theme.name,
+    dir: draft.template.dir,
+    theme: draft.template.theme,
+    layouts: draft.layouts,
+    findings: draft.findings,
+    notes: draft.notes,
+    checks: await checkTemplate(draft.template, draft.fills),
+  };
+}
+
+/** The personal templates of the library, as the user's Templates panel lists them. */
+export function personalTemplates(): { id: string; name: string; layouts: number }[] {
+  return library.state.getState().personal.map((template) => ({
+    id: template.theme.id,
+    name: template.theme.name,
+    layouts: template.layouts.length,
+  }));
+}
+
+/** A file to send with a message, as the runner hands it over: its bytes in base64. */
+export interface SentFile {
+  name: string;
+  mime: string;
+  base64: string;
+  use?: string;
+}
+
+/**
+ * Sends an action of the deck tool as its panel sends it, with the files of its form. For a
+ * runner that cannot answer the file dialog of the real window.
+ */
+export function sendAction(id: ActionId, params: ActionParams, files: readonly SentFile[]): void {
+  const attachments = files.map(({ name, mime, base64, use }) => ({
+    name,
+    mime,
+    bytes: Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)),
+    ...(use ? { use } : {}),
+  }));
+  void thread().send(actionMessage({ action: id, params, replyIn: 'Hebrew' }), {
+    action: { id },
+    ...(attachments.length > 0 ? { attachments } : {}),
+  });
+}
+
+const api = {
+  dataDir,
+  prepare,
+  send,
+  stop,
+  status,
+  collect,
+  png,
+  save,
+  close,
+  draftReport,
+  personalTemplates,
+  sendAction,
+};
 
 declare global {
   interface Window {
