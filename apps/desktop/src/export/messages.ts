@@ -1,0 +1,118 @@
+/**
+ * The strings of the export dialog. English has the same keys (`registerMessages` checks). A
+ * count has a string for one and a string for more, chosen by the code (`counted`): Hebrew has a
+ * form for two as well, and "2 שקפים" reads right without one.
+ */
+export const he = {
+  title: 'ייצוא ל-HTML',
+  description: 'קובץ אחד שמתנגן בכל דפדפן, גם בלי אינטרנט.',
+  close: 'סגירה',
+  cancel: 'ביטול',
+  export: 'ייצוא',
+  again: 'ייצוא נוסף',
+  filter: 'דף HTML',
+  slides: {
+    label: 'שקפים',
+    all: 'כל המצגת',
+    range: 'טווח',
+    from: 'משקף',
+    to: 'עד שקף',
+    countOne: 'ייוצא שקף אחד.',
+    countMany: 'ייוצאו {{n}} שקפים.',
+    hiddenOne: 'שקף מוסתר אחד לא ייכלל.',
+    hiddenMany: '{{n}} שקפים מוסתרים לא ייכללו.',
+    none: 'אין שקפים לייצא בטווח הזה.',
+  },
+  animations: {
+    label: 'אנימציות ומעברים',
+    with: 'כלולים',
+    without: 'בלי',
+    withoutHint: 'כל שקף יוצג שלם, והמעבר לשקף הבא יהיה מיידי.',
+  },
+  working: 'מייצא את המצגת…',
+  done: {
+    saved: 'הקובץ נשמר',
+    downloaded: 'הקובץ ירד למחשב',
+    slidesOne: 'שקף אחד',
+    slidesMany: '{{n}} שקפים',
+    seconds: '{{n}} שניות',
+    assets: 'נכסים בקובץ',
+    noAssets: 'אין בקובץ תמונות או מדיה.',
+    fonts: 'גופנים בקובץ',
+    noFonts: 'אין בקובץ גופנים: הטקסט יוצג בגופני המחשב שיפתח אותו.',
+    fontsOne: 'גופן אחד, {{size}} במקום {{original}}',
+    fontsMany: '{{n}} גופנים, {{size}} במקום {{original}}',
+    asset: 'נכס',
+    original: 'במצגת',
+    embedded: 'בקובץ',
+    warnings: 'לתשומת לבכם',
+  },
+  warning: {
+    assetUnreadable: 'הנכס {{name}} לא נקרא, והוא חסר בקובץ.',
+    fontWhole: 'הגופן {{name}} נכנס לקובץ במלואו.',
+    fontUnreadable: 'הגופן {{name}} לא נקרא, והוא חסר בקובץ.',
+    noShadowRoots: 'הדפדפן הזה לא יודע לכתוב אובייקטי HTML: התוכן שלהם חסר בקובץ.',
+  },
+  failed: {
+    title: 'הייצוא נכשל',
+    save: 'הקובץ לא נשמר',
+  },
+};
+
+export const en: typeof he = {
+  title: 'Export to HTML',
+  description: 'One file that plays in any browser, with or without the internet.',
+  close: 'Close',
+  cancel: 'Cancel',
+  export: 'Export',
+  again: 'Export again',
+  filter: 'HTML page',
+  slides: {
+    label: 'Slides',
+    all: 'The whole deck',
+    range: 'A range',
+    from: 'From slide',
+    to: 'to slide',
+    countOne: 'One slide will be exported.',
+    countMany: '{{n}} slides will be exported.',
+    hiddenOne: 'One hidden slide is left out.',
+    hiddenMany: '{{n}} hidden slides are left out.',
+    none: 'There are no slides to export in this range.',
+  },
+  animations: {
+    label: 'Animations and transitions',
+    with: 'Included',
+    without: 'Without',
+    withoutHint: 'Every slide is shown whole, and the next one comes at once.',
+  },
+  working: 'Exporting the deck…',
+  done: {
+    saved: 'The file was saved',
+    downloaded: 'The file was downloaded',
+    slidesOne: 'One slide',
+    slidesMany: '{{n}} slides',
+    seconds: '{{n}} seconds',
+    assets: 'Assets in the file',
+    noAssets: 'The file has no pictures or media.',
+    fonts: 'Fonts in the file',
+    noFonts:
+      'The file has no fonts: its text will be shown in the fonts of the computer that opens it.',
+    fontsOne: 'One font, {{size}} instead of {{original}}',
+    fontsMany: '{{n}} fonts, {{size}} instead of {{original}}',
+    asset: 'Asset',
+    original: 'In the deck',
+    embedded: 'In the file',
+    warnings: 'Worth knowing',
+  },
+  warning: {
+    assetUnreadable: 'The asset {{name}} could not be read, and is missing from the file.',
+    fontWhole: 'The font {{name}} went into the file whole.',
+    fontUnreadable: 'The font {{name}} could not be read, and is missing from the file.',
+    noShadowRoots:
+      'This browser cannot write HTML objects: their content is missing from the file.',
+  },
+  failed: {
+    title: 'The export failed',
+    save: 'The file was not saved',
+  },
+};
