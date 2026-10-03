@@ -7,6 +7,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['packages/*/src/**/*.browser.test.{ts,tsx}', 'apps/*/src/**/*.browser.test.{ts,tsx}'],
+    // These tests take screenshots, and the files run side by side in one browser: a test that
+    // takes 8 seconds alone ran past the default 15 when the suite grew and the machine was busy.
+    testTimeout: 60_000,
     browser: {
       enabled: true,
       headless: true,
