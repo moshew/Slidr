@@ -1000,14 +1000,15 @@ export class ChatThread {
     session: Session,
     event: Extract<AgentEvent, { type: 'turn_completed' }>,
   ): Promise<void> {
+    // The turn failed on a conversation that cannot be resumed: `exited` follows, and the
+    // message is sent again in a fresh session. The attempt ran nothing, and what it reports
+    // (no cost at all) is not the turn's.
+    if (run.startOver && event.outcome === 'failed') return;
     run.usage = addUsage(run.usage, event.usage);
     run.durationMs += event.durationMs;
     run.costUsd =
       run.costUsd === null || event.costUsd === null ? null : run.costUsd + event.costUsd;
     this.#spent(event.costUsd);
-    // The turn failed on a conversation that cannot be resumed: `exited` follows, and the
-    // message is sent again in a fresh session.
-    if (run.startOver && event.outcome === 'failed') return;
     if (event.outcome !== 'completed' || run.stopRequested) {
       this.#finish(run, run.stopRequested ? 'interrupted' : event.outcome);
       return;

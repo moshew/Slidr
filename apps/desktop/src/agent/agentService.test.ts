@@ -360,6 +360,8 @@ describe('the transcript', () => {
     expect(seen.sends.map((s) => s.text)).toEqual(['היי', 'היי']);
     expect(entry).toMatchObject({ outcome: 'completed', parts: [{ type: 'text', text: 'שלום.' }] });
     expect(entry.problem).toBeUndefined();
+    // The attempt that could not resume is not part of the turn: its cost is the fresh one's.
+    expect(entry.costUsd).toBe(0.01);
     const index = JSON.parse(transcripts.files.get('threads.json') ?? '{}') as {
       threads: Record<string, { nativeSessionId: string }>;
     };
