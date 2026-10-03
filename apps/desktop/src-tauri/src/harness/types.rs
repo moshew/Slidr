@@ -137,7 +137,8 @@ pub struct ToolEndpoint {
 pub struct SessionConfig {
     #[allow(
         dead_code,
-        reason = "read by the scope guard behind the tool endpoint (WG10-T06)"
+        reason = "part of the contract; the webview acts on it (prompt modules, the Deck API's \
+                  scope guard), no harness does yet"
     )]
     pub scope: Scope,
     /// Assembled from the prompt modules (SPEC 11.6). Replaces the harness's own prompt.

@@ -906,11 +906,14 @@ fn text(value: &Value) -> String {
 /// A tool result as short text: its text parts, `[image]` for images.
 fn summarize(content: &Value) -> String {
     let full = match content {
-        Value::String(text) => text.clone(),
+        Value::String(text) => without_image_paths(text),
         Value::Array(parts) => parts
             .iter()
             .filter_map(|part| match part["type"].as_str() {
-                Some("text") => part["text"].as_str().map(str::to_owned),
+                Some("text") => part["text"]
+                    .as_str()
+                    .map(without_image_paths)
+                    .filter(|text| !text.is_empty()),
                 Some("image") => Some("[image]".to_owned()),
                 _ => None,
             })
@@ -924,6 +927,16 @@ fn summarize(content: &Value) -> String {
     } else {
         full.chars().take(SUMMARY_CHARS).chain(['…']).collect()
     }
+}
+
+/// The CLI saves every image a tool returns and adds a line with the file's path, which holds
+/// the user's name. The summary goes to the chat and to the saved transcript, so the line is
+/// dropped.
+fn without_image_paths(text: &str) -> String {
+    text.lines()
+        .filter(|line| !(line.starts_with("[Image: source: ") && line.ends_with(']')))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -1191,6 +1204,21 @@ mod tests {
             summarize(&json!([{ "type": "text", "text": "ok" }, { "type": "image" }])),
             "ok\n[image]"
         );
+    }
+
+    /// The shape recorded from the CLI (2.1.287) for a tool result with a picture.
+    #[test]
+    fn summaries_leave_out_where_the_cli_saved_an_image() {
+        let path = r"[Image: source: C:\Users\someone\.claude\projects\s\tool-results\blob.png]";
+        assert_eq!(
+            summarize(&json!([
+                { "type": "text", "text": "{\"ok\":true}" },
+                { "type": "image" },
+                { "type": "text", "text": path },
+            ])),
+            "{\"ok\":true}\n[image]"
+        );
+        assert_eq!(summarize(&json!(format!("done\n{path}"))), "done");
     }
 
     /// Recorded: `--resume` with an id the CLI does not have. It answers before any message,
@@ -1649,6 +1677,169 @@ mod tests {
         ));
         assert_eq!(manager.native_session_id(&id).await?, Some(native));
         manager.close(&id).await?;
+        Ok(())
+    }
+
+    /// The real CLI with the app's tools, on the owner's subscription: a session whose tool
+    /// endpoint is the bridge, and one tool that a closure answers in place of the webview. What
+    /// ADR-002 warns about is what it checks: the CLI lists the tools (no `tools_unavailable`),
+    /// the model calls one, the call arrives under the session's key and the tool's own name,
+    /// and the answer the model reads, text and picture, is the one that went back through the
+    /// bridge. Haiku, about a cent.
+    /// Run: `cargo test -p slidr real_cli_calls_a_tool -- --ignored --nocapture`.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "runs the real Claude Code CLI on the owner's subscription"]
+    async fn real_cli_calls_a_tool_through_the_bridge() -> TestResult {
+        use crate::tool_bridge::{Content, ToolBridge, ToolCall, ToolDef, ToolReply};
+
+        // A word the model cannot know without the tool's answer.
+        const CODE_WORD: &str = "HERON-4821";
+        /// The app's 32 px icon, base64: a picture for the answer to carry.
+        const PICTURE: &str = include_str!("claude_code/icon-32.png.b64");
+
+        let bridge = ToolBridge::new();
+        let webview = Arc::downgrade(&bridge);
+        let calls = Arc::new(Mutex::new(Vec::<ToolCall>::new()));
+        let received = Arc::clone(&calls);
+        bridge.connect(move |call| {
+            let reply = ToolReply {
+                content: vec![
+                    Content::Text {
+                        text: json!({ "codeWord": CODE_WORD, "deck": call.input["deck"] })
+                            .to_string(),
+                    },
+                    Content::Image {
+                        data: PICTURE.trim().to_owned(),
+                        mime_type: "image/png".into(),
+                    },
+                ],
+                is_error: false,
+            };
+            let answered = webview
+                .upgrade()
+                .is_some_and(|bridge| bridge.reply(&call.call_id, reply));
+            lock(&received).push(call);
+            answered
+        });
+        let tool: ToolDef = serde_json::from_value(json!({
+            "name": "deck_code_word",
+            "description": "Returns the code word of a deck.",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "deck": { "type": "string", "description": "The deck's name." } },
+                "required": ["deck"]
+            }
+        }))?;
+        let endpoint = bridge.open(vec![tool]).await?;
+
+        let root = tempfile::tempdir()?;
+        let manager =
+            HarnessManager::new(root.path().into(), vec![Arc::new(ClaudeCodeHarness::new())]);
+        let mut config = SessionConfig::new(
+            Scope::Deck,
+            "You are a terse test agent. Follow instructions exactly.",
+            PathBuf::new(),
+        );
+        config.model = Some("haiku".into());
+        config.web_access = false;
+        config.tool_endpoint = Some(ToolEndpoint {
+            url: endpoint.url.clone(),
+            token: endpoint.token.clone(),
+        });
+        let (sender, mut events) = tokio::sync::mpsc::unbounded_channel();
+        let id = manager
+            .start("claude-code", "real/bridge", config, move |event| {
+                println!("  {}", serde_json::to_string(&event).unwrap_or_default());
+                let _ = sender.send((Instant::now(), event));
+            })
+            .await?;
+        // The adapter pointed the CLI at the bridge under the server name its tool prefix names.
+        let written: Value = serde_json::from_str(&std::fs::read_to_string(
+            root.path().join("real").join("bridge").join("mcp.json"),
+        )?)?;
+        assert_eq!(written["mcpServers"][TOOL_SERVER]["url"], endpoint.url);
+
+        manager
+            .send(
+                &id,
+                UserTurn::text(
+                    "Call the deck_code_word tool with deck set to \"plan\". Then reply with \
+                     exactly the code word it returned and nothing else.",
+                ),
+            )
+            .await?;
+        let mut seen = Vec::new();
+        loop {
+            let (at, event) = timeout(Duration::from_secs(120), events.recv())
+                .await?
+                .ok_or("the event stream ended")?;
+            let end = matches!(event, AgentEvent::TurnCompleted { .. });
+            seen.push((at, event));
+            if end {
+                break;
+            }
+        }
+        manager.close(&id).await?;
+
+        let errors: Vec<&AgentEvent> = seen
+            .iter()
+            .map(|(_, event)| event)
+            .filter(|event| matches!(event, AgentEvent::Error { .. }))
+            .collect();
+        assert!(errors.is_empty(), "{errors:?}");
+        let started = seen.iter().find_map(|(at, event)| match event {
+            AgentEvent::ToolCallStarted {
+                id,
+                name,
+                source: ToolSource::App,
+                input,
+            } if name == "deck_code_word" => Some((*at, id.clone(), input.clone())),
+            _ => None,
+        });
+        let (called_at, call_id, input) = started.ok_or("the model did not call the tool")?;
+        assert_eq!(input["deck"], "plan");
+        let finished = seen.iter().find_map(|(at, event)| match event {
+            AgentEvent::ToolCallFinished { id, ok, summary } if *id == call_id => {
+                Some((*at, *ok, summary.clone()))
+            }
+            _ => None,
+        });
+        let (answered_at, ok, summary) = finished.ok_or("the call did not finish")?;
+        println!(
+            "tool call as the CLI's stream shows it: {:?} from the call to its result",
+            answered_at.duration_since(called_at)
+        );
+        assert!(ok && summary.contains(CODE_WORD), "{summary}");
+        // The picture arrived. The CLI saves it under its own folder and adds a line that says
+        // where (ADR-002 finding 4), so the picture is not the last part.
+        assert!(summary.contains("\n[image]"), "{summary}");
+
+        // It went through the bridge: once, under the session's key and the tool's own name.
+        let calls = lock(&calls);
+        assert_eq!(calls.len(), 1, "{calls:?}");
+        assert_eq!(calls[0].session_key, endpoint.session_key);
+        assert_eq!(calls[0].name, "deck_code_word");
+        assert_eq!(calls[0].input["deck"], "plan");
+
+        let reply: String = seen
+            .iter()
+            .filter_map(|(_, event)| match event {
+                AgentEvent::TextDelta { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(reply.contains(CODE_WORD), "{reply}");
+        match seen.last() {
+            Some((
+                _,
+                AgentEvent::TurnCompleted {
+                    outcome: TurnOutcome::Completed,
+                    cost_usd,
+                    ..
+                },
+            )) => println!("cost: {cost_usd:?} USD"),
+            other => return Err(format!("the turn did not complete: {other:?}").into()),
+        }
         Ok(())
     }
 

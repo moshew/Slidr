@@ -104,5 +104,46 @@
       "context": "<slidr_context>scope: slide</slidr_context>",
       "images": [{ "mediaType": "image/png", "data": "iVBORw0KGgo=" }]
     }
-  ]
+  ],
+  "toolBridge": {
+    "tools": [
+      {
+        "name": "slide_get",
+        "description": "The full model of one slide.",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "slideId": { "type": "string" } },
+          "required": ["slideId"]
+        },
+        "scopes": ["deck", "slide", "object"],
+        "writes": false
+      },
+      {
+        "name": "image_generate",
+        "description": "Generates images from a prompt.",
+        "inputSchema": { "type": "object", "properties": { "prompt": { "type": "string" } } },
+        "timeoutMs": 300000
+      }
+    ],
+    "endpoint": { "sessionKey": "k", "url": "http://127.0.0.1:5000/t/k", "token": "secret" },
+    "call": {
+      "callId": "call_1",
+      "sessionKey": "k",
+      "name": "slide_get",
+      "input": { "slideId": "s_1" }
+    },
+    "replies": [
+      {
+        "content": [
+          { "type": "text", "text": "{\"id\":\"s_1\",\"name\":\"פתיחה\"}" },
+          { "type": "image", "data": "iVBORw0KGgo=", "mimeType": "image/png" }
+        ],
+        "isError": false
+      },
+      {
+        "content": [{ "type": "text", "text": "Slide \"s_9\" does not exist." }],
+        "isError": true
+      }
+    ]
+  }
 }

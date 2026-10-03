@@ -35,10 +35,15 @@ uuid = { version = "1", features = ["v4"] }
 percent-encoding = "2"
 # Agent harnesses: the CLI child process and its pipes, the session locks and turn state, the
 # interrupt and close timeouts, select!. Already in the tree through Tauri, whose runtime it is.
-tokio = { version = "1", features = ["process", "io-util", "sync", "time", "macros", "rt", "fs"] }
+tokio = { version = "1", features = ["process", "io-util", "sync", "time", "macros", "rt", "fs", "net"] }
 # `dyn AgentHarness` / `dyn AgentSession` with async methods; native async fn in traits is not
 # dyn-compatible yet. Its proc-macro dependencies are already in the tree through serde.
 async-trait = "0.1"
+# The tool bridge (ADR-002, ADR-022): the protocol, as a Streamable HTTP server. No macros and no
+# client; the tools are defined in the webview, not here.
+rmcp = { version = "3.5.0", default-features = false, features = ["server", "transport-streamable-http-server"] }
+# Serves the bridge on 127.0.0.1 and carries its auth layer. HTTP/1 only, no extractors.
+axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1"] }
 
 # Slide capture (ADR-003): Page.captureScreenshot through the WebView2 DevTools protocol. The
 # versions wry already uses, so nothing new is built; base64 decodes the PNG the protocol returns.

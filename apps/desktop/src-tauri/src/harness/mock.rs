@@ -15,18 +15,35 @@
 //! Each step is an [`AgentEvent`] in its IPC shape plus `delayMs`, the wait before it. The n-th
 //! `send` plays turn n, wrapping around after the last. Every turn ends with `turn_completed`;
 //! `session_started` and `exited` are the mock's own (the first `send`, and `close`). The model
-//! picked for the session is the script's name. Tool calls are only events: nothing executes them.
+//! picked for the session is the script's name.
+//!
+//! Tool calls are only events, and nothing executes them, unless the step says `"call": true`:
+//!
+//! ```json
+//! { "delayMs": 200, "type": "tool_call_started", "id": "t1", "name": "text_set",
+//!   "input": { "elementId": "e_1", "markdown": "Shorter" }, "call": true }
+//! ```
+//!
+//! Such a step is carried out. The mock calls the tool through the session's tool endpoint as a
+//! real agent would, waits for the answer, and emits the call's `tool_call_finished` from it;
+//! the script holds none for that id. This is how a scripted turn changes the deck.
 
 use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use serde::Deserialize;
+use serde_json::Value;
 use tokio::{sync::oneshot, task::JoinHandle, time::Instant};
 
 use super::{
     AgentError, AgentEvent, AgentHarness, AgentSession, Capabilities, EventSink, HarnessDescriptor,
-    HarnessState, HarnessStatus, ModelOption, Result, SessionConfig, TurnOutcome, Usage, UserTurn,
+    HarnessState, HarnessStatus, ModelOption, Result, SessionConfig, ToolEndpoint, ToolSource,
+    TurnOutcome, Usage, UserTurn,
 };
+use crate::tool_bridge::{self, Content};
+
+/// Length of a carried-out call's summary, in characters: what the real adapters keep.
+const SUMMARY_CHARS: usize = 300;
 
 /// The scripts built into the app, by name.
 const BUILTIN: [(&str, &str); 3] = [
@@ -53,12 +70,16 @@ pub struct Script {
 struct Step {
     #[serde(default)]
     delay_ms: u64,
+    /// On a `tool_call_started` of an app tool: make the call for real.
+    #[serde(default)]
+    call: bool,
     #[serde(flatten)]
     event: AgentEvent,
 }
 
 impl Script {
-    /// Parses and checks a script: at least one turn, each ending in its only `turn_completed`.
+    /// Parses and checks a script: at least one turn, each ending in its only `turn_completed`;
+    /// a carried-out call is an app tool's `tool_call_started` with no scripted result.
     pub fn parse(json: &str) -> std::result::Result<Self, String> {
         let script: Self = serde_json::from_str(json).map_err(|e| e.to_string())?;
         if script.turns.is_empty() {
@@ -85,8 +106,68 @@ impl Script {
                      session_started or exited"
                 ));
             }
+            for step in turn.iter().filter(|s| s.call) {
+                let AgentEvent::ToolCallStarted {
+                    id,
+                    source: ToolSource::App,
+                    ..
+                } = &step.event
+                else {
+                    return Err(format!(
+                        "turn {index}: only a tool_call_started of an app tool can be carried \
+                         out (\"call\": true)"
+                    ));
+                };
+                let scripted = turn.iter().any(|s| {
+                    matches!(&s.event, AgentEvent::ToolCallFinished { id: done, .. } if done == id)
+                });
+                if scripted {
+                    return Err(format!(
+                        "turn {index}: call {id} is carried out, so its tool_call_finished comes \
+                         from the tool and not from the script"
+                    ));
+                }
+            }
         }
         Ok(script)
+    }
+}
+
+/// Carries out a scripted call through the session's tool endpoint, and reports how it went as
+/// the call's `tool_call_finished`.
+async fn carry_out(
+    endpoint: Option<&ToolEndpoint>,
+    id: &str,
+    name: &str,
+    input: &Value,
+) -> AgentEvent {
+    let reply = match endpoint {
+        Some(endpoint) => tool_bridge::call_tool(&endpoint.url, &endpoint.token, name, input).await,
+        None => Err("the session has no tool endpoint".to_owned()),
+    };
+    let (ok, summary) = match reply {
+        Ok(reply) => {
+            let parts: Vec<&str> = reply
+                .content
+                .iter()
+                .map(|part| match part {
+                    Content::Text { text } => text.as_str(),
+                    Content::Image { .. } => "[image]",
+                })
+                .collect();
+            (!reply.is_error, parts.join("\n"))
+        }
+        Err(message) => (false, message),
+    };
+    let summary = if summary.chars().count() <= SUMMARY_CHARS {
+        summary
+    } else {
+        summary.chars().take(SUMMARY_CHARS).chain(['…']).collect()
+    };
+    AgentEvent::ToolCallFinished {
+        id: id.to_owned(),
+        ok,
+        summary,
     }
 }
 
@@ -171,6 +252,7 @@ impl AgentHarness for MockHarness {
             native_id: config
                 .resume
                 .unwrap_or_else(|| format!("mock-{}", uuid::Uuid::new_v4().simple())),
+            tool_endpoint: config.tool_endpoint,
             sink,
             started: false,
             next_turn: 0,
@@ -183,6 +265,8 @@ struct MockSession {
     script: Arc<Script>,
     model: String,
     native_id: String,
+    /// Where carried-out calls go.
+    tool_endpoint: Option<ToolEndpoint>,
     sink: EventSink,
     started: bool,
     next_turn: usize,
@@ -225,28 +309,37 @@ impl AgentSession for MockSession {
         self.next_turn += 1;
         let script = Arc::clone(&self.script);
         let sink = self.sink.clone();
-        let (stop, mut stopped) = oneshot::channel::<()>();
+        let endpoint = self.tool_endpoint.clone();
+        let (stop, stopped) = oneshot::channel::<()>();
         let task = tokio::spawn(async move {
             let began = Instant::now();
-            for step in script.turns.get(index).into_iter().flatten() {
-                tokio::select! {
-                    biased;
-                    _ = &mut stopped => {
-                        // What a real harness emits for an interrupted turn: no more output, then
-                        // the turn's end with nothing billed for it.
-                        sink.emit(AgentEvent::TurnCompleted {
-                            outcome: TurnOutcome::Interrupted,
-                            usage: Usage::default(),
-                            cost_usd: Some(0.0),
-                            duration_ms: u64::try_from(began.elapsed().as_millis())
-                                .unwrap_or(u64::MAX),
-                        });
-                        return;
-                    }
-                    () = tokio::time::sleep(Duration::from_millis(step.delay_ms)) => {
-                        sink.emit(step.event.clone());
+            let play = async {
+                for step in script.turns.get(index).into_iter().flatten() {
+                    tokio::time::sleep(Duration::from_millis(step.delay_ms)).await;
+                    sink.emit(step.event.clone());
+                    if let AgentEvent::ToolCallStarted {
+                        id, name, input, ..
+                    } = &step.event
+                        && step.call
+                    {
+                        sink.emit(carry_out(endpoint.as_ref(), id, name, input).await);
                     }
                 }
+            };
+            tokio::select! {
+                biased;
+                _ = stopped => {
+                    // What a real harness emits for an interrupted turn: no more output, then
+                    // the turn's end with nothing billed for it.
+                    sink.emit(AgentEvent::TurnCompleted {
+                        outcome: TurnOutcome::Interrupted,
+                        usage: Usage::default(),
+                        cost_usd: Some(0.0),
+                        duration_ms: u64::try_from(began.elapsed().as_millis())
+                            .unwrap_or(u64::MAX),
+                    });
+                }
+                () = play => {}
             }
         });
         self.player = Some(Player { stop, task });
@@ -299,6 +392,17 @@ mod tests {
                 { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
             r#"{ "description": "", "turns": [[ { "type": "no_such_event" } ]] }"#,
             r#"{ "description": "", "turns": [], "extra": 1 }"#,
+            // Only an app tool's call can be carried out, and then the script holds no result.
+            r#"{ "description": "", "turns": [[ { "type": "text_delta", "text": "x", "call": true },
+                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
+            r#"{ "description": "", "turns": [[
+                { "type": "tool_call_started", "id": "t", "name": "WebSearch", "source": "harness",
+                  "input": {}, "call": true },
+                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
+            r#"{ "description": "", "turns": [[
+                { "type": "tool_call_started", "id": "t", "name": "slide_get", "input": {}, "call": true },
+                { "type": "tool_call_finished", "id": "t", "ok": true, "summary": "scripted" },
+                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
         ];
         for json in bad {
             assert!(Script::parse(json).is_err(), "{json}");
@@ -393,5 +497,162 @@ mod tests {
         }
         assert_eq!(rest, [AgentEvent::Exited { code: Some(0) }]);
         Ok(())
+    }
+
+    /// A scripted turn whose calls are carried out: through the manager, the session's tool
+    /// endpoint and the bridge, to a closure standing in for the webview.
+    #[tokio::test]
+    async fn carries_out_scripted_calls_through_the_tool_bridge() -> TestResult {
+        use serde_json::json;
+
+        use crate::{
+            harness::HarnessManager,
+            tool_bridge::{ToolBridge, ToolDef, ToolReply},
+        };
+
+        let script = Script::parse(
+            &json!({
+                "description": "two calls that are carried out, one that is only an event",
+                "turns": [[
+                    { "delayMs": 5, "type": "tool_call_started", "id": "t1", "name": "text_set",
+                      "input": { "elementId": "e_1", "markdown": "קצר יותר" }, "call": true },
+                    { "delayMs": 5, "type": "tool_call_started", "id": "t2", "name": "slide_render",
+                      "input": { "slideId": "s_1" }, "call": true },
+                    { "delayMs": 5, "type": "tool_call_started", "id": "t3", "name": "slide_delete",
+                      "input": { "slideId": "s_1" }, "call": true },
+                    { "delayMs": 5, "type": "tool_call_started", "id": "t4", "name": "WebSearch",
+                      "source": "harness", "input": {} },
+                    { "delayMs": 5, "type": "tool_call_finished", "id": "t4", "ok": true,
+                      "summary": "scripted" },
+                    { "delayMs": 5, "type": "turn_completed", "outcome": "completed",
+                      "costUsd": 0.0, "durationMs": 30 }
+                ]]
+            })
+            .to_string(),
+        )?;
+
+        // The webview: `text_set` writes, `slide_render` returns a picture.
+        let bridge = ToolBridge::new();
+        let webview = Arc::downgrade(&bridge);
+        let calls = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let received = Arc::clone(&calls);
+        bridge.connect(move |call| {
+            let mut content = vec![Content::Text {
+                text: format!("{} {}", call.name, call.input),
+            }];
+            if call.name == "slide_render" {
+                content.push(Content::Image {
+                    data: "iVBORw0KGgo=".into(),
+                    mime_type: "image/png".into(),
+                });
+            }
+            let reply = ToolReply {
+                content,
+                is_error: false,
+            };
+            let answered = webview
+                .upgrade()
+                .is_some_and(|bridge| bridge.reply(&call.call_id, reply));
+            if let Ok(mut calls) = received.lock() {
+                calls.push(call);
+            }
+            answered
+        });
+        let tool = |name: &str| ToolDef {
+            name: name.into(),
+            description: String::new(),
+            input_schema: serde_json::Map::new(),
+            timeout_ms: None,
+        };
+        // A slide session: it has no `slide_delete`.
+        let endpoint = bridge
+            .open(vec![tool("text_set"), tool("slide_render")])
+            .await?;
+
+        let root = tempfile::tempdir()?;
+        let harness = MockHarness::new(vec![("scenario".to_owned(), script)]);
+        let manager = HarnessManager::new(root.path().into(), vec![Arc::new(harness)]);
+        let mut config = SessionConfig::new(Scope::Deck, "", PathBuf::new());
+        config.tool_endpoint = Some(ToolEndpoint {
+            url: endpoint.url.clone(),
+            token: endpoint.token.clone(),
+        });
+        let (sender, mut events) = tokio::sync::mpsc::unbounded_channel();
+        let id = manager
+            .start("mock", "deck/thread", config, move |event| {
+                let _ = sender.send(event);
+            })
+            .await?;
+        manager
+            .send(&id, UserTurn::text("Shorten the title"))
+            .await?;
+
+        let mut seen = Vec::new();
+        while let Some(event) = tokio::time::timeout(Duration::from_secs(10), events.recv()).await?
+        {
+            let end = matches!(event, AgentEvent::TurnCompleted { .. });
+            seen.push(event);
+            if end {
+                break;
+            }
+        }
+        let finished: Vec<(&str, bool, &str)> = seen
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::ToolCallFinished { id, ok, summary } => {
+                    Some((id.as_str(), *ok, summary.as_str()))
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            finished,
+            [
+                (
+                    "t1",
+                    true,
+                    r#"text_set {"elementId":"e_1","markdown":"קצר יותר"}"#
+                ),
+                ("t2", true, "slide_render {\"slideId\":\"s_1\"}\n[image]"),
+                (
+                    "t3",
+                    false,
+                    "There is no tool named \"slide_delete\" in this session."
+                ),
+                ("t4", true, "scripted"),
+            ]
+        );
+        // Each result follows its call, so the stream is the one a real agent produces.
+        assert_eq!(seen.len(), 10, "{seen:?}");
+        assert!(matches!(&seen[1], AgentEvent::ToolCallStarted { id, .. } if id == "t1"));
+        assert!(matches!(&seen[2], AgentEvent::ToolCallFinished { id, .. } if id == "t1"));
+        manager.close(&id).await?;
+        // The webview ran the two tools of the session, under the session's key.
+        let calls = calls.lock().map_err(|e| e.to_string())?;
+        let ran: Vec<(&str, &str)> = calls
+            .iter()
+            .map(|call| (call.session_key.as_str(), call.name.as_str()))
+            .collect();
+        assert_eq!(
+            ran,
+            [
+                (endpoint.session_key.as_str(), "text_set"),
+                (endpoint.session_key.as_str(), "slide_render")
+            ]
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn a_carried_out_call_without_a_tool_endpoint_fails() {
+        let finished = carry_out(None, "t1", "slide_get", &Value::Null).await;
+        assert_eq!(
+            finished,
+            AgentEvent::ToolCallFinished {
+                id: "t1".into(),
+                ok: false,
+                summary: "the session has no tool endpoint".into()
+            }
+        );
     }
 }

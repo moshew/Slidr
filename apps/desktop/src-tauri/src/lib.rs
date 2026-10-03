@@ -7,6 +7,10 @@ mod commands;
 mod error;
 mod harness;
 mod storage;
+// The tool bridge. Its folder is the one place that names the protocol it speaks to agents
+// (API-02); the rest of the crate knows it by what it does.
+#[path = "mcp_bridge/mod.rs"]
+mod tool_bridge;
 
 use std::sync::Arc;
 
@@ -25,6 +29,7 @@ pub fn run() {
                 root.join("agent"),
                 harness::builtin(),
             )));
+            app.manage(tool_bridge::ToolBridge::new());
             app.manage(Arc::new(storage::Storage::new(root)));
             app.manage(Arc::new(capture::CaptureService::new()));
             Ok(())
@@ -49,6 +54,10 @@ pub fn run() {
             harness::ipc::agent_send,
             harness::ipc::agent_interrupt,
             harness::ipc::agent_close,
+            tool_bridge::ipc::tool_bridge_connect,
+            tool_bridge::ipc::tool_bridge_open,
+            tool_bridge::ipc::tool_bridge_close,
+            tool_bridge::ipc::tool_bridge_reply,
             capture::capture_slide,
             capture::capture_page_loaded,
             capture::capture_ready,

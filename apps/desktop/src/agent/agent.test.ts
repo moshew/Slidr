@@ -150,8 +150,10 @@ describe('the IPC contract (src-tauri/src/harness/fixtures/contract.json)', () =
     for (const script of [importScript, slideChatScript, errorsScript]) {
       for (const turn of script.turns) {
         for (const step of turn) {
-          const { delayMs, ...event } = step as Record<string, unknown>;
+          // `call` marks a tool call the mock carries out; it is the script's, not the event's.
+          const { delayMs, call, ...event } = step as Record<string, unknown>;
           expect(typeof delayMs).toBe('number');
+          expect([undefined, true]).toContain(call);
           expectEvent(event, false);
         }
         expect(turn.at(-1)?.type).toBe('turn_completed');

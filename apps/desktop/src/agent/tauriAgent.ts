@@ -8,6 +8,13 @@ import {
   type HarnessDescriptor,
   type HarnessStatus,
 } from './agent';
+import {
+  toReply,
+  type BridgeCall,
+  type ToolBridge,
+  type ToolHandler,
+  type ToolReply,
+} from './toolBridge';
 
 const KINDS = new Set<string>(AGENT_ERROR_KINDS);
 
@@ -52,3 +59,43 @@ export const tauriAgent: AgentClient = {
     await call('agent_close', { sessionId });
   },
 };
+
+/**
+ * Connects this webview to the tool bridge (the `tool_bridge_*` commands): from now on `handler`
+ * runs every tool call of every session opened through the returned bridge, each under its
+ * session key. Calls run side by side; the bridge does not order them.
+ *
+ * Connect once, when the app starts. Connecting again takes the bridge over, as a reloaded page
+ * does: calls the earlier connection had not answered fail at once.
+ */
+export async function connectToolBridge(handler: ToolHandler): Promise<ToolBridge> {
+  const answer = async ({ callId, sessionKey, name, input }: BridgeCall) => {
+    let reply: ToolReply;
+    try {
+      reply = toReply(await handler(sessionKey, name, input));
+    } catch (error) {
+      // The Deck API never throws; whatever did is still an answer the agent can read.
+      const text = error instanceof Error ? error.message : String(error);
+      reply = { content: [{ type: 'text', text }], isError: true };
+    }
+    // Resolves `false` when the bridge no longer waits for this call (it timed out, its session
+    // closed, the agent gave it up). Either way there is nothing left to do with the reply.
+    await invoke('tool_bridge_reply', { callId, reply }).catch(() => undefined);
+  };
+  // One channel for all sessions: ordered, and only this webview receives it.
+  const onCall = new Channel<BridgeCall>((toolCall) => void answer(toolCall));
+  await call('tool_bridge_connect', { onCall });
+  return {
+    open: async (tools) => {
+      const { sessionKey, url, token } = await call<{
+        sessionKey: string;
+        url: string;
+        token: string;
+      }>('tool_bridge_open', { tools });
+      return { sessionKey, endpoint: { url, token } };
+    },
+    close: async (sessionKey) => {
+      await call('tool_bridge_close', { sessionKey });
+    },
+  };
+}
