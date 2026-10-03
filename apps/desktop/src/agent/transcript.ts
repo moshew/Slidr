@@ -60,12 +60,22 @@ export interface ChatProblem {
   message: string;
 }
 
+/** A button of an AI tool that the user pressed in place of typing (SPEC 4.3). */
+export interface EntryAction {
+  /** The id of the action's template (`@slidr/prompts`). */
+  id: string;
+  /** What the user chose in the action's form. */
+  params?: Record<string, string | number>;
+}
+
 export interface UserEntry {
   type: 'user';
   id: string;
   /** ISO time. */
   at: string;
   text: string;
+  /** The action the message stands for: the chat shows its name, and `text` is what was sent. */
+  action?: EntryAction;
 }
 
 /** Everything the agent did for one user message, the design check's rounds included. */

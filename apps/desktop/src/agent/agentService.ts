@@ -32,6 +32,7 @@ import {
   type AgentClient,
   type AgentEvent,
   type HarnessDescriptor,
+  type ImageAttachment,
   type Scope,
   type ToolSource,
   type TurnOutcome,
@@ -44,6 +45,7 @@ import type {
   AssistantPart,
   ChatEntry,
   ChatProblem,
+  EntryAction,
   GateReport,
   ThreadRecord,
   ToolPart,
@@ -82,7 +84,30 @@ export interface AgentServiceOptions {
   onSlideTouched?: (slideId: string) => void;
   /** The user stopped a turn: stop what its tools left running (image jobs). */
   onInterrupt?: () => void;
+  /**
+   * What a session is told about its subject beside the context block (AIS-01, AIO-01): the
+   * slide or the elements in full, and a picture of the slide. Asked before every user turn;
+   * null when the session has nothing new to hear. `fresh`: the conversation starts here, so
+   * the agent has not been told anything yet.
+   */
+  brief?: (scope: SessionScope, turn: { fresh: boolean }) => Promise<TurnBrief | null>;
   now?: () => Date;
+}
+
+/** What `brief` adds to a turn. */
+export interface TurnBrief {
+  /** Goes after the turn's context block. */
+  text: string;
+  /** For a harness that takes pictures; left out for one that does not. */
+  images: ImageAttachment[];
+}
+
+/** How a message was sent, when it was not typed. */
+export interface SendOptions {
+  /** The action the message stands for (SPEC 4.3): kept with the entry, for the chat to show. */
+  action?: EntryAction;
+  /** The turn's name in the undo history; the message's first line when absent. */
+  label?: string;
 }
 
 /** What the agent is doing right now (CHT-U03). */
@@ -199,6 +224,10 @@ interface Session {
   harnessId: string;
   /** The session has a tool that returns a picture of a slide. */
   canLook: boolean;
+  /** The harness takes pictures with a user turn. */
+  imageInput: boolean;
+  /** The conversation began with this session and no turn has been sent on it yet. */
+  fresh: boolean;
 }
 
 /** One user message being answered: the agent's turn and the design check's rounds after it. */
@@ -206,6 +235,8 @@ interface Run {
   entryId: string;
   /** What the turn was started with, to send again if the session has to start over. */
   message: string;
+  /** The turn's name in the undo history. */
+  label?: string;
   /** Every write of the run, follow-up rounds included, is this one transaction (D8). */
   turn: Turn | null;
   watch: TurnWatch;
@@ -312,13 +343,19 @@ export class ChatThread {
   }
 
   /** Sends a user message and starts the agent's turn. Ignored while a turn runs. */
-  async send(message: string): Promise<void> {
+  async send(message: string, options: SendOptions = {}): Promise<void> {
     const trimmed = message.trim();
     if (!trimmed || this.store.getState().busy) return;
-    const user: UserEntry = { type: 'user', id: entryId(), at: this.#now(), text: trimmed };
+    const user: UserEntry = {
+      type: 'user',
+      id: entryId(),
+      at: this.#now(),
+      text: trimmed,
+      ...(options.action ? { action: options.action } : {}),
+    };
     this.store.setState((state) => ({ entries: [...state.entries, user] }));
     this.#persist([user]);
-    await this.#begin(trimmed, new TurnWatch(), 0);
+    await this.#begin(trimmed, new TurnWatch(), 0, undefined, options.label);
   }
 
   /**
@@ -430,7 +467,13 @@ export class ChatThread {
   }
 
   /** Starts answering: a new assistant entry, a session if there is none, and the first turn. */
-  async #begin(message: string, watch: TurnWatch, round: number, first?: AssistantPart) {
+  async #begin(
+    message: string,
+    watch: TurnWatch,
+    round: number,
+    first?: AssistantPart,
+    label?: string,
+  ) {
     const entry: AssistantEntry = {
       type: 'assistant',
       id: entryId(),
@@ -440,6 +483,7 @@ export class ChatThread {
     const run: Run = {
       entryId: entry.id,
       message,
+      ...(label ? { label } : {}),
       turn: null,
       watch,
       round,
@@ -472,11 +516,19 @@ export class ChatThread {
         this.#finish(run, 'interrupted');
         return;
       }
-      const label = run.message.split('\n')[0]?.slice(0, 60);
+      const label = run.label ?? run.message.split('\n')[0]?.slice(0, 60);
       run.turn ??= startTurn(session.sessionKey, this.scope, label ? { label } : {});
+      // A brief that fails is a turn without one: the agent reads what it needs with its tools.
+      const brief = await this.#options
+        .brief?.(this.scope, { fresh: session.fresh })
+        .catch(() => null);
+      if (this.#run !== run) return;
+      session.fresh = false;
+      const context = this.#context(session);
       await this.#options.client.send(session.sessionId, {
         text: run.message,
-        context: this.#context(session),
+        context: brief ? `${context}\n${brief.text}` : context,
+        ...(brief && session.imageInput && brief.images.length > 0 ? { images: brief.images } : {}),
       });
       if (this.#run === run) this.store.setState({ activity: { kind: 'thinking' } });
     } catch (error) {
@@ -541,6 +593,8 @@ export class ChatThread {
       sessionKey,
       harnessId: harness.id,
       canLook: names.includes('slide_render'),
+      imageInput: harness.capabilities.imageInput,
+      fresh: !resume,
     });
     this.#service.digest.track(sessionKey);
     this.#session = session;
