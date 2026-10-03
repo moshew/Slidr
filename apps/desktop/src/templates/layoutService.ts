@@ -8,7 +8,7 @@ import type { Layout, PlaceholderRole } from '@slidr/model';
 import { createSlide, type LayoutContent, type RoleFill } from '@slidr/templates';
 
 /** The roles of a layout as the agent should read them: `title, body ×3, image`. */
-function describeRoles(layout: Layout): string {
+export function describeRoles(layout: Layout): string {
   const counts = new Map<PlaceholderRole, number>();
   for (const { role } of layout.placeholders) counts.set(role, (counts.get(role) ?? 0) + 1);
   if (counts.size === 0) return 'none';

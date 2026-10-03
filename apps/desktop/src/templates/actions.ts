@@ -28,6 +28,7 @@ import {
   type Template,
 } from '@slidr/templates';
 import type { Editor } from '../shell';
+import type { TemplateDrafts } from './drafts';
 import type { TemplateLibrary } from './library';
 import type { TemplateFile } from './store';
 
@@ -243,6 +244,37 @@ export async function templateFromDeck(
     (file): file is TemplateFile => file !== undefined,
   );
   return { template, files };
+}
+
+/**
+ * Keeps a drafted template as a personal template of the library, under a name (THM-06). The
+ * files of the assets its layouts draw are read from the open document, where the conversion of
+ * its layouts stored them. The deck is not changed. Returns the id the template has in the
+ * library; saving a draft that is already saved returns the id it got then.
+ */
+export async function saveDraft(
+  editor: Editor,
+  library: TemplateLibrary,
+  drafts: TemplateDrafts,
+  draftId: string,
+  request: { name: string; setDefault?: boolean },
+): Promise<string> {
+  const draft = drafts.get(draftId);
+  if (!draft) throw new Error(`"${draftId}" is not a draft.`);
+  if (draft.savedAs) return draft.savedAs;
+  const id = `personal_${ulid().toLowerCase()}`;
+  const template: Template = {
+    ...draft.template,
+    theme: { ...draft.template.theme, id, name: request.name },
+  };
+  const assets = Object.values(template.assets ?? {});
+  const files = (await Promise.all(assets.map((asset) => fileOf(editor, asset)))).filter(
+    (file): file is TemplateFile => file !== undefined,
+  );
+  await library.save(template, files);
+  if (request.setDefault) library.setDefault(id);
+  drafts.markSaved(draftId, id);
+  return id;
 }
 
 /**

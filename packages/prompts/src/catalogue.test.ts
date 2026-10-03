@@ -9,6 +9,7 @@ import { LANGUAGE } from './language';
 import { ROLE } from './role';
 import { SCOPE_MODULES } from './scope';
 import { systemPrompt } from './systemPrompt';
+import { TEMPLATE_GUIDE } from './template';
 import { TOOL_GUIDE } from './tools';
 
 /*
@@ -62,7 +63,11 @@ function named(text: string): string[] {
   return [...catalogue, ...PLANNED].filter((name) => new RegExp(`\\b${name}\\b`).test(text));
 }
 
-const parts: readonly Part[] = [...TOOL_GUIDE, ...Object.values(SCOPE_MODULES).flat()];
+const parts: readonly Part[] = [
+  ...TOOL_GUIDE,
+  ...Object.values(SCOPE_MODULES).flat(),
+  ...TEMPLATE_GUIDE,
+];
 const entries = parts.filter((part) => typeof part !== 'string');
 const sorted = (names: readonly string[]) => [...new Set(names)].sort();
 

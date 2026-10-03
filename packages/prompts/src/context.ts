@@ -15,6 +15,12 @@ export interface ContextInput {
   changes: ChangeSummary;
   /** The clock, for `today`: the prompt replaces the one that used to tell the agent the date. */
   now?: Date;
+  /**
+   * A deck session only: what the user set for a deck asked for by its subject alone (AID-03).
+   * `first`: an outline to approve before anything is built. `build`: build at once. The
+   * system prompt is frozen with the conversation, so a setting travels here.
+   */
+  outline?: 'first' | 'build';
 }
 
 /** Longest string the block carries (a title, a name); longer ones are cut. */
@@ -145,6 +151,7 @@ export function contextBlock(input: ContextInput): string {
   );
   line('selection', capped(selected));
   line('changed_since_last_turn', changed(changes));
+  if (input.outline) line('outline', input.outline);
 
   return ['<slidr_context>', ...lines, '</slidr_context>'].join('\n');
 }

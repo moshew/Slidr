@@ -33,6 +33,10 @@ export interface ActionParams {
   slideNumber?: number;
   /** The same slide, by id. */
   slideId?: string;
+  /** A web address the user gave as a source, e.g. the site a template should look like. */
+  url?: string;
+  /** The open deck itself is a source: a template is to be made from how it looks. */
+  fromDeck?: boolean;
 }
 
 export interface ActionDef {
@@ -90,6 +94,26 @@ export const ACTIONS = define({
     needs: ['deck_render_contact_sheet', 'slide_replace_from_html'],
     ask: () =>
       'Improve the design across the deck. Look at the whole deck on a contact sheet first, and judge it as a designer would: do the slides belong together, do neighbours differ, which slides are the weakest (text on an empty background, three slides of one kind in a row, a slide with no visual element)? Then redesign the few slides that would gain the most, keeping what each one says, and leave the good ones untouched. End with a line on what you changed and why.',
+  },
+
+  'template.create': {
+    scope: 'deck',
+    needs: ['template_create'],
+    ask: (p) => {
+      // The sources of THM-06, as the form gave them. Reading each is the agent's work.
+      const sources = [
+        ...(p.description ? ['the description in `description`'] : []),
+        ...(p.url ? ['the site at the address in `url`, which you read with your web tools'] : []),
+        ...(p.fromDeck ? ['the open deck: its theme, and how its slides look'] : []),
+      ];
+      return `Make a template${sources.length > 0 ? ` from ${sources.join('; ')}` : ''}. Files the user attached are listed with this message: one marked as the logo is the template's logo, to be drawn by the layouts; a picture is a reference for the look; an HTML file is a deck or a page whose design the template should follow. Read every source before you draw anything, then draft the template as the section on making a template describes, look at the sheet that comes back and fix what the design lint found. Nothing is saved: the app shows the draft to the user, who saves it or asks for changes. End with two or three lines on what you took from each source and what you chose where the sources were silent.`;
+    },
+  },
+  'outline.approve': {
+    scope: 'deck',
+    needs: ['slide_create_from_html'],
+    ask: () =>
+      'The user approved the outline you proposed. Build the deck from it now, slide by slide, as it stands.',
   },
 
   /* ---------------------------------------------------------------- the slide tool (AIS-02) */
@@ -226,6 +250,9 @@ export interface ActionMessageInput {
 
 /** A user's free text in an action's field: a sentence or two, not a page. */
 const MAX_DESCRIPTION = 600;
+/** The description of a template to make is a brief: a paragraph or three. */
+const MAX_BRIEF = 2000;
+const MAX_URL = 500;
 
 /**
  * The message of an action: one `<slidr_action>` block, sent as the turn's text in place of
@@ -237,8 +264,10 @@ export function actionMessage({ action, params = {}, replyIn }: ActionMessageInp
   if (params.slideId !== undefined) lines.push(`slideId: ${json(params.slideId)}`);
   if (params.description !== undefined) {
     // The limit of a bare string is asked for under the empty key.
-    lines.push(`description: ${json(params.description, { '': MAX_DESCRIPTION })}`);
+    const limit = action === 'template.create' ? MAX_BRIEF : MAX_DESCRIPTION;
+    lines.push(`description: ${json(params.description, { '': limit })}`);
   }
+  if (params.url !== undefined) lines.push(`url: ${json(params.url, { '': MAX_URL })}`);
   lines.push(`reply_in: ${json(replyIn)}`);
   return [
     `<${ACTION_TAG}>`,

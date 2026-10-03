@@ -5,6 +5,7 @@ import { HTML_CONVENTIONS } from './html';
 import { LANGUAGE } from './language';
 import { ROLE } from './role';
 import { SCOPE_MODULES } from './scope';
+import { TEMPLATE_GUIDE } from './template';
 import { TOOL_GUIDE } from './tools';
 
 export interface SystemPromptInput {
@@ -20,9 +21,13 @@ export interface SystemPromptInput {
 /** The tools that take a slide written as HTML. A session without one gets no conventions. */
 const HTML_TOOLS = ['slide_create_from_html', 'slide_replace_from_html'];
 
+/** The tool that drafts a template. A session without it is told nothing about making one. */
+const TEMPLATE_TOOL = 'template_create';
+
 /**
- * The system prompt of an agent session: the five modules of SPEC 11.6, in its order. It
- * replaces the harness's own prompt (ADR-001) and is the same for every harness.
+ * The system prompt of an agent session: the five modules of SPEC 11.6, in its order, and for
+ * a deck session that can draft a template, the module about making one. It replaces the
+ * harness's own prompt (ADR-001) and is the same for every harness.
  *
  * It depends on the kind of session and on its tools, and on nothing else: no ids, no names, no
  * date. The harness keeps the prompt of a conversation's first request and reuses it after a
@@ -38,6 +43,7 @@ export function systemPrompt({ scope, tools }: SystemPromptInput): string {
     render(TOOL_GUIDE, has),
     ...(HTML_TOOLS.some(has) ? [HTML_CONVENTIONS] : []),
     render(SCOPE_MODULES[scope], has),
+    ...(has(TEMPLATE_TOOL) ? [render(TEMPLATE_GUIDE, has)] : []),
     LANGUAGE,
   ].join('\n\n');
 }

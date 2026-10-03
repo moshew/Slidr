@@ -63,6 +63,7 @@ describe('the catalogue', () => {
       'deck_lint',
       'ui_present_options',
       'ui_navigate',
+      'outline_propose',
     ]);
   });
 
@@ -87,7 +88,7 @@ describe('the catalogue', () => {
 
   it('lists only the tools that need no service when there are none', () => {
     const bare = createDeckApi(new CommandBus(hebrewDeck()));
-    expect(bare.list().map((t) => t.name)).toHaveLength(18);
+    expect(bare.list().map((t) => t.name)).toHaveLength(19);
   });
 });
 
@@ -124,9 +125,10 @@ describe('tool definitions for a transport adapter', () => {
     expect(total).toBeLessThan(90_000);
   });
 
-  it('give the image tools more time than a call gets by default', () => {
+  it('give the image tools, and the drafting of a template, more time than a call gets by default', () => {
     const slow = listing.filter((t) => t.timeoutMs !== undefined);
     expect(slow.map((t) => [t.name, t.timeoutMs])).toEqual([
+      ['template_create', 180_000],
       ['image_generate', 300_000],
       ['image_edit', 300_000],
     ]);

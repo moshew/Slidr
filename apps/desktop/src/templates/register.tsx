@@ -2,7 +2,7 @@ import { Palette } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
 import { registerPanel, setNewDeck, whenEditor } from '../shell';
 import { startDeck, supplyAssets } from './actions';
-import { library } from './app';
+import { drafts, library } from './app';
 import { en, he } from './messages';
 import { TemplatesPanel } from './TemplatesPanel';
 
@@ -48,7 +48,10 @@ whenEditor((editor) => {
       });
   // Whenever a document starts on a personal template, its asset files go into the document.
   editor.bus.subscribe((event) => {
-    if (event.kind === 'reset') supply();
+    if (event.kind !== 'reset') return;
+    supply();
+    // A draft was drawn with the files of the document that was open.
+    drafts.clear();
   });
   void library
     .load()

@@ -317,18 +317,25 @@ describe('draftTemplate', () => {
     expect(notes).toEqual([]);
   });
 
-  it('keeps only the drawn layouts when the base is drawn for the other direction', () => {
+  it('turns a base drawn for the other direction, so every deck gets the layouts it got before', () => {
     const night = nightTemplate();
-    const { template, notes } = draftTemplate({
+    const other = night.dir === 'rtl' ? 'ltr' : 'rtl';
+    const { template } = draftTemplate({
       id: 'draft_3',
       name: 'Night',
       theme: themeFrom(night.theme, {}, { id: 'draft_3', name: 'Night' }),
-      dir: night.dir === 'rtl' ? 'ltr' : 'rtl',
-      layouts: [cards()],
+      dir: other,
+      layouts: [],
       base: night,
     });
-    expect(template.layouts).toHaveLength(1);
-    expect(notes[0]).toMatch(/^The template it is based on is drawn/);
+    expect(Template.safeParse(template).error?.issues).toBeUndefined();
+    expect(template.dir).toBe(other);
+    // Night draws one layout by hand for the other direction: both directions keep theirs.
+    expect(night.flipped).toHaveLength(1);
+    expect(template.flipped?.map((l) => l.id)).toEqual(night.flipped!.map((l) => l.id));
+    for (const dir of ['rtl', 'ltr'] as const) {
+      expect(layoutsFor(template, dir)).toEqual(layoutsFor(night, dir));
+    }
   });
 });
 

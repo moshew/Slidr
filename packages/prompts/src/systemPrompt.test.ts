@@ -54,7 +54,7 @@ describe('the system prompt, by scope', () => {
     for (const tool of ['slide_create_from_html', 'slide_delete', 'theme_update']) {
       expect(prompt).toContain(`\`${tool}\``);
     }
-    expect(prompt).toMatch(/propose an outline first/);
+    expect(prompt).toMatch(/show them the plan with .outline_propose. and end the turn/);
     expect(prompt).toMatch(/call `deck_render_contact_sheet` and look at the whole/);
     expect(prompt).not.toContain('ui_present_options');
   });
@@ -272,12 +272,13 @@ describe('what the prompt must say for itself, having replaced the harness promp
 describe('size', () => {
   // In characters, about 4 to a token. The prompt is sent with every request; growing it should be
   // a decision. The limits were raised once, when the prompt was tuned against the evaluation
-  // set (ADR-042): they are roughly a tenth above what that tuning left.
+  // set (ADR-042), and again for the module about making a template (WG7-T11a), which every
+  // session that can draft one carries: they are a few percent above what is there.
   const LIMITS: Record<ScopeKind, number> = {
-    deck: 33_000,
+    deck: 38_500,
     slide: 31_000,
     object: 23_000,
-    import: 35_000,
+    import: 40_000,
   };
 
   it.each(SCOPES)('a %s prompt stays within its budget', (scope) => {

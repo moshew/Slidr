@@ -30,7 +30,7 @@ import {
 import { fillLayout, type RoleFill } from './createSlide';
 import { deckFromTemplate } from './deck';
 import { copyJson } from './json';
-import type { Template } from './template';
+import { layoutsFor, type Template } from './template';
 
 /** A layout as its designer drew it. */
 export interface DrawnLayout {
@@ -308,6 +308,24 @@ function replaced(base: Template | undefined, drawn: DrawnLayout): Layout | unde
   return base.layouts.find((layout) => sameName(layout.name, drawn.name));
 }
 
+/**
+ * A template as if it had been drawn for `dir`: the same layouts for every deck. Its layouts are
+ * the ones a deck of that direction gets, and where it had a layout drawn by hand for the other
+ * direction, the layout it was drawn with is now that hand-drawn one.
+ */
+function turned(template: Template, dir: Direction): Template {
+  if (template.dir === dir) return template;
+  const byHand = new Set((template.flipped ?? []).map((layout) => layout.id));
+  const flipped = template.layouts.filter((layout) => byHand.has(layout.id));
+  const { flipped: _flipped, ...rest } = template;
+  return {
+    ...rest,
+    dir,
+    layouts: layoutsFor(template, dir),
+    ...(flipped.length > 0 ? { flipped: copyJson(flipped) } : {}),
+  };
+}
+
 /** An id fit for a layout of the draft: unique among templates, since it carries the draft's id. */
 function layoutId(draftId: string, index: number, taken: ReadonlySet<string>): string {
   let n = index + 1;
@@ -320,22 +338,16 @@ function layoutId(draftId: string, index: number, taken: ReadonlySet<string>): s
  * its theme changed. Nothing here saves or applies it.
  */
 export function draftTemplate(input: DraftInput): Draft {
-  const { id, name, theme, dir, base } = input;
+  const { id, name, theme, dir } = input;
+  const base = input.base ? turned(input.base, dir) : undefined;
   const notes: string[] = [];
   const fills: Draft['fills'] = {};
-  // A base drawn for the other direction is taken as it is drawn: its layouts stay its own, and
-  // a deck of either direction gets them through `layoutsFor`.
-  const layouts: Layout[] = base && base.dir === dir ? copyJson(base.layouts) : [];
-  const flipped = base && base.dir === dir ? copyJson(base.flipped ?? []) : [];
-  if (base && base.dir !== dir) {
-    notes.push(
-      `The template it is based on is drawn ${base.dir}, and these layouts ${dir}: only the layouts given here are in the draft.`,
-    );
-  }
+  const layouts: Layout[] = copyJson(base?.layouts ?? []);
+  const flipped = copyJson(base?.flipped ?? []);
   const taken = new Set(layouts.map((layout) => layout.id));
 
   for (const [index, drawn] of input.layouts.entries()) {
-    const old = base && base.dir === dir ? replaced(base, drawn) : undefined;
+    const old = replaced(base, drawn);
     const own = old?.id ?? layoutId(id, index, taken);
     taken.add(own);
     const made = layoutFromSlide(drawn, { id: own, theme });

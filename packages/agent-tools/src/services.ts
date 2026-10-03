@@ -132,6 +132,36 @@ export interface LayoutDraft {
   html: string;
 }
 
+/** A layout of a drafted template, as the agent should know it. */
+export interface DraftedLayout {
+  id: string;
+  name: string;
+  archetype: string;
+  /** Its placeholders by role: `title, body ×3, image`. */
+  placeholders: string;
+  /** Present for a layout this call drew: the share of its HTML that became regular elements. */
+  editability?: number;
+}
+
+/** What the design lint found on a layout of a draft, filled with its sample. */
+export interface DraftFinding {
+  layout: string;
+  /** The direction of the deck the layout was tried in: as drawn, and mirrored. */
+  dir: 'rtl' | 'ltr';
+  rule: string;
+  severity: LintFinding['severity'];
+  message: string;
+}
+
+export interface TemplateDraftResult {
+  templateId: string;
+  layouts: DraftedLayout[];
+  findings: DraftFinding[];
+  notes: string[];
+  /** Every layout with its sample on it, on one sheet; absent when the app cannot capture. */
+  preview?: PngImage;
+}
+
 /** WG7-T03 (switching) and WG7-T11a (AI templates). */
 export interface TemplateService {
   list(): Promise<TemplateSummary[]>;
@@ -140,11 +170,21 @@ export interface TemplateService {
    * slides mapped to the new layouts by archetype and role.
    */
   applyCommands(deck: Deck, templateId: string): Promise<Command[]>;
-  /** A draft template from theme tokens and layouts in HTML; not saved, not applied. */
+  /**
+   * A draft template from theme tokens and layouts in HTML; not saved, not applied. With
+   * `basedOn` (a draft of an earlier call, or a template of the library) the draft starts as a
+   * copy of it: the tokens are merged over its theme, and each layout replaces its layout of the
+   * same archetype, or is added.
+   */
   create(
     deck: Deck,
-    request: { name: string; theme: Record<string, unknown>; layouts: LayoutDraft[] },
-  ): Promise<{ templateId: string; preview: PngImage; notes: string[] }>;
+    request: {
+      name: string;
+      theme: Record<string, unknown>;
+      layouts: LayoutDraft[];
+      basedOn?: string;
+    },
+  ): Promise<TemplateDraftResult>;
   /** Saves a draft, or the deck's own theme and layouts when `templateId` is absent. */
   save(
     deck: Deck,

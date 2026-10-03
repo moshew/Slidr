@@ -47,6 +47,7 @@ import type {
   UserEntry,
 } from '../agent/transcript';
 import { ask, useDeck, useEditor } from '../shell';
+import { TemplateDraftCard } from '../templates/DraftCard';
 import { actionLabel } from './actionLabels';
 import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
@@ -579,6 +580,8 @@ export function Chat({ scope }: { scope: SessionScope }) {
         <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
       </div>
       <Gallery scope={scope} />
+      {/* A template the agent drafted is shown before anything is saved (THM-06). */}
+      {scope.kind === 'deck' && <TemplateDraftCard />}
       <Composer
         scope={scope.kind}
         busy={state.busy}

@@ -2,12 +2,18 @@
  * The template library of this window, and the pieces of the app that are built on it: the
  * template service the agent's tools call, and the start of a new deck.
  */
-import type { TemplateService } from '@slidr/agent-tools';
+import type {
+  CaptureService,
+  ConversionService,
+  LintService,
+  TemplateService,
+} from '@slidr/agent-tools';
 import { layoutAssets, layoutsFor } from '@slidr/templates';
 import { isTauri } from '@tauri-apps/api/core';
 import { i18n } from '../i18n';
 import type { Editor } from '../shell';
-import { copyAssets, templateFromDeck } from './actions';
+import { copyAssets, saveDraft, templateFromDeck } from './actions';
+import { TemplateDrafts } from './drafts';
 import { TemplateLibrary, type PrefsStorage } from './library';
 import { memoryTemplateStore, tauriTemplateStore } from './store';
 import { createTemplateService } from './templateService';
@@ -27,8 +33,21 @@ export const library = new TemplateLibrary(isTauri() ? tauriTemplateStore : memo
   layoutName: (archetype, lang) => i18n.t(`templates:archetype.${archetype}`, { lng: lang }),
 });
 
-/** The Deck API's template service for an editor: the library, with its files and its saving. */
-export function appTemplateService(editor: Editor): TemplateService {
+/** The templates the agent drafted in this window and nobody saved yet (THM-06). */
+export const drafts = new TemplateDrafts();
+
+/** What the app has for drafting a template: the services the agent's other tools use too. */
+export interface DraftingTools {
+  conversion: ConversionService;
+  lint?: LintService;
+  capture?: CaptureService;
+}
+
+/**
+ * The Deck API's template service for an editor: the library, with its files and its saving,
+ * and, when the app can convert HTML, the drafting of new templates.
+ */
+export function appTemplateService(editor: Editor, tools?: DraftingTools): TemplateService {
   return createTemplateService({
     get builtIn() {
       return library
@@ -48,5 +67,18 @@ export function appTemplateService(editor: Editor): TemplateService {
       if (setDefault) library.setDefault(template.theme.id);
       return template.theme.id;
     },
+    ...(tools
+      ? {
+          drafting: {
+            ...tools,
+            drafts,
+            sampleText: (role, lang) => {
+              const key = `templates:sample.${role}`;
+              return i18n.exists(key) ? i18n.t(key, { lng: lang }) : undefined;
+            },
+            save: (draft, request) => saveDraft(editor, library, drafts, draft.id, request),
+          },
+        }
+      : {}),
   });
 }

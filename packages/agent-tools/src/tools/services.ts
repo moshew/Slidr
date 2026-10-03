@@ -125,7 +125,7 @@ const RoleContent = z.union([
 export const slideCreate = defineTool({
   name: 'slide_create',
   description:
-    'A new slide from a layout of the deck (deck_get_theme lists them), with content placed by placeholder role. A role the layout has several placeholders of (three cards, four steps) takes a list, one value per placeholder in order. Returns `slideId` and the ids created.',
+    'A new slide from a layout of the deck (deck_get_theme lists them), with content placed by placeholder role. A role the layout has several placeholders of (three cards, four steps) takes a list, one value per placeholder in order. Returns `slideId`, the ids created, lint findings, and a render of the slide.',
   input: z.strictObject({
     layoutId: Id,
     content: z
@@ -153,7 +153,9 @@ export const slideCreate = defineTool({
     });
     const index = indexAfter(ctx.deck, afterSlideId, ctx.deck.slides.length);
     ctx.write([{ type: 'slide.add', slide, index }]);
-    return { data: { slideId: slide.id } };
+    // Like a slide written as HTML: the render that comes back is the look the design check asks
+    // for, so a slide made exactly as its layout draws it needs no second call.
+    return { data: { slideId: slide.id }, images: await renderIfPossible(ctx, slide.id) };
   },
 });
 
@@ -338,32 +340,51 @@ export const templateApply = defineTool({
 
 const ThemeTokens = commandDefs['theme.update'].schema.shape.patch;
 
+/** A draft of fourteen layouts is fourteen conversions and two lint passes. */
+const TEMPLATE_TIMEOUT_MS = 180_000;
+
 export const templateCreate = defineTool({
   name: 'template_create',
   description:
-    'Drafts a new template: theme tokens plus layouts written as HTML, with data-role on each placeholder (title, subtitle, body, image, ...). Nothing is saved or applied; show the preview to the user, then template_save. Returns `templateId`, notes, and a preview image.',
+    'Drafts a template: theme tokens, and layouts each written as one slide in HTML at 1920x1080 in the deck\'s direction, with data-role on every part a deck fills in (title, subtitle, body, caption, number, quote, attribution, footer, image, chart, table) and data-role="logo" on the logo. What carries a role becomes a placeholder, in the theme text style nearest to how it was drawn, and keeps the text it was drawn with as the sample; everything else is drawn by the layout, under the content. Nothing is saved or applied: the app shows the draft to the user, who saves it or asks for changes. With `basedOn` the draft starts as a copy of an earlier draft or of a template of the library, so a call can carry only what changes. Returns `templateId`, the layouts with their placeholders, `findings` of the design lint on each layout filled with its sample (as drawn and mirrored for the other direction), notes on what a layout could not keep, and a sheet of all the layouts to look at.',
   input: z.strictObject({
     name: z.string().min(1),
-    theme: ThemeTokens.describe('Theme tokens over the base theme, as in theme_update.'),
+    theme: ThemeTokens.describe(
+      'Theme tokens, as in theme_update: over the base theme, or over the theme of `basedOn`.',
+    ),
     layouts: z
       .array(
         z.strictObject({ name: z.string().min(1), archetype: Archetype, html: z.string().min(1) }),
       )
-      .min(1),
+      .describe(
+        'With `basedOn`, a layout replaces the one of the same archetype (of the same name, when the template has several of that archetype), or is added; the list may be empty to change the theme alone.',
+      ),
+    basedOn: Id.optional().describe(
+      'The `templateId` of an earlier draft, or the id of a template deck_get_theme lists.',
+    ),
   }),
   scopes: ['deck'],
   writes: false,
   requires: 'templates',
-  async run({ name, theme, layouts }, ctx) {
-    const draft = await ctx.services.templates!.create(ctx.deck, { name, theme, layouts });
-    return { data: { templateId: draft.templateId, notes: draft.notes }, images: [draft.preview] };
+  timeoutMs: TEMPLATE_TIMEOUT_MS,
+  async run({ name, theme, layouts, basedOn }, ctx) {
+    if (layouts.length === 0 && !basedOn) {
+      throw new DeckApiError('invalid_input', 'A template needs at least one layout.');
+    }
+    const { preview, ...draft } = await ctx.services.templates!.create(ctx.deck, {
+      name,
+      theme,
+      layouts,
+      ...(basedOn ? { basedOn } : {}),
+    });
+    return { data: { ...draft }, images: preview ? [preview] : [] };
   },
 });
 
 export const templateSave = defineTool({
   name: 'template_save',
   description:
-    "Saves a drafted template (or, without templateId, the deck's own theme and layouts) as a personal template, optionally the default for new decks. Returns `templateId`.",
+    "Saves a drafted template (or, without templateId, the deck's own theme and layouts) as a personal template of the library, optionally the default for new decks. The deck itself stays on the template it is on. Returns `templateId`: the id the template has in the library, which template_apply takes.",
   input: z.strictObject({
     templateId: Id.optional(),
     name: z.string().min(1),
