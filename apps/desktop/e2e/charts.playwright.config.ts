@@ -23,6 +23,9 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   reporter: [['list']],
   outputDir: '../test-results/.playwright-charts',
+  // The baselines are named as the other configs name them, without the project: one picture
+  // for a test, whichever config ran it.
+  snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}-{platform}{ext}',
   use: {
     baseURL: `http://localhost:${PORT}`,
     channel: 'msedge',
