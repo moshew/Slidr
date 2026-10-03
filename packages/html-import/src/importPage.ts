@@ -49,8 +49,11 @@ export interface ImportCapture {
   textEditability: number;
   notes: string[];
   guard: Pick<GuardReport, 'faithful' | 'exact' | 'rounds' | 'wholeSlide' | 'diffPixels'>;
-  /** The size of the captured element, in CSS px of the source. */
-  source: { width: number; height: number };
+  /**
+   * The size of the captured element on the page, in CSS px, and the scale the page shows it
+   * through: its size on the page over the size it is laid out at.
+   */
+  source: { width: number; height: number; scale: number };
   ms: number;
 }
 
@@ -616,6 +619,7 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
         );
       }
 
+      const laidOut = (root as HTMLElement).offsetWidth ?? 0;
       const notes = await fonts.sync(page().doc);
       await doc.fonts.ready;
       const result = await convertSubtree(root, {
@@ -637,7 +641,11 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
         textEditability: result.textEditability,
         notes: [...notes, ...result.notes],
         guard: { faithful, exact, rounds, wholeSlide, diffPixels },
-        source: { width: at.width, height: at.height },
+        source: {
+          width: at.width,
+          height: at.height,
+          scale: laidOut > 0 ? Math.round((at.width / laidOut) * 10000) / 10000 : 1,
+        },
         ms: result.ms,
       };
     },

@@ -40,25 +40,40 @@ export function drawnOver(root: Element): Element[] {
   const doc = root.ownerDocument;
   const rect = root.getBoundingClientRect();
   if (rect.width < 1 || rect.height < 1) return [];
-  const open = doc.createElement('style');
-  open.textContent = '* { pointer-events: auto !important; }';
-  (doc.head ?? doc.documentElement).append(open);
+  // The document, and every shadow tree the element is shown through: a deck built as a
+  // component keeps its own chrome (a rail, a counter that fades) inside its shadow tree, and
+  // the document's own answer names only the component.
+  // Told by the node type: the element lives in a frame, and its ShadowRoot is not this window's.
+  const isShadow = (tree: Node): tree is ShadowRoot => tree.nodeType === 11 && 'host' in tree;
+  const trees: (Document | ShadowRoot)[] = [doc];
+  for (let node: Node | undefined = root; node; node = composedParent(node)) {
+    const tree = node.getRootNode();
+    if (isShadow(tree) && !trees.includes(tree)) trees.push(tree);
+  }
+  const opened = trees.map((tree) => {
+    const open = doc.createElement('style');
+    open.textContent = '* { pointer-events: auto !important; }';
+    (isShadow(tree) ? tree : (doc.head ?? doc.documentElement)).append(open);
+    return open;
+  });
   const found = new Set<Element>();
   try {
     for (let row = 0; row < ROWS; row++) {
       for (let column = 0; column < COLUMNS; column++) {
         const x = rect.left + ((column + 0.5) / COLUMNS) * rect.width;
         const y = rect.top + ((row + 0.5) / ROWS) * rect.height;
-        for (const el of doc.elementsFromPoint(x, y)) {
-          // From the top down to the element itself: what comes after it lies behind it.
-          if (el === root) break;
-          if (isInside(el, root) || isInside(root, el)) continue;
-          if (paints(el) && shown(el)) found.add(el);
+        for (const tree of trees) {
+          for (const el of tree.elementsFromPoint(x, y)) {
+            // From the top down to the element itself: what comes after it lies behind it.
+            if (el === root) break;
+            if (isInside(el, root) || isInside(root, el)) continue;
+            if (paints(el) && shown(el)) found.add(el);
+          }
         }
       }
     }
   } finally {
-    open.remove();
+    for (const open of opened) open.remove();
   }
   // A thing and its parts are one thing: only the outermost is named.
   return Array.from(found).filter(

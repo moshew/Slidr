@@ -1256,7 +1256,13 @@ export function propose(root: Element, options: WalkOptions): Proposal {
         htmlFor(el, true, 'content clipped by its box', own);
         return;
       }
-      if (/^(table|inline-table)$/.test(cs.display)) {
+      // A table is what lays its children out as rows. An element with another `display` whose
+      // children are rows (a `table` set to `block` so that it can scroll) gets a table box from
+      // the browser, without a name, and is read the same way.
+      const rows = children.some((c) =>
+        /^table-(row|row-group|header-group|footer-group)$/.test(styleOf(c).display),
+      );
+      if (/^(table|inline-table)$/.test(cs.display) || rows) {
         const table = readTable(el, {
           deck,
           text,

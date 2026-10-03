@@ -143,6 +143,9 @@ const BAD_TEXT_SHARE = 0.01;
  * coarse picture: a glyph a pixel over is gone there, another weight, colour or font is not.
  */
 const GLYPH_SHIFT_SHARE = 0.04;
+/** A box is wrong all over when more than this share of its own pixels differ, of at least this many. */
+const WRONG_ALL_OVER_SHARE = 0.5;
+const WRONG_ALL_OVER_MIN_PIXELS = 400;
 /** Pictures are compared at half resolution: edge noise of boxes and glyphs averages out. */
 const FINE = 2;
 /** Elements drawn through a scale are judged on a coarser picture, which raster noise does not reach. */
@@ -490,14 +493,16 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       e.fill = { kind: 'none' };
   }
 
-  // Where the root is on the page the pictures are taken of, cut on whole pixels.
+  // Where the root is on the page the pictures are taken of, cut on whole pixels. A root that
+  // was scrolled to sits up to a pixel above or left of the page's edge (scrolling stops on
+  // whole pixels, a section starts where it starts); the picture begins at the edge.
   const offset = viewportOffset(doc);
   const origin = { x: space.rootRect.left + offset.x, y: space.rootRect.top + offset.y };
+  const corner = { x: Math.max(0, Math.floor(origin.x)), y: Math.max(0, Math.floor(origin.y)) };
   const clip = {
-    x: Math.floor(origin.x),
-    y: Math.floor(origin.y),
-    width: Math.ceil(origin.x + space.rootRect.width) - Math.floor(origin.x),
-    height: Math.ceil(origin.y + space.rootRect.height) - Math.floor(origin.y),
+    ...corner,
+    width: Math.ceil(origin.x + space.rootRect.width) - corner.x,
+    height: Math.ceil(origin.y + space.rootRect.height) - corner.y,
   };
   const take = async () => decode(await host.capture(clip));
   const fullSlide =
@@ -676,8 +681,29 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   };
   const zoomed = rootScaled || Math.abs(space.k - 1) > 1e-6;
 
+  // A root that sits on a fraction of a pixel (a section of a scrolled page, a stage centred in
+  // an odd width) hands the fraction down: the browser rounds every box and every baseline in
+  // it from where it really is. The slide's own root would drop it, since a box that contains
+  // its paint starts on a whole pixel. So the slide is put on the whole pixel, and what is on
+  // it is drawn the fraction further in, as the source's content is.
+  const whole = { x: Math.round(origin.x), y: Math.round(origin.y) };
+  const lead = {
+    x: ((origin.x - whole.x) / space.viewScale) * space.k,
+    y: ((origin.y - whole.y) / space.viewScale) * space.k,
+  };
+  const led = (slide: Slide): Slide =>
+    lead.x === 0 && lead.y === 0
+      ? slide
+      : {
+          ...slide,
+          elements: slide.elements.map((element) => ({
+            ...element,
+            frame: { ...element.frame, x: element.frame.x + lead.x, y: element.frame.y + lead.y },
+          })),
+        };
+
   const place: Placement = {
-    origin,
+    origin: whole,
     viewScale: space.viewScale,
     k: space.k,
     offX: space.offX,
@@ -697,7 +723,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
    * elsewhere are moved (`fit`), and then nothing is pictured: the caller renders again.
    */
   const render = async (fit: boolean): Promise<Rendered> => {
-    const mounted = await mountSlide(renderDeck(), assemble(), host, place);
+    const mounted = await mountSlide(renderDeck(), led(assemble()), host, place);
     try {
       for (const item of proposal.items) {
         if (item.element.opacity !== 1 || !grey.has(item)) continue;
@@ -718,11 +744,11 @@ export async function startConversion(root: Element, options: ConvertOptions): P
           lines.set(
             item,
             textLines(dom, (el) => el.hasAttribute('data-slidr-marker')).map((l) => ({
-              left: (l.left - at.left) / scale,
-              right: (l.right - at.left) / scale,
-              top: (l.top - at.top) / scale,
-              bottom: (l.bottom - at.top) / scale,
-              ...(l.base === undefined ? {} : { base: (l.base - at.top) / scale }),
+              left: (l.left - at.left) / scale - lead.x,
+              right: (l.right - at.left) / scale - lead.x,
+              top: (l.top - at.top) / scale - lead.y,
+              bottom: (l.bottom - at.top) / scale - lead.y,
+              ...(l.base === undefined ? {} : { base: (l.base - at.top) / scale - lead.y }),
             })),
           );
         }
@@ -922,6 +948,24 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       (c) => c.pixels >= CLUSTER_MIN_PIXELS,
     );
 
+    // A box that is wrong all over (one that lost its background) changes every pixel of
+    // whatever is drawn on it. What lies on such a box is not judged in this round: the box is
+    // put right first, and the next round sees the rest as it is. Judged now, a card's text
+    // would be taken away for the card's fault.
+    const wrongAllOver = items.map(
+      (item, index) =>
+        !item.exempt &&
+        item.element.type !== 'text' &&
+        strict.owned[index]! >= WRONG_ALL_OVER_MIN_PIXELS &&
+        strict.differing[index]! > WRONG_ALL_OVER_SHARE * strict.owned[index]!,
+    );
+    const inside = (a: Rect, b: Rect) =>
+      a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.w <= b.x + b.w + 1 && a.y + a.h <= b.y + b.h + 1;
+    const onWrongBox = (index: number) =>
+      items.some(
+        (under, at) => at < index && wrongAllOver[at] && inside(items[index]!.region, under.region),
+      );
+
     const bad: Verdict['bad'] = [];
     items.forEach((item, index) => {
       if (item.exempt) return;
@@ -929,6 +973,8 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       const type = item.element.type;
       if (why) {
         // wraps or sits elsewhere
+      } else if (onWrongBox(index)) {
+        // judged in the next round
       } else if (item.scaled || rootScaled || onLayer(item)) {
         // The source drew this through a scale the model cannot repeat step for step, so its
         // pixels carry raster noise: judged on the coarse picture.

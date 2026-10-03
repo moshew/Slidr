@@ -264,6 +264,26 @@ interface Frozen {
   units: WindowUnits | undefined;
   /** Whether a media condition holds in the source's window. */
   matches(condition: string): boolean;
+  /** Ancestors that are not HTML, by local name, and the tag their shell is written with. */
+  shells: ReadonlyMap<string, string>;
+}
+
+const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
+
+/**
+ * An ancestor that is not HTML (the `svg` and `foreignObject` a tool wraps each slide in)
+ * cannot be written out under its own name: read again it would be SVG, and an SVG element
+ * that is only a shell shows nothing of what is in it. Its shell gets a name of its own, and
+ * a selector that names the ancestor matches by either name: the original for an element of
+ * that kind inside the copy, the shell's for the ancestor.
+ */
+function withShells(selector: string, shells: ReadonlyMap<string, string>): string {
+  if (shells.size === 0) return selector;
+  let renamed = selector;
+  for (const [name, tag] of shells) {
+    renamed = renamed.replace(new RegExp(`(?<![\\w\\-#.:[="'])${name}(?![\\w-])`, 'gi'), tag);
+  }
+  return renamed === selector ? selector : `${selector}, ${renamed}`;
 }
 
 const freeze = (css: string, frozen: Frozen) =>
@@ -293,7 +313,7 @@ function collectRules(
     const kind = ruleKind(rule);
     if (kind === 'CSSStyleRule') {
       const style = rule as CSSStyleRule;
-      const selector = rewriteSelector(style.selectorText);
+      const selector = withShells(rewriteSelector(style.selectorText), frozen.shells);
       if (!canMatch(scope, selector)) continue;
       const block = freeze(style.cssText.slice(style.selectorText.length), frozen);
       out.push(absoluteUrls(selector + block, base));
@@ -411,8 +431,12 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
 
   // Empty shells of the ancestors keep selectors matching and inherited values flowing.
   let top: Element = root;
+  const shells = new Map<string, string>();
   for (let p = composedParent(el); p; p = composedParent(p)) {
-    const shell = out.createElement(shellTag(p));
+    const html = p.namespaceURI === HTML_NAMESPACE;
+    const tag = html ? shellTag(p) : `slidr-${p.localName.toLowerCase()}`;
+    if (!html) shells.set(p.localName.toLowerCase(), tag);
+    const shell = out.createElement(tag);
     for (const attr of Array.from(p.attributes)) {
       if (!attr.name.toLowerCase().startsWith('on')) shell.setAttribute(attr.name, attr.value);
     }
@@ -442,6 +466,7 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
         return true;
       }
     },
+    shells,
   };
   // Inline styles carry window-relative lengths too.
   if (frozen.units) {

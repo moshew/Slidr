@@ -155,7 +155,7 @@ describe('capturing an element as a slide', () => {
     expect(captured.guard).toMatchObject({ faithful: true, exact: true, wholeSlide: false });
     expect(captured.editability).toBe(1);
     expect(captured.textEditability).toBe(1);
-    expect(captured.source).toEqual({ width: 1280, height: 720 });
+    expect(captured.source).toEqual({ width: 1280, height: 720, scale: 1 });
     const texts = captured.slide.elements.flatMap((element) =>
       element.type === 'text'
         ? [element.content.paragraphs.map((p) => p.runs.map((r) => r.text).join('')).join('\n')]
@@ -212,6 +212,38 @@ describe('capturing an element as a slide', () => {
     expect(captured.editability).toBe(1);
   });
 
+  it('captures a part that sits on a fraction of a pixel, as the parts of a real page do', async () => {
+    // The parts above are not a whole number of pixels tall, so each part below starts on a
+    // fraction: after the scroll, a third and two thirds of a pixel above the viewport's edge.
+    const long = `<!doctype html><html><head><style>
+      body { margin: 0; font-family: Georgia, serif; color: #1f2a24; }
+      .part { height: 700.34px; padding: 50px 60px; box-sizing: border-box; background: #fbf7ef; }
+      .part + .part { background: #eef6f0; }
+      h2 { margin: 0 0 21.3px; font-size: 41px; line-height: 1.15; }
+      h3 { margin: 0 0 9.7px; font-size: 23px; line-height: 1.15; }
+      p { margin: 0 0 17.9px; font: 17px/1.6 Arial, sans-serif; max-width: 700px; }
+    </style></head><body>
+      <div class="part">One</div>
+      <div class="part two"><h2>Second part</h2><h3>Shared in real time</h3>
+        <p>Anyone at home adds an item and it shows up on every phone within a second.</p>
+        <h3>Weekly meal plan</h3><p>Drag recipes onto the days of the week.</p></div>
+      <div class="part three"><h2>Third part</h2><h3>Sorted by aisle</h3>
+        <p>The list reorders itself to match the layout of your usual shop.</p>
+        <h3>Pantry memory</h3><p>Larder remembers what you bought and how long it lasts.</p></div>
+    </body></html>`;
+    const imported = importPage(long);
+    await imported.setViewport({ width: 1280, height: 720 });
+    for (const selector of ['.two', '.three']) {
+      const captured = await imported.capture({
+        selector,
+        deck: createDeck({ lang: 'en' }),
+        takenIds: [],
+      });
+      expect(captured.guard).toMatchObject({ faithful: true, exact: true, wholeSlide: false });
+      expect(captured.editability).toBe(1);
+    }
+  });
+
   it('says what the page draws over the element without being part of it', async () => {
     const imported = importPage(DECK);
     await imported.setViewport({ width: 1280, height: 720 });
@@ -238,6 +270,79 @@ describe('capturing an element as a slide', () => {
     });
     expect(whole.guard.faithful).toBe(true);
     expect(JSON.stringify(whole.slide)).toContain('1 / 3');
+  });
+
+  it('finds what a deck built as a component draws over its slide from inside its shadow tree', async () => {
+    // The slides are the component's own children; its counter lives in its shadow tree,
+    // ignores the pointer, and is nowhere in the document's own tree.
+    const component = `<!doctype html><html><head><style>
+      body { margin: 0; font-family: Arial, sans-serif; }
+      section { width: 1280px; height: 720px; background: #f1f5f9; padding: 80px; box-sizing: border-box; font-size: 48px; }
+    </style></head><body>
+      <deck-frame><section>Inside a component</section></deck-frame>
+      <script>
+        customElements.define('deck-frame', class extends HTMLElement {
+          connectedCallback() {
+            const tree = this.attachShadow({ mode: 'open' });
+            tree.innerHTML = '<style>.pager { position: fixed; left: 560px; top: 660px; width: 160px; height: 36px; background: #0f172a; color: #fff; font-size: 16px; pointer-events: none; }</style><slot></slot><div class="pager">1 / 9</div>';
+          }
+        });
+      </script>
+    </body></html>`;
+    const imported = importPage(component);
+    await imported.setViewport({ width: 1280, height: 720 });
+    const deck = createDeck({ lang: 'en' });
+    await expect(imported.capture({ selector: 'section', deck, takenIds: [] })).rejects.toThrow(
+      /Drawn over the element without being part of it: div\.pager \[160x36 @560,660\] "1 \/ 9"/,
+    );
+    const captured = await imported.capture({
+      selector: 'section',
+      before:
+        'document.querySelector("deck-frame").shadowRoot.querySelector(".pager").style.display = "none";',
+      deck,
+      takenIds: [],
+    });
+    expect(captured.guard).toMatchObject({ faithful: true, exact: true });
+    expect(captured.editability).toBe(1);
+  });
+
+  it('captures a slide a tool wrapped in an svg, with rules that name the wrapping', async () => {
+    // The slide is HTML inside `svg > foreignObject`, every rule is anchored to that wrapping,
+    // the page behind the slide is black, and the page number is a pseudo-element.
+    const wrapped = `<!doctype html><html><head><style>
+      body { margin: 0; background: #000; }
+      svg { display: block; width: 1280px; height: 720px; }
+      svg > foreignObject > section { width: 1280px; height: 720px; box-sizing: border-box; position: relative; padding: 70px; background: #fff; color: #1f2328; font: 30px Arial, sans-serif; }
+      svg > foreignObject > section::after { content: attr(data-page); position: absolute; right: 30px; bottom: 24px; font-size: 22px; color: #777; }
+      svg > foreignObject > section h2 { margin: 0 0 30px; font-size: 44px; }
+      svg > foreignObject > section table { display: block; overflow: auto; border-collapse: collapse; }
+      svg > foreignObject > section td { border: 1px solid #d1d9e0; padding: 8px 16px; }
+    </style></head><body>
+      <svg viewBox="0 0 1280 720"><foreignObject width="1280" height="720">
+        <section data-page="4"><h2>Wrapped by a tool</h2><p>Every rule names the wrapping.</p>
+          <table><tbody><tr><td>Spring</td><td>2,410</td></tr><tr><td>Summer</td><td>3,980</td></tr></tbody></table>
+        </section>
+      </foreignObject></svg>
+    </body></html>`;
+    const imported = importPage(wrapped);
+    await imported.setViewport({ width: 1280, height: 720 });
+    const captured = await imported.capture({
+      selector: 'section',
+      deck: createDeck({ lang: 'en' }),
+      takenIds: [],
+    });
+    expect(captured.guard).toMatchObject({ faithful: true, exact: true, wholeSlide: false });
+    // The slide's own box, which only HTML can draw (the page number), kept its white
+    // background outside its document: its shells are not SVG, which shows nothing when empty.
+    const [box, heading, line, table, ...rest] = captured.slide.elements;
+    expect(box?.type === 'html' && box.markup).toContain('<slidr-foreignobject');
+    expect(box?.type === 'html' && box.markup).not.toContain('<svg');
+    // The texts on it were not taken away for a background that was the box's to draw.
+    expect([heading?.type, line?.type]).toEqual(['text', 'text']);
+    // The rows of a table set to `display: block` stay together, as a table or as its HTML;
+    // they are not read as so many loose boxes.
+    expect(['table', 'html']).toContain(table?.type);
+    expect(rest).toEqual([]);
   });
 
   it('keeps the end of an entrance animation, and an animation that never ends as it is', async () => {
