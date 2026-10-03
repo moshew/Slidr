@@ -92,6 +92,24 @@ describe('createPlayer', () => {
     expect(fake.hidden(el('a1'))).toBe(false);
   });
 
+  it('opens on the slide it is told to, played in from its start', () => {
+    const viewport = document.querySelector('.slidr-viewport') as HTMLElement;
+    const stage = document.querySelector('.slidr-stage') as HTMLElement;
+    slides = readSlides(stage);
+    // A hidden slide too: a show started on it shows it.
+    player = createPlayer({ viewport, stage, slides, start: 1 });
+    expect(player.state).toEqual({ slide: 1, step: 0 });
+    expect(shown()).toEqual(['b']);
+    expect(fake.hidden(el('b1'))).toBe(true);
+    player.destroy();
+    player = createPlayer({ viewport, stage, slides, start: 2 });
+    expect(shown()).toEqual(['hidden']);
+    player.destroy();
+    // A slide that is not there falls back to the first.
+    player = createPlayer({ viewport, stage, slides, start: 9 });
+    expect(player.state).toEqual({ slide: 0, step: 0 });
+  });
+
   it('steps through the clicks of a slide, then moves on with the transition', async () => {
     start();
     await fake.finishRunning();

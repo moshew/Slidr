@@ -39,7 +39,9 @@ export interface PlayerOptions {
   slides: readonly PlayerSlide[];
   /** Default 1920x1080. */
   size?: Size | undefined;
-  /** Where to start, shown as it is, without animation. Default: the first slide, played in. */
+  /** The slide the show opens on, played in. Default: the first one that is not hidden. */
+  start?: number | undefined;
+  /** Where to start instead, shown as it is, without animation: a show that follows another. */
   state?: PlayerState | undefined;
   onWarn?: Warn | undefined;
 }
@@ -339,6 +341,7 @@ export function createPlayer(options: PlayerOptions): Player {
   };
 
   if (options.state) open(options.state.slide, options.state.step);
+  else if (options.start !== undefined && slides[options.start]) open(options.start, 'fresh');
   else open(Math.max(visibleFrom(-1, 1), 0), 'fresh');
   return player;
 }
