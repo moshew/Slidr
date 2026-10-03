@@ -155,7 +155,7 @@ export async function openSandbox(html: string, options: SandboxOptions): Promis
     const url = host.resolveAsset(asset);
     if (!url) continue;
     faces.add(
-      `@font-face { font-family: ${JSON.stringify(asset.font.family)}; font-weight: ${asset.font.weight}; font-style: ${asset.font.style}; font-display: block; src: url(${JSON.stringify(url)}); }`,
+      `@font-face { font-family: ${JSON.stringify(asset.font.family)}; font-weight: ${asset.font.weight}; font-style: ${asset.font.style}; font-display: block; src: url(${JSON.stringify(url)});${asset.font.unicodeRange ? ` unicode-range: ${asset.font.unicodeRange};` : ''} }`,
     );
   }
   for (const face of faces)

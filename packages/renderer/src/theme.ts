@@ -125,8 +125,10 @@ export function deckFontFaces(
     if (asset.kind !== 'font' || !asset.font) continue;
     const src = url(asset);
     if (!src) continue;
+    // A family that came in subsets (one file per script) keeps them apart, as the source did.
+    const range = asset.font.unicodeRange ? ` unicode-range: ${asset.font.unicodeRange};` : '';
     rules.push(
-      `@font-face { font-family: ${cssString(asset.font.family)}; font-weight: ${asset.font.weight}; font-style: ${asset.font.style}; font-display: block; src: ${cssUrl(src)}; }`,
+      `@font-face { font-family: ${cssString(asset.font.family)}; font-weight: ${asset.font.weight}; font-style: ${asset.font.style}; font-display: block; src: ${cssUrl(src)};${range} }`,
     );
   }
   return rules.join('\n');

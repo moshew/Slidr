@@ -42,6 +42,8 @@ export const AssetMeta = z.strictObject({
       family: z.string().min(1),
       weight: z.string().min(1),
       style: z.string().min(1),
+      /** The characters the face is for, as CSS `unicode-range`; all of them when absent. */
+      unicodeRange: z.string().min(1).optional(),
     })
     .optional(),
 });
