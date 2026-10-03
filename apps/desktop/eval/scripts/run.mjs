@@ -339,6 +339,14 @@ async function main() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // A run that is cut short should say by what: twice a run ended in its first seconds with
+  // nothing written, and the app it had started stayed up (ADR-042). `--attach` picks it up.
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP']) {
+    process.on(signal, () => {
+      console.error(`stopped by ${signal}`);
+      process.exit(1);
+    });
+  }
   main().catch((error) => {
     console.error(error.message);
     process.exitCode = 1;
