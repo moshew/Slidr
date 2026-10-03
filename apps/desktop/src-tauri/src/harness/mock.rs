@@ -57,7 +57,7 @@ const SUMMARY_CHARS: usize = 300;
 const REF_KEY: &str = "$ref";
 
 /// The scripts built into the app, by name.
-const BUILTIN: [(&str, &str); 9] = [
+const BUILTIN: [(&str, &str); 11] = [
     ("import", include_str!("fixtures/scripts/import.json")),
     (
         "slide-chat",
@@ -88,6 +88,11 @@ const BUILTIN: [(&str, &str); 9] = [
         "image-alternatives",
         include_str!("fixtures/scripts/image-alternatives.json"),
     ),
+    (
+        "template-create",
+        include_str!("fixtures/scripts/template-create.json"),
+    ),
+    ("outline", include_str!("fixtures/scripts/outline.json")),
 ];
 
 /// One recorded conversation.

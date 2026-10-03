@@ -1,0 +1,196 @@
+{
+  "description": "A deck chat that makes a template (WG7-T11a), in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"make a template from this description and this logo\": template_create with a theme and three layouts written as HTML (opening, cards, closing), the logo drawn by its asset id; the app shows the draft. Turn 2 improves the draft in the chat: a draft based on the first, with a warmer palette and nothing else. Turn 3 saves the latest draft when the user asks in words. Hand-written, with the timing of deck-build.",
+  "turns": [
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "קורא את התיאור "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "ומסתכל על הלוגו."
+      },
+      {
+        "delayMs": 700,
+        "type": "tool_call_started",
+        "id": "draft_1",
+        "name": "template_create",
+        "source": "app",
+        "input": {
+          "name": "חימר",
+          "theme": {
+            "colors": {
+              "bg": "#fbf6ef",
+              "surface": "#ffffff",
+              "text": "#2a3c50",
+              "muted": "#5f6f80",
+              "primary": "#b4552d",
+              "secondary": "#2a3c50",
+              "accent": "#e9b872"
+            },
+            "fonts": {
+              "heading": {
+                "he": "Rubik",
+                "latin": "Poppins"
+              },
+              "body": {
+                "he": "Assistant",
+                "latin": "Inter"
+              }
+            },
+            "radius": 24
+          },
+          "layouts": [
+            {
+              "name": "פתיחה",
+              "archetype": "hero",
+              "html": "<div data-archetype=\"hero\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body);color:var(--color-text)\"><div data-name=\"field\" style=\"position:absolute;left:0;top:0;width:640px;height:1080px;background:var(--color-primary)\"></div><div data-name=\"disc\" style=\"position:absolute;left:200px;top:400px;width:280px;height:280px;border-radius:50%;background:var(--color-accent)\"></div><img data-asset=\"373af45eb91ba778476dcc03de7dfd7cc554216bfd56b4e6947541ace2f77832\" data-role=\"logo\" data-name=\"logo\" style=\"position:absolute;right:96px;top:88px;width:160px;height:48px;object-fit:contain\"><p data-role=\"caption\" style=\"position:absolute;right:96px;top:300px;width:900px;height:34px;margin:0;font-family:var(--font-body);font-size:22px;font-weight:400;line-height:1.4;color:var(--color-muted)\">הצגה לצוות</p><h1 data-role=\"title\" style=\"position:absolute;right:96px;top:350px;width:1080px;height:240px;margin:0;font-family:var(--font-heading);font-size:112px;font-weight:800;line-height:1.05;color:var(--color-text)\">שם המצגת בשתי שורות</h1><p data-role=\"subtitle\" style=\"position:absolute;right:96px;top:630px;width:1000px;height:110px;margin:0;font-family:var(--font-heading);font-size:44px;font-weight:600;line-height:1.2;color:var(--color-text)\">שורה אחת שמסבירה על מה נדבר היום</p></div>"
+            },
+            {
+              "name": "כרטיסים",
+              "archetype": "cards",
+              "html": "<div data-archetype=\"cards\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body);color:var(--color-text)\"><p data-role=\"caption\" style=\"position:absolute;right:96px;top:88px;width:900px;height:34px;margin:0;font-family:var(--font-body);font-size:22px;font-weight:400;line-height:1.4;color:var(--color-muted)\">שלושה מהלכים</p><h2 data-role=\"title\" style=\"position:absolute;right:96px;top:130px;width:1728px;height:90px;margin:0;font-family:var(--font-heading);font-size:72px;font-weight:700;line-height:1.1;color:var(--color-text)\">כותרת השקף</h2><div data-name=\"card-1\" style=\"position:absolute;right:96px;top:300px;width:544px;height:560px;border-radius:var(--radius);background:var(--color-surface)\"></div><div data-name=\"bar-1\" style=\"position:absolute;right:136px;top:340px;width:72px;height:8px;background:var(--color-primary)\"></div><h3 data-role=\"subtitle\" style=\"position:absolute;right:136px;top:380px;width:464px;height:110px;margin:0;font-family:var(--font-heading);font-size:44px;font-weight:600;line-height:1.2;color:var(--color-text)\">כותרת כרטיס 1</h3><p data-role=\"body\" style=\"position:absolute;right:136px;top:510px;width:464px;height:310px;margin:0;font-family:var(--font-body);font-size:30px;font-weight:400;line-height:1.45;color:var(--color-text)\">שתיים או שלוש שורות שמסבירות את הנקודה של הכרטיס הזה.</p><div data-name=\"card-2\" style=\"position:absolute;right:688px;top:300px;width:544px;height:560px;border-radius:var(--radius);background:var(--color-surface)\"></div><div data-name=\"bar-2\" style=\"position:absolute;right:728px;top:340px;width:72px;height:8px;background:var(--color-primary)\"></div><h3 data-role=\"subtitle\" style=\"position:absolute;right:728px;top:380px;width:464px;height:110px;margin:0;font-family:var(--font-heading);font-size:44px;font-weight:600;line-height:1.2;color:var(--color-text)\">כותרת כרטיס 2</h3><p data-role=\"body\" style=\"position:absolute;right:728px;top:510px;width:464px;height:310px;margin:0;font-family:var(--font-body);font-size:30px;font-weight:400;line-height:1.45;color:var(--color-text)\">שתיים או שלוש שורות שמסבירות את הנקודה של הכרטיס הזה.</p><div data-name=\"card-3\" style=\"position:absolute;right:1280px;top:300px;width:544px;height:560px;border-radius:var(--radius);background:var(--color-surface)\"></div><div data-name=\"bar-3\" style=\"position:absolute;right:1320px;top:340px;width:72px;height:8px;background:var(--color-primary)\"></div><h3 data-role=\"subtitle\" style=\"position:absolute;right:1320px;top:380px;width:464px;height:110px;margin:0;font-family:var(--font-heading);font-size:44px;font-weight:600;line-height:1.2;color:var(--color-text)\">כותרת כרטיס 3</h3><p data-role=\"body\" style=\"position:absolute;right:1320px;top:510px;width:464px;height:310px;margin:0;font-family:var(--font-body);font-size:30px;font-weight:400;line-height:1.45;color:var(--color-text)\">שתיים או שלוש שורות שמסבירות את הנקודה של הכרטיס הזה.</p><img data-asset=\"373af45eb91ba778476dcc03de7dfd7cc554216bfd56b4e6947541ace2f77832\" data-role=\"logo\" data-name=\"logo\" style=\"position:absolute;right:96px;top:944px;width:160px;height:48px;object-fit:contain\"><p data-role=\"footer\" style=\"position:absolute;left:96px;top:952px;width:900px;height:34px;margin:0;font-family:var(--font-body);font-size:22px;font-weight:400;line-height:1.4;color:var(--color-muted);text-align:end\">שם המצגת</p></div>"
+            },
+            {
+              "name": "סיום",
+              "archetype": "closing",
+              "html": "<div data-archetype=\"closing\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body);color:var(--color-text)\"><div data-name=\"field\" style=\"position:absolute;left:0;top:0;width:480px;height:1080px;background:var(--color-secondary)\"></div><p data-role=\"caption\" style=\"position:absolute;right:96px;top:160px;width:900px;height:34px;margin:0;font-family:var(--font-body);font-size:22px;font-weight:400;line-height:1.4;color:var(--color-muted)\">מה הלאה</p><h2 data-role=\"title\" style=\"position:absolute;right:96px;top:210px;width:1200px;height:260px;margin:0;font-family:var(--font-heading);font-size:112px;font-weight:800;line-height:1.05;color:var(--color-text)\">תודה, ולעבודה</h2><div data-name=\"dot-1\" style=\"position:absolute;right:96px;top:520px;width:40px;height:40px;border-radius:50%;background:var(--color-primary)\"></div><p data-role=\"body\" style=\"position:absolute;right:160px;top:516px;width:1100px;height:48px;margin:0;font-family:var(--font-body);font-size:30px;font-weight:400;line-height:1.45;color:var(--color-text)\">צעד 1: מה עושים עכשיו</p><div data-name=\"dot-2\" style=\"position:absolute;right:96px;top:616px;width:40px;height:40px;border-radius:50%;background:var(--color-primary)\"></div><p data-role=\"body\" style=\"position:absolute;right:160px;top:612px;width:1100px;height:48px;margin:0;font-family:var(--font-body);font-size:30px;font-weight:400;line-height:1.45;color:var(--color-text)\">צעד 2: מה עושים עכשיו</p><div data-name=\"dot-3\" style=\"position:absolute;right:96px;top:712px;width:40px;height:40px;border-radius:50%;background:var(--color-primary)\"></div><p data-role=\"body\" style=\"position:absolute;right:160px;top:708px;width:1100px;height:48px;margin:0;font-family:var(--font-body);font-size:30px;font-weight:400;line-height:1.45;color:var(--color-text)\">צעד 3: מה עושים עכשיו</p><img data-asset=\"373af45eb91ba778476dcc03de7dfd7cc554216bfd56b4e6947541ace2f77832\" data-role=\"logo\" data-name=\"logo\" style=\"position:absolute;right:96px;top:880px;width:160px;height:48px;object-fit:contain\"></div>"
+            }
+          ]
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "הטיוטה מוכנה: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "פלטה חמה שנלקחה מהלוגו, "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "Rubik לכותרות, ושלוש פריסות. "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "אפשר לשמור אותה או לבקש שינויים."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 900,
+          "cacheReadTokens": 7200,
+          "cacheWriteTokens": 640
+        },
+        "costUsd": 0.0312,
+        "durationMs": 5200
+      }
+    ],
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "draft_2",
+        "name": "template_create",
+        "source": "app",
+        "input": {
+          "name": "חימר",
+          "theme": {
+            "colors": {
+              "bg": "#fdf1e3",
+              "primary": "#c2410c",
+              "accent": "#f59e0b"
+            }
+          },
+          "layouts": [],
+          "basedOn": {
+            "$ref": "draft_1.templateId"
+          }
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "חיממתי את הפלטה: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "רקע שמנת וכתום עמוק יותר. "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "הפריסות נשארו כמו שהיו."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 900,
+          "cacheReadTokens": 7200,
+          "cacheWriteTokens": 640
+        },
+        "costUsd": 0.0105,
+        "durationMs": 2400
+      }
+    ],
+    [
+      {
+        "delayMs": 500,
+        "type": "tool_call_started",
+        "id": "save_1",
+        "name": "template_save",
+        "source": "app",
+        "input": {
+          "templateId": {
+            "$ref": "draft_2.templateId"
+          },
+          "name": "חימר"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "התבנית נשמרה בספרייה."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 900,
+          "cacheReadTokens": 7200,
+          "cacheWriteTokens": 640
+        },
+        "costUsd": 0.0041,
+        "durationMs": 1500
+      }
+    ]
+  ]
+}

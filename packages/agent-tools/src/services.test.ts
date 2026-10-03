@@ -213,6 +213,30 @@ describe('conversion', () => {
     expect(other.code).toBe('out_of_scope');
   });
 
+  it('slide_replace_from_html gives the slide the archetype of its new design', async () => {
+    const drawn = (archetype?: 'section'): ConversionService => ({
+      ...conversion,
+      htmlToSlide: () =>
+        Promise.resolve({
+          slide: createSlide({ id: newId('s'), ...(archetype ? { archetype } : {}) }),
+          assets: [],
+          editability: 1,
+          notes: [],
+        }),
+    });
+    const deck = hebrewDeck();
+    const slideId = deck.slides[0]!.id;
+    deck.slides[0]!.archetype = 'hero';
+    // A design that names its kind: the slide is of that kind now, which the lint reads.
+    const named = setup(deck, { conversion: drawn('section') });
+    await ok(named.call('slide_replace_from_html', { slideId, html: '<div/>' }));
+    expect(findSlide(named.bus.deck, slideId)!.archetype).toBe('section');
+    // A design that names none: the kind of the design that is gone goes with it.
+    const bare = setup(deck, { conversion: drawn() });
+    await ok(bare.call('slide_replace_from_html', { slideId, html: '<div/>' }));
+    expect(findSlide(bare.bus.deck, slideId)!.archetype).toBeUndefined();
+  });
+
   it('element_convert puts the replacements where the element was', async () => {
     const { call, bus } = setup(allElementsDeck(), { conversion });
     const data = await ok(call('element_convert', { elementId: 'e_html', to: 'elements' }));

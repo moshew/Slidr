@@ -213,7 +213,13 @@ export const slideReplaceFromHtml = defineTool({
       {
         type: 'slide.update',
         slideId,
-        patch: { background: slide.background ?? null, css: slide.css ?? null, layoutId: null },
+        // The new design says which kind of slide it is; the old kind goes with the old design.
+        patch: {
+          background: slide.background ?? null,
+          css: slide.css ?? null,
+          layoutId: null,
+          archetype: slide.archetype ?? null,
+        },
       },
       { type: 'slide.setTimeline', slideId, timeline: slide.timeline },
     );

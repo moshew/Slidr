@@ -1,0 +1,136 @@
+{
+  "description": "The outline flow of a deck chat (AID-03, WG11-T05), in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers a request that gives only a subject: outline_propose with four slides, and the turn ends without building anything. Turn 2 is the answer to an approval: it builds the first two slides of the outline from HTML, the first into the empty slide a new deck opens with. Hand-written, with the timing of deck-build.",
+  "turns": [
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 600,
+        "type": "tool_call_started",
+        "id": "outline_1",
+        "name": "outline_propose",
+        "source": "app",
+        "input": {
+          "title": "תוכנית העבודה לשנת 2027",
+          "slides": [
+            {
+              "title": "תוכנית העבודה לשנת 2027",
+              "archetype": "hero",
+              "note": "כותרת גדולה מול לוח צבע"
+            },
+            {
+              "title": "איפה אנחנו היום",
+              "archetype": "bigNumber",
+              "note": "המספר של השנה שעברה"
+            },
+            {
+              "title": "שלושת היעדים",
+              "archetype": "cards"
+            },
+            {
+              "title": "מה עושים ברבעון הראשון",
+              "archetype": "timeline"
+            }
+          ]
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "זה המתווה שאני מציע: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "ארבעה שקפים. "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "לאשר, או לשנות משהו?"
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 900,
+          "cacheReadTokens": 7200,
+          "cacheWriteTokens": 640
+        },
+        "costUsd": 0.0058,
+        "durationMs": 1900
+      }
+    ],
+    [
+      {
+        "delayMs": 500,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "outline_read",
+        "name": "deck_get_outline",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
+        "delayMs": 700,
+        "type": "tool_call_started",
+        "id": "build_1",
+        "name": "slide_replace_from_html",
+        "source": "app",
+        "input": {
+          "slideId": {
+            "$ref": "outline_read.slides.0.id"
+          },
+          "html": "<div data-archetype=\"hero\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body);color:var(--color-text)\"><div data-name=\"panel\" style=\"position:absolute;left:96px;top:140px;width:640px;height:800px;border-radius:40px;background:var(--color-primary)\"></div><h1 data-role=\"title\" data-name=\"title\" style=\"position:absolute;right:96px;top:300px;width:980px;height:240px;margin:0;font-family:var(--font-heading);font-size:112px;font-weight:800;line-height:1.05;color:var(--color-text)\">תוכנית העבודה לשנת 2027</h1><p data-role=\"subtitle\" style=\"position:absolute;right:96px;top:580px;width:980px;height:110px;margin:0;font-family:var(--font-heading);font-size:44px;font-weight:600;line-height:1.2;color:var(--color-text)\">לאן הולכים, ואיך נדע שהגענו</p></div>"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 700,
+        "type": "tool_call_started",
+        "id": "build_2",
+        "name": "slide_create_from_html",
+        "source": "app",
+        "input": {
+          "html": "<div data-archetype=\"bigNumber\" dir=\"rtl\" lang=\"he\" style=\"position:relative;width:1920px;height:1080px;background:var(--color-bg);font-family:var(--font-body);color:var(--color-text)\"><div data-name=\"panel\" style=\"position:absolute;left:96px;top:140px;width:640px;height:800px;border-radius:40px;background:var(--color-primary)\"></div><h1 data-role=\"title\" data-name=\"title\" style=\"position:absolute;right:96px;top:300px;width:980px;height:240px;margin:0;font-family:var(--font-heading);font-size:112px;font-weight:800;line-height:1.05;color:var(--color-text)\">1,240 לקוחות</h1><p data-role=\"subtitle\" style=\"position:absolute;right:96px;top:580px;width:980px;height:110px;margin:0;font-family:var(--font-heading);font-size:44px;font-weight:600;line-height:1.2;color:var(--color-text)\">איפה אנחנו היום</p></div>",
+          "name": "איפה אנחנו היום"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "text_delta",
+        "text": "בניתי את שני השקפים הראשונים "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "לפי המתווה."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 900,
+          "cacheReadTokens": 7200,
+          "cacheWriteTokens": 640
+        },
+        "costUsd": 0.0214,
+        "durationMs": 4800
+      }
+    ]
+  ]
+}

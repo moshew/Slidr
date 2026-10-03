@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from '@slidr/ui/icons';
 import { Button, EmptyState, Icon, SegmentedControl, Select, Textarea } from '@slidr/ui';
+import { threadIdOf, type Attachment } from '../agent/agentService';
 import { TransitionTool } from '../animations/TransitionTool';
 import type { ImageProviderState } from '../images/images';
 import { BackgroundTool } from '../objects/BackgroundTool';
@@ -34,6 +35,7 @@ import { openPanel, PanelId, setAiTab, useDeck, useEditor } from '../shell';
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
 import { useThread } from './Chat';
 import { DeckLook } from './DeckLook';
+import { TemplateForm } from './TemplateForm';
 import { switchLayoutCommands } from './layout';
 import { aiOf } from './runtime';
 import { useObjectScope, useSlideScope } from './scopes';
@@ -48,9 +50,9 @@ const DECK: SessionScope = { kind: 'deck' };
 
 /* ---------------------------------------------------------------- sending an action */
 
-interface Runner {
-  /** Sends an action to its chat and shows the chat. */
-  run: (id: ActionId, params?: ActionParams) => void;
+export interface Runner {
+  /** Sends an action to its chat, with the files its form took, and shows the chat. */
+  run: (id: ActionId, params?: ActionParams, attachments?: readonly Attachment[]) => void;
   /** The action cannot be sent now: its chat is in a turn, or its session lacks a tool. */
   off: (id: ActionId) => boolean;
   /** The panel's own chat is in a turn. */
@@ -63,7 +65,9 @@ function useRunner(scope: SessionScope): Runner {
   const editor = useEditor();
   const ai = aiOf(editor);
   const own = useThread(scope);
-  const deck = useMemo(() => ai.sessions.thread(DECK), [ai]);
+  // The deck's chat is the conversation its tool shows now.
+  const deckId = useStore(ai.agent.shown, (shown) => shown[threadIdOf(DECK)] ?? threadIdOf(DECK));
+  const deck = useMemo(() => ai.sessions.thread(DECK, deckId), [ai, deckId]);
   const busy = useStore(own.store, (s) => s.busy);
   const deckBusy = useStore(deck.store, (s) => s.busy);
   const elsewhere = (id: ActionId) => ACTIONS[id].scope !== scope.kind;
@@ -72,11 +76,14 @@ function useRunner(scope: SessionScope): Runner {
     off: (id) =>
       (elsewhere(id) ? deckBusy : busy) ||
       !ACTIONS[id].needs.every((tool) => ai.tools(ACTIONS[id].scope).has(tool)),
-    run: (id, params = {}) => {
+    run: (id, params = {}, attachments = []) => {
       const action = {
         id,
+        // What the chat shows of the form: its numbers and its words.
         params: Object.fromEntries(
-          Object.entries(params).filter(([, value]) => value !== undefined),
+          Object.entries(params).filter(
+            ([, value]) => typeof value === 'string' || typeof value === 'number',
+          ),
         ) as Record<string, string | number>,
       };
       const message = actionMessage({
@@ -84,7 +91,11 @@ function useRunner(scope: SessionScope): Runner {
         params,
         replyIn: i18n.language === 'he' ? 'Hebrew' : 'English',
       });
-      void (elsewhere(id) ? deck : own).send(message, { action, label: actionLabel(t, action) });
+      void (elsewhere(id) ? deck : own).send(message, {
+        action,
+        label: actionLabel(t, action),
+        ...(attachments.length > 0 ? { attachments } : {}),
+      });
       if (elsewhere(id)) openPanel(PanelId.aiDeck, 'chat');
       else setAiTab('chat');
     },
@@ -244,6 +255,7 @@ export function DeckActions() {
       </Section>
       {/* The template gallery, the palettes and the font pairs: the user's own edits, not AI. */}
       <DeckLook />
+      <TemplateForm runner={runner} />
     </Tab>
   );
 }
