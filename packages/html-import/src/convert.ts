@@ -377,8 +377,17 @@ export function propose(root: Element, options: WalkOptions): Proposal {
         css['outline-offset'] = `${round(px(cs.outlineOffset) * kl)}px`;
     }
     if (cs.animationName !== 'none') {
-      css.animation = cs.animation;
-      for (const name of splitTopLevel(cs.animationName, ',')) proposal.keyframes.add(name);
+      // In a foreign page, an animation that ends has ended: the guard finishes it before it
+      // measures, and what an imported slide keeps is the state it ended in (ADR-005). Kept as
+      // `css` it would hold a whole group back as HTML for something that no longer moves.
+      // One that never ends is what the element looks like, and stays.
+      const endless = splitTopLevel(cs.animationIterationCount, ',').some(
+        (count) => count.trim() === 'infinite',
+      );
+      if (text.link || endless) {
+        css.animation = cs.animation;
+        for (const name of splitTopLevel(cs.animationName, ',')) proposal.keyframes.add(name);
+      }
     }
     let rotation = 0;
     let transform: 'none' | 'scale' | 'rotate' | 'other' = 'none';

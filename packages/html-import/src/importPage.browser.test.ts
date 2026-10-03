@@ -240,6 +240,37 @@ describe('capturing an element as a slide', () => {
     expect(JSON.stringify(whole.slide)).toContain('1 / 3');
   });
 
+  it('keeps the end of an entrance animation, and an animation that never ends as it is', async () => {
+    const animated = `<!doctype html><html><head><style>
+      body { margin: 0; font-family: Arial, sans-serif; }
+      .slide { width: 1280px; height: 720px; background: #f8fafc; padding: 60px; box-sizing: border-box; }
+      @keyframes rise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+      @keyframes pulse { 50% { opacity: 0.4; } }
+      .card { opacity: 0; animation: rise 0.2s ease-out forwards; background: #fff; border: 2px solid #94a3b8; padding: 24px; width: 500px; }
+      .card h2 { margin: 0 0 12px; font-size: 40px; color: #0f172a; }
+      .card p { margin: 0; font-size: 24px; color: #334155; }
+      .dot { width: 40px; height: 40px; margin-top: 40px; border-radius: 50%; background: #dc2626; animation: pulse 1s infinite; }
+    </style></head><body>
+      <div class="slide"><div class="card"><h2>Entrance</h2><p>Shown once it has risen.</p></div><div class="dot"></div></div>
+    </body></html>`;
+    const imported = importPage(animated);
+    await imported.setViewport({ width: 1280, height: 720 });
+    const captured = await imported.capture({
+      selector: '.slide',
+      deck: createDeck({ lang: 'en' }),
+      takenIds: [],
+    });
+    expect(captured.guard.faithful).toBe(true);
+    // The card that rose into place is a box and two texts, not a block of HTML that animates.
+    const texts = captured.slide.elements.filter((element) => element.type === 'text');
+    expect(texts).toHaveLength(2);
+    expect(captured.textEditability).toBe(1);
+    const written = JSON.stringify(captured.slide);
+    expect(written).not.toMatch(/keyframes rise|[^"]* rise"/);
+    expect(written).toContain('"animation":"1s infinite pulse"');
+    expect(captured.slide.css).toContain('@keyframes pulse');
+  });
+
   it('takes statements that return the element where an expression was asked for', async () => {
     const imported = importPage(DECK);
     await imported.setViewport({ width: 1280, height: 720 });
