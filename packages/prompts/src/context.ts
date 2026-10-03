@@ -36,25 +36,26 @@ const UNSAFE = new RegExp(`[<>${String.fromCharCode(0x2028, 0x2029)}]`, 'g');
  * A value as JSON on one line. Titles and names are the user's text, or an imported file's, and
  * must stay data whatever they contain: JSON escapes quotes and line breaks, `<` and `>` are
  * written as escapes too, and every string is cut to a bounded length. So a name cannot close
- * the block, open a tag of its own, start a line, or carry a page of text.
+ * the block, open a tag of its own, start a line, or carry a page of text. `limits` gives a key
+ * a length of its own.
  */
-function json(value: unknown): string {
+export function json(value: unknown, limits: Readonly<Record<string, number>> = {}): string {
   const text = JSON.stringify(value, (key, item: unknown) =>
     typeof item === 'string'
-      ? clip(item, key === 'image_style' ? MAX_IMAGE_STYLE : MAX_TEXT)
+      ? clip(item, limits[key] ?? (key === 'image_style' ? MAX_IMAGE_STYLE : MAX_TEXT))
       : item,
   );
   return text.replace(UNSAFE, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
 }
 
-function capped<T>(items: readonly T[]): (T | string)[] {
+export function capped<T>(items: readonly T[]): (T | string)[] {
   return items.length > MAX_LIST
     ? [...items.slice(0, MAX_LIST), `… ${items.length - MAX_LIST} more`]
     : [...items];
 }
 
 /** A slide as the agent refers to it. `number` counts from 1, like the Deck API (ADR-011). */
-function slideRef(deck: Deck, slideId: string) {
+export function slideRef(deck: Deck, slideId: string) {
   const index = deck.slides.findIndex((slide) => slide.id === slideId);
   const slide = deck.slides[index];
   if (!slide) return { id: slideId, missing: true };
