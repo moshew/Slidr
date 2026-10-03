@@ -58,6 +58,11 @@ export interface ConvertOptions {
   placement?: { k: number; x: number; y: number };
   /** Ids that are taken besides those in the deck. */
   takenIds?: ReadonlySet<string>;
+  /**
+   * False when the caller keeps the fonts the source brought as assets of the deck (HTML
+   * import, SPEC 5.7): their `@font-face` rules then stay out of the slide's `css`.
+   */
+  fontFaces?: boolean;
 }
 
 export interface Fallback {
@@ -148,7 +153,22 @@ const CLUSTER_MIN_PIXELS = 12;
 /** A text box sits right when its lines are within this many pixels of the source's. */
 const SETTLED = 0.04;
 /** How often a text box is moved to where its lines belong before it counts as different. */
-const MAX_TEXT_FITS = 3;
+const MAX_TEXT_FITS = 5;
+
+/** How long a page that is given no frames is waited for (as in the renderer's `settle`). */
+const FRAMES_FALLBACK_MS = 250;
+
+/**
+ * Two frames, after which what was just changed has been drawn. A window that is minimized or
+ * hidden gets no frames, so a timer stands in for them: a conversion must not wait for the user
+ * to bring the window back.
+ */
+function twoFrames(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    setTimeout(resolve, FRAMES_FALLBACK_MS);
+  });
+}
 
 async function decode(blob: Blob): Promise<Picture> {
   const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
@@ -445,10 +465,18 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     const before = html.getAttribute('style');
     html.style.setProperty('transition', 'none', 'important');
     html.style.setProperty('opacity', '0', 'important');
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await twoFrames();
     const blob = await host.capture(clip);
+    // Back as it was, in two steps: the opacity returns while transitions are still off, and
+    // only then the element's own style. An element that fades in with a transition (many
+    // decks show a slide that way) would otherwise fade in again, and the picture of the
+    // source would be taken halfway through.
+    html.style.removeProperty('opacity');
+    void styleOf(html).opacity;
     if (before === null) html.removeAttribute('style');
     else html.setAttribute('style', before);
+    freezeAnimations(doc);
+    await twoFrames();
     const flat = uniformColor(await decode(blob));
     if (flat) {
       const under = {
@@ -524,7 +552,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   const density = sourcePicture.width / clip.width;
 
   const slideId = newId('s', (candidate) => deck.slides.some((s) => s.id === candidate));
-  const fonts = fontFaceText(doc);
+  const fonts = options.fontFaces === false ? '' : fontFaceText(doc);
   const assemble = (): Slide => {
     const groups = new Set<number>();
     const timeline: AnimationStep[] = [];
@@ -644,7 +672,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         ) {
           continue;
         }
-        const verdict = compareLines(item.lines, measured);
+        const verdict = compareLines(item.lines, measured, true);
         // Glyphs are drawn on whole pixel rows, so a box a fraction of a pixel off can draw
         // its text a whole row off: the box is moved until its lines sit exactly.
         const off =
@@ -668,7 +696,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         }
       }
       if (moved) return { real, shown, moved };
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await twoFrames();
       return { real, shown, picture: await take(), moved };
     } finally {
       mounted.dispose();
@@ -753,7 +781,12 @@ export async function startConversion(root: Element, options: ConvertOptions): P
           why = `looks different (${fine.differing[index]} of ${fine.owned[index]} pixels)`;
         }
       } else {
-        const textual = type === 'text' || type === 'table';
+        // An HTML copy that holds text is judged as text is. It is the source's own markup
+        // drawn again, a frame's rounding away from where it was, and glyphs that sit on the
+        // edge of a pixel then fall on its other side: measured on a real deck, up to 1% of
+        // the region. Held to the stricter rule, such a copy is widened, round after round,
+        // until the whole slide is one HTML element that differs by exactly the same pixels.
+        const textual = type === 'text' || type === 'table' || (type === 'html' && item.chars > 0);
         const least = textual ? 2 * BAD_MIN_PIXELS : BAD_MIN_PIXELS;
         const share = textual ? BAD_TEXT_SHARE : BAD_SHARE;
         const local = textual ? undefined : dense.find((c) => c.owner === index);

@@ -528,7 +528,16 @@ export type LineVerdict =
  * conversions, lines land within half a pixel; the tolerance is 1.5px, and a little more
  * along long lines.
  */
-export function compareLines(source: readonly Line[], converted: readonly Line[]): LineVerdict {
+export function compareLines(
+  source: readonly Line[],
+  converted: readonly Line[],
+  /**
+   * Report a different spacing of the lines even where every line is still within the
+   * tolerance: a text of two lines whose second sits a pixel low passes the geometry and
+   * fails the pixels, and the spacing is something the caller can put right.
+   */
+  exactPitch = false,
+): LineVerdict {
   if (source.length !== converted.length) {
     return {
       kind: 'different',
@@ -556,6 +565,21 @@ export function compareLines(source: readonly Line[], converted: readonly Line[]
   // Glyphs hang on the baseline, about four fifths down their box. Through a nested scale the
   // boxes of the two sides differ in height by a fraction, and it is the baselines that must meet.
   const baseline = first.top + 0.8 * (first.bottom - first.top);
+  const pitch = (): LineVerdict | undefined => {
+    if (source.length < 2) return undefined;
+    const last = source.length - 1;
+    const sourcePitch = (source[last]!.top - source[0]!.top) / last;
+    const convertedPitch = (converted[last]!.top - converted[0]!.top) / last;
+    const sameAcross = off.every(
+      (d, i) =>
+        Math.max(Math.abs(d.left - first.left), Math.abs(d.right - first.left)) <= tolX(source[i]!),
+    );
+    return sameAcross && convertedPitch > 0 && Math.abs(sourcePitch - convertedPitch) > 0.05
+      ? { kind: 'pitch', ratio: sourcePitch / convertedPitch }
+      : undefined;
+  };
+  const spaced = exactPitch ? pitch() : undefined;
+  if (spaced) return spaced;
   if (within) return { kind: 'same', dx: first.left, dy: baseline };
 
   // The same widths and heights everywhere, only somewhere else: a shift.
@@ -568,18 +592,8 @@ export function compareLines(source: readonly Line[], converted: readonly Line[]
   );
   if (rigid) return { kind: 'shifted', dx: first.left, dy: baseline };
 
-  if (source.length > 1) {
-    const last = source.length - 1;
-    const sourcePitch = (source[last]!.top - source[0]!.top) / last;
-    const convertedPitch = (converted[last]!.top - converted[0]!.top) / last;
-    const sameAcross = off.every(
-      (d, i) =>
-        Math.max(Math.abs(d.left - first.left), Math.abs(d.right - first.left)) <= tolX(source[i]!),
-    );
-    if (sameAcross && convertedPitch > 0 && Math.abs(sourcePitch - convertedPitch) > 0.05) {
-      return { kind: 'pitch', ratio: sourcePitch / convertedPitch };
-    }
-  }
+  const otherPitch = pitch();
+  if (otherPitch) return otherPitch;
   const worst = off.reduce(
     (m, d, i) => {
       const dx = Math.max(Math.abs(d.left), Math.abs(d.right));

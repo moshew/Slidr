@@ -114,6 +114,8 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
       merged: true,
     })),
   );
+  // Which places of the grid a measured cell lies over: its own, and those its spans cover.
+  const covered = Array.from({ length: lines }, () => new Array<boolean>(columns).fill(false));
   const stroke = (
     cell: Element,
     cs: CSSStyleDeclaration,
@@ -183,6 +185,13 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
     const left = stroke(cell, cs, 'Left');
     const align = cs.verticalAlign;
     const column = rtl ? columns - c1 : c0;
+    for (let r = r0; r < r1; r++) {
+      for (let c = column; c < column + (c1 - c0); c++) {
+        // Two cells over one place is not a grid the model's table can hold.
+        if (covered[r]![c]) return undefined;
+        covered[r]![c] = true;
+      }
+    }
     cells[r0]![column] = {
       content: { paragraphs },
       ...(r1 - r0 > 1 ? { rowSpan: r1 - r0 } : {}),
@@ -210,6 +219,14 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
         left: round(px(cs.paddingLeft) * kl),
       },
     };
+  }
+
+  // A place no cell lies over (a row that is short of cells) is an empty cell of its own, not
+  // one that another cell covers: `merged` without a cell that spans over it is not a table.
+  for (let r = 0; r < lines; r++) {
+    for (let c = 0; c < columns; c++) {
+      if (!covered[r]![c]) cells[r]![c] = { content: { paragraphs: [] }, borders: {} };
+    }
   }
 
   // A cell's box runs from the middle of one collapsed border to the middle of the next, and

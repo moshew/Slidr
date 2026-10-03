@@ -211,6 +211,64 @@ function absoluteUrls(css: string, base: string): string {
   });
 }
 
+/** What a length can depend on outside the copy: the window's size and the root's font size. */
+export interface WindowUnits {
+  /** CSS px per `vw` and per `vh`. */
+  vw: number;
+  vh: number;
+  /** CSS px per `rem`. */
+  rem: number;
+}
+
+function windowUnits(doc: Document): WindowUnits | undefined {
+  const view = doc.defaultView;
+  if (!view || view.innerWidth <= 0 || view.innerHeight <= 0) return undefined;
+  return {
+    vw: view.innerWidth / 100,
+    vh: view.innerHeight / 100,
+    rem: px(styleOf(doc.documentElement).fontSize) || 16,
+  };
+}
+
+/** A length in a unit of the window or of the root, outside URLs and strings. */
+const WINDOW_LENGTH =
+  /url\([^)]*\)|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|(?<![\w-])(-?(?:\d+\.?\d*|\.\d+))(rem|[sld]?v(?:min|max|w|h|i|b))\b/gi;
+
+/**
+ * Declarations with their window-relative lengths (`vw`, `vh`, `vmin`, `vmax` and their small,
+ * large and dynamic forms) and `rem` written out in px, as they resolved where the source was
+ * rendered. An `html` element is drawn inside the app's page, whose window and root font size
+ * are not the source's: a copy that kept these units would change size with the editor's
+ * window.
+ */
+export function freezeWindowLengths(css: string, units: WindowUnits): string {
+  return css.replace(WINDOW_LENGTH, (whole: string, number?: string, unit?: string) => {
+    if (number === undefined || unit === undefined) return whole;
+    const name = unit.toLowerCase();
+    const per =
+      name === 'rem'
+        ? units.rem
+        : name.endsWith('min')
+          ? Math.min(units.vw, units.vh)
+          : name.endsWith('max')
+            ? Math.max(units.vw, units.vh)
+            : name.endsWith('w') || name.endsWith('i')
+              ? units.vw
+              : units.vh;
+    return `${Math.round(Number.parseFloat(number) * per * 10000) / 10000}px`;
+  });
+}
+
+/** How the rules of a document are made independent of the window they were read in. */
+interface Frozen {
+  units: WindowUnits | undefined;
+  /** Whether a media condition holds in the source's window. */
+  matches(condition: string): boolean;
+}
+
+const freeze = (css: string, frozen: Frozen) =>
+  frozen.units ? freezeWindowLengths(css, frozen.units) : css;
+
 /** The rule's type by name: rule classes of another document are not this window's classes. */
 function ruleKind(rule: CSSRule): string {
   return rule.constructor.name;
@@ -218,47 +276,68 @@ function ruleKind(rule: CSSRule): string {
 
 /**
  * The rules of the document that can match inside `scope`, as stylesheet text. Grouping rules
- * (`@media`, `@supports`, `@layer`) keep their condition around what is left of them.
- * `@font-face` is left out (fonts are assets of the deck), `@import` is followed where the
- * sheet can be read.
+ * (`@supports`, `@layer`) keep their condition around what is left of them. `@media` is decided
+ * here, by the window the source was rendered in: the rules of a condition that held are kept
+ * without it and the others are dropped, since inside the app the condition would be asked of
+ * the editor's window. `@font-face` is left out (fonts are assets of the deck), `@import` is
+ * followed where the sheet can be read.
  */
-function collectRules(rules: CSSRuleList, scope: ParentNode, base: string, out: string[]): void {
+function collectRules(
+  rules: CSSRuleList,
+  scope: ParentNode,
+  base: string,
+  frozen: Frozen,
+  out: string[],
+): void {
   for (const rule of Array.from(rules)) {
     const kind = ruleKind(rule);
     if (kind === 'CSSStyleRule') {
       const style = rule as CSSStyleRule;
       const selector = rewriteSelector(style.selectorText);
       if (!canMatch(scope, selector)) continue;
-      out.push(absoluteUrls(selector + style.cssText.slice(style.selectorText.length), base));
+      const block = freeze(style.cssText.slice(style.selectorText.length), frozen);
+      out.push(absoluteUrls(selector + block, base));
     } else if (kind === 'CSSFontFaceRule') {
       continue;
     } else if (kind === 'CSSImportRule') {
-      const sheet = (rule as CSSImportRule).styleSheet;
+      const imported = rule as CSSImportRule;
+      if (imported.media.mediaText && !frozen.matches(imported.media.mediaText)) continue;
+      const sheet = imported.styleSheet;
       try {
-        if (sheet) collectRules(sheet.cssRules, scope, sheet.href ?? base, out);
+        if (sheet) collectRules(sheet.cssRules, scope, sheet.href ?? base, frozen, out);
       } catch {
         // A sheet from another origin cannot be read.
       }
+    } else if (kind === 'CSSMediaRule') {
+      const media = rule as CSSMediaRule;
+      if (frozen.matches(media.conditionText)) {
+        collectRules(media.cssRules, scope, base, frozen, out);
+      }
     } else if ('cssRules' in rule && kind !== 'CSSKeyframesRule') {
       const inner: string[] = [];
-      collectRules((rule as CSSGroupingRule).cssRules, scope, base, inner);
+      collectRules((rule as CSSGroupingRule).cssRules, scope, base, frozen, inner);
       if (inner.length === 0) continue;
       const header = rule.cssText.slice(0, rule.cssText.indexOf('{')).trim();
       out.push(`${header} {\n${inner.join('\n')}\n}`);
     } else {
-      out.push(absoluteUrls(rule.cssText, base));
+      // Keyframes and the like: the name stays, the declarations are frozen.
+      const text = rule.cssText;
+      const open = text.indexOf('{');
+      const body = open < 0 ? text : text.slice(0, open) + freeze(text.slice(open), frozen);
+      out.push(absoluteUrls(body, base));
     }
   }
 }
 
-function documentRules(doc: Document, scope: ParentNode): string {
+function documentRules(doc: Document, scope: ParentNode, frozen: Frozen): string {
   const out: string[] = [];
   const sheets = [...Array.from(doc.styleSheets), ...doc.adoptedStyleSheets];
   for (const sheet of sheets) {
     const owner = sheet.ownerNode;
     if (owner && isElement(owner) && owner.hasAttribute(BASE_STYLE_ATTRIBUTE)) continue;
+    if (sheet.media.mediaText && !frozen.matches(sheet.media.mediaText)) continue;
     try {
-      collectRules(sheet.cssRules, scope, sheet.href ?? doc.baseURI, out);
+      collectRules(sheet.cssRules, scope, sheet.href ?? doc.baseURI, frozen, out);
     } catch {
       // A sheet from another origin cannot be read.
     }
@@ -353,7 +432,26 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
   );
   holder.append(top);
 
-  const styles = documentRules(doc, holder);
+  const view = doc.defaultView;
+  const frozen: Frozen = {
+    units: windowUnits(doc),
+    matches: (condition) => {
+      try {
+        return view ? view.matchMedia(condition).matches : true;
+      } catch {
+        return true;
+      }
+    },
+  };
+  // Inline styles carry window-relative lengths too.
+  if (frozen.units) {
+    for (const styled of Array.from(holder.querySelectorAll('[style]'))) {
+      const inline = styled.getAttribute('style') ?? '';
+      const fixed = freezeWindowLengths(inline, frozen.units);
+      if (fixed !== inline) styled.setAttribute('style', fixed);
+    }
+  }
+  const styles = documentRules(doc, holder, frozen);
   return { markup: holder.outerHTML, ...(styles ? { styles } : {}), natural, lossy };
 }
 
