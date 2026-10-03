@@ -14,7 +14,8 @@
 //   --budget <usd>     stop before a request once every run together has cost this much (30)
 //   --no-gate          switch the design check off
 //   --template <id>    the template every request's deck starts on (a built-in one: zerem,
-//                      shvil, tzuk); without it, the plain deck of the base theme
+//                      shvil, tzuk), or `all`: the three in turn, by the request's place in
+//                      the set; without it, the plain deck of the base theme
 //   --attach           use the app that is already running on the CDP port
 //
 // A session that shares the machine with others runs the set under an identifier and ports of
@@ -77,6 +78,15 @@ function parseArgs(argv) {
     else if (flag !== '--') throw new Error(`unknown option ${flag}`);
   }
   return args;
+}
+
+/** The built-in templates (WG7-T04), in the order `--template all` deals them out. */
+const BUILT_IN = ['zerem', 'shvil', 'tzuk'];
+
+/** The template a request's deck starts on. A request keeps its template whatever `--only` says. */
+function templateOf(args, set, request) {
+  if (args.template !== 'all') return args.template;
+  return BUILT_IN[set.requests.indexOf(request) % BUILT_IN.length];
 }
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -204,6 +214,7 @@ async function runRequest(page, request, context) {
   mkdirSync(join(dir, 'slides'), { recursive: true });
   const started = Date.now();
   const provider = images.count >= args.maxImages ? 'mock' : args.images;
+  const template = templateOf(args, set, request);
   await page.evaluate((options) => window.slidrEval.prepare(options), {
     settings: {
       harnessId: 'claude-code',
@@ -214,7 +225,7 @@ async function runRequest(page, request, context) {
     },
     imageProvider: provider,
     ...(request.base ? { base: request.base } : {}),
-    ...(args.template ? { template: args.template } : {}),
+    ...(template ? { template } : {}),
   });
   await page.waitForFunction(() => window.slidrEval.status().ready, null, { timeout: 30_000 });
 
@@ -253,7 +264,7 @@ async function runRequest(page, request, context) {
     model: args.model,
     images: provider,
     gate: args.gate,
-    ...(args.template ? { template: args.template } : {}),
+    ...(template ? { template } : {}),
     approvals,
     outcome: status.timedOut ? 'timed_out' : (status.outcome ?? 'unknown'),
     ...(status.problem ? { problem: status.problem } : {}),
@@ -323,7 +334,8 @@ async function main() {
         console.log(`stopped before ${request.id}: $${total.toFixed(2)} of $${args.budget} spent`);
         break;
       }
-      console.log(`${request.id} …`);
+      const on = templateOf(args, set, request);
+      console.log(`${request.id}${on ? ` on ${on}` : ''} …`);
       let result;
       try {
         result = await runRequest(page, request, { args, set, runDir, images });

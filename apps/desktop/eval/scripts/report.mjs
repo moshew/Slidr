@@ -47,6 +47,10 @@ function row(result, scores) {
   return {
     id: request.id,
     lang: request.lang,
+    // The template the request's deck started on, when the run gave it one.
+    template: result.template ?? null,
+    // How often the runner said "go ahead": the agent proposed an outline, or asked.
+    approvals: result.approvals ?? 0,
     outcome: result.outcome,
     slides: score.slides.length,
     errors: score.findings.error,
@@ -93,6 +97,7 @@ export function summarize(runDir) {
       editability: slides === 0 ? 1 : sum(rows, (r) => r.editability * r.slides) / slides,
       titleAndBullets: sum(rows, (r) => r.titleAndBullets),
       emoji: sum(rows, (r) => r.emoji),
+      approvals: sum(rows, (r) => r.approvals),
       htmlWrites: sum(rows, (r) => r.htmlWrites),
       partlyHtml: sum(rows, (r) => r.partlyHtml),
       wholeSlideHtml: sum(rows, (r) => r.wholeSlideHtml),
@@ -112,6 +117,7 @@ function summaryText(summary) {
   const pad = (value, width) => String(value).padEnd(width);
   const head = [
     pad('request', 24),
+    pad('tmpl', 7),
     pad('slides', 7),
     pad('err', 4),
     pad('warn', 5),
@@ -120,6 +126,7 @@ function summaryText(summary) {
     pad('edit', 6),
     pad('t+b', 4),
     pad('emoji', 6),
+    pad('asked', 6),
     pad('sec', 6),
     pad('usd', 6),
     'visual',
@@ -127,6 +134,7 @@ function summaryText(summary) {
   const line = (r) =>
     [
       pad(r.id, 24),
+      pad(r.template ?? '–', 7),
       pad(r.slides, 7),
       pad(r.errors, 4),
       pad(r.warnings, 5),
@@ -135,6 +143,7 @@ function summaryText(summary) {
       pad(percent(r.editability, 1), 6),
       pad(r.titleAndBullets, 4),
       pad(r.emoji, 6),
+      pad(r.approvals, 6),
       pad(r.seconds, 6),
       pad((r.costUsd ?? 0).toFixed(2), 6),
       r.visual ?? '–',
@@ -156,6 +165,7 @@ function summaryText(summary) {
       editability: t.editability,
       titleAndBullets: t.titleAndBullets,
       emoji: t.emoji,
+      approvals: t.approvals,
       seconds: t.seconds,
       costUsd: t.costUsd,
       visual:
@@ -202,7 +212,7 @@ function requestSection(result, runDir) {
     .join('\n');
   return `<section id="${request.id}" data-request="${request.id}">
   <header>
-    <h2>${escapeHtml(request.id)} <small>${escapeHtml(request.kind)} · ${escapeHtml(request.lang)}</small></h2>
+    <h2>${escapeHtml(request.id)} <small>${escapeHtml(request.kind)} · ${escapeHtml(request.lang)}${result.template ? ` · תבנית: ${escapeHtml(result.template)}` : ''}</small></h2>
     <div class="score" role="radiogroup" aria-label="ציון חזותי">
       ${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="score-${request.id}" value="${n}"><span>${n}</span></label>`).join('')}
     </div>
