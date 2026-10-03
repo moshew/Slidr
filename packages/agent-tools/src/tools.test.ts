@@ -411,6 +411,87 @@ describe('content tools', () => {
     );
     expect(stray.code).toBe('not_found');
   });
+
+  it('animation_set takes only the presets the runtime can play', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    const before = findSlide(bus.deck, 's_all')!.timeline;
+    const unknown = await failed(
+      call('animation_set', {
+        slideId: 's_all',
+        steps: [{ elementId: 'e_text', preset: 'swoosh' }],
+      }),
+    );
+    expect(unknown.code).toBe('invalid_input');
+    expect(unknown.message).toMatch(/Unknown entrance preset "swoosh"\. Use one of: appear, fade,/);
+    // A name of another category is not a name of this one.
+    const wrongCategory = await failed(
+      call('animation_set', {
+        slideId: 's_all',
+        steps: [{ elementId: 'e_text', category: 'emphasis', preset: 'flyIn' }],
+      }),
+    );
+    expect(wrongCategory.message).toMatch(/Unknown emphasis preset "flyIn"\. Use one of: pulse,/);
+    const motion = await failed(
+      call('animation_set', {
+        slideId: 's_all',
+        steps: [{ elementId: 'e_text', category: 'motion', preset: 'path' }],
+      }),
+    );
+    expect(motion.message).toMatch(/Motion paths cannot be played yet/);
+    expect(findSlide(bus.deck, 's_all')!.timeline).toBe(before);
+
+    await ok(
+      call('animation_set', {
+        slideId: 's_all',
+        steps: [
+          { elementId: 'e_text', preset: 'wipe', direction: 'end' },
+          { elementId: 'e_text', category: 'exit', preset: 'flyOut', trigger: 'afterPrevious' },
+        ],
+      }),
+    );
+    expect(findSlide(bus.deck, 's_all')!.timeline.map((s) => s.preset)).toEqual(['wipe', 'flyOut']);
+  });
+
+  it('animation_set sets the transition into the slide, and checks its type', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    const timeline = findSlide(bus.deck, 's_all')!.timeline;
+    const data = await ok(
+      call('animation_set', { slideId: 's_all', transition: { type: 'push', direction: 'up' } }),
+    );
+    expect(data.stepIds).toEqual([]);
+    const slide = findSlide(bus.deck, 's_all')!;
+    expect(slide.transition).toEqual({
+      type: 'push',
+      direction: 'up',
+      duration: 600,
+      easing: 'ease-in-out',
+      advance: { onClick: true },
+    });
+    // Steps that were not given stay.
+    expect(slide.timeline).toBe(timeline);
+
+    const unknown = await failed(
+      call('animation_set', { slideId: 's_all', transition: { type: 'morph' } }),
+    );
+    expect(unknown.code).toBe('invalid_input');
+    expect(unknown.message).toMatch(/Unknown transition type "morph"\. Use one of: none, fade,/);
+
+    // Both at once are one undo step.
+    await ok(
+      call('animation_set', {
+        slideId: 's_all',
+        steps: [{ elementId: 'e_text', preset: 'rise' }],
+        transition: null,
+      }),
+    );
+    expect(findSlide(bus.deck, 's_all')!.transition).toBeUndefined();
+    bus.undo();
+    expect(findSlide(bus.deck, 's_all')!.transition?.type).toBe('push');
+    expect(findSlide(bus.deck, 's_all')!.timeline).toEqual(timeline);
+
+    const nothing = await failed(call('animation_set', { slideId: 's_all' }));
+    expect(nothing.message).toMatch(/Nothing to change/);
+  });
 });
 
 describe('deck tools', () => {

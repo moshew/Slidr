@@ -1,5 +1,8 @@
 import type { Vec } from './direction';
+import type { Category, emphasisNames, entranceNames, exitNames } from './names';
 import type { FlowDirection, Size } from './types';
+
+export { animationPresets, type Category } from './names';
 
 /**
  * The ready-made animations (SPEC 5.6, WG8-T03). A preset describes its motion once, in slide
@@ -50,8 +53,6 @@ export interface Preset {
   inline?: string;
 }
 
-export type Category = 'entrance' | 'emphasis' | 'exit';
-
 /** Clear of the slide's edge, so a shadow is out of sight too. */
 const OFFSCREEN_MARGIN = 80;
 
@@ -83,7 +84,7 @@ function covered(v: Vec, p: number): [number, number, number, number] {
   return [v.y > 0 ? p : 0, v.x < 0 ? p : 0, v.y < 0 ? p : 0, v.x > 0 ? p : 0];
 }
 
-const entrance: Record<string, Preset> = {
+const entrance: Record<(typeof entranceNames)[number], Preset> = {
   appear: {
     direction: 'up',
     frames: () => [
@@ -148,7 +149,7 @@ const entrance: Record<string, Preset> = {
   },
 };
 
-const exit: Record<string, Preset> = {
+const exit: Record<(typeof exitNames)[number], Preset> = {
   disappear: {
     direction: 'down',
     frames: () => [
@@ -213,7 +214,7 @@ const exit: Record<string, Preset> = {
 };
 
 /** Emphasis draws attention and leaves the part as it was. */
-const emphasis: Record<string, Preset> = {
+const emphasis: Record<(typeof emphasisNames)[number], Preset> = {
   pulse: {
     direction: 'up',
     inline: 'flash',
@@ -276,7 +277,8 @@ const emphasis: Record<string, Preset> = {
   },
 };
 
-const presets: Record<Category, Record<string, Preset>> = { entrance, emphasis, exit };
+// Looked up by the free text of a step, so by any string.
+const presets: Record<Category, Record<string, Preset | undefined>> = { entrance, emphasis, exit };
 
 /** A name that belongs to the other category means its counterpart: `flyIn` as an exit is `flyOut`. */
 const COUNTERPART: Record<Category, Record<string, string>> = {
@@ -287,13 +289,6 @@ const COUNTERPART: Record<Category, Record<string, string>> = {
 
 /** What plays when the name is unknown. The step still shows or hides its element. */
 const FALLBACK: Record<Category, string> = { entrance: 'fade', exit: 'fade', emphasis: 'pulse' };
-
-/** The names of the presets, for a picker and for the agent's prompt. */
-export const animationPresets: Record<Category, readonly string[]> = {
-  entrance: Object.keys(entrance),
-  emphasis: Object.keys(emphasis),
-  exit: Object.keys(exit),
-};
 
 /** The preset a step names, and whether the name was known. */
 export function findPreset(category: Category, name: string): { preset: Preset; known: boolean } {

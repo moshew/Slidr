@@ -8,10 +8,14 @@ import {
   newId,
   RichText,
   TextStyleRef,
+  Transition,
+  type Command,
   type Deck,
   type Paragraph,
   type TableCell,
 } from '@slidr/model';
+// The names only: the runtime itself is browser code, and this package compiles without the DOM.
+import { animationPresets, transitionTypes } from '@slidr/runtime/names';
 import { z } from 'zod';
 import { getElement, getSlide } from '../lookup';
 import { markdownToRichText } from '../markdown';
@@ -316,16 +320,51 @@ const StepInput = AnimationStep.partial({
   easing: true,
 });
 
+const TransitionInput = Transition.partial({ duration: true, easing: true, advance: true });
+
+const oneOf = (names: readonly string[]) => names.join(', ');
+
+/**
+ * The model keeps `preset` and `type` as free text, because the runtime owns the lists (ADR-020).
+ * A name the runtime does not know would play as a plain fade, so it is refused here, with the
+ * names that exist.
+ */
+function checkPreset(step: Pick<AnimationStep, 'category' | 'preset'>): void {
+  if (step.category === 'motion') {
+    throw new DeckApiError(
+      'invalid_input',
+      'Motion paths cannot be played yet: use category entrance, emphasis or exit.',
+    );
+  }
+  const names = animationPresets[step.category];
+  if (!names.includes(step.preset)) {
+    throw new DeckApiError(
+      'invalid_input',
+      `Unknown ${step.category} preset "${step.preset}". Use one of: ${oneOf(names)}.`,
+    );
+  }
+}
+
+function checkTransitionType(type: string): void {
+  if (!transitionTypes.includes(type)) {
+    throw new DeckApiError(
+      'invalid_input',
+      `Unknown transition type "${type}". Use one of: ${oneOf(transitionTypes)}.`,
+    );
+  }
+}
+
 export const animationSet = defineTool({
   name: 'animation_set',
   description:
-    "Sets the animation timeline of a slide, in play order. With elementIds, only the steps of those elements are replaced and the rest of the timeline stays (in an object session this is the default, for the session's elements). Step defaults: trigger onClick, category entrance, duration 500 ms, delay 0, easing ease-out, new id. Returns the ids changed.",
+    "Sets the animations of a slide: its timeline, in play order, and the transition into it. Give steps, transition, or both; what is not given stays. With elementIds, only the steps of those elements are replaced and the rest of the timeline stays (in an object session this is the default, for the session's elements). Step defaults: trigger onClick, category entrance, duration 500 ms, delay 0, easing ease-out, new id. Returns the ids changed.",
   input: z.strictObject({
     slideId: Id,
     steps: z
       .array(StepInput)
+      .optional()
       .describe(
-        'Each step animates one element of the slide. preset: fade, flyIn, zoom, wipe, rise, pulse, ...; trigger: onClick, withPrevious or afterPrevious.',
+        `Each step animates one element of the slide; an empty list removes all animations. preset, by category: entrance ${oneOf(animationPresets.entrance)}; emphasis ${oneOf(animationPresets.emphasis)}; exit ${oneOf(animationPresets.exit)}. trigger: onClick, withPrevious or afterPrevious. direction is the way the element, or the edge of a wipe, travels: flyIn with up comes from below; start and end follow the reading direction of the slide. textBy paragraph brings a text in one paragraph per trigger; word and char stagger within one step.`,
       ),
     elementIds: z
       .array(Id)
@@ -333,18 +372,41 @@ export const animationSet = defineTool({
       .describe(
         'Replace only the steps of these elements; the new steps go where their first old step was.',
       ),
+    transition: TransitionInput.nullable()
+      .optional()
+      .describe(
+        `How the slide comes in; null removes it. type: ${oneOf(transitionTypes)}. direction is the way the slides travel (default start, the way a deck reads forwards). Defaults: duration 600 ms, easing ease-in-out, advance { onClick: true }; advance.afterMs moves on by itself.`,
+      ),
   }),
   scopes: ['deck', 'slide', 'object'],
   writes: true,
-  run({ slideId, steps, elementIds }, ctx) {
+  run({ slideId, steps, elementIds, transition }, ctx) {
     const slide = getSlide(ctx.deck, slideId);
+    if (!steps && transition === undefined) {
+      throw new DeckApiError('invalid_input', 'Nothing to change: give steps, transition or both.');
+    }
+    const commands: Command[] = [];
+    if (transition !== undefined) {
+      if (transition) checkTransitionType(transition.type);
+      const next = transition && {
+        duration: 600,
+        easing: 'ease-in-out',
+        advance: { onClick: true },
+        ...transition,
+      };
+      commands.push({ type: 'slide.update', slideId, patch: { transition: next } });
+    }
+    if (!steps) {
+      ctx.write(commands);
+      return { data: { stepIds: [] } };
+    }
     const scope = ctx.turn.scope;
     const only = elementIds ?? (scope.kind === 'object' ? scope.elementIds : undefined);
     const taken = new Set(slide.timeline.map((s) => s.id));
     const fresh = steps.map((step) => {
       const id = step.id ?? newId('a', (candidate) => taken.has(candidate));
       taken.add(id);
-      return {
+      const whole = {
         trigger: 'onClick' as const,
         category: 'entrance' as const,
         duration: 500,
@@ -353,6 +415,8 @@ export const animationSet = defineTool({
         ...step,
         id,
       };
+      checkPreset(whole);
+      return whole;
     });
     let timeline = fresh;
     if (only) {
@@ -370,7 +434,8 @@ export const animationSet = defineTool({
       const insertAt = at < 0 ? kept.length : at;
       timeline = [...kept.slice(0, insertAt), ...fresh, ...kept.slice(insertAt)];
     }
-    ctx.write([{ type: 'slide.setTimeline', slideId, timeline }]);
+    commands.push({ type: 'slide.setTimeline', slideId, timeline });
+    ctx.write(commands);
     return { data: { stepIds: fresh.map((s) => s.id) } };
   },
 });

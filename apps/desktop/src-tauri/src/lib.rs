@@ -53,6 +53,7 @@ pub fn run() {
             commands::recents_remove,
             commands::asset_import_file,
             commands::asset_import_bytes,
+            commands::export_write_file,
             image_providers::ipc::image_providers,
             image_providers::ipc::image_probe,
             image_providers::ipc::image_default_provider,

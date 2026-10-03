@@ -371,6 +371,9 @@ importers:
       '@slidr/model':
         specifier: workspace:*
         version: link:../model
+      '@slidr/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       zod:
         specifier: ^4.6.5
         version: 4.6.5

@@ -159,3 +159,89 @@ fn header(request: &Request<'_>, name: &str) -> Result<Option<String>> {
         .map_err(|_| invalid())?;
     Ok(Some(decoded.into_owned()))
 }
+
+/// `export_write_file`: writes an exported presentation to the place the user chose in the save
+/// dialog (WG9-T12). The body is the file's bytes, as in [`asset_import_bytes`]; the path travels
+/// percent-encoded in the header `x-file-path`.
+#[tauri::command]
+pub async fn export_write_file(request: Request<'_>) -> Result<()> {
+    let path = header(&request, "x-file-path")?
+        .map(PathBuf::from)
+        .ok_or_else(|| AppError::invalid_input("missing header x-file-path"))?;
+    let bytes = match request.body() {
+        InvokeBody::Raw(bytes) => bytes.clone(),
+        InvokeBody::Json(value) => serde_json::from_value(value.clone())
+            .map_err(|e| AppError::invalid_input(format!("the body is not bytes: {e}")))?,
+    };
+    off_main(move || write_export(&path, &bytes)).await
+}
+
+/// Replaces the file at `path` with `bytes`, atomically. The path comes from the webview, so it
+/// is held to what an export is: an absolute path to an `.html` file.
+fn write_export(path: &std::path::Path, bytes: &[u8]) -> Result<()> {
+    use std::io::Write as _;
+
+    let html = path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("html") || e.eq_ignore_ascii_case("htm"));
+    let dir = path.parent().filter(|_| html && path.is_absolute());
+    let Some(dir) = dir else {
+        return Err(AppError::invalid_input(format!(
+            "not an absolute path to an .html file: {}",
+            path.display()
+        )));
+    };
+    let temp = crate::storage::TempFile::new_in(dir).map_err(|e| AppError::path(path, &e))?;
+    temp.file()
+        .and_then(|mut file| file.write_all(bytes))
+        .map_err(|e| AppError::io("write the exported file", &e))?;
+    temp.persist(path).map_err(|e| AppError::path(path, &e))
+}
+
+#[cfg(test)]
+mod export_tests {
+    use super::write_export;
+    use crate::error::ErrorKind;
+
+    type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    #[test]
+    fn an_export_is_written_and_replaces_the_file_that_was_there() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let target = dir.path().join("deck.html");
+        write_export(&target, b"<!doctype html>one")?;
+        write_export(&target, b"<!doctype html>two")?;
+        assert_eq!(std::fs::read(&target)?, b"<!doctype html>two");
+        // No temp file is left beside it.
+        assert_eq!(std::fs::read_dir(dir.path())?.count(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn only_an_absolute_html_path_is_written() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        for name in ["deck.slidr", "deck", "deck.html.exe"] {
+            let Err(error) = write_export(&dir.path().join(name), b"x") else {
+                return Err(format!("{name} was written").into());
+            };
+            assert_eq!(error.kind, ErrorKind::InvalidInput);
+        }
+        let Err(error) = write_export(std::path::Path::new("deck.html"), b"x") else {
+            return Err("a relative path was written".into());
+        };
+        assert_eq!(error.kind, ErrorKind::InvalidInput);
+        assert_eq!(std::fs::read_dir(dir.path())?.count(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn a_folder_that_is_not_there_is_not_found() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let Err(error) = write_export(&dir.path().join("missing").join("deck.HTML"), b"x") else {
+            return Err("a file was written into a missing folder".into());
+        };
+        assert_eq!(error.kind, ErrorKind::NotFound);
+        Ok(())
+    }
+}

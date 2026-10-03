@@ -1,4 +1,5 @@
 import { safeEasing, travel, type Dir, type Vec } from './direction';
+import type { transitionNames } from './names';
 import type { Transition, Warn } from './types';
 
 /**
@@ -33,7 +34,9 @@ function turn(v: Vec, quarters: number): string {
 
 const fade = (): Motion => ({ to: [{ opacity: 0 }, { opacity: 1 }] });
 
-const transitions: Record<string, (v: Vec) => Motion> = {
+type Played = Exclude<(typeof transitionNames)[number], 'none'>;
+
+const transitions: Record<Played, (v: Vec) => Motion> = {
   fade,
   push: (v) => ({
     from: [{ translate: '0% 0%' }, { translate: at(v, 1) }],
@@ -65,8 +68,7 @@ const transitions: Record<string, (v: Vec) => Motion> = {
   }),
 };
 
-/** The names of the transitions, for a picker and for the agent's prompt. */
-export const transitionTypes: readonly string[] = ['none', ...Object.keys(transitions)];
+export { transitionTypes } from './names';
 
 export interface TransitionRun {
   /** Resolves when the incoming slide is in place, by itself or through `finish`. */
@@ -89,7 +91,8 @@ export function runTransition(
   warn?: Warn,
 ): TransitionRun {
   if (!transition || transition.type === 'none' || transition.duration <= 0) return DONE;
-  const make = transitions[transition.type];
+  // The type is free text in the model: looked up by any string.
+  const make = (transitions as Record<string, ((v: Vec) => Motion) | undefined>)[transition.type];
   // `morph` is not here yet (WG8-T08); it and any unknown name cross-fade.
   if (!make) warn?.(`Transition "${transition.type}" is not supported; fading instead`);
   const motion = (make ?? fade)(travel(transition.direction ?? 'start', dir));
