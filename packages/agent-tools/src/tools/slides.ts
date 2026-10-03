@@ -1,8 +1,10 @@
 import { Archetype, Background, duplicateSlide, Transition } from '@slidr/model';
+import { transitionTypes } from '@slidr/runtime/names';
 import { z } from 'zod';
 import { getSlide } from '../lookup';
 import { markdownToRichText } from '../markdown';
 import { DeckApiError, defineTool } from '../tool';
+import { checkTransitionType } from './content';
 import { about, afterSlide, indexAfter } from './shared';
 
 export const slideUpdate = defineTool({
@@ -25,7 +27,10 @@ export const slideUpdate = defineTool({
       .nullable()
       .optional()
       .describe('Speaker notes, in the Markdown of text_set; null removes them.'),
-    transition: about(Transition.nullable(), 'The transition into this slide.').optional(),
+    transition: about(
+      Transition.nullable(),
+      `The transition into this slide. type: ${transitionTypes.join(', ')}.`,
+    ).optional(),
     hidden: z.boolean().optional().describe('Hidden slides are skipped when presenting.'),
     css: z
       .string()
@@ -37,6 +42,8 @@ export const slideUpdate = defineTool({
   writes: true,
   run({ slideId, notes, ...fields }, ctx) {
     const slide = getSlide(ctx.deck, slideId);
+    // The same check as in `animation_set`: an unknown type would play as a plain fade.
+    if (fields.transition) checkTransitionType(fields.transition.type);
     const patch: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) if (value !== undefined) patch[key] = value;
     if (notes !== undefined) {

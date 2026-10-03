@@ -1,18 +1,27 @@
 import {
   AnimationStep,
+  cellText,
   ChartElement,
   ChartType,
   Color,
   createElement,
+  deleteCols,
+  deleteRows,
   Frame,
+  insertCols,
+  insertRows,
   newId,
   RichText,
+  tableFromGrid,
+  tableSizes,
   TextStyleRef,
   Transition,
   type Command,
   type Deck,
   type Paragraph,
   type TableCell,
+  type TableElement,
+  type TablePatch,
 } from '@slidr/model';
 // The names only: the runtime itself is browser code, and this package compiles without the DOM.
 import { animationPresets, transitionTypes } from '@slidr/runtime/names';
@@ -91,6 +100,8 @@ export const textSet = defineTool({
       richText ??
       markdownToRichText(markdown!, {
         ...textOptions(ctx.deck, previous, input),
+        // A cell's text is aligned by the direction of its table, which `auto` leaves to it.
+        ...(element.type === 'table' && !input.dir ? { dir: 'auto' as const } : {}),
         defaultAlign: element.type === 'shape' ? 'center' : 'start',
       });
     ctx.write([
@@ -103,13 +114,29 @@ export const textSet = defineTool({
 const ChartSeries = ChartElement.shape.data.shape.series.element;
 const ChartOptions = ChartElement.shape.options.shape;
 
-function evenSizes(total: number, count: number): number[] {
-  return Array.from({ length: count }, () => total / count);
+/**
+ * The table styles of the renderer (`tableStyle.ts`, ADR-033), by `style.styleId`. The renderer
+ * owns them and this package compiles without it, so the ids are repeated here; a test in the
+ * app, which has both, holds the two lists together.
+ */
+export const TABLE_STYLE_IDS = ['plain', 'grid', 'lines', 'soft', 'tint', 'boxed'] as const;
+
+const STYLE_HELP =
+  'The look of the table, in theme colours: plain (primary header, lines under the rows), grid (plain, with lines between the columns and around the table), lines (bold header over a heavy line, no fills), soft (surface header with primary text, no lines), tint (secondary header, tinted bands), boxed (surface header, a heavy outline). Default: plain. A cell written with its own fill or borders keeps them over the style.';
+
+/** A cell's text from Markdown. Every paragraph is `auto`: its alignment follows the table. */
+function cellContent(markdown: string, deck: Deck, previous: RichText | undefined): RichText {
+  const content = markdownToRichText(markdown, { deckDir: deck.meta.dir, previous, dir: 'auto' });
+  // A cell with no text keeps one empty paragraph, so that its row keeps a line of height.
+  return content.paragraphs.length > 0 ? content : cellText(previous, '');
 }
+
+const indicesFrom = (from: number, to: number) =>
+  Array.from({ length: to - from }, (_, i) => from + i);
 
 export const tableSet = defineTool({
   name: 'table_set',
-  description: `Sets the data and design of a table, or creates one when elementId is absent (then slideId and frame are required). Cells are Markdown (the subset of text_set); a cell keeps the formatting of the text it replaces. Changing the number of rows or columns spreads them evenly unless sizes are given. Returns \`elementId\` and the ids created or changed.`,
+  description: `Sets the data and design of a table, or creates one when elementId is absent (then slideId, frame and cells are required). Cells are Markdown (the subset of text_set); a cell keeps the formatting of the text it replaces, and its text is aligned by the direction of the table. A new table gets columns as wide as their text asks. An existing table keeps its frame, its merged cells and the look of its rows when rows or columns are added (after the last) or removed (from the end). Returns \`elementId\` and the ids created or changed.`,
   input: z.strictObject({
     elementId: Id.optional().describe('The table to change. Absent: create a new table.'),
     slideId: Id.optional(),
@@ -123,6 +150,7 @@ export const tableSet = defineTool({
     headerRow: z.boolean().optional(),
     bandedRows: z.boolean().optional(),
     firstColumn: z.boolean().optional(),
+    styleId: z.enum(TABLE_STYLE_IDS).optional().describe(STYLE_HELP),
     dir: z
       .enum(['rtl', 'ltr'])
       .optional()
@@ -155,68 +183,69 @@ export const tableSet = defineTool({
         'cells must be a non-empty grid: every row the same length.',
       );
     }
-    const sizes = (
-      given: number[] | undefined,
-      old: number[] | undefined,
-      count: number,
-      total: number,
-      what: string,
-    ) => {
+    for (const [what, given, count] of [
+      ['colWidths', input.colWidths, colCount],
+      ['rowHeights', input.rowHeights, rowCount],
+    ] as const) {
       if (given && given.length !== count) {
         throw new DeckApiError(
           'invalid_input',
           `${what} has ${given.length} entries for ${count}.`,
         );
       }
-      return given ?? (old?.length === count ? old : evenSizes(total, count));
-    };
-    const cols = sizes(input.colWidths, table?.cols, colCount, frame.w, 'colWidths');
-    const rows = sizes(input.rowHeights, table?.rows, rowCount, frame.h, 'rowHeights');
-    const sameGrid = table && table.rows.length === rowCount && table.cols.length === colCount;
-
-    const cells: TableCell[][] = [];
-    for (let r = 0; r < rowCount; r++) {
-      const row: TableCell[] = [];
-      for (let c = 0; c < colCount; c++) {
-        // A new row or column looks like the last one of the old grid.
-        const like =
-          table?.cells[Math.min(r, table.rows.length - 1)]?.[Math.min(c, table.cols.length - 1)];
-        const {
-          rowSpan: _r,
-          colSpan: _c,
-          merged: _m,
-          ...look
-        } = like ?? { content: { paragraphs: [] } };
-        const base: TableCell = sameGrid && like ? { ...like } : look;
-        const text = texts?.[r]?.[c];
-        row.push(
-          text === undefined
-            ? base
-            : {
-                ...base,
-                content: markdownToRichText(text, {
-                  deckDir: deck.meta.dir,
-                  previous: like?.content,
-                }),
-              },
-        );
-      }
-      cells.push(row);
     }
 
-    const style = {
-      ...(table?.style ?? { headerRow: true, bandedRows: false, firstColumn: false }),
-      ...(input.headerRow !== undefined ? { headerRow: input.headerRow } : {}),
-      ...(input.bandedRows !== undefined ? { bandedRows: input.bandedRows } : {}),
-      ...(input.firstColumn !== undefined ? { firstColumn: input.firstColumn } : {}),
-    };
+    // The table the texts go into: the old one brought to the new grid by the editor's own
+    // operations, which keep merged cells and give new rows the look of the last one, or a new
+    // one with columns sized by their text.
+    let grid: TableElement;
+    if (table) {
+      grid = table;
+      const apply = (patch: TablePatch | undefined) => {
+        if (patch) grid = { ...grid, ...patch };
+      };
+      const { length: oldRows } = table.rows;
+      const { length: oldCols } = table.cols;
+      if (rowCount > oldRows) apply(insertRows(grid, oldRows, rowCount - oldRows, oldRows - 1));
+      if (rowCount < oldRows) apply(deleteRows(grid, indicesFrom(rowCount, oldRows)));
+      if (colCount > oldCols) apply(insertCols(grid, oldCols, colCount - oldCols, oldCols - 1));
+      if (colCount < oldCols) apply(deleteCols(grid, indicesFrom(colCount, oldCols)));
+    } else {
+      grid = tableFromGrid(texts!, { frame, dir: input.dir ?? deck.meta.dir });
+    }
+
+    const cells = grid.cells.map((row, r) =>
+      row.map((cell, c): TableCell => {
+        const text = texts?.[r]?.[c];
+        // A cell under another's span is not drawn: it holds nothing.
+        if (text === undefined || cell.merged) return cell;
+        return { ...cell, content: cellContent(text, deck, table ? cell.content : undefined) };
+      }),
+    );
+
+    // The table keeps its frame, and its rows and columns share it in the proportions they
+    // have, unless the sizes themselves are given.
+    const kept = tableSizes({ ...grid, frame });
+    const cols = input.colWidths ?? kept.cols;
+    const rows = input.rowHeights ?? kept.rows;
+    const sum = (sizes: readonly number[]) => sizes.reduce((a, b) => a + b, 0);
     const fields = {
-      frame: { ...frame, w: cols.reduce((a, b) => a + b, 0), h: rows.reduce((a, b) => a + b, 0) },
+      frame: {
+        ...frame,
+        ...(input.colWidths ? { w: sum(cols) } : {}),
+        ...(input.rowHeights ? { h: sum(rows) } : {}),
+      },
       rows,
       cols,
       cells,
-      style,
-      dir: input.dir ?? table?.dir ?? deck.meta.dir,
+      style: {
+        ...grid.style,
+        ...(input.headerRow !== undefined ? { headerRow: input.headerRow } : {}),
+        ...(input.bandedRows !== undefined ? { bandedRows: input.bandedRows } : {}),
+        ...(input.firstColumn !== undefined ? { firstColumn: input.firstColumn } : {}),
+        ...(input.styleId ? { styleId: input.styleId } : {}),
+      },
+      dir: input.dir ?? grid.dir,
     };
     if (table) {
       ctx.write([{ type: 'element.update', slideId, elementId: table.id, patch: fields }]);
@@ -345,7 +374,7 @@ function checkPreset(step: Pick<AnimationStep, 'category' | 'preset'>): void {
   }
 }
 
-function checkTransitionType(type: string): void {
+export function checkTransitionType(type: string): void {
   if (!transitionTypes.includes(type)) {
     throw new DeckApiError(
       'invalid_input',

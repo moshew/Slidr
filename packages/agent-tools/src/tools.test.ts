@@ -133,6 +133,25 @@ describe('slide tools', () => {
     expect((await failed(call('slide_update', { slideId: 's_all' }))).code).toBe('invalid_input');
   });
 
+  it('slide_update takes only the transitions the runtime can play', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    const transition = (type: string) => ({
+      type,
+      duration: 600,
+      easing: 'ease-in-out',
+      advance: { onClick: true },
+    });
+    const refused = await failed(
+      call('slide_update', { slideId: 's_all', transition: transition('swirl') }),
+    );
+    expect(refused.code).toBe('invalid_input');
+    expect(refused.message).toMatch(/Unknown transition type "swirl". Use one of: .*fade/);
+    await ok(call('slide_update', { slideId: 's_all', transition: transition('fade') }));
+    expect(findSlide(bus.deck, 's_all')!.transition?.type).toBe('fade');
+    await ok(call('slide_update', { slideId: 's_all', transition: null }));
+    expect(findSlide(bus.deck, 's_all')!.transition).toBeUndefined();
+  });
+
   it('slide_delete removes slides and reports their elements', async () => {
     const { call, bus } = setup(hebrewDeck());
     const data = await ok(call('slide_delete', { slideIds: ['s_he_goals'] }));
@@ -350,6 +369,90 @@ describe('content tools', () => {
     expect(
       (await failed(call('table_set', { elementId: 'e_table', cells: [['a'], ['b', 'c']] }))).code,
     ).toBe('invalid_input');
+  });
+
+  it('table_set sizes new columns by their text, takes a style, and leaves alignment to the table', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    const created = await ok(
+      call('table_set', {
+        slideId: 's_empty',
+        frame: { x: 96, y: 200, w: 1200, h: 300 },
+        cells: [
+          ['מדד', 'Q2', 'Q3'],
+          ['הכנסה חודשית חוזרת באלפי דולרים', '412', '468'],
+          ['', '37', '52'],
+        ],
+        styleId: 'lines',
+      }),
+    );
+    const table = element<TableElement>(bus.deck, created.elementId as string);
+    expect(table.style).toEqual({
+      headerRow: true,
+      bandedRows: false,
+      firstColumn: false,
+      styleId: 'lines',
+    });
+    // The column of the long label is the widest, and the table is as wide as its frame.
+    expect(table.cols[0]).toBeGreaterThan(table.cols[1]! * 2);
+    expect(table.cols.reduce((a, b) => a + b, 0)).toBeCloseTo(1200, 5);
+    // "Q2" in a Hebrew table: `auto`, so the renderer aligns it by the table, not to the left.
+    const dirs = table.cells.flat().flatMap((cell) => cell.content.paragraphs.map((p) => p.dir));
+    expect(new Set(dirs)).toEqual(new Set(['auto']));
+    // An empty cell keeps a paragraph, so its row keeps a line of height.
+    expect(table.cells[2]![0]!.content.paragraphs).toHaveLength(1);
+
+    await ok(call('text_set', { elementId: table.id, cell: { row: 1, col: 1 }, markdown: '415' }));
+    const cell = element<TableElement>(bus.deck, table.id).cells[1]![1]!;
+    expect(cell.content.paragraphs[0]).toMatchObject({ dir: 'auto', runs: [{ text: '415' }] });
+
+    expect((await failed(call('table_set', { elementId: table.id, styleId: 'zebra' }))).code).toBe(
+      'invalid_input',
+    );
+  });
+
+  it('table_set keeps merged cells and the frame when rows are added', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    const created = await ok(
+      call('table_set', {
+        slideId: 's_empty',
+        frame: { x: 0, y: 0, w: 600, h: 200 },
+        cells: [
+          ['a', 'b'],
+          ['c', 'd'],
+        ],
+      }),
+    );
+    const id = created.elementId as string;
+    const before = element<TableElement>(bus.deck, id);
+    // The header spans both columns, as the user would merge it in the editor.
+    const merged = before.cells.map((row, r) =>
+      r === 0
+        ? [
+            { ...row[0]!, colSpan: 2 },
+            { content: { paragraphs: [] }, merged: true },
+          ]
+        : row,
+    );
+    await ok(call('element_update', { elementId: id, patch: { cells: merged } }));
+
+    await ok(
+      call('table_set', {
+        elementId: id,
+        cells: [
+          ['title', 'ignored'],
+          ['c', 'd'],
+          ['e', 'f'],
+        ],
+      }),
+    );
+    const table = element<TableElement>(bus.deck, id);
+    expect(table.frame).toMatchObject({ w: 600, h: 200 });
+    expect(table.rows).toHaveLength(3);
+    expect(table.rows.reduce((a, b) => a + b, 0)).toBeCloseTo(200, 5);
+    expect(table.cells[0]![0]).toMatchObject({ colSpan: 2 });
+    expect(plainText(table.cells[0]![0]!.content)).toBe('title');
+    expect(table.cells[0]![1]).toMatchObject({ merged: true, content: { paragraphs: [] } });
+    expect(plainText(table.cells[2]![1]!.content)).toBe('f');
   });
 
   it('chart_set merges options, checks series lengths, and creates a chart', async () => {
