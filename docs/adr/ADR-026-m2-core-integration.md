@@ -2,7 +2,7 @@
 
 # ADR-026 — ליבת M2: התשתית המשותפת, השילוב, ומה חסר עד שהאפליקציה תריץ את זה
 
-סטטוס: **הוכרע, חוץ מהסעיפים שתחת "החלטות שמחכות לך"** · 2026-10-03 · ענף: `m2-core` (worktree נפרד, יוצא מ-`0004502`) · משימות: WG9A, WG7-T05, WG10-T08, WG10-T04
+סטטוס: **הוכרע, חוץ מהסעיפים שתחת "החלטות שמחכות לך"** · 2026-10-03 · ענף: `m2-core` (worktree נפרד; נבנה על `0004502`, ועבר rebase על `afc200d`) · משימות: WG9A, WG7-T05, WG10-T08, WG10-T04
 
 ארבע המשימות נבנו במקביל על ידי ארבעה סוכנים, כל אחת עם ADR משלה:
 
@@ -90,6 +90,8 @@ renderSlideOffscreen(props: SlideRendererProps, { parent?, hidden? }): Promise<{
 | `cargo test --workspace` | 88 עוברות, 4 מסומנות `#[ignore]` |
 | מול Claude Code האמיתי (Haiku), פעמיים | ראשונה עברה: כלי אחד נקרא דרך הגשר. שנייה: התמונה הגיעה ל-CLI, הבדיקה נכשלה על assertion שגוי; התיקון לא הורץ שוב. סה"כ $0.0138 |
 
+**אחרי ה-rebase על `afc200d`** (סבב M1 בפנים) הכול הורץ שוב ועבר: `pnpm check` עם 772 בדיקות ב-58 קבצים, `pnpm test:browser` עם 65, ו-`cargo fmt`, `clippy` ו-`cargo test` (88). המספרים שבטבלה הם של הענף לפני ה-rebase.
+
 **קריטריון ה-grep של PLAN (WG10):**
 
 - `claude` מופיע מחוץ למותר רק ב-`storage/workspace.rs`, בנתוני בדיקה שהיו שם לפני הענף.
@@ -112,7 +114,7 @@ renderSlideOffscreen(props: SlideRendererProps, { parent?, hidden? }): Promise<{
 
 ## מיזוג עם סבב M1
 
-הענף יוצא מ-`0004502`, לפני סבב M1 שעדיין לא ב-commit בעץ הראשי. מחוץ לארבע החבילות, הענף נגע בקבצים האלה:
+הענף נבנה על `0004502`, לפני סבב M1. הסבב נכנס ל-`main` ב-`5934544` וב-`afc200d`, והענף (שישה commits) עבר rebase עליהם ב-2026-10-03 בלי התנגשויות. מה שנשאר למזג הוא הענפים המקבילים האחרים (`m5-runtime`, `wg12-images`, `wg7-templates`). מחוץ לארבע החבילות, הענף נגע בקבצים האלה:
 
 | קובץ | מה | סיכון |
 |---|---|---|
@@ -126,7 +128,7 @@ renderSlideOffscreen(props: SlideRendererProps, { parent?, hidden? }): Promise<{
 | `apps/desktop/src-tauri/src/lib.rs`, `harness/*` | רישום הגשר, צעד `call` ב-mock, `summarize` | נמוך |
 
 - **לא נגעתי** ב-`apps/desktop/src/{shell,stage,text,objects,arrange,controls}`, ב-`packages/ui`, ב-`packages/model/src/compose`, ב-`docs/PLAN.md`, ב-`docs/SPEC.md`, ב-`capabilities/default.json` וב-`packages/model/src/store.ts`.
-- **ההצעה:** סבב M1 נכנס ל-commit ראשון, ואז `m2-core` עובר rebase עליו.
+- **מול הענפים האחרים:** `wg12-images` נוגע גם הוא ב-`src-tauri/src/lib.rs` (רישום מודול ופקודות), ו-`m5-runtime` ב-`pnpm-lock.yaml`. שניהם צפויים להתנגשות קלה.
 - **`README.md`:** רשימת ה-ADR-ים צריכה את 017, 018, 019, 022 ו-026. לא עודכנה כאן, כי סבב M1 מוסיף באותו מקום את 013 עד 016.
 - **מספור ה-ADR-ים.** הענף קיבל "מ-ADR-017 והלאה", והסשן של M5 קיבל "מ-ADR-020". חמישה מסמכים לא נכנסים בשלושה מספרים, ולכן הגשר ומסמך השילוב נכתבו תחילה כ-020 ו-021 והתנגשו עם `ADR-020-runtime` ו-`ADR-021-html-export` שב-`../Slidr-m5`. הם מוספרו מחדש ל-022 ול-026: המספרים הפנויים שנמצאו ב-2026-10-03 בארבעת ה-worktrees (023 ב-`../Slidr-templates`, 025 ב-`../Slidr-images`). אם 022 או 026 הוקצו למישהו אחר, זה שינוי של שם קובץ ושל ההפניות אליו.
 - **`docs/PLAN.md` ו-`docs/SPEC.md`:** כל אחד מארבעת ה-ADR-ים מונה את העדכונים שהוא מבקש. העיקריים: תוצאות WG9A, WG7-T05, WG10-T04 ו-T08 ב-PLAN; קריטריון ה-grep; SPEC 11.5 (קישור ל-token רק דרך `var()`, ערכי `data-anim`, `data-archetype`); MCP-03 (רישום כלים לכל סשן); 11.6 (שדות בלוק ההקשר); 14.2 (`html-import` תלוי גם ב-`renderer`).
