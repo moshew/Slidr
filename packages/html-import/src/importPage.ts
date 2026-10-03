@@ -14,7 +14,7 @@ import type { AssetMeta, Deck, Slide } from '@slidr/model';
 import { settle } from '@slidr/renderer';
 import { convertSubtree, type GuardReport } from './engine';
 import type { ConversionHost } from './host';
-import { drawnOver, nameOf } from './drawnOver';
+import { drawnOver, nameOf, notPainted } from './drawnOver';
 import { composedChildNodes, composedChildren, viewportOffset } from './measure';
 import { createSourceFonts, type AppFontFace } from './sourceFonts';
 
@@ -597,6 +597,14 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
       if (at.width < 1 || at.height < 1) {
         throw new Error(
           `The element has no size (${Math.round(at.width)}x${Math.round(at.height)}): it is hidden or not laid out. Bring the slide into view in \`before\`.`,
+        );
+      }
+      // An element can have a size and still not be painted: the picture of the source would be
+      // of an empty slide, and no conversion could look like it.
+      const hider = notPainted(root);
+      if (hider) {
+        throw new Error(
+          `The element is not shown: ${nameOf(hider.element)} has \`${hider.why}\`. Bring the slide into view in \`before\`, the way the deck itself shows it.`,
         );
       }
       if (!inViewport(at)) {

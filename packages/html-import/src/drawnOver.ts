@@ -32,6 +32,25 @@ function shown(el: Element): boolean {
 }
 
 /**
+ * What keeps an element that has a size from being painted, with the element that carries it:
+ * the element itself or something around it. A deck hides the slides that are not current in
+ * more ways than one (`opacity`, and `content-visibility` so that the browser skips them), and
+ * a slide brought back by undoing one of them is still not on the page. `visibility` is not
+ * asked about: a hidden element can hold visible ones, and the conversion follows them.
+ */
+export function notPainted(el: Element): { element: Element; why: string } | undefined {
+  for (let node: Element | undefined = el; node; node = composedParent(node)) {
+    const cs = styleOf(node);
+    if (cs.display === 'none') return { element: node, why: 'display: none' };
+    if (cs.contentVisibility === 'hidden') {
+      return { element: node, why: 'content-visibility: hidden' };
+    }
+    if (Number.parseFloat(cs.opacity) === 0) return { element: node, why: 'opacity: 0' };
+  }
+  return undefined;
+}
+
+/**
  * The elements outside `root` that are painted above it somewhere inside its box, outermost
  * first. The browser is asked for the stack of elements at a grid of points; hit testing is
  * opened to every element for the moment, so one that ignores the pointer is found too.

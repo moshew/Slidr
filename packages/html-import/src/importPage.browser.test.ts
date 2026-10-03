@@ -189,6 +189,41 @@ describe('capturing an element as a slide', () => {
     ).rejects.toThrow(/The code does not parse/);
   });
 
+  it('refuses a slide the page does not paint, and names what hides it', async () => {
+    // The slides that are not current keep their size, and are hidden twice over: faded out,
+    // and skipped by the browser. Undoing the first alone leaves an empty picture.
+    const stacked = `<!doctype html><html><head><style>
+      body { margin: 0; font-family: Arial, sans-serif; }
+      .slide { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; padding: 80px; box-sizing: border-box; background: #fff; font-size: 48px; opacity: 0; content-visibility: hidden; }
+      .slide.on { opacity: 1; content-visibility: visible; }
+    </style></head><body>
+      <div class="slide on">First</div><div class="slide" id="second">Second</div>
+    </body></html>`;
+    const imported = importPage(stacked);
+    await imported.setViewport({ width: 1280, height: 720 });
+    const deck = createDeck({ lang: 'en' });
+    await expect(imported.capture({ selector: '#second', deck, takenIds: [] })).rejects.toThrow(
+      /The element is not shown: div#second\.slide \[1280x720 @0,0\].* has `content-visibility: hidden`\. Bring the slide into view in `before`/,
+    );
+    await expect(
+      imported.capture({
+        selector: '#second',
+        before: 'document.getElementById("second").style.contentVisibility = "visible";',
+        deck,
+        takenIds: [],
+      }),
+    ).rejects.toThrow(/The element is not shown: .* has `opacity: 0`/);
+    const captured = await imported.capture({
+      selector: '#second',
+      before:
+        'document.querySelector(".on").classList.remove("on"); document.getElementById("second").classList.add("on");',
+      deck,
+      takenIds: [],
+    });
+    expect(captured.guard).toMatchObject({ faithful: true, exact: true });
+    expect(captured.editability).toBe(1);
+  });
+
   it('scrolls a part of a long page into view before it pictures it', async () => {
     const long = `<!doctype html><html><head><style>
       body { margin: 0; font-family: Arial, sans-serif; }
