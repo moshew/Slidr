@@ -108,7 +108,7 @@ test('every slide has a chat of its own, and its options stay with it', async ({
     const { bus, selection } = window.slidr!;
     bus.dispatch({
       type: 'slide.add',
-      slide: { id: 's_second', elements: [], timeline: [] } as never,
+      slide: { id: 's_second', elements: [], timeline: [] },
     });
     selection.getState().setCurrentSlide('s_second');
   });
