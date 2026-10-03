@@ -48,13 +48,13 @@ export function startDeck(library: TemplateLibrary, lang: string): Deck {
 /**
  * Puts the asset files of the deck's template into the open document: a template names its
  * assets, and their files have to be stored with the deck (SPEC 5.7). Assets are addressed by
- * content, so storing a file again changes nothing.
+ * content, so storing a file again changes nothing. Returns the assets whose files were stored.
  */
-export async function supplyAssets(editor: Editor, library: TemplateLibrary): Promise<void> {
+export async function supplyAssets(editor: Editor, library: TemplateLibrary): Promise<AssetMeta[]> {
   const { deck } = editor.bus;
   const entry = library.find(deck.theme.id);
-  if (!entry?.personal) return;
-  await copyAssets(editor, library, entry.template, Object.values(entry.template.assets ?? {}));
+  if (!entry?.personal) return [];
+  return copyAssets(editor, library, entry.template, Object.values(entry.template.assets ?? {}));
 }
 
 /** Stores asset files of a personal template with the open document. */
@@ -63,13 +63,16 @@ export async function copyAssets(
   library: TemplateLibrary,
   template: Template,
   assets: readonly AssetMeta[],
-): Promise<void> {
+): Promise<AssetMeta[]> {
+  const stored: AssetMeta[] = [];
   for (const asset of assets) {
     const bytes = await library.assetBytes(template.theme.id, asset);
     if (!bytes) continue;
     const file = new File([bytes.slice()], asset.file, { type: asset.mime });
     await editor.assets.import(file, asset.origin);
+    stored.push(asset);
   }
+  return stored;
 }
 
 /** Switches the deck to a template of the library (THM-04). False when there is no such template. */

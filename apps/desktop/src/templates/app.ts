@@ -38,13 +38,10 @@ export function appTemplateService(editor: Editor): TemplateService {
     },
     personal: () => library.state.getState().personal,
     forDeck: (template, deck) => library.forDeck(template.theme.id, deck.meta.lang) ?? template,
-    supply: (template, deck) =>
-      copyAssets(
-        editor,
-        library,
-        template,
-        layoutAssets(template, layoutsFor(template, deck.meta.dir)),
-      ),
+    supply: async (template, deck) => {
+      const assets = layoutAssets(template, layoutsFor(template, deck.meta.dir));
+      await copyAssets(editor, library, template, assets);
+    },
     saveDeck: async (deck, { name, setDefault }) => {
       const { template, files } = await templateFromDeck(editor, library, deck, name);
       await library.save(template, files);

@@ -28,11 +28,24 @@ registerPanel({
 // A new deck opens on the default template (THM-08).
 setNewDeck((lang) => startDeck(library, lang));
 
+/**
+ * A new deck is drawn the moment it exists, and the files of its template's assets arrive a
+ * moment later: a picture that was asked for before its file was there has failed, and a
+ * browser does not ask again by itself.
+ */
+function reloadPictures(urls: readonly (string | undefined)[]): void {
+  for (const img of Array.from(document.images)) {
+    if (img.naturalWidth === 0 && urls.includes(img.src)) img.src = String(img.src);
+  }
+}
+
 whenEditor((editor) => {
   const supply = () =>
-    void supplyAssets(editor, library).catch((error: unknown) => {
-      console.error("The files of the template's assets could not be stored", error);
-    });
+    void supplyAssets(editor, library)
+      .then((stored) => reloadPictures(stored.map((asset) => editor.assets.url(asset))))
+      .catch((error: unknown) => {
+        console.error("The files of the template's assets could not be stored", error);
+      });
   // Whenever a document starts on a personal template, its asset files go into the document.
   editor.bus.subscribe((event) => {
     if (event.kind === 'reset') supply();

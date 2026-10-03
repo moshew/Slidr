@@ -110,11 +110,11 @@ function declared(css: string): { vars: Record<string, string>; body: Record<str
     const from = css.indexOf(`${selector} {`);
     return from < 0 ? '' : css.slice(css.indexOf('{', from) + 1, css.indexOf('}', from));
   };
-  const pairs = (text: string) =>
+  const pairs = (text: string): Record<string, string> =>
     Object.fromEntries(
       text
         .split(';')
-        .map((line) => {
+        .map((line): [string, string] => {
           const at = line.indexOf(':');
           return [line.slice(0, at).trim(), spaced(line.slice(at + 1))];
         })

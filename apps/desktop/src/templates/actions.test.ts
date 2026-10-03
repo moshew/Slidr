@@ -149,11 +149,12 @@ describe('a deck that starts on a personal template', () => {
 
     const fresh = editorOn(startDeck(library, 'he'));
     expect(fresh.bus.deck.theme.id).toBe(saved.theme.id);
-    await supplyAssets(fresh.editor, library);
-    expect(fresh.imported).toEqual([Object.values(saved.assets!)[0]!.file]);
+    const logo = Object.values(saved.assets!)[0]!;
+    expect(await supplyAssets(fresh.editor, library)).toEqual([logo]);
+    expect(fresh.imported).toEqual([logo.file]);
     // A deck on a built-in template has nothing to store.
     const plain = editorOn(deckFromTemplate(paperTemplate(), { lang: 'he' }));
-    await supplyAssets(plain.editor, library);
+    expect(await supplyAssets(plain.editor, library)).toEqual([]);
     expect(plain.imported).toEqual([]);
   });
 });

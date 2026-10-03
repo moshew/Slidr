@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { AssetMeta } from '@slidr/model';
 import type { AssetResolver } from '@slidr/renderer';
 import type { AssetService } from '../document/assets';
@@ -14,8 +14,11 @@ function resolverFor(assets: AssetService, _workspaceDir: string | null): AssetR
 
 /** Where the renderer loads the open document's assets from (`editor.assets`). */
 export function useAssetResolver(): AssetResolver {
-  const { assets, document } = useEditor();
-  // A new or opened document resets the deck, which re-renders this.
-  const dir = document?.workspace?.dir ?? null;
+  const { assets, bus, document } = useEditor();
+  // The workspace is read at every change of the bus, not only when the deck itself changes:
+  // the first document of a window is created around the deck the bus already holds, and a
+  // deck that starts with assets (a default template with a logo) must find its folder then.
+  const subscribe = useCallback((onChange: () => void) => bus.subscribe(onChange), [bus]);
+  const dir = useSyncExternalStore(subscribe, () => document?.workspace?.dir ?? null);
   return useMemo(() => resolverFor(assets, dir), [assets, dir]);
 }

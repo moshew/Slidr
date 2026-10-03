@@ -23,6 +23,7 @@ const PACKAGES = {
   'DM Sans': '@fontsource-variable/dm-sans',
   'Space Grotesk': '@fontsource-variable/space-grotesk',
   'Playfair Display': '@fontsource-variable/playfair-display',
+  'DM Serif Display': '@fontsource/dm-serif-display',
 };
 
 /** The Hebrew letters, as the renderer's Hebrew-only faces cover them (`hebrewFaces`). */
