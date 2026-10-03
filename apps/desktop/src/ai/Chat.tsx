@@ -54,14 +54,13 @@ import { targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
  * every turn that changed the deck, and a card that says what to do when the agent cannot run.
  */
 
-/** The thread of a scope in the open deck. A new deck has other chats. */
+/** The thread of a scope in the open deck. */
 function useThread(scope: SessionScope): ChatThread {
   const editor = useEditor();
-  const deckId = useDeck((s) => s.deck.id);
   const key = JSON.stringify(scope);
-  // The deck's id is a dependency though it is not read: `thread` answers for the open deck.
+  // The scope is compared by value: a caller may build it anew on every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => agentOf(editor).thread(scope), [editor, deckId, key]);
+  return useMemo(() => agentOf(editor).thread(scope), [editor, key]);
 }
 
 /* ---------------------------------------------------------------- tool chips */

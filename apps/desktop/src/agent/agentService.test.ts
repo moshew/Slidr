@@ -543,12 +543,16 @@ describe('stopping and failing', () => {
     await ask(thread, 'Rename');
     bus.reset(createDeck({ slides: [createSlide({ id: 's_1' })] }));
     await vi.waitFor(() => expect(seen.closed).toHaveLength(1));
-    const next = service.thread({ kind: 'deck' });
-    expect(next).not.toBe(thread);
-    await next.load();
+    // The panel keeps the thread it has, and the thread is now the new deck's chat.
+    expect(service.thread({ kind: 'deck' })).toBe(thread);
+    await thread.load();
+    expect(thread.store.getState()).toMatchObject({ ready: true, busy: false });
     // The store here is one "file" for both decks, so the transcript is read again; what
-    // matters is that the session is new, under the new deck's key.
-    await ask(next, 'Rename');
+    // matters is that the session is new, under the new deck's key, and that its tool calls
+    // find their chat.
+    const entry = await ask(thread, 'Rename');
+    expect(entry.parts).toMatchObject([{ type: 'tool', name: 'slide_update', state: 'ok' }]);
+    expect(bus.deck.slides[0]!.name).toBe('Intro');
     expect(seen.starts).toHaveLength(2);
     expect(seen.starts[1]!.thread).toBe(`${bus.deck.id}/deck`);
     expect(seen.starts[1]!.thread).not.toBe(seen.starts[0]!.thread);

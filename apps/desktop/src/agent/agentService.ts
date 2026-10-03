@@ -267,8 +267,11 @@ export class ChatThread {
 
   /** Reads the thread's transcript from the deck. Safe to call again. */
   load(): Promise<void> {
-    this.#loading ??= this.#options.transcripts.read(this.id).then(
+    if (this.#loading) return this.#loading;
+    const loading = this.#options.transcripts.read(this.id).then(
       ({ record, entries }) => {
+        // Another deck was opened while this one's chat was being read.
+        if (this.#loading !== loading) return;
         if (record) this.#record = { ...record, scope: this.scope };
         // A message sent while the transcript was being read stays after what was read.
         this.store.setState((state) => ({
@@ -277,11 +280,35 @@ export class ChatThread {
         }));
       },
       (error: unknown) => {
+        if (this.#loading !== loading) return;
         console.error('The chat could not be read from the deck', error);
         this.store.setState({ ready: true });
       },
     );
-    return this.#loading;
+    this.#loading = loading;
+    return loading;
+  }
+
+  /**
+   * Another deck is open in the window: the session and what the chat showed were the old
+   * deck's. The thread itself stays, so whoever holds it now holds the new deck's chat.
+   */
+  reset(): void {
+    const session = this.#session;
+    this.#session = null;
+    this.#run = null;
+    this.#heldWatch = null;
+    this.#record = { scope: this.scope };
+    this.#loading = null;
+    this.store.setState({
+      ready: false,
+      entries: [],
+      busy: false,
+      stopping: false,
+      activity: null,
+    });
+    if (session) void this.#endSession(session);
+    void this.load();
   }
 
   /** Sends a user message and starts the agent's turn. Ignored while a turn runs. */
@@ -335,7 +362,7 @@ export class ChatThread {
     }
   }
 
-  /** Ends the thread's session, e.g. when another deck is opened. The transcript stays. */
+  /** Ends the thread's session. The transcript stays with the deck. */
   async close(): Promise<void> {
     const session = this.#session;
     this.#session = null;
@@ -858,10 +885,19 @@ export class AgentService {
     return Promise.reject(new Error(`${name} was not run: its chat is no longer open.`));
   };
 
-  /** Another deck is open: its chats are other chats, and the old sessions have no deck. */
+  /**
+   * Another deck is open: the sessions were the old deck's. The deck's own chat starts over
+   * in place, since the panel that shows it holds on to it; a chat of a slide or an object is
+   * about ids the new deck does not have, and goes.
+   */
   #reset(): void {
-    const threads = [...this.#threads.values()];
-    this.#threads.clear();
-    for (const thread of threads) void thread.close();
+    for (const [id, thread] of this.#threads) {
+      if (thread.scope.kind === 'deck') {
+        thread.reset();
+      } else {
+        this.#threads.delete(id);
+        void thread.close();
+      }
+    }
   }
 }
