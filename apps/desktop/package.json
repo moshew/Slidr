@@ -36,6 +36,7 @@
     "@fontsource/suez-one": "^5.3.0",
     "@fontsource/varela-round": "^5.3.0",
     "@slidr/agent-tools": "workspace:*",
+    "@slidr/lint": "workspace:*",
     "@slidr/model": "workspace:*",
     "@slidr/renderer": "workspace:*",
     "@slidr/ui": "workspace:*",

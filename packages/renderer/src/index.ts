@@ -20,3 +20,10 @@ export { sanitizeMarkup } from './sanitize';
 export { scopeSlideCss } from './css';
 export { settle } from './settle';
 export { renderSlideOffscreen, type OffscreenOptions, type OffscreenSlide } from './offscreen';
+export {
+  measureSlide,
+  type ElementMeasure,
+  type SlideMeasurements,
+  type TextMeasure,
+  type TextSpanMeasure,
+} from './measure';
