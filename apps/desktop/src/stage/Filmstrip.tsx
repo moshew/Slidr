@@ -42,6 +42,7 @@ import {
   EyeOff,
   Plus,
   Scissors,
+  Sparkles,
   Trash2,
 } from '@slidr/ui/icons';
 import { useStore } from 'zustand';
@@ -74,6 +75,11 @@ export interface FilmstripProps {
   clipboard?: FilmstripClipboard;
   /** Labels in the UI language. Default: English. */
   labels?: FilmstripLabels;
+  /**
+   * Opens the host's AI tool on the slide the menu was opened on, which is the current slide by
+   * then. Without it the menu has no such item.
+   */
+  onAi?: () => void;
   className?: string;
 }
 
@@ -100,6 +106,8 @@ export interface FilmstripLabels {
   copy: string;
   cut: string;
   paste: string;
+  /** The menu's way to the AI tool of the slide; shown when the host gives `onAi`. */
+  ai?: string;
 }
 
 export const THUMB_W = 176;
@@ -338,6 +346,7 @@ export function Filmstrip({
   resolveAsset,
   clipboard,
   labels = DEFAULT_LABELS,
+  onAi,
   className,
 }: FilmstripProps) {
   const scroller = useRef<HTMLDivElement>(null);
@@ -644,6 +653,11 @@ export function Filmstrip({
               >
                 {hiddenAll ? labels.show : labels.hide}
               </ContextMenuItem>
+              {onAi && labels.ai ? (
+                <ContextMenuItem icon={Sparkles} shortcut="Ctrl+2" onSelect={onAi}>
+                  {labels.ai}
+                </ContextMenuItem>
+              ) : null}
             </>
           ) : null}
           {clipboard ? (

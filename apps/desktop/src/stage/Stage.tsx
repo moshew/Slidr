@@ -131,6 +131,12 @@ export interface StageProps {
    * The host imports them as assets and inserts them (see `insert.ts`).
    */
   onFiles?: (files: File[], at: Point) => void;
+  /**
+   * A deck to draw in place of `deck`: a proposed change, shown without making it (STG-10). Only
+   * the picture changes: the handles step aside, and the pointer and the keys still work on
+   * `deck`.
+   */
+  preview?: Deck | null;
   className?: string;
   style?: CSSProperties;
 }
@@ -290,6 +296,7 @@ export function Stage({
   onViewScale,
   resolveAsset,
   onFiles,
+  preview,
   className,
   style,
 }: StageProps) {
@@ -580,9 +587,24 @@ export function Stage({
   // ---- Pointer ----
 
   const onPointerDown = (e: PointerEvent) => {
-    if (!slide || e.button === 2) return;
+    if (!slide) return;
     // Inside the text editor the pointer is the editor's: caret, selection, drag-select.
     if (isInEditor(e.target)) return;
+    if (e.button === 2) {
+      // A right click is about what is under it: the host's menu acts on the selection, so an
+      // element that is not selected yet becomes the selection, and the empty slide clears it.
+      const hit = resolveHit(pickAt(e.clientX, e.clientY), scope);
+      const target = hit.id ? index.get(hit.id) : undefined;
+      const state = selection.getState();
+      if (target?.locked || (target && state.selectedElementIds.includes(target.element.id))) {
+        return;
+      }
+      if (editingId) state.stopEditing();
+      setEntered(hit.scope);
+      if (target) state.selectElements([target.element.id]);
+      else state.clearSelection();
+      return;
+    }
     container.current?.focus({ preventScroll: true });
     container.current?.setPointerCapture(e.pointerId);
     const p = toSlide(e.clientX, e.clientY);
@@ -1232,6 +1254,10 @@ export function Stage({
     [htmlId, htmlEditing],
   );
 
+  // The preview layer (STG-10): the slide as a proposed change would leave it.
+  const previewSlide = preview?.slides.find((s) => s.id === slide?.id);
+  const previewing = Boolean(preview && previewSlide);
+
   const stageView: StageView = { origin, scale };
   const active = activeKind;
   const hovered = hover && !selected.includes(hover) ? index.get(hover) : undefined;
@@ -1245,7 +1271,8 @@ export function Stage({
   } else if (single && active === 'rotate') label = `${Math.round(single.element.rotation)}°`;
 
   let overlay: ReactNode = null;
-  if (slide) {
+  // The handles are where the real elements are, which a preview may have moved or replaced.
+  if (slide && !previewing) {
     overlay = (
       <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
         {enteredGroup ? <Outline located={enteredGroup} view={stageView} entered /> : null}
@@ -1344,6 +1371,7 @@ export function Stage({
       data-testid="stage-surface"
       data-cropping={croppingId ?? undefined}
       data-entered={scope.length ? scope.join(' ') : undefined}
+      data-previewing={previewing || undefined}
       className={className}
       tabIndex={0}
       onPointerDown={onPointerDown}
@@ -1390,15 +1418,24 @@ export function Stage({
               transform: `scale(${scale})`,
             }}
           >
-            <SlideRenderer
-              deck={deck}
-              slide={slide}
-              mode="edit"
-              resolveAsset={resolveAsset}
-              textSlot={editingId && !croppingId ? textSlot : undefined}
-              cellSlot={tables.cellSlot}
-              htmlSlot={htmlEditing ? htmlSlot : undefined}
-            />
+            {preview && previewSlide ? (
+              <SlideRenderer
+                deck={preview}
+                slide={previewSlide}
+                mode="edit"
+                resolveAsset={resolveAsset}
+              />
+            ) : (
+              <SlideRenderer
+                deck={deck}
+                slide={slide}
+                mode="edit"
+                resolveAsset={resolveAsset}
+                textSlot={editingId && !croppingId ? textSlot : undefined}
+                cellSlot={tables.cellSlot}
+                htmlSlot={htmlEditing ? htmlSlot : undefined}
+              />
+            )}
           </div>
         </div>
       ) : null}
