@@ -336,18 +336,78 @@ describe('images as they are made', () => {
     expect(sets()).toEqual([]);
   });
 
-  it('give way to the options the agent presents for the same image', async () => {
+  it('take the labels of the options the agent presents, and keep what it did not present', async () => {
     const { gallery, sets } = setup();
-    gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 1 });
+    gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 3 });
     gallery.imageEvent('job-1', stored(0, SECOND));
+    gallery.imageEvent('job-1', stored(1, THIRD));
     expect(sets()[0]!.cards[0]!.label).toBe('');
+    const id = sets()[0]!.id;
+    // The agent presents the one image it knows; another arrived, and a third is on its way.
     await gallery.service.present({
       kind: 'image',
       target: PICTURE,
       options: [{ label: 'Harbour', assetId: SECOND }],
     });
     expect(sets()).toHaveLength(1);
-    expect(sets()[0]).toMatchObject({ live: false, cards: [{ label: 'Harbour', state: 'ready' }] });
+    expect(sets()[0]).toMatchObject({
+      id,
+      live: true,
+      cards: [
+        { label: 'Harbour', state: 'ready', asset: { id: SECOND } },
+        { label: '', state: 'ready', asset: { id: THIRD } },
+        { label: '', state: 'pending' },
+      ],
+    });
+    // The image that was on its way still finds its card.
+    gallery.imageEvent('job-1', stored(2, FIRST));
+    expect(sets()[0]).toMatchObject({ live: false, cards: [{}, {}, { state: 'ready' }] });
+  });
+
+  it('keep the images that arrived when more are asked for, and refuse to make them twice', () => {
+    const { bus, gallery, sets } = setup();
+    const input = { prompt: 'a harbour at dawn', count: 2 };
+    expect(gallery.refusal(OBJECT, 'image_generate', input)).toBeUndefined();
+    gallery.noteToolCall(OBJECT, 'image_generate', input);
+    gallery.imageEvent('job-1', { type: 'started', index: 0 });
+    gallery.imageEvent('job-1', stored(0, SECOND));
+
+    // The call timed out for the agent while an image is still being made: asking again is
+    // turned back, with words for the agent. Other calls are not its business.
+    expect(gallery.refusal(OBJECT, 'image_generate', input)).toMatch(/do not generate again/);
+    expect(gallery.refusal(OBJECT, 'text_set', {})).toBeUndefined();
+    expect(gallery.refusal({ kind: 'deck' }, 'image_generate', input)).toBeUndefined();
+    expect(
+      gallery.refusal(OBJECT, 'image_generate', { ...input, elementId: 'e_picture' }),
+    ).toBeUndefined();
+
+    gallery.imageEvent('job-1', {
+      type: 'finished',
+      index: 1,
+      outcome: { status: 'failed', error: { kind: 'timeout', message: 'took too long' } },
+    });
+    expect(sets()[0]).toMatchObject({ live: false });
+    expect(gallery.refusal(OBJECT, 'image_generate', input)).toBeUndefined();
+
+    // A later call for more: its cards join the image that was made; the failed one makes room.
+    const id = sets()[0]!.id;
+    gallery.noteToolCall(OBJECT, 'image_generate', input);
+    gallery.imageEvent('job-2', { type: 'started', index: 0 });
+    expect(sets()).toHaveLength(1);
+    expect(sets()[0]).toMatchObject({
+      id,
+      live: true,
+      cards: [
+        { state: 'ready', asset: { id: SECOND } },
+        { state: 'pending' },
+        { state: 'pending' },
+      ],
+    });
+    gallery.imageEvent('job-2', stored(1, THIRD));
+    expect(sets()[0]!.cards.map((card) => card.state)).toEqual(['ready', 'pending', 'ready']);
+    // The first image is still there to pick.
+    expect(gallery.pick(id, 0, 'Pick')).toBe(true);
+    expect(pictureOf(bus.deck)).toMatchObject({ assetId: SECOND });
   });
 });
 

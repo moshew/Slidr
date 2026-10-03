@@ -169,10 +169,15 @@ function createAi(editor: Editor): AiRuntime {
     conversion,
   };
   const deckApi = createDeckApi(editor.bus, services);
-  // Every call passes the gallery on its way in: it knows whose images are about to be made.
+  // Every call passes the gallery on its way in: it knows whose images are about to be made,
+  // and turns back a call for images that are being made already.
   const api: DeckApi = {
     ...deckApi,
     call: (turn, name, input) => {
+      const refusal = gallery.refusal(turn.scope, name, input);
+      if (refusal) {
+        return Promise.resolve({ ok: false, error: { code: 'invalid_state', message: refusal } });
+      }
       gallery.noteToolCall(turn.scope, name, input);
       return deckApi.call(turn, name, input);
     },

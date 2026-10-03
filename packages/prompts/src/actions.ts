@@ -207,7 +207,7 @@ export const ACTIONS = define({
     scope: 'object',
     needs: ['image_generate'],
     ask: (p) =>
-      `Generate ${count(p, 4)} alternatives for this image, in one image_generate call with that count and without an element id, at the aspect closest to the element's frame.${described(p, 'What the user wants to see')} Write the prompt from what the image is there to show on this slide, the deck's image style and its palette. The app shows each image to the user as it arrives, and replaces the element's image with the one they pick, keeping its frame and crop: so do not place one yourself. If the session can present options, show the finished images with ui_present_options, kind "image", each with a label of two or three words.`,
+      `Generate ${count(p, 4)} alternatives for this image, in one image_generate call with that count and without an element id, at the aspect closest to the element's frame.${described(p, 'What the user wants to see')} Write the prompt from what the image is there to show on this slide, the deck's image style and its palette. The app shows each image to the user as it arrives, and replaces the element's image with the one they pick, keeping its frame and crop: so do not place one yourself. Images take about a minute each, and the call may come back as timed out while they are still being made. If it does, or if it fails some other way, do not call it again: what was started keeps arriving in the app, and a second call would make every image twice. Say in a line that the images are on their way. When the call returns the images, and the session can present options, show them with ui_present_options, kind "image", each with a label of two or three words.`,
   },
 });
 

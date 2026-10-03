@@ -58,6 +58,8 @@ export interface GalleryCard {
   problem?: string;
   /** For an image, the kind of failure, so the card can say it in the user's words. */
   problemKind?: ImageErrorKind;
+  /** For an image that comes from a job: which image of which job fills the card. */
+  key?: string;
 }
 
 export interface OptionSet {
@@ -93,6 +95,12 @@ export interface Gallery {
   service: OptionsService;
   /** A tool call of a session is about to run: an image call announces the cards to expect. */
   noteToolCall: (scope: SessionScope, name: string, input: unknown) => void;
+  /**
+   * Why a tool call should not run, written for the agent; undefined when it may. Images that
+   * are still being made for an element are not asked for a second time: a call that timed out
+   * on the agent's side is still at work here, and asking again would make every image twice.
+   */
+  refusal: (scope: SessionScope, name: string, input: unknown) => string | undefined;
   /** Progress of an image job of the agent's image service. */
   imageEvent: (jobId: string, event: ImageEvent) => void;
   /** Shows a card on the Stage without changing the deck; `null` takes the preview down. */
@@ -164,10 +172,8 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
   const store = createStore<GalleryState>(() => ({ sets: [] }));
   /** Image calls whose jobs have not reported yet, in the order they were made. */
   let expected: { target: OptionTarget; count: number; prompt: string; at: number }[] = [];
-  /** The set each image job fills. */
-  const jobs = new Map<string, string>();
-  /** The prompt each set of images was generated from, for the lineage of its assets. */
-  const prompts = new Map<string, string>();
+  /** The set each image job fills, and the prompt it generates from (for its assets' lineage). */
+  const jobs = new Map<string, { setId: string; prompt: string }>();
   /**
    * The session whose `ui_present_options` call is on its way in. The tool reaches `present`
    * before it first waits, so the call noted last is the one that is presenting.
@@ -191,6 +197,32 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
         return { ...set, cards, live: set.live && cards.some((c) => c.state === 'pending') };
       }),
     }));
+  }
+
+  /** Fills the card of one image of a job. A set that was dismissed has no card to fill. */
+  function patchKey(setId: string, key: string, card: Partial<GalleryCard>): void {
+    store.setState(({ sets }) => ({
+      sets: sets.map((set) => {
+        if (set.id !== setId) return set;
+        const cards = set.cards.map((c) => (c.key === key ? { ...c, ...card } : c));
+        return { ...set, cards, live: cards.some((c) => c.state === 'pending') };
+      }),
+    }));
+  }
+
+  /** The images an object session's element has been offered so far. */
+  const imagesOf = (target: OptionTarget) =>
+    store.getState().sets.find((set) => set.kind === 'image' && sameTarget(set.target, target));
+
+  /** The image element an object session works on, as a target: where its images go. */
+  function imageTarget(scope: SessionScope): OptionTarget | undefined {
+    if (scope.kind !== 'object') return undefined;
+    const elementId = scope.elementIds[0];
+    const slide = findSlide(bus.deck, scope.slideId);
+    const element = slide && elementId ? findElement(slide, elementId) : undefined;
+    return element?.type === 'image'
+      ? { slideId: scope.slideId, elementId: element.id }
+      : undefined;
   }
 
   /**
@@ -279,6 +311,21 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
           }
           return { label: option.label, state: 'ready', asset };
         });
+        // Images that arrived before, or are still on their way, stay beside the ones presented:
+        // a call that timed out for the agent may have made images it does not know about.
+        const before = imagesOf(target);
+        if (before) {
+          const presented = new Set(set.cards.map((card) => card.asset?.id));
+          set.id = before.id;
+          set.cards.push(
+            ...before.cards.filter(
+              (card) =>
+                card.state === 'pending' ||
+                (card.state === 'ready' && !presented.has(card.asset?.id)),
+            ),
+          );
+          set.live = set.cards.some((card) => card.state === 'pending');
+        }
       } else {
         if (!conversion) {
           throw new DeckApiError('unavailable', 'Design options need the HTML conversion engine.');
@@ -320,59 +367,77 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
 
     noteToolCall(scope, name, input) {
       if (name === 'ui_present_options') presenting = scope.kind === 'slide' ? 'slide' : 'object';
-      if (name !== 'image_generate' || scope.kind !== 'object') return;
+      if (name !== 'image_generate') return;
       const args = isRecord(input) ? input : {};
       // With an element id the first image goes straight into the element: nothing to pick.
       if (typeof args.elementId === 'string') return;
-      const elementId = scope.elementIds[0];
-      const slide = findSlide(bus.deck, scope.slideId);
-      const element = slide && elementId ? findElement(slide, elementId) : undefined;
-      if (element?.type !== 'image') return;
+      const target = imageTarget(scope);
+      if (!target) return;
       expected.push({
-        target: { slideId: scope.slideId, elementId: element.id },
+        target,
         count: typeof args.count === 'number' && args.count >= 1 ? Math.floor(args.count) : 1,
         prompt: typeof args.prompt === 'string' ? args.prompt : '',
         at: Date.now(),
       });
     },
 
+    refusal(scope, name, input) {
+      if (name !== 'image_generate') return undefined;
+      if (isRecord(input) && typeof input.elementId === 'string') return undefined;
+      const target = imageTarget(scope);
+      if (!target || !imagesOf(target)?.live) return undefined;
+      return 'The images of your earlier image_generate call for this element are still being made. The app shows each one to the user as it arrives, and they can pick one, so do not generate again: tell the user the images are on their way.';
+    },
+
     imageEvent(jobId, event) {
-      let setId = jobs.get(jobId);
-      if (!setId) {
+      let job = jobs.get(jobId);
+      if (!job) {
         // A job nobody has seen: it is the oldest image call still waiting for its job. A call
         // that was refused before it started has no job, and is forgotten.
         expected = expected.filter((call) => Date.now() - call.at < EXPECT_MS);
         const call = expected.shift();
         if (!call) return;
+        const cards = Array.from({ length: call.count }, (_, index): GalleryCard => ({
+          label: '',
+          state: 'pending',
+          key: `${jobId}:${index}`,
+        }));
+        // More images for an element that has some: they join them. What was made is kept,
+        // what failed makes room.
+        const before = imagesOf(call.target);
         const set: OptionSet = {
-          id: newId('tx'),
+          id: before?.id ?? newId('tx'),
           kind: 'image',
           from: 'object',
           target: call.target,
-          cards: Array.from({ length: call.count }, () => ({ label: '', state: 'pending' })),
+          ...(before?.prompt ? { prompt: before.prompt } : {}),
+          // The mark of a pick is by place, and the places have just moved: it goes.
+          cards: [...(before?.cards.filter((card) => card.state !== 'failed') ?? []), ...cards],
           live: true,
         };
-        setId = set.id;
-        jobs.set(jobId, setId);
-        prompts.set(setId, call.prompt);
+        job = { setId: set.id, prompt: call.prompt };
+        jobs.set(jobId, job);
         show(set);
       }
       if (event.type !== 'finished') return;
       const { outcome } = event;
+      const key = `${jobId}:${event.index}`;
       if (outcome.status === 'stored') {
-        const prompt = prompts.get(setId);
-        patchCard(setId, event.index, {
+        patchKey(job.setId, key, {
           state: 'ready',
-          asset: { ...outcome.asset, origin: 'ai', ...(prompt ? { lineage: { prompt } } : {}) },
+          asset: {
+            ...outcome.asset,
+            origin: 'ai',
+            ...(job.prompt ? { lineage: { prompt: job.prompt } } : {}),
+          },
         });
       } else {
-        patchCard(setId, event.index, {
+        patchKey(job.setId, key, {
           state: 'failed',
           problem: outcome.error.message,
           problemKind: outcome.error.kind,
         });
       }
-      if (!find(setId)?.live) jobs.delete(jobId);
     },
 
     preview(setId, index) {
@@ -422,7 +487,6 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
 
     dismiss(setId) {
       showPreview(null);
-      prompts.delete(setId);
       store.setState(({ sets }) => ({ sets: sets.filter((set) => set.id !== setId) }));
     },
   };
