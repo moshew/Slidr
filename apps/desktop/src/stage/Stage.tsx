@@ -16,6 +16,8 @@ import {
   type Slide,
 } from '@slidr/model';
 import { SlideRenderer, type AssetResolver, type TextSlot } from '@slidr/renderer';
+import { fitRows } from '../table/fit';
+import { useTableStage } from '../table/stage';
 import { TextEditor } from '../text/TextEditor';
 import {
   useCallback,
@@ -236,8 +238,12 @@ function burstTx(ref: { current: Burst | null }): string {
   return ref.current.txId;
 }
 
+/** In the text editor, or in the table cell around it: the whole cell is the editor's (WG6). */
 function isInEditor(target: EventTarget | null): boolean {
-  return target instanceof globalThis.Element && Boolean(target.closest('[data-text-editor]'));
+  return (
+    target instanceof globalThis.Element &&
+    Boolean(target.closest('[data-text-editor], [data-cell-editing]'))
+  );
 }
 
 /** The value of a `data-*` attribute on the target or on what it sits in. */
@@ -379,6 +385,22 @@ export function Stage({
         }
       : undefined;
 
+  // ---- Tables: the lines of a selected table, and the cells of one the user went into (WG6) ----
+
+  const focusSurface = useCallback(() => container.current?.focus({ preventScroll: true }), []);
+  const tables = useTableStage({
+    bus,
+    selection,
+    slide,
+    theme: deck.theme,
+    index,
+    single,
+    editingId,
+    view: { origin, scale },
+    toSlide,
+    focus: focusSurface,
+  });
+
   // ---- Crop mode: `editingElementId` on an image that has a picture of a known size ----
 
   const editing = editingId ? index.get(editingId) : undefined;
@@ -483,6 +505,11 @@ export function Stage({
         selection.getState().selectElements(g.restore);
       }
     } else if (g.kind === 'move' && g.moved && !g.path) refitSlide(g.txId);
+    else if (g.kind === 'resize') {
+      // A table cannot be shorter than its text: its rows are written as they came out.
+      for (const { element } of g.items)
+        if (element.type === 'table') fitRows(bus, element.id, g.txId);
+    }
   };
 
   // ---- Hit-testing ----
@@ -911,6 +938,7 @@ export function Stage({
     const hit = resolveHit(chain, scope);
     const target = hit.id ? index.get(hit.id) : undefined;
     if (!target || target.locked) return;
+    if (tables.onDoubleClick(target, e)) return;
     const element = target.element;
     if (element.type === 'text' || element.type === 'shape') {
       setCaretAt({ x: e.clientX, y: e.clientY });
@@ -986,6 +1014,8 @@ export function Stage({
   const nudge = useRef<Burst | null>(null);
   const onKeyDown = (e: KeyboardEvent) => {
     if (isInEditor(e.target)) return;
+    // Inside a table the arrows, Tab, Enter, Delete and Esc are about its cells.
+    if (tables.onKeyDown(e)) return;
     // Alt is a modifier of drags here; it must not hand the focus to a menu bar.
     if (e.key === 'Alt') {
       e.preventDefault();
@@ -1204,6 +1234,7 @@ export function Stage({
             }}
           />
         ) : null}
+        {tables.overlay}
         {crop ? (
           <CropOverlay
             located={crop.located}
@@ -1313,6 +1344,7 @@ export function Stage({
               mode="edit"
               resolveAsset={resolveAsset}
               textSlot={editingId && !croppingId ? textSlot : undefined}
+              cellSlot={tables.cellSlot}
             />
           </div>
         </div>
