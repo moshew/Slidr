@@ -15,12 +15,10 @@ const IMPORT = ['import'] as const;
 const target = {
   selector: z
     .string()
-    .min(1)
     .optional()
     .describe('CSS selector of the element. Open shadow roots are searched too.'),
   js: z
     .string()
-    .min(1)
     .optional()
     .describe(
       'Instead of a selector: a JavaScript expression that evaluates to the Element, e.g. document.querySelectorAll("section")[3].',
@@ -175,7 +173,7 @@ function slideReport(deck: Deck, imported: ImportedSlide): Record<string, unknow
 export const importCapture = defineTool({
   name: 'import_capture',
   description:
-    'Captures elements of the page as slides, in the order given, and appends them to the deck. For each: runs `before` (optional JavaScript, as in import_eval) to bring the slide into its final state, waits, then copies the element with the styles, images and fonts it uses, converts what it can into editable elements, compares the result with the source, and keeps as html whatever did not convert faithfully. Returns for each slide: its id and number, `faithful`, the share that became editable, element counts and remarks; a slide that could not be captured is reported with the reason. A long call stops early and says which slides are left: call again for those.',
+    'Captures elements of the page as slides, in the order given, and appends them to the deck. For each: runs `before` (optional JavaScript, as in import_eval) to bring the slide into its final state, waits, then copies the element with the styles, images and fonts it uses, converts what it can into editable elements, compares the result with the source, and keeps as html whatever did not convert faithfully. Returns `captured`, with for each slide its id and number, `faithful`, the share that became editable, element counts and remarks; a slide that could not be captured is reported with the reason. A long call stops early and says which slides are left: call again for those.',
   input: z.strictObject({
     slides: z
       .array(
@@ -183,13 +181,11 @@ export const importCapture = defineTool({
           ...target,
           before: z
             .string()
-            .min(1)
             .optional()
             .describe('JavaScript to run first: bring this slide into view in its final state.'),
-          name: z.string().min(1).optional().describe('A short name for the slide.'),
+          name: z.string().optional().describe('A short name for the slide.'),
           notes: z
             .string()
-            .min(1)
             .optional()
             .describe('Speaker notes of this slide, when the file has them. Markdown.'),
           waitMs: z
@@ -247,7 +243,8 @@ export const importCapture = defineTool({
     }
     return {
       data: {
-        slides: reports,
+        // Not "slides": the registry adds the ids of the slides a write touched under that name.
+        captured: reports,
         ...(left > 0
           ? {
               notCaptured: `The last ${left} of this call were not started (time): call again for them.`,

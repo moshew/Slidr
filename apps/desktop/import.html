@@ -5,13 +5,26 @@
     <title>Slidr import</title>
     <!--
       The import window (SPEC 13.3): never shown. An imported file runs in a frame of this page.
-      Rust refuses every request of the window that is not this page or the IPC. That filter
-      does not see WebSockets, so the policy below closes them: `connect-src` names no `ws:`
-      scheme beyond the page's own origin, and the frame inherits the policy.
+      Rust refuses every request of the window that is not this page or the IPC, and writes down
+      what it refused. Two kinds of request never reach that filter, and this policy, which the
+      frame inherits, closes them: WebSockets (`connect-src` names no `ws:` scheme beyond the
+      page's own origin) and prefetches (`default-src 'none'`). Everything else is let through
+      to the filter on purpose, so that it is the one place a refused address is recorded.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="connect-src 'self' http: https: ipc: data: blob:"
+      content="
+        default-src 'none';
+        script-src * data: blob: 'unsafe-inline' 'unsafe-eval';
+        style-src * data: blob: 'unsafe-inline';
+        img-src * data: blob:;
+        font-src * data: blob:;
+        media-src * data: blob:;
+        frame-src * data: blob:;
+        worker-src * data: blob:;
+        object-src * data: blob:;
+        connect-src 'self' http: https: ipc: data: blob:
+      "
     />
     <style>
       html,
