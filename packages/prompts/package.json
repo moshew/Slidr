@@ -8,5 +8,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@slidr/agent-tools": "workspace:*",
+    "@slidr/model": "workspace:*"
   }
 }
