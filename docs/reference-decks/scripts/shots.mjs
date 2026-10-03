@@ -3,6 +3,7 @@
 //   node docs/reference-decks/scripts/shots.mjs index [deck ...] the index page, deck by deck
 // Each slide at 1920x1080 and one contact sheet per deck, under
 // apps/desktop/test-results/templates/reference/.
+/* global document */
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';

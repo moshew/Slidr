@@ -244,6 +244,8 @@ export function sampleSlides(
   const dir = options.dir ?? template.dir;
   const lang = options.lang ?? (dir === 'rtl' ? 'he' : 'en');
   const deck = deckFromTemplate(template, { lang, dir });
+  // The pictures of the sample: a deck that only takes the template does not carry them.
+  deck.assets = { ...deck.assets, ...template.assets };
   const random = seeded(options.seed ?? 1);
   for (const sample of slides) {
     const { slide, unplaced } = createSlide(
@@ -281,6 +283,7 @@ export function sampleDeck(
   options: { dir: 'rtl' | 'ltr'; lang: string },
 ): Deck {
   const deck = deckFromTemplate(template, options);
+  deck.assets = { ...deck.assets, ...template.assets };
   deck.slides = sampleSlides(template, slides, options);
   return deck;
 }

@@ -42,12 +42,26 @@ export interface Editor {
   file: StoreApi<FileState>;
 }
 
-/** A new deck: one empty slide, in the language of the UI. */
+let deckFactory = (lang: string): Deck => createDeck({ lang, slides: [createSlide()] });
+
+/** A new deck, in the language of the UI: one empty slide, unless an area set another start. */
 export function newDeck(lang: string): Deck {
-  return createDeck({ lang, slides: [createSlide()] });
+  return deckFactory(lang);
+}
+
+/** Sets what a new deck starts as: the templates area opens it on the default template (THM-08). */
+export function setNewDeck(factory: (lang: string) => Deck): void {
+  deckFactory = factory;
 }
 
 let current: Editor | null = null;
+const waiting: ((editor: Editor) => void)[] = [];
+
+/** Runs once the editor of this window exists: at once when it does, else when it is created. */
+export function whenEditor(callback: (editor: Editor) => void): void {
+  if (current) callback(current);
+  else waiting.push(callback);
+}
 
 /**
  * The editor of this window, for code that is not a component: a row A action, a shortcut.
@@ -61,6 +75,7 @@ export function getEditor(): Editor {
 export function createEditor(options: { lang: string; storage: Storage | null }): Editor {
   const editor = buildEditor(options);
   current = editor;
+  for (const callback of waiting.splice(0)) callback(editor);
   return editor;
 }
 

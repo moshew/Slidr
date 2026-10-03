@@ -1,4 +1,10 @@
-import { createElement, type Background, type Element, type Layout, type Theme } from '@slidr/model';
+import {
+  createElement,
+  type Background,
+  type Element,
+  type Layout,
+  type Theme,
+} from '@slidr/model';
 import { copyJson } from '../json';
 import type { Template } from '../template';
 import {
@@ -43,7 +49,13 @@ export const zeremTheme: Theme = {
     body: { he: 'Heebo', latin: 'Inter' },
   },
   textStyles: {
-    display: { font: 'heading', size: 136, weight: 700, lineHeight: 1.05, color: { token: 'text' } },
+    display: {
+      font: 'heading',
+      size: 136,
+      weight: 700,
+      lineHeight: 1.05,
+      color: { token: 'text' },
+    },
     title: { font: 'heading', size: 72, weight: 700, lineHeight: 1.12, color: { token: 'text' } },
     heading: { font: 'heading', size: 44, weight: 600, lineHeight: 1.2, color: { token: 'text' } },
     body: { font: 'body', size: 30, weight: 400, lineHeight: 1.5, color: { token: 'text' } },
@@ -65,7 +77,8 @@ const CARD = {
   stroke: { color: token('text', 0.12), width: 1 },
   effects: { radius: 12 },
 };
-const card = (id: string, frame: ReturnType<typeof at>) => rect(id, frame, solid(token('surface')), CARD);
+const card = (id: string, frame: ReturnType<typeof at>) =>
+  rect(id, frame, solid(token('surface')), CARD);
 
 const MARK =
   '<svg viewBox="0 0 44 32"><rect x="0" y="1" width="26" height="6" rx="3" fill="#2ee6d0"/><rect x="32" y="1" width="12" height="6" rx="3" fill="#2ee6d0" opacity="0.5"/><rect x="8" y="13" width="36" height="6" rx="3" fill="#2ee6d0"/><rect x="0" y="25" width="14" height="6" rx="3" fill="#2ee6d0" opacity="0.5"/><rect x="20" y="25" width="24" height="6" rx="3" fill="#2ee6d0"/></svg>';
@@ -87,14 +100,18 @@ const head = (width = 1728, lines = 1) => [
   place('p_title', 'title', at(96, 122, width, 81 * lines), 'title'),
 ];
 
-/** The foot of a content slide: a rule, the mark, the deck's name and the slide's number. */
-function foot(name: string, width = 1728): { placeholders: Layout['placeholders']; decorations: Element[] } {
+/**
+ * The foot of a content slide: a rule, the mark at the start and the deck's name at the end,
+ * which leaves a logo of any width room to replace the mark. There is no placeholder for the
+ * slide's number: nothing shows it yet (SLD-04), and a placeholder would give nothing.
+ */
+function foot(
+  name: string,
+  width = 1728,
+): { placeholders: Layout['placeholders']; decorations: Element[] } {
   return {
     placeholders: [
-      place('p_footer', 'footer', at(160, 961, 760, 34), 'caption'),
-      place('p_number', 'slideNumber', at(96 + width - 120, 961, 120, 34), 'caption', {
-        align: 'end',
-      }),
+      place('p_footer', 'footer', at(96 + width - 900, 961, 900, 34), 'caption', { align: 'end' }),
     ],
     decorations: [
       rect(`d_zerem_${name}_rule`, at(96, 940, width, 1), solid(token('text', 0.14))),
@@ -104,17 +121,43 @@ function foot(name: string, width = 1728): { placeholders: Layout['placeholders'
 }
 
 /** The stream: lanes of events of different lengths, fading towards the text. */
-const LANES: [x: number, y: number, w: number, color: 'primary' | 'secondary' | 'accent' | 'text', opacity: number][] = [
-  [40, 150, 120, 'secondary', 0.5], [200, 150, 300, 'primary', 0.9], [560, 150, 60, 'text', 0.25],
-  [-20, 234, 260, 'primary', 0.35], [300, 234, 90, 'secondary', 0.9], [430, 234, 220, 'text', 0.18],
-  [90, 318, 60, 'accent', 1], [190, 318, 420, 'primary', 0.8], [660, 318, 110, 'secondary', 0.4],
-  [20, 402, 180, 'secondary', 0.7], [250, 402, 70, 'text', 0.3], [370, 402, 330, 'primary', 0.25],
-  [-40, 486, 380, 'primary', 0.95], [390, 486, 140, 'secondary', 0.55], [580, 486, 50, 'text', 0.3],
-  [110, 570, 110, 'text', 0.2], [260, 570, 250, 'secondary', 0.85], [560, 570, 180, 'primary', 0.4],
-  [10, 654, 300, 'primary', 0.6], [360, 654, 60, 'accent', 0.9], [470, 654, 200, 'text', 0.15],
-  [70, 738, 90, 'secondary', 0.45], [210, 738, 360, 'primary', 0.85], [620, 738, 80, 'secondary', 0.3],
-  [-30, 822, 220, 'text', 0.2], [240, 822, 130, 'primary', 0.5], [420, 822, 280, 'secondary', 0.7],
-  [140, 906, 260, 'primary', 0.3], [450, 906, 70, 'text', 0.3], [570, 906, 160, 'secondary', 0.5],
+const LANES: [
+  x: number,
+  y: number,
+  w: number,
+  color: 'primary' | 'secondary' | 'accent' | 'text',
+  opacity: number,
+][] = [
+  [40, 150, 120, 'secondary', 0.5],
+  [200, 150, 300, 'primary', 0.9],
+  [560, 150, 60, 'text', 0.25],
+  [-20, 234, 260, 'primary', 0.35],
+  [300, 234, 90, 'secondary', 0.9],
+  [430, 234, 220, 'text', 0.18],
+  [90, 318, 60, 'accent', 1],
+  [190, 318, 420, 'primary', 0.8],
+  [660, 318, 110, 'secondary', 0.4],
+  [20, 402, 180, 'secondary', 0.7],
+  [250, 402, 70, 'text', 0.3],
+  [370, 402, 330, 'primary', 0.25],
+  [-40, 486, 380, 'primary', 0.95],
+  [390, 486, 140, 'secondary', 0.55],
+  [580, 486, 50, 'text', 0.3],
+  [110, 570, 110, 'text', 0.2],
+  [260, 570, 250, 'secondary', 0.85],
+  [560, 570, 180, 'primary', 0.4],
+  [10, 654, 300, 'primary', 0.6],
+  [360, 654, 60, 'accent', 0.9],
+  [470, 654, 200, 'text', 0.15],
+  [70, 738, 90, 'secondary', 0.45],
+  [210, 738, 360, 'primary', 0.85],
+  [620, 738, 80, 'secondary', 0.3],
+  [-30, 822, 220, 'text', 0.2],
+  [240, 822, 130, 'primary', 0.5],
+  [420, 822, 280, 'secondary', 0.7],
+  [140, 906, 260, 'primary', 0.3],
+  [450, 906, 70, 'text', 0.3],
+  [570, 906, 160, 'secondary', 0.5],
 ];
 
 function stream(id: string, width: number, rows: [from: number, to: number]): Element {
@@ -135,7 +178,13 @@ function stream(id: string, width: number, rows: [from: number, to: number]): El
 }
 
 /** A glow in a corner of the slide; `side` is where it sits, as a share of the width. */
-const glow = (side: number, top: number, color: 'primary' | 'secondary', share: number, size: string) =>
+const glow = (
+  side: number,
+  top: number,
+  color: 'primary' | 'secondary',
+  share: number,
+  size: string,
+) =>
   `radial-gradient(${size} at ${side}% ${top}%, color-mix(in srgb, var(--color-${color}) ${share}%, transparent), transparent 70%)`;
 
 const css = (...layers: string[]): Background => ({
@@ -252,8 +301,7 @@ function layouts(): Layout[] {
           place(`p_point${i + 1}`, 'subtitle', at(168, top, 848, 53), 'heading'),
           place(`p_point${i + 1}_body`, 'body', at(168, top + 60, 848, 90), 'body'),
         ]),
-        place('p_footer', 'footer', at(160, 961, 700, 34), 'caption'),
-        place('p_number', 'slideNumber', atEnd(896, 961, 120, 34), 'caption', { align: 'end' }),
+        place('p_footer', 'footer', atEnd(896, 961, 700, 34), 'caption', { align: 'end' }),
       ],
       decorations: [
         ...[336, 530, 724].map((top, i) =>
@@ -278,7 +326,9 @@ function layouts(): Layout[] {
         place('p_title', 'title', at(96, 730, 1060, 162), 'title'),
         place('p_body', 'body', atEnd(96, 738, 560, 180), 'body'),
       ],
-      decorations: [rect('d_zerem_full_image_bar', atEnd(696, 746, 4, 140), solid(token('primary')))],
+      decorations: [
+        rect('d_zerem_full_image_bar', atEnd(696, 746, 4, 140), solid(token('primary'))),
+      ],
     },
     {
       id: 'l_zerem_cards',
@@ -297,9 +347,14 @@ function layouts(): Layout[] {
       decorations: [
         ...cards3.flatMap((start, i) => [
           card(`d_zerem_cards_card${i + 1}`, at(start, 262, 544, 580)),
-          rect(`d_zerem_cards_tile${i + 1}`, at(start + 44, 306, 76, 76), solid(token('primary', 0.14)), {
-            effects: { radius: 12 },
-          }),
+          rect(
+            `d_zerem_cards_tile${i + 1}`,
+            at(start + 44, 306, 76, 76),
+            solid(token('primary', 0.14)),
+            {
+              effects: { radius: 12 },
+            },
+          ),
           label(`d_zerem_cards_n${i + 1}`, at(start + 44, 322, 76, 45), `0${i + 1}`, 'body', {
             color: token('primary'),
             weight: 700,
@@ -328,9 +383,14 @@ function layouts(): Layout[] {
           effects: { radius: 2 },
         }),
         ...columns4.map((start, i) =>
-          dot(`d_zerem_timeline_dot${i + 1}`, at(start, 430, 32, 32), solid(token(i === 0 ? 'primary' : 'bg')), {
-            stroke: { color: token('primary', i === 0 ? 1 : 0.6), width: 4 },
-          }),
+          dot(
+            `d_zerem_timeline_dot${i + 1}`,
+            at(start, 430, 32, 32),
+            solid(token(i === 0 ? 'primary' : 'bg')),
+            {
+              stroke: { color: token('primary', i === 0 ? 1 : 0.6), width: 4 },
+            },
+          ),
         ),
         card('d_zerem_timeline_card', at(96, 806, 1728, 92)),
         ...foot('timeline').decorations,
@@ -449,7 +509,7 @@ function layouts(): Layout[] {
         ...[540, 628, 716].map((top, i) =>
           place(`p_step${i + 1}`, 'body', at(176, top + 2, 1100, 45), 'body'),
         ),
-        place('p_contact', 'caption', at(196, 896, 900, 34), 'caption'),
+        place('p_contact', 'caption', at(96, 952, 900, 34), 'caption'),
       ],
       decorations: [
         stream('d_zerem_closing_stream', 620, [234, 822]),
@@ -461,8 +521,8 @@ function layouts(): Layout[] {
             '#2ee6d0': token('primary'),
           }),
         ]),
-        rect('d_zerem_closing_rule', at(96, 840, 560, 1), solid(token('text', 0.14))),
-        mark('d_zerem_closing_mark', at(96, 880, 77, 56)),
+        rect('d_zerem_closing_rule', at(96, 832, 560, 1), solid(token('text', 0.14))),
+        mark('d_zerem_closing_mark', at(96, 868, 77, 56)),
       ],
     },
   ];
@@ -478,9 +538,14 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_zerem_hero',
     name: 'פתיחה',
     content: {
-      caption: [text('PLATFORM ARCHITECTURE REVIEW'), text('צוות Platform · סקירת ארכיטקטורה · דצמבר 2026')],
+      caption: [
+        text('PLATFORM ARCHITECTURE REVIEW'),
+        text('צוות Platform · סקירת ארכיטקטורה · דצמבר 2026'),
+      ],
       title: text('הארכיטקטורה הבאה של Zerem'),
-      subtitle: text('Event streaming של יותר ממיליארד אירועים ביום, בלי broker אחד שמחזיק את הכול.'),
+      subtitle: text(
+        'Event streaming של יותר ממיליארד אירועים ביום, בלי broker אחד שמחזיק את הכול.',
+      ),
     },
   },
   {
@@ -569,7 +634,13 @@ const sampleHe: SampleSlide[] = [
         text('קריאה מה-cache החם, או ישירות מהשכבה הקרה.'),
       ],
       title: text('מסלולו של אירוע, מקצה לקצה'),
-      subtitle: [text('Producer'), text('Gateway'), text('Broker'), text('Storage'), text('Consumer')],
+      subtitle: [
+        text('Producer'),
+        text('Gateway'),
+        text('Broker'),
+        text('Storage'),
+        text('Consumer'),
+      ],
       number: [text('2ms'), text('6ms'), text('12ms'), text('14ms'), text('4ms')],
       body: text('בסך הכול 38ms מה-producer עד ה-consumer, מול יעד של 50ms.'),
       footer: FOOTER,
@@ -586,9 +657,15 @@ const sampleHe: SampleSlide[] = [
         text('המדד: p99 בזמן עומס'),
       ],
       title: text('שלושה עקרונות שלא מתפשרים עליהם'),
-      subtitle: [text('Brokers בלי מצב'), text('אחסון נפרד מ-compute'), text('Backpressure מקצה לקצה')],
+      subtitle: [
+        text('Brokers בלי מצב'),
+        text('אחסון נפרד מ-compute'),
+        text('Backpressure מקצה לקצה'),
+      ],
       body: [
-        text('Broker לא מחזיק נתונים שאי אפשר לשחזר. כל instance ניתן להחלפה בתוך שניות, בלי העתקה.'),
+        text(
+          'Broker לא מחזיק נתונים שאי אפשר לשחזר. כל instance ניתן להחלפה בתוך שניות, בלי העתקה.',
+        ),
         text('הנתונים חיים ב-object storage, וה-compute רק קורא וכותב. כל אחד גדל לפי העומס שלו.'),
         text('כש-consumer מאט, ה-producer יודע על זה. אין תורים נסתרים שמתנפחים עד שמשהו נופל.'),
         text('כל החלטת תכנון ב-v3 נבחנת מול שלושתם, לפני שנכתבת שורת קוד אחת.'),
@@ -602,7 +679,9 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: text('DEEP DIVE'),
       title: text('Tiered Storage: מה קורה לאירוע אחרי שנכתב'),
-      image: { imagePrompt: 'A diagram of three storage tiers, hot, warm and cold, one above the other' },
+      image: {
+        imagePrompt: 'A diagram of three storage tiers, hot, warm and cold, one above the other',
+      },
       subtitle: [
         text('שכבה חמה: שש השעות האחרונות'),
         text('שכבה פושרת: שבעה ימים'),
@@ -620,7 +699,10 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_zerem_chart',
     name: 'תוצאות ה-pilot',
     content: {
-      caption: [text('PILOT RESULTS'), text('מקור: cluster ה-pilot, צוותי Payments ו-Search, יולי עד דצמבר 2026.')],
+      caption: [
+        text('PILOT RESULTS'),
+        text('מקור: cluster ה-pilot, צוותי Payments ו-Search, יולי עד דצמבר 2026.'),
+      ],
       title: text('ה-pilot: יותר throughput על אותה חומרה'),
       number: [text('×3.1'), text('−64%')],
       body: [
@@ -647,7 +729,9 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [
         text('SERVICE TIERS'),
-        text('כל ה-SLOs נמדדים בחלון של 30 יום. חריגה משני רבעונים רצופים פותחת design review לשכבה.'),
+        text(
+          'כל ה-SLOs נמדדים בחלון של 30 יום. חריגה משני רבעונים רצופים פותחת design review לשכבה.',
+        ),
       ],
       title: text('מה אנחנו מבטיחים לכל סוג topic'),
       footer: FOOTER,
@@ -672,7 +756,9 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [
         text('ROADMAP 2027'),
-        text('בכל רבעון יש נקודת יציאה: אם ה-p99 של v3 חורג מ-50ms שבועיים ברצף, עוצרים וחוזרים שלב.'),
+        text(
+          'בכל רבעון יש נקודת יציאה: אם ה-p99 של v3 חורג מ-50ms שבועיים ברצף, עוצרים וחוזרים שלב.',
+        ),
       ],
       title: text('ארבעה רבעונים, בלי big bang'),
       number: [text('Q1'), text('Q2'), text('Q3'), text('Q4')],
@@ -708,7 +794,9 @@ const sampleHe: SampleSlide[] = [
       image: { assetId: pictures.zeremDatacenter.id },
       caption: text('RESILIENCE'),
       title: text('שלושה אזורים, אפס נקודות כשל'),
-      body: text('כל segment נכתב לשלושה אזורי זמינות לפני ה-ack. אזור שלם יכול ליפול בלי שאירוע אחד יאבד.'),
+      body: text(
+        'כל segment נכתב לשלושה אזורי זמינות לפני ה-ack. אזור שלם יכול ליפול בלי שאירוע אחד יאבד.',
+      ),
     },
   },
   {
@@ -779,7 +867,9 @@ const sampleEn: SampleSlide[] = [
       number: text('01'),
       caption: text('Part one of three'),
       title: text('Why now'),
-      subtitle: text('Three pressures that built up during 2026, and what each week of waiting costs us.'),
+      subtitle: text(
+        'Three pressures that built up during 2026, and what each week of waiting costs us.',
+      ),
     },
   },
   {
@@ -858,7 +948,13 @@ const sampleEn: SampleSlide[] = [
         text('Reads from the hot cache or the cold tier.'),
       ],
       title: text('The path of an event, end to end'),
-      subtitle: [text('Producer'), text('Gateway'), text('Broker'), text('Storage'), text('Consumer')],
+      subtitle: [
+        text('Producer'),
+        text('Gateway'),
+        text('Broker'),
+        text('Storage'),
+        text('Consumer'),
+      ],
       number: [text('2ms'), text('6ms'), text('12ms'), text('14ms'), text('4ms')],
       body: text('In all, 38ms from producer to consumer, against a target of 50ms.'),
       footer: FOOTER_EN,
@@ -884,7 +980,9 @@ const sampleEn: SampleSlide[] = [
         text('A broker holds nothing that cannot be rebuilt. Any instance is replaced in seconds.'),
         text('Data lives in object storage; compute reads and writes. Each grows on its own.'),
         text('When a consumer slows down, the producer knows. No hidden queue grows.'),
-        text('Every design decision in v3 is weighed against all three, before a line of code is written.'),
+        text(
+          'Every design decision in v3 is weighed against all three, before a line of code is written.',
+        ),
       ],
       footer: FOOTER_EN,
     },
@@ -923,7 +1021,9 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [
         text('SERVICE TIERS'),
-        text('Every SLO is measured over 30 days. Two quarters in a row out of bounds open a design review.'),
+        text(
+          'Every SLO is measured over 30 days. Two quarters in a row out of bounds open a design review.',
+        ),
       ],
       title: text('What we promise each kind of topic'),
       footer: FOOTER_EN,
@@ -948,7 +1048,9 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [
         text('ROADMAP 2027'),
-        text('Every quarter has an exit: if v3 runs over 50ms at p99 for two weeks, we stop and step back.'),
+        text(
+          'Every quarter has an exit: if v3 runs over 50ms at p99 for two weeks, we stop and step back.',
+        ),
       ],
       title: text('Four quarters, no big bang'),
       number: [text('Q1'), text('Q2'), text('Q3'), text('Q4')],
@@ -971,7 +1073,9 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_zerem_quote',
     name: 'Quote',
     content: {
-      quote: text('Since we moved to v3 my pager is quiet at night. That is not luck, it is architecture.'),
+      quote: text(
+        'Since we moved to v3 my pager is quiet at night. That is not luck, it is architecture.',
+      ),
       attribution: text('Noa Barak'),
       caption: text('SRE Lead on Payments, one of the two pilot teams'),
       footer: FOOTER_EN,
@@ -984,7 +1088,9 @@ const sampleEn: SampleSlide[] = [
       image: { assetId: pictures.zeremDatacenter.id },
       caption: text('RESILIENCE'),
       title: text('Three zones, no single point of failure'),
-      body: text('Every segment is written to three zones before the ack. A whole zone can go down.'),
+      body: text(
+        'Every segment is written to three zones before the ack. A whole zone can go down.',
+      ),
     },
   },
   {
@@ -1005,7 +1111,12 @@ const sampleEn: SampleSlide[] = [
         { assetId: pictures.zeremTeam3.id },
         { assetId: pictures.zeremTeam4.id },
       ],
-      subtitle: [text('Maya Levin'), text('Yonatan Sagi'), text('Omer Dayan'), text('Ronit Avraham')],
+      subtitle: [
+        text('Maya Levin'),
+        text('Yonatan Sagi'),
+        text('Omer Dayan'),
+        text('Ronit Avraham'),
+      ],
       body: [
         text('Leads tiered storage and the cost model.'),
         text('Owns the stateless broker and failover.'),

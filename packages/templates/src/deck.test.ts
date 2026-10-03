@@ -323,7 +323,7 @@ describe('applyTemplate', () => {
     });
   });
 
-  it("registers the template's assets the deck does not have", () => {
+  it("registers the assets the template's layouts draw, and not those of its sample", () => {
     const logo: AssetMeta = {
       id: 'b'.repeat(64),
       file: `${'b'.repeat(64)}.svg`,
@@ -332,9 +332,29 @@ describe('applyTemplate', () => {
       bytes: 512,
       origin: 'upload',
     };
-    const night = { ...nightTemplate(), assets: { [logo.id]: logo } };
+    const sampleOnly: AssetMeta = { ...logo, id: 'c'.repeat(64), file: `${'c'.repeat(64)}.svg` };
+    const night = { ...nightTemplate(), assets: { [logo.id]: logo, [sampleOnly.id]: sampleOnly } };
+    // The logo is drawn by a layout; the other asset only by a sample slide.
+    night.layouts[0]!.decorations.push(
+      createElement.image({
+        id: 'd_night_logo',
+        role: 'logo',
+        frame: box(96, 40, 120, 40),
+        assetId: logo.id,
+      }),
+    );
+    night.sample![0]!.elements.push(
+      createElement.image({
+        id: 'e_sample_photo',
+        frame: box(0, 0, 400, 300),
+        assetId: sampleOnly.id,
+      }),
+    );
     const deck = paperDeck();
     const commands = applyTemplate(deck, night);
+    expect(commands.filter((c) => c.type === 'asset.add')).toEqual([
+      { type: 'asset.add', asset: logo },
+    ]);
     expect(commands[0]).toEqual({ type: 'asset.add', asset: logo });
     const after = run(deck, commands).deck;
     expect(after.assets[logo.id]).toEqual(logo);

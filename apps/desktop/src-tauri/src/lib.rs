@@ -8,6 +8,7 @@ mod error;
 mod harness;
 mod image_providers;
 mod storage;
+mod templates;
 // The tool bridge. Its folder is the one place that names the protocol it speaks to agents
 // (API-02); the rest of the crate knows it by what it does.
 #[path = "mcp_bridge/mod.rs"]
@@ -35,6 +36,7 @@ pub fn run() {
                 root.join("image-providers.json"),
                 image_providers::builtin(),
             )));
+            app.manage(Arc::new(templates::TemplateStore::new(&root)));
             app.manage(Arc::new(storage::Storage::new(root)));
             app.manage(Arc::new(capture::CaptureService::new()));
             Ok(())
@@ -80,6 +82,11 @@ pub fn run() {
             capture::capture_job_done,
             harness::ipc::agent_chat_read,
             harness::ipc::agent_chat_write,
+            templates::template_store_list,
+            templates::template_store_save,
+            templates::template_store_remove,
+            templates::template_store_read_asset,
+            templates::template_store_write_asset,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

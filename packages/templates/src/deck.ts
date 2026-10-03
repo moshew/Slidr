@@ -2,6 +2,7 @@ import {
   CommandBus,
   createDeck,
   walkElements,
+  type AssetMeta,
   type Command,
   type CreateDeckOptions,
   type Deck,
@@ -52,7 +53,8 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
     const from = deck.layouts.find((layout) => layout.id === slide.layoutId);
     if (!from) {
       const adopted = adoptLayout(slide, next, deck.meta.dir);
-      if (adopted) adopting.push({ slideId: slide.id, to: adopted.layout, updates: adopted.updates });
+      if (adopted)
+        adopting.push({ slideId: slide.id, to: adopted.layout, updates: adopted.updates });
       continue;
     }
     const to = matchLayout(slide, from, next);
@@ -61,7 +63,7 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
   }
 
   const commands: Command[] = [];
-  for (const asset of Object.values(template.assets ?? {})) {
+  for (const asset of layoutAssets(template, next)) {
     if (!deck.assets[asset.id]) commands.push({ type: 'asset.add', asset: copyJson(asset) });
   }
   if (!equalJson(deck.theme, template.theme)) {
@@ -87,6 +89,17 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
     commands.push({ type: 'slide.update', slideId, patch: { layoutId: to.id } }, ...updates);
   }
   return commands;
+}
+
+/**
+ * The assets of a template that its layouts draw: a logo, a picture behind a layout. The
+ * pictures of its sample slides are not among them, so a deck that takes the template does not
+ * carry them. An asset counts when its id appears anywhere in the layouts, as in the model's
+ * `assetsUsedBy`.
+ */
+export function layoutAssets(template: Template, layouts: readonly Layout[]): AssetMeta[] {
+  const drawn = JSON.stringify(layouts);
+  return Object.values(template.assets ?? {}).filter((asset) => drawn.includes(asset.id));
 }
 
 /** The fields mirroring changes in one element, as an `element.update` patch. */
@@ -185,17 +198,19 @@ export interface DeckFromTemplateOptions extends Omit<
 }
 
 /**
- * A new deck on a template, in the deck's direction: the theme, the layouts of that direction,
- * the template's assets and, when asked for, its sample slides.
+ * A new deck on a template, in the deck's direction: the theme, the layouts of that direction
+ * with the assets they draw and, when asked for, the sample slides with theirs.
  */
 export function deckFromTemplate(template: Template, options: DeckFromTemplateOptions = {}): Deck {
   const { sample = false, ...rest } = options;
   const deck = createDeck({ ...rest, theme: copyJson(template.theme) });
-  deck.assets = copyJson(template.assets ?? {});
   if (!sample || !template.sample?.length) {
     deck.layouts = layoutsFor(template, deck.meta.dir);
+    for (const asset of layoutAssets(template, deck.layouts))
+      deck.assets[asset.id] = copyJson(asset);
     return deck;
   }
+  deck.assets = copyJson(template.assets ?? {});
   const { dir } = deck.meta;
   deck.meta.dir = template.dir;
   deck.layouts = copyJson(template.layouts);

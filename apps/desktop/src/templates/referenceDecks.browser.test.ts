@@ -106,14 +106,18 @@ describe('the reference decks, converted and linted', () => {
   });
 
   for (const reference of decks) {
-    test(`${reference.id}: every slide becomes a slide of the model`, { timeout: 240_000 }, async () => {
-      const measured = await measure(reference);
-      report.push(measured);
-      expect(measured.slides).toHaveLength(reference.slides.length);
-      for (const slide of measured.slides) {
-        const total = Object.values(slide.elements).reduce((a, b) => a + b, 0);
-        expect(total, `${reference.id} ${slide.id}`).toBeGreaterThan(0);
-      }
-    });
+    test(
+      `${reference.id}: every slide becomes a slide of the model`,
+      { timeout: 240_000 },
+      async () => {
+        const measured = await measure(reference);
+        report.push(measured);
+        expect(measured.slides).toHaveLength(reference.slides.length);
+        for (const slide of measured.slides) {
+          const total = Object.values(slide.elements).reduce((a, b) => a + b, 0);
+          expect(total, `${reference.id} ${slide.id}`).toBeGreaterThan(0);
+        }
+      },
+    );
   }
 });

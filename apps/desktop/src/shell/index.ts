@@ -21,10 +21,12 @@ export { aiKinds, selectionKind, elementKind, type SelectionKind } from './selec
 export { StatusItem } from './StatusBar';
 export {
   getEditor,
+  setNewDeck,
   useDeck,
   useEditor,
   useFile,
   useSelection,
+  whenEditor,
   type Editor,
   type FileState,
 } from './editor';

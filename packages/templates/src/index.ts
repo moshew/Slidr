@@ -14,6 +14,7 @@ export {
   applyTemplate,
   changeDirection,
   deckFromTemplate,
+  layoutAssets,
   type DeckFromTemplateOptions,
 } from './deck';
 export { matchLayout, relayout } from './relayout';

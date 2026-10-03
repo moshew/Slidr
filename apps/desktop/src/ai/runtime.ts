@@ -37,7 +37,7 @@ import { createAppImages, type AppImages } from '../images/appImages';
 import { createLintService } from '../lint/deckLint';
 import type { Editor } from '../shell';
 import { createLayoutService } from '../templates/layoutService';
-import { createTemplateService } from '../templates/templateService';
+import { appTemplateService } from '../templates/app';
 import { createGallery, type Gallery } from './variations';
 import { createSessions, type Sessions } from './sessions';
 
@@ -161,8 +161,7 @@ function createAi(editor: Editor): AiRuntime {
     },
     lint,
     layouts: createLayoutService(),
-    // The built-in templates are WG7-T04; until then the library is empty.
-    templates: createTemplateService({ builtIn: [] }),
+    templates: appTemplateService(editor),
     images: images.service,
     options: gallery.service,
     capture: inApp ? createCaptureService(workspaceId) : pageCapture(),
