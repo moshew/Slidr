@@ -14,11 +14,16 @@ import type { Item, Problem, Rule } from '../rule';
  * What of an element has to stay on the slide: the glyphs of anything with text, the whole box
  * of a table or a chart. Images, shapes, lines, icons and video may run past the edge: that is
  * a full bleed, which the guidelines encourage (SPEC 9.1).
+ *
+ * A table is as tall as its rows, which grow to hold their text (ADR-033): a table whose frame
+ * is on the slide can still run off the bottom of it.
  */
 function mustStayOn({ element, measure }: Item): { what: string; box: Frame } | undefined {
-  if (element.type === 'table' || element.type === 'chart') {
-    return { what: `The ${element.type}`, box: measure.box };
+  if (element.type === 'table') {
+    const grown = measure.text?.overflow.y ?? 0;
+    return { what: 'The table', box: { ...measure.box, h: measure.box.h + grown } };
   }
+  if (element.type === 'chart') return { what: 'The chart', box: measure.box };
   return measure.text ? { what: 'The text', box: measure.text.ink } : undefined;
 }
 

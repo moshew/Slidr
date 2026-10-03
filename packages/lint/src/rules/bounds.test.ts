@@ -80,6 +80,31 @@ describe('L02: an element that leaves the slide', () => {
     expect(finding?.message).toMatch(/^The chart reaches 80px past the right edge of the slide/);
   });
 
+  it('reports a table whose rows grew past the bottom of the slide', () => {
+    const frame = { x: 200, y: 700, w: 1200, h: 300 };
+    const table = createElement.table({
+      id: 'e_table',
+      frame,
+      rows: [150, 150],
+      cols: [600, 600],
+      cells: [
+        [{ content: richText('Plan') }, { content: richText('Price') }],
+        [{ content: richText('Team') }, { content: richText('890') }],
+      ],
+      dir: 'ltr',
+    });
+    const grown = (y: number) => ({
+      e_table: { box: frame, text: text(frame, { overflow: { x: 0, y } }) },
+    });
+    // The frame ends at 1000: rows that are 80px taller still end on the slide.
+    expect(check('L02', [table], grown(80))).toEqual([]);
+    const [finding] = check('L02', [table], grown(140));
+    expect(finding?.elementIds).toEqual(['e_table']);
+    expect(finding?.message).toMatch(
+      /^The table reaches 60px past the bottom edge of the slide \(it is at x 200\.\.1400, y 700\.\.1140;/,
+    );
+  });
+
   it('reports any element that is entirely off the slide', () => {
     const elements = [
       createElement.image({ id: 'e_lost', frame: { x: 2000, y: 100, w: 400, h: 200 } }),
