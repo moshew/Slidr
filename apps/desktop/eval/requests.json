@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "approve": {
+    "he": "מאשר, בנה את המצגת.",
+    "en": "Approved, go ahead and build it."
+  },
+  "requests": [
+    {
+      "id": "01-opening-slide",
+      "kind": "single slide",
+      "lang": "he",
+      "forces": ["title"],
+      "prompt": "צור שקף פתיחה למצגת \"תוכנית העבודה 2027\" של חטיבת המוצר. כותרת משנה: ממוקדים בלקוח, מהירים בביצוע."
+    },
+    {
+      "id": "02-tech-microservices",
+      "kind": "technology",
+      "lang": "he",
+      "forces": ["title", "section", "few points", "diagram", "table", "timeline"],
+      "prompt": "בנה מצגת של 8 שקפים לצוות הפיתוח על המעבר שלנו ממונולית ל-microservices. המבנה: שקף פתיחה; למה עכשיו (שלוש הבעיות של המונולית: build של 40 דקות, deploy אחד בשבוע, תקלה אחת מפילה את כל המערכת); תרשים של הארכיטקטורה החדשה (API Gateway, שישה שירותים, message bus, ומסד נתונים לכל שירות); טבלת השוואה בין מונולית ל-microservices בחמישה ממדים; שקף מפריד \"תוכנית המעבר\"; ציר זמן של ארבעה רבעונים; הסיכונים ואיך מצמצמים אותם; ושקף סיום עם שלושת הצעדים הראשונים."
+    },
+    {
+      "id": "03-investor-seed",
+      "kind": "business / investor",
+      "lang": "he",
+      "forces": ["title", "data", "chart", "team", "few points"],
+      "prompt": "אני צריך מצגת משקיעים של 11 שקפים לסבב Seed של הסטארט-אפ שלנו, \"קליניקל\": תוכנה לניהול מרפאות פרטיות קטנות.\n\nהנתונים שיש לי:\n- 4,200 מרפאות פרטיות בישראל, 86% מהן מנהלות תורים בטלפון ובאקסל\n- 140 מרפאות משלמות היום\n- הכנסה חודשית חוזרת (MRR) לפי רבעון ב-2026: 38, 61, 97, 142 אלף ש\"ח\n- נטישה חודשית: 1.8%\n- מחיר: 890 ש\"ח לחודש למרפאה\n- הצוות: ד\"ר נועה לוי (מנכ\"לית, רופאת משפחה), עומר כהן (CTO, לשעבר Wix), תמר אברהם (מכירות)\n- מגייסים 6 מיליון ש\"ח ל-18 חודשים: 50% פיתוח, 30% מכירות ושיווק, 20% תפעול"
+    },
+    {
+      "id": "04-marketing-launch",
+      "kind": "marketing",
+      "lang": "en",
+      "forces": ["title", "image", "few points", "timeline"],
+      "prompt": "Build a 6-slide marketing deck for the launch of \"Brewly\", a countertop cold-brew coffee maker, aimed at retail buyers. Slides: a title slide with a strong product image; the problem (cold brew takes 18 hours at home); the product and its three key benefits (ready in 12 minutes, no filters to replace, fits any fridge door); who buys it (urban, 25 to 40, already spends $60 a month on coffee out); the launch plan across four channels with dates (pre-orders March 3, influencer week March 10 to 16, retail launch April 1, TV in May); and a closing slide with the offer to retailers: 40% margin, and a free display stand for the first 200 stores."
+    },
+    {
+      "id": "05-long-text",
+      "kind": "text-heavy source",
+      "lang": "he",
+      "forces": ["text-heavy", "split or dense", "data"],
+      "prompt": "הפוך את הטקסט הבא לשקפים, כמה שצריך:\n\nסיכום מחקר הנטישה, רבעון שלישי 2026\n\nבמהלך הרבעון ראיינו 48 לקוחות שעזבו את השירות בתוך שלושת החודשים הראשונים, וניתחנו את נתוני השימוש של כל 612 הלקוחות שהצטרפו מתחילת השנה. המטרה הייתה להבין למה שיעור הנטישה בשלושת החודשים הראשונים עומד על 23%, בזמן שאחרי החודש השלישי הוא יורד ל-4% בלבד.\n\nהממצא המרכזי הוא שהנטישה מוכרעת בשבועיים הראשונים. לקוחות שהשלימו את שלושת שלבי ההקמה (חיבור היומן, ייבוא אנשי הקשר והגדרת תזכורות) בתוך 14 יום נשארו ב-91% מהמקרים. לקוחות שלא השלימו אפילו שלב אחד נשארו רק ב-38% מהמקרים. הבעיה היא שרק 44% מהלקוחות החדשים מגיעים לסוף ההקמה, ורובם נתקעים בשלב ייבוא אנשי הקשר: הוא דורש קובץ בפורמט מסוים, ו-6 מתוך 10 לקוחות שניסו להעלות קובץ קיבלו הודעת שגיאה לפחות פעם אחת.\n\nבראיונות חזרו שלוש סיבות. הראשונה, שהוזכרה על ידי 31 מתוך 48 המרואיינים: \"לא הצלחתי להעביר את הנתונים שלי, ואחרי שבוע ויתרתי\". השנייה, אצל 19 מרואיינים: אף אחד לא יצר איתם קשר אחרי ההרשמה, והם הרגישו לבד מול המערכת. השלישית, אצל 12 מרואיינים: המחיר נראה להם גבוה ביחס למה שהספיקו להשתמש בו. חשוב לשים לב שהמחיר כמעט לא הוזכר על ידי לקוחות שהשלימו את ההקמה.\n\nאחת המרואיינות, בעלת קליניקה לפיזיותרפיה, סיכמה את זה כך: \"המוצר נראה מצוין בהדגמה, אבל ביום השלישי כבר חזרתי לאקסל, כי שם לפחות הנתונים שלי\".\n\nאנחנו ממליצים על שלושה צעדים. ראשית, לבנות מחדש את ייבוא אנשי הקשר כך שיקבל כל קובץ אקסל או CSV, עם מיפוי עמודות אוטומטי; ההערכה היא שישה שבועות פיתוח. שנית, להוסיף שיחת ליווי של 20 דקות עם כל לקוח חדש ביום השלישי אחרי ההרשמה; זה דורש נציג אחד נוסף בצוות ההצלחה. שלישית, לדחות את החיוב הראשון עד להשלמת ההקמה, כדי שלקוח לא ישלם על מוצר שעוד לא התחיל להשתמש בו. אם שיעור השלמת ההקמה יעלה מ-44% ל-70%, אנחנו מעריכים שהנטישה בשלושת החודשים הראשונים תרד מ-23% ל-13% בערך, שהם כ-60 לקוחות נוספים בשנה."
+    },
+    {
+      "id": "06-training-security",
+      "kind": "training",
+      "lang": "he",
+      "forces": ["few points", "process", "comparison", "example"],
+      "prompt": "מצגת הדרכה של 7 שקפים לעובדים חדשים בנושא אבטחת מידע: סיסמאות ואימות דו-שלבי, זיהוי פישינג (עם דוגמה של מייל חשוד), עבודה מרחוק ו-Wi-Fi ציבורי, מה עושים כשמשהו נראה חשוד (ארבעה צעדים לפי הסדר), ושקף סיכום של עשה ואל תעשה. הטון ענייני וידידותי, לא מפחיד."
+    },
+    {
+      "id": "07-quarterly-update",
+      "kind": "internal update",
+      "lang": "mixed",
+      "forces": ["big number", "table", "chart", "a slide in the other language"],
+      "prompt": "עדכון רבעוני פנימי להנהלה, 5 שקפים. הנתונים של Q3 2026:\n\nKPI | Q2 | Q3 | Target\nMRR ($K) | 412 | 468 | 450\nNew customers | 37 | 52 | 45\nChurn (%) | 2.4 | 1.9 | 2.0\nNPS | 41 | 47 | 45\nSupport tickets | 1,180 | 960 | 1,000\n\nמה אני רוצה: שקף פתיחה; שקף עם המספר החשוב ביותר של הרבעון; שקף עם טבלת ה-KPI המלאה; גרף של MRR ושל New customers, Q2 מול Q3 מול Target; ושקף אחרון באנגלית בשביל הצוות בלונדון, Next quarter priorities: expand the self-serve onboarding, launch the partner API, hire two support engineers."
+    },
+    {
+      "id": "08-survey-data",
+      "kind": "data",
+      "lang": "en",
+      "forces": ["data", "chart", "big number"],
+      "prompt": "Four slides on our 2026 developer survey (1,240 respondents).\n1. Title.\n2. Primary language: TypeScript 38%, Python 27%, Go 14%, Rust 9%, Java 7%, other 5%.\n3. Where the week goes: writing code 31%, meetings 22%, reviewing code 18%, debugging 17%, documentation 12%. The headline is that less than a third of the week goes to writing code.\n4. What they want most from tooling, top three: faster CI (64%), better code search (48%), fewer context switches (45%)."
+    },
+    {
+      "id": "09-text-archetypes",
+      "kind": "section, quote, big number",
+      "lang": "he",
+      "forces": ["section", "quote", "big number"],
+      "prompt": "שלושה שקפים למצגת על שירות לקוחות: שקף מפריד \"הקול של הלקוח\"; ציטוט של לקוחה: \"פעם ראשונה שמישהו חזר אליי לפני שהספקתי להתלונן\" (מיכל, לקוחה מאז 2021); ושקף עם המספר 92%: שיעור הפניות שנסגרות בשיחה הראשונה."
+    },
+    {
+      "id": "10-edit-existing",
+      "kind": "edits an existing deck",
+      "lang": "he",
+      "base": "warehouse",
+      "forces": ["redesign", "chart from text", "text edit", "a new slide"],
+      "prompt": "המצגת הזאת נראית יבשה מדי. בלי לשנות את התוכן: עצב מחדש את שקף 2 ואת שקף 4, הפוך את הנתונים שבשקף 3 לגרף, קצר את הניסוחים בשקף 5, והוסף בסוף שקף סיכום עם שלושת הלקחים המרכזיים."
+    }
+  ]
+}
