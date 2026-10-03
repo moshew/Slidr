@@ -454,7 +454,8 @@ describe('layouts, templates, images, options', () => {
       edit: () => Promise.resolve([]),
       process: () => Promise.reject(new Error('unused')),
     };
-    const { call, bus, nextTurn } = setup(deck, { images });
+    const session = setup(deck, { images });
+    const { call, bus } = session;
     const before = bus.undoStack.length;
 
     const result = await call('image_fill_placeholders');
@@ -484,10 +485,10 @@ describe('layouts, templates, images, options', () => {
 
     // Nothing waits: nothing is generated. One slide only: only its placeholders.
     bus.redo();
-    nextTurn();
+    session.nextTurn();
     expect(await ok(call('image_fill_placeholders'))).toMatchObject({ filled: [], remaining: 0 });
     bus.undo();
-    nextTurn();
+    session.nextTurn();
     const one = await ok(call('image_fill_placeholders', { slideId: 's_more' }));
     expect(one.filled).toEqual([
       { slideId: 's_more', elementId: 'e_tall', assetId: 'r'.repeat(64) },
@@ -498,7 +499,7 @@ describe('layouts, templates, images, options', () => {
 
     // A slide session fills its own slide; an image that fails is reported and the rest stand.
     made = 6;
-    nextTurn({ kind: 'slide', slideId: 's_all' });
+    session.nextTurn({ kind: 'slide', slideId: 's_all' });
     const own = await ok(call('image_fill_placeholders'));
     expect(own.filled).toEqual([
       { slideId: 's_all', elementId: 'e_image_pending', assetId: 'v'.repeat(64) },
