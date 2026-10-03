@@ -103,7 +103,7 @@ describe.each(templates.map((template) => [template.theme.id, template] as const
     );
 
     test(
-      'switching the sample decks of the model to it leaves one known error',
+      'switching the sample decks of the model to it leaves no error but the one known',
       { timeout: 120_000 },
       async () => {
         const found: string[] = [];
@@ -132,14 +132,18 @@ describe.each(templates.map((template) => [template.theme.id, template] as const
 );
 
 describe('switching between the built-in templates', () => {
-  // A measurement, not a criterion: a deck written for the frames and the type sizes of one
-  // template, moved to another. What it finds goes to the report.
+  // A deck written for the frames and the type sizes of one template, moved to another. The
+  // three templates seat the same roles, so the text of a slide finds its place. What is left
+  // is the one thing a single template seats and the others do not: the photographs of the
+  // marketing template's cards. They stay where they were (nothing is deleted by a switch), the
+  // text of the other template's cards lands on them, and the lint reports its contrast.
   test('every sample deck on every other template', { timeout: 300_000 }, async () => {
     for (const from of templates) {
       for (const to of templates) {
         if (from === to) continue;
         for (const { lang, dir } of LANGUAGES) {
           const deck = sampleDeck(from, builtInSamples[from.theme.id]![lang], { lang, dir });
+          const cameFrom = new Map(deck.slides.map((slide) => [slide.id, slide.layoutId]));
           const bus = new CommandBus(deck, { validate: true });
           bus.batch(applyTemplate(deck, to));
           const ids = bus.deck.slides.map((s) => s.id);
@@ -150,6 +154,12 @@ describe('switching between the built-in templates', () => {
             lang,
             errors: errors(findings).map(brief),
           });
+          const unexpected = errors(findings).filter(
+            (f) => !(f.rule === 'L05' && cameFrom.get(f.slideId) === 'l_shvil_cards'),
+          );
+          expect(unexpected.map((f) => `${from.theme.id} to ${to.theme.id}: ${brief(f)}`)).toEqual(
+            [],
+          );
           // Whatever the lint says, the switch is one step and takes every slide along.
           expect(
             bus.deck.slides.every((slide) => to.layouts.some((l) => l.id === slide.layoutId)),

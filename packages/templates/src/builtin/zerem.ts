@@ -213,6 +213,7 @@ const backgrounds = (flip: boolean) => {
 const columns4 = [96, 540, 984, 1428];
 const cards3 = [96, 688, 1280];
 const steps5 = [96, 453, 810, 1167, 1524];
+const points3 = [316, 516, 716];
 
 function layouts(): Layout[] {
   const bg = backgrounds(false);
@@ -297,14 +298,16 @@ function layouts(): Layout[] {
       placeholders: [
         ...head(920, 2),
         place('p_image', 'image', atEnd(0, 0, 800, 1080)),
-        ...[336, 530, 724].flatMap((top, i) => [
+        // A point holds a paragraph of three lines: a deck that comes from another template
+        // brings its own copy, and the dense slide of one is longer than this template's.
+        ...points3.flatMap((top, i) => [
           place(`p_point${i + 1}`, 'subtitle', at(168, top, 848, 53), 'heading'),
-          place(`p_point${i + 1}_body`, 'body', at(168, top + 60, 848, 90), 'body'),
+          place(`p_point${i + 1}_body`, 'body', at(168, top + 59, 848, 135), 'body'),
         ]),
         place('p_footer', 'footer', atEnd(896, 961, 700, 34), 'caption', { align: 'end' }),
       ],
       decorations: [
-        ...[336, 530, 724].map((top, i) =>
+        ...points3.map((top, i) =>
           label(`d_zerem_text_image_n${i + 1}`, at(96, top + 6, 56, 45), `0${i + 1}`, 'body', {
             color: token('primary'),
             weight: 700,
@@ -403,23 +406,27 @@ function layouts(): Layout[] {
       placeholders: [
         ...head(),
         ...steps5.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start + 32, 380, 236, 53), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start + 32, 448, 236, 150), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start + 32, 614, 236, 45), 'body'),
+          // Two lines for the name of a step, which sits on the text under it: a name of
+          // two words does not fit one line of a card this narrow.
+          place(`p_step${i + 1}`, 'subtitle', at(start + 32, 362, 236, 106), 'heading', {
+            vAlign: 'bottom',
+          }),
+          place(`p_step${i + 1}_body`, 'caption', at(start + 32, 480, 236, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start + 32, 632, 236, 45), 'body'),
         ]),
         place('p_summary', 'body', at(96, 760, 1728, 90), 'body'),
         ...foot('process').placeholders,
       ],
       decorations: [
         ...steps5.flatMap((start, i) => [
-          card(`d_zerem_process_card${i + 1}`, at(start, 270, 300, 420)),
+          card(`d_zerem_process_card${i + 1}`, at(start, 270, 300, 440)),
           label(`d_zerem_process_n${i + 1}`, at(start + 32, 304, 236, 45), `0${i + 1}`, 'body', {
             color: token('primary'),
             weight: 700,
           }),
         ]),
         ...steps5.slice(1).map((start, i) =>
-          drawing(`d_zerem_process_arrow${i + 1}`, at(start - 43, 464, 32, 32), CHEVRON, {
+          drawing(`d_zerem_process_arrow${i + 1}`, at(start - 43, 474, 32, 32), CHEVRON, {
             '#98a5c8': token('muted'),
           }),
         ),
@@ -476,8 +483,9 @@ function layouts(): Layout[] {
       archetype: 'table',
       placeholders: [
         ...head(),
-        place('p_table', 'table', at(96, 262, 1728, 546)),
-        place('p_note', 'caption', at(96, 842, 1728, 68), 'caption'),
+        // As tall as the slide allows: nine rows of the sample's height.
+        place('p_table', 'table', at(96, 246, 1728, 630)),
+        place('p_note', 'caption', at(96, 892, 1728, 34), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: foot('table').decorations,
