@@ -115,6 +115,11 @@ export interface ThreadRecord {
   harnessId?: string;
   /** What resumes the conversation on that harness (AGT-05: used for nothing else). */
   nativeSessionId?: string;
+  /**
+   * What the harness's session has cost so far, as the sum of its turns: the baseline of the
+   * next process that resumes it. Absent once a turn's cost was unknown.
+   */
+  spentUsd?: number;
   updatedAt?: string;
   /** The start of the conversation's first message, for the list of conversations (CHT-U07). */
   title?: string;

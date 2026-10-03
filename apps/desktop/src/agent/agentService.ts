@@ -296,6 +296,8 @@ interface Session {
   imageInput: boolean;
   /** The conversation began with this session and no turn has been sent on it yet. */
   fresh: boolean;
+  /** It goes on from an earlier session of the harness, with what that one had cost. */
+  resumed: boolean;
   /** The settings it was started with: other settings need another session. */
   settings: string;
 }
@@ -839,6 +841,9 @@ export class ChatThread {
           ...(settings.model ? { model: settings.model } : {}),
           ...(settings.effort ? { effort: settings.effort } : {}),
           ...(resume ? { resume } : {}),
+          ...(resume && this.#record.spentUsd !== undefined
+            ? { resumedCostUsd: this.#record.spentUsd }
+            : {}),
         },
         (event) => this.#enqueue(token, event),
       );
@@ -853,11 +858,21 @@ export class ChatThread {
       canLook: names.includes('slide_render'),
       imageInput: harness.capabilities.imageInput,
       fresh: !resume,
+      resumed: Boolean(resume),
       settings: sessionSettings(settings),
     });
     this.#service.digest.track(sessionKey);
     this.#session = session;
     return session;
+  }
+
+  /** Keeps what the harness's session has cost, for the process that resumes it next. */
+  #spent(costUsd: number | null): void {
+    const { spentUsd: before, ...rest } = this.#record;
+    const spentUsd = costUsd === null || before === undefined ? undefined : before + costUsd;
+    if (spentUsd === before) return;
+    this.#record = { ...rest, ...(spentUsd === undefined ? {} : { spentUsd }) };
+    this.#saveRecord();
   }
 
   async #endSession(session: Session): Promise<void> {
@@ -884,6 +899,8 @@ export class ChatThread {
           ...this.#record,
           harnessId: session.harnessId,
           nativeSessionId: event.nativeSessionId,
+          // A session that begins has cost nothing; one that goes on has cost what it had.
+          ...(session.resumed ? {} : { spentUsd: 0 }),
           updatedAt: this.#now(),
         };
         this.#saveRecord();
@@ -987,6 +1004,7 @@ export class ChatThread {
     run.durationMs += event.durationMs;
     run.costUsd =
       run.costUsd === null || event.costUsd === null ? null : run.costUsd + event.costUsd;
+    this.#spent(event.costUsd);
     // The turn failed on a conversation that cannot be resumed: `exited` follows, and the
     // message is sent again in a fresh session.
     if (run.startOver && event.outcome === 'failed') return;

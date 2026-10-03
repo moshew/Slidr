@@ -803,6 +803,38 @@ describe('the model of the next turn (CHT-U06)', () => {
     expect(thread.store.getState().entries).toHaveLength(6);
   });
 
+  it('tells the session that resumes what the conversation had cost, so its first turn has a cost', async () => {
+    const settings: AgentSettings = { model: 'a' };
+    const { thread, seen } = setup({ a, b }, { settings });
+    await ask(thread, 'one');
+    await ask(thread, 'two');
+    // A session that begins has cost nothing, and says so to nobody.
+    expect(seen.starts[0]!.config.resumedCostUsd).toBeUndefined();
+
+    // A harness reports a running total: the two turns so far are where the next one starts.
+    settings.model = 'b';
+    await ask(thread, 'three');
+    expect(seen.starts[1]!.config.resumedCostUsd).toBeCloseTo(0.02);
+
+    settings.model = 'a';
+    await ask(thread, 'four');
+    expect(seen.starts[2]!.config.resumedCostUsd).toBeCloseTo(0.03);
+  });
+
+  it('says nothing of the cost once a turn of the session had none', async () => {
+    const settings: AgentSettings = { model: 'a' };
+    const unknown = script([say('?'), done({ costUsd: null })]);
+    const { thread, seen } = setup({ a, b, unknown }, { settings });
+    await ask(thread, 'one');
+    settings.model = 'unknown';
+    await ask(thread, 'two');
+    expect(seen.starts[1]!.config.resumedCostUsd).toBeCloseTo(0.01);
+    // What that turn cost is not known, so neither is the total the next process goes on from.
+    settings.model = 'b';
+    await ask(thread, 'three');
+    expect(seen.starts[2]!.config).not.toHaveProperty('resumedCostUsd');
+  });
+
   it('counts effort and web access as settings of a session too', async () => {
     const settings: AgentSettings = { model: 'a' };
     const { thread, seen } = setup({ a }, { settings });

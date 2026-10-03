@@ -256,7 +256,10 @@ impl AgentHarness for ClaudeCodeHarness {
             kill: Notify::new(),
         });
         let (exited_tx, exited) = watch::channel(false);
-        let mapper = StreamMapper::new(config.resume.is_some(), config.tool_endpoint.is_some());
+        let mut mapper = StreamMapper::new(config.resume.is_some(), config.tool_endpoint.is_some());
+        if config.resume.is_some() {
+            mapper.cost_baseline = config.resumed_cost_usd;
+        }
         tokio::spawn(supervise(
             child,
             stdout,
@@ -668,8 +671,10 @@ struct StreamMapper {
     resumed: bool,
     /// Check every `init` for the app's tools (ADR-002).
     expect_app_tools: bool,
-    /// `total_cost_usd` is cumulative per conversation; the last value seen, when known. Unknown
-    /// on a resumed process until its first `result`, which therefore has no per-turn cost.
+    /// `total_cost_usd` is cumulative per conversation, across processes; the last value seen,
+    /// when known. On a resumed process it is what the app says the conversation had cost
+    /// (`SessionConfig::resumed_cost_usd`); without that it is unknown until the first `result`,
+    /// which then has no per-turn cost.
     cost_baseline: Option<f64>,
     /// The id of the assistant message being streamed, and the ones whose text was streamed.
     current_message: Option<String>,
@@ -1125,6 +1130,30 @@ mod tests {
         assert_eq!(expecting.map(&init).len(), 1);
         assert_eq!(StreamMapper::new(false, false).map(&init).len(), 1);
         Ok(())
+    }
+
+    #[test]
+    fn cost_of_a_resumed_turn_is_known_when_the_app_says_what_was_spent() {
+        let result = |total: f64| {
+            json!({ "type": "result", "subtype": "success", "is_error": false, "result": "ok",
+                    "total_cost_usd": total, "duration_ms": 900, "usage": {} })
+        };
+        // The conversation had cost 0.6693 when its last process ended; the total goes on from it.
+        let mut mapper = StreamMapper::new(true, false);
+        mapper.cost_baseline = Some(0.6693);
+        mapper
+            .map(&json!({ "type": "system", "subtype": "init", "session_id": "s", "model": "m" }));
+        let costs: Vec<Option<f64>> = [0.8599, 0.8700]
+            .into_iter()
+            .flat_map(|total| mapper.map(&result(total)))
+            .filter_map(|event| match event {
+                AgentEvent::TurnCompleted { cost_usd, .. } => Some(cost_usd),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(costs.len(), 2);
+        assert!(close_to(costs[0], 0.1906));
+        assert!(close_to(costs[1], 0.0101));
     }
 
     #[test]

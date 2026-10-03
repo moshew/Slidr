@@ -110,6 +110,11 @@ export interface SessionConfig {
   effort?: string | null;
   /** A `nativeSessionId` from an earlier `session_started`. */
   resume?: string | null;
+  /**
+   * With `resume`: what the conversation had cost when its last process ended, if known. A
+   * harness reports a running total, so without it the first resumed turn has no cost.
+   */
+  resumedCostUsd?: number | null;
 }
 
 export interface ImageAttachment {
