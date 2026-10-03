@@ -1,4 +1,4 @@
-import { findSlide, type Command } from '@slidr/model';
+import { createElement, findSlide, type Command } from '@slidr/model';
 import { allElementsDeck, hebrewDeck } from '@slidr/model/fixtures';
 import { describe, expect, it } from 'vitest';
 import { availableIn, checkWrite, type SessionScope } from './scope';
@@ -132,6 +132,37 @@ describe('scope guard: rules', () => {
       { type: 'slide.add', slide: { id: 's_new', elements: [], timeline: [] } },
     ];
     for (const command of commands) expect(checkWrite(scope, [command], deck)).toBeDefined();
+  });
+
+  it('lets an object session replace its element in place, under the same id', () => {
+    const scope: SessionScope = { kind: 'object', slideId: 's_all', elementIds: ['e_html'] };
+    const slide = findSlide(deck, 's_all')!;
+    const index = slide.elements.findIndex((e) => e.id === 'e_html');
+    const remove: Command = { type: 'element.remove', slideId: 's_all', elementIds: ['e_html'] };
+    const frame = { x: 0, y: 0, w: 10, h: 10 };
+    const sameId = createElement.shape({ id: 'e_html', frame });
+    const add = (element = sameId, at = index): Command => ({
+      type: 'element.add',
+      slideId: 's_all',
+      element,
+      index: at,
+    });
+
+    expect(checkWrite(scope, [remove, add()], deck)).toBeUndefined();
+    // Deleting it, adding something else, or putting it elsewhere is not a replacement.
+    expect(checkWrite(scope, [remove], deck)).toMatch(/may be replaced .* not deleted/);
+    expect(checkWrite(scope, [add()], deck)).toMatch(/only in place of one of its own/);
+    expect(
+      checkWrite(scope, [remove, add(createElement.shape({ id: 'e_other', frame }))], deck),
+    ).toBeDefined();
+    expect(checkWrite(scope, [remove, add(sameId, 0)], deck)).toBeDefined();
+    expect(
+      checkWrite(
+        scope,
+        [{ type: 'element.remove', slideId: 's_all', elementIds: ['e_text'] }, add()],
+        deck,
+      ),
+    ).toMatch(/remove element "e_text", which is outside/);
   });
 
   it('gives an import session every deck tool', () => {

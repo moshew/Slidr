@@ -1,4 +1,4 @@
-import { walkElements, type Command, type Deck, type Slide } from '@slidr/model';
+import { locateElement, walkElements, type Command, type Deck, type Slide } from '@slidr/model';
 
 /**
  * What an agent session works on (SPEC 11.2, 11.7). The same shape as `Scope` in the app's
@@ -50,12 +50,36 @@ function writableElements(slide: Slide | undefined, elementIds: readonly string[
 }
 
 /**
+ * The elements a write replaces in place: removed and, in the same write, added again under
+ * the same id, in the same parent and at the same place in the layer order. That is how
+ * `element_convert` turns an element into another kind of element (`element.update` cannot
+ * change `type` or `children`), and to an object session it is a change of its element, not a
+ * deletion and an addition: what the session works on still exists, under the id it knows.
+ */
+function replacedInPlace(commands: readonly Command[], slide: Slide | undefined): Set<string> {
+  const ids = new Set<string>();
+  if (!slide) return ids;
+  const removed = new Set(
+    commands.flatMap((c) => (c.type === 'element.remove' ? c.elementIds : [])),
+  );
+  for (const command of commands) {
+    if (command.type !== 'element.add' || !removed.has(command.element.id)) continue;
+    const was = locateElement(slide.elements, command.element.id);
+    if (was && was.parent?.id === command.parentId && was.index === command.index) {
+      ids.add(command.element.id);
+    }
+  }
+  return ids;
+}
+
+/**
  * The scope guard for writes (SPEC 11.4): undefined when every command stays inside the
  * session's scope, otherwise why not. Reads are never limited. A deck or import session may
  * do anything. A slide session may change only its slide and what is on it. An object session
- * may change only its elements (and their children): their fields, their text, and their own
- * animation steps. Registering an asset is allowed everywhere: it changes no slide, and the
- * image tools need it in every scope.
+ * may change only its elements (and their children): their fields, their text, their own
+ * animation steps, and what kind of element they are (see `replacedInPlace`). Registering an
+ * asset is allowed everywhere: it changes no slide, and the image tools need it in every
+ * scope.
  */
 export function checkWrite(
   scope: SessionScope,
@@ -66,6 +90,7 @@ export function checkWrite(
   const where = describeScope(scope);
   const slide = deck.slides.find((s) => s.id === scope.slideId);
   const writable = scope.kind === 'object' ? writableElements(slide, scope.elementIds) : undefined;
+  const replaced = writable ? replacedInPlace(commands, slide) : undefined;
 
   for (const command of commands) {
     if (command.type === 'asset.add') continue;
@@ -87,6 +112,19 @@ export function checkWrite(
         JSON.stringify(steps.filter((step) => !writable.has(step.elementId)));
       if (others(command.timeline) !== others(slide?.timeline ?? [])) {
         return `This would change animation steps of other elements, which is outside ${where}.`;
+      }
+    } else if (command.type === 'element.remove') {
+      const outside = command.elementIds.find((id) => !writable.has(id));
+      if (outside) {
+        return `This would remove element "${outside}", which is outside ${where}.`;
+      }
+      const gone = command.elementIds.find((id) => !replaced?.has(id));
+      if (gone) {
+        return `This would delete element "${gone}". In ${where} an element may be replaced by one that keeps its id, in the same place, not deleted.`;
+      }
+    } else if (command.type === 'element.add') {
+      if (!replaced?.has(command.element.id)) {
+        return `This would add element "${command.element.id}". In ${where} an element may be added only in place of one of its own, under the same id.`;
       }
     } else {
       return `${command.type} is not allowed in ${where}: it may change only the fields, text and animation of its elements.`;

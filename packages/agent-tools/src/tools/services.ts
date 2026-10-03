@@ -6,10 +6,14 @@
 import {
   Archetype,
   commandDefs,
+  createElement,
   PlaceholderRole,
+  rotatedBounds,
+  unionBounds,
   type AssetMeta,
   type Command,
   type Deck,
+  type Element,
 } from '@slidr/model';
 import { z } from 'zod';
 import { getElement, getSlide, slideNumber } from '../lookup';
@@ -21,7 +25,7 @@ const Id = z.string().min(1);
 const ALL = ['deck', 'slide', 'object'] as const;
 
 const HTML_HELP =
-  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute). Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> a placeholder to generate later; <i data-icon="lucide:rocket"> an icon; <div data-chart=\'{...}\'> an editable chart; data-name and data-role name elements; data-anim hints an entrance; data-keep-html keeps a subtree as HTML.';
+  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute). Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> a placeholder to generate later; <i data-icon="lucide:rocket"> an icon; <div data-chart=\'{...}\'> an editable chart; data-name and data-role name elements; data-anim gives an entrance by preset name; data-keep-html keeps a subtree as HTML; data-archetype on the root states the kind of slide.';
 
 const registerAssets = (assets: readonly AssetMeta[]): Command[] =>
   assets.map((asset) => ({ type: 'asset.add', asset }));
@@ -193,10 +197,37 @@ export const slideReplaceFromHtml = defineTool({
   },
 });
 
+/**
+ * The replacements as one element under the id of the element they replace: the element
+ * itself when there is one, a group around them when there are several. An object session
+ * converts this way, so that what it works on stays one element with the id it knows
+ * (ADR-017); the scope guard lets an element be replaced in place under its own id.
+ */
+function asOneElement(elements: readonly Element[], original: Element): Element {
+  const [only] = elements;
+  if (!only) {
+    throw new DeckApiError(
+      'invalid_state',
+      `Element "${original.id}" has nothing visible to convert.`,
+    );
+  }
+  if (elements.length === 1) return { ...only, id: original.id };
+  const frame = unionBounds(elements.map((e) => rotatedBounds(e.frame, e.rotation)));
+  return createElement.group({
+    id: original.id,
+    frame,
+    ...(original.name ? { name: original.name } : {}),
+    children: elements.map((e) => ({
+      ...e,
+      frame: { ...e.frame, x: e.frame.x - frame.x, y: e.frame.y - frame.y },
+    })),
+  });
+}
+
 export const elementConvert = defineTool({
   name: 'element_convert',
   description:
-    'Converts an `html` element into regular elements (to: "elements"), or regular elements into one `html` element (to: "html"), in the same place. Animation steps of the converted element are dropped. Returns `elementIds` of the replacements, `editability` and notes.',
+    'Converts an `html` element into regular elements (to: "elements"), or a regular element into one `html` element (to: "html"), in the same place. Animation steps of the converted element are dropped. In an object session the result stays one element with the same id: a group when the HTML became several elements. Returns `elementIds` of the replacements, `editability` and notes.',
   input: z.strictObject({
     elementId: Id,
     slideId: Id.optional(),
@@ -212,21 +243,24 @@ export const elementConvert = defineTool({
       elementId,
       to,
     });
-    const { parent, index } = getElement(ctx.deck, elementId, slide.id);
+    // The deck may have changed while the conversion ran.
+    const { element, parent, index } = getElement(ctx.deck, elementId, slide.id);
+    const elements =
+      ctx.turn.scope.kind === 'object' ? [asOneElement(result.elements, element)] : result.elements;
     ctx.write([
       ...registerAssets(result.assets),
       { type: 'element.remove', slideId: slide.id, elementIds: [elementId] },
-      ...result.elements.map((element, i): Command => ({
+      ...elements.map((replacement, i): Command => ({
         type: 'element.add',
         slideId: slide.id,
-        element,
+        element: replacement,
         index: index + i,
         ...(parent ? { parentId: parent.id } : {}),
       })),
     ]);
     return {
       data: {
-        elementIds: result.elements.map((e) => e.id),
+        elementIds: elements.map((e) => e.id),
         editability: result.editability,
         notes: result.notes,
       },

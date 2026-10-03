@@ -189,6 +189,57 @@ describe('conversion', () => {
     expect(slide.elements.slice(-2).map((e) => e.id)).toEqual(ids);
     expect(data.removed).toEqual(['e_html']);
   });
+
+  it('element_convert in an object session keeps one element under the same id', async () => {
+    const scope = { kind: 'object', slideId: 's_all', elementIds: ['e_html'] } as const;
+    const { call, bus } = setup(allElementsDeck(), { conversion }, scope);
+    const before = findSlide(bus.deck, 's_all')!.elements.map((e) => e.id);
+    const data = await ok(call('element_convert', { elementId: 'e_html', to: 'elements' }));
+
+    // Two replacements: a group that takes the element's id and place, holding both.
+    expect(data.elementIds).toEqual(['e_html']);
+    const slide = findSlide(bus.deck, 's_all')!;
+    expect(slide.elements.map((e) => e.id)).toEqual(before);
+    const group = slide.elements.at(-1)!;
+    expect(group).toMatchObject({
+      id: 'e_html',
+      type: 'group',
+      frame: { x: 0, y: 0, w: 30, h: 10 },
+    });
+    if (group.type !== 'group') throw new Error('not a group');
+    expect(group.children.map((c) => c.frame.x)).toEqual([0, 20]);
+    expect(data.changed).toEqual(['e_html']);
+    expect(data.created).toEqual(group.children.map((c) => c.id));
+
+    // The session goes on working on it, and on what is now inside it.
+    await ok(call('element_update', { elementId: 'e_html', patch: { opacity: 0.5 } }));
+    await ok(call('element_update', { elementId: group.children[0]!.id, patch: { opacity: 0.5 } }));
+    // One undo step for the turn, as for any other write.
+    expect(bus.undoStack).toHaveLength(1);
+  });
+
+  it('element_convert in an object session gives a single replacement the id', async () => {
+    const one: ConversionService = {
+      ...conversion,
+      convertElement: () =>
+        Promise.resolve({
+          elements: [createElement.shape({ frame: { x: 5, y: 5, w: 10, h: 10 } })],
+          assets: [],
+          editability: 1,
+          notes: [],
+        }),
+    };
+    const scope = { kind: 'object', slideId: 's_all', elementIds: ['e_html'] } as const;
+    const { call, bus } = setup(allElementsDeck(), { conversion: one }, scope);
+    await ok(call('element_convert', { elementId: 'e_html', to: 'elements' }));
+    expect(findElementInDeck(bus.deck, 'e_html')?.element).toMatchObject({
+      type: 'shape',
+      frame: { x: 5, y: 5, w: 10, h: 10 },
+    });
+    // Another element of the slide is still out of reach.
+    const error = await failed(call('element_convert', { elementId: 'e_text', to: 'html' }));
+    expect(error.code).toBe('out_of_scope');
+  });
 });
 
 describe('layouts, templates, images, options', () => {
