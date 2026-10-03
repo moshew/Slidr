@@ -1,4 +1,4 @@
-import type { Deck, Element, Slide } from '@slidr/model';
+import type { Background, Deck, Element, Frame, Slide } from '@slidr/model';
 import type { ElementMeasure } from './measure';
 
 export type Severity = 'error' | 'warning' | 'info';
@@ -21,11 +21,28 @@ export interface Item<E extends Element = Element> {
   measure: ElementMeasure;
 }
 
-export interface SlideContext {
-  deck: Deck;
-  slide: Slide;
+/** What is drawn on a slide, as far as a rule about the picture cares. */
+export interface Drawn {
   /** Bottom to top. Elements inside groups are here too, with their place on the slide. */
   items: readonly Item[];
+  /** Groups that read as one drawing (`drawingsIn`), each as the box around its parts. */
+  drawings: readonly Frame[];
+}
+
+/** The slide's own elements are `items` and `drawings`. */
+export interface SlideContext extends Drawn {
+  deck: Deck;
+  slide: Slide;
+  /** Behind everything: the slide's own background, else its layout's, else the theme's. */
+  background: Background;
+  /**
+   * What the slide's layout draws under it: its decorations, placed by their frames (the
+   * renderer gives them no element id, so nothing measures them). The logo is left out: it is
+   * on every slide and says nothing about this one. A rule about what was written on the slide
+   * reads `items`; a rule about what the slide looks like reads the layout as well, since a
+   * slide built on a layout as the template drew it is as full as the template made it.
+   */
+  layout: Drawn;
 }
 
 export type Problem = Pick<LintFinding, 'elementIds' | 'message'>;

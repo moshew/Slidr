@@ -5,6 +5,7 @@ import {
   type Background,
   type Element,
   type Layout,
+  type Slide,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { check } from '../testing';
@@ -133,16 +134,18 @@ describe('L16: a slide without a visual element', () => {
     };
     expect(check('L16', [title], {}, { slide: { background: photo } })).toEqual([]);
     expect(check('L16', [title], {}, { slide: { background: gradient } })).toHaveLength(1);
+    // A photo over a slide that has a colour of its own: the conversion writes it as the overlay.
+    const over: Background = {
+      fill: { kind: 'solid', color: { token: 'bg' } },
+      overlay: photo.fill,
+    };
+    expect(check('L16', [title], {}, { slide: { background: over } })).toEqual([]);
     expect(
-      check(
-        'L16',
-        [title],
-        {},
-        {
-          slide: { layoutId: 'l_1' },
-          deck: { layouts: [layoutOf('fullImage', photo)] },
-        },
-      ),
+      check('L16', [title], {}, { slide: { background: { ...gradient, overlay: gradient.fill } } }),
+    ).toHaveLength(1);
+    const photoLayout = { ...layoutOf('fullImage', photo), decorations: [] };
+    expect(
+      check('L16', [title], {}, { slide: { layoutId: 'l_1' }, deck: { layouts: [photoLayout] } }),
     ).toEqual([]);
     // The slide's own background wins over its layout's.
     expect(
@@ -150,10 +153,7 @@ describe('L16: a slide without a visual element', () => {
         'L16',
         [title],
         {},
-        {
-          slide: { layoutId: 'l_1', background: gradient },
-          deck: { layouts: [layoutOf('fullImage', photo)] },
-        },
+        { slide: { layoutId: 'l_1', background: gradient }, deck: { layouts: [photoLayout] } },
       ),
     ).toHaveLength(1);
   });
@@ -179,7 +179,75 @@ describe('L16: a slide without a visual element', () => {
     }
   });
 
-  it('does not count the decorations of the layout', () => {
+  describe('the decorations of the layout', () => {
+    const on = (decorations: Element[], slide: Partial<Slide> = {}) =>
+      check(
+        'L16',
+        [title],
+        {},
+        {
+          slide: { layoutId: 'l_1', ...slide },
+          deck: { layouts: [{ ...layoutOf('cards'), decorations }] },
+        },
+      );
+    const card = createElement.shape({ id: 'd_card', frame: box });
+
+    it('count: a slide that fills a layout has the visual the template drew', () => {
+      expect(on([card])).toEqual([]);
+      expect(
+        on([createElement.svg({ id: 'd_icon', frame: box, markup: '<svg viewBox="0 0 24 24"/>' })]),
+      ).toEqual([]);
+      // Inside a group a decoration is where the group puts it.
+      const far = createElement.group({
+        id: 'd_group',
+        frame: { x: 2400, y: 0, w: 800, h: 600 },
+        children: [card],
+      });
+      expect(on([far])).toHaveLength(1);
+    });
+
+    it('count by the same measure as the elements of the slide', () => {
+      // A rule, a panel, a label, and a card that is switched off.
+      expect(on([createElement.shape({ id: 'd_rule', frame: { ...box, h: 2 } })])).toHaveLength(1);
+      expect(
+        on([createElement.shape({ id: 'd_panel', frame: { x: 0, y: 0, w: 1920, h: 1080 } })]),
+      ).toHaveLength(1);
+      expect(
+        on([createElement.text({ id: 'd_label', frame: box, content: richText('01') })]),
+      ).toHaveLength(1);
+      expect(on([{ ...card, hidden: true }])).toHaveLength(1);
+    });
+
+    it('leave out the logo, which is on every slide', () => {
+      const logo = createElement.svg({
+        id: 'd_logo',
+        frame: { x: 96, y: 80, w: 56, h: 56 },
+        markup: '<svg viewBox="0 0 24 24"/>',
+        role: 'logo',
+      });
+      expect(on([logo])).toHaveLength(1);
+    });
+
+    it('are not there for a slide that does not sit on the layout', () => {
+      expect(
+        check('L16', [title], {}, { deck: { layouts: [{ ...layoutOf('cards') }] } }),
+      ).toHaveLength(1);
+    });
+  });
+
+  it('counts a group of bars as one drawing, on the slide and in its layout', () => {
+    const bar = (id: string, y: number) =>
+      createElement.shape({ id, frame: { x: 0, y, w: 300, h: 14 } });
+    const bars = (ids: string[]) =>
+      createElement.group({
+        id: `${ids[0]}_group`,
+        frame: { x: 1000, y: 300, w: 300, h: 400 },
+        children: ids.map((id, i) => bar(id, i * 60)),
+      });
+    // Each bar alone is an accent bar, and two of them are a rule and a bar.
+    expect(withVisual(bar('e_bar', 400))).toHaveLength(1);
+    expect(withVisual(bars(['e_a', 'e_b']))).toHaveLength(1);
+    expect(withVisual(bars(['e_a', 'e_b', 'e_c']))).toEqual([]);
     expect(
       check(
         'L16',
@@ -187,10 +255,28 @@ describe('L16: a slide without a visual element', () => {
         {},
         {
           slide: { layoutId: 'l_1' },
-          deck: { layouts: [layoutOf('hero')] },
+          deck: {
+            layouts: [{ ...layoutOf('hero'), decorations: [bars(['d_a', 'd_b', 'd_c'])] }],
+          },
         },
       ),
-    ).toHaveLength(1);
+    ).toEqual([]);
+    // A group that holds words is not a drawing: its parts are judged one by one.
+    const captioned = createElement.group({
+      id: 'e_captioned',
+      frame: { x: 1000, y: 300, w: 300, h: 400 },
+      children: [
+        bar('e_a', 0),
+        bar('e_b', 60),
+        bar('e_c', 120),
+        createElement.text({
+          id: 'e_caption',
+          frame: { x: 0, y: 200, w: 300, h: 40 },
+          content: richText('Events'),
+        }),
+      ],
+    });
+    expect(withVisual(captioned)).toHaveLength(1);
   });
 
   it('leaves an empty slide to L07', () => {

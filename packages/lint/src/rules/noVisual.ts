@@ -1,7 +1,7 @@
 import { slideArchetype, type Archetype } from '@slidr/model';
-import { isOutside, slideArea } from '../geometry';
+import { slideArea } from '../geometry';
 import type { Rule, SlideContext } from '../rule';
-import { htmlHasVisual, isMeaningfulShape } from '../visual';
+import { hasPhoto, showsVisual } from '../visual';
 
 /**
  * Slides that may be text alone. Quote and section divider are the two QG-04 names; a big
@@ -9,29 +9,13 @@ import { htmlHasVisual, isMeaningfulShape } from '../visual';
  */
 const TEXT_ARCHETYPES: readonly Archetype[] = ['quote', 'section', 'bigNumber'];
 
-function hasVisual({ deck, slide, items }: SlideContext): boolean {
-  const layout = slide.layoutId ? deck.layouts.find((l) => l.id === slide.layoutId) : undefined;
-  const background = slide.background ?? layout?.background ?? deck.theme.background;
+function hasVisual(ctx: SlideContext): boolean {
   // A photo behind the text is the picture of a full-image slide.
-  if (background.fill.kind === 'image') return true;
-  const area = slideArea(deck);
-  return items.some(({ element, measure }) => {
-    if (isOutside(measure.box, area)) return false;
-    switch (element.type) {
-      case 'image':
-      case 'svg':
-      case 'chart':
-      case 'table':
-      case 'video':
-        return true;
-      case 'shape':
-        return isMeaningfulShape(element, area);
-      case 'html':
-        return htmlHasVisual(element);
-      default:
-        return false;
-    }
-  });
+  if (hasPhoto(ctx.background)) return true;
+  const area = slideArea(ctx.deck);
+  // The cards, the nodes and the drawings of the slide's layout are part of the picture: a
+  // slide that fills a layout as the template drew it has the visual the template gave it.
+  return showsVisual(ctx, area) || showsVisual(ctx.layout, area);
 }
 
 /** L16 (QG-04): a slide with content but no visual element, unless its archetype is textual. */
