@@ -6,6 +6,7 @@ mod capture;
 mod commands;
 mod error;
 mod harness;
+mod image_providers;
 mod storage;
 // The tool bridge. Its folder is the one place that names the protocol it speaks to agents
 // (API-02); the rest of the crate knows it by what it does.
@@ -30,6 +31,10 @@ pub fn run() {
                 harness::builtin(),
             )));
             app.manage(tool_bridge::ToolBridge::new());
+            app.manage(Arc::new(image_providers::ImageService::new(
+                root.join("image-providers.json"),
+                image_providers::builtin(),
+            )));
             app.manage(Arc::new(storage::Storage::new(root)));
             app.manage(Arc::new(capture::CaptureService::new()));
             Ok(())
@@ -48,6 +53,13 @@ pub fn run() {
             commands::recents_remove,
             commands::asset_import_file,
             commands::asset_import_bytes,
+            image_providers::ipc::image_providers,
+            image_providers::ipc::image_probe,
+            image_providers::ipc::image_default_provider,
+            image_providers::ipc::image_set_default_provider,
+            image_providers::ipc::image_generate,
+            image_providers::ipc::image_edit,
+            image_providers::ipc::image_cancel,
             harness::ipc::agent_harnesses,
             harness::ipc::agent_probe,
             harness::ipc::agent_start,

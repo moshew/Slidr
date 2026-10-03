@@ -1,0 +1,115 @@
+{
+  "events": [
+    { "type": "started", "index": 0 },
+    {
+      "type": "finished",
+      "index": 0,
+      "outcome": {
+        "status": "stored",
+        "asset": {
+          "id": "abababababababababababababababababababababababababababababababab",
+          "file": "abababababababababababababababababababababababababababababababab.png",
+          "mime": "image/png",
+          "kind": "image",
+          "bytes": 2148301,
+          "width": 1672.0,
+          "height": 941.0
+        },
+        "durationMs": 51300
+      }
+    },
+    {
+      "type": "finished",
+      "index": 1,
+      "outcome": {
+        "status": "failed",
+        "error": { "kind": "cancelled", "message": "the job was cancelled" }
+      }
+    }
+  ],
+  "result": {
+    "provider": "example",
+    "images": [
+      {
+        "status": "stored",
+        "asset": {
+          "id": "abababababababababababababababababababababababababababababababab",
+          "file": "abababababababababababababababababababababababababababababababab.png",
+          "mime": "image/png",
+          "kind": "image",
+          "bytes": 2148301,
+          "width": 1672.0,
+          "height": 941.0
+        },
+        "durationMs": 51300
+      },
+      {
+        "status": "failed",
+        "error": { "kind": "cancelled", "message": "the job was cancelled" }
+      }
+    ]
+  },
+  "errorKinds": [
+    "unknown_provider",
+    "unknown_workspace",
+    "not_found",
+    "invalid_input",
+    "unsupported",
+    "not_installed",
+    "not_logged_in",
+    "quota",
+    "timeout",
+    "cancelled",
+    "generation_failed",
+    "io",
+    "internal"
+  ],
+  "error": { "kind": "cancelled", "message": "the job was cancelled" },
+  "descriptors": [
+    {
+      "id": "example",
+      "name": "Example",
+      "capabilities": {
+        "edit": "regenerate",
+        "mask": false,
+        "transparent": false,
+        "maxParallel": 4
+      }
+    },
+    {
+      "id": "exact",
+      "name": "Exact",
+      "capabilities": { "edit": "exact", "mask": true, "transparent": false, "maxParallel": 2 }
+    },
+    {
+      "id": "plain",
+      "name": "Plain",
+      "capabilities": { "edit": "none", "mask": false, "transparent": false, "maxParallel": 1 }
+    }
+  ],
+  "statuses": [
+    { "state": "ready", "version": "0.160.0", "account": "ChatGPT", "detail": null },
+    { "state": "not_installed", "version": null, "account": null, "detail": "Install it." },
+    { "state": "not_logged_in", "version": "0.160.0", "account": null, "detail": "Sign in." },
+    { "state": "unavailable", "version": null, "account": null, "detail": "timed out" }
+  ],
+  "generateJobs": [
+    { "prompt": "wind turbines at sunrise", "count": 1, "aspect": "16:9" },
+    { "prompt": "a city skyline", "count": 4, "aspect": "9:16", "provider": "example" }
+  ],
+  "editJobs": [
+    {
+      "assetId": "abababababababababababababababababababababababababababababababab",
+      "instruction": "make it night",
+      "count": 1
+    },
+    {
+      "assetId": "abababababababababababababababababababababababababababababababab",
+      "instruction": "replace the sky",
+      "maskAssetId": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "count": 2,
+      "provider": "exact"
+    }
+  ],
+  "aspects": ["16:9", "4:3", "1:1", "3:4", "9:16"]
+}
