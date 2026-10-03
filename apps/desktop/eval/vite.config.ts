@@ -27,5 +27,12 @@ const hold: Plugin = {
 export default defineConfig({
   ...app,
   plugins: [...(app.plugins ?? []), hold],
-  server: { ...app.server, port: 1491, strictPort: true, watch: null, hmr: false },
+  server: {
+    ...app.server,
+    // A session with ports of its own names its port (see scripts/run.mjs).
+    port: Number(process.env.SLIDR_EVAL_VITE_PORT ?? 1491),
+    strictPort: true,
+    watch: null,
+    hmr: false,
+  },
 });

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { Editor } from '../shell';
 import {
   applyLibraryTemplate,
+  followDirection,
   logoAsset,
   logoHidden,
   logoLayouts,
@@ -174,6 +175,36 @@ describe('turning the deck', () => {
     // The same direction again is no step at all.
     turnDeck(editor, library, 'rtl');
     expect(bus.undoStack).toHaveLength(0);
+  });
+
+  it('lets the layouts follow a direction that was set on the field alone, as the agent sets it', () => {
+    const night = nightTemplate();
+    const deck = deckFromTemplate(night, { lang: 'he', sample: true });
+    // A slide the agent wrote for the direction it meant: on no layout.
+    deck.slides.push({
+      id: 's_free',
+      elements: [{ ...deck.slides[0]!.elements[0]!, id: 'e_free' }],
+      timeline: [],
+    });
+    const { bus } = editorOn(deck);
+    const library = libraryOf(night);
+    expect(followDirection(bus.deck, 'rtl', library)).toEqual([]);
+
+    // One transaction, as the agent's turn is: the field, and what follows it.
+    bus.dispatch({ type: 'deck.setMeta', patch: { dir: 'ltr', lang: 'en' } }, { txId: 'tx_turn' });
+    bus.batch(followDirection(bus.deck, 'rtl', library), { txId: 'tx_turn' });
+    // The layouts are the template's own for the new direction, and a slide on a layout went
+    // with its placeholders: the deck is what turning it by the control gives.
+    expect(bus.deck.layouts).toEqual(layoutsFor(night, 'ltr'));
+    const turned = editorOn(deck);
+    turnDeck(turned.editor, library, 'ltr');
+    expect(bus.deck.slides.slice(0, -1)).toEqual(turned.bus.deck.slides.slice(0, -1));
+    // The slide on no layout was left as it was written.
+    expect(bus.deck.slides.at(-1)).toEqual(deck.slides.at(-1));
+    expect(turned.bus.deck.slides.at(-1)).not.toEqual(deck.slides.at(-1));
+    // Undoing the turn takes the field and the layouts back together.
+    bus.undoTransaction('tx_turn');
+    expect(bus.deck).toEqual(deck);
   });
 });
 

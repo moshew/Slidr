@@ -13,7 +13,13 @@
 //   --max-images <n>   with a real provider: after n image jobs the run goes back to the mock (15)
 //   --budget <usd>     stop before a request once every run together has cost this much (30)
 //   --no-gate          switch the design check off
+//   --template <id>    the template every request's deck starts on (a built-in one: zerem,
+//                      shvil, tzuk); without it, the plain deck of the base theme
 //   --attach           use the app that is already running on the CDP port
+//
+// A session that shares the machine with others runs the set under an identifier and ports of
+// its own: SLIDR_EVAL_IDENTIFIER, SLIDR_EVAL_VITE_PORT, SLIDR_EVAL_CDP_PORT, and
+// SLIDR_EVAL_CONFIG for the Tauri config that names them (as eval/eval.tauri.conf.json does).
 //
 // Output, under test-results/eval/<run>/<request>/: deck.json, deck.slidr, slides/NN.png,
 // transcript.jsonl, tools.jsonl (every tool call in full), result.json (the measurements).
@@ -30,9 +36,10 @@ import { writeReport } from './report.mjs';
 const APP_DIR = fileURLToPath(new URL('../..', import.meta.url));
 const OUT_ROOT = join(APP_DIR, 'test-results', 'eval');
 const LEDGER = join(OUT_ROOT, 'ledger.json');
-const IDENTIFIER = 'dev.slidr.app.quality';
-const VITE_PORT = 1491;
-const CDP_PORT = 9291;
+const IDENTIFIER = process.env.SLIDR_EVAL_IDENTIFIER ?? 'dev.slidr.app.quality';
+const VITE_PORT = Number(process.env.SLIDR_EVAL_VITE_PORT ?? 1491);
+const CDP_PORT = Number(process.env.SLIDR_EVAL_CDP_PORT ?? 9291);
+const TAURI_CONFIG = process.env.SLIDR_EVAL_CONFIG ?? 'eval/eval.tauri.conf.json';
 const APP_URL = `http://localhost:${VITE_PORT}/`;
 /** Tauri's `BaseDirectory.AppData`. */
 const APP_DATA = 14;
@@ -49,6 +56,7 @@ function parseArgs(argv) {
     budget: 30,
     gate: true,
     attach: false,
+    template: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
@@ -64,6 +72,7 @@ function parseArgs(argv) {
     else if (flag === '--max-images') args.maxImages = Number(value());
     else if (flag === '--budget') args.budget = Number(value());
     else if (flag === '--no-gate') args.gate = false;
+    else if (flag === '--template') args.template = value();
     else if (flag === '--attach') args.attach = true;
     else if (flag !== '--') throw new Error(`unknown option ${flag}`);
   }
@@ -109,7 +118,7 @@ async function startApp(logFile) {
   }
   const log = createWriteStream(logFile);
   // One string: on Windows pnpm is a script, which only a shell can start.
-  const child = spawn('pnpm exec tauri dev --no-watch --config eval/eval.tauri.conf.json', {
+  const child = spawn(`pnpm exec tauri dev --no-watch --config ${TAURI_CONFIG}`, {
     cwd: APP_DIR,
     shell: true,
     env: {
@@ -205,6 +214,7 @@ async function runRequest(page, request, context) {
     },
     imageProvider: provider,
     ...(request.base ? { base: request.base } : {}),
+    ...(args.template ? { template: args.template } : {}),
   });
   await page.waitForFunction(() => window.slidrEval.status().ready, null, { timeout: 30_000 });
 
@@ -243,6 +253,7 @@ async function runRequest(page, request, context) {
     model: args.model,
     images: provider,
     gate: args.gate,
+    ...(args.template ? { template: args.template } : {}),
     approvals,
     outcome: status.timedOut ? 'timed_out' : (status.outcome ?? 'unknown'),
     ...(status.problem ? { problem: status.problem } : {}),
@@ -294,7 +305,10 @@ async function main() {
     dirty: git('status', '--porcelain', '--', '../../packages', 'src') !== '',
     startedAt: new Date(),
   });
-  console.log(`run ${run}: ${requests.length} requests on ${args.model}, images: ${args.images}`);
+  console.log(
+    `run ${run}: ${requests.length} requests on ${args.model}, images: ${args.images}` +
+      (args.template ? `, template: ${args.template}` : ''),
+  );
 
   const app = args.attach ? null : await startApp(join(runDir, 'app.log'));
   let browser;

@@ -37,7 +37,8 @@ import { createAppImages, type AppImages } from '../images/appImages';
 import { createLintService } from '../lint/deckLint';
 import type { Editor } from '../shell';
 import { createLayoutService } from '../templates/layoutService';
-import { appTemplateService } from '../templates/app';
+import { followDirection } from '../templates/actions';
+import { appTemplateService, library } from '../templates/app';
 import { createGallery, type Gallery } from './variations';
 import { createSessions, type Sessions } from './sessions';
 
@@ -202,13 +203,17 @@ function createAi(editor: Editor): AiRuntime {
   // and turns back a call for images that are being made already.
   const api: DeckApi = {
     ...deckApi,
-    call: (turn, name, input) => {
+    call: async (turn, name, input) => {
       const refusal = gallery.refusal(turn.scope, name, input);
-      if (refusal) {
-        return Promise.resolve({ ok: false, error: { code: 'invalid_state', message: refusal } });
-      }
+      if (refusal) return { ok: false, error: { code: 'invalid_state', message: refusal } };
       gallery.noteToolCall(turn.scope, name, input);
-      return deckApi.call(turn, name, input);
+      const from = editor.bus.deck.meta.dir;
+      const result = await deckApi.call(turn, name, input);
+      // The agent turns a deck by setting its direction. The layouts of its template are drawn
+      // for one direction, so they turn with it, in the same undo step.
+      const follow = followDirection(editor.bus.deck, from, library);
+      if (follow.length > 0) editor.bus.batch(follow, { actor: turn.actor, txId: turn.txId });
+      return result;
     },
   };
   const harness = inApp ? { client: tauriAgent, connectBridge: connectToolBridge } : pageHarness();

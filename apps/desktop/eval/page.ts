@@ -8,13 +8,16 @@
  */
 import type { LintFinding, ToolResult } from '@slidr/agent-tools';
 import {
+  CommandBus,
   createDeck,
   createElement,
   createSlide,
+  slideFromLayout,
   type Deck,
   type Paragraph,
   type Slide,
 } from '@slidr/model';
+import { applyTemplate, deckFromTemplate } from '@slidr/templates';
 import { invoke } from '@tauri-apps/api/core';
 import { appDataDir } from '@tauri-apps/api/path';
 import type { AgentSettings } from '../src/agent/agentService';
@@ -23,6 +26,7 @@ import { agentOf } from '../src/ai/runtime';
 import { captureSlide } from '../src/capture/client';
 import { createLintService } from '../src/lint/deckLint';
 import { newDeck, syncFileState, type Editor } from '../src/shell/editor';
+import { library } from '../src/templates/app';
 import { scoreRequest, toolRecord, type RequestScore, type ToolRecord } from './metrics';
 
 export interface PrepareOptions {
@@ -32,6 +36,11 @@ export interface PrepareOptions {
   imageProvider: string;
   /** A deck to start from; absent for the app's own new deck. */
   base?: 'warehouse';
+  /**
+   * The template of the library the deck starts on, as if the user had made it their default:
+   * its theme, its layouts and an opening slide. Absent for the plain deck of the base theme.
+   */
+  template?: string;
 }
 
 export interface Status {
@@ -154,6 +163,27 @@ function warehouseDeck(): Deck {
   });
 }
 
+/**
+ * The deck a request starts from. With a template: a new deck is what the app opens on the
+ * user's default template, and the deck of the edit request is the hand-typed deck after the
+ * user switched it to the template, which changes its colours and fonts and gives it layouts.
+ */
+function startingDeck({ base, template: id }: PrepareOptions): Deck {
+  const plain = base === 'warehouse' ? warehouseDeck() : undefined;
+  if (!id) return plain ?? newDeck('he');
+  const template = library.forDeck(id, 'he');
+  if (!template) throw new Error(`The library has no template "${id}".`);
+  if (plain) {
+    const bus = new CommandBus(plain);
+    bus.batch(applyTemplate(plain, template));
+    return bus.deck;
+  }
+  const deck = deckFromTemplate(template, { lang: 'he' });
+  const opening = deck.layouts[0];
+  deck.slides = [opening ? slideFromLayout(deck, opening.id).slide : createSlide()];
+  return deck;
+}
+
 /** The folder the app keeps its data in: the runner checks it before anything is written. */
 export function dataDir(): Promise<string> {
   return appDataDir();
@@ -173,7 +203,7 @@ export async function prepare(options: PrepareOptions): Promise<{ deckId: string
   for (const leftover of await document.listRecoverable()) {
     await document.discardRecoverable(leftover.id);
   }
-  const deck = options.base === 'warehouse' ? warehouseDeck() : newDeck('he');
+  const deck = startingDeck(options);
   await document.create(deck);
   syncFileState(editor());
   tapTools();

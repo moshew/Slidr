@@ -105,6 +105,26 @@ export function turnDeck(
   if (commands.length > 0) editor.bus.batch(commands, { label });
 }
 
+/**
+ * What has to follow when the deck's direction was changed by setting the field alone, which is
+ * how the agent turns a deck (`deck.setMeta`): the layouts, which a deck holds for its own
+ * direction only (ADR-023), and the slides that sit on them. A slide without a layout is left
+ * as it is: the agent wrote it for the direction it meant. `from` is the direction the deck had;
+ * the commands do not touch the field.
+ */
+export function followDirection(deck: Deck, from: Direction, library: TemplateLibrary): Command[] {
+  if (deck.meta.dir === from) return [];
+  const asItWas: Deck = { ...deck, meta: { ...deck.meta, dir: from } };
+  const template = library.forDeck(deck.theme.id, deck.meta.lang);
+  const onLayout = new Set(deck.slides.filter((slide) => slide.layoutId).map((slide) => slide.id));
+  return changeDirection(asItWas, deck.meta.dir, template).filter(
+    (command) =>
+      command.type === 'layout.update' ||
+      ((command.type === 'slide.update' || command.type === 'element.update') &&
+        onLayout.has(command.slideId)),
+  );
+}
+
 // ---------------------------------------------------------------------------------------------
 // The logo
 
