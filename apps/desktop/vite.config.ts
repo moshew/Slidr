@@ -23,6 +23,8 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL('index.html', import.meta.url)),
         capture: fileURLToPath(new URL('capture.html', import.meta.url)),
+        // The page of the hidden import window (SPEC 13.3).
+        import: fileURLToPath(new URL('import.html', import.meta.url)),
       },
     },
   },

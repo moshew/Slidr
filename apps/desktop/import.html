@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Slidr import</title>
+    <!--
+      The import window (SPEC 13.3): never shown. An imported file runs in a frame of this page.
+      Rust refuses every request of the window that is not this page or the IPC. That filter
+      does not see WebSockets, so the policy below closes them: `connect-src` names no `ws:`
+      scheme beyond the page's own origin, and the frame inherits the policy.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="connect-src 'self' http: https: ipc: data: blob:"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module" src="/src/import/page/main.ts"></script>
+  </body>
+</html>

@@ -34,6 +34,7 @@ import {
 } from '../agent/transcript';
 import { createCaptureService } from '../capture/deckCapture';
 import { createAppImages, type AppImages } from '../images/appImages';
+import { createImporter } from '../import/session';
 import { createLintService } from '../lint/deckLint';
 import { mediaServices } from '../media/services';
 import type { Editor } from '../shell';
@@ -200,6 +201,8 @@ function createAi(editor: Editor): AiRuntime {
     options: gallery.service,
     capture,
     conversion,
+    // The isolated page of an HTML import (SPEC 13.2); its tools exist in import sessions only.
+    importer: createImporter(editor),
   };
   const deckApi = createDeckApi(editor.bus, services);
   // Every call passes the gallery on its way in: it knows whose images are about to be made,
