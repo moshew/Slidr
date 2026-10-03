@@ -59,7 +59,18 @@ And what writing the first deck taught, each of them measured (ADR-039):
 - **A block with its own direction is placed with physical sides.** `inset-inline-start` on an
   element with `dir="ltr"` resolves by that element's direction, so in a right-to-left deck a
   left-to-right number is placed with `right:` and `left:`.
-- **Table cells are aligned to the top**, with padding, not centred vertically.
+- **A table that reads right-to-left stays HTML.** Text aligned to the start of a right-to-left
+  table fails the conversion's pixel comparison by a fraction of a percent, whatever its borders,
+  fills and fonts; the same table with `dir="ltr"`, or with its text aligned to the end, converts.
+  The decks keep their tables as they should read, and the tables are faithful as HTML.
+- **A box may hold its own text** (a chip, a numbered circle): it becomes a shape and a text.
+  A ring drawn as a thick border in another colour does not convert; a circle under a smaller
+  circle does.
+- **In inline SVG a class wins over an attribute**, so a variation of a shared class goes in
+  `style`.
+- **Mixed-direction copy:** a Latin word followed by a number reads in the wrong order in a
+  Hebrew sentence (put the number first), and a line can break between a Hebrew prefix and the
+  Latin word it is attached to (rephrase).
 - **A background picture** has `background-size: cover`, `background-position: center` and
   `background-repeat: no-repeat`.
 - No pseudo-elements, no clipping containers, no transforms, no Unicode arrows (the Latin

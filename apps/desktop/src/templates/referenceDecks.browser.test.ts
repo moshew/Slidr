@@ -10,6 +10,7 @@ import type { LintFinding } from '@slidr/agent-tools';
 import { createConversionService } from '@slidr/html-import';
 import { testHost } from '@slidr/html-import/testing';
 import { createDeck, walkElements, type Deck, type Slide } from '@slidr/model';
+import { colorCss, themeVariables } from '@slidr/renderer';
 import { builtInThemes } from '@slidr/templates/builtin';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { commands, page } from 'vitest/browser';
@@ -99,6 +100,50 @@ async function measure(reference: ReferenceDeck): Promise<DeckReport> {
   }
   return { id: reference.id, template: reference.template, dir: reference.dir, slides };
 }
+
+/** A CSS value with every run of white space as one space. */
+const spaced = (value: string) => value.trim().split(/\s+/).join(' ');
+
+/** The custom properties a deck file declares on `:root`, and its body text style. */
+function declared(css: string): { vars: Record<string, string>; body: Record<string, string> } {
+  const block = (selector: string) => {
+    const from = css.indexOf(`${selector} {`);
+    return from < 0 ? '' : css.slice(css.indexOf('{', from) + 1, css.indexOf('}', from));
+  };
+  const pairs = (text: string) =>
+    Object.fromEntries(
+      text
+        .split(';')
+        .map((line) => {
+          const at = line.indexOf(':');
+          return [line.slice(0, at).trim(), spaced(line.slice(at + 1))];
+        })
+        .filter(([name, value]) => name && value),
+    );
+  return { vars: pairs(block(':root')), body: pairs(block('body')) };
+}
+
+describe('the theme block of every reference deck', () => {
+  // A deck opens in a browser with the values written in its file; in the app the same
+  // variables come from the template's theme. The two must not drift apart.
+  for (const reference of referenceDecks()) {
+    test(`${reference.id} holds the values of the ${reference.template} template`, () => {
+      const theme = builtInThemes[reference.template]!;
+      const { vars, body } = declared(reference.themeCss);
+      const wanted = Object.fromEntries(
+        Object.entries(themeVariables(theme)).map(([name, value]) => [name, spaced(value)]),
+      );
+      expect(vars).toEqual(wanted);
+      const style = theme.textStyles.body;
+      expect(body).toMatchObject({
+        'font-family': 'var(--font-body)',
+        'font-size': `${style.size}px`,
+        'line-height': String(style.lineHeight),
+        color: colorCss(style.color),
+      });
+    });
+  }
+});
 
 describe('the reference decks, converted and linted', () => {
   test('there are decks to measure', () => {

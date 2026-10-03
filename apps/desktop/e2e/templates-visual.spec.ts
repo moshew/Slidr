@@ -43,3 +43,56 @@ for (const theme of themes) {
     }
   }
 }
+
+const PNG_LOGO = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAEElEQVR42mNk+M9QzwAEAAmGAYCF+yOnAAAAAElFTkSuQmCC',
+  'base64',
+);
+
+const states = [
+  { lang: 'he', theme: 'light', viewport: viewports[0], name: 'light-rtl-1920' },
+  { lang: 'en', theme: 'dark', viewport: viewports[1], name: 'dark-ltr-1366' },
+] as const;
+
+for (const { lang, theme, viewport, name } of states) {
+  test(`the layouts of "New slide" ${name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openTemplates(page, { lang, theme, defaultTemplate: 'zerem' });
+    await page.getByTestId('new-slide').click();
+    await expect(page.getByTestId('layout-choices')).toBeVisible();
+    await settle(page);
+    await page.screenshot({ path: out(`layouts-${name}`) });
+  });
+
+  test(`the colour picker of the theme ${name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openTemplates(page, { lang, theme, defaultTemplate: 'zerem' });
+    await panel(page).locator('[data-theme-color="primary"]').click();
+    await settle(page);
+    await page.screenshot({ path: out(`color-${name}`) });
+  });
+
+  test(`a personal template with a logo, and deleting it ${name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openTemplates(page, { lang, theme, defaultTemplate: 'zerem' });
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('logo-choose').click();
+    await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_LOGO });
+    await expect(panel(page).locator('img')).toHaveCount(1);
+    await panel(page)
+      .getByRole('textbox')
+      .last()
+      .fill(lang === 'he' ? 'התבנית של החברה' : 'Company template');
+    await panel(page).getByRole('button').last().click();
+    await expect(panel(page).locator('[data-template^="personal_"]')).toBeVisible();
+    await settle(page);
+    await page.screenshot({ path: out(`saved-${name}`) });
+    await panel(page).locator('[data-template^="personal_"]').scrollIntoViewIfNeeded();
+    await settle(page);
+    await page.screenshot({ path: out(`personal-${name}`) });
+    await panel(page).locator('[data-template^="personal_"]').getByRole('button').nth(1).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await settle(page);
+    await page.screenshot({ path: out(`delete-${name}`) });
+  });
+}
