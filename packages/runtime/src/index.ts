@@ -11,9 +11,15 @@ export type {
 } from './types';
 export { travel, directionOf, slideDirection, type Dir, type Vec } from './direction';
 export { schedule, type Group, type Slot, type Timed } from './schedule';
-export { animationPresets, type Category } from './presets';
-export { transitionTypes, runTransition, type TransitionRun } from './transitions';
-export { createTimeline, type SlideTimeline, type TimelineOptions } from './timeline';
+export { animationPresets, describePreset, type Category, type PresetInfo } from './presets';
+export { transitionTypes, transitionTurns, runTransition, type TransitionRun } from './transitions';
+export {
+  createTimeline,
+  type SlideTimeline,
+  type TimelineGroup,
+  type TimelineOptions,
+  type TimelinePart,
+} from './timeline';
 export {
   createPlayer,
   type Player,

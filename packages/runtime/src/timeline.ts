@@ -18,9 +18,29 @@ import type { AnimationStep, Size, Trigger, Warn } from './types';
  * advance, so going back a step, or arriving at a slide from the one after it, sets the state
  * directly instead of replaying anything.
  */
+/** One step's share of a group. A step animated by paragraph has a part for every paragraph. */
+export interface TimelinePart {
+  stepId: string;
+  /** Milliseconds from the start of the group. */
+  start: number;
+  end: number;
+}
+
+export interface TimelineGroup {
+  /** Milliseconds. */
+  duration: number;
+  parts: readonly TimelinePart[];
+}
+
 export interface SlideTimeline {
   /** How many groups wait for a click. Group 0, the lead-in, plays by itself. */
   readonly clicks: number;
+  /**
+   * How the steps fall into groups and when each plays inside its group, for a timeline view. The
+   * runtime is the one that knows: it depends on the paragraphs and words of the rendered text.
+   * Group 0 is the lead-in, and may be empty.
+   */
+  readonly groups: readonly TimelineGroup[];
   /** Length of a group in milliseconds. */
   duration: (group: number) => number;
   /** Shows the slide as it is once `done` groups have played: 0 is before the lead-in. */
@@ -310,6 +330,14 @@ export function createTimeline(
 
   return {
     clicks: groups.length - 1,
+    groups: groups.map((group) => ({
+      duration: group.duration,
+      parts: group.slots.map((slot) => ({
+        stepId: (effects[slot.index] as Effect).step.id,
+        start: slot.start,
+        end: slot.end,
+      })),
+    })),
     duration: (group) => groups[group]?.duration ?? 0,
     apply,
     get playing() {

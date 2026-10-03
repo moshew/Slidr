@@ -303,6 +303,31 @@ export function inlinePreset(category: Category, preset: Preset): Preset {
   return (preset.inline ? presets[category][preset.inline] : undefined) ?? preset;
 }
 
+/** What a picker shows of a preset. */
+export interface PresetInfo {
+  /** False for a name the runtime does not have: the fallback plays instead. */
+  known: boolean;
+  /** Whether `direction` changes what plays; a picker offers a direction only then. */
+  directional: boolean;
+  /** The direction a step gets when it names none. */
+  direction: FlowDirection;
+}
+
+/** Whether a preset's frames depend on the way it travels: asked of the frames themselves. */
+function turns(preset: Preset): boolean {
+  const input = {
+    box: { left: 400, top: 300, right: 700, bottom: 500 },
+    slide: { w: 1920, h: 1080 },
+  };
+  const along = (v: Vec) => JSON.stringify(preset.frames({ ...input, v }));
+  return along({ x: 0, y: -1 }) !== along({ x: 1, y: 0 });
+}
+
+export function describePreset(category: Category, name: string): PresetInfo {
+  const { preset, known } = findPreset(category, name);
+  return { known, directional: turns(preset), direction: preset.direction };
+}
+
 export interface PartStyle {
   /** False for inline text: it can be faded and moved, and nothing else. */
   box: boolean;

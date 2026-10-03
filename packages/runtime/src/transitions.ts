@@ -70,6 +70,13 @@ const transitions: Record<Played, (v: Vec) => Motion> = {
 
 export { transitionTypes } from './names';
 
+/** Whether `direction` changes a transition; a picker offers a direction only then. */
+export function transitionTurns(type: string): boolean {
+  const make = (transitions as Record<string, ((v: Vec) => Motion) | undefined>)[type];
+  if (!make) return false;
+  return JSON.stringify(make({ x: 0, y: -1 })) !== JSON.stringify(make({ x: 1, y: 0 }));
+}
+
 export interface TransitionRun {
   /** Resolves when the incoming slide is in place, by itself or through `finish`. */
   finished: Promise<void>;

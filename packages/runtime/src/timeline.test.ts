@@ -62,6 +62,32 @@ describe('createTimeline', () => {
     expect(t.duration(0)).toBe(300);
   });
 
+  it('says how the steps fall into groups, a paragraph at a time', () => {
+    const t = timeline([
+      step('title', { trigger: 'afterPrevious', duration: 200 }),
+      step('box', { delay: 100 }),
+      step('list', { textBy: 'paragraph', trigger: 'afterPrevious', duration: 100 }),
+      step('list', { category: 'exit', textBy: 'paragraph', duration: 100 }),
+      step('gone'),
+    ]);
+    expect(t.groups.map((g) => g.duration)).toEqual([200, 700, 100, 100, 100]);
+    expect(t.groups[0]?.parts).toEqual([{ stepId: 'a_title_entrance', start: 0, end: 200 }]);
+    // The box, then the three paragraphs that have text, one after the other.
+    expect(t.groups[1]?.parts).toEqual([
+      { stepId: 'a_box_entrance', start: 100, end: 400 },
+      { stepId: 'a_list_entrance', start: 400, end: 500 },
+      { stepId: 'a_list_entrance', start: 500, end: 600 },
+      { stepId: 'a_list_entrance', start: 600, end: 700 },
+    ]);
+    // On a click, each paragraph is a click of its own; a step whose element is gone has no part.
+    expect(t.groups.slice(2).map((g) => g.parts.map((p) => p.stepId))).toEqual([
+      ['a_list_exit'],
+      ['a_list_exit'],
+      ['a_list_exit'],
+    ]);
+    expect(t.clicks).toBe(4);
+  });
+
   it('hides what has not come in yet, and nothing else', () => {
     const t = timeline([step('title', { trigger: 'afterPrevious' }), step('box')]);
     t.apply(0);

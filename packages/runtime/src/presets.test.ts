@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { travel } from './direction';
 import {
   animationPresets,
+  describePreset,
   findPreset,
   inlinePreset,
   toKeyframes,
   type PresetInput,
 } from './presets';
-import { transitionTypes } from './transitions';
+import { transitionTurns, transitionTypes } from './transitions';
 
 const slide = { w: 1920, h: 1080 };
 const box = { left: 400, top: 300, right: 700, bottom: 500 };
@@ -46,6 +47,29 @@ describe('presets', () => {
       'zoom',
       'flip',
     ]);
+  });
+
+  it('tells a picker which presets and transitions take a direction', () => {
+    const turning = (category: 'entrance' | 'emphasis' | 'exit') =>
+      animationPresets[category].filter((name) => describePreset(category, name).directional);
+    expect(turning('entrance')).toEqual(['flyIn', 'rise', 'wipe']);
+    expect(turning('emphasis')).toEqual([]);
+    expect(turning('exit')).toEqual(['flyOut', 'sink', 'wipe']);
+    expect(describePreset('entrance', 'wipe')).toEqual({
+      known: true,
+      directional: true,
+      direction: 'end',
+    });
+    expect(describePreset('exit', 'flyOut').direction).toBe('down');
+    expect(describePreset('entrance', 'swoosh').known).toBe(false);
+    expect(transitionTypes.filter(transitionTurns)).toEqual([
+      'push',
+      'cover',
+      'reveal',
+      'wipe',
+      'flip',
+    ]);
+    expect(transitionTurns('morph')).toBe(false);
   });
 
   it('flies in from outside the slide, on the side opposite to the travel', () => {
