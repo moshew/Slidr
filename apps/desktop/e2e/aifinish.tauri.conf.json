@@ -1,0 +1,7 @@
+{
+  "identifier": "dev.slidr.app.aifinish",
+  "build": {
+    "devUrl": "http://localhost:1531",
+    "beforeDevCommand": "pnpm exec vite --port 1531 --strictPort"
+  }
+}
