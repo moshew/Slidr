@@ -5,6 +5,7 @@ import {
   type AssetResolver,
   type CellSlot,
   type ElementSlot,
+  type HtmlSlot,
   type RenderContext,
   type RenderMode,
   type TextSlot,
@@ -31,6 +32,8 @@ export interface SlideRendererProps {
   textSlot?: TextSlot;
   /** Puts the host's content (the text editor) in a table cell. Keep it stable. */
   cellSlot?: CellSlot;
+  /** Hands the content of an `html` element to the host, to edit its text. Keep it stable. */
+  htmlSlot?: HtmlSlot;
   className?: string;
   /** Applied to the slide root, after the renderer's own styles. */
   style?: CSSProperties;
@@ -53,6 +56,7 @@ export function SlideRenderer({
   slot,
   textSlot,
   cellSlot,
+  htmlSlot,
   className,
   style,
 }: SlideRendererProps) {
@@ -71,8 +75,9 @@ export function SlideRenderer({
       slot,
       textSlot,
       cellSlot,
+      htmlSlot,
     }),
-    [theme, mode, meta.dir, meta.lang, assets, resolveAsset, slot, textSlot, cellSlot],
+    [theme, mode, meta.dir, meta.lang, assets, resolveAsset, slot, textSlot, cellSlot, htmlSlot],
   );
   const vars = useMemo(() => themeVariables(theme), [theme]);
   const fontFaces = useMemo(

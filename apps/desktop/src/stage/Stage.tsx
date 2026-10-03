@@ -15,9 +15,10 @@ import {
   type SelectionStore,
   type Slide,
 } from '@slidr/model';
-import { SlideRenderer, type AssetResolver, type TextSlot } from '@slidr/renderer';
+import { SlideRenderer, type AssetResolver, type HtmlSlot, type TextSlot } from '@slidr/renderer';
 import { fitRows } from '../table/fit';
 import { useTableStage } from '../table/stage';
+import { createHtmlTextEditing } from '../text/htmlEditing';
 import { TextEditor } from '../text/TextEditor';
 import {
   useCallback,
@@ -422,6 +423,29 @@ export function Stage({
     // An image without a picture, or a locked one, has nothing to crop.
     if (editing?.element.type === 'image' && !croppingId) selection.getState().stopEditing();
   }, [editing, croppingId, selection]);
+
+  // The `html` element whose text is edited in place (HTM-03). One with scripts runs in a frame
+  // the editor cannot reach into, so it has no text to edit here.
+  const htmlId =
+    editing?.element.type === 'html' && !editing.element.hasScripts && !editing.locked
+      ? editing.element.id
+      : undefined;
+  useEffect(() => {
+    if (editing?.element.type === 'html' && !htmlId) selection.getState().stopEditing();
+  }, [editing, htmlId, selection]);
+  const wasHtml = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const ended = wasHtml.current !== undefined && htmlId === undefined;
+    wasHtml.current = htmlId;
+    const surface = container.current;
+    if (!ended || !surface) return;
+    // The text that had the keyboard is no longer editable: the Stage takes the keyboard back,
+    // unless the user has already put it somewhere else.
+    const active = document.activeElement;
+    if (!active || active === document.body || surface.contains(active)) {
+      surface.focus({ preventScroll: true });
+    }
+  }, [htmlId]);
 
   const wasCropping = useRef<string | null>(null);
   useEffect(() => {
@@ -945,6 +969,12 @@ export function Stage({
       selection.getState().startEditing(element.id);
     } else if (element.type === 'image') {
       if (canCrop(element)) selection.getState().startEditing(element.id);
+    } else if (element.type === 'html') {
+      // The text inside it is edited where it stands (HTM-03); one with scripts is out of reach.
+      if (!element.hasScripts) {
+        setCaretAt({ x: e.clientX, y: e.clientY });
+        selection.getState().startEditing(element.id);
+      }
     } else if (element.type === 'group') {
       // One level in: the child under the pointer is selected, the rest of the group stays put.
       const inside = [...hit.scope, element.id];
@@ -1039,6 +1069,12 @@ export function Stage({
         selection.getState().startEditing(target.id);
         return;
       }
+      if (target?.type === 'html' && !target.hasScripts) {
+        e.preventDefault();
+        setCaretAt(undefined);
+        selection.getState().startEditing(target.id);
+        return;
+      }
       if (target?.type === 'group' && single) {
         e.preventDefault();
         setEntered([...pathIds(single), target.id]);
@@ -1057,7 +1093,7 @@ export function Stage({
       // Handled here, so a shortcut of the shell does not act on the same key.
       e.preventDefault();
       if (gesture.current) endGesture(true);
-      else if (crop) selection.getState().stopEditing();
+      else if (crop || htmlId) selection.getState().stopEditing();
       else if (scope.length) {
         // Out of the group, one level: the group itself is selected.
         const group = scope[scope.length - 1] as string;
@@ -1178,6 +1214,22 @@ export function Stage({
         />
       ) : undefined,
     [editingId, slide, bus, deck.theme, caretAt, exitEditing],
+  );
+  // The text of an `html` element is edited inside the element's own content (HTM-03).
+  const slideId = slide?.id;
+  const stopEditing = useCallback(() => selection.getState().stopEditing(), [selection]);
+  const htmlEditing = useMemo(
+    () =>
+      htmlId && slideId
+        ? createHtmlTextEditing({ bus, slideId, elementId: htmlId, caretAt, onExit: stopEditing })
+        : undefined,
+    // The caret is where the double-click that started the editing was: it is read once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [htmlId, slideId, bus, stopEditing],
+  );
+  const htmlSlot = useCallback<HtmlSlot>(
+    (element) => (element.id === htmlId ? htmlEditing : undefined),
+    [htmlId, htmlEditing],
   );
 
   const stageView: StageView = { origin, scale };
@@ -1345,6 +1397,7 @@ export function Stage({
               resolveAsset={resolveAsset}
               textSlot={editingId && !croppingId ? textSlot : undefined}
               cellSlot={tables.cellSlot}
+              htmlSlot={htmlEditing ? htmlSlot : undefined}
             />
           </div>
         </div>

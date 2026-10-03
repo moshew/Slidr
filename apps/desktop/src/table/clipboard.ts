@@ -94,6 +94,9 @@ function onPaste(event: ClipboardEvent): void {
   if (!typing && isTextTarget(event.target)) return;
   const editor = getEditor();
   const target = tableTarget(editor);
+  // Another element is being edited in place (the text of an `html` element, the crop of an
+  // image): what is pasted there is not a table for the slide.
+  if (editor.selection.getState().editingElementId && !target?.inside) return;
   const grid = clipboardGrid(
     { html: data.getData('text/html'), text: data.getData('text/plain') },
     // In a selected table every delimited text is meant for its cells.

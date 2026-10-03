@@ -2,6 +2,7 @@ import type {
   AssetMeta,
   Direction,
   Element,
+  HtmlElement,
   ShapeElement,
   TableElement,
   TextElement,
@@ -43,6 +44,36 @@ export type TextSlot = (element: TextElement | ShapeElement) => ReactNode | unde
  */
 export type CellSlot = (table: TableElement, row: number, col: number) => ReactNode | undefined;
 
+/**
+ * The host's hand on the content of an `html` element, to edit its text in place (HTM-03). The
+ * renderer builds the content from the markup and hands it over; the host changes text in it and
+ * writes the markup back to the model itself.
+ */
+export interface HtmlEditing {
+  /**
+   * The content already shows this markup: it is what the host wrote last. The renderer then
+   * leaves the content alone, so a caret in it survives the host's own writes. Any other markup
+   * (an undo, the agent) is rendered afresh and handed over again.
+   */
+  shows(markup: string): boolean;
+  /**
+   * The content of the element is in `root`. `source` is the same markup as it was parsed,
+   * before it was cleaned and before its asset references were resolved; `sourceOf` gives the
+   * node of `source` that a node of the content was made from. `rebuild` builds the content
+   * again from the markup of the model, for a change the host could not keep; the content is then
+   * handed over anew. Returns what to undo when the editing ends or the content is built again.
+   */
+  attach(
+    root: ShadowRoot,
+    source: DocumentFragment,
+    sourceOf: (node: Node) => Node | undefined,
+    rebuild: () => void,
+  ): () => void;
+}
+
+/** Hands the content of an `html` element without scripts to the host. `undefined` leaves it be. */
+export type HtmlSlot = (element: HtmlElement) => HtmlEditing | undefined;
+
 export interface RenderContext {
   theme: Theme;
   mode: RenderMode;
@@ -55,6 +86,7 @@ export interface RenderContext {
   slot?: ElementSlot;
   textSlot?: TextSlot;
   cellSlot?: CellSlot;
+  htmlSlot?: HtmlSlot;
 }
 
 export const RenderContextValue = createContext<RenderContext | null>(null);

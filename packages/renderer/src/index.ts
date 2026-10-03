@@ -1,6 +1,14 @@
 // SlideRenderer and the element renderers: model -> DOM (SPEC 7, ADR-009).
 export { SlideRenderer, ScaledSlide, type SlideRendererProps } from './SlideRenderer';
-export type { AssetResolver, CellSlot, ElementSlot, RenderMode, TextSlot } from './context';
+export type {
+  AssetResolver,
+  CellSlot,
+  ElementSlot,
+  HtmlEditing,
+  HtmlSlot,
+  RenderMode,
+  TextSlot,
+} from './context';
 export {
   colorCss,
   familyCss,

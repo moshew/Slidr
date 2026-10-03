@@ -24,7 +24,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { domId, useRenderContext, type RenderContext } from './context';
+import { domId, useRenderContext, type HtmlEditing, type RenderContext } from './context';
 import { num, passthroughStyle } from './css';
 import { FillLayer } from './fill';
 import {
@@ -688,22 +688,63 @@ function SvgView({ element: e }: { element: SvgElement }) {
 function ShadowContent({ e, style }: { e: HtmlElement; style: CSSProperties }) {
   const ctx = useRenderContext();
   const host = useRef<HTMLDivElement>(null);
+  // The host that edits the text of this element in place, if one does (HTM-03).
+  const editing = ctx.htmlSlot?.(e);
+  const attached = useRef<{ editing: HtmlEditing; detach: () => void } | null>(null);
+  // What the content is built from. The host may ask for it to be built again long after the
+  // render that handed it over, and gets the element as it is then.
+  const latest = useRef({ e, ctx });
+  useLayoutEffect(() => {
+    latest.current = { e, ctx };
+  });
   useLayoutEffect(() => {
     const el = host.current;
     if (!el) return;
-    const root = el.shadowRoot ?? el.attachShadow({ mode: 'open', serializable: true });
-    const fragment = parseFragment(e.markup);
-    sanitizeFragment(fragment);
-    resolveAssetRefs(fragment, ctx);
-    root.replaceChildren();
-    if (e.styles) {
-      const sheet = document.createElement('style');
-      sheet.textContent = e.styles;
-      root.append(sheet);
-    }
-    root.append(fragment);
-  }, [e.markup, e.styles, ctx]);
+    const build = () => {
+      const now = latest.current;
+      attached.current?.detach();
+      attached.current = null;
+      const root = el.shadowRoot ?? el.attachShadow({ mode: 'open', serializable: true });
+      const fragment = parseFragment(now.e.markup);
+      // Paired now, while the two trees still have one shape: cleaning takes nodes out of one.
+      const source = editing ? (fragment.cloneNode(true) as DocumentFragment) : undefined;
+      const sources = source ? pairNodes(fragment, source) : undefined;
+      sanitizeFragment(fragment);
+      resolveAssetRefs(fragment, now.ctx);
+      root.replaceChildren();
+      if (now.e.styles) {
+        const sheet = document.createElement('style');
+        sheet.textContent = now.e.styles;
+        root.append(sheet);
+      }
+      root.append(fragment);
+      if (editing && source && sources) {
+        const detach = editing.attach(root, source, (node) => sources.get(node), build);
+        attached.current = { editing, detach };
+      }
+    };
+    // The host typed this markup into the content itself: the content is already it.
+    if (editing && attached.current?.editing === editing && editing.shows(e.markup)) return;
+    build();
+  }, [e.markup, e.styles, ctx, editing]);
+  useEffect(
+    () => () => {
+      attached.current?.detach();
+      attached.current = null;
+    },
+    [],
+  );
   return <div ref={host} data-slidr-html="shadow" style={style} />;
+}
+
+/** Every node of a tree with the node at the same place in a tree of the same shape. */
+function pairNodes(tree: Node, twin: Node, pairs = new WeakMap<Node, Node>()): WeakMap<Node, Node> {
+  pairs.set(tree, twin);
+  tree.childNodes.forEach((child, i) => {
+    const other = twin.childNodes[i];
+    if (other) pairNodes(child, other, pairs);
+  });
+  return pairs;
 }
 
 function FrameContent({ e, style }: { e: HtmlElement; style: CSSProperties }) {
@@ -747,7 +788,8 @@ function HtmlView({ element: e }: { element: HtmlElement }) {
     padding: 0,
     transformOrigin: '0 0',
     transform: sx !== 1 || sy !== 1 ? `scale(${num(sx, 6)}, ${num(sy, 6)})` : undefined,
-    pointerEvents: interactive(ctx) ? 'auto' : 'none',
+    // While its text is edited in place the pointer reaches the content, for the caret.
+    pointerEvents: interactive(ctx) || ctx.htmlSlot?.(e) ? 'auto' : 'none',
   };
   return (
     <div style={{ ...FILL_PARENT, transform: flipTransform(e) }}>
