@@ -22,11 +22,12 @@ export function ChartView({ element: e }: { element: ChartElement }) {
   const live = mode === 'present';
   const { chartType, data, options } = e;
   const { w, h } = e.frame;
+  const ink = e.css?.color;
   // The model keeps the identity of what a change did not touch (ADR-007): moving a chart draws
   // nothing again.
   const spec = useMemo(
-    () => chartSpec({ chartType, data, options, frame: { w, h } }, { theme, dir, lang }),
-    [chartType, data, options, w, h, theme, dir, lang],
+    () => chartSpec({ chartType, data, options, frame: { w, h }, ink }, { theme, dir, lang }),
+    [chartType, data, options, w, h, ink, theme, dir, lang],
   );
   const json = useMemo(() => JSON.stringify(spec), [spec]);
 

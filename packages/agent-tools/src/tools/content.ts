@@ -271,7 +271,7 @@ export const tableSet = defineTool({
 export const chartSet = defineTool({
   name: 'chart_set',
   description:
-    'Sets the data and options of a chart, or creates one when elementId is absent (then slideId, frame, chartType, categories and series are required). The app draws the chart in the theme colours, mirrored in a right-to-left deck. Omitted fields keep their value, so a change of chartType keeps the data; options are merged key by key, and a key that is given is given whole. Each series has one value per category (null for a gap); a scatter series may give `points` instead, with `values: []`. A pie shows the first series; a donut shows each series as a ring. Returns `elementId` and the ids created or changed.',
+    'Sets the data and options of a chart, or creates one when elementId is absent (then slideId, frame, chartType, categories and series are required). The app draws the chart in the theme colours, mirrored in a right-to-left deck. Omitted fields keep their value, so a change of chartType keeps the data; options are merged key by key, and a key that is given is given whole. Each series has one value per category (null for a gap); a scatter series may give `points` instead, with `values: []`. A pie shows the first series; a donut shows each series as a ring. The text of a chart is in the theme text colours; on a slide with a dark background give the chart a light one with element_update, as `css: {"color": "#ffffff"}`. Returns `elementId` and the ids created or changed.',
   input: z.strictObject({
     elementId: Id.optional().describe('The chart to change. Absent: create a new chart.'),
     slideId: Id.optional(),

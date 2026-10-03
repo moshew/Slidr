@@ -95,7 +95,23 @@ export interface ChartSpecContext {
 /** What of a chart element its picture depends on. */
 export type ChartSource = Pick<ChartElement, 'chartType' | 'data' | 'options'> & {
   frame: { w: number; h: number };
+  /**
+   * The CSS `color` of the chart's box, when the element sets one (`css.color`). The chart's
+   * text and lines take it in place of the theme's text colours: a chart on a slide whose
+   * background is dark in a light theme is given a light colour this way.
+   */
+  ink?: string | undefined;
 };
+
+/** A colour written as one of the theme's variables, as the theme has it; any other as it is. */
+function themed(css: string, theme: Theme): string {
+  const name = /^var\(\s*--color-([a-z]+)(?:-([0-9]+))?\s*\)$/.exec(css.trim());
+  if (!name) return css;
+  const [, token, index] = name;
+  if (token === 'chart') return theme.colors.chart[Number(index) - 1] ?? css;
+  const value = (theme.colors as Record<string, unknown>)[token ?? ''];
+  return typeof value === 'string' ? value : css;
+}
 
 /** The spec of a chart element under a theme (CHT-04: the theme's chart palette, or the chart's own). */
 export function chartSpec(element: ChartSource, { theme, dir, lang }: ChartSpecContext): ChartSpec {
@@ -104,6 +120,7 @@ export function chartSpec(element: ChartSource, { theme, dir, lang }: ChartSpecC
   const palette = options.palette?.length
     ? options.palette.map((color) => literal(color, theme))
     : colors.chart;
+  const ink = element.ink ? themed(element.ink, theme) : undefined;
   return {
     type: element.chartType,
     w: element.frame.w,
@@ -123,10 +140,10 @@ export function chartSpec(element: ChartSource, { theme, dir, lang }: ChartSpecC
     axes: options.axes,
     labels: options.labels,
     colors: {
-      text: colors.text,
-      muted: colors.muted,
-      line: fade(colors.muted, 0.5),
-      grid: fade(colors.muted, 0.22),
+      text: ink ?? colors.text,
+      muted: ink ? fade(ink, 0.78) : colors.muted,
+      line: fade(ink ?? colors.muted, 0.5),
+      grid: fade(ink ?? colors.muted, 0.22),
       surface: colors.surface,
       bg: colors.bg,
     },

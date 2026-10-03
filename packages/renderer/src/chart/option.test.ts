@@ -362,3 +362,28 @@ describe('what is written around a chart', () => {
     expect(series(wide)[0]?.barMaxWidth).toBeGreaterThan(series(narrow)[0]?.barMaxWidth as number);
   });
 });
+
+describe('a chart on a dark slide', () => {
+  const source = { ...chart(), frame: { w: 900, h: 500 } };
+  const ctx = { theme, dir: 'ltr' as const, lang: 'en' };
+
+  it('takes the colour of its box for its text and lines, in place of the theme text colours', () => {
+    const plain = chartSpec(source, ctx);
+    expect(plain.colors.text).toBe(theme.colors.text);
+    expect(plain.colors.muted).toBe(theme.colors.muted);
+    const light = chartSpec({ ...source, ink: '#ffffff' }, ctx);
+    expect(light.colors.text).toBe('#ffffff');
+    expect(light.colors.muted).toBe('rgba(255, 255, 255, 0.78)');
+    expect(light.colors.grid).toBe('rgba(255, 255, 255, 0.22)');
+    // The series keep the palette.
+    expect(light.palette).toEqual(plain.palette);
+  });
+
+  it('reads a theme variable as the theme has it: an SVG attribute resolves none', () => {
+    expect(chartSpec({ ...source, ink: 'var(--color-bg)' }, ctx).colors.text).toBe(theme.colors.bg);
+    expect(chartSpec({ ...source, ink: 'var(--color-chart-2)' }, ctx).colors.text).toBe(
+      theme.colors.chart[1],
+    );
+    expect(chartSpec({ ...source, ink: 'var(--other)' }, ctx).colors.text).toBe('var(--other)');
+  });
+});
