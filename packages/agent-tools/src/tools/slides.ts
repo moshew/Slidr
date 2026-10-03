@@ -1,4 +1,4 @@
-import { Background, duplicateSlide, Transition } from '@slidr/model';
+import { Archetype, Background, duplicateSlide, Transition } from '@slidr/model';
 import { z } from 'zod';
 import { getSlide } from '../lookup';
 import { markdownToRichText } from '../markdown';
@@ -13,6 +13,9 @@ export const slideUpdate = defineTool({
     slideId: z.string().min(1),
     name: z.string().min(1).nullable().optional(),
     layoutId: z.string().min(1).nullable().optional().describe('An id from deck_get_theme.'),
+    archetype: Archetype.nullable()
+      .optional()
+      .describe('What kind of slide this is, for a slide without a layout.'),
     background: about(
       Background.nullable(),
       'Overrides the theme background; null goes back to it.',

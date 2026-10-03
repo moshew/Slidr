@@ -39,7 +39,7 @@ const OPS_HELP = [
   'slide.add {slide (full slide JSON with new ids), index?}',
   'slide.remove {slideIds}',
   'slide.move {slideIds, toIndex (counted without the moved slides)}',
-  'slide.update {slideId, patch: {name, layoutId, background, notes, transition, hidden, css}}',
+  'slide.update {slideId, patch: {name, layoutId, archetype, background, notes, transition, hidden, css}}',
   'slide.setTimeline {slideId, timeline: AnimationStep[]}',
   'deck.setMeta {patch: {title, lang, dir, imageStyle}}',
   'theme.update {patch: as theme_update}',

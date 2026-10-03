@@ -39,6 +39,16 @@ describe('read tools', () => {
     ]);
   });
 
+  it('a slide without a layout carries its own archetype', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    await ok(call('slide_update', { slideId: 's_empty', archetype: 'quote' }));
+    const outline = await ok(call('deck_get_outline'));
+    expect((outline.slides as unknown[])[1]).toMatchObject({ id: 's_empty', archetype: 'quote' });
+
+    await ok(call('slide_update', { slideId: 's_empty', archetype: null }));
+    expect(findSlide(bus.deck, 's_empty')!.archetype).toBeUndefined();
+  });
+
   it('deck_get_theme gives the theme and the layouts with their placeholders', async () => {
     const { call } = setup(allElementsDeck());
     const theme = await ok(call('deck_get_theme'));

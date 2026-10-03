@@ -18,3 +18,5 @@ export {
 } from './text';
 export { sanitizeMarkup } from './sanitize';
 export { scopeSlideCss } from './css';
+export { settle } from './settle';
+export { renderSlideOffscreen, type OffscreenOptions, type OffscreenSlide } from './offscreen';

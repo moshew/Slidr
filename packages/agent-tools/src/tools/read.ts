@@ -1,4 +1,4 @@
-import { plainText, walkElements, type Element, type Slide } from '@slidr/model';
+import { plainText, slideArchetype, walkElements, type Element, type Slide } from '@slidr/model';
 import { z } from 'zod';
 import { getElement, getSlide, slideNumber } from '../lookup';
 import { defineTool } from '../tool';
@@ -31,13 +31,14 @@ export const deckGetOutline = defineTool({
         theme: deck.theme.name,
         slideCount: deck.slides.length,
         slides: deck.slides.map((slide, i) => {
-          const layout = deck.layouts.find((l) => l.id === slide.layoutId);
+          const archetype = slideArchetype(deck, slide);
           return {
             number: i + 1,
             id: slide.id,
             ...(slide.name ? { name: slide.name } : {}),
             ...(slideTitle(slide) ? { title: slideTitle(slide) } : {}),
-            ...(layout ? { layoutId: layout.id, archetype: layout.archetype } : {}),
+            ...(slide.layoutId ? { layoutId: slide.layoutId } : {}),
+            ...(archetype ? { archetype } : {}),
             elements: slide.elements.length,
             ...(slide.hidden ? { hidden: true } : {}),
           };

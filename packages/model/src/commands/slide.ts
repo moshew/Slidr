@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { allElementIds, walkElements } from '../queries';
-import { AnimationStep, Background, Id, RichText, Slide, Transition } from '../schema';
+import { AnimationStep, Archetype, Background, Id, RichText, Slide, Transition } from '../schema';
 import {
   applyFields,
   baseDeck,
@@ -82,6 +82,7 @@ export const slideUpdate = defineCommand(
       .strictObject({
         name: z.string().min(1).nullable(),
         layoutId: Id.nullable(),
+        archetype: Archetype.nullable(),
         background: Background.nullable(),
         notes: RichText.nullable(),
         transition: Transition.nullable(),

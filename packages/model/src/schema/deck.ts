@@ -3,7 +3,7 @@ import { AnimationStep, Transition } from './animation';
 import { Element } from './elements';
 import { AssetId, Background, Direction, Id, SLIDE_HEIGHT, SLIDE_WIDTH } from './primitives';
 import { RichText } from './text';
-import { Layout, Theme } from './theme';
+import { Archetype, Layout, Theme } from './theme';
 
 /** Bumped whenever a stored deck needs a migration to load (see ../migrations.ts). */
 export const SCHEMA_VERSION = 1;
@@ -51,6 +51,11 @@ export const Slide = z.strictObject({
   id: Id,
   name: z.string().min(1).optional(),
   layoutId: Id.optional(),
+  /**
+   * What kind of slide this is, for a slide without a layout (one written as HTML has none).
+   * A slide with a layout takes the layout's: see `slideArchetype`.
+   */
+  archetype: Archetype.optional(),
   /** Overrides the theme background. */
   background: Background.optional(),
   /** Array order is z-order: the last element is on top. */

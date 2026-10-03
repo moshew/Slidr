@@ -1,4 +1,4 @@
-import type { Deck, Element, GroupElement, Slide } from './schema';
+import type { Archetype, Deck, Element, GroupElement, Slide } from './schema';
 
 /** Every element of a tree, parents before their children. */
 export function* walkElements(elements: readonly Element[]): Generator<Element> {
@@ -10,6 +10,12 @@ export function* walkElements(elements: readonly Element[]): Generator<Element> 
 
 export function findSlide(deck: Deck, slideId: string): Slide | undefined {
   return deck.slides.find((s) => s.id === slideId);
+}
+
+/** The archetype of a slide: its layout's, or its own when it has no layout. */
+export function slideArchetype(deck: Deck, slide: Slide): Archetype | undefined {
+  const layout = slide.layoutId ? deck.layouts.find((l) => l.id === slide.layoutId) : undefined;
+  return layout?.archetype ?? slide.archetype;
 }
 
 export interface ElementLocation {
