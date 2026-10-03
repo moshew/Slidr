@@ -7,8 +7,9 @@
 //   pnpm --filter @slidr/desktop eval:review -- <run>         a run by folder name
 //   pnpm --filter @slidr/desktop eval:review -- --summary <run> [<run> …]   print, side by side
 //
-// The page saves through this script's own little server (http://localhost:1492). Opened as a
-// file it still shows everything, and offers the scores as a download instead.
+// The page saves through this script's own little server (http://localhost:1492, or the port in
+// SLIDR_EVAL_REVIEW_PORT, for a worktree whose page is open beside another's). Opened as a file
+// it still shows everything, and offers the scores as a download instead.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
@@ -16,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const APP_DIR = fileURLToPath(new URL('../..', import.meta.url));
 const OUT_ROOT = join(APP_DIR, 'test-results', 'eval');
-const PORT = 1492;
+const PORT = Number(process.env.SLIDR_EVAL_REVIEW_PORT ?? 1492);
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const percent = (part, whole) => (whole === 0 ? '–' : `${Math.round((part / whole) * 100)}%`);
