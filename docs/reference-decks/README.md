@@ -73,6 +73,10 @@ And what writing the first deck taught, each of them measured (ADR-039):
   Latin word it is attached to (rephrase).
 - **A background picture** has `background-size: cover`, `background-position: center` and
   `background-repeat: no-repeat`.
+- **A full-image slide has no background colour of its own** (`style="background:none"` on the
+  slide). The picture then becomes the slide's background and the scrim its overlay. With a
+  colour on the slide, the colour is the background, the picture lands in the overlay, and the
+  lint no longer sees that the slide has a picture.
 - No pseudo-elements, no clipping containers, no transforms, no Unicode arrows (the Latin
   subsets of the fonts do not hold them; draw them in SVG).
 
