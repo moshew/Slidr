@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { Settings } from '@slidr/ui/icons';
 import {
   groupContextTools,
+  normalizeKeys,
   registerAction,
+  registerActionPopover,
   registerContextTool,
   registerPanel,
+  registerShortcut,
   registries,
+  shortcutsFor,
   type ContextToolDefinition,
   type ToolPanelDefinition,
 } from './registry';
@@ -85,9 +89,39 @@ describe('row A actions', () => {
     registries.actions
       .getState()
       .items.find((a) => a.id === 'insert.text')
-      ?.run();
+      ?.run?.();
     expect(calls).toEqual(['text']);
     remove();
     expect(registries.actions.getState().items.some((a) => a.id === 'insert.text')).toBe(false);
+  });
+
+  it('takes a popover in place of a handler', () => {
+    const remove = registerActionPopover('insert.shape', Nothing);
+    const entry = registries.actions.getState().items.find((a) => a.id === 'insert.shape');
+    expect(entry?.popover).toBe(Nothing);
+    expect(entry?.run).toBeUndefined();
+    remove();
+  });
+});
+
+describe('shortcuts', () => {
+  it('writes a key combination one way', () => {
+    expect(normalizeKeys('Ctrl+Shift+G')).toBe('ctrl+shift+g');
+    expect(normalizeKeys('shift + ctrl + g')).toBe('ctrl+shift+g');
+    expect(normalizeKeys('Ctrl+]')).toBe('ctrl+]');
+    expect(normalizeKeys('T')).toBe('t');
+  });
+
+  it('finds the shortcuts of a combination, the latest first', () => {
+    const run = () => true;
+    const first = { id: 't.dup', keys: 'Ctrl+D', run };
+    const second = { id: 't.dup2', keys: 'ctrl+d', run };
+    const removeFirst = registerShortcut(first);
+    const removeSecond = registerShortcut(second);
+    expect(shortcutsFor('Ctrl+D')).toEqual([second, first]);
+    expect(shortcutsFor('Ctrl+Shift+D')).toEqual([]);
+    removeFirst();
+    removeSecond();
+    expect(shortcutsFor('Ctrl+D')).toEqual([]);
   });
 });

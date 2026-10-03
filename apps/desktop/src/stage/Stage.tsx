@@ -1,11 +1,16 @@
 import {
+  duplicateElements,
   newId,
   rotatedBounds,
+  rotateVector,
   unionBounds,
   type CommandBus,
   type Deck,
   type Element as SlideElement,
   type Frame,
+  type GroupElement,
+  type ImageElement,
+  type LineElement,
   type Point,
   type SelectionStore,
   type Slide,
@@ -31,23 +36,81 @@ import {
 } from 'react';
 import { useStore } from 'zustand';
 import {
+  cropPan,
+  cropPatch,
+  cropResize,
+  cropView,
+  cropZoom,
+  cropZoomLevel,
+  positionToOwn,
+  type CropView,
+} from './crop';
+import { cropSession, heldRatio, resetCropSession } from './cropSession';
+import {
   fitZoom,
   HANDLES,
   MAX_ZOOM,
   MIN_ZOOM,
   resizeFrame,
   rotationAt,
-  snapBoxes,
   snapMove,
+  snapResize,
   type Guide,
   type Handle,
 } from './geometry';
+import {
+  refitAll,
+  refitGroups,
+  refitPatches,
+  resizeGroup,
+  resizeTogether,
+  type Patch,
+  type Placement,
+} from './groups';
+import {
+  constrainAngle,
+  distanceToLine,
+  insertLinePoint,
+  linePoints,
+  moveLinePoint,
+  neighbourIndex,
+  removeLinePoint,
+} from './line';
+import {
+  CropOverlay,
+  Handles,
+  Label,
+  LineOverlay,
+  Outline,
+  screenBox,
+  type StageView,
+} from './overlays';
+import {
+  apply,
+  applyVector,
+  elementMatrix,
+  indexElements,
+  invert,
+  isTranslation,
+  pathIds,
+  resolveHit,
+  slideBounds,
+  snapCandidates,
+  tidy,
+  validScope,
+  type Located,
+  type Matrix,
+} from './space';
 
 /**
- * The Stage (WG2-T03..T06): the slide at the chosen zoom, and the direct manipulation of its
+ * The Stage (WG2-T03..T06, WG5): the slide at the chosen zoom, and the direct manipulation of its
  * elements. The slide is drawn by `SlideRenderer`; selection, handles, guides and the marquee are
  * a separate layer in screen pixels, so they stay crisp at every zoom (RND-02). Every change is a
  * command: a drag is one transaction, Esc rolls it back (ADR-007).
+ *
+ * Besides moving, resizing and rotating (ADR-012) it crops images, edits the points of lines and
+ * works inside groups (ADR-016). Which group the user has entered is the Stage's own state; the
+ * image being cropped is `selection.editingElementId`, like the text being edited.
  */
 export interface StageProps {
   bus: CommandBus;
@@ -72,27 +135,76 @@ export interface StageProps {
 /** Screen pixels within which an edge snaps or a click counts as a click. */
 const SNAP_PX = 6;
 const DRAG_PX = 3;
-const HANDLE_PX = 8;
-const ROTATE_OFFSET_PX = 24;
+/** How near the stroke of a line the pointer has to be, in screen pixels. */
+const LINE_HIT_PX = 6;
 /** Safe margin and column grid the guides offer (STG-04): 5% of the width, 12 columns. */
 const SAFE_MARGIN = 96;
 const COLUMNS = 12;
 const GUTTER = 24;
+/** Wheel steps or arrow presses this close together are one undo step. */
+const BURST_MS = 800;
+
+/** One element of a move, as it was when the drag began. */
+interface MoveItem {
+  id: string;
+  frame: Frame;
+  /** From slide pixels to the coordinates its frame is written in. */
+  inverse: Matrix;
+  bounds: Frame;
+  path: GroupElement[];
+}
 
 type Gesture =
-  | { kind: 'move'; txId: string; start: Point; originals: Map<string, Frame>; moved: boolean }
+  | {
+      kind: 'move';
+      txId: string;
+      start: Point;
+      moved: boolean;
+      /** Alt: the drag moves copies and leaves the originals (ARR-05). */
+      duplicate: boolean;
+      /** The selection the drag started from, to put back when a duplicating drag is cancelled. */
+      restore: string[];
+      items: MoveItem[];
+      /** The groups around the moved elements, when they share them; otherwise undefined. */
+      path: GroupElement[] | undefined;
+      snapBoxes: Frame[];
+    }
   | {
       kind: 'resize';
       txId: string;
       start: Point;
-      id: string;
+      /** One element, or several of one parent that are resized together. */
+      items: Located[];
+      /** The box the handles are on: the element's frame, or the box around the several. */
       frame: Frame;
       rotation: number;
+      /** The space the box is written in, and the way back from the slide. */
+      space: Matrix;
+      inverse: Matrix;
+      path: GroupElement[];
       handle: Handle;
       aspect: boolean;
+      snapBoxes: Frame[];
     }
-  | { kind: 'rotate'; txId: string; start: Point; id: string; center: Point; rotation: number }
-  | { kind: 'marquee'; start: Point; current: Point; additive: string[] }
+  | { kind: 'rotate'; txId: string; start: Point; located: Located; inverse: Matrix; center: Point }
+  | {
+      kind: 'line-point';
+      txId: string;
+      located: Located & { element: LineElement };
+      inverse: Matrix;
+      index: number;
+      snapBoxes: Frame[];
+    }
+  | {
+      kind: 'crop-resize' | 'crop-pan';
+      txId: string;
+      start: Point;
+      located: Located;
+      inverse: Matrix;
+      view: CropView;
+      handle: Handle;
+    }
+  | { kind: 'marquee'; start: Point; current: Point; additive: string[]; scope: string[] }
   | { kind: 'pan'; start: Point; pan: Point };
 
 function useElementSize(ref: RefObject<HTMLElement | null>): { w: number; h: number } {
@@ -111,53 +223,56 @@ function useElementSize(ref: RefObject<HTMLElement | null>): { w: number; h: num
   return size;
 }
 
-/** The top-level element of the slide under a DOM node: a click inside a group picks the group. */
-function hitElementId(
-  target: EventTarget | null,
-  slideRoot: HTMLElement | null,
-): string | undefined {
-  if (!(target instanceof Element) || !slideRoot) return undefined;
-  let hit = target.closest<HTMLElement>('[data-element-id]');
-  if (!hit || !slideRoot.contains(hit)) return undefined;
-  for (
-    let up = hit.parentElement?.closest<HTMLElement>('[data-element-id]');
-    up && slideRoot.contains(up);
-    up = up.parentElement?.closest<HTMLElement>('[data-element-id]')
-  ) {
-    hit = up;
-  }
-  return hit.dataset.elementId;
+interface Burst {
+  txId: string;
+  at: number;
 }
 
-/**
- * The top-level element under a point. By position, not by event target: while the Stage holds
- * pointer capture (during and right after a drag), events are aimed at the Stage itself.
- */
-function hitElementAt(x: number, y: number, slideRoot: HTMLElement | null): string | undefined {
-  for (const node of document.elementsFromPoint(x, y)) {
-    const id = hitElementId(node, slideRoot);
-    if (id) return id;
-  }
-  return undefined;
+/** The transaction of a burst of key presses or wheel steps; a pause starts the next one. */
+function burstTx(ref: { current: Burst | null }): string {
+  const now = performance.now();
+  if (!ref.current || now - ref.current.at > BURST_MS) ref.current = { txId: newId('tx'), at: now };
+  ref.current.at = now;
+  return ref.current.txId;
 }
 
 function isInEditor(target: EventTarget | null): boolean {
   return target instanceof globalThis.Element && Boolean(target.closest('[data-text-editor]'));
 }
 
-const CURSORS = ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'] as const;
-
-/** The resize cursor of a handle on a box rotated by `rotation`. */
-function handleCursor(handle: Handle, rotation: number): string {
-  const angle = (Math.atan2(handle.y, handle.x) * 180) / Math.PI + rotation + 90;
-  const index = Math.round((((angle % 180) + 180) % 180) / 45) % 4;
-  return CURSORS[index] ?? 'move';
+/** The value of a `data-*` attribute on the target or on what it sits in. */
+function dataOf(target: EventTarget | null, name: string): string | undefined {
+  if (!(target instanceof globalThis.Element)) return undefined;
+  return target.closest(`[data-${name}]`)?.getAttribute(`data-${name}`) ?? undefined;
 }
 
 /** Images, SVG and video keep their proportions unless Shift says otherwise (IMG-02). */
 function keepsAspect(e: SlideElement): boolean {
   return e.type === 'image' || e.type === 'svg' || e.type === 'video';
 }
+
+const sameIds = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
+
+const intersects = (a: Frame, b: Frame) =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+/** The groups around the elements when all of them sit in the same one. */
+function sharedPath(items: readonly { path: GroupElement[] }[]): GroupElement[] | undefined {
+  const head = items[0];
+  if (!head) return undefined;
+  const key = head.path.map((g) => g.id);
+  const same = items.every((item) =>
+    sameIds(
+      item.path.map((g) => g.id),
+      key,
+    ),
+  );
+  return same ? head.path : undefined;
+}
+
+const isLine = (located: Located): located is Located & { element: LineElement } =>
+  located.element.type === 'line';
 
 export function Stage({
   bus,
@@ -196,6 +311,9 @@ export function Stage({
   const [guides, setGuides] = useState<Guide[]>([]);
   const [marquee, setMarquee] = useState<Frame | undefined>();
   const [spaceDown, setSpaceDown] = useState(false);
+  const [overCrop, setOverCrop] = useState(false);
+  /** The groups the user went into by double-click, outermost first (ARR-01). */
+  const [entered, setEntered] = useState<string[]>([]);
   const gesture = useRef<Gesture | null>(null);
   // What kind of drag is under way, for rendering; the gesture itself lives in the ref.
   const [activeKind, setActiveKind] = useState<Gesture['kind'] | null>(null);
@@ -228,24 +346,118 @@ export function Stage({
     [origin.x, origin.y, scale],
   );
 
-  const elementById = useMemo(
-    () => new Map((slide?.elements ?? []).map((e) => [e.id, e])),
-    [slide],
-  );
+  /** Every element of the slide by id, nested ones too, with the space each is written in. */
+  const index = useMemo(() => indexElements(slide?.elements ?? []), [slide]);
+  const selectedLocated = selected
+    .map((id) => index.get(id))
+    .filter((l): l is Located => Boolean(l));
+  const single = selectedLocated.length === 1 ? selectedLocated[0] : undefined;
 
-  const updateFrames = useCallback(
-    (txId: string, frames: Map<string, Partial<Pick<SlideElement, 'frame' | 'rotation'>>>) => {
-      if (!slide || frames.size === 0) return;
-      const commands = [...frames].map(([elementId, patch]) => ({
-        type: 'element.update' as const,
-        slideId: slide.id,
-        elementId,
-        patch,
-      }));
-      bus.batch(commands, { txId, label: 'Move' });
+  // The group being worked in: the one around the selection, or the one entered last.
+  const first = selectedLocated[0];
+  const scope = first ? pathIds(first) : validScope(entered, index);
+
+  // Several elements of one parent have one box around them, in that parent's axes, with handles
+  // that resize them together.
+  const together: Located | undefined =
+    first &&
+    selectedLocated.length > 1 &&
+    sharedPath(selectedLocated) &&
+    selectedLocated.every((l) => !l.locked)
+      ? {
+          ...first,
+          element: {
+            ...first.element,
+            id: 'selection',
+            frame: unionBounds(
+              selectedLocated.map((l) => rotatedBounds(l.element.frame, l.element.rotation)),
+            ),
+            rotation: 0,
+            flipH: false,
+            flipV: false,
+          },
+        }
+      : undefined;
+
+  // ---- Crop mode: `editingElementId` on an image that has a picture of a known size ----
+
+  const editing = editingId ? index.get(editingId) : undefined;
+  const crop = useMemo(() => {
+    const image = editing?.element;
+    if (!editing || image?.type !== 'image' || editing.locked) return undefined;
+    const asset = image.assetId ? deck.assets[image.assetId] : undefined;
+    if (!asset?.width || !asset.height) return undefined;
+    return {
+      located: editing,
+      image,
+      view: cropView(image, { w: asset.width, h: asset.height }),
+      url: resolveAsset?.(asset),
+    };
+  }, [editing, deck.assets, resolveAsset]);
+  const croppingId = crop?.image.id ?? null;
+
+  useEffect(() => {
+    // An image without a picture, or a locked one, has nothing to crop.
+    if (editing?.element.type === 'image' && !croppingId) selection.getState().stopEditing();
+  }, [editing, croppingId, selection]);
+
+  const wasCropping = useRef<string | null>(null);
+  useEffect(() => {
+    if (wasCropping.current === croppingId) return;
+    wasCropping.current = croppingId;
+    resetCropSession();
+    const surface = container.current;
+    if (!surface) return;
+    // Crop mode is left with Esc and Enter, which the Stage hears only when it has the focus:
+    // take it from the button that started crop mode, and from a button that went away with it.
+    const active = document.activeElement;
+    if (croppingId ? !surface.contains(active) : active === document.body) {
+      surface.focus({ preventScroll: true });
+    }
+  }, [croppingId]);
+
+  // ---- Commands ----
+
+  /** Sends patches of elements as one change; `path` keeps the groups around them fitted. */
+  const commit = useCallback(
+    (
+      txId: string,
+      label: string,
+      path: readonly GroupElement[] | undefined,
+      patches: ReadonlyMap<string, Patch>,
+    ) => {
+      if (!slide || patches.size === 0) return;
+      const all = path?.length ? refitPatches(path, patches) : patches;
+      bus.batch(
+        [...all].map(([elementId, patch]) => ({
+          type: 'element.update' as const,
+          slideId: slide.id,
+          elementId,
+          patch,
+        })),
+        { txId, label },
+      );
     },
     [bus, slide],
   );
+
+  const liveIndex = () =>
+    indexElements(bus.deck.slides.find((s) => s.id === slide?.id)?.elements ?? []);
+
+  /** Fits every group of the slide to its children, for changes that spanned several groups. */
+  const refitSlide = (txId: string) => {
+    const now = bus.deck.slides.find((s) => s.id === slide?.id);
+    if (now) commit(txId, 'Move', undefined, refitAll(now.elements));
+  };
+
+  /** The selected elements that can move: not locked, and not inside another selected one. */
+  const movable = (from: ReadonlyMap<string, Located>): Located[] => {
+    const ids = new Set(selection.getState().selectedElementIds);
+    return [...ids]
+      .map((id) => from.get(id))
+      .filter((l): l is Located => Boolean(l))
+      .filter((l) => !l.locked && !l.path.some((group) => ids.has(group.id)));
+  };
 
   const schedule = (work: () => void) => {
     if (frame.current !== undefined) cancelAnimationFrame(frame.current);
@@ -263,8 +475,56 @@ export function Stage({
     frame.current = undefined;
     setGuides([]);
     setMarquee(undefined);
-    if (cancel && g && 'txId' in g) bus.rollback(g.txId);
+    if (!g || !('txId' in g)) return;
+    if (cancel) {
+      bus.rollback(g.txId);
+      // The copies of a duplicating drag are gone again; the originals are selected as before.
+      if (g.kind === 'move' && g.duplicate && g.moved) {
+        selection.getState().selectElements(g.restore);
+      }
+    } else if (g.kind === 'move' && g.moved && !g.path) refitSlide(g.txId);
   };
+
+  // ---- Hit-testing ----
+
+  /**
+   * The element under a point, with the groups around it, outermost first. By position, not by
+   * event target: while the Stage holds pointer capture, events are aimed at the Stage itself. A
+   * line is hit by its stroke, with some slack, and not by the box around it.
+   */
+  const pickAt = (clientX: number, clientY: number): string[] => {
+    const root = slideRoot.current;
+    if (!root || !slide) return [];
+    const p = toSlide(clientX, clientY);
+    const reach = LINE_HIT_PX / scale;
+    let best: Located | undefined;
+    for (const located of index.values()) {
+      if (!isLine(located) || located.hidden) continue;
+      if (distanceToLine(located.element, apply(invert(located.space), p)) > reach) continue;
+      if (!best || located.order > best.order) best = located;
+    }
+    for (const node of document.elementsFromPoint(clientX, clientY)) {
+      if (!root.contains(node)) continue;
+      const id = node.closest<HTMLElement>('[data-element-id]')?.dataset.elementId;
+      const located = id ? index.get(id) : undefined;
+      if (!located || isLine(located)) continue;
+      if (!best || located.order > best.order) best = located;
+      break;
+    }
+    return best ? [...pathIds(best), best.element.id] : [];
+  };
+
+  /** The frame of the image being cropped contains the point. */
+  const inCropFrame = (p: Point): boolean => {
+    if (!crop) return false;
+    const own = apply(invert(elementMatrix(crop.located)), p);
+    const { w, h } = crop.image.frame;
+    return own.x >= 0 && own.x <= w && own.y >= 0 && own.y <= h;
+  };
+
+  /** A slide vector in the axes of the cropped image's frame: rotated with it, not mirrored. */
+  const toFrameAxes = (inverse: Matrix, rotation: number, v: Point): Point =>
+    rotateVector(applyVector(inverse, v), -rotation);
 
   // ---- Pointer ----
 
@@ -272,7 +532,6 @@ export function Stage({
     if (!slide || e.button === 2) return;
     // Inside the text editor the pointer is the editor's: caret, selection, drag-select.
     if (isInEditor(e.target)) return;
-    if (editingId) selection.getState().stopEditing();
     container.current?.focus({ preventScroll: true });
     container.current?.setPointerCapture(e.pointerId);
     const p = toSlide(e.clientX, e.clientY);
@@ -280,68 +539,167 @@ export function Stage({
       if (zoom !== 'fit') begin({ kind: 'pan', start: { x: e.clientX, y: e.clientY }, pan });
       return;
     }
-    const handle = (e.target as HTMLElement).dataset.handle;
-    const single = selected.length === 1 ? elementById.get(selected[0] as string) : undefined;
-    if (handle && single) {
+    if (crop) {
+      const name = dataOf(e.target, 'crop-handle');
+      if (name || inCropFrame(p)) {
+        begin({
+          kind: name ? 'crop-resize' : 'crop-pan',
+          txId: newId('tx'),
+          start: p,
+          located: crop.located,
+          inverse: invert(crop.located.space),
+          view: crop.view,
+          handle: name ? HANDLES[name as keyof typeof HANDLES] : { x: 0, y: 0 },
+        });
+        return;
+      }
+      // A press anywhere else leaves crop mode, and then acts as it always does.
+    }
+    if (editingId) selection.getState().stopEditing();
+
+    const pointIndex = dataOf(e.target, 'line-point');
+    if (pointIndex !== undefined && single && isLine(single) && !single.locked) {
+      begin({
+        kind: 'line-point',
+        txId: newId('tx'),
+        located: single,
+        inverse: invert(single.space),
+        index: Number(pointIndex),
+        snapBoxes: snapCandidates(index, new Set([single.element.id])),
+      });
+      return;
+    }
+    const handle = dataOf(e.target, 'handle');
+    if (handle && single && !single.locked) {
       const txId = newId('tx');
+      const inverse = invert(single.space);
+      const { frame: f } = single.element;
       if (handle === 'rotate') {
-        const c = {
-          x: single.frame.x + single.frame.w / 2,
-          y: single.frame.y + single.frame.h / 2,
-        };
         begin({
           kind: 'rotate',
           txId,
-          start: p,
-          id: single.id,
-          center: c,
-          rotation: single.rotation,
+          start: apply(inverse, p),
+          located: single,
+          inverse,
+          center: { x: f.x + f.w / 2, y: f.y + f.h / 2 },
         });
       } else {
         begin({
           kind: 'resize',
           txId,
           start: p,
-          id: single.id,
-          frame: single.frame,
-          rotation: single.rotation,
+          items: [single],
+          frame: f,
+          rotation: single.element.rotation,
+          space: single.space,
+          inverse,
+          path: single.path,
           handle: HANDLES[handle as keyof typeof HANDLES],
-          aspect: keepsAspect(single),
+          aspect: keepsAspect(single.element),
+          snapBoxes: snapCandidates(index, new Set([single.element.id])),
         });
       }
       return;
     }
-    const hit = hitElementId(e.target, slideRoot.current);
-    const element = hit ? elementById.get(hit) : undefined;
-    if (element && !element.locked) {
-      const state = selection.getState();
-      if (e.shiftKey) {
-        state.toggleElement(element.id);
+    if (handle && together) {
+      // The handles of the box around several elements resize them together.
+      begin({
+        kind: 'resize',
+        txId: newId('tx'),
+        start: p,
+        items: selectedLocated,
+        frame: together.element.frame,
+        rotation: 0,
+        space: together.space,
+        inverse: invert(together.space),
+        path: together.path,
+        handle: HANDLES[handle as keyof typeof HANDLES],
+        aspect: false,
+        snapBoxes: snapCandidates(index, new Set(selected)),
+      });
+      return;
+    }
+
+    const hit = resolveHit(pickAt(e.clientX, e.clientY), scope);
+    const target = hit.id ? index.get(hit.id) : undefined;
+    const state = selection.getState();
+    const within = sameIds(hit.scope, scope);
+    setEntered(hit.scope);
+    if (target && !target.locked) {
+      const { id } = target.element;
+      if (e.shiftKey && within) {
+        state.toggleElement(id);
         return;
       }
-      if (!state.selectedElementIds.includes(element.id)) state.selectElements([element.id]);
-      const ids = selection
-        .getState()
-        .selectedElementIds.filter((id) => !elementById.get(id)?.locked);
+      const before = state.selectedElementIds;
+      if (!before.includes(id)) state.selectElements([id]);
       begin({
         kind: 'move',
         txId: newId('tx'),
         start: p,
-        originals: new Map(ids.map((id) => [id, (elementById.get(id) as SlideElement).frame])),
         moved: false,
+        duplicate: e.altKey,
+        restore: selection.getState().selectedElementIds,
+        items: [],
+        path: undefined,
+        snapBoxes: [],
       });
       return;
     }
-    const additive = e.shiftKey ? selection.getState().selectedElementIds : [];
-    if (!e.shiftKey) selection.getState().clearSelection();
-    begin({ kind: 'marquee', start: p, current: p, additive });
+    const additive = e.shiftKey && within ? state.selectedElementIds : [];
+    if (!additive.length) state.clearSelection();
+    begin({ kind: 'marquee', start: p, current: p, additive, scope: hit.scope });
   };
+
+  /** The drag passed the threshold: copy the elements if Alt asks for it, and note where they are. */
+  const startMove = (g: Extract<Gesture, { kind: 'move' }>, alt: boolean): boolean => {
+    if (!slide) return false;
+    g.duplicate ||= alt;
+    let moving = movable(index);
+    if (g.duplicate && moving.length) {
+      const commands = duplicateElements(
+        bus.deck,
+        slide.id,
+        moving.map((l) => l.element.id),
+      );
+      bus.batch(commands, { txId: g.txId, label: 'Duplicate' });
+      const copies = commands.map((c) => c.element.id);
+      selection.getState().selectElements(copies);
+      const live = liveIndex();
+      moving = copies.map((id) => live.get(id)).filter((l): l is Located => Boolean(l));
+      g.snapBoxes = snapCandidates(live, new Set(copies));
+    } else {
+      g.snapBoxes = snapCandidates(index, new Set(moving.map((l) => l.element.id)));
+    }
+    g.items = moving.map((l) => ({
+      id: l.element.id,
+      frame: l.element.frame,
+      inverse: invert(l.space),
+      bounds: slideBounds(l),
+      path: l.path,
+    }));
+    g.path = sharedPath(g.items);
+    return g.items.length > 0;
+  };
+
+  const snapTargets = (boxes: Frame[]) => ({
+    boxes,
+    slide: deck.size,
+    safeMargin: SAFE_MARGIN,
+    columns: COLUMNS,
+    gutter: GUTTER,
+  });
 
   const onPointerMove = (e: PointerEvent) => {
     const g = gesture.current;
     if (!g) {
-      const hit = hitElementId(e.target, slideRoot.current);
-      setHover(hit && !elementById.get(hit)?.locked ? hit : undefined);
+      if (crop) {
+        setOverCrop(inCropFrame(toSlide(e.clientX, e.clientY)));
+        setHover(undefined);
+        return;
+      }
+      const id = resolveHit(pickAt(e.clientX, e.clientY), scope).id;
+      setHover(id && !index.get(id)?.locked ? id : undefined);
       return;
     }
     if (g.kind === 'pan') {
@@ -361,85 +719,159 @@ export function Stage({
           { x: p.x, y: p.y, w: 0, h: 0 },
         ]);
         setMarquee(box);
-        const hits = slide.elements
-          .filter((el) => !el.locked && !el.hidden)
-          .filter((el) => {
-            const b = rotatedBounds(el.frame, el.rotation);
-            return (
-              b.x < box.x + box.w && b.x + b.w > box.x && b.y < box.y + box.h && b.y + b.h > box.y
-            );
-          })
-          .map((el) => el.id);
+        // What the marquee touches, among the elements of the group it was started in.
+        const hits = [...index.values()]
+          .filter((l) => !l.locked && !l.hidden && sameIds(pathIds(l), g.scope))
+          .filter((l) => intersects(slideBounds(l), box))
+          .map((l) => l.element.id);
         selection.getState().selectElements([...new Set([...g.additive, ...hits])]);
         return;
       }
       if (g.kind === 'move') {
         let dx = p.x - g.start.x;
         let dy = p.y - g.start.y;
-        if (!g.moved && Math.hypot(dx, dy) * scale < DRAG_PX) return;
-        g.moved = true;
+        if (!g.moved) {
+          if (Math.hypot(dx, dy) * scale < DRAG_PX) return;
+          g.moved = true;
+          if (!startMove(g, alt)) return;
+        }
+        if (!g.items.length) return;
         // Shift keeps the drag on one axis.
         if (shift) {
           if (Math.abs(dx) > Math.abs(dy)) dy = 0;
           else dx = 0;
         }
-        const moving = [...g.originals].map(([id, f]) =>
-          rotatedBounds({ ...f, x: f.x + dx, y: f.y + dy }, elementById.get(id)?.rotation ?? 0),
+        const moving = unionBounds(
+          g.items.map((i) => ({ ...i.bounds, x: i.bounds.x + dx, y: i.bounds.y + dy })),
         );
         const snap = free
           ? { dx: 0, dy: 0, guides: [] }
-          : snapMove(
-              unionBounds(moving),
-              {
-                boxes: snapBoxes(slide.elements, new Set(g.originals.keys())),
-                slide: deck.size,
-                safeMargin: SAFE_MARGIN,
-                columns: COLUMNS,
-                gutter: GUTTER,
-              },
-              SNAP_PX / scale,
-            );
+          : snapMove(moving, snapTargets(g.snapBoxes), SNAP_PX / scale);
         if (!shift || dx !== 0) dx += snap.dx;
         if (!shift || dy !== 0) dy += snap.dy;
         setGuides(snap.guides);
-        updateFrames(
-          g.txId,
-          new Map(
-            [...g.originals].map(([id, f]) => [
-              id,
-              { frame: { ...f, x: Math.round(f.x + dx), y: Math.round(f.y + dy) } },
-            ]),
-          ),
+        const patches = new Map<string, Patch>(
+          g.items.map((item) => {
+            // The same distance in the axes of the group the element is in.
+            const d = applyVector(item.inverse, { x: dx, y: dy });
+            return [
+              item.id,
+              {
+                frame: {
+                  ...item.frame,
+                  x: Math.round(item.frame.x + d.x),
+                  y: Math.round(item.frame.y + d.y),
+                },
+              },
+            ];
+          }),
         );
+        commit(g.txId, g.duplicate ? 'Duplicate' : 'Move', g.path, patches);
         return;
       }
       if (g.kind === 'resize') {
+        const keepAspect = g.aspect !== shift;
         const next = resizeFrame(
           g.frame,
           g.rotation,
           g.handle,
-          { x: p.x - g.start.x, y: p.y - g.start.y },
-          {
-            keepAspect: g.aspect !== shift,
-            fromCenter: alt,
-            min: 4,
-          },
+          applyVector(g.inverse, { x: p.x - g.start.x, y: p.y - g.start.y }),
+          { keepAspect, fromCenter: alt, min: 4 },
         );
+        // An upright box in an upright place snaps its moving edges, as a move does.
+        let fitted = next;
+        const upright = g.rotation === 0 && isTranslation(g.space);
+        if (upright && !free && !alt) {
+          const { e: ox, f: oy } = g.space;
+          const snap = snapResize(
+            { ...next, x: next.x + ox, y: next.y + oy },
+            g.handle,
+            snapTargets(g.snapBoxes),
+            SNAP_PX / scale,
+            { keepAspect },
+          );
+          setGuides(snap.guides);
+          fitted = { ...snap.frame, x: snap.frame.x - ox, y: snap.frame.y - oy };
+        } else setGuides([]);
         const rounded = {
-          x: Math.round(next.x),
-          y: Math.round(next.y),
-          w: Math.round(next.w),
-          h: Math.round(next.h),
+          x: Math.round(fitted.x),
+          y: Math.round(fitted.y),
+          w: Math.max(1, Math.round(fitted.w)),
+          h: Math.max(1, Math.round(fitted.h)),
         };
-        updateFrames(g.txId, new Map([[g.id, { frame: rounded }]]));
+        // What is in a group is stretched with it, and so are several elements with their box.
+        const only = g.items.length === 1 ? g.items[0]?.element : undefined;
+        const patches = !only
+          ? resizeTogether(
+              g.items.map((l) => l.element),
+              g.frame,
+              rounded,
+            )
+          : only.type === 'group'
+            ? resizeGroup(only, rounded)
+            : new Map<string, Patch>([[only.id, { frame: rounded }]]);
+        commit(g.txId, 'Resize', g.path, patches);
         return;
       }
       if (g.kind === 'rotate') {
-        updateFrames(
-          g.txId,
-          new Map([[g.id, { rotation: rotationAt(g.center, g.start, p, g.rotation, shift) }]]),
+        const { element } = g.located;
+        const rotation = rotationAt(
+          g.center,
+          g.start,
+          apply(g.inverse, p),
+          element.rotation,
+          shift,
         );
+        commit(g.txId, 'Rotate', g.located.path, new Map([[element.id, { rotation }]]));
+        return;
       }
+      if (g.kind === 'line-point') {
+        const line = g.located.element;
+        const space = g.located.space;
+        let to = p;
+        // Which way the end may still snap: freely, or only along a constrained direction.
+        let snapX = true;
+        let snapY = true;
+        if (shift) {
+          // The angle is measured on the slide, from the neighbouring point.
+          const neighbour = linePoints(line)[neighbourIndex(line.points.length, g.index)] as Point;
+          const anchor = apply(space, neighbour);
+          to = constrainAngle(anchor, p);
+          const horizontal = Math.abs(to.y - anchor.y) < 1e-9;
+          const vertical = Math.abs(to.x - anchor.x) < 1e-9;
+          snapX = horizontal && !vertical;
+          snapY = vertical && !horizontal;
+        }
+        const snap =
+          free || (!snapX && !snapY)
+            ? { dx: 0, dy: 0, guides: [] }
+            : snapMove(
+                { x: to.x, y: to.y, w: 0, h: 0 },
+                { ...snapTargets(g.snapBoxes), spacing: false },
+                SNAP_PX / scale,
+              );
+        setGuides(snap.guides.filter((guide) => (guide.axis === 'x' ? snapX : snapY)));
+        to = { x: to.x + (snapX ? snap.dx : 0), y: to.y + (snapY ? snap.dy : 0) };
+        // Whole pixels, unless that would bend a constrained angle.
+        if (!shift || snapX || snapY) to = { x: Math.round(to.x), y: Math.round(to.y) };
+        const next = moveLinePoint(line, g.index, apply(g.inverse, to));
+        commit(g.txId, 'Edit line', g.located.path, new Map([[line.id, next]]));
+        return;
+      }
+      // Crop: the pointer's way in the axes of the frame.
+      const delta = toFrameAxes(g.inverse, g.view.rotation, {
+        x: p.x - g.start.x,
+        y: p.y - g.start.y,
+      });
+      let next: CropView;
+      if (g.kind === 'crop-resize') {
+        const { w, h } = g.view.frame;
+        // The proportions a preset set are kept; Shift turns that around, as on a resize.
+        const locked = heldRatio(cropSession.getState().ratio, g.view.frame);
+        const ratio = shift ? (locked ? undefined : w / h) : (locked ?? undefined);
+        next = cropResize(g.view, g.handle, delta, { ratio });
+      } else next = cropPan(g.view, delta);
+      commit(g.txId, 'Crop', g.located.path, new Map([[g.located.element.id, cropPatch(next)]]));
     });
   };
 
@@ -449,15 +881,53 @@ export function Stage({
     endGesture(false);
   };
 
+  const canCrop = (image: ImageElement): boolean => {
+    const asset = image.assetId ? deck.assets[image.assetId] : undefined;
+    return Boolean(asset?.width && asset.height);
+  };
+
   const onDoubleClick = (e: MouseEvent) => {
-    const hit = hitElementAt(e.clientX, e.clientY, slideRoot.current);
-    const element = hit ? elementById.get(hit) : undefined;
-    if (element && !element.locked && (element.type === 'text' || element.type === 'shape')) {
+    if (!slide || crop || isInEditor(e.target)) return;
+    // A double-click on a point of the selected line removes it; on its stroke it adds one.
+    if (single && isLine(single) && !single.locked) {
+      const line = single.element;
+      const handle = document
+        .elementsFromPoint(e.clientX, e.clientY)
+        .map((node) => node.getAttribute('data-line-point'))
+        .find((value) => value !== null);
+      if (handle !== undefined && handle !== null) {
+        const next = removeLinePoint(line, Number(handle));
+        if (next) commit(newId('tx'), 'Edit line', single.path, new Map([[line.id, next]]));
+        return;
+      }
+      const at = apply(invert(single.space), toSlide(e.clientX, e.clientY));
+      if (distanceToLine(line, at) <= LINE_HIT_PX / scale) {
+        const { frame: f, points } = insertLinePoint(line, at);
+        commit(newId('tx'), 'Edit line', single.path, new Map([[line.id, { frame: f, points }]]));
+        return;
+      }
+    }
+    const chain = pickAt(e.clientX, e.clientY);
+    const hit = resolveHit(chain, scope);
+    const target = hit.id ? index.get(hit.id) : undefined;
+    if (!target || target.locked) return;
+    const element = target.element;
+    if (element.type === 'text' || element.type === 'shape') {
       setCaretAt({ x: e.clientX, y: e.clientY });
       selection.getState().startEditing(element.id);
+    } else if (element.type === 'image') {
+      if (canCrop(element)) selection.getState().startEditing(element.id);
+    } else if (element.type === 'group') {
+      // One level in: the child under the pointer is selected, the rest of the group stays put.
+      const inside = [...hit.scope, element.id];
+      const child = index.get(chain[inside.length] ?? '');
+      setEntered(inside);
+      if (child && !child.locked) selection.getState().selectElements([child.element.id]);
+      else selection.getState().clearSelection();
     }
   };
 
+  const wheelBurst = useRef<Burst | null>(null);
   const onWheel = (e: WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
       // Zoom around the pointer: the slide point under it stays under it.
@@ -479,6 +949,31 @@ export function Stage({
       onZoomChange?.(rounded);
       return;
     }
+    if (crop && !gesture.current) {
+      // The wheel scales the picture under the frame, around the pointer. Wheel steps can come
+      // faster than the Stage renders, and each one builds on the last: so the image is read
+      // from the deck as it is now, not as it was drawn.
+      const located = liveIndex().get(crop.image.id) ?? crop.located;
+      const image = located.element.type === 'image' ? located.element : crop.image;
+      const asset = image.assetId ? deck.assets[image.assetId] : undefined;
+      const v =
+        asset?.width && asset.height
+          ? cropView(image, { w: asset.width, h: asset.height })
+          : crop.view;
+      const at = apply(invert(elementMatrix(located)), toSlide(e.clientX, e.clientY));
+      const pivot = positionToOwn(v, {
+        x: Math.min(v.frame.w, Math.max(0, at.x)),
+        y: Math.min(v.frame.h, Math.max(0, at.y)),
+      });
+      const level = cropZoomLevel(v, image.fit) * Math.pow(1.0015, -e.deltaY);
+      commit(
+        burstTx(wheelBurst),
+        'Crop',
+        located.path,
+        new Map([[image.id, cropPatch(cropZoom(v, image.fit, level, pivot))]]),
+      );
+      return;
+    }
     if (zoom === 'fit') return;
     setPan((v) => ({
       x: v.x - (e.shiftKey ? e.deltaY : e.deltaX),
@@ -488,15 +983,38 @@ export function Stage({
 
   // ---- Keyboard ----
 
-  const nudge = useRef<{ txId: string; at: number } | null>(null);
+  const nudge = useRef<Burst | null>(null);
   const onKeyDown = (e: KeyboardEvent) => {
     if (isInEditor(e.target)) return;
-    if (e.key === 'Enter' && selected.length === 1) {
-      const target = elementById.get(selected[0] as string);
-      if (target && !target.locked && (target.type === 'text' || target.type === 'shape')) {
+    // Alt is a modifier of drags here; it must not hand the focus to a menu bar.
+    if (e.key === 'Alt') {
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Enter') {
+      if (crop) {
+        e.preventDefault();
+        selection.getState().stopEditing();
+        return;
+      }
+      const target = single && !single.locked ? single.element : undefined;
+      if (target?.type === 'text' || target?.type === 'shape') {
         e.preventDefault();
         setCaretAt(undefined);
         selection.getState().startEditing(target.id);
+        return;
+      }
+      if (target?.type === 'image' && canCrop(target)) {
+        e.preventDefault();
+        selection.getState().startEditing(target.id);
+        return;
+      }
+      if (target?.type === 'group' && single) {
+        e.preventDefault();
+        setEntered([...pathIds(single), target.id]);
+        selection
+          .getState()
+          .selectElements(target.children.filter((c) => !c.locked && !c.hidden).map((c) => c.id));
         return;
       }
     }
@@ -506,24 +1024,50 @@ export function Stage({
       return;
     }
     if (e.key === 'Escape') {
+      // Handled here, so a shortcut of the shell does not act on the same key.
+      e.preventDefault();
       if (gesture.current) endGesture(true);
-      else selection.getState().clearSelection();
+      else if (crop) selection.getState().stopEditing();
+      else if (scope.length) {
+        // Out of the group, one level: the group itself is selected.
+        const group = scope[scope.length - 1] as string;
+        setEntered(scope.slice(0, -1));
+        selection.getState().selectElements([group]);
+      } else selection.getState().clearSelection();
       return;
     }
     if (!slide) return;
-    const ids = selected.filter((id) => !elementById.get(id)?.locked);
-    if ((e.key === 'Delete' || e.key === 'Backspace') && ids.length) {
-      bus.dispatch(
-        { type: 'element.remove', slideId: slide.id, elementIds: ids },
-        { label: 'Delete' },
+    const moving = movable(index);
+    if ((e.key === 'Delete' || e.key === 'Backspace') && moving.length) {
+      const ids = moving.map((l) => l.element.id);
+      const path = sharedPath(moving);
+      // The groups the elements leave shrink around what stays in them.
+      const fitted: ReadonlyMap<string, Placement | null> = path?.length
+        ? refitGroups(path, new Map(ids.map((id) => [id, null])))
+        : new Map();
+      const txId = newId('tx');
+      bus.batch(
+        [
+          { type: 'element.remove' as const, slideId: slide.id, elementIds: ids },
+          ...[...fitted].flatMap(([elementId, patch]) =>
+            patch ? [{ type: 'element.update' as const, slideId: slide.id, elementId, patch }] : [],
+          ),
+        ],
+        { txId, label: 'Delete' },
       );
+      if (!path) refitSlide(txId);
       e.preventDefault();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+      // Everything in the group being worked in, or on the slide.
       selection
         .getState()
-        .selectElements(slide.elements.filter((el) => !el.locked && !el.hidden).map((el) => el.id));
+        .selectElements(
+          [...index.values()]
+            .filter((l) => !l.locked && !l.hidden && sameIds(pathIds(l), scope))
+            .map((l) => l.element.id),
+        );
       e.preventDefault();
       return;
     }
@@ -534,27 +1078,33 @@ export function Stage({
       ArrowDown: { x: 0, y: 1 },
     };
     const dir = arrows[e.key];
-    if (dir && ids.length) {
-      e.preventDefault();
-      const step = e.shiftKey ? 10 : 1;
-      // A burst of presses is one undo step (STG-08).
-      const now = performance.now();
-      if (!nudge.current || now - nudge.current.at > 800)
-        nudge.current = { txId: newId('tx'), at: now };
-      nudge.current.at = now;
-      updateFrames(
-        nudge.current.txId,
-        new Map(
-          ids.map((id) => {
-            const f = (elementById.get(id) as SlideElement).frame;
-            return [id, { frame: { ...f, x: f.x + dir.x * step, y: f.y + dir.y * step } }];
-          }),
-        ),
-      );
+    if (!dir || (!crop && !moving.length)) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    const by = { x: dir.x * step, y: dir.y * step };
+    // A burst of presses is one undo step (STG-08).
+    const txId = burstTx(nudge);
+    if (crop) {
+      // In crop mode the arrows move the picture under the frame.
+      const { located, view: v, image } = crop;
+      const delta = toFrameAxes(invert(located.space), v.rotation, by);
+      commit(txId, 'Crop', located.path, new Map([[image.id, cropPatch(cropPan(v, delta))]]));
+      return;
     }
+    const patches = new Map<string, Patch>(
+      moving.map((l) => {
+        const d = applyVector(invert(l.space), by);
+        const f = l.element.frame;
+        return [l.element.id, { frame: { ...f, x: tidy(f.x + d.x), y: tidy(f.y + d.y) } }];
+      }),
+    );
+    const path = sharedPath(moving);
+    commit(txId, 'Move', path, patches);
+    if (!path) refitSlide(txId);
   };
   const onKeyUp = (e: KeyboardEvent) => {
     if (e.key === ' ') setSpaceDown(false);
+    if (e.key === 'Alt') e.preventDefault();
   };
 
   // ---- Files ----
@@ -600,53 +1150,73 @@ export function Stage({
     [editingId, slide, bus, deck.theme, caretAt, exitEditing],
   );
 
-  const screen = (f: Frame): CSSProperties => ({
-    position: 'absolute',
-    left: origin.x + f.x * scale,
-    top: origin.y + f.y * scale,
-    width: f.w * scale,
-    height: f.h * scale,
-  });
-
-  const selectedElements = selected
-    .map((id) => elementById.get(id))
-    .filter((e): e is SlideElement => Boolean(e));
-  const single = selectedElements.length === 1 ? selectedElements[0] : undefined;
+  const stageView: StageView = { origin, scale };
   const active = activeKind;
+  const hovered = hover && !selected.includes(hover) ? index.get(hover) : undefined;
+  const enteredGroup = scope.length ? index.get(scope[scope.length - 1] as string) : undefined;
+
+  // The size or the angle, next to what a handle is changing.
+  const sized = single ?? together;
+  let label: string | undefined;
+  if (sized && (active === 'resize' || active === 'crop-resize')) {
+    label = `${Math.round(sized.element.frame.w)} × ${Math.round(sized.element.frame.h)}`;
+  } else if (single && active === 'rotate') label = `${Math.round(single.element.rotation)}°`;
 
   let overlay: ReactNode = null;
   if (slide) {
     overlay = (
       <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-        {hover && !selected.includes(hover) && elementById.get(hover) ? (
-          <Outline element={elementById.get(hover) as SlideElement} screen={screen} hover />
+        {enteredGroup ? <Outline located={enteredGroup} view={stageView} entered /> : null}
+        {hovered ? (
+          isLine(hovered) ? (
+            <LineOverlay located={hovered} view={stageView} hover />
+          ) : (
+            <Outline located={hovered} view={stageView} hover />
+          )
         ) : null}
-        {selectedElements.map((el) => (
-          <Outline key={el.id} element={el} screen={screen} locked={el.locked} />
-        ))}
-        {selectedElements.length > 1 ? (
+        {selectedLocated.map((located) =>
+          located.element.id === croppingId ? null : isLine(located) ? (
+            <LineOverlay
+              key={located.element.id}
+              located={located}
+              view={stageView}
+              handles={located === single && !located.locked}
+            />
+          ) : (
+            <Outline
+              key={located.element.id}
+              located={located}
+              view={stageView}
+              dashed={located.locked}
+            />
+          ),
+        )}
+        {together ? (
+          <>
+            <Outline located={together} view={stageView} dashed />
+            <Handles located={together} view={stageView} noRotate />
+          </>
+        ) : selectedLocated.length > 1 ? (
           <div
             style={{
-              ...screen(
-                unionBounds(selectedElements.map((el) => rotatedBounds(el.frame, el.rotation))),
-              ),
+              ...screenBox(unionBounds(selectedLocated.map((l) => slideBounds(l))), stageView),
               outline: '1px dashed var(--color-ui-accent)',
             }}
           />
         ) : null}
-        {single && !single.locked && editingId !== single.id ? (
-          <Handles
-            element={single}
-            screen={screen}
-            scale={scale}
-            label={
-              active === 'resize'
-                ? `${Math.round(single.frame.w)} × ${Math.round(single.frame.h)}`
-                : active === 'rotate'
-                  ? `${Math.round(single.rotation)}°`
-                  : undefined
-            }
+        {crop ? (
+          <CropOverlay
+            located={crop.located}
+            view={stageView}
+            crop={crop.view}
+            url={crop.url}
+            active={active === 'crop-resize' || active === 'crop-pan'}
           />
+        ) : single && !single.locked && editingId !== single.element.id ? (
+          <Handles located={single} view={stageView} rotateOnly={isLine(single)} />
+        ) : null}
+        {sized && label ? (
+          <Label bounds={slideBounds(sized)} view={stageView} text={label} />
         ) : null}
         {guides.map((g, i) => (
           <div
@@ -675,7 +1245,7 @@ export function Stage({
         {marquee ? (
           <div
             style={{
-              ...screen(marquee),
+              ...screenBox(marquee, stageView),
               background: 'var(--color-ui-accent-soft)',
               outline: '1px solid var(--color-ui-accent)',
             }}
@@ -689,6 +1259,8 @@ export function Stage({
     <div
       ref={container}
       data-testid="stage-surface"
+      data-cropping={croppingId ?? undefined}
+      data-entered={scope.length ? scope.join(' ') : undefined}
       className={className}
       tabIndex={0}
       onPointerDown={onPointerDown}
@@ -707,7 +1279,7 @@ export function Stage({
         position: 'relative',
         overflow: 'hidden',
         outline: 'none',
-        cursor: spaceDown ? 'grab' : undefined,
+        cursor: spaceDown ? 'grab' : crop && overCrop ? 'move' : undefined,
         userSelect: 'none',
         touchAction: 'none',
         ...style,
@@ -740,118 +1312,12 @@ export function Stage({
               slide={slide}
               mode="edit"
               resolveAsset={resolveAsset}
-              textSlot={editingId ? textSlot : undefined}
+              textSlot={editingId && !croppingId ? textSlot : undefined}
             />
           </div>
         </div>
       ) : null}
       {overlay}
-    </div>
-  );
-}
-
-function Outline({
-  element,
-  screen,
-  hover,
-  locked,
-}: {
-  element: SlideElement;
-  screen: (f: Frame) => CSSProperties;
-  hover?: boolean;
-  locked?: boolean;
-}) {
-  return (
-    <div
-      data-outline={element.id}
-      style={{
-        ...screen(element.frame),
-        transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
-        outline: `${hover ? 1 : 1.5}px ${locked ? 'dashed' : 'solid'} var(--color-ui-accent)`,
-      }}
-    />
-  );
-}
-
-function Handles({
-  element,
-  screen,
-  scale,
-  label,
-}: {
-  element: SlideElement;
-  screen: (f: Frame) => CSSProperties;
-  scale: number;
-  label?: string;
-}) {
-  const { w, h } = element.frame;
-  const sw = w * scale;
-  const sh = h * scale;
-  const box: CSSProperties = {
-    ...screen(element.frame),
-    transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
-  };
-  const handle = (name: keyof typeof HANDLES): ReactNode => {
-    const hd = HANDLES[name];
-    // Handles that would sit on top of each other on a tiny box are left out.
-    if ((hd.x === 0 && sw < 3 * HANDLE_PX) || (hd.y === 0 && sh < 3 * HANDLE_PX)) return null;
-    return (
-      <div
-        key={name}
-        data-handle={name}
-        style={{
-          position: 'absolute',
-          left: ((hd.x + 1) / 2) * sw - HANDLE_PX / 2,
-          top: ((hd.y + 1) / 2) * sh - HANDLE_PX / 2,
-          width: HANDLE_PX,
-          height: HANDLE_PX,
-          boxSizing: 'border-box',
-          background: 'var(--color-ui-panel)',
-          border: '1.5px solid var(--color-ui-accent)',
-          borderRadius: 2,
-          pointerEvents: 'auto',
-          cursor: handleCursor(hd, element.rotation),
-        }}
-      />
-    );
-  };
-  return (
-    <div style={box}>
-      {(Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map(handle)}
-      <div
-        data-handle="rotate"
-        style={{
-          position: 'absolute',
-          left: sw / 2 - 5,
-          top: -ROTATE_OFFSET_PX - 5,
-          width: 10,
-          height: 10,
-          boxSizing: 'border-box',
-          borderRadius: '50%',
-          background: 'var(--color-ui-panel)',
-          border: '1.5px solid var(--color-ui-accent)',
-          pointerEvents: 'auto',
-          cursor: 'grab',
-        }}
-      />
-      {label ? (
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: sh + 10,
-            transform: `translateX(-50%) rotate(${-element.rotation}deg)`,
-            padding: '2px 6px',
-            borderRadius: 4,
-            background: 'var(--color-ui-accent)',
-            color: 'var(--color-ui-on-accent)',
-            font: '500 11px/16px var(--font-ui)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {label}
-        </div>
-      ) : null}
     </div>
   );
 }

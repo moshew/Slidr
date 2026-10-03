@@ -1,33 +1,105 @@
-import { createSlide, type CommandBus, type Deck, type SelectionStore } from '@slidr/model';
+import {
+  slideFromLayout,
+  type CommandBus,
+  type Deck,
+  type Layout,
+  type SelectionStore,
+  type Slide,
+} from '@slidr/model';
 import { ScaledSlide, type AssetResolver } from '@slidr/renderer';
 import {
   memo,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
 } from 'react';
-import { Icon, Tooltip } from '@slidr/ui';
-import { Plus } from '@slidr/ui/icons';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+  Icon,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  ScrollArea,
+  Tooltip,
+} from '@slidr/ui';
+import {
+  ClipboardPaste,
+  Copy,
+  CopyPlus,
+  Eye,
+  EyeOff,
+  Plus,
+  Scissors,
+  Trash2,
+} from '@slidr/ui/icons';
 import { useStore } from 'zustand';
+import {
+  addSlide,
+  allHidden,
+  duplicateSlides,
+  removeSlides,
+  setSlidesHidden,
+} from '../arrange/slides';
 
 /**
- * The Filmstrip (WG2-T07, FLM-01..03): thumbnails of every slide, in the reading direction of the
- * UI. Only the thumbnails in view are rendered, so 200 slides scroll as smoothly as 10 (NFR-05).
- * Click picks a slide, Ctrl adds to the selection, Shift selects a range; dragging reorders.
+ * The Filmstrip (WG2-T07, WG5-T08, FLM-01..03): thumbnails of every slide, in the reading
+ * direction of the UI. Only the thumbnails in view are rendered, so 200 slides scroll as smoothly
+ * as 10 (NFR-05). Click picks a slide, Ctrl adds to the selection, Shift selects a range; dragging
+ * reorders; a right click opens the slide menu, which acts on the whole selection.
+ *
+ * It is a standalone component: it knows the bus and the selection, and gets its labels and the
+ * clipboard from the host.
  */
 export interface FilmstripProps {
   bus: CommandBus;
   deck: Deck;
   selection: SelectionStore;
   resolveAsset?: AssetResolver;
-  /** The "new slide" button (FLM-03). Without it the button adds a blank slide after the current one. */
-  onAddSlide?: () => void;
-  /** Labels in the UI language. */
-  labels?: { addSlide: string; slide: (n: number) => string };
+  /**
+   * Copy, cut and paste of slides. The clipboard belongs to the host (it needs the window's
+   * clipboard events); without it the menu leaves these three out.
+   */
+  clipboard?: FilmstripClipboard;
+  /** Labels in the UI language. Default: English. */
+  labels?: FilmstripLabels;
   className?: string;
+}
+
+export interface FilmstripClipboard {
+  copy: (slideIds: string[]) => void;
+  cut: (slideIds: string[]) => void;
+  /** Pastes after the current slide. */
+  paste: () => void;
+  /** Whether there is something to paste; asked when the menu opens. */
+  canPaste: () => boolean;
+}
+
+export interface FilmstripLabels {
+  addSlide: string;
+  slide: (n: number) => string;
+  /** The mark on a slide that is left out of the presentation. */
+  hidden: string;
+  /** The first choice among the layouts of a new slide. */
+  blank: string;
+  duplicate: string;
+  delete: string;
+  hide: string;
+  show: string;
+  copy: string;
+  cut: string;
+  paste: string;
 }
 
 export const THUMB_W = 176;
@@ -38,8 +110,22 @@ const STEP = THUMB_W + GAP;
 /** Thumbnails rendered beyond each edge of the view. */
 const OVERSCAN = 3;
 const DRAG_PX = 4;
+/** A layout in the "new slide" popover. */
+const LAYOUT_W = 120;
 
-const DEFAULT_LABELS = { addSlide: 'New slide', slide: (n: number) => `Slide ${n}` };
+const DEFAULT_LABELS: FilmstripLabels = {
+  addSlide: 'New slide',
+  slide: (n: number) => `Slide ${n}`,
+  hidden: 'Hidden',
+  blank: 'Blank slide',
+  duplicate: 'Duplicate',
+  delete: 'Delete',
+  hide: 'Hide',
+  show: 'Show',
+  copy: 'Copy',
+  cut: 'Cut',
+  paste: 'Paste',
+};
 
 interface Drag {
   pointerId: number;
@@ -57,6 +143,7 @@ const Thumb = memo(function Thumb({
   current,
   resolveAsset,
   label,
+  hiddenLabel,
 }: {
   deck: Deck;
   slideIndex: number;
@@ -64,6 +151,7 @@ const Thumb = memo(function Thumb({
   current: boolean;
   resolveAsset?: AssetResolver;
   label: string;
+  hiddenLabel: string;
 }) {
   const slide = deck.slides[slideIndex];
   if (!slide) return null;
@@ -71,8 +159,9 @@ const Thumb = memo(function Thumb({
     <div
       role="option"
       aria-selected={selected}
-      aria-label={label}
+      aria-label={slide.hidden ? `${label}, ${hiddenLabel}` : label}
       data-slide-id={slide.id}
+      data-hidden={slide.hidden || undefined}
       style={{
         position: 'absolute',
         insetInlineStart: PAD + slideIndex * STEP,
@@ -103,6 +192,28 @@ const Thumb = memo(function Thumb({
           resolveAsset={resolveAsset}
         />
       </div>
+      {slide.hidden ? (
+        // The mark sits outside the dimmed picture, so it stays at full strength.
+        <div
+          data-testid="slide-hidden-mark"
+          style={{
+            position: 'absolute',
+            top: 6,
+            insetInlineEnd: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 22,
+            height: 22,
+            borderRadius: 'var(--radius-small)',
+            background: 'var(--color-ui-raised)',
+            color: 'var(--color-ui-fg)',
+            boxShadow: 'var(--shadow-raised), 0 0 0 1px var(--color-ui-line)',
+          }}
+        >
+          <Icon icon={EyeOff} />
+        </div>
+      ) : null}
       <div
         style={{
           marginTop: 4,
@@ -117,21 +228,128 @@ const Thumb = memo(function Thumb({
   );
 });
 
+/** A layout as a small picture: its background and decorations, and where its placeholders sit. */
+function LayoutPreview({
+  deck,
+  layout,
+  resolveAsset,
+}: {
+  deck: Deck;
+  layout: Layout;
+  resolveAsset?: AssetResolver;
+}) {
+  // The slide of the layout without its (empty) elements: the renderer draws the rest.
+  const slide = useMemo(
+    () => ({ ...slideFromLayout(deck, layout.id).slide, elements: [] }),
+    [deck, layout.id],
+  );
+  const scale = LAYOUT_W / deck.size.w;
+  return (
+    <div style={{ position: 'relative', width: LAYOUT_W, height: deck.size.h * scale }}>
+      <ScaledSlide
+        deck={deck}
+        slide={slide}
+        width={LAYOUT_W}
+        mode="thumbnail"
+        resolveAsset={resolveAsset}
+      />
+      {layout.placeholders.map((p) => (
+        <div
+          key={p.id}
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: p.frame.x * scale,
+            top: p.frame.y * scale,
+            width: p.frame.w * scale,
+            height: p.frame.h * scale,
+            boxSizing: 'border-box',
+            border: '1px dashed var(--color-ui-fg-subtle)',
+            borderRadius: 2,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** A slide with nothing on it, for the picture of the "blank" choice: the theme's background. */
+const BLANK: Slide = { id: 's_blank', elements: [], timeline: [] };
+
+/** The choices of a new slide (FLM-03): blank, or one of the deck's layouts. */
+function LayoutChoices({
+  deck,
+  resolveAsset,
+  blankLabel,
+  onChoose,
+}: {
+  deck: Deck;
+  resolveAsset?: AssetResolver;
+  blankLabel: string;
+  onChoose: (layoutId?: string) => void;
+}) {
+  const card =
+    'flex cursor-default flex-col items-center gap-1.5 rounded-control p-1.5 text-xs text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed';
+  const frame = {
+    borderRadius: 'var(--radius-small)',
+    overflow: 'hidden',
+    boxShadow: '0 0 0 1px var(--color-ui-line)',
+  };
+  return (
+    <ScrollArea className="-m-2" viewportClassName="max-h-96">
+      <div className="grid grid-cols-2 gap-1 p-2">
+        <button type="button" data-layout="" className={card} onClick={() => onChoose()}>
+          <div style={frame}>
+            <ScaledSlide
+              deck={deck}
+              slide={BLANK}
+              width={LAYOUT_W}
+              mode="thumbnail"
+              resolveAsset={resolveAsset}
+            />
+          </div>
+          <span className="max-w-full truncate">{blankLabel}</span>
+        </button>
+        {deck.layouts.map((layout) => (
+          <button
+            key={layout.id}
+            type="button"
+            data-layout={layout.id}
+            className={card}
+            onClick={() => onChoose(layout.id)}
+          >
+            <div style={frame}>
+              <LayoutPreview deck={deck} layout={layout} resolveAsset={resolveAsset} />
+            </div>
+            <span className="max-w-full truncate">{layout.name}</span>
+          </button>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
+
+const NO_KEYS = { ctrlKey: false, metaKey: false, shiftKey: false };
+
 export function Filmstrip({
   bus,
   deck,
   selection,
   resolveAsset,
-  onAddSlide,
+  clipboard,
   labels = DEFAULT_LABELS,
   className,
 }: FilmstripProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ pos: 0, width: 0 });
   const [drag, setDrag] = useState<Drag | null>(null);
+  /** What the open menu is about: a slide (and the selection around it) or the empty strip. */
+  const [menu, setMenu] = useState({ onSlide: false, canPaste: false });
+  const [choosing, setChoosing] = useState(false);
   const currentId = useStore(selection, (s) => s.currentSlideId);
   const selectedIds = useStore(selection, (s) => s.selectedSlideIds);
   const slides = deck.slides;
+  const hasLayouts = deck.layouts.length > 0;
   const total = PAD * 2 + slides.length * STEP + THUMB_W;
 
   const measure = () => {
@@ -261,13 +479,18 @@ export function Filmstrip({
     setDrag(null);
   };
 
-  const addSlide = () => {
-    if (onAddSlide) return onAddSlide();
-    const index = slides.findIndex((s) => s.id === currentId) + 1;
-    const slide = createSlide({});
-    bus.dispatch({ type: 'slide.add', slide, index }, { label: 'New slide' });
-    selection.getState().setCurrentSlide(slide.id);
+  /** A right click acts on the selection the slide is part of, or on that slide alone. */
+  const onContextMenu = (e: MouseEvent) => {
+    const index = indexAt(e.clientX);
+    const slide = slides[index];
+    if (slide && !selection.getState().selectedSlideIds.includes(slide.id)) select(index, NO_KEYS);
+    setMenu({ onSlide: Boolean(slide), canPaste: clipboard?.canPaste() ?? false });
   };
+
+  const add = (layoutId?: string) => addSlide(bus, selection, { layoutId, label: labels.addSlide });
+  /** The slides the menu acts on, as they are when an item is chosen. */
+  const chosen = () => selection.getState().selectedSlideIds;
+  const hiddenAll = allHidden(deck, selectedIds);
 
   const onKeyDown = (e: KeyboardEvent) => {
     const index = slides.findIndex((s) => s.id === currentId);
@@ -292,77 +515,196 @@ export function Filmstrip({
     }
     if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length) {
       e.preventDefault();
-      bus.dispatch({ type: 'slide.remove', slideIds: selectedIds }, { label: 'Delete slides' });
+      removeSlides(bus, selectedIds, labels.delete);
     }
   };
 
   const indicator = drag?.active ? PAD + drag.slot * STEP - GAP / 2 - 1 : undefined;
 
-  return (
-    <div
-      ref={scroller}
-      role="listbox"
-      aria-multiselectable
-      aria-orientation="horizontal"
-      tabIndex={0}
-      className={className}
-      onScroll={measure}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => setDrag(null)}
-      onKeyDown={onKeyDown}
-      style={{
-        position: 'relative',
-        overflowX: 'auto',
-        overflowY: 'hidden',
-        outline: 'none',
-        userSelect: 'none',
-      }}
+  const addButton = (
+    <button
+      type="button"
+      aria-label={labels.addSlide}
+      data-testid="new-slide"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={hasLayouts ? undefined : () => add()}
+      className="inline-flex h-thumb-h w-thumb-h cursor-default items-center justify-center rounded-small border border-dashed border-ui-line-strong text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed"
     >
-      <div style={{ position: 'relative', width: total, height: '100%' }}>
-        {slides.slice(first, last + 1).map((slide, i) => (
-          <Thumb
-            key={slide.id}
-            deck={deck}
-            slideIndex={first + i}
-            selected={selectedIds.includes(slide.id)}
-            current={slide.id === currentId}
-            resolveAsset={resolveAsset}
-            label={labels.slide(first + i + 1)}
-          />
-        ))}
-        <div
-          style={{ position: 'absolute', insetInlineStart: PAD + slides.length * STEP, top: 10 }}
-        >
-          <Tooltip content={labels.addSlide} shortcut="Ctrl+M">
-            <button
-              type="button"
-              aria-label={labels.addSlide}
-              data-testid="new-slide"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={addSlide}
-              className="inline-flex h-thumb-h w-thumb-h cursor-default items-center justify-center rounded-small border border-dashed border-ui-line-strong text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed"
-            >
-              <Icon icon={Plus} size="md" />
-            </button>
-          </Tooltip>
-        </div>
-        {indicator !== undefined ? (
+      <Icon icon={Plus} size="md" />
+    </button>
+  );
+
+  /*
+   * The menu and the layout popover are siblings of the strip in the React tree, not children of
+   * it: React events bubble through portals, and a click in a popover must not reach the strip's
+   * pointer and key handlers.
+   */
+  return (
+    <Popover open={choosing} onOpenChange={setChoosing}>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
           <div
-            aria-hidden
+            ref={scroller}
+            role="listbox"
+            aria-multiselectable
+            aria-orientation="horizontal"
+            tabIndex={0}
+            data-filmstrip=""
+            className={className}
+            onScroll={measure}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={() => setDrag(null)}
+            onKeyDown={onKeyDown}
+            onContextMenu={onContextMenu}
             style={{
-              position: 'absolute',
-              insetInlineStart: indicator,
-              top: 6,
-              width: 2,
-              height: THUMB_H + 8,
-              borderRadius: 1,
-              background: 'var(--color-ui-accent)',
+              position: 'relative',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              outline: 'none',
+              userSelect: 'none',
+            }}
+          >
+            <div style={{ position: 'relative', width: total, height: '100%' }}>
+              {slides.slice(first, last + 1).map((slide, i) => (
+                <Thumb
+                  key={slide.id}
+                  deck={deck}
+                  slideIndex={first + i}
+                  selected={selectedIds.includes(slide.id)}
+                  current={slide.id === currentId}
+                  resolveAsset={resolveAsset}
+                  label={labels.slide(first + i + 1)}
+                  hiddenLabel={labels.hidden}
+                />
+              ))}
+              <div
+                style={{
+                  position: 'absolute',
+                  insetInlineStart: PAD + slides.length * STEP,
+                  top: 10,
+                }}
+              >
+                {/* With layouts in the deck the button offers them (FLM-03). */}
+                <Tooltip content={labels.addSlide} shortcut="Ctrl+M">
+                  {hasLayouts ? <PopoverTrigger asChild>{addButton}</PopoverTrigger> : addButton}
+                </Tooltip>
+              </div>
+              {indicator !== undefined ? (
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    insetInlineStart: indicator,
+                    top: 6,
+                    width: 2,
+                    height: THUMB_H + 8,
+                    borderRadius: 1,
+                    background: 'var(--color-ui-accent)',
+                  }}
+                />
+              ) : null}
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent data-testid="slide-menu">
+          {hasLayouts ? (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger icon={Plus}>{labels.addSlide}</ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuItem onSelect={() => add()}>{labels.blank}</ContextMenuItem>
+                <ContextMenuSeparator />
+                {deck.layouts.map((layout) => (
+                  <ContextMenuItem key={layout.id} onSelect={() => add(layout.id)}>
+                    {layout.name}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          ) : (
+            <ContextMenuItem icon={Plus} shortcut="Ctrl+M" onSelect={() => add()}>
+              {labels.addSlide}
+            </ContextMenuItem>
+          )}
+          {menu.onSlide ? (
+            <>
+              <ContextMenuItem
+                icon={CopyPlus}
+                shortcut="Ctrl+D"
+                onSelect={() => duplicateSlides(bus, selection, chosen(), labels.duplicate)}
+              >
+                {labels.duplicate}
+              </ContextMenuItem>
+              <ContextMenuItem
+                icon={hiddenAll ? Eye : EyeOff}
+                onSelect={() =>
+                  setSlidesHidden(bus, chosen(), !hiddenAll, hiddenAll ? labels.show : labels.hide)
+                }
+              >
+                {hiddenAll ? labels.show : labels.hide}
+              </ContextMenuItem>
+            </>
+          ) : null}
+          {clipboard ? (
+            <>
+              <ContextMenuSeparator />
+              {menu.onSlide ? (
+                <>
+                  <ContextMenuItem
+                    icon={Scissors}
+                    shortcut="Ctrl+X"
+                    onSelect={() => clipboard.cut(chosen())}
+                  >
+                    {labels.cut}
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    icon={Copy}
+                    shortcut="Ctrl+C"
+                    onSelect={() => clipboard.copy(chosen())}
+                  >
+                    {labels.copy}
+                  </ContextMenuItem>
+                </>
+              ) : null}
+              <ContextMenuItem
+                icon={ClipboardPaste}
+                shortcut="Ctrl+V"
+                disabled={!menu.canPaste}
+                onSelect={() => clipboard.paste()}
+              >
+                {labels.paste}
+              </ContextMenuItem>
+            </>
+          ) : null}
+          {menu.onSlide ? (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                icon={Trash2}
+                shortcut="Del"
+                tone="danger"
+                onSelect={() => removeSlides(bus, chosen(), labels.delete)}
+              >
+                {labels.delete}
+              </ContextMenuItem>
+            </>
+          ) : null}
+        </ContextMenuContent>
+      </ContextMenu>
+      {hasLayouts ? (
+        <PopoverContent side="top" align="end" data-testid="layout-choices">
+          <LayoutChoices
+            deck={deck}
+            resolveAsset={resolveAsset}
+            blankLabel={labels.blank}
+            onChoose={(layoutId) => {
+              setChoosing(false);
+              add(layoutId);
             }}
           />
-        ) : null}
-      </div>
-    </div>
+        </PopoverContent>
+      ) : null}
+    </Popover>
   );
 }

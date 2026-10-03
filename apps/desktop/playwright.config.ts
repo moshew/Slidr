@@ -5,7 +5,13 @@ import { defineConfig } from '@playwright/test';
 // and it needs no browser download.
 export default defineConfig({
   testDir: './e2e',
+  // Playwright empties its output folder at the start of every run. Screenshots written for the
+  // design gate live next to it (`test-results/<area>/`), so they survive the next run.
+  outputDir: './test-results/.playwright',
   fullyParallel: true,
+  // Half the cores by default is too many here: every test drives a full editor, and with a
+  // dozen at once they time out waiting for a stable frame.
+  workers: 6,
   forbidOnly: Boolean(process.env.CI),
   reporter: [['list']],
   use: {

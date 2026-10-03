@@ -12,6 +12,7 @@ import {
   type SelectionState,
   type SelectionStore,
 } from '@slidr/model';
+import { memoryAssets, workspaceAssets, type AssetService } from '../document/assets';
 import { DocumentService } from '../document/documentService';
 import type { Storage } from '../document/storage';
 
@@ -34,6 +35,8 @@ export interface Editor {
   selection: SelectionStore;
   /** Files and workspaces. Null in a plain browser (Playwright, the Vite page): no Tauri core. */
   document: DocumentService | null;
+  /** The document's asset files: in the workspace, or in memory when there is no storage. */
+  assets: AssetService;
   /** The storage under the document service; the shell reads the recent files from it. */
   storage: Storage | null;
   file: StoreApi<FileState>;
@@ -44,7 +47,24 @@ export function newDeck(lang: string): Deck {
   return createDeck({ lang, slides: [createSlide()] });
 }
 
+let current: Editor | null = null;
+
+/**
+ * The editor of this window, for code that is not a component: a row A action, a shortcut.
+ * Components use `useEditor()`.
+ */
+export function getEditor(): Editor {
+  if (!current) throw new Error('The editor has not been created yet.');
+  return current;
+}
+
 export function createEditor(options: { lang: string; storage: Storage | null }): Editor {
+  const editor = buildEditor(options);
+  current = editor;
+  return editor;
+}
+
+function buildEditor(options: { lang: string; storage: Storage | null }): Editor {
   const bus = new CommandBus(newDeck(options.lang));
   // Created before the subscription below, so `dirty` is current when it runs.
   const document = options.storage
@@ -61,6 +81,7 @@ export function createEditor(options: { lang: string; storage: Storage | null })
     deck: createDeckStore(bus),
     selection: createSelectionStore(bus),
     document,
+    assets: document ? workspaceAssets(document) : memoryAssets(),
     storage: options.storage,
     file,
   };

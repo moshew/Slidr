@@ -3,7 +3,11 @@ import '@fontsource-variable/heebo';
 import '../../app.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { registerBuiltinFonts } from '../../fonts';
 import { Gallery, type Cell } from './Gallery';
+
+// The font picker draws every family in its own face.
+registerBuiltinFonts();
 
 // The component gallery (DSN-06), served by the dev server at /dev/gallery.html.
 const params = new URLSearchParams(location.search);

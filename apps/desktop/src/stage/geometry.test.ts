@@ -1,6 +1,14 @@
 import { frameCenter, rotateVector, type Frame } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { fitZoom, HANDLES, resizeFrame, rotationAt, snapBoxes, snapMove } from './geometry';
+import {
+  fitZoom,
+  HANDLES,
+  resizeFrame,
+  rotationAt,
+  snapBoxes,
+  snapMove,
+  snapResize,
+} from './geometry';
 
 const SLIDE = { w: 1920, h: 1080 };
 const close = (a: Frame, b: Frame) => {
@@ -139,5 +147,49 @@ describe('snapMove', () => {
     );
     expect(boxes).toHaveLength(1);
     expect(boxes[0]!.w).toBeCloseTo(141.42, 2);
+  });
+});
+
+describe('snapResize', () => {
+  const others: Frame[] = [{ x: 600, y: 400, w: 200, h: 200 }];
+  const targets = { boxes: others, slide: SLIDE };
+  const frame = { x: 100, y: 100, w: 497, h: 303 };
+
+  it('snaps the edges the handle moves, and only those', () => {
+    const r = snapResize(frame, HANDLES.se, targets, 6);
+    // The right edge to the other box's left edge, the bottom edge to its top.
+    close(r.frame, { x: 100, y: 100, w: 500, h: 300 });
+    expect(r.guides.map((g) => g.axis).sort()).toEqual(['x', 'y']);
+    expect(r.guides.find((g) => g.axis === 'x')).toMatchObject({ at: 600, kind: 'edge' });
+
+    // The top-left handle moves the other two edges: this frame's are far from any line.
+    close(snapResize(frame, HANDLES.nw, targets, 6).frame, frame);
+    const near = { x: 97, y: 91, w: 300, h: 200 };
+    // Near the safe margin: the left edge and the top edge both go to 96.
+    const m = snapResize(near, HANDLES.nw, { ...targets, safeMargin: 96 }, 6);
+    close(m.frame, { x: 96, y: 96, w: 301, h: 195 });
+    expect(m.guides.every((g) => g.kind === 'margin')).toBe(true);
+  });
+
+  it('moves one edge for an edge handle', () => {
+    close(snapResize(frame, HANDLES.e, targets, 6).frame, { ...frame, w: 500 });
+    close(snapResize(frame, HANDLES.n, targets, 6).frame, frame);
+  });
+
+  it('with the proportions kept, the nearer snap decides and the other side follows', () => {
+    const square = { x: 100, y: 100, w: 497, h: 497 };
+    const r = snapResize(square, HANDLES.se, targets, 6, { keepAspect: true });
+    close(r.frame, { x: 100, y: 100, w: 500, h: 500 });
+    expect(r.guides).toHaveLength(1);
+    // An edge handle grows the other axis around its middle.
+    const e = snapResize(square, HANDLES.e, targets, 6, { keepAspect: true });
+    close(e.frame, { x: 100, y: 98.5, w: 500, h: 500 });
+  });
+
+  it('leaves the frame alone beyond the threshold', () => {
+    const far = { x: 100, y: 100, w: 380, h: 250 };
+    const r = snapResize(far, HANDLES.se, targets, 6);
+    close(r.frame, far);
+    expect(r.guides).toEqual([]);
   });
 });

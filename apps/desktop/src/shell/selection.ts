@@ -23,14 +23,21 @@ export function elementKind(element: Element): SelectionKind {
   return kindOfType[element.type];
 }
 
+/**
+ * The row B kind of a selection. A shape whose text is being edited counts as text: the caret is
+ * in text, so the text tools are the ones wanted.
+ */
 export function selectionKind(
   deck: Deck,
   slideId: string | null,
   elementIds: readonly string[],
+  editingElementId: string | null = null,
 ): SelectionKind {
   if (elementIds.length === 0 || !slideId) return 'none';
   if (elementIds.length > 1) return 'multiple';
   const slide = findSlide(deck, slideId);
   const element = slide && elementIds[0] ? findElement(slide, elementIds[0]) : undefined;
-  return element ? kindOfType[element.type] : 'none';
+  if (!element) return 'none';
+  if (element.type === 'shape' && editingElementId === element.id) return 'text';
+  return kindOfType[element.type];
 }

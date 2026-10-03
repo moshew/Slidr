@@ -1,13 +1,15 @@
 import { useMemo, type ComponentType } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import type { LucideIcon } from '@slidr/ui';
+import type { Editor } from './editor';
 import type { SelectionKind } from './selection';
 
 /*
  * What other areas plug into the shell, without editing it (PLAN WG3 acceptance):
  *   - panels for the Activity Bar and Tool Panel (SPEC 4.2, 4.3),
  *   - contextual tools for Top Tools row B (SPEC 4.4),
- *   - handlers for the fixed buttons of row A (insert, present, export).
+ *   - handlers for the fixed buttons of row A (insert, present, export),
+ *   - keyboard shortcuts.
  * An area registers from its own `src/<area>/register.ts(x)`, which the shell loads at startup.
  */
 
@@ -155,9 +157,16 @@ export type ToolAction =
   | 'present'
   | 'export';
 
+/** What a row A button opens instead of acting at once, e.g. the shape library. */
+export interface ActionPopoverProps {
+  /** Closes the popover, after a choice. */
+  close: () => void;
+}
+
 interface ActionEntry extends Registered {
   id: ToolAction;
-  run: () => void;
+  run?: () => void;
+  popover?: ComponentType<ActionPopoverProps>;
 }
 
 const actions = createRegistry<ActionEntry>();
@@ -167,9 +176,60 @@ export function registerAction(id: ToolAction, run: () => void): () => void {
   return actions.register({ id, run });
 }
 
+/**
+ * Makes a row A button open a popover under it: the shell draws the popover, the area draws what
+ * is in it and calls `close` when a choice was made.
+ */
+export function registerActionPopover(
+  id: ToolAction,
+  popover: ComponentType<ActionPopoverProps>,
+): () => void {
+  return actions.register({ id, popover });
+}
+
 /** The handler of a row A button, or undefined while nobody has registered one. */
 export function useAction(id: ToolAction): (() => void) | undefined {
   return useStore(actions.store, (s) => s.items.find((a) => a.id === id)?.run);
+}
+
+/** The popover of a row A button, when its area registered one. */
+export function useActionPopover(id: ToolAction): ComponentType<ActionPopoverProps> | undefined {
+  return useStore(actions.store, (s) => s.items.find((a) => a.id === id)?.popover);
+}
+
+/* ---------------------------------------------------------------- keyboard shortcuts */
+
+/** A keyboard shortcut of some area (SPEC Appendix A). The shell listens; the area acts. */
+export interface ShortcutDefinition extends Registered {
+  /**
+   * Modifiers and one key, joined by `+`: `Ctrl+D`, `Ctrl+Shift+G`, `Ctrl+]`, `T`, `F5`. Letters,
+   * digits and brackets are matched by the physical key, so they work on a Hebrew layout too.
+   */
+  keys: string;
+  /** Does it. Return false when there was nothing to act on: the key then goes its usual way. */
+  run: (editor: Editor, event: KeyboardEvent) => boolean | void;
+  /** Also while the caret is in a text field or in the slide's text editor. Off by default. */
+  inText?: boolean;
+}
+
+const shortcuts = createRegistry<ShortcutDefinition>();
+
+export const registerShortcut = shortcuts.register;
+
+/** `Ctrl+Shift+G` and `shift+ctrl+g` are the same shortcut. */
+export function normalizeKeys(keys: string): string {
+  const parts = keys.split('+').map((part) => part.trim().toLowerCase());
+  const key = parts.pop() ?? '';
+  return [...['ctrl', 'alt', 'shift'].filter((mod) => parts.includes(mod)), key].join('+');
+}
+
+/** The registered shortcuts for a key combination, the latest registration first. */
+export function shortcutsFor(keys: string): ShortcutDefinition[] {
+  const wanted = normalizeKeys(keys);
+  return shortcuts.store
+    .getState()
+    .items.filter((s) => normalizeKeys(s.keys) === wanted)
+    .reverse();
 }
 
 /** For tests: the registries' stores. */
@@ -177,4 +237,5 @@ export const registries = {
   panels: panels.store,
   contextTools: contextTools.store,
   actions: actions.store,
+  shortcuts: shortcuts.store,
 };

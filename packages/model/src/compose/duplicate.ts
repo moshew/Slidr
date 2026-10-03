@@ -1,4 +1,5 @@
 import { CommandError, type CommandOf } from '../commands';
+import type { IdPrefix } from '../ids';
 import { allElementIds, walkElements } from '../queries';
 import type { Deck, Element, Point, Slide } from '../schema';
 import { ancestorsOf, copyJson, idSource, slideOrThrow } from './shared';
@@ -26,6 +27,43 @@ function renameIds(text: string, ids: ReadonlyMap<string, string>): string {
   return out;
 }
 
+/** Ids for slides and elements that are free in the deck; each one handed out is taken. */
+export function deckIdSource(deck: Deck, random?: () => number): (prefix: IdPrefix) => string {
+  return idSource(new Set([...deck.slides.map((s) => s.id), ...allElementIds(deck)]), random);
+}
+
+/**
+ * A copy of a slide, from this deck or from another. The slide, its elements and its animation
+ * steps get new ids; the timeline and the slide CSS are rewritten to the new element ids.
+ */
+export function copySlide(
+  source: Slide,
+  fresh: (prefix: IdPrefix) => string,
+  random?: () => number,
+): Slide {
+  const renamed = new Map<string, string>();
+  const elements = source.elements.map((element) =>
+    cloneElement(element, (oldId) => {
+      const id = fresh('e');
+      renamed.set(oldId, id);
+      return id;
+    }),
+  );
+  const stepIds = idSource(new Set(source.timeline.map((step) => step.id)), random);
+  const slide: Slide = {
+    ...copyJson(source),
+    id: fresh('s'),
+    elements,
+    timeline: source.timeline.map((step) => ({
+      ...copyJson(step),
+      id: stepIds('a'),
+      elementId: renamed.get(step.elementId) ?? step.elementId,
+    })),
+  };
+  if (slide.css !== undefined) slide.css = renameIds(slide.css, renamed);
+  return slide;
+}
+
 export interface DuplicateSlideOptions {
   /** Position of the copy in the deck. Default: right after the original. */
   index?: number;
@@ -43,30 +81,7 @@ export function duplicateSlide(
   options: DuplicateSlideOptions = {},
 ): CommandOf<'slide.add'> {
   const source = slideOrThrow(deck, slideId);
-  const fresh = idSource(
-    new Set([...deck.slides.map((s) => s.id), ...allElementIds(deck)]),
-    options.random,
-  );
-  const renamed = new Map<string, string>();
-  const elements = source.elements.map((element) =>
-    cloneElement(element, (oldId) => {
-      const id = fresh('e');
-      renamed.set(oldId, id);
-      return id;
-    }),
-  );
-  const stepIds = idSource(new Set(source.timeline.map((step) => step.id)), options.random);
-  const slide: Slide = {
-    ...copyJson(source),
-    id: fresh('s'),
-    elements,
-    timeline: source.timeline.map((step) => ({
-      ...copyJson(step),
-      id: stepIds('a'),
-      elementId: renamed.get(step.elementId) ?? step.elementId,
-    })),
-  };
-  if (slide.css !== undefined) slide.css = renameIds(slide.css, renamed);
+  const slide = copySlide(source, deckIdSource(deck, options.random), options.random);
   return { type: 'slide.add', slide, index: options.index ?? deck.slides.indexOf(source) + 1 };
 }
 

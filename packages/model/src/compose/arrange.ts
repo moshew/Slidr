@@ -198,6 +198,28 @@ export function reorderElements(
   }));
 }
 
+/**
+ * Whether a z-order move would change anything. It would not when, in every parent, the
+ * elements already sit together at the end they would move towards.
+ */
+export function canReorder(slide: Slide, elementIds: readonly string[], to: ZOrderMove): boolean {
+  const byParent = new Map<string, { siblings: readonly Element[]; ids: Set<string> }>();
+  for (const id of new Set(elementIds)) {
+    const location = locateElement(slide.elements, id);
+    if (!location) continue;
+    const key = location.parent?.id ?? '';
+    const entry = byParent.get(key) ?? { siblings: location.siblings, ids: new Set<string>() };
+    entry.ids.add(id);
+    byParent.set(key, entry);
+  }
+  const up = to === 'front' || to === 'forward';
+  for (const { siblings, ids } of byParent.values()) {
+    const end = up ? siblings.slice(-ids.size) : siblings.slice(0, ids.size);
+    if (!end.every((element) => ids.has(element.id))) return true;
+  }
+  return false;
+}
+
 /** An `element.group` with a new group id that is free in the deck. */
 export function groupElements(
   deck: Deck,

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { createSlide } from '@slidr/model';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { OpenedDeck, Storage, Workspace } from '../document/storage';
+import type { OpenedDeck, RecoverableWorkspace, Storage, Workspace } from '../document/storage';
 import { answer, pendingDialog } from './dialogs';
 import { createEditor, type Editor } from './editor';
 import {
@@ -24,6 +24,8 @@ function fakeStorage() {
   const files = new Map<string, string>();
   const workspaces = new Map<string, { sourcePath: string | null; deckJson: string }>();
   const log: string[] = [];
+  /** What a crash left behind, as `listRecoverable` reports it. */
+  const leftovers: RecoverableWorkspace[] = [];
   let next = 1;
   const workspace = (id: string): Workspace => ({
     id,
@@ -62,7 +64,7 @@ function fakeStorage() {
       log.push(`close ${id}`);
       return Promise.resolve();
     },
-    listRecoverable: () => Promise.resolve([]),
+    listRecoverable: () => Promise.resolve(leftovers.filter((l) => workspaces.has(l.id))),
     recover: (id): Promise<OpenedDeck> => {
       log.push(`recover ${id}`);
       const ws = workspaces.get(id);
@@ -75,7 +77,7 @@ function fakeStorage() {
     listRecents: () => Promise.resolve([]),
     removeRecent: () => Promise.resolve(),
   };
-  return { storage, files, workspaces, log };
+  return { storage, files, workspaces, log, leftovers };
 }
 
 function edit(editor: Editor): void {
@@ -176,6 +178,54 @@ describe('with storage', () => {
       'open C:\\decks\\b.slidr',
       'close w1',
     ]);
+  });
+
+  describe('after a crash (DOC-03)', () => {
+    /** A storage where an earlier run left two workspaces with unsaved changes. */
+    function crashed() {
+      const fake = fakeStorage();
+      const before = createEditor({ lang: 'he', storage: fake.storage });
+      for (const [id, autosavedAt] of [
+        ['old', '2026-10-01T08:00:00Z'],
+        ['new', '2026-10-02T08:00:00Z'],
+      ] as const) {
+        edit(before);
+        fake.workspaces.set(id, { sourcePath: null, deckJson: JSON.stringify(before.bus.deck) });
+        fake.leftovers.push({ id, sourcePath: null, title: id, autosavedAt });
+      }
+      sessionStorage.clear();
+      return fake;
+    }
+
+    it('offers the latest leftover first and recovers it as unsaved work', async () => {
+      const { storage, log, workspaces } = crashed();
+      const editor = createEditor({ lang: 'he', storage });
+      const starting = startDocument(editor);
+      await vi.waitFor(() => expect(pendingDialog()?.title).toContain('new'));
+      answer('recover');
+      await starting;
+      expect(log).toEqual(['recover new']);
+      expect(editor.document?.workspace?.id).toBe('new');
+      expect(editor.bus.deck.slides).toHaveLength(3);
+      expect(editor.file.getState().dirty).toBe(true);
+      // The older one was not asked about: it waits for the next start.
+      expect(workspaces.has('old')).toBe(true);
+    });
+
+    it('deletes what the user discards, keeps what is put off, then starts a new deck', async () => {
+      const { storage, log, workspaces } = crashed();
+      const editor = createEditor({ lang: 'he', storage });
+      const starting = startDocument(editor);
+      await vi.waitFor(() => expect(pendingDialog()?.title).toContain('new'));
+      answer('discard');
+      await vi.waitFor(() => expect(pendingDialog()?.title).toContain('old'));
+      answer('later');
+      await starting;
+      expect(log).toEqual(['close new', 'create w1']);
+      expect(workspaces.has('old')).toBe(true);
+      expect(editor.bus.deck.slides).toHaveLength(1);
+      expect(editor.file.getState().dirty).toBe(false);
+    });
   });
 
   it('lets go of the workspace when the window closes', async () => {

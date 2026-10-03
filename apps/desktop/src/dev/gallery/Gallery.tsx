@@ -23,6 +23,8 @@ import {
 } from '@slidr/ui/icons';
 import {
   Button,
+  ColorPicker,
+  ColorSwatch,
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
@@ -43,16 +45,20 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   EmptyState,
+  FontPicker,
   IconButton,
   Input,
   Kbd,
+  NumberField,
   Popover,
   PopoverContent,
   PopoverTrigger,
   ScrollArea,
   SegmentedControl,
+  Select,
   Separator,
   Skeleton,
+  Slider,
   Spinner,
   Tabs,
   TabsContent,
@@ -65,6 +71,7 @@ import {
   type ButtonVariant,
   type Dir,
 } from '@slidr/ui';
+import { builtinFamilies } from '../../fonts';
 import { copy, type Copy } from './copy';
 
 /*
@@ -117,6 +124,9 @@ function GalleryCell({ theme, dir }: Cell) {
           <Segmented c={c} />
           <TabsDemo c={c} />
           <Fields c={c} />
+          <Values c={c} />
+          <ColorDemo c={c} />
+          <FontDemo c={c} />
           <Menus c={c} dir={dir} />
           <Overlays c={c} dir={dir} />
           <DialogDemo c={c} dir={dir} />
@@ -422,6 +432,153 @@ function Fields({ c }: { c: Copy }) {
         error={c.fieldError}
       />
       <Input defaultValue={c.fieldPlaceholder} disabled />
+    </Card>
+  );
+}
+
+/* ---------------------------------------------------------------- values and pickers */
+
+const weightValues = ['300', '400', '500', '700'] as const;
+
+function Values({ c }: { c: Copy }) {
+  const [size, setSize] = useState(32);
+  const [angle, setAngle] = useState(12.5);
+  const [opacity, setOpacity] = useState(80);
+  const [weight, setWeight] = useState<(typeof weightValues)[number]>('500');
+  const weights = weightValues.map((value, i) => ({ value, label: c.weights[i] ?? value }));
+  return (
+    <Card title={c.values}>
+      <div className="flex items-center gap-2">
+        <NumberField
+          aria-label={c.size}
+          className="w-20"
+          value={size}
+          onValueChange={setSize}
+          min={1}
+          max={999}
+        />
+        <NumberField
+          aria-label={c.rotation}
+          className="w-24"
+          value={angle}
+          onValueChange={setAngle}
+          precision={1}
+          unit="°"
+        />
+        <NumberField
+          aria-label={c.size}
+          className="w-20"
+          size="sm"
+          value={null}
+          placeholder={c.mixed}
+          onValueChange={setSize}
+        />
+        <NumberField
+          aria-label={c.size}
+          className="w-20"
+          value={size}
+          onValueChange={setSize}
+          disabled
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Select
+          aria-label={c.weight}
+          className="w-32"
+          options={weights}
+          value={weight}
+          onValueChange={setWeight}
+        />
+        <Select
+          aria-label={c.weight}
+          variant="ghost"
+          size="sm"
+          options={weights}
+          value={weight}
+          onValueChange={setWeight}
+        />
+        <Select
+          aria-label={c.weight}
+          className="w-32"
+          options={weights}
+          value={null}
+          placeholder={c.mixed}
+          onValueChange={setWeight}
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <Slider aria-label={c.opacity} value={opacity} onValueChange={setOpacity} />
+        <NumberField
+          aria-label={c.opacity}
+          className="w-20 shrink-0"
+          value={opacity}
+          onValueChange={setOpacity}
+          min={0}
+          max={100}
+          unit="%"
+        />
+      </div>
+      <Slider aria-label={c.opacity} value={40} onValueChange={() => {}} disabled />
+    </Card>
+  );
+}
+
+// A deck theme for the demo; the gallery is a dev page, so literal colours are fine here.
+const themeSwatches = ['#ffffff', '#f3f4f6', '#15171a', '#5f6672', '#2f5bea', '#0f9d8a', '#f59e0b'];
+
+function ColorDemo({ c }: { c: Copy }) {
+  const [value, setValue] = useState<string | null>('#2f5bea');
+  const [choice, setChoice] = useState<string | null>('4');
+  const choices = themeSwatches.map((color, i) => ({
+    id: String(i),
+    label: c.themeNames[i] ?? color,
+    color,
+  }));
+  return (
+    <Card title={c.colorPicker}>
+      <div className="flex items-center gap-2 text-sm text-ui-fg-muted">
+        <ColorSwatch color={value} className="size-5" />
+        <span dir="ltr">{value ?? c.color.none}</span>
+      </div>
+      <ColorPicker
+        className="w-64"
+        value={value}
+        choiceId={choice}
+        onChange={(hex) => {
+          setValue(hex);
+          setChoice(null);
+        }}
+        onChoice={(id) => {
+          setChoice(id);
+          setValue(themeSwatches[Number(id)] ?? null);
+        }}
+        onNone={() => setValue(null)}
+        groups={[{ label: c.themeColors, choices }]}
+        recent={['#e5484d', '#8e4ec6', '#15171a80']}
+        alpha
+        labels={c.color}
+      />
+    </Card>
+  );
+}
+
+const galleryFonts = builtinFamilies.map(({ family, scripts }) => ({
+  family,
+  hebrew: (scripts as readonly string[]).includes('he'),
+}));
+
+function FontDemo({ c }: { c: Copy }) {
+  const [family, setFamily] = useState('Heebo');
+  return (
+    <Card title={c.fontPicker}>
+      <FontPicker
+        fonts={galleryFonts}
+        recent={['Rubik', 'Inter']}
+        value={family}
+        onValueChange={setFamily}
+        autoFocus={false}
+        labels={c.font}
+      />
     </Card>
   );
 }

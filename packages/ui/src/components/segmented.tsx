@@ -61,7 +61,9 @@ export function SegmentedControl<T extends string>({
             className={cx(
               'inline-flex cursor-default items-center justify-center gap-1.5 rounded-inset text-sm font-medium whitespace-nowrap text-ui-fg-muted transition-colors select-none',
               'hover:text-ui-fg focus-visible:outline-offset-0 disabled:text-ui-fg-subtle',
-              'data-[state=on]:bg-ui-thumb data-[state=on]:text-ui-fg data-[state=on]:shadow-raised',
+              // By `aria-checked`, not `data-state`: the tooltip of an icon-only segment writes
+              // its own `data-state` on the same element.
+              'aria-checked:bg-ui-thumb aria-checked:text-ui-fg aria-checked:shadow-raised',
               option.iconOnly ? 'aspect-square' : 'px-2.5',
               fill && 'flex-1',
             )}

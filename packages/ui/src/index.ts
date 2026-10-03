@@ -45,6 +45,24 @@ export {
   type DialogContentProps,
 } from './components/overlay';
 export { Input, TextField, type InputProps, type TextFieldProps } from './components/input';
+export { NumberField, type NumberFieldProps } from './components/number-field';
+export { Select, type SelectOption, type SelectProps } from './components/select';
+export { Slider, type SliderProps } from './components/slider';
+export {
+  ColorPicker,
+  ColorSwatch,
+  type ColorChoice,
+  type ColorChoiceGroup,
+  type ColorPickerLabels,
+  type ColorPickerProps,
+} from './components/color-picker';
+export {
+  FontPicker,
+  type FontOption,
+  type FontPickerLabels,
+  type FontPickerProps,
+} from './components/font-picker';
+export { parseHex, toHex, type Rgba } from './color';
 export {
   EmptyState,
   ScrollArea,

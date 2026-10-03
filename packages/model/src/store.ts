@@ -47,7 +47,12 @@ export interface SelectionState {
   selectedSlideIds: string[];
   /** Selected elements of the current slide. */
   selectedElementIds: string[];
-  /** The element whose text is being edited in place, if any. */
+  /**
+   * The element being edited in place, if any. What that means follows its type: the text of a
+   * text box or a shape, the crop of an image. It is always the one selected element. Working
+   * inside a group is not this: the group the user has entered is the Stage's own state, and it
+   * shows in the selection only as ids of nested elements (ADR-016).
+   */
   editingElementId: string | null;
 
   setCurrentSlide: (slideId: string) => void;

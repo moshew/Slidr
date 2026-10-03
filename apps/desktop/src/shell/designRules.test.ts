@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -6,11 +6,28 @@ import { describe, expect, it } from 'vitest';
 /*
  * The design-system rules that a reader can miss and a scan cannot (DSN-01, SPEC 4.0 rule 7):
  * components take colours, spacing and radii from tokens only, and use no OS control.
- * Checked over the design system and the shell; dev pages (the gallery) are exempt.
+ * Checked over the design system, the shell and every area that draws app UI. Exempt: dev pages
+ * (the gallery), and what is drawn on the slide itself, in slide or screen pixels rather than in
+ * tokens (`src/stage`, the in-place text editor).
  */
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const scanned = ['packages/ui/src', 'apps/desktop/src/shell'];
+const scanned = [
+  'packages/ui/src',
+  'apps/desktop/src/shell',
+  'apps/desktop/src/controls',
+  'apps/desktop/src/text',
+  'apps/desktop/src/objects',
+  'apps/desktop/src/arrange',
+].filter((dir) => existsSync(join(root, dir)));
+
+/** Drawn on the slide, not in the app's chrome. */
+const onSlide = new Set([
+  'apps/desktop/src/text/TextEditor.tsx',
+  'apps/desktop/src/text/schema.ts',
+]);
+/** The colour picker's maths: the one place that writes colours (see the file). */
+const colourMaths = 'packages/ui/src/color.ts';
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -20,16 +37,22 @@ function sources(dir: string): string[] {
   });
 }
 
-const files = scanned.flatMap((dir) => sources(join(root, dir)));
+const posix = (file: string) => relative(root, file).replaceAll('\\', '/');
 
-function violations(pattern: RegExp): string[] {
-  return files.flatMap((file) =>
-    readFileSync(file, 'utf8')
-      .split('\n')
-      .map((line, i) => ({ line, i }))
-      .filter(({ line }) => pattern.test(line) && !/^(?:\/\/|\/\*|\*)/.test(line.trim()))
-      .map(({ line, i }) => `${relative(root, file)}:${i + 1}: ${line.trim()}`),
-  );
+const files = scanned
+  .flatMap((dir) => sources(join(root, dir)))
+  .filter((file) => !onSlide.has(posix(file)));
+
+function violations(pattern: RegExp, exempt?: string): string[] {
+  return files
+    .filter((file) => posix(file) !== exempt)
+    .flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split('\n')
+        .map((line, i) => ({ line, i }))
+        .filter(({ line }) => pattern.test(line) && !/^(?:\/\/|\/\*|\*)/.test(line.trim()))
+        .map(({ line, i }) => `${relative(root, file)}:${i + 1}: ${line.trim()}`),
+    );
 }
 
 describe('design rules', () => {
@@ -38,7 +61,9 @@ describe('design rules', () => {
   });
 
   it('has no colour literals in components', () => {
-    expect(violations(/#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab)\(/)).toEqual([]);
+    expect(violations(/#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab)\(/, colourMaths)).toEqual(
+      [],
+    );
   });
 
   it('has no arbitrary Tailwind values (a size, colour or radius that is not a token)', () => {

@@ -1,5 +1,5 @@
 /**
- * Dev page for the Stage (WG2-T03..T06): /dev/stage.html[?deck=<name>&slide=<n>]
+ * Dev page for the Stage (WG2-T03..T06, WG5): /dev/stage.html[?deck=<name>&slide=<n>]
  * A deck on a real CommandBus with undo, zoom and a slide picker, without the app shell.
  * `window.slidr` exposes the bus and the selection to Playwright.
  */
@@ -16,11 +16,12 @@ import {
   type Deck,
 } from '@slidr/model';
 import { fixtureDecks } from '@slidr/model/fixtures';
-import { referenceDeck } from '@slidr/renderer/fixtures';
+import { referenceAssets, referenceDeck } from '@slidr/renderer/fixtures';
 import { UiProvider } from '@slidr/ui';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useStore } from 'zustand';
+import { memoryAssets } from '../../document/assets';
 import { registerBuiltinFonts } from '../../fonts';
 import { Filmstrip } from '../../stage/Filmstrip';
 import { insertAssetsCommands } from '../../stage/insert';
@@ -50,9 +51,214 @@ function bigDeck(): Deck {
   });
 }
 
+/**
+ * What WG5 added to the Stage (ADR-016), one slide each: images to crop (every fit, a turned and
+ * mirrored one), groups to enter (plain, turned, mirrored, nested), and lines to edit.
+ */
+function stageDeck(): Deck {
+  const L = referenceAssets.landscape;
+  const P = referenceAssets.portrait;
+  const solid = (token: 'primary' | 'secondary' | 'accent' | 'surface' | 'bg') =>
+    ({ kind: 'solid', color: { token } }) as const;
+  const line = (id: string, x: number, y: number, w: number, h: number, up = false) => ({
+    id,
+    frame: { x, y, w, h },
+    points: [
+      { x: 0, y: up ? h : 0 },
+      { x: w, y: up ? 0 : h },
+    ],
+    stroke: { color: { token: 'text' as const }, width: 6 },
+  });
+
+  const crop = createSlide({
+    id: 's_crop',
+    name: 'Crop',
+    elements: [
+      createElement.image({
+        id: 'e_crop_plain',
+        frame: { x: 140, y: 120, w: 600, h: 400 },
+        assetId: L,
+      }),
+      createElement.image({
+        id: 'e_crop_turned',
+        frame: { x: 1080, y: 160, w: 600, h: 400 },
+        rotation: 20,
+        flipH: true,
+        assetId: L,
+      }),
+      createElement.image({
+        id: 'e_crop_contain',
+        frame: { x: 140, y: 640, w: 360, h: 360 },
+        assetId: L,
+        fit: 'contain',
+        css: { outline: '1px dashed rgba(127, 127, 127, 0.6)' },
+      }),
+      createElement.image({
+        id: 'e_crop_fill',
+        frame: { x: 620, y: 700, w: 480, h: 280 },
+        assetId: P,
+        fit: 'fill',
+      }),
+      createElement.image({
+        id: 'e_crop_cover',
+        frame: { x: 1240, y: 700, w: 400, h: 280 },
+        assetId: P,
+        fit: 'cover',
+      }),
+      createElement.image({
+        id: 'e_crop_pending',
+        frame: { x: 1700, y: 760, w: 180, h: 180 },
+        prompt: 'A picture that is not there yet',
+      }),
+    ],
+  });
+
+  const groups = createSlide({
+    id: 's_groups',
+    name: 'Groups',
+    elements: [
+      createElement.group({
+        id: 'g_plain',
+        frame: { x: 120, y: 120, w: 640, h: 380 },
+        children: [
+          createElement.shape({
+            id: 'g_plain_card',
+            frame: { x: 0, y: 0, w: 640, h: 380 },
+            geometry: { kind: 'preset', preset: 'roundRect', adjust: [0.08] },
+            fill: solid('surface'),
+          }),
+          createElement.text({
+            id: 'g_plain_text',
+            frame: { x: 40, y: 30, w: 560, h: 80 },
+            content: richText('A plain group', { dir: 'ltr', styleRef: 'heading' }),
+          }),
+          createElement.image({
+            id: 'g_plain_image',
+            frame: { x: 40, y: 140, w: 300, h: 200 },
+            assetId: L,
+          }),
+          createElement.shape({
+            id: 'g_plain_dot',
+            frame: { x: 420, y: 160, w: 160, h: 160 },
+            geometry: { kind: 'preset', preset: 'ellipse' },
+            fill: solid('accent'),
+          }),
+        ],
+      }),
+      createElement.group({
+        id: 'g_turned',
+        frame: { x: 1040, y: 140, w: 560, h: 320 },
+        rotation: 20,
+        flipH: true,
+        children: [
+          createElement.shape({
+            id: 'g_turned_card',
+            frame: { x: 0, y: 0, w: 560, h: 320 },
+            fill: solid('primary'),
+          }),
+          createElement.shape({
+            id: 'g_turned_arrow',
+            frame: { x: 40, y: 60, w: 200, h: 120 },
+            geometry: { kind: 'preset', preset: 'arrowRight' },
+            fill: solid('bg'),
+          }),
+          createElement.text({
+            id: 'g_turned_text',
+            frame: { x: 280, y: 200, w: 240, h: 80 },
+            content: richText('Turned', {
+              dir: 'ltr',
+              styleRef: 'heading',
+              marks: { color: { token: 'bg' } },
+            }),
+          }),
+        ],
+      }),
+      createElement.group({
+        id: 'g_outer',
+        frame: { x: 200, y: 620, w: 700, h: 320 },
+        children: [
+          createElement.shape({
+            id: 'g_outer_box',
+            frame: { x: 0, y: 0, w: 260, h: 320 },
+            fill: solid('secondary'),
+          }),
+          createElement.group({
+            id: 'g_inner',
+            frame: { x: 320, y: 40, w: 380, h: 240 },
+            children: [
+              createElement.shape({
+                id: 'g_inner_a',
+                frame: { x: 0, y: 0, w: 180, h: 240 },
+                fill: solid('accent'),
+              }),
+              createElement.shape({
+                id: 'g_inner_b',
+                frame: { x: 220, y: 60, w: 160, h: 120 },
+                geometry: { kind: 'preset', preset: 'ellipse' },
+                fill: solid('primary'),
+              }),
+            ],
+          }),
+        ],
+      }),
+      createElement.shape({
+        id: 'e_free',
+        frame: { x: 1240, y: 700, w: 240, h: 180 },
+        fill: solid('accent'),
+      }),
+    ],
+  });
+
+  const lines = createSlide({
+    id: 's_lines',
+    name: 'Lines',
+    elements: [
+      createElement.shape({
+        id: 'e_lines_box',
+        frame: { x: 1400, y: 200, w: 300, h: 200 },
+        fill: solid('surface'),
+        stroke: { color: { token: 'muted' }, width: 2 },
+      }),
+      createElement.line({ ...line('e_line_diagonal', 200, 160, 500, 300), endHead: 'triangle' }),
+      createElement.line(line('e_line_flat', 200, 600, 500, 0)),
+      createElement.line({ ...line('e_line_elbow', 860, 160, 360, 240), curve: 'elbow' }),
+      createElement.line({
+        ...line('e_line_curved', 860, 520, 360, 240),
+        curve: 'curved',
+        endHead: 'arrow',
+      }),
+      createElement.line({
+        ...line('e_line_turned', 300, 760, 400, 160, true),
+        rotation: -15,
+        flipH: true,
+        stroke: { color: { token: 'primary' }, width: 8 },
+        endHead: 'triangle',
+      }),
+      createElement.line({
+        id: 'e_line_wave',
+        frame: { x: 1000, y: 820, w: 720, h: 160 },
+        points: [
+          { x: 0, y: 160 },
+          { x: 240, y: 0 },
+          { x: 480, y: 140 },
+          { x: 720, y: 20 },
+        ],
+        stroke: { color: { token: 'accent' }, width: 6, cap: 'round' },
+        curve: 'curved',
+      }),
+    ],
+  });
+
+  return {
+    ...createDeck({ lang: 'en', title: 'Stage', slides: [crop, groups, lines] }),
+    assets: referenceDeck().assets,
+  };
+}
+
 const decks: Record<string, () => Deck> = {
   reference: referenceDeck,
   big: bigDeck,
+  stage: stageDeck,
   hebrew: fixtureDecks.hebrewDeck,
   english: fixtureDecks.englishDeck,
   mixed: fixtureDecks.mixedDeck,
@@ -68,51 +274,17 @@ const start = deck.slides[Number(params.get('slide') ?? 0)];
 if (start) selection.getState().setCurrentSlide(start.id);
 Object.assign(window, { slidr: { bus, selection } });
 
-/** Assets dropped on the dev page live in memory as data URLs; the app stores them in the workspace. */
-const dropped = new Map<string, string>();
-const resolveAsset = (asset: AssetMeta) => dropped.get(asset.id) ?? testAssetUrl(asset.id);
-
-async function importFile(file: File): Promise<AssetMeta | undefined> {
-  const bytes = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  const id = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-  const url = await new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(file);
-  });
-  const kind = file.type === 'image/svg+xml' ? 'svg' : file.type.split('/')[0];
-  if (kind !== 'image' && kind !== 'svg' && kind !== 'video' && kind !== 'audio') return undefined;
-  let size: { width?: number; height?: number } = {};
-  if (kind === 'image' || kind === 'svg') {
-    const img = new Image();
-    img.src = url;
-    await img.decode().catch(() => undefined);
-    if (img.naturalWidth) size = { width: img.naturalWidth, height: img.naturalHeight };
-  }
-  dropped.set(id, url);
-  const ext = file.name.split('.').pop() ?? 'bin';
-  return {
-    id,
-    file: `${id}.${ext}`,
-    mime: file.type,
-    kind,
-    bytes: file.size,
-    origin: 'upload',
-    name: file.name,
-    ...size,
-  };
-}
+/** Files dropped on the dev page live in memory; the app stores them in the workspace. */
+const assets = memoryAssets();
+const resolveAsset = (asset: AssetMeta) => assets.url(asset) ?? testAssetUrl(asset.id);
 
 async function onFiles(files: File[], at: { x: number; y: number }) {
   const slideId = selection.getState().currentSlideId;
   if (!slideId) return;
-  const assets = (await Promise.all(files.map(importFile))).filter((a): a is AssetMeta =>
-    Boolean(a),
-  );
+  const imported = await Promise.all(files.map((file) => assets.import(file)));
   const { commands, elementIds } = insertAssetsCommands(
     slideId,
-    assets,
+    imported,
     bus.deck.size,
     at,
     (id) => id in bus.deck.assets,

@@ -134,6 +134,8 @@ export interface SnapTargets {
   columns?: number;
   /** Gap between grid columns. */
   gutter?: number;
+  /** False leaves equal spacing out: a single point, such as a line's end, has no gaps to even. */
+  spacing?: boolean;
 }
 
 export interface Guide {
@@ -293,7 +295,8 @@ function snapAxis(
       }
     }
   }
-  for (const c of spacingCandidates(box, targets.boxes, axis)) {
+  const spacing = targets.spacing === false ? [] : spacingCandidates(box, targets.boxes, axis);
+  for (const c of spacing) {
     const d = c.pos - lo;
     if (Math.abs(d) < bestDist - 1e-9) {
       best = { d, guides: c.guide };
@@ -322,4 +325,78 @@ export function snapBoxes(
   return elements
     .filter((e) => !exclude.has(e.id) && !e.hidden)
     .map((e) => rotatedBounds(e.frame, e.rotation));
+}
+
+/**
+ * Where the edges a resize handle moves snap (STG-04): to the same lines a moving element snaps
+ * to. For a frame that is not rotated. With `keepAspect` the nearer of the two snaps decides, and
+ * the other side follows the proportions, around the opposite handle (or, for an edge handle,
+ * around the middle of the other axis), as `resizeFrame` sizes it.
+ */
+export function snapResize(
+  frame: Frame,
+  handle: Handle,
+  targets: SnapTargets,
+  threshold: number,
+  options: { keepAspect?: boolean } = {},
+): { frame: Frame; guides: Guide[] } {
+  const nearest = (axis: 'x' | 'y'): { d: number; guide: Guide } | undefined => {
+    const side = axis === 'x' ? handle.x : handle.y;
+    if (!side) return undefined;
+    const lo = axis === 'x' ? frame.x : frame.y;
+    const len = axis === 'x' ? frame.w : frame.h;
+    const edge = side > 0 ? lo + len : lo;
+    const cLo = axis === 'x' ? frame.y : frame.x;
+    const cLen = axis === 'x' ? frame.h : frame.w;
+    let best: { d: number; guide: Guide } | undefined;
+    for (const line of targetLines(targets, axis)) {
+      const d = line.at - edge;
+      if (Math.abs(d) > threshold || (best && Math.abs(d) >= Math.abs(best.d))) continue;
+      best = {
+        d,
+        guide: {
+          axis,
+          at: line.at,
+          from: Math.min(line.from, cLo),
+          to: Math.max(line.to, cLo + cLen),
+          kind: line.kind,
+        },
+      };
+    }
+    return best;
+  };
+  /** The frame with one edge moved by `d`. */
+  const moved = (f: Frame, axis: 'x' | 'y', d: number): Frame => {
+    if (axis === 'x') return handle.x > 0 ? { ...f, w: f.w + d } : { ...f, x: f.x + d, w: f.w - d };
+    return handle.y > 0 ? { ...f, h: f.h + d } : { ...f, y: f.y + d, h: f.h - d };
+  };
+  let sx = nearest('x');
+  let sy = nearest('y');
+  if (!options.keepAspect || frame.w <= 0 || frame.h <= 0) {
+    let out = frame;
+    if (sx) out = moved(out, 'x', sx.d);
+    if (sy) out = moved(out, 'y', sy.d);
+    return { frame: out, guides: [sx?.guide, sy?.guide].filter((g): g is Guide => Boolean(g)) };
+  }
+  // One snap only: the nearer one. The other side is sized by the proportions.
+  if (sx && sy) {
+    if (Math.abs(sx.d) <= Math.abs(sy.d)) sy = undefined;
+    else sx = undefined;
+  }
+  const snap = sx ?? sy;
+  if (!snap) return { frame, guides: [] };
+  const ratio = frame.w / frame.h;
+  const out = moved(frame, sx ? 'x' : 'y', snap.d);
+  if (sx) {
+    const h = out.w / ratio;
+    out.y =
+      handle.y > 0 ? frame.y : handle.y < 0 ? frame.y + frame.h - h : frame.y + (frame.h - h) / 2;
+    out.h = h;
+  } else {
+    const w = out.h * ratio;
+    out.x =
+      handle.x > 0 ? frame.x : handle.x < 0 ? frame.x + frame.w - w : frame.x + (frame.w - w) / 2;
+    out.w = w;
+  }
+  return { frame: out, guides: [snap.guide] };
 }

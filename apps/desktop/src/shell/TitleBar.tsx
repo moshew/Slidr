@@ -4,7 +4,7 @@ import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Copy, Minus, Square, X } from '@slidr/ui/icons';
 import { cx, Icon, Tooltip, type LucideIcon } from '@slidr/ui';
-import { useDeck, useEditor, useFile } from './editor';
+import { useDeck, useEditor, useFile, type Editor } from './editor';
 import { documentName, prepareToClose } from './fileActions';
 
 /**
@@ -86,6 +86,7 @@ function WindowControls() {
   const { t } = useTranslation();
   const editor = useEditor();
   const maximized = useMaximized();
+  useCloseGuard(editor);
   const appWindow = () => getCurrentWindow();
   // In a plain browser there is no window to control; the buttons are drawn but inert.
   const run = (action: () => Promise<unknown>) => () => {
@@ -108,12 +109,27 @@ function WindowControls() {
         icon={X}
         label={t('window.close')}
         danger
-        onClick={run(async () => {
-          if (await prepareToClose(editor)) await appWindow().close();
-        })}
+        // Asks to close, like Alt+F4 and the taskbar do; `useCloseGuard` answers.
+        onClick={run(() => appWindow().close())}
       />
     </div>
   );
+}
+
+/**
+ * Every way of closing the window (the close button, Alt+F4, the taskbar) first settles unsaved
+ * changes and lets go of the workspace. Cancelling the question keeps the window open.
+ */
+function useCloseGuard(editor: Editor): void {
+  useEffect(() => {
+    if (!isTauri()) return;
+    const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
+      if (!(await prepareToClose(editor))) event.preventDefault();
+    });
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  }, [editor]);
 }
 
 /** Whether the window is maximized, for the maximize / restore button. */

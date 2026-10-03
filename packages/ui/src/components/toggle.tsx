@@ -24,7 +24,9 @@ export function Toggle({ icon, label, shortcut, size = 'md', className, ...props
         className={cx(
           'inline-flex shrink-0 cursor-default items-center justify-center rounded-control text-ui-fg-muted transition-colors select-none',
           'hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed disabled:text-ui-fg-subtle',
-          'data-[state=on]:bg-ui-accent-soft data-[state=on]:text-ui-accent-fg data-[state=on]:hover:bg-ui-accent-soft-hover',
+          // By `aria-pressed`, not `data-state`: the tooltip around the button writes its own
+          // `data-state` on the same element.
+          'aria-pressed:bg-ui-accent-soft aria-pressed:text-ui-accent-fg aria-pressed:hover:bg-ui-accent-soft-hover',
           size === 'md' ? 'size-control' : 'size-control-sm',
           className,
         )}

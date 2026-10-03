@@ -2,6 +2,7 @@ import type { Paragraph, TextStyleRef, Theme } from '@slidr/model';
 import { LEVEL_EM, MARKER_EM, paragraphStyle, runStyle } from '@slidr/renderer';
 import { Mark, Node, type AnyExtension } from '@tiptap/core';
 import type { CSSProperties } from 'react';
+import { safeLink } from './paste';
 import { BOOLEAN_MARKS, MARK_TYPES, PARAGRAPH_ATTRS, type MarkType } from './richTextDoc';
 
 /** Properties React writes without a unit; every other number is pixels. */
@@ -114,7 +115,8 @@ function markExtension(type: MarkType) {
         return [
           'a',
           {
-            href: String(value),
+            // Only a link that opens a page or a mail; never one that runs code.
+            href: safeLink(String(value)) ?? null,
             target: '_blank',
             rel: 'noopener noreferrer',
             style: 'color: inherit; text-decoration: inherit',

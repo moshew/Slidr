@@ -4,7 +4,6 @@ import {
   Film,
   History,
   Images,
-  Layers,
   LayoutTemplate,
   MessagesSquare,
   NotebookPen,
@@ -121,21 +120,26 @@ function soon(icon: LucideIcon, body: string) {
   };
 }
 
+// The order is the one of SPEC 4.2. Layers (order 2) is real: `src/arrange` registers it.
 const tools = [
-  { id: 'media', title: 'panels.media', icon: Images, body: 'panels.mediaBody' },
-  { id: 'animations', title: 'panels.animations', icon: Film, body: 'panels.animationsBody' },
-  { id: 'layers', title: 'panels.layers', icon: Layers, body: 'panels.layersBody' },
-  { id: 'notes', title: 'panels.notes', icon: NotebookPen, body: 'panels.notesBody' },
-  { id: 'lint', title: 'panels.lint', icon: ScanEye, body: 'panels.lintBody' },
-  { id: 'history', title: 'panels.history', icon: History, body: 'panels.historyBody' },
+  { id: 'media', order: 0, title: 'panels.media', icon: Images, body: 'panels.mediaBody' },
+  {
+    id: 'animations',
+    order: 1,
+    title: 'panels.animations',
+    icon: Film,
+    body: 'panels.animationsBody',
+  },
+  { id: 'notes', order: 3, title: 'panels.notes', icon: NotebookPen, body: 'panels.notesBody' },
+  { id: 'lint', order: 4, title: 'panels.lint', icon: ScanEye, body: 'panels.lintBody' },
+  { id: 'history', order: 5, title: 'panels.history', icon: History, body: 'panels.historyBody' },
 ];
 
-tools.forEach(({ body, ...tool }, order) =>
+tools.forEach(({ body, ...tool }) =>
   registerPanel({
     ...tool,
     kind: 'tool',
     slot: 'tools',
-    order,
     placeholder: true,
     content: soon(tool.icon, body),
   }),

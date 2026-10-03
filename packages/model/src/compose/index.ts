@@ -2,6 +2,7 @@
 // commands from the catalogue. The editor (WG5-T06) and the Deck API share them.
 export {
   alignElements,
+  canReorder,
   distributeElements,
   groupElements,
   reorderElements,
@@ -17,3 +18,12 @@ export {
   type DuplicateElementsOptions,
   type DuplicateSlideOptions,
 } from './duplicate';
+export {
+  assetsUsedBy,
+  detachElements,
+  pasteElements,
+  pasteSlides,
+  type PasteElementsOptions,
+  type PasteSlidesOptions,
+} from './clipboard';
+export { slideFromLayout, type SlideFromLayoutOptions } from './layout';

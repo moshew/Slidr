@@ -8,11 +8,17 @@ import { allElementIds, findElement, findSlide, walkElements } from '../queries'
 import type { Deck, Element, Frame } from '../schema';
 import {
   alignElements,
+  assetsUsedBy,
+  canReorder,
+  detachElements,
   distributeElements,
   duplicateElements,
   duplicateSlide,
   groupElements,
+  pasteElements,
+  pasteSlides,
   reorderElements,
+  slideFromLayout,
 } from './index';
 
 const box = (x: number, y: number, w = 100, h = 100): Frame => ({ x, y, w, h });
@@ -219,5 +225,203 @@ describe('reorderElements and groupElements', () => {
     expect(allElementIds(deck).has(command.groupId)).toBe(false);
     const after = apply(deck, [command]);
     expect(findElement(after.slides[0]!, command.groupId)).toMatchObject({ name: 'pair' });
+  });
+
+  it('knows when a z-order move would change nothing', () => {
+    const slide = deckWith(rect('a', box(0, 0)), rect('b', box(0, 0)), rect('c', box(0, 0)))
+      .slides[0]!;
+    // Bottom to top: a, b, c.
+    expect(canReorder(slide, ['c'], 'front')).toBe(false);
+    expect(canReorder(slide, ['c'], 'forward')).toBe(false);
+    expect(canReorder(slide, ['c'], 'backward')).toBe(true);
+    expect(canReorder(slide, ['a'], 'back')).toBe(false);
+    expect(canReorder(slide, ['a'], 'front')).toBe(true);
+    expect(canReorder(slide, ['b', 'c'], 'front')).toBe(false);
+    expect(canReorder(slide, ['a', 'c'], 'forward')).toBe(true);
+    expect(canReorder(slide, ['a', 'c'], 'back')).toBe(true);
+    expect(canReorder(slide, ['a', 'b', 'c'], 'back')).toBe(false);
+    expect(canReorder(slide, ['gone'], 'front')).toBe(false);
+
+    // Each parent on its own: the group is on top of nothing else here, its child is not.
+    const nested = allElementsDeck().slides[0]!;
+    expect(canReorder(nested, ['e_group_text'], 'front')).toBe(false);
+    expect(canReorder(nested, ['e_group_text', 'e_text'], 'front')).toBe(true);
+    // What it says is what the command does.
+    for (const to of ['front', 'forward', 'backward', 'back'] as const) {
+      for (const ids of [['a'], ['b'], ['c'], ['a', 'c'], ['b', 'c']]) {
+        const deck = deckWith(rect('a', box(0, 0)), rect('b', box(0, 0)), rect('c', box(0, 0)));
+        const after = apply(deck, reorderElements(deck.slides[0]!, ids, to));
+        const moved =
+          after.slides[0]!.elements.map((e) => e.id).join() !==
+          deck.slides[0]!.elements.map((e) => e.id).join();
+        expect(canReorder(deck.slides[0]!, ids, to)).toBe(moved);
+      }
+    }
+  });
+});
+
+describe('detachElements and pasteElements', () => {
+  it('takes elements out of their groups, at their place on the slide, in z-order', () => {
+    const slide = allElementsDeck().slides[0]!;
+    const taken = detachElements(slide, ['e_group_text', 'e_text', 'e_gone']);
+    expect(taken.map((e) => e.id)).toEqual(['e_text', 'e_group_text']);
+    expect(taken[1]!.frame).toEqual({ x: 104, y: 484, w: 352, h: 192 });
+    // Copies: the slide is untouched (it is frozen in a bus, and stays as it was here).
+    expect(findElement(slide, 'e_group_text')!.frame.x).toBe(24);
+    // A child of a group that is taken comes with the group, once.
+    const withGroup = detachElements(slide, ['e_group', 'e_group_bg']);
+    expect(withGroup.map((e) => e.id)).toEqual(['e_group']);
+  });
+
+  it('pastes on top with new ids and an offset, also into another deck', () => {
+    const source = allElementsDeck();
+    const clip = detachElements(source.slides[0]!, ['e_shape', 'e_group']);
+
+    const same = pasteElements(source, 's_all', clip, { offset: { x: 24, y: 24 } });
+    expect(same.map((c) => c.element.frame.x)).toEqual([104, 104]);
+    const after = apply(source, same);
+    const top = after.slides[0]!.elements.slice(-2);
+    expect(top.map((e) => e.type)).toEqual(['shape', 'group']);
+    const ids = [...walkElements(top)].map((e) => e.id);
+    expect(ids).toHaveLength(4);
+    for (const id of ids) expect(allElementIds(source).has(id)).toBe(false);
+    expect(after.slides[0]!.timeline).toEqual(source.slides[0]!.timeline);
+
+    const other = deckWith(rect('e_shape', box(0, 0)));
+    const pasted = apply(other, pasteElements(other, 's1', clip));
+    expect(pasted.slides[0]!.elements).toHaveLength(3);
+    expect(pasted.slides[0]!.elements[1]!.frame).toEqual(clip[0]!.frame);
+    // Pasting the same clipboard twice clashes with nothing.
+    apply(pasted, pasteElements(pasted, 's1', clip));
+    expect(() => pasteElements(other, 's_gone', clip)).toThrow(/may have been deleted/);
+  });
+});
+
+describe('pasteSlides', () => {
+  it('adds copies as a block, with ids that are new across all of them', () => {
+    const deck = hebrewDeck();
+    const commands = pasteSlides(deck, [deck.slides[0]!, deck.slides[1]!, deck.slides[0]!], {
+      index: 1,
+    });
+    const after = apply(deck, commands);
+    expect(after.slides).toHaveLength(6);
+    expect(after.slides.slice(1, 4).map((s) => s.name)).toEqual([
+      deck.slides[0]!.name,
+      deck.slides[1]!.name,
+      deck.slides[0]!.name,
+    ]);
+    expect(new Set(after.slides.map((s) => s.id)).size).toBe(6);
+    expect(allElementIds(after).size).toBe(
+      [...deck.slides, deck.slides[0]!, deck.slides[1]!, deck.slides[0]!].reduce(
+        (n, s) => n + [...walkElements(s.elements)].length,
+        0,
+      ),
+    );
+  });
+
+  it('brings a missing layout along when it is given, and lets go of it otherwise', () => {
+    const source = allElementsDeck();
+    const slide = source.slides[0]!;
+    const target = hebrewDeck();
+
+    const kept = pasteSlides(target, [slide, slide], { layouts: source.layouts });
+    expect(kept.map((c) => c.type)).toEqual(['layout.add', 'slide.add', 'slide.add']);
+    const after = apply(target, kept);
+    expect(after.layouts.map((l) => l.id)).toEqual(['l_text_image']);
+    expect(after.slides.at(-1)!.layoutId).toBe('l_text_image');
+    // The timeline and the CSS follow the new ids, as in duplicateSlide.
+    expect(after.slides.at(-1)!.timeline[0]!.elementId).toBe(after.slides.at(-1)!.elements[0]!.id);
+
+    const dropped = pasteSlides(target, [slide]);
+    expect(dropped).toHaveLength(1);
+    const added = dropped[0]!;
+    expect(added.type === 'slide.add' ? added.slide.layoutId : 'not a slide').toBeUndefined();
+    apply(target, dropped);
+
+    // A deck that has the layout keeps using its own.
+    expect(pasteSlides(source, [slide], { layouts: source.layouts }).map((c) => c.type)).toEqual([
+      'slide.add',
+    ]);
+  });
+});
+
+describe('assetsUsedBy', () => {
+  it('finds the assets a part of the deck refers to, wherever the id is written', () => {
+    const deck = allElementsDeck();
+    const slide = deck.slides[0]!;
+    const names = (part: unknown) =>
+      assetsUsedBy(deck, part)
+        .map((a) => a.file.split('.')[1])
+        .sort();
+    expect(names(detachElements(slide, ['e_image']))).toEqual(['jpg']);
+    expect(names(detachElements(slide, ['e_video', 'e_text']))).toEqual(['mp4', 'png']);
+    expect(names(detachElements(slide, ['e_text']))).toEqual([]);
+    // The whole slide: also its background image, but not the font or the unused picture.
+    expect(names(slide)).toEqual(['jpg', 'mp3', 'mp4', 'png', 'svg']);
+    const html = createElement.html({
+      frame: box(0, 0),
+      markup: `<img data-asset="${'2'.repeat(64)}">`,
+    });
+    expect(names([html])).toEqual(['svg']);
+  });
+});
+
+describe('slideFromLayout', () => {
+  it('makes a slide of the layout with an empty element per text or picture placeholder', () => {
+    const deck = allElementsDeck();
+    const command = slideFromLayout(deck, 'l_text_image', { index: 1 });
+    expect(command.index).toBe(1);
+    const { slide } = command;
+    expect(slide.layoutId).toBe('l_text_image');
+    expect(slide.elements.map((e) => [e.type, e.role])).toEqual([
+      ['text', 'title'],
+      ['text', 'body'],
+      ['image', 'image'],
+    ]);
+    const [title, , image] = slide.elements;
+    expect(title).toMatchObject({
+      frame: { x: 160, y: 140, w: 760, h: 160 },
+      vAlign: 'top',
+      content: { paragraphs: [{ styleRef: 'title', align: 'start', runs: [] }] },
+    });
+    expect(image).toMatchObject({ frame: { x: 1000, y: 0, w: 920, h: 1080 } });
+    // The decorations stay with the layout: the renderer draws them for a slide that points at it.
+    expect(slide.elements.some((e) => e.id === 'e_layout_bar')).toBe(false);
+    const after = apply(deck, [command]);
+    expect(after.slides[1]!.id).toBe(slide.id);
+  });
+
+  it('skips placeholders it has no element for, takes their alignment, and reports a missing layout', () => {
+    const deck = createDeck({
+      layouts: [
+        {
+          id: 'l_chart',
+          name: 'Chart',
+          archetype: 'chart',
+          placeholders: [
+            {
+              id: 'p_title',
+              role: 'title',
+              frame: box(0, 0, 800, 100),
+              align: 'center',
+              vAlign: 'middle',
+            },
+            { id: 'p_chart', role: 'chart', frame: box(0, 200, 800, 600) },
+            { id: 'p_number', role: 'slideNumber', frame: box(0, 900, 100, 50) },
+            { id: 'p_logo', role: 'logo', frame: box(1700, 900, 120, 60) },
+          ],
+          decorations: [],
+        },
+      ],
+    });
+    const { slide, index } = slideFromLayout(deck, 'l_chart');
+    expect(index).toBeUndefined();
+    expect(slide.elements.map((e) => e.role)).toEqual(['title', 'logo']);
+    expect(slide.elements[0]).toMatchObject({
+      vAlign: 'middle',
+      content: { paragraphs: [{ align: 'center' }] },
+    });
+    apply(deck, [{ type: 'slide.add', slide }]);
+    expect(() => slideFromLayout(deck, 'l_gone')).toThrow(CommandError);
   });
 });

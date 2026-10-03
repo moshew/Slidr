@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChartColumn,
@@ -36,6 +36,9 @@ import {
   DropdownMenuTrigger,
   Icon,
   IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@slidr/ui';
 import type { RecentFile } from '../document/storage';
 import { useDeck, useEditor, useFile, useSelection } from './editor';
@@ -46,7 +49,14 @@ import {
   saveDocument,
   saveDocumentAs,
 } from './fileActions';
-import { PanelId, useAction, useContextTools, type ToolAction } from './registry';
+import {
+  PanelId,
+  useAction,
+  useActionPopover,
+  useContextTools,
+  type ActionPopoverProps,
+  type ToolAction,
+} from './registry';
 import { selectionKind, type SelectionKind } from './selection';
 import { openPanel, setZoom, useShell } from './store';
 
@@ -62,7 +72,8 @@ export function TopTools() {
 
 function Group({ children, label }: { children: ReactNode; label?: string }) {
   return (
-    <div role="group" aria-label={label} className="flex items-center gap-0.5">
+    // A tool may draw nothing for the element at hand; its group then takes no room in the row.
+    <div role="group" aria-label={label} className="flex items-center gap-0.5 empty:hidden">
       {children}
     </div>
   );
@@ -121,7 +132,32 @@ function ActionButton({
 }) {
   const { t } = useTranslation();
   const run = useAction(action);
+  const popover = useActionPopover(action);
+  if (popover) return <PopoverButton icon={icon} label={t(label)} content={popover} />;
   return <IconButton icon={icon} label={t(label)} disabled={!run} onClick={run} />;
+}
+
+/** A row A button whose area registered a popover, such as the shape library. */
+function PopoverButton({
+  icon,
+  label,
+  content: Content,
+}: {
+  icon: LucideIcon;
+  label: string;
+  content: ComponentType<ActionPopoverProps>;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <IconButton icon={icon} label={label} />
+      </PopoverTrigger>
+      <PopoverContent>
+        <Content close={() => setOpen(false)} />
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function ExportButton() {
@@ -311,7 +347,8 @@ function useSelectionKind(): { kind: SelectionKind; count: number } {
   const deck = useDeck((s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
   const elementIds = useSelection((s) => s.selectedElementIds);
-  return { kind: selectionKind(deck, slideId, elementIds), count: elementIds.length };
+  const editingId = useSelection((s) => s.editingElementId);
+  return { kind: selectionKind(deck, slideId, elementIds, editingId), count: elementIds.length };
 }
 
 function RowB() {

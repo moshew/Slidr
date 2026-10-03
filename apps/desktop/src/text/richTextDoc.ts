@@ -43,12 +43,13 @@ export const PARAGRAPH_ATTRS = [
   'styleRef',
 ] as const satisfies readonly (keyof Paragraph)[];
 
-interface PmMark {
+/** A mark as the editor's JSON has it. */
+export interface PmMark {
   type: string;
   attrs?: Record<string, unknown>;
 }
 
-function marksToPm(marks: Marks | undefined): PmMark[] | undefined {
+export function marksToPm(marks: Marks | undefined): PmMark[] | undefined {
   if (!marks) return undefined;
   const out: PmMark[] = [];
   for (const type of MARK_TYPES) {
@@ -59,7 +60,7 @@ function marksToPm(marks: Marks | undefined): PmMark[] | undefined {
   return out.length ? out : undefined;
 }
 
-function pmToMarks(marks: readonly PmMark[] | undefined): Marks | undefined {
+export function pmToMarks(marks: readonly PmMark[] | undefined): Marks | undefined {
   if (!marks?.length) return undefined;
   const out: Record<string, unknown> = {};
   for (const mark of marks) {
@@ -71,7 +72,7 @@ function pmToMarks(marks: readonly PmMark[] | undefined): Marks | undefined {
 }
 
 /** Marks without empty or "off" keys, so that equal formatting compares equal. */
-function cleanMarks(marks: Marks | undefined): Marks | undefined {
+export function cleanMarks(marks: Marks | undefined): Marks | undefined {
   if (!marks) return undefined;
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(marks)) {
@@ -80,7 +81,8 @@ function cleanMarks(marks: Marks | undefined): Marks | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
-function sameValue(a: unknown, b: unknown): boolean {
+/** Deep equality of plain values, where a key that is `undefined` counts as absent. */
+export function sameValue(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
   const ka = Object.keys(a).filter((k) => (a as Record<string, unknown>)[k] !== undefined);

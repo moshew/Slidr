@@ -33,6 +33,13 @@ export const en: Messages<typeof he> = {
     startFailed: 'Couldn’t prepare the presentation for saving',
     migrated:
       'This file came from an older version and was updated. A copy of the original was kept next to it.',
+    recoverTitle: 'Recover “{{name}}”?',
+    recoverBody: 'The app closed before your changes were saved. Last autosave: {{time}}.',
+    recoverBodyNoTime: 'The app closed before your changes were saved.',
+    recover: 'Recover',
+    recoverDiscard: 'Delete',
+    recoverLater: 'Not now',
+    recoverFailed: 'Couldn’t recover the presentation',
   },
   tools: {
     undo: 'Undo',
@@ -98,7 +105,6 @@ export const en: Messages<typeof he> = {
     soonTitle: 'Not available yet',
     mediaBody: 'Uploads, stock photos, icons and AI images.',
     animationsBody: 'The slide’s animation timeline and its transition.',
-    layersBody: 'The objects on the slide: order, lock, visibility and names.',
     notesBody: 'Speaker notes for the current slide.',
     lintBody: 'Design check findings, with automatic fixes.',
     historyBody: 'Every change, yours and the agent’s, with a way back to any point.',

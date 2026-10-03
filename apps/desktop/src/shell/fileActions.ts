@@ -1,13 +1,14 @@
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
-import type { RecentFile } from '../document/storage';
+import type { RecentFile, RecoverableWorkspace } from '../document/storage';
 import { currentLanguage, i18n } from '../i18n';
 import { ask, tell } from './dialogs';
 import { newDeck, syncFileState, type Editor } from './editor';
 
 /*
  * The File menu flows (DOC-05) over `DocumentService` (ADR-007): new, open, save, save as,
- * recent files, and the unsaved-changes question before anything replaces the document.
- * Outside Tauri there is no storage; only "new" works there.
+ * recent files, the unsaved-changes question before anything replaces the document, and the
+ * offer to recover what a crash left behind. Outside Tauri there is no storage; only "new" works
+ * there.
  */
 
 const EXTENSION = 'slidr';
@@ -66,7 +67,7 @@ export async function startDocument(editor: Editor): Promise<void> {
       } catch {
         await document.create(editor.bus.deck);
       }
-    } else {
+    } else if (!(await offerRecovery(editor))) {
       await document.create(editor.bus.deck);
     }
   } catch (error) {
@@ -74,6 +75,53 @@ export async function startDocument(editor: Editor): Promise<void> {
   }
   rememberWorkspace(editor);
   syncFileState(editor);
+}
+
+/**
+ * After a crash (DOC-03): workspaces with changes that never reached their file are offered one
+ * by one, the latest first. True when one was recovered and is now the open document. "Not now"
+ * keeps a leftover on disk, to be offered again at the next start.
+ */
+async function offerRecovery(editor: Editor): Promise<boolean> {
+  const document = editor.document;
+  if (!document) return false;
+  let leftovers: RecoverableWorkspace[];
+  try {
+    leftovers = await document.listRecoverable();
+  } catch (error) {
+    console.error('Could not list recoverable workspaces', error);
+    return false;
+  }
+  leftovers.sort((a, b) => (b.autosavedAt ?? '').localeCompare(a.autosavedAt ?? ''));
+  for (const leftover of leftovers) {
+    const time = leftover.autosavedAt
+      ? new Date(leftover.autosavedAt).toLocaleString(currentLanguage())
+      : null;
+    const choice = await ask({
+      title: t('file.recoverTitle', { name: documentName(leftover.sourcePath, leftover.title) }),
+      body: time ? t('file.recoverBody', { time }) : t('file.recoverBodyNoTime'),
+      actions: [
+        { id: 'later', label: t('file.recoverLater'), variant: 'ghost' },
+        { id: 'discard', label: t('file.recoverDiscard') },
+        { id: 'recover', label: t('file.recover'), variant: 'primary' },
+      ],
+      cancelId: 'later',
+    });
+    if (choice === 'discard') {
+      await document.discardRecoverable(leftover.id).catch((error: unknown) => {
+        console.error('Could not discard the workspace', error);
+      });
+    } else if (choice === 'recover') {
+      try {
+        await document.recover(leftover.id);
+        return true;
+      } catch (error) {
+        // The leftover stays on disk: it is the only copy of that work.
+        await report(t('file.recoverFailed'), error);
+      }
+    }
+  }
+  return false;
 }
 
 /**
