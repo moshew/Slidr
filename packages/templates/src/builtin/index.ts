@@ -4,8 +4,8 @@
 import type { Theme } from '@slidr/model';
 import type { Template } from '../template';
 import type { SampleSlide } from './kit';
-import { shvilTheme } from './shvil';
-import { tzukTheme } from './tzuk';
+import { shvilSamples, shvilTemplate, shvilTheme } from './shvil';
+import { tzukSamples, tzukTemplate, tzukTheme } from './tzuk';
 import { zeremSamples, zeremTemplate, zeremTheme } from './zerem';
 
 export { pictures } from './pictures.generated';
@@ -21,7 +21,7 @@ export const builtInThemes: Record<string, Theme> = {
 
 /** The built-in templates, in the order the library shows them. */
 export function builtInTemplates(): Template[] {
-  return [zeremTemplate()];
+  return [zeremTemplate(), shvilTemplate(), tzukTemplate()];
 }
 
 /**
@@ -30,4 +30,6 @@ export function builtInTemplates(): Template[] {
  */
 export const builtInSamples: Record<string, { he: SampleSlide[]; en: SampleSlide[] }> = {
   zerem: zeremSamples,
+  shvil: shvilSamples,
+  tzuk: tzukSamples,
 };
