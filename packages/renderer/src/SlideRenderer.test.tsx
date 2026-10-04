@@ -133,6 +133,42 @@ describe('SlideRenderer', () => {
     expect(shown('[data-element-id="e_own"]')).toBe('#');
   });
 
+  it("draws the layout's footer on every slide, except where the slide has a footer of its own", () => {
+    const footer = (id: string, text: string) =>
+      createElement.text({
+        id,
+        role: 'footer',
+        frame: { x: 96, y: 960, w: 900, h: 40 },
+        content: richText(text, { styleRef: 'caption' }),
+      });
+    const deck = createDeck({
+      lang: 'en',
+      slides: [
+        createSlide({ id: 's_plain', layoutId: 'l_plain', elements: [] }),
+        // What a slide made from a layout holds until someone writes in it: an empty footer.
+        createSlide({ id: 's_empty', layoutId: 'l_plain', elements: [footer('e_empty', '')] }),
+        createSlide({ id: 's_own', layoutId: 'l_plain', elements: [footer('e_own', 'Appendix')] }),
+      ],
+    });
+    deck.layouts = [
+      {
+        id: 'l_plain',
+        name: 'Plain',
+        archetype: 'cards',
+        placeholders: [],
+        decorations: [footer('d_footer', 'ACME · 2026')],
+      },
+    ];
+    const drawn = () => container.querySelector('[data-decoration-id="d_footer"]')?.textContent;
+    render(<SlideRenderer deck={deck} slide={deck.slides[0]!} />);
+    expect(drawn()).toBe('ACME · 2026');
+    render(<SlideRenderer deck={deck} slide={deck.slides[1]!} />);
+    expect(drawn()).toBe('ACME · 2026');
+    render(<SlideRenderer deck={deck} slide={deck.slides[2]!} />);
+    expect(drawn()).toBeUndefined();
+    expect(container.querySelector('[data-element-id="e_own"]')?.textContent).toBe('Appendix');
+  });
+
   it('leaves hidden elements out', () => {
     const deck = allElementsDeck();
     const slide = deck.slides[0]!;

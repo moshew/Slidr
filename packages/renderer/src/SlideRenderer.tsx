@@ -100,6 +100,15 @@ export function SlideRenderer({
     [assets, resolveAsset],
   );
   const layout = slide.layoutId ? layouts.find((l) => l.id === slide.layoutId) : undefined;
+  // A footer the layout draws is the deck's footer, the same on every slide (SLD-04). A slide
+  // whose own footer says something shows that instead: the two share one place.
+  const ownFooter = slide.elements.some(
+    (e) =>
+      e.role === 'footer' &&
+      !e.hidden &&
+      e.type === 'text' &&
+      e.content.paragraphs.some((p) => p.runs.some((run) => run.text.trim() !== '')),
+  );
   const background = slide.background ?? layout?.background ?? theme.background;
   const body = theme.textStyles.body;
   const scopedCss = useMemo(
@@ -145,9 +154,11 @@ export function SlideRenderer({
         {fontFaces ? <style data-slidr-fonts="">{fontFaces}</style> : null}
         {scopedCss ? <style>{scopedCss}</style> : null}
         <BackgroundLayers background={background} ctx={ctx} />
-        {layout?.decorations.map((d) => (
-          <ElementView key={d.id} element={d} decoration />
-        ))}
+        {layout?.decorations.map((d) =>
+          d.role === 'footer' && ownFooter ? null : (
+            <ElementView key={d.id} element={d} decoration />
+          ),
+        )}
         {slide.elements.map((e) => (
           <ElementView key={e.id} element={e} />
         ))}
