@@ -6,38 +6,49 @@ import { describe, expect, it } from 'vitest';
 /*
  * The design-system rules that a reader can miss and a scan cannot (DSN-01, SPEC 4.0 rule 7):
  * components take colours, spacing and radii from tokens only, and use no OS control.
- * Checked over the design system, the shell and every area that draws app UI. Exempt: dev pages
- * (the gallery), and what is drawn on the slide itself, in slide or screen pixels rather than in
- * tokens (`src/stage`, the in-place text editor).
+ * Checked over the design system and over all of the app's source: whatever area there is under
+ * `apps/desktop/src`, so a folder created tomorrow is checked without an edit here. What is not
+ * checked is in `exempt`, each entry with its reason.
  */
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const scanned = [
-  'packages/ui/src',
-  'apps/desktop/src/shell',
-  'apps/desktop/src/controls',
-  'apps/desktop/src/text',
-  'apps/desktop/src/objects',
-  'apps/desktop/src/arrange',
-  'apps/desktop/src/ai',
-  'apps/desktop/src/settings',
-  'apps/desktop/src/images',
-  'apps/desktop/src/media',
-  'apps/desktop/src/about',
-].filter((dir) => existsSync(join(root, dir)));
+const designSystem = 'packages/ui/src';
+const app = 'apps/desktop/src';
 
 /**
- * Drawn on the slide, not in the app's chrome; and the stand-ins of a plain browser page, which
- * paint the pictures a provider or a photo library would return.
+ * What the rules do not hold for: a folder (the entry ends with `/`) or one file. An entry is
+ * for code that does not draw the app's chrome. App UI that breaks a rule is fixed, not listed.
  */
-const onSlide = new Set([
-  'apps/desktop/src/text/TextEditor.tsx',
-  'apps/desktop/src/text/schema.ts',
-  'apps/desktop/src/images/memoryImages.ts',
-  'apps/desktop/src/media/memoryStock.ts',
-]);
-/** The colour picker's maths: the one place that writes colours (see the file). */
+const exempt: Record<string, string> = {
+  // The dev pages: served by the dev server only, and free to show whatever a check needs.
+  'apps/desktop/src/dev/': 'the gallery and the harness pages of the renderer and the runtime',
+
+  // Drawn on the slide or over it, in slide pixels or screen pixels rather than in tokens.
+  'apps/desktop/src/stage/': 'the Stage and the Filmstrip: the slide, its handles and its guides',
+  'apps/desktop/src/text/TextEditor.tsx': 'the text editor inside a text box of the slide',
+  'apps/desktop/src/text/schema.ts':
+    'the styles of the text being edited, which are the deck theme',
+  'apps/desktop/src/table/stage.tsx':
+    'the selection and the handles of a table on the Stage (ADR-033)',
+  'apps/desktop/src/present/Show.tsx': 'the show: black around the slide, on the screen (ADR-030)',
+  'apps/desktop/src/capture/deckCapture.ts':
+    'the contact sheet an agent gets: a picture on a canvas',
+
+  // The stand-ins of a plain browser page, which paint the pictures that a provider or a photo
+  // library would return.
+  'apps/desktop/src/images/memoryImages.ts': 'paints what an image provider would return',
+  'apps/desktop/src/media/memoryStock.ts': 'paints what a photo library would return',
+
+  // Colours of decks, kept as data: what a slide is drawn in, not what the app is drawn in.
+  'apps/desktop/src/templates/curated.ts': 'the palettes a deck can take',
+};
+/** The colour picker's maths: the one file of the design system that writes colours. */
 const colourMaths = 'packages/ui/src/color.ts';
+
+const isExempt = (path: string) =>
+  Object.keys(exempt).some((entry) =>
+    entry.endsWith('/') ? path.startsWith(entry) : path === entry,
+  );
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -49,13 +60,13 @@ function sources(dir: string): string[] {
 
 const posix = (file: string) => relative(root, file).replaceAll('\\', '/');
 
-const files = scanned
+const files = [designSystem, app]
   .flatMap((dir) => sources(join(root, dir)))
-  .filter((file) => !onSlide.has(posix(file)));
+  .filter((file) => !isExempt(posix(file)));
 
-function violations(pattern: RegExp, exempt?: string): string[] {
+function violations(pattern: RegExp, except?: string): string[] {
   return files
-    .filter((file) => posix(file) !== exempt)
+    .filter((file) => posix(file) !== except)
     .flatMap((file) =>
       readFileSync(file, 'utf8')
         .split('\n')
@@ -65,11 +76,31 @@ function violations(pattern: RegExp, exempt?: string): string[] {
     );
 }
 
-describe('design rules', () => {
-  it('scans the design system and the shell', () => {
-    expect(files.length).toBeGreaterThan(20);
+describe('what the design rules are checked over', () => {
+  /** The folders directly under the app's source: its areas. */
+  const areas = readdirSync(join(root, app)).filter((name) =>
+    statSync(join(root, app, name)).isDirectory(),
+  );
+  const scanned = (area: string) => files.some((file) => posix(file).startsWith(`${app}/${area}/`));
+
+  it('the design system, and every area of the app but those exempt as a whole', () => {
+    expect(files.some((file) => posix(file).startsWith(`${designSystem}/`))).toBe(true);
+    // No area is named here: whatever folder is found is scanned.
+    expect(areas.length).toBeGreaterThan(15);
+    expect(areas.filter((area) => !scanned(area)).map((area) => `${app}/${area}/`)).toEqual(
+      Object.keys(exempt).filter((entry) => entry.endsWith('/')),
+    );
+    expect(files.length).toBeGreaterThan(200);
   });
 
+  it('exempts only what is there, so the list does not outlive what it names', () => {
+    for (const entry of [...Object.keys(exempt), colourMaths]) {
+      expect(existsSync(join(root, entry)), entry).toBe(true);
+    }
+  });
+});
+
+describe('design rules', () => {
   it('has no colour literals in components', () => {
     expect(violations(/#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab)\(/, colourMaths)).toEqual(
       [],
