@@ -11,6 +11,7 @@
 //! Adapters live next to this file; [`registry`] is the only place that names them. The mock
 //! harness ([`mock`]) replays recorded event scripts, for tests and for UI work without cost.
 
+mod diagnostics;
 pub mod ipc;
 mod manager;
 mod mock;
@@ -22,6 +23,7 @@ use std::{fmt, sync::Arc};
 
 use async_trait::async_trait;
 
+pub use diagnostics::DiagnosticsView;
 pub use manager::{ATTACHMENTS, HarnessManager};
 pub use registry::builtin;
 #[allow(unused_imports)]
@@ -66,19 +68,43 @@ pub trait AgentSession: Send {
     fn native_session_id(&self) -> Option<String>;
 }
 
+/// Takes a line of a harness's own output.
+type RawLine = dyn Fn(&str) + Send + Sync;
+
 /// Where a session's events go. Cheap to clone; may be called from any task.
 #[derive(Clone)]
-pub struct EventSink(Arc<dyn Fn(AgentEvent) + Send + Sync>);
+pub struct EventSink {
+    deliver: Arc<dyn Fn(AgentEvent) + Send + Sync>,
+    /// Where the harness's own output goes, a line at a time, for the diagnostics log (AGT-08).
+    raw: Option<Arc<RawLine>>,
+}
 
 impl EventSink {
     /// A sink that hands every event to `deliver`, in order.
     pub fn new(deliver: impl Fn(AgentEvent) + Send + Sync + 'static) -> Self {
-        Self(Arc::new(deliver))
+        Self {
+            deliver: Arc::new(deliver),
+            raw: None,
+        }
+    }
+
+    /// The same sink, also handing what the harness itself writes to `raw`.
+    pub fn with_raw(mut self, raw: impl Fn(&str) + Send + Sync + 'static) -> Self {
+        self.raw = Some(Arc::new(raw));
+        self
     }
 
     /// Delivers one event.
     pub fn emit(&self, event: AgentEvent) {
-        (self.0)(event);
+        (self.deliver)(event);
+    }
+
+    /// Hands over a line the harness wrote, before it is mapped to events: whatever the adapter
+    /// makes of it, the log has what the harness said.
+    pub fn raw(&self, line: &str) {
+        if let Some(raw) = &self.raw {
+            raw(line);
+        }
     }
 
     /// A sink that queues events for a test to read.

@@ -49,6 +49,8 @@ export const AGENT_ERROR_KINDS = [
   'io',
   /** A bug on the Rust side. */
   'internal',
+  /** The harness could not reach its model (no connection); the turn can be sent again. */
+  'network',
 ] as const;
 
 export type AgentErrorKind = (typeof AGENT_ERROR_KINDS)[number];

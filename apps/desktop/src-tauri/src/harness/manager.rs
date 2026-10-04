@@ -4,13 +4,20 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, MutexGuard, PoisonError},
-    time::Instant,
+    sync::{
+        Arc, Mutex, MutexGuard, PoisonError,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
 };
+
+use serde_json::json;
+use tokio::time::Instant;
 
 use super::{
     AgentError, AgentErrorKind, AgentEvent, AgentHarness, AgentSession, EventSink,
     HarnessDescriptor, HarnessStatus, Result, SessionConfig, TurnOutcome, Usage, UserTurn,
+    diagnostics::{DEFAULT_TAIL_BYTES, Diagnostics, DiagnosticsView},
 };
 
 /// Longest thread key, in bytes.
@@ -18,6 +25,16 @@ const MAX_THREAD_KEY: usize = 200;
 /// The folder inside a session's folder that its agent runs in and may read (the adapters'
 /// working directory). Files for the agent go here.
 pub const ATTACHMENTS: &str = "attachments";
+
+/// How long a session may sit without a turn before its process is closed (AGT-07). The
+/// conversation is not lost: the next message starts a process that resumes it by its id, which
+/// costs about a second (ADR-001). Ten minutes is past a pause to read what the agent made, and
+/// short of leaving a process per chat running through a working day.
+const IDLE_LIMIT: Duration = Duration::from_secs(10 * 60);
+/// Names another limit, in seconds: for a run that checks the closing and cannot wait for it.
+const IDLE_ENV: &str = "SLIDR_AGENT_IDLE_SECS";
+/// How often idle sessions are looked for, at most.
+const IDLE_CHECK: Duration = Duration::from_secs(30);
 
 /// Where the files a user attached to a chat are kept, inside the folder of its thread.
 const ATTACHMENTS_DIR: &str = "attachments";
@@ -34,6 +51,12 @@ pub struct HarnessManager {
     /// Session folders live under `<root>/<thread key>/`.
     root: PathBuf,
     sessions: Mutex<HashMap<String, Arc<Slot>>>,
+    /// What the harnesses said and the sessions did (AGT-08).
+    diagnostics: Arc<Diagnostics>,
+    /// A session without a turn for this long is closed (AGT-07).
+    idle_limit: Duration,
+    /// The task that looks for idle sessions is running.
+    watching: AtomicBool,
 }
 
 /// One open session.
@@ -46,11 +69,26 @@ struct Slot {
 impl HarnessManager {
     /// A manager over `harnesses`, keeping session folders under `root`.
     pub fn new(root: PathBuf, harnesses: Vec<Arc<dyn AgentHarness>>) -> Self {
+        let idle_limit = std::env::var(IDLE_ENV)
+            .ok()
+            .and_then(|seconds| seconds.parse::<u64>().ok())
+            .filter(|seconds| *seconds > 0)
+            .map_or(IDLE_LIMIT, Duration::from_secs);
         Self {
+            diagnostics: Arc::new(Diagnostics::new(root.clone())),
             harnesses,
             root,
             sessions: Mutex::new(HashMap::new()),
+            idle_limit,
+            watching: AtomicBool::new(false),
         }
+    }
+
+    /// The same manager with another idle limit.
+    #[cfg(test)]
+    fn with_idle_limit(mut self, limit: Duration) -> Self {
+        self.idle_limit = limit;
+        self
     }
 
     /// The registered harnesses, in registration order.
@@ -81,13 +119,47 @@ impl HarnessManager {
     ) -> Result<String> {
         let harness = self.harness(harness_id)?;
         config.workdir = thread_dir(&self.root, thread)?;
-        let guard = Arc::new(TurnGuard::new(deliver));
+        let id = uuid::Uuid::new_v4().simple().to_string();
+        self.diagnostics.record(
+            &id,
+            "start",
+            json!({
+                "harness": harness_id,
+                "thread": thread,
+                "scope": config.scope,
+                "model": config.model,
+                "effort": config.effort,
+                "resume": config.resume,
+                "webAccess": config.web_access,
+                "appTools": config.tool_endpoint.is_some(),
+                "systemPromptChars": config.system_prompt.chars().count(),
+            }),
+        );
+        // What reaches the listener is what the log records: the guard's own additions too.
+        let guard = {
+            let (log, id) = (Arc::clone(&self.diagnostics), id.clone());
+            Arc::new(TurnGuard::new(move |event| {
+                record_event(&log, &id, &event);
+                deliver(event);
+            }))
+        };
         let sink = {
             let guard = Arc::clone(&guard);
+            let (log, id) = (Arc::clone(&self.diagnostics), id.clone());
             EventSink::new(move |event| guard.emit(event))
+                .with_raw(move |line| log.record_raw(&id, line))
         };
-        let session = harness.start(config, sink).await?;
-        let id = uuid::Uuid::new_v4().simple().to_string();
+        let session = match harness.start(config, sink).await {
+            Ok(session) => session,
+            Err(error) => {
+                self.diagnostics.record(
+                    &id,
+                    "event",
+                    json!({ "type": "start_failed", "kind": error.kind, "message": error.message }),
+                );
+                return Err(error);
+            }
+        };
         let slot = Arc::new(Slot {
             guard,
             session: tokio::sync::Mutex::new(Some(session)),
@@ -101,6 +173,16 @@ impl HarnessManager {
         turn.validate()?;
         let slot = self.slot(session_id)?;
         slot.guard.begin_turn()?;
+        // Its size only: what the user wrote is kept in the deck's own transcript.
+        self.diagnostics.record(
+            session_id,
+            "send",
+            json!({
+                "textChars": turn.text.chars().count(),
+                "contextChars": turn.context.as_deref().map_or(0, |c| c.chars().count()),
+                "images": turn.images.len(),
+            }),
+        );
         let mut session = slot.session.lock().await;
         let result = match session.as_mut() {
             Some(session) => session.send(turn).await,
@@ -126,9 +208,15 @@ impl HarnessManager {
 
     /// Ends a session and forgets it. Its last event is `exited`.
     pub async fn close(&self, session_id: &str) -> Result<()> {
+        self.end(session_id, "asked").await
+    }
+
+    async fn end(&self, session_id: &str, reason: &str) -> Result<()> {
         let slot = lock(&self.sessions)
             .remove(session_id)
             .ok_or_else(|| unknown_session(session_id))?;
+        self.diagnostics
+            .record(session_id, "close", json!({ "reason": reason }));
         let session = slot.session.lock().await.take();
         let result = match session {
             Some(session) => session.close().await,
@@ -137,6 +225,54 @@ impl HarnessManager {
         // In case the adapter did not say so itself; the guard drops it if it did.
         slot.guard.emit(AgentEvent::Exited { code: None });
         result
+    }
+
+    /// Starts looking for idle sessions, once: from then on a session that has had no turn for
+    /// the idle limit is closed (AGT-07), and so is one whose process ended by itself. Needs a
+    /// running Tokio runtime; holds the manager only weakly.
+    pub fn watch_idle(self: &Arc<Self>) {
+        if self.watching.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let manager = Arc::downgrade(self);
+        let every = (self.idle_limit / 4).clamp(Duration::from_secs(1), IDLE_CHECK);
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(every).await;
+                let Some(manager) = manager.upgrade() else {
+                    break;
+                };
+                manager.close_idle().await;
+            }
+        });
+    }
+
+    /// Closes the sessions that have been idle for the limit. Returns how many.
+    async fn close_idle(&self) -> usize {
+        // Marked under each guard's own lock, so a turn that begins now is refused rather than
+        // cut: the webview then starts a session that resumes the conversation.
+        let idle: Vec<String> = lock(&self.sessions)
+            .iter()
+            .filter(|(_, slot)| slot.guard.retire_if_idle(self.idle_limit))
+            .map(|(id, _)| id.clone())
+            .collect();
+        for id in &idle {
+            let _ = self.end(id, "idle").await;
+        }
+        idle.len()
+    }
+
+    /// The end of the diagnostics log (AGT-08).
+    pub fn diagnostics(&self, max_bytes: Option<usize>) -> DiagnosticsView {
+        self.diagnostics
+            .tail(max_bytes.unwrap_or(DEFAULT_TAIL_BYTES))
+    }
+
+    /// Empties the diagnostics log.
+    pub fn clear_diagnostics(&self) -> Result<()> {
+        self.diagnostics
+            .clear()
+            .map_err(|e| AgentError::io("clear the diagnostics log", &e))
     }
 
     /// Stores a file the user attached to a chat (CHT-U05) in the folder of its thread, under
@@ -211,6 +347,20 @@ impl HarnessManager {
     }
 }
 
+/// Writes an event to the diagnostics log. Streamed text is not an entry: it is the reply, which
+/// the transcript keeps, a token at a time.
+fn record_event(log: &Diagnostics, session: &str, event: &AgentEvent) {
+    if matches!(
+        event,
+        AgentEvent::TextDelta { .. } | AgentEvent::ThinkingDelta { .. }
+    ) {
+        return;
+    }
+    if let Ok(data) = serde_json::to_value(event) {
+        log.record(session, "event", data);
+    }
+}
+
 fn unknown_session(id: &str) -> AgentError {
     AgentError::new(
         AgentErrorKind::UnknownSession,
@@ -278,26 +428,36 @@ struct TurnGuard {
     state: Mutex<GuardState>,
 }
 
-#[derive(Default)]
 struct GuardState {
     started: bool,
     /// When the running turn began.
     turn: Option<Instant>,
     open_tools: Vec<String>,
     exited: bool,
+    /// When the session last did anything: it began, took a turn, or said something.
+    active: Instant,
+    /// The session is being closed for sitting idle: it takes no more turns.
+    retiring: bool,
 }
 
 impl TurnGuard {
     fn new(deliver: impl Fn(AgentEvent) + Send + Sync + 'static) -> Self {
         Self {
             deliver: Box::new(deliver),
-            state: Mutex::default(),
+            state: Mutex::new(GuardState {
+                started: false,
+                turn: None,
+                open_tools: Vec::new(),
+                exited: false,
+                active: Instant::now(),
+                retiring: false,
+            }),
         }
     }
 
     fn begin_turn(&self) -> Result<()> {
         let mut state = lock(&self.state);
-        if state.exited {
+        if state.exited || state.retiring {
             return Err(AgentError::process_exited("the session has ended"));
         }
         if state.turn.is_some() {
@@ -306,7 +466,9 @@ impl TurnGuard {
                 "a turn is still running in this session",
             ));
         }
-        state.turn = Some(Instant::now());
+        let now = Instant::now();
+        state.turn = Some(now);
+        state.active = now;
         Ok(())
     }
 
@@ -319,6 +481,19 @@ impl TurnGuard {
         lock(&self.state).turn.is_some()
     }
 
+    /// Whether the session is to be closed for sitting idle: no turn is running and nothing has
+    /// happened in it for `limit`, or it has ended by itself. If so it takes no more turns, so
+    /// the close that follows never cuts one.
+    fn retire_if_idle(&self, limit: Duration) -> bool {
+        let mut state = lock(&self.state);
+        if state.retiring {
+            return false;
+        }
+        let idle = state.exited || (state.turn.is_none() && state.active.elapsed() >= limit);
+        state.retiring = idle;
+        idle
+    }
+
     /// Delivers `event`, preceded by whatever the contract says must come first. Delivery happens
     /// under the lock, so events from different tasks of one session cannot overtake each other.
     fn emit(&self, event: AgentEvent) {
@@ -326,6 +501,7 @@ impl TurnGuard {
         if state.exited {
             return;
         }
+        state.active = Instant::now();
         match &event {
             AgentEvent::SessionStarted { .. } => {
                 if state.started {
@@ -587,6 +763,111 @@ mod tests {
             ]
         );
         Ok(())
+    }
+
+    /// The kinds of the entries of the diagnostics log, with what closed a session beside it.
+    fn logged(manager: &HarnessManager) -> std::result::Result<Vec<String>, serde_json::Error> {
+        manager
+            .diagnostics(None)
+            .text
+            .lines()
+            .map(|line| {
+                let entry: serde_json::Value = serde_json::from_str(line)?;
+                let kind = entry["kind"].as_str().unwrap_or_default();
+                Ok(match kind {
+                    "close" => format!("close:{}", entry["data"]["reason"].as_str().unwrap_or("")),
+                    "event" => format!("event:{}", entry["data"]["type"].as_str().unwrap_or("")),
+                    other => other.to_owned(),
+                })
+            })
+            .collect()
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn an_idle_session_is_closed_and_one_at_work_is_not() -> TestResult {
+        let root = tempfile::tempdir()?;
+        let manager = Arc::new(manager(root.path())?.with_idle_limit(Duration::from_secs(600)));
+        manager.watch_idle();
+        // Asked again, it is still one watch.
+        manager.watch_idle();
+
+        let (idle, mut idle_events) = start(&manager).await?;
+        manager.send(&idle, UserTurn::text("Go")).await?;
+        assert_eq!(until_turn_end(&mut idle_events).await.len(), 5);
+
+        // A second session takes a turn just as the first one's ten minutes run out.
+        tokio::time::sleep(Duration::from_secs(599)).await;
+        let (busy, mut busy_events) = start(&manager).await?;
+        manager.send(&busy, UserTurn::text("Go")).await?;
+
+        // The first is closed, without a word of error: only `exited`.
+        assert_eq!(kinds(&until_turn_end(&mut idle_events).await), ["exited"]);
+        assert!(idle_events.recv().await.is_none());
+        let gone = manager.send(&idle, UserTurn::text("Still there?")).await;
+        assert_eq!(
+            gone.err().map(|e| e.kind),
+            Some(AgentErrorKind::UnknownSession)
+        );
+
+        // The second finished its turn untouched, and goes after ten quiet minutes of its own.
+        let turn = until_turn_end(&mut busy_events).await;
+        assert!(matches!(
+            turn.last(),
+            Some(AgentEvent::TurnCompleted {
+                outcome: TurnOutcome::Completed,
+                ..
+            })
+        ));
+        tokio::time::sleep(Duration::from_secs(300)).await;
+        manager.send(&busy, UserTurn::text("Again")).await?;
+        manager.interrupt(&busy).await?;
+        until_turn_end(&mut busy_events).await;
+        assert_eq!(kinds(&until_turn_end(&mut busy_events).await), ["exited"]);
+
+        // The log has the whole of it, in order, and says why each session closed.
+        let log = logged(&manager)?;
+        assert_eq!(log.iter().filter(|entry| *entry == "close:idle").count(), 2);
+        assert_eq!(
+            &log[..7],
+            [
+                "start",
+                "send",
+                "event:session_started",
+                "event:tool_call_started",
+                "event:tool_call_finished",
+                "event:turn_completed",
+                "start",
+            ]
+        );
+        assert!(!log.iter().any(|entry| entry == "event:text_delta"));
+        manager.clear_diagnostics()?;
+        assert!(logged(&manager)?.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn a_session_being_closed_for_idleness_takes_no_turn() {
+        let guard = TurnGuard::new(|_| {});
+        assert!(!guard.retire_if_idle(Duration::from_secs(600)), "just made");
+        assert!(guard.begin_turn().is_ok());
+        assert!(!guard.retire_if_idle(Duration::ZERO), "a turn is running");
+        guard.emit(AgentEvent::TurnCompleted {
+            outcome: TurnOutcome::Completed,
+            usage: Usage::default(),
+            cost_usd: None,
+            duration_ms: 1,
+        });
+        assert!(guard.retire_if_idle(Duration::ZERO));
+        assert!(!guard.retire_if_idle(Duration::ZERO), "retired once");
+        // The turn that arrives now is refused, not cut: the caller resumes in a new session.
+        assert_eq!(
+            guard.begin_turn().err().map(|e| e.kind),
+            Some(AgentErrorKind::ProcessExited)
+        );
+        // A session that ended by itself is retired whatever the limit.
+        let ended = TurnGuard::new(|_| {});
+        ended.emit(AgentEvent::Exited { code: Some(1) });
+        assert!(ended.retire_if_idle(Duration::from_secs(600)));
     }
 
     #[tokio::test]

@@ -349,6 +349,9 @@ pub enum AgentErrorKind {
     Io,
     /// A bug on the Rust side.
     Internal,
+    /// The harness could not reach its model: no connection, no name resolution, a proxy in the
+    /// way. Nothing is wrong with the turn itself, so it can be sent again (WG13-T03).
+    Network,
 }
 
 /// A rejected call, as the webview receives it: `{ kind, message }`, like the storage errors.
@@ -490,6 +493,7 @@ mod tests {
             TurnFailed,
             Io,
             Internal,
+            Network,
         ];
         // Exhaustive: a new kind does not compile here until it is in the list above.
         let position = |kind: AgentErrorKind| match kind {
@@ -506,6 +510,7 @@ mod tests {
             TurnFailed => 10,
             Io => 11,
             Internal => 12,
+            Network => 13,
         };
         assert!(all.iter().enumerate().all(|(i, kind)| position(*kind) == i));
         let contract = contract()?;

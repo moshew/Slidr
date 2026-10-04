@@ -54,7 +54,8 @@
     "process_exited",
     "turn_failed",
     "io",
-    "internal"
+    "internal",
+    "network"
   ],
   "error": { "kind": "busy", "message": "a turn is still running in this session" },
   "descriptor": {

@@ -13,8 +13,8 @@ use tauri::{
 };
 
 use super::{
-    AgentError, AgentEvent, HarnessDescriptor, HarnessManager, HarnessStatus, Result,
-    SessionConfig, UserTurn, transcript,
+    AgentError, AgentEvent, DiagnosticsView, HarnessDescriptor, HarnessManager, HarnessStatus,
+    Result, SessionConfig, UserTurn, transcript,
 };
 use crate::storage::Storage;
 
@@ -41,6 +41,8 @@ pub async fn agent_start(
     config: SessionConfig,
     on_event: Channel<AgentEvent>,
 ) -> Result<String> {
+    // From the first session on, a session nobody talks to is closed (AGT-07).
+    manager.watch_idle();
     manager
         .start(&harness_id, &thread, config, move |event| {
             // Fails only when the webview is gone; the session is closed by then or soon will be.
@@ -65,6 +67,24 @@ pub async fn agent_interrupt(manager: Manager<'_>, session_id: String) -> Result
 #[tauri::command]
 pub async fn agent_close(manager: Manager<'_>, session_id: String) -> Result<()> {
     manager.close(&session_id).await
+}
+
+/// `agent_diagnostics_read({ maxBytes? })`: the end of the diagnostics log, for the settings
+/// screen (AGT-08): what the harnesses wrote and what the sessions did, the newest last.
+#[tauri::command]
+pub async fn agent_diagnostics_read(
+    manager: Manager<'_>,
+    max_bytes: Option<usize>,
+) -> Result<DiagnosticsView> {
+    let manager = Arc::clone(&manager);
+    off_main(move || Ok(manager.diagnostics(max_bytes))).await
+}
+
+/// `agent_diagnostics_clear()`: empties the diagnostics log.
+#[tauri::command]
+pub async fn agent_diagnostics_clear(manager: Manager<'_>) -> Result<()> {
+    let manager = Arc::clone(&manager);
+    off_main(move || manager.clear_diagnostics()).await
 }
 
 /// The folder of a workspace open in this process.

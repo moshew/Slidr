@@ -119,6 +119,8 @@ pub fn run() {
             commands::export_copy_media,
             image_process::ipc::image_process,
             image_process::ipc::image_process_status,
+            harness::ipc::agent_diagnostics_read,
+            harness::ipc::agent_diagnostics_clear,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

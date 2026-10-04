@@ -22,6 +22,7 @@ mod workspace;
 pub(crate) use atomic::TempFile;
 pub(crate) use backup::backup;
 pub use recents::RecentFile;
+pub(crate) use time::now_iso;
 pub use workspace::{OpenedDeck, Recoverable, SavedDeck, Storage, Workspace};
 
 /// The model, written by the webview.

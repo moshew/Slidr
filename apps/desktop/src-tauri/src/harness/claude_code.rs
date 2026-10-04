@@ -516,6 +516,9 @@ async fn supervise(
 }
 
 async fn on_line(line: &str, mapper: &mut StreamMapper, sink: &EventSink, shared: &Shared) {
+    // For the diagnostics log (AGT-08), which wants what the CLI said and not what was made of
+    // it: the lines mapped to nothing below (retries, statuses, denials) are in it too.
+    sink.raw(line);
     // Anything that is not JSON is the CLI talking to a terminal; nothing to map.
     let Ok(message) = serde_json::from_str::<Value>(line) else {
         return;
@@ -701,12 +704,17 @@ impl StreamMapper {
         match line["type"].as_str() {
             Some("system") if line["subtype"] == "init" => self.init(line),
             Some("stream_event") => self.stream_event(&line["event"]),
+            // A message the CLI writes itself when the API fails ("API Error: …"). It is not the
+            // model's reply; the `result` that follows carries the same words as the error.
+            Some("assistant") if line["is_api_error_message"] == true => Vec::new(),
             Some("assistant") => self.assistant(&line["message"]),
             Some("user") => tool_results(&line["message"]),
             Some("result") => self.result(line),
             Some("rate_limit_event") => rate_limit(&line["rate_limit_info"]),
-            // system/status, system/thinking_tokens, system/permission_denied (the denial also
-            // comes back as a failed tool result), control_response: for the diagnostics log.
+            // system/status, system/thinking_tokens, system/api_retry (the CLI tries the API up
+            // to ten times, over about three minutes, before it gives a turn up),
+            // system/permission_denied (the denial also comes back as a failed tool result),
+            // control_response: for the diagnostics log, which gets every line as it is.
             _ => Vec::new(),
         }
     }
@@ -863,6 +871,9 @@ fn turn_error(line: &Value) -> AgentEvent {
     let kind = match line["api_error_status"].as_u64() {
         Some(401 | 403) => AgentErrorKind::NotLoggedIn,
         Some(429) => AgentErrorKind::Quota,
+        // The turn ended on the API and there is no status: no answer ever came. That is the
+        // connection (refused, no name resolution, a proxy), after the CLI's own retries.
+        None if line["terminal_reason"] == "api_error" => AgentErrorKind::Network,
         _ => AgentErrorKind::TurnFailed,
     };
     AgentEvent::Error {
@@ -1226,6 +1237,48 @@ mod tests {
             "event": { "type": "content_block_delta", "delta": { "type": "text_delta", "text": "x" } }
         }));
         assert!(subagent.is_empty());
+    }
+
+    /// What the CLI (2.1.287) wrote when its API was behind a proxy that refused every
+    /// connection, recorded on 2026-10-04: ten `api_retry` lines over 175 seconds (the first and
+    /// the last are kept), then a message of its own with the error as its text, then the result.
+    const NETWORK_FAILURE: &str = include_str!("claude_code/network-failure.jsonl");
+
+    #[test]
+    fn a_turn_that_never_reached_the_api_is_a_network_error_and_not_a_reply() -> TestResult {
+        let mut mapper = StreamMapper::new(false, false);
+        mapper
+            .map(&json!({ "type": "system", "subtype": "init", "session_id": "s", "model": "m" }));
+        let events = map_all(&mut mapper, NETWORK_FAILURE)?;
+        // The CLI's own "API Error: …" message is not text of the reply, and its retries are
+        // nothing the chat is told: an error, and the turn's end.
+        assert_eq!(events.len(), 2, "{events:?}");
+        assert!(matches!(
+            &events[0],
+            AgentEvent::Error { kind: AgentErrorKind::Network, message, recoverable: true }
+                if message.contains("ECONNREFUSED")
+        ));
+        assert!(matches!(
+            &events[1],
+            AgentEvent::TurnCompleted {
+                outcome: TurnOutcome::Failed,
+                duration_ms: 175_441,
+                ..
+            }
+        ));
+        // A failure the API answered with is still the turn's own, whatever ended it.
+        let refused = mapper.map(&json!({
+            "type": "result", "subtype": "success", "is_error": true, "api_error_status": 400,
+            "terminal_reason": "api_error", "result": "API Error: 400 prompt is too long"
+        }));
+        assert!(matches!(
+            &refused[0],
+            AgentEvent::Error {
+                kind: AgentErrorKind::TurnFailed,
+                ..
+            }
+        ));
+        Ok(())
     }
 
     #[test]
