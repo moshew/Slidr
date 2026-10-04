@@ -15,6 +15,8 @@ import { defineConfig } from '@playwright/test';
 const PORT = Number(process.env.SLIDR_E2E_PORT) || 1551;
 const app = process.env.SLIDR_E2E === 'app';
 const runtime = /runtime-.*\.spec\.ts/;
+// By the name of the file, not by its path: the worktree itself is a folder called "Slidr-editor".
+const own = /[\\/]editor-[^\\/]*\.spec\.ts$/;
 
 export default defineConfig({
   testDir: '.',
@@ -35,7 +37,7 @@ export default defineConfig({
   projects: [
     {
       name: 'editor',
-      testMatch: app ? /.*\.spec\.ts/ : /editor-.*\.spec\.ts/,
+      testMatch: app ? /.*\.spec\.ts/ : own,
       testIgnore: runtime,
       use: { viewport: { width: 1920, height: 1032 } },
     },
