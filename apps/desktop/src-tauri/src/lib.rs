@@ -61,7 +61,6 @@ pub fn run() {
             commands::asset_import_file,
             commands::asset_import_bytes,
             commands::export_write_file,
-            commands::export_copy_media,
             image_providers::ipc::image_providers,
             image_providers::ipc::image_probe,
             image_providers::ipc::image_default_provider,
@@ -113,6 +112,7 @@ pub fn run() {
             import_window::import_job_done,
             import_window::import_source,
             import_window::import_store_asset,
+            commands::export_copy_media,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");
