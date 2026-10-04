@@ -37,6 +37,16 @@ for (const [command, args] of [
   ['agent_chat_read', { workspaceId: 'x', name: 'deck.jsonl' }],
   ['tool_bridge_connect', {}],
   ['image_providers', {}],
+  // The keys and the settings (ADR-051): what a hostile file would reach for first. The ones
+  // that write are asked without their arguments, so a gate that let them through would still
+  // change nothing.
+  ['settings_read', {}],
+  ['settings_write', {}],
+  ['secret_status', {}],
+  ['secret_set', {}],
+  ['secret_delete', {}],
+  ['stock_search', {}],
+  ['stock_import', {}],
   ['capture_slide', { request: { deck: { slides: [] } } }],
   ['capture_run_job', { job: {} }],
   ['import_open', { path: 'C:/x.html', thread: 'a/b', workspaceId: 'x' }],
