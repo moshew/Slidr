@@ -1,4 +1,5 @@
 import { slideDirection } from './direction';
+import { CLIP_TOGGLE_SELECTOR } from './media';
 import type { Player } from './player';
 
 /**
@@ -23,9 +24,11 @@ export interface ControlOptions {
   hash?: boolean;
 }
 
-/** What takes a click or a key for itself. */
-const INTERACTIVE =
-  'a[href], button, input, textarea, select, summary, label, iframe, video[controls], audio[controls], [contenteditable], [data-slidr-control]';
+/**
+ * What takes a click or a key for itself. A video, and the mark of a sound without controls,
+ * play and pause on a click (the player does that): the click is not a step of the show.
+ */
+const INTERACTIVE = `a[href], button, input, textarea, select, summary, label, iframe, video[controls], audio[controls], [contenteditable], [data-slidr-control], ${CLIP_TOGGLE_SELECTOR}`;
 
 const NEXT_KEYS = new Set(['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter', 'n']);
 const PREV_KEYS = new Set(['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace', 'p']);

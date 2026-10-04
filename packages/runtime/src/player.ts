@@ -1,4 +1,5 @@
 import { slideDirection } from './direction';
+import { bindClip, CLIP_TOGGLE_SELECTOR, clipOf, clipSettings, type Clip } from './media';
 import { createTimeline, type SlideTimeline } from './timeline';
 import { runTransition } from './transitions';
 import type { AnimationStep, Size, Transition, Warn } from './types';
@@ -71,11 +72,8 @@ export interface Player {
 
 const DEFAULT_SIZE: Size = { w: 1920, h: 1080 };
 
-/** Where the trim of a media element starts: the renderer writes it as a `#t=start,end` fragment. */
-function trimStart(media: HTMLMediaElement): number {
-  const match = /#t=([\d.]+)/.exec(media.currentSrc || media.src);
-  return match ? Number(match[1]) : 0;
-}
+/** A press that moved further than this before it ended, in CSS pixels, was a drag, not a click. */
+const CLICK_SLACK = 10;
 
 export function createPlayer(options: PlayerOptions): Player {
   const { viewport, stage, slides } = options;
@@ -126,15 +124,18 @@ export function createPlayer(options: PlayerOptions): Player {
 
   // ---- Media and scripted content follow the slide they are on ----
 
-  const mediaOf = (slide: PlayerSlide) =>
-    Array.from(slide.el.querySelectorAll<HTMLMediaElement>('video, audio'));
-
+  // Every video and sound is a clip (see `media.ts`): its trim, its loop and its poster are
+  // kept here, the same way for a show in the app and for an exported file.
+  const clips = new Map<HTMLMediaElement, Clip>();
   for (const media of Array.from(stage.querySelectorAll<HTMLMediaElement>('video, audio'))) {
-    // An export writes the volume down as an attribute: markup has no other place for it.
-    if (media.dataset.volume) media.volume = Number(media.dataset.volume);
+    clips.set(media, bindClip(media));
     // Nothing plays until its slide is shown.
     media.pause();
   }
+  const clipsOf = (slide: PlayerSlide): Clip[] =>
+    Array.from(slide.el.querySelectorAll<HTMLMediaElement>('video, audio'), (media) =>
+      clips.get(media),
+    ).filter((clip) => clip !== undefined);
   // Media on a slide that is not shown does not play, autoplay or not. `play` does not bubble,
   // so it is caught on its way down.
   const onPlay = (event: Event) => {
@@ -144,9 +145,33 @@ export function createPlayer(options: PlayerOptions): Player {
   };
   stage.addEventListener('play', onPlay, true);
 
+  // A click on a video, or on the mark of a sound that shows no controls, plays and pauses it
+  // (MED-02). The controls leave such a click alone: it is not a step of the show.
+  let pressed: { x: number; y: number } | undefined;
+  const onPress = (event: PointerEvent) => {
+    pressed = { x: event.clientX, y: event.clientY };
+  };
+  const onClick = (event: MouseEvent) => {
+    if (event.defaultPrevented || event.button !== 0) return;
+    // The click that ends a swipe is not a click on what the finger happened to lift from.
+    const moved = pressed ? Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) : 0;
+    if (moved > CLICK_SLACK) return;
+    const hit = event
+      .composedPath()
+      .find(
+        (node): node is Element => node instanceof Element && node.matches(CLIP_TOGGLE_SELECTOR),
+      );
+    const media = hit && clipOf(hit);
+    if (media && slides[index]?.el.contains(media)) clips.get(media)?.toggle();
+  };
+  stage.addEventListener('pointerdown', onPress);
+  stage.addEventListener('click', onClick);
+
   function show(slide: PlayerSlide, revisit: boolean): void {
     // Spelled out: an exported file's stylesheet hides every slide until the player shows one.
     slide.el.style.display = 'block';
+    // A slide opens with its clips at rest, each at its poster.
+    for (const clip of clipsOf(slide)) clip.rest();
     const frames = Array.from(
       slide.el.querySelectorAll<HTMLIFrameElement>('iframe[data-slidr-html="frame"]'),
     );
@@ -167,15 +192,14 @@ export function createPlayer(options: PlayerOptions): Player {
 
   function hide(slide: PlayerSlide): void {
     slide.el.style.display = 'none';
-    for (const media of mediaOf(slide)) media.pause();
+    for (const clip of clipsOf(slide)) clip.pause();
   }
 
   function startMedia(slide: PlayerSlide): void {
-    for (const media of mediaOf(slide)) {
-      if (!media.autoplay) continue;
-      media.currentTime = trimStart(media);
-      // A browser refuses sound before the first click or key; the slide is shown either way.
-      media.play().catch(() => undefined);
+    for (const clip of clipsOf(slide)) {
+      // A browser refuses sound before the first click or key: the clip then waits at its
+      // poster for a click, and the slide is shown either way.
+      if (clipSettings(clip.media).autoplay) void clip.play();
     }
   }
 
@@ -335,6 +359,13 @@ export function createPlayer(options: PlayerOptions): Player {
       listeners.clear();
       observer?.disconnect();
       stage.removeEventListener('play', onPlay, true);
+      stage.removeEventListener('pointerdown', onPress);
+      stage.removeEventListener('click', onClick);
+      for (const clip of clips.values()) {
+        clip.pause();
+        clip.release();
+      }
+      clips.clear();
       stage.style.transform = '';
       for (const slide of slides) slide.el.style.display = '';
     },

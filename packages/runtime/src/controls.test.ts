@@ -189,3 +189,30 @@ describe('a slide number and Enter', () => {
     expect(calls).toEqual(['next', 'prev', 'next']);
   });
 });
+
+describe('a click', () => {
+  const click = (target: Element) =>
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+
+  it('is a step, except on what takes the click for itself', () => {
+    const { calls } = bind();
+    viewport.innerHTML = `
+      <div id="text"></div>
+      <video id="clip" data-slidr-clip="video"></video>
+      <video id="foreign"></video>
+      <div><div id="mark" data-slidr-clip-toggle></div><audio data-slidr-clip="audio"></audio></div>
+      <audio id="bar" controls data-slidr-clip="audio"></audio>`;
+    const at = (id: string) => viewport.querySelector(`#${id}`) as Element;
+    click(at('text'));
+    expect(calls).toEqual(['next']);
+    // A video of the deck and the mark of a sound play on a click (the player does that), and
+    // the controls of a sound are the browser's: none of them moves the show.
+    click(at('clip'));
+    click(at('mark'));
+    click(at('bar'));
+    expect(calls).toEqual(['next']);
+    // A video that is not a clip of the deck has no click of its own.
+    click(at('foreign'));
+    expect(calls).toEqual(['next', 'next']);
+  });
+});

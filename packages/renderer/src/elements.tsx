@@ -24,6 +24,7 @@ import {
   type RefObject,
 } from 'react';
 import { ChartView } from './chart/view';
+import { clipAttributes, CLIP_TOGGLE_ATTRIBUTE, nativeLoop, showsMark, videoSource } from './clip';
 import { domId, useRenderContext, type HtmlEditing, type RenderContext } from './context';
 import { num, passthroughStyle } from './css';
 import { FillLayer } from './fill';
@@ -805,10 +806,11 @@ function HtmlView({ element: e }: { element: HtmlElement }) {
 // ---------------------------------------------------------------------------------------------
 // Video and audio
 
-function mediaFragment(trim: VideoElement['trim']): string {
-  if (!trim) return '';
-  return `#t=${num(trim.startMs / 1000, 3)},${num(trim.endMs / 1000, 3)}`;
-}
+/*
+ * A media element only carries what its clip is (`clip.ts`): where it starts and ends, whether it
+ * goes round, whether it starts by itself. Nothing here plays it. In a show and in an exported
+ * file the runtime's player does; in the editor the media tools do, with the same code.
+ */
 
 function useVolume(ref: RefObject<HTMLMediaElement | null>, volume: number) {
   useEffect(() => {
@@ -823,23 +825,19 @@ function VideoView({ element: e }: { element: VideoElement }) {
   const url = ctx.assetUrl(e.assetId);
   const present = ctx.mode === 'present';
   const poster = e.poster && 'assetId' in e.poster ? ctx.assetUrl(e.poster.assetId) : undefined;
-  // Outside presentation a video shows its poster frame: a chosen time, or the start of the trim.
-  const stillAt = e.poster && 'timeMs' in e.poster ? e.poster.timeMs : (e.trim?.startMs ?? 0);
-  const src = url
-    ? present
-      ? url + mediaFragment(e.trim)
-      : `${url}#t=${num(stillAt / 1000, 3)}`
-    : undefined;
   return (
     <video
       ref={ref}
-      src={src}
+      // In a show the player puts the video at its poster; elsewhere nothing runs, and the
+      // address itself asks the browser for the still frame.
+      src={url ? (present ? url : videoSource(e, url)) : undefined}
       poster={poster}
+      // Outside a show a video is silent unless the editor plays it in place.
       muted={e.muted || !present}
-      loop={present && e.loop}
-      autoPlay={present && e.autoplay}
+      loop={nativeLoop(e)}
       playsInline
       preload="metadata"
+      {...clipAttributes(e)}
       style={{
         ...FILL_PARENT,
         display: 'block',
@@ -849,6 +847,8 @@ function VideoView({ element: e }: { element: VideoElement }) {
         background: '#000',
         transform: flipTransform(e),
         pointerEvents: present ? 'auto' : 'none',
+        // In a show a click plays and pauses it.
+        cursor: present ? 'pointer' : undefined,
       }}
     />
   );
@@ -859,40 +859,53 @@ function AudioView({ element: e }: { element: AudioElement }) {
   const ref = useRef<HTMLAudioElement>(null);
   useVolume(ref, e.volume);
   const url = ctx.assetUrl(e.assetId);
-  if (ctx.mode === 'present') {
-    return (
-      <audio
-        ref={ref}
-        src={url ? url + mediaFragment(e.trim) : undefined}
-        controls={e.showControls}
-        autoPlay={e.autoplay}
-        loop={e.loop}
-        style={{
-          ...FILL_PARENT,
-          width: '100%',
-          height: '100%',
-          display: e.showControls ? 'block' : 'none',
-        }}
-      />
-    );
-  }
-  // In the editor an audio clip has no picture of its own: it shows as a chip.
+  const present = ctx.mode === 'present';
+  const controls = present && e.showControls;
+  // A sound has no picture of its own. In the editor it shows as a mark; in a show the mark is
+  // there only for a sound that waits to be clicked and has no controls to click.
+  const marked = !present || showsMark(e);
   const size = Math.min(e.frame.h * 0.5, 48);
   return (
-    <div
-      data-slidr-placeholder="audio"
-      style={{
-        ...FILL_PARENT,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: Math.min(e.frame.h / 2, 32),
-        backgroundColor: 'var(--color-surface)',
-        color: 'var(--color-primary)',
-      }}
-    >
-      <Icon name="audio" size={size} />
-    </div>
+    <>
+      {marked && (
+        <div
+          data-slidr-placeholder="audio"
+          {...{ [CLIP_TOGGLE_ATTRIBUTE]: '' }}
+          role={present ? 'button' : undefined}
+          aria-label={present ? e.name : undefined}
+          style={{
+            ...FILL_PARENT,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: Math.min(e.frame.h / 2, 32),
+            backgroundColor: 'var(--color-surface)',
+            color: 'var(--color-primary)',
+            pointerEvents: present ? 'auto' : undefined,
+            cursor: present ? 'pointer' : undefined,
+          }}
+        >
+          <Icon name="audio" size={size} />
+        </div>
+      )}
+      {/* A thumbnail never plays: it draws the mark alone. */}
+      {ctx.mode !== 'thumbnail' && (
+        <audio
+          ref={ref}
+          src={url}
+          controls={controls}
+          loop={nativeLoop(e)}
+          // The editor reads the file only when the sound is played in place.
+          preload={present ? 'metadata' : 'none'}
+          {...clipAttributes(e)}
+          style={
+            controls
+              ? { ...FILL_PARENT, display: 'block', width: '100%', height: '100%' }
+              : { display: 'none' }
+          }
+        />
+      )}
+    </>
   );
 }
 

@@ -241,3 +241,116 @@ describe('createPlayer', () => {
     expect(slides.every((s) => s.el.style.display === '')).toBe(true);
   });
 });
+
+describe('video and audio in a show', () => {
+  /** Two slides with clips: a video that waits, then a video that starts by itself and a sound. */
+  const MEDIA = `
+    <div class="slidr-viewport"><div class="slidr-stage">
+      <section class="slide" data-slide="a"><div data-slide-id="a" dir="ltr">
+        <div data-element-id="waits"><video data-slidr-clip="video" data-clip-start="1" data-clip-end="3"></video></div>
+        <div data-element-id="text"></div>
+      </div></section>
+      <section class="slide" data-slide="b"><div data-slide-id="b" dir="ltr">
+        <div data-element-id="starts"><video data-slidr-clip="video" data-clip-autoplay data-clip-start="2" data-clip-still="5"></video></div>
+        <div data-element-id="sound"><div data-slidr-clip-toggle></div><audio data-slidr-clip="audio" data-volume="0.5"></audio></div>
+      </div></section>
+    </div></div>`;
+
+  const clipOf = (id: string) => el(id).querySelector('video, audio') as HTMLMediaElement;
+  const click = (target: Element, init: MouseEventInit = {}) =>
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, ...init }));
+
+  beforeEach(() => {
+    document.body.innerHTML = MEDIA;
+  });
+
+  it('opens a slide with its clips at rest, and plays only the one that starts by itself', async () => {
+    start();
+    expect(clipOf('waits').paused).toBe(true);
+    // At rest a clip stands at the start of its trim, or at its chosen frame.
+    expect(clipOf('waits').currentTime).toBe(1);
+    expect(clipOf('starts').paused).toBe(true);
+    player.next();
+    // During the transition the slide is seen with its video at its poster.
+    expect(clipOf('starts').currentTime).toBe(5);
+    await fake.finishRunning();
+    await Promise.resolve();
+    expect(clipOf('starts').paused).toBe(false);
+    expect(clipOf('starts').currentTime).toBe(2);
+    expect(clipOf('sound').paused).toBe(true);
+    // The volume an export wrote down is the clip's.
+    expect(clipOf('sound').volume).toBe(0.5);
+  });
+
+  it('pauses the clips of a slide that is left, and opens it at rest the next time', async () => {
+    start({ slide: 1, step: 0 });
+    const video = clipOf('starts');
+    void video.play();
+    video.currentTime = 4;
+    player.prev();
+    expect(video.paused).toBe(true);
+    player.next();
+    await fake.finishRunning();
+    await Promise.resolve();
+    expect(video.paused).toBe(false);
+    expect(video.currentTime).toBe(2);
+  });
+
+  it('stops a clip that starts on a slide which is not shown', () => {
+    start();
+    void clipOf('starts').play();
+    expect(clipOf('starts').paused).toBe(true);
+  });
+
+  it('plays and pauses a video on a click on it, from the start of its trim', () => {
+    start();
+    const video = clipOf('waits');
+    click(video);
+    expect(video.paused).toBe(false);
+    expect(video.currentTime).toBe(1);
+    video.currentTime = 2;
+    click(video);
+    expect(video.paused).toBe(true);
+    click(video);
+    expect(video.paused).toBe(false);
+    expect(video.currentTime).toBe(2);
+    // The show itself has not moved.
+    expect(player.state).toEqual({ slide: 0, step: 0 });
+  });
+
+  it('plays and pauses a sound on a click on its mark', () => {
+    start({ slide: 1, step: 0 });
+    const mark = el('sound').querySelector('[data-slidr-clip-toggle]') as HTMLElement;
+    click(mark);
+    expect(clipOf('sound').paused).toBe(false);
+    click(mark);
+    expect(clipOf('sound').paused).toBe(true);
+  });
+
+  it('does not take the end of a drag, or a click on something else, for a click on a clip', () => {
+    start();
+    const video = clipOf('waits');
+    video.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10 }));
+    click(video, { clientX: 90, clientY: 12 });
+    expect(video.paused).toBe(true);
+    click(el('text'));
+    expect(video.paused).toBe(true);
+    click(video, { button: 2 });
+    expect(video.paused).toBe(true);
+  });
+
+  it('pauses every clip and lets go of it on destroy', () => {
+    start();
+    const video = clipOf('waits');
+    click(video);
+    player.destroy();
+    expect(video.paused).toBe(true);
+    click(video);
+    expect(video.paused).toBe(true);
+    // Left alone from here on: the trim is no longer kept.
+    void video.play();
+    video.currentTime = 9;
+    video.dispatchEvent(new Event('timeupdate'));
+    expect(video.paused).toBe(false);
+  });
+});

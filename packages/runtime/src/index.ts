@@ -29,6 +29,21 @@ export {
 } from './player';
 export { bindControls, toggleFullscreen, type ControlOptions } from './controls';
 export {
+  bindClip,
+  clipSettings,
+  CLIP_ATTRIBUTE,
+  CLIP_AUTOPLAY,
+  CLIP_END,
+  CLIP_LOOP,
+  CLIP_START,
+  CLIP_STILL,
+  CLIP_TOGGLE_ATTRIBUTE,
+  CLIP_TOGGLE_SELECTOR,
+  CLIP_VOLUME,
+  type Clip,
+  type ClipSettings,
+} from './media';
+export {
   CHART_BUILD_MS,
   CHART_EVENT,
   CHART_SELECTOR,

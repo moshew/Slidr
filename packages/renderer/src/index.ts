@@ -43,11 +43,13 @@ export {
   type TextDefaults,
 } from './text';
 export { sanitizeMarkup } from './sanitize';
+export { normalizeColor } from './markup';
 export { scopeSlideCss } from './css';
 export { settle } from './settle';
 export { chartsSettled } from './chart/controller';
 export { CHART_ATTRIBUTE, CHART_EVENT, type ChartCue } from './chart/cue';
 export { chartSpec, type ChartSpec } from './chart/spec';
+export { clipAttributes, CLIP_ATTRIBUTE, CLIP_TOGGLE_ATTRIBUTE } from './clip';
 export { renderSlideOffscreen, type OffscreenOptions, type OffscreenSlide } from './offscreen';
 export {
   measureSlide,
