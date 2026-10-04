@@ -2,7 +2,7 @@
 
 # ADR-048 — גרפים חיים: רינדור ב-ECharts, עורך נתונים, אפשרויות, וגרפים חיים בקובץ המיוצא
 
-סטטוס: **נבנה ורץ באפליקציה האמיתית; התלות החדשה (ECharts) וההכרעות שתחת "החלטות שמחכות לך" מחכות לאישורך** · 2026-10-04 · ענף: `m6-charts` (יצא מ-`9be0750`; לא מוזג ולא נדחף) · משימות: WG6-T05 עד T08 (CHT-01 עד CHT-08, EXP-12, EXP-13), והחזרת `data-chart` ל-prompt ([ADR-042](ADR-042-agent-design-quality.md), החלטה 1)
+סטטוס: **נבנה ורץ באפליקציה האמיתית; התלות החדשה (ECharts) וההכרעות שתחת "החלטות שמחכות לך" מחכות לאישורך** · 2026-10-04 · ענף: `m6-charts` (יצא מ-`9be0750`; ב-`main` מאז 2026-10-04, ראה "איך הענף נכנס ל-`main`") · משימות: WG6-T05 עד T08 (CHT-01 עד CHT-08, EXP-12, EXP-13), והחזרת `data-chart` ל-prompt ([ADR-042](ADR-042-agent-design-quality.md), החלטה 1)
 
 עד המסלול הזה אובייקט גרף היה קופסה אפורה עם אייקון (`ChartView` ב-`packages/renderer/src/elements.tsx`). הסכמה, `chart_set` ו-`data-chart` במנוע ההמרה היו קיימים, אבל לא היה מה לראות, ולכן ה-prompt הורה ל-Agent לצייר נתונים מצורות. עכשיו גרף מצויר, נערך, מיוצא חי, וה-Agent בונה אותו כאובייקט גרף.
 
@@ -427,8 +427,8 @@ ChartElement + Theme ──chartSpec──► ChartSpec (plain data, written on 
 
 **ה-Agent**
 
-15. **`data-chart` הוא הדרך הראשית, ומספר בודד אינו גרף.** ה-prompt גדל בכ-310 tokens. להפוך: פסקת `Charts` ב-`html.ts`.
-16. **ה-runner של סט ההערכה מקבל תיקיית נתונים, פורטים וקובץ בקשות משלו** (`--identifier`, `--vite-port`, `--cdp-port`, `--requests`). תוספת בתיקייה שאינה שלי, כדי להריץ אותו מ-worktree ליד מסלול אחר.
+15. **`data-chart` הוא הדרך הראשית, ומספר בודד אינו גרף.** ה-prompt גדל בכ-310 tokens (1,234 תווים). להפוך: פסקת `Charts` ב-`html.ts`. **תקציב הגודל של ה-prompt עלה בגלל זה ב-1,250 תווים** ל-deck, ל-slide ול-import (`packages/prompts/src/systemPrompt.test.ts`, קובץ שאינו שלי), ראה "איך הענף נכנס ל-`main`". החלופה היא לקצר את הפסקה, ואז היא כבר לא הפסקה שנבדקה מול סט ההערכה.
+16. **ה-runner של סט ההערכה מקבל קובץ בקשות אחר** (`--requests`). תוספת בתיקייה שאינה שלי. תיקיית הנתונים והפורטים של הרצה הם משתני הסביבה שמסלול J הוסיף ל-runner (`SLIDR_EVAL_IDENTIFIER`, `SLIDR_EVAL_VITE_PORT`, `SLIDR_EVAL_CDP_PORT`); שלושת הדגלים שהיו לענף לאותו צורך (`--identifier`, `--vite-port`, `--cdp-port`) ירדו ב-rebase.
 
 **הממשק**
 
@@ -458,17 +458,35 @@ ChartElement + Theme ──chartSpec──► ChartSpec (plain data, written on 
 | `packages/runtime/src/timeline.ts` | `chartBuilds`; `stop` לצד `clear`; האירועים ב-`apply`, ב-`clear` וב-`start`; אורך קבוצה שכולל את הגרף | בינוני: זה לב ה-runtime. שקף בלי גרף עובר באותו קוד כמו קודם (69 הבדיקות שהיו לחבילה עוברות) |
 | `packages/runtime/src/bundle.generated.ts` | נבנה מחדש | אם מסלול אחר שינה את ה-runtime: לבנות שוב אחרי המיזוג |
 | `packages/html-export/src/exportHtml.ts`, `document.ts`, `render.ts` | הסקריפט של הגרפים, `ExportResult.charts`, ההמתנה לגרפים | נמוך: שדה חדש בתוצאה |
-| `packages/agent-tools/src/tools/services.ts` | משפט אחד ב-`HTML_HELP` | נמוך |
-| `apps/desktop/eval/scripts/run.mjs`, `eval/vite.config.ts` | ארבעה דגלים חדשים; ברירות המחדל כמו שהיו | נמוך: מסלול J מריץ את הסט, ואם נגע ב-`run.mjs` ייתכן מפגש |
+| `packages/agent-tools/src/tools/services.ts` | משפט אחד ב-`HTML_HELP`. ב-rebase על מסלול I: המשפט שלו על אייקונים, שלי על גרפים | נמוך |
+| `apps/desktop/eval/scripts/run.mjs` | הדגל `--requests`; ברירת המחדל כמו שהייתה. `eval/vite.config.ts` הוא של `main`, בלי שינוי | נמוך. המפגש עם מסלול J קרה ונפתר ב-rebase |
+| `packages/prompts/src/systemPrompt.test.ts` | שלושה גבולות של תקציב הגודל, ומשפט בהערה שמעליהם | נמוך: מסלול שמאריך את ה-prompt יפגוש את אותם גבולות |
 | `apps/desktop/eval/chart-requests.json`, `eval/conversion-cases/numbered-cards-in-a-row.html` | חדשים | אין |
 | `apps/desktop/src/dev/slides/main.tsx`, `src/dev/runtime/decks.ts` | מצגת הגרפים בדפי הפיתוח | נמוך |
 | `apps/desktop/e2e/renderer.spec.ts-snapshots/` | שתי תמונות בסיס | מי שנוגע באותם שקפים צריך לצלם מחדש |
 | `apps/desktop/e2e/charts.playwright.config.ts`, `charts.tauri.conf.json`, `chart-*` | חדשים | אין |
 
-- **לא שונו:** `lib.rs`, `capabilities/default.json`, `apps/desktop/package.json`, `agentService.ts`, שום קובץ Rust, `Cargo.toml`, `Cargo.lock`, `packages/model`, `packages/lint`, `packages/templates`, `packages/html-import`, `packages/ui`, `apps/desktop/src/{shell,stage,table,text,controls,objects,ai,agent,templates,export,present,animations}`, שאר `packages/prompts`, `docs/PLAN.md`, `docs/SPEC.md`, `README.md`.
+- **לא שונו:** `lib.rs`, `capabilities/default.json`, `apps/desktop/package.json`, `agentService.ts`, שום קובץ Rust, `Cargo.toml`, `Cargo.lock`, `packages/model`, `packages/lint`, `packages/templates`, `packages/html-import`, `packages/ui`, `apps/desktop/src/{shell,stage,table,text,controls,objects,ai,agent,templates,export,present,animations}`, שאר `packages/prompts` (חוץ מהגבולות שבשורה למעלה), `docs/PLAN.md`, `docs/SPEC.md`, `README.md`.
+- **שלוש הנקודות הבאות נכתבו לפני המיזוג**, ומתארות את הענף כמו שעמד אז. מה שקרה בפועל רשום ב"איך הענף נכנס ל-`main`".
 - **`main` זז בזמן המסלול** (`m2-templates` נכנס, עד `d7411df`). לא עשיתי rebase, כפי שביקשת. מתוך 82 הקבצים שהשתנו ב-`main` מאז, אחד הוא גם שלי: `packages/agent-tools/src/tools/services.ts` (אצלי משפט אחד ב-`HTML_HELP`). מיזוג ניסיוני בלי לגעת בענפים (`git merge-tree`) עובר בלי התנגשות. `pnpm-lock.yaml` לא השתנה ב-`main`.
 - **אחרי המיזוג:** `pnpm install`; `pnpm --filter @slidr/renderer chart-bundle` אם `bundle.test.ts` נכשל; וה-E2E המלא, כי שתי תמונות בסיס של ה-renderer השתנו.
 - **נשאר במחשב:** `%APPDATA%\dev.slidr.app.charts` ו-`%LOCALAPPDATA%\dev.slidr.app.charts` (workspaces של ההרצות ופרופיל WebView2), ותוצאות ההרצות ב-`apps/desktop/test-results/` של ה-worktree. לא נמחקו, כי לא התבקש. מחיקת ה-worktree מוחקת את דפי הסקירה של שתי ההרצות.
+
+## איך הענף נכנס ל-`main`
+
+2026-10-04, בבוקר, לבקשתך ("מזג ל-main (אחרי rebase אם צריך) ודחוף לגיט. מחק ענף זמני אם מיותר"). הבקשה באה במקום "בלי merge, בלי push ובלי rebase" של תיאור המשימה.
+
+- **שלושה rebase-ים, כי `main` זז פעמיים בזמן הבדיקות.** הראשון על `d7411df` (מסלול E), בלי התנגשות. בזמן שה-E2E רץ עליו נכנס מסלול J (`e8faea5`), ובזמן שה-E2E רץ על השני נכנס מסלול I (`136b2e9`). הכניסה עצמה היא fast-forward: 14 ה-commits של המסלול, commit של תקציב ה-prompt, והסעיף הזה.
+- **מול מסלול J, ה-runner של סט ההערכה** (`apps/desktop/eval/scripts/run.mjs`, `eval/vite.config.ts`): שנינו הוספנו לו דרך לרוץ תחת מזהה ופורטים של worktree, הוא במשתני סביבה ואני בדגלים. נשאר הקוד שלו כמו שהוא, ומהענף נשאר רק `--requests`. מי שמריץ שוב את בקשות הגרפים: `SLIDR_EVAL_IDENTIFIER`, `SLIDR_EVAL_VITE_PORT`, `SLIDR_EVAL_CDP_PORT` ואז `--requests eval/chart-requests.json`. **השילוב הזה לא הורץ:** שלוש ההרצות של המסלול נעשו עם הדגלים, לפני ה-rebase.
+- **מול מסלול I, שני משפטים של ה-Agent** (`packages/prompts/src/html.ts`, `packages/agent-tools/src/tools/services.ts`): הוא שינה את הפסקאות על תמונות ועל אייקונים, אני את הפסקה על גרפים, בשורות סמוכות. נשאר הנוסח שלו לחלקים שלו ושלי לגרפים. `pnpm-lock.yaml` התמזג בלי התנגשות.
+- **תקציב הגודל של ה-prompt** (`packages/prompts/src/systemPrompt.test.ts`, קובץ של מסלול J): מסלול J ואחריו מסלול I קבעו את הגבולות כאחוז אחד מעל הגודל שהיה להם, ופסקת הגרפים, שארוכה ב-1,234 תווים מזו שהחליפה, לא נכנסה בהם. עם הפסקה ה-prompt של deck הוא 40,800 תווים, של slide 31,831 ושל import 41,859. העליתי את שלושת הגבולות ב-1,250: deck מ-40,000 ל-41,250, slide מ-31,000 ל-32,250, import מ-41,000 ל-42,250. **זו הכרעה שלך** (החלטה 15): הגבול קיים כדי שהגדלה של ה-prompt תהיה החלטה.
+- **סט ההערכה לא הורץ שוב אחרי ה-rebase.** המדידות שבסעיף 8 הן של פסקת הגרפים ליד ה-prompt כמו שהיה ב-`9be0750`. ב-`main` היא יושבת עכשיו ליד מודול התבניות ומתווה המצגת (מסלול J) וההנחיות לתמונות ולאייקונים (מסלול I), והשילוב לא נמדד מול מודל.
+- **שני הקבצים הנוצרים לא נבנו מחדש.** `packages/runtime/src/bundle.generated.ts` ו-`packages/renderer/src/chart/bundle.generated.ts` נבדקים מול המקור שלהם ב-`pnpm check`, והבדיקות עוברות: מאז שהענף יצא, `main` לא שינה דבר ב-`packages/runtime/src` או ב-`packages/renderer/src/chart`.
+- **לא נעשה עם המיזוג:** PLAN, SPEC ו-README לא עודכנו (התוצאות להדבקה למעלה). גרף על כל אחת משלוש התבניות המובנות עדיין לא נבדק בעין. החלון האמיתי של Tauri לא הורץ שוב אחרי ה-rebase.
+- **מה נבדק על הקוד שנכנס** (הענף מעל `136b2e9`): `pnpm check` (1,516 בדיקות ב-117 קבצים), `pnpm test:browser` (131 ב-20 קבצים), וה-E2E המלא דרך `e2e/charts.playwright.config.ts` עם `SLIDR_E2E=app` (797 מ-797 ב-16.8 דקות, בלי שינוי באף תמונת בסיס). אותן שלוש בדיקות עברו גם על ה-rebase הקודם, מעל `e8faea5`: 1,473, 129, ו-753 מ-753. `pnpm check:rust` לא הורץ: הענף לא נוגע ב-Rust. אחרי הבדיקות נוסף רק ה-commit של הסעיף הזה.
+- **מסלול D (`m3-import`) עוד לא נכנס** בזמן המיזוג; ה-worktree שלו (`../Slidr-import`) כבר עמד על `136b2e9`. הקובץ היחיד ששנינו שינינו הוא `packages/prompts/src/systemPrompt.test.ts`, והוא יפגוש שם את גבולות התקציב.
+- **ה-worktree `../Slidr-charts` והענף `m6-charts` נמחקו** אחרי הדחיפה (הענף לא היה ב-remote). לפני כן הועתקו ל-checkout הראשי, מחוץ ל-git: `apps/desktop/test-results/charts/` (הצילומים לשער העיצוב, הקבצים המיוצאים וסקריפטי ההרצה מול החלון האמיתי), ושלוש תיקיות ההערכה (`apps/desktop/test-results/eval/20261004-0056-sonnet-chartcheck`, `20261004-0059-sonnet-charts`, `20261004-0124-sonnet-charts2`). ספר התקציב של ה-worktree (`ledger.json`, $4.60) לא הועתק, כדי לא לדרוס את זה של ה-checkout הראשי. דפי הסקירה נפתחים עכשיו מה-checkout הראשי, ולא מה-worktree כמו שכתוב בסעיף 8. `pnpm install` הורץ שם אחרי המיזוג, בגלל התלות החדשה. תיקיות הנתונים `dev.slidr.app.charts` נשארו במחשב.
+- **הזמן:** כשעה על השעון, רובה ה-E2E המלא: שתי הרצות שלמות, ואחת שנעצרה כש-`main` זז.
 
 ## זמן סוכן, כפי שנמדד
 
