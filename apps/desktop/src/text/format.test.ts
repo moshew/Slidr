@@ -2,6 +2,7 @@ import { createBaseTheme, type Paragraph, type RichText } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import {
   boldChange,
+  clearMarks,
   flippedDirection,
   levelChange,
   listChange,
@@ -9,8 +10,11 @@ import {
   mapMarks,
   mapParagraphs,
   MIXED,
+  paintMarks,
+  paintParagraph,
   patchMarks,
   patchParagraph,
+  pickFormat,
   readFormat,
   sampleRichText,
   type FormatContext,
@@ -307,5 +311,125 @@ describe('reading the format', () => {
     expect(flippedDirection(sampleRichText(text(p([{ text: 'שלום' }], { dir: 'ltr' }))), ctx)).toBe(
       'rtl',
     );
+  });
+});
+
+describe('clear formatting', () => {
+  it('removes every character mark and leaves the paragraph fields', () => {
+    const rich = text(
+      p(
+        [
+          { text: 'גדול ', marks: { size: 60, weight: 700, color: { token: 'accent' } } },
+          { text: 'H', marks: { italic: true, underline: true, highlight: { value: '#ff0' } } },
+          { text: '2', marks: { script: 'sub', font: 'Rubik', case: 'upper', letterSpacing: 2 } },
+          { text: 'O', marks: { strike: true } },
+        ],
+        { align: 'center', lineHeight: 1.2, styleRef: 'title', list: { kind: 'bullet', level: 1 } },
+      ),
+    );
+    expect(mapMarks(rich, clearMarks)).toEqual(
+      text(
+        p([{ text: 'גדול H2O' }], {
+          align: 'center',
+          lineHeight: 1.2,
+          styleRef: 'title',
+          list: { kind: 'bullet', level: 1 },
+        }),
+      ),
+    );
+  });
+
+  it('keeps a link, and the underline that shows it', () => {
+    const link = 'https://example.com/';
+    const rich = text(
+      p([
+        { text: 'ראו ', marks: { underline: true, size: 40 } },
+        { text: 'כאן', marks: { link, underline: true, weight: 700 } },
+        { text: ' וגם ', marks: { italic: true } },
+        { text: 'שם', marks: { link: '#slide=s_2', color: { token: 'primary' } } },
+      ]),
+    );
+    expect(mapMarks(rich, clearMarks).paragraphs[0]?.runs).toEqual([
+      { text: 'ראו ' },
+      { text: 'כאן', marks: { link, underline: true } },
+      { text: ' וגם ' },
+      { text: 'שם', marks: { link: '#slide=s_2' } },
+    ]);
+  });
+
+  it('takes the formatting of an empty line too', () => {
+    expect(mapMarks(text(p([{ text: '', marks: { size: 60 } }])), clearMarks)).toEqual(text(p([])));
+  });
+});
+
+describe('the format painter', () => {
+  const source = text(
+    p(
+      [
+        { text: 'מקור', marks: { size: 48, weight: 700, link: 'https://example.com/' } },
+        { text: ' אחר', marks: { italic: true } },
+      ],
+      { dir: 'rtl', align: 'center', lineHeight: 1.1, styleRef: 'heading' },
+    ),
+    p([{ text: 'second' }], { align: 'end' }),
+  );
+  const picked = pickFormat(sampleRichText(source));
+
+  it('picks up the marks and the paragraph format at the start, without the link or the direction', () => {
+    expect(picked).toEqual({
+      marks: { size: 48, weight: 700 },
+      paragraph: { align: 'center', lineHeight: 1.1, styleRef: 'heading' },
+    });
+    // Plain text has a format too: no marks, and the paragraph as it is.
+    expect(pickFormat(sampleRichText(text(p([{ text: 'a' }]))))).toEqual({
+      marks: {},
+      paragraph: { align: 'start' },
+    });
+    expect(pickFormat(sampleRichText({ paragraphs: [] }))).toEqual({
+      marks: {},
+      paragraph: { align: 'start' },
+    });
+  });
+
+  it('replaces the marks of the text it paints, and keeps its links', () => {
+    const target = text(
+      p([
+        { text: 'a', marks: { color: { token: 'accent' }, strike: true } },
+        { text: 'b', marks: { link: '#slide=s_1', underline: true, size: 20 } },
+      ]),
+    );
+    expect(mapMarks(target, paintMarks(picked)).paragraphs[0]?.runs).toEqual([
+      { text: 'a', marks: { size: 48, weight: 700 } },
+      { text: 'b', marks: { size: 48, weight: 700, link: '#slide=s_1', underline: true } },
+    ]);
+  });
+
+  it('replaces the paragraph format, and leaves each paragraph its direction', () => {
+    const target = text(
+      p([{ text: 'English' }], { dir: 'ltr', spaceAfter: 20, list: { kind: 'number', level: 0 } }),
+      p([{ text: 'אוטומטי' }], { indent: 40 }),
+    );
+    expect(mapParagraphs(target, paintParagraph(picked))).toEqual(
+      text(
+        p([{ text: 'English' }], {
+          dir: 'ltr',
+          align: 'center',
+          lineHeight: 1.1,
+          styleRef: 'heading',
+        }),
+        p([{ text: 'אוטומטי' }], { align: 'center', lineHeight: 1.1, styleRef: 'heading' }),
+      ),
+    );
+  });
+
+  it('carries a list with the rest of the paragraph format', () => {
+    const bullets = pickFormat(
+      sampleRichText(
+        text(p([{ text: 'item' }], { list: { kind: 'bullet', level: 2, glyph: '–' } })),
+      ),
+    );
+    expect(
+      mapParagraphs(text(p([{ text: 'plain' }])), paintParagraph(bullets)).paragraphs[0]?.list,
+    ).toEqual({ kind: 'bullet', level: 2, glyph: '–' });
   });
 });

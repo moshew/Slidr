@@ -23,9 +23,11 @@ import {
   sampleState,
   STEP_META,
   type StepMeta,
+  type TextRange,
 } from './editorFormat';
 import {
   boldChange,
+  clearMarks,
   flippedDirection,
   mapMarks,
   mapParagraphs,
@@ -177,32 +179,53 @@ function setCells(
   cellsWritten(bus, element.id, txId);
 }
 
-/** Makes a marks change: to the editor's selection, or to all the text of the element. */
-export function changeMarks(target: TextTarget, change: MarksChange, step: Step = {}): void {
+/** A change to the marks of a text, to its paragraphs, or to both at once. */
+export interface TextChange {
+  marks?: MarksChange;
+  paragraphs?: ParagraphChange;
+  /**
+   * In the editor: the stretch of text the change goes to, in place of the selection. A text
+   * style changes the marks of whole paragraphs, and a link is edited as a whole.
+   */
+  range?: TextRange;
+}
+
+/**
+ * Makes a change, as one undo step: to the editor's selection (marks to the text it covers,
+ * paragraph fields to the paragraphs it touches), or to all the text of the element or the cells.
+ */
+export function changeText(target: TextTarget, change: TextChange, step: Step = {}): void {
   if (target.kind === 'editor') {
     const { view } = target;
-    view.dispatch(changeMarksTr(view.state, change).setMeta(STEP_META, step));
-  } else if (target.kind === 'cells') {
-    setCells(target, (content) => mapMarks(content, change), step);
-  } else {
-    setText(target, mapMarks(target.element.content ?? NO_TEXT, change), step);
+    const { state } = view;
+    // Neither kind of change moves text, so both are written against the same positions.
+    const tr = state.tr;
+    if (change.marks) changeMarksTr(state, change.marks, change.range, tr);
+    if (change.paragraphs) changeParagraphsTr(state, change.paragraphs, change.range, tr);
+    view.dispatch(tr.setMeta(STEP_META, step));
+    return;
   }
+  const map = (content: RichText) => {
+    const marked = change.marks ? mapMarks(content, change.marks) : content;
+    return change.paragraphs ? mapParagraphs(marked, change.paragraphs) : marked;
+  };
+  if (target.kind === 'cells') setCells(target, map, step);
+  else setText(target, map(target.element.content ?? NO_TEXT), step);
+}
+
+/** Makes a marks change: to the editor's selection, or to all the text of the element. */
+export function changeMarks(target: TextTarget, change: MarksChange, step?: Step): void {
+  changeText(target, { marks: change }, step);
 }
 
 /** Makes a paragraph change: to the paragraphs the selection touches, or to all of them. */
-export function changeParagraphs(
-  target: TextTarget,
-  change: ParagraphChange,
-  step: Step = {},
-): void {
-  if (target.kind === 'editor') {
-    const { view } = target;
-    view.dispatch(changeParagraphsTr(view.state, change).setMeta(STEP_META, step));
-  } else if (target.kind === 'cells') {
-    setCells(target, (content) => mapParagraphs(content, change), step);
-  } else {
-    setText(target, mapParagraphs(target.element.content ?? NO_TEXT, change), step);
-  }
+export function changeParagraphs(target: TextTarget, change: ParagraphChange, step?: Step): void {
+  changeText(target, { paragraphs: change }, step);
+}
+
+/** Clear formatting (TXT-10): the character marks go, links and paragraph fields stay. */
+export function clearFormatting(target: TextTarget, step?: Step): void {
+  changeMarks(target, clearMarks, step);
 }
 
 /** Bold on if any of the text is not bold, off if all of it is (Ctrl+B). */

@@ -86,6 +86,22 @@ export function boldChange(on: boolean, ctx: FormatContext): MarksChange {
   };
 }
 
+/**
+ * What of a run's marks is its link, not its formatting: the link itself, and the underline that
+ * shows it (the link tool sets the two together, and the renderer draws a link in the colour and
+ * the decoration of its text).
+ */
+function linkMarks(marks: Marks): Marks {
+  if (!marks.link) return {};
+  return marks.underline ? { link: marks.link, underline: true } : { link: marks.link };
+}
+
+/**
+ * Clear formatting (TXT-10): every character mark goes, and the text shows its text style again.
+ * A link is not formatting and stays, with its underline. Paragraph fields are not touched.
+ */
+export const clearMarks: MarksChange = (marks) => linkMarks(marks);
+
 /** Sets the given paragraph fields and removes the ones given as `null`. */
 export function patchParagraph(patch: ParagraphPatch): ParagraphChange {
   return (paragraph) => withoutNulls({ ...paragraph, ...patch }) as ParagraphProps;
@@ -290,4 +306,35 @@ export function readFormat(sample: TextSample, ctx: FormatContext): TextFormat {
  */
 export function flippedDirection(sample: TextSample, ctx: FormatContext): Direction {
   return readFormat(sample, ctx).direction === 'rtl' ? 'ltr' : 'rtl';
+}
+
+/* ---------------------------------------------------------------- the format painter */
+
+/**
+ * What the format painter carries from one text to another (TXT-10): the character marks, and the
+ * paragraph's format. Not the link, which belongs to its text, and not the direction, which
+ * follows the language of the text it lands on.
+ */
+export interface PickedFormat {
+  marks: Marks;
+  paragraph: Omit<ParagraphProps, 'dir'>;
+}
+
+/** The format at the start of a sample: at the caret, or of the first text of a box. */
+export function pickFormat(sample: TextSample): PickedFormat {
+  const span = sample.spans[0];
+  const marks = { ...span?.marks };
+  delete marks.link;
+  const { dir: _dir, ...paragraph } = sample.paragraphs[0]?.props ?? EMPTY_PARAGRAPH;
+  return { marks: cleanMarks(marks) ?? {}, paragraph };
+}
+
+/** The picked marks in place of the text's own. A link the text has stays its link. */
+export function paintMarks(picked: PickedFormat): MarksChange {
+  return (marks) => ({ ...picked.marks, ...linkMarks(marks) });
+}
+
+/** The picked paragraph format in place of the paragraph's own; the paragraph keeps its direction. */
+export function paintParagraph(picked: PickedFormat): ParagraphChange {
+  return (paragraph) => ({ dir: paragraph.dir, ...picked.paragraph });
 }

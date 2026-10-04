@@ -27,6 +27,15 @@ import type { FormatContext, TextFormat } from '../format';
 
 /* What the text tools of row B share: the target, the focus, and their layout. */
 
+/**
+ * The keys of the text area that are both a shortcut and a button's tooltip. Each is one key of
+ * every layout: the backslash is where it is on a Hebrew keyboard too, and letters are matched
+ * by the physical key.
+ */
+export const CLEAR_KEYS = 'Ctrl+\\';
+export const PICK_FORMAT_KEYS = 'Ctrl+Alt+C';
+export const PAINT_FORMAT_KEYS = 'Ctrl+Alt+V';
+
 /* ---------------------------------------------------------------- the target */
 
 /**

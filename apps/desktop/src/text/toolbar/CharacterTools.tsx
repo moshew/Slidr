@@ -5,6 +5,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Icon,
+  IconButton,
   NumberField,
   Select,
 } from '@slidr/ui';
@@ -17,6 +18,7 @@ import {
   Ellipsis,
   Highlighter,
   Italic,
+  RemoveFormatting,
   Strikethrough,
   Subscript,
   Superscript,
@@ -25,9 +27,10 @@ import {
 import { useRef, type FocusEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColorField, FontField, useGestureTx } from '../../controls';
-import { changeMarks, toggleBold, toggleMark } from '../actions';
+import { changeMarks, clearFormatting, toggleBold, toggleMark } from '../actions';
 import { isMixed, orNull, patchMarks, type MarksPatch } from '../format';
 import {
+  CLEAR_KEYS,
   closeToText,
   keepFocus,
   PopoverTool,
@@ -296,6 +299,15 @@ export function MoreTool() {
           label={t('lowercase')}
           pressed={format.case === 'lower'}
           onPressedChange={(on) => setMarks({ case: on ? 'lower' : null })}
+        />
+        <IconButton
+          size="sm"
+          icon={RemoveFormatting}
+          label={t('clear')}
+          shortcut={CLEAR_KEYS}
+          className="ms-auto"
+          onMouseDown={keepFocus}
+          onClick={() => clearFormatting(text.target, { label: t('step.clear') })}
         />
       </div>
       <Row label={t('letterSpacing')}>

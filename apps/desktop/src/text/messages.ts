@@ -31,6 +31,8 @@ export const he = {
   uppercase: 'אותיות גדולות',
   lowercase: 'אותיות קטנות',
   letterSpacing: 'ריווח אותיות',
+  clear: 'ניקוי עיצוב',
+  painter: 'מברשת עיצוב',
   color: 'צבע טקסט',
   highlight: 'צבע הדגשה',
   align: {
@@ -93,6 +95,19 @@ export const he = {
     format: 'עיצוב טקסט',
     paragraph: 'עיצוב פסקה',
     box: 'הגדרות תיבת הטקסט',
+    clear: 'ניקוי עיצוב',
+    paint: 'העברת עיצוב',
+  },
+  // The shortcut map (UI-06): what each shortcut of the text area does.
+  shortcut: {
+    bold: 'מודגש',
+    italic: 'נטוי',
+    underline: 'קו תחתון',
+    direction: 'היפוך כיוון הפסקה',
+    insert: 'הוספת תיבת טקסט',
+    clear: 'ניקוי עיצוב',
+    pickFormat: 'מברשת עיצוב: העתקת העיצוב',
+    paintFormat: 'מברשת עיצוב: החלת העיצוב שהועתק',
   },
 };
 
@@ -123,6 +138,8 @@ export const en: Messages<typeof he> = {
   uppercase: 'Uppercase',
   lowercase: 'Lowercase',
   letterSpacing: 'Letter spacing',
+  clear: 'Clear formatting',
+  painter: 'Format painter',
   color: 'Text colour',
   highlight: 'Highlight colour',
   align: {
@@ -185,5 +202,17 @@ export const en: Messages<typeof he> = {
     format: 'Format text',
     paragraph: 'Format paragraph',
     box: 'Text box settings',
+    clear: 'Clear formatting',
+    paint: 'Paint format',
+  },
+  shortcut: {
+    bold: 'Bold',
+    italic: 'Italic',
+    underline: 'Underline',
+    direction: 'Flip the paragraph direction',
+    insert: 'Insert a text box',
+    clear: 'Clear formatting',
+    pickFormat: 'Format painter: pick up the format',
+    paintFormat: 'Format painter: apply the picked format',
   },
 };

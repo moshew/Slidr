@@ -26,6 +26,7 @@ import {
   clipboardPlugin,
   decorationsPlugin,
   emptyLinePlugin,
+  painterPlugin,
 } from './plugins';
 import { docToRichText, normalizeRichText, richTextToDoc } from './richTextDoc';
 import { textExtensions } from './schema';
@@ -256,12 +257,16 @@ export function TextEditor({
             }
             return shortcuts;
           },
-          addProseMirrorPlugins: () => [
-            decorationsPlugin(emptyDir),
-            emptyLinePlugin(),
-            blurredSelectionPlugin(),
-            clipboardPlugin(),
-          ],
+          addProseMirrorPlugins() {
+            const ed = this.editor;
+            return [
+              decorationsPlugin(emptyDir),
+              emptyLinePlugin(),
+              blurredSelectionPlugin(),
+              clipboardPlugin(),
+              painterPlugin(() => ({ kind: 'editor', view: ed.view, bus, slideId, element })),
+            ];
+          },
         }),
       ],
       content: richTextToDoc(editedText(element, cell)),

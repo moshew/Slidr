@@ -4,8 +4,10 @@ import type { JSONContent } from '@tiptap/core';
 import { Slice, type Node as PmNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
+import type { TextTarget } from './actions';
 import { resolveDirection } from './bidi';
 import { caretMarks, marksOf, paragraphProps, STEP_META, toPmMarks } from './editorFormat';
+import { paint, painter } from './painter';
 import {
   hasText,
   htmlToRichText,
@@ -186,6 +188,30 @@ export function blurredSelectionPlugin(): Plugin {
         return DecorationSet.create(state.doc, [
           Decoration.inline(from, to, { style: SELECTION_STYLE, 'data-blurred-selection': '' }),
         ]);
+      },
+    },
+  });
+}
+
+/**
+ * The format painter inside the editor (TXT-10). While the brush is in hand, what the mouse
+ * selects takes the picked format when the button is let go; a plain click paints the word under
+ * it. The button may be let go outside the text, so the whole document is listened to; and the
+ * editor learns of the new selection a moment after the button, so the painting waits for it.
+ */
+export function painterPlugin(target: () => TextTarget): Plugin {
+  return new Plugin({
+    props: {
+      handleDOMEvents: {
+        mousedown(view) {
+          if (!painter.getState().armed) return false;
+          const onUp = () =>
+            setTimeout(() => {
+              if (!view.isDestroyed && painter.getState().armed) paint(target());
+            });
+          document.addEventListener('mouseup', onUp, { once: true });
+          return false;
+        },
       },
     },
   });

@@ -67,19 +67,55 @@ interface SelectedParagraph {
   pos: number;
 }
 
+/** A stretch of the document, in its positions. */
+export interface TextRange {
+  from: number;
+  to: number;
+}
+
 /**
- * The paragraphs the selection touches. A selection that only reaches the start of its last
- * paragraph (Shift+Down from a line above) does not touch it.
+ * The paragraphs the selection touches, or a range given in its place. A selection that only
+ * reaches the start of its last paragraph (Shift+Down from a line above) does not touch it.
  */
-export function selectedParagraphs(state: EditorState): SelectedParagraph[] {
-  const { from, to, empty } = state.selection;
+export function selectedParagraphs(
+  state: EditorState,
+  range: TextRange = state.selection,
+): SelectedParagraph[] {
+  const { from, to } = range;
   const out: SelectedParagraph[] = [];
   state.doc.nodesBetween(from, to, (node, pos) => {
     if (node.type.name !== 'paragraph') return true;
-    if (empty || out.length === 0 || to > pos + 1) out.push({ node, pos });
+    if (from === to || out.length === 0 || to > pos + 1) out.push({ node, pos });
     return false;
   });
   return out;
+}
+
+/** All the text of the paragraphs the selection touches: what a change to a paragraph's style covers. */
+export function paragraphsRange(state: EditorState): TextRange {
+  const selected = selectedParagraphs(state);
+  const first = selected[0];
+  const last = selected.at(-1);
+  if (!first || !last) return state.selection;
+  return { from: first.pos + 1, to: last.pos + last.node.nodeSize - 1 };
+}
+
+/**
+ * The word the caret is in or beside, by the browser's own word breaking (Hebrew and Latin
+ * alike). Null when the selection is not a caret, or the caret is not at a word.
+ */
+export function wordRange(state: EditorState): TextRange | null {
+  const { $from, empty } = state.selection;
+  if (!empty || !$from.parent.isTextblock) return null;
+  // One character for a line break, as it has one position.
+  const text = $from.parent.textBetween(0, $from.parent.content.size, undefined, '\n');
+  const offset = $from.parentOffset;
+  for (const part of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)) {
+    const end = part.index + part.segment.length;
+    if (part.isWordLike && offset >= part.index && offset <= end)
+      return { from: $from.start() + part.index, to: $from.start() + end };
+  }
+  return null;
 }
 
 /** The marks that typing at the caret would take. */
@@ -119,25 +155,34 @@ export function sampleState(state: EditorState): TextSample {
   return { paragraphs, spans };
 }
 
-/** A transaction that makes a marks change to the selection, or to what is typed next. */
-export function changeMarksTr(state: EditorState, change: MarksChange): Transaction {
+/**
+ * A transaction that makes a marks change to the selection, or to what is typed next. With
+ * `range` the change goes to that stretch of the text instead (a whole link, the paragraphs of a
+ * text style); `tr` adds it to a transaction that already holds another change of the same step.
+ */
+export function changeMarksTr(
+  state: EditorState,
+  change: MarksChange,
+  range: TextRange = state.selection,
+  tr: Transaction = state.tr,
+): Transaction {
   const { schema, selection } = state;
-  const tr = state.tr;
   const apply = (marks: Marks, paragraph: ParagraphProps) =>
     cleanMarks(change(marks, paragraph)) ?? {};
 
   if (selection.empty) {
+    // The caret too: what is typed next takes the change, and so does the empty line it is on.
     const { $from } = selection;
     const node = $from.parent;
     const next = apply(caretMarks(state), paragraphProps(node));
     tr.setStoredMarks(toPmMarks(schema, next));
     if (node.content.size === 0)
       tr.setNodeAttribute($from.before(), 'emptyMarks', Object.keys(next).length ? next : null);
-    return tr;
+    if (range.from === range.to) return tr;
   }
 
-  const { from, to } = selection;
-  for (const { node, pos } of selectedParagraphs(state)) {
+  const { from, to } = range;
+  for (const { node, pos } of selectedParagraphs(state, range)) {
     const paragraph = paragraphProps(node);
     if (node.content.size === 0) {
       const next = apply(emptyMarks(node), paragraph);
@@ -163,9 +208,13 @@ export function changeMarksTr(state: EditorState, change: MarksChange): Transact
 }
 
 /** A transaction that makes a paragraph change to the paragraphs the selection touches. */
-export function changeParagraphsTr(state: EditorState, change: ParagraphChange): Transaction {
-  const tr = state.tr;
-  for (const { node, pos } of selectedParagraphs(state)) {
+export function changeParagraphsTr(
+  state: EditorState,
+  change: ParagraphChange,
+  range: TextRange = state.selection,
+  tr: Transaction = state.tr,
+): Transaction {
+  for (const { node, pos } of selectedParagraphs(state, range)) {
     const next = change(paragraphProps(node)) as Record<string, unknown>;
     const attrs = node.attrs as Record<string, unknown>;
     for (const key of PARAGRAPH_ATTRS) {

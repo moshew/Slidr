@@ -8,19 +8,25 @@ import {
   caretMarks,
   changeMarksTr,
   changeParagraphsTr,
+  paragraphsRange,
   sampleState,
   selectedParagraphs,
+  wordRange,
 } from './editorFormat';
 import {
   boldChange,
+  clearMarks,
   listChange,
   mapMarks,
   mapParagraphs,
+  paintMarks,
+  paintParagraph,
   patchMarks,
   patchParagraph,
   readFormat,
   sampleRichText,
   type FormatContext,
+  type PickedFormat,
 } from './format';
 import { docToRichText, normalizeRichText, richTextToDoc } from './richTextDoc';
 import { textExtensions } from './schema';
@@ -136,6 +142,61 @@ describe('a marks change in the editor', () => {
   });
 });
 
+describe('a change to a stretch of the text that is not the selection', () => {
+  const rich: RichText = {
+    paragraphs: [
+      p([{ text: 'אחת ' }, { text: 'bold', marks: { weight: 700 } }, { text: ' שלוש' }]),
+      p([{ text: 'second line' }]),
+    ],
+  };
+
+  it('finds the word the caret is in or beside, in Hebrew and in Latin text', () => {
+    // "אחת": positions 1 to 4, from either end and from inside.
+    for (const at of [1, 2, 4]) expect(wordRange(stateOf(rich, at))).toEqual({ from: 1, to: 4 });
+    expect(wordRange(stateOf(rich, 6))).toEqual({ from: 5, to: 9 });
+    expect(wordRange(stateOf(rich, 20))).toEqual({ from: 16, to: 22 });
+    // A selection is not a caret; and a line without a word has none.
+    expect(wordRange(stateOf(rich, 1, 4))).toBeNull();
+    expect(wordRange(stateOf({ paragraphs: [p([{ text: ' - ' }])] }, 2))).toBeNull();
+    expect(wordRange(stateOf({ paragraphs: [p([])] }, 1))).toBeNull();
+  });
+
+  it('counts a line break as one position', () => {
+    const broken: RichText = { paragraphs: [p([{ text: 'one\ntwo three' }])] };
+    expect(wordRange(stateOf(broken, 6))).toEqual({ from: 5, to: 8 });
+  });
+
+  it('a marks change with a range goes to the range, and the caret types in it too', () => {
+    const state = stateOf(rich, 6);
+    const range = wordRange(state);
+    const tr = changeMarksTr(state, patchMarks({ italic: true }), range ?? undefined);
+    expect(applied(state, tr).paragraphs[0]?.runs).toEqual([
+      { text: 'אחת ' },
+      { text: 'bold', marks: { weight: 700, italic: true } },
+      { text: ' שלוש' },
+    ]);
+    expect(state.apply(tr).selection.from).toBe(6);
+  });
+
+  it('the paragraphs of a selection are all of their text', () => {
+    expect(paragraphsRange(stateOf(rich, 6))).toEqual({ from: 1, to: 14 });
+    expect(paragraphsRange(stateOf(rich, 6, 18))).toEqual({ from: 1, to: 27 });
+    // Shift+Down from the first line reaches the start of the second, and does not touch it.
+    expect(paragraphsRange(stateOf(rich, 3, 16))).toEqual({ from: 1, to: 14 });
+  });
+
+  it('marks and paragraph fields change in one transaction', () => {
+    const state = stateOf(rich, 6);
+    const tr = state.tr;
+    changeMarksTr(state, patchMarks({ weight: null }), paragraphsRange(state), tr);
+    changeParagraphsTr(state, patchParagraph({ styleRef: 'title' }), undefined, tr);
+    expect(applied(state, tr).paragraphs).toEqual([
+      p([{ text: 'אחת bold שלוש' }], { styleRef: 'title' }),
+      p([{ text: 'second line' }]),
+    ]);
+  });
+});
+
 describe('a paragraph change in the editor', () => {
   it('goes to the paragraph of the caret', () => {
     const state = stateOf(two, 14);
@@ -218,16 +279,23 @@ describe('the two targets agree', () => {
   }
 
   it('selecting all the text of a box and formatting it is formatting the box', () => {
+    const picked: PickedFormat = {
+      marks: { size: 52, italic: true },
+      paragraph: { align: 'end', spaceBefore: 8, styleRef: 'heading' },
+    };
     const marks = [
       patchMarks({ size: 44, color: { token: 'accent' } }),
       patchMarks({ italic: true, underline: null, font: 'Rubik' }),
       boldChange(true, ctx),
       boldChange(false, ctx),
+      clearMarks,
+      paintMarks(picked),
     ];
     const paragraphs = [
       patchParagraph({ align: 'center', dir: 'rtl', lineHeight: 1.2, spaceAfter: 12 }),
       listChange('number', true),
       listChange('bullet', false),
+      paintParagraph(picked),
     ];
     const texts = allRichTexts();
     expect(texts.length).toBeGreaterThan(40);
