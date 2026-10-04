@@ -12,7 +12,7 @@ import {
   violations,
   watchViolations,
 } from '../e2e/hardening-helpers';
-import { invoke, launchApp, workspaces, type RunningApp } from './app';
+import { invoke, launchApp, showPanel, workspaces, type RunningApp } from './app';
 import { hostileDeck, openDeckFile, writeDeckFile } from './decks';
 
 /*
@@ -272,8 +272,7 @@ test('the tool bridge listens on this computer alone, and each session has its o
   await page.evaluate(() =>
     localStorage.setItem('slidr.agent', JSON.stringify({ harnessId: 'mock', model: 'slide-chat' })),
   );
-  const chat = page.getByTestId('activity-bar').locator('[data-panel="ai.deck"]');
-  if ((await chat.getAttribute('aria-pressed')) !== 'true') await chat.click();
+  await showPanel(page, 'ai.deck');
   await page.getByTestId('chat-input').fill('שלום');
   await page.getByTestId('chat-input').press('Enter');
   await expect(page.getByTestId('chat-assistant').first()).toHaveAttribute('data-outcome', /.+/, {

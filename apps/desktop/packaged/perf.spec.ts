@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { answerDialog, invoke, launchApp, type RunningApp } from './app';
+import { answerDialog, invoke, launchApp, showPanel, type RunningApp } from './app';
 import { crowdedDeck, longDeck, openDeckFile, writeDeckFile, writePictureDeck } from './decks';
 
 /*
@@ -461,8 +461,7 @@ test.describe('with a deck open', () => {
         JSON.stringify({ harnessId: 'mock', model: 'deck-build', qualityGate: false }),
       ),
     );
-    const chat = page.getByTestId('activity-bar').locator('[data-panel="ai.deck"]');
-    if ((await chat.getAttribute('aria-pressed')) !== 'true') await chat.click();
+    await showPanel(page, 'ai.deck');
     const input = page.getByTestId('chat-input');
     await expect(input).toBeVisible();
     const before = await page.getByTestId('chat-assistant').count();

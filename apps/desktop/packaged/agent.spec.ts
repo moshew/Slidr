@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'nod
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { dataDir, invoke, launchApp, type RunningApp } from './app';
+import { dataDir, invoke, launchApp, showPanel, type RunningApp } from './app';
 
 /*
  * The agent's process against the real CLI (SEC-02, WG13-T03, AGT-07), in the packaged app: it
@@ -99,9 +99,7 @@ test.beforeAll(async () => {
       }),
     ),
   );
-  // The deck's chat, whichever panel the app was last closed on.
-  const chat = app.page.getByTestId('activity-bar').locator('[data-panel="ai.deck"]');
-  if ((await chat.getAttribute('aria-pressed')) !== 'true') await chat.click();
+  await showPanel(app.page, 'ai.deck');
   await expect(app.page.getByTestId('chat-input')).toBeVisible();
 });
 

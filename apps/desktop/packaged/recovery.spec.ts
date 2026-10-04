@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { answerDialog, invoke, launchApp, workspaces, type RunningApp } from './app';
+import { answerDialog, invoke, launchApp, showPanel, workspaces, type RunningApp } from './app';
 import { longDeck, openDeckFile, writeDeckFile } from './decks';
 
 /*
@@ -222,6 +222,7 @@ test.describe('an agent session that sits idle (AGT-07, AGT-08)', () => {
       .map((line) => JSON.parse(line) as LogEntry);
   };
   const say = async (page: Page, message: string, nth: number) => {
+    await showPanel(page, 'ai.deck');
     await page.getByTestId('chat-input').fill(message);
     await page.getByTestId('chat-input').press('Enter');
     const turn = page.getByTestId('chat-assistant').nth(nth);
@@ -280,7 +281,7 @@ test.describe('an agent session that sits idle (AGT-07, AGT-08)', () => {
 
   test('the diagnostics log shows it all in the settings screen', async () => {
     const { page } = app;
-    await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+    await showPanel(page, 'settings');
     const about = page.locator('[data-settings-section="about"]');
     await about.scrollIntoViewIfNeeded();
     await expect(about.getByTestId('about-log-size')).toContainText('גודל היומן');

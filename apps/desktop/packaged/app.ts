@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Browser, type Page } from '@playwright/test';
+import { chromium, expect, type Browser, type Page } from '@playwright/test';
 
 /*
  * The packaged app, started and driven from a test (WG13-T02, ADR-066): the `slidr.exe` that
@@ -209,6 +209,17 @@ export async function answerDialog(
  * What the page complains about from now on: console errors (a missing string is one, and so is
  * a request the content policy refused) and uncaught exceptions. A spec checks it is empty.
  */
+/**
+ * Shows a panel of the Tool Panel. The app remembers which panel was showing, between runs
+ * too, and the button of the panel that is showing closes it: so the button is pressed only
+ * when another panel, or none, is showing. A suite cannot know what the one before it left.
+ */
+export async function showPanel(page: Page, panel: string): Promise<void> {
+  const button = page.getByTestId('activity-bar').locator(`[data-panel="${panel}"]`);
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+}
+
 export function watchProblems(page: Page): string[] {
   const problems: string[] = [];
   page.on('pageerror', (error) => problems.push(error.message));

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { invoke, launchApp, watchProblems, workspaces, type RunningApp } from './app';
+import { invoke, launchApp, showPanel, watchProblems, workspaces, type RunningApp } from './app';
 
 /*
  * What the ADRs from 027 on wrote down as never run in a production build (WG13-T05), run in
@@ -69,7 +69,7 @@ test('the bundle holds no scripted agent, no dev page and no editor handle', asy
 
 test('the app carries the licences of what it is built from, and shows them', async () => {
   const { page } = app;
-  await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  await showPanel(page, 'settings');
   const about = page.locator('[data-settings-section="about"]');
   await about.scrollIntoViewIfNeeded();
   await expect(about.getByTestId('about-version')).toContainText(/\d+\.\d+\.\d+/);
@@ -101,7 +101,7 @@ test('the app carries the licences of what it is built from, and shows them', as
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('licenses-dialog')).toHaveCount(0);
   // Back to the deck's chat, where the next test writes.
-  await page.getByTestId('activity-bar').locator('[data-panel="ai.deck"]').click();
+  await showPanel(page, 'ai.deck');
   await expect(page.getByTestId('chat-input')).toBeVisible();
 });
 
@@ -135,6 +135,7 @@ test('a turn builds a slide: the bridge, the capture window, the conversion and 
   await page.evaluate(() =>
     localStorage.setItem('slidr.agent', JSON.stringify({ harnessId: 'mock', model: 'deck-build' })),
   );
+  await showPanel(page, 'ai.deck');
   const input = page.getByTestId('chat-input');
   await input.fill('מצגת על תוכנית העבודה');
   await input.press('Enter');
@@ -149,7 +150,8 @@ test('a turn builds a slide: the bridge, the capture window, the conversion and 
   await expect(stage.locator('[data-element-type="text"]')).toHaveCount(3);
   await expect(stage.locator('[data-element-type="html"]')).toHaveCount(0);
   await expect(stage).toContainText('תוכנית העבודה לשנת 2027');
-  expect(app.capturePage()?.url()).toBe('http://tauri.localhost/capture.html');
+  // The capture window shows the app's own capture page, from where the app itself is served.
+  expect(app.capturePage()?.url()).toBe(new URL('/capture.html', page.url()).href);
 });
 
 test('a slide is captured as a PNG of the size asked for', async () => {
