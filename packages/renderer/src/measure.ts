@@ -40,7 +40,10 @@ export interface TextMeasure {
 export interface ElementMeasure {
   /** The box the element covers on the slide: rotated, inside its groups, at its real height. */
   box: Frame;
-  /** Present when the element shows text: a text box, a shape with text, a table, `html`. */
+  /**
+   * Present when the element shows text: a text box, a shape with text, a table, `html`, and a
+   * chart, whose labels, legend and titles are text it draws itself.
+   */
   text?: TextMeasure;
 }
 
@@ -136,10 +139,15 @@ function pairs<E extends Element>(a: ParentNode, b: ParentNode, selector: string
   return Array.from(a.querySelectorAll<E>(selector), (el, i) => [el, copies[i] as E]);
 }
 
-/** Glyphs out, everything else stays: fills, highlights, borders, and icons drawn in `currentColor`. */
+/**
+ * Glyphs out, everything else stays: fills, highlights, borders, and icons drawn in
+ * `currentColor`. Text drawn in SVG (the labels of a chart) is painted by `fill`, not by the
+ * text fill colour, and goes out by that.
+ */
 const NO_GLYPHS =
   '*{-webkit-text-fill-color:transparent!important;-webkit-text-stroke:0 transparent!important;' +
-  'text-shadow:none!important;text-decoration-line:none!important}';
+  'text-shadow:none!important;text-decoration-line:none!important}' +
+  'svg text,svg tspan{fill:transparent!important;stroke:transparent!important}';
 
 /** Characters XML 1.0 does not allow; one of them in a text would make the whole picture fail. */
 // eslint-disable-next-line no-control-regex
@@ -266,6 +274,9 @@ function textRoot(node: HTMLElement): Element | ShadowRoot | null | undefined {
     case 'html':
       // Free HTML without scripts. With scripts it is a sandboxed frame, which cannot be read.
       return node.querySelector('[data-slidr-html="shadow"]')?.shadowRoot;
+    case 'chart':
+      // Drawn as SVG in the slide's own DOM (ADR-048): its labels are text nodes like any other.
+      return node.querySelector('[data-slidr-chart-box] svg');
     default:
       return undefined;
   }
@@ -398,6 +409,9 @@ function measureText(
     if (parent.closest('[data-slidr-marker]')) continue;
 
     const cs = getComputedStyle(parent);
+    // Text in SVG is painted by its fill; a label with none is not drawn.
+    const drawn = parent instanceof SVGElement;
+    if (drawn && cs.fill === 'none') continue;
     // Superscript and subscript are small by design: they count at the size of the text they sit in.
     const sized =
       (cs.verticalAlign === 'super' || cs.verticalAlign === 'sub') && parent.parentElement
@@ -405,7 +419,7 @@ function measureText(
         : cs;
     // Computed sizes ignore `zoom` (what `shrink` sets) and transforms.
     const fontSize = parseFloat(sized.fontSize) * (parent.currentCSSZoom ?? 1) * scale;
-    const [r, g, b, a] = parseColor(cs.webkitTextFillColor || cs.color);
+    const [r, g, b, a] = parseColor(drawn ? cs.fill : cs.webkitTextFillColor || cs.color);
     const alpha = a * opacity;
     const key = `${r},${g},${b},${alpha},${fontSize}`;
     let entry = spans.get(key);

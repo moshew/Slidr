@@ -433,3 +433,40 @@ test('a slide in a scaled container measures the same, in slide pixels', async (
     parent.remove();
   }
 });
+
+test('a chart: the text it draws is measured where it is, and judged against what is under it', async () => {
+  const frame = { x: 200, y: 200, w: 1000, h: 600 };
+  const m = await measured(
+    [
+      createElement.chart({
+        id: 'e_chart',
+        frame,
+        chartType: 'column',
+        data: {
+          categories: ['Q1', 'Q2', 'Q3'],
+          series: [
+            { name: 'Hardware', values: [24, 26, 28] },
+            { name: 'Subscription', values: [9, 11, 12] },
+          ],
+        },
+      }),
+    ],
+    { background: { fill: { kind: 'solid', color: { value: '#101418' } } } },
+  );
+  const text = m.e_chart!.text!;
+  // The labels of the axes and the legend, inside the chart's own box.
+  expect(text.spans.length).toBeGreaterThan(0);
+  expect(text.ink.x).toBeGreaterThanOrEqual(frame.x - 1);
+  expect(text.ink.y).toBeGreaterThanOrEqual(frame.y - 1);
+  expect(text.ink.x + text.ink.w).toBeLessThanOrEqual(frame.x + frame.w + 1);
+  expect(text.ink.y + text.ink.h).toBeLessThanOrEqual(frame.y + frame.h + 1);
+  expect(text.ink.w).toBeGreaterThan(400);
+  expect(text.overflow).toEqual({ x: 0, y: 0 });
+  // A chart sets its text in the theme's caption size, and in the theme's text colours.
+  expect(Math.min(...text.spans.map((s) => s.fontSize))).toBe(22);
+  // Under the labels is the dark slide: the labels themselves are not in the picture.
+  const under = text.spans.flatMap((s) => s.backdrop);
+  expect(under.length).toBeGreaterThan(4);
+  const dark = under.filter((c) => near(c, [16, 20, 24], 10)).length;
+  expect(dark / under.length).toBeGreaterThan(0.8);
+});
