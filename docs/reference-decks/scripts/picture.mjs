@@ -10,7 +10,7 @@
 //   --from FILE    do not generate: cut and convert a picture that already exists
 // Every generation uses the ChatGPT plan's quota. Each run is written to
 // apps/desktop/test-results/design/templates/pictures/ledger.json (not in git), with the PNG
-// as it came. Run build.mjs afterwards: it writes the asset records the templates name.
+// as it came. The asset records the templates name (pictures.generated.ts) are written again.
 /* global document, Image */
 import { spawn } from 'node:child_process';
 import {
@@ -27,6 +27,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { root } from './decks.mjs';
+import { writePictures } from './pictures.mjs';
 
 const MAX_BYTES = 200_000;
 const RULE =
@@ -148,4 +149,5 @@ for (const [i, cell] of cells.entries()) {
   writeFileSync(path, Buffer.from(cell.url.slice(cell.url.indexOf(',') + 1), 'base64'));
   console.log(`images/${file}: ${cell.w}x${cell.h}, ${Math.round(statSync(path).size / 1024)}kB`);
 }
+console.log(writePictures());
 console.log(`generations so far in this worktree: ${ledger.length}`);

@@ -8,6 +8,7 @@ import { shvilSamples, shvilTemplate, shvilTheme } from './shvil';
 import { tzukSamples, tzukTemplate, tzukTheme } from './tzuk';
 import { zeremSamples, zeremTemplate, zeremTheme } from './zerem';
 
+export { contractGaps, ROLE_CONTRACT } from './contract';
 export { pictures } from './pictures.generated';
 export { sampleDeck, type SampleSlide } from './kit';
 export { zeremTemplate };
