@@ -134,3 +134,56 @@ for (const lang of ['he', 'en'] as const) {
     await expect(page.getByTestId('stage-surface')).toBeFocused();
   });
 }
+
+test('the Stage says what it is and what Tab selects on it', async ({ page }) => {
+  await openApp(page, { lang: 'en' });
+  await addBoxes(page, [
+    { id: 'e_a', x: 200, y: 200, w: 300, h: 200, name: 'Logo' },
+    { id: 'e_b', x: 800, y: 400, w: 300, h: 200 },
+  ]);
+  const stage = page.getByTestId('stage-surface');
+  await expect(stage).toHaveRole('application');
+  await expect(stage).toHaveAccessibleName('Slide 1 of 1');
+  const said = page.getByTestId('stage-selection');
+  await expect(said).toHaveRole('status');
+  await expect(said).toHaveText('');
+  await stage.focus();
+  await page.keyboard.press('Tab');
+  await expect(said).toHaveText('Selected: Shape · Logo');
+  await page.keyboard.press('Control+a');
+  await expect(said).toHaveText('Selected: 2 objects');
+});
+
+for (const motion of ['reduce', 'no-preference'] as const) {
+  test(`the Filmstrip goes to the current slide ${motion === 'reduce' ? 'at once, with reduced motion' : 'smoothly'}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang: 'en' });
+    await page.emulateMedia({ reducedMotion: motion });
+    await page.evaluate(() => {
+      const { bus } = window.slidr!;
+      bus.batch(
+        Array.from({ length: 30 }, (_, i) => ({
+          type: 'slide.add' as const,
+          slide: { id: `s_far_${i}`, elements: [], timeline: [] },
+        })),
+      );
+    });
+    const strip = page.locator('[data-filmstrip]');
+    // The strip has room for the new slides before the current one changes.
+    await expect.poll(() => strip.evaluate((el) => el.scrollWidth)).toBeGreaterThan(5000);
+    // Two frames after the change, and a second after it.
+    const soon = await page.evaluate(async () => {
+      window.slidr!.selection.getState().setCurrentSlide('s_far_25');
+      const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      await frame();
+      await frame();
+      return Math.abs(document.querySelector('[data-filmstrip]')!.scrollLeft);
+    });
+    await page.waitForTimeout(1000);
+    const later = await strip.evaluate((el) => Math.abs(el.scrollLeft));
+    expect(later).toBeGreaterThan(1000);
+    if (motion === 'reduce') expect(soon).toBe(later);
+    else expect(soon).toBeLessThan(later);
+  });
+}

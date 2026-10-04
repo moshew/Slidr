@@ -415,7 +415,10 @@ export function Filmstrip({
     const start = PAD + index * STEP;
     const pos = Math.abs(el.scrollLeft);
     const rtl = getComputedStyle(el).direction === 'rtl';
-    const to = (p: number) => el.scrollTo({ left: rtl ? -p : p, behavior: 'smooth' });
+    // At once, not gliding, for whoever asked the system for less motion (UI-06).
+    const still = el.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)');
+    const behavior = still?.matches ? 'instant' : 'smooth';
+    const to = (p: number) => el.scrollTo({ left: rtl ? -p : p, behavior });
     if (start < pos) to(start - PAD);
     else if (start + THUMB_W > pos + el.clientWidth) to(start + THUMB_W + PAD - el.clientWidth);
   }, [currentId, slides]);

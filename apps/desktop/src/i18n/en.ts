@@ -134,6 +134,8 @@ export const en: Messages<typeof he> = {
   },
   stage: {
     label: 'Slide',
+    surface: 'Slide {{n}} of {{total}}',
+    selected: 'Selected: {{what}}',
     filmstrip: 'Slides',
     newSlide: 'New slide',
     slide: 'Slide {{n}}',

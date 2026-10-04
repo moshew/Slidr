@@ -134,6 +134,8 @@ export const he = {
   },
   stage: {
     label: 'השקף',
+    surface: 'שקף {{n}} מתוך {{total}}',
+    selected: 'בבחירה: {{what}}',
     filmstrip: 'שקפים',
     newSlide: 'שקף חדש',
     slide: 'שקף {{n}}',

@@ -161,6 +161,11 @@ export interface StageProps {
    * knows the language. Undefined, or nothing for an element, shows nothing.
    */
   placeholderHint?: (element: TextElement) => string | undefined;
+  /**
+   * What a screen reader calls the Stage, by the host, which knows the language. The Stage takes
+   * its own keys (the arrows move, Tab walks the objects), so it is an application to it.
+   */
+  label?: string;
   className?: string;
   style?: CSSProperties;
 }
@@ -341,6 +346,7 @@ export function Stage({
   selectionToolbar,
   marked,
   placeholderHint,
+  label: name,
   className,
   style,
 }: StageProps) {
@@ -1623,6 +1629,8 @@ export function Stage({
   return (
     <div
       ref={container}
+      role="application"
+      aria-label={name}
       data-testid="stage-surface"
       data-cropping={croppingId ?? undefined}
       data-entered={scope.length ? scope.join(' ') : undefined}
