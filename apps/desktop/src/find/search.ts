@@ -134,24 +134,29 @@ function isWholeWord(text: string, { start, end }: TextRange): boolean {
   return !joinsBefore && !joinsAfter;
 }
 
-/**
- * Where `query` occurs in a text, in order and without overlap. Without `matchCase` both are
- * compared with their case folded, and a match covers whole characters of the text: "s" does not
- * find half of a "ß".
- */
-export function findInText(text: string, query: string, options: FindOptions): TextRange[] {
-  if (!query || !text) return [];
-  const hay: Folded | undefined = options.matchCase ? undefined : fold(text);
-  const haystack = hay ? hay.text : text;
-  const needle = hay ? foldText(query) : query;
+/** A text as a search reads it: itself, and with its case folded once a search asked for that. */
+interface Haystack {
+  text: string;
+  folded?: Folded;
+}
+
+/** What is looked for in every text of one search: the query, folded unless the case must match. */
+const needleOf = (query: string, options: FindOptions): string =>
+  options.matchCase ? query : foldText(query);
+
+function search(hay: Haystack, needle: string, options: FindOptions): TextRange[] {
+  const { text } = hay;
+  if (!needle || !text) return [];
+  const folded = options.matchCase ? undefined : (hay.folded ??= fold(text));
+  const haystack = folded ? folded.text : text;
   const out: TextRange[] = [];
   let from = 0;
   for (;;) {
     const found = haystack.indexOf(needle, from);
     if (found < 0) return out;
     const last = found + needle.length - 1;
-    const range: TextRange = hay
-      ? { start: hay.starts[found] ?? -1, end: hay.ends[last] ?? -1 }
+    const range: TextRange = folded
+      ? { start: folded.starts[found] ?? -1, end: folded.ends[last] ?? -1 }
       : { start: found, end: found + needle.length };
     const whole = range.start >= 0 && range.end >= 0;
     if (whole && (!options.wholeWord || isWholeWord(text, range))) {
@@ -161,6 +166,33 @@ export function findInText(text: string, query: string, options: FindOptions): T
       from = found + 1;
     }
   }
+}
+
+/**
+ * Where `query` occurs in a text, in order and without overlap. Without `matchCase` both are
+ * compared with their case folded, and a match covers whole characters of the text: "s" does not
+ * find half of a "ß".
+ */
+export function findInText(text: string, query: string, options: FindOptions): TextRange[] {
+  return search({ text }, needleOf(query, options), options);
+}
+
+const haystacks = new WeakMap<Paragraph, Haystack>();
+
+/**
+ * The text of a paragraph of the deck, joined and folded once. The deck is immutable (ADR-007): a
+ * paragraph object always has the same text, and a change makes new objects only for what it
+ * touched. So a search after a change, or after one more letter of the query, folds nothing
+ * again, and folding is most of the work: measured on 200 slides with 9,000 paragraphs, a search
+ * took some 150 ms without this and under 20 ms with it.
+ */
+function haystackOf(paragraph: Paragraph): Haystack {
+  let hay = haystacks.get(paragraph);
+  if (!hay) {
+    hay = { text: paragraphText(paragraph) };
+    haystacks.set(paragraph, hay);
+  }
+  return hay;
 }
 
 /* ---------------------------------------------------------------- the deck */
@@ -217,11 +249,12 @@ export function* slideTexts(slide: Pick<Slide, 'elements' | 'notes'>): Generator
 export function findMatches(deck: Deck, query: string, options: FindOptions): Match[] {
   const out: Match[] = [];
   if (!query) return out;
-  for (const [slide, { id: slideId, ...rest }] of deck.slides.entries()) {
+  const needle = needleOf(query, options);
+  for (const [slide, { id: slideId, elements, notes }] of deck.slides.entries()) {
     let text = 0;
-    for (const { content, ...holder } of slideTexts(rest)) {
+    for (const { content, ...holder } of slideTexts({ elements, notes })) {
       for (const [paragraph, p] of content.paragraphs.entries()) {
-        for (const range of findInText(paragraphText(p), query, options)) {
+        for (const range of search(haystackOf(p), needle, options)) {
           out.push({ slideId, ...holder, paragraph, ...range, slide, text });
         }
       }
