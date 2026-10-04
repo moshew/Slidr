@@ -39,8 +39,10 @@ import {
   supportsSpread,
 } from './effects';
 import { FillEditor } from './FillEditor';
+import { AdjustTool, AsBackgroundTool, CutoutTool, FilterTool, MaskTool } from './imageTools';
 import { IMAGE_FILES, isPicture, pickFiles } from './insert';
 import { Field, FillSwatch, PopoverTool, ToolGroup, ToolRow } from './parts';
+import { SvgColorsTool } from './svgTools';
 import { isTarget, useTarget, type Target } from './target';
 
 /*
@@ -254,8 +256,7 @@ function CurveTool({ target }: { target: Target<LineElement> }) {
 
 /**
  * Row B for the `shape` kind of selection, which covers three element types: a shape (fill,
- * outline, effects), a line (stroke, heads, curve, effects) and an SVG (effects only: recolouring
- * is SHP-06, P1).
+ * outline, effects), a line (stroke, heads, curve, effects) and an SVG (its colours, effects).
  */
 export function ShapeRow() {
   const { t } = useTranslation('objects');
@@ -283,7 +284,14 @@ export function ShapeRow() {
       </ToolRow>
     );
   }
-  if (isTarget(target, 'svg')) return <EffectTools target={target} />;
+  if (isTarget(target, 'svg')) {
+    return (
+      <ToolRow>
+        <SvgColorsTool target={target} />
+        <EffectTools target={target} />
+      </ToolRow>
+    );
+  }
   return null;
 }
 
@@ -382,7 +390,7 @@ function FlipTools({ target }: { target: Target<ImageElement> }) {
 }
 
 /**
- * Row B for an image (IMG-02, 04, 08, 09). Nothing here touches the asset: every control writes a
+ * Row B for an image (IMG-02, 04 to 10). Nothing here touches the asset: every control writes a
  * field of the element, so the original is always there to go back to (IMG-12). While the image
  * is being cropped the row belongs to the crop tools, and this draws nothing.
  */
@@ -397,6 +405,13 @@ export function ImageRow() {
         <FitTool target={target} />
         <FlipTools target={target} />
         <ReplaceTool target={target} />
+      </ToolGroup>
+      <ToolGroup label={t('groups.look')}>
+        <MaskTool target={target} />
+        <AdjustTool target={target} />
+        <FilterTool target={target} />
+        <CutoutTool target={target} />
+        <AsBackgroundTool target={target} />
       </ToolGroup>
       <ToolGroup label={t('groups.effects')}>
         <StrokeTool target={target} label={t('image.border')} icon={Square} />

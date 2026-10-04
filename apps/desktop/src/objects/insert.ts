@@ -3,6 +3,7 @@ import { i18n } from '../i18n';
 import { focusStage, tell, type Editor } from '../shell';
 import { insertAssetsCommands } from '../stage/insert';
 import { newLine, newShape, type LineKind } from './shapes';
+import { svgMarkups } from './svgImport';
 
 /*
  * The Insert buttons of row A for pictures, shapes and lines (IMG-01, SHP-01, SHP-05). Each
@@ -94,6 +95,8 @@ export async function insertImages(editor: Editor): Promise<void> {
       size,
       { x: size.w / 2, y: size.h / 2 },
       (id) => id in editor.bus.deck.assets,
+      // An SVG file goes in as cleaned markup, so its colours can be replaced (SHP-06, SEC-06).
+      await svgMarkups(files, assets),
     );
     if (commands.length === 0) return;
     editor.bus.batch(commands, { label: i18n.t('objects:history.insert') });

@@ -7,7 +7,8 @@ import { GLYPH_BOX, LINE_GLYPHS, LINE_KINDS, shapeGlyph, shapeLibrary } from './
 
 /* What the Shape and Line buttons of row A open (SHP-01, SHP-05). */
 
-function ShapeGlyph({ preset }: { preset: string }) {
+/** A shape of the library as a small glyph, in the colour of the text around it. */
+export function ShapeGlyph({ preset }: { preset: string }) {
   const glyph = useMemo(() => shapeGlyph(preset), [preset]);
   if (!glyph) return null;
   return (
