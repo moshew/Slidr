@@ -306,15 +306,37 @@ describe('L15: a paragraph laid out against its text', () => {
   });
 
   it('reports Hebrew set left to right, and the fix states its direction', () => {
-    const element = para('שלוש המטרות של הרבעון הבא', 'ltr');
+    const element = para('שלוש המטרות של הרבעון הבא.', 'ltr');
     const [finding, ...rest] = check('L15', [element], {}, { deck: { lang: 'he' } });
     expect(rest).toEqual([]);
     expect(finding).toMatchObject({ severity: 'warning', elementIds: ['e_text'] });
     expect(finding?.message).toBe(
-      'A paragraph here is laid out left to right while the text reads right to left ("שלוש המטרות של הרבעון הבא"). Set the direction of the paragraph to "rtl".',
+      'A paragraph here is laid out left to right while the text reads right to left ("שלוש המטרות של הרבעון הבא."). Set the direction of the paragraph to "rtl".',
     );
     const after = fixed([element], finding, { deck: { lang: 'he' } }).elements[0]!;
-    expect(after.type === 'text' && after.content.paragraphs[0]!.dir).toBe('rtl');
+    // The direction was stated, so the text was put on that side: it stays there.
+    expect(after.type === 'text' && after.content.paragraphs[0]).toMatchObject({
+      dir: 'rtl',
+      align: 'end',
+    });
+  });
+
+  it('leaves alone a bare word or phrase, which is drawn the same in either direction', () => {
+    const he = { deck: { lang: 'he' } };
+    // What an agent writes in a Hebrew deck: every paragraph right to left, Latin labels too.
+    expect(check('L15', [para('Q1', 'rtl')], {}, he)).toEqual([]);
+    expect(check('L15', [para('API Gateway', 'rtl')], {}, he)).toEqual([]);
+    expect(check('L15', [para('שלוש המטרות של הרבעון הבא', 'ltr')], {}, he)).toEqual([]);
+    // A full stop or a leading figure lands on the wrong side, and that shows.
+    const stop = para('Ships in the second quarter.', 'rtl');
+    const [finding] = check('L15', [stop], {}, he);
+    expect(finding?.message).toContain('laid out right to left while the text reads left to right');
+    const after = fixed([stop], finding, he).elements[0]!;
+    expect(after.type === 'text' && after.content.paragraphs[0]).toMatchObject({
+      dir: 'ltr',
+      align: 'end',
+    });
+    expect(check('L15', [para('2027 roadmap', 'rtl')], {}, he)).toHaveLength(1);
   });
 
   it('reports a Hebrew sentence that opens with an English term and follows its first letter', () => {

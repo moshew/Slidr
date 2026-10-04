@@ -476,7 +476,7 @@ describe("the user's design check: the rules that do not go back to the agent, a
         createElement.text({
           id: 'e_turned',
           frame: { x: 160, y: 800, w: 900, h: 60 },
-          content: richText('המשפט הזה כתוב בעברית', { dir: 'ltr' }),
+          content: richText('המשפט הזה כתוב בעברית.', { dir: 'ltr' }),
         }),
       ],
       { background: photo(SNOW) },

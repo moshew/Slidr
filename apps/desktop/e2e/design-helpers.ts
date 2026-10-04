@@ -84,7 +84,7 @@ export function flawedDeck(): Deck {
           createElement.text({
             id: 'e_turned',
             frame: { x: 96, y: 860, w: 1728, h: 60 },
-            content: richText('המשפט הזה כתוב בעברית', { dir: 'ltr' }),
+            content: richText('המשפט הזה כתוב בעברית.', { dir: 'ltr' }),
           }),
         ],
       }),

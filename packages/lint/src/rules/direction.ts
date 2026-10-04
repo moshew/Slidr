@@ -19,11 +19,45 @@ export function readingDirection(text: string, deck: 'rtl' | 'ltr'): 'rtl' | 'lt
 const NAME = { rtl: 'right to left', ltr: 'left to right' } as const;
 
 /**
- * L15: a paragraph laid out against the direction of its own text. A Hebrew sentence that opens
- * with an English term is still a Hebrew sentence; set to follow its first letter, it is laid
- * out left to right, and its punctuation and its numbers land on the wrong side. The fix states
- * the direction on the paragraph. Text boxes and text in shapes; cells of a table take their
- * sides from the table.
+ * Text that begins with something that is not a letter (a figure, a bracket), or ends with
+ * punctuation. A figure at the end stays with the word before it ("Q1", "31%").
+ */
+const LOOSE_END = /^[^\p{L}\s]|[^\p{L}\p{N}\s%]$/u;
+
+/**
+ * Whether a paragraph laid out against its text is drawn any differently for it. Letters of one
+ * script keep their order in either direction, so a bare word or phrase ("Q1", "API Gateway" in
+ * a Hebrew deck) looks the same and is left alone. What moves is whatever has no direction of
+ * its own at an end of the text (the full stop, a leading figure), and the parts of a text that
+ * holds both scripts.
+ */
+function drawnWrong(text: string): boolean {
+  const { rtl, ltr } = letterCount(text);
+  return (rtl > 0 && ltr > 0) || LOOSE_END.test(text.trim());
+}
+
+const OTHER_SIDE = { start: 'end', end: 'start' } as const;
+
+/**
+ * The paragraph in the direction it reads in. A direction that was stated put the text on a
+ * side of its box, and the text stays there: `start` and `end` trade places. A paragraph that
+ * followed its first letter had no side of its own, and takes the deck's.
+ */
+function turned(paragraph: Paragraph, reads: 'rtl' | 'ltr'): Paragraph {
+  const side = paragraph.align === 'start' || paragraph.align === 'end' ? paragraph.align : null;
+  return {
+    ...paragraph,
+    dir: reads,
+    ...(paragraph.dir !== 'auto' && side ? { align: OTHER_SIDE[side] } : {}),
+  };
+}
+
+/**
+ * L15: a paragraph laid out against the direction of its own text, where that shows. A Hebrew
+ * sentence that opens with an English term is still a Hebrew sentence; set to follow its first
+ * letter, it is laid out left to right, and its punctuation and its numbers land on the wrong
+ * side. The fix states the direction on the paragraph, and keeps the text on the side it was
+ * put on. Text boxes and text in shapes; cells of a table take their sides from the table.
  */
 export const L15: Rule = {
   id: 'L15',
@@ -38,7 +72,8 @@ export const L15: Rule = {
       for (const paragraph of prose.paragraphs) {
         const text = plainText({ paragraphs: [paragraph] });
         const reads = readingDirection(text, deck.meta.dir);
-        if (reads && drawnDirection(paragraph.dir, text, deck.meta.dir) !== reads) {
+        const drawn = drawnDirection(paragraph.dir, text, deck.meta.dir);
+        if (reads && drawn !== reads && drawnWrong(text)) {
           wrong.set(paragraph, reads);
         }
       }
@@ -46,7 +81,7 @@ export const L15: Rule = {
       const [first, reads] = [...wrong][0]!;
       const sample = plainText({ paragraphs: [first] }).slice(0, 40);
       const content = {
-        paragraphs: prose.paragraphs.map((p) => (wrong.has(p) ? { ...p, dir: wrong.get(p)! } : p)),
+        paragraphs: prose.paragraphs.map((p) => (wrong.has(p) ? turned(p, wrong.get(p)!) : p)),
       };
       problems.push({
         elementIds: [element.id],
