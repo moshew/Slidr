@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { addBoxes, openApp, select } from './arrange-helpers';
-import { addTable, cellTarget } from './table-helpers';
+import { addTable, cellTarget, selectCell } from './table-helpers';
 import { addText, para } from './text-helpers';
 
 /*
@@ -93,8 +93,8 @@ for (const theme of themes) {
   }
 }
 
-test('the menu of the cells of a table', async ({ page }) => {
-  for (const lang of languages) {
+for (const lang of languages) {
+  test(`the menu of the cells of a table, ${lang}`, async ({ page }) => {
     await openApp(page, { lang, theme: 'light' });
     await addTable(page, {
       dir: lang === 'he' ? 'rtl' : 'ltr',
@@ -112,12 +112,13 @@ test('the menu of the cells of a table', async ({ page }) => {
               ['Q2', '138', '+15%'],
             ],
     });
-    await page.getByTestId('stage-frame').locator('[data-element-id="e_table"]').dblclick();
-    await page.keyboard.press('Escape');
+    // Into the table, with a cell selected and not typed in: the helper waits for the cell's
+    // editor before the Esc that leaves it, which a double click followed at once by Esc does not.
+    await selectCell(page, 'e_table', 0, 0);
     await cellTarget(page, 1, 1).click({ button: 'right' });
     await expect(menu(page)).toBeVisible();
     await settle(page);
     await page.screenshot({ path: out(`stage-menu-cells-${lang}`) });
     await page.keyboard.press('Escape');
-  }
-});
+  });
+}
