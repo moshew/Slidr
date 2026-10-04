@@ -35,6 +35,36 @@ export function policyHeader(policy: Policy, added: Policy = {}): string {
     .join('; ');
 }
 
+/**
+ * A page asked for with this in its address is served with what an imported file needs, in
+ * place of the app pages' script rules. Outside the app (a plain browser: the E2E suites, the
+ * Vite page) there is no import window, and the import runs the file in a frame of the editor's
+ * own page (`src/import/session.ts`). The app's policy refuses that frame, which is what it is
+ * for; the stand-in is given what the import page allows itself (`import.html`), and no network
+ * either. Development only: the packaged app has no such address, and imports in a window of
+ * its own.
+ */
+export const IMPORT_IN_PAGE = 'import-in-page';
+
+/** The header the dev server sends with a page of the app. */
+export function devPolicyHeader(
+  policy: Policy,
+  { nonce, port, importInPage }: { nonce: string; port: number; importInPage: boolean },
+): string {
+  const socket = [`ws://localhost:${port}`, `ws://127.0.0.1:${port}`];
+  if (!importInPage) {
+    return policyHeader(policy, { 'script-src': `'nonce-${nonce}'`, 'connect-src': socket });
+  }
+  // No nonce here: beside one, a browser does not count `'unsafe-inline'`, and the file's
+  // scripts are its own, written into it.
+  return policyHeader(policy, {
+    'script-src': ["'unsafe-inline'", "'unsafe-eval'", 'data:', 'blob:'],
+    'frame-src': ['data:', 'blob:'],
+    'worker-src': ['data:', 'blob:'],
+    'connect-src': socket,
+  });
+}
+
 export interface DevPolicyOptions {
   policy: Policy;
   /** The pages of the app, by path: the ones the packaged app has. Dev pages get no policy. */
@@ -55,17 +85,15 @@ export function devContentPolicy({ policy, pages }: DevPolicyOptions): Plugin {
     },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
-        const path = (request.url ?? '').split(/[?#]/)[0];
+        const [path, query = ''] = (request.url ?? '').split('#')[0]!.split('?');
         if (path !== undefined && pages.includes(path)) {
           const address = server.httpServer?.address();
           const port =
             typeof address === 'object' && address ? address.port : server.config.server.port;
+          const importInPage = new URLSearchParams(query).has(IMPORT_IN_PAGE);
           response.setHeader(
             'Content-Security-Policy',
-            policyHeader(policy, {
-              'script-src': `'nonce-${nonce}'`,
-              'connect-src': [`ws://localhost:${port}`, `ws://127.0.0.1:${port}`],
-            }),
+            devPolicyHeader(policy, { nonce, port, importInPage }),
           );
         }
         next();

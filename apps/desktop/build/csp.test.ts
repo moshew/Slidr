@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NONCE_PLACEHOLDER, policyHeader, type Policy } from './csp.ts';
+import {
+  devPolicyHeader,
+  IMPORT_IN_PAGE,
+  NONCE_PLACEHOLDER,
+  policyHeader,
+  type Policy,
+} from './csp.ts';
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -74,5 +80,40 @@ describe('the header the dev server sends', () => {
       expect(header).toContain(`${directive} ${String(sources)}`);
     }
     expect(header.split('; ')).toHaveLength(Object.keys(policy).length);
+  });
+
+  it('carries the nonce of the server and its hot-reload socket, and nothing else new', () => {
+    const header = devPolicyHeader(policy, { nonce: 'abc', port: 1420, importInPage: false });
+    const directives = new Map(
+      header.split('; ').map((part) => [part.split(' ')[0], part.split(' ').slice(1)] as const),
+    );
+    expect(directives.get('script-src')).toEqual(["'self'", "'wasm-unsafe-eval'", "'nonce-abc'"]);
+    expect(directives.get('connect-src')?.slice(-2)).toEqual([
+      'ws://localhost:1420',
+      'ws://127.0.0.1:1420',
+    ]);
+    expect(directives.has('frame-src')).toBe(false);
+    expect(directives.size).toBe(Object.keys(policy).length);
+  });
+
+  it('lets an imported file run in the page only where the address asks for it', () => {
+    const header = devPolicyHeader(policy, { nonce: 'abc', port: 1420, importInPage: true });
+    const directives = new Map(
+      header.split('; ').map((part) => [part.split(' ')[0], part.split(' ').slice(1)] as const),
+    );
+    // What import.html allows itself: the file's own scripts, and the frame it runs in.
+    const scripts = directives.get('script-src') ?? [];
+    expect(scripts).toEqual(expect.arrayContaining(["'unsafe-inline'", "'unsafe-eval'", 'blob:']));
+    // Beside a nonce a browser does not count `'unsafe-inline'`.
+    expect(scripts.some((source) => source.startsWith("'nonce-"))).toBe(false);
+    expect(directives.get('frame-src')).toEqual(['data:', 'blob:']);
+    // Still no server but the app's own two: the file's requests have nowhere to go here either.
+    expect(directives.get('default-src')).toEqual(["'none'"]);
+    for (const [name, sources] of directives) {
+      for (const source of sources) {
+        expect(source, name).not.toMatch(/^https?:\/\/(?!(ipc|asset)\.localhost$)/);
+      }
+    }
+    expect(IMPORT_IN_PAGE).toBe('import-in-page');
   });
 });

@@ -26,7 +26,10 @@ export async function openImportPanel(page: Page, options: ImportOptions = {}): 
     },
     [lang, JSON.stringify({ harnessId: 'mock', model: 'import-handwritten', mockSpeed: speed })],
   );
-  await page.goto('/');
+  // The file runs in a frame of this page, which the app pages' content policy refuses (it is
+  // why the app imports in a window of its own). The dev server serves the page asked for this
+  // way with what the import page allows itself (build/csp.ts, ADR-066).
+  await page.goto('/?import-in-page');
   await page.locator('[data-testid="activity-bar"] [data-panel="import"]').click();
   await expect(page.getByTestId('import-start')).toBeVisible();
 }
