@@ -273,14 +273,15 @@ describe('size', () => {
   // In characters, about 4 to a token. The prompt is sent with every request; growing it should be
   // a decision. The limits were raised once, when the prompt was tuned against the evaluation
   // set (ADR-042), and again for the module about making a template (WG7-T11a), which every
-  // session that can draft one carries, and a third time when the guidance on images, stock
-  // photos and icons (ADR-051) met that module in `main`: they are about one percent above what
-  // is there.
+  // session that can draft one carries, a third time when the guidance on images, stock photos
+  // and icons (ADR-051) met that module in `main`, and a fourth, by 1,250, for the paragraph on
+  // charts, which says what each chart type is for and which options there are (ADR-048): they
+  // are about one percent above what is there.
   const LIMITS: Record<ScopeKind, number> = {
-    deck: 40_000,
-    slide: 31_000,
+    deck: 41_250,
+    slide: 32_250,
     object: 23_000,
-    import: 41_000,
+    import: 42_250,
   };
 
   it.each(SCOPES)('a %s prompt stays within its budget', (scope) => {
