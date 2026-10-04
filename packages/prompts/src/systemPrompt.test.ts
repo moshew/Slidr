@@ -285,7 +285,9 @@ describe('size', () => {
     deck: 41_250,
     slide: 32_250,
     object: 23_000,
-    import: 42_250,
+    // With the five import tools in the catalogue the import module shows its capture step,
+    // and it says what the isolated page is not (ADR-036).
+    import: 44_250,
   };
 
   it.each(SCOPES)('a %s prompt stays within its budget', (scope) => {
