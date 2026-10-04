@@ -12,7 +12,7 @@ import {
   Spinner,
 } from '@slidr/ui';
 import { useSettings } from '../settings';
-import { openPanel, PanelId, tell, useDeck, useEditor } from '../shell';
+import { isWebAddress, openPanel, PanelId, tell, useDeck, useEditor } from '../shell';
 import { stockOf } from './appStock';
 import { toEnglish } from './icons/library';
 import { insertAsset } from './insert';
@@ -405,11 +405,24 @@ function Credits() {
                 ? t('stock.creditOn', { author: credit.author, library: credit.library })
                 : t('stock.credit', { author: credit.author })}
             </span>
-            {credit.url && (
-              <span dir="ltr" className="truncate text-ui-fg-muted">
-                {credit.url}
-              </span>
-            )}
+            {credit.url &&
+              // The page of the photo, which its library asks to link to: in the app the shell
+              // hands the link to the browser of the system.
+              (isWebAddress(credit.url) ? (
+                <a
+                  dir="ltr"
+                  href={credit.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate rounded-small text-ui-fg-muted underline underline-offset-2 hover:text-ui-fg"
+                >
+                  {credit.url}
+                </a>
+              ) : (
+                <span dir="ltr" className="truncate text-ui-fg-muted">
+                  {credit.url}
+                </span>
+              ))}
           </li>
         ))}
       </ul>
