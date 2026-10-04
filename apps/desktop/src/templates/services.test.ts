@@ -392,14 +392,14 @@ describe('drafting a template (WG7-T11a)', () => {
         editability: 0.75,
       },
     ]);
-    // The lint ran on the sample as drawn, and on the app's own words in Hebrew (on the mirrored
-    // layouts) and in English. The rule about how much a slide says is left out, and what the
-    // sample already showed of a layout is said once.
-    expect(linted).toEqual(['ltr:2', 'rtl:2', 'ltr:2']);
+    // The lint ran on the sample as drawn and mirrored, and on the app's own words in Hebrew and
+    // in English. The rule about how much a slide says is left out, and what the sample already
+    // showed of a layout is said once.
+    expect(linted).toEqual(['ltr:2', 'rtl:2', 'rtl:2', 'ltr:2']);
     const overflows = { layout: 'Opening', rule: 'L01', severity: 'error', message: 'overflows' };
     expect(result.data.findings).toEqual([
       { ...overflows, dir: 'ltr', text: 'sample' },
-      { ...overflows, dir: 'rtl', text: 'other' },
+      { ...overflows, dir: 'rtl', text: 'sample' },
       {
         layout: 'Opening',
         dir: 'ltr',
