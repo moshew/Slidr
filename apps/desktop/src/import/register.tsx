@@ -9,8 +9,8 @@ import { buildReport } from './report';
 import { endImport, importState, refreshBlocked } from './session';
 
 /*
- * HTML import (SPEC ch. 13, WG9-T18): a panel of the Activity Bar. The shell's File menu has no
- * entry for it yet; that is the shell's to add. See docs/adr/ADR-036-html-import.md.
+ * HTML import (SPEC ch. 13, WG9-T18): a panel of the Activity Bar. The shell's File menu and its
+ * welcome screen lead to it by the panel's id. See docs/adr/ADR-036-html-import.md.
  */
 
 registerMessages('import', { he, en });

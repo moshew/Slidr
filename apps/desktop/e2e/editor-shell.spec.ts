@@ -320,6 +320,22 @@ test('a template starts a deck that is set in it', async ({ page }) => {
   expect(deck.layouts).toBeGreaterThan(3);
 });
 
+test('"Import HTML" leads to the import panel, from the welcome screen and from the File menu', async ({
+  page,
+}) => {
+  await openWelcome(page);
+  await page.getByTestId('welcome-import').click();
+  await expect(welcome(page)).toHaveCount(0);
+  await expect(page.getByTestId('stage-frame')).toBeVisible();
+  await expect(page.getByTestId('import-start')).toBeVisible();
+
+  // The same panel from the menu, when another one is open.
+  await page.locator('[data-testid="activity-bar"] [data-panel="ai.deck"]').click();
+  await expect(page.getByTestId('import-start')).toHaveCount(0);
+  await (await fileItem(page, 'ייבוא HTML…')).click();
+  await expect(page.getByTestId('import-start')).toBeVisible();
+});
+
 test('on the welcome screen only the File keys answer, and the File menu comes back to it', async ({
   page,
 }) => {

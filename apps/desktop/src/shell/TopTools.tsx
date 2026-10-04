@@ -58,6 +58,7 @@ import {
   useAction,
   useActionPopover,
   useContextTools,
+  usePanel,
   useShortcut,
   type ActionPopoverProps,
   type ToolAction,
@@ -262,6 +263,8 @@ function FileMenu() {
   // Find and replace is another area's: the menu offers what its shortcut does, when it is there.
   const find = useShortcut('find.replace');
   const toFind = useRef(false);
+  // So is HTML import: its panel asks for the file, and about the open document if it has work.
+  const htmlImport = usePanel(PanelId.htmlImport);
 
   return (
     <DropdownMenu
@@ -316,6 +319,11 @@ function FileMenu() {
             )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+        {htmlImport && (
+          <DropdownMenuItem icon={htmlImport.icon} onSelect={() => openPanel(htmlImport.id)}>
+            {t('file.importHtml')}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           icon={Save}

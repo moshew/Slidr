@@ -12,14 +12,14 @@ import { library } from '../templates/app';
 import { coverAsset, coverOf } from '../templates/covers';
 import { useDeck, useEditor, useFile, type Editor } from './editor';
 import { newDocument, openDocument, recentFiles } from './fileActions';
-import { PanelId } from './registry';
+import { PanelId, usePanel } from './registry';
 import { openPanel, setWelcome } from './store';
 
 /*
  * The welcome screen (DOC-05): what the app opens on, in place of the editor. A new deck with
  * the agent, from a template or empty; a file to open; the recent files. Every way out of it
  * ends in the editor with a document, so the editor behind it never needs to know it was there.
- * "Import HTML" joins the ways in when the import area is in the app.
+ * "Import HTML" is one of the ways in once the import area has registered its panel.
  */
 
 /** The width a template's cover is drawn at, in screen pixels: a card of the grid. */
@@ -161,6 +161,7 @@ export function Welcome() {
   const editor = useEditor();
   const busy = useFile((s) => s.busy);
   const hasStorage = editor.document !== null;
+  const htmlImport = usePanel(PanelId.htmlImport);
   // Built-in templates first, then the user's own; drawn again when the personal ones are read.
   useStore(library.state, (s) => s.personal);
   const templates = library.entries();
@@ -195,6 +196,11 @@ export function Welcome() {
   };
   const open = async (path?: string) => {
     if (await openDocument(editor, path)) setWelcome(false);
+  };
+  /** The import panel asks for the file, and about the open document if it has work in it. */
+  const toImport = (panel: string) => {
+    setWelcome(false);
+    openPanel(panel);
   };
 
   return (
@@ -236,6 +242,15 @@ export function Welcome() {
                 disabled={!hasStorage}
                 onClick={() => void open()}
               />
+              {htmlImport && (
+                <Way
+                  icon={htmlImport.icon}
+                  testId="welcome-import"
+                  title={t('welcome.importHtml')}
+                  body={t('welcome.importHtmlBody')}
+                  onClick={() => toImport(htmlImport.id)}
+                />
+              )}
             </div>
           </section>
 

@@ -80,12 +80,16 @@ export interface ToolPanelDefinition extends PanelBase {
 
 export type PanelDefinition = AiPanelDefinition | ToolPanelDefinition;
 
-/** The panel ids the shell refers to: the AI tools of Ctrl+1/2/3 and of the "AI" buttons. */
+/**
+ * The panel ids the shell refers to: the AI tools of Ctrl+1/2/3 and of the "AI" buttons, and the
+ * HTML import that the File menu and the welcome screen lead to.
+ */
 export const PanelId = {
   aiDeck: 'ai.deck',
   aiSlide: 'ai.slide',
   aiObject: 'ai.object',
   settings: 'settings',
+  htmlImport: 'import',
 } as const;
 
 const panels = createRegistry<PanelDefinition>();
@@ -101,6 +105,11 @@ export function usePanels(): readonly PanelDefinition[] {
     () => [...items].sort((a, b) => slotOrder[a.slot] - slotOrder[b.slot] || a.order - b.order),
     [items],
   );
+}
+
+/** A panel by its id, once its area registered it: the shell offers a way to it only then. */
+export function usePanel(id: string): PanelDefinition | undefined {
+  return useStore(panels.store, (s) => s.items.find((panel) => panel.id === id));
 }
 
 /* ---------------------------------------------------------------- Top Tools row B */
