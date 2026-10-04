@@ -41,6 +41,20 @@ export const he = {
     signIn: 'בלי מפתח, על ההתחברות של הכלי',
   },
   account: 'מחובר דרך {{account}}',
+  mask: {
+    title: 'סימון האזור לשינוי',
+    description: 'צבעו על התמונה את החלק שה-AI רשאי לשנות. כל מה שלא נצבע יישאר בדיוק כמו שהוא.',
+    canvas: 'התמונה, לצביעת האזור',
+    tool: 'הכלי',
+    paint: 'צביעה',
+    erase: 'מחיקה',
+    brush: 'גודל המברשת',
+    clear: 'ניקוי',
+    empty: 'עוד לא נצבע אזור.',
+    done: 'אישור',
+    cancel: 'ביטול',
+    failed: 'הסימון לא נשמר',
+  },
 };
 
 export const en: Messages<typeof he> = {
@@ -78,4 +92,19 @@ export const en: Messages<typeof he> = {
     signIn: "No key: it uses the tool's own sign-in",
   },
   account: 'Signed in with {{account}}',
+  mask: {
+    title: 'Mark the area to change',
+    description:
+      'Paint over the part of the image the AI may change. Whatever is not painted stays exactly as it is.',
+    canvas: 'The image, to paint the area on',
+    tool: 'Tool',
+    paint: 'Paint',
+    erase: 'Erase',
+    brush: 'Brush size',
+    clear: 'Clear',
+    empty: 'No area is painted yet.',
+    done: 'Done',
+    cancel: 'Cancel',
+    failed: 'The mark was not saved',
+  },
 };

@@ -142,6 +142,33 @@ describe('the message of an action', () => {
     expect(long.split('\n')[2]!.length).toBeLessThan(700);
   });
 
+  it('asks for one edit of an image, inside the area the user painted when there is one (AIO-04)', () => {
+    const plain = actionMessage({
+      action: 'image.edit',
+      params: { description: 'make the sky a sunset' },
+      replyIn: 'Hebrew',
+    });
+    expect(plain).toContain('description: "make the sky a sunset"');
+    expect(plain).toContain('Call image_edit once');
+    expect(plain).not.toContain('maskAssetId');
+    // The agent says what the provider did, and does not pay for the image twice.
+    expect(plain).toContain('`regenerate`');
+    expect(plain).toContain('do not call it a second time');
+
+    const masked = actionMessage({
+      action: 'image.edit',
+      params: { description: 'a red boat here', maskAssetId: 'a'.repeat(64) },
+      replyIn: 'Hebrew',
+    });
+    expect(masked.split('\n')).toContain(`maskAssetId: "${'a'.repeat(64)}"`);
+    expect(masked).toContain('pass the id in `maskAssetId` as the mask');
+    expect(masked).toContain('a painted area needs a provider that edits exactly');
+
+    const restyle = actionMessage({ action: 'image.restyle', params: {}, replyIn: 'English' });
+    expect(restyle).toContain("the deck's `image_style` from the context");
+    expect(ACTIONS['image.edit'].needs).toEqual(['image_edit']);
+  });
+
   it('names the sources of a template, and leaves reading them to the agent (THM-06)', () => {
     const message = actionMessage({
       action: 'template.create',

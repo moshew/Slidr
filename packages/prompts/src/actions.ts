@@ -37,6 +37,8 @@ export interface ActionParams {
   url?: string;
   /** The open deck itself is a source: a template is to be made from how it looks. */
   fromDeck?: boolean;
+  /** An image asset the user painted: its transparent area is where an edit may happen. */
+  maskAssetId?: string;
 }
 
 export interface ActionDef {
@@ -47,6 +49,10 @@ export interface ActionDef {
   /** The request, in the app's voice. */
   ask: (params: ActionParams) => string;
 }
+
+/** What every edit of an image through a provider has to be told (ADR-025, ADR-045). */
+const ONE_EDIT =
+  'The tool puts the result into the element, keeping its frame and crop, so place nothing yourself. An edit takes about a minute, and the call may come back as timed out while the image is still being made: do not call it a second time.';
 
 const OPTIONS =
   'Then stop: the app previews an option on the slide when the user hovers it and applies the one they click, so do not apply one yourself.';
@@ -233,6 +239,27 @@ export const ACTIONS = define({
     ask: (p) =>
       `Generate ${count(p, 4)} alternatives for this image, in one image_generate call with that count and without an element id, at the aspect closest to the element's frame.${described(p, 'What the user wants to see')} Write the prompt from what the image is there to show on this slide, the deck's image style and its palette. The app shows each image to the user as it arrives, and replaces the element's image with the one they pick, keeping its frame and crop: so do not place one yourself. Images take about a minute each, and the call may come back as timed out while they are still being made. If it does, or if it fails some other way, do not call it again: what was started keeps arriving in the app, and a second call would make every image twice. Say in a line that the images are on their way. When the call returns the images, and the session can present options, show them with ui_present_options, kind "image", each with a label of two or three words.`,
   },
+
+  /* ---------------------------------------------------------------- the object tool: editing an image (AIO-04) */
+
+  'image.edit': {
+    scope: 'object',
+    needs: ['image_edit'],
+    ask: (p) =>
+      `Change this image as the user asks: what they want is in \`description\`. Call image_edit once, with this element's id and an instruction that says what to change and what must stay as it is.${
+        p.maskAssetId
+          ? ' The user painted the area the change may touch: pass the id in `maskAssetId` as the mask, and word the instruction about what goes into that area.'
+          : ''
+      } ${ONE_EDIT} The result says what kind of edit the image provider made: when it was a redraw (\`regenerate\`), tell the user in a line that the whole image was drawn anew rather than touched up${
+        p.maskAssetId ? ', and that a painted area needs a provider that edits exactly' : ''
+      }.`,
+  },
+  'image.restyle': {
+    scope: 'object',
+    needs: ['image_edit'],
+    ask: () =>
+      `Bring this image into the deck's image style. Call image_edit once, with this element's id and an instruction that keeps the subject and the composition and restates the style: the deck's \`image_style\` from the context, and its palette. When the deck has no image style yet, take it from the deck's other images and its theme, and say in a line what you went by. ${ONE_EDIT} When the result says the edit was a redraw (\`regenerate\`), tell the user in a line that details of the image moved.`,
+  },
 });
 
 export type ActionId = keyof typeof ACTIONS;
@@ -268,6 +295,7 @@ export function actionMessage({ action, params = {}, replyIn }: ActionMessageInp
     lines.push(`description: ${json(params.description, { '': limit })}`);
   }
   if (params.url !== undefined) lines.push(`url: ${json(params.url, { '': MAX_URL })}`);
+  if (params.maskAssetId !== undefined) lines.push(`maskAssetId: ${json(params.maskAssetId)}`);
   lines.push(`reply_in: ${json(replyIn)}`);
   return [
     `<${ACTION_TAG}>`,

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import type { SessionScope } from '@slidr/agent-tools';
+import type { ImageAspect, ImageProviderInfo, SessionScope } from '@slidr/agent-tools';
 import { findElement, findSlide, type Element } from '@slidr/model';
 import { ACTIONS, actionMessage, type ActionId, type ActionParams } from '@slidr/prompts';
 import {
+  Brush,
   Clapperboard,
+  Crop,
   Expand,
   Heading,
   ImagePlus,
@@ -15,6 +17,7 @@ import {
   List,
   Megaphone,
   NotebookPen,
+  Palette,
   PenLine,
   ScanEye,
   Shapes,
@@ -26,12 +29,31 @@ import {
   Zap,
   type LucideIcon,
 } from '@slidr/ui/icons';
-import { Button, EmptyState, Icon, SegmentedControl, Select, Textarea } from '@slidr/ui';
+import {
+  Button,
+  EmptyState,
+  Icon,
+  IconButton,
+  SegmentedControl,
+  Select,
+  Textarea,
+  Toggle,
+} from '@slidr/ui';
 import { threadIdOf, type Attachment } from '../agent/agentService';
 import { TransitionTool } from '../animations/TransitionTool';
+import { expandImage, useExpandWorking } from '../images/expand';
 import type { ImageProviderState } from '../images/images';
+import { paintMask } from '../images/MaskPainter';
 import { BackgroundTool } from '../objects/BackgroundTool';
-import { openPanel, PanelId, setAiTab, useDeck, useEditor } from '../shell';
+import {
+  AdjustTool,
+  AsBackgroundTool,
+  CutoutTool,
+  FilterTool,
+  MaskTool,
+} from '../objects/imageTools';
+import { isTarget, useTarget } from '../objects/target';
+import { focusStage, openPanel, PanelId, setAiTab, tell, useDeck, useEditor } from '../shell';
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
 import { useThread } from './Chat';
 import { DeckLook } from './DeckLook';
@@ -423,46 +445,198 @@ function TextActions({ runner }: { runner: Runner }) {
   );
 }
 
+/** What the image provider in use does to an image it is asked to edit (ADR-025). */
+function useEditSupport(): ImageProviderInfo | undefined {
+  const { images } = aiOf(useEditor());
+  const [info, setInfo] = useState<ImageProviderInfo>();
+  useEffect(() => {
+    let current = true;
+    images.service.describe?.().then(
+      (found) => current && setInfo(found),
+      () => undefined,
+    );
+    return () => {
+      current = false;
+    };
+  }, [images]);
+  return info;
+}
+
+const ASPECTS: readonly ImageAspect[] = ['16:9', '4:3', '1:1', '3:4', '9:16'];
+
+/**
+ * Extends the picture past its edges to another shape (AIO-04). Not a message to the agent: the
+ * app prepares the canvas and the mask and asks the image provider itself, and the result takes
+ * the picture's place as one undo step.
+ */
+function ExpandRow({ elementId, disabled }: { elementId: string; disabled: boolean }) {
+  const { t } = useTranslation('ai');
+  const editor = useEditor();
+  const working = useExpandWorking(elementId);
+  const [aspect, setAspect] = useState<ImageAspect>('16:9');
+  const run = () => {
+    expandImage(editor, elementId, aspect, t('actions.expandLabel')).then(
+      (done) => !done && void tell(t('actions.expandSame')),
+      (error: unknown) =>
+        void tell(t('actions.expandFailed'), error instanceof Error ? error.message : undefined),
+    );
+  };
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          icon={Expand}
+          loading={working}
+          disabled={disabled || working}
+          data-testid="image-expand"
+          className="min-w-0 flex-1 justify-start"
+          onClick={run}
+        >
+          <span className="truncate">{t('actions.expandImage')}</span>
+        </Button>
+        <Select
+          aria-label={t('actions.expandTo')}
+          size="sm"
+          className="w-20 shrink-0"
+          options={ASPECTS.map((value) => ({ value, label: value }))}
+          value={aspect}
+          onValueChange={setAspect}
+        />
+      </div>
+      <p className="px-2 text-xs text-ui-fg-muted">{t('actions.expandHint')}</p>
+    </>
+  );
+}
+
 function ImageActions({ runner }: { runner: Runner }) {
   const { t } = useTranslation('ai');
+  const editor = useEditor();
   const provider = useImageProvider();
+  const support = useEditSupport();
+  const target = useTarget();
+  const image = isTarget(target, 'image') ? target : undefined;
+  const assetId = image?.element.assetId;
+  const asset = useDeck((s) => (assetId ? s.deck.assets[assetId] : undefined));
   const [count, setCount] = useState(4);
   const [description, setDescription] = useState('');
+  /** The area the user painted for an edit, and the picture it was painted on. */
+  const [mask, setMask] = useState<{ assetId: string; of: string } | null>(null);
   const wanted = description.trim();
+  // A mask is of one picture: once the element shows another, it no longer applies.
+  const maskId = mask && mask.of === assetId ? mask.assetId : undefined;
+  const editing = provider === 'ready' && assetId !== undefined && support !== undefined;
+
+  const paint = async () => {
+    if (!asset?.width || !assetId) return;
+    const painted = await paintMask(editor, asset);
+    if (painted) setMask({ assetId: painted.id, of: assetId });
+  };
+
   return (
-    <Section title={t('actions.image')}>
-      <div className="flex flex-col gap-1.5 px-2 pb-2">
-        <Textarea
-          dir={description ? 'auto' : undefined}
-          value={description}
-          aria-label={t('actions.imagePrompt')}
-          placeholder={t('actions.imagePrompt')}
-          disabled={provider !== 'ready'}
-          data-testid="image-prompt"
-          onChange={(event) => setDescription(event.target.value)}
-        />
-        <p className="text-xs text-ui-fg-muted">{t('actions.imagePromptHint')}</p>
-      </div>
-      {provider === 'ready' ? (
-        <Row
-          id="image.alternatives"
-          icon={Images}
-          label={t('actions.alternatives')}
-          runner={runner}
-          params={{ count, ...(wanted ? { description: wanted } : {}) }}
+    <>
+      <Section title={t('actions.image')}>
+        <div className="flex flex-col gap-1.5 px-2 pb-2">
+          <Textarea
+            dir={description ? 'auto' : undefined}
+            value={description}
+            aria-label={t('actions.imagePrompt')}
+            placeholder={t('actions.imagePrompt')}
+            disabled={provider !== 'ready'}
+            data-testid="image-prompt"
+            onChange={(event) => setDescription(event.target.value)}
+          />
+          <p className="text-xs text-ui-fg-muted">{t('actions.imagePromptHint')}</p>
+        </div>
+        {provider === 'ready' ? (
+          <Row
+            id="image.alternatives"
+            icon={Images}
+            label={t('actions.alternatives')}
+            runner={runner}
+            params={{ count, ...(wanted ? { description: wanted } : {}) }}
+          >
+            <CountControl value={count} choices={[2, 4]} onChange={setCount} />
+          </Row>
+        ) : null}
+        <p
+          role="status"
+          data-testid="image-provider"
+          data-state={provider}
+          className="px-2 pt-1 text-xs text-ui-fg-muted"
         >
-          <CountControl value={count} choices={[2, 4]} onChange={setCount} />
-        </Row>
-      ) : null}
-      <p
-        role="status"
-        data-testid="image-provider"
-        data-state={provider}
-        className="px-2 pt-1 text-xs text-ui-fg-muted"
-      >
-        {t(`actions.provider.${provider}`)}
-      </p>
-    </Section>
+          {t(`actions.provider.${provider}`)}
+        </p>
+      </Section>
+      {/* Editing the picture that is there (AIO-04): what it is depends on the provider. */}
+      {editing && (
+        <Section title={t('actions.imageEdit')}>
+          {support.edit !== 'none' && (
+            <>
+              <Row
+                id="image.edit"
+                icon={WandSparkles}
+                label={t('actions.editImage')}
+                // The change is what the user wrote: without words there is nothing to ask for.
+                runner={{ ...runner, off: (id) => runner.off(id) || !wanted }}
+                params={{ description: wanted, ...(maskId ? { maskAssetId: maskId } : {}) }}
+              >
+                {support.mask && (
+                  <Toggle
+                    icon={Brush}
+                    size="sm"
+                    label={maskId ? t('actions.maskClear') : t('actions.paintMask')}
+                    pressed={Boolean(maskId)}
+                    disabled={!asset?.width}
+                    data-testid="image-mask"
+                    onPressedChange={(on) => (on ? void paint() : setMask(null))}
+                  />
+                )}
+              </Row>
+              {maskId && (
+                <p role="status" data-testid="image-mask-set" className="px-2 text-xs text-ui-fg">
+                  {t('actions.maskSet')}
+                </p>
+              )}
+              <Row id="image.restyle" icon={Palette} label={t('actions.restyle')} runner={runner} />
+            </>
+          )}
+          {/* Extending needs an exact edit inside a mask: offered only where it can be done. */}
+          {support.edit === 'exact' && support.mask && image && (
+            <ExpandRow elementId={image.element.id} disabled={runner.busy || !asset?.width} />
+          )}
+          <p
+            data-testid="image-edit-kind"
+            data-kind={support.edit}
+            className="px-2 pt-1 text-xs text-ui-fg-muted"
+          >
+            {t(`actions.editKind.${support.edit}`)}
+          </p>
+        </Section>
+      )}
+      {/* The controls that are not AI (AIO-05): the same ones row B has for an image. */}
+      {image && (
+        <Section title={t('actions.imageLocal')}>
+          <div data-testid="image-local" className="flex flex-wrap items-center gap-0.5 px-2">
+            <IconButton
+              icon={Crop}
+              size="sm"
+              label={t('actions.crop')}
+              disabled={!asset?.width}
+              onClick={() => {
+                editor.selection.getState().startEditing(image.element.id);
+                focusStage();
+              }}
+            />
+            <MaskTool target={image} />
+            <AdjustTool target={image} />
+            <FilterTool target={image} />
+            <CutoutTool target={image} />
+            <AsBackgroundTool target={image} />
+          </div>
+        </Section>
+      )}
+    </>
   );
 }
 
