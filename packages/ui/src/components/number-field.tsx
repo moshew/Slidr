@@ -14,7 +14,10 @@ export interface NumberFieldProps {
   step?: number;
   /** Decimal places kept. */
   precision?: number;
-  /** Shown after the number: `px`, `%`, `°`. */
+  /**
+   * Shown after the number: `px`, `%`, `°`. A unit in a right-to-left script (a Hebrew
+   * abbreviation) comes after the number in its own direction, that is, on its left.
+   */
   unit?: string;
   icon?: LucideIcon;
   /** Shown when `value` is null. */
@@ -34,10 +37,13 @@ function format(value: number | null, precision: number): string {
   return String(Number(value.toFixed(precision)));
 }
 
+/** A letter of a script that is written right to left. */
+const RTL_LETTER = /[\p{Script=Hebrew}\p{Script=Arabic}]/u;
+
 /**
  * A field for one number. Typing is free; the value is committed on Enter or when the field is
- * left, and text that is not a number puts the old value back. Up and Down step it. Numbers read
- * left to right in every UI language.
+ * left, and text that is not a number puts the old value back. Up and Down step it. The number
+ * reads left to right in every UI language; its unit sits on the side its own script puts it.
  */
 export function NumberField({
   value,
@@ -103,11 +109,16 @@ export function NumberField({
       )}
     >
       {icon && <Icon icon={icon} className="text-ui-fg-muted" />}
-      {/* The number and its unit always read as in Latin text; in an RTL UI they sit at the start. */}
-      <span dir="ltr" className="flex h-full min-w-0 flex-1 items-center gap-1">
+      {/* The number and a Latin unit read as in Latin text, "12 px", and in an RTL UI they sit at
+          the start. A Hebrew unit reads as in Hebrew text: the number, then the unit on its left. */}
+      <span
+        dir={unit && RTL_LETTER.test(unit) ? 'rtl' : 'ltr'}
+        className="flex h-full min-w-0 flex-1 items-center gap-1"
+      >
         <input
           type="text"
           inputMode="decimal"
+          dir="ltr"
           aria-label={aria['aria-label']}
           value={draft ?? shown}
           placeholder={placeholder}
