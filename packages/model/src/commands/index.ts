@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { Element } from '../schema';
 import {
   assetAdd,
+  assetRemove,
   deckSetMeta,
   layoutAdd,
   layoutRemove,
@@ -34,6 +35,7 @@ export const commandDefs = {
   'layout.update': layoutUpdate,
   'layout.remove': layoutRemove,
   'asset.add': assetAdd,
+  'asset.remove': assetRemove,
   'slide.add': slideAdd,
   'slide.remove': slideRemove,
   'slide.move': slideMove,
@@ -56,6 +58,7 @@ export const Command = z.discriminatedUnion('type', [
   layoutUpdate.schema,
   layoutRemove.schema,
   assetAdd.schema,
+  assetRemove.schema,
   slideAdd.schema,
   slideRemove.schema,
   slideMove.schema,

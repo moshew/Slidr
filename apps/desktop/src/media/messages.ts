@@ -29,6 +29,9 @@ export const he = {
     insert: 'הוספה לשקף: {{name}}',
     unnamed: 'תמונה',
     failed: 'לא ניתן להוסיף את הקובץ',
+    remove: 'הסרה מהמצגת: {{name}}',
+    inUse: 'התמונה בשימוש במצגת, ולכן אי אפשר להסיר אותה',
+    removed: 'הסרת תמונה מהמצגת',
   },
   stock: {
     search: 'חיפוש תמונות',
@@ -186,6 +189,9 @@ export const en: Messages<typeof he> = {
     insert: 'Add to the slide: {{name}}',
     unnamed: 'Image',
     failed: 'The file could not be added',
+    remove: 'Remove from the presentation: {{name}}',
+    inUse: 'The presentation uses this image, so it cannot be removed',
+    removed: 'Remove an image from the presentation',
   },
   stock: {
     search: 'Search photos',
