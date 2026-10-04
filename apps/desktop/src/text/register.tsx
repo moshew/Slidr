@@ -19,7 +19,7 @@ import type { FormatContext } from './format';
 import { insertTextBox } from './insert';
 import { en, he } from './messages';
 import { typeToEdit } from './opening';
-import { paint, pickUp, watchPainter } from './painter';
+import { paint, pickUp, setPaintLabel, watchPainter } from './painter';
 import { BoxTool } from './toolbar/BoxTool';
 import {
   BoldTool,
@@ -211,6 +211,7 @@ registerShortcut({
 
 // The format painter paints the box that is clicked while the brush is in hand, and a character
 // typed on a selected text box or shape starts editing its text (SHP-04).
+setPaintLabel(() => i18n.t('text:step.paint'));
 whenEditor((editor) => {
   watchPainter(editor);
   typeToEdit(editor);

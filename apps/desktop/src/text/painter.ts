@@ -1,6 +1,5 @@
 import { findElement, findSlide } from '@slidr/model';
 import { createStore } from 'zustand/vanilla';
-import { i18n } from '../i18n';
 import type { Editor } from '../shell';
 import { changeText, sampleTarget, type TextTarget } from './actions';
 import { wordRange } from './editorFormat';
@@ -42,6 +41,18 @@ export function putDown(): void {
 }
 
 /**
+ * The name of the undo step, as the history shows it. The text editor loads this module to paint
+ * from inside, and the editor knows no language (it is also mounted on pages that have none: the
+ * UI's strings set the direction of the whole document when they load). The app gives the name in
+ * the user's language when it registers the text area.
+ */
+let stepLabel = () => 'Paint format';
+
+export function setPaintLabel(label: () => string): void {
+  stepLabel = label;
+}
+
+/**
  * Gives the picked format to the target, as one undo step: to the selection, or to all the text
  * of a box. A caret takes the word it is in, as a click on a word does in other editors; a caret
  * outside any word takes the paragraph format only. False when no format was picked up.
@@ -51,7 +62,7 @@ export function paint(target: TextTarget): boolean {
   if (!picked) return false;
   const marks = paintMarks(picked);
   const paragraphs = paintParagraph(picked);
-  const step = { label: i18n.t('text:step.paint') };
+  const step = { label: stepLabel() };
   if (target.kind === 'editor' && target.view.state.selection.empty) {
     const range = wordRange(target.view.state);
     changeText(target, range ? { marks, paragraphs, range } : { paragraphs }, step);
