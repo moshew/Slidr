@@ -57,7 +57,52 @@ test('the bundle holds no scripted agent, no dev page and no editor handle', asy
     const code = readFileSync(join(DIST, 'assets', name), 'utf8');
     for (const marker of markers) expect(code.includes(marker), `${name}: ${marker}`).toBe(false);
   }
-  expect(readdirSync(DIST).sort()).toEqual(['assets', 'capture.html', 'favicon.svg', 'index.html']);
+  // The two pages of the app, their files, and the notices: no dev page was built.
+  expect(readdirSync(DIST).sort()).toEqual([
+    'THIRD-PARTY-NOTICES.txt',
+    'assets',
+    'capture.html',
+    'favicon.svg',
+    'index.html',
+  ]);
+});
+
+test('the app carries the licences of what it is built from, and shows them', async () => {
+  const { page } = app;
+  await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  const about = page.locator('[data-settings-section="about"]');
+  await about.scrollIntoViewIfNeeded();
+  await expect(about.getByTestId('about-version')).toContainText(/\d+\.\d+\.\d+/);
+  await about.getByTestId('about-licenses').click();
+  const text = page.getByTestId('licenses-text');
+  await expect(text).toContainText('third-party notices');
+  const notices = (await text.textContent()) ?? '';
+  // What the ADRs named as owed a notice: the chart library and what it draws with (ADR-048),
+  // the two icon sets (ADR-051), the font subsetting (ADR-032), and the built-in fonts.
+  for (const name of [
+    'echarts ',
+    'zrender ',
+    'lucide-static ',
+    '@tabler/icons ',
+    'harfbuzzjs ',
+    'woff2-encoder ',
+    '@fontsource-variable/heebo ',
+    '@fontsource-variable/inter ',
+    '@fontsource/alef ',
+  ]) {
+    expect(notices, name).toContain(`\n${name}`);
+  }
+  expect(notices).toMatch(/In the interface: libraries, fonts and icons \(\d{3}\)/);
+  // The crates of the core were listed too: Cargo was there when the app was built.
+  expect(notices).toMatch(/In the core: Rust crates \(\d{3}\)/);
+  expect(notices).toContain('\ntauri ');
+  expect(notices).toContain('Apache License');
+  expect(notices).toContain('SIL OPEN FONT LICENSE');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('licenses-dialog')).toHaveCount(0);
+  // Back to the deck's chat, where the next test writes.
+  await page.getByTestId('activity-bar').locator('[data-panel="ai.deck"]').click();
+  await expect(page.getByTestId('chat-input')).toBeVisible();
 });
 
 test('the fonts of the app and of decks are served from the bundle', async () => {

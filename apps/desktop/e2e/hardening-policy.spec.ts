@@ -118,6 +118,9 @@ test('a script inside an html object runs in its frame, and stays in it', async 
     origin: 'null',
     parent: 'blocked',
     storage: 'blocked',
+    // A browser page has no core: what the frame would call it with is not there.
+    invoke: 'absent',
+    fallback: 'absent',
     outside: 'refused',
     // A handler attribute carries no nonce: it does not run inside the app. In a file the
     // deck was exported to, which has no policy, it does.

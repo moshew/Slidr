@@ -19,8 +19,19 @@ export interface FrameReport {
   parent: 'readable' | 'blocked';
   /** The page's storage: the language, the agent's settings. */
   storage: 'readable' | 'blocked';
-  /** A command of the core, sent the way the app's page sends one. */
+  /** A command of the core, sent as a bare request to where the app's page sends its own. */
   command: string;
+  /**
+   * The same command through the page's own `invoke`, where the frame has one: `absent`, or
+   * what came back. `storage_new` makes a workspace, so an answer is a file on the disk.
+   */
+  invoke: string;
+  /**
+   * The same through the message channel. The page's `invoke` falls back to it when its request
+   * fails, so the script makes requests fail and invokes again: this is the way a script in a
+   * frame would take, if the core listened to a frame's messages.
+   */
+  fallback: string;
   /** A server outside the app. */
   outside: 'answered' | 'refused';
   /** An inline event handler of the object's markup. */
@@ -51,6 +62,24 @@ export function probeMarkup(outside: string): string {
     });
     report.command = 'answered ' + response.status;
   } catch { report.command = 'refused'; }
+  const internals = window.__TAURI_INTERNALS__;
+  const call = () => Promise.race([
+    internals.invoke('storage_new').then(
+      (made) => 'answered ' + JSON.stringify(made).slice(0, 80),
+      (error) => 'refused: ' + String((error && error.message) || error).slice(0, 120),
+    ),
+    new Promise((resolve) => setTimeout(() => resolve('no answer'), 3000)),
+  ]);
+  if (!internals || typeof internals.invoke !== 'function') {
+    report.invoke = 'absent';
+    report.fallback = 'absent';
+  } else {
+    report.invoke = await call();
+    const request = window.fetch;
+    window.fetch = () => Promise.reject(new TypeError('made to fail'));
+    report.fallback = await call();
+    window.fetch = request;
+  }
   try { await fetch(${JSON.stringify(outside)}, { mode: 'no-cors' }); report.outside = 'answered'; } catch { report.outside = 'refused'; }
   document.getElementById('b').click();
   report.handler = window.__clicked === true;
