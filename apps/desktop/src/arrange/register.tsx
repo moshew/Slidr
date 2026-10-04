@@ -8,7 +8,7 @@ import {
   type Editor,
   type SelectionKind,
 } from '../shell';
-import { duplicate, group, reorder, ungroup } from './actions';
+import { duplicate, group, pasteStyle, reorder, ungroup } from './actions';
 import {
   AlignHorizontal,
   AlignVertical,
@@ -17,9 +17,10 @@ import {
   GroupButton,
   LAYERS_PANEL,
 } from './ArrangeTools';
-import { focusInFilmstrip, installClipboard } from './clipboard';
+import { copiedElement, focusInFilmstrip, installClipboard } from './clipboard';
 import { LayersPanel } from './LayersPanel';
 import { en, he } from './messages';
+import { PlacementTool } from './PlacementTool';
 import { addSlide, duplicateSlides, layoutOfCurrentSlide } from './slides';
 
 /*
@@ -73,6 +74,14 @@ const elementKinds: SelectionKind[] = [
   'group',
   'multiple',
 ];
+// Position, size and rotation as numbers (ARR-07): for one element, just before the menu.
+registerContextTool({
+  id: 'arrange.placement',
+  kinds: elementKinds.filter((kind) => kind !== 'multiple'),
+  group: 'arrange.menu',
+  order: 890,
+  render: PlacementTool,
+});
 // Order 900 and up is the end of the row, after the tools of the element's own kind.
 registerContextTool({
   id: 'arrange.menu',
@@ -101,6 +110,11 @@ registerShortcut({
   keys: 'Ctrl+D',
   // With the focus in the Filmstrip the slides are what is duplicated.
   run: (editor) => (focusInFilmstrip() ? duplicateSelectedSlides(editor) : duplicate(editor)),
+});
+registerShortcut({
+  id: 'arrange.pasteStyle',
+  keys: 'Ctrl+Alt+V',
+  run: (editor) => pasteStyle(editor, copiedElement()),
 });
 registerShortcut({ id: 'arrange.group', keys: 'Ctrl+G', run: group });
 registerShortcut({ id: 'arrange.ungroup', keys: 'Ctrl+Shift+G', run: ungroup });

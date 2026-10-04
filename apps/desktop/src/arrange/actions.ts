@@ -17,6 +17,7 @@ import {
 import { i18n } from '../i18n';
 import type { Editor } from '../shell';
 import { abilities, selectedElements } from './abilities';
+import { pasteStyleCommands } from './style';
 
 /*
  * The arrange operations (WG5-T06, ARR-01..05) on the editor's selection. Each one computes
@@ -150,6 +151,19 @@ export function hide(editor: Editor): boolean {
 }
 
 /** Copies the selection next to itself and selects the copies (ARR-05, Ctrl+D). */
+/**
+ * Puts the look of `source` on the selected elements (ARR-06), as one undo step. False when
+ * nothing would change: no selection, or the selection already looks like it.
+ */
+export function pasteStyle(editor: Editor, source: Element | undefined): boolean {
+  const at = target(editor);
+  if (!at || !source) return false;
+  const commands = pasteStyleCommands(at.slide, at.ids, source);
+  if (commands.length === 0) return false;
+  send(editor, commands, label('history.pasteStyle'));
+  return true;
+}
+
 export function duplicate(editor: Editor): boolean {
   const at = target(editor);
   if (!at) return false;

@@ -16,6 +16,7 @@ import {
   ArrowUpToLine,
   ChevronDown,
   CopyPlus,
+  PaintRoller,
   EyeOff,
   Group,
   Layers,
@@ -54,11 +55,13 @@ import {
   duplicate,
   group,
   hide,
+  pasteStyle,
   remove,
   reorder,
   toggleLock,
   ungroup,
 } from './actions';
+import { copiedElement } from './clipboard';
 
 /*
  * Row B of Top Tools for arranging (SPEC 4.4, ARR-01..05). A multiple selection gets the align
@@ -293,6 +296,16 @@ export function ArrangeMenu(_: ContextToolProps) {
         <DropdownMenuSeparator />
         <DropdownMenuItem icon={CopyPlus} shortcut="Ctrl+D" onSelect={() => duplicate(editor)}>
           {t('menu.duplicate')}
+        </DropdownMenuItem>
+        {/* The look of the object copied last in this window, on what is selected (ARR-06). */}
+        <DropdownMenuItem
+          icon={PaintRoller}
+          shortcut="Ctrl+Alt+V"
+          disabled={!copiedElement()}
+          data-testid="paste-style"
+          onSelect={() => pasteStyle(editor, copiedElement())}
+        >
+          {t('menu.pasteStyle')}
         </DropdownMenuItem>
         <DropdownMenuItem
           icon={Trash2}

@@ -1,4 +1,4 @@
-import type { AssetMeta } from '@slidr/model';
+import type { AssetMeta, Element } from '@slidr/model';
 import { i18n } from '../i18n';
 import { getEditor, tell, type Editor } from '../shell';
 import { target } from './actions';
@@ -112,6 +112,14 @@ function remember(editor: Editor, clip: Clip): void {
 /** Whether a menu's "Paste" has something to paste. */
 export function canPaste(): boolean {
   return memory !== undefined;
+}
+
+/**
+ * The element whose style "Paste style" pastes (ARR-06): the first one of the last copy made in
+ * this window. A copy made elsewhere is not seen: only a paste event reads the system clipboard.
+ */
+export function copiedElement(): Element | undefined {
+  return memory?.kind === 'elements' ? memory.elements[0] : undefined;
 }
 
 /* ---------------------------------------------------------------- copy and cut */
