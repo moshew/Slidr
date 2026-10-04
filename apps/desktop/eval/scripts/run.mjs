@@ -13,9 +13,10 @@
 //   --max-images <n>   with a real provider: after n image jobs the run goes back to the mock (15)
 //   --budget <usd>     stop before a request once every run together has cost this much (30)
 //   --no-gate          switch the design check off
-//   --template <id>    the template every request's deck starts on (a built-in one: zerem,
-//                      shvil, tzuk), or `all`: the three in turn, by the request's place in
-//                      the set; without it, the plain deck of the base theme
+//   --template <id>    the template every request's deck starts on (a built-in one, such as
+//                      zerem), several with commas between them, or `all`: each in turn, by
+//                      the request's place in the set; without it, the plain deck of the base
+//                      theme
 //   --attach           use the app that is already running on the CDP port
 //   --requests <file>  another set of requests, in the shape of ../requests.json
 //
@@ -83,13 +84,28 @@ function parseArgs(argv) {
   return args;
 }
 
-/** The built-in templates (WG7-T04), in the order `--template all` deals them out. */
-const BUILT_IN = ['zerem', 'shvil', 'tzuk'];
+/** The built-in templates (WG7-T04, T10), in the order `--template all` deals them out. */
+const BUILT_IN = [
+  'zerem',
+  'shvil',
+  'tzuk',
+  'lavan',
+  'layla',
+  'zohar',
+  'migdal',
+  'gan',
+  'nof',
+  'defus',
+];
 
-/** The template a request's deck starts on. A request keeps its template whatever `--only` says. */
+/**
+ * The template a request's deck starts on. `all` and a list of several deal them out in turn,
+ * by the request's place in the set, so a request keeps its template whatever `--only` says.
+ */
 function templateOf(args, set, request) {
-  if (args.template !== 'all') return args.template;
-  return BUILT_IN[set.requests.indexOf(request) % BUILT_IN.length];
+  if (!args.template) return args.template;
+  const turn = args.template === 'all' ? BUILT_IN : args.template.split(',');
+  return turn[set.requests.indexOf(request) % turn.length];
 }
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
