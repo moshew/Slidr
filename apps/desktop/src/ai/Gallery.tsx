@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import type { SessionScope } from '@slidr/agent-tools';
 import { findElement, findSlide, type Deck } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
-import { Check, CircleAlert, X } from '@slidr/ui/icons';
+import { Check, ChevronLeft, ChevronRight, CircleAlert, X } from '@slidr/ui/icons';
 import { cx, Icon, IconButton, ScrollArea, Skeleton } from '@slidr/ui';
 import { useAssetResolver, useDeck, useEditor, useElementSize } from '../shell';
-import type { GalleryCard, OptionSet } from './variations';
+import { historyOf, type GalleryCard, type OptionSet } from './variations';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
 import { aiOf } from './runtime';
@@ -15,7 +15,8 @@ import { aiOf } from './runtime';
 /*
  * The results area of an AI tool (SPEC 4.3; WG11-T08): the options the agent offered as cards.
  * Hovering a card shows it on the slide without changing the deck, and a click applies it as
- * one undo step. Images appear in their cards one by one, as they are made.
+ * one undo step. Images appear in their cards one by one, as they are made. The sets offered
+ * before for the same target are a step back (AIO-09).
  */
 
 /** Space between the cards of a row, and inside a card around its picture: Tailwind's 2. */
@@ -23,19 +24,23 @@ const GAP = 8;
 /** A card's padding and border, on both sides. */
 const CARD_EDGE = 2 * (GAP + 1);
 
-/** The set a panel shows: the newest one its tool was offered for what the panel is on. */
-function useOptionSet(scope: SessionScope): OptionSet | undefined {
+/**
+ * The sets a panel goes through: the newest one its tool was offered for what the panel is on,
+ * after the ones offered for the same target before it (AIO-09). Empty while there is none.
+ */
+function useOptionSets(scope: SessionScope): OptionSet[] {
   const { gallery } = aiOf(useEditor());
-  const sets = useStore(gallery.store, (s) => s.sets);
+  const state = useStore(gallery.store);
   const deck = useDeck((s) => s.deck);
-  if (scope.kind !== 'slide' && scope.kind !== 'object') return undefined;
-  return sets.findLast(({ from, target }) => {
+  if (scope.kind !== 'slide' && scope.kind !== 'object') return [];
+  const newest = state.sets.findLast(({ from, target }) => {
     if (from !== scope.kind || target.slideId !== scope.slideId) return false;
     if (scope.kind === 'object' && !scope.elementIds.includes(target.elementId ?? '')) return false;
     // What the options were for may have been deleted since.
     const slide = findSlide(deck, target.slideId);
     return Boolean(slide && (!target.elementId || findElement(slide, target.elementId)));
   });
+  return newest ? historyOf(state, newest) : [];
 }
 
 function isFailure(
@@ -152,13 +157,71 @@ function OptionCard({
   );
 }
 
-/** The results area of the panel on `scope`; nothing while its tool has offered no options. */
-export function Gallery({ scope }: { scope: SessionScope }) {
-  const set = useOptionSet(scope);
-  return set ? <Options key={set.id} set={set} /> : null;
+/** Where the panel is in the sets of its target, and the way to another one. */
+interface Place {
+  index: number;
+  count: number;
+  go: (index: number) => void;
 }
 
-function Options({ set }: { set: OptionSet }) {
+/** The results area of the panel on `scope`; nothing while its tool has offered no options. */
+export function Gallery({ scope }: { scope: SessionScope }) {
+  const history = useOptionSets(scope);
+  const newest = history.at(-1);
+  // The set the user went back to, while no newer one has come: a new set shows itself.
+  const [back, setBack] = useState<{ id: string; newest: string }>();
+  if (!newest) return null;
+  const shown = (back?.newest === newest.id && history.find((set) => set.id === back.id)) || newest;
+  const place: Place = {
+    index: history.indexOf(shown),
+    count: history.length,
+    go: (index) => {
+      const set = history[index];
+      if (set) setBack({ id: set.id, newest: newest.id });
+    },
+  };
+  // One component for every set, so the keyboard stays on the button that moved between them.
+  return <Options set={shown} place={place} />;
+}
+
+/** The buttons to the sets offered before and after the one shown, and where it is. */
+function HistoryNav({ place }: { place: Place }) {
+  const { t } = useTranslation('ai');
+  const { index, count, go } = place;
+  return (
+    <div role="group" aria-label={t('gallery.history')} className="flex items-center">
+      <IconButton
+        icon={ChevronLeft}
+        size="sm"
+        className="rtl:-scale-x-100"
+        label={t('gallery.earlier')}
+        data-testid="gallery-earlier"
+        disabled={index === 0}
+        onClick={() => go(index - 1)}
+      />
+      <span
+        data-testid="gallery-place"
+        className="min-w-8 text-center text-xs text-ui-fg-muted tabular-nums"
+      >
+        <span aria-hidden>
+          {index + 1} / {count}
+        </span>
+        <span className="sr-only">{t('gallery.place', { n: index + 1, total: count })}</span>
+      </span>
+      <IconButton
+        icon={ChevronRight}
+        size="sm"
+        className="rtl:-scale-x-100"
+        label={t('gallery.later')}
+        data-testid="gallery-later"
+        disabled={index === count - 1}
+        onClick={() => go(index + 1)}
+      />
+    </div>
+  );
+}
+
+function Options({ set, place }: { set: OptionSet; place: Place }) {
   const { t } = useTranslation('ai');
   const editor = useEditor();
   const { gallery } = aiOf(editor);
@@ -179,6 +242,7 @@ function Options({ set }: { set: OptionSet }) {
       aria-label={t(`gallery.${set.kind}`)}
       data-testid="gallery"
       data-kind={set.kind}
+      data-set-id={set.id}
       className="flex shrink-0 flex-col gap-2 border-t border-ui-line pt-2"
     >
       <div className="flex items-start gap-2 ps-4 pe-2">
@@ -195,6 +259,7 @@ function Options({ set }: { set: OptionSet }) {
               : t('gallery.hint')}
           </p>
         </div>
+        {place.count > 1 && <HistoryNav place={place} />}
         <IconButton
           icon={X}
           size="sm"

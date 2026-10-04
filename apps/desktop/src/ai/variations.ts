@@ -2,7 +2,8 @@
  * The variations gallery (WG11-T08; AIO-02, AIO-03, AIS-03): the options an agent offers with
  * `ui_present_options`, and the images of an `image_generate` call as they arrive. A card can
  * be tried on the Stage without changing the deck (STG-10), and picking one applies it as one
- * undo step. The app applies the pick, not the agent (ADR-011).
+ * undo step. The app applies the pick, not the agent (ADR-011). The sets a target had before
+ * its newest stay, so the user can go back to them and pick from one (AIO-09).
  *
  * No React here: the store is what the panel draws, and the functions are what its cards do.
  */
@@ -80,6 +81,12 @@ export interface OptionSet {
 export interface GalleryState {
   /** The newest set of each target, oldest first. */
   sets: OptionSet[];
+  /**
+   * The sets each target had before its newest one, oldest first (AIO-09). A card of one is
+   * tried and picked as a card of the newest. Up to `EARLIER` of a target, while the window is
+   * open: closing the gallery of a target ends its history.
+   */
+  earlier: OptionSet[];
 }
 
 export interface GalleryOptions {
@@ -107,11 +114,26 @@ export interface Gallery {
   preview: (setId: string, index: number | null) => void;
   /** Applies a card as one undo step. False when the card can no longer be applied. */
   pick: (setId: string, index: number, label: string) => boolean;
+  /** Closes the options of a set's target, with the sets that target had before. */
   dismiss: (setId: string) => void;
 }
 
 const sameTarget = (a: OptionTarget, b: OptionTarget) =>
   a.slideId === b.slideId && a.elementId === b.elementId;
+
+/** How many sets a target keeps before its newest (AIO-09). */
+export const EARLIER = 9;
+
+/**
+ * A set and the ones its target was offered before it by the same tool, oldest first: what the
+ * panel goes back through (AIO-09).
+ */
+export function historyOf(state: GalleryState, set: OptionSet): OptionSet[] {
+  const before = state.earlier.filter(
+    (other) => other.from === set.from && sameTarget(other.target, set.target),
+  );
+  return before.some((other) => other.id === set.id) ? before : [...before, set];
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -169,7 +191,7 @@ export function commandsOf(set: OptionSet, card: GalleryCard, deck: Deck): Comma
 }
 
 export function createGallery({ bus, selection, conversion }: GalleryOptions): Gallery {
-  const store = createStore<GalleryState>(() => ({ sets: [] }));
+  const store = createStore<GalleryState>(() => ({ sets: [], earlier: [] }));
   /** Image calls whose jobs have not reported yet, in the order they were made. */
   let expected: { target: OptionTarget; count: number; prompt: string; at: number }[] = [];
   /** The set each image job fills, and the prompt it generates from (for its assets' lineage). */
@@ -180,34 +202,74 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
    */
   let presenting: OptionSet['from'] = 'object';
 
-  const find = (setId: string) => store.getState().sets.find((set) => set.id === setId);
+  const find = (setId: string) => {
+    const { sets, earlier } = store.getState();
+    return sets.find((set) => set.id === setId) ?? earlier.find((set) => set.id === setId);
+  };
 
-  /** Shows a set in place of the one its target had. */
-  function show(set: OptionSet): void {
-    store.setState(({ sets }) => ({
-      sets: [...sets.filter((other) => !sameTarget(other.target, set.target)), set],
+  /** Changes one set, the newest of its target or an earlier one. */
+  function update(setId: string, change: (set: OptionSet) => OptionSet): void {
+    const apply = (set: OptionSet) => (set.id === setId ? change(set) : set);
+    store.setState(({ sets, earlier }) => ({ sets: sets.map(apply), earlier: earlier.map(apply) }));
+  }
+
+  /** Takes sets out of the gallery, the newest of their targets and earlier ones alike. */
+  function remove(gone: (set: OptionSet) => boolean): void {
+    store.setState(({ sets, earlier }) => ({
+      sets: sets.filter((set) => !gone(set)),
+      earlier: earlier.filter((set) => !gone(set)),
     }));
   }
 
+  /**
+   * Shows a set in place of the one its target had, which joins the target's earlier sets if
+   * it had a card to pick (AIO-09). A target keeps the newest `EARLIER` of them.
+   */
+  function show(set: OptionSet): void {
+    store.setState(({ sets, earlier }) => {
+      const replaced = sets.find(
+        (other) => other.id !== set.id && sameTarget(other.target, set.target),
+      );
+      const kept = earlier.filter((other) => other.id !== set.id);
+      if (replaced?.cards.some((card) => card.state === 'ready')) kept.push(replaced);
+      const ofTarget = kept.filter((other) => sameTarget(other.target, set.target));
+      const dropped = new Set(ofTarget.slice(0, -EARLIER));
+      return {
+        sets: [...sets.filter((other) => !sameTarget(other.target, set.target)), set],
+        earlier: kept.filter((other) => !dropped.has(other)),
+      };
+    });
+  }
+
+  /**
+   * Takes back a set that could not be shown. The target's last earlier set, if it has one,
+   * is its newest again.
+   */
+  function withdraw(setId: string): void {
+    store.setState(({ sets, earlier }) => {
+      const set = sets.find((other) => other.id === setId);
+      if (!set) return { sets, earlier };
+      const last = earlier.findLast((other) => sameTarget(other.target, set.target));
+      return {
+        sets: [...sets.filter((other) => other !== set), ...(last ? [last] : [])],
+        earlier: earlier.filter((other) => other !== last),
+      };
+    });
+  }
+
   function patchCard(setId: string, index: number, card: Partial<GalleryCard>): void {
-    store.setState(({ sets }) => ({
-      sets: sets.map((set) => {
-        if (set.id !== setId) return set;
-        const cards = set.cards.map((c, i) => (i === index ? { ...c, ...card } : c));
-        return { ...set, cards, live: set.live && cards.some((c) => c.state === 'pending') };
-      }),
-    }));
+    update(setId, (set) => {
+      const cards = set.cards.map((c, i) => (i === index ? { ...c, ...card } : c));
+      return { ...set, cards, live: set.live && cards.some((c) => c.state === 'pending') };
+    });
   }
 
   /** Fills the card of one image of a job. A set that was dismissed has no card to fill. */
   function patchKey(setId: string, key: string, card: Partial<GalleryCard>): void {
-    store.setState(({ sets }) => ({
-      sets: sets.map((set) => {
-        if (set.id !== setId) return set;
-        const cards = set.cards.map((c) => (c.key === key ? { ...c, ...card } : c));
-        return { ...set, cards, live: cards.some((c) => c.state === 'pending') };
-      }),
-    }));
+    update(setId, (set) => {
+      const cards = set.cards.map((c) => (c.key === key ? { ...c, ...card } : c));
+      return { ...set, cards, live: cards.some((c) => c.state === 'pending') };
+    });
   }
 
   /** The images an object session's element has been offered so far. */
@@ -348,13 +410,13 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
               card = fail(i, error instanceof Error ? error.message : String(error));
             }
           }
-          // A set that was replaced or dismissed meanwhile has no card to fill.
+          // A set that was dismissed meanwhile has no card to fill; one that was replaced has.
           patchCard(set.id, i, card);
         }
       }
 
       if (failures.length === options.length) {
-        store.setState(({ sets }) => ({ sets: sets.filter((other) => other.id !== set.id) }));
+        withdraw(set.id);
         throw new DeckApiError('invalid_input', `No option could be shown. ${failures.join(' ')}`);
       }
       if (kind !== 'layout') show(set);
@@ -473,21 +535,22 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
         if (commands.length === 0) return false;
         bus.batch(commands, { txId, label });
       } catch {
-        // What the options were for has been deleted since: the set has nothing left to offer.
-        store.setState(({ sets }) => ({ sets: sets.filter((other) => other.id !== setId) }));
+        // What the options were for has been deleted since: its sets have nothing left to offer.
+        remove((other) => sameTarget(other.target, set.target));
         return false;
       }
-      store.setState(({ sets }) => ({
-        sets: sets.map((other) =>
-          other.id === setId ? { ...other, picked: { index, txId } } : other,
-        ),
-      }));
+      update(setId, (other) => ({ ...other, picked: { index, txId } }));
       return true;
     },
 
     dismiss(setId) {
       showPreview(null);
-      store.setState(({ sets }) => ({ sets: sets.filter((set) => set.id !== setId) }));
+      const set = find(setId);
+      if (!set) return;
+      remove(
+        (other) =>
+          other.id === setId || (other.from === set.from && sameTarget(other.target, set.target)),
+      );
     },
   };
 }

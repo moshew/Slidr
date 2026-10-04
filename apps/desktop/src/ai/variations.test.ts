@@ -14,7 +14,7 @@ import {
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ImageEvent } from '../images/images';
 import { stagePreview } from '../stage/preview';
-import { createGallery } from './variations';
+import { createGallery, EARLIER, historyOf } from './variations';
 
 /*
  * The variations gallery without a panel: what `ui_present_options` shows, what a hover puts on
@@ -492,5 +492,140 @@ describe('design options', () => {
     await expect(
       setup().gallery.service.present({ kind: 'layout', target: SLIDE, options }),
     ).rejects.toMatchObject({ code: 'unavailable' });
+  });
+});
+
+describe('the history of a target (AIO-09)', () => {
+  const first = [
+    { label: 'Direct', text: 'Our plan for 2027' },
+    { label: 'Question', text: 'Where are we going in **2027**?' },
+  ];
+  const second = [{ label: 'Short', text: 'Plan 2027' }];
+  const earlier = (gallery: ReturnType<typeof setup>['gallery']) =>
+    gallery.store.getState().earlier;
+  const stored = (index: number, id: string): ImageEvent => ({
+    type: 'finished',
+    index,
+    outcome: { status: 'stored', asset: asset(id), durationMs: 1000 },
+  });
+
+  it('keeps the set a target had, and a card of it is tried and picked as one undo step', async () => {
+    const { bus, gallery, sets } = setup();
+    await gallery.service.present({ kind: 'text', target: TITLE, options: first });
+    const old = sets()[0]!.id;
+    await gallery.service.present({ kind: 'text', target: TITLE, options: second });
+    const newest = sets()[0]!;
+    expect(earlier(gallery).map((set) => set.id)).toEqual([old]);
+    expect(historyOf(gallery.store.getState(), newest).map((set) => set.id)).toEqual([
+      old,
+      newest.id,
+    ]);
+
+    gallery.preview(old, 1);
+    expect(plainText(titleOf(stagePreview.getState().deck!)!)).toBe('Where are we going in 2027?');
+    expect(bus.undoStack).toHaveLength(0);
+
+    expect(gallery.pick(old, 1, 'Pick')).toBe(true);
+    expect(plainText(titleOf(bus.deck)!)).toBe('Where are we going in 2027?');
+    expect(bus.undoStack).toHaveLength(1);
+    expect(earlier(gallery)[0]!.picked).toMatchObject({ index: 1 });
+    // The newest set is still the one shown first, and has no pick of its own.
+    expect(sets()[0]).toMatchObject({ id: newest.id });
+    expect(sets()[0]!.picked).toBeUndefined();
+    bus.undo();
+    expect(plainText(titleOf(bus.deck)!)).toBe('Work plan 2027');
+    bus.redo();
+    expect(plainText(titleOf(bus.deck)!)).toBe('Where are we going in 2027?');
+  });
+
+  it('is of one target and one tool, and keeps the newest sets of each', async () => {
+    const { gallery, sets } = setup();
+    for (let i = 0; i < EARLIER + 3; i++) {
+      await gallery.service.present({ kind: 'text', target: TITLE, options: first });
+    }
+    gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 1 });
+    gallery.imageEvent('job-1', stored(0, SECOND));
+    expect(earlier(gallery)).toHaveLength(EARLIER);
+    const title = sets().find((set) => set.kind === 'text')!;
+    const picture = sets().find((set) => set.kind === 'image')!;
+    expect(historyOf(gallery.store.getState(), title)).toHaveLength(EARLIER + 1);
+    expect(historyOf(gallery.store.getState(), picture)).toEqual([picture]);
+
+    // The options of the slide's tool for the same element are not the object tool's history.
+    gallery.noteToolCall({ kind: 'slide', slideId: 's_1' }, 'ui_present_options', {});
+    await gallery.service.present({ kind: 'text', target: TITLE, options: second });
+    const fromSlide = sets().find((set) => set.kind === 'text')!;
+    expect(historyOf(gallery.store.getState(), fromSlide)).toEqual([fromSlide]);
+  });
+
+  it('leaves out a set with nothing to pick', async () => {
+    const { gallery, sets } = setup();
+    gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 1 });
+    gallery.imageEvent('job-1', {
+      type: 'finished',
+      index: 0,
+      outcome: { status: 'failed', error: { kind: 'timeout', message: 'took too long' } },
+    });
+    expect(sets()[0]!.cards[0]!.state).toBe('failed');
+    await gallery.service.present({
+      kind: 'image',
+      target: PICTURE,
+      options: [{ label: 'Harbour', assetId: SECOND }],
+    });
+    // Image sets of an element grow in place; text sets replace one another.
+    expect(earlier(gallery)).toEqual([]);
+  });
+
+  it('ends when the gallery of the target is closed, from any of its sets', async () => {
+    const { gallery, sets } = setup();
+    await gallery.service.present({ kind: 'text', target: TITLE, options: first });
+    const old = sets()[0]!.id;
+    await gallery.service.present({ kind: 'text', target: TITLE, options: second });
+    gallery.dismiss(old);
+    expect(sets()).toEqual([]);
+    expect(earlier(gallery)).toEqual([]);
+  });
+
+  it('goes with the element it was for', async () => {
+    const { bus, gallery, sets } = setup();
+    await gallery.service.present({ kind: 'text', target: TITLE, options: first });
+    const old = sets()[0]!.id;
+    await gallery.service.present({ kind: 'text', target: TITLE, options: second });
+    bus.dispatch({ type: 'element.remove', slideId: 's_1', elementIds: ['e_title'] });
+    expect(gallery.pick(old, 0, 'Pick')).toBe(false);
+    expect(sets()).toEqual([]);
+    expect(earlier(gallery)).toEqual([]);
+  });
+
+  it('gives the designs a slide had back when none of a new set converts', async () => {
+    const conversion: ConversionService = {
+      htmlToSlide: (_deck, { html }) =>
+        html === 'bad'
+          ? Promise.reject(new Error('no'))
+          : Promise.resolve({
+              slide: createSlide({ id: 's_new' }),
+              assets: [],
+              editability: 1,
+              notes: [],
+            }),
+      convertElement: () => Promise.reject(new Error('not here')),
+    };
+    const { gallery, sets } = setup(conversion);
+    const SLIDE = { slideId: 's_1' };
+    await gallery.service.present({
+      kind: 'layout',
+      target: SLIDE,
+      options: [{ label: 'Plain', html: 'plain' }],
+    });
+    const old = sets()[0]!.id;
+    await expect(
+      gallery.service.present({
+        kind: 'layout',
+        target: SLIDE,
+        options: [{ label: 'Broken', html: 'bad' }],
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
+    expect(sets().map((set) => set.id)).toEqual([old]);
+    expect(earlier(gallery)).toEqual([]);
   });
 });
