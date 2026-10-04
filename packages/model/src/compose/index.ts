@@ -28,6 +28,16 @@ export {
 } from './clipboard';
 export { slideFromLayout, type SlideFromLayoutOptions } from './layout';
 export {
+  batchFitted,
+  refitAfter,
+  refitAll,
+  refitCommands,
+  refitGroups,
+  refitPatches,
+  type Placement,
+  type PlacementPatch,
+} from './refit';
+export {
   anchorOf,
   canMerge,
   canSplit,
