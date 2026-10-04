@@ -1,0 +1,16 @@
+/*
+ * How the matches of the find bar look on the Stage (TXT-12, `highlight.ts`). The colours are the
+ * app's tokens (packages/ui/src/theme.css), not the deck's: the marks belong to the app, like the
+ * selection outline. Each mark is a chip with a text colour of its own, so it reads on a slide of
+ * any colour: a wash over the slide's own colours disappears on a fill near the accent. Every
+ * match gets a pale tint of the accent; the match the bar stands on is the accent itself.
+ */
+::highlight(slidr-find) {
+  background-color: color-mix(in oklab, var(--color-ui-accent) 18%, var(--color-ui-on-accent));
+  color: var(--color-ui-accent-pressed);
+}
+
+::highlight(slidr-find-current) {
+  background-color: var(--color-ui-accent);
+  color: var(--color-ui-on-accent);
+}
