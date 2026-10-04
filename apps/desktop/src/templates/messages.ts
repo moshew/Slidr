@@ -160,10 +160,13 @@ export const he = {
   },
   draft: {
     title: 'טיוטת תבנית',
+    // Hebrew counts one, two and many apart.
     layouts_one: 'פריסה אחת',
+    layouts_two: 'שתי פריסות',
     layouts_other: '{{count}} פריסות',
     strip: 'הפריסות של הטיוטה',
     errors_one: 'בדיקת העיצוב מצאה שגיאה אחת בפריסות',
+    errors_two: 'בדיקת העיצוב מצאה שתי שגיאות בפריסות',
     errors_other: 'בדיקת העיצוב מצאה {{count}} שגיאות בפריסות',
     errorsHint: 'אפשר לבקש מה-Agent לתקן, או לשמור כמו שהיא.',
     name: 'שם התבנית',
@@ -341,9 +344,11 @@ export const en: typeof he = {
   draft: {
     title: 'Template draft',
     layouts_one: 'One layout',
+    layouts_two: '{{count}} layouts',
     layouts_other: '{{count}} layouts',
     strip: 'The layouts of the draft',
     errors_one: 'The design check found one error in the layouts',
+    errors_two: 'The design check found {{count}} errors in the layouts',
     errors_other: 'The design check found {{count}} errors in the layouts',
     errorsHint: 'Ask the agent to fix them, or save it as it is.',
     name: 'Template name',
