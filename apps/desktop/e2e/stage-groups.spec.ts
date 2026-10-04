@@ -531,8 +531,9 @@ test('several elements are resized together by the handles of the box around the
   await page.mouse.click(boxed.x, boxed.y);
   await page.keyboard.up('Shift');
   expect((await state(page)).selected).toEqual(['e_free', 'g_outer']);
-  // The box has the eight resize handles and no rotation handle.
-  await expect(surface(page).locator('[data-handle]')).toHaveCount(8);
+  // The box has the eight resize handles, and the rotation handle that turns them together.
+  await expect(surface(page).locator('[data-handle]')).toHaveCount(9);
+  await expect(surface(page).locator('[data-handle="rotate"]')).toHaveCount(1);
   const { steps } = await state(page);
 
   // The box is 200..1480 wide; three quarters of that, from its right edge.

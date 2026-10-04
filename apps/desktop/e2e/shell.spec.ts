@@ -224,7 +224,7 @@ test('the File menu offers the document commands', async ({ page }) => {
   const menu = page.getByRole('menu');
   await expect(menu.getByRole('menuitem', { name: /מצגת חדשה/ })).toBeVisible();
   // Without the Tauri core there are no files, so only "new" is on.
-  await expect(menu.getByRole('menuitem', { name: /פתיחה/ })).toHaveAttribute('data-disabled', '');
+  await expect(menu.getByRole('menuitem', { name: /^פתיחה/ })).toHaveAttribute('data-disabled', '');
   const save = menu.getByRole('menuitem').filter({ has: page.getByText('שמירה', { exact: true }) });
   await expect(save).toHaveAttribute('data-disabled', '');
   await page.keyboard.press('Escape');
