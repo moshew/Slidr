@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
-import { answerDialog, launchApp, watchProblems, type RunningApp } from './app';
+import { answerDialog, invoke, launchApp, watchProblems, type RunningApp } from './app';
 
 /*
  * The smoke suite of the packaged app (WG13-T02): one pass through what a user does with a deck,
@@ -38,6 +38,9 @@ test('the app starts on an empty deck, with no development hooks', async () => {
   await expect(page.getByTestId('document-name')).toHaveText('מצגת ללא שם');
   expect(await page.evaluate(() => typeof (window as { slidr?: unknown }).slidr)).toBe('undefined');
   expect(page.url()).toBe('http://tauri.localhost/');
+  // The scripted harness is compiled in, and offered only to a run that asks for it.
+  const harnesses = await invoke<{ id: string }[]>(page, 'agent_harnesses');
+  expect(harnesses.map((harness) => harness.id)).toEqual(['claude-code']);
 });
 
 test('edit: a text box is added and typed into, and a second slide is added', async () => {
