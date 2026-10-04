@@ -210,7 +210,9 @@ export function createTemplateService(source: TemplateSource): TemplateService {
       for (const { deck: tried, text } of lint ? tries : []) {
         const nameOf = new Map(tried.slides.map((slide) => [slide.id, slide.name ?? slide.id]));
         try {
-          const found = await lint!.lint(tried, [...nameOf.keys()], 'all');
+          // The rules a deck's own writes are held to: the rules of the user's design check
+          // (near-alignment, balance) would cost the agent tokens on every draft.
+          const found = await lint!.lint(tried, [...nameOf.keys()], 'agent');
           for (const { slideId, rule, severity, message } of found) {
             if (OF_THE_SAMPLE.has(rule)) continue;
             const layout = nameOf.get(slideId) ?? slideId;

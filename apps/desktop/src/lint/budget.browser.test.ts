@@ -18,7 +18,7 @@ interface Timing {
   render: number;
   /** Reading the DOM, and painting and reading what is under the text. */
   measure: number;
-  /** The nine rules. */
+  /** Every rule: the agent's and the user's. */
   rules: number;
 }
 
@@ -32,7 +32,7 @@ async function pass(): Promise<Timing[]> {
       const t1 = performance.now();
       const measured = await measureSlide(rendered.root);
       const t2 = performance.now();
-      lintSlide(deck, slide, measured, 'agent');
+      lintSlide(deck, slide, measured, 'all');
       const t3 = performance.now();
       rendered.dispose();
       times.push({ slide: slide.id, render: t1 - t0, measure: t2 - t1, rules: t3 - t2 });

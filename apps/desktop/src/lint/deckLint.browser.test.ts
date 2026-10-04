@@ -16,7 +16,7 @@ import { referenceDeck } from '@slidr/renderer/fixtures';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { testAssetUrl } from '../dev/slides/testAssets';
 import { registerBuiltinFonts } from '../fonts';
-import { createLintService } from './deckLint';
+import { createLintService, lintSlides } from './deckLint';
 
 // End to end, in the engine WebView2 uses: slides are rendered with the built-in fonts, measured
 // from the DOM and judged, through the same service the Deck API calls after every write.
@@ -86,7 +86,8 @@ async function lint(
   return service.lint(deckOf([slide], lang), ['s_1'], 'agent');
 }
 const brief = (findings: LintFinding[]) => findings.map((f) => [f.rule, ...f.elementIds].join(' '));
-const of = (findings: LintFinding[], rule: string) => findings.filter((f) => f.rule === rule);
+const of = <F extends LintFinding>(findings: F[], rule: string) =>
+  findings.filter((f) => f.rule === rule);
 
 const he = (text: string, styleRef: 'title' | 'body' = 'body', color?: string) =>
   richText(text, {
@@ -445,6 +446,117 @@ describe('the example decks (PLAN, WG7 acceptance)', () => {
       // Titles and captions that take two lines where the frame has room for one.
       's_ref_effects L01 e_fx_title',
       's_ref_html L01 e_cap_html',
+    ]);
+  });
+});
+
+describe("the user's design check: the rules that do not go back to the agent, and the fixes", () => {
+  /** The findings of the whole set, with their fixes, and the bus the fixes run on. */
+  async function check(elements: Element[], init: Partial<Slide> = {}, lang: 'he' | 'en' = 'he') {
+    const slide = createSlide({ id: 's_1', ...init, elements });
+    const bus = new CommandBus(deckOf([slide], lang), { validate: true });
+    const run = () => lintSlides(bus.deck, ['s_1'], 'all', resolveAsset);
+    return { bus, run, findings: await run() };
+  }
+
+  test('a fix puts its finding right, as one step, on the slide as it is really drawn', async () => {
+    // Text that overflows its box, pale text on a pale photo, and a paragraph set the wrong way.
+    const { bus, run, findings } = await check(
+      [
+        createElement.text({
+          id: 'e_body',
+          frame: { x: 1160, y: 200, w: 600, h: 60 },
+          content: he('הטקסט הזה ארוך מדי בשביל התיבה שלו, ולכן הוא נשבר לשלוש שורות ויוצא ממנה.'),
+        }),
+        createElement.text({
+          id: 'e_pale',
+          frame: { x: 160, y: 600, w: 800, h: 100 },
+          content: he('טקסט לבן על תצלום בהיר', 'title', '#ffffff'),
+        }),
+        createElement.text({
+          id: 'e_turned',
+          frame: { x: 160, y: 800, w: 900, h: 60 },
+          content: richText('המשפט הזה כתוב בעברית', { dir: 'ltr' }),
+        }),
+      ],
+      { background: photo(SNOW) },
+    );
+    // And the photograph itself: 960 pixels wide, drawn across a slide of 1920.
+    expect(brief(findings)).toEqual(['L01 e_body', 'L05 e_pale', 'L12', 'L15 e_turned']);
+    for (const rule of ['L01', 'L05', 'L15']) {
+      const [finding] = of(await run(), rule);
+      const steps = bus.undoStack.length;
+      bus.batch(finding!.fix!);
+      expect(bus.undoStack).toHaveLength(steps + 1);
+      expect(of(await run(), rule)).toEqual([]);
+    }
+    // What is left has no fix: the picture is as small as it was.
+    const left = await run();
+    expect(brief(left)).toEqual(['L12']);
+    expect(left[0]).not.toHaveProperty('fix');
+  });
+
+  test('edges that nearly line up and gaps that are uneven are found on the drawn slide and fixed', async () => {
+    const card = (id: string, x: number, y: number) =>
+      createElement.shape({ id, frame: { x, y, w: 400, h: 260 } });
+    const { bus, run, findings } = await check([
+      card('e_1', 96, 200),
+      card('e_2', 520, 203),
+      card('e_3', 951, 200),
+      card('e_4', 1400, 200),
+    ]);
+    expect(of(findings, 'L09').map((f) => f.message.slice(0, 16))).toEqual([
+      'The top edges of',
+      'The bottom edges',
+    ]);
+    bus.batch(of(findings, 'L09')[0]!.fix!);
+    const spaced = of(await run(), 'L10');
+    expect(spaced).toHaveLength(1);
+    bus.batch(spaced[0]!.fix!);
+    const after = await run();
+    expect([...of(after, 'L09'), ...of(after, 'L10')]).toEqual([]);
+    expect(bus.deck.slides[0]!.elements.map((e) => e.frame.x)).toEqual([
+      96, 530.667, 965.333, 1400,
+    ]);
+  });
+
+  test('the text a chart draws is judged for the user, and never for the agent', async () => {
+    const chart = createElement.chart({
+      id: 'e_chart',
+      frame: { x: 160, y: 160, w: 1600, h: 760 },
+      chartType: 'column',
+      data: {
+        categories: ['Q1', 'Q2', 'Q3'],
+        series: [{ name: 'Revenue', values: [24, 26, 28] }],
+      },
+    });
+    // The base theme draws a chart's text dark, and here the slide behind it is dark.
+    const dark = { background: { fill: { kind: 'solid' as const, color: { value: '#14181d' } } } };
+    const { findings } = await check([chart], dark, 'en');
+    expect(brief(findings)).toEqual(['L04 e_chart', 'L05 e_chart']);
+    expect(of(findings, 'L05')[0]?.message).toMatch(
+      /^Text of the chart in #[0-9a-f]{6} has a contrast/,
+    );
+    expect(await lint([chart], dark, 'en')).toEqual([]);
+    // On the theme's own ground the same chart reads; its 22px labels are the base theme's caption.
+    expect(brief((await check([chart], {}, 'en')).findings)).toEqual(['L04 e_chart']);
+  });
+
+  test('the Deck API hands findings on without the commands that fix them', async () => {
+    const [finding] = await lint([
+      createElement.text({
+        id: 'e_body',
+        frame: { x: 1360, y: 340, w: 400, h: 60 },
+        content: he('טקסט ארוך מדי בשביל תיבה של שורה אחת בלבד.'),
+      }),
+    ]);
+    expect(finding?.rule).toBe('L01');
+    expect(Object.keys(finding!).sort()).toEqual([
+      'elementIds',
+      'message',
+      'rule',
+      'severity',
+      'slideId',
     ]);
   });
 });
