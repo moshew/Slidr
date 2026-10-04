@@ -1,9 +1,10 @@
 # Reference decks
 
 Three designed decks with invented companies and content. They set the visual bar for Slidr's
-built-in templates, and each template under `packages/templates/src/builtin/` is derived from one
-of them. Open `index.html` to see every slide of every deck in one grid, next to the same slide
-rebuilt from its template.
+built-in templates, and the first three templates under `packages/templates/src/builtin/` are each
+derived from one of them. Open `index.html`: it opens with all ten built-in templates side by
+side, a row for each kind of slide, and goes on to every slide of every deck here, next to the same
+slide rebuilt from its template.
 
 | File | Deck | Template |
 |---|---|---|
@@ -11,6 +12,10 @@ rebuilt from its template.
 | `shvil.html` | Marketing: the spring campaign of a hiking-trails app | `shvil` |
 | `tzuk.html` | Business: a quarterly investor update of a robotics company | `tzuk` |
 | `tzuk.en.html` | The business deck in English, mirrored to left-to-right | `tzuk` |
+
+The other seven templates (`lavan`, `layla`, `zohar`, `migdal`, `gan`, `nof`, `defus`) have no deck
+here: each was drawn as a template from the start (ADR-063), and its sample deck lives in its own
+file under `packages/templates/src/builtin/`. Their pictures sit in `images/` with the others.
 
 Every file opens in a browser by double-click, with no network: the fonts are embedded and the
 pictures sit in `images/`. Nothing here is a real brand, logo or third-party image; the
@@ -90,4 +95,25 @@ Run from the repository root.
   contact sheet per deck into `apps/desktop/test-results/templates/reference/` (not in git).
 - `pnpm test:browser` runs the decks through the conversion engine and the lint and writes
   `apps/desktop/test-results/templates/reference-report.json`;
-  `node docs/reference-decks/scripts/report.mjs` prints it.
+  `node docs/reference-decks/scripts/report.mjs` prints it. The same run writes
+  `rebuilt-report.json` beside it: the sample deck of every template as the renderer draws it,
+  which is what `index.html` is built from.
+- `node docs/reference-decks/scripts/picture.mjs <name> "<what it shows>" [--grid CxR]` generates
+  a picture through Codex CLI, cuts it and stores it as WebP in `images/`; with `--from <file>` it
+  cuts a picture that already exists. Every generation uses a paid quota.
+
+## Revising a template
+
+A template is one file. To change one, or to draw a new one:
+
+1. Put a test file beside `apps/desktop/src/templates/acceptance.ts`, named
+   `<id>.draft.browser.test.ts`, that calls `acceptDraft('<id>', <id>Template(), <id>Samples)`.
+   It is not committed.
+2. `pnpm exec vitest run --config vitest.browser.config.ts apps/desktop/src/templates/<id>.draft.browser.test.ts`
+   tries the template alone: the role contract, the lint on every layout in Hebrew and in English
+   (no error, and no "no visual" or "too empty" warning either), and every sample deck of the
+   library moved to it and back.
+3. Each run leaves pictures under `apps/desktop/test-results/design/templates/` (not in git): a
+   contact sheet of the sample in each language, every slide at full size, each library deck on
+   the template, and `<id>.findings.json` with every finding, warnings and notes included.
+4. `pnpm test:browser` and the build script then refresh `index.html`.
