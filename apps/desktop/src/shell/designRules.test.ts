@@ -23,6 +23,7 @@ const scanned = [
   'apps/desktop/src/settings',
   'apps/desktop/src/images',
   'apps/desktop/src/media',
+  'apps/desktop/src/about',
 ].filter((dir) => existsSync(join(root, dir)));
 
 /**

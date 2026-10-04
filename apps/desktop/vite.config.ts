@@ -23,6 +23,8 @@ export default defineConfig({
     thirdPartyNotices({ app: tauri.productName, version: tauri.version, root: here }),
   ],
   clearScreen: false,
+  // The version the settings screen shows: the one `tauri.conf.json` gives the app.
+  define: { 'import.meta.env.VITE_SLIDR_VERSION': JSON.stringify(tauri.version) },
   server: {
     port: 1420,
     strictPort: true,

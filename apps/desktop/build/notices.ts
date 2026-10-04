@@ -218,11 +218,24 @@ export function noticesText(
   ].join('\n');
 }
 
-/** Writes the notices of a build into its output. */
+/**
+ * Writes the notices of a build into its output. The dev server, which bundles nothing and so
+ * has no list to make, answers the file's address with a note that says so: the screen that
+ * shows the notices can be opened in development too.
+ */
 export function thirdPartyNotices(options: { app: string; version: string; root: string }): Plugin {
   return {
     name: 'slidr:third-party-notices',
-    apply: 'build',
+    configureServer(server) {
+      server.middlewares.use(`/${NOTICES_FILE}`, (_request, response) => {
+        response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        response.end(
+          `${options.app} ${options.version}: third-party notices\n\n` +
+            'This is the development server. The list of what the app is built from, and the\n' +
+            'licence of each, is made when the app is built (pnpm build).\n',
+        );
+      });
+    },
     generateBundle(_options, bundle) {
       const ids = new Set<string>();
       for (const chunk of Object.values(bundle)) {
