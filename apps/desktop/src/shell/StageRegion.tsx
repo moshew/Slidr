@@ -10,7 +10,7 @@ import { stagePreview } from '../stage/preview';
 import { Stage } from '../stage/Stage';
 import { useAssetResolver } from './assets';
 import { useDeck, useEditor, useSelection } from './editor';
-import { PanelId } from './registry';
+import { PanelId, useStageLayers } from './registry';
 import { aiKinds, selectionKind } from './selection';
 import { openPanel, useShell } from './store';
 
@@ -30,6 +30,7 @@ export function StageRegion() {
   const slideId = useSelection((s) => s.currentSlideId);
   const elementIds = useSelection((s) => s.selectedElementIds);
   const editingId = useSelection((s) => s.editingElementId);
+  const layers = useStageLayers();
   const previewing = Boolean(preview?.slides.some((s) => s.id === slideId));
 
   const onViewScale = useCallback((viewScale: number) => useShell.setState({ viewScale }), []);
@@ -93,6 +94,12 @@ export function StageRegion() {
               </span>
             </div>
           )}
+          {/* What other areas draw over the Stage; a right click there is theirs, not the menu's. */}
+          <div className="contents" onContextMenu={(event) => event.stopPropagation()}>
+            {layers.map(({ id, render: Layer }) => (
+              <Layer key={id} />
+            ))}
+          </div>
         </section>
       </ContextMenuTrigger>
       <ContextMenuContent data-testid="stage-menu">

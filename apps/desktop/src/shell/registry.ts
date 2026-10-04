@@ -199,6 +199,21 @@ export function useActionPopover(id: ToolAction): ComponentType<ActionPopoverPro
 
 /* ---------------------------------------------------------------- keyboard shortcuts */
 
+/** The headings of the shortcut map (UI-06), in the order it shows them. */
+export const shortcutSections = [
+  'file',
+  'edit',
+  'insert',
+  'text',
+  'arrange',
+  'table',
+  'slides',
+  'view',
+  'ai',
+  'present',
+] as const;
+export type ShortcutSection = (typeof shortcutSections)[number];
+
 /** A keyboard shortcut of some area (SPEC Appendix A). The shell listens; the area acts. */
 export interface ShortcutDefinition extends Registered {
   /**
@@ -210,6 +225,13 @@ export interface ShortcutDefinition extends Registered {
   run: (editor: Editor, event: KeyboardEvent) => boolean | void;
   /** Also while the caret is in a text field or in the slide's text editor. Off by default. */
   inText?: boolean;
+  /**
+   * What it does, as an i18n key (`namespace:key` outside the shell's namespace). The shortcut
+   * map lists the shortcuts that have one (UI-06); without it the shortcut works and is not listed.
+   */
+  label?: string;
+  /** The heading of the shortcut map it is listed under; `edit` when not given. */
+  section?: ShortcutSection;
 }
 
 const shortcuts = createRegistry<ShortcutDefinition>();
@@ -252,6 +274,25 @@ export function useStatusItem(id: StatusItemDefinition['id']): ComponentType | u
   return useStore(statusItems.store, (s) => s.items.find((item) => item.id === id)?.render);
 }
 
+/* ---------------------------------------------------------------- layers over the Stage */
+
+/**
+ * Something another area draws over the Stage region and places there itself, such as the find
+ * bar. It is drawn above the slide and outside the Stage's own surface, so the pointer and the
+ * keys in it are its own, and a right click on it does not open the Stage's menu.
+ */
+export interface StageLayerDefinition extends Registered {
+  render: ComponentType;
+}
+
+const stageLayers = createRegistry<StageLayerDefinition>();
+
+export const registerStageLayer = stageLayers.register;
+
+export function useStageLayers(): readonly StageLayerDefinition[] {
+  return useStore(stageLayers.store, (s) => s.items);
+}
+
 /** For tests: the registries' stores. */
 export const registries = {
   panels: panels.store,
@@ -259,4 +300,5 @@ export const registries = {
   actions: actions.store,
   shortcuts: shortcuts.store,
   statusItems: statusItems.store,
+  stageLayers: stageLayers.store,
 };

@@ -8,6 +8,7 @@ import {
   registerContextTool,
   registerPanel,
   registerShortcut,
+  registerStageLayer,
   registries,
   shortcutsFor,
   type ContextToolDefinition,
@@ -123,5 +124,14 @@ describe('shortcuts', () => {
     removeFirst();
     removeSecond();
     expect(shortcutsFor('Ctrl+D')).toEqual([]);
+  });
+});
+
+describe('layers over the Stage', () => {
+  it('keeps a layer until its area removes it', () => {
+    const remove = registerStageLayer({ id: 't.layer', render: Nothing });
+    expect(registries.stageLayers.getState().items.map((l) => l.id)).toContain('t.layer');
+    remove();
+    expect(registries.stageLayers.getState().items.map((l) => l.id)).not.toContain('t.layer');
   });
 });

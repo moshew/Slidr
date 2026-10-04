@@ -6,6 +6,7 @@ export {
   registerContextTool,
   registerPanel,
   registerShortcut,
+  registerStageLayer,
   registerStatusItem,
   type ActionPopoverProps,
   type AiPanelDefinition,
@@ -14,6 +15,8 @@ export {
   type PanelDefinition,
   type PanelSlot,
   type ShortcutDefinition,
+  type ShortcutSection,
+  type StageLayerDefinition,
   type ToolAction,
   type ToolPanelDefinition,
 } from './registry';
