@@ -37,6 +37,7 @@ import {
   type ShapePath,
 } from './geometry';
 import { Icon } from './icons';
+import { imageLook } from './imageLook';
 import { frameDocument, prepareSvg, resolveAssetRefs } from './markup';
 import { parseFragment, sanitizeFragment } from './sanitize';
 import { TableView } from './table';
@@ -150,39 +151,6 @@ export function imagePlacement(
     width: num(natural.w * sx, 3),
     height: num(natural.h * sy, 3),
   };
-}
-
-/**
- * CSS filters for `adjust` (IMG-06). brightness, contrast and saturation are multipliers
- * (1 = untouched), hue is in degrees, blur in slide pixels, grayscale 0..1, and temperature -1..1
- * (warmer above 0), which CSS has no filter for and an SVG colour matrix draws.
- */
-function adjustFilter(adjust: ImageElement['adjust'], temperatureId: string): string | undefined {
-  if (!adjust) return undefined;
-  const parts: string[] = [];
-  if (adjust.temperature) parts.push(`url(#${temperatureId})`);
-  if (adjust.brightness !== undefined && adjust.brightness !== 1)
-    parts.push(`brightness(${adjust.brightness})`);
-  if (adjust.contrast !== undefined && adjust.contrast !== 1)
-    parts.push(`contrast(${adjust.contrast})`);
-  if (adjust.saturation !== undefined && adjust.saturation !== 1)
-    parts.push(`saturate(${adjust.saturation})`);
-  if (adjust.hue) parts.push(`hue-rotate(${adjust.hue}deg)`);
-  if (adjust.grayscale) parts.push(`grayscale(${adjust.grayscale})`);
-  if (adjust.blur) parts.push(`blur(${adjust.blur}px)`);
-  return parts.length ? parts.join(' ') : undefined;
-}
-
-function TemperatureFilter({ id, t }: { id: string; t: number }) {
-  const r = num(1 + 0.25 * t, 3);
-  const b = num(1 - 0.25 * t, 3);
-  return (
-    <svg aria-hidden width="0" height="0" style={{ position: 'absolute' }}>
-      <filter id={id} colorInterpolationFilters="sRGB">
-        <feColorMatrix type="matrix" values={`${r} 0 0 0 0 0 1 0 0 0 0 0 ${b} 0 0 0 0 0 1 0`} />
-      </filter>
-    </svg>
-  );
 }
 
 /** The clip of an image's frame: its mask, or else the element's corner radius (IMG-05, IMG-08). */
@@ -308,8 +276,7 @@ function ImageView({ element: e }: { element: ImageElement }) {
   const clip = imageClip(e);
   const url = e.assetId ? ctx.assetUrl(e.assetId) : undefined;
   const meta = e.assetId ? ctx.asset(e.assetId) : undefined;
-  const temperatureId = domId(reactId, 'temperature');
-  const filter = adjustFilter(e.adjust, temperatureId);
+  const { filter, defs } = imageLook(e, ctx.theme, (suffix) => domId(reactId, suffix));
   const imgBase: CSSProperties = {
     position: 'absolute',
     display: 'block',
@@ -343,9 +310,7 @@ function ImageView({ element: e }: { element: ImageElement }) {
   }
   return (
     <div style={{ ...FILL_PARENT, overflow: 'hidden', ...clip.style, transform: flipTransform(e) }}>
-      {e.adjust?.temperature ? (
-        <TemperatureFilter id={temperatureId} t={e.adjust.temperature} />
-      ) : null}
+      {defs}
       {e.assetId ? img : <PendingImage e={e} ctx={ctx} />}
       {e.border ? (
         clip.path ? (

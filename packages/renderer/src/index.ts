@@ -32,6 +32,15 @@ export {
 export { presetPath, scalePath, shapePresets, isBoxPreset, type ShapePath } from './geometry';
 export { imagePlacement, linePath } from './elements';
 export {
+  colorRgb,
+  duotonePreset,
+  duotoneTokens,
+  imageFilterNames,
+  imageLook,
+  type ImageFilterName,
+  type ImageLook,
+} from './imageLook';
+export {
   firstStrong,
   listMarkers,
   paragraphDirection,
