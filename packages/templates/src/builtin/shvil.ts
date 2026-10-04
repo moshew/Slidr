@@ -509,12 +509,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('team', 1728, 1).placeholders,
         ...columns4.flatMap((start, i) => [
+          // The texts start where the photograph does: 4px apart read as a slip (L09).
           place(`p_person${i + 1}_photo`, 'image', at(start + 20, 270, 356, 330)),
-          place(`p_person${i + 1}`, 'subtitle', at(start + 24, 606, 348, 112), 'heading', {
+          place(`p_person${i + 1}`, 'subtitle', at(start + 20, 606, 356, 112), 'heading', {
             vAlign: 'bottom',
           }),
-          place(`p_person${i + 1}_role`, 'caption', at(start + 24, 722, 348, 34), 'caption'),
-          place(`p_person${i + 1}_body`, 'body', at(start + 24, 762, 348, 101), 'caption'),
+          place(`p_person${i + 1}_role`, 'caption', at(start + 20, 722, 356, 34), 'caption'),
+          place(`p_person${i + 1}_body`, 'body', at(start + 20, 762, 356, 101), 'caption'),
         ]),
         ...foot('team').placeholders,
       ],
