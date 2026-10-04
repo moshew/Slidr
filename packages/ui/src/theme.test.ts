@@ -87,6 +87,47 @@ describe.each(['light', 'dark'] as const)('%s theme', (theme) => {
   });
 });
 
+describe('the switch and the checkbox (non-text 3:1)', () => {
+  it.each(['light', 'dark'] as const)('%s: what tells off from on stands out', (theme) => {
+    // Off: the outline of the box or the track, and the thumb, on whatever surface they sit on.
+    for (const surface of surfaces) {
+      expect(contrast('ui-fg-muted', surface, theme)).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrast('ui-fg-muted', 'ui-pressed', theme)).toBeGreaterThanOrEqual(3);
+    // On: the mark and the thumb on the accent fill, at rest, hovered and pressed.
+    for (const fill of ['ui-accent', 'ui-accent-hover', 'ui-accent-pressed']) {
+      expect(contrast('ui-on-accent', fill, theme)).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+describe('reduced motion', () => {
+  const block = /@media \(prefers-reduced-motion: reduce\) \{([^{}]*)\{[^{}]*\}/.exec(css);
+  // One selector on a line; a selector has a comma of its own.
+  const selectors = (block?.[1] ?? '').trim().split(/,\s*\n\s*/);
+
+  it('shortens every transition and animation of the app', () => {
+    expect(block?.[0]).toMatch(/animation-duration: 1ms !important/);
+    expect(block?.[0]).toMatch(/transition-duration: 1ms !important/);
+    expect(selectors).toHaveLength(3);
+  });
+
+  it('leaves the slide alone: the root the renderer draws and everything under it', () => {
+    // `.slidr-slide` is the class of the root in packages/renderer/src/SlideRenderer.tsx. The
+    // rule is seen at work, on a real slide, in e2e/editor-ui-components.spec.ts.
+    for (const selector of selectors) {
+      expect(selector).toMatch(/^:not\(\.slidr-slide, \.slidr-slide \*\)(?:::before|::after)?$/);
+    }
+  });
+});
+
+describe('fonts', () => {
+  it('has a fixed-width family beside the UI family, each ending in a generic one', () => {
+    expect(/--font-ui:\s*([^;]+);/.exec(css)?.[1]).toMatch(/, sans-serif$/);
+    expect(/--font-mono:\s*([^;]+);/.exec(css)?.[1]).toMatch(/, monospace$/);
+  });
+});
+
 describe('token names', () => {
   it('never take a name of the slide theme contract (RND-08)', () => {
     const names = [...css.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]);
