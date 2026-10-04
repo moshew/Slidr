@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { devContentPolicy } from './build/csp.ts';
 import { thirdPartyNotices } from './build/notices.ts';
 import tauri from './src-tauri/tauri.conf.json' with { type: 'json' };
 
@@ -13,6 +14,11 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    // The app's two pages are served under the policy the packaged app sends with them (SEC-05).
+    devContentPolicy({
+      policy: tauri.app.security.csp,
+      pages: ['/', '/index.html', '/capture.html'],
+    }),
     // The licences of everything the build contains, as a file inside it (WG13-T05).
     thirdPartyNotices({ app: tauri.productName, version: tauri.version, root: here }),
   ],

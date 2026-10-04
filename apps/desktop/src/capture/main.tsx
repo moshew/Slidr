@@ -10,10 +10,13 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { listenForConversionJobs } from '../agent/conversionPage';
 import { registerBuiltinFonts } from '../fonts';
+import { shareScriptNonce } from '../scriptNonce';
 import { SURFACE_WIDTH, type PageRequest } from './protocol';
 import { settle } from './settle';
 
 registerBuiltinFonts();
+// A slide is captured as the user sees it: with the scripts of its `html` objects run (ADR-066).
+shareScriptNonce();
 const host = document.getElementById('root');
 if (!host) throw new Error('#root is missing');
 
