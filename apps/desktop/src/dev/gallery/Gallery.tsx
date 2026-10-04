@@ -546,7 +546,7 @@ function TabsDemo({ c }: { c: Copy }) {
 function FieldDemo({ c }: { c: Copy }) {
   const [from, setFrom] = useState<(typeof arrowValues)[number]>('up');
   const [seconds, setSeconds] = useState(0.5);
-  const [opacity, setOpacity] = useState(80);
+  const [volume, setVolume] = useState(80);
   return (
     <Card title={c.field}>
       <Field label={c.direction} hint={c.directionHint}>
@@ -585,8 +585,8 @@ function FieldDemo({ c }: { c: Copy }) {
           unit={c.secondsUnit}
         />
       </Field>
-      <Field label={c.opacity}>
-        <Slider aria-label={c.opacity} value={opacity} onValueChange={setOpacity} />
+      <Field label={c.volume}>
+        <Slider aria-label={c.volume} value={volume} onValueChange={setVolume} />
       </Field>
     </Card>
   );
