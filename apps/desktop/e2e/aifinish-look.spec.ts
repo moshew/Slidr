@@ -331,7 +331,8 @@ test('in English, with no string missing', async ({ page }) => {
   const errors = collectErrors(page);
   await openLook(page, { lang: 'en' });
   const deckPanel = panel(page, 'ai.deck');
-  await expect(deckPanel.getByRole('region', { name: 'Template' })).toBeVisible();
+  // Exact: the form that asks for a new template is a region of the same tab.
+  await expect(deckPanel.getByRole('region', { name: 'Template', exact: true })).toBeVisible();
   await expect(deckPanel.getByRole('region', { name: 'Colour palette' })).toBeVisible();
   await expect(deckPanel.getByRole('region', { name: 'Font pair' })).toBeVisible();
   await expect(look(page, 'template')).toContainText('Hover to see it on the slide');
