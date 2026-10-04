@@ -28,7 +28,7 @@ import {
   Toggle,
 } from '@slidr/ui';
 import { Chat } from '../ai/Chat';
-import { agentOf } from '../ai/runtime';
+import { aiOf } from '../ai/runtime';
 import { useDeck, useEditor } from '../shell';
 import { startImport } from './flow';
 import { buildReport, type ImportReport, type ReportRow } from './report';
@@ -318,7 +318,7 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
   const state = useStore(importState);
   const deck = useDeck((s) => s.deck);
   const scope = useMemo(() => ({ kind: 'import', file }) as const, [file]);
-  const thread = useMemo(() => agentOf(editor).thread(scope), [editor, scope]);
+  const thread = useMemo(() => aiOf(editor).sessions.thread(scope), [editor, scope]);
   const chat = useStore(thread.store);
   const report = useMemo(() => buildReport(state, deck, chat.entries), [state, deck, chat.entries]);
   const captured = report.rows.length;
