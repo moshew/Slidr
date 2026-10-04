@@ -12,8 +12,8 @@ import { defineConfig } from '@playwright/test';
 // Two runs at once need two servers: SLIDR_E2E_PORT gives the second one its own port, and
 // `--output` its own output folder.
 //
-// The suites that drive the packaged app (smoke/, perf/) are not here: they have no page of a dev
-// server to open, and a config of their own (smoke/playwright.config.ts).
+// The suites that drive the packaged app are not here: they have no page of a dev server to
+// open, and a folder and a config of their own (../packaged/playwright.config.ts).
 const PORT = Number(process.env.SLIDR_E2E_PORT) || 1571;
 const app = process.env.SLIDR_E2E === 'app';
 const runtime = /runtime-.*\.spec\.ts/;
