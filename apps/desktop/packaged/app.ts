@@ -46,7 +46,7 @@ export interface RunningApp {
   /** The main window's page. */
   page: Page;
   process: ChildProcess;
-  /** When the process was started, by `performance.now()` of this process. */
+  /** When the process was started: milliseconds since the epoch, as the page's clock counts. */
   startedAt: number;
   /** The page of the capture window, once the app has opened one. */
   capturePage(): Page | undefined;
@@ -129,7 +129,7 @@ export async function launchApp(options: LaunchOptions = {}): Promise<RunningApp
     rmSync(join(dataDir(), 'workspaces'), { recursive: true, force: true });
   }
   const browserArgs = [`--remote-debugging-port=${CDP_PORT}`, ...(options.browserArgs ?? [])];
-  const startedAt = performance.now();
+  const startedAt = Date.now();
   const child = spawn(binary, [], {
     env: {
       ...process.env,
