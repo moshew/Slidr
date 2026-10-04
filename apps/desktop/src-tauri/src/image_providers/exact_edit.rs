@@ -16,7 +16,10 @@
 
 use std::io::Cursor;
 
-use image::{DynamicImage, GrayImage, ImageFormat, Luma, Rgba, RgbaImage, imageops};
+use image::{
+    DynamicImage, GrayImage, ImageDecoder, ImageFormat, ImageReader, Luma, Rgba, RgbaImage,
+    imageops,
+};
 
 use super::{ImageError, Result};
 
@@ -203,12 +206,22 @@ impl Prepared {
     }
 }
 
+/// The picture in `bytes`, turned the way its file says it is to be shown: a photo taken with
+/// the camera turned is shown turned, and its mask is painted over it so.
 fn decode(bytes: &[u8], what: &str) -> Result<DynamicImage> {
-    image::load_from_memory(bytes).map_err(|_| {
+    let refuse = || {
         ImageError::invalid_input(format!(
             "the {what} is in a format this provider cannot edit; use PNG, JPEG or WebP"
         ))
-    })
+    };
+    let reader = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|_| refuse())?;
+    let mut decoder = reader.into_decoder().map_err(|_| refuse())?;
+    let orientation = decoder.orientation().map_err(|_| refuse())?;
+    let mut picture = DynamicImage::from_decoder(decoder).map_err(|_| refuse())?;
+    picture.apply_orientation(orientation);
+    Ok(picture)
 }
 
 fn png(image: &DynamicImage) -> Result<Vec<u8>> {
@@ -385,6 +398,34 @@ mod tests {
     /// What a service answers with: one flat colour over the whole canvas.
     fn answer(canvas: (u32, u32), colour: [u8; 4]) -> TestResultOf<Vec<u8>> {
         encoded(RgbaImage::from_pixel(canvas.0, canvas.1, Rgba(colour)))
+    }
+
+    #[test]
+    fn a_photo_taken_sideways_is_edited_as_it_is_shown() -> TestResult {
+        // A JPEG 40 wide and 20 high whose Exif says: turn a quarter clockwise to show. It is
+        // shown 20 wide and 40 high, and its mask is painted over it so (ADR-057, finding 13).
+        let mut plain = Vec::new();
+        DynamicImage::ImageRgba8(source(40, 20))
+            .to_rgb8()
+            .write_to(&mut Cursor::new(&mut plain), ImageFormat::Jpeg)?;
+        let exif: &[u8] = &[
+            0xff, 0xe1, 0x00, 0x22, b'E', b'x', b'i', b'f', 0, 0, b'M', b'M', 0, 42, 0, 0, 0, 8, 0,
+            1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, 6, 0, 0, 0, 0, 0, 0,
+        ];
+        let mut turned = plain[..2].to_vec();
+        turned.extend_from_slice(exif);
+        turned.extend_from_slice(&plain[2..]);
+        // A mask of the picture as shown: the top half may change.
+        let prepared = prepare(
+            &turned,
+            Some(&encoded(mask(20, 40, (0, 0, 20, 20)))?),
+            SIZES,
+        )?;
+        // Upright: the canvas and the place are of a tall picture.
+        assert_eq!(prepared.canvas, (1024, 1536));
+        let Place { w, h, .. } = prepared.place;
+        assert!(h > w, "placed {w}x{h}");
+        Ok(())
     }
 
     #[test]
