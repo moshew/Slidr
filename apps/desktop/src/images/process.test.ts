@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import contract from '../../src-tauri/src/image_process/fixtures/contract.json';
 import type { ImportedAsset } from '../document/storage';
 import { createImageService } from './imageService';
-import type { ImageClient } from './images';
+import { ImageError, type ImageClient } from './images';
 import {
   clearBorderColour,
   type ImageProcessClient,
@@ -136,6 +136,15 @@ describe('the image service', () => {
     const { asset } = await images.process({ assetId: source.id, operation: 'keyOutBackground' });
     expect(run).toHaveBeenCalledWith('w1', source.id, { type: 'chroma_key' });
     expect(asset.lineage).toEqual({ parentAssetId: source.id, provider: 'local' });
+  });
+
+  it('says in the words of its tool that there is no model, and what works without one', async () => {
+    const { images, run } = setup();
+    run.mockRejectedValueOnce(new ImageError('not_installed', 'put u2net.onnx into a folder'));
+    const failed = images.process({ assetId: source.id, operation: 'removeBackground' });
+    await expect(failed).rejects.toMatchObject({ kind: 'not_installed' });
+    await expect(failed).rejects.toThrow(/keyOutBackground/);
+    await expect(failed).rejects.not.toThrow(/u2net|chroma_key/);
   });
 
   it('needs an open document', async () => {

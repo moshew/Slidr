@@ -25,6 +25,10 @@ export interface ImageServiceOptions {
 const FLAT_BACKGROUND =
   'Background: the subject alone, whole and uncropped, on one flat, even, pure magenta background (red 255, green 0, blue 255) that reaches every edge of the picture. No shadow, gradient, texture, floor or horizon on the background, and no magenta on the subject.';
 
+/** What the agent is told when background removal has no model to run on. */
+const NO_MODEL =
+  'No background-removal model is installed on this machine, so removeBackground cannot run: say so to the user. A picture on a flat background colour can still be cut out, with keyOutBackground.';
+
 /** The operation of the Deck API as the processing client takes it. */
 const OPERATIONS: Record<ImageOperation, ProcessOperation> = {
   removeBackground: { type: 'remove_background' },
@@ -159,7 +163,16 @@ export function createImageService(options: ImageServiceOptions): AgentImageServ
       }
       const workspaceId = options.workspaceId();
       if (!workspaceId) throw new ImageError('unknown_workspace', 'No document is open.');
-      const made = await processor.run(workspaceId, assetId, OPERATIONS[operation]);
+      const made = await processor
+        .run(workspaceId, assetId, OPERATIONS[operation])
+        .catch((error: unknown) => {
+          // Rust says where to put the file and names the other operation its own way; the
+          // agent is told what it can do about it, in the words of its tool.
+          if (error instanceof ImageError && error.kind === 'not_installed') {
+            throw new ImageError('not_installed', NO_MODEL);
+          }
+          throw error;
+        });
       const source = options.asset?.(assetId);
       const asset: AssetMeta = {
         ...made.asset,
