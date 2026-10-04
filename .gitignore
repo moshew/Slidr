@@ -26,3 +26,6 @@ Thumbs.db
 spikes/s5-agent-import/fixtures/*.html
 # Spike run logs
 spikes/**/out-run*.txt
+
+# Matting models of local background removal: fetched by a developer, never committed (ADR-057)
+apps/desktop/src-tauri/models/
