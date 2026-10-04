@@ -19,6 +19,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useRenderContext } from './context';
+import { passthroughStyle } from './css';
 import { colorCss, runFontStack } from './theme';
 
 /**
@@ -382,6 +383,30 @@ export function numberedText(content: RichText, number: number | undefined): Ric
   const first = content.paragraphs[0];
   if (number === undefined || !first) return content;
   return { paragraphs: [{ ...first, runs: [{ ...first.runs[0], text: String(number) }] }] };
+}
+
+/** The CSS that paints text with a background: the background, and its clip to the glyphs. */
+const TEXT_FILL = new Set([
+  'background',
+  'background-image',
+  'background-clip',
+  '-webkit-background-clip',
+]);
+
+/**
+ * The part of an element's `css` that fills its text with a background (`background-clip: text`,
+ * a gradient fill of the text, TXT-11), for the box of the text itself. On a text box the
+ * element's box is that box. A shape draws its own fill over the box of the element, which would
+ * hide such a background, so the box of its text takes these properties as well.
+ */
+export function textFillStyle(css: Record<string, string> | undefined): CSSProperties | undefined {
+  const own = Object.entries(css ?? {}).filter(([name]) =>
+    TEXT_FILL.has(name.trim().toLowerCase()),
+  );
+  const clipped = own.some(
+    ([name, value]) => /clip$/i.test(name.trim()) && value.trim() === 'text',
+  );
+  return clipped ? passthroughStyle(Object.fromEntries(own)) : undefined;
 }
 
 const V_ALIGN = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;

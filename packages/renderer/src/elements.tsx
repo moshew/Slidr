@@ -41,7 +41,7 @@ import { imageLook } from './imageLook';
 import { frameDocument, prepareSvg, resolveAssetRefs } from './markup';
 import { parseFragment, sanitizeFragment } from './sanitize';
 import { TableView } from './table';
-import { numberedText, TextBox } from './text';
+import { numberedText, TextBox, textFillStyle } from './text';
 import { colorCss, shadowCss } from './theme';
 
 const FILL_PARENT: CSSProperties = { position: 'absolute', inset: 0, margin: 0, padding: 0 };
@@ -414,7 +414,9 @@ function ShapeView({ element: e }: { element: ShapeElement }) {
     <>
       {geometry}
       {e.content || slotted !== undefined ? (
-        <div style={FILL_PARENT}>
+        // A gradient fill of the text is a background of the text's own box: the shape's fill
+        // lies over the box of the element.
+        <div style={{ ...FILL_PARENT, ...textFillStyle(e.css) }}>
           <TextBox
             content={e.content ?? EMPTY_TEXT}
             vAlign="middle"
