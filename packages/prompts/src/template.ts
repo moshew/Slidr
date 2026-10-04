@@ -1,3 +1,4 @@
+import type { Archetype, PlaceholderRole } from '@slidr/model';
 import { entry, type Part } from './entry';
 
 /**
@@ -48,26 +49,51 @@ export const TEMPLATE_FONTS = {
   ],
 } as const;
 
+type Drawn = Exclude<Archetype, 'blank'>;
+type Seats = Partial<Record<PlaceholderRole, number>>;
+
 /**
- * The roles each archetype is drawn with in the app's own templates (ADR-039). A deck that moves
- * from one template to another finds a place for its content where both draw the same roles.
+ * The roles each archetype is drawn with in the app's own templates, and how many of each
+ * (ADR-039). A deck that moves from one template to another finds a place for its content where
+ * both draw the same roles. This package cannot read the templates' own contract (SPEC 14.2), so
+ * `apps/desktop/src/templates/roleContract.test.ts` holds these to `ROLE_CONTRACT`.
  */
-const ROLE_CONTRACT = [
-  'hero: caption ×2, title, subtitle (image when it opens with a picture)',
-  'section: number, caption, title, subtitle',
-  'bigNumber: caption, title, number, subtitle, body, footer',
-  'quote: quote, attribution, caption, footer',
-  'textImage: caption, title, image, subtitle ×3, body ×3, footer',
-  'fullImage: image, caption, title, body',
-  'cards: caption, title, subtitle ×3, body ×3, footer',
-  'timeline: caption, title, number ×4, subtitle ×4, body ×4, footer',
-  'process: caption, title, subtitle ×5, number ×5, body, footer',
-  'comparison: caption, title, subtitle ×2, body ×2, footer',
-  'chart: caption, title, chart, number ×2, body ×2, footer',
-  'table: caption, title, table, footer',
-  'team: caption, title, image ×4, subtitle ×4, body ×4, footer',
-  'closing: caption, title, body ×3',
-].join('; ');
+export const TEMPLATE_ROLES: Record<Drawn, Seats> = {
+  hero: { caption: 2, title: 1, subtitle: 1 },
+  section: { number: 1, caption: 1, title: 1, subtitle: 1 },
+  bigNumber: { caption: 4, title: 1, number: 4, subtitle: 1, body: 1, footer: 1 },
+  quote: { quote: 1, attribution: 1, caption: 1, footer: 1 },
+  textImage: { caption: 1, title: 1, image: 1, subtitle: 3, body: 3, footer: 1 },
+  fullImage: { image: 1, caption: 1, title: 1, body: 1 },
+  cards: { caption: 4, title: 1, subtitle: 3, body: 4, footer: 1 },
+  timeline: { caption: 2, title: 1, number: 4, subtitle: 4, body: 4, footer: 1 },
+  process: { caption: 6, title: 1, subtitle: 5, number: 5, body: 1, footer: 1 },
+  comparison: { caption: 3, title: 1, subtitle: 2, body: 2, footer: 1 },
+  chart: { caption: 2, title: 1, chart: 1, number: 2, body: 2, footer: 1 },
+  table: { caption: 2, title: 1, table: 1, footer: 1 },
+  team: { caption: 5, title: 1, image: 4, subtitle: 4, body: 4, footer: 1 },
+  closing: { caption: 2, title: 1, body: 3 },
+};
+
+/** What a template may seat beyond `TEMPLATE_ROLES`, and when. */
+export const TEMPLATE_OPTIONAL_ROLES: Partial<Record<Drawn, { seats: Seats; when: string }>> = {
+  hero: { seats: { image: 1 }, when: 'when it opens with a picture' },
+  cards: { seats: { image: 3 }, when: 'when the cards have pictures' },
+};
+
+function listSeats(seats: Seats): string {
+  return Object.entries(seats)
+    .map(([role, count]) => (count === 1 ? role : `${role} ×${count}`))
+    .join(', ');
+}
+
+const ROLE_CONTRACT = Object.entries(TEMPLATE_ROLES)
+  .map(([archetype, seats]) => {
+    const optional = TEMPLATE_OPTIONAL_ROLES[archetype as Drawn];
+    const extra = optional ? ` (${listSeats(optional.seats)} ${optional.when})` : '';
+    return `${archetype}: ${listSeats(seats)}${extra}`;
+  })
+  .join('; ');
 
 export const TEMPLATE_GUIDE: readonly Part[] = [
   '## Making a template',
