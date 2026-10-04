@@ -272,6 +272,19 @@ function TableOverlay({
   // ---- Cells: a click types, a drag selects, Shift reaches from where the selection began.
 
   const onCellDown = (event: PointerEvent) => {
+    if (event.button === 2) {
+      // A right click is about the cells under it, as it is about the element under it on the
+      // slide: a cell outside the selection becomes the selection the Stage's menu acts on.
+      const cell = cellUnder(event);
+      const range = selectedRange(table, tableSession.getState(), table.id);
+      const within =
+        cell.row >= range.row0 &&
+        cell.row <= range.row1 &&
+        cell.col >= range.col0 &&
+        cell.col <= range.col1;
+      if (!within) selectCells(cell);
+      return;
+    }
     if (event.button !== 0) return;
     event.stopPropagation();
     (event.target as Element).setPointerCapture(event.pointerId);

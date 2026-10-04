@@ -1,4 +1,4 @@
-import { registerActionPopover, registerContextTool } from '../shell';
+import { registerActionPopover, registerContextTool, registerStageMenu } from '../shell';
 import {
   BoldTool,
   ColorTool,
@@ -11,7 +11,7 @@ import { AlignTool } from '../text/toolbar/ParagraphTools';
 import { installTableClipboard } from './clipboard';
 import './messages';
 import { TableInsert } from './TableInsert';
-import { LookTools, StructureTools } from './tools';
+import { LookTools, StructureMenuItems, StructureTools } from './tools';
 
 /*
  * The table area (WG6): inserting a table (row A), the table tools of row B, and pasting tables.
@@ -42,6 +42,17 @@ const tools = [
   { id: 'table.text.align', group: 'table.paragraph', order: 130, render: AlignTool },
 ];
 for (const tool of tools) registerContextTool({ ...tool, kinds: ['table'] });
+
+/* ---------------------------------------------------------------- the Stage's right-click menu */
+
+// Among the cells of a table: its rows and columns, after the clipboard (STG-06).
+registerStageMenu({
+  id: 'table.structure',
+  group: 'table.structure',
+  order: 25,
+  kinds: ['table'],
+  render: StructureMenuItems,
+});
 
 /* ---------------------------------------------------------------- clipboard */
 

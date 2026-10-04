@@ -23,6 +23,8 @@ import {
 } from '@slidr/model';
 import { cellLook, SlideRenderer, tableStyle, tableStyles } from '@slidr/renderer';
 import {
+  ContextMenuItem,
+  ContextMenuSeparator,
   cx,
   DropdownMenu,
   DropdownMenuContent,
@@ -104,7 +106,11 @@ function shiftSelection(target: TableTarget, rows: number, cols: number): void {
 const span = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
-function StructureMenu({ target }: { target: TableTarget }) {
+/**
+ * The changes of a table's structure, for the selected cells. Row B and the Stage's right-click
+ * menu call the same ones, so the two cannot drift apart.
+ */
+function useStructure(target: TableTarget) {
   const { t } = useTranslation('table');
   const { table, range, write } = target;
   const rtl = table.dir === 'rtl';
@@ -150,7 +156,40 @@ function StructureMenu({ target }: { target: TableTarget }) {
       fit: true,
     });
   };
+  const merge = () => {
+    leaveText();
+    write(mergeCells(table, range), { label: t('history.merge'), fit: true });
+    if (target.inside) selectCells({ row: range.row0, col: range.col0 });
+  };
+  const split = () => {
+    leaveText();
+    write(splitCells(table, range), { label: t('history.split'), fit: true });
+  };
 
+  return {
+    t,
+    insertRow,
+    insertCol,
+    remove,
+    even,
+    merge,
+    split,
+    /** The words and the limits of deleting: one row or several, and never the last ones. */
+    deleteRows: {
+      label: t(rows.length > 1 ? 'structure.deleteRows' : 'structure.deleteRow'),
+      disabled: rows.length >= table.rows.length,
+    },
+    deleteCols: {
+      label: t(cols.length > 1 ? 'structure.deleteCols' : 'structure.deleteCol'),
+      disabled: cols.length >= table.cols.length,
+    },
+    canMerge: target.inside && canMerge(table, range),
+    canSplit: canSplit(table, range),
+  };
+}
+
+function StructureMenu({ target }: { target: TableTarget }) {
+  const { t, insertRow, insertCol, remove, even, deleteRows, deleteCols } = useStructure(target);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -173,18 +212,18 @@ function StructureMenu({ target }: { target: TableTarget }) {
         <DropdownMenuItem
           icon={Trash2}
           tone="danger"
-          disabled={rows.length >= table.rows.length}
+          disabled={deleteRows.disabled}
           onSelect={() => remove('rows')}
         >
-          {t(rows.length > 1 ? 'structure.deleteRows' : 'structure.deleteRow')}
+          {deleteRows.label}
         </DropdownMenuItem>
         <DropdownMenuItem
           icon={Trash2}
           tone="danger"
-          disabled={cols.length >= table.cols.length}
+          disabled={deleteCols.disabled}
           onSelect={() => remove('cols')}
         >
-          {t(cols.length > 1 ? 'structure.deleteCols' : 'structure.deleteCol')}
+          {deleteCols.label}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem icon={StretchHorizontal} onSelect={() => even('rows')}>
@@ -199,35 +238,83 @@ function StructureMenu({ target }: { target: TableTarget }) {
 }
 
 function MergeTools({ target }: { target: TableTarget }) {
-  const { t } = useTranslation('table');
-  const { table, range, write } = target;
+  const { t, merge, split, canMerge, canSplit } = useStructure(target);
   return (
     <>
       <IconButton
         icon={TableCellsMerge}
         size="sm"
         label={t('merge')}
-        disabled={!target.inside || !canMerge(table, range)}
+        disabled={!canMerge}
         onMouseDown={keepFocus}
-        onClick={() => {
-          leaveText();
-          write(mergeCells(table, range), { label: t('history.merge'), fit: true });
-          if (target.inside) selectCells({ row: range.row0, col: range.col0 });
-        }}
+        onClick={merge}
       />
       <IconButton
         icon={TableCellsSplit}
         size="sm"
         label={t('split')}
-        disabled={!canSplit(table, range)}
+        disabled={!canSplit}
         onMouseDown={keepFocus}
-        onClick={() => {
-          leaveText();
-          write(splitCells(table, range), { label: t('history.split'), fit: true });
-        }}
+        onClick={split}
       />
     </>
   );
+}
+
+function StructureItems({ target }: { target: TableTarget }) {
+  const s = useStructure(target);
+  const { t } = s;
+  return (
+    <>
+      <ContextMenuItem icon={ArrowUp} onSelect={() => s.insertRow(true)}>
+        {t('structure.rowAbove')}
+      </ContextMenuItem>
+      <ContextMenuItem icon={ArrowDown} onSelect={() => s.insertRow(false)}>
+        {t('structure.rowBelow')}
+      </ContextMenuItem>
+      <ContextMenuItem icon={ArrowRight} onSelect={() => s.insertCol('right')}>
+        {t('structure.colRight')}
+      </ContextMenuItem>
+      <ContextMenuItem icon={ArrowLeft} onSelect={() => s.insertCol('left')}>
+        {t('structure.colLeft')}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        icon={Trash2}
+        tone="danger"
+        disabled={s.deleteRows.disabled}
+        onSelect={() => s.remove('rows')}
+      >
+        {s.deleteRows.label}
+      </ContextMenuItem>
+      <ContextMenuItem
+        icon={Trash2}
+        tone="danger"
+        disabled={s.deleteCols.disabled}
+        onSelect={() => s.remove('cols')}
+      >
+        {s.deleteCols.label}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem icon={TableCellsMerge} disabled={!s.canMerge} onSelect={s.merge}>
+        {t('merge')}
+      </ContextMenuItem>
+      <ContextMenuItem icon={TableCellsSplit} disabled={!s.canSplit} onSelect={s.split}>
+        {t('split')}
+      </ContextMenuItem>
+    </>
+  );
+}
+
+/**
+ * The table's part of the Stage's right-click menu (STG-06): rows, columns, merge and split, for
+ * the cells the user selected inside the table. A table selected as an object has the menu of
+ * every element instead.
+ */
+export function StructureMenuItems() {
+  const target = useTableTarget();
+  if (!target?.inside) return null;
+  return <StructureItems target={target} />;
 }
 
 /** Row B, first group: the structure of the table. */
