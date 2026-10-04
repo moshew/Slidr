@@ -574,3 +574,55 @@ describe('layouts, templates, images, options', () => {
     ).toBe('out_of_scope');
   });
 });
+
+describe('image_process and transparent images', () => {
+  it('processes the picture of an element on this machine and puts the result in it', async () => {
+    const process = vi.fn<ImageService['process']>(() =>
+      Promise.resolve({ asset: asset('k'), preview: png }),
+    );
+    const images: ImageService = {
+      generate: () => Promise.resolve([]),
+      edit: () => Promise.resolve([]),
+      process,
+    };
+    const { call, bus } = setup(allElementsDeck(), { images });
+    const before = findElementInDeck(bus.deck, 'e_image')!.element;
+    const source = before.type === 'image' ? before.assetId : undefined;
+    const steps = bus.undoStack.length;
+
+    const data = await ok(
+      call('image_process', { elementId: 'e_image', operation: 'keyOutBackground' }),
+    );
+    expect(process).toHaveBeenCalledWith({ assetId: source, operation: 'keyOutBackground' });
+    expect(data.assets).toEqual([{ assetId: 'k'.repeat(64), width: 1024, height: 576 }]);
+    expect(findElementInDeck(bus.deck, 'e_image')!.element).toMatchObject({
+      assetId: 'k'.repeat(64),
+      frame: before.frame,
+    });
+    // The original stays an asset of the deck, and one undo brings it back to the element.
+    expect(bus.deck.assets[source!]).toBeDefined();
+    expect(bus.undoStack).toHaveLength(steps + 1);
+    bus.undo();
+    expect(findElementInDeck(bus.deck, 'e_image')!.element).toMatchObject({ assetId: source });
+
+    expect(
+      (await failed(call('image_process', { elementId: 'e_image', operation: 'sharpen' }))).code,
+    ).toBe('invalid_input');
+  });
+
+  it('asks for a transparent image only when the agent does', async () => {
+    const generate = vi.fn<ImageService['generate']>(() =>
+      Promise.resolve([{ asset: asset('t'), preview: png }]),
+    );
+    const images: ImageService = {
+      generate,
+      edit: () => Promise.resolve([]),
+      process: () => Promise.reject(new Error('unused')),
+    };
+    const { call } = setup(allElementsDeck(), { images });
+    await ok(call('image_generate', { prompt: 'a red bicycle', transparent: true }));
+    await ok(call('image_generate', { prompt: 'a harbour at dawn' }));
+    expect(generate.mock.calls[0]![0]).toMatchObject({ transparent: true });
+    expect(generate.mock.calls[1]![0]).not.toHaveProperty('transparent');
+  });
+});

@@ -1,3 +1,4 @@
+import type { AssetMeta } from '@slidr/model';
 import type { AssetService } from '../document/assets';
 import type { DocumentService } from '../document/documentService';
 import { pageSettings } from '../settings/store';
@@ -6,6 +7,7 @@ import { createImageService, type AgentImageService } from './imageService';
 import type { ImageClient, ImageEvent } from './images';
 import { memoryImages } from './memoryImages';
 import { previewOf } from './preview';
+import { memoryProcess, tauriProcess, type ImageProcessClient } from './process';
 import { tauriImages } from './tauriImages';
 
 export interface AppImages {
@@ -13,6 +15,8 @@ export interface AppImages {
   client: ImageClient;
   /** The Deck API's `images` service, for the agent's tools. */
   service: AgentImageService;
+  /** Local processing: background removal, and whether its model is installed. */
+  processor: ImageProcessClient;
   /** The workspace jobs of `client` store into; null while no document is open. */
   workspaceId: () => string | null;
 }
@@ -26,21 +30,26 @@ export function createAppImages(
   document: DocumentService | null,
   assets: AssetService,
   onEvent?: (jobId: string, event: ImageEvent) => void,
+  /** An asset of the open deck, by id. */
+  asset: (assetId: string) => AssetMeta | undefined = () => undefined,
 ): AppImages {
   // The page's own settings hold the choice of provider, so every client of a page agrees on it.
   const client = document ? tauriImages : memoryImages(assets, { settings: pageSettings });
   // In memory there is one store and no workspace; the id only has to be there.
   const workspaceId = () => (document ? (document.workspace?.id ?? null) : 'memory');
+  const processor = document ? tauriProcess : memoryProcess(assets, asset);
   const service = createImageService({
     client,
     workspaceId,
+    processor,
+    asset,
     preview: (asset) => {
       const url = assets.url(asset);
       return url ? previewOf(url) : Promise.reject(new Error('The asset has no file at hand.'));
     },
     ...(onEvent ? { onEvent } : {}),
   });
-  return { client, service, workspaceId };
+  return { client, service, processor, workspaceId };
 }
 
 const ofEditor = new WeakMap<Editor, AppImages>();
@@ -52,7 +61,12 @@ const ofEditor = new WeakMap<Editor, AppImages>();
 export function imagesOf(editor: Editor): AppImages {
   let images = ofEditor.get(editor);
   if (!images) {
-    images = createAppImages(editor.document, editor.assets);
+    images = createAppImages(
+      editor.document,
+      editor.assets,
+      undefined,
+      (id) => editor.bus.deck.assets[id],
+    );
     ofEditor.set(editor, images);
   }
   return images;

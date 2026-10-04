@@ -174,7 +174,12 @@ function createAi(editor: Editor): AiRuntime {
   const conversion = inApp ? captureWindowConversion(workspaceId) : pageConversion(editor.assets);
   const gallery = createGallery({ bus: editor.bus, selection: editor.selection, conversion });
   // The gallery hears the image jobs of the agent's tools, and shows each image as it lands.
-  const images = createAppImages(editor.document, editor.assets, gallery.imageEvent);
+  const images = createAppImages(
+    editor.document,
+    editor.assets,
+    gallery.imageEvent,
+    (id) => editor.bus.deck.assets[id],
+  );
   const lint = createLintService((asset) => editor.assets.url(asset));
   const selection = () => {
     const { currentSlideId, selectedSlideIds, selectedElementIds, editingElementId } =

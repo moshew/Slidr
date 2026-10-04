@@ -1,7 +1,8 @@
-import type { ImageService, PngImage, StoredImage } from '@slidr/agent-tools';
+import type { ImageOperation, ImageService, PngImage, StoredImage } from '@slidr/agent-tools';
 import type { AssetMeta } from '@slidr/model';
 import { ImageError, type ImageClient, type ImageEvent, type ImageJobResult } from './images';
 import { BLANK_PREVIEW } from './preview';
+import type { ImageProcessClient, ProcessOperation } from './process';
 
 export interface ImageServiceOptions {
   client: ImageClient;
@@ -11,7 +12,24 @@ export interface ImageServiceOptions {
   preview: (asset: AssetMeta) => Promise<PngImage>;
   /** Progress of the service's jobs, for whoever shows it. */
   onEvent?: (jobId: string, event: ImageEvent) => void;
+  /** Local processing (background removal). Without it `process` rejects as `unsupported`. */
+  processor?: ImageProcessClient;
+  /** An asset of the open deck: a processed picture carries on what its source was. */
+  asset?: (assetId: string) => AssetMeta | undefined;
 }
+
+/**
+ * What a prompt is given when the image has to end up with a transparent background: a colour
+ * that the key can tell from the subject. Magenta, since few subjects are.
+ */
+const FLAT_BACKGROUND =
+  'Background: the subject alone, whole and uncropped, on one flat, even, pure magenta background (red 255, green 0, blue 255) that reaches every edge of the picture. No shadow, gradient, texture, floor or horizon on the background, and no magenta on the subject.';
+
+/** The operation of the Deck API as the processing client takes it. */
+const OPERATIONS: Record<ImageOperation, ProcessOperation> = {
+  removeBackground: { type: 'remove_background' },
+  keyOutBackground: { type: 'chroma_key' },
+};
 
 /** The Deck API's image service, and a way to stop what it has running. */
 export interface AgentImageService extends ImageService {
@@ -36,7 +54,9 @@ interface Origin {
  *   call rejects with the first failure, as an `ImageError`; its message is what the agent reads.
  * - `edit` is whatever the provider's `capabilities.edit` says. With the default provider it is a
  *   redraw after the source, not a pixel-preserving edit, and a mask is rejected as `unsupported`.
- * - `process` (background removal) is not built yet (WG12-T05) and rejects as `unsupported`.
+ * - `process` runs on this machine and calls no provider. Its picture is the source with a
+ *   transparent background, so it keeps the source's origin, name and attribution: a stock photo
+ *   that was cut out is still that photographer's.
  */
 export function createImageService(options: ImageServiceOptions): AgentImageService {
   const { client } = options;
@@ -85,12 +105,37 @@ export function createImageService(options: ImageServiceOptions): AgentImageServ
   }
 
   return {
-    generate: ({ prompt, count, aspect }) =>
-      run(
+    generate: async ({ prompt, count, aspect, transparent }) => {
+      const { processor } = options;
+      // No provider draws transparency through this contract (ADR-051), so a transparent image
+      // is drawn on a flat colour and the colour is keyed out here (GEN-07).
+      const keyed = Boolean(transparent && processor);
+      const asked = keyed ? [prompt, FLAT_BACKGROUND].join('\n\n') : prompt;
+      const made = await run(
         (jobId, workspaceId, onEvent) =>
-          client.generate(jobId, workspaceId, { prompt, count, aspect }, onEvent),
+          client.generate(jobId, workspaceId, { prompt: asked, count, aspect }, onEvent),
         { prompt },
-      ),
+      );
+      if (!keyed || !processor) return made;
+      const workspaceId = options.workspaceId();
+      if (!workspaceId) return made;
+      return Promise.all(
+        made.map(async (image) => {
+          try {
+            const cut = await processor.run(workspaceId, image.asset.id, { type: 'chroma_key' });
+            const asset: AssetMeta = {
+              ...cut.asset,
+              origin: 'ai',
+              lineage: { ...image.asset.lineage, parentAssetId: image.asset.id },
+            };
+            return { asset, preview: await options.preview(asset).catch(() => BLANK_PREVIEW) };
+          } catch {
+            // The image was made and paid for: it is kept on its colour rather than lost.
+            return image;
+          }
+        }),
+      );
+    },
 
     edit: ({ assetId, instruction, maskAssetId, count }) =>
       run(
@@ -104,13 +149,28 @@ export function createImageService(options: ImageServiceOptions): AgentImageServ
         { prompt: instruction, parentAssetId: assetId },
       ),
 
-    process: ({ operation }) =>
-      Promise.reject(
-        new ImageError(
+    process: async ({ assetId, operation }) => {
+      const { processor } = options;
+      if (!processor) {
+        throw new ImageError(
           'unsupported',
-          `Local image processing (${operation}) is not available in this version.`,
-        ),
-      ),
+          `Local image processing (${operation}) is not available here.`,
+        );
+      }
+      const workspaceId = options.workspaceId();
+      if (!workspaceId) throw new ImageError('unknown_workspace', 'No document is open.');
+      const made = await processor.run(workspaceId, assetId, OPERATIONS[operation]);
+      const source = options.asset?.(assetId);
+      const asset: AssetMeta = {
+        ...made.asset,
+        origin: source?.origin ?? 'upload',
+        ...(source?.name ? { name: source.name } : {}),
+        ...(source?.attribution ? { attribution: source.attribution } : {}),
+        lineage: { parentAssetId: assetId, provider: made.model ?? 'local' },
+      };
+      const preview = await options.preview(asset).catch(() => BLANK_PREVIEW);
+      return { asset, preview };
+    },
 
     // What a call goes to now: read every time, since the user can change it between calls.
     describe: async () => {

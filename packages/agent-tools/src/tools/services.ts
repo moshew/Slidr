@@ -495,12 +495,18 @@ export const imageGenerate = defineTool({
       .optional()
       .describe("Default: the one nearest to the element's frame, or 16:9 without an element."),
     elementId: Id.optional(),
+    transparent: z
+      .boolean()
+      .optional()
+      .describe(
+        'The subject alone on a transparent background: a cut-out to lay over the slide (a product, a figure, an object). Describe the subject only; the app sees to the background.',
+      ),
   }),
   scopes: ALL,
   writes: true,
   requires: 'images',
   timeoutMs: IMAGE_TIMEOUT_MS,
-  async run({ prompt, count, aspect, elementId }, ctx) {
+  async run({ prompt, count, aspect, elementId, transparent }, ctx) {
     const target: ImageTarget = elementId ? sourceAsset(ctx.deck, { elementId }) : {};
     const subject = prompt ?? target.prompt;
     if (!subject) {
@@ -515,6 +521,7 @@ export const imageGenerate = defineTool({
       prompt: styledPrompt(ctx.deck, subject),
       count: count ?? 1,
       aspect: aspect ?? (target.frame ? closestAspect(target.frame) : '16:9'),
+      ...(transparent ? { transparent } : {}),
     });
     return placeImages(ctx, images, target);
   },
@@ -636,11 +643,11 @@ export const imageEdit = defineTool({
 export const imageProcess = defineTool({
   name: 'image_process',
   description:
-    'Processes an image locally, as a new asset: removeBackground. With elementId, the result replaces the image in the element. (Crop and colour adjustments are element fields: use element_update.) Returns `assets` and a preview.',
+    'Processes an image on this machine, as a new asset with a transparent background; the original stays. removeBackground: a local model cuts the subject of a photo out. keyOutBackground: a flat background colour, read off the border of the picture, becomes transparent; right for a logo or an illustration on one colour, where a model is not needed. With elementId, the result replaces the image in the element, keeping its frame and crop. (Crop, mask, filter and colour adjustments are element fields: use element_update.) Returns `assets` and a preview.',
   input: z.strictObject({
     elementId: Id.optional().describe('An image element. Give this or assetId.'),
     assetId: Id.optional(),
-    operation: z.enum(['removeBackground']),
+    operation: z.enum(['removeBackground', 'keyOutBackground']),
   }),
   scopes: ALL,
   writes: true,

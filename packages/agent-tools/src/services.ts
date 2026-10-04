@@ -242,16 +242,33 @@ export interface ImageProviderInfo {
   mask: boolean;
 }
 
+/** What `image_process` does to a picture on this machine (GEN-06, GEN-07). */
+export type ImageOperation = 'removeBackground' | 'keyOutBackground';
+
 /** WG12-T01, T04, T05: AI images and local image processing. */
 export interface ImageService {
-  generate(request: { prompt: string; count: number; aspect: ImageAspect }): Promise<StoredImage[]>;
+  /**
+   * `transparent`: the subject alone on a transparent background. A provider that cannot draw
+   * transparency draws it on a flat colour, which the app then keys out on this machine (GEN-07).
+   */
+  generate(request: {
+    prompt: string;
+    count: number;
+    aspect: ImageAspect;
+    transparent?: boolean;
+  }): Promise<StoredImage[]>;
   edit(request: {
     assetId: string;
     instruction: string;
     maskAssetId?: string;
     count: number;
   }): Promise<StoredImage[]>;
-  process(request: { assetId: string; operation: 'removeBackground' }): Promise<StoredImage>;
+  /**
+   * Local processing, as a new asset. `removeBackground`: a model on this machine keeps the
+   * subject and makes the rest transparent. `keyOutBackground`: a flat background colour, read
+   * off the picture's border, becomes transparent.
+   */
+  process(request: { assetId: string; operation: ImageOperation }): Promise<StoredImage>;
   /** The provider in use now. Optional: a service that has one provider need not say. */
   describe?(): Promise<ImageProviderInfo>;
 }
