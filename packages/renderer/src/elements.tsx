@@ -41,7 +41,7 @@ import { imageLook } from './imageLook';
 import { frameDocument, prepareSvg, resolveAssetRefs } from './markup';
 import { parseFragment, sanitizeFragment } from './sanitize';
 import { TableView } from './table';
-import { TextBox } from './text';
+import { numberedText, TextBox } from './text';
 import { colorCss, shadowCss } from './theme';
 
 const FILL_PARENT: CSSProperties = { position: 'absolute', inset: 0, margin: 0, padding: 0 };
@@ -104,7 +104,7 @@ function TextView({ element: e }: { element: TextElement }) {
   const ctx = useRenderContext();
   return (
     <TextBox
-      content={e.content}
+      content={e.role === 'slideNumber' ? numberedText(e.content, ctx.slideNumber) : e.content}
       vAlign={e.vAlign}
       padding={e.padding}
       autoFit={e.autoFit}

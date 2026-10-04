@@ -61,6 +61,8 @@ export function SlideRenderer({
   style,
 }: SlideRendererProps) {
   const { theme, assets, layouts, meta, size } = deck;
+  const at = deck.slides.findIndex((s) => s.id === slide.id);
+  const slideNumber = at === -1 ? undefined : at + 1;
   const ctx = useMemo<RenderContext>(
     () => ({
       theme,
@@ -72,12 +74,25 @@ export function SlideRenderer({
         const asset = assets[id];
         return asset && resolveAsset ? resolveAsset(asset) : undefined;
       },
+      slideNumber,
       slot,
       textSlot,
       cellSlot,
       htmlSlot,
     }),
-    [theme, mode, meta.dir, meta.lang, assets, resolveAsset, slot, textSlot, cellSlot, htmlSlot],
+    [
+      theme,
+      mode,
+      meta.dir,
+      meta.lang,
+      assets,
+      resolveAsset,
+      slideNumber,
+      slot,
+      textSlot,
+      cellSlot,
+      htmlSlot,
+    ],
   );
   const vars = useMemo(() => themeVariables(theme), [theme]);
   const fontFaces = useMemo(

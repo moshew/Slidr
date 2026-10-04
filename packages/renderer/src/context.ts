@@ -83,6 +83,11 @@ export interface RenderContext {
   /** URL of an asset by id, or undefined when the deck does not have it. */
   assetUrl: (assetId: string) => string | undefined;
   asset: (assetId: string) => AssetMeta | undefined;
+  /**
+   * The number of the slide in its deck, from 1: what a slide-number element shows (SLD-04).
+   * Undefined for a slide the deck does not hold, such as a preview or a template's cover.
+   */
+  slideNumber?: number;
   slot?: ElementSlot;
   textSlot?: TextSlot;
   cellSlot?: CellSlot;

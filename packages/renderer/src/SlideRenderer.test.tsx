@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
 import {
   CommandBus,
+  createDeck,
   createDeckStore,
+  createElement,
+  createSlide,
+  richText,
   updateElement,
   walkElements,
   type Deck,
@@ -84,6 +88,49 @@ describe('SlideRenderer', () => {
     render(<SlideRenderer deck={deck} slide={deck.slides[0]!} />);
     expect(ids('[data-decoration-id]')).toEqual(['e_layout_bar']);
     expect(container.querySelector('[data-element-id="e_layout_bar"]')).toBeNull();
+  });
+
+  it('writes the number of the slide in a slide-number text, of the layout or of the slide', () => {
+    const number = (id: string, text: string) =>
+      createElement.text({
+        id,
+        role: 'slideNumber',
+        frame: { x: 96, y: 960, w: 120, h: 40 },
+        content: richText(text, { styleRef: 'caption', marks: { weight: 700 } }),
+      });
+    const deck = createDeck({
+      lang: 'he',
+      slides: ['s_a', 's_b', 's_c'].map((id) =>
+        createSlide({
+          id,
+          layoutId: 'l_plain',
+          elements: id === 's_c' ? [number('e_own', '#')] : [],
+        }),
+      ),
+    });
+    deck.layouts = [
+      {
+        id: 'l_plain',
+        name: 'Plain',
+        archetype: 'cards',
+        placeholders: [],
+        decorations: [number('d_number', '1')],
+      },
+    ];
+    const shown = (selector: string) => container.querySelector(selector)?.textContent;
+    render(<SlideRenderer deck={deck} slide={deck.slides[1]!} />);
+    expect(shown('[data-decoration-id="d_number"]')).toBe('2');
+    // The number keeps the marks it was drawn with.
+    expect(
+      container.querySelector<HTMLElement>('[data-decoration-id="d_number"] span')?.style
+        .fontWeight,
+    ).toBe('700');
+    render(<SlideRenderer deck={deck} slide={deck.slides[2]!} />);
+    expect(shown('[data-decoration-id="d_number"]')).toBe('3');
+    expect(shown('[data-element-id="e_own"]')).toBe('3');
+    // A slide the deck does not hold (a preview, a cover) shows what the element holds.
+    render(<SlideRenderer deck={deck} slide={{ ...deck.slides[2]!, id: 's_preview' }} />);
+    expect(shown('[data-element-id="e_own"]')).toBe('#');
   });
 
   it('leaves hidden elements out', () => {

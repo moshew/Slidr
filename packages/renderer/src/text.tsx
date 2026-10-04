@@ -355,6 +355,17 @@ export function RichTextView({
   return <>{out}</>;
 }
 
+/**
+ * The text of a slide-number element (SLD-04): the number of the slide it is drawn on, in the
+ * paragraph and the marks of its first run. What the element itself holds is the look of the
+ * number, and a stand-in for where no deck gives the slide one.
+ */
+export function numberedText(content: RichText, number: number | undefined): RichText {
+  const first = content.paragraphs[0];
+  if (number === undefined || !first) return content;
+  return { paragraphs: [{ ...first, runs: [{ ...first.runs[0], text: String(number) }] }] };
+}
+
 const V_ALIGN = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
 /** Smallest scale `shrink` goes down to; below it the text overflows instead. */
 const MIN_FIT = 0.25;
