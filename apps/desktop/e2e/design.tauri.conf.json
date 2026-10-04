@@ -1,0 +1,7 @@
+{
+  "identifier": "dev.slidr.app.design",
+  "build": {
+    "devUrl": "http://localhost:1561",
+    "beforeDevCommand": "pnpm exec vite --port 1561 --strictPort"
+  }
+}

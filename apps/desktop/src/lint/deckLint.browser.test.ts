@@ -505,10 +505,8 @@ describe("the user's design check: the rules that do not go back to the agent, a
       card('e_3', 951, 200),
       card('e_4', 1400, 200),
     ]);
-    expect(of(findings, 'L09').map((f) => f.message.slice(0, 16))).toEqual([
-      'The top edges of',
-      'The bottom edges',
-    ]);
+    // The second card sits 3px low: off at its top and at its bottom, and said once.
+    expect(of(findings, 'L09').map((f) => f.message.slice(0, 16))).toEqual(['The top edges of']);
     bus.batch(of(findings, 'L09')[0]!.fix!);
     const spaced = of(await run(), 'L10');
     expect(spaced).toHaveLength(1);

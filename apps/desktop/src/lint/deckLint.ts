@@ -1,15 +1,36 @@
 import type { LintService } from '@slidr/agent-tools';
 import { lintSlide, type LintFinding, type RuleSet } from '@slidr/lint';
-import { findSlide, type Deck } from '@slidr/model';
-import { measureSlide, renderSlideOffscreen, type AssetResolver } from '@slidr/renderer';
+import { findSlide, type Deck, type Slide } from '@slidr/model';
+import {
+  measureSlide,
+  renderSlideOffscreen,
+  type AssetResolver,
+  type SlideMeasurements,
+} from '@slidr/renderer';
 
 /**
- * The design lint of slides of a deck state (SPEC 9.2): each slide is rendered out of sight,
- * measured, and judged by the rules of `@slidr/lint`. The findings carry their fixes, for the
- * user's design check (LNT-03); a fix holds for the deck it was found on.
- *
- * `resolveAsset` gives the same URLs the Stage shows. Without it images do not load, and text
- * over them is judged against what is behind them.
+ * What a slide of a deck state measures (LNT-02): it is rendered out of sight and read from the
+ * DOM. `resolveAsset` gives the same URLs the Stage shows; without it images do not load, and
+ * text over them is judged against what is behind them.
+ */
+export async function measureDeckSlide(
+  deck: Deck,
+  slide: Slide,
+  resolveAsset?: AssetResolver,
+): Promise<SlideMeasurements> {
+  // `thumbnail`: nothing plays and no script runs, and lint cannot see into a frame anyway.
+  const rendered = await renderSlideOffscreen({ deck, slide, mode: 'thumbnail', resolveAsset });
+  try {
+    return await measureSlide(rendered.root);
+  } finally {
+    rendered.dispose();
+  }
+}
+
+/**
+ * The design lint of slides of a deck state (SPEC 9.2), judged by the rules of `@slidr/lint`.
+ * The findings carry their fixes, for the user's design check (LNT-03); a fix holds for the
+ * deck it was found on.
  */
 export async function lintSlides(
   deck: Deck,
@@ -23,13 +44,8 @@ export async function lintSlides(
   for (const slideId of slideIds) {
     const slide = findSlide(deck, slideId);
     if (!slide) continue;
-    // `thumbnail`: nothing plays and no script runs, and lint cannot see into a frame anyway.
-    const rendered = await renderSlideOffscreen({ deck, slide, mode: 'thumbnail', resolveAsset });
-    try {
-      findings.push(...lintSlide(deck, slide, await measureSlide(rendered.root), rules));
-    } finally {
-      rendered.dispose();
-    }
+    const measured = await measureDeckSlide(deck, slide, resolveAsset);
+    findings.push(...lintSlide(deck, slide, measured, rules));
   }
   return findings;
 }
