@@ -21,7 +21,9 @@ describe("the deck's image style and palette", () => {
   // ask the agent to write them in, so the style is said twice in every image prompt.
   it.fails('are not asked of the agent, since the tool adds them', () => {
     for (const action of ['slide.image', 'image.alternatives'] as const) {
-      expect(actionMessage({ action, params: {} })).not.toMatch(/image style and its palette/);
+      expect(actionMessage({ action, params: {}, replyIn: 'English' })).not.toMatch(
+        /image style and its palette/,
+      );
     }
     expect(prompt('deck')).not.toMatch(/you repeat it in every image prompt/);
   });
