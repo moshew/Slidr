@@ -35,6 +35,7 @@
 mod network;
 
 use std::{
+    borrow::Cow,
     fmt,
     path::{Path, PathBuf},
     sync::{
@@ -185,6 +186,22 @@ pub fn request_allowed(home: &str, url: &str) -> bool {
         .strip_prefix(home)
         .is_some_and(|rest| rest.is_empty() || rest.starts_with(['/', '?', '#']));
     own || IPC.iter().any(|ipc| url.starts_with(ipc))
+}
+
+/// The answer that carries a page to the import window, before the window gets it: without the
+/// app's content policy. A packaged app sends the policy of `tauri.conf.json` with every page it
+/// serves (ADR-066), and here it would be laid over the import page's own. A browser then allows
+/// only what both allow, and a file being imported needs what the app's pages are refused: its
+/// own inline scripts, `eval`, a frame of a `blob:`. The import failed that way in a packaged
+/// build, and only there. The policy that holds in this window is the one `import.html` carries:
+/// it names no server, and behind it Rust refuses every request of the window ([`network`]).
+fn own_policy(
+    _request: tauri::http::Request<Vec<u8>>,
+    response: &mut tauri::http::Response<Cow<'static, [u8]>>,
+) {
+    response
+        .headers_mut()
+        .remove(tauri::http::header::CONTENT_SECURITY_POLICY);
 }
 
 /// Whether a top-level navigation of the import window stays on its page.
@@ -483,6 +500,8 @@ impl Surface for AppSurface<'_> {
                 .incognito(true)
                 // The file may not take the window anywhere else.
                 .on_navigation(stays_home)
+                // The page's own policy is the one in force, not the app pages' over it.
+                .on_web_resource_request(own_policy)
                 .build()
                 .map_err(|e| {
                     ImportError::internal(format!("could not create the import window: {e}"))
@@ -759,6 +778,9 @@ mod tests {
             "import_run_job",
             "import_blocked",
             "import_close",
+            // The agent's diagnostics log (ADR-066): what the agent wrote is not a file's to read.
+            "agent_diagnostics_read",
+            "agent_diagnostics_clear",
             "a_command_added_next_month",
             "",
         ] {
@@ -766,6 +788,23 @@ mod tests {
             assert!(may_call("main", command), "{command}");
             assert!(may_call("capture", command), "{command}");
         }
+    }
+
+    /// The import page arrives without the app pages' policy, and with the rest of its answer.
+    #[test]
+    fn the_import_page_is_served_without_the_app_pages_policy() -> TestResult {
+        let request = tauri::http::Request::builder()
+            .uri("http://tauri.localhost/import.html")
+            .body(Vec::new())?;
+        let mut response = tauri::http::Response::builder()
+            .header("Content-Security-Policy", "default-src 'none'")
+            .header("Content-Type", "text/html")
+            .body(Cow::Borrowed(&b"<!doctype html>"[..]))?;
+        own_policy(request, &mut response);
+        assert!(!response.headers().contains_key("content-security-policy"));
+        assert_eq!(response.headers()["content-type"], "text/html");
+        assert_eq!(response.body().as_ref(), b"<!doctype html>");
+        Ok(())
     }
 
     #[test]
