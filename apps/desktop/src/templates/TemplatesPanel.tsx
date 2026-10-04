@@ -18,7 +18,7 @@ import {
   Toggle,
   Tooltip,
 } from '@slidr/ui';
-import { Check, Eye, EyeOff, ImageUp, Star, Trash2 } from '@slidr/ui/icons';
+import { Check, Eye, EyeOff, ImageUp, Pencil, RefreshCw, Star, Trash2 } from '@slidr/ui/icons';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
@@ -30,12 +30,14 @@ import {
   logoAsset,
   logoHidden,
   logoLayouts,
+  renameTemplate,
   saveAsTemplate,
   setFooter,
   setLogo,
   showLogo,
   showNumber,
   turnDeck,
+  updateTemplate,
 } from './actions';
 import { library } from './app';
 import { coverAsset, coverOf } from './covers';
@@ -88,6 +90,7 @@ function TemplateCard({
   const { template, personal } = entry;
   const { theme } = template;
   const [busy, setBusy] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   // The cover follows the deck's direction and language, not every edit of the deck.
   const cover = useMemo(
     () => coverOf(library.forDeck(theme.id, like.meta.lang) ?? template, like),
@@ -115,6 +118,28 @@ function TemplateCard({
     });
     if (answer === 'remove') await library.remove(theme.id);
   };
+  const rename = async (name: string) => {
+    setRenaming(false);
+    await renameTemplate(library, theme.id, name);
+  };
+  const update = async () => {
+    const answer = await ask({
+      title: t('panel.updateTitle', { name: theme.name }),
+      body: t('panel.updateBody'),
+      actions: [
+        { id: 'cancel', label: t('panel.cancel'), variant: 'ghost' },
+        { id: 'update', label: t('panel.updateConfirm'), variant: 'primary' },
+      ],
+      cancelId: 'cancel',
+    });
+    if (answer !== 'update') return;
+    setBusy(true);
+    try {
+      await updateTemplate(editor, library, theme.id, t('undo.save'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <article
@@ -138,9 +163,23 @@ function TemplateCard({
       </div>
       <div className="flex min-w-0 items-center gap-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm font-medium text-ui-fg" dir="auto">
-            {theme.name}
-          </span>
+          {renaming ? (
+            <Input
+              aria-label={t('panel.renameField')}
+              defaultValue={theme.name}
+              dir="auto"
+              autoFocus
+              onBlur={(event) => void rename(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur();
+                if (event.key === 'Escape') setRenaming(false);
+              }}
+            />
+          ) : (
+            <span className="truncate text-sm font-medium text-ui-fg" dir="auto">
+              {theme.name}
+            </span>
+          )}
           <span className="truncate text-xs text-ui-fg-muted">
             {isDefault ? t('panel.defaultBadge') : t(personal ? 'panel.personal' : 'panel.builtIn')}
           </span>
@@ -152,15 +191,31 @@ function TemplateCard({
           pressed={isDefault}
           onPressedChange={(pressed) => library.setDefault(pressed ? theme.id : null)}
         />
-        {personal && (
+      </div>
+      {personal && (
+        // A personal template is the user's own: its name, what it holds, and whether it stays.
+        <div className="flex items-center justify-end gap-1" data-testid="template-actions">
+          <IconButton
+            icon={Pencil}
+            size="sm"
+            label={t('panel.rename')}
+            onClick={() => setRenaming(true)}
+          />
+          <IconButton
+            icon={RefreshCw}
+            size="sm"
+            label={t('panel.update')}
+            disabled={busy}
+            onClick={() => void update()}
+          />
           <IconButton
             icon={Trash2}
             size="sm"
             label={t('panel.remove')}
             onClick={() => void remove()}
           />
-        )}
-      </div>
+        </div>
+      )}
       <Button
         size="sm"
         variant={current ? 'ghost' : 'secondary'}

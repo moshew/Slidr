@@ -309,6 +309,43 @@ export async function templateFromDeck(
   return { template, files };
 }
 
+/** Gives a personal template another name. Decks that are on it are not changed. */
+export async function renameTemplate(
+  library: TemplateLibrary,
+  id: string,
+  name: string,
+): Promise<boolean> {
+  const entry = library.find(id);
+  const wanted = name.trim();
+  if (!entry?.personal || !wanted || wanted === entry.template.theme.name) return false;
+  // The asset files are already in the template's folder: only its description is written.
+  await library.save({ ...entry.template, theme: { ...entry.template.theme, name: wanted } }, []);
+  return true;
+}
+
+/**
+ * Saves the open deck's theme and layouts into a personal template that exists, in place: it
+ * keeps its id and its name, so it stays the default where it was, and the deck is on it
+ * afterwards. Decks that took the template earlier are not changed (THM-05).
+ */
+export async function updateTemplate(
+  editor: Editor,
+  library: TemplateLibrary,
+  id: string,
+  label?: string,
+): Promise<Template | undefined> {
+  const entry = library.find(id);
+  if (!entry?.personal) return undefined;
+  const { deck } = editor.bus;
+  const made = await templateFromDeck(editor, library, deck, entry.template.theme.name);
+  const template: Template = { ...made.template, theme: { ...made.template.theme, id } };
+  await library.save(template, made.files);
+  if (deck.theme.id !== id || deck.theme.name !== template.theme.name) {
+    editor.bus.dispatch({ type: 'theme.replace', theme: template.theme }, { label });
+  }
+  return template;
+}
+
 /**
  * Keeps a drafted template as a personal template of the library, under a name (THM-06). The
  * files of the assets its layouts draw are read from the open document, where the conversion of

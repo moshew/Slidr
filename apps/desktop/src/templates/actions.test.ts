@@ -17,6 +17,7 @@ import {
   logoAsset,
   logoHidden,
   logoLayouts,
+  renameTemplate,
   saveAsTemplate,
   setFooter,
   setLogo,
@@ -26,6 +27,7 @@ import {
   supplyAssets,
   switchCommands,
   turnDeck,
+  updateTemplate,
 } from './actions';
 import { TemplateLibrary } from './library';
 import { memoryTemplateStore } from './store';
@@ -383,3 +385,57 @@ describe('the master components of the deck (SLD-04)', () => {
 });
 
 const tzukTemplate = () => builtInTemplates().find((template) => template.theme.id === 'tzuk')!;
+
+describe('a personal template that exists (THM-05)', () => {
+  async function saved() {
+    const night = withLogo(nightTemplate());
+    const library = libraryOf(night, paperTemplate());
+    const { editor, bus } = editorOn(deckFromTemplate(night, { lang: 'he', sample: true }));
+    await setLogo(editor, new File([new Uint8Array([5, 5, 5])], 'logo.png'));
+    const template = await saveAsTemplate(editor, library, 'החברה שלי', { setDefault: true });
+    return { library, editor, bus, id: template.theme.id };
+  }
+
+  it('takes another name, and keeps its id, its files and its place as the default', async () => {
+    const { library, bus, id } = await saved();
+    const logo = logoAsset(bus.deck)!;
+    expect(await renameTemplate(library, id, '  המותג החדש ')).toBe(true);
+    const entry = library.find(id)!;
+    expect(entry.template.theme).toMatchObject({ id, name: 'המותג החדש' });
+    expect(library.entries().filter((e) => e.personal)).toHaveLength(1);
+    expect(library.state.getState().defaultId).toBe(id);
+    expect(await library.assetBytes(id, logo)).toEqual(new Uint8Array([5, 5, 5]));
+    // The same name, an empty name and a built-in template are no change.
+    expect(await renameTemplate(library, id, 'המותג החדש')).toBe(false);
+    expect(await renameTemplate(library, id, '   ')).toBe(false);
+    expect(await renameTemplate(library, 'test_paper', 'Mine')).toBe(false);
+  });
+
+  it('is updated in place from the open deck: the same id and name, the new look', async () => {
+    const { library, editor, bus, id } = await saved();
+    bus.dispatch({ type: 'theme.update', patch: { colors: { primary: '#aa0033' } } });
+    const steps = bus.undoStack.length;
+    const updated = await updateTemplate(editor, library, id, 'שמירה');
+    expect(updated?.theme).toMatchObject({ id, name: 'החברה שלי' });
+    expect(updated?.theme.colors.primary).toBe('#aa0033');
+    expect(library.entries().filter((e) => e.personal)).toHaveLength(1);
+    expect(library.find(id)?.template.theme.colors.primary).toBe('#aa0033');
+    expect(library.state.getState().defaultId).toBe(id);
+    // The deck was already on the template and already looks like it: no step is added.
+    expect(bus.undoStack).toHaveLength(steps);
+    // A new deck opens with the new look.
+    expect(startDeck(library, 'he').theme.colors.primary).toBe('#aa0033');
+  });
+
+  it('takes the look of a deck that is on another template, and puts the deck on it', async () => {
+    const { library, id } = await saved();
+    const { editor, bus } = editorOn(deckFromTemplate(paperTemplate(), { lang: 'he' }));
+    await updateTemplate(editor, library, id);
+    expect(library.find(id)?.template.layouts.map((l) => l.id)).toEqual(
+      bus.deck.layouts.map((l) => l.id),
+    );
+    expect(bus.deck.theme).toMatchObject({ id, name: 'החברה שלי' });
+    expect(bus.undoStack).toHaveLength(1);
+    expect(await updateTemplate(editor, library, 'test_paper')).toBeUndefined();
+  });
+});
