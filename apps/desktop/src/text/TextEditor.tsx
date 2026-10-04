@@ -16,6 +16,8 @@ import { TextSelection, type EditorState, type Transaction } from '@tiptap/pm/st
 import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { useEffect, useRef } from 'react';
+// By file, not through the shell's index: the index loads the Stage, which loads this editor.
+import { stageElement } from '../shell/stageDom';
 import { flipDirection, syncGrowHeight, toggleBold, toggleMark, type TextTarget } from './actions';
 import { announceEditor } from './activeEditor';
 import { cellsWritten } from './cellScope';
@@ -28,7 +30,7 @@ import {
   emptyLinePlugin,
   painterPlugin,
 } from './plugins';
-import { docToRichText, normalizeRichText, richTextToDoc } from './richTextDoc';
+import { docToRichText, normalizeRichText, richTextToDoc, sameValue } from './richTextDoc';
 import { textExtensions } from './schema';
 
 /**
@@ -77,8 +79,6 @@ const BURST_MS = 650;
 const OPENING_MS = 200;
 
 const NO_TEXT: RichText = { paragraphs: [] };
-
-const signature = (value: unknown) => JSON.stringify(value);
 
 type Dispatch = (tr: Transaction) => void;
 
@@ -139,6 +139,13 @@ function wordMoveAtEdge(view: EditorView, arrow: 'left' | 'right'): boolean {
   return $head.parentOffset === 0 && $head.index(0) === 0;
 }
 
+/** A transaction that puts the selection at the given positions, as far as the text allows. */
+function selectionTr(state: EditorState, anchor: number, head: number): Transaction {
+  const { doc } = state;
+  const at = (pos: number) => doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
+  return state.tr.setSelection(TextSelection.between(at(anchor), at(head)));
+}
+
 /** What makes a transaction an undo step of its own: a formatting change, or the clipboard. */
 function ownStep(transaction: Transaction): StepMeta | undefined {
   const step = transaction.getMeta(STEP_META) as StepMeta | undefined;
@@ -168,8 +175,14 @@ export function TextEditor({
   const burst = useRef<{ txId: string; at: number } | null>(null);
   /** When the editor opened with a typed character (`replaceWith`); 0 when it did not. */
   const openedTyping = useRef(0);
+  /**
+   * Where the selection is and whether the editor has the focus, once it has opened. A change of
+   * theme builds the editor anew (its paragraphs are drawn from the theme), and the new one
+   * carries on from here instead of opening again.
+   */
+  const kept = useRef<{ anchor: number; head: number; focused: boolean } | null>(null);
   /** What the editor last wrote to the model, to tell our own changes from undo or the agent's. */
-  const written = useRef<string>(signature(normalizeRichText(editedText(element, cell))));
+  const written = useRef<RichText>(normalizeRichText(editedText(element, cell)));
 
   useEffect(() => {
     exitRef.current = onExit;
@@ -285,13 +298,21 @@ export function TextEditor({
         const opening = performance.now() - openedTyping.current < OPENING_MS;
         if (!transaction.docChanged && !opening) burst.current = null;
       },
-      onTransaction: ({ transaction }) => {
+      onTransaction: ({ editor: ed, transaction }) => {
         // So does a formatting change, also one that only sets what is typed next.
         if (ownStep(transaction)) burst.current = null;
+        const { anchor, head } = ed.state.selection;
+        if (kept.current) kept.current = { ...kept.current, anchor, head };
+      },
+      onFocus: () => {
+        if (kept.current) kept.current.focused = true;
+      },
+      onBlur: () => {
+        if (kept.current) kept.current.focused = false;
       },
       onUpdate: ({ editor: ed, transaction }) => {
         const content = docToRichText(ed.getJSON());
-        written.current = signature(content);
+        written.current = content;
         const step = ownStep(transaction);
         let txId: string;
         if (step) {
@@ -312,12 +333,23 @@ export function TextEditor({
           cellsWritten(bus, element.id, txId);
         } else {
           // A growing text box writes its new height to the frame, in the same undo step.
+          // By the time it is measured this editor may be gone, rebuilt for a new theme.
           syncGrowHeight(bus, element.id, txId, () =>
-            ed.view.dom.closest<HTMLElement>('[data-element-id]'),
+            ed.isDestroyed
+              ? stageElement(element.id)
+              : ed.view.dom.closest<HTMLElement>('[data-element-id]'),
           );
         }
       },
       onCreate: ({ editor: ed }) => {
+        if (kept.current) {
+          // Built anew for a new theme: the selection is where it was, and the focus is taken
+          // only if the editor had it (it may be in a popover of the toolbar).
+          const { anchor, head, focused } = kept.current;
+          ed.view.dispatch(selectionTr(ed.state, anchor, head));
+          if (focused) ed.view.focus();
+          return;
+        }
         const pos = caretAt ? ed.view.posAtCoords({ left: caretAt.x, top: caretAt.y }) : null;
         if (pos) {
           // A point beside the text (in a table cell, most of the cell) is between two lines: the
@@ -335,6 +367,8 @@ export function TextEditor({
           openedTyping.current = performance.now();
           ed.view.dispatch(tr.setSelection(all).insertText(replaceWith));
         }
+        const { anchor, head } = ed.state.selection;
+        kept.current = { anchor, head, focused: true };
       },
     },
     [theme, defaults?.color, defaults?.weight, defaults?.alignTo],
@@ -349,22 +383,20 @@ export function TextEditor({
 
   // An undo, a redo or the agent changed the text while it is being edited: show the model's.
   const text = editedText(element, cell);
-  const external = signature(normalizeRichText(text));
   useEffect(() => {
-    if (!editor || external === written.current) return;
-    written.current = external;
+    // An editor that a change of theme has just taken away is left alone: the one built in its
+    // place starts from the model's text.
+    if (!editor || editor.isDestroyed) return;
+    // Compared as values: the editor and the model do not keep the keys of a run in one order.
+    const model = normalizeRichText(text);
+    if (sameValue(model, written.current)) return;
+    written.current = model;
     const { anchor, head } = editor.state.selection;
     editor.commands.setContent(richTextToDoc(text), { emitUpdate: false });
     // The selection stays where it was, as far as the new text allows.
-    const { doc } = editor.state;
-    const at = (pos: number) => doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
-    editor.view.dispatch(
-      editor.state.tr
-        .setSelection(TextSelection.between(at(anchor), at(head)))
-        .setMeta('preventUpdate', true),
-    );
+    editor.view.dispatch(selectionTr(editor.state, anchor, head).setMeta('preventUpdate', true));
     burst.current = null;
-  }, [editor, external, text]);
+  }, [editor, text]);
 
   return <EditorContent editor={editor} />;
 }
