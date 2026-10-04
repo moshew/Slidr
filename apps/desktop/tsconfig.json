@@ -3,7 +3,9 @@
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node"],
+    // The Vite config names its own modules with their extension, as Node loads them.
+    "allowImportingTsExtensions": true
   },
-  "include": ["src", "e2e", "packaged", "vite.config.ts", "playwright.config.ts", "eval"]
+  "include": ["src", "e2e", "packaged", "build", "vite.config.ts", "playwright.config.ts", "eval"]
 }
