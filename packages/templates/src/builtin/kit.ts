@@ -132,6 +132,24 @@ export function label(
   });
 }
 
+/**
+ * The number of the slide, drawn by the layout (SLD-04): a text whose role makes the renderer
+ * write the slide's own number in it. A figure reads left to right and sits on the deck's side,
+ * so `end` is the far corner in both directions; `1` stands in where no deck numbers the slide.
+ */
+export function pageNumber(
+  id: string,
+  frame: Frame,
+  styleRef: TextStyleRef = 'caption',
+  rest: Parameters<typeof label>[4] = {},
+): TextElement {
+  return {
+    ...label(id, frame, '1', styleRef, { dir: 'auto', align: 'end', ...rest }),
+    role: 'slideNumber',
+    name: 'slide number',
+  };
+}
+
 /** Inline SVG whose colours follow the theme: each literal colour of the markup maps to a token. */
 export function drawing(
   id: string,
