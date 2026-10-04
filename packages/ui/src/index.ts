@@ -30,6 +30,8 @@ export {
   type SegmentedOption,
 } from './components/segmented';
 export { Toggle, type ToggleProps } from './components/toggle';
+export { Checkbox, type CheckboxProps } from './components/checkbox';
+export { Switch, type SwitchProps } from './components/switch';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/tabs';
 export * from './components/menu';
 export {
