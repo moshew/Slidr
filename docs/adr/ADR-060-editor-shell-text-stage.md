@@ -222,7 +222,7 @@ Ctrl+/ או "קובץ > קיצורי מקלדת". עשר כותרות (קובץ,
 
 ## בדיקות
 
-על `b131a18`, אחרי ששלושת סוכני המשנה נכנסו. ה-commit היחיד שמעליו בענף הוא ה-ADR הזה:
+על `b131a18`, אחרי ששלושת סוכני המשנה נכנסו. מה שמעליו בענף הוא ה-ADR הזה בלבד:
 
 | בדיקה | תוצאה |
 |---|---|
@@ -477,16 +477,21 @@ Ctrl+/ או "קובץ > קיצורי מקלדת". עשר כותרות (קובץ,
 - `apps/desktop/package.json`: נוספה שורה אחת, `@tauri-apps/plugin-opener`.
 - `src-tauri/Cargo.toml`: שתי תלויות (`tauri-plugin-opener`, `windows`). `Cargo.lock`, `pnpm-lock.yaml` בהתאם.
 
-**איפה הענף פוגש את האחרים.** בדיקה בלי מיזוג (`git merge-tree`) מול ראשי הענפים כפי שהיו ב-2026-10-04 ב-11:50. מסלולים M ו-N עוד רצו אז, כך שהרשימה שלהם יכולה לגדול.
+**איפה הענף פוגש את האחרים.** בדיקה בלי מיזוג (`git merge-tree`) מול ראשי הענפים כפי שהיו ב-2026-10-04 ב-12:40, כששלושת המסלולים האחרים כבר נמסרו. שום דבר לא רץ על תוצאה ממוזגת.
 
 | מול | קבצים שמתנגשים | מה לעשות |
 |---|---|---|
 | `main` (`86f21f6`, מסלול D) | `src-tauri/src/lib.rs` | כתוב למעלה |
 | מסלול K, `m6-objects` (`4415b4b`) | `lib.rs`, `Cargo.lock`, `src/shell/StageRegion.tsx` | ב-`StageRegion.tsx` הוא הוסיף ייבוא אחד ושורה אחת בטיפול בקבצים שנגררים אל ה-Stage (`svgMarkups`), וכאן הקובץ נכתב מחדש: לקחת את הצד של הענף הזה ולהוסיף את שתי השורות שלו. `Cargo.lock`: ליצור מחדש |
-| מסלול M, `m6-design` (`863b3a1`) | `packages/renderer/src/elements.tsx`, `text.tsx` | שני הצדדים הוסיפו: הוא `numberedText` למספר השקף, כאן קישור לשקף ואפקטי טקסט. להשאיר את שניהם |
-| מסלול N, `m7-hardening` (`e90f995`) | `capabilities/default.json`, `lib.rs`, `src/shell/designRules.test.ts` | ב-`default.json` הוא החליף את `core:default` ברשימה מפורשת: לקחת את שלו ולהוסיף בסוף את `opener:allow-open-url` עם התחום שלו. ב-`designRules.test.ts` הוא הוסיף את `src/about` לרשימת התיקיות, שכאן כבר לא קיימת: לקחת את הצד של הענף הזה, והתיקייה נסרקת מעצמה |
+| מסלול M, `m6-design` (`5b8bfac`) | `packages/renderer/src/elements.tsx`, `text.tsx` | שני הצדדים הוסיפו: הוא `numberedText` למספר השקף, כאן קישור לשקף ואפקטי טקסט. להשאיר את שניהם |
+| מסלול N, `m7-hardening` (`7cd77c9`) | `capabilities/default.json`, `lib.rs`, `src/shell/designRules.test.ts` | ב-`default.json` הוא החליף את `core:default` ברשימה מפורשת: לקחת את שלו ולהוסיף בסוף את `opener:allow-open-url` עם התחום שלו. ב-`designRules.test.ts` הוא הוסיף את `src/about` לרשימת התיקיות, שכאן כבר לא קיימת: לקחת את הצד של הענף הזה, והתיקייה נסרקת מעצמה |
 
 הרצתי את הכללים של בדיקת העיצוב המאוחדת על כל קובץ שכל אחד מהענפים האלה הוסיף או שינה. הפרה אחת: `src/templates/acceptance.ts:105` של מסלול M כותב צבע מילולי (`ground: '#0e1014'`), והבדיקה תיכשל עליו כששני הענפים יהיו ב-`main`. הוא צריך טוקן, או שורת פטור עם נימוק אם זה גיליון שמצויר על canvas, כמו `capture/deckCapture.ts`.
+
+**שני דברים שאינם התנגשות בקובץ, מול מסלול N:**
+
+- **מסך הפתיחה עוצר את ה-driver שלו ל-build הארוז** (`apps/desktop/packaged/app.ts`), כי האפליקציה נפתחת עכשיו על המסך ולא על העורך. שלוש דרכים לעבור אותו: `localStorage['slidr.welcome'] = 'off'` לפני שהדף נטען, `?editor` בכתובת אם ה-driver טוען את הדף בעצמו, או לחיצה על `welcome-blank`.
+- **ה-CSP שלו** (`default-src 'none'`, `style-src 'self' 'unsafe-inline'`, `connect-src` עם `ipc:`): קראתי אותה מול מה שהענף הזה מוסיף, ולא מצאתי דבר שהיא חוסמת. הסימון של החיפוש הוא קובץ CSS של האפליקציה, אפקטי הטקסט והסימון של ה-Agent נכתבים דרך ה-DOM, וה-plugin של הקישורים עובר ב-IPC. לא הרצתי את הענף תחתיה: זה מחכה ל-rebase.
 
 **אחרי ה-rebase, כשמסלול D כבר ב-`main`:**
 
