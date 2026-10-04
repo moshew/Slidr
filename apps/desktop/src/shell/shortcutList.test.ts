@@ -59,6 +59,15 @@ describe('the lines of the shortcut map', () => {
     expect(edit).toContain('edit.copy');
   });
 
+  it("opens a section with the shell's own shortcuts, whichever area registered first", () => {
+    const rows = mapRows([
+      shortcut({ id: 'find.open', keys: 'Ctrl+F', label: 'find:shortcut.open', section: 'edit' }),
+      shortcut({ id: 'shell.undo', keys: 'Ctrl+Z', label: 'keys.undo', section: 'edit' }),
+    ]);
+    const edit = rows.filter((row) => row.section === 'edit').map((row) => row.id);
+    expect(edit.slice(0, 2)).toEqual(['shell.undo', 'find.open']);
+  });
+
   it('has a string in both languages for every line and every word it shows', () => {
     const rows = mapRows([]);
     const words = new Set<string>();

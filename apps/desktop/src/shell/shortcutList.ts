@@ -37,11 +37,6 @@ const named: Record<string, { section: ShortcutSection; label: string }> = {
   'arrange.order.backward': { section: 'arrange', label: 'keys.backward' },
   'arrange.order.back': { section: 'arrange', label: 'keys.back' },
   'arrange.newSlide': { section: 'slides', label: 'keys.newSlide' },
-  'text.insert': { section: 'insert', label: 'keys.insertText' },
-  'text.bold': { section: 'text', label: 'keys.bold' },
-  'text.italic': { section: 'text', label: 'keys.italic' },
-  'text.underline': { section: 'text', label: 'keys.underline' },
-  'text.direction': { section: 'text', label: 'keys.direction' },
   'ai.focusChat': { section: 'ai', label: 'keys.focusChat' },
   'present.fromStart': { section: 'present', label: 'keys.presentStart' },
   'present.fromCurrent': { section: 'present', label: 'keys.presentCurrent' },
@@ -108,8 +103,9 @@ function shown(keys: string): string {
 
 /**
  * The lines of the map, by section, in the order of `shortcutSections`. Within a section: the
- * shortcuts that name themselves, as they were registered (undo and redo open "edit"), then the
- * ones named here, then the keys components handle. Lines of one section that say the same
+ * shortcuts that name themselves, the shell's own first (undo and redo open "edit", whichever
+ * area the registry heard from first) and then the areas' as they were registered; then the
+ * ones named here; then the keys components handle. Lines of one section that say the same
  * thing become one line with both keys (redo is Ctrl+Y and Ctrl+Shift+Z).
  */
 export function mapRows(registered: readonly ShortcutDefinition[]): MapRow[] {
@@ -119,7 +115,9 @@ export function mapRows(registered: readonly ShortcutDefinition[]): MapRow[] {
     if (!same) rows.push({ ...row, keys: [...row.keys] });
     else for (const keys of row.keys) if (!same.keys.includes(keys)) same.keys.push(keys);
   };
-  for (const { id, label, section = 'edit', keys } of registered) {
+  const own = registered.filter(({ id }) => id.startsWith('shell.'));
+  const areas = registered.filter(({ id }) => !id.startsWith('shell.'));
+  for (const { id, label, section = 'edit', keys } of [...own, ...areas]) {
     if (label) add({ id, section, label, keys: [shown(keys)] });
   }
   for (const { id, label, keys } of registered) {
