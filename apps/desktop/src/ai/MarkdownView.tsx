@@ -1,5 +1,6 @@
 import { memo, useMemo, type ReactNode } from 'react';
 import { cx } from '@slidr/ui';
+import { isWebAddress } from '../shell';
 import { parseMarkdown, type Block, type Inline } from './markdown';
 
 /*
@@ -36,8 +37,20 @@ function inline(nodes: readonly Inline[]): ReactNode {
       case 'del':
         return <del key={i}>{inline(node.children)}</del>;
       case 'link':
-        // Shown, not followed: the webview is the app, and nothing here may navigate it.
-        return (
+        // An address of the web is a link: in the app the shell hands it to the browser of the
+        // system, so the webview, which is the app, never navigates. Any other address is
+        // shown and not followed.
+        return isWebAddress(node.href) ? (
+          <a
+            key={i}
+            href={node.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-small text-ui-accent-fg underline underline-offset-2 hover:text-ui-accent"
+          >
+            {inline(node.children)}
+          </a>
+        ) : (
           <span key={i} className="text-ui-accent-fg underline underline-offset-2">
             {inline(node.children)}
           </span>
