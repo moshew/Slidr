@@ -23,8 +23,13 @@ const exempt: Record<string, string> = {
   // The dev pages: served by the dev server only, and free to show whatever a check needs.
   'apps/desktop/src/dev/': 'the gallery and the harness pages of the renderer and the runtime',
 
-  // Drawn on the slide or over it, in slide pixels or screen pixels rather than in tokens.
-  'apps/desktop/src/stage/': 'the Stage and the Filmstrip: the slide, its handles and its guides',
+  // Drawn on the slide or over it, in slide pixels or screen pixels rather than in tokens. The
+  // rest of `src/stage` is app UI (the right-click menu, the selection toolbar, the crop tools)
+  // and is checked like any other.
+  'apps/desktop/src/stage/Stage.tsx': 'the Stage: the slide at its zoom, and what lies over it',
+  'apps/desktop/src/stage/overlays.tsx': 'the handles, the outlines and the marks over the slide',
+  'apps/desktop/src/stage/Filmstrip.tsx': 'the Filmstrip: slides at the size of a thumbnail',
+  'apps/desktop/src/stage/PlaceholderHint.tsx': 'the words of an empty placeholder, on the slide',
   'apps/desktop/src/text/TextEditor.tsx': 'the text editor inside a text box of the slide',
   'apps/desktop/src/text/schema.ts':
     'the styles of the text being edited, which are the deck theme',
