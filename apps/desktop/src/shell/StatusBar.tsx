@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cx, Spinner } from '@slidr/ui';
+import { autosaveFailure } from '../document/failures';
 import { useDeck, useFile, useSelection } from './editor';
 import { useStatusItem } from './registry';
 import { useShell } from './store';
@@ -78,11 +79,22 @@ export function StatusItem({
 
 function SaveState() {
   const { t } = useTranslation();
-  const { path, dirty, busy } = useFile((s) => s);
+  const { path, dirty, busy, autosaveFailure: failure } = useFile((s) => s);
   if (busy === 'saving') {
     return (
       <span data-testid="status-save">
         <StatusItem busy>{t('status.saving')}</StatusItem>
+      </span>
+    );
+  }
+  // The autosave cannot write (a full disk, a folder it may not write to): said for as long as
+  // it lasts, because until then the changes are in memory alone (WG13-T03).
+  if (failure) {
+    return (
+      <span data-testid="status-save" data-failure={failure} role="alert">
+        <StatusItem dot="bg-ui-danger">
+          <span className="text-ui-danger-fg">{autosaveFailure(failure)}</span>
+        </StatusItem>
       </span>
     );
   }

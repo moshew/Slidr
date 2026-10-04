@@ -1,4 +1,5 @@
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { describeFailure } from '../document/failures';
 import type { RecentFile, RecoverableWorkspace } from '../document/storage';
 import { currentLanguage, i18n } from '../i18n';
 import { ask, tell } from './dialogs';
@@ -45,9 +46,13 @@ function rememberWorkspace(editor: Editor): void {
   }
 }
 
+/**
+ * Tells the user that a file operation failed: what happened and what to do, in the language of
+ * the interface (WG13-T03). The error's own text, which is English and names paths, is logged.
+ */
 async function report(title: string, error: unknown): Promise<void> {
   console.error(title, error);
-  await tell(title, error instanceof Error ? error.message : String(error));
+  await tell(title, describeFailure(error));
 }
 
 /** Starts the window's document: reopens the workspace of this session, or creates one. */

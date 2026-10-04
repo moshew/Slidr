@@ -14,6 +14,7 @@ import {
 } from '@slidr/model';
 import { memoryAssets, workspaceAssets, type AssetService } from '../document/assets';
 import { DocumentService } from '../document/documentService';
+import { failureKind, type FailureKind } from '../document/failures';
 import type { Storage } from '../document/storage';
 
 /** The open document as the shell shows it: title bar, status bar, File menu. */
@@ -23,6 +24,11 @@ export interface FileState {
   /** There are changes that are not in the file. */
   dirty: boolean;
   busy: 'opening' | 'saving' | null;
+  /**
+   * Why the autosave cannot write, while it cannot (WG13-T03): the changes are in memory alone,
+   * and a crash now would lose them. Null again once a write goes through.
+   */
+  autosaveFailure: FailureKind | null;
 }
 
 /**
@@ -81,13 +87,24 @@ export function createEditor(options: { lang: string; storage: Storage | null })
 
 function buildEditor(options: { lang: string; storage: Storage | null }): Editor {
   const bus = new CommandBus(newDeck(options.lang));
+  const file = createStore<FileState>(() => ({
+    path: null,
+    dirty: false,
+    busy: null,
+    autosaveFailure: null,
+  }));
   // Created before the subscription below, so `dirty` is current when it runs.
   const document = options.storage
     ? new DocumentService(options.storage, bus, {
-        onAutosaveError: (error) => console.error('Autosave failed', error),
+        onAutosaveError: (error) => {
+          console.error('Autosave failed', error);
+          file.setState({ autosaveFailure: failureKind(error) });
+        },
+        onAutosaved: () => {
+          if (file.getState().autosaveFailure) file.setState({ autosaveFailure: null });
+        },
       })
     : null;
-  const file = createStore<FileState>(() => ({ path: null, dirty: false, busy: null }));
   bus.subscribe((event) => {
     file.setState({ dirty: document ? document.dirty : event.kind !== 'reset' });
   });
