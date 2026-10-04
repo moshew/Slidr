@@ -25,7 +25,7 @@ export function Textarea({
   return (
     <div
       className={cx(
-        'flex flex-col gap-1 rounded-panel border bg-ui-field p-1.5 transition-colors',
+        'flex flex-col gap-1 rounded-panel border bg-ui-field p-1.5 text-ui-fg transition-colors',
         'focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ui-focus',
         'has-disabled:border-ui-line has-disabled:text-ui-fg-subtle',
         invalid
@@ -37,7 +37,8 @@ export function Textarea({
       <textarea
         rows={rows}
         aria-invalid={invalid || undefined}
-        className="field-sizing-content max-h-40 min-h-10 w-full resize-none bg-transparent px-2 py-1.5 text-md leading-6 text-ui-fg outline-none placeholder:text-ui-fg-muted focus-visible:outline-none disabled:placeholder:text-ui-fg-subtle"
+        // No colour of its own: the frame's, which fades when the field is disabled.
+        className="field-sizing-content max-h-40 min-h-10 w-full resize-none bg-transparent px-2 py-1.5 text-md leading-6 outline-none placeholder:text-ui-fg-muted focus-visible:outline-none disabled:placeholder:text-ui-fg-subtle"
         {...props}
       />
       {footer}
