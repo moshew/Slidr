@@ -102,6 +102,11 @@
 
   /* Type: Inter for Latin, Heebo for Hebrew (each covers what the other lacks). */
   --font-ui: 'Inter Variable', 'Heebo Variable', system-ui, sans-serif;
+  /* Code and whatever must line up in columns: `font-mono`, and Tailwind's base styles give it
+     to `code`, `pre` and `kbd` as well. JetBrains Mono is in the built-in font library, which
+     the app registers under this name; it has no Hebrew, and Cascadia Mono, which Windows ships,
+     does. */
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, ui-monospace, monospace;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
