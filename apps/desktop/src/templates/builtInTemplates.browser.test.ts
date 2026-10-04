@@ -56,7 +56,7 @@ describe('switching between the built-in templates', () => {
             from: from.theme.id,
             to: to.theme.id,
             lang: language.lang,
-            errors: findings.map(brief),
+            errors: findings.map((f) => brief(f)),
           });
           unexpected.push(
             ...findings

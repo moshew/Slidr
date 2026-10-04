@@ -20,8 +20,8 @@ import {
   sampleDeck,
   type SampleSlide,
 } from '@slidr/templates/builtin';
-import { beforeAll, describe, expect, test } from 'vitest';
-import { page } from 'vitest/browser';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { commands, page } from 'vitest/browser';
 import { registerBuiltinFonts } from '../fonts';
 import { createLintService } from '../lint/deckLint';
 import { pictureAssets, pictureUrl } from './pictures';
@@ -56,7 +56,21 @@ export const lint = createLintService(pictureUrl);
 
 const SHOTS = '../../test-results/design/templates';
 
-export const brief = (finding: LintFinding) => `${finding.rule}: ${finding.message.slice(0, 160)}`;
+/** A finding in a line: the slide when it is known, the rule, the elements, and the message. */
+export function brief(finding: LintFinding, deck?: Deck): string {
+  const slide = deck?.slides.find((s) => s.id === finding.slideId);
+  const where = slide ? `"${slide.name ?? slide.id}" ` : '';
+  const elements = finding.elementIds.length ? ` [${finding.elementIds.join(', ')}]` : '';
+  return `${where}${finding.rule}${elements}: ${finding.message.slice(0, 240)}`;
+}
+
+/**
+ * The warnings that hold the agent's turn (QG-03, QG-04), and that a template must not earn by
+ * itself: a slide made from a layout as the template drew it has to pass the quality gate. The
+ * third such rule, L13, is about how much the slide says, which is the deck's doing.
+ */
+const HOLDS = new Set(['L07', 'L16']);
+export const holds = (findings: LintFinding[]) => findings.filter((f) => HOLDS.has(f.rule));
 export const errors = (findings: LintFinding[]) => findings.filter((f) => f.severity === 'error');
 
 /** Before the first test of a file: the viewport of a slide, and the fonts the templates name. */
@@ -146,20 +160,29 @@ export async function switchErrors(
   from: { template: Template; samples: Samples },
   to: Template,
   { lang, dir }: (typeof LANGUAGES)[number],
-): Promise<{ findings: LintFinding[]; cameFrom: Map<string, string | undefined> }> {
+): Promise<{
+  findings: LintFinding[];
+  /** Every finding of the switched deck, warnings and notes too. */
+  all: LintFinding[];
+  cameFrom: Map<string, string | undefined>;
+  /** The deck after the switch. */
+  deck: Deck;
+}> {
   const deck = sampleDeck(from.template, from.samples[lang], { lang, dir });
   const cameFrom = new Map(deck.slides.map((slide) => [slide.id, slide.layoutId]));
   const bus = new CommandBus(deck, { validate: true });
   bus.batch(applyTemplate(deck, to));
   const ids = bus.deck.slides.map((s) => s.id);
-  const findings = errors(await lint.lint(bus.deck, ids, 'all'));
+  const all = await lint.lint(bus.deck, ids, 'all');
+  const findings = errors(all);
+  const switched = bus.deck;
   // Whatever the lint says, the switch is one step and takes every slide along.
   expect(bus.deck.slides.every((slide) => to.layouts.some((l) => l.id === slide.layoutId))).toBe(
     true,
   );
   bus.undo();
   expect(bus.deck).toEqual(deck);
-  return { findings, cameFrom };
+  return { findings, all, cameFrom, deck: switched };
 }
 
 export interface AcceptOptions {
@@ -189,7 +212,7 @@ export function acceptTemplate(
       const found: string[] = [];
       for (const slide of deck.slides) {
         const findings = await lint.lint(deck, [slide.id], 'all');
-        found.push(...errors(findings).map((f) => `"${slide.name}" ${brief(f)}`));
+        found.push(...[...errors(findings), ...holds(findings)].map((f) => brief(f, deck)));
         slides.push({
           name: slide.name ?? slide.id,
           layout: slide.layoutId ?? '',
@@ -199,6 +222,7 @@ export function acceptTemplate(
       }
       report.rebuilt[`${id}.${lang}`] = slides;
       await contactSheet(deck, `${id}.${lang}`, each);
+      // No error, and no warning that would hold the agent on a slide the template drew.
       expect(found).toEqual([]);
     },
   );
@@ -245,7 +269,7 @@ export function acceptTemplate(
         const opening = bus.deck.slides[0]!;
         expect(template.layouts.find((l) => l.id === opening.layoutId)?.archetype).toBe('hero');
         const findings = await lint.lint(bus.deck, [opening.id], 'all');
-        found.push(...errors(findings).map(brief));
+        found.push(...errors(findings).map((f) => brief(f, bus.deck)));
         bus.undo();
         expect(bus.deck).toEqual(before);
       }
@@ -264,16 +288,35 @@ export const knownSwitchError = (
  * Everything a template that is still being drawn is tried by, as the whole of a test file of
  * its own (`<id>.draft.browser.test.ts`, beside this file): the role contract, the tests of
  * `acceptTemplate` with a picture of every slide, and the sample decks of the templates already
- * in the library moved to it, and its own moved to them.
+ * in the library moved to it, and its own moved to them. Every finding the run saw, warnings
+ * and notes included, is written to `test-results/design/templates/<id>.findings.json`, and
+ * each deck that was moved to the template is drawn as `<id>.from-<other>.<lang>.png`.
  */
 export function acceptDraft(id: string, template: Template, samples: Samples): void {
   beforeAll(prepare);
+  const report = emptyReport();
+  /** Every finding the run saw, warnings and notes too, a line each: for whoever draws the template. */
+  const seen: Record<string, string[]> = {};
+  afterAll(async () => {
+    for (const [key, slides] of Object.entries(report.rebuilt)) {
+      seen[key] = slides.flatMap((slide) =>
+        slide.lint.map(
+          (f) => `"${slide.name}" ${f.rule} (${f.severity}): ${f.message.slice(0, 240)}`,
+        ),
+      );
+    }
+    // In a hook the path is taken from the root of the repository.
+    await commands.writeFile(
+      `apps/desktop/test-results/design/templates/${id}.findings.json`,
+      JSON.stringify(seen, null, 2),
+    );
+  });
   describe(`the ${id} template`, () => {
     test('seats the roles every built-in template seats', () => {
       expect(template.layouts.flatMap(contractGaps)).toEqual([]);
     });
 
-    acceptTemplate(id, template, samples, { each: true });
+    acceptTemplate(id, template, samples, { each: true, report });
 
     test(
       'decks move between it and the templates of the library with no error',
@@ -285,17 +328,19 @@ export function acceptDraft(id: string, template: Template, samples: Samples): v
           const theirs = { template: other, samples: builtInSamples[other.theme.id]! };
           for (const language of LANGUAGES) {
             const here = await switchErrors(theirs, template, language);
+            const into = `${other.theme.id} to ${id}, ${language.lang}`;
             found.push(
               ...here.findings
                 .filter((f) => !knownSwitchError(f, here.cameFrom))
-                .map((f) => `${other.theme.id} to ${id}, ${language.lang}: ${brief(f)}`),
+                .map((f) => `${into}: ${brief(f, here.deck)}`),
             );
+            seen[into] = here.all.map((f) => brief(f, here.deck));
+            // Their deck on this template, to look at: what a user sees who switches to it.
+            await contactSheet(here.deck, `${id}.from-${other.theme.id}.${language.lang}`);
             const there = await switchErrors({ template, samples }, other, language);
-            found.push(
-              ...there.findings.map(
-                (f) => `${id} to ${other.theme.id}, ${language.lang}: ${brief(f)}`,
-              ),
-            );
+            const out = `${id} to ${other.theme.id}, ${language.lang}`;
+            found.push(...there.findings.map((f) => `${out}: ${brief(f, there.deck)}`));
+            seen[out] = there.all.map((f) => brief(f, there.deck));
           }
         }
         expect(found).toEqual([]);
