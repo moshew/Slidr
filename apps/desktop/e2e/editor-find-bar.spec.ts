@@ -299,6 +299,27 @@ test('a right click on the bar opens neither the menu of the Stage nor the webvi
   await expect(page.getByTestId('stage-menu')).toHaveCount(0);
 });
 
+test('in a browser without the Custom Highlight API the bar works, without the marks', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(() => Reflect.deleteProperty(window, 'Highlight'));
+  await openApp(page);
+  const firstId = await buildDeck(page);
+  expect(await page.evaluate(() => typeof Highlight)).toBe('undefined');
+
+  await find(page, WORD);
+  await expect(count(page)).toHaveText('9');
+  await page.keyboard.press('Enter');
+  await expect(count(page)).toHaveText('1 / 9');
+  expect(await place(page)).toMatchObject({ slide: firstId, selected: ['e_title'] });
+  expect(await page.evaluate(() => CSS.highlights.size)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(bar(page)).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('whole word and match case narrow the search, in Hebrew and in Latin text', async ({
   page,
 }) => {
