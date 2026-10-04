@@ -39,7 +39,7 @@ import {
   PICK_FORMAT_KEYS,
   resolveTarget,
 } from './toolbar/shared';
-import { PainterTool } from './toolbar/StyleTools';
+import { PainterTool, StyleTool } from './toolbar/StyleTools';
 
 /*
  * The text area (WG4): the text tools of row B, the "Text" button of row A, and the text
@@ -58,6 +58,7 @@ registerMessages('text', { he, en });
  */
 const tools = [
   { id: 'text.painter', group: 'font', order: 8, render: PainterTool },
+  { id: 'text.style', group: 'font', order: 9, render: StyleTool },
   { id: 'text.font', group: 'font', order: 10, render: FontTool },
   { id: 'text.size', group: 'font', order: 11, render: SizeTool },
   { id: 'text.weight', group: 'font', order: 12, render: WeightTool },

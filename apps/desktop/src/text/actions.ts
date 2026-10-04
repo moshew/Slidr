@@ -10,6 +10,7 @@ import {
   type ShapeElement,
   type TableElement,
   type TextElement,
+  type TextStyleRef,
 } from '@slidr/model';
 import type { EditorView } from '@tiptap/pm/view';
 // By file, not through the shell's index: these are plain functions, and the index loads the app.
@@ -20,6 +21,7 @@ import { cellsWritten } from './cellScope';
 import {
   changeMarksTr,
   changeParagraphsTr,
+  paragraphsRange,
   sampleState,
   STEP_META,
   type StepMeta,
@@ -31,10 +33,12 @@ import {
   flippedDirection,
   mapMarks,
   mapParagraphs,
+  matchStyle,
   patchMarks,
   patchParagraph,
   readFormat,
   sampleRichText,
+  styleChange,
   type FormatContext,
   type MarksChange,
   type ParagraphChange,
@@ -226,6 +230,46 @@ export function changeParagraphs(target: TextTarget, change: ParagraphChange, st
 /** Clear formatting (TXT-10): the character marks go, links and paragraph fields stay. */
 export function clearFormatting(target: TextTarget, step?: Step): void {
   changeMarks(target, clearMarks, step);
+}
+
+/** In the editor a text style is about whole paragraphs, whatever part of them is selected. */
+function wholeParagraphs(target: TextTarget): TextRange | undefined {
+  return target.kind === 'editor' ? paragraphsRange(target.view.state) : undefined;
+}
+
+/** Gives the paragraphs of the target a text style of the theme, so that the style shows (TXT-08). */
+export function applyStyle(target: TextTarget, styleRef: TextStyleRef, step?: Step): void {
+  changeText(target, { ...styleChange(styleRef), range: wholeParagraphs(target) }, step);
+}
+
+/**
+ * "Update the style to match" (TXT-08): writes what the text has into its text style of the
+ * theme, and takes from the paragraphs the marks that now only repeat the style. One undo step:
+ * the theme and the text change in one transaction. False when there is nothing to update.
+ */
+export function updateStyle(
+  target: TextTarget,
+  ctx: FormatContext,
+  styleRef: TextStyleRef,
+  step: Step = {},
+): boolean {
+  const match = matchStyle(formatOf(target, ctx), ctx.theme.textStyles[styleRef]);
+  if (!match) return false;
+  const { bus, element } = target;
+  const txId = step.txId ?? newId('tx');
+  const label = step.label ?? 'Update style';
+  bus.dispatch(
+    { type: 'theme.update', patch: { textStyles: { [styleRef]: match.style } } },
+    { txId, label },
+  );
+  changeText(
+    target,
+    { marks: match.marks, paragraphs: match.paragraphs, range: wholeParagraphs(target) },
+    { txId, label },
+  );
+  // The box is as tall as its text in the style's new size, also when no mark had to go.
+  if (target.kind === 'element') syncGrowHeight(bus, element.id, txId);
+  return true;
 }
 
 /** Bold on if any of the text is not bold, off if all of it is (Ctrl+B). */

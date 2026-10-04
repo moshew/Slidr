@@ -108,6 +108,30 @@ export function patchParagraph(patch: ParagraphPatch): ParagraphChange {
 }
 
 /**
+ * Applying a text style of the theme (TXT-08). The paragraph points at the style, and what would
+ * hide it goes: the marks a style defines itself (font, size, weight, colour, letter spacing,
+ * case) and the paragraph's own line height. Italic, underline, links and the like stay.
+ */
+export const styleMarks: MarksPatch = {
+  font: null,
+  size: null,
+  weight: null,
+  color: null,
+  letterSpacing: null,
+  case: null,
+};
+
+export function styleChange(styleRef: TextStyleRef): {
+  marks: MarksChange;
+  paragraphs: ParagraphChange;
+} {
+  return {
+    marks: patchMarks(styleMarks),
+    paragraphs: patchParagraph({ styleRef, lineHeight: null }),
+  };
+}
+
+/**
  * Turns a list on or off. A paragraph that changes kind keeps its level and its marker colour; a
  * custom bullet is dropped on the way to a numbered list, where it would replace the numbers.
  */
@@ -235,6 +259,8 @@ export interface TextFormat {
   case: Value<'upper' | 'lower' | null>;
   letterSpacing: Value<number>;
 
+  /** The text style of the paragraphs; a paragraph that names none has the default one. */
+  styleRef: Value<TextStyleRef>;
   align: Value<Paragraph['align']>;
   dir: Value<Paragraph['dir']>;
   /** The direction the first paragraph is laid out in: which side `start` is on. */
@@ -286,6 +312,7 @@ export function readFormat(sample: TextSample, ctx: FormatContext): TextFormat {
       spans.map((span) => span.marks?.letterSpacing ?? style(span).letterSpacing ?? 0),
     ),
 
+    styleRef: common(props.map((p) => p.styleRef ?? ctx.styleRef ?? 'body')),
     align: common(props.map((p) => p.align)),
     dir: common(props.map((p) => p.dir)),
     direction: first ? resolveDirection(first.props.dir, first.text, ctx.dir) : ctx.dir,
@@ -306,6 +333,50 @@ export function readFormat(sample: TextSample, ctx: FormatContext): TextFormat {
  */
 export function flippedDirection(sample: TextSample, ctx: FormatContext): Direction {
   return readFormat(sample, ctx).direction === 'rtl' ? 'ltr' : 'rtl';
+}
+
+/** What a text style and the marks both say: where they agree, the mark says nothing. */
+const STYLE_FIELDS = ['size', 'weight', 'color', 'letterSpacing', 'case'] as const;
+
+/**
+ * "Update the style to match" (TXT-08): the text style with what the text has in its place, and
+ * the change that takes from the text the marks and the line height that then only repeat the
+ * style. A value the text has more than one of is left out, and the style keeps its own. The
+ * font is not taken: a style names a role of the theme (`heading` or `body`), not a family.
+ * Null when the style already matches.
+ */
+export function matchStyle(
+  format: TextFormat,
+  style: TextStyle,
+): { style: TextStyle; marks: MarksChange; paragraphs: ParagraphChange } | null {
+  const next: TextStyle = { ...style };
+  if (!isMixed(format.size)) next.size = format.size;
+  if (!isMixed(format.weight)) next.weight = format.weight;
+  if (!isMixed(format.color)) next.color = format.color;
+  if (!isMixed(format.lineHeight)) next.lineHeight = format.lineHeight;
+  // No spacing and no case are the absence of the field, in a style as in the marks.
+  if (!isMixed(format.letterSpacing)) {
+    if (format.letterSpacing) next.letterSpacing = format.letterSpacing;
+    else delete next.letterSpacing;
+  }
+  if (!isMixed(format.case)) {
+    if (format.case) next.case = format.case;
+    else delete next.case;
+  }
+  if (sameValue(next, style)) return null;
+  return {
+    style: next,
+    marks: (marks) => {
+      const out = { ...marks };
+      for (const key of STYLE_FIELDS) if (sameValue(out[key], next[key])) delete out[key];
+      return out;
+    },
+    paragraphs: (paragraph) => {
+      if (paragraph.lineHeight !== next.lineHeight) return paragraph;
+      const { lineHeight: _lineHeight, ...rest } = paragraph;
+      return rest;
+    },
+  };
 }
 
 /* ---------------------------------------------------------------- the format painter */

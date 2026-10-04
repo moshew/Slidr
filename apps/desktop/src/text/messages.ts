@@ -33,6 +33,16 @@ export const he = {
   letterSpacing: 'ריווח אותיות',
   clear: 'ניקוי עיצוב',
   painter: 'מברשת עיצוב',
+  style: {
+    label: 'סגנון טקסט',
+    current: 'סגנון טקסט: {{name}}',
+    display: 'כותרת ראשית',
+    title: 'כותרת',
+    heading: 'כותרת משנה',
+    body: 'גוף הטקסט',
+    caption: 'כיתוב',
+    update: 'עדכון הסגנון לפי הטקסט',
+  },
   color: 'צבע טקסט',
   highlight: 'צבע הדגשה',
   align: {
@@ -97,6 +107,8 @@ export const he = {
     box: 'הגדרות תיבת הטקסט',
     clear: 'ניקוי עיצוב',
     paint: 'העברת עיצוב',
+    style: 'החלת סגנון טקסט',
+    styleUpdate: 'עדכון סגנון הטקסט',
   },
   // The shortcut map (UI-06): what each shortcut of the text area does.
   shortcut: {
@@ -140,6 +152,16 @@ export const en: Messages<typeof he> = {
   letterSpacing: 'Letter spacing',
   clear: 'Clear formatting',
   painter: 'Format painter',
+  style: {
+    label: 'Text style',
+    current: 'Text style: {{name}}',
+    display: 'Display',
+    title: 'Title',
+    heading: 'Heading',
+    body: 'Body',
+    caption: 'Caption',
+    update: 'Update the style to match the text',
+  },
   color: 'Text colour',
   highlight: 'Highlight colour',
   align: {
@@ -204,6 +226,8 @@ export const en: Messages<typeof he> = {
     box: 'Text box settings',
     clear: 'Clear formatting',
     paint: 'Paint format',
+    style: 'Apply text style',
+    styleUpdate: 'Update text style',
   },
   shortcut: {
     bold: 'Bold',

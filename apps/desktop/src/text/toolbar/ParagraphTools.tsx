@@ -3,8 +3,10 @@ import {
   cx,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
   Input,
@@ -28,6 +30,7 @@ import {
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColorField, useGestureTx } from '../../controls';
+import type { ContextToolProps } from '../../shell';
 import { changeParagraphs } from '../actions';
 import {
   isMixed,
@@ -121,8 +124,11 @@ function AlignButtons({ text }: { text: Text }) {
   );
 }
 
-/** In the row when there is room; a menu otherwise. */
-export function AlignTool() {
+/**
+ * In the row when there is room; a menu otherwise. The menu of a text box holds the direction of
+ * the paragraph too, which has no button of its own in the compact layout.
+ */
+export function AlignTool({ kind }: Partial<ContextToolProps>) {
   const { t } = useTranslation('text');
   const compact = useCompact();
   const text = useText();
@@ -152,6 +158,13 @@ export function AlignTool() {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+        {kind === 'text' && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t('direction.label')}</DropdownMenuLabel>
+            <DirectionChoices text={text} />
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -161,36 +174,47 @@ export function AlignTool() {
 
 const DIRECTIONS: readonly Paragraph['dir'][] = ['rtl', 'ltr', 'auto'];
 
-/** The button shows which way the paragraph reads now; the menu sets it, or leaves it to the text. */
+/** The three directions as the choices of a menu: the two ways, or as the text itself says. */
+function DirectionChoices({ text }: { text: Text }) {
+  const { t } = useTranslation('text');
+  const setParagraph = useSetParagraph(text);
+  return (
+    <DropdownMenuRadioGroup
+      value={orNull(text.format.dir) ?? ''}
+      onValueChange={(next) => setParagraph({ dir: next as Paragraph['dir'] })}
+    >
+      {DIRECTIONS.map((value) => (
+        <DropdownMenuRadioItem key={value} value={value}>
+          {t(`direction.${value}`)}
+        </DropdownMenuRadioItem>
+      ))}
+    </DropdownMenuRadioGroup>
+  );
+}
+
+/**
+ * The button shows which way the paragraph reads now; the menu sets it, or leaves it to the text.
+ * In the row when there is room; otherwise in the alignment menu.
+ */
 export function DirectionTool() {
   const { t } = useTranslation('text');
+  const compact = useCompact();
   const text = useText();
-  const setParagraph = useSetParagraph(text);
-  if (!text) return null;
-  const { dir, direction } = text.format;
+  if (!text || compact) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <IconButton
           size="sm"
-          icon={direction === 'rtl' ? PilcrowLeft : PilcrowRight}
+          icon={text.format.direction === 'rtl' ? PilcrowLeft : PilcrowRight}
           label={t('direction.label')}
           shortcut="Ctrl+Shift+X"
-          data-direction={direction}
+          data-direction={text.format.direction}
           onMouseDown={keepFocus}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent onCloseAutoFocus={closeToText}>
-        <DropdownMenuRadioGroup
-          value={orNull(dir) ?? ''}
-          onValueChange={(next) => setParagraph({ dir: next as Paragraph['dir'] })}
-        >
-          {DIRECTIONS.map((value) => (
-            <DropdownMenuRadioItem key={value} value={value}>
-              {t(`direction.${value}`)}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+        <DirectionChoices text={text} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

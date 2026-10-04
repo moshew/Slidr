@@ -9,6 +9,7 @@ import {
   listStyleChange,
   mapMarks,
   mapParagraphs,
+  matchStyle,
   MIXED,
   paintMarks,
   paintParagraph,
@@ -17,6 +18,7 @@ import {
   pickFormat,
   readFormat,
   sampleRichText,
+  styleChange,
   type FormatContext,
 } from './format';
 
@@ -311,6 +313,128 @@ describe('reading the format', () => {
     expect(flippedDirection(sampleRichText(text(p([{ text: 'שלום' }], { dir: 'ltr' }))), ctx)).toBe(
       'rtl',
     );
+  });
+});
+
+describe('text styles of the theme', () => {
+  const rich = text(
+    p(
+      [
+        { text: 'כותרת ', marks: { size: 44, weight: 700, color: { token: 'accent' } } },
+        { text: 'נטויה', marks: { size: 44, weight: 700, italic: true, font: 'Rubik' } },
+        { text: ' link', marks: { link: 'https://example.com/', underline: true, case: 'upper' } },
+      ],
+      { lineHeight: 1.1, spaceAfter: 12, align: 'center' },
+    ),
+  );
+
+  it('reads the style of the paragraphs: the default one when none is named', () => {
+    expect(read(rich).styleRef).toBe('body');
+    expect(read(text(p([{ text: 'a' }], { styleRef: 'title' }))).styleRef).toBe('title');
+    expect(read(text(p([{ text: 'a' }], { styleRef: 'title' }), p([{ text: 'b' }]))).styleRef).toBe(
+      MIXED,
+    );
+    expect(read(text(p([{ text: 'a' }])), { ...ctx, styleRef: 'caption' }).styleRef).toBe(
+      'caption',
+    );
+  });
+
+  it('applying a style drops what the style defines, so the style shows; the rest stays', () => {
+    const change = styleChange('title');
+    const out = mapParagraphs(mapMarks(rich, change.marks), change.paragraphs);
+    expect(out).toEqual(
+      text(
+        p(
+          [
+            { text: 'כותרת ' },
+            { text: 'נטויה', marks: { italic: true } },
+            { text: ' link', marks: { link: 'https://example.com/', underline: true } },
+          ],
+          { styleRef: 'title', spaceAfter: 12, align: 'center' },
+        ),
+      ),
+    );
+    // What the toolbar then shows is the style's own.
+    const title = theme.textStyles.title;
+    expect(read(out)).toMatchObject({
+      styleRef: 'title',
+      size: title.size,
+      weight: title.weight,
+      lineHeight: title.lineHeight,
+    });
+  });
+
+  it('"update the style to match" takes what the text has, and the marks that then repeat it', () => {
+    const body = theme.textStyles.body;
+    const big = text(
+      p(
+        [
+          { text: 'גדול ', marks: { size: 44, weight: 700, color: { token: 'accent' } } },
+          {
+            text: 'אחר',
+            marks: { size: 44, weight: 700, color: { token: 'accent' }, italic: true },
+          },
+        ],
+        { lineHeight: 1.1 },
+      ),
+    );
+    const match = matchStyle(read(big), body);
+    expect(match?.style).toEqual({
+      ...body,
+      size: 44,
+      weight: 700,
+      color: { token: 'accent' },
+      lineHeight: 1.1,
+    });
+    // The font is a role of the theme, not a family: it is not taken.
+    expect(match?.style.font).toBe(body.font);
+    const out = mapParagraphs(mapMarks(big, match!.marks), match!.paragraphs);
+    expect(out).toEqual(text(p([{ text: 'גדול ' }, { text: 'אחר', marks: { italic: true } }])));
+  });
+
+  it('a value the text has more than one of is left as the style has it, and its marks stay', () => {
+    const body = theme.textStyles.body;
+    const mixed = text(
+      p([
+        { text: 'a', marks: { size: 44, letterSpacing: 2 } },
+        { text: 'b', marks: { size: 60, letterSpacing: 2 } },
+      ]),
+    );
+    const match = matchStyle(read(mixed), body);
+    expect(match?.style).toEqual({ ...body, letterSpacing: 2 });
+    expect(mapMarks(mixed, match!.marks).paragraphs[0]?.runs).toEqual([
+      { text: 'a', marks: { size: 44 } },
+      { text: 'b', marks: { size: 60 } },
+    ]);
+  });
+
+  it('a mark that says something else than the new style stays, in the rest of the paragraph', () => {
+    // The selection was "a" alone; the paragraph also holds "b", at another size.
+    const match = matchStyle(
+      read(text(p([{ text: 'a', marks: { size: 44 } }]))),
+      theme.textStyles.body,
+    );
+    const whole = text(
+      p([
+        { text: 'a', marks: { size: 44 } },
+        { text: 'b', marks: { size: 20 } },
+      ]),
+    );
+    expect(mapMarks(whole, match!.marks).paragraphs[0]?.runs).toEqual([
+      { text: 'a' },
+      { text: 'b', marks: { size: 20 } },
+    ]);
+  });
+
+  it('removes the letter spacing and the case of a style when the text has none', () => {
+    const spaced = { ...theme.textStyles.caption, letterSpacing: 3, case: 'upper' as const };
+    const plain = text(
+      p([{ text: 'a', marks: { letterSpacing: 0.5, case: 'lower' } }], { styleRef: 'caption' }),
+    );
+    const lower = matchStyle(read(plain), spaced);
+    expect(lower?.style).toMatchObject({ letterSpacing: 0.5, case: 'lower' });
+    // Text that shows the style as it is has nothing to update.
+    expect(matchStyle(read(text(p([{ text: 'a' }]))), theme.textStyles.body)).toBeNull();
   });
 });
 

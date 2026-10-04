@@ -43,6 +43,7 @@ import {
   useText,
   type Text,
 } from './shared';
+import { StyleRows } from './StyleTools';
 
 /* Row B for text, the character tools (WG4-T03): font, size, weight, B / I / U, more, colours. */
 
@@ -75,7 +76,7 @@ export function FontTool() {
           value={text.format.fontFromStyle ? null : family}
           fallback={family ?? undefined}
           mixed={font !== undefined && isMixed(font)}
-          className={compact ? 'w-24' : 'w-32'}
+          className={compact ? 'w-24' : 'w-28'}
           onChange={(next) => setMarks({ font: next })}
           onCloseAutoFocus={closeToText}
         />
@@ -89,7 +90,6 @@ const SIZES = [16, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 96, 112, 144];
 
 export function SizeTool() {
   const { t } = useTranslation('text');
-  const compact = useCompact();
   const text = useText();
   const setMarks = useSetMarks(text);
   const burst = useBurstTx();
@@ -112,7 +112,7 @@ export function SizeTool() {
       <NumberField
         size="sm"
         aria-label={t('size')}
-        className={compact ? 'w-16' : 'w-18'}
+        className="w-16"
         value={size}
         placeholder="–"
         min={1}
@@ -256,7 +256,10 @@ export function UnderlineTool() {
   );
 }
 
-/** Strikethrough, super / subscript, case and letter spacing; and the weight when the row is tight. */
+/**
+ * Strikethrough, super / subscript, case, letter spacing and "clear formatting"; and when the row
+ * is tight, what has no room in it: the weight, the highlight colour and the text style.
+ */
 export function MoreTool() {
   const { t } = useTranslation('text');
   const compact = useCompact();
@@ -327,9 +330,15 @@ export function MoreTool() {
         />
       </Row>
       {compact && (
-        <Row label={t('weight')}>
-          <WeightSelect text={text} variant="field" className="w-36" />
-        </Row>
+        <>
+          <Row label={t('weight')}>
+            <WeightSelect text={text} variant="field" className="w-36" />
+          </Row>
+          <Row label={t('highlight')}>
+            <HighlightField text={text} inPopover />
+          </Row>
+          <StyleRows text={text} />
+        </>
       )}
     </PopoverTool>
   );
@@ -361,32 +370,44 @@ export function ColorTool() {
   );
 }
 
+/** In the row when there is room; otherwise in the "more" popover. */
 export function HighlightTool() {
-  const { t } = useTranslation('text');
+  const compact = useCompact();
   const text = useText();
+  return text && !compact ? <HighlightField text={text} /> : null;
+}
+
+function HighlightField({ text, inPopover = false }: { text: Text; inPopover?: boolean }) {
+  const { t } = useTranslation('text');
   const setMarks = useSetMarks(text);
   const tx = useGestureTx();
-  if (!text) return null;
+  const slot = useRef<HTMLSpanElement>(null);
   const { highlight } = text.format;
   return (
-    <ColorField
-      size="sm"
-      icon={Highlighter}
-      label={t('highlight')}
-      value={orNull(highlight)}
-      mixed={isMixed(highlight)}
-      allowNone
-      alpha
-      onChange={(next) => {
-        setMarks({ highlight: next }, tx.id());
-        // "No colour" is a click, not a drag: the picker reports no end for it.
-        if (next === null) tx.end();
-      }}
-      onGestureEnd={tx.end}
-      onCloseAutoFocus={(event) => {
-        tx.end();
-        closeToText(event);
-      }}
-    />
+    <span ref={slot} className="inline-flex">
+      <ColorField
+        size="sm"
+        icon={Highlighter}
+        label={t('highlight')}
+        value={orNull(highlight)}
+        mixed={isMixed(highlight)}
+        allowNone
+        alpha
+        onChange={(next) => {
+          setMarks({ highlight: next }, tx.id());
+          // "No colour" is a click, not a drag: the picker reports no end for it.
+          if (next === null) tx.end();
+        }}
+        onGestureEnd={tx.end}
+        onCloseAutoFocus={(event) => {
+          tx.end();
+          if (!inPopover) return closeToText(event);
+          // Back to the popover this sits in, not to the swatch: a focused swatch shows its
+          // tooltip, and the next Esc would close that instead of the popover.
+          event.preventDefault();
+          slot.current?.closest<HTMLElement>('[role="dialog"]')?.focus();
+        }}
+      />
+    </span>
   );
 }
