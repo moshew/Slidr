@@ -117,6 +117,7 @@ export const L09: Rule = {
   check(ctx) {
     const all = arranged(ctx);
     const problems: Problem[] = [];
+    const said = new Set<string>();
     for (const side of ['left', 'right', 'top', 'bottom'] as const) {
       const classes = new Map<string, Item[]>();
       for (const item of all) {
@@ -131,6 +132,17 @@ export const L09: Rule = {
         if (cluster.length > 1 && values.at(-1)! - values[0]! > EQUAL) {
           const to = target(values);
           const axis = side === 'left' || side === 'right' ? 'x' : 'y';
+          // An object that sits 3px low is off at its top and at its bottom alike: one slip,
+          // said once. The same objects, the same distances, on the same axis.
+          const slip = `${axis} ${cluster
+            .map((item, i) => `${item.element.id}:${Math.round(to - values[i]!)}`)
+            .sort()
+            .join(' ')}`;
+          if (said.has(slip)) {
+            cluster = [];
+            return;
+          }
+          said.add(slip);
           const fix = snap(ctx, all, cluster, side, to);
           problems.push({
             elementIds: cluster.map((item) => item.element.id),

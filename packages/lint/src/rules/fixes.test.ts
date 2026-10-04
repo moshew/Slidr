@@ -224,3 +224,29 @@ describe('L05: a colour that reads, or a veil under the text', () => {
     expect(colours(byId(after, 'e_label'))).toEqual([{ value: '#ffffff' }]);
   });
 });
+
+describe('L05: text that is faint by its own opacity', () => {
+  it('takes an opaque colour that reads: the faintness goes with the colour that had it', () => {
+    const frame = { x: 160, y: 340, w: 800, h: 100 };
+    const faint = createElement.text({
+      id: 'e_label',
+      frame,
+      content: richText('Hello world', { marks: { color: { token: 'text', alpha: 0.35 } } }),
+    });
+    const blue: Rgb = [47, 91, 234];
+    const measured = {
+      e_label: {
+        box: frame,
+        text: text(frame, {
+          spans: [span({ color: [21, 23, 26], alpha: 0.35, backdrop: [blue] })],
+        }),
+      },
+    };
+    const [finding] = check('L05', [faint], measured);
+    const after = fixed([faint], finding).elements[0]!;
+    // Dark text does not read on this blue even when opaque; the theme's background does.
+    expect(after.type === 'text' && after.content.paragraphs[0]!.runs[0]!.marks?.color).toEqual({
+      token: 'bg',
+    });
+  });
+});

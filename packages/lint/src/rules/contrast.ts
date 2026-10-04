@@ -92,18 +92,27 @@ function fixOf(ctx: SlideContext, item: Item, worst: Faint): Command[] | undefin
   const prose = proseOf(element);
   if (!prose) return undefined;
   const { theme } = ctx.deck;
+  const colourOf = (run: Run, paragraph: Paragraph) =>
+    run.marks?.color ?? styleOf(theme, paragraph).color;
+  const failing = (run: Run, paragraph: Paragraph) => {
+    const drawn = colorRgb(theme, colourOf(run, paragraph));
+    return drawn !== undefined && distance(drawn, worst.span.color) <= 4;
+  };
+  const faint = prose.paragraphs.flatMap((p) =>
+    p.runs.filter((run) => run.text && failing(run, p)).map((run) => colourOf(run, p).alpha ?? 1),
+  );
+  // The colour that goes in is opaque: what stays of the faintness is the element's own.
+  const opacity = Math.min(1, worst.span.alpha / Math.max(...faint, worst.span.alpha));
   const reads = (rgb: Rgb, backdrop = worst.span.backdrop) =>
-    (spanContrast({ ...worst.span, color: rgb, backdrop })?.ratio ?? 0) >= worst.required;
+    (spanContrast({ ...worst.span, color: rgb, alpha: opacity, backdrop })?.ratio ?? 0) >=
+    worst.required;
 
   const recolour = (color: Color) => {
-    const failing = (run: Run, paragraph: Paragraph) => {
-      const drawn = colorRgb(theme, run.marks?.color ?? styleOf(theme, paragraph).color);
-      return drawn !== undefined && distance(drawn, worst.span.color) <= 4;
-    };
-    const some = prose.paragraphs.some((p) => p.runs.some((run) => run.text && failing(run, p)));
     // Where the model's colours cannot be read (a CSS colour that is not hex), all of it turns.
     const content = mapRuns(prose, (run, paragraph) =>
-      !some || failing(run, paragraph) ? { ...run, marks: { ...run.marks, color } } : run,
+      faint.length === 0 || failing(run, paragraph)
+        ? { ...run, marks: { ...run.marks, color } }
+        : run,
     );
     return content ? setText(ctx.slide.id, element.id, content) : undefined;
   };

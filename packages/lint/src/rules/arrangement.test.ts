@@ -72,7 +72,7 @@ describe('L09: edges that nearly line up', () => {
     expect(after.e_b_text?.x).toBe(128);
   });
 
-  it('compares tops and bottoms too, and leaves lines and turned elements out', () => {
+  it('compares tops and bottoms too, once for one slip, and leaves lines and turned elements out', () => {
     const elements: Element[] = [
       card('e_a', { x: 96, y: 300, w: 400, h: 200 }),
       card('e_b', { x: 600, y: 303, w: 400, h: 200 }),
@@ -86,12 +86,16 @@ describe('L09: edges that nearly line up', () => {
       }),
       { ...card('e_turned', { x: 1200, y: 302, w: 300, h: 200 }), rotation: 20 },
     ];
+    // One box 3px lower than its neighbour is off at its top and at its bottom: one finding.
     const findings = check('L09', elements);
-    expect(findings.map((f) => f.message.slice(0, 16))).toEqual([
+    expect(findings.map((f) => f.message.slice(0, 16))).toEqual(['The top edges of']);
+    expect(findings[0]?.elementIds).toEqual(['e_a', 'e_b']);
+    // A box that is 3px taller as well is off by another distance at its bottom: two.
+    const taller = [elements[0]!, card('e_b', { x: 600, y: 303, w: 400, h: 203 })];
+    expect(check('L09', taller).map((f) => f.message.slice(0, 16))).toEqual([
       'The top edges of',
       'The bottom edges',
     ]);
-    expect(findings.every((f) => f.elementIds.join() === 'e_a,e_b')).toBe(true);
   });
 });
 
