@@ -7,7 +7,15 @@
 import { builtInSamples, builtInTemplates } from '@slidr/templates/builtin';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { commands } from 'vitest/browser';
-import { acceptTemplate, brief, emptyReport, LANGUAGES, prepare, switchErrors } from './acceptance';
+import {
+  acceptTemplate,
+  brief,
+  emptyReport,
+  knownSwitchError,
+  LANGUAGES,
+  prepare,
+  switchErrors,
+} from './acceptance';
 
 const templates = builtInTemplates();
 const report = emptyReport();
@@ -52,7 +60,7 @@ describe('switching between the built-in templates', () => {
           });
           unexpected.push(
             ...findings
-              .filter((f) => !(f.rule === 'L05' && cameFrom.get(f.slideId) === 'l_shvil_cards'))
+              .filter((f) => !knownSwitchError(f, cameFrom))
               .map((f) => `${from.theme.id} to ${to.theme.id}, ${language.lang}: ${brief(f)}`),
           );
         }

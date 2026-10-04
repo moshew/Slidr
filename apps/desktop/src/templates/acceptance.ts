@@ -13,8 +13,14 @@ import { CommandBus, type Deck } from '@slidr/model';
 import { fixtureDecks } from '@slidr/model/fixtures';
 import { renderSlideOffscreen, type OffscreenSlide } from '@slidr/renderer';
 import { applyTemplate, type Template } from '@slidr/templates';
-import { sampleDeck, type SampleSlide } from '@slidr/templates/builtin';
-import { expect, test } from 'vitest';
+import {
+  builtInSamples,
+  builtInTemplates,
+  contractGaps,
+  sampleDeck,
+  type SampleSlide,
+} from '@slidr/templates/builtin';
+import { beforeAll, describe, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { registerBuiltinFonts } from '../fonts';
 import { createLintService } from '../lint/deckLint';
@@ -246,4 +252,54 @@ export function acceptTemplate(
       expect(found).toEqual([]);
     },
   );
+}
+
+/** The one difference the templates have between them: only the marketing cards seat photographs. */
+export const knownSwitchError = (
+  finding: LintFinding,
+  cameFrom: ReadonlyMap<string, string | undefined>,
+) => finding.rule === 'L05' && cameFrom.get(finding.slideId) === 'l_shvil_cards';
+
+/**
+ * Everything a template that is still being drawn is tried by, as the whole of a test file of
+ * its own (`<id>.draft.browser.test.ts`, beside this file): the role contract, the tests of
+ * `acceptTemplate` with a picture of every slide, and the sample decks of the templates already
+ * in the library moved to it, and its own moved to them.
+ */
+export function acceptDraft(id: string, template: Template, samples: Samples): void {
+  beforeAll(prepare);
+  describe(`the ${id} template`, () => {
+    test('seats the roles every built-in template seats', () => {
+      expect(template.layouts.flatMap(contractGaps)).toEqual([]);
+    });
+
+    acceptTemplate(id, template, samples, { each: true });
+
+    test(
+      'decks move between it and the templates of the library with no error',
+      { timeout: 900_000 },
+      async () => {
+        const found: string[] = [];
+        for (const other of builtInTemplates()) {
+          if (other.theme.id === id) continue;
+          const theirs = { template: other, samples: builtInSamples[other.theme.id]! };
+          for (const language of LANGUAGES) {
+            const here = await switchErrors(theirs, template, language);
+            found.push(
+              ...here.findings
+                .filter((f) => !knownSwitchError(f, here.cameFrom))
+                .map((f) => `${other.theme.id} to ${id}, ${language.lang}: ${brief(f)}`),
+            );
+            const there = await switchErrors({ template, samples }, other, language);
+            found.push(
+              ...there.findings.map(
+                (f) => `${id} to ${other.theme.id}, ${language.lang}: ${brief(f)}`,
+              ),
+            );
+          }
+        }
+        expect(found).toEqual([]);
+      },
+    );
+  });
 }
