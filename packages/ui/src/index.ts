@@ -46,6 +46,7 @@ export {
   PopoverTrigger,
   type DialogContentProps,
 } from './components/overlay';
+export { Field, type FieldProps } from './components/field';
 export { Input, TextField, type InputProps, type TextFieldProps } from './components/input';
 export { Textarea, type TextareaProps } from './components/textarea';
 export { NumberField, type NumberFieldProps } from './components/number-field';

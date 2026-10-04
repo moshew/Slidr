@@ -1,5 +1,6 @@
 import { useId, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { cx } from '../cx';
+import { Field } from './field';
 import { Icon, type LucideIcon } from './icon';
 
 export interface InputProps extends ComponentPropsWithRef<'input'> {
@@ -58,31 +59,18 @@ export interface TextFieldProps extends Omit<InputProps, 'invalid'> {
   error?: string;
 }
 
-/** An input with its label and a hint or error line. */
+/** An input with its label and a hint or error line: a `Field` around an `Input`. */
 export function TextField({ label, hint, error, id, className, ...props }: TextFieldProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
-  const message = error ?? hint;
-  const messageId = `${inputId}-message`;
   return (
-    <div className={cx('flex flex-col gap-1.5', className)}>
-      <label htmlFor={inputId} className="text-xs font-medium text-ui-fg-muted">
-        {label}
-      </label>
+    <Field label={label} hint={hint} error={error} htmlFor={inputId} className={className}>
       <Input
         id={inputId}
         invalid={Boolean(error)}
-        aria-describedby={message ? messageId : undefined}
+        aria-describedby={(error ?? hint) ? `${inputId}-message` : undefined}
         {...props}
       />
-      {message && (
-        <p
-          id={messageId}
-          className={cx('text-xs', error ? 'text-ui-danger-fg' : 'text-ui-fg-muted')}
-        >
-          {message}
-        </p>
-      )}
-    </div>
+    </Field>
   );
 }
