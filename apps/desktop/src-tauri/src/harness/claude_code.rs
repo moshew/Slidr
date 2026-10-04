@@ -829,7 +829,10 @@ impl StreamMapper {
         }
         let total = line["total_cost_usd"].as_f64();
         let cost_usd = match (self.cost_baseline, total) {
-            (Some(before), Some(total)) => Some((total - before).max(0.0)),
+            // A process that was killed leaves the CLI's running total behind, and the next one
+            // counts from zero (ADR-066): a total below the last one is this process's own.
+            (Some(before), Some(total)) if total < before => Some(total),
+            (Some(before), Some(total)) => Some(total - before),
             _ => None,
         };
         if total.is_some() {
@@ -1165,6 +1168,32 @@ mod tests {
         assert_eq!(costs.len(), 2);
         assert!(close_to(costs[0], 0.1906));
         assert!(close_to(costs[1], 0.0101));
+    }
+
+    #[test]
+    fn cost_of_a_turn_after_a_killed_process_is_its_own_total() {
+        let result = |total: f64| {
+            json!({ "type": "result", "subtype": "success", "is_error": false, "result": "ok",
+                    "total_cost_usd": total, "duration_ms": 900, "usage": {} })
+        };
+        // The conversation had cost 0.6693 when its last process was killed mid-turn. A process
+        // that ends that way leaves the CLI's running total behind: the next one counts from zero
+        // (ADR-066, finding 4), and its first turn cost what its total says.
+        let mut mapper = StreamMapper::new(true, false);
+        mapper.cost_baseline = Some(0.6693);
+        mapper
+            .map(&json!({ "type": "system", "subtype": "init", "session_id": "s", "model": "m" }));
+        let costs: Vec<Option<f64>> = [0.0412, 0.0530]
+            .into_iter()
+            .flat_map(|total| mapper.map(&result(total)))
+            .filter_map(|event| match event {
+                AgentEvent::TurnCompleted { cost_usd, .. } => Some(cost_usd),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(costs.len(), 2);
+        assert!(close_to(costs[0], 0.0412));
+        assert!(close_to(costs[1], 0.0118));
     }
 
     #[test]
