@@ -38,6 +38,8 @@ const exempt: Record<string, string> = {
   'apps/desktop/src/present/Show.tsx': 'the show: black around the slide, on the screen (ADR-030)',
   'apps/desktop/src/capture/deckCapture.ts':
     'the contact sheet an agent gets: a picture on a canvas',
+  'apps/desktop/src/templates/acceptance.ts':
+    'the contact sheet a template is accepted on: a picture on a canvas (ADR-063)',
 
   // The stand-ins of a plain browser page, which paint the pictures that a provider or a photo
   // library would return.
