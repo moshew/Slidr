@@ -36,6 +36,48 @@ describe('L09: edges that nearly line up', () => {
     ).toEqual([]);
   });
 
+  it('leaves alone a slip of less than a pixel', () => {
+    // What rendering leaves between two text boxes that were meant to share an edge.
+    expect(
+      check('L09', [
+        card('e_a', { x: 96, y: 200, w: 500, h: 200 }),
+        card('e_b', { x: 96.8, y: 440, w: 300, h: 200 }),
+      ]),
+    ).toEqual([]);
+    expect(
+      check('L09', [
+        card('e_a', { x: 96, y: 200, w: 500, h: 200 }),
+        card('e_b', { x: 97, y: 440, w: 300, h: 200 }),
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it('reports one cause once: rows that are each off by the same distance', () => {
+    // Two cards side by side; everything in the second sits 3px lower, as under a border.
+    const row = (n: number, y: number) => [
+      card(`e_left${n}`, { x: 96, y, w: 400, h: 60 }),
+      card(`e_right${n}`, { x: 1000, y: y + 3, w: 400, h: 60 }),
+    ];
+    const elements = [...row(1, 200), ...row(2, 340), ...row(3, 480)];
+    const [finding, ...rest] = check('L09', elements);
+    expect(rest).toEqual([]);
+    expect(finding?.elementIds).toEqual([
+      'e_left1',
+      'e_right1',
+      'e_left2',
+      'e_right2',
+      'e_left3',
+      'e_right3',
+    ]);
+    expect(finding?.message).toBe(
+      'The top edges of 3 sets of objects nearly line up, each set off by the same distance (the first: "e_left1", "e_right1" at y = 200, 203): within 6px of each other, and not equal. Align each set; the first at y = 200.',
+    );
+    // One fix lines up every row.
+    const after = fixed(elements, finding);
+    expect(check('L09', after.elements)).toEqual([]);
+    expect([1, 2, 3].map((n) => frames(after)[`e_right${n}`]?.y)).toEqual([200, 340, 480]);
+  });
+
   it('between equals, takes the value that sits on the 8px unit', () => {
     const elements = [
       card('e_a', { x: 99, y: 200, w: 300, h: 200 }),

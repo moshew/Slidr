@@ -7,6 +7,8 @@ import { drawnDirection } from '../text';
 export const NEAR = 6;
 /** Rendering lands on fractions of a pixel: edges this close are equal. */
 const EQUAL = 0.5;
+/** The smallest slip that is one (SPEC 9.2: from 1px): under it, nobody sees the difference. */
+const SLIP = 1;
 /** The spacing unit of the guidelines (SPEC 9.1): a value on it is the likelier intent. */
 const UNIT = 8;
 
@@ -70,16 +72,23 @@ function target(values: number[]): number {
     .sort((a, b) => offUnit(a) - offUnit(b) || a - b)[0]!;
 }
 
+/** Objects whose edges on one side nearly line up, and the value they go to. */
+interface Miss {
+  cluster: Item[];
+  values: number[];
+  to: number;
+}
+
 /**
- * The fix: every edge of the cluster goes to the value most of them hold. An element moves,
+ * The fix: every edge of a cluster goes to the value most of them hold. An element moves,
  * with what sits on it; unless its opposite edge is already lined up with another object's,
  * and then it is resized, so that fixing one edge does not break the other.
  */
-function snap(ctx: SlideContext, all: Item[], cluster: Item[], side: Side, to: number): Command[] {
+function snap(ctx: SlideContext, all: Item[], side: Side, misses: readonly Miss[]): Command[] {
   const moves = new Map<string, Move>();
   const resizes: Command[] = [];
   const horizontal = side === 'left' || side === 'right';
-  for (const item of cluster) {
+  for (const { item, to } of misses.flatMap((m) => m.cluster.map((item) => ({ item, to: m.to })))) {
     const by = to - EDGE[side](item.measure.box);
     if (Math.abs(by) <= EQUAL) continue;
     const other = EDGE[OPPOSITE[side]](item.measure.box);
@@ -105,10 +114,17 @@ function snap(ctx: SlideContext, all: Item[], cluster: Item[], side: Side, to: n
   return [...moveTops(ctx, moves), ...resizes];
 }
 
+const quoted = (cluster: Item[]) => cluster.map((item) => `"${item.element.id}"`).join(', ');
+
 /**
  * L09: edges of objects that nearly line up. Objects whose left edges stand at 96, 98 and 101
  * were meant to share one, and the eye sees that they do not. Only edges that show are compared
  * (see `shows`).
+ *
+ * One cause is one finding. An object that sits 3px low is off at its top and at its bottom
+ * alike; and the content of a card that is 3px lower than its neighbour's is off row by row,
+ * every row by the same 3px. Sets of objects that are off on the same side by the same amounts
+ * are reported together, and fixed together.
  */
 export const L09: Rule = {
   id: 'L09',
@@ -119,6 +135,7 @@ export const L09: Rule = {
     const problems: Problem[] = [];
     const said = new Set<string>();
     for (const side of ['left', 'right', 'top', 'bottom'] as const) {
+      const axis = side === 'left' || side === 'right' ? 'x' : 'y';
       const classes = new Map<string, Item[]>();
       for (const item of all) {
         const of = shows(ctx, item, side);
@@ -126,29 +143,25 @@ export const L09: Rule = {
         if (!classes.has(of)) classes.set(of, []);
         classes.get(of)!.push(item);
       }
+      /** The misses of this side, by how far their objects are off: the same slip, repeated. */
+      const causes = new Map<string, Miss[]>();
       let cluster: Item[] = [];
       const flush = () => {
         const values = cluster.map((item) => EDGE[side](item.measure.box));
-        if (cluster.length > 1 && values.at(-1)! - values[0]! > EQUAL) {
-          const to = target(values);
-          const axis = side === 'left' || side === 'right' ? 'x' : 'y';
-          // An object that sits 3px low is off at its top and at its bottom alike: one slip,
-          // said once. The same objects, the same distances, on the same axis.
+        if (cluster.length > 1 && values.at(-1)! - values[0]! >= SLIP) {
+          // How far each edge stands from the first: the shape of the slip.
+          const offsets = values.map((value) => Math.round(value - values[0]!));
+          // The same objects, the same distances, on the same axis: said once.
           const slip = `${axis} ${cluster
-            .map((item, i) => `${item.element.id}:${Math.round(to - values[i]!)}`)
+            .map((item, i) => `${item.element.id}:${offsets[i]}`)
             .sort()
             .join(' ')}`;
-          if (said.has(slip)) {
-            cluster = [];
-            return;
+          if (!said.has(slip)) {
+            said.add(slip);
+            const cause = offsets.join(' ');
+            if (!causes.has(cause)) causes.set(cause, []);
+            causes.get(cause)!.push({ cluster, values, to: target(values) });
           }
-          said.add(slip);
-          const fix = snap(ctx, all, cluster, side, to);
-          problems.push({
-            elementIds: cluster.map((item) => item.element.id),
-            message: `The ${side} edges of ${cluster.map((item) => `"${item.element.id}"`).join(', ')} nearly line up (${axis} = ${values.map(round).join(', ')}): within ${NEAR}px of each other, and not equal. Align them at ${axis} = ${round(to)}.`,
-            ...(fix.length ? { fix } : {}),
-          });
         }
         cluster = [];
       };
@@ -160,6 +173,23 @@ export const L09: Rule = {
           cluster.push(item);
         }
         flush();
+      }
+      for (const misses of causes.values()) {
+        const [first] = misses as [Miss, ...Miss[]];
+        // Every set goes the way the first one goes: rows that move one up and one down would
+        // be lined up in pairs and uneven in their columns.
+        const lead = first.values.findIndex((value) => Math.abs(value - first.to) <= EQUAL);
+        for (const miss of misses) miss.to = miss.values[lead]!;
+        const fix = snap(ctx, all, side, misses);
+        const at = `${axis} = ${first.values.map(round).join(', ')}`;
+        problems.push({
+          elementIds: misses.flatMap((miss) => miss.cluster.map((item) => item.element.id)),
+          message:
+            misses.length === 1
+              ? `The ${side} edges of ${quoted(first.cluster)} nearly line up (${at}): within ${NEAR}px of each other, and not equal. Align them at ${axis} = ${round(first.to)}.`
+              : `The ${side} edges of ${misses.length} sets of objects nearly line up, each set off by the same distance (the first: ${quoted(first.cluster)} at ${at}): within ${NEAR}px of each other, and not equal. Align each set; the first at ${axis} = ${round(first.to)}.`,
+          ...(fix.length ? { fix } : {}),
+        });
       }
     }
     return problems;
