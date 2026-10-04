@@ -22,8 +22,10 @@ import {
   formatBytes,
   ltr,
   planExport,
+  planMedia,
   type Destination,
   type ExportChoices,
+  type MediaPlan,
 } from './exportDeck';
 import { warningText } from './warnings';
 
@@ -61,10 +63,15 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
   const [from, setFrom] = useState(1);
   const [to, setTo] = useState(total);
   const [animations, setAnimations] = useState(true);
+  const [mediaBeside, setMediaBeside] = useState(false);
   const [phase, setPhase] = useState<Phase>({ at: 'choose' });
 
-  const choices: ExportChoices = { range: ranged ? { from, to } : null, animations };
-  const plan = planExport(deck, choices.range);
+  const range = ranged ? { from, to } : null;
+  const plan = planExport(deck, range);
+  // The video and audio of the slides that will be exported, and what they weigh (MED-05).
+  const media = planMedia(deck, plan.slideIds);
+  const beside = media.assets.length > 0 && (mediaBeside || media.tooLarge);
+  const choices: ExportChoices = { range, animations, media: beside ? 'beside' : 'inside' };
 
   const run = async () => {
     const name = exportFileName(
@@ -79,7 +86,12 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
     const outcome = await exportTo(editor, deck, choices, destination);
     if (outcome.ok) setPhase({ at: 'done', ...outcome });
     else {
-      const title = outcome.step === 'save' ? t('failed.save') : t('failed.title');
+      const title =
+        outcome.step === 'save'
+          ? t('failed.save')
+          : outcome.step === 'media'
+            ? t('failed.media')
+            : t('failed.title');
       setPhase({ at: 'failed', title, message: outcome.message });
     }
   };
@@ -180,6 +192,9 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
                 <p className="text-xs text-ui-fg-muted">{t('animations.withoutHint')}</p>
               )}
             </Section>
+            {media.assets.length > 0 && (
+              <MediaChoice media={media} beside={beside} onChange={setMediaBeside} />
+            )}
           </div>
         )}
         {phase.at === 'working' && (
@@ -203,6 +218,56 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
   );
 }
 
+/**
+ * Where the video and audio of the deck go (MED-05, EXP-08): inside the file, which stays one
+ * file and grows by all of them, or in a folder beside it. Shown only for a deck that has any.
+ * The size is said before the export, with a warning when it is large; media too large for one
+ * file can only go beside it.
+ */
+function MediaChoice({
+  media,
+  beside,
+  onChange,
+}: {
+  media: MediaPlan;
+  beside: boolean;
+  onChange: (beside: boolean) => void;
+}) {
+  const { t } = useTranslation('export');
+  const count = counted(t, 'media.count', media.assets.length);
+  const hint = beside
+    ? media.tooLarge
+      ? t('media.tooLarge', { count, size: ltr(formatBytes(media.bytes)) })
+      : t('media.besideHint', { count, size: ltr(formatBytes(media.bytes)) })
+    : media.large
+      ? t('media.large', { count, size: ltr(formatBytes(media.inFile)) })
+      : t('media.insideHint', { count, size: ltr(formatBytes(media.inFile)) });
+  const warns = media.tooLarge || (!beside && media.large);
+  return (
+    <Section title={t('media.label')}>
+      <SegmentedControl
+        aria-label={t('media.label')}
+        className="self-start"
+        value={beside ? 'beside' : 'inside'}
+        onValueChange={(where) => onChange(where === 'beside')}
+        options={[
+          { value: 'inside', label: t('media.inside'), disabled: media.tooLarge },
+          { value: 'beside', label: t('media.beside') },
+        ]}
+      />
+      <p
+        data-testid="export-media"
+        data-warning={warns}
+        role={warns ? 'status' : undefined}
+        className="flex items-start gap-2 text-xs text-ui-fg-muted"
+      >
+        {warns && <Icon icon={TriangleAlert} className="mt-0.5 shrink-0 text-ui-warning-fg" />}
+        <span>{hint}</span>
+      </p>
+    </Section>
+  );
+}
+
 /** What went into the file. */
 function Report({
   editor,
@@ -221,6 +286,10 @@ function Report({
   const fontBytes = fonts.reduce((sum, font) => sum + font.bytes, 0);
   const fontOriginal = fonts.reduce((sum, font) => sum + font.originalBytes, 0);
   const where = destination.kind === 'file' ? destination.path : destination.name;
+  // Video and audio that are in the folder beside the file are listed apart from what is in it.
+  const inFile = result.assets.filter((asset) => asset.file === undefined);
+  const besideFile = result.assets.filter((asset) => asset.file !== undefined);
+  const nameOf = (id: string) => assets[id]?.name ?? assets[id]?.file ?? id;
 
   return (
     <div data-testid="export-report" className="flex flex-col gap-4">
@@ -255,8 +324,31 @@ function Report({
               </ul>
             </Section>
           )}
+          {besideFile.length > 0 && result.mediaFolder !== undefined && (
+            <Section title={t('done.media')}>
+              <span data-testid="export-media-folder">
+                {destination.kind === 'file'
+                  ? t('done.mediaFolder', { folder: ltr(result.mediaFolder) })
+                  : t('done.mediaDownloaded', { folder: ltr(result.mediaFolder) })}
+              </span>
+              <ul data-testid="export-media-files" className="flex flex-col gap-1">
+                {besideFile.map((asset) => (
+                  <li key={asset.id} className="flex items-center gap-3">
+                    <span className="flex min-w-0 flex-1">
+                      <span dir="auto" className="truncate">
+                        {nameOf(asset.id)}
+                      </span>
+                    </span>
+                    <span dir="ltr" className="w-16 text-end tabular-nums">
+                      {formatBytes(asset.originalBytes)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
           <Section title={t('done.assets')}>
-            {result.assets.length === 0 ? (
+            {inFile.length === 0 ? (
               <span className="text-ui-fg-muted">{t('done.noAssets')}</span>
             ) : (
               <ul data-testid="export-assets" className="flex flex-col gap-1">
@@ -265,29 +357,26 @@ function Report({
                   <span className="w-16 text-end">{t('done.original')}</span>
                   <span className="w-16 text-end">{t('done.embedded')}</span>
                 </li>
-                {result.assets.map((asset) => {
-                  const meta = assets[asset.id];
-                  return (
-                    <li key={asset.id} className="flex items-center gap-3">
-                      <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-                        <span dir="auto" className="truncate">
-                          {meta?.name ?? meta?.file ?? asset.id}
+                {inFile.map((asset) => (
+                  <li key={asset.id} className="flex items-center gap-3">
+                    <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+                      <span dir="auto" className="truncate">
+                        {nameOf(asset.id)}
+                      </span>
+                      {asset.width !== undefined && asset.height !== undefined && (
+                        <span dir="ltr" className="shrink-0 text-xs text-ui-fg-muted">
+                          {asset.width}×{asset.height}
                         </span>
-                        {asset.width !== undefined && asset.height !== undefined && (
-                          <span dir="ltr" className="shrink-0 text-xs text-ui-fg-muted">
-                            {asset.width}×{asset.height}
-                          </span>
-                        )}
-                      </span>
-                      <span dir="ltr" className="w-16 text-end text-ui-fg-muted tabular-nums">
-                        {formatBytes(asset.originalBytes)}
-                      </span>
-                      <span dir="ltr" className="w-16 text-end tabular-nums">
-                        {formatBytes(asset.bytes)}
-                      </span>
-                    </li>
-                  );
-                })}
+                      )}
+                    </span>
+                    <span dir="ltr" className="w-16 text-end text-ui-fg-muted tabular-nums">
+                      {formatBytes(asset.originalBytes)}
+                    </span>
+                    <span dir="ltr" className="w-16 text-end tabular-nums">
+                      {formatBytes(asset.bytes)}
+                    </span>
+                  </li>
+                ))}
               </ul>
             )}
           </Section>

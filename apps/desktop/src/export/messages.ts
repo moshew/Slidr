@@ -29,6 +29,20 @@ export const he = {
     without: 'בלי',
     withoutHint: 'כל שקף יוצג שלם, והמעבר לשקף הבא יהיה מיידי.',
   },
+  media: {
+    label: 'וידאו ואודיו',
+    inside: 'בתוך הקובץ',
+    beside: 'בתיקייה ליד הקובץ',
+    countOne: 'קובץ מדיה אחד',
+    countMany: '{{n}} קובצי מדיה',
+    insideHint: '{{count}}: הקובץ יגדל בכ-{{size}}.',
+    large:
+      '{{count}}: הקובץ יגדל בכ-{{size}}. קובץ כזה נפתח לאט וקשה לשלוח אותו; אפשר לשמור את המדיה בתיקייה ליד הקובץ.',
+    besideHint:
+      '{{count}}, {{size}}, יישמרו בתיקייה ליד הקובץ. כדי שיתנגנו, התיקייה צריכה לעבור יחד עם הקובץ.',
+    tooLarge:
+      '{{count}}, {{size}}: יותר ממה שקובץ אחד יכול להכיל. המדיה תישמר בתיקייה ליד הקובץ, והתיקייה צריכה לעבור יחד איתו.',
+  },
   working: 'מייצא את המצגת…',
   done: {
     saved: 'הקובץ נשמר',
@@ -46,6 +60,10 @@ export const he = {
     original: 'במצגת',
     embedded: 'בקובץ',
     warnings: 'לתשומת לבכם',
+    media: 'מדיה ליד הקובץ',
+    mediaFolder: 'בתיקייה {{folder}}, ליד הקובץ. היא צריכה לעבור יחד איתו.',
+    mediaDownloaded:
+      'קובצי המדיה ירדו בנפרד. כדי שיתנגנו, יש לשים אותם בתיקייה בשם {{folder}} ליד הקובץ.',
   },
   warning: {
     assetUnreadable: 'הנכס {{name}} לא נקרא, והוא חסר בקובץ.',
@@ -57,6 +75,7 @@ export const he = {
   failed: {
     title: 'הייצוא נכשל',
     save: 'הקובץ לא נשמר',
+    media: 'המדיה לא הועתקה',
   },
 };
 
@@ -86,6 +105,20 @@ export const en: typeof he = {
     without: 'Without',
     withoutHint: 'Every slide is shown whole, and the next one comes at once.',
   },
+  media: {
+    label: 'Video and audio',
+    inside: 'Inside the file',
+    beside: 'In a folder beside it',
+    countOne: 'One media file',
+    countMany: '{{n}} media files',
+    insideHint: '{{count}}: the file grows by about {{size}}.',
+    large:
+      '{{count}}: the file grows by about {{size}}. A file that large is slow to open and hard to send; the media can go in a folder beside the file instead.',
+    besideHint:
+      '{{count}}, {{size}}, go into a folder beside the file. They play only when the folder travels with the file.',
+    tooLarge:
+      '{{count}}, {{size}}: more than one file can hold. The media goes into a folder beside the file, and the folder has to travel with it.',
+  },
   working: 'Exporting the deck…',
   done: {
     saved: 'The file was saved',
@@ -104,6 +137,10 @@ export const en: typeof he = {
     original: 'In the deck',
     embedded: 'In the file',
     warnings: 'Worth knowing',
+    media: 'Media beside the file',
+    mediaFolder: 'In the folder {{folder}}, beside the file. It has to travel with the file.',
+    mediaDownloaded:
+      'The media files were downloaded separately. To play, they belong in a folder named {{folder}} beside the file.',
   },
   warning: {
     assetUnreadable: 'The asset {{name}} could not be read, and is missing from the file.',
@@ -117,5 +154,6 @@ export const en: typeof he = {
   failed: {
     title: 'The export failed',
     save: 'The file was not saved',
+    media: 'The media was not copied',
   },
 };

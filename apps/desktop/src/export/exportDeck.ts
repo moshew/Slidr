@@ -1,5 +1,5 @@
 import { exportHtml, type ExportResult } from '@slidr/html-export';
-import type { AssetMeta, Deck } from '@slidr/model';
+import { referencedAssetIds, type AssetMeta, type Deck } from '@slidr/model';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 import type { Editor } from '../shell';
@@ -17,6 +17,8 @@ export interface ExportChoices {
   range: { from: number; to: number } | null;
   /** False leaves the transitions and the animations out. */
   animations: boolean;
+  /** Where video and audio go: inside the file, or in a folder beside it (MED-05). */
+  media: 'inside' | 'beside';
 }
 
 export interface ExportPlan {
@@ -35,6 +37,65 @@ export function planExport(deck: Deck, range: ExportChoices['range']): ExportPla
     slideIds: within.filter((slide) => !slide.hidden).map((slide) => slide.id),
     hidden: within.filter((slide) => slide.hidden).length,
   };
+}
+
+/* ---------------------------------------------------------------- video and audio (MED-05) */
+
+/**
+ * Media that adds more than this to the file gets a warning: a file past the size most mail
+ * services take is hard to send, and slow to open.
+ */
+export const LARGE_MEDIA_BYTES = 25_000_000;
+
+/**
+ * Media that would add more than this cannot go inside the file at all. The whole file is one
+ * string in the webview while it is built, and a string has a largest size; well before it the
+ * export takes memory several times the size of the media.
+ */
+export const MEDIA_INSIDE_LIMIT_BYTES = 300_000_000;
+
+/** What bytes add to a file that carries them inside: a data URI is four characters for three. */
+export const embeddedSize = (bytes: number): number => Math.ceil(bytes / 3) * 4;
+
+export interface MediaPlan {
+  /** The video and audio the exported slides use. */
+  assets: AssetMeta[];
+  /** Their size as files. */
+  bytes: number;
+  /** What they would add to the file, inside it. */
+  inFile: number;
+  /** Inside the file they would make it large enough to warn about. */
+  large: boolean;
+  /** Too large to go inside the file. */
+  tooLarge: boolean;
+}
+
+/** The video and audio of the slides an export writes, and what they weigh. */
+export function planMedia(deck: Deck, slideIds: readonly string[]): MediaPlan {
+  const chosen = new Set(slideIds);
+  const used = referencedAssetIds({ ...deck, slides: deck.slides.filter((s) => chosen.has(s.id)) });
+  const assets = Object.values(deck.assets).filter(
+    (asset) => (asset.kind === 'video' || asset.kind === 'audio') && used.has(asset.id),
+  );
+  const bytes = assets.reduce((sum, asset) => sum + asset.bytes, 0);
+  const inFile = embeddedSize(bytes);
+  return {
+    assets,
+    bytes,
+    inFile,
+    large: inFile > LARGE_MEDIA_BYTES,
+    tooLarge: inFile > MEDIA_INSIDE_LIMIT_BYTES,
+  };
+}
+
+/**
+ * The name of the media folder of an exported file: the file's name without `.html`, and
+ * `_media`. In the app the folder is made by Rust, which derives the same name from the path
+ * (`media_folder_name` in `commands.rs`) and says what it is; this is for a plain browser.
+ */
+export function mediaFolderName(fileName: string): string {
+  const name = fileName.split(/[\\/]/).at(-1) ?? fileName;
+  return `${name.replace(/\.html?$/i, '')}_media`;
 }
 
 /** The characters Windows does not take in a file name, and control characters. */
@@ -88,23 +149,43 @@ export async function chooseDestination(
   return { kind: 'file', path: /\.html?$/i.test(chosen) ? chosen : `${chosen}.html` };
 }
 
-/** The deck as one HTML file. The assets are read from where the renderer loads them. */
+/** An asset's bytes, from where the renderer loads it; undefined when the file is not at hand. */
+async function assetBlob(editor: Editor, asset: AssetMeta): Promise<Blob | undefined> {
+  const url = editor.assets.url(asset);
+  if (!url) return undefined;
+  const response = await fetch(url);
+  return response.ok ? response.blob() : undefined;
+}
+
+/**
+ * The deck as one HTML file. The assets are read from where the renderer loads them. With
+ * `mediaFolder` the video and audio are not read: the file refers to them in that folder.
+ */
 export function exportDeck(
   editor: Editor,
   deck: Deck,
   choices: ExportChoices,
+  mediaFolder?: string,
 ): Promise<ExportResult> {
-  const loadAsset = async (asset: AssetMeta): Promise<Blob | undefined> => {
-    const url = editor.assets.url(asset);
-    if (!url) return undefined;
-    const response = await fetch(url);
-    return response.ok ? response.blob() : undefined;
-  };
   return exportHtml(deck, {
-    loadAsset,
+    loadAsset: (asset) => assetBlob(editor, asset),
     slideIds: planExport(deck, choices.range).slideIds,
     animations: choices.animations,
+    ...(mediaFolder === undefined ? {} : { mediaFolder }),
   });
+}
+
+/** Hands a file to the browser as a download. */
+function download(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // After the browser has taken the download.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /** Writes the file out. Rejects with the reason when it could not be written. */
@@ -116,15 +197,55 @@ export async function writeExport(destination: Destination, html: string): Promi
     });
     return;
   }
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = destination.name;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  // After the browser has taken the download.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  download(new Blob([html], { type: 'text/html' }), destination.name);
+}
+
+/** The media folder of an export: its name, and the files that could not be put in it. */
+interface PlacedMedia {
+  folder: string;
+  /** File names of assets that are not at hand. */
+  missing: string[];
+}
+
+/** What `export_copy_media` answers (see `commands.rs`). */
+interface CopiedMedia {
+  folder: string;
+  files: { file: string; bytes: number }[];
+  missing: string[];
+}
+
+/**
+ * Puts the video and audio of an export in the folder beside the file (MED-05).
+ *
+ * In the app Rust copies them from the workspace: the webview says which file the export is and
+ * which assets go with it, and never reads or names a path for them. Rust derives the folder
+ * from the path of the file and says what it is called.
+ *
+ * A plain browser has no folder to write to: each file is a download of its own, and the report
+ * says in which folder they belong.
+ */
+async function placeMedia(
+  editor: Editor,
+  destination: Destination,
+  media: readonly AssetMeta[],
+): Promise<PlacedMedia> {
+  if (destination.kind === 'file') {
+    const workspaceId = editor.document?.workspace?.id;
+    if (!workspaceId) throw new Error('The document has no workspace to copy media from.');
+    const copied = await invoke<CopiedMedia>('export_copy_media', {
+      workspaceId,
+      path: destination.path,
+      files: media.map((asset) => asset.file),
+    });
+    return { folder: copied.folder, missing: copied.missing };
+  }
+  const missing: string[] = [];
+  for (const asset of media) {
+    const blob = await assetBlob(editor, asset).catch(() => undefined);
+    if (blob) download(blob, asset.file);
+    else missing.push(asset.file);
+  }
+  return { folder: mediaFolderName(destination.name), missing };
 }
 
 const reason = (error: unknown): string =>
@@ -137,9 +258,13 @@ const reason = (error: unknown): string =>
 /** How an export ended: with a file, or at the step that failed. */
 export type Outcome =
   | { ok: true; result: ExportResult; destination: Destination; seconds: number }
-  | { ok: false; step: 'export' | 'save'; message: string };
+  | { ok: false; step: 'export' | 'media' | 'save'; message: string };
 
-/** Exports the deck and writes the file to a destination already chosen. */
+/**
+ * Exports the deck and writes the file to a destination already chosen. With the media beside
+ * the file, the media is put in its folder first: a file is never written that points at media
+ * which could not be copied.
+ */
 export async function exportTo(
   editor: Editor,
   deck: Deck,
@@ -147,12 +272,36 @@ export async function exportTo(
   destination: Destination,
 ): Promise<Outcome> {
   const started = performance.now();
+  const { slideIds } = planExport(deck, choices.range);
+  const media = choices.media === 'beside' ? planMedia(deck, slideIds).assets : [];
+  let placed: PlacedMedia | undefined;
+  if (media.length > 0) {
+    try {
+      placed = await placeMedia(editor, destination, media);
+    } catch (error) {
+      console.error('The media of the export was not copied', error);
+      return { ok: false, step: 'media', message: reason(error) };
+    }
+  }
   let result: ExportResult;
   try {
-    result = await exportDeck(editor, deck, choices);
+    result = await exportDeck(editor, deck, choices, placed?.folder);
   } catch (error) {
     console.error('Export failed', error);
     return { ok: false, step: 'export', message: reason(error) };
+  }
+  if (placed?.missing.length) {
+    // What is not at hand is said, as it is for an asset that could not be read into the file.
+    const missing = new Set(placed.missing);
+    for (const asset of media.filter((a) => missing.has(a.file))) {
+      const subject = asset.name ?? asset.file;
+      result.warnings.push({
+        code: 'asset-unreadable',
+        subject,
+        message: `Asset ${subject} could not be read`,
+      });
+    }
+    result.assets = result.assets.filter((a) => a.file === undefined || !missing.has(a.file));
   }
   try {
     await writeExport(destination, result.html);

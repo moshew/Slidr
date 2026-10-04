@@ -1,6 +1,7 @@
 import type { AssetMeta } from '@slidr/model';
 import { createRoot } from 'react-dom/client';
 import { i18n } from '../i18n';
+import { stopPlayback } from '../media/playback';
 import { focusStage, tell, type Editor } from '../shell';
 import { Show } from './Show';
 
@@ -40,6 +41,8 @@ export function startPresenting(editor: Editor, options: PresentOptions): boolea
   const selection = editor.selection.getState();
   // Text being edited is in the model already; the editor's caret has no place under a show.
   selection.stopEditing();
+  // A clip the editor is playing in place would be heard under the show: it goes back to rest.
+  stopPlayback();
   const current = deck.slides.findIndex((slide) => slide.id === selection.currentSlideId);
   const first = deck.slides.findIndex((slide) => !slide.hidden);
   const start = options.from === 'current' && current !== -1 ? current : Math.max(first, 0);

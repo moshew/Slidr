@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { AssetMeta } from '@slidr/model';
 import { cx, Tooltip } from '@slidr/ui';
 import { useEditor } from '../shell';
+import { startAssetDrag } from './drag';
 
 /* The pieces the tabs of the media panel share: a tab's frame, a titled group, a picture tile. */
 
@@ -59,6 +60,9 @@ export function AssetTile({
         aria-label={label}
         data-asset={asset.id}
         onClick={onPick}
+        // The tile can also be dragged onto the slide, to land where it is dropped.
+        draggable
+        onDragStart={(event) => startAssetDrag(event, asset.id)}
         className={cx(
           'aspect-square cursor-default overflow-hidden rounded-control border border-ui-line bg-ui-field transition-colors',
           'hover:border-ui-accent focus-visible:-outline-offset-2',
