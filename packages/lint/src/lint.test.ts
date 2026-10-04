@@ -139,10 +139,15 @@ describe('lintSlide', () => {
     const busy = { ...slide, elements };
     const measured = measure(busy);
     lintSlide(deck, busy, measured);
-    // `Date`, not `performance`: this package has neither the DOM nor Node in its types.
-    const start = Date.now();
-    for (let i = 0; i < 20; i++) lintSlide(deck, busy, measured);
-    expect((Date.now() - start) / 20).toBeLessThan(20);
+    // `Date`, not `performance`: this package has neither the DOM nor Node in its types. The
+    // quickest of several rounds is the engine's own time: on a machine that runs other suites
+    // beside this one, a single round measures the machine (29ms was seen for 4ms of work).
+    const rounds = Array.from({ length: 5 }, () => {
+      const start = Date.now();
+      for (let i = 0; i < 10; i++) lintSlide(deck, busy, measured);
+      return (Date.now() - start) / 10;
+    });
+    expect(Math.min(...rounds)).toBeLessThan(20);
   });
 });
 
