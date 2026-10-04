@@ -212,4 +212,67 @@ describe('CommandBus', () => {
     }
     expect((Date.now() - start) / 100).toBeLessThan(16);
   });
+
+  describe('a change that shifts the slides of a large deck (NFR-03)', () => {
+    const large = () =>
+      createDeck({
+        slides: Array.from({ length: 200 }, (_, s) =>
+          createSlide({
+            id: `s${s}`,
+            elements: Array.from({ length: 30 }, (_, e) => rect(`e${s}_${e}`)),
+          }),
+        ),
+      });
+    const changes: [string, Command][] = [
+      // Every slide after the place of the change moves by one: a patch for each.
+      [
+        'a slide added near the start',
+        { type: 'slide.add', slide: createSlide({ id: 'new' }), index: 1 },
+      ],
+      ['a slide removed near the start', { type: 'slide.remove', slideIds: ['s1'] }],
+      ['a slide moved to the far end', { type: 'slide.move', slideIds: ['s2'], toIndex: 199 }],
+    ];
+
+    it.each(changes)('%s is undone and redone quickly', (_name, command) => {
+      const bus = new CommandBus(large());
+      bus.dispatch(command);
+      const start = Date.now();
+      for (let i = 0; i < 50; i++) {
+        bus.undo();
+        bus.redo();
+      }
+      // The whole key press has 16 ms; the model's part of it is a small one.
+      expect((Date.now() - start) / 100).toBeLessThan(4);
+    });
+
+    it.each(changes)(
+      '%s keeps every slide it did not touch as the object it was',
+      (_name, command) => {
+        const bus = new CommandBus(large());
+        const before = bus.deck;
+        bus.dispatch(command);
+        const after = bus.deck;
+        const sameSlides = (deck: typeof before, as: typeof before) => {
+          expect(deck).toEqual(as);
+          const known = new Map(as.slides.map((slide) => [slide.id, slide]));
+          for (const slide of deck.slides) expect(slide).toBe(known.get(slide.id));
+        };
+
+        bus.undo();
+        // Equal to what it was, and made of the same slides: nothing was copied on the way back.
+        sameSlides(bus.deck, before);
+        expect(Object.isFrozen(bus.deck.slides)).toBe(true);
+        bus.redo();
+        sameSlides(bus.deck, after);
+        bus.undo();
+        bus.redo();
+        bus.undo();
+        sameSlides(bus.deck, before);
+        // The history is as good as it was: the entry was not changed by being applied.
+        bus.redo();
+        sameSlides(bus.deck, after);
+        expect(bus.undoStack).toHaveLength(1);
+      },
+    );
+  });
 });

@@ -1,4 +1,4 @@
-import { applyPatches, enablePatches, freeze, produceWithPatches, type Patch } from 'immer';
+import { enablePatches, freeze, produce, produceWithPatches, type Patch } from 'immer';
 import { z } from 'zod';
 import {
   commandDefs,
@@ -72,6 +72,44 @@ export interface CommandBusOptions {
 }
 
 type Apply = (deck: Deck, command: Command, touched: Touched) => void;
+
+/** A node of the deck on the way to where a patch applies: an object, or a list. */
+type Node = Record<string | number, unknown>;
+
+/**
+ * Applies the patches of a history entry: what immer's `applyPatches` does, without copying
+ * the values. immer copies every value a patch carries, deeply, in case it is changed later.
+ * The values here are parts of earlier states of the deck, which are frozen, so they are put
+ * back as they are. That matters where a list shifts: a slide added in the middle of a deck is
+ * a patch for every slide after it, and copying them made undo in a deck of 200 slides take
+ * 12 ms and hand the editor 200 slides it had never seen (NFR-03, ADR-066). Shared, each slide
+ * that did not change is the object it was.
+ */
+function applyHistoryPatches(deck: Deck, patches: readonly Patch[]): Deck {
+  return produce(deck, (draft) => {
+    for (const patch of patches) {
+      const { op, path } = patch;
+      const value: unknown = patch.value;
+      const key = path.at(-1);
+      // The command bus never replaces the deck itself, so every patch has a place inside it.
+      if (key === undefined) throw new Error('A history patch must point inside the deck.');
+      let parent = draft as unknown as Node;
+      for (const step of path.slice(0, -1)) parent = parent[step] as Node;
+      if (Array.isArray(parent)) {
+        const list = parent as unknown[];
+        if (op === 'remove') list.splice(Number(key), 1);
+        else if (op === 'add' && key === '-') list.push(value);
+        else if (op === 'add') list.splice(Number(key), 0, value);
+        // `length` too: that is how a list that got shorter is written.
+        else parent[key] = value;
+      } else if (op === 'remove') {
+        delete parent[key];
+      } else {
+        parent[key] = value;
+      }
+    }
+  });
+}
 
 function parseCommand(input: Command): Command {
   const type: unknown = (input as { type?: unknown } | null)?.type;
@@ -212,7 +250,7 @@ export class CommandBus {
     const entry = this.#redo.pop();
     if (!entry) return false;
     this.#undo.push(entry);
-    const deck = applyPatches(this.#deck, entry.patches);
+    const deck = applyHistoryPatches(this.#deck, entry.patches);
     this.#commit('redo', deck, entry.patches, entry.affected, 'user', entry.txId);
     return true;
   }
@@ -271,7 +309,7 @@ export class CommandBus {
   }
 
   #revert(kind: 'undo' | 'rollback', entry: Entry, actor: Actor): void {
-    const deck = applyPatches(this.#deck, entry.inversePatches);
+    const deck = applyHistoryPatches(this.#deck, entry.inversePatches);
     this.#commit(kind, deck, entry.inversePatches, entry.affected, actor, entry.txId);
   }
 
