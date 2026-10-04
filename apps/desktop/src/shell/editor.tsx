@@ -6,6 +6,8 @@ import {
   createDeckStore,
   createSelectionStore,
   createSlide,
+  refitAfter,
+  type ChangeEvent,
   type Deck,
   type DeckState,
   type DeckStore,
@@ -85,6 +87,24 @@ export function createEditor(options: { lang: string; storage: Storage | null })
   return editor;
 }
 
+/**
+ * The agent moves and resizes elements through the Deck API, which knows nothing of the Stage.
+ * After each of its writes the groups around what it changed are fitted to their children again
+ * (ARR-01), in the undo step of its turn. Once the change has reached every subscriber, not
+ * while it is still on its way to them: a change made from inside a subscriber overtakes it.
+ */
+function fitAfterAgent(bus: CommandBus, event: ChangeEvent): void {
+  const { actor, txId } = event;
+  if (event.kind !== 'apply' || actor === 'user' || txId === undefined) return;
+  if (refitAfter(event.deck, event.previous, event.affected).length === 0) return;
+  queueMicrotask(() => {
+    // Another change may have come since: the fit is of the deck as it is now.
+    if (bus.undoStack.at(-1)?.txId !== txId) return;
+    const fit = refitAfter(bus.deck, event.previous, event.affected);
+    if (fit.length > 0) bus.batch(fit, { actor, txId });
+  });
+}
+
 function buildEditor(options: { lang: string; storage: Storage | null }): Editor {
   const bus = new CommandBus(newDeck(options.lang));
   const file = createStore<FileState>(() => ({
@@ -108,6 +128,7 @@ function buildEditor(options: { lang: string; storage: Storage | null }): Editor
   bus.subscribe((event) => {
     file.setState({ dirty: document ? document.dirty : event.kind !== 'reset' });
   });
+  bus.subscribe((event) => fitAfterAgent(bus, event));
   return {
     bus,
     deck: createDeckStore(bus),
