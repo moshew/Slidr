@@ -227,10 +227,28 @@ const paragraphText = (p: Paragraph) => p.runs.map((r) => r.text).join('');
 
 const LINK_STYLE: CSSProperties = { color: 'inherit', textDecoration: 'inherit' };
 
+/** A link to a slide of the deck, as the `link` mark holds it: `#slide=<slideId>` (TXT-09). */
+const SLIDE_LINK = /^#slide=(.+)$/;
+
 function RunView({ run, role, ltr }: { run: Run; role: 'heading' | 'body'; ltr: boolean }) {
   const style = runStyle(run.marks, role);
   const dir = ltr ? 'ltr' : undefined;
   const link = run.marks?.link;
+  const slide = link ? SLIDE_LINK.exec(link)?.[1] : undefined;
+  if (slide) {
+    // Not an address a browser opens: the runtime follows these attributes on a click, as it
+    // does for an element's own link. Without `href` an anchor shows no hand, so it is asked for.
+    return (
+      <a
+        data-link-kind="slide"
+        data-link-target={slide}
+        dir={dir}
+        style={{ ...LINK_STYLE, cursor: 'pointer', ...style }}
+      >
+        {run.text}
+      </a>
+    );
+  }
   if (link) {
     return (
       <a

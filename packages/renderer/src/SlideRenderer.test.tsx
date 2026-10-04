@@ -250,6 +250,39 @@ describe('SlideRenderer', () => {
     expect(shadow?.querySelector('p')?.hasAttribute('onclick')).toBe(false);
   });
 
+  it('draws a link of text to an address as an anchor, and a link to a slide for the runtime', () => {
+    const deck = allElementsDeck();
+    const slide = deck.slides[0]!;
+    const linked: Element = {
+      ...(slide.elements.find((e) => e.id === 'e_text') as Element),
+      id: 'e_links',
+      content: {
+        paragraphs: [
+          {
+            dir: 'auto',
+            align: 'start',
+            runs: [
+              { text: 'page', marks: { link: 'https://example.com/a', underline: true } },
+              { text: ' and ' },
+              { text: 'slide', marks: { link: '#slide=s_other', weight: 700 } },
+            ],
+          },
+        ],
+      },
+    } as Element;
+    render(<SlideRenderer deck={deck} slide={{ ...slide, elements: [linked] }} />);
+    const [page, other] = Array.from(container.querySelectorAll('[data-element-id="e_links"] a'));
+    expect(page?.getAttribute('href')).toBe('https://example.com/a');
+    expect(page?.getAttribute('target')).toBe('_blank');
+    expect(page?.hasAttribute('data-link-kind')).toBe(false);
+    // No address to open: the runtime follows these two attributes on a click.
+    expect(other?.hasAttribute('href')).toBe(false);
+    expect(other?.getAttribute('data-link-kind')).toBe('slide');
+    expect(other?.getAttribute('data-link-target')).toBe('s_other');
+    expect(other?.textContent).toBe('slide');
+    expect((other as HTMLElement).style.fontWeight).toBe('700');
+  });
+
   it('re-renders only the elements a change touched', () => {
     const bus = new CommandBus(allElementsDeck());
     const store = createDeckStore(bus);
