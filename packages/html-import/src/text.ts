@@ -39,6 +39,11 @@ export interface TextTheme {
   color(css: string, node: Element, property: string, pseudo?: string): Color;
   /** False for a foreign document: its text is not tied to the theme's fonts and text styles. */
   link: boolean;
+  /**
+   * A forced conversion (HTM-05): text with styling the model has no field for becomes a text
+   * element all the same, without that styling, instead of staying html.
+   */
+  lossy?: boolean;
 }
 
 /**
@@ -68,8 +73,10 @@ const TEXT_PASSTHROUGH: readonly (readonly [string, readonly string[]])[] = [
 ];
 
 /** What cannot be said per run and cannot be put on the box either. */
-function unsupportedText(cs: CSSStyleDeclaration): string | undefined {
+function unsupportedText(cs: CSSStyleDeclaration, lossy = false): string | undefined {
   if (cs.writingMode !== 'horizontal-tb') return 'vertical writing mode';
+  // A forced conversion shows the whole text where the HTML cut it short.
+  if (lossy) return undefined;
   if (cs.getPropertyValue('-webkit-line-clamp') !== 'none') return 'line clamp';
   if (cs.textOverflow !== 'clip' && cs.overflowX !== 'visible') return 'text-overflow';
   return undefined;
@@ -320,7 +327,7 @@ export function readTextBlock(
   ctx: TextTheme,
 ): TextBlock | { unsupported: string } {
   const { theme, values } = ctx;
-  const unsupported = unsupportedText(cs);
+  const unsupported = unsupportedText(cs, ctx.lossy);
   if (unsupported) return { unsupported };
   const blockCss = passthrough(cs, scale);
   const signature = JSON.stringify(blockCss);
@@ -428,7 +435,8 @@ export function readTextBlock(
     strike: decoration.includes('line-through'),
     ...(link ? { link } : {}),
   });
-  if (problem) return { unsupported: problem };
+  // A forced conversion keeps the text and loses what the part of it could not carry.
+  if (problem && !ctx.lossy) return { unsupported: problem };
 
   const texts = pre
     ? raw.map((r) => r.text)

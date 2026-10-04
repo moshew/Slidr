@@ -80,22 +80,45 @@ export interface HtmlSlideConversion {
   notes: string[];
 }
 
+/** One place where a forced conversion looks different from the HTML it replaces (HTM-05). */
+export interface ConversionDifference {
+  /** The element that differs; absent for a difference no element owns. */
+  elementId?: string;
+  /**
+   * `text`: its lines break or sit elsewhere. `look`: it is drawn differently. `region`: an area
+   * that differs and no element explains.
+   */
+  kind: 'text' | 'look' | 'region';
+  /** Where a `region` is, in slide pixels of the element's parent. */
+  frame?: { x: number; y: number; w: number; h: number };
+  /** The engine's own words, in English. */
+  detail: string;
+}
+
 export interface ElementConversion {
   /** The elements that replace the converted one, with new ids, in z-order. */
   elements: Element[];
   assets: AssetMeta[];
   editability: number;
   notes: string[];
+  /** With `force`: what looks different from the HTML, since nothing was put back as html for it. */
+  differences?: ConversionDifference[];
 }
 
 /** WG9A: the HTML conversion engine, shared with HTML import (SPEC ch. 13). */
 export interface ConversionService {
   /** Converts a slide written as HTML/CSS at 1920x1080 (`<style>` allowed inside). */
   htmlToSlide(deck: Deck, request: { html: string; name?: string }): Promise<HtmlSlideConversion>;
-  /** `elements`: breaks an `html` element into regular ones. `html`: the opposite. */
+  /**
+   * `elements`: breaks an `html` element into regular ones. `html`: the opposite.
+   *
+   * `force`, with `elements`: everything the engine can map becomes a regular element, also where
+   * it then looks different from the HTML; `differences` says where. Without it, what would look
+   * different stays html.
+   */
   convertElement(
     deck: Deck,
-    request: { slideId: string; elementId: string; to: 'elements' | 'html' },
+    request: { slideId: string; elementId: string; to: 'elements' | 'html'; force?: boolean },
   ): Promise<ElementConversion>;
 }
 

@@ -32,7 +32,7 @@ export type ConversionJob =
   | {
       kind: 'convertElement';
       deck: Deck;
-      request: { slideId: string; elementId: string; to: 'elements' | 'html' };
+      request: { slideId: string; elementId: string; to: 'elements' | 'html'; force?: boolean };
     };
 
 /** A job as the capture page receives it. */

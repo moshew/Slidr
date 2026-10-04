@@ -3,7 +3,12 @@
  * `slide_replace_from_html` and `element_convert` call it. Each call loads HTML in the sandbox
  * and hands the loaded root to the same engine HTML import will hand a captured subtree to.
  */
-import type { ConversionService, ElementConversion, HtmlSlideConversion } from '@slidr/agent-tools';
+import type {
+  ConversionDifference,
+  ConversionService,
+  ElementConversion,
+  HtmlSlideConversion,
+} from '@slidr/agent-tools';
 import {
   createElement,
   createSlide,
@@ -19,7 +24,14 @@ import {
   type Slide,
 } from '@slidr/model';
 import { renderSlideOffscreen } from '@slidr/renderer';
-import { convertSubtree, mountSlide, type ConversionResult, type ConvertOptions } from './engine';
+import {
+  convertSubtree,
+  mountSlide,
+  startConversion,
+  type ConversionResult,
+  type ConvertOptions,
+  type Verdict,
+} from './engine';
 import type { ConversionHost } from './host';
 import { hasScripts, openSandbox } from './sandbox';
 
@@ -103,6 +115,47 @@ export async function convertHtml(
   }
 }
 
+/**
+ * Loads HTML and converts what it shows without the guard's way back: everything the measuring
+ * pass mapped stays a regular element, and what then looks different is told, not replaced
+ * (HTM-05). Text boxes are still moved to where their lines belong, as in a guarded conversion.
+ */
+async function convertHtmlForced(
+  html: string,
+  deck: Deck,
+  host: ConversionHost,
+  size: { w: number; h: number },
+  options: Pick<ConvertOptions, 'placement' | 'base'>,
+): Promise<ConversionResult & { loadNotes: string[]; verdict: Verdict }> {
+  const loaded = await loadHtml(html, deck, host, size, options);
+  try {
+    const conversion = await startConversion(loaded.root, {
+      deck,
+      host,
+      foreign: false,
+      behind: 'slide',
+      lossy: true,
+      ...options,
+    });
+    try {
+      const verdict = await conversion.judge();
+      const result = conversion.result({
+        faithful: verdict.faithful,
+        rounds: 1,
+        diffPixels: verdict.diffPixels,
+        exact: !conversion.proposal.items.some((item) => item.scaled),
+        fallbacks: [],
+        wholeSlide: false,
+      });
+      return { ...result, loadNotes: loaded.notes, verdict };
+    } finally {
+      conversion.dispose();
+    }
+  } finally {
+    loaded.dispose();
+  }
+}
+
 /** Variables the HTML uses in the theme's namespaces that nothing defines. */
 function unknownVariables(html: string): string[] {
   const used = new Set(
@@ -160,6 +213,7 @@ async function htmlToElements(
   deck: Deck,
   slide: Slide,
   element: HtmlElement,
+  force = false,
 ): Promise<ElementConversion> {
   if (element.hasScripts) {
     throw new Error(
@@ -186,15 +240,36 @@ async function htmlToElements(
     ? `<style>${element.styles.replace(/<\/style/gi, '<\\/style')}</style>`
     : '';
   const html = `${styles}${parsed.body.innerHTML}`;
-  const result = await convertHtml(html, deck, host, natural, {
+  const options = {
     placement: { k: kx, x: element.frame.x, y: element.frame.y },
     base: {
       ...(slide.background ? { background: slide.background } : {}),
       ...(slide.layoutId ? { layoutId: slide.layoutId } : {}),
     },
-  });
+  };
+  const forced = force ? await convertHtmlForced(html, deck, host, natural, options) : undefined;
+  const result = forced ?? (await convertHtml(html, deck, host, natural, options));
   const notes = [...result.loadNotes, ...result.notes];
   const centre = frameCenter(element.frame);
+  // What the forced conversion left looking different: by element, and the areas no element owns.
+  const differences: ConversionDifference[] | undefined = forced && [
+    ...forced.verdict.bad.map(({ item, why }): ConversionDifference => ({
+      elementId: item.element.id,
+      kind: why.startsWith('looks different') ? 'look' : 'text',
+      detail: why,
+    })),
+    ...forced.verdict.loose.map(({ box, pixels }): ConversionDifference => ({
+      kind: 'region',
+      // From CSS pixels of the HTML's own document to slide pixels, as the parts were placed.
+      frame: {
+        x: Math.round(element.frame.x + box.x * kx),
+        y: Math.round(element.frame.y + box.y * kx),
+        w: Math.round(box.w * kx),
+        h: Math.round(box.h * kx),
+      },
+      detail: `a difference no element explains (${pixels} pixels)`,
+    })),
+  ];
   const elements = result.slide.elements.map((made): ModelElement => {
     const out: ModelElement = {
       ...made,
@@ -227,6 +302,7 @@ async function htmlToElements(
     assets: result.assets,
     editability: Math.round(result.editability * 1000) / 1000,
     notes,
+    ...(differences ? { differences } : {}),
   };
 }
 
@@ -346,7 +422,7 @@ export function createConversionService(host: ConversionHost): ConversionService
             `Element "${element.id}" is a ${element.type}, not html; only html converts to elements.`,
           );
         }
-        return htmlToElements(host, deck, slide, element);
+        return htmlToElements(host, deck, slide, element, request.force);
       }),
   };
 }

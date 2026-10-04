@@ -63,6 +63,12 @@ export interface ConvertOptions {
    * import, SPEC 5.7): their `@font-face` rules then stay out of the slide's `css`.
    */
   fontFaces?: boolean;
+  /**
+   * A forced conversion (HTM-05): text with styling the model has no field for is proposed as a
+   * text element without it, where otherwise it would stay html. The caller judges the
+   * proposal and tells the differences instead of guarding it.
+   */
+  lossy?: boolean;
 }
 
 export interface Fallback {
@@ -479,6 +485,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       link: !options.foreign,
       color: (css, node, property, pseudo) =>
         snapColor(css, values, (token) => use?.uses(node, property, token, pseudo) ?? false),
+      ...(options.lossy ? { lossy: true } : {}),
     },
     nextId,
     storeImage,
