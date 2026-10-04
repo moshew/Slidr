@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { copy } from './arrange-helpers';
 import {
   coords,
   dragSelect,
@@ -59,6 +60,14 @@ async function twoBoxes(page: Page) {
 
 const runs = async (page: Page, id: string) =>
   (await paragraphs(page, id)).map((p) => p.runs.map((r) => ({ text: r.text, marks: r.marks })));
+
+/** How opaque an element of the first slide is: a part of its look, which no text tool writes. */
+const opacity = (page: Page, id: string) =>
+  page.evaluate(
+    (elementId) =>
+      window.slidr!.bus.deck.slides[0]!.elements.find((e) => e.id === elementId)?.opacity ?? 1,
+    id,
+  );
 
 test.beforeEach(async ({ page }) => {
   await open(page);
@@ -259,6 +268,50 @@ test.describe('the format painter', () => {
       { text: ' ראשונה', marks: undefined },
     ]);
     await expect(editor(page)).toBeFocused();
+  });
+
+  test('Ctrl+Alt+V gives what was picked up last: a text format, or the look of a copied object', async ({
+    page,
+  }) => {
+    // The arrange area has the same key for "paste style only" (ARR-06). The source box is
+    // copied as an object, with a look that the painter does not carry.
+    await page.evaluate((id) => {
+      const slidr = window.slidr!;
+      slidr.bus.dispatch({
+        type: 'element.update',
+        slideId: slidr.selection.getState().currentSlideId!,
+        elementId: id,
+        patch: { opacity: 0.5 },
+      });
+    }, SOURCE);
+    await select(page, SOURCE);
+    await copy(page);
+
+    // A format picked up after the copy: the key paints the text, and the look is not pasted.
+    await page.keyboard.press('Control+Alt+c');
+    await select(page, TARGET);
+    await page.keyboard.press('Control+Alt+v');
+    expect((await runs(page, TARGET))[0]).toEqual([{ text: 'שורה ראשונה', marks: PAINTED }]);
+    expect(await opacity(page, TARGET)).toBe(1);
+    // The format stays in hand for the key, as before: once more changes nothing of the look.
+    await page.keyboard.press('Control+Alt+v');
+    expect(await opacity(page, TARGET)).toBe(1);
+
+    // An object copied after the format was picked up: the key is its look's now.
+    await select(page, SOURCE);
+    await copy(page);
+    await select(page, TARGET);
+    await page.keyboard.press('Control+Alt+v');
+    expect(await opacity(page, TARGET)).toBe(0.5);
+
+    // Inside the text editor there is only text to paint: the format is still the one in hand.
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    expect((await runs(page, TARGET))[0]).toEqual([{ text: 'שורה ראשונה', marks: undefined }]);
+    await edit(page, TARGET);
+    await setSelection(page, 1, 5);
+    await page.keyboard.press('Control+Alt+v');
+    expect((await runs(page, TARGET))[0]?.[0]).toEqual({ text: 'שורה', marks: PAINTED });
   });
 
   test('the keys arrive on a Hebrew keyboard layout, on a box and in the editor', async ({

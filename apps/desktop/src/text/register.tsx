@@ -1,3 +1,4 @@
+import { copiedElement } from '../arrange/clipboard';
 import { i18n, registerMessages } from '../i18n';
 import {
   getEditor,
@@ -19,7 +20,7 @@ import type { FormatContext } from './format';
 import { insertTextBox } from './insert';
 import { en, he } from './messages';
 import { typeToEdit } from './opening';
-import { paint, pickUp, setPaintLabel, watchPainter } from './painter';
+import { paint, painter, pickUp, setPaintLabel, watchPainter } from './painter';
 import { BoxTool } from './toolbar/BoxTool';
 import {
   BoldTool,
@@ -178,11 +179,26 @@ registerShortcut({
   label: 'text:shortcut.pickFormat',
   ...text,
 });
+/*
+ * The arrange area has the same key for "paste style only": the look of the object that was
+ * copied (ARR-06). On a selected object the key gives what was picked up last, as a clipboard
+ * would: a format picked up after the copy paints, and an object copied after the format was
+ * picked up passes the key on to its look. Inside the text editor there is only text to paint.
+ */
+let copiedAtPick: ReturnType<typeof copiedElement>;
+painter.subscribe((state, before) => {
+  if (state.picked !== before.picked) copiedAtPick = copiedElement();
+});
+
 registerShortcut({
   id: 'text.paintFormat',
   keys: PAINT_FORMAT_KEYS,
   inText: true,
-  run: onTextOrSelection(paint),
+  run: onTextOrSelection((target) => {
+    const copied = copiedElement();
+    if (target.kind !== 'editor' && copied && copied !== copiedAtPick) return false;
+    return paint(target);
+  }),
   label: 'text:shortcut.paintFormat',
   ...text,
 });
