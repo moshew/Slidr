@@ -99,8 +99,17 @@ export function movesOf(slide: Slide, from: Layout, to: Layout): Map<string, Mov
  * layout in what it had from the old placeholder: the frame, the vertical alignment, and the
  * alignment and text style of each paragraph. A value set by hand differs from the old
  * placeholder's, and stays (SPEC 5.5: an element with explicit values stays as it is).
+ *
+ * With the deck's direction, a paragraph that reads against the deck follows too: its alignment
+ * was turned when it was seated (`seatAlign`: an English line in a Hebrew deck is `end` on a
+ * `start` placeholder), so it is the old placeholder's, and it takes the new one's turned the
+ * same way.
  */
-export function followPatch(element: Element, { from, to }: Move): Record<string, unknown> {
+export function followPatch(
+  element: Element,
+  { from, to }: Move,
+  deckDir?: Direction,
+): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
   if (sitsOn(element, from) && !sameFrame(from.frame, to.frame)) patch.frame = { ...to.frame };
   if (element.type !== 'text') return patch;
@@ -113,9 +122,17 @@ export function followPatch(element: Element, { from, to }: Move): Record<string
   let changed = false;
   const paragraphs = element.content.paragraphs.map((paragraph) => {
     const next = { ...paragraph };
-    if (paragraph.align === fromAlign && toAlign !== fromAlign) {
-      next.align = toAlign;
-      changed = true;
+    if (paragraph.align === fromAlign) {
+      if (toAlign !== fromAlign) {
+        next.align = toAlign;
+        changed = true;
+      }
+    } else if (deckDir && paragraph.align === seatAlign(fromAlign, paragraph, deckDir)) {
+      const turned = seatAlign(toAlign, paragraph, deckDir);
+      if (turned !== paragraph.align) {
+        next.align = turned;
+        changed = true;
+      }
     }
     if (paragraph.styleRef === from.styleRef && to.styleRef !== from.styleRef) {
       if (to.styleRef) next.styleRef = to.styleRef;
@@ -128,14 +145,22 @@ export function followPatch(element: Element, { from, to }: Move): Record<string
   return patch;
 }
 
-/** The `element.update`s that take a slide's elements from one layout to another. */
-export function relayout(slide: Slide, from: Layout, to: Layout): CommandOf<'element.update'>[] {
+/**
+ * The `element.update`s that take a slide's elements from one layout to another. `deckDir` is
+ * the direction of the deck both layouts are drawn for (see `followPatch`).
+ */
+export function relayout(
+  slide: Slide,
+  from: Layout,
+  to: Layout,
+  deckDir?: Direction,
+): CommandOf<'element.update'>[] {
   const moves = movesOf(slide, from, to);
   const commands: CommandOf<'element.update'>[] = [];
   for (const element of slide.elements) {
     const move = moves.get(element.id);
     if (!move) continue;
-    const patch = followPatch(element, move);
+    const patch = followPatch(element, move, deckDir);
     if (Object.keys(patch).length > 0) {
       commands.push({ type: 'element.update', slideId: slide.id, elementId: element.id, patch });
     }

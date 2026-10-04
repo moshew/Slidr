@@ -58,8 +58,9 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
       continue;
     }
     const to = matchLayout(slide, from, next);
-    if (to) moving.push({ slideId: slide.id, to, updates: relayout(slide, from, to) });
-    else kept.add(from.id);
+    if (to) {
+      moving.push({ slideId: slide.id, to, updates: relayout(slide, from, to, deck.meta.dir) });
+    } else kept.add(from.id);
   }
 
   const commands: Command[] = [];

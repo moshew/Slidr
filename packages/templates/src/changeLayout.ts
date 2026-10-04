@@ -35,7 +35,7 @@ export function changeLayout(
   const onto: Command = { type: 'slide.update', slideId, patch: { layoutId: to.id } };
 
   const from = deck.layouts.find((layout) => layout.id === slide.layoutId);
-  if (from) return [...relayout(slide, from, to), onto];
+  if (from) return [...relayout(slide, from, to, deck.meta.dir), onto];
 
   if (slide.elements.length === 0) {
     const fresh = slideFromLayout(deck, to.id, options).slide;
