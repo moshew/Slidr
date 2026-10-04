@@ -182,6 +182,7 @@ export const en: Messages<typeof he> = {
     editText: 'Edit the text of the selected object',
     leaveText: 'Leave text editing',
     pastePlain: 'Paste as plain text',
+    lineBreak: 'Line break inside the paragraph',
     listLevel: 'List level: in, and out',
     move: 'Move by one pixel',
     moveFar: 'Move by ten pixels',

@@ -118,6 +118,21 @@ function leaveEmptyListItem(state: EditorState, dispatch: Dispatch): boolean {
   return true;
 }
 
+/**
+ * Shift+Enter breaks the line inside the paragraph, as in every word processor: the model keeps
+ * the break as a newline in the run's text (UI-06; ADR-060 listed it as having no key at all).
+ * The break carries the marks at the caret, so what is typed after it looks as before.
+ */
+function breakLine(state: EditorState, dispatch: Dispatch): boolean {
+  const type = state.schema.nodes.hardBreak;
+  if (!type) return false;
+  const marks = state.storedMarks ?? state.selection.$from.marks();
+  dispatch(
+    state.tr.replaceSelectionWith(type.create(), true).setStoredMarks(marks).scrollIntoView(),
+  );
+  return true;
+}
+
 /** Backspace at the start of a list item removes its bullet before it joins paragraphs. */
 function unlistAtStart(state: EditorState, dispatch: Dispatch): boolean {
   const { $from, empty } = state.selection;
@@ -242,6 +257,7 @@ export function TextEditor({
               Tab: () => shiftLevel(ed.state, ed.view.dispatch, 1),
               'Shift-Tab': () => shiftLevel(ed.state, ed.view.dispatch, -1),
               Enter: () => leaveEmptyListItem(ed.state, ed.view.dispatch),
+              'Shift-Enter': () => breakLine(ed.state, ed.view.dispatch),
               Backspace: () => unlistAtStart(ed.state, ed.view.dispatch),
               'Mod-z': () => bus.undo() || true,
               'Mod-y': () => bus.redo() || true,

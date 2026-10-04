@@ -41,6 +41,7 @@ const handled: readonly MapRow[] = [
   { id: 'text.edit', section: 'text', label: 'keys.editText', keys: ['Enter'] },
   { id: 'text.leave', section: 'text', label: 'keys.leaveText', keys: ['Esc'] },
   { id: 'text.pastePlain', section: 'text', label: 'keys.pastePlain', keys: ['Ctrl+Shift+V'] },
+  { id: 'text.lineBreak', section: 'text', label: 'keys.lineBreak', keys: ['Shift+Enter'] },
   { id: 'text.level', section: 'text', label: 'keys.listLevel', keys: ['Tab', 'Shift+Tab'] },
 
   { id: 'arrange.move', section: 'arrange', label: 'keys.move', keys: ['{arrows}'] },
