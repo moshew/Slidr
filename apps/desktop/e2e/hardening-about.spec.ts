@@ -137,6 +137,36 @@ for (const theme of themes) {
         await settle(page);
         await page.screenshot({ path: out(`licenses-${name}`) });
       });
+
+      test(`the autosave alert in the status bar ${name}`, async ({ page }) => {
+        await page.setViewportSize(viewport);
+        await openApp(page, { lang, theme });
+        // What the document service reports when the disk is full (WG13-T03); the failure itself
+        // is staged in the packaged app (packaged/recovery.spec.ts).
+        await page.evaluate(() => {
+          const editor = (
+            window as unknown as {
+              slidr: { file: { setState(state: { autosaveFailure: string }): void } };
+            }
+          ).slidr;
+          editor.file.setState({ autosaveFailure: 'disk_full' });
+        });
+        const alert = page.getByTestId('status-save');
+        await expect(alert).toHaveAttribute('role', 'alert');
+        await expect(alert).toHaveText(
+          lang === 'he'
+            ? 'השמירה האוטומטית נכשלה: אין מקום בדיסק'
+            : 'Autosave failed: the disk is full',
+        );
+        // The sentence fits the bar at both sizes: on one line, inside the window.
+        const box = (await alert.boundingBox())!;
+        const bar = (await page.getByTestId('status-bar').boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+        expect(box.height).toBeLessThanOrEqual(bar.height);
+        await settle(page);
+        await page.screenshot({ path: out(`autosave-${name}`) });
+      });
     }
   }
 }
