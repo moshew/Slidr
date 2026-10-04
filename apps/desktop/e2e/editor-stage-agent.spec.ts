@@ -26,8 +26,8 @@ const agentMoves = (page: Page, elementId: string, x: number) =>
         {
           type: 'element.update',
           slideId,
-          elementId: id as string,
-          patch: { frame: { ...element.frame, x: to as number } },
+          elementId: id,
+          patch: { frame: { ...element.frame, x: to } },
         },
         { actor: 'agent:s_test:t_1', txId: 'tx_agent_turn' },
       );
