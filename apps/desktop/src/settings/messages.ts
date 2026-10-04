@@ -25,6 +25,21 @@ export const he = {
   },
   loadFailed: 'לא ניתן לקרוא את ההגדרות',
   retry: 'ניסיון נוסף',
+  agent: {
+    title: 'ה-Agent',
+    harness: 'Harness',
+    model: 'מודל',
+    effort: 'רמת מאמץ',
+    default: 'ברירת המחדל',
+    nextMessage: 'חל מההודעה הבאה, בכל שיחה.',
+    web: 'חיפוש וקריאה ברשת',
+    webHint: 'ה-Agent רשאי לחפש ברשת ולקרוא דפים כשהוא בונה שקפים.',
+    gate: 'בדיקת עיצוב בסוף כל תור',
+    gateHint: 'ה-Agent מתקן ממצאי עיצוב בשקפים שנגע בהם לפני שהוא מסיים.',
+    outline: 'מתווה לפני בניית מצגת',
+    outlineHint: 'כשמבקשים מצגת לפי נושא, ה-Agent מציג קודם מתווה לאישור.',
+    unavailable: 'לא ניתן לקרוא מה ה-Agent יכול להריץ כרגע.',
+  },
 };
 
 export const en: Messages<typeof he> = {
@@ -48,4 +63,19 @@ export const en: Messages<typeof he> = {
   },
   loadFailed: 'The settings could not be read',
   retry: 'Try again',
+  agent: {
+    title: 'The agent',
+    harness: 'Harness',
+    model: 'Model',
+    effort: 'Effort',
+    default: 'The default',
+    nextMessage: 'Applies from the next message, in every chat.',
+    web: 'Web search and reading',
+    webHint: 'The agent may search the web and read pages while it builds slides.',
+    gate: 'Design check at the end of every turn',
+    gateHint: 'The agent fixes design findings on the slides it touched before it finishes.',
+    outline: 'An outline before building a deck',
+    outlineHint: 'Asked for a deck by its subject, the agent first shows an outline to approve.',
+    unavailable: 'What the agent can run could not be read right now.',
+  },
 };
