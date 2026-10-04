@@ -335,3 +335,25 @@ test('in the exported file both kinds of link work', async ({ page, context }) =
   await expect.poll(slide).toBe(1);
   expect(errors).toEqual([]);
 });
+
+test('from the keyboard: Tab reaches a link of the slide shown, and Enter follows it (UI-06)', async ({
+  page,
+}) => {
+  await linkBoth(page, siteUrl());
+  await page.getByTestId('stage-surface').focus();
+  await page.keyboard.press('F5');
+  const view = await show(page);
+  expect(await showState(page)).toMatchObject({ slide: 0 });
+  const next = view.locator('a', { hasText: 'השקף הבא' });
+  await expect(next).toHaveAttribute('role', 'link');
+  // The web link first, then the link to the slide: the order of the text.
+  await page.keyboard.press('Tab');
+  await expect(view.locator('a', { hasText: 'האתר שלנו' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await showState(page)).slide).toBe(1);
+  // Not a step on: the show went to the slide the link names, and no further.
+  expect(await showState(page)).toMatchObject({ slide: 1, step: 0 });
+  await page.keyboard.press('Escape');
+});

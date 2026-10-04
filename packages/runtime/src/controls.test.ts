@@ -216,3 +216,45 @@ describe('a click', () => {
     expect(calls).toEqual(['next', 'next']);
   });
 });
+
+describe('a link', () => {
+  const click = (target: Element) =>
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+  const links = () => {
+    viewport.innerHTML = `
+      <a id="slide" data-link-kind="slide" data-link-target="s3" tabindex="0" role="link">3</a>
+      <div id="web" data-link-kind="url" data-link-target="https://example.com/" tabindex="0"></div>
+      <div id="script" data-link-kind="url" data-link-target=" javascript:alert(1)"></div>
+      <div id="file" data-link-kind="url" data-link-target="file:///C:/secret.txt"></div>
+      <div id="data" data-link-kind="url" data-link-target="data:text/html,<b>x</b>"></div>`;
+    return (id: string) => viewport.querySelector(`#${id}`) as HTMLElement;
+  };
+
+  it('to a slide is followed by Enter when it has the keyboard, and not taken for the next step', () => {
+    const { calls } = bind();
+    const at = links();
+    at('slide').focus();
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    at('slide').dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(true);
+    expect(calls).toEqual(['goTo 2']);
+    // With the keyboard elsewhere, Enter is the next step as it was.
+    at('slide').blur();
+    press('Enter');
+    expect(calls).toEqual(['goTo 2', 'next']);
+  });
+
+  it('to an address opens only the addresses the app writes', () => {
+    bind();
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const at = links();
+    click(at('web'));
+    at('web').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    for (const id of ['script', 'file', 'data']) click(at(id));
+    expect(open.mock.calls).toEqual([
+      ['https://example.com/', '_blank', 'noopener'],
+      ['https://example.com/', '_blank', 'noopener'],
+    ]);
+    open.mockRestore();
+  });
+});

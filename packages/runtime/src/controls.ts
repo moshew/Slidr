@@ -42,6 +42,13 @@ const BLANK_KEYS = new Map<string, 'black' | 'white'>([
 /** Pressed on the way to another key; never a command by themselves. */
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph']);
 
+/**
+ * The addresses a show opens from a link: the ones the app's text tools write (`safeLink`). A
+ * link that came in some other way (an imported file, an agent) to `javascript:`, `data:` or a
+ * file on the disk is not followed.
+ */
+const OPENABLE = /^(?:https?:|mailto:|tel:)/i;
+
 /** A swipe is at least this long, in CSS pixels, and mostly horizontal. */
 const SWIPE_DISTANCE = 50;
 
@@ -151,11 +158,28 @@ export function bindControls(player: Player, options: ControlOptions): () => voi
   };
   undo.push(() => setTyped(''));
 
+  /** Follows the link of an element or of text: to a slide of the show, or out to an address. */
+  const follow = (linked: Element) => {
+    const target = linked.getAttribute('data-link-target') ?? '';
+    if (linked.getAttribute('data-link-kind') === 'slide') {
+      const to = player.slides.findIndex((s) => s.id === target);
+      if (to !== -1) player.goTo(to);
+    } else if (OPENABLE.test(target.trim())) view?.open(target, '_blank', 'noopener');
+  };
+
   if (on.keyboard) {
     listen<KeyboardEvent>(doc, 'keydown', (event) => {
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
       if (MODIFIER_KEYS.has(event.key)) return;
       if (pathOf(event).some((el) => el.matches(INTERACTIVE))) return;
+      // Enter on a link that has the keyboard (Tab reaches the links of the slide shown) follows
+      // it, as a click does; elsewhere Enter is the next step.
+      const linked = pathOf(event).find((el) => el.hasAttribute('data-link-kind'));
+      if (linked && event.key === 'Enter') {
+        event.preventDefault();
+        follow(linked);
+        return;
+      }
       const key = keyOf(event);
       const colour = BLANK_KEYS.get(key);
       if (blank) {
@@ -231,11 +255,7 @@ export function bindControls(player: Player, options: ControlOptions): () => voi
       if (path.some((el) => el.matches(INTERACTIVE))) return;
       const linked = path.find((el) => el.hasAttribute('data-link-kind'));
       if (linked) {
-        const target = linked.getAttribute('data-link-target') ?? '';
-        if (linked.getAttribute('data-link-kind') === 'slide') {
-          const to = player.slides.findIndex((s) => s.id === target);
-          if (to !== -1) player.goTo(to);
-        } else view?.open(target, '_blank', 'noopener');
+        follow(linked);
         return;
       }
       // Dragging to select text ends in a click too.

@@ -942,6 +942,10 @@ export const ElementView = memo(function ElementView({
       data-name={element.name}
       data-link-kind={element.link?.kind}
       data-link-target={element.link?.target}
+      // In a show an element with a link is a stop of Tab, and Enter on it follows it (UI-06).
+      {...(element.link && ctx.mode === 'present' && !decoration
+        ? { tabIndex: 0, role: 'link' }
+        : {})}
       style={{ ...boxStyle(element), ...passthroughStyle(element.css) }}
     >
       {inner(element, decoration)}
