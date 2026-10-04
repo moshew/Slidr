@@ -54,6 +54,13 @@ reqwest = { version = "0.13.5", default-features = false, features = ["native-tl
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 # The pictures an image API returns inside JSON; and, on Windows, the PNG of a slide capture.
 base64 = "0.22"
+# Runs the matting model of local background removal (GEN-06) in this process and in Rust: no
+# native library, and nothing downloaded at build time. Without the transformer operators,
+# which a convolutional model does not use.
+tract-onnx = { version = "0.23.8", default-features = false }
+# The kernels of the same library, named only to turn on their thread pool: a model that reads
+# 1024 pixels a side takes 2 s on eight threads and 6 s on one.
+tract-linalg = { version = "0.23.8", features = ["multithread-mm"] }
 
 # Slide capture (ADR-003): Page.captureScreenshot through the WebView2 DevTools protocol. The
 # versions wry already uses, so nothing new is built.

@@ -6,6 +6,7 @@ mod capture;
 mod commands;
 mod error;
 mod harness;
+mod image_process;
 mod image_providers;
 mod import_window;
 mod net;
@@ -42,6 +43,9 @@ pub fn run() {
             app.manage(Arc::new(storage::Storage::new(root)));
             app.manage(Arc::new(capture::CaptureService::new()));
             app.manage(Arc::new(import_window::ImportService::new()));
+            app.manage(Arc::new(image_process::ImageProcessService::new(
+                image_process::places(app)?,
+            )));
             Ok(())
         })
         .on_window_event(capture::on_window_event)
@@ -113,6 +117,8 @@ pub fn run() {
             import_window::import_source,
             import_window::import_store_asset,
             commands::export_copy_media,
+            image_process::ipc::image_process,
+            image_process::ipc::image_process_status,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

@@ -1,0 +1,115 @@
+{
+  "operations": [
+    { "type": "remove_background" },
+    { "type": "chroma_key" },
+    { "type": "chroma_key", "color": "#00ff00", "tolerance": 0.12, "contiguous": true }
+  ],
+  "results": [
+    {
+      "asset": {
+        "id": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+        "file": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef.png",
+        "mime": "image/png",
+        "kind": "image",
+        "bytes": 1907113,
+        "width": 2000.0,
+        "height": 1333.0
+      },
+      "durationMs": 1340,
+      "model": "u2net"
+    },
+    {
+      "asset": {
+        "id": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+        "file": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef.png",
+        "mime": "image/png",
+        "kind": "image",
+        "bytes": 1907113,
+        "width": 2000.0,
+        "height": 1333.0
+      },
+      "durationMs": 85,
+      "keyColor": "#00ff00"
+    }
+  ],
+  "statuses": [
+    {
+      "state": "ready",
+      "model": {
+        "id": "u2net",
+        "name": "U²-Net",
+        "file": "u2net.onnx",
+        "license": "Apache-2.0",
+        "bytes": 175997641
+      },
+      "path": "/data/dev.slidr.app/models/u2net.onnx",
+      "place": "app_data",
+      "installDir": "/data/dev.slidr.app/models",
+      "supported": [
+        {
+          "id": "u2net",
+          "name": "U²-Net",
+          "file": "u2net.onnx",
+          "license": "Apache-2.0",
+          "bytes": 175997641
+        },
+        {
+          "id": "isnet-general-use",
+          "name": "IS-Net (general use)",
+          "file": "isnet-general-use.onnx",
+          "license": "Apache-2.0",
+          "bytes": 178648008
+        },
+        {
+          "id": "u2netp",
+          "name": "U²-Net (small)",
+          "file": "u2netp.onnx",
+          "license": "Apache-2.0",
+          "bytes": 4574861
+        }
+      ]
+    },
+    {
+      "state": "not_installed",
+      "model": null,
+      "path": null,
+      "place": null,
+      "installDir": "/data/dev.slidr.app/models",
+      "supported": [
+        {
+          "id": "u2net",
+          "name": "U²-Net",
+          "file": "u2net.onnx",
+          "license": "Apache-2.0",
+          "bytes": 175997641
+        },
+        {
+          "id": "isnet-general-use",
+          "name": "IS-Net (general use)",
+          "file": "isnet-general-use.onnx",
+          "license": "Apache-2.0",
+          "bytes": 178648008
+        },
+        {
+          "id": "u2netp",
+          "name": "U²-Net (small)",
+          "file": "u2netp.onnx",
+          "license": "Apache-2.0",
+          "bytes": 4574861
+        }
+      ]
+    }
+  ],
+  "places": ["dev", "app_data", "bundle"],
+  "error": { "kind": "not_installed", "message": "no background-removal model is installed" },
+  "errorKinds": [
+    "not_installed",
+    "not_found",
+    "unsupported",
+    "invalid_input",
+    "unknown_workspace",
+    "generation_failed",
+    "io",
+    "internal"
+  ]
+}
