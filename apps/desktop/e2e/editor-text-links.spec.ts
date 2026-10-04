@@ -144,9 +144,12 @@ test.describe('the link tool', () => {
       marks: { link: 'https://example.com', underline: true },
     });
 
-    await page.keyboard.press('End');
+    // A new line after the text (the caret is put at its end: position 30). On the empty line
+    // the tool is off, and Ctrl+K opens nothing.
+    await expect(editor(page)).toBeFocused();
+    await setSelection(page, 30);
     await page.keyboard.press('Enter');
-    // An empty line: the tool is off, and Ctrl+K opens nothing.
+    expect(await paragraphs(page, ID)).toHaveLength(2);
     await expect(linkButton(page)).toBeDisabled();
     await page.keyboard.press('Control+k');
     await expect(address(page)).toHaveCount(0);
