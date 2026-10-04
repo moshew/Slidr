@@ -1,4 +1,11 @@
-import { Command, commandDefs, locateElement, type CommandType } from '@slidr/model';
+import {
+  Command,
+  CommandBus,
+  commandDefs,
+  locateElement,
+  type CommandType,
+  type Deck,
+} from '@slidr/model';
 import { z } from 'zod';
 import { formatZodError } from '../errors';
 import { getSlide } from '../lookup';
@@ -29,7 +36,7 @@ const COMMAND_TYPES = Object.keys(commandDefs) as [CommandType, ...CommandType[]
  */
 const OPS_HELP = [
   'Each op is one model command: {"type": ..., ...fields}. Fields named patch replace each given field whole; null removes an optional field.',
-  'element.update {slideId, elementId, patch}',
+  'element.update {slideId, elementId, patch} (patch.frame may be partial)',
   'text.set {slideId, elementId, content: RichText, cell?: {row, col}}',
   'element.add {slideId, element, parentId?, index?}',
   'element.remove {slideId, elementIds}',
@@ -71,10 +78,43 @@ export const deckApplyOps = defineTool({
       }
       return parsed.data;
     });
-    ctx.write(commands);
+    ctx.write(withWholeFrames(commands, ctx.deck));
     return {};
   },
 });
+
+/**
+ * `element.update` replaces each field of its patch whole, but an agent sends a frame with only
+ * what changed (`{"x": 100}`), as `element_update` lets it, and was refused (ADR-063). Each frame
+ * of an `element.update` is completed from the element as the earlier ops of the batch leave it,
+ * on a scratch bus over the same immutable deck. An op the scratch bus refuses is left as it is:
+ * the write refuses it again and names it.
+ */
+function withWholeFrames(commands: Command[], deck: Deck): Command[] {
+  const partial = (command: Command) =>
+    command.type === 'element.update' &&
+    typeof command.patch.frame === 'object' &&
+    command.patch.frame !== null;
+  if (!commands.some(partial)) return commands;
+  const scratch = new CommandBus(deck, { historyLimit: 0 });
+  return commands.map((command) => {
+    let whole = command;
+    if (command.type === 'element.update' && partial(command)) {
+      const slide = scratch.deck.slides.find((s) => s.id === command.slideId);
+      const found = slide && locateElement(slide.elements, command.elementId);
+      if (found) {
+        const frame = { ...found.element.frame, ...(command.patch.frame as object) };
+        whole = { ...command, patch: { ...command.patch, frame } };
+      }
+    }
+    try {
+      scratch.dispatch(whole);
+    } catch {
+      // The write below refuses it, with the index of the op.
+    }
+    return whole;
+  });
+}
 
 export const uiNavigate = defineTool({
   name: 'ui_navigate',
