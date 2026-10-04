@@ -17,6 +17,7 @@ import {
   flipBackgrounds,
   label,
   NO_FILL,
+  pageNumber,
   place,
   rect,
   sampleSlides,
@@ -101,9 +102,9 @@ const head = (width = 1728, lines = 1) => [
 ];
 
 /**
- * The foot of a content slide: a rule, the mark at the start and the deck's name at the end,
- * which leaves a logo of any width room to replace the mark. There is no placeholder for the
- * slide's number: nothing shows it yet (SLD-04), and a placeholder would give nothing.
+ * The foot of a content slide: a rule, the mark at the start, and at the end the deck's name
+ * with the slide's number beyond it (SLD-04). The mark stands alone at its side, which leaves a
+ * logo of any width room to replace it.
  */
 function foot(
   name: string,
@@ -111,11 +112,12 @@ function foot(
 ): { placeholders: Layout['placeholders']; decorations: Element[] } {
   return {
     placeholders: [
-      place('p_footer', 'footer', at(96 + width - 900, 961, 900, 34), 'caption', { align: 'end' }),
+      place('p_footer', 'footer', at(96 + width - 900, 961, 828, 34), 'caption', { align: 'end' }),
     ],
     decorations: [
       rect(`d_zerem_${name}_rule`, at(96, 940, width, 1), solid(token('text', 0.14))),
       mark(`d_zerem_${name}_mark`, at(96, 962, 44, 32)),
+      pageNumber(`d_zerem_${name}_number`, at(96 + width - 60, 961, 60, 34)),
     ],
   };
 }

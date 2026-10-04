@@ -30,3 +30,14 @@ export {
   type DrawnLayout,
   type LayoutFromSlide,
 } from './draft';
+export {
+  deckFooter,
+  footerLayouts,
+  masterState,
+  restoreMaster,
+  setDeckFooter,
+  showSlideNumber,
+  slideNumberHidden,
+  slideNumberLayouts,
+  type MasterState,
+} from './master';

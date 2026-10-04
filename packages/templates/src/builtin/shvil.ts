@@ -9,6 +9,7 @@ import {
   dot,
   drawing,
   label,
+  pageNumber,
   para,
   place,
   rect,
@@ -158,9 +159,9 @@ function head(
 }
 
 /**
- * The foot of a content slide: the mark at the start and the deck's name at the end, which
- * leaves a logo of any width room to replace the mark. There is no placeholder for the slide's
- * number: nothing shows it yet (SLD-04).
+ * The foot of a content slide: the mark at the start, and at the end the deck's name with the
+ * slide's number beyond it (SLD-04). The mark stands alone at its side, which leaves a logo of
+ * any width room to replace it.
  */
 function foot(
   name: string,
@@ -168,9 +169,12 @@ function foot(
 ): { placeholders: Layout['placeholders']; decorations: Element[] } {
   return {
     placeholders: [
-      place('p_footer', 'footer', at(96 + width - 900, 956, 900, 34), 'caption', { align: 'end' }),
+      place('p_footer', 'footer', at(96 + width - 900, 956, 828, 34), 'caption', { align: 'end' }),
     ],
-    decorations: [mark(`d_shvil_${name}_mark`, at(96, 954, 36, 36))],
+    decorations: [
+      mark(`d_shvil_${name}_mark`, at(96, 954, 36, 36)),
+      pageNumber(`d_shvil_${name}_number`, at(96 + width - 60, 956, 60, 34)),
+    ],
   };
 }
 

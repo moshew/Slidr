@@ -9,6 +9,7 @@ import {
   bullets,
   drawing,
   label,
+  pageNumber,
   place,
   rect,
   sampleSlides,
@@ -111,9 +112,9 @@ const head = (width = 1728, lines = 1) => [
 
 /**
  * What frames a content slide besides its head: the brass rule before the line over the title,
- * and the foot, a hairline with the mark at the start and the deck's name at the end, which
- * leaves a logo of any width room to replace the mark. No placeholder for the slide's number:
- * nothing shows it yet.
+ * and the foot, a hairline with the mark at the start, and at the end the deck's name with the
+ * slide's number beyond it (SLD-04). The mark stands alone at its side, which leaves a logo of
+ * any width room to replace it.
  */
 function frameOf(
   name: string,
@@ -121,12 +122,13 @@ function frameOf(
 ): { placeholders: Layout['placeholders']; decorations: Element[] } {
   return {
     placeholders: [
-      place('p_footer', 'footer', at(96 + width - 900, 958, 900, 34), 'caption', { align: 'end' }),
+      place('p_footer', 'footer', at(96 + width - 900, 958, 828, 34), 'caption', { align: 'end' }),
     ],
     decorations: [
       tick(`d_tzuk_${name}_tick`),
       rect(`d_tzuk_${name}_rule`, at(96, 940, width, 1), HAIR),
       mark(`d_tzuk_${name}_mark`, at(96, 957, 34, 34)),
+      pageNumber(`d_tzuk_${name}_number`, at(96 + width - 60, 958, 60, 34)),
     ],
   };
 }
