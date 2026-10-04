@@ -2,6 +2,13 @@ import { hebrewFaces } from '@slidr/renderer';
 import { builtinFaces, builtinFamilies, type BuiltinFace } from './builtinFonts.generated';
 
 export { builtinFamilies };
+export {
+  loadSystemFonts,
+  setSystemFontSource,
+  useSystemFonts,
+  type SystemFont,
+  type SystemFontSource,
+} from './systemFonts';
 
 function faceRule(face: BuiltinFace): string {
   return [
