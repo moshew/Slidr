@@ -83,6 +83,19 @@ export const he = {
     set: 'קביעת לוגו',
     failed: 'התמונה לא נשמרה',
   },
+  master: {
+    title: 'מספר שקף וכותרת תחתונה',
+    number: 'מספר השקף',
+    numberShown: 'מוצג בשקפי התוכן',
+    numberHidden: 'מוסתר',
+    showNumber: 'הצגת מספר השקף',
+    hideNumber: 'הסתרת מספר השקף',
+    numberNone: 'ב-layouts של המצגת אין מקום למספר שקף. החילו תבנית כדי לקבל אחד.',
+    footer: 'כותרת תחתונה',
+    footerPlaceholder: 'למשל שם החברה והתאריך',
+    footerHint: 'מופיעה בכל שקף שיש בו מקום לכותרת תחתונה. שקף שנכתבה בו כותרת משלו מציג את שלו.',
+    footerNone: 'ב-layouts של המצגת אין מקום לכותרת תחתונה.',
+  },
   save: {
     title: 'שמירה כתבנית אישית',
     name: 'שם התבנית',
@@ -100,6 +113,8 @@ export const he = {
     font: 'שינוי גופן בתבנית',
     style: 'שינוי סגנון טקסט',
     logo: 'שינוי הלוגו',
+    number: 'הצגה או הסתרה של מספר השקף',
+    footer: 'שינוי הכותרת התחתונה',
     save: 'שמירה כתבנית',
   },
   archetype: {
@@ -234,6 +249,21 @@ export const en: typeof he = {
     set: 'Set the logo',
     failed: 'The picture was not stored',
   },
+  master: {
+    title: 'Slide number and footer',
+    number: 'Slide number',
+    numberShown: 'Shown on content slides',
+    numberHidden: 'Hidden',
+    showNumber: 'Show the slide number',
+    hideNumber: 'Hide the slide number',
+    numberNone:
+      'The layouts of this deck have no place for a slide number. Apply a template to get one.',
+    footer: 'Footer',
+    footerPlaceholder: 'For example, the company and the date',
+    footerHint:
+      'Shown on every slide that has a place for a footer. A slide with a footer of its own shows its own.',
+    footerNone: 'The layouts of this deck have no place for a footer.',
+  },
   save: {
     title: 'Save as a personal template',
     name: 'Template name',
@@ -251,6 +281,8 @@ export const en: typeof he = {
     font: 'Change a template font',
     style: 'Change a text style',
     logo: 'Change the logo',
+    number: 'Show or hide the slide number',
+    footer: 'Change the footer',
     save: 'Save as a template',
   },
   archetype: {

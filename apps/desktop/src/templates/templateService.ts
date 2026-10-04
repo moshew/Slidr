@@ -17,7 +17,6 @@ import {
   type PlaceholderRole,
 } from '@slidr/model';
 import {
-  applyTemplate,
   draftTemplate,
   sampleDeckOf,
   themeFrom,
@@ -25,6 +24,7 @@ import {
   type DrawnLayout,
   type Template,
 } from '@slidr/templates';
+import { switchCommands } from './actions';
 import type { TemplateDraft, TemplateDrafts } from './drafts';
 import { describeRoles } from './layoutService';
 
@@ -108,7 +108,7 @@ export function createTemplateService(source: TemplateSource): TemplateService {
       }
       const template = source.forDeck?.(found, deck) ?? found;
       await source.supply?.(template, deck);
-      return applyTemplate(deck, template);
+      return switchCommands(deck, template);
     },
 
     create: async (deck, { name, theme: tokens, layouts, basedOn }) => {

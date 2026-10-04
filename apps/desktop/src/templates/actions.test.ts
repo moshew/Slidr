@@ -1,5 +1,13 @@
 import { CommandBus, createDeck, type AssetMeta, type Deck } from '@slidr/model';
-import { deckFromTemplate, layoutsFor, type Template } from '@slidr/templates';
+import {
+  deckFooter,
+  deckFromTemplate,
+  layoutsFor,
+  masterState,
+  slideNumberHidden,
+  type Template,
+} from '@slidr/templates';
+import { builtInTemplates, zeremTemplate } from '@slidr/templates/builtin';
 import { nightTemplate, paperTemplate } from '@slidr/templates/fixtures';
 import { describe, expect, it } from 'vitest';
 import type { Editor } from '../shell';
@@ -10,10 +18,13 @@ import {
   logoHidden,
   logoLayouts,
   saveAsTemplate,
+  setFooter,
   setLogo,
   showLogo,
+  showNumber,
   startDeck,
   supplyAssets,
+  switchCommands,
   turnDeck,
 } from './actions';
 import { TemplateLibrary } from './library';
@@ -315,3 +326,60 @@ describe('saving the deck as a personal template', () => {
     expect(next.slides).toHaveLength(1);
   });
 });
+
+describe('the master components of the deck (SLD-04)', () => {
+  const library = () => libraryOf(...builtInTemplates());
+  const png = (name: string) => new File([new Uint8Array([1, 2, 3])], name, { type: 'image/png' });
+
+  it('hides and shows the slide number, and sets and clears the footer, each as one step', () => {
+    const { editor, bus } = editorOn(deckFromTemplate(tzukTemplate(), { lang: 'he' }));
+    showNumber(editor, false, 'מספר');
+    expect(slideNumberHidden(bus.deck)).toBe(true);
+    setFooter(editor, 'צוק · 2026', 'כותרת תחתונה');
+    expect(deckFooter(bus.deck)).toBe('צוק · 2026');
+    expect(bus.undoStack.map((step) => step.label)).toEqual(['מספר', 'כותרת תחתונה']);
+    // What is already so is no step.
+    setFooter(editor, 'צוק · 2026');
+    showNumber(editor, false);
+    expect(bus.undoStack).toHaveLength(2);
+    bus.undo();
+    bus.undo();
+    expect(masterState(bus.deck)).toEqual({ footer: '', numberHidden: false });
+  });
+
+  it('a switch of template keeps the footer, the hidden number and the logo, as one step', async () => {
+    const start = deckFromTemplate(tzukTemplate(), { lang: 'he', sample: true });
+    const { editor, bus } = editorOn(start);
+    setFooter(editor, 'צוק · 2026');
+    showNumber(editor, false);
+    await setLogo(editor, png('logo.png'));
+    const before = bus.deck;
+    const steps = bus.undoStack.length;
+
+    expect(await applyLibraryTemplate(editor, library(), 'zerem', 'החלפת תבנית')).toBe(true);
+    expect(bus.undoStack).toHaveLength(steps + 1);
+    expect(bus.deck.theme.id).toBe('zerem');
+    expect(masterState(bus.deck)).toEqual({ footer: 'צוק · 2026', numberHidden: true });
+    // The user's picture stands where the new template drew its mark.
+    expect(logoAsset(bus.deck)?.name).toBe('logo.png');
+    expect(logoLayouts(bus.deck).every((layout) => layout.id.startsWith('l_zerem_'))).toBe(true);
+    bus.undo();
+    expect(bus.deck).toEqual(before);
+  });
+
+  it('a deck that set none of them gets the template as it was drawn', async () => {
+    const { editor, bus } = editorOn(deckFromTemplate(tzukTemplate(), { lang: 'he' }));
+    await applyLibraryTemplate(editor, library(), 'zerem');
+    expect(bus.deck.layouts).toEqual(layoutsFor(zeremTemplate(), 'rtl'));
+    expect(switchCommands(bus.deck, zeremTemplate())).toEqual([]);
+  });
+
+  it('a hidden logo stays hidden on the new template', async () => {
+    const { editor, bus } = editorOn(deckFromTemplate(tzukTemplate(), { lang: 'he' }));
+    showLogo(editor, false);
+    await applyLibraryTemplate(editor, library(), 'zerem');
+    expect(logoHidden(bus.deck)).toBe(true);
+  });
+});
+
+const tzukTemplate = () => builtInTemplates().find((template) => template.theme.id === 'tzuk')!;

@@ -5,6 +5,7 @@
  * deck is one batch of commands from the catalogue, so each is one undo step.
  */
 import {
+  CommandBus,
   createDeck,
   createElement,
   createSlide,
@@ -24,7 +25,11 @@ import {
   deckFromTemplate,
   layoutAssets,
   layoutsFor,
+  masterState,
   mirrorLayout,
+  restoreMaster,
+  setDeckFooter,
+  showSlideNumber,
   type Template,
 } from '@slidr/templates';
 import type { Editor } from '../shell';
@@ -88,9 +93,47 @@ export async function applyLibraryTemplate(
   // The files before the commands that name them, so the deck never points at a missing file.
   const layouts = layoutsFor(template, editor.bus.deck.meta.dir);
   await copyAssets(editor, library, template, layoutAssets(template, layouts));
-  const commands = applyTemplate(editor.bus.deck, template);
+  const commands = switchCommands(editor.bus.deck, template);
   if (commands.length > 0) editor.bus.batch(commands, { label });
   return true;
+}
+
+/**
+ * The commands that switch a deck to a template and keep what the user set on every slide: the
+ * footer they wrote, a slide number they hid, and their logo (SLD-04). A switch replaces the
+ * layouts, and the master components live in the layouts, so they are set again on the new
+ * ones. A deck that set none of them gets the template as it was drawn.
+ */
+export function switchCommands(deck: Deck, template: Template): Command[] {
+  const apply = applyTemplate(deck, template);
+  if (apply.length === 0) return apply;
+  // Each step is worked out on the deck the one before it leaves.
+  const scratch = new CommandBus(deck);
+  const commands: Command[] = [];
+  const then = (next: (after: Deck) => Command[]) => {
+    const step = next(scratch.deck);
+    if (step.length === 0) return;
+    scratch.batch(step);
+    commands.push(...step);
+  };
+  const logo = logoAsset(deck);
+  then(() => apply);
+  then((after) => restoreMaster(after, masterState(deck)));
+  if (logo) then((after) => onLogos(after, (mark) => logoPicture(mark, logo)));
+  if (logoHidden(deck)) then((after) => onLogos(after, (mark) => ({ ...mark, hidden: true })));
+  return commands;
+}
+
+/** Shows the slide number on every layout that draws one, or hides it (SLD-04). */
+export function showNumber(editor: Editor, shown: boolean, label?: string): void {
+  const commands = showSlideNumber(editor.bus.deck, shown);
+  if (commands.length > 0) editor.bus.batch(commands, { label });
+}
+
+/** Sets the footer every slide shows; an empty text takes it away (SLD-04). */
+export function setFooter(editor: Editor, text: string, label?: string): void {
+  const commands = setDeckFooter(editor.bus.deck, text);
+  if (commands.length > 0) editor.bus.batch(commands, { label });
 }
 
 /** Turns the deck to the other direction, layouts and slides with it (THM-02). */

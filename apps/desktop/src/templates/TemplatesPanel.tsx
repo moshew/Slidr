@@ -1,5 +1,6 @@
 import { TextStyleRef, type ColorToken, type FontPair, type TextStyle } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
+import { deckFooter, footerLayouts, slideNumberHidden, slideNumberLayouts } from '@slidr/templates';
 import {
   Button,
   ColorPicker,
@@ -30,8 +31,10 @@ import {
   logoHidden,
   logoLayouts,
   saveAsTemplate,
+  setFooter,
   setLogo,
   showLogo,
+  showNumber,
   turnDeck,
 } from './actions';
 import { library } from './app';
@@ -369,6 +372,72 @@ function ThemeTextStyles() {
   );
 }
 
+/**
+ * The master components beside the logo (SLD-04): the slide's number, which the layouts draw,
+ * and the footer every slide shows. Both are of the open deck, like the rest of this panel.
+ */
+function Master() {
+  const { t } = useTranslation('templates');
+  const editor = useEditor();
+  const deck = useDeck((s) => s.deck);
+  const numbers = slideNumberLayouts(deck).length;
+  const hidden = slideNumberHidden(deck);
+  const seats = footerLayouts(deck).length;
+  const footer = deckFooter(deck);
+  return (
+    <Section title={t('master.title')}>
+      <div className="flex items-center gap-2" data-testid="master-number">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="text-sm text-ui-fg">{t('master.number')}</span>
+          <span className="text-xs text-ui-fg-muted">
+            {numbers === 0
+              ? t('master.numberNone')
+              : t(hidden ? 'master.numberHidden' : 'master.numberShown')}
+          </span>
+        </div>
+        {numbers > 0 && (
+          <IconButton
+            size="sm"
+            icon={hidden ? Eye : EyeOff}
+            label={t(hidden ? 'master.showNumber' : 'master.hideNumber')}
+            onClick={() => showNumber(editor, hidden, t('undo.number'))}
+          />
+        )}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {/* Keyed by the deck's footer, so the field follows an undo or a switch of template. */}
+        <FooterField key={footer} footer={footer} disabled={seats === 0} />
+        <p className="text-xs text-ui-fg-muted">
+          {t(seats === 0 ? 'master.footerNone' : 'master.footerHint')}
+        </p>
+      </div>
+    </Section>
+  );
+}
+
+/** The footer as it is typed; it goes to the deck when the field is left, or on Enter. */
+function FooterField({ footer, disabled }: { footer: string; disabled: boolean }) {
+  const { t } = useTranslation('templates');
+  const editor = useEditor();
+  const [draft, setDraft] = useState(footer);
+  const commit = () => setFooter(editor, draft, t('undo.footer'));
+  return (
+    <Input
+      aria-label={t('master.footer')}
+      placeholder={t('master.footerPlaceholder')}
+      value={draft}
+      dir="auto"
+      disabled={disabled}
+      data-testid="master-footer"
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') commit();
+      }}
+    />
+  );
+}
+
 function Logo() {
   const { t } = useTranslation('templates');
   const editor = useEditor();
@@ -505,6 +574,7 @@ export function TemplatesPanel() {
       <ThemeColors />
       <ThemeFonts />
       <ThemeTextStyles />
+      <Master />
       <Logo />
       <SaveAsTemplate />
     </div>
