@@ -14,6 +14,12 @@
     "eval:review": "node eval/scripts/report.mjs"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
     "@fontsource-variable/assistant": "^5.3.0",
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource-variable/frank-ruhl-libre": "^5.3.0",
@@ -37,6 +43,7 @@
     "@fontsource/secular-one": "^5.3.0",
     "@fontsource/suez-one": "^5.3.0",
     "@fontsource/varela-round": "^5.3.0",
+    "@lezer/highlight": "^1.2.5",
     "@slidr/agent-tools": "workspace:*",
     "@slidr/html-export": "workspace:*",
     "@slidr/html-import": "workspace:*",

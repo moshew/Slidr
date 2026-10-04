@@ -1,14 +1,24 @@
+import { CodeXml } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
-import { getEditor, registerAction, registerActionPopover, registerContextTool } from '../shell';
+import {
+  getEditor,
+  registerAction,
+  registerActionPopover,
+  registerContextTool,
+  registerPanel,
+} from '../shell';
 import { BackgroundTool } from './BackgroundTool';
+import { CODE_PANEL, CodePanel } from './CodePanel';
+import { HtmlRow } from './htmlTools';
 import { insertImages } from './insert';
 import { LineLibrary, ShapeLibrary } from './library';
 import { en, he } from './messages';
 import { EffectsRow, ImageRow, ShapeRow } from './tools';
 
 /*
- * The objects area (WG5): inserting pictures, shapes and lines, styling them, and the slide
- * background. See docs/adr/ADR-014-objects.md.
+ * The objects area (WG5): inserting pictures, shapes and lines, styling them, the slide
+ * background, and the code of an `html` element. See docs/adr/ADR-014-objects.md and
+ * ADR-057-objects-media-images.md.
  */
 
 registerMessages('objects', { he, en });
@@ -44,6 +54,13 @@ registerContextTool({
   order: 800,
   render: EffectsRow,
 });
+registerContextTool({
+  id: 'objects.html',
+  kinds: ['html'],
+  group: 'objects',
+  order: 30,
+  render: HtmlRow,
+});
 // Replaces the shell's placeholder of the same id.
 registerContextTool({
   id: 'slide.background',
@@ -51,4 +68,18 @@ registerContextTool({
   group: 'slide',
   order: 0,
   render: BackgroundTool,
+});
+
+/*
+ * The code panel (HTM-04): after the panels of SPEC 4.2. It shows the selected `html` element,
+ * and row B's "Edit the code" opens it.
+ */
+registerPanel({
+  id: CODE_PANEL,
+  kind: 'tool',
+  slot: 'tools',
+  order: 6,
+  title: 'objects:code.title',
+  icon: CodeXml,
+  content: CodePanel,
 });
