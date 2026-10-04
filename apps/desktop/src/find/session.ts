@@ -4,6 +4,7 @@ import { i18n } from '../i18n';
 import type { Editor } from '../shell';
 // By file, not through the shell's index: these are plain functions, and the index loads the app.
 import { focusStage, stageElement } from '../shell/stageDom';
+import { openPanel } from '../shell/store';
 import { syncGrowHeight } from '../text/actions';
 import { editorFor } from '../text/activeEditor';
 import { cellsWritten } from '../text/cellScope';
@@ -125,9 +126,13 @@ function goTo(editor: Editor, match: Match): void {
     if (!focusInBar()) focusStage();
   }
   selection.setCurrentSlide(match.slideId);
-  // A match in the speaker notes has nothing on the Stage to select.
   if (match.elementId) selection.selectElements([match.elementId]);
-  else selection.clearSelection();
+  else {
+    // A match in the speaker notes has nothing on the Stage to select: the notes panel shows it.
+    // The keyboard stays in the bar, for the next Enter.
+    selection.clearSelection();
+    openPanel('notes');
+  }
 }
 
 /** Goes to the next match, or to the previous one (Enter and Shift+Enter, F3 and Shift+F3). */

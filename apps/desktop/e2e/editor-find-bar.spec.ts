@@ -134,6 +134,10 @@ test('Enter and Shift+Enter go through the matches of every slide, and the count
     }
     if (step.count === '7 / 9') {
       await expect(status(page)).toHaveText('התוצאה בהערות הדובר של השקף');
+      // The notes are shown: their panel opens, with the match in its text (ADR-060).
+      const notes = page.locator('section[data-panel="notes"]');
+      await expect(notes).toBeVisible();
+      await expect(notes.getByRole('textbox')).toHaveValue(/לציין את הרבעון החזק/);
     } else {
       await expect(status(page)).toHaveCount(0);
     }
