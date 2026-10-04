@@ -280,6 +280,16 @@ export function shortcutsFor(keys: string): ShortcutDefinition[] {
     .reverse();
 }
 
+/** Every registered shortcut, in the order of registration, for the shortcut map. */
+export function useShortcuts(): readonly ShortcutDefinition[] {
+  return useStore(shortcuts.store, (s) => s.items);
+}
+
+/** A registered shortcut by its id, for a button that does what the key does. */
+export function useShortcut(id: string): ShortcutDefinition | undefined {
+  return useStore(shortcuts.store, (s) => s.items.find((shortcut) => shortcut.id === id));
+}
+
 /* ---------------------------------------------------------------- status bar */
 
 /**

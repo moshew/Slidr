@@ -3,7 +3,10 @@ import { describeFailure } from '../document/failures';
 import type { RecentFile, RecoverableWorkspace } from '../document/storage';
 import { currentLanguage, i18n } from '../i18n';
 import { ask, tell } from './dialogs';
+import type { Deck } from '@slidr/model';
 import { newDeck, syncFileState, type Editor } from './editor';
+import { WORKSPACE_KEY } from './startup';
+import { setWelcome } from './store';
 
 /*
  * The File menu flows (DOC-05) over `DocumentService` (ADR-007): new, open, save, save as,
@@ -13,7 +16,6 @@ import { newDeck, syncFileState, type Editor } from './editor';
  */
 
 const EXTENSION = 'slidr';
-const WORKSPACE_KEY = 'slidr.workspace';
 
 const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, options);
 
@@ -119,6 +121,8 @@ async function offerRecovery(editor: Editor): Promise<boolean> {
     } else if (choice === 'recover') {
       try {
         await document.recover(leftover.id);
+        // The work that was recovered is what the user came back for: straight to it.
+        setWelcome(false);
         return true;
       } catch (error) {
         // The leftover stays on disk: it is the only copy of that work.
@@ -153,12 +157,18 @@ export async function confirmDiscard(editor: Editor): Promise<boolean> {
   return choice === 'discard';
 }
 
-export async function newDocument(editor: Editor): Promise<void> {
-  if (!(await confirmDiscard(editor))) return;
-  const deck = newDeck(currentLanguage());
+/**
+ * A new document: the deck given (one that starts on a chosen template), or the one a new deck
+ * starts as. False when the user kept the document that was open.
+ */
+export async function newDocument(editor: Editor, start?: Deck): Promise<boolean> {
+  if (!(await confirmDiscard(editor))) return false;
+  const deck = start ?? newDeck(currentLanguage());
+  // A document was chosen: from the welcome screen, on to the editor (DOC-05).
+  setWelcome(false);
   if (!editor.document) {
     editor.bus.reset(deck);
-    return;
+    return true;
   }
   try {
     await editor.document.create(deck);
@@ -167,25 +177,29 @@ export async function newDocument(editor: Editor): Promise<void> {
   }
   rememberWorkspace(editor);
   syncFileState(editor);
+  return true;
 }
 
-/** Opens a `.slidr` file: the given one, or one the user picks. */
-export async function openDocument(editor: Editor, path?: string): Promise<void> {
+/** Opens a `.slidr` file: the given one, or one the user picks. True when it is open. */
+export async function openDocument(editor: Editor, path?: string): Promise<boolean> {
   const document = editor.document;
-  if (!document) return;
-  if (!(await confirmDiscard(editor))) return;
+  if (!document) return false;
+  if (!(await confirmDiscard(editor))) return false;
   const chosen =
     path ?? (await openDialog({ multiple: false, directory: false, filters: filters() }));
-  if (!chosen) return;
+  if (!chosen) return false;
   editor.file.setState({ busy: 'opening' });
   try {
     const { migratedFrom } = await document.open(chosen);
     rememberWorkspace(editor);
     syncFileState(editor);
+    setWelcome(false);
     if (migratedFrom !== undefined) await tell(t('file.migrated'));
+    return true;
   } catch (error) {
     syncFileState(editor);
     await report(t('file.openFailed'), error);
+    return false;
   }
 }
 

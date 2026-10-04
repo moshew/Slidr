@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { findElement, findSlide, type Point } from '@slidr/model';
@@ -33,6 +33,20 @@ const TEXT_EDITED = new Set(['text', 'shape', 'html']);
 /** In the text editor of a table cell, where the right click is the text's too. */
 function inCellText(target: EventTarget): boolean {
   return target instanceof Element && Boolean(target.closest('[data-cell-editing]'));
+}
+
+/**
+ * A right click on a layer over the Stage is the layer's own, not the Stage menu's: it stops
+ * here. So it never reaches the window, where `main.tsx` keeps the webview's own menu (Back,
+ * Reload, Inspect) away, and the same rule is applied here: only a text field keeps its menu,
+ * and in development Shift+right-click still opens it, for Inspect.
+ */
+function layerContextMenu(event: MouseEvent): void {
+  event.stopPropagation();
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+  if (import.meta.env.DEV && event.shiftKey) return;
+  event.preventDefault();
 }
 
 /** The Stage region (UI-03): the slide at the zoom the shell keeps, and direct manipulation. */
@@ -123,7 +137,7 @@ export function StageRegion() {
             </div>
           )}
           {/* What other areas draw over the Stage; a right click there is theirs, not the menu's. */}
-          <div className="contents" onContextMenu={(event) => event.stopPropagation()}>
+          <div className="contents" onContextMenu={layerContextMenu}>
             {layers.map(({ id, render: Layer }) => (
               <Layer key={id} />
             ))}

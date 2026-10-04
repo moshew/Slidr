@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { PanelId } from './registry';
+import { startsOnWelcome } from './startup';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type AiTab = 'chat' | 'actions';
@@ -20,6 +21,10 @@ export interface ShellState {
   /** The scale the Stage shows the slide at, for the status bar. Written by the Stage. */
   viewScale: number;
   theme: ThemePreference;
+  /** The welcome screen is shown in place of the editor (DOC-05). */
+  welcome: boolean;
+  /** The shortcut map is open (UI-06). */
+  shortcutsOpen: boolean;
 }
 
 export const useShell = create<ShellState>()(
@@ -32,6 +37,8 @@ export const useShell = create<ShellState>()(
       zoom: 'fit',
       viewScale: 1,
       theme: 'system',
+      welcome: startsOnWelcome(),
+      shortcutsOpen: false,
     }),
     {
       name: 'slidr.shell',
@@ -74,6 +81,24 @@ export function setPanelShare(panelShare: number | null): void {
 
 export function setZoom(zoom: 'fit' | number): void {
   useShell.setState({ zoom });
+}
+
+/** The zoom range of the Stage (STG-01). */
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 4;
+
+/** Zooms in or out from the scale the slide is shown at now, by a factor. */
+export function zoomBy(factor: number): void {
+  const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, useShell.getState().viewScale * factor));
+  useShell.setState({ zoom: Math.round(next * 100) / 100 });
+}
+
+export function setWelcome(welcome: boolean): void {
+  useShell.setState({ welcome });
+}
+
+export function showShortcuts(shortcutsOpen = true): void {
+  useShell.setState({ shortcutsOpen });
 }
 
 export function setTheme(theme: ThemePreference): void {

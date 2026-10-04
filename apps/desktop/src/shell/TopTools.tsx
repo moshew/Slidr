@@ -1,4 +1,4 @@
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChartColumn,
@@ -7,13 +7,17 @@ import {
   FilePlus,
   FolderOpen,
   History,
+  House,
   Image,
+  Keyboard,
   Play,
   RectangleHorizontal,
   Redo2,
   Save,
+  Search,
   Shapes,
   Share,
+  SkipBack,
   Slash,
   Sparkles,
   Sticker,
@@ -54,11 +58,12 @@ import {
   useAction,
   useActionPopover,
   useContextTools,
+  useShortcut,
   type ActionPopoverProps,
   type ToolAction,
 } from './registry';
 import { aiKinds, selectionKind, type SelectionKind } from './selection';
-import { openPanel, setZoom, useShell } from './store';
+import { openPanel, setWelcome, setZoom, showShortcuts, useShell } from './store';
 
 /** Top Tools (SPEC 4.4): row A is fixed, row B follows the selection. */
 export function TopTools() {
@@ -161,18 +166,63 @@ function PopoverButton({
 }
 
 function ExportButton() {
-  const { t } = useTranslation();
-  const run = useAction('export');
-  return <IconButton icon={Share} label={t('tools.export')} disabled={!run} onClick={run} />;
+  return <ActionButton action="export" icon={Share} label="tools.export" />;
 }
 
+/**
+ * "Present" as a split button: the button itself does what its area registered (from the
+ * current slide), and the arrow beside it opens the two ways to start, which are the
+ * registered shortcuts F5 and Shift+F5: the menu does what the keys do.
+ */
 function PresentButton() {
   const { t } = useTranslation();
+  const editor = useEditor();
   const run = useAction('present');
+  const fromStart = useShortcut('present.fromStart');
+  const fromCurrent = useShortcut('present.fromCurrent');
+  const ways = [
+    { shortcut: fromStart, label: 'keys.presentStart', icon: SkipBack },
+    { shortcut: fromCurrent, label: 'keys.presentCurrent', icon: Play },
+  ];
   return (
-    <Button variant="primary" icon={Play} disabled={!run} onClick={run}>
-      {t('tools.present')}
-    </Button>
+    <div className="flex items-center" data-testid="present-button">
+      <Button
+        variant="primary"
+        icon={Play}
+        disabled={!run}
+        onClick={run}
+        className="rounded-e-none"
+      >
+        {t('tools.present')}
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="primary"
+            aria-label={t('tools.presentOptions')}
+            disabled={!fromStart && !fromCurrent}
+            className="rounded-s-none border-s border-ui-on-accent/25 px-1.5"
+          >
+            <Icon icon={ChevronDown} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" data-testid="present-menu">
+          {ways.map(
+            ({ shortcut, label, icon }) =>
+              shortcut && (
+                <DropdownMenuItem
+                  key={shortcut.id}
+                  icon={icon}
+                  shortcut={shortcut.keys}
+                  onSelect={() => shortcut.run(editor, new KeyboardEvent('keydown'))}
+                >
+                  {t(label)}
+                </DropdownMenuItem>
+              ),
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -209,6 +259,9 @@ function FileMenu() {
   const busy = useFile((s) => s.busy);
   const [recent, setRecent] = useState<RecentFile[] | null>(null);
   const hasStorage = editor.document !== null;
+  // Find and replace is another area's: the menu offers what its shortcut does, when it is there.
+  const find = useShortcut('find.replace');
+  const toFind = useRef(false);
 
   return (
     <DropdownMenu
@@ -221,7 +274,12 @@ function FileMenu() {
           {t('file.menu')}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent
+        onCloseAutoFocus={(event) => {
+          if (toFind.current) event.preventDefault();
+          toFind.current = false;
+        }}
+      >
         <DropdownMenuItem
           icon={FilePlus}
           shortcut="Ctrl+N"
@@ -274,6 +332,29 @@ function FileMenu() {
           className="ps-8"
         >
           {t('file.saveAs')}
+        </DropdownMenuItem>
+        {find && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              icon={Search}
+              shortcut={find.keys}
+              onSelect={() => {
+                // The find bar takes the keyboard; the menu must not hand it back to its button.
+                toFind.current = true;
+                find.run(editor, new KeyboardEvent('keydown'));
+              }}
+            >
+              {t('file.find')}
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem icon={Keyboard} shortcut="Ctrl+/" onSelect={() => showShortcuts()}>
+          {t('keys.shortcuts')}
+        </DropdownMenuItem>
+        <DropdownMenuItem icon={House} onSelect={() => setWelcome(true)}>
+          {t('welcome.show')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

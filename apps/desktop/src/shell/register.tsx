@@ -18,13 +18,17 @@ import {
 } from '@slidr/ui/icons';
 import { Button, Tooltip } from '@slidr/ui';
 import { useSelection } from './editor';
-import { PanelId, registerContextTool, registerPanel } from './registry';
+import { newDocument, openDocument, saveDocument, saveDocumentAs } from './fileActions';
+import { NotesPanel } from './NotesPanel';
+import { PanelId, registerContextTool, registerPanel, registerShortcut } from './registry';
 import { SettingsPanel } from './SettingsPanel';
+import { openPanel, setZoom, showShortcuts, zoomBy } from './store';
 import { PanelEmpty } from './ToolPanel';
 
 /*
- * The shell's own registrations. Settings is real; the rest are placeholders (SPEC 4.2, 4.4)
- * that hold the place of panels and tools other areas will register under the same ids.
+ * The shell's own registrations. Settings and the speaker notes are real; the rest are
+ * placeholders (SPEC 4.2, 4.4) that hold the place of panels and tools other areas will
+ * register under the same ids. And the shell's own keyboard shortcuts.
  */
 
 registerPanel({
@@ -130,7 +134,6 @@ const tools = [
     icon: Film,
     body: 'panels.animationsBody',
   },
-  { id: 'notes', order: 3, title: 'panels.notes', icon: NotebookPen, body: 'panels.notesBody' },
   { id: 'lint', order: 4, title: 'panels.lint', icon: ScanEye, body: 'panels.lintBody' },
   { id: 'history', order: 5, title: 'panels.history', icon: History, body: 'panels.historyBody' },
 ];
@@ -144,6 +147,17 @@ tools.forEach(({ body, ...tool }) =>
     content: soon(tool.icon, body),
   }),
 );
+
+// The speaker notes of the current slide (SPEC 4.2, panel 7).
+registerPanel({
+  id: 'notes',
+  kind: 'tool',
+  slot: 'tools',
+  order: 3,
+  title: 'panels.notes',
+  icon: NotebookPen,
+  content: NotesPanel,
+});
 
 /* ---------------------------------------------------------------- row B, no selection */
 
@@ -175,5 +189,101 @@ function slideTool(icon: LucideIcon, label: string) {
     order,
     placeholder: true,
     render: slideTool(icon, label),
+  }),
+);
+
+/* ---------------------------------------------------------------- shortcuts (SPEC Appendix A) */
+
+/*
+ * The shell's own keys, registered like every area's, so the shortcut map lists them (UI-06).
+ * The File commands and the view also answer while the caret is in text; undo and redo there
+ * are the text's own (the slide's text editor passes them on to the deck itself).
+ */
+const file = { section: 'file', inText: true } as const;
+registerShortcut({
+  id: 'shell.new',
+  keys: 'Ctrl+N',
+  label: 'keys.new',
+  ...file,
+  run: (editor) => void newDocument(editor),
+});
+registerShortcut({
+  id: 'shell.open',
+  keys: 'Ctrl+O',
+  label: 'keys.open',
+  ...file,
+  run: (editor) => void openDocument(editor),
+});
+registerShortcut({
+  id: 'shell.save',
+  keys: 'Ctrl+S',
+  label: 'keys.save',
+  ...file,
+  run: (editor) => void saveDocument(editor),
+});
+registerShortcut({
+  id: 'shell.saveAs',
+  keys: 'Ctrl+Shift+S',
+  label: 'keys.saveAs',
+  ...file,
+  run: (editor) => void saveDocumentAs(editor),
+});
+registerShortcut({
+  id: 'shell.shortcuts',
+  keys: 'Ctrl+/',
+  label: 'keys.shortcuts',
+  ...file,
+  run: () => showShortcuts(),
+});
+
+const edit = { section: 'edit' } as const;
+registerShortcut({
+  id: 'shell.undo',
+  keys: 'Ctrl+Z',
+  label: 'keys.undo',
+  ...edit,
+  run: (editor) => void editor.bus.undo(),
+});
+for (const keys of ['Ctrl+Y', 'Ctrl+Shift+Z']) {
+  registerShortcut({
+    id: `shell.redo.${keys}`,
+    keys,
+    label: 'keys.redo',
+    ...edit,
+    run: (editor) => void editor.bus.redo(),
+  });
+}
+
+const view = { section: 'view', inText: true } as const;
+registerShortcut({
+  id: 'shell.zoomFit',
+  keys: 'Ctrl+0',
+  label: 'keys.zoomFit',
+  ...view,
+  run: () => setZoom('fit'),
+});
+registerShortcut({
+  id: 'shell.zoomIn',
+  keys: 'Ctrl+=',
+  label: 'keys.zoomIn',
+  ...view,
+  run: () => zoomBy(1.25),
+});
+registerShortcut({
+  id: 'shell.zoomOut',
+  keys: 'Ctrl+-',
+  label: 'keys.zoomOut',
+  ...view,
+  run: () => zoomBy(0.8),
+});
+
+ai.forEach(({ id, shortcut }, n) =>
+  registerShortcut({
+    id: `shell.${id}`,
+    keys: shortcut,
+    label: (['keys.aiDeck', 'keys.aiSlide', 'keys.aiObject'] as const)[n],
+    section: 'ai',
+    inText: true,
+    run: () => openPanel(id),
   }),
 );
