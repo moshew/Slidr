@@ -16,11 +16,16 @@ const MAX_SHARE = 0.6;
 /** Several dropped files fan out by this much, so none hides another. */
 const CASCADE = 40;
 
-/** The element that shows an asset, or undefined for assets that are not pictures, video or sound. */
+/**
+ * The element that shows an asset, or undefined for assets that are not pictures, video or sound.
+ * `svgMarkup` is the cleaned markup of an SVG file: with it the element holds the markup itself,
+ * so its colours can be replaced (SHP-06), and needs no asset.
+ */
 export function elementForAsset(
   asset: AssetMeta,
   slide: { w: number; h: number },
   center: Point,
+  svgMarkup?: string,
 ): Element | undefined {
   const natural = { w: asset.width ?? slide.w * 0.4, h: asset.height ?? slide.h * 0.4 };
   const scale = Math.min(1, (slide.w * MAX_SHARE) / natural.w, (slide.h * MAX_SHARE) / natural.h);
@@ -40,7 +45,9 @@ export function elementForAsset(
         ...(name ? { alt: name } : {}),
       });
     case 'svg':
-      return createElement.svg({ ...base, assetId: asset.id });
+      return createElement.svg(
+        svgMarkup ? { ...base, markup: svgMarkup } : { ...base, assetId: asset.id },
+      );
     case 'video':
       return createElement.video({ ...base, assetId: asset.id });
     case 'audio':
@@ -53,6 +60,9 @@ export function elementForAsset(
 /**
  * The commands that register the assets and place them around a point, as one batch: dropping
  * several files is one undo step. Returns the new element ids too, to select them.
+ *
+ * `svgMarkup` holds the cleaned markup of the SVG files among them, by asset id; such an element
+ * carries its markup and its asset is not registered.
  */
 export function insertAssetsCommands(
   slideId: string,
@@ -60,13 +70,20 @@ export function insertAssetsCommands(
   slide: { w: number; h: number },
   at: Point,
   known: (assetId: string) => boolean,
+  svgMarkup?: ReadonlyMap<string, string>,
 ): { commands: Command[]; elementIds: string[] } {
   const commands: Command[] = [];
   const elementIds: string[] = [];
   assets.forEach((asset, i) => {
-    const element = elementForAsset(asset, slide, { x: at.x + i * CASCADE, y: at.y + i * CASCADE });
+    const markup = svgMarkup?.get(asset.id);
+    const element = elementForAsset(
+      asset,
+      slide,
+      { x: at.x + i * CASCADE, y: at.y + i * CASCADE },
+      markup,
+    );
     if (!element) return;
-    if (!known(asset.id)) commands.push({ type: 'asset.add', asset });
+    if (!markup && !known(asset.id)) commands.push({ type: 'asset.add', asset });
     commands.push({ type: 'element.add', slideId, element });
     elementIds.push(element.id);
   });
