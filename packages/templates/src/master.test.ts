@@ -24,8 +24,10 @@ const seat = (layout: Layout) => layout.placeholders.find((p) => p.role === 'foo
 describe('the master components of a deck (SLD-04)', () => {
   it('a built-in template draws the slide number on its content layouts, and no footer yet', () => {
     const deck = start();
+    // Every layout that seats a footer: the layouts with a foot.
     expect(slideNumberLayouts(deck).map((l) => l.archetype)).toEqual([
       'bigNumber',
+      'quote',
       'textImage',
       'cards',
       'timeline',

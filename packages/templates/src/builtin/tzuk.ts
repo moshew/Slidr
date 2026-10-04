@@ -270,7 +270,7 @@ function layouts(): Layout[] {
         place('p_quote', 'quote', at(96, 232, 1008, 395), 'title', { vAlign: 'middle' }),
         place('p_attribution', 'attribution', at(96, 706, 1008, 53), 'heading'),
         place('p_caption', 'caption', at(96, 768, 1008, 68), 'caption'),
-        place('p_footer', 'footer', at(204, 958, 900, 34), 'caption', { align: 'end' }),
+        place('p_footer', 'footer', at(204, 958, 828, 34), 'caption', { align: 'end' }),
       ],
       decorations: [
         field('d_tzuk_quote_field', 'secondary'),
@@ -278,6 +278,7 @@ function layouts(): Layout[] {
         rect('d_tzuk_quote_top', at(96, 162, 1008, 2), INK),
         rect('d_tzuk_quote_bar', at(96, 678, 96, 3), BRASS),
         rect('d_tzuk_quote_rule', at(96, 940, 1008, 1), HAIR),
+        pageNumber('d_tzuk_quote_number', at(1044, 958, 60, 34)),
         mark('d_tzuk_quote_mark', at(96, 957, 34, 34)),
       ],
     },

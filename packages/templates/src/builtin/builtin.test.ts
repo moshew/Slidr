@@ -26,6 +26,23 @@ describe.each(templates.map((template) => [template.theme.id, template] as const
       expect(template.layouts.flatMap(contractGaps)).toEqual([]);
     });
 
+    it('draws the slide number and the mark wherever a layout seats a footer', () => {
+      // The master components of SLD-04 live in the layouts: a layout with a foot has all three.
+      for (const layout of [...template.layouts, ...(template.flipped ?? [])]) {
+        if (!layout.placeholders.some((p) => p.role === 'footer')) continue;
+        const drawn = layout.decorations.map((d) => d.role);
+        expect(drawn, layout.id).toContain('slideNumber');
+        expect(drawn, layout.id).toContain('logo');
+      }
+    });
+
+    it('gives the hand-drawn mirror of a layout ids of its own decorations', () => {
+      for (const layout of template.flipped ?? []) {
+        const ids = layout.decorations.map((d) => d.id);
+        expect(new Set(ids).size, layout.id).toBe(ids.length);
+      }
+    });
+
     it('shows every layout in its sample, in Hebrew and in English', () => {
       const samples = builtInSamples[id]!;
       for (const sample of [samples.he, samples.en]) {

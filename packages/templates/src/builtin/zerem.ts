@@ -306,7 +306,7 @@ function layouts(): Layout[] {
           place(`p_point${i + 1}`, 'subtitle', at(168, top, 848, 53), 'heading'),
           place(`p_point${i + 1}_body`, 'body', at(168, top + 59, 848, 135), 'body'),
         ]),
-        place('p_footer', 'footer', atEnd(896, 961, 700, 34), 'caption', { align: 'end' }),
+        place('p_footer', 'footer', atEnd(968, 961, 628, 34), 'caption', { align: 'end' }),
       ],
       decorations: [
         ...points3.map((top, i) =>
@@ -316,6 +316,7 @@ function layouts(): Layout[] {
           }),
         ),
         rect('d_zerem_text_image_rule', at(96, 940, 928, 1), solid(token('text', 0.14))),
+        pageNumber('d_zerem_text_image_number', atEnd(896, 961, 60, 34)),
         mark('d_zerem_text_image_mark', at(96, 962, 44, 32)),
       ],
     },

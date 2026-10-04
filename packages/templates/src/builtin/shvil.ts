@@ -274,7 +274,7 @@ function layouts(): Layout[] {
         place('p_quote', 'quote', at(144, 286, 1272, 420), 'title'),
         place('p_attribution', 'attribution', at(144, 766, 1200, 56), 'heading'),
         place('p_caption', 'caption', at(144, 828, 1200, 34), 'caption'),
-        place('p_footer', 'footer', atEnd(504, 956, 700, 34), 'caption', { align: 'end' }),
+        place('p_footer', 'footer', atEnd(576, 956, 628, 34), 'caption', { align: 'end' }),
       ],
       decorations: [
         dot('d_shvil_quote_hill', atEnd(-300, 520, 1000, 1000), solid(token('text', 0.16))),
@@ -284,6 +284,7 @@ function layouts(): Layout[] {
         }),
         tab('d_shvil_quote_bar', at(144, 736, 96, 6), 'accent'),
         mark('d_shvil_quote_mark', at(144, 954, 36, 36)),
+        pageNumber('d_shvil_quote_number', atEnd(504, 956, 60, 34)),
       ],
     },
     {
@@ -297,7 +298,7 @@ function layouts(): Layout[] {
           place(`p_point${i + 1}`, 'subtitle', at(152, top, 912, 56), 'heading'),
           place(`p_point${i + 1}_body`, 'body', at(152, top + 60, 912, 135), 'body'),
         ]),
-        place('p_footer', 'footer', atEnd(856, 956, 700, 34), 'caption', { align: 'end' }),
+        place('p_footer', 'footer', atEnd(928, 956, 628, 34), 'caption', { align: 'end' }),
       ],
       decorations: [
         ...head('text_image').decorations,
@@ -308,6 +309,7 @@ function layouts(): Layout[] {
           .slice(1)
           .map((top, i) => dots(`d_shvil_text_image_rule${i + 1}`, at(96, top - 10, 968, 6))),
         mark('d_shvil_text_image_mark', at(96, 954, 36, 36)),
+        pageNumber('d_shvil_text_image_number', atEnd(856, 956, 60, 34)),
       ],
     },
     {
