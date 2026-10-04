@@ -1,4 +1,4 @@
-import { enablePatches, freeze, produce, produceWithPatches, type Patch } from 'immer';
+import { enablePatches, freeze, isDraft, produce, produceWithPatches, type Patch } from 'immer';
 import { z } from 'zod';
 import {
   commandDefs,
@@ -83,10 +83,13 @@ type Node = Record<string | number, unknown>;
  * back as they are. That matters where a list shifts: a slide added in the middle of a deck is
  * a patch for every slide after it, and copying them made undo in a deck of 200 slides take
  * 12 ms and hand the editor 200 slides it had never seen (NFR-03, ADR-066). Shared, each slide
- * that did not change is the object it was.
+ * that did not change is the object it was. What immer's copying was for is kept another way:
+ * a patch never writes into a value of the history, only into a copy of the level it changes.
  */
 function applyHistoryPatches(deck: Deck, patches: readonly Patch[]): Deck {
   return produce(deck, (draft) => {
+    /** The copies made below: they are this change's own, and may be written to. */
+    const own = new WeakSet<object>();
     for (const patch of patches) {
       const { op, path } = patch;
       const value: unknown = patch.value;
@@ -94,7 +97,18 @@ function applyHistoryPatches(deck: Deck, patches: readonly Patch[]): Deck {
       // The command bus never replaces the deck itself, so every patch has a place inside it.
       if (key === undefined) throw new Error('A history patch must point inside the deck.');
       let parent = draft as unknown as Node;
-      for (const step of path.slice(0, -1)) parent = parent[step] as Node;
+      for (const step of path.slice(0, -1)) {
+        let child = parent[step] as Node;
+        // A later patch of a step can go on into what an earlier one put in: an element is
+        // added, then changed. What was put in belongs to the history, so the patch gets a
+        // copy of the one level it passes through, and the history keeps its own.
+        if (!isDraft(child) && !own.has(child)) {
+          child = (Array.isArray(child) ? [...(child as unknown[])] : { ...child }) as Node;
+          own.add(child);
+          parent[step] = child;
+        }
+        parent = child;
+      }
       if (Array.isArray(parent)) {
         const list = parent as unknown[];
         if (op === 'remove') list.splice(Number(key), 1);

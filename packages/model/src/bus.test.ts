@@ -213,6 +213,34 @@ describe('CommandBus', () => {
     expect((Date.now() - start) / 100).toBeLessThan(16);
   });
 
+  it('redoes a step whose later changes go into what its earlier ones added', () => {
+    const bus = new CommandBus(freshDeck(), { validate: true });
+    const before = bus.deck;
+    // One step, as an agent's turn is: an element is added, then changed, then a slide is added
+    // and an element put on it and moved.
+    bus.dispatch({ type: 'element.add', slideId: 's1', element: rect('c') }, { txId: 'turn' });
+    bus.dispatch(updateElement('s1', 'c', { opacity: 0.5 }), { txId: 'turn' });
+    bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's2' }) }, { txId: 'turn' });
+    bus.dispatch({ type: 'element.add', slideId: 's2', element: rect('d') }, { txId: 'turn' });
+    bus.dispatch(
+      { type: 'element.update', slideId: 's2', elementId: 'd', patch: { opacity: 0.25 } },
+      { txId: 'turn' },
+    );
+    const after = bus.deck;
+    expect(bus.undoStack).toHaveLength(1);
+
+    // Three times round: what a redo puts back is not what the next redo starts from.
+    for (let round = 0; round < 3; round++) {
+      bus.undo();
+      expect(bus.deck).toEqual(before);
+      bus.redo();
+      expect(bus.deck).toEqual(after);
+      expect(Object.isFrozen(findElement(bus.deck.slides[1]!, 'd'))).toBe(true);
+    }
+    // The first slide's untouched element is the object it was all along.
+    expect(bus.deck.slides[0]!.elements[0]).toBe(before.slides[0]!.elements[0]);
+  });
+
   describe('a change that shifts the slides of a large deck (NFR-03)', () => {
     const large = () =>
       createDeck({
