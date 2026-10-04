@@ -106,11 +106,18 @@ test('font picker: search, arrows and Enter', async ({ page }) => {
   await expect(list.getByRole('option')).toHaveCount(1);
   await expect(list.getByRole('option').getByRole('img')).toHaveCount(0);
   await search.press('Enter');
-  await search.fill('');
   await expect(list.getByRole('option', { name: 'Playfair Display' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
+  // The whole list again, from its top: only the lines in view are drawn, and the font that was
+  // chosen is further down.
+  await search.fill('');
+  await expect(list.getByRole('option', { name: /Heebo/ })).toHaveAttribute(
+    'aria-selected',
+    'false',
+  );
+  await expect(list.getByRole('option', { name: 'Playfair Display' })).toHaveCount(0);
 
   await search.fill('zzz');
   await expect(card.getByText('No font by that name')).toBeVisible();
