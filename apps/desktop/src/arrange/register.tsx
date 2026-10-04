@@ -108,30 +108,57 @@ registerPanel({
 registerShortcut({
   id: 'arrange.duplicate',
   keys: 'Ctrl+D',
+  label: 'keys.duplicate',
+  section: 'edit',
   // With the focus in the Filmstrip the slides are what is duplicated.
   run: (editor) => (focusInFilmstrip() ? duplicateSelectedSlides(editor) : duplicate(editor)),
 });
 registerShortcut({
   id: 'arrange.pasteStyle',
   keys: 'Ctrl+Alt+V',
+  label: 'keys.pasteStyle',
+  section: 'arrange',
   run: (editor) => pasteStyle(editor, copiedElement()),
 });
-registerShortcut({ id: 'arrange.group', keys: 'Ctrl+G', run: group });
-registerShortcut({ id: 'arrange.ungroup', keys: 'Ctrl+Shift+G', run: ungroup });
+registerShortcut({
+  id: 'arrange.group',
+  keys: 'Ctrl+G',
+  label: 'keys.group',
+  section: 'arrange',
+  run: group,
+});
+registerShortcut({
+  id: 'arrange.ungroup',
+  keys: 'Ctrl+Shift+G',
+  label: 'keys.ungroup',
+  section: 'arrange',
+  run: ungroup,
+});
 
-const orderKeys: Record<ZOrderMove, string> = {
-  front: 'Ctrl+Shift+]',
-  forward: 'Ctrl+]',
-  backward: 'Ctrl+[',
-  back: 'Ctrl+Shift+[',
+const orderKeys: Record<ZOrderMove, { keys: string; label: string }> = {
+  front: { keys: 'Ctrl+Shift+]', label: 'keys.front' },
+  forward: { keys: 'Ctrl+]', label: 'keys.forward' },
+  backward: { keys: 'Ctrl+[', label: 'keys.backward' },
+  back: { keys: 'Ctrl+Shift+[', label: 'keys.back' },
 };
-for (const [to, keys] of Object.entries(orderKeys) as [ZOrderMove, string][]) {
-  registerShortcut({ id: `arrange.order.${to}`, keys, run: (editor) => reorder(editor, to) });
+for (const [to, { keys, label }] of Object.entries(orderKeys) as [
+  ZOrderMove,
+  { keys: string; label: string },
+][]) {
+  registerShortcut({
+    id: `arrange.order.${to}`,
+    keys,
+    label,
+    section: 'arrange',
+    run: (editor) => reorder(editor, to),
+  });
 }
 
 registerShortcut({
   id: 'arrange.newSlide',
   keys: 'Ctrl+M',
+  label: 'keys.newSlide',
+  section: 'slides',
   run: ({ bus, selection }) => {
     addSlide(bus, selection, {
       layoutId: layoutOfCurrentSlide(bus.deck, selection),

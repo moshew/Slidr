@@ -2,12 +2,11 @@ import type { ShortcutDefinition, ShortcutSection } from './registry';
 import { normalizeKeys, shortcutSections } from './registry';
 
 /*
- * What the shortcut map lists (UI-06, SPEC Appendix A). Three kinds of key reach the app:
+ * What the shortcut map lists (UI-06, SPEC Appendix A). Two kinds of key reach the app:
  *
- *   - a shortcut an area registered with a label of its own: it is listed as it is;
- *   - a shortcut an area registered without one (its `register.tsx` came before the map): it is
- *     named here, by its id, and its keys are read from the registration, so the map cannot
- *     show a key the app no longer listens to;
+ *   - a shortcut an area registered with a label of its own: it is listed as it is, with the
+ *     keys of the registration, so the map cannot show a key the app no longer listens to; a
+ *     shortcut registered without a label works and is not listed;
  *   - a key a component handles itself (the arrows on the Stage, the keys of a table, of the
  *     Filmstrip, of the show): there is no registration to read, so the key is written here.
  *
@@ -26,22 +25,6 @@ export interface MapRow {
    */
   keys: string[];
 }
-
-/** A registered shortcut that carries no label of its own, by its id. */
-const named: Record<string, { section: ShortcutSection; label: string }> = {
-  'arrange.duplicate': { section: 'edit', label: 'keys.duplicate' },
-  'arrange.group': { section: 'arrange', label: 'keys.group' },
-  'arrange.ungroup': { section: 'arrange', label: 'keys.ungroup' },
-  'arrange.pasteStyle': { section: 'arrange', label: 'keys.pasteStyle' },
-  'arrange.order.front': { section: 'arrange', label: 'keys.front' },
-  'arrange.order.forward': { section: 'arrange', label: 'keys.forward' },
-  'arrange.order.backward': { section: 'arrange', label: 'keys.backward' },
-  'arrange.order.back': { section: 'arrange', label: 'keys.back' },
-  'arrange.newSlide': { section: 'slides', label: 'keys.newSlide' },
-  'ai.focusChat': { section: 'ai', label: 'keys.focusChat' },
-  'present.fromStart': { section: 'present', label: 'keys.presentStart' },
-  'present.fromCurrent': { section: 'present', label: 'keys.presentCurrent' },
-};
 
 /** The keys components handle themselves, in the order the map shows them. */
 const handled: readonly MapRow[] = [
@@ -106,7 +89,7 @@ function shown(keys: string): string {
  * The lines of the map, by section, in the order of `shortcutSections`. Within a section: the
  * shortcuts that name themselves, the shell's own first (undo and redo open "edit", whichever
  * area the registry heard from first) and then the areas' as they were registered; then the
- * ones named here; then the keys components handle. Lines of one section that say the same
+ * keys components handle. Lines of one section that say the same
  * thing become one line with both keys (redo is Ctrl+Y and Ctrl+Shift+Z).
  */
 export function mapRows(registered: readonly ShortcutDefinition[]): MapRow[] {
@@ -120,10 +103,6 @@ export function mapRows(registered: readonly ShortcutDefinition[]): MapRow[] {
   const areas = registered.filter(({ id }) => !id.startsWith('shell.'));
   for (const { id, label, section = 'edit', keys } of [...own, ...areas]) {
     if (label) add({ id, section, label, keys: [shown(keys)] });
-  }
-  for (const { id, label, keys } of registered) {
-    const name = named[id];
-    if (!label && name) add({ id, ...name, keys: [shown(keys)] });
   }
   for (const row of handled) add(row);
   return shortcutSections.flatMap((section) => rows.filter((row) => row.section === section));

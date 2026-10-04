@@ -22,16 +22,7 @@ describe('the lines of the shortcut map', () => {
     });
   });
 
-  it('names a registered shortcut that has no label, and reads its keys from the registration', () => {
-    const rows = mapRows([shortcut({ id: 'arrange.group', keys: 'Ctrl+J' })]);
-    expect(rows.find((row) => row.id === 'arrange.group')).toMatchObject({
-      section: 'arrange',
-      label: 'keys.group',
-      keys: ['Ctrl+J'],
-    });
-  });
-
-  it('leaves out a registered shortcut nobody named', () => {
+  it('leaves out a registered shortcut that has no label', () => {
     expect(mapRows([shortcut({ id: 'x.secret', keys: 'Ctrl+Q' })]).map((r) => r.id)).not.toContain(
       'x.secret',
     );
@@ -49,7 +40,12 @@ describe('the lines of the shortcut map', () => {
 
   it('goes section by section, the registered shortcuts of a section before the handled keys', () => {
     const rows = mapRows([
-      shortcut({ id: 'present.fromStart', keys: 'F5' }),
+      shortcut({
+        id: 'present.fromStart',
+        keys: 'F5',
+        label: 'keys.presentStart',
+        section: 'present',
+      }),
       shortcut({ id: 'edit.undo', keys: 'Ctrl+Z', label: 'keys.undo', section: 'edit' }),
     ]);
     const order = rows.map((row) => shortcutSections.indexOf(row.section));
