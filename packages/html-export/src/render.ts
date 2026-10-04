@@ -1,6 +1,6 @@
 import { walkElements, type Deck, type Paragraph, type Slide } from '@slidr/model';
 import { chartsSettled, SlideRenderer, type AssetResolver } from '@slidr/renderer';
-import type { AnimationStep, Transition } from '@slidr/runtime';
+import { CLIP_VOLUME, type AnimationStep, type Transition } from '@slidr/runtime';
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
@@ -162,12 +162,13 @@ export function markHeadings(host: HTMLElement, slides: readonly Slide[]): void 
 
 /**
  * Writes down what media elements hold only as properties, which markup does not carry: React
- * sets `muted` and the volume on the element, not as attributes.
+ * sets `muted` and the volume on the element, not as attributes. The runtime reads the volume
+ * back when it takes charge of the clip.
  */
 export function persistMediaState(host: HTMLElement): void {
   for (const element of everyElement(host)) {
     if (!(element instanceof HTMLMediaElement)) continue;
     if (element.muted) element.setAttribute('muted', '');
-    if (element.volume !== 1) element.setAttribute('data-volume', String(element.volume));
+    if (element.volume !== 1) element.setAttribute(CLIP_VOLUME, String(element.volume));
   }
 }

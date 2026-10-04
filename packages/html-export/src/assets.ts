@@ -11,6 +11,11 @@ export interface LoadedAsset {
   blob: Blob;
   /** The object URL the slides were rendered with; the data URI takes its place in the markup. */
   url: string;
+  /**
+   * The asset stays outside the file, in the media folder beside it: `blob` is an empty stand-in
+   * and the address in the folder takes the place of `url`.
+   */
+  external?: boolean;
 }
 
 export interface EmbeddedAsset {
@@ -22,6 +27,11 @@ export interface EmbeddedAsset {
   /** Pixel size of an embedded picture. */
   width?: number;
   height?: number;
+  /**
+   * Set for video or audio that is not in the file: its name in the media folder beside the
+   * file. `bytes` is then 0, and `originalBytes` is the size of the file to put there.
+   */
+  file?: string;
 }
 
 export interface ImageOptions {

@@ -27,6 +27,13 @@ export interface ExportOptions {
   pixelRatio?: number;
   /** WebP quality of re-encoded pictures, 0..1. Default 0.9. */
   imageQuality?: number;
+  /**
+   * The name of a folder beside the file for video and audio (MED-05, EXP-08). With it they are
+   * not put into the file and are not read at all: the file refers to each as
+   * `<mediaFolder>/<asset.file>`, and the host copies them there. Without it they go into the
+   * file like every other asset.
+   */
+  mediaFolder?: string;
   /** The document the slides are drawn in while exporting. Default: this one. */
   document?: Document;
 }
@@ -42,8 +49,26 @@ export interface ExportResult {
   fonts: EmbeddedFont[];
   /** The charts in the file, and the bytes of the chart library they brought with them. */
   charts: { count: number; bytes: number };
+  /** The folder the file expects its video and audio in, when they are not inside it. */
+  mediaFolder?: string;
   /** What could not be exported as it is in the deck. */
   warnings: ExportWarning[];
+}
+
+/** Video and audio: what an export may leave beside the file instead of inside it. */
+const isMedia = (asset: AssetMeta): boolean => asset.kind === 'video' || asset.kind === 'audio';
+
+/** The address of a file in the media folder, as the exported file writes it: relative to itself. */
+export function mediaUrl(folder: string, file: string): string {
+  return `${encodeURIComponent(folder)}/${encodeURIComponent(file)}`;
+}
+
+/** A media asset that stays outside the file: its address in the folder, and its line of the report. */
+function besideFile(meta: AssetMeta, folder: string): { uri: string; report: EmbeddedAsset } {
+  return {
+    uri: mediaUrl(folder, meta.file),
+    report: { id: meta.id, mime: meta.mime, originalBytes: meta.bytes, bytes: 0, file: meta.file },
+  };
 }
 
 function escapeRegExp(text: string): string {
@@ -66,6 +91,7 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
   );
   const exported: Deck = { ...deck, slides };
   const animations = options.animations !== false;
+  const { mediaFolder } = options;
 
   // The assets the exported slides use, under object URLs for the time of the rendering.
   const loaded = new Map<string, LoadedAsset>();
@@ -73,6 +99,14 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
     Array.from(referencedAssetIds(exported), async (id) => {
       const meta = deck.assets[id];
       if (!meta) return;
+      if (mediaFolder !== undefined && isMedia(meta)) {
+        // Not read: a video may be hundreds of megabytes. A stand-in gives the slides an address
+        // to carry while they are drawn, which the address in the folder then replaces. One byte,
+        // not none: a browser asked to play an empty file reports a failed request.
+        const blob = new Blob([new Uint8Array(1)], { type: meta.mime });
+        loaded.set(id, { meta, blob, url: URL.createObjectURL(blob), external: true });
+        return;
+      }
       const blob = await options.loadAsset(meta).catch(() => undefined);
       if (!blob) {
         if (meta.kind !== 'font') {
@@ -132,7 +166,11 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
     const pixelRatio = options.pixelRatio ?? 2;
     const quality = options.imageQuality ?? 0.9;
     const embedded = await Promise.all(
-      used.map((asset) => embedAsset(asset, needs.get(asset.meta.id), { pixelRatio, quality })),
+      used.map((asset) =>
+        asset.external && mediaFolder !== undefined
+          ? Promise.resolve(besideFile(asset.meta, mediaFolder))
+          : embedAsset(asset, needs.get(asset.meta.id), { pixelRatio, quality }),
+      ),
     );
     const uris = new Map(used.map((asset, i) => [asset.url, embedded[i]?.uri ?? '']));
     if (used.length) {
@@ -162,6 +200,9 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       assets: embedded.map((e) => e.report),
       fonts,
       charts: { count: chartCount, bytes: chartScript ? new Blob([chartScript]).size : 0 },
+      ...(embedded.some((e) => e.report.file !== undefined) && mediaFolder !== undefined
+        ? { mediaFolder }
+        : {}),
       warnings,
     };
   } finally {
