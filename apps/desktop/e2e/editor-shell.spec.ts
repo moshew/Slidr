@@ -133,6 +133,29 @@ test('a plain key that no shortcut took still does what it does', async ({ page 
   await expect(page.getByRole('menu')).toBeVisible();
 });
 
+test('a character typed with AltGr is text, not a shortcut', async ({ page }) => {
+  await openApp(page);
+  await stage(page).focus();
+  // On Windows AltGr reports Ctrl and Alt both. AltGr+C is a letter on a Polish layout, and must
+  // not be the Ctrl+Alt+C that picks up the format of a text.
+  const taken = (altGraph: boolean) =>
+    page.evaluate((withAltGraph) => {
+      const event = new KeyboardEvent('keydown', {
+        key: withAltGraph ? 'ć' : 'c',
+        code: 'KeyC',
+        ctrlKey: true,
+        altKey: true,
+        modifierAltGraph: withAltGraph,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.activeElement?.dispatchEvent(event);
+      return event.defaultPrevented;
+    }, altGraph);
+  expect(await taken(false)).toBe(true);
+  expect(await taken(true)).toBe(false);
+});
+
 /* ---------------------------------------------------------------- Present */
 
 test('"Present" is a split button: the arrow offers the two ways to start', async ({ page }) => {

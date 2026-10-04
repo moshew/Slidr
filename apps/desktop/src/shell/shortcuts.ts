@@ -74,6 +74,9 @@ export function useShellShortcuts(editor: Editor): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.defaultPrevented) return;
+      // A character typed with AltGr is text. On Windows the key reports Ctrl and Alt both, and
+      // would answer to a Ctrl+Alt shortcut: AltGr+C is a letter on a Polish layout.
+      if (event.getModifierState('AltGraph')) return;
       const editable = isEditable(event.target);
       const keys = eventKeys(event);
       // On the welcome screen there is no editor to act on: only the File commands answer.
