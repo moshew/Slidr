@@ -266,10 +266,16 @@
     display: none;
   }
 
+  /*
+   * Not inside a slide (`.slidr-slide`, the root the renderer draws): there a duration on every
+   * element makes every change of a style a transition, the layout stays the old one for a
+   * frame, and whatever measures the slide right after a change reads it. The slide's own motion
+   * is the runtime's, which does not go through CSS.
+   */
   @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
+    :not(.slidr-slide, .slidr-slide *),
+    :not(.slidr-slide, .slidr-slide *)::before,
+    :not(.slidr-slide, .slidr-slide *)::after {
       animation-duration: 1ms !important;
       transition-duration: 1ms !important;
     }
