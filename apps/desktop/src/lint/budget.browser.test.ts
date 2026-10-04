@@ -3,7 +3,8 @@ import type { AssetMeta } from '@slidr/model';
 import { fixtureDecks } from '@slidr/model/fixtures';
 import { measureSlide, renderSlideOffscreen } from '@slidr/renderer';
 import { referenceDeck } from '@slidr/renderer/fixtures';
-import { expect, test } from 'vitest';
+import { afterAll, expect, test } from 'vitest';
+import { commands } from 'vitest/browser';
 import { testAssetUrl } from '../dev/slides/testAssets';
 import { registerBuiltinFonts } from '../fonts';
 
@@ -57,11 +58,23 @@ function summary(times: Timing[]) {
   };
 }
 
+/** What the run measured, for the record: the browser's console does not reach the terminal. */
+let measured: { first: ReturnType<typeof summary>; warm: ReturnType<typeof summary> } | undefined;
+
+afterAll(async () => {
+  // In a hook the path is taken from the root of the repository.
+  await commands.writeFile(
+    'apps/desktop/test-results/design/lint-budget.json',
+    JSON.stringify(measured, null, 2),
+  );
+});
+
 test('a slide is measured and judged in under 100ms', async () => {
   registerBuiltinFonts();
   const first = summary(await pass());
   const times = await pass();
   const warm = summary(times);
+  measured = { first, warm };
   console.log(`lint, ms per slide, first pass: ${JSON.stringify(first)}`);
   console.log(`lint, ms per slide, warm: ${JSON.stringify(warm)}`);
   console.log(
