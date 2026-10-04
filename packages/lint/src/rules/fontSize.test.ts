@@ -17,7 +17,7 @@ const drawnAt = (sizes: number[], scale = 1) => ({
 
 describe('L04: text smaller than 24px', () => {
   it('reports the size the text is drawn at', () => {
-    expect(check('L04', [note], drawnAt([22]))).toEqual([
+    expect(check('L04', [note], drawnAt([22]))).toMatchObject([
       {
         rule: 'L04',
         severity: 'warning',

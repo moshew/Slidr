@@ -1,6 +1,17 @@
+import {
+  createElement,
+  type Color,
+  type Command,
+  type Frame,
+  type Paragraph,
+  type Run,
+} from '@slidr/model';
 import { blend, contrastRatio, hex, luminance } from '../color';
+import { intersection, slideArea } from '../geometry';
 import type { Rgb, TextSpanMeasure } from '../measure';
-import type { Rule } from '../rule';
+import { colorRgb, distance, tokenRgb } from '../palette';
+import type { Item, Problem, Rule, SlideContext } from '../rule';
+import { mapRuns, proseOf, setText, styleOf } from '../text';
 
 /** WCAG AA (SPEC 9.1): 4.5:1, and 3:1 for large text, which on a slide is text above 48px. */
 const AA = 4.5;
@@ -33,33 +44,149 @@ export function spanContrast(span: TextSpanMeasure): { ratio: number; under: Rgb
   return ratios[Math.floor((ratios.length - 1) * TOLERATED_SHARE)];
 }
 
-/** L05: text whose contrast against what is really under it is below WCAG AA. */
+export interface Faint {
+  span: TextSpanMeasure;
+  ratio: number;
+  under: Rgb;
+  required: number;
+}
+
+/** The span of an element that falls furthest short of the contrast it needs, if any does. */
+export function faintest({ measure }: Item): Faint | undefined {
+  let worst: Faint | undefined;
+  for (const span of measure.text?.spans ?? []) {
+    const contrast = spanContrast(span);
+    if (!contrast) continue;
+    const required = requiredContrast(span.fontSize);
+    if (contrast.ratio >= required) continue;
+    if (!worst || contrast.ratio / required < worst.ratio / worst.required) {
+      worst = { span, ...contrast, required };
+    }
+  }
+  return worst;
+}
+
+/** "Text in #777777 at 50% opacity has a contrast of 2.1:1 against ...", for a message. */
+export function describeFaint({ span, ratio, under, required }: Faint, what = 'Text'): string {
+  const faint = span.alpha < 1 ? ` at ${Math.round(span.alpha * 100)}% opacity` : '';
+  // Rounded down, so a ratio just short of the bar never reads as meeting it.
+  return `${what} in ${hex(span.color)}${faint} has a contrast of ${Math.floor(ratio * 100) / 100}:1 against what is under it (${hex(under)}); ${Math.round(span.fontSize)}px text needs ${required}:1 (WCAG AA; 3:1 only above ${LARGE_ABOVE}px).`;
+}
+
+const BLACK: Rgb = [0, 0, 0];
+const WHITE: Rgb = [255, 255, 255];
+
+/** How dark a veil under the text may have to be before white, or black, reads on it. */
+const VEILS = [0.5, 0.65, 0.8];
+/** Room around the glyphs under a veil, in slide pixels. */
+const VEIL_PAD = 24;
+
+/**
+ * The fix the table of SPEC 9.2 names. First a colour: the theme's text colour, its background
+ * or its surface, then black or white, whichever is the first to read on what is under the
+ * text. Only the runs drawn in the colour that fails change. Where no colour reads (a busy
+ * photograph), a veil goes under the text and the text turns white, or black over a pale veil.
+ */
+function fixOf(ctx: SlideContext, item: Item, worst: Faint): Command[] | undefined {
+  const { element } = item;
+  const prose = proseOf(element);
+  if (!prose) return undefined;
+  const { theme } = ctx.deck;
+  const reads = (rgb: Rgb, backdrop = worst.span.backdrop) =>
+    (spanContrast({ ...worst.span, color: rgb, backdrop })?.ratio ?? 0) >= worst.required;
+
+  const recolour = (color: Color) => {
+    const failing = (run: Run, paragraph: Paragraph) => {
+      const drawn = colorRgb(theme, run.marks?.color ?? styleOf(theme, paragraph).color);
+      return drawn !== undefined && distance(drawn, worst.span.color) <= 4;
+    };
+    const some = prose.paragraphs.some((p) => p.runs.some((run) => run.text && failing(run, p)));
+    // Where the model's colours cannot be read (a CSS colour that is not hex), all of it turns.
+    const content = mapRuns(prose, (run, paragraph) =>
+      !some || failing(run, paragraph) ? { ...run, marks: { ...run.marks, color } } : run,
+    );
+    return content ? setText(ctx.slide.id, element.id, content) : undefined;
+  };
+
+  const colours: { color: Color; rgb: Rgb | undefined }[] = [
+    ...(['text', 'bg', 'surface'] as const).map((token) => ({
+      color: { token },
+      rgb: tokenRgb(theme, token),
+    })),
+    { color: { value: '#000000' }, rgb: BLACK },
+    { color: { value: '#ffffff' }, rgb: WHITE },
+  ];
+  const colour = colours.find(({ rgb }) => rgb && reads(rgb));
+  if (colour) {
+    const command = recolour(colour.color);
+    return command ? [command] : undefined;
+  }
+
+  // A veil sits under the text in the slide's own list, so only text at the top of the tree.
+  const at = ctx.slide.elements.findIndex((e) => e.id === element.id);
+  const ink = item.measure.text?.ink;
+  if (at === -1 || !ink || element.rotation !== 0) return undefined;
+  const mean =
+    worst.span.backdrop.reduce((sum, c) => sum + luminance(c), 0) / worst.span.backdrop.length;
+  const order = mean < 0.5 ? [BLACK, WHITE] : [WHITE, BLACK];
+  for (const veil of order) {
+    const letters = veil === BLACK ? WHITE : BLACK;
+    for (const alpha of VEILS) {
+      if (
+        !reads(
+          letters,
+          worst.span.backdrop.map((under) => blend(veil, alpha, under)),
+        )
+      )
+        continue;
+      const padded: Frame = {
+        x: ink.x - VEIL_PAD,
+        y: ink.y - VEIL_PAD,
+        w: ink.w + 2 * VEIL_PAD,
+        h: ink.h + 2 * VEIL_PAD,
+      };
+      const frame = intersection(padded, slideArea(ctx.deck)) ?? padded;
+      let id = `${element.id}_veil`;
+      for (let n = 2; ctx.items.some((other) => other.element.id === id); n++) {
+        id = `${element.id}_veil${n}`;
+      }
+      const shape = createElement.shape({
+        id,
+        name: 'veil',
+        frame,
+        fill: { kind: 'solid', color: { value: hex(veil), alpha } },
+        effects: { radius: theme.radius },
+      });
+      const command = recolour({ value: hex(letters) });
+      return [
+        { type: 'element.add', slideId: ctx.slide.id, element: shape, index: at },
+        ...(command ? [command] : []),
+      ];
+    }
+  }
+  return undefined;
+}
+
+/**
+ * L05: text whose contrast against what is really under it is below WCAG AA. The text a chart
+ * draws is judged by the user's rule of the same number (see `chart.ts`).
+ */
 export const L05: Rule = {
   id: 'L05',
   severity: 'error',
   agent: true,
-  check({ items }) {
-    return items.flatMap(({ element, measure }) => {
+  check(ctx) {
+    return ctx.items.flatMap((item): Problem[] => {
       // One finding per element: its worst span, relative to what that span needs.
-      let worst: { span: TextSpanMeasure; ratio: number; under: Rgb; required: number } | undefined;
-      for (const span of measure.text?.spans ?? []) {
-        const contrast = spanContrast(span);
-        if (!contrast) continue;
-        const required = requiredContrast(span.fontSize);
-        if (contrast.ratio >= required) continue;
-        if (!worst || contrast.ratio / required < worst.ratio / worst.required) {
-          worst = { span, ...contrast, required };
-        }
-      }
+      const worst = item.element.type === 'chart' ? undefined : faintest(item);
       if (!worst) return [];
-      const { span, ratio, under, required } = worst;
-      const faint = span.alpha < 1 ? ` at ${Math.round(span.alpha * 100)}% opacity` : '';
-      const shade = luminance(span.color) > luminance(under) ? 'darker' : 'lighter';
+      const shade = luminance(worst.span.color) > luminance(worst.under) ? 'darker' : 'lighter';
+      const fix = fixOf(ctx, item, worst);
       return [
         {
-          elementIds: [element.id],
-          // Rounded down, so a ratio just short of the bar never reads as meeting it.
-          message: `Text in ${hex(span.color)}${faint} has a contrast of ${Math.floor(ratio * 100) / 100}:1 against what is under it (${hex(under)}); ${Math.round(span.fontSize)}px text needs ${required}:1 (WCAG AA; 3:1 only above ${LARGE_ABOVE}px). Change the text colour, or put a ${shade} shape or overlay under the text.`,
+          elementIds: [item.element.id],
+          message: `${describeFaint(worst)} Change the text colour, or put a ${shade} shape or overlay under the text.`,
+          ...(fix ? { fix } : {}),
         },
       ];
     });

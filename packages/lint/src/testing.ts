@@ -1,5 +1,6 @@
 // Helpers for this package's tests (not exported from the package).
 import {
+  CommandBus,
   createDeck,
   createSlide,
   type CreateDeckOptions,
@@ -70,4 +71,22 @@ export function check(
   const slide = createSlide({ id: 's_1', ...options.slide, elements });
   const deck = createDeck({ lang: 'en', ...options.deck, slides: [slide] });
   return lintSlide(deck, slide, measure(slide, overrides)).filter((f) => f.rule === rule);
+}
+
+/**
+ * The slide of `check` after a finding's fix ran on it, through a command bus that validates
+ * every command: a fix that is not a valid change of the deck fails here.
+ */
+export function fixed(
+  elements: Element[],
+  finding: LintFinding | undefined,
+  options: { slide?: Partial<Slide>; deck?: CreateDeckOptions } = {},
+): Slide {
+  if (!finding?.fix) throw new Error('The finding has no fix.');
+  const slide = createSlide({ id: 's_1', ...options.slide, elements });
+  const deck = createDeck({ lang: 'en', ...options.deck, slides: [slide] });
+  const bus = new CommandBus(deck, { validate: true });
+  bus.batch(finding.fix);
+  if (bus.undoStack.length !== 1) throw new Error('A fix is one step to undo.');
+  return bus.deck.slides[0]!;
 }

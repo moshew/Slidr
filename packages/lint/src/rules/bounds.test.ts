@@ -11,7 +11,7 @@ const inkAt = (frame: Frame, ink: Frame) => ({ e_title: { box: frame, text: text
 describe('L02: an element that leaves the slide', () => {
   it('reports text whose glyphs are cut by the edge, with the sides and the distance', () => {
     const frame = { x: 1400, y: 1000, w: 554, h: 92 };
-    expect(check('L02', [title(frame)])).toEqual([
+    expect(check('L02', [title(frame)])).toMatchObject([
       {
         rule: 'L02',
         severity: 'error',
@@ -147,7 +147,7 @@ describe('L02: an element that leaves the slide', () => {
 describe('L03: text outside the safe margins', () => {
   it('reports the side, the distance and the safe area', () => {
     const frame = { x: 50, y: 300, w: 850, h: 120 };
-    expect(check('L03', [title(frame)])).toEqual([
+    expect(check('L03', [title(frame)])).toMatchObject([
       {
         rule: 'L03',
         severity: 'warning',

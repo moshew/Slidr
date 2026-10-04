@@ -13,7 +13,7 @@ import { drawingsIn } from './visual';
 
 /**
  * `agent`: the rules whose findings go back to the agent after every write (L01–L07, L13, L16;
- * LNT-04, QG-03, QG-04). `all`: every rule.
+ * LNT-04, QG-03, QG-04). `all`: every rule, the user's design check included.
  */
 export type RuleSet = 'agent' | 'all';
 
@@ -52,6 +52,23 @@ export function lintSlide(
     // No measurement: the element is hidden, or inside a hidden group.
     if (element.type !== 'group' && measure) items.push({ element, measure });
   }
+  const tops: Item[] = [];
+  for (const element of slide.elements) {
+    const measure = measured.elements[element.id];
+    if (measure) tops.push({ element, measure });
+  }
+  const turned = new Set<string>();
+  const mark = (elements: readonly Element[], inside: boolean) => {
+    for (const element of elements) {
+      if (inside) turned.add(element.id);
+      if (element.type !== 'group') continue;
+      mark(
+        element.children,
+        inside || element.rotation !== 0 || !!element.flipH || !!element.flipV,
+      );
+    }
+  };
+  mark(slide.elements, false);
   const layout = slide.layoutId ? deck.layouts.find((l) => l.id === slide.layoutId) : undefined;
   const decorations = layout?.decorations ?? [];
   const ctx: SlideContext = {
@@ -60,6 +77,8 @@ export function lintSlide(
     ...drawn(slide.elements, items),
     background: slide.background ?? layout?.background ?? deck.theme.background,
     layout: drawn(decorations, placed(decorations, 0, 0, [])),
+    tops,
+    turned,
   };
   const findings: LintFinding[] = [];
   for (const rule of rules) {

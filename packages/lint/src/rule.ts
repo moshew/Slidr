@@ -1,4 +1,4 @@
-import type { Background, Deck, Element, Frame, Slide } from '@slidr/model';
+import type { Background, Command, Deck, Element, Frame, Slide } from '@slidr/model';
 import type { ElementMeasure } from './measure';
 
 export type Severity = 'error' | 'warning' | 'info';
@@ -13,6 +13,12 @@ export interface LintFinding {
   elementIds: string[];
   /** Written for the agent: what was measured, and what would fix it. */
   message: string;
+  /**
+   * The commands that put the finding right, where the rule knows a fix that needs no judgement
+   * (the "automatic fix" of SPEC 9.2). They hold for the deck the lint ran on: lint again after
+   * any change. The Deck API hands findings to the agent without them.
+   */
+  fix?: Command[];
 }
 
 /** A rendered element that is not a group, with what its rendering measured. */
@@ -43,14 +49,25 @@ export interface SlideContext extends Drawn {
    * slide built on a layout as the template drew it is as full as the template made it.
    */
   layout: Drawn;
+  /**
+   * The slide's own elements at the top of its tree, groups included, bottom to top: what a
+   * user moves as one piece. Rules about how objects are arranged read these.
+   */
+  tops: readonly Item[];
+  /** Elements inside a group that is rotated or flipped: a move of theirs is not a move on the slide. */
+  turned: ReadonlySet<string>;
 }
 
-export type Problem = Pick<LintFinding, 'elementIds' | 'message'>;
+export type Problem = Pick<LintFinding, 'elementIds' | 'message' | 'fix'>;
 
 export interface Rule {
   id: string;
   severity: Severity;
-  /** Whether its findings go back to the agent after every write (LNT-04, QG-03, QG-04). */
+  /**
+   * Whether its findings go back to the agent after every write (LNT-04, QG-03, QG-04). The
+   * others are for the user's design check; a rule id may stand twice in the list, once for
+   * each (what a rule sees inside a chart is the user's alone).
+   */
   agent: boolean;
   check(ctx: SlideContext): Problem[];
 }

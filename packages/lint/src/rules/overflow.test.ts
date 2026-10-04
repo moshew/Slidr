@@ -15,7 +15,7 @@ describe('L01: text that overflows its box', () => {
       frame,
       content: richText('Three goals for the quarter', { dir: 'ltr' }),
     });
-    expect(check('L01', [body], { e_body: overflowing(0, 86) })).toEqual([
+    expect(check('L01', [body], { e_body: overflowing(0, 86) })).toMatchObject([
       {
         rule: 'L01',
         severity: 'error',

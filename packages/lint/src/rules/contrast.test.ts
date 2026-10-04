@@ -60,7 +60,7 @@ describe('contrast', () => {
 
 describe('L05: text contrast below AA', () => {
   it('reports the colours, the ratio measured and the ratio needed', () => {
-    expect(check('L05', [label], drawn({ color: grey(0x77) }))).toEqual([
+    expect(check('L05', [label], drawn({ color: grey(0x77) }))).toMatchObject([
       {
         rule: 'L05',
         severity: 'error',
