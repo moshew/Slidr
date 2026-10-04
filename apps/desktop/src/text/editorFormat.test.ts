@@ -8,6 +8,7 @@ import {
   caretMarks,
   changeMarksTr,
   changeParagraphsTr,
+  linkAt,
   paragraphsRange,
   sampleState,
   selectedParagraphs,
@@ -16,6 +17,7 @@ import {
 import {
   boldChange,
   clearMarks,
+  linkChange,
   listChange,
   mapMarks,
   mapParagraphs,
@@ -183,6 +185,44 @@ describe('a change to a stretch of the text that is not the selection', () => {
     expect(paragraphsRange(stateOf(rich, 6, 18))).toEqual({ from: 1, to: 27 });
     // Shift+Down from the first line reaches the start of the second, and does not touch it.
     expect(paragraphsRange(stateOf(rich, 3, 16))).toEqual({ from: 1, to: 14 });
+  });
+
+  it('finds the whole link the caret is in, also when its text is formatted in parts', () => {
+    const link = 'https://example.com/';
+    const linked: RichText = {
+      paragraphs: [
+        p([
+          { text: 'see ' },
+          { text: 'the ', marks: { link, underline: true } },
+          { text: 'page', marks: { link, underline: true, weight: 700 } },
+          { text: ' and ' },
+          { text: 'slide', marks: { link: '#slide=s_2' } },
+        ]),
+      ],
+    };
+    // "the page": positions 5 to 13, from inside and from both edges.
+    for (const at of [5, 7, 9, 13])
+      expect(linkAt(stateOf(linked, at))).toEqual({ link, from: 5, to: 13 });
+    expect(linkAt(stateOf(linked, 20))).toEqual({ link: '#slide=s_2', from: 18, to: 23 });
+    // Plain text, and a selection, are not a caret in a link.
+    expect(linkAt(stateOf(linked, 2))).toBeNull();
+    expect(linkAt(stateOf(linked, 6, 8))).toBeNull();
+
+    // The whole link takes a new address, wherever in it the caret is.
+    const state = stateOf(linked, 7);
+    const range = linkAt(state) ?? undefined;
+    const tr = changeMarksTr(state, linkChange('https://other.dev/'), range);
+    expect(applied(state, tr).paragraphs[0]?.runs.slice(1, 3)).toEqual([
+      { text: 'the ', marks: { link: 'https://other.dev/', underline: true } },
+      { text: 'page', marks: { link: 'https://other.dev/', underline: true, weight: 700 } },
+    ]);
+    // And loses it, with the underline that showed it.
+    const off = changeMarksTr(state, linkChange(null), range);
+    expect(applied(state, off).paragraphs[0]?.runs.slice(0, 3)).toEqual([
+      { text: 'see the ' },
+      { text: 'page', marks: { weight: 700 } },
+      { text: ' and ' },
+    ]);
   });
 
   it('marks and paragraph fields change in one transaction', () => {

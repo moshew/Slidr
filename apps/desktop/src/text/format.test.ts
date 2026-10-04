@@ -5,6 +5,7 @@ import {
   clearMarks,
   flippedDirection,
   levelChange,
+  linkChange,
   listChange,
   listStyleChange,
   mapMarks,
@@ -435,6 +436,24 @@ describe('text styles of the theme', () => {
     expect(lower?.style).toMatchObject({ letterSpacing: 0.5, case: 'lower' });
     // Text that shows the style as it is has nothing to update.
     expect(matchStyle(read(text(p([{ text: 'a' }]))), theme.textStyles.body)).toBeNull();
+  });
+});
+
+describe('links', () => {
+  it('a link comes with its underline, and goes with it', () => {
+    const rich = text(p([{ text: 'a', marks: { italic: true } }]));
+    const linked = mapMarks(rich, linkChange('#slide=s_2'));
+    expect(linked.paragraphs[0]?.runs).toEqual([
+      { text: 'a', marks: { italic: true, link: '#slide=s_2', underline: true } },
+    ]);
+    expect(mapMarks(linked, linkChange(null))).toEqual(rich);
+  });
+
+  it('reads the link of the text: one address, none, or mixed', () => {
+    const link = 'https://example.com/';
+    expect(read(text(p([{ text: 'a', marks: { link } }]))).link).toBe(link);
+    expect(read(text(p([{ text: 'a' }]))).link).toBeNull();
+    expect(read(text(p([{ text: 'a', marks: { link } }, { text: 'b' }]))).link).toBe(MIXED);
   });
 });
 

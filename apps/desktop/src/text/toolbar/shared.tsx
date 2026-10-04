@@ -35,6 +35,7 @@ import type { FormatContext, TextFormat } from '../format';
 export const CLEAR_KEYS = 'Ctrl+\\';
 export const PICK_FORMAT_KEYS = 'Ctrl+Alt+C';
 export const PAINT_FORMAT_KEYS = 'Ctrl+Alt+V';
+export const LINK_KEYS = 'Ctrl+K';
 
 /* ---------------------------------------------------------------- the target */
 

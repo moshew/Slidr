@@ -110,14 +110,55 @@ const TAG_MARKS: Record<string, Marks> = {
   sub: { script: 'sub' },
 };
 
-/** A link a slide may carry: one that opens a page or writes a mail, never one that runs code. */
+/**
+ * A link to a slide of the deck, as the `link` mark holds it (TXT-09): `#slide=<slideId>`. The
+ * renderer draws it as a link the runtime follows; it is never an address a browser opens.
+ */
+const SLIDE_LINK = /^#slide=([\w.:-]+)$/;
+
+export function slideLink(slideId: string): string {
+  return `#slide=${slideId}`;
+}
+
+/** The slide a link goes to, when it is a link to a slide. */
+export function linkedSlide(link: string | null | undefined): string | undefined {
+  return SLIDE_LINK.exec(link ?? '')?.[1];
+}
+
+/**
+ * A link a slide may carry: one that opens a page or writes a mail, or one to a slide of the deck
+ * in exactly its own form; never one that runs code.
+ */
 export function safeLink(href: string | null | undefined): string | undefined {
   if (!href) return undefined;
   // Browsers ignore whitespace and control characters inside the scheme.
   const compact = Array.from(href)
     .filter((char) => char.charCodeAt(0) > 0x20)
     .join('');
+  if (SLIDE_LINK.test(compact)) return compact;
   return /^(?:https?:|mailto:|tel:)/i.test(compact) ? compact : undefined;
+}
+
+/**
+ * The link for an address as a person types it: `example.com` is a page and gets `https://`, and
+ * `name@example.com` is a mail. Undefined for what `safeLink` refuses, and for what is no address.
+ */
+export function typedLink(input: string): string | undefined {
+  const text = input.trim();
+  if (!text) return undefined;
+  // A scheme of any kind is taken as typed, and refused below unless it is one a slide may
+  // carry. `localhost:1420` is a host and a port, not a scheme.
+  const hasScheme =
+    /^(?:https?|mailto|tel):/i.test(text) || /^[a-z][a-z0-9+.-]*:(?!\d)/i.test(text);
+  const isMail = /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(text);
+  const address = hasScheme
+    ? text
+    : isMail
+      ? `mailto:${text}`
+      : `https://${text.replace(/^\/\//, '')}`;
+  const link = safeLink(address);
+  if (!link || linkedSlide(link)) return undefined;
+  return /^https?:/i.test(link) && !URL.canParse(link) ? undefined : link;
 }
 
 /** The declarations of a `style` attribute, by lower-case property name. */

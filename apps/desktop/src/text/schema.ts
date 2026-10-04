@@ -2,7 +2,7 @@ import type { Direction, Paragraph, TextStyleRef, Theme } from '@slidr/model';
 import { LEVEL_EM, MARKER_EM, paragraphStyle, runStyle } from '@slidr/renderer';
 import { Mark, Node, type AnyExtension } from '@tiptap/core';
 import type { CSSProperties } from 'react';
-import { safeLink } from './paste';
+import { linkedSlide, safeLink } from './paste';
 import { BOOLEAN_MARKS, MARK_TYPES, PARAGRAPH_ATTRS, type MarkType } from './richTextDoc';
 
 /** Properties React writes without a unit; every other number is pixels. */
@@ -120,6 +120,10 @@ function markExtension(type: MarkType) {
     renderHTML({ mark }) {
       const value: unknown = boolean ? true : mark.attrs.value;
       if (type === 'link') {
+        const style = 'color: inherit; text-decoration: inherit';
+        // A link to a slide is drawn as the renderer draws it: an address of no page.
+        const slide = linkedSlide(String(value));
+        if (slide) return ['a', { 'data-link-kind': 'slide', 'data-link-target': slide, style }, 0];
         return [
           'a',
           {
@@ -127,7 +131,7 @@ function markExtension(type: MarkType) {
             href: safeLink(String(value)) ?? null,
             target: '_blank',
             rel: 'noopener noreferrer',
-            style: 'color: inherit; text-decoration: inherit',
+            style,
           },
           0,
         ];

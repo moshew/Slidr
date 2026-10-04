@@ -7,7 +7,10 @@ import {
   matchDestination,
   parseCopiedText,
   plainTextToRichText,
+  linkedSlide,
   safeLink,
+  slideLink,
+  typedLink,
 } from './paste';
 
 // In a browser a parsed clipboard document is inert: it has no window, so it loads nothing and
@@ -358,5 +361,61 @@ describe('safe links', () => {
     expect(safeLink('page.html')).toBeUndefined();
     expect(safeLink('')).toBeUndefined();
     expect(safeLink(null)).toBeUndefined();
+  });
+
+  it('lets a link to a slide through, in exactly its own form', () => {
+    expect(safeLink('#slide=s_k3x9a2bq')).toBe('#slide=s_k3x9a2bq');
+    expect(safeLink(slideLink('s_probe_a'))).toBe('#slide=s_probe_a');
+    expect(linkedSlide('#slide=s_probe_a')).toBe('s_probe_a');
+    // Anything else that starts with a hash is an address of some page, and is refused.
+    expect(safeLink('#slide=')).toBeUndefined();
+    expect(safeLink('#slide=a b')).toBe('#slide=ab');
+    expect(safeLink('#slide=a"onclick="x')).toBeUndefined();
+    expect(safeLink('#Slide=s_1')).toBeUndefined();
+    expect(safeLink('#top')).toBeUndefined();
+    expect(safeLink('page.html#slide=s_1')).toBeUndefined();
+    expect(linkedSlide('https://a.dev/#slide=s_1')).toBeUndefined();
+    expect(linkedSlide(undefined)).toBeUndefined();
+  });
+
+  it('a slide link survives a copy and a paste inside Slidr', () => {
+    const copied = {
+      paragraphs: [
+        {
+          dir: 'auto',
+          align: 'start',
+          runs: [{ text: 'next', marks: { link: '#slide=s_2', underline: true } }],
+        },
+      ],
+    };
+    expect(parseCopiedText(JSON.stringify(copied))).toEqual(copied);
+  });
+});
+
+describe('an address as it is typed', () => {
+  it('gets https:// when no scheme was typed, and mailto: when it is a mail address', () => {
+    expect(typedLink('example.com')).toBe('https://example.com');
+    expect(typedLink('  www.example.com/a?b=1#c  ')).toBe('https://www.example.com/a?b=1#c');
+    expect(typedLink('//example.com/x')).toBe('https://example.com/x');
+    expect(typedLink('localhost:1420/dev')).toBe('https://localhost:1420/dev');
+    expect(typedLink('name@example.com')).toBe('mailto:name@example.com');
+  });
+
+  it('keeps a scheme a slide may carry as it was typed', () => {
+    expect(typedLink('http://example.com')).toBe('http://example.com');
+    expect(typedLink('HTTPS://Example.com')).toBe('HTTPS://Example.com');
+    expect(typedLink('mailto:a@b.dev')).toBe('mailto:a@b.dev');
+    expect(typedLink('tel:035551234')).toBe('tel:035551234');
+  });
+
+  it('refuses what safeLink refuses, and what is no address', () => {
+    expect(typedLink('javascript:alert(1)')).toBeUndefined();
+    expect(typedLink('data:text/html,x')).toBeUndefined();
+    expect(typedLink('file:///C:/x.html')).toBeUndefined();
+    expect(typedLink('C:\\deck\\x.html')).toBeUndefined();
+    expect(typedLink('')).toBeUndefined();
+    expect(typedLink('   ')).toBeUndefined();
+    // A link to a slide is picked from the list, not typed.
+    expect(typedLink('#slide=s_1')).toBeUndefined();
   });
 });

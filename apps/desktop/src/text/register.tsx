@@ -31,10 +31,12 @@ import {
   UnderlineTool,
   WeightTool,
 } from './toolbar/CharacterTools';
+import { LinkTool, requestLink } from './toolbar/LinkTool';
 import { AlignTool, DirectionTool, ListTool, SpacingTool } from './toolbar/ParagraphTools';
 import {
   CLEAR_KEYS,
   formatContext,
+  LINK_KEYS,
   PAINT_FORMAT_KEYS,
   PICK_FORMAT_KEYS,
   resolveTarget,
@@ -66,6 +68,7 @@ const tools = [
   { id: 'text.italic', group: 'marks', order: 21, render: ItalicTool },
   { id: 'text.underline', group: 'marks', order: 22, render: UnderlineTool },
   { id: 'text.more', group: 'marks', order: 23, render: MoreTool },
+  { id: 'text.link', group: 'marks', order: 24, render: LinkTool },
   { id: 'text.color', group: 'color', order: 30, render: ColorTool },
   { id: 'text.highlight', group: 'color', order: 31, render: HighlightTool },
   { id: 'text.align', group: 'paragraph', order: 40, render: AlignTool },
@@ -167,6 +170,19 @@ registerShortcut({
   inText: true,
   run: onTextOrSelection(paint),
   label: 'text:shortcut.paintFormat',
+  ...text,
+});
+registerShortcut({
+  id: 'text.link',
+  keys: LINK_KEYS,
+  inText: true,
+  // The popover is a tool of row B, which a text box has, and a shape while its text is edited.
+  run: onTextOrSelection((target) => {
+    if (target.kind === 'element' && target.element.type !== 'text') return false;
+    if (target.kind === 'cells' || target.element.type === 'table') return false;
+    requestLink();
+  }),
+  label: 'text:shortcut.link',
   ...text,
 });
 registerShortcut({

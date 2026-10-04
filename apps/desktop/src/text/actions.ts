@@ -12,6 +12,7 @@ import {
   type TextElement,
   type TextStyleRef,
 } from '@slidr/model';
+import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 // By file, not through the shell's index: these are plain functions, and the index loads the app.
 import { stageElement } from '../shell/stageDom';
@@ -21,9 +22,11 @@ import { cellsWritten } from './cellScope';
 import {
   changeMarksTr,
   changeParagraphsTr,
+  linkAt,
   paragraphsRange,
   sampleState,
   STEP_META,
+  wordRange,
   type StepMeta,
   type TextRange,
 } from './editorFormat';
@@ -31,6 +34,7 @@ import {
   boldChange,
   clearMarks,
   flippedDirection,
+  linkChange,
   mapMarks,
   mapParagraphs,
   matchStyle,
@@ -230,6 +234,26 @@ export function changeParagraphs(target: TextTarget, change: ParagraphChange, st
 /** Clear formatting (TXT-10): the character marks go, links and paragraph fields stay. */
 export function clearFormatting(target: TextTarget, step?: Step): void {
   changeMarks(target, clearMarks, step);
+}
+
+/**
+ * What a link would be put on, in the editor (TXT-09): the selection; or with a caret the whole
+ * link it is in, or else the word it is in. Null when the caret is at neither: nothing to link.
+ */
+export function linkTarget(state: EditorState): (TextRange & { link?: string }) | null {
+  const { from, to, empty } = state.selection;
+  return empty ? (linkAt(state) ?? wordRange(state)) : { from, to };
+}
+
+/**
+ * Links the text, or with `null` unlinks it, as one undo step: the editor's selection (see
+ * `linkTarget`), or all the text of the element. False when the caret has nothing to link.
+ */
+export function setLink(target: TextTarget, link: string | null, step?: Step): boolean {
+  const range = target.kind === 'editor' ? linkTarget(target.view.state) : undefined;
+  if (range === null) return false;
+  changeText(target, { marks: linkChange(link), range }, step);
+  return true;
 }
 
 /** In the editor a text style is about whole paragraphs, whatever part of them is selected. */

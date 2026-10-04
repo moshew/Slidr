@@ -43,6 +43,19 @@ export const he = {
     caption: 'כיתוב',
     update: 'עדכון הסגנון לפי הטקסט',
   },
+  link: {
+    label: 'קישור',
+    kind: 'סוג הקישור',
+    url: 'כתובת אינטרנט',
+    slide: 'שקף',
+    address: 'כתובת',
+    refused: 'אי אפשר לקשר לכתובת הזו. אפשר לקשר לדף אינטרנט, לכתובת דואר או למספר טלפון.',
+    pickSlide: 'בחרו שקף',
+    slideTitle: '{{n}}. {{title}}',
+    slideNumber: 'שקף {{n}}',
+    apply: 'החלה',
+    remove: 'הסרת הקישור',
+  },
   color: 'צבע טקסט',
   highlight: 'צבע הדגשה',
   align: {
@@ -109,6 +122,8 @@ export const he = {
     paint: 'העברת עיצוב',
     style: 'החלת סגנון טקסט',
     styleUpdate: 'עדכון סגנון הטקסט',
+    link: 'קישור',
+    unlink: 'הסרת קישור',
   },
   // The shortcut map (UI-06): what each shortcut of the text area does.
   shortcut: {
@@ -120,6 +135,7 @@ export const he = {
     clear: 'ניקוי עיצוב',
     pickFormat: 'מברשת עיצוב: העתקת העיצוב',
     paintFormat: 'מברשת עיצוב: החלת העיצוב שהועתק',
+    link: 'קישור לכתובת או לשקף',
   },
 };
 
@@ -161,6 +177,20 @@ export const en: Messages<typeof he> = {
     body: 'Body',
     caption: 'Caption',
     update: 'Update the style to match the text',
+  },
+  link: {
+    label: 'Link',
+    kind: 'Kind of link',
+    url: 'Web address',
+    slide: 'Slide',
+    address: 'Address',
+    refused:
+      'This address cannot be linked. A link goes to a web page, a mail address or a phone number.',
+    pickSlide: 'Pick a slide',
+    slideTitle: '{{n}}. {{title}}',
+    slideNumber: 'Slide {{n}}',
+    apply: 'Apply',
+    remove: 'Remove link',
   },
   color: 'Text colour',
   highlight: 'Highlight colour',
@@ -228,6 +258,8 @@ export const en: Messages<typeof he> = {
     paint: 'Paint format',
     style: 'Apply text style',
     styleUpdate: 'Update text style',
+    link: 'Link',
+    unlink: 'Remove link',
   },
   shortcut: {
     bold: 'Bold',
@@ -238,5 +270,6 @@ export const en: Messages<typeof he> = {
     clear: 'Clear formatting',
     pickFormat: 'Format painter: pick up the format',
     paintFormat: 'Format painter: apply the picked format',
+    link: 'Link to an address or to a slide',
   },
 };

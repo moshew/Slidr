@@ -118,6 +118,27 @@ export function wordRange(state: EditorState): TextRange | null {
   return null;
 }
 
+/**
+ * The whole link the caret is in, or at an edge of: its stretch of text, and where it goes. Null
+ * when the selection is not a caret, or the caret is not at a link.
+ */
+export function linkAt(state: EditorState): (TextRange & { link: string }) | null {
+  const { $from, empty } = state.selection;
+  if (!empty) return null;
+  // The links of the paragraph. A link whose text is formatted in parts is several nodes.
+  const links: (TextRange & { link: string })[] = [];
+  $from.parent.forEach((child, offset) => {
+    const link = marksOf(child.marks).link;
+    if (!link) return;
+    const last = links.at(-1);
+    if (last?.link === link && last.to === offset) last.to = offset + child.nodeSize;
+    else links.push({ link, from: offset, to: offset + child.nodeSize });
+  });
+  const caret = $from.parentOffset;
+  const at = links.find(({ from, to }) => caret >= from && caret <= to);
+  return at ? { link: at.link, from: $from.start() + at.from, to: $from.start() + at.to } : null;
+}
+
 /** The marks that typing at the caret would take. */
 export function caretMarks(state: EditorState): Marks {
   const { $from } = state.selection;

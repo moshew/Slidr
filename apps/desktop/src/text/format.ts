@@ -102,6 +102,14 @@ function linkMarks(marks: Marks): Marks {
  */
 export const clearMarks: MarksChange = (marks) => linkMarks(marks);
 
+/**
+ * A link on the text, or none (TXT-09). The renderer draws a link in the colour and the
+ * decoration of its text, so the underline that shows it is set and taken away with it.
+ */
+export function linkChange(link: string | null): MarksChange {
+  return patchMarks(link ? { link, underline: true } : { link: null, underline: null });
+}
+
 /** Sets the given paragraph fields and removes the ones given as `null`. */
 export function patchParagraph(patch: ParagraphPatch): ParagraphChange {
   return (paragraph) => withoutNulls({ ...paragraph, ...patch }) as ParagraphProps;
@@ -258,6 +266,8 @@ export interface TextFormat {
   script: Value<'sup' | 'sub' | null>;
   case: Value<'upper' | 'lower' | null>;
   letterSpacing: Value<number>;
+  /** Where the text links to (TXT-09): an address, or a slide as `#slide=<id>`; null for no link. */
+  link: Value<string | null>;
 
   /** The text style of the paragraphs; a paragraph that names none has the default one. */
   styleRef: Value<TextStyleRef>;
@@ -311,6 +321,7 @@ export function readFormat(sample: TextSample, ctx: FormatContext): TextFormat {
     letterSpacing: common(
       spans.map((span) => span.marks?.letterSpacing ?? style(span).letterSpacing ?? 0),
     ),
+    link: common(spans.map((span) => span.marks?.link ?? null)),
 
     styleRef: common(props.map((p) => p.styleRef ?? ctx.styleRef ?? 'body')),
     align: common(props.map((p) => p.align)),
