@@ -32,6 +32,7 @@ export function FilmstripRegion() {
       copy: ta('slides.copy'),
       cut: ta('slides.cut'),
       paste: ta('slides.paste'),
+      move: ta('slides.move'),
       ai: t('tools.aiSlide'),
     }),
     [t, ta],

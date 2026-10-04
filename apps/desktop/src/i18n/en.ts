@@ -207,6 +207,7 @@ export const en: Messages<typeof he> = {
     clearCells: 'Clear the selected cells',
     leaveTable: 'Leave the table',
     newSlide: 'New slide',
+    moveSlides: 'Move the selected slides along the strip',
     walkSlides: 'Previous slide, and next (in the Filmstrip)',
     endSlides: 'First slide, and last',
     duplicateSlide: 'Duplicate the selected slides',

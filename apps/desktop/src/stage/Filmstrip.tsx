@@ -106,6 +106,8 @@ export interface FilmstripLabels {
   copy: string;
   cut: string;
   paste: string;
+  /** The undo step of slides moved along the strip, by a drag or by the keyboard. */
+  move: string;
   /** The menu's way to the AI tool of the slide; shown when the host gives `onAi`. */
   ai?: string;
 }
@@ -135,6 +137,7 @@ const DEFAULT_LABELS: FilmstripLabels = {
   copy: 'Copy',
   cut: 'Cut',
   paste: 'Paste',
+  move: 'Move slides',
 };
 
 interface Drag {
@@ -500,10 +503,7 @@ export function Filmstrip({
       // `slide.move` counts the position in the list without the slides that move (ADR-007).
       const moving = new Set(drag.ids);
       const toIndex = slides.slice(0, drag.slot).filter((s) => !moving.has(s.id)).length;
-      bus.dispatch(
-        { type: 'slide.move', slideIds: drag.ids, toIndex },
-        { label: 'Reorder slides' },
-      );
+      bus.dispatch({ type: 'slide.move', slideIds: drag.ids, toIndex }, { label: labels.move });
     } else {
       // A plain click on a slide that was part of a multi-selection narrows it to that slide.
       const index = indexAt(e.clientX);
@@ -529,12 +529,53 @@ export function Filmstrip({
   const chosen = () => selection.getState().selectedSlideIds;
   const hiddenAll = allHidden(deck, selectedIds);
 
+  /**
+   * Moves the selected slides along the strip from the keyboard (UI-06), as a drag does: one
+   * place on or back, or to either end. `slide.move` counts the place without the moving slides.
+   */
+  const moveSelected = (to: 'on' | 'back' | 'start' | 'end') => {
+    const ids = selectedIds.length ? selectedIds : currentId ? [currentId] : [];
+    const moving = new Set(ids);
+    const rest = slides.filter((s) => !moving.has(s.id));
+    const first = slides.findIndex((s) => moving.has(s.id));
+    if (first < 0) return;
+    const at = slides.slice(0, first).filter((s) => !moving.has(s.id)).length;
+    const toIndex = { on: at + 1, back: at - 1, start: 0, end: rest.length }[to];
+    if (toIndex < 0 || toIndex > rest.length) return;
+    const ordered = slides.filter((s) => moving.has(s.id));
+    const after = [...rest.slice(0, toIndex), ...ordered, ...rest.slice(toIndex)];
+    // A move that leaves the order as it is is no undo step.
+    if (after.every((s, i) => s === slides[i])) return;
+    bus.dispatch(
+      { type: 'slide.move', slideIds: ordered.map((s) => s.id), toIndex },
+      { label: labels.move },
+    );
+  };
+
   const onKeyDown = (e: KeyboardEvent) => {
     const index = slides.findIndex((s) => s.id === currentId);
     const rtl = scroller.current ? getComputedStyle(scroller.current).direction === 'rtl' : false;
     const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ArrowDown: 1, ArrowUp: -1 }[
       e.key
     ];
+    // Ctrl and an arrow carries the selected slides along; Ctrl+Home and Ctrl+End to an end.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      const to =
+        step === 1
+          ? 'on'
+          : step === -1
+            ? 'back'
+            : e.key === 'Home'
+              ? 'start'
+              : e.key === 'End'
+                ? 'end'
+                : undefined;
+      if (to) {
+        e.preventDefault();
+        moveSelected(to);
+        return;
+      }
+    }
     if (step !== undefined) {
       e.preventDefault();
       const next = slides[Math.max(0, Math.min(slides.length - 1, index + step))];

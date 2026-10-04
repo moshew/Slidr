@@ -75,6 +75,7 @@ export const he = {
     copy: 'העתקה',
     cut: 'גזירה',
     paste: 'הדבקה',
+    move: 'הזזת שקפים',
   },
   history: {
     align: 'יישור',
@@ -174,6 +175,7 @@ export const en = {
     copy: 'Copy',
     cut: 'Cut',
     paste: 'Paste',
+    move: 'Move slides',
   },
   history: {
     align: 'Align',

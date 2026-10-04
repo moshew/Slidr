@@ -207,6 +207,7 @@ export const he = {
     clearCells: 'ניקוי התאים הנבחרים',
     leaveTable: 'יציאה מהטבלה',
     newSlide: 'שקף חדש',
+    moveSlides: 'הזזת השקפים הנבחרים לאורך הרצועה',
     walkSlides: 'השקף הקודם, והבא (בסרגל השקפים)',
     endSlides: 'השקף הראשון, והאחרון',
     duplicateSlide: 'שכפול השקפים הנבחרים',

@@ -63,6 +63,12 @@ const handled: readonly MapRow[] = [
 
   { id: 'slides.walk', section: 'slides', label: 'keys.walkSlides', keys: ['←', '→'] },
   { id: 'slides.ends', section: 'slides', label: 'keys.endSlides', keys: ['Home', 'End'] },
+  {
+    id: 'slides.move',
+    section: 'slides',
+    label: 'keys.moveSlides',
+    keys: ['Ctrl+←', 'Ctrl+→', 'Ctrl+Home', 'Ctrl+End'],
+  },
   { id: 'slides.duplicate', section: 'slides', label: 'keys.duplicateSlide', keys: ['Ctrl+D'] },
   { id: 'slides.delete', section: 'slides', label: 'keys.deleteSlide', keys: ['Del'] },
 

@@ -1,5 +1,13 @@
-import { expect, test } from '@playwright/test';
-import { openApp } from './arrange-helpers';
+import { expect, test, type Page } from '@playwright/test';
+import {
+  currentSlide,
+  focusFilmstrip,
+  openApp,
+  selectedSlides,
+  slideIds,
+  undo,
+  undoSteps,
+} from './arrange-helpers';
 import { addText, edit, paragraphs, para, steps } from './text-helpers';
 
 /*
@@ -32,3 +40,59 @@ test('Shift+Enter breaks the line inside a paragraph, as one undo step with the 
   await page.keyboard.type('פסקה');
   await expect.poll(async () => (await paragraphs(page, 'e_text')).length).toBe(2);
 });
+
+/** Three more slides after the first one. */
+async function fourSlides(page: Page): Promise<string[]> {
+  await page.evaluate(() => {
+    const { bus } = window.slidr!;
+    bus.batch(
+      [2, 3, 4].map((n) => ({
+        type: 'slide.add' as const,
+        slide: { id: `s_${n}`, name: `Slide ${n}`, elements: [], timeline: [] },
+      })),
+    );
+  });
+  return slideIds(page);
+}
+
+for (const lang of ['he', 'en'] as const) {
+  test(`Ctrl and an arrow moves the selected slides along the Filmstrip, ${lang}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang });
+    const [one, two, three, four] = await fourSlides(page);
+    await page.evaluate((id) => window.slidr!.selection.getState().setCurrentSlide(id), one!);
+    await focusFilmstrip(page);
+    // On is to the left in a right-to-left strip, as the plain arrows walk it.
+    const on = lang === 'he' ? 'Control+ArrowLeft' : 'Control+ArrowRight';
+    const back = lang === 'he' ? 'Control+ArrowRight' : 'Control+ArrowLeft';
+    const before = await undoSteps(page);
+
+    await page.keyboard.press(on);
+    expect(await slideIds(page)).toEqual([two, one, three, four]);
+    expect(await undoSteps(page)).toBe(before + 1);
+    // The moved slide stays the current one, for the next press.
+    expect(await currentSlide(page)).toBe(one);
+    await page.keyboard.press(on);
+    expect(await slideIds(page)).toEqual([two, three, one, four]);
+    await page.keyboard.press(back);
+    expect(await slideIds(page)).toEqual([two, one, three, four]);
+
+    await page.keyboard.press('Control+End');
+    expect(await slideIds(page)).toEqual([two, three, four, one]);
+    // At the end there is nowhere further: no step.
+    const atEnd = await undoSteps(page);
+    await page.keyboard.press(on);
+    expect(await undoSteps(page)).toBe(atEnd);
+
+    // Two slides selected move together.
+    await page.keyboard.press('Control+Home');
+    expect(await slideIds(page)).toEqual([one, two, three, four]);
+    await page.keyboard.press(lang === 'he' ? 'Shift+ArrowLeft' : 'Shift+ArrowRight');
+    expect(await selectedSlides(page)).toEqual([one, two]);
+    await page.keyboard.press(on);
+    expect(await slideIds(page)).toEqual([three, one, two, four]);
+    await undo(page);
+    expect(await slideIds(page)).toEqual([one, two, three, four]);
+  });
+}
