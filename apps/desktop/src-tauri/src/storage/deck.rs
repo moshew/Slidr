@@ -1,4 +1,4 @@
-//! The only two things Rust reads out of `deck.json`. Everything else is the webview's.
+//! The only three things Rust reads out of `deck.json`. Everything else is the webview's.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -13,6 +13,8 @@ pub(crate) struct DeckInfo {
     pub(crate) schema_version: serde_json::Number,
     /// `assets[*].file`: the names inside `assets/` the deck refers to, sorted.
     pub(crate) asset_files: BTreeSet<String>,
+    /// `slides[*].id`: the slides the deck has, which decides whose chats go into the file.
+    pub(crate) slide_ids: BTreeSet<String>,
 }
 
 #[derive(Deserialize)]
@@ -20,6 +22,8 @@ struct DeckProbe {
     #[serde(rename = "schemaVersion")]
     schema_version: serde_json::Number,
     assets: BTreeMap<String, AssetProbe>,
+    #[serde(default)]
+    slides: Vec<SlideProbe>,
 }
 
 #[derive(Deserialize)]
@@ -27,8 +31,14 @@ struct AssetProbe {
     file: String,
 }
 
+#[derive(Deserialize)]
+struct SlideProbe {
+    #[serde(default)]
+    id: Option<String>,
+}
+
 impl DeckInfo {
-    /// Reads the two fields. Fails with `invalid_input` when they are missing or when an asset
+    /// Reads the fields. Fails with `invalid_input` when the first two are missing or when an asset
     /// name is anything but a plain file name.
     pub(crate) fn parse(deck_json: &str) -> Result<Self> {
         let probe: DeckProbe = serde_json::from_str(deck_json)
@@ -46,6 +56,7 @@ impl DeckInfo {
         Ok(Self {
             schema_version: probe.schema_version,
             asset_files,
+            slide_ids: probe.slides.into_iter().filter_map(|s| s.id).collect(),
         })
     }
 }
@@ -73,6 +84,23 @@ mod tests {
             info.asset_files.into_iter().collect::<Vec<_>>(),
             ["a.woff2", "b.png"]
         );
+        assert!(info.slide_ids.is_empty(), "a slide without an id has none");
+        Ok(())
+    }
+
+    #[test]
+    fn reads_the_ids_of_the_slides() -> TestResult {
+        let info = DeckInfo::parse(
+            r#"{"schemaVersion":1,"assets":{},
+                "slides":[{"id":"s_b","elements":[]},{"id":"s_a","name":"שקף"}]}"#,
+        )?;
+        assert_eq!(
+            info.slide_ids.into_iter().collect::<Vec<_>>(),
+            ["s_a", "s_b"]
+        );
+        // A deck text without slides at all is still a deck to this layer.
+        let info = DeckInfo::parse(r#"{"schemaVersion":1,"assets":{}}"#)?;
+        assert!(info.slide_ids.is_empty());
         Ok(())
     }
 

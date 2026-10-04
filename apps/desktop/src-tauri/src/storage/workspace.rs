@@ -245,7 +245,7 @@ impl Storage {
         let mut state = store_deck(&dir, id, deck_json, title)?;
         let saved_at = now_iso();
         write_meta(&dir, &info.schema_version, &saved_at)?;
-        let missing_assets = archive::pack(&dir, &target, &info.asset_files)?;
+        let missing_assets = archive::pack(&dir, &target, &info.asset_files, &info.slide_ids)?;
 
         let source = display(&target);
         state.source_path = Some(source.clone());
@@ -764,6 +764,72 @@ mod tests {
         let mut packed = String::new();
         archive.by_name(DECK_FILE)?.read_to_string(&mut packed)?;
         assert_eq!(packed, deck);
+        Ok(())
+    }
+
+    #[test]
+    fn the_chat_of_a_deleted_slide_stays_out_of_the_file_and_in_the_workspace() -> TestResult {
+        let fx = fixture()?;
+        let storage = Storage::new(fx.root.clone());
+        let workspace = storage.new_workspace()?;
+        let chat = PathBuf::from(&workspace.dir).join("chat");
+        fs::create_dir_all(&chat)?;
+        let line = b"{\"type\":\"user\"}\n";
+        for name in [
+            "deck.jsonl",
+            "slide-s_kept.jsonl",
+            "slide-s_kept-cm1x2.jsonl",
+            "slide-s_gone.jsonl",
+            "slide-s_gone-cm1x2.jsonl",
+        ] {
+            fs::write(chat.join(name), line)?;
+        }
+        let index = serde_json::json!({ "version": 1, "threads": {
+            "deck": { "scope": { "kind": "deck" }, "nativeSessionId": "n-1" },
+            "slide-s_kept": { "scope": { "kind": "slide", "slideId": "s_kept" } },
+            "slide-s_gone": { "scope": { "kind": "slide", "slideId": "s_gone" } },
+            "slide-s_gone-cm1x2": { "scope": { "kind": "slide", "slideId": "s_gone" } },
+        }});
+        fs::write(chat.join("threads.json"), index.to_string())?;
+
+        let deck = r#"{"schemaVersion":1,"assets":{},"slides":[{"id":"s_kept","elements":[]}]}"#;
+        let target = fx.files.join("deck.slidr");
+        storage.save(&workspace.id, &target, deck, None)?;
+
+        let chats: Vec<String> = entries_of(&target)?
+            .into_iter()
+            .filter(|name| name.starts_with("chat/"))
+            .collect();
+        assert_eq!(
+            chats,
+            [
+                "chat/deck.jsonl",
+                "chat/slide-s_kept-cm1x2.jsonl",
+                "chat/slide-s_kept.jsonl",
+                "chat/threads.json",
+            ]
+        );
+        let opened = storage.open(&target)?;
+        let packed: serde_json::Value = serde_json::from_slice(&fs::read(
+            PathBuf::from(&opened.workspace.dir)
+                .join("chat")
+                .join("threads.json"),
+        )?)?;
+        let threads: Vec<&String> = packed["threads"]
+            .as_object()
+            .ok_or("no threads")?
+            .keys()
+            .collect();
+        assert_eq!(threads, ["deck", "slide-s_kept"]);
+        assert_eq!(packed["threads"]["deck"]["nativeSessionId"], "n-1");
+
+        // The workspace still has all of it: an undo may bring the slide back, and the next save
+        // then takes its chat along again.
+        assert_eq!(names_in(&chat)?.len(), 6);
+        let restored = r#"{"schemaVersion":1,"assets":{},
+            "slides":[{"id":"s_kept","elements":[]},{"id":"s_gone","elements":[]}]}"#;
+        storage.save(&workspace.id, &target, restored, None)?;
+        assert!(entries_of(&target)?.contains(&"chat/slide-s_gone.jsonl".to_owned()));
         Ok(())
     }
 

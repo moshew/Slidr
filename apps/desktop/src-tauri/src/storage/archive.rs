@@ -16,7 +16,15 @@ use super::{
 use crate::error::{AppError, Result};
 
 /// Directories other work groups fill; open and save carry them through as they are.
-const CARRIED_DIRS: [&str; 3] = ["thumbs", "chat", "source"];
+const CARRIED_DIRS: [&str; 2] = ["thumbs", "source"];
+/// The chats of the deck (AGT-05). Carried through too, except the chats of slides the deck no
+/// longer has (see [`add_chats`]).
+const CHAT_DIR: &str = "chat";
+/// The index of the chats: `{ "threads": { "<thread id>": { … } } }`.
+const CHAT_INDEX: &str = "threads.json";
+/// What the id of a slide's chat begins with: `slide-<slide id>`, and `slide-<slide id>-c…` for
+/// the conversations it has beside its first (`threadIdOf` in the webview's `agentService.ts`).
+const SLIDE_THREAD: &str = "slide-";
 
 /// Formats that are already compressed: deflating them again costs time and saves nothing.
 const STORED_EXTENSIONS: [&str; 21] = [
@@ -33,10 +41,14 @@ const STORED_EXTENSIONS: [&str; 21] = [
 ///
 /// Returns the referenced asset files that are not in the workspace; they are skipped rather
 /// than failing the save, so the user never loses the deck over a missing picture.
+///
+/// The chat of a slide that is not among `slide_ids` stays out of the archive, as an asset the
+/// deck no longer refers to does. Both stay in the workspace: an undo may bring the slide back.
 pub(crate) fn pack(
     workspace: &Path,
     target: &Path,
     asset_files: &BTreeSet<String>,
+    slide_ids: &BTreeSet<String>,
 ) -> Result<Vec<String>> {
     let parent = target
         .parent()
@@ -65,6 +77,7 @@ pub(crate) fn pack(
     for dir in CARRIED_DIRS {
         add_dir(&mut zip, workspace, dir)?;
     }
+    add_chats(&mut zip, workspace, slide_ids)?;
 
     let writer = zip.finish().map_err(|e| write_error(&e))?;
     writer
@@ -127,6 +140,87 @@ fn add_dir<W: Write + Seek>(
         }
     }
     Ok(())
+}
+
+/// Whether the chat with this thread id goes into the file: every chat does, except a slide's
+/// when the deck no longer has the slide.
+fn chat_is_kept(thread: &str, slide_ids: &BTreeSet<String>) -> bool {
+    let Some(rest) = thread.strip_prefix(SLIDE_THREAD) else {
+        return true;
+    };
+    slide_ids.iter().any(|id| {
+        rest.strip_prefix(id.as_str())
+            .is_some_and(|more| more.is_empty() || more.starts_with("-c"))
+    })
+}
+
+/// Adds `chat/`: the transcripts of the chats that are kept, and the index without the entries
+/// of the ones that are not. An index that cannot be read as one is carried as it is.
+fn add_chats<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
+    workspace: &Path,
+    slide_ids: &BTreeSet<String>,
+) -> Result<()> {
+    let dir = workspace.join(CHAT_DIR);
+    let read_error = |e: &io::Error| AppError::io(format_args!("read {}", dir.display()), e);
+    let entries = match fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(read_error(&e)),
+    };
+    let mut entries = entries
+        .collect::<io::Result<Vec<_>>>()
+        .map_err(|e| read_error(&e))?;
+    entries.sort_by_key(fs::DirEntry::file_name);
+    for entry in entries {
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        if atomic::is_temp_name(&name) {
+            continue;
+        }
+        let child = format!("{CHAT_DIR}/{name}");
+        let file_type = entry.file_type().map_err(|e| read_error(&e))?;
+        if file_type.is_dir() {
+            add_dir(zip, workspace, &child)?;
+        } else if !file_type.is_file() {
+            continue;
+        } else if name == CHAT_INDEX {
+            match kept_index(&entry.path(), slide_ids) {
+                Some(index) => {
+                    let options =
+                        SimpleFileOptions::default().compression_method(compression_for(&child));
+                    zip.start_file(&child, options)
+                        .map_err(|e| write_error(&e))?;
+                    zip.write_all(&index)
+                        .map_err(|e| AppError::io(format_args!("pack {child}"), &e))?;
+                }
+                None => {
+                    add_file(zip, &child, &entry.path())?;
+                }
+            }
+        } else {
+            let thread = name.strip_suffix(".jsonl").unwrap_or(&name);
+            if chat_is_kept(thread, slide_ids) {
+                add_file(zip, &child, &entry.path())?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The chat index without the chats of slides that are gone, or `None` when the file is not an
+/// index this layer can read (it is the webview's, and is then left as it is).
+fn kept_index(path: &Path, slide_ids: &BTreeSet<String>) -> Option<Vec<u8>> {
+    let mut index: serde_json::Value = serde_json::from_slice(&fs::read(path).ok()?).ok()?;
+    let threads = index.get_mut("threads")?.as_object_mut()?;
+    let before = threads.len();
+    threads.retain(|thread, _| chat_is_kept(thread, slide_ids));
+    if threads.len() == before {
+        // Nothing to take out: the bytes the webview wrote go in.
+        return None;
+    }
+    serde_json::to_vec_pretty(&index).ok()
 }
 
 fn compression_for(name: &str) -> CompressionMethod {
@@ -272,6 +366,30 @@ mod tests {
             "a\0b",
         ] {
             assert_eq!(entry_path(unsafe_name), None, "{unsafe_name}");
+        }
+    }
+
+    #[test]
+    fn a_chat_is_kept_unless_it_is_of_a_slide_that_is_gone() {
+        let slides: BTreeSet<String> = ["s_a1", "s_b2"].map(String::from).into();
+        for kept in [
+            "deck",
+            "deck-cm1x2y3",
+            "import",
+            "slide-s_a1",
+            "slide-s_a1-cm1x2y3",
+            "slide-s_b2",
+        ] {
+            assert!(chat_is_kept(kept, &slides), "{kept}");
+        }
+        for gone in [
+            "slide-s_zz",
+            "slide-s_zz-cm1x2y3",
+            // The id of another slide that only begins the same way.
+            "slide-s_a10",
+            "slide-",
+        ] {
+            assert!(!chat_is_kept(gone, &slides), "{gone}");
         }
     }
 
