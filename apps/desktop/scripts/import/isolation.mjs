@@ -47,6 +47,11 @@ for (const [command, args] of [
   ['secret_delete', {}],
   ['stock_search', {}],
   ['stock_import', {}],
+  // The commands of ADR-057: one copies assets to a folder beside a file, one reads an asset
+  // and stores another.
+  ['export_copy_media', {}],
+  ['image_process', {}],
+  ['image_process_status', {}],
   ['capture_slide', { request: { deck: { slides: [] } } }],
   ['capture_run_job', { job: {} }],
   ['import_open', { path: 'C:/x.html', thread: 'a/b', workspaceId: 'x' }],
