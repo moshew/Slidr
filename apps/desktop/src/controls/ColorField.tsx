@@ -10,7 +10,7 @@ import {
   Tooltip,
   type LucideIcon,
 } from '@slidr/ui';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeck } from '../shell';
 import { colorToHex, pickedColor } from './colors';
@@ -61,6 +61,13 @@ export function ColorField({
   const hex = color ? colorToHex(color, theme) : null;
   /** The free colour picked last in this gesture, to remember it when the gesture ends. */
   const picked = useRef<Color | null>(null);
+  /**
+   * The swatch's tooltip. When the picker closes the focus comes back to the swatch, and a
+   * tooltip that opened on that focus took the next Esc for itself: the popover around the swatch
+   * needed two (ADR-060). So it stays shut from then until the pointer or the focus moves on.
+   */
+  const [tip, setTip] = useState(false);
+  const quiet = useRef(false);
 
   const groups = useMemo(
     () => [
@@ -78,11 +85,14 @@ export function ColorField({
 
   return (
     <Popover>
-      <Tooltip content={label}>
+      <Tooltip content={label} open={tip} onOpenChange={(open) => setTip(open && !quiet.current)}>
         <PopoverTrigger asChild>
           <button
             type="button"
             aria-label={label}
+            onPointerEnter={() => (quiet.current = false)}
+            onPointerLeave={() => (quiet.current = false)}
+            onBlur={() => (quiet.current = false)}
             className={cx(
               'inline-flex shrink-0 cursor-default flex-col items-center justify-center gap-0.5 rounded-control text-ui-fg-muted transition-colors select-none',
               'hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed data-[state=open]:bg-ui-hover data-[state=open]:text-ui-fg',
@@ -101,7 +111,10 @@ export function ColorField({
         </PopoverTrigger>
       </Tooltip>
       <PopoverContent
-        onCloseAutoFocus={onCloseAutoFocus}
+        onCloseAutoFocus={(event) => {
+          quiet.current = true;
+          onCloseAutoFocus?.(event);
+        }}
         // The focus goes to the popover itself, not to its first swatch: a focused swatch shows
         // its tooltip at once, over the swatches under it. Tab still reaches everything.
         onOpenAutoFocus={(event) => {
