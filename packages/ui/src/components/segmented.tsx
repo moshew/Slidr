@@ -22,10 +22,18 @@ export interface SegmentedControlProps<T extends string> {
   /** Stretch the segments over the full width. */
   fill?: boolean;
   disabled?: boolean;
+  /**
+   * Fixes the direction, for segments that are physical (arrows, left and right) rather than a
+   * sequence: with `ltr` the first option is on the left in every UI language.
+   */
+  dir?: 'ltr' | 'rtl';
   className?: string;
 }
 
-/** One choice out of a few, all visible: a track with a raised thumb on the selected segment. */
+/**
+ * One choice out of a few, all visible: a track with a raised thumb on the selected segment. It
+ * follows the direction of the UI: the first option is at the start.
+ */
 export function SegmentedControl<T extends string>({
   options,
   value,
@@ -33,6 +41,7 @@ export function SegmentedControl<T extends string>({
   size = 'md',
   fill = false,
   disabled = false,
+  dir,
   className,
   ...aria
 }: SegmentedControlProps<T>) {
@@ -43,6 +52,9 @@ export function SegmentedControl<T extends string>({
       // Radix sends '' when the selected segment is clicked again; a segmented control keeps it.
       onValueChange={(next) => next && onValueChange(next as T)}
       disabled={disabled}
+      // Radix writes it on the element too, so the segments are laid out and the arrow keys
+      // move in that direction.
+      {...(dir ? { dir } : {})}
       aria-label={aria['aria-label']}
       className={cx(
         'inline-flex items-stretch gap-0.5 rounded-control bg-ui-field p-0.5',
