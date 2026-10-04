@@ -39,6 +39,8 @@ export interface LaunchOptions {
   keepWorkspaces?: boolean;
   /** Extra arguments of the WebView2 browser process. */
   browserArgs?: string[];
+  /** Leave the app on the welcome screen it opens on, for a test of that screen. */
+  welcome?: boolean;
 }
 
 export interface RunningApp {
@@ -115,6 +117,29 @@ async function started(leftovers: boolean): Promise<void> {
   await sleep(leftovers ? 1500 : 250);
 }
 
+/** What `localStorage` holds to keep the app in the editor at start (`src/shell/startup.ts`). */
+const WELCOME_KEY = 'slidr.welcome';
+
+/**
+ * The app opens on its welcome screen (ADR-060), and the suites drive the editor. The profile of
+ * the app under test is told to start in the editor from its next launch on, and this launch is
+ * taken there as a user goes: an empty presentation, which keeps the document the app started
+ * with. Behind a recovery dialog the screen waits for the answer, and a recovery leads to the
+ * editor by itself.
+ */
+async function pastWelcome(page: Page): Promise<void> {
+  await page.evaluate((key) => localStorage.setItem(key, 'off'), WELCOME_KEY);
+  if ((await page.getByTestId('welcome').count()) === 0) return;
+  if ((await page.getByRole('dialog').count()) > 0) return;
+  await page.getByTestId('welcome-blank').click();
+  await page.waitForSelector('[data-testid="stage"]', { timeout: 30_000 });
+}
+
+/** Makes the next launch open on the welcome screen again, as a user's first one does. */
+export async function welcomeNextTime(page: Page): Promise<void> {
+  await page.evaluate((key) => localStorage.removeItem(key), WELCOME_KEY);
+}
+
 /** Starts the packaged app and connects to its main window. */
 export async function launchApp(options: LaunchOptions = {}): Promise<RunningApp> {
   const binary = appBinary();
@@ -148,7 +173,10 @@ export async function launchApp(options: LaunchOptions = {}): Promise<RunningApp
     if (!context) throw new Error('The app has no browser context.');
     const isMain = (page: Page) => !page.url().includes('capture.html');
     const page = context.pages().find(isMain) ?? (await context.waitForEvent('page'));
-    await page.waitForSelector('[data-testid="stage"], [role="dialog"]', { timeout: 30_000 });
+    await page.waitForSelector('[data-testid="stage"], [data-testid="welcome"], [role="dialog"]', {
+      timeout: 30_000,
+    });
+    if (!options.welcome) await pastWelcome(page);
     // The window may open behind the one the user works in; keys reach a page only while it
     // believes it has the focus. The desktop itself is never sent a key.
     const session = await context.newCDPSession(page);
