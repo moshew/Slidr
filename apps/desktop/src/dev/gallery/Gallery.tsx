@@ -3,6 +3,10 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   Bold,
   ChevronDown,
   Copy as CopyIcon,
@@ -23,6 +27,7 @@ import {
 } from '@slidr/ui/icons';
 import {
   Button,
+  Checkbox,
   ColorPicker,
   ColorSwatch,
   ContextMenu,
@@ -45,6 +50,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   EmptyState,
+  Field,
   FontPicker,
   IconButton,
   Input,
@@ -60,6 +66,7 @@ import {
   Skeleton,
   Slider,
   Spinner,
+  Switch,
   Tabs,
   TabsContent,
   TabsList,
@@ -123,7 +130,9 @@ function GalleryCell({ theme, dir }: Cell) {
           <Buttons c={c} />
           <IconButtons c={c} />
           <Segmented c={c} />
+          <Options c={c} />
           <TabsDemo c={c} />
+          <FieldDemo c={c} />
           <Fields c={c} />
           <Values c={c} />
           <ColorDemo c={c} />
@@ -210,6 +219,9 @@ const typeScale = [
   'text-xs text-ui-fg-muted',
 ] as const;
 
+/** Columns that line up are what the fixed-width font is for: 0 and O, 1 and l, i and W. */
+const monoSample = 'slide_update({ id: "s_0O1l", width: 1920 })';
+
 function Tokens({ c }: { c: Copy }) {
   return (
     <Card title={c.tokens} wide>
@@ -230,6 +242,12 @@ function Tokens({ c }: { c: Copy }) {
               {sample}
             </p>
           ))}
+          <p className="flex items-baseline gap-3 text-xs text-ui-fg-muted">
+            {c.mono}
+            <span dir="ltr" className="font-mono text-sm text-ui-fg">
+              {monoSample}
+            </span>
+          </p>
         </div>
         <div className="flex items-end gap-4 text-xs text-ui-fg-muted">
           <div className="flex flex-col items-center gap-1.5">
@@ -339,6 +357,7 @@ function Segmented({ c }: { c: Copy }) {
   const [scope, setScope] = useState('slide');
   const [align, setAlign] = useState('center');
   const [theme, setTheme] = useState('light');
+  const [from, setFrom] = useState<(typeof arrowValues)[number]>('left');
   return (
     <Card title={c.segmented}>
       <SegmentedControl
@@ -394,8 +413,111 @@ function Segmented({ c }: { c: Copy }) {
           { value: 'deck', label: c.segments[1] },
         ]}
       />
+      {/* Physical segments: `dir` keeps the left arrow on the left in a right-to-left UI too. */}
+      <SegmentedControl
+        aria-label={c.direction}
+        dir="ltr"
+        className="self-start"
+        value={from}
+        onValueChange={setFrom}
+        options={arrowIcons.map((icon, i) => ({
+          value: arrowValues[i] ?? 'left',
+          label: c.arrows[i] ?? '',
+          icon,
+          iconOnly: true,
+        }))}
+      />
     </Card>
   );
+}
+
+const arrowValues = ['left', 'up', 'down', 'right'] as const;
+const arrowIcons = [ArrowLeft, ArrowUp, ArrowDown, ArrowRight];
+
+/* ---------------------------------------------------------------- checkbox and switch */
+
+const optionPreviews = [undefined, 'hover', 'active', 'focus', 'disabled'] as const;
+
+function Options({ c }: { c: Copy }) {
+  const [asDefault, setAsDefault] = useState(true);
+  const [animations, setAnimations] = useState(false);
+  const [parts, setParts] = useState([true, false, true]);
+  // A row of the grid: one control in each state of DSN-05.
+  const states = (name: string, control: (state: StateProps) => ReactNode) => (
+    <>
+      <span className="text-xs text-ui-fg-muted">{name}</span>
+      {optionPreviews.map((preview) => (
+        <span key={preview ?? 'rest'}>
+          {control({
+            'data-preview': preview === 'disabled' ? undefined : preview,
+            disabled: preview === 'disabled',
+          })}
+        </span>
+      ))}
+    </>
+  );
+  const still = () => {};
+  return (
+    <Card title={c.options} wide>
+      <div className="grid grid-cols-[auto_repeat(5,1fr)] items-center gap-x-4 gap-y-3">
+        <span />
+        {c.optionStates.map((state) => (
+          <span key={state} className="text-xs text-ui-fg-muted">
+            {state}
+          </span>
+        ))}
+        {states(c.optionRows[0], (state) => (
+          <Checkbox checked={false} onCheckedChange={still} label={c.optionLabel} {...state} />
+        ))}
+        {states(c.optionRows[1], (state) => (
+          <Checkbox checked onCheckedChange={still} label={c.optionLabel} {...state} />
+        ))}
+        {states(c.optionRows[2], (state) => (
+          <Checkbox checked="mixed" onCheckedChange={still} label={c.optionLabel} {...state} />
+        ))}
+        {states(c.optionRows[3], (state) => (
+          <Switch checked={false} onCheckedChange={still} label={c.optionLabel} {...state} />
+        ))}
+        {states(c.optionRows[4], (state) => (
+          <Switch checked onCheckedChange={still} label={c.optionLabel} {...state} />
+        ))}
+      </div>
+      <Separator />
+      <div className="grid grid-cols-2 items-start gap-8">
+        <div className="flex flex-col items-start gap-3">
+          <Checkbox
+            checked={asDefault}
+            onCheckedChange={setAsDefault}
+            label={c.asDefault}
+            hint={c.asDefaultHint}
+          />
+          <Switch
+            checked={animations}
+            onCheckedChange={setAnimations}
+            label={c.animations}
+            hint={c.animationsHint}
+          />
+        </div>
+        {/* A row of settings: the label at the start, the switch at the far end. */}
+        <div className="flex flex-col gap-2">
+          {c.tableParts.map((part, i) => (
+            <Switch
+              key={part}
+              side="end"
+              checked={parts[i] ?? false}
+              onCheckedChange={(on) => setParts(parts.map((was, at) => (at === i ? on : was)))}
+              label={part}
+            />
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+interface StateProps {
+  'data-preview': string | undefined;
+  disabled: boolean;
 }
 
 function TabsDemo({ c }: { c: Copy }) {
@@ -421,6 +543,55 @@ function TabsDemo({ c }: { c: Copy }) {
   );
 }
 
+function FieldDemo({ c }: { c: Copy }) {
+  const [from, setFrom] = useState<(typeof arrowValues)[number]>('up');
+  const [seconds, setSeconds] = useState(0.5);
+  const [opacity, setOpacity] = useState(80);
+  return (
+    <Card title={c.field}>
+      <Field label={c.direction} hint={c.directionHint}>
+        <SegmentedControl
+          aria-label={c.direction}
+          dir="ltr"
+          className="self-start"
+          value={from}
+          onValueChange={setFrom}
+          options={arrowIcons.map((icon, i) => ({
+            value: arrowValues[i] ?? 'left',
+            label: c.arrows[i] ?? '',
+            icon,
+            iconOnly: true,
+          }))}
+        />
+      </Field>
+      <Field label={c.duration} error={seconds > 60 ? c.durationError : undefined}>
+        <NumberField
+          aria-label={c.duration}
+          className="w-24"
+          value={seconds}
+          onValueChange={setSeconds}
+          min={0}
+          precision={1}
+          step={0.1}
+          unit={c.secondsUnit}
+        />
+      </Field>
+      <Field label={c.duration} error={c.durationError}>
+        <NumberField
+          aria-label={c.duration}
+          className="w-24"
+          value={75}
+          onValueChange={() => {}}
+          unit={c.secondsUnit}
+        />
+      </Field>
+      <Field label={c.opacity}>
+        <Slider aria-label={c.opacity} value={opacity} onValueChange={setOpacity} />
+      </Field>
+    </Card>
+  );
+}
+
 function Fields({ c }: { c: Copy }) {
   return (
     <Card title={c.fields}>
@@ -437,7 +608,16 @@ function Fields({ c }: { c: Copy }) {
       <Textarea
         aria-label={c.fieldLabel}
         defaultValue={`${c.fieldPlaceholder}\n${c.fieldHint}\n${c.fieldPlaceholder}`}
+        footer={
+          <div className="flex justify-end">
+            <Button variant="primary" size="sm">
+              {c.send}
+            </Button>
+          </div>
+        }
       />
+      <Textarea aria-label={c.fieldLabel} defaultValue={c.fieldPlaceholder} invalid />
+      <Textarea aria-label={c.fieldLabel} defaultValue={c.fieldPlaceholder} disabled />
     </Card>
   );
 }
