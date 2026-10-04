@@ -41,3 +41,4 @@ export {
   slideNumberLayouts,
   type MasterState,
 } from './master';
+export { changeLayout } from './changeLayout';
