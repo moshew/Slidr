@@ -90,7 +90,10 @@ for (const { lang, theme, viewport, name } of states) {
     await panel(page).locator('[data-template^="personal_"]').scrollIntoViewIfNeeded();
     await settle(page);
     await page.screenshot({ path: out(`personal-${name}`) });
-    await panel(page).locator('[data-template^="personal_"]').getByRole('button').nth(1).click();
+    await panel(page)
+      .locator('[data-template^="personal_"]')
+      .getByRole('button', { name: lang === 'he' ? 'מחיקת התבנית' : 'Delete the template' })
+      .click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await settle(page);
     await page.screenshot({ path: out(`delete-${name}`) });
