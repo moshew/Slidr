@@ -6,6 +6,7 @@
 export const he = {
   title: 'ייצוא ל-HTML',
   description: 'קובץ אחד שמתנגן בכל דפדפן, גם בלי אינטרנט.',
+  descriptionBeside: 'קובץ שמתנגן בכל דפדפן, גם בלי אינטרנט, ולידו תיקייה עם הווידאו והאודיו.',
   close: 'סגירה',
   cancel: 'ביטול',
   export: 'ייצוא',
@@ -56,6 +57,9 @@ export const he = {
     noFonts: 'אין בקובץ גופנים: הטקסט יוצג בגופני המחשב שיפתח אותו.',
     fontsOne: 'גופן אחד, {{size}} במקום {{original}}',
     fontsMany: '{{n}} גופנים, {{size}} במקום {{original}}',
+    charts: 'גרפים בקובץ',
+    chartsOne: 'גרף חי אחד. הספרייה שמציירת אותו מוסיפה לקובץ {{size}}.',
+    chartsMany: '{{n}} גרפים חיים. הספרייה שמציירת אותם מוסיפה לקובץ {{size}}.',
     asset: 'נכס',
     original: 'במצגת',
     embedded: 'בקובץ',
@@ -82,6 +86,8 @@ export const he = {
 export const en: typeof he = {
   title: 'Export to HTML',
   description: 'One file that plays in any browser, with or without the internet.',
+  descriptionBeside:
+    'A file that plays in any browser, with or without the internet, and a folder beside it with the video and audio.',
   close: 'Close',
   cancel: 'Cancel',
   export: 'Export',
@@ -133,6 +139,9 @@ export const en: typeof he = {
       'The file has no fonts: its text will be shown in the fonts of the computer that opens it.',
     fontsOne: 'One font, {{size}} instead of {{original}}',
     fontsMany: '{{n}} fonts, {{size}} instead of {{original}}',
+    charts: 'Charts in the file',
+    chartsOne: 'One live chart. The library that draws it adds {{size}} to the file.',
+    chartsMany: '{{n}} live charts. The library that draws them adds {{size}} to the file.',
     asset: 'Asset',
     original: 'In the deck',
     embedded: 'In the file',

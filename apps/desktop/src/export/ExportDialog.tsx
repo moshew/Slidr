@@ -96,6 +96,10 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
     }
   };
 
+  // One file, unless its video and audio go into a folder beside it (ADR-057).
+  const withFolder =
+    phase.at === 'done' ? phase.result.mediaFolder !== undefined : phase.at !== 'failed' && beside;
+
   const close = (
     <Button variant={phase.at === 'done' ? 'primary' : 'ghost'} onClick={onClose}>
       {phase.at === 'choose' ? t('cancel') : t('close')}
@@ -127,7 +131,7 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
     <Dialog open onOpenChange={(open) => !open && phase.at !== 'working' && onClose()}>
       <DialogContent
         title={t('title')}
-        description={t('description')}
+        description={withFolder ? t('descriptionBeside') : t('description')}
         closeLabel={phase.at === 'working' ? undefined : t('close')}
         footer={footer}
         data-testid="export-dialog"
@@ -380,6 +384,18 @@ function Report({
               </ul>
             )}
           </Section>
+          {result.charts.count > 0 && (
+            <Section title={t('done.charts')}>
+              <span data-testid="export-charts">
+                {result.charts.count === 1
+                  ? t('done.chartsOne', { size: ltr(formatBytes(result.charts.bytes)) })
+                  : t('done.chartsMany', {
+                      n: result.charts.count,
+                      size: ltr(formatBytes(result.charts.bytes)),
+                    })}
+              </span>
+            </Section>
+          )}
           <Section title={t('done.fonts')}>
             {fonts.length === 0 ? (
               <span className="text-ui-fg-muted">{t('done.noFonts')}</span>
