@@ -178,6 +178,10 @@ test('the import window may call its own commands, and no other (the gate)', asy
       // The two this track added to the app (ADR-066): the agent's log is not the file's to read.
       'agent_diagnostics_read',
       'agent_diagnostics_clear',
+      // The ones that write beside an exported file and run the local image model (ADR-057).
+      'export_copy_media',
+      'image_process',
+      'image_process_status',
     ]) {
       expect(await call(command), command).toContain('may not call');
     }
