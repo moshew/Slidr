@@ -247,17 +247,20 @@ impl HarnessManager {
         });
     }
 
-    /// Closes the sessions that have been idle for the limit. Returns how many.
+    /// Closes the sessions that have been idle for the limit, and the ones whose process ended
+    /// by itself. Returns how many.
     async fn close_idle(&self) -> usize {
         // Marked under each guard's own lock, so a turn that begins now is refused rather than
         // cut: the webview then starts a session that resumes the conversation.
-        let idle: Vec<String> = lock(&self.sessions)
+        let idle: Vec<(String, &'static str)> = lock(&self.sessions)
             .iter()
-            .filter(|(_, slot)| slot.guard.retire_if_idle(self.idle_limit))
-            .map(|(id, _)| id.clone())
+            .filter_map(|(id, slot)| {
+                let reason = slot.guard.retire_if_idle(self.idle_limit)?;
+                Some((id.clone(), reason))
+            })
             .collect();
-        for id in &idle {
-            let _ = self.end(id, "idle").await;
+        for (id, reason) in &idle {
+            let _ = self.end(id, reason).await;
         }
         idle.len()
     }
@@ -481,17 +484,24 @@ impl TurnGuard {
         lock(&self.state).turn.is_some()
     }
 
-    /// Whether the session is to be closed for sitting idle: no turn is running and nothing has
-    /// happened in it for `limit`, or it has ended by itself. If so it takes no more turns, so
+    /// Why the session is to be closed by the watch, if it is: `idle`, when no turn is running
+    /// and nothing has happened in it for `limit`, or `exited`, when it has ended by itself.
+    /// The word goes into the diagnostics log. From then on the session takes no more turns, so
     /// the close that follows never cuts one.
-    fn retire_if_idle(&self, limit: Duration) -> bool {
+    fn retire_if_idle(&self, limit: Duration) -> Option<&'static str> {
         let mut state = lock(&self.state);
         if state.retiring {
-            return false;
+            return None;
         }
-        let idle = state.exited || (state.turn.is_none() && state.active.elapsed() >= limit);
-        state.retiring = idle;
-        idle
+        let reason = if state.exited {
+            "exited"
+        } else if state.turn.is_none() && state.active.elapsed() >= limit {
+            "idle"
+        } else {
+            return None;
+        };
+        state.retiring = true;
+        Some(reason)
     }
 
     /// Delivers `event`, preceded by whatever the contract says must come first. Delivery happens
@@ -848,26 +858,37 @@ mod tests {
     #[test]
     fn a_session_being_closed_for_idleness_takes_no_turn() {
         let guard = TurnGuard::new(|_| {});
-        assert!(!guard.retire_if_idle(Duration::from_secs(600)), "just made");
+        assert_eq!(
+            guard.retire_if_idle(Duration::from_secs(600)),
+            None,
+            "just made"
+        );
         assert!(guard.begin_turn().is_ok());
-        assert!(!guard.retire_if_idle(Duration::ZERO), "a turn is running");
+        assert_eq!(
+            guard.retire_if_idle(Duration::ZERO),
+            None,
+            "a turn is running"
+        );
         guard.emit(AgentEvent::TurnCompleted {
             outcome: TurnOutcome::Completed,
             usage: Usage::default(),
             cost_usd: None,
             duration_ms: 1,
         });
-        assert!(guard.retire_if_idle(Duration::ZERO));
-        assert!(!guard.retire_if_idle(Duration::ZERO), "retired once");
+        assert_eq!(guard.retire_if_idle(Duration::ZERO), Some("idle"));
+        assert_eq!(guard.retire_if_idle(Duration::ZERO), None, "retired once");
         // The turn that arrives now is refused, not cut: the caller resumes in a new session.
         assert_eq!(
             guard.begin_turn().err().map(|e| e.kind),
             Some(AgentErrorKind::ProcessExited)
         );
-        // A session that ended by itself is retired whatever the limit.
+        // A session that ended by itself is retired whatever the limit, and the log says which.
         let ended = TurnGuard::new(|_| {});
         ended.emit(AgentEvent::Exited { code: Some(1) });
-        assert!(ended.retire_if_idle(Duration::from_secs(600)));
+        assert_eq!(
+            ended.retire_if_idle(Duration::from_secs(600)),
+            Some("exited")
+        );
     }
 
     #[tokio::test]
