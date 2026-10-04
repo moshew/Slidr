@@ -442,7 +442,9 @@ function RowB() {
       aria-label={t('tools.contextTools')}
       data-testid="top-tools-b"
       data-selection={kind}
-      className="flex h-toolbar-b items-center gap-4 border-b border-ui-line px-3"
+      // The groups are 12px apart: at 16 the row of a text box, the fullest one, did not hold the
+      // tools of all the areas at 1920 or at 1366.
+      className="flex h-toolbar-b items-center gap-3 border-b border-ui-line px-3"
     >
       <span
         data-testid="selection-label"
