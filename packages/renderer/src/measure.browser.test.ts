@@ -174,6 +174,34 @@ test('text: where the glyphs are, in both directions, and how far they run past 
   expect(Math.abs(1400 - wideHe.ink.x - wideHe.overflow.x)).toBeLessThan(2);
 });
 
+test('the space a wrapped line ends in hangs past the box and is not ink', async () => {
+  const hebrew = 'שלוש מטרות לרבעון הבא שכל אחת מהן נמדדת במספר אחד ברור ולא ביותר';
+  const english = 'Three goals for the next quarter, each one measured by a single clear number';
+  const box = (id: string, y: number, text: string, dir: 'rtl' | 'ltr', align: 'start' | 'end') =>
+    createElement.text({
+      id,
+      frame: { x: 96, y, w: 1000, h: 320 },
+      content: richText(text, { dir, align, styleRef: 'title' }),
+    });
+  const m = await measured([
+    // Text set against the side it reads from: every wrapped line ends in a space at the far
+    // edge of the box, which the browser lets hang outside it.
+    box('e_he_end', 80, hebrew, 'rtl', 'end'),
+    box('e_he_start', 400, hebrew, 'rtl', 'start'),
+    box('e_en_end', 720, english, 'ltr', 'end'),
+  ]);
+  for (const id of ['e_he_end', 'e_he_start', 'e_en_end']) {
+    const { ink } = m[id]!.text!;
+    expect(ink.h, id).toBeGreaterThan(200);
+    expect(ink.x, id).toBeGreaterThanOrEqual(95.5);
+    expect(ink.x + ink.w, id).toBeLessThanOrEqual(1096.5);
+  }
+  // The lines still end where their last letter does.
+  expect(m.e_he_end!.text!.ink.x).toBeCloseTo(96, 0);
+  expect(m.e_he_start!.text!.ink.x + m.e_he_start!.text!.ink.w).toBeCloseTo(1096, 0);
+  expect(m.e_en_end!.text!.ink.x + m.e_en_end!.text!.ink.w).toBeCloseTo(1096, 0);
+});
+
 test('shrink: the scale it settled on, and the size the text is really drawn at', async () => {
   const m = await measured([
     createElement.text({

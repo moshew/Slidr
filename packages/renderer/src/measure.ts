@@ -313,6 +313,33 @@ function fitOf(node: HTMLElement, container: Element | ShadowRoot) {
   return fit;
 }
 
+/**
+ * The boxes of a text node's letters, one per line. Not the boxes of the node as a whole: text
+ * boxes keep their spaces (`white-space: pre-wrap`), so the space a wrapped line ends in hangs
+ * past the edge of the box, and the node's boxes take it in. For text set against the side it
+ * reads from (Hebrew aligned to the left) that put the ink a space's width outside the box. So
+ * each word is measured by itself, and the words of a line are joined again, the spaces between
+ * them included.
+ */
+function lineRects(text: Node, range: Range, toSlide: ToSlide): Frame[] {
+  const lines: Frame[] = [];
+  for (const word of (text.nodeValue ?? '').matchAll(/\S+/g)) {
+    range.setStart(text, word.index);
+    range.setEnd(text, word.index + word[0].length);
+    for (const rect of range.getClientRects()) {
+      const box = toSlide(rect);
+      if (!(box.w > 0 && box.h > 0)) continue;
+      const line = lines.find((l) => Math.abs(l.y - box.y) < 0.5 && Math.abs(l.h - box.h) < 0.5);
+      if (line) {
+        const end = Math.max(line.x + line.w, box.x + box.w);
+        line.x = Math.min(line.x, box.x);
+        line.w = end - line.x;
+      } else lines.push(box);
+    }
+  }
+  return lines;
+}
+
 function measureText(
   node: HTMLElement,
   root: HTMLElement,
@@ -339,8 +366,7 @@ function measureText(
     if (!/\S/.test(text.nodeValue ?? '')) continue;
     const parent = text.parentElement ?? host;
     if (!parent || parent.closest('style, script, template')) continue;
-    range.selectNodeContents(text);
-    const rects = Array.from(range.getClientRects(), toSlide).filter((r) => r.w > 0 && r.h > 0);
+    const rects = lineRects(text, range, toSlide);
     // Text that is not displayed has no boxes.
     if (rects.length === 0) continue;
 
