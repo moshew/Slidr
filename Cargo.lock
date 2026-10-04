@@ -4159,6 +4159,7 @@ dependencies = [
  "tract-onnx",
  "uuid",
  "webview2-com",
+ "windows",
  "windows-core",
  "zip",
 ]

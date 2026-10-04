@@ -5,6 +5,7 @@ mod assets;
 mod capture;
 mod commands;
 mod error;
+mod fonts;
 mod harness;
 mod image_process;
 mod image_providers;
@@ -121,6 +122,7 @@ pub fn run() {
             image_process::ipc::image_process_status,
             harness::ipc::agent_diagnostics_read,
             harness::ipc::agent_diagnostics_clear,
+            fonts::fonts_system,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");
