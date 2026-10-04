@@ -4,6 +4,7 @@ import { useStore } from 'zustand';
 import type { Point } from '@slidr/model';
 import { Sparkles } from '@slidr/ui/icons';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@slidr/ui';
+import { svgMarkups } from '../objects/svgImport';
 import { insertAssetsCommands } from '../stage/insert';
 import { stagePreview } from '../stage/preview';
 import { Stage } from '../stage/Stage';
@@ -46,6 +47,8 @@ export function StageRegion() {
         bus.deck.size,
         at,
         (id) => id in bus.deck.assets,
+        // An SVG file goes in as cleaned markup, so its colours can be replaced (SHP-06, SEC-06).
+        await svgMarkups(files, imported),
       );
       if (!commands.length) return;
       bus.batch(commands, { label: t('stage.insert') });
