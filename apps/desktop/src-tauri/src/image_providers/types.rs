@@ -299,7 +299,8 @@ impl From<AppError> for ImageError {
         let kind = match error.kind {
             ErrorKind::NotFound => ImageErrorKind::NotFound,
             ErrorKind::InvalidInput => ImageErrorKind::InvalidInput,
-            ErrorKind::Io => ImageErrorKind::Io,
+            // A full disk is a file system refusal here: the message says which.
+            ErrorKind::Io | ErrorKind::DiskFull => ImageErrorKind::Io,
             ErrorKind::UnknownWorkspace => ImageErrorKind::UnknownWorkspace,
             ErrorKind::InvalidFile | ErrorKind::Internal => ImageErrorKind::Internal,
         };

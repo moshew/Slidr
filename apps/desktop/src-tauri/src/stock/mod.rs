@@ -301,7 +301,8 @@ impl From<AppError> for StockError {
         let kind = match error.kind {
             ErrorKind::NotFound => StockErrorKind::NotFound,
             ErrorKind::InvalidInput => StockErrorKind::InvalidInput,
-            ErrorKind::Io => StockErrorKind::Io,
+            // A full disk is a file system refusal here: the message says which.
+            ErrorKind::Io | ErrorKind::DiskFull => StockErrorKind::Io,
             ErrorKind::UnknownWorkspace => StockErrorKind::UnknownWorkspace,
             ErrorKind::InvalidFile | ErrorKind::Internal => StockErrorKind::Internal,
         };
