@@ -1,6 +1,7 @@
 import type { Frame, LineElement, Point } from '@slidr/model';
 import { linePath } from '@slidr/renderer';
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -50,6 +51,11 @@ function boxStyle(located: Located, view: StageView, flips = false): CSSProperti
   };
 }
 
+/** The box of an element on the Stage, for a mark that is not one of the Stage's own outlines. */
+export function elementBox(located: Located, view: StageView): CSSProperties {
+  return boxStyle(located, view);
+}
+
 /** A slide-pixel box in the screen pixels of the Stage. */
 export function toScreen(f: Frame, view: StageView): Frame {
   return {
@@ -82,6 +88,7 @@ export function Outline({
   hover,
   dashed,
   entered,
+  placeholder,
 }: {
   located: Located;
   view: StageView;
@@ -89,15 +96,64 @@ export function Outline({
   dashed?: boolean;
   /** The group the user is working inside: a quieter frame than a selection. */
   entered?: boolean;
+  /** An empty placeholder: the quietest frame, there so that the empty box can be seen. */
+  placeholder?: boolean;
 }) {
   const { element } = located;
+  const quiet = entered || placeholder;
+  const mark = entered
+    ? { 'data-entered-group': element.id }
+    : placeholder
+      ? { 'data-placeholder': element.id }
+      : { 'data-outline': element.id };
   return (
     <div
-      {...(entered ? { 'data-entered-group': element.id } : { 'data-outline': element.id })}
+      {...mark}
       style={{
         ...boxStyle(located, view),
-        outline: `${hover || entered ? 1 : 1.5}px ${dashed || entered ? 'dashed' : 'solid'} ${ACCENT}`,
-        opacity: entered ? 0.7 : undefined,
+        outline: `${hover || quiet ? 1 : 1.5}px ${dashed || quiet ? 'dashed' : 'solid'} ${ACCENT}`,
+        opacity: placeholder ? 0.45 : entered ? 0.7 : undefined,
+      }}
+    />
+  );
+}
+
+/**
+ * The mark of an element the agent is changing right now (STG-11, SPEC 4.0 rule 6): a frame
+ * in the accent with a soft halo, that breathes. Where reduced motion is asked for, it stands
+ * still. It takes no pointer: the element under it is still the one that is clicked.
+ */
+export function AgentMark({
+  id,
+  box,
+}: {
+  /** The element, or the slide when the agent built or rebuilt all of it. */
+  id: string;
+  /** Where it is on the Stage: see `elementBox` and `screenBox`. */
+  box: CSSProperties;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof el.animate !== 'function') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const breath = el.animate([{ opacity: 1 }, { opacity: 0.35 }, { opacity: 1 }], {
+      duration: 1400,
+      iterations: Infinity,
+      easing: 'ease-in-out',
+    });
+    return () => breath.cancel();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      data-agent-mark={id}
+      style={{
+        ...box,
+        borderRadius: 4,
+        outline: `2px solid ${ACCENT}`,
+        outlineOffset: 3,
+        boxShadow: `0 0 16px 5px color-mix(in srgb, ${ACCENT} 45%, transparent)`,
       }}
     />
   );

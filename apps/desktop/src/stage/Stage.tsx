@@ -2,6 +2,7 @@ import {
   duplicateElements,
   newId,
   normalizeAngle,
+  plainText,
   rotatedBounds,
   rotateVector,
   unionBounds,
@@ -15,6 +16,7 @@ import {
   type Point,
   type SelectionStore,
   type Slide,
+  type TextElement,
 } from '@slidr/model';
 import { SlideRenderer, type AssetResolver, type HtmlSlot, type TextSlot } from '@slidr/renderer';
 import { fitRows } from '../table/fit';
@@ -82,8 +84,10 @@ import {
   removeLinePoint,
 } from './line';
 import {
+  AgentMark,
   Beside,
   CropOverlay,
+  elementBox,
   Handles,
   Label,
   LineOverlay,
@@ -92,6 +96,7 @@ import {
   toScreen,
   type StageView,
 } from './overlays';
+import { PlaceholderHint } from './PlaceholderHint';
 import {
   apply,
   applyVector,
@@ -146,6 +151,16 @@ export interface StageProps {
    * and puts it away while a gesture is under way and while something is edited in place.
    */
   selectionToolbar?: ReactNode;
+  /**
+   * The elements the agent is changing right now, to mark on the slide (STG-11); the id of
+   * the slide itself marks all of it.
+   */
+  marked?: readonly string[];
+  /**
+   * The words an empty placeholder shows where its text will be (ADR-040), by the host, which
+   * knows the language. Undefined, or nothing for an element, shows nothing.
+   */
+  placeholderHint?: (element: TextElement) => string | undefined;
   className?: string;
   style?: CSSProperties;
 }
@@ -322,6 +337,8 @@ export function Stage({
   onFiles,
   preview,
   selectionToolbar,
+  marked,
+  placeholderHint,
   className,
   style,
 }: StageProps) {
@@ -1360,19 +1377,50 @@ export function Stage({
     selection.getState().stopEditing();
     container.current?.focus({ preventScroll: true });
   }, [selection]);
+  // The empty placeholders of the slide and what each of them says (ADR-040). As one string,
+  // so that the map below changes only when a hint does, and not with every move of an element.
+  const hinted = useMemo(() => {
+    if (!placeholderHint) return '';
+    const entries: string[] = [];
+    for (const { element, hidden } of index.values()) {
+      if (element.type !== 'text' || !element.role || hidden) continue;
+      if (plainText(element.content) !== '') continue;
+      const hint = placeholderHint(element);
+      if (hint) entries.push(`${element.id}\n${hint}`);
+    }
+    return entries.join('\n\n');
+  }, [index, placeholderHint]);
+  const hints = useMemo(
+    () =>
+      new Map(
+        hinted
+          .split('\n\n')
+          .filter(Boolean)
+          .map((entry) => entry.split('\n') as [string, string]),
+      ),
+    [hinted],
+  );
+  const deckDir = deck.meta.dir;
   const textSlot = useCallback<TextSlot>(
-    (element) =>
-      element.id === editingId && slide ? (
-        <TextEditor
-          bus={bus}
-          slideId={slide.id}
-          element={element}
-          theme={deck.theme}
-          caretAt={caretAt}
-          onExit={exitEditing}
-        />
-      ) : undefined,
-    [editingId, slide, bus, deck.theme, caretAt, exitEditing],
+    (element) => {
+      if (element.id === editingId && slide) {
+        return (
+          <TextEditor
+            bus={bus}
+            slideId={slide.id}
+            element={element}
+            theme={deck.theme}
+            caretAt={caretAt}
+            onExit={exitEditing}
+          />
+        );
+      }
+      const hint = hints.get(element.id);
+      return hint && element.type === 'text' ? (
+        <PlaceholderHint element={element} theme={deck.theme} dir={deckDir} text={hint} />
+      ) : undefined;
+    },
+    [editingId, slide, bus, deck.theme, deckDir, caretAt, exitEditing, hints],
   );
   // The text of an `html` element is edited inside the element's own content (HTM-03).
   const slideId = slide?.id;
@@ -1415,6 +1463,12 @@ export function Stage({
   if (slide && !previewing) {
     overlay = (
       <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        {[...hints.keys()].map((id) => {
+          const located = index.get(id);
+          return located && !selected.includes(id) && id !== editingId ? (
+            <Outline key={id} located={located} view={stageView} placeholder />
+          ) : null;
+        })}
         {enteredGroup ? <Outline located={enteredGroup} view={stageView} entered /> : null}
         {hovered ? (
           isLine(hovered) ? (
@@ -1453,6 +1507,17 @@ export function Stage({
             }}
           />
         ) : null}
+        {marked?.map((id) => {
+          // A slide the agent built or rebuilt is marked as a whole.
+          if (id === slide.id) {
+            const whole = { x: 0, y: 0, w: deck.size.w, h: deck.size.h };
+            return <AgentMark key={id} id={id} box={screenBox(whole, stageView)} />;
+          }
+          const located = index.get(id);
+          return located && !located.hidden ? (
+            <AgentMark key={id} id={id} box={elementBox(located, stageView)} />
+          ) : null;
+        })}
         {tables.overlay}
         {crop ? (
           <CropOverlay
@@ -1589,7 +1654,7 @@ export function Stage({
                 slide={slide}
                 mode="edit"
                 resolveAsset={resolveAsset}
-                textSlot={editingId && !croppingId ? textSlot : undefined}
+                textSlot={(editingId && !croppingId) || hints.size > 0 ? textSlot : undefined}
                 cellSlot={tables.cellSlot}
                 htmlSlot={htmlEditing ? htmlSlot : undefined}
               />

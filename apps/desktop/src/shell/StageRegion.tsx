@@ -1,7 +1,7 @@
 import { useCallback, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import { findElement, findSlide, type Point } from '@slidr/model';
+import { findElement, findSlide, type Point, type TextElement } from '@slidr/model';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -9,11 +9,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@slidr/ui';
+import { languages } from '../i18n';
 import { svgMarkups } from '../objects/svgImport';
 import { insertAssetsCommands } from '../stage/insert';
 import { stagePreview } from '../stage/preview';
 import { SelectionToolbar } from '../stage/SelectionToolbar';
 import { Stage } from '../stage/Stage';
+import { useAgentMarks } from '../stage/useAgentMarks';
 import { useAssetResolver } from './assets';
 import { useDeck, useEditor, useSelection } from './editor';
 import { useStageLayers, useStageMenu } from './registry';
@@ -51,10 +53,12 @@ function layerContextMenu(event: MouseEvent): void {
 
 /** The Stage region (UI-03): the slide at the zoom the shell keeps, and direct manipulation. */
 export function StageRegion() {
-  const { t } = useTranslation();
-  const { bus, selection, assets } = useEditor();
+  const { t, i18n } = useTranslation();
+  const editor = useEditor();
+  const { bus, selection, assets } = editor;
   const deck = useDeck((s) => s.deck);
   const zoom = useShell((s) => s.zoom);
+  const marked = useAgentMarks(editor);
   const resolveAsset = useAssetResolver();
   const preview = useStore(stagePreview, (s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
@@ -86,6 +90,19 @@ export function StageRegion() {
       selection.getState().selectElements(elementIds);
     },
     [bus, assets, selection, t],
+  );
+
+  // An empty placeholder says what it is for, in the language of the deck and not of the app:
+  // the words stand where the deck's own text will be.
+  const deckLang = deck.meta.lang;
+  const placeholderHint = useCallback(
+    (element: TextElement) => {
+      const key = `stage:hint.${element.role}`;
+      if (!element.role || !i18n.exists(key)) return undefined;
+      const lang = (languages as readonly string[]).includes(deckLang) ? deckLang : i18n.language;
+      return i18n.getFixedT(lang)(key);
+    },
+    [deckLang, i18n],
   );
 
   // The right click's menu (STG-06). The Stage has already made what was clicked the selection,
@@ -122,6 +139,8 @@ export function StageRegion() {
               onFiles={(files, at) => void onFiles(files, at)}
               preview={preview}
               selectionToolbar={<SelectionToolbar />}
+              marked={marked}
+              placeholderHint={placeholderHint}
               className="h-full w-full"
             />
           </div>

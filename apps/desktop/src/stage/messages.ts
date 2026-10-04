@@ -26,6 +26,17 @@ export const he = {
   toolbar: {
     label: 'כלים לבחירה',
   },
+  // What an empty placeholder says where its text will be, by its role.
+  hint: {
+    title: 'כותרת',
+    subtitle: 'כותרת משנה',
+    body: 'טקסט',
+    caption: 'כיתוב',
+    number: 'מספר',
+    quote: 'ציטוט',
+    attribution: 'מקור הציטוט',
+    footer: 'כותרת תחתונה',
+  },
 };
 
 export const en = {
@@ -53,5 +64,15 @@ export const en = {
   },
   toolbar: {
     label: 'Selection tools',
+  },
+  hint: {
+    title: 'Title',
+    subtitle: 'Subtitle',
+    body: 'Text',
+    caption: 'Caption',
+    number: 'Number',
+    quote: 'Quote',
+    attribution: 'Who said it',
+    footer: 'Footer',
   },
 };
