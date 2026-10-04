@@ -1,12 +1,12 @@
 import subsetterUrl from 'harfbuzzjs/dist/harfbuzz-subset.wasm?url';
-import type * as Woff2 from 'woff2-encoder';
 import codecUrl from 'woff2-encoder?url';
+import type { CodecReply, CodecRequest } from './woff2Worker';
 
 /**
  * Cutting a font down to the characters in use (WG9-T09). This is the heavy half of font
  * embedding: HarfBuzz's subsetter (650 kB of WebAssembly) and a WOFF2 codec (1 MB, its own
  * WebAssembly inside). Both are files fetched by address when the first export has fonts to cut,
- * so the app does not pay for them at start-up.
+ * so the app does not pay for them at start-up. The codec runs in a worker (see `woff2Worker`).
  *
  * HarfBuzz keeps what shaping needs of the glyphs it keeps: it follows GSUB to the ligatures and
  * the alternates the characters can turn into, and keeps their kerning and mark positioning.
@@ -85,9 +85,54 @@ const SFNT = new Set([0x00010000, tag('OTTO'), tag('true')]);
 const FVAR = tag('fvar');
 const WEIGHT_AXIS = tag('wght');
 
+/** WOFF2 to a bare font and back. */
+interface Codec {
+  compress(bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>>;
+  decompress(bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>>;
+}
+
 interface Tools {
   hb: HarfBuzz;
-  codec: typeof Woff2;
+  codec: Codec;
+}
+
+/**
+ * The codec, behind a worker. The codec is one ES module with nothing to resolve, so the worker
+ * imports the file as it is, by its address. Imported by name, Vite's dev server would find it
+ * only when the first export runs, bundle it then, and reload the page in the middle of that
+ * export.
+ */
+function codecInWorker(): Codec {
+  const worker = new Worker(new URL('./woff2Worker.ts', import.meta.url), { type: 'module' });
+  const address = new URL(codecUrl, location.href).href;
+  const waiting = new Map<
+    number,
+    { resolve: (bytes: Uint8Array<ArrayBuffer>) => void; reject: (error: Error) => void }
+  >();
+  let calls = 0;
+  worker.onmessage = ({ data }: MessageEvent<CodecReply>) => {
+    const call = waiting.get(data.id);
+    waiting.delete(data.id);
+    if ('error' in data) call?.reject(new Error(data.error));
+    else call?.resolve(data.bytes);
+  };
+  // The worker's script did not load, or the codec threw outside a call: nothing will answer.
+  worker.onerror = (event) => {
+    const error = new Error(event.message || 'the font codec could not be run');
+    for (const call of waiting.values()) call.reject(error);
+    waiting.clear();
+  };
+  const run = (op: CodecRequest['op'], bytes: Uint8Array) =>
+    new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => {
+      const id = calls++;
+      waiting.set(id, { resolve, reject });
+      // Copied, not handed over: the caller goes on using its bytes.
+      worker.postMessage({ id, op, bytes, codecUrl: address } satisfies CodecRequest);
+    });
+  return {
+    compress: (bytes) => run('compress', bytes),
+    decompress: (bytes) => run('decompress', bytes),
+  };
 }
 
 async function load(): Promise<Tools> {
@@ -97,11 +142,7 @@ async function load(): Promise<Tools> {
   const { instance } = await WebAssembly.instantiate(await response.arrayBuffer(), {});
   const hb = instance.exports as unknown as HarfBuzz;
   hb._initialize?.();
-  // The codec is one ES module with nothing to resolve, so the browser imports the file as it
-  // is. Imported by name, Vite's dev server would find it only when the first export runs,
-  // bundle it then, and reload the page in the middle of that export.
-  const codec = (await import(/* @vite-ignore */ codecUrl)) as typeof Woff2;
-  return { hb, codec };
+  return { hb, codec: codecInWorker() };
 }
 
 let loading: Promise<Tools> | undefined;
@@ -117,7 +158,7 @@ const signature = (bytes: Uint8Array): number =>
   bytes.byteLength < 4 ? 0 : new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0);
 
 /** The bare font inside a file, which is what the subsetter reads. */
-async function decode(codec: typeof Woff2, bytes: Uint8Array): Promise<Uint8Array | undefined> {
+async function decode(codec: Codec, bytes: Uint8Array): Promise<Uint8Array | undefined> {
   const type = signature(bytes);
   if (SFNT.has(type)) return bytes;
   if (type !== WOFF2) return undefined;
@@ -255,7 +296,7 @@ export async function subsetFonts(
         parts.map(async ({ weight, codePoints }): Promise<SubsetFont> => {
           const bytes = subset(hb, font, codePoints, request.features, weight);
           if (!bytes) throw new Error('the font could not be cut down');
-          return { bytes: new Uint8Array(await codec.compress(bytes)), weight };
+          return { bytes: await codec.compress(bytes), weight };
         }),
       );
     } catch {
