@@ -32,6 +32,7 @@ const named: Record<string, { section: ShortcutSection; label: string }> = {
   'arrange.duplicate': { section: 'edit', label: 'keys.duplicate' },
   'arrange.group': { section: 'arrange', label: 'keys.group' },
   'arrange.ungroup': { section: 'arrange', label: 'keys.ungroup' },
+  'arrange.pasteStyle': { section: 'arrange', label: 'keys.pasteStyle' },
   'arrange.order.front': { section: 'arrange', label: 'keys.front' },
   'arrange.order.forward': { section: 'arrange', label: 'keys.forward' },
   'arrange.order.backward': { section: 'arrange', label: 'keys.backward' },

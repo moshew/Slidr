@@ -189,6 +189,7 @@ export const en: Messages<typeof he> = {
     rotate: 'Rotate by one degree (with Shift: by 15)',
     group: 'Group',
     ungroup: 'Ungroup',
+    pasteStyle: 'Paste the style of the copied object',
     front: 'Bring to front',
     forward: 'Bring forward',
     backward: 'Send backward',

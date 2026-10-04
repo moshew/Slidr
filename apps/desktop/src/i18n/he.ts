@@ -189,6 +189,7 @@ export const he = {
     rotate: 'סיבוב במעלה (עם Shift: ב-15 מעלות)',
     group: 'קיבוץ',
     ungroup: 'פירוק קבוצה',
+    pasteStyle: 'הדבקת הסגנון של האובייקט שהועתק',
     front: 'הבאה לחזית',
     forward: 'הבאה קדימה',
     backward: 'העברה אחורה',
