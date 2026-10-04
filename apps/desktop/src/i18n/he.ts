@@ -242,6 +242,8 @@ export const he = {
     importHtml: 'ייבוא HTML',
     importHtmlBody: 'מצגת מקובץ HTML, שה-Agent מביא כשקפים לעריכה.',
     templates: 'חדש מתבנית',
+    allTemplates: 'כל התבניות',
+    fewerTemplates: 'פחות תבניות',
     recent: 'קבצים אחרונים',
     noRecentTitle: 'אין קבצים אחרונים',
     noRecentBody: 'מצגות שתשמרו יופיעו כאן.',

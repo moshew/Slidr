@@ -43,7 +43,8 @@ for (const theme of themes) {
         await page.addInitScript((l) => localStorage.setItem('slidr.language', l), lang);
         await page.goto('/?welcome');
         await expect(page.getByTestId('welcome')).toBeVisible();
-        await expect(page.locator('[data-welcome-template]')).toHaveCount(3);
+        // The first row of templates; the covers are drawn before the picture is taken.
+        await expect(page.locator('[data-welcome-template]')).toHaveCount(4);
         await settle(page);
         await page.screenshot({ path: out(`welcome-${tag}`) });
       });

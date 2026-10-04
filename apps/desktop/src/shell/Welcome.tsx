@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import { createSlide, slideFromLayout, type Deck } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { deckFromTemplate, type Template } from '@slidr/templates';
-import { cx, EmptyState, Icon, ScrollArea, type LucideIcon } from '@slidr/ui';
+import { Button, cx, EmptyState, Icon, ScrollArea, type LucideIcon } from '@slidr/ui';
 import { Clock, FilePlus, FolderOpen, Sparkles } from '@slidr/ui/icons';
 import type { RecentFile } from '../document/storage';
 import { currentLanguage } from '../i18n';
@@ -22,8 +22,13 @@ import { openPanel, setWelcome } from './store';
  * "Import HTML" is one of the ways in once the import area has registered its panel.
  */
 
-/** The width a template's cover is drawn at, in screen pixels: a card of the grid. */
-const COVER_WIDTH = 224;
+/**
+ * The templates of one row, under the four ways of the row above; the first row shows until the
+ * user asks for all of them, so the recent files stay in sight however many templates there are.
+ */
+const TEMPLATE_COLUMNS = 4;
+/** The width a template's cover is drawn at, in screen pixels: inside a card of that row. */
+const COVER_WIDTH = 212;
 
 /** A deck that starts on a template: its opening layout as the first slide (THM-08). */
 function deckOn(template: Template, lang: string): Deck {
@@ -108,7 +113,7 @@ function TemplateCard({ template, onPick }: { template: Template; onPick: () => 
       type="button"
       data-welcome-template={theme.id}
       onClick={onPick}
-      className="group flex cursor-default flex-col gap-2 rounded-panel border border-ui-line bg-ui-panel p-2 text-start transition-colors hover:border-ui-line-strong hover:bg-ui-hover"
+      className="group flex min-w-0 cursor-default flex-col gap-2 rounded-panel border border-ui-line bg-ui-panel p-2 text-start transition-colors hover:border-ui-line-strong hover:bg-ui-hover"
     >
       <span className="pointer-events-none block overflow-hidden rounded-inset">
         <ScaledSlide
@@ -165,6 +170,7 @@ export function Welcome() {
   // Built-in templates first, then the user's own; drawn again when the personal ones are read.
   useStore(library.state, (s) => s.personal);
   const templates = library.entries();
+  const [allTemplates, setAllTemplates] = useState(false);
   const [recent, setRecent] = useState<RecentFile[] | null>(hasStorage ? null : []);
 
   useEffect(() => {
@@ -255,15 +261,30 @@ export function Welcome() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <Heading>{t('welcome.templates')}</Heading>
-            <div className="flex flex-wrap gap-3">
-              {templates.map(({ template }) => (
-                <TemplateCard
-                  key={template.theme.id}
-                  template={template}
-                  onPick={() => void onTemplate(template)}
-                />
-              ))}
+            <div className="flex h-control-sm items-center justify-between">
+              <Heading>{t('welcome.templates')}</Heading>
+              {templates.length > TEMPLATE_COLUMNS && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="welcome-all-templates"
+                  aria-expanded={allTemplates}
+                  onClick={() => setAllTemplates((all) => !all)}
+                >
+                  {t(allTemplates ? 'welcome.fewerTemplates' : 'welcome.allTemplates')}
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              {(allTemplates ? templates : templates.slice(0, TEMPLATE_COLUMNS)).map(
+                ({ template }) => (
+                  <TemplateCard
+                    key={template.theme.id}
+                    template={template}
+                    onPick={() => void onTemplate(template)}
+                  />
+                ),
+              )}
             </div>
           </section>
 

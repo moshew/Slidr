@@ -242,6 +242,8 @@ export const en: Messages<typeof he> = {
     importHtml: 'Import HTML',
     importHtmlBody: 'A deck from an HTML file, which the agent brings in as slides to edit.',
     templates: 'New from a template',
+    allTemplates: 'All templates',
+    fewerTemplates: 'Fewer templates',
     recent: 'Recent files',
     noRecentTitle: 'No recent files',
     noRecentBody: 'Presentations you save will be listed here.',
