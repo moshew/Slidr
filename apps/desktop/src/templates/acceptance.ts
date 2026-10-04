@@ -104,21 +104,31 @@ async function markup(deck: Deck, slideId: string): Promise<string> {
 
 const SHEET = { columns: 4, gap: 8, ground: '#0e1014' };
 
+/** A slide and the deck it is drawn in. */
+export interface SheetCell {
+  deck: Deck;
+  slide: Deck['slides'][number];
+}
+
 /**
- * A picture of a whole deck: every slide small, four to a row, as a contact sheet. With `each`,
- * also every slide by itself at its full size, as `<name>-<nn>.png`.
+ * A picture of slides small, four to a row, as a contact sheet. With `each`, also every slide by
+ * itself at its full size, as `<name>-<nn>.png`.
  */
-export async function contactSheet(deck: Deck, name: string, each = false): Promise<void> {
+export async function sheet(
+  cells: readonly SheetCell[],
+  name: string,
+  each = false,
+): Promise<void> {
   const { columns, gap, ground } = SHEET;
   const k = (1920 - gap * (columns + 1)) / columns / 1920;
-  const rows = Math.ceil(deck.slides.length / columns);
+  const rows = Math.ceil(cells.length / columns);
   const height = Math.ceil(rows * 1080 * k + gap * (rows + 1));
   const board = document.createElement('div');
   board.style.cssText = `position:fixed;left:0;top:0;width:1920px;height:${height}px;background:${ground};z-index:2147483647`;
   document.body.append(board);
   const drawn: OffscreenSlide[] = [];
   try {
-    for (const [i, slide] of deck.slides.entries()) {
+    for (const [i, { deck, slide }] of cells.entries()) {
       const cell = document.createElement('div');
       const x = gap + (i % columns) * (1920 * k + gap);
       const y = gap + Math.floor(i / columns) * (1080 * k + gap);
@@ -135,7 +145,7 @@ export async function contactSheet(deck: Deck, name: string, each = false): Prom
     await page.screenshot({ path: `${SHOTS}/${name}.png` });
     if (each) {
       await page.viewport(1920, 1080);
-      for (const [i, slide] of deck.slides.entries()) {
+      for (const [i, { deck, slide }] of cells.entries()) {
         const full = await renderSlideOffscreen(
           { deck, slide, mode: 'thumbnail', resolveAsset: pictureUrl },
           { parent: board, hidden: false },
@@ -156,6 +166,14 @@ export async function contactSheet(deck: Deck, name: string, each = false): Prom
     await page.viewport(1920, 1080);
   }
 }
+
+/** A picture of a whole deck: every slide of it on one contact sheet. */
+export const contactSheet = (deck: Deck, name: string, each = false): Promise<void> =>
+  sheet(
+    deck.slides.map((slide) => ({ deck, slide })),
+    name,
+    each,
+  );
 
 /** The errors the lint leaves on a sample deck of `from` once it is switched to `to`. */
 export async function switchErrors(
