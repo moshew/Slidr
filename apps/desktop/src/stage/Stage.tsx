@@ -1,6 +1,7 @@
 import {
   duplicateElements,
   newId,
+  normalizeAngle,
   rotatedBounds,
   rotateVector,
   unionBounds,
@@ -67,6 +68,7 @@ import {
   refitPatches,
   resizeGroup,
   resizeTogether,
+  rotateTogether,
   type Patch,
   type Placement,
 } from './groups';
@@ -207,6 +209,18 @@ type Gesture =
     }
   | { kind: 'rotate'; txId: string; start: Point; located: Located; inverse: Matrix; center: Point }
   | {
+      kind: 'rotate-together';
+      txId: string;
+      start: Point;
+      /** The several elements, as they were when the turn began. */
+      items: Located[];
+      inverse: Matrix;
+      /** The box around them, and its centre, which they turn around. */
+      frame: Frame;
+      center: Point;
+      path: GroupElement[];
+    }
+  | {
       kind: 'line-point';
       txId: string;
       located: Located & { element: LineElement };
@@ -337,6 +351,8 @@ export function Stage({
   const [marquee, setMarquee] = useState<Frame | undefined>();
   const [spaceDown, setSpaceDown] = useState(false);
   const [overCrop, setOverCrop] = useState(false);
+  /** While several elements are turned together: the box they started in, and how far it turned. */
+  const [turn, setTurn] = useState<{ frame: Frame; angle: number } | undefined>();
   /** The groups the user went into by double-click, outermost first (ARR-01). */
   const [entered, setEntered] = useState<string[]>([]);
   const gesture = useRef<Gesture | null>(null);
@@ -394,10 +410,14 @@ export function Stage({
           element: {
             ...first.element,
             id: 'selection',
-            frame: unionBounds(
-              selectedLocated.map((l) => rotatedBounds(l.element.frame, l.element.rotation)),
-            ),
-            rotation: 0,
+            // While they are turned, the box they started in turns with them; once the turn
+            // ends, the box is the upright one around where they are.
+            frame:
+              turn?.frame ??
+              unionBounds(
+                selectedLocated.map((l) => rotatedBounds(l.element.frame, l.element.rotation)),
+              ),
+            rotation: turn?.angle ?? 0,
             flipH: false,
             flipV: false,
           },
@@ -539,6 +559,7 @@ export function Stage({
     frame.current = undefined;
     setGuides([]);
     setMarquee(undefined);
+    setTurn(undefined);
     if (!g || !('txId' in g)) return;
     if (cancel) {
       bus.rollback(g.txId);
@@ -683,6 +704,23 @@ export function Stage({
           snapBoxes: snapCandidates(index, new Set([single.element.id])),
         });
       }
+      return;
+    }
+    if (handle === 'rotate' && together) {
+      // The rotation handle of the box around several elements turns them together.
+      const f = together.element.frame;
+      const inverse = invert(together.space);
+      begin({
+        kind: 'rotate-together',
+        txId: newId('tx'),
+        start: apply(inverse, p),
+        items: selectedLocated,
+        inverse,
+        frame: f,
+        center: { x: f.x + f.w / 2, y: f.y + f.h / 2 },
+        path: together.path,
+      });
+      setTurn({ frame: f, angle: 0 });
       return;
     }
     if (handle && together) {
@@ -909,6 +947,13 @@ export function Stage({
         commit(g.txId, 'Rotate', g.located.path, new Map([[element.id, { rotation }]]));
         return;
       }
+      if (g.kind === 'rotate-together') {
+        const angle = rotationAt(g.center, g.start, apply(g.inverse, p), 0, shift);
+        setTurn({ frame: g.frame, angle });
+        const elements = g.items.map((l) => l.element);
+        commit(g.txId, 'Rotate', g.path, rotateTogether(elements, g.center, angle));
+        return;
+      }
       if (g.kind === 'line-point') {
         const line = g.located.element;
         const space = g.located.space;
@@ -1075,6 +1120,66 @@ export function Stage({
   // ---- Keyboard ----
 
   const nudge = useRef<Burst | null>(null);
+
+  /**
+   * Turning and sizing with the keyboard (UI-06), for what the handles do with the pointer. Alt
+   * with a side arrow turns by a degree, with Shift by 15; Ctrl with an arrow moves the end and
+   * the bottom edge by a pixel, with Shift by ten. Several elements of one parent go together,
+   * as with the handles of the box around them. A burst of presses is one undo step.
+   */
+  const keyTransform = (moving: Located[], dir: Point, what: 'rotate' | 'resize', far: boolean) => {
+    const one = moving.length === 1 ? moving[0] : undefined;
+    const path = sharedPath(moving);
+    if (!one && !path) return;
+    const elements = moving.map((l) => l.element);
+    const box = unionBounds(elements.map((el) => rotatedBounds(el.frame, el.rotation)));
+    const txId = burstTx(nudge);
+    if (what === 'rotate') {
+      if (dir.x === 0) return;
+      const by = dir.x * (far ? 15 : 1);
+      const patches = one
+        ? new Map<string, Patch>([
+            [one.element.id, { rotation: tidy(normalizeAngle(one.element.rotation + by)) }],
+          ])
+        : rotateTogether(elements, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, by);
+      commit(txId, 'Rotate', path, patches);
+      return;
+    }
+    const step = far ? 10 : 1;
+    const by = { x: dir.x * step, y: dir.y * step };
+    if (!one) {
+      const next = { ...box, w: Math.max(4, box.w + by.x), h: Math.max(4, box.h + by.y) };
+      commit(txId, 'Resize', path, resizeTogether(elements, box, next));
+      return;
+    }
+    const { element } = one;
+    // A line is shaped by its points, not by its box.
+    if (element.type === 'line') return;
+    const keepAspect = keepsAspect(element);
+    const handle = keepAspect ? HANDLES.se : by.x !== 0 ? HANDLES.e : HANDLES.s;
+    // The key moves an edge along the element's own axes, wherever it is turned.
+    const fitted = resizeFrame(
+      element.frame,
+      element.rotation,
+      handle,
+      rotateVector(by, element.rotation),
+      { keepAspect, min: 4 },
+    );
+    const frame = {
+      x: tidy(fitted.x),
+      y: tidy(fitted.y),
+      w: Math.max(1, Math.round(fitted.w)),
+      h: Math.max(1, Math.round(fitted.h)),
+    };
+    const patches =
+      element.type === 'group'
+        ? resizeGroup(element, frame)
+        : new Map<string, Patch>([[element.id, { frame }]]);
+    commit(txId, 'Resize', one.path, patches);
+    // A table cannot be shorter than its text: its rows are written as they came out.
+    if (element.type === 'table') fitRows(bus, element.id, txId);
+  };
+
   const onKeyDown = (e: KeyboardEvent) => {
     if (isInEditor(e.target)) return;
     // Inside a table the arrows, Tab, Enter, Delete and Esc are about its cells.
@@ -1136,6 +1241,22 @@ export function Stage({
       return;
     }
     if (!slide) return;
+    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey && !crop && !htmlId) {
+      // Tab walks the elements of the group being worked in, bottom to top, and Shift+Tab walks
+      // back (UI-06). Past either end the key is the browser's again: the selection is cleared
+      // and the focus moves on, so the Stage is no trap for the keyboard.
+      const walk = [...index.values()]
+        .filter((l) => !l.locked && !l.hidden && sameIds(pathIds(l), scope))
+        .sort((a, b) => a.order - b.order);
+      const at = walk.findIndex((l) => l.element.id === selected[0]);
+      const to = selected.length === 0 ? (e.shiftKey ? -1 : 0) : at + (e.shiftKey ? -1 : 1);
+      const next = walk[to];
+      if (next) {
+        e.preventDefault();
+        selection.getState().selectElements([next.element.id]);
+      } else if (selected.length) selection.getState().clearSelection();
+      return;
+    }
     const moving = movable(index);
     if ((e.key === 'Delete' || e.key === 'Backspace') && moving.length) {
       const ids = moving.map((l) => l.element.id);
@@ -1179,6 +1300,11 @@ export function Stage({
     const dir = arrows[e.key];
     if (!dir || (!crop && !moving.length)) return;
     e.preventDefault();
+    if (!crop && (e.altKey || e.ctrlKey || e.metaKey)) {
+      // With Alt the side arrows turn the selection, with Ctrl the arrows size it (UI-06).
+      keyTransform(moving, dir, e.altKey ? 'rotate' : 'resize', e.shiftKey);
+      return;
+    }
     const step = e.shiftKey ? 10 : 1;
     const by = { x: dir.x * step, y: dir.y * step };
     // A burst of presses is one undo step (STG-08).
@@ -1280,6 +1406,9 @@ export function Stage({
   if (sized && (active === 'resize' || active === 'crop-resize')) {
     label = `${Math.round(sized.element.frame.w)} × ${Math.round(sized.element.frame.h)}`;
   } else if (single && active === 'rotate') label = `${Math.round(single.element.rotation)}°`;
+  // Several elements show how far they turned, to either side.
+  else if (turn && active === 'rotate-together')
+    label = `${Math.round(turn.angle > 180 ? turn.angle - 360 : turn.angle)}°`;
 
   let overlay: ReactNode = null;
   // The handles are where the real elements are, which a preview may have moved or replaced.
@@ -1314,7 +1443,7 @@ export function Stage({
         {together ? (
           <>
             <Outline located={together} view={stageView} dashed />
-            <Handles located={together} view={stageView} noRotate />
+            <Handles located={together} view={stageView} />
           </>
         ) : selectedLocated.length > 1 ? (
           <div

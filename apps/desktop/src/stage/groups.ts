@@ -1,148 +1,26 @@
 import {
-  rotatedBounds,
+  normalizeAngle,
+  refitAll,
   rotateVector,
-  unionBounds,
   type Element,
   type Frame,
   type GroupElement,
+  type PlacementPatch,
+  type Point,
 } from '@slidr/model';
 import { fitLine, linePoints } from './line';
-import { tidyFrame } from './space';
+import { tidy, tidyFrame } from './space';
 
-/**
- * Keeping a group's frame around its children (ARR-01). A child's frame is relative to the group's
- * frame, and the group rotates and mirrors around the centre of that frame. So when a child moves
- * or changes size, the group takes the new bounds of its children and every child shifts by the
- * same amount the other way: nothing moves on the slide, and the frame bounds the children again.
+/*
+ * What a gesture of the Stage does to several elements at once: stretching a group with what is
+ * in it, stretching several elements together, turning them together. Keeping a group's frame
+ * around its children (ARR-01) is the model's (`@slidr/model`, `compose/refit.ts`), where every
+ * other way of changing an element can reach it too; it is passed on from here for the Stage.
  */
-
-/** What a gesture changes of an element's placement. `null` stands for an element being removed. */
-export type Placement = Partial<Pick<Element, 'frame' | 'rotation'>>;
-
-/** A refit ignores differences below this: the model keeps a thousandth of a pixel. */
-const EPSILON = 2e-3;
-
-/**
- * The placements that go with a change inside nested groups.
- *
- * @param path The groups around the changed elements, outermost first, as they are before the
- *   change.
- * @param changes New frame and / or rotation of children of the innermost group; `null` removes
- *   the child.
- * @returns The changed children, their siblings and the groups of the path, each with the frame it
- *   has to get. Removed elements, and groups left empty by a removal, map to `null`.
- */
-export function refitGroups(
-  path: readonly GroupElement[],
-  changes: ReadonlyMap<string, Placement | null>,
-): Map<string, Placement | null> {
-  const out = new Map<string, Placement | null>(changes);
-  let pending: ReadonlyMap<string, Placement | null> = changes;
-  for (let depth = path.length - 1; depth >= 0; depth--) {
-    const group = path[depth] as GroupElement;
-    const children = group.children
-      .filter((child) => pending.get(child.id) !== null)
-      .map((child) => {
-        const change = pending.get(child.id);
-        return {
-          id: child.id,
-          frame: change?.frame ?? child.frame,
-          rotation: change?.rotation ?? child.rotation,
-        };
-      });
-    if (children.length === 0) {
-      // The command that removes the last child removes the group too (ADR-007).
-      out.set(group.id, null);
-      pending = new Map([[group.id, null]]);
-      continue;
-    }
-    const bounds = unionBounds(children.map((c) => rotatedBounds(c.frame, c.rotation)));
-    const { frame } = group;
-    const moved = Math.abs(bounds.x) > EPSILON || Math.abs(bounds.y) > EPSILON;
-    const resized =
-      Math.abs(bounds.w - frame.w) > EPSILON || Math.abs(bounds.h - frame.h) > EPSILON;
-    // The group already bounds its children, so nothing above it changes either.
-    if (!moved && !resized) break;
-    if (moved) {
-      for (const child of children) {
-        out.set(child.id, {
-          ...out.get(child.id),
-          frame: tidyFrame({
-            ...child.frame,
-            x: child.frame.x - bounds.x,
-            y: child.frame.y - bounds.y,
-          }),
-        });
-      }
-    }
-    // How far the centre of the children moved, in the group's own axes, and from there on the
-    // slide: mirrored, then rotated, as the group draws its inside.
-    const shift = {
-      x: bounds.x + bounds.w / 2 - frame.w / 2,
-      y: bounds.y + bounds.h / 2 - frame.h / 2,
-    };
-    const onParent = rotateVector(
-      { x: group.flipH ? -shift.x : shift.x, y: group.flipV ? -shift.y : shift.y },
-      group.rotation,
-    );
-    const next: Frame = tidyFrame({
-      x: frame.x + frame.w / 2 + onParent.x - bounds.w / 2,
-      y: frame.y + frame.h / 2 + onParent.y - bounds.h / 2,
-      w: bounds.w,
-      h: bounds.h,
-    });
-    out.set(group.id, { frame: next });
-    pending = new Map([[group.id, { frame: next }]]);
-  }
-  return out;
-}
+export { refitAll, refitGroups, refitPatches, type Placement } from '@slidr/model';
 
 /** What `element.update` takes; `frame` and `rotation` are what a refit reads and writes. */
-export type Patch = Record<string, unknown> & Placement;
-
-/**
- * The patches of a gesture on children of the innermost group of `path`, together with the frames
- * that keep the groups around them fitted. At the top level of the slide they are returned as
- * they are.
- */
-export function refitPatches(
-  path: readonly GroupElement[],
-  patches: ReadonlyMap<string, Patch>,
-): Map<string, Patch> {
-  const out = new Map(patches);
-  if (path.length === 0) return out;
-  const placements = new Map<string, Placement>();
-  for (const [id, patch] of patches) {
-    placements.set(id, {
-      ...(patch.frame ? { frame: patch.frame } : {}),
-      ...(patch.rotation !== undefined ? { rotation: patch.rotation } : {}),
-    });
-  }
-  for (const [id, placement] of refitGroups(path, placements)) {
-    if (placement) out.set(id, { ...out.get(id), ...placement });
-  }
-  return out;
-}
-
-/**
- * The frames that fit every group of a tree to its children, innermost first: for changes that
- * were made without a refit, such as moving elements of several groups at once.
- */
-export function refitAll(elements: readonly Element[]): Map<string, Placement> {
-  const out = new Map<string, Placement>();
-  const visit = (list: readonly Element[]): Element[] =>
-    list.map((element) => {
-      if (element.type !== 'group' || element.children.length === 0) return element;
-      const children = visit(element.children);
-      const fitted = refitGroups([{ ...element, children }], new Map());
-      for (const [id, placement] of fitted)
-        if (placement) out.set(id, { ...out.get(id), ...placement });
-      const frame = fitted.get(element.id)?.frame ?? element.frame;
-      return { ...element, frame, children };
-    });
-  visit(elements);
-  return out;
-}
+export type Patch = PlacementPatch;
 
 /**
  * An element stretched with the group it is in, by `kx` and `ky` along the group's axes. A line
@@ -225,6 +103,36 @@ export function resizeTogether(
     out.set(element.id, {
       ...patch,
       frame: tidyFrame({ ...patch.frame, x: patch.frame.x + to.x, y: patch.frame.y + to.y }),
+    });
+  }
+  return out;
+}
+
+/**
+ * The patches that turn several elements of one parent together by `angle` degrees around
+ * `center` (in the coordinates their frames are written in): each one turns by the angle, and
+ * its centre travels around the common centre, as if they were a group for the length of the
+ * gesture. A group among them turns as one thing, with what is in it.
+ */
+export function rotateTogether(
+  elements: readonly Element[],
+  center: Point,
+  angle: number,
+): Map<string, Patch> {
+  const out = new Map<string, Patch>();
+  for (const element of elements) {
+    const { frame } = element;
+    const arm = rotateVector(
+      { x: frame.x + frame.w / 2 - center.x, y: frame.y + frame.h / 2 - center.y },
+      angle,
+    );
+    out.set(element.id, {
+      frame: tidyFrame({
+        ...frame,
+        x: center.x + arm.x - frame.w / 2,
+        y: center.y + arm.y - frame.h / 2,
+      }),
+      rotation: tidy(normalizeAngle(element.rotation + angle)),
     });
   }
   return out;
