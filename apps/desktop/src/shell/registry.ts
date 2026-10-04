@@ -9,6 +9,7 @@ import type { SelectionKind } from './selection';
  *   - panels for the Activity Bar and Tool Panel (SPEC 4.2, 4.3),
  *   - contextual tools for Top Tools row B (SPEC 4.4),
  *   - handlers for the fixed buttons of row A (insert, present, export),
+ *   - parts of the Stage's right-click menu, and layers over the Stage,
  *   - keyboard shortcuts.
  * An area registers from its own `src/<area>/register.ts(x)`, which the shell loads at startup.
  */
@@ -123,11 +124,11 @@ const contextTools = createRegistry<ContextToolDefinition>();
 export const registerContextTool = contextTools.register;
 
 /** The row B tools for a kind of selection, in order, split into groups. */
-export function groupContextTools(
-  items: readonly ContextToolDefinition[],
+export function groupContextTools<T extends Omit<ContextToolDefinition, 'render'>>(
+  items: readonly T[],
   kind: SelectionKind,
-): ContextToolDefinition[][] {
-  const groups: ContextToolDefinition[][] = [];
+): T[][] {
+  const groups: T[][] = [];
   const sorted = items.filter((i) => i.kinds.includes(kind)).sort((a, b) => a.order - b.order);
   for (const tool of sorted) {
     const last = groups.at(-1);
@@ -139,6 +140,31 @@ export function groupContextTools(
 
 export function useContextTools(kind: SelectionKind): ContextToolDefinition[][] {
   const items = useStore(contextTools.store, (s) => s.items);
+  return useMemo(() => groupContextTools(items, kind), [items, kind]);
+}
+
+/* ---------------------------------------------------------------- the Stage's right-click menu */
+
+/**
+ * A part of the Stage's right-click menu for some kinds of selection (STG-06): `none` is the
+ * slide itself. It draws `ContextMenuItem`s, and sub-menus, of `@slidr/ui`; it may draw none for
+ * the element at hand, and its group then takes no room in the menu.
+ */
+export interface StageMenuDefinition extends Registered {
+  kinds: readonly SelectionKind[];
+  /** Parts of one group sit together; a line separates groups. */
+  group: string;
+  /** Position in the menu, ascending. */
+  order: number;
+  render: ComponentType<ContextToolProps>;
+}
+
+const stageMenu = createRegistry<StageMenuDefinition>();
+
+export const registerStageMenu = stageMenu.register;
+
+export function useStageMenu(kind: SelectionKind): StageMenuDefinition[][] {
+  const items = useStore(stageMenu.store, (s) => s.items);
   return useMemo(() => groupContextTools(items, kind), [items, kind]);
 }
 
@@ -301,4 +327,5 @@ export const registries = {
   shortcuts: shortcuts.store,
   statusItems: statusItems.store,
   stageLayers: stageLayers.store,
+  stageMenu: stageMenu.store,
 };

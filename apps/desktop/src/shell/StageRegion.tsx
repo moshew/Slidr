@@ -1,23 +1,39 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import type { Point } from '@slidr/model';
-import { Sparkles } from '@slidr/ui/icons';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@slidr/ui';
+import { findElement, findSlide, type Point } from '@slidr/model';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@slidr/ui';
 import { svgMarkups } from '../objects/svgImport';
 import { insertAssetsCommands } from '../stage/insert';
 import { stagePreview } from '../stage/preview';
+import { SelectionToolbar } from '../stage/SelectionToolbar';
 import { Stage } from '../stage/Stage';
 import { useAssetResolver } from './assets';
 import { useDeck, useEditor, useSelection } from './editor';
-import { PanelId, useStageLayers } from './registry';
-import { aiKinds, selectionKind } from './selection';
-import { openPanel, useShell } from './store';
+import { useStageLayers, useStageMenu } from './registry';
+import { selectionKind } from './selection';
+import { useShell } from './store';
 
 /*
  * The Stage (WG2, src/stage) in the shell's layout. The component knows only the bus and the
- * stores; this file hands it the editor, the zoom and the open workspace.
+ * stores; this file hands it the editor, the zoom and the open workspace, and draws around it
+ * what belongs to the app and not to the slide: the right-click menu, the toolbar beside the
+ * selection, and the layers other areas put over the Stage.
  */
+
+/** The kinds of element whose text is edited in place: a right click there is the text's own. */
+const TEXT_EDITED = new Set(['text', 'shape', 'html']);
+
+/** In the text editor of a table cell, where the right click is the text's too. */
+function inCellText(target: EventTarget): boolean {
+  return target instanceof Element && Boolean(target.closest('[data-cell-editing]'));
+}
 
 /** The Stage region (UI-03): the slide at the zoom the shell keeps, and direct manipulation. */
 export function StageRegion() {
@@ -58,31 +74,43 @@ export function StageRegion() {
     [bus, assets, selection, t],
   );
 
-  // The right click's menu (STG-06 is P1; today it is the way to the AI tools, SPEC 4.2). The
-  // Stage has already made what was clicked the selection.
-  const onObject = aiKinds.has(selectionKind(deck, slideId, elementIds, editingId));
+  // The right click's menu (STG-06). The Stage has already made what was clicked the selection,
+  // so the menu is the one of the selection's kind; its parts come from the areas.
+  const kind = selectionKind(deck, slideId, elementIds, editingId);
+  const menu = useStageMenu(kind);
+  const slide = slideId ? findSlide(deck, slideId) : undefined;
+  const editing = slide && editingId ? findElement(slide, editingId) : undefined;
+  // While text is edited in place the right click is the text's own.
+  const editingText = editing !== undefined && TEXT_EDITED.has(editing.type);
 
   return (
     <ContextMenu>
-      {/* While text is edited in place the right click is the text's own. */}
-      <ContextMenuTrigger asChild disabled={editingId !== null || !slideId}>
+      <ContextMenuTrigger asChild disabled={editingText || !slideId}>
         <section
           aria-label={t('stage.label')}
           data-testid="stage"
           className="relative min-h-0 flex-1 overflow-hidden bg-ui-canvas"
         >
-          <Stage
-            bus={bus}
-            deck={deck}
-            selection={selection}
-            zoom={zoom}
-            onZoomChange={onZoomChange}
-            onViewScale={onViewScale}
-            resolveAsset={resolveAsset}
-            onFiles={(files, at) => void onFiles(files, at)}
-            preview={preview}
-            className="h-full w-full"
-          />
+          <div
+            className="contents"
+            onContextMenu={(event) => {
+              if (inCellText(event.target)) event.stopPropagation();
+            }}
+          >
+            <Stage
+              bus={bus}
+              deck={deck}
+              selection={selection}
+              zoom={zoom}
+              onZoomChange={onZoomChange}
+              onViewScale={onViewScale}
+              resolveAsset={resolveAsset}
+              onFiles={(files, at) => void onFiles(files, at)}
+              preview={preview}
+              selectionToolbar={<SelectionToolbar />}
+              className="h-full w-full"
+            />
+          </div>
           {previewing && (
             <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
               <span
@@ -103,23 +131,16 @@ export function StageRegion() {
         </section>
       </ContextMenuTrigger>
       <ContextMenuContent data-testid="stage-menu">
-        {onObject ? (
-          <ContextMenuItem
-            icon={Sparkles}
-            shortcut="Ctrl+3"
-            onSelect={() => openPanel(PanelId.aiObject, 'chat')}
-          >
-            {t('tools.aiObject')}
-          </ContextMenuItem>
-        ) : (
-          <ContextMenuItem
-            icon={Sparkles}
-            shortcut="Ctrl+2"
-            onSelect={() => openPanel(PanelId.aiSlide, 'chat')}
-          >
-            {t('tools.aiSlide')}
-          </ContextMenuItem>
-        )}
+        {menu.map((group, index) => (
+          // A part may draw nothing for the element at hand: its group, and the line above it,
+          // then take no room. The first group is the clipboard, which always has something.
+          <ContextMenuGroup key={group[0]?.group} className="hidden has-[[role^=menuitem]]:block">
+            {index > 0 && <ContextMenuSeparator />}
+            {group.map(({ id, render: Part }) => (
+              <Part key={id} kind={kind} />
+            ))}
+          </ContextMenuGroup>
+        ))}
       </ContextMenuContent>
     </ContextMenu>
   );

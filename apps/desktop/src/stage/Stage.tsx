@@ -80,12 +80,14 @@ import {
   removeLinePoint,
 } from './line';
 import {
+  Beside,
   CropOverlay,
   Handles,
   Label,
   LineOverlay,
   Outline,
   screenBox,
+  toScreen,
   type StageView,
 } from './overlays';
 import {
@@ -137,9 +139,17 @@ export interface StageProps {
    * `deck`.
    */
   preview?: Deck | null;
+  /**
+   * The host's toolbar for the selection (STG-05). The Stage places it beside what is selected,
+   * and puts it away while a gesture is under way and while something is edited in place.
+   */
+  selectionToolbar?: ReactNode;
   className?: string;
   style?: CSSProperties;
 }
+
+/** Room above the selection for the rotation handle, which the toolbar must not cover. */
+const TOOLBAR_CLEAR_PX = 40;
 
 /** Screen pixels within which an edge snaps or a click counts as a click. */
 const SNAP_PX = 6;
@@ -297,6 +307,7 @@ export function Stage({
   resolveAsset,
   onFiles,
   preview,
+  selectionToolbar,
   className,
   style,
 }: StageProps) {
@@ -1365,6 +1376,24 @@ export function Stage({
     );
   }
 
+  // Not part of the overlay: the overlay is hidden from assistive technology, and this is not.
+  const toolbar =
+    selectionToolbar &&
+    slide &&
+    !previewing &&
+    selectedLocated.length > 0 &&
+    !editingId &&
+    !active ? (
+      <Beside
+        box={toScreen(unionBounds(selectedLocated.map((l) => slideBounds(l))), stageView)}
+        stage={size}
+        clear={selectedLocated.every((l) => l.locked) ? 0 : TOOLBAR_CLEAR_PX}
+        onEnter={() => setHover(undefined)}
+      >
+        {selectionToolbar}
+      </Beside>
+    ) : null;
+
   return (
     <div
       ref={container}
@@ -1440,6 +1469,7 @@ export function Stage({
         </div>
       ) : null}
       {overlay}
+      {toolbar}
     </div>
   );
 }

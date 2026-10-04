@@ -1,6 +1,13 @@
 import type { Frame, LineElement, Point } from '@slidr/model';
 import { linePath } from '@slidr/renderer';
-import type { CSSProperties, ReactNode } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type SyntheticEvent,
+} from 'react';
 import type { CropView } from './crop';
 import { HANDLES, type Handle } from './geometry';
 import {
@@ -43,15 +50,20 @@ function boxStyle(located: Located, view: StageView, flips = false): CSSProperti
   };
 }
 
+/** A slide-pixel box in the screen pixels of the Stage. */
+export function toScreen(f: Frame, view: StageView): Frame {
+  return {
+    x: view.origin.x + f.x * view.scale,
+    y: view.origin.y + f.y * view.scale,
+    w: f.w * view.scale,
+    h: f.h * view.scale,
+  };
+}
+
 /** A slide-pixel box as a screen-pixel one. */
 export function screenBox(f: Frame, view: StageView): CSSProperties {
-  return {
-    position: 'absolute',
-    left: view.origin.x + f.x * view.scale,
-    top: view.origin.y + f.y * view.scale,
-    width: f.w * view.scale,
-    height: f.h * view.scale,
-  };
+  const { x, y, w, h } = toScreen(f, view);
+  return { position: 'absolute', left: x, top: y, width: w, height: h };
 }
 
 const CURSORS = ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'] as const;
@@ -177,6 +189,104 @@ export function Label({ bounds, view, text }: { bounds: Frame; view: StageView; 
       }}
     >
       {text}
+    </div>
+  );
+}
+
+/** The gap between a box and what is placed beside it, and the margin kept to the Stage's edge. */
+const BESIDE_GAP = 12;
+const BESIDE_MARGIN = 8;
+
+/**
+ * Where a toolbar of the given size goes beside a box of the Stage, all in screen pixels: centred
+ * above it, clear of the rotation handle; below it when there is no room above; and inside the
+ * Stage whatever the box does, so a selection that fills the Stage still has its toolbar.
+ */
+export function besidePosition(
+  box: Frame,
+  own: { w: number; h: number },
+  stage: { w: number; h: number },
+  clear: number,
+): Point {
+  const above = box.y - clear - BESIDE_GAP - own.h;
+  const below = box.y + box.h + BESIDE_GAP;
+  const y =
+    above >= BESIDE_MARGIN
+      ? above
+      : below + own.h <= stage.h - BESIDE_MARGIN
+        ? below
+        : BESIDE_MARGIN;
+  const x = Math.min(
+    Math.max(BESIDE_MARGIN, box.x + box.w / 2 - own.w / 2),
+    Math.max(BESIDE_MARGIN, stage.w - own.w - BESIDE_MARGIN),
+  );
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
+/**
+ * The host's toolbar beside the selection (STG-05). It is the host's own UI on the Stage's
+ * surface: the pointer and the keys in it stay in it, and a press on it does not take the
+ * keyboard from the Stage, so the arrows and Delete go on working on the selection.
+ */
+export function Beside({
+  box,
+  stage,
+  clear,
+  onEnter,
+  children,
+}: {
+  /** The selection, in screen pixels of the Stage. */
+  box: Frame;
+  stage: { w: number; h: number };
+  /** Room to leave above the box for the rotation handle. */
+  clear: number;
+  /** The pointer came onto the toolbar: it is no longer over the slide. */
+  onEnter?: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [own, setOwn] = useState<{ w: number; h: number } | undefined>();
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const { offsetWidth: w, offsetHeight: h } = el;
+      setOwn((s) => (s?.w === w && s.h === h ? s : { w, h }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const at = own ? besidePosition(box, own, stage, clear) : { x: 0, y: 0 };
+  const stop = (event: SyntheticEvent) => event.stopPropagation();
+  return (
+    <div
+      ref={ref}
+      data-stage-toolbar
+      style={{
+        position: 'absolute',
+        left: at.x,
+        top: at.y,
+        // Measured first, then shown: it never flashes in the corner.
+        visibility: own ? 'visible' : 'hidden',
+        pointerEvents: 'auto',
+      }}
+      onPointerDown={stop}
+      onPointerMove={stop}
+      onPointerUp={stop}
+      onPointerEnter={onEnter}
+      onDoubleClick={stop}
+      onWheel={stop}
+      onKeyDown={stop}
+      onKeyUp={stop}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+      onMouseDown={(event) => event.preventDefault()}
+    >
+      {children}
     </div>
   );
 }

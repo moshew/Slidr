@@ -9,9 +9,11 @@ import {
   registerPanel,
   registerShortcut,
   registerStageLayer,
+  registerStageMenu,
   registries,
   shortcutsFor,
   type ContextToolDefinition,
+  type StageMenuDefinition,
   type ToolPanelDefinition,
 } from './registry';
 
@@ -80,6 +82,32 @@ describe('row B tools', () => {
     expect(registries.contextTools.getState().items.some((t) => t.id === 't.tool')).toBe(true);
     remove();
     expect(registries.contextTools.getState().items.some((t) => t.id === 't.tool')).toBe(false);
+  });
+});
+
+describe("the Stage's right-click menu", () => {
+  it('is put together by kind, in order and in groups, as row B is', () => {
+    const part = (
+      id: string,
+      group: string,
+      order: number,
+      kinds: ContextToolDefinition['kinds'],
+    ) => ({ id, group, order, kinds, render: Nothing }) satisfies StageMenuDefinition;
+    const removes = [
+      part('t.ai', 'ai', 90, ['none', 'text']),
+      part('t.cells', 'table', 25, ['table']),
+      part('t.clipboard', 'clipboard', 10, ['none', 'text', 'table']),
+    ].map(registerStageMenu);
+    const ids = (kind: ContextToolDefinition['kinds'][number]) =>
+      groupContextTools(registries.stageMenu.getState().items, kind)
+        .flat()
+        .map((p) => p.id)
+        .filter((id) => id.startsWith('t.'));
+    expect(ids('table')).toEqual(['t.clipboard', 't.cells']);
+    expect(ids('none')).toEqual(['t.clipboard', 't.ai']);
+    expect(ids('image')).toEqual([]);
+    for (const remove of removes) remove();
+    expect(ids('none')).toEqual([]);
   });
 });
 

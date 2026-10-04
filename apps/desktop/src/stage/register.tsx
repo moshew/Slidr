@@ -1,6 +1,7 @@
 import { findSlide, type ImageElement } from '@slidr/model';
 import { Button, Icon, IconButton, Select, Slider, Toggle } from '@slidr/ui';
 import { Check, Crop, RotateCcw, ZoomIn } from '@slidr/ui/icons';
+import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { useGestureTx } from '../controls';
@@ -8,10 +9,13 @@ import { registerMessages } from '../i18n';
 import {
   registerContextTool,
   registerShortcut,
+  registerStageMenu,
   useDeck,
   useEditor,
   useSelection,
+  type ContextToolProps,
   type Editor,
+  type SelectionKind,
 } from '../shell';
 import {
   cropPatch,
@@ -26,39 +30,18 @@ import {
 } from './crop';
 import { cropSession, heldRatio, type CropPreset } from './cropSession';
 import { refitPatches, type Patch } from './groups';
+import { AiItems, ClipboardItems, EditItems, GroupItems, OrderItems, StateItems } from './menu';
+import { en, he } from './messages';
 import { indexElements, type Located } from './space';
 
 /*
  * The Stage's part of Top Tools row B (SPEC 4.4): crop mode of an image (WG5-T02, IMG-03). The
  * Crop button is there for every image; the rest shows while cropping, when the other image
  * tools step aside. Crop mode itself is `selection.editingElementId` on the image, and the
- * Stage draws it (ADR-016).
+ * Stage draws it (ADR-016). And the Stage's right-click menu (STG-06), at the end of the file.
  */
 
-registerMessages('stage', {
-  he: {
-    crop: {
-      toggle: 'חיתוך',
-      aspect: 'יחס החיתוך',
-      free: 'חופשי',
-      original: 'מקורי',
-      zoom: 'זום התמונה',
-      reset: 'איפוס החיתוך',
-      done: 'סיום',
-    },
-  },
-  en: {
-    crop: {
-      toggle: 'Crop',
-      aspect: 'Crop proportions',
-      free: 'Free',
-      original: 'Original',
-      zoom: 'Picture zoom',
-      reset: 'Reset crop',
-      done: 'Done',
-    },
-  },
-});
+registerMessages('stage', { he, en });
 
 interface CropTarget {
   slideId: string;
@@ -260,3 +243,38 @@ registerShortcut({
     return true;
   },
 });
+
+/* ---------------------------------------------------------------- the right-click menu */
+
+/** Every kind of selection that is one element or more; `none` is the slide itself. */
+const elementKinds: SelectionKind[] = [
+  'text',
+  'image',
+  'shape',
+  'table',
+  'chart',
+  'media',
+  'html',
+  'group',
+  'multiple',
+];
+
+/*
+ * Groups, top to bottom: the clipboard (10), the element's own way in (20), order and alignment
+ * (30), grouping (40), lock and hide (50), and the AI tools last (90). Another area adds what
+ * only it knows, between them: the table's rows and columns are at 25.
+ */
+const menu: {
+  id: string;
+  order: number;
+  kinds: readonly SelectionKind[];
+  render: ComponentType<ContextToolProps>;
+}[] = [
+  { id: 'clipboard', order: 10, kinds: ['none', ...elementKinds], render: ClipboardItems },
+  { id: 'edit', order: 20, kinds: elementKinds, render: EditItems },
+  { id: 'order', order: 30, kinds: elementKinds, render: OrderItems },
+  { id: 'group', order: 40, kinds: ['group', 'multiple'], render: GroupItems },
+  { id: 'state', order: 50, kinds: elementKinds, render: StateItems },
+  { id: 'ai', order: 90, kinds: ['none', ...elementKinds], render: AiItems },
+];
+for (const { id, ...part } of menu) registerStageMenu({ id: `stage.${id}`, group: id, ...part });
