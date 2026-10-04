@@ -19,6 +19,11 @@ export const SOUND_SECONDS = 1.5;
 /** The picture of the test video, in pixels. */
 export const CLIP_SIZE = { w: 320, h: 180 } as const;
 
+/** A recording smaller than this has no picture in it: three seconds are about 26 kB. */
+const LEAST_CLIP_BYTES = 5000;
+/** How far video compression may move a colour of the test video. */
+const BAND_SLACK = 28;
+
 export interface TestMedia {
   video: Buffer;
   sound: Buffer;
@@ -35,7 +40,7 @@ let recorded: Promise<TestMedia> | undefined;
 export function testMedia(page: Page): Promise<TestMedia> {
   recorded ??= page
     .evaluate(
-      async ({ path, seconds, tone, size }) => {
+      async ({ path, seconds, tone, size, least, bands, slack }) => {
         const recorder = (await import(/* @vite-ignore */ path)) as {
           recordClip: (seconds: number, size: { w: number; h: number }) => Promise<Blob>;
           toneWav: (seconds: number) => Uint8Array<ArrayBuffer>;
@@ -47,12 +52,65 @@ export function testMedia(page: Page): Promise<TestMedia> {
               resolve(typeof reader.result === 'string' ? (reader.result.split(',')[1] ?? '') : '');
             reader.readAsDataURL(blob);
           });
+        // The colour in a corner of the clip at a time, where no digit is drawn.
+        const colourAt = async (clip: Blob, at: number): Promise<number[]> => {
+          const video = document.createElement('video');
+          video.muted = true;
+          video.src = URL.createObjectURL(clip);
+          const heard = (type: string) =>
+            new Promise<boolean>((resolve) => {
+              video.addEventListener(type, () => resolve(true), { once: true });
+              video.addEventListener('error', () => resolve(false), { once: true });
+              setTimeout(() => resolve(false), 3000);
+            });
+          try {
+            if (!(await heard('loadeddata'))) return [];
+            const seeked = heard('seeked');
+            video.currentTime = at;
+            if (!(await seeked)) return [];
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = 8;
+            const context = canvas.getContext('2d');
+            if (!context) return [];
+            context.drawImage(video, 0, 0, 32, 16, 0, 0, 8, 8);
+            return Array.from(context.getImageData(4, 4, 1, 1).data.slice(0, 3));
+          } finally {
+            URL.revokeObjectURL(video.src);
+          }
+        };
+        // A recording is good when the middle of each second shows that second's colour. On a
+        // busy machine it can come out as a header with no frames in it (110 bytes, once in a
+        // full run), or with its first frame held for seconds: such a clip is recorded again.
+        const good = async (clip: Blob): Promise<boolean> => {
+          if (clip.size < least) return false;
+          for (let second = 0; second < Math.floor(seconds); second++) {
+            const colour = await colourAt(clip, second + 0.5);
+            const band = bands[second % bands.length] ?? [];
+            if (colour.length !== 3) return false;
+            if (!colour.every((value, i) => Math.abs(value - (band[i] ?? 0)) <= slack)) {
+              return false;
+            }
+          }
+          return true;
+        };
+        let clip = await recorder.recordClip(seconds, size);
+        for (let again = 0; again < 4 && !(await good(clip)); again++) {
+          clip = await recorder.recordClip(seconds, size);
+        }
         return {
-          video: await base64(await recorder.recordClip(seconds, size)),
+          video: await base64(clip),
           sound: await base64(new Blob([recorder.toneWav(tone)])),
         };
       },
-      { path: RECORDER, seconds: CLIP_SECONDS, tone: SOUND_SECONDS, size: CLIP_SIZE },
+      {
+        path: RECORDER,
+        seconds: CLIP_SECONDS,
+        tone: SOUND_SECONDS,
+        size: CLIP_SIZE,
+        least: LEAST_CLIP_BYTES,
+        bands: BANDS.map((band) => [...band]),
+        slack: BAND_SLACK,
+      },
     )
     .then(({ video, sound }) => ({
       video: Buffer.from(video, 'base64'),
@@ -278,7 +336,7 @@ export async function secondSeen(page: Page, selector: string): Promise<string> 
 }
 
 /** Whether two colours are the same to the eye: video compression moves them a little. */
-export const near = (a: readonly number[], b: readonly number[], slack = 28): boolean =>
+export const near = (a: readonly number[], b: readonly number[], slack = BAND_SLACK): boolean =>
   a.every((value, i) => Math.abs(value - (b[i] ?? 0)) <= slack);
 
 /** The colours of the test video's bands, a second each (see `recordedClip.ts`). */
