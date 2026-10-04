@@ -1,12 +1,20 @@
-// The templates Slidr ships with (THM-01, WG7-T04). Each is derived from a reference deck under
-// `docs/reference-decks/`: the deck set the design, the template is what of it a theme and
-// fourteen layouts can carry.
+// The templates Slidr ships with (THM-01, WG7-T04, WG7-T10). The first three are each derived
+// from a reference deck under `docs/reference-decks/`: the deck set the design, the template is
+// what of it a theme and fourteen layouts can carry. The seven after them were drawn as
+// templates from the start (ADR-063).
 import type { Theme } from '@slidr/model';
 import type { Template } from '../template';
 import type { SampleSlide } from './kit';
+import { defusSamples, defusTemplate, defusTheme } from './defus';
+import { ganSamples, ganTemplate, ganTheme } from './gan';
+import { lavanSamples, lavanTemplate, lavanTheme } from './lavan';
+import { laylaSamples, laylaTemplate, laylaTheme } from './layla';
+import { migdalSamples, migdalTemplate, migdalTheme } from './migdal';
+import { nofSamples, nofTemplate, nofTheme } from './nof';
 import { shvilSamples, shvilTemplate, shvilTheme } from './shvil';
 import { tzukSamples, tzukTemplate, tzukTheme } from './tzuk';
 import { zeremSamples, zeremTemplate, zeremTheme } from './zerem';
+import { zoharSamples, zoharTemplate, zoharTheme } from './zohar';
 
 export { contractGaps, ROLE_CONTRACT } from './contract';
 export { pictures } from './pictures.generated';
@@ -18,19 +26,45 @@ export const builtInThemes: Record<string, Theme> = {
   zerem: zeremTheme,
   shvil: shvilTheme,
   tzuk: tzukTheme,
+  lavan: lavanTheme,
+  layla: laylaTheme,
+  zohar: zoharTheme,
+  migdal: migdalTheme,
+  gan: ganTheme,
+  nof: nofTheme,
+  defus: defusTheme,
 };
 
 /** The built-in templates, in the order the library shows them. */
 export function builtInTemplates(): Template[] {
-  return [zeremTemplate(), shvilTemplate(), tzukTemplate()];
+  return [
+    zeremTemplate(),
+    shvilTemplate(),
+    tzukTemplate(),
+    lavanTemplate(),
+    laylaTemplate(),
+    zoharTemplate(),
+    migdalTemplate(),
+    ganTemplate(),
+    nofTemplate(),
+    defusTemplate(),
+  ];
 }
 
 /**
  * The sample deck of each built-in template in Hebrew and in English, as content for its
- * layouts: the reference deck the template was derived from, rebuilt on the template.
+ * layouts: for the first three, the reference deck the template was derived from, rebuilt on
+ * the template.
  */
 export const builtInSamples: Record<string, { he: SampleSlide[]; en: SampleSlide[] }> = {
   zerem: zeremSamples,
   shvil: shvilSamples,
   tzuk: tzukSamples,
+  lavan: lavanSamples,
+  layla: laylaSamples,
+  zohar: zoharSamples,
+  migdal: migdalSamples,
+  gan: ganSamples,
+  nof: nofSamples,
+  defus: defusSamples,
 };
