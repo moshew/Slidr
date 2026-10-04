@@ -84,6 +84,7 @@
   --spacing-thumb-h: 99px;
   --spacing-menu: 224px; /* the minimum width of a menu */
   --spacing-dialog: 440px;
+  --spacing-dialog-wide: 720px; /* a dialog with a slide or a picture in it */
   --spacing-popover: 288px;
 
   /* Radius: 8 for controls, 12 for panels, cards and floating surfaces. */

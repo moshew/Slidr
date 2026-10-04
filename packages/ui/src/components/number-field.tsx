@@ -30,6 +30,8 @@ export interface NumberFieldProps {
   end?: ReactNode;
   /** Classes for the frame, e.g. its width. */
   className?: string;
+  /** For tests: put on the input, which is what a test types into and reads. */
+  'data-testid'?: string;
 }
 
 function format(value: number | null, precision: number): string {
@@ -59,6 +61,7 @@ export function NumberField({
   disabled = false,
   end,
   className,
+  'data-testid': testId,
   ...aria
 }: NumberFieldProps) {
   const rtl = Direction.useDirection() === 'rtl';
@@ -120,6 +123,7 @@ export function NumberField({
           inputMode="decimal"
           dir="ltr"
           aria-label={aria['aria-label']}
+          data-testid={testId}
           value={draft ?? shown}
           placeholder={placeholder}
           disabled={disabled}

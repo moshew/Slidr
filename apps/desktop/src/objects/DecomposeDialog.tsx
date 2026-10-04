@@ -301,7 +301,7 @@ export function DecomposeDialog({
         data-testid="decompose-dialog"
         data-phase={phase.at}
         // Wider than a form: the preview is the point of this dialog.
-        className="w-180! max-w-full"
+        size="wide"
       >
         {phase.at === 'working' && (
           <div role="status" className="flex items-center gap-2 py-4 text-ui-fg-muted">
