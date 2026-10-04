@@ -184,6 +184,10 @@ export const he = {
       title: 'התור נכשל',
       body: 'ה-Agent דיווח על שגיאה. מה שכבר נעשה נשאר במצגת, ואפשר לבטל אותו.',
     },
+    network: {
+      title: 'אין חיבור לשירות של ה-Agent',
+      body: 'ה-Agent ניסה כמה דקות ולא הצליח להתחבר. בדקו את החיבור לאינטרנט ושלחו את ההודעה שוב. מה שכבר נעשה נשאר במצגת.',
+    },
     other: {
       title: 'משהו השתבש',
       body: 'התור לא הושלם. נסו לשלוח את ההודעה שוב.',
@@ -624,6 +628,10 @@ export const en = {
     turn_failed: {
       title: 'The turn failed',
       body: 'The agent reported an error. What it already did stays in the deck, and can be undone.',
+    },
+    network: {
+      title: "No connection to the agent's service",
+      body: 'The agent tried for a few minutes and could not connect. Check the internet connection and send the message again. What it already did stays in the deck.',
     },
     other: {
       title: 'Something went wrong',

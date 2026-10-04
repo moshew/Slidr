@@ -251,6 +251,21 @@ function entryId(): string {
 /** What the harness is told when a message is only its attachments: a turn needs words. */
 const ATTACHED_ONLY = 'See the files attached to this message.';
 
+/**
+ * What the agent is told when a turn that failed for want of a connection is tried again
+ * (WG13-T03). The request it was working on is still the last thing the user said to it, with
+ * whatever it had done before the connection went.
+ */
+const RECONNECTED =
+  'The connection to the model was lost before this turn was finished, and it is back. Go on ' +
+  'with my last request from where it stopped. Do not repeat what is already done, and do not ' +
+  'mention the interruption.';
+
+/** The session a turn was sent to is not there: the harness layer's two ways of saying so. */
+const isSessionGone = (error: unknown): boolean =>
+  error instanceof AgentError &&
+  (error.kind === 'unknown_session' || error.kind === 'process_exited');
+
 /** The pictures a harness can be shown, by media type. */
 const SHOWN = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 /** A picture larger than this is not shown to the model; it is still attached as a file. */
@@ -334,6 +349,10 @@ interface Run {
   stopRequested: boolean;
   /** The conversation could not be resumed: start over once the session has gone. */
   startOver: boolean;
+  /** The turn failed once for want of a connection and was sent again. Once only. */
+  retried: boolean;
+  /** The session was gone when the turn reached it, and another was opened. Once only. */
+  reopened: boolean;
   problem?: ChatProblem;
   usage: Usage;
   costUsd: number | null;
@@ -671,6 +690,8 @@ export class ChatThread {
       wrote: false,
       stopRequested: false,
       startOver: false,
+      retried: false,
+      reopened: false,
       usage: NO_USAGE,
       costUsd: 0,
       durationMs: 0,
@@ -740,6 +761,18 @@ export class ChatThread {
       if (this.#run === run) this.store.setState({ activity: { kind: 'thinking' } });
     } catch (error) {
       if (this.#run !== run) return;
+      // The session was gone when the turn reached it: closed a moment ago for sitting idle
+      // (AGT-07), or its process had ended and the word had not arrived yet. Nothing was sent,
+      // so the turn goes to a new session, which resumes the conversation by its id.
+      const gone = this.#session;
+      if (gone && isSessionGone(error) && !run.reopened && !run.stopRequested) {
+        run.reopened = true;
+        run.turn = null;
+        this.#session = null;
+        void this.#endSession(gone);
+        await this.#startTurn(run);
+        return;
+      }
       run.problem = problemOf(error);
       this.#finish(run, 'failed');
     }
@@ -1009,12 +1042,42 @@ export class ChatThread {
     run.costUsd =
       run.costUsd === null || event.costUsd === null ? null : run.costUsd + event.costUsd;
     this.#spent(event.costUsd);
+    const { bus, lint, client } = this.#options;
+    // The harness could not reach its model. One more try before the user is told (ADR-042):
+    // the harness has been trying for minutes by then, and the connection may be back. The
+    // session is alive, and has the request and whatever was done for it.
+    if (
+      event.outcome === 'failed' &&
+      run.problem?.kind === 'network' &&
+      !run.retried &&
+      !run.stopRequested &&
+      this.#session === session
+    ) {
+      run.retried = true;
+      const lost = run.problem;
+      delete run.problem;
+      this.store.setState({ activity: { kind: 'starting' } });
+      try {
+        await client.send(session.sessionId, {
+          text: RECONNECTED,
+          context: this.#context(session),
+        });
+        if (this.#run !== run) return;
+        this.store.setState({ activity: { kind: 'thinking' } });
+        if (run.stopRequested) await client.interrupt(session.sessionId).catch(() => undefined);
+      } catch {
+        if (this.#run !== run) return;
+        // The session did not take the second try: the user is told what stopped the first.
+        run.problem = lost;
+        this.#finish(run, 'failed');
+      }
+      return;
+    }
     if (event.outcome !== 'completed' || run.stopRequested) {
       this.#finish(run, run.stopRequested ? 'interrupted' : event.outcome);
       return;
     }
 
-    const { bus, lint, client } = this.#options;
     const gated = (this.#settings().qualityGate ?? true) && this.scope.kind !== 'import';
     let report: GateReport = { unseen: [], findings: [] };
     if (gated && run.watch.touched) {

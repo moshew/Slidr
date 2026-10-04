@@ -548,6 +548,116 @@ describe('stopping and failing', () => {
     });
   });
 
+  describe('without a connection (WG13-T03)', () => {
+    const lost: ScriptStep[] = [
+      {
+        type: 'error',
+        kind: 'network',
+        message: "API Error: Can't reach the API server (ENOTFOUND)",
+        recoverable: true,
+      },
+      done({ outcome: 'failed', costUsd: 0, durationMs: 175_000 }),
+    ];
+
+    it('sends a turn that failed for want of a connection once more, and the user sees one turn', async () => {
+      const back = [
+        call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }),
+        say('Renamed.'),
+        done(),
+      ];
+      const { bus, thread, seen } = setup({ flaky: script(lost, back) });
+      const entry = await ask(thread, 'Rename the first slide');
+
+      // One message of the user, one answer: the failed try left no error and no second entry.
+      expect(thread.store.getState().entries.map((e) => e.type)).toEqual(['user', 'assistant']);
+      expect(entry.outcome).toBe('completed');
+      expect(entry.problem).toBeUndefined();
+      expect(entry.parts.at(-1)).toEqual({ type: 'text', text: 'Renamed.' });
+      expect(bus.deck.slides[0]!.name).toBe('Intro');
+      // The second try went to the same session, and asks the agent to go on, not to begin.
+      expect(seen.starts).toHaveLength(1);
+      expect(seen.sends).toHaveLength(2);
+      expect(seen.sends[0]!.text).toBe('Rename the first slide');
+      expect(seen.sends[1]!.text).toContain('Go on with my last request');
+      expect(seen.sends[1]!.context).toContain('<slidr_context>');
+      // Both tries are the turn's time; the work of both is one undo step.
+      expect(entry.durationMs).toBe(175_100);
+      expect(bus.undoStack).toHaveLength(1);
+    });
+
+    it('tells the user when the second try fails too, and does not try a third time', async () => {
+      const { thread, seen } = setup({ down: script(lost, lost, [say('Never.'), done()]) });
+      const entry = await ask(thread, 'Rename the first slide');
+      expect(entry).toMatchObject({
+        outcome: 'failed',
+        parts: [],
+        problem: { kind: 'network', message: expect.stringContaining('ENOTFOUND') as string },
+      });
+      expect(seen.sends).toHaveLength(2);
+      // The next message of the user is a turn like any other, with a retry of its own.
+      const next = await ask(thread, 'Again');
+      expect(next.outcome).toBe('completed');
+      expect(seen.sends).toHaveLength(3);
+    });
+
+    it('does not try again a turn the user stopped, or one that failed for another reason', async () => {
+      const refused: ScriptStep[] = [
+        { type: 'error', kind: 'turn_failed', message: 'API Error: 400', recoverable: true },
+        done({ outcome: 'failed' }),
+      ];
+      const { thread, seen } = setup({ refused: script(refused, [done()]) });
+      expect(await ask(thread, 'Go')).toMatchObject({
+        outcome: 'failed',
+        problem: { kind: 'turn_failed' },
+      });
+      expect(seen.sends).toHaveLength(1);
+    });
+  });
+
+  it('opens a new session for a turn whose session was closed under it (AGT-07)', async () => {
+    const talk = script([say('One.'), done()], [say('Two.'), done()]);
+    let refuse = false;
+    const wrap = (client: AgentClient): AgentClient => ({
+      ...client,
+      send: (sessionId, turn) => {
+        if (!refuse) return client.send(sessionId, turn);
+        // As the harness layer answers for a session it closed for sitting idle.
+        refuse = false;
+        return Promise.reject(new AgentError('unknown_session', `unknown session: ${sessionId}`));
+      },
+    });
+    const { thread, seen, transcripts } = setup({ talk }, { wrap });
+    await ask(thread, 'First');
+    const resumeId = (await transcripts.read('deck')).record?.nativeSessionId;
+    expect(resumeId).toBeTruthy();
+
+    refuse = true;
+    const entry = await ask(thread, 'Second');
+    // The user sees an answer, not an error: the turn went to a session that resumes the
+    // conversation, and the one that was gone is let go of.
+    expect(entry.outcome).toBe('completed');
+    expect(entry.problem).toBeUndefined();
+    expect(seen.starts).toHaveLength(2);
+    expect(seen.starts[1]!.config.resume).toBe(resumeId);
+    expect(seen.closed).toHaveLength(1);
+    expect(seen.sends.map((turn) => turn.text)).toEqual(['First', 'Second', 'Second']);
+    // Once only: a session that is gone again is the turn's failure.
+    const always = setup(
+      { talk },
+      {
+        wrap: (client) => ({
+          ...client,
+          send: () => Promise.reject(new AgentError('process_exited', 'the session has ended')),
+        }),
+      },
+    );
+    expect(await ask(always.thread, 'Hi')).toMatchObject({
+      outcome: 'failed',
+      problem: { kind: 'process_exited' },
+    });
+    expect(always.seen.starts).toHaveLength(2);
+  });
+
   it('leaves the old chat behind when another deck is opened', async () => {
     const rename = script([call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }), done()]);
     const { bus, service, thread, seen } = setup({ rename });
