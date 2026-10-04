@@ -57,7 +57,14 @@ export interface SavedDeck {
 }
 
 export type StorageErrorKind =
-  'not_found' | 'invalid_file' | 'invalid_input' | 'io' | 'unknown_workspace' | 'internal';
+  | 'not_found'
+  | 'invalid_file'
+  | 'invalid_input'
+  | 'io'
+  /** The disk, or the user's quota on it, has no room for what was being written. */
+  | 'disk_full'
+  | 'unknown_workspace'
+  | 'internal';
 
 export class StorageError extends Error {
   readonly kind: StorageErrorKind;

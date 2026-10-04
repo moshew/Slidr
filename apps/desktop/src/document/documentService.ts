@@ -20,8 +20,15 @@ import type {
 export interface DocumentServiceOptions {
   /** Quiet time after the last change before the workspace is written (DOC-03). */
   autosaveDelayMs?: number;
-  /** An autosave that failed. The deck in memory is intact; the next change tries again. */
+  /**
+   * An autosave that failed. The deck in memory is intact, and the write is tried again: with
+   * the next change, or after `autosaveRetryMs` without one.
+   */
   onAutosaveError?: (error: unknown) => void;
+  /** The workspace has the deck again: an autosave, or a save, went through. */
+  onAutosaved?: () => void;
+  /** How long after a failed autosave the next try comes, when no change brings one sooner. */
+  autosaveRetryMs?: number;
   /** Schema migrations; the model's own by default. */
   migrations?: Record<number, Migration>;
 }
@@ -36,6 +43,8 @@ export class DocumentService {
   readonly #storage: Storage;
   readonly #autosaveDelayMs: number;
   readonly #onAutosaveError: (error: unknown) => void;
+  readonly #onAutosaved: () => void;
+  readonly #autosaveRetryMs: number;
   readonly #migrations: Record<number, Migration>;
   #workspace: Workspace | null = null;
   #revision = 0;
@@ -50,6 +59,8 @@ export class DocumentService {
     this.bus = bus;
     this.#autosaveDelayMs = options.autosaveDelayMs ?? 3000;
     this.#onAutosaveError = options.onAutosaveError ?? ((error) => console.error(error));
+    this.#onAutosaved = options.onAutosaved ?? (() => undefined);
+    this.#autosaveRetryMs = options.autosaveRetryMs ?? 15_000;
     this.#migrations = options.migrations ?? migrations;
     bus.subscribe((event) => {
       if (event.kind === 'reset') return;
@@ -135,6 +146,8 @@ export class DocumentService {
       this.#workspace = { ...this.#workspace, sourcePath: saved.path };
       this.#savedRevision = revision;
       this.#autosavedRevision = Math.max(this.#autosavedRevision, revision);
+      // A save writes the workspace first: whatever kept the autosave from writing is over.
+      this.#onAutosaved();
     }
     return saved;
   }
@@ -209,13 +222,18 @@ export class DocumentService {
     return this.#workspace;
   }
 
-  #scheduleAutosave(): void {
+  #scheduleAutosave(delayMs: number = this.#autosaveDelayMs): void {
     if (!this.#workspace) return;
     this.#cancelAutosave();
     this.#timer = setTimeout(() => {
       this.#timer = undefined;
-      this.flush().catch(this.#onAutosaveError);
-    }, this.#autosaveDelayMs);
+      this.flush().then(this.#onAutosaved, (error: unknown) => {
+        this.#onAutosaveError(error);
+        // The change is still in memory alone, and a disk that was full may have room by now:
+        // the write is tried again without waiting for the user to change something.
+        this.#scheduleAutosave(this.#autosaveRetryMs);
+      });
+    }, delayMs);
   }
 
   #cancelAutosave(): void {

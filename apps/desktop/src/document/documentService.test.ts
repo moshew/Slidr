@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import {
   CommandBus,
   createDeck,
@@ -9,6 +10,7 @@ import {
 import { allElementsDeck, hebrewDeck } from '@slidr/model/fixtures';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentService } from './documentService';
+import { failureKind } from './failures';
 import { StorageError, type OpenedDeck, type Storage, type Workspace } from './storage';
 
 const titleIn = (deckJson: string | null | undefined) =>
@@ -250,5 +252,68 @@ describe('DocumentService', () => {
     expect(asset).toMatchObject({ origin: 'upload', name: 'cat.png', kind: 'image', width: 2 });
     service.bus.dispatch({ type: 'asset.add', asset });
     expect(service.bus.deck.assets[asset.id]).toEqual(asset);
+  });
+
+  describe('when the disk refuses (WG13-T03)', () => {
+    it('reports an autosave that failed, tries again without a change, and says when it is over', async () => {
+      const failed: unknown[] = [];
+      let saved = 0;
+      const guarded = new DocumentService(storage, new CommandBus(createDeck()), {
+        autosaveDelayMs: 1000,
+        autosaveRetryMs: 5000,
+        onAutosaveError: (error) => failed.push(error),
+        onAutosaved: () => saved++,
+      });
+      await guarded.create(hebrewDeck());
+      const id = guarded.workspace!.id;
+      const write = storage.writeDeck.bind(storage);
+      let full = true;
+      storage.writeDeck = (...args) =>
+        full
+          ? Promise.reject(new StorageError('disk_full', 'could not write deck.json'))
+          : write(...args);
+
+      guarded.bus.dispatch(rename('Kept in memory'));
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(failed).toHaveLength(1);
+      expect(failureKind(failed[0])).toBe('disk_full');
+      expect(saved).toBe(0);
+      // Nothing is lost: the deck in memory has the change, and the document is still unsaved.
+      expect(guarded.bus.deck.meta.title).toBe('Kept in memory');
+      expect(guarded.dirty).toBe(true);
+
+      // With no change from the user, it is tried again, and fails again while the disk is full.
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(failed).toHaveLength(2);
+      full = false;
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(failed).toHaveLength(2);
+      expect(saved).toBe(1);
+      expect(titleIn(storage.workspaces.get(id)?.deckJson)).toBe('Kept in memory');
+      // And then it rests: nothing is written while nothing changes.
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(storage.log.filter((l) => l.startsWith('write'))).toEqual([`write ${id}`]);
+    });
+
+    it('keeps the deck and the document as they were when a save fails', async () => {
+      await service.create(hebrewDeck());
+      await service.saveAs('C:/decks/a.slidr');
+      service.bus.dispatch(rename('Newer'));
+      storage.save = () => Promise.reject(new StorageError('disk_full', 'could not write'));
+      await expect(service.save()).rejects.toMatchObject({ kind: 'disk_full' });
+      expect(service.dirty).toBe(true);
+      expect(service.path).toBe('C:/decks/a.slidr');
+      expect(service.bus.deck.meta.title).toBe('Newer');
+      expect(titleIn(storage.files.get('C:/decks/a.slidr'))).not.toBe('Newer');
+    });
+
+    it('refuses a file whose deck was cut short, and cleans up after itself', async () => {
+      const whole = JSON.stringify(hebrewDeck());
+      storage.files.set('C:/cut.slidr', whole.slice(0, whole.length / 2));
+      const refused = await service.open('C:/cut.slidr').catch((error: unknown) => error);
+      expect(refused).toBeInstanceOf(SyntaxError);
+      expect(failureKind(refused)).toBe('damaged');
+      expect(storage.workspaces.size).toBe(0);
+    });
   });
 });

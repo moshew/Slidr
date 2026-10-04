@@ -16,6 +16,7 @@ const KINDS = new Set<StorageErrorKind>([
   'invalid_file',
   'invalid_input',
   'io',
+  'disk_full',
   'unknown_workspace',
   'internal',
 ]);
