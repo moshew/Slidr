@@ -117,6 +117,8 @@ const PAD = 16;
 const STEP = THUMB_W + GAP;
 /** Thumbnails rendered beyond each edge of the view. */
 const OVERSCAN = 3;
+/** What one line of a wheel that counts in lines scrolls the strip, in pixels. */
+const WHEEL_LINE = 40;
 const DRAG_PX = 4;
 /** A layout in the "new slide" popover. */
 const LAYOUT_W = 120;
@@ -374,6 +376,32 @@ export function Filmstrip({
     observer.observe(el);
     measure();
     return () => observer.disconnect();
+  }, []);
+
+  // A mouse wheel turns up and down, and the strip runs along: turned over the strip it scrolls
+  // the strip, toward the slides after when turned down, in either direction of the UI (ADR-066).
+  // Shift and a touchpad already scroll it sideways; Ctrl is the browser's zoom.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const unit =
+        e.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? WHEEL_LINE
+          : e.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? el.clientWidth
+            : 1;
+      const by = e.deltaY * unit;
+      // In RTL the strip's start is on the right, and `scrollLeft` runs from 0 down.
+      const rtl = getComputedStyle(el).direction === 'rtl';
+      const before = el.scrollLeft;
+      el.scrollLeft += rtl ? -by : by;
+      // At an end the wheel is the page's, as it is for any scroller that cannot go further.
+      if (el.scrollLeft !== before) e.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
   // Keep the current slide in view when it changes (from the Stage, the agent, or the keyboard).
