@@ -101,6 +101,21 @@ test('a character typed on a selected text box goes to the end of its text, in t
   expect(await caret(page)).toMatchObject({ from: 14, to: 14 });
 });
 
+test('no character is lost while the editor is on its way: typing does not wait for it', async ({
+  page,
+}) => {
+  await select(page, SHAPE);
+  const before = await steps(page);
+  // As fast as a machine types: the editor is built, and takes the keyboard, in the middle of it.
+  await page.keyboard.type('Go on, type fast');
+  await expect(editor(page)).toBeFocused();
+  expect(await plain(page, SHAPE)).toBe('Go on, type fast');
+  expect(await steps(page)).toBe(before + 1);
+  // The space on the way to the text did not pan the Stage: its cursor is not the hand.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('stage-surface')).not.toHaveCSS('cursor', 'grab');
+});
+
 test('T on a selected text box is a letter; with nothing selected it adds a text box', async ({
   page,
 }) => {

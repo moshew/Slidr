@@ -23,7 +23,7 @@ import { announceEditor } from './activeEditor';
 import { cellsWritten } from './cellScope';
 import { changeParagraphsTr, STEP_META, type StepMeta } from './editorFormat';
 import { levelChange, type FormatContext } from './format';
-import { takeOpening } from './opening';
+import { finishOpening, takeOpening } from './opening';
 import {
   blurredSelectionPlugin,
   clipboardPlugin,
@@ -314,8 +314,11 @@ export function TextEditor({
         const { anchor, head } = ed.state.selection;
         if (kept.current) kept.current = { ...kept.current, anchor, head };
       },
-      onFocus: () => {
+      onFocus: ({ editor: ed }) => {
         if (kept.current) kept.current.focused = true;
+        // What was typed on the selected box while the editor was on its way to the keyboard.
+        const rest = finishOpening(element.id);
+        if (rest) ed.view.dispatch(ed.state.tr.insertText(rest));
       },
       onBlur: () => {
         if (kept.current) kept.current.focused = false;
