@@ -1,8 +1,9 @@
 import { Palette } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
-import { registerPanel, setNewDeck, whenEditor } from '../shell';
+import { registerContextTool, registerPanel, setNewDeck, whenEditor } from '../shell';
 import { startDeck, supplyAssets } from './actions';
 import { drafts, library } from './app';
+import { LayoutTool } from './LayoutTool';
 import { en, he } from './messages';
 import { TemplatesPanel } from './TemplatesPanel';
 
@@ -23,6 +24,16 @@ registerPanel({
   title: 'templates:panel.title',
   icon: Palette,
   content: TemplatesPanel,
+});
+
+// Row B with nothing selected: the layout of the slide on the Stage (SLD-02), in the place the
+// shell kept for it between the background and the transition.
+registerContextTool({
+  id: 'slide.layout',
+  kinds: ['none'],
+  group: 'slide',
+  order: 1,
+  render: LayoutTool,
 });
 
 // A new deck opens on the default template (THM-08).

@@ -83,6 +83,11 @@ export const he = {
     set: 'קביעת לוגו',
     failed: 'התמונה לא נשמרה',
   },
+  layout: {
+    button: 'פריסה',
+    title: 'הפריסה של השקף',
+    none: 'במצגת הזו אין פריסות. החילו תבנית כדי לקבל אותן.',
+  },
   master: {
     title: 'מספר שקף וכותרת תחתונה',
     number: 'מספר השקף',
@@ -115,6 +120,7 @@ export const he = {
     logo: 'שינוי הלוגו',
     number: 'הצגה או הסתרה של מספר השקף',
     footer: 'שינוי הכותרת התחתונה',
+    layout: 'שינוי הפריסה של השקף',
     save: 'שמירה כתבנית',
   },
   archetype: {
@@ -249,6 +255,11 @@ export const en: typeof he = {
     set: 'Set the logo',
     failed: 'The picture was not stored',
   },
+  layout: {
+    button: 'Layout',
+    title: 'The layout of the slide',
+    none: 'This deck has no layouts. Apply a template to get them.',
+  },
   master: {
     title: 'Slide number and footer',
     number: 'Slide number',
@@ -283,6 +294,7 @@ export const en: typeof he = {
     logo: 'Change the logo',
     number: 'Show or hide the slide number',
     footer: 'Change the footer',
+    layout: 'Change the layout of the slide',
     save: 'Save as a template',
   },
   archetype: {
