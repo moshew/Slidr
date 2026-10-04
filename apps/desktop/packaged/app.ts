@@ -206,9 +206,23 @@ export async function answerDialog(
 }
 
 /**
- * What the page complains about from now on: console errors (a missing string is one, and so is
- * a request the content policy refused) and uncaught exceptions. A spec checks it is empty.
+ * A window of the running app by the path of its page, over a connection of its own. A window
+ * the app opens later, in a profile of its own (the import window is an InPrivate one), is not
+ * among the pages of the connection `launchApp` made. Close it when done; the app stays up.
  */
+export async function windowPage(path: string): Promise<{ page: Page; close(): Promise<void> }> {
+  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`);
+  const page = browser
+    .contexts()
+    .flatMap((context) => context.pages())
+    .find((candidate) => new URL(candidate.url()).pathname === path);
+  if (!page) {
+    await browser.close();
+    throw new Error(`The app has no window at ${path}.`);
+  }
+  return { page, close: () => browser.close() };
+}
+
 /**
  * Shows a panel of the Tool Panel. The app remembers which panel was showing, between runs
  * too, and the button of the panel that is showing closes it: so the button is pressed only
@@ -220,6 +234,10 @@ export async function showPanel(page: Page, panel: string): Promise<void> {
   await expect(button).toHaveAttribute('aria-pressed', 'true');
 }
 
+/**
+ * What the page complains about from now on: console errors (a missing string is one, and so is
+ * a request the content policy refused) and uncaught exceptions. A spec checks it is empty.
+ */
 export function watchProblems(page: Page): string[] {
   const problems: string[] = [];
   page.on('pageerror', (error) => problems.push(error.message));
@@ -238,7 +256,12 @@ export async function invoke<T>(page: Page, command: string, args?: unknown): Pr
           __TAURI_INTERNALS__: { invoke: (command: string, args?: unknown) => Promise<unknown> };
         }
       ).__TAURI_INTERNALS__;
-      return internals.invoke(name, payload);
+      // A command of the app fails with `{ kind, message }`: said in words, so a failed test
+      // reads as what the app answered and not as "Object".
+      return internals.invoke(name, payload).catch((error: unknown) => {
+        if (error instanceof Error) throw error;
+        throw new Error(typeof error === 'string' ? error : JSON.stringify(error));
+      });
     },
     { name: command, payload: args },
   );

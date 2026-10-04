@@ -6,8 +6,8 @@ import { defineConfig } from '@playwright/test';
 //   pnpm --filter @slidr/desktop tauri build --config e2e/hardening.tauri.conf.json
 //   pnpm --filter @slidr/desktop exec playwright test -c packaged/playwright.config.ts
 //
-// That runs the four suites that are a gate: smoke, build, security, recovery. Two more are run
-// when asked for, each by its own switch:
+// That runs the five suites that are a gate: smoke, build, security, recovery, import. Two more
+// are run when asked for, each by its own switch:
 //
 //   SLIDR_PERF=1        --project=perf     the measurements of SPEC 14.4; about ten minutes
 //   SLIDR_REAL_AGENT=1  --project=agent    the agent against the real CLI; costs money
@@ -28,6 +28,7 @@ export default defineConfig({
     { name: 'build', testMatch: /build\.spec\.ts/ },
     { name: 'security', testMatch: /security\.spec\.ts/ },
     { name: 'recovery', testMatch: /recovery\.spec\.ts/ },
+    { name: 'import', testMatch: /import\.spec\.ts/ },
     ...(process.env.SLIDR_PERF ? [{ name: 'perf', testMatch: /perf\.spec\.ts/ }] : []),
     ...(process.env.SLIDR_REAL_AGENT ? [{ name: 'agent', testMatch: /agent\.spec\.ts/ }] : []),
   ],
