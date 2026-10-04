@@ -1,5 +1,6 @@
 import {
   alignElements,
+  batchFitted,
   distributeElements,
   duplicateElements,
   findSlide,
@@ -45,8 +46,12 @@ export function target(editor: Editor): Target | undefined {
   return { slide, elements, ids: elements.map((e) => e.id) };
 }
 
+/**
+ * One undo step. The elements may sit in a group, and nothing here goes through the Stage, which
+ * fits a group to its children as a gesture goes: the fit is added to the step (ARR-01).
+ */
 function send(editor: Editor, commands: readonly Command[], name: string): void {
-  if (commands.length > 0) editor.bus.batch(commands, { label: name });
+  if (commands.length > 0) batchFitted(editor.bus, commands, { label: name });
 }
 
 export function align(editor: Editor, edge: AlignEdge, relativeTo: ArrangeReference): boolean {
@@ -180,9 +185,10 @@ export function remove(editor: Editor): boolean {
   const at = target(editor);
   const ids = at?.elements.filter((e) => !e.locked).map((e) => e.id) ?? [];
   if (!at || ids.length === 0) return false;
-  editor.bus.dispatch(
-    { type: 'element.remove', slideId: at.slide.id, elementIds: ids },
-    { label: label('menu.delete') },
+  send(
+    editor,
+    [{ type: 'element.remove', slideId: at.slide.id, elementIds: ids }],
+    label('menu.delete'),
   );
   return true;
 }
