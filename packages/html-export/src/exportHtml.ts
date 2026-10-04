@@ -127,7 +127,9 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
   const resolveAsset = (asset: AssetMeta) => loaded.get(asset.id)?.url;
 
   try {
-    const rendered = await renderSlides(doc, exported, slides, resolveAsset, animations);
+    // Drawn against the whole deck, so a slide shows its number in it (a range does not start at
+    // 1, and a hidden slide left out still counts), as on the Stage and in present mode.
+    const rendered = await renderSlides(doc, deck, slides, resolveAsset, animations);
     let markup: string;
     let needs: ReturnType<typeof measureNeeds>;
     let fontCss = '';
