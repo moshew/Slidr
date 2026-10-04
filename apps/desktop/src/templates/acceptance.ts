@@ -36,6 +36,8 @@ export type Samples = Record<(typeof LANGUAGES)[number]['lang'], SampleSlide[]>;
 export interface RebuiltSlide {
   name: string;
   layout: string;
+  /** The archetype of the slide's layout: what the index page lines the templates up by. */
+  archetype: string;
   /** The slide as the renderer draws it, with pictures as `images/<file>`. */
   html: string;
   lint: Pick<LintFinding, 'rule' | 'severity' | 'message'>[];
@@ -216,6 +218,7 @@ export function acceptTemplate(
         slides.push({
           name: slide.name ?? slide.id,
           layout: slide.layoutId ?? '',
+          archetype: template.layouts.find((l) => l.id === slide.layoutId)?.archetype ?? '',
           html: await markup(deck, slide.id),
           lint: findings.map(({ rule, severity, message }) => ({ rule, severity, message })),
         });
