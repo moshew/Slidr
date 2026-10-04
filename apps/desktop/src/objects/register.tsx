@@ -20,7 +20,7 @@ import { EffectsRow, ImageRow, ShapeRow } from './tools';
 /*
  * The objects area (WG5): inserting pictures, shapes and lines, styling them, the slide
  * background, and the code of an `html` element. See docs/adr/ADR-014-objects.md and
- * ADR-057-objects-media-images.md.
+ * ADR-057-objects-code-media-images.md.
  */
 
 registerMessages('objects', { he, en });
