@@ -57,12 +57,14 @@ test('the bundle holds no scripted agent, no dev page and no editor handle', asy
     const code = readFileSync(join(DIST, 'assets', name), 'utf8');
     for (const marker of markers) expect(code.includes(marker), `${name}: ${marker}`).toBe(false);
   }
-  // The two pages of the app, their files, and the notices: no dev page was built.
+  // The three pages of the app (the editor's, the capture window's, the import window's), their
+  // files, and the notices: no dev page was built.
   expect(readdirSync(DIST).sort()).toEqual([
     'THIRD-PARTY-NOTICES.txt',
     'assets',
     'capture.html',
     'favicon.svg',
+    'import.html',
     'index.html',
   ]);
 });
