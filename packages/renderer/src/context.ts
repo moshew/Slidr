@@ -92,6 +92,8 @@ export interface RenderContext {
   textSlot?: TextSlot;
   cellSlot?: CellSlot;
   htmlSlot?: HtmlSlot;
+  /** What the scripts of an `html` element's frame carry, so the page's policy lets them run. */
+  scriptNonce?: string;
 }
 
 export const RenderContextValue = createContext<RenderContext | null>(null);

@@ -107,7 +107,14 @@ export async function renderSlides(
           createElement(
             'section',
             { key: slide.id, ...sectionProps(slide, i, animations) },
-            createElement(SlideRenderer, { deck, slide, mode: 'present', resolveAsset }),
+            // Without the page's script nonce: a file has no policy that asks for one.
+            createElement(SlideRenderer, {
+              deck,
+              slide,
+              mode: 'present',
+              resolveAsset,
+              scriptNonce: '',
+            }),
           ),
         ),
       ),

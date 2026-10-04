@@ -16,6 +16,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { referenceDeck } from './fixtures/referenceDeck';
+import { setFrameScriptNonce } from './markup';
 import { SlideRenderer } from './SlideRenderer';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -206,6 +207,33 @@ describe('SlideRenderer', () => {
     expect(
       container.querySelector('[data-element-id="e_html_script"] iframe')?.getAttribute('sandbox'),
     ).toBe('');
+  });
+
+  it('gives the scripts of a frame the nonce of the page, and none to an export', () => {
+    const deck = referenceDeck();
+    const slide = deck.slides.find((s) => s.id === 's_ref_html')!;
+    const scripts = () => {
+      const srcdoc =
+        container
+          .querySelector('[data-element-id="e_html_script"] iframe')
+          ?.getAttribute('srcdoc') ?? '';
+      const frame = new DOMParser().parseFromString(srcdoc, 'text/html');
+      return Array.from(frame.querySelectorAll('script'), (s) => s.getAttribute('nonce'));
+    };
+    // A page without a content policy has no nonce, and its frames carry none.
+    render(<SlideRenderer deck={deck} slide={slide} />);
+    expect(scripts().length).toBeGreaterThan(0);
+    expect(scripts().every((nonce) => nonce === null)).toBe(true);
+    try {
+      setFrameScriptNonce('n-1234');
+      render(<SlideRenderer deck={deck} slide={slide} mode="present" />);
+      expect(scripts().every((nonce) => nonce === 'n-1234')).toBe(true);
+      // What an export draws goes into a file: the nonce of this load stays out of it.
+      render(<SlideRenderer deck={deck} slide={slide} mode="present" scriptNonce="" />);
+      expect(scripts().every((nonce) => nonce === null)).toBe(true);
+    } finally {
+      setFrameScriptNonce(undefined);
+    }
   });
 
   it('keeps html without scripts free of scripts and handlers', () => {

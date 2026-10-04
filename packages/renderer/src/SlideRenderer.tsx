@@ -13,6 +13,7 @@ import {
 import { cssString, scopeSlideCss } from './css';
 import { ElementView } from './elements';
 import { BackgroundLayers } from './fill';
+import { frameScriptNonce } from './markup';
 import { colorCss, deckFontFaces, themeVariables } from './theme';
 
 export interface SlideRendererProps {
@@ -34,6 +35,12 @@ export interface SlideRendererProps {
   cellSlot?: CellSlot;
   /** Hands the content of an `html` element to the host, to edit its text. Keep it stable. */
   htmlSlot?: HtmlSlot;
+  /**
+   * The nonce the scripts of `html` elements carry in their frames. The page's own by default
+   * (`setFrameScriptNonce`); an empty string draws them without one, as an export does: a file
+   * has no policy to satisfy, and a nonce of this load has no business in it.
+   */
+  scriptNonce?: string;
   className?: string;
   /** Applied to the slide root, after the renderer's own styles. */
   style?: CSSProperties;
@@ -57,12 +64,14 @@ export function SlideRenderer({
   textSlot,
   cellSlot,
   htmlSlot,
+  scriptNonce: givenNonce,
   className,
   style,
 }: SlideRendererProps) {
   const { theme, assets, layouts, meta, size } = deck;
   const at = deck.slides.findIndex((s) => s.id === slide.id);
   const slideNumber = at === -1 ? undefined : at + 1;
+  const scriptNonce = (givenNonce ?? frameScriptNonce()) || undefined;
   const ctx = useMemo<RenderContext>(
     () => ({
       theme,
@@ -79,6 +88,7 @@ export function SlideRenderer({
       textSlot,
       cellSlot,
       htmlSlot,
+      ...(scriptNonce ? { scriptNonce } : {}),
     }),
     [
       theme,
@@ -92,6 +102,7 @@ export function SlideRenderer({
       textSlot,
       cellSlot,
       htmlSlot,
+      scriptNonce,
     ],
   );
   const vars = useMemo(() => themeVariables(theme), [theme]);

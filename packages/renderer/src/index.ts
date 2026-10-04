@@ -52,7 +52,7 @@ export {
   type TextDefaults,
 } from './text';
 export { sanitizeMarkup } from './sanitize';
-export { normalizeColor } from './markup';
+export { normalizeColor, setFrameScriptNonce } from './markup';
 export { scopeSlideCss } from './css';
 export { settle } from './settle';
 export { chartsSettled } from './chart/controller';

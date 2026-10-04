@@ -122,6 +122,24 @@ function escapeStyle(css: string): string {
   return css.replace(/<\/style/gi, '<\\/style');
 }
 
+let pageNonce: string | undefined;
+
+/**
+ * Tells the renderer the script nonce of the page it draws in, where the page has a content
+ * policy that asks for one (SEC-05). A frame made from `srcdoc` inherits the policy of the page
+ * around it, so the scripts of an `html` element run only when they carry the page's nonce. They
+ * still run inside the frame's sandbox, and the page's own policy is not loosened. A host sets
+ * it once, when the page starts; `SlideRenderer` takes `scriptNonce` to draw without it.
+ */
+export function setFrameScriptNonce(nonce: string | undefined): void {
+  pageNonce = nonce || undefined;
+}
+
+/** The nonce the frames of a slide get when the host of the slide names none. */
+export function frameScriptNonce(): string | undefined {
+  return pageNonce;
+}
+
 /**
  * The document of a sandboxed frame. It does not inherit anything from the slide, so it gets the
  * theme variables and the slide's base text style itself (RND-08).
@@ -133,6 +151,11 @@ export function frameDocument(
 ): string {
   const fragment = parseFragment(element.markup);
   resolveAssetRefs(fragment, ctx);
+  if (ctx.scriptNonce) {
+    for (const script of Array.from(fragment.querySelectorAll('script'))) {
+      script.setAttribute('nonce', ctx.scriptNonce);
+    }
+  }
   const body = ctx.theme.textStyles.body;
   const base = [
     `:root { ${themeVariablesCss(ctx.theme)} }`,
