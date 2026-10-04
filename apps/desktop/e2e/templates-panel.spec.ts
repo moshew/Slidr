@@ -219,3 +219,109 @@ test('the panel reads in English, with no missing string', async ({ page }) => {
   expect((await deck(page)).layouts.map((l) => l.name)).toContain('Timeline');
   expect(errors).toEqual([]);
 });
+
+test('the chart palette, line height, spacing, corners, shadow and backgrounds of the theme, each edit one undo step', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openTemplates(page, { defaultTemplate: 'zerem' });
+  const before = (await deck(page)).theme;
+  let steps = await undoSteps(page);
+  const step = async () => {
+    steps += 1;
+    await expect.poll(() => undoSteps(page)).toBe(steps);
+  };
+
+  // A colour of the chart palette, typed as hex; then one more colour, and one less.
+  await panel(page).getByTestId('chart-color').first().click();
+  const hex = page.getByRole('textbox', { name: 'קוד הצבע' });
+  await hex.fill('#123456');
+  await hex.press('Enter');
+  await expect.poll(async () => (await deck(page)).theme.colors.chart[0]).toBe('#123456');
+  await page.keyboard.press('Escape');
+  await step();
+  await panel(page).getByTestId('chart-add').click();
+  await expect
+    .poll(async () => (await deck(page)).theme.colors.chart)
+    .toHaveLength(before.colors.chart.length + 1);
+  await step();
+  await panel(page).getByTestId('chart-color').last().click();
+  await page.getByTestId('chart-remove').click();
+  await expect
+    .poll(async () => (await deck(page)).theme.colors.chart)
+    .toHaveLength(before.colors.chart.length);
+  await page.keyboard.press('Escape');
+  await step();
+
+  // The line height and the letter spacing of a text style.
+  const lineHeight = panel(page).getByRole('textbox', { name: 'גובה השורה של כותרת', exact: true });
+  await lineHeight.fill('1.3');
+  await lineHeight.press('Enter');
+  await expect.poll(async () => (await deck(page)).theme.textStyles.title.lineHeight).toBe(1.3);
+  await step();
+  const spacing = panel(page).getByRole('textbox', { name: 'ריווח האותיות של כותרת', exact: true });
+  await spacing.fill('2.5');
+  await spacing.press('Enter');
+  await expect.poll(async () => (await deck(page)).theme.textStyles.title.letterSpacing).toBe(2.5);
+  await step();
+
+  // The corners and the shadow.
+  const radius = panel(page).getByRole('textbox', { name: 'עיגול פינות', exact: true });
+  await radius.fill('20');
+  await radius.press('Enter');
+  await expect.poll(async () => (await deck(page)).theme.radius).toBe(20);
+  await step();
+  const down = panel(page).getByRole('textbox', { name: 'הזזת הצל לגובה' });
+  await down.fill('8');
+  await down.press('Enter');
+  await expect.poll(async () => (await deck(page)).theme.shadow.y).toBe(8);
+  expect((await deck(page)).theme.shadow.blur).toBe(before.shadow.blur);
+  await step();
+
+  // A variant of the background: a slide that picked it changes with it.
+  const variants = before.backgroundVariants.length;
+  await page.evaluate(() => {
+    const { bus, selection } = window.slidr!;
+    const slideId = selection.getState().currentSlideId!;
+    bus.dispatch({
+      type: 'slide.update',
+      slideId,
+      patch: { background: bus.deck.theme.backgroundVariants[0]! },
+    });
+  });
+  steps += 1;
+  await panel(page).getByTestId('theme-variant').first().click();
+  await page.getByTestId('theme-background-editor').getByRole('radio', { name: 'הדרגתי' }).click();
+  await expect
+    .poll(async () => (await deck(page)).theme.backgroundVariants[0]!.fill.kind)
+    .toBe('linear');
+  const shown = await deck(page);
+  expect(shown.slides[0]!.background).toEqual(shown.theme.backgroundVariants[0]);
+  await page.keyboard.press('Escape');
+  await step();
+  await panel(page).getByTestId('variant-add').click();
+  await expect
+    .poll(async () => (await deck(page)).theme.backgroundVariants)
+    .toHaveLength(variants + 1);
+  await step();
+  await panel(page).getByTestId('theme-variant').last().click();
+  await page.getByTestId('variant-remove').click();
+  await expect.poll(async () => (await deck(page)).theme.backgroundVariants).toHaveLength(variants);
+  await step();
+
+  // Undone one by one, the theme is the template's again.
+  while ((await undoSteps(page)) > 0) await undo(page);
+  expect((await deck(page)).theme).toEqual(before);
+  expect(errors).toEqual([]);
+});
+
+test('the new fields of the theme read in English', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openTemplates(page, { lang: 'en', defaultTemplate: 'zerem' });
+  await expect(panel(page)).toContainText('Chart palette');
+  await expect(panel(page)).toContainText('Corners and shadow');
+  await expect(panel(page)).toContainText('Background variants');
+  await expect(panel(page).getByRole('textbox', { name: 'Line height of Title' })).toBeVisible();
+  await expect(panel(page).getByRole('button', { name: 'Variant 1' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
