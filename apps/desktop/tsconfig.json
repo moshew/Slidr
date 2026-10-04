@@ -5,5 +5,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "e2e", "vite.config.ts", "playwright.config.ts", "eval"]
+  "include": ["src", "e2e", "packaged", "vite.config.ts", "playwright.config.ts", "eval"]
 }
