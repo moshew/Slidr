@@ -31,6 +31,7 @@ import {
   UnderlineTool,
   WeightTool,
 } from './toolbar/CharacterTools';
+import { TextEffectsTool } from './toolbar/EffectsTool';
 import { LinkTool, requestLink } from './toolbar/LinkTool';
 import { AlignTool, DirectionTool, ListTool, SpacingTool } from './toolbar/ParagraphTools';
 import {
@@ -76,6 +77,8 @@ const tools = [
   { id: 'text.list', group: 'layout', order: 50, render: ListTool },
   { id: 'text.spacing', group: 'layout', order: 60, render: SpacingTool },
   { id: 'text.box', group: 'layout', order: 70, render: BoxTool },
+  // Beside the effects every element has (opacity, shadow, corners), which the objects area draws.
+  { id: 'text.effects', group: 'effects', order: 799, render: TextEffectsTool },
 ];
 for (const tool of tools) registerContextTool({ ...tool, kinds: ['text'] });
 

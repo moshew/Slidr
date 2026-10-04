@@ -233,15 +233,18 @@ export function PopoverTool({
   label,
   icon,
   mirror,
+  onClose,
   children,
 }: {
   label: string;
   icon: LucideIcon;
   mirror?: boolean;
+  /** The popover closed: the place to close an undo step that a drag left open. */
+  onClose?: () => void;
   children: ReactNode;
 }) {
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => !open && onClose?.()}>
       <PopoverTrigger asChild>
         <IconButton icon={icon} mirror={mirror} label={label} size="sm" onMouseDown={keepFocus} />
       </PopoverTrigger>
