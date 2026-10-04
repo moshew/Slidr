@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UiProvider } from '@slidr/ui';
 import { ActivityBar } from './ActivityBar';
 import { DialogHost } from './dialogs';
 import { useEditor } from './editor';
+import { installExternalLinks } from './external';
 import { FilmstripRegion } from './FilmstripRegion';
 import { ShortcutMap } from './ShortcutMap';
 import { useShellShortcuts } from './shortcuts';
@@ -33,6 +35,8 @@ export function Shell() {
   const editor = useEditor();
   const welcome = useShell((s) => s.welcome);
   useShellShortcuts(editor);
+  // A link to the web opens in the browser of the system, not in this window.
+  useEffect(() => installExternalLinks(), []);
 
   return (
     <UiProvider dir={i18n.dir()}>

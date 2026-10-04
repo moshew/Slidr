@@ -19,6 +19,9 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
+# Links that leave the app (the chat, photo credits, a link on a slide in the show) open in the
+# browser of the system. Only `open_url`, for http and https: see capabilities/default.json.
+tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # .slidr archives; deflate through the pure-Rust zlib-rs backend, nothing else.

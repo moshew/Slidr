@@ -11,6 +11,15 @@ export function focusStage(): void {
   document.querySelector<HTMLElement>(SURFACE)?.focus({ preventScroll: true });
 }
 
+/**
+ * The slide as the Stage draws it: the root the renderer made, in slide pixels under the Stage's
+ * zoom. For an area that plays something on the slide in place, such as the preview of an
+ * animation. Null when no slide is shown.
+ */
+export function stageSlide(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`${SURFACE} [data-testid="stage-frame"] .slidr-slide`);
+}
+
 /** The rendered box of an element of the current slide, or null when it is not on the Stage. */
 export function stageElement(elementId: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(

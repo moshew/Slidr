@@ -32,6 +32,9 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // A link that leaves the app opens in the browser of the system. The capability allows
+        // `open_url` for http and https addresses and nothing else of the plugin.
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let root = app.path().app_data_dir()?;
             app.manage(Arc::new(harness::HarnessManager::new(
