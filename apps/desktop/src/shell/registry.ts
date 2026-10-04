@@ -319,6 +319,24 @@ export function useStatusItem(id: StatusItemDefinition['id']): ComponentType | u
   return useStore(statusItems.store, (s) => s.items.find((item) => item.id === id)?.render);
 }
 
+/* ---------------------------------------------------------------- marks on the thumbnails */
+
+/**
+ * A mark another area puts on the Filmstrip's thumbnails (FLM-04), such as the design check's
+ * findings. It draws itself for one slide, or nothing; the Filmstrip gives it a corner.
+ */
+export interface SlideMarkDefinition extends Registered {
+  render: ComponentType<{ slideId: string }>;
+}
+
+const slideMarks = createRegistry<SlideMarkDefinition>();
+
+export const registerSlideMark = slideMarks.register;
+
+export function useSlideMarks(): readonly SlideMarkDefinition[] {
+  return useStore(slideMarks.store, (s) => s.items);
+}
+
 /* ---------------------------------------------------------------- layers over the Stage */
 
 /**
@@ -347,4 +365,5 @@ export const registries = {
   statusItems: statusItems.store,
   stageLayers: stageLayers.store,
   stageMenu: stageMenu.store,
+  slideMarks: slideMarks.store,
 };

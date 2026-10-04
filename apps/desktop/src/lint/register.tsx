@@ -1,8 +1,9 @@
 import { ScanEye } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
-import { registerPanel, registerStatusItem, whenEditor } from '../shell';
+import { registerPanel, registerSlideMark, registerStatusItem, whenEditor } from '../shell';
 import { checkOf } from './app';
 import { DesignCheckPanel } from './DesignCheckPanel';
+import { SlideFindingsMark } from './SlideMark';
 import { en, he } from './messages';
 import { PANEL_ID, StatusCount } from './StatusCount';
 
@@ -25,6 +26,9 @@ registerPanel({
 });
 
 registerStatusItem({ id: 'lint', render: StatusCount });
+
+// A mark on the thumbnail of a slide with findings (FLM-04).
+registerSlideMark({ id: 'lint', render: SlideFindingsMark });
 
 // The check follows the deck from the start, so the status bar counts before the panel opens.
 whenEditor((editor) => {

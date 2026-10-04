@@ -183,3 +183,35 @@ test('in English: the same panel, with no string missing, and notes that can be 
   await expect(page.getByTestId('status-lint')).toHaveText('2 design errors');
   expect(errors).toEqual([]);
 });
+
+test('a slide with findings has a mark on its thumbnail, red for errors and amber for warnings (FLM-04)', async ({
+  page,
+}) => {
+  await openCheck(page);
+  const thumb = (slideId: string) =>
+    page.locator(`[data-testid="filmstrip"] [role="option"][data-slide-id="${slideId}"]`);
+  const mark = (slideId: string) => thumb(slideId).getByTestId('slide-findings-mark');
+  await expect(mark('s_clean')).toHaveCount(0);
+  await expect(mark('s_errors')).toHaveAttribute('data-severity', 'error');
+  await expect(mark('s_arrange')).toHaveAttribute('data-severity', 'warning');
+  // A note is information, as in the status bar: no mark.
+  await expect(mark('s_colour')).toHaveCount(0);
+  // A screen reader hears the count with the thumbnail.
+  await expect(thumb('s_errors')).toHaveAccessibleDescription(/שגיאות עיצוב|שגיאת עיצוב/);
+  await expect(thumb('s_arrange')).toHaveAccessibleDescription(/ממצאי עיצוב|ממצא עיצוב/);
+
+  // Emptied, the slide keeps only a warning (L07, an empty slide); undone, its errors come back.
+  await page.evaluate(() => {
+    const { bus } = window.slidr!;
+    const slide = bus.deck.slides.find((s) => s.id === 's_errors')!;
+    bus.dispatch({
+      type: 'element.remove',
+      slideId: slide.id,
+      elementIds: slide.elements.map((e) => e.id),
+    });
+  });
+  await checked(page);
+  await expect(mark('s_errors')).toHaveAttribute('data-severity', 'warning');
+  await undo(page);
+  await expect(mark('s_errors')).toHaveAttribute('data-severity', 'error');
+});

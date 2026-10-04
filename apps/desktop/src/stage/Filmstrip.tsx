@@ -17,6 +17,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
+  type ReactNode,
 } from 'react';
 import {
   ContextMenu,
@@ -75,6 +76,11 @@ export interface FilmstripProps {
   clipboard?: FilmstripClipboard;
   /** Labels in the UI language. Default: English. */
   labels?: FilmstripLabels;
+  /**
+   * What other areas mark a slide with, drawn in a corner of its thumbnail (FLM-04): the design
+   * check's findings. A screen reader hears it as the thumbnail's description.
+   */
+  mark?: (slideId: string) => ReactNode;
   /**
    * Opens the host's AI tool on the slide the menu was opened on, which is the current slide by
    * then. Without it the menu has no such item.
@@ -157,6 +163,7 @@ const Thumb = memo(function Thumb({
   resolveAsset,
   label,
   hiddenLabel,
+  mark,
 }: {
   deck: Deck;
   slideIndex: number;
@@ -165,14 +172,17 @@ const Thumb = memo(function Thumb({
   resolveAsset?: AssetResolver;
   label: string;
   hiddenLabel: string;
+  mark?: (slideId: string) => ReactNode;
 }) {
   const slide = deck.slides[slideIndex];
   if (!slide) return null;
+  const markId = `filmstrip-mark-${slide.id}`;
   return (
     <div
       role="option"
       aria-selected={selected}
       aria-label={slide.hidden ? `${label}, ${hiddenLabel}` : label}
+      aria-describedby={mark ? markId : undefined}
       data-slide-id={slide.id}
       data-hidden={slide.hidden || undefined}
       style={{
@@ -227,6 +237,16 @@ const Thumb = memo(function Thumb({
           <Icon icon={EyeOff} />
         </div>
       ) : null}
+      {mark && (
+        // The corner the hidden mark leaves free; the mark draws itself, or nothing.
+        <div
+          id={markId}
+          data-testid="slide-mark"
+          style={{ position: 'absolute', top: 6, insetInlineStart: 6, display: 'flex', gap: 4 }}
+        >
+          {mark(slide.id)}
+        </div>
+      )}
       <div
         style={{
           marginTop: 4,
@@ -351,6 +371,7 @@ export function Filmstrip({
   resolveAsset,
   clipboard,
   labels = DEFAULT_LABELS,
+  mark,
   onAi,
   className,
 }: FilmstripProps) {
@@ -658,6 +679,7 @@ export function Filmstrip({
                   resolveAsset={resolveAsset}
                   label={labels.slide(first + i + 1)}
                   hiddenLabel={labels.hidden}
+                  mark={mark}
                 />
               ))}
               <div
