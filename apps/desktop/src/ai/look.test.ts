@@ -7,6 +7,7 @@ import {
   type Deck,
 } from '@slidr/model';
 import { deckFromTemplate, type Template } from '@slidr/templates';
+import { builtInTemplates } from '@slidr/templates/builtin';
 import { nightTemplate, paperTemplate } from '@slidr/templates/fixtures';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { builtinFaces, builtinFamilies } from '../fonts/builtinFonts.generated';
@@ -129,16 +130,18 @@ describe('what the deck tool offers', () => {
     expect(fonts[1]).toEqual(night.theme.fonts);
   });
 
-  it('offers the three built-in templates of the app, with every look listed once', () => {
+  it('offers the built-in templates of the app, with every look listed once', () => {
     const library = new TemplateLibrary(memoryTemplateStore());
+    const builtIn = builtInTemplates().length;
     const colours = palettes(library);
     expect(colours.slice(0, 3).map((palette) => palette.id)).toEqual([
       'template:zerem',
       'template:shvil',
       'template:tzuk',
     ]);
-    expect(colours).toHaveLength(3 + Object.keys(curatedPalettes).length);
-    expect(fontChoices(library)).toHaveLength(3 + curatedFonts.length);
+    // No two of them share a palette or a font pair, among themselves or with a curated one.
+    expect(colours).toHaveLength(builtIn + Object.keys(curatedPalettes).length);
+    expect(fontChoices(library)).toHaveLength(builtIn + curatedFonts.length);
   });
 });
 

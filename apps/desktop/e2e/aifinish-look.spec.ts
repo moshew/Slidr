@@ -37,7 +37,7 @@ test('the template gallery: a hover shows the deck on the template, a click swit
   const depth = await undoDepth(page);
   expect(before.theme.id).toBe('zerem');
   expect(before.slides).toHaveLength(3);
-  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(3);
+  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(10);
   await expect(templateCard(page, 'zerem')).toHaveAttribute('data-current', 'true');
   await expect(templateCard(page, 'zerem')).toHaveAttribute('aria-pressed', 'true');
   // A cover is the template's opening slide, with the photograph of one that opens with one.
@@ -94,8 +94,8 @@ test('the palettes: a hover shows the colours on the slide, a click sets them in
   await openLook(page);
   const before = await deck(page);
   const depth = await undoDepth(page);
-  // The palettes of the three templates, then the curated ones; the deck's own is marked.
-  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(10);
+  // The palettes of the ten templates, then the seven curated ones; the deck's own is marked.
+  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(17);
   await expect(paletteCard(page, 'template:zerem')).toHaveAttribute('data-current', 'true');
   await expect(look(page, 'palette').locator('[data-current]')).toHaveCount(1);
 
@@ -142,7 +142,8 @@ test('the font pairs: a hover shows the fonts on the slide, a click sets them in
   await openLook(page);
   const before = await deck(page);
   const depth = await undoDepth(page);
-  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(10);
+  // The font pairs of the ten templates, then the seven curated ones.
+  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(17);
   await expect(look(page, 'fonts').locator('[data-current]')).toHaveCount(1);
   await expect(look(page, 'fonts').locator('[data-current]')).toHaveAttribute(
     'data-fonts',
@@ -273,13 +274,13 @@ test('a personal template is offered with its colours, and trying it shows its l
 
   // The deck tool offers it after the built-in ones, with its palette; its fonts are Zerem's.
   await openTool(page, 'ai.deck', 'actions');
-  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(4);
+  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(11);
   await expect(templateCard(page, mine)).toHaveAttribute('data-current', 'true');
   await expect(templateCard(page, mine)).toContainText('המותג שלנו');
   await expect(templateCard(page, mine)).toContainText('אישית');
-  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(11);
+  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(18);
   await expect(paletteCard(page, `template:${mine}`)).toHaveAttribute('data-current', 'true');
-  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(10);
+  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(17);
 
   await templateCard(page, 'tzuk').click();
   await expect(templateCard(page, 'tzuk')).toHaveAttribute('data-current', 'true');

@@ -13,7 +13,7 @@ export function switchLayoutCommands(deck: Deck, slideId: string, layoutId: stri
   const to = deck.layouts.find((layout) => layout.id === layoutId);
   if (!slide || !from || !to || from === to) return [];
   return [
-    ...relayout(slide, from, to),
+    ...relayout(slide, from, to, deck.meta.dir),
     { type: 'slide.update', slideId, patch: { layoutId: to.id } },
   ];
 }
