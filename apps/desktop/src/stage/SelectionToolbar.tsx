@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { findSlide, type ZOrderMove } from '@slidr/model';
 import {
@@ -43,6 +43,51 @@ export const ORDER_MOVES: readonly { to: ZOrderMove; icon: LucideIcon; shortcut:
   { to: 'back', icon: ArrowDownToLine, shortcut: 'Ctrl+Shift+[' },
 ];
 
+/** The toolbar of the selection, as the Stage places it; null when there is none. */
+const toolbarNode = () => document.querySelector<HTMLElement>('[data-testid="selection-toolbar"]');
+
+/** Its buttons that take a press, in their order on the screen's reading line. */
+const buttonsOf = (bar: HTMLElement) =>
+  Array.from(bar.querySelectorAll<HTMLButtonElement>('button')).filter((b) => !b.disabled);
+
+/**
+ * Alt+F10 (UI-06): the keyboard goes to the first tool beside the selection, as in the editors
+ * that have a toolbar of their own beside the text. False when no toolbar is shown, so the key
+ * goes its way.
+ */
+export function focusSelectionToolbar(): boolean {
+  const bar = toolbarNode();
+  const first = bar ? buttonsOf(bar)[0] : undefined;
+  if (!first) return false;
+  first.focus();
+  return true;
+}
+
+/**
+ * The arrows move along the toolbar, as in any toolbar (one stop for Tab, the arrows inside it),
+ * mirrored in a right-to-left UI; Home and End go to its ends.
+ */
+function moveAlong(event: KeyboardEvent<HTMLDivElement>) {
+  const bar = event.currentTarget;
+  const buttons = buttonsOf(bar);
+  const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+  if (at < 0) return;
+  const rtl = getComputedStyle(bar).direction === 'rtl';
+  const to =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? buttons.length - 1
+        : event.key === 'ArrowRight'
+          ? at + (rtl ? -1 : 1)
+          : event.key === 'ArrowLeft'
+            ? at + (rtl ? 1 : -1)
+            : undefined;
+  if (to === undefined) return;
+  event.preventDefault();
+  buttons[(to + buttons.length) % buttons.length]?.focus();
+}
+
 /**
  * The floating toolbar beside the selection (STG-05): duplicate, delete, lock, layer order and
  * "AI". The Stage places it and puts it away during a gesture; this is what is in it. A selection
@@ -68,6 +113,7 @@ export function SelectionToolbar() {
       onKeyDown={(event) => {
         // Esc gives the keyboard back to the slide.
         if (event.key === 'Escape') focusStage();
+        else moveAlong(event);
       }}
     >
       {!can.allLocked && (

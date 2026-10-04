@@ -25,6 +25,7 @@ export const he = {
   },
   toolbar: {
     label: 'כלים לבחירה',
+    shortcut: 'אל הכלים שליד הבחירה',
   },
   // What an empty placeholder says where its text will be, by its role.
   hint: {
@@ -64,6 +65,7 @@ export const en = {
   },
   toolbar: {
     label: 'Selection tools',
+    shortcut: 'To the tools beside the selection',
   },
   hint: {
     title: 'Title',

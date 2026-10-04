@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  addBoxes,
   currentSlide,
+  focusStage,
+  select,
+  selected,
   focusFilmstrip,
   openApp,
   selectedSlides,
@@ -94,5 +98,39 @@ for (const lang of ['he', 'en'] as const) {
     expect(await slideIds(page)).toEqual([three, one, two, four]);
     await undo(page);
     expect(await slideIds(page)).toEqual([one, two, three, four]);
+  });
+}
+
+for (const lang of ['he', 'en'] as const) {
+  test(`Alt+F10 takes the keyboard to the toolbar beside the selection, ${lang}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang });
+    await addBoxes(page, [{ id: 'e_box', x: 700, y: 400, w: 400, h: 300 }]);
+    await select(page, ['e_box']);
+    await focusStage(page);
+    const bar = page.getByTestId('selection-toolbar');
+    await expect(bar).toBeVisible();
+    await expect(bar).toHaveRole('toolbar');
+
+    await page.keyboard.press('Alt+F10');
+    const buttons = bar.getByRole('button');
+    await expect(buttons.first()).toBeFocused();
+    // Along the toolbar with the arrows, in the direction it reads.
+    await page.keyboard.press(lang === 'he' ? 'ArrowLeft' : 'ArrowRight');
+    await expect(buttons.nth(1)).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(buttons.last()).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(buttons.first()).toBeFocused();
+
+    // Enter on the first tool duplicates, and the keyboard stays with the toolbar.
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await selected(page)).length).toBe(1);
+    expect(await selected(page)).not.toEqual(['e_box']);
+    await expect(bar.locator(':focus')).toHaveCount(1);
+    // Esc gives it back to the slide.
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('stage-surface')).toBeFocused();
   });
 }
