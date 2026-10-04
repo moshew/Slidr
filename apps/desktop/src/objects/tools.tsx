@@ -6,11 +6,12 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  Field,
   IconButton,
+  type LucideIcon,
+  Toggle,
   SegmentedControl,
   Select,
-  Toggle,
-  type LucideIcon,
 } from '@slidr/ui';
 import {
   Droplet,
@@ -40,7 +41,7 @@ import {
 } from './effects';
 import { FillEditor } from './FillEditor';
 import { AdjustTool, AsBackgroundTool, CutoutTool, FilterTool, MaskTool } from './imageTools';
-import { Field, FillSwatch, PopoverTool, ToolGroup, ToolRow } from './parts';
+import { FillSwatch, PopoverTool, ToolGroup, ToolRow } from './parts';
 import { replaceImage } from './replace';
 import { SvgColorsTool } from './svgTools';
 import { isTarget, useTarget, type Target } from './target';

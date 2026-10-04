@@ -78,6 +78,9 @@ test('exports the deck to one file, and reports what went into it', async ({ pag
   await openApp(page, { deck: 'probe' });
   await addPictures(page);
   const dialog = await openDialog(page);
+  // Each choice is a field of the design system, named by its label (ADR-060).
+  await expect(dialog.getByRole('group', { name: 'שקפים' })).toBeVisible();
+  await expect(dialog.getByRole('group', { name: 'אנימציות ומעברים' })).toBeVisible();
   // Four slides, one of them hidden.
   await expect(page.getByTestId('export-count')).toHaveText(
     'ייוצאו 3 שקפים. שקף מוסתר אחד לא ייכלל.',

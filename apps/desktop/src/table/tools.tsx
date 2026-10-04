@@ -23,6 +23,7 @@ import {
 } from '@slidr/model';
 import { cellLook, SlideRenderer, tableStyle, tableStyles } from '@slidr/renderer';
 import {
+  Checkbox,
   ContextMenuItem,
   ContextMenuSeparator,
   cx,
@@ -33,6 +34,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Field,
   IconButton,
   SegmentedControl,
   Toggle,
@@ -48,9 +50,6 @@ import {
   ArrowUp,
   Grid2x2,
   PaintBucket,
-  PanelLeft,
-  PanelRight,
-  PanelTop,
   Rows3,
   StretchHorizontal,
   StretchVertical,
@@ -63,9 +62,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColorField, useGestureTx } from '../controls';
 import { StrokeEditor } from '../objects/editors';
-import { Field } from '../objects/parts';
 import { focusStage, useAssetResolver, useDeck } from '../shell';
-import { closeToText, keepFocus, PopoverTool, Row } from '../text/toolbar/shared';
+import { closeToText, keepFocus, PopoverTool } from '../text/toolbar/shared';
 import { borderIcons } from './icons';
 import { selectCells, stopTyping, tableSession } from './session';
 import { useTableTarget, type TableTarget } from './target';
@@ -374,12 +372,14 @@ function StyleTool({ target }: { target: TableTarget }) {
     const style = styleId && styleId !== first ? { ...parts, styleId } : parts;
     write({ style }, { label: t('history.style'), fit: true });
   };
-  const part = (key: 'headerRow' | 'bandedRows' | 'firstColumn') => ({
-    size: 'sm' as const,
-    label: t(`style.${key}`),
-    pressed: table.style[key],
-    onPressedChange: (on: boolean) => setStyle({ [key]: on }),
-  });
+  // Options of the style, each on or off: a box to tick, as in the table tools of other editors.
+  const part = (key: 'headerRow' | 'bandedRows' | 'firstColumn') => (
+    <Checkbox
+      label={t(`style.${key}`)}
+      checked={table.style[key]}
+      onCheckedChange={(on) => setStyle({ [key]: on })}
+    />
+  );
 
   return (
     <PopoverTool label={t('style.title')} icon={TableProperties}>
@@ -407,15 +407,11 @@ function StyleTool({ target }: { target: TableTarget }) {
           ))}
         </div>
       </Field>
-      <Row label={t('style.headerRow')}>
-        <Toggle icon={PanelTop} {...part('headerRow')} />
-      </Row>
-      <Row label={t('style.bandedRows')}>
-        <Toggle icon={Rows3} {...part('bandedRows')} />
-      </Row>
-      <Row label={t('style.firstColumn')}>
-        <Toggle icon={table.dir === 'rtl' ? PanelRight : PanelLeft} {...part('firstColumn')} />
-      </Row>
+      <div className="flex flex-col gap-2">
+        {part('headerRow')}
+        {part('bandedRows')}
+        {part('firstColumn')}
+      </div>
       <Field label={t('style.direction')}>
         <SegmentedControl<Direction>
           aria-label={t('style.direction')}

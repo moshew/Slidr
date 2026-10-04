@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Field,
   IconButton,
 } from '@slidr/ui';
 import {
@@ -38,7 +39,7 @@ import {
   type MaskChoice,
 } from './imageLook';
 import { ShapeGlyph } from './library';
-import { Field, Hint, PopoverTool, SliderField } from './parts';
+import { Hint, PopoverTool, SliderField } from './parts';
 import type { Target } from './target';
 
 /*

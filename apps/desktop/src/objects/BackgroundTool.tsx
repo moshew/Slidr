@@ -1,5 +1,5 @@
 import type { AssetMeta, Background, Command, Fill } from '@slidr/model';
-import { Button, cx, Popover, PopoverContent, PopoverTrigger, Separator } from '@slidr/ui';
+import { Button, cx, Field, Popover, PopoverContent, PopoverTrigger, Separator } from '@slidr/ui';
 import { CopyCheck, PaintBucket, RotateCcw } from '@slidr/ui/icons';
 import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
@@ -12,7 +12,7 @@ import {
   withFill,
 } from './background';
 import { FillEditor } from './FillEditor';
-import { Field, FillSwatch, Hint, SliderField } from './parts';
+import { FillSwatch, Hint, SliderField } from './parts';
 import { useCurrentSlide } from './target';
 
 /** The strongest blur the slider offers, in slide pixels. */

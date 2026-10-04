@@ -3,6 +3,7 @@ import { ScaledSlide } from '@slidr/renderer';
 import { deckFooter, footerLayouts, slideNumberHidden, slideNumberLayouts } from '@slidr/templates';
 import {
   Button,
+  Checkbox,
   ColorPicker,
   ColorSwatch,
   cx,
@@ -598,16 +599,11 @@ function SaveAsTemplate() {
             if (event.key === 'Enter') void save();
           }}
         />
-        <Toggle
-          icon={Star}
-          label={t('save.asDefault')}
-          pressed={asDefault}
-          onPressedChange={setAsDefault}
-        />
         <Button variant="primary" disabled={!trimmed} loading={busy} onClick={() => void save()}>
           {t('save.button')}
         </Button>
       </div>
+      <Checkbox label={t('save.asDefault')} checked={asDefault} onCheckedChange={setAsDefault} />
       <p
         role={message?.error ? 'alert' : 'status'}
         className={cx('text-xs', message?.error ? 'text-ui-danger-fg' : 'text-ui-fg-muted')}

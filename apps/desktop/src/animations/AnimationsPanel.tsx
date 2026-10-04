@@ -10,14 +10,15 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EmptyState,
+  Field,
   Icon,
   IconButton,
+  type LucideIcon,
+  EmptyState,
+  Tooltip,
   SegmentedControl,
   Select,
   Separator,
-  Tooltip,
-  type LucideIcon,
 } from '@slidr/ui';
 import {
   Film,
@@ -63,14 +64,7 @@ import {
   type Row,
   type RowGroup,
 } from './model';
-import {
-  DirectionField,
-  Field,
-  nameLabel,
-  SecondsField,
-  useCurrentSlide,
-  useSeconds,
-} from './parts';
+import { DirectionField, nameLabel, SecondsField, useCurrentSlide, useSeconds } from './parts';
 import { playPreview, stageGroups, stageSlide, stopPreview, usePreview } from './preview';
 import { TransitionEditor } from './TransitionEditor';
 

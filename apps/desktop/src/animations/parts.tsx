@@ -1,8 +1,7 @@
 import type { Slide } from '@slidr/model';
 import type { FlowDirection } from '@slidr/runtime';
-import { cx, NumberField, SegmentedControl } from '@slidr/ui';
+import { NumberField, SegmentedControl } from '@slidr/ui';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from '@slidr/ui/icons';
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { i18n } from '../i18n';
 import { useDeck, useSelection } from '../shell';
@@ -26,24 +25,6 @@ export function useCurrentSlide(): Slide | undefined {
   const slideId = useSelection((s) => s.currentSlideId);
   return useDeck((s) =>
     slideId ? s.deck.slides.find((slide) => slide.id === slideId) : undefined,
-  );
-}
-
-/** A control under its label. */
-export function Field({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cx('flex min-w-0 flex-col gap-1.5', className)}>
-      <span className="text-xs font-medium text-ui-fg-muted">{label}</span>
-      {children}
-    </div>
   );
 }
 

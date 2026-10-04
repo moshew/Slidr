@@ -13,7 +13,7 @@ test('a personal template is renamed, and updated in place from the open deck', 
   const errors = collectErrors(page);
   await openTemplates(page, { defaultTemplate: 'zerem' });
   await panel(page).getByRole('textbox', { name: 'שם התבנית', exact: true }).fill('החברה שלי');
-  await panel(page).getByRole('button', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
+  await panel(page).getByRole('checkbox', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
   await panel(page).getByRole('button', { name: 'שמירה', exact: true }).click();
   await expect(panel(page).getByRole('status')).toContainText('התבנית "החברה שלי" נשמרה');
   const id = (await deck(page)).theme.id;

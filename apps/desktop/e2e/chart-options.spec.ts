@@ -366,7 +366,8 @@ test('the axes follow the type: none for a pie, a range for a radar, two ranges 
   await gallery.locator('[data-chart-type="radar"]').click();
   await page.keyboard.press('Escape');
   let box = await openTool(page, en.axes);
-  await expect(box.getByRole('group')).toHaveCount(1);
+  // One axis (named by its aria-label); the fields inside it are groups of their own.
+  await expect(box.locator('[role="group"][aria-label]')).toHaveCount(1);
   const radar = box.getByRole('group', { name: 'Value axis' });
   await expect(radar.getByRole('textbox')).toHaveCount(2);
   await expect(radar.getByRole('button', { name: 'Show the axis' })).toHaveCount(0);

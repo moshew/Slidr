@@ -1,12 +1,13 @@
 import type { AssetMeta, Color, Fill } from '@slidr/model';
 import { colorCss } from '@slidr/renderer';
 import {
+  parseHex,
   Button,
   cx,
+  Field,
   Icon,
   IconButton,
   NumberField,
-  parseHex,
   SegmentedControl,
   Select,
 } from '@slidr/ui';
@@ -41,7 +42,7 @@ import {
   type ResolveColor,
 } from './fill';
 import { IMAGE_FILES, isPicture, pickFiles } from './insert';
-import { ColorRow, Field, FillSwatch, SliderField, useThemeColors } from './parts';
+import { ColorRow, FillSwatch, SliderField, useThemeColors } from './parts';
 
 export interface FillEditorProps {
   value: Fill;

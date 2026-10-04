@@ -1,9 +1,9 @@
 import type { Shadow, Stroke } from '@slidr/model';
-import { NumberField, SegmentedControl } from '@slidr/ui';
+import { Field, NumberField, SegmentedControl } from '@slidr/ui';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RadiusControl } from './effects';
-import { ColorRow, Field, SliderField } from './parts';
+import { ColorRow, SliderField } from './parts';
 
 /*
  * The contents of the row B popovers that are not the fill editor: outline, shadow, corners and

@@ -176,7 +176,7 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
 
   // Save it all as a personal template, and make it the default.
   await panel(page).getByRole('textbox', { name: 'שם התבנית' }).fill('התבנית של החברה');
-  await panel(page).getByRole('button', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
+  await panel(page).getByRole('checkbox', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
   await panel(page).getByRole('button', { name: 'שמירה', exact: true }).click();
   await expect(panel(page).getByRole('status')).toContainText('התבנית "התבנית של החברה" נשמרה');
 

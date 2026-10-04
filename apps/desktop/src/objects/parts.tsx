@@ -3,6 +3,7 @@ import { fillStyle, themeVariables } from '@slidr/renderer';
 import {
   ColorSwatch,
   cx,
+  Field,
   Icon,
   NumberField,
   Popover,
@@ -87,24 +88,6 @@ export function Hint({ content, children }: { content: string; children: ReactEl
         {children}
       </span>
     </Tooltip>
-  );
-}
-
-/** A control under its label. */
-export function Field({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cx('flex min-w-0 flex-col gap-1.5', className)}>
-      <span className="text-xs font-medium text-ui-fg-muted">{label}</span>
-      {children}
-    </div>
   );
 }
 

@@ -1,8 +1,8 @@
 import { CommandBus } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { applyTemplate } from '@slidr/templates';
-import { Button, cx, Icon, IconButton, Input, ScrollArea, Toggle } from '@slidr/ui';
-import { Check, LayoutTemplate, Star, TriangleAlert, X } from '@slidr/ui/icons';
+import { Button, Checkbox, cx, Icon, IconButton, Input, ScrollArea } from '@slidr/ui';
+import { Check, LayoutTemplate, TriangleAlert, X } from '@slidr/ui/icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
@@ -173,12 +173,6 @@ function DraftOf({ draft }: { draft: TemplateDraft }) {
               if (event.key === 'Enter') void save();
             }}
           />
-          <Toggle
-            icon={Star}
-            label={t('draft.asDefault')}
-            pressed={asDefault}
-            onPressedChange={setAsDefault}
-          />
           <Button
             variant="primary"
             disabled={!trimmed}
@@ -189,6 +183,14 @@ function DraftOf({ draft }: { draft: TemplateDraft }) {
             {t('draft.save')}
           </Button>
         </div>
+      )}
+      {!draft.savedAs && (
+        <Checkbox
+          label={t('draft.asDefault')}
+          checked={asDefault}
+          className="mx-4"
+          onCheckedChange={setAsDefault}
+        />
       )}
       <p
         role={failed ? 'alert' : undefined}

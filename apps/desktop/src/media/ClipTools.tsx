@@ -1,5 +1,13 @@
 import type { VideoElement } from '@slidr/model';
-import { Button, IconButton, NumberField, SegmentedControl, Slider, Toggle } from '@slidr/ui';
+import {
+  Button,
+  Field,
+  IconButton,
+  NumberField,
+  Toggle,
+  SegmentedControl,
+  Slider,
+} from '@slidr/ui';
 import {
   ImagePlay,
   PanelBottom,
@@ -13,7 +21,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
 import { IMAGE_FILES, isPicture, pickFiles } from '../objects/insert';
-import { Field, PopoverTool, SliderField, ToolGroup, ToolRow } from '../objects/parts';
+import { PopoverTool, SliderField, ToolGroup, ToolRow } from '../objects/parts';
 import { isTarget, useTarget, type Target } from '../objects/target';
 import { tell, useDeck, useEditor } from '../shell';
 import {
