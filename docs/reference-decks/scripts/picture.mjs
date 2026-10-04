@@ -27,6 +27,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 import { root } from './decks.mjs';
+import { readLedger, record } from './ledger.mjs';
 import { writePictures } from './pictures.mjs';
 
 const MAX_BYTES = 200_000;
@@ -52,7 +53,6 @@ const [columns, rows] = (grid ?? '1x1').split('x').map(Number);
 const work = join(root, '..', '..', 'apps', 'desktop', 'test-results', 'design', 'templates', 'pictures');
 mkdirSync(work, { recursive: true });
 const ledgerFile = join(work, 'ledger.json');
-const ledger = existsSync(ledgerFile) ? JSON.parse(readFileSync(ledgerFile, 'utf8')) : [];
 
 /** One `codex exec` call; resolves with the file it left in `generated_images`. */
 function generate(text) {
@@ -89,8 +89,7 @@ if (!source) {
   const started = Date.now();
   const made = await generate(`${RULE} Create ONE image: ${prompt} No text, no letters, no logos, no watermark.`);
   const seconds = Math.round((Date.now() - started) / 1000);
-  ledger.push({ name, prompt, at: new Date().toISOString(), seconds, ok: Boolean(made.file) });
-  writeFileSync(ledgerFile, JSON.stringify(ledger, null, 2));
+  await record(ledgerFile, { name, prompt, at: new Date().toISOString(), seconds, ok: Boolean(made.file) });
   if (!made.file) {
     console.error(`${name}: codex exited ${made.code} and left no image (${seconds}s). It still counts against the budget.`);
     process.exit(1);
@@ -150,4 +149,4 @@ for (const [i, cell] of cells.entries()) {
   console.log(`images/${file}: ${cell.w}x${cell.h}, ${Math.round(statSync(path).size / 1024)}kB`);
 }
 console.log(writePictures());
-console.log(`generations so far in this worktree: ${ledger.length}`);
+console.log(`generations so far in this worktree: ${readLedger(ledgerFile).length}`);

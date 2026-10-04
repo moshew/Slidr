@@ -92,6 +92,37 @@ function chips(findings) {
 
 const percent = (share) => `${Math.round(share * 100)}%`;
 
+/** A random id of the model (`newId`): a prefix, `_`, and eight characters of base 36. */
+const RANDOM_ID = /\b(s|e|a|l|p)_[0-9a-z]{8}\b/g;
+
+/**
+ * The slides rebuilt from a template, with the random ids the model gave their slides and
+ * elements on that run replaced, page-wide and in the order they first appear, by numbered ones.
+ * An id that repeats (a layout's mark on every slide) keeps one name, so the page reads the
+ * same; and a rebuild of the page from the same templates writes the same file, where each run
+ * of `pnpm test:browser` used to change dozens of its lines.
+ */
+export function stableIds(rebuilt) {
+  if (!rebuilt) return rebuilt;
+  const names = new Map();
+  const rename = (html) =>
+    html.replace(RANDOM_ID, (id, prefix) => {
+      if (!names.has(id)) names.set(id, `${prefix}_${String(names.size + 1).padStart(8, '0')}`);
+      return names.get(id);
+    });
+  return Object.fromEntries(
+    Object.entries(rebuilt).map(([key, slides]) => [
+      key,
+      slides.map((slide) => ({
+        ...slide,
+        html: rename(slide.html),
+        // A finding may name an element in its message, which a chip shows.
+        lint: (slide.lint ?? []).map((f) => ({ ...f, message: rename(String(f.message ?? '')) })),
+      })),
+    ]),
+  );
+}
+
 /** The archetypes in the order of the model, with the name the page gives each row. */
 const ARCHETYPES = [
   ['hero', 'Opening'],
@@ -235,7 +266,7 @@ export function writeIndex() {
   const decks = deckFiles().map(readDeck);
   const converted = readJson('reference-report.json');
   const report = readJson('rebuilt-report.json');
-  const rebuilt = report?.rebuilt;
+  const rebuilt = stableIds(report?.rebuilt);
   const templates = templatesOf(rebuilt);
 
   const styles = decks
