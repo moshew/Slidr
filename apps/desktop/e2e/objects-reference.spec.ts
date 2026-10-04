@@ -22,6 +22,12 @@ const mine = [
   'צל',
   'אטימות',
   'אפקטים',
+  // The look of a picture, the colours of an SVG, and the numbers of any element (ADR-057).
+  'מסכה',
+  'התאמות',
+  'פילטר',
+  'צבעי הגרפיקה',
+  'מיקום, גודל וסיבוב',
 ];
 
 const deck = referenceDeck();
