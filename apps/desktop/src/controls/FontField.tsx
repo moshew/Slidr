@@ -6,12 +6,13 @@ import {
   PopoverContent,
   PopoverTrigger,
   Tooltip,
+  type FontGroup,
   type FontOption,
 } from '@slidr/ui';
 import { ChevronDown } from '@slidr/ui/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { builtinFamilies } from '../fonts';
+import { builtinFamilies, useSystemFonts } from '../fonts';
 import { useDeck } from '../shell';
 import { rememberFont, useRecent } from './recent';
 
@@ -37,20 +38,36 @@ const builtin: FontOption[] = builtinFamilies.map(({ family, scripts }) => ({
   hebrew: (scripts as readonly string[]).includes('he'),
 }));
 
-/** The built-in library (SPEC appendix B) and the fonts the deck carries as assets (SPEC 5.7). */
-function useFonts(): FontOption[] {
+/** CSS finds a family whatever the case of its name, so one name in two cases is one font. */
+const nameOf = (family: string) => family.toLowerCase();
+
+/**
+ * The fonts a deck can be set in, in the order of the list: the ones the deck carries as assets
+ * (SPEC 5.7), the built-in library, and the ones installed on this computer (SPEC appendix B).
+ * A family is listed once, in the first of the three that has it: the deck's file or the
+ * library's is the one that draws it, whatever is installed under the same name.
+ */
+function useFontGroups(labels: { deck: string; library: string; system: string }): FontGroup[] {
   const assets = useDeck((s) => s.deck.assets);
+  const installed = useSystemFonts();
+  const { deck, library, system } = labels;
   return useMemo(() => {
-    const known = new Set(builtin.map((f) => f.family));
+    const known = new Set(builtin.map((f) => nameOf(f.family)));
     const carried: FontOption[] = [];
     for (const asset of Object.values(assets)) {
       const family = asset.kind === 'font' ? asset.font?.family : undefined;
-      if (!family || known.has(family)) continue;
-      known.add(family);
+      if (!family || known.has(nameOf(family))) continue;
+      known.add(nameOf(family));
       carried.push({ family });
     }
-    return [...carried.sort((a, b) => a.family.localeCompare(b.family)), ...builtin];
-  }, [assets]);
+    carried.sort((a, b) => a.family.localeCompare(b.family));
+    const onComputer = installed.filter((font) => !known.has(nameOf(font.family)));
+    return [
+      { label: deck, fonts: carried },
+      { label: library, fonts: builtin },
+      { label: system, fonts: onComputer },
+    ].filter((group) => group.fonts.length > 0);
+  }, [assets, installed, deck, library, system]);
 }
 
 /** A font family in a toolbar or a panel: a button that opens the font picker (TXT-02). */
@@ -66,7 +83,11 @@ export function FontField({
 }: FontFieldProps) {
   const { t } = useTranslation('controls');
   const [open, setOpen] = useState(false);
-  const fonts = useFonts();
+  const groups = useFontGroups({
+    deck: t('font.deck'),
+    library: t('font.library'),
+    system: t('font.system'),
+  });
   const recent = useRecent((s) => s.fonts);
   const shown = mixed ? t('mixed') : (value ?? fallback ?? '');
 
@@ -91,7 +112,7 @@ export function FontField({
       </Tooltip>
       <PopoverContent onCloseAutoFocus={onCloseAutoFocus} className="p-2">
         <FontPicker
-          fonts={fonts}
+          groups={groups}
           recent={recent}
           value={mixed ? null : (value ?? fallback ?? null)}
           labels={{

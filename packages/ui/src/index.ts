@@ -62,6 +62,7 @@ export {
 } from './components/color-picker';
 export {
   FontPicker,
+  type FontGroup,
   type FontOption,
   type FontPickerLabels,
   type FontPickerProps,

@@ -1,4 +1,4 @@
-import type { ComponentPropsWithRef, ReactNode } from 'react';
+import type { ComponentPropsWithRef, ReactNode, Ref, UIEventHandler } from 'react';
 import { ScrollArea as RadixScrollArea, Separator as RadixSeparator } from 'radix-ui';
 import { cx } from '../cx';
 import { Icon, type LucideIcon } from './icon';
@@ -88,6 +88,9 @@ export interface ScrollAreaProps {
   className?: string;
   /** Classes for the scrolling element, e.g. padding. */
   viewportClassName?: string;
+  /** The scrolling element and its scroll, for a list that draws only the part in view. */
+  viewportRef?: Ref<HTMLDivElement>;
+  onScroll?: UIEventHandler<HTMLDivElement>;
 }
 
 function Scrollbar({ orientation }: { orientation: 'vertical' | 'horizontal' }) {
@@ -111,10 +114,14 @@ export function ScrollArea({
   type = 'hover',
   className,
   viewportClassName,
+  viewportRef,
+  onScroll,
 }: ScrollAreaProps) {
   return (
     <RadixScrollArea.Root type={type} className={cx('relative overflow-hidden', className)}>
       <RadixScrollArea.Viewport
+        ref={viewportRef}
+        onScroll={onScroll}
         // Radix lays the content out as a table, which defeats `truncate` in vertical lists.
         className={cx('size-full', orientation === 'vertical' && '*:block!', viewportClassName)}
       >

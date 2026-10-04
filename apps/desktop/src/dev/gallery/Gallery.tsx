@@ -753,12 +753,26 @@ const galleryFonts = builtinFamilies.map(({ family, scripts }) => ({
   hebrew: (scripts as readonly string[]).includes('he'),
 }));
 
+/** A few of the fonts Windows ships, as the app would list the installed ones. */
+const installedFonts = [
+  { family: 'Arial', hebrew: true },
+  { family: 'Courier New', hebrew: true },
+  { family: 'David', hebrew: true },
+  { family: 'Georgia' },
+  { family: 'Segoe UI', hebrew: true },
+  { family: 'Times New Roman', hebrew: true },
+  { family: 'Wingdings', symbol: true },
+];
+
 function FontDemo({ c }: { c: Copy }) {
   const [family, setFamily] = useState('Heebo');
   return (
     <Card title={c.fontPicker}>
       <FontPicker
-        fonts={galleryFonts}
+        groups={[
+          { label: c.font.library, fonts: galleryFonts },
+          { label: c.font.system, fonts: installedFonts },
+        ]}
         recent={['Rubik', 'Inter']}
         value={family}
         onValueChange={setFamily}
