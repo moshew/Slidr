@@ -4,8 +4,9 @@ import { expect, test, type Page } from '@playwright/test';
 /*
  * Screenshots for the design gate (DSN-09) of what the editor track added to the design system:
  * the checkbox and the switch in every state, `Field`, the growing text field, the fixed-width
- * font, a segmented control with a fixed direction and a number with a Hebrew unit. Both themes,
- * both directions and both target resolutions; written to test-results/editor/ to be looked at.
+ * font, a segmented control with a fixed direction, a number with a Hebrew unit, and the font
+ * picker with its sections. Both themes, both directions and both target resolutions; written to
+ * test-results/editor/ to be looked at.
  */
 
 const out = (name: string) =>
@@ -25,6 +26,7 @@ const cards = {
   fields: { rtl: 'שדות טקסט', ltr: 'Text fields' },
   segmented: { rtl: 'בורר מקטעים', ltr: 'Segmented control' },
   tokens: { rtl: 'צבעים, טיפוגרפיה ועומק', ltr: 'Colour, type and depth' },
+  fontPicker: { rtl: 'בורר גופן', ltr: 'Font picker' },
 } as const;
 
 async function open(page: Page, theme: (typeof themes)[number], dir: (typeof dirs)[number]) {
