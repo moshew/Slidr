@@ -18,6 +18,7 @@ import {
 import type { FormatContext } from './format';
 import { insertTextBox } from './insert';
 import { en, he } from './messages';
+import { typeToEdit } from './opening';
 import { paint, pickUp, watchPainter } from './painter';
 import { BoxTool } from './toolbar/BoxTool';
 import {
@@ -42,6 +43,7 @@ import {
   PICK_FORMAT_KEYS,
   resolveTarget,
 } from './toolbar/shared';
+import { ShapeTextTool } from './toolbar/ShapeTextTool';
 import { PainterTool, StyleTool } from './toolbar/StyleTools';
 
 /*
@@ -81,6 +83,15 @@ const tools = [
   { id: 'text.effects', group: 'effects', order: 799, render: TextEffectsTool },
 ];
 for (const tool of tools) registerContextTool({ ...tool, kinds: ['text'] });
+
+// A selected shape has the row of a shape; its text is one button away (SHP-04).
+registerContextTool({
+  id: 'text.shapeText',
+  kinds: ['shape'],
+  group: 'text',
+  order: 30,
+  render: ShapeTextTool,
+});
 
 /* ---------------------------------------------------------------- row A */
 
@@ -196,6 +207,11 @@ registerShortcut({
   section: 'insert',
 });
 
-/* ---------------------------------------------------------------- the format painter */
+/* ---------------------------------------------------------------- what follows the selection */
 
-whenEditor((editor) => void watchPainter(editor));
+// The format painter paints the box that is clicked while the brush is in hand, and a character
+// typed on a selected text box or shape starts editing its text (SHP-04).
+whenEditor((editor) => {
+  watchPainter(editor);
+  typeToEdit(editor);
+});

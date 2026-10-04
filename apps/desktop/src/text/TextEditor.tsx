@@ -23,6 +23,7 @@ import { announceEditor } from './activeEditor';
 import { cellsWritten } from './cellScope';
 import { changeParagraphsTr, STEP_META, type StepMeta } from './editorFormat';
 import { levelChange, type FormatContext } from './format';
+import { takeOpening } from './opening';
 import {
   blurredSelectionPlugin,
   clipboardPlugin,
@@ -86,6 +87,15 @@ type Dispatch = (tr: Transaction) => void;
 function editedText(element: TextEditorProps['element'], cell: CellRef | undefined): RichText {
   if (element.type !== 'table') return element.content ?? NO_TEXT;
   return (cell ? element.cells[cell.row]?.[cell.col]?.content : undefined) ?? NO_TEXT;
+}
+
+/** Text in a shape is expected in its middle: a shape without text starts with a centred line (SHP-04). */
+const CENTRED: RichText = { paragraphs: [{ dir: 'auto', align: 'center', runs: [] }] };
+
+/** What the editor shows for the text: the text itself, or for a shape that has none, one centred line. */
+function shownText(element: TextEditorProps['element'], cell: CellRef | undefined): RichText {
+  const text = editedText(element, cell);
+  return element.type === 'shape' && text.paragraphs.length === 0 ? CENTRED : text;
 }
 
 /**
@@ -282,7 +292,7 @@ export function TextEditor({
           },
         }),
       ],
-      content: richTextToDoc(editedText(element, cell)),
+      content: richTextToDoc(shownText(element, cell)),
       editorProps: {
         attributes: {
           'data-text-editor': '',
@@ -350,7 +360,11 @@ export function TextEditor({
           if (focused) ed.view.focus();
           return;
         }
-        const pos = caretAt ? ed.view.posAtCoords({ left: caretAt.x, top: caretAt.y }) : null;
+        // Opened by a typed character or from row B (`opening.ts`): the caret goes to the end,
+        // wherever the last double click was.
+        const opening = takeOpening(element.id);
+        const point = opening ? undefined : caretAt;
+        const pos = point ? ed.view.posAtCoords({ left: point.x, top: point.y }) : null;
         if (pos) {
           // A point beside the text (in a table cell, most of the cell) is between two lines: the
           // caret goes to the nearest place in the text.
@@ -366,6 +380,11 @@ export function TextEditor({
           const all = TextSelection.create(doc, 1, doc.content.size - 1);
           openedTyping.current = performance.now();
           ed.view.dispatch(tr.setSelection(all).insertText(replaceWith));
+        } else if (opening?.typed) {
+          // Typed on the selected box: it goes at the end of the text, in the formatting there,
+          // as the first of the typing that follows.
+          openedTyping.current = performance.now();
+          ed.view.dispatch(ed.state.tr.insertText(opening.typed));
         }
         const { anchor, head } = ed.state.selection;
         kept.current = { anchor, head, focused: true };
@@ -383,6 +402,7 @@ export function TextEditor({
 
   // An undo, a redo or the agent changed the text while it is being edited: show the model's.
   const text = editedText(element, cell);
+  const shown = shownText(element, cell);
   useEffect(() => {
     // An editor that a change of theme has just taken away is left alone: the one built in its
     // place starts from the model's text.
@@ -392,11 +412,11 @@ export function TextEditor({
     if (sameValue(model, written.current)) return;
     written.current = model;
     const { anchor, head } = editor.state.selection;
-    editor.commands.setContent(richTextToDoc(text), { emitUpdate: false });
+    editor.commands.setContent(richTextToDoc(shown), { emitUpdate: false });
     // The selection stays where it was, as far as the new text allows.
     editor.view.dispatch(selectionTr(editor.state, anchor, head).setMeta('preventUpdate', true));
     burst.current = null;
-  }, [editor, text]);
+  }, [editor, text, shown]);
 
   return <EditorContent editor={editor} />;
 }

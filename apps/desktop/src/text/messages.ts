@@ -129,6 +129,10 @@ export const he = {
     sideRight: 'ימין',
     sideLeft: 'שמאל',
   },
+  shape: {
+    addText: 'הוספת טקסט לצורה',
+    editText: 'עריכת הטקסט שבצורה',
+  },
   step: {
     insert: 'הוספת תיבת טקסט',
     format: 'עיצוב טקסט',
@@ -282,6 +286,10 @@ export const en: Messages<typeof he> = {
     sideBottom: 'Bottom',
     sideRight: 'Right',
     sideLeft: 'Left',
+  },
+  shape: {
+    addText: 'Add text to the shape',
+    editText: 'Edit the text of the shape',
   },
   step: {
     insert: 'Insert text box',
