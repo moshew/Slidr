@@ -17,6 +17,7 @@
 //                      shvil, tzuk), or `all`: the three in turn, by the request's place in
 //                      the set; without it, the plain deck of the base theme
 //   --attach           use the app that is already running on the CDP port
+//   --requests <file>  another set of requests, in the shape of ../requests.json
 //
 // A session that shares the machine with others runs the set under an identifier and ports of
 // its own: SLIDR_EVAL_IDENTIFIER, SLIDR_EVAL_VITE_PORT, SLIDR_EVAL_CDP_PORT, and
@@ -58,6 +59,7 @@ function parseArgs(argv) {
     gate: true,
     attach: false,
     template: null,
+    requests: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
@@ -75,6 +77,7 @@ function parseArgs(argv) {
     else if (flag === '--no-gate') args.gate = false;
     else if (flag === '--template') args.template = value();
     else if (flag === '--attach') args.attach = true;
+    else if (flag === '--requests') args.requests = value();
     else if (flag !== '--') throw new Error(`unknown option ${flag}`);
   }
   return args;
@@ -292,7 +295,12 @@ async function runRequest(page, request, context) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const set = JSON.parse(readFileSync(join(APP_DIR, 'eval', 'requests.json'), 'utf8'));
+  const set = JSON.parse(
+    readFileSync(
+      args.requests ? resolve(args.requests) : join(APP_DIR, 'eval', 'requests.json'),
+      'utf8',
+    ),
+  );
   const requests = set.requests.filter(
     (request) => !args.only || args.only.some((id) => request.id.startsWith(id)),
   );

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "approve": {
+    "he": "מאשר, בנה את המצגת.",
+    "en": "Approved, go ahead and build it."
+  },
+  "requests": [
+    {
+      "id": "c1-bar-chart-he",
+      "kind": "one chart",
+      "lang": "he",
+      "forces": ["chart"],
+      "prompt": "הוסף שקף עם גרף עמודות של המספרים האלה: מכירות לפי רבעון ב-2026, באלפי ש\"ח. רבעון 1: 320, רבעון 2: 410, רבעון 3: 385, רבעון 4: 520."
+    },
+    {
+      "id": "c2-bar-chart-en",
+      "kind": "one chart",
+      "lang": "en",
+      "forces": ["chart"],
+      "prompt": "Add a slide with a bar chart of these numbers: support tickets per month. January 1180, February 1020, March 960, April 870."
+    }
+  ]
+}

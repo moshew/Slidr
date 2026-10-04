@@ -271,7 +271,7 @@ export const tableSet = defineTool({
 export const chartSet = defineTool({
   name: 'chart_set',
   description:
-    'Sets the data and options of a chart, or creates one when elementId is absent (then slideId, frame, chartType, categories and series are required). Omitted fields keep their value; options are merged key by key. Each series has one value per category (null for a gap). Returns `elementId` and the ids created or changed.',
+    'Sets the data and options of a chart, or creates one when elementId is absent (then slideId, frame, chartType, categories and series are required). The app draws the chart in the theme colours, mirrored in a right-to-left deck. Omitted fields keep their value, so a change of chartType keeps the data; options are merged key by key, and a key that is given is given whole. Each series has one value per category (null for a gap); a scatter series may give `points` instead, with `values: []`. A pie shows the first series; a donut shows each series as a ring. Returns `elementId` and the ids created or changed.',
   input: z.strictObject({
     elementId: Id.optional().describe('The chart to change. Absent: create a new chart.'),
     slideId: Id.optional(),
@@ -281,7 +281,10 @@ export const chartSet = defineTool({
     series: z.array(ChartSeries).optional(),
     title: z.string().nullable().optional().describe('null removes the title.'),
     legend: ChartOptions.legend.optional(),
-    axes: ChartOptions.axes.optional(),
+    axes: about(
+      ChartOptions.axes,
+      'x is the axis of the categories and y the axis of the values, whichever way the chart lies; in a scatter chart, of the x and the y values. min and max apply to an axis of values.',
+    ).optional(),
     labels: z.boolean().optional().describe('Show value labels on the data.'),
     palette: z
       .array(Color)
