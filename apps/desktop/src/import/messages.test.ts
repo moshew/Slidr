@@ -5,56 +5,15 @@ import { describe, expect, it } from 'vitest';
 import { en, he } from './messages';
 
 /*
- * The design-system rules of `src/shell/designRules.test.ts` (DSN-01, SPEC 4.0 rule 7), held
- * over the import panel: that test lists the folders it scans, and this folder is not on its list
- * yet. The patterns are the same ones; when the shell's list gains `src/import`, this file can go.
+ * The strings of the import panel. The design-system rules over the panel are the shell's
+ * (`src/shell/designRules.test.ts` scans every folder of the app).
  */
 
 const dir = fileURLToPath(new URL('.', import.meta.url));
+/** The panel's sources, which ask for the strings. */
 const files = readdirSync(dir).filter(
   (name) => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name),
 );
-
-function violations(pattern: RegExp): string[] {
-  return files.flatMap((file) =>
-    readFileSync(join(dir, file), 'utf8')
-      .split('\n')
-      .map((line, i) => ({ line, i }))
-      .filter(({ line }) => pattern.test(line) && !/^(?:\/\/|\/\*|\*)/.test(line.trim()))
-      .map(({ line, i }) => `${file}:${i + 1}: ${line.trim()}`),
-  );
-}
-
-describe('design rules in the import panel', () => {
-  it('scans the folder', () => {
-    expect(files).toContain('ImportPanel.tsx');
-  });
-
-  it('has no colour literals', () => {
-    expect(violations(/#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab)\(/)).toEqual([]);
-  });
-
-  it('has no arbitrary Tailwind values', () => {
-    expect(violations(/[\s'"`][a-z-]+-\[[^\]]*[\d#][^\]]*\](?!:)/)).toEqual([]);
-  });
-
-  it('has no literal values in inline styles', () => {
-    expect(violations(/style=\{\{[^}]*:\s*['"#\d]/)).toEqual([]);
-  });
-
-  it('uses no OS controls and no OS tooltips', () => {
-    expect(violations(/<select\b|type=["'](?:checkbox|radio|range|color|date)["']/)).toEqual([]);
-    expect(violations(/<[a-z][a-z0-9]*\s[^<>]*\btitle=/)).toEqual([]);
-  });
-
-  it('uses logical properties, so the layout mirrors', () => {
-    expect(
-      violations(
-        /[\s'"`](?:-?m[lr]|p[lr]|left|right|border-[lr]|rounded-[lr]|text-left|text-right)-/,
-      ),
-    ).toEqual([]);
-  });
-});
 
 /** Every leaf of a message tree, as `a.b.c`. */
 function keys(tree: object, prefix = ''): string[] {
