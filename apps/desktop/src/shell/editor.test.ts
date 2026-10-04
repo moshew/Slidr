@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { agentActor, createElement, findElement } from '@slidr/model';
 import { createEditor } from './editor';
