@@ -19,8 +19,29 @@ describe('rule sets', () => {
   it('has the nine rules that go back to the agent (LNT-04, QG-03, QG-04)', () => {
     const agent = rules.filter((rule) => rule.agent).map((rule) => rule.id);
     expect(agent).toEqual(['L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L13', 'L16']);
-    // Until the other rules exist (WG7-T07), `all` is the same set.
-    expect(rules.map((rule) => rule.id)).toEqual(agent);
+  });
+
+  it('keeps the rest for the user: the other rules, and what three of them see in a chart', () => {
+    const user = rules.filter((rule) => !rule.agent).map((rule) => rule.id);
+    expect(user).toEqual([
+      'L03',
+      'L04',
+      'L05',
+      'L08',
+      'L09',
+      'L10',
+      'L11',
+      'L12',
+      'L14',
+      'L15',
+      'L17',
+    ]);
+    // A number that stands twice is one rule seen two ways, and keeps one severity.
+    for (const rule of rules) {
+      expect(rules.filter((r) => r.id === rule.id).every((r) => r.severity === rule.severity)).toBe(
+        true,
+      );
+    }
   });
 
   it('gives each rule the severity of SPEC 9.2', () => {
@@ -33,8 +54,17 @@ describe('rule sets', () => {
       L05: 'error',
       L06: 'error',
       L07: 'warning',
+      L08: 'info',
+      L09: 'warning',
+      L10: 'warning',
+      L11: 'info',
+      L12: 'warning',
       L13: 'warning',
+      L14: 'info',
+      L15: 'warning',
       L16: 'warning',
+      // Not of SPEC 9.2: the empty band at the bottom, which ADR-042 asked for.
+      L17: 'warning',
     });
   });
 });
@@ -55,9 +85,20 @@ describe('lintSlide', () => {
     expect(findings.every((f) => f.slideId === 's_he_goals')).toBe(true);
   });
 
-  it('gives the same findings for `agent` and `all` while the sets are the same', () => {
-    const measured = measure(slide);
-    expect(lintSlide(deck, slide, measured, 'agent')).toEqual(lintSlide(deck, slide, measured));
+  it('gives the agent its own rules only; `all` adds the rules of the user', () => {
+    // Two boxes whose left edges are 3px apart: a finding of L09, which is the user's.
+    const boxes = [96, 99].map((x, i) =>
+      createElement.shape({ id: `e_box${i}`, frame: { x, y: 300 + i * 320, w: 900, h: 280 } }),
+    );
+    const uneven = { ...slide, elements: [...slide.elements, ...boxes] };
+    const measured = measure(uneven);
+    const all = lintSlide(deck, uneven, measured);
+    const agent = lintSlide(deck, uneven, measured, 'agent');
+    expect(all.map((f) => f.rule)).toContain('L09');
+    expect(agent.map((f) => f.rule)).not.toContain('L09');
+    // What the agent gets is what `all` holds of the agent's rules, in the same order.
+    const own = new Set(rules.filter((rule) => rule.agent).map((rule) => rule.id));
+    expect(agent).toEqual(all.filter((f) => own.has(f.rule)));
   });
 
   it('is pure: the same input gives the same findings and changes nothing', () => {

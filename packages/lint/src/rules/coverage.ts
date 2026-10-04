@@ -11,7 +11,7 @@ export const MIN_COVERAGE = 0.6;
  * fills nothing. A line, and a shape that is a divider or a background panel, do not count: one
  * rule across the slide would otherwise stretch the bounding box over empty space.
  */
-function contentBox({ element, measure }: Item, slide: Frame): Frame | undefined {
+export function contentBox({ element, measure }: Item, slide: Frame): Frame | undefined {
   switch (element.type) {
     case 'line':
       return undefined;
@@ -25,7 +25,7 @@ function contentBox({ element, measure }: Item, slide: Frame): Frame | undefined
 }
 
 /** A drawing made of bars counts whole, though each bar alone is no content. */
-function contentBoxes({ items, drawings }: Drawn, slide: Frame): Frame[] {
+export function contentBoxes({ items, drawings }: Drawn, slide: Frame): Frame[] {
   return [...items.flatMap((item) => contentBox(item, slide) ?? []), ...drawings];
 }
 

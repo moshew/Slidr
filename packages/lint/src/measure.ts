@@ -40,7 +40,10 @@ export interface ElementMeasure {
    * real height of a text box that grows with its text.
    */
   box: Frame;
-  /** Present when the element shows text: a text box, a shape with text, a table, `html`. */
+  /**
+   * Present when the element shows text: a text box, a shape with text, a table, `html`, and a
+   * chart, whose labels, legend and titles are text it draws itself.
+   */
   text?: TextMeasure;
 }
 
