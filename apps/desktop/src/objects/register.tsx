@@ -6,12 +6,14 @@ import {
   registerActionPopover,
   registerContextTool,
   registerPanel,
+  registerStageMenu,
 } from '../shell';
 import { BackgroundTool } from './BackgroundTool';
 import { CODE_PANEL, CodePanel } from './CodePanel';
 import { HtmlRow } from './htmlTools';
 import { insertImages } from './insert';
 import { LineLibrary, ShapeLibrary } from './library';
+import { HtmlMenuItems, ImageMenuItems } from './menu';
 import { en, he } from './messages';
 import { EffectsRow, ImageRow, ShapeRow } from './tools';
 
@@ -82,4 +84,23 @@ registerPanel({
   title: 'objects:code.title',
   icon: CodeXml,
   content: CodePanel,
+});
+
+/*
+ * The Stage's right-click menu (STG-06): replace a picture, edit the code of an `html` element and
+ * decompose it, in the group of the element's own way in (crop, edit the text).
+ */
+registerStageMenu({
+  id: 'objects.image',
+  kinds: ['image'],
+  group: 'edit',
+  order: 21,
+  render: ImageMenuItems,
+});
+registerStageMenu({
+  id: 'objects.html',
+  kinds: ['html'],
+  group: 'edit',
+  order: 22,
+  render: HtmlMenuItems,
 });

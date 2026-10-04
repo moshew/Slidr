@@ -29,7 +29,7 @@ import {
 } from '@slidr/ui/icons';
 import { useTranslation } from 'react-i18next';
 import { colorToHex, useGestureTx } from '../controls';
-import { tell, useDeck, useEditor, useSelection } from '../shell';
+import { useDeck, useEditor, useSelection } from '../shell';
 import { OpacityEditor, RadiusEditor, ShadowEditor, StrokeEditor } from './editors';
 import {
   radiusControl,
@@ -40,8 +40,8 @@ import {
 } from './effects';
 import { FillEditor } from './FillEditor';
 import { AdjustTool, AsBackgroundTool, CutoutTool, FilterTool, MaskTool } from './imageTools';
-import { IMAGE_FILES, isPicture, pickFiles } from './insert';
 import { Field, FillSwatch, PopoverTool, ToolGroup, ToolRow } from './parts';
+import { replaceImage } from './replace';
 import { SvgColorsTool } from './svgTools';
 import { isTarget, useTarget, type Target } from './target';
 
@@ -325,34 +325,11 @@ function FitTool({ target }: { target: Target<ImageElement> }) {
   );
 }
 
-/** The automatic alt text of a picture: its file name without the extension (see `stage/insert`). */
-const baseName = (name: string | undefined) => name?.replace(/\.[^.]+$/, '');
-
 function ReplaceTool({ target }: { target: Target<ImageElement> }) {
   const { t } = useTranslation('objects');
-  const { assets, bus } = useEditor();
-  const { element } = target;
-
-  /** Another picture in the same frame: the crop, the fit and every style stay (IMG-09). */
-  const replace = async () => {
-    const [file] = await pickFiles(IMAGE_FILES);
-    if (!file) return;
-    try {
-      const asset = await assets.import(file);
-      if (!isPicture(asset)) return;
-      const previous = element.assetId ? bus.deck.assets[element.assetId] : undefined;
-      // An alt text that was only the old file's name follows the new file; one the user wrote stays.
-      const automatic = element.alt === undefined || element.alt === baseName(previous?.name);
-      const alt = baseName(asset.name);
-      target.update(
-        { assetId: asset.id, ...(automatic && alt ? { alt } : {}) },
-        { label: t('history.replace') },
-        [{ type: 'asset.add', asset }],
-      );
-    } catch (error) {
-      await tell(t('insert.failed'), error instanceof Error ? error.message : undefined);
-    }
-  };
+  const editor = useEditor();
+  const replace = () =>
+    replaceImage(editor, target, { history: t('history.replace'), failed: t('insert.failed') });
 
   return (
     <IconButton

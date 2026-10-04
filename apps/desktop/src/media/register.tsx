@@ -6,11 +6,13 @@ import {
   registerAction,
   registerContextTool,
   registerPanel,
+  registerStageMenu,
   whenEditor,
 } from '../shell';
 import { installAssetDrop } from './drag';
 import { insertClips } from './insertClip';
 import { ClipRow } from './ClipTools';
+import { ClipMenuItems } from './clipMenu';
 import { IconColorTool } from './IconColorTool';
 import { MediaPanel } from './MediaPanel';
 import { en, he } from './messages';
@@ -73,4 +75,12 @@ registerContextTool({
   group: 'media',
   order: 10,
   render: ClipRow,
+});
+// Loop and mute in the Stage's right-click menu (STG-06), where a clip's own way in would be.
+registerStageMenu({
+  id: 'media.clip',
+  kinds: ['media'],
+  group: 'edit',
+  order: 23,
+  render: ClipMenuItems,
 });
