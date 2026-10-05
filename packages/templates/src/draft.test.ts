@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { applyTemplate, deckFromTemplate } from './deck';
 import { draftTemplate, layoutFromSlide, sampleDeckOf, themeFrom, type DrawnLayout } from './draft';
 import { nightTemplate, paperTemplate } from './fixtures';
+import { showSlideNumber, slideNumberHidden, slideNumberLayouts } from './master';
 import { layoutsFor, Template } from './template';
 
 const LOGO: AssetMeta = {
@@ -227,6 +228,88 @@ describe('layoutFromSlide', () => {
       layoutFromSlide({ ...drawn, slide: blankSlide() }, { id: 'l_x_2', theme }).notes,
     ).toEqual([
       'Layout "Photo": no element carries a data-role, so a slide made from it has nothing to fill in.',
+    ]);
+  });
+});
+
+describe('the slide number of a drawn layout', () => {
+  const title = createElement.text({
+    id: 'e_title',
+    role: 'title',
+    frame: { x: 96, y: 100, w: 800, h: 80 },
+    content: richText('A title', { dir: 'ltr', styleRef: 'title' }),
+  });
+  const number = createElement.text({
+    id: 'e_n',
+    role: 'slideNumber',
+    name: 'page',
+    frame: { x: 1700, y: 980, w: 124, h: 40 },
+    content: richText('7', { dir: 'ltr', align: 'end', marks: { size: 20, weight: 700 } }),
+  });
+  const drawn = (elements: Element[]): DrawnLayout => ({
+    name: 'Title',
+    archetype: 'hero',
+    slide: blankSlide({ id: 's_a', elements }),
+  });
+
+  it('is what the layout draws on every slide, not a place a deck fills in', () => {
+    const made = layoutFromSlide(drawn([title, number]), { id: 'l_x_1', theme });
+    // As a placeholder it gave a slide no element, and nothing drew the number.
+    expect(made.layout.placeholders.map((p) => p.role)).toEqual(['title']);
+    expect(made.fills).toHaveLength(1);
+    expect(made.notes).toEqual([]);
+    // The text as it was drawn, with its role and its look: the renderer writes the number in it.
+    expect(made.layout.decorations).toEqual([{ ...number, id: 'l_x_1_d1' }]);
+  });
+
+  it('makes a template whose decks number their slides, and can hide the number', () => {
+    const { template } = draftTemplate({
+      id: 'draft_x',
+      name: 'X',
+      theme,
+      dir: 'ltr',
+      layouts: [drawn([title, number])],
+    });
+    for (const lang of ['en', 'he']) {
+      const deck = deckFromTemplate(template, { lang });
+      expect(slideNumberLayouts(deck).map((l) => l.id)).toEqual([template.layouts[0]!.id]);
+      const bus = new CommandBus(deck, { validate: true });
+      bus.batch(showSlideNumber(bus.deck, false));
+      expect(slideNumberHidden(bus.deck)).toBe(true);
+    }
+  });
+
+  it('comes out of a group it was drawn in, to stand with the other master components', () => {
+    const foot: Element = {
+      id: 'e_foot',
+      type: 'group',
+      frame: { x: 96, y: 960, w: 1728, h: 60 },
+      rotation: 0,
+      opacity: 1,
+      children: [
+        createElement.shape({ id: 'e_rule', frame: { x: 0, y: 0, w: 1728, h: 2 } }),
+        { ...number, frame: { x: 1604, y: 20, w: 124, h: 40 } },
+      ],
+    };
+    const { layout } = layoutFromSlide(drawn([title, foot]), { id: 'l_x_1', theme });
+    expect(layout.decorations.map((d) => [d.type, d.role, d.frame.x, d.frame.y])).toEqual([
+      ['shape', undefined, 96, 960],
+      ['text', 'slideNumber', 1700, 980],
+    ]);
+  });
+
+  it('stays a plain drawing, with a note, when the role is not on text', () => {
+    const badge = createElement.shape({
+      id: 'e_badge',
+      role: 'slideNumber',
+      frame: { x: 1700, y: 980, w: 124, h: 40 },
+      content: richText('7'),
+    });
+    const { layout, notes } = layoutFromSlide(drawn([title, badge]), { id: 'l_x_1', theme });
+    expect(layout.placeholders.map((p) => p.role)).toEqual(['title']);
+    expect(layout.decorations.map((d) => [d.type, d.role])).toEqual([['shape', undefined]]);
+    expect(notes.map((note) => note.slice(0, 75))).toEqual([
+      'Layout "Title": data-role="slideNumber" is on a shape element, not on text,',
     ]);
   });
 });

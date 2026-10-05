@@ -3,7 +3,8 @@
  * template, a person or the agent, draws each layout as a slide and marks what a deck fills in
  * with a role. Here that slide becomes a layout: the elements that carry a role are its
  * placeholders, what they were drawn with is the layout's sample, and everything else is its
- * decorations.
+ * decorations. Two roles mark what the layout draws on every slide and no deck fills in, the
+ * master components: the logo, and the slide's number. They stay decorations, with their role.
  *
  * Pure, like the rest of the engine: slides in, a template out. Where the slides come from (the
  * HTML conversion) and where the template goes (a preview, the library) is the app's.
@@ -224,9 +225,10 @@ export function layoutFromSlide(
     fills.push(fill);
   };
 
-  const decorate = (element: Element, frame: Frame) => {
+  /** A decoration keeps its role only where the role says what the layout draws: a master component. */
+  const decorate = (element: Element, frame: Frame, keepRole = element.role === 'logo') => {
     const { role: _role, ...rest } = element;
-    const kept = { ...(element.role === 'logo' ? element : rest), frame } as Element;
+    const kept = { ...(keepRole ? element : rest), frame } as Element;
     if (placeholders.some((p) => covers(p.frame, frame))) buried.add(element.name ?? element.type);
     decorations.push(decorationOf(kept, id, counter));
   };
@@ -280,9 +282,20 @@ export function layoutFromSlide(
                 : undefined
             : undefined;
         place(role, frame, {}, fill);
+      } else if (role === 'slideNumber') {
+        // The slide's number is not something a deck fills in: the layout draws it, and the
+        // renderer writes in it the number of each slide (SLD-04). As a placeholder it gave a
+        // slide no element, and nothing drew the number at all.
+        if (element.type === 'text') {
+          decorate(element, frame, true);
+        } else {
+          say(
+            `data-role="slideNumber" is on a ${element.type} element, not on text, so the number of a slide cannot be written in it: it is drawn as it is on every slide. Put the role on the text that shows the number.`,
+          );
+          decorate(element, frame);
+        }
       } else {
-        // A chart, a table, a slide number: the frame is the placeholder, and what was drawn in
-        // it was an example.
+        // A chart, a table: the frame is the placeholder, and what was drawn in it was an example.
         place(role, frame, {});
       }
     }
