@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // The text inside a group, as in PowerPoint (ARR-01): the pointer over it shows the text's own
-// frame and the text cursor, a click goes straight into editing it, a drag from it still moves
-// the group, and a second click on a selected group picks the child under the pointer. On the
-// Stage's dev page, on the slide of cards.
+// frame and the text cursor, a click goes straight into editing it, from outside the group and
+// from inside it, a drag from it still moves what a press takes (the group, or the text box in a
+// group that was entered), and a second click on a selected group picks the child under the
+// pointer. On the Stage's dev page, on the slide of cards.
 
 interface Frame {
   x: number;
@@ -237,6 +238,77 @@ test('a click on the text of a shape inside a group edits it, at any depth; off 
   await page.mouse.click(panel.x + panel.width / 2, panel.y + 24 * scale);
   expect(await state(page)).toMatchObject({ selected: ['g_card'], editing: null });
   await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
+});
+
+test('inside the card a click on another of its texts edits that one, and a drag moves it alone', async ({
+  page,
+}) => {
+  const scale = await stageScale(page);
+  const title = await center(page, el('g_card_title'));
+  await page.mouse.click(title.x, title.y);
+  expect((await state(page)).editing).toBe('g_card_title');
+  await page.keyboard.press('Escape');
+  expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: null });
+  await expect(surface(page)).toHaveAttribute('data-entered', 'g_card');
+
+  // The Stage is inside the card now, and its texts are what they were from outside: the frame
+  // of the text and the text cursor, also over the text box that is selected.
+  const chip = await center(page, el('g_card_chip'));
+  await page.mouse.move(chip.x, chip.y);
+  await expect(surface(page).locator('[data-outline="g_card_chip"]')).toBeVisible();
+  await expect(surface(page)).toHaveCSS('cursor', 'text');
+  await page.mouse.move(title.x, title.y);
+  await expect(surface(page)).toHaveCSS('cursor', 'text');
+
+  // A click on the other text edits it, with the caret where the click was.
+  await page.mouse.click(chip.x, chip.y);
+  expect(await state(page)).toMatchObject({ selected: ['g_card_chip'], editing: 'g_card_chip' });
+  await expect(editor(page)).toBeFocused();
+  await page.keyboard.type('X');
+  expect(await textOf(page, 'g_card_chip')).toMatch(/^C\w*X\w*p$/);
+
+  // From one text straight into the next, and into the text box that is the selection.
+  const frame = await box(page, el('g_card_title'));
+  await page.mouse.click(frame.x + 2, frame.y + 26 * scale);
+  expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: 'g_card_title' });
+  await page.keyboard.type('Z');
+  expect(await textOf(page, 'g_card_title')).toBe('ZCard title');
+  await page.keyboard.press('Escape');
+  expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: null });
+  await page.mouse.click(title.x, title.y);
+  expect((await state(page)).editing).toBe('g_card_title');
+  await page.keyboard.press('Escape');
+
+  // A drag from the text of the chip moves the chip, and nothing else of the card.
+  const card = (await element(page, 'g_card'))!;
+  const { steps } = await state(page);
+  const others = (group: Model) => group.children!.filter((c) => c.id !== 'g_card_chip');
+  const chipOf = (group: Model) => group.children!.find((c) => c.id === 'g_card_chip')!;
+  await drag(page, chip, { x: 20 * scale, y: 70 * scale });
+  const after = (await element(page, 'g_card'))!;
+  expect(Math.abs(chipOf(after).frame.x - (chipOf(card).frame.x + 20))).toBeLessThanOrEqual(1);
+  expect(Math.abs(chipOf(after).frame.y - (chipOf(card).frame.y + 70))).toBeLessThanOrEqual(1);
+  expect(after.frame).toEqual(card.frame);
+  expect(others(after)).toEqual(others(card));
+  expect(await state(page)).toMatchObject({
+    selected: ['g_card_chip'],
+    editing: null,
+    steps: steps + 1,
+  });
+  await expect(editor(page)).toHaveCount(0);
+
+  // A text box is still taken as an object: by a Shift-click, and off the text of a shape.
+  await page.keyboard.down('Shift');
+  await page.mouse.click(title.x, title.y);
+  await page.keyboard.up('Shift');
+  expect(await state(page)).toMatchObject({
+    selected: ['g_card_chip', 'g_card_title'],
+    editing: null,
+  });
+  const panel = await box(page, el('g_card_panel'));
+  await page.mouse.click(panel.x + panel.width / 2, panel.y + 24 * scale);
+  expect(await state(page)).toMatchObject({ selected: ['g_card_panel'], editing: null });
+  await expect(surface(page)).toHaveAttribute('data-entered', 'g_card');
 });
 
 test('a drag from the text moves the whole group, and edits nothing', async ({ page }) => {

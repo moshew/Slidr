@@ -166,12 +166,13 @@ test('a click picks the group; a double-click goes in; Esc and a click outside c
   // The child has its own handles now.
   await expect(surface(page).locator('[data-handle]')).toHaveCount(9);
 
-  // Inside, a click picks the children, also the one that fills the group.
+  // Inside, a click picks the children, also the one that fills the group. On a text it goes
+  // on into editing it, as it does from outside the group.
   const text = await center(page, el('g_plain_text'));
   await page.mouse.click(text.x, text.y);
-  expect((await state(page)).selected).toEqual(['g_plain_text']);
+  expect(await state(page)).toMatchObject({ selected: ['g_plain_text'], editing: 'g_plain_text' });
   await page.mouse.click(dot.x + 20, dot.y + 75);
-  expect((await state(page)).selected).toEqual(['g_plain_card']);
+  expect(await state(page)).toMatchObject({ selected: ['g_plain_card'], editing: null });
   await page.keyboard.press('Control+a');
   expect((await state(page)).selected).toHaveLength(4);
 
