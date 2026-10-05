@@ -167,7 +167,7 @@ function CardBody({
   }
   if (card.slide && width > 0) {
     return (
-      <div className="overflow-hidden rounded-small">
+      <div aria-hidden className="overflow-hidden rounded-small">
         <ScaledSlide
           deck={drawn}
           slide={card.slide}

@@ -44,6 +44,7 @@ import {
 import { threadIdOf, type Activity, type Attachment, type ChatThread } from '../agent/agentService';
 import type {
   AssistantEntry,
+  ChatEntry,
   ChatProblem,
   EntryAttachment,
   GatePart,
@@ -379,6 +380,8 @@ function UserMessage({ entry }: { entry: UserEntry }) {
   const words = entry.action ? actionLabel(t, entry.action) : entry.text;
   return (
     <div
+      // With a role the name is read: "You", before the words of the message.
+      role="article"
       aria-label={t('you')}
       data-testid="chat-user"
       data-action={entry.action?.id}
@@ -461,7 +464,8 @@ function TurnUsage({ entry }: { entry: AssistantEntry }) {
     <p
       data-testid="turn-usage"
       data-cost={typeof entry.costUsd === 'number' ? entry.costUsd : undefined}
-      className="text-xs text-ui-fg-subtle"
+      // Quiet, and still text: the colour of disabled controls is not for words (DSN-08).
+      className="text-xs text-ui-fg-muted"
     >
       {typeof entry.costUsd === 'number'
         ? t('usage.turn', { tokens, cost: formatCost(entry.costUsd), time })
@@ -775,6 +779,25 @@ function Suggestions({ focus, onPick }: { focus: Focus; onPick: (prompt: string)
 }
 
 /**
+ * What the agent said, once its turn has ended, for a screen reader (UI-06). The messages are
+ * not a live region themselves: words that arrive a few at a time would be read a few at a time,
+ * over the line that says what the agent is doing. So the closing words of a turn are said
+ * once, when it ends; a problem announces itself (`ProblemCard`).
+ */
+function closingWords(entries: readonly ChatEntry[], busy: boolean, stopped: string): string {
+  const last = entries.at(-1);
+  if (busy || last?.type !== 'assistant' || !last.outcome) return '';
+  // The last thing it wrote, after whatever it did.
+  const words = last.parts.reduce((text, part) => (part.type === 'text' ? part.text : text), '');
+  // The marks of Markdown are not words.
+  const plain = words
+    .replace(/[*_`#>]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return last.outcome === 'interrupted' ? [plain, stopped].filter(Boolean).join(' ') : plain;
+}
+
+/**
  * The chat of a session: the AI chat, a deck session, by default; the HTML import shows the
  * conversation of its own session with it, which is about a file and not about a selection.
  */
@@ -784,6 +807,7 @@ export function Chat({ scope = DECK }: { scope?: SessionScope }) {
   const focus = useFocus();
   const deck = scope.kind === 'deck';
   const state = useStore(thread.store);
+  const said = closingWords(state.entries, state.busy, t('turn.interrupted'));
   const { frame, onScroll, stick } = useStickToEnd(state);
   // What is being written belongs to what the chat is about, whichever of its conversations is
   // shown, and outlives this component (`drafts.ts`).
@@ -849,6 +873,10 @@ export function Chat({ scope = DECK }: { scope?: SessionScope }) {
       <div ref={frame} onScrollCapture={onScroll} className="flex min-h-0 flex-1 flex-col">
         <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
       </div>
+      {/* A conversation that is opened is not news: only what ends while it is open is said. */}
+      <p key={thread.id} role="status" className="sr-only" data-testid="chat-said">
+        {said && `${t('agent')}: ${said}`}
+      </p>
       {deck && <Gallery />}
       {/* A template the agent drafted is shown before anything is saved (THM-06). */}
       {deck && <TemplateDraftCard />}

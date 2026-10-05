@@ -39,6 +39,46 @@ for (const id of ['gallery-once', 'gallery-once-icon']) {
   });
 }
 
+test('a busy button takes no press, from the pointer or from the keyboard', async ({ page }) => {
+  await gallery(page);
+  const button = page.getByTestId('gallery-busy');
+  const presses = page.getByTestId('gallery-busy-presses');
+  await expect(button).toHaveAttribute('aria-busy', 'true');
+  await expect(presses).toHaveText('0');
+  // The pointer is kept off it.
+  expect(await button.evaluate((node) => getComputedStyle(node).pointerEvents)).toBe('none');
+  await button.click({ force: true });
+  // Enter and Space reach it, since it keeps its place in the order of Tab, and do nothing.
+  await button.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Space');
+  await expect(presses).toHaveText('0');
+  // It is not disabled: the keyboard stays on it, and it says it is busy.
+  expect(await focused(page)).toBe('gallery-busy');
+  await expect(button).toBeEnabled();
+});
+
+test('a busy button that opens a menu still opens it, both ways', async ({ page }) => {
+  await gallery(page);
+  const button = page.getByTestId('gallery-busy-menu');
+  await expect(button).toHaveAttribute('aria-busy', 'true');
+  // Its own menu: the gallery keeps another one open, to show what a menu looks like.
+  const menu = page.locator(`[role="menu"][aria-labelledby="${await button.getAttribute('id')}"]`);
+  await expect(menu).toHaveCount(0);
+  // With the pointer: what it opens is where the way to stop the work can be.
+  expect(await button.evaluate((node) => getComputedStyle(node).pointerEvents)).not.toBe('none');
+  await button.click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  // And with the keyboard, as before.
+  await button.focus();
+  await page.keyboard.press('Enter');
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+});
+
 test('an icon button that is a switch reads as pressed, and as not pressed', async ({ page }) => {
   await gallery(page);
   const pressed = page.getByTestId('gallery-pressed');

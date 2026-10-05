@@ -128,6 +128,7 @@ export function StageRegion() {
         <section
           aria-label={t('stage.label')}
           data-testid="stage"
+          data-pane="stage"
           className="relative min-h-0 flex-1 overflow-hidden bg-ui-canvas"
         >
           <div

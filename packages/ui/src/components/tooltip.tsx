@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import { Direction, Tooltip as RadixTooltip } from 'radix-ui';
 import { Kbd } from './kbd';
 import { usePortalContainer } from './provider';
@@ -37,10 +37,23 @@ export function Tooltip({
 }: TooltipProps) {
   const physical = usePhysicalSide(side);
   const container = usePortalContainer();
+  /*
+   * A tooltip that its host holds open, without hearing what the tooltip asks for, was closed by
+   * nothing: Esc asked it to close, it stayed, and being the topmost layer it took every Esc
+   * after that as well. A popover whose focused control had such a tooltip could not be left
+   * from the keyboard at all. So a request to close is always granted: the tooltip stays closed
+   * until its host has said "closed" and then "open" again.
+   */
+  const held = open === true && !onOpenChange;
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed && !held) setDismissed(false);
   return (
     <RadixTooltip.Root
-      {...(open === undefined ? {} : { open })}
-      {...(onOpenChange ? { onOpenChange } : {})}
+      {...(open === undefined ? {} : { open: open && !(held && dismissed) })}
+      onOpenChange={(next) => {
+        if (held && !next) setDismissed(true);
+        onOpenChange?.(next);
+      }}
     >
       <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
       <RadixTooltip.Portal container={container}>

@@ -121,6 +121,7 @@ function RowA() {
       role="toolbar"
       aria-label={t('panels.tools')}
       data-testid="top-tools-a"
+      data-pane="tools"
       className="flex h-toolbar-a items-center gap-4 border-b border-ui-line px-3"
     >
       <FileMenu />
@@ -574,6 +575,7 @@ function RowB() {
       role="toolbar"
       aria-label={t('tools.contextTools')}
       data-testid="top-tools-b"
+      data-pane="context"
       data-selection={kind}
       // The groups are 12px apart: at 16 the row of a text box, the fullest one, did not hold the
       // tools of all the areas at 1920 or at 1366. In a row as narrow as the one of 1366 they are

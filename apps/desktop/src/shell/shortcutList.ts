@@ -82,6 +82,13 @@ const handled: readonly HandledRow[] = [
   { id: 'arrange.moveFar', section: 'arrange', label: 'keys.moveFar', keys: ['Shift+{arrows}'] },
   { id: 'arrange.resize', section: 'arrange', label: 'keys.resize', keys: ['Ctrl+{arrows}'] },
   { id: 'arrange.rotate', section: 'arrange', label: 'keys.rotate', keys: ['Alt+←', 'Alt+→'] },
+  // Among the points of a line, and on a handle of a crop, the arrows are that part's.
+  {
+    id: 'arrange.part',
+    section: 'arrange',
+    label: 'keys.movePart',
+    keys: ['{arrows}'],
+  },
   { id: 'arrange.enter', section: 'arrange', label: 'keys.enterGroup', keys: ['Enter'] },
   { id: 'arrange.leave', section: 'arrange', label: 'keys.leaveGroup', keys: ['Esc'] },
   { id: 'arrange.axis', section: 'arrange', label: 'keys.dragAxis', keys: ['Shift+{drag}'] },
@@ -92,6 +99,12 @@ const handled: readonly HandledRow[] = [
   { id: 'table.type', section: 'table', label: 'keys.typeCell', keys: ['Enter', 'F2'] },
   { id: 'table.move', section: 'table', label: 'keys.moveCell', keys: ['{arrows}'] },
   { id: 'table.extend', section: 'table', label: 'keys.extendCells', keys: ['Shift+{arrows}'] },
+  {
+    id: 'table.rule',
+    section: 'table',
+    label: 'keys.cellRule',
+    keys: ['Ctrl+{arrows}'],
+  },
   { id: 'table.clear', section: 'table', label: 'keys.clearCells', keys: ['Del'] },
   { id: 'table.leave', section: 'table', label: 'keys.leaveTable', keys: ['Esc'] },
 

@@ -1,6 +1,7 @@
 // The Slidr design system (SPEC 4.0): the tokens live in `theme.css`; these are the components.
 // Every app surface is built from them (PLAN 1.2). See docs/adr/ADR-008-design-system-and-shell.md.
 export { cx } from './cx';
+export { keyboardInUse, rememberKeyboard, useKeyboardInUse } from './keyboard';
 export {
   UiProvider,
   usePortalContainer,

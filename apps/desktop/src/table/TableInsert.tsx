@@ -52,29 +52,33 @@ export function TableInsert({ close }: ActionPopoverProps) {
         onKeyDown={onKeyDown}
         onPointerLeave={() => setSize({ rows: 0, cols: 0 })}
       >
-        {rows.map((row) =>
-          cols.map((col) => (
-            <button
-              key={`${row}-${col}`}
-              type="button"
-              role="gridcell"
-              data-rows={row}
-              data-cols={col}
-              aria-label={t('insert.size', { rows: row, cols: col })}
-              // One stop for Tab; the arrows move inside the grid.
-              tabIndex={row === Math.max(size.rows, 1) && col === Math.max(size.cols, 1) ? 0 : -1}
-              className={cx(
-                'size-5 cursor-default rounded-small border transition-colors',
-                row <= size.rows && col <= size.cols
-                  ? 'border-ui-accent bg-ui-accent-soft'
-                  : 'border-ui-line-strong bg-ui-field',
-              )}
-              onPointerEnter={() => setSize({ rows: row, cols: col })}
-              onFocus={() => setSize({ rows: row, cols: col })}
-              onClick={() => pick(row, col)}
-            />
-          )),
-        )}
+        {rows.map((row) => (
+          // A grid is made of rows to a screen reader: the cells of a row are in one, which
+          // takes no box of its own, so the eight columns are still the grid's.
+          <div key={row} role="row" className="contents">
+            {cols.map((col) => (
+              <button
+                key={col}
+                type="button"
+                role="gridcell"
+                data-rows={row}
+                data-cols={col}
+                aria-label={t('insert.size', { rows: row, cols: col })}
+                // One stop for Tab; the arrows move inside the grid.
+                tabIndex={row === Math.max(size.rows, 1) && col === Math.max(size.cols, 1) ? 0 : -1}
+                className={cx(
+                  'size-5 cursor-default rounded-small border transition-colors',
+                  row <= size.rows && col <= size.cols
+                    ? 'border-ui-accent bg-ui-accent-soft'
+                    : 'border-ui-line-strong bg-ui-field',
+                )}
+                onPointerEnter={() => setSize({ rows: row, cols: col })}
+                onFocus={() => setSize({ rows: row, cols: col })}
+                onClick={() => pick(row, col)}
+              />
+            ))}
+          </div>
+        ))}
       </div>
       <span data-testid="table-insert-size" className="text-xs text-ui-fg-muted">
         {size.rows ? t('insert.size', size) : t('insert.hint')}

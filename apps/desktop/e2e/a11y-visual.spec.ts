@@ -18,9 +18,8 @@ const combinations = (['he', 'en'] as const).flatMap((lang) =>
 
 /**
  * Brings the keyboard to the Stage the way a person does, with Tab from the tool before it, and
- * not with `focus()` from the test: the Stage shows its ring for a keyboard that arrived by a
- * key. (Focused by a script after a press of the pointer it shows none, also once keys follow;
- * that gap is in the track's report.)
+ * not with `focus()` from the test: the Stage shows its ring while the keyboard is what the user
+ * works with, which is from a key pressed until the next press of the pointer.
  */
 async function tabToStage(page: Page) {
   await page.getByTestId('top-tools-b').getByRole('button').last().focus();
@@ -87,5 +86,85 @@ for (const { lang, theme } of combinations) {
       'true',
     );
     await shoot(page, `crop-handle-${tag}`);
+  });
+}
+
+for (const { lang, theme } of combinations) {
+  test(`the Filmstrip: its ring, the walk and the marks of a slide, ${lang}-${theme}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang, theme });
+    await addBoxes(page, THREE);
+    await page.evaluate(() => {
+      const { bus, selection } = window.slidr!;
+      const first = selection.getState().currentSlideId!;
+      const step = (id: string, elementId: string) => ({
+        id,
+        elementId,
+        trigger: 'onClick' as const,
+        category: 'entrance' as const,
+        preset: 'fade',
+        duration: 400,
+        delay: 0,
+        easing: 'ease',
+      });
+      bus.batch([
+        ...[2, 3, 4].map((n) => ({
+          type: 'slide.add' as const,
+          slide: { id: `s_${n}`, name: `Slide ${n}`, elements: [], timeline: [] },
+        })),
+        {
+          type: 'slide.update',
+          slideId: first,
+          patch: {
+            transition: { type: 'fade', duration: 400, easing: 'ease', advance: { onClick: true } },
+          },
+        },
+        {
+          type: 'slide.setTimeline',
+          slideId: first,
+          timeline: [step('a_1', 'e_a'), step('a_2', 'e_b')],
+        },
+        { type: 'slide.update', slideId: 's_3', patch: { hidden: true } },
+      ] as never);
+      selection.getState().setCurrentSlide(first);
+    });
+    // By Tab from the Stage, so the strip shows its ring; then the walk goes on two slides.
+    await tabToStage(page);
+    await page.keyboard.press('F6');
+    await expect(page.getByTestId('filmstrip').getByRole('listbox')).toBeFocused();
+    await page.keyboard.press('Alt+ArrowDown');
+    await page.keyboard.press('Alt+ArrowDown');
+    await expect(page.locator('[data-filmstrip] [data-walk]')).toHaveCount(1);
+    await page.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    await page
+      .getByTestId('filmstrip')
+      .screenshot({ path: `${DIR}/filmstrip-${lang}-${theme}.png` });
+  });
+}
+
+for (const { lang, theme } of combinations) {
+  test(`the panel of a tab with the keyboard on it, and the Stage after a press and a key, ${lang}-${theme}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang, theme });
+    await addBoxes(page, THREE);
+    // The panel of a tab is a stop of Tab: it draws a ring inside its edge.
+    const open = page.locator('[data-testid="activity-bar"] button[data-panel="ai"]');
+    if ((await open.getAttribute('aria-pressed')) !== 'true') await open.click();
+    const panel = page.getByTestId('tool-panel');
+    await panel.getByRole('tab').first().focus();
+    await page.keyboard.press('Tab');
+    await expect(panel.getByRole('tabpanel')).toBeFocused();
+    await panel.screenshot({ path: `${DIR}/tabpanel-ring-${lang}-${theme}.png` });
+
+    // The Stage, pressed with the pointer and then worked with a key: the ring comes with the key.
+    const box = (await surface(page).locator('[data-element-id="e_b"]').boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.keyboard.press('ArrowRight');
+    await expect(surface(page)).toBeFocused();
+    await shoot(page, `stage-ring-after-press-${lang}-${theme}`);
   });
 }

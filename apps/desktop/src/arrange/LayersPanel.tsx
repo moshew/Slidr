@@ -45,6 +45,34 @@ const typeIcons: Record<Element['type'], LucideIcon> = {
   html: CodeXml,
 };
 
+/**
+ * The place of every row among the rows of its own group, and how many they are: the rows are
+ * one flat list in the document, so a screen reader cannot count them itself ("2 of 5").
+ */
+function places(rows: readonly LayerRow[]): { at: number; of: number }[] {
+  const out = rows.map(() => ({ at: 1, of: 1 }));
+  const groups: number[][] = [];
+  /** The group that is being listed at each depth. */
+  const open: number[][] = [];
+  rows.forEach((row, index) => {
+    // A row that is less deep than the one before it ends the groups under that one.
+    open.length = Math.min(open.length, row.depth + 1);
+    let group = open[row.depth];
+    if (!group) {
+      group = [];
+      open[row.depth] = group;
+      groups.push(group);
+    }
+    group.push(index);
+  });
+  for (const group of groups) {
+    group.forEach((index, n) => {
+      out[index] = { at: n + 1, of: group.length };
+    });
+  }
+  return out;
+}
+
 /** The indent of a row by its depth in the tree; deeper groups share the last step. */
 const indents = ['ps-2', 'ps-7', 'ps-12', 'ps-16'] as const;
 
@@ -55,6 +83,7 @@ export function LayersPanel() {
   const selected = useSelection((s) => s.selectedElementIds);
   const slide = useDeck((s) => (slideId ? findSlide(s.deck, slideId) : undefined));
   const rows = useMemo(() => (slide ? layerRows(slide.elements) : []), [slide]);
+  const placed = useMemo(() => places(rows), [rows]);
   /** Where a Shift+click range starts: the row picked last without Shift. */
   const anchor = useRef<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -126,10 +155,11 @@ export function LayersPanel() {
       data-testid="layers"
       className="flex flex-col gap-0.5 px-2 pb-3"
     >
-      {rows.map((row) => (
+      {rows.map((row, index) => (
         <Row
           key={row.element.id}
           row={row}
+          place={placed[index] ?? { at: 1, of: 1 }}
           selected={selected.includes(row.element.id)}
           renaming={renaming === row.element.id}
           onPick={(event) => pick(row.element.id, event)}
@@ -149,6 +179,7 @@ export function LayersPanel() {
 
 function Row({
   row,
+  place,
   selected,
   renaming,
   onPick,
@@ -159,6 +190,8 @@ function Row({
   onHide,
 }: {
   row: LayerRow;
+  /** Its place among the rows of its group, counted from one, and how many they are. */
+  place: { at: number; of: number };
   selected: boolean;
   renaming: boolean;
   onPick: (event: MouseEvent) => void;
@@ -170,12 +203,22 @@ function Row({
   onHide: (hidden: boolean) => void;
 }) {
   const { t } = useTranslation('arrange');
+  const { t: said } = useTranslation('a11y');
   const { element, depth, hiddenByGroup, lockedByGroup } = row;
   // A child of a locked or hidden group is shown as locked or hidden, and only the group can
   // change that.
   const locked = Boolean(element.locked) || lockedByGroup;
   const hidden = Boolean(element.hidden) || hiddenByGroup;
-  const name = element.name ?? layerSnippet(element) ?? t(`type.${element.type}`);
+  const kind = t(`type.${element.type}`);
+  const name = element.name ?? layerSnippet(element) ?? kind;
+  // What the icon and the two toggles show, for a screen reader: the kind of the object (unless
+  // that is its name already), and that it is locked or hidden.
+  const states = [
+    name === kind ? null : kind,
+    locked ? said('layers.locked') : null,
+    hidden ? said('layers.hidden') : null,
+  ].filter(Boolean);
+  const statesId = `layer-says-${element.id}`;
   /** A toggle is quiet until the row is pointed at, unless it is on: then it says so always. */
   const quiet = 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100';
 
@@ -185,6 +228,9 @@ function Row({
       aria-level={depth + 1}
       aria-selected={selected}
       aria-label={name}
+      aria-setsize={place.of}
+      aria-posinset={place.at}
+      aria-describedby={states.length > 0 ? statesId : undefined}
       tabIndex={0}
       data-layer={element.id}
       data-locked={element.locked || undefined}
@@ -202,6 +248,11 @@ function Row({
         icon={typeIcons[element.type]}
         className={selected ? 'text-ui-accent-fg' : 'text-ui-fg-muted'}
       />
+      {states.length > 0 && (
+        <span id={statesId} className="sr-only">
+          {states.join(', ')}
+        </span>
+      )}
       {renaming ? (
         <NameField element={element} placeholder={name} onDone={onRenamed} />
       ) : (

@@ -120,7 +120,8 @@ function TemplateCard({ template, onPick }: { template: Template; onPick: () => 
       onClick={onPick}
       className="group flex min-w-0 cursor-default flex-col gap-2 rounded-panel border border-ui-line bg-ui-panel p-2 text-start transition-colors hover:border-ui-line-strong hover:bg-ui-hover"
     >
-      <span className="pointer-events-none block overflow-hidden rounded-inset">
+      {/* The cover is a picture, with every word of its slide: the card is named by its name. */}
+      <span aria-hidden className="pointer-events-none block overflow-hidden rounded-inset">
         <ScaledSlide
           deck={cover.deck}
           slide={cover.slide}

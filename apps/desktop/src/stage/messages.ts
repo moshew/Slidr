@@ -31,7 +31,7 @@ export const he = {
   // The keys of the keyboard pass, as the shortcut map names them.
   keys: {
     pan: 'הזזת התצוגה של שקף מוגדל',
-    walk: 'מעבר לאובייקט הבא או הקודם בלי לבחור בו',
+    walk: 'מעבר לאובייקט הבא או הקודם, וב-Filmstrip לשקף, בלי לבחור בו',
     toggle: 'הוספה לבחירה או הסרה ממנה',
     points: 'כניסה לנקודות של קו, ויציאה מהן',
     part: 'הנקודה הבאה או הקודמת של קו; ידית החיתוך הבאה או הקודמת',
@@ -101,7 +101,7 @@ export const en = {
   },
   keys: {
     pan: 'Move the view of a zoomed slide',
-    walk: 'Go to the next or the previous object without selecting it',
+    walk: 'Go to the next or the previous object, or slide in the Filmstrip, without selecting it',
     toggle: 'Add to the selection, or take out of it',
     points: 'Into the points of a line, and out of them',
     part: 'The next or the previous point of a line; the next or the previous crop handle',

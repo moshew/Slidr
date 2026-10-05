@@ -14,6 +14,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -83,11 +84,9 @@ export const ariachTheme: Theme = {
   radius: 40,
   shadow: { x: 0, y: 10, blur: 30, color: { value: '#111114', alpha: 0.06 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'text' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-  ],
+  // Of the grounds the poster slides stand on, only white carries a placeholder: its text is
+  // ink and ultramarine, and is lost on a field of either (see `SURFACE` in the kit).
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

@@ -53,7 +53,9 @@ function Choices({ deck, slide }: { deck: Deck; slide: Slide }) {
               }
               className="flex min-w-0 cursor-default flex-col gap-1 text-start"
             >
+              {/* A picture, with every word of the slide: the choice is named by its layout. */}
               <span
+                aria-hidden
                 className={cx(
                   'overflow-hidden rounded-inset border transition-colors',
                   current

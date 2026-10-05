@@ -54,11 +54,15 @@ export function Controls({
         tooltipSide="top"
         onClick={onPrevious}
       />
+      {/* Said when the slide changes: "Slide 3 of 12", not the two numbers. */}
       <span
-        aria-label={t('counter', { n: slide, total })}
+        role="status"
         className="min-w-12 px-1 text-center text-xs text-ui-fg-muted tabular-nums"
       >
-        {slide} / {total}
+        <span className="sr-only">{t('counter', { n: slide, total })}</span>
+        <span aria-hidden>
+          {slide} / {total}
+        </span>
       </span>
       <IconButton
         icon={ChevronRight}

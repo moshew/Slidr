@@ -8,9 +8,10 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'soft' | 'danger
 export type ButtonSize = 'sm' | 'md';
 
 // A disabled button looks the same whether the browser disables it (`disabled`) or it keeps the
-// keyboard until the focus leaves (`aria-disabled`, see `useKeepFocus`).
+// keyboard until the focus leaves (`aria-disabled`, see `useKeepFocus`). A busy button takes no
+// pointer, unless it opens something (see `opens`).
 const base =
-  'inline-flex shrink-0 cursor-default items-center justify-center gap-1.5 whitespace-nowrap rounded-control font-medium select-none transition-colors disabled:pointer-events-none aria-disabled:pointer-events-none aria-busy:pointer-events-none';
+  'inline-flex shrink-0 cursor-default items-center justify-center gap-1.5 whitespace-nowrap rounded-control font-medium select-none transition-colors disabled:pointer-events-none aria-disabled:pointer-events-none [&[aria-busy=true]:not([aria-haspopup])]:pointer-events-none';
 
 const variants: Record<ButtonVariant, string> = {
   primary:
@@ -65,6 +66,18 @@ function useKeepFocus(
 
 const swallow = (event: MouseEvent<HTMLButtonElement>) => event.preventDefault();
 
+/**
+ * What a busy button allows. It takes no press, whichever way the press comes: the pointer was
+ * always kept off it, and Enter or Space pressed it all the same, so the work it was waiting for
+ * could be started a second time from the keyboard alone.
+ *
+ * The one exception is a button that opens a menu or a popover (`aria-haspopup`, which a trigger
+ * of this library sets). What it opens is where a way to stop the work can be, so it stays open
+ * to the pointer as it already was to the keyboard, and its menu says what can be done meanwhile.
+ */
+const opens = (props: { 'aria-haspopup'?: unknown }) =>
+  props['aria-haspopup'] !== undefined && props['aria-haspopup'] !== false;
+
 const sizes: Record<ButtonSize, string> = {
   sm: 'h-control-sm px-2.5 text-sm',
   md: 'h-control px-3 text-sm',
@@ -77,7 +90,10 @@ export interface ButtonProps extends ComponentPropsWithRef<'button'> {
   icon?: LucideIcon;
   /** Trailing icon, e.g. a chevron on a menu button. */
   iconEnd?: LucideIcon;
-  /** Busy: shows a spinner in place of the leading icon and ignores clicks. */
+  /**
+   * Busy: shows a spinner in place of the leading icon and takes no press, from the pointer or
+   * from the keyboard. A button that opens a menu or a popover still opens it.
+   */
   loading?: boolean;
 }
 
@@ -104,7 +120,7 @@ export function Button({
       className={cx(base, variants[variant], sizes[size], className)}
       {...props}
       {...keep.props}
-      onClick={keep.holding ? swallow : onClick}
+      onClick={keep.holding || (loading && !opens(props)) ? swallow : onClick}
     >
       {loading ? <Spinner /> : icon && <Icon icon={icon} />}
       {children}
@@ -161,7 +177,7 @@ export function IconButton({
       )}
       {...props}
       {...keep.props}
-      onClick={keep.holding ? swallow : onClick}
+      onClick={keep.holding || (loading && !opens(props)) ? swallow : onClick}
     >
       {loading ? <Spinner /> : <Icon icon={icon} mirror={mirror} />}
     </button>

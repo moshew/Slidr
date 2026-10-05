@@ -226,7 +226,9 @@ export function EditItems(_: ContextToolProps) {
       return edit(t('stage:menu.editCells'), Table2, () => enterTable(selection, single.id));
     case 'line':
       // Its points: Tab goes from one to the next, and the arrows move it (UI-06).
-      return edit(t('stage:menu.editPoints'), Spline, () => stageCommand({ type: 'points' }));
+      return edit(t('stage:menu.editPoints'), Spline, () =>
+        stageCommand({ type: 'points', fromMenu: true }),
+      );
     case 'chart':
       return (
         <ContextMenuItem icon={Table2} onSelect={() => openData(single.id)}>
