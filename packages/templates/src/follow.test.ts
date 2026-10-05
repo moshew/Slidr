@@ -95,6 +95,45 @@ describe('applyTemplate: what a slide holds of the theme as a copy', () => {
     });
   });
 
+  it('hands the colours of an accent to the theme as it does the fill of its shape', () => {
+    const band = `linear-gradient(${PAPER.secondary}, ${PAPER.accent})`;
+    const deck = freeDeck([
+      // A card as the conversion makes one: a group, the box first, its coloured side a fill.
+      createElement.group({
+        id: 'e_card',
+        frame: box(96, 300, 500, 300),
+        children: [
+          createElement.shape({
+            id: 'e_box',
+            frame: box(0, 0, 500, 300),
+            accent: { side: 'right', size: 6, fill: { kind: 'css', value: band } },
+          }),
+        ],
+      }),
+      // A side in a colour of the card's own is no copy of the theme, and a token follows alone.
+      createElement.shape({
+        id: 'e_own',
+        frame: box(700, 300, 500, 300),
+        accent: { side: 'top', size: 4, fill: { kind: 'css', value: 'rgb(10, 200, 30)' } },
+      }),
+      createElement.shape({
+        id: 'e_token',
+        frame: box(1300, 300, 500, 300),
+        accent: { side: 'top', size: 4, fill: { kind: 'solid', color: { token: 'primary' } } },
+      }),
+    ]);
+    const bus = switched(deck);
+    expect(shape(bus.deck, 'e_box').accent).toEqual({
+      side: 'right',
+      size: 6,
+      fill: { kind: 'css', value: 'linear-gradient(var(--color-secondary), var(--color-accent))' },
+    });
+    expect(shape(bus.deck, 'e_own')).toEqual(shape(deck, 'e_own'));
+    expect(shape(bus.deck, 'e_token')).toEqual(shape(deck, 'e_token'));
+    bus.undo();
+    expect(bus.deck).toEqual(deck);
+  });
+
   it("gives a card with the old theme's corners and shadow the new theme's", () => {
     const deck = freeDeck([
       createElement.shape({

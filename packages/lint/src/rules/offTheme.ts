@@ -7,6 +7,7 @@ import {
   type ColorToken,
   type Command,
   type Element,
+  type Fill,
   type Theme,
 } from '@slidr/model';
 import { hex } from '../color';
@@ -114,8 +115,9 @@ function stray(theme: Theme, color: Color | undefined): { hex: string; to: Color
  * The colours an element is drawn in that the theme does not hold, and the commands that turn
  * each into the token nearest to it: the text's colour and highlight, a flat fill, a stroke,
  * and the colours inside a fill kept as CSS (a glow the model has no shape for), which hold no
- * token and so are the first to be left behind by a template. The model's own gradients,
- * pictures, tables, charts and free HTML are left alone.
+ * token and so are the first to be left behind by a template. The fill of a shape's accent is
+ * read as the fill of the shape is. The model's own gradients, pictures, tables, charts and free
+ * HTML are left alone.
  */
 function strays(
   ctx: SlideContext,
@@ -143,8 +145,14 @@ function strays(
     });
     if (content) fix.push(setText(ctx.slide.id, element.id, content));
   }
-  if (element.type === 'shape' && element.fill.kind === 'css') {
-    const value = mapCssColors(element.fill.value, ({ r, g, b, a }) => {
+  /** A fill with its colours turned to the theme's; undefined when it holds none to turn. */
+  const turnFill = (fill: Fill): Fill | undefined => {
+    if (fill.kind === 'solid') {
+      const color = turn(fill.color);
+      return color && { kind: 'solid', color };
+    }
+    if (fill.kind !== 'css') return undefined;
+    const value = mapCssColors(fill.value, ({ r, g, b, a }) => {
       const rgb: Rgb = [Math.round(r), Math.round(g), Math.round(b)];
       // What is not drawn (the clear end of a glow) is no colour of anything.
       const token = a > 0 ? strayToken(theme, rgb) : undefined;
@@ -152,18 +160,20 @@ function strays(
       found.set(hex(rgb), { token, ...(a < 1 ? { alpha: a } : {}) });
       return themeColorCss(token, a);
     });
-    if (value !== element.fill.value) {
-      fix.push(updateElement(ctx.slide.id, element.id, { fill: { kind: 'css', value } }));
-    }
-  }
+    return value === fill.value ? undefined : { kind: 'css', value };
+  };
   if (element.type === 'shape') {
-    const fill = element.fill.kind === 'solid' ? turn(element.fill.color) : undefined;
+    const { accent } = element;
+    const fill = turnFill(element.fill);
     const stroke = element.stroke ? turn(element.stroke.color) : undefined;
-    if (fill || stroke) {
+    // The coloured side of a card is a fill of its own: it is read, and fixed, as the card's is.
+    const side = accent && turnFill(accent.fill);
+    if (fill || stroke || side) {
       fix.push(
         updateElement(ctx.slide.id, element.id, {
-          ...(fill ? { fill: { kind: 'solid', color: fill } } : {}),
+          ...(fill ? { fill } : {}),
           ...(stroke && element.stroke ? { stroke: { ...element.stroke, color: stroke } } : {}),
+          ...(side && accent ? { accent: { ...accent, fill: side } } : {}),
         }),
       );
     }

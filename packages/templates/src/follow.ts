@@ -21,7 +21,8 @@ import { copyJson, equalJson } from './json';
  * when the element was made:
  *
  * - a colour inside a `css` fill: a glow written as `color-mix(var(--color-primary) ...)` is
- *   kept as the CSS the browser computed, with the colour as numbers (SPEC 5.9);
+ *   kept as the CSS the browser computed, with the colour as numbers (SPEC 5.9); a shape has
+ *   such a fill, and so have the accent along one side of it and the cell of a table;
  * - the corner radius (`var(--radius)` of a card becomes `effects.radius: 30`);
  * - the shadow (the shadow tool offers the theme's, and the element takes a copy).
  *
@@ -83,6 +84,10 @@ function themePatch(element: Element, from: Theme, to: Theme): Record<string, un
   if (element.type === 'shape') {
     const fill = linkFill(element.fill, from);
     if (fill !== element.fill) patch.fill = fill;
+    // The coloured side of a card is a fill of its own, and holds the theme the same way.
+    const { accent } = element;
+    const side = accent && linkFill(accent.fill, from);
+    if (accent && side !== accent.fill) patch.accent = { ...accent, fill: side };
   }
   if (element.type === 'table') {
     let changed = false;

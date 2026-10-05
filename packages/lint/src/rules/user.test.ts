@@ -7,6 +7,7 @@ import {
   type Element,
   type Frame,
   type Layout,
+  type ShapeElement,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { lintSlide } from '../lint';
@@ -208,6 +209,51 @@ describe("L11: fonts and colours that are not the template's", () => {
       ),
     );
     expect(check('L11', [shape!])).toEqual([]);
+  });
+
+  it('reads the coloured side of a card as it reads the fill of the card', () => {
+    // Two cards as the conversion makes them, each a group with its box first: one side in a
+    // flat colour, the other a gradient kept as CSS.
+    const boxed = (id: string, x: number, fill: NonNullable<ShapeElement['accent']>['fill']) =>
+      createElement.group({
+        id: `e_card_${id}`,
+        frame: { x, y: 300, w: 500, h: 300 },
+        children: [
+          createElement.shape({
+            id: `e_box_${id}`,
+            frame: { x: 0, y: 0, w: 500, h: 300 },
+            accent: { side: 'left', size: 6, fill, corners: 'follow' },
+          }),
+        ],
+      });
+    const elements = [
+      boxed('flat', 96, { kind: 'solid', color: { value: '#ff7a00', alpha: 0.8 } }),
+      boxed('band', 700, {
+        kind: 'css',
+        value: 'linear-gradient(rgb(157, 123, 255), rgba(0, 0, 0, 0))',
+      }),
+    ];
+    const [finding, ...rest] = check('L11', elements);
+    expect(rest).toEqual([]);
+    expect(finding?.elementIds).toEqual(['e_box_flat', 'e_box_band']);
+    expect(finding?.message).toMatch(/^2 colours here are not the template's: #ff7a00 \(nearest: /);
+    const after = fixed(elements, finding).elements;
+    const [flat, band] = after.map((card) => card.type === 'group' && card.children[0]);
+    // The side stays the side it was; only its colour is the theme's now.
+    expect(flat).toMatchObject({
+      accent: { side: 'left', size: 6, corners: 'follow', fill: { kind: 'solid' } },
+    });
+    expect(flat).toHaveProperty('accent.fill.color.token');
+    expect(flat).toHaveProperty('accent.fill.color.alpha', 0.8);
+    expect(band).toHaveProperty(
+      'accent.fill.value',
+      expect.stringMatching(/^linear-gradient\(var\(--color-\w+\), rgba\(0, 0, 0, 0\)\)$/),
+    );
+    expect(check('L11', after)).toEqual([]);
+    // A side in a token, like a fill in one, is the theme's already.
+    expect(
+      check('L11', [boxed('token', 96, { kind: 'solid', color: { token: 'accent' } })]),
+    ).toEqual([]);
   });
 
   it("accepts a CSS fill in the theme's own colours, in greys and in the theme's variables", () => {
