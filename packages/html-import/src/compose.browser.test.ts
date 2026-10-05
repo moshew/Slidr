@@ -128,6 +128,27 @@ describe('texts that follow one another', () => {
     expect(kinds(r.slide.elements)).toEqual(['text', 'shape', 'text']);
   });
 
+  it('stay the rows of a list when each has its own number beside it', async () => {
+    const row = (n: number, words: string) =>
+      `<div style="display:flex;align-items:center;gap:24px;margin-bottom:28px"><div style="flex:none;width:60px;height:60px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800">${n}</div><div style="font-size:34px;line-height:1.3">${words}</div></div>`;
+    const r = await convert(`<div style="${SLIDE}">
+      <div style="position:absolute;left:160px;top:200px;width:1400px">
+        ${row(1, 'The first question of three')}${row(2, 'The second, under it')}${row(3, 'And the third')}
+      </div>
+    </div>`);
+    // A number in its circle, then its text, three times: no text was joined to the next.
+    expect(kinds(r.slide.elements)).toEqual(['shape', 'text', 'shape', 'text', 'shape', 'text']);
+    // A badge beside a title does not keep the title from the lines under it.
+    const card = await convert(`<div style="${SLIDE}">
+      <div style="position:absolute;left:160px;top:200px;width:700px;display:flex;gap:20px;align-items:flex-start">
+        <div style="flex:none;width:56px;height:56px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800">1</div>
+        <div><div style="font-size:34px;font-weight:700;line-height:1.3">A title with a badge</div><div style="margin-top:8px;font-size:24px;line-height:1.5">And the two lines under it, which have nothing beside them, belong to the same text as the title does.</div></div>
+      </div>
+    </div>`);
+    expect(kinds(card.slide.elements)).toEqual(['shape', 'text']);
+    expect(texts(card.slide.elements)[0]!.content.paragraphs).toHaveLength(2);
+  });
+
   it('stay as the walk left them when the composition is not asked for', async () => {
     const html = `<div style="${SLIDE}">
       <h2 style="position:absolute;left:160px;top:140px;margin:0;font-size:56px;line-height:1.2">Two texts</h2>
