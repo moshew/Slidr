@@ -513,3 +513,108 @@ describe('a difference that sits in one place of a long text', () => {
     );
   });
 });
+
+describe('a part of a text keeps a look the model has no field for', () => {
+  const blue: Tone = (r, g, b) => b > 110 && r < 90;
+  const part = (style: string, size = 40) =>
+    `<p style="${PARA.replace('40px', `${size}px`)}">${ENGLISH.replace('break-even', `<span style="${style}">break-even</span>`)}</p>`;
+  /** The reason the engine gave for keeping the paragraph as it was written. */
+  const kept = (result: ConversionResult) => result.notes.find((note) => note.startsWith('Kept'));
+
+  for (const size of [40, 18]) {
+    it(`the colour of an underline, at ${size}px`, async () => {
+      const looked = await look(
+        part('text-decoration:underline;text-decoration-color:#e00000', size),
+        'en',
+        ['break-even'],
+      );
+      expectSameInk(looked, looked.source.found['break-even']!.box, red, 20);
+      expect(types(looked.result)).toEqual(['html']);
+      expect(kept(looked.result)).toMatch(/text the model cannot hold/);
+    });
+
+    it(`a line over a word, at ${size}px`, async () => {
+      const looked = await look(part('text-decoration:overline', size), 'en', ['break-even']);
+      const word = looked.source.found['break-even']!.box;
+      // The line runs along the top of the letters' box: a strip around that edge.
+      const strip = { x: word.x, y: word.y - 2, w: word.w, h: Math.round(size / 4) };
+      expectSameInk(looked, strip, dark, 20);
+      expect(types(looked.result)).toEqual(['html']);
+    });
+
+    it(`a fill colour of a word, at ${size}px, which is the colour of its run`, async () => {
+      const looked = await look(part('-webkit-text-fill-color:#e00000', size), 'en', [
+        'break-even',
+      ]);
+      expectSameInk(looked, looked.source.found['break-even']!.box, red, 100);
+      // Glyphs are painted in the fill colour, and a run has a colour: this one the model holds.
+      expect(types(looked.result)).toEqual(['text']);
+      const run = texts(looked.result)[0]!.content.paragraphs[0]!.runs.find(
+        (r) => r.text === 'break-even',
+      );
+      expect(run?.marks?.color).toEqual({ value: '#e00000' });
+    });
+  }
+
+  it('a word in another colour than the line under its sentence', async () => {
+    // The line is drawn in the colour of the box that asked for it, the sentence; an
+    // underline mark on the red run would draw it red.
+    const looked = await look(
+      `<p style="${PARA};text-decoration:underline">${ENGLISH.replace('break-even', '<span style="color:#e00000">break-even</span>')}</p>`,
+      'en',
+      ['break-even'],
+    );
+    const word = looked.source.found['break-even']!.box;
+    expectSameInk(looked, { x: word.x, y: word.y + word.h - 12, w: word.w, h: 12 }, dark, 100);
+    expect(types(looked.result)).toEqual(['html']);
+    expect(kept(looked.result)).toMatch(/text the model cannot hold/);
+  });
+
+  it('the colour of a first letter', async () => {
+    const looked = await look(
+      `<style>p{${PARA}} p::first-letter{color:#c00000}</style><p>${ENGLISH}</p>`,
+      'en',
+      ['Revenue'],
+    );
+    expectSameInk(looked, looked.source.found.Revenue!.box, red, 100);
+    expect(types(looked.result)).toEqual(['html']);
+  });
+
+  it('a first line in another weight', async () => {
+    const looked = await look(
+      `<style>p{${PARA}} p::first-line{font-weight:700;color:#0d47a1}</style><p>${ENGLISH}</p>`,
+      'en',
+      ['Revenue', 'stayed'],
+    );
+    expectSameInk(looked, looked.source.found.Revenue!.box, blue, 100);
+    expect(looked.converted.found.stayed!.box).toEqual(looked.source.found.stayed!.box);
+    expect(types(looked.result)).toEqual(['html']);
+  });
+
+  it('a first letter styled on the block around the paragraph, whose first text it is', async () => {
+    const looked = await look(
+      `<style>article::first-letter{color:#c00000} p{margin:0;font:400 40px/1.5 Arial;color:#111}</style>
+       <article style="position:absolute;left:160px;top:200px;width:1500px"><p>${ENGLISH}</p><p>A second paragraph, which no rule touches.</p></article>`,
+      'en',
+      ['Revenue'],
+    );
+    expectSameInk(looked, looked.source.found.Revenue!.box, red, 100);
+    // The paragraph alone cannot carry a rule of the block around it (a copy of it stands in
+    // an empty shell of that block, which has no first letter), so the guard widens to the
+    // block: the whole of it stays as written.
+    expect(types(looked.result)).toEqual(['html']);
+    expect(looked.result.guard.faithful).toBe(true);
+  });
+
+  it('stays editable when the parts only use what marks can say', async () => {
+    // The control: a colour, a weight, an underline of the text's own colour, a highlight.
+    const looked = await look(
+      `<p style="${PARA}">${ENGLISH.replace('break-even', '<span style="color:#e00000;font-weight:700;text-decoration:underline">break-even</span>').replace('four releases', '<mark style="background:#ffe082;color:inherit">four releases</mark>')}</p>`,
+      'en',
+      ['break-even'],
+    );
+    expect(types(looked.result)).toEqual(['text']);
+    expect(looked.result.editability).toBe(1);
+    expectSameInk(looked, looked.source.found['break-even']!.box, red, 100);
+  });
+});

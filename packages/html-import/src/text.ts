@@ -13,11 +13,13 @@ import {
   px,
   round,
   scalePx,
+  splitTopLevel,
 } from './css';
 import {
   composedChildNodes,
   composedParent,
   isElement,
+  isInside,
   isSvg,
   isText,
   linkAround,
@@ -71,7 +73,121 @@ const TEXT_PASSTHROUGH: readonly (readonly [string, readonly string[]])[] = [
   ['-webkit-font-smoothing', ['auto', '']],
   ['font-optical-sizing', ['auto']],
   ['text-underline-offset', ['auto']],
+  ['text-underline-position', ['auto']],
+  ['text-decoration-skip-ink', ['auto']],
+  ['text-emphasis-style', ['none']],
+  ['font-variant-east-asian', ['normal']],
+  ['font-variant-position', ['normal']],
+  ['font-variant-alternates', ['normal']],
+  ['font-size-adjust', ['none']],
 ];
+
+/** The lines of a `text-decoration-line` a run can say: the model has a mark for each. */
+const MARKED_LINES = new Set(['underline', 'line-through']);
+
+/**
+ * What a text decoration is that the model's two marks cannot say, if anything: a line they
+ * have no name for (an overline), or a line drawn in a style or a thickness of its own.
+ */
+function decorationProblem(cs: CSSStyleDeclaration): string | undefined {
+  const lines = cs.textDecorationLine.split(' ').filter((line) => line && line !== 'none');
+  if (lines.length === 0) return undefined;
+  if (lines.some((line) => !MARKED_LINES.has(line))) return 'a line the model has no mark for';
+  if (cs.textDecorationStyle !== 'solid' || cs.textDecorationThickness !== 'auto') {
+    return 'a styled text decoration';
+  }
+  return undefined;
+}
+
+/** The selectors of the rules that style a first letter or a first line, by tree of styles. */
+const firstPartSelectors = new WeakMap<Node, string[]>();
+const FIRST_PART = /::?first-(?:letter|line)\b/;
+
+function selectorsOfFirstParts(root: Document | ShadowRoot): string[] {
+  const known = firstPartSelectors.get(root);
+  if (known) return known;
+  const found: string[] = [];
+  const view = (root.ownerDocument ?? root).defaultView;
+  /** Whether a media condition holds in the window the source is shown in. */
+  const holds = (condition: string): boolean => {
+    try {
+      return view ? view.matchMedia(condition).matches : true;
+    } catch {
+      return true;
+    }
+  };
+  const visit = (rules: CSSRuleList) => {
+    for (const rule of Array.from(rules)) {
+      const kind = rule.constructor.name;
+      if (kind === 'CSSStyleRule') {
+        for (const selector of splitTopLevel((rule as CSSStyleRule).selectorText, ',')) {
+          if (FIRST_PART.test(selector)) found.push(selector.replace(FIRST_PART, '').trim() || '*');
+        }
+      }
+      // A rule for another window than this one styles nothing here.
+      if (kind === 'CSSMediaRule' && !holds((rule as CSSMediaRule).conditionText)) continue;
+      if ('cssRules' in rule) visit((rule as CSSGroupingRule).cssRules);
+    }
+  };
+  for (const sheet of [...Array.from(root.styleSheets), ...(root.adoptedStyleSheets ?? [])]) {
+    try {
+      visit(sheet.cssRules);
+    } catch {
+      // A sheet from another origin cannot be read.
+    }
+  }
+  firstPartSelectors.set(root, found);
+  return found;
+}
+
+const firstTexts = new WeakMap<Element, Text | null>();
+
+/** The first text an element shows, in the order of the tree. */
+function firstText(el: Element): Text | null {
+  const known = firstTexts.get(el);
+  if (known !== undefined) return known;
+  let found: Text | null = null;
+  for (const node of composedChildNodes(el)) {
+    if (isText(node)) {
+      if (node.data.trim() !== '') found = node;
+    } else if (isElement(node) && !neverRendered(node) && styleOf(node).display !== 'none') {
+      found = firstText(node);
+    }
+    if (found) break;
+  }
+  firstTexts.set(el, found);
+  return found;
+}
+
+/**
+ * Whether the page styles the first letter or the first line of the text apart
+ * (`::first-letter`, `::first-line`): a part of the text that is no node, so no run can stand
+ * for it, and that follows the text wherever its first line ends. The rule may sit on the
+ * block or on any block around it whose first text this is. Asked of the stylesheets, which
+ * say it for every property at once; most pages have no such rule, and nothing is looked at.
+ *
+ * @param text  the text in question: an element whose content it is, or a text node
+ */
+export function firstPartStyled(owner: Element, text: Element | Text): boolean {
+  const root = owner.getRootNode();
+  if (root.nodeType !== 9 && root.nodeType !== 11) return false;
+  const selectors = selectorsOfFirstParts(root as Document | ShadowRoot);
+  if (selectors.length === 0) return false;
+  for (let block: Element | undefined = owner; block; block = composedParent(block)) {
+    const first = firstText(block);
+    if (!first || (isText(text) ? first !== text : !isInside(first, text))) return false;
+    const styled = selectors.some((selector) => {
+      try {
+        return block.matches(selector);
+      } catch {
+        // A selector that cannot be asked is taken to match: html is the safe answer.
+        return true;
+      }
+    });
+    if (styled) return true;
+  }
+  return false;
+}
 
 /** What cannot be said per run and cannot be put on the box either. */
 function unsupportedText(cs: CSSStyleDeclaration, lossy = false): string | undefined {
@@ -305,6 +421,12 @@ interface RawRun {
   lineHeight: number | undefined;
 }
 
+/** What the walk over a block's parts carries down: marks, and whose colour a line is drawn in. */
+interface Carried extends Partial<RawRun> {
+  underlineColor?: string;
+  strikeColor?: string;
+}
+
 export interface TextBlock {
   paragraph: Paragraph;
   /** For the element's `css` field. */
@@ -376,9 +498,14 @@ export function readTextBlock(
   ctx: TextTheme,
 ): TextBlock | { unsupported: string } {
   const { theme, values } = ctx;
-  const unsupported = unsupportedText(cs, ctx.lossy);
+  const unsupported =
+    unsupportedText(cs, ctx.lossy) ?? (ctx.lossy ? undefined : decorationProblem(cs));
   if (unsupported) return { unsupported };
   const blockCss = passthrough(cs, scale);
+  // Text that shows its box's background through its glyphs is filled with nothing on purpose.
+  const clip = clippedBackground(cs, scale);
+  const clipped = Object.keys(clip).length > 0;
+  const blockFill = cs.getPropertyValue('-webkit-text-fill-color');
   const signature = JSON.stringify(blockCss);
   const pre = /^pre|break-spaces/.test(cs.whiteSpace) && cs.whiteSpace !== 'pre-line';
   const keepNewlines = pre || cs.whiteSpace === 'pre-line';
@@ -395,15 +522,23 @@ export function readTextBlock(
     text: string,
     style: CSSStyleDeclaration,
     from: { node: Element; pseudo?: string },
-    inherited: Partial<RawRun>,
+    inherited: Carried,
     br = false,
   ) => {
     const decoration = style.textDecorationLine;
     const line = lineHeightPx(style);
+    const look = lookOf(from.node, from.pseudo, style, scale, ctx);
+    // Glyphs are painted in the fill colour, which is the text colour unless something set it
+    // apart. A run has one colour, and it is the one its glyphs show.
+    const fill = style.getPropertyValue('-webkit-text-fill-color');
+    const painted = !clipped && fill && fill !== style.color ? fill : style.color;
+    if (painted !== style.color) {
+      look.color = ctx.color(painted, from.node, '-webkit-text-fill-color', from.pseudo);
+    }
     const base: RawRun = {
       text: style.textTransform === 'capitalize' ? capitalize(text) : text,
       br,
-      look: lookOf(from.node, from.pseudo, style, scale, ctx),
+      look,
       underline: inherited.underline || decoration.includes('underline'),
       strike: inherited.strike || decoration.includes('line-through'),
       lineHeight: line === undefined ? undefined : line * scale,
@@ -413,22 +548,34 @@ export function readTextBlock(
     };
     // The renderer draws a raised or lowered run at 65% of its size mark.
     if (base.script) base.look = { ...base.look, size: round(base.look.size / 0.65) };
+    // A line under or through text is drawn in the colour of the box that asked for it; a
+    // mark draws it in the colour of its own run. Where the two differ (a red word in an
+    // underlined sentence, an underline given a colour of its own), no mark says it.
+    if (!br && text.trim() !== '') {
+      const under = decoration.includes('underline')
+        ? style.textDecorationColor
+        : inherited.underlineColor;
+      const through = decoration.includes('line-through')
+        ? style.textDecorationColor
+        : inherited.strikeColor;
+      if (
+        (base.underline && under !== undefined && under !== painted) ||
+        (base.strike && through !== undefined && through !== painted)
+      ) {
+        problem = 'a text decoration in another colour than its text';
+      }
+    }
     raw.push(base);
   };
 
-  const pseudo = (node: Element, which: '::before' | '::after', inherited: Partial<RawRun>) => {
+  const pseudo = (node: Element, which: '::before' | '::after', inherited: Carried) => {
     if (pseudoKind(node, which) !== 'text') return;
     generated = true;
     const style = styleOf(node, which);
     push(pseudoText(style), style, { node, pseudo: which }, inherited);
   };
 
-  const walk = (
-    node: Element,
-    styled: Element,
-    style: CSSStyleDeclaration,
-    inherited: Partial<RawRun>,
-  ) => {
+  const walk = (node: Element, styled: Element, style: CSSStyleDeclaration, inherited: Carried) => {
     const from = { node: styled };
     if (node === styled) pseudo(node, '::before', inherited);
     for (const child of composedChildNodes(node)) {
@@ -451,21 +598,24 @@ export function readTextBlock(
       if (childStyle.opacity !== '1') problem = 'a translucent part of the text';
       // `direction` alone does nothing to an inline part; with `unicode-bidi` it does.
       if (childStyle.unicodeBidi !== 'normal' && child !== sole?.part) ownDirection = true;
-      if (JSON.stringify(passthrough(childStyle, scale)) !== signature) {
+      if (
+        JSON.stringify(passthrough(childStyle, scale)) !== signature ||
+        (clipped && childStyle.getPropertyValue('-webkit-text-fill-color') !== blockFill)
+      ) {
         problem = 'text styling the model has no field for, on a part of the text';
       }
       const decoration = childStyle.textDecorationLine;
-      if (
-        decoration !== 'none' &&
-        (childStyle.textDecorationStyle !== 'solid' ||
-          childStyle.textDecorationThickness !== 'auto')
-      ) {
-        problem = 'a styled text decoration';
-      }
-      const next: Partial<RawRun> = {
+      problem = decorationProblem(childStyle) ?? problem;
+      const next: Carried = {
         ...inherited,
         underline: inherited.underline || decoration.includes('underline'),
         strike: inherited.strike || decoration.includes('line-through'),
+        ...(decoration.includes('underline')
+          ? { underlineColor: childStyle.textDecorationColor }
+          : {}),
+        ...(decoration.includes('line-through')
+          ? { strikeColor: childStyle.textDecorationColor }
+          : {}),
       };
       if (alphaOf(childStyle.backgroundColor) > 0) {
         next.highlight = ctx.color(childStyle.backgroundColor, child, 'background-color');
@@ -486,6 +636,8 @@ export function readTextBlock(
   walk(el, owner, cs, {
     underline: decoration.includes('underline'),
     strike: decoration.includes('line-through'),
+    ...(decoration.includes('underline') ? { underlineColor: cs.textDecorationColor } : {}),
+    ...(decoration.includes('line-through') ? { strikeColor: cs.textDecorationColor } : {}),
     ...(link ? { link } : {}),
   });
   // A forced conversion keeps the text and loses what the part of it could not carry.
@@ -558,7 +710,7 @@ export function readTextBlock(
   };
   return {
     paragraph,
-    css: { ...blockCss, ...clippedBackground(cs, scale) },
+    css: { ...blockCss, ...clip },
     chars: visible.reduce((n, r) => n + r.text.length, 0),
     generated,
     ownDirection,

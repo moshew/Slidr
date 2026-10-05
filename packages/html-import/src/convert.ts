@@ -66,6 +66,7 @@ import {
 } from './measure';
 import { readTable } from './table';
 import {
+  firstPartStyled,
   hasAnyText,
   hasOwnText,
   isPureInline,
@@ -893,6 +894,8 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     if (lines.length === 0) return undefined;
     const marker = textNode ? undefined : readListMarker(el, cs, text);
     if (marker === 'unsupported') return 'unsupported';
+    // A first letter or first line the page styles apart is a part of the text no run stands for.
+    if (!text.lossy && firstPartStyled(el, source)) return 'unsupported';
     const effects = textNode
       ? { css: {}, transform: 'none' as const, rotation: 0 }
       : boxEffects(cs);

@@ -23,7 +23,14 @@ import {
   subtreeHidden,
   textLines,
 } from './measure';
-import { hasAnyText, isPureInline, lineHeightPx, readTextBlock, type TextTheme } from './text';
+import {
+  firstPartStyled,
+  hasAnyText,
+  isPureInline,
+  lineHeightPx,
+  readTextBlock,
+  type TextTheme,
+} from './text';
 
 export interface TableContext {
   deck: Deck;
@@ -168,6 +175,7 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
           : lineHeightPx(style) === undefined
             ? (first.bottom - first.top) * toSlide
             : undefined;
+      if (!text.lossy && firstPartStyled(block, block)) return false;
       const found = readTextBlock(block, block, style, kl, pitch, undefined, text);
       if ('unsupported' in found) return found.unsupported === 'no visible text';
       if (Object.keys(found.css).length > 0) return false;
