@@ -100,9 +100,11 @@ export function useThread(scope: SessionScope): ChatThread {
   // A scope may keep several conversations (CHT-U07): the panel shows the one chosen.
   const id = useStore(agent.shown, (shown) => shown[threadIdOf(scope)] ?? threadIdOf(scope));
   const thread = useConversation(scope, id);
-  // A deck that is opened again picks up at the conversation that was written in last.
+  // A deck that is opened again picks up at the conversation that was written in last: when
+  // the panel comes up, and when a document is opened under a panel that is up already.
+  const opened = useStore(sessions.opened);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => void agent.restore(scope), [agent, key]);
+  useEffect(() => void agent.restore(scope), [agent, key, opened]);
   useEffect(() => sessions.show(thread), [sessions, thread]);
   return thread;
 }
