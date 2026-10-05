@@ -1,9 +1,10 @@
 // Development helper: connects to the app the HTML import track runs from this working tree
-// (WebView2 CDP on port 9271) and hands back its pages. Not part of the app.
+// (WebView2 CDP on port 9271) and hands back its pages. Not part of the app. Another working
+// tree runs its app on ports of its own: SLIDR_CDP_PORT and SLIDR_APP_PORT say which.
 import { chromium } from '@playwright/test';
 
-export const CDP = 'http://localhost:9271';
-export const APP = 'http://localhost:1471';
+export const CDP = `http://localhost:${process.env.SLIDR_CDP_PORT || 9271}`;
+export const APP = `http://localhost:${process.env.SLIDR_APP_PORT || 1471}`;
 
 export async function connect() {
   const browser = await chromium.connectOverCDP(CDP);

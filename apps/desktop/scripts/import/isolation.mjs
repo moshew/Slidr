@@ -4,7 +4,7 @@
 //   node scripts/import/isolation.mjs
 import { connect } from './cdp.mjs';
 
-const { browser, main, importPage } = await connect();
+const { browser, main, importPage, pages } = await connect();
 const editor = main();
 const page = importPage();
 if (!editor || !page) throw new Error('both windows must be open: start an import first');
@@ -58,6 +58,14 @@ for (const [command, args] of [
   ['import_run_job', { job: {} }],
   ['import_blocked', {}],
   ['import_close', {}],
+  // The source a deck keeps and the record of its import (IMP-07, IMP-09) are the main
+  // window's: a file may not open itself again, read or rewrite what the report says of it, or
+  // have a copy of the source written somewhere. Asked for a workspace that does not exist, so
+  // a gate that let them through would still do nothing.
+  ['import_reopen', { file: 'x.html', thread: 'a/b', workspaceId: 'x' }],
+  ['import_record_read', { workspaceId: 'x' }],
+  ['import_record_write', { workspaceId: 'x', text: '{}' }],
+  ['import_source_export', { workspaceId: 'x', path: 'C:/x.html' }],
   ['a_command_that_does_not_exist', {}],
 ]) {
   const answer = await call(command, args);
@@ -221,10 +229,12 @@ const kept = await editor.evaluate(async () => ({
   blocked: await window.__TAURI_INTERNALS__.invoke('import_blocked'),
   // What the page's policy stopped before Rust was asked, as the browser reported it.
   refused: await window.__TAURI_INTERNALS__.invoke('import_run_job', { job: { kind: 'refused' } }),
-  windows: await window.__TAURI_INTERNALS__.invoke('plugin:window|get_all_windows'),
 }));
 note('the editor window: localStorage slidr.agent', kept.agent, kept.agent !== null);
-note('windows of the app', kept.windows.join(', '), kept.windows.includes('import'));
+// The editor's own window may no longer ask the core for the list of windows (ADR-066 left it
+// the permissions it uses, and this is not one): the browser's own list of pages says it.
+const windows = pages().map((open) => new URL(open.url()).pathname);
+note('windows of the app', windows.join(', '), windows.includes('/import.html'));
 const isProbe = (url) =>
   /probe|beacon|echo\.websocket|asset\.localhost|localhost:1420|example\./.test(url);
 const probes = kept.blocked.filter(isProbe);

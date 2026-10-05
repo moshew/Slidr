@@ -11,10 +11,12 @@ import {
   createImporter,
   endImport,
   importState,
+  openImport,
   refreshBlocked,
   reopenImport,
   turnEnded,
   watchDocuments,
+  type ImportSource,
 } from './session';
 
 /*
@@ -54,6 +56,8 @@ declare global {
       thread(): ReturnType<typeof importThread> | null;
       /** The report the panel shows, with the refused requests read anew. */
       report(): Promise<ReturnType<typeof buildReport> | null>;
+      /** Opens a session on a file with no agent and no message: the page, and the kept source. */
+      open: (source: ImportSource) => Promise<string>;
       /** What the panel's "continue" does: the page again, and the message to the agent. */
       resume: () => Promise<void>;
       /** Opens the isolated page again on the source the deck keeps. */
@@ -92,6 +96,7 @@ if (import.meta.env.DEV) {
         chat.store.getState().entries,
       );
     },
+    open: (source) => openImport(getEditor(), source),
     resume: () => continueImport(getEditor()),
     reopen: () => reopenImport(getEditor()),
     brief: (fresh = false) => importBrief(importState.getState(), getEditor().bus.deck, fresh),
