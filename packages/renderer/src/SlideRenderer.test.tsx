@@ -226,6 +226,28 @@ describe('SlideRenderer', () => {
     expect(JSON.stringify(styled)).not.toContain('asset://');
   });
 
+  it("resolves the assets a slide's own stylesheet names: a face of a font the deck keeps", () => {
+    const deck = referenceDeck();
+    const slide = deck.slides.find((s) => s.id === 's_ref_html')!;
+    // A font file is one asset with one record; a second face of the same file is a rule of
+    // the slide that points at the asset.
+    const css = `@font-face { font-family: "Brand Sans"; font-weight: 700; src: url("slidr-asset:${referenceAssets.landscape}"); }\n.note { color: red; }`;
+    render(
+      <SlideRenderer
+        deck={deck}
+        slide={{ ...slide, css }}
+        resolveAsset={(a) => `asset://${a.file}`}
+      />,
+    );
+    const sheet = Array.from(container.querySelectorAll('style'), (s) => s.textContent ?? '').find(
+      (text) => text.includes('Brand Sans'),
+    );
+    // The face is for the whole document; the slide's own rules stay inside the slide.
+    expect(sheet).toContain('src: url("asset://landscape.jpg"); }');
+    expect(sheet).toMatch(/@scope \(\[data-slide-id="s_ref_html"\]\) \{\s*\.note/);
+    expect(sheet).not.toContain('slidr-asset:');
+  });
+
   it('runs html with scripts in a sandboxed frame that never gets same-origin', () => {
     const deck = referenceDeck();
     const slide = deck.slides.find((s) => s.id === 's_ref_html')!;

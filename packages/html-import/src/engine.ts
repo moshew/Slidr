@@ -75,6 +75,11 @@ export interface ConvertOptions {
    */
   fontFaces?: boolean;
   /**
+   * Stylesheet text the caller gives the slide itself: the faces of a font the deck keeps as
+   * an asset that the asset's one record cannot say (`createSourceFonts`).
+   */
+  css?: string;
+  /**
    * A forced conversion (HTM-05): text with styling the model has no field for is proposed as a
    * text element without it, where otherwise it would stay html. The caller judges the
    * proposal and tells the differences instead of guarding it.
@@ -672,7 +677,9 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       });
       groups.add(item.anim.group);
     }
-    const css = [fonts, keyframesText(doc, proposal.keyframes)].filter(Boolean).join('\n');
+    const css = [options.css, fonts, keyframesText(doc, proposal.keyframes)]
+      .filter(Boolean)
+      .join('\n');
     const background = proposal.background ?? options.base?.background;
     return createSlide({
       id: slideId,

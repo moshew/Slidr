@@ -8,6 +8,7 @@
  *   names one of them without carrying it is drawn with it here, as it will be on the slide.
  */
 import type { AssetMeta } from '@slidr/model';
+import { ASSET_URL_SCHEME } from '@slidr/renderer';
 
 /** A face of the app's own font library, with a URL the source document can load. */
 export interface AppFontFace {
@@ -80,6 +81,22 @@ export interface SourceFonts {
    * know.
    */
   sync(doc: Document): Promise<string[]>;
+  /**
+   * `@font-face` rules for the faces whose font file is an asset that already says another
+   * face: a variable font declared once for each weight, one file under two family names. An
+   * asset is its content and holds one face, so these go with the slides, as rules of the
+   * slide's own stylesheet that name the asset. Empty when every face has an asset of its own.
+   */
+  css(): string;
+}
+
+/** A CSS string literal. */
+const cssText = (value: string) => JSON.stringify(value);
+
+/** The rule that registers a declared face from a font asset of the deck. */
+function faceRule(face: DeclaredFace, assetId: string): string {
+  const range = face.unicodeRange ? ` unicode-range: ${face.unicodeRange};` : '';
+  return `@font-face { font-family: ${cssText(face.family)}; font-weight: ${face.weight}; font-style: ${face.style}; font-display: block; src: url("${ASSET_URL_SCHEME}${assetId}");${range} }`;
 }
 
 export function createSourceFonts(options: {
@@ -92,6 +109,10 @@ export function createSourceFonts(options: {
   appFonts?: readonly AppFontFace[];
 }): SourceFonts {
   const seen = new Set<string>();
+  /** The face each font asset says in its record, by asset id: the first that brought the file. */
+  const recorded = new Map<string, string>();
+  /** The rules of the faces that came after it with the same file. */
+  const shared: string[] = [];
   /** The app faces added to each document, by family (lower case). */
   const added = new WeakMap<Document, Map<string, FontFace[]>>();
 
@@ -160,6 +181,15 @@ export function createSourceFonts(options: {
             notes.push(`The embedded font "${face.family}" is not a font file the app can keep.`);
             continue;
           }
+          // The same file again, for another weight or under another name: the asset is
+          // there, and says the first face. This one is a rule that points at it.
+          const said = [face.family, face.weight, face.style, face.unicodeRange ?? ''].join('|');
+          const first = recorded.get(asset.id);
+          if (first !== undefined) {
+            if (first !== said) shared.push(faceRule(face, asset.id));
+            continue;
+          }
+          recorded.set(asset.id, said);
           options.stored({
             ...asset,
             font: {
@@ -175,5 +205,6 @@ export function createSourceFonts(options: {
       }
       return notes;
     },
+    css: () => shared.join('\n'),
   };
 }

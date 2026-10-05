@@ -710,6 +710,7 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
       const laidOut = (root as HTMLElement).offsetWidth ?? 0;
       const notes = await fonts.sync(page().doc);
       await doc.fonts.ready;
+      const faces = fonts.css();
       const result = await convertSubtree(root, {
         deck: { ...request.deck, slides: [], assets: Object.fromEntries(assets) },
         host,
@@ -717,6 +718,7 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
         behind: 'page',
         takenIds: new Set(request.takenIds),
         fontFaces: false,
+        ...(faces ? { css: faces } : {}),
       });
       const written = JSON.stringify(result.slide);
       const { faithful, exact, rounds, wholeSlide, diffPixels } = result.guard;

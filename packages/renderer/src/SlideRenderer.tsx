@@ -13,7 +13,7 @@ import {
 import { cssString, scopeSlideCss } from './css';
 import { ElementView } from './elements';
 import { BackgroundLayers } from './fill';
-import { frameScriptNonce } from './markup';
+import { frameScriptNonce, resolveAssetUrls } from './markup';
 import { opensAddress } from './text';
 import { colorCss, deckFontFaces, themeVariables } from './theme';
 
@@ -133,10 +133,22 @@ export function SlideRenderer({
   );
   const background = slide.background ?? layout?.background ?? theme.background;
   const body = theme.textStyles.body;
+  // The slide's own stylesheet can name an asset of the deck too (`url("slidr-asset:<id>")`):
+  // a face of a font the deck keeps, which has no record of its own on the asset.
   const scopedCss = useMemo(
     () =>
-      slide.css ? scopeSlideCss(slide.css, `[data-slide-id=${cssString(slide.id)}]`) : undefined,
-    [slide.css, slide.id],
+      slide.css
+        ? scopeSlideCss(
+            resolveAssetUrls(slide.css, {
+              assetUrl: (id) => {
+                const asset = assets[id];
+                return asset && resolveAsset ? resolveAsset(asset) : undefined;
+              },
+            }),
+            `[data-slide-id=${cssString(slide.id)}]`,
+          )
+        : undefined,
+    [slide.css, slide.id, assets, resolveAsset],
   );
 
   return (
