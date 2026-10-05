@@ -158,8 +158,14 @@ test('a marquee from empty space selects what it touches; arrows nudge; Delete r
 });
 
 test('the stage looks right with a selection', async ({ page }) => {
+  // On the card of the group, beside its text: a click on the text goes into editing it. The
+  // group is turned by 8 degrees, and the text keeps 40 slide pixels from the card's edge.
   const c = await center(page, 'e_fx_group');
-  await page.mouse.click(c.x, c.y);
+  const frame = await page.getByTestId('stage-frame').boundingBox();
+  const scale = frame!.width / 1920;
+  const turn = (8 * Math.PI) / 180;
+  await page.mouse.click(c.x - 280 * Math.cos(turn) * scale, c.y - 280 * Math.sin(turn) * scale);
+  expect(await selected(page)).toEqual(['e_fx_group']);
   await page.screenshot({ path: 'test-results/stage/selection.png' });
 });
 

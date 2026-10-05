@@ -53,7 +53,8 @@ function bigDeck(): Deck {
 
 /**
  * What WG5 added to the Stage (ADR-016), one slide each: images to crop (every fit, a turned and
- * mirrored one), groups to enter (plain, turned, mirrored, nested), and lines to edit.
+ * mirrored one), groups to enter (plain, turned, mirrored, nested), and lines to edit. After them,
+ * cards whose text a click goes straight into.
  */
 function stageDeck(): Deck {
   const L = referenceAssets.landscape;
@@ -249,8 +250,93 @@ function stageDeck(): Deck {
     ],
   });
 
+  // A card as a converted slide has it: a group of a background, a title, a chip (a shape with
+  // text), a big shape with a short text, and a row that is a group of its own. Beside it a
+  // turned and mirrored card, and a text box that is in no group.
+  const label = (text: string) =>
+    richText(text, { dir: 'ltr', align: 'center', marks: { color: { token: 'bg' } } });
+  const cards = createSlide({
+    id: 's_cards',
+    name: 'Cards',
+    elements: [
+      createElement.group({
+        id: 'g_card',
+        frame: { x: 160, y: 140, w: 760, h: 520 },
+        children: [
+          createElement.shape({
+            id: 'g_card_bg',
+            frame: { x: 0, y: 0, w: 760, h: 520 },
+            geometry: { kind: 'preset', preset: 'roundRect', adjust: [0.06] },
+            fill: solid('surface'),
+          }),
+          createElement.text({
+            id: 'g_card_title',
+            frame: { x: 48, y: 40, w: 520, h: 110 },
+            content: richText('Card title', { dir: 'ltr', styleRef: 'heading' }),
+          }),
+          createElement.shape({
+            id: 'g_card_chip',
+            frame: { x: 48, y: 180, w: 220, h: 64 },
+            geometry: { kind: 'preset', preset: 'roundRect', adjust: [0.5] },
+            fill: solid('accent'),
+            content: label('Chip'),
+          }),
+          createElement.shape({
+            id: 'g_card_panel',
+            frame: { x: 320, y: 170, w: 392, h: 200 },
+            fill: solid('primary'),
+            content: label('Panel'),
+          }),
+          createElement.group({
+            id: 'g_card_row',
+            frame: { x: 48, y: 400, w: 350, h: 90 },
+            children: [
+              createElement.shape({
+                id: 'g_card_tag',
+                frame: { x: 0, y: 13, w: 200, h: 64 },
+                geometry: { kind: 'preset', preset: 'roundRect', adjust: [0.5] },
+                fill: solid('secondary'),
+                content: label('Nested'),
+              }),
+              createElement.shape({
+                id: 'g_card_icon',
+                frame: { x: 260, y: 0, w: 90, h: 90 },
+                geometry: { kind: 'preset', preset: 'ellipse' },
+                fill: solid('accent'),
+              }),
+            ],
+          }),
+        ],
+      }),
+      createElement.group({
+        id: 'g_tilt',
+        frame: { x: 1120, y: 480, w: 520, h: 320 },
+        rotation: 20,
+        flipH: true,
+        children: [
+          createElement.shape({
+            id: 'g_tilt_bg',
+            frame: { x: 0, y: 0, w: 520, h: 320 },
+            fill: solid('surface'),
+          }),
+          createElement.shape({
+            id: 'g_tilt_panel',
+            frame: { x: 60, y: 40, w: 400, h: 240 },
+            fill: solid('primary'),
+            content: label('Tilted'),
+          }),
+        ],
+      }),
+      createElement.text({
+        id: 'e_solo',
+        frame: { x: 1080, y: 160, w: 600, h: 110 },
+        content: richText('On its own', { dir: 'ltr', styleRef: 'heading' }),
+      }),
+    ],
+  });
+
   return {
-    ...createDeck({ lang: 'en', title: 'Stage', slides: [crop, groups, lines] }),
+    ...createDeck({ lang: 'en', title: 'Stage', slides: [crop, groups, lines, cards] }),
     assets: referenceDeck().assets,
   };
 }
