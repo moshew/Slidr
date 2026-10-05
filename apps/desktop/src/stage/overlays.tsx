@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { CropView } from './crop';
 import { HANDLES, type Handle } from './geometry';
+import type { HandleName } from './keyboardSession';
 import {
   apply,
   applyVector,
@@ -36,6 +37,9 @@ const HANDLE_PX = 8;
 const ROTATE_OFFSET_PX = 24;
 const ACCENT = 'var(--color-ui-accent)';
 const PANEL = 'var(--color-ui-panel)';
+/** The ring around what the keyboard is on: a crop handle, a point of a line, the selection walk. */
+const FOCUS = 'var(--color-ui-focus)';
+const FOCUS_RING = `0 0 0 2px ${PANEL}, 0 0 0 4px ${FOCUS}`;
 
 /** A box of the element's size in screen pixels, laid over the element. */
 function boxStyle(located: Located, view: StageView, flips = false): CSSProperties {
@@ -89,11 +93,17 @@ export function Outline({
   dashed,
   entered,
   placeholder,
+  walk,
 }: {
   located: Located;
   view: StageView;
   hover?: boolean;
   dashed?: boolean;
+  /**
+   * Where the selection walk stands (UI-06): an element the keyboard is on that may not be
+   * selected. A dotted ring outside the element, clear of the outline of a selected one.
+   */
+  walk?: boolean;
   /** The group the user is working inside: a quieter frame than a selection. */
   entered?: boolean;
   /** An empty placeholder: the quietest frame, there so that the empty box can be seen. */
@@ -105,13 +115,18 @@ export function Outline({
     ? { 'data-entered-group': element.id }
     : placeholder
       ? { 'data-placeholder': element.id }
-      : { 'data-outline': element.id };
+      : walk
+        ? { 'data-walk': element.id }
+        : { 'data-outline': element.id };
   return (
     <div
       {...mark}
       style={{
         ...boxStyle(located, view),
-        outline: `${hover || quiet ? 1 : 1.5}px ${dashed || quiet ? 'dashed' : 'solid'} ${ACCENT}`,
+        outline: walk
+          ? `2px dotted ${FOCUS}`
+          : `${hover || quiet ? 1 : 1.5}px ${dashed || quiet ? 'dashed' : 'solid'} ${ACCENT}`,
+        outlineOffset: walk ? 4 : undefined,
         opacity: placeholder ? 0.45 : entered ? 0.7 : undefined,
       }}
     />
@@ -363,11 +378,14 @@ export function LineOverlay({
   view,
   handles,
   hover,
+  point: keyboardAt,
 }: {
   located: Located & { element: LineElement };
   view: StageView;
   handles?: boolean;
   hover?: boolean;
+  /** The point the keyboard is on, which the arrows move (UI-06). */
+  point?: number | null;
 }) {
   const line = located.element;
   // The line's points are in its mirrored box; the map with the flips takes them to the slide.
@@ -399,6 +417,7 @@ export function LineOverlay({
               <div
                 key={i}
                 data-line-point={i}
+                data-active={i === keyboardAt || undefined}
                 style={{
                   position: 'absolute',
                   left: view.origin.x + at.x * view.scale - 6,
@@ -410,7 +429,7 @@ export function LineOverlay({
                   // Filled, to tell a point of the line from the hollow rotation handle.
                   background: ACCENT,
                   border: `2px solid ${PANEL}`,
-                  boxShadow: `0 0 0 1px ${ACCENT}`,
+                  boxShadow: i === keyboardAt ? FOCUS_RING : `0 0 0 1px ${ACCENT}`,
                   pointerEvents: 'auto',
                   cursor: 'crosshair',
                 }}
@@ -433,14 +452,20 @@ function CropHandle({
   sw,
   sh,
   matrix,
+  active,
 }: {
   name: keyof typeof HANDLES;
   sw: number;
   sh: number;
   matrix: Matrix;
+  /** The keyboard is on this handle: the arrows move it (UI-06). */
+  active: boolean;
 }) {
   const hd = HANDLES[name];
-  if ((hd.x === 0 && sw < 3 * CROP_ARM) || (hd.y === 0 && sh < 3 * CROP_ARM)) return null;
+  // On a small frame the handles of the edges would sit on those of the corners, and are left
+  // out; the one the keyboard is on is drawn whatever the size, so it can be seen.
+  const crowded = (hd.x === 0 && sw < 3 * CROP_ARM) || (hd.y === 0 && sh < 3 * CROP_ARM);
+  if (crowded && !active) return null;
   const bar: CSSProperties = {
     position: 'absolute',
     background: ACCENT,
@@ -455,12 +480,15 @@ function CropHandle({
   return (
     <div
       data-crop-handle={name}
+      data-active={active || undefined}
       style={{
         position: 'absolute',
         left: ((hd.x + 1) / 2) * sw - CROP_GRIP / 2,
         top: ((hd.y + 1) / 2) * sh - CROP_GRIP / 2,
         width: CROP_GRIP,
         height: CROP_GRIP,
+        borderRadius: 4,
+        boxShadow: active ? FOCUS_RING : undefined,
         pointerEvents: 'auto',
         cursor: handleCursor(hd, matrix),
       }}
@@ -490,10 +518,13 @@ export function CropOverlay({
   crop,
   url,
   active,
+  handle,
 }: {
   located: Located;
   view: StageView;
   crop: CropView;
+  /** The crop handle the keyboard is on; without one the arrows move the picture. */
+  handle?: HandleName | null;
   /** The picture; without it only the frame is drawn. */
   url: string | undefined;
   /** A crop gesture is under way. */
@@ -547,7 +578,14 @@ export function CropOverlay({
           </>
         ) : null}
         {(Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map((name) => (
-          <CropHandle key={name} name={name} sw={sw} sh={sh} matrix={matrix} />
+          <CropHandle
+            key={name}
+            name={name}
+            sw={sw}
+            sh={sh}
+            matrix={matrix}
+            active={name === handle}
+          />
         ))}
       </div>
     </>

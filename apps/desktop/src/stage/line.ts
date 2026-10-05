@@ -198,6 +198,48 @@ export function insertLinePoint(
   return { ...fitLine(line, positions), index };
 }
 
+/** The point halfway along a path of straight pieces, by its length. */
+function halfway(path: readonly Point[]): Point {
+  const lengths = path.slice(1).map((p, i) => {
+    const from = path[i] as Point;
+    return Math.hypot(p.x - from.x, p.y - from.y);
+  });
+  let left = lengths.reduce((sum, length) => sum + length, 0) / 2;
+  for (let i = 0; i < lengths.length; i++) {
+    const length = lengths[i] as number;
+    if (left <= length && length > 0) {
+      const from = path[i] as Point;
+      const to = path[i + 1] as Point;
+      const t = left / length;
+      return { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+    }
+    left -= length;
+  }
+  return path[path.length - 1] as Point;
+}
+
+/**
+ * A line with one more point, halfway along the stretch that follows point `after` as the line is
+ * drawn; after the last point, halfway along the stretch that leads to it. This is how a point is
+ * added from the keyboard, where there is no pointer to say where (UI-06). Returns the index of
+ * the new point too.
+ */
+export function addLinePoint(
+  line: LineBox & Pick<LineElement, 'curve'>,
+  after: number,
+): { frame: Frame; points: Point[]; index: number } {
+  const stretches = lineStretches(line.points, line.curve);
+  // A line of two points is one stretch whatever its curve; otherwise there is one per pair.
+  const stretch = Math.max(0, Math.min(after, stretches.length - 1));
+  const middle = halfway(stretches[stretch] ?? line.points);
+  const index = stretches.length === 1 ? 1 : stretch + 1;
+  const m = boxMatrix(line);
+  const positions = line.points.map((p) => apply(m, p));
+  // On a whole pixel of the line's own axes, like the points a drag leaves.
+  positions.splice(index, 0, apply(m, { x: Math.round(middle.x), y: Math.round(middle.y) }));
+  return { ...fitLine(line, positions), index };
+}
+
 /** A line without one of its points, or undefined when only its two ends are left. */
 export function removeLinePoint(
   line: LineBox,

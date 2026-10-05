@@ -29,6 +29,7 @@ import {
   LogIn,
   Scissors,
   Sparkles,
+  Spline,
   SquareDashedMousePointer,
   Table2,
   TextCursorInput,
@@ -61,6 +62,7 @@ import {
   type Editor,
 } from '../shell';
 import { enterTable } from '../table/session';
+import { stageCommand } from './keyboardSession';
 import { ORDER_MOVES } from './SelectionToolbar';
 
 /*
@@ -223,6 +225,9 @@ export function EditItems(_: ContextToolProps) {
       );
     case 'table':
       return edit(t('stage:menu.editCells'), Table2, () => enterTable(selection, single.id));
+    case 'line':
+      // Its points: Tab goes from one to the next, and the arrows move it (UI-06).
+      return edit(t('stage:menu.editPoints'), Spline, () => stageCommand({ type: 'points' }));
     case 'chart':
       return (
         <ContextMenuItem icon={Table2} onSelect={() => openData(single.id)}>

@@ -4,6 +4,7 @@ import { Check, Crop, RotateCcw, ZoomIn } from '@slidr/ui/icons';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
+import { hide, toggleLock } from '../arrange/actions';
 import { useGestureTx } from '../controls';
 import { registerMessages } from '../i18n';
 import {
@@ -30,6 +31,7 @@ import {
 } from './crop';
 import { cropSession, heldRatio, type CropPreset } from './cropSession';
 import { refitPatches, type Patch } from './groups';
+import { stageCommand } from './keyboardSession';
 import { AiItems, ClipboardItems, EditItems, GroupItems, OrderItems, StateItems } from './menu';
 import { en, he } from './messages';
 import { indexElements, type Located } from './space';
@@ -235,6 +237,119 @@ registerShortcut({
   label: 'stage:toolbar.shortcut',
   section: 'edit',
   run: () => focusSelectionToolbar(),
+});
+
+/*
+ * The keys of the keyboard pass (WG13-T06, UI-06): what the pointer did alone until now. Each is
+ * a shortcut of the registry, so the shortcut map lists it and the user can change it; the Stage
+ * that has the keyboard does the work (`stageCommand`), and says false when the key is not its
+ * own right now, so the key goes its usual way. The arrows inside a mode (a crop handle, a point
+ * of a line) stay the Stage's own, like the arrows that move and size.
+ */
+const pans = [
+  { to: 'left', keys: 'Ctrl+Alt+ArrowLeft', dir: { x: -1, y: 0 } },
+  { to: 'right', keys: 'Ctrl+Alt+ArrowRight', dir: { x: 1, y: 0 } },
+  { to: 'up', keys: 'Ctrl+Alt+ArrowUp', dir: { x: 0, y: -1 } },
+  { to: 'down', keys: 'Ctrl+Alt+ArrowDown', dir: { x: 0, y: 1 } },
+];
+for (const { to, keys, dir } of pans) {
+  registerShortcut({
+    id: `stage.pan.${to}`,
+    keys,
+    label: 'stage:keys.pan',
+    section: 'view',
+    run: () => stageCommand({ type: 'pan', dir }),
+  });
+}
+
+// The selection walk: from element to element without selecting, and a key that adds the one
+// the walk stands on to the selection or takes it out. Several elements that are not the whole
+// slide are selected this way without the pointer.
+registerShortcut({
+  id: 'stage.walk.next',
+  keys: 'Alt+ArrowDown',
+  label: 'stage:keys.walk',
+  section: 'edit',
+  run: () => stageCommand({ type: 'walk', step: 1 }),
+});
+registerShortcut({
+  id: 'stage.walk.previous',
+  keys: 'Alt+ArrowUp',
+  label: 'stage:keys.walk',
+  section: 'edit',
+  run: () => stageCommand({ type: 'walk', step: -1 }),
+});
+registerShortcut({
+  id: 'stage.walk.toggle',
+  keys: 'Alt+Enter',
+  label: 'stage:keys.toggle',
+  section: 'edit',
+  run: () => stageCommand({ type: 'toggle' }),
+});
+
+// The points of a line, and the handles of a crop: Enter goes into the points as it goes into a
+// group; Tab goes from one point or handle to the next, and the arrows then move it.
+registerShortcut({
+  id: 'stage.points',
+  keys: 'Enter',
+  label: 'stage:keys.points',
+  section: 'arrange',
+  run: () => stageCommand({ type: 'points' }),
+});
+registerShortcut({
+  id: 'stage.part.next',
+  keys: 'Tab',
+  label: 'stage:keys.part',
+  section: 'arrange',
+  run: () => stageCommand({ type: 'part', step: 1 }),
+});
+registerShortcut({
+  id: 'stage.part.previous',
+  keys: 'Shift+Tab',
+  label: 'stage:keys.part',
+  section: 'arrange',
+  run: () => stageCommand({ type: 'part', step: -1 }),
+});
+for (const [id, keys] of [
+  ['stage.point.add', 'Insert'],
+  // The key marked + on the row of digits; a keyboard without Insert has this one.
+  ['stage.point.add.plus', 'Shift+='],
+] as const) {
+  registerShortcut({
+    id,
+    keys,
+    label: 'stage:keys.addPoint',
+    section: 'arrange',
+    run: () => stageCommand({ type: 'point.add' }),
+  });
+}
+for (const [id, keys] of [
+  ['stage.point.remove', 'Delete'],
+  ['stage.point.remove.backspace', 'Backspace'],
+] as const) {
+  registerShortcut({
+    id,
+    keys,
+    label: 'stage:keys.removePoint',
+    section: 'arrange',
+    run: () => stageCommand({ type: 'point.remove' }),
+  });
+}
+
+// Lock and hide had no key of their own (ADR-060, section 3): the menu's two items, as keys.
+registerShortcut({
+  id: 'stage.lock',
+  keys: 'Ctrl+Shift+L',
+  label: 'stage:keys.lock',
+  section: 'arrange',
+  run: (editor) => toggleLock(editor),
+});
+registerShortcut({
+  id: 'stage.hide',
+  keys: 'Ctrl+Shift+H',
+  label: 'stage:keys.hide',
+  section: 'arrange',
+  run: (editor) => hide(editor),
 });
 
 /** Esc leaves crop mode also when the focus is on one of the crop tools and not on the Stage. */

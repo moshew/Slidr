@@ -636,7 +636,9 @@ export function useTableStage({
       return cancelLineDrag();
     }
     if (!inside) {
-      if (event.key !== 'Enter' || !isTable(single) || single.locked || editingId) return false;
+      // Enter goes into the table; with Alt it is the Stage's selection walk, not the table's.
+      if (event.key !== 'Enter' || event.altKey) return false;
+      if (!isTable(single) || single.locked || editingId) return false;
       event.preventDefault();
       enterTable(selection, single.element.id, FIRST, 'all');
       return true;

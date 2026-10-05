@@ -74,8 +74,16 @@ import {
   type Patch,
   type Placement,
 } from './groups';
-import { isCtrlLetter } from './keys';
 import {
+  HANDLE_ORDER,
+  resetStageKeys,
+  setStageCommands,
+  stageKeys,
+  type StageCommand,
+} from './keyboardSession';
+import { isCtrlLetter, withAltGraph } from './keys';
+import {
+  addLinePoint,
   constrainAngle,
   distanceToLine,
   insertLinePoint,
@@ -187,6 +195,8 @@ const COLUMNS = 12;
 const GUTTER = 24;
 /** Wheel steps or arrow presses this close together are one undo step. */
 const BURST_MS = 800;
+/** How far a key moves the view of a zoomed slide, in screen pixels. */
+const PAN_STEP_PX = 64;
 
 /** One element of a move, as it was when the drag began. */
 interface MoveItem {
@@ -381,6 +391,10 @@ export function Stage({
   const [turn, setTurn] = useState<{ frame: Frame; angle: number } | undefined>();
   /** The groups the user went into by double-click, outermost first (ARR-01). */
   const [entered, setEntered] = useState<string[]>([]);
+  /** Where the keyboard is beyond the selection: a crop handle, a point of a line, the walk. */
+  const keys = useStore(stageKeys);
+  /** The Stage got the keyboard from the keyboard, and shows that it has it (DSN-08). */
+  const [ring, setRing] = useState(false);
   const gesture = useRef<Gesture | null>(null);
   // What kind of drag is under way, for rendering; the gesture itself lives in the ref.
   const [activeKind, setActiveKind] = useState<Gesture['kind'] | null>(null);
@@ -527,6 +541,8 @@ export function Stage({
     if (wasCropping.current === croppingId) return;
     wasCropping.current = croppingId;
     resetCropSession();
+    // The arrows start on the picture, in every crop.
+    if (stageKeys.getState().handle !== null) stageKeys.setState({ handle: null });
     const surface = container.current;
     if (!surface) return;
     // Crop mode is left with Esc and Enter, which the Stage hears only when it has the focus:
@@ -536,6 +552,33 @@ export function Stage({
       surface.focus({ preventScroll: true });
     }
   }, [croppingId]);
+
+  // ---- Where the keyboard is beyond the selection (UI-06) ----
+
+  // The point of the selected line that the arrows move, for as long as that line is the selection.
+  const pointAt =
+    single && isLine(single) && !single.locked && !editingId && keys.point !== null
+      ? Math.min(keys.point, single.element.points.length - 1)
+      : null;
+  // The crop handle that the arrows move; without one they move the picture under the frame.
+  const handleAt = crop ? keys.handle : null;
+  // The element the selection walk stands on, which Alt+Enter adds to the selection or takes out.
+  const walkAt = keys.cursor !== null ? index.get(keys.cursor) : undefined;
+  /** The selection is about to change by the walk's own toggle, which leaves the walk where it is. */
+  const toggling = useRef(false);
+  // What is selected, as one value: the same elements selected again are the same selection,
+  // though the store hands out a new list for them.
+  const selectedKey = selected.join('\n');
+  useEffect(() => {
+    const own = toggling.current;
+    toggling.current = false;
+    const { point, cursor } = stageKeys.getState();
+    // A point belongs to the line that was selected, and the walk to the selection it started from.
+    if (point !== null || (cursor !== null && !own)) {
+      stageKeys.setState({ point: null, cursor: own ? cursor : null });
+    }
+  }, [selectedKey, currentSlideId]);
+  useEffect(() => resetStageKeys, []);
 
   // ---- Commands ----
 
@@ -564,6 +607,22 @@ export function Stage({
 
   const liveIndex = () =>
     indexElements(bus.deck.slides.find((s) => s.id === slide?.id)?.elements ?? []);
+
+  /**
+   * The image being cropped as the deck has it now, not as it was drawn: wheel steps and key
+   * presses can come faster than the Stage renders, and each one builds on the last.
+   */
+  const liveCrop = () => {
+    if (!crop) return undefined;
+    const located = liveIndex().get(crop.image.id) ?? crop.located;
+    const image = located.element.type === 'image' ? located.element : crop.image;
+    const asset = image.assetId ? deck.assets[image.assetId] : undefined;
+    const view =
+      asset?.width && asset.height
+        ? cropView(image, { w: asset.width, h: asset.height })
+        : crop.view;
+    return { located, image, view };
+  };
 
   /** Fits every group of the slide to its children, for changes that spanned several groups. */
   const refitSlide = (txId: string) => {
@@ -1144,17 +1203,10 @@ export function Stage({
       onZoomChange?.(rounded);
       return;
     }
-    if (crop && !gesture.current) {
-      // The wheel scales the picture under the frame, around the pointer. Wheel steps can come
-      // faster than the Stage renders, and each one builds on the last: so the image is read
-      // from the deck as it is now, not as it was drawn.
-      const located = liveIndex().get(crop.image.id) ?? crop.located;
-      const image = located.element.type === 'image' ? located.element : crop.image;
-      const asset = image.assetId ? deck.assets[image.assetId] : undefined;
-      const v =
-        asset?.width && asset.height
-          ? cropView(image, { w: asset.width, h: asset.height })
-          : crop.view;
+    const cropped = gesture.current ? undefined : liveCrop();
+    if (cropped) {
+      // The wheel scales the picture under the frame, around the pointer.
+      const { located, image, view: v } = cropped;
       const at = apply(invert(elementMatrix(located)), toSlide(e.clientX, e.clientY));
       const pivot = positionToOwn(v, {
         x: Math.min(v.frame.w, Math.max(0, at.x)),
@@ -1239,6 +1291,12 @@ export function Stage({
     if (element.type === 'table') fitRows(bus, element.id, txId);
   };
 
+  /** The elements Tab goes through: those of the group being worked in, bottom to top. */
+  const walkOrder = () =>
+    [...index.values()]
+      .filter((l) => !l.locked && !l.hidden && sameIds(pathIds(l), scope))
+      .sort((a, b) => a.order - b.order);
+
   const onKeyDown = (e: KeyboardEvent) => {
     if (isInEditor(e.target)) return;
     // Inside a table the arrows, Tab, Enter, Delete and Esc are about its cells.
@@ -1248,7 +1306,8 @@ export function Stage({
       e.preventDefault();
       return;
     }
-    if (e.key === 'Enter') {
+    // Enter with Alt is not the way into an element: it is the selection walk's key.
+    if (e.key === 'Enter' && !e.altKey) {
       if (crop) {
         e.preventDefault();
         selection.getState().stopEditing();
@@ -1291,6 +1350,9 @@ export function Stage({
       e.preventDefault();
       if (gesture.current) endGesture(true);
       else if (crop || htmlId) selection.getState().stopEditing();
+      // Out of the points of a line, or off the selection walk: the selection itself stays.
+      else if (pointAt !== null) stageKeys.setState({ point: null });
+      else if (walkAt) stageKeys.setState({ cursor: null });
       else if (scope.length) {
         // Out of the group, one level: the group itself is selected.
         const group = scope[scope.length - 1] as string;
@@ -1300,13 +1362,15 @@ export function Stage({
       return;
     }
     if (!slide) return;
-    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey && !crop && !htmlId) {
+    // Among the crop handles and among the points of a line Tab goes from one to the next, and
+    // Delete takes a point out: those are shortcuts of the registry (`register.tsx`), which hears
+    // the key after this handler has let it pass.
+    const inParts = Boolean(crop) || pointAt !== null;
+    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey && !inParts && !htmlId) {
       // Tab walks the elements of the group being worked in, bottom to top, and Shift+Tab walks
       // back (UI-06). Past either end the key is the browser's again: the selection is cleared
       // and the focus moves on, so the Stage is no trap for the keyboard.
-      const walk = [...index.values()]
-        .filter((l) => !l.locked && !l.hidden && sameIds(pathIds(l), scope))
-        .sort((a, b) => a.order - b.order);
+      const walk = walkOrder();
       const at = walk.findIndex((l) => l.element.id === selected[0]);
       const to = selected.length === 0 ? (e.shiftKey ? -1 : 0) : at + (e.shiftKey ? -1 : 1);
       const next = walk[to];
@@ -1317,7 +1381,7 @@ export function Stage({
       return;
     }
     const moving = movable(index);
-    if ((e.key === 'Delete' || e.key === 'Backspace') && moving.length) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && moving.length && pointAt === null) {
       const ids = moving.map((l) => l.element.id);
       const path = sharedPath(moving);
       // The groups the elements leave shrink around what stays in them.
@@ -1357,22 +1421,47 @@ export function Stage({
       ArrowDown: { x: 0, y: 1 },
     };
     const dir = arrows[e.key];
-    if (!dir || (!crop && !moving.length)) return;
+    if (!dir) return;
+    // Two families of arrows are shortcuts of the registry, and pass through here untouched: Ctrl
+    // and Alt together move the view of a zoomed slide, and Alt with Up or Down walks the
+    // selection. AltGr, which Windows reports as Ctrl and Alt, stays what Alt alone is.
+    if (!withAltGraph(e) && e.altKey && (e.ctrlKey || (dir.x === 0 && !crop))) return;
+    if (!crop && !moving.length) return;
     e.preventDefault();
-    if (!crop && (e.altKey || e.ctrlKey || e.metaKey)) {
+    const step = e.shiftKey ? 10 : 1;
+    const by = { x: dir.x * step, y: dir.y * step };
+    const plain = !e.altKey && !e.ctrlKey && !e.metaKey;
+    if (pointAt !== null && plain && single) {
+      // Among the points of a line the arrows move the point the keyboard is on; the other
+      // points stay where they are on the slide, as when a point is dragged (SHP-05).
+      const located = liveIndex().get(single.element.id);
+      if (!located || !isLine(located)) return;
+      const line = located.element;
+      const at = linePoints(line)[Math.min(pointAt, line.points.length - 1)];
+      if (!at) return;
+      const to = applyVector(invert(located.space), by);
+      const next = moveLinePoint(line, pointAt, { x: at.x + to.x, y: at.y + to.y });
+      commit(burstTx(nudge), 'Edit line', located.path, new Map([[line.id, next]]));
+      return;
+    }
+    if (!crop && !plain) {
       // With Alt the side arrows turn the selection, with Ctrl the arrows size it (UI-06).
       keyTransform(moving, dir, e.altKey ? 'rotate' : 'resize', e.shiftKey);
       return;
     }
-    const step = e.shiftKey ? 10 : 1;
-    const by = { x: dir.x * step, y: dir.y * step };
     // A burst of presses is one undo step (STG-08).
     const txId = burstTx(nudge);
-    if (crop) {
-      // In crop mode the arrows move the picture under the frame.
-      const { located, view: v, image } = crop;
+    const cropped = liveCrop();
+    if (cropped) {
+      // In crop mode the arrows move the picture under the frame, or the crop handle that Tab
+      // went to: that handle goes the way the arrow points on the slide, as if it were dragged.
+      const { located, view: v, image } = cropped;
       const delta = toFrameAxes(invert(located.space), v.rotation, by);
-      commit(txId, 'Crop', located.path, new Map([[image.id, cropPatch(cropPan(v, delta))]]));
+      const ratio = heldRatio(cropSession.getState().ratio, v.frame) ?? undefined;
+      const next = handleAt
+        ? cropResize(v, HANDLES[handleAt], delta, { ratio })
+        : cropPan(v, delta);
+      commit(txId, 'Crop', located.path, new Map([[image.id, cropPatch(next)]]));
       return;
     }
     const patches = new Map<string, Patch>(
@@ -1390,6 +1479,114 @@ export function Stage({
     if (e.key === ' ') setSpaceDown(false);
     if (e.key === 'Alt') e.preventDefault();
   };
+
+  /**
+   * What the shortcuts of the registry ask of the Stage (UI-06): the keys that are new with the
+   * keyboard pass, which the user can change like any registered shortcut. They are the Stage's
+   * only while it has the keyboard itself: not a tool beside the selection, and not the text
+   * that is edited on the slide.
+   */
+  const runCommand = (command: StageCommand): boolean => {
+    const surface = container.current;
+    if (!slide || !surface) return false;
+    const line = single && isLine(single) && !single.locked && !editingId ? single : undefined;
+    if (command.type === 'points') {
+      // Into the points of the line, or out of them again. The menu asks for this too, and had
+      // the keyboard: the Stage takes it.
+      if (pointAt !== null) stageKeys.setState({ point: null });
+      else if (line) stageKeys.setState({ point: 0, cursor: null });
+      else return false;
+      surface.focus({ preventScroll: true });
+      return true;
+    }
+    if (document.activeElement !== surface) return false;
+    switch (command.type) {
+      case 'pan': {
+        // A fitted slide is all in view: there is nowhere to go.
+        if (zoom === 'fit') return false;
+        setPan((p) => ({
+          x: p.x - command.dir.x * PAN_STEP_PX,
+          y: p.y - command.dir.y * PAN_STEP_PX,
+        }));
+        return true;
+      }
+      case 'walk': {
+        // From one element to the next without selecting it, round and round: what Tab walks.
+        const walk = editingId ? [] : walkOrder();
+        if (!walk.length) return false;
+        const from = walkAt?.element.id ?? selected.at(-1);
+        const at = walk.findIndex((l) => l.element.id === from);
+        const to =
+          at < 0
+            ? command.step > 0
+              ? 0
+              : walk.length - 1
+            : (at + command.step + walk.length) % walk.length;
+        stageKeys.setState({ cursor: walk[to]?.element.id ?? null, point: null });
+        return true;
+      }
+      case 'toggle': {
+        if (!walkAt || editingId) return false;
+        toggling.current = true;
+        selection.getState().toggleElement(walkAt.element.id);
+        return true;
+      }
+      case 'part': {
+        if (crop) {
+          // The picture itself, then the eight handles, clockwise from the top left corner.
+          const order = [null, ...HANDLE_ORDER];
+          const at = order.indexOf(handleAt);
+          const to = (at + command.step + order.length) % order.length;
+          stageKeys.setState({ handle: order[to] ?? null });
+          return true;
+        }
+        if (pointAt === null || !line) return false;
+        const count = line.element.points.length;
+        stageKeys.setState({ point: (pointAt + command.step + count) % count });
+        return true;
+      }
+      case 'point.add': {
+        if (pointAt === null || !line) return false;
+        const { index: at, ...patch } = addLinePoint(line.element, pointAt);
+        commit(newId('tx'), 'Edit line', line.path, new Map([[line.element.id, patch]]));
+        stageKeys.setState({ point: at });
+        return true;
+      }
+      case 'point.remove': {
+        if (pointAt === null || !line) return false;
+        // A line keeps its two ends: the key then does nothing, and does not delete the line.
+        const next = removeLinePoint(line.element, pointAt);
+        if (next) {
+          commit(newId('tx'), 'Edit line', line.path, new Map([[line.element.id, next]]));
+          stageKeys.setState({ point: Math.min(pointAt, next.points.length - 1) });
+        }
+        return true;
+      }
+    }
+  };
+  useEffect(() => {
+    setStageCommands(runCommand);
+    return () => setStageCommands(null);
+  });
+
+  // The ring that says the Stage has the keyboard is for a keyboard that brought it here; after a
+  // press on the slide, what is selected says it.
+  const byKeyboard = useRef(false);
+  useEffect(() => {
+    const key = () => {
+      byKeyboard.current = true;
+    };
+    const pointer = () => {
+      byKeyboard.current = false;
+      setRing(false);
+    };
+    window.addEventListener('keydown', key, true);
+    window.addEventListener('pointerdown', pointer, true);
+    return () => {
+      window.removeEventListener('keydown', key, true);
+      window.removeEventListener('pointerdown', pointer, true);
+    };
+  }, []);
 
   // ---- Files ----
 
@@ -1526,6 +1723,7 @@ export function Stage({
               located={located}
               view={stageView}
               handles={located === single && !located.locked}
+              point={located === single ? pointAt : null}
             />
           ) : (
             <Outline
@@ -1549,6 +1747,7 @@ export function Stage({
             }}
           />
         ) : null}
+        {walkAt && !walkAt.hidden ? <Outline located={walkAt} view={stageView} walk /> : null}
         {marked?.map((id) => {
           // A slide the agent built or rebuilt is marked as a whole.
           if (id === slide.id) {
@@ -1568,6 +1767,7 @@ export function Stage({
             crop={crop.view}
             url={crop.url}
             active={active === 'crop-resize' || active === 'crop-pan'}
+            handle={handleAt}
           />
         ) : single && !single.locked && editingId !== single.element.id ? (
           <Handles located={single} view={stageView} rotateOnly={isLine(single)} />
@@ -1653,10 +1853,17 @@ export function Stage({
       onDrop={onDrop}
       onPaste={onPaste}
       onPointerLeave={() => setHover(undefined)}
+      onFocus={(e) => {
+        if (e.target === e.currentTarget) setRing(byKeyboard.current);
+      }}
+      onBlur={(e) => {
+        if (e.target === e.currentTarget) setRing(false);
+      }}
       style={{
         position: 'relative',
         overflow: 'hidden',
-        outline: 'none',
+        outline: ring ? '2px solid var(--color-ui-focus)' : 'none',
+        outlineOffset: -2,
         cursor: spaceDown ? 'grab' : crop && overCrop ? 'move' : undefined,
         userSelect: 'none',
         touchAction: 'none',

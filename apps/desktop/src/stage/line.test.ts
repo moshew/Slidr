@@ -1,6 +1,7 @@
 import { createElement, type LineElement, type Point } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import {
+  addLinePoint,
   constrainAngle,
   distanceToLine,
   fitLine,
@@ -199,5 +200,62 @@ describe('insertLinePoint and removeLinePoint', () => {
     ]);
     expect(out.frame).toEqual({ x: 100, y: 200, w: 300, h: 100 });
     expect(removeLinePoint({ ...line, ...out }, 0)).toBeUndefined();
+  });
+});
+
+describe('addLinePoint', () => {
+  const bent = () =>
+    diagonal({
+      points: [
+        { x: 0, y: 100 },
+        { x: 100, y: 100 },
+        { x: 300, y: 0 },
+      ],
+    });
+
+  it('puts the point halfway along the stretch after the given one, and moves no other', () => {
+    const line = bent();
+    const before = linePoints(line);
+    const out = addLinePoint(line, 0);
+    expect(out.index).toBe(1);
+    expect(out.points).toHaveLength(4);
+    const after = linePoints({ ...line, ...out });
+    near(after[0]!, before[0]!);
+    near(after[2]!, before[1]!);
+    near(after[3]!, before[2]!);
+    // Halfway between the first two points, on the path.
+    near(after[1]!, { x: 150, y: 300 });
+    expect(distanceToLine(line, after[1]!)).toBe(0);
+  });
+
+  it('after the last point, adds on the stretch that leads to it', () => {
+    const line = bent();
+    const out = addLinePoint(line, 2);
+    expect(out.index).toBe(2);
+    const after = linePoints({ ...line, ...out });
+    near(after[2]!, { x: 300, y: 250 });
+    near(after[3]!, linePoints(line)[2]!);
+  });
+
+  it('halves a line of two points along what is drawn: the corner of an elbow, by its length', () => {
+    const straight = addLinePoint(diagonal(), 0);
+    expect(straight.index).toBe(1);
+    near(linePoints({ ...diagonal(), ...straight })[1]!, { x: 250, y: 250 });
+    // An elbow of two points runs 150 across, 100 up, 150 across: its middle is half way up.
+    const elbow = diagonal({ curve: 'elbow' });
+    const out = addLinePoint(elbow, 1);
+    expect(out.index).toBe(1);
+    near(linePoints({ ...elbow, ...out })[1]!, { x: 250, y: 250 });
+  });
+
+  it('keeps the place of the other points on a line that is turned and mirrored', () => {
+    const line = { ...bent(), rotation: 30, flipH: true };
+    const before = linePoints(line);
+    const out = addLinePoint(line, 1);
+    const after = linePoints({ ...line, ...out });
+    near(after[0]!, before[0]!);
+    near(after[1]!, before[1]!);
+    near(after[3]!, before[2]!);
+    expect(distanceToLine(line, after[2]!)).toBeLessThan(1);
   });
 });

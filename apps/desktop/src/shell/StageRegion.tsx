@@ -13,6 +13,7 @@ import { languages } from '../i18n';
 import { svgMarkups } from '../objects/svgImport';
 import { layerSnippet } from '../arrange/layers';
 import { insertAssetsCommands } from '../stage/insert';
+import { KeyboardStatus } from '../stage/KeyboardStatus';
 import { stagePreview } from '../stage/preview';
 import { SelectionToolbar } from '../stage/SelectionToolbar';
 import { Stage } from '../stage/Stage';
@@ -161,6 +162,8 @@ export function StageRegion() {
             <p role="status" data-testid="stage-selection" className="sr-only">
               {selected}
             </p>
+            {/* And where the keyboard is beyond it: a point of a line, a crop handle, the walk. */}
+            <KeyboardStatus />
           </div>
           {previewing && (
             <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
