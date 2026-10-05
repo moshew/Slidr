@@ -140,6 +140,27 @@ export function moveStep(
   return next.every((step, i) => step === timeline[i]) ? timeline : next;
 }
 
+/**
+ * Where Alt with an arrow moves a step: one place on or back among the steps the list shows in
+ * its groups, as `moveStep`'s `beforeId`. The steps the runtime does not play are listed apart,
+ * and are passed over, so every press moves the row. Undefined at either end.
+ */
+export function nudgeTarget(
+  timeline: readonly AnimationStep[],
+  unplayed: readonly AnimationStep[],
+  stepId: string,
+  by: 1 | -1,
+): { before: string | undefined } | undefined {
+  const apart = new Set(unplayed.map((step) => step.id));
+  const shown = timeline.filter((step) => !apart.has(step.id));
+  const at = shown.findIndex((step) => step.id === stepId);
+  const neighbour = at < 0 ? undefined : shown[at + by];
+  if (!neighbour) return undefined;
+  if (by < 0) return { before: neighbour.id };
+  // Just after the next step that plays: before whatever follows it in the timeline.
+  return { before: timeline[timeline.indexOf(neighbour) + 1]?.id };
+}
+
 /* ---------------------------------------------------------------- the list */
 
 /** One line of the list: a step, or the share of a step that plays in one group. */
