@@ -171,3 +171,23 @@ export interface ImageClient {
   /** Ends the unfinished images of a job as `cancelled`. Images already stored stay. */
   cancel(jobId: string): Promise<void>;
 }
+
+/**
+ * Makes a provider the default one. True when the core took the choice. The core writes the
+ * choice into the settings itself, so what the page holds of them is read again (`refresh`);
+ * if that reading fails the choice is saved all the same, and it is not reported as a failure
+ * of the choice.
+ */
+export async function chooseDefaultProvider(
+  client: Pick<ImageClient, 'setDefaultProvider'>,
+  providerId: string,
+  refresh: () => Promise<unknown>,
+): Promise<boolean> {
+  try {
+    await client.setDefaultProvider(providerId);
+  } catch {
+    return false;
+  }
+  await refresh().catch(() => undefined);
+  return true;
+}

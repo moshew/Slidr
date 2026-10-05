@@ -13,6 +13,7 @@ import {
   IMAGE_ASPECTS,
   IMAGE_ERROR_KINDS,
   ImageError,
+  chooseDefaultProvider,
   type EditJob,
   type EditSupport,
   type GenerateJob,
@@ -579,5 +580,27 @@ describe('memoryImages', () => {
     await expect(images.setDefaultProvider('nope')).rejects.toMatchObject({
       kind: 'unknown_provider',
     });
+  });
+});
+
+describe('choosing the default provider', () => {
+  it('is a choice that was made once the core took it, even if the settings are not read back', async () => {
+    const setDefaultProvider = vi.fn(() => Promise.resolve());
+    const unread = vi.fn(() => Promise.reject(new Error('the settings could not be read')));
+    // The core saved the choice: the screen must not put the old one back and call it a failure.
+    expect(await chooseDefaultProvider({ setDefaultProvider }, 'openai-api', unread)).toBe(true);
+    expect(setDefaultProvider).toHaveBeenCalledWith('openai-api');
+    expect(unread).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not made when the core refuses it, and nothing is read back then', async () => {
+    const refused = vi.fn(() =>
+      Promise.reject(new ImageError('invalid_input', 'no such provider')),
+    );
+    const refresh = vi.fn(() => Promise.resolve());
+    expect(await chooseDefaultProvider({ setDefaultProvider: refused }, 'nope', refresh)).toBe(
+      false,
+    );
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

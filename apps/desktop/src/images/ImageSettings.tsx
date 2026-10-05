@@ -4,7 +4,11 @@ import { cx, SegmentedControl, Skeleton } from '@slidr/ui';
 import { KeyField, refreshSettings, updateSection, useSection, useSettings } from '../settings';
 import { useEditor } from '../shell/editor';
 import { imagesOf } from './appImages';
-import type { ImageProviderDescriptor, ImageProviderStatus } from './images';
+import {
+  chooseDefaultProvider,
+  type ImageProviderDescriptor,
+  type ImageProviderStatus,
+} from './images';
 
 /** The values of `images.quality` in the settings; the core falls back to `medium`. */
 const QUALITIES = ['low', 'medium', 'high', 'auto'] as const;
@@ -96,14 +100,10 @@ export function ImageSettings() {
     const before = chosen;
     setChosen(id);
     setError(null);
-    try {
-      await client.setDefaultProvider(id);
-      // The core wrote the choice into the settings itself.
-      await refreshSettings();
-    } catch {
-      setChosen(before);
-      setError(t('settings.chooseFailed'));
-    }
+    if (await chooseDefaultProvider(client, id, refreshSettings)) return;
+    // Only a choice the core did not take is taken back, and not over one made since.
+    setChosen((now) => (now === id ? before : now));
+    setError(t('settings.chooseFailed'));
   };
 
   if (!providers) {
