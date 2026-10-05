@@ -351,3 +351,39 @@ describe('the actions of a chart and of a table (AIO-07, AIO-08)', () => {
     expect(message('table.chart')).toContain('the insight and not the subject');
   });
 });
+
+describe('the actions of a shape and of an icon (AIO-06)', () => {
+  const message = (action: ActionId, params = {}) =>
+    actionMessage({ action, params, replyIn: 'Hebrew' });
+
+  it('are three, each a choice the app applies as a patch of the element', () => {
+    for (const id of ['shape.suggest', 'shape.colour', 'icon.replace'] as const) {
+      expect(ACTIONS[id].scope, id).toBe('object');
+      expect(ACTIONS[id].needs, id).toContain('ui_present_options');
+      const text = message(id);
+      expect(text, id).toContain('ui_present_options, kind "element"');
+      expect(text, id).toMatch(/each option's `set` is the element_update patch/);
+      expect(text, id).toContain('and nothing else');
+      expect(text, id).toContain('do not apply one yourself');
+    }
+    // An icon is found in the library, so a session without the library does not offer it.
+    expect(ACTIONS['icon.replace'].needs).toEqual(['ui_present_options', 'icon_search']);
+    expect(message('icon.replace', { count: 4 })).toContain('Offer 4 icons');
+    expect(message('icon.replace')).toContain('{"markup": "<svg …>"}');
+  });
+
+  it('name the shapes the app can draw, which the app passes with the action', () => {
+    const text = message('shape.suggest', { count: 3, shapes: ['rect', 'ellipse', 'chevron'] });
+    expect(text.split('\n')).toContain('shapes: ["rect","ellipse","chevron"]');
+    expect(text).toContain('{"geometry": {"kind": "preset", "preset": "<name>"}}');
+    expect(text).toContain('with a name from `shapes`');
+    expect(message('shape.colour')).not.toContain('shapes:');
+  });
+
+  it('colour by tokens of the theme, never by a value', () => {
+    const text = message('shape.colour');
+    expect(text).toContain('{"token": "primary"}, never a value of your own');
+    expect(text).toContain('{"fill": {"kind": "solid", "color": {"token": "primary"}}}');
+    expect(text).toContain('{"colorOverrides": {"currentColor": {"token": "primary"}}}');
+  });
+});

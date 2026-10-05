@@ -1,4 +1,5 @@
 import type { ScopeKind } from '@slidr/agent-tools';
+import { ColorToken } from '@slidr/model';
 import { json } from './context';
 
 /**
@@ -45,6 +46,8 @@ export interface ActionParams {
   outline?: readonly OutlineSlide[];
   /** The user changed the outline in its card before approving it. */
   edited?: boolean;
+  /** The shapes the app can draw, by the names a shape's `geometry.preset` takes (AIO-06). */
+  shapes?: readonly string[];
 }
 
 /** A slide of an outline: what `outline_propose` takes for one, and what its card shows. */
@@ -346,6 +349,27 @@ export const ACTIONS = define({
     ask: () =>
       'Turn the table `elementId` into a chart. Read its header row and its first column as the names and its numbers as the values: a number written with a unit or a sign ("12%", "$1,200") is its value, and a column that holds no numbers is not a series. Columns that measure different things in different units (customers and revenue, say) do not share an axis: chart the measure this slide is about, and say which you left out. Choose the chart type that fits what the table compares, and give the chart a title that says what the data shows, the insight and not the subject. The chart takes the place of the table: create it with chart_set in the frame of the table, larger if a chart needs more room there, then delete the table with element_delete. Nothing else on the slide changes, unless it has to move to make room. Look at the slide when you are done. If the table holds nothing a chart can show, change nothing and say so.',
   },
+
+  /* ---------------------------------------------------------------- the object tool: shape and icon (AIO-06) */
+
+  'shape.suggest': {
+    scope: 'object',
+    needs: ['ui_present_options'],
+    ask: (p) =>
+      `Offer ${count(p, 3)} other shapes for this one. Look at what the shape does on its slide (a frame for words, a step of a process, a pointer, a mark) and choose shapes that do that job better or say it more clearly, each different from the one it has and from the others. Show them with ui_present_options, kind "element": each option's \`set\` is the element_update patch that changes the outline and nothing else, {"geometry": {"kind": "preset", "preset": "<name>"}}, with a name from \`shapes\`. The frame, the fill and the text of the shape stay as they are. Each label names the shape and says, in two or three words, what it does here. ${OPTIONS}`,
+  },
+  'shape.colour': {
+    scope: 'object',
+    needs: ['ui_present_options'],
+    ask: (p) =>
+      `Offer ${count(p, 3)} ways to colour this element from the deck's theme, so that it belongs with the slides around it. A colour here is a token of the theme, written {"token": "primary"}, never a value of your own. The tokens are ${ColorToken.options.join(', ')}; read the theme to see what colour each is. Choose by what the element does on its slide (the one accent, a quiet surface under words, a mark beside a line of text) and keep what is written on it or beside it readable. Show them with ui_present_options, kind "element": each option's \`set\` is the element_update patch of the colours and nothing else. For a shape that is its \`fill\`, as in {"fill": {"kind": "solid", "color": {"token": "primary"}}}, with its \`stroke\` when it has an outline. For an icon it is \`colorOverrides\`, which maps each colour of the drawing to a token, as in {"colorOverrides": {"currentColor": {"token": "primary"}}}. Each label says in two or three words what the colouring makes of the element. ${OPTIONS}`,
+  },
+  'icon.replace': {
+    scope: 'object',
+    needs: ['ui_present_options', 'icon_search'],
+    ask: (p) =>
+      `Offer ${count(p, 4)} icons that say what this icon is there to say better than it does. Read the slide to see what the icon stands beside and what it has to mean, then search the icon library with icon_search, a word or two at a time, and choose icons that differ in the idea they picture and not only in how they are drawn. Show them with ui_present_options, kind "element": each option's \`set\` is the element_update patch that swaps the drawing and nothing else, {"markup": "<svg …>"}, with the SVG of the icon exactly as icon_search returned it (and "assetId": null beside it when the element holds an asset in place of markup). The frame and the colour of the icon stay as they are. Each label is the icon's name. ${OPTIONS}`,
+  },
 });
 
 export type ActionId = keyof typeof ACTIONS;
@@ -405,6 +429,8 @@ export function actionMessage({ action, params = {}, replyIn }: ActionMessageInp
     }));
     lines.push(`${OUTLINE_KEY}${json(slides, OUTLINE_LIMITS)}`);
   }
+  // The renderer owns the list of shapes, and this package does not see it: the app passes it.
+  if (params.shapes !== undefined) lines.push(`shapes: ${json(params.shapes)}`);
   lines.push(`reply_in: ${json(replyIn)}`);
   return [
     `<${ACTION_TAG}>`,
