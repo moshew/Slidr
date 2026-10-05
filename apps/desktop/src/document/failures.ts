@@ -1,4 +1,4 @@
-import { DeckLoadError } from '@slidr/model';
+import { DeckLoadError, type Deck } from '@slidr/model';
 import { i18n } from '../i18n';
 import { StorageError } from './storage';
 
@@ -50,4 +50,32 @@ export function describeFailure(error: unknown): string {
 /** The few words the status bar shows while the autosave cannot write. */
 export function autosaveFailure(kind: FailureKind): string {
   return i18n.t(kind === 'disk_full' ? 'document:autosave.disk_full' : 'document:autosave.failed');
+}
+
+/** As many of the files' names as a sentence reads well with. */
+const NAMES_SHOWN = 4;
+
+/**
+ * What the user is told after a save that went through without some of the deck's files
+ * (`SavedDeck.missingAssets`): how many, the names they were added under where the deck knows
+ * them (a name inside `assets/` is a hash), and what to do.
+ */
+export function describeMissingAssets(
+  deck: Deck,
+  files: readonly string[],
+): { title: string; body: string } {
+  const byFile = new Map(Object.values(deck.assets).map((asset) => [asset.file, asset]));
+  const names = files.flatMap((file) => byFile.get(file)?.name ?? []);
+  const shown = names.slice(0, NAMES_SHOWN).join(', ') + (names.length > NAMES_SHOWN ? ', …' : '');
+  const count = files.length;
+  const body = [
+    i18n.t('document:saved.missing', { count }),
+    ...(names.length === 0
+      ? []
+      : names.length === count
+        ? [i18n.t('document:saved.missingNames', { count, names: shown })]
+        : [i18n.t('document:saved.missingAmong', { names: shown })]),
+    i18n.t('document:saved.missingNext', { count }),
+  ];
+  return { title: i18n.t('document:saved.missingTitle'), body: body.join(' ') };
 }

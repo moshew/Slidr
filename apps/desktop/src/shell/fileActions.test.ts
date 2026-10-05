@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { createDeck, createSlide, type Deck } from '@slidr/model';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import '../document/register';
 import type { OpenedDeck, RecoverableWorkspace, Storage, Workspace } from '../document/storage';
 import { answer, pendingDialog } from './dialogs';
 import { createEditor, type Editor } from './editor';
@@ -330,6 +331,84 @@ describe('with storage', () => {
       expect(slidesIn(files.get(MINE))).not.toContain('s_agent');
       answer('cancel');
       expect(await settled).toBe(false);
+    });
+  });
+
+  /*
+   * The storage layer does not fail a save over a file it cannot find: it writes the deck
+   * without it and says which (ADR-007). Someone has to pass that on.
+   */
+  describe('a save that went through without some of the deck files', () => {
+    const picture = (id: string, name?: string) => ({
+      id,
+      file: `${id}.png`,
+      mime: 'image/png',
+      kind: 'image' as const,
+      bytes: 1,
+      origin: 'upload' as const,
+      ...(name ? { name } : {}),
+    });
+
+    /** A saved document with two pictures, and a storage whose saves leave `out.files` out. */
+    async function withPictures() {
+      const fake = fakeStorage();
+      const out = { files: [] as string[] };
+      const save = fake.storage.save.bind(fake.storage);
+      fake.storage.save = async (...args) => ({
+        ...(await save(...args)),
+        missingAssets: out.files,
+      });
+      const editor = createEditor({ lang: 'he', storage: fake.storage });
+      await startDocument(editor);
+      editor.bus.batch([
+        { type: 'asset.add', asset: picture('logo', 'logo.png') },
+        { type: 'asset.add', asset: picture('hero') },
+      ]);
+      dialog.save.mockResolvedValue('C:\\decks\\a.slidr');
+      return { editor, out };
+    }
+
+    it('tells the user how many files, and their names where the deck knows them', async () => {
+      const { editor, out } = await withPictures();
+      out.files = ['logo.png', 'hero.png'];
+      const saving = saveDocument(editor);
+      await vi.waitFor(() => expect(pendingDialog()).not.toBeNull());
+      expect(pendingDialog()?.title).toBe('המצגת נשמרה, אבל לא כל הקבצים שלה בקובץ');
+      expect(pendingDialog()?.body).toContain('שני קבצים');
+      expect(pendingDialog()?.body).toContain('ביניהם: logo.png.');
+      // The deck is saved all the same.
+      expect(editor.file.getState()).toMatchObject({ dirty: false, busy: null });
+      answer('ok');
+      expect(await saving).toBe(true);
+    });
+
+    it('says it once for a document, and again when the list changes', async () => {
+      const { editor, out } = await withPictures();
+      out.files = ['logo.png', 'hero.png'];
+      const first = saveDocument(editor);
+      await press('ok');
+      expect(await first).toBe(true);
+
+      // The same files are left out of every save that follows: nothing new to say.
+      edit(editor);
+      expect(await saveDocument(editor)).toBe(true);
+      expect(pendingDialog()).toBeNull();
+
+      out.files = ['hero.png'];
+      edit(editor);
+      const changed = saveDocument(editor);
+      await vi.waitFor(() => expect(pendingDialog()?.body).toContain('קובץ אחד'));
+      answer('ok');
+      expect(await changed).toBe(true);
+
+      // A whole save in between, and the next one that is not whole is news again.
+      out.files = [];
+      expect(await saveDocument(editor)).toBe(true);
+      expect(pendingDialog()).toBeNull();
+      out.files = ['hero.png'];
+      const again = saveDocument(editor);
+      await press('ok');
+      expect(await again).toBe(true);
     });
   });
 

@@ -1,7 +1,7 @@
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import type { ReplaceGuard } from '../document/documentService';
-import { describeFailure } from '../document/failures';
-import type { RecentFile, RecoverableWorkspace } from '../document/storage';
+import { describeFailure, describeMissingAssets } from '../document/failures';
+import type { RecentFile, RecoverableWorkspace, SavedDeck } from '../document/storage';
 import { currentLanguage, i18n } from '../i18n';
 import { ask, tell } from './dialogs';
 import type { Deck } from '@slidr/model';
@@ -248,17 +248,41 @@ export async function saveDocumentAs(editor: Editor): Promise<boolean> {
   return write(editor, () => document.saveAs(path));
 }
 
-async function write(editor: Editor, save: () => Promise<unknown>): Promise<boolean> {
+async function write(editor: Editor, save: () => Promise<SavedDeck>): Promise<boolean> {
   editor.file.setState({ busy: 'saving' });
+  let saved: SavedDeck;
   try {
-    await save();
-    syncFileState(editor);
-    return true;
+    saved = await save();
   } catch (error) {
     syncFileState(editor);
     await report(t('file.saveFailed'), error);
     return false;
   }
+  syncFileState(editor);
+  await tellMissing(editor, saved.missingAssets);
+  return true;
+}
+
+/**
+ * The files the user was last told a save went without, and in which document. The storage
+ * layer never fails a save over a picture it cannot find (ADR-007): it writes the file without
+ * it and says which. Every later save of the same deck goes without the same files, so the
+ * user is told once, and again when the list changes.
+ */
+const toldMissing = new WeakMap<Editor, { workspace: string | undefined; files: string }>();
+
+/** Tells the user that the file just saved is without some of the deck's files. */
+async function tellMissing(editor: Editor, files: readonly string[]): Promise<void> {
+  if (files.length === 0) {
+    toldMissing.delete(editor);
+    return;
+  }
+  const now = { workspace: editor.document?.workspace?.id, files: [...files].sort().join('\n') };
+  const before = toldMissing.get(editor);
+  if (before && before.workspace === now.workspace && before.files === now.files) return;
+  toldMissing.set(editor, now);
+  const { title, body } = describeMissingAssets(editor.bus.deck, files);
+  await tell(title, body);
 }
 
 export async function recentFiles(editor: Editor): Promise<RecentFile[]> {

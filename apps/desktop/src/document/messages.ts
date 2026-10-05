@@ -22,6 +22,23 @@ export const he = {
     failed: 'השמירה האוטומטית נכשלה',
     disk_full: 'השמירה האוטומטית נכשלה: אין מקום בדיסק',
   },
+  // A save that went through, without files the deck uses: the deck is safe, the file is not whole.
+  saved: {
+    missingTitle: 'המצגת נשמרה, אבל לא כל הקבצים שלה בקובץ',
+    missing_one:
+      'קובץ אחד שהמצגת משתמשת בו (תמונה, וידאו, אודיו או גופן) לא נמצא, ולכן אינו בקובץ השמור. בשקף הוא מוצג כחסר.',
+    missing_two:
+      'שני קבצים שהמצגת משתמשת בהם (תמונות, וידאו, אודיו או גופנים) לא נמצאו, ולכן אינם בקובץ השמור. בשקפים הם מוצגים כחסרים.',
+    missing_other:
+      '{{count}} קבצים שהמצגת משתמשת בהם (תמונות, וידאו, אודיו או גופנים) לא נמצאו, ולכן אינם בקובץ השמור. בשקפים הם מוצגים כחסרים.',
+    missingNames_one: 'שם הקובץ: {{names}}.',
+    missingNames_two: 'שמות הקבצים: {{names}}.',
+    missingNames_other: 'שמות הקבצים: {{names}}.',
+    missingAmong: 'ביניהם: {{names}}.',
+    missingNext_one: 'אפשר להחליף אותו בקובץ מהמחשב, ואז לשמור שוב.',
+    missingNext_two: 'אפשר להחליף אותם בקבצים מהמחשב, ואז לשמור שוב.',
+    missingNext_other: 'אפשר להחליף אותם בקבצים מהמחשב, ואז לשמור שוב.',
+  },
 };
 
 export const en: Messages<typeof he> = {
@@ -40,5 +57,21 @@ export const en: Messages<typeof he> = {
   autosave: {
     failed: 'Autosave failed',
     disk_full: 'Autosave failed: the disk is full',
+  },
+  saved: {
+    missingTitle: 'Saved, but not all of the deck’s files are in the file',
+    missing_one:
+      'One file the deck uses (a picture, a video, a sound or a font) was not found, so it is not in the saved file. On its slide it shows as missing.',
+    missing_two:
+      '{{count}} files the deck uses (pictures, videos, sounds or fonts) were not found, so they are not in the saved file. On the slides they show as missing.',
+    missing_other:
+      '{{count}} files the deck uses (pictures, videos, sounds or fonts) were not found, so they are not in the saved file. On the slides they show as missing.',
+    missingNames_one: 'Its name: {{names}}.',
+    missingNames_two: 'Their names: {{names}}.',
+    missingNames_other: 'Their names: {{names}}.',
+    missingAmong: 'Among them: {{names}}.',
+    missingNext_one: 'You can replace it with a file from your computer, then save again.',
+    missingNext_two: 'You can replace them with files from your computer, then save again.',
+    missingNext_other: 'You can replace them with files from your computer, then save again.',
   },
 };
