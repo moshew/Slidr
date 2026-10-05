@@ -174,10 +174,11 @@ export function createBaseTheme(): Theme {
     radius: 16,
     shadow: { x: 0, y: 12, blur: 32, color: { value: '#000000', alpha: 0.14 } },
     background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-    backgroundVariants: [
-      { fill: { kind: 'solid', color: { token: 'surface' } } },
-      { fill: { kind: 'solid', color: { token: 'primary' } } },
-    ],
+    // The Background tool offers these as the theme's own, so a theme offers only grounds that
+    // all five of its text styles read on, as the built-in templates do (`SURFACE` in their
+    // kit). A field of the primary colour was here too: the body text was at 3.25:1 on it and
+    // the caption at 1.05:1. A deck saved with that variant keeps it; a new one is not offered it.
+    backgroundVariants: [{ fill: { kind: 'solid', color: { token: 'surface' } } }],
   };
 }
 

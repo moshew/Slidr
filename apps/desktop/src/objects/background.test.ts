@@ -50,10 +50,16 @@ describe('what a slide shows', () => {
   });
 
   it('recognises a variant of the theme', () => {
-    const deck = deckOf({});
-    const [surface, primary] = createBaseTheme().backgroundVariants;
+    // A theme with two variants, as a template has, or a plain deck the user gave a second one.
+    const surface: Background = { fill: { kind: 'solid', color: { token: 'surface' } } };
+    const deck = createDeck({
+      theme: { ...createBaseTheme(), backgroundVariants: [surface, photo] },
+      slides: [createSlide({ id: 's1' })],
+    });
     expect(variantIndex(deck, surface)).toBe(0);
-    expect(variantIndex(deck, primary)).toBe(1);
+    expect(variantIndex(deck, { ...photo })).toBe(1);
+    // A variant is the whole background: the same picture without its veil is not it.
+    expect(variantIndex(deck, { fill: photo.fill })).toBe(-1);
     expect(variantIndex(deck, accent)).toBe(-1);
     expect(variantIndex(deck, undefined)).toBe(-1);
   });

@@ -41,6 +41,23 @@ async function addSlides(page: Page, count: number) {
   }, count);
 }
 
+/**
+ * One more variant of the theme's background, as the Templates panel adds one. The plain deck
+ * offers a single variant, its surface colour, which all of its text reads on; a test of
+ * choosing among several gives it another.
+ */
+async function addVariant(page: Page, variant: Background) {
+  await page.evaluate((next) => {
+    const { bus } = window.slidr!;
+    bus.dispatch({
+      type: 'theme.update',
+      patch: { backgroundVariants: [...bus.deck.theme.backgroundVariants, next] },
+    });
+  }, variant);
+}
+
+const ACCENT: Background = { fill: { kind: 'solid', color: { token: 'accent' } } };
+
 test.afterEach(({ page }) => {
   expect(pageProblems(page)).toEqual([]);
 });
@@ -62,12 +79,15 @@ test('the real tool replaces the placeholder, beside the layout tool', async ({ 
 });
 
 test('a variant of the theme, and back to the theme background', async ({ page }) => {
+  // The plain deck offers one variant, the surface colour: nothing its own text is lost on.
+  expect((await deck(page)).theme.backgroundVariants).toEqual([
+    { fill: { kind: 'solid', color: { token: 'surface' } } },
+  ]);
+  await addVariant(page, ACCENT);
   const editor = await openBackground(page);
   const theme = (await deck(page)).theme;
   // One choice for the theme background and one for each of its variants.
-  await expect(editor.locator('button[aria-pressed]')).toHaveCount(
-    1 + theme.backgroundVariants.length,
-  );
+  await expect(editor.locator('button[aria-pressed]')).toHaveCount(3);
   await expect(editor.getByRole('button', { name: 'רקע התבנית', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -80,7 +100,11 @@ test('a variant of the theme, and back to the theme background', async ({ page }
     'aria-pressed',
     'true',
   );
-  await expect(drawn(page)).toHaveCSS('background-color', 'rgb(47, 91, 234)');
+  await expect(editor.getByRole('button', { name: 'וריאנט 1' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(drawn(page)).toHaveCSS('background-color', 'rgb(245, 158, 11)');
 
   expect(
     await steps(page, () => editor.getByRole('button', { name: 'חזרה לרקע התבנית' }).click()),
@@ -191,13 +215,13 @@ test('apply to all slides, and undo it as one step', async ({ page }) => {
     window.slidr!.bus.dispatch({
       type: 'slide.update',
       slideId: 's_extra1',
-      patch: { background: { fill: { kind: 'solid', color: { token: 'surface' } } } },
+      patch: { background: { fill: { kind: 'solid', color: { token: 'accent' } } } },
     }),
   );
   const editor = await openBackground(page);
   const all = editor.getByRole('button', { name: 'החלה על כל השקפים' });
 
-  await editor.getByRole('button', { name: 'וריאנט 2' }).click();
+  await editor.getByRole('button', { name: 'וריאנט 1' }).click();
   const chosen = await backgroundOf(page);
   const before = await deck(page);
   expect(await steps(page, () => all.click())).toBe(1);
@@ -217,7 +241,7 @@ test('apply to all slides, and undo it as one step', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page.getByTestId('new-slide').click();
   await expect.poll(async () => (await deck(page)).slides.length).toBe(4);
-  await expect(drawn(page)).toHaveCSS('background-color', 'rgb(47, 91, 234)');
+  await expect(drawn(page)).toHaveCSS('background-color', 'rgb(243, 244, 246)');
 });
 
 test('the background of another slide is edited after going to it', async ({ page }) => {

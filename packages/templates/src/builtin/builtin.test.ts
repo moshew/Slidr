@@ -1,4 +1,11 @@
-import { Archetype, CommandBus, type Color, type Fill, type Theme } from '@slidr/model';
+import {
+  Archetype,
+  CommandBus,
+  createBaseTheme,
+  type Color,
+  type Fill,
+  type Theme,
+} from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { applyTemplate } from '../deck';
 import { equalJson } from '../json';
@@ -54,30 +61,47 @@ describe.each(templates.map((template) => [template.theme.id, template] as const
     });
 
     it('offers no background that one of its text styles cannot be read on', () => {
-      // The text of a placeholder has the colour of its text style and none of its own, so a
-      // ground the theme offers (its own, and the variants the Background tool shows) has to
-      // carry all five styles: WCAG AA, as the lint judges it (4.5:1, and 3:1 above 48px).
-      const { theme } = template;
-      const faint: string[] = [];
-      for (const [index, background] of [theme.background, ...theme.backgroundVariants].entries()) {
-        const name = index === 0 ? 'the background' : `variant ${index}`;
-        expect(background.overlay, name).toBeUndefined();
-        for (const ground of groundsOf(theme, background.fill, name)) {
-          for (const [ref, style] of Object.entries(theme.textStyles)) {
-            const drawn = rgbOf(theme, style.color, ground);
-            const got = contrast(drawn, ground);
-            const need = style.size > 48 ? 3 : 4.5;
-            if (got < need) faint.push(`${name}: ${ref} at ${got.toFixed(2)}:1, needs ${need}:1`);
-          }
-        }
-      }
-      expect([...new Set(faint)]).toEqual([]);
+      expect(faintGrounds(template.theme)).toEqual([]);
     });
   },
 );
 
+describe('the theme of a deck without a template', () => {
+  it('offers no background that one of its text styles cannot be read on', () => {
+    // The plain deck is on no built-in template, and its Background tool offers the variants of
+    // its theme all the same: it is held to the rule the templates are held to.
+    const theme = createBaseTheme();
+    expect(faintGrounds(theme)).toEqual([]);
+    // And it still has a ground to offer beside its own.
+    expect(theme.backgroundVariants.length).toBeGreaterThan(0);
+  });
+});
+
 // The contrast of a text style on a ground, from the values of the theme alone.
 type Rgb = [number, number, number];
+
+/**
+ * The text styles of a theme that are too faint on a ground the theme offers. The text of a
+ * placeholder has the colour of its text style and none of its own, so a ground the theme offers
+ * (its own, and the variants the Background tool shows) has to carry all five styles: WCAG AA,
+ * as the lint judges it (4.5:1, and 3:1 above 48px).
+ */
+function faintGrounds(theme: Theme): string[] {
+  const faint: string[] = [];
+  for (const [index, background] of [theme.background, ...theme.backgroundVariants].entries()) {
+    const name = index === 0 ? 'the background' : `variant ${index}`;
+    expect(background.overlay, name).toBeUndefined();
+    for (const ground of groundsOf(theme, background.fill, name)) {
+      for (const [ref, style] of Object.entries(theme.textStyles)) {
+        const drawn = rgbOf(theme, style.color, ground);
+        const got = contrast(drawn, ground);
+        const need = style.size > 48 ? 3 : 4.5;
+        if (got < need) faint.push(`${name}: ${ref} at ${got.toFixed(2)}:1, needs ${need}:1`);
+      }
+    }
+  }
+  return [...new Set(faint)];
+}
 
 function hexRgb(css: string): Rgb {
   const digits = /^#([0-9a-f]{6})$/i.exec(css.trim())?.[1];
