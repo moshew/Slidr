@@ -76,3 +76,32 @@ for (const theme of themes) {
     }
   }
 }
+
+/*
+ * The welcome screen as it is when it was opened over a document, from the File menu: with the
+ * way back to that document at its top. Written to test-results/fix-editing/.
+ */
+const fixed = (name: string) =>
+  fileURLToPath(new URL(`../test-results/fix-editing/${name}.png`, import.meta.url));
+
+for (const theme of themes) {
+  for (const lang of languages) {
+    test(`the welcome screen over a document, with the way back: ${lang}-${theme}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewports[1]);
+      await openApp(page, { lang, theme });
+      await page
+        .getByTestId('top-tools-a')
+        .getByRole('button', { name: lang === 'he' ? 'קובץ' : 'File' })
+        .click();
+      await page
+        .getByRole('menuitem')
+        .filter({ hasText: lang === 'he' ? 'מסך הפתיחה' : 'Welcome screen' })
+        .click();
+      await expect(page.getByTestId('welcome-back')).toBeVisible();
+      await settle(page);
+      await page.screenshot({ path: fixed(`welcome-back-${lang}-${theme}`) });
+    });
+  }
+}
