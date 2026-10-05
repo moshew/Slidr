@@ -77,6 +77,12 @@ export interface ToolContext {
    * abandoned.
    */
   write(commands: readonly Command[]): WriteSummary;
+  /**
+   * Asks the scope guard about commands the tool means to write later, and throws its refusal
+   * as `write` would. For a tool that pays for something first (an image takes a minute, and
+   * money at some providers): a write the session may not make is refused before it is paid for.
+   */
+  allowed(commands: readonly Command[]): void;
 }
 
 /** What a tool returns. The registry adds the write summary and lint findings to `data`. */

@@ -709,3 +709,104 @@ describe('image_process and transparent images', () => {
     expect(generate.mock.calls[1]![0]).not.toHaveProperty('transparent');
   });
 });
+
+describe('an image that takes a minute to make, and may cost money', () => {
+  const made = { asset: asset('b'), preview: png };
+  /** An image service that counts what it is asked for, and answers when the test says. */
+  function slowImages() {
+    let finish!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    let asked = 0;
+    const one = async () => {
+      asked++;
+      await gate;
+      return [made];
+    };
+    const images: ImageService = {
+      generate: one,
+      edit: one,
+      process: () => one().then(() => made),
+    };
+    return { images, finish, asked: () => asked };
+  }
+
+  it('is not made for an element the session may not change', async () => {
+    const slow = slowImages();
+    slow.finish();
+    // An object session of one image; the agent names another image of the slide.
+    const scope = { kind: 'object', slideId: 's_all', elementIds: ['e_image'] } as const;
+    const { call, bus } = setup(allElementsDeck(), { images: slow.images }, scope);
+    const calls = [
+      call('image_generate', { prompt: 'blue', elementId: 'e_image_pending' }),
+      call('image_edit', { elementId: 'e_image_pending', instruction: 'night' }),
+      call('image_process', { elementId: 'e_image_pending', operation: 'keyOutBackground' }),
+    ];
+    for (const pending of calls) {
+      const error = await failed(pending);
+      expect(error.code).toBe('out_of_scope');
+      expect(error.message).toMatch(/would change element "e_image_pending"/);
+    }
+    // The refusal came before the provider was asked: nothing was made, and nothing paid for.
+    expect(slow.asked()).toBe(0);
+    expect(Object.keys(bus.deck.assets)).toEqual(Object.keys(allElementsDeck().assets));
+    // Its own element is made and placed as before.
+    await ok(call('image_process', { elementId: 'e_image', operation: 'keyOutBackground' }));
+    expect(slow.asked()).toBe(1);
+  });
+
+  it('is not made for the placeholders of a slide that is not the session’s', async () => {
+    const slow = slowImages();
+    slow.finish();
+    const pending = (id: string, prompt: string) =>
+      createElement.image({ id, frame: { x: 0, y: 0, w: 160, h: 90 }, prompt });
+    const deck = createDeck({
+      slides: [
+        createSlide({ id: 's_mine', elements: [pending('e_mine', 'a lighthouse')] }),
+        createSlide({ id: 's_other', elements: [pending('e_other', 'a harbour')] }),
+      ],
+    });
+    const { call } = setup(deck, { images: slow.images }, { kind: 'slide', slideId: 's_mine' });
+    const error = await failed(call('image_fill_placeholders', { slideId: 's_other' }));
+    expect(error.code).toBe('out_of_scope');
+    expect(slow.asked()).toBe(0);
+    expect(await ok(call('image_fill_placeholders'))).toMatchObject({
+      filled: [{ slideId: 's_mine', elementId: 'e_mine' }],
+    });
+  });
+
+  it.each([
+    ['image_generate', { elementId: 'e_image_pending' }, 'e_image_pending'],
+    ['image_edit', { elementId: 'e_image', instruction: 'make it night' }, 'e_image'],
+    ['image_process', { elementId: 'e_image', operation: 'keyOutBackground' }, 'e_image'],
+  ])('%s keeps what it made when its element was deleted meanwhile', async (tool, input, id) => {
+    const slow = slowImages();
+    const { call, bus } = setup(allElementsDeck(), { images: slow.images });
+    const pending = call(tool, input);
+    await vi.waitFor(() => expect(slow.asked()).toBe(1));
+    // The user deletes the element while the provider works.
+    bus.dispatch({ type: 'element.remove', slideId: 's_all', elementIds: [id] });
+    slow.finish();
+
+    const data = await ok(pending);
+    // The image is among the deck's assets, as `image_fill_placeholders` leaves it, and the
+    // agent is told that it is in no element.
+    expect(bus.deck.assets).toHaveProperty(made.asset.id);
+    expect(data.assets).toEqual([{ assetId: made.asset.id, width: 1024, height: 576 }]);
+    expect(data.notPlaced).toMatch(new RegExp(`^Element "${id}" was deleted or changed`));
+    expect(findElementInDeck(bus.deck, id)).toBeUndefined();
+  });
+
+  it('says nothing of placing when the image went where it was meant to', async () => {
+    const slow = slowImages();
+    slow.finish();
+    const { call } = setup(allElementsDeck(), { images: slow.images });
+    expect(await ok(call('image_generate', { elementId: 'e_image_pending' }))).not.toHaveProperty(
+      'notPlaced',
+    );
+    expect(await ok(call('image_generate', { prompt: 'a harbour' }))).not.toHaveProperty(
+      'notPlaced',
+    );
+  });
+});

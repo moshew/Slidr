@@ -7,12 +7,12 @@ import {
   Archetype,
   commandDefs,
   createElement,
+  findElementInDeck,
   PlaceholderRole,
   rotatedBounds,
   unionBounds,
   type AssetMeta,
   type Command,
-  type Deck,
   type Element,
   type Slide,
 } from '@slidr/model';
@@ -410,8 +410,24 @@ interface ImageTarget {
   frame?: { w: number; h: number };
 }
 
-/** The asset of an image element, or the given asset; one of the two is required. */
-function sourceAsset(deck: Deck, input: { elementId?: string; assetId?: string }): ImageTarget {
+/** The change that puts an image into an image element: its asset, and no prompt left to fill. */
+const placement = (slideId: string, elementId: string, assetId: string): Command => ({
+  type: 'element.update',
+  slideId,
+  elementId,
+  patch: { assetId, prompt: null },
+});
+
+/**
+ * The asset of an image element, or the given asset; one of the two is required. An element the
+ * session may not change is refused here, before an image is made for it: the provider takes a
+ * minute, and at some providers money, and the scope guard would refuse the write afterwards.
+ */
+function sourceAsset(
+  ctx: ToolContext,
+  input: { elementId?: string; assetId?: string },
+): ImageTarget {
+  const { deck } = ctx;
   if (input.elementId) {
     const { slide, element } = getElement(deck, input.elementId);
     if (element.type !== 'image') {
@@ -420,6 +436,7 @@ function sourceAsset(deck: Deck, input: { elementId?: string; assetId?: string }
         `Element "${input.elementId}" is a ${element.type}, not an image.`,
       );
     }
+    ctx.allowed([placement(slide.id, element.id, element.assetId ?? '')]);
     return {
       slideId: slide.id,
       elementId: element.id,
@@ -435,26 +452,23 @@ function sourceAsset(deck: Deck, input: { elementId?: string; assetId?: string }
   return { assetId: input.assetId };
 }
 
-/** Registers the images, and puts the first into the element when there is one. */
+/**
+ * Registers the images, and puts the first into the element when there is one. The images took
+ * a while to make, and the deck may have changed meanwhile: an element that is gone, or is no
+ * longer an image, is left alone, and what was made (and paid for) stays among the assets.
+ */
 function placeImages(
   ctx: ToolContext,
   images: readonly StoredImage[],
-  target: { slideId?: string; elementId?: string },
+  target: { elementId?: string },
 ) {
   const first = images[0];
   if (!first) throw new DeckApiError('failed', 'The image service returned no image.');
+  const found = target.elementId ? findElementInDeck(ctx.deck, target.elementId) : undefined;
+  const into = found?.element.type === 'image' ? found : undefined;
   ctx.write([
     ...registerAssets(images.map((i) => i.asset)),
-    ...(target.slideId && target.elementId
-      ? [
-          {
-            type: 'element.update' as const,
-            slideId: target.slideId,
-            elementId: target.elementId,
-            patch: { assetId: first.asset.id, prompt: null },
-          },
-        ]
-      : []),
+    ...(into ? [placement(into.slide.id, into.element.id, first.asset.id)] : []),
   ]);
   return {
     data: {
@@ -463,6 +477,11 @@ function placeImages(
         ...(asset.width ? { width: asset.width, height: asset.height } : {}),
         ...(asset.attribution ? { attribution: asset.attribution } : {}),
       })),
+      ...(target.elementId && !into
+        ? {
+            notPlaced: `Element "${target.elementId}" was deleted or changed while the image was made: the image is among the deck's assets, in no element.`,
+          }
+        : {}),
     },
     images: images.map((i) => i.preview),
   };
@@ -502,7 +521,7 @@ export const imageGenerate = defineTool({
   requires: 'images',
   timeoutMs: IMAGE_TIMEOUT_MS,
   async run({ prompt, count, aspect, elementId, transparent }, ctx) {
-    const target: ImageTarget = elementId ? sourceAsset(ctx.deck, { elementId }) : {};
+    const target: ImageTarget = elementId ? sourceAsset(ctx, { elementId }) : {};
     const subject = prompt ?? target.prompt;
     if (!subject) {
       throw new DeckApiError(
@@ -542,6 +561,8 @@ export const imageFillPlaceholders = defineTool({
     const waiting = imagePlaceholders(ctx.deck, only ? [only] : undefined);
     const batch = waiting.slice(0, MAX_FILL);
     if (batch.length === 0) return { data: { filled: [], failed: [], remaining: 0 } };
+    // A slide the session may not change is refused now, not after its images were made.
+    ctx.allowed(batch.map((p) => placement(p.slideId, p.elementId, '')));
 
     const images = ctx.services.images!;
     const settled = await Promise.allSettled(
@@ -577,12 +598,7 @@ export const imageFillPlaceholders = defineTool({
       ...registerAssets(filled.map(({ image }) => image.asset)),
       ...filled
         .filter(({ elementId }) => still.has(elementId))
-        .map(({ slideId: slide, elementId, image }): Command => ({
-          type: 'element.update',
-          slideId: slide,
-          elementId,
-          patch: { assetId: image.asset.id, prompt: null },
-        })),
+        .map(({ slideId: slide, elementId, image }) => placement(slide, elementId, image.asset.id)),
     ]);
     return {
       data: {
@@ -615,7 +631,7 @@ export const imageEdit = defineTool({
   requires: 'images',
   timeoutMs: IMAGE_TIMEOUT_MS,
   async run({ elementId, assetId, instruction, maskAssetId, count }, ctx) {
-    const source = sourceAsset(ctx.deck, { elementId, assetId });
+    const source = sourceAsset(ctx, { elementId, assetId });
     if (!source.assetId)
       throw new DeckApiError('invalid_state', 'The image element has no image yet.');
     const service = ctx.services.images!;
@@ -648,7 +664,7 @@ export const imageProcess = defineTool({
   writes: true,
   requires: 'images',
   async run({ elementId, assetId, operation }, ctx) {
-    const source = sourceAsset(ctx.deck, { elementId, assetId });
+    const source = sourceAsset(ctx, { elementId, assetId });
     if (!source.assetId)
       throw new DeckApiError('invalid_state', 'The image element has no image yet.');
     const image = await ctx.services.images!.process({ assetId: source.assetId, operation });

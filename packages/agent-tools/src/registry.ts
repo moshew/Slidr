@@ -258,6 +258,10 @@ export function createDeckApi(
       get abandoned() {
         return abandoned();
       },
+      allowed(commands) {
+        const refusal = checkWrite(turn.scope, commands, bus.deck);
+        if (refusal) throw new DeckApiError('out_of_scope', refusal);
+      },
       write(commands) {
         if (!tool.writes) throw new Error(`${name} is declared read-only but tried to write.`);
         // A call that waited on a service (a conversion, an image) comes back to a turn that
