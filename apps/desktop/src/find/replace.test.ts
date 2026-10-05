@@ -53,6 +53,15 @@ describe('replaceInParagraph', () => {
     ]);
   });
 
+  it('replaces a pointed Hebrew word whole, leaving none of its points behind', () => {
+    // The word ends in a letter that carries a point: the point goes with it.
+    const p = para({ text: 'בוא לְךָ ' }, { text: 'מכאן', marks: bold });
+    expect(replaced(p, 'לך', 'אליי').runs).toEqual([
+      { text: 'בוא אליי ' },
+      { text: 'מכאן', marks: bold },
+    ]);
+  });
+
   it('leaves the runs no match touches as they are, the very same objects', () => {
     const p = para({ text: 'x ' }, { text: 'a-a-a', marks: bold }, { text: ' y', marks: italic });
     const out = replaced(p, 'a', 'bb');

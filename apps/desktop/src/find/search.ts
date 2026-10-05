@@ -65,10 +65,23 @@ const foldedChars = new Map<string, string>();
 function foldChar(char: string): string {
   let folded = foldedChars.get(char);
   if (folded === undefined) {
-    folded = char.toLowerCase().toUpperCase().toLowerCase();
+    folded = isHebrewPoint(char) ? '' : char.toLowerCase().toUpperCase().toLowerCase();
     foldedChars.set(char, folded);
   }
   return folded;
+}
+
+const HEBREW = /\p{Script=Hebrew}/u;
+const MARK = /\p{Mn}/u;
+
+/**
+ * The points and the cantillation marks of Hebrew (niqqud, te'amim): marks that sit on a letter
+ * and are no letter themselves. A text is searched without them unless the case must match: a
+ * query typed without points finds the pointed word, as in a word processor, and the other way
+ * round.
+ */
+function isHebrewPoint(char: string): boolean {
+  return MARK.test(char) && HEBREW.test(char);
 }
 
 const foldText = (text: string): string => Array.from(text, foldChar).join('');
@@ -92,6 +105,11 @@ function fold(text: string): Folded {
   let at = 0;
   for (const char of text) {
     const part = foldChar(char);
+    // A Hebrew point is folded to nothing. It belongs to the letter before it: a match that ends
+    // on that letter ends after its points, so that replacing the match leaves no point behind.
+    if (part === '' && ends.length > 0 && ends[ends.length - 1] !== -1) {
+      ends[ends.length - 1] = at + char.length;
+    }
     for (let i = 0; i < part.length; i++) {
       starts.push(i === 0 ? at : -1);
       ends.push(i === part.length - 1 ? at + char.length : -1);

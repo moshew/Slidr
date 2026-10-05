@@ -116,9 +116,37 @@ describe('findInText', () => {
 
   it('takes the points of a Hebrew letter as part of its word', () => {
     const pointed = 'שָׁלוֹם עולם';
-    expect(found(pointed, 'ש')).toEqual(['ש']);
+    // A letter is found with the points that sit on it.
+    expect(found(pointed, 'ש')).toEqual(['שָׁ']);
     expect(found(pointed, 'ש', WORD)).toEqual([]);
     expect(found(pointed, 'שָׁלוֹם', WORD)).toEqual(['שָׁלוֹם']);
+  });
+
+  it('finds pointed Hebrew by a query without points, and the other way round', () => {
+    const pointed = 'שָׁלוֹם עוֹלָם';
+    expect(found(pointed, 'שלום')).toEqual(['שָׁלוֹם']);
+    expect(found(pointed, 'עולם', WORD)).toEqual(['עוֹלָם']);
+    expect(found(pointed, 'שלום עולם')).toEqual([pointed]);
+    // A pointed query in a text that has no points, or has other ones.
+    expect(found('שלום עולם', 'שָׁלוֹם')).toEqual(['שלום']);
+    expect(found('שַׁלוּם', 'שָׁלוֹם')).toEqual(['שַׁלוּם']);
+    // The marks of the cantillation are no letters either.
+    expect(found('בְּרֵאשִׁ֖ית בָּרָ֣א', 'בראשית ברא')).toEqual(['בְּרֵאשִׁ֖ית בָּרָ֣א']);
+    // Asked to match exactly, the points count like the case of a letter.
+    expect(found(pointed, 'שלום', CASE)).toEqual([]);
+    expect(found(pointed, 'שָׁלוֹם', CASE)).toEqual(['שָׁלוֹם']);
+  });
+
+  it('ends a match after the points of its last letter, and finds nothing for points alone', () => {
+    // "lecha": the last letter, a final kaf, carries a point of its own.
+    const text = 'לְךָ שלום';
+    expect(ranges(text, 'לך')).toEqual([[0, 4]]);
+    expect(found(text, 'לך')).toEqual(['לְךָ']);
+    const qamats = String.fromCodePoint(0x5b8);
+    expect(found(text, qamats)).toEqual([]);
+    // A mark of another script is a character like any other: the match ends before it.
+    const acute = String.fromCodePoint(0x301);
+    expect(ranges(`cafe${acute}`, 'cafe')).toEqual([[0, 4]]);
   });
 
   it('finds whole words in mixed text, next to punctuation and digits', () => {
