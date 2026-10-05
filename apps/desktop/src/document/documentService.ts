@@ -245,14 +245,16 @@ export class DocumentService {
   }
 
   /**
-   * Deletes a workspace that was made for a document that did not come to be. One that cannot
-   * be deleted now is swept at the next start: it never held unsaved work.
+   * Deletes a workspace the window has no more use for: one made for a document that did not
+   * come to be, or the one of the document that was just replaced. A folder that cannot be
+   * deleted now (Windows still holds a file of it) is nothing to the open deck, and nothing
+   * the user can act on: it is logged, and the next start sweeps it.
    */
   async #discard(workspaceId: string): Promise<void> {
     try {
       await this.#storage.close(workspaceId);
     } catch (error) {
-      console.warn('A workspace that is not needed could not be deleted', error);
+      console.warn('A workspace that is no longer needed could not be deleted', error);
     }
   }
 
@@ -265,7 +267,9 @@ export class DocumentService {
     this.#savedRevision = 0;
     this.#autosavedRevision = this.#revision;
     if (previous && previous.id !== workspace.id) {
-      void this.#enqueue(() => this.#storage.close(previous.id)).catch(this.#onAutosaveError);
+      // In the queue, after whatever was still being written to it. Not through the autosave's
+      // error: that one tells the user the deck in front of them is not being kept.
+      void this.#enqueue(() => this.#discard(previous.id));
     }
   }
 

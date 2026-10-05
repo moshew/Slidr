@@ -208,6 +208,27 @@ describe('DocumentService', () => {
     expect(service.bus.canUndo).toBe(false);
   });
 
+  it('logs a previous workspace that cannot be deleted, and does not call it a failed autosave', async () => {
+    const failed: unknown[] = [];
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const guarded = new DocumentService(storage, new CommandBus(createDeck()), {
+      onAutosaveError: (error) => failed.push(error),
+    });
+    await guarded.create(hebrewDeck());
+    // Windows still holds a file of the old workspace (a clip that was playing): it refuses.
+    const held = new StorageError('io', 'could not delete the workspace');
+    storage.close = () => Promise.reject(held);
+    await guarded.create(createDeck({ title: 'New' }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // The alert in the status bar is about the open deck, which is new and untouched; nothing
+    // would ever clear it, since no autosave of an untouched deck is coming.
+    expect(failed).toEqual([]);
+    expect(warned).toHaveBeenCalledWith(expect.any(String), held);
+    expect(guarded.bus.deck.meta.title).toBe('New');
+    warned.mockRestore();
+  });
+
   it('migrates an old file after putting a copy aside (DOC-04)', async () => {
     const old = SCHEMA_VERSION - 1;
     storage.files.set('C:/old.slidr', JSON.stringify({ ...hebrewDeck(), schemaVersion: old }));
