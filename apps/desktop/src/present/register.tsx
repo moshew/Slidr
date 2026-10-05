@@ -18,10 +18,14 @@ registerAction('present', () => {
 registerShortcut({
   id: 'present.fromStart',
   keys: 'F5',
+  label: 'keys.presentStart',
+  section: 'present',
   run: (editor) => startPresenting(editor, { from: 'first' }),
 });
 registerShortcut({
   id: 'present.fromCurrent',
   keys: 'Shift+F5',
+  label: 'keys.presentCurrent',
+  section: 'present',
   run: (editor) => startPresenting(editor, { from: 'current' }),
 });

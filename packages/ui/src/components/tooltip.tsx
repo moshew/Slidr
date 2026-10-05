@@ -11,8 +11,10 @@ export interface TooltipProps {
   /** Shown as keycaps after the text. */
   shortcut?: string;
   side?: TooltipSide;
-  /** Controlled open state; for the gallery. */
+  /** Controlled open state; for the gallery, and with `onOpenChange` for a host that decides. */
   open?: boolean;
+  /** What the tooltip asks for: open on hover or focus, closed on leave, Esc or a click. */
+  onOpenChange?: (open: boolean) => void;
   /** The trigger: one element that takes a ref, such as a Button. */
   children: ReactElement;
 }
@@ -25,11 +27,21 @@ export function usePhysicalSide(side: TooltipSide): 'top' | 'bottom' | 'left' | 
 }
 
 /** The app's tooltip. Never use the `title` attribute: that is the OS tooltip. */
-export function Tooltip({ content, shortcut, side = 'bottom', open, children }: TooltipProps) {
+export function Tooltip({
+  content,
+  shortcut,
+  side = 'bottom',
+  open,
+  onOpenChange,
+  children,
+}: TooltipProps) {
   const physical = usePhysicalSide(side);
   const container = usePortalContainer();
   return (
-    <RadixTooltip.Root {...(open === undefined ? {} : { open })}>
+    <RadixTooltip.Root
+      {...(open === undefined ? {} : { open })}
+      {...(onOpenChange ? { onOpenChange } : {})}
+    >
       <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
       <RadixTooltip.Portal container={container}>
         <RadixTooltip.Content

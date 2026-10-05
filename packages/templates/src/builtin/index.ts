@@ -16,7 +16,7 @@ import { tzukSamples, tzukTemplate, tzukTheme } from './tzuk';
 import { zeremSamples, zeremTemplate, zeremTheme } from './zerem';
 import { zoharSamples, zoharTemplate, zoharTheme } from './zohar';
 
-export { contractGaps, ROLE_CONTRACT } from './contract';
+export { contractGaps, OPTIONAL, ROLE_CONTRACT } from './contract';
 export { pictures } from './pictures.generated';
 export { sampleDeck, type SampleSlide } from './kit';
 export { zeremTemplate };

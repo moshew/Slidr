@@ -3,6 +3,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  Field,
   Icon,
   NumberField,
   ScrollArea,
@@ -11,7 +12,7 @@ import {
 } from '@slidr/ui';
 import { CircleAlert, CircleCheck, TriangleAlert } from '@slidr/ui/icons';
 import type { TFunction } from 'i18next';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Editor } from '../shell';
 import {
@@ -44,15 +45,6 @@ type Phase =
 /** A count in words: one string for one, another for more (see `messages.ts`). */
 const counted = (t: TFunction<'export'>, key: string, n: number): string =>
   n === 1 ? t(`${key}One`) : t(`${key}Many`, { n });
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-ui-fg-muted">{title}</span>
-      {children}
-    </div>
-  );
-}
 
 export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () => void }) {
   const { t } = useTranslation('export');
@@ -96,6 +88,10 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
     }
   };
 
+  // One file, unless its video and audio go into a folder beside it (ADR-057).
+  const withFolder =
+    phase.at === 'done' ? phase.result.mediaFolder !== undefined : phase.at !== 'failed' && beside;
+
   const close = (
     <Button variant={phase.at === 'done' ? 'primary' : 'ghost'} onClick={onClose}>
       {phase.at === 'choose' ? t('cancel') : t('close')}
@@ -127,7 +123,7 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
     <Dialog open onOpenChange={(open) => !open && phase.at !== 'working' && onClose()}>
       <DialogContent
         title={t('title')}
-        description={t('description')}
+        description={withFolder ? t('descriptionBeside') : t('description')}
         closeLabel={phase.at === 'working' ? undefined : t('close')}
         footer={footer}
         data-testid="export-dialog"
@@ -135,7 +131,7 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
       >
         {phase.at === 'choose' && (
           <div className="flex flex-col gap-4">
-            <Section title={t('slides.label')}>
+            <Field label={t('slides.label')}>
               <SegmentedControl
                 aria-label={t('slides.label')}
                 className="self-start"
@@ -176,8 +172,8 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
                       ...(plan.hidden > 0 ? [counted(t, 'slides.hidden', plan.hidden)] : []),
                     ].join(' ')}
               </p>
-            </Section>
-            <Section title={t('animations.label')}>
+            </Field>
+            <Field label={t('animations.label')}>
               <SegmentedControl
                 aria-label={t('animations.label')}
                 className="self-start"
@@ -191,7 +187,7 @@ export function ExportDialog({ editor, onClose }: { editor: Editor; onClose: () 
               {!animations && (
                 <p className="text-xs text-ui-fg-muted">{t('animations.withoutHint')}</p>
               )}
-            </Section>
+            </Field>
             {media.assets.length > 0 && (
               <MediaChoice media={media} beside={beside} onChange={setMediaBeside} />
             )}
@@ -244,7 +240,7 @@ function MediaChoice({
       : t('media.insideHint', { count, size: ltr(formatBytes(media.inFile)) });
   const warns = media.tooLarge || (!beside && media.large);
   return (
-    <Section title={t('media.label')}>
+    <Field label={t('media.label')}>
       <SegmentedControl
         aria-label={t('media.label')}
         className="self-start"
@@ -264,7 +260,7 @@ function MediaChoice({
         {warns && <Icon icon={TriangleAlert} className="mt-0.5 shrink-0 text-ui-warning-fg" />}
         <span>{hint}</span>
       </p>
-    </Section>
+    </Field>
   );
 }
 
@@ -313,7 +309,7 @@ function Report({
       <ScrollArea viewportClassName="max-h-72">
         <div className="flex flex-col gap-4 pe-3">
           {result.warnings.length > 0 && (
-            <Section title={t('done.warnings')}>
+            <Field label={t('done.warnings')}>
               <ul data-testid="export-warnings" className="flex flex-col gap-1">
                 {result.warnings.map((warning, i) => (
                   <li key={i} className="flex items-start gap-2">
@@ -322,10 +318,10 @@ function Report({
                   </li>
                 ))}
               </ul>
-            </Section>
+            </Field>
           )}
           {besideFile.length > 0 && result.mediaFolder !== undefined && (
-            <Section title={t('done.media')}>
+            <Field label={t('done.media')}>
               <span data-testid="export-media-folder">
                 {destination.kind === 'file'
                   ? t('done.mediaFolder', { folder: ltr(result.mediaFolder) })
@@ -345,9 +341,9 @@ function Report({
                   </li>
                 ))}
               </ul>
-            </Section>
+            </Field>
           )}
-          <Section title={t('done.assets')}>
+          <Field label={t('done.assets')}>
             {inFile.length === 0 ? (
               <span className="text-ui-fg-muted">{t('done.noAssets')}</span>
             ) : (
@@ -379,8 +375,20 @@ function Report({
                 ))}
               </ul>
             )}
-          </Section>
-          <Section title={t('done.fonts')}>
+          </Field>
+          {result.charts.count > 0 && (
+            <Field label={t('done.charts')}>
+              <span data-testid="export-charts">
+                {result.charts.count === 1
+                  ? t('done.chartsOne', { size: ltr(formatBytes(result.charts.bytes)) })
+                  : t('done.chartsMany', {
+                      n: result.charts.count,
+                      size: ltr(formatBytes(result.charts.bytes)),
+                    })}
+              </span>
+            </Field>
+          )}
+          <Field label={t('done.fonts')}>
             {fonts.length === 0 ? (
               <span className="text-ui-fg-muted">{t('done.noFonts')}</span>
             ) : (
@@ -406,7 +414,7 @@ function Report({
                 </span>
               </>
             )}
-          </Section>
+          </Field>
         </div>
       </ScrollArea>
     </div>

@@ -74,6 +74,7 @@ import {
   type Patch,
   type Placement,
 } from './groups';
+import { isCtrlLetter } from './keys';
 import {
   constrainAngle,
   distanceToLine,
@@ -161,6 +162,11 @@ export interface StageProps {
    * knows the language. Undefined, or nothing for an element, shows nothing.
    */
   placeholderHint?: (element: TextElement) => string | undefined;
+  /**
+   * What a screen reader calls the Stage, by the host, which knows the language. The Stage takes
+   * its own keys (the arrows move, Tab walks the objects), so it is an application to it.
+   */
+  label?: string;
   className?: string;
   style?: CSSProperties;
 }
@@ -171,6 +177,8 @@ const TOOLBAR_CLEAR_PX = 40;
 /** Screen pixels within which an edge snaps or a click counts as a click. */
 const SNAP_PX = 6;
 const DRAG_PX = 3;
+/** How far inside the Stage's edge a dragged selection stops following the pointer, in screen px. */
+const STAGE_EDGE_PX = 8;
 /** How near the stroke of a line the pointer has to be, in screen pixels. */
 const LINE_HIT_PX = 6;
 /** Safe margin and column grid the guides offer (STG-04): 5% of the width, 12 columns. */
@@ -339,6 +347,7 @@ export function Stage({
   selectionToolbar,
   marked,
   placeholderHint,
+  label: name,
   className,
   style,
 }: StageProps) {
@@ -403,6 +412,17 @@ export function Stage({
     },
     [origin.x, origin.y, scale],
   );
+
+  /** A point of the window, moved inside the Stage's visible box if it is outside it. */
+  const withinStage = (clientX: number, clientY: number): Point => {
+    const rect = container.current?.getBoundingClientRect();
+    if (!rect) return { x: clientX, y: clientY };
+    const inset = STAGE_EDGE_PX;
+    return {
+      x: Math.min(Math.max(clientX, rect.left + inset), rect.right - inset),
+      y: Math.min(Math.max(clientY, rect.top + inset), rect.bottom - inset),
+    };
+  };
 
   /** Every element of the slide by id, nested ones too, with the space each is written in. */
   const index = useMemo(() => indexElements(slide?.elements ?? []), [slide]);
@@ -621,6 +641,13 @@ export function Stage({
     return best ? [...pathIds(best), best.element.id] : [];
   };
 
+  /** The frame of an element contains the point, wherever it is drawn. */
+  const inFrameOf = (located: Located, p: Point): boolean => {
+    const own = apply(invert(elementMatrix(located)), p);
+    const { w, h } = located.element.frame;
+    return own.x >= 0 && own.x <= w && own.y >= 0 && own.y <= h;
+  };
+
   /** The frame of the image being cropped contains the point. */
   const inCropFrame = (p: Point): boolean => {
     if (!crop) return false;
@@ -760,10 +787,21 @@ export function Stage({
     }
 
     const hit = resolveHit(pickAt(e.clientX, e.clientY), scope);
-    const target = hit.id ? index.get(hit.id) : undefined;
+    // The slide draws nothing outside itself, so the part of an element that is off the slide
+    // cannot be picked. A selected one is still taken by it there: one dragged to the edge of the
+    // Stage is grabbed again (ADR-066). On the slide, picking stays the drawing's own (a line by
+    // its stroke, not by the box around it).
+    const offSlide = p.x < 0 || p.y < 0 || p.x > deck.size.w || p.y > deck.size.h;
+    const outside =
+      hit.id || !offSlide
+        ? undefined
+        : selectedLocated.find((l) => !l.locked && !l.hidden && inFrameOf(l, p));
+    const target = outside ?? (hit.id ? index.get(hit.id) : undefined);
+    // A selected element is in the group the Stage is working in.
+    const hitScope = outside ? [...scope] : hit.scope;
     const state = selection.getState();
-    const within = sameIds(hit.scope, scope);
-    setEntered(hit.scope);
+    const within = sameIds(hitScope, scope);
+    setEntered(hitScope);
     if (target && !target.locked) {
       const { id } = target.element;
       if (e.shiftKey && within) {
@@ -787,7 +825,7 @@ export function Stage({
     }
     const additive = e.shiftKey && within ? state.selectedElementIds : [];
     if (!additive.length) state.clearSelection();
-    begin({ kind: 'marquee', start: p, current: p, additive, scope: hit.scope });
+    begin({ kind: 'marquee', start: p, current: p, additive, scope: hitScope });
   };
 
   /** The drag passed the threshold: copy the elements if Alt asks for it, and note where they are. */
@@ -845,7 +883,11 @@ export function Stage({
       setPan({ x: g.pan.x + e.clientX - g.start.x, y: g.pan.y + e.clientY - g.start.y });
       return;
     }
-    const p = toSlide(e.clientX, e.clientY);
+    // What is moved follows the pointer as far as the edge of the Stage, and no further: past it,
+    // what was grabbed would land under the panels, drawn out of view and out of reach (ADR-066).
+    const at =
+      g.kind === 'move' ? withinStage(e.clientX, e.clientY) : { x: e.clientX, y: e.clientY };
+    const p = toSlide(at.x, at.y);
     const shift = e.shiftKey;
     const alt = e.altKey;
     const free = e.ctrlKey || e.metaKey;
@@ -1296,7 +1338,7 @@ export function Stage({
       e.preventDefault();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+    if (isCtrlLetter(e, 'a')) {
       // Everything in the group being worked in, or on the slide.
       selection
         .getState()
@@ -1591,6 +1633,8 @@ export function Stage({
   return (
     <div
       ref={container}
+      role="application"
+      aria-label={name}
       data-testid="stage-surface"
       data-cropping={croppingId ?? undefined}
       data-entered={scope.length ? scope.join(' ') : undefined}

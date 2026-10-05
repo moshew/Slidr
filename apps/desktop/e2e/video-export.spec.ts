@@ -204,6 +204,24 @@ test('media goes into a folder beside the file: the file refers to it, and plays
   expect(pageProblems(page)).toEqual([]);
 });
 
+test('the dialog says one file only while the media goes inside it (ADR-057)', async ({ page }) => {
+  const media = await openWithMedia(page);
+  await withClips(page, media);
+  const dialog = await openDialog(page);
+  await expect(dialog).toHaveAccessibleDescription('קובץ אחד שמתנגן בכל דפדפן, גם בלי אינטרנט.');
+  await dialog.getByRole('radio', { name: 'בתיקייה ליד הקובץ' }).click();
+  await expect(dialog).toHaveAccessibleDescription(
+    'קובץ שמתנגן בכל דפדפן, גם בלי אינטרנט, ולידו תיקייה עם הווידאו והאודיו.',
+  );
+  // The report of a file exported that way says the same.
+  await exported(page, 3);
+  await expect(dialog).toHaveAccessibleDescription(/ולידו תיקייה עם הווידאו והאודיו/);
+  await dialog.getByRole('button', { name: 'ייצוא נוסף' }).click();
+  await dialog.getByRole('radio', { name: 'בתוך הקובץ' }).click();
+  await expect(dialog).toHaveAccessibleDescription('קובץ אחד שמתנגן בכל דפדפן, גם בלי אינטרנט.');
+  expect(pageProblems(page)).toEqual([]);
+});
+
 test('only the media of the slides that are exported counts', async ({ page }) => {
   const media = await openWithMedia(page);
   await addClip(page, 'audio', media.sound);

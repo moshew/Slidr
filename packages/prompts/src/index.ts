@@ -16,7 +16,7 @@ export {
   type ActionParams,
 } from './actions';
 export { SESSION_TAG, sessionBrief, type SessionBriefInput } from './brief';
-export { TEMPLATE_FONTS } from './template';
+export { TEMPLATE_FONTS, TEMPLATE_OPTIONAL_ROLES, TEMPLATE_ROLES } from './template';
 export {
   ATTACHMENTS_TAG,
   CONVERSATION_TAG,

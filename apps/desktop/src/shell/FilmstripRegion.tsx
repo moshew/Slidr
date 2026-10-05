@@ -1,15 +1,16 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { canPaste, copySlides, cutSlides, pasteFromMemory } from '../arrange/clipboard';
 import { Filmstrip, type FilmstripClipboard, type FilmstripLabels } from '../stage/Filmstrip';
 import { useAssetResolver } from './assets';
 import { useDeck, useEditor } from './editor';
-import { PanelId } from './registry';
+import { PanelId, useSlideMarks } from './registry';
 import { openPanel } from './store';
 
 /**
  * The Filmstrip region: 132px under the Stage (SPEC 4.1). The Filmstrip itself is a standalone
- * component; this hands it the editor, the strings in the UI language and the window's clipboard.
+ * component; this hands it the editor, the strings in the UI language, the window's clipboard and
+ * the marks other areas put on a slide.
  */
 export function FilmstripRegion() {
   const { t } = useTranslation();
@@ -32,9 +33,16 @@ export function FilmstripRegion() {
       copy: ta('slides.copy'),
       cut: ta('slides.cut'),
       paste: ta('slides.paste'),
+      move: ta('slides.move'),
       ai: t('tools.aiSlide'),
     }),
     [t, ta],
+  );
+  // What the areas mark a slide with (FLM-04): the design check's findings.
+  const marks = useSlideMarks();
+  const mark = useCallback(
+    (slideId: string) => marks.map(({ id, render: Mark }) => <Mark key={id} slideId={slideId} />),
+    [marks],
   );
   const clipboard = useMemo<FilmstripClipboard>(
     () => ({
@@ -58,6 +66,7 @@ export function FilmstripRegion() {
         resolveAsset={resolveAsset}
         clipboard={clipboard}
         labels={labels}
+        mark={marks.length ? mark : undefined}
         onAi={() => openPanel(PanelId.aiSlide, 'chat')}
         className="h-full"
       />

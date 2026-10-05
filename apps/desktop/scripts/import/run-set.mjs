@@ -1,11 +1,14 @@
 // Runs the import test set (SPEC 13.5), one file after another, in the app this working tree
 // runs, and prints one line per file. Each run is run-import.mjs; its JSON lands in
 // test-results/import/runs/<name>-<model>.json.
-//   node scripts/import/run-set.mjs [--model sonnet] [--only name,name]
-// The four files of examples/ are the user's and are read from the main checkout; the two
-// third-party builds are in this working tree's ignored examples/ (see e2e/import-set/README.md).
+//   node scripts/import/run-set.mjs [--model sonnet] [--only name,name] [--examples <folder>]
+// Four files are the user's own and are not in git: they are read from the folder given by
+// --examples or by the environment variable SLIDR_IMPORT_EXAMPLES (the main checkout's examples/
+// on the machine that has them), and skipped without one. The two third-party builds are in this
+// working tree's ignored examples/ (see e2e/import-set/README.md).
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
@@ -17,22 +20,24 @@ const model = flag('model') ?? 'haiku';
 const only = flag('only')?.split(',');
 
 const here = (path) => fileURLToPath(new URL(path, import.meta.url));
-const USER = 'C:/Users/Moshe/Documents/Projects/Slidr/examples';
+/** The folder of the user's own files, when one was given. */
+const USER = flag('examples') || process.env.SLIDR_IMPORT_EXAMPLES || undefined;
+const user = (name) => (USER ? join(USER, name) : undefined);
 const BUILT = here('../../../../examples');
 const SET = here('../../e2e/import-set');
 
 /** `confirm`: the agent is asked to show its plan first, and the script approves it. */
 const FILES = [
   { name: 'handwritten', path: `${SET}/handwritten.html`, slides: 6 },
-  { name: 'ecix-client', path: `${USER}/ecix-client-future 4.html`, slides: 11 },
-  { name: 'dapflow', path: `${USER}/dapflow.html`, slides: 8 },
-  { name: 'ecix-ng', path: `${USER}/E-CIX NG - standalone.html`, slides: 35 },
+  { name: 'ecix-client', path: user('ecix-client-future 4.html'), slides: 11 },
+  { name: 'dapflow', path: user('dapflow.html'), slides: 8 },
+  { name: 'ecix-ng', path: user('E-CIX NG - standalone.html'), slides: 35 },
   { name: 'reveal', path: `${BUILT}/reveal-demo.html`, slides: 8 },
   { name: 'marp', path: `${BUILT}/marp-demo.html`, slides: 7 },
   { name: 'canvas-animations', path: `${SET}/canvas-animations.html`, slides: 6 },
   { name: 'long-page', path: `${SET}/long-page.html`, slides: null, confirm: true },
   { name: 'photo-tour', path: `${SET}/photo-tour.html`, slides: 7 },
-  { name: 'devops', path: `${USER}/devops.html`, slides: 9 },
+  { name: 'devops', path: user('devops.html'), slides: 9 },
 ];
 
 const outDir = here('../../test-results/import/runs');
@@ -40,6 +45,12 @@ mkdirSync(outDir, { recursive: true });
 let total = 0;
 for (const file of FILES) {
   if (only && !only.includes(file.name)) continue;
+  if (file.path === undefined) {
+    console.log(
+      `${file.name}: skipped (a file of the user's: give its folder with --examples or SLIDR_IMPORT_EXAMPLES)`,
+    );
+    continue;
+  }
   if (!existsSync(file.path)) {
     console.log(`${file.name}: missing (${file.path})`);
     continue;

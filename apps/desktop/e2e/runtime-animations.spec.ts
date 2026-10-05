@@ -387,3 +387,37 @@ test('the panel at 1366x768', async ({ page }) => {
   await page.getByTestId('transition-editor').scrollIntoViewIfNeeded();
   await page.screenshot({ path: shot('panel-transition-light-he-1366') });
 });
+
+test('Alt+arrow keeps the keyboard on the row it moves, and passes a step that does not play in one press (ADR-069, finding 14)', async ({
+  page,
+}) => {
+  await openPanel(page);
+  const ids = async () => (await timeline(page)).map((s) => s.id);
+  const row = (id: string) => page.locator(`[data-step="${id}"] [data-row]`).first();
+  // A motion path, which the runtime does not play, sits between the first two: the list shows
+  // it apart.
+  await page.evaluate(() => {
+    const { bus } = window.slidr!;
+    const slide = bus.deck.slides.find((s) => s.id === 's_probe_a')!;
+    const [first, ...rest] = slide.timeline;
+    bus.dispatch({
+      type: 'slide.setTimeline',
+      slideId: slide.id,
+      timeline: [first!, { ...first!, id: 'a_gone', category: 'motion' }, ...rest],
+    });
+  });
+  expect(await ids()).toEqual(['a_0', 'a_gone', 'a_1', 'a_2', 'a_3', 'a_4', 'a_5', 'a_6']);
+
+  await row('a_0').focus();
+  const steps = await undoSteps(page);
+  await page.keyboard.press('Alt+ArrowDown');
+  // One press, one place down among the steps that play, one undo step.
+  expect((await ids()).filter((id) => id !== 'a_gone').slice(0, 2)).toEqual(['a_1', 'a_0']);
+  expect(await undoSteps(page)).toBe(steps + 1);
+  await expect(row('a_0')).toBeFocused();
+
+  // And back up, from the keyboard it kept.
+  await page.keyboard.press('Alt+ArrowUp');
+  expect((await ids()).filter((id) => id !== 'a_gone').slice(0, 2)).toEqual(['a_0', 'a_1']);
+  await expect(row('a_0')).toBeFocused();
+});

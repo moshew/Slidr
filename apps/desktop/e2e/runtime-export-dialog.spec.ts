@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { FHD, LAPTOP, openApp, shot } from './runtime-app-helpers';
+import { FHD, LAPTOP, loadDeck, openApp, shot } from './runtime-app-helpers';
 
 // The export dialog in the app (WG9-T12): the row A button, the choices of EXP-08 that mean
 // something today, and the report. In a plain browser the file is a download; in the app it goes
@@ -78,6 +78,9 @@ test('exports the deck to one file, and reports what went into it', async ({ pag
   await openApp(page, { deck: 'probe' });
   await addPictures(page);
   const dialog = await openDialog(page);
+  // Each choice is a field of the design system, named by its label (ADR-060).
+  await expect(dialog.getByRole('group', { name: 'שקפים' })).toBeVisible();
+  await expect(dialog.getByRole('group', { name: 'אנימציות ומעברים' })).toBeVisible();
   // Four slides, one of them hidden.
   await expect(page.getByTestId('export-count')).toHaveText(
     'ייוצאו 3 שקפים. שקף מוסתר אחד לא ייכלל.',
@@ -136,6 +139,37 @@ test('exports the deck to one file, and reports what went into it', async ({ pag
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId('stage-surface')).toBeFocused();
   expect(errors).toEqual([]);
+});
+
+test('the report says how many live charts went in, and what their library adds (ADR-048)', async ({
+  page,
+}) => {
+  await openApp(page, { deck: 'charts-rtl' });
+  const dialog = await openDialog(page);
+  const file = await exported(page);
+  await expect(dialog).toHaveAttribute('data-phase', 'done');
+  const charts = await page.evaluate(
+    () =>
+      window
+        .slidr!.bus.deck.slides.filter((slide) => !slide.hidden)
+        .flatMap((slide) => slide.elements)
+        .filter((element) => element.type === 'chart').length,
+  );
+  expect(charts).toBeGreaterThan(1);
+  expect(file.html).toContain('data-slidr-chart');
+  const line = page.getByTestId('export-charts');
+  await expect(line).toContainText(`${charts} גרפים חיים`);
+  // The library is the one script a file has only with a chart in it: hundreds of kilobytes.
+  await expect(line).toContainText(/\d+ kB|\d+(\.\d)? MB/);
+  await page.screenshot({ path: shot('export-report-charts-light-he') });
+  await dialog.getByRole('button', { name: 'סגירה' }).last().click();
+
+  // A deck without a chart has no such line.
+  await loadDeck(page, 'probe');
+  await openDialog(page);
+  await exported(page);
+  await expect(page.getByTestId('export-report')).toBeVisible();
+  await expect(page.getByTestId('export-charts')).toHaveCount(0);
 });
 
 test('a range of slides, without animations', async ({ page }) => {

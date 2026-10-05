@@ -3,6 +3,7 @@ import { ScaledSlide } from '@slidr/renderer';
 import { deckFooter, footerLayouts, slideNumberHidden, slideNumberLayouts } from '@slidr/templates';
 import {
   Button,
+  Checkbox,
   ColorPicker,
   ColorSwatch,
   cx,
@@ -42,12 +43,13 @@ import {
 import { library } from './app';
 import { coverAsset, coverOf } from './covers';
 import type { LibraryEntry } from './library';
+import { BackgroundFields, ChartPalette, ShapeFields } from './ThemeLook';
 
 /*
  * The Templates panel (WG7-T09 and the wiring of T04; THM-04, THM-05, THM-08): the library with
  * the default for new decks, and the design of the open deck: its direction, the theme's
- * colours, fonts and text styles, the logo of its layouts, and saving all of it as a personal
- * template. Every edit is a command of the catalogue on the open deck, so the slides on the
+ * colours and chart palette, fonts, text styles, corners, shadow and backgrounds, the logo of its
+ * layouts, and saving all of it as a personal template. Every edit is a command of the catalogue on the open deck, so the slides on the
  * Stage are the preview and undo works as everywhere.
  */
 
@@ -344,6 +346,7 @@ function ThemeColors() {
           <ThemeColor key={token} token={token} />
         ))}
       </div>
+      <ChartPalette />
     </Section>
   );
 }
@@ -385,11 +388,15 @@ function ThemeTextStyles() {
   const { t } = useTranslation('templates');
   const editor = useEditor();
   const styles = useDeck((s) => s.deck.theme.textStyles);
-  const set = (ref: TextStyleRef, patch: Partial<TextStyle>) =>
+  const set = (ref: TextStyleRef, patch: Partial<TextStyle>) => {
+    const style = { ...styles[ref], ...patch };
+    // No spacing is stored as none, as the templates have it.
+    if (!style.letterSpacing) delete style.letterSpacing;
     editor.bus.dispatch(
-      { type: 'theme.update', patch: { textStyles: { [ref]: { ...styles[ref], ...patch } } } },
+      { type: 'theme.update', patch: { textStyles: { [ref]: style } } },
       { label: t('undo.style') },
     );
+  };
   return (
     <Section title={t('styles.title')}>
       <div className="flex flex-col gap-2">
@@ -399,26 +406,55 @@ function ThemeTextStyles() {
           const style = styles[ref];
           const weight = String(Math.round(style.weight / 100) * 100);
           return (
-            <div key={ref} className="flex items-center gap-2" data-text-style={ref}>
-              <span className="min-w-0 flex-1 truncate text-sm text-ui-fg">{name}</span>
-              <NumberField
-                aria-label={t('styles.size', { style: name })}
-                size="sm"
-                className="w-20"
-                value={style.size}
-                min={12}
-                max={400}
-                step={1}
-                onValueChange={(size) => set(ref, { size })}
-              />
-              <Select
-                aria-label={t('styles.weight', { style: name })}
-                size="sm"
-                className="w-36"
-                value={WEIGHTS.find((w) => w === weight) ?? null}
-                onValueChange={(next) => set(ref, { weight: Number(next) })}
-                options={WEIGHTS.map((w) => ({ value: w, label: t(`styles.weight${w}`) }))}
-              />
+            <div key={ref} className="flex flex-col gap-1.5" data-text-style={ref}>
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-sm text-ui-fg">{name}</span>
+                <NumberField
+                  aria-label={t('styles.size', { style: name })}
+                  size="sm"
+                  className="w-20"
+                  value={style.size}
+                  min={12}
+                  max={400}
+                  step={1}
+                  onValueChange={(size) => set(ref, { size })}
+                />
+                <Select
+                  aria-label={t('styles.weight', { style: name })}
+                  size="sm"
+                  className="w-36"
+                  value={WEIGHTS.find((w) => w === weight) ?? null}
+                  onValueChange={(next) => set(ref, { weight: Number(next) })}
+                  options={WEIGHTS.map((w) => ({ value: w, label: t(`styles.weight${w}`) }))}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-xs text-ui-fg-muted">{t('styles.lineHeightShort')}</span>
+                <NumberField
+                  aria-label={t('styles.lineHeight', { style: name })}
+                  size="sm"
+                  className="w-20"
+                  value={style.lineHeight}
+                  min={0.8}
+                  max={3}
+                  step={0.05}
+                  precision={2}
+                  onValueChange={(lineHeight) => set(ref, { lineHeight })}
+                />
+                <span className="text-xs text-ui-fg-muted">{t('styles.letterSpacingShort')}</span>
+                <NumberField
+                  aria-label={t('styles.letterSpacing', { style: name })}
+                  size="sm"
+                  className="w-24"
+                  unit="px"
+                  value={style.letterSpacing ?? 0}
+                  min={-20}
+                  max={50}
+                  step={0.5}
+                  precision={1}
+                  onValueChange={(letterSpacing) => set(ref, { letterSpacing })}
+                />
+              </div>
             </div>
           );
         })}
@@ -598,16 +634,11 @@ function SaveAsTemplate() {
             if (event.key === 'Enter') void save();
           }}
         />
-        <Toggle
-          icon={Star}
-          label={t('save.asDefault')}
-          pressed={asDefault}
-          onPressedChange={setAsDefault}
-        />
         <Button variant="primary" disabled={!trimmed} loading={busy} onClick={() => void save()}>
           {t('save.button')}
         </Button>
       </div>
+      <Checkbox label={t('save.asDefault')} checked={asDefault} onCheckedChange={setAsDefault} />
       <p
         role={message?.error ? 'alert' : 'status'}
         className={cx('text-xs', message?.error ? 'text-ui-danger-fg' : 'text-ui-fg-muted')}
@@ -629,6 +660,12 @@ export function TemplatesPanel() {
       <ThemeColors />
       <ThemeFonts />
       <ThemeTextStyles />
+      <Section title={t('shape.title')}>
+        <ShapeFields />
+      </Section>
+      <Section title={t('backgrounds.title')}>
+        <BackgroundFields />
+      </Section>
       <Master />
       <Logo />
       <SaveAsTemplate />

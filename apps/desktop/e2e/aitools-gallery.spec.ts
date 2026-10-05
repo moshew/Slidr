@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   addBody,
   addImage,
@@ -210,4 +210,109 @@ test('image alternatives arrive one by one, and the pick keeps the frame and the
   await page.evaluate(() => window.slidr!.bus.undo());
   expect(await element(page, 'e_picture')).toEqual(picture);
   expect(errors).toEqual([]);
+});
+
+/** Offers a set of text options for the title from the object tool, as `ui_present_options` would. */
+function offer(page: Page, prompt: string, texts: string[]): Promise<void> {
+  return page.evaluate(
+    async ([path, prompt, texts]) => {
+      const { aiOf } = (await import(/* @vite-ignore */ path)) as {
+        aiOf: (editor: unknown) => {
+          gallery: {
+            noteToolCall: (scope: unknown, name: string, input: unknown) => void;
+            service: { present: (request: unknown) => Promise<void> };
+          };
+        };
+      };
+      const editor = window.slidr!;
+      const slideId = editor.selection.getState().currentSlideId!;
+      const { gallery } = aiOf(editor);
+      gallery.noteToolCall(
+        { kind: 'object', slideId, elementIds: ['e_title'] },
+        'ui_present_options',
+        {},
+      );
+      await gallery.service.present({
+        kind: 'text',
+        target: { slideId, elementId: 'e_title' },
+        prompt,
+        options: texts.map((text, i) => ({ label: `${i + 1}`, text })),
+      });
+    },
+    ['/src/ai/runtime.ts', prompt, texts] as const,
+  );
+}
+
+test('the options offered before for the same element are a step back, and pick as the newest do (AIO-09)', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openApp(page, { script: 'text-variations' });
+  await addTitle(page);
+  await openTool(page, 'ai.object', 'chat');
+  await say(page, 'תן לי ארבעה ניסוחים אחרים לכותרת');
+  await expect(cards(page)).toHaveCount(4);
+  // One set: nothing to go back to.
+  await expect(page.getByTestId('gallery-place')).toHaveCount(0);
+  await cards(page).nth(1).click();
+  const depth = await undoDepth(page);
+
+  await offer(page, 'שני ניסוחים קצרים', ['תוכנית 2027', 'לאן ב-2027']);
+  await expect(cards(page)).toHaveCount(2);
+  await expect(gallery(page)).toContainText('שני ניסוחים קצרים');
+  await expect(page.getByTestId('gallery-place')).toContainText('2 / 2');
+  await expect(page.getByTestId('gallery-later')).toBeDisabled();
+
+  // Back from the keyboard: the earlier set, with its pick marked, and the focus stays put.
+  await page.getByTestId('gallery-earlier').focus();
+  await page.keyboard.press('Enter');
+  await expect(cards(page)).toHaveCount(4);
+  await expect(gallery(page)).toContainText('ארבעה ניסוחים לכותרת');
+  await expect(page.getByTestId('gallery-place')).toContainText('1 / 2');
+  await expect(page.getByTestId('gallery-place')).toContainText('סט 1 מתוך 2');
+  await expect(cards(page).nth(1)).toHaveAttribute('data-picked', 'true');
+  await expect(page.getByTestId('gallery-earlier')).toBeFocused();
+
+  // A card of the earlier set is tried on the Stage and picked as one undo step.
+  await cards(page).nth(3).hover();
+  await expect(page.getByTestId('stage-preview')).toBeVisible();
+  await expect(onStage(page, 'e_title')).toHaveText('2027: צמיחה שמתחילה בתכנון');
+  await cards(page).nth(3).click();
+  expect(await textOf(page, 'e_title')).toBe('2027: צמיחה שמתחילה בתכנון');
+  expect(await undoDepth(page)).toBe(depth + 1);
+  await expect(cards(page).nth(3)).toHaveAttribute('data-picked', 'true');
+
+  await page.getByTestId('gallery-later').click();
+  await expect(cards(page)).toHaveCount(2);
+  await expect(cards(page).nth(0)).not.toHaveAttribute('data-picked', 'true');
+
+  // While the user is back on an earlier set, a new one shows itself.
+  await page.getByTestId('gallery-earlier').click();
+  await expect(cards(page)).toHaveCount(4);
+  await offer(page, 'עוד ניסוח', ['תוכנית העבודה']);
+  await expect(cards(page)).toHaveCount(1);
+  await expect(page.getByTestId('gallery-place')).toContainText('3 / 3');
+
+  // Closing the options ends the history of the element.
+  await page.getByTestId('gallery-close').click();
+  await expect(gallery(page)).toHaveCount(0);
+  await offer(page, 'ניסוח אחר', ['תוכנית']);
+  await expect(cards(page)).toHaveCount(1);
+  await expect(page.getByTestId('gallery-place')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('in English, the step back points to the left', async ({ page }) => {
+  await openApp(page, { script: 'text-variations', lang: 'en' });
+  await addTitle(page, 'Team work plan for 2027');
+  await openTool(page, 'ai.object', 'chat');
+  await offer(page, 'Two titles', ['Plan 2027', 'Where to in 2027']);
+  await offer(page, 'One more', ['The plan']);
+  await expect(page.getByTestId('gallery-place')).toContainText('Set 2 of 2');
+  const earlier = page.getByTestId('gallery-earlier');
+  const later = page.getByTestId('gallery-later');
+  await expect(earlier).toHaveAccessibleName('Earlier options');
+  // In a left-to-right panel, back is on the left; in Hebrew it is on the right.
+  const [a, b] = await Promise.all([earlier.boundingBox(), later.boundingBox()]);
+  expect(a!.x).toBeLessThan(b!.x);
 });

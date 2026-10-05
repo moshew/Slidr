@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AssetMeta } from '@slidr/model';
-import { cx, Tooltip } from '@slidr/ui';
+import { cx, IconButton, Tooltip } from '@slidr/ui';
+import { Trash2 } from '@slidr/ui/icons';
 import { useEditor } from '../shell';
 import { startAssetDrag } from './drag';
 
@@ -40,31 +41,50 @@ export function Group({
   );
 }
 
-/** A picture of the deck as a square tile that adds it to the slide. */
+/** Taking a picture out of the deck, from its tile. */
+export interface TileRemoval {
+  /** The accessible name of the button, and its tooltip. */
+  label: string;
+  onRemove: () => void;
+}
+
+/**
+ * A picture of the deck as a square tile that adds it to the slide. With `remove` it has a
+ * button in its corner that takes the picture out of the deck, shown on hover and on focus, and
+ * Delete on the tile does the same.
+ */
 export function AssetTile({
   asset,
   label,
   onPick,
+  remove,
 }: {
   asset: AssetMeta;
   /** The accessible name, and the tooltip. */
   label: string;
   onPick: () => void;
+  remove?: TileRemoval;
 }) {
   const { assets } = useEditor();
   const url = assets.url(asset);
-  return (
+  const tile = (
     <Tooltip content={label}>
       <button
         type="button"
         aria-label={label}
         data-asset={asset.id}
         onClick={onPick}
+        onKeyDown={(event) => {
+          if (!remove) return;
+          if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+          event.preventDefault();
+          remove.onRemove();
+        }}
         // The tile can also be dragged onto the slide, to land where it is dropped.
         draggable
         onDragStart={(event) => startAssetDrag(event, asset.id)}
         className={cx(
-          'aspect-square cursor-default overflow-hidden rounded-control border border-ui-line bg-ui-field transition-colors',
+          'aspect-square w-full cursor-default overflow-hidden rounded-control border border-ui-line bg-ui-field transition-colors',
           'hover:border-ui-accent focus-visible:-outline-offset-2',
         )}
       >
@@ -82,6 +102,21 @@ export function AssetTile({
         )}
       </button>
     </Tooltip>
+  );
+  if (!remove) return tile;
+  return (
+    <div className="group/tile relative">
+      {tile}
+      <IconButton
+        icon={Trash2}
+        size="sm"
+        variant="secondary"
+        label={remove.label}
+        data-remove-asset={asset.id}
+        onClick={remove.onRemove}
+        className="absolute end-1 top-1 bg-ui-raised opacity-0 shadow-raised group-focus-within/tile:opacity-100 group-hover/tile:opacity-100"
+      />
+    </div>
   );
 }
 

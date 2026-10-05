@@ -11,6 +11,7 @@ import {
 } from '@slidr/ui';
 import { languages } from '../i18n';
 import { svgMarkups } from '../objects/svgImport';
+import { layerSnippet } from '../arrange/layers';
 import { insertAssetsCommands } from '../stage/insert';
 import { stagePreview } from '../stage/preview';
 import { SelectionToolbar } from '../stage/SelectionToolbar';
@@ -113,6 +114,18 @@ export function StageRegion() {
   const editing = slide && editingId ? findElement(slide, editingId) : undefined;
   // While text is edited in place the right click is the text's own.
   const editingText = editing !== undefined && TEXT_EDITED.has(editing.type);
+  const slideNumber = slide ? deck.slides.indexOf(slide) + 1 : 0;
+  const one = slide && elementIds.length === 1 ? findElement(slide, elementIds[0]!) : undefined;
+  const selected =
+    elementIds.length > 1
+      ? t('stage.selected', { what: t('selection.multiple', { n: elementIds.length }) })
+      : one
+        ? t('stage.selected', {
+            what: [t(`selection.${kind}`), one.name ?? layerSnippet(one)]
+              .filter(Boolean)
+              .join(' · '),
+          })
+        : '';
 
   return (
     <ContextMenu>
@@ -141,8 +154,13 @@ export function StageRegion() {
               selectionToolbar={<SelectionToolbar />}
               marked={marked}
               placeholderHint={placeholderHint}
+              label={t('stage.surface', { n: slideNumber, total: deck.slides.length })}
               className="h-full w-full"
             />
+            {/* What is selected, said by a screen reader as the selection changes (UI-06). */}
+            <p role="status" data-testid="stage-selection" className="sr-only">
+              {selected}
+            </p>
           </div>
           {previewing && (
             <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">

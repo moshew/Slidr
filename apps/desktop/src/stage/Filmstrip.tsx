@@ -17,6 +17,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
+  type ReactNode,
 } from 'react';
 import {
   ContextMenu,
@@ -76,6 +77,11 @@ export interface FilmstripProps {
   /** Labels in the UI language. Default: English. */
   labels?: FilmstripLabels;
   /**
+   * What other areas mark a slide with, drawn beside its number under the thumbnail (FLM-04): the design
+   * check's findings. A screen reader hears it as the thumbnail's description.
+   */
+  mark?: (slideId: string) => ReactNode;
+  /**
    * Opens the host's AI tool on the slide the menu was opened on, which is the current slide by
    * then. Without it the menu has no such item.
    */
@@ -106,6 +112,8 @@ export interface FilmstripLabels {
   copy: string;
   cut: string;
   paste: string;
+  /** The undo step of slides moved along the strip, by a drag or by the keyboard. */
+  move: string;
   /** The menu's way to the AI tool of the slide; shown when the host gives `onAi`. */
   ai?: string;
 }
@@ -117,6 +125,8 @@ const PAD = 16;
 const STEP = THUMB_W + GAP;
 /** Thumbnails rendered beyond each edge of the view. */
 const OVERSCAN = 3;
+/** What one line of a wheel that counts in lines scrolls the strip, in pixels. */
+const WHEEL_LINE = 40;
 const DRAG_PX = 4;
 /** A layout in the "new slide" popover. */
 const LAYOUT_W = 120;
@@ -133,6 +143,7 @@ const DEFAULT_LABELS: FilmstripLabels = {
   copy: 'Copy',
   cut: 'Cut',
   paste: 'Paste',
+  move: 'Move slides',
 };
 
 interface Drag {
@@ -152,6 +163,7 @@ const Thumb = memo(function Thumb({
   resolveAsset,
   label,
   hiddenLabel,
+  mark,
 }: {
   deck: Deck;
   slideIndex: number;
@@ -160,14 +172,17 @@ const Thumb = memo(function Thumb({
   resolveAsset?: AssetResolver;
   label: string;
   hiddenLabel: string;
+  mark?: (slideId: string) => ReactNode;
 }) {
   const slide = deck.slides[slideIndex];
   if (!slide) return null;
+  const markId = `filmstrip-mark-${slide.id}`;
   return (
     <div
       role="option"
       aria-selected={selected}
       aria-label={slide.hidden ? `${label}, ${hiddenLabel}` : label}
+      aria-describedby={mark ? markId : undefined}
       data-slide-id={slide.id}
       data-hidden={slide.hidden || undefined}
       style={{
@@ -224,6 +239,7 @@ const Thumb = memo(function Thumb({
       ) : null}
       <div
         style={{
+          position: 'relative',
           marginTop: 4,
           font: '500 11px/14px var(--font-ui)',
           color: current ? 'var(--color-ui-fg)' : 'var(--color-ui-fg-muted)',
@@ -231,6 +247,17 @@ const Thumb = memo(function Thumb({
         }}
       >
         {slideIndex + 1}
+        {mark && (
+          // Beside the number, not over the picture: the thumbnail stays the slide as it is drawn.
+          // The mark draws itself, or nothing.
+          <div
+            id={markId}
+            data-testid="slide-mark"
+            style={{ position: 'absolute', top: -1, insetInlineStart: 0, display: 'flex', gap: 4 }}
+          >
+            {mark(slide.id)}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -346,6 +373,7 @@ export function Filmstrip({
   resolveAsset,
   clipboard,
   labels = DEFAULT_LABELS,
+  mark,
   onAi,
   className,
 }: FilmstripProps) {
@@ -376,6 +404,32 @@ export function Filmstrip({
     return () => observer.disconnect();
   }, []);
 
+  // A mouse wheel turns up and down, and the strip runs along: turned over the strip it scrolls
+  // the strip, toward the slides after when turned down, in either direction of the UI (ADR-066).
+  // Shift and a touchpad already scroll it sideways; Ctrl is the browser's zoom.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const unit =
+        e.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? WHEEL_LINE
+          : e.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? el.clientWidth
+            : 1;
+      const by = e.deltaY * unit;
+      // In RTL the strip's start is on the right, and `scrollLeft` runs from 0 down.
+      const rtl = getComputedStyle(el).direction === 'rtl';
+      const before = el.scrollLeft;
+      el.scrollLeft += rtl ? -by : by;
+      // At an end the wheel is the page's, as it is for any scroller that cannot go further.
+      if (el.scrollLeft !== before) e.preventDefault();
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
   // Keep the current slide in view when it changes (from the Stage, the agent, or the keyboard).
   useEffect(() => {
     const el = scroller.current;
@@ -384,7 +438,10 @@ export function Filmstrip({
     const start = PAD + index * STEP;
     const pos = Math.abs(el.scrollLeft);
     const rtl = getComputedStyle(el).direction === 'rtl';
-    const to = (p: number) => el.scrollTo({ left: rtl ? -p : p, behavior: 'smooth' });
+    // At once, not gliding, for whoever asked the system for less motion (UI-06).
+    const still = el.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)');
+    const behavior = still?.matches ? 'instant' : 'smooth';
+    const to = (p: number) => el.scrollTo({ left: rtl ? -p : p, behavior });
     if (start < pos) to(start - PAD);
     else if (start + THUMB_W > pos + el.clientWidth) to(start + THUMB_W + PAD - el.clientWidth);
   }, [currentId, slides]);
@@ -472,10 +529,7 @@ export function Filmstrip({
       // `slide.move` counts the position in the list without the slides that move (ADR-007).
       const moving = new Set(drag.ids);
       const toIndex = slides.slice(0, drag.slot).filter((s) => !moving.has(s.id)).length;
-      bus.dispatch(
-        { type: 'slide.move', slideIds: drag.ids, toIndex },
-        { label: 'Reorder slides' },
-      );
+      bus.dispatch({ type: 'slide.move', slideIds: drag.ids, toIndex }, { label: labels.move });
     } else {
       // A plain click on a slide that was part of a multi-selection narrows it to that slide.
       const index = indexAt(e.clientX);
@@ -501,12 +555,53 @@ export function Filmstrip({
   const chosen = () => selection.getState().selectedSlideIds;
   const hiddenAll = allHidden(deck, selectedIds);
 
+  /**
+   * Moves the selected slides along the strip from the keyboard (UI-06), as a drag does: one
+   * place on or back, or to either end. `slide.move` counts the place without the moving slides.
+   */
+  const moveSelected = (to: 'on' | 'back' | 'start' | 'end') => {
+    const ids = selectedIds.length ? selectedIds : currentId ? [currentId] : [];
+    const moving = new Set(ids);
+    const rest = slides.filter((s) => !moving.has(s.id));
+    const first = slides.findIndex((s) => moving.has(s.id));
+    if (first < 0) return;
+    const at = slides.slice(0, first).filter((s) => !moving.has(s.id)).length;
+    const toIndex = { on: at + 1, back: at - 1, start: 0, end: rest.length }[to];
+    if (toIndex < 0 || toIndex > rest.length) return;
+    const ordered = slides.filter((s) => moving.has(s.id));
+    const after = [...rest.slice(0, toIndex), ...ordered, ...rest.slice(toIndex)];
+    // A move that leaves the order as it is is no undo step.
+    if (after.every((s, i) => s === slides[i])) return;
+    bus.dispatch(
+      { type: 'slide.move', slideIds: ordered.map((s) => s.id), toIndex },
+      { label: labels.move },
+    );
+  };
+
   const onKeyDown = (e: KeyboardEvent) => {
     const index = slides.findIndex((s) => s.id === currentId);
     const rtl = scroller.current ? getComputedStyle(scroller.current).direction === 'rtl' : false;
     const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ArrowDown: 1, ArrowUp: -1 }[
       e.key
     ];
+    // Ctrl and an arrow carries the selected slides along; Ctrl+Home and Ctrl+End to an end.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      const to =
+        step === 1
+          ? 'on'
+          : step === -1
+            ? 'back'
+            : e.key === 'Home'
+              ? 'start'
+              : e.key === 'End'
+                ? 'end'
+                : undefined;
+      if (to) {
+        e.preventDefault();
+        moveSelected(to);
+        return;
+      }
+    }
     if (step !== undefined) {
       e.preventDefault();
       const next = slides[Math.max(0, Math.min(slides.length - 1, index + step))];
@@ -586,6 +681,7 @@ export function Filmstrip({
                   resolveAsset={resolveAsset}
                   label={labels.slide(first + i + 1)}
                   hiddenLabel={labels.hidden}
+                  mark={mark}
                 />
               ))}
               <div

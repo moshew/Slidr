@@ -368,3 +368,26 @@ test.describe('the Layers panel', () => {
     await expect(page.getByText('אין אובייקטים בשקף')).toBeVisible();
   });
 });
+
+test('Delete in the Layers panel keeps the keyboard in the list, on the row that took the place', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'שכבות', exact: true }).click();
+  const rows = page.getByTestId('layers').getByRole('treeitem');
+  await expect(rows).toHaveText(['C', 'B', 'A']);
+  const row = (id: string) => page.locator(`[data-layer="${id}"]`);
+
+  await row('e_c').click();
+  await expectOneStep(page, () => page.keyboard.press('Delete'));
+  expect(await order(page)).toEqual(['e_a', 'e_b']);
+  // The row below the one removed has the keyboard, and the arrows go on from it.
+  await expect(row('e_b')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(row('e_a')).toBeFocused();
+  expect(await selected(page)).toEqual(['e_a']);
+
+  // The last row removed: the keyboard goes to the one above it.
+  await expectOneStep(page, () => page.keyboard.press('Delete'));
+  expect(await order(page)).toEqual(['e_b']);
+  await expect(row('e_b')).toBeFocused();
+});

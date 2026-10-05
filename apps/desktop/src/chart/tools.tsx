@@ -1,16 +1,17 @@
 import {
   Button,
+  Field,
   Icon,
   Input,
+  type LucideIcon,
   NumberField,
+  Toggle,
+  Tooltip,
   Popover,
   PopoverContent,
   PopoverTrigger,
   SegmentedControl,
   Separator,
-  Toggle,
-  Tooltip,
-  type LucideIcon,
 } from '@slidr/ui';
 import {
   Eye,
@@ -31,7 +32,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { ColorField, useGestureTx } from '../controls';
-import { Field } from '../objects/parts';
+
 import { focusStage, useDeck, useEditor } from '../shell';
 import { keepFocus, PopoverTool, returnFocus, Row, useBurstTx } from '../text/toolbar/shared';
 import { setType } from './actions';

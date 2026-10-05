@@ -128,6 +128,60 @@ describe('deck and theme commands', () => {
   });
 });
 
+describe('asset.remove', () => {
+  const asset = (id: string, kind: 'image' | 'font' = 'image') => ({
+    id,
+    file: `${id}.png`,
+    mime: 'image/png',
+    kind,
+    bytes: 10,
+    origin: 'upload' as const,
+  });
+  /** A deck with three assets: one an image of the first slide shows, one free, one a font. */
+  function withAssets(): Deck {
+    const deck = hebrewDeck();
+    const [used, free, font] = ['a'.repeat(64), 'b'.repeat(64), 'c'.repeat(64)];
+    const bus = new CommandBus(deck);
+    bus.batch([
+      { type: 'asset.add', asset: asset(used) },
+      { type: 'asset.add', asset: asset(free) },
+      { type: 'asset.add', asset: asset(font, 'font') },
+      {
+        type: 'element.add',
+        slideId: deck.slides[0]!.id,
+        element: createElement.image({
+          id: 'e_picture',
+          frame: { x: 0, y: 0, w: 100, h: 100 },
+          assetId: used,
+        }),
+      },
+    ]);
+    return bus.deck;
+  }
+
+  it('takes an asset nothing uses out of the table, and undo brings it back', () => {
+    const start = withAssets();
+    check(start, { type: 'asset.remove', assetIds: ['b'.repeat(64)] }, (after, before) => {
+      expect(after.assets['b'.repeat(64)]).toBeUndefined();
+      expect(Object.keys(after.assets)).toHaveLength(Object.keys(before.assets).length - 1);
+      expect(after.slides).toBe(before.slides);
+    });
+  });
+
+  it('refuses an asset a slide still uses, a font, and one that is not there', () => {
+    const start = withAssets();
+    rejects(start, { type: 'asset.remove', assetIds: ['a'.repeat(64)] }, 'invalid_state');
+    rejects(start, { type: 'asset.remove', assetIds: ['c'.repeat(64)] }, 'invalid_state');
+    rejects(start, { type: 'asset.remove', assetIds: ['d'.repeat(64)] }, 'not_found');
+    // All or nothing: the free one stays when another in the same command is refused.
+    rejects(
+      start,
+      { type: 'asset.remove', assetIds: ['b'.repeat(64), 'a'.repeat(64)] },
+      'invalid_state',
+    );
+  });
+});
+
 describe('layout commands', () => {
   const layout: Layout = {
     id: 'l_new',

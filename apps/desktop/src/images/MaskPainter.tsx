@@ -107,7 +107,7 @@ export function MaskPainter({ editor, asset, onDone }: PainterProps) {
         description={t('mask.description')}
         closeLabel={state === 'saving' ? undefined : t('mask.cancel')}
         data-testid="mask-painter"
-        className="w-180! max-w-full"
+        size="wide"
         footer={
           <>
             <Button variant="ghost" disabled={state === 'saving'} onClick={() => onDone(null)}>

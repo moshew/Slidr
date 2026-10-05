@@ -664,4 +664,79 @@ describe('deck tools', () => {
     );
     expect(field.message).toMatch(/ops\[1\]\.patch\.hidden: /);
   });
+
+  it('deck_apply_ops completes a partial frame from the element as earlier ops left it', async () => {
+    const { call, bus } = setup(hebrewDeck());
+    const before = element<TextElement>(bus.deck, 'e_he_hero_title').frame;
+    await ok(
+      call('deck_apply_ops', {
+        ops: [
+          {
+            type: 'element.update',
+            slideId: 's_he_hero',
+            elementId: 'e_he_hero_title',
+            patch: { frame: { x: 100 } },
+          },
+          {
+            type: 'element.update',
+            slideId: 's_he_hero',
+            elementId: 'e_he_hero_title',
+            patch: { frame: { w: 640 } },
+          },
+        ],
+      }),
+    );
+    expect(element<TextElement>(bus.deck, 'e_he_hero_title').frame).toEqual({
+      ...before,
+      x: 100,
+      w: 640,
+    });
+    // One step, and undo brings the frame back whole.
+    expect(bus.undoStack).toHaveLength(1);
+    bus.undo();
+    expect(element<TextElement>(bus.deck, 'e_he_hero_title').frame).toEqual(before);
+    bus.redo();
+    expect(element<TextElement>(bus.deck, 'e_he_hero_title').frame).toMatchObject({ x: 100 });
+
+    // An element added earlier in the same batch is completed from what was added.
+    const box = {
+      ...element<TextElement>(bus.deck, 'e_he_hero_subtitle'),
+      id: 'e_added',
+      frame: { x: 10, y: 20, w: 300, h: 80 },
+    };
+    await ok(
+      call('deck_apply_ops', {
+        ops: [
+          { type: 'element.add', slideId: 's_he_hero', element: box },
+          {
+            type: 'element.update',
+            slideId: 's_he_hero',
+            elementId: 'e_added',
+            patch: { frame: { y: 500 } },
+          },
+        ],
+      }),
+    );
+    expect(element<TextElement>(bus.deck, 'e_added').frame).toEqual({
+      x: 10,
+      y: 500,
+      w: 300,
+      h: 80,
+    });
+
+    // A frame that is not an object is still refused, with the path of the op.
+    const bad = await failed(
+      call('deck_apply_ops', {
+        ops: [
+          {
+            type: 'element.update',
+            slideId: 's_he_hero',
+            elementId: 'e_he_hero_title',
+            patch: { frame: { x: 'left' } },
+          },
+        ],
+      }),
+    );
+    expect(bad.code).toBe('invalid_input');
+  });
 });

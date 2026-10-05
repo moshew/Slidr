@@ -414,3 +414,15 @@ describe('a chart without data', () => {
     }
   });
 });
+
+describe('the corners of the bars', () => {
+  // Expected failure: ADR-069, ממצא 1. The bars are drawn with 3px corners whatever the theme
+  // says, so a template with square corners (radius 0) gets rounded columns. Fixing it changes
+  // how a chart is drawn, which the Windows baselines of chart-render.spec.ts check.
+  it.fails('are square in a theme with square corners', () => {
+    const square = chartSpec(chart(), { theme: { ...theme, radius: 0 }, dir: 'ltr', lang: 'en' });
+    for (const bar of series(chartOption(square, still))) {
+      expect((bar.itemStyle as Part).borderRadius ?? 0).toBe(0);
+    }
+  });
+});

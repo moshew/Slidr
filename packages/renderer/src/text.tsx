@@ -231,18 +231,28 @@ const LINK_STYLE: CSSProperties = { color: 'inherit', textDecoration: 'inherit' 
 /** A link to a slide of the deck, as the `link` mark holds it: `#slide=<slideId>` (TXT-09). */
 const SLIDE_LINK = /^#slide=(.+)$/;
 
+/**
+ * The addresses a slide opens, as the app's text tools write them (`safeLink`). A link that came
+ * some other way (an imported file, an agent) to `javascript:`, `data:` or a file is drawn as its
+ * text, with no address to follow.
+ */
+const OPENABLE = /^(?:https?:|mailto:|tel:)/i;
+
 function RunView({ run, role, ltr }: { run: Run; role: 'heading' | 'body'; ltr: boolean }) {
+  const { mode } = useRenderContext();
   const style = runStyle(run.marks, role);
   const dir = ltr ? 'ltr' : undefined;
   const link = run.marks?.link;
   const slide = link ? SLIDE_LINK.exec(link)?.[1] : undefined;
   if (slide) {
     // Not an address a browser opens: the runtime follows these attributes on a click, as it
-    // does for an element's own link. Without `href` an anchor shows no hand, so it is asked for.
+    // does for an element's own link. Without `href` an anchor shows no hand, so it is asked for;
+    // in a show it is also a stop of Tab, and Enter on it follows it (UI-06).
     return (
       <a
         data-link-kind="slide"
         data-link-target={slide}
+        {...(mode === 'present' ? { tabIndex: 0, role: 'link' } : {})}
         dir={dir}
         style={{ ...LINK_STYLE, cursor: 'pointer', ...style }}
       >
@@ -250,7 +260,7 @@ function RunView({ run, role, ltr }: { run: Run; role: 'heading' | 'body'; ltr: 
       </a>
     );
   }
-  if (link) {
+  if (link && OPENABLE.test(link.trim())) {
     return (
       <a
         href={link}

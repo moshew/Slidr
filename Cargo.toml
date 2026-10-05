@@ -11,8 +11,9 @@ license = "UNLICENSED"
 
 [workspace.lints.rust]
 # `deny`, not `forbid`: the slide capture and the import window's network block call WebView2
-# over COM, which takes `unsafe`. Their two submodules carry an explicit `#[allow(unsafe_code)]`
-# (ADR-003, "מחיר"; ADR-036); nothing else may.
+# over COM, and the list of system fonts calls DirectWrite, which takes `unsafe`. Their three
+# submodules carry an explicit `#[allow(unsafe_code)]` (ADR-003, "מחיר"; ADR-036; ADR-060);
+# nothing else may.
 unsafe_code = "deny"
 
 [workspace.lints.clippy]

@@ -21,8 +21,9 @@ import {
   type TableCell,
   type TableElement,
 } from '@slidr/model';
-import { cellLook, SlideRenderer, tableStyle, tableStyles } from '@slidr/renderer';
+import { CELL_PADDING, cellLook, SlideRenderer, tableStyle, tableStyles } from '@slidr/renderer';
 import {
+  Checkbox,
   ContextMenuItem,
   ContextMenuSeparator,
   cx,
@@ -33,7 +34,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Field,
   IconButton,
+  NumberField,
   SegmentedControl,
   Toggle,
   Tooltip,
@@ -48,10 +51,8 @@ import {
   ArrowUp,
   Grid2x2,
   PaintBucket,
-  PanelLeft,
-  PanelRight,
-  PanelTop,
   Rows3,
+  SquareSquare,
   StretchHorizontal,
   StretchVertical,
   TableCellsMerge,
@@ -63,9 +64,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColorField, useGestureTx } from '../controls';
 import { StrokeEditor } from '../objects/editors';
-import { Field } from '../objects/parts';
 import { focusStage, useAssetResolver, useDeck } from '../shell';
-import { closeToText, keepFocus, PopoverTool, Row } from '../text/toolbar/shared';
+import { closeToText, keepFocus, PopoverTool } from '../text/toolbar/shared';
 import { borderIcons } from './icons';
 import { selectCells, stopTyping, tableSession } from './session';
 import { useTableTarget, type TableTarget } from './target';
@@ -116,23 +116,29 @@ function useStructure(target: TableTarget) {
   const rtl = table.dir === 'rtl';
   const rows = span(range.row0, range.row1);
   const cols = span(range.col0, range.col1);
+  // As many rows or columns as are selected inside the table go in at once (ADR-033); a table
+  // selected as an object gets one.
+  const newRows = target.inside ? rows.length : 1;
+  const newCols = target.inside ? cols.length : 1;
 
   const insertRow = (above: boolean) => {
     leaveText();
     const at = above ? range.row0 : range.row1;
-    write(insertRows(table, above ? at : at + 1, 1, at), { label: t('history.insertRow') });
-    if (above) shiftSelection(target, 1, 0);
+    write(insertRows(table, above ? at : at + 1, newRows, at), {
+      label: t(newRows > 1 ? 'history.insertRows' : 'history.insertRow'),
+    });
+    if (above) shiftSelection(target, newRows, 0);
   };
   /** On the screen: in a right-to-left table the column before the selection is on its right. */
   const insertCol = (side: 'left' | 'right') => {
     leaveText();
     const before = (side === 'right') === rtl;
     const at = before ? range.col0 : range.col1;
-    write(insertCols(table, before ? at : at + 1, 1, at), {
-      label: t('history.insertColumn'),
+    write(insertCols(table, before ? at : at + 1, newCols, at), {
+      label: t(newCols > 1 ? 'history.insertColumns' : 'history.insertColumn'),
       fit: true,
     });
-    if (before) shiftSelection(target, 0, 1);
+    if (before) shiftSelection(target, 0, newCols);
   };
   const remove = (what: 'rows' | 'cols') => {
     leaveText();
@@ -174,6 +180,13 @@ function useStructure(target: TableTarget) {
     even,
     merge,
     split,
+    /** The words of inserting: one row or column, or as many as are selected. */
+    inserts: {
+      above: newRows > 1 ? t('structure.rowsAbove', { count: newRows }) : t('structure.rowAbove'),
+      below: newRows > 1 ? t('structure.rowsBelow', { count: newRows }) : t('structure.rowBelow'),
+      right: newCols > 1 ? t('structure.colsRight', { count: newCols }) : t('structure.colRight'),
+      left: newCols > 1 ? t('structure.colsLeft', { count: newCols }) : t('structure.colLeft'),
+    },
     /** The words and the limits of deleting: one row or several, and never the last ones. */
     deleteRows: {
       label: t(rows.length > 1 ? 'structure.deleteRows' : 'structure.deleteRow'),
@@ -189,7 +202,8 @@ function useStructure(target: TableTarget) {
 }
 
 function StructureMenu({ target }: { target: TableTarget }) {
-  const { t, insertRow, insertCol, remove, even, deleteRows, deleteCols } = useStructure(target);
+  const { t, insertRow, insertCol, remove, even, inserts, deleteRows, deleteCols } =
+    useStructure(target);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -197,16 +211,16 @@ function StructureMenu({ target }: { target: TableTarget }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent onCloseAutoFocus={closeToText}>
         <DropdownMenuItem icon={ArrowUp} onSelect={() => insertRow(true)}>
-          {t('structure.rowAbove')}
+          {inserts.above}
         </DropdownMenuItem>
         <DropdownMenuItem icon={ArrowDown} onSelect={() => insertRow(false)}>
-          {t('structure.rowBelow')}
+          {inserts.below}
         </DropdownMenuItem>
         <DropdownMenuItem icon={ArrowRight} onSelect={() => insertCol('right')}>
-          {t('structure.colRight')}
+          {inserts.right}
         </DropdownMenuItem>
         <DropdownMenuItem icon={ArrowLeft} onSelect={() => insertCol('left')}>
-          {t('structure.colLeft')}
+          {inserts.left}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -267,16 +281,16 @@ function StructureItems({ target }: { target: TableTarget }) {
   return (
     <>
       <ContextMenuItem icon={ArrowUp} onSelect={() => s.insertRow(true)}>
-        {t('structure.rowAbove')}
+        {s.inserts.above}
       </ContextMenuItem>
       <ContextMenuItem icon={ArrowDown} onSelect={() => s.insertRow(false)}>
-        {t('structure.rowBelow')}
+        {s.inserts.below}
       </ContextMenuItem>
       <ContextMenuItem icon={ArrowRight} onSelect={() => s.insertCol('right')}>
-        {t('structure.colRight')}
+        {s.inserts.right}
       </ContextMenuItem>
       <ContextMenuItem icon={ArrowLeft} onSelect={() => s.insertCol('left')}>
-        {t('structure.colLeft')}
+        {s.inserts.left}
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
@@ -374,12 +388,14 @@ function StyleTool({ target }: { target: TableTarget }) {
     const style = styleId && styleId !== first ? { ...parts, styleId } : parts;
     write({ style }, { label: t('history.style'), fit: true });
   };
-  const part = (key: 'headerRow' | 'bandedRows' | 'firstColumn') => ({
-    size: 'sm' as const,
-    label: t(`style.${key}`),
-    pressed: table.style[key],
-    onPressedChange: (on: boolean) => setStyle({ [key]: on }),
-  });
+  // Options of the style, each on or off: a box to tick, as in the table tools of other editors.
+  const part = (key: 'headerRow' | 'bandedRows' | 'firstColumn') => (
+    <Checkbox
+      label={t(`style.${key}`)}
+      checked={table.style[key]}
+      onCheckedChange={(on) => setStyle({ [key]: on })}
+    />
+  );
 
   return (
     <PopoverTool label={t('style.title')} icon={TableProperties}>
@@ -407,15 +423,11 @@ function StyleTool({ target }: { target: TableTarget }) {
           ))}
         </div>
       </Field>
-      <Row label={t('style.headerRow')}>
-        <Toggle icon={PanelTop} {...part('headerRow')} />
-      </Row>
-      <Row label={t('style.bandedRows')}>
-        <Toggle icon={Rows3} {...part('bandedRows')} />
-      </Row>
-      <Row label={t('style.firstColumn')}>
-        <Toggle icon={table.dir === 'rtl' ? PanelRight : PanelLeft} {...part('firstColumn')} />
-      </Row>
+      <div className="flex flex-col gap-2">
+        {part('headerRow')}
+        {part('bandedRows')}
+        {part('firstColumn')}
+      </div>
       <Field label={t('style.direction')}>
         <SegmentedControl<Direction>
           aria-label={t('style.direction')}
@@ -593,6 +605,64 @@ function VAlignTool({ target }: { target: TableTarget }) {
   );
 }
 
+/** The largest padding the fields offer, in slide pixels. */
+const MAX_PADDING = 120;
+
+/**
+ * The padding of the selected cells (ADR-033): across, on both sides of the text, and down,
+ * above and below it. A field is empty when the cells differ. A change can make text taller:
+ * the rows are measured after it.
+ */
+function PaddingTool({ target }: { target: TableTarget }) {
+  const { t } = useTranslation('table');
+  const { table, cells, write } = target;
+  const pads = cells.map((cell) => cellAt(table, cell).padding ?? CELL_PADDING);
+  const shared = (a: 'left' | 'top', b: 'right' | 'bottom') => {
+    const first = pads[0]?.[a];
+    return pads.every((pad) => pad[a] === first && pad[b] === first) ? (first ?? null) : null;
+  };
+  const set = (sides: 'across' | 'down', value: number) =>
+    write(
+      updateCells(table, cells, (cell) => {
+        const pad = cell.padding ?? CELL_PADDING;
+        const next =
+          sides === 'across'
+            ? { ...pad, left: value, right: value }
+            : { ...pad, top: value, bottom: value };
+        return sameJson(next, pad) ? cell : { ...cell, padding: next };
+      }),
+      { label: t('history.padding'), fit: true },
+    );
+  return (
+    <PopoverTool label={t('padding.title')} icon={SquareSquare}>
+      <div className="flex gap-3" data-testid="cell-padding">
+        <Field label={t('padding.across')} className="flex-1">
+          <NumberField
+            aria-label={t('padding.across')}
+            size="sm"
+            unit="px"
+            min={0}
+            max={MAX_PADDING}
+            value={shared('left', 'right')}
+            onValueChange={(value) => set('across', value)}
+          />
+        </Field>
+        <Field label={t('padding.down')} className="flex-1">
+          <NumberField
+            aria-label={t('padding.down')}
+            size="sm"
+            unit="px"
+            min={0}
+            max={MAX_PADDING}
+            value={shared('top', 'bottom')}
+            onValueChange={(value) => set('down', value)}
+          />
+        </Field>
+      </div>
+    </PopoverTool>
+  );
+}
+
 /** Row B, second group: how the table and its selected cells look. */
 export function LookTools() {
   const target = useTableTarget();
@@ -604,6 +674,7 @@ export function LookTools() {
       {/* A new selection starts the borders popover afresh: its pen is that of the cells. */}
       <BordersTool key={`${target.table.id}:${JSON.stringify(target.range)}`} target={target} />
       <VAlignTool target={target} />
+      <PaddingTool target={target} />
     </>
   );
 }

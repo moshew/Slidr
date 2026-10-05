@@ -51,6 +51,11 @@ export interface DialogContentProps extends Omit<
   footer?: ReactNode;
   /** The accessible name of the close button; omit it to have no close button. */
   closeLabel?: string;
+  /**
+   * `wide` for a dialog that shows a slide or a picture beside its controls (decompose, the mask
+   * painter): 720px, as narrow as the window when that is less.
+   */
+  size?: 'default' | 'wide';
 }
 
 /** A modal dialog centred over a scrim. */
@@ -59,6 +64,7 @@ export function DialogContent({
   description,
   footer,
   closeLabel,
+  size = 'default',
   className,
   children,
   ...props
@@ -70,7 +76,8 @@ export function DialogContent({
         // A description is optional; Radix warns unless told there is none.
         {...(description ? {} : { 'aria-describedby': undefined })}
         className={cx(
-          'fixed inset-0 z-50 m-auto flex h-fit w-dialog animate-overlay-in flex-col gap-4 rounded-panel border border-ui-line bg-ui-raised p-5 text-sm text-ui-fg shadow-overlay',
+          'fixed inset-0 z-50 m-auto flex h-fit animate-overlay-in flex-col gap-4 rounded-panel border border-ui-line bg-ui-raised p-5 text-sm text-ui-fg shadow-overlay',
+          size === 'wide' ? 'w-dialog-wide max-w-full' : 'w-dialog',
           className,
         )}
         {...props}

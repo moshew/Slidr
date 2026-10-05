@@ -70,7 +70,7 @@ test('a template from a description and a logo is previewed, saved, and a new de
   await tab(page, 'chat');
 
   // Saving, as the default for new decks.
-  await draft(page).getByRole('button', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
+  await draft(page).getByRole('checkbox', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
   await draft(page).getByTestId('draft-save').click();
   await expect(draft(page)).toHaveAttribute('data-saved', /^personal_/);
   const id = (await draft(page).getAttribute('data-saved'))!;

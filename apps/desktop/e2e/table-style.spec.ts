@@ -167,8 +167,9 @@ test('"Header row" switches the look of the first row', async ({ page }) => {
   const id = await addTable(page, { texts: QUARTERS });
   await selectTable(page, id);
   const popover = await open(page, 'Table style');
-  const toggle = popover.getByRole('button', { name: 'Header row', exact: true });
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  // An option of the style is a box to tick (ADR-060), not a pressed icon.
+  const toggle = popover.getByRole('checkbox', { name: 'Header row', exact: true });
+  await expect(toggle).toBeChecked();
   const header = cellOnStage(page, id, 0, 1);
   await expect(header).toHaveCSS('background-color', await themeColor(page, 'primary'));
   await expect(header.locator('p')).toHaveCSS('font-weight', '600');
@@ -176,7 +177,7 @@ test('"Header row" switches the look of the first row', async ({ page }) => {
 
   const off = await oneUndoStep(page, () => toggle.click());
   expect(off.style).toEqual({ headerRow: false, bandedRows: false, firstColumn: false });
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(toggle).not.toBeChecked();
   await expect(header).toHaveCSS('background-color', CLEAR);
   await expect(header.locator('p')).toHaveCSS('font-weight', '400');
   await expect(header.locator('p')).toHaveCSS('color', await themeColor(page, 'text'));
@@ -190,8 +191,8 @@ test('"Banded rows" fills every second row under the header', async ({ page }) =
   const id = await addTable(page, { texts: [...QUARTERS, ['Q3', '1.9M', '+21%']] });
   await selectTable(page, id);
   const popover = await open(page, 'Table style');
-  const toggle = popover.getByRole('button', { name: 'Banded rows', exact: true });
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  const toggle = popover.getByRole('checkbox', { name: 'Banded rows', exact: true });
+  await expect(toggle).not.toBeChecked();
   await expect(cellOnStage(page, id, 2, 0)).toHaveCSS('background-color', CLEAR);
 
   const after = await oneUndoStep(page, () => toggle.click());
@@ -210,7 +211,7 @@ test('"First column" makes the first column strong, on the right in a right-to-l
   const id = await addTable(page, { dir: 'rtl', texts: HEBREW });
   await selectTable(page, id);
   const popover = await open(page, 'סגנון טבלה');
-  const toggle = popover.getByRole('button', { name: 'עמודה ראשונה', exact: true });
+  const toggle = popover.getByRole('checkbox', { name: 'עמודה ראשונה', exact: true });
   const first = cellOnStage(page, id, 1, 0);
   const last = cellOnStage(page, id, 1, 3);
   await expect(first.locator('p')).toHaveCSS('font-weight', '400');

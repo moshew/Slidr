@@ -17,6 +17,7 @@ import {
   flowOf,
   hasText,
   moveStep,
+  nudgeTarget,
   newSteps,
   opensTheShow,
   patchStep,
@@ -119,6 +120,22 @@ describe('steps', () => {
     expect(moveStep(timeline, 'a', 'a')).toBe(timeline);
     expect(moveStep(timeline, 'x', 'a')).toBe(timeline);
     expect(ids(removeStep(timeline, 'b'))).toBe('ac');
+  });
+
+  it('moves a step with Alt and an arrow past the steps that do not play (ADR-069, finding 14)', () => {
+    const path = step('p', { category: 'motion' });
+    const timeline = [step('a'), path, step('b'), step('c')];
+    const ids = (list: readonly AnimationStep[]) => list.map((s) => s.id).join('');
+    const nudged = (id: string, by: 1 | -1) => {
+      const target = nudgeTarget(timeline, [path], id, by);
+      return target ? ids(moveStep(timeline, id, target.before)) : null;
+    };
+    expect(nudged('a', 1)).toBe('pbac');
+    expect(nudged('b', -1)).toBe('bapc');
+    expect(nudged('b', 1)).toBe('apcb');
+    // At either end there is nowhere to go.
+    expect(nudged('a', -1)).toBeNull();
+    expect(nudged('c', 1)).toBeNull();
   });
 });
 

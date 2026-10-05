@@ -315,6 +315,38 @@ function ButtonRow({ variant, name, c }: { variant: ButtonVariant; name: string;
   );
 }
 
+/**
+ * A button and an icon button that turn disabled once used, with a way back, and an icon button
+ * that is a switch (`aria-pressed`): the keyboard stays on a button that turns disabled while it
+ * has it, and a pressed icon button reads as selected.
+ */
+function KeepFocus({ c }: { c: Copy }) {
+  const [used, setUsed] = useState(false);
+  const [pressed, setPressed] = useState(true);
+  return (
+    <div className="flex items-center gap-2">
+      <Button data-testid="gallery-once" disabled={used} onClick={() => setUsed(true)}>
+        {c.buttonLabel}
+      </Button>
+      <IconButton
+        icon={Plus}
+        label={c.buttonLabel}
+        data-testid="gallery-once-icon"
+        disabled={used}
+        onClick={() => setUsed(true)}
+      />
+      <IconButton icon={Undo2} mirror label={c.undo} onClick={() => setUsed(false)} />
+      <IconButton
+        icon={Bold}
+        label={c.bold}
+        data-testid="gallery-pressed"
+        aria-pressed={pressed}
+        onClick={() => setPressed(!pressed)}
+      />
+    </div>
+  );
+}
+
 function IconButtons({ c }: { c: Copy }) {
   return (
     <Card title={c.iconButtons}>
@@ -340,6 +372,7 @@ function IconButtons({ c }: { c: Copy }) {
           <IconButton icon={Trash2} label={c.buttonLabel} variant="danger" />
           <IconButton icon={Plus} label={c.buttonLabel} size="sm" variant="secondary" />
         </div>
+        <KeepFocus c={c} />
         <div className="flex items-center gap-1">
           <Toggle icon={Bold} label={c.bold} shortcut="Ctrl+B" defaultPressed />
           <Toggle icon={Italic} label={c.italic} />
@@ -567,6 +600,7 @@ function FieldDemo({ c }: { c: Copy }) {
       <Field label={c.duration} error={seconds > 60 ? c.durationError : undefined}>
         <NumberField
           aria-label={c.duration}
+          data-testid="gallery-seconds"
           className="w-24"
           value={seconds}
           onValueChange={setSeconds}

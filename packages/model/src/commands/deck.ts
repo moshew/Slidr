@@ -1,4 +1,6 @@
+import { current, isDraft } from 'immer';
 import { z } from 'zod';
+import { referencedAssetIds } from '../queries';
 import {
   Archetype,
   AssetMeta,
@@ -127,5 +129,32 @@ export const assetAdd = defineCommand(
     if (deck.assets[asset.id]) return;
     deck.assets[asset.id] = asset;
     touched.assets.add(asset.id);
+  },
+);
+
+/**
+ * Takes assets out of the deck's table (ADR-069). An asset the deck still uses is refused, and
+ * the command with it: an image, a clip, a fill or a poster, an id inside free HTML or CSS, and
+ * every font, which is used by its family's name (`referencedAssetIds`). So nothing on a slide is
+ * left pointing at a file the deck no longer lists. The file stays where the storage put it, so
+ * undo brings the asset back whole, and an asset nothing lists is not saved with the deck.
+ */
+export const assetRemove = defineCommand(
+  z.strictObject({ type: z.literal('asset.remove'), assetIds: z.array(Id).min(1) }),
+  (deck, { assetIds }, touched) => {
+    const used = referencedAssetIds(isDraft(deck) ? current(deck) : deck);
+    for (const id of assetIds) {
+      if (!deck.assets[id]) throw new CommandError('not_found', `Asset "${id}" does not exist.`);
+      if (used.has(id)) {
+        throw new CommandError(
+          'invalid_state',
+          `Asset "${id}" is still used by the deck; remove what uses it first.`,
+        );
+      }
+    }
+    for (const id of assetIds) {
+      delete deck.assets[id];
+      touched.assets.add(id);
+    }
   },
 );

@@ -7,7 +7,9 @@ use serde::Serialize;
 use crate::error::{AppError, Result};
 
 #[cfg(windows)]
-#[allow(unsafe_code)] // COM calls into DirectWrite: the app's second place for `unsafe`.
+// COM calls into DirectWrite: one of the app's three places for `unsafe`, with
+// `capture/webview2.rs` and `import_window/network.rs`.
+#[allow(unsafe_code)]
 mod directwrite;
 
 /// One installed font family.

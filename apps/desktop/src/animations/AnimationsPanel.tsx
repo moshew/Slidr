@@ -10,14 +10,15 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EmptyState,
+  Field,
   Icon,
   IconButton,
+  type LucideIcon,
+  EmptyState,
+  Tooltip,
   SegmentedControl,
   Select,
   Separator,
-  Tooltip,
-  type LucideIcon,
 } from '@slidr/ui';
 import {
   Film,
@@ -49,6 +50,7 @@ import {
   hasText,
   isOpenRow,
   moveStep,
+  nudgeTarget,
   newSteps,
   openRow,
   patchStep,
@@ -63,14 +65,7 @@ import {
   type Row,
   type RowGroup,
 } from './model';
-import {
-  DirectionField,
-  Field,
-  nameLabel,
-  SecondsField,
-  useCurrentSlide,
-  useSeconds,
-} from './parts';
+import { DirectionField, nameLabel, SecondsField, useCurrentSlide, useSeconds } from './parts';
 import { playPreview, stageGroups, stageSlide, stopPreview, usePreview } from './preview';
 import { TransitionEditor } from './TransitionEditor';
 
@@ -351,13 +346,21 @@ function StepList(props: StepListProps) {
     onPointerCancel: () => setDrag(null),
   });
 
-  /** Alt with an arrow moves the step one place in the order of the timeline. */
+  /** The step moved from the keyboard: its row keeps the keyboard, in whichever group it is now. */
+  const refocus = useRef<string | null>(null);
+  useEffect(() => {
+    const id = refocus.current;
+    if (id === null) return;
+    refocus.current = null;
+    root.current?.querySelector<HTMLElement>(`[data-step="${CSS.escape(id)}"] [data-row]`)?.focus();
+  }, [list]);
+
+  /** Alt with an arrow moves the step one place among the steps of the groups. */
   const nudge = (step: AnimationStep, by: 1 | -1) => {
-    const steps = slide.timeline;
-    const at = steps.findIndex((s) => s.id === step.id);
-    const before = by < 0 ? steps[at - 1]?.id : steps[at + 2]?.id;
-    if (by < 0 && before === undefined) return;
-    onMove(step, before);
+    const target = nudgeTarget(slide.timeline, list.unplayed, step.id, by);
+    if (!target) return;
+    refocus.current = step.id;
+    onMove(step, target.before);
   };
 
   return (

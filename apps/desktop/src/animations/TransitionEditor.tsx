@@ -1,7 +1,16 @@
 import type { Deck, Slide, Transition } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { runTransition, transitionTurns, transitionTypes } from '@slidr/runtime';
-import { Button, cx, Icon, IconButton, SegmentedControl, Slider, type LucideIcon } from '@slidr/ui';
+import {
+  Button,
+  cx,
+  Field,
+  Icon,
+  IconButton,
+  type LucideIcon,
+  SegmentedControl,
+  Slider,
+} from '@slidr/ui';
 import {
   Ban,
   Blend,
@@ -27,7 +36,7 @@ import {
   TRANSITION_DEFAULTS,
   withType,
 } from './model';
-import { DirectionField, Field, SecondsField, useCurrentSlide, useSeconds } from './parts';
+import { DirectionField, SecondsField, useCurrentSlide, useSeconds } from './parts';
 
 /*
  * The transition into the slide on the Stage (WG8-T05, SPEC 4.4): its kind, the way it travels,

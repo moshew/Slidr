@@ -133,6 +133,9 @@ function styleBorders(style: TableStyle, place: Place): Borders {
   return borders;
 }
 
+/** The padding of a cell that has none of its own, in slide pixels. */
+export const CELL_PADDING = { top: 12, right: 20, bottom: 12, left: 20 } as const;
+
 /** What a cell is drawn with: its own fill and borders, or else the style's. */
 export interface CellLook {
   fill: Fill | undefined;

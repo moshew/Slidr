@@ -62,7 +62,7 @@ export function setFollow(follow: boolean): void {
   useAiPreferences.setState({ follow });
 }
 
-/** Where the agent's settings are kept until the settings screen exists (WG3-T08). */
+/** Where the agent's settings are kept: the agent's section of the settings screen writes them too. */
 const SETTINGS_KEY = 'slidr.agent';
 
 interface StoredSettings extends AgentSettings {
@@ -71,10 +71,11 @@ interface StoredSettings extends AgentSettings {
 }
 
 /**
- * The agent's settings: harness, model, effort, web access, the design check. There is no
- * screen for them yet, so they are read from `localStorage` (`slidr.agent`, a JSON object) and
- * the defaults stand when it is absent: the first harness the app offers, on its own default
- * model, with web access and the design check on.
+ * The agent's settings: harness, model, effort, web access, the design check. The agent's section
+ * of the settings screen (`src/settings/AgentSection.tsx`) and the chat's picker show them; they
+ * are kept in `localStorage` (`slidr.agent`, a JSON object), not yet in `settings.json`, and the
+ * defaults stand when it is absent: the first harness the app offers, on its own default model,
+ * with web access and the design check on.
  */
 export function agentSettings(): StoredSettings {
   try {
@@ -90,7 +91,7 @@ const settingsChanges = create(() => ({ count: 0 }));
 
 /**
  * Changes some of the agent's settings, where they are kept (`slidr.agent`): the picker of the
- * chat today, the settings screen when there is one. A value of `undefined` clears the setting,
+ * chat and the agent's section of the settings screen. A value of `undefined` clears the setting,
  * so its default stands again. A session reads them when it starts and at every turn's start.
  */
 export function setAgentSettings(patch: Partial<StoredSettings>): void {

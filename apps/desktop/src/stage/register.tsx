@@ -33,6 +33,7 @@ import { refitPatches, type Patch } from './groups';
 import { AiItems, ClipboardItems, EditItems, GroupItems, OrderItems, StateItems } from './menu';
 import { en, he } from './messages';
 import { indexElements, type Located } from './space';
+import { focusSelectionToolbar } from './SelectionToolbar';
 
 /*
  * The Stage's part of Top Tools row B (SPEC 4.4): crop mode of an image (WG5-T02, IMG-03). The
@@ -226,6 +227,15 @@ const tools = [
   { id: 'image.crop.done', order: 10.4, render: CropDone },
 ];
 for (const tool of tools) registerContextTool({ ...tool, kinds: ['image'], group: 'crop' });
+
+/** The keyboard's way to the toolbar beside the selection (UI-06, ADR-060 section 3). */
+registerShortcut({
+  id: 'stage.toolbar',
+  keys: 'Alt+F10',
+  label: 'stage:toolbar.shortcut',
+  section: 'edit',
+  run: () => focusSelectionToolbar(),
+});
 
 /** Esc leaves crop mode also when the focus is on one of the crop tools and not on the Stage. */
 registerShortcut({

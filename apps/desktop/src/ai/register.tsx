@@ -150,6 +150,8 @@ const AI_PANELS: readonly string[] = [PanelId.aiDeck, PanelId.aiSlide, PanelId.a
 registerShortcut({
   id: 'ai.focusChat',
   keys: 'Ctrl+L',
+  label: 'keys.focusChat',
+  section: 'ai',
   inText: true,
   run: () => {
     const { activePanel, panelOpen } = useShell.getState();

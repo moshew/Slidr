@@ -283,6 +283,54 @@ describe('SlideRenderer', () => {
     expect((other as HTMLElement).style.fontWeight).toBe('700');
   });
 
+  it('in a show, makes the links of a slide stops of the keyboard, and opens only safe addresses', () => {
+    const deck = allElementsDeck();
+    const slide = deck.slides[0]!;
+    const text = slide.elements.find((e) => e.id === 'e_text') as Element;
+    const linked: Element = {
+      ...text,
+      id: 'e_links',
+      content: {
+        paragraphs: [
+          {
+            dir: 'auto',
+            align: 'start',
+            runs: [
+              { text: 'slide', marks: { link: '#slide=s_other' } },
+              { text: ' and ' },
+              { text: 'script', marks: { link: 'javascript:alert(1)' } },
+              { text: ' and ' },
+              { text: 'file', marks: { link: 'file:///C:/secret.txt' } },
+            ],
+          },
+        ],
+      },
+    } as Element;
+    const card = { ...text, id: 'e_card', link: { kind: 'slide', target: 's_other' } } as Element;
+    const draw = (mode: 'edit' | 'present') =>
+      render(
+        <SlideRenderer deck={deck} slide={{ ...slide, elements: [linked, card] }} mode={mode} />,
+      );
+
+    draw('present');
+    const toSlide = container.querySelector('[data-element-id="e_links"] [data-link-kind="slide"]');
+    expect(toSlide?.getAttribute('tabindex')).toBe('0');
+    expect(toSlide?.getAttribute('role')).toBe('link');
+    const box = container.querySelector('[data-element-id="e_card"]');
+    expect(box?.getAttribute('tabindex')).toBe('0');
+    expect(box?.getAttribute('role')).toBe('link');
+    // An address a slide may not open is drawn as its text, with no address to follow.
+    const anchors = Array.from(container.querySelectorAll('[data-element-id="e_links"] a'));
+    expect(anchors.map((a) => a.textContent)).toEqual(['slide']);
+    expect(container.querySelector('[data-element-id="e_links"]')?.textContent).toBe(
+      'slide and script and file',
+    );
+
+    // On the Stage and in a thumbnail the slide takes no stops of the keyboard of its own.
+    draw('edit');
+    expect(container.querySelectorAll('[tabindex]')).toHaveLength(0);
+  });
+
   it('re-renders only the elements a change touched', () => {
     const bus = new CommandBus(allElementsDeck());
     const store = createDeckStore(bus);

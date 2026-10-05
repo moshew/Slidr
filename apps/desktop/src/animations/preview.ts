@@ -1,7 +1,7 @@
 import type { AnimationStep } from '@slidr/model';
 import { createTimeline, type SlideTimeline, type TimelineGroup } from '@slidr/runtime';
 import { create } from 'zustand';
-import type { Editor } from '../shell';
+import { stageSlide as drawnSlide, type Editor } from '../shell';
 import { scheduledGroups } from './model';
 
 /*
@@ -13,11 +13,13 @@ import { scheduledGroups } from './model';
  * before its text is edited.
  */
 
-/** The slide the Stage shows, as `SlideRenderer` drew it; null when there is none. */
+/**
+ * This slide as the Stage draws it, as `SlideRenderer` drew it; null when the Stage shows another
+ * or none. The shell is the one place that knows how to find the Stage (`stageDom.ts`).
+ */
 export function stageSlide(slideId: string): HTMLElement | null {
-  return document.querySelector<HTMLElement>(
-    `[data-testid="stage-frame"] [data-slide-id="${CSS.escape(slideId)}"]`,
-  );
+  const root = drawnSlide();
+  return root?.dataset.slideId === slideId ? root : null;
 }
 
 /**

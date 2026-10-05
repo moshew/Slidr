@@ -222,6 +222,75 @@ test("the deck's own pictures are added to a slide again with a click", async ({
   expect(errors).toEqual([]);
 });
 
+test('a picture the deck no longer uses is taken out of it, and one it uses is not', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openApp(page, { lang: 'en' });
+  await openMedia(page, 'uploads');
+  // Two pictures in the deck: one on the slide, one not.
+  const [used, free] = await page.evaluate(async () => {
+    const editor = window.slidr!;
+    const picture = async (name: string, shade: string) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 200;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = shade;
+      context.fillRect(0, 0, 320, 200);
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), 'image/png'),
+      );
+      const asset = await editor.assets.import(new File([blob], name, { type: 'image/png' }));
+      editor.bus.dispatch({ type: 'asset.add', asset });
+      return asset;
+    };
+    const one = await picture('on the slide.png', 'teal');
+    const two = await picture('spare.png', 'gold');
+    editor.bus.dispatch({
+      type: 'element.add',
+      slideId: editor.selection.getState().currentSlideId!,
+      element: {
+        id: 'e_photo',
+        type: 'image',
+        frame: { x: 100, y: 100, w: 320, h: 200 },
+        rotation: 0,
+        opacity: 1,
+        fit: 'cover',
+        assetId: one.id,
+      },
+    });
+    return [one.id, two.id];
+  });
+  const panel = page.getByTestId('media-uploads');
+  const removeOf = (id: string) => panel.locator(`[data-remove-asset="${id}"]`);
+  await panel.locator(`[data-asset="${free}"]`).hover();
+  await expect(removeOf(free)).toBeVisible();
+  await expect(removeOf(free)).toHaveAccessibleName('Remove from the presentation: spare');
+
+  const before = await undoDepth(page);
+  await removeOf(free).click();
+  await expect(panel.locator(`[data-asset="${free}"]`)).toHaveCount(0);
+  expect(Object.keys((await deck(page)).assets)).toEqual([used]);
+  expect(await undoDepth(page)).toBe(before + 1);
+  await undo(page);
+  await expect(panel.locator(`[data-asset="${free}"]`)).toBeVisible();
+
+  // The one on the slide stays, and the user is told why.
+  await panel.locator(`[data-asset="${used}"]`).hover();
+  await removeOf(used).click();
+  const dialog = page.getByRole('alertdialog').or(page.getByRole('dialog'));
+  await expect(dialog).toContainText('The presentation uses this image');
+  await page.keyboard.press('Escape');
+  expect(Object.keys((await deck(page)).assets).sort()).toEqual([used, free].sort());
+
+  // From the keyboard: Delete on a tile.
+  await panel.locator(`[data-asset="${free}"]`).focus();
+  await page.keyboard.press('Delete');
+  await expect(panel.locator(`[data-asset="${free}"]`)).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('AI images: the deck style, the placeholders that wait, and what was made', async ({
   page,
 }) => {

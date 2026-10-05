@@ -1,3 +1,4 @@
+import { referencedAssetIds, type AssetMeta } from '@slidr/model';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ImageUp, Images } from '@slidr/ui/icons';
@@ -10,7 +11,8 @@ import { AssetTile, TabBody, TileGrid } from './parts';
 /**
  * The deck's own pictures (SPEC 4.2, WG5-T13): what the user uploaded, dropped or pasted, and
  * what an imported file brought with it. Uploading puts the picture on the current slide, as the
- * Insert button does; a picture already in the deck is added to a slide again with a click.
+ * Insert button does; a picture already in the deck is added to a slide again with a click, and
+ * one the deck no longer uses can be taken out of it.
  */
 export function UploadsTab() {
   const { t } = useTranslation('media');
@@ -25,6 +27,23 @@ export function UploadsTab() {
       ),
     [assets],
   );
+
+  /**
+   * Takes a picture out of the deck, as one undo step. One the deck still uses is refused with
+   * the reason (`asset.remove`): it is looked up when asked, not on every change of the deck.
+   */
+  const remove = (asset: AssetMeta) => {
+    if (referencedAssetIds(editor.bus.deck).has(asset.id)) {
+      void tell(t('uploads.inUse'));
+      return;
+    }
+    editor.bus.dispatch(
+      { type: 'asset.remove', assetIds: [asset.id] },
+      { label: t('uploads.removed') },
+    );
+  };
+
+  const nameOf = (asset: AssetMeta) => asset.name?.replace(/\.[^.]+$/, '') || t('uploads.unnamed');
 
   return (
     <TabBody testId="media-uploads">
@@ -44,11 +63,13 @@ export function UploadsTab() {
             <AssetTile
               key={asset.id}
               asset={asset}
-              label={t('uploads.insert', {
-                name: asset.name?.replace(/\.[^.]+$/, '') || t('uploads.unnamed'),
-              })}
+              label={t('uploads.insert', { name: nameOf(asset) })}
               onPick={() => {
                 if (!insertAsset(editor, asset)) void tell(t('noSlide'));
+              }}
+              remove={{
+                label: t('uploads.remove', { name: nameOf(asset) }),
+                onRemove: () => remove(asset),
               }}
             />
           ))}
