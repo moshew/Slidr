@@ -204,6 +204,29 @@ describe('import_capture', () => {
     expect(remarks[3]).toMatch(/a difference no element explains \(1984 pixels\)\. … and 1 more/);
   });
 
+  it('counts the elements of a slide that was put together wherever they are in it', async () => {
+    const frame = { x: 0, y: 0, w: 400, h: 200 };
+    const words = () => createElement.text({ frame, content: { paragraphs: [] } });
+    // Two cards, each a group of its box and the text on it, one with a number in a group of
+    // its own; a line of text beside them.
+    const card = (...on: Parameters<typeof createElement.group>[0]['children']) =>
+      createElement.group({ frame, children: [createElement.shape({ frame }), words(), ...on] });
+    const slide = createSlide({
+      id: newId('s'),
+      elements: [
+        card(),
+        card(createElement.group({ frame, children: [createElement.shape({ frame })] })),
+        words(),
+      ],
+    });
+    const service = importer({ capture: vi.fn(() => Promise.resolve(captured({ slide }))) });
+    const { call } = setup(hebrewDeck(), { importer: service }, IMPORT);
+    const data = await ok(call('import_capture', { slides: [{ selector: 'section' }] }));
+    expect(data.captured).toEqual([
+      expect.objectContaining({ slideId: slide.id, elements: '3 group, 3 shape, 3 text' }),
+    ]);
+  });
+
   it('captures a slide again in the place of the first capture', async () => {
     const fresh = createDeck({ lang: 'he', slides: [createSlide()] });
     const service = importer();

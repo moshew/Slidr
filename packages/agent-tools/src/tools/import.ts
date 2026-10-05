@@ -4,7 +4,7 @@
  * converts it, and measures the result against the source. None of this knows a presentation
  * format (IMP-04): the tools take a selector or JavaScript, and say what the browser reports.
  */
-import type { Command, Deck, Slide } from '@slidr/model';
+import { walkElements, type Command, type Deck, type Slide } from '@slidr/model';
 import { z } from 'zod';
 import { markdownToRichText } from '../markdown';
 import type { ImportedSlide } from '../services';
@@ -120,9 +120,13 @@ function untouchedOnlySlide(deck: Deck): Slide | undefined {
   return untouched ? only : undefined;
 }
 
+/**
+ * What a captured slide is made of, at any depth: the conversion puts a box and what lies on it
+ * in a group, so the top of the tree alone would say "4 group" of a slide of four cards.
+ */
 function countByType(slide: Slide): string {
   const counts = new Map<string, number>();
-  for (const element of slide.elements) {
+  for (const element of walkElements(slide.elements)) {
     counts.set(element.type, (counts.get(element.type) ?? 0) + 1);
   }
   return Array.from(counts, ([type, n]) => `${n} ${type}`).join(', ') || 'no elements';

@@ -5,20 +5,34 @@ import { defineTool } from '../tool';
 
 const ALL = ['deck', 'slide', 'object'] as const;
 
+/** The text an element holds: a text box's, and what is written on a shape (a title on a band). */
+function textIn(element: Element): string | undefined {
+  if (element.type !== 'text' && element.type !== 'shape') return undefined;
+  return element.content && plainText(element.content).slice(0, 120);
+}
+
 function slideTitle(slide: Slide): string | undefined {
-  let firstText: Element | undefined;
+  let first: string | undefined;
   for (const element of walkElements(slide.elements)) {
-    if (element.type !== 'text') continue;
-    if (element.role === 'title') return plainText(element.content).slice(0, 120);
-    firstText ??= element;
+    const text = textIn(element);
+    if (text === undefined) continue;
+    if (element.role === 'title') return text;
+    first ??= text;
   }
-  return firstText?.type === 'text' ? plainText(firstText.content).slice(0, 120) : undefined;
+  return first;
+}
+
+/** How many elements a slide has, the ones inside its groups and the groups themselves too. */
+function elementCount(slide: Slide): number {
+  let count = 0;
+  for (const _ of walkElements(slide.elements)) count++;
+  return count;
 }
 
 export const deckGetOutline = defineTool({
   name: 'deck_get_outline',
   description:
-    'The structure of the deck: title, language, direction, theme name, and for each slide its number (1 = first, as the user counts), id, name, title text, layout and archetype, number of elements, and whether it is hidden.',
+    'The structure of the deck: title, language, direction, theme name, and for each slide its number (1 = first, as the user counts), id, name, title text, layout and archetype, number of elements (those inside groups too), and whether it is hidden.',
   input: z.strictObject({}),
   scopes: ALL,
   writes: false,
@@ -39,7 +53,7 @@ export const deckGetOutline = defineTool({
             ...(slideTitle(slide) ? { title: slideTitle(slide) } : {}),
             ...(slide.layoutId ? { layoutId: slide.layoutId } : {}),
             ...(archetype ? { archetype } : {}),
-            elements: slide.elements.length,
+            elements: elementCount(slide),
             ...(slide.hidden ? { hidden: true } : {}),
           };
         }),

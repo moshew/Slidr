@@ -1,13 +1,17 @@
 import {
   CommandBus,
+  createDeck,
   createElement,
   createSelectionStore,
+  createSlide,
   findElement,
   findElementInDeck,
   findSlide,
   plainText,
+  richText,
   type ChartElement,
   type Deck,
+  type Element,
   type TableElement,
   type TextElement,
 } from '@slidr/model';
@@ -33,9 +37,60 @@ describe('read tools', () => {
         title: 'כל סוגי האובייקטים',
         layoutId: 'l_text_image',
         archetype: 'textImage',
-        elements: 13,
+        // Thirteen at the top of the slide, and the two inside its group.
+        elements: 15,
       },
       { number: 2, id: 's_empty', name: 'Empty', elements: 0, hidden: true },
+    ]);
+  });
+
+  it('deck_get_outline counts what is inside groups, and reads a title that a shape holds', async () => {
+    const frame = { x: 96, y: 96, w: 400, h: 120 };
+    // Slides as the conversion puts them together: a card is a group, and a text that sat in
+    // the middle of a box is the text of that shape.
+    const card = (id: string, ...on: Element[]) =>
+      createElement.group({
+        id: `e_card_${id}`,
+        frame,
+        children: [createElement.shape({ id: `e_box_${id}`, frame }), ...on],
+      });
+    const words = (id: string, text: string) =>
+      createElement.text({ id, frame, content: richText(text) });
+    const deck = createDeck({
+      lang: 'en',
+      slides: [
+        createSlide({
+          id: 's_banner',
+          elements: [
+            createElement.shape({ id: 'e_banner', frame, content: richText('Three goals') }),
+            card('a', words('e_a', 'Faster onboarding')),
+            card('b', words('e_b', 'Fewer tickets'), card('c', words('e_c', 'Inside'))),
+          ],
+        }),
+        createSlide({
+          id: 's_role',
+          elements: [
+            card('d', words('e_d', 'A card drawn under the title')),
+            createElement.shape({
+              id: 'e_title',
+              role: 'title',
+              frame,
+              content: richText('The title, on a band of colour'),
+            }),
+          ],
+        }),
+        // A box with nothing written on it is no title, whatever comes after it.
+        createSlide({
+          id: 's_plain',
+          elements: [createElement.shape({ id: 'e_plain', frame }), words('e_e', 'Only words')],
+        }),
+      ],
+    });
+    const outline = await ok(setup(deck).call('deck_get_outline'));
+    expect(outline.slides).toEqual([
+      { number: 1, id: 's_banner', title: 'Three goals', elements: 10 },
+      { number: 2, id: 's_role', title: 'The title, on a band of colour', elements: 4 },
+      { number: 3, id: 's_plain', title: 'Only words', elements: 2 },
     ]);
   });
 
