@@ -67,6 +67,7 @@ export const he = {
     ai: 'AI',
     aiObject: 'AI על האובייקט',
     contextTools: 'כלים לבחירה',
+    moreTools: 'עוד כלים',
   },
   selection: {
     none: 'שקף',

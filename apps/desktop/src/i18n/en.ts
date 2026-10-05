@@ -66,6 +66,7 @@ export const en: Messages<typeof he> = {
     ai: 'AI',
     aiObject: 'AI on this object',
     contextTools: 'Selection tools',
+    moreTools: 'More tools',
   },
   selection: {
     none: 'Slide',

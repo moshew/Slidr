@@ -234,8 +234,12 @@ function measureRow(toolbar: HTMLElement): void {
   const style = getComputedStyle(toolbar);
   const available =
     toolbar.clientWidth - parseFloat(style.paddingInlineStart) - parseFloat(style.paddingInlineEnd);
+  // The tools sit in a strip that scrolls when the row has no room for them all
+  // (`shell/TopTools.tsx`): what is scrolled out of sight is part of what the row has to hold.
+  const strip = toolbar.querySelector<HTMLElement>('[data-row-tools]');
+  const hidden = strip ? Math.max(0, strip.scrollWidth - strip.clientWidth) : 0;
   const content =
-    Math.max(...boxes.map((box) => box.right)) - Math.min(...boxes.map((box) => box.left));
+    Math.max(...boxes.map((box) => box.right)) - Math.min(...boxes.map((box) => box.left)) + hidden;
   const { level } = useDensity.getState();
   measured[level] = content;
   if (content > available + 0.5) {

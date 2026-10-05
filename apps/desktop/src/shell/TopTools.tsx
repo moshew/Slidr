@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChartColumn,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clapperboard,
   FilePlus,
   FolderOpen,
@@ -28,6 +38,7 @@ import {
 } from '@slidr/ui/icons';
 import {
   Button,
+  cx,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -113,14 +124,18 @@ function RowA() {
     >
       <FileMenu />
       <UndoRedo />
-      <Group>
-        {inserts.map((insert) => (
-          <ActionButton key={insert.action} {...insert} />
-        ))}
-      </Group>
+      {/* What is added to a slide is the part of this row that gives way when the row is narrow:
+          the document's menu, undo, the zoom and the three buttons at the end stay in place. */}
+      <ToolStrip testId="row-inserts">
+        <Group>
+          {inserts.map((insert) => (
+            <ActionButton key={insert.action} {...insert} />
+          ))}
+        </Group>
+      </ToolStrip>
       <div className="flex-1" />
       <ZoomMenu />
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <Button variant="soft" icon={Sparkles} onClick={() => openPanel(PanelId.aiSlide)}>
           {t('tools.aiSlide')}
         </Button>
@@ -433,6 +448,119 @@ function useSelectionKind(): { kind: SelectionKind; count: number } {
   return { kind: selectionKind(deck, slideId, elementIds, editingId), count: elementIds.length };
 }
 
+/** How much of the strip one press on its edge brings into view. */
+const STRIP_STEP = 0.7;
+
+/**
+ * Tools of a row, in a strip that takes the room the row has for them: the tools of row B, and
+ * the insert buttons of row A. They fit at the resolutions the layout is made for; when the Tool
+ * Panel is dragged wider on a small window the row is narrower than its tools, and then the
+ * strip scrolls sideways: by the wheel, by the arrow that shows on the side where tools are out
+ * of sight, and by Tab, which brings the tool it lands on into view. No tool is ever out of
+ * reach, and none is moved or folded away for it.
+ */
+function ToolStrip({
+  testId,
+  startOver,
+  gaps = '',
+  children,
+}: {
+  /** The arrows are `<testId>-start` and `<testId>-end`. */
+  testId: string;
+  /** What the strip shows: when it changes, the strip starts again from its first tool. */
+  startOver?: string;
+  /** The classes of the space between the groups of the strip. */
+  gaps?: string;
+  children: ReactNode;
+}) {
+  const { t, i18n } = useTranslation();
+  const strip = useRef<HTMLDivElement>(null);
+  const tools = useRef<HTMLDivElement>(null);
+  /** Tools are out of sight before the strip's start, and after its end. */
+  const [more, setMore] = useState({ start: false, end: false });
+  // A strip that reads right to left scrolls to the left, which the browser counts down from 0.
+  const towardsEnd = i18n.dir() === 'rtl' ? -1 : 1;
+
+  const look = useCallback(() => {
+    const el = strip.current;
+    if (!el) return;
+    const hidden = el.scrollWidth - el.clientWidth;
+    const at = Math.abs(el.scrollLeft);
+    const next = { start: hidden > 1 && at > 1, end: hidden > 1 && at < hidden - 1 };
+    setMore((was) => (was.start === next.start && was.end === next.end ? was : next));
+  }, []);
+
+  // Another kind of selection is another row: it starts from its first tool.
+  useLayoutEffect(() => {
+    strip.current?.scrollTo({ left: 0 });
+    look();
+  }, [startOver, look]);
+  useEffect(() => {
+    if (!strip.current || !tools.current) return;
+    // The room the row has, and the room its tools take: either can change by itself.
+    const observer = new ResizeObserver(look);
+    observer.observe(strip.current);
+    observer.observe(tools.current);
+    return () => observer.disconnect();
+  }, [look]);
+
+  const scroll = (way: 1 | -1) => {
+    const el = strip.current;
+    if (!el) return;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({
+      left: way * towardsEnd * el.clientWidth * STRIP_STEP,
+      behavior: still ? 'auto' : 'smooth',
+    });
+  };
+
+  return (
+    <div className="relative flex min-w-0 items-center self-stretch">
+      <div
+        ref={strip}
+        data-row-tools
+        onScroll={look}
+        onWheel={(event) => {
+          // The wheel of a mouse turns one way only: over the strip it scrolls it sideways.
+          if (event.deltaX === 0) strip.current?.scrollBy({ left: towardsEnd * event.deltaY });
+        }}
+        // The padding leaves room for the focus ring of the first and the last tool, which the
+        // edge of a strip that scrolls would cut.
+        className="-mx-1 flex h-full min-w-0 items-center overflow-x-auto overflow-y-hidden px-1 [scrollbar-width:none]"
+      >
+        <div ref={tools} className={cx('flex w-max items-center', gaps)}>
+          {children}
+        </div>
+      </div>
+      {(['start', 'end'] as const).map(
+        (side) =>
+          more[side] && (
+            // For the pointer only: the keyboard reaches every tool with Tab.
+            <div
+              key={side}
+              aria-hidden
+              data-testid={`${testId}-${side}`}
+              className={cx(
+                'absolute inset-y-0 flex items-center bg-ui-panel',
+                side === 'start' ? '-start-1 border-e pe-1' : '-end-1 border-s ps-1',
+                'border-ui-line',
+              )}
+            >
+              <IconButton
+                icon={side === 'start' ? ChevronLeft : ChevronRight}
+                mirror
+                size="sm"
+                tabIndex={-1}
+                label={t('tools.moreTools')}
+                onClick={() => scroll(side === 'start' ? -1 : 1)}
+              />
+            </div>
+          ),
+      )}
+    </div>
+  );
+}
+
 function RowB() {
   const { t } = useTranslation();
   const { kind, count } = useSelectionKind();
@@ -452,18 +580,20 @@ function RowB() {
     >
       <span
         data-testid="selection-label"
-        className="flex items-center gap-1.5 ps-1 text-sm font-medium text-ui-fg"
+        className="flex shrink-0 items-center gap-1.5 ps-1 text-sm font-medium text-ui-fg"
       >
         <Icon icon={kindIcons[kind]} className="text-ui-fg-muted" />
         {label}
       </span>
-      {groups.map((group) => (
-        <Group key={group[0]?.group}>
-          {group.map(({ id, render: Tool }) => (
-            <Tool key={id} kind={kind} />
-          ))}
-        </Group>
-      ))}
+      <ToolStrip testId="row-tools" startOver={kind} gaps="gap-3">
+        {groups.map((group) => (
+          <Group key={group[0]?.group}>
+            {group.map(({ id, render: Tool }) => (
+              <Tool key={id} kind={kind} />
+            ))}
+          </Group>
+        ))}
+      </ToolStrip>
       {kind === 'none' ? (
         <Button variant="soft" size="sm" icon={Sparkles} onClick={() => openPanel(PanelId.aiSlide)}>
           {t('tools.aiSlide')}
