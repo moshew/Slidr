@@ -474,8 +474,17 @@ for (const lang of ['he', 'en'] as const) {
         lang === 'he' ? 'הזזת התצוגה של שקף מוגדל' : 'Move the view of a zoomed slide',
       'stage.walk.next':
         lang === 'he'
-          ? 'מעבר לאובייקט הבא או הקודם בלי לבחור בו'
-          : 'Go to the next or the previous object without selecting it',
+          ? 'מעבר לאובייקט הבא או הקודם, וב-Filmstrip לשקף, בלי לבחור בו'
+          : 'Go to the next or the previous object, or slide in the Filmstrip, without selecting it',
+      // Keys a part of the Stage and a table read themselves: listed, and not to be given away.
+      'arrange.part':
+        lang === 'he'
+          ? 'הזזת הנקודה של קו, או ידית החיתוך, שהמקלדת עליה (עם Shift: בעשרה פיקסלים)'
+          : 'Move the point of a line, or the crop handle, the keyboard is on (with Shift: by ten pixels)',
+      'table.rule':
+        lang === 'he'
+          ? 'רוחב העמודה וגובה השורה של התא (עם Shift: בעשרה פיקסלים)'
+          : 'The width of the column and the height of the row of the cell (with Shift: by ten pixels)',
       'stage.walk.toggle':
         lang === 'he' ? 'הוספה לבחירה או הסרה ממנה' : 'Add to the selection, or take out of it',
       'stage.points':
@@ -492,5 +501,6 @@ for (const lang of ['he', 'en'] as const) {
     }
     // No string is missing: a missing one would show as its key.
     await expect(map).not.toContainText('stage:');
+    await expect(map).not.toContainText('a11y:');
   });
 }

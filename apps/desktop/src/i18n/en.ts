@@ -215,6 +215,8 @@ export const en: Messages<typeof he> = {
     move: 'Move by one pixel',
     moveFar: 'Move by ten pixels',
     resize: 'Resize (with Shift: by ten pixels)',
+    movePart:
+      'Move the point of a line, or the crop handle, the keyboard is on (with Shift: by ten pixels)',
     rotate: 'Rotate by one degree (with Shift: by 15)',
     group: 'Group',
     ungroup: 'Ungroup',
@@ -232,6 +234,8 @@ export const en: Messages<typeof he> = {
     typeCell: 'Type in the selected cell',
     moveCell: 'Move between cells',
     extendCells: 'Extend the cell selection',
+    cellRule:
+      'The width of the column and the height of the row of the cell (with Shift: by ten pixels)',
     clearCells: 'Clear the selected cells',
     leaveTable: 'Leave the table',
     newSlide: 'New slide',

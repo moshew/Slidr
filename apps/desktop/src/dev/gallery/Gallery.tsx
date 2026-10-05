@@ -318,11 +318,14 @@ function ButtonRow({ variant, name, c }: { variant: ButtonVariant; name: string;
 /**
  * A button and an icon button that turn disabled once used, with a way back, and an icon button
  * that is a switch (`aria-pressed`): the keyboard stays on a button that turns disabled while it
- * has it, and a pressed icon button reads as selected.
+ * has it, and a pressed icon button reads as selected. And two busy buttons: one that takes no
+ * press while it is busy, with a count of the presses that got through, and one that opens a
+ * menu, which it still opens.
  */
 function KeepFocus({ c }: { c: Copy }) {
   const [used, setUsed] = useState(false);
   const [pressed, setPressed] = useState(true);
+  const [presses, setPresses] = useState(0);
   return (
     <div className="flex items-center gap-2">
       <Button data-testid="gallery-once" disabled={used} onClick={() => setUsed(true)}>
@@ -343,6 +346,22 @@ function KeepFocus({ c }: { c: Copy }) {
         aria-pressed={pressed}
         onClick={() => setPressed(!pressed)}
       />
+      <Button data-testid="gallery-busy" loading onClick={() => setPresses(presses + 1)}>
+        {c.buttonLabel}
+      </Button>
+      <span data-testid="gallery-busy-presses" className="text-xs text-ui-fg-muted tabular-nums">
+        {presses}
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button data-testid="gallery-busy-menu" loading iconEnd={ChevronDown}>
+            {c.buttonLabel}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>{c.undo}</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
