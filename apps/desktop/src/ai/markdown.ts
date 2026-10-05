@@ -197,9 +197,27 @@ function isBlockStart(line: string): boolean {
   );
 }
 
+/**
+ * How deep quotes and lists nest before what is inside them is read as plain text. No reply a
+ * person reads nests this deep; a text written to (thousands of `>` on a line) would otherwise
+ * take a level of the stack for each, here and again when it is drawn, and a throw while
+ * drawing blanks the window.
+ */
+const MAX_NESTING = 24;
+
 export function parseMarkdown(source: string): Block[] {
+  return parseBlocks(source, 0);
+}
+
+/** `depth`: how many quotes and list items this text is inside of. */
+function parseBlocks(source: string, depth: number): Block[] {
   const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const blocks: Block[] = [];
+  /** The blocks inside a quote or an item of a list. */
+  const inside = (text: string): Block[] =>
+    depth < MAX_NESTING
+      ? parseBlocks(text, depth + 1)
+      : [{ type: 'paragraph', children: [{ type: 'text', text }] }];
   let i = 0;
 
   while (i < lines.length) {
@@ -236,7 +254,7 @@ export function parseMarkdown(source: string): Block[] {
     if (QUOTE.test(line)) {
       const body: string[] = [];
       while (i < lines.length && QUOTE.test(lines[i]!)) body.push(QUOTE.exec(lines[i++]!)![1]!);
-      blocks.push({ type: 'quote', children: parseMarkdown(body.join('\n')) });
+      blocks.push({ type: 'quote', children: inside(body.join('\n')) });
       continue;
     }
 
@@ -260,7 +278,7 @@ export function parseMarkdown(source: string): Block[] {
           body.push(below.slice(Math.min(depth, indent + 2)));
           i++;
         }
-        items.push({ children: parseMarkdown(body.join('\n')) });
+        items.push({ children: inside(body.join('\n')) });
         while (i < lines.length && !lines[i]!.trim() && marker.test(lines[i + 1] ?? '')) i++;
       }
       blocks.push({ type: 'list', ordered, start: ordered ? Number(item[2]) : 1, items });

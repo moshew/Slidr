@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseInline, parseMarkdown } from './markdown';
+import { parseInline, parseMarkdown, type Block } from './markdown';
 
 const text = (value: string) => ({ type: 'text', text: value });
 
@@ -180,5 +180,33 @@ describe('a line of a reply costs no more than its length', () => {
     expect(parseMarkdown(`| a |\n  |${run}:--${run}|  \n| 1 |`)).toMatchObject([
       { type: 'table', rows: [[[text('1')]]] },
     ]);
+  });
+});
+
+describe('nesting in a reply', () => {
+  /** How many quotes are one inside the other at the start of a text. */
+  const quotes = (blocks: Block[]): number =>
+    blocks[0]?.type === 'quote' ? 1 + quotes(blocks[0].children) : 0;
+
+  it('is read as it is written, as deep as a reply goes', () => {
+    expect(quotes(parseMarkdown('> > > > > five deep'))).toBe(5);
+    const list = parseMarkdown('- a\n  - b\n    - c\n      - d')[0];
+    expect(JSON.stringify(list).match(/"type":"list"/g)).toHaveLength(4);
+  });
+
+  // 8,000 quotes on a line ran the parser out of stack, and the app has no boundary that would
+  // catch the throw: whatever is drawn from a reply must come back from any text.
+  it('stops at a depth no reply has, and what is deeper is plain text', () => {
+    const deep = parseMarkdown(`${'>'.repeat(20_000)} **x**`);
+    expect(quotes(deep)).toBe(25);
+    let inner = deep;
+    while (inner[0]?.type === 'quote') inner = inner[0].children;
+    expect(inner).toEqual([
+      { type: 'paragraph', children: [{ type: 'text', text: `${'>'.repeat(19_975)} **x**` }] },
+    ]);
+    // The same for a list inside a list inside a list.
+    const steps = Array.from({ length: 400 }, (_, i) => `${'  '.repeat(i)}- item`).join('\n');
+    expect(() => parseMarkdown(steps)).not.toThrow();
+    expect(JSON.stringify(parseMarkdown(steps)).match(/"type":"list"/g)).toHaveLength(25);
   });
 });
