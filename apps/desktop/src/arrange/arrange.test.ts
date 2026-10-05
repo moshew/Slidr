@@ -6,6 +6,7 @@ import {
   createSlide,
   richText,
   walkElements,
+  type AssetMeta,
   type Deck,
   type Element,
   type Frame,
@@ -255,6 +256,36 @@ describe('pasting a clip', () => {
     expect(given.commands.filter((c) => c.type === 'asset.add')).toEqual([
       { type: 'asset.add', asset: imported },
     ]);
+  });
+
+  it('leaves out an asset whose file is not the name of a file, and pastes the rest', () => {
+    // A deck made elsewhere can carry such an asset: it is never drawn, and `asset.add` refuses
+    // it. A clip copied from that deck must not be refused whole with it.
+    const far: AssetMeta = {
+      id: 'a_far',
+      file: 'https://example.com/far.png',
+      mime: 'image/png',
+      kind: 'image',
+      bytes: 1200,
+      origin: 'import',
+    };
+    const source = deckWith(
+      createElement.image({ id: 'e_far', frame: box(0, 0), assetId: far.id }),
+      rect('e_box', box(200, 0)),
+    );
+    source.assets = { [far.id]: far };
+    const clip = clipElements(source, 's1', ['e_far', 'e_box'])!;
+    expect(clip.assets).toEqual([far]);
+
+    const other = deckWith();
+    const { commands } = pasteCommands(other, clip, { slideId: 's1' });
+    expect(commands.map((c) => c.type)).toEqual(['element.add', 'element.add']);
+    const after = applied(other, clip, 's1');
+    expect(after.assets).toEqual({});
+    // The picture comes as it was in its own deck: a frame that names a file nobody has.
+    expect(after.slides[0]!.elements.map((e) => e.type)).toEqual(['image', 'shape']);
+    // Handed over by a caller that could not import the file, it is left out all the same.
+    expect(pasteCommands(other, clip, { slideId: 's1', assets: [far] }).commands).toHaveLength(2);
   });
 
   it('adds slides after the slide shown, with new ids, into this deck or another', () => {

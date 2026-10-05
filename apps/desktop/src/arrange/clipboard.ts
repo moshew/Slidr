@@ -229,7 +229,9 @@ export function cutSlides(editor: Editor, slideIds: readonly string[]): void {
 /**
  * The table entries for the clip's assets that the open deck lacks. Their files are imported
  * into this document when this window still has them; otherwise the entry goes in without a
- * file, the picture shows as missing, and `lost` counts it.
+ * file, the picture shows as missing, and `lost` counts it. An entry whose file is not the name
+ * of a file (a deck made elsewhere can carry one) has no file to keep, so it is always among the
+ * lost; `pasteCommands` leaves it out of the deck, and the user is told like for any other.
  */
 async function bringAssets(
   editor: Editor,
@@ -275,7 +277,10 @@ export async function paste(editor: Editor, clip: Clip): Promise<void> {
   try {
     bus.batch(result.commands, { txId, label: label('history.paste') });
   } catch (error) {
+    // The deck is as it was. The reason is for whoever looks into it; the user is told that
+    // nothing was pasted, and not left pressing Ctrl+V at a deck that does not answer.
     console.error('The paste was rejected', error);
+    void tell(label('clipboard.refusedTitle'), label('clipboard.refusedBody'));
     return;
   }
   if (slideId) pastes.bySlide.set(slideId, earlier + 1);

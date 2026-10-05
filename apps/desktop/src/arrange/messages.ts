@@ -97,6 +97,8 @@ export const he = {
     lostTitle: 'חלק מהקבצים לא הועברו',
     lostBody:
       'ההדבקה בוצעה, אבל חלק מהקבצים (תמונות, וידאו או אודיו) לא נמצאים במצגת הזו. אפשר להחליף אותם בקבצים מהמחשב.',
+    refusedTitle: 'ההדבקה לא בוצעה',
+    refusedBody: 'אי אפשר להדביק כאן את מה שהועתק. המצגת לא השתנתה.',
   },
 };
 
@@ -197,5 +199,7 @@ export const en = {
     lostTitle: 'Some files did not come along',
     lostBody:
       'The paste went through, but some of the files (pictures, videos or sounds) are not in this deck. You can replace them with files from your computer.',
+    refusedTitle: 'The paste did not go through',
+    refusedBody: 'What was copied cannot be pasted here. The deck was not changed.',
   },
 };

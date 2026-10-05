@@ -5,6 +5,7 @@ import {
   detachElements,
   Element,
   findSlide,
+  isAssetFileName,
   Layout,
   newId,
   pasteElements,
@@ -226,11 +227,18 @@ export interface PasteResult {
   slideIds: string[];
 }
 
-/** The commands that paste a clip into a deck, with new ids, and what to select afterwards. */
+/**
+ * The commands that paste a clip into a deck, with new ids, and what to select afterwards.
+ *
+ * An asset whose `file` is not the name of a file is left out. A deck made elsewhere can carry
+ * one (it is never drawn there), `asset.add` refuses it, and one refused command would take the
+ * whole paste with it. What was copied comes without it: a picture as a frame that has none,
+ * which is what it was in its own deck.
+ */
 export function pasteCommands(deck: Deck, clip: Clip, options: PasteOptions): PasteResult {
   const empty: PasteResult = { commands: [], elementIds: [], slideIds: [] };
   const assets = (options.assets ?? clip.assets)
-    .filter((asset) => !(asset.id in deck.assets))
+    .filter((asset) => !(asset.id in deck.assets) && isAssetFileName(asset.file))
     .map((asset): Command => ({ type: 'asset.add', asset }));
 
   if (clip.kind === 'elements') {
