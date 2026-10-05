@@ -703,9 +703,9 @@ export const iconSearch = defineTool({
 export const uiPresentOptions = defineTool({
   name: 'ui_present_options',
   description:
-    "Shows the user 2 to 8 variations as cards (text in Markdown, an image asset, or a slide layout in HTML). Hovering previews a card and clicking applies it: the app applies the user's pick, so do not apply it yourself. Returns how many cards were shown.",
+    "Shows the user 2 to 8 variations as cards (text in Markdown, an image asset, a slide layout in HTML, or a change to a chart or a table). Hovering previews a card and clicking applies it: the app applies the user's pick, so do not apply it yourself. Returns how many cards were shown.",
   input: z.strictObject({
-    kind: z.enum(['text', 'image', 'layout']),
+    kind: z.enum(['text', 'image', 'layout', 'chart', 'table']),
     prompt: z.string().optional().describe('A line above the cards.'),
     elementId: Id.optional().describe(
       "The element the options are for. Default: the session's element.",
@@ -717,10 +717,14 @@ export const uiPresentOptions = defineTool({
           text: z.string().optional(),
           assetId: Id.optional(),
           html: z.string().optional(),
+          set: z.record(z.string(), z.unknown()).optional(),
         }),
       )
       .min(2)
-      .max(8),
+      .max(8)
+      .describe(
+        'Each option has a label and what its kind takes: text, assetId, html, or, for kind chart or table, set: the arguments of chart_set or table_set that make this variation of the element, without elementId, as in {"chartType": "line"}, {"title": "…"} or {"styleId": "lines", "bandedRows": true}.',
+      ),
   }),
   scopes: ['slide', 'object'],
   writes: false,

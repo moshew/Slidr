@@ -298,12 +298,17 @@ export interface OptionCard {
   assetId?: string;
   /** A slide variation, in HTML as for `slide_create_from_html`. */
   html?: string;
+  /**
+   * A variation of a chart or a table (AIO-07, AIO-08): the arguments of `chart_set` or
+   * `table_set` that make it, without the element's id.
+   */
+  set?: Record<string, unknown>;
 }
 
 /** WG11-T08: the variations gallery. The app applies the user's pick, not the agent. */
 export interface OptionsService {
   present(request: {
-    kind: 'text' | 'image' | 'layout';
+    kind: 'text' | 'image' | 'layout' | 'chart' | 'table';
     target: { slideId: string; elementId?: string };
     prompt?: string;
     options: OptionCard[];
