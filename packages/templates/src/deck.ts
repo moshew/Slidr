@@ -10,6 +10,7 @@ import {
   type Element,
   type Layout,
 } from '@slidr/model';
+import { followTheme } from './follow';
 import { copyJson, equalJson } from './json';
 import { isMaster } from './master';
 import { mirrorBackground, mirrorElement, mirrorLayout } from './mirror';
@@ -34,6 +35,8 @@ import { layoutsFor, type Template } from './template';
  * The commands that switch a deck to a template (THM-04, SPEC 5.5).
  *
  * - The theme is replaced, so everything that uses tokens follows.
+ * - What a slide holds of the old theme as a copy follows too (see `followTheme`): a colour of
+ *   the theme inside a CSS fill, the theme's corner radius, the theme's shadow.
  * - The deck gets the template's layouts for its direction, in the template's order.
  * - Each slide moves to the layout `matchLayout` finds for it, and its elements follow their
  *   placeholders there (see `followPatch`). Nothing is deleted: an element whose role has no
@@ -68,9 +71,8 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
   for (const asset of layoutAssets(template, next)) {
     if (!deck.assets[asset.id]) commands.push({ type: 'asset.add', asset: copyJson(asset) });
   }
-  if (!equalJson(deck.theme, template.theme)) {
-    commands.push({ type: 'theme.replace', theme: copyJson(template.theme) });
-  }
+  const themed = !equalJson(deck.theme, template.theme);
+  if (themed) commands.push({ type: 'theme.replace', theme: copyJson(template.theme) });
 
   // The catalogue has no command that reorders layouts, so they are taken out and put in again:
   // the deck ends with the template's layouts in the template's order, whatever it had before.
@@ -89,6 +91,10 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
   }
   for (const { slideId, to, updates } of adopting) {
     commands.push({ type: 'slide.update', slideId, patch: { layoutId: to.id } }, ...updates);
+  }
+  if (themed) {
+    const staying = deck.layouts.filter((layout) => kept.has(layout.id));
+    commands.push(...followTheme(deck, template.theme, staying));
   }
   return commands;
 }

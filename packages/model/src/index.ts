@@ -1,6 +1,7 @@
 export * from './schema';
 export * from './ids';
 export * from './geometry';
+export * from './cssColors';
 export * from './queries';
 export * from './factories';
 export * from './commands';

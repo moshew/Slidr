@@ -21,6 +21,7 @@ export {
   turnedLayout,
   type DeckFromTemplateOptions,
 } from './deck';
+export { followTheme, linkCssToTheme } from './follow';
 export { matchLayout, relayout } from './relayout';
 export {
   draftTemplate,
