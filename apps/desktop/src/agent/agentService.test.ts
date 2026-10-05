@@ -1648,6 +1648,46 @@ describe('a session that cannot remember its conversation (AGT-06)', () => {
     expect(again.seen.sends.at(-1)!.context).not.toContain('<slidr_conversation>');
   });
 
+  it('is told the outline that was proposed, so that a typed answer to it has its subject', async () => {
+    const slides = [
+      { title: 'פתיחה', archetype: 'hero' },
+      { title: 'שלושה יעדים', archetype: 'cards', note: 'יעד לכל כרטיס' },
+    ];
+    const outline = script(
+      [say('הנה מתווה.'), call('t1', 'outline_propose', { title: 'תוכנית 2027', slides }), done()],
+      [say('בונה.'), done()],
+    );
+    const first = setup({ outline });
+    await ask(first.thread, 'מצגת על תוכנית העבודה');
+    const files = new Map(first.transcripts.files);
+
+    // The user answers the card in words, on a machine that does not have the conversation:
+    // the record names what was proposed, not only that something was.
+    const again = setup({ outline }, { files, wrap: forgetful() });
+    await again.thread.load();
+    await ask(again.thread, 'בלי השקף השני');
+    const record = again.seen.sends.at(-1)!.context!.split('\n');
+    expect(record).toContain(
+      'you: {"said":"הנה מתווה.\\nתוכנית 2027\\n1. פתיחה (hero)\\n2. שלושה יעדים (cards): יעד לכל כרטיס","did":["outline_propose"]}',
+    );
+
+    // A long outline is told without its notes, so that all of its slides fit the record.
+    const long = Array.from({ length: 30 }, (_, i) => ({
+      title: `שקף מספר ${i + 1}`,
+      archetype: 'cards',
+      note: 'כמה מילים על מה שהשקף הזה מראה',
+    }));
+    const big = script([call('t1', 'outline_propose', { slides: long }), done()], [done()]);
+    const before = setup({ big });
+    await ask(before.thread, 'מצגת ארוכה');
+    const later = setup({ big }, { files: new Map(before.transcripts.files), wrap: forgetful() });
+    await later.thread.load();
+    await ask(later.thread, 'בסדר');
+    const told = later.seen.sends.at(-1)!.context!;
+    expect(told).toContain('30. שקף מספר 30 (cards)');
+    expect(told).not.toContain('כמה מילים');
+  });
+
   it('is told nothing when the conversation begins with it, or resumes', async () => {
     const first = setup({ talk });
     await ask(first.thread, 'היי');

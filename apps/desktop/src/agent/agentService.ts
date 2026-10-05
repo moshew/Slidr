@@ -292,6 +292,34 @@ function together(a: ChangeSummary, b: ChangeSummary, deck: Deck): ChangeSummary
   };
 }
 
+/** The tool an outline is proposed with (AID-03): its arguments are the outline. */
+const OUTLINE_TOOL = 'outline_propose';
+/** An outline longer than this is told without the notes of its slides: a reply is cut at 900. */
+const OUTLINE_CHARS = 700;
+
+/**
+ * An outline the agent proposed, as the lines its card showed: the title, then `1. title
+ * (archetype): note` for each slide. The record a session gets of a conversation it cannot
+ * remember (AGT-06) names the tools that were called and not what they were given. For this one
+ * what it was given is the answer the user is replying to: their next message may be a few words
+ * about it ("build it, without the third"), and a session that knew only that an outline was
+ * once proposed had nothing to build from.
+ */
+function outlineText(input: unknown): string {
+  if (!isRecord(input) || !Array.isArray(input.slides)) return '';
+  const slides = (input.slides as unknown[]).filter(isRecord);
+  const lines = (notes: boolean) =>
+    slides.flatMap((slide, index) => {
+      const [title, archetype, note] = [text(slide.title), text(slide.archetype), text(slide.note)];
+      if (!title) return [];
+      const kind = archetype ? ` (${archetype})` : '';
+      return [`${index + 1}. ${title}${kind}${notes && note ? `: ${note}` : ''}`];
+    });
+  const whole = (notes: boolean) => [text(input.title) ?? '', ...lines(notes)].filter(Boolean);
+  const full = whole(true).join('\n');
+  return full.length <= OUTLINE_CHARS ? full : whole(false).join('\n');
+}
+
 /** The session's scope as the harness layer takes it: an import always names its file there. */
 function harnessScope(scope: SessionScope): Scope {
   return scope.kind === 'import' ? { kind: 'import', file: scope.file ?? '' } : scope;
@@ -1111,7 +1139,12 @@ export class ChatThread {
         exchanges.push({ user: '(a follow-up of the app)', reply: '', tools: [] });
       }
       const last = exchanges[exchanges.length - 1]!;
-      const reply = entry.parts.flatMap((part) => (part.type === 'text' ? [part.text] : []));
+      const reply = entry.parts.flatMap((part) => {
+        if (part.type === 'text') return [part.text];
+        // An outline is something the agent said, on a card: it goes with its words.
+        if (part.type === 'tool' && part.name === OUTLINE_TOOL) return [outlineText(part.input)];
+        return [];
+      });
       const tools = entry.parts.flatMap((part) => (part.type === 'tool' ? [part.name] : []));
       exchanges[exchanges.length - 1] = {
         user: last.user,
