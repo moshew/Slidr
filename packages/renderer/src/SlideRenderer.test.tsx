@@ -463,6 +463,84 @@ describe('SlideRenderer', () => {
     expect(draw(() => true).boxes).toEqual(['e_web', 'e_mail', 'e_slide']);
   });
 
+  it('draws the accent of a shape as a stripe its corners cut, or as the border of its box', () => {
+    const accent = { side: 'left', size: 10, fill: { kind: 'solid', color: { value: '#0891b2' } } };
+    const box = (id: string, more: object) =>
+      createElement.shape({
+        id,
+        frame: { x: 100, y: 100, w: 400, h: 200 },
+        fill: { kind: 'solid', color: { value: '#ffffff' } },
+        stroke: { color: { value: '#e2e8f0' }, width: 2 },
+        effects: { radius: 18 },
+        ...more,
+      } as Parameters<typeof createElement.shape>[0]);
+    const deck = createDeck({ lang: 'en' });
+    const slide = createSlide({
+      id: 's_accent',
+      elements: [
+        box('e_cut', { accent }),
+        box('e_follow', { accent: { ...accent, corners: 'follow' } }),
+        box('e_plain', {}),
+      ],
+    });
+    render(<SlideRenderer deck={{ ...deck, slides: [slide] }} slide={slide} />);
+    const layers = (id: string) =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(`[data-element-id="${id}"] > div div`),
+      ).map((el) => el.style);
+    // Cut: a stripe 10 wide along the left, in a box that starts inside the outline and has
+    // the corners the outline leaves it.
+    const stripe = layers('e_cut').find((style) => style.width === '10px')!;
+    expect(stripe.left).toBe('0px');
+    expect(stripe.backgroundColor).toMatch(/#0891b2|rgb\(8, 145, 178\)/);
+    const clip = layers('e_cut').find(
+      (style) => style.overflow === 'hidden' && style.inset === '2px',
+    )!;
+    expect(clip.borderRadius).toBe('16px');
+    // Following the corners: the fill and all four sides are one box, as a page writes it.
+    const bordered = layers('e_follow').find((style) => style.borderLeftWidth === '10px')!;
+    expect(bordered.borderTopWidth).toBe('2px');
+    expect(bordered.borderRadius).toBe('18px');
+    expect(bordered.backgroundColor).not.toBe('');
+    expect(layers('e_follow').some((style) => style.boxShadow.includes('inset'))).toBe(false);
+    // Without an accent a shape is drawn as it always was.
+    expect(layers('e_plain').some((style) => style.boxShadow.includes('inset'))).toBe(true);
+    expect(layers('e_plain').some((style) => style.width === '10px')).toBe(false);
+  });
+
+  it('leaves the room a shape asks for around its text, and its usual room when it asks for none', () => {
+    const label = (id: string, more: object) =>
+      createElement.shape({
+        id,
+        frame: { x: 100, y: 100, w: 60, h: 60 },
+        geometry: { kind: 'preset', preset: 'ellipse' },
+        content: richText('7'),
+        ...more,
+      } as Parameters<typeof createElement.shape>[0]);
+    const deck = createDeck({ lang: 'en' });
+    const slide = createSlide({
+      id: 's_label',
+      elements: [
+        label('e_tight', { padding: { top: 2, right: 0, bottom: 4, left: 0 } }),
+        label('e_usual', {}),
+      ],
+    });
+    render(<SlideRenderer deck={{ ...deck, slides: [slide] }} slide={slide} />);
+    const room = (id: string) => {
+      const text = container.querySelector<HTMLElement>(
+        `[data-element-id="${id}"] [data-slidr-text]`,
+      )!;
+      return [
+        text.style.paddingTop,
+        text.style.paddingRight,
+        text.style.paddingBottom,
+        text.style.paddingLeft,
+      ];
+    };
+    expect(room('e_tight')).toEqual(['2px', '0px', '4px', '0px']);
+    expect(room('e_usual')).toEqual(['8px', '16px', '8px', '16px']);
+  });
+
   it('re-renders only the elements a change touched', () => {
     const bus = new CommandBus(allElementsDeck());
     const store = createDeckStore(bus);

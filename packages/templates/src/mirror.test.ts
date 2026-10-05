@@ -166,6 +166,24 @@ describe('mirrorLayout', () => {
     expect(there.background?.fill).toMatchObject({ kind: 'linear', angle: -90 });
   });
 
+  it('flips a shape with its accent, and moves the room around its text to the other side', () => {
+    const card = createElement.shape({
+      id: 'e_card',
+      frame: box(100, 100, 400, 200),
+      accent: { side: 'left', size: 8, fill: { kind: 'solid', color: { token: 'primary' } } },
+      padding: { top: 10, right: 40, bottom: 10, left: 20 },
+    });
+    const there = mirrorElement(card);
+    // The accent is drawn with the shape, which is flipped: its side is not rewritten.
+    expect(there).toMatchObject({ flipH: true, accent: card.accent });
+    expect(there.type === 'shape' && there.padding).toEqual({
+      top: 10,
+      right: 20,
+      bottom: 10,
+      left: 40,
+    });
+  });
+
   it('leaves a layout without sides as it is', () => {
     const section = nightTemplate().layouts.find((l) => l.id === 'l_night_section')!;
     expect(mirrorLayout(section)).toEqual(section);

@@ -89,6 +89,22 @@ describe('schema rules', () => {
     expect(Element.safeParse(broken).success).toBe(false);
   });
 
+  it('takes an accent on one side of a shape, and room around its text', () => {
+    const shape = allElementsDeck().slides[0]!.elements.find((e) => e.type === 'shape')!;
+    const accent = { side: 'top', size: 8, fill: { kind: 'solid', color: { token: 'primary' } } };
+    const padding = { top: 0, right: 4, bottom: 0, left: 4 };
+    expect(Element.safeParse({ ...shape, accent, padding }).error?.issues).toBeUndefined();
+    expect(Element.safeParse({ ...shape, accent: { ...accent, corners: 'follow' } }).success).toBe(
+      true,
+    );
+    // A side is one of the four, and an accent has a thickness.
+    expect(Element.safeParse({ ...shape, accent: { ...accent, side: 'start' } }).success).toBe(
+      false,
+    );
+    expect(Element.safeParse({ ...shape, accent: { ...accent, size: 0 } }).success).toBe(false);
+    expect(Element.safeParse({ ...shape, padding: { ...padding, left: -1 } }).success).toBe(false);
+  });
+
   it('fixes the slide size', () => {
     expect(Deck.safeParse({ ...hebrewDeck(), size: { w: 1024, h: 768 } }).success).toBe(false);
   });
