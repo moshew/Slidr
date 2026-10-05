@@ -473,7 +473,7 @@ describe('SlideRenderer', () => {
         stroke: { color: { value: '#e2e8f0' }, width: 2 },
         effects: { radius: 18 },
         ...more,
-      } as Parameters<typeof createElement.shape>[0]);
+      });
     const deck = createDeck({ lang: 'en' });
     const slide = createSlide({
       id: 's_accent',
@@ -516,7 +516,7 @@ describe('SlideRenderer', () => {
         geometry: { kind: 'preset', preset: 'ellipse' },
         content: richText('7'),
         ...more,
-      } as Parameters<typeof createElement.shape>[0]);
+      });
     const deck = createDeck({ lang: 'en' });
     const slide = createSlide({
       id: 's_label',
