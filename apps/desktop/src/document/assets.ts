@@ -1,4 +1,4 @@
-import type { AssetMeta } from '@slidr/model';
+import { isAssetFileName, type AssetMeta } from '@slidr/model';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { DocumentService } from './documentService';
 
@@ -24,7 +24,10 @@ export function workspaceAssets(document: DocumentService): AssetService {
       document.importAssetBytes(file.name, new Uint8Array(await file.arrayBuffer()), origin),
     url: (asset) => {
       const dir = document.workspace?.dir;
-      return dir ? convertFileSrc(`${dir}/assets/${asset.file}`) : undefined;
+      // A deck made elsewhere may name a path or an address as an asset's file. It is never
+      // joined to the folder: the picture is missing on the slide, as it is from the saved file.
+      if (!dir || !isAssetFileName(asset.file)) return undefined;
+      return convertFileSrc(`${dir}/assets/${asset.file}`);
     },
   };
 }

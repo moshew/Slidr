@@ -129,15 +129,15 @@ describe('the prompt against the catalogue', () => {
     },
   );
 
-  it('describes to the agent every command of the model but the removal of an asset', () => {
-    // What `deck_apply_ops` lists, against the model's own list (ADR-007). `asset.remove` is
-    // left out on purpose: the comment on the tool's help says why.
+  it('describes to the agent every command of the model but the two of the asset table', () => {
+    // What `deck_apply_ops` lists, against the model's own list (ADR-007). `asset.add` and
+    // `asset.remove` are left out on purpose: the comment on the tool's help says why.
     const { inputSchema } = bare.list('deck').find((tool) => tool.name === 'deck_apply_ops')!;
     const { ops } = inputSchema.properties as Record<string, { description: string }>;
     const described = (type: string) => new RegExp(`(^|/ )${type.replace('.', '\\.')} \\{`, 'm');
     expect(
       Object.keys(commandDefs).filter((type) => !described(type).test(ops!.description)),
-    ).toEqual(['asset.remove']);
+    ).toEqual(['asset.add', 'asset.remove']);
   });
 
   it('presents the import tools to an import session that has them, and to no other', () => {

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import cases from '../assetFileNames.cases.json';
 import { CommandBus } from '../bus';
 import { createDeck, createElement, createSlide, plainText, richText } from '../factories';
 import { allElementsDeck, hebrewDeck } from '../fixtures';
-import { findElement, findSlide } from '../queries';
+import { findElement, findSlide, isAssetFileName } from '../queries';
 import type { Deck, Element, GroupElement, Layout } from '../schema';
 import {
   commandDefs,
@@ -125,6 +126,53 @@ describe('deck and theme commands', () => {
     const bus = new CommandBus(after);
     bus.dispatch({ type: 'asset.add', asset: { ...asset, name: 'other' } });
     expect(bus.canUndo).toBe(false);
+  });
+
+  it('asset.add refuses a file that is a path or an address, and says what it wants', () => {
+    const asset = {
+      id: 'logo',
+      mime: 'image/png',
+      kind: 'image' as const,
+      bytes: 10,
+      origin: 'upload' as const,
+    };
+    // What a model writes when it wants a picture from the web, or from the disk, on a slide:
+    // the storage layer can never put such an asset in the file.
+    for (const file of ['https://example.com/logo.png', 'C:\\Users\\me\\logo.png', 'img/a.png']) {
+      rejects(hebrewDeck(), { type: 'asset.add', asset: { ...asset, file } }, 'invalid_payload');
+    }
+    const bus = new CommandBus(hebrewDeck());
+    expect(() =>
+      bus.dispatch({ type: 'asset.add', asset: { ...asset, file: 'https://example.com/a.png' } }),
+    ).toThrow(/"file" must be the name of a file .* "https:\/\/example\.com\/a\.png"/);
+    // One bad asset refuses the batch it came in: no element is left pointing at it.
+    const slideId = bus.deck.slides[0]!.id;
+    expect(() =>
+      bus.batch([
+        { type: 'asset.add', asset: { ...asset, file: '../deck.json' } },
+        {
+          type: 'element.add',
+          slideId,
+          element: createElement.image({
+            id: 'e_logo',
+            frame: { x: 0, y: 0, w: 10, h: 10 },
+            assetId: 'logo',
+          }),
+        },
+      ]),
+    ).toThrow(CommandError);
+    expect(findElement(findSlide(bus.deck, slideId)!, 'e_logo')).toBeUndefined();
+  });
+});
+
+describe('isAssetFileName', () => {
+  // The list the storage layer's `is_plain_file_name` is tested against too (storage/deck.rs).
+  it.each(cases.fileNames)('takes %j', (name) => {
+    expect(isAssetFileName(name)).toBe(true);
+  });
+
+  it.each(cases.notFileNames)('refuses %j', (name) => {
+    expect(isAssetFileName(name)).toBe(false);
   });
 });
 

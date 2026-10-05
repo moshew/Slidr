@@ -34,11 +34,18 @@ const COMMAND_TYPES = Object.keys(commandDefs) as [CommandType, ...CommandType[]
  * agent knows the element, slide and RichText shapes from the other tools; each op is still
  * validated against the model's `Command` schema, with the path of any bad field.
  *
- * `asset.remove` is the one command left out, on purpose: it works here like any other, but the
- * agent has no use to put it to. No tool lists the deck's assets, so the only ones it could name
- * are those its own image and stock calls just added. Removing them saves nothing, since an
- * asset nothing uses is dropped when the deck is saved (`prepareForSave`); all it would do is
- * take pictures out of the user's media panel, and what is kept there is the user's to decide.
+ * Two commands are left out, on purpose.
+ *
+ * `asset.remove` works here like any other, but the agent has no use to put it to. No tool
+ * lists the deck's assets, so the only ones it could name are those its own image and stock
+ * calls just added. Removing them saves nothing, since an asset nothing uses is dropped when the
+ * deck is saved (`prepareForSave`); all it would do is take pictures out of the user's media
+ * panel, and what is kept there is the user's to decide.
+ *
+ * `asset.add` is refused here (`NO_ASSET_ADD`). It registers a file the app has stored, and
+ * nothing the agent sends stores one: listed among the ops, it was what a model reached for
+ * when asked for a picture "from this link", with the address as the file. The deck then held a
+ * picture that is never drawn, and that no save can put in the file.
  */
 const OPS_HELP = [
   'Each op is one model command: {"type": ..., ...fields}. Fields named patch replace each given field whole; null removes an optional field.',
@@ -58,8 +65,11 @@ const OPS_HELP = [
   'theme.update {patch: as theme_update}',
   'theme.replace {theme}',
   'layout.add {layout, index?} / layout.update {layoutId, patch} / layout.remove {layoutId}',
-  'asset.add {asset}',
 ].join('\n');
+
+/** What an agent that sends `asset.add` is told: why not, and how a picture does get in. */
+const NO_ASSET_ADD =
+  'asset.add is not available to you. It registers a file the app has already stored with the deck, and no call of yours stores one: an address or a path is not a file of the deck, and its picture would never be drawn or saved. Pictures enter the deck through the tools that store them (the image and stock tools you were given), which register what they bring. For a picture only the user has, ask the user to insert it.';
 
 export const deckApplyOps = defineTool({
   name: 'deck_apply_ops',
@@ -80,6 +90,12 @@ export const deckApplyOps = defineTool({
         throw new DeckApiError(
           'invalid_input',
           `Invalid input for deck_apply_ops:\n${formatZodError(parsed.error, ['ops', i])}`,
+        );
+      }
+      if (parsed.data.type === 'asset.add') {
+        throw new DeckApiError(
+          'invalid_input',
+          `Invalid input for deck_apply_ops:\nops[${i}]: ${NO_ASSET_ADD}`,
         );
       }
       return parsed.data;

@@ -83,3 +83,26 @@ export function referencedAssetIds(deck: Deck): Set<string> {
   }
   return ids;
 }
+
+/** The separators of paths, drives and streams, and the characters Windows refuses in a name. */
+const NOT_IN_A_FILE_NAME = '/\\:<>"|?*';
+/** What Windows reads as a device, whatever the extension: `NUL`, `con.png`, `COM1`. */
+const DEVICE_NAME = /^(?:con|prn|aux|nul|com\d|lpt\d)$/i;
+
+/**
+ * Whether `name` can be an asset's `file`: the name of one file inside the document's `assets/`
+ * folder (SPEC 5.7), on every system the app runs on. A path, an address, and a name that
+ * Windows would refuse, cut short (a dot or a space at the end) or take for a device are not.
+ *
+ * The storage layer judges by the same rule when it saves (`is_plain_file_name`, in Rust), and
+ * leaves such an asset out of the file; the two are held to one list of names by their tests.
+ */
+export function isAssetFileName(name: string): boolean {
+  if (name === '' || name === '.' || name === '..') return false;
+  if (name.endsWith('.') || name.endsWith(' ')) return false;
+  for (const char of name) {
+    if (char.charCodeAt(0) < 0x20 || NOT_IN_A_FILE_NAME.includes(char)) return false;
+  }
+  const stem = (name.split('.')[0] ?? name).replace(/ +$/, '');
+  return !DEVICE_NAME.test(stem);
+}

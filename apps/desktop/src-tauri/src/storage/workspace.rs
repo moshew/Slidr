@@ -54,7 +54,8 @@ pub struct OpenedDeck {
 pub struct SavedDeck {
     /// Absolute path of the written file.
     pub path: String,
-    /// Asset files the deck refers to that are not in the workspace; they were left out.
+    /// `assets[*].file` of the deck that the file was written without: files that are not in
+    /// the workspace, and names that are not file names at all.
     pub missing_assets: Vec<String>,
 }
 
@@ -246,7 +247,9 @@ impl Storage {
         let mut state = store_deck(&dir, id, deck_json, title)?;
         let saved_at = now_iso();
         write_meta(&dir, &info.schema_version, &saved_at)?;
-        let missing_assets = archive::pack(&dir, &target, &info.asset_files, &info.slide_ids)?;
+        let mut missing_assets = archive::pack(&dir, &target, &info.asset_files, &info.slide_ids)?;
+        // A name that is no file name was never looked for: to the deck it is as missing.
+        missing_assets.extend(info.unusable_assets);
 
         let source = display(&target);
         state.source_path = Some(source.clone());
@@ -798,6 +801,53 @@ mod tests {
         let mut packed = String::new();
         archive.by_name(DECK_FILE)?.read_to_string(&mut packed)?;
         assert_eq!(packed, deck);
+        Ok(())
+    }
+
+    /// An asset entry is the webview's word, and so the agent's: a path, an address or a name
+    /// no file can have costs the deck that asset, never its save. The autosave takes such a
+    /// deck, so a save that refused it would leave work that can never reach a file.
+    #[test]
+    fn an_asset_that_names_no_file_of_the_deck_is_left_out_and_the_deck_is_saved() -> TestResult {
+        let fx = fixture()?;
+        let storage = Storage::new(fx.root.clone());
+        let workspace = storage.new_workspace()?;
+        let dir = PathBuf::from(&workspace.dir);
+        let assets_dir = storage.assets_dir(&workspace.id)?;
+        let kept = assets::import_bytes(&assets_dir, None, &tiny_png(1, 1))?;
+        // What `../state` would name if it were followed.
+        fs::write(dir.join("state"), b"not an asset")?;
+        let strange = [
+            "https://example.com/logo.png",
+            "C:\\Users\\me\\logo.png",
+            "img/logo.png",
+            "../state",
+            "what?.png",
+            "NUL",
+        ];
+        let mut assets = vec![(kept.id.as_str(), kept.file.as_str())];
+        assets.extend(strange.iter().map(|&name| (name, name)));
+        let deck = deck(&assets);
+
+        storage.write_deck(&workspace.id, &deck, "Deck")?;
+        let target = fx.files.join("deck.slidr");
+        let saved = storage.save(&workspace.id, &target, &deck, Some("Deck"))?;
+
+        let mut left_out = saved.missing_assets.clone();
+        left_out.sort();
+        let mut expected = strange.map(String::from).to_vec();
+        expected.sort();
+        assert_eq!(left_out, expected);
+        // The file has the deck as it was sent and the one asset that is a file, and no more.
+        let entries = entries_of(&target)?;
+        let packed: Vec<&String> = entries
+            .iter()
+            .filter(|name| name.starts_with("assets/"))
+            .collect();
+        assert_eq!(packed, [&format!("assets/{}", kept.file)]);
+        assert!(!entries.iter().any(|name| name.contains("state")));
+        assert_eq!(storage.open(&target)?.deck_json, deck);
+        assert!(read_state(&dir).is_some_and(|state| !state.dirty));
         Ok(())
     }
 

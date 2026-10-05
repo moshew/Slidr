@@ -1,6 +1,6 @@
 import { current, isDraft } from 'immer';
 import { z } from 'zod';
-import { referencedAssetIds } from '../queries';
+import { isAssetFileName, referencedAssetIds } from '../queries';
 import {
   Archetype,
   AssetMeta,
@@ -122,10 +122,22 @@ export const layoutRemove = defineCommand(
   },
 );
 
-/** Registers an asset the storage layer has already stored. The same content is added once. */
+/**
+ * Registers an asset the storage layer has already stored. The same content is added once.
+ *
+ * `file` is the name of that file inside `assets/`. A path or an address is refused here, where
+ * whoever sent it can read why: the deck would hold a picture that is never drawn, and that no
+ * save can put in the file (`isAssetFileName`; the storage layer judges by the same rule).
+ */
 export const assetAdd = defineCommand(
   z.strictObject({ type: z.literal('asset.add'), asset: AssetMeta }),
   (deck, { asset }, touched) => {
+    if (!isAssetFileName(asset.file)) {
+      throw new CommandError(
+        'invalid_payload',
+        `asset.add: "file" must be the name of a file stored in the deck's assets folder, not a path or an address: ${JSON.stringify(asset.file)}. The command registers a file that is already there; it does not fetch or copy one.`,
+      );
+    }
     if (deck.assets[asset.id]) return;
     deck.assets[asset.id] = asset;
     touched.assets.add(asset.id);

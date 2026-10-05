@@ -665,6 +665,49 @@ describe('deck tools', () => {
     expect(field.message).toMatch(/ops\[1\]\.patch\.hidden: /);
   });
 
+  it('deck_apply_ops does not take asset.add, and says how a picture gets into the deck', async () => {
+    const { call, bus, api } = setup(hebrewDeck());
+    const before = bus.deck;
+    // What a model sends when it is asked for "the logo from this link": the address as the
+    // file. The deck would hold a picture that is never drawn and that no save can pack.
+    for (const file of ['https://example.com/logo.png', 'C:\\Users\\me\\logo.png', 'logo.png']) {
+      const refused = await failed(
+        call('deck_apply_ops', {
+          ops: [
+            { type: 'slide.update', slideId: 's_he_hero', patch: { name: 'x' } },
+            {
+              type: 'asset.add',
+              asset: {
+                id: 'logo',
+                file,
+                mime: 'image/png',
+                kind: 'image',
+                bytes: 1,
+                origin: 'upload',
+              },
+            },
+            {
+              type: 'element.add',
+              slideId: 's_he_hero',
+              element: createElement.image({
+                id: 'e_logo',
+                frame: { x: 100, y: 100, w: 300, h: 200 },
+                assetId: 'logo',
+              }),
+            },
+          ],
+        }),
+      );
+      expect(refused.code).toBe('invalid_input');
+      expect(refused.message).toMatch(/ops\[1\]: asset\.add is not available to you\./);
+      expect(refused.message).toMatch(/ask the user to insert it/);
+    }
+    expect(bus.deck).toBe(before);
+    // Nor is it among the commands the tool describes.
+    const tool = api.list('deck').find((t) => t.name === 'deck_apply_ops')!;
+    expect(JSON.stringify(tool.inputSchema.properties)).not.toMatch(/asset\.add \{/);
+  });
+
   it('deck_apply_ops completes a partial frame from the element as earlier ops left it', async () => {
     const { call, bus } = setup(hebrewDeck());
     const before = element<TextElement>(bus.deck, 'e_he_hero_title').frame;

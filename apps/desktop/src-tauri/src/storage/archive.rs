@@ -88,12 +88,20 @@ pub(crate) fn pack(
     Ok(missing)
 }
 
-/// Adds one file under `name`. Returns `false` when the file does not exist.
+/// Adds one file under `name`. Returns `false` when the file does not exist, or cannot: a name
+/// the file system turns down (too long for it, say) names no file either.
 fn add_file<W: Write + Seek>(zip: &mut ZipWriter<W>, name: &str, path: &Path) -> Result<bool> {
     let read_error = |e: &io::Error| AppError::io(format_args!("read {}", path.display()), e);
     let mut file = match File::open(path) {
         Ok(file) => file,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(e)
+            if matches!(
+                e.kind(),
+                io::ErrorKind::NotFound | io::ErrorKind::InvalidFilename
+            ) =>
+        {
+            return Ok(false);
+        }
         Err(e) => return Err(read_error(&e)),
     };
     let size = file.metadata().map_err(|e| read_error(&e))?.len();
