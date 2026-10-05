@@ -47,9 +47,9 @@ const COMMAND_TYPES = Object.keys(commandDefs) as [CommandType, ...CommandType[]
  * when asked for a picture "from this link", with the address as the file. The deck then held a
  * picture that is never drawn, and that no save can put in the file.
  *
- *  is left out too, for now: it is what  writes, and it works
+ * `element.replace` is left out too, for now: it is what `element_convert` writes, and it works
  * here like any other. Describing it is new wording for the agent, which the evaluation set has
- * not seen, and takes more of the listing's size than is left ().
+ * not seen, and takes more of the listing's size than is left (`listing.test.ts`).
  */
 const OPS_HELP = [
   'Each op is one model command: {"type": ..., ...fields}. Fields named patch replace each given field whole; null removes an optional field.',

@@ -130,8 +130,9 @@ describe('the prompt against the catalogue', () => {
   );
 
   it('describes to the agent every command of the model but three', () => {
-    // What  lists, against the model's own list (ADR-007). The two commands of
-    // the asset table and the replacement of an element in its place (what     // writes) are left out on purpose: the comment on the tool's help says why.
+    // What `deck_apply_ops` lists, against the model's own list (ADR-007). The two commands of
+    // the asset table and the replacement of an element in its place (what `element_convert`
+    // writes) are left out on purpose: the comment on the tool's help says why.
     const { inputSchema } = bare.list('deck').find((tool) => tool.name === 'deck_apply_ops')!;
     const { ops } = inputSchema.properties as Record<string, { description: string }>;
     const described = (type: string) => new RegExp(`(^|/ )${type.replace('.', '\\.')} \\{`, 'm');
