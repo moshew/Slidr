@@ -130,13 +130,34 @@ const Geometry = z.discriminatedUnion('kind', [
   }),
 ]);
 
+/**
+ * One side of a box drawn apart from the rest of it: the coloured edge of a card (ADR-073). It
+ * runs the whole length of the side, inside the outline.
+ */
+export const Accent = z.strictObject({
+  side: z.enum(['top', 'right', 'bottom', 'left']),
+  /** Thickness in slide pixels. */
+  size: z.number().positive(),
+  fill: Fill,
+  /**
+   * How it meets rounded corners: cut straight by them (the default), or going around them and
+   * thinning out as a border does. A border has one colour: any other fill is cut.
+   */
+  corners: z.enum(['cut', 'follow']).optional(),
+});
+export type Accent = z.infer<typeof Accent>;
+
 export const ShapeElement = z.strictObject({
   ...base,
   type: z.literal('shape'),
   geometry: Geometry,
   fill: Fill,
   stroke: Stroke.optional(),
+  /** For the box presets (`rect`, `roundRect`, `ellipse`); a path has no sides. */
+  accent: Accent.optional(),
   content: RichText.optional(),
+  /** Room between the outline and `content`. Without it: 8 above and below, 16 on the sides. */
+  padding: Insets.optional(),
 });
 export type ShapeElement = z.infer<typeof ShapeElement>;
 

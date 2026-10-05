@@ -50,7 +50,9 @@ export function mirrorElement(element: Element, width: number = SLIDE_WIDTH): El
     if (element.flipH) delete out.flipH;
     else out.flipH = true;
   }
-  if (out.type === 'text' && out.padding) {
+  // A shape is flipped with what it draws, its accent included; its text is not, so the room
+  // around the text changes sides as a text box's does.
+  if ((out.type === 'text' || out.type === 'shape') && out.padding) {
     out.padding = { ...out.padding, left: out.padding.right, right: out.padding.left };
   }
   if (out.type === 'text' && out.role === 'footer') {

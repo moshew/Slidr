@@ -1,6 +1,8 @@
 import type {
+  Accent,
   AudioElement,
   Element,
+  Fill,
   GroupElement,
   HtmlElement,
   ImageElement,
@@ -190,6 +192,75 @@ function BoxStroke({ stroke, radius }: { stroke: Stroke; radius?: number | strin
           : { boxShadow: `inset 0 0 0 ${stroke.width}px ${color}` }),
       }}
     />
+  );
+}
+
+const BORDER_SIDE = {
+  top: 'borderTop',
+  right: 'borderRight',
+  bottom: 'borderBottom',
+  left: 'borderLeft',
+} as const;
+
+/** An accent that goes around the corners: one colour, on a box the browser can border. */
+type BorderAccent = Accent & { fill: Extract<Fill, { kind: 'solid' }> };
+
+function followsCorners(accent: Accent | undefined): accent is BorderAccent {
+  return accent?.corners === 'follow' && accent.fill.kind === 'solid';
+}
+
+/**
+ * The four sides of a box whose accent goes around its corners, as CSS borders: the outline on
+ * three of them and the accent in its place on the fourth. Where two sides of unequal width
+ * meet, each thins into the other along the corner, and only a real border is drawn that way.
+ */
+function borderSides(stroke: Stroke | undefined, accent: BorderAccent): CSSProperties {
+  const line =
+    stroke && stroke.width > 0
+      ? `${stroke.width}px ${stroke.dash ?? 'solid'} ${colorCss(stroke.color)}`
+      : '0 solid transparent';
+  return {
+    boxSizing: 'border-box',
+    borderTop: line,
+    borderRight: line,
+    borderBottom: line,
+    borderLeft: line,
+    [BORDER_SIDE[accent.side]]: `${accent.size}px solid ${colorCss(accent.fill.color)}`,
+  };
+}
+
+/**
+ * An accent that the corners cut: a stripe along one side, inside the outline, as a page draws
+ * one with a positioned box inside a card that clips it.
+ */
+function AccentBand({
+  accent,
+  inset,
+  radius,
+  ctx,
+}: {
+  accent: Accent;
+  inset: number;
+  radius?: number | string;
+  ctx: RenderContext;
+}) {
+  const across = accent.side === 'top' || accent.side === 'bottom';
+  const stripe: CSSProperties = across
+    ? { inset: 'auto', left: 0, right: 0, [accent.side]: 0, height: accent.size }
+    : { inset: 'auto', top: 0, bottom: 0, [accent.side]: 0, width: accent.size };
+  return (
+    <div
+      aria-hidden
+      style={{
+        ...FILL_PARENT,
+        inset,
+        overflow: 'hidden',
+        borderRadius: typeof radius === 'number' ? Math.max(0, radius - inset) : radius,
+        pointerEvents: 'none',
+      }}
+    >
+      <FillLayer fill={accent.fill} ctx={ctx} style={stripe} />
+    </div>
   );
 }
 
@@ -385,6 +456,33 @@ function ShapeView({ element: e }: { element: ShapeElement }) {
         : g.preset === 'roundRect'
           ? num(Math.min(Math.max(g.adjust?.[0] ?? 0.1667, 0), 0.5) * Math.min(w, h), 3)
           : e.effects?.radius;
+    const accent = e.accent;
+    let layers: ReactNode;
+    if (followsCorners(accent)) {
+      // The fill and the borders are one box, as they are on a page: a gradient is then laid
+      // out inside the borders and shows through them, as the page's own background does. An
+      // image fill has an opacity of its own, which the borders must not take.
+      const sides = { ...borderSides(e.stroke, accent), borderRadius: radius };
+      layers =
+        e.fill.kind === 'none' || e.fill.kind === 'image' ? (
+          <>
+            <FillLayer fill={e.fill} ctx={ctx} />
+            <div aria-hidden style={{ ...FILL_PARENT, pointerEvents: 'none', ...sides }} />
+          </>
+        ) : (
+          <FillLayer fill={e.fill} ctx={ctx} style={sides} />
+        );
+    } else {
+      layers = (
+        <>
+          <FillLayer fill={e.fill} ctx={ctx} />
+          {accent ? (
+            <AccentBand accent={accent} inset={e.stroke?.width ?? 0} radius={radius} ctx={ctx} />
+          ) : null}
+          {e.stroke ? <BoxStroke stroke={e.stroke} radius={radius} /> : null}
+        </>
+      );
+    }
     geometry = (
       <div
         style={{
@@ -394,8 +492,7 @@ function ShapeView({ element: e }: { element: ShapeElement }) {
           transform: flipTransform(e),
         }}
       >
-        <FillLayer fill={e.fill} ctx={ctx} />
-        {e.stroke ? <BoxStroke stroke={e.stroke} radius={radius} /> : null}
+        {layers}
       </div>
     );
   } else {
@@ -421,7 +518,7 @@ function ShapeView({ element: e }: { element: ShapeElement }) {
           <TextBox
             content={e.content ?? EMPTY_TEXT}
             vAlign="middle"
-            padding={SHAPE_TEXT_PADDING}
+            padding={e.padding ?? SHAPE_TEXT_PADDING}
             autoFit="none"
           >
             {slotted}
