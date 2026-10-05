@@ -156,12 +156,19 @@ test('extending an image asks the provider to fill around it, and the frame grow
     .poll(async () => (await picture(page)).assetId, { timeout: 20_000 })
     .not.toBe(before.assetId);
   const after = await picture(page);
-  // The picture that was there keeps its height; the frame is wider by what was added (640 by
-  // 400 extended to 16:9 is 711 by 400), around the same centre, and the crop is given up.
+  // The picture that was there keeps its place and its size on the slide, the frame grows around
+  // it, and the crop is given up. The frame showed a part of the picture: the cropped middle
+  // (512 by 320 of the 640 by 400) covered a frame 520 high, so the whole picture is 1040 by 650
+  // there. Extended to 16:9 the file is 711 by 400 with the picture 639 wide in its middle: the
+  // frame is 1040 * 711 / 639 wide and 650 high.
+  expect(before.frame).toEqual({ x: 1000, y: 200, w: 760, h: 520 });
   expect(after.crop).toBeUndefined();
-  expect(after.frame.h).toBe(before.frame.h);
-  expect(after.frame.w).toBe(Math.round((before.frame.w * 711) / 639));
-  expect(after.frame.x + after.frame.w / 2).toBeCloseTo(before.frame.x + before.frame.w / 2, 0);
+  expect(after.frame.h).toBe(before.frame.h / 0.8);
+  expect(after.frame.w).toBe(Math.round((1040 * 711) / 639));
+  // Around the same centre, to the half pixel a frame in whole pixels allows.
+  const centre = ({ x, y, w, h }: ImageElement['frame']) => ({ x: x + w / 2, y: y + h / 2 });
+  expect(Math.abs(centre(after.frame).x - centre(before.frame).x)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(centre(after.frame).y - centre(before.frame).y)).toBeLessThanOrEqual(0.5);
   expect(await undoDepth(page)).toBe(depth + 1);
   await page.evaluate(() => window.slidr!.bus.undo());
   expect(await picture(page)).toEqual(before);
