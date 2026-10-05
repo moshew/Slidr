@@ -468,16 +468,28 @@ ${extra}
     expect(colours(source)).toEqual(['rgb(198, 40, 40)', 'rgb(21, 101, 192)', 'rgb(46, 125, 50)']);
     expect(colours(converted)).toEqual(colours(source));
     expect(types(result)).toEqual(['html', 'html', 'html']);
+    // Each card is still the source's own markup, in its place among stand-ins of the other
+    // two: nothing had to be put right by the guard, or rebuilt from computed styles.
+    expect(result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
+    const markups = result.slide.elements.map((element) =>
+      element.type === 'html' ? element.markup : '',
+    );
+    const STAND_IN = '<div class="card" style="display:none !important"></div>';
+    for (const markup of markups) expect(markup.split(STAND_IN)).toHaveLength(3);
+    // The second card stands between one stand-in and another.
+    expect(markups[1]!.indexOf(STAND_IN)).toBeLessThan(markups[1]!.indexOf('Growth'));
+    expect(markups[1]!.lastIndexOf(STAND_IN)).toBeGreaterThan(markups[1]!.indexOf('Growth'));
   });
 
   it('keeps a colour given with a sibling combinator', async () => {
-    const { source, converted } = await look(
+    const { result, source, converted } = await look(
       cards('.card h3{color:#c62828} .card + .card h3{color:#1565c0} .card ~ .card p{color:#555}'),
       'en',
       TITLES,
     );
     expect(colours(source)).toEqual(['rgb(198, 40, 40)', 'rgb(21, 101, 192)', 'rgb(21, 101, 192)']);
     expect(colours(converted)).toEqual(colours(source));
+    expect(result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
   });
 
   it('keeps a border given with :nth-child', async () => {
@@ -491,6 +503,37 @@ ${extra}
     expectSameInk(looked, { x: 200, y: 240, w: 400, h: 6 }, red, 2000);
     expect(ink(looked.converted.picture, { x: 760, y: 240, w: 400, h: 6 }, red)).toBe(0);
     expect(ink(looked.source.picture, { x: 760, y: 240, w: 400, h: 6 }, red)).toBe(0);
+    expect(looked.result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
+  });
+
+  it('keeps the place of an ancestor too, and of what is not HTML or cannot be written as itself', async () => {
+    // The second group of three, after a style element and an inline svg: its card is styled
+    // by the place of the group, and by the two siblings before the group.
+    const { result, source, converted } = await look(
+      `<div style="position:absolute;left:120px;top:240px">
+         <style>.group:nth-child(4) .card h3{color:#1565c0} svg + .group h3{color:#2e7d32} style + svg{display:none}</style>
+         <svg width="10" height="10"></svg>
+         <div class="group"><div class="card" style="width:520px;height:160px;overflow:hidden;border-radius:24px;background:#fff;position:relative"><div style="position:absolute;right:-60px;top:-60px;width:160px;height:160px;border-radius:50%;background:#e8eef8"></div><h3 style="margin:40px;font:700 40px/1.2 Arial">Starter</h3></div></div>
+         <div class="group"><div class="card" style="width:520px;height:160px;overflow:hidden;border-radius:24px;background:#fff;position:relative;margin-top:40px"><div style="position:absolute;right:-60px;top:-60px;width:160px;height:160px;border-radius:50%;background:#e8eef8"></div><h3 style="margin:40px;font:700 40px/1.2 Arial">Growth</h3></div></div>
+       </div>`,
+      'en',
+      ['Starter', 'Growth'],
+    );
+    expect([source.found.Starter!.colour, source.found.Growth!.colour]).toEqual([
+      'rgb(46, 125, 50)',
+      'rgb(21, 101, 192)',
+    ]);
+    expect(converted.found.Starter!.colour).toBe(source.found.Starter!.colour);
+    expect(converted.found.Growth!.colour).toBe(source.found.Growth!.colour);
+    expect(result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
+  });
+
+  it('writes no stand-in where nothing is styled by its place', async () => {
+    const { result } = await look(cards(''), 'en', TITLES);
+    expect(types(result)).toEqual(['html', 'html', 'html']);
+    for (const element of result.slide.elements) {
+      expect(element.type === 'html' && element.markup).not.toContain('display:none');
+    }
   });
 });
 

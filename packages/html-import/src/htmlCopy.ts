@@ -62,6 +62,101 @@ const TABLE_PARTS = new Set([
 const ROOT_SHELL = 'slidr-html';
 const BODY_SHELL = 'slidr-body';
 
+/**
+ * A selector that tells an element by its place among its siblings: a structural pseudo-class,
+ * a sibling combinator, or a `:has()` that may look at siblings. (An attribute selector with
+ * `~=` reads as one too; taking it for one costs a few empty elements, nothing else.)
+ */
+const BY_PLACE =
+  /:(?:nth-|first-child|last-child|only-child|first-of-type|last-of-type|only-of-type|has\()|[+~]/;
+
+const byPlace = new WeakMap<Document, boolean>();
+
+/** Whether any rule of the document styles something by its place among its siblings. */
+function styledByPlace(doc: Document): boolean {
+  const known = byPlace.get(doc);
+  if (known !== undefined) return known;
+  let found = false;
+  const visit = (rules: CSSRuleList) => {
+    for (const rule of Array.from(rules)) {
+      if (found) return;
+      if (ruleKind(rule) === 'CSSStyleRule') {
+        found = BY_PLACE.test((rule as CSSStyleRule).selectorText);
+      } else if ('cssRules' in rule) visit((rule as CSSGroupingRule).cssRules);
+    }
+  };
+  for (const sheet of [...Array.from(doc.styleSheets), ...doc.adoptedStyleSheets]) {
+    try {
+      visit(sheet.cssRules);
+    } catch {
+      // A sheet from another origin cannot be read.
+    }
+  }
+  byPlace.set(doc, found);
+  return found;
+}
+
+/** How many siblings on each side get a stand-in: a row of thousands is not copied for one cell. */
+const MAX_STAND_INS = 200;
+const MAX_STAND_IN_ATTRIBUTE = 300;
+/**
+ * Tags a stand-in cannot be written as: what a renderer drops for safety, and what the HTML
+ * parser moves, swallows or keeps only in its own place when the copy is read again. Such a
+ * sibling stands in under a name of its own (it still counts as a sibling), and a rule that
+ * names its tag matches by either name, as for an ancestor that is not HTML.
+ */
+const NOT_AS_ITSELF = new Set([
+  'html',
+  'head',
+  'body',
+  'title',
+  'script',
+  'style',
+  'link',
+  'base',
+  'meta',
+  'noscript',
+  'template',
+  'iframe',
+  'frame',
+  'frameset',
+  'object',
+  'embed',
+  'applet',
+  'portal',
+  'plaintext',
+  'xmp',
+  'noembed',
+  'noframes',
+]);
+/** Attributes a stand-in leaves behind: what would load something, and its own look. */
+const NOT_ON_A_STAND_IN = new Set(['src', 'srcset', 'data', 'poster', 'style', 'autoplay']);
+
+/**
+ * An empty, undrawn element in the place of a sibling: its tag, its classes and its other
+ * attributes, which is all a selector can ask of a sibling it does not descend into.
+ */
+function standIn(sibling: Element, out: Document, shells: Map<string, string>): Element {
+  const name = sibling.localName.toLowerCase();
+  const itself =
+    sibling.namespaceURI === HTML_NAMESPACE && !NOT_AS_ITSELF.has(name) && !TABLE_PARTS.has(name);
+  const tag = itself ? name : `slidr-${name}`;
+  if (!itself) shells.set(name, tag);
+  const made = out.createElement(tag);
+  for (const attr of Array.from(sibling.attributes)) {
+    const key = attr.name.toLowerCase();
+    if (key.startsWith('on') || NOT_ON_A_STAND_IN.has(key)) continue;
+    if (attr.value.length > MAX_STAND_IN_ATTRIBUTE) continue;
+    try {
+      made.setAttribute(attr.name, attr.value);
+    } catch {
+      // A name this document does not take (an attribute of another namespace).
+    }
+  }
+  made.setAttribute('style', 'display:none !important');
+  return made;
+}
+
 function shellTag(el: Element): string {
   if (el.localName === 'html') return ROOT_SHELL;
   if (el.localName === 'body') return BODY_SHELL;
@@ -429,10 +524,15 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
       ? ';display:block'
       : `;display:${cs.display}`);
 
-  // Empty shells of the ancestors keep selectors matching and inherited values flowing.
+  // Empty shells of the ancestors keep selectors matching and inherited values flowing. Where
+  // the page styles anything by its place among its siblings, each shell also holds empty
+  // stand-ins of the siblings, so that the element and its ancestors are still the second
+  // card, the last row, the one after a heading.
   let top: Element = root;
   const shells = new Map<string, string>();
-  for (let p = composedParent(el); p; p = composedParent(p)) {
+  const placed = styledByPlace(doc);
+  let below: Element = el;
+  for (let p = composedParent(el); p; below = p, p = composedParent(p)) {
     const html = p.namespaceURI === HTML_NAMESPACE;
     const tag = html ? shellTag(p) : `slidr-${p.localName.toLowerCase()}`;
     if (!html) shells.set(p.localName.toLowerCase(), tag);
@@ -441,7 +541,15 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
       if (!attr.name.toLowerCase().startsWith('on')) shell.setAttribute(attr.name, attr.value);
     }
     shell.style.cssText += ';display:contents !important';
-    shell.append(top);
+    const siblings = placed ? Array.from(p.children) : [];
+    const at = siblings.indexOf(below);
+    const before = at < 0 ? [] : siblings.slice(Math.max(0, at - MAX_STAND_INS), at);
+    const after = at < 0 ? [] : siblings.slice(at + 1, at + 1 + MAX_STAND_INS);
+    shell.append(
+      ...before.map((sibling) => standIn(sibling, out, shells)),
+      top,
+      ...after.map((sibling) => standIn(sibling, out, shells)),
+    );
     top = shell;
   }
 
