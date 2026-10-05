@@ -20,6 +20,24 @@ describe('inline Markdown', () => {
     ]);
   });
 
+  it('reads a run of three marks by what is open: bold italic, and an emphasis that ends a bold', () => {
+    const strong = (...children: unknown[]) => ({ type: 'strong', children });
+    const em = (...children: unknown[]) => ({ type: 'em', children });
+    // The bug hunt's `ai-ui.md`, finding 18: this was bold "*bold italic" and a stray "*".
+    expect(parseInline('***bold italic***')).toEqual([strong(em(text('bold italic')))]);
+    expect(parseInline('___bold italic___')).toEqual([strong(em(text('bold italic')))]);
+    expect(parseInline('**Note: *important***')).toEqual([
+      strong(text('Note: '), em(text('important'))),
+    ]);
+    expect(parseInline('*a **b***')).toEqual([em(text('a '), strong(text('b')))]);
+    // With no emphasis open, the first two marks of the run close and the third opens.
+    expect(parseInline('**a***b*')).toEqual([strong(text('a')), em(text('b'))]);
+    // A star that stands alone inside bold text opens nothing.
+    expect(parseInline('**2 * 3 = 6**')).toEqual([strong(text('2 * 3 = 6'))]);
+    // And half of it, as a reply that is still streaming has, is text.
+    expect(parseInline('***bold ita')).toEqual([text('***bold ita')]);
+  });
+
   it('leaves what is not markup alone', () => {
     expect(parseInline('snake_case_name and 2 * 3 * 4')).toEqual([
       text('snake_case_name and 2 * 3 * 4'),

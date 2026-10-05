@@ -48,6 +48,37 @@ function closing(source: string, mark: string, from: number): number {
   return -1;
 }
 
+/**
+ * Where the strong text that `**` (or `__`) opened before `from` closes; -1 when it does not.
+ * A run of three marks or more is read by what is open: with an emphasis open inside the strong
+ * text, its first mark closes the emphasis and the next two the strong text, which is how
+ * `***bold italic***` and `**bold *nested***` end; with none open, its first two close.
+ */
+function closingStrong(source: string, mark: string, from: number): number {
+  /** An emphasis of one mark is open inside. */
+  let emphasis = false;
+  for (let i = from; i < source.length; i++) {
+    const char = source[i];
+    if (char === '\\') i++;
+    else if (char === '`') {
+      const end = source.indexOf('`', i + 1);
+      if (end < 0) return -1;
+      i = end;
+    } else if (char === mark) {
+      let run = 1;
+      while (source[i + run] === mark) run++;
+      if (run === 1) {
+        const next = source[i + 1] ?? '';
+        // As in `parseInline`: one mark opens an emphasis only before a word.
+        emphasis = !emphasis && next !== ' ' && next !== '';
+      } else if (emphasis && run > 2) return i + 1;
+      else if (i > from) return i;
+      i += run - 1;
+    }
+  }
+  return -1;
+}
+
 /** `_` marks emphasis only at a word boundary, so `snake_case` stays as it is. */
 function atBoundary(source: string, at: number): boolean {
   return at <= 0 || !/[\p{L}\p{N}]/u.test(source[at - 1] ?? '');
@@ -61,7 +92,10 @@ export function parseInline(source: string): Inline[] {
     buffer = '';
   };
   const wrap = (type: 'strong' | 'em' | 'del', mark: string, at: number): number | undefined => {
-    const end = closing(source, mark, at + mark.length);
+    const end =
+      type === 'strong'
+        ? closingStrong(source, mark[0]!, at + mark.length)
+        : closing(source, mark, at + mark.length);
     if (end < 0) return undefined;
     flush();
     out.push({ type, children: parseInline(source.slice(at + mark.length, end)) });
