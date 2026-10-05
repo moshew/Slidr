@@ -40,7 +40,10 @@
       "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/workspaces/**"]
+        "scope": {
+          "allow": ["$APPDATA/workspaces/**"],
+          "deny": ["$APPDATA/workspaces/*/source/**"]
+        }
       }
     }
   },
