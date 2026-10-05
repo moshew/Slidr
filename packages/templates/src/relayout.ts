@@ -39,7 +39,7 @@ function byRole<T extends { role?: PlaceholderRole }>(items: readonly T[]) {
 }
 
 /** A placeholder of a layout, and its place among the layout's placeholders of the same role. */
-interface Seat {
+export interface Seat {
   placeholder: Placeholder;
   ordinal: number;
 }
@@ -50,7 +50,7 @@ interface Seat {
  * order. An element beyond the placeholders of its role belongs to none, and neither does an
  * element inside a group, whose frame is not in slide coordinates.
  */
-function seatsOf(elements: readonly Element[], layout: Layout): Map<string, Seat> {
+export function seatsOf(elements: readonly Element[], layout: Layout): Map<string, Seat> {
   const seats = new Map<string, Seat>();
   const placeholders = byRole(layout.placeholders);
   for (const [role, group] of byRole(elements)) {

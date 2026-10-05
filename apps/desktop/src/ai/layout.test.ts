@@ -70,6 +70,36 @@ describe('switching the layout of a slide', () => {
     expect(bus.deck.slides[0]).toEqual(after);
   });
 
+  it('leaves no empty placeholder of the old layout behind, and no seat of the new one without an element', () => {
+    const bus = setup();
+    // A layout with a seat the first two do not have, and without their body.
+    const quote: Layout = {
+      id: 'l_quote',
+      name: 'l_quote',
+      archetype: 'quote',
+      decorations: [],
+      placeholders: [
+        { id: 'l_quote_title', role: 'title', frame: { x: 160, y: 80, w: 1600, h: 120 } },
+        { id: 'l_quote_quote', role: 'quote', frame: { x: 160, y: 300, w: 1600, h: 400 } },
+      ],
+    };
+    bus.dispatch({ type: 'layout.add', layout: quote });
+    // The body is still the empty box the layout gave the slide.
+    bus.dispatch({
+      type: 'element.update',
+      slideId: 's_1',
+      elementId: 'e_body',
+      patch: { frame: { x: 160, y: 400, w: 1600, h: 500 }, content: richText('') },
+    });
+    bus.batch(switchLayoutCommands(bus.deck, 's_1', 'l_quote'));
+    const after = bus.deck.slides[0]!;
+    expect(after.elements.map((e) => [e.role, e.frame])).toEqual([
+      ['title', { x: 160, y: 80, w: 1600, h: 120 }],
+      ['quote', { x: 160, y: 300, w: 1600, h: 400 }],
+    ]);
+    expect(after.elements[0]!.id).toBe('e_title');
+  });
+
   it('has nothing to do for the same layout, an unknown one, or a slide without a layout', () => {
     const { deck } = setup();
     expect(switchLayoutCommands(deck, 's_1', 'l_top')).toEqual([]);
