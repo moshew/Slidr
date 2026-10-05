@@ -279,6 +279,7 @@ export const en: Messages<typeof he> = {
     noRecentBody: 'Presentations you save will be listed here.',
     noStorage: 'Files are opened and saved in the app itself, not in a browser.',
     show: 'Welcome screen',
+    back: 'Back to the presentation',
   },
   notes: {
     placeholder: 'What to say about this slide…',

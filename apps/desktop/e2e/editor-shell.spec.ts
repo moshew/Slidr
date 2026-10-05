@@ -372,3 +372,43 @@ test('the editor behind the welcome screen is the one the screen leads to', asyn
   await expect(welcome(page)).toBeVisible();
   expect(await selected(page)).toEqual(['e_a']);
 });
+
+test('the welcome screen that was opened over a document has a way back to it', async ({
+  page,
+}) => {
+  await openApp(page);
+  await addBoxes(page, THREE);
+  await select(page, ['e_a']);
+  const steps = await undoSteps(page);
+  await (await fileItem(page, 'מסך הפתיחה')).click();
+  await expect(welcome(page)).toBeVisible();
+  // Esc, the way out of a screen that was opened only to be looked at.
+  await page.keyboard.press('Escape');
+  await expect(welcome(page)).toHaveCount(0);
+  await expect(page.getByTestId('stage-frame')).toBeVisible();
+
+  // And a button, which says where it leads.
+  await (await fileItem(page, 'מסך הפתיחה')).click();
+  await page.getByTestId('welcome-back').click();
+  await expect(welcome(page)).toHaveCount(0);
+  // The document is as it was left: nothing was asked, replaced or changed.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.evaluate(() => window.slidr!.bus.deck.slides[0]!.elements.length)).toBe(3);
+  expect(await undoSteps(page)).toBe(steps);
+  expect(await selected(page)).toEqual(['e_a']);
+
+  // While a question of the screen is open, Esc answers the question and no more.
+  await (await fileItem(page, 'מסך הפתיחה')).click();
+  await page.getByTestId('welcome-blank').click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(welcome(page)).toBeVisible();
+});
+
+test('the screen the app opens on has no document to go back to', async ({ page }) => {
+  await openWelcome(page);
+  await expect(page.getByTestId('welcome-back')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(welcome(page)).toBeVisible();
+});

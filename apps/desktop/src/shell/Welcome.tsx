@@ -5,21 +5,26 @@ import { createSlide, slideFromLayout, type Deck } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { deckFromTemplate, type Template } from '@slidr/templates';
 import { Button, cx, EmptyState, Icon, ScrollArea, type LucideIcon } from '@slidr/ui';
-import { Clock, FilePlus, FolderOpen, Sparkles } from '@slidr/ui/icons';
+import { ArrowLeft, Clock, FilePlus, FolderOpen, Sparkles } from '@slidr/ui/icons';
 import type { RecentFile } from '../document/storage';
 import { currentLanguage } from '../i18n';
 import { library } from '../templates/app';
 import { coverAsset, coverOf } from '../templates/covers';
 import { useDeck, useEditor, useFile, type Editor } from './editor';
 import { newDocument, openDocument, recentFiles } from './fileActions';
+import { modalOpen, overlayOf } from './overlay';
 import { PanelId, usePanel } from './registry';
-import { openPanel, setWelcome } from './store';
+import { openPanel, setWelcome, useShell } from './store';
 
 /*
  * The welcome screen (DOC-05): what the app opens on, in place of the editor. A new deck with
  * the agent, from a template or empty; a file to open; the recent files. Every way out of it
  * ends in the editor with a document, so the editor behind it never needs to know it was there.
  * "Import HTML" is one of the ways in once the import area has registered its panel.
+ *
+ * Opened from the File menu, the screen stands over a document the user was working on. It then
+ * has one more way out, which is the only one that keeps that document: back to it, by a button
+ * at the top and by Esc.
  */
 
 /**
@@ -172,6 +177,20 @@ export function Welcome() {
   const templates = library.entries();
   const [allTemplates, setAllTemplates] = useState(false);
   const [recent, setRecent] = useState<RecentFile[] | null>(hasStorage ? null : []);
+  const back = useShell((s) => s.welcomeBack);
+
+  useEffect(() => {
+    if (!back) return;
+    // Esc goes back to the document, unless it is the key of a dialog or a menu that is open.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (modalOpen() || overlayOf(event.target)) return;
+      event.preventDefault();
+      setWelcome(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [back]);
 
   useEffect(() => {
     if (!hasStorage) return;
@@ -218,6 +237,18 @@ export function Welcome() {
       <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-8 py-10">
           <header className="flex flex-col gap-1">
+            {back && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="welcome-back"
+                className="-ms-2.5 mb-3 self-start"
+                onClick={() => setWelcome(false)}
+              >
+                <Icon icon={ArrowLeft} mirror />
+                {t('welcome.back')}
+              </Button>
+            )}
             <h1 className="text-xl font-semibold text-ui-fg">{t('welcome.title')}</h1>
             <p className="text-md text-ui-fg-muted">{t('welcome.subtitle')}</p>
           </header>

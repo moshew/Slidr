@@ -365,7 +365,7 @@ function FileMenu() {
         <DropdownMenuItem icon={Keyboard} shortcut="Ctrl+/" onSelect={() => showShortcuts()}>
           {t('keys.shortcuts')}
         </DropdownMenuItem>
-        <DropdownMenuItem icon={House} onSelect={() => setWelcome(true)}>
+        <DropdownMenuItem icon={House} onSelect={() => setWelcome(true, true)}>
           {t('welcome.show')}
         </DropdownMenuItem>
       </DropdownMenuContent>

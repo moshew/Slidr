@@ -23,6 +23,11 @@ export interface ShellState {
   theme: ThemePreference;
   /** The welcome screen is shown in place of the editor (DOC-05). */
   welcome: boolean;
+  /**
+   * The welcome screen was opened from the editor, over a document the user was working on: it
+   * then offers the way back to that document, which no other way out of it is.
+   */
+  welcomeBack: boolean;
   /** The shortcut map is open (UI-06). */
   shortcutsOpen: boolean;
 }
@@ -38,6 +43,7 @@ export const useShell = create<ShellState>()(
       viewScale: 1,
       theme: 'system',
       welcome: startsOnWelcome(),
+      welcomeBack: false,
       shortcutsOpen: false,
     }),
     {
@@ -93,8 +99,12 @@ export function zoomBy(factor: number): void {
   useShell.setState({ zoom: Math.round(next * 100) / 100 });
 }
 
-export function setWelcome(welcome: boolean): void {
-  useShell.setState({ welcome });
+/**
+ * Shows the welcome screen or leaves it. `back`: it is shown over the document that is open,
+ * from the File menu, and offers the way back to it.
+ */
+export function setWelcome(welcome: boolean, back = false): void {
+  useShell.setState({ welcome, welcomeBack: welcome && back });
 }
 
 export function showShortcuts(shortcutsOpen = true): void {
