@@ -4,6 +4,7 @@ import type { JSONContent } from '@tiptap/core';
 import { Slice, type Node as PmNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
+import { isCtrlLetter } from '../stage/keys';
 import type { TextTarget } from './actions';
 import { resolveDirection } from './bidi';
 import { caretMarks, marksOf, paragraphProps, STEP_META, toPmMarks } from './editorFormat';
@@ -399,7 +400,8 @@ export function clipboardPlugin(context: PasteContext): Plugin {
   return new Plugin({
     props: {
       handleKeyDown(_view, event) {
-        if (event.code === 'KeyV' && (event.ctrlKey || event.metaKey))
+        // By the key that is marked V, as the browser reads its own paste (ADR-069, finding 12).
+        if (isCtrlLetter(event, 'v'))
           plainUntil = event.shiftKey ? performance.now() + ARMED_MS : 0;
         return false;
       },

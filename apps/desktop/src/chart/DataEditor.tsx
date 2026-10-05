@@ -13,6 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { useDeck, useEditor } from '../shell';
+import { isCtrlLetter } from '../stage/keys';
 import {
   addColumn,
   addRow,
@@ -192,8 +193,8 @@ export function DataEditor({ target }: { target: ChartTarget }) {
 
     if (event.ctrlKey || event.metaKey || event.altKey) {
       // The browser's "select all" would select the page. Undo, redo, copy and paste go on to
-      // the shell and to the clipboard.
-      if (event.code === 'KeyA' && !event.altKey) event.preventDefault();
+      // the shell and to the clipboard. The key is the one marked A, wherever a layout has it.
+      if (isCtrlLetter(event, 'a') && !event.altKey) event.preventDefault();
       return;
     }
     if (key === 'ArrowUp') step(-1, 0);
