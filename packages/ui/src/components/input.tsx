@@ -32,7 +32,8 @@ export function Input({
       className={cx(
         'flex h-control items-center gap-2 rounded-control border bg-ui-field px-2.5 text-sm text-ui-fg transition-colors',
         'focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ui-focus',
-        'has-disabled:border-ui-line has-disabled:text-ui-fg-subtle',
+        // Faded when the field itself is disabled, and not when a control beside it in the frame is.
+        'has-[>input:disabled]:border-ui-line has-[>input:disabled]:text-ui-fg-subtle',
         invalid
           ? 'border-ui-danger-fg focus-within:outline-ui-danger-fg'
           : 'border-ui-line-strong hover:border-ui-fg-subtle',

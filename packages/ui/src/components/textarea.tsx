@@ -27,7 +27,9 @@ export function Textarea({
       className={cx(
         'flex flex-col gap-1 rounded-panel border bg-ui-field p-1.5 text-ui-fg transition-colors',
         'focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ui-focus',
-        'has-disabled:border-ui-line has-disabled:text-ui-fg-subtle',
+        // Faded when the field itself is disabled, and not when a button of the footer is: a
+        // composer whose Send has nothing to send yet is still a field to type in.
+        'has-[>textarea:disabled]:border-ui-line has-[>textarea:disabled]:text-ui-fg-subtle',
         invalid
           ? 'border-ui-danger-fg focus-within:outline-ui-danger-fg'
           : 'border-ui-line-strong hover:border-ui-fg-subtle',

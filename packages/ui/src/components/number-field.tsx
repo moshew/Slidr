@@ -106,7 +106,8 @@ export function NumberField({
       className={cx(
         'flex items-center gap-1.5 rounded-control border border-ui-line-strong bg-ui-field px-2 text-sm text-ui-fg transition-colors hover:border-ui-fg-subtle',
         'focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ui-focus',
-        'has-disabled:border-ui-line has-disabled:text-ui-fg-subtle',
+        // Faded when the field itself is disabled, and not when a control beside it in the frame is.
+        'has-[>span>input:disabled]:border-ui-line has-[>span>input:disabled]:text-ui-fg-subtle',
         size === 'md' ? 'h-control' : 'h-control-sm',
         className,
       )}
