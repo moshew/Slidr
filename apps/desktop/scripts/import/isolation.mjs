@@ -201,7 +201,7 @@ const tried = await page.evaluate(async () => {
   await attempt(
     'localStorage of the app',
     async () =>
-      `slidr.agent = ${localStorage.getItem('slidr.agent')}, keys = ${localStorage.length}`,
+      `slidr.shell = ${localStorage.getItem('slidr.shell')}, keys = ${localStorage.length}`,
   );
   return out;
 });
@@ -226,12 +226,14 @@ for (const [name, result] of Object.entries(tried)) {
 
 /* ---- what the editor itself keeps, to compare, and what Rust wrote down ---- */
 const kept = await editor.evaluate(async () => ({
-  agent: localStorage.getItem('slidr.agent'),
+  // The layout of the shell: the editor keeps it there (the agent's settings are in the settings
+  // file now, and no longer a key of this storage).
+  shell: localStorage.getItem('slidr.shell'),
   blocked: await window.__TAURI_INTERNALS__.invoke('import_blocked'),
   // What the page's policy stopped before Rust was asked, as the browser reported it.
   refused: await window.__TAURI_INTERNALS__.invoke('import_run_job', { job: { kind: 'refused' } }),
 }));
-note('the editor window: localStorage slidr.agent', kept.agent, kept.agent !== null);
+note('the editor window: localStorage slidr.shell', kept.shell, kept.shell !== null);
 // The editor's own window may no longer ask the core for the list of windows (ADR-066 left it
 // the permissions it uses, and this is not one): the browser's own list of pages says it.
 const windows = pages().map((open) => new URL(open.url()).pathname);
