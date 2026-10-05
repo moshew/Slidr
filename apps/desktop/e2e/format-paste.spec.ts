@@ -327,7 +327,7 @@ test.describe('from the menu of the slide', () => {
 
     await pasteText(page, 'שמירת עיצוב המקור');
     await expect.poll(async () => (await added(page)).elements.length).toBe(1);
-    let { elements, selected } = await added(page);
+    const { elements, selected } = await added(page);
     // In the middle of the slide and half as wide, growing with its text, and selected.
     expect(elements[0]).toMatchObject({
       type: 'text',
@@ -355,8 +355,7 @@ test.describe('from the menu of the slide', () => {
 
     await pasteText(page, 'בעיצוב של המצגת');
     await expect.poll(async () => (await added(page)).elements.length).toBe(1);
-    ({ elements, selected } = await added(page));
-    expect(elements[0]).toMatchObject({
+    expect((await added(page)).elements[0]).toMatchObject({
       content: {
         paragraphs: [
           para('', {
