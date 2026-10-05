@@ -31,10 +31,12 @@ export const he = {
       'שני קבצים שהמצגת משתמשת בהם (תמונות, וידאו, אודיו או גופנים) לא נמצאו, ולכן אינם בקובץ השמור. בשקפים הם מוצגים כחסרים.',
     missing_other:
       '{{count}} קבצים שהמצגת משתמשת בהם (תמונות, וידאו, אודיו או גופנים) לא נמצאו, ולכן אינם בקובץ השמור. בשקפים הם מוצגים כחסרים.',
-    missingNames_one: 'שם הקובץ: {{names}}.',
-    missingNames_two: 'שמות הקבצים: {{names}}.',
-    missingNames_other: 'שמות הקבצים: {{names}}.',
-    missingAmong: 'ביניהם: {{names}}.',
+    // Last in the message, and with no full stop after the names: they read left to right, and
+    // a stop after them is drawn at their other end, before the first name.
+    missingNames_one: 'שם הקובץ: {{names}}',
+    missingNames_two: 'שמות הקבצים: {{names}}',
+    missingNames_other: 'שמות הקבצים: {{names}}',
+    missingAmong: 'ביניהם: {{names}}',
     missingNext_one: 'אפשר להחליף אותו בקובץ מהמחשב, ואז לשמור שוב.',
     missingNext_two: 'אפשר להחליף אותם בקבצים מהמחשב, ואז לשמור שוב.',
     missingNext_other: 'אפשר להחליף אותם בקבצים מהמחשב, ואז לשמור שוב.',

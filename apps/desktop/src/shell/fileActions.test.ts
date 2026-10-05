@@ -375,7 +375,7 @@ describe('with storage', () => {
       await vi.waitFor(() => expect(pendingDialog()).not.toBeNull());
       expect(pendingDialog()?.title).toBe('המצגת נשמרה, אבל לא כל הקבצים שלה בקובץ');
       expect(pendingDialog()?.body).toContain('שני קבצים');
-      expect(pendingDialog()?.body).toContain('ביניהם: logo.png.');
+      expect(pendingDialog()?.body).toMatch(/ביניהם: logo.png$/);
       // The deck is saved all the same.
       expect(editor.file.getState()).toMatchObject({ dirty: false, busy: null });
       answer('ok');

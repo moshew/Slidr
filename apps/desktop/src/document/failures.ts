@@ -70,12 +70,12 @@ export function describeMissingAssets(
   const count = files.length;
   const body = [
     i18n.t('document:saved.missing', { count }),
+    i18n.t('document:saved.missingNext', { count }),
     ...(names.length === 0
       ? []
       : names.length === count
         ? [i18n.t('document:saved.missingNames', { count, names: shown })]
         : [i18n.t('document:saved.missingAmong', { names: shown })]),
-    i18n.t('document:saved.missingNext', { count }),
   ];
   return { title: i18n.t('document:saved.missingTitle'), body: body.join(' ') };
 }

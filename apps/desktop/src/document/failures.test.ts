@@ -58,25 +58,25 @@ describe('what the user is told when a file operation fails (WG13-T03)', () => {
       'המצגת נשמרה, אבל לא כל הקבצים שלה בקובץ',
     );
     expect(said(['a.png'])).toBe(
-      'קובץ אחד שהמצגת משתמשת בו (תמונה, וידאו, אודיו או גופן) לא נמצא, ולכן אינו בקובץ השמור. בשקף הוא מוצג כחסר. שם הקובץ: a-photo.jpg. אפשר להחליף אותו בקובץ מהמחשב, ואז לשמור שוב.',
+      'קובץ אחד שהמצגת משתמשת בו (תמונה, וידאו, אודיו או גופן) לא נמצא, ולכן אינו בקובץ השמור. בשקף הוא מוצג כחסר. אפשר להחליף אותו בקובץ מהמחשב, ואז לשמור שוב. שם הקובץ: a-photo.jpg',
     );
     expect(said(['a.png', 'b.png'])).toContain('שני קבצים');
-    expect(said(['a.png', 'b.png'])).toContain('שמות הקבצים: a-photo.jpg, b-photo.jpg.');
+    expect(said(['a.png', 'b.png'])).toMatch(/שמות הקבצים: a-photo.jpg, b-photo.jpg$/);
     // A name inside the assets folder is a hash, and is never shown: only the names files came by.
     expect(said(['bare.png'])).not.toContain('bare');
     expect(said(['bare.png'])).not.toContain('שם הקובץ');
     expect(said(['a.png', 'bare.png', 'https://example.com/x.png'])).toContain(
       '3 קבצים שהמצגת משתמשת בהם',
     );
-    expect(said(['a.png', 'bare.png'])).toContain('ביניהם: a-photo.jpg.');
+    expect(said(['a.png', 'bare.png'])).toMatch(/ביניהם: a-photo.jpg$/);
     // A long list is cut, and says so.
     expect(said(named.map((a) => a.file))).toContain(
-      'שמות הקבצים: a-photo.jpg, b-photo.jpg, c-photo.jpg, d-photo.jpg, ….',
+      'שמות הקבצים: a-photo.jpg, b-photo.jpg, c-photo.jpg, d-photo.jpg, …',
     );
 
     await i18n.changeLanguage('en');
     expect(said(['a.png'])).toBe(
-      'One file the deck uses (a picture, a video, a sound or a font) was not found, so it is not in the saved file. On its slide it shows as missing. Its name: a-photo.jpg. You can replace it with a file from your computer, then save again.',
+      'One file the deck uses (a picture, a video, a sound or a font) was not found, so it is not in the saved file. On its slide it shows as missing. You can replace it with a file from your computer, then save again. Its name: a-photo.jpg.',
     );
     expect(said(['a.png', 'b.png'])).toContain('2 files the deck uses');
     expect(said(['a.png', 'bare.png'])).toContain('Among them: a-photo.jpg.');
