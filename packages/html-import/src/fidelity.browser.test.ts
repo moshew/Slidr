@@ -161,6 +161,34 @@ const texts = (result: ConversionResult) =>
   result.slide.elements.filter((element): element is TextElement => element.type === 'text');
 const types = (result: ConversionResult) => result.slide.elements.map((element) => element.type);
 
+type Tone = (r: number, g: number, b: number) => boolean;
+const luminance = (r: number, g: number, b: number) => 0.299 * r + 0.587 * g + 0.114 * b;
+const dark: Tone = (r, g, b) => luminance(r, g, b) < 110;
+const red: Tone = (r, g, b) => r > 150 && g < 100 && b < 100;
+
+/** How many pixels of a box have the tone. */
+function ink(picture: ImageData, box: Box, tone: Tone): number {
+  let count = 0;
+  for (let y = Math.max(0, box.y); y < Math.min(picture.height, box.y + box.h); y++) {
+    for (let x = Math.max(0, box.x); x < Math.min(picture.width, box.x + box.w); x++) {
+      const i = (y * picture.width + x) * 4;
+      if (tone(picture.data[i]!, picture.data[i + 1]!, picture.data[i + 2]!)) count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * The same ink in both pictures, give or take the edges of glyphs: the converted slide shows
+ * what the source showed there. `least` guards against a probe that looks at nothing.
+ */
+function expectSameInk(looked: Looked, box: Box, tone: Tone, least = 1): void {
+  const source = ink(looked.source.picture, box, tone);
+  const converted = ink(looked.converted.picture, box, tone);
+  expect(source).toBeGreaterThanOrEqual(least);
+  expect(Math.abs(converted - source)).toBeLessThanOrEqual(Math.max(12, 0.1 * source));
+}
+
 const PARA =
   'position:absolute;left:160px;top:200px;width:1500px;margin:0;font:400 40px/1.5 Arial;color:#111';
 const HEBREW =
@@ -407,5 +435,81 @@ describe('a link is kept on whatever stands for the linked element', () => {
     const [kept, beside] = result.slide.elements;
     expect(kept!.link).toEqual(REPORT);
     expect(beside!.link).toBeUndefined();
+  });
+});
+
+describe('an element kept as html looks as it did among its siblings', () => {
+  // Three cards that each stay html (they clip a decoration), and a look that the stylesheet
+  // gives by position among the siblings.
+  const cards = (extra: string) => `<style>
+.row{position:absolute;left:120px;top:240px;display:flex;gap:40px}
+.card{position:relative;width:520px;height:420px;background:#fff;border-radius:24px;overflow:hidden;padding:40px;box-sizing:border-box;font:400 28px/1.4 Arial;color:#222;box-shadow:0 0 0 1px #ccd}
+.card .blob{position:absolute;right:-60px;bottom:-60px;width:200px;height:200px;border-radius:50%;background:#e8eef8}
+.card h3{margin:0 0 16px;font:700 40px/1.2 Arial}
+.card p{margin:0}
+${extra}
+</style>
+<div class="row">
+<div class="card"><div class="blob"></div><h3>Starter</h3><p>For a small team that is just getting started.</p></div>
+<div class="card"><div class="blob"></div><h3>Growth</h3><p>For a company that grows from month to month.</p></div>
+<div class="card"><div class="blob"></div><h3>Scale</h3><p>For an organisation with many teams and sites.</p></div>
+</div>`;
+  const TITLES = ['Starter', 'Growth', 'Scale'];
+  const colours = (seen: Seen) => TITLES.map((title) => seen.found[title]?.colour);
+
+  it('keeps a colour given with :nth-child', async () => {
+    const { result, source, converted } = await look(
+      cards(
+        '.card:nth-child(1) h3{color:#c62828} .card:nth-child(2) h3{color:#1565c0} .card:nth-child(3) h3{color:#2e7d32}',
+      ),
+      'en',
+      TITLES,
+    );
+    expect(colours(source)).toEqual(['rgb(198, 40, 40)', 'rgb(21, 101, 192)', 'rgb(46, 125, 50)']);
+    expect(colours(converted)).toEqual(colours(source));
+    expect(types(result)).toEqual(['html', 'html', 'html']);
+  });
+
+  it('keeps a colour given with a sibling combinator', async () => {
+    const { source, converted } = await look(
+      cards('.card h3{color:#c62828} .card + .card h3{color:#1565c0} .card ~ .card p{color:#555}'),
+      'en',
+      TITLES,
+    );
+    expect(colours(source)).toEqual(['rgb(198, 40, 40)', 'rgb(21, 101, 192)', 'rgb(21, 101, 192)']);
+    expect(colours(converted)).toEqual(colours(source));
+  });
+
+  it('keeps a border given with :nth-child', async () => {
+    const looked = await look(
+      cards(
+        '.card{border-top:6px solid #c62828} .card:nth-child(2){border-top-color:#1565c0} .card:nth-child(3){border-top-color:#2e7d32}',
+      ),
+      'en',
+    );
+    // The top border of the first card is red, and that of the second is not.
+    expectSameInk(looked, { x: 200, y: 240, w: 400, h: 6 }, red, 2000);
+    expect(ink(looked.converted.picture, { x: 760, y: 240, w: 400, h: 6 }, red)).toBe(0);
+    expect(ink(looked.source.picture, { x: 760, y: 240, w: 400, h: 6 }, red)).toBe(0);
+  });
+});
+
+describe('a difference that sits in one place of a long text', () => {
+  it('is caught by the guard where the walk does not know what a part does', async () => {
+    // Nothing reads a filter on a word (it is not a property of text), and the model has
+    // nothing to say it with: here it takes the word off the page. The paragraph is long, so
+    // the word is a small share of its pixels; it is the place the guard sees.
+    const looked = await look(
+      `<p style="${PARA}">${ENGLISH.replace('break-even', '<span style="filter:opacity(0)">break-even</span>')}</p>`,
+      'en',
+      ['break-even'],
+    );
+    const word = looked.source.found['break-even']!.box;
+    expect(ink(looked.source.picture, word, dark)).toBe(0);
+    expect(ink(looked.converted.picture, word, dark)).toBe(0);
+    expect(types(looked.result)).toEqual(['html']);
+    expect(looked.result.notes.join('\n')).toMatch(
+      /text that looks different in one place \(\d+ blocks of/,
+    );
   });
 });

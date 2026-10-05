@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   attribute,
   clusters,
+  differingBlocks,
   differingPixels,
   downsample,
   uniformColor,
@@ -152,5 +153,91 @@ describe('whose pixels differ', () => {
     expect(clusters(owned.loose, width, 6)).toEqual([
       { pixels: 3, owner: -1, box: { x: 0, y: 0, w: 12, h: 6 } },
     ]);
+  });
+});
+
+describe('blocks whose average colour differs', () => {
+  const BLACK: [number, number, number] = [17, 17, 17];
+  const RED: [number, number, number] = [224, 0, 0];
+  const W = 96;
+  const H = 48;
+  /** One region that owns the whole picture. */
+  const whole = new Int32Array(W * H).fill(0);
+  /** "Text": stems three pixels wide and twenty tall, every eight pixels along a line. */
+  const stems = (
+    dx: number,
+    dy: number,
+    color = BLACK,
+    from = 0,
+    to = 12,
+  ): [number, number, number, number, [number, number, number]][] =>
+    Array.from({ length: to - from }, (_, i) => [2 + (from + i) * 8 + dx, 14 + dy, 3, 20, color]);
+  const blocks = (a: Picture, b: Picture, size: number, threshold: number, reach = 1) =>
+    differingBlocks(a, b, whole, 1, size, threshold, reach)[0];
+
+  it('counts nothing for the same picture, nor for text that moved by a pixel', () => {
+    const source = picture(W, H, WHITE, ...stems(0, 0));
+    expect(blocks(source, picture(W, H, WHITE, ...stems(0, 0)), 8, 0.14)).toBe(0);
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const) {
+      const moved = picture(W, H, WHITE, ...stems(dx, dy));
+      // Without looking around: a strip one pixel wide is under the threshold of each size.
+      expect(blocks(source, moved, 8, 0.14, 0)).toBe(0);
+      expect(blocks(source, moved, 16, 0.07, 0)).toBe(0);
+      // The pixel count, which this measure stands beside, is what such a move changes.
+      expect(count(differingPixels(source, moved, 0.03))).toBeGreaterThan(60);
+    }
+  });
+
+  it('counts nothing for content drawn a little further off, once it looks around', () => {
+    // A bar across the border of two blocks, and the same bar three pixels over.
+    const source = picture(W, H, WHITE, [4, 8, 6, 32, BLACK]);
+    const moved = picture(W, H, WHITE, [7, 8, 6, 32, BLACK]);
+    expect(blocks(source, moved, 8, 0.14, 0)).toBeGreaterThan(0);
+    // One pixel of looking around leaves it two pixels off, which a block of eight still sees.
+    expect(blocks(source, moved, 8, 0.14, 1)).toBeGreaterThan(0);
+    // Two pixels of looking around find it again, a pixel off: under the threshold.
+    expect(blocks(source, moved, 8, 0.14, 2)).toBe(0);
+    // And the same bar two pixels over is forgiven with one.
+    expect(blocks(source, picture(W, H, WHITE, [6, 8, 6, 32, BLACK]), 8, 0.14, 1)).toBe(0);
+  });
+
+  it('counts a part in another colour, however much text there is around it', () => {
+    // Three stems of twelve are red: a word in a line.
+    const source = picture(W, H, WHITE, ...stems(0, 0), ...stems(0, 0, RED, 4, 7));
+    const plain = picture(W, H, WHITE, ...stems(0, 0));
+    expect(blocks(source, plain, 8, 0.14)).toBeGreaterThanOrEqual(6);
+    expect(blocks(source, plain, 16, 0.07)).toBeGreaterThanOrEqual(2);
+    // A share of the pixels would let it through in a text ten times as long.
+    expect(count(differingPixels(source, plain, 0.03)) / (W * H)).toBeLessThan(0.05);
+  });
+
+  it('counts a line that is not there, and text that is missing', () => {
+    const source = picture(W, H, WHITE, ...stems(0, 0), [34, 10, 24, 3, BLACK]);
+    expect(blocks(source, picture(W, H, WHITE, ...stems(0, 0)), 8, 0.14)).toBeGreaterThanOrEqual(2);
+    const shorter = picture(W, H, WHITE, ...stems(0, 0, BLACK, 0, 8));
+    expect(blocks(picture(W, H, WHITE, ...stems(0, 0)), shorter, 16, 0.07)).toBeGreaterThanOrEqual(
+      2,
+    );
+  });
+
+  it('counts a block for the region that owns nearly all of it, on its own pixels', () => {
+    // Two regions side by side; the right one differs all over.
+    const owner = new Int32Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) owner[y * W + x] = x < 44 ? 0 : 1;
+    const source = picture(W, H, WHITE);
+    const other = picture(W, H, WHITE, [44, 0, W - 44, H, RED]);
+    const counts = differingBlocks(source, other, owner, 2, 8, 0.14);
+    // The column of blocks the border runs through (40..47) is half one, half the other:
+    // nobody's. The left region has nothing to answer for.
+    expect(Array.from(counts)).toEqual([0, 6 * 6]);
+    // Pixels nobody owns (a strip that is not compared) take their block out.
+    const strip = new Int32Array(W * H).fill(0);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < W; x++) strip[y * W + x] = -2;
+    expect(differingBlocks(source, picture(W, H, RED), strip, 1, 8, 0.14)[0]).toBe(12 * 5);
   });
 });

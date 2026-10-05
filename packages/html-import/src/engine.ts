@@ -38,6 +38,7 @@ import {
 import {
   attribute,
   clusters,
+  differingBlocks,
   differingPixels,
   downsample,
   uniformColor,
@@ -175,6 +176,22 @@ const NOISE_THRESHOLD = 0.1;
 const STRICT_THRESHOLD = 0.03;
 const CLUSTER_CELL = 12;
 const CLUSTER_MIN_PIXELS = 12;
+/**
+ * A difference that sits in one place of a text, a table or an HTML copy with text in it: a
+ * word in another colour, a line drawn over it, a title that took its neighbour's look. The
+ * shares above cannot see it, since they grow with the element: in a paragraph of three lines
+ * 1% is a whole word, and in an HTML copy of a card it is the card's title. So the average
+ * colour of blocks is compared too (`differingBlocks`), at two sizes of block, in px of the
+ * page; each threshold is a little over 1 / size, which a glyph that moved by a pixel cannot
+ * reach. Measured on the engine's fixtures and on the four files written for the import set
+ * (229 textual items, zoomed pages among them): no block differs on a conversion that is
+ * right, and 7 to 65 blocks on the bug hunt's cases at 40px text.
+ */
+const LOCAL_BLOCKS = [
+  { size: 8, threshold: 0.14 },
+  { size: 16, threshold: 0.07 },
+] as const;
+const LOCAL_MIN_BLOCKS = 2;
 /** A text box sits right when its lines are within this many pixels of the source's. */
 const SETTLED = 0.04;
 /** How far past the middle of a pixel a baseline is pushed to land on the source's row, in source px. */
@@ -957,9 +974,17 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       const bottom = Math.max(...boxes.map((b) => b.y + b.h)) + SPILL;
       return [{ x: left, y: top, w: right - left, h: bottom - top }];
     });
+    const sized = new Map<number, [Picture, Picture]>();
+    const both = (factor: number): [Picture, Picture] => {
+      let pair = sized.get(factor);
+      if (!pair) {
+        pair = [downsample(sourcePicture, factor), downsample(picture, factor)];
+        sized.set(factor, pair);
+      }
+      return pair;
+    };
     const at = (factor: number, threshold: number) => {
-      const a = downsample(sourcePicture, factor);
-      const b = downsample(picture, factor);
+      const [a, b] = both(factor);
       const mask = differingPixels(a, b, threshold);
       const width = Math.min(a.width, b.width);
       const height = Math.min(a.height, b.height);
@@ -983,6 +1008,17 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     const fine = at(FINE, NOISE_THRESHOLD);
     const strict = at(FINE, STRICT_THRESHOLD);
     const coarse = at(COARSE, NOISE_THRESHOLD);
+    // For what holds text: the blocks whose average colour differs, by who owns them.
+    const blocks = LOCAL_BLOCKS.map(({ size, threshold }) => ({
+      size,
+      differing: differingBlocks(
+        ...both(FINE),
+        strict.owner,
+        items.length,
+        Math.max(2, Math.round((size * density) / FINE)),
+        threshold,
+      ),
+    }));
 
     // Without a scale in the way the two pictures are the same picture, so a difference that
     // is small next to a large element still counts when it sits in one place: a corner that
@@ -1052,10 +1088,17 @@ export async function startConversion(root: Element, options: ConvertOptions): P
           differing <= GLYPH_SHIFT_SHARE * owned &&
           coarse.differing[index]! <=
             Math.max(COARSE_MIN_PIXELS, COARSE_SHARE * coarse.owned[index]!);
+        // The share says how much of the element differs; for what holds text, the blocks say
+        // whether a part of it does, however large the element around that part is.
+        const place = textual
+          ? blocks.find((scale) => scale.differing[index]! >= LOCAL_MIN_BLOCKS)
+          : undefined;
         if (differing > Math.max(least, share * owned) && !glyphShift) {
           why = `looks different (${differing} of ${owned} pixels)`;
         } else if (local) {
           why = `looks different in one place (${local.pixels} pixels)`;
+        } else if (place) {
+          why = `looks different in one place (${place.differing[index]} blocks of ${place.size}px)`;
         }
       }
       if (why) bad.push({ item, why });

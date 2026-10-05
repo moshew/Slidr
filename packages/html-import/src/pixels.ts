@@ -161,6 +161,95 @@ export function attribute(
 }
 
 /**
+ * For every region, how many blocks of `size` x `size` pixels differ in their average colour by
+ * more than `threshold` (the distance of `differingPixels`). A block counts for the region
+ * that owns nearly all of it, and the average is taken over that region's pixels alone: what a
+ * neighbour drew in the rest is the neighbour's to answer for.
+ *
+ * What this measure is for: a difference that sits in one place of a text, whatever the size of
+ * the text around it. Counting pixels cannot tell that from noise, since glyphs whose edges
+ * fall on the other side of a pixel change pixels all along a text. An average over a block
+ * can: a glyph that moved by a pixel carries at most a strip one pixel wide across a side of
+ * the block, which changes the average by no more than 1 / `size` of the contrast, while a
+ * word in another colour, a line drawn over it or text that is not there changes it by the
+ * share of the block they cover. With `threshold` above 1 / `size`, the first is never counted.
+ *
+ * The same content drawn a little to the side is not what is asked about here either (where
+ * things sit is for the geometry of lines, and for the shares of pixels, to say): a block that
+ * differs is compared again with the other picture moved by up to `reach` pixels each way, and
+ * counts only when it differs at every one of those places.
+ */
+export function differingBlocks(
+  a: Picture,
+  b: Picture,
+  owner: Int32Array,
+  regions: number,
+  size: number,
+  threshold: number,
+  reach = 1,
+): Int32Array {
+  const width = Math.min(a.width, b.width);
+  const height = Math.min(a.height, b.height);
+  const counts = new Int32Array(regions);
+  const limit = 35215 * threshold * threshold;
+  const enough = 0.75 * size * size;
+  /** How far the block's average is from the other picture's, moved by (sx, sy). */
+  const distance = (
+    left: number,
+    top: number,
+    o: number,
+    sx: number,
+    sy: number,
+  ): number | undefined => {
+    let n = 0;
+    let dr = 0;
+    let dg = 0;
+    let db = 0;
+    for (let y = top; y < top + size; y++) {
+      const v = y + sy;
+      if (v < 0 || v >= height) continue;
+      for (let x = left; x < left + size; x++) {
+        const u = x + sx;
+        if (u < 0 || u >= width || owner[y * width + x] !== o) continue;
+        const i = (y * a.width + x) * 4;
+        const j = (v * b.width + u) * 4;
+        dr += a.data[i]! - b.data[j]!;
+        dg += a.data[i + 1]! - b.data[j + 1]!;
+        db += a.data[i + 2]! - b.data[j + 2]!;
+        n++;
+      }
+    }
+    // A block that is mostly someone else's, or mostly off the picture, says nothing.
+    if (n < enough) return undefined;
+    dr /= n;
+    dg /= n;
+    db /= n;
+    const dy = 0.29889531 * dr + 0.58662247 * dg + 0.11448223 * db;
+    const di = 0.59597799 * dr - 0.2741761 * dg - 0.32180189 * db;
+    const dq = 0.21147017 * dr - 0.52261711 * dg + 0.31114694 * db;
+    return 0.5053 * dy * dy + 0.299 * di * di + 0.1957 * dq * dq;
+  };
+  for (let top = 0; top + size <= height; top += size) {
+    for (let left = 0; left + size <= width; left += size) {
+      const o = owner[(top + (size >> 1)) * width + left + (size >> 1)]!;
+      if (o < 0) continue;
+      const here = distance(left, top, o, 0, 0);
+      if (here === undefined || here <= limit) continue;
+      let elsewhere = false;
+      for (let sy = -reach; sy <= reach && !elsewhere; sy++) {
+        for (let sx = -reach; sx <= reach && !elsewhere; sx++) {
+          if (sx === 0 && sy === 0) continue;
+          const there = distance(left, top, o, sx, sy);
+          elsewhere = there !== undefined && there <= limit;
+        }
+      }
+      if (!elsewhere) counts[o]!++;
+    }
+  }
+  return counts;
+}
+
+/**
  * Groups differing pixels that lie near each other, so that one difference is reported once,
  * with the box around it. `cell` is the grid the pixels are bucketed in. With `owner`, each
  * group also names the region most of its pixels belong to (-1: none).
