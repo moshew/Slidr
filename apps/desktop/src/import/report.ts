@@ -3,7 +3,7 @@
  * record the app kept of every captured slide, the requests the isolated page was refused, and
  * the turns of the chat. Nothing in it is taken from the agent's own account.
  */
-import type { Deck } from '@slidr/model';
+import type { Deck, Element } from '@slidr/model';
 import type { ChatEntry } from '../agent/transcript';
 import type { ImportState, SlideRecord } from './session';
 
@@ -47,6 +47,17 @@ export function median(values: readonly number[]): number | null {
   return sorted.length % 2 === 1 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
 }
 
+/**
+ * Whether any of the elements, or anything inside a group among them, is one of `ids`. A
+ * captured element that the user grouped is still on the slide, a level down.
+ */
+function holdsAny(elements: readonly Element[], ids: ReadonlySet<string>): boolean {
+  return elements.some(
+    (element) =>
+      ids.has(element.id) || (element.type === 'group' && holdsAny(element.children, ids)),
+  );
+}
+
 export function buildReport(
   state: ImportState,
   deck: Deck,
@@ -62,7 +73,7 @@ export function buildReport(
       slideId: slide.id,
       number: index + 1,
       ...(slide.name ? { name: slide.name } : {}),
-      rebuilt: captured.size > 0 && !slide.elements.some((element) => captured.has(element.id)),
+      rebuilt: captured.size > 0 && !holdsAny(slide.elements, captured),
     });
   });
   const measured = rows.filter((row) => !row.rebuilt);

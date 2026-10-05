@@ -1,4 +1,4 @@
-import { createDeck, createSlide } from '@slidr/model';
+import { CommandBus, createDeck, createElement, createSlide } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import type { ChatEntry } from '../agent/transcript';
 import { buildReport, median } from './report';
@@ -108,6 +108,49 @@ describe('buildReport', () => {
       wholeHtml: 0,
       medianEditability: 0.6,
     });
+  });
+
+  it('still counts a slide whose captured elements were grouped', () => {
+    const title = createElement.text({
+      id: 'e_title',
+      frame: { x: 100, y: 100, w: 600, h: 80 },
+      content: { paragraphs: [] },
+    });
+    const card = createElement.shape({
+      id: 'e_card',
+      frame: { x: 100, y: 240, w: 600, h: 300 },
+      geometry: { kind: 'preset', preset: 'rect' },
+      fill: { kind: 'solid', color: { value: '#eeeeee' } },
+    });
+    const deck = createDeck({
+      lang: 'en',
+      slides: [createSlide({ id: 's_imported', elements: [title, card] })],
+    });
+    const imported = state({ s_imported: record({ elementIds: ['e_title', 'e_card'] }) });
+    expect(buildReport(imported, deck, []).measured).toBe(1);
+
+    // The user selects both and groups them, then puts that group in another: what was
+    // captured is still on the slide, however deep.
+    const bus = new CommandBus(deck, { validate: true });
+    bus.dispatch({
+      type: 'element.group',
+      slideId: 's_imported',
+      elementIds: ['e_title', 'e_card'],
+      groupId: 'e_group',
+    });
+    bus.dispatch({
+      type: 'element.group',
+      slideId: 's_imported',
+      elementIds: ['e_group'],
+      groupId: 'e_outer',
+    });
+    const grouped = buildReport(imported, bus.deck, []);
+    expect(grouped.rows[0]?.rebuilt).toBe(false);
+    expect(grouped).toMatchObject({ measured: 1, faithful: 1 });
+
+    // With everything that was captured deleted, the group gone with it, it is a rebuilt slide.
+    bus.dispatch({ type: 'element.remove', slideId: 's_imported', elementIds: ['e_outer'] });
+    expect(buildReport(imported, bus.deck, []).rows[0]?.rebuilt).toBe(true);
   });
 
   it('adds up the time and the cost of the turns that ended, as the harness reported them', () => {
