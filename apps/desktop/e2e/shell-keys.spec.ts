@@ -52,6 +52,16 @@ const stored = (page: Page) =>
     return (await pageSettings.read()).shortcuts as { keys?: Record<string, string> } | undefined;
   }, '/src/settings/index.ts');
 
+/** A key press as a layout reports it: the character it types, and the place of the key. */
+interface Key {
+  key: string;
+  code: string;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
+  modifierAltGraph?: boolean;
+}
+
 const groups = async (page: Page) => (await elements(page)).filter((e) => e.type === 'group');
 
 test('a shortcut gets a new key in the map, and answers to it from then on', async ({ page }) => {
@@ -275,7 +285,7 @@ test('the new key is read by its place on a Hebrew layout, and AltGr is not a ke
   await openMap(page);
   await key(page, 'arrange.group').click();
   await expect(key(page, 'arrange.group')).toHaveAttribute('data-state', 'listening');
-  const press = (init: KeyboardEventInit) =>
+  const press = (init: Key) =>
     page.evaluate(
       (options) =>
         void window.dispatchEvent(
