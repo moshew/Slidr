@@ -527,4 +527,28 @@ describe('the authoring conventions of SPEC 11.5', () => {
     expect(literal!.fill).toEqual({ kind: 'solid', color: { value: '#f3f4f6' } });
     expect(half!.fill).toEqual({ kind: 'solid', color: { token: 'secondary', alpha: 0.4 } });
   });
+
+  it('keeps the link to the theme inside a gradient it keeps as CSS', async () => {
+    const r = await convert('theme glows', fixtures.themeGlows);
+    const [themed, literal, stacked] = shapes(r).map((s) => s.fill);
+    // A circle in a box that is not square is no shape of the model: the CSS is the fill. The
+    // browser computed the theme's colour to numbers, and it is the theme's variable again.
+    expect(themed).toEqual({
+      kind: 'css',
+      value:
+        'radial-gradient(circle, color-mix(in srgb, var(--color-primary) 35%, transparent) 0%, rgba(0, 0, 0, 0) 70%) 0% 0% / auto repeat',
+    });
+    // The same blue written out is the slide's own, as it is in a fill of the model.
+    expect(literal).toEqual({
+      kind: 'css',
+      value:
+        'radial-gradient(circle, rgba(47, 91, 234, 0.35) 0%, rgba(0, 0, 0, 0) 70%) 0% 0% / auto repeat',
+    });
+    // Every layer, and the colour under them.
+    expect(stacked).toEqual({
+      kind: 'css',
+      value:
+        'radial-gradient(circle at 20% 30%, var(--color-accent), rgba(0, 0, 0, 0) 60%) 0% 0% / auto repeat, none 0% 0% / auto repeat, var(--color-surface)',
+    });
+  });
 });

@@ -11,7 +11,9 @@ import {
   Archetype,
   ChartElement,
   createElement,
+  mapCssColors,
   PlaceholderRole,
+  themeColorCss,
   type Background,
   type Deck,
   type Element as ModelElement,
@@ -513,19 +515,25 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     const sizes = splitTopLevel(cs.backgroundSize, ',');
     const positions = splitTopLevel(cs.backgroundPosition, ',');
     const repeats = splitTopLevel(cs.backgroundRepeat, ',');
+    // The browser computed the colours: a glow of `var(--color-primary)` is numbers by now, and
+    // kept so it would stay in this theme's colour on any other. A colour the source took from
+    // the theme is written as the theme's variable again, as a model fill gets a token.
+    const themed = (css: string, property: string) =>
+      mapCssColors(css, (_, text) => {
+        const read = color(text, el, property);
+        return 'token' in read ? themeColorCss(read.token, read.alpha ?? 1) : undefined;
+      });
     const value = layers
       .map((layer, i) => {
         const position = positions[i % positions.length]!;
         const size = sizes[i % sizes.length]!;
         const repeat = repeats[i % repeats.length]!;
-        return `${layer} ${position} / ${size} ${repeat}`;
+        return `${themed(layer, 'background-image')} ${position} / ${size} ${repeat}`;
       })
       .join(', ');
+    const ground = hasColor ? themed(cs.backgroundColor, 'background-color') : undefined;
     return {
-      fill: {
-        kind: 'css',
-        value: scalePx(hasColor ? `${value}, ${cs.backgroundColor}` : value, kl),
-      },
+      fill: { kind: 'css', value: scalePx(ground ? `${value}, ${ground}` : value, kl) },
     };
   };
 

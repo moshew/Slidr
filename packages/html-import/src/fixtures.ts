@@ -307,6 +307,21 @@ export const themeUse = `
   <div class="box half"></div>
 </div>`;
 
+/** Glows the model has no shape for: in the theme's colours, and in the same colour written out. */
+export const themeGlows = `
+<style>
+  .slide { ${SLIDE}; background: var(--color-bg); }
+  .glow { position: absolute; width: 600px; height: 400px; }
+  .themed { left: 100px; top: 100px; background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 35%, transparent) 0%, transparent 70%); }
+  .literal { left: 800px; top: 100px; background: radial-gradient(circle, rgba(47, 91, 234, 0.35) 0%, transparent 70%); }
+  .stacked { left: 100px; top: 600px; background: radial-gradient(circle at 20% 30%, var(--color-accent), transparent 60%), var(--color-surface); }
+</style>
+<div class="slide">
+  <div class="glow themed"></div>
+  <div class="glow literal"></div>
+  <div class="glow stacked"></div>
+</div>`;
+
 /** CSS the model has no fields for: it has to arrive in `css`, and the keyframes on the slide. */
 export const passthrough = `
 <style>
