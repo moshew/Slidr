@@ -4,9 +4,10 @@
  * And going on with one that was cut (IMP-09): the page again, from the source the deck keeps,
  * and a message that asks the agent to continue.
  */
+import { createDeck, createSlide, type Deck } from '@slidr/model';
 import type { ChatThread } from '../agent/agentService';
 import { aiOf } from '../ai/runtime';
-import { i18n } from '../i18n';
+import { currentLanguage, i18n } from '../i18n';
 import type { Editor } from '../shell';
 import { newDocument } from '../shell/fileActions';
 import {
@@ -18,14 +19,28 @@ import {
   type ImportSource,
 } from './session';
 
-/** The deck nobody has put anything into: what a new document starts as. */
+/**
+ * The deck an import fills: one empty slide and nothing of a template. The slides of the file
+ * bring their own design, and the agent reads the theme off the file (SPEC 13.3 step 6).
+ */
+function plainDeck(): Deck {
+  return createDeck({ lang: currentLanguage(), slides: [createSlide()] });
+}
+
+/**
+ * The open deck is such a deck, and nobody has put anything into it. A deck that started on the
+ * user's default template (THM-08) is not: its first slide holds the placeholders of a layout,
+ * which the first imported slide would not take the place of.
+ */
 function blank(editor: Editor): boolean {
-  const { slides } = editor.bus.deck;
+  const { slides, layouts } = editor.bus.deck;
   const only = slides[0];
   return (
     slides.length === 1 &&
     only !== undefined &&
     only.elements.length === 0 &&
+    only.layoutId === undefined &&
+    layouts.length === 0 &&
     !editor.file.getState().dirty &&
     editor.file.getState().path === null
   );
@@ -71,9 +86,13 @@ export async function startImport(
   options: { confirm: boolean },
 ): Promise<boolean> {
   if (!blank(editor)) {
-    // Asks about unsaved changes first, like File > New.
-    await newDocument(editor);
-    if (!blank(editor)) return false;
+    // Asks about unsaved changes first, like File > New. The new document is a plain one,
+    // whatever new decks otherwise start as: with a default template set, the deck File > New
+    // makes is never blank, and an import that waited for a blank one never started.
+    const deck = plainDeck();
+    if (!(await newDocument(editor, deck))) return false;
+    // The user was told when the new document could not be made; the one they had stays.
+    if (editor.bus.deck.id !== deck.id) return false;
   }
   const file = await openImport(editor, source);
   const t = (key: string) => i18n.t(key, { ns: 'import', file });
