@@ -228,11 +228,25 @@ function toPlain(value: unknown, depth: number, seen: WeakSet<object>): unknown 
     if (items.length > MAX_ITEMS) plain.push(`… ${items.length - MAX_ITEMS} more`);
     return plain;
   }
-  if (Object.prototype.toString.call(value) === '[object Map]') {
+  // The kind by its tag: a value of the file's page is not an instance of this page's classes.
+  const kind = Object.prototype.toString.call(value);
+  if (kind === '[object Map]') {
     return toPlain(Object.fromEntries(value as Map<unknown, unknown>), depth, seen);
   }
-  if (typeof object.width === 'number' && typeof object.toJSON === 'function') {
-    return toPlain((object.toJSON as () => unknown)(), depth + 1, seen);
+  // An error the code caught and handed back reads as it would had it been thrown. Its name
+  // and its message are not among the keys an object lists.
+  if (kind === '[object Error]' || kind === '[object DOMException]') return thrown(value);
+  // As JSON has it: a date is its text, an address its text, a rectangle its numbers.
+  if (typeof object.toJSON === 'function') {
+    let said: unknown;
+    try {
+      said = (object.toJSON as () => unknown)();
+    } catch {
+      said = undefined;
+    }
+    if (said !== null && said !== undefined && said !== value) {
+      return toPlain(said, depth + 1, seen);
+    }
   }
   const out: Record<string, unknown> = {};
   let count = 0;
@@ -245,6 +259,19 @@ function toPlain(value: unknown, depth: number, seen: WeakSet<object>): unknown 
       out[key] = toPlain(object[key], depth + 1, seen);
     } catch {
       out[key] = '[unreadable]';
+    }
+  }
+  // An object with no key to list (a pattern, a number in a wrapper, a promise nobody awaited)
+  // would read as `{}`, which tells the agent nothing: it is what it says of itself instead.
+  if (count === 0) {
+    try {
+      const write = (object as { toString?: unknown }).toString;
+      const said = typeof write === 'function' ? (write as () => unknown).call(value) : undefined;
+      if (typeof said === 'string' && said !== '[object Object]') {
+        return toPlain(said, depth + 1, seen);
+      }
+    } catch {
+      // An object that cannot be written out is an empty one to JSON too.
     }
   }
   return out;

@@ -119,6 +119,40 @@ describe('an imported file in its frame', () => {
     await expect(imported.evaluate('return (')).rejects.toThrow(/The code does not parse/);
   });
 
+  it('says what a returned value is when it has no keys to list', async () => {
+    const imported = importPage(DECK);
+    // The agent that writes `catch (e) { return e }` to learn why its code failed is told.
+    const caught = await imported.evaluate('try { null.x } catch (e) { return e }');
+    expect(caught).toMatch(/^"TypeError: .*null/);
+    expect(
+      JSON.parse(
+        await imported.evaluate(
+          'return { failed: new RangeError("too far"), own: Object.assign(new Error("with a code"), { code: 7 }), dom: (() => { try { document.querySelector("(") } catch (e) { return e } })() }',
+        ),
+      ),
+    ).toEqual({
+      failed: 'RangeError: too far',
+      own: 'Error: with a code',
+      dom: expect.stringMatching(/^SyntaxError: /) as string,
+    });
+    expect(await imported.evaluate('return new Date(0)')).toBe('"1970-01-01T00:00:00.000Z"');
+    expect(await imported.evaluate('return new Date("no day")')).toBe('"Invalid Date"');
+    expect(await imported.evaluate('return /sl[i1]de-\\d+/gi')).toBe('"/sl[i1]de-\\\\d+/gi"');
+    expect(await imported.evaluate('return [new Number(5), Promise.resolve(1)]')).toBe(
+      '["5","[object Promise]"]',
+    );
+    // What JSON itself knows how to write is written its way; a plain record stays a record.
+    expect(await imported.evaluate('return new URL("https://example.com/a?b=1")')).toBe(
+      '"https://example.com/a?b=1"',
+    );
+    expect(
+      JSON.parse(await imported.evaluate('return document.body.getBoundingClientRect()')),
+    ).toMatchObject({ x: 0, y: 0, width: 1920 });
+    expect(await imported.evaluate('return [{}, { name: "Dana", message: "hello" }]')).toBe(
+      '[{},{"name":"Dana","message":"hello"}]',
+    );
+  });
+
   it('resizes the page the file sees', async () => {
     const imported = importPage(DECK);
     expect(await imported.setViewport({ width: 1280, height: 720 })).toBe(
