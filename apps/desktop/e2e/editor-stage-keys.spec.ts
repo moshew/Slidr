@@ -149,6 +149,77 @@ test('several elements are sized and turned together from the keyboard', async (
   expect(await rotations(page, ['e_a', 'e_b'])).toEqual([15, 15]);
 });
 
+test('several elements turn around one centre for all the presses, and back to where they were', async ({
+  page,
+}) => {
+  await select(page, ['e_a', 'e_c']);
+  await focusStage(page);
+  const before = await frames(page, ['e_a', 'e_c']);
+  // There and back, also with a pause between the two, which makes them two undo steps.
+  await page.keyboard.press('Alt+Shift+ArrowRight');
+  await page.keyboard.press('Alt+Shift+ArrowRight');
+  await page.waitForTimeout(900);
+  await page.keyboard.press('Alt+Shift+ArrowLeft');
+  await page.keyboard.press('Alt+Shift+ArrowLeft');
+  expect(await frames(page, ['e_a', 'e_c'])).toEqual(before);
+  expect(await rotations(page, ['e_a', 'e_c'])).toEqual([0, 0]);
+
+  // A quarter turn in six presses is the quarter turn of the handle: each centre goes a
+  // quarter of the way around the centre of the box that was around them.
+  for (let i = 0; i < 6; i++) await page.keyboard.press('Alt+Shift+ArrowRight');
+  const centre = { x: (100 + 1000) / 2, y: (100 + 900) / 2 };
+  const turned = await frames(page, ['e_a', 'e_c']);
+  const centreOf = (f: { x: number; y: number; w: number; h: number }) => ({
+    x: f.x + f.w / 2,
+    y: f.y + f.h / 2,
+  });
+  const quarter = (p: { x: number; y: number }) => ({
+    x: centre.x - (p.y - centre.y),
+    y: centre.y + (p.x - centre.x),
+  });
+  for (const id of ['e_a', 'e_c'] as const) {
+    const want = quarter(centreOf(before[id]!));
+    const got = centreOf(turned[id]!);
+    expect(got.x).toBeCloseTo(want.x, 2);
+    expect(got.y).toBeCloseTo(want.y, 2);
+  }
+  expect(await rotations(page, ['e_a', 'e_c'])).toEqual([90, 90]);
+  // And a full turn brings them home.
+  for (let i = 0; i < 18; i++) await page.keyboard.press('Alt+Shift+ArrowRight');
+  expect(await frames(page, ['e_a', 'e_c'])).toEqual(before);
+
+  // A move in between starts the turn again, around where they are now.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Alt+Shift+ArrowRight');
+  await page.keyboard.press('Alt+Shift+ArrowLeft');
+  const moved = await frames(page, ['e_a', 'e_c']);
+  expect(moved.e_a).toEqual({ ...before.e_a!, x: before.e_a!.x + 1 });
+  expect(moved.e_c).toEqual({ ...before.e_c!, x: before.e_c!.x + 1 });
+});
+
+test('children of a group turn together around one centre too, and the group stays around them', async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.group',
+      slideId: editor.selection.getState().currentSlideId!,
+      elementIds: ['e_a', 'e_b', 'e_c'],
+      groupId: 'e_group',
+    });
+  });
+  await select(page, ['e_a', 'e_c']);
+  await focusStage(page);
+  const before = await frames(page, ['e_group', 'e_a', 'e_b', 'e_c']);
+  await page.keyboard.press('Alt+Shift+ArrowRight');
+  await page.keyboard.press('Alt+Shift+ArrowRight');
+  expect(await frames(page, ['e_group', 'e_a', 'e_b', 'e_c'])).not.toEqual(before);
+  await page.keyboard.press('Alt+Shift+ArrowLeft');
+  await page.keyboard.press('Alt+Shift+ArrowLeft');
+  expect(await frames(page, ['e_group', 'e_a', 'e_b', 'e_c'])).toEqual(before);
+});
+
 test('a group stays around its children when one of them is aligned from a menu', async ({
   page,
 }) => {

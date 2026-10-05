@@ -1239,6 +1239,17 @@ export function Stage({
   // ---- Keyboard ----
 
   const nudge = useRef<Burst | null>(null);
+  /**
+   * The turn of several elements that the keys are in the middle of: the elements as the first
+   * press found them, the centre they turn around, how far they have turned, and where the last
+   * press left them.
+   */
+  const keyTurn = useRef<{
+    start: SlideElement[];
+    center: Point;
+    angle: number;
+    left: Map<string, { x: number; y: number; rotation: number }>;
+  } | null>(null);
 
   /**
    * Turning and sizing with the keyboard (UI-06), for what the handles do with the pointer. Alt
@@ -1256,12 +1267,67 @@ export function Stage({
     if (what === 'rotate') {
       if (dir.x === 0) return;
       const by = dir.x * (far ? 15 : 1);
-      const patches = one
-        ? new Map<string, Patch>([
-            [one.element.id, { rotation: tidy(normalizeAngle(one.element.rotation + by)) }],
-          ])
-        : rotateTogether(elements, { x: box.x + box.w / 2, y: box.y + box.h / 2 }, by);
-      commit(txId, 'Rotate', path, patches);
+      if (one) {
+        const rotation = tidy(normalizeAngle(one.element.rotation + by));
+        commit(txId, 'Rotate', path, new Map<string, Patch>([[one.element.id, { rotation }]]));
+        return;
+      }
+      // Several elements turn around the centre of the box around them. That box changes as
+      // they turn, so its centre is taken once: for as long as the elements are where the last
+      // press left them, the next press turns what the first one found by the whole angle so
+      // far, around the same centre, as the handle does through a drag. Turning back by the
+      // same presses then brings every element back to where it was.
+      // The elements as the deck has them now: presses can come faster than the Stage draws.
+      const live = liveIndex();
+      const now = elements.map((el) => live.get(el.id)?.element ?? el);
+      const last = keyTurn.current;
+      const going =
+        last !== null &&
+        last.start.length === now.length &&
+        now.every((el) => {
+          const left = last.left.get(el.id);
+          return (
+            left !== undefined &&
+            left.rotation === el.rotation &&
+            left.x === el.frame.x &&
+            left.y === el.frame.y
+          );
+        });
+      const around = unionBounds(now.map((el) => rotatedBounds(el.frame, el.rotation)));
+      const turn = going
+        ? { start: last.start, center: last.center, angle: last.angle + by }
+        : {
+            start: now,
+            center: { x: around.x + around.w / 2, y: around.y + around.h / 2 },
+            angle: by,
+          };
+      const turned = rotateTogether(turn.start, turn.center, turn.angle);
+      commit(txId, 'Rotate', path, turned);
+      // Inside a group the fit of the group to its children moves all of them by one distance
+      // in the group's axes: what the turn is measured from moves with them.
+      const after = liveIndex();
+      const head = turn.start[0];
+      const wanted = head ? turned.get(head.id)?.frame : undefined;
+      const written = head ? after.get(head.id)?.element.frame : undefined;
+      const dx = wanted && written ? written.x - wanted.x : 0;
+      const dy = wanted && written ? written.y - wanted.y : 0;
+      keyTurn.current = {
+        start:
+          dx === 0 && dy === 0
+            ? turn.start
+            : turn.start.map((el) => ({
+                ...el,
+                frame: { ...el.frame, x: el.frame.x + dx, y: el.frame.y + dy },
+              })),
+        center: { x: turn.center.x + dx, y: turn.center.y + dy },
+        angle: turn.angle,
+        left: new Map(
+          turn.start.flatMap((el) => {
+            const at = after.get(el.id)?.element;
+            return at ? [[el.id, { x: at.frame.x, y: at.frame.y, rotation: at.rotation }]] : [];
+          }),
+        ),
+      };
       return;
     }
     const step = far ? 10 : 1;
