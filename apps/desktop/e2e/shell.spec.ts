@@ -58,7 +58,8 @@ test('the AI area is on the right in Hebrew and moves left in English, live', as
   await page.getByRole('radio', { name: 'English' }).click();
 
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
-  await expect(page.getByRole('button', { name: 'File' })).toBeVisible();
+  // By its whole name: the settings screen, which is open, has "Add a font file" in it too.
+  await expect(page.getByRole('button', { name: 'File', exact: true })).toBeVisible();
   await expect(page.getByTestId('status-slide')).toHaveText('Slide 1 of 1');
   bar = await box(page, 'activity-bar');
   panel = await box(page, 'tool-panel');
@@ -69,7 +70,7 @@ test('the AI area is on the right in Hebrew and moves left in English, live', as
 
   await page.getByRole('radio', { name: 'עברית' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.getByRole('button', { name: 'קובץ' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'קובץ', exact: true })).toBeVisible();
   expect((await box(page, 'activity-bar')).x).toBe(1920 - 56);
 });
 
