@@ -16,13 +16,24 @@ export interface Turn {
   readonly txId: string;
   /** Shown in the history list. */
   readonly label?: string;
+  /**
+   * Goes off when the turn is over: it ended, the user stopped it, or its session went. From
+   * then on its calls write nothing, also one that was already running (the app is never told
+   * that a harness gave a call up). Absent for a turn that nobody ends.
+   */
+  readonly ended?: EndSignal;
+}
+
+/** Goes off once and stays off. (An `AbortSignal` is one.) */
+export interface EndSignal {
+  readonly aborted: boolean;
 }
 
 /** Starts a turn: a fresh transaction id, and the turn id (default: the same) in the actor. */
 export function startTurn(
   sessionId: string,
   scope: SessionScope,
-  options: { turnId?: string; label?: string } = {},
+  options: { turnId?: string; label?: string; ended?: EndSignal } = {},
 ): Turn {
   const txId = newId('tx');
   return {
@@ -31,6 +42,7 @@ export function startTurn(
     actor: agentActor(sessionId, options.turnId ?? txId),
     txId,
     ...(options.label ? { label: options.label } : {}),
+    ...(options.ended ? { ended: options.ended } : {}),
   };
 }
 
@@ -54,8 +66,15 @@ export interface ToolContext {
   readonly turn: Turn;
   readonly services: Services;
   /**
+   * The call was given up: its turn is over, or the document it was started on is no longer the
+   * open one. `write` refuses from then on, and `deck` may by then be another document's. A tool
+   * that works in pieces looks before each piece.
+   */
+  readonly abandoned: boolean;
+  /**
    * Applies commands as one atomic change, inside the turn's transaction. The scope guard
-   * checks every command first; nothing is applied if one is refused.
+   * checks every command first; nothing is applied if one is refused, or if the call was
+   * abandoned.
    */
   write(commands: readonly Command[]): WriteSummary;
 }

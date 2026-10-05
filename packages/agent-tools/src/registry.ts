@@ -151,6 +151,10 @@ function failure(code: ToolErrorCode, message: string): ToolResult {
   return { ok: false, error: { code, message } };
 }
 
+/** What a call is told when its turn can no longer write. Mostly nobody is left to read it. */
+const TURN_OVER =
+  'the turn this call belongs to is over (it was stopped, or another document was opened).';
+
 /** "deck sessions", "deck and slide sessions", "deck, slide and object sessions". */
 function scopeNames(scopes: readonly ScopeKind[]): string {
   const names =
@@ -167,6 +171,15 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
   const tools = deckTools.filter((tool) => !tool.requires || services[tool.requires]);
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
   const schemas = new Map<string, JsonSchema>();
+
+  // A turn belongs to the document it began on. The bus outlives its documents (File > New and
+  // Open put another deck into it), and a deck's id does not tell them apart: the same file can
+  // be opened again. So the documents are counted, and a turn keeps the number of its own.
+  let opened = 0;
+  bus.subscribe((event) => {
+    if (event.kind === 'reset') opened++;
+  });
+  const homes = new WeakMap<Turn, number>();
 
   function list(scope?: ScopeKind): ToolListing[] {
     return tools
@@ -209,6 +222,10 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
         `Invalid input for ${name}:\n${formatZodError(parsed.error)}`,
       );
     }
+    const home = homes.get(turn) ?? opened;
+    homes.set(turn, home);
+    const abandoned = () => home !== opened || turn.ended?.aborted === true;
+    if (abandoned()) return failure('invalid_state', `${name} was not run: ${TURN_OVER}`);
 
     // All writes of the call, so the result reports them together.
     let before: Deck | undefined;
@@ -220,8 +237,16 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
       },
       turn,
       services,
+      get abandoned() {
+        return abandoned();
+      },
       write(commands) {
         if (!tool.writes) throw new Error(`${name} is declared read-only but tried to write.`);
+        // A call that waited on a service (a conversion, an image) comes back to a turn that
+        // was stopped, or to another document: what it made is nobody's any more.
+        if (abandoned()) {
+          throw new DeckApiError('invalid_state', `Nothing was written: ${TURN_OVER}`);
+        }
         const start = bus.deck;
         if (commands.length === 0) return summarizeWrite(start, start, NOTHING);
         const refusal = checkWrite(turn.scope, commands, start);
@@ -250,7 +275,7 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
         // An import session brings in the user's own design (SPEC 13.3): what it writes is not
         // judged as it goes. slide_lint and deck_lint are there to ask.
         const judged = tool.lint !== false && turn.scope.kind !== 'import';
-        if (services.lint && judged && summary.slides.length > 0) {
+        if (services.lint && judged && summary.slides.length > 0 && !abandoned()) {
           const live = new Set(bus.deck.slides.map((s) => s.id));
           const slides = summary.slides.filter((id) => live.has(id));
           try {

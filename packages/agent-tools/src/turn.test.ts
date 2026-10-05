@@ -1,6 +1,14 @@
-import { ChangeDigest, findElementInDeck, updateElement, type Deck } from '@slidr/model';
+import {
+  ChangeDigest,
+  createDeck,
+  createSlide,
+  findElementInDeck,
+  updateElement,
+  type Deck,
+} from '@slidr/model';
 import { allElementsDeck, hebrewDeck } from '@slidr/model/fixtures';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { ConversionService, HtmlImportService } from './services';
 import { failed, ok, setup } from './testing';
 import { startTurn } from './tool';
 
@@ -103,5 +111,130 @@ describe('a turn is one transaction (D8)', () => {
     await ok(call('element_update', { elementId: 'e_text', patch: { opacity: 0.9 } }));
     bus.dispatch(updateElement('s_all', 'e_image', { opacity: 0.3 }));
     expect(digest.take(turn.sessionId).elements).toEqual(['e_image']);
+  });
+});
+
+describe('a turn belongs to the document it began on, and has an end', () => {
+  /** A conversion that takes as long as the test says: the capture window at work. */
+  function slowConversion() {
+    let release!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    const conversion: ConversionService = {
+      async htmlToSlide() {
+        calls++;
+        await waiting;
+        return { slide: createSlide({ id: 's_made' }), assets: [], editability: 1, notes: [] };
+      },
+      convertElement: () => Promise.reject(new Error('not in this test')),
+    };
+    return { conversion, release, calls: () => calls };
+  }
+  const anotherFile = () => createDeck({ slides: [createSlide({ id: 's_other' })] });
+
+  it('a call that was running when another document was opened writes nothing into it', async () => {
+    const slow = slowConversion();
+    const { bus, call } = setup(hebrewDeck(), { conversion: slow.conversion });
+    const pending = call('slide_create_from_html', { html: '<section>hello</section>' });
+    await vi.waitFor(() => expect(slow.calls()).toBe(1));
+
+    // File > New or Open: the bus now holds another deck.
+    const other = anotherFile();
+    bus.reset(other);
+    slow.release();
+
+    const refused = await failed(pending);
+    expect(refused.code).toBe('invalid_state');
+    expect(refused.message).toMatch(/^Nothing was written: the turn .* is over/);
+    // The other file is exactly what was opened: no slide, and no step of a turn it never had.
+    expect(bus.deck).toBe(other);
+    expect(bus.undoStack).toEqual([]);
+  });
+
+  it('stays with its document: a later call of the turn is not run on the next one', async () => {
+    const harness = setup(hebrewDeck());
+    const { bus, call } = harness;
+    await ok(call('slide_update', { slideId: 's_he_hero', name: 'one' }));
+    // The same file opened again: the same ids, and still another document.
+    const again = hebrewDeck();
+    bus.reset(again);
+    const write = await failed(call('slide_update', { slideId: 's_he_hero', name: 'two' }));
+    expect(write.message).toMatch(/^slide_update was not run: the turn .* is over/);
+    expect((await failed(call('deck_get_outline'))).code).toBe('invalid_state');
+    expect(bus.deck).toBe(again);
+    // A turn that begins on the new document is that document's.
+    harness.nextTurn();
+    await ok(call('slide_update', { slideId: 's_he_hero', name: 'two' }));
+    expect(bus.deck.slides[0]!.name).toBe('two');
+  });
+
+  it('writes nothing once it has ended, also from a call that was already running', async () => {
+    const slow = slowConversion();
+    const { bus, api } = setup(hebrewDeck(), { conversion: slow.conversion });
+    const ended = { aborted: false };
+    const turn = startTurn('sess', { kind: 'deck' }, { ended });
+    await ok(api.call(turn, 'slide_update', { slideId: 's_he_hero', name: 'one' }));
+    const pending = api.call(turn, 'slide_create_from_html', { html: '<section>hi</section>' });
+    await vi.waitFor(() => expect(slow.calls()).toBe(1));
+    const before = bus.deck;
+
+    // The user stops the turn; the harness gives the call up and the app goes on converting.
+    ended.aborted = true;
+    slow.release();
+
+    expect((await failed(pending)).message).toMatch(/^Nothing was written/);
+    expect(bus.deck).toBe(before);
+    // What the turn wrote while it ran is still its one undo step.
+    expect(bus.undoStack.map((entry) => entry.commands)).toEqual([['slide.update']]);
+    expect((await failed(api.call(turn, 'deck_get_outline', {}))).message).toMatch(/was not run/);
+  });
+
+  it('tells a tool that works in pieces that it was given up', async () => {
+    let release!: () => void;
+    const captured = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let captures = 0;
+    const importer: HtmlImportService = {
+      inspect: () => Promise.resolve(''),
+      evaluate: () => Promise.resolve(''),
+      screenshot: () => Promise.reject(new Error('not in this test')),
+      setViewport: () => Promise.resolve(''),
+      capture: async () => {
+        captures++;
+        await captured;
+        return {
+          slide: createSlide({ id: `s_captured_${captures}` }),
+          assets: [],
+          editability: 1,
+          textEditability: 1,
+          faithful: true,
+          exact: true,
+          wholeSlideHtml: false,
+          source: { width: 1920, height: 1080 },
+          notes: [],
+        };
+      },
+    };
+    const scope = { kind: 'import', file: 'deck.html' } as const;
+    const { bus, api } = setup(hebrewDeck(), { importer }, scope);
+    const ended = { aborted: false };
+    const turn = startTurn('sess', scope, { ended });
+    const pending = api.call(turn, 'import_capture', {
+      slides: [{ selector: '#one' }, { selector: '#two' }, { selector: '#three' }],
+    });
+    await vi.waitFor(() => expect(captures).toBe(1));
+    const before = bus.deck;
+    ended.aborted = true;
+    release();
+
+    // An importer that has no signal of its own stops all the same: the slide the page was
+    // working on stays out, and no further one is started.
+    const data = await ok(pending);
+    expect(data.notCaptured).toMatch(/The turn was stopped: the last 3 of this call/);
+    expect(captures).toBe(1);
+    expect(bus.deck).toBe(before);
   });
 });

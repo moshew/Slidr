@@ -350,6 +350,13 @@ interface Run {
   label?: string;
   /** Every write of the run, follow-up rounds included, is this one transaction (D8). */
   turn: Turn | null;
+  /**
+   * Goes off when the run is over, or the user asked it to stop: from then on its turn writes
+   * nothing, also from a tool call that was already running in the app. A harness that is
+   * stopped gives its call up and tells nobody (ADR-022), and a document that replaces the open
+   * one finds the call still at work.
+   */
+  over: AbortController;
   watch: TurnWatch;
   /** Follow-ups the design check has sent. */
   round: number;
@@ -447,6 +454,8 @@ export class ChatThread {
   reset(): void {
     const session = this.#session;
     this.#session = null;
+    // A call of the old deck's turn that is still at work must not write into the new one.
+    this.#run?.over.abort();
     this.#run = null;
     this.#heldWatch = null;
     this.#record = { scope: this.scope };
@@ -582,6 +591,8 @@ export class ChatThread {
     const run = this.#run;
     if (!run || run.stopRequested) return;
     run.stopRequested = true;
+    // From here on nothing is written for the turn, whatever its tool calls are still doing.
+    run.over.abort();
     this.store.setState({ stopping: true });
     this.#options.onInterrupt?.();
     const session = this.#session;
@@ -596,6 +607,7 @@ export class ChatThread {
   async close(): Promise<void> {
     const session = this.#session;
     this.#session = null;
+    this.#run?.over.abort();
     this.#run = null;
     this.#heldWatch = null;
     if (session) await this.#endSession(session);
@@ -633,6 +645,9 @@ export class ChatThread {
     const writes = api.tools.find((tool) => tool.name === name)?.writes ?? false;
     const before = run.watch.mark();
     const result = await api.call(run.turn, name, input);
+    // The run ended while the call was at work (it was stopped, or another deck was opened):
+    // the answer has no chip to go to, and the chat may be showing another run by now.
+    if (this.#run !== run) return result;
     // A read shows the slide as it was when asked; a write is rendered after it was made.
     run.watch.noteResult(result, writes ? run.watch.mark() : before);
     this.#pairResult(name, input, result);
@@ -693,6 +708,7 @@ export class ChatThread {
       ...(label ? { label } : {}),
       ...(attached ? { attached } : {}),
       turn: null,
+      over: new AbortController(),
       watch,
       round,
       wrote: false,
@@ -742,7 +758,10 @@ export class ChatThread {
         return;
       }
       const label = run.label ?? run.message.split('\n')[0]?.slice(0, 60);
-      run.turn ??= startTurn(session.sessionKey, this.scope, label ? { label } : {});
+      run.turn ??= startTurn(session.sessionKey, this.scope, {
+        ...(label ? { label } : {}),
+        ended: run.over.signal,
+      });
       this.#registerAssets(run);
       // A brief that fails is a turn without one: the agent reads what it needs with its tools.
       const brief = await this.#options
@@ -1133,6 +1152,8 @@ export class ChatThread {
   #finish(run: Run, outcome: TurnOutcome, remaining?: GateReport): void {
     if (this.#run !== run) return;
     this.#run = null;
+    // What the entry says of the turn is final: a call that is still at work adds nothing to it.
+    run.over.abort();
     this.#heldWatch = remaining ? { entryId: run.entryId, watch: run.watch } : null;
     this.#patchEntry(run.entryId, (entry) => ({
       ...entry,

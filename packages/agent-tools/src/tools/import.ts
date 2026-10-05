@@ -227,7 +227,8 @@ export const importCapture = defineTool({
   requires: 'importer',
   async run({ slides, total }, ctx) {
     const importer = ctx.services.importer!;
-    // Taken before anything else: it is this call's turn that it speaks of.
+    // Taken before anything else: it is this call's turn that it speaks of. The Deck API says
+    // the same of every call (`ctx.abandoned`: the turn is over, or the document is another).
     const turnOver = importer.interruption?.();
     if (total !== undefined) importer.planned?.(total);
     const started = Date.now();
@@ -235,7 +236,7 @@ export const importCapture = defineTool({
     let left = 0;
     let stopped = 0;
     for (const [index, request] of slides.entries()) {
-      if (turnOver?.aborted) {
+      if (turnOver?.aborted || ctx.abandoned) {
         stopped = slides.length - index;
         break;
       }
@@ -252,7 +253,7 @@ export const importCapture = defineTool({
         const captured = await importer.capture(ctx.deck, where);
         // The turn was stopped, or its session ended, while the page worked on this slide: it
         // stays out of the deck, which may by now be another document's.
-        if (turnOver?.aborted) {
+        if (turnOver?.aborted || ctx.abandoned) {
           stopped = slides.length - index;
           break;
         }

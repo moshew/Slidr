@@ -13,6 +13,7 @@ export {
   DeckApiError,
   defineTool,
   startTurn,
+  type EndSignal,
   type ToolContext,
   type ToolDef,
   type ToolError,

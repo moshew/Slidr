@@ -1,8 +1,10 @@
 import {
   createDeckApi,
   type CaptureService,
+  type ConversionService,
   type LintFinding,
   type LintService,
+  type Services,
 } from '@slidr/agent-tools';
 import { CommandBus, createDeck, createSlide, findSlide } from '@slidr/model';
 import { describe, expect, it, vi } from 'vitest';
@@ -133,6 +135,8 @@ function setup(
     wrap?: (client: AgentClient) => AgentClient;
     brief?: AgentServiceOptions['brief'];
     storeImage?: AgentServiceOptions['storeImage'];
+    /** Services of the Deck API beside the lint and the capture every test has. */
+    services?: Services;
   } = {},
 ) {
   const bus =
@@ -140,7 +144,7 @@ function setup(
     new CommandBus(createDeck({ slides: [createSlide({ id: 's_1', name: 'first' })] }), {
       validate: true,
     });
-  const api = createDeckApi(bus, { lint, capture });
+  const api = createDeckApi(bus, { lint, capture, ...options.services });
   const agent = createScriptedAgent(scripts, { speed: options.speed ?? 0 });
   const { client, seen } = recording(options.wrap ? options.wrap(agent.client) : agent.client);
   const transcripts = memoryTranscripts(options.files);
@@ -683,6 +687,129 @@ describe('stopping and failing', () => {
     expect(seen.starts).toHaveLength(2);
     expect(seen.starts[1]!.thread).toBe(`${bus.deck.id}/deck`);
     expect(seen.starts[1]!.thread).not.toBe(seen.starts[0]!.thread);
+  });
+});
+
+/** A conversion that takes as long as the test says: the capture window at work on a slide. */
+function slowConversion() {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let calls = 0;
+  const conversion: ConversionService = {
+    async htmlToSlide() {
+      calls++;
+      await gate;
+      return { slide: createSlide({ id: 's_made' }), assets: [], editability: 1, notes: [] };
+    },
+    convertElement: () => Promise.reject(new Error('not in this test')),
+  };
+  return {
+    conversion,
+    calls: () => calls,
+    /** Lets the conversion answer, and waits until the call that asked has dealt with it. */
+    async answer() {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    },
+  };
+}
+
+/**
+ * A harness as the real ones are: asked to stop, it ends the turn at once and gives up the tool
+ * call it was waiting for, and the app is not told (ADR-022). The scripted one waits for the
+ * call instead.
+ */
+function givingUp(client: AgentClient): AgentClient {
+  const events = new Map<string, (event: AgentEvent) => void>();
+  return {
+    ...client,
+    start: async (harnessId, thread, config, onEvent) => {
+      const id = await client.start(harnessId, thread, config, onEvent);
+      events.set(id, onEvent);
+      return id;
+    },
+    interrupt: (sessionId) => {
+      void client.interrupt(sessionId);
+      events.get(sessionId)?.({
+        type: 'turn_completed',
+        outcome: 'interrupted',
+        usage: NO_USAGE,
+        costUsd: 0,
+        durationMs: 5,
+      });
+      return Promise.resolve();
+    },
+  };
+}
+
+describe('a tool call that is still at work when its turn is over', () => {
+  const build = script([
+    call('t1', 'slide_create_from_html', { html: '<section>hello</section>' }),
+    done(),
+  ]);
+
+  it('writes nothing into the document that was opened in the meantime', async () => {
+    const slow = slowConversion();
+    const { bus, thread } = setup({ build }, { services: { conversion: slow.conversion } });
+    await thread.send('Build a slide');
+    await vi.waitFor(() => expect(slow.calls()).toBe(1));
+
+    // File > New or Open while the agent works: the bus holds another deck from here on.
+    const other = createDeck({ slides: [createSlide({ id: 's_other' })] });
+    bus.reset(other);
+    await slow.answer();
+
+    // The other file is as it was opened: no slide of the old deck's turn, and no undo step of
+    // an agent it never had a turn with.
+    expect(bus.deck).toBe(other);
+    expect(bus.undoStack).toEqual([]);
+  });
+
+  it('writes nothing once the user stopped the turn, so the entry says all the turn did', async () => {
+    const slow = slowConversion();
+    const { bus, thread } = setup(
+      { build },
+      { services: { conversion: slow.conversion }, wrap: givingUp },
+    );
+    await thread.send('Build a slide');
+    await vi.waitFor(() => expect(slow.calls()).toBe(1));
+    await thread.stop();
+    await settled(thread);
+    await slow.answer();
+
+    const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(entry.outcome).toBe('interrupted');
+    // The slide that was being converted did not arrive after the chat said "stopped", so a
+    // turn without "undo the changes" (CHT-U04) is a turn that changed nothing.
+    expect(bus.deck.slides.map((slide) => slide.id)).toEqual(['s_1']);
+    expect(entry.txId).toBeUndefined();
+    expect(bus.undoStack).toEqual([]);
+  });
+
+  it('keeps the undo of what the turn wrote before it was stopped', async () => {
+    const slow = slowConversion();
+    const both = script([
+      call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }),
+      call('t2', 'slide_create_from_html', { html: '<section>hello</section>' }),
+      done(),
+    ]);
+    const { bus, service, thread } = setup(
+      { both },
+      { services: { conversion: slow.conversion }, wrap: givingUp },
+    );
+    await thread.send('Rename, then build');
+    await vi.waitFor(() => expect(slow.calls()).toBe(1));
+    await thread.stop();
+    await settled(thread);
+    await slow.answer();
+
+    const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(bus.deck.slides.map((slide) => slide.name ?? slide.id)).toEqual(['Intro']);
+    expect(service.undoInfo(entry.txId!)).toEqual({ steps: 1, otherEdits: 0 });
+    expect(service.undoTurn(entry.txId!)).toBe(true);
+    expect(bus.deck.slides[0]!.name).toBe('first');
   });
 });
 
