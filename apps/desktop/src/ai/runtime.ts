@@ -34,7 +34,8 @@ import {
 } from '../agent/transcript';
 import { createCaptureService } from '../capture/deckCapture';
 import { createAppImages, type AppImages } from '../images/appImages';
-import { createImporter } from '../import/session';
+import { importBrief } from '../import/progress';
+import { createImporter, importState } from '../import/session';
 import { createLintService } from '../lint/deckLint';
 import { mediaServices } from '../media/services';
 import type { Editor } from '../shell';
@@ -246,6 +247,11 @@ function createAi(editor: Editor): AiRuntime {
    * that is the same object has not changed, and there is nothing new to tell. */
   const told = new Map<string, Slide>();
   const brief = async (scope: SessionScope, { fresh }: { fresh: boolean }) => {
+    if (scope.kind === 'import') {
+      // An import that was cut, or whose page was closed: what the session cannot know (IMP-09).
+      const text = importBrief(importState.getState(), editor.bus.deck, fresh);
+      return text ? { text, images: [] } : null;
+    }
     if (scope.kind !== 'slide' && scope.kind !== 'object') return null;
     const deck = editor.bus.deck;
     const slide = findSlide(deck, scope.slideId);

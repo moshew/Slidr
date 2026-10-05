@@ -23,8 +23,13 @@ const record = (over: Partial<SlideRecord> = {}): SlideRecord => ({
 
 const state = (records: Record<string, SlideRecord>, blocked: string[] = []): ImportState => ({
   file: 'deck.html',
+  deckId: 'd_1',
   open: true,
+  kept: true,
+  stale: false,
   startedAt: 0,
+  planned: null,
+  phase: 'idle',
   records,
   blocked,
 });

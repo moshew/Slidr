@@ -2,9 +2,12 @@ import { useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { isTauri } from '@tauri-apps/api/core';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import {
   CircleCheck,
+  CirclePause,
+  Download,
+  FileCode,
   FileInput,
   FilePlus,
   ListChecks,
@@ -28,17 +31,20 @@ import {
   Toggle,
 } from '@slidr/ui';
 import { Chat } from '../ai/Chat';
-import { aiOf } from '../ai/runtime';
 import { useDeck, useEditor } from '../shell';
-import { startImport } from './flow';
+import { continueImport, importThread, startImport } from './flow';
 import { buildReport, type ImportReport, type ReportRow } from './report';
-import { importState, type ImportSource } from './session';
+import { exportSource, importState, pageSource, type ImportSource } from './session';
 
 /*
  * The import panel (SPEC 13.3, IMP-03; WG9-T18): choosing a file, the agent's plan and its
  * approval, the slides coming in, the report, and the chat that goes on afterwards. The chat is
- * the AI panels' own component on an import session; the report is the app's.
+ * the AI panels' own component on an import session; the report is the app's. A deck that was
+ * imported shows its import here whenever it is open, and an import that was cut is continued
+ * from here (IMP-07, IMP-09).
  */
+
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const percent = (share: number) => Math.round(share * 100);
 
@@ -310,6 +316,70 @@ function Report({ report, onOpen }: { report: ImportReport; onOpen: (slideId: st
   );
 }
 
+/* ---------------------------------------------------------------- the kept source */
+
+/** The file the deck was imported from, which the deck file keeps (IMP-07). */
+function SourceFile({ file }: { file: string }) {
+  const { t } = useTranslation('import');
+  const editor = useEditor();
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const save = async () => {
+    setFailure(null);
+    try {
+      if (!isTauri()) {
+        // A plain browser has no save dialog of the app's: the page's own download stands in.
+        const source = pageSource(editor.bus.deck.id);
+        if (!source) return;
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(source);
+        link.download = source.name;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        return;
+      }
+      const path = await saveDialog({
+        defaultPath: file,
+        filters: [{ name: t('start.filter'), extensions: ['html', 'htm'] }],
+      });
+      if (path) await exportSource(editor, path);
+    } catch (error) {
+      setFailure(reason(error));
+    }
+  };
+
+  return (
+    <section
+      className="flex flex-col gap-1.5 border-t border-ui-line px-4 pt-3 pb-6"
+      data-testid="import-source"
+    >
+      <h3 className="flex items-center gap-2 text-sm font-medium text-ui-fg">
+        <Icon icon={FileCode} className="text-ui-fg-muted" />
+        {t('source.title')}
+      </h3>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div dir="auto" className="truncate text-start text-sm text-ui-fg">
+            {file}
+          </div>
+          <p className="text-xs leading-5 text-ui-fg-muted">{t('source.kept')}</p>
+        </div>
+        <Button variant="secondary" size="sm" icon={Download} onClick={() => void save()}>
+          {t('source.save')}
+        </Button>
+      </div>
+      {failure && (
+        <div role="alert" className="text-xs text-ui-danger-fg">
+          <div>{t('source.failed')}</div>
+          <div dir="ltr" className="text-start text-ui-fg-muted">
+            {failure}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /* ---------------------------------------------------------------- a session */
 
 function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
@@ -318,14 +388,31 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
   const state = useStore(importState);
   const deck = useDeck((s) => s.deck);
   const scope = useMemo(() => ({ kind: 'import', file }) as const, [file]);
-  const thread = useMemo(() => aiOf(editor).sessions.thread(scope), [editor, scope]);
+  const thread = useMemo(() => importThread(editor, file), [editor, file]);
   const chat = useStore(thread.store);
   const report = useMemo(() => buildReport(state, deck, chat.entries), [state, deck, chat.entries]);
   const captured = report.rows.length;
+  // Against the size of the agent's plan, once it has said it (IMP-11).
+  const count =
+    state.planned === null
+      ? t('captured', { n: captured })
+      : t('capturedOf', { n: captured, total: state.planned });
+  // The import was at work when its turn was stopped or failed, or when the app went (IMP-09).
+  const cut = state.phase === 'cut' && !chat.busy;
+  const [resuming, setResuming] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const resume = () => {
+    setResuming(true);
+    setFailure(null);
+    continueImport(editor)
+      .catch((error: unknown) => setFailure(reason(error)))
+      .finally(() => setResuming(false));
+  };
   // The agent has answered and nothing was captured yet: it showed its plan and is waiting.
   const last = chat.entries.at(-1);
   const waiting =
-    state.open &&
+    !cut &&
+    (state.open || state.kept) &&
     !chat.busy &&
     captured === 0 &&
     last?.type === 'assistant' &&
@@ -338,12 +425,12 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
         <span dir="auto" className="min-w-0 flex-1 truncate text-sm text-ui-fg">
           {file}
         </span>
-        {captured > 0 && (
+        {(captured > 0 || state.planned !== null) && (
           <span
             className="shrink-0 rounded-full bg-ui-accent-soft px-2 py-0.5 text-xs font-medium text-ui-accent-fg tabular-nums"
             data-testid="import-count"
           >
-            {t('captured', { n: captured })}
+            {count}
           </span>
         )}
         <IconButton
@@ -377,7 +464,34 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
               </Button>
             </div>
           )}
-          {!state.open && (
+          {cut && (
+            <div
+              role="status"
+              className="flex shrink-0 items-start gap-3 border-b border-ui-line bg-ui-accent-soft px-4 py-2.5"
+              data-testid="import-cut"
+            >
+              <Icon icon={CirclePause} className="mt-0.5 shrink-0 text-ui-warning-fg" />
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-ui-fg">{t('cut.title')}</div>
+                <div className="text-xs text-ui-fg-muted tabular-nums">
+                  {captured > 0 || state.planned !== null ? count : t('cut.none')}
+                </div>
+                {failure && (
+                  <div role="alert" className="mt-1 text-xs text-ui-danger-fg">
+                    <div>{t('cut.failed')}</div>
+                    <div dir="ltr" className="text-start text-ui-fg-muted">
+                      {failure}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Button variant="primary" size="sm" loading={resuming} onClick={resume}>
+                {t('cut.action')}
+              </Button>
+            </div>
+          )}
+          {/* A page that is closed is opened again when it is needed, if the deck keeps the file. */}
+          {!state.open && !state.kept && (
             <div className="shrink-0 border-b border-ui-line px-4 py-2 text-xs text-ui-fg-muted">
               {t('closed')}
             </div>
@@ -392,6 +506,7 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
               report={report}
               onOpen={(slideId) => editor.selection.getState().setCurrentSlide(slideId)}
             />
+            {state.kept && <SourceFile file={file} />}
           </ScrollArea>
         </TabsContent>
       </Tabs>

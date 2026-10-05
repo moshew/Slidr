@@ -1,0 +1,176 @@
+{
+  "description": "An HTML import of e2e/import-set/handwritten.html that is cut and continued (IMP-09), for the end-to-end tests of the import panel in a plain browser. Turn 1 shows a plan. Turn 2 captures the first three of six slides, saying how many the plan has (IMP-11), and then waits ten minutes before its usage runs out: at the pace of a real session the test stops it while it waits, and played at once it ends as a turn whose quota ran out. Turn 3 is the turn that goes on: it sets the viewport again, captures the three slides that are missing and names the deck. Turn 4 answers a follow-up. The last two turns are also the script \"import-rest\", which a session that begins by continuing plays from its start. The tool calls are carried out (\"call\": true) against the file running in the page. Hand-written, after the shape of real runs.",
+  "turns": [
+    [
+      { "delayMs": 100, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 100,
+        "type": "tool_call_started",
+        "id": "explore_1",
+        "name": "import_inspect",
+        "source": "app",
+        "input": { "depth": 3 },
+        "call": true
+      },
+      { "delayMs": 100, "type": "text_delta", "text": "מצאתי **6 שקפים** בעברית, " },
+      { "delayMs": 20, "type": "text_delta", "text": "בגודל עיצוב של 1280×720.\n\n" },
+      { "delayMs": 20, "type": "text_delta", "text": "להמשיך?" },
+      {
+        "delayMs": 40,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 20,
+          "outputTokens": 310,
+          "cacheReadTokens": 41200,
+          "cacheWriteTokens": 3100
+        },
+        "costUsd": 0.021,
+        "durationMs": 9400
+      }
+    ],
+    [
+      { "delayMs": 100, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 100,
+        "type": "tool_call_started",
+        "id": "capture_0",
+        "name": "import_set_viewport",
+        "source": "app",
+        "input": { "width": 1280, "height": 720 },
+        "call": true
+      },
+      {
+        "delayMs": 100,
+        "type": "tool_call_started",
+        "id": "capture_1",
+        "name": "import_capture",
+        "source": "app",
+        "input": {
+          "total": 6,
+          "slides": [
+            {
+              "js": "document.querySelectorAll('section')[0]",
+              "before": "counter.style.display = 'none'; show(0);",
+              "name": "פתיחה"
+            },
+            {
+              "js": "document.querySelectorAll('section')[1]",
+              "before": "show(1);",
+              "name": "למה גינה קהילתית"
+            },
+            {
+              "js": "document.querySelectorAll('section')[2]",
+              "before": "show(2);",
+              "name": "המגרש"
+            }
+          ]
+        },
+        "call": true
+      },
+      { "delayMs": 600000, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 0,
+        "type": "error",
+        "kind": "quota",
+        "message": "usage limit reached (five_hour); resets at 2026-10-05T18:00:00Z"
+      },
+      {
+        "delayMs": 20,
+        "type": "turn_completed",
+        "outcome": "failed",
+        "usage": {
+          "inputTokens": 18,
+          "outputTokens": 260,
+          "cacheReadTokens": 52000,
+          "cacheWriteTokens": 2400
+        },
+        "costUsd": 0.019,
+        "durationMs": 11200
+      }
+    ],
+    [
+      { "delayMs": 100, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 100,
+        "type": "tool_call_started",
+        "id": "rest_0",
+        "name": "import_set_viewport",
+        "source": "app",
+        "input": { "width": 1280, "height": 720 },
+        "call": true
+      },
+      {
+        "delayMs": 100,
+        "type": "tool_call_started",
+        "id": "rest_1",
+        "name": "import_capture",
+        "source": "app",
+        "input": {
+          "total": 6,
+          "slides": [
+            {
+              "js": "document.querySelectorAll('section')[3]",
+              "before": "counter.style.display = 'none'; show(3);",
+              "name": "ציטוט"
+            },
+            {
+              "js": "document.querySelectorAll('section')[4]",
+              "before": "show(4);",
+              "name": "תקציב ההקמה"
+            },
+            {
+              "js": "document.querySelectorAll('section')[5]",
+              "before": "show(5);",
+              "name": "מצטרפים"
+            }
+          ]
+        },
+        "call": true
+      },
+      {
+        "delayMs": 100,
+        "type": "tool_call_started",
+        "id": "rest_2",
+        "name": "deck_apply_ops",
+        "source": "app",
+        "input": {
+          "ops": [{ "type": "deck.setMeta", "patch": { "title": "גינה קהילתית ברחוב הדקל" } }]
+        },
+        "call": true
+      },
+      { "delayMs": 100, "type": "text_delta", "text": "שלושת השקפים שחסרו נלכדו: " },
+      { "delayMs": 20, "type": "text_delta", "text": "במצגת **6 שקפים**, בסדר של המקור." },
+      {
+        "delayMs": 40,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 22,
+          "outputTokens": 340,
+          "cacheReadTokens": 61000,
+          "cacheWriteTokens": 3300
+        },
+        "costUsd": 0.024,
+        "durationMs": 12800
+      }
+    ],
+    [
+      { "delayMs": 100, "type": "text_delta", "text": "השקפים כבר במצגת; " },
+      { "delayMs": 20, "type": "text_delta", "text": "אפשר להמשיך לערוך אותם כמו כל שקף אחר." },
+      {
+        "delayMs": 40,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 12,
+          "outputTokens": 60,
+          "cacheReadTokens": 70000,
+          "cacheWriteTokens": 300
+        },
+        "costUsd": 0.004,
+        "durationMs": 2100
+      }
+    ]
+  ]
+}
