@@ -274,19 +274,14 @@ export const elementConvert = defineTool({
       to,
     });
     // The deck may have changed while the conversion ran.
-    const { element, parent, index } = getElement(ctx.deck, elementId, slide.id);
+    const { element } = getElement(ctx.deck, elementId, slide.id);
     const elements =
       ctx.turn.scope.kind === 'object' ? [asOneElement(result.elements, element)] : result.elements;
+    // In its place, as one command: a removal and an addition would take the group of an only
+    // child away between the two.
     ctx.write([
       ...registerAssets(result.assets),
-      { type: 'element.remove', slideId: slide.id, elementIds: [elementId] },
-      ...elements.map((replacement, i): Command => ({
-        type: 'element.add',
-        slideId: slide.id,
-        element: replacement,
-        index: index + i,
-        ...(parent ? { parentId: parent.id } : {}),
-      })),
+      { type: 'element.replace', slideId: slide.id, elementId, elements },
     ]);
     return {
       data: {

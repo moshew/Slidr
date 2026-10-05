@@ -51,10 +51,11 @@ function writableElements(slide: Slide | undefined, elementIds: readonly string[
 
 /**
  * The elements a write replaces in place: removed and, in the same write, added again under
- * the same id, in the same parent and at the same place in the layer order. That is how
- * `element_convert` turns an element into another kind of element (`element.update` cannot
- * change `type` or `children`), and to an object session it is a change of its element, not a
- * deletion and an addition: what the session works on still exists, under the id it knows.
+ * the same id, in the same parent and at the same place in the layer order. To an object
+ * session that is a change of its element (`element.update` cannot change `type` or
+ * `children`), not a deletion and an addition: what the session works on still exists, under
+ * the id it knows. `element.replace` says the same in one command, and is what
+ * `element_convert` writes; the pair is still read, for a write that spells it out.
  */
 function replacedInPlace(commands: readonly Command[], slide: Slide | undefined): Set<string> {
   const ids = new Set<string>();
@@ -125,6 +126,16 @@ export function checkWrite(
     } else if (command.type === 'element.add') {
       if (!replaced?.has(command.element.id)) {
         return `This would add element "${command.element.id}". In ${where} an element may be added only in place of one of its own, under the same id.`;
+      }
+    } else if (command.type === 'element.replace') {
+      if (!writable.has(command.elementId)) {
+        return `This would replace element "${command.elementId}", which is outside ${where}.`;
+      }
+      // The same rule as for a removal and an addition: what the session works on still
+      // exists afterwards, as one element under the id it knows.
+      const [only] = command.elements;
+      if (command.elements.length !== 1 || only?.id !== command.elementId) {
+        return `This would replace element "${command.elementId}" by elements under other ids. In ${where} an element may be replaced only by one element that keeps its id.`;
       }
     } else {
       return `${command.type} is not allowed in ${where}: it may change only the fields, text and animation of its elements.`;

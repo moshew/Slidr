@@ -1,14 +1,18 @@
 import {
+  createDeck,
   createElement,
   createSlide,
   findElementInDeck,
   findSlide,
   newId,
   type AssetMeta,
+  type Command,
   type Deck,
+  type Element,
 } from '@slidr/model';
 import { allElementsDeck, hebrewDeck } from '@slidr/model/fixtures';
 import { describe, expect, it, vi } from 'vitest';
+import { checkWrite } from './scope';
 import type {
   CaptureService,
   ConversionService,
@@ -295,6 +299,85 @@ describe('conversion', () => {
     // Another element of the slide is still out of reach.
     const error = await failed(call('element_convert', { elementId: 'e_text', to: 'html' }));
     expect(error.code).toBe('out_of_scope');
+  });
+
+  describe('element_convert of an element that is the only child of its group', () => {
+    const frame = { x: 0, y: 0, w: 400, h: 300 };
+    const alone = () =>
+      createDeck({
+        slides: [
+          createSlide({
+            id: 's_1',
+            elements: [
+              createElement.shape({ id: 'e_under', frame }),
+              createElement.group({
+                id: 'e_group',
+                frame: { x: 100, y: 100, w: 400, h: 300 },
+                children: [createElement.html({ id: 'e_html', frame, markup: '<p>hello</p>' })],
+              }),
+            ],
+          }),
+        ],
+      });
+    const converts = (...ids: string[]): ConversionService => ({
+      ...conversion,
+      convertElement: () =>
+        Promise.resolve({
+          elements: ids.map((id) => createElement.shape({ id, frame })),
+          assets: [],
+          editability: 1,
+          notes: [],
+        }),
+    });
+    const inGroup = (deck: Deck) => {
+      const group = findElementInDeck(deck, 'e_group')?.element;
+      return group?.type === 'group' ? group.children.map((child) => child.id) : undefined;
+    };
+
+    it('puts the replacements inside the group, which stays where it was', async () => {
+      const { call, bus } = setup(alone(), { conversion: converts('e_one', 'e_two') });
+      const data = await ok(call('element_convert', { elementId: 'e_html', to: 'elements' }));
+      expect(data.elementIds).toEqual(['e_one', 'e_two']);
+      expect(inGroup(bus.deck)).toEqual(['e_one', 'e_two']);
+      expect(bus.deck.slides[0]!.elements.map((e) => e.id)).toEqual(['e_under', 'e_group']);
+      expect(data).toMatchObject({ removed: ['e_html'], created: ['e_one', 'e_two'] });
+      bus.undo();
+      expect(inGroup(bus.deck)).toEqual(['e_html']);
+    });
+
+    it('in an object session too, where the replacement keeps the id', async () => {
+      const scope = { kind: 'object', slideId: 's_1', elementIds: ['e_html'] } as const;
+      const { call, bus } = setup(alone(), { conversion: converts('e_one') }, scope);
+      const data = await ok(call('element_convert', { elementId: 'e_html', to: 'elements' }));
+      expect(data.elementIds).toEqual(['e_html']);
+      expect(inGroup(bus.deck)).toEqual(['e_html']);
+      expect(findElementInDeck(bus.deck, 'e_html')?.element.type).toBe('shape');
+    });
+  });
+
+  it('lets an object session replace its element only by one element that keeps the id', () => {
+    const scope = { kind: 'object', slideId: 's_all', elementIds: ['e_html'] } as const;
+    const shape = (id: string) => createElement.shape({ id, frame: { x: 0, y: 0, w: 9, h: 9 } });
+    const replace = (elementId: string, ...elements: Element[]): Command[] => [
+      { type: 'element.replace', slideId: 's_all', elementId, elements },
+    ];
+    const deck = allElementsDeck();
+    expect(checkWrite(scope, replace('e_html', shape('e_html')), deck)).toBeUndefined();
+    expect(checkWrite(scope, replace('e_html', shape('e_else')), deck)).toMatch(
+      /only by one element that keeps its id/,
+    );
+    expect(checkWrite(scope, replace('e_html', shape('e_html'), shape('e_more')), deck)).toMatch(
+      /only by one element that keeps its id/,
+    );
+    expect(checkWrite(scope, replace('e_text', shape('e_text')), deck)).toMatch(
+      /replace element "e_text", which is outside/,
+    );
+    // A slide session may replace anything on its slide, and nothing on another.
+    const slide = { kind: 'slide', slideId: 's_all' } as const;
+    expect(checkWrite(slide, replace('e_text', shape('e_a'), shape('e_b')), deck)).toBeUndefined();
+    expect(
+      checkWrite({ kind: 'slide', slideId: 's_x' }, replace('e_text', shape('e_a')), deck),
+    ).toMatch(/outside a slide session/);
   });
 });
 

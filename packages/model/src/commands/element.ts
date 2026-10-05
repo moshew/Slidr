@@ -107,6 +107,43 @@ export const elementRemove = defineCommand(
   },
 );
 
+/**
+ * Replaces one element by others, in its place: the same parent and the same position in the
+ * layer order. A replacement may take the id of the element it replaces, which is how an element
+ * becomes another kind of element (`element.update` cannot change `type`). A removal followed by
+ * an addition cannot say this: a group whose only child is removed is removed with it, and the
+ * addition then has no parent to go into. Animation steps of the replaced element, and of what
+ * was inside it, go with it.
+ */
+export const elementReplace = defineCommand(
+  z.strictObject({
+    type: z.literal('element.replace'),
+    slideId: Id,
+    elementId: Id,
+    elements: z.array(Element).min(1),
+  }),
+  (deck, { slideId, elementId, elements }, touched) => {
+    const slide = requireSlide(deck, slideId);
+    const { element, siblings, index } = requireElement(slide, elementId);
+    const replaced = new Set<string>();
+    for (const inside of walkElements([element])) replaced.add(inside.id);
+    const taken = allElementIds(baseDeck(deck));
+    for (const id of replaced) taken.delete(id);
+    for (const added of walkElements(elements)) {
+      if (taken.has(added.id)) {
+        throw new CommandError('conflict', `Element id "${added.id}" is already in use.`);
+      }
+      taken.add(added.id);
+    }
+    siblings.splice(index, 1, ...elements);
+    if (slide.timeline.some((step) => replaced.has(step.elementId))) {
+      slide.timeline = slide.timeline.filter((step) => !replaced.has(step.elementId));
+    }
+    for (const id of replaced) touched.element(slideId, id);
+    for (const added of elements) touched.tree(slideId, added);
+  },
+);
+
 const FIXED_FIELDS = new Set(['id', 'type', 'children']);
 
 /**

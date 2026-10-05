@@ -34,7 +34,7 @@ const COMMAND_TYPES = Object.keys(commandDefs) as [CommandType, ...CommandType[]
  * agent knows the element, slide and RichText shapes from the other tools; each op is still
  * validated against the model's `Command` schema, with the path of any bad field.
  *
- * Two commands are left out, on purpose.
+ * Three commands are left out, on purpose.
  *
  * `asset.remove` works here like any other, but the agent has no use to put it to. No tool
  * lists the deck's assets, so the only ones it could name are those its own image and stock
@@ -46,6 +46,10 @@ const COMMAND_TYPES = Object.keys(commandDefs) as [CommandType, ...CommandType[]
  * nothing the agent sends stores one: listed among the ops, it was what a model reached for
  * when asked for a picture "from this link", with the address as the file. The deck then held a
  * picture that is never drawn, and that no save can put in the file.
+ *
+ *  is left out too, for now: it is what  writes, and it works
+ * here like any other. Describing it is new wording for the agent, which the evaluation set has
+ * not seen, and takes more of the listing's size than is left ().
  */
 const OPS_HELP = [
   'Each op is one model command: {"type": ..., ...fields}. Fields named patch replace each given field whole; null removes an optional field.',

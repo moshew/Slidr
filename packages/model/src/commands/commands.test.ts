@@ -463,6 +463,74 @@ describe('element commands', () => {
     );
   });
 
+  it('element.replace puts other elements in the place of one', () => {
+    const start = deckWith(rect('a'), rect('b'), rect('c'));
+    check(
+      start,
+      { type: 'element.replace', slideId: 's1', elementId: 'b', elements: [rect('x'), rect('y')] },
+      (d) => expect(ids(d)).toEqual(['a', 'x', 'y', 'c']),
+    );
+    // Another kind of element under the id it replaces: what `element.update` cannot do.
+    const text = createElement.text({ id: 'b', frame: box(5, 5), content: richText('שלום') });
+    check(
+      start,
+      { type: 'element.replace', slideId: 's1', elementId: 'b', elements: [text] },
+      (d) => {
+        expect(ids(d)).toEqual(['a', 'b', 'c']);
+        expect(elementOf(d, 'b', 's1')).toEqual(text);
+      },
+    );
+  });
+
+  it('element.replace keeps the group of an only child, where a removal would take it', () => {
+    const group = createElement.group({ id: 'g', frame: box(0, 0), children: [rect('only')] });
+    const start = deckWith(rect('a'), group);
+    check(
+      start,
+      { type: 'element.replace', slideId: 's1', elementId: 'only', elements: [rect('new')] },
+      (d) => {
+        expect(ids(d)).toEqual(['a', 'g']);
+        expect((elementOf(d, 'g', 's1') as GroupElement).children.map((c) => c.id)).toEqual([
+          'new',
+        ]);
+      },
+    );
+  });
+
+  it('element.replace drops the animation steps of what it replaces, whatever takes its place', () => {
+    const start = allElementsDeck();
+    const { frame } = elementOf(start, 'e_group');
+    check(
+      start,
+      {
+        type: 'element.replace',
+        slideId: 's_all',
+        elementId: 'e_group',
+        elements: [createElement.shape({ id: 'e_group', frame })],
+      },
+      (d) => {
+        expect(elementOf(d, 'e_group').type).toBe('shape');
+        expect(findElement(findSlide(d, 's_all')!, 'e_group_text')).toBeUndefined();
+        expect(findSlide(d, 's_all')!.timeline.map((s) => s.id)).toEqual(['a_title']);
+      },
+    );
+  });
+
+  it('element.replace keeps element ids unique, and needs the element it replaces', () => {
+    const start = deckWith(rect('a'), rect('b'));
+    const replace = (elementId: string, ...elements: Element[]): CommandOf<'element.replace'> => ({
+      type: 'element.replace',
+      slideId: 's1',
+      elementId,
+      elements,
+    });
+    rejects(start, replace('b', rect('a')), 'conflict');
+    rejects(start, replace('b', rect('x'), rect('x')), 'conflict');
+    rejects(start, replace('gone', rect('x')), 'not_found');
+    rejects(start, replace('b'), 'invalid_payload');
+    rejects(start, { ...replace('b', rect('x')), slideId: 's9' }, 'not_found');
+  });
+
   it('element.remove tells the agent clearly that an element is gone (CMD-07)', () => {
     const bus = new CommandBus(deckWith(rect('a')));
     bus.dispatch({ type: 'element.remove', slideId: 's1', elementIds: ['a'] });
