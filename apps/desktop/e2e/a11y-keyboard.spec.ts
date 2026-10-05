@@ -102,10 +102,14 @@ test('the text of a shape gets a link and an effect without the pointer', async 
   await page.keyboard.press('Space');
   await expect.poll(() => held(page, 'e_shape')).toContain('text-stroke');
 
-  // Esc gives the keyboard back to the text, where typing goes on.
+  // Esc gives the keyboard back to the tool that opened the effects: it was reached with the
+  // keyboard, so it keeps it and Tab goes on to the next tool (the rule of the tool rows). The
+  // pane key goes back to the text, where typing goes on.
   await page.keyboard.press('Escape');
   if ((await effects.count()) > 0) await page.keyboard.press('Escape');
   await expect(effects).toHaveCount(0);
+  expect(await at(page)).toBe('Text effects');
+  await page.keyboard.press('F6');
   await expect(editor).toBeFocused();
 });
 
