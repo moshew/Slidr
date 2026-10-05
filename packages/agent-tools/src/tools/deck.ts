@@ -33,6 +33,12 @@ const COMMAND_TYPES = Object.keys(commandDefs) as [CommandType, ...CommandType[]
  * The shapes of the commands, in short. The full union as JSON Schema is about 40 KB, and the
  * agent knows the element, slide and RichText shapes from the other tools; each op is still
  * validated against the model's `Command` schema, with the path of any bad field.
+ *
+ * `asset.remove` is the one command left out, on purpose: it works here like any other, but the
+ * agent has no use to put it to. No tool lists the deck's assets, so the only ones it could name
+ * are those its own image and stock calls just added. Removing them saves nothing, since an
+ * asset nothing uses is dropped when the deck is saved (`prepareForSave`); all it would do is
+ * take pictures out of the user's media panel, and what is kept there is the user's to decide.
  */
 const OPS_HELP = [
   'Each op is one model command: {"type": ..., ...fields}. Fields named patch replace each given field whole; null removes an optional field.',
