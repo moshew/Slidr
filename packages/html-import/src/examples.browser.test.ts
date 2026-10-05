@@ -5,14 +5,17 @@
  *
  *   VITE_EXAMPLE=dapflow pnpm vitest run --config vitest.browser.config.ts packages/html-import/src/examples
  *   VITE_EXAMPLE=dapflow VITE_SLIDES=2,4 …    only those slides, counted from 0
+ *   VITE_EXAMPLE=marp VITE_SELECTOR=section …  the slides are these elements (default `.slide`)
+ *   VITE_EXAMPLE=devops VITE_REVEAL=visible …  a class the page's script would have given what it shows
  *
  * Each slide is converted where it stands, and what came out is written under
  * `test-results/examples/`: the tree of elements with what the guard put back as HTML, the
  * slide as JSON, and a picture of the source beside one of the converted slide.
  *
- * It knows one way a deck keeps its slides: elements of class `slide`, shown one at a time by
- * the class `active`. What a page draws over its slides (navigation, a counter) is hidden. A
- * deck that shows its slides by script is not run: the page is loaded without scripts.
+ * The page is loaded without its scripts, so this stands in for the little a script does to
+ * show a slide: one slide gets the class `active` at a time and is scrolled to, and what a
+ * page draws over its slides (navigation, a counter) is hidden. A deck that lays its slides
+ * out by script, or unpacks itself with one, cannot be run here; the import in the app can.
  */
 import { createDeck, plainText, type Element } from '@slidr/model';
 import { beforeAll, describe, it } from 'vitest';
@@ -32,6 +35,8 @@ const files = (import.meta as unknown as ViteMeta).glob('../../../examples/*.htm
 const env = (import.meta as unknown as ViteMeta).env;
 const ONLY = env.VITE_EXAMPLE;
 const SLIDES = (env.VITE_SLIDES ?? '').split(',').filter(Boolean).map(Number);
+const SELECTOR = env.VITE_SELECTOR ?? '.slide';
+const REVEAL = env.VITE_REVEAL;
 const SIZE = { w: 1920, h: 1080 };
 const OUT = 'test-results/examples';
 
@@ -90,7 +95,7 @@ describe.skipIf(!ONLY)('the decks under examples/', () => {
       const summary: string[] = [];
       try {
         const doc = frame.document;
-        const slides = Array.from(doc.querySelectorAll<HTMLElement>('.slide'));
+        const slides = Array.from(doc.querySelectorAll<HTMLElement>(SELECTOR));
         for (const el of Array.from(doc.body.querySelectorAll<HTMLElement>('*'))) {
           if (slides.some((s) => s.contains(el) || el.contains(s))) continue;
           const position = doc.defaultView!.getComputedStyle(el).position;
@@ -100,6 +105,10 @@ describe.skipIf(!ONLY)('the decks under examples/', () => {
         for (const [index, slide] of slides.entries()) {
           if (SLIDES.length > 0 && !SLIDES.includes(index)) continue;
           for (const other of slides) other.classList.toggle('active', other === slide);
+          if (REVEAL)
+            for (const el of Array.from(slide.querySelectorAll('*'))) el.classList.add(REVEAL);
+          slide.scrollIntoView({ block: 'start', behavior: 'instant' });
+          await twoFrames();
           freezeAnimations(doc);
           await twoFrames();
           const id = `${name.replace(/[^a-z0-9]+/gi, '-')}-${String(index).padStart(2, '0')}`;
