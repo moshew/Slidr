@@ -38,7 +38,7 @@ import {
 } from './geometry';
 import { Icon } from './icons';
 import { imageLook } from './imageLook';
-import { frameDocument, prepareSvg, resolveAssetRefs } from './markup';
+import { frameDocument, prepareSvg, resolveAssetRefs, resolveAssetUrls } from './markup';
 import { parseFragment, sanitizeFragment } from './sanitize';
 import { TableView } from './table';
 import { numberedText, opensAddress, TextBox, textFillStyle } from './text';
@@ -697,7 +697,7 @@ function ShadowContent({ e, style }: { e: HtmlElement; style: CSSProperties }) {
       root.replaceChildren();
       if (now.e.styles) {
         const sheet = document.createElement('style');
-        sheet.textContent = now.e.styles;
+        sheet.textContent = resolveAssetUrls(now.e.styles, now.ctx);
         root.append(sheet);
       }
       root.append(fragment);

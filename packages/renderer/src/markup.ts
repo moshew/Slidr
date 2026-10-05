@@ -2,6 +2,7 @@ import type { Color, HtmlElement } from '@slidr/model';
 import type { RenderContext } from './context';
 import { cleanPicture, SVG_NAMESPACE } from './picture';
 import { parseFragment, sanitizeFragment, serializeFragment } from './sanitize';
+import { cssUrl } from './css';
 import { colorCss, themeVariablesCss } from './theme';
 
 /** A 1x1 transparent GIF: an image that waits for its content shows no broken-image icon. */
@@ -10,8 +11,29 @@ const BLANK_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABA
 const SRC_ELEMENTS = new Set(['img', 'video', 'audio', 'source', 'track', 'embed']);
 
 /**
- * Points `data-asset="<id>"` at the asset's URL (SPEC 11.5). `<img data-image-prompt>` without a
- * source is a placeholder waiting for a generated image; it gets a blank source and a surface fill.
+ * How the CSS of an `html` element names an asset of the deck: `url("slidr-asset:<id>")`. An
+ * element names one with `data-asset`, which gives it a single background picture; a
+ * background of several layers, a mask, a border image or a rule of the element's stylesheet
+ * has no attribute to say it with. An imported file's pictures are assets of the deck wherever
+ * its CSS used them (SPEC 5.7), and this is where a copy of that CSS points at them.
+ */
+export const ASSET_URL_SCHEME = 'slidr-asset:';
+
+const ASSET_URL = /url\(\s*(["']?)slidr-asset:([^"')\s]+)\1\s*\)/g;
+
+/** CSS with every `url("slidr-asset:<id>")` pointed at the asset's address; unknown ids stay. */
+export function resolveAssetUrls(css: string, ctx: Pick<RenderContext, 'assetUrl'>): string {
+  if (!css.includes(ASSET_URL_SCHEME)) return css;
+  return css.replace(ASSET_URL, (whole, _quote: string, id: string) => {
+    const url = ctx.assetUrl(id);
+    return url ? cssUrl(url) : whole;
+  });
+}
+
+/**
+ * Points `data-asset="<id>"` at the asset's URL (SPEC 11.5), and so the assets an inline style
+ * names. `<img data-image-prompt>` without a source is a placeholder waiting for a generated
+ * image; it gets a blank source and a surface fill.
  */
 export function resolveAssetRefs(root: ParentNode, ctx: RenderContext): void {
   for (const el of Array.from(root.querySelectorAll('[data-asset]'))) {
@@ -23,6 +45,9 @@ export function resolveAssetRefs(root: ParentNode, ctx: RenderContext): void {
     else if (el instanceof HTMLElement || el instanceof SVGElement) {
       el.style.backgroundImage = `url("${url}")`;
     }
+  }
+  for (const el of Array.from(root.querySelectorAll(`[style*="${ASSET_URL_SCHEME}"]`))) {
+    el.setAttribute('style', resolveAssetUrls(el.getAttribute('style') ?? '', ctx));
   }
   for (const el of Array.from(root.querySelectorAll('img[data-image-prompt]:not([src])'))) {
     el.setAttribute('src', BLANK_IMAGE);
@@ -204,7 +229,7 @@ export function frameDocument(
     '<!doctype html>',
     `<html lang="${ctx.lang}" dir="${ctx.dir}"><head><meta charset="utf-8">`,
     `<style>${escapeStyle(base)}</style>`,
-    element.styles ? `<style>${escapeStyle(element.styles)}</style>` : '',
+    element.styles ? `<style>${escapeStyle(resolveAssetUrls(element.styles, ctx))}</style>` : '',
     `</head><body>${serializeFragment(fragment)}</body></html>`,
   ].join('');
 }

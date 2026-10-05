@@ -55,9 +55,11 @@ export {
 export { sanitizeMarkup } from './sanitize';
 export { cleanPicture, SVG_NAMESPACE } from './picture';
 export {
+  ASSET_URL_SCHEME,
   cleanFreeMarkup,
   FREE_MARKUP_SELECTOR,
   normalizeColor,
+  resolveAssetUrls,
   setFrameScriptNonce,
 } from './markup';
 export { scopeSlideCss } from './css';

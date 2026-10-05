@@ -15,7 +15,7 @@ import { allElementsDeck } from '@slidr/model/fixtures';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { referenceDeck } from './fixtures/referenceDeck';
+import { referenceAssets, referenceDeck } from './fixtures/referenceDeck';
 import { setFrameScriptNonce } from './markup';
 import { SlideRenderer } from './SlideRenderer';
 
@@ -192,6 +192,38 @@ describe('SlideRenderer', () => {
     )?.shadowRoot;
     expect(shadow?.querySelector('img')?.getAttribute('src')).toBe('asset://landscape.jpg');
     expect(shadow?.querySelector('style')?.textContent).toContain('.card');
+  });
+
+  it('resolves the assets the CSS of an html element names, in its stylesheet and inline', () => {
+    const deck = referenceDeck();
+    const slide = deck.slides.find((s) => s.id === 's_ref_html')!;
+    const card = slide.elements.find((e) => e.id === 'e_html_card')!;
+    const photo = referenceAssets.landscape;
+    // A picture under a gradient, a mask: what `data-asset` (one background picture) cannot say.
+    const styled = {
+      ...slide,
+      elements: [
+        {
+          ...card,
+          markup: `<div class="hero" style="mask-image: url('slidr-asset:${photo}')"><i style="background: url(slidr-asset:no-such-asset)"></i></div>`,
+          styles: `.hero { background: linear-gradient(#0000, #0008), url("slidr-asset:${photo}") center / cover; }`,
+        },
+      ],
+    };
+    render(<SlideRenderer deck={deck} slide={styled} resolveAsset={(a) => `asset://${a.file}`} />);
+    const shadow = container.querySelector('[data-slidr-html="shadow"]')?.shadowRoot;
+    expect(shadow?.querySelector('style')?.textContent).toBe(
+      '.hero { background: linear-gradient(#0000, #0008), url("asset://landscape.jpg") center / cover; }',
+    );
+    expect(shadow?.querySelector('.hero')?.getAttribute('style')).toContain(
+      'url("asset://landscape.jpg")',
+    );
+    // An id the deck does not have is left as it was written: it draws nothing.
+    expect(shadow?.querySelector('i')?.getAttribute('style')).toContain(
+      'slidr-asset:no-such-asset',
+    );
+    // The model keeps the reference, not the address.
+    expect(JSON.stringify(styled)).not.toContain('asset://');
   });
 
   it('runs html with scripts in a sandboxed frame that never gets same-origin', () => {
