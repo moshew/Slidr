@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import contract from '../../src-tauri/src/image_process/fixtures/contract.json';
 import type { ImportedAsset } from '../document/storage';
 import { createImageService } from './imageService';
-import { ImageError, type ImageClient } from './images';
+import { ImageError, type ImageClient, type ImageEvent } from './images';
 import {
   clearBorderColour,
   type ImageProcessClient,
@@ -159,21 +159,30 @@ describe('an image with a transparent background (GEN-07)', () => {
   const drawn: ImportedAsset = { ...made, id: 'd'.repeat(64), file: `${'d'.repeat(64)}.png` };
 
   function generating(key: ImageProcessClient['run']) {
-    const generate = vi.fn<ImageClient['generate']>(() =>
-      Promise.resolve({
-        provider: 'example',
-        images: [{ status: 'stored', asset: drawn, durationMs: 50 }],
-      }),
-    );
+    const outcome = { status: 'stored', asset: drawn, durationMs: 50 } as const;
+    const generate = vi.fn<ImageClient['generate']>((_job, _workspace, _request, onEvent) => {
+      // The job reports each image as it goes, as the providers do.
+      onEvent?.({ type: 'started', index: 0 });
+      onEvent?.({ type: 'finished', index: 0, outcome });
+      return Promise.resolve({ provider: 'example', images: [outcome] });
+    });
     const run = vi.fn(key);
+    const events: ImageEvent[] = [];
     const images: ImageService = createImageService({
       client: { generate } as unknown as ImageClient,
       workspaceId: () => 'w1',
       preview: () => Promise.reject(new Error('no canvas here')),
       processor: { status: () => Promise.reject(new Error('unused')), run },
+      onEvent: (_jobId, event) => events.push(event),
     });
-    return { images, generate, run };
+    return { images, generate, run, events };
   }
+
+  /** The asset each image of the job was reported with when it finished. */
+  const reported = (events: readonly ImageEvent[]) =>
+    events.flatMap((event) =>
+      event.type === 'finished' && event.outcome.status === 'stored' ? [event.outcome.asset] : [],
+    );
 
   it('is drawn on a flat colour, which is then keyed out on this machine', async () => {
     const { images, generate, run } = generating(() =>
@@ -199,7 +208,7 @@ describe('an image with a transparent background (GEN-07)', () => {
   });
 
   it('keeps the image on its colour when the key fails: it was made and paid for', async () => {
-    const { images } = generating(() => Promise.reject(new Error('not a flat background')));
+    const { images, events } = generating(() => Promise.reject(new Error('not a flat background')));
     const [image] = await images.generate({
       prompt: 'a red bicycle',
       count: 1,
@@ -207,12 +216,37 @@ describe('an image with a transparent background (GEN-07)', () => {
       transparent: true,
     });
     expect(image?.asset.id).toBe(drawn.id);
+    expect(reported(events).map((asset) => asset.id)).toEqual([drawn.id]);
   });
 
   it('is not asked for unless wanted', async () => {
-    const { images, generate, run } = generating(() => Promise.reject(new Error('unused')));
+    const { images, generate, run, events } = generating(() => Promise.reject(new Error('unused')));
     await images.generate({ prompt: 'a red bicycle', count: 1, aspect: '1:1' });
     expect(generate.mock.calls[0]![2].prompt).toBe('a red bicycle');
     expect(run).not.toHaveBeenCalled();
+    expect(reported(events).map((asset) => asset.id)).toEqual([drawn.id]);
+  });
+
+  // The bug hunt's `ai-ui.md`, finding 13: the job's own report went out as it was, so the
+  // gallery that follows the job offered the picture on magenta, and the cut-out came after.
+  it('is reported to whoever follows its job as the cut-out, once it is cut out', async () => {
+    let cut: (result: ProcessResult) => void = () => undefined;
+    const { images, run, events } = generating(() => new Promise((resolve) => (cut = resolve)));
+    const call = images.generate({
+      prompt: 'a red bicycle',
+      count: 1,
+      aspect: '1:1',
+      transparent: true,
+    });
+    // The picture has landed and is being keyed: so far the image has only started.
+    await vi.waitFor(() => expect(run).toHaveBeenCalled());
+    expect(events).toEqual([{ type: 'started', index: 0 }]);
+
+    cut({ asset: made, durationMs: 3, keyColor: '#ff00ff' });
+    const [image] = await call;
+    expect(reported(events).map((asset) => asset.id)).toEqual([made.id]);
+    expect(image?.asset.id).toBe(made.id);
+    // The picture is keyed once, for the report and for the result alike.
+    expect(run).toHaveBeenCalledTimes(1);
   });
 });

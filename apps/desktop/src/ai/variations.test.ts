@@ -12,7 +12,8 @@ import {
   type Deck,
 } from '@slidr/model';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ImageEvent } from '../images/images';
+import { createImageService } from '../images/imageService';
+import type { ImageClient, ImageEvent } from '../images/images';
 import { stagePreview } from '../stage/preview';
 import { createGallery, EARLIER, historyOf } from './variations';
 
@@ -256,6 +257,7 @@ describe('image options', () => {
 });
 
 describe('images as they are made', () => {
+  type Listener = (event: ImageEvent) => void;
   const stored = (index: number, id: string): ImageEvent => ({
     type: 'finished',
     index,
@@ -443,6 +445,48 @@ describe('images as they are made', () => {
     expect(others()[0]!.cards[0]!.asset?.lineage).toEqual({ prompt: 'y' });
     // A call that announces no cards has nothing to take back.
     expect(() => other.noteToolCall(OBJECT, 'text_set', {})()).not.toThrow();
+  });
+
+  // The bug hunt's `ai-ui.md`, finding 13: an image asked for with a transparent background
+  // is drawn on flat magenta and keyed out, and the card showed the picture from before the key.
+  it('are offered as the cut-out the tool returns, when a transparent background was asked for', async () => {
+    const { gallery, sets } = setup();
+    const drawn = asset(SECOND);
+    const cut = asset(THIRD);
+    const outcome = { status: 'stored', asset: drawn, durationMs: 1 } as const;
+    const client = {
+      // The provider draws on the flat colour, and reports the image as it lands.
+      generate: (_job: string, _workspace: string, _request: unknown, onEvent?: Listener) => {
+        onEvent?.({ type: 'started', index: 0 });
+        onEvent?.({ type: 'finished', index: 0, outcome });
+        return Promise.resolve({ provider: 'example', images: [outcome] });
+      },
+    } as unknown as ImageClient;
+    const images = createImageService({
+      client,
+      workspaceId: () => 'w',
+      preview: () => Promise.reject(new Error('no canvas here')),
+      onEvent: gallery.imageEvent,
+      processor: {
+        status: () => Promise.reject(new Error('unused')),
+        run: () => Promise.resolve({ asset: cut, durationMs: 1, keyColor: '#ff00ff' }),
+      },
+    });
+
+    // What the runtime does around the agent's call: the gallery hears of it first.
+    const returned = gallery.noteToolCall(OBJECT, 'image_generate', {
+      prompt: 'our product',
+      count: 1,
+      transparent: true,
+    });
+    const made = await images
+      .generate({ prompt: 'our product', count: 1, aspect: '1:1', transparent: true })
+      .finally(returned);
+    expect(made.map((image) => image.asset.id)).toEqual([THIRD]);
+    // The one card holds what the tool returned, so presenting it adds no second card.
+    expect(sets()[0]!.cards.map((card) => [card.state, card.asset?.id])).toEqual([
+      ['ready', THIRD],
+    ]);
   });
 });
 

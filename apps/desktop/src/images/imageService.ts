@@ -1,5 +1,6 @@
 import type { ImageOperation, ImageService, PngImage, StoredImage } from '@slidr/agent-tools';
 import type { AssetMeta } from '@slidr/model';
+import type { ImportedAsset } from '../document/storage';
 import { ImageError, type ImageClient, type ImageEvent, type ImageJobResult } from './images';
 import { BLANK_PREVIEW } from './preview';
 import type { ImageProcessClient, ProcessOperation } from './process';
@@ -115,28 +116,63 @@ export function createImageService(options: ImageServiceOptions): AgentImageServ
       // is drawn on a flat colour and the colour is keyed out here (GEN-07).
       const keyed = Boolean(transparent && processor);
       const asked = keyed ? [prompt, FLAT_BACKGROUND].join('\n\n') : prompt;
+      /**
+       * The cut-out of each picture of a keyed job, by the picture it is cut from; null where
+       * the key failed. Each is made once: when its picture lands, for whoever follows the job,
+       * and it is the same one the call returns.
+       */
+      const cuts = new Map<string, Promise<ImportedAsset | null>>();
+      const cutOut = (workspaceId: string, drawnId: string): Promise<ImportedAsset | null> => {
+        let cut = cuts.get(drawnId);
+        if (!cut) {
+          cut = processor
+            ? processor.run(workspaceId, drawnId, { type: 'chroma_key' }).then(
+                (result) => result.asset,
+                () => null,
+              )
+            : Promise.resolve(null);
+          cuts.set(drawnId, cut);
+        }
+        return cut;
+      };
       const made = await run(
         (jobId, workspaceId, onEvent) =>
-          client.generate(jobId, workspaceId, { prompt: asked, count, aspect }, onEvent),
+          client.generate(
+            jobId,
+            workspaceId,
+            { prompt: asked, count, aspect },
+            !keyed
+              ? onEvent
+              : (event) => {
+                  if (event.type !== 'finished' || event.outcome.status !== 'stored') {
+                    onEvent(event);
+                    return;
+                  }
+                  // An image of a keyed job is finished once it is cut out, and what is told
+                  // of it is the cut-out: the picture on its flat colour is nobody's to pick.
+                  const { outcome } = event;
+                  void cutOut(workspaceId, outcome.asset.id).then((cut) =>
+                    onEvent({ ...event, outcome: { ...outcome, asset: cut ?? outcome.asset } }),
+                  );
+                },
+          ),
         { prompt },
       );
-      if (!keyed || !processor) return made;
+      if (!keyed) return made;
       const workspaceId = options.workspaceId();
       if (!workspaceId) return made;
       return Promise.all(
         made.map(async (image) => {
-          try {
-            const cut = await processor.run(workspaceId, image.asset.id, { type: 'chroma_key' });
-            const asset: AssetMeta = {
-              ...cut.asset,
-              origin: 'ai',
-              lineage: { ...image.asset.lineage, parentAssetId: image.asset.id },
-            };
-            return { asset, preview: await options.preview(asset).catch(() => BLANK_PREVIEW) };
-          } catch {
-            // The image was made and paid for: it is kept on its colour rather than lost.
-            return image;
-          }
+          const cut = await cutOut(workspaceId, image.asset.id);
+          // The image was made and paid for: where the key fails, it is kept on its colour
+          // rather than lost.
+          if (!cut) return image;
+          const asset: AssetMeta = {
+            ...cut,
+            origin: 'ai',
+            lineage: { ...image.asset.lineage, parentAssetId: image.asset.id },
+          };
+          return { asset, preview: await options.preview(asset).catch(() => BLANK_PREVIEW) };
         }),
       );
     },
