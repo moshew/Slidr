@@ -359,8 +359,15 @@ export function shapedCodePoints(codePoints: Iterable<number>): Set<number> {
   return all;
 }
 
+/**
+ * A CSS string literal that stays one: a line break or another control character in the text
+ * would end it where it stands, and the rest would be read as CSS of the file.
+ */
 function cssString(value: string): string {
-  return `"${value.replace(/["\\]/g, '\\$&')}"`;
+  return `"${value
+    .replace(/["\\]/g, '\\$&')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f\x7f]/g, (char) => `\\${char.charCodeAt(0).toString(16)} `)}"`;
 }
 
 const FEATURES = 'font-feature-settings';

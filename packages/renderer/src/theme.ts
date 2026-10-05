@@ -112,6 +112,24 @@ export function themeVariablesCss(theme: Theme): string {
     .join(' ');
 }
 
+/*
+ * What a face of a font asset may say of itself, as CSS writes it. The deck holds these as free
+ * text, and they are written into a stylesheet of the page that draws the slide: text that is
+ * not of the form is left out, so nothing a deck holds there is read as anything but a weight, a
+ * style or a range.
+ */
+const NUMBER = String.raw`\d{1,4}(?:\.\d+)?`;
+const FACE_WEIGHT = new RegExp(`^(?:normal|bold|${NUMBER}(?:\\s+${NUMBER})?)$`, 'i');
+const FACE_STYLE = new RegExp(`^(?:normal|italic|oblique(?:\\s+-?${NUMBER}deg){0,2})$`, 'i');
+const RANGE = String.raw`u\+[0-9a-f?]{1,6}(?:-[0-9a-f]{1,6})?`;
+const FACE_RANGE = new RegExp(`^${RANGE}(?:\\s*,\\s*${RANGE})*$`, 'i');
+
+/** A descriptor of a face when its value is of the form, and nothing when it is not. */
+function descriptor(name: string, value: string | undefined, form: RegExp): string {
+  const text = value?.trim();
+  return text && form.test(text) ? ` ${name}: ${text};` : '';
+}
+
 /**
  * `@font-face` rules for the fonts a deck carries as assets (SPEC 5.7): an imported deck looks the
  * same on a machine that does not have its fonts installed.
@@ -125,10 +143,12 @@ export function deckFontFaces(
     if (asset.kind !== 'font' || !asset.font) continue;
     const src = url(asset);
     if (!src) continue;
-    // A family that came in subsets (one file per script) keeps them apart, as the source did.
-    const range = asset.font.unicodeRange ? ` unicode-range: ${asset.font.unicodeRange};` : '';
+    const { family, weight, style, unicodeRange } = asset.font;
     rules.push(
-      `@font-face { font-family: ${cssString(asset.font.family)}; font-weight: ${asset.font.weight}; font-style: ${asset.font.style}; font-display: block; src: ${cssUrl(src)};${range} }`,
+      `@font-face { font-family: ${cssString(family)};${descriptor('font-weight', weight, FACE_WEIGHT)}${descriptor('font-style', style, FACE_STYLE)} font-display: block; src: ${cssUrl(src)};${
+        // A family that came in subsets (one file per script) keeps them apart, as the source did.
+        descriptor('unicode-range', unicodeRange, FACE_RANGE)
+      } }`,
     );
   }
   return rules.join('\n');

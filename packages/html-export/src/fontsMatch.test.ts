@@ -315,6 +315,16 @@ describe('fontFaceCss', () => {
     );
   });
 
+  it('writes a family name as one string, whatever the name holds', () => {
+    // A line break ends a CSS string where it stands: the rest of the name would be CSS of the
+    // file. It is written as an escape, and the name stays a name.
+    const css = fontFaceCss(face('Brand\n} * { display: none } x {', '', {}), {
+      uri: 'data:font/woff2;base64,AAAA',
+    });
+    expect(css).toContain('font-family: "Brand\\a } * { display: none } x {";');
+    expect(css).not.toContain('\n');
+  });
+
   it('asks for kerning by name, next to the features the rule sets itself', () => {
     const features = (own: string) =>
       /font-feature-settings: ([^;]+);/.exec(

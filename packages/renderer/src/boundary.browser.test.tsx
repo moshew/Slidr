@@ -109,12 +109,17 @@ afterEach(() => {
   delete window.boundaryRan;
 });
 
+/** Every asset is "at hand", as nothing: enough for the rules that name it to be written. */
+const anyAsset = () => 'data:application/octet-stream;base64,';
+
 function draw(deck: Deck, slide: Slide, mode: RenderMode = 'edit'): HTMLElement {
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:0;top:0;width:1920px;height:1080px';
   document.body.append(container);
   const root = createRoot(container);
-  flushSync(() => root.render(<SlideRenderer deck={deck} slide={slide} mode={mode} />));
+  flushSync(() =>
+    root.render(<SlideRenderer deck={deck} slide={slide} mode={mode} resolveAsset={anyAsset} />),
+  );
   mounted.push(() => {
     root.unmount();
     container.remove();
@@ -381,6 +386,85 @@ describe('CSS of a deck styles its own slide or element, and nothing else', () =
       getComputedStyle(root.querySelector('[data-element-id="e_box"]')!).outlineStyle;
     expect(outline(second)).toBe('solid');
     expect(outline(first)).toBe('none');
+  });
+
+  // A deck names its slides as it likes: an id is any text, and it is written into a selector.
+  const IDS: Record<string, string> = {
+    quote: 's"] , * , [x="',
+    lineBreak: 's\n]) { } * { display: none !important } @scope ([y="z',
+    carriageReturn: 's\r]) { } * { display: none !important } @scope ([y="z',
+    formFeed: 's\f]) { } * { display: none !important } @scope ([y="z',
+    backslash: 's\\',
+    closing: 's</style><style>* { display: none !important }',
+  };
+  for (const [name, id] of Object.entries(IDS)) {
+    it(`the id of a slide cannot end the selector its css is held by (${name})`, () => {
+      const outside = victim();
+      const slide = createSlide({
+        id,
+        css: '[data-element-id="e_box"] { outline: 3px solid rgb(255, 0, 0) }',
+        elements: [createElement.shape({ id: 'e_box', frame: frame(0) })],
+      });
+      const container = draw(createDeck({ slides: [slide] }), slide);
+      expect(shown(outside)).toBe(true);
+      // And the selector still finds the slide it names.
+      const box = container.querySelector('[data-element-id="e_box"]')!;
+      expect(getComputedStyle(box).outlineColor).toBe('rgb(255, 0, 0)');
+    });
+  }
+
+  it('what a font of the deck says of itself is a face, and no other CSS', () => {
+    const outside = victim();
+    const LOOSE = '} * { display: none !important } x {';
+    const { deck, slide } = deckOf([]);
+    const font = (id: string, face: NonNullable<Deck['assets'][string]['font']>) => {
+      deck.assets[id] = {
+        id,
+        file: `${id}.woff2`,
+        mime: 'font/woff2',
+        kind: 'font',
+        bytes: 1,
+        origin: 'import',
+        font: face,
+      };
+    };
+    font('a'.repeat(64), {
+      family: `Brand"; ${LOOSE} y: "`,
+      weight: `400 ${LOOSE}`,
+      style: `normal; ${LOOSE}`,
+      unicodeRange: `U+0-FF; ${LOOSE}`,
+    });
+    font('b'.repeat(64), {
+      family: `Line\n${LOOSE}`,
+      weight: '400;}',
+      style: 'oblique 1deg 2deg 3deg',
+    });
+    font('c'.repeat(64), {
+      family: 'Fine',
+      weight: '100 900',
+      style: 'italic',
+      unicodeRange: 'U+0590-05FF, U+20AA, U+4??',
+    });
+    const container = draw(deck, slide);
+    expect(shown(outside)).toBe(true);
+    const sheet = container.querySelector<HTMLStyleElement>('style[data-slidr-fonts]')!.sheet!;
+    const rules = Array.from(sheet.cssRules);
+    expect(rules.map((rule) => rule.constructor.name)).toEqual([
+      'CSSFontFaceRule',
+      'CSSFontFaceRule',
+      'CSSFontFaceRule',
+    ]);
+    const say = (rule: CSSRule, name: string) =>
+      (rule as CSSFontFaceRule).style.getPropertyValue(name);
+    // What is not a weight, a style or a range is left unsaid; the name is a name, whatever it holds.
+    expect(say(rules[0]!, 'font-family')).toContain('Brand');
+    expect([say(rules[0]!, 'font-weight'), say(rules[0]!, 'unicode-range')]).toEqual(['', '']);
+    expect(say(rules[1]!, 'font-style')).toBe('');
+    // A face that says what a face says keeps all of it.
+    expect(say(rules[2]!, 'font-family')).toBe('Fine');
+    expect(say(rules[2]!, 'font-weight')).toBe('100 900');
+    expect(say(rules[2]!, 'font-style')).toBe('italic');
+    expect(say(rules[2]!, 'unicode-range')).toBe('U+590-5FF, U+20AA, U+400-4FF');
   });
 
   it("a name the css of a slide defines does not replace the page's own", async () => {

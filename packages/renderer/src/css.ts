@@ -79,9 +79,19 @@ export function scopeSlideCss(css: string, rootSelector: string): string {
   return parts.join('\n');
 }
 
-/** A CSS string literal. */
+/** A line break, or any other control character: each of them ends a CSS string where it stands. */
+// eslint-disable-next-line no-control-regex
+const ENDS_STRING = /[\x00-\x1f\x7f]/g;
+
+/**
+ * A CSS string literal that stays one whatever the text holds: a quote and a backslash are
+ * escaped, and so is every character that would end the string early (a line break, a form feed)
+ * and let the rest of the text be read as CSS.
+ */
 export function cssString(value: string): string {
-  return `"${value.replace(/["\\]/g, '\\$&').replace(/\n/g, '\\a ')}"`;
+  return `"${value
+    .replace(/["\\]/g, '\\$&')
+    .replace(ENDS_STRING, (char) => `\\${char.charCodeAt(0).toString(16)} `)}"`;
 }
 
 /** `url("...")` for a URL that may contain quotes or spaces. */
