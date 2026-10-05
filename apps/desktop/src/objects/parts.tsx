@@ -1,5 +1,5 @@
-import type { Color, Fill } from '@slidr/model';
-import { fillStyle, themeVariables } from '@slidr/renderer';
+import { assetsUsedBy, createSlide, type Background, type Color, type Fill } from '@slidr/model';
+import { fillStyle, ScaledSlide, themeVariables } from '@slidr/renderer';
 import {
   ColorSwatch,
   cx,
@@ -255,6 +255,38 @@ export function useFillPaint(): (fill: Fill) => CSSProperties {
     };
     return (fill) => ({ ...variables, ...fillStyle(fill, context) });
   }, [theme, assets, meta, resolve, variables]);
+}
+
+/**
+ * A background as a small slide, `width` pixels wide: the fill, a photo's blur and dim, and the
+ * overlay, over the checkerboard that shows through what is translucent. It is drawn by the
+ * renderer itself, as an empty slide that has this background, so it is what a slide will get:
+ * a swatch of the fill alone showed a dimmed photo bright and a veiled ground bare.
+ */
+export function BackgroundSwatch({ background, width }: { background: Background; width: number }) {
+  const deck = useDeck((s) => s.deck);
+  const resolve = useAssetResolver();
+  const small = useMemo(() => {
+    const slide = createSlide({ id: 's_swatch', background });
+    // Only what the background draws: no layout under it, and none of the deck's fonts.
+    const assets = Object.fromEntries(
+      assetsUsedBy(deck, background).map((asset) => [asset.id, asset]),
+    );
+    return { deck: { ...deck, layouts: [], slides: [slide], assets }, slide };
+  }, [deck, background]);
+  return (
+    <div aria-hidden className="relative shrink-0 overflow-hidden rounded-small">
+      <ColorSwatch color="transparent" className="absolute inset-0" />
+      <ScaledSlide
+        deck={small.deck}
+        slide={small.slide}
+        mode="thumbnail"
+        width={width}
+        resolveAsset={resolve}
+      />
+      <div className="absolute inset-0 rounded-small border border-ui-line-strong" />
+    </div>
+  );
 }
 
 /**

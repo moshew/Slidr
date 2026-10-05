@@ -12,11 +12,14 @@ import {
   withFill,
 } from './background';
 import { FillEditor } from './FillEditor';
-import { FillSwatch, Hint, SliderField } from './parts';
+import { BackgroundSwatch, Hint, SliderField } from './parts';
 import { useCurrentSlide } from './target';
 
 /** The strongest blur the slider offers, in slide pixels. */
 const MAX_BLUR = 80;
+
+/** The width of a choice, in pixels: Tailwind's `w-16`. Its height is the slide's shape. */
+const CHOICE_WIDTH = 64;
 
 /** A background as a small slide: the choices of the theme. */
 function BackgroundChoice({
@@ -42,7 +45,8 @@ function BackgroundChoice({
           selected && 'outline-2 outline-offset-2 outline-ui-accent',
         )}
       >
-        <FillSwatch fill={background.fill} className="size-full" />
+        {/* The whole background, not its fill alone: a variant can be a dimmed photo, or a veil. */}
+        <BackgroundSwatch background={background} width={CHOICE_WIDTH} />
       </button>
     </Hint>
   );

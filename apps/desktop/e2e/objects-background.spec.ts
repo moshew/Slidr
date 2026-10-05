@@ -4,6 +4,7 @@ import {
   currentSlide,
   deck,
   dragSlider,
+  importPicture,
   openApp,
   pageProblems,
   pngBytes,
@@ -57,6 +58,21 @@ async function addVariant(page: Page, variant: Background) {
 }
 
 const ACCENT: Background = { fill: { kind: 'solid', color: { token: 'accent' } } };
+
+/** The colour an element shows a quarter of the way in, as red, green and blue, from a screenshot. */
+async function colourOf(page: Page, target: Locator): Promise<number[]> {
+  const png = (await target.screenshot()).toString('base64');
+  return page.evaluate(async (base64) => {
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const context = canvas.getContext('2d')!;
+    context.drawImage(bitmap, 0, 0);
+    const x = Math.floor(bitmap.width / 4);
+    const y = Math.floor(bitmap.height / 4);
+    return Array.from(context.getImageData(x, y, 1, 1).data.slice(0, 3));
+  }, png);
+}
 
 test.afterEach(({ page }) => {
   expect(pageProblems(page)).toEqual([]);
@@ -114,6 +130,38 @@ test('a variant of the theme, and back to the theme background', async ({ page }
   expect(await backgroundOf(page)).toEqual(theme.backgroundVariants[1]);
   await undo(page);
   expect(await currentSlide(page)).not.toHaveProperty('background');
+});
+
+test('a choice of the theme is drawn as the slide will be, with its overlay and its dim', async ({
+  page,
+}) => {
+  // Variants as the Templates panel and an imported template can make them: white under a veil,
+  // and a white photo that is dimmed. Their fills alone are white; the slide they give is grey.
+  const photo = await importPicture(page, 'snow.png', ['#ffffff', '#ffffff']);
+  const veiled: Background = {
+    fill: { kind: 'solid', color: { value: '#ffffff' } },
+    overlay: { kind: 'solid', color: { value: '#000000', alpha: 0.5 } },
+  };
+  const dimmed: Background = { fill: { kind: 'image', assetId: photo, fit: 'cover' }, dim: 0.5 };
+  await addVariant(page, veiled);
+  await addVariant(page, dimmed);
+  const grey = (colour: number[]) => colour.every((channel) => Math.abs(channel - 128) <= 3);
+  const slide = page.getByTestId('stage-frame').locator('[data-slidr-background]').first();
+
+  for (const [name, variant] of [
+    ['וריאנט 2', veiled],
+    ['וריאנט 3', dimmed],
+  ] as const) {
+    const editor = await openBackground(page);
+    const choice = editor.getByRole('button', { name });
+    await expect.poll(async () => grey(await colourOf(page, choice)), `${name}, drawn`).toBe(true);
+    await choice.click();
+    expect(await backgroundOf(page)).toEqual(variant);
+    // The tool is closed first: it hangs over the slide.
+    await page.keyboard.press('Escape');
+    await expect(editor).toBeHidden();
+    await expect.poll(async () => grey(await colourOf(page, slide)), `${name}, chosen`).toBe(true);
+  }
 });
 
 test('a colour and a gradient for this slide only', async ({ page }) => {
