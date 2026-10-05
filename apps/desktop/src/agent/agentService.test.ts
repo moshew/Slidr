@@ -9,6 +9,7 @@ import {
 import { CommandBus, createDeck, createSlide, findSlide } from '@slidr/model';
 import { describe, expect, it, vi } from 'vitest';
 import errorsScript from '../../src-tauri/src/harness/fixtures/scripts/errors.json';
+import { createSessions } from '../ai/sessions';
 import {
   AgentError,
   type AgentClient,
@@ -1107,6 +1108,63 @@ describe('stopping and failing', () => {
     expect(seen.starts).toHaveLength(2);
     expect(seen.starts[1]!.thread).toBe(`${bus.deck.id}/deck`);
     expect(seen.starts[1]!.thread).not.toBe(seen.starts[0]!.thread);
+  });
+
+  describe('a chat that is cut in the middle of a turn', () => {
+    const long = script([say('A long '), { ...say('answer'), delayMs: 5000 }, done()]);
+    const SLIDE = { kind: 'slide', slideId: 's_1' } as const;
+
+    it('by another deck (File > New, Open): it is no longer at work, and nothing more is written of it', async () => {
+      const { bus, service, transcripts } = setup({ long }, { speed: 1 });
+      // What the panels and the status bar work with: every chat a panel opened that is busy.
+      const sessions = createSessions(service);
+      const slide = sessions.thread(SLIDE);
+      const second = sessions.thread({ kind: 'deck' }, 'deck-c1');
+      await slide.send('Go');
+      await second.send('Go');
+      await vi.waitFor(() => expect(slide.store.getState().activity?.kind).toBe('writing'));
+      await vi.waitFor(() => expect(second.store.getState().activity?.kind).toBe('writing'));
+      expect(sessions.working.getState().threads).toEqual([slide, second]);
+      const kept = new Map(transcripts.files);
+
+      bus.reset(createDeck({ slides: [createSlide({ id: 's_other' })] }));
+
+      // Neither chat is the new deck's, and neither stays "working" in the status bar for good.
+      for (const thread of [slide, second]) {
+        expect(thread.store.getState()).toMatchObject({
+          busy: false,
+          stopping: false,
+          activity: null,
+        });
+        expect(thread.store.getState().entries.at(-1)).toMatchObject({
+          type: 'assistant',
+          outcome: 'interrupted',
+        });
+      }
+      expect(sessions.working.getState().threads).toEqual([]);
+      // The chat's files are by now the new document's: the old chats write nothing into them.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(transcripts.files).toEqual(kept);
+      expect(service.thread(SLIDE)).not.toBe(slide);
+    });
+
+    it('by closing it: the turn is closed as interrupted, and kept with the deck', async () => {
+      const { thread, transcripts, seen } = setup({ long }, { speed: 1 });
+      await thread.send('Go');
+      await vi.waitFor(() => expect(thread.store.getState().activity?.kind).toBe('writing'));
+      await thread.close();
+
+      expect(thread.store.getState()).toMatchObject({ busy: false, activity: null });
+      expect(seen.closed).toHaveLength(1);
+      const kept = parseTranscript(transcripts.files.get('deck.jsonl') ?? '');
+      expect(kept.at(-1)).toMatchObject({
+        type: 'assistant',
+        outcome: 'interrupted',
+        parts: [{ type: 'text', text: 'A long ' }],
+      });
+      // The record of the conversation is there for the session that resumes it.
+      expect((await transcripts.read('deck')).record?.nativeSessionId).toMatch(/^mock-/);
+    });
   });
 });
 

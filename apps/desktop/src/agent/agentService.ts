@@ -409,6 +409,8 @@ export class ChatThread {
   #loading: Promise<void> | null = null;
   /** A message whose files are being stored, before it has a run: Stop is kept here meanwhile. */
   #sending: { stopped: boolean } | null = null;
+  /** The document the chat belonged to was replaced (`drop`): its files are not this chat's. */
+  #gone = false;
   /**
    * The changes behind the conversation's back are being collected (`#changes`): from its first
    * turn in this window on. Before that nobody knows what became of the deck since its last turn.
@@ -642,15 +644,45 @@ export class ChatThread {
     if (session) await this.#options.client.interrupt(session.sessionId).catch(() => undefined);
   }
 
-  /** Ends the thread's session. The transcript stays with the deck. */
+  /**
+   * Ends the thread's session. The transcript stays with the deck. A turn that was running is
+   * over: its entry is closed as interrupted, and the chat is no longer at work.
+   */
   async close(): Promise<void> {
     const session = this.#session;
     this.#session = null;
-    this.#run?.over.abort();
-    this.#run = null;
+    this.#end();
+    if (session) await this.#endSession(session);
+  }
+
+  /**
+   * The deck this chat was about is no longer the open one (File > New, Open): the chat ends
+   * where it is. Nothing more is written of it: the files a chat is kept in are by now the new
+   * document's.
+   */
+  drop(): void {
+    const session = this.#session;
+    this.#session = null;
+    this.#gone = true;
+    // Nor is anything read: a transcript that was still on its way belongs to nobody here.
+    this.#loading = Promise.resolve();
+    this.#end();
+    if (session) void this.#endSession(session);
+  }
+
+  /** Ends whatever the chat was in the middle of, and leaves it idle. */
+  #end(): void {
+    const run = this.#run;
+    if (run) {
+      // Its session is gone under it, as if the user had stopped it.
+      run.stopRequested = true;
+      this.#finish(run, 'interrupted');
+    } else if (this.#sending) {
+      // A message whose files were still being stored: it never became a turn.
+      this.store.setState({ busy: false, stopping: false, activity: null });
+    }
     this.#sending = null;
     this.#heldWatch = null;
-    if (session) await this.#endSession(session);
   }
 
   /** A change the bus applied: the run's own writes are what the design check judges. */
@@ -703,12 +735,14 @@ export class ChatThread {
   }
 
   #persist(entries: readonly ChatEntry[]): void {
+    if (this.#gone) return;
     this.#options.transcripts.append(this.id, entries).catch((error: unknown) => {
       console.error('The chat could not be saved with the deck', error);
     });
   }
 
   #saveRecord(): void {
+    if (this.#gone) return;
     this.#options.transcripts.setRecord(this.id, this.#record).catch((error: unknown) => {
       console.error('The chat index could not be saved with the deck', error);
     });
@@ -1587,7 +1621,7 @@ export class AgentService {
       } else {
         this.#threads.delete(id);
         this.digest.forget(id);
-        void thread.close();
+        thread.drop();
       }
     }
   }
