@@ -238,6 +238,57 @@ describe('import_capture', () => {
     expect(service.capture).toHaveBeenCalledTimes(4);
   });
 
+  it('replaces the slide it was asked to, also when the deck changed while the page worked', async () => {
+    const fresh = createDeck({ lang: 'he', slides: [createSlide()] });
+    // The capture runs in the isolated page and takes a while; the editor stays usable.
+    let meanwhile: (() => void) | undefined;
+    const service = importer({
+      capture: vi.fn(async () => {
+        await Promise.resolve();
+        meanwhile?.();
+        meanwhile = undefined;
+        return captured();
+      }),
+    });
+    const { bus, call } = setup(fresh, { importer: service }, IMPORT);
+    await ok(
+      call('import_capture', {
+        slides: [
+          { selector: 'a', name: 'One' },
+          { selector: 'b', name: 'Two' },
+          { selector: 'c', name: 'Three' },
+        ],
+      }),
+    );
+    const [one, two, three] = bus.deck.slides.map((slide) => slide.id) as [string, string, string];
+    const names = () => bus.deck.slides.map((slide) => slide.name);
+
+    // While "Two" is captured again, the user deletes "One" in the filmstrip.
+    meanwhile = () => bus.dispatch({ type: 'slide.remove', slideIds: [one] });
+    const first = await ok(call('import_capture', { slides: [{ selector: 'b', replaces: two }] }));
+    expect(names()).toEqual(['Two', 'Three']);
+    expect(bus.deck.slides.map((slide) => slide.id)).not.toContain(two);
+    expect(bus.deck.slides[1]!.id).toBe(three);
+    expect(first.captured).toEqual([expect.objectContaining({ number: 1, name: 'Two' })]);
+
+    // While it is captured once more, a slide is added before it.
+    const again = bus.deck.slides[0]!.id;
+    meanwhile = () =>
+      bus.dispatch({ type: 'slide.add', slide: createSlide({ name: 'Mine' }), index: 0 });
+    await ok(call('import_capture', { slides: [{ selector: 'b', replaces: again }] }));
+    expect(names()).toEqual(['Mine', 'Two', 'Three']);
+    expect(bus.deck.slides.map((slide) => slide.id)).not.toContain(again);
+    expect(bus.deck.slides[2]!.id).toBe(three);
+
+    // The slide to replace is itself deleted meanwhile: said, and nothing else is touched.
+    const last = bus.deck.slides[1]!.id;
+    meanwhile = () => bus.dispatch({ type: 'slide.remove', slideIds: [last] });
+    const gone = await ok(call('import_capture', { slides: [{ selector: 'b', replaces: last }] }));
+    const [refused] = gone.captured as { error: string }[];
+    expect(refused?.error).toMatch(/was removed from the deck while the page worked/);
+    expect(names()).toEqual(['Mine', 'Three']);
+  });
+
   it('replaces the untouched slide a new deck starts with, and only that', async () => {
     const fresh = createDeck({ lang: 'he', slides: [createSlide()] });
     const service = importer();

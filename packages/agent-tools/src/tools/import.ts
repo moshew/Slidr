@@ -246,8 +246,7 @@ export const importCapture = defineTool({
       }
       const { name, notes, replaces, ...where } = request;
       try {
-        const replaced = replaces ? ctx.deck.slides.findIndex((s) => s.id === replaces) : -1;
-        if (replaces && replaced < 0) {
+        if (replaces && !ctx.deck.slides.some((s) => s.id === replaces)) {
           throw new Error(`No slide ${replaces} in the deck to replace. Nothing was captured.`);
         }
         const captured = await importer.capture(ctx.deck, where);
@@ -256,6 +255,15 @@ export const importCapture = defineTool({
         if (turnOver?.aborted || ctx.abandoned) {
           stopped = slides.length - index;
           break;
+        }
+        // The capture took its time, and the user may have deleted or moved slides meanwhile:
+        // the slide to replace is looked for where it is now, by its id, never by the place it
+        // had when the call began.
+        const replaced = replaces ? ctx.deck.slides.findIndex((s) => s.id === replaces) : -1;
+        if (replaces && replaced < 0) {
+          throw new Error(
+            `Slide ${replaces} was removed from the deck while the page worked on its capture, so there is nothing to replace. The capture was not added; capture it again without \`replaces\` if it is still wanted.`,
+          );
         }
         // A slide captured again keeps the name and the notes the first capture was given.
         const old = replaced >= 0 ? ctx.deck.slides[replaced] : undefined;
