@@ -530,9 +530,8 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
               {t('closed')}
             </div>
           )}
-          <div className="relative min-h-0 flex-1">
-            <Chat scope={scope} />
-          </div>
+          {/* The chat is laid out by this column: it takes the room that is left under the notes. */}
+          <Chat scope={scope} />
         </TabsContent>
         <TabsContent value="report" className="min-h-0 flex-1">
           <ScrollArea className="h-full">

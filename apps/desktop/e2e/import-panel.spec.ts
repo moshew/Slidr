@@ -69,6 +69,52 @@ test('imports a file: plan, approval, slides, report, and the chat goes on', asy
   expect(errors).toEqual([]);
 });
 
+test('the chat takes the room of the panel: the composer at its foot, the messages scroll', async ({
+  page,
+}) => {
+  await openImportPanel(page);
+  await chooseFile(page);
+  await turnsDone(page, 1);
+  const edges = (testId: string) =>
+    page.getByTestId(testId).evaluate((node) => {
+      const { top, bottom } = node.getBoundingClientRect();
+      return { top, bottom };
+    });
+  const messages = () =>
+    page
+      .getByTestId('chat')
+      .locator('[data-radix-scroll-area-viewport]')
+      .evaluate((view) => ({
+        top: view.getBoundingClientRect().top,
+        bottom: view.getBoundingClientRect().bottom,
+        room: view.clientHeight,
+        content: view.scrollHeight,
+        scrolled: view.scrollTop,
+      }));
+
+  // A plan that is shorter than the panel leaves the room empty above the composer, not under it.
+  expect((await edges('chat')).bottom).toBeCloseTo((await edges('import-session')).bottom, 0);
+  expect((await edges('chat-input')).bottom).toBeGreaterThan((await edges('chat')).bottom - 64);
+
+  // In a window too short for the plan the composer stays in the panel, and the plan scrolls.
+  await page.setViewportSize({ width: 1280, height: 440 });
+  const session = await edges('import-session');
+  expect(session.bottom).toBeLessThanOrEqual(440);
+  expect((await edges('chat')).bottom).toBeCloseTo(session.bottom, 0);
+  await expect(page.getByTestId('chat-send')).toBeInViewport({ ratio: 1 });
+  const list = await messages();
+  expect(list.content).toBeGreaterThan(list.room);
+  expect(list.bottom).toBeLessThanOrEqual((await edges('chat-input')).top);
+
+  // The end of what the agent wrote can be reached.
+  await page.getByTestId('chat').locator('[data-radix-scroll-area-viewport]').hover();
+  await page.mouse.wheel(0, 4000);
+  await expect.poll(async () => (await messages()).scrolled).toBeGreaterThan(0);
+  const end = await messages();
+  expect(end.scrolled + end.room).toBeCloseTo(end.content, 0);
+  await expect(turns(page).first().getByTestId('turn-usage')).toBeInViewport({ ratio: 1 });
+});
+
 test('the capture turn is one undo step, and comes back on redo', async ({ page }) => {
   await openImportPanel(page);
   await chooseFile(page);
