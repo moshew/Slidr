@@ -165,6 +165,11 @@ export interface StageMenuDefinition extends Registered {
   group: string;
   /** Position in the menu, ascending. */
   order: number;
+  /**
+   * A part of the menu of text that is being edited in place: it is drawn for a right click in
+   * that text, where the parts about the element (delete, order, lock) are not. Off by default.
+   */
+  inText?: boolean;
   render: ComponentType<ContextToolProps>;
 }
 
@@ -172,9 +177,20 @@ const stageMenu = createRegistry<StageMenuDefinition>();
 
 export const registerStageMenu = stageMenu.register;
 
-export function useStageMenu(kind: SelectionKind): StageMenuDefinition[][] {
+/**
+ * The parts of the menu for a kind of selection, in groups; with `inText`, the parts of the menu
+ * of the text that is being edited instead.
+ */
+export function useStageMenu(kind: SelectionKind, inText = false): StageMenuDefinition[][] {
   const items = useStore(stageMenu.store, (s) => s.items);
-  return useMemo(() => groupContextTools(items, kind), [items, kind]);
+  return useMemo(
+    () =>
+      groupContextTools(
+        items.filter((item) => Boolean(item.inText) === inText),
+        kind,
+      ),
+    [items, kind, inText],
+  );
 }
 
 /* ---------------------------------------------------------------- Top Tools row A */

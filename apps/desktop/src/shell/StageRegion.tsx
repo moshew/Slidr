@@ -1,4 +1,4 @@
-import { useCallback, type MouseEvent } from 'react';
+import { useCallback, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { findElement, findSlide, type Point, type TextElement } from '@slidr/model';
@@ -34,9 +34,15 @@ import { useShell } from './store';
 /** The kinds of element whose text is edited in place: a right click there is the text's own. */
 const TEXT_EDITED = new Set(['text', 'shape', 'html']);
 
-/** In the text editor of a table cell, where the right click is the text's too. */
-function inCellText(target: EventTarget): boolean {
-  return target instanceof Element && Boolean(target.closest('[data-cell-editing]'));
+/**
+ * In the app's own text editor: the text of a text box or of a shape, or of a table cell (the
+ * whole cell is the editor's while it is typed in). A right click there opens the menu of the
+ * text, whose parts the text area registers (`inText`).
+ */
+function inTextEditor(target: EventTarget): boolean {
+  return (
+    target instanceof Element && Boolean(target.closest('[data-text-editor], [data-cell-editing]'))
+  );
 }
 
 /**
@@ -110,7 +116,9 @@ export function StageRegion() {
   // The right click's menu (STG-06). The Stage has already made what was clicked the selection,
   // so the menu is the one of the selection's kind; its parts come from the areas.
   const kind = selectionKind(deck, slideId, elementIds, editingId);
-  const menu = useStageMenu(kind);
+  /** The last right click was in text that is being edited: the menu is the text's. */
+  const [menuInText, setMenuInText] = useState(false);
+  const menu = useStageMenu(kind, menuInText);
   const slide = slideId ? findSlide(deck, slideId) : undefined;
   const editing = slide && editingId ? findElement(slide, editingId) : undefined;
   // While text is edited in place the right click is the text's own.
@@ -130,7 +138,7 @@ export function StageRegion() {
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild disabled={editingText || !slideId}>
+      <ContextMenuTrigger asChild disabled={!slideId}>
         <section
           aria-label={t('stage.label')}
           data-testid="stage"
@@ -139,7 +147,12 @@ export function StageRegion() {
           <div
             className="contents"
             onContextMenu={(event) => {
-              if (inCellText(event.target)) event.stopPropagation();
+              const inText = inTextEditor(event.target);
+              setMenuInText(inText);
+              // While text is edited in place, a right click outside the app's own editor is
+              // not the Stage menu's: beside the text, and in the text of an `html` element,
+              // which keeps the menu of a text field.
+              if (editingText && !inText) layerContextMenu(event);
             }}
           >
             <Stage
