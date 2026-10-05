@@ -25,6 +25,7 @@ const onStage = (page: Page, id: string) =>
 const rowA = (page: Page) => page.getByTestId('top-tools-a');
 const rowB = (page: Page) => page.getByTestId('top-tools-b');
 const types = async (page: Page) => (await elements(page)).map((e) => e.type);
+const zoom = (page: Page) => page.getByTestId('status-zoom').textContent();
 
 test.describe('a key pressed in what stands over the window', () => {
   test('a letter typed in an open menu is the menu’s, not the shortcut "T: text box"', async ({
@@ -152,8 +153,11 @@ test.describe('a key typed into the text of an html element', () => {
       .toBe('e_html');
   }
 
-  test('Ctrl+F reaches the app, as from a text box', async ({ page }) => {
+  test('Ctrl+F and the zoom reach the app, as from a text box', async ({ page }) => {
     await editHtml(page);
+    const fit = await zoom(page);
+    await page.keyboard.press('Control+Equal');
+    await expect.poll(() => zoom(page)).not.toBe(fit);
     await page.keyboard.press('Control+f');
     await expect(page.getByTestId('find-bar')).toBeVisible();
   });
@@ -206,5 +210,27 @@ test.describe('a key typed into the text of an html element', () => {
     expect(await page.evaluate(() => window.slidr!.bus.canRedo)).toBe(true);
     await press({ key: 'y', code: 'KeyZ', ctrlKey: true });
     await expect.poll(() => markup(page)).toContain('this year. more');
+  });
+});
+
+test.describe('Ctrl and plus', () => {
+  test('zooms in by each of the keys that are a plus, and the minus of the number pad zooms out', async ({
+    page,
+  }) => {
+    await openApp(page, { lang: 'en' });
+    await focusStage(page);
+    const fit = await zoom(page);
+    await page.keyboard.press('Control+Equal');
+    const closer = await zoom(page);
+    expect(closer).not.toBe(fit);
+    for (const keys of ['Control+Shift+Equal', 'Control+NumpadAdd']) {
+      await page.keyboard.press('Control+0');
+      await expect.poll(() => zoom(page)).toBe(fit);
+      await page.keyboard.press(keys);
+      await expect.poll(() => zoom(page), keys).toBe(closer);
+    }
+    await page.keyboard.press('Control+NumpadSubtract');
+    await expect.poll(() => zoom(page)).toBe(fit);
+    await expect(surface(page)).toBeFocused();
   });
 });

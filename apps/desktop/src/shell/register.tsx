@@ -262,13 +262,21 @@ registerShortcut({
   ...view,
   run: () => setZoom('fit'),
 });
-registerShortcut({
-  id: 'shell.zoomIn',
-  keys: 'Ctrl+=',
-  label: 'keys.zoomIn',
-  ...view,
-  run: () => zoomBy(1.25),
-});
+// "Ctrl and plus" is two keys on the row of digits: the key marked `+ =` as it is, and the same
+// key with Shift, which is what makes it a plus. The plus of the number pad is read as that key
+// too (`eventKeys.ts`), and its minus as the minus.
+for (const [id, keys] of [
+  ['shell.zoomIn', 'Ctrl+='],
+  ['shell.zoomIn.shift', 'Ctrl+Shift+='],
+] as const) {
+  registerShortcut({
+    id,
+    keys,
+    label: 'keys.zoomIn',
+    ...view,
+    run: () => zoomBy(1.25),
+  });
+}
 registerShortcut({
   id: 'shell.zoomOut',
   keys: 'Ctrl+-',

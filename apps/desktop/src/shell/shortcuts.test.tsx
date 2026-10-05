@@ -56,6 +56,11 @@ describe('the keys of the shell', () => {
     expect(keys({ key: 'ע', code: 'KeyG', ctrlKey: true })).toBe('ctrl+g');
     expect(keys({ key: ' ', code: 'Space', ctrlKey: true })).toBe('ctrl+space');
     expect(keys({ key: 'F8', code: 'F8' })).toBe('f8');
+    // "Ctrl and plus": the key marked `+ =`, with Shift or without, and the number pad's plus.
+    expect(keys({ key: '=', code: 'Equal', ctrlKey: true })).toBe('ctrl+=');
+    expect(keys({ key: '+', code: 'Equal', ctrlKey: true, shiftKey: true })).toBe('ctrl+shift+=');
+    expect(keys({ key: '+', code: 'NumpadAdd', ctrlKey: true })).toBe('ctrl+=');
+    expect(keys({ key: '-', code: 'NumpadSubtract', ctrlKey: true })).toBe('ctrl+-');
   });
 
   it("answers no shortcut until the user's keys were read, and then by the user's keys", async () => {

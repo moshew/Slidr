@@ -12,6 +12,10 @@ const PHYSICAL: Record<string, string> = {
   Backslash: '\\',
   Equal: '=',
   Minus: '-',
+  // The plus and the minus of the number pad are the plus and the minus: Ctrl with either zooms,
+  // as Ctrl with the key marked `+ =` does.
+  NumpadAdd: '=',
+  NumpadSubtract: '-',
 };
 
 /**
