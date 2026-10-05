@@ -288,6 +288,36 @@ if (phase === 'all') {
       );
     }
   }
+
+  // A deck whose file has the record and not the source (it was put together elsewhere): going
+  // on with its import says so to the user, in the panel, and asks nothing of the agent.
+  const lost = await start();
+  await page.evaluate(async () => {
+    window.slidrImport.turnEnded(false);
+    await window.slidrImport.end();
+  });
+  rmSync(join(lost.workspace.dir, 'source', 'import.html'));
+  if (!(await page.getByTestId('import-session').isVisible())) {
+    await page.locator('[data-testid="activity-bar"] [data-panel="import"]').click();
+  }
+  const banner = page.getByTestId('import-cut');
+  await banner.getByRole('button').click();
+  const refusal = await banner
+    .getByRole('alert')
+    .innerText({ timeout: 15_000 })
+    .catch((error) => `NOTHING SHOWN ${error?.message}`);
+  const turnsAfter = await page.evaluate(
+    () =>
+      window.slidrImport
+        .thread()
+        .store.getState()
+        .entries.filter((e) => e.type === 'user').length,
+  );
+  note(
+    'a deck that lost its source: continuing says so in the panel, and sends the agent nothing',
+    `${refusal.replace(/\s+/g, ' ')} | ${turnsAfter} messages`,
+    /keeps no source file/.test(refusal) && turnsAfter === 0,
+  );
 } else if (phase === 'before-crash') {
   const begun = await start();
   checkDisk('workspace', begun.workspace.dir, 3);

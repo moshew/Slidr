@@ -142,11 +142,15 @@ describe('the record of an import, kept with its deck', () => {
     await pageRecord(first.id).write(serializeRecord(kept(first.id)));
     await restoreImport(editor);
     const importer = createImporter(editor);
+    const running = importer.interruption!();
 
     // Another document is opened while the page still works on a slide of the first.
     const other = newDeck();
     bus.reset(other);
     expect(importState.getState().file).toBeNull();
+    // The capture call is told at once, so the slide never reaches the other document's deck;
+    // and if it did, it would not reach its record.
+    expect(running.aborted).toBe(true);
     importer.captured?.(captured('s_late'));
     await Promise.resolve();
     expect(importState.getState().records).toEqual({});

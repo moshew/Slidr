@@ -198,6 +198,9 @@ export function turnEnded(completed: boolean): void {
   } else if (phase === 'working') {
     importState.setState({ phase: 'cut' });
   }
+  // What the page was refused while the turn worked goes into the record now: the page may not
+  // be there the next time the report is looked at.
+  void refreshBlocked().catch(() => undefined);
 }
 
 /* ------------------------------------------------------------ a plain browser page */
