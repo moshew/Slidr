@@ -11,6 +11,7 @@ use std::{
     path::Path,
 };
 
+use image::{ImageDecoder, ImageFormat, ImageReader, metadata::Orientation};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -54,7 +55,9 @@ pub struct ImportedAsset {
     pub kind: AssetKind,
     /// Size of the content in bytes.
     pub bytes: u64,
-    /// Natural width in pixels (raster images, and SVGs that state it).
+    /// Natural width in pixels (raster images, and SVGs that state it), as the picture is
+    /// shown: a photo whose file says it is shown turned a quarter has its sides the other way
+    /// round than its stored pixels.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<f64>,
     /// Natural height in pixels.
@@ -258,12 +261,54 @@ fn detect(head: &[u8], name: Option<&str>) -> Detected {
     Detected::other(extension, "application/octet-stream")
 }
 
+/// How the webview turns a picture to show it, by the note a camera held on its side leaves in
+/// the file (Exif orientation). The webview obeys the note in a JPEG and in a PNG, and not in a
+/// WebP (measured in Edge, 2026-10), so that is what holds everywhere in the core: the size an
+/// asset is given, and the pixels the image tools work on. A picture is then one thing, wherever
+/// it is drawn or changed.
+pub fn shown_orientation(format: ImageFormat, decoder: &mut impl ImageDecoder) -> Orientation {
+    match format {
+        ImageFormat::Jpeg | ImageFormat::Png => {
+            decoder.orientation().unwrap_or(Orientation::NoTransforms)
+        }
+        _ => Orientation::NoTransforms,
+    }
+}
+
+/// Whether the picture in the file is shown turned a quarter, so that its width as shown is its
+/// stored height. Reads the file's headers only.
+fn shown_on_its_side(path: &Path) -> bool {
+    let Ok(reader) = ImageReader::open(path).and_then(ImageReader::with_guessed_format) else {
+        return false;
+    };
+    let Some(format @ (ImageFormat::Jpeg | ImageFormat::Png)) = reader.format() else {
+        return false;
+    };
+    let Ok(mut decoder) = reader.into_decoder() else {
+        return false;
+    };
+    matches!(
+        shown_orientation(format, &mut decoder),
+        Orientation::Rotate90
+            | Orientation::Rotate270
+            | Orientation::Rotate90FlipH
+            | Orientation::Rotate270FlipH
+    )
+}
+
 fn dimensions(path: &Path, head: &[u8], kind: AssetKind) -> Option<(f64, f64)> {
     let (width, height) = match kind {
         // Reads only as much of the file as the header needs.
         AssetKind::Image => {
             let size = imagesize::size(path).ok()?;
-            (size.width as f64, size.height as f64)
+            let stored = (size.width as f64, size.height as f64);
+            // The frame of an image element and the place of the picture in it are worked out
+            // from these numbers, and the webview draws the picture as it is shown.
+            if shown_on_its_side(path) {
+                (stored.1, stored.0)
+            } else {
+                stored
+            }
         }
         AssetKind::Svg => svg_size(&String::from_utf8_lossy(head))?,
         _ => return None,
@@ -522,6 +567,137 @@ mod tests {
             .map_err(|e| e.kind)
             .err();
         assert_eq!(error, Some(crate::error::ErrorKind::NotFound));
+        Ok(())
+    }
+
+    /// The note a camera leaves in a file about how to turn its picture: a TIFF block with the
+    /// one tag, Orientation.
+    fn orientation_note(orientation: u8) -> Vec<u8> {
+        let mut note = b"MM\0\x2a\0\0\0\x08\0\x01".to_vec();
+        note.extend_from_slice(&[0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, orientation, 0, 0]);
+        note.extend_from_slice(&[0, 0, 0, 0]);
+        note
+    }
+
+    fn crc32(bytes: &[u8]) -> u32 {
+        let mut crc = u32::MAX;
+        for byte in bytes {
+            crc ^= u32::from(*byte);
+            for _ in 0..8 {
+                crc = if crc & 1 == 1 {
+                    (crc >> 1) ^ 0xedb8_8320
+                } else {
+                    crc >> 1
+                };
+            }
+        }
+        !crc
+    }
+
+    /// A picture of 400 by 300 stored pixels in `format`, whose file says how it is to be shown.
+    fn noted(
+        format: ImageFormat,
+        orientation: u8,
+    ) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let picture = image::RgbImage::from_pixel(400, 300, image::Rgb([200, 30, 30]));
+        let mut plain = Vec::new();
+        image::DynamicImage::ImageRgb8(picture)
+            .write_to(&mut io::Cursor::new(&mut plain), format)?;
+        let note = orientation_note(orientation);
+        let mut out = Vec::new();
+        match format {
+            ImageFormat::Jpeg => {
+                // An APP1 segment right after the start-of-image marker.
+                let length = u16::try_from(note.len() + 8)?;
+                out.extend_from_slice(&plain[..2]);
+                out.extend_from_slice(&[0xff, 0xe1]);
+                out.extend_from_slice(&length.to_be_bytes());
+                out.extend_from_slice(b"Exif\0\0");
+                out.extend_from_slice(&note);
+                out.extend_from_slice(&plain[2..]);
+            }
+            ImageFormat::Png => {
+                // An `eXIf` chunk after the signature (8 bytes) and the header chunk (25).
+                let mut chunk = b"eXIf".to_vec();
+                chunk.extend_from_slice(&note);
+                out.extend_from_slice(&plain[..33]);
+                out.extend_from_slice(&u32::try_from(note.len())?.to_be_bytes());
+                out.extend_from_slice(&chunk);
+                out.extend_from_slice(&crc32(&chunk).to_be_bytes());
+                out.extend_from_slice(&plain[33..]);
+            }
+            ImageFormat::WebP => {
+                // The extended form: a `VP8X` header that says "has Exif", the picture, the note.
+                let mut body = b"WEBP".to_vec();
+                if &plain[12..16] == b"VP8X" {
+                    body.extend_from_slice(&plain[12..]);
+                    body[4 + 8] |= 0x08;
+                } else {
+                    body.extend_from_slice(b"VP8X");
+                    body.extend_from_slice(&10_u32.to_le_bytes());
+                    body.extend_from_slice(&[0x08, 0, 0, 0]);
+                    body.extend_from_slice(&399_u32.to_le_bytes()[..3]);
+                    body.extend_from_slice(&299_u32.to_le_bytes()[..3]);
+                    body.extend_from_slice(&plain[12..]);
+                }
+                body.extend_from_slice(b"EXIF");
+                body.extend_from_slice(&u32::try_from(note.len())?.to_le_bytes());
+                body.extend_from_slice(&note);
+                out.extend_from_slice(b"RIFF");
+                out.extend_from_slice(&u32::try_from(body.len())?.to_le_bytes());
+                out.extend_from_slice(&body);
+            }
+            _ => return Err("no note for this format".into()),
+        }
+        Ok(out)
+    }
+
+    #[test]
+    fn a_photo_that_is_shown_turned_is_measured_as_it_is_shown() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let size = |format: ImageFormat,
+                    orientation: u8|
+         -> std::result::Result<_, Box<dyn std::error::Error>> {
+            let asset = import_bytes(dir.path(), None, &noted(format, orientation)?)?;
+            assert_eq!(asset.kind, AssetKind::Image);
+            Ok((asset.width, asset.height))
+        };
+        let (lying, standing) = ((Some(400.0), Some(300.0)), (Some(300.0), Some(400.0)));
+        // A phone held upright writes the pixels lying and the note "turn a quarter" (6, 8, and
+        // their mirrored forms 5 and 7): every viewer, the webview included, shows it standing.
+        // The frame of an image element is made from these numbers.
+        for orientation in 1..=4 {
+            assert_eq!(
+                size(ImageFormat::Jpeg, orientation)?,
+                lying,
+                "{orientation}"
+            );
+        }
+        for orientation in 5..=8 {
+            assert_eq!(
+                size(ImageFormat::Jpeg, orientation)?,
+                standing,
+                "{orientation}"
+            );
+        }
+        // A note that makes no sense turns nothing.
+        assert_eq!(size(ImageFormat::Jpeg, 0)?, lying);
+        assert_eq!(size(ImageFormat::Jpeg, 9)?, lying);
+        // The webview obeys the same note in a PNG.
+        assert_eq!(size(ImageFormat::Png, 1)?, lying);
+        assert_eq!(size(ImageFormat::Png, 6)?, standing);
+        // It does not obey it in a WebP, so neither does the store: the note is there (the
+        // decoder reads it), and the picture is measured as it is stored.
+        let webp = noted(ImageFormat::WebP, 6)?;
+        let mut decoder = ImageReader::new(io::Cursor::new(&webp))
+            .with_guessed_format()?
+            .into_decoder()?;
+        assert_eq!(decoder.orientation()?, Orientation::Rotate90);
+        assert_eq!(
+            shown_orientation(ImageFormat::WebP, &mut decoder),
+            Orientation::NoTransforms
+        );
+        assert_eq!(size(ImageFormat::WebP, 6)?, lying);
         Ok(())
     }
 }

@@ -16,12 +16,10 @@
 
 use std::io::Cursor;
 
-use image::{
-    DynamicImage, GrayImage, ImageDecoder, ImageFormat, ImageReader, Luma, Rgba, RgbaImage,
-    imageops,
-};
+use image::{DynamicImage, GrayImage, ImageFormat, ImageReader, Luma, Rgba, RgbaImage, imageops};
 
 use super::{ImageError, Result};
+use crate::assets;
 
 /// A picture and its mask as a service receives them, and what it takes to bring the answer
 /// back onto the source.
@@ -217,8 +215,9 @@ fn decode(bytes: &[u8], what: &str) -> Result<DynamicImage> {
     let reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .map_err(|_| refuse())?;
+    let format = reader.format().ok_or_else(refuse)?;
     let mut decoder = reader.into_decoder().map_err(|_| refuse())?;
-    let orientation = decoder.orientation().map_err(|_| refuse())?;
+    let orientation = assets::shown_orientation(format, &mut decoder);
     let mut picture = DynamicImage::from_decoder(decoder).map_err(|_| refuse())?;
     picture.apply_orientation(orientation);
     Ok(picture)

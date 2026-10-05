@@ -416,7 +416,7 @@ fn open(
     check(w, h)?;
     // A photo taken with the camera turned says so in its file, and is shown turned; the
     // result has no such note, so its pixels are turned.
-    let orientation = decoder.orientation().map_err(unreadable)?;
+    let orientation = assets::shown_orientation(format, &mut decoder);
     let mut picture = DynamicImage::from_decoder(decoder).map_err(unreadable)?;
     picture.apply_orientation(orientation);
     Ok((picture, format))
