@@ -270,6 +270,18 @@ describe('L05: a colour that reads, or a veil under the text', () => {
     // Around both texts: the title's own veil, grown down to hold the line.
     expect(byId(after, 'e_label_veil').frame).toEqual({ x: 136, y: 316, w: 848, h: 218 });
     expect(colours(byId(after, 'e_line'))).toEqual([{ token: 'bg' }]);
+
+    // A veil the user locked is not made larger: the line gets a veil of its own.
+    const held = elements.map((e) => (e.id === 'e_label_veil' ? { ...e, locked: true } : e));
+    const [again] = check('L05', held, {
+      e_line: {
+        box: under,
+        text: text(under, { spans: [span({ color: WHITE, backdrop: busy })] }),
+      },
+    });
+    const own = fixed(held, again);
+    expect(own.elements.map((e) => e.id)).toContain('e_line_veil');
+    expect(byId(own, 'e_label_veil').frame).toEqual({ x: 136, y: 316, w: 848, h: 148 });
   });
 });
 

@@ -208,9 +208,11 @@ function fixOf(ctx: SlideContext, item: Item, worst: Faint): Command[] | undefin
   };
 
   // The veil of the text next to this one is made to hold both: two veils that overlap are
-  // darker where they meet, and a title with the line under it reads as two boxes.
+  // darker where they meet, and a title with the line under it reads as two boxes. A veil the
+  // user locked stays the size it is, and this text gets one of its own.
   for (const laid of ctx.slide.elements.slice(0, at).reverse()) {
     if (laid.type !== 'shape' || laid.name !== VEIL || laid.rotation !== 0) continue;
+    if (ctx.locked.has(laid.id)) continue;
     if (laid.fill.kind !== 'solid' || !intersection(laid.frame, frame)) continue;
     const { color } = laid.fill;
     const pair = pairs.find(({ veil }) => sameColour(veil.color, color));
