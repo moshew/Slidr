@@ -18,7 +18,9 @@
 //! its answer as opaque JSON:
 //!
 //! ```text
-//! import_open ──► the source is copied where the agent reads it; a fresh window next time
+//! import_open ──► the source is copied where the agent reads it, and kept with the deck
+//!                 (`source/import.html`, IMP-07); a fresh window next time
+//! import_reopen ──► the same, from the copy the deck keeps: an import that is continued (IMP-09)
 //! import_run_job ──► ImportService (one job at a time)
 //!   1. the window: created on first use, label "import", loads import.html, network blocked
 //!   2. eval window.__slidrImportJob(id)          ──►  page: import_job_take(id) ──► the job
@@ -58,6 +60,7 @@ use tokio::{
 
 use crate::{
     assets::{self, ImportedAsset},
+    error::{AppError, ErrorKind},
     harness::HarnessManager,
     storage::Storage,
 };
@@ -350,6 +353,19 @@ impl ImportService {
             .await
             .map_err(|e| io("copy the file", &e))?;
 
+        self.begin(surface, source, workspace_id).await;
+        Ok(OpenedSource { file, bytes })
+    }
+
+    /// Starts a session on a source that is already where the agent reads it: the copy the deck
+    /// keeps was put there again, for an import that is continued (IMP-09). The file gets a
+    /// window nothing ran in, as on the first opening.
+    async fn reopen<S: Surface>(&self, surface: &S, source: PathBuf, workspace_id: String) {
+        self.begin(surface, source, workspace_id).await;
+    }
+
+    /// Lets go of the window of the session before, and makes `source` the session's file.
+    async fn begin<S: Surface>(&self, surface: &S, source: PathBuf, workspace_id: String) {
         let _turn = self.turn.lock().await;
         surface.destroy();
         self.loaded.send_replace(false);
@@ -358,7 +374,6 @@ impl ImportService {
             source,
             workspace_id,
         });
-        Ok(OpenedSource { file, bytes })
     }
 
     /// Ends the session: its window goes, and with it whatever the file left running.
@@ -597,9 +612,120 @@ pub async fn import_open(
     let folder = harness
         .attachments_dir(&thread)
         .map_err(|e| ImportError::invalid(e.message))?;
+    let window = surface(&app, &service);
+    let opened = service
+        .open(&window, &path, &folder, workspace_id.clone())
+        .await?;
+    // The deck keeps its source (IMP-07): the bytes the session reads, so what is looked at or
+    // continued later is what was imported, whatever becomes of the file the user chose.
+    let copy = folder.join(&opened.file);
+    let storage = Arc::clone(&storage);
+    let kept = off_main(move || storage.keep_source(&workspace_id, &copy)).await;
+    if let Err(error) = kept {
+        service.close(&window).await;
+        return Err(error);
+    }
+    Ok(opened)
+}
+
+/// `import_reopen({ file, thread, workspaceId })`: starts an import session again on the source
+/// the deck keeps, for an import that is continued or a slide that is captured again. `file` is
+/// the name the agent knows the file by; the copy is put back where the agent of `thread` reads
+/// its files, which another machine, or a cleaned folder, does not have.
+#[tauri::command]
+pub async fn import_reopen(
+    app: AppHandle,
+    service: Service<'_>,
+    harness: State<'_, Arc<HarnessManager>>,
+    storage: State<'_, Arc<Storage>>,
+    file: String,
+    thread: String,
+    workspace_id: String,
+) -> Result<OpenedSource> {
+    let folder = harness
+        .attachments_dir(&thread)
+        .map_err(|e| ImportError::invalid(e.message))?;
+    // The name comes from the webview: only a plain file name gets to be a path.
+    let file = source_name(Path::new(&file));
+    let source = folder.join(&file);
+    let bytes = {
+        let (storage, workspace_id, source) =
+            (Arc::clone(&storage), workspace_id.clone(), source.clone());
+        off_main(move || storage.copy_source(&workspace_id, &source)).await?
+    };
     service
-        .open(&surface(&app, &service), &path, &folder, workspace_id)
+        .reopen(&surface(&app, &service), source, workspace_id)
+        .await;
+    Ok(OpenedSource { file, bytes })
+}
+
+/// `import_record_read({ workspaceId })`: the record of the import the open deck came from
+/// (`source/import.json`), as the webview wrote it; `null` when the deck has none.
+#[tauri::command]
+pub async fn import_record_read(
+    storage: State<'_, Arc<Storage>>,
+    workspace_id: String,
+) -> Result<Option<String>> {
+    let storage = Arc::clone(&storage);
+    off_main(move || storage.import_record(&workspace_id)).await
+}
+
+/// `import_record_write({ workspaceId, text })`: replaces the record of the import. It is saved
+/// with the deck, so a deck that is opened again has its import report, and an import that was
+/// cut is continued from what the record says was captured.
+#[tauri::command]
+pub async fn import_record_write(
+    storage: State<'_, Arc<Storage>>,
+    workspace_id: String,
+    text: String,
+) -> Result<()> {
+    let storage = Arc::clone(&storage);
+    off_main(move || storage.write_import_record(&workspace_id, &text)).await
+}
+
+/// `import_source_export({ workspaceId, path })`: writes a copy of the source the deck keeps to
+/// a file the user chose, to look at it outside the app. Returns its size.
+#[tauri::command]
+pub async fn import_source_export(
+    storage: State<'_, Arc<Storage>>,
+    workspace_id: String,
+    path: PathBuf,
+) -> Result<u64> {
+    if !path.is_absolute() {
+        return Err(ImportError::invalid(format!(
+            "not an absolute path: {}",
+            path.display()
+        )));
+    }
+    let storage = Arc::clone(&storage);
+    off_main(move || storage.copy_source(&workspace_id, &path)).await
+}
+
+/// A failure of the file layer, as an import command reports it.
+impl From<AppError> for ImportError {
+    fn from(error: AppError) -> Self {
+        let kind = match error.kind {
+            ErrorKind::NotFound => ImportErrorKind::NotFound,
+            ErrorKind::InvalidInput | ErrorKind::InvalidFile | ErrorKind::UnknownWorkspace => {
+                ImportErrorKind::InvalidInput
+            }
+            ErrorKind::Io | ErrorKind::DiskFull => ImportErrorKind::Io,
+            ErrorKind::Internal => ImportErrorKind::Internal,
+        };
+        Self::new(kind, error.message)
+    }
+}
+
+/// Runs blocking file work of the file layer off the async runtime's threads.
+async fn off_main<T, F>(task: F) -> Result<T>
+where
+    F: FnOnce() -> crate::error::Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(task)
         .await
+        .map_err(ImportError::internal)?
+        .map_err(ImportError::from)
 }
 
 /// `import_run_job({ job, timeoutMs? })`: runs a job in the import page and returns its answer.
@@ -778,6 +904,13 @@ mod tests {
             "import_run_job",
             "import_blocked",
             "import_close",
+            // The source a deck keeps and the record of its import: the main window's, like
+            // the session itself. A file may not reopen itself, rewrite what the report says of
+            // it, or have a copy of the source written somewhere on the disk.
+            "import_reopen",
+            "import_record_read",
+            "import_record_write",
+            "import_source_export",
             // The agent's diagnostics log (ADR-066): what the agent wrote is not a file's to read.
             "agent_diagnostics_read",
             "agent_diagnostics_clear",
@@ -1050,6 +1183,56 @@ mod tests {
         service.close(&surface).await;
         assert!(service.session().is_err());
         Ok(())
+    }
+
+    /// An import that is continued runs on the copy it is given, in a window nothing ran in.
+    #[tokio::test]
+    async fn reopening_starts_a_session_on_the_copy_in_a_fresh_window() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let service = ImportService::new();
+        let (surface, mut scripts) = FakeSurface::new();
+        assert!(service.session().is_err());
+
+        let copy = dir.path().join("agent/attachments/my deck.html");
+        service.reopen(&surface, copy.clone(), "w1".into()).await;
+        let session = service.session()?;
+        assert_eq!(
+            (session.source, session.workspace_id),
+            (copy.clone(), "w1".into())
+        );
+
+        let run = service.run_job(&surface, json!({ "kind": "load" }), JOB_TIMEOUT);
+        let page = async {
+            service.page_loaded();
+            let id = job_id(&scripts.recv().await.unwrap_or_default());
+            service.finish_job(id, Ok(Value::Null));
+        };
+        let _ = tokio::join!(run, page);
+        note_blocked(&service.blocked, "https://a.example/font.woff2");
+        assert_eq!(surface.created.get(), 1);
+
+        // Reopened once more while its window is up: the window goes, and so does the list.
+        service.reopen(&surface, copy, "w1".into()).await;
+        assert_eq!(surface.destroyed.get(), 1);
+        assert!(service.blocked().is_empty());
+        assert!(
+            !*service.loaded.borrow(),
+            "the next job waits for the new page"
+        );
+        Ok(())
+    }
+
+    /// What the file layer refuses reaches the webview in the import commands' own kinds.
+    #[test]
+    fn a_failure_of_the_file_layer_keeps_its_meaning() {
+        let kind = |kind| ImportError::from(AppError::new(kind, "x")).kind;
+        assert_eq!(kind(ErrorKind::NotFound), ImportErrorKind::NotFound);
+        assert_eq!(
+            kind(ErrorKind::UnknownWorkspace),
+            ImportErrorKind::InvalidInput
+        );
+        assert_eq!(kind(ErrorKind::DiskFull), ImportErrorKind::Io);
+        assert_eq!(kind(ErrorKind::Internal), ImportErrorKind::Internal);
     }
 
     #[tokio::test]

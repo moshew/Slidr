@@ -19,6 +19,7 @@ use super::{
     ASSETS_DIR, DECK_FILE, LOCK_FILE, META_FILE, STATE_FILE, archive, atomic,
     deck::DeckInfo,
     recents::{self, RecentFile},
+    source,
     time::now_iso,
 };
 use crate::error::{AppError, Result};
@@ -369,6 +370,32 @@ impl Storage {
     pub fn remove_recent(&self, path: &str) -> Result<()> {
         let _open = self.open_set();
         recents::remove(&self.root, path)
+    }
+
+    /// Keeps a copy of the file at `from` in the workspace, as the file the deck was imported
+    /// from (IMP-07): `source/import.html`, which every save packs. Returns its size.
+    pub fn keep_source(&self, id: &str, from: &Path) -> Result<u64> {
+        let open = self.open_set();
+        source::keep(&self.open_dir(&open, id)?, from)
+    }
+
+    /// Copies the source the workspace keeps to `to`. `not_found` when it keeps none.
+    pub fn copy_source(&self, id: &str, to: &Path) -> Result<u64> {
+        let open = self.open_set();
+        source::copy_to(&self.open_dir(&open, id)?, to)
+    }
+
+    /// The record of the import the workspace's deck came from (`source/import.json`), as the
+    /// webview wrote it; `None` when there is none.
+    pub fn import_record(&self, id: &str) -> Result<Option<String>> {
+        let open = self.open_set();
+        source::read_record(&self.open_dir(&open, id)?)
+    }
+
+    /// Replaces the record of the import. The text is the webview's and is not read here.
+    pub fn write_import_record(&self, id: &str, text: &str) -> Result<()> {
+        let open = self.open_set();
+        source::write_record(&self.open_dir(&open, id)?, text)
     }
 }
 
@@ -997,6 +1024,97 @@ mod tests {
             );
         }
         assert!(fx.root.join("recents.json").is_file());
+        Ok(())
+    }
+
+    /// IMP-07: the file a deck was imported from, and the record of the import, stay with the
+    /// deck through save, "save as" and reopening, though no asset of the deck refers to them.
+    #[test]
+    fn the_source_of_an_import_and_its_record_travel_with_the_deck() -> TestResult {
+        let fx = fixture()?;
+        let storage = Storage::new(fx.root.clone());
+        let workspace = storage.new_workspace()?;
+        let html = "<!doctype html><section>שקף</section><script>go()</script>";
+        let chosen = fx.files.join("my deck.html");
+        fs::write(&chosen, html)?;
+        assert_eq!(
+            storage.keep_source(&workspace.id, &chosen)?,
+            u64::try_from(html.len())?
+        );
+        assert_eq!(storage.import_record(&workspace.id)?, None);
+        let record = r#"{"version":1,"file":"my deck.html","records":{"s_1":{}}}"#;
+        storage.write_import_record(&workspace.id, record)?;
+
+        // A deck with no assets at all: the save's clean-up has nothing to keep them by.
+        let first = fx.files.join("first.slidr");
+        storage.save(&workspace.id, &first, &deck(&[]), None)?;
+        // "Save as" packs the same workspace into another file, after the record went on.
+        let later = r#"{"version":1,"file":"my deck.html","records":{"s_1":{},"s_2":{}}}"#;
+        storage.write_import_record(&workspace.id, later)?;
+        let second = fx.files.join("second.slidr");
+        storage.save(&workspace.id, &second, &deck(&[]), None)?;
+
+        for (file, record) in [(&first, record), (&second, later)] {
+            let entries = entries_of(file)?;
+            assert!(
+                entries.contains(&"source/import.html".to_owned()),
+                "{entries:?}"
+            );
+            assert!(
+                entries.contains(&"source/import.json".to_owned()),
+                "{entries:?}"
+            );
+            let opened = storage.open(file)?.workspace;
+            assert_eq!(storage.import_record(&opened.id)?.as_deref(), Some(record));
+            // The copy that an import is continued from is the file as it was chosen.
+            let out = fx.files.join("out").join("again.html");
+            storage.copy_source(&opened.id, &out)?;
+            assert_eq!(fs::read_to_string(&out)?, html);
+        }
+
+        // A deck that was not imported has neither, and says so.
+        let plain = storage.new_workspace()?;
+        assert_eq!(storage.import_record(&plain.id)?, None);
+        assert_eq!(
+            kind(storage.copy_source(&plain.id, &fx.files.join("none.html"))),
+            Some(ErrorKind::NotFound)
+        );
+        // Only a workspace open here is read or written.
+        assert_eq!(
+            kind(storage.keep_source("nope", &chosen)),
+            Some(ErrorKind::UnknownWorkspace)
+        );
+        assert_eq!(
+            kind(storage.write_import_record("../x", "{}")),
+            Some(ErrorKind::UnknownWorkspace)
+        );
+        Ok(())
+    }
+
+    /// A crash leaves the workspace as it is: what is recovered has its source and its record.
+    #[test]
+    fn a_recovered_workspace_has_its_source_and_its_record() -> TestResult {
+        let fx = fixture()?;
+        let chosen = fx.files.join("deck.html");
+        fs::write(&chosen, "<section>1</section>")?;
+        let crashed_id = {
+            let crashed = Storage::new(fx.root.clone());
+            let workspace = crashed.new_workspace()?;
+            crashed.keep_source(&workspace.id, &chosen)?;
+            crashed.write_import_record(&workspace.id, "{\"version\":1}")?;
+            crashed.write_deck(&workspace.id, &deck(&[]), "Importing")?;
+            workspace.id
+        };
+        let storage = Storage::new(fx.root.clone());
+        assert_eq!(storage.list_recoverable()?.len(), 1);
+        storage.recover(&crashed_id)?;
+        assert_eq!(
+            storage.import_record(&crashed_id)?.as_deref(),
+            Some("{\"version\":1}")
+        );
+        let out = fx.files.join("again.html");
+        storage.copy_source(&crashed_id, &out)?;
+        assert_eq!(fs::read_to_string(&out)?, "<section>1</section>");
         Ok(())
     }
 }

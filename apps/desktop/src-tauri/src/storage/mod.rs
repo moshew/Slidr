@@ -16,6 +16,7 @@ mod atomic;
 mod backup;
 mod deck;
 mod recents;
+mod source;
 mod time;
 mod workspace;
 

@@ -126,6 +126,10 @@ pub fn run() {
             harness::ipc::agent_diagnostics_read,
             harness::ipc::agent_diagnostics_clear,
             fonts::fonts_system,
+            import_window::import_reopen,
+            import_window::import_record_read,
+            import_window::import_record_write,
+            import_window::import_source_export,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");
