@@ -125,6 +125,67 @@ function applyHistoryPatches(deck: Deck, patches: readonly Patch[]): Deck {
   });
 }
 
+/** What one command changed: its patches, and the patches that take them back. */
+interface Change {
+  forward: readonly Patch[];
+  backward: readonly Patch[];
+}
+
+/**
+ * The places a step has replaced since its structure last changed, while batches go on joining
+ * it. A gesture on the Stage is one batch a frame for as long as it lasts, each replacing the
+ * same few fields; kept one after the other, they made undo walk every frame of the drag, and
+ * a long drag of many elements took ten times the 16 ms of NFR-03.
+ *
+ * A place that is replaced again takes the new value in the patch the step already has for it,
+ * and keeps the inverse it already has: the oldest one is the one that undoes the step. That is
+ * sound only among patches that do not care for each other's order, which is what a run is:
+ * replaces of places none of which is inside another, with nothing between them that adds,
+ * removes or shortens a list (a place is named by its index). Anything else ends the run, and
+ * what came before it is never touched again.
+ */
+interface Run {
+  entry: Entry;
+  /** The place (see `step`) of each replace of the run, to its index in the entry's patches. */
+  at: Map<string, number>;
+  /** Every place above one of those: a replace there would take the place itself along. */
+  above: Set<string>;
+}
+
+/** One more step of a path, in a spelling that no other sequence of steps shares. */
+const step = (key: string, part: string | number): string => {
+  const text = String(part);
+  return `${key}${text.length}:${text}`;
+};
+
+function placeOf(path: readonly (string | number)[]): string {
+  let key = '';
+  for (const part of path) key = step(key, part);
+  return key;
+}
+
+/**
+ * The replaces of a command by place, when that is all the command did: each of its patches
+ * sets a place that was there, its inverses set the same places back, and no place is the
+ * length of a list. Undefined for anything else.
+ */
+function plainReplaces({ forward, backward }: Change): Map<string, Patch> | undefined {
+  if (forward.length !== backward.length) return undefined;
+  const inverses = new Map<string, Patch>();
+  for (const patch of backward) {
+    if (patch.op !== 'replace' || patch.path.at(-1) === 'length') return undefined;
+    inverses.set(placeOf(patch.path), patch);
+  }
+  if (inverses.size !== forward.length) return undefined;
+  const replaced = new Set<string>();
+  for (const patch of forward) {
+    const place = placeOf(patch.path);
+    if (patch.op !== 'replace' || !inverses.has(place) || replaced.has(place)) return undefined;
+    replaced.add(place);
+  }
+  return inverses;
+}
+
 function parseCommand(input: Command): Command {
   const type: unknown = (input as { type?: unknown } | null)?.type;
   if (typeof type !== 'string' || !Object.hasOwn(commandDefs, type)) {
@@ -146,6 +207,8 @@ export class CommandBus {
   #deck: Deck;
   #undo: Entry[] = [];
   #redo: Entry[] = [];
+  /** The run of the step that batches are joining now, if any. */
+  #run: Run | null = null;
   #nextEntryId = 1;
   readonly #listeners = new Set<ChangeListener>();
   readonly #historyLimit: number;
@@ -195,6 +258,7 @@ export class CommandBus {
     let deck = this.#deck;
     const patches: Patch[] = [];
     const inversePatches: Patch[] = [];
+    const changes: Change[] = [];
     const types: CommandType[] = [];
     const touched = new Touched();
 
@@ -207,6 +271,7 @@ export class CommandBus {
       deck = next;
       patches.push(...forward);
       inversePatches.unshift(...backward);
+      changes.push({ forward, backward });
       types.push(command.type);
     }
 
@@ -225,12 +290,12 @@ export class CommandBus {
     const actor = options.actor ?? 'user';
     const top = this.#undo.at(-1);
     if (options.txId !== undefined && top?.txId === options.txId && top.actor === actor) {
-      top.patches.push(...patches);
-      top.inversePatches.unshift(...inversePatches);
+      for (const change of changes) this.#join(top, change);
       top.commands.push(...types);
       top.affected = mergeAffected(top.affected, affected);
       top.at = Date.now();
     } else {
+      this.#run = null;
       this.#undo.push({
         id: this.#nextEntryId++,
         actor,
@@ -254,6 +319,7 @@ export class CommandBus {
   undo(): boolean {
     const entry = this.#undo.pop();
     if (!entry) return false;
+    this.#run = null;
     this.#redo.push(entry);
     this.#revert('undo', entry, 'user');
     return true;
@@ -263,6 +329,7 @@ export class CommandBus {
   redo(): boolean {
     const entry = this.#redo.pop();
     if (!entry) return false;
+    this.#run = null;
     this.#undo.push(entry);
     const deck = applyHistoryPatches(this.#deck, entry.patches);
     this.#commit('redo', deck, entry.patches, entry.affected, 'user', entry.txId);
@@ -278,6 +345,7 @@ export class CommandBus {
     for (;;) {
       const entry = this.#undo.at(-1);
       if (entry?.txId !== txId) return reverted;
+      this.#run = null;
       this.#undo.pop();
       this.#revert('rollback', entry, entry.actor);
       reverted = true;
@@ -311,6 +379,7 @@ export class CommandBus {
   reset(deck: Deck): void {
     this.#undo = [];
     this.#redo = [];
+    this.#run = null;
     const affected = new Touched().toAffected();
     this.#commit('reset', freeze(deck, true), [], affected, 'user', undefined);
   }
@@ -320,6 +389,56 @@ export class CommandBus {
     return () => {
       this.#listeners.delete(listener);
     };
+  }
+
+  /**
+   * Adds what a command changed to the step it joins. A replace of a place the step's run has
+   * already replaced goes into the patch that is there (see `Run`); everything else is added
+   * after what the step has, as it always was.
+   */
+  #join(entry: Entry, change: Change): void {
+    if (this.#run?.entry !== entry) this.#run = { entry, at: new Map(), above: new Set() };
+    const run = this.#run;
+    const inverses = plainReplaces(change);
+    if (!inverses) {
+      // The command changed the structure: the places before it are not the places after it.
+      this.#run = null;
+      entry.patches.push(...change.forward);
+      entry.inversePatches.unshift(...change.backward);
+      return;
+    }
+    for (const patch of change.forward) {
+      const { path } = patch;
+      const above: string[] = [];
+      let place = '';
+      let apart = true;
+      for (const [depth, part] of path.entries()) {
+        if (depth > 0) {
+          // The run replaced something this place is inside of: the two are not apart.
+          if (run.at.has(place)) apart = false;
+          above.push(place);
+        }
+        place = step(place, part);
+      }
+      // Or the run replaced something inside this place.
+      if (run.above.has(place)) apart = false;
+      if (!apart) {
+        run.at.clear();
+        run.above.clear();
+      }
+      const index = run.at.get(place);
+      if (index !== undefined) {
+        // A new object: the one that is there was handed to the subscribers of its own change.
+        entry.patches[index] = { op: 'replace', path, value: patch.value as unknown };
+        continue;
+      }
+      run.at.set(place, entry.patches.length);
+      for (const key of above) run.above.add(key);
+      entry.patches.push(patch);
+      // Present: `plainReplaces` paired every patch of the command with its inverse.
+      const inverse = inverses.get(place);
+      if (inverse) entry.inversePatches.unshift(inverse);
+    }
   }
 
   #revert(kind: 'undo' | 'rollback', entry: Entry, actor: Actor): void {

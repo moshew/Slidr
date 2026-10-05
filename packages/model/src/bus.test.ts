@@ -303,4 +303,198 @@ describe('CommandBus', () => {
       },
     );
   });
+
+  /*
+   * A gesture on the Stage is one batch a frame, one `element.update` an element, under one
+   * transaction id, for as long as the gesture lasts. The step it makes is undone in the time
+   * of what it changed, not of how long the user took to change it (NFR-03).
+   */
+  describe('a step that many batches joined (NFR-03)', () => {
+    const ELEMENTS = 100;
+    const ids = Array.from({ length: ELEMENTS }, (_, i) => `e${i}`);
+    const crowded = () =>
+      createDeck({
+        slides: [
+          createSlide({
+            id: 's',
+            elements: ids.map((id, i) =>
+              createElement.shape({ id, frame: { x: i * 10, y: 0, w: 50, h: 50 } }),
+            ),
+          }),
+        ],
+      });
+    const frame = (bus: CommandBus, at: number, txId = 'drag') =>
+      bus.batch(
+        ids.map((id, i) =>
+          updateElement('s', id, { frame: { x: i * 10 + at, y: at, w: 50, h: 50 } }),
+        ),
+        { txId },
+      );
+
+    it('keeps what the gesture changed, not every frame of it', () => {
+      const bus = new CommandBus(crowded());
+      const before = bus.deck;
+      for (let at = 1; at <= 300; at++) frame(bus, at);
+      const after = bus.deck;
+
+      const [entry] = bus.undoStack;
+      expect(bus.undoStack).toHaveLength(1);
+      // The first frame, and one more patch for each element however many frames followed.
+      expect(entry!.patches.length).toBeLessThanOrEqual(2 * ELEMENTS);
+      expect(entry!.inversePatches).toHaveLength(entry!.patches.length);
+      // What the step says it did is unchanged: every command, every element.
+      expect(entry!.commands).toHaveLength(300 * ELEMENTS);
+      expect(entry!.affected.elements).toHaveLength(ELEMENTS);
+
+      const start = Date.now();
+      for (let round = 0; round < 10; round++) {
+        bus.undo();
+        // Put back, not copied: the frame is the object it was before the gesture.
+        expect(bus.deck.slides[0]!.elements[7]!.frame).toBe(before.slides[0]!.elements[7]!.frame);
+        bus.redo();
+      }
+      // The whole key press has 16 ms; before, this step alone took 40 ms each way.
+      expect((Date.now() - start) / 20).toBeLessThan(4);
+
+      bus.undo();
+      expect(bus.deck).toEqual(before);
+      bus.redo();
+      expect(bus.deck).toEqual(after);
+      expect(Object.isFrozen(bus.deck.slides[0]!.elements[7]!.frame)).toBe(true);
+    });
+
+    it('goes on from where a redo left it, and rolls back to where it began', () => {
+      const bus = new CommandBus(crowded());
+      const before = bus.deck;
+      for (let at = 1; at <= 5; at++) frame(bus, at);
+      bus.undo();
+      bus.redo();
+      for (let at = 6; at <= 10; at++) frame(bus, at);
+      const after = bus.deck;
+      expect(bus.undoStack).toHaveLength(1);
+      expect(after.slides[0]!.elements[3]!.frame).toMatchObject({ x: 40, y: 10 });
+
+      bus.undo();
+      expect(bus.deck).toEqual(before);
+      bus.redo();
+      expect(bus.deck).toEqual(after);
+      // Esc in the middle of a drag: as if it never began.
+      expect(bus.rollback('drag')).toBe(true);
+      expect(bus.deck).toEqual(before);
+      expect(bus.canUndo).toBe(false);
+      expect(bus.canRedo).toBe(false);
+    });
+
+    it('never changes a patch its subscribers were handed', () => {
+      const bus = new CommandBus(freshDeck());
+      const seen: { patch: ChangeEvent['patches'][number]; value: unknown }[] = [];
+      bus.subscribe((event) => {
+        for (const patch of event.patches) seen.push({ patch, value: patch.value as unknown });
+      });
+      for (let x = 1; x <= 20; x++) bus.dispatch(move('a', x), { txId: 'drag' });
+      expect(seen).toHaveLength(20);
+      for (const [i, { patch, value }] of seen.entries()) {
+        expect(patch.value).toBe(value);
+        expect(patch.value).toMatchObject({ x: i + 1 });
+      }
+    });
+
+    /*
+     * The order of two changes matters when one is inside the other, or when a list changed
+     * between them. Steps made of every kind of change, in every order a seed gives, must come
+     * back to the deck they started from and go forward to the one they ended at.
+     */
+    it('undoes and redoes whatever its batches were, in any order', () => {
+      const random = (seed: number) => () => {
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      let joined = 0;
+      for (let seed = 1; seed <= 60; seed++) {
+        const next = random(seed);
+        const pick = <T>(items: readonly T[]): T => items[Math.floor(next() * items.length)]!;
+        const whole = (max: number) => Math.floor(next() * max);
+        const bus = new CommandBus(
+          createDeck({
+            slides: [createSlide({ id: 's1', elements: ['a', 'b', 'c', 'd'].map(rect) })],
+          }),
+          { validate: true },
+        );
+        let added = 0;
+        let emitted = 0;
+        bus.subscribe((event) => {
+          if (event.kind === 'apply' && event.txId === 'tx') emitted += event.patches.length;
+        });
+        const any = (): Command => {
+          const live = bus.deck.slides[0]!.elements.map((element) => element.id);
+          const id = pick(live.length > 0 ? live : ['a']);
+          const kinds: (() => Command)[] = [
+            // The same place again and again: what a drag is.
+            () => move(id, whole(500)),
+            () => move(id, whole(500)),
+            () => updateElement('s1', id, { opacity: next() }),
+            () => updateElement('s1', id, { name: `n${whole(9)}` }),
+            // A place above those: the element itself changes its seat in the list.
+            () => ({
+              type: 'element.reorder',
+              slideId: 's1',
+              elementIds: [id],
+              to: pick(['front', 'back', 'forward', 'backward'] as const),
+            }),
+            // The list grows and shrinks: an index names another element afterwards.
+            () => ({ type: 'element.add', slideId: 's1', element: rect(`x${seed}_${added++}`) }),
+            () => ({ type: 'element.remove', slideId: 's1', elementIds: [id] }),
+            // A place inside the theme, and the theme whole.
+            () => ({
+              type: 'theme.update',
+              patch: { colors: { primary: `#0000${10 + whole(89)}` } },
+            }),
+            () => ({ type: 'theme.update', patch: { radius: whole(20) } }),
+            () => ({ type: 'theme.replace', theme: { ...bus.deck.theme, radius: whole(20) } }),
+            () => ({ type: 'deck.setMeta', patch: { title: `t${whole(9)}` } }),
+            () => ({ type: 'slide.update', slideId: 's1', patch: { name: `s${whole(9)}` } }),
+          ];
+          return pick(kinds)();
+        };
+        /** Up to `count` batches under one transaction; the ones a command refuses are skipped. */
+        const run = (count: number) => {
+          for (let i = 0; i < count; i++) {
+            const commands = Array.from({ length: 1 + whole(3) }, any);
+            try {
+              bus.batch(commands, { txId: 'tx' });
+            } catch (error) {
+              expect(error).toBeInstanceOf(CommandError);
+            }
+          }
+        };
+
+        bus.dispatch(move('a', 1));
+        const before = bus.deck;
+        run(30);
+        if (bus.deck === before) continue;
+        const middle = bus.deck;
+        expect(bus.undoStack).toHaveLength(2);
+        const round = (to: typeof before) => {
+          bus.undo();
+          expect(bus.deck, `seed ${seed}`).toEqual(before);
+          bus.redo();
+          expect(bus.deck, `seed ${seed}`).toEqual(to);
+        };
+        round(middle);
+        round(middle);
+        // More batches join the step after the redo, and it is still one step.
+        run(15);
+        const after = bus.deck;
+        expect(bus.undoStack).toHaveLength(2);
+        round(after);
+        joined += emitted - bus.undoStack[1]!.patches.length;
+        expect(bus.rollback('tx')).toBe(true);
+        expect(bus.deck, `seed ${seed}`).toEqual(before);
+      }
+      // The test means something only if places really were replaced more than once.
+      expect(joined).toBeGreaterThan(100);
+    });
+  });
 });
