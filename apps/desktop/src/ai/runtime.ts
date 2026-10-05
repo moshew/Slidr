@@ -38,6 +38,7 @@ import type { Editor } from '../shell';
 import { createLayoutService } from '../templates/layoutService';
 import { followDirection } from '../templates/actions';
 import { appTemplateService, library } from '../templates/app';
+import { createDrafts, type Drafts } from './drafts';
 import { createGallery, type Gallery } from './variations';
 import { createSessions, type Sessions } from './sessions';
 
@@ -107,6 +108,8 @@ export interface AiRuntime {
   images: AppImages;
   /** The chats the panels have open, and which of them are working. */
   sessions: Sessions;
+  /** What is being written in each chat: it outlives the panel that shows the chat. */
+  drafts: Drafts;
   /** The names of the tools a session of a scope can call: an action that needs more is not offered. */
   tools: (scope: ScopeKind) => ReadonlySet<string>;
 }
@@ -251,7 +254,14 @@ function createAi(editor: Editor): AiRuntime {
     return known;
   };
 
-  return { agent, gallery, images, sessions: createSessions(agent, editor.bus), tools };
+  return {
+    agent,
+    gallery,
+    images,
+    sessions: createSessions(agent, editor.bus),
+    drafts: createDrafts(),
+    tools,
+  };
 }
 
 const runtimes = new WeakMap<Editor, AiRuntime>();

@@ -58,6 +58,7 @@ import { TemplateDraftCard } from '../templates/DraftCard';
 import { actionLabel } from './actionLabels';
 import { accepted, ATTACHABLE, pastedFiles, readAttachment } from './attachments';
 import { ConversationBar } from './Conversations';
+import { NO_DRAFT, type Draft } from './drafts';
 import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
@@ -542,30 +543,32 @@ function Composer({
   scope,
   busy,
   stopping,
-  text,
-  onText,
+  draft,
+  onDraft,
   onSend,
   onStop,
 }: {
   scope: SessionScope['kind'];
   busy: boolean;
   stopping: boolean;
-  /** What is typed: the chat holds it, so that a suggestion can put words here. */
-  text: string;
-  onText: (text: string) => void;
-  onSend: (text: string, files: Attachment[]) => void;
+  /**
+   * What is being written, words and files. It is kept outside the chat (`drafts.ts`), so it is
+   * there when the panel comes back to this chat, and a suggestion can put words here.
+   */
+  draft: Draft;
+  onDraft: (change: (draft: Draft) => Draft) => void;
+  onSend: (text: string, files: readonly Attachment[]) => void;
   onStop: () => void;
 }) {
   const { t } = useTranslation('ai');
-  const [files, setFiles] = useState<Attachment[]>([]);
+  const { text, files } = draft;
   const follow = useAiPreferences((s) => s.follow);
   const field = useRef<HTMLTextAreaElement>(null);
   const ready = (text.trim().length > 0 || files.length > 0) && !busy;
   const send = () => {
     if (!ready) return;
     onSend(text, files);
-    onText('');
-    setFiles([]);
+    onDraft(() => NO_DRAFT);
     field.current?.focus();
   };
   /** Takes files into the message: as many as it still has room for (CHT-U05). */
@@ -573,7 +576,8 @@ function Composer({
     const read = await Promise.all(
       accepted(offered, files.length).map((file) => readAttachment(file)),
     );
-    if (read.length > 0) setFiles((before) => [...before, ...read]);
+    // Into the draft as it is by now: reading a file takes a while.
+    if (read.length > 0) onDraft((now) => ({ ...now, files: [...now.files, ...read] }));
   };
   const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     // A pasted screenshot is a file; pasted words stay the field's own business.
@@ -601,7 +605,9 @@ function Composer({
             <FileChip
               key={i}
               file={{ name: file.name, kind: file.mime.startsWith('image/') ? 'image' : 'file' }}
-              onRemove={() => setFiles((before) => before.filter((_, at) => at !== i))}
+              onRemove={() =>
+                onDraft((now) => ({ ...now, files: now.files.filter((_, at) => at !== i) }))
+              }
             />
           ))}
         </div>
@@ -614,7 +620,10 @@ function Composer({
         aria-label={t('composer.label')}
         placeholder={t(`composer.placeholder.${scope}`)}
         data-testid="chat-input"
-        onChange={(event) => onText(event.target.value)}
+        onChange={(event) => {
+          const typed = event.target.value;
+          onDraft((now) => ({ ...now, text: typed }));
+        }}
         onKeyDown={onKeyDown}
         onPaste={onPaste}
         footer={
@@ -740,9 +749,13 @@ export function Chat({ scope }: { scope: SessionScope }) {
   const thread = useThread(scope);
   const state = useStore(thread.store);
   const { frame, onScroll, stick } = useStickToEnd(state);
-  const [draft, setDraft] = useState('');
+  // What is being written belongs to what the chat is about, whichever of its conversations is
+  // shown, and outlives this component (`drafts.ts`).
+  const { drafts } = aiOf(useEditor());
+  const subject = threadIdOf(scope);
+  const draft = useStore(drafts.store, (all) => all[subject] ?? NO_DRAFT);
   const pick = (prompt: string) => {
-    setDraft(prompt);
+    drafts.change(subject, (now) => ({ ...now, text: prompt }));
     // The caret goes after the words, where an opening that ends mid-sentence is finished.
     requestAnimationFrame(() => {
       const field = document.querySelector<HTMLTextAreaElement>('[data-testid="chat-input"]');
@@ -807,8 +820,8 @@ export function Chat({ scope }: { scope: SessionScope }) {
         scope={scope.kind}
         busy={state.busy}
         stopping={state.stopping}
-        text={draft}
-        onText={setDraft}
+        draft={draft}
+        onDraft={(change) => drafts.change(subject, change)}
         onSend={(text, files) => {
           stick();
           void thread.send(text, files.length > 0 ? { attachments: files } : {});

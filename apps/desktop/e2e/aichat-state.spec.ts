@@ -1,5 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
-import { chat, openApp as openDeckChat, say as sayToDeck, turns } from './aifinish-helpers';
+import {
+  chat,
+  choose,
+  input,
+  LOGO,
+  openApp as openDeckChat,
+  say as sayToDeck,
+  tab,
+  turnEnds,
+  turns,
+} from './aifinish-helpers';
 import { chips, openApp, openTool, say } from './aitools-helpers';
 
 /*
@@ -46,4 +56,47 @@ test('a deck opened under the deck tool shows the conversation that was written 
   // As when the app starts on a deck (`AgentService.restore`), not the first one (finding 16).
   await expect(chat(page)).toHaveAttribute('data-thread', latest);
   await expect(turns(page)).toHaveCount(1);
+});
+
+test('what was typed and attached in a chat is there after a look elsewhere', async ({ page }) => {
+  const request = 'בנה מצגת של 8 שקפים על תוכנית העבודה לשנת 2027, עם שקף לכל רבעון';
+  const attached = page.getByTestId('composer-files').getByTestId('attachment');
+  await openDeckChat(page, { script: 'deck-build' });
+  await input(page).fill(request);
+  await choose(page, () => page.getByTestId('chat-attach').click(), LOGO.path);
+  await expect(attached).toHaveCount(1);
+
+  // The Actions tab of the tool, where its template gallery is, and back (finding 3).
+  await tab(page, 'actions');
+  await tab(page, 'chat');
+  await expect(input(page)).toHaveValue(request);
+  await expect(attached).toHaveCount(1);
+
+  // Another tool is another chat, with a message of its own being written.
+  await openTool(page, 'ai.slide');
+  await expect(input(page)).toHaveValue('');
+  await expect(attached).toHaveCount(0);
+  await input(page).fill('הגדל את הכותרת');
+  // The Stage goes to another slide, as it does when it follows the agent: another chat again.
+  const first = await page.evaluate(() => {
+    const { bus, selection } = window.slidr!;
+    const before = selection.getState().currentSlideId!;
+    bus.dispatch({ type: 'slide.add', slide: { id: 's_second00', elements: [], timeline: [] } });
+    selection.getState().setCurrentSlide('s_second00');
+    return before;
+  });
+  await expect(input(page)).toHaveValue('');
+  await page.evaluate((id) => window.slidr!.selection.getState().setCurrentSlide(id), first);
+  await expect(input(page)).toHaveValue('הגדל את הכותרת');
+
+  // Back in the deck tool the message is as it was left, and once it is sent it is gone.
+  await openTool(page, 'ai.deck');
+  await expect(input(page)).toHaveValue(request);
+  await expect(attached).toHaveCount(1);
+  await input(page).press('Enter');
+  await turnEnds(page, 1);
+  await tab(page, 'actions');
+  await tab(page, 'chat');
+  await expect(input(page)).toHaveValue('');
+  await expect(attached).toHaveCount(0);
 });
