@@ -244,7 +244,8 @@ test('every panel of the Activity Bar, tab by tab, on a slide with every kind of
   const ids = await page
     .locator('[data-testid="activity-bar"] button[data-panel]')
     .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('data-panel') ?? ''));
-  expect(ids.length).toBeGreaterThanOrEqual(13);
+  // Eleven since the three AI tools became one chat (ADR-072); thirteen before it.
+  expect(ids.length).toBeGreaterThanOrEqual(11);
   for (const id of ids) {
     // The Code panel is about an html object; every other panel, about the text box.
     await select(page, [id === 'code' ? 'e_html' : 'e_text']);
