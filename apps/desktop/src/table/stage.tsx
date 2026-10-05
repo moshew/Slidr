@@ -266,6 +266,25 @@ function cancelLineDrag(): boolean {
 
 const sameCell = (a: CellRef, b: CellRef) => a.row === b.row && a.col === b.col;
 
+/** Presses of a sizing key this close together are one undo step, as the Stage's nudges are. */
+const BURST_MS = 800;
+let sizing: { txId: string; tableId: string; at: number } | null = null;
+
+/**
+ * The transaction of a burst of sizing keys on one table; a pause starts the next one. `opened`
+ * says that this press began the burst.
+ */
+function sizingTx(tableId: string): { txId: string; opened: boolean } {
+  const now = performance.now();
+  const opened = !sizing || sizing.tableId !== tableId || now - sizing.at > BURST_MS;
+  if (!sizing || opened) sizing = { txId: newId('tx'), tableId, at: now };
+  sizing.at = now;
+  return { txId: sizing.txId, opened };
+}
+
+const sameSizes = (a: readonly number[], b: readonly number[]) =>
+  a.length === b.length && a.every((size, i) => size === b[i]);
+
 function screenBox(box: Frame, scale: number): CSSProperties {
   return {
     position: 'absolute',
@@ -654,7 +673,53 @@ export function useTableStage({
     const reach = anchorOf(table, sessionCell(table, now.focus));
     const side = ARROWS[event.key];
     let taken = true;
-    if (side) {
+    if (side && (event.ctrlKey || event.metaKey) && !event.altKey && !withAltGraph(event)) {
+      // Ctrl with an arrow sizes, as it sizes an element on the slide (UI-06): here it moves the
+      // rule at the end of the active cell the way the arrow points, by a pixel, with Shift by
+      // ten. It is what a drag of that rule does: a column takes from the next one, the rule
+      // after the last column changes the table, and a row is never shorter than its text.
+      // The table as the deck has it now: each press builds on the one before it, and presses
+      // can come faster than the Stage draws.
+      const found = findElementInDeck(bus.deck, table.id);
+      const live = found?.element.type === 'table' ? found.element : table;
+      const cell = live.cells[at.row]?.[at.col];
+      const col = at.col + (cell?.colSpan ?? 1) - 1;
+      const row = at.row + (cell?.rowSpan ?? 1) - 1;
+      const step = event.shiftKey ? 10 : 1;
+      const across = side === 'left' ? -step : side === 'right' ? step : 0;
+      const down = side === 'up' ? -step : side === 'down' ? step : 0;
+      const { txId, opened } = sizingTx(table.id);
+      // In a right-to-left table the rule after a column is on its left.
+      const patch = across
+        ? resizeColumn(live, col, live.dir === 'rtl' ? -across : across)
+        : resizeRow(live, row, down);
+      writeTable(bus, slideId, table.id, patch, {
+        txId,
+        label: label(across ? 'resizeColumn' : 'resizeRow'),
+      });
+      fitRows(bus, table.id, txId);
+      if (opened) {
+        // A rule that cannot go further (a row at the height of its text, a column whose
+        // neighbour is at its least) is written and then measured back to where it was. Only the
+        // measuring knows that, a frame later: a press that began a burst and left the table as
+        // it found it is taken back then, so it is no undo step that does nothing.
+        const tableId = table.id;
+        requestAnimationFrame(() => {
+          const now = findElementInDeck(bus.deck, tableId)?.element;
+          if (now?.type !== 'table') return;
+          const { frame } = now;
+          const unchanged =
+            sameSizes(now.rows, live.rows) &&
+            sameSizes(now.cols, live.cols) &&
+            frame.x === live.frame.x &&
+            frame.y === live.frame.y &&
+            frame.w === live.frame.w &&
+            frame.h === live.frame.h;
+          // `rollback` takes back only what is still the last step, and only this transaction.
+          if (unchanged && bus.rollback(txId) && sizing?.txId === txId) sizing = null;
+        });
+      }
+    } else if (side) {
       // The arrows are screen directions: in a right-to-left table "left" is the next column.
       const next = neighbourCell(table, event.shiftKey ? reach : at, side);
       if (next) selectCells(event.shiftKey ? now.anchor : next, next);
