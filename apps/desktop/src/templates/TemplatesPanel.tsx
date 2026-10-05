@@ -35,6 +35,7 @@ import {
   saveAsTemplate,
   setFooter,
   setLogo,
+  setThemeFont,
   showLogo,
   showNumber,
   turnDeck,
@@ -356,10 +357,7 @@ function ThemeFonts() {
   const editor = useEditor();
   const fonts = useDeck((s) => s.deck.theme.fonts);
   const set = (role: 'heading' | 'body', pair: FontPair) =>
-    editor.bus.dispatch(
-      { type: 'theme.update', patch: { fonts: { [role]: pair } } },
-      { label: t('undo.font') },
-    );
+    setThemeFont(editor, role, pair, t('undo.font'));
   return (
     <Section title={t('fonts.title')}>
       {(['heading', 'body'] as const).map((role) => (

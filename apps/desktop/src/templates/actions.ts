@@ -9,6 +9,7 @@ import {
   createDeck,
   createElement,
   createSlide,
+  newId,
   SLIDE_WIDTH,
   slideFromLayout,
   ulid,
@@ -17,6 +18,7 @@ import {
   type Deck,
   type Direction,
   type Element,
+  type FontPair,
   type Layout,
 } from '@slidr/model';
 import {
@@ -97,7 +99,9 @@ export async function applyLibraryTemplate(
   const layouts = layoutsFor(template, editor.bus.deck.meta.dir);
   await copyAssets(editor, library, template, layoutAssets(template, layouts));
   const commands = switchCommands(editor.bus.deck, template);
-  if (commands.length > 0) editor.bus.batch(commands, { label });
+  // With a transaction, so the files of a font of the user's that the template names join this
+  // step (see `setThemeFont`).
+  if (commands.length > 0) editor.bus.batch(commands, { txId: newId('tx'), label });
   return true;
 }
 
@@ -137,6 +141,25 @@ export function showNumber(editor: Editor, shown: boolean, label?: string): void
 export function setFooter(editor: Editor, text: string, label?: string): void {
   const commands = setDeckFooter(editor.bus.deck, text);
   if (commands.length > 0) editor.bus.batch(commands, { label });
+}
+
+/**
+ * Sets a font pair of the theme (THM-05), as a change with a transaction of its own. A font of
+ * the user's is carried by the deck that uses it: its files are added when a change names the
+ * family, and they join that change's undo step only when the change has a transaction
+ * (`fonts/embed.ts`). Without one they were a second step, and the first Ctrl+Z after choosing
+ * a font took the files away and changed nothing on the slides.
+ */
+export function setThemeFont(
+  editor: Editor,
+  role: 'heading' | 'body',
+  pair: FontPair,
+  label?: string,
+): void {
+  editor.bus.dispatch(
+    { type: 'theme.update', patch: { fonts: { [role]: pair } } },
+    { txId: newId('tx'), label },
+  );
 }
 
 /** Turns the deck to the other direction, layouts and slides with it (THM-02). */
