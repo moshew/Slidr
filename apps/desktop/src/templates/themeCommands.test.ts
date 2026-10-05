@@ -1,6 +1,6 @@
 import { CommandBus, createDeck, createSlide, type Background } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { MAX_CHART_COLORS, paletteCommands, variantCommands } from './themeLook';
+import { MAX_CHART_COLORS, paletteCommands, variantCommands } from './themeCommands';
 
 const solid = (value: string): Background => ({
   fill: { kind: 'solid', color: { value } },

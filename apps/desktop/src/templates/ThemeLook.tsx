@@ -19,7 +19,7 @@ import { withAdjust, withFill } from '../objects/background';
 import { FillEditor } from '../objects/FillEditor';
 import { ColorRow, FillSwatch, SliderField } from '../objects/parts';
 import { useDeck, useEditor } from '../shell';
-import { MAX_CHART_COLORS, paletteCommands, variantCommands } from './themeLook';
+import { MAX_CHART_COLORS, paletteCommands, variantCommands } from './themeCommands';
 
 /*
  * The theme's look beyond colours, fonts and sizes (ADR-040, "what the panel lacks"): the
