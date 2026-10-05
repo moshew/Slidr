@@ -32,28 +32,37 @@ const FAMILY = 'Slidr Fixture Sans';
 const fixture = (name: string) => new File([readFileSync(fixturePath(name))], name);
 const asItIs = (bytes: Uint8Array) => Promise.resolve(bytes);
 
+/** How many files are being stored at this moment, in any store of the tests. */
+let storing = 0;
+
 /** The asset store of a document: what it stored, as the app's does, by content. */
 function assetStore(): AssetService & { stored: string[] } {
   const stored: string[] = [];
+  const store = async (file: File, origin: AssetMeta['origin']): Promise<AssetMeta> => {
+    const bytes = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const id = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+    const extension = file.name.split('.').pop() ?? 'bin';
+    stored.push(file.name);
+    return {
+      id,
+      file: `${id}.${extension}`,
+      mime: `font/${extension}`,
+      kind: 'font',
+      bytes: file.size,
+      origin,
+      name: file.name,
+    };
+  };
   return {
     stored,
     import: async (file, origin = 'upload') => {
-      const bytes = await file.arrayBuffer();
-      const digest = await crypto.subtle.digest('SHA-256', bytes);
-      const id = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join(
-        '',
-      );
-      const extension = file.name.split('.').pop() ?? 'bin';
-      stored.push(file.name);
-      return {
-        id,
-        file: `${id}.${extension}`,
-        mime: `font/${extension}`,
-        kind: 'font',
-        bytes: file.size,
-        origin,
-        name: file.name,
-      };
+      storing += 1;
+      try {
+        return await store(file, origin);
+      } finally {
+        storing -= 1;
+      }
     },
     url: () => undefined,
   };
@@ -86,8 +95,18 @@ const setFont = (family: string): Command => ({
 const fonts = (bus: CommandBus): AssetMeta[] =>
   Object.values(bus.deck.assets).filter((asset) => asset.kind === 'font');
 
-/** Lets the files reach the deck: storing them takes a few turns of the event loop. */
-const settled = () => new Promise((resolve) => setTimeout(resolve, 20));
+const turn = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+/**
+ * Lets the files reach the deck: a turn of the event loop for the change to reach the watcher,
+ * then for as long as a file is being stored (on a busy machine that is longer than any fixed
+ * wait), and a turn more for the stored files to enter the deck.
+ */
+async function settled(): Promise<void> {
+  do await turn();
+  while (storing > 0);
+  await turn();
+}
 
 let bus: CommandBus;
 let assets: ReturnType<typeof assetStore>;
