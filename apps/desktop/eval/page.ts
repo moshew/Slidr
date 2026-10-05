@@ -26,7 +26,6 @@ import {
   type Template,
 } from '@slidr/templates';
 import { invoke } from '@tauri-apps/api/core';
-import { appDataDir } from '@tauri-apps/api/path';
 import type { AgentSettings } from '../src/agent/agentService';
 import type { ChatEntry } from '../src/agent/transcript';
 import { agentOf } from '../src/ai/runtime';
@@ -192,9 +191,15 @@ function startingDeck({ base, template: id }: PrepareOptions): Deck {
   return deck;
 }
 
-/** The folder the app keeps its data in: the runner checks it before anything is written. */
-export function dataDir(): Promise<string> {
-  return appDataDir();
+/**
+ * The folder the app keeps its data in. Asked of a command of the app's own: the diagnostics log
+ * is kept there, and reading it writes nothing. The path plugin needs a permission the window no
+ * longer has (ADR-066), and the runner asks the same way before this module is loaded.
+ */
+export async function dataDir(): Promise<string> {
+  const { path } = await invoke<{ path: string }>('agent_diagnostics_read', { maxBytes: 1 });
+  // <data folder>/agent/diagnostics.jsonl
+  return path.replace(/[\\/]agent[\\/][^\\/]+$/, '');
 }
 
 /**

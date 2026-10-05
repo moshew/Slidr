@@ -19,6 +19,9 @@
 //                      theme
 //   --attach           use the app that is already running on the CDP port
 //   --requests <file>  another set of requests, in the shape of ../requests.json
+//   --check            start the app, check its data folder and prepare the first request's
+//                      document, and stop there: nothing is sent to the agent and nothing is
+//                      spent. For seeing that the runner still starts after the app changed.
 //
 // A session that shares the machine with others runs the set under an identifier and ports of
 // its own: SLIDR_EVAL_IDENTIFIER, SLIDR_EVAL_VITE_PORT, SLIDR_EVAL_CDP_PORT, and
@@ -44,8 +47,6 @@ const VITE_PORT = Number(process.env.SLIDR_EVAL_VITE_PORT ?? 1491);
 const CDP_PORT = Number(process.env.SLIDR_EVAL_CDP_PORT ?? 9291);
 const TAURI_CONFIG = process.env.SLIDR_EVAL_CONFIG ?? 'eval/eval.tauri.conf.json';
 const APP_URL = `http://localhost:${VITE_PORT}/`;
-/** Tauri's `BaseDirectory.AppData`. */
-const APP_DATA = 14;
 const TURN_TIMEOUT_MS = 30 * 60_000;
 const POLL_MS = 2000;
 
@@ -61,6 +62,7 @@ function parseArgs(argv) {
     attach: false,
     template: null,
     requests: null,
+    check: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
@@ -79,6 +81,7 @@ function parseArgs(argv) {
     else if (flag === '--template') args.template = value();
     else if (flag === '--attach') args.attach = true;
     else if (flag === '--requests') args.requests = value();
+    else if (flag === '--check') args.check = true;
     else if (flag !== '--') throw new Error(`unknown option ${flag}`);
   }
   return args;
@@ -190,14 +193,19 @@ async function mainPage(browser) {
  * The app's page, with the evaluation's module loaded. The window opens on an empty page
  * (`/?hold`, see ../vite.config.ts), so the data folder is checked before the app itself loads
  * and writes anything.
+ *
+ * The folder is asked of a command of the app's own, which needs no permission of the window:
+ * the diagnostics log is kept in it, and reading the log writes nothing. The path plugin's
+ * `resolve_directory`, which this used to call, has been refused since the window's
+ * capabilities were cut down to what the app calls (ADR-066), and the runner then stopped here.
  */
 async function openApp(browser) {
   const page = await mainPage(browser);
-  const dataDir = await page.evaluate(
-    (directory) =>
-      window.__TAURI_INTERNALS__.invoke('plugin:path|resolve_directory', { directory }),
-    APP_DATA,
+  const log = await page.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke('agent_diagnostics_read', { maxBytes: 1 }),
   );
+  // <data folder>/agent/diagnostics.jsonl
+  const dataDir = String(log.path).replace(/[\\/]agent[\\/][^\\/]+$/, '');
   if (!String(dataDir).includes(IDENTIFIER)) {
     throw new Error(
       `The app's data folder is ${dataDir}, not the evaluation's own. Nothing was run.`,
@@ -351,6 +359,24 @@ async function main() {
     browser = await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`);
     const { page, dataDir } = await openApp(browser);
     console.log(`data folder: ${dataDir}`);
+    if (args.check) {
+      const [first] = requests;
+      const template = templateOf(args, set, first);
+      const { deckId } = await page.evaluate((options) => window.slidrEval.prepare(options), {
+        settings: { harnessId: 'claude-code', model: args.model, webAccess: false },
+        imageProvider: 'mock',
+        ...(first.base ? { base: first.base } : {}),
+        ...(template ? { template } : {}),
+      });
+      await page.waitForFunction(() => window.slidrEval.status().ready, null, { timeout: 30_000 });
+      const status = await page.evaluate(() => window.slidrEval.status());
+      console.log(
+        `check: the document of ${first.id} is open (deck ${deckId}, ${status.slides} slides) and ` +
+          'its chat is ready. Nothing was sent.',
+      );
+      await page.evaluate(() => window.slidrEval.close()).catch(() => undefined);
+      return;
+    }
     const images = { count: 0, capped: false };
     for (const request of requests) {
       const total = readLedger().totalUsd;
