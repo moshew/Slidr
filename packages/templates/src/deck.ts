@@ -11,6 +11,7 @@ import {
   type Layout,
 } from '@slidr/model';
 import { copyJson, equalJson } from './json';
+import { isMaster } from './master';
 import { mirrorBackground, mirrorElement, mirrorLayout } from './mirror';
 import {
   adoptLayout,
@@ -119,13 +120,73 @@ function mirrorPatch(before: Element, after: Element): Record<string, unknown> {
   return patch;
 }
 
+/** What a layout draws that is the template's: all but the deck's master components. */
+function drawing(layout: Layout) {
+  return {
+    background: layout.background,
+    placeholders: layout.placeholders,
+    decorations: layout.decorations.filter((decoration) => !isMaster(decoration)),
+  };
+}
+
+/**
+ * Whether a deck's layout is still what its template drew. The master components are left out
+ * of the question: a footer, a logo and a hidden number are the deck's own, set on the layouts
+ * because that is where they live (SLD-04), and they do not make the layout another drawing.
+ * Neither does its name, which the app gives in the deck's language.
+ */
+export function asDrawn(layout: Layout, drawn: Layout | undefined): drawn is Layout {
+  return drawn !== undefined && equalJson(drawing(layout), drawing(drawn));
+}
+
+/**
+ * A deck's layout for the other direction. `drawn` and `drawnTurned` are the layout of the
+ * deck's template for the deck's direction and for the other one.
+ *
+ * While the layout is still what the template drew, the template's own layout for the other
+ * direction is taken, so a layout drawn by hand for a direction (`Template.flipped`: a quotation
+ * mark, a glow in a corner) comes as it was drawn. The deck's master components go onto it: one
+ * the deck left as the template has it is the template's there too, and one the deck set (its
+ * footer, its logo, a number it hid) is mirrored with the deck's own setting. A layout that was
+ * changed in the deck, or that no template knows, is mirrored as it is.
+ */
+export function turnedLayout(layout: Layout, drawn?: Layout, drawnTurned?: Layout): Layout {
+  const mirrored = mirrorLayout(layout);
+  if (!drawnTurned || !asDrawn(layout, drawn)) return mirrored;
+
+  const masters = (decorations: readonly Element[]) =>
+    new Map(decorations.filter(isMaster).map((decoration) => [decoration.id, decoration]));
+  const theirs = masters(drawn.decorations);
+  const mine = masters(layout.decorations);
+  const mineTurned = masters(mirrored.decorations);
+  const decorations = drawnTurned.decorations.flatMap((decoration) => {
+    if (!isMaster(decoration)) return [decoration];
+    const own = mine.get(decoration.id);
+    // One the deck took away stays away.
+    if (!own) return [];
+    return [equalJson(own, theirs.get(decoration.id)) ? decoration : mineTurned.get(own.id)!];
+  });
+  // What the deck added to the layout: its footer.
+  const known = new Set(drawnTurned.decorations.map((decoration) => decoration.id));
+  for (const [id, decoration] of mineTurned) if (!known.has(id)) decorations.push(decoration);
+
+  const { background: _background, ...rest } = mirrored;
+  return {
+    ...rest,
+    ...(drawnTurned.background ? { background: drawnTurned.background } : {}),
+    placeholders: drawnTurned.placeholders,
+    decorations,
+  };
+}
+
 /**
  * The commands that turn a deck to the other direction, as one step (THM-02): the direction
  * itself, every layout, and what is on the slides.
  *
- * - A layout is mirrored. When the deck's template is given and the layout is still as the
- *   template drew it, the template's layout for the new direction is taken instead, so a layout
- *   corrected by hand for a direction (`Template.flipped`) comes with its corrections.
+ * - A layout is mirrored. When the deck's template is given and the layout is still what the
+ *   template drew, the template's layout for the new direction is taken instead, with the deck's
+ *   master components on it (`turnedLayout`), so a layout corrected by hand for a direction
+ *   (`Template.flipped`) comes with its corrections.
  * - An element that sits on its placeholder goes where the placeholder went. Every other element
  *   is mirrored where it stands; nested elements are mirrored inside their group.
  * - The text itself is not touched: the direction of a paragraph belongs to its language.
@@ -141,8 +202,7 @@ export function changeDirection(deck: Deck, dir: Direction, template?: Template)
   const drawnTurned = byId(template ? layoutsFor(template, dir) : []);
   const turned = new Map<string, Layout>();
   for (const layout of deck.layouts) {
-    const asDrawn = equalJson(layout, drawn.get(layout.id));
-    const to = (asDrawn ? drawnTurned.get(layout.id) : undefined) ?? mirrorLayout(layout);
+    const to = turnedLayout(layout, drawn.get(layout.id), drawnTurned.get(layout.id));
     turned.set(layout.id, to);
     commands.push({
       type: 'layout.update',

@@ -24,6 +24,16 @@ type Role = 'slideNumber' | 'footer';
 
 const of = (role: Role) => (element: Element) => element.role === role;
 
+/**
+ * Whether a decoration of a layout is a master component: what the deck sets for itself on the
+ * layouts of its template (its footer, its logo in place of the mark, a number it hid).
+ */
+export function isMaster(decoration: Element): boolean {
+  return (
+    decoration.role === 'slideNumber' || decoration.role === 'footer' || decoration.role === 'logo'
+  );
+}
+
 const update = (layout: Layout, decorations: Element[]): Command => ({
   type: 'layout.update',
   layoutId: layout.id,

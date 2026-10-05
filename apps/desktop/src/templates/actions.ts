@@ -21,6 +21,7 @@ import {
 } from '@slidr/model';
 import {
   applyTemplate,
+  asDrawn,
   changeDirection,
   deckFromTemplate,
   layoutAssets,
@@ -30,6 +31,7 @@ import {
   restoreMaster,
   setDeckFooter,
   showSlideNumber,
+  turnedLayout,
   type Template,
 } from '@slidr/templates';
 import type { Editor } from '../shell';
@@ -252,17 +254,22 @@ export function showLogo(editor: Editor, shown: boolean, label?: string): void {
 
 /**
  * The hand-drawn layouts of the other direction for a template made from a deck. What was
- * corrected by hand for a direction (a glow in a corner) is not something the deck itself
- * holds, so it comes from the template the deck is on; everything else is the deck's own
- * layout, mirrored, because the user may have changed it (a logo).
+ * corrected by hand for a direction (a quotation mark, a glow in a corner) is not something the
+ * deck itself holds, so it comes from the template the deck is on: while the deck's layout is
+ * still what that template drew, the template's own layout for the other direction, with the
+ * deck's master components on it (`turnedLayout`). A layout the deck changed is the deck's own
+ * drawing, mirrored, under the background the template drew by hand: that is free CSS, which
+ * the mirror cannot turn.
  */
 function flipsFrom(source: Template | undefined, deck: Deck): Layout[] {
   if (!source?.flipped?.length) return [];
-  const drawn = new Set(source.flipped.map((layout) => layout.id));
+  const byHand = new Set(source.flipped.map((layout) => layout.id));
   const other: Direction = deck.meta.dir === 'rtl' ? 'ltr' : 'rtl';
+  const drawn = new Map(layoutsFor(source, deck.meta.dir).map((layout) => [layout.id, layout]));
   return layoutsFor(source, other).flatMap((theirs) => {
     const mine = deck.layouts.find((layout) => layout.id === theirs.id);
-    if (!drawn.has(theirs.id) || !mine) return [];
+    if (!byHand.has(theirs.id) || !mine) return [];
+    if (asDrawn(mine, drawn.get(mine.id))) return [turnedLayout(mine, drawn.get(mine.id), theirs)];
     const { background: _mirrored, ...rest } = mirrorLayout(mine);
     return [theirs.background ? { ...rest, background: theirs.background } : rest];
   });

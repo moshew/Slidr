@@ -1,11 +1,12 @@
-import { CommandBus, plainText, type Deck, type Layout } from '@slidr/model';
+import { CommandBus, plainText, type Deck, type Element, type Layout } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { tzukTemplate } from './builtin/tzuk';
 import { zeremTemplate } from './builtin/zerem';
-import { applyTemplate, deckFromTemplate } from './deck';
+import { applyTemplate, changeDirection, deckFromTemplate } from './deck';
 import {
   deckFooter,
   footerLayouts,
+  isMaster,
   masterState,
   restoreMaster,
   setDeckFooter,
@@ -13,6 +14,8 @@ import {
   slideNumberHidden,
   slideNumberLayouts,
 } from './master';
+import { mirrorLayout } from './mirror';
+import { layoutsFor } from './template';
 
 const start = (): Deck => deckFromTemplate(tzukTemplate(), { lang: 'he' });
 const footers = (deck: Deck) =>
@@ -108,5 +111,65 @@ describe('the master components of a deck (SLD-04)', () => {
     bus.batch(restore);
     expect(masterState(bus.deck)).toEqual(before);
     expect(restoreMaster(bus.deck, before)).toEqual([]);
+  });
+
+  it.each([
+    ['tzuk', tzukTemplate],
+    ['zerem', zeremTemplate],
+  ])(
+    '%s: a deck that set them still turns onto the layouts its template drew by hand',
+    (_id, template) => {
+      const bus = new CommandBus(deckFromTemplate(template(), { lang: 'he' }), { validate: true });
+      bus.batch(setDeckFooter(bus.deck, 'ACME 2026'));
+      bus.batch(showSlideNumber(bus.deck, false));
+      const set = bus.deck;
+
+      bus.batch(changeDirection(bus.deck, 'ltr', template()));
+      // What the template draws is its own drawing for the direction, by hand where it has one
+      // (the quotation mark of tzuk, the glow in the corners of zerem), not the plain mirror.
+      const theirs = layoutsFor(template(), 'ltr');
+      expect(template().flipped!.length).toBeGreaterThan(0);
+      bus.deck.layouts.forEach((layout, i) => {
+        expect(layout.background, layout.id).toEqual(theirs[i]!.background);
+        expect(layout.placeholders, layout.id).toEqual(theirs[i]!.placeholders);
+        expect(
+          layout.decorations.filter((d) => !isMaster(d)),
+          layout.id,
+        ).toEqual(theirs[i]!.decorations.filter((d) => !isMaster(d)));
+      });
+      // And what the deck set is still set, each footer on the seat its turned layout has.
+      expect(masterState(bus.deck)).toEqual({ footer: 'ACME 2026', numberHidden: true });
+      for (const layout of footerLayouts(bus.deck)) {
+        const footer = layout.decorations.find((d) => d.role === 'footer')!;
+        expect(footer.frame, layout.id).toEqual(seat(layout)!.frame);
+      }
+      // The mark of the template, which the deck left alone, is the template's own there.
+      for (const [i, layout] of bus.deck.layouts.entries()) {
+        const mark = (decorations: readonly Element[]) =>
+          decorations.filter((d) => d.role === 'logo');
+        expect(mark(layout.decorations), layout.id).toEqual(mark(theirs[i]!.decorations));
+      }
+
+      bus.batch(changeDirection(bus.deck, 'rtl', template()));
+      expect(bus.deck).toEqual(set);
+    },
+  );
+
+  it('a deck whose layouts are named in another language is still on the drawing of its template', () => {
+    // The app names the layouts of a built-in template in the deck's language when the deck
+    // takes it; the template it later compares with may be named in another.
+    const template = tzukTemplate();
+    const deck = deckFromTemplate(template, { lang: 'he' });
+    for (const layout of deck.layouts) layout.name = `פריסה ${layout.archetype}`;
+    const bus = new CommandBus(deck, { validate: true });
+    bus.batch(changeDirection(bus.deck, 'ltr', template));
+    const quote = bus.deck.layouts.find((l) => l.archetype === 'quote')!;
+    const theirs = layoutsFor(template, 'ltr').find((l) => l.id === quote.id)!;
+    expect(quote.decorations).toEqual(theirs.decorations);
+    expect(quote.decorations).not.toEqual(
+      mirrorLayout(deck.layouts.find((l) => l.id === quote.id)!).decorations,
+    );
+    // The name is the deck's.
+    expect(quote.name).toBe('פריסה quote');
   });
 });

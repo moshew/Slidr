@@ -13,9 +13,11 @@ export {
 } from './createSlide';
 export {
   applyTemplate,
+  asDrawn,
   changeDirection,
   deckFromTemplate,
   layoutAssets,
+  turnedLayout,
   type DeckFromTemplateOptions,
 } from './deck';
 export { matchLayout, relayout } from './relayout';

@@ -1,4 +1,4 @@
-import { CommandBus, createDeck, type AssetMeta, type Deck } from '@slidr/model';
+import { CommandBus, createDeck, type AssetMeta, type Deck, type Layout } from '@slidr/model';
 import {
   deckFooter,
   deckFromTemplate,
@@ -218,6 +218,84 @@ describe('turning the deck', () => {
     // Undoing the turn takes the field and the layouts back together.
     bus.undoTransaction('tx_turn');
     expect(bus.deck).toEqual(deck);
+  });
+
+  describe('a deck with a footer, a logo and a hidden number of its own', () => {
+    const builtIn = () => new TemplateLibrary(memoryTemplateStore());
+    /** A deck on a built-in template with all three master components set, as the panel sets them. */
+    async function withMaster(id: string, library: TemplateLibrary) {
+      const template = library.forDeck(id, 'he')!;
+      const made = editorOn(deckFromTemplate(template, { lang: 'he' }));
+      setFooter(made.editor, 'ACME 2026');
+      showNumber(made.editor, false);
+      await setLogo(made.editor, new File([new Uint8Array([7])], 'logo.png'));
+      return { ...made, template };
+    }
+    const drawing = ({ background, placeholders, decorations }: Layout) => ({
+      background,
+      placeholders,
+      decorations: decorations.filter(
+        (d) => d.role !== 'footer' && d.role !== 'logo' && d.role !== 'slideNumber',
+      ),
+    });
+
+    // The four that draw something by hand for the other direction in different ways: a
+    // quotation mark (tzuk, shvil, lavan), and backgrounds of free CSS (zerem).
+    it.each(['tzuk', 'zerem', 'shvil', 'lavan'])(
+      '%s: turns onto the layouts its template drew by hand, with what it set, and back',
+      async (id) => {
+        const library = builtIn();
+        const { editor, bus, template } = await withMaster(id, library);
+        const set = bus.deck;
+        turnDeck(editor, library, 'ltr');
+        expect(bus.undoStack).toHaveLength(4);
+
+        const theirs = layoutsFor(template, 'ltr');
+        expect(template.flipped!.length).toBeGreaterThan(0);
+        expect(bus.deck.layouts.map(drawing)).toEqual(theirs.map(drawing));
+        // What the deck set is still there, on the side the turned layouts have for it.
+        expect(masterState(bus.deck)).toEqual({ footer: 'ACME 2026', numberHidden: true });
+        const logo = logoAsset(bus.deck)!;
+        for (const [i, layout] of bus.deck.layouts.entries()) {
+          const mine = layout.decorations.find((d) => d.role === 'logo');
+          const mark = theirs[i]!.decorations.find((d) => d.role === 'logo');
+          if (!mark) continue;
+          // As tall as the template's mark and on its side of the slide; the picture, not the mark.
+          expect(mine).toMatchObject({ type: 'image', assetId: logo.id });
+          expect(mine!.frame.y).toBe(mark.frame.y);
+          expect(mine!.frame.x + mine!.frame.w / 2 < 960).toBe(
+            mark.frame.x + mark.frame.w / 2 < 960,
+          );
+        }
+
+        turnDeck(editor, library, 'rtl');
+        expect(bus.deck).toEqual(set);
+      },
+    );
+
+    it.each(['tzuk', 'zerem'])(
+      '%s: saved as a personal template, gives a deck of the other direction what turning gives',
+      async (id) => {
+        const library = builtIn();
+        const turned = await withMaster(id, library);
+        turnDeck(turned.editor, library, 'ltr');
+
+        const { editor } = await withMaster(id, library);
+        const saved = await saveAsTemplate(editor, library, 'Mine');
+        expect(layoutsFor(saved, 'ltr')).toEqual(turned.bus.deck.layouts);
+      },
+    );
+
+    it('a personal template of a deck that set nothing has the layouts of its template in both directions', async () => {
+      const library = builtIn();
+      for (const id of ['tzuk', 'zerem']) {
+        const template = library.forDeck(id, 'he')!;
+        const { editor } = editorOn(deckFromTemplate(template, { lang: 'he' }));
+        const saved = await saveAsTemplate(editor, library, `Mine ${id}`);
+        expect(layoutsFor(saved, 'rtl')).toEqual(layoutsFor(template, 'rtl'));
+        expect(layoutsFor(saved, 'ltr')).toEqual(layoutsFor(template, 'ltr'));
+      }
+    });
   });
 });
 
