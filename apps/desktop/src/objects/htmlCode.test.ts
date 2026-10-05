@@ -159,4 +159,59 @@ describe('the code writer', () => {
     writer.flush();
     expect(bus.undoStack).toHaveLength(1);
   });
+
+  // What `CodeEditor` does with every new text of the deck: the text the editor then shows.
+  function shownBy({ writer, now }: ReturnType<typeof setup>) {
+    let shown = now()!.markup;
+    return {
+      deckChanged() {
+        const value = now()!.markup;
+        if (!writer.own(value)) shown = value;
+      },
+      typed(text: string) {
+        shown = text;
+        writer.type(text);
+        vi.advanceTimersByTime(200);
+        this.deckChanged();
+      },
+      shown: () => shown,
+    };
+  }
+
+  it('shows the typed text again after an undo and a redo that are not its own', () => {
+    const made = setup();
+    const { bus, now } = made;
+    const editor = shownBy(made);
+    editor.typed('<p>Typed</p>');
+    // The toolbar's undo, or Ctrl+Z with the focus on the Stage: the deck's, not `writer.undo`.
+    bus.undo();
+    editor.deckChanged();
+    expect(editor.shown()).toBe('<p>Before</p>');
+    bus.redo();
+    editor.deckChanged();
+    expect(now()!.markup).toBe('<p>Typed</p>');
+    expect(editor.shown()).toBe('<p>Typed</p>');
+  });
+
+  it('shows the typed text again when a change of the agent over it is undone', () => {
+    const made = setup();
+    const { bus, now } = made;
+    const editor = shownBy(made);
+    editor.typed('<p>Typed</p>');
+    bus.dispatch({
+      type: 'element.update',
+      slideId: 's1',
+      elementId: 'h1',
+      patch: { markup: '<p>Agent</p>' },
+    });
+    editor.deckChanged();
+    expect(editor.shown()).toBe('<p>Agent</p>');
+    bus.undo();
+    editor.deckChanged();
+    expect(now()!.markup).toBe('<p>Typed</p>');
+    expect(editor.shown()).toBe('<p>Typed</p>');
+    // And the next key is typed over what the deck holds, not over the agent's text.
+    editor.typed('<p>Typed more</p>');
+    expect(now()!.markup).toBe('<p>Typed more</p>');
+  });
 });

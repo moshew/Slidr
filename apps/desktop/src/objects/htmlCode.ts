@@ -51,7 +51,9 @@ export interface CodeWriter {
   /**
    * The deck now holds `text`. True when this writer wrote it: that is not news to the editor.
    * Any other text came from elsewhere (an undo, the agent), and what was typed over the text
-   * it replaced is dropped rather than written over it.
+   * it replaced is dropped rather than written over it. The editor then shows that other text,
+   * so the text this writer wrote last is news again the next time the deck holds it (a redo
+   * from the toolbar, an undo of the agent's change).
    */
   own: (text: string) => boolean;
   /** Undo and redo are the deck's (ADR-006), also for what was typed here. */
@@ -106,6 +108,7 @@ export function createCodeWriter(options: {
       if (timer !== undefined) clearTimeout(timer);
       timer = undefined;
       waiting = undefined;
+      written = undefined;
       return false;
     },
     // After either, the deck's text is news to the editor, even when it is what was typed.
