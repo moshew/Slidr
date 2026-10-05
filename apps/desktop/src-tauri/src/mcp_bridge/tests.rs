@@ -231,12 +231,15 @@ async fn lists_and_calls_the_way_the_cli_does() -> TestResult {
                     "type": "object",
                     "properties": { "slideId": { "type": "string" } },
                     "required": ["slideId"]
-                }
+                },
+                // A long result is to reach the model whole, not as a file's first lines.
+                "_meta": { "anthropic/maxResultSizeChars": 400_000 }
             },
             {
                 "name": "slide_render",
                 "description": "Test tool slide_render.",
-                "inputSchema": { "type": "object" }
+                "inputSchema": { "type": "object" },
+                "_meta": { "anthropic/maxResultSizeChars": 400_000 }
             }
         ]),
         "what the webview registered, and nothing else of it"

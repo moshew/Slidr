@@ -17,8 +17,8 @@ use rmcp::{
     ErrorData, RoleServer, ServerHandler,
     model::{
         CacheScope, CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock,
-        Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig,
-        Tool,
+        Implementation, ListToolsResult, MetaObject, PaginatedRequestParams, ServerCapabilities,
+        ServerConfig, Tool,
     },
     service::RequestContext,
     transport::streamable_http_server::{
@@ -35,6 +35,15 @@ pub(super) const PATH: &str = "/mcp/";
 /// The server's name in the handshake. The agent's own name for it comes from its harness
 /// adapter, which writes it into the agent's configuration.
 const SERVER_NAME: &str = "slidr";
+
+/// How long a result, in characters, the agent's client should hand to its model whole: written
+/// on every tool of a list, under the key the first harness's CLI reads there (a client that does
+/// not know the key ignores it). Past its own default of some 50,000 characters that CLI saves a
+/// result to a file under the user's folder and gives the model the first 2 KB and the path. A
+/// slide comes back as one line of JSON, which can be read there neither in parts nor by
+/// searching, so a long slide could not be read at all (measured against the CLI: the harness
+/// adapter's `real_cli_reads_a_long_tool_result`). The CLI has a ceiling of its own above this.
+const WHOLE_RESULT: (&str, u32) = ("anthropic/maxResultSizeChars", 400_000);
 
 /// The session a request belongs to, put on it by [`auth`].
 #[derive(Clone)]
@@ -60,6 +69,8 @@ impl ServerHandler for Adapter {
             .bridge
             .tools(&session_key(&context)?)
             .ok_or_else(|| ErrorData::invalid_request("this session has ended", None))?;
+        let mut meta = serde_json::Map::new();
+        meta.insert(WHOLE_RESULT.0.to_owned(), WHOLE_RESULT.1.into());
         let tools = tools
             .iter()
             .map(|tool| {
@@ -68,6 +79,7 @@ impl ServerHandler for Adapter {
                     tool.description.clone(),
                     Arc::new(tool.input_schema.clone()),
                 )
+                .with_meta(MetaObject(meta.clone()))
             })
             .collect();
         // Protocol 2026-07-28 requires `ttlMs` and `cacheScope` on a list result, and rmcp

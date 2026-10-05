@@ -70,6 +70,14 @@ const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
 /// finding 5). The tool endpoint already limits every call by its tool's own time limit, so the
 /// CLI only has to wait longer than the longest of those: ten minutes.
 const TOOL_TIMEOUT_ENV: (&str, &str) = ("MCP_TOOL_TIMEOUT", "600000");
+/// The CLI does not hand the model a tool result of more than 25,000 tokens unless this variable
+/// says otherwise: it saves the result to a file under its own folder and tells the model to
+/// grep it (measured: `real_cli_reads_a_long_tool_result`). A slide is one line of JSON, which
+/// can be neither grepped nor read in parts, so a slide of some 70,000 characters (an imported
+/// one that stayed `html`, with its markup and styles) could not be read at all. A hundred
+/// thousand tokens is half the context of the smallest model the adapter offers: room for any
+/// slide the app can draw, and still a limit.
+const TOOL_OUTPUT_ENV: (&str, &str) = ("MAX_MCP_OUTPUT_TOKENS", "100000");
 /// Length of a tool result's summary, in characters.
 const SUMMARY_CHARS: usize = 300;
 /// stderr lines kept for the error message when the process dies.
@@ -230,6 +238,7 @@ impl AgentHarness for ClaudeCodeHarness {
         command
             .args(args(&config, &files))
             .env(TOOL_TIMEOUT_ENV.0, TOOL_TIMEOUT_ENV.1)
+            .env(TOOL_OUTPUT_ENV.0, TOOL_OUTPUT_ENV.1)
             .current_dir(&files.attachments)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -829,8 +838,13 @@ impl StreamMapper {
         }
         let total = line["total_cost_usd"].as_f64();
         let cost_usd = match (self.cost_baseline, total) {
-            // A process that was killed leaves the CLI's running total behind, and the next one
-            // counts from zero (ADR-066): a total below the last one is this process's own.
+            // A total below the baseline: the baseline was not what the CLI had kept. The CLI
+            // keeps its running total when a process ends in order, and a process that is killed
+            // keeps nothing of what its turns added: the next one counts on from where the killed
+            // one began (measured: `real_cli_running_total_across_processes`). The app goes back
+            // to that baseline when it sees a process die. Where it could not (it died with the
+            // process), the total is read as this process's own, which it is for a conversation
+            // that never had a process end in order (ADR-066, finding 4).
             (Some(before), Some(total)) if total < before => Some(total),
             (Some(before), Some(total)) => Some(total - before),
             _ => None,
@@ -861,10 +875,15 @@ impl StreamMapper {
 fn tool_results(message: &Value) -> Vec<AgentEvent> {
     blocks(message)
         .filter(|block| block["type"] == "tool_result")
-        .map(|block| AgentEvent::ToolCallFinished {
-            id: text(&block["tool_use_id"]),
-            ok: !block["is_error"].as_bool().unwrap_or(false),
-            summary: summarize(&block["content"]),
+        .map(|block| {
+            let summary = summarize(&block["content"]);
+            AgentEvent::ToolCallFinished {
+                id: text(&block["tool_use_id"]),
+                // A result past the CLI's limit is not marked as an error, and is one: the
+                // model was handed a sentence in its place.
+                ok: !block["is_error"].as_bool().unwrap_or(false) && !summary.starts_with(TOO_LONG),
+                summary,
+            }
         })
         .collect()
 }
@@ -930,13 +949,13 @@ fn text(value: &Value) -> String {
 /// A tool result as short text: its text parts, `[image]` for images.
 fn summarize(content: &Value) -> String {
     let full = match content {
-        Value::String(text) => without_image_paths(text),
+        Value::String(text) => without_saved_paths(text),
         Value::Array(parts) => parts
             .iter()
             .filter_map(|part| match part["type"].as_str() {
                 Some("text") => part["text"]
                     .as_str()
-                    .map(without_image_paths)
+                    .map(without_saved_paths)
                     .filter(|text| !text.is_empty()),
                 Some("image") => Some("[image]".to_owned()),
                 _ => None,
@@ -953,11 +972,24 @@ fn summarize(content: &Value) -> String {
     }
 }
 
-/// The CLI saves every image a tool returns and adds a line with the file's path, which holds
-/// the user's name. The summary goes to the chat and to the saved transcript, so the line is
-/// dropped.
-fn without_image_paths(text: &str) -> String {
-    text.lines()
+/// How the CLI begins what it hands the model in place of a tool result that is past
+/// `TOOL_OUTPUT_ENV`: "Error: result (139,440 characters across 1 line) exceeds maximum allowed
+/// tokens. Output has been saved to …".
+const TOO_LONG: &str = "Error: result (";
+/// What comes before the path of a file the CLI saved a long result in, in its two wordings.
+const SAVED_TO: [&str; 2] = [". Output has been saved to ", ". Full output saved to: "];
+
+/// The CLI saves what it does not hand to the model as it came (every image a tool returns; a
+/// result past its limits) under the user's own folder, and says where. The path holds the user's
+/// name, and the summary goes to the chat and to the transcript kept with the deck: what names a
+/// path is dropped, and of a result that was saved only the sentence that says so is kept.
+fn without_saved_paths(text: &str) -> String {
+    let text = text.strip_prefix("<persisted-output>\n").unwrap_or(text);
+    let kept = match SAVED_TO.iter().filter_map(|mark| text.find(mark)).min() {
+        Some(at) => &text[..=at],
+        None => text,
+    };
+    kept.lines()
         .filter(|line| !(line.starts_with("[Image: source: ") && line.ends_with(']')))
         .collect::<Vec<_>>()
         .join("\n")
@@ -1176,9 +1208,10 @@ mod tests {
             json!({ "type": "result", "subtype": "success", "is_error": false, "result": "ok",
                     "total_cost_usd": total, "duration_ms": 900, "usage": {} })
         };
-        // The conversation had cost 0.6693 when its last process was killed mid-turn. A process
-        // that ends that way leaves the CLI's running total behind: the next one counts from zero
-        // (ADR-066, finding 4), and its first turn cost what its total says.
+        // The app says the conversation had cost 0.6693, and the process that resumes it reports
+        // less: the CLI did not keep that total. That is a conversation whose only process so
+        // far was killed (ADR-066, finding 4), in an app that did not live to see it die: the
+        // next process counts from zero, and its first turn cost what its total says.
         let mut mapper = StreamMapper::new(true, false);
         mapper.cost_baseline = Some(0.6693);
         mapper
@@ -1335,6 +1368,54 @@ mod tests {
             "{\"ok\":true}\n[image]"
         );
         assert_eq!(summarize(&json!(format!("done\n{path}"))), "done");
+    }
+
+    /// Recorded from the real CLI (`real_cli_reads_a_long_tool_result`, before the limits were
+    /// raised, and with one of the two raised).
+    #[test]
+    fn a_result_the_cli_saved_instead_of_handing_over_is_a_failed_call_without_its_path() {
+        let folder = r"C:\Users\someone\.claude\projects\C--thread-attachments\tool-results";
+        let past_tokens = format!(
+            "Error: result (139,440 characters across 1 line) exceeds maximum allowed tokens. \
+             Output has been saved to {folder}\\mcp-slidr-slide_get-1791225016399.txt.\n\
+             Format: Plain text\n- For targeted searches (find a string): use grep on the file."
+        );
+        let past_characters = format!(
+            "<persisted-output>\nOutput too large (159.7KB). Full output saved to: \
+             {folder}\\toolu_01.json\n\nPreview (first 2KB):\n[\n  {{"
+        );
+        let result = |content: &str| {
+            tool_results(&json!({ "content": [
+                { "type": "tool_result", "tool_use_id": "t1", "content": content }
+            ] }))
+        };
+        assert_eq!(
+            result(&past_tokens),
+            [AgentEvent::ToolCallFinished {
+                id: "t1".into(),
+                ok: false,
+                summary: "Error: result (139,440 characters across 1 line) exceeds maximum \
+                          allowed tokens."
+                    .into(),
+            }]
+        );
+        assert_eq!(
+            result(&past_characters),
+            [AgentEvent::ToolCallFinished {
+                id: "t1".into(),
+                ok: true,
+                summary: "Output too large (159.7KB).".into(),
+            }]
+        );
+        // A result that came whole is as it was, also one that speaks of saving.
+        assert_eq!(
+            result("{\"saved\":true}"),
+            [AgentEvent::ToolCallFinished {
+                id: "t1".into(),
+                ok: true,
+                summary: "{\"saved\":true}".into(),
+            }]
+        );
     }
 
     /// Recorded: `--resume` with an id the CLI does not have. It answers before any message,
@@ -1566,6 +1647,12 @@ mod tests {
             dir.join("attachments/probe.json"),
         )?)?;
         assert_eq!(probe["leaked"], json!([]));
+        // The CLI's own limits on a tool call, both below what the app's tools need: how long a
+        // call may take, and how long a result the model is handed whole.
+        assert_eq!(
+            probe["limits"],
+            json!({ "MCP_TOOL_TIMEOUT": "600000", "MAX_MCP_OUTPUT_TOKENS": "100000" })
+        );
         assert!(
             probe["argv"]
                 .as_array()
@@ -1996,6 +2083,268 @@ mod tests {
                 AgentEvent::Exited { code: Some(1) }
             ]
         ));
+        Ok(())
+    }
+
+    /// One real session for the test of the running total below: its events, and every
+    /// `total_cost_usd` its process reported, as the CLI wrote it.
+    async fn real_session(
+        workdir: &Path,
+        resume: Option<String>,
+        totals: &Arc<Mutex<Vec<f64>>>,
+    ) -> TestResultOf<(Box<dyn AgentSession>, Events)> {
+        let mut config = SessionConfig::new(
+            Scope::Deck,
+            "You are a terse test agent. Follow instructions exactly.",
+            workdir.to_path_buf(),
+        );
+        config.model = Some("haiku".into());
+        config.web_access = false;
+        config.resume = resume;
+        let (sender, events) = tokio::sync::mpsc::unbounded_channel();
+        let totals = Arc::clone(totals);
+        let sink = EventSink::new(move |event| {
+            let _ = sender.send(event);
+        })
+        .with_raw(move |line| {
+            let total = serde_json::from_str::<Value>(line)
+                .ok()
+                .filter(|value| value["type"] == "result")
+                .and_then(|value| value["total_cost_usd"].as_f64());
+            if let Some(total) = total {
+                lock(&totals).push(total);
+            }
+        });
+        let session = ClaudeCodeHarness::new().start(config, sink).await?;
+        Ok((session, events))
+    }
+
+    /// Events of a real session up to the first one `last` accepts; a real turn takes a while.
+    async fn real_until(
+        events: &mut Events,
+        last: impl Fn(&AgentEvent) -> bool,
+    ) -> TestResultOf<Vec<AgentEvent>> {
+        let mut seen = Vec::new();
+        loop {
+            let event = timeout(Duration::from_secs(120), events.recv())
+                .await?
+                .ok_or("the event stream ended")?;
+            let done = last(&event);
+            seen.push(event);
+            if done {
+                return Ok(seen);
+            }
+        }
+    }
+
+    /// The real CLI given a tool result far longer than it takes by default. A slide that an
+    /// import kept as `html` carries its whole markup, `slide_get` returns the slide whole, and
+    /// the brief of a session sends the agent to exactly that call for a slide too long for the
+    /// brief. The tool here answers with about 150,000 characters of slide JSON (some 50,000
+    /// tokens) that end in a word, and the model is asked for the word: it can say it only if
+    /// the whole result reached it, and it reaches it whole only in the one call. Haiku, about
+    /// eleven cents: the result is 52,000 tokens of input.
+    /// Run: `cargo test -p slidr real_cli_reads_a_long -- --ignored --nocapture`.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "runs the real Claude Code CLI on the owner's subscription"]
+    async fn real_cli_reads_a_long_tool_result() -> TestResult {
+        use crate::tool_bridge::{Content, ToolBridge, ToolDef, ToolReply};
+
+        const LAST_WORD: &str = "OSPREY-7733";
+        let element = |n: usize| {
+            json!({
+                "id": format!("e_{n:08}"),
+                "type": "text",
+                "frame": { "x": 120 + n, "y": 340, "w": 560, "h": 80 },
+                "rotation": 0,
+                "opacity": 1,
+                "content": { "paragraphs": [
+                    { "runs": [{ "text": format!("Quarterly revenue by region, row {n}") }] }
+                ] }
+            })
+        };
+        // serde_json writes the keys in order: `lastWord` is the end of the text.
+        let slide = json!({
+            "elements": (0..750).map(element).collect::<Vec<_>>(),
+            "id": "s_1",
+            "lastWord": LAST_WORD,
+        })
+        .to_string();
+        assert!(slide.ends_with(&format!("\"lastWord\":\"{LAST_WORD}\"}}")));
+        println!("the tool's result: {} characters", slide.len());
+
+        let bridge = ToolBridge::new();
+        let webview = Arc::downgrade(&bridge);
+        bridge.connect(move |call| {
+            let reply = ToolReply {
+                content: vec![Content::Text {
+                    text: slide.clone(),
+                }],
+                is_error: false,
+            };
+            webview
+                .upgrade()
+                .is_some_and(|bridge| bridge.reply(&call.call_id, reply))
+        });
+        let tool: ToolDef = serde_json::from_value(json!({
+            "name": "slide_get",
+            "description": "Returns a slide of the deck, whole.",
+            "inputSchema": {
+                "type": "object",
+                "properties": { "slideId": { "type": "string" } },
+                "required": ["slideId"]
+            }
+        }))?;
+        let endpoint = bridge.open(vec![tool]).await?;
+
+        let root = tempfile::tempdir()?;
+        let mut config = SessionConfig::new(
+            Scope::Deck,
+            "You are a terse test agent. Follow instructions exactly.",
+            root.path().join("thread"),
+        );
+        config.model = Some("haiku".into());
+        config.web_access = false;
+        config.tool_endpoint = Some(ToolEndpoint {
+            url: endpoint.url.clone(),
+            token: endpoint.token.clone(),
+        });
+        let (sender, mut events) = tokio::sync::mpsc::unbounded_channel();
+        let sink = EventSink::new(move |event| {
+            let _ = sender.send(event);
+        })
+        .with_raw(|line| {
+            // What the CLI itself made of the result, as it handed it to the model.
+            if line.contains("\"tool_result\"") {
+                let shown: String = line.chars().take(700).collect();
+                println!("  the CLI's tool result line begins: {shown}");
+            }
+        });
+        let mut session = ClaudeCodeHarness::new().start(config, sink).await?;
+        session
+            .send(UserTurn::text(
+                "Call the slide_get tool with slideId set to \"s_1\". Then reply with exactly the \
+                 value of lastWord in its result and nothing else.",
+            ))
+            .await?;
+        let seen = real_until(&mut events, turn_end).await?;
+        session.close().await?;
+
+        let mut reply = String::new();
+        let mut results = Vec::new();
+        for event in &seen {
+            match event {
+                AgentEvent::TextDelta { text } => reply.push_str(text),
+                AgentEvent::ToolCallFinished { ok, summary, .. } => {
+                    let shown: String = summary.chars().take(200).collect();
+                    println!("  tool call finished, ok: {ok}: {shown}");
+                    results.push((*ok, summary.clone()));
+                }
+                AgentEvent::TurnCompleted {
+                    cost_usd, usage, ..
+                } => println!("  cost: {cost_usd:?} USD, usage: {usage:?}"),
+                _ => {}
+            }
+        }
+        println!("  the model replied: {reply}");
+        assert!(
+            reply.contains(LAST_WORD),
+            "the end of the result did not reach the model: {reply}"
+        );
+        // It reached the model as the tool gave it, in the one call. Without the two limits the
+        // CLI saves the result to a file and the model goes looking in it with its file tools:
+        // it found a word that way, and could not have read the slide.
+        assert_eq!(results.len(), 1, "{results:?}");
+        assert!(
+            results[0].0 && results[0].1.starts_with("{\"elements\":["),
+            "{results:?}"
+        );
+        Ok(())
+    }
+
+    /// The real CLI's running total across processes: what a turn's cost is read from
+    /// (`StreamMapper::result`), and what the app keeps as the baseline of the next process
+    /// (`resumed_cost_usd`). One conversation on Haiku, in seven processes: a fresh one; one that
+    /// resumes it after an orderly close; one that is killed in the middle of its turn; two that
+    /// resume after that; one that is killed after a whole turn; and one more. What it found
+    /// (2.1.287): the CLI keeps its total when a process ends in order, and a process that is
+    /// killed keeps nothing, its whole turns included. About two cents.
+    /// Run: `cargo test -p slidr real_cli_running_total -- --ignored --nocapture`.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "runs the real Claude Code CLI on the owner's subscription"]
+    async fn real_cli_running_total_across_processes() -> TestResult {
+        let root = tempfile::tempdir()?;
+        let workdir = root.path().join("thread");
+        let totals = Arc::new(Mutex::new(Vec::new()));
+        let seen = |label: &str| println!("{label}: totals so far {:?}", lock(&totals));
+
+        let (mut a, mut events) = real_session(&workdir, None, &totals).await?;
+        a.send(UserTurn::text("Reply with exactly: one")).await?;
+        real_until(&mut events, turn_end).await?;
+        let native = a.native_session_id().ok_or("no session id")?;
+        a.close().await?;
+        seen("A, a fresh process, closed in order");
+
+        let (mut b, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
+        b.send(UserTurn::text("Reply with exactly: two")).await?;
+        real_until(&mut events, turn_end).await?;
+        b.close().await?;
+        seen("B, resumed after an orderly close");
+
+        let (mut c, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
+        c.send(UserTurn::text(
+            "Count from 1 to 400, one number per line, nothing else.",
+        ))
+        .await?;
+        real_until(&mut events, text_delta).await?;
+        // Dropped without `close`: the process is killed where it is, in the middle of the turn.
+        drop(c);
+        real_until(&mut events, exit).await?;
+        seen("C, resumed, killed in the middle of its turn");
+
+        let (mut d, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
+        d.send(UserTurn::text("Reply with exactly: four")).await?;
+        real_until(&mut events, turn_end).await?;
+        d.close().await?;
+        seen("D, resumed after the killed process");
+
+        let (mut e, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
+        e.send(UserTurn::text("Reply with exactly: five")).await?;
+        real_until(&mut events, turn_end).await?;
+        e.close().await?;
+        seen("E, resumed after an orderly close again");
+
+        let (mut f, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
+        f.send(UserTurn::text("Reply with exactly: six")).await?;
+        real_until(&mut events, turn_end).await?;
+        seen("F, resumed, a whole turn");
+        f.send(UserTurn::text(
+            "Count from 1 to 400, one number per line, nothing else.",
+        ))
+        .await?;
+        real_until(&mut events, text_delta).await?;
+        drop(f);
+        real_until(&mut events, exit).await?;
+        seen("F, killed in the middle of its second turn");
+
+        let (mut g, mut events) = real_session(&workdir, Some(native), &totals).await?;
+        g.send(UserTurn::text("Reply with exactly: seven")).await?;
+        real_until(&mut events, turn_end).await?;
+        g.close().await?;
+        seen("G, resumed after a process that was killed after a whole turn");
+        let totals = lock(&totals).clone();
+        let [a, b, d, e, f, g] = totals[..] else {
+            return Err(
+                format!("a `result` for every turn but the killed ones: {totals:?}").into(),
+            );
+        };
+        // A process that ended in order kept its total: the next one counts on from it.
+        assert!(a < b && b < d && d < e && e < f, "{totals:?}");
+        // A process that was killed kept nothing, its whole turn (F's first) included: G counts
+        // on from where F began, which is where E ended. Had F's turn been kept, G would stand
+        // a whole turn above F; it stands about one turn above E.
+        let turn = f - e;
+        assert!(g - e < 2.0 * turn && g - f < 0.5 * turn, "{totals:?}");
         Ok(())
     }
 }

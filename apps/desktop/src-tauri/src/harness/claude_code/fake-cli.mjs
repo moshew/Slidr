@@ -5,8 +5,8 @@
 //   "hang"    the same, but ignores the interrupt (the adapter must end the process)
 //   "crash"   exits with code 3 mid-turn
 //   anything else: one delta "echo: <text>" and a successful result
-// On start it writes probe.json into its working directory: its arguments and any CLAUDE* or
-// ANTHROPIC* variable it inherited.
+// On start it writes probe.json into its working directory: its arguments, any CLAUDE* or
+// ANTHROPIC* variable it inherited, and the limits it was started with.
 /* global process, setInterval, clearInterval */
 import fs from 'node:fs';
 import readline from 'node:readline';
@@ -24,6 +24,10 @@ fs.writeFileSync(
   JSON.stringify({
     argv: process.argv.slice(2),
     leaked: Object.keys(process.env).filter((key) => /^(CLAUDE|ANTHROPIC)/i.test(key)),
+    limits: {
+      MCP_TOOL_TIMEOUT: process.env.MCP_TOOL_TIMEOUT,
+      MAX_MCP_OUTPUT_TOKENS: process.env.MAX_MCP_OUTPUT_TOKENS,
+    },
   }),
 );
 
