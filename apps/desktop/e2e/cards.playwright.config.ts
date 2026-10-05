@@ -8,7 +8,9 @@ import { defineConfig } from '@playwright/test';
 //
 // With SLIDR_E2E=app the same server runs every suite of the app, each at the viewport its own
 // config gives it: the runtime's at 1280x720 (runtime.playwright.config.ts), the rest at the
-// editor's size.
+// editor's size. A file named on the command line is matched against its whole path, so in a
+// worktree called "Slidr-f-cards-stage" the filter `cards-stage` is every spec there is: name the
+// file with its ending (`'cards-stage\.spec'`), and look at what `--list` selects first.
 //
 // Two runs at once need two servers: SLIDR_E2E_PORT gives the second one its own port, and
 // `--output` its own output folder.
