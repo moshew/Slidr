@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import type * as Runtime from '../src/ai/runtime';
 import {
   chat,
   choose,
@@ -17,6 +18,9 @@ import { chips, openApp, openTool, say } from './aitools-helpers';
  * at another tab or panel, across a document that is opened in the same window, and across a
  * long history. Each test here was a defect the bug hunt of 2026-10-04 proved (`ai-ui.md`).
  */
+
+/** The app's own module, as the page has it: a specifier that is not a literal stays unbundled. */
+const RUNTIME = '/src/ai/runtime.ts';
 
 /**
  * What `DocumentService.open` does to the editor when the same file is opened again: the bus is
@@ -167,4 +171,43 @@ test('a turn kept with the deck does not say "changes undone" when the deck is o
   await expect(turns(page).first()).toContainText('שקף הפתיחה מוכן');
   await expect(turns(page).first().getByTestId('undo-turn')).toHaveCount(0);
   await expect(turns(page).first()).not.toContainText('השינויים בוטלו');
+});
+
+test('every conversation of a tool can be reached in its list, however many there are', async ({
+  page,
+}) => {
+  // A low window, and more conversations than it has room for: they are kept without a limit.
+  await page.setViewportSize({ width: 1366, height: 600 });
+  await openDeckChat(page, { script: 'outline' });
+  await sayToDeck(page, 'ראשונה');
+  await page.evaluate(async (path) => {
+    const { aiOf } = (await import(/* @vite-ignore */ path)) as typeof Runtime;
+    const { agent } = aiOf(window.slidr!);
+    for (let i = 0; i < 24; i++) {
+      const thread = agent.newConversation({ kind: 'deck' });
+      await thread.send(`שיחה ${i}`);
+      await new Promise<void>((resolve) => {
+        const check = () => (thread.store.getState().busy ? setTimeout(check, 10) : resolve());
+        check();
+      });
+    }
+  }, RUNTIME);
+
+  await page.getByTestId('conversations').click();
+  const items = page.locator('[data-conversation]');
+  await expect(items).toHaveCount(25);
+  // The list is inside the window, and scrolls (finding 10: it was as tall as its items).
+  const menu = (await page.getByRole('menu').boundingBox())!;
+  expect(menu.y).toBeGreaterThanOrEqual(0);
+  expect(menu.y + menu.height).toBeLessThanOrEqual(600);
+  const oldest = items.last();
+  await expect(oldest).not.toBeInViewport();
+
+  // The oldest conversation is the last in the list: End goes to it, and Enter opens it.
+  await page.keyboard.press('End');
+  await expect(oldest).toBeFocused();
+  await expect(oldest).toBeInViewport({ ratio: 1 });
+  await page.keyboard.press('Enter');
+  await expect(chat(page)).toHaveAttribute('data-thread', 'deck');
+  await expect(page.getByTestId('chat-user').first()).toContainText('ראשונה');
 });

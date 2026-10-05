@@ -8,11 +8,17 @@ import { usePortalContainer } from './provider';
 
 /*
  * Menus: a dropdown (from a button) and a context menu (right click) with the same items. The
- * surface is a 12px panel with 4px padding, so the 8px items nest in its corners.
+ * surface is a 12px panel with 4px padding, so the 8px items nest in its corners. A menu is
+ * never taller than the room the window has for it: a longer one scrolls, so its last item can
+ * be reached with the wheel and with the keyboard.
  */
 
 const surface =
-  'z-50 min-w-menu overflow-hidden rounded-panel border border-ui-line bg-ui-raised p-1 text-sm text-ui-fg shadow-overlay animate-overlay-in';
+  'z-50 min-w-menu overflow-x-hidden overflow-y-auto rounded-panel border border-ui-line bg-ui-raised p-1 text-sm text-ui-fg shadow-overlay animate-overlay-in';
+
+/** The room the window has for a menu, which Radix measures where the menu opens. */
+const dropdownRoom = 'max-h-(--radix-dropdown-menu-content-available-height)';
+const contextRoom = 'max-h-(--radix-context-menu-content-available-height)';
 
 const item =
   'group relative flex h-control cursor-default items-center gap-2 rounded-control px-2 outline-none select-none data-highlighted:bg-ui-hover data-disabled:text-ui-fg-subtle';
@@ -78,7 +84,7 @@ export function DropdownMenuContent({
         sideOffset={sideOffset}
         align={align}
         collisionPadding={8}
-        className={cx(surface, className)}
+        className={cx(surface, dropdownRoom, className)}
         {...props}
       />
     </RadixDropdownMenu.Portal>
@@ -183,7 +189,7 @@ export function DropdownMenuSubContent({
         sideOffset={8}
         alignOffset={-5}
         collisionPadding={8}
-        className={cx(surface, className)}
+        className={cx(surface, dropdownRoom, className)}
         {...props}
       />
     </RadixDropdownMenu.Portal>
@@ -205,7 +211,7 @@ export function ContextMenuContent({
     <RadixContextMenu.Portal container={usePortalContainer()}>
       <RadixContextMenu.Content
         collisionPadding={8}
-        className={cx(surface, className)}
+        className={cx(surface, contextRoom, className)}
         {...props}
       />
     </RadixContextMenu.Portal>
@@ -291,7 +297,7 @@ export function ContextMenuSubContent({
         sideOffset={8}
         alignOffset={-5}
         collisionPadding={8}
-        className={cx(surface, className)}
+        className={cx(surface, contextRoom, className)}
         {...props}
       />
     </RadixContextMenu.Portal>
