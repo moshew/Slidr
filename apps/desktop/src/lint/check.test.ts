@@ -258,19 +258,25 @@ describe('the design check of the open deck', () => {
     const NEEDS = 95;
     /** What a render measures of a card: each part where its group puts it on the slide. */
     function rendered(slide: Slide): SlideMeasurements {
-      const elements: SlideMeasurements['elements'] = {};
+      const elements: Record<string, SlideMeasurements['elements'][string]> = {};
       const visit = (list: readonly Element[], dx: number, dy: number) => {
         for (const element of list) {
           const box = { ...element.frame, x: element.frame.x + dx, y: element.frame.y + dy };
-          elements[element.id] = { box };
           if (element.type === 'group') visit(element.children, box.x, box.y);
-          if (element.type !== 'text') continue;
-          elements[element.id]!.text = {
-            ink: box,
-            overflow: { x: 0, y: Math.max(0, NEEDS - box.h) },
-            scale: 1,
-            spans: [{ color: [21, 23, 26], alpha: 1, fontSize: 30, backdrop: [[255, 255, 255]] }],
-          };
+          elements[element.id] =
+            element.type === 'text'
+              ? {
+                  box,
+                  text: {
+                    ink: box,
+                    overflow: { x: 0, y: Math.max(0, NEEDS - box.h) },
+                    scale: 1,
+                    spans: [
+                      { color: [21, 23, 26], alpha: 1, fontSize: 30, backdrop: [[255, 255, 255]] },
+                    ],
+                  },
+                }
+              : { box };
         }
       };
       visit(slide.elements, 0, 0);

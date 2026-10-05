@@ -117,7 +117,9 @@ describe('the brief of a session', () => {
       deck: cards,
     })!;
     // The element arrives as the model has it, and the map says where that puts it.
-    expect(value(block, 'elements')).toMatchObject([{ id: 'e_text', frame: box(40, 120, 420, 140) }]);
+    expect(value(block, 'elements')).toMatchObject([
+      { id: 'e_text', frame: box(40, 120, 420, 140) },
+    ]);
     expect((value(block, 'slide') as { elements: unknown[] }).elements).toEqual([
       { id: 'e_card', type: 'group', frame: box(96, 300, 500, 300) },
       { id: 'e_box', type: 'shape', in: 'e_card', frame: box(0, 0, 500, 300) },
