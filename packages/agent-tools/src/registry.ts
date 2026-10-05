@@ -1,5 +1,7 @@
 import {
+  allElementIds,
   mergeAffected,
+  refitAfter,
   toJsonSchema,
   walkElements,
   type Affected,
@@ -246,6 +248,7 @@ export function createDeckApi(
     let before: Deck | undefined;
     let after: Deck | undefined;
     let affected: Affected | undefined;
+    const refitted: Record<string, unknown> = {};
     const ctx: ToolContext = {
       get deck() {
         return bus.deck;
@@ -274,6 +277,21 @@ export function createDeckApi(
         let done = bus.batch(commands, step);
         // What the app adds is the app's own doing, not the session's: the scope guard is not
         // asked. It is part of what the call changed all the same, and the result says so.
+        //
+        // A group bounds its children (ARR-01), and the agent moves and sizes them by numbers:
+        // the groups around what it wrote are fitted again here. That moves the group and
+        // rewrites the frame of every child, the ones the call did not name too, so the result
+        // gives the frames it left: the caller read the old ones.
+        const fit = refitAfter(bus.deck, start, done);
+        if (fit.length > 0) {
+          done = mergeAffected(done, bus.batch(fit, step));
+          const known = allElementIds(start);
+          for (const command of fit) {
+            if (command.type === 'element.update' && known.has(command.elementId)) {
+              refitted[command.elementId] = command.patch.frame;
+            }
+          }
+        }
         const follow = options.follow?.({ deck: bus.deck, previous: start }) ?? [];
         if (follow.length > 0) done = mergeAffected(done, bus.batch(follow, step));
         before ??= start;
@@ -292,6 +310,7 @@ export function createDeckApi(
             ? summarizeWrite(before, after, affected)
             : summarizeWrite(bus.deck, bus.deck, NOTHING);
         Object.assign(data, summary);
+        if (Object.keys(refitted).length > 0) data.refitted = refitted;
         // An import session brings in the user's own design (SPEC 13.3): what it writes is not
         // judged as it goes. slide_lint and deck_lint are there to ask.
         const judged = tool.lint !== false && turn.scope.kind !== 'import';

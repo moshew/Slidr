@@ -2,6 +2,7 @@ import {
   ChangeDigest,
   CommandBus,
   createDeck,
+  createElement,
   createSlide,
   findElementInDeck,
   updateElement,
@@ -148,6 +149,52 @@ describe('a turn is one transaction (D8)', () => {
     await ok(api.call(turn, 'deck_get_outline', {}));
     expect(asked).toEqual(['rtl to ltr', 'rtl to rtl']);
     expect(bus.deck.slides[0]!.name).toBe('now ltr');
+  });
+
+  it('fits a group to its children after a write, in the same step, and says what it moved', async () => {
+    const group = createElement.group({
+      id: 'g',
+      frame: { x: 200, y: 200, w: 300, h: 100 },
+      children: [
+        createElement.shape({ id: 'a', frame: { x: 0, y: 0, w: 100, h: 100 } }),
+        createElement.shape({ id: 'b', frame: { x: 200, y: 0, w: 100, h: 100 } }),
+      ],
+    });
+    const deck = createDeck({ slides: [createSlide({ id: 's_1', elements: [group] })] });
+    const { bus, call, turn } = setup(deck);
+    const frame = (id: string) => findElementInDeck(bus.deck, id)!.element.frame;
+    const onSlide = (id: string) => frame('g').x + frame(id).x;
+
+    // The agent read the slide: `a` at 0 and `b` at 200 inside a group at 200. It moves `a`
+    // 50 to the left, which puts it outside the group's box.
+    const first = await ok(
+      call('element_update', { elementId: 'a', patch: { frame: { x: -50 } } }),
+    );
+    // The group took the child in: it moved, and with it the frame of every child, `b` too.
+    expect(frame('g')).toMatchObject({ x: 150, w: 350 });
+    expect(frame('a').x).toBe(0);
+    expect(frame('b').x).toBe(250);
+    // The result names all three, with the frames they have now: `b` is not where it was read.
+    expect(first.changed).toEqual(['a', 'b', 'g']);
+    expect(first.refitted).toEqual({
+      g: { x: 150, y: 200, w: 350, h: 100 },
+      a: { x: 0, y: 0, w: 100, h: 100 },
+      b: { x: 250, y: 0, w: 100, h: 100 },
+    });
+    // One step of the turn, and nothing left for a fit that comes afterwards to do.
+    expect(bus.undoStack).toHaveLength(1);
+    expect(bus.transactionInfo(turn.txId)).toEqual({ steps: 1, otherEdits: 0 });
+
+    // From the frames it was given, the agent puts `b` where it means it: at 500 on the slide.
+    const g = (first.refitted as Record<string, { x: number }>).g!;
+    await ok(call('element_update', { elementId: 'b', patch: { frame: { x: 500 - g.x } } }));
+    expect(onSlide('b')).toBe(500);
+
+    // A write that leaves every group fitted reports no frames.
+    const plain = await ok(call('element_update', { elementId: 'a', patch: { opacity: 0.5 } }));
+    expect(plain).not.toHaveProperty('refitted');
+    bus.undoTransaction(turn.txId);
+    expect(bus.deck).toEqual(deck);
   });
 });
 

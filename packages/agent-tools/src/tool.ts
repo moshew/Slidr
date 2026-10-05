@@ -145,7 +145,10 @@ export type ToolResult =
       ok: true;
       /**
        * JSON for the agent. For a write tool it includes the `WriteSummary` fields and, when
-       * the lint service runs, `lint`: the findings for `slides` (`LintFinding[]`).
+       * the lint service runs, `lint`: the findings for `slides` (`LintFinding[]`). When the
+       * write made the app fit a group to its children again, also `refitted`: the frame each
+       * element that was there before now has, by id (the group's, and its children's, which
+       * are relative to it).
        */
       data: Record<string, unknown>;
       images: PngImage[];
