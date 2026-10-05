@@ -223,10 +223,13 @@ function createAi(editor: Editor): AiRuntime {
       : undefined;
     const text = sessionBrief({ scope, deck, picture: Boolean(picture) });
     if (!text) return null;
-    told.set(key, slide);
     const result: TurnBrief = {
       text,
       images: picture ? [{ mediaType: 'image/png', data: picture.data }] : [],
+      // Told once the turn is with a session: a turn that was stopped first told nobody.
+      sent: () => {
+        told.set(key, slide);
+      },
     };
     return result;
   };

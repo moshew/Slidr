@@ -355,6 +355,45 @@ describe('what changed behind the conversation (CMD-08)', () => {
     expect(changed(seen.sends.at(-1))).toBe('changed_since_last_turn: {}');
   });
 
+  it('is told again when the turn that carried it did not arrive', async () => {
+    let refuse: AgentError | null = null;
+    const wrap = (client: AgentClient): AgentClient => ({
+      ...client,
+      send: (sessionId, turn) => {
+        if (!refuse) return client.send(sessionId, turn);
+        const error = refuse;
+        refuse = null;
+        return Promise.reject(error);
+      },
+    });
+    const { bus, thread, seen } = setup({ talk }, { wrap });
+    await ask(thread, 'First');
+
+    // The session was closed under the turn (AGT-07): the same turn goes to a session that
+    // resumes, and what the first one was to be told goes with it.
+    bus.dispatch({ type: 'slide.update', slideId: 's_1', patch: { name: 'renamed by hand' } });
+    refuse = new AgentError('unknown_session', 'unknown session');
+    expect((await ask(thread, 'Second')).outcome).toBe('completed');
+    expect(seen.sends.slice(1).map(changed)).toEqual([
+      'changed_since_last_turn: {"slides":["s_1"]}',
+      'changed_since_last_turn: {"slides":["s_1"]}',
+    ]);
+
+    // A turn that failed on its way told nobody: the next one tells it, with what came since.
+    bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's_2' }) });
+    refuse = new AgentError('io', 'the pipe is closed');
+    expect((await ask(thread, 'Third')).outcome).toBe('failed');
+    bus.dispatch({ type: 'slide.remove', slideIds: ['s_2'] });
+    bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's_3' }) });
+    expect((await ask(thread, 'Fourth')).outcome).toBe('completed');
+    expect(changed(seen.sends.at(-1))).toBe(
+      'changed_since_last_turn: {"slides":["s_3"],"removed_slides":["s_2"],"slide_order":true}',
+    );
+    // Told, it is told no more.
+    await ask(thread, 'Fifth');
+    expect(changed(seen.sends.at(-1))).toBe('changed_since_last_turn: {}');
+  });
+
   it('says that anything may have changed when the conversation goes on from an earlier run', async () => {
     const first = setup({ talk });
     await ask(first.thread, 'First');
@@ -642,15 +681,24 @@ describe('stopping and failing', () => {
     it('while the brief is being made: the turn is never sent', async () => {
       const brief = held();
       let briefs = 0;
+      const fresh: boolean[] = [];
+      let told = 0;
       const { bus, service, seen } = setup(
         { rename },
         {
           speed: 1,
           // The brief of a slide or object session renders the slide: it takes a moment.
-          brief: async () => {
+          brief: async (_scope, turn) => {
             briefs++;
+            fresh.push(turn.fresh);
             await brief.gate;
-            return null;
+            return {
+              text: '<slidr_session>slide: {}</slidr_session>',
+              images: [],
+              sent: () => {
+                told++;
+              },
+            };
           },
         },
       );
@@ -670,12 +718,18 @@ describe('stopping and failing', () => {
       // Nothing of the turn reached the harness, and so nothing of it reached the deck.
       expect(seen.sends).toEqual([]);
       expect(bus.deck.slides[0]!.name).toBe('first');
-      // The session is there for the next message, which is sent as any other.
+      // Nor was the session told of its slide: the brief was made for a turn nobody got.
+      expect(told).toBe(0);
+      // The session is there for the next message, which is sent as any other, with the brief
+      // of a conversation that still begins.
       await thread.send('Rename the slide');
       await vi.waitFor(() => expect(bus.deck.slides[0]!.name).toBe('one'));
       await thread.stop();
       await settled(thread);
       expect(seen.starts).toHaveLength(1);
+      expect(fresh).toEqual([true, true]);
+      expect(told).toBe(1);
+      expect(seen.sends[0]!.context).toContain('<slidr_session>');
     });
 
     it('while the turn is on its way to the harness: it is stopped as soon as it is there', async () => {

@@ -25,12 +25,14 @@ import {
   type Turn,
 } from '@slidr/agent-tools';
 import {
+  allElementIds,
   ChangeDigest,
   findSlide,
   type AssetMeta,
   type ChangeEvent,
   type ChangeSummary,
   type CommandBus,
+  type Deck,
 } from '@slidr/model';
 import {
   attachmentsBlock,
@@ -147,6 +149,12 @@ export interface TurnBrief {
   text: string;
   /** For a harness that takes pictures; left out for one that does not. */
   images: ImageAttachment[];
+  /**
+   * Called once the turn that carries the brief was handed to a session: only then was the
+   * session told. A brief made for a turn that was stopped, or that no session took, was told
+   * to nobody, and whoever remembers what was told must not remember that one.
+   */
+  sent?: () => void;
 }
 
 /** How a message was sent, when it was not typed. */
@@ -261,6 +269,27 @@ export function toolTarget(input: unknown, result?: ToolResult): ToolTarget | un
   const elementIds = one ? [one] : texts(args.elementIds);
   if (!slideId && elementIds.length === 0) return undefined;
   return { ...(slideId ? { slideId } : {}), ...(elementIds.length > 0 ? { elementIds } : {}) };
+}
+
+/** Two summaries of changes as one, sorted again by what the deck holds now. */
+function together(a: ChangeSummary, b: ChangeSummary, deck: Deck): ChangeSummary {
+  const slides = new Set([...a.slides, ...a.removedSlides, ...b.slides, ...b.removedSlides]);
+  const elements = new Set([
+    ...a.elements,
+    ...a.removedElements,
+    ...b.elements,
+    ...b.removedElements,
+  ]);
+  const liveSlides = new Set(deck.slides.map((slide) => slide.id));
+  const liveElements = allElementIds(deck);
+  return {
+    slides: [...slides].filter((id) => liveSlides.has(id)),
+    elements: [...elements].filter((id) => liveElements.has(id)),
+    removedSlides: [...slides].filter((id) => !liveSlides.has(id)),
+    removedElements: [...elements].filter((id) => !liveElements.has(id)),
+    slideOrder: a.slideOrder || b.slideOrder,
+    theme: a.theme || b.theme,
+  };
 }
 
 /** The session's scope as the harness layer takes it: an import always names its file there. */
@@ -437,6 +466,11 @@ export class ChatThread {
   /** The document the chat belonged to was replaced (`drop`): its files are not this chat's. */
   #gone = false;
   /**
+   * The changes that went into the context block of a turn no session has taken yet: they left
+   * the digest when the block was made, and are still news if the turn does not arrive.
+   */
+  #untold: ChangeSummary | null = null;
+  /**
    * The changes behind the conversation's back are being collected (`#changes`): from its first
    * turn in this window on. Before that nobody knows what became of the deck since its last turn.
    */
@@ -506,6 +540,7 @@ export class ChatThread {
     this.#record = { scope: this.scope };
     this.#loading = null;
     this.#collecting = false;
+    this.#untold = null;
     this.store.setState({
       ready: false,
       entries: [],
@@ -958,6 +993,8 @@ export class ChatThread {
         // with; said in the same breath as the check, so that no end falls between the two.
         run.preparing = false;
         session.fresh = false;
+        this.#untold = null;
+        brief?.sent?.();
         this.store.setState({ activity: { kind: 'thinking' } });
         // Stop was pressed while the turn was on its way to the harness, which had no turn to
         // stop then: it has one now.
@@ -1014,6 +1051,16 @@ export class ChatThread {
    * resumes must still hear what the user did in the meantime.
    */
   #changes(run: Run): ChangeSummary {
+    let changes = this.#taken(run);
+    // What was taken for a turn that did not arrive (its session was gone, or the send failed)
+    // is told with this one, beside what came since.
+    if (this.#untold) changes = together(this.#untold, changes, this.#options.bus.deck);
+    this.#untold = changes;
+    return changes;
+  }
+
+  /** The changes the digest collected since it was last asked, which empties it. */
+  #taken(run: Run): ChangeSummary {
     const changes = this.#service.digest.take(this.id);
     if (this.#collecting) return changes;
     this.#collecting = true;
@@ -1326,6 +1373,7 @@ export class ChatThread {
           text: RECONNECTED,
           context: this.#context(run),
         });
+        this.#untold = null;
         if (this.#run !== run) return;
         this.store.setState({ activity: { kind: 'thinking' } });
         if (run.stopRequested) await client.interrupt(session.sessionId).catch(() => undefined);
@@ -1374,6 +1422,7 @@ export class ChatThread {
         }),
         context: this.#context(run),
       });
+      this.#untold = null;
       if (this.#run !== run) return;
       this.store.setState({ activity: { kind: 'thinking' } });
       // Stop was pressed while the follow-up was on its way, when there was no turn to stop.
