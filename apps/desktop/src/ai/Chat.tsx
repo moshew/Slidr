@@ -541,6 +541,7 @@ function Working({ activity, stopping }: { activity: Activity | null; stopping: 
 
 function Composer({
   scope,
+  threadId,
   busy,
   stopping,
   draft,
@@ -549,6 +550,8 @@ function Composer({
   onStop,
 }: {
   scope: SessionScope['kind'];
+  /** The conversation the chat shows: the one its picker of model and effort chooses for. */
+  threadId: string;
   busy: boolean;
   stopping: boolean;
   /**
@@ -656,7 +659,7 @@ function Composer({
               pressed={follow}
               onPressedChange={setFollow}
             />
-            <ModelPicker />
+            <ModelPicker threadId={threadId} />
             <span className="min-w-0 flex-1" />
             {busy ? (
               <IconButton
@@ -832,6 +835,7 @@ export function Chat({ scope }: { scope: SessionScope }) {
       {scope.kind === 'deck' && <TemplateDraftCard />}
       <Composer
         scope={scope.kind}
+        threadId={thread.id}
         busy={state.busy}
         stopping={state.stopping}
         draft={draft}
