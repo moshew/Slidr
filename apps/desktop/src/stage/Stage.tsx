@@ -788,11 +788,14 @@ export function Stage({
 
     const hit = resolveHit(pickAt(e.clientX, e.clientY), scope);
     // The slide draws nothing outside itself, so the part of an element that is off the slide
-    // cannot be picked. A selected one is still taken by it: one dragged to the edge of the Stage
-    // is grabbed there again (ADR-066).
-    const outside = hit.id
-      ? undefined
-      : selectedLocated.find((l) => !l.locked && !l.hidden && inFrameOf(l, p));
+    // cannot be picked. A selected one is still taken by it there: one dragged to the edge of the
+    // Stage is grabbed again (ADR-066). On the slide, picking stays the drawing's own (a line by
+    // its stroke, not by the box around it).
+    const offSlide = p.x < 0 || p.y < 0 || p.x > deck.size.w || p.y > deck.size.h;
+    const outside =
+      hit.id || !offSlide
+        ? undefined
+        : selectedLocated.find((l) => !l.locked && !l.hidden && inFrameOf(l, p));
     const target = outside ?? (hit.id ? index.get(hit.id) : undefined);
     // A selected element is in the group the Stage is working in.
     const hitScope = outside ? [...scope] : hit.scope;
