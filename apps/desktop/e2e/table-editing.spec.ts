@@ -205,6 +205,41 @@ test('Tab in the last cell adds a row and goes on typing in it', async ({ page }
   expect((await table(page)).rows).toHaveLength(3);
 });
 
+test('undoing the row that Tab added brings the typing back to the last cell, with its text kept', async ({
+  page,
+}) => {
+  await openApp(page, { lang: 'en' });
+  const id = await addTable(page, {
+    texts: [
+      ['a', 'b'],
+      ['keep me', 'd'],
+    ],
+  });
+  await typeInCell(page, id, 1, 1);
+  await tab(page, '2,0');
+  expect((await table(page)).rows).toHaveLength(3);
+  // One Tab too many: Ctrl+Z takes the row back from under the editor.
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await table(page)).rows.length).toBe(2);
+  // The typing is where it came from, at the end of that cell's text: no other cell's text is
+  // selected for the next key to replace.
+  await expect.poll(() => typingCell(page)).toBe('1,1');
+  await expect(page.locator('[data-text-editor]')).toBeFocused();
+  // The row comes back with Ctrl+Y and goes again with Ctrl+Z, the typing staying where it is.
+  await page.keyboard.press('Control+y');
+  await expect.poll(async () => (await table(page)).rows.length).toBe(3);
+  expect(await typingCell(page)).toBe('1,1');
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await table(page)).rows.length).toBe(2);
+  await page.keyboard.type('x');
+  await expect
+    .poll(() => texts(page))
+    .toEqual([
+      ['a', 'b'],
+      ['keep me', 'dx'],
+    ]);
+});
+
 /** Where every line of text of a table is drawn, cell by cell, with its colour and weight. */
 function lines(page: Page, id: string) {
   return tableOnStage(page, id).evaluate((root) =>

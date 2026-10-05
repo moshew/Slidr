@@ -601,7 +601,28 @@ export function useTableStage({
   }, [editing, enteredId, selection]);
 
   const inside = entered && session.elementId === enteredId ? entered : undefined;
-  const typing = inside && session.typing ? inside.element : undefined;
+  // The cell that is typed in is gone: an undo took its row or its column away under the editor
+  // (the row that Tab added from the last cell). The editor does not move into the cell that
+  // stands nearest, with all of that cell's text selected for the next key to replace: typing
+  // goes back to the cell the user came from, the last one, with the caret at the end of it.
+  const gone =
+    inside && session.typing
+      ? session.focus.row >= inside.element.rows.length ||
+        session.focus.col >= inside.element.cols.length
+      : false;
+  const rowsNow = inside?.element.rows.length ?? 0;
+  const colsNow = inside?.element.cols.length ?? 0;
+  useEffect(() => {
+    if (!gone) return;
+    const { focus: at } = tableSession.getState();
+    typeIn(
+      at.row >= rowsNow
+        ? { row: rowsNow - 1, col: colsNow - 1 }
+        : { row: at.row, col: Math.min(at.col, colsNow - 1) },
+      'end',
+    );
+  }, [gone, rowsNow, colsNow]);
+  const typing = inside && session.typing && !gone ? inside.element : undefined;
   const typingAt = typing ? anchorOf(typing, sessionCell(typing, session.focus)) : undefined;
   const typingId = typing?.id;
   const typingRow = typingAt?.row;
