@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { findSlide, type Element } from '@slidr/model';
 import {
@@ -58,6 +58,16 @@ export function LayersPanel() {
   /** Where a Shift+click range starts: the row picked last without Shift. */
   const anchor = useRef<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const list = useRef<HTMLDivElement>(null);
+  /** The place of a row deleted from the keyboard: the row that takes it gets the keyboard. */
+  const refocus = useRef<number | null>(null);
+  useEffect(() => {
+    const at = refocus.current;
+    if (at === null) return;
+    refocus.current = null;
+    const nodes = list.current?.querySelectorAll<HTMLElement>('[data-layer]') ?? [];
+    nodes[Math.min(at, nodes.length - 1)]?.focus();
+  }, [rows]);
 
   if (rows.length === 0) {
     return (
@@ -93,7 +103,8 @@ export function LayersPanel() {
       setRenaming(id);
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
-      remove(editor);
+      const at = rows.findIndex((r) => r.element.id === id);
+      if (remove(editor)) refocus.current = at;
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const next =
@@ -108,6 +119,7 @@ export function LayersPanel() {
 
   return (
     <div
+      ref={list}
       role="tree"
       aria-label={t('layers.list')}
       aria-multiselectable
