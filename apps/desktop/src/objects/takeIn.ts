@@ -69,13 +69,16 @@ const SHOWN = new Set<AssetMeta['kind']>(['image', 'svg', 'video', 'audio']);
  * change: one undo step, and the new elements end selected. A file that cannot be read, is not
  * something a slide shows, or is a picture the webview cannot draw is left out, the others go
  * in, and one message names every file that was left out.
+ *
+ * `toStage` gives the keyboard to the Stage afterwards, for a caller whose own control had it
+ * (the Insert button): Delete and the arrows then act on what was just put in.
  */
 export async function insertFiles(
   editor: Pick<Editor, 'assets' | 'bus' | 'selection'>,
   files: readonly File[],
   at: Point,
   label: string,
-  draws: Draws = canDraw,
+  { toStage = false, draws = canDraw }: { toStage?: boolean; draws?: Draws } = {},
 ): Promise<void> {
   const taken: { file: File; asset: AssetMeta }[] = [];
   const left: string[] = [];
@@ -115,7 +118,7 @@ export async function insertFiles(
     if (commands.length > 0) {
       editor.bus.batch(commands, { label });
       editor.selection.getState().selectElements(elementIds);
-      focusStage();
+      if (toStage) focusStage();
     }
   }
   if (left.length > 0) {

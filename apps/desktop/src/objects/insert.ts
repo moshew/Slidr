@@ -89,5 +89,6 @@ export async function insertImages(editor: Editor): Promise<void> {
     files,
     { x: size.w / 2, y: size.h / 2 },
     i18n.t('objects:history.insert'),
+    { toStage: true },
   );
 }

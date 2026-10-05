@@ -82,7 +82,7 @@ describe('files taken into a slide', () => {
         ['good.png', 'scan.tif', 'notes.txt', 'gone.png', 'clip.mp4'].map(file),
         AT,
         'Insert',
-        draws,
+        { draws },
       ),
     );
     expect(slide().elements.map((e) => e.type)).toEqual(['image', 'video']);
@@ -104,7 +104,9 @@ describe('files taken into a slide', () => {
   it('adds nothing for a picture the webview cannot draw, and says so', async () => {
     const { editor, slide } = setup();
     const before = editor.bus.undoStack.length;
-    const told = await settle(insertFiles(editor, [file('IMG_0002.heic')], AT, 'Insert', draws));
+    const told = await settle(
+      insertFiles(editor, [file('IMG_0002.heic')], AT, 'Insert', { draws }),
+    );
     expect(slide().elements).toEqual([]);
     expect(editor.bus.undoStack.length).toBe(before);
     expect(told?.title).toBe('The file could not be added');
@@ -114,7 +116,7 @@ describe('files taken into a slide', () => {
   it('says that none of several files went in', async () => {
     const { editor, slide } = setup();
     const told = await settle(
-      insertFiles(editor, [file('scan.tif'), file('notes.txt')], AT, 'Insert', draws),
+      insertFiles(editor, [file('scan.tif'), file('notes.txt')], AT, 'Insert', { draws }),
     );
     expect(slide().elements).toEqual([]);
     expect(told?.title).toBe('The files could not be added');
@@ -123,7 +125,7 @@ describe('files taken into a slide', () => {
   it('says nothing when every file went in', async () => {
     const { editor, slide } = setup();
     const told = await settle(
-      insertFiles(editor, [file('a.png'), file('b.png')], AT, 'Insert', draws),
+      insertFiles(editor, [file('a.png'), file('b.png')], AT, 'Insert', { draws }),
     );
     expect(told).toBeNull();
     expect(slide().elements).toHaveLength(2);
@@ -133,7 +135,7 @@ describe('files taken into a slide', () => {
     await i18n.changeLanguage('he');
     try {
       const { editor } = setup();
-      const told = await settle(insertFiles(editor, [file('scan.tif')], AT, 'Insert', draws));
+      const told = await settle(insertFiles(editor, [file('scan.tif')], AT, 'Insert', { draws }));
       expect(told?.title).toBe(i18n.t('objects:insert.failed'));
       expect(told?.body).toContain('scan.tif');
       expect(told?.body).not.toContain('cannot be shown');
