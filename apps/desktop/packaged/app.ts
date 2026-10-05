@@ -106,7 +106,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function started(leftovers: boolean): Promise<void> {
   const root = join(dataDir(), 'workspaces');
   const deadline = Date.now() + 30_000;
-  // With leftovers the app stops at the recovery dialog, and makes no workspace until answered.
+  // With leftovers there is a workspace on disk before the app starts, so the folder says
+  // nothing: the app makes its own, lists them, and stops at the recovery dialog.
   while (!leftovers && Date.now() < deadline) {
     const made =
       existsSync(root) &&
