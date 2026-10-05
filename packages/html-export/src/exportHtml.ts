@@ -6,6 +6,7 @@ import { buildDocument } from './document';
 import { embedFonts, type EmbeddedFont } from './fonts';
 import { markHeadings, persistMediaState, renderSlides } from './render';
 import type { ExportWarning } from './warnings';
+import { writeSlides } from './written';
 
 export interface ExportOptions {
   /** The bytes of an asset, or undefined when the deck's asset cannot be read. */
@@ -150,15 +151,10 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       }
       markHeadings(rendered.host, slides);
       persistMediaState(rendered.host);
-      if (typeof rendered.host.getHTML === 'function') {
-        markup = rendered.host.getHTML({ serializableShadowRoots: true });
-      } else {
-        markup = rendered.host.innerHTML;
-        warnings.push({
-          code: 'shadow-roots',
-          message: 'This browser cannot write shadow roots: HTML elements lost their content',
-        });
-      }
+      // The markup, checked against what a browser will build from it (`written.ts`).
+      const written = writeSlides(rendered.host);
+      markup = written.markup;
+      warnings.push(...written.warnings);
     } finally {
       rendered.dispose();
     }

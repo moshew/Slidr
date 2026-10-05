@@ -13,11 +13,16 @@ export type ExportWarningCode =
   /** The subsetter could not be loaded: every face is in the file whole. */
   | 'fonts-whole'
   /** The browser cannot write shadow roots: `html` elements are empty in the file. */
-  | 'shadow-roots';
+  | 'shadow-roots'
+  /**
+   * The markup of an `html` or `svg` element never parsed back into what was drawn: the element
+   * is empty in the file (`written.ts`).
+   */
+  | 'markup-unstable';
 
 export interface ExportWarning {
   code: ExportWarningCode;
-  /** The asset or the face the warning is about, when it is about one. */
+  /** The asset, the face or the element the warning is about, when it is about one. */
   subject?: string;
   message: string;
 }

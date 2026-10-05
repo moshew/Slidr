@@ -75,6 +75,8 @@ export const he = {
     fontsWhole: 'הגופנים נכנסו לקובץ במלואם: מה שמצמצם אותם לתווים שבשימוש לא נטען.',
     fontUnreadable: 'הגופן {{name}} לא נקרא, והוא חסר בקובץ.',
     noShadowRoots: 'הדפדפן הזה לא יודע לכתוב אובייקטי HTML: התוכן שלהם חסר בקובץ.',
+    markupUnstable:
+      'הקוד של האובייקט {{name}} לא נכתב לקובץ כמו שהוא מצויר, ולכן האובייקט ריק בקובץ.',
   },
   failed: {
     title: 'הייצוא נכשל',
@@ -159,6 +161,8 @@ export const en: typeof he = {
     fontUnreadable: 'The font {{name}} could not be read, and is missing from the file.',
     noShadowRoots:
       'This browser cannot write HTML objects: their content is missing from the file.',
+    markupUnstable:
+      'The code of the object {{name}} could not be written to the file as it is drawn, so the object is empty in the file.',
   },
   failed: {
     title: 'The export failed',

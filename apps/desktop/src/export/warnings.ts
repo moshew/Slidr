@@ -13,6 +13,7 @@ const KEYS: Record<ExportWarningCode, string> = {
   'font-whole': 'warning.fontWhole',
   'fonts-whole': 'warning.fontsWhole',
   'shadow-roots': 'warning.noShadowRoots',
+  'markup-unstable': 'warning.markupUnstable',
 };
 
 export function warningText(t: TFunction<'export'>, warning: ExportWarning): string {
