@@ -345,5 +345,9 @@ describe('the actions of a chart and of a table (AIO-07, AIO-08)', () => {
     expect(ACTIONS['table.insight'].needs).toEqual(['element_add']);
     expect(ACTIONS['table.chart'].needs).toEqual(['chart_set', 'element_delete']);
     expect(message('table.chart')).toContain('The chart takes the place of the table');
+    // Against Sonnet, a table of customers and of revenue in thousands became one chart with
+    // both on one axis, under a title that named the columns.
+    expect(message('table.chart')).toContain('do not share an axis');
+    expect(message('table.chart')).toContain('the insight and not the subject');
   });
 });
