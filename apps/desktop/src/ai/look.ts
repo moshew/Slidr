@@ -9,15 +9,16 @@
 import {
   ColorToken,
   CommandBus,
+  newId,
   type AssetMeta,
   type Command,
   type Deck,
   type Theme,
 } from '@slidr/model';
-import { applyTemplate, layoutAssets, layoutsFor, type Template } from '@slidr/templates';
+import { layoutAssets, layoutsFor, type Template } from '@slidr/templates';
 import type { Editor } from '../shell';
 import { showPreview } from '../stage/preview';
-import { applyLibraryTemplate, copyAssets } from '../templates/actions';
+import { applyLibraryTemplate, copyAssets, switchCommands } from '../templates/actions';
 import {
   curatedFonts,
   curatedPalettes,
@@ -104,12 +105,18 @@ export function isCurrent(theme: Theme, look: Look): boolean {
   return sameFonts(theme.fonts, look.fonts);
 }
 
-/** What applying a look does to the deck as it is now. Nothing for the look it already has. */
+/**
+ * What applying a look does to the deck as it is now. Nothing for the look it already has.
+ *
+ * A template is the switch the Templates panel makes (`switchCommands`): it keeps the footer the
+ * user wrote, a slide number they hid and their logo (SLD-04). The preview is drawn from these
+ * commands, so what is tried on the Stage is what a click gives.
+ */
 export function lookCommands(deck: Deck, library: TemplateLibrary, look: Look): Command[] {
   if (isCurrent(deck.theme, look)) return [];
   if (look.kind === 'template') {
     const template = library.forDeck(look.id, deck.meta.lang);
-    return template ? applyTemplate(deck, template) : [];
+    return template ? switchCommands(deck, template) : [];
   }
   return [
     {
@@ -192,6 +199,8 @@ export async function applyLook(
   if (isCurrent(editor.bus.deck.theme, look)) return false;
   // A template brings files: the library's own action stores them before the commands.
   if (look.kind === 'template') return applyLibraryTemplate(editor, library, look.id, label);
-  editor.bus.batch(lookCommands(editor.bus.deck, library, look), { label });
+  // With a transaction, so the files of a font of the user's that a pair names join this step
+  // and do not become a second one (see `setThemeFont`).
+  editor.bus.batch(lookCommands(editor.bus.deck, library, look), { txId: newId('tx'), label });
   return true;
 }

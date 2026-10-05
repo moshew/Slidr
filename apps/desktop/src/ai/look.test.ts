@@ -6,14 +6,14 @@ import {
   type AssetMeta,
   type Deck,
 } from '@slidr/model';
-import { deckFromTemplate, type Template } from '@slidr/templates';
+import { deckFromTemplate, masterState, type Template } from '@slidr/templates';
 import { builtInTemplates } from '@slidr/templates/builtin';
 import { nightTemplate, paperTemplate } from '@slidr/templates/fixtures';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { builtinFaces, builtinFamilies } from '../fonts/builtinFonts.generated';
 import type { Editor } from '../shell';
 import { showPreview, stagePreview } from '../stage/preview';
-import { saveAsTemplate, setLogo } from '../templates/actions';
+import { logoAsset, saveAsTemplate, setFooter, setLogo, showNumber } from '../templates/actions';
 import { curatedFonts, curatedPalettes } from '../templates/curated';
 import { TemplateLibrary } from '../templates/library';
 import { memoryTemplateStore } from '../templates/store';
@@ -246,6 +246,33 @@ describe('trying a look on the Stage', () => {
       await applyLook(editor, library, look, 'look');
       expect(preview).toEqual(bus.deck);
     }
+  });
+
+  it('shows the footer, the hidden number and the logo of the deck on the template it tries', async () => {
+    // A switch of template keeps what the user set on every slide (SLD-04, ADR-063). The preview
+    // is of that switch: it once showed the template as it was drawn, without the deck's footer
+    // and with the template's own mark, and the click then gave something else.
+    const library = libraryOf(...builtInTemplates());
+    const tzuk = builtInTemplates().find((template) => template.theme.id === 'tzuk')!;
+    const { editor, bus } = editorOn(deckFromTemplate(tzuk, { lang: 'he', sample: true }));
+    setFooter(editor, 'צוק · 2026');
+    showNumber(editor, false);
+    await setLogo(editor, new File([new Uint8Array([1, 2, 3])], 'logo.png', { type: 'image/png' }));
+    const before = bus.deck;
+    const steps = bus.undoStack.length;
+    const zerem: Look = { kind: 'template', id: 'zerem' };
+
+    const preview = lookPreview(bus.deck, library, zerem)!;
+    expect(preview.theme.id).toBe('zerem');
+    expect(masterState(preview)).toEqual({ footer: 'צוק · 2026', numberHidden: true });
+    expect(logoAsset(preview)?.name).toBe('logo.png');
+    // Trying it changed nothing (STG-10).
+    expect(bus.deck).toBe(before);
+    expect(bus.undoStack).toHaveLength(steps);
+
+    await applyLook(editor, library, zerem, 'look');
+    expect(bus.deck).toEqual(preview);
+    expect(bus.undoStack).toHaveLength(steps + 1);
   });
 
   it('shows nothing for the look the deck already has, or a template that is gone', () => {

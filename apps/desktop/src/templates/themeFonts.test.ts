@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { CommandBus, createDeck, createSlide, type AssetMeta } from '@slidr/model';
 import { paperTemplate } from '@slidr/templates/fixtures';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { applyLook, fontChoices } from '../ai/look';
 import type { AssetService } from '../document/assets';
 import { watchUserFonts } from '../fonts/embed';
 import { addUserFont, memoryFontStore, setUserFontStore } from '../fonts/userFonts';
@@ -14,10 +15,11 @@ import { TemplateLibrary } from './library';
 import { memoryTemplateStore } from './store';
 
 /*
- * A font of the user's that the theme comes to name, from the Templates panel. The deck carries
- * the font's files (SPEC 5.7), and they are added by the watcher of `fonts/embed.ts`, which joins
- * the undo step of the change that named the family only when that change has a transaction.
- * The panel's changes have one, so choosing a font is one step to undo, not two.
+ * A font of the user's that the theme comes to name, from the Templates panel or from the deck
+ * tool's gallery of looks. The deck carries the font's files (SPEC 5.7), and they are added by
+ * the watcher of `fonts/embed.ts`, which joins the undo step of the change that named the family
+ * only when that change has a transaction. These changes have one, so choosing a font is one
+ * step to undo, not two.
  */
 
 const FAMILY = 'Slidr Fixture Sans';
@@ -100,6 +102,25 @@ describe("a font of the user's that the theme comes to name", () => {
     expect(bus.deck.theme.id).toBe('personal_fonts');
     expect(fontsOf(bus)).toHaveLength(1);
     expect(bus.undoStack.map((entry) => entry.label)).toEqual(['Apply']);
+    bus.undo();
+    expect(bus.deck).toEqual(before);
+  });
+
+  it("chosen as a font pair in the deck tool's gallery of looks: one step as well", async () => {
+    // The gallery lists the font pairs of the library's templates, a personal one among them,
+    // and a personal template can name a font of the user's.
+    const template = paperTemplate();
+    const fonts = { ...template.theme.fonts, body: { he: 'Heebo', latin: FAMILY } };
+    template.theme = { ...template.theme, id: 'personal_fonts', fonts };
+    const library = new TemplateLibrary(memoryTemplateStore());
+    await library.save(template, []);
+    expect(fontChoices(library).map((choice) => choice.fonts)).toContainEqual(fonts);
+    const before = bus.deck;
+    expect(await applyLook(editor, library, { kind: 'fonts', fonts }, 'Fonts')).toBe(true);
+    await settled();
+    expect(bus.deck.theme.fonts).toEqual(fonts);
+    expect(fontsOf(bus).map((asset) => asset.font?.family)).toEqual([FAMILY]);
+    expect(bus.undoStack.map((entry) => entry.label)).toEqual(['Fonts']);
     bus.undo();
     expect(bus.deck).toEqual(before);
   });
