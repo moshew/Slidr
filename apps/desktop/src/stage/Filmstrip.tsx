@@ -36,15 +36,18 @@ import {
   Tooltip,
 } from '@slidr/ui';
 import {
+  Blend,
   ClipboardPaste,
   Copy,
   CopyPlus,
   Eye,
   EyeOff,
+  Film,
   Plus,
   Scissors,
   Sparkles,
   Trash2,
+  type LucideIcon,
 } from '@slidr/ui/icons';
 import { useStore } from 'zustand';
 import {
@@ -54,12 +57,18 @@ import {
   removeSlides,
   setSlidesHidden,
 } from '../arrange/slides';
+import { useKeyboardInUse } from './focusRing';
+import { setStripCommands, stageKeys, type StageCommand } from './keyboardSession';
 
 /**
- * The Filmstrip (WG2-T07, WG5-T08, FLM-01..03): thumbnails of every slide, in the reading
+ * The Filmstrip (WG2-T07, WG5-T08, FLM-01..04): thumbnails of every slide, in the reading
  * direction of the UI. Only the thumbnails in view are rendered, so 200 slides scroll as smoothly
  * as 10 (NFR-05). Click picks a slide, Ctrl adds to the selection, Shift selects a range; dragging
  * reorders; a right click opens the slide menu, which acts on the whole selection.
+ *
+ * For the keyboard and for a screen reader (UI-06) the slides are a list with a name: the list
+ * has the keyboard and says which slide it is on and how many there are; the strip around it
+ * scrolls, takes the pointer, and holds the "new slide" button beside the list, not in it.
  *
  * It is a standalone component: it knows the bus and the selection, and gets its labels and the
  * clipboard from the host.
@@ -99,8 +108,14 @@ export interface FilmstripClipboard {
 }
 
 export interface FilmstripLabels {
+  /** The name of the list of slides, for a screen reader. */
+  strip: string;
   addSlide: string;
   slide: (n: number) => string;
+  /** The mark of a slide that comes in with a transition (FLM-04). */
+  transition: string;
+  /** The mark of a slide whose elements are animated, by how many animations (FLM-04). */
+  animations: (count: number) => string;
   /** The mark on a slide that is left out of the presentation. */
   hidden: string;
   /** The first choice among the layouts of a new slide. */
@@ -132,8 +147,11 @@ const DRAG_PX = 4;
 const LAYOUT_W = 120;
 
 const DEFAULT_LABELS: FilmstripLabels = {
+  strip: 'Slides',
   addSlide: 'New slide',
   slide: (n: number) => `Slide ${n}`,
+  transition: 'Has a transition',
+  animations: (count: number) => (count === 1 ? '1 animation' : `${count} animations`),
   hidden: 'Hidden',
   blank: 'Blank slide',
   duplicate: 'Duplicate',
@@ -155,36 +173,72 @@ interface Drag {
   slot: number;
 }
 
+/** The id of a slide's place in the list, which the list names as where the keyboard is. */
+const optionId = (slideId: string) => `filmstrip-slide-${slideId}`;
+
+/**
+ * A state of the slide, beside its number (FLM-04): an icon, with words for a screen reader,
+ * who hears them as the slide's description, and for whoever points at it.
+ */
+function StateMark({ icon, label, testId }: { icon: LucideIcon; label: string; testId: string }) {
+  return (
+    <Tooltip content={label}>
+      <span data-testid={testId} className="inline-flex items-center text-ui-fg-muted">
+        <Icon icon={icon} />
+        <span className="sr-only">{label}</span>
+      </span>
+    </Tooltip>
+  );
+}
+
 const Thumb = memo(function Thumb({
   deck,
   slideIndex,
   selected,
   current,
+  walked,
   resolveAsset,
   label,
   hiddenLabel,
+  transitionLabel,
+  animationsLabel,
   mark,
 }: {
   deck: Deck;
   slideIndex: number;
   selected: boolean;
   current: boolean;
+  /** The selection walk stands on this slide (UI-06): the keyboard is here, selected or not. */
+  walked: boolean;
   resolveAsset?: AssetResolver;
   label: string;
   hiddenLabel: string;
+  transitionLabel: string;
+  animationsLabel: (count: number) => string;
   mark?: (slideId: string) => ReactNode;
 }) {
   const slide = deck.slides[slideIndex];
   if (!slide) return null;
   const markId = `filmstrip-mark-${slide.id}`;
+  const stateId = `filmstrip-state-${slide.id}`;
+  // A transition of "none" is no transition.
+  const transition = Boolean(slide.transition && slide.transition.type !== 'none');
+  const animations = slide.timeline.length;
+  const hasState = transition || animations > 0;
+  const described = [mark ? markId : '', hasState ? stateId : ''].filter(Boolean).join(' ');
   return (
     <div
       role="option"
+      id={optionId(slide.id)}
       aria-selected={selected}
       aria-label={slide.hidden ? `${label}, ${hiddenLabel}` : label}
-      aria-describedby={mark ? markId : undefined}
+      aria-describedby={described || undefined}
+      // Only the slides in view are drawn: the list says how many there are, and which this is.
+      aria-setsize={deck.slides.length}
+      aria-posinset={slideIndex + 1}
       data-slide-id={slide.id}
       data-hidden={slide.hidden || undefined}
+      data-walk={walked || undefined}
       style={{
         position: 'absolute',
         insetInlineStart: PAD + slideIndex * STEP,
@@ -215,6 +269,24 @@ const Thumb = memo(function Thumb({
           resolveAsset={resolveAsset}
         />
       </div>
+      {walked ? (
+        // The walk's ring, outside the frame of the picture as on the Stage. Not on the picture
+        // itself: a hidden slide is dimmed, and the ring of the keyboard must not be.
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 0,
+            insetInlineStart: 0,
+            width: THUMB_W,
+            height: THUMB_H,
+            borderRadius: 'var(--radius-small)',
+            outline: '2px dotted var(--color-ui-focus)',
+            outlineOffset: 4,
+            pointerEvents: 'none',
+          }}
+        />
+      ) : null}
       {slide.hidden ? (
         // The mark sits outside the dimmed picture, so it stays at full strength.
         <div
@@ -256,6 +328,26 @@ const Thumb = memo(function Thumb({
             style={{ position: 'absolute', top: -1, insetInlineStart: 0, display: 'flex', gap: 4 }}
           >
             {mark(slide.id)}
+          </div>
+        )}
+        {hasState && (
+          // The slide's own states, at the other end of the row: how it comes in, and whether
+          // anything on it moves. Beside the number too, for the same reason.
+          <div
+            id={stateId}
+            data-testid="slide-state"
+            style={{ position: 'absolute', top: -1, insetInlineEnd: 0, display: 'flex', gap: 4 }}
+          >
+            {transition && (
+              <StateMark icon={Blend} label={transitionLabel} testId="slide-transition-mark" />
+            )}
+            {animations > 0 && (
+              <StateMark
+                icon={Film}
+                label={animationsLabel(animations)}
+                testId="slide-animations-mark"
+              />
+            )}
           </div>
         )}
       </div>
@@ -366,6 +458,17 @@ function LayoutChoices({
 
 const NO_KEYS = { ctrlKey: false, metaKey: false, shiftKey: false };
 
+/** Scrolls the strip so that the slide at an index is in view, if it is not. */
+function revealSlide(el: HTMLElement, index: number, behavior: ScrollBehavior): void {
+  if (index < 0) return;
+  const start = PAD + index * STEP;
+  const pos = Math.abs(el.scrollLeft);
+  const rtl = getComputedStyle(el).direction === 'rtl';
+  const to = (p: number) => el.scrollTo({ left: rtl ? -p : p, behavior });
+  if (start < pos) to(start - PAD);
+  else if (start + THUMB_W > pos + el.clientWidth) to(start + THUMB_W + PAD - el.clientWidth);
+}
+
 export function Filmstrip({
   bus,
   deck,
@@ -377,7 +480,10 @@ export function Filmstrip({
   onAi,
   className,
 }: FilmstripProps) {
+  /** The strip: it scrolls and takes the pointer. */
   const scroller = useRef<HTMLDivElement>(null);
+  /** The list of slides in it: it takes the keyboard. */
+  const list = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ pos: 0, width: 0 });
   const [drag, setDrag] = useState<Drag | null>(null);
   /** What the open menu is about: a slide (and the selection around it) or the empty strip. */
@@ -388,6 +494,16 @@ export function Filmstrip({
   const slides = deck.slides;
   const hasLayouts = deck.layouts.length > 0;
   const total = PAD * 2 + slides.length * STEP + THUMB_W;
+
+  // The selection walk (UI-06): the slide the keyboard is on without having selected it.
+  const walkId = useStore(stageKeys, (s) => s.slide);
+  const walkIndex = walkId ? slides.findIndex((s) => s.id === walkId) : -1;
+  const endWalk = () => {
+    if (stageKeys.getState().slide !== null) stageKeys.setState({ slide: null });
+  };
+  // The list shows that it has the keyboard while the keyboard is what is being used (DSN-08).
+  const [focused, setFocused] = useState(false);
+  const ring = useKeyboardInUse() && focused;
 
   const measure = () => {
     const el = scroller.current;
@@ -433,18 +549,19 @@ export function Filmstrip({
   // Keep the current slide in view when it changes (from the Stage, the agent, or the keyboard).
   useEffect(() => {
     const el = scroller.current;
-    const index = slides.findIndex((s) => s.id === currentId);
-    if (!el || index < 0) return;
-    const start = PAD + index * STEP;
-    const pos = Math.abs(el.scrollLeft);
-    const rtl = getComputedStyle(el).direction === 'rtl';
+    if (!el) return;
     // At once, not gliding, for whoever asked the system for less motion (UI-06).
     const still = el.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)');
-    const behavior = still?.matches ? 'instant' : 'smooth';
-    const to = (p: number) => el.scrollTo({ left: rtl ? -p : p, behavior });
-    if (start < pos) to(start - PAD);
-    else if (start + THUMB_W > pos + el.clientWidth) to(start + THUMB_W + PAD - el.clientWidth);
+    revealSlide(
+      el,
+      slides.findIndex((s) => s.id === currentId),
+      still?.matches ? 'instant' : 'smooth',
+    );
   }, [currentId, slides]);
+  // And the slide the walk stands on: the keyboard is there, so it has to be seen.
+  useEffect(() => {
+    if (scroller.current) revealSlide(scroller.current, walkIndex, 'instant');
+  }, [walkIndex]);
 
   const first = Math.max(0, Math.floor((view.pos - PAD) / STEP) - OVERSCAN);
   const last = Math.min(slides.length - 1, Math.ceil((view.pos + view.width) / STEP) + OVERSCAN);
@@ -505,7 +622,9 @@ export function Filmstrip({
     if (e.button !== 0) return;
     const index = indexAt(e.clientX);
     if (index < 0) return;
-    scroller.current?.focus({ preventScroll: true });
+    // A press is a selection of its own: the walk is over, and the keyboard is the list's.
+    endWalk();
+    list.current?.focus({ preventScroll: true });
     const slide = slides[index] as Deck['slides'][number];
     const alreadySelected = selection.getState().selectedSlideIds.includes(slide.id);
     if (!alreadySelected || e.ctrlKey || e.metaKey || e.shiftKey) select(index, e);
@@ -540,6 +659,38 @@ export function Filmstrip({
       }
     }
     setDrag(null);
+  };
+
+  /**
+   * A menu asked for from the keyboard (Shift+F10, the menu key) arrives at the middle of what
+   * has the keyboard, which is no slide in particular: it used to make the slide that happened
+   * to be there the current one. It is asked for again at the slide the keyboard is on, the
+   * walked one or else the current one, so the menu is about that slide and opens beside it.
+   */
+  const onContextMenuCapture = (e: MouseEvent) => {
+    // From the keyboard the event names no button; a press of the pointer names the right one.
+    if (e.nativeEvent.button >= 0) return;
+    const el = scroller.current;
+    const index = walkIndex >= 0 ? walkIndex : slides.findIndex((s) => s.id === currentId);
+    // Without a slide the menu is the strip's own, wherever it opens.
+    if (!el || index < 0) return;
+    // This event goes no further, so stopping the webview's own menu is done here too.
+    e.preventDefault();
+    e.stopPropagation();
+    revealSlide(el, index, 'instant');
+    const rect = el.getBoundingClientRect();
+    const rtl = getComputedStyle(el).direction === 'rtl';
+    const inline = PAD + index * STEP + THUMB_W / 2 - Math.abs(el.scrollLeft);
+    el.dispatchEvent(
+      new globalThis.MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        view: el.ownerDocument.defaultView,
+        button: 2,
+        clientX: rtl ? rect.right - inline : rect.left + inline,
+        clientY: rect.top + 10 + THUMB_H / 2,
+      }),
+    );
   };
 
   /** A right click acts on the selection the slide is part of, or on that slide alone. */
@@ -579,13 +730,22 @@ export function Filmstrip({
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    // Esc ends the selection walk, and leaves the selection as the walk made it.
+    if (e.key === 'Escape' && walkId) {
+      e.preventDefault();
+      endWalk();
+      return;
+    }
+    // With Alt the arrows are the selection walk's, a shortcut of the registry (see below): the
+    // key passes through here untouched.
+    if (e.altKey) return;
     const index = slides.findIndex((s) => s.id === currentId);
     const rtl = scroller.current ? getComputedStyle(scroller.current).direction === 'rtl' : false;
     const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ArrowDown: 1, ArrowUp: -1 }[
       e.key
     ];
     // Ctrl and an arrow carries the selected slides along; Ctrl+Home and Ctrl+End to an end.
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
       const to =
         step === 1
           ? 'on'
@@ -604,6 +764,8 @@ export function Filmstrip({
     }
     if (step !== undefined) {
       e.preventDefault();
+      // An arrow of its own is a selection of its own: the walk is over.
+      endWalk();
       const next = slides[Math.max(0, Math.min(slides.length - 1, index + step))];
       if (next) {
         if (e.shiftKey) select(slides.indexOf(next), e);
@@ -613,6 +775,7 @@ export function Filmstrip({
     }
     if (e.key === 'Home' || e.key === 'End') {
       e.preventDefault();
+      endWalk();
       const target = e.key === 'Home' ? slides[0] : slides.at(-1);
       if (target) selection.getState().setCurrentSlide(target.id);
       return;
@@ -623,7 +786,40 @@ export function Filmstrip({
     }
   };
 
+  /**
+   * The selection walk in the strip (UI-06): the keys that walk the elements of the slide on the
+   * Stage walk the slides here, and the key that adds an element to the selection adds a slide.
+   * So slides that are not next to each other are selected without the pointer. The keys are
+   * shortcuts of the registry; the strip answers them only while its list has the keyboard.
+   */
+  const runCommand = (command: StageCommand): boolean => {
+    if (document.activeElement !== list.current) return false;
+    if (command.type === 'walk') {
+      // From where the walk stands, or from the current slide; it stops at the ends of the strip.
+      const from = walkIndex >= 0 ? walkIndex : slides.findIndex((s) => s.id === currentId);
+      const to = slides[Math.max(0, Math.min(slides.length - 1, from + command.step))];
+      if (!to) return false;
+      stageKeys.setState({ slide: to.id });
+      return true;
+    }
+    if (command.type === 'toggle') {
+      if (walkIndex < 0) return false;
+      // What Ctrl and a click do: a slide that joins the selection is the one on the Stage.
+      select(walkIndex, { ctrlKey: true, metaKey: false, shiftKey: false });
+      return true;
+    }
+    return false;
+  };
+  useEffect(() => {
+    setStripCommands(runCommand);
+    return () => setStripCommands(null);
+  });
+
   const indicator = drag?.active ? PAD + drag.slot * STEP - GAP / 2 - 1 : undefined;
+  // The slide the keyboard is on: where the walk stands, else the current one. The list names
+  // it only while its thumbnail is drawn, as only the slides in view are.
+  const activeIndex = walkIndex >= 0 ? walkIndex : slides.findIndex((s) => s.id === currentId);
+  const activeSlide = activeIndex >= first && activeIndex <= last ? slides[activeIndex] : undefined;
 
   const addButton = (
     <button
@@ -649,10 +845,6 @@ export function Filmstrip({
         <ContextMenuTrigger asChild>
           <div
             ref={scroller}
-            role="listbox"
-            aria-multiselectable
-            aria-orientation="horizontal"
-            tabIndex={0}
             data-filmstrip=""
             className={className}
             onScroll={measure}
@@ -660,30 +852,58 @@ export function Filmstrip({
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={() => setDrag(null)}
-            onKeyDown={onKeyDown}
+            onContextMenuCapture={onContextMenuCapture}
             onContextMenu={onContextMenu}
             style={{
               position: 'relative',
               overflowX: 'auto',
               overflowY: 'hidden',
-              outline: 'none',
+              // The ring of the list is drawn on the strip, which is what is in view of it.
+              outline: ring ? '2px solid var(--color-ui-focus)' : 'none',
+              outlineOffset: -2,
               userSelect: 'none',
             }}
           >
             <div style={{ position: 'relative', width: total, height: '100%' }}>
-              {slides.slice(first, last + 1).map((slide, i) => (
-                <Thumb
-                  key={slide.id}
-                  deck={deck}
-                  slideIndex={first + i}
-                  selected={selectedIds.includes(slide.id)}
-                  current={slide.id === currentId}
-                  resolveAsset={resolveAsset}
-                  label={labels.slide(first + i + 1)}
-                  hiddenLabel={labels.hidden}
-                  mark={mark}
-                />
-              ))}
+              {/* The list holds the slides and nothing else: it is as long as the strip, so
+                  getting the focus never scrolls it, and the button after it lies over its end. */}
+              <div
+                ref={list}
+                role="listbox"
+                aria-label={labels.strip}
+                aria-multiselectable
+                aria-orientation="horizontal"
+                aria-activedescendant={activeSlide ? optionId(activeSlide.id) : undefined}
+                tabIndex={0}
+                onKeyDown={onKeyDown}
+                onFocus={(e) => {
+                  if (e.target === e.currentTarget) setFocused(true);
+                }}
+                onBlur={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  setFocused(false);
+                  // The walk is the keyboard's place in the list, and ends when it leaves.
+                  endWalk();
+                }}
+                style={{ position: 'absolute', inset: 0, outline: 'none' }}
+              >
+                {slides.slice(first, last + 1).map((slide, i) => (
+                  <Thumb
+                    key={slide.id}
+                    deck={deck}
+                    slideIndex={first + i}
+                    selected={selectedIds.includes(slide.id)}
+                    current={slide.id === currentId}
+                    walked={slide.id === walkId}
+                    resolveAsset={resolveAsset}
+                    label={labels.slide(first + i + 1)}
+                    hiddenLabel={labels.hidden}
+                    transitionLabel={labels.transition}
+                    animationsLabel={labels.animations}
+                    mark={mark}
+                  />
+                ))}
+              </div>
               <div
                 style={{
                   position: 'absolute',

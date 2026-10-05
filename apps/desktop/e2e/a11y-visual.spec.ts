@@ -89,3 +89,59 @@ for (const { lang, theme } of combinations) {
     await shoot(page, `crop-handle-${tag}`);
   });
 }
+
+for (const { lang, theme } of combinations) {
+  test(`the Filmstrip: its ring, the walk and the marks of a slide, ${lang}-${theme}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang, theme });
+    await addBoxes(page, THREE);
+    await page.evaluate(() => {
+      const { bus, selection } = window.slidr!;
+      const first = selection.getState().currentSlideId!;
+      const step = (id: string, elementId: string) => ({
+        id,
+        elementId,
+        trigger: 'onClick' as const,
+        category: 'entrance' as const,
+        preset: 'fade',
+        duration: 400,
+        delay: 0,
+        easing: 'ease',
+      });
+      bus.batch([
+        ...[2, 3, 4].map((n) => ({
+          type: 'slide.add' as const,
+          slide: { id: `s_${n}`, name: `Slide ${n}`, elements: [], timeline: [] },
+        })),
+        {
+          type: 'slide.update',
+          slideId: first,
+          patch: {
+            transition: { type: 'fade', duration: 400, easing: 'ease', advance: { onClick: true } },
+          },
+        },
+        {
+          type: 'slide.setTimeline',
+          slideId: first,
+          timeline: [step('a_1', 'e_a'), step('a_2', 'e_b')],
+        },
+        { type: 'slide.update', slideId: 's_3', patch: { hidden: true } },
+      ] as never);
+      selection.getState().setCurrentSlide(first);
+    });
+    // By Tab from the Stage, so the strip shows its ring; then the walk goes on two slides.
+    await tabToStage(page);
+    await page.keyboard.press('F6');
+    await expect(page.getByTestId('filmstrip').getByRole('listbox')).toBeFocused();
+    await page.keyboard.press('Alt+ArrowDown');
+    await page.keyboard.press('Alt+ArrowDown');
+    await expect(page.locator('[data-filmstrip] [data-walk]')).toHaveCount(1);
+    await page.evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    );
+    await page
+      .getByTestId('filmstrip')
+      .screenshot({ path: `${DIR}/filmstrip-${lang}-${theme}.png` });
+  });
+}

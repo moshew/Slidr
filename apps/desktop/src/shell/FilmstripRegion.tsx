@@ -16,12 +16,15 @@ export function FilmstripRegion() {
   const { t } = useTranslation();
   // The strings of managing slides live with the arrange area (WG5-T08).
   const { t: ta } = useTranslation('arrange');
+  // What a screen reader hears of the strip, and the marks of a slide's states (FLM-04).
+  const { t: ty } = useTranslation('a11y');
   const editor = useEditor();
   const { bus, selection } = editor;
   const deck = useDeck((s) => s.deck);
   const resolveAsset = useAssetResolver();
   const labels = useMemo<FilmstripLabels>(
     () => ({
+      strip: t('stage.filmstrip'),
       addSlide: t('stage.newSlide'),
       slide: (n: number) => t('stage.slide', { n }),
       hidden: ta('slides.hidden'),
@@ -34,9 +37,11 @@ export function FilmstripRegion() {
       cut: ta('slides.cut'),
       paste: ta('slides.paste'),
       move: ta('slides.move'),
+      transition: ty('strip.transition'),
+      animations: (count: number) => ty('strip.animations', { count }),
       ai: t('tools.aiSlide'),
     }),
-    [t, ta],
+    [t, ta, ty],
   );
   // What the areas mark a slide with (FLM-04): the design check's findings.
   const marks = useSlideMarks();
