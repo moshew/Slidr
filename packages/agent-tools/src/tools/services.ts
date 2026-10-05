@@ -167,11 +167,19 @@ export const slideCreateFromHtml = defineTool({
   writes: true,
   requires: 'conversion',
   async run({ html, name, afterSlideId }, ctx) {
-    const index = indexAfter(ctx.deck, afterSlideId, ctx.deck.slides.length);
+    // A slide that does not exist is refused now, before the conversion.
+    indexAfter(ctx.deck, afterSlideId, 0);
     const result = await ctx.services.conversion!.htmlToSlide(ctx.deck, {
       html,
       ...(name ? { name } : {}),
     });
+    // The place is found once the slide is there to add. The deck may have changed while the
+    // conversion ran (the user added a slide, or a call beside this one did): "at the end" is the
+    // end as it is now, and "after that slide" is where that slide stands now. A slide that
+    // was deleted meanwhile leaves the new one at the end rather than nowhere.
+    const end = ctx.deck.slides.length;
+    const there = afterSlideId == null || ctx.deck.slides.some((s) => s.id === afterSlideId);
+    const index = there ? indexAfter(ctx.deck, afterSlideId, end) : end;
     ctx.write([
       ...registerAssets(result.assets),
       { type: 'slide.add', slide: result.slide, index },

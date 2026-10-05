@@ -192,6 +192,85 @@ describe('conversion', () => {
     ).not.toHaveProperty('imagePlaceholders');
   });
 
+  describe('slide_create_from_html finds the place of its slide once the slide is made', () => {
+    /** Conversions that answer in the order they were asked, each when the test says. */
+    function queued() {
+      const waiting: (() => void)[] = [];
+      const queue: ConversionService = {
+        ...conversion,
+        htmlToSlide: (_deck, { name }) =>
+          new Promise((resolve) => {
+            waiting.push(() =>
+              resolve({
+                slide: createSlide({ id: `s_${name}`, ...(name ? { name } : {}) }),
+                assets: [],
+                editability: 1,
+                notes: [],
+              }),
+            );
+          }),
+      };
+      return { queue, asked: () => waiting.length, answer: () => waiting.shift()?.() };
+    }
+    const ids = (deck: Deck) => deck.slides.map((slide) => slide.id);
+    const three = () =>
+      createDeck({ slides: ['s_1', 's_2', 's_3'].map((id) => createSlide({ id })) });
+
+    it('two calls side by side, both "at the end", stand in the order of the calls', async () => {
+      const { queue, asked, answer } = queued();
+      const { call, bus } = setup(three(), { conversion: queue });
+      // A harness may run the calls of one message together (ADR-022); the conversions still
+      // come out of the capture window one after the other.
+      const both = [
+        call('slide_create_from_html', { html: '<section>A</section>', name: 'A' }),
+        call('slide_create_from_html', { html: '<section>B</section>', name: 'B' }),
+      ];
+      await vi.waitFor(() => expect(asked()).toBe(2));
+      answer();
+      await both[0];
+      answer();
+      await both[1];
+      expect(ids(bus.deck)).toEqual(['s_1', 's_2', 's_3', 's_A', 's_B']);
+    });
+
+    it('a slide added or deleted during the conversion does not move it', async () => {
+      const { queue, asked, answer } = queued();
+      const { call, bus } = setup(three(), { conversion: queue });
+      const atEnd = call('slide_create_from_html', { html: '<section/>', name: 'end' });
+      const afterTwo = call('slide_create_from_html', {
+        html: '<section/>',
+        name: 'after2',
+        afterSlideId: 's_2',
+      });
+      const afterThree = call('slide_create_from_html', {
+        html: '<section/>',
+        name: 'after3',
+        afterSlideId: 's_3',
+      });
+      await vi.waitFor(() => expect(asked()).toBe(3));
+      // The user adds a slide at the start, and deletes the third, while the pages convert.
+      bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's_new' }), index: 0 });
+      bus.dispatch({ type: 'slide.remove', slideIds: ['s_3'] });
+      for (const pending of [atEnd, afterTwo, afterThree]) {
+        answer();
+        await ok(pending);
+      }
+      // After the slide it named, where that slide is now; and at the end as it is now, which is
+      // also where a slide goes whose neighbour was deleted meanwhile.
+      expect(ids(bus.deck)).toEqual(['s_new', 's_1', 's_2', 's_after2', 's_end', 's_after3']);
+    });
+
+    it('a slide that does not exist is refused before anything is converted', async () => {
+      const { queue, asked } = queued();
+      const { call } = setup(three(), { conversion: queue });
+      const error = await failed(
+        call('slide_create_from_html', { html: '<section/>', afterSlideId: 's_none' }),
+      );
+      expect(error.code).toBe('not_found');
+      expect(asked()).toBe(0);
+    });
+  });
+
   it('slide_replace_from_html replaces the content and keeps the slide', async () => {
     const { call, bus } = setup(
       allElementsDeck(),
