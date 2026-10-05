@@ -373,6 +373,11 @@ interface Run {
   retried: boolean;
   /** The session was gone when the turn reached it, and another was opened. Once only. */
   reopened: boolean;
+  /**
+   * The turn is on its way to a session (`#startTurn`): a session that ends meanwhile is that
+   * code's to replace, and the `exited` handler leaves the run alone.
+   */
+  preparing: boolean;
   problem?: ChatProblem;
   usage: Usage;
   costUsd: number | null;
@@ -752,6 +757,7 @@ export class ChatThread {
       startOver: false,
       retried: false,
       reopened: false,
+      preparing: false,
       usage: NO_USAGE,
       costUsd: 0,
       durationMs: 0,
@@ -782,46 +788,88 @@ export class ChatThread {
     await this.#startTurn(run);
   }
 
-  /** Opens a session if the thread has none, and sends the run's message as a turn. */
+  /**
+   * Opens a session if the thread has none, and sends the run's message as a turn. While the
+   * turn is on its way this alone decides what a session that ends means for the run: the
+   * `exited` of a session arrives on its own, and when both acted on it the turn failed over a
+   * session that only needed opening again, or was sent to three.
+   */
   async #startTurn(run: Run): Promise<void> {
+    run.preparing = true;
     try {
-      // Another model or effort was chosen since the session began (CHT-U06): the conversation
-      // goes on in a session started with it. Only between turns of the user's, never under a
-      // follow-up of the design check.
-      const open = this.#session;
-      if (open && !run.turn && open.settings !== sessionSettings(this.#settings())) {
-        this.#session = null;
-        await this.#endSession(open);
+      // At most three sessions: one that was gone when the turn reached it, one that could not
+      // resume the conversation, and the one that takes the turn.
+      while (!(await this.#handOver(run))) {
         if (this.#run !== run) return;
       }
-      const session = this.#session ?? (await this.#openSession());
+    } catch (error) {
       if (this.#run !== run) return;
-      if (run.stopRequested) {
-        this.#finish(run, 'interrupted');
-        return;
+      // A turn the user stopped before it could be sent is a stopped turn, not a failed one.
+      if (!run.stopRequested) run.problem = problemOf(error);
+      this.#finish(run, run.stopRequested ? 'interrupted' : 'failed');
+    } finally {
+      run.preparing = false;
+    }
+  }
+
+  /**
+   * One try at handing the run's turn to a session. True when there is nothing more to try: the
+   * session has the turn, or the run is over. False when the session went before it had the
+   * turn, and the next try opens another.
+   */
+  async #handOver(run: Run): Promise<boolean> {
+    const stopped = () => {
+      if (!run.stopRequested) return false;
+      this.#finish(run, 'interrupted');
+      return true;
+    };
+    if (stopped()) return true;
+    // Another model or effort was chosen since the session began (CHT-U06): the conversation
+    // goes on in a session started with it. Only between turns of the user's, never under a
+    // follow-up of the design check.
+    const open = this.#session;
+    if (open && !run.turn && open.settings !== sessionSettings(this.#settings())) {
+      this.#session = null;
+      await this.#endSession(open);
+      if (this.#run !== run) return true;
+    }
+    let session = this.#session;
+    if (!session) {
+      session = await this.#openSession();
+      if (this.#run !== run) {
+        // Opened for a run that is gone (another deck is in the window by now): nobody is left
+        // to use it, and the next message must not find it.
+        if (this.#session === session) {
+          this.#session = null;
+          void this.#endSession(session);
+        }
+        return true;
       }
-      const label = run.label ?? run.message.split('\n')[0]?.slice(0, 60);
-      // Started under the conversation's id, not the session's: the digest leaves out the
-      // changes of whoever it is asked for, and the conversation outlives its sessions.
-      run.turn ??= startTurn(this.id, this.scope, {
-        ...(label ? { label } : {}),
-        ended: run.over.signal,
-      });
-      this.#registerAssets(run);
-      // A brief that fails is a turn without one: the agent reads what it needs with its tools.
-      const brief = await this.#options
-        .brief?.(this.scope, { fresh: session.fresh, threadId: this.id })
-        .catch(() => null);
-      if (this.#run !== run) return;
-      // Stop was pressed while the brief was being made (it renders the slide): the turn is not
-      // sent, so nothing of it reaches the model or the deck.
-      if (run.stopRequested) {
-        this.#finish(run, 'interrupted');
-        return;
-      }
+    }
+    if (stopped()) return true;
+    const label = run.label ?? run.message.split('\n')[0]?.slice(0, 60);
+    // Started under the conversation's id, not the session's: the digest leaves out the
+    // changes of whoever it is asked for, and the conversation outlives its sessions. So the
+    // turn is the same one whichever session takes it in the end.
+    run.turn ??= startTurn(this.id, this.scope, {
+      ...(label ? { label } : {}),
+      ended: run.over.signal,
+    });
+    this.#registerAssets(run);
+    // A brief that fails is a turn without one: the agent reads what it needs with its tools.
+    const brief = await this.#options
+      .brief?.(this.scope, { fresh: session.fresh, threadId: this.id })
+      .catch(() => null);
+    if (this.#run !== run) return true;
+    // Stop was pressed while the brief was being made (it renders the slide): the turn is not
+    // sent, so nothing of it reaches the model or the deck.
+    if (stopped()) return true;
+
+    let refusal: unknown;
+    // The session may have ended while the brief was being made: then there is nobody to send to.
+    if (this.#session === session) {
       // A session that starts in the middle of a conversation is told what was said (AGT-06).
       const summary = session.fresh ? this.#summary(run) : '';
-      session.fresh = false;
       const context = [
         this.#context(run),
         summary,
@@ -831,40 +879,55 @@ export class ChatThread {
       const images = session.imageInput
         ? [...(brief?.images ?? []), ...(run.attached?.images ?? [])]
         : [];
-      await this.#options.client.send(session.sessionId, {
-        text: run.message,
-        context: context.join('\n'),
-        ...(images.length > 0 ? { images } : {}),
-      });
-      if (this.#run !== run) return;
-      this.store.setState({ activity: { kind: 'thinking' } });
-      // Stop was pressed while the turn was on its way to the harness, which had no turn to
-      // stop then: it has one now.
-      if (run.stopRequested) {
-        await this.#options.client.interrupt(session.sessionId).catch(() => undefined);
+      try {
+        await this.#options.client.send(session.sessionId, {
+          text: run.message,
+          context: context.join('\n'),
+          ...(images.length > 0 ? { images } : {}),
+        });
+      } catch (error) {
+        if (this.#run !== run) return true;
+        if (!isSessionGone(error)) throw error;
+        refusal = error;
       }
-    } catch (error) {
-      if (this.#run !== run) return;
-      // A turn the user stopped before it could be sent is a stopped turn, not a failed one.
-      if (run.stopRequested) {
-        this.#finish(run, 'interrupted');
-        return;
+      if (this.#run !== run) return true;
+      if (refusal === undefined && this.#session === session) {
+        // The session has the turn. From here on its end is for the `exited` handler to deal
+        // with; said in the same breath as the check, so that no end falls between the two.
+        run.preparing = false;
+        session.fresh = false;
+        this.store.setState({ activity: { kind: 'thinking' } });
+        // Stop was pressed while the turn was on its way to the harness, which had no turn to
+        // stop then: it has one now.
+        if (run.stopRequested) {
+          await this.#options.client.interrupt(session.sessionId).catch(() => undefined);
+        }
+        return true;
       }
-      // The session was gone when the turn reached it: closed a moment ago for sitting idle
-      // (AGT-07), or its process had ended and the word had not arrived yet. Nothing was sent,
-      // so the turn goes to a new session, which resumes the conversation by its id.
-      const gone = this.#session;
-      if (gone && isSessionGone(error) && !run.reopened && !run.stopRequested) {
-        run.reopened = true;
-        run.turn = null;
-        this.#session = null;
-        void this.#endSession(gone);
-        await this.#startTurn(run);
-        return;
-      }
-      run.problem = problemOf(error);
-      this.#finish(run, 'failed');
     }
+
+    // The session went before it had the turn: closed a moment ago for sitting idle (AGT-07),
+    // its process ended, or it could not resume the conversation and left (AGT-06). Nothing of
+    // the turn ran, so it goes to another session: one that resumes the conversation by its id,
+    // or, when that is what failed, a fresh one that is told what was said.
+    const resumeFailed = run.startOver;
+    run.startOver = false;
+    // Once only, and not when the harness said why the session ended: a session that is gone
+    // again, or that cannot run, is the turn's failure.
+    if (!resumeFailed && (run.reopened || run.problem)) {
+      run.problem ??=
+        refusal === undefined
+          ? { kind: 'process_exited', message: 'the session ended' }
+          : problemOf(refusal);
+      this.#finish(run, 'failed');
+      return true;
+    }
+    if (!resumeFailed) run.reopened = true;
+    if (this.#session === session) {
+      this.#session = null;
+      void this.#endSession(session);
+    }
+    return false;
   }
 
   #context(run: Run): string {
@@ -1127,13 +1190,17 @@ export class ChatThread {
         return;
       case 'exited': {
         this.#session = null;
+        // The run's turn is still on its way to a session: whoever is handing it over finds
+        // this one gone and opens another. Read before anything is awaited here, so that the
+        // two never both act on the run, and never both leave it to the other.
+        const onItsWay = run?.preparing === true;
         const bridge = await this.#service.bridge().catch(() => null);
         await bridge?.close(session.sessionKey).catch(() => undefined);
-        if (!run || this.#run !== run) return;
+        if (!run || this.#run !== run || onItsWay) return;
         if (run.startOver && !run.stopRequested) {
-          // Nothing was written yet, so the turn can belong to the new session from its start.
+          // The session took the turn and could not resume the conversation: nothing ran, and
+          // the same turn goes to a fresh one.
           run.startOver = false;
-          run.turn = null;
           await this.#startTurn(run);
         } else {
           // A session that ended with a turn still open: the guard closes turns first, so

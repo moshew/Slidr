@@ -908,6 +908,186 @@ describe('stopping and failing', () => {
     expect(always.seen.starts).toHaveLength(2);
   });
 
+  describe('a session that ends while the next turn is on its way to it', () => {
+    const SLIDE = { kind: 'slide', slideId: 's_1' } as const;
+    /** A brief that takes as long as the test says, from its `slow`-th asking on. */
+    function slowBrief(slow: number) {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let asked = 0;
+      const brief: AgentServiceOptions['brief'] = async () => {
+        asked++;
+        if (asked === slow) await gate;
+        return null;
+      };
+      return { brief, release, asked: () => asked };
+    }
+
+    it('closed for sitting idle (AGT-07): the turn goes to a session that resumes', async () => {
+      const talk = script([say('One.'), done()], [say('Two.'), done()]);
+      const sessions: string[] = [];
+      let harness!: AgentClient;
+      const wrap = (client: AgentClient): AgentClient => {
+        harness = client;
+        return {
+          ...client,
+          start: async (harnessId, thread, config, onEvent) => {
+            const id = await client.start(harnessId, thread, config, onEvent);
+            sessions.push(id);
+            return id;
+          },
+        };
+      };
+      const slide = slowBrief(2);
+      const { service, seen, transcripts } = setup({ talk }, { wrap, brief: slide.brief });
+      const thread = service.thread(SLIDE);
+      await ask(thread, 'First');
+      const resumeId = (await transcripts.read(thread.id)).record?.nativeSessionId;
+
+      // The second message is on its way (the slide is being rendered for the brief) when the
+      // harness layer closes the idle session: its last event is `exited`.
+      const sending = thread.send('Second');
+      await vi.waitFor(() => expect(slide.asked()).toBe(2));
+      await harness.close(sessions[0]!);
+      await vi.waitFor(() => expect(thread.sessionKey).toBeNull());
+      slide.release();
+      await sending;
+      await settled(thread);
+
+      // The user sees an answer: the chat shows nothing of the session that went (ADR-066).
+      const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+      expect(entry).toMatchObject({ outcome: 'completed', parts: [{ type: 'text' }] });
+      expect(entry.problem).toBeUndefined();
+      expect(seen.starts).toHaveLength(2);
+      expect(seen.starts[1]!.config.resume).toBe(resumeId);
+      expect(seen.sends.map((turn) => turn.text)).toEqual(['First', 'Second']);
+    });
+
+    it('a resume that fails before the message is sent: one fresh session, and the message once', async () => {
+      const files = memoryTranscripts();
+      await files.setRecord('slide-s_1', {
+        scope: SLIDE,
+        harnessId: 'mock',
+        nativeSessionId: 'from-another-machine',
+      });
+      // A harness that is asked to resume a conversation it does not have says so before any
+      // message, and leaves (the real CLI does: `real_cli_resume_of_an_unknown_conversation`).
+      const wrap = (client: AgentClient): AgentClient => ({
+        ...client,
+        start: async (harnessId, thread, config, onEvent) => {
+          if (config.resume !== 'from-another-machine') {
+            return client.start(harnessId, thread, config, onEvent);
+          }
+          const id = await client.start(harnessId, thread, config, () => undefined);
+          setTimeout(() => {
+            onEvent({
+              type: 'error',
+              kind: 'resume_failed',
+              message: 'No conversation found with session ID: from-another-machine',
+              recoverable: false,
+            });
+            void client.close(id);
+            onEvent({ type: 'exited', code: 1 });
+          }, 0);
+          return id;
+        },
+      });
+      const talk = script([say('Hello.'), done()]);
+      const slide = slowBrief(1);
+      const { service, seen } = setup({ talk }, { wrap, files: files.files, brief: slide.brief });
+      const thread = service.thread(SLIDE);
+      await thread.load();
+      const sending = thread.send('Go on');
+      // The first brief is still being made when the harness gives the conversation up.
+      await vi.waitFor(() => expect(slide.asked()).toBe(1));
+      await vi.waitFor(() => expect(thread.sessionKey).toBeNull());
+      slide.release();
+      await sending;
+      await settled(thread);
+
+      const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+      expect(entry).toMatchObject({
+        outcome: 'completed',
+        parts: [{ type: 'text', text: 'Hello.' }],
+      });
+      expect(entry.problem).toBeUndefined();
+      // One session that could not resume, and one fresh session that took the message, once.
+      expect(seen.starts.map((s) => s.config.resume)).toEqual(['from-another-machine', undefined]);
+      expect(seen.sends.map((turn) => turn.text)).toEqual(['Go on']);
+    });
+
+    it('a session that says why it ended is not opened again', async () => {
+      const talk = script([say('One.'), done()]);
+      const slide = slowBrief(1);
+      const events = new Map<string, (event: AgentEvent) => void>();
+      const wrap = (client: AgentClient): AgentClient => ({
+        ...client,
+        start: async (harnessId, thread, config, onEvent) => {
+          const id = await client.start(harnessId, thread, config, onEvent);
+          events.set(id, onEvent);
+          return id;
+        },
+      });
+      const { service, seen } = setup({ talk }, { wrap, brief: slide.brief });
+      const thread = service.thread(SLIDE);
+      const sending = thread.send('Hello');
+      await vi.waitFor(() => expect(slide.asked()).toBe(1));
+      // The process dies of something the harness can name, while the brief is being made.
+      const [emit] = [...events.values()];
+      emit!({
+        type: 'error',
+        kind: 'process_exited',
+        message: 'the CLI exited (code 1): out of memory',
+        recoverable: false,
+      });
+      emit!({ type: 'exited', code: 1 });
+      await vi.waitFor(() => expect(thread.sessionKey).toBeNull());
+      slide.release();
+      await sending;
+      await settled(thread);
+
+      expect(thread.store.getState().entries.at(-1)).toMatchObject({
+        outcome: 'failed',
+        problem: { kind: 'process_exited', message: 'the CLI exited (code 1): out of memory' },
+      });
+      expect(seen.starts).toHaveLength(1);
+      expect(seen.sends).toEqual([]);
+    });
+  });
+
+  it('does not keep a session that was being opened when another deck took the window', async () => {
+    const talk = script([say('One.'), done()]);
+    let release!: () => void;
+    const starting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let begun = 0;
+    const wrap = (client: AgentClient): AgentClient => ({
+      ...client,
+      // The first session takes a while to start: the CLI is being launched.
+      start: async (harnessId, thread, config, onEvent) => {
+        if (++begun === 1) await starting;
+        return client.start(harnessId, thread, config, onEvent);
+      },
+    });
+    const { bus, thread, seen } = setup({ talk }, { wrap });
+    const old = bus.deck.id;
+    const sending = thread.send('Hello');
+    await vi.waitFor(() => expect(begun).toBe(1));
+    bus.reset(createDeck({ slides: [createSlide({ id: 's_1' })] }));
+    release();
+    await sending;
+
+    // The session of the old deck is closed, not left for the new deck's first message.
+    await vi.waitFor(() => expect(seen.closed).toHaveLength(1));
+    expect(thread.sessionKey).toBeNull();
+    await ask(thread, 'Hello again');
+    expect(seen.starts.map((s) => s.thread)).toEqual([`${old}/deck`, `${bus.deck.id}/deck`]);
+    expect(seen.sends.map((turn) => turn.text)).toEqual(['Hello again']);
+  });
+
   it('leaves the old chat behind when another deck is opened', async () => {
     const rename = script([call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }), done()]);
     const { bus, service, thread, seen } = setup({ rename });
