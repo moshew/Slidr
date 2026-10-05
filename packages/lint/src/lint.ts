@@ -1,6 +1,7 @@
 import {
   rotatedBounds,
   walkElements,
+  type Command,
   type Deck,
   type Element,
   type Frame,
@@ -69,6 +70,15 @@ export function lintSlide(
     }
   };
   mark(slide.elements, false);
+  const locked = new Set<string>();
+  const lock = (elements: readonly Element[], inside: boolean) => {
+    for (const element of elements) {
+      const held = inside || !!element.locked;
+      if (held) locked.add(element.id);
+      if (element.type === 'group') lock(element.children, held);
+    }
+  };
+  lock(slide.elements, false);
   const layout = slide.layoutId ? deck.layouts.find((l) => l.id === slide.layoutId) : undefined;
   const decorations = layout?.decorations ?? [];
   const ctx: SlideContext = {
@@ -79,13 +89,39 @@ export function lintSlide(
     layout: drawn(decorations, placed(decorations, 0, 0, [])),
     tops,
     turned,
+    locked,
   };
   const findings: LintFinding[] = [];
   for (const rule of rules) {
     if (set === 'agent' && !rule.agent) continue;
     for (const problem of rule.check(ctx)) {
-      findings.push({ rule: rule.id, severity: rule.severity, slideId: slide.id, ...problem });
+      const { fix, ...found } = problem;
+      // A locked element is left alone by everything in the app (ARR-04), and by a fix too. The
+      // finding stays, since the slide is what it is; what goes is the fix that would move,
+      // resize or recolour what the user locked. All of it: half of a fix that lines objects up
+      // with one that stays where it is would line them up with nothing.
+      const allowed = fix && !fix.some((command) => changes(command).some((id) => locked.has(id)));
+      findings.push({
+        rule: rule.id,
+        severity: rule.severity,
+        slideId: slide.id,
+        ...found,
+        ...(allowed ? { fix } : {}),
+      });
     }
   }
   return findings;
+}
+
+/** The elements a command changes. A new element changes none, but for the group it is put in. */
+function changes(command: Command): string[] {
+  const named = command as {
+    elementId?: string;
+    elementIds?: string[];
+    parentId?: string;
+    groupId?: string;
+  };
+  return [named.elementId, ...(named.elementIds ?? []), named.parentId, named.groupId].filter(
+    (id): id is string => id !== undefined,
+  );
 }

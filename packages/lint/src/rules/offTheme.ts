@@ -58,7 +58,8 @@ function fontProblem(ctx: SlideContext): Problem[] {
   const fix: Command[] = [];
   for (const element of walkElements(ctx.slide.elements)) {
     const prose = proseOf(element);
-    if (!prose || !ids.includes(element.id)) continue;
+    // Each text is put right by itself, so a locked one is left out and the rest are fixed.
+    if (!prose || !ids.includes(element.id) || ctx.locked.has(element.id)) continue;
     const content = mapRuns(prose, (run) => {
       if (!run.marks?.font || !own.has(run.marks.font)) return run;
       const { font: _font, ...marks } = run.marks;
@@ -159,7 +160,8 @@ function colourProblem(ctx: SlideContext): Problem[] {
     const off = strays(ctx, element);
     if (off.found.size === 0) continue;
     ids.push(element.id);
-    fix.push(...off.fix);
+    // A colour is mapped element by element: a locked one keeps its own, the others are fixed.
+    if (!ctx.locked.has(element.id)) fix.push(...off.fix);
     for (const [hex, to] of off.found) colours.set(hex, to);
   }
   if (colours.size === 0) return [];
@@ -171,7 +173,7 @@ function colourProblem(ctx: SlideContext): Problem[] {
     {
       elementIds: ids,
       message: `${colours.size} ${colours.size === 1 ? 'colour here is' : 'colours here are'} not the template's: ${list}${colours.size > 6 ? ', and more' : ''}. Colours outside the palette do not change with the template; use the theme's colours.`,
-      fix,
+      ...(fix.length ? { fix } : {}),
     },
   ];
 }

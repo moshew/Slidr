@@ -33,9 +33,10 @@ const CARRIES: ReadonlySet<string> = new Set(['shape', 'image', 'group', 'html',
  * The commands that move elements at the top of the slide's tree. What sits on a moved element
  * (inside its box, and above it) goes with it: the text of a card moves with the card, though
  * nothing in the model ties them. An element that is given a move of its own keeps that one.
+ * A locked element that sits on a moved one stays where the user locked it.
  */
 export function moveTops(
-  ctx: Pick<SlideContext, 'slide' | 'tops'>,
+  ctx: Pick<SlideContext, 'slide' | 'tops' | 'locked'>,
   moves: ReadonlyMap<string, Move>,
 ): Command[] {
   const all = new Map(moves);
@@ -43,9 +44,9 @@ export function moveTops(
     const move = moves.get(item.element.id);
     if (!move || !CARRIES.has(item.element.type)) return;
     for (const rider of ctx.tops.slice(i + 1)) {
-      if (!moves.has(rider.element.id) && inside(rider.measure.box, item.measure.box)) {
-        all.set(rider.element.id, move);
-      }
+      const { id } = rider.element;
+      if (moves.has(id) || ctx.locked.has(id)) continue;
+      if (inside(rider.measure.box, item.measure.box)) all.set(id, move);
     }
   });
   const commands: Command[] = [];

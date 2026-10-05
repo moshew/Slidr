@@ -56,6 +56,12 @@ export interface SlideContext extends Drawn {
   tops: readonly Item[];
   /** Elements inside a group that is rotated or flipped: a move of theirs is not a move on the slide. */
   turned: ReadonlySet<string>;
+  /**
+   * Elements that are locked, or inside a locked group (ARR-04). A fix leaves them as they are:
+   * the lint drops a fix that would change one (`lintSlide`), so a rule only looks here where it
+   * can still fix the rest without it.
+   */
+  locked: ReadonlySet<string>;
 }
 
 export type Problem = Pick<LintFinding, 'elementIds' | 'message' | 'fix'>;
