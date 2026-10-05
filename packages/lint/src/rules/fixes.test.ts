@@ -1,4 +1,4 @@
-import { createElement, richText, type Element, type Frame } from '@slidr/model';
+import { createDeck, createElement, richText, type Element, type Frame } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import type { Rgb } from '../measure';
 import { check, fixed, span, text, WHITE } from '../testing';
@@ -209,19 +209,67 @@ describe('L05: a colour that reads, or a veil under the text', () => {
     ]);
   });
 
+  // Half of what is under the text is bright and half is dark.
+  const busy = Array.from({ length: 20 }, (_, i) => (i % 2 ? grey(245) : grey(15)));
+  const white = label({ marks: { color: { value: '#ffffff' } } });
+  const picture = createElement.image({ id: 'e_photo', frame: { x: 0, y: 0, w: 1920, h: 1080 } });
+
   it('puts a veil under text on a busy picture, where no single colour reads', () => {
-    // Half of what is under the text is bright and half is dark.
-    const busy = Array.from({ length: 20 }, (_, i) => (i % 2 ? grey(245) : grey(15)));
-    const white = label({ marks: { color: { value: '#ffffff' } } });
-    const picture = createElement.image({ id: 'e_photo', frame: { x: 0, y: 0, w: 1920, h: 1080 } });
     const [finding] = check('L05', [picture, white], drawn(WHITE, busy));
     const after = fixed([picture, white], finding);
     // Between the picture and the text, around the glyphs, inside the slide.
     expect(after.elements.map((e) => e.id)).toEqual(['e_photo', 'e_label_veil', 'e_label']);
     const veil = byId(after, 'e_label_veil');
     expect(veil.frame).toEqual({ x: 136, y: 316, w: 848, h: 148 });
-    expect(veil).toMatchObject({ type: 'shape', fill: { kind: 'solid' } });
+    // The theme's own two colours, the dark one under the light one: on another template the
+    // veil and its letters are that template's, and still read.
+    expect(veil).toMatchObject({
+      type: 'shape',
+      name: 'veil',
+      fill: { kind: 'solid', color: { token: 'text', alpha: 0.65 } },
+    });
+    expect(colours(byId(after, 'e_label'))).toEqual([{ token: 'bg' }]);
+  });
+
+  it("lays the veil in black under white where the theme's own colours do not read", () => {
+    // A theme of two greys: neither is read on the other.
+    const base = createDeck().theme;
+    const deck = { theme: { ...base, colors: { ...base.colors, bg: '#8a8a8a', text: '#777777' } } };
+    const [finding] = check('L05', [picture, white], drawn(WHITE, busy), { deck });
+    const after = fixed([picture, white], finding, { deck });
+    expect(byId(after, 'e_label_veil')).toMatchObject({
+      fill: { kind: 'solid', color: { value: '#000000', alpha: 0.65 } },
+    });
     expect(colours(byId(after, 'e_label'))).toEqual([{ value: '#ffffff' }]);
+  });
+
+  it('makes the veil of the text beside it larger, and lays no second one', () => {
+    const [first] = check('L05', [picture, white], drawn(WHITE, busy));
+    const veiled = fixed([picture, white], first).elements;
+    const under = { x: 160, y: 450, w: 800, h: 60 };
+    const line = createElement.text({
+      id: 'e_line',
+      frame: under,
+      content: richText('And a line under it', { marks: { color: { value: '#ffffff' } } }),
+    });
+    const elements = [...veiled, line];
+    const [finding] = check('L05', elements, {
+      e_line: {
+        box: under,
+        text: text(under, { spans: [span({ color: WHITE, backdrop: busy })] }),
+      },
+    });
+    expect(finding?.elementIds).toEqual(['e_line']);
+    const after = fixed(elements, finding);
+    expect(after.elements.map((e) => e.id)).toEqual([
+      'e_photo',
+      'e_label_veil',
+      'e_label',
+      'e_line',
+    ]);
+    // Around both texts: the title's own veil, grown down to hold the line.
+    expect(byId(after, 'e_label_veil').frame).toEqual({ x: 136, y: 316, w: 848, h: 218 });
+    expect(colours(byId(after, 'e_line'))).toEqual([{ token: 'bg' }]);
   });
 });
 

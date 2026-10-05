@@ -1,10 +1,12 @@
 import {
   createElement,
+  updateElement,
   type Color,
   type Command,
   type Frame,
   type Paragraph,
   type Run,
+  type Theme,
 } from '@slidr/model';
 import { blend, contrastRatio, hex, luminance } from '../color';
 import { intersection, slideArea } from '../geometry';
@@ -76,16 +78,69 @@ export function describeFaint({ span, ratio, under, required }: Faint, what = 'T
 const BLACK: Rgb = [0, 0, 0];
 const WHITE: Rgb = [255, 255, 255];
 
-/** How dark a veil under the text may have to be before white, or black, reads on it. */
+/** How dense a veil under the text may have to be before the letters read on it. */
 const VEILS = [0.5, 0.65, 0.8];
 /** Room around the glyphs under a veil, in slide pixels. */
 const VEIL_PAD = 24;
+/** The name a veil of this fix carries: by it the fix knows its own veils again. */
+const VEIL = 'veil';
+
+/** A colour of the model, and what it draws. */
+interface Paint {
+  color: Color;
+  rgb: Rgb;
+}
+
+/**
+ * The veils this fix may lay, each with the letters that read on it. The theme's own pair comes
+ * first, its background under its text colour and the other way round: a veil made of the two
+ * is right on any template the deck is switched to, where a black one under white letters stays
+ * a black box on a slide that has turned white. Black and white are for a theme whose own two
+ * colours do not read here. Of each kind, the veil nearer to what is under the text is tried
+ * first: it changes the picture least.
+ */
+function veils(theme: Theme, dark: boolean): { veil: Paint; letters: Paint }[] {
+  const both = (a: Paint, b: Paint) => [
+    { veil: a, letters: b },
+    { veil: b, letters: a },
+  ];
+  const bg = tokenRgb(theme, 'bg');
+  const text = tokenRgb(theme, 'text');
+  const themed =
+    bg && text
+      ? both({ color: { token: 'bg' }, rgb: bg }, { color: { token: 'text' }, rgb: text })
+      : [];
+  const plain = both(
+    { color: { value: '#000000' }, rgb: BLACK },
+    { color: { value: '#ffffff' }, rgb: WHITE },
+  );
+  const far = ({ veil }: { veil: Paint }) => Number(luminance(veil.rgb) < 0.5 !== dark);
+  const nearFirst = (kind: typeof plain) => [...kind].sort((a, b) => far(a) - far(b));
+  return [...nearFirst(themed), ...nearFirst(plain)];
+}
+
+const sameColour = (a: Color, b: Color) =>
+  'token' in a
+    ? 'token' in b && a.token === b.token
+    : 'value' in b && a.value.toLowerCase() === b.value.toLowerCase();
+
+function union(a: Frame, b: Frame): Frame {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    w: Math.max(a.x + a.w, b.x + b.w) - x,
+    h: Math.max(a.y + a.h, b.y + b.h) - y,
+  };
+}
 
 /**
  * The fix the table of SPEC 9.2 names. First a colour: the theme's text colour, its background
  * or its surface, then black or white, whichever is the first to read on what is under the
  * text. Only the runs drawn in the colour that fails change. Where no colour reads (a busy
- * photograph), a veil goes under the text and the text turns white, or black over a pale veil.
+ * photograph), a veil goes under the text and the text takes the colour that reads on the veil
+ * (see `veils`).
  */
 function fixOf(ctx: SlideContext, item: Item, worst: Faint): Command[] | undefined {
   const { element } = item;
@@ -137,40 +192,55 @@ function fixOf(ctx: SlideContext, item: Item, worst: Faint): Command[] | undefin
   if (at === -1 || !ink || element.rotation !== 0) return undefined;
   const mean =
     worst.span.backdrop.reduce((sum, c) => sum + luminance(c), 0) / worst.span.backdrop.length;
-  const order = mean < 0.5 ? [BLACK, WHITE] : [WHITE, BLACK];
-  for (const veil of order) {
-    const letters = veil === BLACK ? WHITE : BLACK;
+  const pairs = veils(theme, mean < 0.5);
+  const under = (veil: Rgb, alpha: number) =>
+    worst.span.backdrop.map((backdrop) => blend(veil, alpha, backdrop));
+  const padded: Frame = {
+    x: ink.x - VEIL_PAD,
+    y: ink.y - VEIL_PAD,
+    w: ink.w + 2 * VEIL_PAD,
+    h: ink.h + 2 * VEIL_PAD,
+  };
+  const frame = intersection(padded, slideArea(ctx.deck)) ?? padded;
+  const lettered = (letters: Paint, veil: Command) => {
+    const command = recolour(letters.color);
+    return [veil, ...(command ? [command] : [])];
+  };
+
+  // The veil of the text next to this one is made to hold both: two veils that overlap are
+  // darker where they meet, and a title with the line under it reads as two boxes.
+  for (const laid of ctx.slide.elements.slice(0, at).reverse()) {
+    if (laid.type !== 'shape' || laid.name !== VEIL || laid.rotation !== 0) continue;
+    if (laid.fill.kind !== 'solid' || !intersection(laid.frame, frame)) continue;
+    const { color } = laid.fill;
+    const pair = pairs.find(({ veil }) => sameColour(veil.color, color));
+    if (!pair || !reads(pair.letters.rgb, under(pair.veil.rgb, color.alpha ?? 1))) continue;
+    return lettered(
+      pair.letters,
+      updateElement(ctx.slide.id, laid.id, { frame: union(laid.frame, frame) }),
+    );
+  }
+
+  for (const { veil, letters } of pairs) {
     for (const alpha of VEILS) {
-      if (
-        !reads(
-          letters,
-          worst.span.backdrop.map((under) => blend(veil, alpha, under)),
-        )
-      )
-        continue;
-      const padded: Frame = {
-        x: ink.x - VEIL_PAD,
-        y: ink.y - VEIL_PAD,
-        w: ink.w + 2 * VEIL_PAD,
-        h: ink.h + 2 * VEIL_PAD,
-      };
-      const frame = intersection(padded, slideArea(ctx.deck)) ?? padded;
+      if (!reads(letters.rgb, under(veil.rgb, alpha))) continue;
       let id = `${element.id}_veil`;
       for (let n = 2; ctx.items.some((other) => other.element.id === id); n++) {
         id = `${element.id}_veil${n}`;
       }
       const shape = createElement.shape({
         id,
-        name: 'veil',
+        name: VEIL,
         frame,
-        fill: { kind: 'solid', color: { value: hex(veil), alpha } },
+        fill: { kind: 'solid', color: { ...veil.color, alpha } },
         effects: { radius: theme.radius },
       });
-      const command = recolour({ value: hex(letters) });
-      return [
-        { type: 'element.add', slideId: ctx.slide.id, element: shape, index: at },
-        ...(command ? [command] : []),
-      ];
+      return lettered(letters, {
+        type: 'element.add',
+        slideId: ctx.slide.id,
+        element: shape,
+        index: at,
+      });
     }
   }
   return undefined;
