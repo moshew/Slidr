@@ -2,6 +2,7 @@ import {
   Archetype,
   CommandBus,
   createBaseTheme,
+  type Background,
   type Color,
   type Fill,
   type Theme,
@@ -90,8 +91,7 @@ function faintGrounds(theme: Theme): string[] {
   const faint: string[] = [];
   for (const [index, background] of [theme.background, ...theme.backgroundVariants].entries()) {
     const name = index === 0 ? 'the background' : `variant ${index}`;
-    expect(background.overlay, name).toBeUndefined();
-    for (const ground of groundsOf(theme, background.fill, name)) {
+    for (const ground of groundsOf(theme, background, name)) {
       for (const [ref, style] of Object.entries(theme.textStyles)) {
         const drawn = rgbOf(theme, style.color, ground);
         const got = contrast(drawn, ground);
@@ -130,22 +130,54 @@ function contrast(a: Rgb, b: Rgb): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
-/** The colours a fill puts under text: its colour, or its stops and what lies between them. */
-function groundsOf(theme: Theme, fill: Fill, name: string): Rgb[] {
-  const opaque = (color: Color): Rgb => {
-    // A ground that lets something through is not one colour: nothing here can judge it.
-    expect(color.alpha, name).toBeUndefined();
-    return rgbOf(theme, color, [0, 0, 0]);
-  };
-  if (fill.kind === 'solid') return [opaque(fill.color)];
+/** A colour as it is drawn, with how much of what is under it shows through. */
+interface Paint {
+  rgb: Rgb;
+  alpha: number;
+}
+
+const SHARES = [0, 0.25, 0.5, 0.75];
+
+/** The colours a fill draws: its colour, or its stops and what lies between them. */
+function paintsOf(theme: Theme, fill: Fill, name: string): Paint[] {
+  const paint = (color: Color): Paint => ({
+    rgb: hexRgb('token' in color ? theme.colors[color.token] : color.value),
+    alpha: color.alpha ?? 1,
+  });
+  if (fill.kind === 'solid') return [paint(fill.color)];
   if (fill.kind === 'linear' || fill.kind === 'radial' || fill.kind === 'conic') {
-    const stops = fill.stops.map((stop) => opaque(stop.color));
+    const stops = fill.stops.map((stop) => paint(stop.color));
     return stops.flatMap((stop, i) => {
       const next = stops[i + 1];
-      return next ? [0, 0.25, 0.5, 0.75].map((share) => mix(stop, next, share)) : [stop];
+      if (!next) return [stop];
+      return SHARES.map((share) => ({
+        rgb: mix(stop.rgb, next.rgb, share),
+        alpha: stop.alpha * (1 - share) + next.alpha * share,
+      }));
     });
   }
   throw new Error(`${name} is a ${fill.kind} fill, which this test cannot read`);
+}
+
+/**
+ * The colours a background puts under text: those of its fill, seen through its overlay where
+ * it has one (a lamp of the surface colour over the ground).
+ *
+ * Free CSS is not read here: nothing short of drawing it says what it puts under text. A ground
+ * kept as CSS (a dot grid over a colour) is held to the rule where it is drawn, in the
+ * acceptance tests, which put every variant behind every slide of the sample and judge the
+ * picture with the real lint (`acceptance.ts` of the app).
+ */
+function groundsOf(theme: Theme, background: Background, name: string): Rgb[] {
+  if (background.fill.kind === 'css') return [];
+  const under = paintsOf(theme, background.fill, name).map(({ rgb, alpha }) => {
+    // A ground that lets something through is not one colour: nothing here can judge it.
+    expect(alpha, name).toBe(1);
+    return rgb;
+  });
+  if (!background.overlay) return under;
+  const over = paintsOf(theme, background.overlay, name);
+  return under.flatMap((ground) => over.map(({ rgb, alpha }) => mix(ground, rgb, alpha)));
 }
 
 it(
