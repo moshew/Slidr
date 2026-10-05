@@ -15,7 +15,7 @@ import { insertImages } from './insert';
 import { LineLibrary, ShapeLibrary } from './library';
 import { HtmlMenuItems, ImageMenuItems } from './menu';
 import { en, he } from './messages';
-import { EffectsRow, ImageRow, ShapeRow } from './tools';
+import { EffectsRow, ImageRow, SeveralRow, ShapeRow } from './tools';
 
 /*
  * The objects area (WG5): inserting pictures, shapes and lines, styling them, the slide
@@ -62,6 +62,15 @@ registerContextTool({
   group: 'objects',
   order: 30,
   render: HtmlRow,
+});
+// Several elements: the look they all have, after the arrange tools (10 to 40) and the tools
+// of the text they share (100 to 199, `text/register.tsx`).
+registerContextTool({
+  id: 'objects.several',
+  kinds: ['multiple'],
+  group: 'objects',
+  order: 200,
+  render: SeveralRow,
 });
 // Replaces the shell's placeholder of the same id.
 registerContextTool({

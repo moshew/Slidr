@@ -1,4 +1,13 @@
-import type { ElementPatch, ImageElement, LineElement, ShapeElement, Stroke } from '@slidr/model';
+import type {
+  Command,
+  Element,
+  ElementPatch,
+  Fill,
+  ImageElement,
+  LineElement,
+  ShapeElement,
+  Stroke,
+} from '@slidr/model';
 import {
   ColorSwatch,
   DropdownMenu,
@@ -42,15 +51,20 @@ import {
 } from './effects';
 import { FillEditor } from './FillEditor';
 import { AdjustTool, AsBackgroundTool, CutoutTool, FilterTool, MaskTool } from './imageTools';
-import { FillSwatch, PopoverTool, ToolGroup, ToolRow } from './parts';
+import { FillSwatch, MixedBar, PopoverTool, ToolGroup, ToolRow } from './parts';
 import { replaceImage } from './replace';
+import { isMixed, sharedFields, sharedValue } from './several';
 import { SvgColorsTool } from './svgTools';
-import { isTarget, useTarget, type Target } from './target';
+import { areTargets, isTarget, useTarget, useTargets, type Target, type Targets } from './target';
 
 /*
  * Row B for shapes, lines and images (SPEC 4.4), and the effects every element has. Each kind of
  * selection gets one registered tool that draws its groups itself: which buttons show depends on
  * the element (a line has no fill, an ellipse has no corners), and a group must never be empty.
+ *
+ * Fill, outline, shadow and opacity work on one element and on several selected together
+ * (`Targets`): a row of several elements holds the ones that apply to every member, a value the
+ * members do not share is shown as mixed, and a change is one undo step for all of them.
  */
 
 /** One undo step per gesture, and the label the history shows. */
@@ -66,24 +80,51 @@ function useStyleUpdate(target: Target) {
   };
 }
 
+/** The same for one element or several: each element takes a patch of its own. */
+function useLookUpdate<T extends Element>(targets: Targets<T>) {
+  const { t } = useTranslation('objects');
+  const tx = useGestureTx();
+  const label = t('history.style');
+  return {
+    /** A step of a drag or of an edit; `end` closes the undo step. */
+    change: (patchOf: (element: T) => ElementPatch | undefined, first?: readonly Command[]) =>
+      targets.update(patchOf, { txId: tx.id(), label }, first),
+    end: tx.end,
+  };
+}
+
+/** The one element of a row for a single selection, for the tools that take one or several. */
+function only<T extends Element>(target: Target<T>): Targets<T> {
+  return {
+    slideId: target.slideId,
+    elements: [target.element],
+    update: (patchOf, options, first) =>
+      target.update(patchOf(target.element) ?? {}, options, first),
+  };
+}
+
 /* ---------------------------------------------------------------- the tools */
 
-function FillTool({ target }: { target: Target<ShapeElement> }) {
+const NO_FILL: Fill = { kind: 'none' };
+
+function FillTool({ targets }: { targets: Targets<ShapeElement> }) {
   const { t } = useTranslation('objects');
-  const { change, end } = useStyleUpdate(target);
-  const { fill } = target.element;
+  const { change, end } = useLookUpdate(targets);
+  const fill = sharedValue(targets.elements.map((element) => element.fill));
+  const mixed = isMixed(fill);
   return (
     <PopoverTool
       label={t('fill.title')}
       icon={PaintBucket}
-      bar={<FillSwatch fill={fill} className="h-1.5 w-4" />}
+      bar={mixed ? <MixedBar /> : <FillSwatch fill={fill} className="h-1.5 w-4" />}
       onClose={end}
     >
       <FillEditor
-        value={fill}
+        value={mixed ? NO_FILL : fill}
+        mixed={mixed}
         defaultColor={{ token: 'primary' }}
         onChange={(next, asset) =>
-          change({ fill: next }, asset ? [{ type: 'asset.add', asset }] : undefined)
+          change(() => ({ fill: next }), asset ? [{ type: 'asset.add', asset }] : undefined)
         }
         onGestureEnd={end}
       />
@@ -101,33 +142,47 @@ function StrokeBar({ stroke }: { stroke: Stroke | undefined }) {
 
 const NEW_STROKE: Stroke = { color: { token: 'text' }, width: 4 };
 
+/** The elements that have an outline of some kind: a shape's, a line's stroke, an image's border. */
+type Outlined = ShapeElement | LineElement | ImageElement;
+
+const strokeOf = (element: Outlined) =>
+  element.type === 'image' ? element.border : element.stroke;
+
+function strokePatch(element: Outlined, next: Stroke | null): ElementPatch | undefined {
+  if (element.type === 'image') return { border: next };
+  // A line always has a stroke; the editor does not offer "none" for it.
+  if (element.type === 'line') return next ? { stroke: next } : undefined;
+  return { stroke: next };
+}
+
 function StrokeTool({
-  target,
+  targets,
   label,
   icon,
 }: {
-  target: Target<ShapeElement | LineElement | ImageElement>;
+  targets: Targets<Outlined>;
   label: string;
   icon: LucideIcon;
 }) {
-  const { change, end } = useStyleUpdate(target);
-  const { element } = target;
-  const stroke = element.type === 'image' ? element.border : element.stroke;
-  const write = (next: Stroke | null): ElementPatch => {
-    if (element.type === 'image') return { border: next };
-    // A line always has a stroke; the editor does not offer "none" for it.
-    if (element.type === 'line') return next ? { stroke: next } : {};
-    return { stroke: next };
-  };
+  const { change, end } = useLookUpdate(targets);
+  const { elements } = targets;
+  const { value, mixed } = sharedFields(elements.map(strokeOf));
+  const lines = elements.filter((element) => element.type === 'line').length;
   return (
-    <PopoverTool label={label} icon={icon} bar={<StrokeBar stroke={stroke} />} onClose={end}>
+    <PopoverTool
+      label={label}
+      icon={icon}
+      bar={mixed.has('state') || mixed.has('color') ? <MixedBar /> : <StrokeBar stroke={value} />}
+      onClose={end}
+    >
       <StrokeEditor
-        value={stroke}
-        required={element.type === 'line'}
-        capAndJoin={strokeHasCapAndJoin(element)}
-        defaultJoin={element.type === 'line' ? 'round' : 'miter'}
+        value={value}
+        mixed={mixed}
+        required={lines > 0}
+        capAndJoin={elements.every(strokeHasCapAndJoin)}
+        defaultJoin={lines === elements.length ? 'round' : 'miter'}
         defaultStroke={NEW_STROKE}
-        onChange={(next) => change(write(next))}
+        onChange={(_, next) => change((element) => strokePatch(element, next(strokeOf(element))))}
         onGestureEnd={end}
       />
     </PopoverTool>
@@ -150,33 +205,38 @@ function RadiusTool({ target }: { target: Target }) {
   );
 }
 
-function ShadowTool({ target }: { target: Target }) {
+function ShadowTool({ targets }: { targets: Targets }) {
   const { t } = useTranslation('objects');
-  const { change, end } = useStyleUpdate(target);
+  const { change, end } = useLookUpdate(targets);
   const themeShadow = useDeck((s) => s.deck.theme.shadow);
-  const { element } = target;
+  const { elements } = targets;
+  const { value, mixed } = sharedFields(elements.map((element) => element.effects?.shadow));
   return (
     <PopoverTool label={t('shadow.title')} icon={Layers2} onClose={end}>
       <ShadowEditor
-        value={element.effects?.shadow}
+        value={value}
+        mixed={mixed}
         themeShadow={themeShadow}
-        spread={supportsSpread(element)}
-        onChange={(shadow) => change(shadowPatch(element, shadow))}
+        spread={elements.every(supportsSpread)}
+        onChange={(_, next) =>
+          change((element) => shadowPatch(element, next(element.effects?.shadow)))
+        }
         onGestureEnd={end}
       />
     </PopoverTool>
   );
 }
 
-function OpacityTool({ target }: { target: Target }) {
+function OpacityTool({ targets }: { targets: Targets }) {
   const { t } = useTranslation('objects');
-  const { change, end } = useStyleUpdate(target);
+  const { change, end } = useLookUpdate(targets);
+  const opacity = sharedValue(targets.elements.map((element) => element.opacity));
   return (
     <PopoverTool label={t('opacity.title')} icon={Droplet} onClose={end}>
       <OpacityEditor
         label={t('opacity.title')}
-        value={target.element.opacity}
-        onChange={(opacity) => change({ opacity })}
+        value={isMixed(opacity) ? null : opacity}
+        onChange={(next) => change(() => ({ opacity: next }))}
         onGestureEnd={end}
       />
     </PopoverTool>
@@ -189,8 +249,8 @@ function EffectTools({ target }: { target: Target }) {
   return (
     <ToolGroup label={t('groups.effects')}>
       <RadiusTool target={target} />
-      <ShadowTool target={target} />
-      <OpacityTool target={target} />
+      <ShadowTool targets={only(target)} />
+      <OpacityTool targets={only(target)} />
     </ToolGroup>
   );
 }
@@ -267,8 +327,8 @@ export function ShapeRow() {
     return (
       <ToolRow>
         <ToolGroup label={t('groups.paint')}>
-          {shapeHasFill(target.element) && <FillTool target={target} />}
-          <StrokeTool target={target} label={t('stroke.outline')} icon={PenLine} />
+          {shapeHasFill(target.element) && <FillTool targets={only(target)} />}
+          <StrokeTool targets={only(target)} label={t('stroke.outline')} icon={PenLine} />
         </ToolGroup>
         <EffectTools target={target} />
       </ToolRow>
@@ -278,7 +338,7 @@ export function ShapeRow() {
     return (
       <ToolRow>
         <ToolGroup label={t('groups.line')}>
-          <StrokeTool target={target} label={t('stroke.line')} icon={PenLine} />
+          <StrokeTool targets={only(target)} label={t('stroke.line')} icon={PenLine} />
           <HeadsTool target={target} />
           <CurveTool target={target} />
         </ToolGroup>
@@ -394,10 +454,10 @@ export function ImageRow() {
         <AsBackgroundTool target={target} />
       </ToolGroup>
       <ToolGroup label={t('groups.effects')}>
-        <StrokeTool target={target} label={t('image.border')} icon={Square} />
+        <StrokeTool targets={only(target)} label={t('image.border')} icon={Square} />
         <RadiusTool target={target} />
-        <ShadowTool target={target} />
-        <OpacityTool target={target} />
+        <ShadowTool targets={only(target)} />
+        <OpacityTool targets={only(target)} />
       </ToolGroup>
     </ToolRow>
   );
@@ -439,6 +499,43 @@ function CompactEffects({ target }: { target: Target }) {
         </div>
       </Field>
     </PopoverTool>
+  );
+}
+
+/* ---------------------------------------------------------------- several elements */
+
+/**
+ * Row B for several selected elements, after the arrange tools the row already has (SPEC 4.4):
+ * the look that applies to every member. Fill when all are shapes with an inside; the outline
+ * when all are shapes, lines or images (for lines it is their stroke, for images their border);
+ * shadow and opacity always, since every element has them.
+ */
+export function SeveralRow() {
+  const { t } = useTranslation('objects');
+  const targets = useTargets();
+  if (!targets || targets.elements.length < 2) return null;
+  const outlined = areTargets(targets, 'shape', 'line', 'image') ? targets : undefined;
+  const filled =
+    areTargets(targets, 'shape') && targets.elements.every(shapeHasFill) ? targets : undefined;
+  const outline =
+    outlined && areTargets(outlined, 'line')
+      ? t('stroke.line')
+      : outlined && areTargets(outlined, 'image')
+        ? t('image.border')
+        : t('stroke.outline');
+  return (
+    <ToolRow>
+      {outlined && (
+        <ToolGroup label={t('groups.paint')}>
+          {filled && <FillTool targets={filled} />}
+          <StrokeTool targets={outlined} label={outline} icon={PenLine} />
+        </ToolGroup>
+      )}
+      <ToolGroup label={t('groups.effects')}>
+        <ShadowTool targets={targets} />
+        <OpacityTool targets={targets} />
+      </ToolGroup>
+    </ToolRow>
   );
 }
 

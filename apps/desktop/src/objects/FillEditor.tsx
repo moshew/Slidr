@@ -47,6 +47,11 @@ import { ColorRow, FillSwatch, SliderField, useThemeColors } from './parts';
 export interface FillEditorProps {
   value: Fill;
   /**
+   * Several elements are selected and do not share one fill: no kind is selected, and `value`
+   * (which the host gives as no fill) is only what a chosen kind starts from.
+   */
+  mixed?: boolean;
+  /**
    * Every change, also each step of a drag. `asset` is a picture that was just imported for an
    * image fill: the host registers it (`asset.add`) in the same change as the fill.
    */
@@ -66,6 +71,7 @@ export interface FillEditorProps {
  */
 export function FillEditor({
   value,
+  mixed = false,
   onChange,
   onGestureEnd,
   defaultColor,
@@ -76,7 +82,7 @@ export function FillEditor({
   const memory = useRef<FillMemory>({});
   // "Image" was chosen and no picture yet: the fill itself cannot say so, it needs an asset.
   const [awaitingImage, setAwaitingImage] = useState(false);
-  const kind = awaitingImage ? 'image' : fillKind(value);
+  const kind = awaitingImage ? 'image' : mixed ? 'mixed' : fillKind(value);
 
   /** A change that is a whole undo step by itself. */
   const commit = (fill: Fill, asset?: AssetMeta) => {
@@ -111,7 +117,8 @@ export function FillEditor({
       return;
     }
     setAwaitingImage(false);
-    if (next !== value) commit(next);
+    // With mixed fills "none" is a change too, though it is what `value` already says.
+    if (mixed || next !== value) commit(next);
   };
 
   const kinds: FillKind[] = allowNone
@@ -124,11 +131,13 @@ export function FillEditor({
         aria-label={t('fill.kind')}
         fill
         options={kinds.map((option) => ({ value: option, label: t(`fill.${option}`) }))}
-        // A `css` fill is none of the kinds: no segment is selected until one is chosen.
+        // A `css` fill is none of the kinds, and neither are the fills of several elements that
+        // differ: no segment is selected until one is chosen.
         value={kind as FillKind}
         onValueChange={setKind}
       />
       {kind === 'css' && <p className="text-xs text-ui-fg-muted">{t('fill.imported')}</p>}
+      {kind === 'mixed' && <p className="text-xs text-ui-fg-muted">{t('several.fill')}</p>}
       {kind === 'solid' && value.kind === 'solid' && (
         <ColorRow
           label={t('fill.color')}

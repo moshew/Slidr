@@ -4,12 +4,21 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RadiusControl } from './effects';
 import { ColorRow, SliderField } from './parts';
+import type { MixedFields } from './several';
 
 /*
  * The contents of the row B popovers that are not the fill editor: outline, shadow, corners and
  * opacity. Each takes a value and reports every change (`onChange`) and the end of a drag or an
  * edit (`onGestureEnd`), so the host makes a drag one undo step (see `useGestureTx`).
+ *
+ * With several elements selected an editor shows what they share (`several.ts`): a field they
+ * do not share is shown as mixed. A change is also reported as a function of the value it is made
+ * to, so that each element keeps the fields the change does not touch: outlines of three colours
+ * that are made thicker stay of three colours.
  */
+
+/** Nothing selected in a segmented control: the elements do not share a choice. */
+const NO_CHOICE = '';
 
 type Dash = NonNullable<Stroke['dash']>;
 type Cap = NonNullable<Stroke['cap']>;
@@ -31,11 +40,19 @@ const joinLabels = {
 /** The widest stroke the controls offer, in slide pixels. */
 const MAX_STROKE = 60;
 
+/** A change to a stroke, as a function of the stroke it is made to. Null takes the stroke away. */
+export type StrokeChange = (stroke: Stroke | undefined) => Stroke | null;
+
 export interface StrokeEditorProps {
   /** Undefined for no outline. */
   value: Stroke | undefined;
-  /** Null removes the outline (never sent when `required`). */
-  onChange: (stroke: Stroke | null) => void;
+  /** With several elements: the fields of the outline they do not share. */
+  mixed?: MixedFields<Stroke>;
+  /**
+   * The outline after the change, and the change itself. Null removes the outline (never sent
+   * when `required`).
+   */
+  onChange: (stroke: Stroke | null, change: StrokeChange) => void;
   onGestureEnd: () => void;
   /** A line always has a stroke: "none" is not offered. */
   required?: boolean;
@@ -50,6 +67,7 @@ export interface StrokeEditorProps {
 /** Outline of a shape, stroke of a line, border of an image (SHP-03, SHP-05, IMG-08). */
 export function StrokeEditor({
   value,
+  mixed,
   onChange,
   onGestureEnd,
   required = false,
@@ -60,22 +78,32 @@ export function StrokeEditor({
   const { t } = useTranslation('objects');
   /** The outline that was switched off, so switching it back on restores it. */
   const last = useRef<Stroke | undefined>(undefined);
+  const isMixed = (field: keyof Stroke | 'state') => mixed?.has(field) ?? false;
   const style: Dash | 'none' = value ? (value.dash ?? 'solid') : 'none';
   const styles: (Dash | 'none')[] = required
     ? ['solid', 'dashed', 'dotted']
     : ['none', 'solid', 'dashed', 'dotted'];
 
-  const commit = (stroke: Stroke | null) => {
-    onChange(stroke);
+  /** A step of a drag: the change, and what it makes of the outline on show. */
+  const change = (next: StrokeChange) => onChange(next(value), next);
+  /** A change that is a whole undo step by itself. */
+  const commit = (next: StrokeChange) => {
+    change(next);
     onGestureEnd();
   };
+  /** Sets fields of the outline an element has; one without an outline starts from the one on show. */
+  const set =
+    (fields: Partial<Stroke>): StrokeChange =>
+    (own) => ({ ...(own ?? value ?? defaultStroke), ...fields });
   const setStyle = (next: Dash | 'none') => {
     if (next === 'none') {
       last.current = value;
-      return commit(null);
+      return commit(() => null);
     }
-    const { dash: _dash, ...base } = value ?? last.current ?? defaultStroke;
-    commit(next === 'solid' ? base : { ...base, dash: next });
+    commit((own) => {
+      const { dash: _dash, ...base } = own ?? last.current ?? defaultStroke;
+      return next === 'solid' ? base : { ...base, dash: next };
+    });
   };
 
   return (
@@ -84,24 +112,26 @@ export function StrokeEditor({
         aria-label={t('stroke.style')}
         fill
         options={styles.map((option) => ({ value: option, label: t(`stroke.${option}`) }))}
-        value={style}
+        value={isMixed('state') || isMixed('dash') ? (NO_CHOICE as Dash) : style}
         onValueChange={setStyle}
       />
+      {isMixed('state') && <p className="text-xs text-ui-fg-muted">{t('several.stroke')}</p>}
       {value && (
         <>
           <ColorRow
             label={t('stroke.color')}
             value={value.color}
-            onChange={(color) => onChange({ ...value, color })}
+            mixed={isMixed('color')}
+            onChange={(color) => change(set({ color }))}
             onGestureEnd={onGestureEnd}
           />
           <SliderField
             label={t('stroke.width')}
-            value={value.width}
+            value={isMixed('width') ? null : value.width}
             min={1}
             max={MAX_STROKE}
             unit="px"
-            onChange={(width) => onChange({ ...value, width })}
+            onChange={(width) => change(set({ width }))}
             onCommit={onGestureEnd}
           />
           {capAndJoin && (
@@ -113,8 +143,12 @@ export function StrokeEditor({
                   size="sm"
                   options={caps.map((cap) => ({ value: cap, label: t(capLabels[cap]) }))}
                   // As the renderer draws a stroke that names no cap: dots are round.
-                  value={value.cap ?? (value.dash === 'dotted' ? 'round' : 'butt')}
-                  onValueChange={(cap) => commit({ ...value, cap })}
+                  value={
+                    isMixed('cap') || isMixed('dash')
+                      ? (NO_CHOICE as Cap)
+                      : (value.cap ?? (value.dash === 'dotted' ? 'round' : 'butt'))
+                  }
+                  onValueChange={(cap) => commit(set({ cap }))}
                 />
               </Field>
               <Field label={t('stroke.join')}>
@@ -123,8 +157,8 @@ export function StrokeEditor({
                   fill
                   size="sm"
                   options={joins.map((join) => ({ value: join, label: t(joinLabels[join]) }))}
-                  value={value.join ?? defaultJoin}
-                  onValueChange={(join) => commit({ ...value, join })}
+                  value={isMixed('join') ? (NO_CHOICE as Join) : (value.join ?? defaultJoin)}
+                  onValueChange={(join) => commit(set({ join }))}
                 />
               </Field>
             </>
@@ -135,11 +169,16 @@ export function StrokeEditor({
   );
 }
 
+/** A change to a shadow, as a function of the shadow it is made to. Null takes the shadow away. */
+export type ShadowChange = (shadow: Shadow | undefined) => Shadow | null;
+
 export interface ShadowEditorProps {
   /** Undefined for no shadow. */
   value: Shadow | undefined;
-  /** Null removes the shadow. */
-  onChange: (shadow: Shadow | null) => void;
+  /** With several elements: the fields of the shadow they do not share. */
+  mixed?: MixedFields<Shadow>;
+  /** The shadow after the change, and the change itself. Null removes the shadow. */
+  onChange: (shadow: Shadow | null, change: ShadowChange) => void;
   onGestureEnd: () => void;
   /** What "on" gives: the shadow of the deck's theme. */
   themeShadow: Shadow;
@@ -160,6 +199,7 @@ function withSpread(shadow: Shadow, spread: number): Shadow {
 /** The shadow of an element (SHP-03, IMG-08): on or off, offset, blur, spread and colour. */
 export function ShadowEditor({
   value,
+  mixed,
   onChange,
   onGestureEnd,
   themeShadow,
@@ -169,27 +209,38 @@ export function ShadowEditor({
   /** The shadow that was switched off, so switching it back on restores it. */
   const last = useRef<Shadow | undefined>(undefined);
 
-  const commit = (shadow: Shadow | null) => {
-    onChange(shadow);
+  const isMixed = (field: keyof Shadow | 'state') => mixed?.has(field) ?? false;
+
+  /** A step of a drag: the change, and what it makes of the shadow on show. */
+  const change = (next: ShadowChange) => onChange(next(value), next);
+  /** A change that is a whole undo step by itself. */
+  const commit = (next: ShadowChange) => {
+    change(next);
     onGestureEnd();
   };
+  /** Sets fields of the shadow an element has; one without a shadow starts from the one on show. */
+  const set =
+    (fields: Partial<Shadow>): ShadowChange =>
+    (own) => ({ ...(own ?? value ?? themeShadow), ...fields });
 
   return (
     <>
-      <SegmentedControl
+      <SegmentedControl<'off' | 'on'>
         aria-label={t('shadow.state')}
         fill
         options={[
           { value: 'off', label: t('shadow.off') },
           { value: 'on', label: t('shadow.on') },
         ]}
-        value={value ? 'on' : 'off'}
+        value={isMixed('state') ? (NO_CHOICE as 'off') : value ? 'on' : 'off'}
         onValueChange={(state) => {
-          if (state === 'on') return commit(last.current ?? themeShadow);
+          // An element that has a shadow keeps its own.
+          if (state === 'on') return commit((own) => own ?? last.current ?? themeShadow);
           last.current = value;
-          commit(null);
+          commit(() => null);
         }}
       />
+      {isMixed('state') && <p className="text-xs text-ui-fg-muted">{t('several.shadow')}</p>}
       {value && (
         <>
           <div className="flex gap-3">
@@ -200,8 +251,9 @@ export function ShadowEditor({
                 unit="px"
                 min={-MAX_OFFSET}
                 max={MAX_OFFSET}
-                value={value.x}
-                onValueChange={(x) => commit({ ...value, x })}
+                value={isMixed('x') ? null : value.x}
+                placeholder="–"
+                onValueChange={(x) => commit(set({ x }))}
               />
             </Field>
             <Field label={t('shadow.y')} className="flex-1">
@@ -211,33 +263,35 @@ export function ShadowEditor({
                 unit="px"
                 min={-MAX_OFFSET}
                 max={MAX_OFFSET}
-                value={value.y}
-                onValueChange={(y) => commit({ ...value, y })}
+                value={isMixed('y') ? null : value.y}
+                placeholder="–"
+                onValueChange={(y) => commit(set({ y }))}
               />
             </Field>
           </div>
           <SliderField
             label={t('shadow.blur')}
-            value={value.blur}
+            value={isMixed('blur') ? null : value.blur}
             max={MAX_BLUR}
             unit="px"
-            onChange={(blur) => onChange({ ...value, blur })}
+            onChange={(blur) => change(set({ blur }))}
             onCommit={onGestureEnd}
           />
           {spread && (
             <SliderField
               label={t('shadow.spread')}
-              value={value.spread ?? 0}
+              value={isMixed('spread') ? null : (value.spread ?? 0)}
               max={MAX_SPREAD}
               unit="px"
-              onChange={(next) => onChange(withSpread(value, next))}
+              onChange={(next) => change((own) => withSpread(own ?? value, next))}
               onCommit={onGestureEnd}
             />
           )}
           <ColorRow
             label={t('shadow.color')}
             value={value.color}
-            onChange={(color) => onChange({ ...value, color })}
+            mixed={isMixed('color')}
+            onChange={(color) => change(set({ color }))}
             onGestureEnd={onGestureEnd}
           />
         </>
@@ -276,8 +330,8 @@ export function OpacityEditor({
   onChange,
   onGestureEnd,
 }: {
-  /** 0..1, as the model has it. */
-  value: number;
+  /** 0..1, as the model has it; null when the selected elements do not share one. */
+  value: number | null;
   label: string;
   onChange: (opacity: number) => void;
   onGestureEnd: () => void;
@@ -285,7 +339,7 @@ export function OpacityEditor({
   return (
     <SliderField
       label={label}
-      value={Math.round(value * 100)}
+      value={value === null ? null : Math.round(value * 100)}
       unit="%"
       onChange={(percent) => onChange(percent / 100)}
       onCommit={onGestureEnd}

@@ -234,6 +234,11 @@ export const he = {
     look: 'מראה התמונה',
     html: 'קוד',
   },
+  several: {
+    fill: 'לאובייקטים שנבחרו מילויים שונים. בחירה כאן תחול על כולם.',
+    stroke: 'רק לחלק מהאובייקטים שנבחרו יש קו מתאר. בחירה כאן תחול על כולם.',
+    shadow: 'רק לחלק מהאובייקטים שנבחרו יש צל. בחירה כאן תחול על כולם.',
+  },
   code: {
     title: 'קוד',
     open: 'עריכת הקוד',
@@ -544,6 +549,11 @@ export const en: Messages<typeof he> = {
     image: 'Image',
     look: 'Look of the image',
     html: 'Code',
+  },
+  several: {
+    fill: 'The selected objects have different fills. A choice here goes to all of them.',
+    stroke: 'Only some of the selected objects have an outline. A choice here goes to all of them.',
+    shadow: 'Only some of the selected objects have a shadow. A choice here goes to all of them.',
   },
   code: {
     title: 'Code',

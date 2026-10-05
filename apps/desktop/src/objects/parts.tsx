@@ -101,9 +101,24 @@ export function InlineField({ label, children }: { label: string; children: Reac
   );
 }
 
+/**
+ * In place of the bar under a tool's icon, when the selected elements do not share the value the
+ * bar would show: an empty, dashed bar, which is neither a colour nor "none".
+ */
+export function MixedBar() {
+  return (
+    <span
+      aria-hidden
+      data-mixed
+      className="block h-1.5 w-4 shrink-0 rounded-small border border-dashed border-ui-fg-subtle"
+    />
+  );
+}
+
 export interface SliderFieldProps {
   label: string;
-  value: number;
+  /** Null when the selected elements do not share one: the number is empty, the slider at rest. */
+  value: number | null;
   /** Every step of a drag, and a committed number. */
   onChange: (value: number) => void;
   /** The drag or the edit ended: close the undo step. */
@@ -131,7 +146,7 @@ export function SliderField({
         <Slider
           aria-label={label}
           className="min-w-0 flex-1"
-          value={Math.min(max, Math.max(min, value))}
+          value={Math.min(max, Math.max(min, value ?? min))}
           min={min}
           max={max}
           step={step}
@@ -143,6 +158,7 @@ export function SliderField({
           size="sm"
           className="w-18 shrink-0"
           value={value}
+          placeholder="–"
           min={min}
           max={max}
           step={step}
@@ -160,6 +176,8 @@ export function SliderField({
 export interface ColorRowProps {
   label: string;
   value: Color;
+  /** The selected elements do not share one colour: `value` is then not shown. */
+  mixed?: boolean;
   /** Every change, also each step of a drag in the picker. */
   onChange: (color: Color) => void;
   /** A drag or an edit in the picker ended, or the picker closed. */
@@ -167,14 +185,15 @@ export interface ColorRowProps {
 }
 
 /** A colour in a popover: its label, what it is (the theme token it follows, or its hex), and the swatch that opens the picker. */
-export function ColorRow({ label, value, onChange, onGestureEnd }: ColorRowProps) {
+export function ColorRow({ label, value, mixed = false, onChange, onGestureEnd }: ColorRowProps) {
   const { t } = useTranslation('controls');
   const theme = useDeck((s) => s.deck.theme);
-  const name =
-    'token' in value
+  const name = mixed
+    ? t('mixed')
+    : 'token' in value
       ? t(`token.${value.token}`)
       : colorToHex({ value: value.value }, theme).toUpperCase();
-  const translucent = value.alpha !== undefined && value.alpha < 1;
+  const translucent = !mixed && value.alpha !== undefined && value.alpha < 1;
   return (
     <InlineField label={label}>
       <span className="flex items-center gap-1.5 text-xs text-ui-fg-muted tabular-nums">
@@ -182,6 +201,7 @@ export function ColorRow({ label, value, onChange, onGestureEnd }: ColorRowProps
         {translucent && <span dir="ltr">{Math.round((value.alpha ?? 1) * 100)}%</span>}
         <ColorField
           value={value}
+          mixed={mixed}
           label={label}
           alpha
           size="sm"
