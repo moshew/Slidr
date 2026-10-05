@@ -25,3 +25,9 @@ export {
   type AttachedFile,
   type Exchange,
 } from './turn';
+export {
+  IMPORT_TAG,
+  importProgress,
+  type CapturedSlide,
+  type ImportProgressInput,
+} from './importSession';
