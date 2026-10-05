@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import contract from '../../src-tauri/src/stock/fixtures/contract.json';
 import type { AssetService } from '../document/assets';
 import { memorySettings } from '../settings/memorySettings';
+import { elementForAsset } from '../stage/insert';
 import { createStockService } from './appStock';
 import { memoryStock } from './memoryStock';
 import {
@@ -83,6 +84,25 @@ describe('the IPC contract (src-tauri/src/stock/fixtures/contract.json)', () => 
       url: 'https://example.com/@ugmonk?utm_source=slidr&utm_medium=referral',
     });
     expect(creditOf({ ...asset, attribution: undefined })).toBeUndefined();
+  });
+
+  it('a photo is named on the slide by the whole description the library gave it', () => {
+    // A description is a sentence, and a full stop in it is not the dot of a file extension.
+    for (const description of ['Sunset over Mt. Fuji', 'A man drinking a coffee.', 'Version 2.0']) {
+      const asset = stockAsset({ ...(contract.imported as ImportedPhoto), description });
+      const element = elementForAsset(asset, { w: 1920, h: 1080 }, { x: 960, y: 540 });
+      expect(element).toMatchObject({ type: 'image', name: description, alt: description });
+    }
+    // A file is still named without its extension, whatever else its name holds.
+    const named = (name: string) =>
+      elementForAsset(
+        { ...stockAsset(contract.imported as ImportedPhoto), origin: 'upload', name },
+        { w: 1920, h: 1080 },
+        { x: 960, y: 540 },
+      )?.name;
+    expect(named('IMG_0001.jpg')).toBe('IMG_0001');
+    expect(named('trip.to.mt.fuji.JPEG')).toBe('trip.to.mt.fuji');
+    expect(named('Trip to Mt. Fuji')).toBe('Trip to Mt. Fuji');
   });
 });
 

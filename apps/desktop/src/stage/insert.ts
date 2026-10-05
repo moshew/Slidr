@@ -17,6 +17,16 @@ const MAX_SHARE = 0.6;
 const CASCADE = 40;
 
 /**
+ * The name an asset gives its element: a file's name without its extension. A stock photo is
+ * named by the library's description of it, which is a sentence and is kept whole: its last full
+ * stop is not the dot of an extension.
+ */
+function elementName(asset: AssetMeta): string | undefined {
+  if (asset.origin === 'stock') return asset.name;
+  return asset.name?.replace(/\.[^.\s]+$/, '');
+}
+
+/**
  * The element that shows an asset, or undefined for assets that are not pictures, video or sound.
  * `svgMarkup` is the cleaned markup of an SVG file: with it the element holds the markup itself,
  * so its colours can be replaced (SHP-06), and needs no asset.
@@ -34,7 +44,7 @@ export function elementForAsset(
   // Keep the whole element on the slide.
   const x = Math.round(Math.min(Math.max(center.x - w / 2, 0), slide.w - w));
   const y = Math.round(Math.min(Math.max(center.y - h / 2, 0), slide.h - h));
-  const name = asset.name?.replace(/\.[^.]+$/, '');
+  const name = elementName(asset);
   const base = { frame: { x, y, w, h }, ...(name ? { name } : {}) };
   switch (asset.kind) {
     case 'image':
