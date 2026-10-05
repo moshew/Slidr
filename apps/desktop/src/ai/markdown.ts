@@ -114,13 +114,38 @@ export function parseInline(source: string): Inline[] {
   return out;
 }
 
+/*
+ * A reply is untrusted text, parsed again on every streamed piece and every time its chat is
+ * shown: no line of it may cost more than its length. So no pattern here has two optional runs
+ * of white space that can share one run of the line between them (`\s*#*\s*$`, `^\s*\|?\s*`):
+ * such a pattern tries every way to share it, and a line with a few thousand spaces in a row
+ * froze the window. A line is trimmed first, and the pattern is written for what is left.
+ */
+
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
-const HEADING = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+/** The marks that open a heading, with the white space after them. */
+const HEADING_OPEN = /^ {0,3}(#{1,6})\s+/;
 const RULE = /^ {0,3}([-*_])(?:\s*\1){2,}\s*$/;
 const BULLET = /^( *)([-*+])\s+(.*)$/;
 const NUMBER = /^( *)(\d{1,9})[.)]\s+(.*)$/;
 const QUOTE = /^ {0,3}>\s?(.*)$/;
-const TABLE_DIVIDER = /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/;
+/** The line under the head of a table, trimmed: `|---|:-:|`. */
+const TABLE_DIVIDER = /^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$/;
+
+/** A heading line as its level and its text; null for a line that is not one. */
+function headingOf(line: string): { level: 1 | 2 | 3; text: string } | null {
+  const open = HEADING_OPEN.exec(line);
+  if (!open) return null;
+  let text = line.slice(open[0].length).trimEnd();
+  // A closing run of `#` is decoration only where a space comes before it: "## Plan ##" is
+  // "Plan", and "## Using C#" keeps its sign.
+  let end = text.length;
+  while (end > 0 && text[end - 1] === '#') end--;
+  if (end === 0 || /\s/.test(text[end - 1]!)) text = text.slice(0, end).trimEnd();
+  return { level: Math.min(open[1]!.length, 3) as 1 | 2 | 3, text };
+}
+
+const isTableDivider = (line: string): boolean => TABLE_DIVIDER.test(line.trim());
 
 function cells(line: string): Inline[][] {
   const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
@@ -130,7 +155,7 @@ function cells(line: string): Inline[][] {
 function isBlockStart(line: string): boolean {
   return (
     FENCE.test(line) ||
-    HEADING.test(line) ||
+    HEADING_OPEN.test(line) ||
     RULE.test(line) ||
     BULLET.test(line) ||
     NUMBER.test(line) ||
@@ -161,10 +186,9 @@ export function parseMarkdown(source: string): Block[] {
       continue;
     }
 
-    const heading = HEADING.exec(line);
+    const heading = headingOf(line);
     if (heading) {
-      const level = Math.min(heading[1]!.length, 3) as 1 | 2 | 3;
-      blocks.push({ type: 'heading', level, children: parseInline(heading[2]!) });
+      blocks.push({ type: 'heading', level: heading.level, children: parseInline(heading.text) });
       i++;
       continue;
     }
@@ -209,7 +233,7 @@ export function parseMarkdown(source: string): Block[] {
       continue;
     }
 
-    if (line.includes('|') && TABLE_DIVIDER.test(lines[i + 1] ?? '')) {
+    if (line.includes('|') && isTableDivider(lines[i + 1] ?? '')) {
       const head = cells(line);
       const rows: Inline[][][] = [];
       i += 2;

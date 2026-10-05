@@ -116,4 +116,51 @@ describe('Markdown blocks', () => {
       expect(() => parseMarkdown(odd)).not.toThrow();
     }
   });
+
+  it('closes a heading with a run of "#" only where a space comes before it', () => {
+    const heading = (line: string) => parseMarkdown(line)[0];
+    expect(heading('## Plan ##')).toEqual({ type: 'heading', level: 2, children: [text('Plan')] });
+    expect(heading('# Plan #   ')).toEqual({ type: 'heading', level: 1, children: [text('Plan')] });
+    // The bug hunt's `ai-ui.md`, finding 18: the sign of a name was taken for the closing run.
+    expect(heading('## Using C#')).toEqual({
+      type: 'heading',
+      level: 2,
+      children: [text('Using C#')],
+    });
+    expect(heading('# F# and C#')).toMatchObject({ children: [text('F# and C#')] });
+    // A heading of nothing, and a line that only looks like one.
+    expect(heading('# ##')).toEqual({ type: 'heading', level: 1, children: [] });
+    expect(heading('#Plan')).toMatchObject({ type: 'paragraph' });
+  });
+});
+
+describe('a line of a reply costs no more than its length', () => {
+  const time = (run: () => void): number => {
+    const start = performance.now();
+    run();
+    return performance.now() - start;
+  };
+
+  // The bug hunt's `ai-ui.md`, finding 9: the pattern of a heading tried every way to share a
+  // run of spaces between its optional parts, in the cube of the run. 2,400 spaces took one to
+  // five seconds on the UI thread, and 5,000 took a minute.
+  it('a heading with a long run of spaces in it', () => {
+    const run = ' '.repeat(2400);
+    expect(time(() => parseMarkdown(`# a${run}b`))).toBeLessThan(200);
+    expect(parseMarkdown(`# a${run}b ##${run}`)).toEqual([
+      { type: 'heading', level: 1, children: [text(`a${run}b`)] },
+    ]);
+  });
+
+  // The same fault, in the square of the run: 64,000 spaces took about two seconds.
+  it('the line under what may be the head of a table', () => {
+    const run = ' '.repeat(64_000);
+    for (const under of [`${run}x`, `---${run}x`, `|---${run}x`, `|---|${run}---${run}x`]) {
+      expect(time(() => parseMarkdown(`| a | b |\n${under}`))).toBeLessThan(300);
+    }
+    // And such a line is still read as what it is.
+    expect(parseMarkdown(`| a |\n  |${run}:--${run}|  \n| 1 |`)).toMatchObject([
+      { type: 'table', rows: [[[text('1')]]] },
+    ]);
+  });
 });
