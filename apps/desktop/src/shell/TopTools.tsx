@@ -84,7 +84,8 @@ export function TopTools() {
   // A tool that is used with the pointer does not keep the keyboard (`toolFocus.ts`).
   useEffect(() => (rows.current ? watchToolFocus(rows.current) : undefined), []);
   return (
-    <div ref={rows} className="shrink-0 bg-ui-panel">
+    // A container, so that row B can tell how wide it is itself, whatever the window is.
+    <div ref={rows} className="@container shrink-0 bg-ui-panel">
       <RowA />
       <RowB />
     </div>
@@ -575,8 +576,9 @@ function RowB() {
       data-testid="top-tools-b"
       data-selection={kind}
       // The groups are 12px apart: at 16 the row of a text box, the fullest one, did not hold the
-      // tools of all the areas at 1920 or at 1366.
-      className="flex h-toolbar-b items-center gap-3 border-b border-ui-line px-3"
+      // tools of all the areas at 1920 or at 1366. In a row as narrow as the one of 1366 they are
+      // 8px apart: at 12 the row of a table was wider than the editor there, in English.
+      className="flex h-toolbar-b items-center gap-3 border-b border-ui-line px-3 @max-4xl:gap-2"
     >
       <span
         data-testid="selection-label"
@@ -585,7 +587,7 @@ function RowB() {
         <Icon icon={kindIcons[kind]} className="text-ui-fg-muted" />
         {label}
       </span>
-      <ToolStrip testId="row-tools" startOver={kind} gaps="gap-3">
+      <ToolStrip testId="row-tools" startOver={kind} gaps="gap-3 @max-4xl:gap-2">
         {groups.map((group) => (
           <Group key={group[0]?.group}>
             {group.map(({ id, render: Tool }) => (

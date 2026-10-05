@@ -169,26 +169,41 @@ test('the padding of the selected cells is set across and down, each one undo st
   await expect(stage(page)).toBeVisible();
 });
 
-test('row B of a table keeps every tool on the screen at 1366, the padding too', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1366, height: 768 });
-  await openApp(page, { lang: 'he' });
-  const id = await addTable(page, { dir: 'rtl', texts: GRID });
-  for (const typing of [false, true]) {
-    if (typing) await typeInCell(page, id, 1, 1);
-    else await selectCell(page, id, 1, 1);
-    await expect(row(page).getByRole('button', { name: 'ריפוד התאים', exact: true })).toBeVisible();
-    const outside = await row(page).evaluate((bar) => {
-      const box = bar.getBoundingClientRect();
-      return [...bar.querySelectorAll('button')]
-        .filter((button) => {
-          const b = button.getBoundingClientRect();
-          return b.width > 0 && (b.left < box.left - 0.5 || b.right > box.right + 0.5);
-        })
-        .map((button) => button.getAttribute('aria-label') ?? button.textContent);
-    });
-    expect(outside).toEqual([]);
-    await page.keyboard.press('Escape');
-  }
-});
+for (const { lang, dir, padding } of [
+  { lang: 'he', dir: 'rtl', padding: 'ריפוד התאים' },
+  { lang: 'en', dir: 'ltr', padding: 'Cell padding' },
+] as const) {
+  test(`row B of a table keeps every tool on the screen at 1366, the padding too: ${lang}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await openApp(page, { lang });
+    const id = await addTable(page, { dir, texts: GRID });
+    for (const typing of [false, true]) {
+      if (typing) await typeInCell(page, id, 1, 1);
+      else await selectCell(page, id, 1, 1);
+      await expect(row(page).getByRole('button', { name: padding, exact: true })).toBeVisible();
+      const outside = await row(page).evaluate((bar) => {
+        const box = bar.getBoundingClientRect();
+        return [...bar.querySelectorAll('button')]
+          .filter((button) => {
+            const b = button.getBoundingClientRect();
+            return b.width > 0 && (b.left < box.left - 0.5 || b.right > box.right + 0.5);
+          })
+          .map((button) => button.getAttribute('aria-label') ?? button.textContent);
+      });
+      expect(outside).toEqual([]);
+      // The row holds its tools with its own padding to spare: none of them is scrolled out of
+      // sight, as they are when the row is narrower than they are (`editor-row-scroll.spec.ts`).
+      const fit = await row(page).evaluate((bar) => {
+        const strip = bar.querySelector('[data-row-tools]')!;
+        return {
+          hidden: strip.scrollWidth - strip.clientWidth,
+          arrows: bar.querySelectorAll('[data-testid^="row-tools-"]').length,
+        };
+      });
+      expect(fit).toEqual({ hidden: 0, arrows: 0 });
+      await page.keyboard.press('Escape');
+    }
+  });
+}
