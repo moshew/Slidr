@@ -63,6 +63,8 @@ export interface FillEditorProps {
   defaultColor: Color;
   /** Offers "none". A slide background always has a fill. */
   allowNone?: boolean;
+  /** Offers a picture. The stripe of an accent is too thin to show one. */
+  allowImage?: boolean;
 }
 
 /**
@@ -77,6 +79,7 @@ export function FillEditor({
   onGestureEnd,
   defaultColor,
   allowNone = true,
+  allowImage = true,
 }: FillEditorProps) {
   const { t } = useTranslation('objects');
   const { assets } = useEditor();
@@ -122,9 +125,9 @@ export function FillEditor({
     if (mixed || next !== value) commit(next);
   };
 
-  const kinds: FillKind[] = allowNone
-    ? ['none', 'solid', 'gradient', 'image']
-    : ['solid', 'gradient', 'image'];
+  const kinds = (['none', 'solid', 'gradient', 'image'] satisfies FillKind[]).filter(
+    (option) => (allowNone || option !== 'none') && (allowImage || option !== 'image'),
+  );
 
   return (
     <div className="flex flex-col gap-3" data-testid="fill-editor">

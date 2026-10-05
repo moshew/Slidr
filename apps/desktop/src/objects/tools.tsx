@@ -28,6 +28,7 @@ import {
   Layers2,
   MoveRight,
   PaintBucket,
+  PanelTop,
   PenLine,
   Scaling,
   SlidersHorizontal,
@@ -41,6 +42,8 @@ import { useTranslation } from 'react-i18next';
 import { colorToHex, useGestureTx } from '../controls';
 import { UpscaleTool } from '../images/UpscaleTool';
 import { useDeck, useEditor, useSelection } from '../shell';
+import { takesAccent } from './accent';
+import { AccentEditor } from './AccentEditor';
 import { OpacityEditor, RadiusEditor, ShadowEditor, StrokeEditor } from './editors';
 import {
   radiusControl,
@@ -243,6 +246,29 @@ function OpacityTool({ targets }: { targets: Targets }) {
   );
 }
 
+/** The coloured side of a box (ADR-073). The bar under the icon is its colour, or the "none" mark. */
+function AccentTool({ target }: { target: Target<ShapeElement> }) {
+  const { t } = useTranslation('objects');
+  const { change, end } = useStyleUpdate(target);
+  return (
+    <PopoverTool
+      label={t('accent.title')}
+      icon={PanelTop}
+      bar={<FillSwatch fill={target.element.accent?.fill ?? NO_FILL} className="h-1.5 w-4" />}
+      onClose={end}
+      startsWithIcons
+    >
+      <AccentEditor
+        shape={target.element}
+        onChange={(patch, asset) =>
+          change(patch, asset ? [{ type: 'asset.add', asset }] : undefined)
+        }
+        onGestureEnd={end}
+      />
+    </PopoverTool>
+  );
+}
+
 /** Corners (where they can be rounded), shadow and opacity, as three buttons. */
 function EffectTools({ target }: { target: Target }) {
   const { t } = useTranslation('objects');
@@ -318,7 +344,8 @@ function CurveTool({ target }: { target: Target<LineElement> }) {
 
 /**
  * Row B for the `shape` kind of selection, which covers three element types: a shape (fill,
- * outline, effects), a line (stroke, heads, curve, effects) and an SVG (its colours, effects).
+ * outline, accent, effects), a line (stroke, heads, curve, effects) and an SVG (its colours,
+ * effects).
  */
 export function ShapeRow() {
   const { t } = useTranslation('objects');
@@ -329,6 +356,7 @@ export function ShapeRow() {
         <ToolGroup label={t('groups.paint')}>
           {shapeHasFill(target.element) && <FillTool targets={only(target)} />}
           <StrokeTool targets={only(target)} label={t('stroke.outline')} icon={PenLine} />
+          {takesAccent(target.element) && <AccentTool target={target} />}
         </ToolGroup>
         <EffectTools target={target} />
       </ToolRow>

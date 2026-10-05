@@ -46,11 +46,30 @@ export interface PopoverToolProps {
   bar?: ReactNode;
   /** The popover closed: the place to close an undo step that a field left open. */
   onClose?: () => void;
+  /**
+   * The popover starts with a row of icons. The keyboard then goes to the popover itself when it
+   * opens, not to its first control: a focused icon shows its tooltip, over its neighbours, and
+   * the first Esc would close the tooltip instead of the popover.
+   */
+  startsWithIcons?: boolean;
   children: ReactNode;
 }
 
+/** For `onOpenAutoFocus` of a popover: the focus goes to the popover, and Tab to its controls. */
+function focusPopover(event: Event): void {
+  event.preventDefault();
+  if (event.target instanceof HTMLElement) event.target.focus({ preventScroll: true });
+}
+
 /** A row B button that opens a popover with the controls of one property. */
-export function PopoverTool({ label, icon, bar, onClose, children }: PopoverToolProps) {
+export function PopoverTool({
+  label,
+  icon,
+  bar,
+  onClose,
+  startsWithIcons = false,
+  children,
+}: PopoverToolProps) {
   return (
     <Popover onOpenChange={(open) => !open && onClose?.()}>
       <Tooltip content={label}>
@@ -61,7 +80,11 @@ export function PopoverTool({ label, icon, bar, onClose, children }: PopoverTool
           </button>
         </PopoverTrigger>
       </Tooltip>
-      <PopoverContent>
+      <PopoverContent
+        {...(startsWithIcons
+          ? { onOpenAutoFocus: focusPopover, className: 'focus-visible:outline-none' }
+          : {})}
+      >
         <div className="flex flex-col gap-3">{children}</div>
       </PopoverContent>
     </Popover>
