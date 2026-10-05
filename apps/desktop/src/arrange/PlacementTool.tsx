@@ -1,4 +1,4 @@
-import { findSlide } from '@slidr/model';
+import { findSlide, newId } from '@slidr/model';
 import {
   Icon,
   NumberField,
@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeck, useEditor, useSelection, type ContextToolProps } from '../shell';
 import { indexElements } from '../stage/space';
+import { syncGrowHeights } from '../text/actions';
 import {
   keepsAspect,
   MIN_SIDE,
@@ -78,7 +79,12 @@ export function PlacementTool(_: ContextToolProps) {
 
   const set = (field: PlacementField, value: number) => {
     const commands = placementCommands(slide, element.id, field, value, keep);
-    if (commands.length > 0) bus.batch(commands, { label: t(`history.${field}`) });
+    if (commands.length === 0) return;
+    const txId = newId('tx');
+    bus.batch(commands, { txId, label: t(`history.${field}`) });
+    // A text box that grows with its text is as tall as the text is in its new width, and never
+    // the height that was typed: the number in the field goes back to what is drawn.
+    if (field === 'w' || field === 'h') syncGrowHeights(bus, [element.id], txId);
   };
 
   return (

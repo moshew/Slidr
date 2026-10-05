@@ -21,6 +21,7 @@ import {
 import { SlideRenderer, type AssetResolver, type HtmlSlot, type TextSlot } from '@slidr/renderer';
 import { fitRows } from '../table/fit';
 import { useTableStage } from '../table/stage';
+import { syncGrowHeights } from '../text/actions';
 import { createHtmlTextEditing } from '../text/htmlEditing';
 import { TextEditor } from '../text/TextEditor';
 import {
@@ -668,6 +669,12 @@ export function Stage({
       // A table cannot be shorter than its text: its rows are written as they came out.
       for (const { element } of g.items)
         if (element.type === 'table') fitRows(bus, element.id, g.txId);
+      // And a text box that grows with its text is as tall as the text is in its new width.
+      syncGrowHeights(
+        bus,
+        g.items.map((l) => l.element.id),
+        g.txId,
+      );
     }
   };
 
@@ -1258,9 +1265,17 @@ export function Stage({
     }
     const step = far ? 10 : 1;
     const by = { x: dir.x * step, y: dir.y * step };
+    // A text box that grows with its text follows its new width, as after a drag of a handle.
+    const grown = () =>
+      syncGrowHeights(
+        bus,
+        elements.map((el) => el.id),
+        txId,
+      );
     if (!one) {
       const next = { ...box, w: Math.max(4, box.w + by.x), h: Math.max(4, box.h + by.y) };
       commit(txId, 'Resize', path, resizeTogether(elements, box, next));
+      grown();
       return;
     }
     const { element } = one;
@@ -1289,6 +1304,7 @@ export function Stage({
     commit(txId, 'Resize', one.path, patches);
     // A table cannot be shorter than its text: its rows are written as they came out.
     if (element.type === 'table') fitRows(bus, element.id, txId);
+    grown();
   };
 
   /** The elements Tab goes through: those of the group being worked in, bottom to top. */

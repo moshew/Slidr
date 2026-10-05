@@ -10,6 +10,7 @@ import {
 import { SLIDR_MIME, textBoxFor } from '../arrange/clip';
 import { i18n } from '../i18n';
 import { focusStage, getEditor, type Editor } from '../shell';
+import { syncGrowHeights } from '../text/actions';
 import { SLIDR_TEXT_MIME } from '../text/paste';
 import { fitRows } from './fit';
 import { tableFrame } from './insert';
@@ -97,8 +98,11 @@ function pasteTextBox(editor: Editor, text: string): void {
   const slideId = selection.getState().currentSlideId;
   const element = textBoxFor(text, bus.deck);
   if (!slideId || !element) return;
-  bus.dispatch({ type: 'element.add', slideId, element }, { label: label('paste') });
+  const txId = newId('tx');
+  bus.dispatch({ type: 'element.add', slideId, element }, { txId, label: label('paste') });
   selection.getState().selectElements([element.id]);
+  // The height the box was made with is a guess by its lines; the text wraps as it will.
+  syncGrowHeights(bus, [element.id], txId);
 }
 
 function onPaste(event: ClipboardEvent): void {

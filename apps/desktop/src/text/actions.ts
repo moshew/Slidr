@@ -2,6 +2,7 @@ import {
   findElementInDeck,
   newId,
   updateElement,
+  walkElements,
   type CommandBus,
   type ElementPatch,
   type Insets,
@@ -158,8 +159,31 @@ export function syncGrowHeight(
   };
   requestAnimationFrame(() => {
     measure();
-    if (document.fonts.status === 'loading') void document.fonts.ready.then(measure);
+    // A document without a font set (a test's) has no font on its way either.
+    const fonts = (document as { fonts?: FontFaceSet }).fonts;
+    if (fonts?.status === 'loading') void fonts.ready.then(measure);
   });
+}
+
+/**
+ * The same for a change that did not come from the text: a box that was made narrower wraps its
+ * text into more lines, and a box that was pasted starts from a height that is only a guess. Every
+ * growing text box among the elements, and inside the groups among them, gets the height it is
+ * drawn at, in the undo step of that change.
+ */
+export function syncGrowHeights(
+  bus: CommandBus,
+  elementIds: readonly string[],
+  txId: string,
+): void {
+  for (const id of elementIds) {
+    const found = findElementInDeck(bus.deck, id);
+    if (!found) continue;
+    for (const element of walkElements([found.element])) {
+      if (element.type === 'text' && element.autoFit === 'growHeight')
+        syncGrowHeight(bus, element.id, txId);
+    }
+  }
 }
 
 function setText(target: TextTarget & { kind: 'element' }, content: RichText, step: Step): void {

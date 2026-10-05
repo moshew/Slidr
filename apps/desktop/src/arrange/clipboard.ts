@@ -1,6 +1,7 @@
-import type { AssetMeta, Element } from '@slidr/model';
+import { newId, type AssetMeta, type Element } from '@slidr/model';
 import { i18n } from '../i18n';
 import { getEditor, tell, type Editor } from '../shell';
+import { syncGrowHeights } from '../text/actions';
 import { target } from './actions';
 import {
   clipElements,
@@ -255,8 +256,9 @@ export async function paste(editor: Editor, clip: Clip): Promise<void> {
 
   const result = pasteCommands(bus.deck, clip, { slideId, offset, assets });
   if (result.commands.length === 0) return;
+  const txId = newId('tx');
   try {
-    bus.batch(result.commands, { label: label('history.paste') });
+    bus.batch(result.commands, { txId, label: label('history.paste') });
   } catch (error) {
     console.error('The paste was rejected', error);
     return;
@@ -264,6 +266,9 @@ export async function paste(editor: Editor, clip: Clip): Promise<void> {
   if (slideId) pastes.bySlide.set(slideId, earlier + 1);
   if (result.slideIds.length > 0) selection.getState().selectSlides(result.slideIds);
   else selection.getState().selectElements(result.elementIds);
+  // In another deck the same text is set in other fonts and sizes: a text box that grows with
+  // its text is as tall as it is drawn here.
+  syncGrowHeights(bus, result.elementIds, txId);
   if (lost > 0) void tell(label('clipboard.lostTitle'), label('clipboard.lostBody'));
 }
 
@@ -277,8 +282,14 @@ function pasteText(editor: Editor, text: string): boolean {
   const slideId = editor.selection.getState().currentSlideId;
   const element = textBoxFor(text, editor.bus.deck);
   if (!slideId || !element) return false;
-  editor.bus.dispatch({ type: 'element.add', slideId, element }, { label: label('history.paste') });
+  const txId = newId('tx');
+  editor.bus.dispatch(
+    { type: 'element.add', slideId, element },
+    { txId, label: label('history.paste') },
+  );
   editor.selection.getState().selectElements([element.id]);
+  // The height the box was made with is a guess by its lines; the text wraps as it will.
+  syncGrowHeights(editor.bus, [element.id], txId);
   return true;
 }
 
