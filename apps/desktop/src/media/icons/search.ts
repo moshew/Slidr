@@ -82,9 +82,10 @@ const PREFIXES = 'הובלמשכ';
 function hebrewForms(word: string): string[] {
   const forms = [word];
   if (word.length > 3 && PREFIXES.includes(word[0]!)) forms.push(word.slice(1));
-  // After normalising, the plural endings are "ימ" and "ות".
+  // After normalising, the plural endings are "ימ" and "ות". A plural of four letters has a
+  // singular of two ("חצימ" for "חצ"), as many common nouns do.
   for (const form of [...forms]) {
-    if (form.length > 4 && (form.endsWith('ימ') || form.endsWith('ות'))) {
+    if (form.length >= 4 && (form.endsWith('ימ') || form.endsWith('ות'))) {
       forms.push(form.slice(0, -2));
     }
   }

@@ -103,6 +103,13 @@ describe('search', () => {
     expect(ids('צ׳יפ')).toEqual(ids("צ'יפ"));
   });
 
+  it('reads a plural of four letters as its singular (ADR-069, finding 11)', () => {
+    // Pens, bins and baskets: no tag of any icon says the plural, so only the singular finds them.
+    expect(ids('עטים', 20)).toContain('lucide:pen');
+    expect(ids('פחים', 20)).toContain('lucide:trash');
+    expect(ids('סלים', 20)).toContain('tabler:basket');
+  });
+
   it('keeps the two styles apart, and finds nothing for nonsense', () => {
     expect(ids('star', 3, 'filled').every((id) => id.endsWith('-filled'))).toBe(true);
     expect(ids('star', 3, 'filled')[0]).toBe('tabler:star-filled');
