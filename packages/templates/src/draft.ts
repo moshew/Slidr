@@ -357,7 +357,8 @@ export interface DraftInput {
   /**
    * The template the draft starts as a copy of. A drawn layout replaces its layout of the same
    * archetype when it has exactly one, else the one of the same name, and takes its id; any
-   * other drawn layout is added.
+   * other drawn layout is added. A layout of the base is replaced once in a call: of two drawn
+   * layouts that would stand in for the same one, the first does, and the second is added.
    */
   base?: Template;
   description?: string;
@@ -372,12 +373,24 @@ export interface Draft {
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/** The layout of the base a drawn layout stands in for. */
-function replaced(base: Template | undefined, drawn: DrawnLayout): Layout | undefined {
+/**
+ * The layout of the base a drawn layout stands in for. A layout of the base is stood in for
+ * once: `redrawn` holds the ones earlier drawn layouts of the same call took. A second drawn
+ * layout of an archetype the base has one of is a layout more (three cards, and four), not a
+ * second version of the first, which it used to overwrite without a word.
+ */
+function replaced(
+  base: Template | undefined,
+  drawn: DrawnLayout,
+  redrawn: ReadonlySet<string>,
+): Layout | undefined {
   if (!base) return undefined;
   const ofArchetype = base.layouts.filter((layout) => layout.archetype === drawn.archetype);
-  if (ofArchetype.length === 1) return ofArchetype[0];
-  return base.layouts.find((layout) => sameName(layout.name, drawn.name));
+  const old =
+    ofArchetype.length === 1
+      ? ofArchetype[0]
+      : base.layouts.find((layout) => sameName(layout.name, drawn.name));
+  return old && !redrawn.has(old.id) ? old : undefined;
 }
 
 /**
@@ -417,9 +430,11 @@ export function draftTemplate(input: DraftInput): Draft {
   const layouts: Layout[] = copyJson(base?.layouts ?? []);
   const flipped = copyJson(base?.flipped ?? []);
   const taken = new Set(layouts.map((layout) => layout.id));
+  const redrawn = new Set<string>();
 
   for (const [index, drawn] of input.layouts.entries()) {
-    const old = replaced(base, drawn);
+    const old = replaced(base, drawn, redrawn);
+    if (old) redrawn.add(old.id);
     const own = old?.id ?? layoutId(id, index, taken);
     taken.add(own);
     const made = layoutFromSlide(drawn, { id: own, theme });

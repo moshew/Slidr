@@ -472,6 +472,57 @@ describe('draftTemplate', () => {
     expect(notes).toEqual([]);
   });
 
+  it('keeps both of two drawn layouts that would replace the same layout of the base', () => {
+    // Night has one cards layout. "Three cards" stands in for it; "Four cards" is one more.
+    const base = nightTemplate();
+    const only = base.layouts.filter((l) => l.archetype === 'cards');
+    expect(only).toHaveLength(1);
+    const { template, fills } = draftTemplate({
+      id: 'draft_4',
+      name: 'Night, more cards',
+      theme: themeFrom(base.theme, {}, { id: 'draft_4', name: 'x' }),
+      dir: base.dir,
+      layouts: [
+        { ...cards(), name: 'Three cards' },
+        { ...cards(), name: 'Four cards' },
+      ],
+      base,
+    });
+    expect(Template.safeParse(template).error?.issues).toBeUndefined();
+    const drawn = template.layouts.filter((l) => l.archetype === 'cards');
+    expect(drawn.map((l) => [l.id, l.name])).toEqual([
+      [only[0]!.id, 'Three cards'],
+      ['l_draft_4_2', 'Four cards'],
+    ]);
+    // The first in the place of the layout it replaced, the second after the layouts of the base.
+    expect(template.layouts.map((l) => l.id)).toEqual([
+      ...base.layouts.map((l) => l.id),
+      'l_draft_4_2',
+    ]);
+    // Each with the sample it was drawn with.
+    expect(Object.keys(fills).sort()).toEqual(['l_draft_4_2', only[0]!.id].sort());
+
+    // The same for two that share the name of a layout of a base with several of the archetype.
+    const paper = paperTemplate();
+    const named = paper.layouts.filter((l) => l.archetype === 'cards')[1]!;
+    const twice = draftTemplate({
+      id: 'draft_5',
+      name: 'Paper',
+      theme: themeFrom(paper.theme, {}, { id: 'draft_5', name: 'x' }),
+      dir: paper.dir,
+      layouts: [
+        { ...cards(), name: named.name },
+        { ...cards(), name: named.name },
+      ],
+      base: paper,
+    });
+    expect(twice.template.layouts).toHaveLength(paper.layouts.length + 1);
+    expect(twice.template.layouts.filter((l) => l.name === named.name).map((l) => l.id)).toEqual([
+      named.id,
+      'l_draft_5_2',
+    ]);
+  });
+
   it('turns a base drawn for the other direction, so every deck gets the layouts it got before', () => {
     const night = nightTemplate();
     const other = night.dir === 'rtl' ? 'ltr' : 'rtl';
