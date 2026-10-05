@@ -49,6 +49,7 @@ import { TransitionTool } from '../animations/TransitionTool';
 import { expandImage, useExpandWorking } from '../images/expand';
 import type { ImageProviderState } from '../images/images';
 import { paintMask } from '../images/MaskPainter';
+import { UpscaleTool } from '../images/UpscaleTool';
 import { BackgroundTool } from '../objects/BackgroundTool';
 import {
   AdjustTool,
@@ -665,6 +666,7 @@ function ImageActions({ runner }: { runner: Runner }) {
             <AdjustTool target={image} />
             <FilterTool target={image} />
             <CutoutTool target={image} />
+            <UpscaleTool elementId={image.element.id} assetId={image.element.assetId} />
             <AsBackgroundTool target={image} />
           </div>
         </Section>

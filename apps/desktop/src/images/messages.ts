@@ -55,6 +55,19 @@ export const he = {
     cancel: 'ביטול',
     failed: 'הסימון לא נשמר',
   },
+  // Upscaling (AIO-04): the button of row B, its choices, and what it says while it works.
+  upscale: {
+    title: 'הגדלת רזולוציה',
+    factor: 'פי {{factor}}',
+    result: '{{size}} פיקסלים',
+    missing: 'המודל אינו מותקן',
+    tooLarge: 'התמונה גדולה מדי',
+    starting: 'מגדיל את התמונה…',
+    working: 'מגדיל את התמונה: {{percent}}%',
+    cancel: 'ביטול ההגדלה',
+    failed: 'התמונה לא הוגדלה',
+    history: 'הגדלת רזולוציה',
+  },
 };
 
 export const en: Messages<typeof he> = {
@@ -106,5 +119,17 @@ export const en: Messages<typeof he> = {
     done: 'Done',
     cancel: 'Cancel',
     failed: 'The mark was not saved',
+  },
+  upscale: {
+    title: 'Upscale',
+    factor: '{{factor}} times the size',
+    result: '{{size}} pixels',
+    missing: 'The model is not installed',
+    tooLarge: 'The picture is too large',
+    starting: 'Upscaling the picture…',
+    working: 'Upscaling the picture: {{percent}}%',
+    cancel: 'Stop upscaling',
+    failed: 'The picture was not upscaled',
+    history: 'Upscale image',
   },
 };

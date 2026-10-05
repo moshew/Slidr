@@ -9,6 +9,7 @@ import { memoryImages } from './memoryImages';
 import { previewOf } from './preview';
 import { memoryProcess, tauriProcess, type ImageProcessClient } from './process';
 import { tauriImages } from './tauriImages';
+import { memoryUpscaler, tauriUpscaler, type ImageUpscaler } from './upscaler';
 
 export interface AppImages {
   /** The providers, jobs with progress, and cancel: what an image gallery works with. */
@@ -17,6 +18,8 @@ export interface AppImages {
   service: AgentImageService;
   /** Local processing: background removal, and whether its model is installed. */
   processor: ImageProcessClient;
+  /** Local upscaling: a job with progress, and whether its model is installed. */
+  upscaler: ImageUpscaler;
   /** The workspace jobs of `client` store into; null while no document is open. */
   workspaceId: () => string | null;
 }
@@ -38,6 +41,7 @@ export function createAppImages(
   // In memory there is one store and no workspace; the id only has to be there.
   const workspaceId = () => (document ? (document.workspace?.id ?? null) : 'memory');
   const processor = document ? tauriProcess : memoryProcess(assets, asset);
+  const upscaler = document ? tauriUpscaler : memoryUpscaler(assets, asset);
   const service = createImageService({
     client,
     workspaceId,
@@ -49,7 +53,7 @@ export function createAppImages(
     },
     ...(onEvent ? { onEvent } : {}),
   });
-  return { client, service, processor, workspaceId };
+  return { client, service, processor, upscaler, workspaceId };
 }
 
 const ofEditor = new WeakMap<Editor, AppImages>();

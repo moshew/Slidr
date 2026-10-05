@@ -30,6 +30,7 @@ import {
 } from '@slidr/ui/icons';
 import { useTranslation } from 'react-i18next';
 import { colorToHex, useGestureTx } from '../controls';
+import { UpscaleTool } from '../images/UpscaleTool';
 import { useDeck, useEditor, useSelection } from '../shell';
 import { OpacityEditor, RadiusEditor, ShadowEditor, StrokeEditor } from './editors';
 import {
@@ -389,6 +390,7 @@ export function ImageRow() {
         <AdjustTool target={target} />
         <FilterTool target={target} />
         <CutoutTool target={target} />
+        <UpscaleTool elementId={target.element.id} assetId={target.element.assetId} />
         <AsBackgroundTool target={target} />
       </ToolGroup>
       <ToolGroup label={t('groups.effects')}>
