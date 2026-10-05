@@ -113,8 +113,10 @@ export interface SessionConfig {
   /** A `nativeSessionId` from an earlier `session_started`. */
   resume?: string | null;
   /**
-   * With `resume`: what the conversation had cost when its last process ended, if known. A
-   * harness reports a running total, so without it the first resumed turn has no cost.
+   * With `resume`: the running total the harness kept for the conversation, if known: what it
+   * had cost when the last process that ended in order ended (one that died kept nothing of
+   * its own). A harness reports a running total, so without it the first resumed turn has no
+   * cost.
    */
   resumedCostUsd?: number | null;
 }

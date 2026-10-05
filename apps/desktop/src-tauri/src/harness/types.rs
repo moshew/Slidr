@@ -158,9 +158,10 @@ pub struct SessionConfig {
     /// A `native_session_id` from an earlier `session_started`.
     #[serde(default)]
     pub resume: Option<String>,
-    /// With `resume`: what the conversation had cost when its last process ended, if the app
-    /// knows. A harness reports a running total, so without it the first turn of a resumed
-    /// process has no cost of its own.
+    /// With `resume`: the running total the harness kept for the conversation, if the app
+    /// knows: what it had cost when the last process that ended in order ended (a process that
+    /// died kept nothing of its own). A harness reports a running total, so without it the
+    /// first turn of a resumed process has no cost of its own.
     #[serde(default)]
     pub resumed_cost_usd: Option<f64>,
     /// The session's own folder: the harness keeps its files here and lets the agent read only

@@ -338,6 +338,14 @@ interface Session {
   fresh: boolean;
   /** It goes on from an earlier session of the harness, with what that one had cost. */
   resumed: boolean;
+  /**
+   * What the harness's running total for the conversation was when this session's process
+   * began; absent when nobody knew. It is where the total goes back to if the process dies: a
+   * process that does not end in order keeps nothing of what its turns added, the whole ones
+   * too, and the one that resumes the conversation counts on from where this one started
+   * (measured against the real CLI: `real_cli_running_total_across_processes`).
+   */
+  baseline?: number;
   /** The settings it was started with: other settings need another session. */
   settings: string;
 }
@@ -1131,6 +1139,12 @@ export class ChatThread {
       imageInput: harness.capabilities.imageInput,
       fresh: !resume,
       resumed: Boolean(resume),
+      // A session that begins counts from nothing; one that resumes, from what was kept.
+      ...(!resume
+        ? { baseline: 0 }
+        : this.#record.spentUsd === undefined
+          ? {}
+          : { baseline: this.#record.spentUsd }),
       settings: sessionSettings(settings),
     });
     this.#session = session;
@@ -1139,8 +1153,12 @@ export class ChatThread {
 
   /** Keeps what the harness's session has cost, for the process that resumes it next. */
   #spent(costUsd: number | null): void {
+    const before = this.#record.spentUsd;
+    this.#keepSpent(costUsd === null || before === undefined ? undefined : before + costUsd);
+  }
+
+  #keepSpent(spentUsd: number | undefined): void {
     const { spentUsd: before, ...rest } = this.#record;
-    const spentUsd = costUsd === null || before === undefined ? undefined : before + costUsd;
     if (spentUsd === before) return;
     this.#record = { ...rest, ...(spentUsd === undefined ? {} : { spentUsd }) };
     this.#saveRecord();
@@ -1244,6 +1262,12 @@ export class ChatThread {
         return;
       case 'exited': {
         this.#session = null;
+        // The process died (it was killed, or it crashed): what its turns added is gone from the
+        // harness's own total, so the next process is told what this one started from. Without
+        // this the turn that died, which has no cost, left every later process without a
+        // baseline, and the first turn of each without a cost. A session the app closes itself,
+        // or one that was closed for sitting idle, ends in order and keeps its total.
+        if (event.code !== 0 && this.#record.nativeSessionId) this.#keepSpent(session.baseline);
         // The run's turn is still on its way to a session: whoever is handing it over finds
         // this one gone and opens another. Read before anything is awaited here, so that the
         // two never both act on the run, and never both leave it to the other.

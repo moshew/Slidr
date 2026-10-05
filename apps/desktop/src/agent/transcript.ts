@@ -116,8 +116,9 @@ export interface ThreadRecord {
   /** What resumes the conversation on that harness (AGT-05: used for nothing else). */
   nativeSessionId?: string;
   /**
-   * What the harness's session has cost so far, as the sum of its turns: the baseline of the
-   * next process that resumes it. Absent once a turn's cost was unknown.
+   * The harness's running total for the conversation, as the sum of its turns: the baseline of
+   * the next process that resumes it. A process that died is taken back out of it, since the
+   * harness kept nothing of that one. Absent once a turn's cost was unknown.
    */
   spentUsd?: number;
   updatedAt?: string;

@@ -1675,6 +1675,64 @@ describe('the model of the next turn (CHT-U06)', () => {
     expect(seen.starts[2]!.config).not.toHaveProperty('resumedCostUsd');
   });
 
+  it('goes back to what a process started from when it dies, so the next turns have a cost', async () => {
+    // A process that is killed keeps nothing of what its turns added to the harness's running
+    // total, the whole turns too: the one that resumes counts on from where the dead one began.
+    const events = new Map<string, (event: AgentEvent) => void>();
+    const sessions: string[] = [];
+    const wrap = (client: AgentClient): AgentClient => ({
+      ...client,
+      start: async (harnessId, thread, config, onEvent) => {
+        const id = await client.start(harnessId, thread, config, onEvent);
+        events.set(id, onEvent);
+        sessions.push(id);
+        return id;
+      },
+    });
+    const long = script(
+      [say('A1.'), done()],
+      [say('A2'), { ...say('…'), delayMs: 60_000 }, done()],
+    );
+    const settings: AgentSettings = { model: 'b' };
+    const { thread, seen } = setup({ b, long }, { settings, speed: 1, wrap });
+    await ask(thread, 'one');
+    settings.model = 'long';
+    await ask(thread, 'two');
+    expect(seen.starts[1]!.config.resumedCostUsd).toBeCloseTo(0.01);
+
+    // The third turn is running when its process is killed: the harness layer closes the turn
+    // without a cost, and says that the session ended.
+    await thread.send('three');
+    await vi.waitFor(() => expect(thread.store.getState().activity?.kind).toBe('writing'));
+    const emit = events.get(sessions[1]!)!;
+    emit({
+      type: 'turn_completed',
+      outcome: 'failed',
+      usage: NO_USAGE,
+      costUsd: null,
+      durationMs: 9,
+    });
+    emit({ type: 'exited', code: 1 });
+    await settled(thread);
+    await vi.waitFor(() => expect(thread.sessionKey).toBeNull());
+    expect(thread.store.getState().entries.at(-1)).toMatchObject({
+      outcome: 'failed',
+      costUsd: null,
+    });
+
+    // The process that resumes is told what the dead one started from: not nothing (its first
+    // turn would have no cost, and so on for good), and not the dead one's own turn on top.
+    settings.model = 'b';
+    const next = await ask(thread, 'four');
+    expect(seen.starts[2]!.config.resume).toMatch(/^mock-/);
+    expect(seen.starts[2]!.config.resumedCostUsd).toBeCloseTo(0.01);
+    expect(next.costUsd).toBe(0.01);
+    // And from there the count goes on as before.
+    settings.model = 'long';
+    await ask(thread, 'five');
+    expect(seen.starts[3]!.config.resumedCostUsd).toBeCloseTo(0.02);
+  });
+
   it('counts effort and web access as settings of a session too', async () => {
     const settings: AgentSettings = { model: 'a' };
     const { thread, seen } = setup({ a }, { settings });
