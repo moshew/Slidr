@@ -38,8 +38,16 @@ export async function readAttachment(file: File, use?: string): Promise<Attachme
   };
 }
 
-/** The files of a paste. A screenshot comes as a file named `image.png`: it gets a name of its own. */
+/**
+ * The files of a paste that is files and no words. A screenshot comes as a file named
+ * `image.png`: it gets a name of its own.
+ *
+ * A clipboard that has words is pasted as words, whatever comes beside them: a spreadsheet
+ * puts a picture of the copied cells next to their text, and a slide program a picture of the
+ * copied object, and neither is what the user meant to send.
+ */
 export function pastedFiles(data: DataTransfer | null, taken: number): File[] {
+  if (data?.getData('text/plain').trim()) return [];
   return Array.from(data?.files ?? []).map((file, index) =>
     file.name && file.name !== 'image.png'
       ? file

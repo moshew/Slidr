@@ -100,3 +100,28 @@ test('what was typed and attached in a chat is there after a look elsewhere', as
   await expect(input(page)).toHaveValue('');
   await expect(attached).toHaveCount(0);
 });
+
+test('words copied with a picture beside them are pasted as words', async ({ page }) => {
+  await openDeckChat(page, { script: 'deck-build' });
+  await input(page).focus();
+  // What a spreadsheet puts on the clipboard for copied cells: their text, and a picture of
+  // them. A paste event made in the page: no input is sent to the desktop.
+  const cancelled = await page.evaluate(() => {
+    const data = new DataTransfer();
+    data.setData('text/plain', 'Q1\t120\nQ2\t150');
+    data.items.add(
+      new File([new Uint8Array([137, 80, 78, 71])], 'image.png', { type: 'image/png' }),
+    );
+    const paste = new ClipboardEvent('paste', {
+      clipboardData: data,
+      bubbles: true,
+      cancelable: true,
+    });
+    document.activeElement!.dispatchEvent(paste);
+    return paste.defaultPrevented;
+  });
+  // The paste is left to the field, which puts the words in, and no picture is attached
+  // (finding 4). A picture alone is still a file: `aifinish-chat.spec.ts`.
+  expect(cancelled).toBe(false);
+  await expect(page.getByTestId('composer-files')).toHaveCount(0);
+});
