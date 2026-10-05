@@ -9,7 +9,7 @@ export {
 } from './components/provider';
 export { Icon, iconSizes, type IconProps, type IconSize, type LucideIcon } from './components/icon';
 export { Spinner } from './components/spinner';
-export { Kbd, type KbdProps } from './components/kbd';
+export { Kbd, setShownKeys, type KbdProps, type ShownKeys } from './components/kbd';
 export {
   Tooltip,
   usePhysicalSide,
