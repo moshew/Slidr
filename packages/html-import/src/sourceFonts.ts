@@ -74,6 +74,72 @@ function faceKey(face: DeclaredFace): string {
   return [family, weight, style, unicodeRange ?? '', src.length, src.slice(-96)].join('|');
 }
 
+/** The weights a `font-weight` descriptor covers: one weight, or a range of them. */
+interface Span {
+  lo: number;
+  hi: number;
+}
+
+function weightSpan(weight: string): Span | undefined {
+  const parts = weight
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((part) => (part === 'normal' ? 400 : part === 'bold' ? 700 : Number(part)));
+  if (parts.length > 2 || parts.some((n) => !Number.isFinite(n) || n < 1 || n > 1000)) {
+    return undefined;
+  }
+  return { lo: Math.min(...parts), hi: Math.max(...parts) };
+}
+
+/** Whether two faces are one face but for the weight they are declared for. */
+const alikeButWeight = (a: DeclaredFace, b: DeclaredFace) =>
+  a.family === b.family && a.style === b.style && (a.unicodeRange ?? '') === (b.unicodeRange ?? '');
+
+/**
+ * The range of weights that says what several faces of one file say, each for a weight of its
+ * own: `400`, `500` and `600` are `400 600`. That is how a variable font is served, a rule a
+ * weight over the same file, and a face with a range draws each of those weights from the file
+ * exactly as the rule of that weight did, and the nearest end for a weight outside them.
+ *
+ * Not when there is a gap between the weights (`400` and `700`): a weight in the gap would be
+ * drawn as itself, where the source drew the nearer of the two. And not when another file of
+ * the family has a weight inside the range, which the range would take text from.
+ */
+function weightRange(
+  faces: readonly DeclaredFace[],
+  others: readonly DeclaredFace[],
+): Span | undefined {
+  const spans: Span[] = [];
+  for (const face of faces) {
+    const span = weightSpan(face.weight);
+    if (!span) return undefined;
+    spans.push(span);
+  }
+  const own = spans[0];
+  if (!own) return undefined;
+  const sorted = [...spans].sort((a, b) => a.lo - b.lo);
+  const range = { ...sorted[0]! };
+  for (const next of sorted.slice(1)) {
+    if (next.lo - range.hi > 100) return undefined;
+    range.hi = Math.max(range.hi, next.hi);
+  }
+  // The first face says it all already: nothing to widen.
+  if (range.lo === own.lo && range.hi === own.hi) return undefined;
+  for (const other of others) {
+    const span = weightSpan(other.weight);
+    if (!span || (span.lo <= range.hi && span.hi >= range.lo)) return undefined;
+  }
+  return range;
+}
+
+/** What a font asset says in its record. */
+interface Recorded {
+  face: DeclaredFace;
+  /** The weights it is for, when they could be read. */
+  span?: Span;
+}
+
 export interface SourceFonts {
   /**
    * Stores the embedded faces of `doc` that were not stored yet as font assets, and brings the
@@ -83,9 +149,10 @@ export interface SourceFonts {
   sync(doc: Document): Promise<string[]>;
   /**
    * `@font-face` rules for the faces whose font file is an asset that already says another
-   * face: a variable font declared once for each weight, one file under two family names. An
+   * face, and that the asset's record cannot say as well: one file under two family names, two
+   * weights of a variable font with others between them that the file does not declare. An
    * asset is its content and holds one face, so these go with the slides, as rules of the
-   * slide's own stylesheet that name the asset. Empty when every face has an asset of its own.
+   * slide's own stylesheet that name the asset. Empty when every face is in an asset's record.
    */
   css(): string;
 }
@@ -109,10 +176,21 @@ export function createSourceFonts(options: {
   appFonts?: readonly AppFontFace[];
 }): SourceFonts {
   const seen = new Set<string>();
-  /** The face each font asset says in its record, by asset id: the first that brought the file. */
-  const recorded = new Map<string, string>();
-  /** The rules of the faces that came after it with the same file. */
+  /**
+   * The face each font asset says in its record, by asset id: the first that brought the file,
+   * for every weight the file was declared for beside it when those make a range.
+   */
+  const recorded = new Map<string, Recorded>();
+  /** The rules of the other faces of the same file. */
   const shared: string[] = [];
+
+  /** Whether an asset's record already says a face. */
+  const says = (record: Recorded, face: DeclaredFace): boolean => {
+    if (!alikeButWeight(record.face, face)) return false;
+    if (record.face.weight === face.weight) return true;
+    const span = weightSpan(face.weight);
+    return Boolean(record.span && span && span.lo >= record.span.lo && span.hi <= record.span.hi);
+  };
   /** The app faces added to each document, by family (lower case). */
   const added = new WeakMap<Document, Map<string, FontFace[]>>();
 
@@ -163,6 +241,8 @@ export function createSourceFonts(options: {
       const notes: string[] = [];
       const declared = declaredFaces(doc);
       alignAppFonts(doc, declared);
+      /** The faces this call found, by the asset their file became, in the file's order. */
+      const brought = new Map<string, { asset: AssetMeta; faces: DeclaredFace[] }>();
       for (const face of declared) {
         const key = faceKey(face);
         if (seen.has(key)) continue;
@@ -181,15 +261,32 @@ export function createSourceFonts(options: {
             notes.push(`The embedded font "${face.family}" is not a font file the app can keep.`);
             continue;
           }
-          // The same file again, for another weight or under another name: the asset is
-          // there, and says the first face. This one is a rule that points at it.
-          const said = [face.family, face.weight, face.style, face.unicodeRange ?? ''].join('|');
-          const first = recorded.get(asset.id);
-          if (first !== undefined) {
-            if (first !== said) shared.push(faceRule(face, asset.id));
-            continue;
-          }
-          recorded.set(asset.id, said);
+          const entry = brought.get(asset.id);
+          if (entry) entry.faces.push(face);
+          else brought.set(asset.id, { asset, faces: [face] });
+        } catch {
+          notes.push(`The embedded font "${face.family}" could not be read.`);
+        }
+      }
+      // One file is one asset, and an asset says one face. Several rules that carry the same
+      // file (a rule a weight, a second family name) are that face where its record can say
+      // them all, and rules of the slides that point at the asset where it cannot.
+      for (const { asset, faces } of brought.values()) {
+        let record = recorded.get(asset.id);
+        if (!record) {
+          const first = faces[0];
+          if (!first) continue;
+          const alike = faces.filter((face) => alikeButWeight(face, first));
+          // A rule the file wrote twice is the same face, not another file's.
+          const mine = new Set(faces.map(faceKey));
+          const range = weightRange(
+            alike,
+            declared.filter((face) => !mine.has(faceKey(face)) && alikeButWeight(face, first)),
+          );
+          const face = range ? { ...first, weight: `${range.lo} ${range.hi}` } : first;
+          const span = range ?? weightSpan(first.weight);
+          record = { face, ...(span ? { span } : {}) };
+          recorded.set(asset.id, record);
           options.stored({
             ...asset,
             font: {
@@ -199,9 +296,8 @@ export function createSourceFonts(options: {
               ...(face.unicodeRange ? { unicodeRange: face.unicodeRange } : {}),
             },
           });
-        } catch {
-          notes.push(`The embedded font "${face.family}" could not be read.`);
         }
+        for (const face of faces) if (!says(record, face)) shared.push(faceRule(face, asset.id));
       }
       return notes;
     },

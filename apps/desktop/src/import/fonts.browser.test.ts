@@ -275,6 +275,72 @@ describe('faces of an imported file that share one font file', () => {
     expect(Math.abs(drawn.bold - source.bold)).toBeLessThanOrEqual(2);
   });
 
+  it('keeps weights in a row as one face with a range, and writes no rule into the slide', async () => {
+    // How a variable font is served: a rule for each weight the page uses, all over one file.
+    // Weights with no gap between them are what one face with a range of weights says, and a
+    // font asset can say that: the deck knows every weight, and no slide carries a rule (in a
+    // packed deck of 35 slides and 18 font files that was 36 rules a slide).
+    const font = await fontData('Heebo');
+    const lines = {
+      regular: 'Regular weight text of the deck, one line',
+      medium: 'Medium weight text of the deck, one line',
+      semi: 'Semibold weight text of the deck, one line',
+      // Outside the declared weights: the source draws the nearest, and so does a range.
+      black: 'Black weight text of the deck, one line',
+    };
+    const html = `<!doctype html><html><head><style>
+      @font-face { font-family: "Brand Sans"; font-weight: 400; src: url("${font}") format("woff2"); }
+      @font-face { font-family: "Brand Sans"; font-weight: 500; src: url("${font}") format("woff2"); }
+      @font-face { font-family: "Brand Sans"; font-weight: 600; src: url("${font}") format("woff2"); }
+      body { margin: 0; }
+      section { width: 1280px; height: 720px; background: #fff; padding: 60px; box-sizing: border-box; font-family: "Brand Sans", monospace; font-size: 48px; color: #111; }
+      p { margin: 0 0 30px; width: 1100px; }
+    </style></head><body><section>
+      <p id="regular" style="font-weight:400">${lines.regular}</p>
+      <p id="medium" style="font-weight:500">${lines.medium}</p>
+      <p id="semi" style="font-weight:600">${lines.semi}</p>
+      <p id="black" style="font-weight:900">${lines.black}</p>
+    </section></body></html>`;
+    const host = testHost();
+    const imported = importPage(html, { host });
+    await imported.setViewport({ width: 1280, height: 720 });
+    // One line at each declared weight: a weight apart is more than twice what the widths
+    // below are allowed to differ by, so a line drawn in its neighbour's weight would show.
+    const steps = JSON.parse(
+      await imported.evaluate(
+        `await document.fonts.ready; const width = (weight) => { const probe = document.createElement('span'); probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font-weight:' + weight; probe.textContent = ${JSON.stringify(lines.regular)}; document.querySelector('section').append(probe); const w = probe.getBoundingClientRect().width; probe.remove(); return w; }; return [width(400), width(500), width(600)]`,
+      ),
+    ) as number[];
+    expect(steps[1]! - steps[0]!).toBeGreaterThan(4);
+    expect(steps[2]! - steps[1]!).toBeGreaterThan(4);
+
+    const names = Object.keys(lines) as (keyof typeof lines)[];
+    const source = {} as Record<keyof typeof lines, number>;
+    for (const name of names) source[name] = await widthInSource(imported, name);
+    const result = await imported.capture({
+      selector: 'section',
+      deck: createDeck({ lang: 'en' }),
+      takenIds: [],
+    });
+    const fonts = result.assets.filter((asset) => asset.kind === 'font');
+    expect(fonts.map((asset) => asset.font)).toEqual([
+      { family: 'Brand Sans', weight: '400 600', style: 'normal' },
+    ]);
+    expect(result.slide.css).toBeUndefined();
+    expect(result.guard.faithful).toBe(true);
+    expect(result.editability).toBe(1);
+    expect(result.slide.elements.map((element) => element.type)).toEqual([
+      'text',
+      'text',
+      'text',
+      'text',
+    ]);
+    for (const name of names) {
+      const drawn = await widthOnSlide(host, result.slide, result.assets, lines[name]);
+      expect(Math.abs(drawn - source[name]), name).toBeLessThanOrEqual(2);
+    }
+  });
+
   it('keeps both families when one file is declared under two names', async () => {
     const font = await fontData('Alef');
     const html = `<!doctype html><html><head><style>
