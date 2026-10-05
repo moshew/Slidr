@@ -29,6 +29,7 @@ import {
   findSlide,
   type AssetMeta,
   type ChangeEvent,
+  type ChangeSummary,
   type CommandBus,
 } from '@slidr/model';
 import {
@@ -115,9 +116,13 @@ export interface AgentServiceOptions {
    * What a session is told about its subject beside the context block (AIS-01, AIO-01): the
    * slide or the elements in full, and a picture of the slide. Asked before every user turn;
    * null when the session has nothing new to hear. `fresh`: the conversation starts here, so
-   * the agent has not been told anything yet.
+   * the agent has not been told anything yet. `threadId`: the conversation that asks; a scope
+   * may have several, and what one was told the others were not.
    */
-  brief?: (scope: SessionScope, turn: { fresh: boolean }) => Promise<TurnBrief | null>;
+  brief?: (
+    scope: SessionScope,
+    turn: { fresh: boolean; threadId: string },
+  ) => Promise<TurnBrief | null>;
   /**
    * Stores a picture the user attached with the open document, so that the agent can place it
    * on a slide; returns its entry for the asset table. Absent where there is nowhere to keep it.
@@ -310,7 +315,7 @@ function addUsage(a: Usage, b: Usage): Usage {
 interface Session {
   /** The harness layer's id of the session. */
   sessionId: string;
-  /** The bridge's id: what tool calls arrive under, and what the turns are started with. */
+  /** The bridge's id: what tool calls arrive under. */
   sessionKey: string;
   harnessId: string;
   /** The session has a tool that returns a picture of a slide. */
@@ -397,6 +402,11 @@ export class ChatThread {
   #chips: (Pairing & { partId: string })[] = [];
   #results: (Pairing & { target: ToolTarget | undefined })[] = [];
   #loading: Promise<void> | null = null;
+  /**
+   * The changes behind the conversation's back are being collected (`#changes`): from its first
+   * turn in this window on. Before that nobody knows what became of the deck since its last turn.
+   */
+  #collecting = false;
 
   constructor(
     service: AgentService,
@@ -460,6 +470,7 @@ export class ChatThread {
     this.#heldWatch = null;
     this.#record = { scope: this.scope };
     this.#loading = null;
+    this.#collecting = false;
     this.store.setState({
       ready: false,
       entries: [],
@@ -758,21 +769,23 @@ export class ChatThread {
         return;
       }
       const label = run.label ?? run.message.split('\n')[0]?.slice(0, 60);
-      run.turn ??= startTurn(session.sessionKey, this.scope, {
+      // Started under the conversation's id, not the session's: the digest leaves out the
+      // changes of whoever it is asked for, and the conversation outlives its sessions.
+      run.turn ??= startTurn(this.id, this.scope, {
         ...(label ? { label } : {}),
         ended: run.over.signal,
       });
       this.#registerAssets(run);
       // A brief that fails is a turn without one: the agent reads what it needs with its tools.
       const brief = await this.#options
-        .brief?.(this.scope, { fresh: session.fresh })
+        .brief?.(this.scope, { fresh: session.fresh, threadId: this.id })
         .catch(() => null);
       if (this.#run !== run) return;
       // A session that starts in the middle of a conversation is told what was said (AGT-06).
       const summary = session.fresh ? this.#summary(run) : '';
       session.fresh = false;
       const context = [
-        this.#context(session),
+        this.#context(run),
         summary,
         brief?.text ?? '',
         run.attached?.block ?? '',
@@ -805,19 +818,52 @@ export class ChatThread {
     }
   }
 
-  #context(session: Session): string {
+  #context(run: Run): string {
     const { bus, selection, now } = this.#options;
     return contextBlock({
       scope: this.scope,
       deck: bus.deck,
       selection: selection(),
-      // The same id the turn is started with: the digest leaves out the session's own writes.
-      changes: this.#service.digest.take(session.sessionKey),
+      changes: this.#changes(run),
       ...(now ? { now: now() } : {}),
       ...(this.scope.kind === 'deck'
         ? { outline: this.#settings().outline ?? DEFAULT_OUTLINE }
         : {}),
     });
+  }
+
+  /**
+   * What changed behind the conversation's back since its last turn (CMD-08). It is collected
+   * for the conversation, under the id its turns are started with, and not for the harness
+   * session that happens to carry it: a session is closed for sitting idle, started again on
+   * another model, or let go of when its panel shows another chat, and the conversation it
+   * resumes must still hear what the user did in the meantime.
+   */
+  #changes(run: Run): ChangeSummary {
+    const changes = this.#service.digest.take(this.id);
+    if (this.#collecting) return changes;
+    this.#collecting = true;
+    const earlier = this.store
+      .getState()
+      .entries.some((entry) => entry.type === 'assistant' && entry.id !== run.entryId);
+    if (!earlier) return changes;
+    // The conversation goes on from an earlier run of the app, and nobody collected what became
+    // of the deck since its last turn. An empty value would say that nothing changed: all the
+    // conversation can have seen is reported as changed, so the agent reads before it relies.
+    const { deck } = this.#options.bus;
+    const { scope } = this;
+    const slides =
+      scope.kind === 'slide' || scope.kind === 'object'
+        ? deck.slides.filter((slide) => slide.id === scope.slideId)
+        : deck.slides;
+    return {
+      slides: slides.map((slide) => slide.id),
+      elements: [],
+      removedSlides: [],
+      removedElements: [],
+      slideOrder: true,
+      theme: true,
+    };
   }
 
   /** The pictures of the message join the deck's assets inside the turn, so undo takes them too. */
@@ -921,7 +967,6 @@ export class ChatThread {
       resumed: Boolean(resume),
       settings: sessionSettings(settings),
     });
-    this.#service.digest.track(sessionKey);
     this.#session = session;
     return session;
   }
@@ -936,7 +981,6 @@ export class ChatThread {
   }
 
   async #endSession(session: Session): Promise<void> {
-    this.#service.digest.forget(session.sessionKey);
     await this.#options.client.close(session.sessionId).catch(() => undefined);
     const bridge = await this.#service.bridge().catch(() => null);
     await bridge?.close(session.sessionKey).catch(() => undefined);
@@ -1034,7 +1078,6 @@ export class ChatThread {
         return;
       case 'exited': {
         this.#session = null;
-        this.#service.digest.forget(session.sessionKey);
         const bridge = await this.#service.bridge().catch(() => null);
         await bridge?.close(session.sessionKey).catch(() => undefined);
         if (!run || this.#run !== run) return;
@@ -1087,7 +1130,7 @@ export class ChatThread {
       try {
         await client.send(session.sessionId, {
           text: RECONNECTED,
-          context: this.#context(session),
+          context: this.#context(run),
         });
         if (this.#run !== run) return;
         this.store.setState({ activity: { kind: 'thinking' } });
@@ -1135,7 +1178,7 @@ export class ChatThread {
           rounds: GATE_ROUNDS,
           ...report,
         }),
-        context: this.#context(session),
+        context: this.#context(run),
       });
       if (this.#run !== run) return;
       this.store.setState({ activity: { kind: 'thinking' } });
@@ -1252,7 +1295,7 @@ export function threadIdOf(scope: SessionScope): string {
 }
 
 export class AgentService {
-  /** What changed behind each session's back since its last turn (CMD-08). */
+  /** What changed behind each conversation's back since its last turn (CMD-08), by thread id. */
   readonly digest: ChangeDigest;
   /**
    * The conversation each scope shows, under the id of the scope's first thread; a scope that
@@ -1427,6 +1470,7 @@ export class AgentService {
         thread.reset();
       } else {
         this.#threads.delete(id);
+        this.digest.forget(id);
         void thread.close();
       }
     }

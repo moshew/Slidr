@@ -16,7 +16,7 @@ import { isTauri } from '@tauri-apps/api/core';
 import { create, type StoreApi } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AgentClient } from '../agent/agent';
-import { AgentService, threadIdOf, type TurnBrief } from '../agent/agentService';
+import { AgentService, type TurnBrief } from '../agent/agentService';
 import { captureWindowConversion, pageConversion } from '../agent/conversion';
 import { pageCapture } from '../agent/pageCapture';
 import { connectToolBridge, tauriAgent } from '../agent/tauriAgent';
@@ -197,10 +197,14 @@ function createAi(editor: Editor): AiRuntime {
     records: async () => ({ ...(await passing.records()), ...(await kept.records()) }),
   };
 
-  /** The slide each slide or object chat was last told about. A deck is immutable, so a slide
-   * that is the same object has not changed, and there is nothing new to tell. */
+  /** The slide each slide or object chat was last told about, by the id of its conversation (a
+   * slide may have several, and each was told on its own). A deck is immutable, so a slide that
+   * is the same object has not changed, and there is nothing new to tell. */
   const told = new Map<string, Slide>();
-  const brief = async (scope: SessionScope, { fresh }: { fresh: boolean }) => {
+  const brief = async (
+    scope: SessionScope,
+    { fresh, threadId }: { fresh: boolean; threadId: string },
+  ) => {
     if (scope.kind === 'import') {
       // An import that was cut, or whose page was closed: what the session cannot know (IMP-09).
       const text = importBrief(importState.getState(), editor.bus.deck, fresh);
@@ -209,7 +213,7 @@ function createAi(editor: Editor): AiRuntime {
     if (scope.kind !== 'slide' && scope.kind !== 'object') return null;
     const deck = editor.bus.deck;
     const slide = findSlide(deck, scope.slideId);
-    const key = threadIdOf(scope);
+    const key = threadId;
     if (!slide || (!fresh && told.get(key) === slide)) return null;
     // A plain page cannot take a picture; there the session reads the model alone.
     const picture = inApp

@@ -290,6 +290,105 @@ describe('a turn', () => {
   });
 });
 
+describe('what changed behind the conversation (CMD-08)', () => {
+  const talk = script([say('One.'), done()], [say('Two.'), done()]);
+  const changed = (turn: UserTurn | undefined) =>
+    turn?.context?.split('\n').find((line) => line.startsWith('changed_since_last_turn'));
+
+  it('is still told after the session was closed for sitting idle (AGT-07)', async () => {
+    const sessions: string[] = [];
+    let harness!: AgentClient;
+    const wrap = (client: AgentClient): AgentClient => {
+      harness = client;
+      return {
+        ...client,
+        start: async (harnessId, thread, config, onEvent) => {
+          const id = await client.start(harnessId, thread, config, onEvent);
+          sessions.push(id);
+          return id;
+        },
+      };
+    };
+    const { bus, thread, seen } = setup({ talk }, { wrap });
+    await ask(thread, 'First');
+
+    // The user goes on by hand; ten quiet minutes later the harness layer closes the session,
+    // and the user edits some more before the next message.
+    bus.dispatch({ type: 'slide.update', slideId: 's_1', patch: { name: 'renamed by hand' } });
+    await harness.close(sessions[0]!);
+    await vi.waitFor(() => expect(thread.sessionKey).toBeNull());
+    bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's_2' }) });
+
+    expect((await ask(thread, 'Second')).outcome).toBe('completed');
+    expect(seen.starts).toHaveLength(2);
+    expect(changed(seen.sends.at(-1))).toBe(
+      'changed_since_last_turn: {"slides":["s_1","s_2"],"slide_order":true}',
+    );
+    // Told once: the turn after it hears only of what came since.
+    await ask(thread, 'Third');
+    expect(changed(seen.sends.at(-1))).toBe('changed_since_last_turn: {}');
+  });
+
+  it('is still told when the next turn runs on another model (CHT-U06)', async () => {
+    const settings: AgentSettings = { model: 'talk' };
+    const { bus, thread, seen } = setup({ talk, other: talk }, { settings });
+    await ask(thread, 'First');
+    bus.dispatch({ type: 'slide.update', slideId: 's_1', patch: { name: 'renamed by hand' } });
+    settings.model = 'other';
+    await ask(thread, 'Second');
+    expect(seen.starts).toHaveLength(2);
+    expect(changed(seen.sends.at(-1))).toBe('changed_since_last_turn: {"slides":["s_1"]}');
+  });
+
+  it("leaves out the conversation's own writes, whichever session made them", async () => {
+    const rename = script(
+      [call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }), done()],
+      [say('Two.'), done()],
+    );
+    const settings: AgentSettings = { model: 'rename' };
+    const { thread, seen } = setup({ rename, other: talk }, { settings });
+    await ask(thread, 'Rename');
+    settings.model = 'other';
+    await ask(thread, 'Go on');
+    expect(changed(seen.sends.at(-1))).toBe('changed_since_last_turn: {}');
+  });
+
+  it('says that anything may have changed when the conversation goes on from an earlier run', async () => {
+    const first = setup({ talk });
+    await ask(first.thread, 'First');
+    const files = new Map(first.transcripts.files);
+
+    // The app was closed and the deck opened again, with a slide the conversation never saw.
+    // Nobody collected what happened in between: an empty value would say "nothing".
+    const bus = new CommandBus(
+      createDeck({ slides: [createSlide({ id: 's_1' }), createSlide({ id: 's_2' })] }),
+    );
+    const again = setup({ talk }, { files, bus });
+    await again.thread.load();
+    await ask(again.thread, 'Second');
+    expect(again.seen.starts[0]!.config.resume).toBeTruthy();
+    expect(changed(again.seen.sends[0])).toBe(
+      'changed_since_last_turn: {"slides":["s_1","s_2"],"slide_order":true,"theme":true}',
+    );
+    // From here on the changes are collected, and the next turn hears of them alone.
+    await ask(again.thread, 'Third');
+    expect(changed(again.seen.sends[1])).toBe('changed_since_last_turn: {}');
+
+    // The chat of a slide can only have seen its slide.
+    const slide = again.service.thread({ kind: 'slide', slideId: 's_2' });
+    await ask(slide, 'About this slide');
+    expect(changed(again.seen.sends[2])).toBe('changed_since_last_turn: {}');
+    await again.service.dispose();
+    const later = setup({ talk }, { files: again.transcripts.files, bus });
+    const resumed = later.service.thread({ kind: 'slide', slideId: 's_2' });
+    await resumed.load();
+    await ask(resumed, 'More');
+    expect(changed(later.seen.sends[0])).toBe(
+      'changed_since_last_turn: {"slides":["s_2"],"slide_order":true,"theme":true}',
+    );
+  });
+});
+
 describe('the transcript', () => {
   const talk = script([say('שלום.'), done()]);
 
@@ -885,6 +984,24 @@ describe('an action, and the brief of a session', () => {
       expect(send.context).toMatch(/<\/slidr_context>$/);
       expect(send.images).toBeUndefined();
     }
+  });
+
+  it('asks for the brief in the name of the conversation: a slide may have several', async () => {
+    const asked: string[] = [];
+    const { service } = setup(
+      { talk },
+      {
+        brief: (_scope, turn) => {
+          asked.push(turn.threadId);
+          return Promise.resolve(null);
+        },
+      },
+    );
+    await ask(service.thread(SLIDE), 'One');
+    // What the first conversation was told of the slide, the second was not.
+    const second = service.newConversation(SLIDE);
+    await ask(second, 'Two');
+    expect(asked).toEqual(['slide-s_1', second.id]);
   });
 
   it('is told again from the start when the conversation could not be resumed', async () => {
