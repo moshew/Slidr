@@ -1,5 +1,6 @@
 import type { Color, HtmlElement } from '@slidr/model';
 import type { RenderContext } from './context';
+import { cleanPicture, SVG_NAMESPACE } from './picture';
 import { parseFragment, sanitizeFragment, serializeFragment } from './sanitize';
 import { colorCss, themeVariablesCss } from './theme';
 
@@ -67,30 +68,44 @@ export function normalizeColor(value: string): string {
 }
 
 /**
- * Inline SVG ready to place in a slide: cleaned (SEC-06), sized to its frame, and recoloured by
- * `colorOverrides` (SHP-06). A replacement is written as a style, because a presentation attribute
- * cannot hold `var(--color-*)`. The key `#000000` also covers shapes that are black only because
- * black is SVG's initial fill, and `currentColor` sets the colour that icons drawn in
- * `currentColor` follow.
+ * The picture of an `svg` element as nodes, ready to be put into the shadow root the element
+ * draws in: cleaned (SEC-06; `picture.ts` says what a picture may hold), sized to its frame, and
+ * recoloured by `colorOverrides` (SHP-06). The nodes themselves, never their markup: a tree that
+ * is written out and parsed again is not the tree that was cleaned (`sanitize.ts`).
+ *
+ * The element draws the first `<svg>` of its markup and nothing else of it. Markup without one
+ * draws nothing.
+ *
+ * A replacement colour is written as a style, because a presentation attribute cannot hold
+ * `var(--color-*)`. The key `#000000` also covers shapes that are black only because black is
+ * SVG's initial fill, and `currentColor` sets the colour that icons drawn in `currentColor`
+ * follow.
  */
-export function prepareSvg(markup: string, overrides: Record<string, Color> | undefined): string {
-  const fragment = parseFragment(markup);
-  sanitizeFragment(fragment);
-  const root = fragment.querySelector('svg');
-  if (root) {
-    const w = parseFloat(root.getAttribute('width') ?? '');
-    const h = parseFloat(root.getAttribute('height') ?? '');
-    if (!root.hasAttribute('viewBox') && w > 0 && h > 0)
-      root.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    root.setAttribute('width', '100%');
-    root.setAttribute('height', '100%');
-    root.style.display = 'block';
-  }
+export function prepareSvg(
+  markup: string,
+  overrides: Record<string, Color> | undefined,
+): DocumentFragment {
+  const parsed = parseFragment(markup);
+  sanitizeFragment(parsed);
+  const picture = parsed.ownerDocument.createDocumentFragment();
+  const root = Array.from(parsed.querySelectorAll<SVGSVGElement>('svg')).find(
+    (el) => el.namespaceURI === SVG_NAMESPACE,
+  );
+  if (!root) return picture;
+  picture.append(root);
+  cleanPicture(root);
+  const w = parseFloat(root.getAttribute('width') ?? '');
+  const h = parseFloat(root.getAttribute('height') ?? '');
+  if (!root.hasAttribute('viewBox') && w > 0 && h > 0)
+    root.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  root.setAttribute('width', '100%');
+  root.setAttribute('height', '100%');
+  root.style.display = 'block';
   if (overrides && Object.keys(overrides).length) {
     const map = new Map(
       Object.entries(overrides).map(([k, c]) => [normalizeColor(k), colorCss(c)]),
     );
-    for (const el of Array.from(fragment.querySelectorAll('*'))) {
+    for (const el of [root, ...Array.from(root.querySelectorAll('*'))]) {
       if (!(el instanceof SVGElement)) continue;
       for (const prop of COLOR_PROPERTIES) {
         const attr = el.getAttribute(prop);
@@ -104,16 +119,39 @@ export function prepareSvg(markup: string, overrides: Record<string, Color> | un
         if (fromStyle) el.style.setProperty(prop, fromStyle);
       }
     }
-    if (root) {
-      const black = map.get('#000000');
-      if (black && !root.getAttribute('fill') && !root.style.getPropertyValue('fill')) {
-        root.style.setProperty('fill', black);
-      }
-      const current = map.get('currentcolor');
-      if (current) root.style.setProperty('color', current);
+    const black = map.get('#000000');
+    if (black && !root.getAttribute('fill') && !root.style.getPropertyValue('fill')) {
+      root.style.setProperty('fill', black);
     }
+    const current = map.get('currentcolor');
+    if (current) root.style.setProperty('color', current);
   }
-  return serializeFragment(fragment);
+  return picture;
+}
+
+// ---- Free markup, as a drawn slide holds it. ----
+
+/**
+ * The places of a drawn slide that hold markup a deck wrote freely: the content of an `html`
+ * element without scripts, and the picture of an `svg` element. Each holds it in a shadow root.
+ */
+export const FREE_MARKUP_SELECTOR = '[data-slidr-html="shadow"], [data-slidr-svg]';
+
+/**
+ * Cleans the content of such a place again, where it is, by the rules it was drawn by. For
+ * whoever puts other nodes there than the renderer did: an export, which keeps what its file
+ * parses into (`@slidr/html-export`).
+ */
+export function cleanFreeMarkup(host: Element): void {
+  const content = host.shadowRoot;
+  if (!content) return;
+  sanitizeFragment(content);
+  if (!host.hasAttribute('data-slidr-svg')) return;
+  const root = Array.from(content.querySelectorAll('svg')).find(
+    (el) => el.namespaceURI === SVG_NAMESPACE,
+  );
+  content.replaceChildren(...(root ? [root] : []));
+  if (root) cleanPicture(root);
 }
 
 // ---- `html` elements with scripts run in a sandboxed frame (RND-06, SEC-03). ----

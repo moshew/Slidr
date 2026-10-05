@@ -21,85 +21,60 @@ export function passthroughStyle(css: Record<string, string> | undefined): CSSPr
   return style;
 }
 
-/** At-rules that mean the same wherever they are written, so they stay outside the scope. */
-const GLOBAL_AT_RULES = new Set([
-  'charset',
-  'import',
-  'namespace',
-  'font-face',
-  'font-feature-values',
-  'font-palette-values',
-  'keyframes',
-  '-webkit-keyframes',
-  'property',
-  'counter-style',
+/**
+ * At-rules that give a name to something for the whole document (an animation, a font family, a
+ * registered property): they cannot be scoped to a slide, and a slide needs them. By the name of
+ * the rule's interface, which is the same in every engine.
+ */
+const NAMING_RULES = new Set([
+  'CSSKeyframesRule',
+  'CSSFontFaceRule',
+  'CSSPropertyRule',
+  'CSSCounterStyleRule',
+  'CSSFontFeatureValuesRule',
+  'CSSFontPaletteValuesRule',
 ]);
 
-/**
- * Splits a stylesheet into its top-level statements: rules, and at-rules with or without a block.
- * Strings, comments and parentheses are respected, so `url(data:...;...)` or a `}` inside a string
- * does not end a statement.
- */
-export function splitStatements(css: string): string[] {
-  const statements: string[] = [];
-  let start = 0;
-  let depth = 0;
-  let parens = 0;
-  let i = 0;
-  while (i < css.length) {
-    const c = css[i];
-    if (c === '/' && css[i + 1] === '*') {
-      const end = css.indexOf('*/', i + 2);
-      i = end === -1 ? css.length : end + 2;
-      continue;
-    }
-    if (c === '"' || c === "'") {
-      i++;
-      while (i < css.length && css[i] !== c) i += css[i] === '\\' ? 2 : 1;
-      i++;
-      continue;
-    }
-    if (c === '(') parens++;
-    else if (c === ')') parens = Math.max(0, parens - 1);
-    else if (parens === 0) {
-      if (c === '{') depth++;
-      else if (c === '}') {
-        depth = Math.max(0, depth - 1);
-        if (depth === 0) {
-          statements.push(css.slice(start, i + 1));
-          start = i + 1;
-        }
-      } else if (c === ';' && depth === 0) {
-        statements.push(css.slice(start, i + 1));
-        start = i + 1;
-      }
-    }
-    i++;
+/** The rules of a stylesheet as the browser itself reads it; none when it cannot be read. */
+function readRules(css: string): CSSRule[] {
+  try {
+    // A sheet made this way takes no `@import`: a slide's CSS brings in nothing from outside it.
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(css);
+    return Array.from(sheet.cssRules);
+  } catch {
+    return [];
   }
-  const rest = css.slice(start);
-  if (rest.trim()) statements.push(rest);
-  return statements.map((s) => s.trim()).filter(Boolean);
-}
-
-function atRuleName(statement: string): string | undefined {
-  const withoutComments = statement.replace(/\/\*[\s\S]*?\*\//g, '').trimStart();
-  return /^@([-\w]+)/.exec(withoutComments)?.[1]?.toLowerCase();
 }
 
 /**
- * The `css` of a slide, scoped to that slide (RND-07): rules apply only inside the slide's root,
- * so two slides on one page (the Stage and the Filmstrip) do not restyle each other. `@keyframes`,
- * `@font-face` and the other definitions are global by nature and are left as they are; two slides
- * that define the same keyframes name differently still collide.
+ * The `css` of a slide, held to that slide (RND-07): its rules apply only inside the slide's
+ * root, so a slide restyles neither the editor around it nor another slide on the same page (the
+ * Stage and the Filmstrip).
+ *
+ * The CSS is read by the browser's own parser and written out again rule by rule, never cut up
+ * as text: each rule comes back whole and closed, so nothing a deck writes (a stray `}`, an open
+ * string or comment) ends the scope early and leaves the rest of it loose in the page.
+ *
+ * - Every rule goes inside `@scope (<the slide's root>)`, and so does any at-rule this function
+ *   does not know: what is not known to need the whole document does not get it.
+ * - Rules that define a name (`@keyframes`, `@font-face`, `@property`, ...) are global by nature.
+ *   They go into a cascade layer, where a name the page itself defines outside any layer wins
+ *   over the slide's: a slide cannot replace an animation, a font or a registered property of the
+ *   editor. Two slides that define one name differently still collide with each other.
  */
 export function scopeSlideCss(css: string, rootSelector: string): string {
-  const global: string[] = [];
+  const namespaces: string[] = [];
+  const names: string[] = [];
   const local: string[] = [];
-  for (const statement of splitStatements(css)) {
-    const name = atRuleName(statement);
-    (name && GLOBAL_AT_RULES.has(name) ? global : local).push(statement);
+  for (const rule of readRules(css)) {
+    const kind = rule.constructor.name;
+    // `@namespace` only says how this sheet's own selectors are read, and must come first.
+    if (kind === 'CSSNamespaceRule') namespaces.push(rule.cssText);
+    else (NAMING_RULES.has(kind) ? names : local).push(rule.cssText);
   }
-  const parts = [...global];
+  const parts = [...namespaces];
+  if (names.length) parts.push(`@layer {\n${names.join('\n')}\n}`);
   if (local.length) parts.push(`@scope (${rootSelector}) {\n${local.join('\n')}\n}`);
   return parts.join('\n');
 }

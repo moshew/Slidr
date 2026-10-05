@@ -1,12 +1,11 @@
 // @vitest-environment happy-dom
 import { Deck, type Paragraph } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { cssPropertyName, passthroughStyle, scopeSlideCss, splitStatements } from './css';
+import { cssPropertyName, passthroughStyle } from './css';
 import { imagePlacement, linePath } from './elements';
 import { referenceDeck } from './fixtures/referenceDeck';
 import { pathBounds, presetPath, scalePath, shapePresets, transformPath } from './geometry';
 import { normalizeColor, prepareSvg } from './markup';
-import { sanitizeMarkup } from './sanitize';
 import { firstStrong, listMarkers, paragraphDirection, readsAsNumber } from './text';
 import {
   colorCss,
@@ -33,29 +32,6 @@ describe('css', () => {
       mixBlendMode: 'multiply',
       textShadow: '0 1px red',
     });
-  });
-
-  it('splits a stylesheet into statements, respecting strings, comments and url()', () => {
-    const css = `@import "a.css";
-.a { background: url(data:image/svg+xml;utf8,<svg>{}</svg>); }
-/* } { */ .b::after { content: "}"; }
-@media (min-width: 1px) { .c { color: red } }`;
-    expect(splitStatements(css)).toEqual([
-      '@import "a.css";',
-      '.a { background: url(data:image/svg+xml;utf8,<svg>{}</svg>); }',
-      '/* } { */ .b::after { content: "}"; }',
-      '@media (min-width: 1px) { .c { color: red } }',
-    ]);
-  });
-
-  it('scopes slide css and leaves global definitions outside the scope', () => {
-    const out = scopeSlideCss(
-      '@keyframes k { to { opacity: 0 } } .x { color: red } @font-face { font-family: F; src: url(f.woff2) }',
-      '[data-slide-id="s_1"]',
-    );
-    expect(out).toBe(
-      '@keyframes k { to { opacity: 0 } }\n@font-face { font-family: F; src: url(f.woff2) }\n@scope ([data-slide-id="s_1"]) {\n.x { color: red }\n}',
-    );
   });
 });
 
@@ -246,15 +222,6 @@ describe('paragraph direction', () => {
 });
 
 describe('markup', () => {
-  it('removes what can run code and keeps what draws', () => {
-    const out = sanitizeMarkup(
-      '<div onclick="x()" style="color:red"><script>x()</script><a href=" javascript:x()">a</a><img src="a.png" onerror="x()"><iframe></iframe><a href="https://x.dev">b</a></div>',
-    );
-    expect(out).toBe(
-      '<div style="color:red"><a>a</a><img src="a.png"><a href="https://x.dev" target="_blank" rel="noopener noreferrer">b</a></div>',
-    );
-  });
-
   it('normalises colours for comparison', () => {
     expect(normalizeColor('#ABC')).toBe('#aabbcc');
     expect(normalizeColor('black')).toBe('#000000');
@@ -262,11 +229,15 @@ describe('markup', () => {
   });
 
   it('recolours SVG through styles, including the initial black fill and currentColor', () => {
-    const out = prepareSvg('<svg viewBox="0 0 24 24"><circle r="1"/><rect fill="#FFF"/></svg>', {
-      '#000000': { token: 'primary' },
-      '#ffffff': { value: 'red' },
-      currentColor: { token: 'accent' },
-    });
+    const picture = prepareSvg(
+      '<svg viewBox="0 0 24 24"><circle r="1"/><rect fill="#FFF"/></svg>',
+      {
+        '#000000': { token: 'primary' },
+        '#ffffff': { value: 'red' },
+        currentColor: { token: 'accent' },
+      },
+    );
+    const out = (picture.firstElementChild as Element).outerHTML;
     expect(out).toContain('fill: var(--color-primary)');
     expect(out).toContain('color: var(--color-accent)');
     expect(out).toMatch(/<rect style="fill: red;?">/);

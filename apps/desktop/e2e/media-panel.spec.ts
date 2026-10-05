@@ -29,9 +29,10 @@ async function searchStock(page: Page, query: string): Promise<void> {
 /** The colour the Stage draws an element's icon in. */
 function drawnColor(page: Page, elementId: string): Promise<string> {
   return page.evaluate((id) => {
-    const svg = document.querySelector(
-      `[data-testid="stage-surface"] [data-element-id="${id}"] svg`,
-    );
+    // The picture of an `svg` element is in a shadow root of its own.
+    const svg = document
+      .querySelector(`[data-testid="stage-surface"] [data-element-id="${id}"] [data-slidr-svg]`)
+      ?.shadowRoot?.querySelector('svg');
     return svg ? getComputedStyle(svg).color : '';
   }, elementId);
 }

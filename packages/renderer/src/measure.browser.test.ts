@@ -388,6 +388,37 @@ test('backdrop: what cannot be read is left unjudged, not guessed', async () => 
   expect(html.ink.x).toBeCloseTo(100, 0);
 });
 
+test('backdrop: the picture of an svg element is under the text, with its own stylesheet only', async () => {
+  const label = (id: string, x: number) =>
+    createElement.text({
+      id,
+      frame: { x, y: 200, w: 300, h: 80 },
+      content: richText('Text', { dir: 'ltr' }),
+    });
+  // An `svg` element draws in a shadow root, which a copy of the slide does not take along.
+  const m = await measured([
+    createElement.svg({
+      id: 'e_plain',
+      frame: { x: 100, y: 100, w: 400, h: 300 },
+      markup:
+        '<svg viewBox="0 0 10 10" preserveAspectRatio="none"><rect width="10" height="10" fill="rgb(16, 32, 48)"/></svg>',
+    }),
+    createElement.svg({
+      id: 'e_styled',
+      frame: { x: 700, y: 100, w: 400, h: 300 },
+      markup:
+        '<svg viewBox="0 0 10 10" preserveAspectRatio="none"><style>rect { fill: rgb(200, 30, 30) }</style><rect width="10" height="10"/></svg>',
+    }),
+    label('e_over_plain', 150),
+    label('e_over_styled', 750),
+  ]);
+  const under = (id: string) => m[id]!.text!.spans[0]!.backdrop;
+  expect(under('e_over_plain').length).toBeGreaterThan(0);
+  // The rule of the second picture colours its own rectangle, and not the first one's.
+  expect(under('e_over_plain').every((c) => near(c, [16, 32, 48]))).toBe(true);
+  expect(under('e_over_styled').every((c) => near(c, [200, 30, 30]))).toBe(true);
+});
+
 test('free HTML scaled to its frame is measured at the size it shows', async () => {
   const m = await measured([
     createElement.html({

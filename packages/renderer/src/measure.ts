@@ -178,6 +178,8 @@ async function paintBackdrop(root: HTMLElement, toSlide: ToSlide): Promise<Backd
     if (twin.matches('iframe, video')) twin.remove();
   }
   copy.querySelector('style[data-slidr-fonts]')?.remove();
+  // Paired now, while the copy still has the shape of the slide (see below).
+  const pictures = pairs(root, copy, '[data-slidr-svg]');
 
   await Promise.all(
     pairs<HTMLImageElement>(root, copy, 'img').map(async ([img, twin]) => {
@@ -204,6 +206,19 @@ async function paintBackdrop(root: HTMLElement, toSlide: ToSlide): Promise<Backd
       });
     }),
   );
+
+  // The picture of an `svg` element is in a shadow root too, but it is plain SVG, which the
+  // copy can hold itself. Last, so that the pairs above were made between trees of one shape.
+  // A stylesheet of the picture would style the whole copy from there, so it is held to its
+  // own picture.
+  pictures.forEach(([el, twin], i) => {
+    if (!el.shadowRoot) return;
+    twin.setAttribute('data-slidr-svg', String(i));
+    twin.append(...Array.from(el.shadowRoot.childNodes, (node) => node.cloneNode(true)));
+    for (const sheet of Array.from(twin.querySelectorAll('style'))) {
+      sheet.textContent = `@scope ([data-slidr-svg="${i}"]) {\n${sheet.textContent ?? ''}\n}`;
+    }
+  });
 
   const style = document.createElement('style');
   style.textContent = NO_GLYPHS;

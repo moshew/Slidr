@@ -617,15 +617,29 @@ function LineView({ element: e }: { element: LineElement }) {
 // ---------------------------------------------------------------------------------------------
 // SVG
 
+/**
+ * The picture of an `svg` element, in a shadow root of its own, like the content of an `html`
+ * element. The nodes that were cleaned are the nodes that are drawn (`prepareSvg`); a stylesheet
+ * and the ids inside the picture stay inside it, and the page's own styles do not reach in.
+ * The theme's variables and the colour of the text around it do, by inheritance. The root is
+ * serializable, so an export writes it out as a declarative shadow root.
+ */
+function SvgPicture({ e, style }: { e: SvgElement; style: CSSProperties }) {
+  const host = useRef<HTMLDivElement>(null);
+  const { markup, colorOverrides } = e;
+  useLayoutEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const root = el.shadowRoot ?? el.attachShadow({ mode: 'open', serializable: true });
+    root.replaceChildren(prepareSvg(markup ?? '', colorOverrides));
+  }, [markup, colorOverrides]);
+  return <div ref={host} data-slidr-svg="" style={style} />;
+}
+
 function SvgView({ element: e }: { element: SvgElement }) {
   const ctx = useRenderContext();
-  const markup = useMemo(
-    () => (e.markup ? prepareSvg(e.markup, e.colorOverrides) : undefined),
-    [e.markup, e.colorOverrides],
-  );
   const style: CSSProperties = { ...FILL_PARENT, transform: flipTransform(e) };
-  if (markup !== undefined)
-    return <div style={style} dangerouslySetInnerHTML={{ __html: markup }} />;
+  if (e.markup) return <SvgPicture e={e} style={style} />;
   // An SVG asset is drawn as an image. Its colours cannot be overridden that way (SHP-06, WG5-T10).
   const url = e.assetId ? ctx.assetUrl(e.assetId) : undefined;
   return url ? (

@@ -173,8 +173,9 @@ test('a hostile deck: its script stays in its frame, and its markup is cleaned',
     const shadow = stageFrame.querySelector(
       '[data-element-id="e_handlers"] [data-slidr-html]',
     )?.shadowRoot;
-    const svg = stageFrame.querySelector('[data-element-id="e_svg"]');
-    const roots = [shadow, svg].filter((root): root is ShadowRoot | Element => Boolean(root));
+    // The picture of an `svg` element is in a shadow root of its own, like the `html` content.
+    const svg = stageFrame.querySelector('[data-element-id="e_svg"] [data-slidr-svg]')?.shadowRoot;
+    const roots = [shadow, svg].filter((root): root is ShadowRoot => Boolean(root));
     const all = roots.flatMap((root) => [...root.querySelectorAll('*')]);
     const link = shadow?.querySelector<HTMLAnchorElement>('#link');
     link?.click();
