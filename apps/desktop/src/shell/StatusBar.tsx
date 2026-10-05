@@ -23,6 +23,7 @@ export function StatusBar() {
   return (
     <footer
       data-testid="status-bar"
+      data-pane="status"
       className="flex h-statusbar shrink-0 items-center gap-5 border-t border-ui-line bg-ui-chrome px-3 text-xs text-ui-fg-muted"
     >
       <span data-testid="status-slide" className="tabular-nums">

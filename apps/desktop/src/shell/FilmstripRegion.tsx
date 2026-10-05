@@ -57,6 +57,7 @@ export function FilmstripRegion() {
     <section
       aria-label={t('stage.filmstrip')}
       data-testid="filmstrip"
+      data-pane="filmstrip"
       className="h-filmstrip shrink-0 border-t border-ui-line bg-ui-panel"
     >
       <Filmstrip

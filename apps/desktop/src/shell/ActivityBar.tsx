@@ -16,6 +16,7 @@ export function ActivityBar() {
     <nav
       aria-label={t('panels.tools')}
       data-testid="activity-bar"
+      data-pane="activity"
       className="flex w-activitybar shrink-0 flex-col items-center gap-4 border-e border-ui-line bg-ui-chrome py-2"
     >
       <Section panels={slot('ai')} />

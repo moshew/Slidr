@@ -50,6 +50,7 @@ export function ToolPanel() {
     <>
       <aside
         data-testid="tool-panel"
+        data-pane="panel"
         data-open={open}
         aria-hidden={!open}
         inert={!open}
