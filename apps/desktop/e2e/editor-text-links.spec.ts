@@ -155,6 +155,25 @@ test.describe('the link tool', () => {
     await expect(address(page)).toHaveCount(0);
   });
 
+  test('Ctrl+K with nothing to link is forgotten: the popover does not open later, while typing', async ({
+    page,
+  }) => {
+    await edit(page, ID);
+    // A new line after the text: nothing to link there, and the tool is off.
+    await setSelection(page, 30);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Control+k');
+    await expect(address(page)).toHaveCount(0);
+    // The first letter makes a word of the line. The request of a moment ago is not waiting for it.
+    await page.keyboard.type('abc', { delay: 40 });
+    await expect(address(page)).toHaveCount(0);
+    await expect(editor(page)).toBeFocused();
+    expect((await paragraphs(page, ID))[1]!.runs.map((run) => run.text).join('')).toBe('abc');
+    // Asked for now, with the caret in the word, it opens.
+    await page.keyboard.press('Control+k');
+    await expect(address(page)).toBeVisible();
+  });
+
   test('refuses an address that is not a page, a mail or a phone number', async ({ page }) => {
     await edit(page, ID);
     await setSelection(page, 8, 17);

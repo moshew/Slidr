@@ -171,9 +171,25 @@ export function LinkTool({ kind }: Partial<ContextToolProps>) {
   const text = useText();
   const compact = useCompact();
   const [open, setOpen] = useState(false);
-  useEffect(() => requests.subscribe(() => setOpen(true)), []);
-  if (!text || !linksText(text.target)) return null;
-  const { link, linkable } = currentLink(text);
+  const current = text && linksText(text.target) ? currentLink(text) : null;
+  // Ctrl+K opens the popover only when there is something to link right now. A request that
+  // could not be shown is forgotten: kept, it would open the popover later, in the middle of
+  // typing, when the caret came to stand in a word.
+  const can = useRef(false);
+  useEffect(() => {
+    can.current = Boolean(current?.linkable);
+  });
+  useEffect(
+    () =>
+      requests.subscribe(() => {
+        if (can.current) setOpen(true);
+      }),
+    [],
+  );
+  // And a popover whose text went away under it (an undo, another selection) is closed for good.
+  if (open && !current?.linkable) setOpen(false);
+  if (!text || !current) return null;
+  const { link, linkable } = current;
   return (
     <Popover open={open && linkable} onOpenChange={setOpen}>
       {kind === 'table' && compact ? (
