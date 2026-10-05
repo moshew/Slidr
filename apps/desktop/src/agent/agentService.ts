@@ -463,8 +463,6 @@ export class ChatThread {
   #loading: Promise<void> | null = null;
   /** A message whose files are being stored, before it has a run: Stop is kept here meanwhile. */
   #sending: { stopped: boolean } | null = null;
-  /** The document the chat belonged to was replaced (`drop`): its files are not this chat's. */
-  #gone = false;
   /**
    * The changes that went into the context block of a turn no session has taken yet: they left
    * the digest when the block was made, and are still news if the turn does not arrive.
@@ -527,7 +525,10 @@ export class ChatThread {
 
   /**
    * Another deck is open in the window: the session and what the chat showed were the old
-   * deck's. The thread itself stays, so whoever holds it now holds the new deck's chat.
+   * deck's. The thread itself stays, so whoever holds it now holds the new deck's chat of the
+   * same name: its transcript is read from the new deck when the chat is next asked for, or
+   * sent to. Nothing of the old deck's chat is written from here on: the files a chat is kept
+   * in are by now the new document's.
    */
   reset(): void {
     const session = this.#session;
@@ -549,7 +550,6 @@ export class ChatThread {
       activity: null,
     });
     if (session) void this.#endSession(session);
-    void this.load();
   }
 
   /** Sends a user message and starts the agent's turn. Ignored while a turn runs. */
@@ -561,6 +561,9 @@ export class ChatThread {
     this.store.setState({ busy: true, stopping: false, activity: { kind: 'starting' } });
     const sending = { stopped: false };
     this.#sending = sending;
+    // The conversation as the deck keeps it comes first: what resumes it is in its record, and
+    // a chat that was reset for another deck has not been read from that deck yet.
+    await this.load();
     let attached: Attached | undefined;
     let shown: EntryAttachment[] = [];
     let failure: unknown;
@@ -715,21 +718,6 @@ export class ChatThread {
     if (session) await this.#endSession(session);
   }
 
-  /**
-   * The deck this chat was about is no longer the open one (File > New, Open): the chat ends
-   * where it is. Nothing more is written of it: the files a chat is kept in are by now the new
-   * document's.
-   */
-  drop(): void {
-    const session = this.#session;
-    this.#session = null;
-    this.#gone = true;
-    // Nor is anything read: a transcript that was still on its way belongs to nobody here.
-    this.#loading = Promise.resolve();
-    this.#end();
-    if (session) void this.#endSession(session);
-  }
-
   /** Ends whatever the chat was in the middle of, and leaves it idle. */
   #end(): void {
     const run = this.#run;
@@ -798,14 +786,12 @@ export class ChatThread {
   }
 
   #persist(entries: readonly ChatEntry[]): void {
-    if (this.#gone) return;
     this.#options.transcripts.append(this.id, entries).catch((error: unknown) => {
       console.error('The chat could not be saved with the deck', error);
     });
   }
 
   #saveRecord(): void {
-    if (this.#gone) return;
     this.#options.transcripts.setRecord(this.id, this.#record).catch((error: unknown) => {
       console.error('The chat index could not be saved with the deck', error);
     });
@@ -1605,8 +1591,9 @@ export class AgentService {
     if (!thread) {
       thread = new ChatThread(this, this.#options, scope, id);
       this.#threads.set(id, thread);
-      void thread.load();
     }
+    // Read once for each deck: a chat that was reset for another deck is read again here.
+    void thread.load();
     return thread;
   }
 
@@ -1730,22 +1717,20 @@ export class AgentService {
   };
 
   /**
-   * Another deck is open: the sessions were the old deck's. The deck's own chat starts over
-   * in place, since the panel that shows it holds on to it; a chat of a slide or an object is
-   * about ids the new deck does not have, and goes.
+   * Another deck is open: the sessions were the old deck's. Every chat starts over in place,
+   * as the new deck's chat of the same name: whoever holds one (a panel, the import's flow, the
+   * list of chats at work) goes on holding a chat that works, where one that was thrown away
+   * left its holder with a chat whose tool calls found nobody. The new deck may have no slide
+   * or selection by that name; then nobody asks for the chat again, and it stays empty.
    */
   #reset(): void {
     this.shown.setState({}, true);
     this.#restored.clear();
     for (const [id, thread] of this.#threads) {
-      // Of the deck's conversations the first is the one a panel holds from the start.
-      if (id === threadIdOf(thread.scope) && thread.scope.kind === 'deck') {
-        thread.reset();
-      } else {
-        this.#threads.delete(id);
-        this.digest.forget(id);
-        thread.drop();
-      }
+      thread.reset();
+      this.digest.forget(id);
+      // Of the deck's conversations the first is the one a panel shows from the start.
+      if (id === threadIdOf(thread.scope) && thread.scope.kind === 'deck') void thread.load();
     }
   }
 }

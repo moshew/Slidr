@@ -10,7 +10,6 @@ import {
 import { CommandBus, createDeck, createSlide, findSlide } from '@slidr/model';
 import { describe, expect, it, vi } from 'vitest';
 import errorsScript from '../../src-tauri/src/harness/fixtures/scripts/errors.json';
-import { createSessions } from '../ai/sessions';
 import {
   AgentError,
   type AgentClient,
@@ -1179,38 +1178,45 @@ describe('stopping and failing', () => {
     const long = script([say('A long '), { ...say('answer'), delayMs: 5000 }, done()]);
     const SLIDE = { kind: 'slide', slideId: 's_1' } as const;
 
-    it('by another deck (File > New, Open): it is no longer at work, and nothing more is written of it', async () => {
-      const { bus, service, transcripts } = setup({ long }, { speed: 1 });
-      // What the panels and the status bar work with: every chat a panel opened that is busy.
-      const sessions = createSessions(service);
-      const slide = sessions.thread(SLIDE);
-      const second = sessions.thread({ kind: 'deck' }, 'deck-c1');
+    it("by another deck (File > New, Open): it is no longer at work, and is the new deck's chat", async () => {
+      const rename = script([
+        call('t1', 'slide_update', { slideId: 's_1', name: 'Intro' }),
+        done(),
+      ]);
+      const settings: AgentSettings = { model: 'long' };
+      const { bus, service, transcripts } = setup({ long, rename }, { speed: 1, settings });
+      const slide = service.thread(SLIDE);
+      const second = service.thread({ kind: 'deck' }, 'deck-c1');
       await slide.send('Go');
       await second.send('Go');
       await vi.waitFor(() => expect(slide.store.getState().activity?.kind).toBe('writing'));
       await vi.waitFor(() => expect(second.store.getState().activity?.kind).toBe('writing'));
-      expect(sessions.working.getState().threads).toEqual([slide, second]);
       const kept = new Map(transcripts.files);
 
-      bus.reset(createDeck({ slides: [createSlide({ id: 's_other' })] }));
+      // The same file opened again, to drop what was changed: the same slide ids.
+      bus.reset(createDeck({ slides: [createSlide({ id: 's_1', name: 'first' })] }));
 
-      // Neither chat is the new deck's, and neither stays "working" in the status bar for good.
+      // Neither chat stays "working" for good (the status bar lists every chat that is busy),
+      // and neither shows the old deck's conversation.
       for (const thread of [slide, second]) {
         expect(thread.store.getState()).toMatchObject({
+          entries: [],
           busy: false,
           stopping: false,
           activity: null,
         });
-        expect(thread.store.getState().entries.at(-1)).toMatchObject({
-          type: 'assistant',
-          outcome: 'interrupted',
-        });
       }
-      expect(sessions.working.getState().threads).toEqual([]);
-      // The chat's files are by now the new document's: the old chats write nothing into them.
+      // The chat's files are by now the new document's: the old turns write nothing into them.
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(transcripts.files).toEqual(kept);
-      expect(service.thread(SLIDE)).not.toBe(slide);
+
+      // Whoever held the chat of the slide holds the new deck's chat of that slide, and it
+      // works: its session is the new deck's, and its tool calls find their chat.
+      expect(service.thread(SLIDE)).toBe(slide);
+      settings.model = 'rename';
+      const entry = await ask(slide, 'Rename the slide');
+      expect(tools(entry)).toMatchObject([{ name: 'slide_update', state: 'ok' }]);
+      expect(bus.deck.slides[0]!.name).toBe('Intro');
     });
 
     it('by closing it: the turn is closed as interrupted, and kept with the deck', async () => {
