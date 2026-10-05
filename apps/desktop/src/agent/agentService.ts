@@ -201,7 +201,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Longest string a chip's detail keeps of a tool's arguments: a slide's HTML runs to pages. */
 const MAX_INPUT_TEXT = 2000;
-const MAX_INPUT_ITEMS = 50;
+/**
+ * Longest list the transcript keeps of a tool's arguments. The card of an outline is drawn from
+ * them, and what it holds is what an approval sends (AID-03), so an outline is kept whole: 60 is
+ * the most slides `outline_propose` takes.
+ */
+const MAX_INPUT_ITEMS = 60;
 
 /** A tool's arguments as the chip keeps them: the same shape, with long values cut. */
 export function clipInput(value: unknown, depth = 0): unknown {

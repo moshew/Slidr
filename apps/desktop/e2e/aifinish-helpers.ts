@@ -147,6 +147,15 @@ export function heldCost(page: Page): Promise<number> {
   }, RUNTIME);
 }
 
+/** What the deck chat was sent last: for an action, its `<slidr_action>` block. */
+export function lastSent(page: Page): Promise<string> {
+  return page.evaluate(async (path) => {
+    const { aiOf } = (await import(/* @vite-ignore */ path)) as typeof Runtime;
+    const { entries } = aiOf(window.slidr!).agent.thread({ kind: 'deck' }).store.getState();
+    return entries.findLast((entry) => entry.type === 'user')?.text ?? '';
+  }, RUNTIME);
+}
+
 /** The drafts the agent made in this window: how many, and the primary colour of two of them. */
 export function draftColours(
   page: Page,
