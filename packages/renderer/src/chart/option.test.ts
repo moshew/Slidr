@@ -416,13 +416,28 @@ describe('a chart without data', () => {
 });
 
 describe('the corners of the bars', () => {
-  // Expected failure: ADR-069, ממצא 1. The bars are drawn with 3px corners whatever the theme
-  // says, so a template with square corners (radius 0) gets rounded columns. Fixing it changes
-  // how a chart is drawn, which the Windows baselines of chart-render.spec.ts check.
-  it.fails('are square in a theme with square corners', () => {
-    const square = chartSpec(chart(), { theme: { ...theme, radius: 0 }, dir: 'ltr', lang: 'en' });
-    for (const bar of series(chartOption(square, still))) {
-      expect((bar.itemStyle as Part).borderRadius ?? 0).toBe(0);
-    }
+  const corners = (radius: number, chartType: ChartElement['chartType'] = 'column') => {
+    const themed = chartSpec(chart({ chartType }), {
+      theme: { ...theme, radius },
+      dir: 'ltr',
+      lang: 'en',
+    });
+    return series(chartOption(themed, still)).map((bar) => (bar.itemStyle as Part).borderRadius);
+  };
+
+  // ADR-069, ממצא 1: the bars were drawn with 3px corners whatever the theme said, so a
+  // template with square corners got rounded columns.
+  it('are square in a theme with square corners', () => {
+    expect(corners(0)).toEqual([0, 0]);
+    expect(corners(0, 'bar')).toEqual([0, 0]);
+  });
+
+  it('follow the theme up to 3px, and are no rounder in a theme that is', () => {
+    expect(corners(2)).toEqual([2, 2]);
+    expect(corners(3)).toEqual([3, 3]);
+    // The base theme, and every baseline picture of a chart: as they were drawn before.
+    expect(theme.radius).toBeGreaterThanOrEqual(3);
+    expect(corners(theme.radius)).toEqual([3, 3]);
+    expect(corners(36, 'bar')).toEqual([3, 3]);
   });
 });

@@ -108,6 +108,9 @@ const sliceColor = (spec: ChartSpec, i: number): string =>
 
 const isRound = (spec: ChartSpec) => spec.type === 'pie' || spec.type === 'donut';
 
+/** The roundest the corners of a bar get, in slide pixels, however round the theme is. */
+const BAR_RADIUS = 3;
+
 /** The points of a scatter series: its own, or its values over the categories read as numbers. */
 function scatterPoints(spec: ChartSpec, series: ChartSeriesSpec): [number, number][] {
   if (series.points?.length) return series.points.map((p) => [p.x, p.y]);
@@ -370,7 +373,9 @@ function cartesian(spec: ChartSpec, plot: Box, live: boolean): Built {
           barMaxWidth: Math.round(Math.max(font.size * 5, (lying ? spec.h : spec.w) * 0.14)),
           barGap: '12%',
           barCategoryGap: '32%',
-          itemStyle: { color, borderRadius: 3 },
+          // The corners of the theme, and no rounder than this: a bar is a narrow thing. In a
+          // theme whose corners are square the bars are square too.
+          itemStyle: { color, borderRadius: Math.min(BAR_RADIUS, spec.radius) },
         };
     }
   });

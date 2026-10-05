@@ -44,6 +44,8 @@ export interface ChartSpec {
     titleSize: number;
     titleWeight: number;
   };
+  /** The theme's corner radius, in slide pixels: how round a chart's own corners may be. */
+  radius: number;
 }
 
 export interface ChartSeriesSpec {
@@ -154,5 +156,6 @@ export function chartSpec(element: ChartSource, { theme, dir, lang }: ChartSpecC
       titleSize: textStyles.body.size,
       titleWeight: textStyles.heading.weight,
     },
+    radius: theme.radius,
   };
 }
