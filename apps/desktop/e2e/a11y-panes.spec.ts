@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addBoxes, frames, openApp, select, selected, THREE } from './arrange-helpers';
+import { addElement, line } from './objects-helpers';
 import { addText, edit, element, para } from './text-helpers';
 
 /*
@@ -229,4 +230,24 @@ test('the pane key is the user’s to change, like any registered shortcut', asy
   expect(await pane(page)).toBe('stage');
   await page.keyboard.press('F8');
   expect(await pane(page)).toBe('filmstrip');
+});
+
+test('Enter on a tool of row B presses that tool, also when a line is selected', async ({
+  page,
+}) => {
+  await openApp(page, { lang: 'en' });
+  await addElement(page, line());
+  await page.keyboard.press('F6');
+  await expect(surface(page)).toBeFocused();
+  expect(await selected(page)).toEqual(['e_line']);
+  // Enter on the Stage goes into the points of the line; on a tool it must not.
+  await page.keyboard.press('Shift+F6');
+  expect(await pane(page)).toBe('context');
+  const tool = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
+  expect(tool).toBeTruthy();
+  await page.keyboard.press('Enter');
+  // The tool was pressed: its popover is open, and the keyboard did not go to the Stage.
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(surface(page)).not.toBeFocused();
+  await expect(surface(page).locator('[data-line-point][data-active]')).toHaveCount(0);
 });

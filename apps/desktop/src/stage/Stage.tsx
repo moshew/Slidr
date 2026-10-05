@@ -1605,8 +1605,10 @@ export function Stage({
     if (!slide || !surface) return false;
     const line = single && isLine(single) && !single.locked && !editingId ? single : undefined;
     if (command.type === 'points') {
-      // Into the points of the line, or out of them again. The menu asks for this too, and had
-      // the keyboard: the Stage takes it.
+      // Into the points of the line, or out of them again. The key is the Stage's only while the
+      // Stage has the keyboard: Enter on a tool of row B presses that tool, whatever is selected.
+      // The menu asks for the points too, and had the keyboard itself: the Stage takes it then.
+      if (!command.fromMenu && document.activeElement !== surface) return false;
       if (pointAt !== null) stageKeys.setState({ point: null });
       else if (line) stageKeys.setState({ point: 0, cursor: null });
       else return false;
