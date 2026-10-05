@@ -468,6 +468,31 @@ test('a series is given a colour of the theme, a colour of its own, and the them
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+test('Enter after the code of a colour leaves the keyboard in the picker', async ({ page }) => {
+  await open(page);
+  const box = (await openTool(page, en.colors)).first();
+  await box.getByRole('button', { name: 'Apples', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(2);
+  const picker = page.getByRole('dialog').last();
+
+  // Enter ends the typing and leaves the field. The picker keeps the keyboard: on the slide
+  // behind it, the picker and the colours would both take it as a press outside, and close.
+  const hex = page.getByRole('textbox', { name: 'Hex code' });
+  await hex.fill('10AA20');
+  await hex.press('Enter');
+  await expect(picker).toBeFocused();
+  await expect(page.getByRole('dialog')).toHaveCount(2);
+  expect((await chart(page)).data.series[0]?.color).toEqual({ value: '#10aa20' });
+
+  // Each Esc closes one of the two, and the last gives the keyboard back to the slide.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(box).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(stage(page)).toBeFocused();
+});
+
 test('a drag in the colour picker is one undo step', async ({ page }) => {
   await open(page);
   const box = await openTool(page, en.colors);

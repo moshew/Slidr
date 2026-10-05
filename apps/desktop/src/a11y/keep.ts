@@ -17,6 +17,9 @@ import { paneNow, paneTarget, takesKeyboard, type Pane } from './panes';
  *     thing that is left: the region the lost control was in, at its first control, when the
  *     control is gone; the slide when the control is still there and was left on purpose (a field
  *     that Enter commits), or when it was in a layer that closed.
+ *   - A layer that is still open keeps the keyboard that was lost inside it: a popover, a
+ *     dialog. On the slide behind it the keyboard would be outside the layer, which a popover
+ *     takes as a press outside it: it closes, and every popover it was opened from with it.
  *
  * A press of the pointer away from a field of a panel leaves the keyboard nowhere as before:
  * that is what the press asked for, and every key that needs no focus works from there.
@@ -35,10 +38,21 @@ const A_MOMENT = 20;
  */
 const GROUND = '[role="tabpanel"]';
 
+/**
+ * A layer of its own over the window: a popover beside its button, a dialog. It takes the focus
+ * as a whole, as it does when it opens with no control of its own to give it to.
+ */
+const LAYER = '[role="dialog"], [role="alertdialog"]';
+
 export function keepKeyboard(): () => void {
   let waiting: ReturnType<typeof setTimeout> | undefined;
 
-  const settle = (from: HTMLElement, pane: Pane | undefined, ground: Element | null) => {
+  const settle = (
+    from: HTMLElement,
+    pane: Pane | undefined,
+    ground: Element | null,
+    layer: HTMLElement | null,
+  ) => {
     waiting = undefined;
     const active = document.activeElement;
     // Somebody has it; or the window itself is not where the user is.
@@ -52,6 +66,12 @@ export function keepKeyboard(): () => void {
       return;
     }
     if (!keyboardInUse()) return;
+    // Lost inside a layer that is still open (the code of a colour that Enter commits, in the
+    // picker): the keyboard stays in the layer.
+    if (layer && takesKeyboard(layer)) {
+      layer.focus({ preventScroll: true });
+      return;
+    }
     const near = pane && !still ? paneTarget(pane) : undefined;
     (near ?? paneTarget('stage'))?.focus({ preventScroll: true });
   };
@@ -64,8 +84,10 @@ export function keepKeyboard(): () => void {
     if (to && !ground) return;
     const from = event.target;
     const pane = paneNow();
+    // Read now: a control that is being taken out of the document is still in its layer.
+    const layer = from.closest<HTMLElement>(LAYER);
     clearTimeout(waiting);
-    waiting = setTimeout(() => settle(from, pane, ground), A_MOMENT);
+    waiting = setTimeout(() => settle(from, pane, ground, layer), A_MOMENT);
   };
 
   document.addEventListener('focusout', onFocusOut);
