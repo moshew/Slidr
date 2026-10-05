@@ -1,5 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Deck, Element, Slide } from '@slidr/model';
+import type * as Runtime from '../src/ai/runtime';
+
+/** The app's own module, as the page has it: a specifier that is not a literal stays unbundled. */
+const RUNTIME = '/src/ai/runtime.ts';
 
 /*
  * Helpers for the suites of the slide tool, the object tool and the variations gallery (WG11-T04
@@ -7,7 +11,15 @@ import type { Deck, Element, Slide } from '@slidr/model';
  * session plays, and `speed` multiplies its recorded delays (0 plays a turn at once).
  */
 
-export type Script = 'text-variations' | 'slide-redesign' | 'image-alternatives' | 'deck-build';
+export type Script =
+  | 'text-variations'
+  | 'slide-redesign'
+  | 'image-alternatives'
+  | 'deck-build'
+  // The actions of a chart and of a table (e2e/aitools-scripts).
+  | 'chart-actions'
+  | 'table-actions'
+  | 'table-on-slide';
 
 export interface OpenOptions {
   script: Script;
@@ -144,6 +156,117 @@ export async function addImage(page: Page): Promise<string> {
     editor.selection.getState().selectElements(['e_picture']);
     return asset.id;
   });
+}
+
+/** The revenue of three years: one series over time, as the chart scripts read it. */
+export const REVENUE = {
+  categories: ['2024', '2025', '2026'],
+  series: [{ name: 'הכנסות', values: [120, 180, 260] }],
+};
+
+/** A column chart under where the title goes, on the current slide, selected. */
+export async function addChart(page: Page): Promise<string> {
+  await page.evaluate((data) => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.add',
+      slideId: editor.selection.getState().currentSlideId ?? '',
+      element: {
+        id: 'e_chart',
+        type: 'chart',
+        frame: { x: 360, y: 420, w: 1200, h: 560 },
+        rotation: 0,
+        opacity: 1,
+        chartType: 'column',
+        data,
+        options: {
+          legend: { show: false, position: 'bottom' },
+          axes: { x: { show: true }, y: { show: true } },
+          labels: false,
+        },
+      } as never,
+    });
+    editor.selection.getState().selectElements(['e_chart']);
+  }, REVENUE);
+  await expect(onStage(page, 'e_chart').locator('[data-slidr-chart-box] svg')).toBeVisible();
+  return 'e_chart';
+}
+
+/** What the chart on the Stage is drawn from: its type, its title and its categories. */
+export async function chartDrawn(
+  page: Page,
+): Promise<{ type: string; title?: string; categories: string[] }> {
+  const spec = await onStage(page, 'e_chart')
+    .locator('[data-slidr-chart]')
+    .getAttribute('data-slidr-chart');
+  return JSON.parse(spec ?? '{}') as { type: string; title?: string; categories: string[] };
+}
+
+/** The customers of three regions, as the table scripts fill them in. */
+export const REGIONS = [
+  ['אזור', 'לקוחות'],
+  ['צפון', '340'],
+  ['מרכז', '520'],
+  ['דרום', '210'],
+];
+
+/** A table of the regions under where the title goes, on the current slide, selected. */
+export async function addTable(page: Page): Promise<string> {
+  await page.evaluate((texts) => {
+    const editor = window.slidr!;
+    const frame = { x: 360, y: 520, w: 1200, h: 360 };
+    const cell = (text: string) => ({
+      content: { paragraphs: [{ dir: 'auto', align: 'start', runs: [{ text }] }] },
+    });
+    editor.bus.dispatch({
+      type: 'element.add',
+      slideId: editor.selection.getState().currentSlideId ?? '',
+      element: {
+        id: 'e_table',
+        type: 'table',
+        frame,
+        rotation: 0,
+        opacity: 1,
+        rows: texts.map(() => frame.h / texts.length),
+        cols: texts[0]!.map(() => frame.w / texts[0]!.length),
+        dir: 'rtl',
+        style: { headerRow: true, bandedRows: false, firstColumn: false },
+        cells: texts.map((row) => row.map(cell)),
+      } as never,
+    });
+    editor.selection.getState().selectElements(['e_table']);
+  }, REGIONS);
+  await expect(onStage(page, 'e_table')).toBeVisible();
+  return 'e_table';
+}
+
+/** The texts of the cells of the table on the current slide, row by row. */
+export async function cellTexts(page: Page): Promise<string[][]> {
+  const table = await element(page, 'e_table');
+  if (table?.type !== 'table') return [];
+  return table.cells.map((row) =>
+    row.map((cell) =>
+      cell.content.paragraphs.map((p) => p.runs.map((r) => r.text).join('')).join('\n'),
+    ),
+  );
+}
+
+/** What the chat that is open was sent last: the message of an action is its `<slidr_action>`. */
+export function lastSent(page: Page): Promise<string> {
+  return page.evaluate(async (path) => {
+    const { aiOf } = (await import(/* @vite-ignore */ path)) as typeof Runtime;
+    const id = document.querySelector('[data-testid="chat"]')?.getAttribute('data-thread');
+    const ai = aiOf(window.slidr!);
+    const selection = window.slidr!.selection.getState();
+    const slideId = selection.currentSlideId ?? '';
+    const scope = id?.startsWith('slide-')
+      ? ({ kind: 'slide', slideId } as const)
+      : id?.startsWith('object-')
+        ? ({ kind: 'object', slideId, elementIds: selection.selectedElementIds } as const)
+        : ({ kind: 'deck' } as const);
+    const { entries } = ai.agent.thread(scope, id ?? undefined).store.getState();
+    return entries.findLast((entry) => entry.type === 'user')?.text ?? '';
+  }, RUNTIME);
 }
 
 export function deck(page: Page): Promise<Deck> {

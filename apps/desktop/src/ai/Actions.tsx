@@ -6,7 +6,9 @@ import { findElement, findSlide, type Element } from '@slidr/model';
 import { ACTIONS, actionMessage, type ActionId, type ActionParams } from '@slidr/prompts';
 import {
   Brush,
+  ChartColumn,
   Clapperboard,
+  ClipboardPaste,
   Crop,
   Expand,
   Heading,
@@ -14,6 +16,7 @@ import {
   Images,
   Languages,
   LayoutTemplate,
+  Lightbulb,
   List,
   Megaphone,
   NotebookPen,
@@ -63,9 +66,10 @@ import { aiOf } from './runtime';
 import { useObjectScope, useSlideScope } from './scopes';
 
 /*
- * The Actions tab of the three AI tools (SPEC 4.3; AID-05, AIS-02, AIS-04, AIO-02, AIO-03). An AI
- * action is a template of `@slidr/prompts`, sent to the tool's chat in place of a typed message,
- * so it is part of the conversation; a deterministic control acts at once.
+ * The Actions tab of the three AI tools (SPEC 4.3; AID-05, AIS-02, AIS-04, AIO-02, AIO-03,
+ * AIO-07, AIO-08). An AI action is a template of `@slidr/prompts`, sent to the tool's chat in
+ * place of a typed message, so it is part of the conversation; a deterministic control acts at
+ * once.
  */
 
 const DECK: SessionScope = { kind: 'deck' };
@@ -81,7 +85,14 @@ export interface Runner {
   busy: boolean;
 }
 
-/** The actions of a panel on `scope`. One that belongs to another scope goes to the deck chat. */
+/** Longest text of a form that is kept with the chat's entry: a pasted page is in the message. */
+const MAX_KEPT = 600;
+
+/**
+ * The actions of a panel on `scope`. One that belongs to another scope goes to the chat of that
+ * scope, and the panel turns to it: the slide's chat for what an object session may not do to
+ * its slide, the deck's for what a slide session may not do to the deck.
+ */
 function useRunner(scope: SessionScope): Runner {
   const { t, i18n } = useTranslation('ai');
   const editor = useEditor();
@@ -90,21 +101,40 @@ function useRunner(scope: SessionScope): Runner {
   // The deck's chat is the conversation its tool shows now.
   const deckId = useStore(ai.agent.shown, (shown) => shown[threadIdOf(DECK)] ?? threadIdOf(DECK));
   const deck = useMemo(() => ai.sessions.thread(DECK, deckId), [ai, deckId]);
+  // The chat of the slide an object is on, likewise.
+  const onSlide = scope.kind === 'object' ? scope.slideId : null;
+  const slideId = useStore(ai.agent.shown, (shown) => {
+    const id = onSlide ? threadIdOf({ kind: 'slide', slideId: onSlide }) : null;
+    return id ? (shown[id] ?? id) : null;
+  });
+  const slide = useMemo(
+    () =>
+      onSlide && slideId ? ai.sessions.thread({ kind: 'slide', slideId: onSlide }, slideId) : null,
+    [ai, onSlide, slideId],
+  );
   const busy = useStore(own.store, (s) => s.busy);
   const deckBusy = useStore(deck.store, (s) => s.busy);
-  const elsewhere = (id: ActionId) => ACTIONS[id].scope !== scope.kind;
+  const slideBusy = useStore((slide ?? own).store, (s) => s.busy);
+  /** The chat an action is sent to, and the panel of that chat when it is not this one. */
+  const home = (id: ActionId) => {
+    const kind = ACTIONS[id].scope;
+    if (kind === scope.kind) return { thread: own, busy, panel: null };
+    if (kind === 'slide' && slide)
+      return { thread: slide, busy: slideBusy, panel: PanelId.aiSlide };
+    return { thread: deck, busy: deckBusy, panel: PanelId.aiDeck };
+  };
   return {
     busy,
     off: (id) =>
-      (elsewhere(id) ? deckBusy : busy) ||
-      !ACTIONS[id].needs.every((tool) => ai.tools(ACTIONS[id].scope).has(tool)),
+      home(id).busy || !ACTIONS[id].needs.every((tool) => ai.tools(ACTIONS[id].scope).has(tool)),
     run: (id, params = {}, attachments = []) => {
       const action = {
         id,
         // What the chat shows of the form: its numbers and its words.
         params: Object.fromEntries(
           Object.entries(params).filter(
-            ([, value]) => typeof value === 'string' || typeof value === 'number',
+            ([, value]) =>
+              typeof value === 'number' || (typeof value === 'string' && value.length <= MAX_KEPT),
           ),
         ) as Record<string, string | number>,
       };
@@ -113,12 +143,13 @@ function useRunner(scope: SessionScope): Runner {
         params,
         replyIn: i18n.language === 'he' ? 'Hebrew' : 'English',
       });
-      void (elsewhere(id) ? deck : own).send(message, {
+      const { thread, panel } = home(id);
+      void thread.send(message, {
         action,
         label: actionLabel(t, action),
         ...(attachments.length > 0 ? { attachments } : {}),
       });
-      if (elsewhere(id)) openPanel(PanelId.aiDeck, 'chat');
+      if (panel) openPanel(panel, 'chat');
       else setAiTab('chat');
     },
   };
@@ -640,11 +671,131 @@ function ImageActions({ runner }: { runner: Runner }) {
   );
 }
 
+/**
+ * The text a chart or a table is filled from (AIO-07, AIO-08): the user pastes it, and the agent
+ * finds the numbers or the items in it. Without a text there is nothing to fill from.
+ */
+function FillFromText({
+  id,
+  label,
+  placeholder,
+  runner,
+}: {
+  id: 'chart.fill' | 'table.fill';
+  label: string;
+  placeholder: string;
+  runner: Runner;
+}) {
+  const { t } = useTranslation('ai');
+  const [source, setSource] = useState('');
+  const pasted = source.trim();
+  return (
+    <Section title={t('actions.fromText')}>
+      <div className="flex flex-col gap-1.5 px-2 pb-2">
+        <Textarea
+          dir={source ? 'auto' : undefined}
+          value={source}
+          aria-label={placeholder}
+          placeholder={placeholder}
+          data-testid="fill-source"
+          onChange={(event) => setSource(event.target.value)}
+        />
+        <p className="text-xs text-ui-fg-muted">{t('actions.fromTextHint')}</p>
+      </div>
+      <Row
+        id={id}
+        icon={ClipboardPaste}
+        label={label}
+        runner={{ ...runner, off: (action) => runner.off(action) || !pasted }}
+        params={{ description: pasted }}
+      />
+    </Section>
+  );
+}
+
+function ChartActions({ runner }: { runner: Runner }) {
+  const { t } = useTranslation('ai');
+  const [count, setCount] = useState(4);
+  return (
+    <>
+      <Section title={t('actions.chart')}>
+        <Row
+          id="chart.type"
+          icon={ChartColumn}
+          label={t('actions.chartType')}
+          runner={runner}
+          params={{ count: 3 }}
+        />
+        <Row
+          id="chart.title"
+          icon={Lightbulb}
+          label={t('actions.chartTitle')}
+          runner={runner}
+          params={{ count }}
+        >
+          <CountControl value={count} choices={[3, 4, 6]} onChange={setCount} />
+        </Row>
+      </Section>
+      <FillFromText
+        id="chart.fill"
+        label={t('actions.chartFill')}
+        placeholder={t('actions.chartSource')}
+        runner={runner}
+      />
+    </>
+  );
+}
+
+function TableActions({ runner, elementId }: { runner: Runner; elementId: string }) {
+  const { t } = useTranslation('ai');
+  return (
+    <>
+      <FillFromText
+        id="table.fill"
+        label={t('actions.tableFill')}
+        placeholder={t('actions.tableSource')}
+        runner={runner}
+      />
+      <Section title={t('actions.design')}>
+        <Row
+          id="table.style"
+          icon={Palette}
+          label={t('actions.tableStyle')}
+          runner={runner}
+          params={{ count: 3 }}
+        />
+      </Section>
+      {/* What changes the slide and not only the table is the work of the slide's chat. */}
+      <Section title={t('actions.onSlide')}>
+        <Row
+          id="table.insight"
+          icon={Lightbulb}
+          label={t('actions.tableInsight')}
+          runner={runner}
+          params={{ elementId }}
+        />
+        <Row
+          id="table.chart"
+          icon={ChartColumn}
+          label={t('actions.tableChart')}
+          runner={runner}
+          params={{ elementId }}
+        />
+        <p className="px-2 pt-1 text-xs text-ui-fg-muted">{t('actions.onSlideHint')}</p>
+      </Section>
+    </>
+  );
+}
+
+type ActionKind = 'text' | 'image' | 'chart' | 'table' | 'none';
+
 /** Text is what a text box holds, and a shape that has some. */
-function actionsFor(element: Element | undefined): 'text' | 'image' | 'none' {
+function actionsFor(element: Element | undefined): ActionKind {
   if (element?.type === 'text') return 'text';
   if (element?.type === 'shape' && element.content) return 'text';
-  if (element?.type === 'image') return 'image';
+  if (element?.type === 'image' || element?.type === 'chart' || element?.type === 'table') {
+    return element.type;
+  }
   return 'none';
 }
 
@@ -663,6 +814,10 @@ function ObjectActionsOn({ scope }: { scope: SessionScope & { kind: 'object' } }
         <TextActions runner={runner} />
       ) : kind === 'image' ? (
         <ImageActions runner={runner} />
+      ) : kind === 'chart' ? (
+        <ChartActions runner={runner} />
+      ) : kind === 'table' ? (
+        <TableActions runner={runner} elementId={scope.elementIds[0]!} />
       ) : (
         <EmptyState
           icon={Zap}

@@ -1,0 +1,131 @@
+{
+  "description": "A slide chat, in Hebrew, for the two table actions that change the slide and so are sent to it (AIO-08), with its tool calls carried out (\"call\": true). Turn 1 answers \"sum the table up in an insight\": it adds one line of text over the table with element_add and looks at the slide. Turn 2 answers \"turn the table into a chart\": it creates a chart with chart_set, deletes the table (e_table) and looks at the slide. Hand-written; not one of the Rust mock's.",
+  "turns": [
+    [
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "selection_1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "insight_1",
+        "name": "element_add",
+        "source": "app",
+        "input": {
+          "slideId": { "$ref": "selection_1.currentSlide.id" },
+          "element": {
+            "id": "e_insight1",
+            "type": "text",
+            "name": "insight",
+            "frame": { "x": 160, "y": 400, "w": 1600, "h": 90 },
+            "rotation": 0,
+            "opacity": 1,
+            "autoFit": "none",
+            "vAlign": "top",
+            "content": {
+              "paragraphs": [
+                {
+                  "dir": "rtl",
+                  "align": "start",
+                  "styleRef": "body",
+                  "runs": [{ "text": "המרכז מביא 520 לקוחות, יותר מהצפון והדרום גם יחד." }]
+                }
+              ]
+            }
+          }
+        },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "render_1",
+        "name": "slide_render",
+        "source": "app",
+        "input": { "slideId": { "$ref": "selection_1.currentSlide.id" } },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "הוספתי את התובנה " },
+      { "delayMs": 40, "type": "text_delta", "text": "כשורה מעל הטבלה." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 240,
+          "cacheReadTokens": 9100,
+          "cacheWriteTokens": 300
+        },
+        "costUsd": 0.0052,
+        "durationMs": 2600
+      }
+    ],
+    [
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "selection_2",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "chart_1",
+        "name": "chart_set",
+        "source": "app",
+        "input": {
+          "slideId": { "$ref": "selection_2.currentSlide.id" },
+          "frame": { "x": 160, "y": 500, "w": 1600, "h": 480 },
+          "chartType": "column",
+          "categories": ["צפון", "מרכז", "דרום"],
+          "series": [{ "name": "לקוחות", "values": [340, 520, 210] }],
+          "title": "המרכז מוביל במספר הלקוחות"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "delete_1",
+        "name": "element_delete",
+        "source": "app",
+        "input": { "elementIds": ["e_table"] },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "render_2",
+        "name": "slide_render",
+        "source": "app",
+        "input": { "slideId": { "$ref": "selection_2.currentSlide.id" } },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "הטבלה היא עכשיו גרף עמודות, " },
+      { "delayMs": 40, "type": "text_delta", "text": "באותו מקום." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 300,
+          "cacheReadTokens": 9400,
+          "cacheWriteTokens": 320
+        },
+        "costUsd": 0.0058,
+        "durationMs": 2900
+      }
+    ]
+  ]
+}

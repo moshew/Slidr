@@ -7,7 +7,7 @@ import { ScaledSlide } from '@slidr/renderer';
 import { Check, ChevronLeft, ChevronRight, CircleAlert, X } from '@slidr/ui/icons';
 import { cx, Icon, IconButton, ScrollArea, Skeleton } from '@slidr/ui';
 import { useAssetResolver, useDeck, useEditor, useElementSize } from '../shell';
-import { historyOf, type GalleryCard, type OptionSet } from './variations';
+import { historyOf, tryOn, type GalleryCard, type OptionSet } from './variations';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
 import { aiOf } from './runtime';
@@ -49,8 +49,69 @@ function isFailure(
   return kind !== undefined && kind !== 'other' && Object.hasOwn(he.gallery.failure, kind);
 }
 
+/**
+ * A chart or a table as an option would leave it: its own part of the slide, at the width of
+ * the card. An element inside a group, or a turned one, is shown on its whole slide instead.
+ */
+function ElementPicture({
+  set,
+  card,
+  deck,
+  width,
+}: {
+  set: OptionSet;
+  card: GalleryCard;
+  deck: Deck;
+  width: number;
+}) {
+  const resolveAsset = useAssetResolver();
+  const tried = useMemo(() => tryOn(set, card, deck), [set, card, deck]);
+  const slide = tried ? findSlide(tried, set.target.slideId) : undefined;
+  if (!tried || !slide || width <= 0) return <Skeleton className="aspect-video w-full" />;
+  const element = slide.elements.find((e) => e.id === set.target.elementId);
+  if (!element || element.rotation !== 0) {
+    return (
+      <div className="overflow-hidden rounded-small">
+        <ScaledSlide
+          deck={tried}
+          slide={slide}
+          width={width}
+          mode="thumbnail"
+          resolveAsset={resolveAsset}
+        />
+      </div>
+    );
+  }
+  const { x, y, w, h } = element.frame;
+  const scale = width / w;
+  return (
+    <div className="relative overflow-hidden rounded-small" style={{ height: h * scale }}>
+      {/* Physical left and top, as the slide itself is laid out: see `ScaledSlide`. */}
+      <div className="absolute" style={{ left: -x * scale, top: -y * scale }}>
+        <ScaledSlide
+          deck={tried}
+          slide={slide}
+          width={tried.size.w * scale}
+          mode="thumbnail"
+          resolveAsset={resolveAsset}
+        />
+      </div>
+    </div>
+  );
+}
+
 /** What a card shows of its option: the text, the image, or the slide as it would look. */
-function CardBody({ card, deck, width }: { card: GalleryCard; deck: Deck; width: number }) {
+function CardBody({
+  set,
+  card,
+  deck,
+  width,
+}: {
+  set: OptionSet;
+  card: GalleryCard;
+  deck: Deck;
+  width: number;
+}) {
   const { t } = useTranslation('ai');
   const resolveAsset = useAssetResolver();
   // A design's own images are not in the deck until the design is picked.
@@ -75,6 +136,15 @@ function CardBody({ card, deck, width }: { card: GalleryCard; deck: Deck; width:
     );
   }
   if (card.text !== undefined) return <MarkdownView text={card.text} />;
+  // A chart's title is plain text: what it holds is what the chart will say.
+  if (card.title !== undefined) {
+    return (
+      <p dir="auto" className="text-start text-md leading-6 wrap-anywhere text-ui-fg">
+        {card.title}
+      </p>
+    );
+  }
+  if (card.set) return <ElementPicture set={set} card={card} deck={deck} width={width} />;
   if (card.state === 'pending') return <Skeleton className="aspect-video w-full" />;
   if (card.asset) {
     return (
@@ -141,7 +211,7 @@ function OptionCard({
           : 'border-ui-line enabled:hover:border-ui-accent enabled:hover:bg-ui-hover enabled:active:bg-ui-pressed',
       )}
     >
-      <CardBody card={card} deck={deck} width={width} />
+      <CardBody set={set} card={card} deck={deck} width={width} />
       <span className="flex items-center gap-1 text-xs text-ui-fg-muted">
         <span className="min-w-0 flex-1 truncate">
           {card.state === 'pending' ? t('gallery.pending') : label}
@@ -233,7 +303,9 @@ function Options({ set, place }: { set: OptionSet; place: Place }) {
   // A preview does not outlive the cards it was shown from.
   useEffect(() => () => gallery.preview(set.id, null), [gallery, set.id]);
 
-  const columns = set.kind === 'text' ? 1 : 2;
+  // Options told apart by their words are read down a column; pictures sit side by side.
+  const worded = (card: GalleryCard) => card.text !== undefined || card.title !== undefined;
+  const columns = set.kind === 'text' || set.cards.every(worded) ? 1 : 2;
   const cardWidth = Math.floor((width - GAP * (columns - 1)) / columns) - CARD_EDGE;
   const done = set.cards.filter((card) => card.state !== 'pending').length;
   const waiting = done < set.cards.length;

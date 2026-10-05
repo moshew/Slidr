@@ -1,0 +1,116 @@
+{
+  "description": "An object chat on a table, in Hebrew, for the suites of the table actions (AIO-08), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest looks\": ui_present_options, kind table, three looks as table_set arguments. Turn 2 answers \"fill from text\": it asks which element is selected, sets the table's cells with table_set and looks at the slide. Hand-written; not one of the Rust mock's.",
+  "turns": [
+    [
+      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 500,
+        "type": "tool_call_started",
+        "id": "looks_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "table",
+          "prompt": "שלושה עיצובים לטבלה",
+          "options": [
+            {
+              "label": "קווים: נקי וקל",
+              "set": {
+                "styleId": "lines",
+                "headerRow": true,
+                "bandedRows": false,
+                "firstColumn": true
+              }
+            },
+            {
+              "label": "פסים: קל לעקוב",
+              "set": {
+                "styleId": "tint",
+                "headerRow": true,
+                "bandedRows": true,
+                "firstColumn": false
+              }
+            },
+            {
+              "label": "מסגרת: מודגש",
+              "set": {
+                "styleId": "boxed",
+                "headerRow": true,
+                "bandedRows": false,
+                "firstColumn": false
+              }
+            }
+          ]
+        },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "שלושה עיצובים, " },
+      { "delayMs": 40, "type": "text_delta", "text": "כולם עם שורת כותרת." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 190,
+          "cacheReadTokens": 6100,
+          "cacheWriteTokens": 240
+        },
+        "costUsd": 0.0039,
+        "durationMs": 1900
+      }
+    ],
+    [
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "selection_1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "table_1",
+        "name": "table_set",
+        "source": "app",
+        "input": {
+          "elementId": { "$ref": "selection_1.selectedElements.0.id" },
+          "cells": [
+            ["אזור", "לקוחות", "שינוי"],
+            ["צפון", "340", "+12%"],
+            ["מרכז", "520", "+8%"],
+            ["דרום", "210", "+21%"]
+          ]
+        },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "render_1",
+        "name": "slide_render",
+        "source": "app",
+        "input": { "slideId": { "$ref": "selection_1.currentSlide.id" } },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "מילאתי שלושה אזורים מהטקסט, " },
+      { "delayMs": 40, "type": "text_delta", "text": "עם מספר הלקוחות והשינוי של כל אחד." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 280,
+          "cacheReadTokens": 6600,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0047,
+        "durationMs": 2400
+      }
+    ]
+  ]
+}

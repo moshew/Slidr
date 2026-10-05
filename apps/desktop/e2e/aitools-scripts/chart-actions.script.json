@@ -1,0 +1,132 @@
+{
+  "description": "An object chat on a chart, in Hebrew, for the suites of the chart actions (AIO-07), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest a chart type\": ui_present_options, kind chart, three types as chart_set arguments. Turn 2 answers \"title and insight\": four titles the same way, and the insight in the reply. Turn 3 answers \"fill from text\": it asks which element is selected, sets the chart's data and title with chart_set and looks at the slide. Hand-written; not one of the Rust mock's.",
+  "turns": [
+    [
+      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 500,
+        "type": "tool_call_started",
+        "id": "types_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "chart",
+          "prompt": "שלושה סוגים שמתאימים לנתונים",
+          "options": [
+            { "label": "קו: המגמה לאורך השנים", "set": { "chartType": "line" } },
+            { "label": "שטח: הנפח שמצטבר", "set": { "chartType": "area" } },
+            {
+              "label": "עמודות אופקיות: השוואה",
+              "set": { "chartType": "bar", "labels": true }
+            }
+          ]
+        },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "סדרה אחת לאורך זמן: " },
+      { "delayMs": 40, "type": "text_delta", "text": "קו מראה את המגמה הכי ברור." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 180,
+          "cacheReadTokens": 6100,
+          "cacheWriteTokens": 240
+        },
+        "costUsd": 0.0038,
+        "durationMs": 1900
+      }
+    ],
+    [
+      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 500,
+        "type": "tool_call_started",
+        "id": "titles_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "chart",
+          "prompt": "ארבע כותרות לגרף",
+          "options": [
+            { "label": "המגמה", "set": { "title": "ההכנסות הוכפלו בתוך שנתיים" } },
+            { "label": "המספר", "set": { "title": "מ-120 ל-260 בשנתיים" } },
+            { "label": "הקצב", "set": { "title": "הצמיחה מאיצה משנה לשנה" } },
+            { "label": "השאלה", "set": { "title": "לאן ממשיכים מ-260?" } }
+          ]
+        },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "התובנה: ההכנסות יותר מהוכפלו " },
+      { "delayMs": 40, "type": "text_delta", "text": "בין 2024 ל-2026, והצמיחה מאיצה." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 210,
+          "cacheReadTokens": 6400,
+          "cacheWriteTokens": 260
+        },
+        "costUsd": 0.0041,
+        "durationMs": 2100
+      }
+    ],
+    [
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "selection_1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "chart_1",
+        "name": "chart_set",
+        "source": "app",
+        "input": {
+          "elementId": { "$ref": "selection_1.selectedElements.0.id" },
+          "categories": ["צפון", "מרכז", "דרום", "ירושלים"],
+          "series": [{ "name": "לקוחות", "values": [340, 520, 210, 180] }],
+          "title": "המרכז מוביל במספר הלקוחות"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "render_1",
+        "name": "slide_render",
+        "source": "app",
+        "input": { "slideId": { "$ref": "selection_1.currentSlide.id" } },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "מילאתי ארבעה אזורים מהטקסט. " },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "את המשפט על השנה הבאה השארתי בחוץ: אין בו מספר."
+      },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 260,
+          "cacheReadTokens": 6600,
+          "cacheWriteTokens": 280
+        },
+        "costUsd": 0.0046,
+        "durationMs": 2400
+      }
+    ]
+  ]
+}

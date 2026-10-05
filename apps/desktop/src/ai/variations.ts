@@ -5,16 +5,22 @@
  * undo step. The app applies the pick, not the agent (ADR-011). The sets a target had before
  * its newest stay, so the user can go back to them and pick from one (AIO-09).
  *
+ * An option of a chart or a table (AIO-07, AIO-08) is the arguments of its setter, `chart_set`
+ * or `table_set`: picking it is making that call on the element as it is then.
+ *
  * No React here: the store is what the panel draws, and the functions are what its cards do.
  */
 import {
   createDeckApi,
   DeckApiError,
+  deckTools,
   startTurn,
+  toToolError,
   type ConversionService,
   type OptionCard,
   type OptionsService,
   type SessionScope,
+  type WriteSummary,
 } from '@slidr/agent-tools';
 import {
   CommandBus,
@@ -32,7 +38,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ImageErrorKind, ImageEvent } from '../images/images';
 import { showPreview } from '../stage/preview';
 
-export type OptionKind = 'text' | 'image' | 'layout';
+export type OptionKind = 'text' | 'image' | 'layout' | 'chart' | 'table';
 
 /** What a set of options is for: an element, or a whole slide. */
 export interface OptionTarget {
@@ -55,6 +61,10 @@ export interface GalleryCard {
   /** A design option: the slide it converts to, and the assets the conversion stored. */
   slide?: Slide;
   assets?: AssetMeta[];
+  /** A chart or table option: the arguments of the element's setter that make it. */
+  set?: Record<string, unknown>;
+  /** A chart option that only names the chart: the title, which is what its card shows. */
+  title?: string;
   /** Why the card failed: English, from the service that made it. */
   problem?: string;
   /** For an image, the kind of failure, so the card can say it in the user's words. */
@@ -142,6 +152,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** An image call waits this long for its job's first event before it is forgotten. */
 const EXPECT_MS = 10_000;
 
+/** The tool that sets each kind of element an option can change: an option is its arguments. */
+const SETTERS = { chart: 'chart_set', table: 'table_set' } as const;
+
+/** What a write that is only collected reports. */
+const NOTHING_WRITTEN: WriteSummary = { created: [], changed: [], removed: [], slides: [] };
+
+/**
+ * What the setter of a chart or a table writes for an option, on the deck as it is now: what the
+ * user changed in the element since the option was offered stays. The tool is run here, outside
+ * the Deck API: a pick is the user's, in no turn and under no scope, and it cannot wait for a
+ * call. Both setters write in the call itself. Throws what the tool throws.
+ */
+function setterCommands(
+  kind: keyof typeof SETTERS,
+  target: OptionTarget,
+  args: Record<string, unknown>,
+  deck: Deck,
+): Command[] {
+  const tool = deckTools.find((t) => t.name === SETTERS[kind]);
+  if (!tool) throw new DeckApiError('unavailable', `${SETTERS[kind]} is not in this build.`);
+  const commands: Command[] = [];
+  // The option is for this element whatever ids its arguments name.
+  const input = tool.input.parse({ ...args, elementId: target.elementId, slideId: target.slideId });
+  const output = tool.run(input, {
+    deck,
+    turn: startTurn('gallery', { kind: 'deck' }),
+    services: {},
+    write: (written) => {
+      commands.push(...written);
+      return NOTHING_WRITTEN;
+    },
+  });
+  if (output instanceof Promise) {
+    output.catch(() => undefined);
+    throw new Error(`${tool.name} no longer writes in the call itself.`);
+  }
+  return commands;
+}
+
 /**
  * What picking a card does to the deck as it is now. A design replaces everything on its slide,
  * the way `slide_replace_from_html` does: the slide keeps its id, name, notes and place.
@@ -151,6 +200,10 @@ export function commandsOf(set: OptionSet, card: GalleryCard, deck: Deck): Comma
   if (set.kind === 'text') {
     if (!elementId || !card.content) return [];
     return [{ type: 'text.set', slideId, elementId, content: card.content }];
+  }
+  if (set.kind === 'chart' || set.kind === 'table') {
+    if (!elementId || !card.set) return [];
+    return setterCommands(set.kind, set.target, card.set, deck);
   }
   if (set.kind === 'image') {
     if (!elementId || !card.asset) return [];
@@ -188,6 +241,21 @@ export function commandsOf(set: OptionSet, card: GalleryCard, deck: Deck): Comma
     },
     { type: 'slide.setTimeline', slideId, timeline: design.timeline },
   ];
+}
+
+/**
+ * The deck as it would be with a card picked: what the Stage shows on hover, and what a card of
+ * a chart or a table draws its picture from. Null when the card can no longer be applied.
+ */
+export function tryOn(set: OptionSet, card: GalleryCard, deck: Deck): Deck | null {
+  try {
+    const scratch = new CommandBus(deck, { historyLimit: 0 });
+    scratch.batch(commandsOf(set, card, deck));
+    return scratch.deck;
+  } catch {
+    // The element or the slide is gone, or the option no longer fits what the element holds.
+    return null;
+  }
 }
 
 export function createGallery({ bus, selection, conversion }: GalleryOptions): Gallery {
@@ -388,6 +456,34 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
           );
           set.live = set.cards.some((card) => card.state === 'pending');
         }
+      } else if (kind === 'chart' || kind === 'table') {
+        if (element?.type !== kind) {
+          throw new DeckApiError(
+            'invalid_state',
+            `Options of kind "${kind}" are for a ${kind} element: give the elementId of one.`,
+          );
+        }
+        set.cards = options.map((option, i): GalleryCard => {
+          const args = option.set;
+          if (!args || Object.keys(args).length === 0) return fail(i, 'it has no `set`.');
+          try {
+            // Only what the deck takes is offered: the setter's own checks, then the model's.
+            new CommandBus(deck, { historyLimit: 0 }).batch(
+              setterCommands(kind, target, args, deck),
+            );
+          } catch (error) {
+            return fail(i, toToolError(error).message);
+          }
+          const names = Object.keys(args);
+          // Titles are told apart by their words, which a small picture of the chart cannot show.
+          const title = names.length === 1 && typeof args.title === 'string' ? args.title : null;
+          return {
+            label: option.label,
+            state: 'ready',
+            set: args,
+            ...(title !== null ? { title } : {}),
+          };
+        });
       } else {
         if (!conversion) {
           throw new DeckApiError('unavailable', 'Design options need the HTML conversion engine.');
@@ -514,14 +610,8 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
         showPreview(null);
         return;
       }
-      try {
-        const scratch = new CommandBus(bus.deck);
-        scratch.batch(commandsOf(set, card, bus.deck));
-        showPreview(scratch.deck);
-      } catch {
-        // The element or the slide is gone: there is nothing to show the option on.
-        showPreview(null);
-      }
+      // Null when the element or the slide is gone: there is nothing to show the option on.
+      showPreview(tryOn(set, card, bus.deck));
     },
 
     pick(setId, index, label) {
@@ -536,7 +626,10 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
         bus.batch(commands, { txId, label });
       } catch {
         // What the options were for has been deleted since: its sets have nothing left to offer.
-        remove((other) => sameTarget(other.target, set.target));
+        // An option that no longer fits an element that is still there leaves the others.
+        const slide = findSlide(bus.deck, set.target.slideId);
+        const there = slide && (!set.target.elementId || findElement(slide, set.target.elementId));
+        if (!there) remove((other) => sameTarget(other.target, set.target));
         return false;
       }
       update(setId, (other) => ({ ...other, picked: { index, txId } }));

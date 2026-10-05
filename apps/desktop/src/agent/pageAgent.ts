@@ -18,6 +18,11 @@ import textVariations from '../../src-tauri/src/harness/fixtures/scripts/text-va
 import importHandwritten from '../../e2e/import-set/handwritten.script.json';
 // The same import, cut after three slides and continued (IMP-09).
 import importCut from '../../e2e/import-set/handwritten.cut.script.json';
+// The actions of a chart and of a table (AIO-07, AIO-08), for the suites of the AI tools. Not the
+// Rust mock's either: the page is where those suites run.
+import chartActions from '../../e2e/aitools-scripts/chart-actions.script.json';
+import tableActions from '../../e2e/aitools-scripts/table-actions.script.json';
+import tableOnSlide from '../../e2e/aitools-scripts/table-on-slide.script.json';
 import { createScriptedAgent, type Script, type ScriptedAgent } from './scriptedAgent';
 
 /** The first is the default, as in the Rust mock's list. */
@@ -36,6 +41,9 @@ const SCRIPTS: Record<string, Script> = {
   'import-cut': importCut,
   // A session that begins by continuing (the deck was opened again) plays the turns that go on.
   'import-rest': { description: importCut.description, turns: importCut.turns.slice(2) },
+  'chart-actions': chartActions,
+  'table-actions': tableActions,
+  'table-on-slide': tableOnSlide,
 };
 
 export function pageAgent(speed: number): ScriptedAgent {

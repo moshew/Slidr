@@ -22,8 +22,10 @@ const known = <T extends string>(names: readonly T[], value: unknown): value is 
 export function actionLabel(t: TFunction<'ai'>, action: EntryAction): string {
   // An action of a later version of the app, read from a saved chat.
   if (!isActionId(action.id)) return t('action.other');
-  const { language, tone, count, slideNumber } = action.params ?? {};
-  return t(`action.${action.id}`, {
+  const { language, tone, count, slideNumber, edited } = action.params ?? {};
+  // An outline approved after the user changed it in its card says so (AID-03).
+  const name = action.id === 'outline.approve' && edited ? 'outline.approveEdited' : action.id;
+  return t(`action.${name}`, {
     language: known(LANGUAGES, language) ? t(`actions.languages.${language}`) : (language ?? ''),
     tone: known(TONES, tone) ? t(`actions.tones.${tone}`) : (tone ?? ''),
     count: count ?? '',
