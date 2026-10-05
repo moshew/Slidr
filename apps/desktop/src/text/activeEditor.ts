@@ -1,6 +1,8 @@
 import type { CellRef } from '@slidr/model';
 import type { Editor as TextEditorInstance } from '@tiptap/core';
 import { createStore } from 'zustand/vanilla';
+// By file, not through the shell's index: the index loads the Stage, which loads the editor.
+import { registerKeyboardHome } from '../shell/stageDom';
 
 /*
  * The text editor that is open on the Stage, for the code that formats text from outside it: the
@@ -35,6 +37,15 @@ export function announceEditor(active: ActiveEditor): () => void {
       activeEditor.setState((s) => ({ active: null, version: s.version + 1 }));
   };
 }
+
+// The text that is being edited is where the keyboard works: a tool that is done hands it back
+// here, and the editor takes it with its caret and its selection.
+registerKeyboardHome(() => {
+  const { active } = activeEditor.getState();
+  if (!active || active.editor.isDestroyed) return false;
+  active.editor.view.focus();
+  return true;
+});
 
 /** The editor open on this element, if it is the one being edited. */
 export function editorFor(elementId: string | null): ActiveEditor | null {

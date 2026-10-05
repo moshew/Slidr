@@ -31,7 +31,14 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { create, useStore } from 'zustand';
-import { focusStage, useDeck, useEditor, useSelection, type Editor } from '../../shell';
+import {
+  returnKeyboard,
+  toolClosed,
+  useDeck,
+  useEditor,
+  useSelection,
+  type Editor,
+} from '../../shell';
 import { formatOf, type TextHolder, type TextTarget } from '../actions';
 import { activeEditor, editorFor } from '../activeEditor';
 import { cellScope } from '../cellScope';
@@ -153,24 +160,16 @@ export function useText(): Text | null {
  * selection comes back with it), the Stage otherwise, so Delete, the arrows and Enter keep acting
  * on the selected element.
  */
-export function returnFocus(): void {
-  const { active } = activeEditor.getState();
-  if (active && !active.editor.isDestroyed) active.editor.view.focus();
-  else focusStage();
-}
+export const returnFocus = returnKeyboard;
 
 /**
  * For `onCloseAutoFocus` of a popover or a menu: the focus goes back to the text, not to the
- * button that opened it. Only when the closing left the focus nowhere or on a toolbar button,
- * though: a popover that closed because the user clicked into the text, into a field or into
- * another popover must not take the focus back from where that click put it.
+ * button that opened it, unless the keyboard was on that button when it opened; the rule is the
+ * rows' own (`shell/toolFocus.ts`). Only when the closing left the focus nowhere or on a toolbar
+ * button, though: a popover that closed because the user clicked into the text, into a field or
+ * into another popover must not take the focus back from where that click put it.
  */
-export function closeToText(event: Event): void {
-  event.preventDefault();
-  const active = document.activeElement;
-  const onButton = active instanceof HTMLButtonElement && active.closest('[role="toolbar"]');
-  if (!active || active === document.body || onButton) returnFocus();
-}
+export const closeToText = toolClosed;
 
 /**
  * For `onOpenAutoFocus` of a popover: the focus goes to the popover itself, not to its first

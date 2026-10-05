@@ -50,6 +50,13 @@ export { ask, tell, type DialogAction, type DialogRequest } from './dialogs';
 export { fitSlide, STAGE_MARGIN, type SlideFit } from './layout';
 export { useElementSize } from './hooks';
 export { useAssetResolver } from './assets';
-export { focusStage, stageElement, stageSlide } from './stageDom';
+export {
+  focusStage,
+  registerKeyboardHome,
+  returnKeyboard,
+  stageElement,
+  stageSlide,
+} from './stageDom';
+export { toolClosed } from './toolFocus';
 export { isWebAddress, openExternal } from './external';
 export type { AssetService } from '../document/assets';

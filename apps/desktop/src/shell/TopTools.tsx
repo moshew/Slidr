@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChartColumn,
@@ -65,11 +65,15 @@ import {
 } from './registry';
 import { aiKinds, selectionKind, type SelectionKind } from './selection';
 import { openPanel, setWelcome, setZoom, showShortcuts, useShell } from './store';
+import { watchToolFocus } from './toolFocus';
 
 /** Top Tools (SPEC 4.4): row A is fixed, row B follows the selection. */
 export function TopTools() {
+  const rows = useRef<HTMLDivElement>(null);
+  // A tool that is used with the pointer does not keep the keyboard (`toolFocus.ts`).
+  useEffect(() => (rows.current ? watchToolFocus(rows.current) : undefined), []);
   return (
-    <div className="shrink-0 bg-ui-panel">
+    <div ref={rows} className="shrink-0 bg-ui-panel">
       <RowA />
       <RowB />
     </div>
