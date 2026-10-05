@@ -135,6 +135,14 @@ function codecInWorker(): Codec {
   };
 }
 
+let worker: Codec | undefined;
+
+/** The codec, its worker started on first use. One for the subsetter and for `bareFont`. */
+function codec(): Codec {
+  worker ??= codecInWorker();
+  return worker;
+}
+
 async function load(): Promise<Tools> {
   const response = await fetch(subsetterUrl);
   if (!response.ok) throw new Error('the font subsetter could not be loaded');
@@ -142,7 +150,7 @@ async function load(): Promise<Tools> {
   const { instance } = await WebAssembly.instantiate(await response.arrayBuffer(), {});
   const hb = instance.exports as unknown as HarfBuzz;
   hb._initialize?.();
-  return { hb, codec: codecInWorker() };
+  return { hb, codec: codec() };
 }
 
 let loading: Promise<Tools> | undefined;
@@ -167,6 +175,15 @@ async function decode(codec: Codec, bytes: Uint8Array): Promise<Uint8Array | und
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The bare TrueType or OpenType font inside a font file: a WOFF2 file unpacked, a bare font as
+ * it is, undefined for anything else. For a caller that reads a font's own tables (its names,
+ * its weight) and cuts nothing: only the codec is loaded for it, not the subsetter.
+ */
+export function bareFont(bytes: Uint8Array): Promise<Uint8Array | undefined> {
+  return decode(codec(), bytes);
 }
 
 /** Whether a font has a weight axis: a variable font whose weight can be pinned. */
