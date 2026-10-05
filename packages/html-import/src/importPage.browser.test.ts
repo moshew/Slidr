@@ -5,6 +5,7 @@
 import { createDeck, Slide } from '@slidr/model';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
+import { mountSlide } from './engine';
 import { createImportPage, type ImportPage } from './importPage';
 import { testHost } from './testing';
 
@@ -457,5 +458,142 @@ describe('capturing an element as a slide', () => {
     await expect(
       imported.capture({ js: 'go(', deck: createDeck({ lang: 'he' }), takenIds: [] }),
     ).rejects.toThrow(/"js" failed: SyntaxError.* what changes the page belongs in `before`/);
+  });
+});
+
+describe('what a file made while it ran, in a region that stays html', () => {
+  /** A file with one slide of 1920x1080, and a script that runs when it loads. */
+  const file = (body: string, script: string, css = '') => `<!doctype html><html><head><style>
+    body{margin:0} section{width:1920px;height:1080px;position:relative;background:#fff;overflow:hidden}
+    h1{position:absolute;left:200px;top:60px;margin:0;font:700 64px Arial;color:#111}
+    ${css}
+  </style></head><body><section>${body}</section><script>${script}</script></body></html>`;
+
+  /** What a packed deck does with a picture it carries: unpacks it, and points at an object URL. */
+  const unpack = (apply: string) => `
+    const c=document.createElement('canvas');c.width=80;c.height=50;const g=c.getContext('2d');g.fillStyle='#dd0000';g.fillRect(0,0,80,50);
+    c.toBlob((b)=>{const u=URL.createObjectURL(b);${apply};document.title='ready';});`;
+  const HERO = '.hero{position:absolute;left:200px;top:200px;width:800px;height:500px}';
+
+  async function pixels(blob: Blob): Promise<ImageData> {
+    const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none' });
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+  const at = (picture: ImageData, x: number, y: number) => {
+    const i = (y * picture.width + x) * 4;
+    return [picture.data[i], picture.data[i + 1], picture.data[i + 2]];
+  };
+
+  /**
+   * Captures the slide, and then draws it the way the editor will: with the real renderer,
+   * from the slide and the assets the capture returned, after the file's page is gone and
+   * every object URL it made with it.
+   */
+  async function captureAndDraw(html: string) {
+    const host = testHost();
+    const imported = importPage(html, { host });
+    await imported.setViewport({ width: 1920, height: 1080 });
+    const deck = createDeck({ lang: 'en' });
+    const source = await pixels((await imported.screenshot({ maxWidth: 1920 })).png);
+    const captured = await imported.capture({ selector: 'section', deck, takenIds: [] });
+    imported.dispose();
+    open = undefined;
+    const mounted = await mountSlide(
+      { ...deck, assets: Object.fromEntries(captured.assets.map((a) => [a.id, a])) },
+      captured.slide,
+      host,
+      { origin: { x: 0, y: 0 }, viewScale: 1, k: 1, offX: 0, offY: 0 },
+    );
+    try {
+      await new Promise((done) => setTimeout(done, 300));
+      const drawn = await pixels(await host.capture({ x: 0, y: 0, width: 1920, height: 1080 }));
+      return { captured, source, drawn, written: JSON.stringify(captured.slide) };
+    } finally {
+      mounted.dispose();
+    }
+  }
+
+  it('keeps a picture under a gradient, which the file pointed at by an object URL, as an asset', async () => {
+    const { captured, source, drawn, written } = await captureAndDraw(
+      file(
+        '<h1>Title</h1><div class="hero"></div>',
+        unpack(
+          `document.querySelector('.hero').style.background='linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.2)), url('+u+') center/cover no-repeat'`,
+        ),
+        HERO,
+      ),
+    );
+    expect(captured.guard.faithful).toBe(true);
+    // Two layers are more than a fill holds: the box stays html, and its picture is the deck's.
+    expect(captured.slide.elements.map((e) => e.type)).toEqual(['text', 'html']);
+    expect(written).not.toContain('blob:');
+    const pictures = captured.assets.filter((asset) => asset.kind === 'image');
+    expect(pictures).toHaveLength(1);
+    expect(written).toContain(`slidr-asset:${pictures[0]!.id}`);
+    // Red under the gradient, at the top of the box where the gradient is clear.
+    expect(at(source, 600, 220)[0]).toBeGreaterThan(200);
+    expect(at(drawn, 600, 220)).toEqual(at(source, 600, 220));
+  });
+
+  it('keeps a picture a rule of a stylesheet the file wrote points at', async () => {
+    const { captured, source, drawn, written } = await captureAndDraw(
+      file(
+        '<h1>Title</h1><div class="hero"></div>',
+        unpack(
+          `const s=document.createElement('style');s.textContent='.hero{background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.2)), url('+u+') center/cover no-repeat}';document.head.append(s)`,
+        ),
+        HERO,
+      ),
+    );
+    expect(captured.guard.faithful).toBe(true);
+    expect(written).not.toContain('blob:');
+    const html = captured.slide.elements.find((e) => e.type === 'html');
+    expect(html?.type === 'html' && html.styles).toMatch(/url\("slidr-asset:[0-9a-f]{64}"\)/);
+    expect(at(drawn, 600, 220)).toEqual(at(source, 600, 220));
+  });
+
+  it('makes an image fill of a photo that covers its box, written without no-repeat', async () => {
+    const { captured, source, drawn, written } = await captureAndDraw(
+      file(
+        '<h1>Title</h1><div class="hero"></div>',
+        unpack(
+          `const h=document.querySelector('.hero');h.style.backgroundImage='url('+u+')';h.style.backgroundSize='cover';h.style.backgroundPosition='center'`,
+        ),
+        HERO,
+      ),
+    );
+    expect(captured.guard.faithful).toBe(true);
+    // A picture that covers the whole box shows one copy of itself whether it may repeat or not.
+    const [, hero] = captured.slide.elements;
+    expect(hero).toMatchObject({ type: 'shape', fill: { kind: 'image', fit: 'cover' } });
+    expect(written).not.toContain('blob:');
+    expect(captured.editability).toBe(1);
+    expect(at(drawn, 600, 440)).toEqual(at(source, 600, 440));
+  });
+
+  it('keeps what a script drew on a canvas, in a card that stays html', async () => {
+    const { captured, source, drawn, written } = await captureAndDraw(
+      file(
+        '<h1>Title</h1><div class="card"><div class="blob"></div><h3>Revenue by quarter</h3><p>Grew in every quarter of the year, and fastest in the last.</p><canvas id="c" width="400" height="120"></canvas></div>',
+        `const g=document.getElementById('c').getContext('2d');g.fillStyle='#dd0000';g.fillRect(180,20,80,80);document.title='ready';`,
+        `.card{position:absolute;left:200px;top:200px;width:900px;height:520px;background:#fff;border-radius:24px;overflow:hidden;padding:40px;box-sizing:border-box;font:400 30px/1.4 Arial;color:#222;box-shadow:0 0 0 1px #ccd}
+         .card .blob{position:absolute;right:-60px;bottom:-60px;width:200px;height:200px;border-radius:50%;background:#e8eef8}
+         .card h3{margin:0 0 16px;font:700 44px/1.2 Arial} .card p{margin:0 0 30px} canvas{display:block}`,
+      ),
+    );
+    expect(captured.guard.faithful).toBe(true);
+    expect(captured.slide.elements.map((e) => e.type)).toEqual(['text', 'html']);
+    // The canvas is still a canvas, for the rules that place it, and shows its picture.
+    expect(written).toMatch(/<canvas [^>]*data-asset=\\"[0-9a-f]{64}\\"/);
+    expect(captured.assets.filter((asset) => asset.kind === 'image')).toHaveLength(1);
+    // A point inside the red square the script drew.
+    expect(at(source, 460, 440)).toEqual([221, 0, 0]);
+    expect(at(drawn, 460, 440)).toEqual(at(source, 460, 440));
+    // And one beside it, on the card.
+    expect(at(drawn, 300, 440)).toEqual(at(source, 300, 440));
   });
 });

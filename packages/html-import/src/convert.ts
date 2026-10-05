@@ -510,13 +510,10 @@ export function propose(root: Element, options: WalkOptions): Proposal {
             ? 'fill'
             : undefined;
       const centred = cs.backgroundPosition === '50% 50%' || fit === 'fill';
-      if (
-        layers.length === 1 &&
-        !hasColor &&
-        fit &&
-        centred &&
-        cs.backgroundRepeat === 'no-repeat'
-      ) {
+      // A picture that covers the whole box shows one copy of itself whether or not it may
+      // repeat; one that is fitted inside the box repeats in the room it leaves.
+      const once = cs.backgroundRepeat === 'no-repeat' || fit === 'cover' || fit === 'fill';
+      if (layers.length === 1 && !hasColor && fit && centred && once) {
         const known = el.getAttribute('data-asset');
         if (known && deck.assets[known]) return { fill: { kind: 'image', assetId: known, fit } };
         return { fill: { kind: 'image', assetId: '', fit }, image: url };

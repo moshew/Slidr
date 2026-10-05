@@ -6,11 +6,19 @@
  * (ADR-009), so the HTML looks here as it will look on the slide.
  */
 import type { Deck } from '@slidr/model';
-import { colorCss, sanitizeMarkup, settle, themeVariablesCss } from '@slidr/renderer';
+import {
+  ASSET_URL_SCHEME,
+  colorCss,
+  resolveAssetUrls,
+  sanitizeMarkup,
+  settle,
+  themeVariablesCss,
+} from '@slidr/renderer';
 import type { ConversionHost } from './host';
 import {
   BASE_STYLE_ATTRIBUTE,
   BLANK_IMAGE_ATTRIBUTE,
+  rememberAssetUrls,
   RESOLVED_BACKGROUND_ATTRIBUTE,
 } from './htmlCopy';
 
@@ -113,10 +121,31 @@ export async function openSandbox(html: string, options: SandboxOptions): Promis
     if (!url) continue;
     allow(url);
     if (['img', 'video', 'audio', 'source'].includes(el.localName)) el.setAttribute('src', url);
+    else if (el.localName === 'image' || el.localName === 'use') el.setAttribute('href', url);
     else {
       (el as HTMLElement).style.backgroundImage = `url("${url}")`;
       el.setAttribute(RESOLVED_BACKGROUND_ATTRIBUTE, '');
     }
+  }
+  // And by name inside CSS, where an attribute cannot say it: `url("slidr-asset:<id>")`. The
+  // address each got is remembered, so that a copy made of this document names the asset again.
+  const written = new Map<string, string>();
+  const named = {
+    assetUrl(id: string): string | undefined {
+      const asset = deck.assets[id];
+      const url = asset ? host.resolveAsset(asset) : undefined;
+      if (!url) return undefined;
+      allow(url);
+      written.set(url, id);
+      return url;
+    },
+  };
+  for (const style of Array.from(parsed.querySelectorAll('style'))) {
+    const css = style.textContent ?? '';
+    if (css.includes(ASSET_URL_SCHEME)) style.textContent = resolveAssetUrls(css, named);
+  }
+  for (const el of Array.from(parsed.querySelectorAll(`[style*="${ASSET_URL_SCHEME}"]`))) {
+    el.setAttribute('style', resolveAssetUrls(el.getAttribute('style') ?? '', named));
   }
   // An image that waits for its picture shows nothing, not a broken-image icon.
   for (const el of Array.from(parsed.querySelectorAll('img[data-image-prompt]:not([src])'))) {
@@ -214,6 +243,7 @@ export async function openSandbox(html: string, options: SandboxOptions): Promis
     frame.remove();
     throw new Error('The sandbox frame cannot be read.');
   }
+  rememberAssetUrls(doc, written);
   await settle(doc);
   return { frame, document: doc, notes, dispose: () => frame.remove() };
 }

@@ -661,3 +661,58 @@ describe('a part of a text keeps a look the model has no field for', () => {
     expectSameInk(looked, looked.source.found['break-even']!.box, red, 100);
   });
 });
+
+describe('the pictures an html region shows are assets of the deck', () => {
+  it('names its asset again when an html element is converted a second time', async () => {
+    // An html element of an imported slide, whose CSS names an asset in two layers of a
+    // background, is taken apart (`element_convert`): the box is still more than a fill holds,
+    // and stays html. The app serves assets from an address of its own, which is neither an
+    // object URL nor a picture written out; the copy must name the asset, not that address.
+    const picture = testImage(640, 400);
+    const bytes = new Uint8Array(await (await fetch(picture)).arrayBuffer());
+    const asset = await host.storeAsset(bytes, { mime: 'image/png', name: 'hero.png' });
+    const address = testImage(8, 8);
+    expect(address.length).toBeLessThan(2048);
+    const served = { ...host, resolveAsset: () => address };
+    const deck = withAssets(createDeck({ lang: 'en' }), [asset]);
+    const layers = `linear-gradient(#0000, #0003), url("slidr-asset:${asset.id}") center / cover no-repeat`;
+    const result = await convertHtml(
+      `<style>.hero{position:absolute;left:200px;top:200px;width:800px;height:400px;background:${layers}}</style>
+       <div class="hero"></div>
+       <div style='position:absolute;left:200px;top:660px;width:300px;height:200px;background:${layers}'></div>`,
+      deck,
+      served,
+      deck.size,
+    );
+    expect(result.guard.faithful).toBe(true);
+    expect(types(result)).toEqual(['html', 'html']);
+    const [byRule, inline] = result.slide.elements;
+    expect(byRule?.type === 'html' && byRule.styles).toContain(`url("slidr-asset:${asset.id}")`);
+    expect(inline?.type === 'html' && inline.markup).toContain(`slidr-asset:${asset.id}`);
+    expect(JSON.stringify(result.slide)).not.toContain('data:image');
+    // Nothing was stored a second time: the asset is the one the deck had.
+    expect(result.assets).toEqual([]);
+  });
+
+  it('leaves a small picture written into the CSS where it is, and keeps a large one once', async () => {
+    const dot = testImage(4, 4);
+    const photo = testImage(640, 400);
+    expect(dot.length).toBeLessThan(2048);
+    expect(photo.length).toBeGreaterThan(2048);
+    const box = (left: number, url: string) =>
+      `<div style="position:absolute;left:${left}px;top:200px;width:400px;height:300px;background:linear-gradient(#0000, #0003), url('${url}') center / cover no-repeat"></div>`;
+    const result = await convertHtml(
+      box(100, dot) + box(600, photo) + box(1100, photo),
+      createDeck({ lang: 'en' }),
+      host,
+      { w: 1920, h: 1080 },
+    );
+    expect(result.guard.faithful).toBe(true);
+    expect(types(result)).toEqual(['html', 'html', 'html']);
+    const written = JSON.stringify(result.slide);
+    expect(written).toContain(dot.slice(0, 60));
+    expect(written).not.toContain(photo.slice(0, 60));
+    expect(result.assets.filter((asset) => asset.kind === 'image')).toHaveLength(1);
+    expect(written.split(`slidr-asset:${result.assets[0]!.id}`)).toHaveLength(3);
+  });
+});

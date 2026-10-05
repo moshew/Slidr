@@ -10,6 +10,7 @@
  *
  * The fidelity guard tries the first and falls back to the second (ADR-017).
  */
+import { ASSET_URL_SCHEME } from '@slidr/renderer';
 import { px } from './css';
 import { composedChildNodes, composedParent, isElement, isSvg, isText, styleOf } from './measure';
 
@@ -232,7 +233,91 @@ export function markupCopyPossible(el: Element, deep: boolean): boolean {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Images inside a copy become assets, referenced with `data-asset` (ADR-009).
+// Pictures inside a copy become assets (SPEC 5.7), wherever the source kept them: an element
+// names its asset with `data-asset` (ADR-009), CSS names it with `url("slidr-asset:<id>")`.
+
+/**
+ * The addresses the engine itself wrote into a document for assets of the deck
+ * (`openSandbox`): a copy names the asset again, not the address it had on the way.
+ */
+const writtenAssets = new WeakMap<Document, ReadonlyMap<string, string>>();
+
+export function rememberAssetUrls(doc: Document, idByUrl: ReadonlyMap<string, string>): void {
+  writtenAssets.set(doc, idByUrl);
+}
+
+/** A picture written out as `data:` that is shorter than this stays where it is: a dot, a tick. */
+const INLINE_PICTURE_CHARS = 2048;
+const CSS_URL = /url\(\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|([^)\s"']*))\s*\)/g;
+
+/** Whether a picture at this address has to be kept by the deck to be seen again. */
+function carriedPicture(url: string): boolean {
+  // An object URL lives as long as the page that made it, and no longer.
+  if (/^blob:/i.test(url)) return true;
+  // The same megabyte written into every slide that shows it is one asset instead.
+  return /^data:image\//i.test(url) && url.length >= INLINE_PICTURE_CHARS;
+}
+
+/**
+ * CSS with the pictures it carries, or points at inside the page, turned into assets of the
+ * deck: `url("slidr-asset:<id>")`, which the renderer points at the asset's address. Fonts are
+ * not here: `@font-face` rules are left out of a copy, and fonts are assets by another road.
+ */
+async function assetUrls(
+  css: string,
+  doc: Document,
+  request: CopyRequest,
+  lossy: string[],
+): Promise<string> {
+  if (!css.includes('url(')) return css;
+  const written = writtenAssets.get(doc);
+  const ids = new Map<string, string | undefined>();
+  for (const match of css.matchAll(CSS_URL)) {
+    const url = (match[1] ?? match[2] ?? match[3] ?? '').replace(/\\(.)/g, '$1');
+    if (ids.has(url)) continue;
+    const known = written?.get(url);
+    if (known) ids.set(url, known);
+    else if (carriedPicture(url)) {
+      const id = await request.storeImage(url);
+      if (!id) lossy.push(`a picture its CSS points at (${url.slice(0, 40)}) could not be read`);
+      ids.set(url, id);
+    }
+  }
+  if (ids.size === 0) return css;
+  return css.replace(CSS_URL, (whole, double?: string, single?: string, bare?: string) => {
+    const id = ids.get((double ?? single ?? bare ?? '').replace(/\\(.)/g, '$1'));
+    return id ? `url("${ASSET_URL_SCHEME}${id}")` : whole;
+  });
+}
+
+/**
+ * A canvas is drawn by script, and a copy of one is empty. The copy shows the picture the
+ * source's canvas held when it was copied, as a background that fills the box the bitmap was
+ * drawn in: the element stays a canvas, so the rules that size and place it still match.
+ */
+async function canvasPicture(
+  copy: Element,
+  original: HTMLCanvasElement | undefined,
+  request: CopyRequest,
+  lossy: string[],
+): Promise<void> {
+  if (!original || original.width === 0 || original.height === 0) return;
+  let picture: string;
+  try {
+    picture = original.toDataURL('image/png');
+  } catch {
+    lossy.push('a canvas that cannot be read');
+    return;
+  }
+  const id = await request.storeImage(picture);
+  if (!id) {
+    lossy.push('a canvas whose picture could not be kept');
+    return;
+  }
+  copy.setAttribute('data-asset', id);
+  (copy as HTMLElement).style.cssText +=
+    ';background-size:100% 100%;background-repeat:no-repeat;background-position:0 0;background-origin:content-box';
+}
 
 async function assetImages(root: Element, source: Element, request: CopyRequest, lossy: string[]) {
   const copies = [root, ...Array.from(root.querySelectorAll('*'))];
@@ -242,6 +327,21 @@ async function assetImages(root: Element, source: Element, request: CopyRequest,
     if (copy.hasAttribute(RESOLVED_BACKGROUND_ATTRIBUTE)) {
       copy.removeAttribute(RESOLVED_BACKGROUND_ATTRIBUTE);
       (copy as HTMLElement).style.removeProperty('background-image');
+    }
+    if (copy.localName === 'canvas' && !copy.hasAttribute('data-asset')) {
+      await canvasPicture(copy, originals[i] as HTMLCanvasElement | undefined, request, lossy);
+      continue;
+    }
+    // A picture inside an inline SVG, by an address only this page can follow.
+    if (copy.localName === 'image' && !copy.hasAttribute('data-asset')) {
+      const href = copy.getAttribute('href') ?? copy.getAttribute('xlink:href') ?? '';
+      const id = carriedPicture(href) ? await request.storeImage(href) : undefined;
+      if (id) {
+        copy.setAttribute('data-asset', id);
+        copy.removeAttribute('href');
+        copy.removeAttribute('xlink:href');
+      } else if (/^blob:/i.test(href)) lossy.push('a picture in an SVG that could not be read');
+      continue;
     }
     if (copy.localName !== 'img') continue;
     if (copy.hasAttribute('data-asset') || copy.hasAttribute(BLANK_IMAGE_ATTRIBUTE)) {
@@ -584,7 +684,13 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
       if (fixed !== inline) styled.setAttribute('style', fixed);
     }
   }
-  const styles = documentRules(doc, holder, frozen);
+  // The pictures the CSS shows, inline and by rule, are the deck's to keep.
+  for (const styled of Array.from(holder.querySelectorAll('[style]'))) {
+    const inline = styled.getAttribute('style') ?? '';
+    const kept = await assetUrls(inline, doc, request, lossy);
+    if (kept !== inline) styled.setAttribute('style', kept);
+  }
+  const styles = await assetUrls(documentRules(doc, holder, frozen), doc, request, lossy);
   return { markup: holder.outerHTML, ...(styles ? { styles } : {}), natural, lossy };
 }
 
@@ -710,12 +816,19 @@ async function copyByComputedStyle(el: Element, request: CopyRequest): Promise<H
 
     let made: Element;
     if (tag === 'canvas') {
-      // A canvas is drawn by script; the copy is its current picture.
+      // A canvas is drawn by script; the copy is its current picture, kept by the deck.
       made = out.createElement('img');
-      try {
-        made.setAttribute('src', (node as HTMLCanvasElement).toDataURL('image/png'));
-      } catch {
-        lossy.push('a canvas that cannot be read');
+      const kept = node.getAttribute('data-asset');
+      if (kept) made.setAttribute('data-asset', kept);
+      else {
+        try {
+          const picture = (node as HTMLCanvasElement).toDataURL('image/png');
+          const id = await request.storeImage(picture);
+          if (id) made.setAttribute('data-asset', id);
+          else made.setAttribute('src', picture);
+        } catch {
+          lossy.push('a canvas that cannot be read');
+        }
       }
     } else if (svg) {
       made = out.createElementNS('http://www.w3.org/2000/svg', node.tagName);
@@ -787,6 +900,20 @@ async function copyByComputedStyle(el: Element, request: CopyRequest): Promise<H
     `all:initial;display:block;position:relative;width:${natural.w}px;height:${natural.h}px;direction:${direction}`,
   );
   if (root) holder.append(root);
+  // A computed background names its picture by the address it had in the source's page.
+  for (const styled of Array.from(holder.querySelectorAll('[style]'))) {
+    const inline = styled.getAttribute('style') ?? '';
+    const kept = await assetUrls(inline, doc, request, lossy);
+    if (kept !== inline) styled.setAttribute('style', kept);
+  }
+  for (const image of Array.from(holder.querySelectorAll('image:not([data-asset])'))) {
+    const href = image.getAttribute('href') ?? image.getAttribute('xlink:href') ?? '';
+    const id = carriedPicture(href) ? await request.storeImage(href) : undefined;
+    if (!id) continue;
+    image.setAttribute('data-asset', id);
+    image.removeAttribute('href');
+    image.removeAttribute('xlink:href');
+  }
   return { markup: holder.outerHTML, natural, lossy };
 }
 
