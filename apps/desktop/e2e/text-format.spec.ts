@@ -821,15 +821,16 @@ test.describe('inserting a text box', () => {
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Escape');
     expect(await texts(page)).toEqual([ID]);
+    // The box leaves no trace in the history, and neither does what was typed into it and
+    // deleted again (`editor-text-new-box.spec.ts` has the rest of the cases).
+    expect(await steps(page)).toBe(before);
 
-    // With nothing typed at all, the box leaves no trace in the history.
-    const clean = await steps(page);
+    // The same with nothing typed at all.
     await page.keyboard.press('t');
     await expect(editor(page)).toBeFocused();
     await page.keyboard.press('Escape');
     expect(await texts(page)).toEqual([ID]);
-    expect(await steps(page)).toBe(clean);
-    expect(clean).toBeGreaterThan(before);
+    expect(await steps(page)).toBe(before);
   });
 });
 
