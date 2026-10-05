@@ -172,10 +172,13 @@ export function ShortcutMap() {
           size="sm"
           data-binding={binding.shortcut}
           data-state={waiting ? 'listening' : binding.original ? 'changed' : 'default'}
+          // While it waits, its name is what it waits for, so a screen reader says so.
           aria-label={
-            binding.keys
-              ? t('keys.change', { action: label, keys: binding.keys })
-              : t('keys.assign', { action: label })
+            waiting
+              ? `${label}: ${t('keys.press')}`
+              : binding.keys
+                ? t('keys.change', { action: label, keys: binding.keys })
+                : t('keys.assign', { action: label })
           }
           onClick={() => setStep(waiting ? null : { ...target, kind: 'listening' })}
           // A click elsewhere is not an answer: the shortcut stops waiting.
@@ -202,7 +205,9 @@ export function ShortcutMap() {
           {refusal(step.refused.keys, step.refused.verdict)}
         </p>
       ) : (
-        <p className="text-xs text-ui-fg-muted">{t('keys.pressHint')}</p>
+        <p aria-live="polite" className="text-xs text-ui-fg-muted">
+          {t('keys.pressHint')}
+        </p>
       );
     }
     return (
