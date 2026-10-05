@@ -2,7 +2,7 @@ import { createDeckApi } from '@slidr/agent-tools';
 import { CommandBus, createDeck, createSlide } from '@slidr/model';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentClient } from '../agent/agent';
-import { AgentService, type ChatThread } from '../agent/agentService';
+import { AgentService, threadIdOf, type ChatThread } from '../agent/agentService';
 import { createScriptedAgent, type Script } from '../agent/scriptedAgent';
 import { memoryTranscripts } from '../agent/transcript';
 import { createSessions } from './sessions';
@@ -211,5 +211,38 @@ describe('another document in the window', () => {
     const call = turn?.type === 'assistant' ? turn.parts.find((p) => p.type === 'tool') : undefined;
     expect(call).toMatchObject({ name: 'slide_update', state: 'ok' });
     expect(bus.deck.slides[0]?.name).toBe('Renamed');
+  });
+});
+
+describe('the chat of a selection', () => {
+  const selection = (...elementIds: string[]) =>
+    ({ kind: 'object', slideId: 's_1', elementIds }) as const;
+  const five = ['e_aaaaaaaa', 'e_bbbbbbbb', 'e_cccccccc', 'e_dddddddd', 'e_eeeeeeee'];
+
+  it('is named by its elements, in whatever order they were selected', () => {
+    expect(threadIdOf(selection('e_1'))).toBe('object-e_1');
+    expect(threadIdOf(selection('e_2', 'e_1'))).toBe('object-e_1-e_2');
+    expect(threadIdOf(selection(...five))).toBe(`object-${five.join('-')}`);
+  });
+
+  // The bug hunt's `ai-ui.md`, finding 15, and `agent-platform.md`, finding 8: the name was cut
+  // at 64 characters, which is five ids, so a sixth element did not tell two selections apart
+  // and the second got the chat, the session and the scope of the first.
+  it('is its own chat for every selection, however many elements it has', () => {
+    const { sessions } = setup();
+    const first = selection(...five, 'e_ffffffff');
+    const second = selection(...five, 'e_zzzzzzzz');
+    const chat = sessions.thread(first);
+    expect(sessions.thread(second)).not.toBe(chat);
+    expect(sessions.thread(second).scope).toEqual(second);
+    // The same selection, picked in another order, is the same chat.
+    expect(sessions.thread(selection('e_ffffffff', ...[...five].reverse()))).toBe(chat);
+
+    // The name is still one a folder can have, and leaves room for a conversation's suffix.
+    for (const scope of [first, second, selection(...five, 'e_ffffffff', 'e_gggggggg')]) {
+      expect(threadIdOf(scope)).toMatch(/^object-\d+x-[0-9a-z]+$/);
+      expect(threadIdOf(scope).length).toBeLessThanOrEqual(64);
+    }
+    expect(threadIdOf(first)).not.toBe(threadIdOf(selection(...five, 'e_ffffffff', 'e_gggggggg')));
   });
 });

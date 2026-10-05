@@ -1191,6 +1191,23 @@ export class ChatThread {
   }
 }
 
+/** The longest id a thread is given: it is part of a folder name, and of the key of a session. */
+const MAX_THREAD_ID = 64;
+
+/** A short, stable name for a long text: 53 bits of it, in base 36. A name, not a secret. */
+function shortHash(text: string): string {
+  let a = 0xdeadbeef;
+  let b = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    a = Math.imul(a ^ code, 2654435761);
+    b = Math.imul(b ^ code, 1597334677);
+  }
+  a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909);
+  b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909);
+  return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36);
+}
+
 /** The id of the thread of a scope: one continuing chat per deck, slide or object (AID-01). */
 export function threadIdOf(scope: SessionScope): string {
   switch (scope.kind) {
@@ -1198,8 +1215,16 @@ export function threadIdOf(scope: SessionScope): string {
       return 'deck';
     case 'slide':
       return `slide-${scope.slideId}`;
-    case 'object':
-      return `object-${[...scope.elementIds].sort().join('-')}`.slice(0, 64);
+    case 'object': {
+      const ids = [...scope.elementIds].sort().join('-');
+      const id = `object-${ids}`;
+      // A selection too large to be named by its ids is named by their number and a hash of
+      // them. Cutting the name short gave every selection that shared its first five ids one
+      // chat, with the session, the brief and the write guard of whichever was first.
+      return id.length <= MAX_THREAD_ID
+        ? id
+        : `object-${scope.elementIds.length}x-${shortHash(ids)}`;
+    }
     case 'import':
       return 'import';
   }
