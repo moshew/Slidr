@@ -53,11 +53,12 @@ test('an icon button that is a switch reads as pressed, and as not pressed', asy
   await pressed.click();
   await page.mouse.move(0, 0);
   await expect(pressed).toHaveAttribute('aria-pressed', 'false');
+  // Pressed is the accent's soft tint, as a Toggle is; not pressed is a quiet ghost. The colours
+  // fade from one to the other, so the look is read once the fade is over.
+  await expect.poll(async () => (await look()).background).toBe('rgba(0, 0, 0, 0)');
   const off = await look();
-  // Pressed is the accent's soft tint, as a Toggle is; not pressed is a quiet ghost.
   expect(on.background).not.toBe(off.background);
   expect(on.color).not.toBe(off.color);
-  expect(off.background).toBe('rgba(0, 0, 0, 0)');
 });
 
 test('a number field takes a test id on the field one types into', async ({ page }) => {
