@@ -3,15 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { Field, Select, Skeleton, Switch } from '@slidr/ui';
 import type { HarnessDescriptor } from '../agent/agent';
 import { DEFAULT_OUTLINE } from '../agent/agentService';
-import { agentOf, setAgentSettings, useAgentSettings } from '../ai/runtime';
+import { agentOf } from '../ai/runtime';
 import { useEditor } from '../shell';
+import { setAgentSettings, useAgentSettings } from './agentSettings';
 
 /*
  * The agent's part of the settings screen (WG3-T08, WG11-T11): the harness that runs the
  * sessions, its model and effort, web access, the design check at the end of a turn, and whether
- * a deck asked for by its subject starts from an outline. The values are the agent's own
- * settings (`ai/runtime.ts`): the picker in the chat changes the same model and effort, and a
- * session reads all of them when it starts and at the start of every turn.
+ * a deck asked for by its subject starts from an outline. The values are the app's own, the
+ * section `agent` of the settings file (`agentSettings.ts`): what every conversation runs with
+ * until the picker of its chat chooses a model or an effort for that conversation alone
+ * (AGT-04). A session reads them when it starts and at the start of every turn.
  */
 
 /** A choice that leaves the setting to the harness. */

@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import type * as Settings from '../src/settings';
 import { openApp } from './arrange-helpers';
 
 /*
@@ -18,11 +19,12 @@ async function openSettings(page: Page) {
   return section;
 }
 
-/** The agent's settings as they are kept. */
+/** The agent's settings as they are kept: the section `agent` of the settings. */
 const stored = (page: Page) =>
-  page.evaluate(
-    () => JSON.parse(localStorage.getItem('slidr.agent') ?? '{}') as Record<string, unknown>,
-  );
+  page.evaluate(async (path) => {
+    const { pageSettings } = (await import(/* @vite-ignore */ path)) as typeof Settings;
+    return ((await pageSettings.read()).agent ?? {}) as Record<string, unknown>;
+  }, '/src/settings/index.ts');
 
 test('the agent has its section, before the image providers', async ({ page }) => {
   await openApp(page);

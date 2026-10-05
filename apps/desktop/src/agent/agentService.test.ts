@@ -125,6 +125,8 @@ function setup(
   scripts: Record<string, Script>,
   options: {
     settings?: AgentSettings;
+    /** The settings of each conversation, by the id of its thread; over `settings`. */
+    settingsOf?: (threadId: string) => AgentSettings;
     files?: Map<string, string>;
     speed?: number;
     bus?: CommandBus;
@@ -156,7 +158,11 @@ function setup(
       editingElementId: null,
     }),
     transcripts,
-    settings: () => ({ harnessId: 'mock', ...options.settings }),
+    settings: (threadId) => ({
+      harnessId: 'mock',
+      ...options.settings,
+      ...options.settingsOf?.(threadId),
+    }),
     onSlideTouched: (slideId) => touched.push(slideId),
     ...(options.brief ? { brief: options.brief } : {}),
     ...(options.storeImage ? { storeImage: options.storeImage } : {}),
@@ -964,6 +970,28 @@ describe('the model of the next turn (CHT-U06)', () => {
     settings.qualityGate = false;
     await ask(thread, 'four');
     expect(seen.starts).toHaveLength(3);
+  });
+
+  it('asks for the settings of its own conversation, so one chat runs on a model of its own (AGT-04)', async () => {
+    const own: Record<string, AgentSettings> = { 'deck-c1': { model: 'b' } };
+    const { service, seen } = setup(
+      { a, b },
+      { settings: { model: 'a' }, settingsOf: (threadId) => own[threadId] ?? {} },
+    );
+    const first = service.thread({ kind: 'deck' });
+    const second = service.thread({ kind: 'deck' }, 'deck-c1');
+    await ask(first, 'one');
+    const reply = await ask(second, 'two');
+    expect(reply.parts).toEqual([{ type: 'text', text: 'B1.' }]);
+    expect(seen.starts.map((s) => s.config.model)).toEqual(['a', 'b']);
+
+    // The conversation gives its choice back: its session starts again on the model of the
+    // app, and the session of the other conversation is left as it is.
+    delete own['deck-c1'];
+    await ask(second, 'three');
+    await ask(first, 'four');
+    expect(seen.starts.map((s) => s.config.model)).toEqual(['a', 'b', 'a']);
+    expect(seen.closed).toHaveLength(1);
   });
 });
 

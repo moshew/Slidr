@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Deck } from '@slidr/model';
 import type * as Runtime from '../src/ai/runtime';
+import type * as Settings from '../src/settings';
 import type * as TemplatesApp from '../src/templates/app';
 
 /*
@@ -78,11 +79,15 @@ export function undoDepth(page: Page): Promise<number> {
   return page.evaluate(() => window.slidr!.bus.undoStack.length);
 }
 
-/** What the agent's settings hold now. */
+/**
+ * What the app's own settings of the agent hold now: the section `agent` of the settings, where
+ * the value the page was opened with (`slidr.agent`) was carried to.
+ */
 export function agentSettings(page: Page): Promise<Record<string, unknown>> {
-  return page.evaluate(
-    () => JSON.parse(localStorage.getItem('slidr.agent') ?? '{}') as Record<string, unknown>,
-  );
+  return page.evaluate(async (path) => {
+    const { pageSettings } = (await import(/* @vite-ignore */ path)) as typeof Settings;
+    return ((await pageSettings.read()).agent ?? {}) as Record<string, unknown>;
+  }, '/src/settings/index.ts');
 }
 
 /** The logo the template suites attach: a small picture with a known asset id. */

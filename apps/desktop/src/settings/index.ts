@@ -1,6 +1,15 @@
 // The app's settings and keys (WG3-T08, SEC-04). An area reads and writes its own section here,
 // and adds its part of the settings screen with `registerSettingsSection`.
 // See docs/adr/ADR-051-media-and-settings.md.
+export {
+  agentSettings,
+  setAgentSettings,
+  setConversationSettings,
+  useAgentSettings,
+  useConversationSettings,
+  type ConversationSettings,
+  type StoredAgentSettings,
+} from './agentSettings';
 export { KeyField } from './KeyField';
 export {
   registerSettingsSection,

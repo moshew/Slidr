@@ -102,8 +102,11 @@ export interface AgentServiceOptions {
   /** The user's selection, for the context block. */
   selection: () => SelectionSnapshot;
   transcripts: TranscriptStore;
-  /** Read when a session starts and when a turn ends. */
-  settings?: () => AgentSettings;
+  /**
+   * Read when a session starts and when a turn ends, for the thread that asks: a conversation
+   * may have a model and an effort of its own over the app's (AGT-04).
+   */
+  settings?: (threadId: string) => AgentSettings;
   /** A slide the agent has just created or changed, for the Stage to follow (AID-06). */
   onSlideTouched?: (slideId: string) => void;
   /** The user stopped a turn: stop what its tools left running (image jobs). */
@@ -641,7 +644,7 @@ export class ChatThread {
   }
 
   #settings(): AgentSettings {
-    return this.#options.settings?.() ?? {};
+    return this.#options.settings?.(this.id) ?? {};
   }
 
   #persist(entries: readonly ChatEntry[]): void {

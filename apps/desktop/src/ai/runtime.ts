@@ -16,12 +16,7 @@ import { isTauri } from '@tauri-apps/api/core';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AgentClient } from '../agent/agent';
-import {
-  AgentService,
-  threadIdOf,
-  type AgentSettings,
-  type TurnBrief,
-} from '../agent/agentService';
+import { AgentService, threadIdOf, type TurnBrief } from '../agent/agentService';
 import { captureWindowConversion, pageConversion } from '../agent/conversion';
 import { pageCapture } from '../agent/pageCapture';
 import { connectToolBridge, tauriAgent } from '../agent/tauriAgent';
@@ -38,6 +33,7 @@ import { importBrief } from '../import/progress';
 import { createImporter, importState } from '../import/session';
 import { createLintService } from '../lint/deckLint';
 import { mediaServices } from '../media/services';
+import { agentSettings } from '../settings';
 import type { Editor } from '../shell';
 import { createLayoutService } from '../templates/layoutService';
 import { followDirection } from '../templates/actions';
@@ -61,56 +57,6 @@ export const useAiPreferences = create<AiPreferences>()(
 
 export function setFollow(follow: boolean): void {
   useAiPreferences.setState({ follow });
-}
-
-/** Where the agent's settings are kept: the agent's section of the settings screen writes them too. */
-const SETTINGS_KEY = 'slidr.agent';
-
-interface StoredSettings extends AgentSettings {
-  /** A plain browser page only: how fast the scripted agent plays (1 = as recorded). */
-  mockSpeed?: number;
-}
-
-/**
- * The agent's settings: harness, model, effort, web access, the design check. The agent's section
- * of the settings screen (`src/settings/AgentSection.tsx`) and the chat's picker show them; they
- * are kept in `localStorage` (`slidr.agent`, a JSON object), not yet in `settings.json`, and the
- * defaults stand when it is absent: the first harness the app offers, on its own default model,
- * with web access and the design check on.
- */
-export function agentSettings(): StoredSettings {
-  try {
-    const stored: unknown = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}');
-    return typeof stored === 'object' && stored !== null ? stored : {};
-  } catch {
-    return {};
-  }
-}
-
-/** Counts the changes to the agent's settings, so that whoever shows them draws again. */
-const settingsChanges = create(() => ({ count: 0 }));
-
-/**
- * Changes some of the agent's settings, where they are kept (`slidr.agent`): the picker of the
- * chat and the agent's section of the settings screen. A value of `undefined` clears the setting,
- * so its default stands again. A session reads them when it starts and at every turn's start.
- */
-export function setAgentSettings(patch: Partial<StoredSettings>): void {
-  const next = Object.fromEntries(
-    Object.entries({ ...agentSettings(), ...patch }).filter(([, value]) => value !== undefined),
-  );
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
-  } catch {
-    // Not remembered: the choice cannot hold without storage.
-  }
-  settingsChanges.setState(({ count }) => ({ count: count + 1 }));
-}
-
-/** The agent's settings, for a component that shows them. */
-export function useAgentSettings(): StoredSettings {
-  settingsChanges((state) => state.count);
-  return agentSettings();
 }
 
 /** Shows a slide on the Stage and, when given, selects elements on it. */
@@ -280,6 +226,7 @@ function createAi(editor: Editor): AiRuntime {
     lint,
     selection,
     transcripts,
+    // The app's settings, and over them what the thread's conversation chose for itself.
     settings: agentSettings,
     brief,
     // A picture sent with a message is kept with the document, so the agent can place it.

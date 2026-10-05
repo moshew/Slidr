@@ -39,7 +39,8 @@ test('the picker changes the model of the next turn, and keeps the conversation'
   await picker.click();
   await page.getByRole('menuitemradio', { name: 'slide-chat' }).click();
   await expect(picker).toHaveAttribute('data-model', 'slide-chat');
-  expect((await agentSettings(page)).model).toBe('slide-chat');
+  // The choice is this conversation's own: the app's setting is what it was (AGT-04).
+  expect((await agentSettings(page)).model).toBe('deck-build');
 
   // The next turn is slide-chat's first: the session was started again on the new model, and
   // the conversation on screen is still the one that was.
@@ -48,10 +49,12 @@ test('the picker changes the model of the next turn, and keeps the conversation'
   await expect(first).toContainText('בונה שקף פתיחה');
   await expect(messages(page)).toHaveCount(2);
 
-  // The default again: the setting is cleared, not set to a name.
+  // The default again: the conversation gives its choice back, and shows the app's model.
   await picker.click();
   await page.getByRole('menuitemradio', { name: 'ברירת המחדל' }).first().click();
-  expect(await agentSettings(page)).not.toHaveProperty('model');
+  await expect(picker).toHaveAttribute('data-model', 'deck-build');
+  await expect(picker).toHaveAttribute('data-own', 'false');
+  expect((await agentSettings(page)).model).toBe('deck-build');
 });
 
 test('the cost of a conversation is what its turns cost, and each turn shows its own', async ({
