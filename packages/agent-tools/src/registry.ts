@@ -3,6 +3,7 @@ import {
   toJsonSchema,
   walkElements,
   type Affected,
+  type Command,
   type CommandBus,
   type Deck,
   type JsonSchema,
@@ -45,6 +46,16 @@ export interface DeckApi {
    * of the call left it.
    */
   call(turn: Turn, name: string, input: unknown): Promise<ToolResult>;
+}
+
+export interface DeckApiOptions {
+  /**
+   * What the app makes of a write of the agent: commands that have to follow it, which go into
+   * the same undo step and into the result of the call (the layouts of a deck whose direction
+   * the write turned). Asked after every write, with the deck as the write left it and as it
+   * was just before: what changed between the two is the write's own doing, and nothing else is.
+   */
+  follow?: (write: { deck: Deck; previous: Deck }) => readonly Command[];
 }
 
 function descriptionOf(schema: z.ZodType): string | undefined {
@@ -167,7 +178,11 @@ function scopeNames(scopes: readonly ScopeKind[]): string {
  * need another part of the app are registered. Plain closures over the bus: the transport
  * adapter, the harness and the tests all call `call` the same way (API-01).
  */
-export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi {
+export function createDeckApi(
+  bus: CommandBus,
+  services: Services = {},
+  options: DeckApiOptions = {},
+): DeckApi {
   const tools = deckTools.filter((tool) => !tool.requires || services[tool.requires]);
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
   const schemas = new Map<string, JsonSchema>();
@@ -251,11 +266,16 @@ export function createDeckApi(bus: CommandBus, services: Services = {}): DeckApi
         if (commands.length === 0) return summarizeWrite(start, start, NOTHING);
         const refusal = checkWrite(turn.scope, commands, start);
         if (refusal) throw new DeckApiError('out_of_scope', refusal);
-        const done = bus.batch(commands, {
+        const step = {
           actor: turn.actor,
           txId: turn.txId,
           ...(turn.label ? { label: turn.label } : {}),
-        });
+        };
+        let done = bus.batch(commands, step);
+        // What the app adds is the app's own doing, not the session's: the scope guard is not
+        // asked. It is part of what the call changed all the same, and the result says so.
+        const follow = options.follow?.({ deck: bus.deck, previous: start }) ?? [];
+        if (follow.length > 0) done = mergeAffected(done, bus.batch(follow, step));
         before ??= start;
         after = bus.deck;
         affected = affected ? mergeAffected(affected, done) : done;

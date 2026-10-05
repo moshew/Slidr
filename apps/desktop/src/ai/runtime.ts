@@ -163,7 +163,13 @@ function createAi(editor: Editor): AiRuntime {
     // The isolated page of an HTML import (SPEC 13.2); its tools exist in import sessions only.
     importer: createImporter(editor),
   };
-  const deckApi = createDeckApi(editor.bus, services);
+  const deckApi = createDeckApi(editor.bus, services, {
+    // The agent turns a deck by setting its direction. The layouts of its template are drawn
+    // for one direction, so they turn with it, in the same undo step. Told from the write that
+    // set the direction, not from the deck before and after the call: a call takes a while, and
+    // the user may turn the deck, or open another one, while it runs.
+    follow: ({ deck, previous }) => followDirection(deck, previous.meta.dir, library),
+  });
   // Every call passes the gallery on its way in: it knows whose images are about to be made,
   // and turns back a call for images that are being made already.
   const api: DeckApi = {
@@ -172,13 +178,8 @@ function createAi(editor: Editor): AiRuntime {
       const refusal = gallery.refusal(turn.scope, name, input);
       if (refusal) return { ok: false, error: { code: 'invalid_state', message: refusal } };
       const returned = gallery.noteToolCall(turn.scope, name, input);
-      const from = editor.bus.deck.meta.dir;
       // The gallery hears of the return too: a call that started no image job has no cards coming.
       const result = await deckApi.call(turn, name, input).finally(returned);
-      // The agent turns a deck by setting its direction. The layouts of its template are drawn
-      // for one direction, so they turn with it, in the same undo step.
-      const follow = followDirection(editor.bus.deck, from, library);
-      if (follow.length > 0) editor.bus.batch(follow, { actor: turn.actor, txId: turn.txId });
       return result;
     },
   };

@@ -6,6 +6,7 @@ export {
   inputJsonSchema,
   summarizeWrite,
   type DeckApi,
+  type DeckApiOptions,
   type ToolListing,
 } from './registry';
 export { availableIn, checkWrite, describeScope, type ScopeKind, type SessionScope } from './scope';

@@ -1,5 +1,6 @@
 import {
   ChangeDigest,
+  CommandBus,
   createDeck,
   createSlide,
   findElementInDeck,
@@ -8,6 +9,7 @@ import {
 } from '@slidr/model';
 import { allElementsDeck, hebrewDeck } from '@slidr/model/fixtures';
 import { describe, expect, it, vi } from 'vitest';
+import { createDeckApi } from './registry';
 import type { ConversionService, HtmlImportService } from './services';
 import { failed, ok, setup } from './testing';
 import { startTurn } from './tool';
@@ -111,6 +113,41 @@ describe('a turn is one transaction (D8)', () => {
     await ok(call('element_update', { elementId: 'e_text', patch: { opacity: 0.9 } }));
     bus.dispatch(updateElement('s_all', 'e_image', { opacity: 0.3 }));
     expect(digest.take(turn.sessionId).elements).toEqual(['e_image']);
+  });
+
+  it('takes what the app adds to a write into the same step, and into the result', async () => {
+    const bus = new CommandBus(hebrewDeck(), { validate: true });
+    const asked: string[] = [];
+    // An app that has something to do when the deck is turned: here, it renames a slide.
+    const api = createDeckApi(
+      bus,
+      {},
+      {
+        follow: ({ deck, previous }) => {
+          asked.push(`${previous.meta.dir} to ${deck.meta.dir}`);
+          if (deck.meta.dir === previous.meta.dir) return [];
+          return [
+            { type: 'slide.update', slideId: 's_he_hero', patch: { name: `now ${deck.meta.dir}` } },
+          ];
+        },
+      },
+    );
+    const turn = startTurn('sess', { kind: 'deck' });
+    const data = await ok(
+      api.call(turn, 'deck_apply_ops', { ops: [{ type: 'deck.setMeta', patch: { dir: 'ltr' } }] }),
+    );
+    expect(bus.deck.slides[0]!.name).toBe('now ltr');
+    expect(data).toMatchObject({ changed: ['s_he_hero'], deck: ['meta'] });
+    expect(bus.undoStack).toHaveLength(1);
+    expect(bus.undoStack[0]!.commands).toEqual(['deck.setMeta', 'slide.update']);
+
+    // It is asked about the write alone. The user turns the deck back while a call is on its
+    // way: that is not the call's doing, and the write that comes after it turned nothing.
+    bus.dispatch({ type: 'deck.setMeta', patch: { dir: 'rtl' } });
+    await ok(api.call(turn, 'slide_update', { slideId: 's_he_goals', name: 'goals' }));
+    await ok(api.call(turn, 'deck_get_outline', {}));
+    expect(asked).toEqual(['rtl to ltr', 'rtl to rtl']);
+    expect(bus.deck.slides[0]!.name).toBe('now ltr');
   });
 });
 
