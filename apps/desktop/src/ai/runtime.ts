@@ -251,7 +251,7 @@ function createAi(editor: Editor): AiRuntime {
     return known;
   };
 
-  return { agent, gallery, images, sessions: createSessions(agent), tools };
+  return { agent, gallery, images, sessions: createSessions(agent, editor.bus), tools };
 }
 
 const runtimes = new WeakMap<Editor, AiRuntime>();

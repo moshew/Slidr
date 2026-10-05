@@ -61,7 +61,7 @@ import {
 import { isTarget, useTarget } from '../objects/target';
 import { focusStage, openPanel, PanelId, setAiTab, tell, useDeck, useEditor } from '../shell';
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
-import { useThread } from './Chat';
+import { useConversation, useThread } from './Chat';
 import { DeckLook } from './DeckLook';
 import { TemplateForm } from './TemplateForm';
 import { switchLayoutCommands } from './layout';
@@ -103,17 +103,21 @@ function useRunner(scope: SessionScope): Runner {
   const own = useThread(scope);
   // The deck's chat is the conversation its tool shows now.
   const deckId = useStore(ai.agent.shown, (shown) => shown[threadIdOf(DECK)] ?? threadIdOf(DECK));
-  const deck = useMemo(() => ai.sessions.thread(DECK, deckId), [ai, deckId]);
+  const deck = useConversation(DECK, deckId);
   // The chat of the slide an object is on, likewise.
   const onSlide = scope.kind === 'object' ? scope.slideId : null;
   const slideId = useStore(ai.agent.shown, (shown) => {
     const id = onSlide ? threadIdOf({ kind: 'slide', slideId: onSlide }) : null;
     return id ? (shown[id] ?? id) : null;
   });
+  const opened = useStore(ai.sessions.opened);
   const slide = useMemo(
     () =>
       onSlide && slideId ? ai.sessions.thread({ kind: 'slide', slideId: onSlide }, slideId) : null,
-    [ai, onSlide, slideId],
+    // `opened` is not read: the slide of another document may carry the same id, and its chat
+    // is another one (see `useConversation`).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ai, onSlide, slideId, opened],
   );
   const busy = useStore(own.store, (s) => s.busy);
   const deckBusy = useStore(deck.store, (s) => s.busy);

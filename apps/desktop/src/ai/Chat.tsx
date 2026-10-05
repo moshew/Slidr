@@ -74,6 +74,22 @@ import { formatCost, formatTokens, tokensOf } from './usage';
  */
 
 /**
+ * One conversation of a scope, in the document that is open now. A panel keeps what this gives
+ * for as long as it gives the same: when another document is opened the chat is taken again,
+ * since the one from before was the old document's and its session is gone, though the slide
+ * or the elements may carry the same ids (the same file opened again).
+ */
+export function useConversation(scope: SessionScope, id: string): ChatThread {
+  const { sessions } = aiOf(useEditor());
+  const key = JSON.stringify(scope);
+  const opened = useStore(sessions.opened);
+  // The scope is compared by value: a caller may build it anew on every render. And `opened`
+  // is not read, it is what makes the chat be asked for again.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => sessions.thread(scope, id), [sessions, key, id, opened]);
+}
+
+/**
  * The thread of a scope in the open deck. The panel that shows it is where the scope's session
  * lives: the chat of a slide or an object the panel has moved on from lets its session go.
  */
@@ -83,9 +99,7 @@ export function useThread(scope: SessionScope): ChatThread {
   const key = JSON.stringify(scope);
   // A scope may keep several conversations (CHT-U07): the panel shows the one chosen.
   const id = useStore(agent.shown, (shown) => shown[threadIdOf(scope)] ?? threadIdOf(scope));
-  // The scope is compared by value: a caller may build it anew on every render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const thread = useMemo(() => sessions.thread(scope, id), [sessions, key, id]);
+  const thread = useConversation(scope, id);
   // A deck that is opened again picks up at the conversation that was written in last.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => void agent.restore(scope), [agent, key]);

@@ -29,11 +29,29 @@ const talk: Script = {
   ],
 };
 
-function setup(speed = 0) {
-  const bus = new CommandBus(
-    createDeck({ slides: [createSlide({ id: 's_1' }), createSlide({ id: 's_2' })] }),
-  );
-  const agent = createScriptedAgent({ talk }, { speed });
+/** A turn that names the first slide, through the app's own tool. */
+const rename: Script = {
+  description: '',
+  turns: [
+    [
+      {
+        type: 'tool_call_started',
+        id: 't1',
+        name: 'slide_update',
+        input: { slideId: 's_1', name: 'Renamed' },
+        call: true,
+      },
+      { type: 'turn_completed', outcome: 'completed', usage: {}, costUsd: 0, durationMs: 10 },
+    ],
+  ],
+};
+
+const twoSlides = () =>
+  createDeck({ slides: [createSlide({ id: 's_1' }), createSlide({ id: 's_2' })] });
+
+function setup(speed = 0, script: Script = talk) {
+  const bus = new CommandBus(twoSlides());
+  const agent = createScriptedAgent({ script }, { speed });
   const closed: string[] = [];
   const started: string[] = [];
   const client: AgentClient = {
@@ -61,7 +79,7 @@ function setup(speed = 0) {
     transcripts: memoryTranscripts(),
     settings: () => ({ harnessId: 'mock' }),
   });
-  return { sessions: createSessions(service), closed, started };
+  return { bus, sessions: createSessions(service, bus), closed, started };
 }
 
 function settled(thread: ChatThread): Promise<void> {
@@ -165,5 +183,33 @@ describe('the sessions of the AI tools', () => {
     await settled(first);
     expect(sessions.working.getState().threads).toEqual([]);
     expect(seen).toEqual([1, 0]);
+  });
+});
+
+describe('another document in the window', () => {
+  // The bug hunt's `ai-ui.md`, finding 2: the panel went on holding the chat of the document
+  // that was open before, whose session the service had closed, so every tool call failed.
+  it('is told to the panels, and the chat a slide has then is one that works', async () => {
+    const { bus, sessions } = setup(0, rename);
+    const held = sessions.thread(slide('s_1'));
+    sessions.show(held);
+    expect(sessions.opened.getState()).toBe(0);
+    bus.dispatch({ type: 'slide.update', slideId: 's_2', patch: { name: 'An edit' } });
+    expect(sessions.opened.getState()).toBe(0);
+
+    // The same file is opened again: its slides carry the ids they had.
+    bus.reset(twoSlides());
+    expect(sessions.opened.getState()).toBe(1);
+
+    // What a panel does when that moves: it takes the chat of its scope again.
+    const chat = sessions.thread(slide('s_1'));
+    expect(chat).not.toBe(held);
+    sessions.show(chat);
+    await chat.send('Name the slide');
+    await settled(chat);
+    const turn = chat.store.getState().entries.at(-1);
+    const call = turn?.type === 'assistant' ? turn.parts.find((p) => p.type === 'tool') : undefined;
+    expect(call).toMatchObject({ name: 'slide_update', state: 'ok' });
+    expect(bus.deck.slides[0]?.name).toBe('Renamed');
   });
 });
