@@ -15,6 +15,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -64,11 +65,7 @@ export const nofTheme: Theme = {
   radius: 28,
   shadow: { x: 0, y: 10, blur: 30, color: { value: '#1e3832', alpha: 0.07 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-    { fill: { kind: 'solid', color: { token: 'secondary' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -58,11 +59,7 @@ export const shvilTheme: Theme = {
   radius: 32,
   shadow: { x: 0, y: 20, blur: 50, color: { value: '#3c1e0a', alpha: 0.12 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-    { fill: { kind: 'solid', color: { token: 'secondary' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

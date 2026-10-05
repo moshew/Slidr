@@ -14,6 +14,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -55,10 +56,7 @@ export const laylaTheme: Theme = {
   radius: 0,
   shadow: { x: 0, y: 16, blur: 40, color: { value: '#000000', alpha: 0.5 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

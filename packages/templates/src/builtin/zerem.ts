@@ -22,6 +22,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -65,10 +66,7 @@ export const zeremTheme: Theme = {
   radius: 12,
   shadow: { x: 0, y: 24, blur: 60, color: { value: '#000000', alpha: 0.45 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

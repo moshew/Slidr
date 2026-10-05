@@ -249,6 +249,34 @@ export function acceptTemplate(
   );
 
   test(
+    'every background its theme offers keeps the text of its slides readable',
+    { timeout: 300_000 },
+    async () => {
+      // The variants of the theme's background are what the Background tool of row B offers as
+      // the template's own. A placeholder's text takes its colour from its text style, so a
+      // variant is one the template can offer only when all its styles read on it.
+      const { lang, dir } = LANGUAGES[0];
+      const deck = sampleDeck(template, samples[lang], { lang, dir });
+      const unreadable: string[] = [];
+      for (const [index, background] of template.theme.backgroundVariants.entries()) {
+        // What a click on "Variant n" sends, on every slide of the sample.
+        const bus = new CommandBus(deck, { validate: true });
+        bus.batch(
+          deck.slides.map((slide) => ({
+            type: 'slide.update' as const,
+            slideId: slide.id,
+            patch: { background },
+          })),
+        );
+        const ids = bus.deck.slides.map((slide) => slide.id);
+        const faint = (await lint.lint(bus.deck, ids, 'all')).filter((f) => f.rule === 'L05');
+        unreadable.push(...faint.map((f) => `variant ${index + 1}: ${brief(f, bus.deck)}`));
+      }
+      expect(unreadable).toEqual([]);
+    },
+  );
+
+  test(
     'switching the sample decks of the model to it leaves no error but the one known',
     { timeout: 120_000 },
     async () => {

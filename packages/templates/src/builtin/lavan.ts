@@ -15,6 +15,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -71,11 +72,7 @@ export const lavanTheme: Theme = {
   radius: 0,
   shadow: { x: 0, y: 8, blur: 24, color: { value: '#111214', alpha: 0.08 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-    { fill: { kind: 'solid', color: { token: 'secondary' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

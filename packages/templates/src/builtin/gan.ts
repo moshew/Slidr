@@ -15,6 +15,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -67,11 +68,7 @@ export const ganTheme: Theme = {
   radius: 36,
   shadow: { x: 0, y: 12, blur: 28, color: { value: '#1f1d47', alpha: 0.12 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'accent' } } },
-    { fill: { kind: 'solid', color: { token: 'secondary' } } },
-  ],
+  backgroundVariants: [SURFACE, { fill: { kind: 'solid', color: { token: 'accent' } } }],
 };
 
 // ---------------------------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -61,11 +62,7 @@ export const tzukTheme: Theme = {
   radius: 4,
   shadow: { x: 0, y: 12, blur: 32, color: { value: '#16202e', alpha: 0.1 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-    { fill: { kind: 'solid', color: { token: 'secondary' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

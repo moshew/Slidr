@@ -20,6 +20,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -84,11 +85,7 @@ export const defusTheme: Theme = {
   radius: 0,
   shadow: { x: -12, y: 12, blur: 0, color: { token: 'text' } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-    { fill: { kind: 'solid', color: { token: 'accent' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------

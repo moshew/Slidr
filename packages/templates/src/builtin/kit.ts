@@ -54,6 +54,19 @@ export const solid = (color: Color): Fill => ({ kind: 'solid', color });
 
 export const NO_FILL: Fill = { kind: 'none' };
 
+/**
+ * The ground of the theme's surface colour: the background every theme offers beside its own
+ * (`Theme.backgroundVariants`, which the Background tool shows as the template's choices).
+ *
+ * A theme offers only grounds that all five of its text styles read on. The text of a
+ * placeholder takes its colour from its text style and has none of its own (SPEC 5.5), so on a
+ * field of the primary colour the template's own text is lost: black on black in `defus`,
+ * 1.3:1 in `tzuk` and `lavan`. Such fields were offered and are not any more; they can come
+ * back when a placeholder can carry a colour. `builtin.test.ts` holds every theme to this, and
+ * the acceptance tests of a template try each variant behind every slide of its sample.
+ */
+export const SURFACE: Background = { fill: { kind: 'solid', color: { token: 'surface' } } };
+
 /** A placeholder. The alignment is always stated, so text is seated on the layout's side. */
 export function place(
   id: string,

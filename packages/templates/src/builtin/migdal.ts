@@ -13,6 +13,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -60,11 +61,7 @@ export const migdalTheme: Theme = {
   radius: 6,
   shadow: { x: 0, y: 8, blur: 24, color: { value: '#0d2240', alpha: 0.1 } },
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
-  backgroundVariants: [
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
-    { fill: { kind: 'solid', color: { token: 'secondary' } } },
-    { fill: { kind: 'solid', color: { token: 'primary' } } },
-  ],
+  backgroundVariants: [SURFACE],
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -125,6 +122,11 @@ const panel = (id: string, frame: Frame) => rect(id, frame, TINT, { effects: ROU
 /**
  * A card with a tinted strip at its head, `strip` high. The strong one is tinted with the blue
  * all over and bordered in it: the side of a comparison the slide argues for.
+ *
+ * Its tints are thin washes of the blue, so it has a white ground of its own under them, like
+ * the plain card beside it. Over the white of the template that changes no pixel; over another
+ * ground of the slide (the theme's surface colour, which the Background tool offers) the washes
+ * used to darken with it, and the tag at the head of the card fell to 4.2:1.
  */
 function sheet(id: string, frame: Frame, strip: number, strong = false): Element {
   const { w, h } = frame;
@@ -133,9 +135,11 @@ function sheet(id: string, frame: Frame, strip: number, strong = false): Element
     : 'stroke="#0d2240" stroke-opacity="0.16"';
   const ground = strong ? 'fill="#1a56c8" fill-opacity="0.06"' : 'fill="#ffffff"';
   const head = strong ? 'fill="#1a56c8" fill-opacity="0.12"' : 'fill="#eef2f8"';
+  const box = `x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="6"`;
   const markup =
     `<svg viewBox="0 0 ${w} ${h}">` +
-    `<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="6" ${ground} ${edge}/>` +
+    (strong ? `<rect ${box} fill="#ffffff"/>` : '') +
+    `<rect ${box} ${ground} ${edge}/>` +
     `<path ${head} d="M1 ${strip}V6a5 5 0 0 1 5-5H${w - 6}a5 5 0 0 1 5 5V${strip}z"/>` +
     `<path fill="none" ${edge} d="M1 ${strip + 0.5}H${w - 1}"/></svg>`;
   return drawing(id, frame, markup, PAINT);

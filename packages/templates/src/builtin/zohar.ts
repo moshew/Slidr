@@ -14,6 +14,7 @@ import {
   rect,
   sampleSlides,
   solid,
+  SURFACE,
   text,
   token,
   type SampleSlide,
@@ -62,7 +63,9 @@ export const zoharTheme: Theme = {
   radius: 30,
   shadow: { x: 0, y: 24, blur: 60, color: { value: '#1c0a52', alpha: 0.5 } },
   // A slide without a layout keeps the plain ground: text in any of the theme's colours reads
-  // on it. The gradients are the variants, and every layout carries its own.
+  // on it. The gradient of the two ground colours is the variant, and every layout carries its
+  // own. The one that ran on to pink and orange is not offered: the white text of a slide is
+  // lost on its lower third (see `SURFACE` in the kit).
   background: { fill: { kind: 'solid', color: { token: 'bg' } } },
   backgroundVariants: [
     {
@@ -75,18 +78,7 @@ export const zoharTheme: Theme = {
         ],
       },
     },
-    {
-      fill: {
-        kind: 'linear',
-        angle: 180,
-        stops: [
-          { color: { token: 'surface' }, at: 0 },
-          { color: { token: 'primary' }, at: 0.7 },
-          { color: { token: 'accent' }, at: 1 },
-        ],
-      },
-    },
-    { fill: { kind: 'solid', color: { token: 'surface' } } },
+    SURFACE,
   ],
 };
 
