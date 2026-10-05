@@ -1,5 +1,6 @@
 import { CommandBus, plainText, type Deck, type Element, type Layout } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
+import { seatAlign } from './align';
 import { tzukTemplate } from './builtin/tzuk';
 import { zeremTemplate } from './builtin/zerem';
 import { applyTemplate, changeDirection, deckFromTemplate } from './deck';
@@ -76,6 +77,77 @@ describe('the master components of a deck (SLD-04)', () => {
     }
     // Layouts with no place for a footer (the opening slide) are left as they were.
     expect(bus.deck.layouts[0]).toEqual(start().layouts[0]);
+  });
+
+  describe('a footer written in the other script than the deck’s', () => {
+    const paragraphs = (deck: Deck) =>
+      footers(deck).flatMap((f) => (f.type === 'text' ? f.content.paragraphs : []));
+    /** The footer seat of tzuk is at the end of the foot: the left of a right-to-left slide. */
+    const on = (lang: string, words: string) => {
+      const bus = new CommandBus(deckFromTemplate(tzukTemplate(), { lang }), { validate: true });
+      bus.batch(setDeckFooter(bus.deck, words));
+      return bus;
+    };
+
+    it('reads the way its words read, and stands on the side the layout seats a footer on', () => {
+      // "ACME Corp." laid out right to left is drawn ".ACME Corp".
+      const latin = paragraphs(on('he', 'ACME Corp.').deck);
+      expect(latin).toHaveLength(10);
+      // The end of a right-to-left slide is its left: the start of a line that reads left to right.
+      expect(new Set(latin.map((p) => `${p.dir} ${p.align}`))).toEqual(new Set(['ltr start']));
+      const hebrew = paragraphs(on('en', 'חברת הדוגמה בע"מ.').deck);
+      expect(new Set(hebrew.map((p) => `${p.dir} ${p.align}`))).toEqual(new Set(['rtl start']));
+      // A line of the deck's own language, and one that holds both: the deck's direction.
+      for (const words of ['צוק רובוטיקה · 2026', 'ACME בע"מ · Q3 2026', '2026']) {
+        expect(new Set(paragraphs(on('he', words).deck).map((p) => `${p.dir} ${p.align}`))).toEqual(
+          new Set(['rtl end']),
+        );
+      }
+      expect(
+        new Set(paragraphs(on('en', 'ACME · 2026').deck).map((p) => `${p.dir} ${p.align}`)),
+      ).toEqual(new Set(['ltr end']));
+    });
+
+    it('is laid out again when its words change script', () => {
+      const bus = on('he', 'צוק רובוטיקה');
+      expect(paragraphs(bus.deck)[0]).toMatchObject({ dir: 'rtl', align: 'end' });
+      bus.batch(setDeckFooter(bus.deck, 'TZUK ROBOTICS'));
+      expect(paragraphs(bus.deck)[0]).toMatchObject({
+        dir: 'ltr',
+        align: 'start',
+        styleRef: 'caption',
+      });
+      bus.batch(setDeckFooter(bus.deck, 'צוק'));
+      expect(paragraphs(bus.deck)[0]).toMatchObject({ dir: 'rtl', align: 'end' });
+    });
+
+    it.each([
+      ['he', 'ACME Corp.'],
+      ['he', 'צוק רובוטיקה'],
+      ['en', 'ACME Corp.'],
+    ])(
+      '%s deck, "%s": stays on the side of the foot it is seated on when the deck is turned',
+      (lang, words) => {
+        const bus = on(lang, words);
+        const set = bus.deck;
+        const other = set.meta.dir === 'rtl' ? 'ltr' : 'rtl';
+        bus.batch(changeDirection(bus.deck, other, tzukTemplate()));
+        for (const layout of footerLayouts(bus.deck)) {
+          const footer = layout.decorations.find((d) => d.role === 'footer')!;
+          expect(footer.frame, layout.id).toEqual(seat(layout)!.frame);
+          const [paragraph] = footer.type === 'text' ? footer.content.paragraphs : [];
+          // The seat is at the end of the foot in both directions.
+          expect(seat(layout)!.align).toBe('end');
+          expect(paragraph!.align, layout.id).toBe(seatAlign('end', paragraph!, other));
+        }
+        // New words are seated the same way as the turned ones.
+        const again = new CommandBus(bus.deck, { validate: true });
+        again.batch(setDeckFooter(again.deck, `${words} 2`));
+        expect(paragraphs(again.deck)[0]!.align).toBe(paragraphs(bus.deck)[0]!.align);
+        bus.batch(changeDirection(bus.deck, set.meta.dir, tzukTemplate()));
+        expect(bus.deck).toEqual(set);
+      },
+    );
   });
 
   it('changes the words of a footer that is there, and takes it away for an empty text', () => {

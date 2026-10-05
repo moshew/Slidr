@@ -19,6 +19,25 @@ export function readingDirection(paragraph: Paragraph, deckDir: Direction): Dire
 }
 
 /**
+ * The direction text is laid out in when the app sets it, as `text_set` and the samples of the
+ * templates do and as the design check judges it (L15): the deck's, unless the text has letters
+ * and none of them is of that direction. A Hebrew sentence that opens with an English term is
+ * still a Hebrew sentence; "ACME Corp." in a Hebrew deck is not, and laid out right to left its
+ * full stop would stand before the "A".
+ */
+export function textDirection(text: string, deckDir: Direction): Direction {
+  let rtl = false;
+  let ltr = false;
+  for (const char of text) {
+    if (!LETTER.test(char)) continue;
+    if (RTL_LETTER.test(char)) rtl = true;
+    else ltr = true;
+  }
+  if (deckDir === 'rtl') return ltr && !rtl ? 'ltr' : 'rtl';
+  return rtl && !ltr ? 'rtl' : 'ltr';
+}
+
+/**
  * The alignment that puts a paragraph on the side a placeholder means. A layout says `start`
  * and `end` for the deck's direction, and a paragraph's alignment is counted in its own: an
  * English line in a Hebrew deck is `end` where the layout says `start`, so that it sits on the

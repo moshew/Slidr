@@ -5,8 +5,10 @@ import {
   type Deck,
   type Element,
   type Layout,
+  type Paragraph,
   type TextElement,
 } from '@slidr/model';
+import { seatAlign, textDirection } from './align';
 
 /*
  * The master components of a deck (SLD-04): what every slide shows without holding it. They
@@ -90,18 +92,27 @@ export function deckFooter(deck: Deck): string {
   return '';
 }
 
-/** A footer for a layout: in the frame, the style and on the side of its footer placeholder. */
+/**
+ * A footer for a layout: in the frame, the style and on the side of its footer placeholder.
+ *
+ * The words are laid out as the app lays out all the text it sets (`textDirection`): an English
+ * company name in a Hebrew deck reads left to right, with its full stop after its last letter.
+ * And they are seated like the text of a placeholder (`seatAlign`): on the side of the box the
+ * layout means, whichever way they read.
+ */
 function footerOf(layout: Layout, text: string, dir: Deck['meta']['dir']): TextElement | undefined {
-  const drawn = drawnFooter(layout);
-  if (drawn) {
-    // The one that is there keeps its look, and takes the new words.
-    const [first] = drawn.content.paragraphs;
-    return {
-      ...drawn,
-      content: { paragraphs: [{ dir, align: 'start', ...first, runs: [{ text }] }] },
-    };
-  }
   const seat = layout.placeholders.find((p) => p.role === 'footer');
+  const drawn = drawnFooter(layout);
+  const [first] = drawn?.content.paragraphs ?? [];
+  // The side of the box: the one the layout seats a footer on; without a seat, the one the words
+  // that are there stand on.
+  const side = seat?.align ?? (first ? seatAlign(first.align, first, dir) : 'start');
+  const words = (look: Partial<Paragraph>): Paragraph => {
+    const paragraph = { ...look, dir: textDirection(text, dir), align: side, runs: [{ text }] };
+    return { ...paragraph, align: seatAlign(side, paragraph, dir) };
+  };
+  // The one that is there keeps its look, and takes the new words.
+  if (drawn) return { ...drawn, content: { paragraphs: [words(first ?? {})] } };
   if (!seat) return undefined;
   return createElement.text({
     id: `d_footer_${layout.id}`,
@@ -109,17 +120,7 @@ function footerOf(layout: Layout, text: string, dir: Deck['meta']['dir']): TextE
     role: 'footer',
     frame: { ...seat.frame },
     vAlign: seat.vAlign ?? 'top',
-    content: {
-      paragraphs: [
-        {
-          // The footer is the deck's own line: it reads in the deck's direction.
-          dir,
-          align: seat.align ?? 'start',
-          ...(seat.styleRef ? { styleRef: seat.styleRef } : {}),
-          runs: [{ text }],
-        },
-      ],
-    },
+    content: { paragraphs: [words(seat.styleRef ? { styleRef: seat.styleRef } : {})] },
   });
 }
 

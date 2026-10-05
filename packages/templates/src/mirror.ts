@@ -33,6 +33,8 @@ export function mirrorFrame(frame: Frame, width: number = SLIDE_WIDTH): Frame {
  */
 const FLIPPED: ReadonlySet<Element['type']> = new Set(['shape', 'line', 'svg']);
 
+const OTHER_SIDE: Partial<Record<string, 'start' | 'end'>> = { start: 'end', end: 'start' };
+
 /**
  * An element as it looks from the other direction, inside a box `width` wide. A group keeps its
  * own box unflipped and mirrors its children inside it, so text in a group stays readable.
@@ -50,6 +52,18 @@ export function mirrorElement(element: Element, width: number = SLIDE_WIDTH): El
   }
   if (out.type === 'text' && out.padding) {
     out.padding = { ...out.padding, left: out.padding.right, right: out.padding.left };
+  }
+  if (out.type === 'text' && out.role === 'footer') {
+    // The deck's footer (SLD-04) is seated like the text of a placeholder, on the side of its
+    // box that the layout means. Its box changed sides, and the way it reads did not, so the
+    // side is the other word now: without this a Hebrew footer of a deck that was turned
+    // left-to-right hugs the far edge of its box.
+    out.content = {
+      paragraphs: out.content.paragraphs.map((paragraph) => ({
+        ...paragraph,
+        align: OTHER_SIDE[paragraph.align] ?? paragraph.align,
+      })),
+    };
   }
   if (out.type === 'group') {
     out.children = out.children.map((child) => mirrorElement(child, element.frame.w));
