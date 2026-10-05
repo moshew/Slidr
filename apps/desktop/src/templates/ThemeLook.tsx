@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
 import { withAdjust, withFill } from '../objects/background';
 import { FillEditor } from '../objects/FillEditor';
-import { ColorRow, FillSwatch, SliderField } from '../objects/parts';
+import { BackgroundSwatch, ColorRow, SliderField } from '../objects/parts';
 import { useDeck, useEditor } from '../shell';
 import { MAX_CHART_COLORS, paletteCommands, variantCommands } from './themeCommands';
 
@@ -166,7 +166,7 @@ function BackgroundButton({
             {...data}
             className="h-9 w-16 shrink-0 cursor-default rounded-small transition-colors data-[state=open]:outline-2 data-[state=open]:outline-offset-2 data-[state=open]:outline-ui-accent"
           >
-            <FillSwatch fill={background.fill} className="size-full" />
+            <BackgroundSwatch background={background} width={64} />
           </button>
         </PopoverTrigger>
       </Tooltip>

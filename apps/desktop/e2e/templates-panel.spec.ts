@@ -290,6 +290,11 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
     });
   });
   steps += 1;
+  // A variant is drawn as the slide will be, by the renderer itself (an empty slide that has
+  // this background), not as its fill alone: a dimmed photo and a veiled ground show as they are.
+  await expect(
+    panel(page).getByTestId('theme-variant').first().locator('[data-slide-id="s_swatch"]'),
+  ).toHaveCount(1);
   await panel(page).getByTestId('theme-variant').first().click();
   await page.getByTestId('theme-background-editor').getByRole('radio', { name: 'הדרגתי' }).click();
   await expect
