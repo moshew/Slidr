@@ -5,10 +5,15 @@ import { defineTool } from '../tool';
 
 const ALL = ['deck', 'slide', 'object'] as const;
 
-/** The text an element holds: a text box's, and what is written on a shape (a title on a band). */
+/**
+ * The text an element holds: a text box's, and what is written on a shape (a title on a band).
+ * A shape with nothing written on it is a drawing, and holds none.
+ */
 function textIn(element: Element): string | undefined {
-  if (element.type !== 'text' && element.type !== 'shape') return undefined;
-  return element.content && plainText(element.content).slice(0, 120);
+  if (element.type === 'text') return plainText(element.content).slice(0, 120);
+  if (element.type !== 'shape' || !element.content) return undefined;
+  const text = plainText(element.content);
+  return text.trim() ? text.slice(0, 120) : undefined;
 }
 
 function slideTitle(slide: Slide): string | undefined {

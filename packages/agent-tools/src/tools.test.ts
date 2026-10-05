@@ -79,10 +79,15 @@ describe('read tools', () => {
             }),
           ],
         }),
-        // A box with nothing written on it is no title, whatever comes after it.
+        // A box with nothing written on it is no title, whatever comes after it: neither one
+        // that never had text, nor one whose text was deleted.
         createSlide({
           id: 's_plain',
-          elements: [createElement.shape({ id: 'e_plain', frame }), words('e_e', 'Only words')],
+          elements: [
+            createElement.shape({ id: 'e_plain', frame }),
+            createElement.shape({ id: 'e_blank', frame, content: richText(' ') }),
+            words('e_e', 'Only words'),
+          ],
         }),
       ],
     });
@@ -90,7 +95,7 @@ describe('read tools', () => {
     expect(outline.slides).toEqual([
       { number: 1, id: 's_banner', title: 'Three goals', elements: 10 },
       { number: 2, id: 's_role', title: 'The title, on a band of colour', elements: 4 },
-      { number: 3, id: 's_plain', title: 'Only words', elements: 2 },
+      { number: 3, id: 's_plain', title: 'Only words', elements: 3 },
     ]);
   });
 
