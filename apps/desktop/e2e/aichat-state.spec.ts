@@ -125,3 +125,46 @@ test('words copied with a picture beside them are pasted as words', async ({ pag
   expect(cancelled).toBe(false);
   await expect(page.getByTestId('composer-files')).toHaveCount(0);
 });
+
+test('a turn says "changes undone" only when its changes were undone', async ({ page }) => {
+  await openDeckChat(page, { script: 'deck-build' });
+  const turn = await sayToDeck(page, 'בנה שקף פתיחה');
+  const undo = turn.getByTestId('undo-turn');
+  await expect(undo).toBeVisible();
+  const built = await page.evaluate(() => window.slidr!.bus.deck.slides.length);
+
+  // Undone, it says so; redone, it offers the undo again.
+  await undo.click();
+  await expect(turn).toContainText('השינויים בוטלו');
+  await page.evaluate(() => window.slidr!.bus.redo());
+  await expect(undo).toBeVisible();
+  await expect(turn).not.toContainText('השינויים בוטלו');
+
+  // 200 edits of the user's, each a step of its own: the history keeps 200 steps, so the turn
+  // is no longer in it. Its slide is in the deck: there is nothing to undo, and nothing was
+  // undone (finding 5).
+  await page.evaluate(() => {
+    const { bus } = window.slidr!;
+    for (let i = 0; i < 200; i++) {
+      bus.dispatch({ type: 'deck.setMeta', patch: { title: `title ${i}` } });
+    }
+  });
+  expect(await page.evaluate(() => window.slidr!.bus.deck.slides.length)).toBe(built);
+  await expect(undo).toHaveCount(0);
+  await expect(turn).not.toContainText('השינויים בוטלו');
+});
+
+test('a turn kept with the deck does not say "changes undone" when the deck is opened again', async ({
+  page,
+}) => {
+  await openDeckChat(page, { script: 'deck-build' });
+  const turn = await sayToDeck(page, 'בנה שקף פתיחה');
+  await expect(turn.getByTestId('undo-turn')).toBeVisible();
+  await reopenSameDeck(page);
+  // The chat is read again from its transcript, the turn in it: an old turn has no button
+  // (SPEC, the note on CHT-U04), and no label either (finding 5).
+  await expect(turns(page)).toHaveCount(1);
+  await expect(turns(page).first()).toContainText('שקף הפתיחה מוכן');
+  await expect(turns(page).first().getByTestId('undo-turn')).toHaveCount(0);
+  await expect(turns(page).first()).not.toContainText('השינויים בוטלו');
+});

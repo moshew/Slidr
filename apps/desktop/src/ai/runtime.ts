@@ -13,7 +13,7 @@ import {
 import { findSlide, locateElement, type Slide } from '@slidr/model';
 import { sessionBrief } from '@slidr/prompts';
 import { isTauri } from '@tauri-apps/api/core';
-import { create } from 'zustand';
+import { create, type StoreApi } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AgentClient } from '../agent/agent';
 import { AgentService, threadIdOf, type TurnBrief } from '../agent/agentService';
@@ -41,6 +41,7 @@ import { appTemplateService, library } from '../templates/app';
 import { createDrafts, type Drafts } from './drafts';
 import { createGallery, type Gallery } from './variations';
 import { createSessions, type Sessions } from './sessions';
+import { createUndoneTurns, type UndoneTurns } from './undone';
 
 /** What the user chose for the AI panels. Kept per machine, like the shell's own layout. */
 interface AiPreferences {
@@ -110,6 +111,8 @@ export interface AiRuntime {
   sessions: Sessions;
   /** What is being written in each chat: it outlives the panel that shows the chat. */
   drafts: Drafts;
+  /** The turns whose changes were undone, for the chat to say so under them (CHT-U04). */
+  undone: StoreApi<UndoneTurns>;
   /** The names of the tools a session of a scope can call: an action that needs more is not offered. */
   tools: (scope: ScopeKind) => ReadonlySet<string>;
 }
@@ -260,6 +263,7 @@ function createAi(editor: Editor): AiRuntime {
     images,
     sessions: createSessions(agent, editor.bus),
     drafts: createDrafts(),
+    undone: createUndoneTurns(editor.bus),
     tools,
   };
 }

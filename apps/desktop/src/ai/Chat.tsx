@@ -64,7 +64,7 @@ import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
 import { ModelPicker } from './ModelPicker';
 import { OutlineCard } from './Outline';
-import { agentOf, aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
+import { aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
 import { activityLabel, targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
 import { formatCost, formatTokens, tokensOf } from './usage';
 
@@ -397,20 +397,20 @@ function UserMessage({ entry }: { entry: UserEntry }) {
   );
 }
 
-/** Turns that were on the undo stack while this window was open: only those say "undone". */
-const undoable = new Set<string>();
-
-/** "Undo changes" of a turn that changed the deck (CHT-U04, CMD-06). */
+/**
+ * "Undo changes" of a turn that changed the deck (CHT-U04, CMD-06). Once the turn is undone it
+ * says so; a turn that only left the history (it is long, or the deck was opened again) has
+ * nothing to undo and nothing to say.
+ */
 function UndoTurn({ txId, disabled }: { txId: string; disabled: boolean }) {
   const { t } = useTranslation('ai');
-  const editor = useEditor();
-  const agent = agentOf(editor);
+  const { agent, undone } = aiOf(useEditor());
   // Read again after every change to the deck: undo and redo move the turn off and on the stack.
   useDeck((s) => s.revision);
+  const wasUndone = useStore(undone, (s) => s.turns.has(txId));
   const info = agent.undoInfo(txId);
-  if (info) undoable.add(txId);
   if (!info) {
-    return undoable.has(txId) ? (
+    return wasUndone ? (
       <span className="self-start text-xs text-ui-fg-muted">{t('turn.undone')}</span>
     ) : null;
   }
