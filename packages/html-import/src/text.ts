@@ -205,6 +205,19 @@ function byFamily(run: RawRun, doc: Document): RawRun[] {
   return cut.length > 0 ? cut : [run];
 }
 
+/**
+ * The height the style gives a line, in its own CSS px; undefined when it gives none the model
+ * can hold: `normal`, which the font decides, and a height of nothing (`line-height: 0`, a
+ * common way to centre a figure in a badge), where the glyphs are simply drawn around the
+ * line's place. A single line sits the same under any height once its box is put where the
+ * glyphs were, which the guard does by measuring.
+ */
+export function lineHeightPx(cs: CSSStyleDeclaration): number | undefined {
+  if (cs.lineHeight === 'normal') return undefined;
+  const height = px(cs.lineHeight);
+  return height > 0 ? height : undefined;
+}
+
 /** How the browser shows the text of an element, in slide pixels. */
 export function lookOf(
   node: Element,
@@ -219,7 +232,8 @@ export function lookOf(
     families,
     font: families.find((f) => familyAvailable(f, node.ownerDocument)) ?? families[0],
     size: round(px(cs.fontSize) * scale),
-    weight: Number(cs.fontWeight) || 400,
+    // A variable font takes any weight (450.5); the model's weight is a whole number.
+    weight: Math.min(1000, Math.max(1, Math.round(Number(cs.fontWeight) || 400))),
     italic: cs.fontStyle !== 'normal',
     color: ctx.color(cs.color, node, 'color', pseudo),
     letterSpacing: cs.letterSpacing === 'normal' ? 0 : round(px(cs.letterSpacing) * scale),
@@ -346,13 +360,14 @@ export function readTextBlock(
     br = false,
   ) => {
     const decoration = style.textDecorationLine;
+    const line = lineHeightPx(style);
     const base: RawRun = {
       text: style.textTransform === 'capitalize' ? capitalize(text) : text,
       br,
       look: lookOf(from.node, from.pseudo, style, scale, ctx),
       underline: inherited.underline || decoration.includes('underline'),
       strike: inherited.strike || decoration.includes('line-through'),
-      lineHeight: style.lineHeight === 'normal' ? undefined : px(style.lineHeight) * scale,
+      lineHeight: line === undefined ? undefined : line * scale,
       ...(inherited.highlight ? { highlight: inherited.highlight } : {}),
       ...(inherited.link ? { link: inherited.link } : {}),
       ...(inherited.script ? { script: inherited.script } : {}),
@@ -446,7 +461,10 @@ export function readTextBlock(
       );
   const kept = raw
     .map((r, i) => ({ ...r, text: texts[i]! }))
-    .filter((r) => r.text !== '')
+    // Text of no size (`font-size: 0`) is in the DOM and not on screen, like text that is
+    // hidden. It goes after the white space was collapsed around it: the spaces on its two
+    // sides are both drawn, since it stood between them.
+    .filter((r) => r.text !== '' && (r.br || r.look.size > 0))
     .flatMap((r) => (r.br ? [r] : byFamily(r, owner.ownerDocument)));
   if (kept.every((r) => r.br)) return { unsupported: 'no visible text' };
 

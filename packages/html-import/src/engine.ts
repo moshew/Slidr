@@ -11,7 +11,9 @@
 import {
   createElement,
   createSlide,
+  Element as ElementSchema,
   newId,
+  Slide as SlideSchema,
   type AnimationStep,
   type AssetMeta,
   type Background,
@@ -1053,6 +1055,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   };
 
   const judge = async ({ fit = true }: { fit?: boolean } = {}): Promise<Verdict> => {
+    await holdToSchema();
     const first = await pictured(fit);
     const verdict = assess(first.rendered, first.picture);
     if (!options.foreign) return verdict;
@@ -1121,6 +1124,30 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     await fillHtml(item);
     fallbacks.push({ reason, copy: 'markup', deep });
     return item;
+  };
+
+  /**
+   * The model's schema has the last word on what an element may be. Any valid CSS is taken
+   * (ADR-017), and a computed value can be one a field does not take. Whatever the walk made of
+   * it that the schema refuses goes back to HTML here, before anything is compared: no field,
+   * of today or of later, can then make a conversion hand back a slide the deck refuses. Once
+   * is enough: what the guard puts in afterwards is HTML, which is always a valid element.
+   */
+  let held = false;
+  const holdToSchema = async (): Promise<void> => {
+    if (held) return;
+    held = true;
+    if (SlideSchema.safeParse(assemble()).success) return;
+    for (const item of [...proposal.items]) {
+      if (!proposal.items.includes(item) || ElementSchema.safeParse(item.element).success) continue;
+      const reason = `${item.element.type === 'text' ? 'text' : `a ${item.element.type}`} the model cannot hold`;
+      if (item.covers === 'box') await replace(item.node, false, reason, item);
+      else await replace(item.node, true, reason);
+    }
+    // Not an element: something of the slide itself. The whole of it, then, as it was written.
+    if (!SlideSchema.safeParse(assemble()).success) {
+      await replace(root, true, 'a slide the model cannot hold');
+    }
   };
 
   const guard = async (): Promise<GuardReport> => {

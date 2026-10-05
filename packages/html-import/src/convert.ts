@@ -67,6 +67,7 @@ import {
   hasAnyText,
   hasOwnText,
   isPureInline,
+  lineHeightPx,
   readListMarker,
   readTextBlock,
   type TextTheme,
@@ -905,7 +906,8 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     // The renderer starts a line box at the top of the frame; the glyphs sit half the leading
     // lower. The guard corrects what is left of the difference from a measured render.
     const glyphs = first.bottom - first.top;
-    const half = cs.lineHeight === 'normal' ? 0 : (px(cs.lineHeight) * vl - glyphs) / 2;
+    const lineHeight = lineHeightPx(cs);
+    const half = lineHeight === undefined ? 0 : (lineHeight * vl - glyphs) / 2;
     const top = bounds.top - half;
     const height = bounds.bottom - bounds.top + 2 * half;
     // A block lays its lines out in its content box; text that a flex or grid container, or

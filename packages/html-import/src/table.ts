@@ -23,7 +23,7 @@ import {
   subtreeHidden,
   textLines,
 } from './measure';
-import { hasAnyText, isPureInline, readTextBlock, type TextTheme } from './text';
+import { hasAnyText, isPureInline, lineHeightPx, readTextBlock, type TextTheme } from './text';
 
 export interface TableContext {
   deck: Deck;
@@ -165,7 +165,7 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
       const pitch =
         blockLines.length > 1
           ? ((last.top - first.top) / (blockLines.length - 1)) * toSlide
-          : style.lineHeight === 'normal'
+          : lineHeightPx(style) === undefined
             ? (first.bottom - first.top) * toSlide
             : undefined;
       const found = readTextBlock(block, block, style, kl, pitch, undefined, text);
