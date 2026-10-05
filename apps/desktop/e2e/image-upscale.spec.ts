@@ -27,6 +27,8 @@ const out = (name: string) =>
 
 const imageOf = (page: Page) => selected<ImageElement>(page);
 const button = (page: Page) => row(page).getByTestId('image-upscale');
+/** The slide on the Stage, where the keys of the selection are heard. */
+const slide = (page: Page) => page.getByTestId('stage-surface');
 
 /** What a picture has besides its file: all of it stays when the picture is upscaled. */
 const LOOK = {
@@ -136,8 +138,10 @@ test('while it works its place says how far it is, and the button beside it stop
   await expect(work.getByRole('status')).toHaveText(/Upscaling the picture: \d+%\s*\d+%/);
   await expect(button(page)).toHaveCount(0);
   const stop = work.getByRole('button', { name: 'Stop upscaling' });
-  // The keyboard is on it: the button that was pressed is gone, and the page did not take it.
-  await expect(stop).toBeFocused();
+  await expect(stop).toBeVisible();
+  // The button that was pressed is gone, and the page did not take the keyboard. A tool used
+  // with the pointer does not keep it either (`shell/toolFocus.ts`): it is on the slide.
+  await expect(slide(page)).toBeFocused();
   await expect
     .poll(async () => Number.parseInt(await work.locator('span[aria-hidden]').innerText(), 10))
     .toBeGreaterThan(0);
@@ -146,7 +150,8 @@ test('while it works its place says how far it is, and the button beside it stop
 
   // Stopped at once for the user: the button is back, and the picture is the one it was.
   await expect(work).toHaveCount(0);
-  await expect(button(page)).toBeFocused();
+  await expect(button(page)).toBeVisible();
+  await expect(slide(page)).toBeFocused();
   // Past the time the whole job would have taken, nothing was put in its place.
   await page.waitForTimeout(3500);
   expect((await imageOf(page)).assetId).toBe(original);
@@ -160,6 +165,32 @@ test('while it works its place says how far it is, and the button beside it stop
   await expect.poll(async () => (await imageOf(page)).assetId).not.toBe(original);
   expect(await undoDepth(page)).toBe(steps + 1);
   await expect(button(page)).toBeVisible();
+});
+
+test('reached with the keyboard, the way to stop has the keyboard, and then the button again', async ({
+  page,
+}) => {
+  await openApp(page, { lang: 'en' });
+  const original = await addPicture(page);
+  await standIn(page, { tiles: 10, tileMs: 300 });
+
+  // The button, its menu and the choice, all by keys: the tool keeps the keyboard.
+  await button(page).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem', { name: '2 times the size' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  const work = row(page).getByTestId('image-upscale-work');
+  const stop = work.getByRole('button', { name: 'Stop upscaling' });
+  // The button that was pressed is gone: what took its place has the keyboard, not the page.
+  await expect(stop).toBeFocused();
+  await expect(work.getByRole('status')).toHaveText(/Upscaling the picture: \d+%\s*\d+%/);
+
+  await page.keyboard.press('Enter');
+  await expect(work).toHaveCount(0);
+  // And the other way round when the work is stopped.
+  await expect(button(page)).toBeFocused();
+  expect((await imageOf(page)).assetId).toBe(original);
 });
 
 test('without the model the choices are there, off, and say why', async ({ page }) => {
