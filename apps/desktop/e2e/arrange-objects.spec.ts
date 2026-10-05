@@ -368,6 +368,41 @@ test.describe('the Layers panel', () => {
     await expect(shownName(row(page, 'e_a'))).toHaveText('צורה');
   });
 
+  test('when a name is done the keyboard is back on its row, and the arrows go on from it', async ({
+    page,
+  }) => {
+    // By the keyboard all the way: the row, F2, the name, Enter.
+    await row(page, 'e_b').click();
+    await page.keyboard.press('F2');
+    const field = page.getByTestId('layer-name');
+    await expect(field).toBeFocused();
+    await field.fill('אמצע');
+    await field.press('Enter');
+    await expect(field).toHaveCount(0);
+    expect((await elements(page))[1]!.name).toBe('אמצע');
+    // Not on the first control of the panel, where a second Enter would collapse it.
+    await expect(row(page, 'e_b')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(row(page, 'e_a')).toBeFocused();
+    expect(await selected(page)).toEqual(['e_a']);
+
+    // Given up with Esc, the same.
+    await page.keyboard.press('F2');
+    await field.fill('אחר');
+    await field.press('Escape');
+    await expect(field).toHaveCount(0);
+    expect((await elements(page))[0]!.name).toBe('A');
+    await expect(row(page, 'e_a')).toBeFocused();
+
+    // A press on another row keeps the name, and the keyboard goes where the press was.
+    await row(page, 'e_c').dblclick();
+    await field.fill('עליון');
+    await row(page, 'e_b').click();
+    await expect(field).toHaveCount(0);
+    expect((await elements(page))[2]!.name).toBe('עליון');
+    await expect(row(page, 'e_b')).toBeFocused();
+  });
+
   test('an empty slide says so', async ({ page }) => {
     await select(page, ALL);
     await focusStage(page);

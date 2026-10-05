@@ -329,8 +329,11 @@ function NameField({
       onDoubleClick={(event) => event.stopPropagation()}
       onBlur={(event) => finish(event.currentTarget.value)}
       onKeyDown={(event) => {
-        if (event.key === 'Enter') finish(event.currentTarget.value);
-        else if (event.key === 'Escape') finish(undefined);
+        if (event.key !== 'Enter' && event.key !== 'Escape') return;
+        finish(event.key === 'Enter' ? event.currentTarget.value : undefined);
+        // The field goes away with the keyboard in it: its row takes the keyboard, so the
+        // arrows go on from the row that was named, and not from wherever the focus falls.
+        event.currentTarget.closest<HTMLElement>('[data-layer]')?.focus({ preventScroll: true });
       }}
     />
   );
