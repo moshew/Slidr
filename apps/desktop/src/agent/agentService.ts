@@ -402,6 +402,8 @@ export class ChatThread {
   #chips: (Pairing & { partId: string })[] = [];
   #results: (Pairing & { target: ToolTarget | undefined })[] = [];
   #loading: Promise<void> | null = null;
+  /** A message whose files are being stored, before it has a run: Stop is kept here meanwhile. */
+  #sending: { stopped: boolean } | null = null;
   /**
    * The changes behind the conversation's back are being collected (`#changes`): from its first
    * turn in this window on. Before that nobody knows what became of the deck since its last turn.
@@ -467,6 +469,7 @@ export class ChatThread {
     // A call of the old deck's turn that is still at work must not write into the new one.
     this.#run?.over.abort();
     this.#run = null;
+    this.#sending = null;
     this.#heldWatch = null;
     this.#record = { scope: this.scope };
     this.#loading = null;
@@ -489,6 +492,8 @@ export class ChatThread {
     if ((!trimmed && files.length === 0) || this.store.getState().busy) return;
     // Taken at once: storing the files takes a moment, and a second send must not slip in.
     this.store.setState({ busy: true, stopping: false, activity: { kind: 'starting' } });
+    const sending = { stopped: false };
+    this.#sending = sending;
     let attached: Attached | undefined;
     let shown: EntryAttachment[] = [];
     let failure: unknown;
@@ -501,6 +506,10 @@ export class ChatThread {
         kind: mime.startsWith('image/') ? 'image' : 'file',
       }));
     }
+    // Another deck was opened, or the chat closed, while the files were being stored: the
+    // message was said to a chat that is gone.
+    if (this.#sending !== sending) return;
+    this.#sending = null;
     const user: UserEntry = {
       type: 'user',
       id: entryId(),
@@ -528,6 +537,7 @@ export class ChatThread {
       options.label,
       attached,
       failure,
+      sending.stopped,
     );
   }
 
@@ -597,21 +607,34 @@ export class ChatThread {
     await this.#begin(followUp, watch, 1, { type: 'gate', round: 1, ...report });
   }
 
-  /** Stops the running turn (CHT-U03). It ends as `interrupted`; what it wrote stays. */
+  /**
+   * Stops the running turn (CHT-U03). It ends as `interrupted`; what it wrote stays. A turn that
+   * is still being prepared (its files are being stored, its session opened, its slide rendered
+   * for the brief) is never sent.
+   */
   async stop(): Promise<void> {
     const run = this.#run;
-    if (!run || run.stopRequested) return;
-    run.stopRequested = true;
-    // From here on nothing is written for the turn, whatever its tool calls are still doing.
-    run.over.abort();
-    this.store.setState({ stopping: true });
-    this.#options.onInterrupt?.();
-    const session = this.#session;
-    if (session) {
-      // Refused when no turn runs on the harness (the design check is judging): then the
-      // flag alone ends the run.
-      await this.#options.client.interrupt(session.sessionId).catch(() => undefined);
+    if (!run) {
+      // The files of the message are still being stored: there is no run yet to stop.
+      const sending = this.#sending;
+      if (sending && !sending.stopped) {
+        sending.stopped = true;
+        this.store.setState({ stopping: true });
+      }
+      return;
     }
+    if (!run.stopRequested) {
+      run.stopRequested = true;
+      // From here on nothing is written for the turn, whatever its tool calls are still doing.
+      run.over.abort();
+      this.store.setState({ stopping: true });
+      this.#options.onInterrupt?.();
+    }
+    // Asked on every press: the harness does nothing when it has no turn to stop (the turn is
+    // on its way to it, or the design check is judging), and then the flag ends the run where
+    // it is looked at next.
+    const session = this.#session;
+    if (session) await this.#options.client.interrupt(session.sessionId).catch(() => undefined);
   }
 
   /** Ends the thread's session. The transcript stays with the deck. */
@@ -620,6 +643,7 @@ export class ChatThread {
     this.#session = null;
     this.#run?.over.abort();
     this.#run = null;
+    this.#sending = null;
     this.#heldWatch = null;
     if (session) await this.#endSession(session);
   }
@@ -706,6 +730,7 @@ export class ChatThread {
     label?: string,
     attached?: Attached,
     failure?: unknown,
+    stopped = false,
   ) {
     const entry: AssistantEntry = {
       type: 'assistant',
@@ -741,6 +766,13 @@ export class ChatThread {
       stopping: false,
       activity: { kind: 'starting' },
     }));
+    if (stopped) {
+      // Stop was pressed while the files were being stored: the message is in the chat, and
+      // nothing of its turn began.
+      run.stopRequested = true;
+      this.#finish(run, 'interrupted');
+      return;
+    }
     if (failure !== undefined) {
       // The files could not be stored: the message is in the chat, and so is the reason.
       run.problem = problemOf(failure);
@@ -781,6 +813,12 @@ export class ChatThread {
         .brief?.(this.scope, { fresh: session.fresh, threadId: this.id })
         .catch(() => null);
       if (this.#run !== run) return;
+      // Stop was pressed while the brief was being made (it renders the slide): the turn is not
+      // sent, so nothing of it reaches the model or the deck.
+      if (run.stopRequested) {
+        this.#finish(run, 'interrupted');
+        return;
+      }
       // A session that starts in the middle of a conversation is told what was said (AGT-06).
       const summary = session.fresh ? this.#summary(run) : '';
       session.fresh = false;
@@ -798,9 +836,20 @@ export class ChatThread {
         context: context.join('\n'),
         ...(images.length > 0 ? { images } : {}),
       });
-      if (this.#run === run) this.store.setState({ activity: { kind: 'thinking' } });
+      if (this.#run !== run) return;
+      this.store.setState({ activity: { kind: 'thinking' } });
+      // Stop was pressed while the turn was on its way to the harness, which had no turn to
+      // stop then: it has one now.
+      if (run.stopRequested) {
+        await this.#options.client.interrupt(session.sessionId).catch(() => undefined);
+      }
     } catch (error) {
       if (this.#run !== run) return;
+      // A turn the user stopped before it could be sent is a stopped turn, not a failed one.
+      if (run.stopRequested) {
+        this.#finish(run, 'interrupted');
+        return;
+      }
       // The session was gone when the turn reached it: closed a moment ago for sitting idle
       // (AGT-07), or its process had ended and the word had not arrived yet. Nothing was sent,
       // so the turn goes to a new session, which resumes the conversation by its id.

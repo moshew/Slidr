@@ -610,6 +610,147 @@ describe('stopping and failing', () => {
     expect(thread.store.getState()).toMatchObject({ busy: false, stopping: false });
   });
 
+  describe('Stop pressed while the turn is still being prepared', () => {
+    // A turn that renames the slide twice, a moment apart: what a turn that runs on leaves.
+    const rename = script([
+      call('t1', 'slide_update', { slideId: 's_1', name: 'one' }),
+      { ...say('…'), delayMs: 5000 },
+      call('t2', 'slide_update', { slideId: 's_1', name: 'two' }),
+      done(),
+    ]);
+    /** Something the turn waits for, for as long as the test says. */
+    function held() {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { gate, release };
+    }
+
+    it('while the brief is being made: the turn is never sent', async () => {
+      const brief = held();
+      let briefs = 0;
+      const { bus, service, seen } = setup(
+        { rename },
+        {
+          speed: 1,
+          // The brief of a slide or object session renders the slide: it takes a moment.
+          brief: async () => {
+            briefs++;
+            await brief.gate;
+            return null;
+          },
+        },
+      );
+      const thread = service.thread({ kind: 'slide', slideId: 's_1' });
+      const sending = thread.send('Rename the slide');
+      await vi.waitFor(() => expect(briefs).toBe(1));
+
+      await thread.stop();
+      expect(thread.store.getState()).toMatchObject({ busy: true, stopping: true });
+      brief.release();
+      await sending;
+
+      const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+      expect(entry).toMatchObject({ outcome: 'interrupted', parts: [] });
+      expect(entry.problem).toBeUndefined();
+      expect(thread.store.getState()).toMatchObject({ busy: false, stopping: false });
+      // Nothing of the turn reached the harness, and so nothing of it reached the deck.
+      expect(seen.sends).toEqual([]);
+      expect(bus.deck.slides[0]!.name).toBe('first');
+      // The session is there for the next message, which is sent as any other.
+      await thread.send('Rename the slide');
+      await vi.waitFor(() => expect(bus.deck.slides[0]!.name).toBe('one'));
+      await thread.stop();
+      await settled(thread);
+      expect(seen.starts).toHaveLength(1);
+    });
+
+    it('while the turn is on its way to the harness: it is stopped as soon as it is there', async () => {
+      const way = held();
+      let onItsWay = 0;
+      let delivered = false;
+      const interrupts: string[] = [];
+      const wrap = (client: AgentClient): AgentClient => ({
+        ...client,
+        // The harness has the turn only once `send` has answered.
+        send: async (sessionId, turn) => {
+          onItsWay++;
+          await way.gate;
+          await client.send(sessionId, turn);
+          delivered = true;
+        },
+        interrupt: (sessionId) => {
+          interrupts.push(delivered ? 'a turn' : 'no turn yet');
+          return client.interrupt(sessionId);
+        },
+      });
+      const { bus, thread, seen } = setup({ rename }, { speed: 1, wrap });
+      const sending = thread.send('Rename the slide');
+      await vi.waitFor(() => expect(onItsWay).toBe(1));
+      await thread.stop();
+      way.release();
+      await sending;
+      await settled(thread);
+
+      const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+      expect(entry.outcome).toBe('interrupted');
+      // The first press found no turn to stop; the service asked again once the turn was there.
+      expect(interrupts).toEqual(['no turn yet', 'a turn']);
+      expect(seen.sends).toHaveLength(1);
+      expect(bus.deck.slides[0]!.name).not.toBe('two');
+    });
+
+    it('a second press asks the harness again', async () => {
+      let asked = 0;
+      const wrap = (client: AgentClient): AgentClient => ({
+        ...client,
+        // A harness that lets the first request go by, as one does that has no turn yet.
+        interrupt: (sessionId) => (++asked === 1 ? Promise.resolve() : client.interrupt(sessionId)),
+      });
+      const { bus, thread } = setup({ rename }, { speed: 1, wrap });
+      await thread.send('Rename the slide');
+      await vi.waitFor(() => expect(bus.deck.slides[0]!.name).toBe('one'));
+      await thread.stop();
+      expect(thread.store.getState()).toMatchObject({ busy: true, stopping: true });
+      await thread.stop();
+      await settled(thread);
+      expect(asked).toBe(2);
+      expect((thread.store.getState().entries.at(-1) as AssistantEntry).outcome).toBe(
+        'interrupted',
+      );
+      expect(bus.deck.slides[0]!.name).toBe('one');
+    });
+
+    it('while the files of the message are being stored: the message stays, and no turn begins', async () => {
+      const stored = held();
+      let attaching = 0;
+      const wrap = (client: AgentClient): AgentClient => ({
+        ...client,
+        attach: async (_thread, file) => {
+          attaching++;
+          await stored.gate;
+          return file.name;
+        },
+      });
+      const { thread, seen } = setup({ rename }, { speed: 1, wrap });
+      const file = { name: 'brief.md', mime: 'text/markdown', bytes: new Uint8Array([35]) };
+      const sending = thread.send('Read this', { attachments: [file] });
+      await vi.waitFor(() => expect(attaching).toBe(1));
+      await thread.stop();
+      expect(thread.store.getState()).toMatchObject({ busy: true, stopping: true });
+      stored.release();
+      await sending;
+
+      const [user, reply] = thread.store.getState().entries;
+      expect(user).toMatchObject({ type: 'user', text: 'Read this' });
+      expect(reply).toMatchObject({ type: 'assistant', outcome: 'interrupted', parts: [] });
+      expect(thread.store.getState()).toMatchObject({ busy: false, stopping: false });
+      expect(seen.starts).toEqual([]);
+      expect(seen.sends).toEqual([]);
+    });
+  });
+
   it('shows why a harness cannot run instead of starting a session (CHT-U09)', async () => {
     const wrap = (client: AgentClient): AgentClient => ({
       ...client,
