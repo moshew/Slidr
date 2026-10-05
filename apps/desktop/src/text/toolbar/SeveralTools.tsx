@@ -17,14 +17,15 @@ import { InFold, PopoverTool, useFolded, useMeasuredDensity, useText } from './s
 import { StyleTool } from './StyleTools';
 
 /*
- * Row B for several selected elements whose text is formatted together: the text tools of the
- * row, and the one button they fold into when the row, which holds the arrange tools too, has no
- * room for them (1366).
+ * Row B for several selected elements whose text is formatted together, and for a selected group,
+ * whose text is that of the elements inside it: the text tools of the row, and the one button
+ * they fold into when the row, which holds the arrange tools too, has no room for them (1366).
  */
 
 /**
- * A text tool in the row of several elements. It draws nothing unless every selected element has
- * text (its group then takes no room), and nothing while the tools are folded into one button.
+ * A text tool in the row of several elements, or of a group. It draws nothing unless every
+ * selected element has text (its group of tools then takes no room), and nothing while the tools
+ * are folded into one button.
  */
 export function forSeveral(Tool: ComponentType<ContextToolProps>) {
   return function SeveralTool(props: ContextToolProps) {

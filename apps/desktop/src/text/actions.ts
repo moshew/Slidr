@@ -61,8 +61,9 @@ import { normalizeRichText, sameValue } from './richTextDoc';
  * - `cells`: cells of a table are selected and none is being edited (WG6). A change goes to all
  *   the text of each of them, as one `element.update`. A cell that is being edited is an `editor`
  *   target like any other text.
- * - `elements`: several text boxes and shapes with text are selected together. A change goes to
- *   all the text of each of them, as one batch: one undo step for the whole selection.
+ * - `elements`: several text boxes and shapes with text are selected together, or a group that
+ *   holds some: its texts, wherever they are in it. A change goes to all the text of each of
+ *   them, as one batch: one undo step for the whole selection.
  */
 
 interface TargetBase {

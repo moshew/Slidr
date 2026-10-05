@@ -40,6 +40,7 @@ import { isMixed, orNull, patchMarks, type MarksPatch } from '../format';
 import {
   CLEAR_KEYS,
   closeToText,
+  inSeveralRow,
   keepFocus,
   PopoverTool,
   returnFocus,
@@ -276,7 +277,8 @@ export function UnderlineTool() {
 /**
  * Strikethrough, super / subscript, case, letter spacing and "clear formatting"; and when the row
  * is tight, what has no room in it: the weight, the highlight colour and the text style. The row
- * of several elements holds the arrange tools too and never has room for the weight.
+ * of several elements holds the arrange tools too and never has room for the weight, and the row
+ * of a group has the text tools of that row.
  */
 export function MoreTool({ kind }: Partial<ContextToolProps>) {
   const { t } = useTranslation('text');
@@ -347,7 +349,7 @@ export function MoreTool({ kind }: Partial<ContextToolProps>) {
           onValueChange={(next) => setMarks({ letterSpacing: next === 0 ? null : next }, burst())}
         />
       </Row>
-      {(compact || kind === 'multiple') && (
+      {(compact || inSeveralRow(kind)) && (
         <Row label={t('weight')}>
           <WeightSelect text={text} variant="field" className="w-36" />
         </Row>

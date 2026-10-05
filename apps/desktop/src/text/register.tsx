@@ -48,6 +48,7 @@ import {
   PAINT_FORMAT_KEYS,
   PICK_FORMAT_KEYS,
   resolveTarget,
+  SEVERAL_KINDS,
 } from './toolbar/shared';
 import { forSeveral, SeveralTextTool } from './toolbar/SeveralTools';
 import { ShapeTextTool } from './toolbar/ShapeTextTool';
@@ -97,6 +98,10 @@ for (const tool of tools) registerContextTool({ ...tool, kinds: ['text'] });
  * of them at once, after the arrange tools (10 to 40) and before the look they share (200). A
  * value they do not share is shown as mixed, and a change is one undo step for all of them. The
  * weight is in "more" (which also holds "clear formatting"): the row has no room for it.
+ *
+ * One selected group has the same tools, for the texts inside it (`resolveTarget`): a card of a
+ * converted slide is a group, and bold, size, colour and the text style are wanted on it as on
+ * the text boxes it is made of.
  */
 const several = [
   { id: 'style', group: 'font', order: 100, render: StyleTool },
@@ -113,7 +118,7 @@ const several = [
 for (const { id, group, order, render } of several) {
   registerContextTool({
     id: `text.several.${id}`,
-    kinds: ['multiple'],
+    kinds: SEVERAL_KINDS,
     group: `text.${group}`,
     order,
     render: forSeveral(render),
@@ -122,7 +127,7 @@ for (const { id, group, order, render } of several) {
 // All of them as one button, when the row has no room for them (1366).
 registerContextTool({
   id: 'text.several',
-  kinds: ['multiple'],
+  kinds: SEVERAL_KINDS,
   group: 'text.font',
   order: 99,
   render: SeveralTextTool,

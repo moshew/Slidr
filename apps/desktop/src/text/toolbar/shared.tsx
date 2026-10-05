@@ -6,6 +6,7 @@ import {
   newId,
   plainText,
   rangeCells,
+  walkElements,
   type Element,
   type TableElement,
 } from '@slidr/model';
@@ -38,6 +39,7 @@ import {
   useEditor,
   useSelection,
   type Editor,
+  type SelectionKind,
 } from '../../shell';
 import { formatOf, type TextHolder, type TextTarget } from '../actions';
 import { activeEditor, editorFor } from '../activeEditor';
@@ -64,16 +66,25 @@ export const LINK_KEYS = 'Ctrl+K';
  * is the editor open in one of its cells, or else the text of its selected cells: the ones the
  * table area names (`cellScope`), and all of them when the table is selected as a whole. For
  * several selected elements it is the text of all of them, when every one is a text box or a
- * shape with text: what the tools do must apply to every member of the selection. Null otherwise.
+ * shape with text: what the tools do must apply to every member of the selection. A group in
+ * the selection, or selected alone, stands for the texts inside it: a card is a group, and its
+ * text is formatted as the text of several text boxes is. Null otherwise.
  */
-export function resolveTarget({ bus, selection }: Editor): TextTarget | null {
+export function resolveTarget({
+  bus,
+  selection,
+}: Pick<Editor, 'bus' | 'selection'>): TextTarget | null {
   const { currentSlideId, selectedElementIds, editingElementId } = selection.getState();
   const slide = currentSlideId ? findSlide(bus.deck, currentSlideId) : undefined;
-  if (slide && !editingElementId && selectedElementIds.length > 1) {
-    const elements = selectedElementIds.map((id) => findElement(slide, id));
-    return elements.every(holdsText)
-      ? { bus, slideId: slide.id, kind: 'elements', elements }
-      : null;
+  if (slide && !editingElementId) {
+    const selected = selectedElementIds.map((id) => findElement(slide, id));
+    if (selected.length > 1 || selected[0]?.type === 'group') {
+      const held = selected.map(textsOf);
+      if (!held.every((texts) => texts.length > 0)) return null;
+      // A group and something inside it may both be selected: its text is formatted once.
+      const elements = [...new Set(held.flat())];
+      return { bus, slideId: slide.id, kind: 'elements', elements };
+    }
   }
   const id = editingElementId ?? (selectedElementIds.length === 1 ? selectedElementIds[0] : null);
   const element = slide && id ? findElement(slide, id) : undefined;
@@ -112,6 +123,26 @@ function holdsText(element: Element | undefined): element is TextHolder {
   return element?.type === 'shape' && plainText(element.content ?? { paragraphs: [] }) !== '';
 }
 
+/**
+ * The texts a member of the selection brings to the tools: its own, and for a group those of
+ * everything in it, at any depth. What is in a group and has no text (the box of a card, a
+ * picture) is passed over; a member that brings none has nothing the tools would change.
+ */
+function textsOf(element: Element | undefined): TextHolder[] {
+  if (element?.type === 'group') return [...walkElements(element.children)].filter(holdsText);
+  return holdsText(element) ? [element] : [];
+}
+
+/**
+ * The rows of a selection that is not one text and may hold several: several elements, and a
+ * group. Both have the text tools of several elements (`SeveralTools.tsx`).
+ */
+export const SEVERAL_KINDS: readonly SelectionKind[] = ['multiple', 'group'];
+
+/** Whether a tool is drawn in such a row, by the kind the row hands it. */
+export const inSeveralRow = (kind: SelectionKind | undefined): boolean =>
+  kind !== undefined && SEVERAL_KINDS.includes(kind);
+
 /** The table a target is in, when it is the text of a table's cells. */
 function tableOf(target: TextTarget | null | undefined): TableElement | undefined {
   return target && target.kind !== 'elements' && target.element.type === 'table'
@@ -120,7 +151,10 @@ function tableOf(target: TextTarget | null | undefined): TableElement | undefine
 }
 
 /** The theme and the direction text is formatted against: the deck's, and in a table the table's. */
-export function formatContext({ bus }: Editor, target?: TextTarget | null): FormatContext {
+export function formatContext(
+  { bus }: Pick<Editor, 'bus'>,
+  target?: TextTarget | null,
+): FormatContext {
   return { theme: bus.deck.theme, dir: tableOf(target)?.dir ?? bus.deck.meta.dir };
 }
 

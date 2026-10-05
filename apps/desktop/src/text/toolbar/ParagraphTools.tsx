@@ -44,6 +44,7 @@ import {
 } from '../format';
 import {
   closeToText,
+  inSeveralRow,
   keepFocus,
   PopoverTool,
   Row,
@@ -95,10 +96,11 @@ const SIDE_ICONS: Record<ReturnType<typeof alignSide>, LucideIcon> = {
 /**
  * The names of the alignments. In the row of several elements they stand beside the arrange
  * tools, which align the elements themselves ("align left"): there they say that it is the text
- * they align.
+ * they align. So they do in the row of a group, where what is selected is an object and the
+ * text is what is inside it.
  */
 const alignNames = (kind: ContextToolProps['kind'] | undefined) =>
-  kind === 'multiple' ? 'alignText' : 'align';
+  inSeveralRow(kind) ? 'alignText' : 'align';
 
 /**
  * The four alignments as buttons. They are laid out in the direction of the paragraph, so the
