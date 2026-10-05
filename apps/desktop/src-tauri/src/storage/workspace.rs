@@ -770,6 +770,48 @@ mod tests {
         Ok(())
     }
 
+    /// A `.slidr` file comes from anyone. One made to fill the disk (here: more files than any
+    /// deck has, in a file of a few megabytes) is refused, and nothing of it stays behind.
+    #[test]
+    fn open_refuses_an_archive_made_to_fill_the_disk_and_leaves_nothing_behind() -> TestResult {
+        let fx = fixture()?;
+        let storage = Storage::new(fx.root.clone());
+        let deck = deck(&[]);
+        let names: Vec<String> = (0..20_000).map(|n| format!("assets/{n}.bin")).collect();
+        let mut entries: Vec<(&str, &[u8])> = vec![(DECK_FILE, deck.as_bytes())];
+        entries.extend(names.iter().map(|name| (name.as_str(), &b""[..])));
+        let file = fx.files.join("many.slidr");
+        write_zip(&file, &entries)?;
+
+        assert_eq!(kind(storage.open(&file)), Some(ErrorKind::InvalidFile));
+        assert!(names_in(&fx.root.join("workspaces"))?.is_empty());
+        assert!(storage.recents().is_empty());
+        Ok(())
+    }
+
+    /// The limit is on what a file unpacks to against its own size, and a small deck may still
+    /// unpack to far more than it weighs: text, and the HTML it was imported from, deflate well.
+    #[test]
+    fn a_deck_whose_source_deflates_a_thousandfold_still_opens() -> TestResult {
+        let fx = fixture()?;
+        let storage = Storage::new(fx.root.clone());
+        let deck = deck(&[]);
+        let html = vec![b' '; 8 * 1024 * 1024];
+        let file = fx.files.join("imported.slidr");
+        write_zip(
+            &file,
+            &[(DECK_FILE, deck.as_bytes()), ("source/import.html", &html)],
+        )?;
+        assert!(fs::metadata(&file)?.len() < 64 * 1024);
+
+        let opened = storage.open(&file)?;
+        let kept = PathBuf::from(&opened.workspace.dir)
+            .join("source")
+            .join("import.html");
+        assert_eq!(fs::metadata(kept)?.len(), u64::try_from(html.len())?);
+        Ok(())
+    }
+
     #[test]
     fn unreferenced_assets_stay_in_the_workspace_but_are_not_packed() -> TestResult {
         let fx = fixture()?;

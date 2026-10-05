@@ -254,15 +254,79 @@ fn write_error(error: &ZipError) -> AppError {
     }
 }
 
+/// How much an archive may unpack to. A `.slidr` file is a ZIP anyone can send, and a ZIP of a
+/// few hundred kilobytes can declare, or simply hold, entries that unpack to many gigabytes, or
+/// a million empty files: opening it would fill the disk the workspace is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Limits {
+    /// Entries in the archive, directories included.
+    entries: usize,
+    /// Bytes written to the workspace, over all entries: `deck.json`, the assets, the chats,
+    /// the thumbnails and `source/` alike.
+    bytes: u64,
+}
+
+/// More files than any deck has: one for an asset, a few for a slide's chats and thumbnail.
+const MAX_ENTRIES: usize = 20_000;
+/// What every archive may unpack to, however small it is: room for a deck of text, vector
+/// pictures and uncompressed bitmaps, which deflate a hundredfold and more.
+const UNPACKED_ALLOWANCE: u64 = 1 << 30;
+/// Beyond the allowance, how many times its own size an archive may unpack to. A deck is large
+/// because of its media, which is packed as it is (a video of 5 GiB makes a file of 5 GiB), so
+/// a large deck is far inside this; a small file that unpacks to gigabytes is not a deck.
+const UNPACKED_RATIO: u64 = 100;
+
+impl Limits {
+    /// The limits for an archive of `archive_bytes` on disk.
+    fn of_archive(archive_bytes: u64) -> Self {
+        Self {
+            entries: MAX_ENTRIES,
+            bytes: UNPACKED_ALLOWANCE.saturating_add(archive_bytes.saturating_mul(UNPACKED_RATIO)),
+        }
+    }
+
+    fn too_large(self) -> AppError {
+        AppError::invalid_file(format!(
+            "the archive unpacks to more than {} bytes, which no deck of its size does",
+            self.bytes
+        ))
+    }
+}
+
 /// Extracts the archive at `source` into the (fresh) `workspace` directory.
 ///
 /// Every entry name is checked before anything is written: an archive with a path that could
 /// land outside the workspace (`..`, absolute, drive prefix) is rejected as a whole, and so is
-/// one without `deck.json`.
+/// one without `deck.json`, and one that would unpack to more than a deck does ([`Limits`]).
 pub(crate) fn unpack(source: &Path, workspace: &Path) -> Result<()> {
     let file = File::open(source).map_err(|e| AppError::path(source, &e))?;
+    let size = file
+        .metadata()
+        .map_err(|e| AppError::path(source, &e))?
+        .len();
+    extract(file, workspace, Limits::of_archive(size))
+}
+
+fn extract(file: File, workspace: &Path, limits: Limits) -> Result<()> {
     let mut archive = ZipArchive::new(BufReader::new(file))
         .map_err(|e| AppError::invalid_file(format!("not a .slidr file: {e}")))?;
+
+    if archive.len() > limits.entries {
+        return Err(AppError::invalid_file(format!(
+            "the archive holds {} entries; a deck has at most {}",
+            archive.len(),
+            limits.entries
+        )));
+    }
+    // What the archive says of itself, before a byte is written. It may say less than it
+    // holds, or nothing (entries written as a stream): the loop below counts what comes out.
+    if archive
+        .decompressed_size()
+        .is_some_and(|declared| declared > u128::from(limits.bytes))
+    {
+        return Err(limits.too_large());
+    }
+    let mut unpacked: u64 = 0;
 
     for index in 0..archive.len() {
         let name = archive.name_for_index(index).unwrap_or_default();
@@ -313,6 +377,10 @@ pub(crate) fn unpack(source: &Path, workspace: &Path) -> Result<()> {
                     )));
                 }
             };
+            unpacked = unpacked.saturating_add(read as u64);
+            if unpacked > limits.bytes {
+                return Err(limits.too_large());
+            }
             out.write_all(&buffer[..read])
                 .map_err(|e| write_error(&e))?;
         }
@@ -343,6 +411,160 @@ fn entry_path(name: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorKind;
+
+    type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    const MIB: u64 = 1 << 20;
+
+    /// Writes a ZIP with the given entries into `dir` and opens it for reading. `streamed`
+    /// writes it as a stream does: no entry says how large it is before its data.
+    fn archive_of(
+        dir: &Path,
+        entries: &[(&str, &[u8])],
+        streamed: bool,
+    ) -> std::result::Result<File, Box<dyn std::error::Error>> {
+        let path = dir.join("deck.slidr");
+        let file = File::create(&path)?;
+        if streamed {
+            let mut zip = ZipWriter::new_stream(file);
+            for &(name, bytes) in entries {
+                zip.start_file(name, SimpleFileOptions::default())?;
+                zip.write_all(bytes)?;
+            }
+            zip.finish()?;
+        } else {
+            let mut zip = ZipWriter::new(file);
+            for &(name, bytes) in entries {
+                zip.start_file(name, SimpleFileOptions::default())?;
+                zip.write_all(bytes)?;
+            }
+            zip.finish()?;
+        }
+        Ok(File::open(path)?)
+    }
+
+    fn files_under(dir: &Path) -> io::Result<Vec<(PathBuf, u64)>> {
+        let mut found = Vec::new();
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                found.extend(files_under(&entry.path())?);
+            } else {
+                found.push((entry.path(), entry.metadata()?.len()));
+            }
+        }
+        Ok(found)
+    }
+
+    #[test]
+    fn an_archive_may_unpack_to_an_allowance_and_a_multiple_of_its_own_size() {
+        // A file of a few hundred kilobytes: the allowance, and little more.
+        let small = Limits::of_archive(300 * 1024);
+        assert_eq!(small.entries, 20_000);
+        assert_eq!(small.bytes, (1 << 30) + 100 * 300 * 1024);
+        // A deck with a long video is as large on disk as its video, and far inside its limit.
+        let video = 5 * 1024 * MIB;
+        assert!(Limits::of_archive(video).bytes > 100 * video);
+        assert_eq!(Limits::of_archive(u64::MAX).bytes, u64::MAX);
+    }
+
+    #[test]
+    fn an_archive_that_declares_more_than_the_limit_is_refused_before_anything_is_written()
+    -> TestResult {
+        let temp = tempfile::tempdir()?;
+        let workspace = temp.path().join("w");
+        fs::create_dir(&workspace)?;
+        // Two megabytes of zeros are two kilobytes of archive.
+        let zeros = vec![0_u8; 2 * 1024 * 1024];
+        let file = archive_of(
+            temp.path(),
+            &[(DECK_FILE, b"{}"), ("assets/big.bin", &zeros)],
+            false,
+        )?;
+        assert!(file.metadata()?.len() < 16 * 1024);
+
+        let limits = Limits {
+            entries: 10,
+            bytes: MIB,
+        };
+        let refused = extract(file, &workspace, limits);
+        assert_eq!(refused.err().map(|e| e.kind), Some(ErrorKind::InvalidFile));
+        assert_eq!(files_under(&workspace)?, []);
+        Ok(())
+    }
+
+    /// The sizes an archive declares are the sender's word. One that declares none (its
+    /// entries were written as a stream) is counted as it comes out, and stopped at the limit.
+    #[test]
+    fn an_archive_that_holds_more_than_the_limit_is_stopped_while_it_unpacks() -> TestResult {
+        let temp = tempfile::tempdir()?;
+        let workspace = temp.path().join("w");
+        fs::create_dir(&workspace)?;
+        let zeros = vec![0_u8; 2 * 1024 * 1024];
+        let entries: [(&str, &[u8]); 3] = [
+            (DECK_FILE, b"{}"),
+            ("source/import.html", &zeros),
+            ("assets/big.bin", &zeros),
+        ];
+        let limits = Limits {
+            entries: 10,
+            bytes: 3 * MIB,
+        };
+        let streamed = archive_of(temp.path(), &entries, true)?;
+        let refused = extract(streamed, &workspace, limits);
+        assert_eq!(refused.err().map(|e| e.kind), Some(ErrorKind::InvalidFile));
+        // Every entry counts, `source/` too: what reached the disk is inside the limit.
+        let written: u64 = files_under(&workspace)?.iter().map(|(_, size)| size).sum();
+        assert!(written <= limits.bytes, "{written} bytes were written");
+        assert!(written > 2 * MIB, "{written} bytes were written");
+
+        // The same entries inside the limit unpack whole.
+        let whole = temp.path().join("whole");
+        fs::create_dir(&whole)?;
+        let roomy = Limits {
+            entries: 10,
+            bytes: 5 * MIB,
+        };
+        extract(archive_of(temp.path(), &entries, true)?, &whole, roomy)?;
+        assert_eq!(
+            fs::metadata(whole.join("source").join("import.html"))?.len(),
+            2 * MIB
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn an_archive_with_more_entries_than_the_limit_is_refused() -> TestResult {
+        let temp = tempfile::tempdir()?;
+        let workspace = temp.path().join("w");
+        fs::create_dir(&workspace)?;
+        let entries: [(&str, &[u8]); 4] = [
+            (DECK_FILE, b"{}"),
+            ("assets/a.png", b"a"),
+            ("assets/b.png", b"b"),
+            ("assets/c.png", b"c"),
+        ];
+        let limits = Limits {
+            entries: 3,
+            bytes: MIB,
+        };
+        let refused = extract(
+            archive_of(temp.path(), &entries, false)?,
+            &workspace,
+            limits,
+        );
+        assert_eq!(refused.err().map(|e| e.kind), Some(ErrorKind::InvalidFile));
+        assert_eq!(files_under(&workspace)?, []);
+
+        let four = Limits {
+            entries: 4,
+            bytes: MIB,
+        };
+        extract(archive_of(temp.path(), &entries, false)?, &workspace, four)?;
+        assert_eq!(files_under(&workspace)?.len(), 4);
+        Ok(())
+    }
 
     #[test]
     fn entry_paths_stay_inside_the_workspace() {
