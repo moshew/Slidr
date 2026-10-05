@@ -8,6 +8,7 @@ export const he = {
   windowed: 'יציאה ממסך מלא',
   counter: 'שקף {{n}} מתוך {{total}}',
   noSlides: 'אין שקפים להציג',
+  end: 'סוף ההצגה. לחיצה נוספת חוזרת לעורך.',
 };
 
 export const en: typeof he = {
@@ -19,4 +20,5 @@ export const en: typeof he = {
   windowed: 'Leave full screen',
   counter: 'Slide {{n}} of {{total}}',
   noSlides: 'There are no slides to present',
+  end: 'End of the show. One more click returns to the editor.',
 };

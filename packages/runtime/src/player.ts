@@ -32,6 +32,19 @@ export interface PlayerSlide {
 export interface PlayerState {
   slide: number;
   step: number;
+  /** The show was stepped past its last step: the end of the show is on the screen. */
+  ended?: true;
+}
+
+/** The end of a show: the screen that follows the last step of the last slide. */
+export interface PlayerEnd {
+  /** What the screen says, in the host's language. Without it the screen is only black. */
+  text?: string | undefined;
+  /**
+   * What one more step forward does there: the host's way out of the show. Without it the end
+   * stays on the screen until the show is stepped back or sent to a slide.
+   */
+  leave?: (() => void) | undefined;
 }
 
 export interface PlayerOptions {
@@ -44,6 +57,7 @@ export interface PlayerOptions {
   start?: number | undefined;
   /** Where to start instead, shown as it is, without animation: a show that follows another. */
   state?: PlayerState | undefined;
+  end?: PlayerEnd | undefined;
   onWarn?: Warn | undefined;
 }
 
@@ -52,9 +66,16 @@ export interface Player {
   readonly state: PlayerState;
   /** How many click steps a slide has; the current slide when no index is given. */
   steps: (slide?: number) => number;
-  /** One step forward: the next click step, or the next slide with its transition. */
+  /**
+   * One step forward: the next click step, or the next slide with its transition. After the last
+   * step of the last slide it is the end of the show, a black screen (`state.ended`); one more
+   * step there is the host's way out (`end.leave`).
+   */
   next: () => void;
-  /** One step back, without animation: the previous step, or the end of the previous slide. */
+  /**
+   * One step back, without animation: the previous step, or the end of the previous slide. From
+   * the end of the show it is the last slide again, as it was left.
+   */
   prev: () => void;
   /** Opens a slide afresh: at step 0, with the animations that play by themselves. */
   goTo: (slide: number) => void;
@@ -65,6 +86,14 @@ export interface Player {
   setState: (state: PlayerState) => void;
   /** Calls back on every change of slide or step. Returns the way to stop. */
   subscribe: (listener: (state: PlayerState) => void) => () => void;
+  /**
+   * Holds the show still, or lets it go on. While it is held nothing moves on by itself and
+   * nothing plays: the wait of an automatic advance stops, and so do the clips and the
+   * animations that were playing. Let go, each goes on from where it stopped. A black or a
+   * white screen holds the show this way (PRS-04); steps taken meanwhile still count.
+   */
+  hold: (on: boolean) => void;
+  readonly held: boolean;
   /** Fits the stage to the viewport again; the player does it by itself when the viewport resizes. */
   fit: () => void;
   destroy: () => void;
@@ -74,6 +103,23 @@ const DEFAULT_SIZE: Size = { w: 1920, h: 1080 };
 
 /** A press that moved further than this before it ended, in CSS pixels, was a drag, not a click. */
 const CLICK_SLACK = 10;
+
+/**
+ * The end of the show: black over the stage, with a line at the top. It goes right after the
+ * stage, so that what a host lays over the show (a bar, a full-screen button) stays above it.
+ */
+const END_STYLE =
+  'position:absolute;inset:0;z-index:0;box-sizing:border-box;padding:32px 24px 0;' +
+  'background:#000;color:rgba(255,255,255,0.72);font:500 18px/1.4 system-ui,sans-serif;' +
+  'text-align:center;';
+
+/** What a hold stopped, to go on when the show is let go. */
+interface Stopped {
+  /** What was left of the wait of an automatic advance, in milliseconds. */
+  wait?: number;
+  clips: Clip[];
+  animations: Animation[];
+}
 
 export function createPlayer(options: PlayerOptions): Player {
   const { viewport, stage, slides } = options;
@@ -90,6 +136,12 @@ export function createPlayer(options: PlayerOptions): Player {
   /** Bumped by every action, so that the end of an older one does not act on a newer one. */
   let generation = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  /** When the wait of an automatic advance is over, by the clock. */
+  let due = 0;
+  /** The screen of the end of the show, while it is up. */
+  let ended: HTMLElement | undefined;
+  let held = false;
+  let stopped: Stopped = { clips: [], animations: [] };
 
   // ---- Layout ----
 
@@ -197,9 +249,12 @@ export function createPlayer(options: PlayerOptions): Player {
 
   function startMedia(slide: PlayerSlide): void {
     for (const clip of clipsOf(slide)) {
+      if (!clipSettings(clip.media).autoplay) continue;
+      // A slide reached while the show is held starts its clips when the show goes on.
+      if (held) stopped.clips.push(clip);
       // A browser refuses sound before the first click or key: the clip then waits at its
       // poster for a click, and the slide is shown either way.
-      if (clipSettings(clip.media).autoplay) void clip.play();
+      else void clip.play();
     }
   }
 
@@ -215,8 +270,11 @@ export function createPlayer(options: PlayerOptions): Player {
   const timelineOf = (slide: PlayerSlide): SlideTimeline =>
     createTimeline(slide.el, slide.timeline ?? [], { size, onWarn: warn });
 
+  const stateNow = (): PlayerState =>
+    ended ? { slide: index, step, ended: true } : { slide: index, step };
+
   function emit(): void {
-    const state = { slide: index, step };
+    const state = stateNow();
     for (const listener of listeners) listener(state);
   }
 
@@ -224,17 +282,90 @@ export function createPlayer(options: PlayerOptions): Player {
     generation++;
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
+    delete stopped.wait;
     const now = settleNow;
     settleNow = undefined;
     now?.();
+  }
+
+  /** Moves on by itself in `ms`. A show that is held starts the wait when it is let go. */
+  function wait(ms: number): void {
+    if (held) {
+      stopped.wait = ms;
+      return;
+    }
+    due = Date.now() + ms;
+    timer = setTimeout(next, ms);
   }
 
   /** The slide is at rest: `advance.afterMs` counts from here. */
   function rest(): void {
     settleNow = undefined;
     const after = slides[index]?.transition?.advance.afterMs;
+    // The end of the show is a step somebody takes: a show that runs by itself stays on its
+    // last slide.
     const more = (timeline && step < timeline.clicks) || visibleFrom(index, 1) !== -1;
-    if (after !== undefined && more) timer = setTimeout(next, after);
+    if (after !== undefined && more) wait(after);
+  }
+
+  function hold(on: boolean): void {
+    if (on === held) return;
+    held = on;
+    const slide = slides[index];
+    if (on) {
+      stopped = {
+        clips: slide ? clipsOf(slide).filter((clip) => clip.playing) : [],
+        animations: [],
+      };
+      if (timer !== undefined) {
+        clearTimeout(timer);
+        timer = undefined;
+        stopped.wait = Math.max(due - Date.now(), 0);
+      }
+      for (const clip of stopped.clips) clip.pause();
+      // A step or a transition in flight stops where it is. Only what is running: an animation
+      // that has ended and still holds its target hidden would start over if it were played.
+      if (typeof stage.getAnimations === 'function') {
+        stopped.animations = stage
+          .getAnimations({ subtree: true })
+          .filter((animation) => animation.playState === 'running');
+        for (const animation of stopped.animations) animation.pause();
+      }
+      return;
+    }
+    const { clips, animations, wait: left } = stopped;
+    stopped = { clips: [], animations: [] };
+    // A step taken meanwhile ended them: only what still stands where it was stopped goes on.
+    for (const animation of animations) if (animation.playState === 'paused') animation.play();
+    // The end of the show plays nothing, and a slide that was left took its clips with it.
+    for (const clip of clips) if (!ended && slide?.el.contains(clip.media)) void clip.play();
+    if (left !== undefined) wait(left);
+  }
+
+  // ---- The end of the show ----
+
+  function end(): void {
+    const slide = slides[index];
+    if (!slide || ended) return;
+    for (const clip of clipsOf(slide)) clip.pause();
+    stopped.clips = [];
+    ended = viewport.ownerDocument.createElement('div');
+    ended.dataset.slidrEnd = '';
+    ended.style.cssText = END_STYLE;
+    ended.setAttribute('role', 'status');
+    // In the direction of what it says, whichever way the page around the show reads.
+    ended.dir = 'auto';
+    ended.textContent = options.end?.text ?? '';
+    stage.after(ended);
+    emit();
+  }
+
+  /** Takes the end of the show off the screen; false when it was not up. */
+  function resume(): boolean {
+    if (!ended) return false;
+    ended.remove();
+    ended = undefined;
+    return true;
   }
 
   function playGroup(group: number): void {
@@ -252,6 +383,7 @@ export function createPlayer(options: PlayerOptions): Player {
     const slide = slides[to];
     if (!slide) return;
     settle();
+    resume();
     const from = slides[index];
     if (from !== slide) {
       if (from) hide(from);
@@ -311,6 +443,10 @@ export function createPlayer(options: PlayerOptions): Player {
   }
 
   function next(): void {
+    if (ended) {
+      options.end?.leave?.();
+      return;
+    }
     settle();
     if (timeline && step < timeline.clicks) {
       step++;
@@ -320,10 +456,13 @@ export function createPlayer(options: PlayerOptions): Player {
     }
     const to = visibleFrom(index, 1);
     if (to !== -1) enter(to);
+    else end();
   }
 
   function prev(): void {
-    if (step > 0) open(index, step - 1);
+    // Back from the end is the last slide as it was left, with nothing played again.
+    if (resume()) emit();
+    else if (step > 0) open(index, step - 1);
     else {
       const to = visibleFrom(index, -1);
       if (to !== -1) open(to, 'end');
@@ -334,7 +473,7 @@ export function createPlayer(options: PlayerOptions): Player {
   const player: Player = {
     slides,
     get state() {
-      return { slide: index, step };
+      return stateNow();
     },
     steps: (slide = index) => {
       if (slide === index && timeline) return timeline.clicks;
@@ -346,14 +485,23 @@ export function createPlayer(options: PlayerOptions): Player {
     next,
     prev,
     goTo: (slide) => open(slide, 'fresh'),
-    setState: (state) => open(state.slide, state.step),
+    setState: (state) => {
+      open(state.slide, state.step);
+      if (state.ended) end();
+    },
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    hold,
+    get held() {
+      return held;
+    },
     fit,
     destroy: () => {
       settle();
+      resume();
+      stopped = { clips: [], animations: [] };
       timeline?.clear();
       timeline = undefined;
       listeners.clear();

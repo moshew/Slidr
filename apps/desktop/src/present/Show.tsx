@@ -3,6 +3,7 @@ import { SlideRenderer, type AssetResolver } from '@slidr/renderer';
 import { bindControls, createPlayer, type Player, type PlayerState } from '@slidr/runtime';
 import { UiProvider, type Dir } from '@slidr/ui';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { i18n } from '../i18n';
 import { Controls } from './Controls';
 import { showScreen, type Screen } from './screen';
 
@@ -126,6 +127,8 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
         })),
         size: deck.size,
         start,
+        // Past the last step the screen goes black and says so; one more step is the way out.
+        end: { text: i18n.t('present:end'), leave: exit },
         onWarn: (message) => console.warn(message),
       });
       // No hash: the address is the app's. F is the window's full screen, not the browser's.
@@ -141,7 +144,7 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
       player.current?.destroy();
       player.current = undefined;
     };
-  }, [deck, start, toggleFull]);
+  }, [deck, start, toggleFull, exit]);
 
   // ---- Keys: Esc ends the show, and nothing the show does not take reaches the editor ----
 
@@ -221,6 +224,7 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
       data-testid="present"
       data-slide={state.slide}
       data-step={state.step}
+      data-ended={state.ended}
       tabIndex={-1}
       style={{
         position: 'fixed',

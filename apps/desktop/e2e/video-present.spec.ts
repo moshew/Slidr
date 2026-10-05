@@ -205,6 +205,38 @@ async function playThrough(show: Show): Promise<void> {
   const again = await watchMedia(page, starts, 400);
   expect(again.min).toBeGreaterThanOrEqual(0.5 - 0.001);
   expect(again.max).toBeLessThanOrEqual(1.08);
+
+  // ---- A black screen holds the show (PRS-04): the video stands still under it, and plays on
+  // when the show is seen again. Neither key is a step.
+  const blank = page.locator('[data-slidr-blank]');
+  await page.keyboard.press('b');
+  await expect(blank).toHaveAttribute('data-slidr-blank', 'black');
+  await expect.poll(async () => (await mediaState(page, starts)).paused).toBe(true);
+  const held = await watchMedia(page, starts, 400);
+  expect(held.paused).toBe(true);
+  expect(held.max - held.min).toBe(0);
+  await page.keyboard.press('b');
+  await expect(blank).toHaveCount(0);
+  await expect.poll(async () => (await mediaState(page, starts)).paused).toBe(false);
+  expect(await show.state()).toEqual({ slide: 1, step: 0 });
+  // A clip that was not playing is not started by the show coming back.
+  expect((await mediaState(page, tone)).paused).toBe(true);
+
+  // ---- Past the last slide the show ends: a black screen, and nothing plays under it.
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(show.state).toEqual({ slide: 2, step: 0 });
+  await expect.poll(async () => (await mediaState(page, background)).paused).toBe(false);
+  await page.keyboard.press('ArrowRight');
+  const end = page.locator('[data-slidr-end]');
+  await expect(end).toBeVisible();
+  expect(await end.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 0, 0)');
+  expect((await mediaState(page, background)).paused).toBe(true);
+  expect(await show.state()).toEqual({ slide: 2, step: 0 });
+  // A step back is the last slide again, as it was left: its sound does not start over.
+  await page.keyboard.press('ArrowLeft');
+  await expect(end).toHaveCount(0);
+  expect(await show.state()).toEqual({ slide: 2, step: 0 });
+  expect((await mediaState(page, background)).paused).toBe(true);
 }
 
 test('clips in the app show: poster, click to play, autoplay, loop inside the trim', async ({
@@ -279,11 +311,19 @@ test('clips in an exported file behave as they do in the app show', async ({ pag
     page: opened,
     root: '',
     state: () =>
-      opened.evaluate(
-        () =>
-          (window as unknown as { slidr: { state: { slide: number; step: number } } }).slidr.state,
-      ),
+      opened.evaluate(() => {
+        const { state } = (
+          window as unknown as { slidr: { state: { slide: number; step: number } } }
+        ).slidr;
+        return { slide: state.slide, step: state.step };
+      }),
   });
+  // A file has nowhere to leave to: a step forward at its end changes nothing, and the end
+  // says what it is in the language of the deck.
+  await opened.keyboard.press('ArrowRight');
+  await opened.keyboard.press('ArrowRight');
+  await expect(opened.locator('[data-slidr-end]')).toHaveText('סוף ההצגה');
+  await opened.screenshot({ path: `${outDir}media-show-end.png` });
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
 });

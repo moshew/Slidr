@@ -64,6 +64,16 @@ function fullscreenButton(viewport: HTMLElement): void {
   viewport.addEventListener('pointerdown', wake);
 }
 
+/**
+ * What the end of the show says in a file, in the language the file says it is in (`<html
+ * lang>`, the deck's): the two languages of the app, and English for any other.
+ */
+const END_TEXT = { he: 'סוף ההצגה', en: 'End of the show' };
+
+function endText(doc: Document): string {
+  return /^he\b/i.test(doc.documentElement.lang) ? END_TEXT.he : END_TEXT.en;
+}
+
 /** Starts the show of an exported document. */
 export function boot(doc: Document = document): Player | undefined {
   const viewport = doc.querySelector<HTMLElement>(`.${VIEWPORT_CLASS}`);
@@ -74,6 +84,8 @@ export function boot(doc: Document = document): Player | undefined {
     stage,
     slides: readSlides(stage),
     size: { w: Number(stage.dataset.width) || 1920, h: Number(stage.dataset.height) || 1080 },
+    // A file has nowhere to leave to: its end stays until the show is stepped back.
+    end: { text: endText(doc) },
   });
   bindControls(player, { viewport });
   fullscreenButton(viewport);

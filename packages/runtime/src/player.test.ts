@@ -167,10 +167,8 @@ describe('createPlayer', () => {
     expect(fake.live().filter((a) => a.state === 'running')).toEqual([]);
   });
 
-  it('skips hidden slides both ways, and stops at the ends', () => {
+  it('skips hidden slides both ways, and stops at the start', () => {
     start({ slide: 1, step: 1 });
-    player.next();
-    expect(player.state).toEqual({ slide: 3, step: 0 });
     player.next();
     expect(player.state).toEqual({ slide: 3, step: 0 });
     player.prev();
@@ -221,6 +219,61 @@ describe('createPlayer', () => {
     expect(player.state).toEqual({ slide: 3, step: 0 });
   });
 
+  it('does not start the wait of an automatic advance while it is held', async () => {
+    vi.useFakeTimers();
+    const auto: Transition = { ...push, type: 'none', advance: { onClick: true, afterMs: 500 } };
+    document
+      .querySelector('[data-slide="b"]')
+      ?.setAttribute('data-transition', JSON.stringify(auto));
+    start({ slide: 1, step: 0 });
+    expect(player.held).toBe(false);
+    vi.advanceTimersByTime(300);
+    player.hold(true);
+    expect(player.held).toBe(true);
+    // However long the hold lasts, the show stands where it stood.
+    vi.advanceTimersByTime(60_000);
+    expect(player.state).toEqual({ slide: 1, step: 0 });
+    player.hold(false);
+    // It goes on with what was left of the wait, not with a wait of its own.
+    vi.advanceTimersByTime(199);
+    expect(player.state).toEqual({ slide: 1, step: 0 });
+    vi.advanceTimersByTime(1);
+    expect(player.state).toEqual({ slide: 1, step: 1 });
+
+    // A step that ends while the show is held starts its wait when the show is let go.
+    player.hold(true);
+    await vi.runAllTimersAsync();
+    for (const animation of fake.all) animation.finish();
+    await vi.runAllTimersAsync();
+    vi.advanceTimersByTime(60_000);
+    expect(player.state).toEqual({ slide: 1, step: 1 });
+    player.hold(false);
+    vi.advanceTimersByTime(499);
+    expect(player.state).toEqual({ slide: 1, step: 1 });
+    vi.advanceTimersByTime(1);
+    expect(player.state).toEqual({ slide: 3, step: 0 });
+  });
+
+  it('counts a step taken while it is held, and waits for the new slide only once let go', () => {
+    vi.useFakeTimers();
+    const auto: Transition = { ...push, type: 'none', advance: { onClick: true, afterMs: 500 } };
+    document
+      .querySelector('[data-slide="a"]')
+      ?.setAttribute('data-transition', JSON.stringify(auto));
+    start({ slide: 0, step: 0 });
+    vi.advanceTimersByTime(400);
+    player.hold(true);
+    player.setState({ slide: 0, step: 1 });
+    vi.advanceTimersByTime(60_000);
+    expect(player.state).toEqual({ slide: 0, step: 1 });
+    player.hold(false);
+    // The whole wait of the step it stands on now: what was left of the old one went with it.
+    vi.advanceTimersByTime(499);
+    expect(player.state).toEqual({ slide: 0, step: 1 });
+    vi.advanceTimersByTime(1);
+    expect(player.state).toEqual({ slide: 0, step: 2 });
+  });
+
   it('scales the stage into the viewport', () => {
     const viewport = document.querySelector('.slidr-viewport') as HTMLElement;
     Object.defineProperties(viewport, {
@@ -239,6 +292,109 @@ describe('createPlayer', () => {
     player.destroy();
     expect(fake.live().filter((a) => a.state === 'running' || fake.hidden(a.target))).toEqual([]);
     expect(slides.every((s) => s.el.style.display === '')).toBe(true);
+  });
+});
+
+describe('the end of the show', () => {
+  const screen = () => document.querySelector<HTMLElement>('[data-slidr-end]');
+
+  /** A show that stands on its last step, with a host that counts how often it was left. */
+  function atTheEnd(text?: string) {
+    const viewport = document.querySelector('.slidr-viewport') as HTMLElement;
+    const stage = document.querySelector('.slidr-stage') as HTMLElement;
+    slides = readSlides(stage);
+    const leave = vi.fn();
+    player = createPlayer({
+      viewport,
+      stage,
+      slides,
+      state: { slide: 3, step: 0 },
+      end: { text, leave },
+    });
+    states = [];
+    player.subscribe((s) => states.push(s));
+    return leave;
+  }
+
+  it('follows the last step of the last slide: a black screen that says so', () => {
+    const leave = atTheEnd('End of the show');
+    expect(screen()).toBeNull();
+    player.next();
+    expect(player.state).toEqual({ slide: 3, step: 0, ended: true });
+    expect(states).toEqual([{ slide: 3, step: 0, ended: true }]);
+    expect(screen()?.textContent).toBe('End of the show');
+    expect(screen()?.style.background).toBe('#000');
+    // Over the stage and under whatever the host lays over the show.
+    expect(screen()?.previousElementSibling?.className).toBe('slidr-stage');
+    // The last slide stays where it was, under it.
+    expect(shown()).toEqual(['c']);
+    expect(leave).not.toHaveBeenCalled();
+  });
+
+  it('is left by one more step forward, which is the host’s way out', () => {
+    const leave = atTheEnd();
+    player.next();
+    player.next();
+    expect(leave).toHaveBeenCalledTimes(1);
+    // The show itself stands where it stood: leaving is the host's to do.
+    expect(player.state).toEqual({ slide: 3, step: 0, ended: true });
+  });
+
+  it('stays up in a show that has nowhere to leave to', () => {
+    start({ slide: 3, step: 0 });
+    player.next();
+    player.next();
+    player.next();
+    expect(player.state).toEqual({ slide: 3, step: 0, ended: true });
+    expect(screen()?.textContent).toBe('');
+  });
+
+  it('gives way to the last slide, as it was left, on a step back', () => {
+    atTheEnd();
+    player.setState({ slide: 1, step: 1 });
+    player.next();
+    player.next();
+    expect(player.state).toEqual({ slide: 3, step: 0, ended: true });
+    player.prev();
+    expect(player.state).toEqual({ slide: 3, step: 0 });
+    expect(screen()).toBeNull();
+    expect(shown()).toEqual(['c']);
+    // And from there back is the slide before, as ever.
+    player.prev();
+    expect(player.state).toEqual({ slide: 1, step: 1 });
+  });
+
+  it('gives way to any slide the show is sent to', () => {
+    atTheEnd();
+    player.next();
+    player.goTo(0);
+    expect(player.state).toEqual({ slide: 0, step: 0 });
+    expect(screen()).toBeNull();
+    player.setState({ slide: 3, step: 0, ended: true });
+    expect(screen()).not.toBeNull();
+    player.setState({ slide: 1, step: 0 });
+    expect(screen()).toBeNull();
+  });
+
+  it('is a state a show can be given from outside, and be opened in', () => {
+    start({ slide: 0, step: 1 });
+    player.setState({ slide: 3, step: 0, ended: true });
+    expect(player.state).toEqual({ slide: 3, step: 0, ended: true });
+    expect(screen()).not.toBeNull();
+    player.destroy();
+    expect(screen()).toBeNull();
+  });
+
+  it('is not reached by a show that moves on by itself', async () => {
+    vi.useFakeTimers();
+    const auto: Transition = { ...push, type: 'none', advance: { onClick: true, afterMs: 500 } };
+    for (const section of document.querySelectorAll('.slide')) {
+      section.setAttribute('data-transition', JSON.stringify(auto));
+    }
+    start({ slide: 3, step: 0 });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(player.state).toEqual({ slide: 3, step: 0 });
+    expect(screen()).toBeNull();
   });
 });
 
@@ -336,6 +492,60 @@ describe('video and audio in a show', () => {
     click(el('text'));
     expect(video.paused).toBe(true);
     click(video, { button: 2 });
+    expect(video.paused).toBe(true);
+  });
+
+  it('stops the clips that play while it is held, and lets them go on from where they stood', async () => {
+    start({ slide: 1, step: 0 });
+    await Promise.resolve();
+    const video = clipOf('starts');
+    const sound = clipOf('sound');
+    expect(video.paused).toBe(false);
+    video.currentTime = 3.5;
+    player.hold(true);
+    expect(video.paused).toBe(true);
+    player.hold(false);
+    expect(video.paused).toBe(false);
+    // From where it stood, not from the start of its trim.
+    expect(video.currentTime).toBe(3.5);
+    // A clip that was not playing is not started by letting the show go.
+    expect(sound.paused).toBe(true);
+  });
+
+  it('starts the clips of a slide reached while it is held only once it is let go', async () => {
+    start();
+    player.hold(true);
+    player.next();
+    await fake.finishRunning();
+    await Promise.resolve();
+    const video = clipOf('starts');
+    expect(player.state).toEqual({ slide: 1, step: 0 });
+    expect(video.paused).toBe(true);
+    player.hold(false);
+    expect(video.paused).toBe(false);
+    expect(video.currentTime).toBe(2);
+  });
+
+  it('leaves alone, when let go, a clip whose slide was left while it was held', async () => {
+    start({ slide: 1, step: 0 });
+    await Promise.resolve();
+    const video = clipOf('starts');
+    player.hold(true);
+    player.prev();
+    player.hold(false);
+    expect(player.state).toEqual({ slide: 0, step: 0 });
+    expect(video.paused).toBe(true);
+  });
+
+  it('stops every clip at the end of the show, and a step back does not start them', async () => {
+    start({ slide: 1, step: 0 });
+    await Promise.resolve();
+    const video = clipOf('starts');
+    expect(video.paused).toBe(false);
+    player.next();
+    expect(player.state).toEqual({ slide: 1, step: 0, ended: true });
+    expect(video.paused).toBe(true);
+    player.prev();
     expect(video.paused).toBe(true);
   });
 

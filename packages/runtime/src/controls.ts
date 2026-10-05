@@ -4,7 +4,8 @@ import type { Player } from './player';
 
 /**
  * Navigation by keyboard, click, swipe, URL hash and full screen (EXP-04, PRS-01), a black or
- * white screen and a jump to a slide by its number (PRS-04). It is apart from the player because
+ * white screen, which holds the show while it is up, and a jump to a slide by its number
+ * (PRS-04). It is apart from the player because
  * each host decides what drives its show: an exported file binds all of it, the editor's preview
  * binds none.
  */
@@ -115,8 +116,13 @@ export function bindControls(player: Player, options: ControlOptions): () => voi
   // ---- A black or a white screen over the show (PRS-04) ----
 
   let blank: HTMLElement | undefined;
-  /** Covers the show, or uncovers it when called without a colour. */
+  /**
+   * Covers the show, or uncovers it when called without a colour. A covered show stands still:
+   * it does not move on by itself and nothing plays under the cover, and it goes on from where
+   * it stood when it is seen again.
+   */
   const setBlank = (colour?: 'black' | 'white') => {
+    player.hold(Boolean(colour));
     if (!colour) {
       blank?.remove();
       blank = undefined;
@@ -260,7 +266,9 @@ export function bindControls(player: Player, options: ControlOptions): () => voi
       }
       // Dragging to select text ends in a click too.
       if (view?.getSelection()?.isCollapsed === false) return;
-      if (player.slides[player.state.slide]?.transition?.advance.onClick === false) return;
+      // A slide may keep a click from moving the show on; the end of the show is no slide's.
+      const { slide, ended } = player.state;
+      if (!ended && player.slides[slide]?.transition?.advance.onClick === false) return;
       player.next();
     });
   }

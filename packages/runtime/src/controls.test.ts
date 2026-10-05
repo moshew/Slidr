@@ -12,6 +12,8 @@ function fakePlayer(count: number, hidden: number[] = []) {
     id: `s${i + 1}`,
     hidden: hidden.includes(i),
   }));
+  /** Whether the show is held, as the controls last said. */
+  const holds: boolean[] = [];
   const player: Player = {
     slides,
     state,
@@ -21,10 +23,17 @@ function fakePlayer(count: number, hidden: number[] = []) {
     goTo: (slide) => calls.push(`goTo ${slide}`),
     setState: () => undefined,
     subscribe: () => () => undefined,
+    hold: (on) => {
+      // As the player does: saying the same again changes nothing.
+      if (on !== (holds[holds.length - 1] ?? false)) holds.push(on);
+    },
+    get held() {
+      return holds[holds.length - 1] ?? false;
+    },
     fit: () => undefined,
     destroy: () => undefined,
   };
-  return { player, calls };
+  return { player, calls, holds, state };
 }
 
 let viewport: HTMLElement;
@@ -136,10 +145,26 @@ describe('a black or a white screen', () => {
   });
 
   it('is gone once the controls are unbound', () => {
-    bind();
+    const { holds } = bind();
     press('b', 'KeyB');
     unbind();
     expect(blank()).toBeUndefined();
+    // And the show with it is let go.
+    expect(holds).toEqual([true, false]);
+  });
+
+  it('holds the show while it is up, and lets it go when the show is seen again', () => {
+    const { holds } = bind();
+    press('b', 'KeyB');
+    expect(holds).toEqual([true]);
+    // From black to white the show is still covered.
+    press('w', 'KeyW');
+    expect(holds).toEqual([true]);
+    press('ArrowRight');
+    expect(holds).toEqual([true, false]);
+    press(',', 'Comma');
+    viewport.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+    expect(holds).toEqual([true, false, true, false]);
   });
 });
 
@@ -214,6 +239,24 @@ describe('a click', () => {
     // A video that is not a clip of the deck has no click of its own.
     click(at('foreign'));
     expect(calls).toEqual(['next', 'next']);
+  });
+
+  it('on a slide that clicks do not move stays there, but at the end of the show it is a step', () => {
+    const { player, calls, state } = bind(2);
+    const last = player.slides[1] as PlayerSlide;
+    last.transition = {
+      type: 'none',
+      duration: 0,
+      easing: 'ease',
+      advance: { onClick: false, afterMs: 4000 },
+    };
+    state.slide = 1;
+    click(viewport);
+    expect(calls).toEqual([]);
+    // The end of the show is no slide's: the click that leaves it is not held back.
+    state.ended = true;
+    click(viewport);
+    expect(calls).toEqual(['next']);
   });
 });
 

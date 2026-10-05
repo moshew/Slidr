@@ -160,8 +160,17 @@ test('moving on plays the transition, and hidden slides are skipped', async ({ p
   await page.keyboard.press('ArrowRight');
   expect(await stateOf(page)).toEqual({ slide: 3, step: 0 });
   await idle(page);
+  // Past the last slide is the end of the show: a black screen over it, and the slide under it.
   await page.keyboard.press('ArrowRight');
+  expect(await stateOf(page)).toEqual({ slide: 3, step: 0, ended: true });
+  await expect(page.locator('[data-testid="viewport"] [data-slidr-end]')).toBeVisible();
+  expect(await shown()).toEqual([3]);
+  // Nothing more comes after it, and a step back is the last slide again.
+  await page.keyboard.press('ArrowRight');
+  expect(await stateOf(page)).toEqual({ slide: 3, step: 0, ended: true });
+  await page.keyboard.press('ArrowLeft');
   expect(await stateOf(page)).toEqual({ slide: 3, step: 0 });
+  await expect(page.locator('[data-slidr-end]')).toHaveCount(0);
   noErrors();
 });
 

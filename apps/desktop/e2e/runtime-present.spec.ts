@@ -150,6 +150,103 @@ test('B and W blank the screen, and a number with Enter jumps to that slide', as
   await page.keyboard.press('Escape');
 });
 
+test('a black screen holds a show that runs by itself, and the show goes on when it is seen again', async ({
+  page,
+}) => {
+  await openApp(page, { deck: 'auto' });
+  // Long enough to press a key before it is over, on a machine that is doing other things.
+  await page.evaluate(() => {
+    const { bus } = window.slidr!;
+    const first = bus.deck.slides[0]!;
+    bus.dispatch({
+      type: 'slide.update',
+      slideId: first.id,
+      patch: { transition: { ...first.transition!, advance: { onClick: false, afterMs: 1500 } } },
+    });
+  });
+  await page.keyboard.press('F5');
+  const view = await show(page);
+  await page.keyboard.press('b');
+  await expect(view.locator('[data-slidr-blank]')).toHaveCount(1);
+  // Twice the wait and more: under the black screen the show stands where it stood.
+  await page.waitForTimeout(3200);
+  expect(await showState(page)).toEqual({ slide: 0, step: 0 });
+  await page.keyboard.press('b');
+  await expect(view.locator('[data-slidr-blank]')).toHaveCount(0);
+  // Seen again, it moves on by itself as it was going to: the step of the slide, then the slide.
+  await expect.poll(() => showState(page), { timeout: 4000 }).toEqual({ slide: 0, step: 1 });
+  await expect.poll(() => showState(page), { timeout: 4000 }).toEqual({ slide: 1, step: 0 });
+  await page.keyboard.press('Escape');
+});
+
+test('past the last step the show ends on a black screen, and one more step returns to the editor', async ({
+  page,
+}) => {
+  await openApp(page, { deck: 'probe' });
+  await setCurrentSlide(page, 's_probe_c');
+  await page.keyboard.press('Shift+F5');
+  const view = await show(page);
+  await idle(page);
+  const end = view.locator('[data-slidr-end]');
+  // Through whatever steps the last slide has, and one more.
+  for (let i = 0; i < 12 && (await end.count()) === 0; i++) await page.keyboard.press('ArrowRight');
+  await expect(view).toHaveAttribute('data-ended', 'true');
+  await expect(end).toHaveText('סוף ההצגה. לחיצה נוספת חוזרת לעורך.');
+  expect(await end.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(0, 0, 0)');
+  expect(await end.boundingBox()).toEqual(await view.boundingBox());
+  expect((await showState(page)).slide).toBe(3);
+
+  // The bar is over it, and still works.
+  await page.mouse.move(900, 900);
+  await page.mouse.move(960, 990);
+  const bar = page.getByTestId('present-controls');
+  await expect(bar).toHaveAttribute('data-visible', 'true');
+  await view.screenshot({ path: shot('end-he') });
+  // A step back is the last slide again; the keys that are not steps do nothing to the end.
+  await bar.getByRole('button', { name: 'אחורה' }).click();
+  await expect(end).toHaveCount(0);
+  await expect(view).not.toHaveAttribute('data-ended');
+  expect((await showState(page)).slide).toBe(3);
+  await page.keyboard.press('ArrowRight');
+  await expect(end).toHaveCount(1);
+  await page.keyboard.press('x');
+  await expect(end).toHaveCount(1);
+
+  // One more step forward leaves the show, on the slide it ended on.
+  await page.keyboard.press('ArrowRight');
+  await expect(view).toHaveCount(0);
+  expect(await currentSlide(page)).toBe('s_probe_c');
+  await expect(page.getByTestId('stage-surface')).toBeFocused();
+});
+
+test('the end of the show is left by a click too, and reads in the language of the window', async ({
+  page,
+}) => {
+  await openApp(page, { deck: 'probe', lang: 'en' });
+  await page.keyboard.press('F5');
+  const view = await show(page);
+  // By its number, then on: the last slide has no steps of its own.
+  await page.keyboard.press('4');
+  await page.keyboard.press('Enter');
+  expect(await showState(page)).toEqual({ slide: 3, step: 0 });
+  await idle(page);
+  await view.click({ position: { x: 600, y: 600 } });
+  const end = view.locator('[data-slidr-end]');
+  await expect(end).toHaveText('End of the show. One more click returns to the editor.');
+  await view.screenshot({ path: shot('end-en') });
+  // A slide number still takes the show where it says.
+  await page.keyboard.press('1');
+  await page.keyboard.press('Enter');
+  await expect(end).toHaveCount(0);
+  expect(await showState(page)).toEqual({ slide: 0, step: 0 });
+  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowRight');
+  await expect(end).toHaveCount(1);
+  await view.click({ position: { x: 600, y: 600 } });
+  await expect(view).toHaveCount(0);
+  expect(await currentSlide(page)).toBe('s_probe_c');
+});
+
 test('a click is a step, and the bar shows while the pointer moves', async ({ page }) => {
   await openApp(page, { deck: 'probe' });
   await page.keyboard.press('F5');
