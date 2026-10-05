@@ -111,8 +111,9 @@ export interface SheetCell {
 }
 
 /**
- * A picture of slides small, four to a row, as a contact sheet. With `each`, also every slide by
- * itself at its full size, as `<name>-<nn>.png`.
+ * A picture of slides small, four to a row, as a contact sheet. The rows read in the direction
+ * of the decks: a sheet of right-to-left decks starts at the top right. With `each`, also every
+ * slide by itself at its full size, as `<name>-<nn>.png`.
  */
 export async function sheet(
   cells: readonly SheetCell[],
@@ -123,6 +124,7 @@ export async function sheet(
   const k = (1920 - gap * (columns + 1)) / columns / 1920;
   const rows = Math.ceil(cells.length / columns);
   const height = Math.ceil(rows * 1080 * k + gap * (rows + 1));
+  const rtl = cells.length > 0 && cells.every(({ deck }) => deck.meta.dir === 'rtl');
   const board = document.createElement('div');
   board.style.cssText = `position:fixed;left:0;top:0;width:1920px;height:${height}px;background:${ground};z-index:2147483647`;
   document.body.append(board);
@@ -130,7 +132,8 @@ export async function sheet(
   try {
     for (const [i, { deck, slide }] of cells.entries()) {
       const cell = document.createElement('div');
-      const x = gap + (i % columns) * (1920 * k + gap);
+      const column = rtl ? columns - 1 - (i % columns) : i % columns;
+      const x = gap + column * (1920 * k + gap);
       const y = gap + Math.floor(i / columns) * (1080 * k + gap);
       cell.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:1920px;height:1080px;transform:scale(${k});transform-origin:0 0`;
       board.append(cell);

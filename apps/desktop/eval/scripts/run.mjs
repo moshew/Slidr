@@ -99,6 +99,11 @@ const BUILT_IN = [
   'gan',
   'nof',
   'defus',
+  'ariach',
+  'bolet',
+  'hod',
+  'sirtut',
+  'ziv',
 ];
 
 /**
