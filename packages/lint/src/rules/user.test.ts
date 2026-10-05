@@ -180,6 +180,45 @@ describe("L11: fonts and colours that are not the template's", () => {
     ).toEqual([]);
     expect(check('L11', [createElement.shape({ id: 'e_token', frame })])).toEqual([]);
   });
+
+  // A glow as the conversion keeps it: the CSS the browser computed, with a clear end.
+  const glow = (colour: string) =>
+    createElement.shape({
+      id: 'e_glow',
+      frame,
+      fill: {
+        kind: 'css',
+        value: `radial-gradient(circle, ${colour} 0%, rgba(0, 0, 0, 0) 70%) 0% 0% / auto repeat`,
+      },
+    });
+
+  it('reads the colours inside a fill kept as CSS, and hands them to the theme', () => {
+    // The purple of another template, as a deck keeps it that was switched away from it.
+    const elements = [glow('color(srgb 0.615686 0.482353 1 / 0.35)')];
+    const [finding, ...rest] = check('L11', elements);
+    expect(rest).toEqual([]);
+    expect(finding?.elementIds).toEqual(['e_glow']);
+    expect(finding?.message).toMatch(/^1 colour here is not the template's: #9d7bff \(nearest: /);
+    const [shape] = fixed(elements, finding).elements;
+    // The theme's variable, as translucent as the colour was; the rest of the CSS to the letter.
+    expect(shape).toHaveProperty(
+      'fill.value',
+      expect.stringMatching(
+        /^radial-gradient\(circle, color-mix\(in srgb, var\(--color-\w+\) 35%, transparent\) 0%, rgba\(0, 0, 0, 0\) 70%\) 0% 0% \/ auto repeat$/,
+      ),
+    );
+    expect(check('L11', [shape!])).toEqual([]);
+  });
+
+  it("accepts a CSS fill in the theme's own colours, in greys and in the theme's variables", () => {
+    for (const colour of [
+      'rgb(47, 91, 234)',
+      'rgba(255, 255, 255, 0.4)',
+      'color-mix(in srgb, var(--color-primary) 30%, transparent)',
+    ]) {
+      expect(check('L11', [glow(colour)])).toEqual([]);
+    }
+  });
 });
 
 describe('L12: a picture enlarged or stretched', () => {

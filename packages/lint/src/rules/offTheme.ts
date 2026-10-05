@@ -1,11 +1,16 @@
 import {
+  mapCssColors,
+  themeColorCss,
   updateElement,
   walkElements,
   type Color,
+  type ColorToken,
   type Command,
   type Element,
   type Theme,
 } from '@slidr/model';
+import { hex } from '../color';
+import type { Rgb } from '../measure';
 import { distance, isNeutral, nearestToken, parseHex } from '../palette';
 import type { Problem, Rule, SlideContext } from '../rule';
 import { mapRuns, proseOf, setText, styleOf } from '../text';
@@ -79,28 +84,38 @@ function fontProblem(ctx: SlideContext): Problem[] {
 // ---------------------------------------------------------------------------------------------
 // Colours
 
-/** A colour of the model that is no colour of the theme, with the token nearest to it. */
-function stray(theme: Theme, color: Color | undefined): { hex: string; to: Color } | undefined {
-  if (!color || 'token' in color) return undefined;
-  const rgb = parseHex(color.value);
-  // Black, white and grey belong to every template; a colour that is not hex is left unjudged.
-  if (!rgb || isNeutral(rgb)) return undefined;
+/** The token nearest to a colour that is no colour of the theme; undefined for one that is. */
+function strayToken(theme: Theme, rgb: Rgb): ColorToken | undefined {
+  // Black, white and grey belong to every template.
+  if (isNeutral(rgb)) return undefined;
   const chart = theme.colors.chart.some((c) => {
     const of = parseHex(c);
     return of && distance(of, rgb) <= SAME_COLOUR;
   });
   const nearest = nearestToken(theme, rgb);
   if (chart || !nearest || nearest.distance <= SAME_COLOUR) return undefined;
+  return nearest.token;
+}
+
+/** A colour of the model that is no colour of the theme, with the token nearest to it. */
+function stray(theme: Theme, color: Color | undefined): { hex: string; to: Color } | undefined {
+  if (!color || 'token' in color) return undefined;
+  // A colour that is not hex is left unjudged.
+  const rgb = parseHex(color.value);
+  const token = rgb && strayToken(theme, rgb);
+  if (!token) return undefined;
   return {
     hex: color.value.toLowerCase(),
-    to: { token: nearest.token, ...(color.alpha === undefined ? {} : { alpha: color.alpha }) },
+    to: { token, ...(color.alpha === undefined ? {} : { alpha: color.alpha }) },
   };
 }
 
 /**
  * The colours an element is drawn in that the theme does not hold, and the commands that turn
- * each into the token nearest to it: the text's colour and highlight, a flat fill, a stroke.
- * Gradients, pictures, tables, charts and free HTML are left alone.
+ * each into the token nearest to it: the text's colour and highlight, a flat fill, a stroke,
+ * and the colours inside a fill kept as CSS (a glow the model has no shape for), which hold no
+ * token and so are the first to be left behind by a template. The model's own gradients,
+ * pictures, tables, charts and free HTML are left alone.
  */
 function strays(
   ctx: SlideContext,
@@ -127,6 +142,19 @@ function strays(
       };
     });
     if (content) fix.push(setText(ctx.slide.id, element.id, content));
+  }
+  if (element.type === 'shape' && element.fill.kind === 'css') {
+    const value = mapCssColors(element.fill.value, ({ r, g, b, a }) => {
+      const rgb: Rgb = [Math.round(r), Math.round(g), Math.round(b)];
+      // What is not drawn (the clear end of a glow) is no colour of anything.
+      const token = a > 0 ? strayToken(theme, rgb) : undefined;
+      if (!token) return undefined;
+      found.set(hex(rgb), { token, ...(a < 1 ? { alpha: a } : {}) });
+      return themeColorCss(token, a);
+    });
+    if (value !== element.fill.value) {
+      fix.push(updateElement(ctx.slide.id, element.id, { fill: { kind: 'css', value } }));
+    }
   }
   if (element.type === 'shape') {
     const fill = element.fill.kind === 'solid' ? turn(element.fill.color) : undefined;
