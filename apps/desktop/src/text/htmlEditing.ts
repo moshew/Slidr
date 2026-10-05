@@ -1,5 +1,6 @@
 import { newId, updateElement, type CommandBus } from '@slidr/model';
 import type { HtmlEditing } from '@slidr/renderer';
+import { isCtrlLetter } from '../stage/keys';
 import { copyText, elementCount, fragmentMarkup, keepsStructure } from './htmlText';
 
 /*
@@ -39,6 +40,27 @@ const NOT_TEXT = 'style, script, link, svg, img, video, audio, canvas, iframe';
  * change how its long words wrap. The focus ring of an editable element is not part of the slide.
  */
 const EDITABLE_CSS = `:host > :not(${NOT_TEXT}) { -webkit-user-modify: read-write-plaintext-only; outline: none; cursor: text; }`;
+
+/** What the text does with Ctrl itself: select all, the clipboard, undo and redo. */
+const TEXT_LETTERS = ['a', 'c', 'x', 'v', 'z', 'y'];
+/** With Ctrl these move the caret by a word or delete one: they are the text's too. */
+const CARET_KEYS = /^(?:Arrow|Home$|End$|Backspace$|Delete$|Enter$|Tab$|Escape$)/;
+
+/**
+ * A key that is not the text's own: one with Ctrl that the text does nothing with, or a
+ * function key. It goes on to the window, where the app's shortcuts that work while text is
+ * typed answer it as they do in a text box (Ctrl+S, Ctrl+F, the zoom), and where the keys the
+ * webview would act on itself are kept from it (`shell/shortcuts.ts`). Every other key types or
+ * moves the caret, and stays here: "T" is a letter and Delete deletes a character (ADR-034).
+ */
+function forTheApp(event: KeyboardEvent): boolean {
+  // A character typed with AltGr, which Windows reports with Ctrl and Alt, is text.
+  if (event.getModifierState('AltGraph')) return false;
+  if (/^F\d{1,2}$/.test(event.key)) return true;
+  if (!event.ctrlKey && !event.metaKey) return false;
+  if (CARET_KEYS.test(event.key)) return false;
+  return !TEXT_LETTERS.some((letter) => isCtrlLetter(event, letter));
+}
 
 type CaretPoint = { offsetNode: Node; offset: number } | null;
 
@@ -121,19 +143,19 @@ export function createHtmlTextEditing(options: HtmlTextEditingOptions): HtmlEdit
         if (!caret || !keepsStructure(event.inputType, caret)) event.preventDefault();
       };
       const onKeyDown = (event: KeyboardEvent) => {
-        // The keys typed here are text: the Stage and the app's shortcuts do not hear them.
-        event.stopPropagation();
-        const mod = event.ctrlKey || event.metaKey;
+        // The keys typed here are text: the Stage and the app's shortcuts do not hear them. A
+        // key that is none of the text's goes on to the app.
+        if (!forTheApp(event)) event.stopPropagation();
         if (event.key === 'Escape') {
           event.preventDefault();
           onExit();
-        } else if (mod && event.code === 'KeyZ') {
+        } else if (isCtrlLetter(event, 'z')) {
           // Undo is the deck's (ADR-006), also for what was typed here.
           event.preventDefault();
           burst = null;
           if (event.shiftKey) bus.redo();
           else bus.undo();
-        } else if (mod && event.code === 'KeyY') {
+        } else if (isCtrlLetter(event, 'y')) {
           event.preventDefault();
           burst = null;
           bus.redo();

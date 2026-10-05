@@ -1,48 +1,54 @@
 import { useEffect } from 'react';
 import type { Editor } from './editor';
+import { eventKeys } from './eventKeys';
+import { modalOpen, overlayOf } from './overlay';
 import { useShell } from './store';
 import { shortcutsOn, userKeysReady } from './userKeys';
 
-/** Text fields keep their own undo and their own Ctrl+A, Ctrl+Z and so on. */
-function isEditable(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || target.matches('input, textarea, select');
-}
-
-/** Keys that are the same key on every layout, by their physical place. */
-const PHYSICAL: Record<string, string> = {
-  BracketLeft: '[',
-  BracketRight: ']',
-  Slash: '/',
-  Backslash: '\\',
-  Equal: '=',
-  Minus: '-',
-};
+export { eventKeys };
 
 /**
- * The key of a shortcut. With a Hebrew layout `event.key` is a Hebrew letter (and the brackets
- * swap), so the physical key decides; with a Latin layout the letter itself does (Ctrl+Z on
- * AZERTY too).
+ * Text fields keep their own undo and their own Ctrl+A, Ctrl+Z and so on. So does text that a
+ * stylesheet makes editable and no attribute: the text of an `html` element that is edited where
+ * it stands (`text/htmlEditing.ts`), which `isContentEditable` does not know of.
  */
-function shortcutKey(event: KeyboardEvent): string {
-  const physical = PHYSICAL[event.code];
-  if (physical) return physical;
-  // The space bar reports a space, which a combination cannot be written with.
-  if (event.code === 'Space') return 'space';
-  const key = event.key.toLowerCase();
-  if (/^[a-z0-9]$/.test(key)) return key;
-  const letter = /^(?:Key|Digit)(.)$/.exec(event.code)?.[1];
-  return letter ? letter.toLowerCase() : key;
+function isEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable || target.matches('input, textarea, select')) return true;
+  return getComputedStyle(target).getPropertyValue('-webkit-user-modify').startsWith('read-write');
 }
 
-/** The combination as the registry writes it: `ctrl+shift+g`. */
-export function eventKeys(event: KeyboardEvent): string {
-  return [
-    ...(event.ctrlKey ? ['ctrl'] : []),
-    ...(event.altKey ? ['alt'] : []),
-    ...(event.shiftKey ? ['shift'] : []),
-    shortcutKey(event),
-  ].join('+');
+/**
+ * What was pressed, as the one it was pressed in sees it. The content of an `html` element is in
+ * a tree of its own, and the window is told only of the element around it: a key typed into that
+ * content would look like a key on something that takes no text.
+ */
+function pressedOn(event: KeyboardEvent): EventTarget | null {
+  return event.composedPath()[0] ?? event.target;
+}
+
+/** A control that Enter or the space bar presses, opens or chooses: there the key is its own. */
+const PRESSED_BY_KEY =
+  'button, a[href], summary, [role="button"], [role="link"], [role="menuitem"], [role="option"], [role="tab"], [role="checkbox"], [role="switch"], [role="radio"], [role="combobox"]';
+
+/**
+ * Whose a key is, by where it was pressed. The shortcuts are the window's: they act on the deck
+ * and on the editor as a whole. A key that was pressed inside something that stands over the
+ * window belongs to that thing first:
+ *   - in a menu or a floating list every key is its own (a letter is typeahead), and behind a
+ *     modal dialog the window is out of reach altogether: no shortcut answers;
+ *   - in a popover the plain keys are its own (Enter, Esc, a letter), and a combination with Ctrl
+ *     or Alt is still the window's: Ctrl+Z after a drag of a slider in it undoes the drag;
+ *   - anywhere, Enter and the space bar on a control they press are that control's.
+ */
+function belongsElsewhere(event: KeyboardEvent, target: EventTarget | null): boolean {
+  if (modalOpen()) return true;
+  const overlay = overlayOf(target);
+  if (overlay === 'menu' || overlay === 'modal') return true;
+  if (event.ctrlKey || event.altKey) return false;
+  if (overlay === 'popover') return true;
+  const presses = event.key === 'Enter' || event.key === ' ';
+  return presses && target instanceof Element && target.closest(PRESSED_BY_KEY) !== null;
 }
 
 /**
@@ -74,7 +80,8 @@ const KEYS_WAIT_MS = 3000;
  * shortcut answers to the key the user gave it (`userKeys.ts`), else to the one it was
  * registered with. The latest registration of a combination is asked first; one that returns
  * false passes the key on to the next. A shortcut without `inText` stays out of text fields and
- * of the slide's text editor, where the keys type.
+ * of the slide's text editor, where the keys type; and none answers a key that belongs to a
+ * menu, a popover or a dialog it was pressed in (`belongsElsewhere`).
  *
  * No shortcut answers until the user's keys were read from the settings file, so a key pressed
  * while the window comes up never acts by a combination the user had moved elsewhere.
@@ -93,24 +100,28 @@ export function useShellShortcuts(editor: Editor): void {
       // A character typed with AltGr is text. On Windows the key reports Ctrl and Alt both, and
       // would answer to a Ctrl+Alt shortcut: AltGr+C is a letter on a Polish layout.
       if (event.getModifierState('AltGraph')) return;
-      const editable = isEditable(event.target);
+      const target = pressedOn(event);
+      const editable = isEditable(target);
       const keys = eventKeys(event);
       // On the welcome screen there is no editor to act on: only the File commands answer.
       const welcome = useShell.getState().welcome;
+      const elsewhere = belongsElsewhere(event, target);
       let owned = false;
       let handled = false;
       for (const shortcut of known ? shortcutsOn(keys) : []) {
         if (editable && !shortcut.inText) continue;
         if (welcome && shortcut.section !== 'file') continue;
         owned = true;
+        if (elsewhere) continue;
         if (shortcut.run(editor, event) !== false) {
           handled = true;
           break;
         }
       }
       // A combination with Ctrl or Alt is the app's even when there is nothing to act on right
-      // now (Ctrl+D without a selection): the webview must not run its own command for it. A
-      // plain key that nobody took goes its usual way: Enter still presses the focused button.
+      // now (Ctrl+D without a selection, Ctrl+S behind a dialog): the webview must not run its
+      // own command for it. A plain key that nobody took goes its usual way: Enter still presses
+      // the focused button.
       const combination = event.ctrlKey || event.altKey;
       if (handled || (owned && combination) || (!import.meta.env.DEV && BROWSER_KEYS.has(keys))) {
         event.preventDefault();

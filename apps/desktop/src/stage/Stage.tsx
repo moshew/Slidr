@@ -1315,6 +1315,9 @@ export function Stage({
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (isInEditor(e.target)) return;
+    // So is the text of an `html` element that is edited where it stands: the keys it lets out
+    // are for the app's shortcuts (Ctrl+S), not for the Stage (Ctrl with an arrow would size it).
+    if (htmlId && dataOf(e.target, 'element-id') === htmlId) return;
     // Inside a table the arrows, Tab, Enter, Delete and Esc are about its cells.
     if (tables.onKeyDown(e)) return;
     // Alt is a modifier of drags here; it must not hand the focus to a menu bar.
