@@ -1307,7 +1307,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     };
     const plan = () =>
       compose(items, {
-        space,
+        root,
         theme: deck.theme,
         slide: deck.size,
         lines,
@@ -1352,49 +1352,50 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         mounted.dispose();
       }
     };
-    /** A plan whose texts sit where they were; what would not sit is left out of it. */
+    /**
+     * A plan whose texts were put on their lines. A text that is a fraction off is moved by
+     * exactly what it was measured to be off, and is not laid out again to see that it took:
+     * the judge that follows draws it and compares it. One that would not sit at all is left
+     * out, and the plan is made again without it.
+     */
     const settled = async (): Promise<Composition | undefined> => {
-      let composition = plan();
-      for (let tries = 0; tries < MAX_COMPOSE_FITS && !unchanged(composition); tries++) {
+      for (let tries = 0; tries < MAX_COMPOSE_FITS; tries++) {
+        const composition = plan();
+        if (unchanged(composition)) return undefined;
         take(composition);
-        const outcome = composition.made.size > 0 ? await fit(composition) : 'settled';
-        if (outcome === 'settled') return composition;
-        if (outcome === 'refused') composition = plan();
+        if (composition.made.size === 0 || (await fit(composition)) !== 'refused')
+          return composition;
       }
-      // Still moving after every try: what moved is not put together.
-      for (const how of composition.made.values()) refused.add(keyOf(how.kind, how.of));
-      composition = plan();
-      return unchanged(composition) ? undefined : composition;
+      return undefined;
+    };
+    const judged = async (composition: Composition): Promise<Verdict> => {
+      take(composition);
+      for (const item of composition.items) {
+        // Text the source drew in grey is drawn in grey when it is part of something larger too.
+        if (composition.made.get(item)?.of.some((member) => grey.has(member))) grey.add(item);
+      }
+      return judge({ fit: false });
     };
 
-    let composition = await settled();
-    if (!composition) {
-      take(undefined);
-      return undefined;
-    }
-    take(composition);
-    for (const item of composition.items) {
-      // Text the source drew in grey is drawn in grey when it is part of something larger too.
-      if (composition.made.get(item)?.of.some((member) => grey.has(member))) grey.add(item);
-    }
-    let verdict = await judge({ fit: false });
-    if (!verdict.faithful) {
+    // Judged, and once more without whatever looked different; after that it is all or nothing.
+    for (let round = 0; round < 2; round++) {
+      const composition = await settled();
+      if (!composition) break;
+      const verdict = await judged(composition);
+      if (verdict.faithful) return verdict;
       const before = refused.size;
       for (const { item } of verdict.bad) {
+        // What was made of several is taken apart; what only moved into a group (and so under
+        // something it lay over) has its group taken apart.
         const how = composition.made.get(item);
+        const group = composition.around.get(item);
         if (how) refused.add(keyOf(how.kind, how.of));
+        else if (group) refused.add(group);
       }
-      composition = refused.size > before ? await settled() : undefined;
-      if (composition) {
-        take(composition);
-        verdict = await judge({ fit: false });
-      }
+      if (refused.size === before) break;
     }
-    if (!composition || !verdict.faithful) {
-      take(undefined);
-      return undefined;
-    }
-    return verdict;
+    take(undefined);
+    return undefined;
   };
 
   const guard = async (): Promise<GuardReport> => {

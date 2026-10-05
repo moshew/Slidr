@@ -25,7 +25,7 @@ import {
   type TextElement,
   type Theme,
 } from '@slidr/model';
-import type { Item, Space } from './convert';
+import type { Item } from './convert';
 import { round, type Line } from './css';
 import { composedParent, styleOf } from './measure';
 
@@ -53,10 +53,13 @@ export interface Composition {
   /** The same items as they nest. */
   parts: Part[];
   made: Map<Item, Made>;
+  /** For every item in a group: the key (`keyOf`) of the innermost group around it. */
+  around: Map<Item, string>;
 }
 
 export interface ComposeContext {
-  space: Space;
+  /** The element the slide was converted from: its own box is the slide's ground. */
+  root: Element;
   /** The theme the slide is drawn with: what a paragraph without a line height of its own takes. */
   theme: Theme;
   slide: { w: number; h: number };
@@ -156,13 +159,17 @@ function lowerLine(paragraph: Paragraph, theme: Theme, by: number): boolean {
 
 /** Plans the composition of the items of a settled proposal. Changes none of them. */
 export function compose(flat: readonly Item[], ctx: ComposeContext): Composition {
-  const { space } = ctx;
   const order = new Map(flat.map((item, index) => [item, index]));
   const made = new Map<Item, Made>();
   /** The lines of the flat texts, and of the texts joined from them. */
   const lines = new Map(ctx.lines);
 
-  /** Where an item paints, in slide px: for text its lines, for a box its shadow too. */
+  /**
+   * Where an item is, in slide px. A text is where its glyphs are: the box of a text element
+   * is where its lines start from, which the guard moves until the glyphs sit right. A shadow
+   * is not counted: it is the judge that says whether one that now falls over something it
+   * fell under is seen.
+   */
   const reach = (item: Item): Frame => {
     const own = lines.get(item);
     if (item.element.type === 'text' && own?.length) {
@@ -170,14 +177,7 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
         own.map((l) => ({ x: l.left, y: l.top, w: l.right - l.left, h: l.bottom - l.top })),
       );
     }
-    const r = item.region;
-    const frame = {
-      x: ((r.x - space.rootRect.left) / space.viewScale) * space.k + space.offX,
-      y: ((r.y - space.rootRect.top) / space.viewScale) * space.k + space.offY,
-      w: (r.w / space.viewScale) * space.k,
-      h: (r.h / space.viewScale) * space.k,
-    };
-    return unionBounds([frame, rotatedBounds(item.element.frame, item.element.rotation)]);
+    return rotatedBounds(item.element.frame, item.element.rotation);
   };
 
   const regionOf = (items: readonly Item[]) => {
@@ -194,7 +194,7 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
     item.covers === 'box' &&
     !item.pseudo &&
     !item.exempt &&
-    item.node !== space.root &&
+    item.node !== ctx.root &&
     (item.element.type === 'shape' || item.element.type === 'html') &&
     item.element.rotation === 0 &&
     !coversSlide(item.element.frame);
@@ -204,7 +204,7 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
   /** The nearest box around an item: the box of its own node for a text, a parent's for a box. */
   const ownerOf = (item: Item): Item | undefined => {
     let node = baseOf.get(item.node) === item ? composedParent(item.node) : item.node;
-    for (; node; node = node === space.root ? undefined : composedParent(node)) {
+    for (; node; node = node === ctx.root ? undefined : composedParent(node)) {
       const base = baseOf.get(node);
       if (base) return base;
     }
@@ -225,19 +225,8 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
   const sources = (part: Part): Item[] =>
     leaves(part).flatMap((item) => made.get(item)?.of ?? [item]);
   const at = (part: Part) => Math.min(...sources(part).map((item) => order.get(item)!));
-  /**
-   * The box around a part: where it is, not how far its shadow falls. A text is where its
-   * glyphs are; the box of a text element is where its lines start from, which the guard moves
-   * until the glyphs sit right.
-   */
-  const extent = (part: Part): Frame =>
-    unionBounds(
-      sources(part).map((item) =>
-        item.element.type === 'text' && lines.get(item)?.length
-          ? reach(item)
-          : rotatedBounds(item.element.frame, item.element.rotation),
-      ),
-    );
+  /** The box around a part. */
+  const extent = (part: Part): Frame => unionBounds(sources(part).map(reach));
 
   /**
    * Whether items may be painted as one, right after the first of them. What is painted
@@ -550,9 +539,12 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
       if (ahead < -SAME || after < -SAME) return undefined;
       if (Math.abs(ahead - after) <= Math.max(1, 0.05 * Math.min(ahead, after))) {
         align = 'center';
-        const room = Math.max(0, Math.min(ahead, after) - SLACK);
-        left = room + Math.max(0, ahead - after);
-        end = room + Math.max(0, after - ahead);
+        // The same room on both sides, in whole pixels; a line that sits a real fraction off
+        // the middle keeps the fraction on the side it leans from.
+        const room = Math.max(0, Math.floor(Math.min(ahead, after) - SLACK));
+        const lean = Math.abs(ahead - after) <= SAME ? 0 : ahead - after;
+        left = room + Math.max(0, lean);
+        end = room + Math.max(0, -lean);
       } else if (ahead <= after === !rtl) {
         align = 'start';
         left = rtl ? 0 : ahead;
@@ -629,11 +621,16 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
     ) {
       return [{ item: base }, ...parts];
     }
+    const key = keyOf('group', members);
+    for (const item of [base, ...parts.flatMap(leaves)])
+      if (!around.has(item)) around.set(item, key);
     return [{ item: base, group: { id: ctx.groupId(base), parts } }];
   };
 
+  /** The innermost group each item is in, by its key: filled from the inside out. */
+  const around = new Map<Item, string>();
   const parts = on(undefined);
-  return { items: parts.flatMap(leaves), parts, made };
+  return { items: parts.flatMap(leaves), parts, made, around };
 }
 
 /** Whether a plan leaves the proposal as it was. */
