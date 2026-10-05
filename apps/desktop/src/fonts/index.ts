@@ -2,6 +2,7 @@ import { hebrewFaces } from '@slidr/renderer';
 import { builtinFaces, builtinFamilies, type BuiltinFace } from './builtinFonts.generated';
 
 export { builtinFamilies };
+export { useUserFonts, type UserFont } from './userFonts';
 export {
   loadSystemFonts,
   setSystemFontSource,

@@ -17,12 +17,14 @@ export interface SettingsSection {
 
 /**
  * Where the sections sit. Appearance and language are the screen's own and come first; the
- * agent's (harness, model, web access) has its place before the image providers.
+ * agent's (harness, model, web access) has its place before the image providers, and the fonts
+ * come last.
  */
 export const SettingsOrder = {
   agent: 20,
   images: 30,
   stock: 40,
+  fonts: 50,
 } as const;
 
 const sections = createStore<{ items: readonly SettingsSection[] }>(() => ({ items: [] }));

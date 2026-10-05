@@ -12,7 +12,7 @@ import {
 import { ChevronDown } from '@slidr/ui/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { builtinFamilies, useSystemFonts } from '../fonts';
+import { builtinFamilies, useSystemFonts, useUserFonts } from '../fonts';
 import { useDeck } from '../shell';
 import { rememberFont, useRecent } from './recent';
 
@@ -43,14 +43,21 @@ const nameOf = (family: string) => family.toLowerCase();
 
 /**
  * The fonts a deck can be set in, in the order of the list: the ones the deck carries as assets
- * (SPEC 5.7), the built-in library, and the ones installed on this computer (SPEC appendix B).
- * A family is listed once, in the first of the three that has it: the deck's file or the
- * library's is the one that draws it, whatever is installed under the same name.
+ * (SPEC 5.7), the user's own (added in the settings screen), the built-in library, and the ones
+ * installed on this computer (SPEC appendix B). A family is listed once, in the first of them
+ * that has it: the deck's file or the library's is the one that draws it, whatever is installed
+ * under the same name.
  */
-function useFontGroups(labels: { deck: string; library: string; system: string }): FontGroup[] {
+function useFontGroups(labels: {
+  deck: string;
+  mine: string;
+  library: string;
+  system: string;
+}): FontGroup[] {
   const assets = useDeck((s) => s.deck.assets);
+  const own = useUserFonts();
   const installed = useSystemFonts();
-  const { deck, library, system } = labels;
+  const { deck, mine, library, system } = labels;
   return useMemo(() => {
     const known = new Set(builtin.map((f) => nameOf(f.family)));
     const carried: FontOption[] = [];
@@ -61,13 +68,22 @@ function useFontGroups(labels: { deck: string; library: string; system: string }
       carried.push({ family });
     }
     carried.sort((a, b) => a.family.localeCompare(b.family));
+    // A family of several files (regular, bold) is one line; it has Hebrew when a file has.
+    const added = new Map<string, FontOption>();
+    for (const { family, hebrew } of own) {
+      if (known.has(nameOf(family))) continue;
+      const listed = added.get(nameOf(family));
+      added.set(nameOf(family), { family, hebrew: hebrew || listed?.hebrew === true });
+    }
+    for (const name of added.keys()) known.add(name);
     const onComputer = installed.filter((font) => !known.has(nameOf(font.family)));
     return [
       { label: deck, fonts: carried },
+      { label: mine, fonts: [...added.values()] },
       { label: library, fonts: builtin },
       { label: system, fonts: onComputer },
     ].filter((group) => group.fonts.length > 0);
-  }, [assets, installed, deck, library, system]);
+  }, [assets, own, installed, deck, mine, library, system]);
 }
 
 /** A font family in a toolbar or a panel: a button that opens the font picker (TXT-02). */
@@ -85,6 +101,7 @@ export function FontField({
   const [open, setOpen] = useState(false);
   const groups = useFontGroups({
     deck: t('font.deck'),
+    mine: t('font.mine'),
     library: t('font.library'),
     system: t('font.system'),
   });
