@@ -1274,13 +1274,11 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       cs.borderBottomWidth,
       cs.borderLeftWidth,
     ].map(px);
-    if (
-      corners.kind === 'px' &&
-      within(box, rect) &&
-      borders.every((width) => width === borders[0])
-    ) {
-      // It fills the box inside the borders: cut to the same corners, less the border.
-      return { rect, radius: Math.max(0, corners.value - borders[0]!) };
+    if (corners.kind === 'px' && within(box, rect)) {
+      // It fills the box inside the borders: cut to the same corners, less the border. Where
+      // one side is thicker (an accent), the corners beside it are a little tighter than one
+      // radius says: by the thinnest border, which is the most of the two it keeps.
+      return { rect, radius: Math.max(0, corners.value - Math.min(...borders)) };
     }
     // Anywhere else it is whole only when it keeps out of the corners.
     const reach = corners.kind === 'px' ? corners.value * vl : Math.min(r.width, r.height) / 2;

@@ -336,4 +336,27 @@ describe('the coloured side of a card', () => {
     expect(r.editability).toBe(1);
     expect(r.guard.fallbacks).toEqual([]);
   });
+
+  it('does not keep a sheen over the whole card from being a shape of its own', async () => {
+    // A card with one thicker border and a gradient laid over all of it: the sheen fills the
+    // box inside borders that are not all one width, which used to leave the card's box HTML.
+    const r = await convert(`<style>
+        .card { position:absolute; left:200px; top:200px; width:640px; padding:36px; background:#fffbeb; border:2px solid #fde68a; border-top:8px solid #f59e0b; border-radius:20px; overflow:hidden; }
+        .card::before { content:""; position:absolute; inset:0; background:linear-gradient(130deg, rgba(245,158,11,.18) 0%, transparent 58%); pointer-events:none; }
+      </style>
+      <div style="${SLIDE}">
+        <div class="card"><h3 style="margin:0 0 12px;font-size:36px;line-height:1.2">A goal</h3><p style="margin:0;font-size:26px;line-height:1.5;color:#475569">With a sheen across the card.</p></div>
+      </div>`);
+    expect(kinds(r.slide.elements)).toEqual(['group']);
+    const [box, ...onIt] = groups(r.slide.elements)[0]!.children;
+    expect(box).toMatchObject({
+      type: 'shape',
+      stroke: { width: 2 },
+      accent: { side: 'top', size: 8, corners: 'follow' },
+    });
+    // The sheen is a shape on the card, and the two texts are one text box.
+    expect(kinds(onIt).sort()).toEqual(['shape', 'text']);
+    expect(r.editability).toBe(1);
+    expect(r.guard.fallbacks).toEqual([]);
+  });
 });
