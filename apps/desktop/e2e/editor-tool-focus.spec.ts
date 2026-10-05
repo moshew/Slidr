@@ -193,6 +193,30 @@ test.describe('a tool that is used with the pointer', () => {
     await size.click();
     await expect(size).toBeFocused();
   });
+
+  test('a show that a menu of row A started keeps the keyboard, not the slide behind it', async ({
+    page,
+  }) => {
+    await openApp(page, { lang: 'en' });
+    await addBoxes(page, THREE);
+    await onStage(page, 'e_b').click();
+    const before = (await frames(page, ['e_b'])).e_b!;
+    await rowA(page).getByRole('button', { name: 'Start from' }).click();
+    await page.getByRole('menuitem', { name: 'Present from the current slide' }).click();
+    const show = page.getByTestId('present');
+    await expect(show).toBeVisible();
+    // The menu closes while the show comes up: the keyboard must not be handed to the Stage,
+    // where the arrows of the show would move what is selected and Delete would delete it.
+    await page.waitForTimeout(300);
+    await expect(surface(page)).not.toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Delete');
+    await page.keyboard.press('Escape');
+    await expect(show).toHaveCount(0);
+    expect((await frames(page, ['e_b'])).e_b).toEqual(before);
+    expect(await elements(page)).toHaveLength(3);
+    await expect(surface(page)).toBeFocused();
+  });
 });
 
 test.describe('a tool that was reached with the keyboard', () => {

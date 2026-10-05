@@ -109,7 +109,21 @@ export function watchToolFocus(rows: HTMLElement): () => void {
     // hands back to its button as it closes, after a press of the pointer opened it.
     if (pressing || way !== 'pointer') return;
     if (!inRows(event.target) || within(event.target, FIELD)) return;
-    returnKeyboard();
+    // What the tool started may have taken the keyboard meanwhile: the show that "Present"
+    // begins, a dialog that a choice of a menu opened. The focus is then taken from there to
+    // the button, and it goes back there, not to the slide behind it.
+    const from = event.relatedTarget;
+    const taken =
+      from instanceof HTMLElement &&
+      from.isConnected &&
+      !rows.contains(from) &&
+      overlayOf(from) !== 'menu' &&
+      overlayOf(from) !== 'popover' &&
+      // On the slide itself the keyboard is given back the slide's own way: to the text that is
+      // edited with its caret, else to the Stage.
+      from.closest('[data-testid="stage-surface"]') === null;
+    if (taken) from.focus({ preventScroll: true });
+    else returnKeyboard();
   };
   const onClick = () => {
     pressing = false;
