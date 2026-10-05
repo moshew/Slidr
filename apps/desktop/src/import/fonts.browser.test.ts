@@ -254,7 +254,10 @@ describe('faces of an imported file that share one font file', () => {
     );
     expect(result.guard.faithful).toBe(true);
     expect(result.editability).toBe(1);
-    expect(result.slide.elements.map((element) => element.type)).toEqual(['text', 'text']);
+    // The two lines follow one another: one text box, a paragraph for each (ADR-073).
+    expect(result.slide.elements.map((element) => element.type)).toEqual(['text']);
+    const [words] = result.slide.elements;
+    expect(words?.type === 'text' && words.content.paragraphs).toHaveLength(2);
     // Both lines as wide as the source drew them: each in its own weight of the font. (Drawn
     // with the bold face alone, as before, the regular line came out 19px wider.)
     const drawn = {
