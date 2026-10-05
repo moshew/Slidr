@@ -167,10 +167,14 @@ test('an option of the gallery shows on the slide while the keyboard is on it, a
     role: 'title',
   });
   await select(page, 'e_title');
+  // The chat is the panel the app opens on (ADR-072), and Enter on the button of the open panel
+  // closes it: the button is pressed only when the panel is not the one that shows.
   await page.locator('[data-testid="activity-bar"] button[data-panel="ai"]').focus();
-  await page.keyboard.press('Enter');
+  if ((await page.getByTestId('chat-input').count()) === 0) await page.keyboard.press('Enter');
+  await expect(page.getByTestId('tool-panel')).toHaveAttribute('data-open', 'true');
   const input = page.getByTestId('chat-input');
   await input.focus();
+  await expect(input).toBeFocused();
   await page.keyboard.type('Four other wordings for the title');
   await page.keyboard.press('Enter');
   const cards = page.getByTestId('option-card');
