@@ -72,10 +72,13 @@ export function ConversationBar({ scope, thread }: { scope: SessionScope; thread
                 key={conversation.id}
                 value={conversation.id}
                 data-conversation={conversation.id}
+                // Room for the two lines: an item of a menu is as high as one.
+                className="min-h-10"
               >
                 {/* Two lines: a long first message is cut, and when it was said stays whole. */}
-                <span className="flex min-w-0 flex-col">
-                  <span dir="auto" className="truncate">
+                <span className="flex min-w-0 flex-col items-start">
+                  {/* The words read in their own direction, and start where the list starts. */}
+                  <span dir="auto" className="max-w-full truncate">
                     {titleOf(conversation)}
                   </span>
                   {conversation.updatedAt && (
