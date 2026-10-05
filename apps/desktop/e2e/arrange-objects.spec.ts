@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   addBoxes,
   elements,
@@ -21,6 +21,13 @@ import {
 const ALL = ['e_a', 'e_b', 'e_c'];
 
 const rowB = (page: Page) => page.getByTestId('top-tools-b');
+
+/**
+ * The name a row of the Layers panel shows. A row also holds what a screen reader is told after
+ * its name (the kind of the object, "locked", "hidden"), which is not drawn and is no part of
+ * the name: `a11y-reader.spec.ts` holds what is said.
+ */
+const shownName = (rows: Locator) => rows.locator(':scope > span:not(.sr-only)');
 
 async function arrangeItem(page: Page, name: string) {
   await page.getByTestId('arrange-menu').click();
@@ -245,7 +252,7 @@ test.describe('the Layers panel', () => {
     page,
   }) => {
     const rows = page.getByTestId('layers').getByRole('treeitem');
-    await expect(rows).toHaveText(['C', 'B', 'A']);
+    await expect(shownName(rows)).toHaveText(['C', 'B', 'A']);
 
     await row(page, 'e_c').click();
     expect(await selected(page)).toEqual(['e_c']);
@@ -258,7 +265,7 @@ test.describe('the Layers panel', () => {
     await select(page, ['e_a', 'e_b']);
     await page.getByTestId('group').click();
     const [groupId] = await selected(page);
-    await expect(rows).toHaveText(['C', 'קבוצה', 'B', 'A']);
+    await expect(shownName(rows)).toHaveText(['C', 'קבוצה', 'B', 'A']);
     await expect(row(page, groupId!)).toHaveAttribute('aria-level', '1');
     await expect(row(page, 'e_b')).toHaveAttribute('aria-level', '2');
     // A child is picked on its own from the panel.
@@ -345,7 +352,7 @@ test.describe('the Layers panel', () => {
     await field.fill('כותרת ראשית');
     await expectOneStep(page, () => field.press('Enter'));
     expect((await elements(page))[0]!.name).toBe('כותרת ראשית');
-    await expect(row(page, 'e_a')).toHaveText('כותרת ראשית');
+    await expect(shownName(row(page, 'e_a'))).toHaveText('כותרת ראשית');
 
     await row(page, 'e_a').dblclick();
     await page.getByTestId('layer-name').fill('אחר');
@@ -358,7 +365,7 @@ test.describe('the Layers panel', () => {
     await page.getByTestId('layer-name').fill('');
     await page.getByTestId('layer-name').press('Enter');
     expect((await elements(page))[0]!.name).toBeUndefined();
-    await expect(row(page, 'e_a')).toHaveText('צורה');
+    await expect(shownName(row(page, 'e_a'))).toHaveText('צורה');
   });
 
   test('an empty slide says so', async ({ page }) => {
@@ -374,7 +381,7 @@ test('Delete in the Layers panel keeps the keyboard in the list, on the row that
 }) => {
   await page.getByRole('button', { name: 'שכבות', exact: true }).click();
   const rows = page.getByTestId('layers').getByRole('treeitem');
-  await expect(rows).toHaveText(['C', 'B', 'A']);
+  await expect(shownName(rows)).toHaveText(['C', 'B', 'A']);
   const row = (id: string) => page.locator(`[data-layer="${id}"]`);
 
   await row('e_c').click();
