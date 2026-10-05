@@ -44,4 +44,37 @@ describe('what a paragraph takes from its new placeholder', () => {
     // Without the deck's direction it counts as set by hand, as before.
     expect(followPatch(latin, { from: seat('start'), to: seat('center') })).toEqual({});
   });
+
+  it('lands on the side the new seat means when it comes from a centred seat', () => {
+    // Centred, a line is centred whichever way it reads. On a `start` seat of a Hebrew deck the
+    // English line is `end`, as it is when a slide is made with it.
+    const latin = text('Steve Jobs, Apple', 'center');
+    expect(aligned(followPatch(latin, { from: seat('center'), to: seat('start') }, 'rtl'))).toBe(
+      'end',
+    );
+    expect(aligned(followPatch(latin, { from: seat('center'), to: seat('end') }, 'rtl'))).toBe(
+      'start',
+    );
+    // A line that reads with the deck takes the seat's alignment as it is.
+    const hebrew = text('עיצוב הוא איך שזה עובד', 'center');
+    expect(aligned(followPatch(hebrew, { from: seat('center'), to: seat('start') }, 'rtl'))).toBe(
+      'start',
+    );
+    // In an English deck it is the Hebrew line that is turned.
+    expect(aligned(followPatch(hebrew, { from: seat('center'), to: seat('start') }, 'ltr'))).toBe(
+      'end',
+    );
+    expect(aligned(followPatch(latin, { from: seat('center'), to: seat('start') }, 'ltr'))).toBe(
+      'start',
+    );
+  });
+
+  it('there and back through a centred seat gives a turned paragraph its alignment back', () => {
+    const latin = text('I', 'end');
+    const there = followPatch(latin, { from: seat('start'), to: seat('center') }, 'rtl');
+    expect(aligned(there)).toBe('center');
+    const centred = { ...latin, content: there.content as (typeof latin)['content'] };
+    const back = followPatch(centred, { from: seat('center'), to: seat('start') }, 'rtl');
+    expect(aligned(back)).toBe('end');
+  });
 });

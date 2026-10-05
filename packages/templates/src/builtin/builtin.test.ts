@@ -1,8 +1,10 @@
-import { Archetype } from '@slidr/model';
+import { Archetype, CommandBus } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
+import { applyTemplate } from '../deck';
+import { equalJson } from '../json';
 import { Template } from '../template';
 import { contractGaps } from './contract';
-import { builtInSamples, builtInTemplates, builtInThemes } from './index';
+import { builtInSamples, builtInTemplates, builtInThemes, sampleDeck } from './index';
 
 const templates = builtInTemplates();
 const DRAWN = Archetype.options.filter((archetype) => archetype !== 'blank');
@@ -50,6 +52,33 @@ describe.each(templates.map((template) => [template.theme.id, template] as const
         expect(template.layouts.filter((layout) => !shown.has(layout.id))).toEqual([]);
       }
     });
+  },
+);
+
+it(
+  'a deck that goes to another template and back is the deck it was: every pair, in both languages',
+  { timeout: 120_000 },
+  () => {
+    // The promise of ADR-023, over the whole library: 90 ordered pairs, Hebrew and English.
+    const broken: string[] = [];
+    for (const from of templates) {
+      for (const language of [
+        { lang: 'he', dir: 'rtl' },
+        { lang: 'en', dir: 'ltr' },
+      ] as const) {
+        const start = sampleDeck(from, builtInSamples[from.theme.id]![language.lang], language);
+        for (const to of templates) {
+          if (to === from) continue;
+          const bus = new CommandBus(start);
+          bus.batch(applyTemplate(bus.deck, to));
+          bus.batch(applyTemplate(bus.deck, from));
+          if (!equalJson(bus.deck, start)) {
+            broken.push(`${from.theme.id} -> ${to.theme.id} -> ${from.theme.id}, ${language.lang}`);
+          }
+        }
+      }
+    }
+    expect(broken).toEqual([]);
   },
 );
 

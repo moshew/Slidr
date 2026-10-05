@@ -104,6 +104,14 @@ export function movesOf(slide: Slide, from: Layout, to: Layout): Map<string, Mov
  * was turned when it was seated (`seatAlign`: an English line in a Hebrew deck is `end` on a
  * `start` placeholder), so it is the old placeholder's, and it takes the new one's turned the
  * same way.
+ *
+ * A centred seat does not say which way a paragraph was seated: turned and plain are one word
+ * there. A paragraph that comes from one goes to the side the new placeholder means, as it would
+ * if a slide were made with it: an English name under a centred quote goes to the right of a
+ * Hebrew deck, with the lines around it. So a paragraph that was seated on the layout's side
+ * gets its alignment back when a switch takes it through a centred seat and back. One that
+ * read against the deck with the placeholder's alignment as it is (a line typed into the
+ * placeholder, which stands on the far side) comes back on the layout's side.
  */
 export function followPatch(
   element: Element,
@@ -122,17 +130,15 @@ export function followPatch(
   let changed = false;
   const paragraphs = element.content.paragraphs.map((paragraph) => {
     const next = { ...paragraph };
+    let align = paragraph.align;
     if (paragraph.align === fromAlign) {
-      if (toAlign !== fromAlign) {
-        next.align = toAlign;
-        changed = true;
-      }
+      align = deckDir && fromAlign === 'center' ? seatAlign(toAlign, paragraph, deckDir) : toAlign;
     } else if (deckDir && paragraph.align === seatAlign(fromAlign, paragraph, deckDir)) {
-      const turned = seatAlign(toAlign, paragraph, deckDir);
-      if (turned !== paragraph.align) {
-        next.align = turned;
-        changed = true;
-      }
+      align = seatAlign(toAlign, paragraph, deckDir);
+    }
+    if (align !== paragraph.align) {
+      next.align = align;
+      changed = true;
     }
     if (paragraph.styleRef === from.styleRef && to.styleRef !== from.styleRef) {
       if (to.styleRef) next.styleRef = to.styleRef;

@@ -205,9 +205,18 @@ describe('template tools over the template service', () => {
     expect(bus.deck.slides[0]!.layoutId).toBe('l_night_hero');
     expect(bus.undoStack).toHaveLength(1);
 
-    // There and back is the deck that was; one undo is the deck that was, too.
+    // There and back is the deck that was, but for one line. The sample of `paper` is English,
+    // and in this Hebrew deck each of its lines has the alignment of its seat as it is: the far
+    // side of the box. The quote, which `night` centres, comes back on the side its seat means.
     await ok(call('template_apply', { templateId: 'test_paper' }));
-    expect(bus.deck).toEqual(deck);
+    const back = structuredClone(deck);
+    for (const element of back.slides.flatMap((slide) => slide.elements)) {
+      if (element.type === 'text' && plainText(element.content) === 'It just works.') {
+        element.content.paragraphs[0]!.align = 'end';
+      }
+    }
+    expect(bus.deck).toEqual(back);
+    expect(bus.deck).not.toEqual(deck);
     expect(bus.undoStack).toHaveLength(1);
     bus.undo();
     expect(bus.deck).toEqual(deck);

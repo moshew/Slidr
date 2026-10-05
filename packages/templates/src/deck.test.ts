@@ -11,10 +11,12 @@ import {
 } from '@slidr/model';
 import { hebrewDeck } from '@slidr/model/fixtures';
 import { describe, expect, it } from 'vitest';
+import { seatAlign } from './align';
 import { applyTemplate, changeDirection, deckFromTemplate } from './deck';
 import { nightTemplate, paperTemplate } from './fixtures';
+import { copyJson } from './json';
 import { mirrorLayout } from './mirror';
-import { matchLayout } from './relayout';
+import { matchLayout, seatsOf } from './relayout';
 import { layoutsFor } from './template';
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -27,6 +29,20 @@ function run(deck: Deck, commands: Command[]): CommandBus {
   const bus = new CommandBus(deck, { validate: true });
   bus.batch(commands);
   return bus;
+}
+
+/** A deck with the paragraphs that say one of `texts` aligned another way. */
+function aligned(deck: Deck, texts: readonly string[], align: 'start' | 'end'): Deck {
+  const copy = copyJson(deck);
+  for (const slide of copy.slides) {
+    for (const element of slide.elements) {
+      if (element.type !== 'text') continue;
+      for (const paragraph of element.content.paragraphs) {
+        if (texts.includes(paragraph.runs.map((run) => run.text).join(''))) paragraph.align = align;
+      }
+    }
+  }
+  return copy;
 }
 
 const slideOf = (deck: Deck, layoutId: string) => deck.slides.find((s) => s.layoutId === layoutId)!;
@@ -192,7 +208,11 @@ describe('applyTemplate', () => {
       const there = run(deck, applyTemplate(deck, night)).deck;
       expect(there).not.toEqual(deck);
       const back = run(there, applyTemplate(there, paperTemplate())).deck;
-      expect(back).toEqual(deck);
+      // A sample in a deck of the other direction is lines that nobody seated: each reads against
+      // the deck with the alignment of its placeholder as it is, which is the far side of its
+      // box. Such a line that the other template centres comes back from the centred seat on
+      // the side its placeholder means; all else is the deck it was. Here: the quote.
+      expect(back).toEqual(aligned(deck, lang === 'he' ? ['It just works.'] : [], 'end'));
 
       // And the other way round, from the template drawn right-to-left.
       const dark = deckFromTemplate(night, { lang, sample: true });
@@ -202,7 +222,36 @@ describe('applyTemplate', () => {
         'l_night_table',
         'l_night_closing',
       ]);
-      expect(run(light, applyTemplate(light, night)).deck).toEqual(dark);
+      // `paper` centres the section's title, the big number and its caption.
+      const centred = lang === 'en' ? ['תוצאות', '87%', 'מהלקוחות חידשו'] : [];
+      expect(run(light, applyTemplate(light, night)).deck).toEqual(aligned(dark, centred, 'end'));
+    }
+  });
+
+  it('gives a line seated on the side of its layout the alignment it had, through a centred seat', () => {
+    // The same decks, with every line that reads against the deck seated as a slide made with
+    // it would seat it (`createSlide`): turned to its own end on a `start` placeholder.
+    const seated = (deck: Deck): Deck => {
+      const copy = copyJson(deck);
+      for (const slide of copy.slides) {
+        const layout = copy.layouts.find((l) => l.id === slide.layoutId)!;
+        for (const [id, { placeholder }] of seatsOf(slide.elements, layout)) {
+          const element = slide.elements.find((e) => e.id === id)!;
+          if (element.type !== 'text') continue;
+          for (const paragraph of element.content.paragraphs) {
+            paragraph.align = seatAlign(placeholder.align ?? 'start', paragraph, copy.meta.dir);
+          }
+        }
+      }
+      return copy;
+    };
+    for (const [from, to, lang] of [
+      [paperTemplate(), nightTemplate(), 'he'],
+      [nightTemplate(), paperTemplate(), 'en'],
+    ] as const) {
+      const deck = seated(deckFromTemplate(from, { lang, sample: true }));
+      const there = run(deck, applyTemplate(deck, to)).deck;
+      expect(run(there, applyTemplate(there, from)).deck).toEqual(deck);
     }
   });
 
