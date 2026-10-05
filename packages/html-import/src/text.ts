@@ -143,7 +143,7 @@ function selectorsOfFirstParts(root: Document | ShadowRoot): string[] {
 const firstTexts = new WeakMap<Element, Text | null>();
 
 /** The first text an element shows, in the order of the tree. */
-function firstText(el: Element): Text | null {
+export function firstText(el: Element): Text | null {
   const known = firstTexts.get(el);
   if (known !== undefined) return known;
   let found: Text | null = null;
@@ -768,21 +768,23 @@ function roman(n: number): string {
 
 /** The marker text of a counter style the model can show, e.g. "3." for `decimal`. */
 function counterText(type: string, n: number): string | undefined {
+  // Letters and Roman numerals count from one; below that the browser writes the number.
+  const counted = n >= 1;
   switch (type) {
     case 'decimal':
       return `${n}.`;
     case 'decimal-leading-zero':
-      return `${String(n).padStart(2, '0')}.`;
+      return `${n < 0 ? '-' : ''}${String(Math.abs(n)).padStart(2, '0')}.`;
     case 'lower-alpha':
     case 'lower-latin':
-      return `${alphabetic(n, 97)}.`;
+      return counted ? `${alphabetic(n, 97)}.` : `${n}.`;
     case 'upper-alpha':
     case 'upper-latin':
-      return `${alphabetic(n, 65)}.`;
+      return counted ? `${alphabetic(n, 65)}.` : `${n}.`;
     case 'lower-roman':
-      return `${roman(n)}.`;
+      return counted && n < 4000 ? `${roman(n)}.` : `${n}.`;
     case 'upper-roman':
-      return `${roman(n).toUpperCase()}.`;
+      return counted && n < 4000 ? `${roman(n).toUpperCase()}.` : `${n}.`;
     default:
       return undefined;
   }
@@ -791,27 +793,51 @@ function counterText(type: string, n: number): string | undefined {
 /**
  * The list marker of an element the browser lays out as a list item: `undefined` when it has
  * none, `unsupported` when the model cannot show it (an image, a counter style it does not
- * know).
+ * know, a marker the page built or dressed in a way a marker of the model is not).
+ *
+ * Nothing compares a marker with the source's: the renderer draws its own, and the strip it
+ * hangs in is left out of the comparison (ADR-017). So a marker is written only from what the
+ * browser says of it, and what it does not say plainly is not guessed.
  */
 export function readListMarker(
   el: Element,
   cs: CSSStyleDeclaration,
   ctx: TextTheme,
 ): ListInfo | 'unsupported' | undefined {
-  if (cs.display !== 'list-item' || cs.listStyleType === 'none') {
-    return cs.display === 'list-item' && cs.listStyleImage !== 'none' ? 'unsupported' : undefined;
+  if (cs.display !== 'list-item') return undefined;
+  const marker = styleOf(el, '::marker');
+  // The marker's own text, when the page wrote one (`li::marker { content: "→ " }`).
+  let written: string | undefined;
+  if (marker.content === 'none') return undefined;
+  if (marker.content && marker.content !== 'normal') {
+    const literal = /^"((?:[^"\\]|\\.)*)"$/.exec(marker.content);
+    // A counter, a picture, several pieces: put together by rules the model has no word for.
+    if (!literal) return 'unsupported';
+    written = literal[1]!.replace(/\\(.)/g, '$1').trim();
+    if (!written) return undefined;
+  } else if (cs.listStyleImage !== 'none') return 'unsupported';
+  else if (cs.listStyleType === 'none') return undefined;
+  // The renderer draws a marker in the look of the text it hangs beside. One the page gave a
+  // size, a weight or a face of its own is one it cannot draw.
+  if (
+    marker.fontSize !== cs.fontSize ||
+    marker.fontWeight !== cs.fontWeight ||
+    marker.fontStyle !== cs.fontStyle ||
+    marker.fontFamily !== cs.fontFamily
+  ) {
+    return 'unsupported';
   }
-  if (cs.listStyleImage !== 'none') return 'unsupported';
   let level = 0;
   for (let p = composedParent(el); p; p = composedParent(p)) {
     if (styleOf(p).display === 'list-item') level++;
   }
   level = Math.min(level, 8);
-  const markerColor = ctx.color(styleOf(el, '::marker').color, el, 'color', '::marker');
+  const markerColor = ctx.color(marker.color, el, 'color', '::marker');
   const color =
     JSON.stringify(markerColor) === JSON.stringify(ctx.color(cs.color, el, 'color'))
       ? {}
       : { color: markerColor };
+  if (written) return { kind: 'bullet', level, glyph: written, ...color };
   const type = cs.listStyleType;
   const bullet = BULLETS[type];
   if (bullet) {
@@ -827,22 +853,71 @@ export function readListMarker(
     const glyph = literal[1]!.trim();
     return glyph ? { kind: 'bullet', level, glyph, ...color } : undefined;
   }
-  const text = counterText(type, ordinalOf(el));
+  const ordinal = ordinalOf(el);
+  const text = ordinal === undefined ? undefined : counterText(type, ordinal);
   // Each item is its own text box, so its number is written out rather than counted.
   return text ? { kind: 'number', level, glyph: text, ...color } : 'unsupported';
 }
 
-/** The number of a list item among its siblings, honouring `start` and `value`. */
-function ordinalOf(el: Element): number {
+/** Whether the page resets the count of the list items in an element itself. */
+export function resetsListCount(cs: CSSStyleDeclaration): boolean {
+  return listItemCounter(cs.counterReset, 0) !== undefined;
+}
+
+/**
+ * What a computed `counter-reset`, `counter-set` or `counter-increment` says about the
+ * counter of list items: its number, `undefined` when it does not name the counter, and
+ * `unknown` when it names it in a way that is not a plain number (`reversed(list-item)`).
+ */
+function listItemCounter(value: string, unnamed: number): number | 'unknown' | undefined {
+  if (!value || value === 'none') return undefined;
+  if (/reversed\(\s*list-item\s*\)/.test(value)) return 'unknown';
+  const words = value.trim().split(/\s+/);
+  const at = words.indexOf('list-item');
+  if (at < 0) return undefined;
+  const next = words[at + 1];
+  if (next === undefined || !/^[+-]?\d+$/.test(next)) return unnamed;
+  return Number(next);
+}
+
+const wholeNumber = (el: Element, name: string): number | undefined => {
+  const value = el.getAttribute(name);
+  return value !== null && /^\s*[+-]?\d+\s*$/.test(value) ? Number(value) : undefined;
+};
+
+/**
+ * The number of a list item, as the browser counts it: from where the list starts (`start`),
+ * by the step of each item before it (one, minus one in a `reversed` list, or its own
+ * `counter-increment`), through every number an item sets (`value`, `counter-set`, the
+ * second before the first). Measured against what the browser draws, item by item.
+ *
+ * `undefined` when the page counts in a way this does not follow: a `counter-reset` of the
+ * list's own counter, on the list or on an item. The browser this was measured in draws its
+ * numbers as if the list's reset were not there, and the standard says otherwise; a number
+ * is content, so neither is written down, and the item keeps its markup.
+ */
+export function ordinalOf(el: Element): number | undefined {
   const parent = composedParent(el);
   if (!parent) return 1;
-  const start = parent.getAttribute('start');
-  let n = (start !== null && Number.isFinite(Number(start)) ? Number(start) : 1) - 1;
-  for (const sibling of composedChildNodes(parent)) {
-    if (!isElement(sibling) || styleOf(sibling).display !== 'list-item') continue;
-    const value = sibling.getAttribute('value');
-    n = value !== null && Number.isFinite(Number(value)) ? Number(value) : n + 1;
-    if (sibling === el) break;
+  const items = composedChildNodes(parent).filter(
+    (node): node is Element => isElement(node) && styleOf(node).display === 'list-item',
+  );
+  const reversed = parent.localName === 'ol' && parent.hasAttribute('reversed');
+  const step = reversed ? -1 : 1;
+  if (resetsListCount(styleOf(parent))) return undefined;
+  const start = wholeNumber(parent, 'start');
+  // Where the count stands before the first item. A reversed list without a start counts
+  // down from the number of its items.
+  let n = start !== undefined ? start - step : reversed ? items.length + 1 : 0;
+  for (const item of items) {
+    const style = styleOf(item);
+    const increment = listItemCounter(style.counterIncrement, 1);
+    const set = listItemCounter(style.getPropertyValue('counter-set'), 0);
+    // An item that starts a count of its own inside itself is not one of this row.
+    const inner = listItemCounter(style.counterReset, 0);
+    if (increment === 'unknown' || set === 'unknown' || inner !== undefined) return undefined;
+    n = set ?? wholeNumber(item, 'value') ?? n + (increment ?? step);
+    if (item === el) return n;
   }
-  return n;
+  return undefined;
 }

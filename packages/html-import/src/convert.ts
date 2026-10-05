@@ -19,6 +19,7 @@ import {
   type Element as ModelElement,
   type Fill,
   type Frame,
+  type ListInfo,
   type Shadow,
   type Stroke,
 } from '@slidr/model';
@@ -48,6 +49,7 @@ import {
   composedParent,
   contentRect,
   isElement,
+  isInside,
   isSvg,
   isText,
   linkAround,
@@ -67,12 +69,14 @@ import {
 import { readTable } from './table';
 import {
   firstPartStyled,
+  firstText,
   hasAnyText,
   hasOwnText,
   isPureInline,
   lineHeightPx,
   readListMarker,
   readTextBlock,
+  resetsListCount,
   type TextTheme,
 } from './text';
 
@@ -204,6 +208,25 @@ interface Inherited {
   role?: PlaceholderRole;
   /** The part of the page the boxes that clip their overflow leave visible. */
   clip?: Edges;
+  /** The marker of a list item above that waits for the text of the item's first line. */
+  marker?: Hanging;
+}
+
+/**
+ * The marker of a list item that is not a block of text itself (it holds a nested list, or
+ * its text is in a paragraph of its own). The browser hangs it beside the item's first line,
+ * so the text that holds that line draws it, when that line starts where the item's content
+ * does. Nothing compares a marker with the source's (the renderer draws its own), so one that
+ * finds no such text is not guessed at: the item stays html.
+ */
+interface Hanging {
+  list: ListInfo;
+  /** The first text the item shows. */
+  first: Text | null;
+  /** Where the item's content starts on the side the marker hangs on, in viewport px. */
+  start: number;
+  rtl: boolean;
+  taken: boolean;
 }
 
 interface Edges {
@@ -250,6 +273,12 @@ function intersects(r: DOMRect, bounds: DOMRect): boolean {
 
 function toRect(r: { left: number; top: number; width: number; height: number }): Rect {
   return { x: r.left, y: r.top, w: r.width, h: r.height };
+}
+
+/** Whether a list item shows a number or a letter, which depends on where it stands. */
+function readsAsNumbered(item: Element): boolean {
+  const type = styleOf(item).listStyleType;
+  return type !== 'none' && !/^(disc|circle|square|")/.test(type);
 }
 
 /** Counts the content under an element: text blocks, pictures and painted boxes. */
@@ -885,12 +914,26 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     cs: CSSStyleDeclaration,
     state: State,
     textNode?: Text,
+    hanging?: Hanging,
   ): Item | 'unsupported' | undefined => {
     const source = textNode ?? el;
     const lines = textLines(source);
     if (lines.length === 0) return undefined;
-    const marker = textNode ? undefined : readListMarker(el, cs, text);
+    let marker = textNode ? undefined : readListMarker(el, cs, text);
     if (marker === 'unsupported') return 'unsupported';
+    // The marker of an item above, when this is the text of its first line.
+    if (
+      !marker &&
+      hanging?.first &&
+      !hanging.taken &&
+      (textNode ? textNode === hanging.first : isInside(hanging.first, el))
+    ) {
+      const edge = hanging.rtl ? lines[0]!.right : lines[0]!.left;
+      if (Math.abs(edge - hanging.start) <= 1.5 * vl) {
+        marker = hanging.list;
+        hanging.taken = true;
+      }
+    }
     // A first letter or first line the page styles apart is a part of the text no run stands for.
     if (!text.lossy && firstPartStyled(el, source)) return 'unsupported';
     const effects = textNode
@@ -902,9 +945,15 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     const last = lines[lines.length - 1]!;
     const pitch =
       lines.length > 1 ? ((last.top - first.top) / (lines.length - 1) / vl) * kl : undefined;
-    const block = textNode
-      ? readTextBlock(wrapTextNode(textNode), el, cs, kl, pitch, undefined, text)
-      : readTextBlock(el, el, cs, kl, pitch, marker, text);
+    const block = readTextBlock(
+      textNode ? wrapTextNode(textNode) : el,
+      el,
+      cs,
+      kl,
+      pitch,
+      marker,
+      text,
+    );
     if ('unsupported' in block)
       return block.unsupported === 'no visible text' ? undefined : 'unsupported';
     // Text with a part in a direction of its own is text only as long as the guard can see
@@ -1193,9 +1242,24 @@ export function propose(root: Element, options: WalkOptions): Proposal {
             bottom: Math.min(box.bottom, inherited.clip.bottom),
           }
         : (box ?? inherited.clip);
+    // Set further down, for a list item that is not a block of text itself.
+    let hanging: Hanging | undefined;
     const down = () => {
+      const marker = hanging ?? inherited.marker;
       for (const child of composedChildren(el)) {
-        walk(child, { ...inherited, opacity, z, anim, role, ...(clip ? { clip } : {}) }, false);
+        walk(
+          child,
+          {
+            ...inherited,
+            opacity,
+            z,
+            anim,
+            role,
+            ...(clip ? { clip } : {}),
+            ...(marker ? { marker } : {}),
+          },
+          false,
+        );
       }
     };
     const leaf = (item: Item | undefined): boolean => {
@@ -1282,6 +1346,15 @@ export function propose(root: Element, options: WalkOptions): Proposal {
         htmlFor(el, true, 'content clipped by its box', own);
         return;
       }
+      // A list the page counts in a way of its own keeps its numbers only as a whole: its
+      // items are numbered by the browser, by rules a number written beside each cannot follow.
+      if (
+        resetsListCount(cs) &&
+        children.some((c) => styleOf(c).display === 'list-item' && readsAsNumbered(c))
+      ) {
+        htmlFor(el, true, 'a list whose count the page resets', own);
+        return;
+      }
       // A table is what lays its children out as rows. An element with another `display` whose
       // children are rows (a `table` set to `block` so that it can scroll) gets a table box from
       // the browser, without a name, and is read the same way.
@@ -1309,6 +1382,30 @@ export function propose(root: Element, options: WalkOptions): Proposal {
           );
         } else htmlFor(el, true, 'a table the model cannot hold', own);
         return;
+      }
+    }
+
+    // What this element has put into the proposal so far, should it turn out to need its own
+    // markup after all.
+    const mark = { items: items.length, pending: proposal.pending.length };
+    const whole = (reason: string) => {
+      items.length = mark.items;
+      proposal.pending.length = mark.pending;
+      htmlFor(el, true, reason, own);
+    };
+    if (!isRoot && !textBlock && !boxless && cs.display === 'list-item') {
+      const list = readListMarker(el, cs, text);
+      if (list === 'unsupported') return whole('a list marker the model cannot show');
+      if (list) {
+        const content = contentRect(el, cs, vl);
+        const rtl = cs.direction === 'rtl';
+        hanging = {
+          list,
+          first: firstText(el),
+          start: rtl ? content.left + content.width : content.left,
+          rtl,
+          taken: false,
+        };
       }
     }
 
@@ -1391,7 +1488,7 @@ export function propose(root: Element, options: WalkOptions): Proposal {
 
     pseudoShape('::before');
     if (textBlock) {
-      const item = textFor(el, cs, inner);
+      const item = textFor(el, cs, inner, undefined, inherited.marker);
       if (item === 'unsupported') {
         // What was emitted above stands for the node's paint; the text needs the whole node.
         for (let i = items.length - 1; i >= 0; i--) if (items[i]!.node === el) items.splice(i, 1);
@@ -1407,11 +1504,17 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     if (hasOwnText(el)) {
       for (const child of composedChildNodes(el)) {
         if (!isText(child) || child.data.trim() === '') continue;
-        const item = textFor(el, cs, inner, child);
+        const item = textFor(el, cs, inner, child, hanging ?? inherited.marker);
+        // Text the model cannot hold is not left out: it is the element's to show, whole.
+        if (item === 'unsupported' && !isRoot) return whole('text the model cannot hold');
         if (item && item !== 'unsupported') item.element.opacity = round(opacity);
       }
     }
     down();
+    // A marker nothing took would be gone without a word: the item shows it itself.
+    if (hanging && !hanging.taken) {
+      return whole('a list item whose marker has no first line of text to hang beside');
+    }
     pseudoShape('::after');
   };
 

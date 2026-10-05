@@ -474,11 +474,13 @@ ${extra}
     const markups = result.slide.elements.map((element) =>
       element.type === 'html' ? element.markup : '',
     );
-    const STAND_IN = '<div class="card" style="display:none !important"></div>';
-    for (const markup of markups) expect(markup.split(STAND_IN)).toHaveLength(3);
+    // An empty card that is not seen and takes no room.
+    const STAND_IN = /<div class="card" style="[^"]*visibility:\s*hidden[^"]*"><\/div>/g;
+    for (const markup of markups) expect(markup.match(STAND_IN)).toHaveLength(2);
     // The second card stands between one stand-in and another.
-    expect(markups[1]!.indexOf(STAND_IN)).toBeLessThan(markups[1]!.indexOf('Growth'));
-    expect(markups[1]!.lastIndexOf(STAND_IN)).toBeGreaterThan(markups[1]!.indexOf('Growth'));
+    const [before, after] = Array.from(markups[1]!.matchAll(STAND_IN), (found) => found.index);
+    expect(before).toBeLessThan(markups[1]!.indexOf('Growth'));
+    expect(after).toBeGreaterThan(markups[1]!.indexOf('Growth'));
   });
 
   it('keeps a colour given with a sibling combinator', async () => {
@@ -528,12 +530,28 @@ ${extra}
     expect(result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
   });
 
-  it('writes no stand-in where nothing is styled by its place', async () => {
+  it('writes no stand-in where nothing is styled by its place, or counted', async () => {
     const { result } = await look(cards(''), 'en', TITLES);
     expect(types(result)).toEqual(['html', 'html', 'html']);
     for (const element of result.slide.elements) {
-      expect(element.type === 'html' && element.markup).not.toContain('display:none');
+      expect(element.type === 'html' && element.markup).not.toMatch(/visibility:\s*hidden/);
     }
+  });
+
+  it('keeps the number a counter of the page gives it', async () => {
+    // Cards the page numbers itself: each steps a counter, and a pseudo-element writes it.
+    const looked = await look(
+      cards(
+        '.row{counter-reset:card} .card{counter-increment:card} .card h3::before{content:counter(card) ". ";color:#c62828}',
+      ),
+      'en',
+      ['Growth'],
+    );
+    expect(types(looked.result)).toEqual(['html', 'html', 'html']);
+    expect(looked.result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
+    // The figure before the second title, red: a "2." in the source and on the slide.
+    const title = looked.source.found.Growth!.box;
+    expectSameInk(looked, { x: title.x - 60, y: title.y, w: 60, h: title.h }, red, 100);
   });
 });
 
@@ -800,5 +818,155 @@ ${head ? '</tbody>' : ''}</table>`;
     expect(types(looked.result)).toEqual(['table']);
     expect(looked.result.editability).toBe(1);
     expect(rules(looked.converted, DOWN)).toBe(rules(looked.source, DOWN));
+  });
+});
+
+describe('list items keep the markers the source drew', () => {
+  const notWhite: Tone = (r, g, b) => luminance(r, g, b) < 235;
+  const LIST =
+    'position:absolute;left:200px;top:200px;width:1000px;margin:0;padding-left:60px;font:400 36px/1.5 Arial;color:#111';
+  /** The marker each list paragraph of the slide was given, as the renderer will write it. */
+  const glyphs = (result: ConversionResult) =>
+    texts(result).map((text) => text.content.paragraphs[0]!.list?.glyph);
+
+  it('counts down in a reversed list', async () => {
+    const { result, converted } = await look(
+      `<ol reversed style="${LIST}"><li>Bronze medal</li><li>Silver medal</li><li>Gold medal</li></ol>`,
+      'en',
+    );
+    expect(types(result)).toEqual(['text', 'text', 'text']);
+    expect(converted.markers).toEqual(['3.', '2.', '1.']);
+    const from = await look(
+      `<ol reversed start="10" style="${LIST}"><li>Tenth</li><li>Ninth</li></ol>`,
+      'en',
+    );
+    expect(from.converted.markers).toEqual(['10.', '9.']);
+  });
+
+  /** The strip a number hangs in, left of the text of an item. */
+  const strip = (seen: Seen, needle: string): Box => {
+    const text = seen.found[needle]!.box;
+    return { x: text.x - 80, y: text.y, w: 76, h: text.h };
+  };
+
+  it('counts from where the list starts, by the steps its items set', async () => {
+    const ITEMS = ['Five', 'Nine', 'Ten', 'Thirteen', 'Twenty'];
+    const steps = await look(
+      `<ol start="5" style="${LIST}"><li>Five</li><li value="9">Nine</li><li>Ten</li><li style="counter-increment:list-item 3">Thirteen</li><li style="counter-set:list-item 20">Twenty</li></ol>`,
+      'en',
+      ITEMS,
+    );
+    expect(steps.converted.markers).toEqual(['5.', '9.', '10.', '13.', '20.']);
+    // Not only what was written down: the number the browser drew beside each item has the
+    // ink of the number the slide draws there.
+    for (const item of ITEMS) expectSameInk(steps, strip(steps.source, item), dark, 40);
+    // Letters count from one; a list that starts below it shows the number, as the browser does.
+    const letters = await look(
+      `<ol start="0" style="${LIST};list-style-type:lower-alpha"><li>Zero</li><li>One</li></ol>`,
+      'en',
+    );
+    expect(letters.converted.markers).toEqual(['0.', 'a.']);
+  });
+
+  it('does not guess the numbers of a list whose own counter the page resets', async () => {
+    // The standard starts this list at 5; the browser this runs in draws 1, 2, 3. Whichever
+    // it is, the list stays whole, numbered by the browser where it is shown.
+    const ITEMS = ['First step', 'Second step', 'Third step'];
+    const reset = await look(
+      `<ol style="${LIST};counter-reset:list-item 4"><li>First step</li><li>Second step</li><li>Third step</li></ol>`,
+      'en',
+      ITEMS,
+    );
+    expect(types(reset.result)).toEqual(['html']);
+    expect(reset.result.notes.join('\n')).toMatch(/a list whose count the page resets/);
+    expect(reset.result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
+    for (const item of ITEMS) expectSameInk(reset, strip(reset.source, item), dark, 40);
+    // Bullets do not depend on a count: such a list is read item by item as any other.
+    const bullets = await look(
+      `<ul style="${LIST};counter-reset:list-item 4"><li>First point</li><li>Second point</li></ul>`,
+      'en',
+    );
+    expect(types(bullets.result)).toEqual(['text', 'text']);
+  });
+
+  it('writes the marker the page wrote itself, in its colour', async () => {
+    const { result, converted } = await look(
+      `<style>ul{${LIST}} li::marker{content:"→ ";color:#c00}</style><ul><li>First point of the plan</li><li>Second point of the plan</li><li>Third point of the plan</li></ul>`,
+      'en',
+    );
+    expect(types(result)).toEqual(['text', 'text', 'text']);
+    expect(converted.markers).toEqual(['→', '→', '→']);
+    expect(texts(result)[0]!.content.paragraphs[0]!.list).toMatchObject({
+      kind: 'bullet',
+      glyph: '→',
+      color: { value: '#cc0000' },
+    });
+  });
+
+  it('stays html where the page built the marker, or dressed it apart from its text', async () => {
+    const built = await look(
+      `<style>ol{${LIST}} li::marker{content:counter(list-item) ") "}</style><ol><li>First</li><li>Second</li></ol>`,
+      'en',
+    );
+    expect(types(built.result)).toEqual(['html', 'html']);
+    const dressed = await look(
+      `<style>ol{${LIST}} li::marker{font-weight:700;font-size:1.4em;color:#c62828}</style><ol><li>First</li><li>Second</li><li>Third</li></ol>`,
+      'en',
+      ['Second', 'Third'],
+    );
+    expect(types(dressed.result)).toEqual(['html', 'html', 'html']);
+    expect(dressed.result.notes.join('\n')).toMatch(/text the model cannot hold/);
+    // Each item stands alone in its own copy, and is still the second or the third of its
+    // list there: the number beside it is the source's, at once.
+    expect(dressed.result.guard).toMatchObject({ rounds: 1, fallbacks: [] });
+    for (const item of ['Second', 'Third']) {
+      const text = dressed.source.found[item]!.box;
+      expectSameInk(dressed, { x: text.x - 70, y: text.y - 8, w: 66, h: text.h + 16 }, red, 100);
+    }
+  });
+
+  it('keeps the bullet of an item that holds a nested list, in small text too', async () => {
+    const looked = await look(
+      `<style>ul{margin:0;padding-left:30px} .top{position:absolute;left:200px;top:200px;width:700px;font:400 16px/1.6 Arial;color:#111}</style><ul class="top"><li>Parent item with children<ul><li>Child one</li><li>Child two</li></ul></li><li>Second parent item</li></ul>`,
+      'en',
+      ['Parent item'],
+    );
+    // The item is not a block of text itself; its marker hangs beside its first line, which
+    // is the text before the nested list.
+    expect(types(looked.result)).toEqual(['text', 'text', 'text', 'text']);
+    expect(looked.result.editability).toBe(1);
+    expect(looked.converted.markers).toHaveLength(4);
+    const parent = texts(looked.result).find((text) =>
+      plainText(text.content).startsWith('Parent item'),
+    )!;
+    expect(parent.content.paragraphs[0]!.list).toMatchObject({ kind: 'bullet', level: 0 });
+    // Where the bullet of the first item hangs: left of its text.
+    const text = looked.source.found['Parent item']!.box;
+    const bullet = { x: text.x - 26, y: text.y, w: 22, h: text.h };
+    expect(ink(looked.source.picture, bullet, notWhite)).toBeGreaterThan(0);
+    expect(ink(looked.converted.picture, bullet, notWhite)).toBeGreaterThan(0);
+    expect(looked.converted.found['Parent item']!.box).toEqual(text);
+  });
+
+  it('hangs the number beside a paragraph that is the first line of its item', async () => {
+    const { result, converted } = await look(
+      `<ol style="${LIST}"><li><p style="margin:0">A step written as a paragraph</p><p style="margin:0;font-size:24px">And a note under it</p></li><li><p style="margin:0">The next step</p></li></ol>`,
+      'en',
+    );
+    expect(types(result)).toEqual(['text', 'text', 'text']);
+    expect(glyphs(result)).toEqual(['1.', undefined, '2.']);
+    expect(converted.markers).toEqual(['1.', '2.']);
+  });
+
+  it('keeps an item whole when its marker has no first line of text to hang beside', async () => {
+    const png = testImage(120, 80);
+    const { result } = await look(
+      `<ul style="${LIST}"><li><img src="${png}" style="display:block;width:120px;height:80px"></li><li><p style="margin:0;padding-left:80px">Text that starts away from the edge</p></li><li>A plain item</li></ul>`,
+      'en',
+    );
+    // A picture has no line to hang a bullet beside, and a paragraph pushed in from the edge
+    // is not where the browser hangs it: neither is guessed at.
+    expect(types(result)).toEqual(['html', 'html', 'text']);
+    expect(result.notes.join('\n')).toMatch(/a list item whose marker has no first line of text/);
   });
 });

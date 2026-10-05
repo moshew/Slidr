@@ -13,6 +13,7 @@
 import { ASSET_URL_SCHEME } from '@slidr/renderer';
 import { px } from './css';
 import { composedChildNodes, composedParent, isElement, isSvg, isText, styleOf } from './measure';
+import { ordinalOf } from './text';
 
 export type CopyStrategy = 'markup' | 'computed';
 
@@ -133,9 +134,31 @@ const NOT_AS_ITSELF = new Set([
 /** Attributes a stand-in leaves behind: what would load something, and its own look. */
 const NOT_ON_A_STAND_IN = new Set(['src', 'srcset', 'data', 'poster', 'style', 'autoplay']);
 
+const COUNTERS = ['counter-increment', 'counter-reset', 'counter-set'] as const;
+
+/** Whether an element takes part in a count the page keeps itself. */
+function counted(cs: CSSStyleDeclaration): boolean {
+  return COUNTERS.some((property) => {
+    const value = cs.getPropertyValue(property);
+    return value !== '' && value !== 'none';
+  });
+}
+
 /**
- * An empty, undrawn element in the place of a sibling: its tag, its classes and its other
- * attributes, which is all a selector can ask of a sibling it does not descend into.
+ * What keeps a stand-in out of sight and out of the layout while it still counts: a box that is
+ * not generated at all (`display: none`) counts for no list and no counter, and the third item
+ * of a list would be its first.
+ */
+const OUT_OF_SIGHT =
+  'position:absolute !important;visibility:hidden !important;width:0 !important;height:0 !important;' +
+  'min-width:0 !important;min-height:0 !important;margin:0 !important;padding:0 !important;' +
+  'border:0 !important;overflow:hidden !important;pointer-events:none !important';
+
+/**
+ * An empty, unseen element in the place of a sibling: its tag, its classes and its other
+ * attributes, which is all a selector can ask of a sibling it does not descend into, and its
+ * part in a count (it is a list item where the sibling is one, and steps the counters the
+ * sibling steps).
  */
 function standIn(sibling: Element, out: Document, shells: Map<string, string>): Element {
   const name = sibling.localName.toLowerCase();
@@ -154,7 +177,15 @@ function standIn(sibling: Element, out: Document, shells: Map<string, string>): 
       // A name this document does not take (an attribute of another namespace).
     }
   }
-  made.setAttribute('style', 'display:none !important');
+  const cs = styleOf(sibling);
+  if (cs.display === 'none') made.setAttribute('style', 'display:none !important');
+  else {
+    const counters = COUNTERS.map((property) => [property, cs.getPropertyValue(property)])
+      .filter(([, value]) => value && value !== 'none')
+      .map(([property, value]) => `;${property}:${value} !important`)
+      .join('');
+    made.setAttribute('style', `display:${cs.display} !important;${OUT_OF_SIGHT}${counters}`);
+  }
   return made;
 }
 
@@ -615,6 +646,14 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
   cleanClone(root);
   if (!request.deep) root.replaceChildren();
 
+  // A list item alone in its copy is no longer the third of its list: the list around it is
+  // an empty shell, which starts no count (and the browser goes on counting from whatever list
+  // came before on the page). It carries its number itself.
+  const ordinal = cs.display === 'list-item' ? ordinalOf(el) : undefined;
+  if (ordinal !== undefined) {
+    (root as HTMLElement).style.setProperty('counter-set', `list-item ${ordinal}`, 'important');
+  }
+
   // The root fills the box the model frame gives the copy; its own transform stays on it.
   const pinned = root as HTMLElement;
   pinned.style.cssText +=
@@ -625,9 +664,9 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
       : `;display:${cs.display}`);
 
   // Empty shells of the ancestors keep selectors matching and inherited values flowing. Where
-  // the page styles anything by its place among its siblings, each shell also holds empty
-  // stand-ins of the siblings, so that the element and its ancestors are still the second
-  // card, the last row, the one after a heading.
+  // the page styles anything by its place among its siblings, or counts them (a list, a
+  // counter), each shell also holds empty stand-ins of the siblings, so that the element and
+  // its ancestors are still the second card, the last row, the third item.
   let top: Element = root;
   const shells = new Map<string, string>();
   const placed = styledByPlace(doc);
@@ -641,7 +680,7 @@ async function copyByMarkup(el: Element, request: CopyRequest): Promise<HtmlCopy
       if (!attr.name.toLowerCase().startsWith('on')) shell.setAttribute(attr.name, attr.value);
     }
     shell.style.cssText += ';display:contents !important';
-    const siblings = placed ? Array.from(p.children) : [];
+    const siblings = placed || counted(styleOf(below)) ? Array.from(p.children) : [];
     const at = siblings.indexOf(below);
     const before = at < 0 ? [] : siblings.slice(Math.max(0, at - MAX_STAND_INS), at);
     const after = at < 0 ? [] : siblings.slice(at + 1, at + 1 + MAX_STAND_INS);
