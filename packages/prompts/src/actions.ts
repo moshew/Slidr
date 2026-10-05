@@ -54,6 +54,14 @@ export interface ActionDef {
 const ONE_EDIT =
   'The tool puts the result into the element, keeping its frame and crop, so place nothing yourself. An edit takes about a minute, and the call may come back as timed out while the image is still being made: do not call it a second time.';
 
+/**
+ * What the prompt of a new image is written from. The look is not the agent's to write: the tool
+ * adds the deck's image style and palette to every prompt (ADR-051), and a prompt that names
+ * them says them twice (ADR-069, finding 2).
+ */
+const PICTURE =
+  "Write the prompt from what the picture is there to show on this slide, and say only that: the app adds the deck's style and palette to every prompt itself.";
+
 const OPTIONS =
   'Then stop: the app previews an option on the slide when the user hovers it and applies the one they click, so do not apply one yourself.';
 
@@ -153,7 +161,7 @@ export const ACTIONS = define({
     scope: 'slide',
     needs: ['image_generate'],
     ask: (p) =>
-      `Add an image to this slide: one that carries its message, not decoration.${described(p, 'What the user wants to see')} Write the prompt from the slide's point, the deck's image style and its palette, generate it, and place it so that text and image do not compete, rearranging the slide if it needs it. Look at the slide when you are done.`,
+      `Add an image to this slide: one that carries its message, not decoration.${described(p, 'What the user wants to see')} ${PICTURE} Generate it, and place it so that text and image do not compete, rearranging the slide if it needs it. Look at the slide when you are done.`,
   },
   'slide.animate': {
     scope: 'slide',
@@ -237,7 +245,7 @@ export const ACTIONS = define({
     scope: 'object',
     needs: ['image_generate'],
     ask: (p) =>
-      `Generate ${count(p, 4)} alternatives for this image, in one image_generate call with that count and without an element id, at the aspect closest to the element's frame.${described(p, 'What the user wants to see')} Write the prompt from what the image is there to show on this slide, the deck's image style and its palette. The app shows each image to the user as it arrives, and replaces the element's image with the one they pick, keeping its frame and crop: so do not place one yourself. Images take about a minute each, and the call may come back as timed out while they are still being made. If it does, or if it fails some other way, do not call it again: what was started keeps arriving in the app, and a second call would make every image twice. Say in a line that the images are on their way. When the call returns the images, and the session can present options, show them with ui_present_options, kind "image", each with a label of two or three words.`,
+      `Generate ${count(p, 4)} alternatives for this image, in one image_generate call with that count and without an element id, at the aspect closest to the element's frame.${described(p, 'What the user wants to see')} ${PICTURE} The app shows each image to the user as it arrives, and replaces the element's image with the one they pick, keeping its frame and crop: so do not place one yourself. Images take about a minute each, and the call may come back as timed out while they are still being made. If it does, or if it fails some other way, do not call it again: what was started keeps arriving in the app, and a second call would make every image twice. Say in a line that the images are on their way. When the call returns the images, and the session can present options, show them with ui_present_options, kind "image", each with a label of two or three words.`,
   },
 
   /* ---------------------------------------------------------------- the object tool: editing an image (AIO-04) */
