@@ -1,4 +1,4 @@
-import { newId, type AssetMeta, type Element } from '@slidr/model';
+import { batchFitted, newId, type AssetMeta, type Element } from '@slidr/model';
 import { i18n } from '../i18n';
 import { getEditor, tell, type Editor } from '../shell';
 import { syncGrowHeights } from '../text/actions';
@@ -157,8 +157,17 @@ function removeSource(editor: Editor, clip: Clip): void {
       { label: label('history.cut') },
     );
   } else {
-    bus.dispatch(
-      { type: 'element.remove', slideId: clip.slideId, elementIds: clip.elements.map((e) => e.id) },
+    // A group that an element is cut out of is fitted to what stays in it, in the same undo
+    // step, as after Delete (ARR-01).
+    batchFitted(
+      bus,
+      [
+        {
+          type: 'element.remove',
+          slideId: clip.slideId,
+          elementIds: clip.elements.map((e) => e.id),
+        },
+      ],
       { label: label('history.cut') },
     );
   }

@@ -144,6 +144,29 @@ test('cut removes in one undo step, and the first paste lands where the elements
   expect(tree.slice(4).map((e) => e.frame.x)).toEqual([424, 924]);
 });
 
+test('cut out of a group leaves the group fitted to what stays in it, in the same undo step', async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.group',
+      slideId: editor.selection.getState().currentSlideId!,
+      elementIds: ['e_a', 'e_b', 'e_c'],
+      groupId: 'e_group',
+    });
+  });
+  const group = async () => (await elements(page)).find((e) => e.id === 'e_group')!;
+  expect((await group()).frame).toEqual({ x: 100, y: 100, w: 900, h: 800 });
+  // The far child leaves: the group is as large as the two that stay.
+  await select(page, ['e_c']);
+  await focusStage(page);
+  await expectOneStep(page, () => copy(page, 'cut'));
+  const left = await group();
+  expect(left.children!.map((child) => child.id)).toEqual(['e_a', 'e_b']);
+  expect(left.frame).toEqual({ x: 100, y: 100, w: 500, h: 300 });
+});
+
 test('paste into another deck, after the bus was reset to it', async ({ page }) => {
   await select(page, ['e_a', 'e_c']);
   await focusStage(page);
