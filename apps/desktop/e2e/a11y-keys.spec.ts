@@ -75,6 +75,10 @@ for (const lang of ['he', 'en'] as const) {
     await page.keyboard.press(on);
     expect(await slideIds(page)).toEqual([two, one, three, four]);
     expect(await undoSteps(page)).toBe(before + 1);
+    // The step is named in the language of the UI, as a drag's is (ADR-069, finding 10).
+    expect(await page.evaluate(() => window.slidr!.bus.undoStack.at(-1)?.label)).toBe(
+      lang === 'he' ? 'הזזת שקפים' : 'Move slides',
+    );
     // The moved slide stays the current one, for the next press.
     expect(await currentSlide(page)).toBe(one);
     await page.keyboard.press(on);
