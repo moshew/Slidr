@@ -26,6 +26,8 @@ import tableOnSlide from '../../e2e/aitools-scripts/table-on-slide.script.json';
 // The actions of a shape and of an icon (AIO-06).
 import iconActions from '../../e2e/aitools-scripts/icon-actions.script.json';
 import shapeActions from '../../e2e/aitools-scripts/shape-actions.script.json';
+// An image call that is refused, and the one that follows it, for the suite of the gallery.
+import imageRetry from '../../e2e/aitools-scripts/image-retry.script.json';
 import { createScriptedAgent, type Script, type ScriptedAgent } from './scriptedAgent';
 
 /** The first is the default, as in the Rust mock's list. */
@@ -49,6 +51,7 @@ const SCRIPTS: Record<string, Script> = {
   'table-on-slide': tableOnSlide,
   'shape-actions': shapeActions,
   'icon-actions': iconActions,
+  'image-retry': imageRetry,
 };
 
 export function pageAgent(speed: number): ScriptedAgent {

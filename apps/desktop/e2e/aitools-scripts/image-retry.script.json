@@ -1,0 +1,47 @@
+{
+  "description": "An object chat on an image element, in Hebrew, for the suite of the gallery, with its tool calls carried out (\"call\": true). The agent asks image_generate for ten images, which is more than the tool takes, so the call is refused before any job starts; it asks again for two, and a job runs. The gallery must show two cards, not ten (the bug hunt's ai-ui.md, finding 14). Hand-written; not one of the Rust mock's.",
+  "turns": [
+    [
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "images_1",
+        "name": "image_generate",
+        "source": "app",
+        "input": {
+          "prompt": "A calm harbour at dawn, wide composition",
+          "count": 10,
+          "aspect": "16:9"
+        },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "images_2",
+        "name": "image_generate",
+        "source": "app",
+        "input": {
+          "prompt": "A calm harbour at dawn, wide composition",
+          "count": 2,
+          "aspect": "16:9"
+        },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "שתי חלופות לתמונה מוכנות לבחירה." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 180,
+          "cacheReadTokens": 6100,
+          "cacheWriteTokens": 700
+        },
+        "costUsd": 0.0048,
+        "durationMs": 5200
+      }
+    ]
+  ]
+}

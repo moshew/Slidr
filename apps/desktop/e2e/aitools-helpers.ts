@@ -22,7 +22,9 @@ export type Script =
   | 'table-on-slide'
   // The actions of a shape and of an icon.
   | 'shape-actions'
-  | 'icon-actions';
+  | 'icon-actions'
+  // An image call that is refused, and the one that follows it.
+  | 'image-retry';
 
 export interface OpenOptions {
   script: Script;

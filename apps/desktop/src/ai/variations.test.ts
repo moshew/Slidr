@@ -409,6 +409,41 @@ describe('images as they are made', () => {
     expect(gallery.pick(id, 0, 'Pick')).toBe(true);
     expect(pictureOf(bus.deck)).toMatchObject({ assetId: SECOND });
   });
+
+  // The bug hunt's `ai-ui.md`, finding 14: the call was noted before the Deck API had looked at
+  // it, and its cards were handed to the job of the call after it.
+  it('are not expected of a call that returned without a job: it was refused, or failed first', () => {
+    const { gallery, sets } = setup();
+    // The agent asks for ten images, which is more than the tool takes: the call is refused,
+    // and returns. Then it asks for two, and a job runs.
+    const refused = gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 10 });
+    refused();
+    const made = gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 2 });
+    gallery.imageEvent('job-1', { type: 'started', index: 0 });
+    expect(sets()[0]!.cards).toHaveLength(2);
+    gallery.imageEvent('job-1', stored(0, SECOND));
+    gallery.imageEvent('job-1', stored(1, THIRD));
+    // A call that returns after its job took its cards changes nothing; nor does a second word.
+    made();
+    made();
+    expect(sets()[0]).toMatchObject({
+      live: false,
+      cards: [{ state: 'ready' }, { state: 'ready' }],
+    });
+    // So more images can be asked for: nothing is "still being made".
+    expect(gallery.refusal(OBJECT, 'image_generate', { prompt: 'more' })).toBeUndefined();
+
+    // Of two calls on their way, the one that returned empty-handed leaves the other its job.
+    const { gallery: other, sets: others } = setup();
+    const first = other.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 4 });
+    other.noteToolCall(OBJECT, 'image_generate', { prompt: 'y', count: 1 });
+    first();
+    other.imageEvent('job-2', stored(0, SECOND));
+    expect(others()[0]).toMatchObject({ live: false, cards: [{ asset: { id: SECOND } }] });
+    expect(others()[0]!.cards[0]!.asset?.lineage).toEqual({ prompt: 'y' });
+    // A call that announces no cards has nothing to take back.
+    expect(() => other.noteToolCall(OBJECT, 'text_set', {})()).not.toThrow();
+  });
 });
 
 describe('design options', () => {

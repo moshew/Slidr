@@ -111,8 +111,12 @@ export interface Gallery {
   store: StoreApi<GalleryState>;
   /** The Deck API's `options` service: what `ui_present_options` calls. */
   service: OptionsService;
-  /** A tool call of a session is about to run: an image call announces the cards to expect. */
-  noteToolCall: (scope: SessionScope, name: string, input: unknown) => void;
+  /**
+   * A tool call of a session is about to run: an image call announces the cards to expect.
+   * What it gives back is to be called once the tool call has returned, whatever it returned:
+   * a call that started no job by then (it was refused, or failed first) has no cards coming.
+   */
+  noteToolCall: (scope: SessionScope, name: string, input: unknown) => () => void;
   /**
    * Why a tool call should not run, written for the agent; undefined when it may. Images that
    * are still being made for an element are not asked for a second time: a call that timed out
@@ -152,6 +156,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** An image call waits this long for its job's first event before it is forgotten. */
 const EXPECT_MS = 10_000;
+
+/** What `noteToolCall` gives back for a call that announces no cards. */
+const NOTHING_EXPECTED = (): void => undefined;
 
 /**
  * The tool that sets each kind of element an option can change: an option is its arguments. A
@@ -540,18 +547,23 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
 
     noteToolCall(scope, name, input) {
       if (name === 'ui_present_options') presenting = scope.kind === 'slide' ? 'slide' : 'object';
-      if (name !== 'image_generate') return;
+      if (name !== 'image_generate') return NOTHING_EXPECTED;
       const args = isRecord(input) ? input : {};
       // With an element id the first image goes straight into the element: nothing to pick.
-      if (typeof args.elementId === 'string') return;
+      if (typeof args.elementId === 'string') return NOTHING_EXPECTED;
       const target = imageTarget(scope);
-      if (!target) return;
-      expected.push({
+      if (!target) return NOTHING_EXPECTED;
+      const call = {
         target,
         count: typeof args.count === 'number' && args.count >= 1 ? Math.floor(args.count) : 1,
         prompt: typeof args.prompt === 'string' ? args.prompt : '',
         at: Date.now(),
-      });
+      };
+      expected.push(call);
+      // The call is back. If no job took its cards, none will: the next job is another call's.
+      return () => {
+        expected = expected.filter((waiting) => waiting !== call);
+      };
     },
 
     refusal(scope, name, input) {
@@ -566,7 +578,8 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
       let job = jobs.get(jobId);
       if (!job) {
         // A job nobody has seen: it is the oldest image call still waiting for its job. A call
-        // that was refused before it started has no job, and is forgotten.
+        // that returned without one is gone from the list already (`noteToolCall`); one that
+        // neither returned nor started a job in all this time is given up on.
         expected = expected.filter((call) => Date.now() - call.at < EXPECT_MS);
         const call = expected.shift();
         if (!call) return;

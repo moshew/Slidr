@@ -212,6 +212,25 @@ test('image alternatives arrive one by one, and the pick keeps the frame and the
   expect(errors).toEqual([]);
 });
 
+test('an image call that was refused leaves no cards waiting for images nobody makes', async ({
+  page,
+}) => {
+  // The agent asks for ten images, the tool takes four at most; it asks again, for two.
+  await openApp(page, { script: 'image-retry', speed: 0.2 });
+  await addImage(page);
+  await openTool(page, 'ai.object');
+  await say(page, 'תן לי חלופות לתמונה');
+  await expect(chips(page).nth(0)).toHaveAttribute('data-state', 'failed');
+  await expect(chips(page).nth(1)).toHaveAttribute('data-state', 'ok');
+  // The cards are the two of the call that ran, both made: the bug hunt's `ai-ui.md`, finding
+  // 14, was ten cards, eight of them waiting for good under "making images · 2 of 10".
+  await expect(cards(page)).toHaveCount(2);
+  for (const card of await cards(page).all()) {
+    await expect(card).toHaveAttribute('data-state', 'ready');
+  }
+  await expect(gallery(page)).not.toContainText('יוצר תמונות');
+});
+
 /** Offers a set of text options for the title from the object tool, as `ui_present_options` would. */
 function offer(page: Page, prompt: string, texts: string[]): Promise<void> {
   return page.evaluate(

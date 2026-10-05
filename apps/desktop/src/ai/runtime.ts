@@ -171,9 +171,10 @@ function createAi(editor: Editor): AiRuntime {
     call: async (turn, name, input) => {
       const refusal = gallery.refusal(turn.scope, name, input);
       if (refusal) return { ok: false, error: { code: 'invalid_state', message: refusal } };
-      gallery.noteToolCall(turn.scope, name, input);
+      const returned = gallery.noteToolCall(turn.scope, name, input);
       const from = editor.bus.deck.meta.dir;
-      const result = await deckApi.call(turn, name, input);
+      // The gallery hears of the return too: a call that started no image job has no cards coming.
+      const result = await deckApi.call(turn, name, input).finally(returned);
       // The agent turns a deck by setting its direction. The layouts of its template are drawn
       // for one direction, so they turn with it, in the same undo step.
       const follow = followDirection(editor.bus.deck, from, library);
