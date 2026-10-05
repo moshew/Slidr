@@ -454,7 +454,8 @@ function TurnUsage({ entry }: { entry: AssistantEntry }) {
     <p
       data-testid="turn-usage"
       data-cost={typeof entry.costUsd === 'number' ? entry.costUsd : undefined}
-      className="text-xs text-ui-fg-subtle"
+      // Quiet, and still text: the colour of disabled controls is not for words (DSN-08).
+      className="text-xs text-ui-fg-muted"
     >
       {typeof entry.costUsd === 'number'
         ? t('usage.turn', { tokens, cost: formatCost(entry.costUsd), time })

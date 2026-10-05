@@ -12,16 +12,38 @@ export const PopoverTrigger = RadixPopover.Trigger;
 export const PopoverAnchor = RadixPopover.Anchor;
 export const PopoverClose = RadixPopover.Close;
 
+/**
+ * A popover is a dialog to a screen reader, and a dialog without a name is announced as just
+ * "dialog" (DSN-08). Unless its caller names it, a popover takes the name of the button that
+ * opened it, which already says what it is for: "Background", "Font size".
+ */
+function nameAfterTrigger(content: HTMLElement | null): void {
+  if (!content?.id) return;
+  if (content.hasAttribute('aria-label') || content.hasAttribute('aria-labelledby')) return;
+  // The trigger says which popover is its own; the popover does not say which trigger.
+  const trigger = document.querySelector(`[aria-controls="${CSS.escape(content.id)}"]`);
+  if (!trigger) return;
+  if (!trigger.id) trigger.id = `${content.id}-trigger`;
+  content.setAttribute('aria-labelledby', trigger.id);
+}
+
 /** A floating panel next to its trigger: forms and pickers. */
 export function PopoverContent({
   className,
   sideOffset = 6,
   align = 'start',
+  ref,
   ...props
 }: ComponentPropsWithRef<typeof RadixPopover.Content>) {
   return (
     <RadixPopover.Portal container={usePortalContainer()}>
       <RadixPopover.Content
+        ref={(node) => {
+          nameAfterTrigger(node);
+          if (typeof ref === 'function') return ref(node);
+          if (ref) ref.current = node;
+          return undefined;
+        }}
         sideOffset={sideOffset}
         align={align}
         collisionPadding={8}

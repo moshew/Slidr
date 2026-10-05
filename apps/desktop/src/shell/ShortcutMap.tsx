@@ -324,7 +324,7 @@ export function ShortcutMap() {
                 {t('keys.none')}
               </p>
             ) : (
-              <dl className="flex flex-col">
+              <div className="flex flex-col">
                 {shortcutSections.map((section) => {
                   const inSection = found.filter((row) => row.section === section);
                   if (inSection.length === 0) return null;
@@ -336,26 +336,31 @@ export function ShortcutMap() {
                       >
                         {t(`keys.sections.${section}`)}
                       </h3>
-                      {inSection.map((row) => {
-                        const below = under(row);
-                        return (
-                          <div
-                            key={row.id}
-                            data-shortcut={row.id}
-                            className="flex min-h-control flex-wrap items-center justify-between gap-x-4 gap-y-1 py-1"
-                          >
-                            <dt className="min-w-0 flex-1">{t(row.label)}</dt>
-                            <dd className="flex shrink-0 flex-wrap items-center justify-end gap-y-1">
-                              {row.bindings.map((binding) => chip(row, binding))}
-                            </dd>
-                            {below && <dd className="basis-full">{below}</dd>}
-                          </div>
-                        );
-                      })}
+                      {/* A list of its own under each heading: a list of terms holds terms and
+                          what they are, and a heading inside one is read as neither. It takes
+                          no box, so the rows lie in the column as they did. */}
+                      <dl className="contents">
+                        {inSection.map((row) => {
+                          const below = under(row);
+                          return (
+                            <div
+                              key={row.id}
+                              data-shortcut={row.id}
+                              className="flex min-h-control flex-wrap items-center justify-between gap-x-4 gap-y-1 py-1"
+                            >
+                              <dt className="min-w-0 flex-1">{t(row.label)}</dt>
+                              <dd className="flex shrink-0 flex-wrap items-center justify-end gap-y-1">
+                                {row.bindings.map((binding) => chip(row, binding))}
+                              </dd>
+                              {below && <dd className="basis-full">{below}</dd>}
+                            </div>
+                          );
+                        })}
+                      </dl>
                     </Fragment>
                   );
                 })}
-              </dl>
+              </div>
             )}
           </ScrollArea>
         </DialogContent>

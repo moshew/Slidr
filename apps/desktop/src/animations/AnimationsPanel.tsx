@@ -382,19 +382,22 @@ function StepList(props: StepListProps) {
         />
       ))}
       {list.unplayed.length > 0 && (
-        <div role="group" aria-label={t('group.unplayed')} className="flex flex-col gap-0.5">
+        <div role="listitem" aria-label={t('group.unplayed')} className="flex flex-col gap-0.5">
           <div className="flex h-6 items-center gap-2 text-xs font-medium text-ui-fg-muted">
             {t('group.unplayed')}
             <span className="font-normal">{t('group.unplayedHint')}</span>
           </div>
-          {list.unplayed.map((step) => (
-            <StepRow
-              key={step.id}
-              {...props}
-              row={{ key: `x:${step.id}`, step, start: 0, end: 0 }}
-              total={0}
-            />
-          ))}
+          {/* No box of its own: the rows lie in the column as they did. */}
+          <div role="list" className="contents">
+            {list.unplayed.map((step) => (
+              <StepRow
+                key={step.id}
+                {...props}
+                row={{ key: `x:${step.id}`, step, start: 0, end: 0 }}
+                total={0}
+              />
+            ))}
+          </div>
         </div>
       )}
       {drag && (
@@ -432,14 +435,19 @@ function GroupView({
   const label = group.index === 0 ? t('group.leadIn') : t('group.click', { n: group.index });
   const playing = props.playing === group.index;
   return (
-    <div role="group" aria-label={label} data-group={group.index} className="flex flex-col gap-0.5">
+    <div
+      role="listitem"
+      aria-label={label}
+      data-group={group.index}
+      className="flex flex-col gap-0.5"
+    >
       <div className="flex h-6 items-center gap-2 ps-1">
         <span
           className={cx('text-xs font-medium', playing ? 'text-ui-accent-fg' : 'text-ui-fg-muted')}
         >
           {label}
         </span>
-        <span className="text-xs text-ui-fg-subtle tabular-nums">
+        <span className="text-xs text-ui-fg-muted tabular-nums">
           {seconds(group.duration)} {t('field.seconds')}
         </span>
         <div className="flex-1" />
@@ -451,17 +459,21 @@ function GroupView({
           onClick={() => props.onPlay(group.index)}
         />
       </div>
-      {group.rows.map((row) => (
-        <StepRow
-          key={row.key}
-          {...props}
-          row={row}
-          total={group.duration}
-          dimmed={dragging === row.step}
-          handle={dragHandlers(row.step)}
-          onNudge={onNudge}
-        />
-      ))}
+      {/* The steps of the group, as a list a screen reader counts. No box of its own: the rows
+          lie in the column as they did. */}
+      <div role="list" className="contents">
+        {group.rows.map((row) => (
+          <StepRow
+            key={row.key}
+            {...props}
+            row={row}
+            total={group.duration}
+            dimmed={dragging === row.step}
+            handle={dragHandlers(row.step)}
+            onNudge={onNudge}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -512,54 +524,60 @@ function StepRow({
   return (
     <div role="listitem" data-step={step.id} className={cx(dimmed && 'opacity-50')}>
       <div
-        data-row={row.key}
-        role="button"
-        tabIndex={0}
-        aria-expanded={playable(step.category) ? isOpen : undefined}
-        aria-label={t('panel.row', { effect, name })}
-        onClick={() => onOpen(row)}
-        onKeyDown={onKeyDown}
         className={cx(
-          'group flex h-control cursor-default items-center gap-2 rounded-control pe-1 -outline-offset-2 transition-colors',
+          'group flex h-control cursor-default items-center gap-2 rounded-control pe-1 transition-colors',
           selected.includes(step.elementId) ? 'bg-ui-accent-soft' : 'hover:bg-ui-hover',
         )}
       >
-        <span
-          {...handle}
-          aria-hidden
-          data-testid="animation-drag"
-          onClick={(event) => event.stopPropagation()}
-          className={cx(
-            'flex h-full w-5 shrink-0 touch-none items-center justify-center text-ui-fg-subtle',
-            handle ? 'cursor-grab active:cursor-grabbing' : 'invisible',
-          )}
+        {/* What opens the step. The "remove" button is beside it and not inside it: a button
+            inside a button is read as one control, and the inner one is lost. */}
+        <div
+          data-row={row.key}
+          role="button"
+          tabIndex={0}
+          aria-expanded={playable(step.category) ? isOpen : undefined}
+          aria-label={t('panel.row', { effect, name })}
+          onClick={() => onOpen(row)}
+          onKeyDown={onKeyDown}
+          className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-control -outline-offset-2"
         >
-          <Icon icon={GripVertical} />
-        </span>
-        <Icon icon={CATEGORY_ICONS[step.category]} className={tone.text} />
-        <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-          <span className="truncate">{name}</span>
-          <span className="shrink-0 text-xs text-ui-fg-muted">
-            {effect}
-            {row.part && ` · ${t('panel.paragraph', row.part)}`}
-          </span>
-        </span>
-        {total > 0 && (
-          // Time runs left to right in every language, like a media scrubber.
           <span
-            dir="ltr"
+            {...handle}
             aria-hidden
-            className="relative h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-ui-field"
+            data-testid="animation-drag"
+            onClick={(event) => event.stopPropagation()}
+            className={cx(
+              'flex h-full w-5 shrink-0 touch-none items-center justify-center text-ui-fg-subtle',
+              handle ? 'cursor-grab active:cursor-grabbing' : 'invisible',
+            )}
           >
-            <span
-              className={cx('absolute inset-y-0 min-w-1 rounded-full', tone.bar)}
-              style={{
-                left: `${(row.start / span) * 100}%`,
-                width: `${((row.end - row.start) / span) * 100}%`,
-              }}
-            />
+            <Icon icon={GripVertical} />
           </span>
-        )}
+          <Icon icon={CATEGORY_ICONS[step.category]} className={tone.text} />
+          <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+            <span className="truncate">{name}</span>
+            <span className="shrink-0 text-xs text-ui-fg-muted">
+              {effect}
+              {row.part && ` · ${t('panel.paragraph', row.part)}`}
+            </span>
+          </span>
+          {total > 0 && (
+            // Time runs left to right in every language, like a media scrubber.
+            <span
+              dir="ltr"
+              aria-hidden
+              className="relative h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-ui-field"
+            >
+              <span
+                className={cx('absolute inset-y-0 min-w-1 rounded-full', tone.bar)}
+                style={{
+                  left: `${(row.start / span) * 100}%`,
+                  width: `${((row.end - row.start) / span) * 100}%`,
+                }}
+              />
+            </span>
+          )}
+        </div>
         <IconButton
           icon={Trash2}
           size="sm"

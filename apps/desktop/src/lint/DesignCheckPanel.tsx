@@ -163,10 +163,10 @@ function Finding({
         <div className="flex flex-col gap-2 px-2 pb-2 ps-8 text-xs text-ui-fg-muted">
           <p>{t(`rule.${rule}.advice`)}</p>
           <details>
-            <summary className="cursor-default select-none text-ui-fg-subtle">
+            <summary className="cursor-default select-none text-ui-fg-muted">
               {t('panel.details')}
             </summary>
-            <p className="pt-1 text-ui-fg-subtle">{t('panel.detailsNote')}</p>
+            <p className="pt-1 text-ui-fg-muted">{t('panel.detailsNote')}</p>
             <p dir="ltr" lang="en" className="pt-1 text-start font-mono text-ui-fg-muted">
               {finding.message}
             </p>
