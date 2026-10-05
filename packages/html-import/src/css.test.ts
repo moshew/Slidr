@@ -2,6 +2,7 @@ import type { Color } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import {
   alphaOf,
+  charactersMoved,
   collapseWhitespace,
   compareLines,
   cornerRadius,
@@ -334,5 +335,25 @@ describe('lines of text', () => {
     const shorter = [source[0]!, word(100, 460, 154)];
     expect(wrapsDifferently(source, shorter)).toBe('line 2 is 40.0px wider or narrower');
     expect(compareLines(source, shorter).kind).toBe('different');
+  });
+
+  it('sees characters that changed places inside a line the same size', () => {
+    // "C++" in a right-to-left line: a "C" of 28px and two "+" of 23px, drawn "C++" by the
+    // source and "++C" by a paragraph of plain runs. The three fill the same 74px either way.
+    const drawn = (left: number, width: number) => word(left, left + width, 100);
+    const sourceOrder = [drawn(1001, 28), drawn(1029, 23), drawn(1052, 23)];
+    const plainRuns = [drawn(1047, 28), drawn(1024, 23), drawn(1001, 23)];
+    expect(charactersMoved(sourceOrder, plainRuns)).toBe(true);
+    expect(charactersMoved(sourceOrder, sourceOrder)).toBe(false);
+    // What moved with its line, or by the rounding of a glyph, did not change places.
+    const nudged = sourceOrder.map((c) => ({ ...c, left: c.left + 1.2, right: c.right + 1.6 }));
+    expect(charactersMoved(sourceOrder, nudged)).toBe(false);
+    // A wide letter and a narrow sign that swapped: the letter moved by the sign's width only,
+    // and the sign gives it away.
+    const wide = [drawn(500, 40), drawn(540, 6)];
+    expect(charactersMoved(wide, [drawn(506, 40), drawn(500, 6)])).toBe(true);
+    // A character more or less cannot be matched one to one: not the same text.
+    expect(charactersMoved(sourceOrder, sourceOrder.slice(1))).toBe(true);
+    expect(charactersMoved([], [])).toBe(false);
   });
 });

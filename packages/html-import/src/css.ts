@@ -519,6 +519,23 @@ export function wrapsDifferently(
   return undefined;
 }
 
+/**
+ * Whether the characters of a text sit elsewhere along their lines than the source's, one by
+ * one, in the order of the text. The boxes of whole lines cannot show that: a part the source
+ * laid out in a direction of its own (`C++`, a range of hours, a price in a Hebrew sentence)
+ * fills the same stretch of the line whichever way round it is drawn. A character that only
+ * moved with its line, or by the rounding of a glyph, is within the tolerance; one that
+ * changed places with a neighbour is at least a neighbour's width away.
+ */
+export function charactersMoved(source: readonly Line[], converted: readonly Line[]): boolean {
+  if (source.length !== converted.length) return true;
+  return source.some((s, i) => {
+    const c = converted[i]!;
+    const tolerance = Math.max(2.5, 0.4 * (s.right - s.left));
+    return Math.abs(c.left - s.left) > tolerance || Math.abs(c.right - s.right) > tolerance;
+  });
+}
+
 export type LineVerdict =
   /** The lines sit where the source's do; `dx`, `dy` is what is left, a fraction of a pixel. */
   | { kind: 'same'; dx: number; dy: number }

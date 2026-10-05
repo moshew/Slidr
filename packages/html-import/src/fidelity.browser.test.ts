@@ -163,9 +163,134 @@ const types = (result: ConversionResult) => result.slide.elements.map((element) 
 
 const PARA =
   'position:absolute;left:160px;top:200px;width:1500px;margin:0;font:400 40px/1.5 Arial;color:#111';
+const HEBREW =
+  'ההנהלה אישרה השבוע את תוכנית העבודה לשנה הבאה, והיא כוללת הרחבה של צוות הפיתוח, פתיחה של שני סניפים חדשים בצפון ובדרום, השקעה גדולה בהכשרת עובדים ושדרוג מלא של מערכות המידע הישנות';
+const ENGLISH =
+  'Revenue grew by a third while costs stayed flat, and the new product line reached break-even two quarters early. The team shipped four releases, opened two offices and signed the largest contract in the history of the company, with a renewal already agreed for next year.';
 
 beforeAll(async () => {
   await page.viewport(1920, 1080);
+});
+
+describe('text reads in the order the source drew it', () => {
+  /** Whether `a` is drawn left of `b`. */
+  const leftOf = (seen: Seen, a: string, b: string) => seen.found[a]!.box.x < seen.found[b]!.box.x;
+
+  // A part the source lays out in a direction of its own, in a paragraph long enough for a few
+  // glyphs that changed places to be a small share of its pixels. The two pieces named are
+  // drawn in one order in the source and in the other by a paragraph of plain runs.
+  const reordered: [string, 'he' | 'en', string, string, string][] = [
+    [
+      'a term with signs (C++) in a Hebrew sentence',
+      'he',
+      `<p style="${PARA}">${HEBREW}, ויתקיים קורס <span dir="ltr">C++</span> לכל העובדים.</p>`,
+      'C',
+      '++',
+    ],
+    [
+      'a range of hours in a Hebrew sentence',
+      'he',
+      `<p style="${PARA}">${HEBREW}, בין השעות <span dir="ltr">10:00 - 12:00</span> בחדר הישיבות.</p>`,
+      '10:',
+      '12:',
+    ],
+    [
+      'a phone number in a Hebrew sentence',
+      'he',
+      `<p style="${PARA}">${HEBREW}, בטלפון <span dir="ltr">+972-3-1234567</span> בכל יום.</p>`,
+      '+',
+      '972',
+    ],
+    [
+      'a temperature below zero in a Hebrew sentence',
+      'he',
+      `<p style="${PARA}">${HEBREW}, בטמפרטורה של <span dir="ltr">-5°C</span> בלילה.</p>`,
+      '-',
+      '5',
+    ],
+    [
+      'a range of prices in a bdi, in a Hebrew sentence',
+      'he',
+      `<p style="${PARA}">${HEBREW}, במחיר של <bdi>$1,200 - $1,500</bdi> לחודש.</p>`,
+      '200',
+      '500',
+    ],
+    [
+      'a Hebrew word with its mark in an English sentence',
+      'en',
+      `<p style="${PARA}">${ENGLISH} The Hebrew greeting <span dir="rtl">שלום!</span> opens every meeting.</p>`,
+      '!',
+      'ש',
+    ],
+    [
+      'letters a bdo turns round, in an English sentence',
+      'en',
+      `<p style="${PARA}">${ENGLISH} Mirror writing: <bdo dir="rtl">ABC</bdo> is how it reads.</p>`,
+      'A',
+      'C',
+    ],
+  ];
+
+  for (const [name, lang, html, a, b] of reordered) {
+    it(`keeps ${name} as the source drew it`, async () => {
+      const { result, source, converted } = await look(html, lang, [a, b]);
+      expect(leftOf(converted, a, b)).toBe(leftOf(source, a, b));
+      expect(converted.found[a]!.box.x).toBeCloseTo(source.found[a]!.box.x, -1);
+      // A run has no direction of its own to give: the paragraph stays the source's markup.
+      expect(types(result)).toEqual(['html']);
+      expect(result.notes.join('\n')).toMatch(/text that reads in another order/);
+    });
+  }
+
+  it('keeps as text a part whose own direction changes nothing', async () => {
+    // An English name in a Hebrew sentence reads the same with the isolation and without.
+    const { result, source, converted } = await look(
+      `<p style="${PARA}">${HEBREW}, בעזרת <span dir="ltr">Slidr</span> וגם <bdi>Claude</bdi> בכל יום.</p>`,
+      'he',
+      ['Slidr', 'Claude'],
+    );
+    expect(types(result)).toEqual(['text']);
+    expect(result.editability).toBe(1);
+    expect(converted.found.Slidr!.box).toEqual(source.found.Slidr!.box);
+    expect(converted.found.Claude!.box).toEqual(source.found.Claude!.box);
+  });
+
+  it('reads text that is all inside one isolate as a paragraph of its direction', async () => {
+    // A figure alone in its box, written the correct way in a right-to-left deck.
+    const { result, source, converted } = await look(
+      `<p style="${PARA}"><b><span dir="ltr">-5°C</span></b></p>
+       <p style="${PARA};top:400px;text-align:center"><bdi>$1,200 - $1,500</bdi></p>`,
+      'he',
+      ['-', '5°C', '200', '500'],
+    );
+    expect(types(result)).toEqual(['text', 'text']);
+    const [figure, range] = texts(result).map((text) => text.content.paragraphs[0]!);
+    // On the right of its box, where the right-to-left block put it, reading left to right.
+    expect(figure).toMatchObject({ dir: 'ltr', align: 'end' });
+    expect(range).toMatchObject({ dir: 'ltr', align: 'center' });
+    for (const needle of ['-', '5°C', '200', '500']) {
+      expect(converted.found[needle]!.box).toEqual(source.found[needle]!.box);
+    }
+    expect(leftOf(converted, '-', '5°C')).toBe(true);
+    expect(leftOf(converted, '200', '500')).toBe(true);
+  });
+
+  it('holds a table whose cells wrap their figures in a direction, and not one that mixes', async () => {
+    const table = (cell: string) => `<style>
+      table{position:absolute;left:160px;top:200px;width:1200px;border-collapse:collapse;font:400 28px/1.4 Arial;color:#111}
+      td{padding:16px 20px;border:1px solid #999}
+    </style><table><tr><td>שינוי בהכנסות</td><td>${cell}</td></tr><tr><td>שינוי בהוצאות</td><td><span dir="ltr">-2%</span></td></tr></table>`;
+    const whole = await look(table('<span dir="ltr">+4%</span>'), 'he', ['+', '4%']);
+    expect(types(whole.result)).toEqual(['table']);
+    expect(leftOf(whole.converted, '+', '4%')).toBe(leftOf(whole.source, '+', '4%'));
+    expect(whole.converted.found['+']!.box.x).toBeCloseTo(whole.source.found['+']!.box.x, -1);
+
+    // A sign that would change sides: the cell cannot be told by its lines, so the table stays
+    // html rather than show "4%+".
+    const mixed = await look(table('עלייה של <span dir="ltr">+4%</span>'), 'he', ['+', '4%']);
+    expect(types(mixed.result)).toEqual(['html']);
+    expect(leftOf(mixed.converted, '+', '4%')).toBe(leftOf(mixed.source, '+', '4%'));
+  });
 });
 
 describe('what comes back is a slide the model accepts', () => {

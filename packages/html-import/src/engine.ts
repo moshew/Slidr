@@ -22,11 +22,19 @@ import {
   type Slide,
 } from '@slidr/model';
 import { renderSlideOffscreen, themeVariables } from '@slidr/renderer';
-import { compareLines, round, wrapsDifferently, type Line } from './css';
+import { charactersMoved, compareLines, round, wrapsDifferently, type Line } from './css';
 import { htmlItem, opaqueFill, propose, type Item, type Proposal } from './convert';
 import type { ConversionHost, Rect } from './host';
 import { BASE_STYLE_ATTRIBUTE, copySubtree, disposeCopyBaseline } from './htmlCopy';
-import { composedParent, isElement, isInside, styleOf, textLines, viewportOffset } from './measure';
+import {
+  charRects,
+  composedParent,
+  isElement,
+  isInside,
+  styleOf,
+  textLines,
+  viewportOffset,
+} from './measure';
 import {
   attribute,
   clusters,
@@ -723,6 +731,8 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     /** The lines of each text on the layout at 1920, and as shown like the source, in slide px. */
     real: Map<Item, Line[]>;
     shown: Map<Item, Line[]>;
+    /** Where the characters sit, of the texts whose order has to be compared, in slide px. */
+    characters: Map<Item, Line[]>;
     picture?: Picture;
     moved: boolean;
   }
@@ -768,6 +778,24 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       // text and the same line of 28px text zoomed by 1.5 sit a fraction of a pixel apart, and
       // it is the second that is pictured.
       const real = measure();
+      // The order of the characters is a matter of layout too, and is read off the same one.
+      const characters = new Map<Item, Line[]>();
+      for (const item of proposal.items) {
+        if (!item.characters) continue;
+        const dom = mounted.root.querySelector(`[data-element-id="${item.element.id}"]`);
+        if (!dom) continue;
+        const at = mounted.root.getBoundingClientRect();
+        const scale = at.width / deck.size.w;
+        characters.set(
+          item,
+          charRects(dom, (el) => el.hasAttribute('data-slidr-marker')).map((c) => ({
+            left: (c.left - at.left) / scale - lead.x,
+            right: (c.right - at.left) / scale - lead.x,
+            top: (c.top - at.top) / scale - lead.y,
+            bottom: (c.bottom - at.top) / scale - lead.y,
+          })),
+        );
+      }
       // What the source drew through a scale of its own is drawn on a layer of its own here
       // too, so that text is anti-aliased the same way on both sides.
       for (const item of proposal.items) {
@@ -855,9 +883,9 @@ export async function startConversion(root: Element, options: ConvertOptions): P
           moved = true;
         }
       }
-      if (moved) return { real, shown, moved };
+      if (moved) return { real, shown, characters, moved };
       await twoFrames();
-      return { real, shown, picture: await take(), moved };
+      return { real, shown, characters, picture: await take(), moved };
     } finally {
       mounted.dispose();
     }
@@ -902,7 +930,13 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       if (wraps) return wraps;
       const verdict = compareLines(item.lines, shown);
       if (verdict.kind === 'different') return verdict.why;
-      return verdict.kind === 'same' ? undefined : 'its lines sit elsewhere';
+      if (verdict.kind !== 'same') return 'its lines sit elsewhere';
+      // Lines that sit right can still hold their characters in another order: asked of the
+      // texts the walk could not vouch for.
+      const drawn = rendered.characters.get(item);
+      return item.characters && drawn && charactersMoved(item.characters, drawn)
+        ? 'reads in another order (a part of it is laid out in a direction of its own)'
+        : undefined;
     });
     // A text that wraps or sits differently draws its glyphs over its neighbours. Until it is
     // put right, the pixels around it are not held against what lies under or beside it: the

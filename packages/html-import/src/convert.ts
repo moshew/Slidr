@@ -40,6 +40,7 @@ import {
 import type { ConversionHost, Rect } from './host';
 import { BLANK_IMAGE_ATTRIBUTE, type CopyStrategy } from './htmlCopy';
 import {
+  charRects,
   clippedAway,
   comparePaintOrder,
   composedChildNodes,
@@ -97,6 +98,12 @@ export interface Item {
   region: Rect;
   /** Where the lines of a text sit, in slide px. Absent when they cannot be compared. */
   lines?: Line[];
+  /**
+   * Where each character of the text sits, in slide px and in the order of the text: given for
+   * text with a part in a direction of its own, which the model's runs cannot say. Whether it
+   * reads the same without it is measured (`charactersMoved`).
+   */
+  characters?: Line[];
   /** Strips of the source picture not compared: list markers, which the renderer draws its own way. */
   ignored?: Rect[];
   /** The element's look is the app's, not the source's (a placeholder, a chart): not compared. */
@@ -900,6 +907,10 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       : readTextBlock(el, el, cs, kl, pitch, marker, text);
     if ('unsupported' in block)
       return block.unsupported === 'no visible text' ? undefined : 'unsupported';
+    // Text with a part in a direction of its own is text only as long as the guard can see
+    // that it reads the same; turned text and generated text have no boxes to compare.
+    const comparable = !block.generated && !effects.rotation;
+    if (block.ownDirection && !comparable && !text.lossy) return 'unsupported';
 
     const bounds = {
       left: Math.min(...lines.map((l) => l.left)),
@@ -988,7 +999,8 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       : undefined;
     return emit(element, el, textNode ? 'text' : 'subtree', region, state, {
       chars: block.chars,
-      ...(block.generated || effects.rotation ? {} : { lines: toSlideLines(lines) }),
+      ...(comparable ? { lines: toSlideLines(lines) } : {}),
+      ...(comparable && block.ownDirection ? { characters: toSlideLines(charRects(source)) } : {}),
       ...(ignored ? { ignored } : {}),
     });
   };

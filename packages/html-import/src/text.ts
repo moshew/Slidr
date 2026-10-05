@@ -312,10 +312,44 @@ export interface TextBlock {
   chars: number;
   /** The text includes generated content, which has no boxes to measure. */
   generated: boolean;
+  /**
+   * A part of the text is laid out in a direction or an isolation of its own, which a run
+   * cannot say: the model's marks have no direction. Whether the text reads the same without
+   * it depends on what is in it (an English word in a Hebrew sentence does, `C++` does not),
+   * so it is for the guard to measure, by where each character sits.
+   */
+  ownDirection: boolean;
   /** Largest font size among the runs, in slide pixels. */
   maxSize: number;
   /** The theme text style the paragraph points at. */
   styleSize: number;
+}
+
+/**
+ * The part that holds all the text of a block and isolates it in a direction: the one child
+ * with anything to show, at whatever depth (`<p><b><span dir="ltr">…</span></b></p>`, a `bdi`
+ * around the figure of a table cell). Text that is all inside one isolate is laid out exactly
+ * as a paragraph of that direction is, and a paragraph has a direction.
+ */
+function soleIsolate(el: Element): { part: Element; direction: 'rtl' | 'ltr' } | undefined {
+  for (let scope = el; ;) {
+    // Generated text stands outside whatever the scope holds.
+    if (pseudoKind(scope, '::before') || pseudoKind(scope, '::after')) return undefined;
+    const content = composedChildNodes(scope).filter((node) =>
+      isText(node)
+        ? node.data.trim() !== ''
+        : isElement(node) && !neverRendered(node) && styleOf(node).display !== 'none',
+    );
+    const only = content.length === 1 ? content[0] : undefined;
+    if (!only || !isElement(only) || only.localName === 'br') return undefined;
+    const bidi = styleOf(only).unicodeBidi;
+    if (bidi === 'isolate' || bidi === 'embed') {
+      return { part: only, direction: styleOf(only).direction === 'rtl' ? 'rtl' : 'ltr' };
+    }
+    // An override or `plaintext` orders the characters themselves: not a paragraph's direction.
+    if (bidi !== 'normal') return undefined;
+    scope = only;
+  }
 }
 
 function capitalize(text: string): string {
@@ -351,6 +385,10 @@ export function readTextBlock(
   const raw: RawRun[] = [];
   let problem: string | undefined;
   let generated = false;
+  const sole = soleIsolate(el);
+  // On the block itself an isolation changes nothing (a block is one already); an override
+  // or `plaintext` decides the order of its characters.
+  let ownDirection = /override|plaintext/.test(cs.unicodeBidi);
 
   /** `from`: whose style `style` is, so that a colour can be traced to the theme. */
   const push = (
@@ -411,6 +449,8 @@ export function readTextBlock(
       const childStyle = styleOf(child);
       if (subtreeHidden(childStyle) || childStyle.visibility !== 'visible') continue;
       if (childStyle.opacity !== '1') problem = 'a translucent part of the text';
+      // `direction` alone does nothing to an inline part; with `unicode-bidi` it does.
+      if (childStyle.unicodeBidi !== 'normal' && child !== sole?.part) ownDirection = true;
       if (JSON.stringify(passthrough(childStyle, scale)) !== signature) {
         problem = 'text styling the model has no field for, on a part of the text';
       }
@@ -493,11 +533,21 @@ export function readTextBlock(
   const linePx = pitch ?? (lineHeights.length > 0 ? Math.max(...lineHeights) : undefined);
   const multiplier = linePx === undefined ? undefined : linePx / Math.max(style.size, maxSize);
 
-  const direction = cs.direction === 'rtl' ? 'rtl' : 'ltr';
+  const blockDirection: 'rtl' | 'ltr' = cs.direction === 'rtl' ? 'rtl' : 'ltr';
   const indent = round(px(cs.textIndent) * scale);
+  const blockAlign = alignOf(cs.textAlign, blockDirection);
+  // Text that is all inside one isolate reads as a paragraph of the isolate's direction, on
+  // the side of the box the block put it. Not where the block's own direction places more than
+  // the lines: a list marker, an indent, the last line of justified text.
+  let direction: 'rtl' | 'ltr' = blockDirection;
+  if (sole && sole.direction !== blockDirection) {
+    if (list || indent !== 0 || blockAlign === 'justify') ownDirection = true;
+    else direction = sole.direction;
+  }
+  const flipped = direction !== blockDirection && (blockAlign === 'start' || blockAlign === 'end');
   const paragraph: Paragraph = {
     dir: direction,
-    align: alignOf(cs.textAlign, direction),
+    align: flipped ? (blockAlign === 'start' ? 'end' : 'start') : blockAlign,
     ...(multiplier !== undefined && (!ctx.link || Math.abs(multiplier - style.lineHeight) > 0.004)
       ? { lineHeight: Math.round(multiplier * 10000) / 10000 }
       : {}),
@@ -511,6 +561,7 @@ export function readTextBlock(
     css: { ...blockCss, ...clippedBackground(cs, scale) },
     chars: visible.reduce((n, r) => n + r.text.length, 0),
     generated,
+    ownDirection,
     maxSize,
     styleSize: style.size,
   };

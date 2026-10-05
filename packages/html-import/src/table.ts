@@ -171,6 +171,11 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
       const found = readTextBlock(block, block, style, kl, pitch, undefined, text);
       if ('unsupported' in found) return found.unsupported === 'no visible text';
       if (Object.keys(found.css).length > 0) return false;
+      // A part of the cell's text in a direction of its own: whether it reads the same as
+      // plain runs is measured for a text box, character by character, and a table is not
+      // measured that way. (Text that is all in one such part is a paragraph of that
+      // direction, and is not counted here.)
+      if (found.ownDirection && !text.lossy) return false;
       paragraphs.push(found.paragraph);
       return true;
     };

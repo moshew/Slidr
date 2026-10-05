@@ -350,6 +350,42 @@ export function textLines(node: Node, skip?: (el: Element) => boolean): Line[] {
   return groupLines(wordRects(node, skip));
 }
 
+/**
+ * The box of every character of the text under `node` that is drawn, in the order of the text
+ * (white space left out, since it collapses differently in the two places a text is measured).
+ * Where each character sits says in which order the browser laid the text out. Text the
+ * reading of a block leaves out (hidden, of no size) has no box here either.
+ */
+export function charRects(node: Node, skip?: (el: Element) => boolean): Line[] {
+  const doc = node.ownerDocument!;
+  const range = doc.createRange();
+  const rects: Line[] = [];
+  const visit = (n: Node) => {
+    if (isText(n)) {
+      for (let at = 0; at < n.data.length;) {
+        // By character, not by code unit: half of a pair has no box of its own.
+        const length = (n.data.codePointAt(at) ?? 0) > 0xffff ? 2 : 1;
+        if (!/^\s$/u.test(n.data.slice(at, at + length))) {
+          range.setStart(n, at);
+          range.setEnd(n, at + length);
+          const r = range.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            rects.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+          }
+        }
+        at += length;
+      }
+      return;
+    }
+    if (!isElement(n) || neverRendered(n) || skip?.(n)) return;
+    const cs = styleOf(n);
+    if (subtreeHidden(cs) || cs.visibility !== 'visible') return;
+    for (const child of composedChildNodes(n)) visit(child);
+  };
+  visit(node);
+  return rects;
+}
+
 /** The visible characters under an element, white space collapsed. */
 export function visibleChars(el: Element): number {
   let chars = 0;
