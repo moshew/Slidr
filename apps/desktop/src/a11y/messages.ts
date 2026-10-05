@@ -20,6 +20,11 @@ export const he = {
     slideSelected: '{{what}}: בתוך הבחירה',
     slideFree: '{{what}}: מחוץ לבחירה',
   },
+  // A row of the Layers panel: what its two toggles show, said with the row.
+  layers: {
+    locked: 'נעול',
+    hidden: 'מוסתר',
+  },
 };
 
 export const en = {
@@ -36,5 +41,9 @@ export const en = {
   at: {
     slideSelected: '{{what}}: in the selection',
     slideFree: '{{what}}: not in the selection',
+  },
+  layers: {
+    locked: 'Locked',
+    hidden: 'Hidden',
   },
 };

@@ -31,8 +31,12 @@ export function StatusBar() {
           ? t('status.noSlides')
           : t('status.slide', { current: index + 1, total: slides.length })}
       </span>
-      <span data-testid="status-zoom" aria-label={t('status.zoom')} className="tabular-nums">
-        {Math.round(scale * 100)}%
+      {/* The word is for a screen reader: a number alone does not say what it measures. */}
+      <span>
+        <span className="sr-only">{t('status.zoom')} </span>
+        <span data-testid="status-zoom" className="tabular-nums">
+          {Math.round(scale * 100)}%
+        </span>
       </span>
       <SaveState />
       <div className="flex-1" />

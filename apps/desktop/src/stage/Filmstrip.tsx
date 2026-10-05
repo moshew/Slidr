@@ -425,8 +425,9 @@ function LayoutChoices({
   return (
     <ScrollArea className="-m-2" viewportClassName="max-h-96">
       <div className="grid grid-cols-2 gap-1 p-2">
+        {/* A card is named by its layout; the picture of it, with its words, is not its name. */}
         <button type="button" data-layout="" className={card} onClick={() => onChoose()}>
-          <div style={frame}>
+          <div aria-hidden style={frame}>
             <ScaledSlide
               deck={deck}
               slide={BLANK}
@@ -445,7 +446,7 @@ function LayoutChoices({
             className={card}
             onClick={() => onChoose(layout.id)}
           >
-            <div style={frame}>
+            <div aria-hidden style={frame}>
               <LayoutPreview deck={deck} layout={layout} resolveAsset={resolveAsset} />
             </div>
             <span className="max-w-full truncate">{layout.name}</span>

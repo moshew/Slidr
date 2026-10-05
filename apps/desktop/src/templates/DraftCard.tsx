@@ -31,7 +31,7 @@ function Layouts({ draft }: { draft: TemplateDraft }) {
       <ul aria-label={t('draft.strip')} className="flex gap-2 px-4 pb-2">
         {draft.sample.slides.map((slide) => (
           <li key={slide.id} data-testid="draft-layout" className="flex shrink-0 flex-col gap-1">
-            <div className="overflow-hidden rounded-small border border-ui-line">
+            <div aria-hidden className="overflow-hidden rounded-small border border-ui-line">
               <ScaledSlide
                 deck={draft.sample}
                 slide={slide}

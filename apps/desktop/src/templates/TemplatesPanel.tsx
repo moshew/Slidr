@@ -153,7 +153,8 @@ function TemplateCard({
         current ? 'border-ui-accent bg-ui-accent-soft' : 'border-ui-line',
       )}
     >
-      <div className="overflow-hidden rounded-inset">
+      {/* A picture of the cover: a screen reader is told the template's name, not its words. */}
+      <div aria-hidden className="overflow-hidden rounded-inset">
         {width > 0 && (
           <ScaledSlide
             deck={cover.deck}

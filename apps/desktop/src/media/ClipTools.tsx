@@ -78,6 +78,8 @@ function PlayTool({ target, playback }: ToolProps) {
       <span
         dir="ltr"
         data-testid="clip-time"
+        // A role, so that the name is read: on a bare span it is not.
+        role="timer"
         aria-label={total ? t('clip.time', { now, total }) : now}
         className="px-1 text-xs text-ui-fg-muted tabular-nums"
       >

@@ -109,6 +109,8 @@ function TransitionPreview({
   const layer = 'absolute inset-0 overflow-hidden';
   return (
     <div
+      // A moving picture of two slides: nothing in it is for a screen reader to read.
+      aria-hidden
       data-testid="transition-preview"
       className="relative shrink-0 overflow-hidden rounded-control border border-ui-line bg-ui-canvas"
       style={{ width: PREVIEW_W, height }}
