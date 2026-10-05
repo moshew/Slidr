@@ -22,6 +22,15 @@ import {
   type Slide,
 } from '@slidr/model';
 import { renderSlideOffscreen, themeVariables } from '@slidr/renderer';
+import {
+  compose,
+  elementsOf,
+  keyOf,
+  settle,
+  unchanged,
+  type Composition,
+  type Part,
+} from './compose';
 import { charactersMoved, compareLines, round, wrapsDifferently, type Line } from './css';
 import { htmlItem, opaqueFill, propose, type Item, type Proposal } from './convert';
 import type { ConversionHost, Rect } from './host';
@@ -79,6 +88,11 @@ export interface ConvertOptions {
    * an asset that the asset's one record cannot say (`createSourceFonts`).
    */
   css?: string;
+  /**
+   * False leaves the slide as the list the guard settled, one element for each thing the page
+   * draws, without putting it together (`Conversion.compose`).
+   */
+  compose?: boolean;
   /**
    * A forced conversion (HTM-05): text with styling the model has no field for is proposed as a
    * text element without it, where otherwise it would stay html. The caller judges the
@@ -143,6 +157,13 @@ export interface Conversion {
   judge(options?: { fit?: boolean }): Promise<Verdict>;
   /** Judges and replaces what differs with HTML, until the slide matches or nothing is left to try. */
   guard(): Promise<GuardReport>;
+  /**
+   * Puts the guarded proposal together the way a slide is built by hand (ADR-073): texts that
+   * follow one another in one box, a text in the middle of a box as the text of a shape, a box
+   * and what lies on it as a group. The result is judged as the guard judges, and what does
+   * not look the same is left as it was. Returns the report of the slide as it now stands.
+   */
+  compose(report: GuardReport): Promise<GuardReport>;
   /** The slide as the proposal stands. */
   result(report: GuardReport): ConversionResult;
   dispose(): void;
@@ -207,6 +228,24 @@ const ROW_SETTLED = 0.1;
 const SAME_ANTIALIASING = '0.999';
 /** How often a text box is moved to where its lines belong before it counts as different. */
 const MAX_TEXT_FITS = 5;
+/** How often the composed slide is laid out to put its joined texts where they were (ADR-073). */
+const MAX_COMPOSE_FITS = 4;
+
+/** An element whose text is laid out in lines that can be measured: a text box, a shape with text. */
+function holdsLines(element: ModelElement): boolean {
+  return element.type === 'text' || (element.type === 'shape' && element.content !== undefined);
+}
+
+/** What is judged as text is: by where its lines sit, and with the slack glyph edges need. */
+function textual(item: Item): boolean {
+  const element = item.element;
+  return (
+    element.type === 'text' ||
+    element.type === 'table' ||
+    (element.type === 'html' && item.chars > 0) ||
+    (element.type === 'shape' && element.content !== undefined)
+  );
+}
 
 /** How long a page that is given no frames is waited for (as in the renderer's `settle`). */
 const FRAMES_FALLBACK_MS = 250;
@@ -656,34 +695,51 @@ export async function startConversion(root: Element, options: ConvertOptions): P
 
   const slideId = newId('s', (candidate) => deck.slides.some((s) => s.id === candidate));
   const fonts = options.fontFaces === false ? '' : fontFaceText(doc);
+  /** The proposal as it nests, once it was put together (`composed`); flat until then. */
+  let nested: Part[] | undefined;
   const assemble = (): Slide => {
     const groups = new Set<number>();
     const timeline: AnimationStep[] = [];
     const steps = new Set<string>();
-    for (const item of proposal.items) {
-      if (!item.anim) continue;
+    const parts: Part[] = nested ?? proposal.items.map((item) => ({ item }));
+    /** The `data-anim` everything in a part enters with, when it is one. */
+    const entrance = (part: Part): Item['anim'] => {
+      const inner = part.group?.parts.map(entrance) ?? [];
+      const own = part.item.anim;
+      return own && inner.every((a) => a?.group === own.group) ? own : undefined;
+    };
+    const enter = (part: Part) => {
+      const anim = entrance(part);
+      if (!anim) {
+        // What is in it enters each in its own way, or not at all.
+        if (part.item.anim) enter({ item: part.item });
+        part.group?.parts.forEach(enter);
+        return;
+      }
       const id = newId('a', (candidate) => steps.has(candidate));
       steps.add(id);
       timeline.push({
         id,
-        elementId: item.element.id,
+        // A group whose every part enters with one `data-anim` enters as the one thing it is.
+        elementId: part.group?.id ?? part.item.element.id,
         // The elements one `data-anim` produced enter together.
-        trigger: groups.has(item.anim.group) ? 'withPrevious' : 'onClick',
+        trigger: groups.has(anim.group) ? 'withPrevious' : 'onClick',
         category: 'entrance',
-        preset: item.anim.preset,
+        preset: anim.preset,
         duration: 500,
         delay: 0,
         easing: 'ease-out',
       });
-      groups.add(item.anim.group);
-    }
+      groups.add(anim.group);
+    };
+    parts.forEach(enter);
     const css = [options.css, fonts, keyframesText(doc, proposal.keyframes)]
       .filter(Boolean)
       .join('\n');
     const background = proposal.background ?? options.base?.background;
     return createSlide({
       id: slideId,
-      elements: proposal.items.map((i) => i.element),
+      elements: elementsOf(parts),
       timeline,
       ...(background ? { background } : {}),
       ...(options.base?.layoutId && !proposal.background
@@ -781,7 +837,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         const scale = at.width / deck.size.w;
         const lines = new Map<Item, Line[]>();
         for (const item of proposal.items) {
-          if (!item.lines || item.element.type !== 'text') continue;
+          if (!item.lines || !holdsLines(item.element)) continue;
           const dom = mounted.root.querySelector(`[data-element-id="${item.element.id}"]`);
           if (!dom) continue;
           lines.set(
@@ -937,13 +993,8 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       ({ element }) =>
         element.type === 'shape' && (element.opacity < 1 || !opaqueFill(element.fill)),
     );
-    const textual = items.map(
-      (item) =>
-        item.element.type === 'text' ||
-        item.element.type === 'table' ||
-        (item.element.type === 'html' && item.chars > 0),
-    );
-    const leaves = (above: number, under: number) => showsThrough[above]! && textual[under]!;
+    const texts = items.map(textual);
+    const leaves = (above: number, under: number) => showsThrough[above]! && texts[under]!;
 
     /** Why a text does not sit as the source's does, read off the geometry of its lines. */
     const misplaced = items.map((item) => {
@@ -1064,10 +1115,9 @@ export async function startConversion(root: Element, options: ConvertOptions): P
       } else if (item.scaled || rootScaled || onLayer(item)) {
         // The source drew this through a scale the model cannot repeat step for step, so its
         // pixels carry raster noise: judged on the coarse picture.
-        if (type === 'text' || type === 'html' || type === 'table') {
+        if (type === 'html' || textual(item)) {
           // A table is mostly text, and so is an HTML copy that holds any.
-          const textual = type !== 'html' || item.chars > 0;
-          const share = textual ? SCALED_TEXT_SHARE : COARSE_SHARE;
+          const share = textual(item) ? SCALED_TEXT_SHARE : COARSE_SHARE;
           if (
             coarse.differing[index]! > Math.max(COARSE_MIN_PIXELS, share * coarse.owned[index]!)
           ) {
@@ -1084,20 +1134,20 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         // edge of a pixel then fall on its other side: measured on a real deck, up to 1% of
         // the region. Held to the stricter rule, such a copy is widened, round after round,
         // until the whole slide is one HTML element that differs by exactly the same pixels.
-        const textual = type === 'text' || type === 'table' || (type === 'html' && item.chars > 0);
-        const least = textual ? 2 * BAD_MIN_PIXELS : BAD_MIN_PIXELS;
-        const share = textual ? BAD_TEXT_SHARE : BAD_SHARE;
-        const local = textual ? undefined : dense.find((c) => c.owner === index);
+        const text = textual(item);
+        const least = text ? 2 * BAD_MIN_PIXELS : BAD_MIN_PIXELS;
+        const share = text ? BAD_TEXT_SHARE : BAD_SHARE;
+        const local = text ? undefined : dense.find((c) => c.owner === index);
         const differing = strict.differing[index]!;
         const owned = strict.owned[index]!;
         const glyphShift =
-          textual &&
+          text &&
           differing <= GLYPH_SHIFT_SHARE * owned &&
           coarse.differing[index]! <=
             Math.max(COARSE_MIN_PIXELS, COARSE_SHARE * coarse.owned[index]!);
         // The share says how much of the element differs; for what holds text, the blocks say
         // whether a part of it does, however large the element around that part is.
-        const place = textual
+        const place = text
           ? blocks.find((scale) => scale.differing[index]! >= LOCAL_MIN_BLOCKS)
           : undefined;
         if (differing > Math.max(least, share * owned) && !glyphShift) {
@@ -1138,19 +1188,21 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     return { rendered, picture };
   };
 
+  /** Where the lines of every text were laid out the last time the proposal was judged. */
+  let drawn: Map<Item, Line[]> | undefined;
   const judge = async ({ fit = true }: { fit?: boolean } = {}): Promise<Verdict> => {
     await holdToSchema();
     const first = await pictured(fit);
+    drawn = first.rendered.real;
     const verdict = assess(first.rendered, first.picture);
     if (!options.foreign) return verdict;
     // Text that sits where it should and still differs in its pixels may only be anti-aliased
     // the other way: drawn once more in grey, and kept that way where it then matches.
     const again = verdict.bad
-      .filter(({ item, why }) => {
-        const type = item.element.type;
-        const textual = type === 'text' || type === 'table' || (type === 'html' && item.chars > 0);
-        return textual && why.startsWith('looks different') && !triedGrey.has(item);
-      })
+      .filter(
+        ({ item, why }) =>
+          textual(item) && why.startsWith('looks different') && !triedGrey.has(item),
+      )
       .map(({ item }) => item);
     if (again.length === 0) return verdict;
     for (const item of again) {
@@ -1232,6 +1284,117 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     if (!SlideSchema.safeParse(assemble()).success) {
       await replace(root, true, 'a slide the model cannot hold');
     }
+  };
+
+  /**
+   * Puts the settled proposal together (`compose`): joined texts, shapes with their text,
+   * groups. The composed slide is laid out until its texts sit on the lines they drew apart,
+   * and then judged against the source like any other proposal; what looks different is taken
+   * apart again, and if that does not help, all of it is. Undefined when nothing was put
+   * together: the proposal is then as the guard left it.
+   */
+  const composed = async (): Promise<Verdict | undefined> => {
+    const items = proposal.items;
+    const lines = drawn;
+    if (!lines) return undefined;
+    const refused = new Set<string>();
+    const kept = new Map<string, ModelElement>();
+    const groupIds = new Map<Item, string>();
+    const groupId = (base: Item) => {
+      const id = groupIds.get(base) ?? nextId();
+      groupIds.set(base, id);
+      return id;
+    };
+    const plan = () =>
+      compose(items, {
+        space,
+        theme: deck.theme,
+        slide: deck.size,
+        lines,
+        groupId,
+        refused,
+        kept,
+      });
+    const take = (composition: Composition | undefined) => {
+      proposal.items = composition ? composition.items : items;
+      nested = composition?.parts;
+    };
+    /** Lays the composed slide out and holds every text that was put together to its lines. */
+    const fit = async (composition: Composition): Promise<'settled' | 'moved' | 'refused'> => {
+      const mounted = await mountSlide(renderDeck(), led(assemble()), host, place);
+      try {
+        const at = mounted.root.getBoundingClientRect();
+        const scale = at.width / deck.size.w;
+        let outcome: 'settled' | 'moved' | 'refused' = 'settled';
+        for (const [item, how] of composition.made) {
+          const dom = mounted.root.querySelector(`[data-element-id="${item.element.id}"]`);
+          const now = dom
+            ? textLines(dom, (el) => el.hasAttribute('data-slidr-marker')).map((l) => ({
+                left: (l.left - at.left) / scale - lead.x,
+                right: (l.right - at.left) / scale - lead.x,
+                top: (l.top - at.top) / scale - lead.y,
+                bottom: (l.bottom - at.top) / scale - lead.y,
+              }))
+            : [];
+          const result = settle(item, how, now, deck.theme);
+          const key = keyOf(how.kind, how.of);
+          if (result === 'refused') {
+            refused.add(key);
+            kept.delete(key);
+            outcome = 'refused';
+          } else {
+            kept.set(key, item.element);
+            if (result === 'moved' && outcome === 'settled') outcome = 'moved';
+          }
+        }
+        return outcome;
+      } finally {
+        mounted.dispose();
+      }
+    };
+    /** A plan whose texts sit where they were; what would not sit is left out of it. */
+    const settled = async (): Promise<Composition | undefined> => {
+      let composition = plan();
+      for (let tries = 0; tries < MAX_COMPOSE_FITS && !unchanged(composition); tries++) {
+        take(composition);
+        const outcome = composition.made.size > 0 ? await fit(composition) : 'settled';
+        if (outcome === 'settled') return composition;
+        if (outcome === 'refused') composition = plan();
+      }
+      // Still moving after every try: what moved is not put together.
+      for (const how of composition.made.values()) refused.add(keyOf(how.kind, how.of));
+      composition = plan();
+      return unchanged(composition) ? undefined : composition;
+    };
+
+    let composition = await settled();
+    if (!composition) {
+      take(undefined);
+      return undefined;
+    }
+    take(composition);
+    for (const item of composition.items) {
+      // Text the source drew in grey is drawn in grey when it is part of something larger too.
+      if (composition.made.get(item)?.of.some((member) => grey.has(member))) grey.add(item);
+    }
+    let verdict = await judge({ fit: false });
+    if (!verdict.faithful) {
+      const before = refused.size;
+      for (const { item } of verdict.bad) {
+        const how = composition.made.get(item);
+        if (how) refused.add(keyOf(how.kind, how.of));
+      }
+      composition = refused.size > before ? await settled() : undefined;
+      if (composition) {
+        take(composition);
+        verdict = await judge({ fit: false });
+      }
+    }
+    if (!composition || !verdict.faithful) {
+      take(undefined);
+      return undefined;
+    }
+    return verdict;
   };
 
   const guard = async (): Promise<GuardReport> => {
@@ -1322,6 +1485,13 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     };
   };
 
+  const put = async (report: GuardReport): Promise<GuardReport> => {
+    // Only a slide that is right is put together, and only one that is still in pieces.
+    if (!report.faithful || report.wholeSlide || options.lossy) return report;
+    const verdict = await composed();
+    return verdict ? { ...report, diffPixels: verdict.diffPixels } : report;
+  };
+
   const result = (report: GuardReport): ConversionResult => {
     let regular = 0;
     let html = 0;
@@ -1363,19 +1533,23 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     proposal,
     judge,
     guard,
+    compose: put,
     result,
     dispose: disposeCopyBaseline,
   };
 }
 
-/** Converts the subtree under `root`: measure, propose, guard. See `startConversion`. */
+/** Converts the subtree under `root`: measure, propose, guard, compose. See `startConversion`. */
 export async function convertSubtree(
   root: Element,
   options: ConvertOptions,
 ): Promise<ConversionResult> {
   const conversion = await startConversion(root, options);
   try {
-    return conversion.result(await conversion.guard());
+    const guarded = await conversion.guard();
+    return conversion.result(
+      options.compose === false ? guarded : await conversion.compose(guarded),
+    );
   } finally {
     conversion.dispose();
   }

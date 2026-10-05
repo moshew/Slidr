@@ -178,17 +178,26 @@ describe('element_convert', () => {
     expect(data.editability).toBe(1);
     const slide = findSlide(bus.deck, slideId)!;
     expect(slide.elements.map((e) => e.id)).toEqual(data.elementIds);
-    const [box, text] = slide.elements;
+    // The card and the text on it are a group, as a converted slide has them (ADR-073), under
+    // the name the html element had.
+    const [card, ...others] = slide.elements;
+    expect(others).toEqual([]);
+    expect(card).toMatchObject({
+      type: 'group',
+      name: 'card',
+      frame: { x: 400, y: 300, w: 600, h: 240 },
+    });
+    const [box, text] = card?.type === 'group' ? card.children : [];
     expect(box).toMatchObject({
       type: 'shape',
-      frame: { x: 400, y: 300, w: 600, h: 240 },
+      frame: { x: 0, y: 0, w: 600, h: 240 },
       fill: { kind: 'solid', color: { value: '#1e3a8a' } },
       effects: { radius: 20 },
     });
-    expect(text).toMatchObject({ type: 'text', frame: { x: 440 } });
+    expect(text).toMatchObject({ type: 'text', frame: { x: 40 } });
     expect(text?.type === 'text' && plainText(text.content)).toBe('Inside the card');
-    expect(text!.frame.y).toBeGreaterThan(330);
-    expect(text!.frame.y).toBeLessThan(350);
+    expect(text!.frame.y).toBeGreaterThan(30);
+    expect(text!.frame.y).toBeLessThan(50);
   });
 
   it('in an object session keeps one element under the same id: a group of the parts', async () => {
@@ -214,11 +223,17 @@ describe('element_convert', () => {
   it('turns a regular element into an html element that draws the same', async () => {
     const { bus, call, slideId, element } = await withHtmlElement();
     const parts = await ok(call('element_convert', { elementId: element.id, to: 'elements' }));
-    const textId = (parts.elementIds as string[])[1]!;
+    /** The text on the card: the second child of the group the card became. */
+    const onCard = () => {
+      const card = findSlide(bus.deck, slideId)!.elements[0]!;
+      expect((parts.elementIds as string[])[0]).toBe(card.id);
+      return (card.type === 'group' ? card.children : [])[1]!;
+    };
+    const textId = onCard().id;
     const before = findElementInDeck(bus.deck, textId)!.element;
     const data = await ok(call('element_convert', { elementId: textId, to: 'html' }));
     expect(data.editability).toBe(0);
-    const html = findSlide(bus.deck, slideId)!.elements[1]!;
+    const html = onCard();
     expect(html).toMatchObject({
       type: 'html',
       hasScripts: false,
@@ -237,7 +252,8 @@ describe('element_convert', () => {
   it('refuses what cannot be converted, with a reason', async () => {
     const { call, element, bus, slideId } = await withHtmlElement();
     const parts = await ok(call('element_convert', { elementId: element.id, to: 'elements' }));
-    const shapeId = (parts.elementIds as string[])[0]!;
+    const card = findSlide(bus.deck, slideId)!.elements[0]!;
+    const shapeId = (card.type === 'group' ? card.children : [])[0]!.id;
     const result = await call('element_convert', { elementId: shapeId, to: 'elements' });
     expect(result).toMatchObject({ ok: false, error: { code: 'failed' } });
     expect(!result.ok && result.error.message).toMatch(/is a shape, not html/);

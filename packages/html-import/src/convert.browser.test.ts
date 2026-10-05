@@ -5,6 +5,10 @@
  *
  * The figures printed at the end (editability, time per slide) are the ones ADR-017 quotes.
  * Run with `--silent=false` to see them.
+ *
+ * What is looked at here is the walk and the guard: the slide as they leave it, one element
+ * for each thing the page draws. How that list is then put together (texts joined, a text in
+ * its shape, a card as a group) is `compose.browser.test.ts`.
  */
 import {
   createDeck,
@@ -54,7 +58,7 @@ async function convert(
   deck: Deck = english,
 ): Promise<ConversionResult> {
   const started = performance.now();
-  const result = await convertHtml(html, deck, host, deck.size);
+  const result = await convertHtml(html, deck, host, deck.size, { compose: false });
   const total = Math.round(performance.now() - started);
   const counts: Record<string, number> = {};
   for (const e of result.slide.elements) counts[e.type] = (counts[e.type] ?? 0) + 1;

@@ -329,11 +329,13 @@ describe('what comes back is a slide the model accepts', () => {
       ['7'],
     );
     // A single line sits the same under any line height once its box is where the glyphs
-    // were: the figure stays editable, with no height of nothing written into the model.
-    expect(types(result)).toEqual(['shape', 'text']);
-    const [figure] = texts(result);
-    expect(plainText(figure!.content)).toBe('7');
-    expect(figure!.content.paragraphs[0]!.lineHeight ?? 1).toBeGreaterThan(0);
+    // were: the figure stays editable, with no height of nothing written into the model. It
+    // sits in the middle of its circle, so the two are one shape with its text (ADR-073).
+    expect(types(result)).toEqual(['shape']);
+    const [circle] = result.slide.elements;
+    const figure = circle!.type === 'shape' ? circle.content! : undefined;
+    expect(plainText(figure!)).toBe('7');
+    expect(figure!.paragraphs[0]!.lineHeight ?? 1).toBeGreaterThan(0);
     expect(converted.found['7']!.box).toEqual(source.found['7']!.box);
   });
 
@@ -417,12 +419,17 @@ describe('a link is kept on whatever stands for the linked element', () => {
       `<a href="https://example.com/report" style="position:absolute;left:200px;top:200px;display:block;width:640px;height:300px;box-sizing:border-box;padding:40px;background:#e8eef8;border-radius:24px;text-decoration:none;font:400 36px/1.4 Arial;color:#123">Read the whole report</a>`,
       'en',
     );
-    expect(types(result)).toEqual(['shape', 'text']);
-    const [card, label] = result.slide.elements;
+    // The card and the text at its top are a group (ADR-073): the box, then the text.
+    expect(types(result)).toEqual(['group']);
+    const [group] = result.slide.elements;
+    const [card, label] = group!.type === 'group' ? group.children : [];
+    expect([card!.type, label!.type]).toEqual(['shape', 'text']);
     expect(card!.link).toEqual(REPORT);
     // Text holds a link on its runs, where the editor's text tools read and write it.
     expect(label!.link).toBeUndefined();
-    expect(texts(result)[0]!.content.paragraphs[0]!.runs[0]!.marks?.link).toBe(REPORT.target);
+    expect(label!.type === 'text' && label.content.paragraphs[0]!.runs[0]!.marks?.link).toBe(
+      REPORT.target,
+    );
   });
 
   it('on a region inside a link that stays html, and on nothing outside the link', async () => {
@@ -827,14 +834,19 @@ describe('list items keep the markers the source drew', () => {
     'position:absolute;left:200px;top:200px;width:1000px;margin:0;padding-left:60px;font:400 36px/1.5 Arial;color:#111';
   /** The marker each list paragraph of the slide was given, as the renderer will write it. */
   const glyphs = (result: ConversionResult) =>
-    texts(result).map((text) => text.content.paragraphs[0]!.list?.glyph);
+    texts(result).flatMap((text) => text.content.paragraphs.map((p) => p.list?.glyph));
+  /** How many paragraphs each text box of the slide holds. */
+  const paragraphs = (result: ConversionResult) =>
+    texts(result).map((text) => text.content.paragraphs.length);
 
   it('counts down in a reversed list', async () => {
     const { result, converted } = await look(
       `<ol reversed style="${LIST}"><li>Bronze medal</li><li>Silver medal</li><li>Gold medal</li></ol>`,
       'en',
     );
-    expect(types(result)).toEqual(['text', 'text', 'text']);
+    // The items of one list are the paragraphs of one text box (ADR-073).
+    expect(types(result)).toEqual(['text']);
+    expect(paragraphs(result)).toEqual([3]);
     expect(converted.markers).toEqual(['3.', '2.', '1.']);
     const from = await look(
       `<ol reversed start="10" style="${LIST}"><li>Tenth</li><li>Ninth</li></ol>`,
@@ -886,7 +898,8 @@ describe('list items keep the markers the source drew', () => {
       `<ul style="${LIST};counter-reset:list-item 4"><li>First point</li><li>Second point</li></ul>`,
       'en',
     );
-    expect(types(bullets.result)).toEqual(['text', 'text']);
+    expect(types(bullets.result)).toEqual(['text']);
+    expect(paragraphs(bullets.result)).toEqual([2]);
   });
 
   it('writes the marker the page wrote itself, in its colour', async () => {
@@ -894,7 +907,8 @@ describe('list items keep the markers the source drew', () => {
       `<style>ul{${LIST}} li::marker{content:"→ ";color:#c00}</style><ul><li>First point of the plan</li><li>Second point of the plan</li><li>Third point of the plan</li></ul>`,
       'en',
     );
-    expect(types(result)).toEqual(['text', 'text', 'text']);
+    expect(types(result)).toEqual(['text']);
+    expect(paragraphs(result)).toEqual([3]);
     expect(converted.markers).toEqual(['→', '→', '→']);
     expect(texts(result)[0]!.content.paragraphs[0]!.list).toMatchObject({
       kind: 'bullet',
@@ -932,8 +946,10 @@ describe('list items keep the markers the source drew', () => {
       ['Parent item'],
     );
     // The item is not a block of text itself; its marker hangs beside its first line, which
-    // is the text before the nested list.
-    expect(types(looked.result)).toEqual(['text', 'text', 'text', 'text']);
+    // is the text before the nested list. The two children share a box, and are one text box;
+    // the page indents them by another step than the renderer's, so their parents keep theirs.
+    expect(types(looked.result)).toEqual(['text', 'text', 'text']);
+    expect(paragraphs(looked.result)).toEqual([1, 2, 1]);
     expect(looked.result.editability).toBe(1);
     expect(looked.converted.markers).toHaveLength(4);
     const parent = texts(looked.result).find((text) =>

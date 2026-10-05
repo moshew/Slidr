@@ -196,7 +196,8 @@ describe('capturing an element as a slide', () => {
         ? [element.content.paragraphs.map((p) => p.runs.map((r) => r.text).join('')).join('\n')]
         : [],
     );
-    expect(texts).toEqual(['יעדים', 'שקף שני']);
+    // The title and the line under it are the two paragraphs of one text box (ADR-073).
+    expect(texts).toEqual(['יעדים\nשקף שני']);
     // The slide fills the deck's 1920x1080: a 1280x720 source is drawn one and a half times larger.
     const title = captured.slide.elements.find((element) => element.type === 'text')!;
     expect(title.frame.x + title.frame.w).toBeCloseTo(1920 - 80 * 1.5, 0);
@@ -404,11 +405,12 @@ describe('capturing an element as a slide', () => {
     expect(captured.guard).toMatchObject({ faithful: true, exact: true, wholeSlide: false });
     // The slide's own box, which only HTML can draw (the page number), kept its white
     // background outside its document: its shells are not SVG, which shows nothing when empty.
-    const [box, heading, line, table, ...rest] = captured.slide.elements;
+    const [box, words, table, ...rest] = captured.slide.elements;
     expect(box?.type === 'html' && box.markup).toContain('<slidr-foreignobject');
     expect(box?.type === 'html' && box.markup).not.toContain('<svg');
-    // The texts on it were not taken away for a background that was the box's to draw.
-    expect([heading?.type, line?.type]).toEqual(['text', 'text']);
+    // The texts on it were not taken away for a background that was the box's to draw: the
+    // heading and the line under it, in one text box.
+    expect(words?.type === 'text' && words.content.paragraphs).toHaveLength(2);
     // The rows of a table set to `display: block` stay together, as a table or as its HTML;
     // they are not read as so many loose boxes.
     expect(['table', 'html']).toContain(table?.type);
@@ -436,9 +438,15 @@ describe('capturing an element as a slide', () => {
       takenIds: [],
     });
     expect(captured.guard.faithful).toBe(true);
-    // The card that rose into place is a box and two texts, not a block of HTML that animates.
-    const texts = captured.slide.elements.filter((element) => element.type === 'text');
-    expect(texts).toHaveLength(2);
+    // The card that rose into place is a box with its two texts on it, in a group, not a
+    // block of HTML that animates.
+    const card = captured.slide.elements.find((element) => element.type === 'group');
+    const [, words] = card?.type === 'group' ? card.children : [];
+    expect(card?.type === 'group' && card.children.map((child) => child.type)).toEqual([
+      'shape',
+      'text',
+    ]);
+    expect(words?.type === 'text' && words.content.paragraphs).toHaveLength(2);
     expect(captured.textEditability).toBe(1);
     const written = JSON.stringify(captured.slide);
     expect(written).not.toMatch(/keyframes rise|[^"]* rise"/);

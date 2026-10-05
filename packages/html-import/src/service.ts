@@ -98,7 +98,7 @@ export async function convertHtml(
   deck: Deck,
   host: ConversionHost,
   size: { w: number; h: number },
-  options: Pick<ConvertOptions, 'placement' | 'base'> = {},
+  options: Pick<ConvertOptions, 'placement' | 'base' | 'compose'> = {},
 ): Promise<ConversionResult & { loadNotes: string[] }> {
   const loaded = await loadHtml(html, deck, host, size, options);
   try {

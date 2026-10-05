@@ -46,19 +46,27 @@ describe('a subtree of a live document', () => {
         fill: { kind: 'image', assetId: r.assets[0]!.id, fit: 'fill' },
       });
 
+      // The title and the paragraph under it share a right edge: one text box, two paragraphs.
       const texts = r.slide.elements.filter((e): e is TextElement => e.type === 'text');
-      const title = texts.find((t) => plainText(t.content) === 'שקף מקובץ אחר')!;
+      expect(texts).toHaveLength(1);
+      const [words] = texts;
+      expect(plainText(words!.content)).toMatch(/^שקף מקובץ אחר\nהטקסט הזה/);
       // 64px at 1.5; every value is written out, nothing is tied to a theme that is not the page's.
-      expect(title.content.paragraphs[0]).toMatchObject({
+      expect(words!.content.paragraphs[0]).toMatchObject({
         dir: 'rtl',
         runs: [{ marks: { font: 'Arial', size: 96, weight: 700, color: { value: '#0c4a6e' } } }],
       });
-      expect(title.frame.x + title.frame.w).toBeCloseTo(1800, 0);
+      expect(words!.content.paragraphs[1]).toMatchObject({
+        runs: [{ marks: { size: 42 } }],
+      });
+      expect(words!.frame.x + words!.frame.w).toBeCloseTo(1800, 0);
+      // The note is its box and the words in its middle: a shape with its text.
       const note = r.slide.elements.find((e) => e.type === 'shape')!;
       expect(note).toMatchObject({
         fill: { kind: 'solid', color: { value: '#0c4a6e' } },
         effects: { radius: 18 },
       });
+      expect(note.type === 'shape' && plainText(note.content!)).toBe('הערה בפינה');
       expect(note.frame).toMatchObject({ x: 120, h: 96 });
     } finally {
       frame.dispose();
@@ -89,8 +97,8 @@ describe('a subtree of a live document', () => {
       const title = r.slide.elements.find(
         (e) => e.type === 'text' && plainText(e.content).startsWith('Fitted'),
       );
-      expect(title).toMatchObject({
-        content: { paragraphs: [{ runs: [{ marks: { size: 90 } }] }] },
+      expect(title?.type === 'text' && title.content.paragraphs[0]).toMatchObject({
+        runs: [{ marks: { size: 90 } }],
       });
       expect(title!.frame.x).toBeCloseTo(120, 0);
       expect(r.slide.elements.find((e) => e.type === 'shape')!.frame).toEqual({
