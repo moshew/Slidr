@@ -716,3 +716,89 @@ describe('the pictures an html region shows are assets of the deck', () => {
     expect(written.split(`slidr-asset:${result.assets[0]!.id}`)).toHaveLength(3);
   });
 });
+
+describe('a table keeps its rules, and shows what the source showed', () => {
+  const notWhite: Tone = (r, g, b) => luminance(r, g, b) < 235;
+  const table = (css: string, head = false) => `<style>
+  table{position:absolute;left:160px;top:200px;width:1200px;border-collapse:collapse;font:400 28px/1.4 Arial;color:#111}
+  td,th{padding:16px 20px;text-align:left;font-weight:400}
+  ${css}
+</style><table>
+  ${head ? '<thead>' : ''}<tr><th>Plan</th><th>Seats</th><th>Price</th></tr>${head ? '</thead><tbody>' : ''}
+  <tr><td>Starter</td><td>5</td><td>$20</td></tr>
+  <tr class="r2"><td>Team</td><td>25</td><td class="c">$90</td></tr>
+  <tr><td>Business</td><td>100</td><td>$300</td></tr>
+  <tr><td>Enterprise</td><td>1000</td><td>$2,000</td></tr>
+${head ? '</tbody>' : ''}</table>`;
+  // A column of pixels near the right edge of the table, where no text is: only rules cross
+  // it. And a row of pixels under the text of the first line of cells: only upright rules
+  // cross that.
+  const DOWN = { x: 1350, y: 190, w: 1, h: 400 };
+  const ACROSS = { x: 150, y: 262, w: 1220, h: 1 };
+  const rules = (seen: Seen, where: Box) => ink(seen.picture, where, notWhite);
+
+  it('draws the rules that are borders of its rows', async () => {
+    const looked = await look(table('tr{border-bottom:1px solid #bbb}'), 'en');
+    expect(types(looked.result)).toEqual(['table']);
+    expect(rules(looked.source, DOWN)).toBe(5);
+    expect(rules(looked.converted, DOWN)).toBe(5);
+    expect(rules(looked.converted, ACROSS)).toBe(rules(looked.source, ACROSS));
+  });
+
+  it('draws the frame that is the border of the table itself', async () => {
+    const looked = await look(table('table{border:1px solid #999}'), 'en');
+    expect(types(looked.result)).toEqual(['table']);
+    expect(rules(looked.source, DOWN)).toBe(2);
+    expect(rules(looked.converted, DOWN)).toBe(2);
+    expect(rules(looked.source, ACROSS)).toBe(2);
+    expect(rules(looked.converted, ACROSS)).toBe(2);
+  });
+
+  it('draws the rule under a group of rows, and lets the heavier of two borders win', async () => {
+    // The rule under the heading is the group's, 3px; every row asks for 1px of another colour.
+    const looked = await look(
+      table('thead{border-bottom:3px solid #246} tr{border-bottom:1px solid #bbb}', true),
+      'en',
+    );
+    expect(types(looked.result)).toEqual(['table']);
+    expect(rules(looked.source, DOWN)).toBe(3 + 4);
+    expect(rules(looked.converted, DOWN)).toBe(3 + 4);
+    const [heading] =
+      looked.result.slide.elements[0]!.type === 'table'
+        ? looked.result.slide.elements[0].cells[0]!
+        : [];
+    expect(heading?.borders?.bottom).toMatchObject({ width: 3, color: { value: '#224466' } });
+  });
+
+  it('stays html when a rule is one a stroke cannot say', async () => {
+    const looked = await look(table('thead{border-bottom:6px double #246}', true), 'en');
+    expect(types(looked.result)).toEqual(['html']);
+    expect(rules(looked.converted, DOWN)).toBe(rules(looked.source, DOWN));
+    expect(rules(looked.source, DOWN)).toBeGreaterThan(0);
+  });
+
+  it('stays html when a cell keeps its place and shows nothing', async () => {
+    const looked = await look(table('.c{visibility:hidden}'), 'en', ['$90', '$20']);
+    expect(types(looked.result)).toEqual(['html']);
+    expect(ink(looked.source.picture, looked.source.found.$90!.box, dark)).toBe(0);
+    expect(ink(looked.converted.picture, looked.source.found.$90!.box, dark)).toBe(0);
+    // The cell above it is there, on both sides: the probe sees ink where there is some.
+    expectSameInk(looked, looked.source.found.$20!.box, dark, 20);
+  });
+
+  it('stays html when a row is dimmed', async () => {
+    const looked = await look(table('.r2{opacity:.35}'), 'en', ['Team', 'Starter']);
+    expect(types(looked.result)).toEqual(['html']);
+    // At 35% the letters are light grey: nothing dark where the dimmed row is.
+    expect(ink(looked.source.picture, looked.source.found.Team!.box, dark)).toBe(0);
+    expect(ink(looked.converted.picture, looked.source.found.Team!.box, dark)).toBe(0);
+    expectSameInk(looked, looked.source.found.Starter!.box, dark, 20);
+  });
+
+  it('stays a table when its rules are the borders of its cells, as before', async () => {
+    const looked = await look(table('td,th{border:1px solid #999}'), 'en');
+    expect(types(looked.result)).toEqual(['table']);
+    expect(looked.result.editability).toBe(1);
+    expect(rules(looked.converted, DOWN)).toBe(rules(looked.source, DOWN));
+  });
+});

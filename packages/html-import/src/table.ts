@@ -57,6 +57,57 @@ function gridLines(values: number[]): number[] {
   return lines;
 }
 
+/** A border as the browser computed it, and whose it is. */
+interface Edge {
+  width: number;
+  style: string;
+  color: string;
+  owner: Element;
+  /** Where the box stands when two borders are equal: a cell before its row, and so on. */
+  rank: number;
+}
+
+type Side = 'Top' | 'Right' | 'Bottom' | 'Left';
+
+function edgeOf(owner: Element, cs: CSSStyleDeclaration, side: Side, rank: number): Edge {
+  return {
+    width: px(cs[`border${side}Width`]),
+    style: cs[`border${side}Style`],
+    color: cs[`border${side}Color`],
+    owner,
+    rank,
+  };
+}
+
+const drawn = (edge: Edge) => edge.style !== 'none' && edge.width > 0;
+/** The styles of a border, the more eye-catching first, as a collapsed table ranks them. */
+const BORDER_STYLES = ['double', 'solid', 'dashed', 'dotted', 'ridge', 'outset', 'groove', 'inset'];
+
+/**
+ * Which of two borders that meet on one line of a collapsed table is drawn there (CSS 2.1,
+ * 17.6.2.1): `hidden` before all, then the wider, then the more eye-catching style, then the
+ * one of the smaller box.
+ */
+function heavier(a: Edge, b: Edge): Edge {
+  if (a.style === 'hidden' || b.style === 'hidden') return a.style === 'hidden' ? a : b;
+  if (drawn(a) !== drawn(b)) return drawn(a) ? a : b;
+  if (a.width !== b.width) return a.width > b.width ? a : b;
+  const [styleA, styleB] = [BORDER_STYLES.indexOf(a.style), BORDER_STYLES.indexOf(b.style)];
+  if (styleA !== styleB) return styleA < styleB ? a : b;
+  return a.rank <= b.rank ? a : b;
+}
+
+/** A box of the table that is not a cell, by the lines of the grid it runs between. */
+interface Band {
+  el: Element;
+  cs: CSSStyleDeclaration;
+  rank: number;
+  r0: number;
+  r1: number;
+  c0: number;
+  c1: number;
+}
+
 function lineIndex(lines: readonly number[], value: number): number {
   let best = 0;
   for (let i = 1; i < lines.length; i++) {
@@ -81,18 +132,29 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
   const behind = tablePaint.background ? tableCs.backgroundColor : undefined;
   if (behind && (!collapsed || px(tableCs.borderTopLeftRadius) > 0)) return undefined;
 
+  // What the model's table has no word for, on a part of the table: a row or a cell that is
+  // dimmed, or that keeps its place and shows nothing. A cell has a fill, borders and text.
+  const plain = (cs: CSSStyleDeclaration) => cs.opacity === '1' && cs.visibility === 'visible';
   const rows: Element[] = [];
+  const groups: Element[] = [];
   for (const child of composedChildren(el).filter(shown)) {
-    const display = styleOf(child).display;
+    const cs = styleOf(child);
+    const display = cs.display;
     if (display === 'table-row') rows.push(child);
     else if (ROW_GROUPS.has(display)) {
+      if (!plain(cs)) return undefined;
+      groups.push(child);
       for (const row of composedChildren(child).filter(shown)) {
         if (styleOf(row).display !== 'table-row') return undefined;
         rows.push(row);
       }
-    } else if (display !== 'table-column' && display !== 'table-column-group') return undefined;
+    } else if (display === 'table-column' || display === 'table-column-group') {
+      // A column draws behind and around its cells; the model's table has cells only.
+      const columns = [child, ...composedChildren(child)];
+      if (columns.some((column) => ownPaint(styleOf(column)).any)) return undefined;
+    } else return undefined;
   }
-  if (rows.length === 0) return undefined;
+  if (rows.length === 0 || rows.some((row) => !plain(styleOf(row)))) return undefined;
 
   interface Measured {
     cell: Element;
@@ -104,7 +166,7 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
   for (const row of rows) {
     for (const cell of composedChildren(row).filter(shown)) {
       const cs = styleOf(cell);
-      if (cs.display !== 'table-cell') return undefined;
+      if (cs.display !== 'table-cell' || !plain(cs)) return undefined;
       measured.push({ cell, row, rect: cell.getBoundingClientRect(), cs });
     }
   }
@@ -127,21 +189,53 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
   );
   // Which places of the grid a measured cell lies over: its own, and those its spans cover.
   const covered = Array.from({ length: lines }, () => new Array<boolean>(columns).fill(false));
+  // In a collapsed table a line of the grid is drawn by whichever of the boxes that meet there
+  // asks for the heaviest border: the cells on its two sides, their row, the row group, the
+  // table. The renderer's table settles cell against cell the same way. A row, a group and
+  // the table have no box of their own in the model: what they ask for along one of their
+  // sides is given to the cells that lie along it.
+  const bands: Band[] = [];
+  if (collapsed) {
+    const band = (box: Element, rank: number): Band => {
+      const r = box.getBoundingClientRect();
+      return {
+        el: box,
+        cs: styleOf(box),
+        rank,
+        r0: lineIndex(ys, r.top),
+        r1: lineIndex(ys, r.bottom),
+        c0: lineIndex(xs, r.left),
+        c1: lineIndex(xs, r.right),
+      };
+    };
+    bands.push(...rows.map((row) => band(row, 1)), ...groups.map((group) => band(group, 2)));
+    bands.push({ el, cs: tableCs, rank: 3, r0: 0, r1: lines, c0: 0, c1: columns });
+  }
+  /** A border the model's stroke cannot say (a double rule, a ridge): the table is not held. */
+  let unheld = false;
   const stroke = (
     cell: Element,
     cs: CSSStyleDeclaration,
-    side: 'Top' | 'Right' | 'Bottom' | 'Left',
+    side: Side,
+    at: { r0: number; r1: number; c0: number; c1: number },
   ): Stroke | undefined => {
-    const width = px(cs[`border${side}Width`]);
-    const style = cs[`border${side}Style`];
-    const color = cs[`border${side}Color`];
-    if (width <= 0 || style === 'none' || style === 'hidden' || alphaOf(color) === 0)
+    let edge = edgeOf(cell, cs, side, 0);
+    for (const b of bands) {
+      const along =
+        side === 'Top' || side === 'Bottom'
+          ? at.c0 >= b.c0 && at.c1 <= b.c1 && (side === 'Top' ? at.r0 === b.r0 : at.r1 === b.r1)
+          : at.r0 >= b.r0 && at.r1 <= b.r1 && (side === 'Left' ? at.c0 === b.c0 : at.c1 === b.c1);
+      if (along) edge = heavier(edge, edgeOf(b.el, b.cs, side, b.rank));
+    }
+    if (!drawn(edge) || edge.style === 'hidden' || alphaOf(edge.color) === 0) return undefined;
+    if (edge.style !== 'solid' && edge.style !== 'dashed' && edge.style !== 'dotted') {
+      unheld = true;
       return undefined;
-    if (style !== 'solid' && style !== 'dashed' && style !== 'dotted') return undefined;
+    }
     return {
-      color: text.color(color, cell, `border-${side.toLowerCase()}-color`),
-      width: round(width * kl),
-      ...(style === 'solid' ? {} : { dash: style }),
+      color: text.color(edge.color, edge.owner, `border-${side.toLowerCase()}-color`),
+      width: round(edge.width * kl),
+      ...(edge.style === 'solid' ? {} : { dash: edge.style }),
     };
   };
 
@@ -205,10 +299,12 @@ export function readTable(el: Element, ctx: TableContext): TableElement | undefi
     const background = own ? cs.backgroundColor : alphaOf(ofRow) > 0 || !behind ? ofRow : behind;
     // A colour that only tints what is behind it would need both; the model's cell has one fill.
     if (behind && alphaOf(background) < 1 && background !== behind) return undefined;
-    const top = stroke(cell, cs, 'Top');
-    const right = stroke(cell, cs, 'Right');
-    const bottom = stroke(cell, cs, 'Bottom');
-    const left = stroke(cell, cs, 'Left');
+    const at = { r0, r1, c0, c1 };
+    const top = stroke(cell, cs, 'Top', at);
+    const right = stroke(cell, cs, 'Right', at);
+    const bottom = stroke(cell, cs, 'Bottom', at);
+    const left = stroke(cell, cs, 'Left', at);
+    if (unheld) return undefined;
     const align = cs.verticalAlign;
     const column = rtl ? columns - c1 : c0;
     for (let r = r0; r < r1; r++) {
