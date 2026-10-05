@@ -92,6 +92,30 @@ export class DocumentService {
   }
 
   /**
+   * Gives the deck the window started with its workspace: the window's first document.
+   *
+   * The window is drawn, and the bus can be written to, before the storage layer has answered,
+   * and on a busy machine that is seconds. Whatever happened meanwhile stands: when another
+   * document was opened or created, it has a workspace of its own and this one is not needed;
+   * and what was changed in the deck is unsaved work, owed to the autosave. The subscribers of
+   * the bus hear a reset either way, as at every new document: that is how they learn that
+   * there is a workspace to put files in.
+   */
+  async start(): Promise<void> {
+    const workspace = await this.#storage.create();
+    if (this.#workspace) {
+      await this.#discard(workspace.id);
+      return;
+    }
+    const changed = this.#revision !== this.#savedRevision;
+    this.#replace(workspace, this.bus.deck, false);
+    if (changed) {
+      this.#revision = 1;
+      this.#scheduleAutosave();
+    }
+  }
+
+  /**
    * Starts a new, unsaved document with the given deck. False when `mayReplace` kept the open
    * document instead.
    */
@@ -138,12 +162,18 @@ export class DocumentService {
     return this.#storage.listRecoverable();
   }
 
-  /** Reopens a workspace a crash left behind. Its changes count as unsaved. */
-  async recover(workspaceId: string): Promise<void> {
+  /**
+   * Reopens a workspace a crash left behind. Its changes count as unsaved. False when
+   * `mayReplace` kept the open document instead.
+   */
+  async recover(workspaceId: string, mayReplace?: ReplaceGuard): Promise<boolean> {
     const opened = await this.#storage.recover(workspaceId);
-    // A leftover that fails to load is the only copy of that work: never delete it here.
+    // A leftover that fails to load, or that the user did not take after all, is the only copy
+    // of that work: it is never deleted here, and is offered again at the next start.
     const { deck } = await this.#load(opened, false);
+    if (mayReplace && !(await mayReplace())) return false;
     this.#replace(opened.workspace, deck, true);
+    return true;
   }
 
   /** Discards a workspace a crash left behind. */

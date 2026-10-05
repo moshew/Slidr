@@ -27,6 +27,13 @@ export interface FileState {
   dirty: boolean;
   busy: 'opening' | 'saving' | null;
   /**
+   * The window's first document is still on its way (`startDocument`): it has no workspace
+   * yet, or what a crash left behind has not been listed. The shell is drawn and takes no input
+   * until this is over, so that nothing is typed into a deck that has nowhere to be kept, and
+   * the offer to recover comes before any work, not over it.
+   */
+  starting: boolean;
+  /**
    * Why the autosave cannot write, while it cannot (WG13-T03): the changes are in memory alone,
    * and a crash now would lose them. Null again once a write goes through.
    */
@@ -111,6 +118,7 @@ function buildEditor(options: { lang: string; storage: Storage | null }): Editor
     path: null,
     dirty: false,
     busy: null,
+    starting: false,
     autosaveFailure: null,
   }));
   // Created before the subscription below, so `dirty` is current when it runs.

@@ -198,6 +198,88 @@ describe('DocumentService', () => {
     expect(restarted.dirty).toBe(true);
   });
 
+  it('keeps a leftover the guard did not let in, for the next start', async () => {
+    await service.create(hebrewDeck());
+    service.bus.dispatch(rename('Lost in a crash'));
+    await vi.advanceTimersByTimeAsync(1000);
+    const leftover = service.workspace!.id;
+
+    const restarted = new DocumentService(storage, new CommandBus(createDeck({ title: 'Open' })));
+    await restarted.start();
+    const own = restarted.workspace!.id;
+    expect(await restarted.recover(leftover, () => Promise.resolve(false))).toBe(false);
+    expect(restarted.workspace?.id).toBe(own);
+    expect(restarted.bus.deck.meta.title).toBe('Open');
+    // The only copy of that work is where it was, and is listed again.
+    expect((await restarted.listRecoverable()).map((left) => left.id)).toEqual([leftover]);
+    expect(await restarted.recover(leftover, () => Promise.resolve(true))).toBe(true);
+    expect(restarted.bus.deck.meta.title).toBe('Lost in a crash');
+  });
+
+  describe('the first document of a window', () => {
+    /** A window whose storage has not answered the request for a workspace yet. */
+    function slowStart() {
+      const bus = new CommandBus(createDeck({ title: 'Start' }));
+      const starting = new DocumentService(storage, bus, { autosaveDelayMs: 1000 });
+      const create = storage.create.bind(storage);
+      let answer = (): void => undefined;
+      storage.create = () => new Promise((resolve) => (answer = () => resolve(create())));
+      const started = starting.start();
+      // The next request is answered at once: only the window's first one was slow.
+      storage.create = create;
+      return { starting, bus, started, answer: () => answer() };
+    }
+
+    it('gives the deck in the bus a workspace and tells the subscribers', async () => {
+      const bus = new CommandBus(createDeck({ title: 'Start' }));
+      const starting = new DocumentService(storage, bus);
+      const before = bus.deck;
+      const kinds: string[] = [];
+      bus.subscribe((event) => kinds.push(event.kind));
+      await starting.start();
+      expect(starting.workspace?.id).toBe('w1');
+      expect(bus.deck).toBe(before);
+      // A reset, as at every new document: the areas learn that there is a workspace now.
+      expect(kinds).toEqual(['reset']);
+      expect(starting.dirty).toBe(false);
+      expect(starting.path).toBeNull();
+    });
+
+    it('counts what was changed before the workspace was there as unsaved, and autosaves it', async () => {
+      const { starting, bus, started, answer } = slowStart();
+      bus.dispatch(rename('Typed while the storage layer was busy'));
+      answer();
+      await started;
+      expect(bus.deck.meta.title).toBe('Typed while the storage layer was busy');
+      expect(starting.dirty).toBe(true);
+      const id = starting.workspace!.id;
+      expect(storage.workspaces.get(id)?.deckJson).toBeNull();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(titleIn(storage.workspaces.get(id)?.deckJson)).toBe(
+        'Typed while the storage layer was busy',
+      );
+    });
+
+    it('stands aside for a document that was opened before the workspace was there', async () => {
+      storage.files.set('C:/b.slidr', JSON.stringify(hebrewDeck()));
+      const { starting, bus, started, answer } = slowStart();
+      await starting.open('C:/b.slidr');
+      const opened = starting.workspace!.id;
+      bus.dispatch(rename('Edited after opening'));
+      answer();
+      await started;
+
+      // The file's document is as it was: its workspace, its path, its changes, its history.
+      expect(starting.workspace?.id).toBe(opened);
+      expect(starting.path).toBe('C:/b.slidr');
+      expect(bus.deck.meta.title).toBe('Edited after opening');
+      expect(starting.dirty).toBe(true);
+      expect(bus.canUndo).toBe(true);
+      // And the workspace that came too late is gone.
+      expect([...storage.workspaces.keys()]).toEqual([opened]);
+    });
+  });
+
   it('closes the previous workspace when another document opens', async () => {
     storage.files.set('C:/b.slidr', JSON.stringify(hebrewDeck()));
     await service.create(hebrewDeck());

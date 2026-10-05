@@ -436,7 +436,8 @@ describe('with storage', () => {
       await vi.waitFor(() => expect(pendingDialog()?.title).toContain('new'));
       answer('recover');
       await starting;
-      expect(log).toEqual(['recover new']);
+      // The window's own deck had a workspace first; the recovered one takes its place.
+      expect(log).toEqual(['create w1', 'recover new', 'close w1']);
       expect(editor.document?.workspace?.id).toBe('new');
       expect(editor.bus.deck.slides).toHaveLength(3);
       expect(editor.file.getState().dirty).toBe(true);
@@ -453,10 +454,117 @@ describe('with storage', () => {
       await vi.waitFor(() => expect(pendingDialog()?.title).toContain('old'));
       answer('later');
       await starting;
-      expect(log).toEqual(['close new', 'create w1']);
+      expect(log).toEqual(['create w1', 'close new']);
       expect(workspaces.has('old')).toBe(true);
+      expect(editor.document?.workspace?.id).toBe('w1');
       expect(editor.bus.deck.slides).toHaveLength(1);
       expect(editor.file.getState().dirty).toBe(false);
+    });
+
+    /*
+     * The window is drawn before its document has a workspace, and on a busy machine the answer
+     * of the storage layer comes seconds later (seen: eight, three times). Whatever was done in
+     * the window meanwhile is the user's, and the start must not take it.
+     */
+    describe('when the storage layer answers late', () => {
+      const OTHER = 'C:\\decks\\other.slidr';
+
+      it('keeps what was typed before the workspace was there, as unsaved work', async () => {
+        const { storage, workspaces } = fakeStorage();
+        const making = hold(storage.create.bind(storage));
+        storage.create = making.held;
+        const editor = createEditor({ lang: 'he', storage });
+        const starting = startDocument(editor);
+        await making.called;
+        expect(editor.file.getState().starting).toBe(true);
+        edit(editor);
+        making.release();
+        await starting;
+
+        expect(editor.file.getState().starting).toBe(false);
+        expect(editor.bus.deck.slides).toHaveLength(2);
+        // Not in any file, and not in the workspace yet: unsaved, and owed to the autosave.
+        expect(editor.file.getState().dirty).toBe(true);
+        await editor.document?.flush();
+        expect((JSON.parse(workspaces.get('w1')!.deckJson) as Deck).slides).toHaveLength(2);
+      });
+
+      it('leaves alone a file that was opened before the leftovers were listed', async () => {
+        const { storage, files, log, leftovers, workspaces } = crashed();
+        files.set(OTHER, JSON.stringify(createDeck({ title: 'Other' })));
+        const listing = hold(storage.listRecoverable.bind(storage));
+        storage.listRecoverable = listing.held;
+        const editor = createEditor({ lang: 'he', storage });
+        const starting = startDocument(editor);
+        await listing.called;
+        expect(await openDocument(editor, OTHER)).toBe(true);
+        listing.release();
+
+        // Each leftover is still offered, late as it is; the user puts both off.
+        await vi.waitFor(() => expect(pendingDialog()?.title).toContain('new'));
+        answer('later');
+        await vi.waitFor(() => expect(pendingDialog()?.title).toContain('old'));
+        answer('later');
+        await starting;
+        expect(editor.bus.deck.meta.title).toBe('Other');
+        expect(editor.file.getState()).toMatchObject({ path: OTHER, dirty: false });
+        expect(editor.document?.workspace?.sourcePath).toBe(OTHER);
+        // One workspace for the window's first deck, which the opened file replaced; no other.
+        expect(log.filter((line) => line.startsWith('create'))).toEqual(['create w1']);
+        expect(leftovers.every((leftover) => workspaces.has(leftover.id))).toBe(true);
+      });
+
+      it('asks about the work on screen before a leftover replaces it', async () => {
+        const { storage, workspaces } = crashed();
+        const listing = hold(storage.listRecoverable.bind(storage));
+        storage.listRecoverable = listing.held;
+        const editor = createEditor({ lang: 'he', storage });
+        const starting = startDocument(editor);
+        await listing.called;
+        // The user did not wait: a new deck, and work in it.
+        expect(await newDocument(editor)).toBe(true);
+        edit(editor);
+        edit(editor);
+        listing.release();
+
+        await vi.waitFor(() => expect(pendingDialog()?.title).toContain('new'));
+        answer('recover');
+        // Not recovered yet: first the question about the deck that would be replaced.
+        await vi.waitFor(() =>
+          expect(pendingDialog()?.actions.map((a) => a.id)).toContain('discard'),
+        );
+        expect(editor.bus.deck.slides).toHaveLength(3);
+        answer('cancel');
+        await starting;
+        expect(editor.bus.deck.slides).toHaveLength(3);
+        expect(editor.file.getState().dirty).toBe(true);
+        expect(editor.bus.canUndo).toBe(true);
+        // The leftover is the only copy of that work: it waits for the next start.
+        expect(workspaces.has('new')).toBe(true);
+        expect(workspaces.has('old')).toBe(true);
+      });
+
+      it('recovers the leftover once the user lets the work on screen go', async () => {
+        const { storage } = crashed();
+        const listing = hold(storage.listRecoverable.bind(storage));
+        storage.listRecoverable = listing.held;
+        const editor = createEditor({ lang: 'he', storage });
+        const starting = startDocument(editor);
+        await listing.called;
+        edit(editor);
+        listing.release();
+
+        await vi.waitFor(() => expect(pendingDialog()?.title).toContain('new'));
+        answer('recover');
+        await vi.waitFor(() =>
+          expect(pendingDialog()?.actions.map((a) => a.id)).toContain('discard'),
+        );
+        answer('discard');
+        await starting;
+        expect(editor.document?.workspace?.id).toBe('new');
+        expect(editor.bus.deck.slides).toHaveLength(3);
+        expect(editor.file.getState().dirty).toBe(true);
+      });
     });
   });
 

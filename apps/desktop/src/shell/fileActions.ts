@@ -58,49 +58,70 @@ async function report(title: string, error: unknown): Promise<void> {
   await tell(title, describeFailure(error));
 }
 
-/** Starts the window's document: reopens the workspace of this session, or creates one. */
+/**
+ * Starts the window's document: reopens the workspace of this session, or gives the deck the
+ * window started with a workspace, and then offers what a crash left behind.
+ *
+ * The window is drawn while this runs, and the storage layer may take its time (seconds, on a
+ * busy machine). Until the document has its workspace and the leftovers are listed, the file
+ * state says `starting` and the shell takes no input. That is a courtesy and not the guard:
+ * a shortcut still reaches the editor, so each step here leaves whatever was done meanwhile as
+ * it is. The workspace comes first and is never made twice; the offer to recover comes after,
+ * and replaces the open document only through the question about unsaved changes.
+ */
 export async function startDocument(editor: Editor): Promise<void> {
   const document = editor.document;
   if (!document) return;
+  editor.file.setState({ starting: true });
   let previous: string | null = null;
   try {
     previous = sessionStorage.getItem(WORKSPACE_KEY);
   } catch {
     // As if there were none.
   }
+  let leftovers: RecoverableWorkspace[] = [];
   try {
-    if (previous) {
-      try {
-        await document.recover(previous);
-      } catch {
-        await document.create(editor.bus.deck);
-      }
-    } else if (!(await offerRecovery(editor))) {
-      await document.create(editor.bus.deck);
+    // A reload of the webview comes back to the workspace it had; when that one is gone, and
+    // at every other start, the deck the window opened with gets a new one.
+    const reopened = previous ? await document.recover(previous).catch(() => false) : false;
+    if (!reopened) {
+      await document.start();
+      if (!previous) leftovers = await listLeftovers(editor);
     }
   } catch (error) {
     await report(t('file.startFailed'), error);
   }
   rememberWorkspace(editor);
   syncFileState(editor);
+  editor.file.setState({ starting: false });
+  if (await offerRecovery(editor, leftovers)) {
+    rememberWorkspace(editor);
+    syncFileState(editor);
+  }
+}
+
+/** The workspaces a crash left with unsaved changes, the latest first. */
+async function listLeftovers(editor: Editor): Promise<RecoverableWorkspace[]> {
+  try {
+    const leftovers = (await editor.document?.listRecoverable()) ?? [];
+    return leftovers.sort((a, b) => (b.autosavedAt ?? '').localeCompare(a.autosavedAt ?? ''));
+  } catch (error) {
+    console.error('Could not list recoverable workspaces', error);
+    return [];
+  }
 }
 
 /**
  * After a crash (DOC-03): workspaces with changes that never reached their file are offered one
- * by one, the latest first. True when one was recovered and is now the open document. "Not now"
- * keeps a leftover on disk, to be offered again at the next start.
+ * by one. True when one was recovered and is now the open document. "Not now" keeps a leftover
+ * on disk, to be offered again at the next start.
  */
-async function offerRecovery(editor: Editor): Promise<boolean> {
+async function offerRecovery(
+  editor: Editor,
+  leftovers: readonly RecoverableWorkspace[],
+): Promise<boolean> {
   const document = editor.document;
   if (!document) return false;
-  let leftovers: RecoverableWorkspace[];
-  try {
-    leftovers = await document.listRecoverable();
-  } catch (error) {
-    console.error('Could not list recoverable workspaces', error);
-    return false;
-  }
-  leftovers.sort((a, b) => (b.autosavedAt ?? '').localeCompare(a.autosavedAt ?? ''));
   for (const leftover of leftovers) {
     const time = leftover.autosavedAt
       ? new Date(leftover.autosavedAt).toLocaleString(currentLanguage())
@@ -121,7 +142,11 @@ async function offerRecovery(editor: Editor): Promise<boolean> {
       });
     } else if (choice === 'recover') {
       try {
-        await document.recover(leftover.id);
+        // The window may have been worked in before this question reached it: that work gets
+        // the usual question first. Kept, it stays the open document, and the leftovers (this
+        // one and the rest) wait on disk for the next start.
+        if (!(await confirmDiscard(editor))) return false;
+        if (!(await document.recover(leftover.id, replaceGuard(editor)))) return false;
         // The work that was recovered is what the user came back for: straight to it.
         setWelcome(false);
         return true;
