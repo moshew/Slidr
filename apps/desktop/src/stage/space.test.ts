@@ -254,6 +254,9 @@ describe('resolvePress', () => {
     // A shape without text, or with none left in it, has no text to be on.
     expect(press(['card', 'bg']).inside).toBeUndefined();
     expect(press(['card', 'blank']).inside).toBeUndefined();
+    // The same inside the group the shape is in: off its text, a click only selects it.
+    expect(press(['card', 'chip'], ['card'], [], offText)).toEqual({ scope: ['card'], id: 'chip' });
+    expect(press(['card', 'bg'], ['card']).inside).toBeUndefined();
   });
 
   it('reaches a text at any depth, from wherever the user has entered', () => {
@@ -264,22 +267,39 @@ describe('resolvePress', () => {
       id: 'row',
       inside,
     });
-    // Next to the text, in the group it is in: a click picks it, as it does at the top level.
     expect(press(['card', 'row', 'tag'], ['card', 'row'])).toEqual({
       scope: ['card', 'row'],
       id: 'tag',
+      inside,
     });
-    expect(press(['card', 'title'], ['card'])).toEqual({ scope: ['card'], id: 'title' });
   });
 
-  it('leaves a text at the top level to the double-click', () => {
+  it('goes into a text of the group that was entered, where the press takes the text itself', () => {
+    const inside = { scope: ['card'], id: 'title', edit: true };
+    // The press takes the text box, so a drag moves it alone; a click goes on into its text.
+    expect(press(['card', 'title'], ['card'])).toEqual({ scope: ['card'], id: 'title', inside });
+    // Also when it is the selection already, or another child of the group is.
+    expect(press(['card', 'title'], ['card'], ['title']).inside).toEqual(inside);
+    expect(press(['card', 'title'], ['card'], ['chip']).inside).toEqual(inside);
+    expect(press(['card', 'chip'], ['card'], ['title']).inside).toEqual({
+      scope: ['card'],
+      id: 'chip',
+      edit: true,
+    });
+  });
+
+  it('leaves a text that is in no group to the double-click', () => {
     expect(press(['solo'])).toEqual({ scope: [], id: 'solo' });
+    expect(press(['solo'], [], ['solo'])).toEqual({ scope: [], id: 'solo' });
     expect(press(['label'], [], ['label'])).toEqual({ scope: [], id: 'label' });
+    // Also on the way out of a group that was entered.
+    expect(press(['solo'], ['card', 'row'])).toEqual({ scope: [], id: 'solo' });
   });
 
   it('does not go into what is locked or hidden', () => {
     expect(press(['card', 'fixed']).inside).toBeUndefined();
     expect(press(['card', 'unseen']).inside).toBeUndefined();
+    expect(press(['card', 'fixed'], ['card'])).toEqual({ scope: ['card'], id: 'fixed' });
     expect(press(['shut', 'kept'])).toEqual({ scope: [], id: 'shut' });
     expect(press(['shut', 'kept'], [], ['shut']).inside).toBeUndefined();
   });

@@ -397,7 +397,7 @@ export function Stage({
   const [marquee, setMarquee] = useState<Frame | undefined>();
   const [spaceDown, setSpaceDown] = useState(false);
   const [overCrop, setOverCrop] = useState(false);
-  /** What is hovered is a text that a click goes straight into, inside a group (ARR-01). */
+  /** What is hovered is a text in a group, which a click goes straight into (ARR-01). */
   const [overText, setOverText] = useState(false);
   /** While several elements are turned together: the box they started in, and how far it turned. */
   const [turn, setTurn] = useState<{ frame: Frame; angle: number } | undefined>();
@@ -1053,8 +1053,8 @@ export function Stage({
         return;
       }
       const press = pressAt(e.clientX, e.clientY);
-      // A text that a click would go straight into is what the pointer is on, and not the
-      // group around it that a press takes.
+      // A text that a click would go straight into is what the pointer is on, and not a
+      // group around it that a press would take.
       const text = press.inside?.edit ? press.inside.id : undefined;
       const id = text ?? press.id;
       setHover(id && !index.get(id)?.locked ? id : undefined);
@@ -1909,11 +1909,13 @@ export function Stage({
 
   const stageView: StageView = { origin, scale };
   const active = activeKind;
-  // A press on the text of a group takes the group: while it lasts, the text has no frame of
-  // its own, and the cursor is not the text's.
+  // A press on a text takes the group around it, or the text box itself in a group that was
+  // entered, to move it: while it lasts, the text has no frame of its own, and the cursor is
+  // not the text's. Otherwise the cursor is, also over a text that is selected: a click still
+  // goes into it.
   const hovered =
     hover && !selected.includes(hover) && !(overText && active) ? index.get(hover) : undefined;
-  const intoText = overText && Boolean(hovered) && !previewing;
+  const intoText = overText && hover !== undefined && !active && !previewing;
   const enteredGroup = scope.length ? index.get(scope[scope.length - 1] as string) : undefined;
 
   // The size or the angle, next to what a handle is changing.

@@ -204,7 +204,7 @@ export function resolveHit(
   return { scope: scope.slice(0, depth), id: chain[depth] };
 }
 
-/** Where a press that stays a click goes, further in than the element the press itself took. */
+/** Where a press that stays a click goes, beyond selecting the element the press itself took. */
 export interface Inside {
   /** The entered groups once the click has gone in, outermost first. */
   scope: string[];
@@ -230,12 +230,14 @@ function holdsText(located: Located, onText: (shape: Located) => boolean): boole
 
 /**
  * What a press means, as PowerPoint has it (ARR-01). The press itself takes what `resolveHit`
- * picks, so a drag from anywhere on a group moves the group. A press that is released where it
- * began may go further in:
+ * picks, so a drag moves that: the group that was not entered, or the child of the one that was.
+ * A press that is released where it began may go further:
  *
- * - On a text inside groups that were not entered, straight into editing that text, however deep
- *   it lies. It is the element `chain` ends in, the topmost one under the pointer, unless that
- *   one is locked or hidden. The empty part of a big shape still stands for its group.
+ * - On a text that is in a group, straight into editing that text, however deep it lies, and
+ *   whether its group was entered or not, and whether the text was the selection or not: it is
+ *   where the text is that counts. The text is the element `chain` ends in, the topmost one under
+ *   the pointer, unless that one is locked or hidden. The empty part of a big shape is no text.
+ *   A text in no group is left to the double-click.
  * - On a group that was the whole selection before the press, to the child under the pointer, one
  *   level in: a second click on a group does what a double-click on it does.
  *
@@ -251,12 +253,14 @@ export function resolvePress(
 ): Press {
   const hit = resolveHit(chain, scope);
   const target = hit.id ? index.get(hit.id) : undefined;
-  // Only a group has an inside to go to, and a locked one is not taken by a press at all.
-  if (!target || target.locked || target.element.type !== 'group') return hit;
+  // A locked element is not taken by a press at all.
+  if (!target || target.locked) return hit;
   const top = index.get(chain[chain.length - 1] ?? '');
-  if (top && !top.locked && !top.hidden && holdsText(top, onText)) {
+  if (top?.path.length && !top.locked && !top.hidden && holdsText(top, onText)) {
     return { ...hit, inside: { scope: pathIds(top), id: top.element.id, edit: true } };
   }
+  // Besides a text, only a group has an inside to go to.
+  if (target.element.type !== 'group') return hit;
   const depth = hit.scope.length + 1;
   const child = index.get(chain[depth] ?? '');
   const alone = selected.length === 1 && selected[0] === target.element.id;
