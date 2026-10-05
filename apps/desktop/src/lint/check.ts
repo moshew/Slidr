@@ -39,8 +39,14 @@ const keyOf = (deck: Deck, slide: Slide): Key => [
 ];
 const same = (a: Key, b: Key) => a.every((part, i) => part === b[i]);
 
+/** Errors one "fix" may go on to fix after its own: each is one the step before it opened. */
+const MAX_FOLLOW_UPS = 4;
+
 const nameOf = ({ slideId, rule, elementIds }: LintFinding) =>
   `${slideId} ${rule} ${elementIds.join(' ')}`;
+
+/** One try at a finding: the finding with the commands of its fix. */
+const attemptOf = (finding: LintFinding) => `${nameOf(finding)} ${JSON.stringify(finding.fix)}`;
 
 /** Fixing everything at once leaves alone what is only information: a colour may be meant. */
 export const fixable = (finding: LintFinding) =>
@@ -127,23 +133,65 @@ export class DesignCheck {
     }
   }
 
-  /** Applies the fix of one finding, as one step to undo. False when it can no longer run. */
-  fix(finding: LintFinding, label: string): boolean {
-    if (!finding.fix || !this.current) return false;
+  /**
+   * Applies the fix of one finding, as one step to undo. Resolves false when it can no longer
+   * run. The fix itself is applied at once, before anything is awaited.
+   *
+   * A fix changes what the slide measures, and a rule cannot measure: small text set at a
+   * readable size is larger than the box that fitted it, and the warning it closed would come
+   * back as an error. So the deck is checked again, and an error that the fix opened on the
+   * elements of its finding is fixed too, in the same step: the box of that text is made taller
+   * where there is room, and the text is shrunk to it where there is none. Errors that were
+   * there before are not touched: the user asked for this finding.
+   */
+  async fix(finding: LintFinding, label: string): Promise<boolean> {
+    const { findings: present } = this.state.getState();
+    // A fix holds for the deck its finding is of: a finding of an earlier check is not run.
+    if (!finding.fix || !this.current || !present.includes(finding)) return false;
+    const known = new Set(present.map(nameOf));
+    const txId = newId('tx');
     try {
-      this.#bus.batch(finding.fix, { label });
-      return true;
+      this.#bus.batch(finding.fix, { txId, label });
     } catch (error) {
       console.error('A fix of the design check did not apply', error);
       return false;
     }
+    const tried = new Set<string>();
+    for (let followed = 0; followed < MAX_FOLLOW_UPS; followed++) {
+      const mine = this.#bus.deck;
+      const findings = await this.check();
+      // Somebody else changed the deck meanwhile: what is found now is no longer of this fix.
+      if (this.#bus.deck !== mine || !this.current) break;
+      const opened = findings.find(
+        (f) =>
+          f.severity === 'error' &&
+          f.fix !== undefined &&
+          f.slideId === finding.slideId &&
+          f.elementIds.some((id) => finding.elementIds.includes(id)) &&
+          !known.has(nameOf(f)) &&
+          !tried.has(attemptOf(f)),
+      );
+      if (!opened?.fix) break;
+      tried.add(attemptOf(opened));
+      try {
+        this.#bus.batch(opened.fix, { txId, label });
+      } catch (error) {
+        console.error('A fix of the design check did not apply', error);
+        break;
+      }
+    }
+    return true;
   }
 
   /**
    * Applies every fix there is for errors and warnings, of the whole deck or of one slide, as
    * one step to undo. A fix changes what the next one would find, so the deck is checked again
-   * after each; a finding that its fix did not close is not tried twice. Resolves with the
+   * after each; a fix that did not close its finding is not tried twice. Resolves with the
    * number of fixes applied.
+   *
+   * What is not tried twice is the fix, not the finding: a finding that was closed and that a
+   * later fix opened again (the box that was made to fit its text, before the text was set at
+   * a readable size) comes back with another fix, and that one is applied.
    */
   async fixAll(label: string, slideId?: string): Promise<number> {
     const txId = newId('tx');
@@ -152,10 +200,10 @@ export class DesignCheck {
     while (applied < MAX_FIXES) {
       const findings = await this.check();
       const next = findings.find(
-        (f) => fixable(f) && !tried.has(nameOf(f)) && (!slideId || f.slideId === slideId),
+        (f) => fixable(f) && !tried.has(attemptOf(f)) && (!slideId || f.slideId === slideId),
       );
       if (!next?.fix || !this.current) break;
-      tried.add(nameOf(next));
+      tried.add(attemptOf(next));
       try {
         this.#bus.batch(next.fix, { txId, label });
         applied++;

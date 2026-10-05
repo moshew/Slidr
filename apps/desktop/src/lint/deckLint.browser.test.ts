@@ -18,7 +18,8 @@ import { builtInSamples, builtInTemplates, sampleDeck } from '@slidr/templates/b
 import { beforeAll, describe, expect, test } from 'vitest';
 import { testAssetUrl } from '../dev/slides/testAssets';
 import { registerBuiltinFonts } from '../fonts';
-import { createLintService, lintSlides } from './deckLint';
+import { DesignCheck } from './check';
+import { createLintService, lintSlides, measureDeckSlide } from './deckLint';
 
 // End to end, in the engine WebView2 uses: slides are rendered with the built-in fonts, measured
 // from the DOM and judged, through the same service the Deck API calls after every write.
@@ -559,6 +560,80 @@ describe("the user's design check: the rules that do not go back to the agent, a
     // And back: the box the fix left.
     bus.batch(applyTemplate(bus.deck, template('tzuk')));
     expect(box()).toEqual(grown);
+  });
+
+  describe('the check of the open deck, on slides as they are really drawn', () => {
+    const checkOf = (elements: Element[]) => {
+      const slide = createSlide({ id: 's_1', elements });
+      const bus = new CommandBus(deckOf([slide], 'en'), { validate: true });
+      const check = new DesignCheck(bus, (deck, s) => measureDeckSlide(deck, s, resolveAsset), {
+        rest: 0,
+      });
+      const onElements = async () => (await check.check()).filter((f) => f.elementIds.length > 0);
+      return { bus, check, onElements };
+    };
+    const small = (text: string, size: number) => richText(text, { dir: 'ltr', marks: { size } });
+
+    test('small text made readable gets the box it needs: the warning does not come back as an error', async () => {
+      // A footnote at 18px that fills the two lines of its box, as a conversion measures it.
+      const { bus, check, onElements } = checkOf([
+        createElement.text({
+          id: 'e_small',
+          frame: { x: 200, y: 200, w: 620, h: 96 },
+          content: small(
+            'A footnote set at eighteen pixels: it fills the two lines of the box it was given and not one line more than that, as drawn.',
+            18,
+          ),
+        }),
+        createElement.shape({ id: 'e_card', frame: { x: 900, y: 200, w: 600, h: 500 } }),
+      ]);
+      const before = await onElements();
+      expect(brief(before)).toEqual(['L04 e_small']);
+      expect(await check.fix(before[0]!, 'Fix')).toBe(true);
+      // At 24px the text is taller than the box that fitted it. The same step made the box
+      // taller; before, "Fix" left "L01: the text is 35px taller than its box", an error.
+      expect(brief(await onElements())).toEqual([]);
+      const after = bus.deck.slides[0]!.elements[0]!;
+      expect(after.frame.h).toBeGreaterThan(96);
+      expect(bus.undoStack).toHaveLength(1);
+    });
+
+    test('"fix all" leaves nothing a second "fix all" would fix', async () => {
+      const card = (id: string, x: number, y: number) =>
+        createElement.shape({ id, frame: { x, y, w: 400, h: 260 } });
+      const { bus, check, onElements } = checkOf([
+        card('e_1', 96, 300),
+        card('e_2', 520, 303),
+        card('e_3', 951, 300),
+        card('e_4', 1400, 300),
+        createElement.text({
+          id: 'e_t1',
+          frame: { x: 116, y: 320, w: 360, h: 60 },
+          content: en('A heading that is far too long for the one line it has'),
+        }),
+        // Too small, and too long for its box at once: the box is fitted, then the size is
+        // raised, and the box no longer fits. The fix of the box has to be tried again.
+        createElement.text({
+          id: 'e_t2',
+          frame: { x: 540, y: 322, w: 360, h: 40 },
+          content: small('Small print of the second card, set at sixteen', 16),
+        }),
+        createElement.text({
+          id: 'e_t3',
+          frame: { x: 971, y: 320, w: 360, h: 60 },
+          content: en('Pale text', 'body', '#d9d9d9'),
+        }),
+      ]);
+      expect((await onElements()).some((f) => f.severity === 'error')).toBe(true);
+      expect(await check.fixAll('Fix all')).toBeGreaterThan(0);
+      const left = await onElements();
+      expect(left.filter((f) => f.severity === 'error')).toEqual([]);
+      expect(left.filter((f) => f.fix && f.severity !== 'info')).toEqual([]);
+      const settled = bus.deck;
+      expect(await check.fixAll('Fix all')).toBe(0);
+      expect(bus.deck).toBe(settled);
+      expect(bus.undoStack).toHaveLength(1);
+    });
   });
 
   test('the text a chart draws is judged for the user, and never for the agent', async () => {

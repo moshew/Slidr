@@ -152,7 +152,7 @@ function Finding({
               disabled={pending}
               data-fix={finding.rule}
               className="me-1 shrink-0"
-              onClick={() => check.fix(finding, t('undo.fix'))}
+              onClick={() => void check.fix(finding, t('undo.fix'))}
             >
               {t('panel.fix')}
             </Button>

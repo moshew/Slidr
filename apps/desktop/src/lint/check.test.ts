@@ -1,4 +1,4 @@
-import type { SlideMeasurements } from '@slidr/lint';
+import type { LintFinding, SlideMeasurements } from '@slidr/lint';
 import {
   CommandBus,
   createDeck,
@@ -115,14 +115,140 @@ describe('the design check of the open deck', () => {
   it('fixes one finding as one step, and not once the deck has moved on', async () => {
     const { bus, check } = setup();
     const [near] = await check.check();
-    expect(check.fix(near!, 'Fix')).toBe(true);
+    const fixing = check.fix(near!, 'Fix');
+    // The fix itself is applied at once: the button answers before anything is measured again.
+    expect(bus.undoStack).toHaveLength(1);
+    expect(await fixing).toBe(true);
     expect(bus.undoStack).toHaveLength(1);
     expect(bus.undoStack[0]).toMatchObject({ label: 'Fix' });
     // The finding was of the deck before the fix: its commands are not for this one.
-    expect(check.fix(near!, 'Fix')).toBe(false);
+    expect(await check.fix(near!, 'Fix')).toBe(false);
     expect(bus.undoStack).toHaveLength(1);
     await check.check();
     expect(rules(check)).toEqual(['s_off L10', 's_off L11']);
+  });
+
+  describe('a fix that opens an error', () => {
+    /**
+     * A footnote as a render measures it: at 18px its two lines fill a box of 60; set at a
+     * readable 24px they need 95, and shrunk to fit they are drawn smaller again.
+     */
+    const NEEDS = 95;
+    const note = (init: Partial<Parameters<typeof createElement.text>[0]> = {}) =>
+      createElement.text({
+        id: 'e_note',
+        frame: { x: 200, y: 200, w: 620, h: 60 },
+        content: richText('A footnote of two lines, set small', { marks: { size: 18 } }),
+        ...init,
+      });
+    function rendered(slide: Slide): SlideMeasurements {
+      const out = measured(slide);
+      for (const element of slide.elements) {
+        const text = out.elements[element.id]?.text;
+        if (element.type !== 'text' || !text) continue;
+        const size = element.content.paragraphs[0]!.runs[0]!.marks?.size ?? 30;
+        if (size < 24) text.spans = [{ ...text.spans[0]!, fontSize: size }];
+        if (size !== 24) continue;
+        const room = element.frame.h;
+        const shrunk = element.autoFit === 'shrink' && room < NEEDS;
+        text.scale = shrunk ? room / NEEDS : 1;
+        text.overflow = { x: 0, y: shrunk ? 0 : Math.max(0, NEEDS - room) };
+        text.spans = [{ ...text.spans[0]!, fontSize: 24 * text.scale }];
+      }
+      return out;
+    }
+    /** What is found on elements: a slide this bare has findings about the slide as a whole too. */
+    const onElements = (findings: readonly LintFinding[]) =>
+      findings.filter((f) => f.elementIds.length > 0);
+    const brief = (findings: readonly LintFinding[]) =>
+      onElements(findings).map((f) => `${f.rule} ${f.severity}`);
+    function on(elements: Element[]) {
+      const start = createDeck({ lang: 'en', slides: [createSlide({ id: 's_1', elements })] });
+      const bus = new CommandBus(start, { validate: true });
+      const check = new DesignCheck(bus, (_, slide) => Promise.resolve(rendered(slide)), {
+        rest: 0,
+      });
+      const found = async () => brief(await check.check());
+      const box = () => bus.deck.slides[0]!.elements.find((e) => e.id === 'e_note')!;
+      return { start, bus, check, found, box };
+    }
+
+    it('goes on to fix it, in the same step: small text made readable gets the box it needs', async () => {
+      const { start, bus, check, found, box } = on([note()]);
+      expect(await found()).toEqual(['L04 warning']);
+      const [small] = onElements(await check.check());
+      expect(await check.fix(small!, 'Fix')).toBe(true);
+      // Alone, the fix of the size leaves the text 35px taller than its box: an error in place
+      // of the warning. The box was made taller for it.
+      expect(await found()).toEqual([]);
+      expect(box().frame.h).toBe(NEEDS);
+      expect(bus.undoStack).toHaveLength(1);
+      bus.undo();
+      expect(bus.deck).toEqual(start);
+    });
+
+    it('shrinks the text to its box where the box has no room to grow, and leaves no error', async () => {
+      const under = createElement.text({
+        id: 'e_under',
+        frame: { x: 200, y: 270, w: 620, h: 60 },
+        content: richText('The line right under the footnote'),
+      });
+      const { bus, check, found, box } = on([note(), under]);
+      const [small] = onElements(await check.check());
+      await check.fix(small!, 'Fix');
+      expect(box()).toMatchObject({ autoFit: 'shrink', frame: { h: 60 } });
+      // What is left is the warning that text of this length has no room at a readable size.
+      expect(await found()).toEqual(['L04 warning']);
+      expect(onElements(await check.check())[0]).not.toHaveProperty('fix');
+      expect(bus.undoStack).toHaveLength(1);
+    });
+
+    it('leaves alone an error that was there before: the user asked for one finding', async () => {
+      // The same footnote, already too tall for its box before anything was fixed.
+      const tall = note({
+        content: richText('A footnote of two lines, set small', { marks: { size: 24 } }),
+      });
+      const pale = createElement.text({
+        id: 'e_pale',
+        frame: { x: 200, y: 600, w: 620, h: 60 },
+        content: richText('המשפט הזה כתוב בעברית.', { dir: 'ltr' }),
+      });
+      const { check, found } = on([tall, pale]);
+      expect(await found()).toEqual(['L01 error', 'L15 warning']);
+      const turned = (await check.check()).find((f) => f.rule === 'L15')!;
+      await check.fix(turned, 'Fix');
+      expect(await found()).toEqual(['L01 error']);
+    });
+
+    it('is fixed by "fix all" whatever the order: a finding that comes back gets its new fix', async () => {
+      // Too small and too tall at once: the box is fitted first, then the size is raised, and
+      // the box no longer fits. Before, the second fix of the box was never tried.
+      const crowded = note({ frame: { x: 200, y: 200, w: 620, h: 40 } });
+      const measure = (_: Deck, slide: Slide) => {
+        const out = rendered(slide);
+        const element = slide.elements[0]!;
+        const text = out.elements[element.id]!.text!;
+        // At 18px the two lines need 60, and the box is 40.
+        if (text.spans[0]!.fontSize === 18) {
+          text.overflow = { x: 0, y: Math.max(0, 60 - element.frame.h) };
+        }
+        return Promise.resolve(out);
+      };
+      const start = createDeck({
+        lang: 'en',
+        slides: [createSlide({ id: 's_1', elements: [crowded] })],
+      });
+      const bus = new CommandBus(start, { validate: true });
+      const check = new DesignCheck(bus, measure, { rest: 0 });
+      expect(brief(await check.check())).toEqual(['L01 error', 'L04 warning']);
+      expect(await check.fixAll('Fix all')).toBe(3);
+      expect(brief(await check.check())).toEqual([]);
+      expect(bus.deck.slides[0]!.elements[0]!.frame.h).toBe(NEEDS);
+      expect(bus.undoStack).toHaveLength(1);
+      const settled = bus.deck;
+      expect(await check.fixAll('Fix all')).toBe(0);
+      expect(bus.deck).toBe(settled);
+    });
   });
 
   it('fixes all errors and warnings as one step, and leaves what is only information', async () => {
