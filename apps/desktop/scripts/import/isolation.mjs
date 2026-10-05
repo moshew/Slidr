@@ -218,7 +218,7 @@ const blockedBy = {
   sendBeacon: /./,
   'window.open': /returned null/,
   'top navigation': /still at \/import\.html/,
-  'localStorage of the app': /slidr\.agent = null/,
+  'localStorage of the app': /slidr\.shell = null/,
 };
 for (const [name, result] of Object.entries(tried)) {
   note(`from the file: ${name}`, result, blockedBy[name].test(result));
