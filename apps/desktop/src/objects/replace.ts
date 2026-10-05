@@ -1,6 +1,7 @@
 import type { AssetMeta, ImageElement } from '@slidr/model';
 import { tell, type Editor } from '../shell';
 import { IMAGE_FILES, isPicture, pickFiles } from './insert';
+import { importPicture } from './takeIn';
 import type { Target } from './target';
 
 /** The automatic alt text of a picture: its file name without the extension (see `stage/insert`). */
@@ -40,7 +41,7 @@ export async function replaceImage(
   const [file] = await pickFiles(IMAGE_FILES);
   if (!file) return;
   try {
-    const asset = await assets.import(file);
+    const asset = await importPicture(assets, file);
     if (!isPicture(asset)) return;
     replaceWith({ bus }, target, asset, labels.history);
   } catch (error) {

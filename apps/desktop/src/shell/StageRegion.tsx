@@ -10,9 +10,8 @@ import {
   ContextMenuTrigger,
 } from '@slidr/ui';
 import { languages } from '../i18n';
-import { svgMarkups } from '../objects/svgImport';
+import { insertFiles } from '../objects/takeIn';
 import { layerSnippet } from '../arrange/layers';
-import { insertAssetsCommands } from '../stage/insert';
 import { KeyboardStatus } from '../stage/KeyboardStatus';
 import { stagePreview } from '../stage/preview';
 import { SelectionToolbar } from '../stage/SelectionToolbar';
@@ -63,7 +62,7 @@ function layerContextMenu(event: MouseEvent): void {
 export function StageRegion() {
   const { t, i18n } = useTranslation();
   const editor = useEditor();
-  const { bus, selection, assets } = editor;
+  const { bus, selection } = editor;
   const deck = useDeck((s) => s.deck);
   const zoom = useShell((s) => s.zoom);
   const marked = useAgentMarks(editor);
@@ -78,26 +77,13 @@ export function StageRegion() {
   const onViewScale = useCallback((viewScale: number) => useShell.setState({ viewScale }), []);
   const onZoomChange = useCallback((value: number) => useShell.setState({ zoom: value }), []);
 
-  /** Dropped or pasted files become assets of the document and elements of the slide (STG-09). */
+  /**
+   * Dropped or pasted files become assets of the document and elements of the slide (STG-09),
+   * each by itself: a file that cannot be taken is left out and named to the user.
+   */
   const onFiles = useCallback(
-    async (files: File[], at: Point) => {
-      const slideId = selection.getState().currentSlideId;
-      if (!slideId) return;
-      const imported = await Promise.all(files.map((file) => assets.import(file)));
-      const { commands, elementIds } = insertAssetsCommands(
-        slideId,
-        imported,
-        bus.deck.size,
-        at,
-        (id) => id in bus.deck.assets,
-        // An SVG file goes in as cleaned markup, so its colours can be replaced (SHP-06, SEC-06).
-        await svgMarkups(files, imported),
-      );
-      if (!commands.length) return;
-      bus.batch(commands, { label: t('stage.insert') });
-      selection.getState().selectElements(elementIds);
-    },
-    [bus, assets, selection, t],
+    (files: File[], at: Point) => void insertFiles(editor, files, at, t('stage.insert')),
+    [editor, t],
   );
 
   // An empty placeholder says what it is for, in the language of the deck and not of the app:

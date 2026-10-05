@@ -21,6 +21,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
 import { IMAGE_FILES, isPicture, pickFiles } from '../objects/insert';
+import { importPicture } from '../objects/takeIn';
 import { PopoverTool, SliderField, ToolGroup, ToolRow } from '../objects/parts';
 import { isTarget, useTarget, type Target } from '../objects/target';
 import { tell, useDeck, useEditor } from '../shell';
@@ -296,7 +297,7 @@ function PosterTool({ target, playback }: { target: Target<VideoElement>; playba
     const [file] = await pickFiles(IMAGE_FILES);
     if (!file) return;
     try {
-      const asset = await assets.import(file);
+      const asset = await importPicture(assets, file);
       if (!isPicture(asset)) return;
       write({ assetId: asset.id }, [{ type: 'asset.add', asset }]);
     } catch (error) {

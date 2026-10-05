@@ -149,6 +149,63 @@ test('an SVG kept as a file is made editable from row B', async ({ page }) => {
   expect((await currentSlide(page)).elements[0]).toMatchObject({ assetId });
 });
 
+test('a drop takes the files it can, and names the one it left out', async ({ page }) => {
+  await openApp(page, { lang: 'en' });
+  const steps = await undoDepth(page);
+  await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    canvas.getContext('2d')!.fillRect(0, 0, 64, 64);
+    const png = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((blob) => resolve(blob!), 'image/png'),
+    );
+    // A drawing with the notes its program left in it: an element of another kind of markup
+    // with a `style` attribute once made the whole drop fail, without a word.
+    const drawing = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+      <metadata><x:note xmlns:x="urn:example" style="color: red">made by a drawing program</x:note></metadata>
+      <rect width="10" height="10" fill="#ff0000" mask="url(https://example.com/track.svg#m)"/></svg>`;
+    // A scan: a TIFF, which the asset store calls a picture and the webview cannot draw.
+    const tiff = new Uint8Array([
+      0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x01, 0x03, 0x00, 0x01,
+      0x00, 0x00, 0x00, 0x80, 0x02, 0x00, 0x00, 0x01, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0xe0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
+    const data = new DataTransfer();
+    data.items.add(new File([png], 'good.png', { type: 'image/png' }));
+    data.items.add(new File([drawing], 'drawing.svg', { type: 'image/svg+xml' }));
+    data.items.add(new File([tiff], 'scan.tif', { type: 'image/tiff' }));
+    const stage = document.querySelector('[data-testid="stage-frame"]')!;
+    const box = stage.getBoundingClientRect();
+    const init = {
+      bubbles: true,
+      cancelable: true,
+      clientX: box.left + box.width / 2,
+      clientY: box.top + box.height / 2,
+      dataTransfer: data,
+    };
+    stage.dispatchEvent(new DragEvent('dragover', init));
+    stage.dispatchEvent(new DragEvent('drop', init));
+  });
+  const told = page.getByRole('dialog');
+  await expect(told).toContainText('Some of the files were not added');
+  await expect(told).toContainText('"scan.tif" cannot be shown as a picture');
+  await told.getByRole('button', { name: 'OK' }).click();
+  const added = (await currentSlide(page)).elements;
+  expect(added.map((element) => element.type)).toEqual(['image', 'svg']);
+  expect((added[1] as SvgElement).markup).not.toMatch(/example|note/);
+  expect(await undoDepth(page)).toBe(steps + 1);
+  // Both are drawn: neither is an empty frame.
+  await expect
+    .poll(() =>
+      onStage(page, added[0]!.id)
+        .locator('img')
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBe(64);
+  expect(await painted(page, added[1]!.id, 'rect')).toBe('rgb(255, 0, 0)');
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const { lang, dir, button } of [
     { lang: 'he', dir: 'rtl', button: 'צבעי הגרפיקה' },

@@ -10,6 +10,14 @@ export const he = {
     shape: 'הוספת צורה',
     line: 'הוספת קו',
     failed: 'לא ניתן להוסיף את הקובץ',
+    failedSome: 'חלק מהקבצים לא נוספו',
+    failedAll: 'הקבצים לא נוספו',
+    reason: {
+      notShown:
+        'אי אפשר להציג את "{{name}}" כתמונה. אפשר להוסיף קובצי PNG, JPEG, WebP, GIF, AVIF ו-SVG.',
+      notMedia: 'הקובץ "{{name}}" אינו תמונה, וידאו או אודיו.',
+      unreadable: 'הקובץ "{{name}}" לא נקרא.',
+    },
   },
   library: {
     title: 'ספריית הצורות',
@@ -326,6 +334,14 @@ export const en: Messages<typeof he> = {
     shape: 'Insert shape',
     line: 'Insert line',
     failed: 'The file could not be added',
+    failedSome: 'Some of the files were not added',
+    failedAll: 'The files could not be added',
+    reason: {
+      notShown:
+        '"{{name}}" cannot be shown as a picture. PNG, JPEG, WebP, GIF, AVIF and SVG files can.',
+      notMedia: '"{{name}}" is not a picture, a video or a sound.',
+      unreadable: '"{{name}}" could not be read.',
+    },
   },
   library: {
     title: 'Shape library',

@@ -174,7 +174,8 @@ export async function svgMarkups(
     assets.map(async (asset, i) => {
       const file = files[i];
       if (asset.kind !== 'svg' || !file || file.size > MAX_INLINE_SVG) return;
-      const markup = cleanSvg(await file.text());
+      // A file the cleaning cannot make sense of stays an asset, drawn as a picture.
+      const markup = await file.text().then(cleanSvg, () => undefined);
       if (markup) markups.set(asset.id, markup);
     }),
   );

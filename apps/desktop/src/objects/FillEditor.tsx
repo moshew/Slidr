@@ -42,6 +42,7 @@ import {
   type ResolveColor,
 } from './fill';
 import { IMAGE_FILES, isPicture, pickFiles } from './insert';
+import { importPicture } from './takeIn';
 import { ColorRow, FillSwatch, SliderField, useThemeColors } from './parts';
 
 export interface FillEditorProps {
@@ -94,7 +95,7 @@ export function FillEditor({
     const [file] = await pickFiles(IMAGE_FILES);
     if (!file) return;
     try {
-      const asset = await assets.import(file);
+      const asset = await importPicture(assets, file);
       if (!isPicture(asset)) return;
       setAwaitingImage(false);
       commit(

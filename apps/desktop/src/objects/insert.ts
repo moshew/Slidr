@@ -1,9 +1,8 @@
 import { findSlide, type AssetMeta, type Element, type Frame } from '@slidr/model';
 import { i18n } from '../i18n';
-import { focusStage, tell, type Editor } from '../shell';
-import { insertAssetsCommands } from '../stage/insert';
+import { focusStage, type Editor } from '../shell';
 import { newLine, newShape, type LineKind } from './shapes';
-import { svgMarkups } from './svgImport';
+import { insertFiles } from './takeIn';
 
 /*
  * The Insert buttons of row A for pictures, shapes and lines (IMG-01, SHP-01, SHP-05). Each
@@ -78,31 +77,17 @@ export function insertLine(editor: Editor, kind: LineKind): void {
 
 /**
  * Picture files chosen in the file dialog become assets of the document and elements in the
- * middle of the slide: one change, so one undo step, and the new elements end selected.
+ * middle of the slide: one change, so one undo step, and the new elements end selected. A file
+ * that cannot be taken is left out, and the user is told which (`insertFiles`).
  */
 export async function insertImages(editor: Editor): Promise<void> {
   const files = await pickFiles(IMAGE_FILES, true);
   if (files.length === 0) return;
-  try {
-    const assets = await Promise.all(files.map((file) => editor.assets.import(file)));
-    // The slide of the moment the files are in: the user may have moved on while they loaded.
-    const slideId = editor.selection.getState().currentSlideId;
-    if (!slideId) return;
-    const { size } = editor.bus.deck;
-    const { commands, elementIds } = insertAssetsCommands(
-      slideId,
-      assets,
-      size,
-      { x: size.w / 2, y: size.h / 2 },
-      (id) => id in editor.bus.deck.assets,
-      // An SVG file goes in as cleaned markup, so its colours can be replaced (SHP-06, SEC-06).
-      await svgMarkups(files, assets),
-    );
-    if (commands.length === 0) return;
-    editor.bus.batch(commands, { label: i18n.t('objects:history.insert') });
-    editor.selection.getState().selectElements(elementIds);
-    focusStage();
-  } catch (error) {
-    await tell(i18n.t('objects:insert.failed'), error instanceof Error ? error.message : undefined);
-  }
+  const { size } = editor.bus.deck;
+  await insertFiles(
+    editor,
+    files,
+    { x: size.w / 2, y: size.h / 2 },
+    i18n.t('objects:history.insert'),
+  );
 }
