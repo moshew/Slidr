@@ -25,6 +25,7 @@ import {
   changeDirection,
   deckFromTemplate,
   layoutAssets,
+  layoutsDirection,
   layoutsFor,
   masterState,
   mirrorLayout,
@@ -156,11 +157,20 @@ export function turnDeck(
  * direction only (ADR-023), and the slides that sit on them. A slide without a layout is left
  * as it is: the agent wrote it for the direction it meant. `from` is the direction the deck had;
  * the commands do not touch the field.
+ *
+ * Nothing follows a direction the layouts are already drawn for. Whoever calls this knows only
+ * that the field differs from what it was: the user may have turned the deck meanwhile, with its
+ * layouts (`turnDeck`), an undo may have taken a turn back, or another document may have been
+ * opened. Mirroring then would turn the layouts back and leave the deck on the layouts of the
+ * other direction. The deck's template says which direction its layouts are drawn for
+ * (`layoutsDirection`); where it cannot (a deck on no template of the library, or one that
+ * changed every layout), the field is taken at its word, as before.
  */
 export function followDirection(deck: Deck, from: Direction, library: TemplateLibrary): Command[] {
   if (deck.meta.dir === from) return [];
-  const asItWas: Deck = { ...deck, meta: { ...deck.meta, dir: from } };
   const template = library.forDeck(deck.theme.id, deck.meta.lang);
+  if (template && layoutsDirection(deck, template) === deck.meta.dir) return [];
+  const asItWas: Deck = { ...deck, meta: { ...deck.meta, dir: from } };
   const onLayout = new Set(deck.slides.filter((slide) => slide.layoutId).map((slide) => slide.id));
   return changeDirection(asItWas, deck.meta.dir, template).filter(
     (command) =>

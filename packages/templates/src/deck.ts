@@ -179,6 +179,33 @@ export function turnedLayout(layout: Layout, drawn?: Layout, drawnTurned?: Layou
   };
 }
 
+const byId = (layouts: Layout[]) => new Map(layouts.map((layout) => [layout.id, layout]));
+
+/**
+ * The direction a deck's layouts are drawn for, as far as its template can tell. A deck holds
+ * its layouts for one direction only, its own (ADR-023), and nothing in a layout says which: a
+ * layout that is still what the template drew for one direction, and not what it drew for the
+ * other, does. Undefined when none does (the deck changed them all, or they are the same both
+ * ways), and when they do not agree.
+ *
+ * It is how a direction that was set on the field alone is told from one the layouts have
+ * already followed (`followDirection` of the app).
+ */
+export function layoutsDirection(deck: Deck, template: Template): Direction | undefined {
+  const other: Direction = template.dir === 'rtl' ? 'ltr' : 'rtl';
+  const own = byId(layoutsFor(template, template.dir));
+  const turned = byId(layoutsFor(template, other));
+  let found: Direction | undefined;
+  for (const layout of deck.layouts) {
+    const isOwn = asDrawn(layout, own.get(layout.id));
+    if (isOwn === asDrawn(layout, turned.get(layout.id))) continue;
+    const dir = isOwn ? template.dir : other;
+    if (found !== undefined && found !== dir) return undefined;
+    found = dir;
+  }
+  return found;
+}
+
 /**
  * The commands that turn a deck to the other direction, as one step (THM-02): the direction
  * itself, every layout, and what is on the slides.
@@ -197,7 +224,6 @@ export function changeDirection(deck: Deck, dir: Direction, template?: Template)
   if (dir === deck.meta.dir) return [];
   const commands: Command[] = [{ type: 'deck.setMeta', patch: { dir } }];
 
-  const byId = (layouts: Layout[]) => new Map(layouts.map((layout) => [layout.id, layout]));
   const drawn = byId(template ? layoutsFor(template, deck.meta.dir) : []);
   const drawnTurned = byId(template ? layoutsFor(template, dir) : []);
   const turned = new Map<string, Layout>();

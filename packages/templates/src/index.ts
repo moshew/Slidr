@@ -17,6 +17,7 @@ export {
   changeDirection,
   deckFromTemplate,
   layoutAssets,
+  layoutsDirection,
   turnedLayout,
   type DeckFromTemplateOptions,
 } from './deck';

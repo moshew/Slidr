@@ -1,4 +1,11 @@
-import { CommandBus, createDeck, type AssetMeta, type Deck, type Layout } from '@slidr/model';
+import {
+  CommandBus,
+  createDeck,
+  slideFromLayout,
+  type AssetMeta,
+  type Deck,
+  type Layout,
+} from '@slidr/model';
 import {
   deckFooter,
   deckFromTemplate,
@@ -218,6 +225,89 @@ describe('turning the deck', () => {
     // Undoing the turn takes the field and the layouts back together.
     bus.undoTransaction('tx_turn');
     expect(bus.deck).toEqual(deck);
+  });
+
+  describe('a direction that differs from what it was, with the layouts already turned', () => {
+    // The wrapper around a tool call of the agent reads the direction before the call and after
+    // it, and asks what has to follow. All it knows is that the two differ.
+    const library = () =>
+      new TemplateLibrary(memoryTemplateStore(), {
+        layoutName: (archetype, lang) => `${lang}: ${archetype}`,
+      });
+    const onTzuk = (lib: TemplateLibrary) => {
+      const template = lib.forDeck('tzuk', 'he')!;
+      const deck = deckFromTemplate(template, { lang: 'he' });
+      deck.slides = [slideFromLayout(deck, deck.layouts[0]!.id).slide];
+      return { template, ...editorOn(deck) };
+    };
+
+    it('follows nothing when the user turned the deck during the call', () => {
+      const lib = library();
+      const { editor, bus, template } = onTzuk(lib);
+      const from = bus.deck.meta.dir;
+      turnDeck(editor, lib, 'ltr');
+      expect(bus.deck.layouts).toEqual(layoutsFor(template, 'ltr'));
+      // Before, this was 19 commands that mirrored every layout back.
+      expect(followDirection(bus.deck, from, lib)).toEqual([]);
+    });
+
+    it('follows nothing when the deck has a footer and a logo of its own, either', async () => {
+      const lib = library();
+      const { editor, bus } = onTzuk(lib);
+      setFooter(editor, 'ACME 2026');
+      await setLogo(editor, new File([new Uint8Array([7])], 'logo.png'));
+      turnDeck(editor, lib, 'ltr');
+      expect(followDirection(bus.deck, 'rtl', lib)).toEqual([]);
+    });
+
+    it('follows nothing when an undo took a turn back during the call', () => {
+      const lib = library();
+      const { editor, bus } = onTzuk(lib);
+      turnDeck(editor, lib, 'ltr');
+      const from = bus.deck.meta.dir;
+      bus.undo();
+      expect(bus.deck.meta.dir).toBe('rtl');
+      expect(followDirection(bus.deck, from, lib)).toEqual([]);
+    });
+
+    it('follows nothing when another document, of the other direction, was opened during the call', () => {
+      const lib = library();
+      const { bus } = onTzuk(lib);
+      const from = bus.deck.meta.dir;
+      bus.reset(deckFromTemplate(lib.forDeck('zerem', 'en')!, { lang: 'en' }));
+      expect(bus.deck.meta.dir).toBe('ltr');
+      expect(followDirection(bus.deck, from, lib)).toEqual([]);
+    });
+
+    it('still follows a direction the agent set on the field alone, with the language', () => {
+      const lib = library();
+      const { bus, template } = onTzuk(lib);
+      const names = bus.deck.layouts.map((layout) => layout.name);
+      bus.dispatch({ type: 'deck.setMeta', patch: { dir: 'ltr', lang: 'en' } }, { txId: 'tx' });
+      const follow = followDirection(bus.deck, 'rtl', lib);
+      bus.batch(follow, { txId: 'tx' });
+      // The layouts are the template's own for the direction, the quote drawn by hand among
+      // them, under the names the deck had: the library names them in English now.
+      const theirs = layoutsFor(template, 'ltr');
+      expect(bus.deck.layouts.map(({ name: _name, ...rest }) => rest)).toEqual(
+        theirs.map(({ name: _name, ...rest }) => rest),
+      );
+      expect(bus.deck.layouts.map((layout) => layout.name)).toEqual(names);
+      expect(lib.forDeck('tzuk', 'en')!.layouts[0]!.name).not.toBe(names[0]);
+      // Asked again, there is nothing more to follow.
+      expect(followDirection(bus.deck, 'rtl', lib)).toEqual([]);
+      expect(bus.undoStack).toHaveLength(1);
+    });
+
+    it('takes the field at its word where no template can tell', () => {
+      // A deck whose theme is not in the library: nothing says what its layouts are drawn for.
+      const lib = library();
+      const { bus } = onTzuk(lib);
+      bus.dispatch({ type: 'theme.update', patch: { name: 'Mine' } });
+      const unknown = { ...bus.deck, theme: { ...bus.deck.theme, id: 'somewhere_else' } };
+      const turned = { ...unknown, meta: { ...unknown.meta, dir: 'ltr' as const } };
+      expect(followDirection(turned, 'rtl', lib).length).toBeGreaterThan(0);
+    });
   });
 
   describe('a deck with a footer, a logo and a hidden number of its own', () => {

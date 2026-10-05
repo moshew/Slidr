@@ -12,7 +12,7 @@ import {
 import { hebrewDeck } from '@slidr/model/fixtures';
 import { describe, expect, it } from 'vitest';
 import { seatAlign } from './align';
-import { applyTemplate, changeDirection, deckFromTemplate } from './deck';
+import { applyTemplate, changeDirection, deckFromTemplate, layoutsDirection } from './deck';
 import { nightTemplate, paperTemplate } from './fixtures';
 import { copyJson } from './json';
 import { mirrorLayout } from './mirror';
@@ -552,5 +552,44 @@ describe('changeDirection', () => {
     expect(slideOf(plain, 'l_night_closing').elements[2]!.frame).toEqual(box(96, 920, 204, 80));
 
     expect(run(there, changeDirection(there, 'rtl', night)).deck).toEqual(deck);
+  });
+});
+
+describe('layoutsDirection', () => {
+  it('is the direction a deck took its layouts for, whatever its field says', () => {
+    for (const template of [nightTemplate(), paperTemplate()]) {
+      for (const lang of ['he', 'en']) {
+        const deck = deckFromTemplate(template, { lang });
+        expect(layoutsDirection(deck, template)).toBe(deck.meta.dir);
+        // The field set alone, as `deck.setMeta` sets it: the layouts did not follow.
+        const other = deck.meta.dir === 'rtl' ? 'ltr' : 'rtl';
+        const fieldOnly = run(deck, [{ type: 'deck.setMeta', patch: { dir: other } }]).deck;
+        expect(layoutsDirection(fieldOnly, template)).toBe(deck.meta.dir);
+        // Turned with its layouts.
+        const turned = run(deck, changeDirection(deck, other, template)).deck;
+        expect(layoutsDirection(turned, template)).toBe(other);
+      }
+    }
+  });
+
+  it('is told by the layouts the deck left as drawn, among ones it changed', () => {
+    const night = nightTemplate();
+    const deck = deckFromTemplate(night, { lang: 'he' });
+    for (const layout of deck.layouts.slice(1)) {
+      layout.placeholders[0]!.frame = box(100, 100, 500, 100);
+    }
+    expect(layoutsDirection(deck, night)).toBe('rtl');
+  });
+
+  it('is unknown when no layout is the template’s any more, or the deck has none', () => {
+    const night = nightTemplate();
+    const deck = deckFromTemplate(night, { lang: 'he' });
+    for (const layout of deck.layouts) layout.placeholders[0]!.frame = box(100, 100, 500, 100);
+    expect(layoutsDirection(deck, night)).toBeUndefined();
+    expect(layoutsDirection({ ...deck, layouts: [] }, night)).toBeUndefined();
+    // Layouts of both directions in one deck say nothing either.
+    const mixed = deckFromTemplate(night, { lang: 'he' });
+    mixed.layouts[0] = layoutsFor(night, 'ltr')[0]!;
+    expect(layoutsDirection(mixed, night)).toBeUndefined();
   });
 });
