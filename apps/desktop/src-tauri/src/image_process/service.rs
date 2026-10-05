@@ -2,25 +2,33 @@
 //! source stays as it is (IMG-12).
 
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     fs,
     io::Cursor,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{
+        Arc, Mutex, MutexGuard, PoisonError,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Instant,
 };
 
 use image::{
-    DynamicImage, ImageDecoder, ImageFormat, ImageReader, RgbaImage,
-    error::ImageError as CodecError,
+    DynamicImage, GrayImage, ImageDecoder, ImageFormat, ImageReader, RgbImage, RgbaImage,
+    codecs::jpeg::JpegEncoder, error::ImageError as CodecError, imageops,
 };
 use tokio::sync::Semaphore;
 
 use super::{
     chroma::{self, KeyOptions},
     matte,
-    model::{self, Found, Places},
-    types::{MattingStatus, Operation, Processed},
+    model::{self, Found, Place, Places},
+    types::{
+        MAX_RESULT_PIXELS, MAX_SOURCE_PIXELS, MattingStatus, Operation, Processed, UpscaleProgress,
+        UpscaleStatus, Upscaled,
+    },
+    upscale::{self, UPSCALERS, UpscalerSpec},
 };
 use crate::{
     assets,
@@ -32,11 +40,20 @@ use crate::{
 /// working memory runs into gigabytes.
 const MAX_PIXELS: u64 = 50_000_000;
 
+/// Longest job id, in bytes: the image providers' rule for theirs.
+const MAX_JOB_ID: usize = 64;
+/// How a photograph that is upscaled is stored again: a JPEG that loses nothing an eye finds.
+const JPEG_QUALITY: u8 = 92;
+
 /// Local image processing. Shared by the IPC commands; testable without Tauri.
 pub struct ImageProcessService {
     places: Places,
-    /// One matting at a time: a run takes hundreds of megabytes and every core it is given.
+    /// One model at a time, matting or upscaling: a run takes hundreds of megabytes and every
+    /// core it is given.
     matting: Semaphore,
+    /// The upscales that were asked for and have not returned, each with the flag that
+    /// cancels it.
+    upscales: Mutex<HashMap<String, Arc<AtomicBool>>>,
 }
 
 /// An operation with everything it needs settled before the work starts.
@@ -51,6 +68,7 @@ impl ImageProcessService {
         Self {
             places,
             matting: Semaphore::new(1),
+            upscales: Mutex::new(HashMap::new()),
         }
     }
 
@@ -138,6 +156,204 @@ impl ImageProcessService {
         .await
         .map_err(ImageError::internal)?
     }
+
+    /// The upscaling model that is installed, and where it was found.
+    fn upscaler(&self) -> Option<(&'static UpscalerSpec, PathBuf, Place)> {
+        let files: Vec<&str> = UPSCALERS.iter().map(|spec| spec.file).collect();
+        let (index, path, place) = self.places.find_file(&files)?;
+        Some((&UPSCALERS[index], path, place))
+    }
+
+    /// Whether a picture can be upscaled: the model that is installed, and how far it goes.
+    pub fn upscale_status(&self) -> UpscaleStatus {
+        let found = self.upscaler();
+        UpscaleStatus::of(
+            found
+                .as_ref()
+                .map(|(spec, path, place)| (*spec, path.as_path(), *place)),
+            self.places.install_dir(),
+        )
+    }
+
+    /// Draws the asset `asset_id` of the workspace again at `factor` times its size, with the
+    /// installed model, and stores the result as a new asset: a JPEG when the source is one, a
+    /// PNG otherwise, transparency kept. The source stays (IMG-12).
+    ///
+    /// `job_id` is the caller's, so that [`Self::cancel_upscale`] can name a job whose call has
+    /// not returned; `on_progress` hears how many of the picture's tiles are done.
+    pub async fn upscale(
+        &self,
+        storage: &Arc<Storage>,
+        job_id: &str,
+        workspace_id: &str,
+        asset_id: &str,
+        factor: u32,
+        on_progress: impl Fn(UpscaleProgress) + Send + 'static,
+    ) -> Result<Upscaled> {
+        let began = Instant::now();
+        if !upscale::FACTORS.contains(&factor) {
+            return Err(ImageError::invalid_input(format!(
+                "a picture can be upscaled {:?} times, not {factor}",
+                upscale::FACTORS
+            )));
+        }
+        let assets_dir = storage.assets_dir(workspace_id)?;
+        let (spec, file, _) = self.upscaler().ok_or_else(|| {
+            ImageError::new(
+                ImageErrorKind::NotInstalled,
+                format!(
+                    "no upscaling model is installed: put {} into {}",
+                    UPSCALERS[0].file,
+                    self.places.install_dir().display()
+                ),
+            )
+        })?;
+        let job = self.register(job_id)?;
+        let cancelled = Arc::clone(&job.cancelled);
+        let _turn = self.matting.acquire().await.map_err(ImageError::internal)?;
+        // Cancelled while it waited for its turn: nothing was started.
+        if cancelled.load(Ordering::Relaxed) {
+            return Err(ImageError::cancelled());
+        }
+
+        let storage = Arc::clone(storage);
+        let workspace_id = workspace_id.to_owned();
+        let asset_id = asset_id.to_owned();
+        tokio::task::spawn_blocking(move || {
+            let source = asset_file(&assets_dir, &asset_id)?;
+            let bytes = fs::read(&source).map_err(|e| ImageError::io("read the picture", &e))?;
+            let (picture, format) = open(&bytes, &|w, h| check_upscale(w, h, factor))?;
+            drop(bytes);
+            // The model draws colour; what is seen through is scaled beside it.
+            let alpha = picture.color().has_alpha().then(|| alpha_of(&picture));
+            let picture = picture.into_rgb8();
+            let mut report = |done: usize, total: usize| {
+                on_progress(UpscaleProgress {
+                    done: u32::try_from(done).unwrap_or(u32::MAX),
+                    total: u32::try_from(total).unwrap_or(u32::MAX),
+                });
+            };
+            let large = upscale::upscale(&file, spec, &picture, factor, &cancelled, &mut report)?;
+            drop(picture);
+            let stored = match alpha {
+                Some(alpha) => encode(with_alpha(large, &alpha))?,
+                None if format == ImageFormat::Jpeg => encode_jpeg(&large)?,
+                None => encode_png(DynamicImage::ImageRgb8(large))?,
+            };
+            // Asked once more, now that the long part is over: a job cancelled in its last
+            // tile stores nothing.
+            if cancelled.load(Ordering::Relaxed) {
+                return Err(ImageError::cancelled());
+            }
+            let dir = storage.assets_dir(&workspace_id)?;
+            let asset = assets::import_bytes(&dir, None, &stored)?;
+            Ok(Upscaled {
+                asset,
+                duration_ms: u64::try_from(began.elapsed().as_millis()).unwrap_or(u64::MAX),
+                model: spec.id.into(),
+                factor,
+            })
+        })
+        .await
+        .map_err(ImageError::internal)?
+    }
+
+    /// Cancels an upscale: it stops after the tiles it is working on, stores nothing, and its
+    /// call ends as `cancelled`. A job that is over, or was never there, is left alone.
+    pub fn cancel_upscale(&self, job_id: &str) {
+        if let Some(cancelled) = lock(&self.upscales).get(job_id) {
+            cancelled.store(true, Ordering::Relaxed);
+        }
+    }
+
+    /// Enters an upscale in the list of running ones, under the caller's id.
+    fn register(&self, job_id: &str) -> Result<Registered<'_>> {
+        let plain = !job_id.is_empty()
+            && job_id.len() <= MAX_JOB_ID
+            && job_id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
+        if !plain {
+            return Err(ImageError::invalid_input(format!(
+                "invalid job id {job_id:?}: expected letters, digits, '-' and '_'"
+            )));
+        }
+        let mut jobs = lock(&self.upscales);
+        if jobs.contains_key(job_id) {
+            return Err(ImageError::invalid_input(format!(
+                "a job with the id {job_id} is already running"
+            )));
+        }
+        let cancelled = Arc::new(AtomicBool::new(false));
+        jobs.insert(job_id.to_owned(), Arc::clone(&cancelled));
+        Ok(Registered {
+            jobs: &self.upscales,
+            id: job_id.to_owned(),
+            cancelled,
+        })
+    }
+}
+
+/// An upscale in the list of running ones, for as long as this lives.
+struct Registered<'a> {
+    jobs: &'a Mutex<HashMap<String, Arc<AtomicBool>>>,
+    id: String,
+    cancelled: Arc<AtomicBool>,
+}
+
+impl Drop for Registered<'_> {
+    /// A job whose caller went away stops with it: the work that is left is nobody's.
+    fn drop(&mut self) {
+        lock(self.jobs).remove(&self.id);
+        self.cancelled.store(true, Ordering::Relaxed);
+    }
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Refuses a picture that is not upscaled `factor` times here, from its header, saying what is.
+fn check_upscale(w: u32, h: u32, factor: u32) -> Result<()> {
+    check_size(w, h)?;
+    let pixels = u64::from(w) * u64::from(h);
+    let megapixels = |pixels: u64| pixels as f64 / 1_000_000.0;
+    if pixels > MAX_SOURCE_PIXELS {
+        return Err(ImageError::invalid_input(format!(
+            "the picture is too large to upscale here: {w} by {h} pixels, and the limit is \
+             {:.1} megapixels",
+            megapixels(MAX_SOURCE_PIXELS)
+        )));
+    }
+    let result = pixels * u64::from(factor) * u64::from(factor);
+    if result > MAX_RESULT_PIXELS {
+        return Err(ImageError::invalid_input(format!(
+            "the picture is too large to upscale {factor} times: {w} by {h} pixels would \
+             become {:.0} megapixels, and the limit is {:.0}; a smaller factor is possible",
+            megapixels(result),
+            megapixels(MAX_RESULT_PIXELS)
+        )));
+    }
+    Ok(())
+}
+
+/// How much of each pixel of a picture is seen.
+fn alpha_of(picture: &DynamicImage) -> GrayImage {
+    let rgba = picture.to_rgba8();
+    GrayImage::from_fn(rgba.width(), rgba.height(), |x, y| {
+        image::Luma([rgba.get_pixel(x, y)[3]])
+    })
+}
+
+/// An upscaled picture with the transparency of its source, scaled to its size. Smoothly: a
+/// soft edge stays soft, and the model is not asked to draw a mask.
+fn with_alpha(large: RgbImage, alpha: &GrayImage) -> RgbaImage {
+    let (w, h) = large.dimensions();
+    let alpha = imageops::resize(alpha, w, h, imageops::FilterType::CatmullRom);
+    RgbaImage::from_fn(w, h, |x, y| {
+        let [r, g, b] = large.get_pixel(x, y).0;
+        image::Rgba([r, g, b, alpha.get_pixel(x, y)[0]])
+    })
 }
 
 /// The picture cut out by the model in `found`.
@@ -171,6 +387,15 @@ fn remove_background(picture: DynamicImage, found: &Found) -> Result<RgbaImage> 
 
 /// The picture in `bytes`, turned the way its file says it is to be shown.
 fn decode(bytes: &[u8]) -> Result<DynamicImage> {
+    open(bytes, &check_size).map(|(picture, _)| picture)
+}
+
+/// The picture in `bytes`, turned the way its file says it is to be shown, and the format of
+/// the file. `check` sees the picture's size before a pixel is read, and may refuse it.
+fn open(
+    bytes: &[u8],
+    check: &dyn Fn(u32, u32) -> Result<()>,
+) -> Result<(DynamicImage, ImageFormat)> {
     let unreadable = |error: CodecError| match error {
         CodecError::Unsupported(_) => ImageError::new(
             ImageErrorKind::Unsupported,
@@ -181,20 +406,20 @@ fn decode(bytes: &[u8]) -> Result<DynamicImage> {
     let reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .map_err(|e| ImageError::io("read the picture", &e))?;
-    if reader.format().is_none() {
+    let Some(format) = reader.format() else {
         return Err(unreadable(CodecError::Unsupported(
             image::error::ImageFormatHint::Unknown.into(),
         )));
-    }
+    };
     let mut decoder = reader.into_decoder().map_err(unreadable)?;
     let (w, h) = decoder.dimensions();
-    check_size(w, h)?;
+    check(w, h)?;
     // A photo taken with the camera turned says so in its file, and is shown turned; the
     // result has no such note, so its pixels are turned.
     let orientation = decoder.orientation().map_err(unreadable)?;
     let mut picture = DynamicImage::from_decoder(decoder).map_err(unreadable)?;
     picture.apply_orientation(orientation);
-    Ok(picture)
+    Ok((picture, format))
 }
 
 /// Refuses a picture too large to work on, from its header, before any pixel is read.
@@ -210,11 +435,24 @@ fn check_size(w: u32, h: u32) -> Result<()> {
 }
 
 fn encode(picture: RgbaImage) -> Result<Vec<u8>> {
+    encode_png(DynamicImage::ImageRgba8(picture))
+}
+
+fn encode_png(picture: DynamicImage) -> Result<Vec<u8>> {
     let mut png = Vec::new();
-    DynamicImage::ImageRgba8(picture)
+    picture
         .write_to(&mut Cursor::new(&mut png), ImageFormat::Png)
         .map_err(ImageError::internal)?;
     Ok(png)
+}
+
+/// A photograph stays a photograph: as a PNG it would weigh ten times as much.
+fn encode_jpeg(picture: &RgbImage) -> Result<Vec<u8>> {
+    let mut jpeg = Vec::new();
+    JpegEncoder::new_with_quality(&mut jpeg, JPEG_QUALITY)
+        .encode_image(picture)
+        .map_err(ImageError::internal)?;
+    Ok(jpeg)
 }
 
 /// The file of asset `id` in a workspace's store: `<id>.<ext>`, a raster image. (The same
@@ -257,6 +495,7 @@ mod tests {
     use image::{Rgb, RgbImage, Rgba};
 
     use super::*;
+    use crate::image_process::types::Upscaled;
     use crate::{assets::AssetKind, image_process::types::MattingState};
 
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
@@ -525,6 +764,383 @@ mod tests {
         turned.extend_from_slice(&plain[2..]);
         let shown = decode(&turned)?;
         assert_eq!((shown.width(), shown.height()), (20, 40));
+        Ok(())
+    }
+
+    /// An upscale of an asset of the bench, under a job id of its own, hearing no progress.
+    async fn upscaled(bench: &Bench, job: &str, asset: &str, factor: u32) -> Result<Upscaled> {
+        bench
+            .service
+            .upscale(&bench.storage, job, &bench.workspace, asset, factor, |_| ())
+            .await
+    }
+
+    #[tokio::test]
+    async fn without_a_model_upscaling_says_where_to_put_one() -> TestResult {
+        let bench = bench(None)?;
+        let status = bench.service.upscale_status();
+        assert_eq!(status.state, MattingState::NotInstalled);
+        assert_eq!(status.model, None);
+        assert_eq!(status.factors, Vec::<u32>::new(), "nothing is offered");
+        let install = bench.root.path().join("models");
+        assert_eq!(status.install_dir, install.to_string_lossy());
+        assert_eq!(status.supported.len(), UPSCALERS.len());
+
+        let picture = DynamicImage::ImageRgb8(square_on_green(64, 64));
+        let source = bench.import(picture, ImageFormat::Png)?;
+        let error = upscaled(&bench, "job-1", &source, 4)
+            .await
+            .err()
+            .ok_or("ran without a model")?;
+        assert_eq!(error.kind, ImageErrorKind::NotInstalled);
+        assert!(
+            error.message.contains("realesr-general-x4v3.onnx"),
+            "{}",
+            error.message
+        );
+        assert!(
+            error.message.contains(&*install.to_string_lossy()),
+            "{}",
+            error.message
+        );
+        assert_eq!(
+            fs::read_dir(&bench.assets)?.count(),
+            1,
+            "nothing was stored"
+        );
+
+        // A matting model is not an upscaling model, and the other way round.
+        fs::create_dir_all(&install)?;
+        fs::write(install.join("u2netp.onnx"), b"not a model")?;
+        assert_eq!(
+            bench.service.upscale_status().state,
+            MattingState::NotInstalled
+        );
+        fs::remove_file(install.join("u2netp.onnx"))?;
+        fs::write(install.join(UPSCALERS[0].file), b"not a model")?;
+        assert_eq!(bench.service.status().state, MattingState::NotInstalled);
+
+        // A file of the right name that is not a model: found, offered, and then refused by name.
+        let status = bench.service.upscale_status();
+        assert_eq!(status.state, MattingState::Ready);
+        assert_eq!(status.factors, [2, 4]);
+        assert_eq!(
+            status.model.map(|m| m.id).as_deref(),
+            Some("realesr-general-x4v3")
+        );
+        let error = upscaled(&bench, "job-2", &source, 2)
+            .await
+            .err()
+            .ok_or("a text file ran as a model")?;
+        assert_eq!(error.kind, ImageErrorKind::NotInstalled);
+        assert!(
+            error.message.contains("could not be loaded"),
+            "{}",
+            error.message
+        );
+        // The job is over: its id is free again.
+        assert!(lock(&bench.service.upscales).is_empty());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn an_upscale_is_refused_for_what_it_cannot_do_before_any_work() -> TestResult {
+        let models = tempfile::tempdir()?;
+        fs::write(models.path().join(UPSCALERS[0].file), b"not a model")?;
+        let bench = bench(Some(models.path().to_path_buf()))?;
+        let picture = DynamicImage::ImageRgb8(square_on_green(64, 64));
+        let source = bench.import(picture, ImageFormat::Png)?;
+        let kind = |result: Result<Upscaled>| result.err().map(|e| e.kind);
+
+        // Three times is not a size the model gives; a job id is letters, digits, '-' and '_'.
+        for factor in [0, 1, 3, 8] {
+            assert_eq!(
+                kind(upscaled(&bench, "job", &source, factor).await),
+                Some(ImageErrorKind::InvalidInput),
+                "{factor} times"
+            );
+        }
+        for job in ["", "a b", "../x", &"j".repeat(MAX_JOB_ID + 1)] {
+            assert_eq!(
+                kind(upscaled(&bench, job, &source, 2).await),
+                Some(ImageErrorKind::InvalidInput),
+                "{job:?}"
+            );
+        }
+        assert_eq!(
+            kind(upscaled(&bench, "job", &"0".repeat(64), 2).await),
+            Some(ImageErrorKind::NotFound)
+        );
+        let svg = assets::import_bytes(&bench.assets, None, b"<svg width=\"1\" height=\"1\"/>")?;
+        assert_eq!(
+            kind(upscaled(&bench, "job", &svg.id, 2).await),
+            Some(ImageErrorKind::Unsupported)
+        );
+
+        // A picture of full HD goes four times; one of 2048 by 2048 two times only, and says
+        // so; a larger one not at all.
+        assert!(check_upscale(1920, 1080, 4).is_ok());
+        assert!(check_upscale(2048, 2048, 2).is_ok());
+        let error = check_upscale(2048, 2048, 4).err().ok_or("accepted")?;
+        assert_eq!(error.kind, ImageErrorKind::InvalidInput);
+        assert!(
+            error.message.contains("2048 by 2048") && error.message.contains("smaller factor"),
+            "{}",
+            error.message
+        );
+        let error = check_upscale(3000, 2000, 2).err().ok_or("accepted")?;
+        assert!(
+            error.message.contains("too large to upscale here"),
+            "{}",
+            error.message
+        );
+        // The limits the status gives are the ones that are applied.
+        let status = bench.service.upscale_status();
+        assert_eq!(
+            (status.max_source_pixels, status.max_result_pixels),
+            (MAX_SOURCE_PIXELS, MAX_RESULT_PIXELS)
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn an_upscale_cancelled_while_it_waits_for_its_turn_does_nothing() -> TestResult {
+        let models = tempfile::tempdir()?;
+        fs::write(models.path().join(UPSCALERS[0].file), b"not a model")?;
+        let bench = bench(Some(models.path().to_path_buf()))?;
+        let picture = DynamicImage::ImageRgb8(square_on_green(64, 64));
+        let source = bench.import(picture, ImageFormat::Png)?;
+
+        // Another model is running: the upscale waits behind it.
+        let turn = bench.service.matting.acquire().await?;
+        let job = upscaled(&bench, "waits", &source, 2);
+        tokio::pin!(job);
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(50), &mut job)
+                .await
+                .is_err(),
+            "it started without its turn"
+        );
+        // The same id cannot be used twice while the first is running.
+        let twice = upscaled(&bench, "waits", &source, 2).await.err();
+        assert_eq!(twice.map(|e| e.kind), Some(ImageErrorKind::InvalidInput));
+
+        bench.service.cancel_upscale("no-such-job");
+        bench.service.cancel_upscale("waits");
+        drop(turn);
+        // Not "the model could not be loaded": the file was never opened.
+        let error = job.await.err().ok_or("it ran")?;
+        assert_eq!(error.kind, ImageErrorKind::Cancelled);
+        assert_eq!(
+            fs::read_dir(&bench.assets)?.count(),
+            1,
+            "nothing was stored"
+        );
+        assert!(lock(&bench.service.upscales).is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn transparency_is_scaled_beside_the_colour() {
+        // Left half clear, right half solid.
+        let alpha = GrayImage::from_fn(8, 4, |x, _| image::Luma([if x < 4 { 0 } else { 255 }]));
+        let large = RgbImage::from_pixel(32, 16, Rgb([10, 20, 30]));
+        let whole = with_alpha(large, &alpha);
+        assert_eq!(whole.dimensions(), (32, 16));
+        assert_eq!(whole.get_pixel(2, 8).0, [10, 20, 30, 0]);
+        assert_eq!(whole.get_pixel(29, 8).0, [10, 20, 30, 255]);
+        // The edge is where it was, four times as far along.
+        assert!(whole.get_pixel(13, 8)[3] < 40 && whole.get_pixel(18, 8)[3] > 215);
+    }
+
+    /// The real thing, end to end: needs the upscaling model, which is not in the repository.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "needs a model file: make one with `node apps/desktop/scripts/fetch-upscale-model.mjs` and set SLIDR_MODELS_DIR to its folder"]
+    async fn the_installed_model_draws_a_picture_larger_and_sharper() -> TestResult {
+        let bench = bench(Some(models_dir()?))?;
+        let status = bench.service.upscale_status();
+        assert_eq!(
+            status.state,
+            MattingState::Ready,
+            "no upscaling model in SLIDR_MODELS_DIR"
+        );
+
+        // A drawing with edges at every angle, made large and then brought down four times:
+        // what the model is given is the small one, and the large one is the truth.
+        let (w, h) = (1440_u32, 1040_u32);
+        let truth = RgbImage::from_fn(w, h, |x, y| {
+            let (fx, fy) = (x as f32, y as f32);
+            let disc = ((fx - 400.0).powi(2) + (fy - 380.0).powi(2)).sqrt() < 230.0;
+            let bar = (fx * 0.6 + fy * 0.8 - 900.0).abs() < 26.0;
+            let frame = (900..1300).contains(&x) && (560..900).contains(&y);
+            let lines = x > 820 && y < 400 && (x / 24) % 2 == 0;
+            if disc {
+                Rgb([230, 96, 40])
+            } else if bar {
+                Rgb([28, 40, 92])
+            } else if frame {
+                Rgb([40, 150, 110])
+            } else if lines {
+                Rgb([20, 20, 20])
+            } else {
+                Rgb([244, 240, 232])
+            }
+        });
+        let small = imageops::resize(&truth, w / 4, h / 4, imageops::FilterType::Lanczos3);
+        let source = bench.import(DynamicImage::ImageRgb8(small.clone()), ImageFormat::Png)?;
+
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let heard = Arc::clone(&seen);
+        let made = bench
+            .service
+            .upscale(
+                &bench.storage,
+                "four",
+                &bench.workspace,
+                &source,
+                4,
+                move |p| {
+                    lock(&heard).push((p.done, p.total));
+                },
+            )
+            .await?;
+        println!(
+            "{}: {} ms for {}x{}, 4x",
+            made.model,
+            made.duration_ms,
+            w / 4,
+            h / 4
+        );
+        assert_eq!(
+            (made.model.as_str(), made.factor),
+            ("realesr-general-x4v3", 4)
+        );
+        assert_eq!(
+            (
+                made.asset.width,
+                made.asset.height,
+                made.asset.mime.as_str()
+            ),
+            (Some(f64::from(w)), Some(f64::from(h)), "image/png")
+        );
+        // The picture is 360 by 260: four tiles, counted from none to all.
+        let seen = lock(&seen).clone();
+        assert_eq!(seen.first(), Some(&(0, 4)));
+        assert_eq!(seen.last(), Some(&(4, 4)));
+        assert_eq!(seen.len(), 5);
+
+        // Closer to the truth than resampling is, and sharper: across the edge of the disc
+        // the model goes from one colour to the other in fewer pixels.
+        let large = image::open(bench.assets.join(&made.asset.file))?.to_rgb8();
+        let resampled = imageops::resize(&small, w, h, imageops::FilterType::CatmullRom);
+        let error = |picture: &RgbImage| -> f64 {
+            let sum: f64 = picture
+                .pixels()
+                .zip(truth.pixels())
+                .flat_map(|(a, b)| (0..3).map(move |c| (f64::from(a[c]) - f64::from(b[c])).powi(2)))
+                .sum();
+            sum / f64::from(w * h * 3)
+        };
+        let (model_error, plain_error) = (error(&large), error(&resampled));
+        println!("mean squared error: model {model_error:.1}, resampling {plain_error:.1}");
+        assert!(
+            model_error < plain_error * 0.6,
+            "the model ({model_error:.1}) is no nearer the truth than resampling ({plain_error:.1})"
+        );
+        let ramp = |picture: &RgbImage| {
+            // Along the row through the middle of the disc, how many pixels are between colours.
+            (100..400)
+                .filter(|&x| (60..200).contains(&picture.get_pixel(x, 380)[1].abs_diff(96)))
+                .count()
+        };
+        assert!(
+            ramp(&large) < ramp(&resampled),
+            "the edge is {} pixels wide, and {} resampled",
+            ramp(&large),
+            ramp(&resampled)
+        );
+
+        // Two times: the same picture at half that, and nearer the truth at that size too.
+        let half = upscaled(&bench, "two", &source, 2).await?;
+        assert_eq!(
+            (half.asset.width, half.asset.height, half.factor),
+            (Some(f64::from(w / 2)), Some(f64::from(h / 2)), 2)
+        );
+        // The source is where it was, and the two results beside it.
+        assert_eq!(fs::read_dir(&bench.assets)?.count(), 3);
+        Ok(())
+    }
+
+    /// A photograph stays a JPEG, a cut-out keeps what is seen through it, and a job that is
+    /// cancelled stores nothing.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "needs a model file: make one with `node apps/desktop/scripts/fetch-upscale-model.mjs` and set SLIDR_MODELS_DIR to its folder"]
+    async fn the_installed_model_keeps_the_format_and_stops_when_told() -> TestResult {
+        let bench = bench(Some(models_dir()?))?;
+        let photo = DynamicImage::ImageRgb8(square_on_green(160, 120));
+        let jpeg = bench.import(photo, ImageFormat::Jpeg)?;
+        let made = upscaled(&bench, "jpeg", &jpeg, 2).await?;
+        assert_eq!(made.asset.mime, "image/jpeg");
+        assert_eq!(
+            (made.asset.width, made.asset.height),
+            (Some(320.0), Some(240.0))
+        );
+
+        // A red square on nothing.
+        let cut = RgbaImage::from_fn(96, 96, |x, y| {
+            if (24..72).contains(&x) && (24..72).contains(&y) {
+                Rgba([200, 30, 40, 255])
+            } else {
+                Rgba([0, 0, 0, 0])
+            }
+        });
+        let png = bench.import(DynamicImage::ImageRgba8(cut), ImageFormat::Png)?;
+        let made = upscaled(&bench, "png", &png, 4).await?;
+        assert_eq!(made.asset.mime, "image/png");
+        let stored = image::open(bench.assets.join(&made.asset.file))?.to_rgba8();
+        assert_eq!(stored.dimensions(), (384, 384));
+        assert_eq!(stored.get_pixel(20, 20)[3], 0);
+        assert_eq!(stored.get_pixel(192, 192)[3], 255);
+        let middle = stored.get_pixel(192, 192);
+        assert!(middle[0] > 180 && middle[1] < 60, "{middle:?}");
+
+        // A picture of many tiles, cancelled when the first of them is done.
+        let large = RgbImage::from_fn(1100, 900, |x, y| {
+            Rgb([(x % 256) as u8, (y % 256) as u8, 90])
+        });
+        let source = bench.import(DynamicImage::ImageRgb8(large), ImageFormat::Png)?;
+        let before = fs::read_dir(&bench.assets)?.count();
+        let service = Arc::new(ImageProcessService::new(Places::new(
+            bench.root.path(),
+            None,
+            Some(models_dir()?),
+        )));
+        let canceller = Arc::clone(&service);
+        let began = Instant::now();
+        let stopped = service
+            .upscale(
+                &bench.storage,
+                "stops",
+                &bench.workspace,
+                &source,
+                4,
+                move |p| {
+                    if p.done == 1 {
+                        canceller.cancel_upscale("stops");
+                    }
+                },
+            )
+            .await;
+        println!("cancelled after {} ms", began.elapsed().as_millis());
+        assert_eq!(
+            stopped.err().map(|e| e.kind),
+            Some(ImageErrorKind::Cancelled)
+        );
+        assert_eq!(
+            fs::read_dir(&bench.assets)?.count(),
+            before,
+            "nothing was stored"
+        );
         Ok(())
     }
 

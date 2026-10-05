@@ -182,6 +182,10 @@ test('the import window may call its own commands, and no other (the gate)', asy
       'export_copy_media',
       'image_process',
       'image_process_status',
+      // And the upscaling job beside it.
+      'image_upscale',
+      'image_upscale_cancel',
+      'image_upscale_status',
     ]) {
       expect(await call(command), command).toContain('may not call');
     }

@@ -131,6 +131,9 @@ pub fn run() {
             import_window::import_record_write,
             import_window::import_source_export,
             import_window::import_source_remove,
+            image_process::ipc::image_upscale,
+            image_process::ipc::image_upscale_cancel,
+            image_process::ipc::image_upscale_status,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

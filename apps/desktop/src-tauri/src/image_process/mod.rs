@@ -18,9 +18,15 @@
 //! - **`chroma_key`** ([`chroma`]) needs nothing: it removes one flat colour. It is what gives a
 //!   picture from a provider that cannot draw transparency a transparent background.
 //!
+//! - **Upscaling** ([`upscale`], SPEC AIO-04) is a job of its own beside the two operations: it
+//!   takes seconds to a minute, so it reports its progress and can be cancelled. It needs a
+//!   super-resolution model, another file of a models folder that the app knows by name; the
+//!   result is the picture two or four times its size, in the format of its source.
+//!
 //! Errors are the image providers' `{ kind, message }`: `not_installed` when there is no model,
 //! `not_found` for an asset that is not in the workspace, `unsupported` for a picture this
-//! build cannot decode, `invalid_input` for a picture an operation cannot work on.
+//! build cannot decode, `invalid_input` for a picture an operation cannot work on, `cancelled`
+//! for an upscale that was stopped.
 
 mod chroma;
 pub mod ipc;
@@ -28,12 +34,16 @@ mod matte;
 mod model;
 mod service;
 mod types;
+mod upscale;
 
 pub use model::Places;
 pub use service::ImageProcessService;
 #[allow(unused_imports)]
 // The whole contract is public, whether or not this crate uses each part.
-pub use types::{MattingState, MattingStatus, ModelInfo, Operation, Processed};
+pub use types::{
+    MattingState, MattingStatus, ModelInfo, Operation, Processed, UpscaleProgress, UpscaleStatus,
+    Upscaled,
+};
 
 use tauri::Manager;
 

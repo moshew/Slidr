@@ -150,14 +150,23 @@ impl Places {
 
     /// The first model file there is.
     pub fn find(&self) -> Option<Found> {
+        let files: Vec<&str> = MODELS.iter().map(|spec| spec.file).collect();
+        let (index, path, place) = self.find_file(&files)?;
+        Some(Found {
+            spec: &MODELS[index],
+            path,
+            place,
+        })
+    }
+
+    /// The first of `files` there is, as its place in the list, its path and where it was
+    /// found: in the nearest place that holds any of them, and there the first of the list.
+    /// The matting models and the upscaling models (`upscale.rs`) are both found this way.
+    pub fn find_file(&self, files: &[&str]) -> Option<(usize, PathBuf, Place)> {
         self.folders.iter().find_map(|(place, folder)| {
-            MODELS.iter().find_map(|spec| {
-                let path = folder.join(spec.file);
-                path.is_file().then_some(Found {
-                    spec,
-                    path,
-                    place: *place,
-                })
+            files.iter().enumerate().find_map(|(index, file)| {
+                let path = folder.join(file);
+                path.is_file().then_some((index, path, *place))
             })
         })
     }
@@ -170,7 +179,7 @@ impl Places {
 
 /// How many threads a run uses: half the logical processors, eight at most. More gains nothing
 /// (measured for ADR-057), and the app stays responsive.
-fn threads() -> usize {
+pub(super) fn threads() -> usize {
     let logical = std::thread::available_parallelism().map_or(2, usize::from);
     (logical / 2).clamp(1, 8)
 }

@@ -9,8 +9,18 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use super::model::{Found, MODELS, ModelSpec, Place};
+use super::{
+    model::{Found, MODELS, ModelSpec, Place},
+    upscale::{FACTORS, UPSCALERS, UpscalerSpec},
+};
 use crate::assets::ImportedAsset;
+
+/// The largest picture that is upscaled, in pixels: 2048 by 2048, about a minute's work on
+/// eight threads. A picture beyond it has more pixels than a slide shows.
+pub const MAX_SOURCE_PIXELS: u64 = 4_194_304;
+/// The largest picture an upscale gives, in pixels: an 8K frame and a little more. Past it a
+/// deck carries tens of megabytes for detail no screen shows.
+pub const MAX_RESULT_PIXELS: u64 = 40_000_000;
 
 /// What to do to a picture. The picture is never changed: the result is a new asset.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -103,6 +113,86 @@ impl From<&ModelSpec> for ModelInfo {
             bytes: spec.bytes,
         }
     }
+}
+
+impl From<&UpscalerSpec> for ModelInfo {
+    fn from(spec: &UpscalerSpec) -> Self {
+        Self {
+            id: spec.id.into(),
+            name: spec.name.into(),
+            file: spec.file.into(),
+            license: spec.license.into(),
+            bytes: spec.bytes,
+        }
+    }
+}
+
+/// Whether a picture can be upscaled, with what, and how far: the upscaling model's own
+/// status, beside the matting model's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpscaleStatus {
+    /// `not_installed`: no upscaling model file in any of the places.
+    pub state: MattingState,
+    /// The model that will run.
+    pub model: Option<ModelInfo>,
+    /// The model's file.
+    pub path: Option<String>,
+    /// Where the file was found.
+    pub place: Option<Place>,
+    /// The folder a model file goes into when it is installed after the app.
+    pub install_dir: String,
+    /// The models the app can run, the default first: the file names it looks for.
+    pub supported: Vec<ModelInfo>,
+    /// How many times its size a picture can be asked for. Empty without a model.
+    pub factors: Vec<u32>,
+    /// The largest picture that is upscaled, in pixels.
+    pub max_source_pixels: u64,
+    /// The largest result, in pixels: what decides whether a picture can go four times.
+    pub max_result_pixels: u64,
+}
+
+impl UpscaleStatus {
+    /// The status of an app that found the model `found` (the spec, its file and where it
+    /// was), and installs into `install_dir`.
+    pub fn of(found: Option<(&UpscalerSpec, &Path, Place)>, install_dir: &Path) -> Self {
+        Self {
+            state: if found.is_some() {
+                MattingState::Ready
+            } else {
+                MattingState::NotInstalled
+            },
+            model: found.map(|(spec, ..)| spec.into()),
+            path: found.map(|(_, path, _)| path.to_string_lossy().into_owned()),
+            place: found.map(|(.., place)| place),
+            install_dir: install_dir.to_string_lossy().into_owned(),
+            supported: UPSCALERS.iter().map(Into::into).collect(),
+            factors: found.map_or_else(Vec::new, |_| FACTORS.to_vec()),
+            max_source_pixels: MAX_SOURCE_PIXELS,
+            max_result_pixels: MAX_RESULT_PIXELS,
+        }
+    }
+}
+
+/// What an upscale returns: the new asset, a picture `factor` times the size of its source.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Upscaled {
+    pub asset: ImportedAsset,
+    /// From reading the picture to the stored asset.
+    pub duration_ms: u64,
+    /// The id of the model that drew it.
+    pub model: String,
+    pub factor: u32,
+}
+
+/// How far an upscale is: the picture goes through the model in tiles. Sent first with none
+/// done, then once for every tile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpscaleProgress {
+    pub done: u32,
+    pub total: u32,
 }
 
 impl MattingStatus {
@@ -245,10 +335,57 @@ mod tests {
             ImageErrorKind::InvalidInput,
             ImageErrorKind::UnknownWorkspace,
             ImageErrorKind::GenerationFailed,
+            // An upscale that was stopped.
+            ImageErrorKind::Cancelled,
             ImageErrorKind::Io,
             ImageErrorKind::Internal,
         ];
         assert_eq!(serde_json::to_value(kinds)?, contract["errorKinds"]);
+        Ok(())
+    }
+
+    #[test]
+    fn an_upscale_has_the_contract_shapes() -> TestResult {
+        let contract = contract()?;
+        let install = PathBuf::from("/data/dev.slidr.app/models");
+        let file = PathBuf::from("/data/dev.slidr.app/models/realesr-general-x4v3.onnx");
+        let statuses = [
+            UpscaleStatus::of(Some((&UPSCALERS[0], &file, Place::AppData)), &install),
+            UpscaleStatus::of(None, &install),
+        ];
+        assert_eq!(
+            serde_json::to_value(&statuses)?,
+            contract["upscale"]["statuses"]
+        );
+        // Without a model no size is offered; the limits are the same either way.
+        assert!(statuses[1].factors.is_empty());
+
+        let result = Upscaled {
+            asset: ImportedAsset {
+                file: format!("{}.jpg", "ef".repeat(32)),
+                mime: "image/jpeg".into(),
+                bytes: 1_033_749,
+                width: Some(3276.0),
+                height: Some(4096.0),
+                ..asset()
+            },
+            duration_ms: 11_800,
+            model: "realesr-general-x4v3".into(),
+            factor: 4,
+        };
+        assert_eq!(serde_json::to_value(result)?, contract["upscale"]["result"]);
+
+        let progress = [
+            UpscaleProgress { done: 0, total: 20 },
+            UpscaleProgress {
+                done: 20,
+                total: 20,
+            },
+        ];
+        assert_eq!(
+            serde_json::to_value(progress)?,
+            contract["upscale"]["progress"]
+        );
         Ok(())
     }
 }

@@ -52,6 +52,10 @@ for (const [command, args] of [
   ['export_copy_media', {}],
   ['image_process', {}],
   ['image_process_status', {}],
+  // Upscaling: it reads an asset and stores another, for as long as a minute of every core.
+  ['image_upscale', {}],
+  ['image_upscale_cancel', {}],
+  ['image_upscale_status', {}],
   ['capture_slide', { request: { deck: { slides: [] } } }],
   ['capture_run_job', { job: {} }],
   ['import_open', { path: 'C:/x.html', thread: 'a/b', workspaceId: 'x' }],

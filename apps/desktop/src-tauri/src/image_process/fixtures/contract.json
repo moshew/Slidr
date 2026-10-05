@@ -100,6 +100,72 @@
       ]
     }
   ],
+  "upscale": {
+    "statuses": [
+      {
+        "state": "ready",
+        "model": {
+          "id": "realesr-general-x4v3",
+          "name": "Real-ESRGAN (general, compact)",
+          "file": "realesr-general-x4v3.onnx",
+          "license": "BSD-3-Clause",
+          "bytes": 4862660
+        },
+        "path": "/data/dev.slidr.app/models/realesr-general-x4v3.onnx",
+        "place": "app_data",
+        "installDir": "/data/dev.slidr.app/models",
+        "supported": [
+          {
+            "id": "realesr-general-x4v3",
+            "name": "Real-ESRGAN (general, compact)",
+            "file": "realesr-general-x4v3.onnx",
+            "license": "BSD-3-Clause",
+            "bytes": 4862660
+          }
+        ],
+        "factors": [2, 4],
+        "maxSourcePixels": 4194304,
+        "maxResultPixels": 40000000
+      },
+      {
+        "state": "not_installed",
+        "model": null,
+        "path": null,
+        "place": null,
+        "installDir": "/data/dev.slidr.app/models",
+        "supported": [
+          {
+            "id": "realesr-general-x4v3",
+            "name": "Real-ESRGAN (general, compact)",
+            "file": "realesr-general-x4v3.onnx",
+            "license": "BSD-3-Clause",
+            "bytes": 4862660
+          }
+        ],
+        "factors": [],
+        "maxSourcePixels": 4194304,
+        "maxResultPixels": 40000000
+      }
+    ],
+    "result": {
+      "asset": {
+        "id": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+        "file": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef.jpg",
+        "mime": "image/jpeg",
+        "kind": "image",
+        "bytes": 1033749,
+        "width": 3276.0,
+        "height": 4096.0
+      },
+      "durationMs": 11800,
+      "model": "realesr-general-x4v3",
+      "factor": 4
+    },
+    "progress": [
+      { "done": 0, "total": 20 },
+      { "done": 20, "total": 20 }
+    ]
+  },
   "places": ["dev", "app_data", "bundle"],
   "error": { "kind": "not_installed", "message": "no background-removal model is installed" },
   "errorKinds": [
@@ -109,6 +175,7 @@
     "invalid_input",
     "unknown_workspace",
     "generation_failed",
+    "cancelled",
     "io",
     "internal"
   ]
