@@ -701,6 +701,19 @@ pub async fn import_source_export(
     off_main(move || storage.copy_source(&workspace_id, &path)).await
 }
 
+/// `import_source_remove({ workspaceId })`: takes the source out of the deck, so that a file
+/// saved from now on does not carry the file it was imported from. An import session that is
+/// open goes on (its page has its own copy); once its page is closed it cannot be opened again.
+/// `false` when the deck kept none.
+#[tauri::command]
+pub async fn import_source_remove(
+    storage: State<'_, Arc<Storage>>,
+    workspace_id: String,
+) -> Result<bool> {
+    let storage = Arc::clone(&storage);
+    off_main(move || storage.remove_source(&workspace_id)).await
+}
+
 /// A failure of the file layer, as an import command reports it.
 impl From<AppError> for ImportError {
     fn from(error: AppError) -> Self {
@@ -911,6 +924,7 @@ mod tests {
             "import_record_read",
             "import_record_write",
             "import_source_export",
+            "import_source_remove",
             // The agent's diagnostics log (ADR-066): what the agent wrote is not a file's to read.
             "agent_diagnostics_read",
             "agent_diagnostics_clear",

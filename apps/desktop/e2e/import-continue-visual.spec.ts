@@ -42,6 +42,14 @@ for (const theme of themes) {
       await expect(page.getByTestId('import-source')).toBeVisible();
       await settle(page);
       await page.screenshot({ path: out(`report-${name}`) });
+
+      // The question before the source file is taken out of the deck, once in each direction.
+      if (theme === (dir === 'rtl' ? 'light' : 'dark')) {
+        await page.getByTestId('import-source-remove').click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await settle(page);
+        await page.screenshot({ path: out(`remove-${name}`) });
+      }
     });
   }
 }

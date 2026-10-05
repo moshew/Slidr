@@ -385,6 +385,13 @@ impl Storage {
         source::copy_to(&self.open_dir(&open, id)?, to)
     }
 
+    /// Takes the kept source out of the workspace: the next save writes a file without it.
+    /// `false` when it kept none.
+    pub fn remove_source(&self, id: &str) -> Result<bool> {
+        let open = self.open_set();
+        source::remove(&self.open_dir(&open, id)?)
+    }
+
     /// The record of the import the workspace's deck came from (`source/import.json`), as the
     /// webview wrote it; `None` when there is none.
     pub fn import_record(&self, id: &str) -> Result<Option<String>> {
@@ -1071,6 +1078,26 @@ mod tests {
             storage.copy_source(&opened.id, &out)?;
             assert_eq!(fs::read_to_string(&out)?, html);
         }
+
+        // The user takes the source out: the file saved after that goes without it, and keeps
+        // the record of the import.
+        assert!(storage.remove_source(&workspace.id)?);
+        let third = fx.files.join("third.slidr");
+        storage.save(&workspace.id, &third, &deck(&[]), None)?;
+        let entries = entries_of(&third)?;
+        assert!(
+            !entries.contains(&"source/import.html".to_owned()),
+            "{entries:?}"
+        );
+        assert!(
+            entries.contains(&"source/import.json".to_owned()),
+            "{entries:?}"
+        );
+        assert!(!storage.remove_source(&workspace.id)?);
+        assert_eq!(
+            kind(storage.remove_source("nope")),
+            Some(ErrorKind::UnknownWorkspace)
+        );
 
         // A deck that was not imported has neither, and says so.
         let plain = storage.new_workspace()?;

@@ -66,6 +66,7 @@ const kept = (deckId: string, over: Partial<ImportRecord> = {}): ImportRecord =>
   version: 1,
   deckId,
   file: 'deck.html',
+  kept: true,
   startedAt: 5,
   planned: null,
   phase: 'idle',

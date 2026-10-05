@@ -49,6 +49,8 @@ export interface ImportRecord {
   deckId: string;
   /** The name the agent reads the source file under. */
   file: string;
+  /** The source file is beside the record; false once the user took it out of the deck. */
+  kept: boolean;
   startedAt: number | null;
   /** How many slides the agent's plan had (IMP-11); null until it said. */
   planned: number | null;
@@ -155,6 +157,8 @@ export function parseRecord(text: string | null, deckId: string): ImportRecord |
     version: 1,
     deckId,
     file,
+    // Only a record that says the source was taken out says so; reopening finds out the rest.
+    kept: value.kept !== false,
     startedAt: typeof startedAt === 'number' && Number.isFinite(startedAt) ? startedAt : null,
     planned:
       typeof planned === 'number' && Number.isInteger(planned) && planned > 0 && planned <= 5000

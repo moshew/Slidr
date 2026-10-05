@@ -124,6 +124,7 @@ function recordOf(state: ImportState): ImportRecord | null {
     version: 1,
     deckId: state.deckId,
     file: state.file,
+    kept: state.kept,
     startedAt: state.startedAt,
     planned: state.planned,
     phase: state.phase,
@@ -514,7 +515,7 @@ export async function restoreImport(editor: Editor): Promise<boolean> {
     file: record.file,
     deckId,
     open: false,
-    kept: isTauri() || browserKept.has(deckId),
+    kept: record.kept && (isTauri() || browserKept.has(deckId)),
     stale: true,
     startedAt: record.startedAt,
     planned: record.planned,
@@ -576,6 +577,28 @@ export async function exportSource(editor: Editor, path: string): Promise<void> 
   } catch (error) {
     throw jobError(error);
   }
+}
+
+/**
+ * Takes the source file out of the deck: a file saved from now on does not carry the file the
+ * deck was imported from. A page that is open goes on working; once it is closed it cannot be
+ * opened again, and an import that was cut can no longer be continued from the file.
+ */
+export async function removeSource(editor: Editor): Promise<void> {
+  const { file, deckId } = importState.getState();
+  if (!file || deckId !== editor.bus.deck.id) return;
+  if (isTauri()) {
+    const workspaceId = editor.document?.workspace?.id;
+    if (!workspaceId) throw new Error('No document is open.');
+    try {
+      await invoke('import_source_remove', { workspaceId });
+    } catch (error) {
+      throw jobError(error);
+    }
+  } else {
+    browserKept.delete(deckId);
+  }
+  if (importState.getState().deckId === deckId) importState.setState({ kept: false });
 }
 
 /** In a plain browser: the kept source as a file to download. Null when the deck keeps none. */

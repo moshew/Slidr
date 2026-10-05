@@ -66,6 +66,7 @@ for (const [command, args] of [
   ['import_record_read', { workspaceId: 'x' }],
   ['import_record_write', { workspaceId: 'x', text: '{}' }],
   ['import_source_export', { workspaceId: 'x', path: 'C:/x.html' }],
+  ['import_source_remove', { workspaceId: 'x' }],
   ['a_command_that_does_not_exist', {}],
 ]) {
   const answer = await call(command, args);

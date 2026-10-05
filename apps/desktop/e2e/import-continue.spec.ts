@@ -199,3 +199,47 @@ test('a finished import that is opened again is not offered to continue, and its
   expect(outline).toMatchObject({ ok: true, data: { result: '6' } });
   expect(await state(page)).toMatchObject({ open: true, stale: false });
 });
+
+test('the source file can be taken out of the deck, and then there is no way back to it', async ({
+  page,
+}) => {
+  await openImportPanel(page, { script: 'import-cut', speed: 1 });
+  // The user is told at the start that the deck will carry the file.
+  await expect(page.getByTestId('import-start')).toContainText(
+    'עותק של הקובץ נשמר בתוך קובץ המצגת',
+  );
+  await importUntilCut(page, { stop: true });
+  await page.getByTestId('import-report-tab').click();
+  const source = page.getByTestId('import-source');
+  await expect(source).toContainText('handwritten.html');
+
+  // Asked first, and nothing happens on "cancel".
+  await page.getByTestId('import-source-remove').click();
+  const question = page.getByRole('dialog');
+  await expect(question).toContainText('להסיר את קובץ המקור מהמצגת?');
+  await question.getByRole('button', { name: 'ביטול' }).click();
+  await expect(source).toBeVisible();
+  expect((await state(page)).kept).toBe(true);
+
+  await page.getByTestId('import-source-remove').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'הסרה', exact: true }).click();
+  await expect(source).toHaveCount(0);
+  expect(await state(page)).toMatchObject({ kept: false, open: true });
+  // The page that is open still works, and the report is as it was.
+  await expect(page.getByTestId('import-report').getByTestId('import-row')).toHaveCount(3);
+
+  // Once the deck was closed, the page cannot be opened again: the panel says so, the next
+  // turn is told, and a tool of the import answers that the page is closed.
+  await reopenDeck(page);
+  await expect(page.getByTestId('import-cut')).toBeVisible();
+  await expect(page.getByTestId('import-session')).toContainText('הדף המבודד נסגר');
+  expect(await state(page)).toMatchObject({ kept: false, open: false, phase: 'cut' });
+  expect(await brief(page)).toMatch(/keeps no copy of the file to open it from/);
+  const refused = await page.evaluate(() =>
+    window.slidrImport!.call('import_eval', { code: 'return 1' }),
+  );
+  expect(refused).toMatchObject({ ok: false });
+  await page.getByTestId('import-report-tab').click();
+  await expect(page.getByTestId('import-report').getByTestId('import-row')).toHaveCount(3);
+  await expect(page.getByTestId('import-source')).toHaveCount(0);
+});

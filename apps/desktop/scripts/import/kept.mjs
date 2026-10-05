@@ -289,6 +289,35 @@ if (phase === 'all') {
     }
   }
 
+  // The user takes the source out of the deck, with the panel's own button: the file saved
+  // after that does not carry it, and opens as an import with a report and no way back.
+  const beforeRemoval = await read();
+  await page.getByTestId('import-report-tab').click();
+  await page.getByTestId('import-source-remove').click();
+  await page.getByRole('dialog').locator('button').last().click();
+  await page.getByTestId('import-source').waitFor({ state: 'detached', timeout: 10_000 });
+  const third = join(out, 'kept-third.slidr');
+  rmSync(third, { force: true });
+  await page.evaluate(async (path) => {
+    const { newDeck, syncFileState } = await import('/src/shell/editor.tsx');
+    await window.slidr.document.saveAs(path);
+    await window.slidr.document.create(newDeck('he'));
+    await window.slidr.document.open(path);
+    syncFileState(window.slidr);
+  }, third);
+  await sleep(1200);
+  const bare = await read();
+  const bareDisk = onDisk(bare.workspace.dir);
+  note(
+    'the source taken out of the deck: the saved file has the record and not the source',
+    `kept ${bare.kept}, source on disk ${Boolean(bareDisk.source)}, ${Object.keys(bareDisk.record?.records ?? {}).length} records, ${bare.slides.length} slides`,
+    bare.file !== null &&
+      !bare.kept &&
+      bareDisk.source === null &&
+      Object.keys(bareDisk.record?.records ?? {}).length === beforeRemoval.records &&
+      bare.slides.length === 6,
+  );
+
   // A deck whose file has the record and not the source (it was put together elsewhere): going
   // on with its import says so to the user, in the panel, and asks nothing of the agent.
   const lost = await start();

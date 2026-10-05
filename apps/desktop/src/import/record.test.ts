@@ -10,6 +10,7 @@ const record = (over: Partial<ImportRecord> = {}): ImportRecord => ({
   version: 1,
   deckId: 'd_1',
   file: 'מצגת.html',
+  kept: true,
   startedAt: 1_700_000_000_000,
   planned: 6,
   phase: 'working',
@@ -38,6 +39,14 @@ describe('the record of an import, as the deck file keeps it', () => {
 
   it("is no record of another deck, though it is in that deck's file", () => {
     expect(parseRecord(serializeRecord(record()), 'd_other')).toBeNull();
+  });
+
+  it('says the source was taken out of the deck only when it was', () => {
+    expect(parseRecord(serializeRecord(record({ kept: false })), 'd_1')!.kept).toBe(false);
+    // A record that does not say (or says something else) is of a deck that keeps its source.
+    const { kept: _kept, ...silent } = record();
+    expect(parseRecord(JSON.stringify(silent), 'd_1')!.kept).toBe(true);
+    expect(parseRecord(JSON.stringify({ ...silent, kept: 'no' }), 'd_1')!.kept).toBe(true);
   });
 
   it('is nothing when the file has none, or holds something else', () => {

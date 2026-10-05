@@ -10,6 +10,7 @@ export const he = {
     body: 'ה-Agent בוחן את הקובץ, מוצא את השקפים ומביא אותם כך שכל שקף נראה כמו המקור. מה שאפשר הופך לאובייקטים שעורכים; השאר נשאר HTML.',
     isolated: 'הקובץ רץ בדף מבודד: בלי רשת ובלי גישה לאפליקציה.',
     newDeck: 'הייבוא נפתח במצגת חדשה.',
+    kept: 'עותק של הקובץ נשמר בתוך קובץ המצגת. אפשר להסיר אותו משם אחר כך.',
     choose: 'בחירת קובץ',
     confirm: 'אישור התוכנית לפני הלכידה',
     confirmOn: 'ה-Agent יציג מה מצא ויחכה לאישור שלכם',
@@ -41,6 +42,13 @@ export const he = {
     kept: 'שמור בתוך קובץ המצגת, לעיון ולהמשך הייבוא.',
     save: 'שמירת עותק',
     failed: 'העותק לא נשמר',
+    remove: 'הסרה מהמצגת',
+    removeTitle: 'להסיר את קובץ המקור מהמצגת?',
+    removeBody:
+      'מהשמירה הבאה, קובץ המצגת לא יכיל את קובץ ה-HTML שממנו יובאה. אחרי ההסרה אי אפשר להמשיך ייבוא שנקטע, או ללכוד שקף מחדש מהמקור. השקפים שיובאו נשארים.',
+    removeConfirm: 'הסרה',
+    cancel: 'ביטול',
+    removeFailed: 'קובץ המקור לא הוסר',
   },
   approve: {
     waiting: 'ה-Agent מחכה לאישור התוכנית',
@@ -80,6 +88,7 @@ export const en: typeof he = {
     body: 'The agent examines the file, finds the slides and brings them in so that every slide looks like the original. What can be edited becomes regular objects; the rest stays HTML.',
     isolated: 'The file runs in an isolated page: no network, and no access to the app.',
     newDeck: 'The import opens in a new deck.',
+    kept: 'A copy of the file is kept inside the deck file. It can be removed from there later.',
     choose: 'Choose a file',
     confirm: 'Approve the plan before capturing',
     confirmOn: 'The agent will show what it found and wait for you',
@@ -111,6 +120,13 @@ export const en: typeof he = {
     kept: 'Kept inside the deck file, to look at and to continue the import from.',
     save: 'Save a copy',
     failed: 'The copy was not saved',
+    remove: 'Remove from the deck',
+    removeTitle: 'Remove the source file from the deck?',
+    removeBody:
+      'From the next save on, the deck file will not contain the HTML file it was imported from. After that, an import that was cut cannot be continued, and a slide cannot be captured again from the source. The imported slides stay.',
+    removeConfirm: 'Remove',
+    cancel: 'Cancel',
+    removeFailed: 'The source file was not removed',
   },
   approve: {
     waiting: 'The agent is waiting for the plan to be approved',

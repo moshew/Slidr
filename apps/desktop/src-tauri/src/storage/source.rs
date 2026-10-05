@@ -62,6 +62,17 @@ pub(crate) fn copy_to(workspace: &Path, to: &Path) -> Result<u64> {
     replace(&kept, to).map_err(|e| AppError::path(to, &e))
 }
 
+/// Takes the kept source out of the workspace, so the next save packs a file without it: the
+/// user's way to pass a deck on without the file it came from. The record stays. `false` when
+/// there was none to remove.
+pub(crate) fn remove(workspace: &Path) -> Result<bool> {
+    match fs::remove_file(file(workspace)) {
+        Ok(()) => Ok(true),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(AppError::io("remove the source file", &e)),
+    }
+}
+
 /// The import's record, or `None` when the deck has none.
 pub(crate) fn read_record(workspace: &Path) -> Result<Option<String>> {
     match fs::read_to_string(workspace.join(SOURCE_DIR).join(RECORD_FILE)) {
@@ -149,6 +160,15 @@ mod tests {
         // The folder is made on the way: a session folder that a restart found empty.
         copy_to(&workspace, &out)?;
         assert_eq!(fs::read_to_string(&out)?, "<p dir=\"rtl\">שלום</p>");
+
+        // Taken out, it is gone from the workspace, and with it from whatever is saved next;
+        // the record of the import stays.
+        write_record(&workspace, "{\"version\":1}")?;
+        assert!(remove(&workspace)?);
+        assert!(!remove(&workspace)?, "nothing to remove the second time");
+        assert_eq!(names(&workspace.join(SOURCE_DIR))?, ["import.json"]);
+        let gone = copy_to(&workspace, &out);
+        assert_eq!(gone.err().map(|e| e.kind), Some(ErrorKind::NotFound));
         Ok(())
     }
 

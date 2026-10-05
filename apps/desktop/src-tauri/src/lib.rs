@@ -130,6 +130,7 @@ pub fn run() {
             import_window::import_record_read,
             import_window::import_record_write,
             import_window::import_source_export,
+            import_window::import_source_remove,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

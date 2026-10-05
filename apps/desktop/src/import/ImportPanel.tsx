@@ -13,6 +13,7 @@ import {
   ListChecks,
   Pencil,
   ShieldCheck,
+  Trash2,
   TriangleAlert,
   WifiOff,
 } from '@slidr/ui/icons';
@@ -31,10 +32,10 @@ import {
   Toggle,
 } from '@slidr/ui';
 import { Chat } from '../ai/Chat';
-import { useDeck, useEditor } from '../shell';
+import { ask, useDeck, useEditor } from '../shell';
 import { continueImport, importThread, startImport } from './flow';
 import { buildReport, type ImportReport, type ReportRow } from './report';
-import { exportSource, importState, pageSource, type ImportSource } from './session';
+import { exportSource, importState, pageSource, removeSource, type ImportSource } from './session';
 
 /*
  * The import panel (SPEC 13.3, IMP-03; WG9-T18): choosing a file, the agent's plan and its
@@ -124,6 +125,10 @@ function Start({ onChoose }: { onChoose: (source: ImportSource, confirm: boolean
         <li className="flex items-start gap-2">
           <Icon icon={FilePlus} className="mt-0.5 shrink-0" />
           <span>{t('start.newDeck')}</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <Icon icon={FileCode} className="mt-0.5 shrink-0" />
+          <span>{t('start.kept')}</span>
         </li>
       </ul>
     </div>
@@ -322,7 +327,28 @@ function Report({ report, onOpen }: { report: ImportReport; onOpen: (slideId: st
 function SourceFile({ file }: { file: string }) {
   const { t } = useTranslation('import');
   const editor = useEditor();
-  const [failure, setFailure] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ what: string; why: string } | null>(null);
+
+  // The deck file carries the file it came from, with whatever was deleted from the deck since.
+  // Passing the deck on without it is the user's to decide, and costs the way back to the file.
+  const remove = async () => {
+    setFailure(null);
+    const answer = await ask({
+      title: t('source.removeTitle'),
+      body: t('source.removeBody'),
+      actions: [
+        { id: 'cancel', label: t('source.cancel'), variant: 'ghost' },
+        { id: 'remove', label: t('source.removeConfirm'), variant: 'danger' },
+      ],
+      cancelId: 'cancel',
+    });
+    if (answer !== 'remove') return;
+    try {
+      await removeSource(editor);
+    } catch (error) {
+      setFailure({ what: t('source.removeFailed'), why: reason(error) });
+    }
+  };
 
   const save = async () => {
     setFailure(null);
@@ -344,7 +370,7 @@ function SourceFile({ file }: { file: string }) {
       });
       if (path) await exportSource(editor, path);
     } catch (error) {
-      setFailure(reason(error));
+      setFailure({ what: t('source.failed'), why: reason(error) });
     }
   };
 
@@ -357,22 +383,30 @@ function SourceFile({ file }: { file: string }) {
         <Icon icon={FileCode} className="text-ui-fg-muted" />
         {t('source.title')}
       </h3>
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <div dir="auto" className="truncate text-start text-sm text-ui-fg">
-            {file}
-          </div>
-          <p className="text-xs leading-5 text-ui-fg-muted">{t('source.kept')}</p>
-        </div>
+      {/* The name starts where the lines around it start; its own characters keep their order. */}
+      <div className="truncate text-sm text-ui-fg">
+        <bdi>{file}</bdi>
+      </div>
+      <p className="text-xs leading-5 text-ui-fg-muted">{t('source.kept')}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" icon={Download} onClick={() => void save()}>
           {t('source.save')}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={Trash2}
+          onClick={() => void remove()}
+          data-testid="import-source-remove"
+        >
+          {t('source.remove')}
         </Button>
       </div>
       {failure && (
         <div role="alert" className="text-xs text-ui-danger-fg">
-          <div>{t('source.failed')}</div>
+          <div>{failure.what}</div>
           <div dir="ltr" className="text-start text-ui-fg-muted">
-            {failure}
+            {failure.why}
           </div>
         </div>
       )}
