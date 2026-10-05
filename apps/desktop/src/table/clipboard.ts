@@ -9,7 +9,7 @@ import {
 } from '@slidr/model';
 import { SLIDR_MIME, textBoxFor } from '../arrange/clip';
 import { i18n } from '../i18n';
-import { focusStage, getEditor, type Editor } from '../shell';
+import { focusStage, getEditor, useShell, type Editor } from '../shell';
 import { syncGrowHeights } from '../text/actions';
 import { SLIDR_TEXT_MIME } from '../text/paste';
 import { fitRows } from './fit';
@@ -105,9 +105,12 @@ function pasteTextBox(editor: Editor, text: string): void {
   syncGrowHeights(bus, [element.id], txId);
 }
 
+/** The welcome screen stands in place of the editor: the deck behind it takes no clipboard. */
+const behindWelcome = () => useShell.getState().welcome;
+
 function onPaste(event: ClipboardEvent): void {
   const data = event.clipboardData;
-  if (!data || event.defaultPrevented) return;
+  if (!data || event.defaultPrevented || behindWelcome()) return;
   // Elements and slides copied in Slidr are the arrange area's; text copied in Slidr is text.
   if (data.getData(SLIDR_MIME) || inFilmstrip(event.target)) return;
   const typing = inCellEditor(event.target);
@@ -144,6 +147,7 @@ function onPaste(event: ClipboardEvent): void {
 
 function onCopy(event: ClipboardEvent, cut: boolean): void {
   if (event.defaultPrevented || !event.clipboardData || isTextTarget(event.target)) return;
+  if (behindWelcome()) return;
   const target = tableTarget(getEditor());
   // A table that is selected as an object is copied as an element, by the arrange area.
   if (!target?.inside || target.typing) return;

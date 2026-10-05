@@ -412,3 +412,30 @@ test('the screen the app opens on has no document to go back to', async ({ page 
   await page.keyboard.press('Escape');
   await expect(welcome(page)).toBeVisible();
 });
+
+test('the clipboard does not reach the deck behind the welcome screen', async ({ page }) => {
+  await openApp(page);
+  await addBoxes(page, THREE);
+  await select(page, ['e_a']);
+  const steps = await undoSteps(page);
+  await (await fileItem(page, 'מסך הפתיחה')).click();
+  await expect(welcome(page)).toBeVisible();
+  // A paste of text would add a text box to the deck, and a cut would take the selection out.
+  const taken = await page.evaluate(() => {
+    const send = (type: string, text?: string) => {
+      const data = new DataTransfer();
+      if (text) data.setData('text/plain', text);
+      const event = new ClipboardEvent(type, {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.body.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    return [send('paste', 'pasted on the welcome screen'), send('cut'), send('copy')];
+  });
+  expect(taken).toEqual([false, false, false]);
+  expect(await page.evaluate(() => window.slidr!.bus.deck.slides[0]!.elements.length)).toBe(3);
+  expect(await undoSteps(page)).toBe(steps);
+});

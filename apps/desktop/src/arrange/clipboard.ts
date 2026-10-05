@@ -1,6 +1,6 @@
 import { batchFitted, newId, type AssetMeta, type Element } from '@slidr/model';
 import { i18n } from '../i18n';
-import { getEditor, tell, type Editor } from '../shell';
+import { getEditor, tell, useShell, type Editor } from '../shell';
 import { syncGrowHeights } from '../text/actions';
 import { target } from './actions';
 import {
@@ -186,8 +186,14 @@ function clipAtFocus(editor: Editor, cut: boolean): Clip | undefined {
   return clipElements(deck, at.slide.id, ids, cut);
 }
 
+/**
+ * The welcome screen stands in place of the editor (DOC-05): the deck behind it is not on the
+ * screen, and nothing is copied out of it, cut from it or pasted into it.
+ */
+const behindWelcome = () => useShell.getState().welcome;
+
 function onCopy(event: ClipboardEvent, cut: boolean): void {
-  if (event.defaultPrevented) return;
+  if (event.defaultPrevented || behindWelcome()) return;
   const editor = getEditor();
   if (pending) {
     const clip = pending;
@@ -306,6 +312,7 @@ function onPaste(event: ClipboardEvent): void {
   const data = event.clipboardData;
   // The Stage takes pasted files itself (STG-09) and marks the event as handled.
   if (!data || event.defaultPrevented || isTextTarget(event.target)) return;
+  if (behindWelcome()) return;
   const editor = getEditor();
   const payload = data.getData(SLIDR_MIME);
   const clip = payload ? parseClip(payload) : undefined;
