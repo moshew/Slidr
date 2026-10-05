@@ -19,6 +19,7 @@ import {
   type TextElement,
 } from '@slidr/model';
 import { SlideRenderer, type AssetResolver, type HtmlSlot, type TextSlot } from '@slidr/renderer';
+import { useKeyboardInUse } from '@slidr/ui';
 import { fitRows } from '../table/fit';
 import { useTableStage } from '../table/stage';
 import { syncGrowHeights } from '../text/actions';
@@ -395,8 +396,12 @@ export function Stage({
   const [entered, setEntered] = useState<string[]>([]);
   /** Where the keyboard is beyond the selection: a crop handle, a point of a line, the walk. */
   const keys = useStore(stageKeys);
-  /** The Stage got the keyboard from the keyboard, and shows that it has it (DSN-08). */
-  const [ring, setRing] = useState(false);
+  /**
+   * The Stage has the keyboard and the keyboard is what the user works with: it shows (DSN-08).
+   * After a press on the slide what is selected says it, and the ring comes with the first key.
+   */
+  const [focused, setFocused] = useState(false);
+  const ring = useKeyboardInUse() && focused;
   const gesture = useRef<Gesture | null>(null);
   // What kind of drag is under way, for rendering; the gesture itself lives in the ref.
   const [activeKind, setActiveKind] = useState<Gesture['kind'] | null>(null);
@@ -1698,25 +1703,6 @@ export function Stage({
     return () => setStageCommands(null);
   });
 
-  // The ring that says the Stage has the keyboard is for a keyboard that brought it here; after a
-  // press on the slide, what is selected says it.
-  const byKeyboard = useRef(false);
-  useEffect(() => {
-    const key = () => {
-      byKeyboard.current = true;
-    };
-    const pointer = () => {
-      byKeyboard.current = false;
-      setRing(false);
-    };
-    window.addEventListener('keydown', key, true);
-    window.addEventListener('pointerdown', pointer, true);
-    return () => {
-      window.removeEventListener('keydown', key, true);
-      window.removeEventListener('pointerdown', pointer, true);
-    };
-  }, []);
-
   // ---- Files ----
 
   const onDragOver = (e: DragEvent) => {
@@ -1995,10 +1981,10 @@ export function Stage({
       onPaste={onPaste}
       onPointerLeave={() => setHover(undefined)}
       onFocus={(e) => {
-        if (e.target === e.currentTarget) setRing(byKeyboard.current);
+        if (e.target === e.currentTarget) setFocused(true);
       }}
       onBlur={(e) => {
-        if (e.target === e.currentTarget) setRing(false);
+        if (e.target === e.currentTarget) setFocused(false);
       }}
       style={{
         position: 'relative',

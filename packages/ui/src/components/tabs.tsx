@@ -35,5 +35,8 @@ export function TabsContent({
   className,
   ...props
 }: ComponentPropsWithRef<typeof RadixTabs.Content>) {
-  return <RadixTabs.Content className={cx('outline-none', className)} {...props} />;
+  // The panel of a tab is a stop of Tab, so it shows when it has the keyboard, inside its edge.
+  return (
+    <RadixTabs.Content className={cx('focus-visible:-outline-offset-2', className)} {...props} />
+  );
 }

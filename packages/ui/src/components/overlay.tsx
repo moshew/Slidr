@@ -1,7 +1,8 @@
-import type { ComponentPropsWithRef, ReactNode } from 'react';
+import { useState, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { Dialog as RadixDialog, Popover as RadixPopover } from 'radix-ui';
 import { X } from 'lucide-react';
 import { cx } from '../cx';
+import { keyboardInUse, rememberKeyboard } from '../keyboard';
 import { IconButton } from './button';
 import { usePortalContainer } from './provider';
 
@@ -81,7 +82,17 @@ export interface DialogContentProps extends Omit<
 }
 
 /** A modal dialog centred over a scrim. */
-export function DialogContent({
+export function DialogContent(props: DialogContentProps) {
+  return (
+    <RadixDialog.Portal container={usePortalContainer()}>
+      <RadixDialog.Overlay className="fixed inset-0 z-50 animate-fade-in bg-ui-scrim" />
+      <DialogSheet {...props} />
+    </RadixDialog.Portal>
+  );
+}
+
+/** The dialog itself. It is there only while the dialog is open, which is what it goes by. */
+function DialogSheet({
   title,
   description,
   footer,
@@ -89,43 +100,60 @@ export function DialogContent({
   size = 'default',
   className,
   children,
+  onCloseAutoFocus,
   ...props
 }: DialogContentProps) {
+  /*
+   * A dialog gives the keyboard back to what opened it (DSN-08). Radix knows that only for a
+   * dialog with a trigger of its own; a dialog opened by a function, as most of the app's are
+   * (a key, an item of a menu, a question the app asks), left the keyboard nowhere when it
+   * closed. So who has the keyboard is remembered as the dialog opens, before it takes it, and
+   * whether the keyboard is what opened it.
+   */
+  const [opened] = useState(() => ({ back: rememberKeyboard(), byKeys: keyboardInUse() }));
   return (
-    <RadixDialog.Portal container={usePortalContainer()}>
-      <RadixDialog.Overlay className="fixed inset-0 z-50 animate-fade-in bg-ui-scrim" />
-      <RadixDialog.Content
-        // A description is optional; Radix warns unless told there is none.
-        {...(description ? {} : { 'aria-describedby': undefined })}
-        className={cx(
-          'fixed inset-0 z-50 m-auto flex h-fit animate-overlay-in flex-col gap-4 rounded-panel border border-ui-line bg-ui-raised p-5 text-sm text-ui-fg shadow-overlay',
-          size === 'wide' ? 'w-dialog-wide max-w-full' : 'w-dialog',
-          className,
+    <RadixDialog.Content
+      // A description is optional; Radix warns unless told there is none.
+      {...(description ? {} : { 'aria-describedby': undefined })}
+      className={cx(
+        'fixed inset-0 z-50 m-auto flex h-fit animate-overlay-in flex-col gap-4 rounded-panel border border-ui-line bg-ui-raised p-5 text-sm text-ui-fg shadow-overlay',
+        size === 'wide' ? 'w-dialog-wide max-w-full' : 'w-dialog',
+        className,
+      )}
+      onCloseAutoFocus={(event) => {
+        // The caller decides first, and says so by preventing the default.
+        onCloseAutoFocus?.(event);
+        if (event.defaultPrevented) return;
+        // Whoever closed the dialog may have put the keyboard somewhere already, as a tool does
+        // whose result is on the slide. That stands for a dialog the pointer opened. One that the
+        // keyboard opened goes back to where the keyboard was, so its next Tab goes on from there.
+        const active = document.activeElement;
+        const nowhere = !active || active === document.body || !active.isConnected;
+        if ((opened.byKeys || nowhere) && opened.back()) event.preventDefault();
+      }}
+      {...props}
+    >
+      <div className="flex flex-col gap-1 pe-8">
+        <RadixDialog.Title className="text-md font-semibold">{title}</RadixDialog.Title>
+        {description && (
+          <RadixDialog.Description className="text-ui-fg-muted">
+            {description}
+          </RadixDialog.Description>
         )}
-        {...props}
-      >
-        <div className="flex flex-col gap-1 pe-8">
-          <RadixDialog.Title className="text-md font-semibold">{title}</RadixDialog.Title>
-          {description && (
-            <RadixDialog.Description className="text-ui-fg-muted">
-              {description}
-            </RadixDialog.Description>
-          )}
-        </div>
-        {children}
-        {footer && <div className="flex justify-end gap-2 pt-1">{footer}</div>}
-        {closeLabel && (
-          <RadixDialog.Close asChild>
-            <IconButton
-              icon={X}
-              label={closeLabel}
-              size="sm"
-              noTooltip
-              className="absolute end-3 top-3"
-            />
-          </RadixDialog.Close>
-        )}
-      </RadixDialog.Content>
-    </RadixDialog.Portal>
+      </div>
+      {children}
+      {footer && <div className="flex justify-end gap-2 pt-1">{footer}</div>}
+      {closeLabel && (
+        <RadixDialog.Close asChild>
+          <IconButton
+            icon={X}
+            label={closeLabel}
+            size="sm"
+            noTooltip
+            className="absolute end-3 top-3"
+          />
+        </RadixDialog.Close>
+      )}
+    </RadixDialog.Content>
   );
 }

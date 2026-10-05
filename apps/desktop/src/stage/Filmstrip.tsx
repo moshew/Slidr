@@ -34,6 +34,7 @@ import {
   PopoverTrigger,
   ScrollArea,
   Tooltip,
+  useKeyboardInUse,
 } from '@slidr/ui';
 import {
   Blend,
@@ -57,7 +58,6 @@ import {
   removeSlides,
   setSlidesHidden,
 } from '../arrange/slides';
-import { useKeyboardInUse } from './focusRing';
 import { setStripCommands, stageKeys, type StageCommand } from './keyboardSession';
 
 /**

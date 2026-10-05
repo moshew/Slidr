@@ -251,3 +251,42 @@ test('Enter on a tool of row B presses that tool, also when a line is selected',
   await expect(surface(page)).not.toBeFocused();
   await expect(surface(page).locator('[data-line-point][data-active]')).toHaveCount(0);
 });
+
+test('the key does not take the keyboard into a window that is not ready, or under what covers it', async ({
+  page,
+}) => {
+  await openApp(page, { lang: 'en' });
+  const nowhere = () => page.evaluate(() => document.activeElement === document.body);
+  // While the window waits for its first document it is inert: nothing in it takes the keyboard.
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    document.getElementById('root')!.setAttribute('inert', '');
+  });
+  await page.keyboard.press('F6');
+  expect(await nowhere()).toBe(true);
+  await page.keyboard.press('Shift+F6');
+  expect(await nowhere()).toBe(true);
+  // Ready: from nowhere the key goes to the Stage.
+  await page.evaluate(() => document.getElementById('root')!.removeAttribute('inert'));
+  await page.keyboard.press('F6');
+  await expect(surface(page)).toBeFocused();
+
+  // One region that is inert is passed over, like a collapsed panel.
+  await page.evaluate(() =>
+    document.querySelector('[data-pane="filmstrip"]')!.setAttribute('inert', ''),
+  );
+  await page.keyboard.press('F6');
+  expect(await pane(page)).toBe('status');
+  await page.evaluate(() =>
+    document.querySelector('[data-pane="filmstrip"]')!.removeAttribute('inert'),
+  );
+
+  // The show has lost the keyboard to nowhere: the key does not send it to the Stage under it.
+  await page.keyboard.press('F5');
+  const show = page.getByTestId('present');
+  await expect(show).toBeVisible();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press('F6');
+  await expect(surface(page)).not.toBeFocused();
+  expect(await pane(page)).toBeNull();
+});

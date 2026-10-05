@@ -35,19 +35,46 @@ const TABBABLE = [
 
 const paneNode = (pane: Pane) => document.querySelector<HTMLElement>(`[data-pane="${pane}"]`);
 
-/** Drawn, and not shut off from the keyboard by a region that is collapsed or covered. */
-function takesKeyboard(node: HTMLElement): boolean {
+/**
+ * Drawn, and not shut off from the keyboard: by a region that is collapsed, by a dialog that
+ * hides the window behind it, or by the window not being ready (`inert`, while its first document
+ * is on its way).
+ */
+export function takesKeyboard(node: HTMLElement): boolean {
   if (!node.isConnected || node.closest('[inert], [aria-hidden="true"]')) return false;
   if (node.getClientRects().length === 0) return false;
   return getComputedStyle(node).visibility !== 'hidden';
 }
 
+/**
+ * Something lies over the region that is no part of it and is not a small thing floating by a
+ * control (a tooltip, a popover): the show, the welcome screen, the scrim of a dialog. The
+ * keyboard does not go under it.
+ */
+function covered(node: HTMLElement): boolean {
+  const box = node.getBoundingClientRect();
+  const over = document
+    .elementsFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+    .find((hit) => !hit.closest('[data-radix-popper-content-wrapper]'));
+  return over !== undefined && !node.contains(over);
+}
+
 /** Where the keyboard was last in each region, for as long as that control is still there. */
 const last = new Map<Pane, HTMLElement>();
+/** The region of what took the keyboard last; none when that was in a layer of its own. */
+let latest: Pane | undefined;
 
 function paneOf(node: Element | null): Pane | undefined {
   const name = node?.closest<HTMLElement>('[data-pane]')?.dataset.pane;
   return PANES.find((pane) => pane === name);
+}
+
+/**
+ * The region the keyboard is in, as it was when it arrived there: it is still the answer while
+ * the control that had it is being taken out of the document.
+ */
+export function paneNow(): Pane | undefined {
+  return latest;
 }
 
 /** Notes where the keyboard is as it moves, so a region is come back to where it was left. */
@@ -55,6 +82,7 @@ export function rememberPanes(): () => void {
   const onFocusIn = (event: FocusEvent) => {
     const target = event.target instanceof HTMLElement ? event.target : null;
     const pane = paneOf(target);
+    latest = pane;
     if (target && pane) last.set(pane, target);
   };
   document.addEventListener('focusin', onFocusIn);
@@ -64,7 +92,7 @@ export function rememberPanes(): () => void {
 /** The control of a region that takes the keyboard when the pane key arrives there. */
 export function paneTarget(pane: Pane): HTMLElement | undefined {
   const node = paneNode(pane);
-  if (!node || !takesKeyboard(node)) return undefined;
+  if (!node || !takesKeyboard(node) || covered(node)) return undefined;
   const remembered = last.get(pane);
   if (remembered && node.contains(remembered) && remembered.matches(TABBABLE)) {
     if (takesKeyboard(remembered)) return remembered;
