@@ -263,7 +263,10 @@ function ScopeChip({ scope }: { scope: AiPanelDefinition['scope'] }) {
     view = element
       ? {
           icon: SquareDashedMousePointer,
-          label: t(`selection.${elementKind(element)}`),
+          // An icon shares the tools of a shape in row B, which is its kind there. The tool
+          // that works on it names it as what it is, as its actions do.
+          label:
+            element.type === 'svg' ? t('selection.icon') : t(`selection.${elementKind(element)}`),
           detail: elementLabel(element),
           onClick: () => selection.getState().selectElements([element.id]),
         }

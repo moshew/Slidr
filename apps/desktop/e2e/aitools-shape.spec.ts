@@ -94,6 +94,8 @@ test('an icon: icons of the library are offered in its place, and colourings fro
   await addTitle(page, 'היעד שלנו');
   await addIcon(page);
   await openTool(page, 'ai.object', 'actions');
+  // The tool says what it works on: an icon, though row B gives it the tools of a shape.
+  await expect(page.getByTestId('scope-chip')).toHaveText(/^אייקון/);
   await expect(action(page, 'icon.replace')).toBeEnabled();
   await expect(action(page, 'shape.colour')).toBeEnabled();
   await expect(action(page, 'shape.suggest')).toHaveCount(0);
@@ -137,6 +139,7 @@ test('the actions of a shape and of an icon in English', async ({ page }) => {
   await openApp(page, { script: 'shape-actions', lang: 'en' });
   await addShape(page);
   await openTool(page, 'ai.object', 'actions');
+  await expect(page.getByTestId('scope-chip')).toHaveText(/^Shape/);
   await expect(action(page, 'shape.suggest')).toHaveText('Suggest a shape');
   await expect(action(page, 'shape.colour')).toHaveText('Colour by the template');
   await runAction(page, 'shape.suggest');
@@ -144,5 +147,6 @@ test('the actions of a shape and of an icon in English', async ({ page }) => {
   await expect(gallery(page)).toHaveAttribute('aria-label', 'Pick an option');
   await addIcon(page);
   await openTool(page, 'ai.object', 'actions');
+  await expect(page.getByTestId('scope-chip')).toHaveText(/^Icon/);
   await expect(action(page, 'icon.replace')).toHaveText('A more fitting icon');
 });

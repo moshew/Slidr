@@ -73,6 +73,7 @@ export const he = {
     text: 'טקסט',
     image: 'תמונה',
     shape: 'צורה',
+    icon: 'אייקון',
     table: 'טבלה',
     chart: 'גרף',
     media: 'מדיה',

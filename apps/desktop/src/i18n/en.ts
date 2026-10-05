@@ -72,6 +72,7 @@ export const en: Messages<typeof he> = {
     text: 'Text',
     image: 'Image',
     shape: 'Shape',
+    icon: 'Icon',
     table: 'Table',
     chart: 'Chart',
     media: 'Media',
