@@ -74,6 +74,7 @@ import {
   type Patch,
   type Placement,
 } from './groups';
+import { isCtrlLetter } from './keys';
 import {
   constrainAngle,
   distanceToLine,
@@ -1334,7 +1335,7 @@ export function Stage({
       e.preventDefault();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+    if (isCtrlLetter(e, 'a')) {
       // Everything in the group being worked in, or on the slide.
       selection
         .getState()

@@ -38,6 +38,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useStore } from 'zustand';
+import { isCtrlLetter, withAltGraph } from '../stage/keys';
 import type { StageView } from '../stage/overlays';
 import {
   apply,
@@ -669,18 +670,17 @@ export function useTableStage({
     } else if (event.key === 'Escape') {
       // Out of the table: it stays selected, as an object.
       selection.getState().stopEditing();
-    } else if ((event.ctrlKey || event.metaKey) && event.code === 'KeyA') {
+    } else if (isCtrlLetter(event, 'a')) {
       const all = fullRange(table);
       selectCells({ row: all.row0, col: all.col0 }, { row: all.row1, col: all.col1 });
     } else if (
       event.key.length === 1 &&
       event.key !== ' ' &&
-      !event.ctrlKey &&
-      !event.metaKey &&
-      !event.altKey
+      ((!event.ctrlKey && !event.metaKey && !event.altKey) || withAltGraph(event))
     ) {
-      // A character typed on a selected cell starts its text over, as in a spreadsheet. The
-      // space is the Stage's (it pans).
+      // A character typed on a selected cell starts its text over, as in a spreadsheet; one
+      // typed with AltGr too, though Windows reports Ctrl and Alt with it. The space is the
+      // Stage's (it pans).
       typeIn(at, { typed: event.key });
     } else taken = false;
     if (taken) event.preventDefault();
