@@ -60,6 +60,8 @@ import { normalizeRichText, sameValue } from './richTextDoc';
  * - `cells`: cells of a table are selected and none is being edited (WG6). A change goes to all
  *   the text of each of them, as one `element.update`. A cell that is being edited is an `editor`
  *   target like any other text.
+ * - `elements`: several text boxes and shapes with text are selected together. A change goes to
+ *   all the text of each of them, as one batch: one undo step for the whole selection.
  */
 
 interface TargetBase {
@@ -67,14 +69,18 @@ interface TargetBase {
   slideId: string;
 }
 
+/** An element whose own text the text tools format: a text box, or a shape. */
+export type TextHolder = TextElement | ShapeElement;
+
 export type TextTarget =
   | (TargetBase & {
       kind: 'editor';
       view: EditorView;
       element: TextElement | ShapeElement | TableElement;
     })
-  | (TargetBase & { kind: 'element'; element: TextElement | ShapeElement })
-  | (TargetBase & { kind: 'cells'; element: TableElement; cells: readonly CellRef[] });
+  | (TargetBase & { kind: 'element'; element: TextHolder })
+  | (TargetBase & { kind: 'cells'; element: TableElement; cells: readonly CellRef[] })
+  | (TargetBase & { kind: 'elements'; elements: readonly TextHolder[] });
 
 /** One undo step. Changes that share a `txId` are one step (a drag in the colour picker). */
 export type Step = StepMeta;
@@ -93,7 +99,13 @@ function cellContents(target: TextTarget & { kind: 'cells' }): RichText[] {
 export function sampleTarget(target: TextTarget): TextSample {
   if (target.kind === 'editor') return sampleState(target.view.state);
   if (target.kind === 'element') return sampleRichText(target.element.content ?? NO_TEXT);
-  const samples = cellContents(target).map(sampleRichText);
+  // Several texts read as one: a value they do not share is mixed, like one a single text has
+  // two of.
+  const texts =
+    target.kind === 'cells'
+      ? cellContents(target)
+      : target.elements.map((element) => element.content ?? NO_TEXT);
+  const samples = texts.map(sampleRichText);
   return {
     paragraphs: samples.flatMap((sample) => sample.paragraphs),
     spans: samples.flatMap((sample) => sample.spans),
@@ -104,8 +116,9 @@ const formats = new WeakMap<object, { ctx: FormatContext; format: TextFormat }>(
 
 /** The current formatting of a target. Cached by the text it was read from, which is immutable. */
 export function formatOf(target: TextTarget, ctx: FormatContext): TextFormat {
-  // Several cells have no one object to cache by; reading them again is cheap.
-  if (target.kind === 'cells') return readFormat(sampleTarget(target), ctx);
+  // Several cells or elements have no one object to cache by; reading them again is cheap.
+  if (target.kind === 'cells' || target.kind === 'elements')
+    return readFormat(sampleTarget(target), ctx);
   const key: object =
     target.kind === 'editor' ? target.view.state : (target.element.content ?? NO_TEXT);
   const cached = formats.get(key);
@@ -158,6 +171,30 @@ function setText(target: TextTarget & { kind: 'element' }, content: RichText, st
     { txId, label: step.label ?? 'Format' },
   );
   syncGrowHeight(bus, element.id, txId);
+}
+
+/**
+ * Changes the text of every element of an `elements` target, as one undo step for all of them.
+ * An element the change leaves as it was is not written.
+ */
+function setTexts(
+  target: TextTarget & { kind: 'elements' },
+  map: (content: RichText) => RichText,
+  step: Step,
+): void {
+  const { bus, slideId, elements } = target;
+  const changed = elements.flatMap((element) => {
+    const before = element.content ?? NO_TEXT;
+    const content = map(before);
+    return sameValue(content, normalizeRichText(before)) ? [] : [{ id: element.id, content }];
+  });
+  if (changed.length === 0) return;
+  const txId = step.txId ?? newId('tx');
+  bus.batch(
+    changed.map(({ id, content }) => ({ type: 'text.set', slideId, elementId: id, content })),
+    { txId, label: step.label ?? 'Format' },
+  );
+  for (const { id } of changed) syncGrowHeight(bus, id, txId);
 }
 
 /** Changes the text of every cell of a `cells` target, as one change to the table. */
@@ -218,6 +255,7 @@ export function changeText(target: TextTarget, change: TextChange, step: Step = 
     return change.paragraphs ? mapParagraphs(marked, change.paragraphs) : marked;
   };
   if (target.kind === 'cells') setCells(target, map, step);
+  else if (target.kind === 'elements') setTexts(target, map, step);
   else setText(target, map(target.element.content ?? NO_TEXT), step);
 }
 
@@ -279,7 +317,7 @@ export function updateStyle(
 ): boolean {
   const match = matchStyle(formatOf(target, ctx), ctx.theme.textStyles[styleRef]);
   if (!match) return false;
-  const { bus, element } = target;
+  const { bus } = target;
   const txId = step.txId ?? newId('tx');
   const label = step.label ?? 'Update style';
   bus.dispatch(
@@ -292,7 +330,9 @@ export function updateStyle(
     { txId, label },
   );
   // The box is as tall as its text in the style's new size, also when no mark had to go.
-  if (target.kind === 'element') syncGrowHeight(bus, element.id, txId);
+  if (target.kind === 'element') syncGrowHeight(bus, target.element.id, txId);
+  if (target.kind === 'elements')
+    for (const element of target.elements) syncGrowHeight(bus, element.id, txId);
   return true;
 }
 
@@ -326,6 +366,8 @@ export interface BoxPatch {
 
 /** Changes the text box itself: auto-fit, vertical alignment, padding (WG4-T05). */
 export function updateBox(target: TextTarget, patch: BoxPatch, step: Step = {}): void {
+  // One box: the settings of several text boxes are not offered together.
+  if (target.kind === 'elements') return;
   const { bus, slideId, element } = target;
   if (element.type !== 'text') return;
   const txId = step.txId ?? newId('tx');

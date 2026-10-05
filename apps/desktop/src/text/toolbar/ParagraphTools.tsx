@@ -93,10 +93,18 @@ const SIDE_ICONS: Record<ReturnType<typeof alignSide>, LucideIcon> = {
 };
 
 /**
+ * The names of the alignments. In the row of several elements they stand beside the arrange
+ * tools, which align the elements themselves ("align left"): there they say that it is the text
+ * they align.
+ */
+const alignNames = (kind: ContextToolProps['kind'] | undefined) =>
+  kind === 'multiple' ? 'alignText' : 'align';
+
+/**
  * The four alignments as buttons. They are laid out in the direction of the paragraph, so the
  * button for the left is on the left whichever way the UI reads.
  */
-function AlignButtons({ text }: { text: Text }) {
+function AlignButtons({ text, names }: { text: Text; names: 'align' | 'alignText' }) {
   const { t } = useTranslation('text');
   const setParagraph = useSetParagraph(text);
   const { align, direction } = text.format;
@@ -104,7 +112,7 @@ function AlignButtons({ text }: { text: Text }) {
     <span
       dir={direction}
       role="group"
-      aria-label={t('align.label')}
+      aria-label={t(`${names}.label`)}
       className="inline-flex gap-0.5"
     >
       {ALIGNS.map((value) => {
@@ -113,7 +121,7 @@ function AlignButtons({ text }: { text: Text }) {
           <TextToggle
             key={value}
             icon={SIDE_ICONS[side]}
-            label={t(`align.${side}`)}
+            label={t(`${names}.${side}`)}
             data-align={value}
             pressed={align === value}
             onPressedChange={() => setParagraph({ align: value })}
@@ -134,7 +142,8 @@ export function AlignTool({ kind }: Partial<ContextToolProps>) {
   const text = useText();
   const setParagraph = useSetParagraph(text);
   if (!text) return null;
-  if (!compact) return <AlignButtons text={text} />;
+  const names = alignNames(kind);
+  if (!compact) return <AlignButtons text={text} names={names} />;
   const { align, direction } = text.format;
   const current = isMixed(align) ? 'start' : align;
   return (
@@ -143,7 +152,7 @@ export function AlignTool({ kind }: Partial<ContextToolProps>) {
         <IconButton
           size="sm"
           icon={SIDE_ICONS[alignSide(current, direction)]}
-          label={t('align.label')}
+          label={t(`${names}.label`)}
           onMouseDown={keepFocus}
         />
       </DropdownMenuTrigger>
@@ -154,7 +163,7 @@ export function AlignTool({ kind }: Partial<ContextToolProps>) {
         >
           {ALIGNS.map((value) => (
             <DropdownMenuRadioItem key={value} value={value}>
-              {t(`align.${alignSide(value, direction)}`)}
+              {t(`${names}.${alignSide(value, direction)}`)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

@@ -1,4 +1,14 @@
-import { expandRange, findElement, findSlide, fullRange, newId, rangeCells } from '@slidr/model';
+import {
+  expandRange,
+  findElement,
+  findSlide,
+  fullRange,
+  newId,
+  plainText,
+  rangeCells,
+  type Element,
+  type TableElement,
+} from '@slidr/model';
 import {
   cx,
   IconButton,
@@ -10,6 +20,8 @@ import {
   type ToggleProps,
 } from '@slidr/ui';
 import {
+  createContext,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -20,7 +32,7 @@ import {
 } from 'react';
 import { create, useStore } from 'zustand';
 import { focusStage, useDeck, useEditor, useSelection, type Editor } from '../../shell';
-import { formatOf, type TextTarget } from '../actions';
+import { formatOf, type TextHolder, type TextTarget } from '../actions';
 import { activeEditor, editorFor } from '../activeEditor';
 import { cellScope } from '../cellScope';
 import type { FormatContext, TextFormat } from '../format';
@@ -43,12 +55,19 @@ export const LINK_KEYS = 'Ctrl+K';
  * What a formatting command acts on now (ADR-013): the text editor's selection while a text box or
  * a shape is being edited, or all the text of the one selected text box or shape. For a table it
  * is the editor open in one of its cells, or else the text of its selected cells: the ones the
- * table area names (`cellScope`), and all of them when the table is selected as a whole. Null
- * otherwise.
+ * table area names (`cellScope`), and all of them when the table is selected as a whole. For
+ * several selected elements it is the text of all of them, when every one is a text box or a
+ * shape with text: what the tools do must apply to every member of the selection. Null otherwise.
  */
 export function resolveTarget({ bus, selection }: Editor): TextTarget | null {
   const { currentSlideId, selectedElementIds, editingElementId } = selection.getState();
   const slide = currentSlideId ? findSlide(bus.deck, currentSlideId) : undefined;
+  if (slide && !editingElementId && selectedElementIds.length > 1) {
+    const elements = selectedElementIds.map((id) => findElement(slide, id));
+    return elements.every(holdsText)
+      ? { bus, slideId: slide.id, kind: 'elements', elements }
+      : null;
+  }
   const id = editingElementId ?? (selectedElementIds.length === 1 ? selectedElementIds[0] : null);
   const element = slide && id ? findElement(slide, id) : undefined;
   if (!slide || !element) return null;
@@ -77,10 +96,25 @@ export function resolveTarget({ bus, selection }: Editor): TextTarget | null {
     : { ...base, kind: 'element', element };
 }
 
+/**
+ * Whether an element is one of several whose text is formatted together: a text box, or a shape
+ * that has text. A shape without text has nothing the text tools would change.
+ */
+function holdsText(element: Element | undefined): element is TextHolder {
+  if (element?.type === 'text') return true;
+  return element?.type === 'shape' && plainText(element.content ?? { paragraphs: [] }) !== '';
+}
+
+/** The table a target is in, when it is the text of a table's cells. */
+function tableOf(target: TextTarget | null | undefined): TableElement | undefined {
+  return target && target.kind !== 'elements' && target.element.type === 'table'
+    ? target.element
+    : undefined;
+}
+
 /** The theme and the direction text is formatted against: the deck's, and in a table the table's. */
 export function formatContext({ bus }: Editor, target?: TextTarget | null): FormatContext {
-  const dir = target?.element.type === 'table' ? target.element.dir : bus.deck.meta.dir;
-  return { theme: bus.deck.theme, dir };
+  return { theme: bus.deck.theme, dir: tableOf(target)?.dir ?? bus.deck.meta.dir };
 }
 
 export interface Text {
@@ -107,7 +141,8 @@ export function useText(): Text | null {
   let format = formatOf(target, ctx);
   // In a table the sides of the alignment are the table's (`TextDefaults.alignTo`): the
   // alignment buttons name them by its direction, whichever way a cell's own text reads.
-  if (target.element.type === 'table') format = { ...format, direction: target.element.dir };
+  const table = tableOf(target);
+  if (table) format = { ...format, direction: table.dir };
   return { target, format, ctx, editing: target.kind === 'editor' };
 }
 
@@ -177,34 +212,55 @@ export function useBurstTx(ms = 800): (key?: string) => string {
 /**
  * Row B is as wide as the editor column: about 1256px at 1920 and 866px at 1366 (SPEC 4.1), less
  * when the Tool Panel is dragged wider, and it also holds the tools of other areas. The text
- * tools have two layouts: roomy, with everything SPEC 4.4 lists in the row, and compact, with the
- * secondary controls inside popovers. Compact is used when roomy does not fit.
+ * tools have three layouts, each used when the one before it does not fit:
+ * - roomy (0), with everything SPEC 4.4 lists in the row;
+ * - compact (1), with the secondary controls inside popovers;
+ * - folded (2), for the row of several selected elements, which holds the arrange tools too: all
+ *   the text tools are in the popover of one button (`SeveralTools.tsx`). A row that has no such
+ *   button stays compact.
  */
-const useDensity = create<{ compact: boolean }>(() => ({ compact: false }));
+type Density = 0 | 1 | 2;
+const FOLDED: Density = 2;
 
-/** The width the row's content took in the roomy layout, the last time it was measured. */
-let roomyWidth = 0;
+const useDensity = create<{ level: Density }>(() => ({ level: 0 }));
+
+/** The width the row's content took in each layout, the last time it was measured in it. */
+const measured: number[] = [];
 
 function measureRow(toolbar: HTMLElement): void {
-  const first = toolbar.firstElementChild?.getBoundingClientRect();
-  const last = toolbar.lastElementChild?.getBoundingClientRect();
-  if (!first || !last) return;
+  const boxes = [...toolbar.children]
+    .map((child) => child.getBoundingClientRect())
+    .filter((box) => box.width > 0);
+  if (boxes.length === 0) return;
   const style = getComputedStyle(toolbar);
   const available =
     toolbar.clientWidth - parseFloat(style.paddingInlineStart) - parseFloat(style.paddingInlineEnd);
-  const content = Math.max(first.right, last.right) - Math.min(first.left, last.left);
-  const { compact } = useDensity.getState();
-  if (!compact) {
-    roomyWidth = content;
-    if (content > available + 0.5) useDensity.setState({ compact: true });
-  } else if (roomyWidth > 0 && available >= roomyWidth) {
-    useDensity.setState({ compact: false });
+  const content =
+    Math.max(...boxes.map((box) => box.right)) - Math.min(...boxes.map((box) => box.left));
+  const { level } = useDensity.getState();
+  measured[level] = content;
+  if (content > available + 0.5) {
+    if (level < FOLDED) useDensity.setState({ level: (level + 1) as Density });
+    return;
   }
+  // Back to the layout before this one, once the room it was last seen to need is there.
+  const before = level > 0 ? measured[level - 1] : undefined;
+  if (before !== undefined && available >= before)
+    useDensity.setState({ level: (level - 1) as Density });
 }
+
+/** Set around the tools that are drawn inside the popover of a folded row: there they are roomy. */
+export const InFold = createContext(false);
 
 /** Whether the text tools are in their compact layout. */
 export function useCompact(): boolean {
-  return useDensity((s) => s.compact);
+  const inFold = useContext(InFold);
+  return useDensity((s) => s.level > 0) && !inFold;
+}
+
+/** Whether the row has no room for the text tools even in their compact layout. */
+export function useFolded(): boolean {
+  return useDensity((s) => s.level === FOLDED);
 }
 
 /**

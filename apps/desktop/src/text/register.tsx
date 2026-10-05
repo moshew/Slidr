@@ -44,6 +44,7 @@ import {
   PICK_FORMAT_KEYS,
   resolveTarget,
 } from './toolbar/shared';
+import { forSeveral, SeveralTextTool } from './toolbar/SeveralTools';
 import { ShapeTextTool } from './toolbar/ShapeTextTool';
 import { PainterTool, StyleTool } from './toolbar/StyleTools';
 
@@ -84,6 +85,43 @@ const tools = [
   { id: 'text.effects', group: 'effects', order: 799, render: TextEffectsTool },
 ];
 for (const tool of tools) registerContextTool({ ...tool, kinds: ['text'] });
+
+/*
+ * Several selected elements. SPEC 4.4 gives them the arrange tools only; when every one of them
+ * is a text box or a shape with text, the row also holds the text tools that make sense for all
+ * of them at once, after the arrange tools (10 to 40) and before the look they share (200). A
+ * value they do not share is shown as mixed, and a change is one undo step for all of them. The
+ * weight is in "more" (which also holds "clear formatting"): the row has no room for it.
+ */
+const several = [
+  { id: 'style', group: 'font', order: 100, render: StyleTool },
+  { id: 'font', group: 'font', order: 101, render: FontTool },
+  { id: 'size', group: 'font', order: 102, render: SizeTool },
+  { id: 'bold', group: 'marks', order: 110, render: BoldTool },
+  { id: 'italic', group: 'marks', order: 111, render: ItalicTool },
+  { id: 'underline', group: 'marks', order: 112, render: UnderlineTool },
+  { id: 'more', group: 'marks', order: 113, render: MoreTool },
+  { id: 'color', group: 'color', order: 120, render: ColorTool },
+  { id: 'highlight', group: 'color', order: 121, render: HighlightTool },
+  { id: 'align', group: 'paragraph', order: 130, render: AlignTool },
+];
+for (const { id, group, order, render } of several) {
+  registerContextTool({
+    id: `text.several.${id}`,
+    kinds: ['multiple'],
+    group: `text.${group}`,
+    order,
+    render: forSeveral(render),
+  });
+}
+// All of them as one button, when the row has no room for them (1366).
+registerContextTool({
+  id: 'text.several',
+  kinds: ['multiple'],
+  group: 'text.font',
+  order: 99,
+  render: SeveralTextTool,
+});
 
 // A selected shape has the row of a shape; its text is one button away (SHP-04).
 registerContextTool({
@@ -208,6 +246,7 @@ registerShortcut({
   inText: true,
   // The popover is a tool of row B, which a text box has, and a shape while its text is edited.
   run: onTextOrSelection((target) => {
+    if (target.kind === 'elements') return false;
     if (target.kind === 'element' && target.element.type !== 'text') return false;
     if (target.kind === 'cells' || target.element.type === 'table') return false;
     requestLink();

@@ -85,8 +85,9 @@ export function TextEffectsTool() {
   const themeShadow = useDeck((s) => s.deck.theme.shadow);
   /** The effects that were switched off, so switching one back on restores it. */
   const last = useRef<TextEffectsPatch>({});
-  // The cells of a table have no box of their own to carry the CSS.
-  if (!text || text.target.element.type === 'table') return null;
+  // The cells of a table have no box of their own to carry the CSS, and the effects of several
+  // boxes are not edited together.
+  if (!text || text.target.kind === 'elements' || text.target.element.type === 'table') return null;
   const { bus, slideId, element } = text.target;
   const { fill, outline, shadow } = readTextEffects(element.css);
 

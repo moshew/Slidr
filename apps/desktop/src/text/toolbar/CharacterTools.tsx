@@ -27,6 +27,7 @@ import {
 import { useRef, type FocusEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColorField, FontField, useGestureTx } from '../../controls';
+import type { ContextToolProps } from '../../shell';
 import { changeMarks, clearFormatting, toggleBold, toggleMark } from '../actions';
 import { isMixed, orNull, patchMarks, type MarksPatch } from '../format';
 import {
@@ -258,9 +259,10 @@ export function UnderlineTool() {
 
 /**
  * Strikethrough, super / subscript, case, letter spacing and "clear formatting"; and when the row
- * is tight, what has no room in it: the weight, the highlight colour and the text style.
+ * is tight, what has no room in it: the weight, the highlight colour and the text style. The row
+ * of several elements holds the arrange tools too and never has room for the weight.
  */
-export function MoreTool() {
+export function MoreTool({ kind }: Partial<ContextToolProps>) {
   const { t } = useTranslation('text');
   const compact = useCompact();
   const text = useText();
@@ -329,11 +331,13 @@ export function MoreTool() {
           onValueChange={(next) => setMarks({ letterSpacing: next === 0 ? null : next }, burst())}
         />
       </Row>
+      {(compact || kind === 'multiple') && (
+        <Row label={t('weight')}>
+          <WeightSelect text={text} variant="field" className="w-36" />
+        </Row>
+      )}
       {compact && (
         <>
-          <Row label={t('weight')}>
-            <WeightSelect text={text} variant="field" className="w-36" />
-          </Row>
           <Row label={t('highlight')}>
             <HighlightField text={text} inPopover />
           </Row>

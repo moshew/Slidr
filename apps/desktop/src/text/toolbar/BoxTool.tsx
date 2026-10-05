@@ -43,7 +43,8 @@ export function BoxTool() {
   const { t } = useTranslation('text');
   const text = useText();
   const burst = useBurstTx();
-  if (!text || text.target.element.type !== 'text') return null;
+  // One text box: the settings of several are not offered together.
+  if (!text || text.target.kind === 'elements' || text.target.element.type !== 'text') return null;
   const { target } = text;
   const element = text.target.element;
   const padding = element.padding ?? NO_PADDING;

@@ -81,6 +81,13 @@ export const he = {
     right: 'יישור לימין',
     justify: 'יישור לשני הצדדים',
   },
+  alignText: {
+    label: 'יישור הטקסט',
+    left: 'יישור הטקסט לשמאל',
+    center: 'יישור הטקסט למרכז',
+    right: 'יישור הטקסט לימין',
+    justify: 'יישור הטקסט לשני הצדדים',
+  },
   direction: {
     label: 'כיוון הפסקה',
     rtl: 'מימין לשמאל',
@@ -132,6 +139,9 @@ export const he = {
   shape: {
     addText: 'הוספת טקסט לצורה',
     editText: 'עריכת הטקסט שבצורה',
+  },
+  several: {
+    label: 'עיצוב הטקסט',
   },
   step: {
     insert: 'הוספת תיבת טקסט',
@@ -239,6 +249,13 @@ export const en: Messages<typeof he> = {
     right: 'Align right',
     justify: 'Justify',
   },
+  alignText: {
+    label: 'Text alignment',
+    left: 'Align text left',
+    center: 'Align text centre',
+    right: 'Align text right',
+    justify: 'Justify text',
+  },
   direction: {
     label: 'Paragraph direction',
     rtl: 'Right to left',
@@ -290,6 +307,9 @@ export const en: Messages<typeof he> = {
   shape: {
     addText: 'Add text to the shape',
     editText: 'Edit the text of the shape',
+  },
+  several: {
+    label: 'Text formatting',
   },
   step: {
     insert: 'Insert text box',
