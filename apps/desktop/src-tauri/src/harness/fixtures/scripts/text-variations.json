@@ -1,11 +1,20 @@
 {
-  "description": "An object chat on a text element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"four other wordings\" with ui_present_options: four text cards for the session's element, which the app previews and applies. Turn 2 is a direct edit: it asks which element is selected, shortens its text with text_set and looks at the slide, as the design check expects of a turn that changed one. Hand-written, with the timing of slide-chat.",
+  "description": "The AI chat on a selected text element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"four other wordings\": it asks which element is selected, and shows four text cards for it with ui_present_options, which the app previews and applies. Turn 2 is a direct edit: it asks which element is selected, shortens its text with text_set and looks at the slide, as the design check expects of a turn that changed one. Hand-written, with the timing of slide-chat.",
   "turns": [
     [
       {
         "delayMs": 500,
         "type": "thinking_delta",
         "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
       },
       {
         "delayMs": 700,
@@ -16,6 +25,9 @@
         "input": {
           "kind": "text",
           "prompt": "ארבעה ניסוחים לכותרת",
+          "elementId": {
+            "$ref": "selection_0.selectedElements.0.id"
+          },
           "options": [
             {
               "label": "ישיר",

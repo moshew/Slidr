@@ -88,7 +88,7 @@ test('a right click on an element selects it and opens the menu of its kind', as
     'יישור לשקף',
     'נעילה',
     'הסתרה',
-    'AI על האובייקט',
+    'שאלו את ה-AI על הבחירה',
   ]);
   // Nothing was copied in this window yet.
   await expect(item(page, 'הדבקה')).toBeDisabled();
@@ -100,7 +100,12 @@ test('the empty slide has a menu of its own', async ({ page }) => {
   await select(page, ['e_a']);
   await rightClickSlide(page);
   expect(await selected(page)).toEqual([]);
-  expect(await itemNames(page)).toEqual(['הדבקה', 'בחירת הכול', 'הדבקת טקסט', 'AI שקף']);
+  expect(await itemNames(page)).toEqual([
+    'הדבקה',
+    'בחירת הכול',
+    'הדבקת טקסט',
+    'שאלו את ה-AI על השקף',
+  ]);
   await item(page, 'בחירת הכול').click();
   expect(await selected(page)).toEqual(['e_a', 'e_b', 'e_c']);
 });
@@ -122,7 +127,12 @@ test('a right click on a locked element opens the menu of the slide, not of what
   await focusStage(page);
   await rightClick(page, onStage(page, 'e_c'));
   expect(await selected(page)).toEqual([]);
-  expect(await itemNames(page)).toEqual(['הדבקה', 'בחירת הכול', 'הדבקת טקסט', 'AI שקף']);
+  expect(await itemNames(page)).toEqual([
+    'הדבקה',
+    'בחירת הכול',
+    'הדבקת טקסט',
+    'שאלו את ה-AI על השקף',
+  ]);
   await page.keyboard.press('Escape');
   expect((await elements(page)).map((e) => e.id)).toEqual(['e_a', 'e_b', 'e_c']);
 
@@ -200,7 +210,8 @@ test('several elements can be grouped, and a group entered or taken apart', asyn
   await rightClick(page, onStage(page, 'e_a'));
   expect(await selected(page)).toEqual(['e_a', 'e_b']);
   expect(await itemNames(page)).toContain('קיבוץ');
-  expect(await itemNames(page)).not.toContain('AI על האובייקט');
+  // The one chat works on any selection (ADR-072).
+  expect(await itemNames(page)).toContain('שאלו את ה-AI על הבחירה');
   await expectOneStep(page, () => item(page, 'קיבוץ').click());
   const [groupId] = await selected(page);
   expect((await elements(page)).find((e) => e.id === groupId)!.type).toBe('group');
@@ -261,7 +272,7 @@ test('a table selected as an object opens to its cells, and the cells have their
     'מחיקת העמודה',
     'מיזוג תאים',
     'פיצול תאים',
-    'AI על האובייקט',
+    'שאלו את ה-AI על הבחירה',
   ]);
   const steps = await undoSteps(page);
   await item(page, 'הוספת שורה מעל').click();
@@ -378,10 +389,12 @@ test('the toolbar duplicates, deletes, locks and reorders, and the keys stay on 
   await expect(toolbar(page)).toHaveCount(0);
 });
 
-test('"AI" on the toolbar opens the object tool', async ({ page }) => {
+test('"AI" on the toolbar opens the AI chat about the selection', async ({ page }) => {
   await select(page, ['e_b']);
-  await toolbar(page).getByRole('button', { name: 'AI על האובייקט' }).click();
-  await expect(page.locator('[data-testid="tool-panel"]')).toContainText('AI אובייקט');
+  await toolbar(page).getByRole('button', { name: 'שאלו את ה-AI על הבחירה' }).click();
+  await expect(page.locator('[data-testid="tool-panel"]')).toContainText("צ'אט AI");
+  await expect(page.getByTestId('chat-input')).toBeFocused();
+  await expect(page.getByTestId('focus-chip')).toHaveAttribute('data-focus', 'object');
 });
 
 test('the toolbar steps aside during a drag and while something is edited in place', async ({

@@ -9,7 +9,7 @@ import { addIcon, openTool } from './aitools-helpers';
 /*
  * Screenshots for the design gate (PLAN 1.2) of what the fixes of the chat put on screen: the
  * words under the composer and under the template form for a file that was not taken, the list
- * of conversations when it is longer than the window, and the object tool's chip for an icon.
+ * of conversations when it is longer than the window, and the chat's focus chip for an icon.
  * In both themes and both directions, at the smallest supported screen. They are written to
  * test-results/fix-aiui/ to be looked at; nothing is compared.
  */
@@ -90,14 +90,14 @@ for (const theme of themes) {
       await page.screenshot({ path: out(`conversations-${name}`) });
     });
 
-    test(`the object tool on an icon ${name}`, async ({ page }) => {
+    test(`the chat on an icon ${name}`, async ({ page }) => {
       await page.setViewportSize({ width: 1366, height: 768 });
       await openApp(page, { script: 'outline', lang, theme });
       await addIcon(page);
-      await openTool(page, 'ai.object', 'actions');
-      await expect(page.getByTestId('scope-chip')).toHaveText(lang === 'he' ? /^אייקון/ : /^Icon/);
+      await openTool(page);
+      await expect(page.getByTestId('focus-chip')).toHaveText(lang === 'he' ? /^אייקון/ : /^Icon/);
       await settle(page);
-      await page.screenshot({ path: out(`scope-icon-${name}`) });
+      await page.screenshot({ path: out(`focus-icon-${name}`) });
     });
   }
 }

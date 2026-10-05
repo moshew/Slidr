@@ -1,5 +1,5 @@
 {
-  "description": "An object chat on an image element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"generate alternatives\": image_generate with a count of four and no element id, so the images are stored without being placed, and then ui_present_options with the four assets, taken from the first call's result. The app shows each image as its job finishes, and replaces the element's image with the one the user picks. Turn 2 is a short reply. Hand-written, with the timing of slide-chat.",
+  "description": "The AI chat on a selected image element, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"generate alternatives\": it asks which element is selected, then image_generate with a count of four and `optionsFor` that element, so the images are stored without being placed and shown as options for it, and then ui_present_options with the four assets, taken from the first call's result. The app shows each image as its job finishes, and replaces the element's image with the one the user picks. Turn 2 is a short reply. Hand-written, with the timing of slide-chat.",
   "turns": [
     [
       {
@@ -18,6 +18,15 @@
         "text": "בסגנון של המצגת."
       },
       {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
+      {
         "delayMs": 600,
         "type": "tool_call_started",
         "id": "images_1",
@@ -26,7 +35,10 @@
         "input": {
           "prompt": "A calm harbour at dawn, soft light, wide composition, muted blue and warm orange palette",
           "count": 4,
-          "aspect": "16:9"
+          "aspect": "16:9",
+          "optionsFor": {
+            "$ref": "selection_0.selectedElements.0.id"
+          }
         },
         "call": true
       },
@@ -39,6 +51,9 @@
         "input": {
           "kind": "image",
           "prompt": "ארבע חלופות לתמונה",
+          "elementId": {
+            "$ref": "selection_0.selectedElements.0.id"
+          },
           "options": [
             {
               "label": "נמל בזריחה",

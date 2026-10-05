@@ -10,6 +10,7 @@ import {
   Frame,
   insertCols,
   insertRows,
+  Marks,
   newId,
   plainText,
   RichText,
@@ -29,6 +30,7 @@ import { animationPresets, transitionTypes } from '@slidr/runtime/names';
 import { z } from 'zod';
 import { getElement, getSlide } from '../lookup';
 import { markdownToRichText } from '../markdown';
+import { replaceInText } from '../textReplace';
 import { DeckApiError, defineTool } from '../tool';
 import { about, freshElementId } from './shared';
 
@@ -114,6 +116,80 @@ export const textSet = defineTool({
       plainText(content).length > plainText(element.content).length;
     ctx.write([
       { type: 'text.set', slideId: slide.id, elementId, content, ...(cell ? { cell } : {}) },
+      ...(wraps
+        ? [{ type: 'element.update' as const, slideId: slide.id, elementId, patch: { wrap: true } }]
+        : []),
+    ]);
+    return {};
+  },
+});
+
+export const textReplace = defineTool({
+  name: 'text_replace',
+  description:
+    'Changes one stretch of the text of a text box, a shape or a table cell, and keeps the rest and its formatting as they are: how to change the text the user selected (`text_selection` in the context) or words inside a longer text. `find` is the stretch, within one paragraph; `occurrence` picks one of its appearances, from 1. `replace` takes the formatting of what it replaces (\\n breaks the line); `marks` restyles the stretch (bold: weight 700). Across paragraphs, use text_set. Returns the ids changed.',
+  input: z.strictObject({
+    elementId: Id,
+    slideId: Id.optional(),
+    cell: z
+      .strictObject({ row: z.number().int().nonnegative(), col: z.number().int().nonnegative() })
+      .optional()
+      .describe('For a table: the cell, counted from 0.'),
+    find: z.string().min(1),
+    occurrence: z.number().int().min(1).optional().describe('Default 1.'),
+    replace: z.string().optional(),
+    marks: Marks.optional(),
+  }),
+  scopes: ['deck', 'slide', 'object'],
+  writes: true,
+  run(input, ctx) {
+    const { elementId, slideId, cell, find, occurrence = 1, replace, marks } = input;
+    if (replace === undefined && !marks) {
+      throw new DeckApiError('invalid_input', 'Give `replace`, `marks` or both.');
+    }
+    const { slide, element } = getElement(ctx.deck, elementId, slideId);
+    let content: RichText | undefined;
+    if (element.type === 'table') {
+      if (!cell) throw new DeckApiError('invalid_input', 'A table needs `cell` to change text.');
+      content = element.cells[cell.row]?.[cell.col]?.content;
+      if (!element.cells[cell.row]?.[cell.col]) {
+        throw new DeckApiError('invalid_input', `The table has no cell ${cell.row}, ${cell.col}.`);
+      }
+    } else if (element.type === 'text' || element.type === 'shape') {
+      content = element.content;
+    } else {
+      throw new DeckApiError(
+        'invalid_state',
+        `Element "${elementId}" is a ${element.type}, which holds no text.`,
+      );
+    }
+    const outcome = replaceInText(content ?? { paragraphs: [] }, find, occurrence, {
+      ...(replace !== undefined ? { replace } : {}),
+      ...(marks ? { marks } : {}),
+    });
+    if (!outcome.ok) {
+      throw new DeckApiError(
+        'invalid_input',
+        outcome.reason === 'paragraphs'
+          ? '`find` runs from one paragraph into the next. Change each paragraph on its own, or rewrite the text with text_set.'
+          : outcome.found === 0
+            ? `"${find}" is not in the text of element "${elementId}"${cell ? ` (cell ${cell.row}, ${cell.col})` : ''}. Read it with element_get: the user may have changed it.`
+            : `"${find}" appears ${outcome.found} time(s) in the text, so there is no appearance ${occurrence}.`,
+      );
+    }
+    // Longer text in a one-line box from HTML would run out of it sideways (see text_set).
+    const wraps =
+      element.type === 'text' &&
+      element.wrap === false &&
+      plainText(outcome.content).length > plainText(element.content).length;
+    ctx.write([
+      {
+        type: 'text.set',
+        slideId: slide.id,
+        elementId,
+        content: outcome.content,
+        ...(cell ? { cell } : {}),
+      },
       ...(wraps
         ? [{ type: 'element.update' as const, slideId: slide.id, elementId, patch: { wrap: true } }]
         : []),

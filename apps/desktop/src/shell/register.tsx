@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import {
+  Ai,
   Blend,
   Film,
   History,
@@ -8,16 +9,12 @@ import {
   MessagesSquare,
   NotebookPen,
   PaintBucket,
-  Presentation,
-  RectangleHorizontal,
   ScanEye,
   Settings,
-  SquareDashedMousePointer,
   Zap,
   type LucideIcon,
 } from '@slidr/ui/icons';
 import { Button, Tooltip } from '@slidr/ui';
-import { useSelection } from './editor';
 import { newDocument, openDocument, saveDocument, saveDocumentAs } from './fileActions';
 import { NotesPanel } from './NotesPanel';
 import { PanelId, registerContextTool, registerPanel, registerShortcut } from './registry';
@@ -41,7 +38,7 @@ registerPanel({
   content: SettingsPanel,
 });
 
-/* ---------------------------------------------------------------- AI tools (WG11) */
+/* ---------------------------------------------------------------- the AI chat (WG11, ADR-072) */
 
 function ChatPlaceholder() {
   const { t } = useTranslation();
@@ -65,55 +62,18 @@ function ActionsPlaceholder() {
   );
 }
 
-/** Tool 3 without a selection says what to do (SPEC 4.2). */
-function ObjectChatPlaceholder() {
-  const { t } = useTranslation();
-  const selected = useSelection((s) => s.selectedElementIds.length > 0);
-  if (selected) return <ChatPlaceholder />;
-  return (
-    <PanelEmpty
-      icon={SquareDashedMousePointer}
-      title={t('panels.objectEmptyTitle')}
-      description={t('panels.objectEmptyBody')}
-    />
-  );
-}
+/** The one AI tool: a chat about the deck and about whatever the user has selected in it. */
+const ai = { id: PanelId.ai, title: 'panels.ai', icon: Ai, shortcut: 'Ctrl+1' } as const;
 
-const ai = [
-  {
-    id: PanelId.aiDeck,
-    title: 'panels.aiDeck',
-    icon: Presentation,
-    scope: 'deck',
-    shortcut: 'Ctrl+1',
-  },
-  {
-    id: PanelId.aiSlide,
-    title: 'panels.aiSlide',
-    icon: RectangleHorizontal,
-    scope: 'slide',
-    shortcut: 'Ctrl+2',
-  },
-  {
-    id: PanelId.aiObject,
-    title: 'panels.aiObject',
-    icon: SquareDashedMousePointer,
-    scope: 'object',
-    shortcut: 'Ctrl+3',
-  },
-] as const;
-
-ai.forEach((tool, order) =>
-  registerPanel({
-    ...tool,
-    kind: 'ai',
-    slot: 'ai',
-    order,
-    placeholder: true,
-    chat: tool.scope === 'object' ? ObjectChatPlaceholder : ChatPlaceholder,
-    actions: ActionsPlaceholder,
-  }),
-);
+registerPanel({
+  ...ai,
+  kind: 'ai',
+  slot: 'ai',
+  order: 0,
+  placeholder: true,
+  chat: ChatPlaceholder,
+  actions: ActionsPlaceholder,
+});
 
 /* ---------------------------------------------------------------- other panels */
 
@@ -286,13 +246,11 @@ registerShortcut({
   run: () => zoomBy(0.8),
 });
 
-ai.forEach(({ id, shortcut }, n) =>
-  registerShortcut({
-    id: `shell.${id}`,
-    keys: shortcut,
-    label: (['keys.aiDeck', 'keys.aiSlide', 'keys.aiObject'] as const)[n],
-    section: 'ai',
-    inText: true,
-    run: () => openPanel(id),
-  }),
-);
+registerShortcut({
+  id: 'shell.ai',
+  keys: ai.shortcut,
+  label: 'keys.ai',
+  section: 'ai',
+  inText: true,
+  run: () => openPanel(ai.id),
+});

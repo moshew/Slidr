@@ -202,16 +202,6 @@ describe('text options', () => {
     gallery.dismiss(sets()[0]!.id);
     expect(sets()).toEqual([]);
   });
-
-  it('belong to the tool whose session offered them', async () => {
-    const { gallery, sets } = setup();
-    gallery.noteToolCall({ kind: 'slide', slideId: 's_1' }, 'ui_present_options', {});
-    await gallery.service.present({ kind: 'text', target: TITLE, options });
-    expect(sets()[0]!.from).toBe('slide');
-    gallery.noteToolCall(OBJECT, 'ui_present_options', {});
-    await gallery.service.present({ kind: 'text', target: TITLE, options });
-    expect(sets()[0]!.from).toBe('object');
-  });
 });
 
 describe('image options', () => {
@@ -273,7 +263,6 @@ describe('images as they are made', () => {
     expect(sets()).toMatchObject([
       {
         kind: 'image',
-        from: 'object',
         target: PICTURE,
         live: true,
         cards: [{ state: 'pending' }, { state: 'pending' }, { state: 'pending' }],
@@ -317,7 +306,25 @@ describe('images as they are made', () => {
     });
   });
 
-  it('are a gallery only for the image an object session works on', () => {
+  it('are a gallery for the image the deck chat names in optionsFor (ADR-072)', () => {
+    const { gallery, sets } = setup();
+    gallery.noteToolCall({ kind: 'deck' }, 'image_generate', {
+      prompt: 'x',
+      count: 2,
+      optionsFor: 'e_picture',
+    });
+    gallery.imageEvent('job-1', stored(0, SECOND));
+    expect(sets()).toMatchObject([
+      { kind: 'image', target: PICTURE, live: true, cards: [{ state: 'ready' }, {}] },
+    ]);
+    // Images being made for it are not asked for a second time.
+    const again = { prompt: 'x', count: 2, optionsFor: 'e_picture' };
+    expect(gallery.refusal({ kind: 'deck' }, 'image_generate', again)).toMatch(
+      /do not generate again/,
+    );
+  });
+
+  it('are a gallery only for an image element: named, or the one an object session works on', () => {
     const { gallery, sets } = setup();
     // Into the element itself: the first image is placed, and there is nothing to pick.
     gallery.noteToolCall(OBJECT, 'image_generate', {
@@ -335,6 +342,13 @@ describe('images as they are made', () => {
       { prompt: 'x', count: 2 },
     );
     gallery.imageEvent('job-3', { type: 'started', index: 0 });
+    // Options named for an element that is not a picture.
+    gallery.noteToolCall({ kind: 'deck' }, 'image_generate', {
+      prompt: 'x',
+      count: 2,
+      optionsFor: 'e_title',
+    });
+    gallery.imageEvent('job-4', { type: 'started', index: 0 });
     expect(sets()).toEqual([]);
   });
 
@@ -617,7 +631,7 @@ describe('the history of a target (AIO-09)', () => {
     expect(plainText(titleOf(bus.deck)!)).toBe('Where are we going in 2027?');
   });
 
-  it('is of one target and one tool, and keeps the newest sets of each', async () => {
+  it('is of one target, and keeps the newest sets of each', async () => {
     const { gallery, sets } = setup();
     for (let i = 0; i < EARLIER + 3; i++) {
       await gallery.service.present({ kind: 'text', target: TITLE, options: first });
@@ -629,12 +643,6 @@ describe('the history of a target (AIO-09)', () => {
     const picture = sets().find((set) => set.kind === 'image')!;
     expect(historyOf(gallery.store.getState(), title)).toHaveLength(EARLIER + 1);
     expect(historyOf(gallery.store.getState(), picture)).toEqual([picture]);
-
-    // The options of the slide's tool for the same element are not the object tool's history.
-    gallery.noteToolCall({ kind: 'slide', slideId: 's_1' }, 'ui_present_options', {});
-    await gallery.service.present({ kind: 'text', target: TITLE, options: second });
-    const fromSlide = sets().find((set) => set.kind === 'text')!;
-    expect(historyOf(gallery.store.getState(), fromSlide)).toEqual([fromSlide]);
   });
 
   it('leaves out a set with nothing to pick', async () => {

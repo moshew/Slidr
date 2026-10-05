@@ -1,5 +1,5 @@
 {
-  "description": "A slide chat, in Hebrew, for the two table actions that change the slide and so are sent to it (AIO-08), with its tool calls carried out (\"call\": true). Turn 1 answers \"sum the table up in an insight\": it adds one line of text over the table with element_add and looks at the slide. Turn 2 answers \"turn the table into a chart\": it creates a chart with chart_set, deletes the table (e_table) and looks at the slide. Hand-written; not one of the Rust mock's.",
+  "description": "The AI chat, in Hebrew, for the two table actions that change the slide and not only the table (AIO-08; ADR-072), with its tool calls carried out (\"call\": true). Turn 1 answers \"sum the table up in an insight\": it adds one line of text over the table with element_add and looks at the slide. Turn 2 answers \"turn the table into a chart\": it creates a chart with chart_set, deletes the table (e_table) and looks at the slide. Hand-written; not one of the Rust mock's.",
   "turns": [
     [
       {

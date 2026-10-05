@@ -65,13 +65,13 @@ export async function openLook(
     const editor = window.slidr!;
     editor.selection.getState().setCurrentSlide(editor.bus.deck.slides[0]!.id);
   });
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'actions');
   await expect(look(page, 'template')).toBeVisible();
 }
 
 /** A section of the deck's look in the Actions tab. */
 export const look = (page: Page, name: 'template' | 'palette' | 'fonts'): Locator =>
-  panel(page, 'ai.deck').locator(`section[data-look="${name}"]`);
+  panel(page).locator(`section[data-look="${name}"]`);
 
 /** Scrolls the Actions tab so a section of the look starts at its top, heading and all. */
 export async function scrollTo(page: Page, name: 'template' | 'palette' | 'fonts'): Promise<void> {
@@ -109,7 +109,7 @@ export const onFilmstrip = (page: Page, variable: string): Promise<string> =>
 
 /** The pointer on nothing that previews: the title of the Tool Panel. */
 export async function pointAway(page: Page): Promise<void> {
-  await panel(page, 'ai.deck').getByRole('heading', { level: 2 }).hover();
+  await panel(page).getByRole('heading', { level: 2 }).hover();
 }
 
 export function deck(page: Page): Promise<Deck> {

@@ -99,7 +99,7 @@ test.beforeAll(async () => {
       }),
     ),
   );
-  await showPanel(app.page, 'ai.deck');
+  await showPanel(app.page, 'ai');
   await expect(app.page.getByTestId('chat-input')).toBeVisible();
 });
 

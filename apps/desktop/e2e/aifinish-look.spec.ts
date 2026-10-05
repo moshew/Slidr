@@ -37,7 +37,7 @@ test('the template gallery: a hover shows the deck on the template, a click swit
   const depth = await undoDepth(page);
   expect(before.theme.id).toBe('zerem');
   expect(before.slides).toHaveLength(3);
-  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(10);
+  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(15);
   await expect(templateCard(page, 'zerem')).toHaveAttribute('data-current', 'true');
   await expect(templateCard(page, 'zerem')).toHaveAttribute('aria-pressed', 'true');
   // A cover is the template's opening slide, with the photograph of one that opens with one.
@@ -94,8 +94,8 @@ test('the palettes: a hover shows the colours on the slide, a click sets them in
   await openLook(page);
   const before = await deck(page);
   const depth = await undoDepth(page);
-  // The palettes of the ten templates, then the seven curated ones; the deck's own is marked.
-  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(17);
+  // The palettes of the fifteen templates, then the seven curated ones; the deck's own is marked.
+  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(22);
   await expect(paletteCard(page, 'template:zerem')).toHaveAttribute('data-current', 'true');
   await expect(look(page, 'palette').locator('[data-current]')).toHaveCount(1);
 
@@ -142,8 +142,8 @@ test('the font pairs: a hover shows the fonts on the slide, a click sets them in
   await openLook(page);
   const before = await deck(page);
   const depth = await undoDepth(page);
-  // The font pairs of the ten templates, then the seven curated ones.
-  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(17);
+  // The font pairs of the fifteen templates, then the seven curated ones.
+  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(22);
   await expect(look(page, 'fonts').locator('[data-current]')).toHaveCount(1);
   await expect(look(page, 'fonts').locator('[data-current]')).toHaveAttribute(
     'data-fonts',
@@ -229,13 +229,13 @@ test('a look that is being tried leaves the Stage when the panel turns to someth
   const before = await deck(page);
   await templateCard(page, 'tzuk').hover();
   await expect(previewLabel(page)).toBeVisible();
-  // The slide tool takes the panel; the pointer has not moved.
-  await page.keyboard.press('Control+2');
-  await expect(panel(page, 'ai.slide')).toBeVisible();
+  // Another panel takes the Tool Panel; the pointer has not moved.
+  await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  await expect(panel(page)).toHaveCount(0);
   await expect(previewLabel(page)).toHaveCount(0);
   expect(await onStage(page, '--color-bg')).toBe(before.theme.colors.bg);
 
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'actions');
   await paletteCard(page, 'ocean').focus();
   await expect(previewLabel(page)).toBeVisible();
   // The Chat tab of the same tool, by the keyboard: Ctrl+L goes to the chat's field.
@@ -272,15 +272,15 @@ test('a personal template is offered with its colours, and trying it shows its l
   const mine = (await deck(page)).theme.id;
   expect(mine).toMatch(/^personal_/);
 
-  // The deck tool offers it after the built-in ones, with its palette; its fonts are Zerem's.
-  await openTool(page, 'ai.deck', 'actions');
-  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(11);
+  // The Actions tab offers it after the built-in ones, with its palette; its fonts are Zerem's.
+  await openTool(page, 'actions');
+  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(16);
   await expect(templateCard(page, mine)).toHaveAttribute('data-current', 'true');
   await expect(templateCard(page, mine)).toContainText('המותג שלנו');
   await expect(templateCard(page, mine)).toContainText('אישית');
-  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(18);
+  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(23);
   await expect(paletteCard(page, `template:${mine}`)).toHaveAttribute('data-current', 'true');
-  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(17);
+  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(22);
 
   await templateCard(page, 'tzuk').click();
   await expect(templateCard(page, 'tzuk')).toHaveAttribute('data-current', 'true');
@@ -312,13 +312,13 @@ test('the look can be changed while the chat of the deck is in a turn', async ({
   await openLook(page, { speed: 1 });
   const before = await deck(page);
   const status = page.getByTestId('status-agent');
-  await openTool(page, 'ai.deck', 'chat');
+  await openTool(page, 'chat');
   await input(page).fill('ניסוחים אחרים');
   await input(page).press('Enter');
   await expect(status).toHaveAttribute('data-state', 'working');
 
   // The actions of the agent wait for the turn; the template, the palette and the fonts do not.
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'actions');
   await expect(page.locator('[data-action="deck.shorten"]')).toBeDisabled();
   await paletteCard(page, 'sage').hover();
   await expect(previewLabel(page)).toBeVisible();
@@ -331,7 +331,7 @@ test('the look can be changed while the chat of the deck is in a turn', async ({
 test('in English, with no string missing', async ({ page }) => {
   const errors = collectErrors(page);
   await openLook(page, { lang: 'en' });
-  const deckPanel = panel(page, 'ai.deck');
+  const deckPanel = panel(page);
   // Exact: the form that asks for a new template is a region of the same tab.
   await expect(deckPanel.getByRole('region', { name: 'Template', exact: true })).toBeVisible();
   await expect(deckPanel.getByRole('region', { name: 'Colour palette' })).toBeVisible();

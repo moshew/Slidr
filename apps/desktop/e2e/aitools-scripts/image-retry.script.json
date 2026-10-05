@@ -1,7 +1,16 @@
 {
-  "description": "An object chat on an image element, in Hebrew, for the suite of the gallery, with its tool calls carried out (\"call\": true). The agent asks image_generate for ten images, which is more than the tool takes, so the call is refused before any job starts; it asks again for two, and a job runs. The gallery must show two cards, not ten (the bug hunt's ai-ui.md, finding 14). Hand-written; not one of the Rust mock's.",
+  "description": "The AI chat on a selected image element, in Hebrew, for the suite of the gallery, with its tool calls carried out (\"call\": true). The agent asks image_generate for ten images, which is more than the tool takes, so the call is refused before any job starts; it asks again for two, and a job runs. The gallery must show two cards, not ten (the bug hunt's ai-ui.md, finding 14). Hand-written; not one of the Rust mock's. It asks which element is selected first, and names it in its calls, as an agent of the one chat does (ADR-072).",
   "turns": [
     [
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
       {
         "delayMs": 300,
         "type": "tool_call_started",
@@ -11,7 +20,10 @@
         "input": {
           "prompt": "A calm harbour at dawn, wide composition",
           "count": 10,
-          "aspect": "16:9"
+          "aspect": "16:9",
+          "optionsFor": {
+            "$ref": "selection_t0.selectedElements.0.id"
+          }
         },
         "call": true
       },
@@ -24,11 +36,18 @@
         "input": {
           "prompt": "A calm harbour at dawn, wide composition",
           "count": 2,
-          "aspect": "16:9"
+          "aspect": "16:9",
+          "optionsFor": {
+            "$ref": "selection_t0.selectedElements.0.id"
+          }
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "שתי חלופות לתמונה מוכנות לבחירה." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "שתי חלופות לתמונה מוכנות לבחירה."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",

@@ -194,7 +194,12 @@ test("a right click beside the text ends the editing, and the menu is the slide'
   });
   await expect(menu(page)).toBeVisible();
   expect(await editingId(page)).toBeNull();
-  expect(await menuLabels(page)).toEqual(['הדבקה', 'בחירת הכול', 'הדבקת טקסט', 'AI שקף']);
+  expect(await menuLabels(page)).toEqual([
+    'הדבקה',
+    'בחירת הכול',
+    'הדבקת טקסט',
+    'שאלו את ה-AI על השקף',
+  ]);
 });
 
 test('the text of a table cell that is typed in has the same menu, and its link', async ({

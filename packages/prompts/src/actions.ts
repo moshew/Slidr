@@ -1,12 +1,12 @@
-import type { ScopeKind } from '@slidr/agent-tools';
 import { ColorToken } from '@slidr/model';
 import { json } from './context';
 
 /**
- * The action templates (SPEC 4.3, 11.7; WG11-T09): what the app sends to a chat when the user
- * presses a button of an AI tool instead of typing. Every action is a template and a scope: the
- * session it is sent to (the deck, slide or object chat), the tools it cannot do without, and
- * the words that ask for it.
+ * The action templates (SPEC 4.3, 11.7; WG11-T09): what the app sends to the chat when the user
+ * presses a button of the AI tool instead of typing. Every action is a template and a target:
+ * what it is about (the deck, a slide or an element), the tools it cannot do without, and the
+ * words that ask for it. There is one chat, a deck session (ADR-072), so an action about a slide
+ * or an element names it: `slideId`, `elementId`.
  *
  * An action goes out as the turn's message, inside a `<slidr_action>` tag. The system prompt
  * teaches that text in `<slidr_…>` tags is the app's and is written in English whatever the
@@ -30,18 +30,18 @@ export interface ActionParams {
   tone?: string;
   /** What the user typed into the action's field, e.g. what a new image should show. */
   description?: string;
-  /** For an action about one slide that the deck chat carries out: the slide's number. */
+  /** For an action about one slide: the slide's number, as the user counts. */
   slideNumber?: number;
-  /** The same slide, by id. */
+  /** The slide an action is about, or the slide of the element it is about. */
   slideId?: string;
+  /** The element an action is about. */
+  elementId?: string;
   /** A web address the user gave as a source, e.g. the site a template should look like. */
   url?: string;
   /** The open deck itself is a source: a template is to be made from how it looks. */
   fromDeck?: boolean;
   /** An image asset the user painted: its transparent area is where an edit may happen. */
   maskAssetId?: string;
-  /** For an action about one element that the slide chat carries out: the element's id. */
-  elementId?: string;
   /** The outline the user approves, as its card holds it when they press the button (AID-03). */
   outline?: readonly OutlineSlide[];
   /** The user changed the outline in its card before approving it. */
@@ -58,9 +58,12 @@ export interface OutlineSlide {
   note?: string;
 }
 
+/** What an action is about: the whole deck, the slide in `slideId`, the element in `elementId`. */
+export type ActionTarget = 'deck' | 'slide' | 'element';
+
 export interface ActionDef {
-  /** The session the action is sent to. */
-  scope: Exclude<ScopeKind, 'import'>;
+  /** What the action is about, and so which of `slideId` and `elementId` it needs. */
+  target: ActionTarget;
   /** Tools the action cannot do without: a session that lacks one does not offer it. */
   needs: readonly string[];
   /** The request, in the app's voice. */
@@ -102,41 +105,41 @@ function define<T extends Record<string, ActionDef>>(actions: T): T {
 }
 
 export const ACTIONS = define({
-  /* ---------------------------------------------------------------- the deck tool (AID-05) */
+  /* ---------------------------------------------------------------- the deck (AID-05) */
 
   'deck.translate': {
-    scope: 'deck',
+    target: 'deck',
     needs: ['text_set'],
     ask: (p) =>
       `Translate the whole deck into ${language(p)}: the text on every slide, the slide names and the speaker notes. Names, product names and technical terms written in Latin letters stay as they are. Set the deck's language to match, and when the new language runs in the other direction, set the direction too and mirror each slide's layout so it reads naturally. Go slide by slide, and look at each slide whose text grew or whose layout you mirrored.`,
   },
   'deck.shorten': {
-    scope: 'deck',
+    target: 'deck',
     needs: ['text_set'],
     ask: () =>
       'Shorten the text across the deck. Go slide by slide and cut each to what the audience has to read: filler and repetition first, then whatever the speaker can say aloud instead. A slide that is already brief stays as it is. Keep the meaning, the voice and the formatting, and touch nothing but text.',
   },
   'deck.notes': {
-    scope: 'deck',
+    target: 'deck',
     needs: ['slide_update'],
     ask: () =>
       "Write speaker notes for every slide that has none. Notes are what the presenter says aloud: the point of the slide in a sentence, then the two or three things worth adding that the slide itself does not spell out. They are written in the deck's language, in a speaking voice, a short paragraph per slide. Leave notes the user already wrote as they are.",
   },
   'deck.fix': {
-    scope: 'deck',
+    target: 'deck',
     needs: ['deck_lint'],
     ask: () =>
       'Run the design check on the whole deck and fix what it finds, the errors first. Give each finding the smallest change that closes it, and look at every slide you changed. A finding that is a deliberate choice, or that cannot be closed without redesigning the slide, is left alone: say which, in a line.',
   },
   'deck.improve': {
-    scope: 'deck',
+    target: 'deck',
     needs: ['deck_render_contact_sheet', 'slide_replace_from_html'],
     ask: () =>
       'Improve the design across the deck. Look at the whole deck on a contact sheet first, and judge it as a designer would: do the slides belong together, do neighbours differ, which slides are the weakest (text on an empty background, three slides of one kind in a row, a slide with no visual element)? Then redesign the few slides that would gain the most, keeping what each one says, and leave the good ones untouched. End with a line on what you changed and why.',
   },
 
   'template.create': {
-    scope: 'deck',
+    target: 'deck',
     needs: ['template_create'],
     ask: (p) => {
       // The sources of THM-06, as the form gave them. Reading each is the agent's work.
@@ -149,7 +152,7 @@ export const ACTIONS = define({
     },
   },
   'outline.approve': {
-    scope: 'deck',
+    target: 'deck',
     needs: ['slide_create_from_html'],
     // The outline rides with the approval: a session that could not be resumed was never told
     // it, and the user may have changed it in its card (AID-03).
@@ -161,128 +164,127 @@ export const ACTIONS = define({
           : 'The user approved the outline you proposed: it is in `outline`, as its card showed it. Build the deck from it now, slide by slide, as it stands.',
   },
 
-  /* ---------------------------------------------------------------- the slide tool (AIS-02) */
+  /* ---------------------------------------------------------------- a slide (AIS-02) */
 
   'slide.redesign': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Offer ${count(p, 3)} redesigns of this slide. The content stays; each option arranges it differently: another archetype or composition, not another colour.${described(p, 'What the user wants from the redesign')} Show them with ui_present_options, kind "layout": each option is a complete slide in HTML, as you would write it for a redesign, with a label of two or three words that names the idea. ${OPTIONS}`,
   },
   'slide.shorten': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['text_set'],
     ask: () =>
       'Shorten the text on this slide to what the audience has to read: cut filler and repetition first, then what the speaker can say aloud. Keep the meaning, the voice and the formatting of each text, and change nothing but text.',
   },
   'slide.split': {
-    // A slide session cannot add a slide (SPEC 11.4, the scope guard), so the deck chat does it.
-    scope: 'deck',
+    target: 'slide',
     needs: ['slide_create_from_html'],
     ask: (p) =>
       `Split slide ${p.slideNumber ?? ''} (\`slideId\`) into two slides. Find where its content divides into two ideas, keep the first on this slide and build the second right after it, each with room to breathe and a title of its own. The two should look like siblings without being the same layout. Look at both when you are done.`,
   },
   'slide.visual': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['element_add'],
     ask: () =>
       'Give this slide the visual element it lacks. Decide what would carry its message best (a big number, a chart, a diagram, a set of cards, an image, a strong shape) and add it, moving and resizing what is there so the two work together. The words stay as they are. Look at the slide when you are done.',
   },
   'slide.image': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['image_generate'],
     ask: (p) =>
       `Add an image to this slide: one that carries its message, not decoration.${described(p, 'What the user wants to see')} ${PICTURE} Generate it, and place it so that text and image do not compete, rearranging the slide if it needs it. Look at the slide when you are done.`,
   },
   'slide.animate': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['animation_set'],
     ask: () =>
       'Animate this slide with restraint: the elements enter in the order they are read, on click where the speaker reveals a point and together where they belong together, with one quiet effect for the whole slide. A title that is simply there needs no animation. Replace the animation the slide already has.',
   },
   'slide.notes': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['slide_update'],
     ask: () =>
       "Write speaker notes for this slide: what the presenter says aloud. Open with the point of the slide in a sentence, then the two or three things worth adding that the slide does not spell out. A short paragraph, in the deck's language, in a speaking voice. If the slide already has notes, improve them instead of replacing what the user wrote.",
   },
   'slide.fix': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['slide_lint'],
     ask: () =>
       'Run the design check on this slide and fix what it finds, the errors first, each with the smallest change that closes it. Look at the slide afterwards. A finding that is a deliberate choice is left alone: say which, in a line.',
   },
   'slide.translate': {
-    scope: 'slide',
+    target: 'slide',
     needs: ['text_set'],
     ask: (p) =>
       `Translate the text on this slide into ${language(p)}, and its speaker notes with it. Names, product names and technical terms written in Latin letters stay as they are. Each paragraph takes the direction of its new language. Look at the slide afterwards: translated text is often longer.`,
   },
 
-  /* ---------------------------------------------------------------- the object tool: text (AIO-02) */
+  /* ---------------------------------------------------------------- a text (AIO-02) */
 
   'text.variations': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Offer ${count(p, 4)} other wordings of this text: the same message, in the same language and at about the same length, each different in angle or tone and not in a word or two. Show them with ui_present_options, kind "text": each option is the complete text of the element in Markdown, with a label of two or three words that says what sets it apart. ${OPTIONS}`,
   },
   'text.title': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Offer ${count(p, 4)} alternative titles in place of this text. A title states the point of its slide in a few words: read the slide first, and let each option take a different way in (the claim, the question, the number, the benefit). Show them with ui_present_options, kind "text", each with a label of two or three words. ${OPTIONS}`,
   },
   'text.shorten': {
-    scope: 'object',
+    target: 'element',
     needs: ['text_set'],
     ask: () =>
       'Shorten this text to about half its length. Keep what it says and its voice; cut filler and repetition first.',
   },
   'text.expand': {
-    scope: 'object',
+    target: 'element',
     needs: ['text_set'],
     ask: () =>
       'Expand this text with the detail or the example that makes it concrete, to twice its length at most. Then look at the slide: the longer text has to fit its box, and if it does not, say so instead of shrinking the font.',
   },
   'text.tone': {
-    scope: 'object',
+    target: 'element',
     needs: ['text_set'],
     ask: (p) =>
       `Rewrite this text in a ${p.tone ?? 'plain'} tone. What it says and how long it is stay as they are; only the voice changes.`,
   },
   'text.fix': {
-    scope: 'object',
+    target: 'element',
     needs: ['text_set'],
     ask: () =>
       "Fix the spelling, grammar and punctuation of this text, and nothing else: the wording stays the user's. If there is nothing to fix, say so and change nothing.",
   },
   'text.translate': {
-    scope: 'object',
+    target: 'element',
     needs: ['text_set'],
     ask: (p) =>
       `Translate this text into ${language(p)}. Names, product names and technical terms written in Latin letters stay as they are, and each paragraph takes the direction of its new language.`,
   },
   'text.bullets': {
-    scope: 'object',
+    target: 'element',
     needs: ['text_set'],
     ask: () =>
       'Turn this text into a short bulleted list: one idea to a bullet, a few words each, all built the same way. Nothing is added and nothing important is dropped.',
   },
 
-  /* ---------------------------------------------------------------- the object tool: image (AIO-03) */
+  /* ---------------------------------------------------------------- an image (AIO-03) */
 
   'image.alternatives': {
-    scope: 'object',
+    target: 'element',
     needs: ['image_generate'],
     ask: (p) =>
-      `Generate ${count(p, 4)} alternatives for this image, in one image_generate call with that count and without an element id, at the aspect closest to the element's frame.${described(p, 'What the user wants to see')} ${PICTURE} The app shows each image to the user as it arrives, and replaces the element's image with the one they pick, keeping its frame and crop: so do not place one yourself. Images take about a minute each, and the call may come back as timed out while they are still being made. If it does, or if it fails some other way, do not call it again: what was started keeps arriving in the app, and a second call would make every image twice. Say in a line that the images are on their way. When the call returns the images, and the session can present options, show them with ui_present_options, kind "image", each with a label of two or three words.`,
+      `Generate ${count(p, 4)} alternatives for this image, in one image_generate call with that count and \`optionsFor\` set to this element, and without an element id.${described(p, 'What the user wants to see')} ${PICTURE} The app shows each image to the user as it arrives, and replaces the element's image with the one they pick, keeping its frame and crop: so do not place one yourself. Images take about a minute each, and the call may come back as timed out while they are still being made. If it does, or if it fails some other way, do not call it again: what was started keeps arriving in the app, and a second call would make every image twice. Say in a line that the images are on their way. When the call returns the images, show them with ui_present_options, kind "image", each with a label of two or three words.`,
   },
 
-  /* ---------------------------------------------------------------- the object tool: editing an image (AIO-04) */
+  /* ---------------------------------------------------------------- editing an image (AIO-04) */
 
   'image.edit': {
-    scope: 'object',
+    target: 'element',
     needs: ['image_edit'],
     ask: (p) =>
       `Change this image as the user asks: what they want is in \`description\`. Call image_edit once, with this element's id and an instruction that says what to change and what must stay as it is.${
@@ -294,78 +296,78 @@ export const ACTIONS = define({
       }.`,
   },
   'image.restyle': {
-    scope: 'object',
+    target: 'element',
     needs: ['image_edit'],
     ask: () =>
       `Bring this image into the deck's image style. Call image_edit once, with this element's id and an instruction that keeps the subject and the composition and restates the style: the deck's \`image_style\` from the context, and its palette. When the deck has no image style yet, take it from the deck's other images and its theme, and say in a line what you went by. ${ONE_EDIT} When the result says the edit was a redraw (\`regenerate\`), tell the user in a line that details of the image moved.`,
   },
 
-  /* ---------------------------------------------------------------- the object tool: chart (AIO-07) */
+  /* ---------------------------------------------------------------- a chart (AIO-07) */
 
   'chart.type': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Suggest chart types for the data of this chart. Read the data first: what it compares (values over time, categories against each other, parts of a whole, two measures against each other), in how many series and how many points. Offer up to ${count(p, 3)} other types that show this data well, the best first. The type the chart has now is not one of them, with or without another option: the user is looking at it. When fewer types fit the data, offer fewer, two at the least. Show them with ui_present_options, kind "chart": each option's \`set\` is the chart_set arguments that make the change, without the element id, and as a rule the type alone, as in {"chartType": "line"}. The data and the other options of the chart stay as the user has them; add an option to \`set\` only when the new type cannot be read without it, such as a legend for several series. Each label names the type and, in two or three words, what it brings out. ${OPTIONS} If the type the chart has now is the best one for this data, say so in your reply.`,
   },
   'chart.fill': {
-    scope: 'object',
+    target: 'element',
     needs: ['chart_set'],
     ask: () =>
       `Fill this chart from the text in \`description\`, which the user pasted: find the numbers in it and what each one measures, and set them as the categories and series of the chart with chart_set. ${EXACT} Only what the text gives a number for is a category: an item it names without one is left out of the chart. Where several series share the categories, a value the text does not give is a gap (null), not a guess. A number written with a unit or a sign ("12%", "$1,200", "3.5M") goes in as its value, and the unit belongs in the name of its series or in the title of the axis. The chart keeps its type and its look, unless the new data cannot be shown in that type: then choose the type that fits, and say so. If the chart's title no longer fits the data, give it one that says what the data shows. Look at the slide afterwards. ${TOOK}`,
   },
   'chart.title': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Offer ${count(p, 4)} titles for this chart. The title of a chart states what the data shows, the insight and not the subject: "Sales doubled in two years", not "Sales by year". Read the data, find what stands out in it (a trend, a gap, a peak, a turn), and let each option say it from another angle, short enough for one line above the chart. A number in a title is one the data holds, or one that follows from it exactly. Show them with ui_present_options, kind "chart": each option's \`set\` is {"title": "…"} and nothing else, with a label of two or three words that names the angle. ${OPTIONS} In your reply, give the insight itself in one full sentence, for the user to say aloud or to put on the slide.`,
   },
 
-  /* ---------------------------------------------------------------- the object tool: table (AIO-08) */
+  /* ---------------------------------------------------------------- a table (AIO-08) */
 
   'table.fill': {
-    scope: 'object',
+    target: 'element',
     needs: ['table_set'],
     ask: () =>
       `Fill this table from the text in \`description\`, which the user pasted: find the items it lists and what it says about each, and set them as the cells of the table with table_set: a header row that names the columns, then a row for each item. A cell is short (a name, a number, a few words): a sentence of the text becomes the fact it states. ${EXACT} A cell the text gives nothing for stays empty. The table keeps its frame and its style, and takes the number of rows and columns the content asks for. Look at the slide afterwards: a table that grew has to stay readable, and if it cannot, say so instead of shrinking its text. ${TOOK}`,
   },
   'table.style': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Offer ${count(p, 3)} looks for this table, each different from the one it has and from the others. A look is one of the named table styles with the switches that suit what this table holds: a header row when the first row names the columns, a marked first column when it names the rows, banded rows when there are many of them. Choose looks that sit well on this slide. Show them with ui_present_options, kind "table": each option's \`set\` is the table_set arguments of the look and nothing else, as in {"styleId": "lines", "headerRow": true, "bandedRows": false, "firstColumn": true}, with a label of two or three words that says what the look does for the table. ${OPTIONS}`,
   },
   'table.insight': {
-    // An object session cannot add an element (SPEC 11.4, the scope guard), so the slide chat does it.
-    scope: 'slide',
+    // It is about the table, and it adds a text beside it: the one chat may (ADR-072).
+    target: 'element',
     needs: ['element_add'],
     ask: () =>
       'Sum up the table `elementId` in one insight, and put it on this slide. The insight is the one thing a reader should take from the table (the largest, the trend, the gap, the exception): a single sentence with the number that carries it, and every number in it is in the table or follows from it exactly. If the slide already has a line that does this job (a subtitle, a caption beside the table), reword that line. Otherwise add the sentence as one text element where the eye meets it together with the table, above it or beside it, in a text style of the theme, moving or resizing the table only as far as that takes. Nothing else on the slide changes. Look at the slide when you are done.',
   },
   'table.chart': {
-    // The chart is a new element and the table goes: both are past an object session.
-    scope: 'slide',
+    // The chart is a new element and the table goes: the one chat may (ADR-072).
+    target: 'element',
     needs: ['chart_set', 'element_delete'],
     ask: () =>
       'Turn the table `elementId` into a chart. Read its header row and its first column as the names and its numbers as the values: a number written with a unit or a sign ("12%", "$1,200") is its value, and a column that holds no numbers is not a series. Columns that measure different things in different units (customers and revenue, say) do not share an axis: chart the measure this slide is about, and say which you left out. Choose the chart type that fits what the table compares, and give the chart a title that says what the data shows, the insight and not the subject. The chart takes the place of the table: create it with chart_set in the frame of the table, larger if a chart needs more room there, then delete the table with element_delete. Nothing else on the slide changes, unless it has to move to make room. Look at the slide when you are done. If the table holds nothing a chart can show, change nothing and say so.',
   },
 
-  /* ---------------------------------------------------------------- the object tool: shape and icon (AIO-06) */
+  /* ---------------------------------------------------------------- a shape and an icon (AIO-06) */
 
   'shape.suggest': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Offer ${count(p, 3)} other shapes for this one. Look at what the shape does on its slide (a frame for words, a step of a process, a pointer, a mark) and choose shapes that do that job better or say it more clearly, each different from the one it has and from the others. Show them with ui_present_options, kind "element": each option's \`set\` is the element_update patch that changes the outline and nothing else, {"geometry": {"kind": "preset", "preset": "<name>"}}, with a name from \`shapes\`. The frame, the fill and the text of the shape stay as they are. Each label names the shape and says, in two or three words, what it does here. ${OPTIONS}`,
   },
   'shape.colour': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options'],
     ask: (p) =>
       `Offer ${count(p, 3)} ways to colour this element from the deck's theme, so that it belongs with the slides around it. A colour here is a token of the theme, written {"token": "primary"}, never a value of your own. The tokens are ${ColorToken.options.join(', ')}; read the theme to see what colour each is. Choose by what the element does on its slide (the one accent, a quiet surface under words, a mark beside a line of text) and keep what is written on it or beside it readable. Show them with ui_present_options, kind "element": each option's \`set\` is the element_update patch of the colours and nothing else. For a shape that is its \`fill\`, as in {"fill": {"kind": "solid", "color": {"token": "primary"}}}, with its \`stroke\` when it has an outline. For an icon it is \`colorOverrides\`, which maps each colour of the drawing to a token, as in {"colorOverrides": {"currentColor": {"token": "primary"}}}. Each label says in two or three words what the colouring makes of the element. ${OPTIONS}`,
   },
   'icon.replace': {
-    scope: 'object',
+    target: 'element',
     needs: ['ui_present_options', 'icon_search'],
     ask: (p) =>
       `Offer ${count(p, 4)} icons that say what this icon is there to say better than it does. Read the slide to see what the icon stands beside and what it has to mean, then search the icon library with icon_search, a word or two at a time, and choose icons that differ in the idea they picture and not only in how they are drawn. Show them with ui_present_options, kind "element": each option's \`set\` is the element_update patch that swaps the drawing and nothing else, {"markup": "<svg …>"}, with the SVG of the icon exactly as icon_search returned it (and "assetId": null beside it when the element holds an asset in place of markup). The frame and the colour of the icon stay as they are. Each label is the icon's name. ${OPTIONS}`,
@@ -384,6 +386,13 @@ export interface ActionMessageInput {
   /** The language to answer in: the UI's, as an English name. There is no typed text to go by. */
   replyIn: string;
 }
+
+/** What "this" is in the request of each kind of action. */
+const ABOUT: Record<ActionTarget, string> = {
+  deck: 'the whole deck',
+  slide: 'the slide in `slideId` ("this slide")',
+  element: 'the element in `elementId`, on the slide in `slideId` ("this text", "this image")',
+};
 
 /** A user's free text in an action's field: a sentence or two, not a page. */
 const MAX_DESCRIPTION = 600;
@@ -410,6 +419,13 @@ const OUTLINE_KEY = 'outline: ';
  * into an action's field stays data.
  */
 export function actionMessage({ action, params = {}, replyIn }: ActionMessageInput): string {
+  const { target } = ACTIONS[action];
+  if (target !== 'deck' && params.slideId === undefined) {
+    throw new Error(`The action "${action}" is about a slide or an element: give slideId.`);
+  }
+  if (target === 'element' && params.elementId === undefined) {
+    throw new Error(`The action "${action}" is about an element: give elementId.`);
+  }
   const lines = [`action: ${json(action)}`];
   if (params.slideId !== undefined) lines.push(`slideId: ${json(params.slideId)}`);
   if (params.elementId !== undefined) lines.push(`elementId: ${json(params.elementId)}`);
@@ -435,7 +451,7 @@ export function actionMessage({ action, params = {}, replyIn }: ActionMessageInp
   return [
     `<${ACTION_TAG}>`,
     ...lines,
-    'The user pressed a button in the app instead of typing: this block stands for their message, and it is about what this session works on. Answer in the language of `reply_in`.',
+    `The user pressed a button in the app instead of typing: this block stands for their message, and it is about ${ABOUT[target]}. Answer in the language of \`reply_in\`.`,
     ACTIONS[action].ask(params),
     `</${ACTION_TAG}>`,
   ].join('\n');

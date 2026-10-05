@@ -6,6 +6,7 @@ import {
   cards,
   chat,
   collectErrors,
+  focusChip,
   gallery,
   input,
   onStage,
@@ -17,19 +18,41 @@ import {
   select,
   textOf,
   TITLE,
-  turns,
   undoDepth,
 } from './aitools-helpers';
 
 /*
- * The three AI tools in the shell (WG11-T04, T06, T07, T10), against the scripted mock agent:
- * every way into each tool, a chat for every slide and for every selection, the actions of each
- * tool as messages of its chat, and the controls that are not AI.
+ * The AI chat in the shell (WG11-T04, T06, T07, T10; ADR-072), against the scripted mock agent:
+ * one AI tool and every way into it, one conversation whatever is selected, the chip that says
+ * what the next message is about (words selected in a text among them), the actions of the
+ * selection, the slide and the deck as messages of that chat, and the controls that are not AI.
  */
 
-const scopeChip = (page: Page) => page.getByTestId('scope-chip');
+/** A Tool Panel that is not the AI chat, to leave it for. */
+const leave = (page: Page) =>
+  page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
 
-test('the three tools open from every entry point', async ({ page }) => {
+/** Selects words of the text being edited, as a drag of the mouse would. */
+async function selectWords(page: Page, words: string): Promise<void> {
+  await page.evaluate((wanted) => {
+    const root = document.querySelector('[data-text-editor]')!;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const at = node.textContent!.indexOf(wanted);
+      if (at < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + wanted.length);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return;
+    }
+    throw new Error(`"${wanted}" is not in the text being edited`);
+  }, words);
+}
+
+test('one AI tool, and every way into it', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page, { script: 'text-variations' });
   await addBody(page, 'להשיק את העורך החדש');
@@ -37,101 +60,220 @@ test('the three tools open from every entry point', async ({ page }) => {
   await select(page, []);
   const bar = page.getByTestId('activity-bar');
 
-  // The Activity Bar (SPEC 4.2).
-  for (const id of ['ai.slide', 'ai.object', 'ai.deck'] as const) {
-    await bar.locator(`[data-panel="${id}"]`).click();
-    await expect(panel(page, id)).toBeVisible();
-  }
+  // The Activity Bar has one AI tool (SPEC 4.2).
+  await expect(bar.locator('[data-panel^="ai"]')).toHaveCount(1);
+  await expect(panel(page).getByRole('heading', { level: 2 })).toHaveText("צ'אט AI");
+  await leave(page);
+  await expect(panel(page)).toHaveCount(0);
+  await bar.locator('[data-panel="ai"]').click();
+  await expect(panel(page)).toBeVisible();
 
-  // Ctrl+1, Ctrl+2, Ctrl+3 (SPEC appendix A).
+  // Ctrl+1 (SPEC appendix A).
+  await leave(page);
   await page.getByTestId('stage-surface').focus();
-  await page.keyboard.press('Control+2');
-  await expect(panel(page, 'ai.slide')).toBeVisible();
-  await page.keyboard.press('Control+3');
-  await expect(panel(page, 'ai.object')).toBeVisible();
   await page.keyboard.press('Control+1');
-  await expect(panel(page, 'ai.deck')).toBeVisible();
+  await expect(panel(page)).toBeVisible();
 
-  // Top Tools: "Slide AI" in row A, and in row B when nothing is selected.
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'AI שקף' }).click();
-  await expect(panel(page, 'ai.slide')).toBeVisible();
-  await page.keyboard.press('Control+1');
-  await page.getByTestId('top-tools-b').getByRole('button', { name: 'AI שקף' }).click();
-  await expect(panel(page, 'ai.slide')).toBeVisible();
+  // Top Tools: "AI chat" in row A, and "AI" in row B, about the slide while nothing is selected.
+  // Each puts the caret in the chat.
+  await leave(page);
+  await page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }).click();
+  await expect(input(page)).toBeFocused();
+  await expect(focusChip(page)).toHaveAttribute('data-focus', 'slide');
+  await expect(focusChip(page)).toContainText('שקף 1');
+  await leave(page);
+  await page
+    .getByTestId('top-tools-b')
+    .getByRole('button', { name: 'שאלו את ה-AI על השקף' })
+    .click();
+  await expect(input(page)).toBeFocused();
 
-  // Row B of a selected object: "AI" opens the object tool on it.
+  // Row B of a selected object: the same chat, about the object.
   await select(page, ['e_title']);
-  await page.getByTestId('top-tools-b').getByRole('button', { name: 'AI על האובייקט' }).click();
-  await expect(panel(page, 'ai.object')).toBeVisible();
-  await expect(scopeChip(page)).toContainText(TITLE);
+  await page
+    .getByTestId('top-tools-b')
+    .getByRole('button', { name: 'שאלו את ה-AI על הבחירה' })
+    .click();
+  await expect(input(page)).toBeFocused();
+  await expect(focusChip(page)).toHaveAttribute('data-focus', 'object');
+  await expect(focusChip(page)).toContainText(TITLE);
 
-  // A right click on an object selects it, and its menu opens the object tool on it.
-  await page.keyboard.press('Control+1');
+  // A right click on an object selects it, and its menu leads to the chat about it.
+  await leave(page);
   await onStage(page, 'e_body').click({ button: 'right' });
-  await page.getByTestId('stage-menu').getByRole('menuitem', { name: 'AI על האובייקט' }).click();
-  await expect(panel(page, 'ai.object')).toBeVisible();
-  await expect(scopeChip(page)).toContainText('להשיק את העורך החדש');
-  await expect(chat(page)).toHaveAttribute('data-scope', 'object');
+  await page
+    .getByTestId('stage-menu')
+    .getByRole('menuitem', { name: 'שאלו את ה-AI על הבחירה' })
+    .click();
+  await expect(focusChip(page)).toContainText('להשיק את העורך החדש');
 
-  // A right click on the slide itself clears the selection and offers the slide tool.
+  // A right click on the slide itself clears the selection: the chat is about the slide.
   await page.getByTestId('stage-frame').click({ button: 'right', position: { x: 40, y: 600 } });
-  await page.getByTestId('stage-menu').getByRole('menuitem', { name: 'AI שקף' }).click();
-  await expect(panel(page, 'ai.slide')).toBeVisible();
-  await expect(chat(page)).toHaveAttribute('data-scope', 'slide');
+  await page
+    .getByTestId('stage-menu')
+    .getByRole('menuitem', { name: 'שאלו את ה-AI על השקף' })
+    .click();
+  await expect(focusChip(page)).toHaveAttribute('data-focus', 'slide');
 
   // The Filmstrip's menu, on a slide.
-  await page.keyboard.press('Control+1');
+  await leave(page);
   await page.getByTestId('filmstrip').getByRole('option').first().click({ button: 'right' });
-  await page.getByTestId('slide-menu').getByRole('menuitem', { name: 'AI שקף' }).click();
-  await expect(panel(page, 'ai.slide')).toBeVisible();
+  await page
+    .getByTestId('slide-menu')
+    .getByRole('menuitem', { name: 'שאלו את ה-AI על השקף' })
+    .click();
+  await expect(panel(page)).toBeVisible();
 
-  // Ctrl+L puts the caret in the chat of the tool that is open, from the Actions tab too.
-  await openTool(page, 'ai.slide', 'actions');
+  // Ctrl+L puts the caret in the chat, from the Actions tab too.
+  await openTool(page, 'actions');
   await page.getByTestId('stage-surface').focus();
   await page.keyboard.press('Control+l');
   await expect(input(page)).toBeFocused();
-  await expect(chat(page)).toHaveAttribute('data-scope', 'slide');
   expect(errors).toEqual([]);
 });
 
-test('every slide has a chat of its own, and its options stay with it', async ({ page }) => {
+test('one conversation whatever is selected, and a chip that says what a message is about', async ({
+  page,
+}) => {
   await openApp(page, { script: 'slide-redesign' });
   await addTitle(page, 'שלושת היעדים של 2027');
-  await openTool(page, 'ai.slide', 'chat');
-  await expect(chat(page)).toContainText('מה לשנות בשקף?');
+  await select(page, []);
+  await openTool(page, 'chat');
+  await expect(chat(page)).toContainText('מה נבנה?');
+  // The openings and the field are about what the user has in front of them: a slide with content.
+  await expect(page.getByTestId('chat-suggestions')).toHaveAttribute('data-for', 'slide');
+  await expect(input(page)).toHaveAttribute('placeholder', 'מה לשנות בשקף הזה?');
   await say(page, 'עצב מחדש את השקף');
   await expect(cards(page)).toHaveCount(3);
+  const thread = (await chat(page).getAttribute('data-thread'))!;
   const [first] = await page.evaluate(() => window.slidr!.bus.deck.slides.map((s) => s.id));
 
-  // A second slide: an empty chat, and no options.
+  // Another slide: the same conversation. The options were for the first slide, and wait there.
   await page.evaluate(() => {
     const { bus, selection } = window.slidr!;
-    bus.dispatch({
-      type: 'slide.add',
-      slide: { id: 's_second', elements: [], timeline: [] },
-    });
+    bus.dispatch({ type: 'slide.add', slide: { id: 's_second', elements: [], timeline: [] } });
     selection.getState().setCurrentSlide('s_second');
   });
-  await expect(scopeChip(page)).toContainText('שקף 2');
-  await expect(turns(page)).toHaveCount(0);
-  await expect(gallery(page)).toHaveCount(0);
-  await say(page, 'עצב מחדש גם את זה');
-  await expect(page.getByTestId('chat-user')).toHaveText('עצב מחדש גם את זה');
-
-  // Back on the first slide, its conversation and its options are there.
-  await page.evaluate((id) => window.slidr!.selection.getState().setCurrentSlide(id), first!);
+  await expect(focusChip(page)).toContainText('שקף 2');
+  await expect(chat(page)).toHaveAttribute('data-thread', thread);
   await expect(page.getByTestId('chat-user')).toHaveText('עצב מחדש את השקף');
+  await expect(gallery(page)).toHaveCount(0);
+  await page.evaluate((id) => window.slidr!.selection.getState().setCurrentSlide(id), first!);
   await expect(cards(page)).toHaveCount(3);
+
+  // Selecting an object changes what the next message is about, not the conversation.
+  await select(page, ['e_title']);
+  await expect(focusChip(page)).toHaveAttribute('data-focus', 'object');
+  await expect(input(page)).toHaveAttribute('placeholder', 'מה לשנות במה שבחרתם?');
+  await expect(chat(page)).toHaveAttribute('data-thread', thread);
+  // With nothing selected, it is about the slide again.
+  await select(page, []);
+  await expect(focusChip(page)).toHaveAttribute('data-focus', 'slide');
 });
 
-test('the slide tool: actions as messages, what is not for it goes to the deck chat, and the controls that are not AI', async ({
+test('words selected in a text are what the next message is about (ADR-072)', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openApp(page, { script: 'text-variations' });
+  await addTitle(page, 'עוזר AI מציע לנציגים תשובות בזמן אמת');
+  await openTool(page, 'chat');
+
+  // The user edits the title and selects some of its words, then goes to the chat to write.
+  await onStage(page, 'e_title').dblclick();
+  await expect(page.locator('[data-text-editor]')).toBeFocused();
+  await selectWords(page, 'תשובות בזמן אמת');
+  await input(page).click();
+  await expect(focusChip(page)).toHaveAttribute('data-focus', 'text');
+  await expect(focusChip(page)).toContainText('טקסט נבחר');
+  await expect(focusChip(page)).toContainText('“תשובות בזמן אמת”');
+  await expect(input(page)).toHaveAttribute('placeholder', 'מה לעשות עם הטקסט שבחרתם?');
+  // The text is still being edited, and its selection is still drawn on the slide.
+  await expect(page.locator('[data-blurred-selection]')).toHaveText('תשובות בזמן אמת');
+
+  // The agent learns of the words with the message, and from selection_get within the turn.
+  const turn = await say(page, 'ניסוחים אחרים');
+  const read = turn.locator('[data-testid="tool-chip"][data-tool="selection_get"]');
+  await read.getByRole('button', { name: 'פרטים' }).click();
+  await expect(read).toContainText('"textSelection"');
+  await expect(read).toContainText('תשובות בזמן אמת');
+  // The options are for the element the words are in.
+  await expect(cards(page)).toHaveCount(4);
+
+  // Leaving the text: the chat is about the element again.
+  await page.keyboard.press('Escape');
+  await onStage(page, 'e_title').click();
+  await expect(focusChip(page)).toHaveAttribute('data-focus', 'object');
+  expect(errors).toEqual([]);
+});
+
+test('the Actions tab: the selection, then the slide, then the deck', async ({ page }) => {
+  const errors = collectErrors(page);
+  await openApp(page, { script: 'text-variations' });
+  await addTitle(page);
+  await openTool(page, 'actions');
+  const actions = page.getByTestId('ai-actions');
+  const groups = () =>
+    actions
+      .locator('[data-group]')
+      .evaluateAll((all) => all.map((g) => g.getAttribute('data-group')));
+  expect(await groups()).toEqual(['selection', 'slide', 'deck']);
+  const selection = actions.locator('[data-group="selection"]');
+  await expect(selection.getByRole('heading', { level: 3 })).toHaveText('מה שבחרתם');
+  await expect(
+    actions.locator('[data-group="slide"]').getByRole('heading', { level: 3 }),
+  ).toHaveText('שקף 1');
+
+  // Text: the wording actions and the editing ones.
+  for (const id of [
+    'variations',
+    'title',
+    'shorten',
+    'expand',
+    'fix',
+    'bullets',
+    'tone',
+    'translate',
+  ]) {
+    await expect(selection.locator(`[data-action="text.${id}"]`)).toBeEnabled();
+  }
+  await selection.getByRole('radio', { name: '6' }).click();
+  await runAction(page, 'text.variations');
+  await expect(page.getByTestId('chat-user')).toHaveText('6 ניסוחים אחרים');
+  await expect(cards(page)).toHaveCount(4);
+
+  // A direct instruction is applied by the agent, as one undo step of its turn.
+  await openTool(page, 'actions');
+  const depth = await undoDepth(page);
+  const turn = await runAction(page, 'text.shorten');
+  expect(await textOf(page, 'e_title')).toBe('תוכנית 2027');
+  expect(await undoDepth(page)).toBe(depth + 1);
+  await turn.getByTestId('undo-turn').click();
+  expect(await textOf(page, 'e_title')).toBe(TITLE);
+
+  // An image: its own actions, and the state of the image provider.
+  await addImage(page);
+  await openTool(page, 'actions');
+  await expect(selection.locator('[data-action="image.alternatives"]')).toBeEnabled();
+  await expect(selection.locator('[data-action^="text."]')).toHaveCount(0);
+  await expect(page.getByTestId('image-provider')).toHaveAttribute('data-state', 'ready');
+
+  // Several objects: no ready-made actions for them, and the chat for anything.
+  await select(page, ['e_title', 'e_picture']);
+  await expect(selection.getByTestId('no-actions')).toBeVisible();
+  // Nothing selected: the slide and the deck.
+  await select(page, []);
+  expect(await groups()).toEqual(['slide', 'deck']);
+  expect(errors).toEqual([]);
+});
+
+test('the actions of a slide are messages of the chat that name it, beside the controls that are not AI', async ({
   page,
 }) => {
   const errors = collectErrors(page);
   await openApp(page, { script: 'slide-redesign' });
   await addTitle(page, 'שלושת היעדים של 2027');
-  await openTool(page, 'ai.slide', 'actions');
-  const actions = page.getByTestId('ai-actions');
+  await select(page, []);
+  await openTool(page, 'actions');
+  const actions = page.getByTestId('ai-actions').locator('[data-group="slide"]');
   for (const id of [
     'slide.redesign',
     'slide.visual',
@@ -148,9 +290,10 @@ test('the slide tool: actions as messages, what is not for it goes to the deck c
 
   // The first turn of the script offers designs; the second writes speaker notes.
   await runAction(page, 'slide.redesign');
-  await openTool(page, 'ai.slide', 'actions');
+  await expect(cards(page)).toHaveCount(3);
+  await openTool(page, 'actions');
   const turn = await runAction(page, 'slide.notes');
-  await expect(page.getByTestId('chat-user').nth(1)).toHaveText('הערות דובר לשקף');
+  await expect(page.getByTestId('chat-user').nth(1)).toHaveText('הערות דובר לשקף 1');
   await expect(turn).toContainText('עדכון שקף · שקף 1');
   const notes = await page.evaluate(() => window.slidr!.bus.deck.slides[0]!.notes);
   expect(JSON.stringify(notes)).toContain('לפתוח בכך שכל שלושת היעדים נמדדים');
@@ -159,7 +302,7 @@ test('the slide tool: actions as messages, what is not for it goes to the deck c
   expect(await page.evaluate(() => window.slidr!.bus.deck.slides[0]!.notes)).toBeUndefined();
 
   // The controls that are not AI (AIS-04): the background and the transition, as in row B.
-  await openTool(page, 'ai.slide', 'actions');
+  await openTool(page, 'actions');
   await actions.getByRole('button', { name: 'רקע' }).click();
   await expect(page.getByTestId('background-editor')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -171,78 +314,19 @@ test('the slide tool: actions as messages, what is not for it goes to the deck c
     'fade',
   );
 
-  // A slide session cannot add a slide, so splitting is asked of the deck chat.
+  // Splitting the slide adds one: the same chat does it, as it can change the whole deck.
   await actions.locator('[data-action="slide.split"]').click();
-  await expect(panel(page, 'ai.deck')).toBeVisible();
-  await expect(chat(page)).toHaveAttribute('data-scope', 'deck');
-  await expect(page.getByTestId('chat-user')).toHaveAttribute('data-action', 'slide.split');
-  await expect(page.getByTestId('chat-user')).toHaveText('פיצול שקף 1 לשניים');
+  await expect(chat(page)).toBeVisible();
+  await expect(page.getByTestId('chat-user').nth(2)).toHaveAttribute('data-action', 'slide.split');
+  await expect(page.getByTestId('chat-user').nth(2)).toHaveText('פיצול שקף 1 לשניים');
   expect(errors).toEqual([]);
 });
 
-test('the object tool follows the selection, and offers the actions of its kind', async ({
-  page,
-}) => {
-  const errors = collectErrors(page);
-  await openApp(page, { script: 'text-variations' });
-  await openTool(page, 'ai.object', 'chat');
-  // Nothing selected: the tool says what to do (SPEC 4.2).
-  await expect(panel(page, 'ai.object')).toContainText('בחרו אובייקט בשקף');
-  await expect(input(page)).toHaveCount(0);
-
-  await addTitle(page);
-  await expect(chat(page)).toContainText('מה לעשות עם מה שבחרתם?');
-  await expect(scopeChip(page)).toContainText(TITLE);
-
-  // Text: the wording actions and the editing ones.
-  await openTool(page, 'ai.object', 'actions');
-  const actions = page.getByTestId('ai-actions');
-  for (const id of [
-    'variations',
-    'title',
-    'shorten',
-    'expand',
-    'fix',
-    'bullets',
-    'tone',
-    'translate',
-  ]) {
-    await expect(actions.locator(`[data-action="text.${id}"]`)).toBeEnabled();
-  }
-  await actions.getByRole('radio', { name: '6' }).click();
-  await runAction(page, 'text.variations');
-  await expect(page.getByTestId('chat-user')).toHaveText('6 ניסוחים אחרים');
-  await expect(cards(page)).toHaveCount(4);
-
-  // A direct instruction is applied by the agent, as one undo step of its turn.
-  await openTool(page, 'ai.object', 'actions');
-  const depth = await undoDepth(page);
-  const turn = await runAction(page, 'text.shorten');
-  expect(await textOf(page, 'e_title')).toBe('תוכנית 2027');
-  expect(await undoDepth(page)).toBe(depth + 1);
-  await turn.getByTestId('undo-turn').click();
-  expect(await textOf(page, 'e_title')).toBe(TITLE);
-
-  // An image: its own actions, and the state of the image provider.
-  await addImage(page);
-  await openTool(page, 'ai.object', 'actions');
-  await expect(actions.locator('[data-action="image.alternatives"]')).toBeEnabled();
-  await expect(actions.locator('[data-action^="text."]')).toHaveCount(0);
-  await expect(page.getByTestId('image-provider')).toHaveAttribute('data-state', 'ready');
-
-  // Several objects: a chat, and no ready-made actions.
-  await select(page, ['e_title', 'e_picture']);
-  await expect(actions).toContainText('אין עדיין פעולות מוכנות לסוג הזה');
-  await openTool(page, 'ai.object', 'chat');
-  await expect(input(page)).toBeVisible();
-  expect(errors).toEqual([]);
-});
-
-test('the deck tool: its actions, and the look of the deck beside them', async ({ page }) => {
+test('the actions of the deck, and the look of the deck beside them', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page, { script: 'deck-build' });
-  await openTool(page, 'ai.deck', 'actions');
-  const actions = page.getByTestId('ai-actions');
+  await openTool(page, 'actions');
+  const actions = page.getByTestId('ai-actions').locator('[data-group="deck"]');
   for (const id of ['translate', 'shorten', 'notes', 'improve', 'fix']) {
     await expect(actions.locator(`[data-action="deck.${id}"]`)).toBeEnabled();
   }
@@ -269,13 +353,13 @@ test('the status bar says what the agent is doing, and the actions wait for it',
   await expect(status).toHaveAttribute('data-state', 'idle');
   await expect(status).toHaveText('ה-Agent לא פעיל');
 
-  await openTool(page, 'ai.object', 'chat');
+  await openTool(page, 'chat');
   await input(page).fill('ניסוחים אחרים');
   await input(page).press('Enter');
   await expect(status).toHaveAttribute('data-state', 'working');
   await expect(status).toContainText('ה-Agent עובד');
-  // While the turn runs, the tool's actions are off.
-  await openTool(page, 'ai.object', 'actions');
+  // While the turn runs, the actions are off.
+  await openTool(page, 'actions');
   await expect(page.locator('[data-action="text.shorten"]')).toBeDisabled();
   await expect(page.getByTestId('ai-actions')).toContainText('ה-Agent באמצע תור');
 

@@ -1,8 +1,21 @@
 {
-  "description": "An object chat on a shape, in Hebrew, for the suites of the shape actions (AIO-06), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest a shape\": ui_present_options, kind element, three shapes as element_update patches of the geometry. Turn 2 answers \"colour by the template\": three colourings as patches of the fill, in theme tokens. Hand-written; not one of the Rust mock's.",
+  "description": "The AI chat on a selected shape, in Hebrew, for the suites of the shape actions (AIO-06), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest a shape\": ui_present_options, kind element, three shapes as element_update patches of the geometry. Turn 2 answers \"colour by the template\": three colourings as patches of the fill, in theme tokens. Hand-written; not one of the Rust mock's. It asks which element is selected first, and names it in its calls, as an agent of the one chat does (ADR-072).",
   "turns": [
     [
-      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 400,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
       {
         "delayMs": 500,
         "type": "tool_call_started",
@@ -12,24 +25,46 @@
         "input": {
           "kind": "element",
           "prompt": "שלוש צורות לשלב בתהליך",
+          "elementId": {
+            "$ref": "selection_t0.selectedElements.0.id"
+          },
           "options": [
             {
               "label": "שברון: שלב שמוביל הלאה",
-              "set": { "geometry": { "kind": "preset", "preset": "chevron" } }
+              "set": {
+                "geometry": {
+                  "kind": "preset",
+                  "preset": "chevron"
+                }
+              }
             },
             {
               "label": "מעוגל: רך יותר",
-              "set": { "geometry": { "kind": "preset", "preset": "roundRect" } }
+              "set": {
+                "geometry": {
+                  "kind": "preset",
+                  "preset": "roundRect"
+                }
+              }
             },
             {
               "label": "חץ: כיוון ברור",
-              "set": { "geometry": { "kind": "preset", "preset": "homePlate" } }
+              "set": {
+                "geometry": {
+                  "kind": "preset",
+                  "preset": "homePlate"
+                }
+              }
             }
           ]
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "שלוש צורות שמתאימות לשלב בתהליך." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "שלוש צורות שמתאימות לשלב בתהליך."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",
@@ -45,7 +80,20 @@
       }
     ],
     [
-      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 400,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
       {
         "delayMs": 500,
         "type": "tool_call_started",
@@ -55,27 +103,58 @@
         "input": {
           "kind": "element",
           "prompt": "שלוש צביעות מהתבנית",
+          "elementId": {
+            "$ref": "selection_t1.selectedElements.0.id"
+          },
           "options": [
             {
               "label": "הצבע הראשי",
-              "set": { "fill": { "kind": "solid", "color": { "token": "primary" } } }
+              "set": {
+                "fill": {
+                  "kind": "solid",
+                  "color": {
+                    "token": "primary"
+                  }
+                }
+              }
             },
             {
               "label": "משטח שקט",
               "set": {
-                "fill": { "kind": "solid", "color": { "token": "surface" } },
-                "stroke": { "color": { "token": "muted" }, "width": 2 }
+                "fill": {
+                  "kind": "solid",
+                  "color": {
+                    "token": "surface"
+                  }
+                },
+                "stroke": {
+                  "color": {
+                    "token": "muted"
+                  },
+                  "width": 2
+                }
               }
             },
             {
               "label": "הדגשה",
-              "set": { "fill": { "kind": "solid", "color": { "token": "accent" } } }
+              "set": {
+                "fill": {
+                  "kind": "solid",
+                  "color": {
+                    "token": "accent"
+                  }
+                }
+              }
             }
           ]
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "שלוש צביעות מצבעי התבנית." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "שלוש צביעות מצבעי התבנית."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",

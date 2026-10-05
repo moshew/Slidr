@@ -1,8 +1,8 @@
 /**
  * `useKept` is `useState` whose value outlives the component: it is kept by a name, for as long
- * as the window is open. For what the user fills in on the Actions tab of an AI tool (the
+ * as the window is open. For what the user fills in on the Actions tab of the AI chat (the
  * description and the files of a template, the prompt of a picture, the text a chart is filled
- * from): the tab's component goes whenever the panel shows the chat or another tool, and what
+ * from): the tab's component goes whenever the panel shows the chat or another panel, and what
  * was typed there must be there on return, as a message being written is (`drafts.ts`).
  */
 import { useCallback } from 'react';

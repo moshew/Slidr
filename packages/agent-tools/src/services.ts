@@ -23,11 +23,32 @@ export interface PngImage {
   height?: number;
 }
 
-/** The user's selection, as the app's `SelectionStore` holds it (CMD-05). */
+/**
+ * A stretch of text the user selected inside a text box, a shape or a table cell, while its
+ * text is being edited (ADR-072). The text editor holds it, not the `SelectionStore`.
+ */
+export interface TextSelection {
+  slideId: string;
+  elementId: string;
+  /** For a table: the cell the text is in. */
+  cell?: { row: number; col: number };
+  /** The selected characters; paragraphs and line breaks are `\n`. */
+  text: string;
+  /**
+   * Which appearance of `text` in the element's text (or the cell's) it is, counted from 1, as
+   * `text_replace` counts them.
+   */
+  occurrence: number;
+}
+
+/** The user's selection, as the app's `SelectionStore` holds it (CMD-05), and selected text. */
 export type SelectionSnapshot = Pick<
   SelectionState,
   'currentSlideId' | 'selectedSlideIds' | 'selectedElementIds' | 'editingElementId'
->;
+> & {
+  /** Text selected in the element being edited; absent or null when there is none. */
+  textSelection?: TextSelection | null;
+};
 
 /** The editor around the deck. Filled by WG3 / WG11 from `SelectionStore` and the stage. */
 export interface UiPort {

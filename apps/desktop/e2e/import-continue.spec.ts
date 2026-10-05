@@ -104,7 +104,7 @@ test('a deck that is opened again has its import: the report, the chat, and the 
   // The deck is closed, and the user is elsewhere when it is opened again.
   await reopenDeck(page, async () => {
     await expect(page.getByTestId('import-start')).toBeVisible();
-    await page.locator('[data-testid="activity-bar"] [data-panel="ai.deck"]').click();
+    await page.locator('[data-testid="activity-bar"] [data-panel="ai"]').click();
     await expect(page.getByTestId('import-start')).toHaveCount(0);
   });
 
@@ -178,7 +178,7 @@ test('a finished import that is opened again is not offered to continue, and its
   await turnsDone(page, 2);
   expect(await slideNames(page)).toEqual(HANDWRITTEN_SLIDES);
 
-  const deckPanel = page.locator('[data-testid="activity-bar"] [data-panel="ai.deck"]');
+  const deckPanel = page.locator('[data-testid="activity-bar"] [data-panel="ai"]');
   await reopenDeck(page, () => deckPanel.click());
   // Nothing was cut: the panel is not opened over what the user is doing.
   await expect.poll(async () => (await state(page)).file).toBe('handwritten.html');

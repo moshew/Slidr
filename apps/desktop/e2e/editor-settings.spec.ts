@@ -74,7 +74,7 @@ test('the model chosen in the settings is the one the chat shows', async ({ page
   expect(model).toBeTruthy();
 
   // The picker of the chat reads the same setting.
-  await page.getByTestId('activity-bar').locator('[data-panel="ai.deck"]').click();
+  await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
   await expect(page.getByTestId('model-picker')).toHaveAttribute('data-model', model);
   await expect(page.getByTestId('model-picker')).toContainText(label);
 });

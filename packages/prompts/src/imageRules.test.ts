@@ -20,7 +20,9 @@ describe("the deck's image style and palette", () => {
   // (ADR-051). An agent that is asked to write them in says the style twice in every prompt.
   it('are not asked of the agent, since the tool adds them', () => {
     for (const action of ['slide.image', 'image.alternatives'] as const) {
-      const message = actionMessage({ action, params: {}, replyIn: 'English' });
+      // Each names what it is about (ADR-072): a slide, or an image on it.
+      const params = { slideId: 's_1', elementId: 'e_1' };
+      const message = actionMessage({ action, params, replyIn: 'English' });
       expect(message).not.toMatch(/image style and its palette/);
       // The agent is told why its prompt stops at what the picture shows.
       expect(message).toMatch(/the app adds the deck's style and palette to every prompt itself/);

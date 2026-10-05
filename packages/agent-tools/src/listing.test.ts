@@ -46,6 +46,7 @@ describe('the catalogue', () => {
       'element_delete',
       'elements_arrange',
       'text_set',
+      'text_replace',
       'table_set',
       'chart_set',
       'animation_set',
@@ -84,7 +85,8 @@ describe('the catalogue', () => {
     for (const scope of ['deck', 'slide', 'object'] as const) {
       expect(names(scope).filter((name) => name.startsWith('import_'))).toEqual([]);
     }
-    expect(names('deck')).not.toContain('ui_present_options');
+    // The one chat of the app is a deck session, and offers options for what the user points at.
+    expect(names('deck')).toEqual(expect.arrayContaining(['ui_present_options', 'text_replace']));
     expect(names('slide')).toEqual(
       expect.arrayContaining([
         'slide_replace_from_html',
@@ -96,12 +98,12 @@ describe('the catalogue', () => {
     expect(names('slide')).not.toContain('slide_delete');
     expect(names('object')).not.toEqual(expect.arrayContaining(['element_add']));
     expect(names('object')).not.toContain('element_delete');
-    expect(names('object')).toContain('text_set');
+    expect(names('object')).toEqual(expect.arrayContaining(['text_set', 'text_replace']));
   });
 
   it('lists only the tools that need no service when there are none', () => {
     const bare = createDeckApi(new CommandBus(hebrewDeck()));
-    expect(bare.list().map((t) => t.name)).toHaveLength(19);
+    expect(bare.list().map((t) => t.name)).toHaveLength(20);
   });
 });
 
@@ -134,8 +136,8 @@ describe('tool definitions for a transport adapter', () => {
 
   it('stay within a size the agent can afford', () => {
     const total = JSON.stringify(listing).length;
-    // About 74 KB (20k tokens) with every service; 56 KB with the model alone.
-    expect(total).toBeLessThan(90_000);
+    // About 92 KB (23k tokens) with every service. Raised from 90 KB for text_replace (ADR-072).
+    expect(total).toBeLessThan(93_000);
   });
 
   it('give the image tools, and the drafting of a template, more time than a call gets by default', () => {

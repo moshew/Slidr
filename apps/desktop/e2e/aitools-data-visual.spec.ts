@@ -43,7 +43,7 @@ for (const { theme, lang, all } of looks) {
     await openApp(page, { script: 'chart-actions', lang, theme });
     await addTitle(page, 'ההכנסות שלנו');
     await addChart(page);
-    await openTool(page, 'ai.object', 'actions');
+    await openTool(page, 'actions');
     if (all) {
       await settle(page);
       await page.screenshot({ path: out(`chart-actions-${name}`) });
@@ -55,7 +55,7 @@ for (const { theme, lang, all } of looks) {
     await settle(page);
     await page.screenshot({ path: out(`chart-types-${name}`) });
     if (!all) return;
-    await openTool(page, 'ai.object', 'actions');
+    await openTool(page, 'actions');
     await runAction(page, 'chart.title');
     await expect(cards(page)).toHaveCount(4);
     await cards(page).nth(1).hover();
@@ -68,7 +68,7 @@ for (const { theme, lang, all } of looks) {
       await openApp(page, { script: 'table-actions', lang, theme });
       await addTitle(page, 'הלקוחות שלנו');
       await addTable(page);
-      await openTool(page, 'ai.object', 'actions');
+      await openTool(page, 'actions');
       await page.getByTestId('fill-source').fill('צפון 340 (+12%), מרכז 520 (+8%), דרום 210');
       await settle(page);
       await page.screenshot({ path: out(`table-actions-${name}`) });
@@ -86,9 +86,9 @@ for (const { theme, lang, all } of looks) {
       await openApp(page, { script: 'shape-actions', lang, theme });
       await addTitle(page, 'שלבי העבודה');
       await addShape(page);
-      await openTool(page, 'ai.object', 'actions');
+      await openTool(page, 'actions');
       await runAction(page, 'shape.suggest');
-      await openTool(page, 'ai.object', 'actions');
+      await openTool(page, 'actions');
       await settle(page);
       await page.screenshot({ path: out(`shape-actions-${name}`) });
       await runAction(page, 'shape.colour');
@@ -103,7 +103,7 @@ for (const { theme, lang, all } of looks) {
       await openApp(page, { script: 'icon-actions', lang, theme });
       await addTitle(page, 'היעד שלנו');
       await addIcon(page);
-      await openTool(page, 'ai.object', 'actions');
+      await openTool(page, 'actions');
       await runAction(page, 'icon.replace');
       await expect(cards(page)).toHaveCount(3);
       await cards(page).nth(1).hover();

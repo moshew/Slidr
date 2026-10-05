@@ -1,9 +1,8 @@
 /**
  * What is being written in each chat (CHT-U05): the words and the files of a message that was
  * not sent yet. A chat's component goes whenever its panel shows something else (the Actions
- * tab, another tool, the settings, another slide when the Stage follows the agent), so what the
- * user has typed and attached is kept here, by what the chat is about: the deck, a slide, a
- * selection. It is there when the chat is back, for as long as the window is open.
+ * tab, the settings, another panel), so what the user has typed and attached is kept here, by
+ * the chat it is for. It is there when the chat is back, for as long as the window is open.
  */
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { Attachment } from '../agent/agentService';

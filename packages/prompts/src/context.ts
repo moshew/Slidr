@@ -1,5 +1,11 @@
-import type { SelectionSnapshot, SessionScope } from '@slidr/agent-tools';
-import { walkElements, type ChangeSummary, type Deck, type Element } from '@slidr/model';
+import type { SelectionSnapshot, SessionScope, TextSelection } from '@slidr/agent-tools';
+import {
+  findElementInDeck,
+  walkElements,
+  type ChangeSummary,
+  type Deck,
+  type Element,
+} from '@slidr/model';
 
 export interface ContextInput {
   /** The scope the session was started with. */
@@ -29,6 +35,8 @@ const MAX_TEXT = 120;
 const MAX_IMAGE_STYLE = 400;
 /** Longest list the block carries; a longer one is cut and says how much is missing. */
 const MAX_LIST = 40;
+/** Selected text is the user's words: a paragraph or a few, not a page. */
+const MAX_SELECTED = 1500;
 
 function clip(text: string, max: number): string {
   const chars = [...text];
@@ -85,6 +93,23 @@ function elementRefs(deck: Deck, slideId: string | null, ids: readonly string[])
     const element = byId.get(id);
     return element ? elementRef(element) : { id, missing: true };
   });
+}
+
+/**
+ * The text the user selected, as `text_replace` takes it (ADR-072). Text that is too long to
+ * quote is cut, and says so: the agent reads the rest, and changes it with `text_set`.
+ */
+function selectedText(deck: Deck, selected: TextSelection) {
+  const found = findElementInDeck(deck, selected.elementId);
+  if (!found || found.slide.id !== selected.slideId) return null;
+  const cut = [...selected.text].length > MAX_SELECTED;
+  return {
+    element: selected.elementId,
+    ...(selected.cell ? { cell: selected.cell } : {}),
+    text: selected.text,
+    occurrence: selected.occurrence,
+    ...(cut ? { cut: true } : {}),
+  };
 }
 
 /** Only what changed: an empty object says the agent's picture of the deck is still good. */
@@ -150,6 +175,8 @@ export function contextBlock(input: ContextInput): string {
     (ref) => !('missing' in ref),
   );
   line('selection', capped(selected));
+  const text = selection.textSelection ? selectedText(deck, selection.textSelection) : null;
+  if (text) lines.push(`text_selection: ${json(text, { text: MAX_SELECTED })}`);
   line('changed_since_last_turn', changed(changes));
   if (input.outline) line('outline', input.outline);
 

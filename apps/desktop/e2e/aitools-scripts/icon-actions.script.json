@@ -1,5 +1,5 @@
 {
-  "description": "An object chat on an icon, in Hebrew, for the suites of the icon actions (AIO-06), with its tool calls carried out (\"call\": true). Turn 1 answers \"a more fitting icon\": it searches the icon library with icon_search and offers what it found with ui_present_options, kind element, each option the element_update patch that swaps the markup. Turn 2 answers \"colour by the template\": two colourings as patches of colorOverrides, in theme tokens. Hand-written; not one of the Rust mock's.",
+  "description": "The AI chat on a selected icon, in Hebrew, for the suites of the icon actions (AIO-06), with its tool calls carried out (\"call\": true). Turn 1 answers \"a more fitting icon\": it searches the icon library with icon_search and offers what it found with ui_present_options, kind element, each option the element_update patch that swaps the markup. Turn 2 answers \"colour by the template\": two colourings as patches of colorOverrides, in theme tokens. Hand-written; not one of the Rust mock's. It asks which element is selected first, and names it in its calls, as an agent of the one chat does (ADR-072).",
   "turns": [
     [
       {
@@ -8,7 +8,19 @@
         "id": "search_1",
         "name": "icon_search",
         "source": "app",
-        "input": { "query": "target", "count": 3 },
+        "input": {
+          "query": "target",
+          "count": 3
+        },
+        "call": true
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
         "call": true
       },
       {
@@ -20,24 +32,49 @@
         "input": {
           "kind": "element",
           "prompt": "אייקונים ליעד",
+          "elementId": {
+            "$ref": "selection_t0.selectedElements.0.id"
+          },
           "options": [
             {
-              "label": { "$ref": "search_1.icons.0.name" },
-              "set": { "markup": { "$ref": "search_1.icons.0.svg" } }
+              "label": {
+                "$ref": "search_1.icons.0.name"
+              },
+              "set": {
+                "markup": {
+                  "$ref": "search_1.icons.0.svg"
+                }
+              }
             },
             {
-              "label": { "$ref": "search_1.icons.1.name" },
-              "set": { "markup": { "$ref": "search_1.icons.1.svg" } }
+              "label": {
+                "$ref": "search_1.icons.1.name"
+              },
+              "set": {
+                "markup": {
+                  "$ref": "search_1.icons.1.svg"
+                }
+              }
             },
             {
-              "label": { "$ref": "search_1.icons.2.name" },
-              "set": { "markup": { "$ref": "search_1.icons.2.svg" } }
+              "label": {
+                "$ref": "search_1.icons.2.name"
+              },
+              "set": {
+                "markup": {
+                  "$ref": "search_1.icons.2.svg"
+                }
+              }
             }
           ]
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "שלושה אייקונים שאומרים \"יעד\"." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "שלושה אייקונים שאומרים \"יעד\"."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",
@@ -53,7 +90,20 @@
       }
     ],
     [
-      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 400,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
       {
         "delayMs": 500,
         "type": "tool_call_started",
@@ -63,20 +113,39 @@
         "input": {
           "kind": "element",
           "prompt": "שתי צביעות מהתבנית",
+          "elementId": {
+            "$ref": "selection_t1.selectedElements.0.id"
+          },
           "options": [
             {
               "label": "הצבע הראשי",
-              "set": { "colorOverrides": { "currentColor": { "token": "primary" } } }
+              "set": {
+                "colorOverrides": {
+                  "currentColor": {
+                    "token": "primary"
+                  }
+                }
+              }
             },
             {
               "label": "הדגשה",
-              "set": { "colorOverrides": { "currentColor": { "token": "accent" } } }
+              "set": {
+                "colorOverrides": {
+                  "currentColor": {
+                    "token": "accent"
+                  }
+                }
+              }
             }
           ]
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "שתי צביעות מצבעי התבנית." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "שתי צביעות מצבעי התבנית."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",

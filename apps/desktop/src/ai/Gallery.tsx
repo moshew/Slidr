@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import type { SessionScope } from '@slidr/agent-tools';
 import { findElement, findSlide, type Deck } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { Check, ChevronLeft, ChevronRight, CircleAlert, X } from '@slidr/ui/icons';
 import { cx, Icon, IconButton, ScrollArea, Skeleton } from '@slidr/ui';
-import { useAssetResolver, useDeck, useEditor, useElementSize } from '../shell';
+import { useAssetResolver, useDeck, useEditor, useElementSize, useSelection } from '../shell';
 import { historyOf, tryOn, type GalleryCard, type OptionSet } from './variations';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
 import { aiOf } from './runtime';
 
 /*
- * The results area of an AI tool (SPEC 4.3; WG11-T08): the options the agent offered as cards.
+ * The results area of the AI chat (SPEC 4.3; WG11-T08): the options the agent offered as cards.
  * Hovering a card shows it on the slide without changing the deck, and a click applies it as
  * one undo step. Images appear in their cards one by one, as they are made. The sets offered
- * before for the same target are a step back (AIO-09).
+ * before for the same target are a step back (AIO-09). The area shows the options for what is on
+ * the slide the Stage shows, where a card can be tried (ADR-072).
  */
 
 /** Space between the cards of a row, and inside a card around its picture: Tailwind's 2. */
@@ -25,17 +25,16 @@ const GAP = 8;
 const CARD_EDGE = 2 * (GAP + 1);
 
 /**
- * The sets a panel goes through: the newest one its tool was offered for what the panel is on,
- * after the ones offered for the same target before it (AIO-09). Empty while there is none.
+ * The sets the area goes through: the newest one offered for something on the slide the Stage
+ * shows, after the ones offered for the same target before it (AIO-09). Empty while there is none.
  */
-function useOptionSets(scope: SessionScope): OptionSet[] {
+function useOptionSets(): OptionSet[] {
   const { gallery } = aiOf(useEditor());
   const state = useStore(gallery.store);
   const deck = useDeck((s) => s.deck);
-  if (scope.kind !== 'slide' && scope.kind !== 'object') return [];
-  const newest = state.sets.findLast(({ from, target }) => {
-    if (from !== scope.kind || target.slideId !== scope.slideId) return false;
-    if (scope.kind === 'object' && !scope.elementIds.includes(target.elementId ?? '')) return false;
+  const slideId = useSelection((s) => s.currentSlideId);
+  const newest = state.sets.findLast(({ target }) => {
+    if (target.slideId !== slideId) return false;
     // What the options were for may have been deleted since.
     const slide = findSlide(deck, target.slideId);
     return Boolean(slide && (!target.elementId || findElement(slide, target.elementId)));
@@ -244,9 +243,9 @@ interface Place {
   go: (index: number) => void;
 }
 
-/** The results area of the panel on `scope`; nothing while its tool has offered no options. */
-export function Gallery({ scope }: { scope: SessionScope }) {
-  const history = useOptionSets(scope);
+/** The results area of the chat; nothing while no options were offered for this slide. */
+export function Gallery() {
+  const history = useOptionSets();
   const newest = history.at(-1);
   // The set the user went back to, while no newer one has come: a new set shows itself.
   const [back, setBack] = useState<{ id: string; newest: string }>();

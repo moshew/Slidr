@@ -1,8 +1,21 @@
 {
-  "description": "An object chat on a chart, in Hebrew, for the suites of the chart actions (AIO-07), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest a chart type\": ui_present_options, kind chart, three types as chart_set arguments. Turn 2 answers \"title and insight\": four titles the same way, and the insight in the reply. Turn 3 answers \"fill from text\": it asks which element is selected, sets the chart's data and title with chart_set and looks at the slide. Hand-written; not one of the Rust mock's.",
+  "description": "The AI chat on a selected chart, in Hebrew, for the suites of the chart actions (AIO-07), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest a chart type\": ui_present_options, kind chart, three types as chart_set arguments. Turn 2 answers \"title and insight\": four titles the same way, and the insight in the reply. Turn 3 answers \"fill from text\": it asks which element is selected, sets the chart's data and title with chart_set and looks at the slide. Hand-written; not one of the Rust mock's. It asks which element is selected first, and names it in its calls, as an agent of the one chat does (ADR-072).",
   "turns": [
     [
-      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 400,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
       {
         "delayMs": 500,
         "type": "tool_call_started",
@@ -12,19 +25,43 @@
         "input": {
           "kind": "chart",
           "prompt": "שלושה סוגים שמתאימים לנתונים",
+          "elementId": {
+            "$ref": "selection_t0.selectedElements.0.id"
+          },
           "options": [
-            { "label": "קו: המגמה לאורך השנים", "set": { "chartType": "line" } },
-            { "label": "שטח: הנפח שמצטבר", "set": { "chartType": "area" } },
+            {
+              "label": "קו: המגמה לאורך השנים",
+              "set": {
+                "chartType": "line"
+              }
+            },
+            {
+              "label": "שטח: הנפח שמצטבר",
+              "set": {
+                "chartType": "area"
+              }
+            },
             {
               "label": "עמודות אופקיות: השוואה",
-              "set": { "chartType": "bar", "labels": true }
+              "set": {
+                "chartType": "bar",
+                "labels": true
+              }
             }
           ]
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "סדרה אחת לאורך זמן: " },
-      { "delayMs": 40, "type": "text_delta", "text": "קו מראה את המגמה הכי ברור." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "סדרה אחת לאורך זמן: "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "קו מראה את המגמה הכי ברור."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",
@@ -40,7 +77,20 @@
       }
     ],
     [
-      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 400,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t1",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
       {
         "delayMs": 500,
         "type": "tool_call_started",
@@ -50,17 +100,48 @@
         "input": {
           "kind": "chart",
           "prompt": "ארבע כותרות לגרף",
+          "elementId": {
+            "$ref": "selection_t1.selectedElements.0.id"
+          },
           "options": [
-            { "label": "המגמה", "set": { "title": "ההכנסות הוכפלו בתוך שנתיים" } },
-            { "label": "המספר", "set": { "title": "מ-120 ל-260 בשנתיים" } },
-            { "label": "הקצב", "set": { "title": "הצמיחה מאיצה משנה לשנה" } },
-            { "label": "השאלה", "set": { "title": "לאן ממשיכים מ-260?" } }
+            {
+              "label": "המגמה",
+              "set": {
+                "title": "ההכנסות הוכפלו בתוך שנתיים"
+              }
+            },
+            {
+              "label": "המספר",
+              "set": {
+                "title": "מ-120 ל-260 בשנתיים"
+              }
+            },
+            {
+              "label": "הקצב",
+              "set": {
+                "title": "הצמיחה מאיצה משנה לשנה"
+              }
+            },
+            {
+              "label": "השאלה",
+              "set": {
+                "title": "לאן ממשיכים מ-260?"
+              }
+            }
           ]
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "התובנה: ההכנסות יותר מהוכפלו " },
-      { "delayMs": 40, "type": "text_delta", "text": "בין 2024 ל-2026, והצמיחה מאיצה." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "התובנה: ההכנסות יותר מהוכפלו "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "בין 2024 ל-2026, והצמיחה מאיצה."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",
@@ -92,9 +173,16 @@
         "name": "chart_set",
         "source": "app",
         "input": {
-          "elementId": { "$ref": "selection_1.selectedElements.0.id" },
+          "elementId": {
+            "$ref": "selection_1.selectedElements.0.id"
+          },
           "categories": ["צפון", "מרכז", "דרום", "ירושלים"],
-          "series": [{ "name": "לקוחות", "values": [340, 520, 210, 180] }],
+          "series": [
+            {
+              "name": "לקוחות",
+              "values": [340, 520, 210, 180]
+            }
+          ],
           "title": "המרכז מוביל במספר הלקוחות"
         },
         "call": true
@@ -105,10 +193,18 @@
         "id": "render_1",
         "name": "slide_render",
         "source": "app",
-        "input": { "slideId": { "$ref": "selection_1.currentSlide.id" } },
+        "input": {
+          "slideId": {
+            "$ref": "selection_1.currentSlide.id"
+          }
+        },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "מילאתי ארבעה אזורים מהטקסט. " },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "מילאתי ארבעה אזורים מהטקסט. "
+      },
       {
         "delayMs": 40,
         "type": "text_delta",

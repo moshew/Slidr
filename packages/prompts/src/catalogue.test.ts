@@ -39,6 +39,7 @@ const NOT_TOOLS = [
   'import_file',
   'current_slide',
   'selected_slides',
+  'text_selection',
   'changed_since_last_turn',
   'slide_order',
   'removed_elements',

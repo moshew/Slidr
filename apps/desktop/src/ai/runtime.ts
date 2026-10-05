@@ -10,13 +10,12 @@ import {
   type Services,
   type SessionScope,
 } from '@slidr/agent-tools';
-import { findSlide, locateElement, type Slide } from '@slidr/model';
-import { sessionBrief } from '@slidr/prompts';
+import { findSlide, locateElement } from '@slidr/model';
 import { isTauri } from '@tauri-apps/api/core';
 import { create, type StoreApi } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AgentClient } from '../agent/agent';
-import { AgentService, type TurnBrief } from '../agent/agentService';
+import { AgentService } from '../agent/agentService';
 import { captureWindowConversion, pageConversion } from '../agent/conversion';
 import { pageCapture } from '../agent/pageCapture';
 import { connectToolBridge, tauriAgent } from '../agent/tauriAgent';
@@ -39,6 +38,8 @@ import { stageGestureActive } from '../stage/gesture';
 import { createLayoutService } from '../templates/layoutService';
 import { followDirection } from '../templates/actions';
 import { appTemplateService, library } from '../templates/app';
+import { editorFor } from '../text/activeEditor';
+import { textSelectionOf } from '../text/selectedText';
 import { createDrafts, type Drafts } from './drafts';
 import { createGallery, type Gallery } from './variations';
 import { createSessions, type Sessions } from './sessions';
@@ -101,7 +102,7 @@ function pageHarness(): { client: AgentClient; connectBridge: typeof connectTool
   };
 }
 
-/** The AI side of an editing window: what the three tools' panels work with. */
+/** The AI side of an editing window: what the AI panel works with. */
 export interface AiRuntime {
   agent: AgentService;
   /** The variations gallery: options the agent offers, and images as they are made (T08). */
@@ -118,9 +119,6 @@ export interface AiRuntime {
   tools: (scope: ScopeKind) => ReadonlySet<string>;
 }
 
-/** Width of the picture a slide or object session is shown of its slide. */
-const BRIEF_WIDTH = 1024;
-
 function createAi(editor: Editor): AiRuntime {
   const inApp = isTauri();
   const workspaceId = () => editor.document?.workspace?.id ?? null;
@@ -136,10 +134,19 @@ function createAi(editor: Editor): AiRuntime {
     (id) => editor.bus.deck.assets[id],
   );
   const lint = createLintService((asset) => editor.assets.url(asset));
+  // What the user has selected, read when a turn starts and by `selection_get`: with the words
+  // selected in the text being edited, which the text editor holds (ADR-072).
   const selection = () => {
     const { currentSlideId, selectedSlideIds, selectedElementIds, editingElementId } =
       editor.selection.getState();
-    return { currentSlideId, selectedSlideIds, selectedElementIds, editingElementId };
+    const textSelection = textSelectionOf(editorFor(editingElementId));
+    return {
+      currentSlideId,
+      selectedSlideIds,
+      selectedElementIds,
+      editingElementId,
+      textSelection,
+    };
   };
 
   const capture = inApp ? createCaptureService(workspaceId) : pageCapture();
@@ -186,53 +193,21 @@ function createAi(editor: Editor): AiRuntime {
   };
   const harness = inApp ? { client: tauriAgent, connectBridge: connectToolBridge } : pageHarness();
 
-  // The chat of an object is short-lived (AIO-01): it lasts while the deck is open, and is not
-  // kept with the file. The deck's chat and the slides' are (AID-01, AIS-01).
-  const kept = inApp ? workspaceTranscripts(workspaceId) : memoryTranscripts();
-  const passing = memoryTranscripts();
-  const storeOf = (threadId: string) => (threadId.startsWith('object-') ? passing : kept);
-  const transcripts: TranscriptStore = {
-    read: (threadId) => storeOf(threadId).read(threadId),
-    append: (threadId, entries) => storeOf(threadId).append(threadId, entries),
-    setRecord: (threadId, record) => storeOf(threadId).setRecord(threadId, record),
-    records: async () => ({ ...(await passing.records()), ...(await kept.records()) }),
-  };
+  // The conversations of the chat are kept with the document (AID-01). Conversations of the
+  // slide and object chats of earlier versions stay in the file, and are not shown (ADR-072).
+  const transcripts: TranscriptStore = inApp
+    ? workspaceTranscripts(workspaceId)
+    : memoryTranscripts();
 
-  /** The slide each slide or object chat was last told about, by the id of its conversation (a
-   * slide may have several, and each was told on its own). A deck is immutable, so a slide that
-   * is the same object has not changed, and there is nothing new to tell. */
-  const told = new Map<string, Slide>();
-  const brief = async (
-    scope: SessionScope,
-    { fresh, threadId }: { fresh: boolean; threadId: string },
-  ) => {
-    if (scope.kind === 'import') {
-      // An import that was cut, or whose page was closed: what the session cannot know (IMP-09).
-      const text = importBrief(importState.getState(), editor.bus.deck, fresh);
-      return text ? { text, images: [] } : null;
-    }
-    if (scope.kind !== 'slide' && scope.kind !== 'object') return null;
-    const deck = editor.bus.deck;
-    const slide = findSlide(deck, scope.slideId);
-    const key = threadId;
-    if (!slide || (!fresh && told.get(key) === slide)) return null;
-    // A plain page cannot take a picture; there the session reads the model alone.
-    const picture = inApp
-      ? await services.capture
-          ?.renderSlide(deck, slide.id, { width: BRIEF_WIDTH })
-          .catch(() => undefined)
-      : undefined;
-    const text = sessionBrief({ scope, deck, picture: Boolean(picture) });
-    if (!text) return null;
-    const result: TurnBrief = {
-      text,
-      images: picture ? [{ mediaType: 'image/png', data: picture.data }] : [],
-      // Told once the turn is with a session: a turn that was stopped first told nobody.
-      sent: () => {
-        told.set(key, slide);
-      },
-    };
-    return result;
+  /**
+   * What a session is told beside the context block. An import that was cut, or whose page was
+   * closed, is told what it cannot know (IMP-09). The chat, a deck session, is told nothing more:
+   * what the user has selected is in the context block (ADR-072).
+   */
+  const brief = (scope: SessionScope, { fresh }: { fresh: boolean; threadId: string }) => {
+    if (scope.kind !== 'import') return Promise.resolve(null);
+    const text = importBrief(importState.getState(), editor.bus.deck, fresh);
+    return Promise.resolve(text ? { text, images: [] } : null);
   };
 
   const agent = new AgentService({

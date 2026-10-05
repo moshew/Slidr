@@ -222,7 +222,7 @@ test.describe('an agent session that sits idle (AGT-07, AGT-08)', () => {
       .map((line) => JSON.parse(line) as LogEntry);
   };
   const say = async (page: Page, message: string, nth: number) => {
-    await showPanel(page, 'ai.deck');
+    await showPanel(page, 'ai');
     await page.getByTestId('chat-input').fill(message);
     await page.getByTestId('chat-input').press('Enter');
     const turn = page.getByTestId('chat-assistant').nth(nth);

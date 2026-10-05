@@ -103,7 +103,7 @@ test('the default changed in the settings reaches a conversation that chose noth
   await expect(section).toContainText('ברירת המחדל של כל שיחה');
 
   // The conversation that chose nothing follows; the one with a choice of its own does not.
-  await showPanel(page, 'ai.deck');
+  await showPanel(page, 'ai');
   await expect.poll(() => thread(page)).toBe(second);
   await expect(picker(page)).toHaveAttribute('data-model', 'outline');
   await page.getByTestId('conversations').click();

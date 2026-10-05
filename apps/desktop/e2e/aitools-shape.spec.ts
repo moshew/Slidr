@@ -35,7 +35,7 @@ test('a shape: other shapes and colourings from the theme, as cards and one undo
   await openApp(page, { script: 'shape-actions' });
   await addTitle(page, 'שלבי העבודה');
   await addShape(page);
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   // A shape with words in it has the actions of its text, and its own beside them.
   await expect(action(page, 'text.shorten')).toBeEnabled();
   await expect(action(page, 'shape.suggest')).toBeEnabled();
@@ -66,7 +66,7 @@ test('a shape: other shapes and colourings from the theme, as cards and one undo
   expect(await undoDepth(page)).toBe(depth + 1);
 
   // The colourings are tokens of the theme, and one of them brings an outline with it.
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   await runAction(page, 'shape.colour');
   await expect(page.getByTestId('chat-user').nth(1)).toHaveText('צביעה לפי התבנית · 3 חלופות');
   await expect(cards(page)).toHaveCount(3);
@@ -93,9 +93,10 @@ test('an icon: icons of the library are offered in its place, and colourings fro
   await openApp(page, { script: 'icon-actions' });
   await addTitle(page, 'היעד שלנו');
   await addIcon(page);
-  await openTool(page, 'ai.object', 'actions');
-  // The tool says what it works on: an icon, though row B gives it the tools of a shape.
-  await expect(page.getByTestId('scope-chip')).toHaveText(/^אייקון/);
+  // The chat says what the message is about: an icon, though row B gives it the tools of a shape.
+  await openTool(page);
+  await expect(page.getByTestId('focus-chip')).toHaveText(/^אייקון/);
+  await openTool(page, 'actions');
   await expect(action(page, 'icon.replace')).toBeEnabled();
   await expect(action(page, 'shape.colour')).toBeEnabled();
   await expect(action(page, 'shape.suggest')).toHaveCount(0);
@@ -123,7 +124,7 @@ test('an icon: icons of the library are offered in its place, and colourings fro
   expect(picked.colorOverrides).toEqual(before.colorOverrides);
   expect(await undoDepth(page)).toBe(depth + 1);
 
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   await runAction(page, 'shape.colour');
   await expect(cards(page)).toHaveCount(2);
   await cards(page).nth(0).click();
@@ -138,15 +139,17 @@ test('an icon: icons of the library are offered in its place, and colourings fro
 test('the actions of a shape and of an icon in English', async ({ page }) => {
   await openApp(page, { script: 'shape-actions', lang: 'en' });
   await addShape(page);
-  await openTool(page, 'ai.object', 'actions');
-  await expect(page.getByTestId('scope-chip')).toHaveText(/^Shape/);
+  await openTool(page);
+  await expect(page.getByTestId('focus-chip')).toHaveText(/^Shape/);
+  await openTool(page, 'actions');
   await expect(action(page, 'shape.suggest')).toHaveText('Suggest a shape');
   await expect(action(page, 'shape.colour')).toHaveText('Colour by the template');
   await runAction(page, 'shape.suggest');
   await expect(page.getByTestId('chat-user')).toHaveText('3 other shapes');
   await expect(gallery(page)).toHaveAttribute('aria-label', 'Pick an option');
   await addIcon(page);
-  await openTool(page, 'ai.object', 'actions');
-  await expect(page.getByTestId('scope-chip')).toHaveText(/^Icon/);
+  await openTool(page);
+  await expect(page.getByTestId('focus-chip')).toHaveText(/^Icon/);
+  await openTool(page, 'actions');
   await expect(action(page, 'icon.replace')).toHaveText('A more fitting icon');
 });

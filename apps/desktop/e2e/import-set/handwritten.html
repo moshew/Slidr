@@ -1,303 +1,306 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="he" dir="rtl">
-<head>
-<meta charset="utf-8">
-<title>גינה קהילתית ברחוב הדקל</title>
-<style>
-  html, body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
-    background: #26332b;
-  }
-  body {
-    font-family: "Segoe UI", Arial, sans-serif;
-    color: #2b3a31;
-  }
-  #deck {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 1280px;
-    height: 720px;
-  }
-  section {
-    display: none;
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 1280px;
-    height: 720px;
-    box-sizing: border-box;
-    padding: 64px 96px;
-    background: #f7f2e8;
-    border-top: 14px solid #4f7a55;
-  }
-  section.current {
-    display: block;
-  }
-  h1 {
-    font-size: 76px;
-    line-height: 1.15;
-    margin: 150px 0 24px;
-    color: #2f5d3a;
-  }
-  h2 {
-    font-size: 46px;
-    margin: 0 0 36px;
-    color: #2f5d3a;
-  }
-  h3 {
-    font-size: 30px;
-    margin: 0 0 14px;
-    color: #a2572b;
-  }
-  p {
-    font-size: 28px;
-    line-height: 1.5;
-    margin: 0 0 16px;
-  }
-  ul {
-    margin: 0;
-    padding: 0 34px 0 0;
-    font-size: 30px;
-    line-height: 1.5;
-  }
-  li {
-    margin-bottom: 14px;
-  }
-  .subtitle {
-    font-size: 34px;
-    color: #6a7468;
-  }
-  .date {
-    position: absolute;
-    bottom: 60px;
-    right: 96px;
-    font-size: 24px;
-    color: #8a8f83;
-  }
+  <head>
+    <meta charset="utf-8" />
+    <title>גינה קהילתית ברחוב הדקל</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #26332b;
+      }
+      body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: #2b3a31;
+      }
+      #deck {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 1280px;
+        height: 720px;
+      }
+      section {
+        display: none;
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 1280px;
+        height: 720px;
+        box-sizing: border-box;
+        padding: 64px 96px;
+        background: #f7f2e8;
+        border-top: 14px solid #4f7a55;
+      }
+      section.current {
+        display: block;
+      }
+      h1 {
+        font-size: 76px;
+        line-height: 1.15;
+        margin: 150px 0 24px;
+        color: #2f5d3a;
+      }
+      h2 {
+        font-size: 46px;
+        margin: 0 0 36px;
+        color: #2f5d3a;
+      }
+      h3 {
+        font-size: 30px;
+        margin: 0 0 14px;
+        color: #a2572b;
+      }
+      p {
+        font-size: 28px;
+        line-height: 1.5;
+        margin: 0 0 16px;
+      }
+      ul {
+        margin: 0;
+        padding: 0 34px 0 0;
+        font-size: 30px;
+        line-height: 1.5;
+      }
+      li {
+        margin-bottom: 14px;
+      }
+      .subtitle {
+        font-size: 34px;
+        color: #6a7468;
+      }
+      .date {
+        position: absolute;
+        bottom: 60px;
+        right: 96px;
+        font-size: 24px;
+        color: #8a8f83;
+      }
 
-  /* two columns */
-  .columns {
-    display: flex;
-    gap: 56px;
-  }
-  .columns div {
-    flex: 1;
-    background: #fff;
-    border-radius: 12px;
-    padding: 30px 34px;
-    min-height: 380px;
-  }
-  .columns ul {
-    font-size: 26px;
-  }
+      /* two columns */
+      .columns {
+        display: flex;
+        gap: 56px;
+      }
+      .columns div {
+        flex: 1;
+        background: #fff;
+        border-radius: 12px;
+        padding: 30px 34px;
+        min-height: 380px;
+      }
+      .columns ul {
+        font-size: 26px;
+      }
 
-  /* quote */
-  blockquote {
-    margin: 110px 60px 0;
-    padding: 0 40px 0 0;
-    border-right: 8px solid #d98b4a;
-    font-size: 50px;
-    line-height: 1.4;
-    font-family: "David", "Times New Roman", serif;
-    color: #2f5d3a;
-  }
-  cite {
-    display: block;
-    margin: 36px 108px 0;
-    font-size: 28px;
-    font-style: normal;
-    color: #6a7468;
-  }
+      /* quote */
+      blockquote {
+        margin: 110px 60px 0;
+        padding: 0 40px 0 0;
+        border-right: 8px solid #d98b4a;
+        font-size: 50px;
+        line-height: 1.4;
+        font-family: 'David', 'Times New Roman', serif;
+        color: #2f5d3a;
+      }
+      cite {
+        display: block;
+        margin: 36px 108px 0;
+        font-size: 28px;
+        font-style: normal;
+        color: #6a7468;
+      }
 
-  /* table */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 27px;
-    background: #fff;
-  }
-  th, td {
-    text-align: right;
-    padding: 13px 22px;
-    border-bottom: 1px solid #ddd6c6;
-  }
-  th {
-    background: #4f7a55;
-    color: #fff;
-    font-weight: 600;
-  }
-  td.num, th.num {
-    text-align: left;
-  }
-  tr.total td {
-    font-weight: 700;
-    border-bottom: none;
-    background: #eef3ea;
-  }
+      /* table */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 27px;
+        background: #fff;
+      }
+      th,
+      td {
+        text-align: right;
+        padding: 13px 22px;
+        border-bottom: 1px solid #ddd6c6;
+      }
+      th {
+        background: #4f7a55;
+        color: #fff;
+        font-weight: 600;
+      }
+      td.num,
+      th.num {
+        text-align: left;
+      }
+      tr.total td {
+        font-weight: 700;
+        border-bottom: none;
+        background: #eef3ea;
+      }
 
-  /* closing */
-  .closing {
-    text-align: center;
-    background: #2f5d3a;
-    border-top-color: #d98b4a;
-    color: #f7f2e8;
-  }
-  .closing h2 {
-    font-size: 84px;
-    margin: 150px 0 30px;
-    color: #fff;
-  }
-  .closing p {
-    font-size: 32px;
-  }
-  .closing .contact {
-    margin-top: 56px;
-    font-size: 26px;
-    color: #c9d8c6;
-  }
+      /* closing */
+      .closing {
+        text-align: center;
+        background: #2f5d3a;
+        border-top-color: #d98b4a;
+        color: #f7f2e8;
+      }
+      .closing h2 {
+        font-size: 84px;
+        margin: 150px 0 30px;
+        color: #fff;
+      }
+      .closing p {
+        font-size: 32px;
+      }
+      .closing .contact {
+        margin-top: 56px;
+        font-size: 26px;
+        color: #c9d8c6;
+      }
 
-  #counter {
-    position: absolute;
-    bottom: 18px;
-    left: 28px;
-    font-size: 18px;
-    color: #8a8f83;
-  }
-</style>
-</head>
-<body>
+      #counter {
+        position: absolute;
+        bottom: 18px;
+        left: 28px;
+        font-size: 18px;
+        color: #8a8f83;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="deck">
+      <section>
+        <h1>גינה קהילתית ברחוב הדקל</h1>
+        <p class="subtitle">הצעה לוועד השכונה: להפוך את המגרש הריק לפינה ירוקה של כולנו</p>
+        <p class="date">אסיפת תושבים · מרץ 2026</p>
+      </section>
 
-<div id="deck">
-
-  <section>
-    <h1>גינה קהילתית ברחוב הדקל</h1>
-    <p class="subtitle">הצעה לוועד השכונה: להפוך את המגרש הריק לפינה ירוקה של כולנו</p>
-    <p class="date">אסיפת תושבים · מרץ 2026</p>
-  </section>
-
-  <section>
-    <h2>למה גינה קהילתית?</h2>
-    <ul>
-      <li>מקום מפגש לשכנים בכל הגילים, בלי צורך לקבוע מראש</li>
-      <li>ירקות ותבלינים טריים במרחק הליכה מהבית</li>
-      <li>המגרש הנטוש ליד מספר 14 הופך לשטח מטופח ובטוח</li>
-      <li>פעילות קבועה לילדי הגן ולכיתות א׳–ג׳ של בית הספר</li>
-      <li>קומפוסט שכונתי שמקטין את כמות האשפה בפחים</li>
-    </ul>
-  </section>
-
-  <section>
-    <h2>המגרש: היום ואחרי ההקמה</h2>
-    <div class="columns">
-      <div>
-        <h3>המצב היום</h3>
+      <section>
+        <h2>למה גינה קהילתית?</h2>
         <ul>
-          <li>כ-400 מ״ר של עשבים ופסולת בניין</li>
-          <li>אין תאורה ואין ברז מים</li>
-          <li>הגדר שבורה בשני מקומות</li>
-          <li>העירייה מנקה פעם בשנה</li>
+          <li>מקום מפגש לשכנים בכל הגילים, בלי צורך לקבוע מראש</li>
+          <li>ירקות ותבלינים טריים במרחק הליכה מהבית</li>
+          <li>המגרש הנטוש ליד מספר 14 הופך לשטח מטופח ובטוח</li>
+          <li>פעילות קבועה לילדי הגן ולכיתות א׳–ג׳ של בית הספר</li>
+          <li>קומפוסט שכונתי שמקטין את כמות האשפה בפחים</li>
         </ul>
-      </div>
-      <div>
-        <h3>אחרי ההקמה</h3>
-        <ul>
-          <li>12 ערוגות מוגבהות ופינת תבלינים</li>
-          <li>השקיה בטפטוף עם שעון מים</li>
-          <li>שני ספסלים ופרגולה מוצלת</li>
-          <li>תורנות שבועית של 30 משפחות</li>
-        </ul>
-      </div>
+      </section>
+
+      <section>
+        <h2>המגרש: היום ואחרי ההקמה</h2>
+        <div class="columns">
+          <div>
+            <h3>המצב היום</h3>
+            <ul>
+              <li>כ-400 מ״ר של עשבים ופסולת בניין</li>
+              <li>אין תאורה ואין ברז מים</li>
+              <li>הגדר שבורה בשני מקומות</li>
+              <li>העירייה מנקה פעם בשנה</li>
+            </ul>
+          </div>
+          <div>
+            <h3>אחרי ההקמה</h3>
+            <ul>
+              <li>12 ערוגות מוגבהות ופינת תבלינים</li>
+              <li>השקיה בטפטוף עם שעון מים</li>
+              <li>שני ספסלים ופרגולה מוצלת</li>
+              <li>תורנות שבועית של 30 משפחות</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <blockquote>
+          ״הילדים שלי לא ידעו שעגבנייה גדלה על שיח. אחרי חודש בגינה של השכונה הסמוכה הם כבר משקים
+          לבד.״
+        </blockquote>
+        <cite>רונית אברהמי, רחוב הדקל 9</cite>
+      </section>
+
+      <section>
+        <h2>תקציב ההקמה</h2>
+        <table>
+          <tr>
+            <th>פריט</th>
+            <th>כמות</th>
+            <th class="num">עלות (₪)</th>
+          </tr>
+          <tr>
+            <td>ערוגות מוגבהות מעץ</td>
+            <td>12</td>
+            <td class="num">9,600</td>
+          </tr>
+          <tr>
+            <td>אדמה וקומפוסט</td>
+            <td>8 קוב</td>
+            <td class="num">3,200</td>
+          </tr>
+          <tr>
+            <td>מערכת השקיה בטפטוף</td>
+            <td>1</td>
+            <td class="num">4,500</td>
+          </tr>
+          <tr>
+            <td>כלי עבודה ומחסן קטן</td>
+            <td>1</td>
+            <td class="num">2,900</td>
+          </tr>
+          <tr>
+            <td>שתילים וזרעים לעונה הראשונה</td>
+            <td>כ-200</td>
+            <td class="num">1,800</td>
+          </tr>
+          <tr class="total">
+            <td>סך הכול</td>
+            <td></td>
+            <td class="num">22,000</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="closing">
+        <h2>מצטרפים?</h2>
+        <p>פגישת מתנדבים ראשונה: יום שלישי, 19:00, במועדון השכונתי</p>
+        <p class="contact">לשאלות: יואב, דירה 6 · gina.hadekel@example.org</p>
+      </section>
+
+      <div id="counter"></div>
     </div>
-  </section>
 
-  <section>
-    <blockquote>״הילדים שלי לא ידעו שעגבנייה גדלה על שיח. אחרי חודש בגינה של השכונה הסמוכה הם כבר משקים לבד.״</blockquote>
-    <cite>רונית אברהמי, רחוב הדקל 9</cite>
-  </section>
+    <script>
+      var slides = document.querySelectorAll('section');
+      var counter = document.getElementById('counter');
+      var deck = document.getElementById('deck');
+      var index = 0;
 
-  <section>
-    <h2>תקציב ההקמה</h2>
-    <table>
-      <tr>
-        <th>פריט</th>
-        <th>כמות</th>
-        <th class="num">עלות (₪)</th>
-      </tr>
-      <tr>
-        <td>ערוגות מוגבהות מעץ</td>
-        <td>12</td>
-        <td class="num">9,600</td>
-      </tr>
-      <tr>
-        <td>אדמה וקומפוסט</td>
-        <td>8 קוב</td>
-        <td class="num">3,200</td>
-      </tr>
-      <tr>
-        <td>מערכת השקיה בטפטוף</td>
-        <td>1</td>
-        <td class="num">4,500</td>
-      </tr>
-      <tr>
-        <td>כלי עבודה ומחסן קטן</td>
-        <td>1</td>
-        <td class="num">2,900</td>
-      </tr>
-      <tr>
-        <td>שתילים וזרעים לעונה הראשונה</td>
-        <td>כ-200</td>
-        <td class="num">1,800</td>
-      </tr>
-      <tr class="total">
-        <td>סך הכול</td>
-        <td></td>
-        <td class="num">22,000</td>
-      </tr>
-    </table>
-  </section>
+      function show(n) {
+        if (n < 0 || n >= slides.length) return;
+        slides[index].classList.remove('current');
+        index = n;
+        slides[index].classList.add('current');
+        counter.textContent = index + 1 + ' / ' + slides.length;
+      }
 
-  <section class="closing">
-    <h2>מצטרפים?</h2>
-    <p>פגישת מתנדבים ראשונה: יום שלישי, 19:00, במועדון השכונתי</p>
-    <p class="contact">לשאלות: יואב, דירה 6 · gina.hadekel@example.org</p>
-  </section>
+      // the deck is drawn at 1280x720 and scaled to the window
+      function fit() {
+        var scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+        deck.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+      }
 
-  <div id="counter"></div>
-</div>
+      // right-to-left: the left arrow moves forward
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft' || e.key === 'PageDown' || e.key === ' ') show(index + 1);
+        if (e.key === 'ArrowRight' || e.key === 'PageUp') show(index - 1);
+      });
 
-<script>
-  var slides = document.querySelectorAll('section');
-  var counter = document.getElementById('counter');
-  var deck = document.getElementById('deck');
-  var index = 0;
-
-  function show(n) {
-    if (n < 0 || n >= slides.length) return;
-    slides[index].classList.remove('current');
-    index = n;
-    slides[index].classList.add('current');
-    counter.textContent = (index + 1) + ' / ' + slides.length;
-  }
-
-  // the deck is drawn at 1280x720 and scaled to the window
-  function fit() {
-    var scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
-    deck.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
-  }
-
-  // right-to-left: the left arrow moves forward
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowLeft' || e.key === 'PageDown' || e.key === ' ') show(index + 1);
-    if (e.key === 'ArrowRight' || e.key === 'PageUp') show(index - 1);
-  });
-
-  window.addEventListener('resize', fit);
-  fit();
-  show(0);
-</script>
-
-</body>
+      window.addEventListener('resize', fit);
+      fit();
+      show(0);
+    </script>
+  </body>
 </html>

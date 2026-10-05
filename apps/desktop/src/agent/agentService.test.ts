@@ -7,7 +7,14 @@ import {
   type LintService,
   type Services,
 } from '@slidr/agent-tools';
-import { CommandBus, createDeck, createSlide, findSlide } from '@slidr/model';
+import {
+  CommandBus,
+  createDeck,
+  createElement,
+  createSlide,
+  findSlide,
+  richText,
+} from '@slidr/model';
 import { describe, expect, it, vi } from 'vitest';
 import errorsScript from '../../src-tauri/src/harness/fixtures/scripts/errors.json';
 import {
@@ -138,6 +145,7 @@ function setup(
     storeImage?: AgentServiceOptions['storeImage'];
     /** Services of the Deck API beside the lint and the capture every test has. */
     services?: Services;
+    selection?: AgentServiceOptions['selection'];
   } = {},
 ) {
   const bus =
@@ -156,12 +164,14 @@ function setup(
     bus,
     api,
     lint,
-    selection: () => ({
-      currentSlideId: bus.deck.slides[0]?.id ?? null,
-      selectedSlideIds: [],
-      selectedElementIds: [],
-      editingElementId: null,
-    }),
+    selection:
+      options.selection ??
+      (() => ({
+        currentSlideId: bus.deck.slides[0]?.id ?? null,
+        selectedSlideIds: [],
+        selectedElementIds: [],
+        editingElementId: null,
+      })),
     transcripts,
     settings: (threadId) => ({
       harnessId: 'mock',
@@ -278,6 +288,53 @@ describe('a turn', () => {
     await ask(thread, 'Again');
     expect(seen.starts).toHaveLength(1);
     expect(seen.sends[1]!.context).toContain('changed_since_last_turn: {"slides":["s_1"]}');
+  });
+
+  it('tells the agent with every message what the user has selected, words too (ADR-072)', async () => {
+    const bus = new CommandBus(
+      createDeck({
+        slides: [
+          createSlide({
+            id: 's_1',
+            elements: [
+              createElement.text({
+                id: 'e_1',
+                frame: { x: 0, y: 0, w: 800, h: 200 },
+                content: richText('עוזר AI מציע לנציגים תשובות בזמן אמת', { dir: 'rtl' }),
+              }),
+            ],
+          }),
+        ],
+      }),
+      { validate: true },
+    );
+    let words: string | null = 'תשובות בזמן אמת';
+    const { thread, seen } = setup(
+      { rename },
+      {
+        bus,
+        selection: () => ({
+          currentSlideId: 's_1',
+          selectedSlideIds: ['s_1'],
+          selectedElementIds: ['e_1'],
+          editingElementId: 'e_1',
+          textSelection: words
+            ? { slideId: 's_1', elementId: 'e_1', text: words, occurrence: 1 }
+            : null,
+        }),
+      },
+    );
+    await ask(thread, 'קצר את זה');
+    const lines = seen.sends[0]!.context!.split('\n');
+    expect(lines).toContain('current_slide: {"id":"s_1","number":1}');
+    expect(lines).toContain('selection: [{"id":"e_1","type":"text"}]');
+    expect(lines).toContain(
+      'text_selection: {"element":"e_1","text":"תשובות בזמן אמת","occurrence":1}',
+    );
+    // The selection is read when each message is sent.
+    words = null;
+    await ask(thread, 'ועכשיו את השקף');
+    expect(seen.sends[1]!.context).not.toContain('text_selection');
   });
 
   it('refuses a second message while a turn runs, and an empty one always', async () => {

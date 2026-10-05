@@ -35,7 +35,7 @@ export interface ShellState {
 export const useShell = create<ShellState>()(
   persist(
     (): ShellState => ({
-      activePanel: PanelId.aiDeck,
+      activePanel: PanelId.ai,
       panelOpen: true,
       aiTab: 'chat',
       panelShare: null,
@@ -48,8 +48,14 @@ export const useShell = create<ShellState>()(
     }),
     {
       name: 'slidr.shell',
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      // Version 1 had three AI tools, `ai.deck`, `ai.slide` and `ai.object`: one chat now (ADR-072).
+      migrate: (stored, version) => {
+        const state = (stored ?? {}) as Partial<ShellState>;
+        if (version < 2 && state.activePanel?.startsWith('ai.')) state.activePanel = PanelId.ai;
+        return state;
+      },
       partialize: ({ activePanel, panelOpen, panelShare, theme }) => ({
         activePanel,
         panelOpen,
@@ -63,6 +69,19 @@ export const useShell = create<ShellState>()(
 /** Shows a panel in the Tool Panel, opening it if it was collapsed; an AI tool, on a tab. */
 export function openPanel(id: string, tab?: AiTab): void {
   useShell.setState({ activePanel: id, panelOpen: true, ...(tab ? { aiTab: tab } : {}) });
+}
+
+/**
+ * Shows the AI chat with the caret in its field: every "AI" button, menu item and Ctrl+L
+ * (ADR-072). The selection stays as it is, also selected text in a box being edited: the chat
+ * tells the agent about it with the next message.
+ */
+export function openAiChat(): void {
+  openPanel(PanelId.ai, 'chat');
+  // The panel may only be opening: the field is there after the next frame.
+  requestAnimationFrame(() =>
+    document.querySelector<HTMLElement>('[data-testid="chat-input"]')?.focus(),
+  );
 }
 
 export function setAiTab(aiTab: AiTab): void {

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import type { ImageAspect, ImageProviderInfo, SessionScope } from '@slidr/agent-tools';
+import type { ImageAspect, ImageProviderInfo } from '@slidr/agent-tools';
 import { findElement, findSlide, type Element } from '@slidr/model';
 import { ACTIONS, actionMessage, type ActionId, type ActionParams } from '@slidr/prompts';
 import { shapePresets } from '@slidr/renderer';
@@ -29,22 +29,11 @@ import {
   Shrink,
   SpellCheck,
   Split,
-  SquareDashedMousePointer,
   WandSparkles,
-  Zap,
   type LucideIcon,
 } from '@slidr/ui/icons';
-import {
-  Button,
-  EmptyState,
-  Icon,
-  IconButton,
-  SegmentedControl,
-  Select,
-  Textarea,
-  Toggle,
-} from '@slidr/ui';
-import { threadIdOf, type Attachment } from '../agent/agentService';
+import { Button, Icon, IconButton, SegmentedControl, Select, Textarea, Toggle } from '@slidr/ui';
+import type { Attachment } from '../agent/agentService';
 import { TransitionTool } from '../animations/TransitionTool';
 import { expandImage, useExpandWorking } from '../images/expand';
 import type { ImageProviderState } from '../images/images';
@@ -59,88 +48,61 @@ import {
   MaskTool,
 } from '../objects/imageTools';
 import { isTarget, useTarget } from '../objects/target';
-import { focusStage, openPanel, PanelId, setAiTab, tell, useDeck, useEditor } from '../shell';
+import { focusStage, setAiTab, tell, useDeck, useEditor } from '../shell';
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
-import { useConversation, useThread } from './Chat';
+import { DECK, useThread } from './Chat';
 import { DeckLook } from './DeckLook';
 import { useKept } from './kept';
 import { TemplateForm } from './TemplateForm';
 import { switchLayoutCommands } from './layout';
 import { aiOf } from './runtime';
-import { useObjectScope, useSlideScope } from './scopes';
+import { useFocus } from './focus';
 
 /*
- * The Actions tab of the three AI tools (SPEC 4.3; AID-05, AIS-02, AIS-04, AIO-02, AIO-03,
- * AIO-06 to AIO-08). An AI action is a template of `@slidr/prompts`, sent to the tool's chat in
- * place of a typed message, so it is part of the conversation; a deterministic control acts at
- * once.
+ * The Actions tab of the AI tool (SPEC 4.3; AID-05, AIS-02, AIS-04, AIO-02 to AIO-08; ADR-072):
+ * what the user has selected first, then the slide on the Stage, then the whole deck. An AI action
+ * is a template of `@slidr/prompts`, sent to the one chat in place of a typed message, with the
+ * slide or the element it is about; a deterministic control acts at once.
  */
-
-const DECK: SessionScope = { kind: 'deck' };
 
 /* ---------------------------------------------------------------- sending an action */
 
 export interface Runner {
-  /** Sends an action to its chat, with the files its form took, and shows the chat. */
+  /** Sends an action to the chat, with the files its form took, and shows the chat. */
   run: (id: ActionId, params?: ActionParams, attachments?: readonly Attachment[]) => void;
-  /** The action cannot be sent now: its chat is in a turn, or its session lacks a tool. */
+  /** The action cannot be sent now: the chat is in a turn, or its session lacks a tool. */
   off: (id: ActionId) => boolean;
-  /** The panel's own chat is in a turn. */
+  /** The chat is in a turn. */
   busy: boolean;
 }
 
 /** Longest text of a form that is kept with the chat's entry: a pasted page is in the message. */
 const MAX_KEPT = 600;
 
-/**
- * The actions of a panel on `scope`. One that belongs to another scope goes to the chat of that
- * scope, and the panel turns to it: the slide's chat for what an object session may not do to
- * its slide, the deck's for what a slide session may not do to the deck.
- */
-function useRunner(scope: SessionScope): Runner {
+/** What the actions of a group are about: nothing (the deck), a slide, or an element on it. */
+interface About {
+  slideId?: string;
+  slideNumber?: number;
+  elementId?: string;
+}
+
+/** The actions of a group, sent to the chat about what the group is about. */
+function useRunner(about: About = {}): Runner {
   const { t, i18n } = useTranslation('ai');
-  const editor = useEditor();
-  const ai = aiOf(editor);
-  const own = useThread(scope);
-  // The deck's chat is the conversation its tool shows now.
-  const deckId = useStore(ai.agent.shown, (shown) => shown[threadIdOf(DECK)] ?? threadIdOf(DECK));
-  const deck = useConversation(DECK, deckId);
-  // The chat of the slide an object is on, likewise.
-  const onSlide = scope.kind === 'object' ? scope.slideId : null;
-  const slideId = useStore(ai.agent.shown, (shown) => {
-    const id = onSlide ? threadIdOf({ kind: 'slide', slideId: onSlide }) : null;
-    return id ? (shown[id] ?? id) : null;
-  });
-  const opened = useStore(ai.sessions.opened);
-  const slide = useMemo(
-    () =>
-      onSlide && slideId ? ai.sessions.thread({ kind: 'slide', slideId: onSlide }, slideId) : null,
-    // `opened` is not read: the slide of another document may carry the same id, and its chat
-    // is another one (see `useConversation`).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ai, onSlide, slideId, opened],
-  );
-  const busy = useStore(own.store, (s) => s.busy);
-  const deckBusy = useStore(deck.store, (s) => s.busy);
-  const slideBusy = useStore((slide ?? own).store, (s) => s.busy);
-  /** The chat an action is sent to, and the panel of that chat when it is not this one. */
-  const home = (id: ActionId) => {
-    const kind = ACTIONS[id].scope;
-    if (kind === scope.kind) return { thread: own, busy, panel: null };
-    if (kind === 'slide' && slide)
-      return { thread: slide, busy: slideBusy, panel: PanelId.aiSlide };
-    return { thread: deck, busy: deckBusy, panel: PanelId.aiDeck };
-  };
+  const ai = aiOf(useEditor());
+  const thread = useThread(DECK);
+  const busy = useStore(thread.store, (s) => s.busy);
+  const tools = ai.tools('deck');
   return {
     busy,
-    off: (id) =>
-      home(id).busy || !ACTIONS[id].needs.every((tool) => ai.tools(ACTIONS[id].scope).has(tool)),
+    off: (id) => busy || !ACTIONS[id].needs.every((tool) => tools.has(tool)),
     run: (id, params = {}, attachments = []) => {
+      const all: ActionParams = { ...about, ...params };
       const action = {
         id,
         // What the chat shows of the form: its numbers and its words.
         params: Object.fromEntries(
-          Object.entries(params).filter(
+          Object.entries(all).filter(
             ([, value]) =>
               typeof value === 'number' || (typeof value === 'string' && value.length <= MAX_KEPT),
           ),
@@ -148,41 +110,47 @@ function useRunner(scope: SessionScope): Runner {
       };
       const message = actionMessage({
         action: id,
-        params,
+        params: all,
         replyIn: i18n.language === 'he' ? 'Hebrew' : 'English',
       });
-      const { thread, panel } = home(id);
       void thread.send(message, {
         action,
         label: actionLabel(t, action),
         ...(attachments.length > 0 ? { attachments } : {}),
       });
-      if (panel) openPanel(panel, 'chat');
-      else setAiTab('chat');
+      setAiTab('chat');
     },
   };
 }
 
 /* ---------------------------------------------------------------- the pieces of a tab */
 
-function Tab({ busy, children }: { busy: boolean; children: ReactNode }) {
-  const { t } = useTranslation('ai');
+/** What a part of the tab is about: the selection, the slide, the deck. */
+function Group({
+  id,
+  title,
+  children,
+}: {
+  id: 'selection' | 'slide' | 'deck';
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <div data-testid="ai-actions" className="flex flex-col gap-5 px-2 pt-3 pb-4">
-      {busy && (
-        <p role="status" className="px-2 text-sm text-ui-fg-muted">
-          {t('actions.busy')}
-        </p>
-      )}
+    <section
+      aria-label={title}
+      data-group={id}
+      className="flex flex-col gap-4 border-t border-ui-line pt-3 first:border-t-0 first:pt-0"
+    >
+      <h3 className="px-2 text-sm font-semibold text-ui-fg">{title}</h3>
       {children}
-    </div>
+    </section>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="flex flex-col gap-0.5">
-      <h3 className="px-2 pb-1 text-xs font-medium text-ui-fg-muted">{title}</h3>
+      <h4 className="px-2 pb-1 text-xs font-medium text-ui-fg-muted">{title}</h4>
       {children}
     </section>
   );
@@ -289,14 +257,14 @@ function useImageProvider(): 'checking' | ImageProviderState {
   return state;
 }
 
-/* ---------------------------------------------------------------- the deck tool (AID-05) */
+/* ---------------------------------------------------------------- the deck (AID-05) */
 
-export function DeckActions() {
+function DeckActions() {
   const { t } = useTranslation('ai');
-  const runner = useRunner(DECK);
+  const runner = useRunner();
   const [language, setLanguage] = useTargetLanguage();
   return (
-    <Tab busy={runner.busy}>
+    <Group id="deck" title={t('actions.groupDeck')}>
       <Section title={t('actions.content')}>
         <Row
           id="deck.translate"
@@ -317,11 +285,11 @@ export function DeckActions() {
       {/* The template gallery, the palettes and the font pairs: the user's own edits, not AI. */}
       <DeckLook />
       <TemplateForm runner={runner} />
-    </Tab>
+    </Group>
   );
 }
 
-/* ---------------------------------------------------------------- the slide tool (AIS-02, AIS-04) */
+/* ---------------------------------------------------------------- the slide on the Stage (AIS-02, AIS-04) */
 
 /** The slide's layout, among the layouts of its deck (AIS-04). */
 function LayoutControl({ slideId }: { slideId: string }) {
@@ -351,14 +319,13 @@ function LayoutControl({ slideId }: { slideId: string }) {
   );
 }
 
-function SlideActionsOn({ scope }: { scope: SessionScope & { kind: 'slide' } }) {
+function SlideActions({ slideId, slideNumber }: { slideId: string; slideNumber: number }) {
   const { t } = useTranslation('ai');
-  const runner = useRunner(scope);
+  const runner = useRunner({ slideId, slideNumber });
   const provider = useImageProvider();
   const [language, setLanguage] = useTargetLanguage();
-  const number = useDeck((s) => s.deck.slides.findIndex((slide) => slide.id === scope.slideId) + 1);
   return (
-    <Tab busy={runner.busy}>
+    <Group id="slide" title={t('actions.groupSlide', { n: slideNumber })}>
       <Section title={t('actions.design')}>
         <Row
           id="slide.redesign"
@@ -376,13 +343,7 @@ function SlideActionsOn({ scope }: { scope: SessionScope & { kind: 'slide' } }) 
       </Section>
       <Section title={t('actions.content')}>
         <Row id="slide.shorten" icon={Shrink} label={t('actions.shortenSlide')} runner={runner} />
-        <Row
-          id="slide.split"
-          icon={Split}
-          label={t('actions.split')}
-          runner={runner}
-          params={{ slideId: scope.slideId, slideNumber: number }}
-        />
+        <Row id="slide.split" icon={Split} label={t('actions.split')} runner={runner} />
         <Row id="slide.notes" icon={NotebookPen} label={t('actions.notes')} runner={runner} />
         <Row
           id="slide.translate"
@@ -396,33 +357,17 @@ function SlideActionsOn({ scope }: { scope: SessionScope & { kind: 'slide' } }) 
       </Section>
       {/* The controls that are not AI (AIS-04): the same ones row B has for a slide. */}
       <Section title={t('actions.slideSettings')}>
-        <LayoutControl slideId={scope.slideId} />
+        <LayoutControl slideId={slideId} />
         <div className="flex flex-wrap items-center gap-1">
           <BackgroundTool />
           <TransitionTool />
         </div>
       </Section>
-    </Tab>
+    </Group>
   );
 }
 
-export function SlideActions() {
-  const { t } = useTranslation('ai');
-  const scope = useSlideScope();
-  if (!scope) {
-    return (
-      <EmptyState
-        icon={Zap}
-        title={t('noSlide.title')}
-        description={t('noSlide.body')}
-        className="min-h-64"
-      />
-    );
-  }
-  return <SlideActionsOn key={scope.slideId} scope={scope} />;
-}
-
-/* ---------------------------------------------------------------- the object tool (AIO-02, AIO-03) */
+/* ---------------------------------------------------------------- the selection (AIO-02 to AIO-05) */
 
 function TextActions({ runner }: { runner: Runner }) {
   const { t } = useTranslation('ai');
@@ -558,7 +503,7 @@ function ImageActions({ runner }: { runner: Runner }) {
   const assetId = image?.element.assetId;
   const asset = useDeck((s) => (assetId ? s.deck.assets[assetId] : undefined));
   const [count, setCount] = useState(4);
-  // The words and the painted area are kept while the panel shows the chat or another tool:
+  // The words and the painted area are kept while the panel shows the chat or another panel:
   // a prompt takes thought and an area takes work, and both were lost with a look elsewhere.
   const of = image?.element.id ?? '';
   const [description, setDescription] = useKept(`image.prompt:${of}`, '');
@@ -711,7 +656,7 @@ function FillFromText({
   runner: Runner;
 }) {
   const { t } = useTranslation('ai');
-  // Kept while the panel shows the chat or another tool, and until it is sent.
+  // Kept while the panel shows the chat or another panel, and until it is sent.
   const [source, setSource] = useKept(`${id}:${elementId}`, '');
   const pasted = source.trim();
   return (
@@ -799,7 +744,7 @@ function TableActions({ runner, elementId }: { runner: Runner; elementId: string
           params={{ count: 3 }}
         />
       </Section>
-      {/* What changes the slide and not only the table is the work of the slide's chat. */}
+      {/* What changes the slide around the table, and not only the table. */}
       <Section title={t('actions.onSlide')}>
         <Row
           id="table.insight"
@@ -871,17 +816,24 @@ function actionsFor(element: Element | undefined): ActionKind {
   return 'none';
 }
 
-function ObjectActionsOn({ scope }: { scope: SessionScope & { kind: 'object' } }) {
+/** The actions for what is selected: one text, image, chart, table, shape or icon. */
+function SelectionActions({
+  slideId,
+  elementIds,
+}: {
+  slideId: string;
+  elementIds: readonly string[];
+}) {
   const { t } = useTranslation('ai');
-  const runner = useRunner(scope);
-  // The actions are for one element; a chat is for any selection.
+  const only = elementIds.length === 1 ? elementIds[0] : undefined;
+  // The actions are for one element; the chat is for any selection.
   const kind = useDeck((s) => {
-    const slide = findSlide(s.deck, scope.slideId);
-    const only = scope.elementIds.length === 1 ? scope.elementIds[0] : undefined;
+    const slide = findSlide(s.deck, slideId);
     return actionsFor(slide && only ? findElement(slide, only) : undefined);
   });
+  const runner = useRunner(only ? { slideId, elementId: only } : { slideId });
   return (
-    <Tab busy={runner.busy}>
+    <Group id="selection" title={t('actions.groupSelection')}>
       {kind === 'text' ? (
         <TextActions runner={runner} />
       ) : kind === 'textShape' ? (
@@ -894,33 +846,45 @@ function ObjectActionsOn({ scope }: { scope: SessionScope & { kind: 'object' } }
       ) : kind === 'image' ? (
         <ImageActions runner={runner} />
       ) : kind === 'chart' ? (
-        <ChartActions runner={runner} elementId={scope.elementIds[0]!} />
+        <ChartActions runner={runner} elementId={only!} />
       ) : kind === 'table' ? (
-        <TableActions runner={runner} elementId={scope.elementIds[0]!} />
+        <TableActions runner={runner} elementId={only!} />
       ) : (
-        <EmptyState
-          icon={Zap}
-          title={t('actions.noActions.title')}
-          description={t('actions.noActions.body')}
-          className="min-h-64"
-        />
+        <p data-testid="no-actions" className="px-2 text-sm text-ui-fg-muted">
+          {t('actions.noActions')}
+        </p>
       )}
-    </Tab>
+    </Group>
   );
 }
 
-export function ObjectActions() {
+/**
+ * The Actions tab: the selection, the slide on the Stage and the deck, each in a group of its
+ * own. A group is drawn anew for another slide or another selection, so no choice made in a
+ * form (a count, a tone, a painted mask) carries over to something else.
+ */
+export function AiActions() {
   const { t } = useTranslation('ai');
-  const scope = useObjectScope();
-  if (!scope) {
-    return (
-      <EmptyState
-        icon={SquareDashedMousePointer}
-        title={t('noSelection.title')}
-        description={t('noSelection.body')}
-        className="min-h-64"
-      />
-    );
-  }
-  return <ObjectActionsOn key={scope.elementIds.join(' ')} scope={scope} />;
+  const focus = useFocus();
+  const runner = useRunner();
+  return (
+    <div data-testid="ai-actions" className="flex flex-col gap-5 px-2 pt-3 pb-4">
+      {runner.busy && (
+        <p role="status" className="px-2 text-sm text-ui-fg-muted">
+          {t('actions.busy')}
+        </p>
+      )}
+      {focus.slideId && focus.elementIds.length > 0 && (
+        <SelectionActions
+          key={focus.elementIds.join(' ')}
+          slideId={focus.slideId}
+          elementIds={focus.elementIds}
+        />
+      )}
+      {focus.slideId && (
+        <SlideActions key={focus.slideId} slideId={focus.slideId} slideNumber={focus.slideNumber} />
+      )}
+      <DeckActions />
+    </div>
+  );
 }

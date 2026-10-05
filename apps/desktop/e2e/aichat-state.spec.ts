@@ -35,10 +35,10 @@ function reopenSameDeck(page: Page): Promise<void> {
   });
 }
 
-test('the slide tool works on after the same deck is opened again', async ({ page }) => {
+test('the AI chat works on after the same deck is opened again', async ({ page }) => {
   await openApp(page, { script: 'slide-redesign' });
-  await openTool(page, 'ai.slide');
-  // The panel is up, on the chat of the first slide, when the document is replaced under it.
+  await openTool(page);
+  // The panel is up, on the chat, when the document is replaced under it.
   await reopenSameDeck(page);
   await say(page, 'עצב מחדש');
   // The app's tools found the chat the message was sent in (finding 2).
@@ -78,25 +78,20 @@ test('what was typed and attached in a chat is there after a look elsewhere', as
   await expect(input(page)).toHaveValue(request);
   await expect(attached).toHaveCount(1);
 
-  // Another tool is another chat, with a message of its own being written.
-  await openTool(page, 'ai.slide');
-  await expect(input(page)).toHaveValue('');
-  await expect(attached).toHaveCount(0);
-  await input(page).fill('הגדל את הכותרת');
-  // The Stage goes to another slide, as it does when it follows the agent: another chat again.
-  const first = await page.evaluate(() => {
+  // The Stage goes to another slide, as it does when it follows the agent: the app has one AI
+  // chat (ADR-072), so the message being written in it stays as it is.
+  await page.evaluate(() => {
     const { bus, selection } = window.slidr!;
-    const before = selection.getState().currentSlideId!;
     bus.dispatch({ type: 'slide.add', slide: { id: 's_second00', elements: [], timeline: [] } });
     selection.getState().setCurrentSlide('s_second00');
-    return before;
   });
-  await expect(input(page)).toHaveValue('');
-  await page.evaluate((id) => window.slidr!.selection.getState().setCurrentSlide(id), first);
-  await expect(input(page)).toHaveValue('הגדל את הכותרת');
+  await expect(input(page)).toHaveValue(request);
+  await expect(attached).toHaveCount(1);
 
-  // Back in the deck tool the message is as it was left, and once it is sent it is gone.
-  await openTool(page, 'ai.deck');
+  // Another panel, and back: the message is as it was left, and once it is sent it is gone.
+  await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  await expect(input(page)).toBeHidden();
+  await openTool(page);
   await expect(input(page)).toHaveValue(request);
   await expect(attached).toHaveCount(1);
   await input(page).press('Enter');
@@ -175,7 +170,7 @@ test('a turn kept with the deck does not say "changes undone" when the deck is o
   await expect(turns(page).first()).not.toContainText('השינויים בוטלו');
 });
 
-test('every conversation of a tool can be reached in its list, however many there are', async ({
+test('every conversation of the chat can be reached in its list, however many there are', async ({
   page,
 }) => {
   // A low window, and more conversations than it has room for: they are kept without a limit.
@@ -290,7 +285,7 @@ test('what is filled in on the Actions tab is there after a look at the chat', a
   await openApp(page, { script: 'image-alternatives' });
 
   // The form of a template: its sources are gathered over a while.
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'actions');
   await page.locator('[data-action="template.create"]').click();
   await page.getByTestId('template-description').fill('נקי ורגוע, בכחול עמוק');
   await page.getByTestId('template-url').fill('https://example.com');
@@ -298,32 +293,33 @@ test('what is filled in on the Actions tab is there after a look at the chat', a
   await page.getByTestId('template-logo').click();
   await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: logo });
   await expect(page.getByTestId('template-file')).toHaveCount(1);
-  await openTool(page, 'ai.deck', 'chat');
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'chat');
+  await openTool(page, 'actions');
   await expect(page.getByTestId('template-description')).toHaveValue('נקי ורגוע, בכחול עמוק');
   await expect(page.getByTestId('template-url')).toHaveValue('https://example.com');
   await expect(page.getByTestId('template-file')).toContainText('logo.png');
 
-  // The prompt of a picture, in the object tool: there after the chat, and after another tool.
+  // The prompt of a picture, among the actions of the selection: there after the chat, and
+  // after another panel.
   await addImage(page);
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   await expect(page.getByTestId('image-provider')).toHaveAttribute('data-state', 'ready');
   await page.getByTestId('image-prompt').fill('נמל דייגים קטן בזריחה');
-  await openTool(page, 'ai.object', 'chat');
-  await openTool(page, 'ai.slide');
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'chat');
+  await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  await openTool(page, 'actions');
   await expect(page.getByTestId('image-prompt')).toHaveValue('נמל דייגים קטן בזריחה');
   // Sent with an action, it has done its work: the form starts over.
   await page.locator('[data-action="image.alternatives"]').click();
   await expect(page.getByTestId('chat-user')).toBeVisible();
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   await expect(page.getByTestId('image-prompt')).toHaveValue('');
 
   // The text a chart is filled from, likewise.
   await addChart(page);
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   await page.getByTestId('fill-source').fill('2024: 120, 2025: 180, 2026: 260');
-  await openTool(page, 'ai.object', 'chat');
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'chat');
+  await openTool(page, 'actions');
   await expect(page.getByTestId('fill-source')).toHaveValue('2024: 120, 2025: 180, 2026: 260');
 });

@@ -140,6 +140,64 @@ describe('the context block (SPEC 11.6)', () => {
     ]);
   });
 
+  it('quotes the text the user selected, as text_replace finds it (ADR-072)', () => {
+    const textSelection = {
+      slideId: 's_all',
+      elementId: 'e_text',
+      text: 'סוגי <האובייקטים>',
+      occurrence: 1,
+    };
+    const block = contextBlock({
+      scope: { kind: 'deck' },
+      deck: allElementsDeck(),
+      selection: { ...selection('s_all', ['e_text']), editingElementId: 'e_text', textSelection },
+      changes: UNCHANGED,
+      now,
+    });
+    expect(value(block, 'text_selection')).toEqual({
+      element: 'e_text',
+      text: 'סוגי <האובייקטים>',
+      occurrence: 1,
+    });
+    // The user's words stay data: they cannot open a tag of their own.
+    expect(block).toContain('\\u003cהאובייקטים\\u003e');
+
+    // A table cell is named; a long stretch is quoted in part, and says so.
+    const long = 'א'.repeat(2000);
+    const cell = contextBlock({
+      scope: { kind: 'deck' },
+      deck: allElementsDeck(),
+      selection: {
+        ...selection('s_all', ['e_table']),
+        textSelection: {
+          slideId: 's_all',
+          elementId: 'e_table',
+          cell: { row: 1, col: 0 },
+          text: long,
+          occurrence: 1,
+        },
+      },
+      changes: UNCHANGED,
+      now,
+    });
+    const quoted = value(cell, 'text_selection') as { text: string; cell: unknown; cut: boolean };
+    expect(quoted.cell).toEqual({ row: 1, col: 0 });
+    expect(quoted.cut).toBe(true);
+    expect([...quoted.text]).toHaveLength(1501);
+
+    // Text of an element that is gone, or no selected text at all: no line.
+    for (const gone of [{ ...textSelection, elementId: 'e_gone' }, null]) {
+      const none = contextBlock({
+        scope: { kind: 'deck' },
+        deck: allElementsDeck(),
+        selection: { ...selection('s_all'), textSelection: gone },
+        changes: UNCHANGED,
+        now,
+      });
+      expect(none).not.toContain('text_selection');
+    }
+  });
+
   it('carries the image style of the deck and the file of an import session', () => {
     const deck = englishDeck();
     deck.meta.imageStyle = 'Flat vector illustrations, navy and coral, no people.';

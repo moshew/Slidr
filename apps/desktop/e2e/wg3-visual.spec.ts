@@ -106,7 +106,7 @@ test.describe('shell states', () => {
       });
       editor.selection.getState().selectElements(['e_hero0001']);
     });
-    await page.keyboard.press('Control+3');
+    await page.keyboard.press('Control+1');
     await settle(page);
     await page.screenshot({ path: out('state-object-ai-dark-rtl') });
     await page.getByTestId('panel-collapse').click();

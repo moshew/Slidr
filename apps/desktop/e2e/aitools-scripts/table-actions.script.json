@@ -1,8 +1,21 @@
 {
-  "description": "An object chat on a table, in Hebrew, for the suites of the table actions (AIO-08), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest looks\": ui_present_options, kind table, three looks as table_set arguments. Turn 2 answers \"fill from text\": it asks which element is selected, sets the table's cells with table_set and looks at the slide. Hand-written; not one of the Rust mock's.",
+  "description": "The AI chat on a selected table, in Hebrew, for the suites of the table actions (AIO-08), with its tool calls carried out (\"call\": true). Turn 1 answers \"suggest looks\": ui_present_options, kind table, three looks as table_set arguments. Turn 2 answers \"fill from text\": it asks which element is selected, sets the table's cells with table_set and looks at the slide. Hand-written; not one of the Rust mock's. It asks which element is selected first, and names it in its calls, as an agent of the one chat does (ADR-072).",
   "turns": [
     [
-      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 400,
+        "type": "thinking_delta",
+        "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_t0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
+      },
       {
         "delayMs": 500,
         "type": "tool_call_started",
@@ -12,6 +25,9 @@
         "input": {
           "kind": "table",
           "prompt": "שלושה עיצובים לטבלה",
+          "elementId": {
+            "$ref": "selection_t0.selectedElements.0.id"
+          },
           "options": [
             {
               "label": "קווים: נקי וקל",
@@ -44,8 +60,16 @@
         },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "שלושה עיצובים, " },
-      { "delayMs": 40, "type": "text_delta", "text": "כולם עם שורת כותרת." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "שלושה עיצובים, "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "כולם עם שורת כותרת."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",
@@ -77,7 +101,9 @@
         "name": "table_set",
         "source": "app",
         "input": {
-          "elementId": { "$ref": "selection_1.selectedElements.0.id" },
+          "elementId": {
+            "$ref": "selection_1.selectedElements.0.id"
+          },
           "cells": [
             ["אזור", "לקוחות", "שינוי"],
             ["צפון", "340", "+12%"],
@@ -93,11 +119,23 @@
         "id": "render_1",
         "name": "slide_render",
         "source": "app",
-        "input": { "slideId": { "$ref": "selection_1.currentSlide.id" } },
+        "input": {
+          "slideId": {
+            "$ref": "selection_1.currentSlide.id"
+          }
+        },
         "call": true
       },
-      { "delayMs": 300, "type": "text_delta", "text": "מילאתי שלושה אזורים מהטקסט, " },
-      { "delayMs": 40, "type": "text_delta", "text": "עם מספר הלקוחות והשינוי של כל אחד." },
+      {
+        "delayMs": 300,
+        "type": "text_delta",
+        "text": "מילאתי שלושה אזורים מהטקסט, "
+      },
+      {
+        "delayMs": 40,
+        "type": "text_delta",
+        "text": "עם מספר הלקוחות והשינוי של כל אחד."
+      },
       {
         "delayMs": 60,
         "type": "turn_completed",

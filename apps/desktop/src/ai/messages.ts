@@ -4,34 +4,26 @@ export const he = {
   empty: {
     deck: {
       title: 'מה נבנה?',
-      body: 'תארו מצגת, שקף או שינוי. ה-Agent בונה את השקפים מולכם, וכל תור שלו אפשר לבטל.',
-    },
-    slide: {
-      title: 'מה לשנות בשקף?',
-      body: 'בקשו עיצוב מחדש, קיצור או ויזואליה. לכל שקף יש שיחה משלו, והיא נשמרת עם המצגת.',
-    },
-    object: {
-      title: 'מה לעשות עם מה שבחרתם?',
-      body: 'בקשו ניסוח אחר, קיצור או תמונה חדשה. השיחה מלווה את הבחירה, ומתחלפת איתה.',
+      body: 'תארו מצגת, שקף או שינוי. מה שבחרתם, שקף, אובייקט או מילים בתוך טקסט, נשלח עם ההודעה, כך ש"זה" הוא מה שבחרתם. כל תור אפשר לבטל.',
     },
     import: {
       title: 'מה נייבא?',
       body: 'ה-Agent קורא את הקובץ ומביא את השקפים שלו למצגת.',
     },
   },
-  noSelection: {
-    title: 'בחרו אובייקט בשקף',
-    body: 'כלי האובייקט עובד על מה שבחרתם: טקסט, תמונה או כל אובייקט אחר.',
-  },
-  noSlide: {
-    title: 'אין שקף לעבוד עליו',
-    body: 'הוסיפו שקף, וכלי השקף יעבוד עליו.',
+  focus: {
+    label: 'ההודעה עוסקת ב',
+    deck: 'כל המצגת',
+    slide: 'שקף {{n}}',
+    text: 'טקסט נבחר',
+    show: 'הצגה על השקף',
   },
   composer: {
     placeholder: {
       deck: 'כתבו בקשה ל-Agent…',
       slide: 'מה לשנות בשקף הזה?',
       object: 'מה לשנות במה שבחרתם?',
+      text: 'מה לעשות עם הטקסט שבחרתם?',
       import: 'כתבו בקשה ל-Agent…',
     },
     label: 'הודעה ל-Agent',
@@ -330,15 +322,15 @@ export const he = {
       improve: 'שיפור העיצוב בכל המצגת',
     },
     slide: {
-      redesign: 'עיצוב השקף מחדש · {{count}} חלופות',
-      shorten: 'קיצור הטקסט בשקף',
+      redesign: 'עיצוב שקף {{n}} מחדש · {{count}} חלופות',
+      shorten: 'קיצור הטקסט בשקף {{n}}',
       split: 'פיצול שקף {{n}} לשניים',
-      visual: 'הוספת ויזואליה',
-      image: 'הוספת תמונה',
-      animate: 'אנימציות לשקף',
-      notes: 'הערות דובר לשקף',
-      fix: 'תיקון ממצאי העיצוב בשקף',
-      translate: 'תרגום השקף ל{{language}}',
+      visual: 'הוספת ויזואליה לשקף {{n}}',
+      image: 'הוספת תמונה לשקף {{n}}',
+      animate: 'אנימציות לשקף {{n}}',
+      notes: 'הערות דובר לשקף {{n}}',
+      fix: 'תיקון ממצאי העיצוב בשקף {{n}}',
+      translate: 'תרגום שקף {{n}} ל{{language}}',
     },
     text: {
       variations: '{{count}} ניסוחים אחרים',
@@ -439,7 +431,7 @@ export const he = {
     fromText: 'מטקסט',
     fromTextHint: 'ה-Agent לוקח רק מה שכתוב בטקסט, ואומר מה נשאר בחוץ.',
     onSlide: 'על השקף',
-    onSlideHint: "שתי אלה משנות את השקף ולא רק את הטבלה, ולכן הן עוברות לצ'אט של השקף.",
+    onSlideHint: 'שתי אלה משנות את השקף ולא רק את הטבלה.',
     shape: 'צורה',
     shapeSuggest: 'הצעת צורה',
     icon: 'אייקון',
@@ -484,10 +476,10 @@ export const he = {
       needSource: 'תנו לפחות מקור אחד: תיאור, כתובת, לוגו, קובץ או המצגת הזו.',
     },
     busy: 'ה-Agent באמצע תור. הפעולות יחזרו כשיסיים.',
-    noActions: {
-      title: 'אין עדיין פעולות מוכנות לסוג הזה',
-      body: "אפשר לבקש כל שינוי בצ'אט.",
-    },
+    groupSelection: 'מה שבחרתם',
+    groupSlide: 'שקף {{n}}',
+    groupDeck: 'כל המצגת',
+    noActions: "לבחירה הזו אין פעולות מוכנות. אפשר לבקש כל שינוי בצ'אט.",
     provider: {
       checking: 'בודק את ספק התמונות…',
       ready: 'כל תמונה נוצרת בערך בדקה, והן מופיעות אחת אחת.',
@@ -502,34 +494,26 @@ export const en = {
   empty: {
     deck: {
       title: 'What shall we build?',
-      body: 'Describe a deck, a slide or a change. The agent builds the slides in front of you, and every turn of its can be undone.',
-    },
-    slide: {
-      title: 'What should change on this slide?',
-      body: 'Ask for a redesign, shorter text or a visual. Every slide has a chat of its own, saved with the deck.',
-    },
-    object: {
-      title: 'What should happen to your selection?',
-      body: 'Ask for another wording, a shorter text or a new image. The chat follows the selection, and changes with it.',
+      body: 'Describe a deck, a slide or a change. What you select, a slide, an object or words inside a text, goes with your message, so "this" is what you selected. Every turn can be undone.',
     },
     import: {
       title: 'What shall we import?',
       body: 'The agent reads the file and brings its slides into the deck.',
     },
   },
-  noSelection: {
-    title: 'Select an object on the slide',
-    body: 'The object tool works on what you select: text, an image or any other object.',
-  },
-  noSlide: {
-    title: 'No slide to work on',
-    body: 'Add a slide, and the slide tool will work on it.',
+  focus: {
+    label: 'Your message is about',
+    deck: 'The whole deck',
+    slide: 'Slide {{n}}',
+    text: 'Selected text',
+    show: 'Show on the slide',
   },
   composer: {
     placeholder: {
       deck: 'Ask the agent…',
       slide: 'What should change on this slide?',
       object: 'What should change in your selection?',
+      text: 'What should happen to the text you selected?',
       import: 'Ask the agent…',
     },
     label: 'Message to the agent',
@@ -833,15 +817,15 @@ export const en = {
       improve: 'Improve the design across the deck',
     },
     slide: {
-      redesign: 'Redesign the slide · {{count}} options',
-      shorten: 'Shorten the text on the slide',
+      redesign: 'Redesign slide {{n}} · {{count}} options',
+      shorten: 'Shorten the text on slide {{n}}',
       split: 'Split slide {{n}} in two',
-      visual: 'Add a visual',
-      image: 'Add an image',
-      animate: 'Animate the slide',
-      notes: 'Speaker notes for the slide',
-      fix: 'Fix the design findings on the slide',
-      translate: 'Translate the slide into {{language}}',
+      visual: 'Add a visual to slide {{n}}',
+      image: 'Add an image to slide {{n}}',
+      animate: 'Animate slide {{n}}',
+      notes: 'Speaker notes for slide {{n}}',
+      fix: 'Fix the design findings on slide {{n}}',
+      translate: 'Translate slide {{n}} into {{language}}',
     },
     text: {
       variations: '{{count}} other wordings',
@@ -944,8 +928,7 @@ export const en = {
     fromText: 'From text',
     fromTextHint: 'The agent takes only what the text says, and tells you what it left out.',
     onSlide: 'On the slide',
-    onSlideHint:
-      "These two change the slide and not only the table, so they go to the slide's chat.",
+    onSlideHint: 'These two change the slide, not only the table.',
     shape: 'Shape',
     shapeSuggest: 'Suggest a shape',
     icon: 'Icon',
@@ -991,10 +974,10 @@ export const en = {
         'Give at least one source: a description, an address, a logo, a file or this deck.',
     },
     busy: 'The agent is in the middle of a turn. The actions come back when it is done.',
-    noActions: {
-      title: 'No ready-made actions for this kind yet',
-      body: 'You can ask for any change in the chat.',
-    },
+    groupSelection: 'Your selection',
+    groupSlide: 'Slide {{n}}',
+    groupDeck: 'The whole deck',
+    noActions: 'Your selection has no ready-made actions. Ask for any change in the chat.',
     provider: {
       checking: 'Checking the image provider…',
       ready: 'Each image takes about a minute, and they appear one by one.',
