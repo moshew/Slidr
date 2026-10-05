@@ -14,6 +14,7 @@ import {
   mapCssColors,
   PlaceholderRole,
   themeColorCss,
+  type Accent,
   type Background,
   type Deck,
   type Element as ModelElement,
@@ -614,34 +615,53 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     }
 
     let stroke: Stroke | undefined;
+    let accent: Accent | undefined;
     if (paint.border) {
-      const [top, right, bottom, left] = paint.borders as [
-        Paint['borders'][number],
-        Paint['borders'][number],
-        Paint['borders'][number],
-        Paint['borders'][number],
-      ];
-      const same = [right, bottom, left].every(
-        (b) => b.width === top.width && b.style === top.style && b.color === top.color,
-      );
+      const sides = (['top', 'right', 'bottom', 'left'] as const).map((side, i) => ({
+        side,
+        ...paint.borders[i]!,
+      }));
+      const drawn = (b: Paint['borders'][number]) =>
+        b.width > 0 && b.style !== 'none' && b.style !== 'hidden' && alphaOf(b.color) > 0;
+      const alike = (a: Paint['borders'][number], b: Paint['borders'][number]) =>
+        drawn(a) ? a.width === b.width && a.style === b.style && a.color === b.color : !drawn(b);
       const dash = { solid: undefined, dashed: 'dashed', dotted: 'dotted' } as const;
-      if (same && top.style in dash) {
-        const kind = dash[top.style as keyof typeof dash];
-        stroke = {
-          color: color(top.color, el, 'border-top-color'),
-          width: round(top.width * kl),
+      const outline = (b: (typeof sides)[number]): Stroke | undefined => {
+        if (!drawn(b)) return undefined;
+        const kind = dash[b.style as keyof typeof dash];
+        return {
+          color: color(b.color, el, `border-${b.side}-color`),
+          width: round(b.width * kl),
           ...(kind ? { dash: kind } : {}),
+        };
+      };
+      const top = sides[0]!;
+      // One side that is not like the three others, which are alike: the outline, and in its
+      // place on that side an accent, as a card's coloured edge is written (ADR-073).
+      const odd = sides.filter((s) => sides.filter((o) => o !== s && alike(o, s)).length === 0);
+      const rest = sides.filter((s) => s !== odd[0]);
+      if (sides.every((s) => alike(s, top)) && top.style in dash) {
+        stroke = outline(top);
+      } else if (
+        odd.length === 1 &&
+        corners.kind !== 'css' &&
+        odd[0]!.style === 'solid' &&
+        drawn(odd[0]!) &&
+        rest.every((s) => alike(s, rest[0]!)) &&
+        (!drawn(rest[0]!) || rest[0]!.style in dash)
+      ) {
+        stroke = outline(rest[0]!);
+        accent = {
+          side: odd[0]!.side,
+          size: round(odd[0]!.width * kl),
+          fill: { kind: 'solid', color: color(odd[0]!.color, el, `border-${odd[0]!.side}-color`) },
+          corners: 'follow',
         };
       } else {
         // The model has one outline for the whole box; borders by side are CSS on the box.
-        for (const [side, b] of [
-          ['top', top],
-          ['right', right],
-          ['bottom', bottom],
-          ['left', left],
-        ] as const) {
+        for (const b of sides) {
           if (b.width > 0 && b.style !== 'none' && b.style !== 'hidden') {
-            css[`border-${side}`] = `${round(b.width * kl)}px ${b.style} ${b.color}`;
+            css[`border-${b.side}`] = `${round(b.width * kl)}px ${b.style} ${b.color}`;
           }
         }
       }
@@ -665,6 +685,7 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       geometry: { kind: 'preset', preset },
       fill: filled.fill,
       ...(stroke ? { stroke } : {}),
+      ...(accent ? { accent } : {}),
       ...(effects.rotation ? { rotation: effects.rotation } : {}),
       ...(Object.keys(effectsField).length > 0 ? { effects: effectsField } : {}),
       ...(Object.keys(css).length > 0 ? { css } : {}),
@@ -1111,17 +1132,15 @@ export function propose(root: Element, options: WalkOptions): Proposal {
   };
 
   /**
-   * Where a pseudo-element's box is, for the one kind that can be told without measuring:
-   * empty, absolutely positioned in its own element, and not transformed. Its used offsets and
-   * size say where the browser put it. `radius`: the corners the element cuts it to.
-   * `nothing`: it has no area, or lies wholly outside what its element clips to, and no
-   * shadow of it could show.
+   * The box of a pseudo-element by its used offsets and size, for the one kind that can be told
+   * without measuring: empty, absolutely positioned in its own element, and not transformed.
+   * `nothing`: it has no area, and no shadow of it could show.
    */
-  const pseudoPlace = (
+  const pseudoRect = (
     cs: CSSStyleDeclaration,
     r: DOMRect,
     pcs: CSSStyleDeclaration,
-  ): { rect: DOMRect; radius: number } | 'nothing' | undefined => {
+  ): DOMRect | 'nothing' | undefined => {
     if (pcs.content !== '""' || pcs.position !== 'absolute' || pcs.transform !== 'none') {
       return undefined;
     }
@@ -1150,7 +1169,89 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     const bare = pcs.boxShadow === 'none' && pcs.outlineStyle === 'none';
     if (w <= 0 || h <= 0) return bare ? 'nothing' : undefined;
     const box = paddingBox(cs, r);
-    const rect = new DOMRect(box.left + left * vl, box.top + top * vl, w * vl, h * vl);
+    return new DOMRect(box.left + left * vl, box.top + top * vl, w * vl, h * vl);
+  };
+
+  /**
+   * A pseudo-element that is a stripe along one whole side of its element, inside the borders,
+   * with a fill and nothing else: the accent of the element's shape (ADR-073). `content`: where
+   * the element's own content is, which must keep clear of it, since a shape draws its accent
+   * under what is on it. A rounded element has to clip, or the stripe would show past its
+   * corners, which an accent never does.
+   */
+  const bandOf = (
+    el: Element,
+    cs: CSSStyleDeclaration,
+    r: DOMRect,
+    pcs: CSSStyleDeclaration,
+    content: () => DOMRect[],
+  ): Accent | undefined => {
+    const rect = pseudoRect(cs, r, pcs);
+    if (!rect || rect === 'nothing') return undefined;
+    const box = paddingBox(cs, r);
+    const near = (a: number, b: number) => Math.abs(a - b) <= 0.5 * vl;
+    const flush = {
+      top: near(rect.top, box.top),
+      right: near(rect.right, box.right),
+      bottom: near(rect.bottom, box.bottom),
+      left: near(rect.left, box.left),
+    };
+    const opposite = { top: 'bottom', right: 'left', bottom: 'top', left: 'right' } as const;
+    const away = (Object.keys(flush) as (keyof typeof flush)[]).filter((side) => !flush[side]);
+    if (away.length !== 1) return undefined;
+    const side = opposite[away[0]!];
+    const paint = ownPaint(pcs);
+    const plain =
+      paint.background &&
+      !paint.border &&
+      !paint.shadow &&
+      pcs.outlineStyle === 'none' &&
+      parseFloat(pcs.opacity) === 1 &&
+      pcs.animationName === 'none' &&
+      !(Number(pcs.zIndex) < 0) &&
+      BOX_PASSTHROUGH.every(([property, initial]) => {
+        const value = pcs.getPropertyValue(property);
+        return !value || initial.includes(value);
+      }) &&
+      [
+        pcs.borderTopLeftRadius,
+        pcs.borderTopRightRadius,
+        pcs.borderBottomRightRadius,
+        pcs.borderBottomLeftRadius,
+      ].every((radius) => splitTopLevel(radius, ' ').every((part) => parseFloat(part) === 0));
+    if (!plain) return undefined;
+    const rounded = [
+      cs.borderTopLeftRadius,
+      cs.borderTopRightRadius,
+      cs.borderBottomRightRadius,
+      cs.borderBottomLeftRadius,
+    ].some((radius) => splitTopLevel(radius, ' ').some((part) => parseFloat(part) > 0));
+    if (rounded && (cs.overflowX === 'visible' || cs.overflowY === 'visible')) return undefined;
+    if (content().some((b) => b.width > 0 && b.height > 0 && overlaps(b, rect))) return undefined;
+    const across = side === 'top' || side === 'bottom';
+    const filled = fillOf(el, pcs, { w: rect.width / vl, h: rect.height / vl });
+    if (filled === 'unsupported' || filled.image || filled.fill.kind === 'none') return undefined;
+    return {
+      side,
+      size: round(((across ? rect.height : rect.width) / vl) * kl),
+      fill: filled.fill,
+    };
+  };
+
+  /**
+   * Where a pseudo-element's box is (`pseudoRect`), as a shape of its own can stand for it.
+   * `radius`: the corners the element cuts it to. `nothing`: it has no area, or lies wholly
+   * outside what its element clips to, and no shadow of it could show.
+   */
+  const pseudoPlace = (
+    cs: CSSStyleDeclaration,
+    r: DOMRect,
+    pcs: CSSStyleDeclaration,
+  ): { rect: DOMRect; radius: number } | 'nothing' | undefined => {
+    const rect = pseudoRect(cs, r, pcs);
+    if (!rect || rect === 'nothing') return rect;
+    const bare = pcs.boxShadow === 'none' && pcs.outlineStyle === 'none';
+    const box = paddingBox(cs, r);
     if (cs.overflowX === 'visible' && cs.overflowY === 'visible') return { rect, radius: 0 };
     // An element that clips cuts its pseudo-element too: at its edges, and at its corners.
     if (bare && cs.overflowX !== 'visible' && cs.overflowY !== 'visible' && !overlaps(rect, box)) {
@@ -1413,22 +1514,9 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     // own turn in paint order. Any other has no box to measure: the element's own box stays
     // HTML, and what is in it is still converted.
     const queued = proposal.pending.length;
-    const places = pseudos.map((which) => {
-      const place = pseudoPlace(cs, r, styleOf(el, which));
-      return place === 'nothing' ? undefined : place;
-    });
-    const placed = places.every((place) => place)
-      ? pseudos.map((which, i) => {
-          const pcs = styleOf(el, which);
-          const shape = shapeFor(el, pcs, ownPaint(pcs), places[i]!.rect, places[i]!.radius);
-          return shape ? { which, pcs, shape } : undefined;
-        })
-      : [undefined];
-    const pseudoBox = pseudos.length > 0 && placed.some((p) => !p);
-    if (pseudoBox) {
-      proposal.pending.length = queued;
-      // One that is drawn over what the element holds cannot be left under it with the box.
-      const content = [
+    /** Where the element's own content is: what a pseudo-element may lie over. */
+    const contentBoxes = () =>
+      [
         ...children.filter((c) => styleOf(c).position === 'static'),
         ...(hasOwnText(el) ? [el] : []),
       ].map((node) => {
@@ -1437,7 +1525,31 @@ export function propose(root: Element, options: WalkOptions): Proposal {
         range.selectNodeContents(el);
         return range.getBoundingClientRect();
       });
-      const over = pseudos.some((which, i) => {
+    // One that is a stripe along a side of the box is the accent of the box's shape; the others
+    // are drawn apart.
+    let band: { which: '::before' | '::after'; accent: Accent } | undefined;
+    for (const which of pseudos) {
+      const accent = band ? undefined : bandOf(el, cs, r, styleOf(el, which), contentBoxes);
+      if (accent) band = { which, accent };
+    }
+    const apart = pseudos.filter((which) => which !== band?.which);
+    const places = apart.map((which) => {
+      const place = pseudoPlace(cs, r, styleOf(el, which));
+      return place === 'nothing' ? undefined : place;
+    });
+    const placed = places.every((place) => place)
+      ? apart.map((which, i) => {
+          const pcs = styleOf(el, which);
+          const shape = shapeFor(el, pcs, ownPaint(pcs), places[i]!.rect, places[i]!.radius);
+          return shape ? { which, pcs, shape } : undefined;
+        })
+      : [undefined];
+    const pseudoBox = apart.length > 0 && placed.some((p) => !p);
+    if (pseudoBox) {
+      proposal.pending.length = queued;
+      // One that is drawn over what the element holds cannot be left under it with the box.
+      const content = contentBoxes();
+      const over = apart.some((which, i) => {
         const place = places[i];
         return (
           place !== undefined &&
@@ -1466,9 +1578,21 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       item.element.opacity = round(opacity * parseFloat(pcs.opacity));
     };
 
-    const both = textBlock && (painted || pseudoBox);
-    if (painted || pseudoBox) {
-      const shape = pseudoBox ? undefined : shapeFor(el, cs, paint, r);
+    const both = textBlock && (painted || pseudoBox || Boolean(band));
+    if (painted || pseudoBox || band) {
+      const before = proposal.pending.length;
+      let shape = pseudoBox ? undefined : shapeFor(el, cs, paint, r);
+      if (shape && band) {
+        // A shape has one accent, and its stripe lies inside one outline: a box that already
+        // has a side of its own, or borders by side, draws its pseudo-element itself.
+        const sided =
+          shape.element.accent !== undefined ||
+          Object.keys(shape.element.css ?? {}).some((property) => property.startsWith('border-'));
+        if (sided) {
+          proposal.pending.length = before;
+          shape = undefined;
+        } else shape.element.accent = band.accent;
+      }
       if (shape) {
         // The name is for what holds the content: the text when the node is a text block.
         const name = both ? undefined : label(el).name;
@@ -1482,7 +1606,12 @@ export function propose(root: Element, options: WalkOptions): Proposal {
         );
         item.element.opacity = round(opacity);
       } else {
-        htmlFor(el, false, pseudoBox ? 'a pseudo-element' : 'a box the model cannot draw', own);
+        htmlFor(
+          el,
+          false,
+          pseudoBox || band ? 'a pseudo-element' : 'a box the model cannot draw',
+          own,
+        );
       }
     }
 
