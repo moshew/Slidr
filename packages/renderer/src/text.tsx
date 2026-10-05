@@ -238,8 +238,13 @@ const SLIDE_LINK = /^#slide=(.+)$/;
  */
 const OPENABLE = /^(?:https?:|mailto:|tel:)/i;
 
+/** Whether an address is one a slide may open at all, wherever it is shown. */
+export function opensAddress(address: string): boolean {
+  return OPENABLE.test(address.trim());
+}
+
 function RunView({ run, role, ltr }: { run: Run; role: 'heading' | 'body'; ltr: boolean }) {
-  const { mode } = useRenderContext();
+  const { mode, opensLink } = useRenderContext();
   const style = runStyle(run.marks, role);
   const dir = ltr ? 'ltr' : undefined;
   const link = run.marks?.link;
@@ -260,7 +265,7 @@ function RunView({ run, role, ltr }: { run: Run; role: 'heading' | 'body'; ltr: 
       </a>
     );
   }
-  if (link && OPENABLE.test(link.trim())) {
+  if (link && (opensLink ?? opensAddress)(link)) {
     return (
       <a
         href={link}

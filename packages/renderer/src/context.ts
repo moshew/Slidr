@@ -94,6 +94,12 @@ export interface RenderContext {
   htmlSlot?: HtmlSlot;
   /** What the scripts of an `html` element's frame carry, so the page's policy lets them run. */
   scriptNonce?: string;
+  /**
+   * Whether a link to this address is one that will be followed where the slide is shown. A link
+   * that will not be is not drawn as one: its text is text, and its element is no link.
+   * Without it, every address a slide may open is followed (`opensAddress`).
+   */
+  opensLink?: (address: string) => boolean;
 }
 
 export const RenderContextValue = createContext<RenderContext | null>(null);

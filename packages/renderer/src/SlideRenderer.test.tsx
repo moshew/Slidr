@@ -331,6 +331,84 @@ describe('SlideRenderer', () => {
     expect(container.querySelectorAll('[tabindex]')).toHaveLength(0);
   });
 
+  it('draws as a link only what its host follows, and a host cannot make it follow more', () => {
+    const deck = allElementsDeck();
+    const slide = deck.slides[0]!;
+    const text = slide.elements.find((e) => e.id === 'e_text') as Element;
+    const linked: Element = {
+      ...text,
+      id: 'e_links',
+      content: {
+        paragraphs: [
+          {
+            dir: 'auto',
+            align: 'start',
+            runs: [
+              { text: 'page', marks: { link: 'https://example.com/a' } },
+              { text: ' and ' },
+              { text: 'mail', marks: { link: 'mailto:dana@example.com' } },
+              { text: ' and ' },
+              { text: 'phone', marks: { link: 'tel:+97231234567' } },
+              { text: ' and ' },
+              { text: 'script', marks: { link: 'javascript:alert(1)' } },
+            ],
+          },
+        ],
+      },
+    } as Element;
+    const box = (id: string, target: string) =>
+      ({ ...text, id, link: { kind: 'url', target } }) as Element;
+    const elements = [
+      linked,
+      box('e_web', 'https://example.com/b'),
+      box('e_mail', 'mailto:dana@example.com'),
+      box('e_script', 'javascript:alert(1)'),
+      { ...text, id: 'e_slide', link: { kind: 'slide', target: 's_other' } } as Element,
+    ];
+    const draw = (opensLink?: (address: string) => boolean) => {
+      render(
+        <SlideRenderer
+          deck={deck}
+          slide={{ ...slide, elements }}
+          mode="present"
+          {...(opensLink ? { opensLink } : {})}
+        />,
+      );
+      return {
+        anchors: Array.from(container.querySelectorAll('[data-element-id="e_links"] a'), (a) =>
+          a.getAttribute('href'),
+        ),
+        boxes: elements
+          .filter((e) => container.querySelector(`[data-element-id="${e.id}"][role="link"]`))
+          .map((e) => e.id),
+        marked: Array.from(container.querySelectorAll('[data-link-target]'), (el) =>
+          el.getAttribute('data-link-target'),
+        ),
+      };
+    };
+
+    // Where nothing says otherwise: the web, a mail address and a phone number.
+    expect(draw()).toEqual({
+      anchors: ['https://example.com/a', 'mailto:dana@example.com', 'tel:+97231234567'],
+      boxes: ['e_web', 'e_mail', 'e_slide'],
+      marked: ['https://example.com/b', 'mailto:dana@example.com', 's_other'],
+    });
+    // A host that hands only web addresses on: a mail link would do nothing there, so it is
+    // text, and its element is not a link (a click on it is a click on the slide).
+    const web = (address: string) => /^https?:/.test(address);
+    expect(draw(web)).toEqual({
+      anchors: ['https://example.com/a'],
+      boxes: ['e_web', 'e_slide'],
+      marked: ['https://example.com/b', 's_other'],
+    });
+    expect(container.querySelector('[data-element-id="e_links"]')?.textContent).toBe(
+      'page and mail and phone and script',
+    );
+    // A host that says yes to everything gets no more than the addresses a slide may open.
+    expect(draw(() => true).anchors).toHaveLength(3);
+    expect(draw(() => true).boxes).toEqual(['e_web', 'e_mail', 'e_slide']);
+  });
+
   it('re-renders only the elements a change touched', () => {
     const bus = new CommandBus(allElementsDeck());
     const store = createDeckStore(bus);

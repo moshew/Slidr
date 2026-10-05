@@ -14,6 +14,7 @@ import { cssString, scopeSlideCss } from './css';
 import { ElementView } from './elements';
 import { BackgroundLayers } from './fill';
 import { frameScriptNonce } from './markup';
+import { opensAddress } from './text';
 import { colorCss, deckFontFaces, themeVariables } from './theme';
 
 export interface SlideRendererProps {
@@ -41,6 +42,13 @@ export interface SlideRendererProps {
    * has no policy to satisfy, and a nonce of this load has no business in it.
    */
   scriptNonce?: string;
+  /**
+   * Narrows the links the slide draws to the addresses its host follows: a host that hands only
+   * some of them on (the app gives the system web addresses only) says so here, and a link to
+   * any other address is drawn as what it is over, not as a link that does nothing. It cannot
+   * widen them: an address no slide may open stays unopened. Keep it stable.
+   */
+  opensLink?: (address: string) => boolean;
   className?: string;
   /** Applied to the slide root, after the renderer's own styles. */
   style?: CSSProperties;
@@ -65,6 +73,7 @@ export function SlideRenderer({
   cellSlot,
   htmlSlot,
   scriptNonce: givenNonce,
+  opensLink: hostOpens,
   className,
   style,
 }: SlideRendererProps) {
@@ -89,6 +98,7 @@ export function SlideRenderer({
       cellSlot,
       htmlSlot,
       ...(scriptNonce ? { scriptNonce } : {}),
+      opensLink: (address) => opensAddress(address) && (hostOpens?.(address) ?? true),
     }),
     [
       theme,
@@ -103,6 +113,7 @@ export function SlideRenderer({
       cellSlot,
       htmlSlot,
       scriptNonce,
+      hostOpens,
     ],
   );
   const vars = useMemo(() => themeVariables(theme), [theme]);

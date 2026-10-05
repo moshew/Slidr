@@ -5,6 +5,7 @@ import { UiProvider, type Dir } from '@slidr/ui';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { i18n } from '../i18n';
 import { Controls } from './Controls';
+import { opensInShow } from './links';
 import { showScreen, type Screen } from './screen';
 
 /*
@@ -54,7 +55,13 @@ const Slides = memo(function Slides({
 }: Pick<ShowProps, 'deck' | 'resolveAsset'>) {
   return deck.slides.map((slide) => (
     <section key={slide.id} data-slide={slide.id}>
-      <SlideRenderer deck={deck} slide={slide} mode="present" resolveAsset={resolveAsset} />
+      <SlideRenderer
+        deck={deck}
+        slide={slide}
+        mode="present"
+        resolveAsset={resolveAsset}
+        opensLink={opensInShow}
+      />
     </section>
   ));
 });

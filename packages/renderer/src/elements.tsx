@@ -41,7 +41,7 @@ import { imageLook } from './imageLook';
 import { frameDocument, prepareSvg, resolveAssetRefs } from './markup';
 import { parseFragment, sanitizeFragment } from './sanitize';
 import { TableView } from './table';
-import { numberedText, TextBox, textFillStyle } from './text';
+import { numberedText, opensAddress, TextBox, textFillStyle } from './text';
 import { colorCss, shadowCss } from './theme';
 
 const FILL_PARENT: CSSProperties = { position: 'absolute', inset: 0, margin: 0, padding: 0 };
@@ -948,6 +948,13 @@ export const ElementView = memo(function ElementView({
 }) {
   const ctx = useRenderContext();
   if (element.hidden) return null;
+  // A link to an address that is not opened where the slide is shown is no link there: the
+  // element is not marked as one, so a click on it is a click on the slide.
+  const link =
+    element.link &&
+    (element.link.kind === 'slide' || (ctx.opensLink ?? opensAddress)(element.link.target))
+      ? element.link
+      : undefined;
   const ids = decoration
     ? { 'data-decoration-id': element.id }
     : { 'data-element-id': element.id, 'data-element-type': element.type };
@@ -955,12 +962,10 @@ export const ElementView = memo(function ElementView({
     <div
       {...ids}
       data-name={element.name}
-      data-link-kind={element.link?.kind}
-      data-link-target={element.link?.target}
+      data-link-kind={link?.kind}
+      data-link-target={link?.target}
       // In a show an element with a link is a stop of Tab, and Enter on it follows it (UI-06).
-      {...(element.link && ctx.mode === 'present' && !decoration
-        ? { tabIndex: 0, role: 'link' }
-        : {})}
+      {...(link && ctx.mode === 'present' && !decoration ? { tabIndex: 0, role: 'link' } : {})}
       style={{ ...boxStyle(element), ...passthroughStyle(element.css) }}
     >
       {inner(element, decoration)}
