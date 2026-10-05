@@ -9,12 +9,12 @@ import { resolveDirection } from './bidi';
 import { caretMarks, marksOf, paragraphProps, STEP_META, toPmMarks } from './editorFormat';
 import { paint, painter } from './painter';
 import {
-  hasText,
-  htmlToRichText,
-  matchDestination,
-  parseCopiedText,
-  plainTextToRichText,
+  pastedText,
   SLIDR_TEXT_MIME,
+  type ClipboardText,
+  type Destination,
+  type PasteMode,
+  type SourceContext,
 } from './paste';
 import { cleanMarks, docToRichText, richTextToDoc } from './richTextDoc';
 import { cssText } from './schema';
@@ -217,23 +217,111 @@ export function painterPlugin(target: () => TextTarget): Plugin {
   });
 }
 
-/** How long after Ctrl+Shift+V a paste event still counts as "paste plain text". */
-const PLAIN_PASTE_MS = 1000;
+/**
+ * A right click in the text (STG-06). Outside what is selected it moves the caret to where it
+ * was made, as in every editor, so that a paste from the menu lands there; inside the selection
+ * it leaves the selection, so that cut and copy are of what was selected. The browser moves its
+ * own caret, but the editor would never hear of it: the menu takes the keyboard first.
+ */
+export function rightClickPlugin(): Plugin {
+  return new Plugin({
+    props: {
+      handleDOMEvents: {
+        contextmenu(view, event) {
+          // The menu key opens the menu where the caret is.
+          if (event.button !== 2) return false;
+          const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          const { from, to, empty } = view.state.selection;
+          if (!at || (!empty && at.pos >= from && at.pos <= to)) return false;
+          const caret = TextSelection.near(view.state.doc.resolve(at.pos));
+          view.dispatch(view.state.tr.setSelection(caret));
+          return false;
+        },
+      },
+    },
+  });
+}
 
-/** Puts a rich text where the selection is. `native` text keeps its own formatting. */
-function insertRichText(view: EditorView, rich: RichText, native: boolean): void {
+/** How long after a key that asks for a kind of paste a paste event still counts as that kind. */
+const ARMED_MS = 1000;
+
+/** What a paste needs of the deck it pastes into; asked when something is pasted. */
+export interface PasteContext {
+  /** For keeping the source's formatting: the fonts and the colours of the deck (`pasteSource.ts`). */
+  source: () => SourceContext;
+  /** The direction of a paragraph without letters: the deck's, and in a table the table's. */
+  dir: () => Direction;
+}
+
+let armed: { mode: PasteMode; until: number } | null = null;
+
+/**
+ * Says that the paste event which follows is of this kind. For a key that the browser itself
+ * turns into a paste: the key says the kind, and the paste event brings the clipboard, which
+ * only it can read without asking for permission.
+ */
+export function armPaste(mode: PasteMode): void {
+  armed = { mode, until: performance.now() + ARMED_MS };
+}
+
+/** The kind of paste a key asked for a moment ago, if no paste event has taken it yet. */
+export function takeArmedPaste(): PasteMode | undefined {
+  const mode = armed && performance.now() < armed.until ? armed.mode : undefined;
+  armed = null;
+  return mode;
+}
+
+/**
+ * The text copied or cut last in this window. A menu's "Paste" reads the clipboard of the
+ * system; where that is not allowed, it still pastes what was copied here. It also tells the
+ * text of the clipboard as Slidr's own, which only a paste event can read in Slidr's format.
+ */
+let copied: ClipboardText | undefined;
+
+const sameLines = (a: string, b: string) =>
+  a.replace(/\r\n?/g, '\n').trimEnd() === b.replace(/\r\n?/g, '\n').trimEnd();
+
+/**
+ * Reads the text of the system clipboard outside a paste event: for a click on a menu. The
+ * webview may ask the user for permission, or refuse; what was copied in this window is the
+ * answer then, and undefined when there is nothing.
+ */
+export async function readClipboard(): Promise<ClipboardText | undefined> {
+  try {
+    // As a paste event gives it, with the stylesheets a word processor says its formatting in:
+    // it is read, never inserted (`paste.ts`).
+    const clipboard: { read(options?: object): Promise<ClipboardItems> } = navigator.clipboard;
+    const data: ClipboardText = { html: '', text: '', slidr: '' };
+    for (const item of await clipboard.read({ unsanitized: ['text/html'] })) {
+      if (!data.html && item.types.includes('text/html'))
+        data.html = await (await item.getType('text/html')).text();
+      if (!data.text && item.types.includes('text/plain'))
+        data.text = await (await item.getType('text/plain')).text();
+    }
+    if (copied && sameLines(copied.text, data.text)) data.slidr = copied.slidr;
+    return data.html || data.text ? data : undefined;
+  } catch {
+    return copied;
+  }
+}
+
+/** Puts pasted text where the selection is, as one undo step. */
+function insertRichText(
+  view: EditorView,
+  content: (destination: Destination) => RichText,
+  dir: Direction,
+): void {
   const { state } = view;
   const { $from, empty } = state.selection;
   const destination = $from.parent;
-  const content = native
-    ? rich
-    : matchDestination(rich, {
-        paragraph: paragraphProps(destination),
-        marks: caretMarks(state),
-      });
-  const fragment = state.schema.nodeFromJSON(richTextToDoc(content)).content;
+  const rich = content({
+    paragraph: paragraphProps(destination),
+    marks: caretMarks(state),
+    dir,
+  });
+  const fragment = state.schema.nodeFromJSON(richTextToDoc(rich)).content;
   const tr = state.tr;
-  if (empty && destination.content.size === 0 && content.paragraphs.length > 0) {
+  if (empty && destination.content.size === 0 && rich.paragraphs.length > 0) {
     // An empty line is replaced whole, so that the first pasted paragraph keeps what it is
     // (a list item stays a list item) instead of dissolving into the line it lands on.
     const start = $from.before();
@@ -249,12 +337,44 @@ function insertRichText(view: EditorView, rich: RichText, native: boolean): void
 }
 
 /**
+ * Pastes text into the editor in one of the kinds of paste. False when there was no text to
+ * paste; the document is then as it was.
+ */
+export function pasteInto(
+  view: EditorView,
+  data: ClipboardText,
+  mode: PasteMode,
+  context: PasteContext,
+): boolean {
+  const content = pastedText(data, mode, context.source());
+  if (!content) return false;
+  insertRichText(view, content, context.dir());
+  return true;
+}
+
+/**
+ * Pastes from the system clipboard outside a paste event (a menu, or a key the browser does not
+ * turn into a paste). False when the clipboard could not be read or holds no text.
+ */
+export async function pasteFromClipboard(
+  view: EditorView,
+  mode: PasteMode,
+  context: PasteContext,
+): Promise<boolean> {
+  const data = await readClipboard();
+  if (!data || view.isDestroyed) return false;
+  // The click that asked for it took the keyboard; the text has it again, with its caret.
+  view.focus();
+  return pasteInto(view, data, mode, context);
+}
+
+/**
  * The clipboard (WG4-T06). Paste: Slidr's own copied text keeps its formatting; HTML is mapped to
  * a `RichText` in the style of the destination; plain text becomes paragraphs. Ctrl+Shift+V pastes
- * plain text. Copy and cut put the selection on the clipboard as HTML, as plain text and as the
- * `RichText` itself.
+ * plain text, and a key or a menu may ask for another kind (`PasteMode`). Copy and cut put the
+ * selection on the clipboard as HTML, as plain text and as the `RichText` itself.
  */
-export function clipboardPlugin(): Plugin {
+export function clipboardPlugin(context: PasteContext): Plugin {
   let plainUntil = 0;
 
   const copy = (view: EditorView, event: ClipboardEvent): boolean => {
@@ -266,10 +386,11 @@ export function clipboardPlugin(): Plugin {
     const rich = docToRichText({ type: 'doc', content: slice.content.toJSON() as JSONContent[] });
     event.preventDefault();
     data.clearData();
-    data.setData('text/html', dom.innerHTML);
+    copied = { html: dom.innerHTML, text: plainText(rich), slidr: JSON.stringify(rich) };
+    data.setData('text/html', copied.html);
     // One line per paragraph, so that the text pastes back as the same paragraphs.
-    data.setData('text/plain', plainText(rich));
-    data.setData(SLIDR_TEXT_MIME, JSON.stringify(rich));
+    data.setData('text/plain', copied.text);
+    data.setData(SLIDR_TEXT_MIME, copied.slidr);
     if (event.type === 'cut')
       view.dispatch(view.state.tr.deleteSelection().setMeta('uiEvent', 'cut'));
     return true;
@@ -279,29 +400,25 @@ export function clipboardPlugin(): Plugin {
     props: {
       handleKeyDown(_view, event) {
         if (event.code === 'KeyV' && (event.ctrlKey || event.metaKey))
-          plainUntil = event.shiftKey ? performance.now() + PLAIN_PASTE_MS : 0;
+          plainUntil = event.shiftKey ? performance.now() + ARMED_MS : 0;
         return false;
       },
       handlePaste(view, event) {
         const data = event.clipboardData;
         const plain = performance.now() < plainUntil;
         plainUntil = 0;
+        const asked = takeArmedPaste();
         if (!data) return false;
-        const text = data.getData('text/plain');
-        if (!plain) {
-          const copied = parseCopiedText(data.getData(SLIDR_TEXT_MIME));
-          if (copied && hasText(copied)) {
-            insertRichText(view, copied, true);
-            return true;
-          }
-          const html = data.getData('text/html');
-          const mapped = html ? htmlToRichText(html) : undefined;
-          if (mapped && hasText(mapped)) {
-            insertRichText(view, mapped, false);
-            return true;
-          }
-        }
-        if (text) insertRichText(view, plainTextToRichText(text), false);
+        pasteInto(
+          view,
+          {
+            html: data.getData('text/html'),
+            text: data.getData('text/plain'),
+            slidr: data.getData(SLIDR_TEXT_MIME),
+          },
+          plain ? 'plain' : (asked ?? 'auto'),
+          context,
+        );
         // Handled either way: nothing from the clipboard reaches the document unread.
         return true;
       },

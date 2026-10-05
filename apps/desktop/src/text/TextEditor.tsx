@@ -24,12 +24,14 @@ import { cellsWritten } from './cellScope';
 import { changeParagraphsTr, STEP_META, type StepMeta } from './editorFormat';
 import { levelChange, type FormatContext } from './format';
 import { finishOpening, takeOpening } from './opening';
+import { knowInstalledFonts, sourceContext } from './pasteSource';
 import {
   blurredSelectionPlugin,
   clipboardPlugin,
   decorationsPlugin,
   emptyLinePlugin,
   painterPlugin,
+  rightClickPlugin,
 } from './plugins';
 import { docToRichText, normalizeRichText, richTextToDoc, sameValue } from './richTextDoc';
 import { textExtensions } from './schema';
@@ -302,7 +304,8 @@ export function TextEditor({
               decorationsPlugin(emptyDir),
               emptyLinePlugin(),
               blurredSelectionPlugin(),
-              clipboardPlugin(),
+              clipboardPlugin({ source: () => sourceContext(bus.deck), dir: emptyDir }),
+              rightClickPlugin(),
               painterPlugin(() => ({ kind: 'editor', view: ed.view, bus, slideId, element })),
             ];
           },
@@ -371,6 +374,8 @@ export function TextEditor({
         }
       },
       onCreate: ({ editor: ed }) => {
+        // A paste that keeps the fonts of its source has to know which fonts are installed.
+        knowInstalledFonts();
         if (kept.current) {
           // Built anew for a new theme: the selection is where it was, and the focus is taken
           // only if the editor had it (it may be in a popover of the toolbar).

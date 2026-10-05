@@ -143,6 +143,25 @@ export const he = {
   several: {
     label: 'עיצוב הטקסט',
   },
+  // The right-click menu of text that is being edited.
+  menu: {
+    cut: 'גזירה',
+    copy: 'העתקה',
+    paste: 'הדבקה',
+    pasteAs: 'הדבקה מיוחדת',
+    pasteText: 'הדבקת טקסט',
+    link: 'קישור…',
+    editLink: 'עריכת הקישור…',
+    selectAll: 'בחירת כל הטקסט',
+  },
+  paste: {
+    source: 'שמירת עיצוב המקור',
+    match: 'התאמה לעיצוב היעד',
+    matchDeck: 'בעיצוב של המצגת',
+    plain: 'טקסט בלבד',
+    nothingTitle: 'לא הודבק דבר',
+    nothingBody: 'בלוח אין טקסט, או שהאפליקציה לא הורשתה לקרוא אותו. Ctrl+V מדביק תמיד.',
+  },
   step: {
     insert: 'הוספת תיבת טקסט',
     format: 'עיצוב טקסט',
@@ -155,6 +174,7 @@ export const he = {
     link: 'קישור',
     unlink: 'הסרת קישור',
     effects: 'אפקטים לטקסט',
+    pasteText: 'הדבקת טקסט',
   },
   // The shortcut map (UI-06): what each shortcut of the text area does.
   shortcut: {
@@ -167,6 +187,7 @@ export const he = {
     pickFormat: 'מברשת עיצוב: העתקת העיצוב',
     paintFormat: 'מברשת עיצוב: החלת העיצוב שהועתק',
     link: 'קישור לכתובת או לשקף',
+    pasteSource: 'הדבקה עם עיצוב המקור',
   },
 };
 
@@ -311,6 +332,25 @@ export const en: Messages<typeof he> = {
   several: {
     label: 'Text formatting',
   },
+  menu: {
+    cut: 'Cut',
+    copy: 'Copy',
+    paste: 'Paste',
+    pasteAs: 'Paste special',
+    pasteText: 'Paste text',
+    link: 'Link…',
+    editLink: 'Edit the link…',
+    selectAll: 'Select all the text',
+  },
+  paste: {
+    source: 'Keep the source formatting',
+    match: 'Match the formatting here',
+    matchDeck: "In the deck's formatting",
+    plain: 'Text only',
+    nothingTitle: 'Nothing was pasted',
+    nothingBody:
+      'The clipboard holds no text, or the app was not allowed to read it. Ctrl+V always pastes.',
+  },
   step: {
     insert: 'Insert text box',
     format: 'Format text',
@@ -323,6 +363,7 @@ export const en: Messages<typeof he> = {
     link: 'Link',
     unlink: 'Remove link',
     effects: 'Text effects',
+    pasteText: 'Paste text',
   },
   shortcut: {
     bold: 'Bold',
@@ -334,5 +375,6 @@ export const en: Messages<typeof he> = {
     pickFormat: 'Format painter: pick up the format',
     paintFormat: 'Format painter: apply the picked format',
     link: 'Link to an address or to a slide',
+    pasteSource: 'Paste, keeping the source formatting',
   },
 };

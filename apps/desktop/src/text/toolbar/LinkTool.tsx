@@ -4,6 +4,7 @@ import {
   cx,
   IconButton,
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
   SegmentedControl,
@@ -14,11 +15,11 @@ import { Link, Unlink } from '@slidr/ui/icons';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createStore } from 'zustand/vanilla';
-import { useDeck } from '../../shell';
-import { linkTarget, setLink } from '../actions';
+import { useDeck, type ContextToolProps } from '../../shell';
+import { linkTarget, setLink, type TextTarget } from '../actions';
 import { orNull } from '../format';
 import { linkedSlide, slideLink, typedLink } from '../paste';
-import { closeToText, keepFocus, LINK_KEYS, useText, type Text } from './shared';
+import { closeToText, keepFocus, LINK_KEYS, useCompact, useText, type Text } from './shared';
 
 /* Row B for text: a link to a web address or to a slide of the deck (WG4-T09, TXT-09). */
 
@@ -27,6 +28,17 @@ const requests = createStore<{ count: number }>(() => ({ count: 0 }));
 
 export function requestLink(): void {
   requests.setState((s) => ({ count: s.count + 1 }));
+}
+
+/**
+ * Whether a target has text a link can be put on (TXT-09): the text that is being edited, a
+ * selected text box, the selected cells of a table, and a selected shape when it has text. Not
+ * several elements at once: a link is one text's.
+ */
+export function linksText(target: TextTarget): boolean {
+  if (target.kind === 'elements') return false;
+  if (target.kind !== 'element' || target.element.type !== 'shape') return true;
+  return plainText(target.element.content ?? { paragraphs: [] }) !== '';
 }
 
 /**
@@ -147,30 +159,42 @@ function LinkForm({ text, link, close }: { text: Text; link: string | null; clos
 }
 
 /**
- * The link of the text: on the editor's selection, or on all the text of a selected box. With the
- * caret inside a link and nothing selected, it is that whole link; inside a plain word, the word.
+ * The link of the text: on the editor's selection, or on all the text of a selected text box, of
+ * a selected shape, or of the selected cells of a table. With the caret inside a link and nothing
+ * selected, it is that whole link; inside a plain word, the word.
+ *
+ * The row of a table is full at 1366 (SPEC 4.4), and has no room for the button there: the
+ * popover then opens from its place in the row, for Ctrl+K and for the menu of the text.
  */
-export function LinkTool() {
+export function LinkTool({ kind }: Partial<ContextToolProps>) {
   const { t } = useTranslation('text');
   const text = useText();
+  const compact = useCompact();
   const [open, setOpen] = useState(false);
   useEffect(() => requests.subscribe(() => setOpen(true)), []);
-  if (!text) return null;
+  if (!text || !linksText(text.target)) return null;
   const { link, linkable } = currentLink(text);
   return (
     <Popover open={open && linkable} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <IconButton
-          size="sm"
-          icon={Link}
-          label={t('link.label')}
-          shortcut={LINK_KEYS}
-          disabled={!linkable}
-          data-linked={link !== null}
-          className={cx(link !== null && 'bg-ui-accent-soft text-ui-accent-fg')}
-          onMouseDown={keepFocus}
-        />
-      </PopoverTrigger>
+      {kind === 'table' && compact ? (
+        <PopoverAnchor asChild>
+          {/* No width, and none of the gap between the tools of its group. */}
+          <span aria-hidden data-testid="link-anchor" className="-ms-0.5 h-control-sm w-0" />
+        </PopoverAnchor>
+      ) : (
+        <PopoverTrigger asChild>
+          <IconButton
+            size="sm"
+            icon={Link}
+            label={t('link.label')}
+            shortcut={LINK_KEYS}
+            disabled={!linkable}
+            data-linked={link !== null}
+            className={cx(link !== null && 'bg-ui-accent-soft text-ui-accent-fg')}
+            onMouseDown={keepFocus}
+          />
+        </PopoverTrigger>
+      )}
       <PopoverContent
         // The keyboard starts in the address field, which the popover is for; with a slide
         // chosen it starts on the popover itself, so that Esc closes it and not the text.

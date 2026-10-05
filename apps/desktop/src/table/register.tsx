@@ -7,6 +7,7 @@ import {
   SizeTool,
   UnderlineTool,
 } from '../text/toolbar/CharacterTools';
+import { LinkTool } from '../text/toolbar/LinkTool';
 import { AlignTool } from '../text/toolbar/ParagraphTools';
 import { installTableClipboard } from './clipboard';
 import './messages';
@@ -39,6 +40,8 @@ const tools = [
   { id: 'table.text.italic', group: 'table.marks', order: 121, render: ItalicTool },
   { id: 'table.text.underline', group: 'table.marks', order: 122, render: UnderlineTool },
   { id: 'table.text.color', group: 'table.marks', order: 123, render: ColorTool },
+  // On the text that is typed in a cell, or on all the text of the selected cells (TXT-09).
+  { id: 'table.text.link', group: 'table.marks', order: 124, render: LinkTool },
   { id: 'table.text.align', group: 'table.paragraph', order: 130, render: AlignTool },
 ];
 for (const tool of tools) registerContextTool({ ...tool, kinds: ['table'] });

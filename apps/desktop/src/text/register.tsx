@@ -5,6 +5,7 @@ import {
   registerAction,
   registerContextTool,
   registerShortcut,
+  registerStageMenu,
   whenEditor,
   type Editor,
 } from '../shell';
@@ -18,9 +19,11 @@ import {
 } from './actions';
 import type { FormatContext } from './format';
 import { insertTextBox } from './insert';
+import { PasteTextItems, TextClipboardItems, TextFormatItems } from './menu';
 import { en, he } from './messages';
 import { typeToEdit } from './opening';
 import { paint, painter, pickUp, setPaintLabel, watchPainter } from './painter';
+import { PASTE_SOURCE_KEYS, pasteSourceKey } from './pasteActions';
 import { BoxTool } from './toolbar/BoxTool';
 import {
   BoldTool,
@@ -34,7 +37,7 @@ import {
   WeightTool,
 } from './toolbar/CharacterTools';
 import { TextEffectsTool } from './toolbar/EffectsTool';
-import { LinkTool, requestLink } from './toolbar/LinkTool';
+import { linksText, LinkTool, requestLink } from './toolbar/LinkTool';
 import { AlignTool, DirectionTool, ListTool, SpacingTool } from './toolbar/ParagraphTools';
 import {
   CLEAR_KEYS,
@@ -123,13 +126,21 @@ registerContextTool({
   render: SeveralTextTool,
 });
 
-// A selected shape has the row of a shape; its text is one button away (SHP-04).
+// A selected shape has the row of a shape; its text is one button away (SHP-04), and so is a
+// link on all of that text, as for a selected text box (TXT-09).
 registerContextTool({
   id: 'text.shapeText',
   kinds: ['shape'],
   group: 'text',
   order: 30,
   render: ShapeTextTool,
+});
+registerContextTool({
+  id: 'text.shapeLink',
+  kinds: ['shape'],
+  group: 'text',
+  order: 31,
+  render: LinkTool,
 });
 
 /* ---------------------------------------------------------------- row A */
@@ -244,14 +255,25 @@ registerShortcut({
   id: 'text.link',
   keys: LINK_KEYS,
   inText: true,
-  // The popover is a tool of row B, which a text box has, and a shape while its text is edited.
+  // The popover is a tool of row B: of a text box, of a table, and of a shape that has text.
   run: onTextOrSelection((target) => {
-    if (target.kind === 'elements') return false;
-    if (target.kind === 'element' && target.element.type !== 'text') return false;
-    if (target.kind === 'cells' || target.element.type === 'table') return false;
+    if (!linksText(target)) return false;
     requestLink();
   }),
   label: 'text:shortcut.link',
+  ...text,
+});
+/*
+ * The kinds of paste (TXT-13). Ctrl+V and Ctrl+Shift+V are not registered: the browser turns
+ * them into a paste event, which brings the clipboard, and a registered combination with Ctrl is
+ * the app's own, so the browser would never send that event.
+ */
+registerShortcut({
+  id: 'text.pasteSource',
+  keys: PASTE_SOURCE_KEYS,
+  inText: true,
+  run: pasteSourceKey,
+  label: 'text:shortcut.pasteSource',
   ...text,
 });
 registerShortcut({
@@ -260,6 +282,39 @@ registerShortcut({
   run: insertTextBox,
   label: 'text:shortcut.insert',
   section: 'insert',
+});
+
+/* ---------------------------------------------------------------- the right-click menu */
+
+/*
+ * In text that is being edited in place the menu is the text's (STG-06): the clipboard with the
+ * kinds of paste, then the link and the character tools. A shape whose text is edited counts as
+ * text, and a table is here for the text of the cell that is typed in.
+ */
+registerStageMenu({
+  id: 'text.clipboard',
+  kinds: ['text', 'table'],
+  group: 'text.clipboard',
+  order: 10,
+  inText: true,
+  render: TextClipboardItems,
+});
+registerStageMenu({
+  id: 'text.format',
+  kinds: ['text', 'table'],
+  group: 'text.format',
+  order: 20,
+  inText: true,
+  render: TextFormatItems,
+});
+// On the slide itself: text from outside as a new text box, with the same kinds of paste. In
+// the clipboard group of the Stage's own parts (10), after them.
+registerStageMenu({
+  id: 'text.pasteText',
+  kinds: ['none'],
+  group: 'clipboard',
+  order: 11,
+  render: PasteTextItems,
 });
 
 /* ---------------------------------------------------------------- what follows the selection */
