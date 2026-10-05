@@ -229,10 +229,10 @@ test.describe('the points of a line', () => {
     await page.waitForTimeout(900);
     await expectOneStep(page, () => page.keyboard.press('ArrowUp'));
     expect((await model(page)).frame).toEqual({ x: 563, y: 410, w: 477, h: 189 });
-    // Round to the first again, and back.
-    await page.keyboard.press('Tab');
-    await expect(point(page, 0)).toHaveAttribute('data-active', 'true');
+    // Back to the first, and on to the second again.
     await page.keyboard.press('Shift+Tab');
+    await expect(point(page, 0)).toHaveAttribute('data-active', 'true');
+    await page.keyboard.press('Tab');
     await expect(point(page, 1)).toHaveAttribute('data-active', 'true');
 
     // Esc leaves the points; the line is still selected, and the arrows move all of it again.
@@ -242,6 +242,36 @@ test.describe('the points of a line', () => {
     expect(await selected(page)).toEqual(['e_line']);
     await page.keyboard.press('ArrowRight');
     expect((await model(page)).frame).toEqual({ x: 564, y: 410, w: 477, h: 189 });
+  });
+
+  test('past the last point, and before the first, Tab leaves the points and the Stage', async ({
+    page,
+  }) => {
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Tab');
+    await expect(point(page, 1)).toHaveAttribute('data-active', 'true');
+    // As past the last crop handle and past the last element of the slide: the key is the
+    // browser's again, so the points are no trap for the keyboard. The line stays selected.
+    await page.keyboard.press('Tab');
+    await expect(surface(page)).not.toBeFocused();
+    expect(await selected(page)).toEqual(['e_line']);
+    await expect(surface(page).locator('[data-line-point][data-active]')).toHaveCount(0);
+    await expect(said(page)).toHaveText('');
+
+    // Before the first point the keyboard goes back, to the tools of the line in row B: the
+    // line is still the selection there, and the tools are its own.
+    await surface(page).focus();
+    await page.keyboard.press('Enter');
+    await expect(point(page, 0)).toHaveAttribute('data-active', 'true');
+    await page.keyboard.press('Shift+Tab');
+    await expect(surface(page)).not.toBeFocused();
+    expect(
+      await page.evaluate(() =>
+        Boolean(document.activeElement?.closest('[data-testid="top-tools-b"]')),
+      ),
+    ).toBe(true);
+    expect(await selected(page)).toEqual(['e_line']);
+    await expect(surface(page).locator('[data-line-point][data-active]')).toHaveCount(0);
   });
 
   test('Insert adds a point after the one the keyboard is on, and Delete removes one', async ({
@@ -356,22 +386,78 @@ test.describe('the handles of a crop', () => {
     expect(after.crop!.x).toBeCloseTo(before.crop!.x + 1 / 600, 5);
   });
 
-  test('Tab goes round the eight handles and comes back to the picture', async ({ page }) => {
+  test('Tab goes through the eight handles, and past the last one it leaves the Stage', async ({
+    page,
+  }) => {
     for (const name of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) {
       await page.keyboard.press('Tab');
       await expect(handle(page, name)).toHaveAttribute('data-active', 'true');
       await expect(surface(page).locator('[data-crop-handle][data-active]')).toHaveCount(1);
+      await expect(surface(page)).toBeFocused();
     }
+    // Past the last handle the key is the browser's again, as it is past the last element of the
+    // slide: the Stage is no trap for the keyboard. The crop goes on.
     await page.keyboard.press('Tab');
+    await expect(surface(page)).not.toBeFocused();
     await expect(surface(page).locator('[data-crop-handle][data-active]')).toHaveCount(0);
+    await expect(surface(page)).toHaveAttribute('data-cropping', 'e_picture');
+    // Back on the Stage the arrows are on the picture, and Enter leaves the crop.
+    await page.keyboard.press('Shift+Tab');
     await expect(surface(page)).toBeFocused();
-    // Enter leaves the crop, and the next crop starts on the picture again.
+    await expect(surface(page).locator('[data-crop-handle][data-active]')).toHaveCount(0);
     await page.keyboard.press('Tab');
+    await expect(handle(page, 'nw')).toHaveAttribute('data-active', 'true');
     await page.keyboard.press('Enter');
     await expect(surface(page)).not.toHaveAttribute('data-cropping');
+    // The next crop starts on the picture again.
     await page.keyboard.press('Enter');
     await expect(surface(page)).toHaveAttribute('data-cropping', 'e_picture');
     await expect(surface(page).locator('[data-crop-handle][data-active]')).toHaveCount(0);
+  });
+
+  test('from a crop the keyboard reaches the crop tools of row B, and they work', async ({
+    page,
+  }) => {
+    const rowB = page.getByTestId('top-tools-b');
+    /** Shift+Tab until the tool of that name has the keyboard; every stop on the way is in row B. */
+    const backTo = async (name: string) => {
+      for (let presses = 0; presses < 12; presses++) {
+        await page.keyboard.press('Shift+Tab');
+        const at = await page.evaluate(() => {
+          const el = document.activeElement;
+          return {
+            inRowB: Boolean(el?.closest('[data-testid="top-tools-b"]')),
+            name: el?.getAttribute('aria-label') ?? el?.textContent?.trim() ?? '',
+          };
+        });
+        expect(at.inRowB, `stop ${presses + 1}: "${at.name}"`).toBe(true);
+        if (at.name === name) return;
+      }
+      throw new Error(`"${name}" was not reached from the Stage with Shift+Tab`);
+    };
+
+    // A crop to take back: the top left corner, ten pixels in.
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+ArrowRight');
+    expect((await model(page)).crop).toBeDefined();
+    await page.keyboard.press('Shift+Tab');
+    await expect(surface(page).locator('[data-crop-handle][data-active]')).toHaveCount(0);
+
+    // Back from the picture the keyboard leaves the Stage for the tools before it, and the crop
+    // goes on: its tools are there only while it does.
+    await backTo('Reset crop');
+    await expect(surface(page)).toHaveAttribute('data-cropping', 'e_picture');
+    await expect(rowB.getByRole('button', { name: 'Reset crop' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await model(page)).crop).toBeUndefined();
+    expect((await model(page)).frame).toEqual({ x: 660, y: 340, w: 600, h: 400 });
+
+    // And the zoom of the picture, which had the wheel and the pointer alone.
+    await surface(page).focus();
+    await backTo('Picture zoom');
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(async () => (await model(page)).crop?.w ?? 1).toBeLessThan(1);
+    await expect(surface(page)).toHaveAttribute('data-cropping', 'e_picture');
   });
 });
 

@@ -1535,14 +1535,27 @@ export function Stage({
         if (crop) {
           // The picture itself, then the eight handles, clockwise from the top left corner.
           const order = [null, ...HANDLE_ORDER];
-          const at = order.indexOf(handleAt);
-          const to = (at + command.step + order.length) % order.length;
+          const to = order.indexOf(handleAt) + command.step;
+          // Past either end the key is the browser's again, as it is past the last element of
+          // the slide: the keyboard goes on to what is beside the Stage, and back from the
+          // picture that is row B, where the tools of the crop are. The crop itself goes on,
+          // and the keyboard finds the picture when it comes back.
+          if (to < 0 || to >= order.length) {
+            if (handleAt !== null) stageKeys.setState({ handle: null });
+            return false;
+          }
           stageKeys.setState({ handle: order[to] ?? null });
           return true;
         }
         if (pointAt === null || !line) return false;
-        const count = line.element.points.length;
-        stageKeys.setState({ point: (pointAt + command.step + count) % count });
+        const next = pointAt + command.step;
+        // The same at the ends of a line: the keyboard leaves the points and the Stage, and the
+        // line stays selected, so back from its first point are its own tools in row B.
+        if (next < 0 || next >= line.element.points.length) {
+          stageKeys.setState({ point: null });
+          return false;
+        }
+        stageKeys.setState({ point: next });
         return true;
       }
       case 'point.add': {
