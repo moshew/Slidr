@@ -25,7 +25,7 @@ import {
   type Theme,
 } from '@slidr/model';
 import type { CellSlot } from '@slidr/renderer';
-import { TextSelection } from '@tiptap/pm/state';
+import { Selection, TextSelection } from '@tiptap/pm/state';
 import {
   useCallback,
   useEffect,
@@ -118,8 +118,9 @@ interface CellEditorProps {
 
 /**
  * The text editor of a text box, in a cell (TBL-01). Tab goes on to the next cell, and from the
- * last cell to a new row. A press on the cell beside its text puts the caret at the nearest place
- * in the text: the cell is larger than its text, and all of it is the cell's.
+ * last cell to a new row; Up on the first line of the text and Down on its last go to the cell
+ * above and below. A press on the cell beside its text puts the caret at the nearest place in
+ * the text: the cell is larger than its text, and all of it is the cell's.
  */
 function CellEditor({ bus, slideId, table, cell, theme, caret, onExit }: CellEditorProps) {
   const marker = useRef<HTMLSpanElement>(null);
@@ -171,8 +172,47 @@ function CellEditor({ bus, slideId, table, cell, theme, caret, onExit }: CellEdi
       }
       return true;
     };
+    /**
+     * Up from the first line of the text, or Down from its last: the cell above or below, with
+     * the caret as far across as it was (ADR-033). Anywhere else the arrow is the editor's.
+     */
+    const across = (side: 'up' | 'down'): boolean => {
+      const view = editorFor(tableId)?.editor.view;
+      if (!view || !view.state.selection.empty) return false;
+      const { doc, selection } = view.state;
+      const edge = side === 'up' ? Selection.atStart(doc) : Selection.atEnd(doc);
+      if (selection.$head.parent !== edge.$head.parent || !view.endOfTextblock(side)) return false;
+      const found = findElementInDeck(bus.deck, tableId);
+      if (found?.element.type !== 'table') return false;
+      const next = neighbourCell(found.element, { row, col }, side);
+      if (!next) return false;
+      // The line of the cell's text the caret comes to, as the cell draws it now.
+      const td = view.dom
+        .closest('table')
+        ?.querySelector(`td[data-row="${next.row}"][data-col="${next.col}"]`);
+      const lines = td ? [...td.querySelectorAll('p')] : [];
+      const line = (side === 'up' ? lines.at(-1) : lines[0]) ?? td;
+      if (!td || !line) {
+        typeIn(next, 'end');
+        return true;
+      }
+      const cell = td.getBoundingClientRect();
+      const box = line.getBoundingClientRect();
+      const x = view.coordsAtPos(selection.head).left;
+      typeIn(next, {
+        x: Math.min(cell.right - 1, Math.max(cell.left + 1, x)),
+        y: side === 'up' ? box.bottom - 2 : box.top + 2,
+      });
+      return true;
+    };
     // Esc while a line is dragged takes the drag back; any other time it is the editor's.
-    return { Tab: () => step(1), 'Shift-Tab': () => step(-1), Escape: cancelLineDrag };
+    return {
+      Tab: () => step(1),
+      'Shift-Tab': () => step(-1),
+      ArrowUp: () => across('up'),
+      ArrowDown: () => across('down'),
+      Escape: cancelLineDrag,
+    };
   }, [bus, slideId, tableId, row, col]);
 
   return (

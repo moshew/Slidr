@@ -20,6 +20,7 @@ export {
 } from './theme';
 export { fillStyle } from './fill';
 export {
+  CELL_PADDING,
   cellLook,
   cellTextDefaults,
   tableEdges,

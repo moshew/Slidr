@@ -2,11 +2,10 @@ import type { Stroke, TableElement } from '@slidr/model';
 import { useRenderContext } from './context';
 import { num } from './css';
 import { fillStyle } from './fill';
-import { cellLook, tableLayout } from './tableStyle';
+import { CELL_PADDING, cellLook, tableLayout } from './tableStyle';
 import { RichTextView } from './text';
 import { colorCss } from './theme';
 
-const CELL_PADDING = { top: 12, right: 20, bottom: 12, left: 20 };
 const V_ALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' } as const;
 
 function strokeCss(stroke: Stroke | undefined): string | undefined {
