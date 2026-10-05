@@ -272,7 +272,7 @@ test('the tool bridge listens on this computer alone, and each session has its o
   await page.evaluate(() =>
     localStorage.setItem('slidr.agent', JSON.stringify({ harnessId: 'mock', model: 'slide-chat' })),
   );
-  await showPanel(page, 'ai.deck');
+  await showPanel(page, 'ai');
   await page.getByTestId('chat-input').fill('שלום');
   await page.getByTestId('chat-input').press('Enter');
   await expect(page.getByTestId('chat-assistant').first()).toHaveAttribute('data-outcome', /.+/, {

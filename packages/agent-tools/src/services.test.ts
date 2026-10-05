@@ -378,6 +378,40 @@ describe('layouts, templates, images, options', () => {
     expect(empty.message).toMatch(/returned no image/);
   });
 
+  it('image_generate with optionsFor places nothing, in the shape of the element', async () => {
+    const generate = vi.fn((request: { count: number; aspect: string }) =>
+      Promise.resolve(
+        ['b', 'c'].slice(0, request.count).map((n) => ({ asset: asset(n), preview: png })),
+      ),
+    );
+    const images: ImageService = {
+      generate,
+      edit: () => Promise.resolve([]),
+      process: () => Promise.reject(new Error('unused')),
+    };
+    const deck = allElementsDeck();
+    const square = deck.slides[0]!.elements.find((e) => e.id === 'e_image')!;
+    square.frame = { ...square.frame, w: 400, h: 400 };
+    const { call, bus } = setup(deck, { images });
+    const before = findElementInDeck(bus.deck, 'e_image')!.element;
+    const data = await ok(
+      call('image_generate', { prompt: 'a lake', count: 2, optionsFor: 'e_image' }),
+    );
+    expect(data.assets).toHaveLength(2);
+    expect(generate.mock.calls[0]![0]).toMatchObject({ count: 2, aspect: '1:1' });
+    // The images are among the deck's assets; the element still shows its own.
+    expect(findElementInDeck(bus.deck, 'e_image')!.element).toEqual(before);
+    expect(bus.deck.assets['b'.repeat(64)]).toBeDefined();
+
+    const both = await failed(
+      call('image_generate', { prompt: 'x', elementId: 'e_image', optionsFor: 'e_image' }),
+    );
+    expect(both.code).toBe('invalid_input');
+    const text = await failed(call('image_generate', { prompt: 'x', optionsFor: 'e_text' }));
+    expect(text.message).toMatch(/is a text/);
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
   it('image_generate takes prompt and shape from a placeholder, and adds the deck style', async () => {
     const generate = vi.fn((_request: { prompt: string; count: number; aspect: string }) =>
       Promise.resolve([{ asset: asset('b'), preview: png }]),
@@ -568,10 +602,44 @@ describe('layouts, templates, images, options', () => {
     expect(present).toHaveBeenCalledWith(
       expect.objectContaining({ target: { slideId: 's_all', elementId: 'e_text' } }),
     );
-    const deckSession = setup(allElementsDeck(), { options });
-    expect(
-      (await failed(deckSession.call('ui_present_options', { kind: 'text', options: [] }))).code,
-    ).toBe('out_of_scope');
+    // An object session offers options on its own slide only.
+    const elsewhere = await failed(
+      call('ui_present_options', {
+        kind: 'layout',
+        slideId: 's_other',
+        elementId: 'e_missing',
+        options: [
+          { label: 'A', html: '<div/>' },
+          { label: 'B', html: '<div/>' },
+        ],
+      }),
+    );
+    expect(elsewhere.code).toBe('not_found');
+  });
+
+  it('ui_present_options in a deck session is for the element or the slide it names', async () => {
+    const present = vi.fn(() => Promise.resolve());
+    const { call } = setup(allElementsDeck(), { options: { present } });
+    const two = [
+      { label: 'A', text: 'one', html: '<div/>' },
+      { label: 'B', text: 'two', html: '<div/>' },
+    ];
+    await ok(call('ui_present_options', { kind: 'text', elementId: 'e_text', options: two }));
+    expect(present).toHaveBeenLastCalledWith(
+      expect.objectContaining({ target: { slideId: 's_all', elementId: 'e_text' } }),
+    );
+    await ok(call('ui_present_options', { kind: 'layout', slideId: 's_all', options: two }));
+    expect(present).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: 'layout', target: { slideId: 's_all' } }),
+    );
+    // Without a target the options are for nothing the app can show them on.
+    const nothing = await failed(call('ui_present_options', { kind: 'layout', options: two }));
+    expect(nothing.code).toBe('invalid_input');
+    const gone = await failed(
+      call('ui_present_options', { kind: 'layout', slideId: 's_gone', options: two }),
+    );
+    expect(gone.code).toBe('not_found');
+    expect(present).toHaveBeenCalledTimes(2);
   });
 });
 

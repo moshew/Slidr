@@ -229,13 +229,13 @@ test('a look that is being tried leaves the Stage when the panel turns to someth
   const before = await deck(page);
   await templateCard(page, 'tzuk').hover();
   await expect(previewLabel(page)).toBeVisible();
-  // The slide tool takes the panel; the pointer has not moved.
-  await page.keyboard.press('Control+2');
-  await expect(panel(page, 'ai.slide')).toBeVisible();
+  // Another panel takes the Tool Panel; the pointer has not moved.
+  await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  await expect(panel(page)).toHaveCount(0);
   await expect(previewLabel(page)).toHaveCount(0);
   expect(await onStage(page, '--color-bg')).toBe(before.theme.colors.bg);
 
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'actions');
   await paletteCard(page, 'ocean').focus();
   await expect(previewLabel(page)).toBeVisible();
   // The Chat tab of the same tool, by the keyboard: Ctrl+L goes to the chat's field.
@@ -273,7 +273,7 @@ test('a personal template is offered with its colours, and trying it shows its l
   expect(mine).toMatch(/^personal_/);
 
   // The deck tool offers it after the built-in ones, with its palette; its fonts are Zerem's.
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'actions');
   await expect(look(page, 'template').locator('[data-template]')).toHaveCount(11);
   await expect(templateCard(page, mine)).toHaveAttribute('data-current', 'true');
   await expect(templateCard(page, mine)).toContainText('המותג שלנו');
@@ -312,13 +312,13 @@ test('the look can be changed while the chat of the deck is in a turn', async ({
   await openLook(page, { speed: 1 });
   const before = await deck(page);
   const status = page.getByTestId('status-agent');
-  await openTool(page, 'ai.deck', 'chat');
+  await openTool(page, 'chat');
   await input(page).fill('ניסוחים אחרים');
   await input(page).press('Enter');
   await expect(status).toHaveAttribute('data-state', 'working');
 
   // The actions of the agent wait for the turn; the template, the palette and the fonts do not.
-  await openTool(page, 'ai.deck', 'actions');
+  await openTool(page, 'actions');
   await expect(page.locator('[data-action="deck.shorten"]')).toBeDisabled();
   await paletteCard(page, 'sage').hover();
   await expect(previewLabel(page)).toBeVisible();
@@ -331,7 +331,7 @@ test('the look can be changed while the chat of the deck is in a turn', async ({
 test('in English, with no string missing', async ({ page }) => {
   const errors = collectErrors(page);
   await openLook(page, { lang: 'en' });
-  const deckPanel = panel(page, 'ai.deck');
+  const deckPanel = panel(page);
   // Exact: the form that asks for a new template is a region of the same tab.
   await expect(deckPanel.getByRole('region', { name: 'Template', exact: true })).toBeVisible();
   await expect(deckPanel.getByRole('region', { name: 'Colour palette' })).toBeVisible();

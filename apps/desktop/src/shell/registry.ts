@@ -56,18 +56,16 @@ interface PanelBase extends Registered {
   slot: PanelSlot;
   /** Position within the slot, ascending. */
   order: number;
-  /** Shown in the Activity Bar tooltip. The shell handles Ctrl+1/2/3 for the AI tools. */
+  /** Shown in the Activity Bar tooltip. The shell handles Ctrl+1 for the AI chat. */
   shortcut?: string;
 }
 
 /**
- * An AI tool (SPEC 4.3). The shell draws its frame: the title, the scope chip, and the Chat and
- * Actions tabs; the panel supplies what goes in the tabs.
+ * The AI tool (SPEC 4.3, ADR-072). The shell draws its frame: the title and the Chat and Actions
+ * tabs; the panel supplies what goes in the tabs, including what the chat sees of the selection.
  */
 export interface AiPanelDefinition extends PanelBase {
   kind: 'ai';
-  /** What the tool works on; the scope chip follows the selection. */
-  scope: 'deck' | 'slide' | 'object';
   chat: ComponentType;
   actions: ComponentType;
 }
@@ -81,13 +79,11 @@ export interface ToolPanelDefinition extends PanelBase {
 export type PanelDefinition = AiPanelDefinition | ToolPanelDefinition;
 
 /**
- * The panel ids the shell refers to: the AI tools of Ctrl+1/2/3 and of the "AI" buttons, and the
- * HTML import that the File menu and the welcome screen lead to.
+ * The panel ids the shell refers to: the AI chat of Ctrl+1 and of the "AI" buttons, and the HTML
+ * import that the File menu and the welcome screen lead to.
  */
 export const PanelId = {
-  aiDeck: 'ai.deck',
-  aiSlide: 'ai.slide',
-  aiObject: 'ai.object',
+  ai: 'ai',
   settings: 'settings',
   htmlImport: 'import',
 } as const;

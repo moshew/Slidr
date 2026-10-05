@@ -98,9 +98,9 @@ export function TemplateForm({ runner }: { runner: Runner }) {
       data-testid="template-form"
       className="flex flex-col gap-0.5"
     >
-      <h3 className="px-2 pb-1 text-xs font-medium text-ui-fg-muted">
+      <h4 className="px-2 pb-1 text-xs font-medium text-ui-fg-muted">
         {t('actions.template.title')}
-      </h3>
+      </h4>
       {!open ? (
         <Button
           variant="ghost"

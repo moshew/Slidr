@@ -55,9 +55,7 @@ test('Ctrl+/ opens the shortcut map, with every section and the keys of Appendix
     ['shell.zoomFit', 'Ctrl 0'],
     ['present.fromStart', 'F5'],
     ['present.fromCurrent', 'Shift F5'],
-    ['shell.ai.deck', 'Ctrl 1'],
-    ['shell.ai.slide', 'Ctrl 2'],
-    ['shell.ai.object', 'Ctrl 3'],
+    ['shell.ai', 'Ctrl 1'],
     ['ai.focusChat', 'Ctrl L'],
     ['text.direction', 'Ctrl Shift X'],
   ];
@@ -300,7 +298,7 @@ test('"with AI" leads to the chat of the deck tool, ready for typing', async ({ 
   await openWelcome(page);
   await page.getByTestId('welcome-ai').click();
   await expect(page.getByTestId('stage-frame')).toBeVisible();
-  await expect(page.locator('[data-panel="ai.deck"]').first()).toBeVisible();
+  await expect(page.locator('[data-panel="ai"]').first()).toBeVisible();
   await expect(page.getByTestId('chat-input')).toBeFocused();
 });
 
@@ -333,7 +331,7 @@ test('"Import HTML" leads to the import panel, from the welcome screen and from 
   await expect(page.getByTestId('import-start')).toBeVisible();
 
   // The same panel from the menu, when another one is open.
-  await page.locator('[data-testid="activity-bar"] [data-panel="ai.deck"]').click();
+  await page.locator('[data-testid="activity-bar"] [data-panel="ai"]').click();
   await expect(page.getByTestId('import-start')).toHaveCount(0);
   await (await fileItem(page, 'ייבוא HTML…')).click();
   await expect(page.getByTestId('import-start')).toBeVisible();

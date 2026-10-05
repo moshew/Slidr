@@ -1,11 +1,20 @@
 {
-  "description": "A slide chat in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"redesign this slide\" with ui_present_options: three whole-slide designs in HTML (a split with a colour panel, three cards, a big number), which the app converts, shows as thumbnails, previews and applies. Turn 2 writes speaker notes for the slide the user is on. Hand-written, with the timing of slide-chat.",
+  "description": "The AI chat on the slide on the Stage, in Hebrew, with its tool calls carried out (\"call\": true). Turn 1 answers \"redesign this slide\": it asks which slide that is, and offers with ui_present_options three whole-slide designs in HTML (a split with a colour panel, three cards, a big number), which the app converts, shows as thumbnails, previews and applies. Turn 2 writes speaker notes for the slide the user is on. Hand-written, with the timing of slide-chat.",
   "turns": [
     [
       {
         "delayMs": 500,
         "type": "thinking_delta",
         "text": ""
+      },
+      {
+        "delayMs": 300,
+        "type": "tool_call_started",
+        "id": "selection_0",
+        "name": "selection_get",
+        "source": "app",
+        "input": {},
+        "call": true
       },
       {
         "delayMs": 900,
@@ -16,6 +25,9 @@
         "input": {
           "kind": "layout",
           "prompt": "שלושה עיצובים לשקף",
+          "slideId": {
+            "$ref": "selection_0.currentSlide.id"
+          },
           "options": [
             {
               "label": "טקסט מול לוח צבע",

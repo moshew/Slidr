@@ -19,6 +19,7 @@ import {
 import {
   CommandBus,
   findElement,
+  findElementInDeck,
   findSlide,
   newId,
   type AssetMeta,
@@ -66,8 +67,6 @@ export interface GalleryCard {
 export interface OptionSet {
   id: string;
   kind: OptionKind;
-  /** The tool whose session offered the options: the panel that shows them. */
-  from: 'slide' | 'object';
   target: OptionTarget;
   /** The agent's line above the cards. */
   prompt?: string;
@@ -125,13 +124,11 @@ const sameTarget = (a: OptionTarget, b: OptionTarget) =>
 export const EARLIER = 9;
 
 /**
- * A set and the ones its target was offered before it by the same tool, oldest first: what the
- * panel goes back through (AIO-09).
+ * A set and the ones its target was offered before it, oldest first: what the chat goes back
+ * through (AIO-09).
  */
 export function historyOf(state: GalleryState, set: OptionSet): OptionSet[] {
-  const before = state.earlier.filter(
-    (other) => other.from === set.from && sameTarget(other.target, set.target),
-  );
+  const before = state.earlier.filter((other) => sameTarget(other.target, set.target));
   return before.some((other) => other.id === set.id) ? before : [...before, set];
 }
 
@@ -196,11 +193,6 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
   let expected: { target: OptionTarget; count: number; prompt: string; at: number }[] = [];
   /** The set each image job fills, and the prompt it generates from (for its assets' lineage). */
   const jobs = new Map<string, { setId: string; prompt: string }>();
-  /**
-   * The session whose `ui_present_options` call is on its way in. The tool reaches `present`
-   * before it first waits, so the call noted last is the one that is presenting.
-   */
-  let presenting: OptionSet['from'] = 'object';
 
   const find = (setId: string) => {
     const { sets, earlier } = store.getState();
@@ -272,18 +264,28 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
     });
   }
 
-  /** The images an object session's element has been offered so far. */
+  /** The images an element has been offered so far. */
   const imagesOf = (target: OptionTarget) =>
     store.getState().sets.find((set) => set.kind === 'image' && sameTarget(set.target, target));
 
-  /** The image element an object session works on, as a target: where its images go. */
-  function imageTarget(scope: SessionScope): OptionTarget | undefined {
-    if (scope.kind !== 'object') return undefined;
-    const elementId = scope.elementIds[0];
-    const slide = findSlide(bus.deck, scope.slideId);
-    const element = slide && elementId ? findElement(slide, elementId) : undefined;
-    return element?.type === 'image'
-      ? { slideId: scope.slideId, elementId: element.id }
+  /**
+   * Where the images of an `image_generate` call go: the image element it names in `optionsFor`
+   * (ADR-072), or the one an object session works on. Undefined for images that go straight
+   * into an element, or that are for no element.
+   */
+  function imageTarget(scope: SessionScope, input: unknown): OptionTarget | undefined {
+    const args = isRecord(input) ? input : {};
+    // With an element id the first image goes straight into the element: nothing to pick.
+    if (typeof args.elementId === 'string') return undefined;
+    const elementId =
+      typeof args.optionsFor === 'string'
+        ? args.optionsFor
+        : scope.kind === 'object'
+          ? scope.elementIds[0]
+          : undefined;
+    const found = elementId ? findElementInDeck(bus.deck, elementId) : undefined;
+    return found?.element.type === 'image'
+      ? { slideId: found.slide.id, elementId: found.element.id }
       : undefined;
   }
 
@@ -322,7 +324,6 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
       const set: OptionSet = {
         id: newId('tx'),
         kind,
-        from: presenting,
         target,
         ...(prompt ? { prompt } : {}),
         cards: options.map((option) => ({ label: option.label, state: 'pending' })),
@@ -428,12 +429,9 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
     service,
 
     noteToolCall(scope, name, input) {
-      if (name === 'ui_present_options') presenting = scope.kind === 'slide' ? 'slide' : 'object';
       if (name !== 'image_generate') return;
       const args = isRecord(input) ? input : {};
-      // With an element id the first image goes straight into the element: nothing to pick.
-      if (typeof args.elementId === 'string') return;
-      const target = imageTarget(scope);
+      const target = imageTarget(scope, input);
       if (!target) return;
       expected.push({
         target,
@@ -445,8 +443,7 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
 
     refusal(scope, name, input) {
       if (name !== 'image_generate') return undefined;
-      if (isRecord(input) && typeof input.elementId === 'string') return undefined;
-      const target = imageTarget(scope);
+      const target = imageTarget(scope, input);
       if (!target || !imagesOf(target)?.live) return undefined;
       return 'The images of your earlier image_generate call for this element are still being made. The app shows each one to the user as it arrives, and they can pick one, so do not generate again: tell the user the images are on their way.';
     },
@@ -470,7 +467,6 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
         const set: OptionSet = {
           id: before?.id ?? newId('tx'),
           kind: 'image',
-          from: 'object',
           target: call.target,
           ...(before?.prompt ? { prompt: before.prompt } : {}),
           // The mark of a pick is by place, and the places have just moved: it goes.
@@ -547,10 +543,7 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
       showPreview(null);
       const set = find(setId);
       if (!set) return;
-      remove(
-        (other) =>
-          other.id === setId || (other.from === set.from && sameTarget(other.target, set.target)),
-      );
+      remove((other) => other.id === setId || sameTarget(other.target, set.target));
     },
   };
 }

@@ -28,7 +28,7 @@ const picture = (page: Page) => element<ImageElement>(page, 'e_picture');
 async function open(page: Page, lang: 'he' | 'en' = 'en', theme: 'light' | 'dark' = 'light') {
   await openApp(page, { script: 'image-alternatives', lang, theme });
   await addImage(page);
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   await expect(page.getByTestId('image-edit-kind')).toHaveAttribute('data-kind', 'exact');
 }
 

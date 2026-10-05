@@ -66,7 +66,7 @@ test('a template from a description and a logo is previewed, saved, and a new de
   expect(Object.keys(during.assets)).toEqual([LOGO.assetId]);
   await page.locator('[data-panel="templates"]').click();
   await expect(page.locator('[data-template^="personal_"]')).toHaveCount(0);
-  await page.getByTestId('activity-bar').locator('[data-panel="ai.deck"]').click();
+  await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
   await tab(page, 'chat');
 
   // Saving, as the default for new decks.

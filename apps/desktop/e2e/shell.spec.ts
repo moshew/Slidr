@@ -145,17 +145,17 @@ test('the Tool Panel collapses, the Activity Bar stays and the Stage grows', asy
   await waitForPanelWidth(page, 0);
 });
 
-test('Ctrl+1/2/3 and the AI buttons open the AI tools with their scope', async ({ page }) => {
-  await page.keyboard.press('Control+2');
-  await expect(page.getByRole('heading', { name: 'AI שקף' })).toBeVisible();
-  await expect(page.getByTestId('scope-chip')).toContainText('שקף 1');
-  await page.keyboard.press('Control+3');
-  await expect(page.getByTestId('scope-chip')).toHaveText(/לא נבחר אובייקט/);
-  await expect(page.getByText('בחרו אובייקט בשקף')).toBeVisible();
+test('Ctrl+1 and the AI button open the one AI chat (ADR-072)', async ({ page }) => {
+  await page.getByRole('button', { name: 'שכבות' }).click();
+  await expect(page.getByRole('heading', { name: 'שכבות' })).toBeVisible();
   await page.keyboard.press('Control+1');
-  await expect(page.getByTestId('scope-chip')).toHaveText(/כל המצגת/);
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'AI שקף' }).click();
-  await expect(page.getByRole('heading', { name: 'AI שקף' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "צ'אט AI" })).toBeVisible();
+  // What the next message is about: the slide on the Stage, as nothing is selected.
+  await expect(page.getByTestId('focus-chip')).toContainText('שקף 1');
+  await page.getByRole('button', { name: 'שכבות' }).click();
+  await page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }).click();
+  await expect(page.getByRole('heading', { name: "צ'אט AI" })).toBeVisible();
+  await expect(page.getByTestId('chat-input')).toBeFocused();
 });
 
 test('undo and redo run the command bus, from the buttons and from Ctrl+Z / Ctrl+Y', async ({
@@ -211,9 +211,9 @@ test('row B follows the kind of selection', async ({ page }) => {
   await expect(page.getByTestId('selection-label')).toHaveText('טקסט');
   await expect(row.getByRole('button', { name: 'רקע' })).toHaveCount(0);
 
-  await row.getByRole('button', { name: 'AI על האובייקט' }).click();
-  await expect(page.getByRole('heading', { name: 'AI אובייקט' })).toBeVisible();
-  await expect(page.getByTestId('scope-chip')).toHaveText(/טקסט.*כותרת/);
+  await row.getByRole('button', { name: 'שאלו את ה-AI על הבחירה' }).click();
+  await expect(page.getByRole('heading', { name: "צ'אט AI" })).toBeVisible();
+  await expect(page.getByTestId('focus-chip')).toHaveText(/טקסט.*כותרת/);
 
   await page.evaluate(() => window.slidr?.selection.getState().clearSelection());
   await expect(row).toHaveAttribute('data-selection', 'none');

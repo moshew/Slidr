@@ -13,7 +13,7 @@ import {
 } from './aitools-helpers';
 
 /*
- * Screenshots of the three AI tools and the variations gallery for the design gate (PLAN 1.2):
+ * Screenshots of the AI chat (ADR-072) and the variations gallery for the design gate (PLAN 1.2):
  * both themes, both directions and both target resolutions. They are written to
  * test-results/ai-tools/ to be looked at; nothing is compared.
  */
@@ -48,11 +48,11 @@ for (const theme of themes) {
     for (const viewport of viewports) {
       const name = `${theme}-${dir}-${viewport.width}`;
 
-      test(`text variations in the object tool ${name}`, async ({ page }) => {
+      test(`text variations of a selected title ${name}`, async ({ page }) => {
         await page.setViewportSize(viewport);
         await open(page, { script: 'text-variations', lang, theme });
         await addTitle(page);
-        await openTool(page, 'ai.object', 'chat');
+        await openTool(page, 'chat');
         await say(page, 'תן לי ארבעה ניסוחים אחרים לכותרת');
         await expect(cards(page)).toHaveCount(4);
         await cards(page).nth(1).hover();
@@ -61,11 +61,11 @@ for (const theme of themes) {
         await page.screenshot({ path: out(`variations-${name}`) });
       });
 
-      test(`designs of a slide in the slide tool ${name}`, async ({ page }) => {
+      test(`designs of the slide on the Stage ${name}`, async ({ page }) => {
         await page.setViewportSize(viewport);
         await open(page, { script: 'slide-redesign', lang, theme });
         await addTitle(page, 'שלושת היעדים של 2027');
-        await openTool(page, 'ai.slide', 'actions');
+        await openTool(page, 'actions');
         await runAction(page, 'slide.redesign');
         await expect(cards(page)).toHaveCount(3);
         await cards(page).nth(1).hover();
@@ -73,17 +73,14 @@ for (const theme of themes) {
         await page.screenshot({ path: out(`designs-${name}`) });
       });
 
-      test(`the actions of the three tools ${name}`, async ({ page }) => {
+      test(`the actions of the slide, of a text and of an image ${name}`, async ({ page }) => {
         await page.setViewportSize(viewport);
         await open(page, { script: 'text-variations', lang, theme });
-        await openTool(page, 'ai.deck', 'actions');
-        await settle(page);
-        await page.screenshot({ path: out(`actions-deck-${name}`) });
-        await openTool(page, 'ai.slide', 'actions');
+        await openTool(page, 'actions');
         await settle(page);
         await page.screenshot({ path: out(`actions-slide-${name}`) });
         await addTitle(page);
-        await openTool(page, 'ai.object', 'actions');
+        await openTool(page, 'actions');
         await settle(page);
         await page.screenshot({ path: out(`actions-text-${name}`) });
         await addImage(page);
@@ -99,7 +96,7 @@ test.describe('states', () => {
     await openApp(page, { script: 'image-alternatives', speed: 0.2 });
     await addTitle(page);
     await addImage(page);
-    await openTool(page, 'ai.object', 'actions');
+    await openTool(page, 'actions');
     await page.locator('[data-action="image.alternatives"]').click();
     await expect(cards(page).first()).toHaveAttribute('data-state', 'ready', { timeout: 15_000 });
     await settle(page);
@@ -110,19 +107,22 @@ test.describe('states', () => {
     await page.screenshot({ path: out('state-image-picked') });
   });
 
-  test('the empty chats of the slide tool and the object tool, and no selection', async ({
+  test('the empty chat about the slide, about a selection, and about words selected in a text', async ({
     page,
   }) => {
     await openApp(page, { script: 'text-variations' });
-    await openTool(page, 'ai.slide', 'chat');
+    await openTool(page, 'chat');
     await settle(page);
     await page.screenshot({ path: out('state-slide-empty') });
-    await openTool(page, 'ai.object', 'chat');
-    await settle(page);
-    await page.screenshot({ path: out('state-object-no-selection') });
     await addTitle(page);
     await settle(page);
     await page.screenshot({ path: out('state-object-empty') });
+    await page.getByTestId('stage-frame').locator('[data-element-id="e_title"]').dblclick();
+    await page.keyboard.press('Control+a');
+    await page.getByTestId('chat-input').click();
+    await expect(page.getByTestId('focus-chip')).toHaveAttribute('data-focus', 'text');
+    await settle(page);
+    await page.screenshot({ path: out('state-text-selected') });
   });
 
   test('the right-click menu of the Stage', async ({ page }) => {

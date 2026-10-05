@@ -82,8 +82,8 @@ export interface FilmstripProps {
    */
   mark?: (slideId: string) => ReactNode;
   /**
-   * Opens the host's AI tool on the slide the menu was opened on, which is the current slide by
-   * then. Without it the menu has no such item.
+   * Opens the host's AI chat about the slide the menu was opened on, which is the current slide
+   * by then. Without it the menu has no such item.
    */
   onAi?: () => void;
   className?: string;
@@ -114,7 +114,7 @@ export interface FilmstripLabels {
   paste: string;
   /** The undo step of slides moved along the strip, by a drag or by the keyboard. */
   move: string;
-  /** The menu's way to the AI tool of the slide; shown when the host gives `onAi`. */
+  /** The menu's way to the AI chat about the slide; shown when the host gives `onAi`. */
   ai?: string;
 }
 
@@ -750,7 +750,7 @@ export function Filmstrip({
                 {hiddenAll ? labels.show : labels.hide}
               </ContextMenuItem>
               {onAi && labels.ai ? (
-                <ContextMenuItem icon={Sparkles} shortcut="Ctrl+2" onSelect={onAi}>
+                <ContextMenuItem icon={Sparkles} shortcut="Ctrl+L" onSelect={onAi}>
                   {labels.ai}
                 </ContextMenuItem>
               ) : null}

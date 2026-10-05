@@ -52,8 +52,7 @@ import { canPaste, pasteFromMemory } from '../arrange/clipboard';
 import { openData } from '../chart/session';
 import {
   aiKinds,
-  openPanel,
-  PanelId,
+  openAiChat,
   useDeck,
   useEditor,
   useSelection,
@@ -345,28 +344,16 @@ export function StateItems(_: ContextToolProps) {
 
 /* ---------------------------------------------------------------- AI */
 
-/** The way to the AI tools (SPEC 4.2): tool 3 on the object, tool 2 on the slide. */
+/**
+ * The way to the AI chat (SPEC 4.2, ADR-072): about the slide, or about what is selected on it.
+ * The chat is the same one; what it is about goes to the agent with the message.
+ */
 export function AiItems({ kind }: ContextToolProps) {
   const { t } = useTranslation();
-  if (kind === 'none') {
-    return (
-      <ContextMenuItem
-        icon={Sparkles}
-        shortcut="Ctrl+2"
-        onSelect={() => openPanel(PanelId.aiSlide, 'chat')}
-      >
-        {t('tools.aiSlide')}
-      </ContextMenuItem>
-    );
-  }
-  if (!aiKinds.has(kind)) return null;
+  if (kind !== 'none' && !aiKinds.has(kind)) return null;
   return (
-    <ContextMenuItem
-      icon={Sparkles}
-      shortcut="Ctrl+3"
-      onSelect={() => openPanel(PanelId.aiObject, 'chat')}
-    >
-      {t('tools.aiObject')}
+    <ContextMenuItem icon={Sparkles} shortcut="Ctrl+L" onSelect={openAiChat}>
+      {t(kind === 'none' ? 'tools.aiSlide' : 'tools.aiSelection')}
     </ContextMenuItem>
   );
 }

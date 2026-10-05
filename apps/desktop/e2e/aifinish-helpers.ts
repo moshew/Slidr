@@ -51,7 +51,7 @@ export const outline = (page: Page): Locator => page.getByTestId('outline');
 /** The tab of the deck tool: its chat, or its actions. */
 export async function tab(page: Page, name: 'chat' | 'actions'): Promise<void> {
   const label = name === 'chat' ? /^(צ'אט|Chat)$/ : /^(פעולות|Actions)$/;
-  await page.locator('section[data-panel="ai.deck"]').getByRole('tab', { name: label }).click();
+  await page.locator('section[data-panel="ai"]').getByRole('tab', { name: label }).click();
 }
 
 /** Waits for the latest turn, with every round of the design check, to end. */

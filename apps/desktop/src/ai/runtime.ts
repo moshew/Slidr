@@ -3,25 +3,13 @@
  * has (ADR-026, ADR-027), and the `AgentService` on top of it. One per editor, made when the
  * first AI panel asks for it; nothing agent-related runs before that.
  */
-import {
-  createDeckApi,
-  type DeckApi,
-  type ScopeKind,
-  type Services,
-  type SessionScope,
-} from '@slidr/agent-tools';
-import { findSlide, locateElement, type Slide } from '@slidr/model';
-import { sessionBrief } from '@slidr/prompts';
+import { createDeckApi, type DeckApi, type ScopeKind, type Services } from '@slidr/agent-tools';
+import { findSlide, locateElement } from '@slidr/model';
 import { isTauri } from '@tauri-apps/api/core';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AgentClient } from '../agent/agent';
-import {
-  AgentService,
-  threadIdOf,
-  type AgentSettings,
-  type TurnBrief,
-} from '../agent/agentService';
+import { AgentService, type AgentSettings } from '../agent/agentService';
 import { captureWindowConversion, pageConversion } from '../agent/conversion';
 import { pageCapture } from '../agent/pageCapture';
 import { connectToolBridge, tauriAgent } from '../agent/tauriAgent';
@@ -41,6 +29,8 @@ import type { Editor } from '../shell';
 import { createLayoutService } from '../templates/layoutService';
 import { followDirection } from '../templates/actions';
 import { appTemplateService, library } from '../templates/app';
+import { editorFor } from '../text/activeEditor';
+import { textSelectionOf } from '../text/selectedText';
 import { createGallery, type Gallery } from './variations';
 import { createSessions, type Sessions } from './sessions';
 
@@ -151,7 +141,7 @@ function pageHarness(): { client: AgentClient; connectBridge: typeof connectTool
   };
 }
 
-/** The AI side of an editing window: what the three tools' panels work with. */
+/** The AI side of an editing window: what the AI panel works with. */
 export interface AiRuntime {
   agent: AgentService;
   /** The variations gallery: options the agent offers, and images as they are made (T08). */
@@ -163,9 +153,6 @@ export interface AiRuntime {
   /** The names of the tools a session of a scope can call: an action that needs more is not offered. */
   tools: (scope: ScopeKind) => ReadonlySet<string>;
 }
-
-/** Width of the picture a slide or object session is shown of its slide. */
-const BRIEF_WIDTH = 1024;
 
 function createAi(editor: Editor): AiRuntime {
   const inApp = isTauri();
@@ -182,10 +169,19 @@ function createAi(editor: Editor): AiRuntime {
     (id) => editor.bus.deck.assets[id],
   );
   const lint = createLintService((asset) => editor.assets.url(asset));
+  // What the user has selected, read when a turn starts and by `selection_get`: with the words
+  // selected in the text being edited, which the text editor holds (ADR-072).
   const selection = () => {
     const { currentSlideId, selectedSlideIds, selectedElementIds, editingElementId } =
       editor.selection.getState();
-    return { currentSlideId, selectedSlideIds, selectedElementIds, editingElementId };
+    const textSelection = textSelectionOf(editorFor(editingElementId));
+    return {
+      currentSlideId,
+      selectedSlideIds,
+      selectedElementIds,
+      editingElementId,
+      textSelection,
+    };
   };
 
   const capture = inApp ? createCaptureService(workspaceId) : pageCapture();
@@ -230,42 +226,11 @@ function createAi(editor: Editor): AiRuntime {
   };
   const harness = inApp ? { client: tauriAgent, connectBridge: connectToolBridge } : pageHarness();
 
-  // The chat of an object is short-lived (AIO-01): it lasts while the deck is open, and is not
-  // kept with the file. The deck's chat and the slides' are (AID-01, AIS-01).
-  const kept = inApp ? workspaceTranscripts(workspaceId) : memoryTranscripts();
-  const passing = memoryTranscripts();
-  const storeOf = (threadId: string) => (threadId.startsWith('object-') ? passing : kept);
-  const transcripts: TranscriptStore = {
-    read: (threadId) => storeOf(threadId).read(threadId),
-    append: (threadId, entries) => storeOf(threadId).append(threadId, entries),
-    setRecord: (threadId, record) => storeOf(threadId).setRecord(threadId, record),
-    records: async () => ({ ...(await passing.records()), ...(await kept.records()) }),
-  };
-
-  /** The slide each slide or object chat was last told about. A deck is immutable, so a slide
-   * that is the same object has not changed, and there is nothing new to tell. */
-  const told = new Map<string, Slide>();
-  const brief = async (scope: SessionScope, { fresh }: { fresh: boolean }) => {
-    if (scope.kind !== 'slide' && scope.kind !== 'object') return null;
-    const deck = editor.bus.deck;
-    const slide = findSlide(deck, scope.slideId);
-    const key = threadIdOf(scope);
-    if (!slide || (!fresh && told.get(key) === slide)) return null;
-    // A plain page cannot take a picture; there the session reads the model alone.
-    const picture = inApp
-      ? await services.capture
-          ?.renderSlide(deck, slide.id, { width: BRIEF_WIDTH })
-          .catch(() => undefined)
-      : undefined;
-    const text = sessionBrief({ scope, deck, picture: Boolean(picture) });
-    if (!text) return null;
-    told.set(key, slide);
-    const result: TurnBrief = {
-      text,
-      images: picture ? [{ mediaType: 'image/png', data: picture.data }] : [],
-    };
-    return result;
-  };
+  // The conversations of the chat are kept with the document (AID-01). Conversations of the
+  // slide and object chats of earlier versions stay in the file, and are not shown (ADR-072).
+  const transcripts: TranscriptStore = inApp
+    ? workspaceTranscripts(workspaceId)
+    : memoryTranscripts();
 
   const agent = new AgentService({
     ...harness,
@@ -275,7 +240,6 @@ function createAi(editor: Editor): AiRuntime {
     selection,
     transcripts,
     settings: agentSettings,
-    brief,
     // A picture sent with a message is kept with the document, so the agent can place it.
     storeImage: ({ name, mime, bytes }) =>
       editor.assets.import(new File([bytes.slice()], name, { type: mime })),

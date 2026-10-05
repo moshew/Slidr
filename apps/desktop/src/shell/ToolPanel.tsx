@@ -1,25 +1,16 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { findElement, findSlide, plainText, type Element } from '@slidr/model';
-import {
-  Layers,
-  PanelLeftClose,
-  RectangleHorizontal,
-  SquareDashedMousePointer,
-} from '@slidr/ui/icons';
+import { PanelLeftClose } from '@slidr/ui/icons';
 import {
   cx,
   EmptyState,
-  Icon,
   IconButton,
   ScrollArea,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  type LucideIcon,
 } from '@slidr/ui';
-import { useDeck, useEditor, useSelection } from './editor';
 import { useWindowWidth } from './hooks';
 import { panelLimits, panelWidth } from './layout';
 import {
@@ -28,7 +19,6 @@ import {
   type PanelDefinition,
   type ToolPanelDefinition,
 } from './registry';
-import { elementKind } from './selection';
 import { setAiTab, setPanelOpen, setPanelShare, useShell } from './store';
 
 /**
@@ -183,7 +173,7 @@ function ToolPanelView({ panel }: { panel: ToolPanelDefinition }) {
   );
 }
 
-/** The frame shared by the three AI tools (SPEC 4.3): title, scope chip, Chat and Actions. */
+/** The frame of the AI tool (SPEC 4.3): title, Chat and Actions. */
 function AiPanelView({ panel }: { panel: AiPanelDefinition }) {
   const { t } = useTranslation();
   const tab = useShell((s) => s.aiTab);
@@ -195,9 +185,6 @@ function AiPanelView({ panel }: { panel: AiPanelDefinition }) {
       className="flex min-h-0 flex-1 flex-col"
     >
       <PanelHeader title={t(panel.title)} />
-      <div className="px-4 pb-3">
-        <ScopeChip scope={panel.scope} />
-      </div>
       <Tabs
         value={tab}
         onValueChange={(value) => setAiTab(value === 'actions' ? 'actions' : 'chat')}
@@ -218,75 +205,6 @@ function AiPanelView({ panel }: { panel: AiPanelDefinition }) {
         </TabsContent>
       </Tabs>
     </section>
-  );
-}
-
-interface ScopeView {
-  icon: LucideIcon;
-  label: string;
-  detail?: string;
-  empty?: boolean;
-  onClick?: () => void;
-}
-
-function elementLabel(element: Element): string | undefined {
-  if (element.name) return element.name;
-  if (element.type === 'text') return plainText(element.content).split('\n')[0]?.slice(0, 40);
-  return undefined;
-}
-
-/** What an AI tool works on; it follows the selection, and a click brings it into view. */
-function ScopeChip({ scope }: { scope: AiPanelDefinition['scope'] }) {
-  const { t } = useTranslation();
-  const { selection } = useEditor();
-  const deck = useDeck((s) => s.deck);
-  const slideId = useSelection((s) => s.currentSlideId);
-  const elementIds = useSelection((s) => s.selectedElementIds);
-
-  const slideIndex = deck.slides.findIndex((s) => s.id === slideId);
-  const slide = slideId ? findSlide(deck, slideId) : undefined;
-  let view: ScopeView;
-  if (scope === 'deck') {
-    view = { icon: Layers, label: t('panels.scopeDeck'), detail: deck.meta.title || undefined };
-  } else if (scope === 'slide') {
-    view = slide
-      ? {
-          icon: RectangleHorizontal,
-          label: t('panels.scopeSlide', { n: slideIndex + 1 }),
-          detail: slide.name,
-          onClick: () => selection.getState().clearSelection(),
-        }
-      : { icon: RectangleHorizontal, label: t('status.noSlides'), empty: true };
-  } else {
-    const element =
-      slide && elementIds.length === 1 ? findElement(slide, elementIds[0] ?? '') : undefined;
-    view = element
-      ? {
-          icon: SquareDashedMousePointer,
-          label: t(`selection.${elementKind(element)}`),
-          detail: elementLabel(element),
-          onClick: () => selection.getState().selectElements([element.id]),
-        }
-      : { icon: SquareDashedMousePointer, label: t('panels.scopeNone'), empty: true };
-  }
-
-  return (
-    <button
-      type="button"
-      data-testid="scope-chip"
-      disabled={!view.onClick}
-      onClick={view.onClick}
-      className={cx(
-        'inline-flex h-7 max-w-full cursor-default items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors',
-        view.empty
-          ? 'border-dashed border-ui-line-strong text-ui-fg-muted'
-          : 'border-transparent bg-ui-accent-soft text-ui-accent-fg hover:bg-ui-accent-soft-hover',
-      )}
-    >
-      <Icon icon={view.icon} className="-ms-0.5" />
-      <span className="shrink-0">{view.label}</span>
-      {view.detail && <span className="truncate font-normal">· {view.detail}</span>}
-    </button>
   );
 }
 

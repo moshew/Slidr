@@ -56,7 +56,17 @@ describe('the system prompt, by scope', () => {
     }
     expect(prompt).toMatch(/show them the plan with .outline_propose. and end the turn/);
     expect(prompt).toMatch(/call `deck_render_contact_sheet` and look at the whole/);
-    expect(prompt).not.toContain('ui_present_options');
+  });
+
+  it('a deck session works on what the user points at, and offers options (ADR-072)', () => {
+    const prompt = full('deck');
+    expect(prompt).toContain('### What the user points at');
+    expect(prompt).toMatch(/`text_selection` first, then `selection`, then `current_slide`/);
+    expect(prompt).toMatch(/with `text_replace` and its `occurrence`/);
+    expect(prompt).toMatch(/offer them with `ui_present_options` and stop/);
+    expect(prompt).toMatch(/`image_generate`, `optionsFor` set to the element/);
+    // Every session is told what the selected text is.
+    for (const scope of SCOPES) expect(full(scope)).toContain('- `text_selection`:');
   });
 
   it('a slide session redesigns its slide in HTML, and is told what belongs to the deck chat', () => {
@@ -280,14 +290,16 @@ describe('size', () => {
   // session that can draft one carries, a third time when the guidance on images, stock photos
   // and icons (ADR-051) met that module in `main`, and a fourth, by 1,250, for the paragraph on
   // charts, which says what each chart type is for and which options there are (ADR-048): they
-  // are about one percent above what is there.
+  // are about one percent above what is there. A fifth time when the deck chat became the one
+  // chat of the app (ADR-072): it is told how to work on what the user points at, it can offer
+  // options, and every session hears of the selected text and of `text_replace`.
   const LIMITS: Record<ScopeKind, number> = {
-    deck: 41_250,
-    slide: 32_250,
+    deck: 44_000,
+    slide: 32_750,
     object: 23_000,
     // With the five import tools in the catalogue the import module shows its capture step,
     // and it says what the isolated page is not (ADR-036).
-    import: 44_250,
+    import: 45_000,
   };
 
   it.each(SCOPES)('a %s prompt stays within its budget', (scope) => {

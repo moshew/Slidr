@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import type { LintFinding, SessionScope } from '@slidr/agent-tools';
 import {
+  Ai,
   ArrowUp,
   Check,
   ChevronDown,
@@ -22,7 +23,6 @@ import {
   LocateFixed,
   Paperclip,
   ScanEye,
-  Sparkles,
   Square,
   TriangleAlert,
   Undo2,
@@ -58,6 +58,8 @@ import { TemplateDraftCard } from '../templates/DraftCard';
 import { actionLabel } from './actionLabels';
 import { accepted, ATTACHABLE, pastedFiles, readAttachment } from './attachments';
 import { ConversationBar } from './Conversations';
+import { FocusChip } from './FocusChip';
+import { focusKind, useFocus, type Focus } from './focus';
 import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
@@ -68,14 +70,19 @@ import { activityLabel, targetSlideNumber, toolIcon, toolLabel } from './toolLab
 import { formatCost, formatTokens, tokensOf } from './usage';
 
 /*
- * The chat of an AI tool (SPEC 11.8, WG11-T01): the conversation as it streams, a chip for
- * every tool call, the design check's follow-ups as folded status lines, "undo changes" on
- * every turn that changed the deck, and a card that says what to do when the agent cannot run.
+ * The AI chat (SPEC 11.8, WG11-T01; ADR-072): the conversation as it streams, a chip for every
+ * tool call, the design check's follow-ups as folded status lines, "undo changes" on every turn
+ * that changed the deck, and a card that says what to do when the agent cannot run. There is one
+ * chat, a deck session: what the user has selected goes to the agent with each message, and the
+ * chip beside the composer says what that is.
  */
+
+/** The session of the chat: the whole deck, whatever the user points at in it. */
+export const DECK: SessionScope = { kind: 'deck' };
 
 /**
  * The thread of a scope in the open deck. The panel that shows it is where the scope's session
- * lives: the chat of a slide or an object the panel has moved on from lets its session go.
+ * lives: a conversation the panel has moved on from lets its session go.
  */
 export function useThread(scope: SessionScope): ChatThread {
   const editor = useEditor();
@@ -523,7 +530,7 @@ function Working({ activity, stopping }: { activity: Activity | null; stopping: 
 }
 
 function Composer({
-  scope,
+  focus,
   busy,
   stopping,
   text,
@@ -531,7 +538,8 @@ function Composer({
   onSend,
   onStop,
 }: {
-  scope: SessionScope['kind'];
+  /** What the message is about; null in a chat that is not about the selection. */
+  focus: Focus | null;
   busy: boolean;
   stopping: boolean;
   /** What is typed: the chat holds it, so that a suggestion can put words here. */
@@ -574,6 +582,7 @@ function Composer({
   };
   return (
     <div className="flex shrink-0 flex-col gap-1.5 px-4 pt-2 pb-4">
+      {focus && <FocusChip focus={focus} />}
       {files.length > 0 && (
         <div
           role="list"
@@ -596,7 +605,7 @@ function Composer({
         dir={text ? 'auto' : undefined}
         value={text}
         aria-label={t('composer.label')}
-        placeholder={t(`composer.placeholder.${scope}`)}
+        placeholder={t(`composer.placeholder.${focus ? focusKind(focus) : 'import'}`)}
         data-testid="chat-input"
         onChange={(event) => onText(event.target.value)}
         onKeyDown={onKeyDown}
@@ -678,7 +687,10 @@ function Loading() {
   );
 }
 
-/** Ready-made openings for an empty chat, by what the tool works on (CHT-U08). */
+/**
+ * Ready-made openings for an empty chat (CHT-U08), by what the user points at: a selection, a
+ * slide that has something on it, or an empty deck.
+ */
 const SUGGESTIONS = {
   deck: ['topic', 'document', 'improve'],
   slide: ['redesign', 'shorten', 'visual'],
@@ -686,15 +698,15 @@ const SUGGESTIONS = {
 } as const;
 
 /** Each puts its words into the composer, for the user to finish or to send as they are. */
-function Suggestions({
-  scope,
-  onPick,
-}: {
-  scope: SessionScope['kind'];
-  onPick: (prompt: string) => void;
-}) {
+function Suggestions({ focus, onPick }: { focus: Focus; onPick: (prompt: string) => void }) {
   const { t } = useTranslation('ai');
-  if (scope === 'import') return null;
+  // A slide with something on it is worked on; an empty one is where a deck starts.
+  const filled = useDeck((s) => {
+    const slide = focus.slideId ? s.deck.slides.find((one) => one.id === focus.slideId) : undefined;
+    return Boolean(slide && slide.elements.length > 0);
+  });
+  const kind = focusKind(focus);
+  const scope = kind === 'text' || kind === 'object' ? 'object' : filled ? 'slide' : 'deck';
   const of = (name: string, part: 'label' | 'prompt') =>
     t(`suggest.${scope}.${name}.${part}` as 'suggest.deck.topic.label');
   return (
@@ -702,6 +714,7 @@ function Suggestions({
       role="group"
       aria-label={t('suggest.title')}
       data-testid="chat-suggestions"
+      data-for={scope}
       className="flex flex-wrap justify-center gap-1.5 px-4 pb-4"
     >
       {SUGGESTIONS[scope].map((name) => (
@@ -719,9 +732,15 @@ function Suggestions({
   );
 }
 
-export function Chat({ scope }: { scope: SessionScope }) {
+/**
+ * The chat of a session: the AI chat, a deck session, by default; the HTML import shows the
+ * conversation of its own session with it, which is about a file and not about a selection.
+ */
+export function Chat({ scope = DECK }: { scope?: SessionScope }) {
   const { t } = useTranslation('ai');
   const thread = useThread(scope);
+  const focus = useFocus();
+  const deck = scope.kind === 'deck';
   const state = useStore(thread.store);
   const { frame, onScroll, stick } = useStickToEnd(state);
   const [draft, setDraft] = useState('');
@@ -742,12 +761,12 @@ export function Chat({ scope }: { scope: SessionScope }) {
     content = (
       <>
         <EmptyState
-          icon={Sparkles}
-          title={t(`empty.${scope.kind}.title`)}
-          description={t(`empty.${scope.kind}.body`)}
+          icon={Ai}
+          title={t(deck ? 'empty.deck.title' : 'empty.import.title')}
+          description={t(deck ? 'empty.deck.body' : 'empty.import.body')}
           className="min-h-56"
         />
-        <Suggestions scope={scope.kind} onPick={pick} />
+        {deck && <Suggestions focus={focus} onPick={pick} />}
       </>
     );
   } else {
@@ -784,11 +803,11 @@ export function Chat({ scope }: { scope: SessionScope }) {
       <div ref={frame} onScrollCapture={onScroll} className="flex min-h-0 flex-1 flex-col">
         <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
       </div>
-      <Gallery scope={scope} />
+      {deck && <Gallery />}
       {/* A template the agent drafted is shown before anything is saved (THM-06). */}
-      {scope.kind === 'deck' && <TemplateDraftCard />}
+      {deck && <TemplateDraftCard />}
       <Composer
-        scope={scope.kind}
+        focus={deck ? focus : null}
         busy={state.busy}
         stopping={state.stopping}
         text={draft}

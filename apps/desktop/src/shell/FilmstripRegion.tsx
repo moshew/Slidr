@@ -4,8 +4,8 @@ import { canPaste, copySlides, cutSlides, pasteFromMemory } from '../arrange/cli
 import { Filmstrip, type FilmstripClipboard, type FilmstripLabels } from '../stage/Filmstrip';
 import { useAssetResolver } from './assets';
 import { useDeck, useEditor } from './editor';
-import { PanelId, useSlideMarks } from './registry';
-import { openPanel } from './store';
+import { useSlideMarks } from './registry';
+import { openAiChat } from './store';
 
 /**
  * The Filmstrip region: 132px under the Stage (SPEC 4.1). The Filmstrip itself is a standalone
@@ -67,7 +67,7 @@ export function FilmstripRegion() {
         clipboard={clipboard}
         labels={labels}
         mark={marks.length ? mark : undefined}
-        onAi={() => openPanel(PanelId.aiSlide, 'chat')}
+        onAi={openAiChat}
         className="h-full"
       />
     </section>

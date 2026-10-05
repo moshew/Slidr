@@ -1,8 +1,9 @@
 /**
- * The chats the AI panels have open (AIS-01, AIO-01). The deck has one chat; the slide tool has
- * one per slide and the object tool one per selection, and each of those two keeps a harness
- * session only for the chat it shows: when the user moves on, the chat they left closes its
- * session as soon as its turn is over. The conversation stays, and its next message resumes it.
+ * The chats the AI panel has open (AID-01, CHT-U07; ADR-072). There is one chat, a deck session,
+ * with several conversations, and an import has its own. Each keeps a harness session only for
+ * the conversation it shows: when the user moves to another conversation, the one they left
+ * closes its session as soon as its turn is over. The conversation stays, and its next message
+ * resumes it.
  */
 import type { SessionScope } from '@slidr/agent-tools';
 import { createStore, type StoreApi } from 'zustand/vanilla';
@@ -15,8 +16,8 @@ export interface Sessions {
    */
   thread: (scope: SessionScope, id?: string) => ChatThread;
   /**
-   * The chat a panel shows now. The one the panel showed before (another slide, another
-   * selection, another conversation) lets go of its session once it is idle.
+   * The chat a panel shows now. The one the panel showed before (another conversation) lets go
+   * of its session once it is idle.
    */
   show: (thread: ChatThread) => void;
   /** The chats with a turn running, for the status bar. */

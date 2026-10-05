@@ -104,12 +104,35 @@ describe('read tools', () => {
       selectedSlideIds: ['s_he_goals'],
       selectedElements: [{ id: 'e_he_goals_body', type: 'text', role: 'body' }],
       editingElementId: null,
+      textSelection: null,
     });
     const stray = await failed(
       api.call(turn, 'ui_navigate', { slideId: 's_he_goals', elementIds: ['e_x'] }),
     );
     expect(stray.code).toBe('not_found');
     expect(bus.canUndo).toBe(false);
+  });
+
+  it('selection_get reports the text the user selected', async () => {
+    const textSelection = {
+      slideId: 's_he_goals',
+      elementId: 'e_he_goals_body',
+      text: 'מטרה',
+      occurrence: 2,
+    };
+    const ui: UiPort = {
+      selection: () => ({
+        currentSlideId: 's_he_goals',
+        selectedSlideIds: ['s_he_goals'],
+        selectedElementIds: ['e_he_goals_body'],
+        editingElementId: 'e_he_goals_body',
+        textSelection,
+      }),
+      navigate: () => undefined,
+    };
+    const api = createDeckApi(new CommandBus(hebrewDeck()), { ui });
+    const data = await ok(api.call(startTurn('sess', { kind: 'deck' }), 'selection_get', {}));
+    expect(data).toMatchObject({ editingElementId: 'e_he_goals_body', textSelection });
   });
 });
 
@@ -334,6 +357,117 @@ describe('content tools', () => {
     expect(bus.redo()).toBe(true);
     expect(title().wrap).toBe(true);
     expect(plainText(title().content)).toBe('כותרת ארוכה בהרבה מזו שנמדדה לתיבה');
+  });
+
+  it('text_replace changes one stretch and keeps every run around it', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    const content = {
+      paragraphs: [
+        {
+          dir: 'rtl',
+          align: 'start',
+          runs: [
+            { text: 'עוזר AI מציע לנציגים ', marks: { color: { token: 'primary' } } },
+            { text: 'תשובות בזמן אמת', marks: { weight: 700 } },
+            { text: '. תשובות בזמן אמת.' },
+          ],
+        },
+      ],
+    };
+    await ok(call('text_set', { elementId: 'e_text', richText: content }));
+    // The second appearance: the plain run after the bold one.
+    await ok(
+      call('text_replace', {
+        elementId: 'e_text',
+        find: 'תשובות בזמן אמת',
+        occurrence: 2,
+        replace: 'מענה מיידי',
+      }),
+    );
+    const runs = () => element<TextElement>(bus.deck, 'e_text').content.paragraphs[0]!.runs;
+    expect(runs()).toEqual([
+      { text: 'עוזר AI מציע לנציגים ', marks: { color: { token: 'primary' } } },
+      { text: 'תשובות בזמן אמת', marks: { weight: 700 } },
+      { text: '. מענה מיידי.' },
+    ]);
+    // The first, by default: the new words take the bold of the words they replace.
+    await ok(call('text_replace', { elementId: 'e_text', find: 'תשובות בזמן אמת', replace: 'X' }));
+    expect(runs()[1]).toEqual({ text: 'X', marks: { weight: 700 } });
+    // Only marks: the text stays, and the stretch is split out of its run.
+    await ok(
+      call('text_replace', {
+        elementId: 'e_text',
+        find: 'AI',
+        marks: { color: { token: 'accent' }, italic: true },
+      }),
+    );
+    expect(runs().slice(0, 3)).toEqual([
+      { text: 'עוזר ', marks: { color: { token: 'primary' } } },
+      { text: 'AI', marks: { color: { token: 'accent' }, italic: true } },
+      { text: ' מציע לנציגים ', marks: { color: { token: 'primary' } } },
+    ]);
+  });
+
+  it('text_replace finds by appearance, in a table cell too, and says what it cannot do', async () => {
+    const { call, bus } = setup(allElementsDeck());
+    const twoLines = 'one two\nthree two';
+    await ok(call('text_set', { elementId: 'e_text', markdown: twoLines }));
+    expect(
+      (await failed(call('text_replace', { elementId: 'e_text', find: 'two' }))).message,
+    ).toMatch(/replace/);
+    const across = await failed(
+      call('text_replace', { elementId: 'e_text', find: 'two\nthree', replace: 'x' }),
+    );
+    expect(across.message).toMatch(/one paragraph into the next/);
+    const third = await failed(
+      call('text_replace', { elementId: 'e_text', find: 'two', occurrence: 3, replace: 'x' }),
+    );
+    expect(third.message).toMatch(/appears 2 time/);
+    const none = await failed(
+      call('text_replace', { elementId: 'e_text', find: 'four', replace: 'x' }),
+    );
+    expect(none.message).toMatch(/not in the text/);
+    await ok(
+      call('text_replace', { elementId: 'e_text', find: 'two', occurrence: 2, replace: '2' }),
+    );
+    expect(plainText(element<TextElement>(bus.deck, 'e_text').content)).toBe('one two\nthree 2');
+
+    const table = findElementInDeck(bus.deck, 'e_table')!.element as TableElement;
+    const before = plainText(table.cells[0]![0]!.content);
+    const word = before.split(' ')[0]!;
+    await ok(
+      call('text_replace', {
+        elementId: 'e_table',
+        cell: { row: 0, col: 0 },
+        find: word,
+        replace: 'Q',
+      }),
+    );
+    const after = findElementInDeck(bus.deck, 'e_table')!.element as TableElement;
+    expect(plainText(after.cells[0]![0]!.content)).toBe(before.replace(word, 'Q'));
+    expect(
+      (await failed(call('text_replace', { elementId: 'e_table', find: 'x', replace: 'y' })))
+        .message,
+    ).toMatch(/needs `cell`/);
+    expect(
+      (await failed(call('text_replace', { elementId: 'e_image', find: 'x', replace: 'y' }))).code,
+    ).toBe('invalid_state');
+  });
+
+  it('text_replace is a change of the element in an object session', async () => {
+    const { call } = setup(
+      allElementsDeck(),
+      {},
+      {
+        kind: 'object',
+        slideId: 's_all',
+        elementIds: ['e_text'],
+      },
+    );
+    await ok(call('text_replace', { elementId: 'e_text', find: 'כל', replace: 'רוב' }));
+    expect(
+      (await failed(call('text_replace', { elementId: 'e_shape', find: 'a', replace: 'b' }))).code,
+    ).toBe('out_of_scope');
   });
 
   it('text_set takes RichText, a table cell, and refuses what holds no text', async () => {

@@ -32,11 +32,14 @@ test('four variations of a title: four cards, a hover on the slide, a click as o
   const errors = collectErrors(page);
   await openApp(page, { script: 'text-variations' });
   await addTitle(page);
-  await openTool(page, 'ai.object', 'chat');
+  await openTool(page, 'chat');
   const depth = await undoDepth(page);
 
   await say(page, 'תן לי ארבעה ניסוחים אחרים לכותרת');
-  await expect(chips(page)).toContainText('הצגת חלופות');
+  // The agent of the one chat reads what is selected, then offers the options for it.
+  await expect(chips(page)).toHaveCount(2);
+  await expect(chips(page).first()).toHaveAttribute('data-tool', 'selection_get');
+  await expect(chips(page).nth(1)).toContainText('הצגת חלופות');
   await expect(gallery(page)).toHaveAttribute('data-kind', 'text');
   await expect(gallery(page)).toContainText('ארבעה ניסוחים לכותרת');
   await expect(cards(page)).toHaveCount(4);
@@ -87,22 +90,21 @@ test('four variations of a title: four cards, a hover on the slide, a click as o
   expect(errors).toEqual([]);
 });
 
-test('the options belong to the element they were offered for', async ({ page }) => {
+test('the options stay with their slide whatever is selected, and go with their element', async ({
+  page,
+}) => {
   await openApp(page, { script: 'text-variations' });
   await addBody(page, 'להשיק את העורך החדש ולהגיע לאלף משתמשים');
   await addTitle(page);
-  await openTool(page, 'ai.object', 'chat');
+  await openTool(page, 'chat');
   await say(page, 'ניסוחים אחרים');
   await expect(cards(page)).toHaveCount(4);
 
-  // Another selection is another chat, with no options of its own.
+  // Another selection is what the next message is about: the chat and its options stay.
   await page.evaluate(() => window.slidr!.selection.getState().selectElements(['e_body']));
-  await expect(gallery(page)).toHaveCount(0);
-  await expect(page.getByTestId('chat-user')).toHaveCount(0);
-
-  // Back on the title, its chat and its options are there.
-  await page.evaluate(() => window.slidr!.selection.getState().selectElements(['e_title']));
   await expect(page.getByTestId('chat-user')).toHaveText('ניסוחים אחרים');
+  await expect(cards(page)).toHaveCount(4);
+  await page.evaluate(() => window.slidr!.selection.getState().clearSelection());
   await expect(cards(page)).toHaveCount(4);
 
   // Options for an element that was deleted are gone.
@@ -120,13 +122,13 @@ test('three designs of a slide: thumbnails, a hover on the Stage, a click as one
   const errors = collectErrors(page);
   await openApp(page, { script: 'slide-redesign' });
   await addTitle(page, 'שלושת היעדים של 2027');
-  await openTool(page, 'ai.slide', 'actions');
+  await openTool(page, 'actions');
   const depth = await undoDepth(page);
   const before = await currentSlide(page);
 
   await runAction(page, 'slide.redesign');
   await expect(page.getByTestId('chat-user')).toHaveAttribute('data-action', 'slide.redesign');
-  await expect(page.getByTestId('chat-user')).toContainText('עיצוב השקף מחדש · 3 חלופות');
+  await expect(page.getByTestId('chat-user')).toContainText('עיצוב שקף 1 מחדש · 3 חלופות');
   await expect(gallery(page)).toHaveAttribute('data-kind', 'layout');
   await expect(cards(page)).toHaveCount(3);
   for (const card of await cards(page).all()) {
@@ -167,7 +169,7 @@ test('image alternatives arrive one by one, and the pick keeps the frame and the
   // The mock provider takes about two seconds an image; the script plays at its own pace.
   await openApp(page, { script: 'image-alternatives', speed: 0.2 });
   const first = await addImage(page);
-  await openTool(page, 'ai.object', 'actions');
+  await openTool(page, 'actions');
   await expect(page.getByTestId('image-provider')).toHaveAttribute('data-state', 'ready');
   const depth = await undoDepth(page);
 
@@ -212,7 +214,7 @@ test('image alternatives arrive one by one, and the pick keeps the frame and the
   expect(errors).toEqual([]);
 });
 
-/** Offers a set of text options for the title from the object tool, as `ui_present_options` would. */
+/** Offers a set of text options for the title in the AI chat, as `ui_present_options` would. */
 function offer(page: Page, prompt: string, texts: string[]): Promise<void> {
   return page.evaluate(
     async ([path, prompt, texts]) => {
@@ -227,11 +229,7 @@ function offer(page: Page, prompt: string, texts: string[]): Promise<void> {
       const editor = window.slidr!;
       const slideId = editor.selection.getState().currentSlideId!;
       const { gallery } = aiOf(editor);
-      gallery.noteToolCall(
-        { kind: 'object', slideId, elementIds: ['e_title'] },
-        'ui_present_options',
-        {},
-      );
+      gallery.noteToolCall({ kind: 'deck' }, 'ui_present_options', { elementId: 'e_title' });
       await gallery.service.present({
         kind: 'text',
         target: { slideId, elementId: 'e_title' },
@@ -249,7 +247,7 @@ test('the options offered before for the same element are a step back, and pick 
   const errors = collectErrors(page);
   await openApp(page, { script: 'text-variations' });
   await addTitle(page);
-  await openTool(page, 'ai.object', 'chat');
+  await openTool(page, 'chat');
   await say(page, 'תן לי ארבעה ניסוחים אחרים לכותרת');
   await expect(cards(page)).toHaveCount(4);
   // One set: nothing to go back to.
@@ -305,7 +303,7 @@ test('the options offered before for the same element are a step back, and pick 
 test('in English, the step back points to the left', async ({ page }) => {
   await openApp(page, { script: 'text-variations', lang: 'en' });
   await addTitle(page, 'Team work plan for 2027');
-  await openTool(page, 'ai.object', 'chat');
+  await openTool(page, 'chat');
   await offer(page, 'Two titles', ['Plan 2027', 'Where to in 2027']);
   await offer(page, 'One more', ['The plan']);
   await expect(page.getByTestId('gallery-place')).toContainText('Set 2 of 2');

@@ -99,26 +99,25 @@ test('"Fix all" fixes every error and warning that has a fix, as one step', asyn
   await expect(group(page, 's_colour')).toHaveCount(0);
 });
 
-test('"Fix with AI" sends the fix action to the deck chat, and a slide\'s to the slide chat', async ({
+test('"Fix with AI" sends the fix action of the deck, or of one slide, to the AI chat', async ({
   page,
 }) => {
   await openCheck(page);
   await page.getByTestId('fix-with-ai').click();
-  // The deck tool, on its chat, with the action as the user's message.
-  await expect(page.locator('button[data-panel="ai.deck"]')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  // The AI chat, with the action as the user's message.
+  await expect(page.locator('button[data-panel="ai"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('chat-user').first()).toHaveAttribute('data-action', 'deck.fix');
 
+  // The chat takes one request at a time: the first turn is stopped before the second is asked.
+  await page.getByTestId('chat-stop').click();
+  await expect(page.getByTestId('chat-stop')).toHaveCount(0);
   await page.locator('button[data-panel="lint"]').click();
   await group(page, 's_arrange').getByTestId('fix-slide-with-ai').click();
-  await expect(page.locator('button[data-panel="ai.slide"]')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(page.locator('button[data-panel="ai"]')).toHaveAttribute('aria-pressed', 'true');
+  // The Stage goes to the slide, and the message names it.
   expect((await selection(page)).slide).toBe('s_arrange');
-  await expect(page.getByTestId('chat-user').first()).toHaveAttribute('data-action', 'slide.fix');
+  await expect(page.getByTestId('chat-user').nth(1)).toHaveAttribute('data-action', 'slide.fix');
+  await expect(page.getByTestId('chat-user').nth(1)).toContainText('שקף 3');
 });
 
 test('the status bar counts the findings, and opens the panel', async ({ page }) => {
@@ -128,7 +127,7 @@ test('the status bar counts the findings, and opens the panel', async ({ page })
   // With the errors fixed it counts what is left to look at; notes are not counted.
   await page.getByTestId('fix-all').click();
   await expect(status).toHaveText('אין ממצאי עיצוב');
-  await page.locator('button[data-panel="ai.deck"]').click();
+  await page.locator('button[data-panel="ai"]').click();
   await expect(panel(page)).toBeHidden();
   await status.click();
   await expect(panel(page)).toBeVisible();

@@ -1,5 +1,5 @@
 import type { ToolDef } from '../tool';
-import { animationSet, chartSet, tableSet, textSet } from './content';
+import { animationSet, chartSet, tableSet, textReplace, textSet } from './content';
 import { deckApplyOps, themeUpdate, uiNavigate } from './deck';
 import { elementAdd, elementDelete, elementsArrange, elementUpdate } from './elements';
 import {
@@ -54,6 +54,7 @@ export const deckTools: readonly ToolDef[] = [
   elementDelete,
   elementsArrange,
   textSet,
+  textReplace,
   tableSet,
   chartSet,
   animationSet,

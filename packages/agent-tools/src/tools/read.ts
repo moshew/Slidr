@@ -114,7 +114,7 @@ export const elementGet = defineTool({
 export const selectionGet = defineTool({
   name: 'selection_get',
   description:
-    'What the user is looking at: the current slide (id, number, name), the selected slides, the selected elements (id, type, name, role), and the element whose text is being edited, if any.',
+    'What the user is looking at: the current slide (id, number, name), the selected slides, the selected elements (id, type, name, role), the element whose text is being edited, if any, and the text selected in it (`textSelection`, as text_replace counts it).',
   input: z.strictObject({}),
   scopes: ALL,
   writes: false,
@@ -144,6 +144,7 @@ export const selectionGet = defineTool({
           ...(e.role ? { role: e.role } : {}),
         })),
         editingElementId: selection.editingElementId,
+        textSelection: selection.textSelection ?? null,
       },
     };
   },

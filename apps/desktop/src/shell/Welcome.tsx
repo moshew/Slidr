@@ -46,7 +46,7 @@ function pristine(editor: Editor): boolean {
 
 /** Puts the caret in the chat of the deck tool, once the editor is on the screen. */
 function focusChat(): void {
-  openPanel(PanelId.aiDeck, 'chat');
+  openPanel(PanelId.ai, 'chat');
   requestAnimationFrame(() =>
     requestAnimationFrame(() =>
       document.querySelector<HTMLElement>('[data-testid="chat-input"]')?.focus(),

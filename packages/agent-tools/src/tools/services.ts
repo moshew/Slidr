@@ -482,7 +482,7 @@ const IMAGE_TIMEOUT_MS = 300_000;
 export const imageGenerate = defineTool({
   name: 'image_generate',
   description:
-    "Generates images from a prompt and adds them to the deck's assets. Say what the image shows; the app adds the deck's image style and palette to every prompt, so the images of one deck belong together. With elementId (an image element, e.g. a placeholder), the first image goes into it, keeping its frame and crop; a placeholder carries a prompt of its own, which is used when you give none. Returns `assets` (ids, sizes) and previews.",
+    "Generates images from a prompt and adds them to the deck's assets. Say what the image shows; the app adds the deck's image style and palette to every prompt, so the images of one deck belong together. With elementId (an image element, e.g. a placeholder), the first image goes into it, keeping its frame and crop; a placeholder carries a prompt of its own, which is used when you give none. With optionsFor (an image element), none is placed: the user sees them as alternatives for it and picks one. Returns `assets` (ids, sizes) and previews.",
   input: z.strictObject({
     prompt: z
       .string()
@@ -495,6 +495,7 @@ export const imageGenerate = defineTool({
       .optional()
       .describe("Default: the one nearest to the element's frame, or 16:9 without an element."),
     elementId: Id.optional(),
+    optionsFor: Id.optional(),
     transparent: z
       .boolean()
       .optional()
@@ -506,7 +507,24 @@ export const imageGenerate = defineTool({
   writes: true,
   requires: 'images',
   timeoutMs: IMAGE_TIMEOUT_MS,
-  async run({ prompt, count, aspect, elementId, transparent }, ctx) {
+  async run({ prompt, count, aspect, elementId, optionsFor, transparent }, ctx) {
+    if (elementId && optionsFor) {
+      throw new DeckApiError(
+        'invalid_input',
+        'Give elementId to put the image into an element, or optionsFor to offer images for one: not both.',
+      );
+    }
+    if (optionsFor) {
+      const { element } = getElement(ctx.deck, optionsFor);
+      if (element.type !== 'image') {
+        throw new DeckApiError(
+          'invalid_input',
+          `optionsFor is for an image element; "${optionsFor}" is a ${element.type}.`,
+        );
+      }
+    }
+    // Alternatives take the shape of the element they are for; none of them is placed.
+    const shape: ImageTarget = optionsFor ? sourceAsset(ctx.deck, { elementId: optionsFor }) : {};
     const target: ImageTarget = elementId ? sourceAsset(ctx.deck, { elementId }) : {};
     const subject = prompt ?? target.prompt;
     if (!subject) {
@@ -517,10 +535,11 @@ export const imageGenerate = defineTool({
           : 'Give `prompt`: what the image shows.',
       );
     }
+    const frame = target.frame ?? shape.frame;
     const images = await ctx.services.images!.generate({
       prompt: styledPrompt(ctx.deck, subject),
       count: count ?? 1,
-      aspect: aspect ?? (target.frame ? closestAspect(target.frame) : '16:9'),
+      aspect: aspect ?? (frame ? closestAspect(frame) : '16:9'),
       ...(transparent ? { transparent } : {}),
     });
     return placeImages(ctx, images, target);
@@ -703,13 +722,14 @@ export const iconSearch = defineTool({
 export const uiPresentOptions = defineTool({
   name: 'ui_present_options',
   description:
-    "Shows the user 2 to 8 variations as cards (text in Markdown, an image asset, or a slide layout in HTML). Hovering previews a card and clicking applies it: the app applies the user's pick, so do not apply it yourself. Returns how many cards were shown.",
+    "Shows the user 2 to 8 variations as cards (text in Markdown, an image asset, or a slide layout in HTML). Text and image options are for an element, a layout for a slide. Hovering previews a card and clicking applies it: the app applies the user's pick, so do not apply it yourself. Returns how many cards were shown.",
   input: z.strictObject({
     kind: z.enum(['text', 'image', 'layout']),
     prompt: z.string().optional().describe('A line above the cards.'),
     elementId: Id.optional().describe(
       "The element the options are for. Default: the session's element.",
     ),
+    slideId: Id.optional().describe("Default: elementId's slide, or the session's."),
     options: z
       .array(
         z.strictObject({
@@ -722,22 +742,30 @@ export const uiPresentOptions = defineTool({
       .min(2)
       .max(8),
   }),
-  scopes: ['slide', 'object'],
+  scopes: ALL,
   writes: false,
   requires: 'options',
-  async run({ kind, prompt, elementId, options }, ctx) {
+  async run({ kind, prompt, elementId, slideId, options }, ctx) {
     const { scope } = ctx.turn;
-    if (scope.kind !== 'slide' && scope.kind !== 'object') {
+    // A slide or object session offers options on its own slide; a deck session names it.
+    const own = scope.kind === 'slide' || scope.kind === 'object' ? scope.slideId : undefined;
+    const target = elementId ?? (scope.kind === 'object' ? scope.elementIds[0] : undefined);
+    const onSlide = target
+      ? getElement(ctx.deck, target, own ?? slideId).slide.id
+      : (own ?? slideId);
+    if (!onSlide) {
       throw new DeckApiError(
-        'out_of_scope',
-        'ui_present_options works in slide and object sessions.',
+        'invalid_input',
+        'Say what the options are for: elementId for text and image options, slideId for layouts.',
       );
     }
-    const target = elementId ?? (scope.kind === 'object' ? scope.elementIds[0] : undefined);
-    if (target) getElement(ctx.deck, target, scope.slideId);
+    if (own && onSlide !== own) {
+      throw new DeckApiError('out_of_scope', `This session offers options on slide "${own}" only.`);
+    }
+    getSlide(ctx.deck, onSlide);
     await ctx.services.options!.present({
       kind,
-      target: { slideId: scope.slideId, ...(target ? { elementId: target } : {}) },
+      target: { slideId: onSlide, ...(target ? { elementId: target } : {}) },
       ...(prompt ? { prompt } : {}),
       options,
     });

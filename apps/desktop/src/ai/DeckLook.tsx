@@ -111,7 +111,7 @@ function StagePreview({ look }: { look: Look | null }) {
 function Section({ title, name, children }: { title: string; name: string; children: ReactNode }) {
   return (
     <section aria-label={title} data-look={name} className="flex flex-col gap-0.5">
-      <h3 className="px-2 pb-1 text-xs font-medium text-ui-fg-muted">{title}</h3>
+      <h4 className="px-2 pb-1 text-xs font-medium text-ui-fg-muted">{title}</h4>
       {children}
     </section>
   );

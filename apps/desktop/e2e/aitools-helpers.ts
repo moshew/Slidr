@@ -2,8 +2,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import type { Deck, Element, Slide } from '@slidr/model';
 
 /*
- * Helpers for the suites of the slide tool, the object tool and the variations gallery (WG11-T04
- * to T10). The agent is the scripted mock of a plain browser page: `script` names what every
+ * Helpers for the suites of the AI chat, its actions and the variations gallery (WG11-T04 to
+ * T10, ADR-072). The agent is the scripted mock of a plain browser page: `script` names what every
  * session plays, and `speed` multiplies its recorded delays (0 plays a turn at once).
  */
 
@@ -18,7 +18,7 @@ export interface OpenOptions {
 
 export const TITLE = 'תוכנית העבודה של הצוות לשנת 2027';
 
-/** Opens the app with the mock agent on a script. The Tool Panel shows the deck tool. */
+/** Opens the app with the mock agent on a script. The Tool Panel shows the AI chat. */
 export async function openApp(page: Page, options: OpenOptions): Promise<void> {
   const { script, speed = 0, lang = 'he', theme = 'light' } = options;
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
@@ -179,9 +179,11 @@ export function select(page: Page, ids: string[]): Promise<void> {
   }, ids);
 }
 
-/** The Tool Panel while it shows a tool: `ai.deck`, `ai.slide` or `ai.object`. */
-export const panel = (page: Page, id: 'ai.deck' | 'ai.slide' | 'ai.object'): Locator =>
-  page.locator(`section[data-panel="${id}"]`);
+/** The Tool Panel while it shows the AI chat (ADR-072). */
+export const panel = (page: Page): Locator => page.locator('section[data-panel="ai"]');
+
+/** What the next message is about, beside the composer. */
+export const focusChip = (page: Page): Locator => page.getByTestId('focus-chip');
 
 export const chat = (page: Page): Locator => page.getByTestId('chat');
 export const input = (page: Page): Locator => page.getByTestId('chat-input');
@@ -194,17 +196,13 @@ export const cards = (page: Page): Locator => page.getByTestId('option-card');
 export const onStage = (page: Page, elementId: string): Locator =>
   page.getByTestId('stage-frame').locator(`[data-element-id="${elementId}"]`);
 
-/** Opens an AI tool from the Activity Bar, on a tab. */
-export async function openTool(
-  page: Page,
-  id: 'ai.deck' | 'ai.slide' | 'ai.object',
-  tab: 'chat' | 'actions' = 'chat',
-): Promise<void> {
-  const button = page.getByTestId('activity-bar').locator(`[data-panel="${id}"]`);
+/** Opens the AI chat from the Activity Bar, on a tab. */
+export async function openTool(page: Page, tab: 'chat' | 'actions' = 'chat'): Promise<void> {
+  const button = page.getByTestId('activity-bar').locator('[data-panel="ai"]');
   if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
-  await expect(panel(page, id)).toBeVisible();
+  await expect(panel(page)).toBeVisible();
   const name = tab === 'chat' ? /^(צ'אט|Chat)$/ : /^(פעולות|Actions)$/;
-  await panel(page, id).getByRole('tab', { name }).click();
+  await panel(page).getByRole('tab', { name }).click();
 }
 
 /** Waits for the turn that is running, with every round of the design check, to end. */

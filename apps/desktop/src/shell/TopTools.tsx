@@ -64,7 +64,7 @@ import {
   type ToolAction,
 } from './registry';
 import { aiKinds, selectionKind, type SelectionKind } from './selection';
-import { openPanel, setWelcome, setZoom, showShortcuts, useShell } from './store';
+import { openAiChat, openPanel, setWelcome, setZoom, showShortcuts, useShell } from './store';
 
 /** Top Tools (SPEC 4.4): row A is fixed, row B follows the selection. */
 export function TopTools() {
@@ -117,8 +117,8 @@ function RowA() {
       <div className="flex-1" />
       <ZoomMenu />
       <div className="flex items-center gap-2">
-        <Button variant="soft" icon={Sparkles} onClick={() => openPanel(PanelId.aiSlide)}>
-          {t('tools.aiSlide')}
+        <Button variant="soft" icon={Sparkles} data-testid="ask-ai" onClick={openAiChat}>
+          {t('tools.aiChat')}
         </Button>
         <ExportButton />
         <PresentButton />
@@ -460,22 +460,16 @@ function RowB() {
           ))}
         </Group>
       ))}
-      {kind === 'none' ? (
-        <Button variant="soft" size="sm" icon={Sparkles} onClick={() => openPanel(PanelId.aiSlide)}>
-          {t('tools.aiSlide')}
+      {(kind === 'none' || aiKinds.has(kind)) && (
+        <Button
+          variant="soft"
+          size="sm"
+          icon={Sparkles}
+          aria-label={t(kind === 'none' ? 'tools.aiSlide' : 'tools.aiSelection')}
+          onClick={openAiChat}
+        >
+          {t('tools.ai')}
         </Button>
-      ) : (
-        aiKinds.has(kind) && (
-          <Button
-            variant="soft"
-            size="sm"
-            icon={Sparkles}
-            aria-label={t('tools.aiObject')}
-            onClick={() => openPanel(PanelId.aiObject)}
-          >
-            {t('tools.ai')}
-          </Button>
-        )
       )}
     </div>
   );

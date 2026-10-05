@@ -461,7 +461,7 @@ test.describe('with a deck open', () => {
         JSON.stringify({ harnessId: 'mock', model: 'deck-build', qualityGate: false }),
       ),
     );
-    await showPanel(page, 'ai.deck');
+    await showPanel(page, 'ai');
     const input = page.getByTestId('chat-input');
     await expect(input).toBeVisible();
     const before = await page.getByTestId('chat-assistant').count();

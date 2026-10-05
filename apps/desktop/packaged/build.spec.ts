@@ -103,7 +103,7 @@ test('the app carries the licences of what it is built from, and shows them', as
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('licenses-dialog')).toHaveCount(0);
   // Back to the deck's chat, where the next test writes.
-  await showPanel(page, 'ai.deck');
+  await showPanel(page, 'ai');
   await expect(page.getByTestId('chat-input')).toBeVisible();
 });
 
@@ -137,7 +137,7 @@ test('a turn builds a slide: the bridge, the capture window, the conversion and 
   await page.evaluate(() =>
     localStorage.setItem('slidr.agent', JSON.stringify({ harnessId: 'mock', model: 'deck-build' })),
   );
-  await showPanel(page, 'ai.deck');
+  await showPanel(page, 'ai');
   const input = page.getByTestId('chat-input');
   await input.fill('מצגת על תוכנית העבודה');
   await input.press('Enter');

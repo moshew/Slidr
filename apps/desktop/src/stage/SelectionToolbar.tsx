@@ -27,8 +27,7 @@ import { duplicate, remove, reorder, toggleLock } from '../arrange/actions';
 import {
   aiKinds,
   focusStage,
-  openPanel,
-  PanelId,
+  openAiChat,
   selectionKind,
   useDeck,
   useEditor,
@@ -179,8 +178,8 @@ export function SelectionToolbar() {
           variant="soft"
           size="sm"
           icon={Sparkles}
-          aria-label={t('tools.aiObject')}
-          onClick={() => openPanel(PanelId.aiObject)}
+          aria-label={t('tools.aiSelection')}
+          onClick={openAiChat}
         >
           {t('tools.ai')}
         </Button>

@@ -38,6 +38,7 @@ export {
   type FileState,
 } from './editor';
 export {
+  openAiChat,
   openPanel,
   setAiTab,
   setPanelOpen,
