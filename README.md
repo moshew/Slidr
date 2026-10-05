@@ -21,24 +21,26 @@ Out of scope: PowerPoint (`.pptx`) compatibility, cloud accounts and real-time c
 
 The work is split into eight milestones, M0 to M7 ([docs/PLAN.md](docs/PLAN.md)). M0 (feasibility) is done. Since then every must-have task and almost every task of the full first version has been built, by coding agents working in parallel, each track recorded in an ADR. No milestone after M0 is closed: each one waits for its design review, for checks only a person can make, and for decisions. Sections 4, 7 and 8 of the plan say what is missing for each.
 
+On 2026-10-05 a round of fixes was merged that a cloud session had built in a Linux container ([ADR-069](docs/adr/ADR-069-cloud-fixes.md)): the defects that earlier records had left open, part of what was still unbuilt, and a hunt for new defects. It was checked there in Edge against the mocked backend. On Windows the regular suites pass on it after two fixes, one for a pair of file names that only Linux tells apart and one in a test; nothing it added has run in the real window yet.
+
 In the app today:
 
 - **Model and storage** — Zod schemas for deck, slide, element, theme and layout; every change goes through an undoable command. The `.slidr` archive, atomic saves, backups, recent files and content-addressed assets are on the Rust side, and the chat is saved inside the file.
 - **Shell** — a welcome screen (start with the AI, from an empty deck, from a template, by opening a file or by importing HTML), a custom title bar, activity bar and panels in light and dark themes and in both directions, a settings screen, and a shortcut map (Ctrl+/) that lists every key. Shortcuts cannot be rebound.
-- **Stage and filmstrip** — select, drag, resize, rotate and snap, also several objects together; image crop, line editing and working inside a group; a right-click menu for every kind of selection and a floating toolbar beside it; Tab walks the objects, Ctrl+arrows resizes and Alt+arrows rotates.
+- **Stage and filmstrip** — select, drag, resize, rotate and snap, also several objects together; image crop, line editing and working inside a group; a right-click menu for every kind of selection and a floating toolbar beside it; Tab walks the objects, Ctrl+arrows resizes, Alt+arrows rotates and Alt+F10 reaches the floating toolbar. In the filmstrip, Ctrl+arrows moves the selected slides, and a slide with design findings carries a mark beside its number.
 - **Text** — in-place editing and formatting for mixed Hebrew and English, paste from Word and the browser, text styles from the theme, links to a web address or to a slide, a format painter, gradient, outline and shadow for the text of a box, and find and replace across the deck. The built-in font library and the fonts installed on the computer.
-- **Objects** — shapes with text inside, lines, fill, outline, effects and the slide background; image masks, adjustments, filter presets and duotone in the template's colours; SVG files whose colours can be replaced and tied to the template; an icon library (Lucide and Tabler, about 8,000 icons) with search in English and Hebrew; position, size and rotation as numbers, and paste style.
-- **Tables** — cells edited in place with the same text editor; rows, columns, merge and split; six table styles; paste from Excel, Google Sheets, Word and CSV; right-to-left tables.
+- **Objects** — shapes with text inside, lines, fill, outline, effects and the slide background; image masks, adjustments, filter presets and duotone in the template's colours; SVG files whose colours can be replaced and tied to the template; an icon library (Lucide and Tabler, about 8,000 icons) with search in English and Hebrew; position, size and rotation as numbers, and paste style. A picture the deck no longer uses can be removed from the media panel.
+- **Tables** — cells edited in place with the same text editor, with the arrows moving between cells; rows and columns, several at a time, merge and split; cell padding; six table styles; paste from Excel, Google Sheets, Word and CSV; right-to-left tables.
 - **Charts** — eight types drawn as SVG by ECharts in the theme's colours and mirrored in a right-to-left deck, a data grid that stays open beside the chart, paste of a range, and options for title, legend, axes and labels. A chart builds on its step in a show and stays live in the exported file.
 - **Video and audio** — mp4, webm, mp3, wav and m4a, with trim, poster, loop, mute and volume; one player serves the editor, present mode and the exported file.
 - **HTML objects** — the text inside an HTML object is edited in place; a Code panel edits its HTML and CSS with the Stage as the live preview; "Decompose into objects" converts it, showing the differences first.
-- **Templates** — ten built-in templates, each a theme and fourteen layouts in both directions; a Templates panel to apply one, edit colours, fonts, text styles and the logo, and save personal templates; a default template for new decks; slide number and footer; a Layout tool that moves an existing slide to another layout.
+- **Templates** — ten built-in templates, each a theme and fourteen layouts in both directions; a Templates panel to apply one, edit colours, the chart palette, fonts, text styles, corners, shadow, backgrounds and the logo, and save personal templates; a default template for new decks; slide number and footer; a Layout tool that moves an existing slide to another layout.
 - **Design check** — a panel with the design lint's findings for the whole deck, slide by slide: go to the object, fix one, fix all in one undo step, or hand the deck to the agent.
-- **Three AI tools** — a chat for the deck, one for every slide, and one that follows the selection, each with a tab of ready-made actions. Ask for a deck and watch the slides appear; a request that names only a subject gets an outline to approve first. Each message is one undo step, and a quality gate sends the agent back to look again or to fix what the design lint finds. Options the agent offers (wordings, images, redesigns) appear as cards: hover to preview on the slide, click to apply. The chat has a model and effort picker, cost per turn, several conversations per tool and attachments. It runs on Claude Code CLI; in tests a scripted mock takes its place.
+- **Three AI tools** — a chat for the deck, one for every slide, and one that follows the selection, each with a tab of ready-made actions. Ask for a deck and watch the slides appear; a request that names only a subject gets an outline to approve first. Each message is one undo step, and a quality gate sends the agent back to look again or to fix what the design lint finds. Options the agent offers (wordings, images, redesigns) appear as cards: hover to preview on the slide, click to apply; the sets offered earlier for the same target stay a step back while the window is open. The chat has a model and effort picker, cost per turn, several conversations per tool and attachments. It runs on Claude Code CLI; in tests a scripted mock takes its place.
 - **Templates made by the agent** — from a description, a site address, a logo, an image, an HTML file or the open deck, the agent drafts a theme and layouts; the app checks every layout with the design lint and shows the draft before anything is saved.
 - **AI images and stock** — two image providers (Codex CLI and `openai-api`), chosen in the settings, with API keys kept in the operating system's credential store; placeholders that carry a prompt, filled one by one or all together; a deck-wide image style; stock photos from Unsplash and Pexels with the credit saved in the asset; background removal on this machine.
 - **HTML import** — open any HTML presentation; the agent explores the file in a hidden window with no network and six permitted commands, shows a plan, and captures the slides into the deck, with a report of what became editable and what stayed HTML.
-- **Animations, present mode, export** — an animations panel and transitions, full-screen presenting on the current display, and export of one self-contained HTML file: images re-encoded, fonts cut down to the characters in use, animations, live charts and links included, media inside the file or in a folder beside it.
+- **Animations, present mode, export** — an animations panel and transitions, full-screen presenting on the current display, and export of one self-contained HTML file: images re-encoded, fonts cut down to the characters in use, animations, live charts and links included, media inside the file or in a folder beside it. A link in a show or in an exported file is reached with Tab and followed with Enter, and only web, mail and phone addresses are opened.
 - **Packaged build** — `tauri build` makes a Windows executable and an unsigned NSIS installer. Every page runs under a strict content policy, the main window holds only the permissions it uses, failures of files, disk and agent are recovered from in plain words, and the seven performance targets of the spec are met on an idle machine.
 
 Working behind all this:
@@ -53,17 +55,17 @@ What the list above does not say:
 - **The agent does not build slides from a template's layouts.** A deck it builds on a template takes the template's colours and fonts and nothing the layouts draw (0 of 108 slides in two evaluation runs). Whether that should change is an open decision.
 - **Never called with a real key:** the OpenAI image API, Unsplash and Pexels. Unsplash's API guidelines also speak against asking each user for a key of their own.
 - **Background removal by the subject is switched off on a clean install:** it needs a matting model file, none ships or is downloaded, and no candidate is free of a licence question. Removing a flat background colour works.
-- **Checked in Edge against a mocked backend, not in the real window:** most of the editor's newer tools. The installer has never been run, drag and drop from Explorer and the system file dialogs were never exercised by hand, and an exported file has not been opened in real Safari.
+- **Checked in Edge against a mocked backend, not in the real window:** most of the editor's newer tools, and everything ADR-069 added, its new keys among them; what it added for screen readers has not been heard in one. The installer has never been run, drag and drop from Explorer and the system file dialogs were never exercised by hand, and an exported file has not been opened in real Safari.
 - **HTML import** was measured on ten files (103 of 103 measured slides match their source, median editability 98%) but not against a hostile file. It works on Windows only, one file at a time, and a canvas drawn by the file's scripts comes in as a still picture.
 - **New dependencies wait for approval:** ECharts, CodeMirror, `tract`, `tauri-plugin-opener` and the icon sets among them.
 
-Not there yet: rebinding shortcuts, the accessibility pass, upscaling a picture, AI actions for charts and tables, audio that plays across slides, resuming an interrupted import, and template files (`.slidrtheme`).
+Not there yet: rebinding shortcuts, the rest of the accessibility pass, upscaling a picture, AI actions for charts and tables, editing an outline in its card, audio that plays across slides, resuming an interrupted import and keeping its source file, and template files (`.slidrtheme`).
 
 ## Getting started
 
 Prerequisites:
 
-- Windows 11. The code is kept cross-platform, but it is only tested on Windows; slide capture, HTML import and the list of installed fonts rely on WebView2 and DirectWrite.
+- Windows 11. The code is kept cross-platform, but the app has only ever run on Windows (the test suites have also run in a Linux container, see [Checks](#checks)); slide capture, HTML import and the list of installed fonts rely on WebView2 and DirectWrite.
 - Node.js 22 or later and pnpm 12.
 - Rust 1.90 or later with the MSVC toolchain (Visual Studio Build Tools, C++ workload), and `cargo` on the PATH.
 - Microsoft Edge, for the end-to-end tests.
@@ -99,7 +101,11 @@ pnpm test:browser # unit tests that need a real browser (Vitest in headless Edge
 pnpm e2e          # Playwright end-to-end and visual regression
 ```
 
-On `main` at `012d280` (2026-10-04) all of these pass: 2,037 unit tests, 244 Rust tests, 234 browser tests and 1,172 end-to-end tests.
+The last full run on Windows was on `main` at `05fc875` (2026-10-05), the merge of ADR-069: 2,063 unit tests pass and 3 fail as expected, 246 Rust tests, 236 browser tests, and 1,211 of 1,212 end-to-end tests, the 22 screenshot baselines among them. Two things that run found are fixed since. Type checking and ESLint failed, because the branch brought two modules whose names differ only in case, which Windows reads as one file (`61e0001`; a test now forbids such a pair). And the one end-to-end failure was a test that read a colour before its fade was over (`53abe48`).
+
+The three expected failures are findings left open on purpose, each written as a test marked `it.fails` with the proposed change inside it; such a test fails on the day its finding is closed, until the mark is removed.
+
+The suites have also been run in a Linux container (ADR-069). Eight browser tests and six end-to-end tests fail there on the fonts, codecs and browser of that system, and the screenshot comparisons have no baseline; Playwright writes a baseline where none exists, so on Linux run the end-to-end suites with `--update-snapshots=none`.
 
 The end-to-end tests run against the Vite frontend with the Tauri IPC mocked, in the installed Edge (the same Chromium engine WebView2 uses). The dev server sends the app's content policy with the app's pages, so a test fails where the packaged app would. The screenshot baselines are Windows-only, and the suites named `*-visual` compare nothing: they write screenshots for the design review to `apps/desktop/test-results/` (ignored by git).
 
@@ -215,6 +221,7 @@ The design documents are written in Hebrew.
   - [ADR-060](docs/adr/ADR-060-editor-shell-text-stage.md) — The editor's P1: the Stage's right-click menu and floating toolbar, the text tools, find and replace, the shortcut map, the welcome screen and system fonts
   - [ADR-063](docs/adr/ADR-063-design-check-and-templates.md) — The user's design check and its panel, seven more built-in templates, master components, and changing the layout of a slide
   - [ADR-066](docs/adr/ADR-066-packaging-and-hardening.md) — Packaging and hardening: the first packaged Windows build and the suites that drive it, the content policy and trimmed permissions, failure recovery, and the performance pass
+  - [ADR-069](docs/adr/ADR-069-cloud-fixes.md) — The cloud fixes: the defects earlier records had left open, part of what was still unbuilt (removing an asset, the findings mark in the filmstrip, the history of options, the rest of the template editor, three table gaps, part of the keyboard pass), and a hunt for new defects
 
 ## License
 
