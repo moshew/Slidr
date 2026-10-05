@@ -229,6 +229,43 @@ describe('DocumentService', () => {
     expect(storage.workspaces.size).toBe(0);
   });
 
+  it('leaves no workspace behind when the copy before a migration cannot be made', async () => {
+    const old = SCHEMA_VERSION - 1;
+    storage.files.set('C:/old.slidr', JSON.stringify({ ...hebrewDeck(), schemaVersion: old }));
+    const migrating = new DocumentService(storage, new CommandBus(createDeck()), {
+      migrations: { [old]: (deck) => deck },
+    });
+    storage.backup = () => Promise.reject(new StorageError('io', 'the folder is read-only'));
+    await expect(migrating.open('C:/old.slidr')).rejects.toMatchObject({ kind: 'io' });
+    expect(storage.workspaces.size).toBe(0);
+    expect(migrating.workspace).toBeNull();
+  });
+
+  it('asks the guard when the new document is ready, and keeps the open one on a no', async () => {
+    storage.files.set('C:/b.slidr', JSON.stringify(hebrewDeck()));
+    await service.create(createDeck());
+    const first = service.workspace!.id;
+    service.bus.dispatch(rename('Still unsaved'));
+    const readyAt: (string | undefined)[] = [];
+    const no = () => {
+      readyAt.push(storage.log.at(-1));
+      return Promise.resolve(false);
+    };
+
+    expect(await service.open('C:/b.slidr', no)).toEqual({ kept: true });
+    expect(await service.create(hebrewDeck(), no)).toBe(false);
+    // Asked after the file was unpacked and the workspace made: at the last moment.
+    expect(readyAt).toEqual(['open C:/b.slidr', 'create w3']);
+    expect(service.workspace?.id).toBe(first);
+    expect(service.bus.deck.meta.title).toBe('Still unsaved');
+    expect(service.dirty).toBe(true);
+    // What was made for the documents that did not come to be is gone.
+    expect([...storage.workspaces.keys()]).toEqual([first]);
+
+    expect(await service.open('C:/b.slidr', () => Promise.resolve(true))).toEqual({});
+    expect(service.bus.deck).toEqual(hebrewDeck());
+  });
+
   it('never deletes a crash leftover that fails to load', async () => {
     const { id } = await storage.create();
     await storage.writeDeck(id, '{"schemaVersion": 99}', 'From the future');

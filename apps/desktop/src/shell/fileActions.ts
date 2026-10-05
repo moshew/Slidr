@@ -1,4 +1,5 @@
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import type { ReplaceGuard } from '../document/documentService';
 import { describeFailure } from '../document/failures';
 import type { RecentFile, RecoverableWorkspace } from '../document/storage';
 import { currentLanguage, i18n } from '../i18n';
@@ -135,26 +136,48 @@ async function offerRecovery(editor: Editor): Promise<boolean> {
 
 /**
  * Asks what to do with unsaved changes before they would be replaced. True when it is fine to
- * go on: there were none, they were saved, or the user chose to drop them.
+ * go on: there are none, or the user chose to drop them. After "Save" it looks again: a deck
+ * that changed while it was being saved (the agent's turn does not wait for a save) has unsaved
+ * changes once more, and they get the question too.
  */
 export async function confirmDiscard(editor: Editor): Promise<boolean> {
-  if (!editor.file.getState().dirty) return true;
-  const name = documentName(editor.file.getState().path, editor.bus.deck.meta.title);
-  const choice = await ask({
-    title: t('file.unsavedTitle', { name }),
-    body: t('file.unsavedBody'),
-    actions: [
-      { id: 'cancel', label: t('file.cancel'), variant: 'ghost' },
-      { id: 'discard', label: t('file.dontSave') },
-      // Without storage (a plain browser) there is nowhere to save to.
-      ...(editor.document
-        ? [{ id: 'save', label: t('file.save'), variant: 'primary' as const }]
-        : []),
-    ],
-    cancelId: 'cancel',
-  });
-  if (choice === 'save') return saveDocument(editor);
-  return choice === 'discard';
+  for (;;) {
+    // The document service knows; the file state is its echo, and is all there is without one.
+    if (!(editor.document?.dirty ?? editor.file.getState().dirty)) return true;
+    const name = documentName(editor.file.getState().path, editor.bus.deck.meta.title);
+    const choice = await ask({
+      title: t('file.unsavedTitle', { name }),
+      body: t('file.unsavedBody'),
+      actions: [
+        { id: 'cancel', label: t('file.cancel'), variant: 'ghost' },
+        { id: 'discard', label: t('file.dontSave') },
+        // Without storage (a plain browser) there is nowhere to save to.
+        ...(editor.document
+          ? [{ id: 'save', label: t('file.save'), variant: 'primary' as const }]
+          : []),
+      ],
+      cancelId: 'cancel',
+    });
+    if (choice === 'discard') return true;
+    if (choice !== 'save' || !(await saveDocument(editor))) return false;
+  }
+}
+
+/**
+ * The guard a flow hands to the document service once the user has answered for the deck as it
+ * is now (DOC-05: unsaved work is never replaced without the question). The service asks it
+ * when the new document is ready, which can be much later: the system's file dialog stops the
+ * user and not the agent, whose turn goes on writing, and a large file takes time to unpack.
+ * A deck that is no longer the one the user answered for gets the question again.
+ */
+function replaceGuard(editor: Editor): ReplaceGuard {
+  let answered = editor.bus.deck;
+  return async () => {
+    if (editor.bus.deck === answered) return true;
+    const go = await confirmDiscard(editor);
+    answered = editor.bus.deck;
+    return go;
+  };
 }
 
 /**
@@ -164,20 +187,22 @@ export async function confirmDiscard(editor: Editor): Promise<boolean> {
 export async function newDocument(editor: Editor, start?: Deck): Promise<boolean> {
   if (!(await confirmDiscard(editor))) return false;
   const deck = start ?? newDeck(currentLanguage());
-  // A document was chosen: from the welcome screen, on to the editor (DOC-05).
-  setWelcome(false);
   if (!editor.document) {
+    // A document was chosen: from the welcome screen, on to the editor (DOC-05).
+    setWelcome(false);
     editor.bus.reset(deck);
     return true;
   }
+  let created = true;
   try {
-    await editor.document.create(deck);
+    created = await editor.document.create(deck, replaceGuard(editor));
   } catch (error) {
     await report(t('file.newFailed'), error);
   }
   rememberWorkspace(editor);
   syncFileState(editor);
-  return true;
+  if (created) setWelcome(false);
+  return created;
 }
 
 /** Opens a `.slidr` file: the given one, or one the user picks. True when it is open. */
@@ -185,14 +210,16 @@ export async function openDocument(editor: Editor, path?: string): Promise<boole
   const document = editor.document;
   if (!document) return false;
   if (!(await confirmDiscard(editor))) return false;
+  const mayReplace = replaceGuard(editor);
   const chosen =
     path ?? (await openDialog({ multiple: false, directory: false, filters: filters() }));
   if (!chosen) return false;
   editor.file.setState({ busy: 'opening' });
   try {
-    const { migratedFrom } = await document.open(chosen);
+    const { migratedFrom, kept } = await document.open(chosen, mayReplace);
     rememberWorkspace(editor);
     syncFileState(editor);
+    if (kept) return false;
     setWelcome(false);
     if (migratedFrom !== undefined) await tell(t('file.migrated'));
     return true;

@@ -34,6 +34,14 @@ export interface DocumentServiceOptions {
 }
 
 /**
+ * Asked at the last moment before a document replaces the open one: false keeps the open one.
+ * Getting a document ready takes time (a workspace is made, a file is unpacked), and the deck
+ * goes on changing through it: the agent's turn does not wait. Nothing is awaited between the
+ * answer and the replacement, so the deck that was answered for is the deck that is replaced.
+ */
+export type ReplaceGuard = () => Promise<boolean>;
+
+/**
  * The open document: which file and workspace the deck in the bus belongs to, whether it has
  * unsaved changes, and the new / open / save / save-as / recover flows (DOC-01..05). It knows
  * nothing of menus and dialogs; the shell asks for paths and calls in.
@@ -83,22 +91,43 @@ export class DocumentService {
     return this.#revision !== this.#savedRevision;
   }
 
-  /** Starts a new, unsaved document with the given deck. */
-  async create(deck: Deck): Promise<void> {
+  /**
+   * Starts a new, unsaved document with the given deck. False when `mayReplace` kept the open
+   * document instead.
+   */
+  async create(deck: Deck, mayReplace?: ReplaceGuard): Promise<boolean> {
     const workspace = await this.#storage.create();
+    if (mayReplace && !(await mayReplace())) {
+      await this.#discard(workspace.id);
+      return false;
+    }
     this.#replace(workspace, deck, false);
+    return true;
   }
 
   /**
    * Opens a `.slidr` file. A file from an older version is migrated, after a copy of the
-   * original is put aside (DOC-04).
+   * original is put aside (DOC-04). `kept` when `mayReplace` kept the open document instead.
    */
-  async open(path: string): Promise<{ migratedFrom?: number }> {
+  async open(
+    path: string,
+    mayReplace?: ReplaceGuard,
+  ): Promise<{ migratedFrom?: number; kept?: true }> {
     const opened = await this.#storage.open(path);
     // The file itself is untouched, so a workspace that fails to load can simply go.
     const loaded = await this.#load(opened, true);
     if (loaded.migratedFrom !== undefined) {
-      await this.#storage.backup(path, `v${loaded.migratedFrom}`);
+      try {
+        await this.#storage.backup(path, `v${loaded.migratedFrom}`);
+      } catch (error) {
+        // Without the copy the file is not migrated, and its workspace has no document.
+        await this.#discard(opened.workspace.id);
+        throw error;
+      }
+    }
+    if (mayReplace && !(await mayReplace())) {
+      await this.#discard(opened.workspace.id);
+      return { kept: true };
     }
     this.#replace(opened.workspace, loaded.deck, false);
     return loaded.migratedFrom === undefined ? {} : { migratedFrom: loaded.migratedFrom };
@@ -199,8 +228,20 @@ export class DocumentService {
     try {
       return loadDeck(JSON.parse(opened.deckJson), this.#migrations);
     } catch (error) {
-      if (discardOnFailure) await this.#storage.close(opened.workspace.id);
+      if (discardOnFailure) await this.#discard(opened.workspace.id);
       throw error;
+    }
+  }
+
+  /**
+   * Deletes a workspace that was made for a document that did not come to be. One that cannot
+   * be deleted now is swept at the next start: it never held unsaved work.
+   */
+  async #discard(workspaceId: string): Promise<void> {
+    try {
+      await this.#storage.close(workspaceId);
+    } catch (error) {
+      console.warn('A workspace that is not needed could not be deleted', error);
     }
   }
 
