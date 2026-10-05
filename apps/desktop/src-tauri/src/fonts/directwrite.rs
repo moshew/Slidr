@@ -4,9 +4,9 @@
 
 use windows::{
     Win32::Graphics::DirectWrite::{
-        DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_STRETCH_NORMAL, DWRITE_FONT_STYLE_NORMAL,
-        DWRITE_FONT_WEIGHT_NORMAL, DWriteCreateFactory, IDWriteFactory, IDWriteFontFamily,
-        IDWriteLocalizedStrings,
+        DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_SIMULATIONS_NONE, DWRITE_FONT_STRETCH_NORMAL,
+        DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_WEIGHT_NORMAL, DWriteCreateFactory, IDWriteFactory,
+        IDWriteFontFamily, IDWriteLocalizedStrings,
     },
     core::{BOOL, Result, w},
 };
@@ -56,8 +56,33 @@ fn family(family: &IDWriteFontFamily) -> Result<SystemFont> {
             family: name,
             hebrew: regular.HasCharacter(ALEF)?.as_bool(),
             symbol: regular.IsSymbolFont().as_bool(),
+            weights: weights(family),
         })
     }
+}
+
+/// The weights of the faces a family has, ascending, each once. A face DirectWrite would only
+/// simulate (a bold made by thickening the regular one) is not a face of the family.
+fn weights(family: &IDWriteFontFamily) -> Vec<u16> {
+    let mut weights = Vec::new();
+    // SAFETY: `family` is a live interface, and an index below its count is a font it has.
+    unsafe {
+        for index in 0..family.GetFontCount() {
+            // A face that cannot be read is left out; the rest are listed.
+            let Ok(font) = family.GetFont(index) else {
+                continue;
+            };
+            if font.GetSimulations() != DWRITE_FONT_SIMULATIONS_NONE {
+                continue;
+            }
+            if let Ok(weight) = u16::try_from(font.GetWeight().0) {
+                weights.push(weight);
+            }
+        }
+    }
+    weights.sort_unstable();
+    weights.dedup();
+    weights
 }
 
 /// The English name of a family, which is the one decks and CSS use; a font that has none

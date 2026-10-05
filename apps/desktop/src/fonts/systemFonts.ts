@@ -10,6 +10,8 @@ export interface SystemFont {
   hebrew: boolean;
   /** A symbol font (Wingdings): it draws pictures in place of letters, its own name included. */
   symbol: boolean;
+  /** The weights the family has a face of its own for, ascending; absent when not known. */
+  weights?: readonly number[];
 }
 
 /** Where the list comes from. */

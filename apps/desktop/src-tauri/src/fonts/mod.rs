@@ -23,6 +23,9 @@ pub struct SystemFont {
     /// A symbol font (Wingdings): it draws pictures in place of letters, those of its own name
     /// too.
     pub symbol: bool,
+    /// The weights the family has a face of its own for (400 and 700, say), ascending. Text
+    /// in another weight is drawn in the nearest of them, so the weight list offers only these.
+    pub weights: Vec<u16>,
 }
 
 /// `fonts_system()`: the installed font families, by name. Empty on a system this module
@@ -64,6 +67,7 @@ mod tests {
             family: family.into(),
             hebrew: false,
             symbol: false,
+            weights: vec![400],
         }
     }
 
@@ -87,11 +91,17 @@ mod tests {
             family: "David".into(),
             hebrew: true,
             symbol: false,
+            weights: vec![400, 700],
         })
         .expect("a font is plain data");
         assert_eq!(
             json,
-            serde_json::json!({ "family": "David", "hebrew": true, "symbol": false })
+            serde_json::json!({
+                "family": "David",
+                "hebrew": true,
+                "symbol": false,
+                "weights": [400, 700]
+            })
         );
     }
 
@@ -106,6 +116,24 @@ mod tests {
         let arial = find("Arial").expect("Arial is installed");
         assert!(arial.hebrew, "Arial has Hebrew letters");
         assert!(!arial.symbol);
+        // Arial comes as regular and bold, each with its italic: two weights, and no light one.
+        assert!(arial.weights.contains(&400) && arial.weights.contains(&700));
+        assert!(!arial.weights.contains(&300), "{:?}", arial.weights);
+
+        // Segoe UI has more faces than regular and bold: light and semibold among them.
+        let segoe = find("Segoe UI").expect("Segoe UI is installed");
+        assert!(segoe.weights.len() > 2, "{:?}", segoe.weights);
+        assert!(segoe.weights.contains(&300) && segoe.weights.contains(&600));
+
+        for font in &fonts {
+            assert!(!font.weights.is_empty(), "{} has no face", font.family);
+            assert!(
+                font.weights.windows(2).all(|pair| pair[0] < pair[1]),
+                "the weights of {} are ascending, each once: {:?}",
+                font.family,
+                font.weights
+            );
+        }
 
         let consolas = find("Consolas").expect("Consolas is installed");
         assert!(!consolas.hebrew, "Consolas has no Hebrew letters");
