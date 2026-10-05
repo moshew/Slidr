@@ -237,32 +237,29 @@ test('a key given to a command of the text editor holds while typing in the text
   await rebind(page, 'shell.undo', 'F9');
   await closeMap(page);
 
-  // In the text: the new key of bold makes bold, and the key it came with does nothing, not
-  // the editor's bold and not the browser's own.
+  // In the text, with the caret at its end: the key bold came with does nothing now, not the
+  // editor's bold and not the browser's own, so what is typed next is as the text was.
   await page.evaluate(() => window.slidr!.selection.getState().startEditing('e_t'));
   const editor = page.locator('[data-text-editor]');
   await expect(editor).toBeFocused();
-  await page.keyboard.press('Control+a');
   await page.keyboard.press('Control+b');
-  expect(await text()).toEqual([{ text: 'hello' }]);
+  await page.keyboard.type(' a');
+  await expect.poll(text).toEqual([{ text: 'hello a' }]);
   expect(await editor.evaluate((dom) => dom.querySelectorAll('b, strong').length)).toBe(0);
+  // The new key of bold makes what is typed next bold.
   await page.keyboard.press('Control+Shift+K');
-  await expect.poll(text).toEqual([{ text: 'hello', marks: { weight: 700 } }]);
+  await page.keyboard.type('b');
+  await expect.poll(text).toEqual([{ text: 'hello a' }, { text: 'b', marks: { weight: 700 } }]);
 
   // Undo is on its new key there too; Ctrl+Z, which no command has now, undoes nothing.
-  // (ProseMirror reads no caret key for 200ms after it set the selection itself: ADR-006.)
-  await page.waitForTimeout(250);
-  await page.keyboard.press('End');
-  await page.keyboard.type(' world');
-  await expect.poll(async () => (await text())[0]!.text).toBe('hello world');
   await page.keyboard.press('Control+z');
-  expect((await text())[0]!.text).toBe('hello world');
+  expect(await text()).toEqual([{ text: 'hello a' }, { text: 'b', marks: { weight: 700 } }]);
   await page.keyboard.press('F9');
-  await expect.poll(async () => (await text())[0]!.text).toBe('hello');
+  await expect.poll(text).toEqual([{ text: 'hello a' }]);
   // On the selected box the same keys hold, as before.
   await page.keyboard.press('Escape');
   await page.keyboard.press('Control+Shift+K');
-  await expect.poll(text).toEqual([{ text: 'hello' }]);
+  await expect.poll(text).toEqual([{ text: 'hello a', marks: { weight: 700 } }]);
 });
 
 test('one shortcut goes back to its key, and all of them do', async ({ page }) => {
