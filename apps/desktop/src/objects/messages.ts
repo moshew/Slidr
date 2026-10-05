@@ -26,6 +26,12 @@ export const he = {
     arrows: 'חצים',
     callouts: 'בועות דיבור',
     brackets: 'סוגריים',
+    cards: 'כרטיסים',
+  },
+  card: {
+    title: 'כרטיס',
+    heading: 'כותרת הכרטיס',
+    body: 'כמה מילים על הנושא של הכרטיס, בשורה או שתיים.',
   },
   shape: {
     rect: 'מלבן',
@@ -362,6 +368,12 @@ export const en: Messages<typeof he> = {
     arrows: 'Arrows',
     callouts: 'Speech bubbles',
     brackets: 'Brackets',
+    cards: 'Cards',
+  },
+  card: {
+    title: 'Card',
+    heading: 'Card title',
+    body: 'A few words about what this card is for, in a line or two.',
   },
   shape: {
     rect: 'Rectangle',

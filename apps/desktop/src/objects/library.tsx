@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeck, useEditor, type ActionPopoverProps } from '../shell';
-import { insertLine, insertShape } from './insert';
+import { CARD_GLYPH } from './card';
+import { insertCard, insertLine, insertShape } from './insert';
 import { Hint } from './parts';
 import { GLYPH_BOX, LINE_GLYPHS, LINE_KINDS, shapeGlyph, shapeLibrary } from './shapes';
 
@@ -27,9 +28,39 @@ export function ShapeGlyph({ preset }: { preset: string }) {
   );
 }
 
+/** A card as a small glyph (`CARD_GLYPH`), drawn as the shapes are; its accent is solid. */
+function CardGlyph() {
+  // The lines of text start where the deck's own do.
+  const rtl = useDeck((s) => s.deck.meta.dir === 'rtl');
+  return (
+    <svg
+      aria-hidden
+      viewBox={`0 0 ${GLYPH_BOX} ${GLYPH_BOX}`}
+      className="size-6"
+      stroke="currentColor"
+      strokeWidth={1.25}
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    >
+      <path d={CARD_GLYPH.box} fill="currentColor" fillOpacity={0.16} />
+      <path d={CARD_GLYPH.accent} fill="currentColor" />
+      <path
+        d={CARD_GLYPH.lines}
+        transform={rtl ? `translate(${GLYPH_BOX} 0) scale(-1 1)` : undefined}
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+/** A button of the library: a glyph in a square, in the colour of the text around it. */
+const entry =
+  'inline-flex size-control cursor-default items-center justify-center rounded-control text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed';
+
 /**
  * The shape library: every preset the renderer draws, by group. A click inserts the shape in the
- * middle of the slide, in the theme's colours, selects it and closes the library.
+ * middle of the slide, in the theme's colours, selects it and closes the library. Under the
+ * shapes is what is put together of several elements: a card (ADR-073), inserted the same way.
  */
 export function ShapeLibrary({ close }: ActionPopoverProps) {
   const { t, i18n } = useTranslation('objects');
@@ -40,35 +71,60 @@ export function ShapeLibrary({ close }: ActionPopoverProps) {
     i18n.exists(`objects:shape.${preset}`) ? t(`shape.${preset}`) : preset;
 
   return (
-    <div data-testid="shape-library" className="flex flex-col gap-3">
-      {groups.map(({ group, presets }) => (
-        <div
-          key={group}
-          role="group"
-          aria-label={t(`library.${group}`)}
-          className="flex flex-col gap-1"
-        >
-          <span className="text-xs font-medium text-ui-fg-muted">{t(`library.${group}`)}</span>
-          <div className="grid grid-cols-8">
-            {presets.map((preset) => (
-              <Hint key={preset} content={nameOf(preset)}>
-                <button
-                  type="button"
-                  aria-label={nameOf(preset)}
-                  data-preset={preset}
-                  className="inline-flex size-control cursor-default items-center justify-center rounded-control text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed"
-                  onClick={() => {
-                    insertShape(editor, preset);
-                    close();
-                  }}
-                >
-                  <ShapeGlyph preset={preset} />
-                </button>
-              </Hint>
-            ))}
+    <div className="flex flex-col gap-3">
+      <div data-testid="shape-library" className="flex flex-col gap-3">
+        {groups.map(({ group, presets }) => (
+          <div
+            key={group}
+            role="group"
+            aria-label={t(`library.${group}`)}
+            className="flex flex-col gap-1"
+          >
+            <span className="text-xs font-medium text-ui-fg-muted">{t(`library.${group}`)}</span>
+            <div className="grid grid-cols-8">
+              {presets.map((preset) => (
+                <Hint key={preset} content={nameOf(preset)}>
+                  <button
+                    type="button"
+                    aria-label={nameOf(preset)}
+                    data-preset={preset}
+                    className={entry}
+                    onClick={() => {
+                      insertShape(editor, preset);
+                      close();
+                    }}
+                  >
+                    <ShapeGlyph preset={preset} />
+                  </button>
+                </Hint>
+              ))}
+            </div>
           </div>
+        ))}
+      </div>
+      <div
+        data-testid="card-library"
+        role="group"
+        aria-label={t('library.cards')}
+        className="flex flex-col gap-1"
+      >
+        <span className="text-xs font-medium text-ui-fg-muted">{t('library.cards')}</span>
+        <div className="grid grid-cols-8">
+          <Hint content={t('card.title')}>
+            <button
+              type="button"
+              aria-label={t('card.title')}
+              className={entry}
+              onClick={() => {
+                insertCard(editor);
+                close();
+              }}
+            >
+              <CardGlyph />
+            </button>
+          </Hint>
         </div>
-      ))}
+      </div>
     </div>
   );
 }

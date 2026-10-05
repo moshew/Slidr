@@ -58,7 +58,15 @@ import { FillSwatch, MixedBar, PopoverTool, ToolGroup, ToolRow } from './parts';
 import { replaceImage } from './replace';
 import { isMixed, sharedFields, sharedValue } from './several';
 import { SvgColorsTool } from './svgTools';
-import { areTargets, isTarget, useTarget, useTargets, type Target, type Targets } from './target';
+import {
+  areTargets,
+  isTarget,
+  useCardBox,
+  useTarget,
+  useTargets,
+  type Target,
+  type Targets,
+} from './target';
 
 /*
  * Row B for shapes, lines and images (SPEC 4.4), and the effects every element has. Each kind of
@@ -68,6 +76,9 @@ import { areTargets, isTarget, useTarget, useTargets, type Target, type Targets 
  * Fill, outline, shadow and opacity work on one element and on several selected together
  * (`Targets`): a row of several elements holds the ones that apply to every member, a value the
  * members do not share is shown as mixed, and a change is one undo step for all of them.
+ *
+ * A card (ADR-073) is a group, and is painted by its box: selected as the group it is, it gets
+ * the row of a shape, working on that box (`CardRow`).
  */
 
 /** One undo step per gesture, and the label the history shows. */
@@ -269,14 +280,21 @@ function AccentTool({ target }: { target: Target<ShapeElement> }) {
   );
 }
 
-/** Corners (where they can be rounded), shadow and opacity, as three buttons. */
-function EffectTools({ target }: { target: Target }) {
+/**
+ * Corners (where they can be rounded), shadow and opacity, as three buttons. `whole` is the card
+ * the target is the box of, when the card is what is selected. Its opacity is the card's, which
+ * fades as one thing. Its shadow is the box's, which is what casts it; but a shadow that the
+ * group itself was given, by an agent or before it was a card, is the one on show until it is
+ * taken away, so the tool never says "none" under a shadow that is there.
+ */
+function EffectTools({ target, whole = target }: { target: Target; whole?: Target }) {
   const { t } = useTranslation('objects');
+  const shadowed = whole.element.effects?.shadow ? whole : target;
   return (
     <ToolGroup label={t('groups.effects')}>
       <RadiusTool target={target} />
-      <ShadowTool targets={only(target)} />
-      <OpacityTool targets={only(target)} />
+      <ShadowTool targets={only(shadowed)} />
+      <OpacityTool targets={only(whole)} />
     </ToolGroup>
   );
 }
@@ -343,6 +361,24 @@ function CurveTool({ target }: { target: Target<LineElement> }) {
 }
 
 /**
+ * The tools of a shape: fill, outline and, for a box, its accent, then the effects. `whole` is
+ * the card the shape is the box of, when that is what is selected (see `EffectTools`).
+ */
+function ShapeTools({ target, whole }: { target: Target<ShapeElement>; whole?: Target }) {
+  const { t } = useTranslation('objects');
+  return (
+    <ToolRow>
+      <ToolGroup label={t('groups.paint')}>
+        {shapeHasFill(target.element) && <FillTool targets={only(target)} />}
+        <StrokeTool targets={only(target)} label={t('stroke.outline')} icon={PenLine} />
+        {takesAccent(target.element) && <AccentTool target={target} />}
+      </ToolGroup>
+      <EffectTools target={target} whole={whole} />
+    </ToolRow>
+  );
+}
+
+/**
  * Row B for the `shape` kind of selection, which covers three element types: a shape (fill,
  * outline, accent, effects), a line (stroke, heads, curve, effects) and an SVG (its colours,
  * effects).
@@ -350,18 +386,7 @@ function CurveTool({ target }: { target: Target<LineElement> }) {
 export function ShapeRow() {
   const { t } = useTranslation('objects');
   const target = useTarget();
-  if (isTarget(target, 'shape')) {
-    return (
-      <ToolRow>
-        <ToolGroup label={t('groups.paint')}>
-          {shapeHasFill(target.element) && <FillTool targets={only(target)} />}
-          <StrokeTool targets={only(target)} label={t('stroke.outline')} icon={PenLine} />
-          {takesAccent(target.element) && <AccentTool target={target} />}
-        </ToolGroup>
-        <EffectTools target={target} />
-      </ToolRow>
-    );
-  }
+  if (isTarget(target, 'shape')) return <ShapeTools target={target} />;
   if (isTarget(target, 'line')) {
     return (
       <ToolRow>
@@ -569,9 +594,26 @@ export function SeveralRow() {
 
 /**
  * Opacity and shadow, and corners where the renderer rounds them, for text, HTML, tables, charts,
- * media and groups. Shapes and images have these as buttons of their own rows.
+ * media and groups. Shapes and images have these as buttons of their own rows, and so has a
+ * group that is a card (`CardRow`).
  */
 export function EffectsRow() {
   const target = useTarget();
-  return target ? <CompactEffects target={target} /> : null;
+  const box = useCardBox();
+  return target && !box ? <CompactEffects target={target} /> : null;
+}
+
+/* ---------------------------------------------------------------- cards */
+
+/**
+ * Row B for a card selected as the group it is (ADR-073): the tools of a shape, working on the
+ * card's box. Fill, outline, accent, corners and shadow are the box's, since the box is what
+ * draws them; opacity is the group's, so the card fades with what lies on it (`EffectTools`).
+ * They take the place of the one effects button that any other group has, and draw nothing for
+ * such a group.
+ */
+export function CardRow() {
+  const card = useTarget();
+  const box = useCardBox();
+  return card && box ? <ShapeTools target={box} whole={card} /> : null;
 }

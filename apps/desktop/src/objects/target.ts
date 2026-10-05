@@ -2,13 +2,16 @@ import {
   findElement,
   updateElement,
   type Command,
+  type CommandBus,
   type DispatchOptions,
   type Element,
   type ElementPatch,
+  type ShapeElement,
   type Slide,
 } from '@slidr/model';
 import { useMemo } from 'react';
 import { useDeck, useEditor, useSelection } from '../shell';
+import { cardBox } from './card';
 
 /** The slide on the Stage. */
 export function useCurrentSlide(): Slide | undefined {
@@ -29,26 +32,52 @@ export interface Target<T extends Element = Element> {
   update: (patch: ElementPatch, options?: DispatchOptions, first?: readonly Command[]) => void;
 }
 
+/** An element of a slide as a target. `element.update` finds it by its id, also inside a group. */
+function targetOf<T extends Element>(bus: CommandBus, slideId: string, element: T): Target<T> {
+  return {
+    slideId,
+    element,
+    update: (patch, options, first = []) =>
+      bus.batch([...first, updateElement(slideId, element.id, patch)], options),
+  };
+}
+
+/** The one selected element of the slide on the Stage, when exactly one is selected. */
+function useSelected(): { slide: Slide; element: Element } | undefined {
+  const slide = useCurrentSlide();
+  const selected = useSelection((s) => s.selectedElementIds);
+  const elementId = selected.length === 1 ? selected[0] : undefined;
+  return useMemo(() => {
+    const element = slide && elementId ? findElement(slide, elementId) : undefined;
+    return slide && element ? { slide, element } : undefined;
+  }, [slide, elementId]);
+}
+
 /**
  * The selected element, when exactly one is selected. Row B tools get only the kind of the
  * selection: they read the element here and draw nothing when they do not apply to it.
  */
 export function useTarget(): Target | undefined {
   const { bus } = useEditor();
-  const slide = useCurrentSlide();
-  const selected = useSelection((s) => s.selectedElementIds);
-  const elementId = selected.length === 1 ? selected[0] : undefined;
+  const selected = useSelected();
+  return useMemo(
+    () => selected && targetOf(bus, selected.slide.id, selected.element),
+    [bus, selected],
+  );
+}
+
+/**
+ * The box of the selected card (`cardBox`), when exactly one element is selected and it is a
+ * card. The tools of a shape take it in place of the selection, so a card that is selected as
+ * the group it is gets painted like the box it looks like, with no step into the group first.
+ */
+export function useCardBox(): Target<ShapeElement> | undefined {
+  const { bus } = useEditor();
+  const selected = useSelected();
   return useMemo(() => {
-    const element = slide && elementId ? findElement(slide, elementId) : undefined;
-    if (!slide || !element) return undefined;
-    const slideId = slide.id;
-    return {
-      slideId,
-      element,
-      update: (patch, options, first = []) =>
-        bus.batch([...first, updateElement(slideId, element.id, patch)], options),
-    };
-  }, [bus, slide, elementId]);
+    const box = selected && cardBox(selected.element);
+    return box ? targetOf(bus, selected.slide.id, box) : undefined;
+  }, [bus, selected]);
 }
 
 /**

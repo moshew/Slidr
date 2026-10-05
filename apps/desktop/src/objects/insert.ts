@@ -1,12 +1,14 @@
 import { findSlide, type AssetMeta, type Element, type Frame } from '@slidr/model';
 import { i18n } from '../i18n';
 import { focusStage, type Editor } from '../shell';
+import { newCard } from './card';
 import { newLine, newShape, type LineKind } from './shapes';
 import { insertFiles } from './takeIn';
 
 /*
- * The Insert buttons of row A for pictures, shapes and lines (IMG-01, SHP-01, SHP-05). Each
- * insert is one change on the bus, lands in the middle of the current slide and ends selected.
+ * The Insert buttons of row A for pictures, shapes, cards and lines (IMG-01, SHP-01, SHP-05,
+ * ADR-073). Each insert is one change on the bus, lands in the middle of the current slide and
+ * ends selected.
  */
 
 /**
@@ -73,6 +75,22 @@ export function insertLine(editor: Editor, kind: LineKind): void {
   insertElement(editor, (slideId) =>
     newLine(kind, editor.bus.deck.size, takenFrames(editor, slideId), editor.bus.deck.meta.dir),
   );
+}
+
+/**
+ * A card: a box in the theme's colours with a heading and a paragraph on it, as one group (see
+ * `newCard`). Its words stand where the deck's own text will be, so they are in the language of
+ * the deck and not of the app; the app has them in two languages, and a deck in any other gets
+ * the English ones.
+ */
+export function insertCard(editor: Editor): void {
+  const { size, theme, meta } = editor.bus.deck;
+  const lng = meta.lang.toLowerCase().startsWith('he') ? 'he' : 'en';
+  const words = {
+    heading: i18n.t('objects:card.heading', { lng }),
+    body: i18n.t('objects:card.body', { lng }),
+  };
+  insertElement(editor, (slideId) => newCard(size, theme, words, takenFrames(editor, slideId)));
 }
 
 /**

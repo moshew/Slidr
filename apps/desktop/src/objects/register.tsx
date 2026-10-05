@@ -15,7 +15,7 @@ import { insertImages } from './insert';
 import { LineLibrary, ShapeLibrary } from './library';
 import { HtmlMenuItems, ImageMenuItems } from './menu';
 import { en, he } from './messages';
-import { EffectsRow, ImageRow, SeveralRow, ShapeRow } from './tools';
+import { CardRow, EffectsRow, ImageRow, SeveralRow, ShapeRow } from './tools';
 
 /*
  * The objects area (WG5): inserting pictures, shapes and lines, styling them, the slide
@@ -62,6 +62,15 @@ registerContextTool({
   group: 'objects',
   order: 30,
   render: HtmlRow,
+});
+// A group that is a card (a box and what lies on it) gets the tools of its box, after the
+// Ungroup button (40). They stand in for the effects button, which draws nothing for a card.
+registerContextTool({
+  id: 'objects.card',
+  kinds: ['group'],
+  group: 'objects',
+  order: 50,
+  render: CardRow,
 });
 // Several elements: the look they all have, after the arrange tools (10 to 40) and the tools
 // of the text they share (100 to 199, `text/register.tsx`).
