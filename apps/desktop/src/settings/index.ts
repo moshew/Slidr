@@ -20,6 +20,7 @@ export {
   pageSettings,
   refreshSettings,
   removeSecret,
+  replaceSection,
   saveSecret,
   sectionOf,
   settingsClient,
