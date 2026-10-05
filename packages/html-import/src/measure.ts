@@ -55,6 +55,19 @@ export function isInside(node: Node, container: Element): boolean {
   return false;
 }
 
+/**
+ * Where a click on the element leads: the address of the link it is, or sits in (`<a href>`,
+ * as HTML means it), as the source wrote it. A picture cannot show a link, so the guard cannot
+ * miss one: whatever stands for the element carries it.
+ */
+export function linkAround(el: Element): string | undefined {
+  for (let n: Element | undefined = el; n; n = composedParent(n)) {
+    const href = n.localName === 'a' ? n.getAttribute('href')?.trim() : undefined;
+    if (href) return href;
+  }
+  return undefined;
+}
+
 /** Elements that never draw anything themselves. */
 const NOT_RENDERED = new Set([
   'script',

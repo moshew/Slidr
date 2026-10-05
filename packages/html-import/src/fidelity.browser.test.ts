@@ -24,7 +24,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { mountSlide, startConversion, type ConversionResult } from './engine';
 import { convertHtml, loadHtml } from './service';
-import { testHost, withAssets } from './testing';
+import { testHost, testImage, withAssets } from './testing';
 
 const host = testHost();
 const FULL = { x: 0, y: 0, width: 1920, height: 1080 };
@@ -244,5 +244,43 @@ describe('what comes back is a slide the model accepts', () => {
     } finally {
       loaded.dispose();
     }
+  });
+});
+
+describe('a link is kept on whatever stands for the linked element', () => {
+  const REPORT = { kind: 'url', target: 'https://example.com/report' };
+
+  it('on a picture inside a link', async () => {
+    const { result } = await look(
+      `<a href="https://example.com/report" style="position:absolute;left:200px;top:200px;display:block;width:640px;height:400px"><img src="${testImage(640, 400)}" style="display:block;width:640px;height:400px"></a>`,
+      'en',
+    );
+    expect(types(result)).toEqual(['image']);
+    expect(result.slide.elements[0]!.link).toEqual(REPORT);
+  });
+
+  it('on the box of a card that is a link, as on the text in it', async () => {
+    const { result } = await look(
+      `<a href="https://example.com/report" style="position:absolute;left:200px;top:200px;display:block;width:640px;height:300px;box-sizing:border-box;padding:40px;background:#e8eef8;border-radius:24px;text-decoration:none;font:400 36px/1.4 Arial;color:#123">Read the whole report</a>`,
+      'en',
+    );
+    expect(types(result)).toEqual(['shape', 'text']);
+    const [card, label] = result.slide.elements;
+    expect(card!.link).toEqual(REPORT);
+    // Text holds a link on its runs, where the editor's text tools read and write it.
+    expect(label!.link).toBeUndefined();
+    expect(texts(result)[0]!.content.paragraphs[0]!.runs[0]!.marks?.link).toBe(REPORT.target);
+  });
+
+  it('on a region inside a link that stays html, and on nothing outside the link', async () => {
+    const { result } = await look(
+      `<a href="https://example.com/report" style="position:absolute;left:200px;top:200px;display:block;width:400px;height:200px"><div data-keep-html style="width:400px;height:200px;background:#246"></div></a>
+       <div style="position:absolute;left:800px;top:200px;width:400px;height:200px;background:#642"></div>`,
+      'en',
+    );
+    expect(types(result)).toEqual(['html', 'shape']);
+    const [kept, beside] = result.slide.elements;
+    expect(kept!.link).toEqual(REPORT);
+    expect(beside!.link).toBeUndefined();
   });
 });

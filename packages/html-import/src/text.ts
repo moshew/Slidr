@@ -20,6 +20,7 @@ import {
   isElement,
   isSvg,
   isText,
+  linkAround,
   neverRendered,
   ownPaint,
   pseudoKind,
@@ -441,10 +442,7 @@ export function readTextBlock(
   };
   const decoration = cs.textDecorationLine;
   // A link around the block, or the block itself, makes all of it a link.
-  let link: string | undefined;
-  for (let n: Element | undefined = owner; n && !link; n = composedParent(n)) {
-    if (n.localName === 'a') link = n.getAttribute('href') ?? undefined;
-  }
+  const link = linkAround(owner);
   walk(el, owner, cs, {
     underline: decoration.includes('underline'),
     strike: decoration.includes('line-through'),

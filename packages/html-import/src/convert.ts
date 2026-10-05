@@ -49,6 +49,7 @@ import {
   isElement,
   isSvg,
   isText,
+  linkAround,
   neverRendered,
   ownPaint,
   pseudoKind,
@@ -372,6 +373,9 @@ export function propose(root: Element, options: WalkOptions): Proposal {
       ...(state.anim ? { anim: state.anim } : {}),
       ...extra,
     };
+    // Text carries a link on its runs (`readTextBlock`); everything else on the element.
+    const link = element.type === 'text' ? undefined : linkAround(node);
+    if (link) element.link = { kind: 'url', target: link };
     items.push(item);
     return item;
   };
@@ -1447,6 +1451,7 @@ function takeBackground(proposal: Proposal, deck: Deck): void {
       !e.rotation &&
       !e.name &&
       !e.role &&
+      !e.link &&
       !item.anim;
     return full && plain ? e.fill : undefined;
   };
@@ -1485,6 +1490,7 @@ export function htmlItem(
   const r = el.getBoundingClientRect();
   const { rootRect, viewScale, k } = space;
   const counted = deep ? countContent(el) : { units: 1, chars: 0 };
+  const link = linkAround(el);
   return {
     element: createElement.html({
       id: nextId(),
@@ -1496,6 +1502,7 @@ export function htmlItem(
       },
       markup: '',
       opacity: round(opacity),
+      ...(link ? { link: { kind: 'url', target: link } } : {}),
     }),
     node: el,
     covers: deep ? 'subtree' : 'box',
