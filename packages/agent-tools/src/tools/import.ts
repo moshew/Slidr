@@ -211,17 +211,34 @@ export const importCapture = defineTool({
       )
       .min(1)
       .max(24),
+    total: z
+      .number()
+      .int()
+      .min(1)
+      .max(5000)
+      .optional()
+      .describe(
+        'How many slides the whole import will have by your plan, not the number in this call. Give it with the first call: the app shows the user the progress against it.',
+      ),
   }),
   scopes: IMPORT,
   writes: true,
   lint: false,
   requires: 'importer',
-  async run({ slides }, ctx) {
+  async run({ slides, total }, ctx) {
     const importer = ctx.services.importer!;
+    // Taken before anything else: it is this call's turn that it speaks of.
+    const turnOver = importer.interruption?.();
+    if (total !== undefined) importer.planned?.(total);
     const started = Date.now();
     const reports: Record<string, unknown>[] = [];
     let left = 0;
+    let stopped = 0;
     for (const [index, request] of slides.entries()) {
+      if (turnOver?.aborted) {
+        stopped = slides.length - index;
+        break;
+      }
       if (Date.now() - started > CAPTURE_BUDGET_MS) {
         left = slides.length - index;
         break;
@@ -233,6 +250,12 @@ export const importCapture = defineTool({
           throw new Error(`No slide ${replaces} in the deck to replace. Nothing was captured.`);
         }
         const captured = await importer.capture(ctx.deck, where);
+        // The turn was stopped, or its session ended, while the page worked on this slide: it
+        // stays out of the deck, which may by now be another document's.
+        if (turnOver?.aborted) {
+          stopped = slides.length - index;
+          break;
+        }
         // A slide captured again keeps the name and the notes the first capture was given.
         const old = replaced >= 0 ? ctx.deck.slides[replaced] : undefined;
         const slide: Slide = {
@@ -255,7 +278,12 @@ export const importCapture = defineTool({
         if (old) commands.push({ type: 'slide.remove', slideIds: [old.id] });
         else if (placeholder) commands.push({ type: 'slide.remove', slideIds: [placeholder.id] });
         ctx.write(commands);
-        importer.captured?.(imported);
+        const { selector, js, before } = where;
+        importer.captured?.(imported, {
+          ...(selector ? { selector } : {}),
+          ...(js ? { js } : {}),
+          ...(before ? { before } : {}),
+        });
         reports.push(slideReport(ctx.deck, imported));
       } catch (error) {
         reports.push({
@@ -271,6 +299,11 @@ export const importCapture = defineTool({
         ...(left > 0
           ? {
               notCaptured: `The last ${left} of this call were not started (time): call again for them.`,
+            }
+          : {}),
+        ...(stopped > 0
+          ? {
+              notCaptured: `The turn was stopped: the last ${stopped} of this call were not captured.`,
             }
           : {}),
         slidesInDeck: ctx.deck.slides.length,

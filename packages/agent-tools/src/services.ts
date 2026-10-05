@@ -355,8 +355,19 @@ export interface HtmlImportService {
     deck: Deck,
     request: ImportTarget & { before?: string; waitMs?: number },
   ): Promise<ImportedSlide>;
-  /** The slide entered the deck: the app keeps what it measured, for the import report. */
-  captured?(slide: ImportedSlide): void;
+  /**
+   * The slide entered the deck: the app keeps what it measured, for the import report, and what
+   * the agent pointed at (`from`), so an import that was cut can be told what it has (IMP-09).
+   */
+  captured?(slide: ImportedSlide, from?: ImportTarget & { before?: string }): void;
+  /** How many slides the agent's plan has for the whole import, for the user to see (IMP-11). */
+  planned?(total: number): void;
+  /**
+   * Goes off when the turn that is running now is stopped or over. A capture call takes it when
+   * it begins: from then on it starts no slide, and adds none that the page was still working
+   * on, so nothing enters the deck behind a turn that has ended. (An `AbortSignal` is one.)
+   */
+  interruption?(): { readonly aborted: boolean };
 }
 
 export interface Services {

@@ -358,4 +358,75 @@ describe('import_capture', () => {
       'lint',
     );
   });
+
+  it('tells the app the size of the plan, and what each slide was captured from', async () => {
+    const service = importer({ planned: vi.fn() });
+    const { call } = setup(hebrewDeck(), { importer: service }, IMPORT);
+    await ok(
+      call('import_capture', {
+        total: 12,
+        slides: [
+          { js: 'document.querySelectorAll("section")[0]', before: 'show(0)', waitMs: 100 },
+          { selector: 'section:nth-of-type(2)', before: '', name: 'Two' },
+        ],
+      }),
+    );
+    expect(service.planned).toHaveBeenCalledExactlyOnceWith(12);
+    // What the agent pointed at, and the script it ran first: no wait, no name, no empty field.
+    const from = vi.mocked(service.captured!).mock.calls.map((args) => args[1]);
+    expect(from).toEqual([
+      { js: 'document.querySelectorAll("section")[0]', before: 'show(0)' },
+      { selector: 'section:nth-of-type(2)' },
+    ]);
+
+    // A call that does not say leaves the plan as it was.
+    await ok(call('import_capture', { slides: [{ selector: 'c' }] }));
+    expect(service.planned).toHaveBeenCalledTimes(1);
+    expect(
+      (await failed(call('import_capture', { total: 0, slides: [{ selector: 'c' }] }))).code,
+    ).toBe('invalid_input');
+  });
+
+  it('starts no slide once its turn is over, and adds none that was on its way (IMP-09)', async () => {
+    // The turn is stopped while the page works on the second slide of four.
+    const turn = { aborted: false };
+    let release: (slide: ImportedSlide) => void = () => undefined;
+    const service = importer({
+      interruption: () => turn,
+      capture: vi
+        .fn()
+        .mockResolvedValueOnce(captured())
+        .mockImplementationOnce(() => new Promise<ImportedSlide>((resolve) => (release = resolve))),
+    });
+    const { bus, call } = setup(hebrewDeck(), { importer: service }, IMPORT);
+    const before = bus.deck.slides.length;
+    const running = call('import_capture', {
+      slides: [{ selector: 'a' }, { selector: 'b' }, { selector: 'c' }, { selector: 'd' }],
+    });
+    await vi.waitFor(() => expect(service.capture).toHaveBeenCalledTimes(2));
+    expect(bus.deck.slides).toHaveLength(before + 1);
+    turn.aborted = true;
+    release(captured());
+
+    const data = await ok(running);
+    // The first slide is in; the one the page finished after the stop is not, and nothing more
+    // was asked of the page.
+    expect(bus.deck.slides).toHaveLength(before + 1);
+    expect(service.capture).toHaveBeenCalledTimes(2);
+    expect(service.captured).toHaveBeenCalledTimes(1);
+    expect(data.captured).toHaveLength(1);
+    expect(data.notCaptured).toBe(
+      'The turn was stopped: the last 3 of this call were not captured.',
+    );
+  });
+
+  it('captures nothing for a call that begins after its turn was stopped', async () => {
+    const service = importer({ interruption: () => ({ aborted: true }) });
+    const { bus, call } = setup(hebrewDeck(), { importer: service }, IMPORT);
+    const before = bus.deck.slides.length;
+    const data = await ok(call('import_capture', { slides: [{ selector: 'a' }] }));
+    expect(service.capture).not.toHaveBeenCalled();
+    expect(bus.deck.slides).toHaveLength(before);
+    expect(data.notCaptured).toMatch(/The turn was stopped: the last 1 /);
+  });
 });
