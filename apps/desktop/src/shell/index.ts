@@ -58,5 +58,6 @@ export {
   stageSlide,
 } from './stageDom';
 export { toolClosed } from './toolFocus';
+export { keysNow } from './userKeys';
 export { isWebAddress, openExternal } from './external';
 export type { AssetService } from '../document/assets';

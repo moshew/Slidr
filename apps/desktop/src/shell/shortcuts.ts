@@ -71,6 +71,26 @@ const BROWSER_KEYS = new Set([
   'f7',
 ]);
 
+/**
+ * Keys the webview acts on itself in text that can be edited: its own undo and redo, and its own
+ * bold, italic and underline. In the slide's text editor they would change the text behind the
+ * editor's back: the history there is the deck's, and the formatting is the model's. The editor
+ * takes these keys while its commands are on them (`text/editorKeys.ts`); once the user moved a
+ * command to another key, the key it left must not fall to the webview. A field of the interface
+ * keeps them: its own undo is the right one for it.
+ */
+const BROWSER_TEXT_KEYS = new Set([
+  'ctrl+z',
+  'ctrl+y',
+  'ctrl+shift+z',
+  'ctrl+b',
+  'ctrl+i',
+  'ctrl+u',
+]);
+
+const inSlideText = (target: EventTarget | null) =>
+  target instanceof Element && target.closest('[data-text-editor]') !== null;
+
 /** How long the shortcuts wait for the settings file before they go on with their own keys. */
 const KEYS_WAIT_MS = 3000;
 
@@ -109,7 +129,7 @@ export function useShellShortcuts(editor: Editor): void {
       let owned = false;
       let handled = false;
       for (const shortcut of known ? shortcutsOn(keys) : []) {
-        if (editable && !shortcut.inText) continue;
+        if (editable && shortcut.inText !== true) continue;
         if (welcome && shortcut.section !== 'file') continue;
         owned = true;
         if (elsewhere) continue;
@@ -123,9 +143,10 @@ export function useShellShortcuts(editor: Editor): void {
       // own command for it. A plain key that nobody took goes its usual way: Enter still presses
       // the focused button.
       const combination = event.ctrlKey || event.altKey;
-      if (handled || (owned && combination) || (!import.meta.env.DEV && BROWSER_KEYS.has(keys))) {
-        event.preventDefault();
-      }
+      const browsers =
+        (!import.meta.env.DEV && BROWSER_KEYS.has(keys)) ||
+        (BROWSER_TEXT_KEYS.has(keys) && inSlideText(target));
+      if (handled || (owned && combination) || browsers) event.preventDefault();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {

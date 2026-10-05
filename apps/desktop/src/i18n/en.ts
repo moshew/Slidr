@@ -168,7 +168,7 @@ export const en: Messages<typeof he> = {
       number: 'Number',
     },
     editHint:
-      'Press a shortcut to change it, then press the new keys. The keys of text, of the controls and of the show are fixed.',
+      'Press a shortcut to change it, then press the new keys. The keys of the controls and of the show are fixed.',
     change: 'Change the shortcut of "{{action}}", now {{keys}}',
     assign: 'Set a shortcut for "{{action}}"',
     unbound: 'No shortcut',
@@ -189,7 +189,6 @@ export const en: Messages<typeof he> = {
     notSaved: 'The change was not saved to the settings file. It holds until the app is closed.',
     fixed: {
       control: 'A key of the control itself. It cannot be changed.',
-      text: 'The text editor answers this key too, so it is fixed.',
       show: 'A key of the show, which also works in an exported file. It cannot be changed.',
     },
     new: 'New presentation',

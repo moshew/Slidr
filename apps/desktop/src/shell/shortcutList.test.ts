@@ -111,13 +111,17 @@ describe('the lines of the shortcut map', () => {
         shortcut({ id: 'x.leave', keys: 'Escape', label: 'keys.leaveGroup', section: 'arrange' }),
       ],
       // A key written by hand for a shortcut that keeps its own is not drawn, and does not act.
-      { 'text.bold': 'ctrl+q' },
+      { 'x.leave': 'ctrl+q', 'text.bold': 'ctrl+j' },
     );
     const fixedOf = (id: string) => rows.find((row) => row.id === id)?.bindings.map((b) => b.fixed);
-    expect(rows.find((row) => row.id === 'text.bold')?.bindings).toEqual([
-      { keys: 'Ctrl+B', shortcut: 'text.bold', fixed: 'text' },
+    expect(rows.find((row) => row.id === 'x.leave')?.bindings).toEqual([
+      { keys: 'Esc', shortcut: 'x.leave', fixed: 'control' },
     ]);
-    expect(fixedOf('shell.undo')).toEqual(['text']);
+    // The keys the text editor answers itself are not fixed: the editor follows the user's.
+    expect(rows.find((row) => row.id === 'text.bold')?.bindings).toEqual([
+      { keys: 'Ctrl+J', shortcut: 'text.bold', original: 'Ctrl+B' },
+    ]);
+    expect(fixedOf('shell.undo')).toEqual([undefined]);
     // A named key without Ctrl or Alt, also when an area registered it.
     expect(fixedOf('x.leave')).toEqual(['control']);
     expect(fixedOf('edit.copy')).toEqual(['control']);
@@ -152,7 +156,12 @@ describe('a new key for a shortcut', () => {
   });
   const save = shortcut({ id: 'x.save', keys: 'Ctrl+S', label: 'keys.save', inText: true });
   const insert = shortcut({ id: 'x.insert', keys: 'T', label: 'keys.new' });
-  const bold = shortcut({ id: 'text.bold', keys: 'Ctrl+B', label: 'text:shortcut.bold' });
+  const bold = shortcut({
+    id: 'text.bold',
+    keys: 'Ctrl+B',
+    label: 'text:shortcut.bold',
+    inText: 'editor',
+  });
   const crop = shortcut({ id: 'x.crop.leave', keys: 'Escape' });
   const all = [group, save, insert, bold, crop];
   const ask = (which: ShortcutDefinition, keys: string, user = {}) =>
@@ -183,9 +192,11 @@ describe('a new key for a shortcut', () => {
     expect(ask(group, 'F2')).toEqual({ kind: 'fixed', label: 'keys.typeCell' });
   });
 
-  it("does not give away a key of the text editor's, or of a shortcut nobody named", () => {
-    expect(ask(group, 'Ctrl+B')).toEqual({ kind: 'fixed', label: 'text:shortcut.bold' });
+  it('does not give away a key of a shortcut nobody named', () => {
     expect(ask(group, 'Escape')).toMatchObject({ kind: 'fixed' });
+    // A key of the text editor's is a shortcut's like any other: it is named, and can move.
+    expect(ask(group, 'Ctrl+B')).toEqual({ kind: 'taken', by: [bold] });
+    expect(ask(bold, 'Ctrl+J')).toEqual({ kind: 'free' });
   });
 
   it('turns back a key no shortcut can have', () => {
@@ -201,6 +212,9 @@ describe('a new key for a shortcut', () => {
     expect(ask(save, 'Shift+2')).toEqual({ kind: 'unusable', why: 'typing' });
     expect(ask(save, 'F9')).toEqual({ kind: 'free' });
     expect(ask(save, 'Alt+S')).toEqual({ kind: 'free' });
+    // The same for a command the text editor runs itself: its key is pressed while typing.
+    expect(ask(bold, 'B')).toEqual({ kind: 'unusable', why: 'typing' });
+    expect(ask(bold, 'F9')).toEqual({ kind: 'free' });
   });
 
   it('asks only who has the key when a shortcut goes back to the one it came with', () => {

@@ -62,19 +62,14 @@ export function userKeysReady(): Promise<void> {
 
 /**
  * Why a shortcut keeps the key it came with:
- *   - `text`: the slide's text editor has the same key in its own keymap (`text/TextEditor.tsx`),
- *     which does not read the user's keys. Moved here, the key would change on a selected box
- *     and stay as it was while typing in it.
  *   - `control`: a control reads the key itself (arrows, Tab, Enter, Esc, the clipboard), so
  *     there is no registration to point elsewhere.
  *   - `show`: a key of the show. It is the runtime's, which is also what an exported file runs,
  *     and there is no settings file there.
+ * The keys the slide's text editor answers itself (bold, italic, underline, direction, undo,
+ * redo) are not among them: the editor asks which key each is on (`keysNow`).
  */
-export type Fixed = 'text' | 'control' | 'show';
-
-/** The shortcuts the text editor's keymap repeats: bold, italic, underline, direction, undo, redo. */
-const TEXT_EDITOR = ['text.bold', 'text.italic', 'text.underline', 'text.direction', 'shell.undo'];
-const TEXT_EDITOR_REDO = 'shell.redo.';
+export type Fixed = 'control' | 'show';
 
 /** Keys that move, confirm, leave or delete wherever the keyboard is. */
 const NAMED = new Set([
@@ -120,7 +115,6 @@ export const isNamedKey = (key: string): boolean => NAMED.has(key);
 export function fixedReason(
   shortcut: Pick<ShortcutDefinition, 'id' | 'keys' | 'label'>,
 ): Fixed | null {
-  if (TEXT_EDITOR.includes(shortcut.id) || shortcut.id.startsWith(TEXT_EDITOR_REDO)) return 'text';
   // A shortcut without a name is not in the map: it is a control's own way of hearing a key.
   if (!shortcut.label) return 'control';
   const { ctrl, alt, key } = combinationOf(shortcut.keys);
@@ -139,6 +133,20 @@ export function keysOf(
 ): string {
   const own = user[shortcut.id];
   return own === undefined || fixedReason(shortcut) ? normalizeKeys(shortcut.keys) : own;
+}
+
+/**
+ * The combinations the registered shortcuts of some ids answer to now, without the ones the user
+ * left without a key. For a control that runs the command of a shortcut itself and has to hear
+ * the same key: the slide's text editor.
+ */
+export function keysNow(of: (id: string) => boolean): string[] {
+  const user = userKeys();
+  return registries.shortcuts
+    .getState()
+    .items.filter((shortcut) => of(shortcut.id))
+    .map((shortcut) => keysOf(shortcut, user))
+    .filter((keys) => keys !== '');
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   changeKeys,
   drawnKeys,
   fixedReason,
+  keysNow,
   keysOf,
   resetKeys,
   shortcutsOn,
@@ -23,12 +24,14 @@ const save: ShortcutDefinition = { id: 't.save', keys: 'Ctrl+S', label: 'keys.sa
 const paste: ShortcutDefinition = { id: 't.paste', keys: 'Ctrl+Alt+V', label: 'keys.paste', run };
 const paint: ShortcutDefinition = { id: 't.paint', keys: 'ctrl+alt+v', label: 'keys.copy', run };
 const bold: ShortcutDefinition = { id: 'text.bold', keys: 'Ctrl+B', label: 'keys.cut', run };
+/** A key a control reads itself: registered without a name, it is not the user's to move. */
+const leave: ShortcutDefinition = { id: 't.leave', keys: 'Escape', run };
 
 /** The section as the settings file holds it. */
 const stored = async () => (await pageSettings.read()).shortcuts;
 
 beforeEach(() => {
-  registries.shortcuts.setState({ items: [group, save, paste, paint, bold] });
+  registries.shortcuts.setState({ items: [group, save, paste, paint, bold, leave] });
 });
 
 afterEach(async () => {
@@ -64,19 +67,33 @@ describe('the key a shortcut answers to', () => {
   });
 
   it('stays what it is for a shortcut that keeps its key', async () => {
-    expect(fixedReason(bold)).toBe('text');
-    expect(fixedReason({ id: 'shell.redo.Ctrl+Y', keys: 'Ctrl+Y', label: 'keys.redo' })).toBe(
-      'text',
-    );
-    expect(fixedReason({ id: 't.leave', keys: 'Escape' })).toBe('control');
+    expect(fixedReason(leave)).toBe('control');
     expect(fixedReason({ id: 't.enter', keys: 'Enter', label: 'keys.editText' })).toBe('control');
     expect(fixedReason({ id: 't.toolbar', keys: 'Alt+F10', label: 'keys.menu' })).toBeNull();
     expect(fixedReason(group)).toBeNull();
-    // A key written into the settings file by hand does not move it.
-    await replaceSection('shortcuts', { keys: { 'text.bold': 'ctrl+q' } });
-    expect(keysOf(bold)).toBe('ctrl+b');
+    // The keys the text editor answers itself are the user's to move like any other.
+    expect(fixedReason(bold)).toBeNull();
+    expect(fixedReason({ id: 'shell.redo.Ctrl+Y', keys: 'Ctrl+Y', label: 'keys.redo' })).toBeNull();
+    // A key written into the settings file by hand does not move a shortcut that keeps its own.
+    await replaceSection('shortcuts', { keys: { 't.leave': 'ctrl+q' } });
+    expect(keysOf(leave)).toBe('escape');
     expect(shortcutsOn('Ctrl+Q')).toEqual([]);
-    expect(shortcutsOn('Ctrl+B')).toEqual([bold]);
+    expect(shortcutsOn('Escape')).toEqual([leave]);
+  });
+
+  it('is told to a control that runs the command itself, as the text editor does', async () => {
+    const isBold = (id: string) => id === 'text.bold';
+    expect(keysNow(isBold)).toEqual(['ctrl+b']);
+    await changeKeys({ 'text.bold': 'Ctrl+J' });
+    expect(keysNow(isBold)).toEqual(['ctrl+j']);
+    // Several shortcuts of one command, each with its key; one left without a key gives none.
+    expect(keysNow((id) => id === 't.paste' || id === 't.paint')).toEqual([
+      'ctrl+alt+v',
+      'ctrl+alt+v',
+    ]);
+    await changeKeys({ 'text.bold': '' });
+    expect(keysNow(isBold)).toEqual([]);
+    expect(keysNow((id) => id === 'nobody')).toEqual([]);
   });
 });
 

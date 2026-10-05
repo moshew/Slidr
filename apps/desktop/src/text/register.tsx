@@ -2,6 +2,7 @@ import { copiedElement } from '../arrange/clipboard';
 import { i18n, registerMessages } from '../i18n';
 import {
   getEditor,
+  keysNow,
   registerAction,
   registerContextTool,
   registerShortcut,
@@ -17,6 +18,7 @@ import {
   type Step,
   type TextTarget,
 } from './actions';
+import { setEditorKeys } from './editorKeys';
 import type { FormatContext } from './format';
 import { insertTextBox } from './insert';
 import { PasteTextItems, TextClipboardItems, TextFormatItems } from './menu';
@@ -151,8 +153,9 @@ registerAction('insert.text', () => void insertTextBox(getEditor()));
 
 /*
  * For a text box or a shape that is selected and not being edited: the shortcut formats all of
- * its text. Inside the text editor the same keys are the editor's own (TextEditor.tsx), and act
- * on its selection.
+ * its text. Inside the text editor the same commands are the editor's own (TextEditor.tsx), and
+ * act on its selection; the editor is told which keys they are on now (`inText: 'editor'`), so
+ * a key the user gave one of them holds on a selected box and while typing in it alike.
  */
 function onText(run: (target: TextTarget, ctx: FormatContext, step: Step) => void) {
   return (editor: Editor) => {
@@ -184,33 +187,45 @@ function onTextOrSelection(run: (target: TextTarget) => boolean | void) {
 
 const text = { section: 'text' } as const;
 
+/** A command the text editor runs itself while its text is edited. */
+const inEditor = { ...text, inText: 'editor' } as const;
+setEditorKeys(() => ({
+  bold: keysNow((id) => id === 'text.bold'),
+  italic: keysNow((id) => id === 'text.italic'),
+  underline: keysNow((id) => id === 'text.underline'),
+  direction: keysNow((id) => id === 'text.direction'),
+  undo: keysNow((id) => id === 'shell.undo'),
+  // Redo has two keys, each a shortcut of its own.
+  redo: keysNow((id) => id.startsWith('shell.redo.')),
+}));
+
 registerShortcut({
   id: 'text.bold',
   keys: 'Ctrl+B',
   run: onText(toggleBold),
   label: 'text:shortcut.bold',
-  ...text,
+  ...inEditor,
 });
 registerShortcut({
   id: 'text.italic',
   keys: 'Ctrl+I',
   run: onText((target, ctx, step) => toggleMark(target, ctx, 'italic', step)),
   label: 'text:shortcut.italic',
-  ...text,
+  ...inEditor,
 });
 registerShortcut({
   id: 'text.underline',
   keys: 'Ctrl+U',
   run: onText((target, ctx, step) => toggleMark(target, ctx, 'underline', step)),
   label: 'text:shortcut.underline',
-  ...text,
+  ...inEditor,
 });
 registerShortcut({
   id: 'text.direction',
   keys: 'Ctrl+Shift+X',
   run: onText(flipDirection),
   label: 'text:shortcut.direction',
-  ...text,
+  ...inEditor,
 });
 registerShortcut({
   id: 'text.clear',

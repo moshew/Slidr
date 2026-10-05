@@ -12,7 +12,7 @@ import {
 } from '@slidr/model';
 import { cellTextDefaults } from '@slidr/renderer';
 import { Extension } from '@tiptap/core';
-import { TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
+import { Plugin, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { useEffect, useRef } from 'react';
@@ -22,6 +22,7 @@ import { flipDirection, syncGrowHeight, toggleBold, toggleMark, type TextTarget 
 import { announceEditor } from './activeEditor';
 import { cellsWritten } from './cellScope';
 import { changeParagraphsTr, STEP_META, type StepMeta } from './editorFormat';
+import { editorCommand, type EditorCommand } from './editorKeys';
 import { levelChange, type FormatContext } from './format';
 import { finishOpening, takeOpening } from './opening';
 import { knowInstalledFonts, sourceContext } from './pasteSource';
@@ -247,40 +248,12 @@ export function TextEditor({
           name: 'slidrKeys',
           addKeyboardShortcuts() {
             const ed = this.editor;
-            const target = (): TextTarget => ({
-              kind: 'editor',
-              view: ed.view,
-              bus,
-              slideId,
-              element,
-            });
-            const ctx = (): FormatContext => ({ theme, dir: emptyDir() });
             const own: Record<string, () => boolean> = {
               Tab: () => shiftLevel(ed.state, ed.view.dispatch, 1),
               'Shift-Tab': () => shiftLevel(ed.state, ed.view.dispatch, -1),
               Enter: () => leaveEmptyListItem(ed.state, ed.view.dispatch),
               'Shift-Enter': () => breakLine(ed.state, ed.view.dispatch),
               Backspace: () => unlistAtStart(ed.state, ed.view.dispatch),
-              'Mod-z': () => bus.undo() || true,
-              'Mod-y': () => bus.redo() || true,
-              'Shift-Mod-z': () => bus.redo() || true,
-              'Mod-b': () => {
-                toggleBold(target(), ctx());
-                return true;
-              },
-              'Mod-i': () => {
-                toggleMark(target(), ctx(), 'italic');
-                return true;
-              },
-              'Mod-u': () => {
-                toggleMark(target(), ctx(), 'underline');
-                return true;
-              },
-              // SPEC Appendix A: flips the direction of the paragraphs the selection touches.
-              'Mod-Shift-x': () => {
-                flipDirection(target(), ctx());
-                return true;
-              },
               'Mod-ArrowLeft': () => wordMoveAtEdge(ed.view, 'left'),
               'Mod-ArrowRight': () => wordMoveAtEdge(ed.view, 'right'),
               'Shift-Mod-ArrowLeft': () => wordMoveAtEdge(ed.view, 'left'),
@@ -300,7 +273,49 @@ export function TextEditor({
           },
           addProseMirrorPlugins() {
             const ed = this.editor;
+            const target = (): TextTarget => ({
+              kind: 'editor',
+              view: ed.view,
+              bus,
+              slideId,
+              element,
+            });
+            const ctx = (): FormatContext => ({ theme, dir: emptyDir() });
+            // The commands whose keys the user can move (`editorKeys.ts`): which key each is
+            // on is asked at every press, so they are no part of the fixed keymap above.
+            const commands: Record<EditorCommand, () => void> = {
+              undo: () => void bus.undo(),
+              redo: () => void bus.redo(),
+              bold: () => toggleBold(target(), ctx()),
+              italic: () => toggleMark(target(), ctx(), 'italic'),
+              underline: () => toggleMark(target(), ctx(), 'underline'),
+              // SPEC Appendix A: flips the direction of the paragraphs the selection touches.
+              direction: () => flipDirection(target(), ctx()),
+            };
             return [
+              new Plugin({
+                props: {
+                  handleKeyDown(_view, event) {
+                    const command = editorCommand(event);
+                    if (!command) return false;
+                    commands[command]();
+                    return true;
+                  },
+                  handleDOMEvents: {
+                    // The browser has an undo and a bold of its own for editable text. Its
+                    // history is not the deck's (ADR-006, rule 3), and its formatting is no
+                    // mark of the model. Their keys are kept from it by the shell, also once
+                    // they are no longer the keys of the commands above (`shell/shortcuts.ts`);
+                    // this turns back the same asked for in any other way, where the browser
+                    // lets it be turned back (its own undo it does not).
+                    beforeinput(_view, event) {
+                      if (!/^(?:history|format)/.test(event.inputType)) return false;
+                      event.preventDefault();
+                      return true;
+                    },
+                  },
+                },
+              }),
               decorationsPlugin(emptyDir),
               emptyLinePlugin(),
               blurredSelectionPlugin(),

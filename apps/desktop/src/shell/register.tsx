@@ -197,7 +197,8 @@ function slideTool(icon: LucideIcon, label: string) {
 /*
  * The shell's own keys, registered like every area's, so the shortcut map lists them (UI-06).
  * The File commands and the view also answer while the caret is in text; undo and redo there
- * are the text's own (the slide's text editor passes them on to the deck itself).
+ * are the text's own: a text field has its own undo, and the slide's text editor passes them on
+ * to the deck itself, on the keys these two have (`inText: 'editor'`).
  */
 const file = { section: 'file', inText: true } as const;
 registerShortcut({
@@ -236,7 +237,7 @@ registerShortcut({
   run: () => showShortcuts(),
 });
 
-const edit = { section: 'edit' } as const;
+const edit = { section: 'edit', inText: 'editor' } as const;
 registerShortcut({
   id: 'shell.undo',
   keys: 'Ctrl+Z',

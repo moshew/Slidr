@@ -278,8 +278,15 @@ export interface ShortcutDefinition extends Registered {
   keys: string;
   /** Does it. Return false when there was nothing to act on: the key then goes its usual way. */
   run: (editor: Editor, event: KeyboardEvent) => boolean | void;
-  /** Also while the caret is in a text field or in the slide's text editor. Off by default. */
-  inText?: boolean;
+  /**
+   * Whether it answers while the caret is in text. Off by default: the keys type there.
+   *   - `true`: also in a text field and in the slide's text editor.
+   *   - `'editor'`: the slide's text editor runs the same command itself, on the key this
+   *     shortcut has now (`text/editorKeys.ts`), and acts on its own selection. The shell stays
+   *     out of text for it, as for a shortcut without `inText`; the key it can be given is one
+   *     that types nothing, as for a shortcut that answers in text.
+   */
+  inText?: boolean | 'editor';
   /**
    * What it does, as an i18n key (`namespace:key` outside the shell's namespace). The shortcut
    * map lists the shortcuts that have one (UI-06); without it the shortcut works and is not listed.
