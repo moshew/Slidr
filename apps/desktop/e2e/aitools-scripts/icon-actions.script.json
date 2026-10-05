@@ -1,0 +1,95 @@
+{
+  "description": "An object chat on an icon, in Hebrew, for the suites of the icon actions (AIO-06), with its tool calls carried out (\"call\": true). Turn 1 answers \"a more fitting icon\": it searches the icon library with icon_search and offers what it found with ui_present_options, kind element, each option the element_update patch that swaps the markup. Turn 2 answers \"colour by the template\": two colourings as patches of colorOverrides, in theme tokens. Hand-written; not one of the Rust mock's.",
+  "turns": [
+    [
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "search_1",
+        "name": "icon_search",
+        "source": "app",
+        "input": { "query": "target", "count": 3 },
+        "call": true
+      },
+      {
+        "delayMs": 400,
+        "type": "tool_call_started",
+        "id": "icons_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "element",
+          "prompt": "אייקונים ליעד",
+          "options": [
+            {
+              "label": { "$ref": "search_1.icons.0.name" },
+              "set": { "markup": { "$ref": "search_1.icons.0.svg" } }
+            },
+            {
+              "label": { "$ref": "search_1.icons.1.name" },
+              "set": { "markup": { "$ref": "search_1.icons.1.svg" } }
+            },
+            {
+              "label": { "$ref": "search_1.icons.2.name" },
+              "set": { "markup": { "$ref": "search_1.icons.2.svg" } }
+            }
+          ]
+        },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "שלושה אייקונים שאומרים \"יעד\"." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 420,
+          "cacheReadTokens": 6100,
+          "cacheWriteTokens": 900
+        },
+        "costUsd": 0.0061,
+        "durationMs": 2600
+      }
+    ],
+    [
+      { "delayMs": 400, "type": "thinking_delta", "text": "" },
+      {
+        "delayMs": 500,
+        "type": "tool_call_started",
+        "id": "colours_1",
+        "name": "ui_present_options",
+        "source": "app",
+        "input": {
+          "kind": "element",
+          "prompt": "שתי צביעות מהתבנית",
+          "options": [
+            {
+              "label": "הצבע הראשי",
+              "set": { "colorOverrides": { "currentColor": { "token": "primary" } } }
+            },
+            {
+              "label": "הדגשה",
+              "set": { "colorOverrides": { "currentColor": { "token": "accent" } } }
+            }
+          ]
+        },
+        "call": true
+      },
+      { "delayMs": 300, "type": "text_delta", "text": "שתי צביעות מצבעי התבנית." },
+      {
+        "delayMs": 60,
+        "type": "turn_completed",
+        "outcome": "completed",
+        "usage": {
+          "inputTokens": 9,
+          "outputTokens": 150,
+          "cacheReadTokens": 7300,
+          "cacheWriteTokens": 240
+        },
+        "costUsd": 0.0036,
+        "durationMs": 1700
+      }
+    ]
+  ]
+}

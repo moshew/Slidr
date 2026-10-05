@@ -267,6 +267,7 @@ export const he = {
     layout: 'בחרו עיצוב',
     chart: 'בחרו חלופה לגרף',
     table: 'בחרו חלופה לטבלה',
+    element: 'בחרו חלופה',
     hint: 'ריחוף מציג על השקף · לחיצה מחילה',
     generating: 'יוצר תמונות · {{done}} מתוך {{total}}',
     converting: 'מכין את העיצובים · {{done}} מתוך {{total}}',
@@ -363,6 +364,13 @@ export const he = {
       insight: 'סיכום הטבלה לתובנה',
       chart: 'המרת הטבלה לגרף',
     },
+    shape: {
+      suggest: '{{count}} צורות אחרות',
+      colour: 'צביעה לפי התבנית · {{count}} חלופות',
+    },
+    icon: {
+      replace: '{{count}} אייקונים מתאימים יותר',
+    },
     template: {
       create: 'יצירת תבנית ב-AI',
     },
@@ -430,6 +438,11 @@ export const he = {
     fromTextHint: 'ה-Agent לוקח רק מה שכתוב בטקסט, ואומר מה נשאר בחוץ.',
     onSlide: 'על השקף',
     onSlideHint: "שתי אלה משנות את השקף ולא רק את הטבלה, ולכן הן עוברות לצ'אט של השקף.",
+    shape: 'צורה',
+    shapeSuggest: 'הצעת צורה',
+    icon: 'אייקון',
+    iconReplace: 'אייקון מתאים יותר',
+    colourByTheme: 'צביעה לפי התבנית',
     editKind: {
       exact: 'ספק התמונות משנה רק את מה שביקשתם, ואפשר לסמן לו אזור.',
       regenerate:
@@ -755,6 +768,7 @@ export const en = {
     layout: 'Pick a design',
     chart: 'Pick an option for the chart',
     table: 'Pick an option for the table',
+    element: 'Pick an option',
     hint: 'Hover to see it on the slide · click to apply',
     generating: 'Generating images · {{done}} of {{total}}',
     converting: 'Preparing the designs · {{done}} of {{total}}',
@@ -851,6 +865,13 @@ export const en = {
       insight: 'Sum the table up in an insight',
       chart: 'Turn the table into a chart',
     },
+    shape: {
+      suggest: '{{count}} other shapes',
+      colour: 'Colour by the template · {{count}} options',
+    },
+    icon: {
+      replace: '{{count}} more fitting icons',
+    },
     template: {
       create: 'Make a template with AI',
     },
@@ -921,6 +942,11 @@ export const en = {
     onSlide: 'On the slide',
     onSlideHint:
       "These two change the slide and not only the table, so they go to the slide's chat.",
+    shape: 'Shape',
+    shapeSuggest: 'Suggest a shape',
+    icon: 'Icon',
+    iconReplace: 'A more fitting icon',
+    colourByTheme: 'Colour by the template',
     editKind: {
       exact: 'The image provider changes only what you ask, and can be given an area.',
       regenerate:

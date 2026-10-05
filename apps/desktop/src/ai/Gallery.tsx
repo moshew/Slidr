@@ -50,8 +50,9 @@ function isFailure(
 }
 
 /**
- * A chart or a table as an option would leave it: its own part of the slide, at the width of
- * the card. An element inside a group, or a turned one, is shown on its whole slide instead.
+ * An element as an option would leave it (a chart, a table, a shape, an icon): its own part of
+ * the slide, at the width of the card. An element inside a group, or a turned one, is shown on
+ * its whole slide instead.
  */
 function ElementPicture({
   set,
@@ -69,9 +70,11 @@ function ElementPicture({
   const slide = tried ? findSlide(tried, set.target.slideId) : undefined;
   if (!tried || !slide || width <= 0) return <Skeleton className="aspect-video w-full" />;
   const element = slide.elements.find((e) => e.id === set.target.elementId);
+  // The picture is of a piece of the slide, with every word the slide holds: a card is named by
+  // its label, so the picture is kept out of the name.
   if (!element || element.rotation !== 0) {
     return (
-      <div className="overflow-hidden rounded-small">
+      <div aria-hidden className="overflow-hidden rounded-small">
         <ScaledSlide
           deck={tried}
           slide={slide}
@@ -83,11 +86,18 @@ function ElementPicture({
     );
   }
   const { x, y, w, h } = element.frame;
-  const scale = width / w;
+  // As wide as the card, and no taller than a slide of that width: a square icon is shown in
+  // the middle of its card, not as a card twice the height of a chart's.
+  const scale = Math.min(width / w, (width * tried.size.h) / tried.size.w / h);
+  const left = (width - w * scale) / 2 - x * scale;
   return (
-    <div className="relative overflow-hidden rounded-small" style={{ height: h * scale }}>
+    <div
+      aria-hidden
+      className="relative overflow-hidden rounded-small"
+      style={{ height: h * scale }}
+    >
       {/* Physical left and top, as the slide itself is laid out: see `ScaledSlide`. */}
-      <div className="absolute" style={{ left: -x * scale, top: -y * scale }}>
+      <div className="absolute" style={{ left, top: -y * scale }}>
         <ScaledSlide
           deck={tried}
           slide={slide}

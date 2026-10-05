@@ -4,6 +4,7 @@ import { useStore } from 'zustand';
 import type { ImageAspect, ImageProviderInfo, SessionScope } from '@slidr/agent-tools';
 import { findElement, findSlide, type Element } from '@slidr/model';
 import { ACTIONS, actionMessage, type ActionId, type ActionParams } from '@slidr/prompts';
+import { shapePresets } from '@slidr/renderer';
 import {
   Brush,
   ChartColumn,
@@ -22,6 +23,7 @@ import {
   NotebookPen,
   Palette,
   PenLine,
+  Replace,
   ScanEye,
   Shapes,
   Shrink,
@@ -67,7 +69,7 @@ import { useObjectScope, useSlideScope } from './scopes';
 
 /*
  * The Actions tab of the three AI tools (SPEC 4.3; AID-05, AIS-02, AIS-04, AIO-02, AIO-03,
- * AIO-07, AIO-08). An AI action is a template of `@slidr/prompts`, sent to the tool's chat in
+ * AIO-06 to AIO-08). An AI action is a template of `@slidr/prompts`, sent to the tool's chat in
  * place of a typed message, so it is part of the conversation; a deterministic control acts at
  * once.
  */
@@ -787,12 +789,50 @@ function TableActions({ runner, elementId }: { runner: Runner; elementId: string
   );
 }
 
-type ActionKind = 'text' | 'image' | 'chart' | 'table' | 'none';
+/**
+ * A shape or an icon (AIO-06). Each of its actions is a choice (another shape, another icon,
+ * a colouring from the theme), so each comes back as cards.
+ */
+function ShapeActions({ runner, icon }: { runner: Runner; icon: boolean }) {
+  const { t } = useTranslation('ai');
+  return (
+    <Section title={t(icon ? 'actions.icon' : 'actions.shape')}>
+      {icon ? (
+        <Row
+          id="icon.replace"
+          icon={Replace}
+          label={t('actions.iconReplace')}
+          runner={runner}
+          params={{ count: 4 }}
+        />
+      ) : (
+        <Row
+          id="shape.suggest"
+          icon={Shapes}
+          label={t('actions.shapeSuggest')}
+          runner={runner}
+          // The shapes the renderer draws: the agent is told their names with the request.
+          params={{ count: 3, shapes: shapePresets }}
+        />
+      )}
+      <Row
+        id="shape.colour"
+        icon={Palette}
+        label={t('actions.colourByTheme')}
+        runner={runner}
+        params={{ count: 3 }}
+      />
+    </Section>
+  );
+}
 
-/** Text is what a text box holds, and a shape that has some. */
+type ActionKind = 'text' | 'textShape' | 'image' | 'chart' | 'table' | 'shape' | 'icon' | 'none';
+
+/** Text is what a text box holds, and a shape that has some: such a shape has both kinds. */
 function actionsFor(element: Element | undefined): ActionKind {
   if (element?.type === 'text') return 'text';
-  if (element?.type === 'shape' && element.content) return 'text';
+  if (element?.type === 'shape') return element.content ? 'textShape' : 'shape';
+  if (element?.type === 'svg') return 'icon';
   if (element?.type === 'image' || element?.type === 'chart' || element?.type === 'table') {
     return element.type;
   }
@@ -812,6 +852,13 @@ function ObjectActionsOn({ scope }: { scope: SessionScope & { kind: 'object' } }
     <Tab busy={runner.busy}>
       {kind === 'text' ? (
         <TextActions runner={runner} />
+      ) : kind === 'textShape' ? (
+        <>
+          <TextActions runner={runner} />
+          <ShapeActions runner={runner} icon={false} />
+        </>
+      ) : kind === 'shape' || kind === 'icon' ? (
+        <ShapeActions runner={runner} icon={kind === 'icon'} />
       ) : kind === 'image' ? (
         <ImageActions runner={runner} />
       ) : kind === 'chart' ? (

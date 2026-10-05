@@ -19,7 +19,10 @@ export type Script =
   // The actions of a chart and of a table (e2e/aitools-scripts).
   | 'chart-actions'
   | 'table-actions'
-  | 'table-on-slide';
+  | 'table-on-slide'
+  // The actions of a shape and of an icon.
+  | 'shape-actions'
+  | 'icon-actions';
 
 export interface OpenOptions {
   script: Script;
@@ -249,6 +252,61 @@ export async function cellTexts(page: Page): Promise<string[][]> {
       cell.content.paragraphs.map((p) => p.runs.map((r) => r.text).join('')).join('\n'),
     ),
   );
+}
+
+/** A rectangle with a word in it and a colour that is not the theme's, selected. */
+export async function addShape(page: Page): Promise<string> {
+  await page.evaluate(() => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.add',
+      slideId: editor.selection.getState().currentSlideId ?? '',
+      element: {
+        id: 'e_shape',
+        type: 'shape',
+        frame: { x: 360, y: 460, w: 520, h: 220 },
+        rotation: 0,
+        opacity: 1,
+        geometry: { kind: 'preset', preset: 'rect' },
+        fill: { kind: 'solid', color: { value: 'orange' } },
+        content: {
+          paragraphs: [
+            { dir: 'rtl', align: 'center', styleRef: 'body', runs: [{ text: 'תכנון' }] },
+          ],
+        },
+      } as never,
+    });
+    editor.selection.getState().selectElements(['e_shape']);
+  });
+  await expect(onStage(page, 'e_shape')).toBeVisible();
+  return 'e_shape';
+}
+
+/** The drawing of the icon the suites start from: one stroke, in the colour of the element. */
+export const ICON_MARKUP =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20 L20 4"/></svg>';
+
+/** An icon in a colour that is not the theme's, on the current slide, selected. */
+export async function addIcon(page: Page): Promise<string> {
+  await page.evaluate((markup) => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.add',
+      slideId: editor.selection.getState().currentSlideId ?? '',
+      element: {
+        id: 'e_icon',
+        type: 'svg',
+        frame: { x: 1100, y: 470, w: 200, h: 200 },
+        rotation: 0,
+        opacity: 1,
+        markup,
+        colorOverrides: { currentColor: { value: 'orange' } },
+      } as never,
+    });
+    editor.selection.getState().selectElements(['e_icon']);
+  }, ICON_MARKUP);
+  await expect(onStage(page, 'e_icon')).toBeVisible();
+  return 'e_icon';
 }
 
 /** What the chat that is open was sent last: the message of an action is its `<slidr_action>`. */

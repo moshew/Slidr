@@ -6,7 +6,8 @@
  * its newest stay, so the user can go back to them and pick from one (AIO-09).
  *
  * An option of a chart or a table (AIO-07, AIO-08) is the arguments of its setter, `chart_set`
- * or `table_set`: picking it is making that call on the element as it is then.
+ * or `table_set`, and an option of any other element (AIO-06) is the patch of `element_update`:
+ * picking it is making that call on the element as it is then.
  *
  * No React here: the store is what the panel draws, and the functions are what its cards do.
  */
@@ -38,7 +39,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ImageErrorKind, ImageEvent } from '../images/images';
 import { showPreview } from '../stage/preview';
 
-export type OptionKind = 'text' | 'image' | 'layout' | 'chart' | 'table';
+export type OptionKind = 'text' | 'image' | 'layout' | 'chart' | 'table' | 'element';
 
 /** What a set of options is for: an element, or a whole slide. */
 export interface OptionTarget {
@@ -152,27 +153,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** An image call waits this long for its job's first event before it is forgotten. */
 const EXPECT_MS = 10_000;
 
-/** The tool that sets each kind of element an option can change: an option is its arguments. */
-const SETTERS = { chart: 'chart_set', table: 'table_set' } as const;
+/**
+ * The tool that sets each kind of element an option can change: an option is its arguments. A
+ * chart and a table have a tool of their own; for any other element (a shape, an icon) the
+ * option is the patch of `element_update`.
+ */
+const SETTERS = { chart: 'chart_set', table: 'table_set', element: 'element_update' } as const;
+type SetKind = keyof typeof SETTERS;
+
+const isSetKind = (kind: OptionKind): kind is SetKind => Object.hasOwn(SETTERS, kind);
 
 /** What a write that is only collected reports. */
 const NOTHING_WRITTEN: WriteSummary = { created: [], changed: [], removed: [], slides: [] };
 
 /**
- * What the setter of a chart or a table writes for an option, on the deck as it is now: what the
- * user changed in the element since the option was offered stays. The tool is run here, outside
- * the Deck API: a pick is the user's, in no turn and under no scope, and it cannot wait for a
- * call. Both setters write in the call itself. Throws what the tool throws.
+ * What the setter of an element writes for an option, on the deck as it is now: what the user
+ * changed in the element since the option was offered stays. The tool is run here, outside the
+ * Deck API: a pick is the user's, in no turn and under no scope, and it cannot wait for a call.
+ * The three setters write in the call itself. Throws what the tool throws.
  */
 function setterCommands(
-  kind: keyof typeof SETTERS,
+  kind: SetKind,
   target: OptionTarget,
-  args: Record<string, unknown>,
+  set: Record<string, unknown>,
   deck: Deck,
 ): Command[] {
   const tool = deckTools.find((t) => t.name === SETTERS[kind]);
   if (!tool) throw new DeckApiError('unavailable', `${SETTERS[kind]} is not in this build.`);
   const commands: Command[] = [];
+  const args = kind === 'element' ? { patch: set } : set;
   // The option is for this element whatever ids its arguments name.
   const input = tool.input.parse({ ...args, elementId: target.elementId, slideId: target.slideId });
   const output = tool.run(input, {
@@ -201,7 +210,7 @@ export function commandsOf(set: OptionSet, card: GalleryCard, deck: Deck): Comma
     if (!elementId || !card.content) return [];
     return [{ type: 'text.set', slideId, elementId, content: card.content }];
   }
-  if (set.kind === 'chart' || set.kind === 'table') {
+  if (isSetKind(set.kind)) {
     if (!elementId || !card.set) return [];
     return setterCommands(set.kind, set.target, card.set, deck);
   }
@@ -456,8 +465,14 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
           );
           set.live = set.cards.some((card) => card.state === 'pending');
         }
-      } else if (kind === 'chart' || kind === 'table') {
-        if (element?.type !== kind) {
+      } else if (isSetKind(kind)) {
+        if (!element) {
+          throw new DeckApiError(
+            'invalid_input',
+            `Options of kind "${kind}" are for one element: give elementId.`,
+          );
+        }
+        if (kind !== 'element' && element.type !== kind) {
           throw new DeckApiError(
             'invalid_state',
             `Options of kind "${kind}" are for a ${kind} element: give the elementId of one.`,
@@ -474,9 +489,9 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
           } catch (error) {
             return fail(i, toToolError(error).message);
           }
-          const names = Object.keys(args);
           // Titles are told apart by their words, which a small picture of the chart cannot show.
-          const title = names.length === 1 && typeof args.title === 'string' ? args.title : null;
+          const named = kind === 'chart' && Object.keys(args).length === 1;
+          const title = named && typeof args.title === 'string' ? args.title : null;
           return {
             label: option.label,
             state: 'ready',

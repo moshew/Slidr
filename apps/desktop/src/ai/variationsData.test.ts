@@ -9,6 +9,8 @@ import {
   tableFromGrid,
   type ChartElement,
   type Deck,
+  type ShapeElement,
+  type SvgElement,
   type TableElement,
 } from '@slidr/model';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -16,15 +18,21 @@ import { stagePreview } from '../stage/preview';
 import { createGallery, tryOn } from './variations';
 
 /*
- * The options of a chart and of a table (AIO-07, AIO-08): an option is the arguments of
- * `chart_set` or `table_set`. What is shown, what a hover puts on the Stage, and what a pick does
- * to the deck as it is then, as one undo step.
+ * The options that are a change to an element (AIO-06 to AIO-08): for a chart or a table the
+ * arguments of `chart_set` or `table_set`, for any other element the patch of `element_update`.
+ * What is shown, what a hover puts on the Stage, and what a pick does to the deck as it is then,
+ * as one undo step.
  */
 
 const SALES = {
   categories: ['2024', '2025', '2026'],
   series: [{ name: 'Revenue', values: [120, 180, 260] }],
 };
+
+const icon = (path: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="${path}"/></svg>`;
+const ROCKET = icon('M4 20 L20 4');
+const FLAG = icon('M4 4 V20 M4 4 H16 V12 H4');
 
 function setup() {
   const deck = createDeck({
@@ -50,6 +58,19 @@ function setup() {
             id: 'e_text',
             frame: { x: 200, y: 40, w: 800, h: 100 },
             content: richText('Sales'),
+          }),
+          createElement.shape({
+            id: 'e_shape',
+            frame: { x: 200, y: 840, w: 400, h: 160 },
+            geometry: { kind: 'preset', preset: 'rect' },
+            fill: { kind: 'solid', color: { value: '#ff8800' } },
+            content: richText('Step one'),
+          }),
+          createElement.svg({
+            id: 'e_icon',
+            frame: { x: 700, y: 860, w: 120, h: 120 },
+            markup: ROCKET,
+            colorOverrides: { currentColor: { value: '#ff8800' } },
           }),
         ],
       }),
@@ -221,11 +242,14 @@ describe('chart options', () => {
     // The set that could be shown is still the chart's.
     expect(sets()[0]!.cards).toHaveLength(4);
 
-    for (const target of [TABLE, { slideId: 's_1', elementId: 'e_text' }, { slideId: 's_1' }]) {
+    for (const target of [TABLE, { slideId: 's_1', elementId: 'e_text' }]) {
       await expect(
         gallery.service.present({ kind: 'chart', target, options: types }),
       ).rejects.toMatchObject({ code: 'invalid_state' });
     }
+    await expect(
+      gallery.service.present({ kind: 'chart', target: { slideId: 's_1' }, options: types }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
   });
 
   it('an option that no longer fits the chart is not applied, and the others stay', async () => {
@@ -326,5 +350,131 @@ describe('table options', () => {
       options: [{ label: 'Fancy', set: { styleId: 'fancy' } }, looks[0]!],
     });
     expect(sets()[0]!.cards.map((card) => card.state)).toEqual(['failed', 'ready']);
+  });
+});
+
+describe('options of any other element (AIO-06)', () => {
+  const SHAPE = { slideId: 's_1', elementId: 'e_shape' };
+  const ICON = { slideId: 's_1', elementId: 'e_icon' };
+  const shapeOf = (deck: Deck) => findElement(deck.slides[0]!, 'e_shape') as ShapeElement;
+  const iconOf = (deck: Deck) => findElement(deck.slides[0]!, 'e_icon') as SvgElement;
+  const preset = (name: string) => ({ geometry: { kind: 'preset', preset: name } });
+
+  it('another shape: a pick changes the outline alone, as one undo step', async () => {
+    const { bus, gallery, sets } = setup();
+    const before = shapeOf(bus.deck);
+    await gallery.service.present({
+      kind: 'element',
+      target: SHAPE,
+      options: [
+        { label: 'Rounded: softer', set: preset('roundRect') },
+        { label: 'Chevron: a step', set: preset('chevron') },
+      ],
+    });
+    expect(sets()[0]).toMatchObject({ kind: 'element', target: SHAPE });
+    expect(sets()[0]!.cards.map((card) => card.state)).toEqual(['ready', 'ready']);
+
+    gallery.preview(sets()[0]!.id, 1);
+    expect(shapeOf(stagePreview.getState().deck!).geometry).toEqual(preset('chevron').geometry);
+    expect(shapeOf(bus.deck)).toBe(before);
+
+    expect(gallery.pick(sets()[0]!.id, 1, 'Pick')).toBe(true);
+    const after = shapeOf(bus.deck);
+    expect(after.geometry).toEqual(preset('chevron').geometry);
+    expect(after.fill).toEqual(before.fill);
+    expect(after.content).toEqual(before.content);
+    expect(after.frame).toEqual(before.frame);
+    expect(bus.undoStack).toHaveLength(1);
+    expect(bus.undo()).toBe(true);
+    expect(shapeOf(bus.deck).geometry).toEqual(before.geometry);
+    expect(bus.redo()).toBe(true);
+    expect(shapeOf(bus.deck).geometry).toEqual(preset('chevron').geometry);
+  });
+
+  it('a colouring from the theme: the fill of a shape, the colours of an icon', async () => {
+    const { bus, gallery, sets } = setup();
+    const primary = { kind: 'solid', color: { token: 'primary' } };
+    await gallery.service.present({
+      kind: 'element',
+      target: SHAPE,
+      options: [
+        { label: 'The accent', set: { fill: primary } },
+        { label: 'A quiet surface', set: { fill: { kind: 'solid', color: { token: 'surface' } } } },
+      ],
+    });
+    // The user changes the shape itself in the meantime: the colouring is put on what is there.
+    bus.dispatch({
+      type: 'element.update',
+      slideId: 's_1',
+      elementId: 'e_shape',
+      patch: preset('ellipse'),
+    });
+    gallery.pick(sets()[0]!.id, 0, 'Pick');
+    expect(shapeOf(bus.deck)).toMatchObject({ fill: primary, ...preset('ellipse') });
+
+    await gallery.service.present({
+      kind: 'element',
+      target: ICON,
+      options: [
+        { label: 'The accent', set: { colorOverrides: { currentColor: { token: 'accent' } } } },
+        { label: 'The text', set: { colorOverrides: { currentColor: { token: 'text' } } } },
+      ],
+    });
+    const forIcon = sets().find((set) => set.target.elementId === 'e_icon')!;
+    gallery.pick(forIcon.id, 0, 'Pick');
+    expect(iconOf(bus.deck).colorOverrides).toEqual({ currentColor: { token: 'accent' } });
+    expect(iconOf(bus.deck).markup).toBe(ROCKET);
+  });
+
+  it('another icon: a pick swaps the drawing and keeps the frame and the colour', async () => {
+    const { bus, gallery, sets } = setup();
+    const before = iconOf(bus.deck);
+    await gallery.service.present({
+      kind: 'element',
+      target: ICON,
+      options: [
+        { label: 'flag', set: { markup: FLAG } },
+        { label: 'flag, from an asset', set: { markup: FLAG, assetId: null } },
+      ],
+    });
+    expect(gallery.pick(sets()[0]!.id, 0, 'Pick')).toBe(true);
+    expect(iconOf(bus.deck)).toMatchObject({
+      markup: FLAG,
+      frame: before.frame,
+      colorOverrides: before.colorOverrides,
+    });
+    expect(bus.undo()).toBe(true);
+    expect(iconOf(bus.deck)).toEqual(before);
+  });
+
+  it('say which option the element cannot take, and need an element to be for', async () => {
+    const { bus, gallery, sets } = setup();
+    await gallery.service.present({
+      kind: 'element',
+      target: SHAPE,
+      options: [
+        // A preset without its name, a colour that is no colour, and a field that may not change.
+        { label: 'No name', set: { geometry: { kind: 'preset' } } },
+        { label: 'Red', set: { fill: 'red' } },
+        { label: 'Another kind', set: { type: 'text' } },
+        { label: 'Ellipse', set: preset('ellipse') },
+      ],
+    });
+    expect(sets()[0]!.cards.map((card) => card.state)).toEqual([
+      'failed',
+      'failed',
+      'failed',
+      'ready',
+    ]);
+    expect(sets()[0]!.cards[2]!.problem).toMatch(/"type" cannot be changed/);
+    expect(gallery.pick(sets()[0]!.id, 0, 'Pick')).toBe(false);
+    expect(bus.undoStack).toHaveLength(0);
+    await expect(
+      gallery.service.present({
+        kind: 'element',
+        target: { slideId: 's_1' },
+        options: [{ label: 'Ellipse', set: preset('ellipse') }],
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
   });
 });

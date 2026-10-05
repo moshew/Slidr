@@ -3,6 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { openApp as openDeckChat, outline, say as sayToDeck } from './aifinish-helpers';
 import {
   addChart,
+  addIcon,
+  addShape,
   addTable,
   addTitle,
   cards,
@@ -13,8 +15,8 @@ import {
 
 /*
  * Screenshots for the design gate (PLAN 1.2) of what the `m8-finish` round added to the AI tools:
- * the actions of a chart and of a table with their cards (AIO-07, AIO-08), and the outline while
- * it is edited in its card (AID-03). Both themes and both directions; written to
+ * the actions of a chart, a table, a shape and an icon with their cards (AIO-06 to AIO-08), and
+ * the outline while it is edited in its card (AID-03). Both themes and both directions; written to
  * test-results/ai/ to be looked at, and nothing is compared.
  */
 
@@ -76,6 +78,38 @@ for (const { theme, lang, all } of looks) {
       await expect(page.getByTestId('stage-preview')).toBeVisible();
       await settle(page);
       await page.screenshot({ path: out(`table-looks-${name}`) });
+    });
+  }
+
+  if (all) {
+    test(`the actions and the cards of a shape and of an icon ${name}`, async ({ page }) => {
+      await openApp(page, { script: 'shape-actions', lang, theme });
+      await addTitle(page, 'שלבי העבודה');
+      await addShape(page);
+      await openTool(page, 'ai.object', 'actions');
+      await runAction(page, 'shape.suggest');
+      await openTool(page, 'ai.object', 'actions');
+      await settle(page);
+      await page.screenshot({ path: out(`shape-actions-${name}`) });
+      await runAction(page, 'shape.colour');
+      await expect(cards(page)).toHaveCount(3);
+      await cards(page).nth(0).hover();
+      await expect(page.getByTestId('stage-preview')).toBeVisible();
+      await settle(page);
+      await page.screenshot({ path: out(`shape-colours-${name}`) });
+    });
+
+    test(`the icons offered in place of an icon ${name}`, async ({ page }) => {
+      await openApp(page, { script: 'icon-actions', lang, theme });
+      await addTitle(page, 'היעד שלנו');
+      await addIcon(page);
+      await openTool(page, 'ai.object', 'actions');
+      await runAction(page, 'icon.replace');
+      await expect(cards(page)).toHaveCount(3);
+      await cards(page).nth(1).hover();
+      await expect(page.getByTestId('stage-preview')).toBeVisible();
+      await settle(page);
+      await page.screenshot({ path: out(`icon-replace-${name}`) });
     });
   }
 

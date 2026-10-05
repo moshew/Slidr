@@ -64,6 +64,8 @@ test('a chart: types are offered as pictures, tried on the Stage, and a pick is 
   await expect(gallery(page)).toContainText('שלושה סוגים שמתאימים לנתונים');
   await expect(cards(page)).toHaveCount(3);
   await expect(cards(page).first()).toContainText('קו: המגמה לאורך השנים');
+  // A card is named by its label alone: its picture holds every word of the chart.
+  await expect(cards(page).first()).toHaveAccessibleName('קו: המגמה לאורך השנים');
   for (const index of [0, 1, 2]) {
     await expect(cards(page).nth(index)).toHaveAttribute('data-state', 'ready');
     await expect(cards(page).nth(index).locator('[data-slidr-chart-box] svg')).toBeVisible();

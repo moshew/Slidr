@@ -23,6 +23,9 @@ import importCut from '../../e2e/import-set/handwritten.cut.script.json';
 import chartActions from '../../e2e/aitools-scripts/chart-actions.script.json';
 import tableActions from '../../e2e/aitools-scripts/table-actions.script.json';
 import tableOnSlide from '../../e2e/aitools-scripts/table-on-slide.script.json';
+// The actions of a shape and of an icon (AIO-06).
+import iconActions from '../../e2e/aitools-scripts/icon-actions.script.json';
+import shapeActions from '../../e2e/aitools-scripts/shape-actions.script.json';
 import { createScriptedAgent, type Script, type ScriptedAgent } from './scriptedAgent';
 
 /** The first is the default, as in the Rust mock's list. */
@@ -44,6 +47,8 @@ const SCRIPTS: Record<string, Script> = {
   'chart-actions': chartActions,
   'table-actions': tableActions,
   'table-on-slide': tableOnSlide,
+  'shape-actions': shapeActions,
+  'icon-actions': iconActions,
 };
 
 export function pageAgent(speed: number): ScriptedAgent {
