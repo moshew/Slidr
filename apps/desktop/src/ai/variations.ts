@@ -195,6 +195,9 @@ function setterCommands(
     deck,
     turn: startTurn('gallery', { kind: 'deck' }),
     services: {},
+    // A pick is the user's: no turn can give it up, and no scope stands in its way.
+    abandoned: false,
+    allowed: () => undefined,
     write: (written) => {
       commands.push(...written);
       return NOTHING_WRITTEN;
