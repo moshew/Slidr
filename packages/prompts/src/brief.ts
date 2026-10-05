@@ -91,25 +91,37 @@ function outline(deck: Deck) {
   );
 }
 
+/** One element of a slide's map; `within` is the group it is a child of. */
+function mapRow(element: Element, within?: string) {
+  const text = textOf(element);
+  return {
+    id: element.id,
+    type: element.type,
+    ...(element.name ? { name: clip(element.name) } : {}),
+    ...(element.role ? { role: element.role } : {}),
+    // The frame is the model's, which is what a change has to write: a child's is relative to
+    // its group, so the row names the group.
+    ...(within ? { in: within } : {}),
+    frame: element.frame,
+    ...(text ? { text } : {}),
+  };
+}
+
+/** The rows of a tree, each group followed by what is in it: a card is a group (ADR-073). */
+function mapRows(elements: readonly Element[], within?: string): ReturnType<typeof mapRow>[] {
+  return elements.flatMap((element) => [
+    mapRow(element, within),
+    ...(element.type === 'group' ? mapRows(element.children, element.id) : []),
+  ]);
+}
+
 /** A slide in a line per element: what an element's neighbours are, and where they sit. */
 function slideMap(deck: Deck, slide: Slide) {
   return {
     id: slide.id,
     number: deck.slides.indexOf(slide) + 1,
     ...(slide.name ? { name: clip(slide.name) } : {}),
-    elements: capped(
-      slide.elements.map((element) => {
-        const text = textOf(element);
-        return {
-          id: element.id,
-          type: element.type,
-          ...(element.name ? { name: clip(element.name) } : {}),
-          ...(element.role ? { role: element.role } : {}),
-          frame: element.frame,
-          ...(text ? { text } : {}),
-        };
-      }),
-    ),
+    elements: capped(mapRows(slide.elements)),
   };
 }
 
@@ -137,6 +149,10 @@ export function sessionBrief({ scope, deck, picture = false }: SessionBriefInput
     lines.push(`slide: ${line(slideMap(deck, slide))}`);
     say =
       'The elements this session works on, in full and as they are now, and a map of the slide around them. You need not read them again before your first change.';
+    if (slide.elements.some((element) => element.type === 'group')) {
+      say +=
+        " An element of the map with `in` is inside that group, and its frame counts from that group's top-left corner.";
+    }
   }
   if (picture) say += ' A picture of the slide as the user sees it now is attached.';
   return [`<${SESSION_TAG}>`, ...lines, say, `</${SESSION_TAG}>`].join('\n');

@@ -244,6 +244,11 @@ describe('what the prompt must say for itself, having replaced the harness promp
     expect(ROLE).toMatch(/The chat panel renders Markdown/);
   });
 
+  it('says what a frame counts from: the slide, and inside a group the group', () => {
+    expect(ROLE).toMatch(/each with an id and a frame in slide pixels\. Inside a group, a frame/);
+    expect(ROLE).toMatch(/a frame counts from the group's top-left corner, not the slide's/);
+  });
+
   it('explains every key of the context block', () => {
     for (const key of [
       'today',
