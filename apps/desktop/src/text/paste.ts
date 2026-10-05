@@ -384,9 +384,10 @@ function statedStyle(
     if (!matches(element, rule.selector)) continue;
     for (const [name, value] of rule.declared) stated.set(name, value);
   }
-  for (const [name, value] of inline) stated.set(name, value);
+  // A browser marks what it copies as important; that is no part of the value.
+  for (const [name, value] of inline) stated.set(name, value.replace(/\s*!important$/, ''));
   // A decoration may be written as the shorthand.
-  const decoration = inline.get('text-decoration');
+  const decoration = stated.get('text-decoration');
   if (decoration && !inline.has('text-decoration-line'))
     stated.set('text-decoration-line', decoration);
   return stated;

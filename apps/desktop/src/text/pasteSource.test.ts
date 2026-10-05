@@ -127,6 +127,22 @@ describe('what the source states is kept', () => {
     ]);
   });
 
+  it('reads a copy from a browser, which states everything on one span and marks it important', () => {
+    expect(
+      runs(
+        '<meta charset="utf-8"><span style="color: #202124 !important; font-family: Arial, sans-serif; ' +
+          'font-size: 14px !important; font-style: normal; font-weight: 400; letter-spacing: normal; ' +
+          'text-align: start; background-color: rgb(255, 255, 255); display: inline !important; float: none;">' +
+          'From a page</span>',
+      ),
+    ).toEqual([
+      {
+        text: 'From a page',
+        marks: { font: 'Arial', size: 21, weight: 400, color: { value: '#202124' } },
+      },
+    ]);
+  });
+
   it('says a weight that is not bold out loud, so that it stays light in a bold line', () => {
     expect(runs('<span style="font-weight: normal">a</span>')).toEqual([
       { text: 'a', marks: { weight: 400 } },
