@@ -9,11 +9,13 @@ export {
   ACTION_TAG,
   ACTIONS,
   actionMessage,
+  approvedOutline,
   isActionId,
   type ActionDef,
   type ActionId,
   type ActionMessageInput,
   type ActionParams,
+  type OutlineSlide,
 } from './actions';
 export { SESSION_TAG, sessionBrief, type SessionBriefInput } from './brief';
 export { TEMPLATE_FONTS, TEMPLATE_OPTIONAL_ROLES, TEMPLATE_ROLES } from './template';

@@ -39,6 +39,20 @@ export interface ActionParams {
   fromDeck?: boolean;
   /** An image asset the user painted: its transparent area is where an edit may happen. */
   maskAssetId?: string;
+  /** For an action about one element that the slide chat carries out: the element's id. */
+  elementId?: string;
+  /** The outline the user approves, as its card holds it when they press the button (AID-03). */
+  outline?: readonly OutlineSlide[];
+  /** The user changed the outline in its card before approving it. */
+  edited?: boolean;
+}
+
+/** A slide of an outline: what `outline_propose` takes for one, and what its card shows. */
+export interface OutlineSlide {
+  title: string;
+  /** Absent for a slide the user added in the card: what it shows is the agent's to decide. */
+  archetype?: string;
+  note?: string;
 }
 
 export interface ActionDef {
@@ -64,6 +78,14 @@ const PICTURE =
 
 const OPTIONS =
   'Then stop: the app previews an option on the slide when the user hovers it and applies the one they click, so do not apply one yourself.';
+
+/** What filling a chart or a table from a pasted text may not do to it (AIO-07, AIO-08). */
+const EXACT =
+  'Names stay as the text writes them and numbers stay exact: nothing is rounded, estimated or made up, and what the text does not give stays empty, not guessed.';
+
+/** How a fill ends: the user pasted more than the element shows, and should know what went in. */
+const TOOK =
+  'End with a line on what you took from the text and what in it you left out. If the text holds nothing to fill from, change nothing and say so.';
 
 const count = (params: ActionParams, fallback: number) => params.count ?? fallback;
 const language = (params: ActionParams) => params.language ?? 'English';
@@ -126,8 +148,14 @@ export const ACTIONS = define({
   'outline.approve': {
     scope: 'deck',
     needs: ['slide_create_from_html'],
-    ask: () =>
-      'The user approved the outline you proposed. Build the deck from it now, slide by slide, as it stands.',
+    // The outline rides with the approval: a session that could not be resumed was never told
+    // it, and the user may have changed it in its card (AID-03).
+    ask: (p) =>
+      !p.outline
+        ? 'The user approved the outline you proposed. Build the deck from it now, slide by slide, as it stands.'
+        : p.edited
+          ? "The user changed the outline you proposed, in its card, and approved it: `outline` is the outline as they left it. Build the deck from `outline` now, slide by slide, and from nothing else. Which slides there are, their order and their titles are the user's decision: a slide that is not in `outline` is not built, and a title is written as it stands there. The archetype and the note of a slide are still yours from the proposal: where the user reworded a title and they no longer fit it, go by the title. A slide with no archetype is one the user added: decide what it shows from its title and its neighbours."
+          : 'The user approved the outline you proposed: it is in `outline`, as its card showed it. Build the deck from it now, slide by slide, as it stands.',
   },
 
   /* ---------------------------------------------------------------- the slide tool (AIS-02) */
@@ -268,6 +296,56 @@ export const ACTIONS = define({
     ask: () =>
       `Bring this image into the deck's image style. Call image_edit once, with this element's id and an instruction that keeps the subject and the composition and restates the style: the deck's \`image_style\` from the context, and its palette. When the deck has no image style yet, take it from the deck's other images and its theme, and say in a line what you went by. ${ONE_EDIT} When the result says the edit was a redraw (\`regenerate\`), tell the user in a line that details of the image moved.`,
   },
+
+  /* ---------------------------------------------------------------- the object tool: chart (AIO-07) */
+
+  'chart.type': {
+    scope: 'object',
+    needs: ['ui_present_options'],
+    ask: (p) =>
+      `Suggest chart types for the data of this chart. Read the data first: what it compares (values over time, categories against each other, parts of a whole, two measures against each other), in how many series and how many points. Offer the ${count(p, 3)} types that show it best, the best first, leaving out the type the chart has now. Show them with ui_present_options, kind "chart": each option's \`set\` is the chart_set arguments that make the change, without the element id, as in {"chartType": "line"}. The data stays as it is; add to \`set\` only an option the new type cannot do without, such as a legend for several series. Each label names the type and, in two or three words, what it brings out. ${OPTIONS} If the type the chart has now is the best one for this data, say so in your reply.`,
+  },
+  'chart.fill': {
+    scope: 'object',
+    needs: ['chart_set'],
+    ask: () =>
+      `Fill this chart from the text in \`description\`, which the user pasted: find the numbers in it and what each one measures, and set them as the categories and series of the chart with chart_set. ${EXACT} A number written with a unit or a sign ("12%", "$1,200", "3.5M") goes in as its value, and the unit belongs in the name of its series or in the title of the axis. The chart keeps its type and its look, unless the new data cannot be shown in that type: then choose the type that fits, and say so. If the chart's title no longer fits the data, give it one that says what the data shows. Look at the slide afterwards. ${TOOK}`,
+  },
+  'chart.title': {
+    scope: 'object',
+    needs: ['ui_present_options'],
+    ask: (p) =>
+      `Offer ${count(p, 4)} titles for this chart. The title of a chart states what the data shows, the insight and not the subject: "Sales doubled in two years", not "Sales by year". Read the data, find what stands out in it (a trend, a gap, a peak, a turn), and let each option say it from another angle, short enough for one line above the chart. A number in a title is one the data holds, or one that follows from it exactly. Show them with ui_present_options, kind "chart": each option's \`set\` is {"title": "…"} and nothing else, with a label of two or three words that names the angle. ${OPTIONS} In your reply, give the insight itself in one full sentence, for the user to say aloud or to put on the slide.`,
+  },
+
+  /* ---------------------------------------------------------------- the object tool: table (AIO-08) */
+
+  'table.fill': {
+    scope: 'object',
+    needs: ['table_set'],
+    ask: () =>
+      `Fill this table from the text in \`description\`, which the user pasted: find the items it lists and what it says about each, and set them as the cells of the table with table_set: a header row that names the columns, then a row for each item. A cell is short (a name, a number, a few words): a sentence of the text becomes the fact it states. ${EXACT} The table keeps its frame and its style, and takes the number of rows and columns the content asks for. Look at the slide afterwards: a table that grew has to stay readable, and if it cannot, say so instead of shrinking its text. ${TOOK}`,
+  },
+  'table.style': {
+    scope: 'object',
+    needs: ['ui_present_options'],
+    ask: (p) =>
+      `Offer ${count(p, 3)} looks for this table, each different from the one it has and from the others. A look is one of the named table styles with the switches that suit what this table holds: a header row when the first row names the columns, a marked first column when it names the rows, banded rows when there are many of them. Choose looks that sit well on this slide. Show them with ui_present_options, kind "table": each option's \`set\` is the table_set arguments of the look and nothing else, as in {"styleId": "lines", "headerRow": true, "bandedRows": false, "firstColumn": true}, with a label of two or three words that says what the look does for the table. ${OPTIONS}`,
+  },
+  'table.insight': {
+    // An object session cannot add an element (SPEC 11.4, the scope guard), so the slide chat does it.
+    scope: 'slide',
+    needs: ['element_add'],
+    ask: () =>
+      'Sum up the table `elementId` in one insight, and put it on this slide. The insight is the one thing a reader should take from the table (the largest, the trend, the gap, the exception): a single sentence with the number that carries it, and every number in it is in the table or follows from it exactly. If the slide already has a line that does this job (a subtitle, a caption beside the table), reword that line. Otherwise add the sentence as one text element where the eye meets it together with the table, above it or beside it, in a text style of the theme, moving or resizing the table only as far as that takes. Nothing else on the slide changes. Look at the slide when you are done.',
+  },
+  'table.chart': {
+    // The chart is a new element and the table goes: both are past an object session.
+    scope: 'slide',
+    needs: ['chart_set', 'element_delete'],
+    ask: () =>
+      'Turn the table `elementId` into a chart. Read its header row and its first column as the names and its numbers as the values: a number written with a unit or a sign ("12%", "$1,200") is its value, and a column that holds no numbers is not a series. Choose the chart type that fits what the table compares, and give the chart a title that says what the data shows. The chart takes the place of the table: create it with chart_set in the frame of the table, larger if a chart needs more room there, then delete the table with element_delete. Nothing else on the slide changes, unless it has to move to make room. Look at the slide when you are done. If the table holds nothing a chart can show, change nothing and say so.',
+  },
 });
 
 export type ActionId = keyof typeof ACTIONS;
@@ -287,7 +365,20 @@ export interface ActionMessageInput {
 const MAX_DESCRIPTION = 600;
 /** The description of a template to make is a brief: a paragraph or three. */
 const MAX_BRIEF = 2000;
+/** A text to fill a chart or a table from is pasted, not typed: a page of a report, a sheet. */
+const MAX_SOURCE = 6000;
 const MAX_URL = 500;
+
+/** Actions whose field takes more than a sentence, and how much. */
+const DESCRIPTION_LIMITS: Partial<Record<ActionId, number>> = {
+  'template.create': MAX_BRIEF,
+  'chart.fill': MAX_SOURCE,
+  'table.fill': MAX_SOURCE,
+};
+
+/** How long a slide's title and its note may be in an outline: a line each. */
+const OUTLINE_LIMITS = { title: 200, note: 300 };
+const OUTLINE_KEY = 'outline: ';
 
 /**
  * The message of an action: one `<slidr_action>` block, sent as the turn's text in place of
@@ -297,13 +388,23 @@ const MAX_URL = 500;
 export function actionMessage({ action, params = {}, replyIn }: ActionMessageInput): string {
   const lines = [`action: ${json(action)}`];
   if (params.slideId !== undefined) lines.push(`slideId: ${json(params.slideId)}`);
+  if (params.elementId !== undefined) lines.push(`elementId: ${json(params.elementId)}`);
   if (params.description !== undefined) {
     // The limit of a bare string is asked for under the empty key.
-    const limit = action === 'template.create' ? MAX_BRIEF : MAX_DESCRIPTION;
+    const limit = DESCRIPTION_LIMITS[action] ?? MAX_DESCRIPTION;
     lines.push(`description: ${json(params.description, { '': limit })}`);
   }
   if (params.url !== undefined) lines.push(`url: ${json(params.url, { '': MAX_URL })}`);
   if (params.maskAssetId !== undefined) lines.push(`maskAssetId: ${json(params.maskAssetId)}`);
+  if (params.outline !== undefined) {
+    // Each slide by its three fields and nothing else: what a card adds for itself stays there.
+    const slides = params.outline.map(({ title, archetype, note }) => ({
+      title,
+      ...(archetype ? { archetype } : {}),
+      ...(note ? { note } : {}),
+    }));
+    lines.push(`${OUTLINE_KEY}${json(slides, OUTLINE_LIMITS)}`);
+  }
   lines.push(`reply_in: ${json(replyIn)}`);
   return [
     `<${ACTION_TAG}>`,
@@ -312,4 +413,32 @@ export function actionMessage({ action, params = {}, replyIn }: ActionMessageInp
     ACTIONS[action].ask(params),
     `</${ACTION_TAG}>`,
   ].join('\n');
+}
+
+/**
+ * The outline an approval carried, read back from the message that was sent: what the card of an
+ * answered outline shows, in this window and after the deck is opened again. Null for a message
+ * that carries none.
+ */
+export function approvedOutline(message: string): OutlineSlide[] | null {
+  const line = message.split('\n').find((text) => text.startsWith(OUTLINE_KEY));
+  if (!line) return null;
+  try {
+    const slides: unknown = JSON.parse(line.slice(OUTLINE_KEY.length));
+    if (!Array.isArray(slides)) return null;
+    return slides.flatMap((slide: unknown): OutlineSlide[] => {
+      if (typeof slide !== 'object' || slide === null) return [];
+      const { title, archetype, note } = slide as Record<string, unknown>;
+      if (typeof title !== 'string') return [];
+      return [
+        {
+          title,
+          ...(typeof archetype === 'string' ? { archetype } : {}),
+          ...(typeof note === 'string' ? { note } : {}),
+        },
+      ];
+    });
+  } catch {
+    return null;
+  }
 }
