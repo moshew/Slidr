@@ -100,7 +100,64 @@ describe('cleaning an SVG file', () => {
     expect(fill('.bg')).toBe('');
   });
 
+  it('drops an address outside the file wherever the file writes it', () => {
+    const url = 'https://outside.example/beacon';
+    // Each of these was kept by a cleaning that looked at four attributes (bug hunt,
+    // objects-media.md, finding 4), or is a neighbour of one that was.
+    const ways: Record<string, string> = {
+      setHref: `<image width="10" height="10" href="data:image/png;base64,iVBORw0KGgo="><set attributeName="href" to="${url}"/></image>`,
+      animateHref: `<image width="10" height="10"><animate attributeName="href" values="${url};${url}" dur="1s"/></image>`,
+      animateXlink: `<image width="10" height="10"><animate attributeName="xlink:href" values="${url}" dur="1s"/></image>`,
+      animateValue: `<rect width="5" height="5"><animate attributeName="mask" values="url(${url})" dur="1s"/></rect>`,
+      mask: `<rect width="50" height="50" mask="url(${url})"/>`,
+      clipPath: `<rect width="50" height="50" clip-path="url(${url}#c)"/>`,
+      marker: `<path d="M10 10 L50 50" marker-start="url(${url}#m)" marker-mid="url(${url}#m)" marker-end="url(${url}#m)"/>`,
+      cursor: `<rect width="50" height="50" cursor="url(${url}), auto"/>`,
+      filterQuoted: `<rect width="50" height="50" filter="url( '${url}#f' )"/>`,
+      upperCase: `<rect width="50" height="50" mask="URL(${url})"/>`,
+      escaped: `<rect width="50" height="50" mask="u\\72 l(${url})"/>`,
+      styleMask: `<rect width="50" height="50" style="mask-image: url(${url}); fill: red"/>`,
+      styleVariable: `<g style="--u: url(${url})"><rect width="5" height="5" style="mask-image: var(--u)"/></g>`,
+      styleImageSet: `<rect width="50" height="50" style="mask-image: image-set('${url}' 1x)"/>`,
+      sheetOtherProperty: `<style>.m { mask-image: url(${url}); cursor: url(${url}), auto }</style><rect class="m" width="5" height="5"/>`,
+      sheetFontFace: `<style>@font-face { font-family: F; src: url(${url}) } text { font-family: F }</style><text y="9">x</text>`,
+      feImage: `<filter id="f"><feImage xlink:href="${url}"/></filter>`,
+      pattern: `<pattern id="p" href="${url}#p"/>`,
+      textPath: `<text><textPath href="${url}#t">x</textPath></text>`,
+      otherPrefix: `<image xmlns:q="http://www.w3.org/1999/xlink" q:href="${url}" width="5" height="5"/>`,
+      xmlBase: `<g xml:base="${url}/"><image href="photo.png" width="5" height="5"/></g>`,
+      htmlImage: `<img xmlns="http://www.w3.org/1999/xhtml" src="${url}"/>`,
+      htmlLink: `<link xmlns="http://www.w3.org/1999/xhtml" rel="stylesheet" href="${url}"/>`,
+      htmlStyle: `<style xmlns="http://www.w3.org/1999/xhtml">@import url(${url});</style>`,
+      useData: `<use href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg'/&gt;#a"/>`,
+    };
+    for (const [name, inside] of Object.entries(ways)) {
+      const markup = cleanSvg(svg(inside));
+      expect(markup, name).toBeTruthy();
+      expect(markup, name).not.toContain('outside.example');
+      expect(markup, name).not.toMatch(/photo\.png|data:image\/svg/);
+    }
+    // An address that an entity of the file's own DTD spells is the same address.
+    const entity = `<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY u "${url}">]>${svg('<image href="&u;" width="5" height="5"/><rect width="5" height="5" mask="url(&u;)"/>')}`;
+    expect(cleanSvg(entity)).not.toContain('outside.example');
+  });
+
+  it('takes a file with elements of another kind of markup in it, without them', () => {
+    // What a drawing program leaves in its files; such an element has a `style` attribute and no
+    // `style` of the kind an SVG element has, which once made the whole import throw.
+    const markup = cleanSvg(
+      svg(
+        `<metadata><x:note xmlns:x="urn:example" style="color: red">made by a drawing program</x:note></metadata>
+         <sodipodi:namedview xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" style="x: 1" pagecolor="#ffffff"/>
+         <rect width="10" height="10" fill="#ff0000"/>`,
+      ),
+    );
+    expect(markup).toContain('<rect');
+    expect(markup).not.toMatch(/note|namedview|urn:example/);
+  });
+
   it('does not take what is not an SVG, or is too large to keep in a deck', () => {
+    expect(cleanSvg('<svg xmlns="http://www.w3.org/1999/xhtml"><rect/></svg>')).toBeUndefined();
     expect(cleanSvg('<html><body>not an svg</body></html>')).toBeUndefined();
     expect(cleanSvg('<svg xmlns="http://www.w3.org/2000/svg"><rect</svg>')).toBeUndefined();
     expect(cleanSvg(svg(`<desc>${'x'.repeat(MAX_INLINE_SVG)}</desc>`))).toBeUndefined();

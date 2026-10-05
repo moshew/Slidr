@@ -1,37 +1,16 @@
 import type { AssetMeta } from '@slidr/model';
-import { normalizeColor } from '@slidr/renderer';
+import { cleanPicture, normalizeColor, SVG_NAMESPACE } from '@slidr/renderer';
 
 /*
  * Importing an SVG file (SHP-06, SEC-06). A small SVG becomes an `svg` element that holds its
  * markup, so that its colours can be replaced and tied to the theme; the markup is cleaned
- * first, since it is drawn in the editor's own document. A large one, or a file that is not an
- * SVG after all, stays an asset and is drawn as a picture, as before.
+ * first, by the rules of a picture that the renderer holds every `svg` element to when it draws
+ * it (`cleanPicture`): what goes into the deck is already what will be drawn. A large one, or a
+ * file that is not an SVG after all, stays an asset and is drawn as a picture, as before.
  */
 
 /** Above this many characters an SVG stays an asset: the markup would be stored in the deck itself. */
 export const MAX_INLINE_SVG = 300_000;
-
-/** Elements that run code, embed other documents or play media: none of them draws a picture. */
-const DROPPED =
-  'script, foreignObject, iframe, object, embed, audio, video, canvas, handler, listener, set[attributeName^="on"], animate[attributeName^="on"]';
-
-const LINK_ATTRIBUTES = ['href', 'xlink:href', 'src'];
-
-/** A reference that stays inside the file: a fragment, or a picture carried as data. */
-function isLocalReference(value: string): boolean {
-  const v = value.trim().toLowerCase();
-  return v.startsWith('#') || /^data:image\/(png|jpe?g|gif|webp|avif|bmp);/.test(v);
-}
-
-/** A CSS value without the `url()`s that point outside the file. */
-function withoutOutsideUrls(value: string): string | undefined {
-  let outside = false;
-  value.replace(/url\(\s*(['"]?)([^'")]*)\1\s*\)/gi, (_all, _quote, target: string) => {
-    if (!isLocalReference(target)) outside = true;
-    return '';
-  });
-  return outside ? undefined : value;
-}
 
 /** How specific a selector is, roughly: ids, then classes and attributes, then element names. */
 function specificity(selector: string): number {
@@ -43,10 +22,9 @@ function specificity(selector: string): number {
 
 /**
  * Writes what the file's stylesheets say onto the elements themselves, and takes the
- * stylesheets out. Two reasons: a `<style>` inside an inline SVG applies to the whole document
- * it is put in, so it would restyle the editor; and a colour that only a class gives cannot be
- * replaced per element. Rules are applied in order of specificity; what an element says in its
- * own `style` wins, as it did in the file. At-rules (`@media`, `@keyframes`) are dropped.
+ * stylesheets out: a colour that only a class gives cannot be replaced per element. Rules are
+ * applied in order of specificity; what an element says in its own `style` wins, as it did in
+ * the file. At-rules (`@media`, `@keyframes`) are dropped.
  */
 function inlineStylesheets(root: Element): void {
   const sheets = Array.from(root.querySelectorAll('style'));
@@ -86,10 +64,11 @@ function inlineStylesheets(root: Element): void {
       if (!target) continue;
       for (const property of Array.from(style)) {
         if (own.get(el)?.has(property)) continue;
-        const value = withoutOutsideUrls(style.getPropertyValue(property));
-        if (value !== undefined) {
-          target.setProperty(property, value, style.getPropertyPriority(property));
-        }
+        target.setProperty(
+          property,
+          style.getPropertyValue(property),
+          style.getPropertyPriority(property),
+        );
       }
     }
   }
@@ -97,38 +76,26 @@ function inlineStylesheets(root: Element): void {
 }
 
 /**
- * The markup of an SVG file, cleaned to be drawn in the editor's own document: nothing that
- * runs, nothing that embeds a document, no reference to anything outside the file, and no
- * stylesheet. Undefined when the text is not an SVG, or is too large to keep in the deck.
+ * The markup of an SVG file as a picture (`cleanPicture`): SVG that draws, with nothing that
+ * runs, nothing of another kind of markup, no link, no reference to anything outside the file,
+ * and its stylesheets written onto its elements. Undefined when the text is not an SVG, or is
+ * too large to keep in the deck.
  */
 export function cleanSvg(text: string): string | undefined {
   if (text.length > MAX_INLINE_SVG) return undefined;
   const parsed = new DOMParser().parseFromString(text, 'image/svg+xml');
   const root = parsed.documentElement;
-  if (root.localName !== 'svg' || parsed.querySelector('parsererror')) return undefined;
-  for (const el of Array.from(root.querySelectorAll(DROPPED))) el.remove();
-  for (const el of [root, ...Array.from(root.querySelectorAll('*'))]) {
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name.toLowerCase();
-      if (name.startsWith('on')) el.removeAttribute(attr.name);
-      else if (LINK_ATTRIBUTES.includes(name) && !isLocalReference(attr.value)) {
-        el.removeAttribute(attr.name);
-      } else if (name === 'style' || name === 'fill' || name === 'stroke' || name === 'filter') {
-        // `url(#gradient)` stays; a `url()` that leaves the file takes its declaration with it.
-        if (name === 'style') {
-          const style = (el as SVGElement).style;
-          for (const property of Array.from(style)) {
-            if (withoutOutsideUrls(style.getPropertyValue(property)) === undefined) {
-              style.removeProperty(property);
-            }
-          }
-        } else if (withoutOutsideUrls(attr.value) === undefined) el.removeAttribute(attr.name);
-      }
-    }
-    // A link in a picture would take the editor's window elsewhere.
-    if (el.localName === 'a') el.replaceWith(...Array.from(el.childNodes));
+  if (
+    root.localName !== 'svg' ||
+    root.namespaceURI !== SVG_NAMESPACE ||
+    parsed.querySelector('parsererror')
+  ) {
+    return undefined;
   }
+  cleanPicture(root);
   inlineStylesheets(root);
+  // Once more, for what the stylesheets wrote onto the elements.
+  cleanPicture(root);
   if (!root.getAttribute('viewBox')) {
     const w = parseFloat(root.getAttribute('width') ?? '');
     const h = parseFloat(root.getAttribute('height') ?? '');
