@@ -193,6 +193,9 @@ describe('another document in the window', () => {
     const { bus, sessions } = setup(0, rename);
     const held = sessions.thread(slide('s_1'));
     sessions.show(held);
+    await held.send('Name the slide');
+    await settled(held);
+    expect(held.store.getState().entries.length).toBeGreaterThan(0);
     expect(sessions.opened.getState()).toBe(0);
     bus.dispatch({ type: 'slide.update', slideId: 's_2', patch: { name: 'An edit' } });
     expect(sessions.opened.getState()).toBe(0);
@@ -200,10 +203,12 @@ describe('another document in the window', () => {
     // The same file is opened again: its slides carry the ids they had.
     bus.reset(twoSlides());
     expect(sessions.opened.getState()).toBe(1);
+    expect(bus.deck.slides[0]?.name).not.toBe('Renamed');
 
-    // What a panel does when that moves: it takes the chat of its scope again.
+    // What a panel does when that moves: it takes the chat of its scope again. The service
+    // emptied the chat for the new document, so the conversation of the old one is not in it.
     const chat = sessions.thread(slide('s_1'));
-    expect(chat).not.toBe(held);
+    expect(chat.store.getState().entries).toEqual([]);
     sessions.show(chat);
     await chat.send('Name the slide');
     await settled(chat);

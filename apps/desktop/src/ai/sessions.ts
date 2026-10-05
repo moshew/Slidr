@@ -11,10 +11,10 @@ import type { AgentService, ChatThread } from '../agent/agentService';
 
 export interface Sessions {
   /**
-   * How many times another document was opened in the window. The chat of a slide or of a
-   * selection ends with its document, and the service lets it go: a panel that holds one takes
-   * the chat of its scope again when this moves, though the ids may be the same ones (the same
-   * file opened again).
+   * How many times another document was opened in the window. The conversation of a slide or of
+   * a selection ends with its document, and the service empties every chat for the new one: a
+   * panel takes the chat of its scope again when this moves, though the ids may be the same ones
+   * (the same file opened again), and what it gets is a chat that starts over.
    */
   opened: StoreApi<number>;
   /**
@@ -34,7 +34,7 @@ export interface Sessions {
 export function createSessions(agent: AgentService, bus: CommandBus): Sessions {
   const working = createStore<{ threads: ChatThread[] }>(() => ({ threads: [] }));
   const opened = createStore<number>(() => 0);
-  // The service subscribed before this, when it was made: by now it has let the old chats go.
+  // The service subscribed before this, when it was made: by now it has emptied the old chats.
   bus.subscribe((event) => {
     if (event.kind === 'reset') opened.setState((count) => count + 1, true);
   });
@@ -71,7 +71,10 @@ export function createSessions(agent: AgentService, bus: CommandBus): Sessions {
       if (!watched.has(thread)) {
         watched.add(thread);
         thread.store.subscribe(refresh);
-        refresh();
+        // A panel asks for its chat while it is being drawn, and a chat may be at work before
+        // any panel showed it (an action of the object tool that is sent to the slide's chat):
+        // the status bar is told after the drawing, not in the middle of it.
+        queueMicrotask(refresh);
       }
       return thread;
     },
