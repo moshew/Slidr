@@ -299,8 +299,9 @@ export interface OptionCard {
   /** A slide variation, in HTML as for `slide_create_from_html`. */
   html?: string;
   /**
-   * A variation of a chart or a table (AIO-07, AIO-08): the arguments of `chart_set` or
-   * `table_set` that make it, without the element's id.
+   * A variation of an element as a change to it (AIO-06 to AIO-08): for a chart or a table the
+   * arguments of `chart_set` or `table_set` that make it, without the element's id; for kind
+   * `element`, the patch of `element_update`.
    */
   set?: Record<string, unknown>;
 }
@@ -308,7 +309,7 @@ export interface OptionCard {
 /** WG11-T08: the variations gallery. The app applies the user's pick, not the agent. */
 export interface OptionsService {
   present(request: {
-    kind: 'text' | 'image' | 'layout' | 'chart' | 'table';
+    kind: 'text' | 'image' | 'layout' | 'chart' | 'table' | 'element';
     target: { slideId: string; elementId?: string };
     prompt?: string;
     options: OptionCard[];
