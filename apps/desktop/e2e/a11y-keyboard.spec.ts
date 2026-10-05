@@ -82,6 +82,10 @@ test('the text of a shape gets a link and an effect without the pointer', async 
   await page.keyboard.press('Enter');
   const effects = page.getByRole('dialog');
   await expect(effects).toBeVisible();
+  // What opens takes the keyboard a moment after it is drawn.
+  await expect
+    .poll(() => page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]'))))
+    .toBe(true);
   await tabTo(page, 'Fill', 4);
   await page.keyboard.press('ArrowRight');
   await expect(effects.getByRole('tab', { name: 'Outline' })).toHaveAttribute(
@@ -93,6 +97,8 @@ test('the text of a shape gets a link and an effect without the pointer', async 
   await page.keyboard.press('Tab');
   await expect(effects.getByRole('radio').first()).toBeFocused();
   await page.keyboard.press('ArrowRight');
+  // The arrow moves the keyboard a moment after the key; a machine's Space would beat it there.
+  await expect(effects.getByRole('radio').nth(1)).toBeFocused();
   await page.keyboard.press('Space');
   await expect.poll(() => held(page, 'e_shape')).toContain('text-stroke');
 
@@ -113,10 +119,14 @@ test('the style of a paragraph, from its menu in row B, without the pointer', as
   await page.keyboard.press('Enter');
   const menu = page.getByRole('menu');
   await expect(menu).toBeVisible();
+  // A menu opened with a key puts the keyboard on its first item, a moment after it is drawn.
+  const items = menu.getByRole('menuitemradio');
+  await expect(items.first()).toBeFocused();
   // Another style than the one it has: the first item of the menu, or the one after it.
-  const first =
-    (await menu.getByRole('menuitemradio').first().getAttribute('aria-checked')) === 'true';
-  if (first) await page.keyboard.press('ArrowDown');
+  if ((await items.first().getAttribute('aria-checked')) === 'true') {
+    await page.keyboard.press('ArrowDown');
+    await expect(items.nth(1)).toBeFocused();
+  }
   await page.keyboard.press('Enter');
   await expect(menu).toHaveCount(0);
   await expect
