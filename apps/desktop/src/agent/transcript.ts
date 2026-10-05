@@ -149,18 +149,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** The entries of a transcript file. A line that does not parse is skipped, not fatal. */
+/**
+ * The entries of a transcript file. A line that does not parse is skipped, not fatal. The file
+ * is only ever added to, so an entry that is written again (something about its turn became
+ * known after it was closed) is a later line under the same id: that line is the entry, in the
+ * place of the first.
+ */
 export function parseTranscript(text: string): ChatEntry[] {
   const entries: ChatEntry[] = [];
+  const places = new Map<string, number>();
+  const keep = (entry: ChatEntry) => {
+    const place = places.get(entry.id);
+    if (place === undefined) places.set(entry.id, entries.push(entry) - 1);
+    else entries[place] = entry;
+  };
   for (const line of text.split('\n')) {
     if (!line.trim()) continue;
     try {
       const entry: unknown = JSON.parse(line);
       if (!isRecord(entry) || typeof entry.id !== 'string') continue;
       if (entry.type === 'user' && typeof entry.text === 'string') {
-        entries.push(entry as unknown as UserEntry);
+        keep(entry as unknown as UserEntry);
       } else if (entry.type === 'assistant' && Array.isArray(entry.parts)) {
-        entries.push(entry as unknown as AssistantEntry);
+        keep(entry as unknown as AssistantEntry);
       }
     } catch {
       // A torn last line after a crash: the entries before it are intact.

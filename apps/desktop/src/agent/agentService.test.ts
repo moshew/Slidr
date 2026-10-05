@@ -2,6 +2,7 @@ import {
   createDeckApi,
   type CaptureService,
   type ConversionService,
+  type HtmlImportService,
   type LintFinding,
   type LintService,
   type Services,
@@ -418,6 +419,16 @@ describe('the transcript', () => {
     await ask(again.thread, 'ועוד משהו');
     expect(again.seen.starts[0]!.config.resume).toBe(native);
     expect(parseTranscript(again.transcripts.files.get('deck.jsonl') ?? '')).toHaveLength(4);
+  });
+
+  it('reads an entry that was written again as one entry, as it last read, in its first place', () => {
+    const user = { type: 'user', id: 'm_1', at: '2026-10-03T09:00:00.000Z', text: 'Go' };
+    const reply = (parts: unknown[]) => ({ type: 'assistant', id: 'm_2', at: user.at, parts });
+    const next = { ...user, id: 'm_3', text: 'More' };
+    // The file is only added to: what became known of a turn after it was closed is a later line.
+    const lines = [user, reply([]), next, reply([{ type: 'text', text: 'Done.' }])];
+    const text = lines.map((line) => JSON.stringify(line)).join('\n');
+    expect(parseTranscript(text)).toEqual([user, reply([{ type: 'text', text: 'Done.' }]), next]);
   });
 
   it('starts over in a fresh session when the conversation cannot be resumed', async () => {
@@ -1264,6 +1275,94 @@ describe('a tool call that is still at work when its turn is over', () => {
     expect(bus.deck.slides.map((slide) => slide.id)).toEqual(['s_1']);
     expect(entry.txId).toBeUndefined();
     expect(bus.undoStack).toEqual([]);
+  });
+
+  it('puts the chip of the call right once the call is back: it wrote nothing', async () => {
+    const slow = slowConversion();
+    const { thread, transcripts } = setup(
+      { build },
+      { services: { conversion: slow.conversion }, wrap: givingUp },
+    );
+    await thread.send('Build a slide');
+    await vi.waitFor(() => expect(slow.calls()).toBe(1));
+    await thread.stop();
+    await settled(thread);
+    // The harness gave the call up: all the entry can say is that it did not finish.
+    const closed = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(tools(closed)).toMatchObject([{ name: 'slide_create_from_html', state: 'failed' }]);
+    expect(tools(closed)[0]).not.toHaveProperty('summary');
+
+    await slow.answer();
+    const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(tools(entry)).toMatchObject([
+      {
+        state: 'failed',
+        summary: expect.stringMatching(/^Nothing was written: the turn .* is over/) as string,
+      },
+    ]);
+    // The file keeps the entry as it now reads, once.
+    const kept = parseTranscript(transcripts.files.get('deck.jsonl') ?? '');
+    expect(kept.map((e) => e.type)).toEqual(['user', 'assistant']);
+    expect(kept.at(-1)).toEqual(entry);
+  });
+
+  it('puts the chip of the call right once the call is back: its slides are in the deck', async () => {
+    let release!: () => void;
+    const second = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let captures = 0;
+    const importer: HtmlImportService = {
+      inspect: () => Promise.resolve(''),
+      evaluate: () => Promise.resolve(''),
+      screenshot: () => Promise.reject(new Error('not in this test')),
+      setViewport: () => Promise.resolve(''),
+      // The first slide comes at once; the page is still working on the second.
+      capture: async () => {
+        const n = ++captures;
+        if (n > 1) await second;
+        return {
+          slide: createSlide({ id: `s_captured_${n}` }),
+          assets: [],
+          editability: 1,
+          textEditability: 1,
+          faithful: true,
+          exact: true,
+          wholeSlideHtml: false,
+          source: { width: 1920, height: 1080 },
+          notes: [],
+        };
+      },
+    };
+    const capture = script([
+      call('t1', 'import_capture', { slides: [{ selector: '#one' }, { selector: '#two' }] }),
+      done(),
+    ]);
+    const { bus, service, transcripts } = setup(
+      { capture },
+      { services: { importer }, wrap: givingUp },
+    );
+    const thread = service.thread({ kind: 'import', file: 'deck.html' });
+    await thread.send('Import the file');
+    await vi.waitFor(() => expect(captures).toBe(2));
+    expect(bus.deck.slides.map((slide) => slide.id)).toEqual(['s_1', 's_captured_1']);
+    await thread.stop();
+    await settled(thread);
+    expect(tools(thread.store.getState().entries.at(-1) as AssistantEntry)).toMatchObject([
+      { name: 'import_capture', state: 'failed' },
+    ]);
+
+    release();
+    await vi.waitFor(() =>
+      expect(tools(thread.store.getState().entries.at(-1) as AssistantEntry)[0]!.state).toBe('ok'),
+    );
+    // The call was cut, not failed: the slide it captured before the turn ended is in the deck,
+    // the one the page was working on is not, and the chip and the turn's undo say so.
+    const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(bus.deck.slides.map((slide) => slide.id)).toEqual(['s_1', 's_captured_1']);
+    expect(tools(entry)[0]!.summary).toContain('"slideId":"s_captured_1"');
+    expect(entry).toMatchObject({ outcome: 'interrupted', txId: expect.any(String) as string });
+    expect(parseTranscript(transcripts.files.get('import.jsonl') ?? '').at(-1)).toEqual(entry);
   });
 
   it('keeps the undo of what the turn wrote before it was stopped', async () => {

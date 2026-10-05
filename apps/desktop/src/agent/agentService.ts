@@ -54,7 +54,7 @@ import {
   type Usage,
 } from './agent';
 import { GATE_ROUNDS, isClean, TurnWatch } from './qualityGate';
-import type { ToolBridge, ToolHandler } from './toolBridge';
+import { toReply, type ToolBridge, type ToolHandler } from './toolBridge';
 import type {
   AssistantEntry,
   AssistantPart,
@@ -205,6 +205,18 @@ function problemOf(error: unknown): ChatProblem {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Length of a tool result's summary on its chip, in characters: what the harnesses keep. */
+const SUMMARY_CHARS = 300;
+
+/** A result as its chip's summary, in the words a harness would have reported of it. */
+function summaryOf(result: ToolResult): string {
+  const text = toReply(result)
+    .content.map((part) => (part.type === 'text' ? part.text : '[image]'))
+    .join('\n');
+  const chars = [...text];
+  return chars.length <= SUMMARY_CHARS ? text : `${chars.slice(0, SUMMARY_CHARS).join('')}…`;
 }
 
 /** Longest string a chip's detail keeps of a tool's arguments: a slide's HTML runs to pages. */
@@ -382,6 +394,13 @@ interface Run {
   usage: Usage;
   costUsd: number | null;
   durationMs: number;
+  /**
+   * The chips of the run's tool calls and the results of the calls arrive on two roads (the
+   * harness's events, and the calls themselves through the bridge), in either order: whichever
+   * comes first waits here for the other.
+   */
+  chips: (Pairing & { partId: string })[];
+  results: (Pairing & { target: ToolTarget | undefined })[];
 }
 
 /** A tool result waiting for its chip, or a chip waiting for its result. */
@@ -404,8 +423,6 @@ export class ChatThread {
   #queue: Promise<void> = Promise.resolve();
   /** The watch of a run the design check gave up on, for "try to fix again" (QG-05). */
   #heldWatch: { entryId: string; watch: TurnWatch } | null = null;
-  #chips: (Pairing & { partId: string })[] = [];
-  #results: (Pairing & { target: ToolTarget | undefined })[] = [];
   #loading: Promise<void> | null = null;
   /** A message whose files are being stored, before it has a run: Stop is kept here meanwhile. */
   #sending: { stopped: boolean } | null = null;
@@ -717,12 +734,15 @@ export class ChatThread {
     const writes = api.tools.find((tool) => tool.name === name)?.writes ?? false;
     const before = run.watch.mark();
     const result = await api.call(run.turn, name, input);
-    // The run ended while the call was at work (it was stopped, or another deck was opened):
-    // the answer has no chip to go to, and the chat may be showing another run by now.
-    if (this.#run !== run) return result;
+    // The run ended while the call was at work (it was stopped, or its session went): the
+    // chat may be showing another run by now, and the entry of this one is closed.
+    if (this.#run !== run) {
+      this.#settle(run, name, input, result);
+      return result;
+    }
     // A read shows the slide as it was when asked; a write is rendered after it was made.
     run.watch.noteResult(result, writes ? run.watch.mark() : before);
-    this.#pairResult(name, input, result);
+    this.#pairResult(run, name, input, result);
     return result;
   }
 
@@ -795,11 +815,11 @@ export class ChatThread {
       usage: NO_USAGE,
       costUsd: 0,
       durationMs: 0,
+      chips: [],
+      results: [],
     };
     this.#run = run;
     this.#heldWatch = null;
-    this.#chips = [];
-    this.#results = [];
     this.store.setState((state) => ({
       entries: [...state.entries, entry],
       busy: true,
@@ -1189,7 +1209,7 @@ export class ChatThread {
             ...(target ? { target } : {}),
           },
         });
-        if (event.source === 'app') this.#pairChip(event.id, event.name, event.input);
+        if (event.source === 'app') this.#pairChip(run, event.id, event.name, event.input);
         return;
       }
       case 'tool_call_finished':
@@ -1370,38 +1390,68 @@ export class ChatThread {
   }
 
   /** A chip appeared: give it the target of its result, if the result is already in. */
-  #pairChip(partId: string, name: string, input: unknown): void {
+  #pairChip(run: Run, partId: string, name: string, input: unknown): void {
     const key = JSON.stringify(input ?? {});
-    const at = this.#results.findIndex((r) => r.name === name && r.key === key);
+    const at = run.results.findIndex((r) => r.name === name && r.key === key);
     if (at < 0) {
-      this.#chips.push({ partId, name, key });
+      run.chips.push({ partId, name, key });
       return;
     }
-    const [result] = this.#results.splice(at, 1);
-    this.#setTarget(partId, result?.target);
+    const [result] = run.results.splice(at, 1);
+    this.#setTarget(run, partId, result?.target);
   }
 
   /** A result came in: give its target to the chip of the call, if the chip is already shown. */
-  #pairResult(name: string, input: unknown, result: ToolResult): void {
+  #pairResult(run: Run, name: string, input: unknown, result: ToolResult): void {
     const target = toolTarget(input, result);
     const key = JSON.stringify(input ?? {});
-    const at = this.#chips.findIndex((c) => c.name === name && c.key === key);
+    const at = run.chips.findIndex((c) => c.name === name && c.key === key);
     if (at < 0) {
-      this.#results.push({ name, key, target });
+      run.results.push({ name, key, target });
       return;
     }
-    const [chip] = this.#chips.splice(at, 1);
-    if (chip) this.#setTarget(chip.partId, target);
+    const [chip] = run.chips.splice(at, 1);
+    if (chip) this.#setTarget(run, chip.partId, target);
   }
 
-  #setTarget(partId: string, target: ToolTarget | undefined): void {
-    const run = this.#run;
-    if (!run || !target) return;
+  #setTarget(run: Run, partId: string, target: ToolTarget | undefined): void {
+    if (!target) return;
     this.#patchParts(run.entryId, (parts) =>
       parts.map((part) =>
         part.type === 'tool' && part.id === partId ? { ...part, target } : part,
       ),
     );
+  }
+
+  /**
+   * A call came back after its run was closed. The entry said of it what was known then: that
+   * it did not finish, which is all a harness that gave the call up can say. The call went on
+   * in the app, and what it did is known now: an import capture that was cut put its slides
+   * into the deck before the turn ended, and a conversion that came back to a stopped turn
+   * wrote nothing. The chip is put right, and the entry is kept again as it now reads.
+   */
+  #settle(run: Run, name: string, input: unknown, result: ToolResult): void {
+    const key = JSON.stringify(input ?? {});
+    const at = run.chips.findIndex((c) => c.name === name && c.key === key);
+    if (at < 0) return;
+    const [chip] = run.chips.splice(at, 1);
+    const target = toolTarget(input, result);
+    let settled = false;
+    this.#patchParts(run.entryId, (parts) =>
+      parts.map((part) => {
+        if (part.type !== 'tool' || part.id !== chip?.partId) return part;
+        settled = true;
+        return {
+          ...part,
+          state: result.ok ? 'ok' : 'failed',
+          summary: summaryOf(result),
+          ...(target ? { target } : {}),
+        };
+      }),
+    );
+    // An entry that is no longer in the chat (another deck took the window) is nobody's to keep.
+    const entry = this.store.getState().entries.find((e) => e.id === run.entryId);
+    if (settled && entry) this.#persist([entry]);
   }
 }
 
