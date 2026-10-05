@@ -1,4 +1,4 @@
-import type { Deck, Slide } from '@slidr/model';
+import type { Deck, Element, Slide } from '@slidr/model';
 import { useMemo, type CSSProperties } from 'react';
 import {
   RenderContextValue,
@@ -123,14 +123,18 @@ export function SlideRenderer({
   );
   const layout = slide.layoutId ? layouts.find((l) => l.id === slide.layoutId) : undefined;
   // A footer the layout draws is the deck's footer, the same on every slide (SLD-04). A slide
-  // whose own footer says something shows that instead: the two share one place.
-  const ownFooter = slide.elements.some(
-    (e) =>
+  // whose own footer says something shows that instead: the two share one place. Its own
+  // footer is one wherever it is: in a group, or as the text of a shape.
+  const says = (e: Element): boolean => {
+    if (e.hidden) return false;
+    if (e.type === 'group') return e.children.some(says);
+    const words = e.type === 'text' || e.type === 'shape' ? e.content : undefined;
+    return (
       e.role === 'footer' &&
-      !e.hidden &&
-      e.type === 'text' &&
-      e.content.paragraphs.some((p) => p.runs.some((run) => run.text.trim() !== '')),
-  );
+      Boolean(words?.paragraphs.some((p) => p.runs.some((run) => run.text.trim() !== '')))
+    );
+  };
+  const ownFooter = slide.elements.some(says);
   const background = slide.background ?? layout?.background ?? theme.background;
   const body = theme.textStyles.body;
   // The slide's own stylesheet can name an asset of the deck too (`url("slidr-asset:<id>")`):

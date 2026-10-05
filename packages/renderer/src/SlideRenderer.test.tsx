@@ -168,6 +168,42 @@ describe('SlideRenderer', () => {
     render(<SlideRenderer deck={deck} slide={deck.slides[2]!} />);
     expect(drawn()).toBeUndefined();
     expect(container.querySelector('[data-element-id="e_own"]')?.textContent).toBe('Appendix');
+    // A footer of its own is one wherever the slide keeps it: in a group, or in a shape.
+    const grouped = createSlide({
+      id: 's_grouped',
+      layoutId: 'l_plain',
+      elements: [
+        createElement.group({
+          id: 'e_group',
+          frame: { x: 0, y: 900, w: 1920, h: 180 },
+          children: [footer('e_inside', 'Inside a group')],
+        }),
+      ],
+    });
+    render(<SlideRenderer deck={deck} slide={grouped} />);
+    expect(drawn()).toBeUndefined();
+    const boxed = createSlide({
+      id: 's_boxed',
+      layoutId: 'l_plain',
+      elements: [
+        createElement.shape({
+          id: 'e_boxed',
+          role: 'footer',
+          frame: { x: 96, y: 960, w: 900, h: 40 },
+          content: richText('In a shape'),
+        }),
+      ],
+    });
+    render(<SlideRenderer deck={deck} slide={boxed} />);
+    expect(drawn()).toBeUndefined();
+    // And a group that is hidden hides the footer in it: the deck's is drawn again.
+    render(
+      <SlideRenderer
+        deck={deck}
+        slide={{ ...grouped, elements: [{ ...grouped.elements[0]!, hidden: true }] }}
+      />,
+    );
+    expect(drawn()).toBe('ACME · 2026');
   });
 
   it('leaves hidden elements out', () => {

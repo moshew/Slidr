@@ -245,9 +245,16 @@ function AccentBand({
   ctx: RenderContext;
 }) {
   const across = accent.side === 'top' || accent.side === 'bottom';
-  const stripe: CSSProperties = across
-    ? { inset: 'auto', left: 0, right: 0, [accent.side]: 0, height: accent.size }
-    : { inset: 'auto', top: 0, bottom: 0, [accent.side]: 0, width: accent.size };
+  // Every side is named whichever side the stripe is on: a property that came and went as the
+  // accent moved from side to side is what React takes for a styling mistake.
+  const stripe: CSSProperties = {
+    top: accent.side === 'bottom' ? 'auto' : 0,
+    right: accent.side === 'left' ? 'auto' : 0,
+    bottom: accent.side === 'top' ? 'auto' : 0,
+    left: accent.side === 'right' ? 'auto' : 0,
+    width: across ? 'auto' : accent.size,
+    height: across ? accent.size : 'auto',
+  };
   return (
     <div
       aria-hidden

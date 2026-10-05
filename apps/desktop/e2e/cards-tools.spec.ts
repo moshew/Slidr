@@ -80,17 +80,8 @@ async function open(page: Page, name: string): Promise<Locator> {
 /** A choice of the side control. Its segments are icons, named by what they choose. */
 const side = (popover: Locator, name: string) => popover.getByRole('radio', { name, exact: true });
 
-/**
- * The one complaint these tests let through, and it is the renderer's to end (`AccentBand` in
- * `packages/renderer/src/elements.tsx`): the stripe of an accent is placed by `inset` together
- * with the properties of its own side, and when an accent moves to another side React, in
- * development only, calls taking one of those properties away a possible styling bug. The stripe
- * is drawn where it should be. When the renderer places it by the four sides alone, this goes.
- */
-const sideMoved = /a style property during rerender .* Removing (top|right|bottom|left) inset$/;
-
 test.afterEach(({ page }) => {
-  expect(pageProblems(page).filter((problem) => !sideMoved.test(problem))).toEqual([]);
+  expect(pageProblems(page)).toEqual([]);
 });
 
 test.describe('the accent of a box', () => {
