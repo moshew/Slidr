@@ -8,7 +8,7 @@ use std::{
         Arc, Mutex, MutexGuard, PoisonError,
         atomic::{AtomicBool, Ordering},
     },
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 use serde_json::json;
@@ -36,6 +36,15 @@ const IDLE_ENV: &str = "SLIDR_AGENT_IDLE_SECS";
 /// How often idle sessions are looked for, at most.
 const IDLE_CHECK: Duration = Duration::from_secs(30);
 
+/// How long the folder of a conversation is kept after it was last used: the files attached to
+/// it (up to 50 MB each), the source of an import, its system prompt and its tool endpoint file.
+/// Nothing else ever removed them: not closing the deck, not deleting its file, not deleting the
+/// slide the conversation was about. Thirty days is how long the first harness's CLI itself keeps
+/// a conversation it has not heard from, as it is set up by default. Past that nothing can pick
+/// the conversation up where it was: its next message starts a session that is told what was
+/// said (AGT-06), and every session writes its folder anew.
+const THREAD_KEPT: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+
 /// Where the files a user attached to a chat are kept, inside the folder of its thread.
 const ATTACHMENTS_DIR: &str = "attachments";
 /// The largest file a chat takes. A deck of scanned pages is tens of megabytes; more is a mistake.
@@ -57,6 +66,8 @@ pub struct HarnessManager {
     idle_limit: Duration,
     /// The task that looks for idle sessions is running.
     watching: AtomicBool,
+    /// The folders of old conversations were looked for in this run of the app (`THREAD_KEPT`).
+    swept: AtomicBool,
 }
 
 /// One open session.
@@ -81,6 +92,7 @@ impl HarnessManager {
             sessions: Mutex::new(HashMap::new()),
             idle_limit,
             watching: AtomicBool::new(false),
+            swept: AtomicBool::new(false),
         }
     }
 
@@ -119,6 +131,18 @@ impl HarnessManager {
     ) -> Result<String> {
         let harness = self.harness(harness_id)?;
         config.workdir = thread_dir(&self.root, thread)?;
+        // Once in a run of the app, before its first session writes anything: no session is open
+        // yet, so no folder is in use. The one this session is about to use stays whatever its age.
+        if !self.swept.swap(true, Ordering::SeqCst) {
+            let (root, keep) = (self.root.clone(), config.workdir.clone());
+            let swept = tokio::task::spawn_blocking(move || sweep_threads(&root, &keep)).await;
+            if let Ok(removed) = swept
+                && removed > 0
+            {
+                self.diagnostics
+                    .record("-", "sweep", json!({ "threadFoldersRemoved": removed }));
+            }
+        }
         let id = uuid::Uuid::new_v4().simple().to_string();
         self.diagnostics.record(
             &id,
@@ -393,6 +417,53 @@ fn thread_dir(root: &Path, thread: &str) -> Result<PathBuf> {
     Ok(thread
         .split('/')
         .fold(root.to_path_buf(), |dir, s| dir.join(s)))
+}
+
+/// When a session folder was last used: the newest of its files, the attachments among them. A
+/// session writes its system prompt each time it starts, and an attachment is written when it
+/// is sent. `None` for a folder that holds no file.
+fn last_used(thread: &Path) -> Option<SystemTime> {
+    let files = |dir: &Path| {
+        std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| entry.ok()?.metadata().ok())
+            .filter(std::fs::Metadata::is_file)
+            .filter_map(|file| file.modified().ok())
+            .max()
+    };
+    files(thread).max(files(&thread.join(ATTACHMENTS)))
+}
+
+/// Removes the folders of the conversations that were last used more than `THREAD_KEPT` ago,
+/// and the folder of a deck that is left without any. `keep` stays whatever its age. Returns how
+/// many conversations went. A folder that cannot be read or removed is left for the next run.
+fn sweep_threads(root: &Path, keep: &Path) -> usize {
+    let Some(limit) = SystemTime::now().checked_sub(THREAD_KEPT) else {
+        return 0;
+    };
+    let folders = |dir: &Path| {
+        std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| Some(entry.ok()?.path()))
+            .filter(|path| path.is_dir())
+            .collect::<Vec<_>>()
+    };
+    let mut removed = 0;
+    for deck in folders(root) {
+        for thread in folders(&deck) {
+            // A session folder, by what every one of them holds; anything else is not ours.
+            let ours = thread.join(ATTACHMENTS).is_dir();
+            let old = last_used(&thread).is_some_and(|at| at < limit);
+            if ours && old && thread != keep && std::fs::remove_dir_all(&thread).is_ok() {
+                removed += 1;
+            }
+        }
+        // Refused while anything is left in it, which is what is wanted.
+        let _ = std::fs::remove_dir(&deck);
+    }
+    removed
 }
 
 /// A file name for an attachment: the name the user's file had, with whatever could leave the
@@ -974,6 +1045,73 @@ mod tests {
                 .map(|e| e.kind),
             Some(AgentErrorKind::InvalidInput)
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn the_folders_of_conversations_long_unused_go_when_the_first_session_starts()
+    -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let root = dir.path();
+        let manager = manager(root)?;
+        /// A session folder as a harness and the chat leave it, last used `days` ago.
+        fn used(root: &Path, thread: &str, days: u64) -> TestResult {
+            let folder = thread_dir(root, thread)?;
+            let attachments = folder.join(ATTACHMENTS);
+            std::fs::create_dir_all(&attachments)?;
+            let at = SystemTime::now() - Duration::from_secs(days * 24 * 60 * 60);
+            for file in [folder.join("system.md"), attachments.join("brief.pdf")] {
+                std::fs::write(&file, b"x")?;
+                std::fs::File::options()
+                    .write(true)
+                    .open(&file)?
+                    .set_modified(at)?;
+            }
+            Ok(())
+        }
+        used(root, "gone/deck", 45)?;
+        used(root, "gone/slide-s_1", 31)?;
+        used(root, "mixed/deck", 29)?;
+        used(root, "mixed/object-e_1", 400)?;
+        used(root, "mine/deck", 90)?;
+        // A file was attached to an old conversation a moment ago: it is in use again.
+        used(root, "back/deck", 60)?;
+        manager.attach("back/deck", "new.txt", b"new")?;
+        // Not a session folder, and the log beside the folders: neither is the sweep's to take.
+        std::fs::create_dir_all(root.join("mixed").join("notes"))?;
+        std::fs::write(root.join("diagnostics.jsonl"), b"")?;
+
+        // The first session of the run, on a conversation that was itself long unused.
+        let id = manager.start("mock", "mine/deck", config(), |_| {}).await?;
+        let left = |deck: &str| -> Vec<String> {
+            let mut names: Vec<String> = std::fs::read_dir(root.join(deck))
+                .into_iter()
+                .flatten()
+                .filter_map(|entry| Some(entry.ok()?.file_name().to_string_lossy().into_owned()))
+                .collect();
+            names.sort();
+            names
+        };
+        // A deck whose conversations all went has no folder left; one that keeps any keeps it.
+        assert!(!root.join("gone").exists());
+        assert_eq!(left("mixed"), ["deck", "notes"]);
+        // The conversation that is being started keeps its folder, with what was attached to it.
+        assert!(root.join("mine/deck/attachments/brief.pdf").is_file());
+        assert!(root.join("back/deck/attachments/brief.pdf").is_file());
+        assert!(root.join("diagnostics.jsonl").is_file());
+        let log = std::fs::read_to_string(root.join("diagnostics.jsonl"))?;
+        assert!(
+            log.contains(r#""kind":"sweep""#) && log.contains(r#""threadFoldersRemoved":3"#),
+            "{log}"
+        );
+
+        // Once in a run: a folder that grows old while the app is open is the next run's.
+        used(root, "later/deck", 45)?;
+        manager
+            .start("mock", "mine/other", config(), |_| {})
+            .await?;
+        assert!(root.join("later/deck").exists());
+        manager.close(&id).await?;
         Ok(())
     }
 
