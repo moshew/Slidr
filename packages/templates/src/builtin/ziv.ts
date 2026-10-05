@@ -1430,7 +1430,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [text('WHAT CHANGED'), text('First generation · 2025'), text('Halo · 2027')],
       title: text('What changed since the first ring'),
-      subtitle: [text('A titanium ring with an app'), text('A chrome ring that speaks in light')],
+      subtitle: [text('A titanium ring with an app'), text('A chrome ring that glows')],
       body: [
         bullets(
           'A four-day battery',
