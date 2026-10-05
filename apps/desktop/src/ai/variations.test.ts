@@ -708,3 +708,39 @@ describe('the history of a target (AIO-09)', () => {
     expect(earlier(gallery)).toEqual([]);
   });
 });
+
+describe('another document in the window', () => {
+  const stored = (index: number, id: string): ImageEvent => ({
+    type: 'finished',
+    index,
+    outcome: { status: 'stored', asset: asset(id), durationMs: 1000 },
+  });
+
+  it('ends the options of the one before, whose cards hold what the new one does not have', async () => {
+    const { bus, gallery, sets } = setup();
+    await gallery.service.present({
+      kind: 'text',
+      target: TITLE,
+      options: [{ label: 'Direct', text: 'Our plan for 2027' }],
+    });
+    gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'x', count: 2 });
+    gallery.imageEvent('job-1', stored(0, THIRD));
+    gallery.preview(sets()[0]!.id, 0);
+    expect(sets()).toHaveLength(2);
+    expect(stagePreview.getState().deck).not.toBeNull();
+
+    // The same file is opened again: its elements carry the ids they had, and the pictures of
+    // the cards are files of the workspace that was closed.
+    bus.reset(bus.deck);
+    expect(gallery.store.getState()).toEqual({ sets: [], earlier: [] });
+    expect(stagePreview.getState().deck).toBeNull();
+
+    // An image of the old document's job that lands now fills no card, and takes none from a
+    // call of the new document that waits for its own job.
+    gallery.noteToolCall(OBJECT, 'image_generate', { prompt: 'y', count: 1 });
+    gallery.imageEvent('job-1', stored(1, SECOND));
+    expect(sets()).toEqual([]);
+    gallery.imageEvent('job-2', { type: 'started', index: 0 });
+    expect(sets()).toMatchObject([{ live: true, cards: [{ state: 'pending' }] }]);
+  });
+});

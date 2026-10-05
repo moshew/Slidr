@@ -286,6 +286,17 @@ export function createGallery({ bus, selection, conversion }: GalleryOptions): G
    */
   let presenting: OptionSet['from'] = 'object';
 
+  // Another document is open: what was offered was for the one before. A file that is opened
+  // again has the ids it had, so its options would still be shown, with cards of pictures and
+  // slides that belong to the workspace that was closed. The jobs stay known, so that an image
+  // of the old document that lands late finds no card, rather than the card of a new call.
+  bus.subscribe((event) => {
+    if (event.kind !== 'reset') return;
+    expected = [];
+    showPreview(null);
+    store.setState({ sets: [], earlier: [] });
+  });
+
   const find = (setId: string) => {
     const { sets, earlier } = store.getState();
     return sets.find((set) => set.id === setId) ?? earlier.find((set) => set.id === setId);
