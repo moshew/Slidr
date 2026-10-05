@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { Editor } from './editor';
-import { shortcutsFor } from './registry';
 import { useShell } from './store';
+import { shortcutsOn, userKeysReady } from './userKeys';
 
 /** Text fields keep their own undo and their own Ctrl+A, Ctrl+Z and so on. */
 function isEditable(target: EventTarget | null): boolean {
@@ -27,6 +27,8 @@ const PHYSICAL: Record<string, string> = {
 function shortcutKey(event: KeyboardEvent): string {
   const physical = PHYSICAL[event.code];
   if (physical) return physical;
+  // The space bar reports a space, which a combination cannot be written with.
+  if (event.code === 'Space') return 'space';
   const key = event.key.toLowerCase();
   if (/^[a-z0-9]$/.test(key)) return key;
   const letter = /^(?:Key|Digit)(.)$/.exec(event.code)?.[1];
@@ -63,15 +65,29 @@ const BROWSER_KEYS = new Set([
   'f7',
 ]);
 
+/** How long the shortcuts wait for the settings file before they go on with their own keys. */
+const KEYS_WAIT_MS = 3000;
+
 /**
  * Keyboard shortcuts (SPEC Appendix A). Every one of them is registered with `registerShortcut`,
- * the shell's own among them (`register.tsx`), so the shortcut map can list them (UI-06). The
- * latest registration of a combination is asked first; one that returns false passes the key on
- * to the next. A shortcut without `inText` stays out of text fields and of the slide's text
- * editor, where the keys type.
+ * the shell's own among them (`register.tsx`), so the shortcut map can list them (UI-06). A
+ * shortcut answers to the key the user gave it (`userKeys.ts`), else to the one it was
+ * registered with. The latest registration of a combination is asked first; one that returns
+ * false passes the key on to the next. A shortcut without `inText` stays out of text fields and
+ * of the slide's text editor, where the keys type.
+ *
+ * No shortcut answers until the user's keys were read from the settings file, so a key pressed
+ * while the window comes up never acts by a combination the user had moved elsewhere.
  */
 export function useShellShortcuts(editor: Editor): void {
   useEffect(() => {
+    let known = false;
+    const know = () => {
+      known = true;
+    };
+    void userKeysReady().then(know);
+    // A settings file that never answers must not leave the app without its keys.
+    const waited = setTimeout(know, KEYS_WAIT_MS);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.defaultPrevented) return;
       // A character typed with AltGr is text. On Windows the key reports Ctrl and Alt both, and
@@ -83,7 +99,7 @@ export function useShellShortcuts(editor: Editor): void {
       const welcome = useShell.getState().welcome;
       let owned = false;
       let handled = false;
-      for (const shortcut of shortcutsFor(keys)) {
+      for (const shortcut of known ? shortcutsOn(keys) : []) {
         if (editable && !shortcut.inText) continue;
         if (welcome && shortcut.section !== 'file') continue;
         owned = true;
@@ -101,6 +117,9 @@ export function useShellShortcuts(editor: Editor): void {
       }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      clearTimeout(waited);
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [editor]);
 }
