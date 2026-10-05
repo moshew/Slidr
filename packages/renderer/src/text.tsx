@@ -557,7 +557,7 @@ export function TextBox({
         ...insetsStyle(padding),
       }}
     >
-      <div ref={measure} style={{ flex: 'none' }}>
+      <div ref={measure} data-slidr-text-block style={{ flex: 'none' }}>
         <div
           ref={inner}
           style={columns && columns > 1 ? { columnCount: columns, columnGap: 48 } : undefined}

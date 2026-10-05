@@ -1,4 +1,5 @@
 import {
+  plainText,
   rotateVector,
   unionBounds,
   type Element,
@@ -201,6 +202,68 @@ export function resolveHit(
   let depth = 0;
   while (depth < scope.length && depth < chain.length && chain[depth] === scope[depth]) depth++;
   return { scope: scope.slice(0, depth), id: chain[depth] };
+}
+
+/** Where a press that stays a click goes, further in than the element the press itself took. */
+export interface Inside {
+  /** The entered groups once the click has gone in, outermost first. */
+  scope: string[];
+  id: string;
+  /** The element is a text the click starts editing; otherwise it becomes the selection. */
+  edit: boolean;
+}
+
+/** What a press at a point means: what `resolveHit` says, and where a click goes in from there. */
+export interface Press {
+  scope: string[];
+  id: string | undefined;
+  inside?: Inside;
+}
+
+/** A text box is its text all over its frame; a shape only where its text is (`onText`). */
+function holdsText(located: Located, onText: (shape: Located) => boolean): boolean {
+  const { element } = located;
+  if (element.type === 'text') return true;
+  if (element.type !== 'shape' || !element.content) return false;
+  return plainText(element.content).trim() !== '' && onText(located);
+}
+
+/**
+ * What a press means, as PowerPoint has it (ARR-01). The press itself takes what `resolveHit`
+ * picks, so a drag from anywhere on a group moves the group. A press that is released where it
+ * began may go further in:
+ *
+ * - On a text inside groups that were not entered, straight into editing that text, however deep
+ *   it lies. It is the element `chain` ends in, the topmost one under the pointer, unless that
+ *   one is locked or hidden. The empty part of a big shape still stands for its group.
+ * - On a group that was the whole selection before the press, to the child under the pointer, one
+ *   level in: a second click on a group does what a double-click on it does.
+ *
+ * `selected` is the selection before the press; `onText` says whether the pointer is on the text
+ * of a shape, which only the drawing knows.
+ */
+export function resolvePress(
+  chain: readonly string[],
+  scope: readonly string[],
+  index: ReadonlyMap<string, Located>,
+  selected: readonly string[],
+  onText: (shape: Located) => boolean,
+): Press {
+  const hit = resolveHit(chain, scope);
+  const target = hit.id ? index.get(hit.id) : undefined;
+  // Only a group has an inside to go to, and a locked one is not taken by a press at all.
+  if (!target || target.locked || target.element.type !== 'group') return hit;
+  const top = index.get(chain[chain.length - 1] ?? '');
+  if (top && !top.locked && !top.hidden && holdsText(top, onText)) {
+    return { ...hit, inside: { scope: pathIds(top), id: top.element.id, edit: true } };
+  }
+  const depth = hit.scope.length + 1;
+  const child = index.get(chain[depth] ?? '');
+  const alone = selected.length === 1 && selected[0] === target.element.id;
+  if (alone && child && !child.locked) {
+    return { ...hit, inside: { scope: chain.slice(0, depth), id: child.element.id, edit: false } };
+  }
+  return hit;
 }
 
 /** The longest start of `scope` that is still a chain of nested groups on the slide. */

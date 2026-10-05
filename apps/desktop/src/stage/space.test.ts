@@ -1,4 +1,4 @@
-import { createElement, type Element, type GroupElement, type Point } from '@slidr/model';
+import { createElement, richText, type Element, type GroupElement, type Point } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import {
   refitAll,
@@ -20,6 +20,7 @@ import {
   isTranslation,
   multiply,
   resolveHit,
+  resolvePress,
   screenTransform,
   slideBounds,
   snapCandidates,
@@ -186,6 +187,122 @@ describe('resolveHit', () => {
     expect(validScope(['outer', 'gone'], index)).toEqual(['outer']);
     expect(validScope(['inner'], index)).toEqual([]);
     expect(validScope(['top'], index)).toEqual([]);
+  });
+});
+
+describe('resolvePress', () => {
+  /**
+   * A card in a group, as a converted slide has it: a background, a title, a chip (a shape with
+   * text), and a row that is a group of its own with a tag and an icon. Beside it a group that
+   * is locked, and a text box and a chip that are in no group.
+   */
+  type Flags = { locked?: boolean; hidden?: boolean };
+  const text = (id: string, flags: Flags = {}): Element => ({
+    ...createElement.text({ id, frame: { x: 0, y: 0, w: 200, h: 40 }, content: richText(id) }),
+    ...flags,
+  });
+  const chip = (id: string, label: string): Element =>
+    createElement.shape({ id, frame: { x: 0, y: 60, w: 120, h: 40 }, content: richText(label) });
+  const group = (id: string, children: Element[], flags: Flags = {}): Element => ({
+    ...createElement.group({ id, frame: { x: 0, y: 0, w: 400, h: 300 }, children }),
+    ...flags,
+  });
+  const index = indexElements([
+    group('card', [
+      rect('bg', 0, 0, 400, 300),
+      text('title'),
+      chip('chip', 'New'),
+      chip('blank', ''),
+      text('fixed', { locked: true }),
+      text('unseen', { hidden: true }),
+      group('row', [chip('tag', 'Beta'), rect('icon', 140, 0, 40, 40)]),
+    ]),
+    group('shut', [text('kept')], { locked: true }),
+    text('solo'),
+    chip('label', 'Alone'),
+  ]);
+  const onText = () => true;
+  const offText = () => false;
+  const press = (chain: string[], scope: string[] = [], selected: string[] = [], on = onText) =>
+    resolvePress(chain, scope, index, selected, on);
+
+  it('takes what resolveHit picks, whatever a click then does', () => {
+    for (const [chain, scope] of [
+      [['card', 'title'], []],
+      [['card', 'row', 'tag'], ['card']],
+      [['card', 'row', 'icon'], []],
+      [['solo'], ['card', 'row']],
+      [[], ['card']],
+    ] as [string[], string[]][]) {
+      const { inside: _inside, ...taken } = press(chain, scope, ['card']);
+      expect(taken).toEqual(resolveHit(chain, scope));
+    }
+  });
+
+  it('goes straight into a text box inside a group, anywhere on its frame', () => {
+    const inside = { scope: ['card'], id: 'title', edit: true };
+    expect(press(['card', 'title'])).toEqual({ scope: [], id: 'card', inside });
+    // Whether the pointer is on the letters is a question for shapes only.
+    expect(press(['card', 'title'], [], [], offText).inside).toEqual(inside);
+    // The group being selected already changes nothing: the text comes before the child.
+    expect(press(['card', 'title'], [], ['card']).inside).toEqual(inside);
+  });
+
+  it('goes into the text of a shape only where its text is', () => {
+    expect(press(['card', 'chip']).inside).toEqual({ scope: ['card'], id: 'chip', edit: true });
+    expect(press(['card', 'chip'], [], [], offText).inside).toBeUndefined();
+    // A shape without text, or with none left in it, has no text to be on.
+    expect(press(['card', 'bg']).inside).toBeUndefined();
+    expect(press(['card', 'blank']).inside).toBeUndefined();
+  });
+
+  it('reaches a text at any depth, from wherever the user has entered', () => {
+    const inside = { scope: ['card', 'row'], id: 'tag', edit: true };
+    expect(press(['card', 'row', 'tag'])).toEqual({ scope: [], id: 'card', inside });
+    expect(press(['card', 'row', 'tag'], ['card'])).toEqual({
+      scope: ['card'],
+      id: 'row',
+      inside,
+    });
+    // Next to the text, in the group it is in: a click picks it, as it does at the top level.
+    expect(press(['card', 'row', 'tag'], ['card', 'row'])).toEqual({
+      scope: ['card', 'row'],
+      id: 'tag',
+    });
+    expect(press(['card', 'title'], ['card'])).toEqual({ scope: ['card'], id: 'title' });
+  });
+
+  it('leaves a text at the top level to the double-click', () => {
+    expect(press(['solo'])).toEqual({ scope: [], id: 'solo' });
+    expect(press(['label'], [], ['label'])).toEqual({ scope: [], id: 'label' });
+  });
+
+  it('does not go into what is locked or hidden', () => {
+    expect(press(['card', 'fixed']).inside).toBeUndefined();
+    expect(press(['card', 'unseen']).inside).toBeUndefined();
+    expect(press(['shut', 'kept'])).toEqual({ scope: [], id: 'shut' });
+    expect(press(['shut', 'kept'], [], ['shut']).inside).toBeUndefined();
+  });
+
+  it('picks the child under the pointer on a second click on a selected group', () => {
+    const child = (id: string, scope: string[]) => ({ scope, id, edit: false });
+    expect(press(['card', 'bg'], [], ['card']).inside).toEqual(child('bg', ['card']));
+    // One level at a time: the row first, and what is in the row on the click after that.
+    expect(press(['card', 'row', 'icon'], [], ['card']).inside).toEqual(child('row', ['card']));
+    expect(press(['card', 'row', 'icon'], ['card'], ['row']).inside).toEqual(
+      child('icon', ['card', 'row']),
+    );
+    // A shape off its text is a child like any other.
+    expect(press(['card', 'chip'], [], ['card'], offText).inside).toEqual(child('chip', ['card']));
+  });
+
+  it('stays on the group when it was not the whole selection, or has no child to pick', () => {
+    expect(press(['card', 'bg']).inside).toBeUndefined();
+    expect(press(['card', 'bg'], [], ['card', 'solo']).inside).toBeUndefined();
+    expect(press(['card', 'bg'], [], ['solo']).inside).toBeUndefined();
+    // Between the children, on the group's own box.
+    expect(press(['card'], [], ['card']).inside).toBeUndefined();
+    expect(press(['card', 'fixed'], [], ['card']).inside).toBeUndefined();
   });
 });
 

@@ -118,12 +118,15 @@ import {
   isTranslation,
   pathIds,
   resolveHit,
+  resolvePress,
   slideBounds,
   snapCandidates,
   tidy,
   validScope,
+  type Inside,
   type Located,
   type Matrix,
+  type Press,
 } from './space';
 
 /**
@@ -192,6 +195,8 @@ const DRAG_PX = 3;
 const STAGE_EDGE_PX = 8;
 /** How near the stroke of a line the pointer has to be, in screen pixels. */
 const LINE_HIT_PX = 6;
+/** How far from the text of a shape the pointer is still on that text, in screen pixels. */
+const TEXT_SLACK_PX = 4;
 /** Safe margin and column grid the guides offer (STG-04): 5% of the width, 12 columns. */
 const SAFE_MARGIN = 96;
 const COLUMNS = 12;
@@ -225,6 +230,8 @@ type Gesture =
       /** The groups around the moved elements, when they share them; otherwise undefined. */
       path: GroupElement[] | undefined;
       snapBoxes: Frame[];
+      /** Where the press goes in if it is released where it began (`resolvePress`). */
+      inside: Inside | undefined;
     }
   | {
       kind: 'resize';
@@ -390,10 +397,17 @@ export function Stage({
   const [marquee, setMarquee] = useState<Frame | undefined>();
   const [spaceDown, setSpaceDown] = useState(false);
   const [overCrop, setOverCrop] = useState(false);
+  /** What is hovered is a text that a click goes straight into, inside a group (ARR-01). */
+  const [overText, setOverText] = useState(false);
   /** While several elements are turned together: the box they started in, and how far it turned. */
   const [turn, setTurn] = useState<{ frame: Frame; angle: number } | undefined>();
-  /** The groups the user went into by double-click, outermost first (ARR-01). */
+  /** The groups the user went into by a click or a double-click, outermost first (ARR-01). */
   const [entered, setEntered] = useState<string[]>([]);
+  /**
+   * Where a click has already gone in, among the clicks that count together (a double-click is
+   * two). The later ones go no further, so a double-click ends one level in, as it always did.
+   */
+  const wentIn = useRef<Inside | null>(null);
   /** Where the keyboard is beyond the selection: a crop handle, a point of a line, the walk. */
   const keys = useStore(stageKeys);
   /**
@@ -711,6 +725,10 @@ export function Stage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSlideId]);
 
+  // The preview layer (STG-10): the slide as a proposed change would leave it.
+  const previewSlide = preview?.slides.find((s) => s.id === slide?.id);
+  const previewing = Boolean(preview && previewSlide);
+
   // ---- Hit-testing ----
 
   /**
@@ -745,6 +763,61 @@ export function Stage({
     const own = apply(invert(elementMatrix(located)), p);
     const { w, h } = located.element.frame;
     return own.x >= 0 && own.x <= w && own.y >= 0 && own.y <= h;
+  };
+
+  /**
+   * The point is on the text of a shape: on the block of its paragraphs, which the renderer
+   * marks, or within a few screen pixels of it. The block is taken where it is laid out, in the
+   * shape's own box, so it is found in a turned or mirrored group as well.
+   */
+  const onTextOf = (shape: Located, p: Point): boolean => {
+    const root = slideRoot.current?.querySelector<HTMLElement>(
+      `[data-element-id="${CSS.escape(shape.element.id)}"]`,
+    );
+    const block = root?.querySelector<HTMLElement>('[data-slidr-text-block]');
+    if (!root || !block) return false;
+    let left = 0;
+    let top = 0;
+    for (let node = block; node !== root;) {
+      left += node.offsetLeft;
+      top += node.offsetTop;
+      const parent = node.offsetParent;
+      if (!(parent instanceof HTMLElement) || !root.contains(parent)) return false;
+      node = parent;
+    }
+    const own = apply(invert(elementMatrix(shape)), p);
+    const slack = TEXT_SLACK_PX / scale;
+    return (
+      own.x >= left - slack &&
+      own.x <= left + block.offsetWidth + slack &&
+      own.y >= top - slack &&
+      own.y <= top + block.offsetHeight + slack
+    );
+  };
+
+  /**
+   * What a press at a point means (`resolvePress`). Over a preview, where the picture is not
+   * the slide's own, and while an image is cropped, a press is only what it always was.
+   */
+  const pressAt = (clientX: number, clientY: number): Press => {
+    const chain = pickAt(clientX, clientY);
+    if (previewing || crop) return resolveHit(chain, scope);
+    const p = toSlide(clientX, clientY);
+    return resolvePress(chain, scope, index, selected, (shape) => onTextOf(shape, p));
+  };
+
+  /**
+   * A press that was released where it began goes in (ARR-01): into the text it was on, with the
+   * caret where the pointer is, or to the child of the group it was on. The groups around either
+   * are entered, so that Esc comes out of them one at a time.
+   */
+  const goInside = (inside: Inside, at: Point) => {
+    wentIn.current = inside;
+    setEntered(inside.scope);
+    if (inside.edit) {
+      setCaretAt(at);
+      selection.getState().startEditing(inside.id);
+    } else selection.getState().selectElements([inside.id]);
   };
 
   /** The frame of the image being cropped contains the point. */
@@ -886,7 +959,7 @@ export function Stage({
       return;
     }
 
-    const hit = resolveHit(pickAt(e.clientX, e.clientY), scope);
+    const hit = pressAt(e.clientX, e.clientY);
     // The slide draws nothing outside itself, so the part of an element that is off the slide
     // cannot be picked. A selected one is still taken by it there: one dragged to the edge of the
     // Stage is grabbed again (ADR-066). On the slide, picking stays the drawing's own (a line by
@@ -910,6 +983,9 @@ export function Stage({
       }
       const before = state.selectedElementIds;
       if (!before.includes(id)) state.selectElements([id]);
+      // Only a plain press goes further in when it is released: a modifier asks for something
+      // else of it (Alt for a copy), and so does any button but the first.
+      const plain = e.button === 0 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey;
       begin({
         kind: 'move',
         txId: newId('tx'),
@@ -920,6 +996,7 @@ export function Stage({
         items: [],
         path: undefined,
         snapBoxes: [],
+        inside: plain ? hit.inside : undefined,
       });
       return;
     }
@@ -975,8 +1052,13 @@ export function Stage({
         setHover(undefined);
         return;
       }
-      const id = resolveHit(pickAt(e.clientX, e.clientY), scope).id;
+      const press = pressAt(e.clientX, e.clientY);
+      // A text that a click would go straight into is what the pointer is on, and not the
+      // group around it that a press takes.
+      const text = press.inside?.edit ? press.inside.id : undefined;
+      const id = text ?? press.id;
       setHover(id && !index.get(id)?.locked ? id : undefined);
+      setOverText(text !== undefined);
       return;
     }
     if (g.kind === 'pan') {
@@ -1166,7 +1248,15 @@ export function Stage({
   const onPointerUp = (e: PointerEvent) => {
     if (container.current?.hasPointerCapture(e.pointerId))
       container.current.releasePointerCapture(e.pointerId);
+    const g = gesture.current;
     endGesture(false);
+    // A press that never became a drag, and is let go where it began, is a click: it goes in,
+    // unless the click before it in the same double-click already did. The distance is taken
+    // here as well, since a quick drag can end before the frame in which it would have started.
+    if (g?.kind !== 'move' || g.moved || !g.inside || wentIn.current) return;
+    const p = toSlide(e.clientX, e.clientY);
+    if (Math.hypot(p.x - g.start.x, p.y - g.start.y) * scale >= DRAG_PX) return;
+    goInside(g.inside, { x: e.clientX, y: e.clientY });
   };
 
   const canCrop = (image: ImageElement): boolean => {
@@ -1176,6 +1266,18 @@ export function Stage({
 
   const onDoubleClick = (e: MouseEvent) => {
     if (!slide || crop || isInEditor(e.target)) return;
+    const went = wentIn.current;
+    if (went) {
+      // The first click of this double-click went in already, and the double-click goes no
+      // further: on a group it ends one level in, as it always did, and does not go on to edit
+      // the child it found there. On a text it ends in that text, also where the second press
+      // fell beside the lines of the text and closed the editor again.
+      const closed = went.edit && selection.getState().editingElementId !== went.id;
+      if (closed && pickAt(e.clientX, e.clientY).at(-1) === went.id) {
+        goInside(went, { x: e.clientX, y: e.clientY });
+      }
+      return;
+    }
     // A double-click on a point of the selected line removes it; on its stroke it adds one.
     if (single && isLine(single) && !single.locked) {
       const line = single.element;
@@ -1805,13 +1907,13 @@ export function Stage({
     [htmlId, htmlEditing],
   );
 
-  // The preview layer (STG-10): the slide as a proposed change would leave it.
-  const previewSlide = preview?.slides.find((s) => s.id === slide?.id);
-  const previewing = Boolean(preview && previewSlide);
-
   const stageView: StageView = { origin, scale };
   const active = activeKind;
-  const hovered = hover && !selected.includes(hover) ? index.get(hover) : undefined;
+  // A press on the text of a group takes the group: while it lasts, the text has no frame of
+  // its own, and the cursor is not the text's.
+  const hovered =
+    hover && !selected.includes(hover) && !(overText && active) ? index.get(hover) : undefined;
+  const intoText = overText && Boolean(hovered) && !previewing;
   const enteredGroup = scope.length ? index.get(scope[scope.length - 1] as string) : undefined;
 
   // The size or the angle, next to what a handle is changing.
@@ -1972,6 +2074,10 @@ export function Stage({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => endGesture(true)}
+      onMouseDown={(e) => {
+        // The first press of a click, of a double-click or of more: none of them has gone in.
+        if (e.detail <= 1) wentIn.current = null;
+      }}
       onDoubleClick={onDoubleClick}
       onWheel={onWheel}
       onKeyDown={onKeyDown}
@@ -1991,7 +2097,7 @@ export function Stage({
         overflow: 'hidden',
         outline: ring ? '2px solid var(--color-ui-focus)' : 'none',
         outlineOffset: -2,
-        cursor: spaceDown ? 'grab' : crop && overCrop ? 'move' : undefined,
+        cursor: spaceDown ? 'grab' : crop && overCrop ? 'move' : intoText ? 'text' : undefined,
         userSelect: 'none',
         touchAction: 'none',
         ...style,
