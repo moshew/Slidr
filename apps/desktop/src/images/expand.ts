@@ -1,5 +1,6 @@
 import type { ImageAspect } from '@slidr/agent-tools';
-import { findElementInDeck, type Command, type Frame } from '@slidr/model';
+import { findElementInDeck, type Command, type Frame, type ImageElement } from '@slidr/model';
+import { imagePlacement } from '@slidr/renderer';
 import { create } from 'zustand';
 import type { Editor } from '../shell/editor';
 import { imagesOf } from './appImages';
@@ -57,18 +58,37 @@ export function expandedCanvas(
  * The frame of the element once its picture is the extended one: the picture that was there
  * keeps its place and its size on the slide, and the frame grows around it. A crop is given up:
  * what was cut away is what the margins are added to.
+ *
+ * So the new frame is worked out from where the whole picture is drawn now, which is not the
+ * frame itself: a cropped element's frame shows a part of the picture, and so does one whose
+ * picture covers a frame of another shape. `natural` is the size of the picture in pixels.
  */
-export function expandedFrame(frame: Frame, canvas: ExpandedCanvas): Frame {
-  // How much wider and taller the canvas is than the picture in it.
-  const kx = canvas.w / (canvas.w - canvas.x * 2);
-  const ky = canvas.h / (canvas.h - canvas.y * 2);
-  const w = Math.round(frame.w * kx);
-  const h = Math.round(frame.h * ky);
+export function expandedFrame(
+  element: Pick<ImageElement, 'frame' | 'crop' | 'fit' | 'rotation' | 'flipH' | 'flipV'>,
+  natural: { w: number; h: number },
+  canvas: ExpandedCanvas,
+): Frame {
+  const { frame } = element;
+  // The whole picture, in the axes of the frame, from the frame's corner.
+  const placed = imagePlacement(frame, natural, element.crop, element.fit);
+  // Slide pixels to a pixel of the canvas: the picture is in its middle, at one scale.
+  const sx = placed.width / (canvas.w - canvas.x * 2);
+  const sy = placed.height / (canvas.h - canvas.y * 2);
+  const w = canvas.w * sx;
+  const h = canvas.h * sy;
+  // How far the middle of the new frame is from the middle of the old one, in those axes. A
+  // mirrored element draws its picture mirrored about its own middle, and a turned one is
+  // turned about it, so the step is mirrored and turned with it.
+  const dx = (placed.left - canvas.x * sx + w / 2 - frame.w / 2) * (element.flipH ? -1 : 1);
+  const dy = (placed.top - canvas.y * sy + h / 2 - frame.h / 2) * (element.flipV ? -1 : 1);
+  const turn = (element.rotation * Math.PI) / 180;
+  const cx = frame.x + frame.w / 2 + dx * Math.cos(turn) - dy * Math.sin(turn);
+  const cy = frame.y + frame.h / 2 + dx * Math.sin(turn) + dy * Math.cos(turn);
   return {
-    x: Math.round(frame.x - (w - frame.w) / 2),
-    y: Math.round(frame.y - (h - frame.h) / 2),
-    w,
-    h,
+    x: Math.round(cx - w / 2),
+    y: Math.round(cy - h / 2),
+    w: Math.round(w),
+    h: Math.round(h),
   };
 }
 
@@ -187,7 +207,7 @@ export async function expandImage(
         patch: {
           assetId: made.asset.id,
           crop: null,
-          frame: expandedFrame(now.element.frame, canvas),
+          frame: expandedFrame(now.element, { w: image.width, h: image.height }, canvas),
         },
       },
     ];
