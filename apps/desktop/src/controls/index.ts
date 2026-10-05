@@ -3,5 +3,7 @@
 export { ColorField, type ColorFieldProps } from './ColorField';
 export { FontField, type FontFieldProps } from './FontField';
 export { colorToHex, cssToRgba, hexToColor, pickedColor } from './colors';
+export { drawnWeight, fontWeights, NAMED_WEIGHTS, type FamilyWeights } from './fontWeights';
+export { useFontWeights } from './useFontWeights';
 export { rememberColor, rememberFont, useRecent } from './recent';
 export { useGestureTx, type GestureTx } from './useGestureTx';

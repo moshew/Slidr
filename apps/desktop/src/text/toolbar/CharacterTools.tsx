@@ -26,7 +26,14 @@ import {
 } from '@slidr/ui/icons';
 import { useRef, type FocusEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ColorField, FontField, useGestureTx } from '../../controls';
+import {
+  ColorField,
+  drawnWeight,
+  FontField,
+  NAMED_WEIGHTS,
+  useFontWeights,
+  useGestureTx,
+} from '../../controls';
 import type { ContextToolProps } from '../../shell';
 import { changeMarks, clearFormatting, toggleBold, toggleMark } from '../actions';
 import { isMixed, orNull, patchMarks, type MarksPatch } from '../format';
@@ -153,10 +160,16 @@ export function SizeTool() {
   );
 }
 
-const WEIGHTS = ['100', '200', '300', '400', '500', '600', '700', '800', '900'] as const;
-type WeightName = (typeof WEIGHTS)[number];
+const isNamed = (weight: number): weight is (typeof NAMED_WEIGHTS)[number] =>
+  (NAMED_WEIGHTS as readonly number[]).includes(weight);
 
-/** The weight as a named choice. A weight between the names (a variable font) shows as its number. */
+/**
+ * The weight as a choice among the weights the font of the text has: a weight the font lacks is
+ * not offered, and text that asks for one shows the weight it is drawn in (bold at 700, in a font
+ * whose heaviest face is 600, reads "semibold"). A weight has a name when it is one of the nine,
+ * and is its number otherwise (350, or a weight between the names of a variable font). Text in
+ * several fonts, or in a font nothing is known of, is offered all nine.
+ */
 function WeightSelect({
   text,
   variant,
@@ -168,17 +181,20 @@ function WeightSelect({
 }) {
   const { t } = useTranslation('text');
   const setMarks = useSetMarks(text);
+  const family = useFontWeights(orNull(text.format.font));
   const weight = orNull(text.format.weight);
-  const name = WEIGHTS.find((w) => Number(w) === weight) ?? null;
+  const drawn = weight !== null && family ? drawnWeight(family, weight) : weight;
+  const offered: readonly number[] = family?.offered ?? NAMED_WEIGHTS;
+  const label = (value: number) => (isNamed(value) ? t(`weights.${value}`) : String(value));
   return (
-    <Select<WeightName>
+    <Select
       variant={variant}
       size="sm"
       aria-label={t('weight')}
       className={className}
-      options={WEIGHTS.map((value) => ({ value, label: t(`weights.${value}`) }))}
-      value={name}
-      placeholder={weight === null ? t('mixed') : String(weight)}
+      options={offered.map((value) => ({ value: String(value), label: label(value) }))}
+      value={drawn !== null && offered.includes(drawn) ? String(drawn) : null}
+      placeholder={drawn === null ? t('mixed') : label(drawn)}
       onValueChange={(next) => setMarks({ weight: Number(next) })}
     />
   );
