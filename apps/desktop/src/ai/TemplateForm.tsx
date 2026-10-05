@@ -15,6 +15,7 @@ import type { Attachment } from '../agent/agentService';
 import { IMAGE_FILES, pickFiles } from '../objects/insert';
 import type { Runner } from './Actions';
 import { accepted, readAttachment, refusals } from './attachments';
+import { useKept } from './kept';
 
 /*
  * "Make a template with AI" (THM-06, AID-05): the form that gathers what a template is made
@@ -55,13 +56,18 @@ function FileRow({ file, onRemove }: { file: Attachment; onRemove: () => void })
   );
 }
 
+/** A form that has no files yet. */
+const NO_FILES: Attachment[] = [];
+
 export function TemplateForm({ runner }: { runner: Runner }) {
   const { t } = useTranslation('ai');
-  const [open, setOpen] = useState(false);
-  const [description, setDescription] = useState('');
-  const [url, setUrl] = useState('');
-  const [fromDeck, setFromDeck] = useState(false);
-  const [files, setFiles] = useState<Attachment[]>([]);
+  // What the form holds is kept while the panel shows its chat or another tool: the sources of
+  // a template are gathered over a while, and the agent's answers are on the other tab.
+  const [open, setOpen] = useKept('template.open', false);
+  const [description, setDescription] = useKept('template.description', '');
+  const [url, setUrl] = useKept('template.url', '');
+  const [fromDeck, setFromDeck] = useKept('template.fromDeck', false);
+  const [files, setFiles] = useKept('template.files', NO_FILES);
   const off = runner.off('template.create');
   const wanted = description.trim();
   const address = url.trim();

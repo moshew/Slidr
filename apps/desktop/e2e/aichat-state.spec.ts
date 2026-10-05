@@ -13,7 +13,7 @@ import {
   turnEnds,
   turns,
 } from './aifinish-helpers';
-import { chips, openApp, openTool, say } from './aitools-helpers';
+import { addChart, addImage, chips, openApp, openTool, say } from './aitools-helpers';
 
 /*
  * What a chat holds on to and what it lets go of, against the scripted mock agent: across a look
@@ -283,4 +283,47 @@ test('the template form says which file it left out, and a new logo takes the pl
   await expect(theLogo).toHaveCount(1);
   await expect(theLogo).toContainText('new-logo.png');
   await expect(refused).toHaveCount(0);
+});
+
+test('what is filled in on the Actions tab is there after a look at the chat', async ({ page }) => {
+  const logo = readFileSync(LOGO.path);
+  await openApp(page, { script: 'image-alternatives' });
+
+  // The form of a template: its sources are gathered over a while.
+  await openTool(page, 'ai.deck', 'actions');
+  await page.locator('[data-action="template.create"]').click();
+  await page.getByTestId('template-description').fill('נקי ורגוע, בכחול עמוק');
+  await page.getByTestId('template-url').fill('https://example.com');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByTestId('template-logo').click();
+  await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: logo });
+  await expect(page.getByTestId('template-file')).toHaveCount(1);
+  await openTool(page, 'ai.deck', 'chat');
+  await openTool(page, 'ai.deck', 'actions');
+  await expect(page.getByTestId('template-description')).toHaveValue('נקי ורגוע, בכחול עמוק');
+  await expect(page.getByTestId('template-url')).toHaveValue('https://example.com');
+  await expect(page.getByTestId('template-file')).toContainText('logo.png');
+
+  // The prompt of a picture, in the object tool: there after the chat, and after another tool.
+  await addImage(page);
+  await openTool(page, 'ai.object', 'actions');
+  await expect(page.getByTestId('image-provider')).toHaveAttribute('data-state', 'ready');
+  await page.getByTestId('image-prompt').fill('נמל דייגים קטן בזריחה');
+  await openTool(page, 'ai.object', 'chat');
+  await openTool(page, 'ai.slide');
+  await openTool(page, 'ai.object', 'actions');
+  await expect(page.getByTestId('image-prompt')).toHaveValue('נמל דייגים קטן בזריחה');
+  // Sent with an action, it has done its work: the form starts over.
+  await page.locator('[data-action="image.alternatives"]').click();
+  await expect(page.getByTestId('chat-user')).toBeVisible();
+  await openTool(page, 'ai.object', 'actions');
+  await expect(page.getByTestId('image-prompt')).toHaveValue('');
+
+  // The text a chart is filled from, likewise.
+  await addChart(page);
+  await openTool(page, 'ai.object', 'actions');
+  await page.getByTestId('fill-source').fill('2024: 120, 2025: 180, 2026: 260');
+  await openTool(page, 'ai.object', 'chat');
+  await openTool(page, 'ai.object', 'actions');
+  await expect(page.getByTestId('fill-source')).toHaveValue('2024: 120, 2025: 180, 2026: 260');
 });

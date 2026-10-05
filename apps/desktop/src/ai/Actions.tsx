@@ -63,6 +63,7 @@ import { focusStage, openPanel, PanelId, setAiTab, tell, useDeck, useEditor } fr
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
 import { useConversation, useThread } from './Chat';
 import { DeckLook } from './DeckLook';
+import { useKept } from './kept';
 import { TemplateForm } from './TemplateForm';
 import { switchLayoutCommands } from './layout';
 import { aiOf } from './runtime';
@@ -557,9 +558,21 @@ function ImageActions({ runner }: { runner: Runner }) {
   const assetId = image?.element.assetId;
   const asset = useDeck((s) => (assetId ? s.deck.assets[assetId] : undefined));
   const [count, setCount] = useState(4);
-  const [description, setDescription] = useState('');
+  // The words and the painted area are kept while the panel shows the chat or another tool:
+  // a prompt takes thought and an area takes work, and both were lost with a look elsewhere.
+  const of = image?.element.id ?? '';
+  const [description, setDescription] = useKept(`image.prompt:${of}`, '');
   /** The area the user painted for an edit, and the picture it was painted on. */
-  const [mask, setMask] = useState<{ assetId: string; of: string } | null>(null);
+  const [mask, setMask] = useKept<{ assetId: string; of: string } | null>(`image.mask:${of}`, null);
+  /** An action that is sent takes what the form holds, and the form starts over. */
+  const sending: Runner = {
+    ...runner,
+    run: (...sent) => {
+      runner.run(...sent);
+      setDescription('');
+      setMask(null);
+    },
+  };
   const wanted = description.trim();
   // A mask is of one picture: once the element shows another, it no longer applies.
   const maskId = mask && mask.of === assetId ? mask.assetId : undefined;
@@ -591,7 +604,7 @@ function ImageActions({ runner }: { runner: Runner }) {
             id="image.alternatives"
             icon={Images}
             label={t('actions.alternatives')}
-            runner={runner}
+            runner={sending}
             params={{ count, ...(wanted ? { description: wanted } : {}) }}
           >
             <CountControl value={count} choices={[2, 4]} onChange={setCount} />
@@ -616,7 +629,7 @@ function ImageActions({ runner }: { runner: Runner }) {
                 icon={WandSparkles}
                 label={t('actions.editImage')}
                 // The change is what the user wrote: without words there is nothing to ask for.
-                runner={{ ...runner, off: (id) => runner.off(id) || !wanted }}
+                runner={{ ...sending, off: (id) => runner.off(id) || !wanted }}
                 params={{ description: wanted, ...(maskId ? { maskAssetId: maskId } : {}) }}
               >
                 {support.mask && (
@@ -685,17 +698,21 @@ function ImageActions({ runner }: { runner: Runner }) {
  */
 function FillFromText({
   id,
+  elementId,
   label,
   placeholder,
   runner,
 }: {
   id: 'chart.fill' | 'table.fill';
+  /** The chart or the table: the text that was pasted for it is kept for it. */
+  elementId: string;
   label: string;
   placeholder: string;
   runner: Runner;
 }) {
   const { t } = useTranslation('ai');
-  const [source, setSource] = useState('');
+  // Kept while the panel shows the chat or another tool, and until it is sent.
+  const [source, setSource] = useKept(`${id}:${elementId}`, '');
   const pasted = source.trim();
   return (
     <Section title={t('actions.fromText')}>
@@ -714,14 +731,21 @@ function FillFromText({
         id={id}
         icon={ClipboardPaste}
         label={label}
-        runner={{ ...runner, off: (action) => runner.off(action) || !pasted }}
+        runner={{
+          ...runner,
+          off: (action) => runner.off(action) || !pasted,
+          run: (...sent) => {
+            runner.run(...sent);
+            setSource('');
+          },
+        }}
         params={{ description: pasted }}
       />
     </Section>
   );
 }
 
-function ChartActions({ runner }: { runner: Runner }) {
+function ChartActions({ runner, elementId }: { runner: Runner; elementId: string }) {
   const { t } = useTranslation('ai');
   const [count, setCount] = useState(4);
   return (
@@ -746,6 +770,7 @@ function ChartActions({ runner }: { runner: Runner }) {
       </Section>
       <FillFromText
         id="chart.fill"
+        elementId={elementId}
         label={t('actions.chartFill')}
         placeholder={t('actions.chartSource')}
         runner={runner}
@@ -760,6 +785,7 @@ function TableActions({ runner, elementId }: { runner: Runner; elementId: string
     <>
       <FillFromText
         id="table.fill"
+        elementId={elementId}
         label={t('actions.tableFill')}
         placeholder={t('actions.tableSource')}
         runner={runner}
@@ -868,7 +894,7 @@ function ObjectActionsOn({ scope }: { scope: SessionScope & { kind: 'object' } }
       ) : kind === 'image' ? (
         <ImageActions runner={runner} />
       ) : kind === 'chart' ? (
-        <ChartActions runner={runner} />
+        <ChartActions runner={runner} elementId={scope.elementIds[0]!} />
       ) : kind === 'table' ? (
         <TableActions runner={runner} elementId={scope.elementIds[0]!} />
       ) : (
