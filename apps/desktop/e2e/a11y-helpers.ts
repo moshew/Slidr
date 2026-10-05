@@ -110,10 +110,203 @@ export async function expectNoFaults(page: Page, options: AuditOptions = {}): Pr
   expect(faults.map(line).join('\n\n'), 'accessibility faults (axe-core)').toBe('');
 }
 
+/* ---------------------------------------------------------------- beyond axe-core */
+
+/**
+ * What axe-core does not judge, read from the same page (WG13-T06). The first five are held: a
+ * surface has none of them, or the audit says why the one it has is no fault.
+ *
+ *   - `pointer`: something that answers the pointer and that the keyboard cannot be on. It has a
+ *     handler of a press, and is no control, is in none, and has none in it.
+ *   - `unreached`: a control that Tab does not stop at, and that is not part of a widget the
+ *     arrows walk (a list, a tree, a menu, a row of tabs or of tools).
+ *   - `keyless`: something that says it is a control (a role of one), answers a press, is not
+ *     the browser's own control, and has no handler of a key, in itself or around it.
+ *   - `picture`: a control that takes its name from a picture of a slide, with every word the
+ *     slide holds, or whose name runs on longer than a name is.
+ *   - `mute`: a name on an element that has no role to carry it (`aria-label` on a `span`): it is
+ *     not read.
+ *
+ * And two that are kept to be read by a person, not held:
+ *
+ *   - `around`: what answers a press and has controls inside it. Mostly a list or a frame that
+ *     listens for its children; now and then a thing that only a drag does.
+ *   - `live`: the regions that announce a change by themselves.
+ */
+export interface Beyond {
+  kind: 'pointer' | 'unreached' | 'keyless' | 'picture' | 'mute' | 'around' | 'live';
+  /** What it is, as short as tells it apart: tag, role, test id, label, the start of its text. */
+  what: string;
+  /** The handlers, the length of the name, or how the region announces. */
+  detail: string;
+}
+
+/** The kinds a surface is held to. */
+export const HELD_BEYOND: readonly Beyond['kind'][] = [
+  'pointer',
+  'unreached',
+  'keyless',
+  'picture',
+  'mute',
+];
+
+/** A name longer than this is not a name. */
+const LONG_NAME = 120;
+
+export function beyond(page: Page, within?: string): Promise<Beyond[]> {
+  return page.evaluate(
+    ({ within, longName }) => {
+      const root = (within ? document.querySelector(within) : document.body) ?? document.body;
+      const PRESS = [
+        'onClick',
+        'onDoubleClick',
+        'onPointerDown',
+        'onMouseDown',
+        'onContextMenu',
+        'onDrop',
+        'onDragStart',
+      ];
+      const KEYS = ['onKeyDown', 'onKeyUp', 'onKeyPress', 'onKeyDownCapture'];
+      const NATIVE = 'a[href], button, input, select, textarea, summary';
+      const CONTROL = `${NATIVE}, [tabindex], [contenteditable=""], [contenteditable="true"]`;
+      /** Roles of a control: something a person presses, sets or picks. */
+      const ACTS = new Set([
+        'button',
+        'link',
+        'option',
+        'menuitem',
+        'menuitemradio',
+        'menuitemcheckbox',
+        'tab',
+        'radio',
+        'checkbox',
+        'switch',
+        'treeitem',
+        'slider',
+        'spinbutton',
+        'combobox',
+        'textbox',
+        'gridcell',
+      ]);
+      /** Widgets whose parts the arrows walk: Tab stops at the widget once. */
+      const WALKED =
+        '[role="listbox"], [role="tree"], [role="menu"], [role="menubar"], [role="tablist"], [role="radiogroup"], [role="toolbar"], [role="grid"], [aria-activedescendant]';
+      const out: { kind: string; what: string; detail: string }[] = [];
+      const describe = (el: Element) => {
+        const role = el.getAttribute('role');
+        const id = el.getAttribute('data-testid');
+        const label = el.getAttribute('aria-label');
+        const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        return [
+          el.tagName.toLowerCase() + (role ? `[${role}]` : ''),
+          id ? `#${id}` : '',
+          label ? `"${label.slice(0, 40)}"` : '',
+          !label && text ? `'${text}'` : '',
+          !id && !label ? `.${String(el.getAttribute('class') ?? '').slice(0, 50)}` : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
+      };
+      const hidden = (el: Element) =>
+        el.closest('[aria-hidden="true"], [inert]') !== null || el.getClientRects().length === 0;
+      const handlers = (el: Element, names: string[]) => {
+        const key = Object.keys(el).find((name) => name.startsWith('__reactProps$'));
+        const props = key
+          ? ((el as unknown as Record<string, Record<string, unknown>>)[key] ?? {})
+          : {};
+        return names.filter((name) => typeof props[name] === 'function');
+      };
+      const off = (el: Element) =>
+        el.matches(':disabled, [aria-disabled="true"], [data-disabled]') ||
+        el.closest('[aria-disabled="true"], [data-disabled]') !== null;
+      /** Whether a key pressed on the element is heard by it, or by something around it. */
+      const keysHeard = (el: Element) => {
+        for (let node: Element | null = el; node; node = node.parentElement) {
+          if (handlers(node, KEYS).length > 0) return true;
+        }
+        return false;
+      };
+
+      for (const el of root.querySelectorAll<HTMLElement>('*')) {
+        // The slide itself is content, not the app's surface.
+        if (el.closest('.slidr-slide')) continue;
+        if (hidden(el)) continue;
+        const role = el.getAttribute('role');
+        const native = el.matches(NATIVE);
+        const acts = native || (role !== null && ACTS.has(role));
+
+        // A name with no role to carry it.
+        const generic = (el.tagName === 'SPAN' || el.tagName === 'DIV') && !role;
+        if (generic && (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby'))) {
+          if (!el.hasAttribute('tabindex') && !el.hasAttribute('contenteditable'))
+            out.push({ kind: 'mute', what: describe(el), detail: '' });
+        }
+
+        // A region that announces itself.
+        const live = el.getAttribute('aria-live');
+        if (live || role === 'status' || role === 'alert' || role === 'log') {
+          out.push({ kind: 'live', what: describe(el), detail: live ?? role ?? '' });
+        }
+
+        // A control named by a picture of a slide, or by more words than a name has.
+        if (acts && !el.hasAttribute('aria-label') && !el.hasAttribute('aria-labelledby')) {
+          const drawn = [...el.querySelectorAll('.slidr-slide')].some(
+            (slide) => !slide.closest('[aria-hidden="true"]'),
+          );
+          const length = el.innerText.replace(/\s+/g, ' ').trim().length;
+          const typed = el.matches('input, textarea, select, [role="textbox"], [role="combobox"]');
+          if (drawn) out.push({ kind: 'picture', what: describe(el), detail: 'a slide' });
+          else if (length > longName && !typed)
+            out.push({ kind: 'picture', what: describe(el), detail: `${length} characters` });
+        }
+
+        // A control Tab does not stop at, outside any widget the arrows walk.
+        // (Text that is edited in place is a stop of Tab though it says -1.)
+        const stop = el.tabIndex >= 0 || (el.isContentEditable && !el.hasAttribute('tabindex'));
+        if (acts && !off(el) && !stop) {
+          const widget = el.closest<HTMLElement>(WALKED);
+          // A menu or a list that floats by its button is given the keyboard as it opens.
+          const floating = el.closest('[data-radix-popper-content-wrapper]');
+          const walked =
+            widget !== null &&
+            (floating?.contains(widget) ||
+              widget.hasAttribute('aria-activedescendant') ||
+              widget.tabIndex >= 0 ||
+              [...widget.querySelectorAll<HTMLElement>('*')].some((part) => part.tabIndex >= 0));
+          if (!walked) out.push({ kind: 'unreached', what: describe(el), detail: 'tabindex -1' });
+        }
+
+        // Something with the role of a control that hears a press and no key.
+        const presses = handlers(el, PRESS);
+        if (acts && !native && presses.length > 0 && !keysHeard(el)) {
+          out.push({ kind: 'keyless', what: describe(el), detail: presses.join(' ') });
+        }
+
+        // Something that answers a press and that the keyboard cannot be on.
+        if (presses.length === 0) continue;
+        if (el.closest(CONTROL)) continue;
+        if (el.tagName === 'LABEL') continue;
+        out.push({
+          kind: el.querySelector(CONTROL) ? 'around' : 'pointer',
+          what: describe(el),
+          detail: presses.join(' '),
+        });
+      }
+      return out as never;
+    },
+    { within, longName: LONG_NAME },
+  );
+}
+
 /* ---------------------------------------------------------------- many surfaces in one page */
 
 /** A fault, and the surface of the app it was found on. */
 export interface Found extends Fault {
+  surface: string;
+}
+
+/** Something beyond axe-core's judgement, and the first surface it was seen on. */
+export interface Seen extends Beyond {
   surface: string;
 }
 
@@ -142,6 +335,9 @@ export class Survey {
   readonly surfaces: string[] = [];
   /** A layer that Esc did not close, or a trigger that opened nothing: for the keyboard's pass. */
   readonly stuck: string[] = [];
+  /** What `beyond` saw, each thing once, with the first surface it was on. */
+  readonly seen: Seen[] = [];
+  private readonly known = new Set<string>();
 
   private readonly languages: readonly Language[];
   private readonly schemes: readonly Scheme[];
@@ -223,6 +419,14 @@ export class Survey {
    */
   async audit(surface: string, options: AuditOptions = {}): Promise<void> {
     this.surfaces.push(surface);
+    // What the keyboard cannot be on and what a screen reader is told does not change with the
+    // language or the scheme: read once, as the surface is reached.
+    for (const thing of await beyond(this.page, options.within)) {
+      const key = `${thing.kind}|${thing.what}|${thing.detail}`;
+      if (this.known.has(key)) continue;
+      this.known.add(key);
+      this.seen.push({ surface, ...thing });
+    }
     const languages: readonly (Language | undefined)[] =
       this.languages.length > 1 ? this.languages : [undefined];
     const schemes: readonly (Scheme | undefined)[] =

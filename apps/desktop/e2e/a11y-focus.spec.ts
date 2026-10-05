@@ -252,7 +252,16 @@ test('a key that makes its own control go away leaves the keyboard in the region
   await remove.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-step="a_2"]')).toHaveCount(0);
-  // Not nowhere, from which Tab would start again at the top of the window: in the panel.
+  // The list gives the keyboard to the row that takes the place of the one removed.
+  await expect(page.locator('[data-step="a_1"] [data-row]')).toBeFocused();
+  // The last step: nothing of the list is left to take the keyboard. It is not nowhere, from
+  // which Tab would start again at the top of the window: it stays in the panel.
+  await page.keyboard.press('Tab');
+  await expect(
+    page.locator('[data-step="a_1"]').getByRole('button', { name: 'Remove' }),
+  ).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-step]')).toHaveCount(0);
   await expect
     .poll(() =>
       page.evaluate(() =>

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { Survey, type Found } from './a11y-helpers';
+import { HELD_BEYOND, Survey, type Found, type Seen } from './a11y-helpers';
 import { addBoxes, openApp, select, THREE } from './arrange-helpers';
 import { addChart } from './chart-helpers';
 import { card } from './code-helpers';
@@ -22,9 +22,15 @@ import { addClip, testMedia } from './video-helpers';
  * not fixed is written in `OPEN` with its reason: a test holds its surfaces to exactly those and
  * no other, so a new fault fails it, and so does fixing one, until it is taken off the list.
  *
- * What axe-core does not judge is held elsewhere: focus kept in a layer and given back, and
- * focus that can be seen, in `a11y-focus.spec.ts`; reaching and working every control without
- * the pointer, in `a11y-keyboard.spec.ts`.
+ * What axe-core does not judge, the same walk reads from the page (`beyond` in the helper), and
+ * every surface is held to it too: nothing that answers the pointer and that the keyboard cannot
+ * be on, no control that Tab and the arrows do not reach, none that hears a press and no key,
+ * none named by the picture of a slide, no name on an element that cannot carry one. What stands
+ * and is no fault is in `STANDS`, with why.
+ *
+ * Held elsewhere: focus kept in a layer and given back, and focus that can be seen, in
+ * `a11y-focus.spec.ts`; the ways of the keyboard that this cannot see (a drag, a hover), in
+ * `a11y-keyboard.spec.ts`; what a screen reader is told, in `a11y-reader.spec.ts`.
  */
 
 /** A fault that is known and open: where, which rule, on what, and why it is still there. */
@@ -60,6 +66,31 @@ const lines = (faults: Found[]) =>
     )
     .join('\n\n');
 
+/** Something beyond axe-core's judgement that stands as it is, and why it is no fault. */
+interface Stands {
+  kind: Seen['kind'];
+  what: RegExp;
+  reason: string;
+}
+
+const STANDS: Stands[] = [
+  {
+    kind: 'pointer',
+    what: /^span\[status\] 'Upscaling the picture/,
+    reason:
+      'Not a control: the progress of an upscale, with a tooltip that says the same words. The handlers are the tooltip\'s own. The progress is read as a status, and "Cancel" beside it is a button.',
+  },
+  {
+    kind: 'pointer',
+    what: /^div \.z-10 flex touch-none p-0\.5 select-none/,
+    reason:
+      'The bar of a scroll area. The area scrolls with the arrows, Page Up and Page Down while the keyboard is in it, and Tab brings into view whatever it stops at.',
+  },
+];
+
+const stands = (thing: Seen) =>
+  STANDS.some((entry) => entry.kind === thing.kind && entry.what.test(thing.what));
+
 const DIR = 'test-results/a11y';
 
 /**
@@ -72,7 +103,7 @@ function conclude(survey: Survey, name: string, expectAtLeast: number): void {
   writeFileSync(
     `${DIR}/audit-${name.replace(/[^a-z0-9]+/gi, '-')}.json`,
     JSON.stringify(
-      { surfaces: survey.surfaces, found: survey.found, stuck: survey.stuck },
+      { surfaces: survey.surfaces, found: survey.found, stuck: survey.stuck, seen: survey.seen },
       null,
       1,
     ),
@@ -80,6 +111,11 @@ function conclude(survey: Survey, name: string, expectAtLeast: number): void {
   // The test reached its surfaces: an audit of nothing would pass too.
   expect(survey.surfaces.length, 'surfaces audited').toBeGreaterThanOrEqual(expectAtLeast);
   expect(lines(survey.found.filter((fault) => !isOpen(fault))), 'accessibility faults').toBe('');
+  const beyond = survey.seen.filter((thing) => HELD_BEYOND.includes(thing.kind) && !stands(thing));
+  expect(
+    beyond.map((t) => `${t.surface}\n  [${t.kind}] ${t.what}\n  ${t.detail}`).join('\n\n'),
+    'beyond axe-core: the keyboard cannot reach it, or a screen reader is not told',
+  ).toBe('');
 }
 
 const PANEL = '[data-testid="tool-panel"]';
@@ -612,6 +648,11 @@ test('a table from inside: the tools of its cells', async ({ page }) => {
   await select(page, ['e_table']);
   await page.getByTestId('stage-surface').focus();
   await page.keyboard.press('Enter');
+  // The editor of the cell takes the keyboard a moment after it is drawn; an Esc sent by a
+  // machine before that is the Stage's, and leaves the table instead of the text.
+  await expect(
+    page.locator('[data-testid="stage-surface"] td[data-cell-editing] [data-text-editor]'),
+  ).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('stage-surface').locator('[data-table-selection]')).toBeVisible();
   await survey.audit('row B, the cells of a table', { within: ROW_B });

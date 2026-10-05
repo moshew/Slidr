@@ -355,6 +355,27 @@ function StepList(props: StepListProps) {
     root.current?.querySelector<HTMLElement>(`[data-step="${CSS.escape(id)}"] [data-row]`)?.focus();
   }, [list]);
 
+  /**
+   * A step removed while its row has the keyboard: the row that takes its place gets it, as in
+   * the Layers panel, and not the page. Removing three steps is then three presses.
+   */
+  const refocusAt = useRef<number | null>(null);
+  useEffect(() => {
+    const at = refocusAt.current;
+    if (at === null) return;
+    refocusAt.current = null;
+    const nodes = root.current?.querySelectorAll<HTMLElement>('[data-row]') ?? [];
+    nodes[Math.min(at, nodes.length - 1)]?.focus();
+  }, [list]);
+  const remove = (step: AnimationStep) => {
+    const own = root.current?.querySelector(`[data-step="${CSS.escape(step.id)}"]`);
+    if (own?.contains(document.activeElement)) {
+      const nodes = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-row]') ?? []);
+      refocusAt.current = nodes.findIndex((node) => own.contains(node));
+    }
+    props.onRemove(step);
+  };
+
   /** Alt with an arrow moves the step one place among the steps of the groups. */
   const nudge = (step: AnimationStep, by: 1 | -1) => {
     const target = nudgeTarget(slide.timeline, list.unplayed, step.id, by);
@@ -375,6 +396,7 @@ function StepList(props: StepListProps) {
         <GroupView
           key={group.index}
           {...props}
+          onRemove={remove}
           group={group}
           dragging={drag?.step}
           dragHandlers={dragHandlers}
@@ -393,6 +415,7 @@ function StepList(props: StepListProps) {
               <StepRow
                 key={step.id}
                 {...props}
+                onRemove={remove}
                 row={{ key: `x:${step.id}`, step, start: 0, end: 0 }}
                 total={0}
               />
