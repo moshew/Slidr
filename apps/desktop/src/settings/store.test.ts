@@ -78,3 +78,40 @@ describe('replacing a section', () => {
     });
   });
 });
+
+describe('reading the settings again', () => {
+  // The bug hunt's `ai-ui.md`, finding 17: the failed read was kept as the answer, so every
+  // later read and every `updateSection` gave up at once, until the app was started again.
+  it('is tried again after a refresh that failed once, and the store keeps what it held', async () => {
+    await replaceSection('stock', { source: 'unsplash' });
+    await loadSettings();
+    // The file cannot be read for a moment: a scanner, a sync client.
+    vi.spyOn(pageSettings, 'read').mockRejectedValueOnce(new Error('settings.json is locked'));
+    await expect(refreshSettings()).rejects.toThrow('settings.json is locked');
+    expect(sections().stock).toEqual({ source: 'unsplash' });
+
+    await expect(loadSettings()).resolves.toBeUndefined();
+    await expect(updateSection('stock', { source: 'pexels' })).resolves.toBeUndefined();
+    expect(sections().stock).toEqual({ source: 'pexels' });
+    expect(await pageSettings.read()).toEqual({ stock: { source: 'pexels' } });
+    await expect(refreshSettings()).resolves.toBeUndefined();
+  });
+
+  it('does not let a refresh that failed undo the one that followed it', async () => {
+    const read = pageSettings.read.bind(pageSettings);
+    let fail: (error: Error) => void = () => undefined;
+    const reading = vi
+      .spyOn(pageSettings, 'read')
+      // The first read hangs, and fails only after the second refresh is done.
+      .mockImplementationOnce(() => new Promise((_, reject) => (fail = reject)))
+      .mockImplementation(read);
+    const first = refreshSettings();
+    await refreshSettings();
+    fail(new Error('too late'));
+    await expect(first).rejects.toThrow('too late');
+    // The answer in hand is the second one's: nothing is read again for it.
+    const reads = reading.mock.calls.length;
+    await loadSettings();
+    expect(reading.mock.calls.length).toBe(reads);
+  });
+});

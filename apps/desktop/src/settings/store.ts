@@ -74,10 +74,19 @@ export function loadSettings(): Promise<void> {
   return loading;
 }
 
-/** Reads the settings again: the core writes some of them itself (the default image provider). */
+/**
+ * Reads the settings again: the core writes some of them itself (the default image provider).
+ * A read that fails is not kept as the answer, as a failed first read is not: the store goes on
+ * holding what it held, and the next read, or the next change of a section, tries the file again.
+ */
 export function refreshSettings(): Promise<void> {
-  loading = read();
-  return loading;
+  const reading: Promise<void> = read().catch((error: unknown) => {
+    // Unless a later refresh has taken its place.
+    if (loading === reading) loading = null;
+    throw error;
+  });
+  loading = reading;
+  return reading;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
