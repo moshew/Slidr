@@ -35,6 +35,7 @@ import { createLintService } from '../lint/deckLint';
 import { mediaServices } from '../media/services';
 import { agentSettings } from '../settings';
 import type { Editor } from '../shell';
+import { stageGestureActive } from '../stage/gesture';
 import { createLayoutService } from '../templates/layoutService';
 import { followDirection } from '../templates/actions';
 import { appTemplateService, library } from '../templates/app';
@@ -249,8 +250,10 @@ function createAi(editor: Editor): AiRuntime {
       editor.assets.import(new File([bytes.slice()], name, { type: mime })),
     onSlideTouched: (slideId) => {
       // Not while the user is typing into a text box: moving the Stage would end their edit.
+      // And not while the pointer holds something on the slide: the drag would be cut off.
       if (!useAiPreferences.getState().follow) return;
       if (editor.selection.getState().editingElementId !== null) return;
+      if (stageGestureActive()) return;
       editor.selection.getState().setCurrentSlide(slideId);
     },
     onInterrupt: () => void images.service.cancel(),

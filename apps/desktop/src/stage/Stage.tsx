@@ -53,6 +53,7 @@ import {
   type CropView,
 } from './crop';
 import { cropSession, heldRatio, resetCropSession } from './cropSession';
+import { setStageGesture } from './gesture';
 import {
   fitZoom,
   HANDLES,
@@ -399,10 +400,15 @@ export function Stage({
   const gesture = useRef<Gesture | null>(null);
   // What kind of drag is under way, for rendering; the gesture itself lives in the ref.
   const [activeKind, setActiveKind] = useState<Gesture['kind'] | null>(null);
+  /** The slide the gesture under way began on: what it changes is written there. */
+  const gestureSlide = useRef<string | null>(null);
   const begin = (g: Gesture) => {
     gesture.current = g;
+    gestureSlide.current = currentSlideId;
     setActiveKind(g.kind);
+    setStageGesture(true);
   };
+  useEffect(() => () => setStageGesture(false), []);
   const frame = useRef<number | undefined>(undefined);
 
   const scale = zoom === 'fit' ? fitZoom(size, deck.size) : zoom;
@@ -626,9 +632,20 @@ export function Stage({
   };
 
   /** Fits every group of the slide to its children, for changes that spanned several groups. */
-  const refitSlide = (txId: string) => {
-    const now = bus.deck.slides.find((s) => s.id === slide?.id);
-    if (now) commit(txId, 'Move', undefined, refitAll(now.elements));
+  const refitSlide = (txId: string, slideId: string | null = currentSlideId) => {
+    const now = bus.deck.slides.find((s) => s.id === slideId);
+    if (!now) return;
+    const fit = refitAll(now.elements);
+    if (fit.size === 0) return;
+    bus.batch(
+      [...fit].map(([elementId, patch]) => ({
+        type: 'element.update' as const,
+        slideId: now.id,
+        elementId,
+        patch,
+      })),
+      { txId, label: 'Move' },
+    );
   };
 
   /** The selected elements that can move: not locked, and not inside another selected one. */
@@ -652,6 +669,7 @@ export function Stage({
     const g = gesture.current;
     gesture.current = null;
     setActiveKind(null);
+    setStageGesture(false);
     if (frame.current !== undefined) cancelAnimationFrame(frame.current);
     frame.current = undefined;
     setGuides([]);
@@ -664,7 +682,7 @@ export function Stage({
       if (g.kind === 'move' && g.duplicate && g.moved) {
         selection.getState().selectElements(g.restore);
       }
-    } else if (g.kind === 'move' && g.moved && !g.path) refitSlide(g.txId);
+    } else if (g.kind === 'move' && g.moved && !g.path) refitSlide(g.txId, gestureSlide.current);
     else if (g.kind === 'resize') {
       // A table cannot be shorter than its text: its rows are written as they came out.
       for (const { element } of g.items)
@@ -677,6 +695,16 @@ export function Stage({
       );
     }
   };
+
+  // The slide went from under a gesture: the Stage was sent to another slide, or the slide was
+  // removed. The gesture ends where it is: what it did so far stays, as its one undo step, and
+  // no later move of the pointer is written to the slide that is shown now, where the elements
+  // it held do not exist.
+  useEffect(() => {
+    if (gesture.current && gestureSlide.current !== currentSlideId) endGesture(false);
+    // Only a change of the slide ends it; `endGesture` is made anew with every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSlideId]);
 
   // ---- Hit-testing ----
 
@@ -959,7 +987,7 @@ export function Stage({
     const alt = e.altKey;
     const free = e.ctrlKey || e.metaKey;
     schedule(() => {
-      if (gesture.current !== g || !slide) return;
+      if (gesture.current !== g || !slide || slide.id !== gestureSlide.current) return;
       if (g.kind === 'marquee') {
         g.current = p;
         const box = unionBounds([
