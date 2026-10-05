@@ -18,7 +18,7 @@ import {
 import { layoutAssets, layoutsFor, type Template } from '@slidr/templates';
 import type { Editor } from '../shell';
 import { showPreview } from '../stage/preview';
-import { applyLibraryTemplate, copyAssets, switchCommands } from '../templates/actions';
+import { applyLibraryTemplate, copyAssets, switchTo } from '../templates/actions';
 import {
   curatedFonts,
   curatedPalettes,
@@ -108,16 +108,13 @@ export function isCurrent(theme: Theme, look: Look): boolean {
 /**
  * What applying a look does to the deck as it is now. Nothing for the look it already has.
  *
- * A template is the switch the Templates panel makes (`switchCommands`): it keeps the footer the
- * user wrote, a slide number they hid and their logo (SLD-04). The preview is drawn from these
- * commands, so what is tried on the Stage is what a click gives.
+ * A template is the switch the Templates panel makes (`switchTo`): it keeps the footer the user
+ * wrote, a slide number they hid and their logo (SLD-04). The preview is of the same switch, so
+ * what is tried on the Stage is what a click gives.
  */
 export function lookCommands(deck: Deck, library: TemplateLibrary, look: Look): Command[] {
   if (isCurrent(deck.theme, look)) return [];
-  if (look.kind === 'template') {
-    const template = library.forDeck(look.id, deck.meta.lang);
-    return template ? switchCommands(deck, template) : [];
-  }
+  if (look.kind === 'template') return templateSwitch(deck, library, look.id)?.commands ?? [];
   return [
     {
       type: 'theme.update',
@@ -126,12 +123,25 @@ export function lookCommands(deck: Deck, library: TemplateLibrary, look: Look): 
   ];
 }
 
+/** The switch of the deck to a template of the library: its commands, and the deck they leave. */
+function templateSwitch(deck: Deck, library: TemplateLibrary, id: string) {
+  const template = library.forDeck(id, deck.meta.lang);
+  return template ? switchTo(deck, template) : undefined;
+}
+
 /**
  * The deck as a look would leave it, for the Stage's preview layer; null when the look changes
  * nothing. The commands run on a bus of their own, so the deck and its history stay as they are.
  */
 export function lookPreview(deck: Deck, library: TemplateLibrary, look: Look): Deck | null {
   try {
+    if (look.kind === 'template') {
+      if (isCurrent(deck.theme, look)) return null;
+      // The switch is worked out on a bus of its own already, and the deck it leaves is the
+      // preview: running its commands again took as long again on a large deck.
+      const switched = templateSwitch(deck, library, look.id);
+      return switched && switched.commands.length > 0 ? switched.deck : null;
+    }
     const commands = lookCommands(deck, library, look);
     if (commands.length === 0) return null;
     const scratch = new CommandBus(deck);

@@ -112,8 +112,17 @@ export async function applyLibraryTemplate(
  * ones. A deck that set none of them gets the template as it was drawn.
  */
 export function switchCommands(deck: Deck, template: Template): Command[] {
+  return switchTo(deck, template).commands;
+}
+
+/**
+ * The switch of `switchCommands` together with the deck it leaves. The commands are worked out
+ * on a bus of their own, so that deck is at hand: a preview of the switch (the deck tool's
+ * gallery of looks) draws it, and does not apply the commands a second time.
+ */
+export function switchTo(deck: Deck, template: Template): { commands: Command[]; deck: Deck } {
   const apply = applyTemplate(deck, template);
-  if (apply.length === 0) return apply;
+  if (apply.length === 0) return { commands: apply, deck };
   // Each step is worked out on the deck the one before it leaves.
   const scratch = new CommandBus(deck);
   const commands: Command[] = [];
@@ -128,7 +137,7 @@ export function switchCommands(deck: Deck, template: Template): Command[] {
   then((after) => restoreMaster(after, masterState(deck)));
   if (logo) then((after) => onLogos(after, (mark) => logoPicture(mark, logo)));
   if (logoHidden(deck)) then((after) => onLogos(after, (mark) => ({ ...mark, hidden: true })));
-  return commands;
+  return { commands, deck: scratch.deck };
 }
 
 /** Shows the slide number on every layout that draws one, or hides it (SLD-04). */
