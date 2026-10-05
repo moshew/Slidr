@@ -735,15 +735,16 @@ export function Stage({
     if (e.button === 2) {
       // A right click is about what is under it: the host's menu acts on the selection, so an
       // element that is not selected yet becomes the selection, and the empty slide clears it.
+      // So does a locked element, which the Stage does not select: its menu is the slide's, and
+      // not that of another element that happens to be selected (unless the locked one is
+      // itself selected, from the Layers panel: then the menu is its own, with "Unlock").
       const hit = resolveHit(pickAt(e.clientX, e.clientY), scope);
       const target = hit.id ? index.get(hit.id) : undefined;
       const state = selection.getState();
-      if (target?.locked || (target && state.selectedElementIds.includes(target.element.id))) {
-        return;
-      }
+      if (target && state.selectedElementIds.includes(target.element.id)) return;
       if (editingId) state.stopEditing();
       setEntered(hit.scope);
-      if (target) state.selectElements([target.element.id]);
+      if (target && !target.locked) state.selectElements([target.element.id]);
       else state.clearSelection();
       return;
     }

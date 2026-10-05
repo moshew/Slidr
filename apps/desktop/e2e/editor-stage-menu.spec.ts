@@ -105,6 +105,34 @@ test('the empty slide has a menu of its own', async ({ page }) => {
   expect(await selected(page)).toEqual(['e_a', 'e_b', 'e_c']);
 });
 
+test('a right click on a locked element opens the menu of the slide, not of what is selected', async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.update',
+      slideId: editor.selection.getState().currentSlideId!,
+      elementId: 'e_c',
+      patch: { locked: true },
+    });
+  });
+  // Another element is selected, far from the locked one: the menu is not about it.
+  await select(page, ['e_a']);
+  await focusStage(page);
+  await rightClick(page, onStage(page, 'e_c'));
+  expect(await selected(page)).toEqual([]);
+  expect(await itemNames(page)).toEqual(['הדבקה', 'בחירת הכול', 'הדבקת טקסט', 'AI שקף']);
+  await page.keyboard.press('Escape');
+  expect((await elements(page)).map((e) => e.id)).toEqual(['e_a', 'e_b', 'e_c']);
+
+  // Selected itself, from the Layers panel, the locked element has its own menu, with the way out.
+  await select(page, ['e_c']);
+  await rightClick(page, onStage(page, 'e_c'));
+  expect(await selected(page)).toEqual(['e_c']);
+  await expect(item(page, 'ביטול נעילה')).toBeVisible();
+});
+
 test('duplicate and delete from the menu are one undo step each', async ({ page }) => {
   await rightClick(page, onStage(page, 'e_a'));
   await expectOneStep(page, () => item(page, 'שכפול').click());
