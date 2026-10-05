@@ -1,6 +1,7 @@
 import {
   CommandBus,
   createDeck,
+  isAssetFileName,
   walkElements,
   type AssetMeta,
   type Command,
@@ -104,10 +105,16 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
  * pictures of its sample slides are not among them, so a deck that takes the template does not
  * carry them. An asset counts when its id appears anywhere in the layouts, as in the model's
  * `assetsUsedBy`.
+ *
+ * An asset whose `file` is not the name of a file is not among them. A template saved from a
+ * deck that was made elsewhere can hold one; it has no file and is never drawn, and `asset.add`
+ * refuses it, which would take the whole switch to the template with it.
  */
 export function layoutAssets(template: Template, layouts: readonly Layout[]): AssetMeta[] {
   const drawn = JSON.stringify(layouts);
-  return Object.values(template.assets ?? {}).filter((asset) => drawn.includes(asset.id));
+  return Object.values(template.assets ?? {}).filter(
+    (asset) => drawn.includes(asset.id) && isAssetFileName(asset.file),
+  );
 }
 
 /** The fields mirroring changes in one element, as an `element.update` patch. */

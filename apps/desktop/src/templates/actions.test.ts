@@ -1,6 +1,7 @@
 import {
   CommandBus,
   createDeck,
+  createElement,
   slideFromLayout,
   type AssetMeta,
   type Deck,
@@ -16,7 +17,7 @@ import {
 } from '@slidr/templates';
 import { builtInTemplates, zeremTemplate } from '@slidr/templates/builtin';
 import { nightTemplate, paperTemplate } from '@slidr/templates/fixtures';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Editor } from '../shell';
 import {
   applyLibraryTemplate,
@@ -494,6 +495,44 @@ describe('saving the deck as a personal template', () => {
     const next = startDeck(library, 'en');
     expect(next.theme.name).toBe('Plain');
     expect(next.slides).toHaveLength(1);
+  });
+
+  it('saved from a deck whose layout names an asset with no file name of its own, it can still be applied', async () => {
+    // A deck made elsewhere can carry an asset whose file is a path or an address. It is never
+    // drawn, and `asset.add` refuses it: a template that handed it to another deck could not
+    // be applied at all, to any deck but the one it was saved from.
+    const night = nightTemplate();
+    const far: AssetMeta = {
+      id: 'a_far',
+      file: 'https://example.com/far.png',
+      mime: 'image/png',
+      kind: 'image',
+      bytes: 1200,
+      origin: 'import',
+    };
+    night.layouts[0]!.decorations.push(
+      createElement.image({ id: 'd_far', frame: box(1500, 80, 320, 180), assetId: far.id }),
+    );
+    const source = deckFromTemplate(night, { lang: 'he' });
+    source.assets = { ...source.assets, [far.id]: far };
+    const library = libraryOf(paperTemplate());
+    const saved = await saveAsTemplate(editorOn(source).editor, library, 'From elsewhere');
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const paper = deckFromTemplate(paperTemplate(), { lang: 'he', sample: true });
+    const { editor, bus } = editorOn(paper);
+    expect(await applyLibraryTemplate(editor, library, saved.theme.id, 'Apply')).toBe(true);
+    expect(bus.deck.theme.id).toBe(saved.theme.id);
+    expect(bus.deck.layouts[0]!.decorations.map((d) => d.id)).toContain('d_far');
+    // The deck does not take the asset, and no file was asked for by a name that is not one.
+    expect(bus.deck.assets).not.toHaveProperty(far.id);
+    expect(errors).not.toHaveBeenCalled();
+    bus.undo();
+    expect(bus.deck).toEqual(paper);
+    // A new deck that opens on the template does not carry it either.
+    library.setDefault(saved.theme.id);
+    expect(startDeck(library, 'he').assets).toEqual({});
+    errors.mockRestore();
   });
 });
 
