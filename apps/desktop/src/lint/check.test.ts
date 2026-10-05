@@ -4,8 +4,10 @@ import {
   createDeck,
   createElement,
   createSlide,
+  refitCommands,
   richText,
   updateElement,
+  walkElements,
   type Deck,
   type Element,
   type Slide,
@@ -248,6 +250,89 @@ describe('the design check of the open deck', () => {
       const settled = bus.deck;
       expect(await check.fixAll('Fix all')).toBe(0);
       expect(bus.deck).toBe(settled);
+    });
+  });
+
+  describe('a fix of an element inside a group', () => {
+    /** The two lines of the card's text need this much; its box is 60 tall. */
+    const NEEDS = 95;
+    /** What a render measures of a card: each part where its group puts it on the slide. */
+    function rendered(slide: Slide): SlideMeasurements {
+      const elements: SlideMeasurements['elements'] = {};
+      const visit = (list: readonly Element[], dx: number, dy: number) => {
+        for (const element of list) {
+          const box = { ...element.frame, x: element.frame.x + dx, y: element.frame.y + dy };
+          elements[element.id] = { box };
+          if (element.type === 'group') visit(element.children, box.x, box.y);
+          if (element.type !== 'text') continue;
+          elements[element.id]!.text = {
+            ink: box,
+            overflow: { x: 0, y: Math.max(0, NEEDS - box.h) },
+            scale: 1,
+            spans: [{ color: [21, 23, 26], alpha: 1, fontSize: 30, backdrop: [[255, 255, 255]] }],
+          };
+        }
+      };
+      visit(slide.elements, 0, 0);
+      return { elements };
+    }
+    /** A card as the conversion makes one: the box, then the text on it, near its lower edge. */
+    function card() {
+      const group = createElement.group({
+        id: 'e_card',
+        frame: { x: 200, y: 200, w: 620, h: 160 },
+        children: [
+          createElement.shape({ id: 'e_box', frame: { x: 0, y: 0, w: 620, h: 160 } }),
+          createElement.text({
+            id: 'e_text',
+            frame: { x: 40, y: 100, w: 540, h: 60 },
+            content: richText('Two lines of text in a box that holds one'),
+          }),
+        ],
+      });
+      const start = createDeck({
+        lang: 'en',
+        slides: [createSlide({ id: 's_1', elements: [group] })],
+      });
+      const bus = new CommandBus(start, { validate: true });
+      const check = new DesignCheck(bus, (_, slide) => Promise.resolve(rendered(slide)), {
+        rest: 0,
+      });
+      const tall = async () => (await check.check()).find((f) => f.rule === 'L01');
+      return { start, bus, check, tall };
+    }
+    const frames = (bus: CommandBus) =>
+      Object.fromEntries(
+        [...walkElements(bus.deck.slides[0]!.elements)].map((e) => [e.id, e.frame]),
+      );
+
+    it('leaves the group the box around its children, in the step of the fix', async () => {
+      const { start, bus, check, tall } = card();
+      const overflow = await tall();
+      expect(overflow).toMatchObject({ elementIds: ['e_text'] });
+      expect(await check.fix(overflow!, 'Fix')).toBe(true);
+      // The text was made taller where it stands, 35px past the lower edge of the card: the
+      // group takes the new bounds of what is in it, and nothing else moved.
+      expect(frames(bus)).toEqual({
+        e_card: { x: 200, y: 200, w: 620, h: 195 },
+        e_box: { x: 0, y: 0, w: 620, h: 160 },
+        e_text: { x: 40, y: 100, w: 540, h: NEEDS },
+      });
+      expect(refitCommands(bus.deck.slides[0]!)).toEqual([]);
+      expect(await tall()).toBeUndefined();
+      expect(bus.undoStack).toHaveLength(1);
+      bus.undo();
+      expect(bus.deck).toEqual(start);
+    });
+
+    it('does the same for every fix of "fix all"', async () => {
+      const { start, bus, check } = card();
+      expect(await check.fixAll('Fix all')).toBeGreaterThan(0);
+      expect(frames(bus).e_text).toMatchObject({ h: NEEDS });
+      expect(refitCommands(bus.deck.slides[0]!)).toEqual([]);
+      expect(bus.undoStack).toHaveLength(1);
+      bus.undo();
+      expect(bus.deck).toEqual(start);
     });
   });
 

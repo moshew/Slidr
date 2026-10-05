@@ -1,5 +1,12 @@
 import { lintSlide, type LintFinding, type SlideMeasurements } from '@slidr/lint';
-import { newId, type CommandBus, type Deck, type Slide } from '@slidr/model';
+import {
+  batchFitted,
+  newId,
+  type Command,
+  type CommandBus,
+  type Deck,
+  type Slide,
+} from '@slidr/model';
 import { createStore, type StoreApi } from 'zustand';
 
 /*
@@ -134,6 +141,15 @@ export class DesignCheck {
   }
 
   /**
+   * Sends the commands of a fix. A rule fixes the element it found, wherever it is in the tree:
+   * the text of a card is made taller, a part of a group is moved. The group around it has to
+   * bound it again (ARR-01), so the fit is added to the step of the fix.
+   */
+  #apply(fix: readonly Command[], txId: string, label: string): void {
+    batchFitted(this.#bus, fix, { txId, label });
+  }
+
+  /**
    * Applies the fix of one finding, as one step to undo. Resolves false when it can no longer
    * run. The fix itself is applied at once, before anything is awaited.
    *
@@ -151,7 +167,7 @@ export class DesignCheck {
     const known = new Set(present.map(nameOf));
     const txId = newId('tx');
     try {
-      this.#bus.batch(finding.fix, { txId, label });
+      this.#apply(finding.fix, txId, label);
     } catch (error) {
       console.error('A fix of the design check did not apply', error);
       return false;
@@ -174,7 +190,7 @@ export class DesignCheck {
       if (!opened?.fix) break;
       tried.add(attemptOf(opened));
       try {
-        this.#bus.batch(opened.fix, { txId, label });
+        this.#apply(opened.fix, txId, label);
       } catch (error) {
         console.error('A fix of the design check did not apply', error);
         break;
@@ -205,7 +221,7 @@ export class DesignCheck {
       if (!next?.fix || !this.current) break;
       tried.add(attemptOf(next));
       try {
-        this.#bus.batch(next.fix, { txId, label });
+        this.#apply(next.fix, txId, label);
         applied++;
       } catch (error) {
         console.error('A fix of the design check did not apply', error);
