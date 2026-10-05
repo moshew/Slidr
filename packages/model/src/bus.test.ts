@@ -120,6 +120,21 @@ describe('CommandBus', () => {
     expect(bus.rollback('drag')).toBe(false);
   });
 
+  it('drops the redo steps that were made on top of a transaction it rolls back', () => {
+    const bus = new CommandBus(freshDeck());
+    bus.dispatch({ type: 'element.add', slideId: 's1', element: rect('c') }, { txId: 'new' });
+    bus.dispatch(move('c', 5));
+    // The move of the new element is undone, and waits to be redone.
+    bus.undo();
+    expect(bus.canRedo).toBe(true);
+    // The element itself is abandoned: the move has nothing to be redone on.
+    expect(bus.rollback('new')).toBe(true);
+    expect(findElement(bus.deck.slides[0]!, 'c')).toBeUndefined();
+    expect(bus.canRedo).toBe(false);
+    expect(bus.redo()).toBe(false);
+    expect(bus.deck.slides[0]!.elements.map((e) => e.id)).toEqual(['a', 'b']);
+  });
+
   it('does not roll back a transaction that is no longer the latest change', () => {
     const bus = new CommandBus(freshDeck());
     bus.dispatch(move('a', 1), { txId: 'drag' });

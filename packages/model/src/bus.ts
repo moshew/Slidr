@@ -339,6 +339,8 @@ export class CommandBus {
   /**
    * Abandons a transaction: reverts its changes and leaves no trace in the history. Works
    * while the transaction is the latest change (a cancelled drag); returns false otherwise.
+   * What was undone since is dropped with it: those steps were made on top of the transaction,
+   * and have nothing to be redone on once it is gone.
    */
   rollback(txId: string): boolean {
     let reverted = false;
@@ -347,6 +349,7 @@ export class CommandBus {
       if (entry?.txId !== txId) return reverted;
       this.#run = null;
       this.#undo.pop();
+      this.#redo = [];
       this.#revert('rollback', entry, entry.actor);
       reverted = true;
     }
