@@ -1,6 +1,6 @@
-import { createElement, type Paragraph, type Placeholder } from '@slidr/model';
+import { createElement, richText, type Paragraph, type Placeholder } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { followPatch } from './relayout';
+import { followPatch, sitsOn } from './relayout';
 
 const frame = { x: 96, y: 80, w: 800, h: 100 };
 const seat = (align: NonNullable<Placeholder['align']>): Placeholder => ({
@@ -17,6 +17,56 @@ const text = (words: string, align: Paragraph['align']) =>
   });
 const aligned = (patch: Record<string, unknown>) =>
   (patch.content as { paragraphs: Paragraph[] } | undefined)?.paragraphs[0]!.align;
+
+describe('the frame an element takes from its new placeholder', () => {
+  const from: Placeholder = { id: 'p_from', role: 'body', frame };
+  const to: Placeholder = { id: 'p_to', role: 'body', frame: { x: 200, y: 600, w: 1000, h: 60 } };
+  const at = (own: Partial<typeof frame>) => ({
+    ...text('שלום', 'start'),
+    frame: { ...frame, ...own },
+  });
+
+  it('is the placeholder’s, for an element that sat on the old one', () => {
+    expect(followPatch(at({}), { from, to }, 'rtl').frame).toEqual(to.frame);
+    expect(sitsOn(at({}), from)).toBe(true);
+  });
+
+  it('keeps the height of a text box that grew to hold its text, and still goes with the seat', () => {
+    // What the fix of an overflowing text leaves, or a pull on the foot of the box.
+    const grown = at({ h: 180 });
+    expect(sitsOn(grown, from)).toBe(true);
+    const there = followPatch(grown, { from, to }, 'rtl');
+    expect(there.frame).toEqual({ x: 200, y: 600, w: 1000, h: 180 });
+    // There and back: the box it was.
+    const moved = { ...grown, frame: there.frame as typeof frame };
+    expect(followPatch(moved, { from: to, to: from }, 'rtl').frame).toEqual(grown.frame);
+  });
+
+  it('goes with the seat for a table that grew with its rows', () => {
+    const table = createElement.table({
+      role: 'table',
+      frame: { ...frame, h: 340 },
+      rows: [170, 170],
+      cols: [800],
+      dir: 'rtl',
+      cells: [[{ content: richText('א') }], [{ content: richText('ב') }]],
+    });
+    expect(followPatch(table, { from, to }).frame).toEqual({ ...to.frame, h: 340 });
+  });
+
+  it('stays where it is for a box that was moved, or made wider', () => {
+    for (const own of [{ x: 100 }, { y: 90 }, { w: 700 }, { y: 60, h: 120 }]) {
+      expect(sitsOn(at(own), from)).toBe(false);
+      expect(followPatch(at(own), { from, to }, 'rtl')).toEqual({});
+    }
+  });
+
+  it('stays where it is for a picture whose height was changed: that is a resize by hand', () => {
+    const picture = createElement.image({ role: 'image', frame: { ...frame, h: 180 } });
+    expect(sitsOn(picture, from)).toBe(false);
+    expect(followPatch(picture, { from, to })).toEqual({});
+  });
+});
 
 describe('what a paragraph takes from its new placeholder', () => {
   it('follows the new alignment when it had the old one', () => {

@@ -19,12 +19,26 @@ import { seatAlign } from './align';
 const sameFrame = (a: Frame, b: Frame) => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
 
 /**
+ * What is as tall as its content needs: a text box and a table. Their height says how much was
+ * written, not where they were put.
+ */
+const TALL_AS_CONTENT: ReadonlySet<Element['type']> = new Set(['text', 'table']);
+
+/**
  * Whether an element is where its placeholder put it. The model has no link from an element to
  * its placeholder, so the frame is the test: one that was moved or resized by hand has a frame of
  * its own, and keeps it.
+ *
+ * A text box or a table that only differs from its placeholder in height is still on it. Text
+ * that outgrew its box gets a taller one, from the design check's fix or from the handle at the
+ * foot of the box, and a table grows with its rows; neither took the element off its seat, and
+ * the next switch of template must not leave it behind (see `followPatch` for the height).
  */
 export function sitsOn(element: Element, placeholder: Placeholder): boolean {
-  return sameFrame(element.frame, placeholder.frame);
+  const { x, y, w, h } = element.frame;
+  const seat = placeholder.frame;
+  if (x !== seat.x || y !== seat.y || w !== seat.w) return false;
+  return h === seat.h || TALL_AS_CONTENT.has(element.type);
 }
 
 function byRole<T extends { role?: PlaceholderRole }>(items: readonly T[]) {
@@ -119,7 +133,13 @@ export function followPatch(
   deckDir?: Direction,
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
-  if (sitsOn(element, from) && !sameFrame(from.frame, to.frame)) patch.frame = { ...to.frame };
+  if (sitsOn(element, from)) {
+    // A height of its own (see `sitsOn`) is the element's, like every value set by hand: it
+    // goes along, and switching back finds it.
+    const own = element.frame.h !== from.frame.h;
+    const frame = own ? { ...to.frame, h: element.frame.h } : { ...to.frame };
+    if (!sameFrame(element.frame, frame)) patch.frame = frame;
+  }
   if (element.type !== 'text') return patch;
 
   const vAlign = to.vAlign ?? 'top';

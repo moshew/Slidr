@@ -13,6 +13,8 @@ import {
 } from '@slidr/model';
 import { fixtureDecks } from '@slidr/model/fixtures';
 import { referenceDeck } from '@slidr/renderer/fixtures';
+import { applyTemplate } from '@slidr/templates';
+import { builtInSamples, builtInTemplates, sampleDeck } from '@slidr/templates/builtin';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { testAssetUrl } from '../dev/slides/testAssets';
 import { registerBuiltinFonts } from '../fonts';
@@ -516,6 +518,47 @@ describe("the user's design check: the rules that do not go back to the agent, a
     expect(bus.deck.slides[0]!.elements.map((e) => e.frame.x)).toEqual([
       96, 530.667, 965.333, 1400,
     ]);
+  });
+
+  test('a text its fix made taller still goes with its placeholder at the next switch of template', async () => {
+    const template = (id: string) => builtInTemplates().find((t) => t.theme.id === id)!;
+    const start = sampleDeck(template('tzuk'), builtInSamples.tzuk!.en, { lang: 'en', dir: 'ltr' });
+    const bus = new CommandBus(start, { validate: true });
+    // A longer closing line on the cards slide: four lines in a box of two.
+    const slide = bus.deck.slides.find((s) => s.layoutId === 'l_tzuk_cards')!;
+    const line = slide.elements.filter((e) => e.role === 'body')[3]!;
+    bus.dispatch({
+      type: 'text.set',
+      slideId: slide.id,
+      elementId: line.id,
+      content: richText(
+        'And the fourth: net revenue retention rose to 124%. Existing customers grow their fleets and add modules, quarter after quarter, and the customers who joined in the last two years already buy more than the ones who joined before them, in every region we sell in and in every size of warehouse, which is the best sign of all that the product holds its promise once it is on the floor.',
+        { dir: 'ltr', styleRef: 'body' },
+      ),
+    });
+    const now = () => bus.deck.slides.find((s) => s.id === slide.id)!;
+    const box = () => now().elements.find((e) => e.id === line.id)!.frame;
+    const seat = () =>
+      bus.deck.layouts
+        .find((l) => l.id === now().layoutId)!
+        .placeholders.filter((p) => p.role === 'body')[3]!.frame;
+
+    const [overflow] = of(await lintSlides(bus.deck, [slide.id], 'all', resolveAsset), 'L01');
+    expect(overflow?.elementIds).toEqual([line.id]);
+    bus.batch(overflow!.fix!);
+    // The fix made the box taller, where the layout put it.
+    const grown = box();
+    expect(grown).toEqual({ ...seat(), h: grown.h });
+    expect(grown.h).toBeGreaterThan(seat().h);
+
+    // The box goes to the seat the other template has for it, as tall as its text made it; before,
+    // it stayed across the cards of the new template, as an element the user had placed by hand.
+    bus.batch(applyTemplate(bus.deck, template('zerem')));
+    expect(now().layoutId).toBe('l_zerem_cards');
+    expect(box()).toEqual({ ...seat(), h: grown.h });
+    // And back: the box the fix left.
+    bus.batch(applyTemplate(bus.deck, template('tzuk')));
+    expect(box()).toEqual(grown);
   });
 
   test('the text a chart draws is judged for the user, and never for the agent', async () => {
