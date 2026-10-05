@@ -14,7 +14,7 @@ import {
 import type { Attachment } from '../agent/agentService';
 import { IMAGE_FILES, pickFiles } from '../objects/insert';
 import type { Runner } from './Actions';
-import { accepted, readAttachment } from './attachments';
+import { accepted, readAttachment, refusals } from './attachments';
 
 /*
  * "Make a template with AI" (THM-06, AID-05): the form that gathers what a template is made
@@ -67,12 +67,18 @@ export function TemplateForm({ runner }: { runner: Runner }) {
   const address = url.trim();
   const ready = Boolean(wanted || address || fromDeck || files.length > 0);
 
+  /** Why files of the last choice were not taken: said until the files change again. */
+  const [refused, setRefused] = useState<string[]>([]);
+
   const add = async (offered: readonly File[], use?: string) => {
-    const read = await Promise.all(
-      accepted(offered, files.length).map((file) => readAttachment(file, use)),
-    );
-    // A template has one logo: a new one takes the place of the old.
-    setFiles((before) => [...before.filter((file) => !use || file.use !== use), ...read]);
+    // A template has one logo: a new one takes the place of the old, which therefore takes
+    // none of the room the new one needs.
+    const others = (all: readonly Attachment[]) => all.filter((file) => !use || file.use !== use);
+    const offer = accepted(offered, others(files).length);
+    setRefused(refusals(t, offer));
+    const read = await Promise.all(offer.files.map((file) => readAttachment(file, use)));
+    // A choice that gave nothing (too large, or none made) replaces nothing: the logo stays.
+    if (read.length > 0) setFiles((before) => [...others(before), ...read]);
   };
   const create = () => {
     if (!ready || off) return;
@@ -89,6 +95,7 @@ export function TemplateForm({ runner }: { runner: Runner }) {
     setUrl('');
     setFromDeck(false);
     setFiles([]);
+    setRefused([]);
     setOpen(false);
   };
 
@@ -165,11 +172,24 @@ export function TemplateForm({ runner }: { runner: Runner }) {
                 <FileRow
                   key={i}
                   file={file}
-                  onRemove={() => setFiles((before) => before.filter((_, at) => at !== i))}
+                  onRemove={() => {
+                    setFiles((before) => before.filter((_, at) => at !== i));
+                    setRefused([]);
+                  }}
                 />
               ))}
             </ul>
           )}
+          {refused.map((words) => (
+            <p
+              key={words}
+              role="alert"
+              data-testid="files-refused"
+              className="text-xs text-ui-danger-fg"
+            >
+              {words}
+            </p>
+          ))}
           <div className="flex items-center gap-2">
             <Button
               variant="primary"

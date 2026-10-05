@@ -42,6 +42,8 @@ export const he = {
     attach: 'צירוף מסמך או תמונה',
     attached: 'הקבצים המצורפים להודעה',
     remove: 'הסרת {{name}}',
+    tooLarge: 'גדול מדי לצירוף: {{names}}. קובץ של הודעה יכול להיות עד {{mb}}MB.',
+    tooMany: 'הודעה נושאת עד {{max}} קבצים. מה שמעבר לכך לא צורף.',
     model: 'מודל ורמת מאמץ',
   },
   picker: {
@@ -538,6 +540,8 @@ export const en = {
     attach: 'Attach a document or an image',
     attached: 'The files attached to the message',
     remove: 'Remove {{name}}',
+    tooLarge: 'Too large to attach: {{names}}. A file of a message can be up to {{mb}} MB.',
+    tooMany: 'A message takes up to {{max}} files. The rest were not attached.',
     model: 'Model and effort',
   },
   picker: {

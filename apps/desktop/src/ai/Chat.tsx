@@ -56,7 +56,7 @@ import { pickFiles } from '../objects/insert';
 import { ask, useDeck, useEditor } from '../shell';
 import { TemplateDraftCard } from '../templates/DraftCard';
 import { actionLabel } from './actionLabels';
-import { accepted, ATTACHABLE, pastedFiles, readAttachment } from './attachments';
+import { accepted, ATTACHABLE, pastedFiles, readAttachment, refusals } from './attachments';
 import { ConversationBar } from './Conversations';
 import { NO_DRAFT, type Draft } from './drafts';
 import { Gallery } from './Gallery';
@@ -564,18 +564,21 @@ function Composer({
   const { text, files } = draft;
   const follow = useAiPreferences((s) => s.follow);
   const field = useRef<HTMLTextAreaElement>(null);
+  /** Why files of the last choice are not in the message: said until the files change again. */
+  const [refused, setRefused] = useState<string[]>([]);
   const ready = (text.trim().length > 0 || files.length > 0) && !busy;
   const send = () => {
     if (!ready) return;
     onSend(text, files);
     onDraft(() => NO_DRAFT);
+    setRefused([]);
     field.current?.focus();
   };
   /** Takes files into the message: as many as it still has room for (CHT-U05). */
   const add = async (offered: readonly File[]) => {
-    const read = await Promise.all(
-      accepted(offered, files.length).map((file) => readAttachment(file)),
-    );
+    const offer = accepted(offered, files.length);
+    setRefused(refusals(t, offer));
+    const read = await Promise.all(offer.files.map((file) => readAttachment(file)));
     // Into the draft as it is by now: reading a file takes a while.
     if (read.length > 0) onDraft((now) => ({ ...now, files: [...now.files, ...read] }));
   };
@@ -605,13 +608,24 @@ function Composer({
             <FileChip
               key={i}
               file={{ name: file.name, kind: file.mime.startsWith('image/') ? 'image' : 'file' }}
-              onRemove={() =>
-                onDraft((now) => ({ ...now, files: now.files.filter((_, at) => at !== i) }))
-              }
+              onRemove={() => {
+                onDraft((now) => ({ ...now, files: now.files.filter((_, at) => at !== i) }));
+                setRefused([]);
+              }}
             />
           ))}
         </div>
       )}
+      {refused.map((words) => (
+        <p
+          key={words}
+          role="alert"
+          data-testid="files-refused"
+          className="text-xs text-ui-danger-fg"
+        >
+          {words}
+        </p>
+      ))}
       <Textarea
         ref={field}
         // The text finds its own direction; the placeholder keeps the panel's.

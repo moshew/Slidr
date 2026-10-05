@@ -1,3 +1,5 @@
+import { closeSync, ftruncateSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import type * as Runtime from '../src/ai/runtime';
 import {
@@ -210,4 +212,75 @@ test('every conversation of a tool can be reached in its list, however many ther
   await page.keyboard.press('Enter');
   await expect(chat(page)).toHaveAttribute('data-thread', 'deck');
   await expect(page.getByTestId('chat-user').first()).toContainText('ראשונה');
+});
+
+test('a file a message cannot take is refused in words, with the limit', async ({
+  page,
+}, testInfo) => {
+  // Last year's deck with its pictures, 51 MB: an empty file of that length, in the folder of
+  // this test's results.
+  const big = testInfo.outputPath('last-year.pptx');
+  mkdirSync(dirname(big), { recursive: true });
+  const handle = openSync(big, 'w');
+  ftruncateSync(handle, 51 * 1024 * 1024);
+  closeSync(handle);
+  try {
+    await openDeckChat(page, { script: 'deck-build' });
+    const attached = page.getByTestId('composer-files').getByTestId('attachment');
+    const refused = page.getByTestId('files-refused');
+    await choose(page, () => page.getByTestId('chat-attach').click(), big);
+    // Not a chip, and not silence (finding 11): the name of the file, and how large one may be.
+    await expect(refused).toHaveRole('alert');
+    await expect(refused).toContainText('last-year.pptx');
+    await expect(refused).toContainText('50MB');
+    await expect(attached).toHaveCount(0);
+    // The next choice is taken, and the words go with the choice they were about.
+    await choose(page, () => page.getByTestId('chat-attach').click(), LOGO.path);
+    await expect(attached).toHaveCount(1);
+    await expect(refused).toHaveCount(0);
+  } finally {
+    rmSync(big, { force: true });
+  }
+});
+
+test('the template form says which file it left out, and a new logo takes the place of the old', async ({
+  page,
+}) => {
+  const logo = readFileSync(LOGO.path);
+  const picture = (name: string) => ({ name, mimeType: 'image/png', buffer: logo });
+  /** Answers the file dialog a button of the form opens. */
+  const pick = async (button: string, files: ReturnType<typeof picture>[]) => {
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId(button).click();
+    await (await chooser).setFiles(files);
+  };
+  await openDeckChat(page, { script: 'template-create', lang: 'en' });
+  await tab(page, 'actions');
+  await page.locator('[data-action="template.create"]').click();
+  const rows = page.getByTestId('template-file');
+  const theLogo = page.locator('[data-testid="template-file"][data-use="logo"]');
+  const refused = page.getByTestId('files-refused');
+
+  // A logo and nine examples: as many files as a message takes.
+  await pick('template-logo', [picture('logo.png')]);
+  await pick(
+    'template-files',
+    Array.from({ length: 9 }, (_, i) => picture(`example-${i + 1}.png`)),
+  );
+  await expect(rows).toHaveCount(10);
+  await expect(refused).toHaveCount(0);
+
+  // One more example has no room, and the form says so, with the limit.
+  await pick('template-files', [picture('one-too-many.png')]);
+  await expect(refused).toHaveRole('alert');
+  await expect(refused).toContainText('up to 10 files');
+  await expect(rows).toHaveCount(10);
+
+  // A new logo takes the place of the old one, so it needs no room of its own. It used to
+  // remove the old logo and add nothing (finding 11).
+  await pick('template-logo', [picture('new-logo.png')]);
+  await expect(rows).toHaveCount(10);
+  await expect(theLogo).toHaveCount(1);
+  await expect(theLogo).toContainText('new-logo.png');
+  await expect(refused).toHaveCount(0);
 });

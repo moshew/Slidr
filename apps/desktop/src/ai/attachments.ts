@@ -3,6 +3,7 @@
  * how a screenshot arrives. A file is read here, once; the agent service stores it with the
  * conversation and, when it is a picture, with the document.
  */
+import type { TFunction } from 'i18next';
 import type { Attachment } from '../agent/agentService';
 
 /** What the file dialog offers: the documents a deck is made from, and pictures. */
@@ -57,7 +58,42 @@ export function pastedFiles(data: DataTransfer | null, taken: number): File[] {
   );
 }
 
-/** The files a message can still take, of those offered. */
-export function accepted(offered: readonly File[], taken: number): File[] {
-  return offered.filter((file) => file.size <= MAX_BYTES).slice(0, Math.max(0, MAX_FILES - taken));
+/** What became of the files that were offered to a message. */
+export interface Offer {
+  /** The files the message takes. */
+  files: File[];
+  /** Left out: larger than a file of a message may be. */
+  tooLarge: File[];
+  /** Left out: how many more than the message still had room for. */
+  tooMany: number;
+}
+
+/**
+ * The files a message can still take, of those offered, and what it leaves out, so that the
+ * form can say so: a file that is dropped without a word looks like a button that did nothing.
+ * `taken` is how many files the message has already.
+ */
+export function accepted(offered: readonly File[], taken: number): Offer {
+  const fits = offered.filter((file) => file.size <= MAX_BYTES);
+  const files = fits.slice(0, Math.max(0, MAX_FILES - taken));
+  return {
+    files,
+    tooLarge: offered.filter((file) => file.size > MAX_BYTES),
+    tooMany: fits.length - files.length,
+  };
+}
+
+/** Why files were left out, in the user's words and with the limit; nothing when none was. */
+export function refusals(t: TFunction<'ai'>, { tooLarge, tooMany }: Offer): string[] {
+  return [
+    ...(tooLarge.length > 0
+      ? [
+          t('composer.tooLarge', {
+            mb: MAX_BYTES / (1024 * 1024),
+            names: tooLarge.map((file) => file.name).join(', '),
+          }),
+        ]
+      : []),
+    ...(tooMany > 0 ? [t('composer.tooMany', { max: MAX_FILES })] : []),
+  ];
 }
