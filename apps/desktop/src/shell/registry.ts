@@ -323,7 +323,7 @@ export function useStatusItem(id: StatusItemDefinition['id']): ComponentType | u
 
 /**
  * A mark another area puts on the Filmstrip's thumbnails (FLM-04), such as the design check's
- * findings. It draws itself for one slide, or nothing; the Filmstrip gives it a corner.
+ * findings. It draws itself for one slide, or nothing; the Filmstrip puts it beside the slide's number.
  */
 export interface SlideMarkDefinition extends Registered {
   render: ComponentType<{ slideId: string }>;

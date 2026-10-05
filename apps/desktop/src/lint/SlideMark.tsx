@@ -37,7 +37,7 @@ export function SlideFindingsMark({ slideId }: { slideId: string }) {
     <span
       data-testid="slide-findings-mark"
       data-severity={error ? 'error' : 'warning'}
-      className="inline-flex size-5.5 items-center justify-center rounded-small bg-ui-raised shadow-raised ring-1 ring-ui-line"
+      className="inline-flex items-center"
     >
       <Icon
         icon={error ? CircleAlert : TriangleAlert}

@@ -77,7 +77,7 @@ export interface FilmstripProps {
   /** Labels in the UI language. Default: English. */
   labels?: FilmstripLabels;
   /**
-   * What other areas mark a slide with, drawn in a corner of its thumbnail (FLM-04): the design
+   * What other areas mark a slide with, drawn beside its number under the thumbnail (FLM-04): the design
    * check's findings. A screen reader hears it as the thumbnail's description.
    */
   mark?: (slideId: string) => ReactNode;
@@ -237,18 +237,9 @@ const Thumb = memo(function Thumb({
           <Icon icon={EyeOff} />
         </div>
       ) : null}
-      {mark && (
-        // The corner the hidden mark leaves free; the mark draws itself, or nothing.
-        <div
-          id={markId}
-          data-testid="slide-mark"
-          style={{ position: 'absolute', top: 6, insetInlineStart: 6, display: 'flex', gap: 4 }}
-        >
-          {mark(slide.id)}
-        </div>
-      )}
       <div
         style={{
+          position: 'relative',
           marginTop: 4,
           font: '500 11px/14px var(--font-ui)',
           color: current ? 'var(--color-ui-fg)' : 'var(--color-ui-fg-muted)',
@@ -256,6 +247,17 @@ const Thumb = memo(function Thumb({
         }}
       >
         {slideIndex + 1}
+        {mark && (
+          // Beside the number, not over the picture: the thumbnail stays the slide as it is drawn.
+          // The mark draws itself, or nothing.
+          <div
+            id={markId}
+            data-testid="slide-mark"
+            style={{ position: 'absolute', top: -1, insetInlineStart: 0, display: 'flex', gap: 4 }}
+          >
+            {mark(slide.id)}
+          </div>
+        )}
       </div>
     </div>
   );
