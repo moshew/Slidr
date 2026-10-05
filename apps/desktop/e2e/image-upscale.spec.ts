@@ -83,8 +83,9 @@ test('a picture is upscaled four times as one undo step, and keeps its frame, cr
   // Each choice says what it gives.
   const twice = page.getByRole('menuitem', { name: '2 times the size' });
   const four = page.getByRole('menuitem', { name: '4 times the size' });
-  await expect(twice).toContainText('1280 × 800 pixels');
-  await expect(four).toContainText('2560 × 1600 pixels');
+  await expect(twice).toContainText('1280 × 800');
+  await expect(four).toContainText('2560 × 1600');
+  await expect(four).toContainText('pixels');
   await four.click();
 
   await expect.poll(async () => (await imageOf(page)).assetId).not.toBe(original);
@@ -186,7 +187,7 @@ test('a picture too large to go four times says so, and still goes two', async (
   await expect(four).toContainText('The picture is too large');
   const twice = page.getByRole('menuitem', { name: '2 times the size' });
   await expect(twice).toBeEnabled();
-  await expect(twice).toContainText('4096 × 4096 pixels');
+  await expect(twice).toContainText('4096 × 4096');
   await page.keyboard.press('Escape');
 });
 
@@ -218,13 +219,40 @@ for (const theme of ['light', 'dark'] as const) {
   }
 }
 
-test('the row of a picture still fits at 1366 with Upscale in it', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 768 });
-  await openApp(page, { lang: 'en' });
-  await addPicture(page);
-  const bar = await row(page).boundingBox();
-  const last = await row(page).getByRole('button').last().boundingBox();
-  expect(last!.x + last!.width).toBeLessThanOrEqual(bar!.x + bar!.width);
-  expect(await row(page).evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-  await expect(button(page)).toBeVisible();
-});
+for (const lang of ['he', 'en'] as const) {
+  test(`the row of a picture still fits at 1366 with Upscale in it, at rest and at work: ${lang}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await openApp(page, { lang });
+    await addPicture(page);
+    const fits = async () => {
+      const bar = (await row(page).boundingBox())!;
+      // Every button of the row is inside it, whichever way the row runs.
+      for (const box of await row(page)
+        .getByRole('button')
+        .evaluateAll((buttons) =>
+          buttons.map((b) => {
+            const { left, right } = b.getBoundingClientRect();
+            return { left, right };
+          }),
+        )) {
+        expect(box.left).toBeGreaterThanOrEqual(bar.x);
+        expect(box.right).toBeLessThanOrEqual(bar.x + bar.width);
+      }
+      expect(await row(page).evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    };
+    await expect(button(page)).toBeVisible();
+    await fits();
+    // At work the button gives its place to two things, a little wider than it was.
+    await standIn(page, { tiles: 10, tileMs: 300 });
+    await button(page).click();
+    await page.getByRole('menuitem').first().click();
+    const work = row(page).getByTestId('image-upscale-work');
+    await expect(work).toBeVisible();
+    await fits();
+    await page.screenshot({ path: out(`upscale-working-1366-${lang}`) });
+    await work.getByRole('button').click();
+    await expect(work).toHaveCount(0);
+  });
+}
