@@ -110,6 +110,7 @@ function TextView({ element: e }: { element: TextElement }) {
       autoFit={e.autoFit}
       columns={e.columns}
       wrap={e.wrap}
+      size={e.frame}
     >
       {ctx.textSlot?.(e)}
     </TextBox>

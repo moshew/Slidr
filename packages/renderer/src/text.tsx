@@ -488,6 +488,7 @@ export function TextBox({
   autoFit,
   columns,
   wrap,
+  size,
   styleRef = 'body',
   children,
 }: {
@@ -497,6 +498,8 @@ export function TextBox({
   autoFit: TextElement['autoFit'];
   columns?: number;
   wrap?: boolean;
+  /** The size of the element's frame: text that shrinks to fit is fitted again when it changes. */
+  size?: { w: number; h: number };
   styleRef?: TextStyleRef;
   /** Shown instead of the text (a `TextSlot`); the box around it stays the same. */
   children?: ReactNode;
@@ -507,11 +510,32 @@ export function TextBox({
   const inner = useRef<HTMLDivElement>(null);
   const shrink = autoFit === 'shrink';
   const fontLoads = useFontLoads(shrink);
+  /** The size of the box the text was last fitted into. */
+  const fitted = useRef<{ w: number; h: number } | null>(null);
   useLayoutEffect(() => {
     if (!box.current || !measure.current || !inner.current) return;
-    if (shrink) shrinkToFit(box.current, measure.current, inner.current);
-    else inner.current.style.zoom = '';
-  }, [shrink, fontLoads, content, padding, columns, wrap, ctx.theme]);
+    if (shrink) {
+      shrinkToFit(box.current, measure.current, inner.current);
+      fitted.current = { w: box.current.clientWidth, h: box.current.clientHeight };
+    } else inner.current.style.zoom = '';
+    // The frame is among what the fit depends on: a resize gives the element a new frame and
+    // leaves its text, its padding and the theme the objects they were (ADR-007).
+  }, [shrink, fontLoads, content, padding, columns, wrap, ctx.theme, size?.w, size?.h]);
+  // And whatever else makes the box another size (the element's own `css`, a slot): the box
+  // itself is watched, since it is what the text is measured against.
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!shrink || !el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const last = fitted.current;
+      if (last && last.w === el.clientWidth && last.h === el.clientHeight) return;
+      if (!measure.current || !inner.current) return;
+      shrinkToFit(el, measure.current, inner.current);
+      fitted.current = { w: el.clientWidth, h: el.clientHeight };
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [shrink]);
   const grow = autoFit === 'growHeight';
   return (
     <div
