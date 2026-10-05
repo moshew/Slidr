@@ -457,6 +457,13 @@ describe('changeDirection', () => {
             padding: { top: 0, right: 12, bottom: 0, left: 4 },
             content: richText('חדש', { dir: 'rtl' }),
           }),
+          // A chip: a shape that holds its own text, with more room on one side of it.
+          createElement.shape({
+            id: 'e_card_chip',
+            frame: box(280, 24, 96, 40),
+            content: richText('3'),
+            padding: { top: 2, right: 20, bottom: 2, left: 6 },
+          }),
         ],
       }),
     );
@@ -513,6 +520,12 @@ describe('changeDirection', () => {
     expect(element(there, 'e_card_text')).toMatchObject({
       frame: box(176, 24, 200, 60),
       padding: { top: 0, right: 4, bottom: 0, left: 12 },
+    });
+    // A shape is flipped and its text is not: the room around the text changes sides with it.
+    expect(element(there, 'e_card_chip')).toMatchObject({
+      frame: box(24, 24, 96, 40),
+      flipH: true,
+      padding: { top: 2, right: 6, bottom: 2, left: 20 },
     });
     expect(there.slides[0]!.background?.fill).toMatchObject({ angle: -120 });
     // A table keeps the order of its columns: that is a choice of its own (TBL-07).

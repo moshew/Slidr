@@ -117,19 +117,18 @@ export function layoutAssets(template: Template, layouts: readonly Layout[]): As
   );
 }
 
+/** The room an element keeps around its text: a text box's, and a shape's around what it holds. */
+const roomOf = (element: Element) =>
+  element.type === 'text' || element.type === 'shape' ? element.padding : undefined;
+
 /** The fields mirroring changes in one element, as an `element.update` patch. */
 function mirrorPatch(before: Element, after: Element): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
   if (after.frame.x !== before.frame.x) patch.frame = after.frame;
   if (after.rotation !== before.rotation) patch.rotation = after.rotation;
   if (Boolean(after.flipH) !== Boolean(before.flipH)) patch.flipH = after.flipH ? true : null;
-  if (
-    after.type === 'text' &&
-    before.type === 'text' &&
-    !equalJson(after.padding, before.padding)
-  ) {
-    patch.padding = after.padding;
-  }
+  const room = roomOf(after);
+  if (!equalJson(room, roomOf(before))) patch.padding = room;
   return patch;
 }
 
