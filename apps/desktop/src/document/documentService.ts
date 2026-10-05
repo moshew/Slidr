@@ -168,9 +168,20 @@ export class DocumentService {
     const revision = this.#revision;
     const deck = prepareForSave(this.bus.deck);
     const deckJson = JSON.stringify(deck);
-    const saved = await this.#enqueue(() =>
-      this.#storage.save(workspace.id, path, deckJson, deck.meta.title),
-    );
+    let saved: SavedDeck;
+    try {
+      saved = await this.#enqueue(() =>
+        this.#storage.save(workspace.id, path, deckJson, deck.meta.title),
+      );
+    } catch (error) {
+      // The save was to write the workspace as well, so the autosave was put off for it. A save
+      // that is refused before it got there (a full disk) leaves the change in memory alone:
+      // the autosave is owed again, and reports for itself if it cannot write either.
+      if (this.#workspace?.id === workspace.id && this.#revision !== this.#autosavedRevision) {
+        this.#scheduleAutosave();
+      }
+      throw error;
+    }
     if (this.#workspace?.id === workspace.id) {
       this.#workspace = { ...this.#workspace, sourcePath: saved.path };
       this.#savedRevision = revision;

@@ -344,6 +344,39 @@ describe('DocumentService', () => {
       expect(titleIn(storage.files.get('C:/decks/a.slidr'))).not.toBe('Newer');
     });
 
+    it('still autosaves a change whose save was refused before the workspace was written', async () => {
+      const failed: unknown[] = [];
+      const guarded = new DocumentService(storage, new CommandBus(createDeck()), {
+        autosaveDelayMs: 1000,
+        autosaveRetryMs: 5000,
+        onAutosaveError: (error) => failed.push(error),
+      });
+      await guarded.create(hebrewDeck());
+      const id = guarded.workspace!.id;
+      // Refused before anything is stored: a full disk.
+      storage.save = () => Promise.reject(new StorageError('disk_full', 'could not write'));
+
+      // Ctrl+S inside the quiet time of the change: the save takes the place of its autosave.
+      guarded.bus.dispatch(rename('Typed a moment before Ctrl+S'));
+      await vi.advanceTimersByTimeAsync(500);
+      await expect(guarded.saveAs('C:/decks/a.slidr')).rejects.toMatchObject({ kind: 'disk_full' });
+      expect(storage.workspaces.get(id)?.deckJson).toBeNull();
+
+      // With no further change from the user, the change still reaches the workspace: a crash
+      // from here on loses nothing.
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(titleIn(storage.workspaces.get(id)?.deckJson)).toBe('Typed a moment before Ctrl+S');
+      expect(failed).toEqual([]);
+
+      // And a workspace that cannot be written either raises the alert the autosave has.
+      const full = new StorageError('disk_full', 'could not write deck.json');
+      storage.writeDeck = () => Promise.reject(full);
+      guarded.bus.dispatch(rename('Next'));
+      await expect(guarded.saveAs('C:/decks/a.slidr')).rejects.toMatchObject({ kind: 'disk_full' });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(failed).toEqual([full]);
+    });
+
     it('refuses a file whose deck was cut short, and cleans up after itself', async () => {
       const whole = JSON.stringify(hebrewDeck());
       storage.files.set('C:/cut.slidr', whole.slice(0, whole.length / 2));
