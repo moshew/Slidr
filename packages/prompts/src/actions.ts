@@ -81,7 +81,7 @@ const OPTIONS =
 
 /** What filling a chart or a table from a pasted text may not do to it (AIO-07, AIO-08). */
 const EXACT =
-  'Names stay as the text writes them and numbers stay exact: nothing is rounded, estimated or made up, and what the text does not give stays empty, not guessed.';
+  'Names stay as the text writes them and numbers stay exact: nothing is rounded, estimated or made up.';
 
 /** How a fill ends: the user pasted more than the element shows, and should know what went in. */
 const TOOK =
@@ -303,13 +303,13 @@ export const ACTIONS = define({
     scope: 'object',
     needs: ['ui_present_options'],
     ask: (p) =>
-      `Suggest chart types for the data of this chart. Read the data first: what it compares (values over time, categories against each other, parts of a whole, two measures against each other), in how many series and how many points. Offer the ${count(p, 3)} types that show it best, the best first, leaving out the type the chart has now. Show them with ui_present_options, kind "chart": each option's \`set\` is the chart_set arguments that make the change, without the element id, as in {"chartType": "line"}. The data stays as it is; add to \`set\` only an option the new type cannot do without, such as a legend for several series. Each label names the type and, in two or three words, what it brings out. ${OPTIONS} If the type the chart has now is the best one for this data, say so in your reply.`,
+      `Suggest chart types for the data of this chart. Read the data first: what it compares (values over time, categories against each other, parts of a whole, two measures against each other), in how many series and how many points. Offer up to ${count(p, 3)} other types that show this data well, the best first. The type the chart has now is not one of them, with or without another option: the user is looking at it. When fewer types fit the data, offer fewer, two at the least. Show them with ui_present_options, kind "chart": each option's \`set\` is the chart_set arguments that make the change, without the element id, and as a rule the type alone, as in {"chartType": "line"}. The data and the other options of the chart stay as the user has them; add an option to \`set\` only when the new type cannot be read without it, such as a legend for several series. Each label names the type and, in two or three words, what it brings out. ${OPTIONS} If the type the chart has now is the best one for this data, say so in your reply.`,
   },
   'chart.fill': {
     scope: 'object',
     needs: ['chart_set'],
     ask: () =>
-      `Fill this chart from the text in \`description\`, which the user pasted: find the numbers in it and what each one measures, and set them as the categories and series of the chart with chart_set. ${EXACT} A number written with a unit or a sign ("12%", "$1,200", "3.5M") goes in as its value, and the unit belongs in the name of its series or in the title of the axis. The chart keeps its type and its look, unless the new data cannot be shown in that type: then choose the type that fits, and say so. If the chart's title no longer fits the data, give it one that says what the data shows. Look at the slide afterwards. ${TOOK}`,
+      `Fill this chart from the text in \`description\`, which the user pasted: find the numbers in it and what each one measures, and set them as the categories and series of the chart with chart_set. ${EXACT} Only what the text gives a number for is a category: an item it names without one is left out of the chart. Where several series share the categories, a value the text does not give is a gap (null), not a guess. A number written with a unit or a sign ("12%", "$1,200", "3.5M") goes in as its value, and the unit belongs in the name of its series or in the title of the axis. The chart keeps its type and its look, unless the new data cannot be shown in that type: then choose the type that fits, and say so. If the chart's title no longer fits the data, give it one that says what the data shows. Look at the slide afterwards. ${TOOK}`,
   },
   'chart.title': {
     scope: 'object',
@@ -324,7 +324,7 @@ export const ACTIONS = define({
     scope: 'object',
     needs: ['table_set'],
     ask: () =>
-      `Fill this table from the text in \`description\`, which the user pasted: find the items it lists and what it says about each, and set them as the cells of the table with table_set: a header row that names the columns, then a row for each item. A cell is short (a name, a number, a few words): a sentence of the text becomes the fact it states. ${EXACT} The table keeps its frame and its style, and takes the number of rows and columns the content asks for. Look at the slide afterwards: a table that grew has to stay readable, and if it cannot, say so instead of shrinking its text. ${TOOK}`,
+      `Fill this table from the text in \`description\`, which the user pasted: find the items it lists and what it says about each, and set them as the cells of the table with table_set: a header row that names the columns, then a row for each item. A cell is short (a name, a number, a few words): a sentence of the text becomes the fact it states. ${EXACT} A cell the text gives nothing for stays empty. The table keeps its frame and its style, and takes the number of rows and columns the content asks for. Look at the slide afterwards: a table that grew has to stay readable, and if it cannot, say so instead of shrinking its text. ${TOOK}`,
   },
   'table.style': {
     scope: 'object',

@@ -297,9 +297,15 @@ describe('the actions of a chart and of a table (AIO-07, AIO-08)', () => {
       expect(text, id).toContain(example);
       expect(text, id).toContain('do not apply one yourself');
     }
-    expect(message('chart.type', { count: 3 })).toContain('Offer the 3 types');
+    expect(message('chart.type', { count: 3 })).toContain('Offer up to 3 other types');
     expect(message('chart.title', { count: 6 })).toContain('Offer 6 titles');
     expect(message('table.style')).toContain('Offer 3 looks');
+    // Against Sonnet, a request that only said "leaving out the type the chart has now" got the
+    // same type back with value labels as its third option, and labels on every other one.
+    const types = message('chart.type');
+    expect(types).toContain('The type the chart has now is not one of them');
+    expect(types).toContain('as a rule the type alone');
+    expect(types).toContain('offer fewer, two at the least');
   });
 
   it('fill from a pasted text, which may be a page long and stays data', () => {
@@ -321,6 +327,10 @@ describe('the actions of a chart and of a table (AIO-07, AIO-08)', () => {
       expect(text, id).toContain('nothing is rounded, estimated or made up');
       expect(text, id).toContain('what in it you left out');
     }
+    // Against Sonnet, "what the text does not give stays empty" made a branch that the text
+    // named without a number into a category with no bar.
+    expect(message('chart.fill')).toContain('an item it names without one is left out');
+    expect(message('table.fill')).toContain('A cell the text gives nothing for stays empty');
   });
 
   it('send what an object session cannot do to the slide chat, naming the table', () => {
