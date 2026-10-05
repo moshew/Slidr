@@ -14,6 +14,12 @@ export interface DocumentParts {
   slides: string;
   /** `@font-face` rules for fonts that are not assets of the deck. */
   fontCss: string;
+  /**
+   * `@font-face` rules for the fonts the deck carries as assets, each around its font. They come
+   * after the others, as they did when every slide wrote them: where both name one face of one
+   * family, the deck's own font is the one that draws.
+   */
+  deckFontCss?: string | undefined;
   /** The runtime bundle. */
   script: string;
   /**
@@ -66,6 +72,7 @@ export function buildDocument(parts: DocumentParts): string {
     `<title>${escapeHtml(parts.title)}</title>`,
     `<style>${inline(baseCss(size))}</style>`,
     parts.fontCss ? `<style data-slidr-fonts>${inline(parts.fontCss)}</style>` : '',
+    parts.deckFontCss ? `<style data-slidr-deck-fonts>${inline(parts.deckFontCss)}</style>` : '',
     `<noscript><style>${noScriptCss()}</style></noscript>`,
     '</head>',
     '<body>',

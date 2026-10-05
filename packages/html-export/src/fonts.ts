@@ -18,7 +18,9 @@ import type { ExportWarning } from './warnings';
  * The faces are those the page registered with `@font-face` rules, which is how the app registers
  * its built-in library; this package knows nothing of that library and reads the rules. Fonts
  * that are assets of the deck are not touched here: every slide registers them itself, in its own
- * markup, and they go into the file whole with the other assets.
+ * markup, and they go into the file whole with the other assets. Those rules are moved from the
+ * slides to the head of the file once the slides are drawn (`takeDeckFonts`), so the file holds
+ * each of the deck's fonts once.
  */
 
 export interface EmbeddedFont {

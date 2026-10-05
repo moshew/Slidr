@@ -167,6 +167,34 @@ export function markHeadings(host: HTMLElement, slides: readonly Slide[]): void 
   });
 }
 
+/** The rules a slide registers the deck's fonts with, at its root (`SlideRenderer`). */
+const DECK_FONTS = ':scope > section > .slidr-slide > style[data-slidr-fonts]';
+
+/**
+ * Takes the font rules of the deck out of the drawn slides and returns them, each once.
+ *
+ * Every slide registers the fonts the deck carries as assets for itself (`deckFontFaces` of the
+ * renderer): a slide is drawn alone on the Stage, in a thumbnail, in a capture. In a file all the
+ * slides are one page and a rule holds its font as data, so a rule in every slide was a copy of
+ * every font for every slide: three slides and one font of 20 KB were 60 KB of font. A
+ * `@font-face` rule names its family for the whole document wherever it stands, so the rules
+ * belong to the file: once, in its head, and every slide draws with them.
+ *
+ * It is called last, right before the slides are written, with nothing awaited in between: the
+ * slides are still laid out, and a slide measured again without its fonts would be written with
+ * another fit of its text.
+ */
+export function takeDeckFonts(host: HTMLElement): string {
+  const rules = new Set<string>();
+  for (const style of Array.from(host.querySelectorAll(DECK_FONTS))) {
+    const css = style.textContent?.trim();
+    // The slides of one deck all say the same; said differently, each saying is kept.
+    if (css) rules.add(css);
+    style.remove();
+  }
+  return Array.from(rules).join('\n');
+}
+
 /**
  * Writes down what media elements hold only as properties, which markup does not carry: React
  * sets `muted` and the volume on the element, not as attributes. The runtime reads the volume

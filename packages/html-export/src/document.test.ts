@@ -46,6 +46,22 @@ describe('buildDocument', () => {
 
   it('leaves the font stylesheet out when there are no fonts to carry', () => {
     expect(buildDocument(parts)).not.toContain('data-slidr-fonts');
+    expect(buildDocument(parts)).not.toContain('data-slidr-deck-fonts');
+  });
+
+  it("writes the deck's own fonts once in the head, after the others, and closed as they are", () => {
+    const html = buildDocument({
+      ...parts,
+      fontCss: '@font-face { font-family: "Library"; }',
+      deckFontCss: '@font-face { font-family: "Deck</style>"; }',
+    });
+    const library = html.indexOf('<style data-slidr-fonts>@font-face { font-family: "Library"; }');
+    const deck = html.indexOf(
+      '<style data-slidr-deck-fonts>@font-face { font-family: "Deck<\\/style>"; }</style>',
+    );
+    expect(library).toBeGreaterThan(-1);
+    expect(deck).toBeGreaterThan(library);
+    expect(deck).toBeLessThan(html.indexOf('</head>'));
   });
 
   it('shows the slides as a page when scripts do not run', () => {

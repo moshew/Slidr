@@ -4,7 +4,7 @@ import { playerBundle } from '@slidr/runtime/bundle';
 import { embedAsset, measureNeeds, typed, type EmbeddedAsset, type LoadedAsset } from './assets';
 import { buildDocument } from './document';
 import { embedFonts, type EmbeddedFont } from './fonts';
-import { markHeadings, persistMediaState, renderSlides } from './render';
+import { markHeadings, persistMediaState, renderSlides, takeDeckFonts } from './render';
 import type { ExportWarning } from './warnings';
 import { writeSlides } from './written';
 
@@ -134,6 +134,7 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
     let markup: string;
     let needs: ReturnType<typeof measureNeeds>;
     let fontCss = '';
+    let deckFontCss = '';
     let fonts: EmbeddedFont[] = [];
     let chartCount = 0;
     try {
@@ -151,6 +152,9 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       }
       markHeadings(rendered.host, slides);
       persistMediaState(rendered.host);
+      // The fonts of the deck go to the head of the file, once, and not into every slide. Taken
+      // out last, and the slides are written at once, before anything lays them out again.
+      deckFontCss = takeDeckFonts(rendered.host);
       // The markup, checked against what a browser will build from it (`written.ts`).
       const written = writeSlides(rendered.host);
       markup = written.markup;
@@ -159,8 +163,11 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       rendered.dispose();
     }
 
-    // Each object URL in the markup gives way to the asset itself.
-    const used = assets.filter((asset) => markup.includes(asset.url));
+    // Each object URL in the markup, and in the font rules of the deck, gives way to the asset
+    // itself.
+    const used = assets.filter(
+      (asset) => markup.includes(asset.url) || deckFontCss.includes(asset.url),
+    );
     const pixelRatio = options.pixelRatio ?? 2;
     const quality = options.imageQuality ?? 0.9;
     const embedded = await Promise.all(
@@ -173,7 +180,9 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
     const uris = new Map(used.map((asset, i) => [asset.url, embedded[i]?.uri ?? '']));
     if (used.length) {
       const urls = new RegExp(used.map((asset) => escapeRegExp(asset.url)).join('|'), 'g');
-      markup = markup.replace(urls, (url) => uris.get(url) ?? url);
+      const inFile = (text: string) => text.replace(urls, (url) => uris.get(url) ?? url);
+      markup = inFile(markup);
+      deckFontCss = inFile(deckFontCss);
     }
 
     // The chart library goes into a file only with a chart to draw (EXP-12), and is loaded
@@ -188,6 +197,7 @@ export async function exportHtml(deck: Deck, options: ExportOptions): Promise<Ex
       size: deck.size,
       slides: markup,
       fontCss,
+      deckFontCss,
       script: playerBundle,
       chartScript,
     });
