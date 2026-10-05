@@ -63,12 +63,19 @@ test('the footer of the deck is on every slide with a place for one, and stays w
   await openTemplates(page, { defaultTemplate: 'zerem' });
   await addSlide(page, 'l_zerem_cards');
   const steps = await undoSteps(page);
+  // The slide's own footer is empty, and says on the Stage what it is for.
+  const hint = onStage(page, '[data-placeholder-hint="footer"]');
+  await expect(hint).toHaveCount(1);
   const field = panel(page).getByTestId('master-footer');
   await field.fill('זרם · סקירת ארכיטקטורה');
   await field.press('Enter');
   const footer = onStage(page, '[data-decoration-id^="d_footer_"]');
   await expect(footer).toHaveText('זרם · סקירת ארכיטקטורה');
   expect(await undoSteps(page)).toBe(steps + 1);
+  // The deck's footer stands in that seat now: no hint is drawn over its words. The other
+  // empty placeholders of the slide keep theirs.
+  await expect(hint).toHaveCount(0);
+  await expect(onStage(page, '[data-placeholder-hint="title"]')).toHaveCount(1);
 
   // A slide that writes a footer of its own shows its own in the same place.
   const own = (await deck(page)).slides[1]!.elements.find((e) => e.role === 'footer')!;
@@ -96,10 +103,11 @@ test('the footer of the deck is on every slide with a place for one, and stays w
   expect((await deck(page)).theme.id).toBe('zerem');
   await expect(footer).toHaveText('זרם · סקירת ארכיטקטורה');
 
-  // An empty field takes the footer away.
+  // An empty field takes the footer away, and the hint of the slide's own is back.
   await field.fill('');
   await field.blur();
   await expect(footer).toHaveCount(0);
+  await expect(hint).toHaveCount(1);
   expect(errors).toEqual([]);
 });
 

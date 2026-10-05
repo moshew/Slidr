@@ -1629,6 +1629,17 @@ export function Stage({
     selection.getState().stopEditing();
     container.current?.focus({ preventScroll: true });
   }, [selection]);
+  // The deck's footer, when the slide's layout draws one (SLD-04). It shows wherever the slide's
+  // own footer is empty, in the seat of that empty footer: the words that stand there are the
+  // deck's, and a hint would be drawn over them.
+  const layoutFooter = useMemo(
+    () =>
+      deck.layouts
+        .find((layout) => layout.id === slide?.layoutId)
+        ?.decorations.some((decoration) => decoration.role === 'footer' && !decoration.hidden) ??
+      false,
+    [deck.layouts, slide?.layoutId],
+  );
   // The empty placeholders of the slide and what each of them says (ADR-040). As one string,
   // so that the map below changes only when a hint does, and not with every move of an element.
   const hinted = useMemo(() => {
@@ -1637,11 +1648,12 @@ export function Stage({
     for (const { element, hidden } of index.values()) {
       if (element.type !== 'text' || !element.role || hidden) continue;
       if (plainText(element.content) !== '') continue;
+      if (element.role === 'footer' && layoutFooter) continue;
       const hint = placeholderHint(element);
       if (hint) entries.push(`${element.id}\n${hint}`);
     }
     return entries.join('\n\n');
-  }, [index, placeholderHint]);
+  }, [index, placeholderHint, layoutFooter]);
   const hints = useMemo(
     () =>
       new Map(
