@@ -234,6 +234,36 @@ describe('elements', () => {
     expect(hasText(slide, 'e_label')).toBe(true);
     expect(hasText(slide, 'e_gone')).toBe(false);
   });
+
+  it('counts the text inside a group: the runtime brings in every paragraph it finds there', () => {
+    // A card as a converted slide has it, with a number in a circle in a group of its own, and
+    // a group that is only drawn.
+    const card = createElement.group({
+      id: 'e_card',
+      frame,
+      children: [
+        createElement.shape({ id: 'e_card_box', frame }),
+        createElement.group({
+          id: 'e_badge',
+          frame,
+          children: [createElement.shape({ id: 'e_number', frame, content: richText('1') })],
+        }),
+      ],
+    });
+    const drawing = createElement.group({
+      id: 'e_drawing',
+      frame,
+      children: [
+        createElement.shape({ id: 'e_part', frame }),
+        createElement.shape({ id: 'e_blank', frame, content: richText(' ') }),
+        createElement.image({ id: 'e_photo', frame }),
+      ],
+    });
+    const slide = createSlide({ id: 's_cards', elements: [card, drawing] });
+    expect(hasText(slide, 'e_card')).toBe(true);
+    expect(hasText(slide, 'e_badge')).toBe(true);
+    expect(hasText(slide, 'e_drawing')).toBe(false);
+  });
 });
 
 describe('direction', () => {

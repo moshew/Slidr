@@ -2,6 +2,7 @@ import {
   findElement,
   newId,
   plainText,
+  walkElements,
   type AnimationStep,
   type Command,
   type Deck,
@@ -299,12 +300,24 @@ export function elementSnippet(element: Element): string | undefined {
   return line.length > SNIPPET ? `${line.slice(0, SNIPPET).trimEnd()}…` : line;
 }
 
-/** Whether an element has text the runtime can bring in by paragraph, word or character. */
+/** Whether an element draws paragraphs of its own: a text box, a table, a shape with text. */
+function holdsText(element: Element): boolean {
+  if (element.type === 'text' || element.type === 'table') return true;
+  return element.type === 'shape' && Boolean(element.content && plainText(element.content).trim());
+}
+
+/**
+ * Whether an element has text the runtime can bring in by paragraph, word or character. A group
+ * has when anything inside it has, at any depth: the runtime takes the paragraphs it finds under
+ * the element it is given (`paragraphsOf`), so a card comes in a paragraph at a time, its box
+ * standing from the start as the outline of a shape does.
+ */
 export function hasText(slide: Slide, elementId: string): boolean {
   const element = findElement(slide, elementId);
   if (!element) return false;
-  if (element.type === 'text' || element.type === 'table') return true;
-  return element.type === 'shape' && Boolean(element.content && plainText(element.content).trim());
+  if (element.type !== 'group') return holdsText(element);
+  for (const inside of walkElements(element.children)) if (holdsText(inside)) return true;
+  return false;
 }
 
 /* ---------------------------------------------------------------- direction */

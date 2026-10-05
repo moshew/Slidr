@@ -159,6 +159,29 @@ describe('createTimeline', () => {
     expect(fake.hidden(node('list'))).toBe(false);
   });
 
+  it('brings in the paragraphs of everything inside a group, and leaves its box standing', () => {
+    // A group as the renderer draws one: its children inside it, a card's box first. The
+    // animations panel offers "by paragraph" for a group on the strength of this.
+    document.body.innerHTML = `
+      <div data-slide-id="s1">
+        <div data-element-id="card">
+          <div data-element-id="card_box"></div>
+          <div data-element-id="card_title"><p>Faster onboarding</p></div>
+          <div data-element-id="badge"><div data-element-id="number"><p>1</p></div></div>
+          <div data-element-id="card_text"><p>Two days</p><p>in place of ten</p></div>
+        </div>
+      </div>`;
+    slide = document.body.firstElementChild as HTMLElement;
+    const t = timeline([step('card', { textBy: 'paragraph' })]);
+    expect(t.clicks).toBe(4);
+    const paragraphs = Array.from(node('card').querySelectorAll('p'));
+    t.apply(2);
+    expect(paragraphs.map((p) => fake.hidden(p))).toEqual([false, true, true, true]);
+    expect(fake.hidden(node('card'))).toBe(false);
+    expect(fake.hidden(node('card_box'))).toBe(false);
+    expect(warnings).toEqual([]);
+  });
+
   it('staggers words, and puts the text back when the group ends', async () => {
     const t = timeline([step('title', { textBy: 'word', duration: 500 })]);
     expect(t.duration(1)).toBe(600);
