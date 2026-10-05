@@ -8,8 +8,9 @@ import { providerStateLabel, type ProviderStateLabel } from '../images/ImageSett
 import { loadSettings, useSettings } from '../settings';
 import { openPanel, PanelId, tell, useDeck, useEditor } from '../shell';
 import { insertAsset } from './insert';
-import { AssetTile, Group, TabBody, TileGrid } from './parts';
+import { AssetTile, Group, ReplaceHint, TabBody, TileGrid } from './parts';
 import { cancelFill, fillPlaceholder, fillPlaceholders } from './placeholders';
+import { offersReplace, replaceSelected, useSelectedPicture } from './replace';
 import { useMedia } from './store';
 
 /**
@@ -37,6 +38,7 @@ export function AiTab() {
   );
   const provider = useProviderState();
   const ready = provider === 'ready';
+  const picture = useSelectedPicture();
   const slideNumber = (slideId: string) => deck.slides.findIndex((s) => s.id === slideId) + 1;
   const idle = placeholders.filter((p) => jobs[p.elementId]?.state !== 'working');
   const working = placeholders.some((p) => jobs[p.elementId]?.state === 'working');
@@ -107,18 +109,29 @@ export function AiTab() {
             className="min-h-48"
           />
         ) : (
-          <TileGrid label={t('ai.history')}>
-            {made.map((asset) => (
-              <AssetTile
-                key={asset.id}
-                asset={asset}
-                label={t('ai.insert', { prompt: firstLine(asset.lineage?.prompt) })}
-                onPick={() => {
-                  if (!insertAsset(editor, asset)) void tell(t('noSlide'));
-                }}
-              />
-            ))}
-          </TileGrid>
+          <>
+            <ReplaceHint shown={picture !== undefined} />
+            <TileGrid label={t('ai.history')}>
+              {made.map((asset) => (
+                <AssetTile
+                  key={asset.id}
+                  asset={asset}
+                  label={t('ai.insert', { prompt: firstLine(asset.lineage?.prompt) })}
+                  onPick={() => {
+                    if (!insertAsset(editor, asset)) void tell(t('noSlide'));
+                  }}
+                  replace={
+                    offersReplace(picture, asset.id)
+                      ? {
+                          label: t('replace', { name: firstLine(asset.lineage?.prompt) }),
+                          onReplace: () => replaceSelected(editor, picture, asset),
+                        }
+                      : undefined
+                  }
+                />
+              ))}
+            </TileGrid>
+          </>
         )}
       </Group>
     </TabBody>

@@ -6,18 +6,21 @@ import { Button, EmptyState } from '@slidr/ui';
 import { insertImages } from '../objects/insert';
 import { tell, useDeck, useEditor } from '../shell';
 import { insertAsset } from './insert';
-import { AssetTile, TabBody, TileGrid } from './parts';
+import { AssetTile, ReplaceHint, TabBody, TileGrid } from './parts';
+import { offersReplace, replaceSelected, useSelectedPicture } from './replace';
 
 /**
  * The deck's own pictures (SPEC 4.2, WG5-T13): what the user uploaded, dropped or pasted, and
  * what an imported file brought with it. Uploading puts the picture on the current slide, as the
  * Insert button does; a picture already in the deck is added to a slide again with a click, and
- * one the deck no longer uses can be taken out of it.
+ * one the deck no longer uses can be taken out of it. While a picture is selected on the Stage,
+ * a tile also offers its own picture in that one's place.
  */
 export function UploadsTab() {
   const { t } = useTranslation('media');
   const editor = useEditor();
   const assets = useDeck((s) => s.deck.assets);
+  const picture = useSelectedPicture();
   const pictures = useMemo(
     () =>
       Object.values(assets).filter(
@@ -58,22 +61,33 @@ export function UploadsTab() {
           className="min-h-64"
         />
       ) : (
-        <TileGrid label={t('uploads.list')}>
-          {pictures.map((asset) => (
-            <AssetTile
-              key={asset.id}
-              asset={asset}
-              label={t('uploads.insert', { name: nameOf(asset) })}
-              onPick={() => {
-                if (!insertAsset(editor, asset)) void tell(t('noSlide'));
-              }}
-              remove={{
-                label: t('uploads.remove', { name: nameOf(asset) }),
-                onRemove: () => remove(asset),
-              }}
-            />
-          ))}
-        </TileGrid>
+        <>
+          <ReplaceHint shown={picture !== undefined} />
+          <TileGrid label={t('uploads.list')}>
+            {pictures.map((asset) => (
+              <AssetTile
+                key={asset.id}
+                asset={asset}
+                label={t('uploads.insert', { name: nameOf(asset) })}
+                onPick={() => {
+                  if (!insertAsset(editor, asset)) void tell(t('noSlide'));
+                }}
+                replace={
+                  offersReplace(picture, asset.id)
+                    ? {
+                        label: t('replace', { name: nameOf(asset) }),
+                        onReplace: () => replaceSelected(editor, picture, asset),
+                      }
+                    : undefined
+                }
+                remove={{
+                  label: t('uploads.remove', { name: nameOf(asset) }),
+                  onRemove: () => remove(asset),
+                }}
+              />
+            ))}
+          </TileGrid>
+        </>
       )}
     </TabBody>
   );

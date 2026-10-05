@@ -16,7 +16,8 @@ import { isWebAddress, openPanel, PanelId, tell, useDeck, useEditor } from '../s
 import { stockOf } from './appStock';
 import { toEnglish } from './icons/library';
 import { insertAsset } from './insert';
-import { Group, TabBody } from './parts';
+import { Group, ReplaceButton, ReplaceHint, TabBody, type TileReplacement } from './parts';
+import { replaceSelected, useSelectedPicture } from './replace';
 import {
   creditOf,
   stockAsset,
@@ -56,7 +57,8 @@ function errorKey(error: unknown): string {
 /**
  * Stock photos (GEN-08, WG12-T06): search a photo library, and add a photo to the slide with a
  * click. The photo is taken into the deck's assets with its credit (who took it, where, under
- * which licence), and the element and the asset are one undo step.
+ * which licence), and the element and the asset are one undo step. While a picture is selected
+ * on the Stage, a photo can be taken in that one's place instead.
  *
  * The tab shows what the libraries' terms ask of an app that shows their photos: the
  * photographer under every photo, and a line that names the library.
@@ -74,6 +76,7 @@ export function StockTab() {
   /** What the last search asked for, to load its next page. */
   const [asked, setAsked] = useState<{ query: string; english: string | null } | null>(null);
   const [taking, setTaking] = useState<string | null>(null);
+  const picture = useSelectedPicture();
   /** Counts the searches, so an answer that arrives late does not replace a newer one. */
   const latest = useRef(0);
 
@@ -135,13 +138,15 @@ export function StockTab() {
     void search(1);
   };
 
-  const take = async (photo: StockPhoto) => {
+  /** Takes a photo into the deck: onto the slide, or in place of the picture `instead`. */
+  const take = async (photo: StockPhoto, instead?: typeof picture) => {
     const workspace = workspaceId();
     if (!workspace || taking) return;
     setTaking(photo.id);
     try {
       const imported = await client.import(workspace, photo.source, photo.id);
-      if (!insertAsset(editor, stockAsset(imported))) await tell(t('noSlide'));
+      if (instead) replaceSelected(editor, instead, stockAsset(imported));
+      else if (!insertAsset(editor, stockAsset(imported))) await tell(t('noSlide'));
     } catch {
       await tell(t('stock.error.import'));
     } finally {
@@ -265,6 +270,7 @@ export function StockTab() {
               {t('stock.searchingFor', { query: asked.english })}
             </p>
           )}
+          <ReplaceHint shown={picture !== undefined} />
           <div
             role="group"
             aria-label={t('stock.results')}
@@ -278,6 +284,14 @@ export function StockTab() {
                 client={client}
                 busy={taking === photo.id}
                 onPick={() => void take(photo)}
+                replace={
+                  picture
+                    ? {
+                        label: t('replace', { name: photo.description ?? photo.author }),
+                        onReplace: () => void take(photo, picture),
+                      }
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -323,11 +337,14 @@ function PhotoTile({
   client,
   busy,
   onPick,
+  replace,
 }: {
   photo: StockPhoto;
   client: StockClient;
   busy: boolean;
   onPick: () => void;
+  /** Offered while a picture is selected on the Stage: the photo in that one's place. */
+  replace: TileReplacement | undefined;
 }) {
   const { t } = useTranslation('media');
   const [url, setUrl] = useState<string | null>(null);
@@ -352,7 +369,7 @@ function PhotoTile({
 
   const label = t('stock.insert', { description: photo.description ?? photo.author });
   return (
-    <figure className="mb-2 flex break-inside-avoid flex-col gap-1">
+    <figure className="relative mb-2 flex break-inside-avoid flex-col gap-1">
       <button
         type="button"
         aria-label={label}
@@ -375,6 +392,7 @@ function PhotoTile({
           </span>
         )}
       </button>
+      {replace && !busy && <ReplaceButton replace={replace} id={photo.id} />}
       <figcaption className="truncate text-xs text-ui-fg-muted">
         {t('stock.by', { author: photo.author })}
       </figcaption>

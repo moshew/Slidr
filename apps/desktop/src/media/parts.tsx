@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { AssetMeta } from '@slidr/model';
-import { cx, IconButton, Tooltip } from '@slidr/ui';
-import { Trash2 } from '@slidr/ui/icons';
+import { useTranslation } from 'react-i18next';
+import { cx, Icon, IconButton, Tooltip } from '@slidr/ui';
+import { Replace, Trash2 } from '@slidr/ui/icons';
 import { useEditor } from '../shell';
 import { startAssetDrag } from './drag';
 
@@ -48,22 +49,77 @@ export interface TileRemoval {
   onRemove: () => void;
 }
 
+/** Putting a tile's picture in place of the picture selected on the Stage. */
+export interface TileReplacement {
+  /** The accessible name of the button, and its tooltip. */
+  label: string;
+  onReplace: () => void;
+}
+
+/**
+ * The button in the corner of a tile that puts its picture in place of the selected one. It is
+ * drawn only while a picture is selected on the Stage, so it is seen without hovering: it is
+ * what the tile offers then, beside adding its picture to the slide.
+ */
+export function ReplaceButton({
+  replace,
+  id,
+}: {
+  replace: TileReplacement;
+  /** What the tile shows: an asset's id, or a found photo's. */
+  id: string;
+}) {
+  return (
+    <IconButton
+      icon={Replace}
+      size="sm"
+      variant="secondary"
+      label={replace.label}
+      data-replace-with={id}
+      onClick={replace.onReplace}
+      className="absolute start-1 top-1 bg-ui-raised shadow-raised"
+    />
+  );
+}
+
+/**
+ * What the buttons in the corners of the tiles are for, said at the top of a tab while a picture
+ * is selected on the Stage: they are there only then.
+ */
+export function ReplaceHint({ shown }: { shown: boolean }) {
+  const { t } = useTranslation('media');
+  if (!shown) return null;
+  return (
+    <p
+      role="status"
+      data-testid="media-replace-hint"
+      className="flex items-start gap-2 rounded-control bg-ui-field px-3 py-2 text-xs text-ui-fg"
+    >
+      <Icon icon={Replace} className="mt-0.5" />
+      <span className="min-w-0 flex-1">{t('replaceHint')}</span>
+    </p>
+  );
+}
+
 /**
  * A picture of the deck as a square tile that adds it to the slide. With `remove` it has a
  * button in its corner that takes the picture out of the deck, shown on hover and on focus, and
- * Delete on the tile does the same.
+ * Delete on the tile does the same. With `replace` it has one in the other corner that puts
+ * the picture in place of the one selected on the Stage.
  */
 export function AssetTile({
   asset,
   label,
   onPick,
   remove,
+  replace,
 }: {
   asset: AssetMeta;
   /** The accessible name, and the tooltip. */
   label: string;
   onPick: () => void;
   remove?: TileRemoval;
+  replace?: TileReplacement | undefined;
 }) {
   const { assets } = useEditor();
   const url = assets.url(asset);
@@ -103,19 +159,22 @@ export function AssetTile({
       </button>
     </Tooltip>
   );
-  if (!remove) return tile;
+  if (!remove && !replace) return tile;
   return (
     <div className="group/tile relative">
       {tile}
-      <IconButton
-        icon={Trash2}
-        size="sm"
-        variant="secondary"
-        label={remove.label}
-        data-remove-asset={asset.id}
-        onClick={remove.onRemove}
-        className="absolute end-1 top-1 bg-ui-raised opacity-0 shadow-raised group-focus-within/tile:opacity-100 group-hover/tile:opacity-100"
-      />
+      {replace && <ReplaceButton replace={replace} id={asset.id} />}
+      {remove && (
+        <IconButton
+          icon={Trash2}
+          size="sm"
+          variant="secondary"
+          label={remove.label}
+          data-remove-asset={asset.id}
+          onClick={remove.onRemove}
+          className="absolute end-1 top-1 bg-ui-raised opacity-0 shadow-raised group-focus-within/tile:opacity-100 group-hover/tile:opacity-100"
+        />
+      )}
     </div>
   );
 }

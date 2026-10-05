@@ -19,8 +19,12 @@ export const he = {
     fill: 'יצירת תמונה',
     style: 'סגנון התמונות',
     iconColor: 'צבע האייקון',
+    replace: 'החלפת תמונה',
   },
   noSlide: 'אין שקף להוסיף אליו',
+  // With a picture selected on the Stage, a tile offers its own in that one's place.
+  replace: 'החלפת התמונה הנבחרת: {{name}}',
+  replaceHint: 'תמונה נבחרה בשקף. הכפתור שבפינת כל תמונה כאן שם אותה במקומה.',
   uploads: {
     upload: 'העלאת תמונות',
     emptyTitle: 'אין עדיין תמונות במצגת',
@@ -179,8 +183,12 @@ export const en: Messages<typeof he> = {
     fill: 'Generate image',
     style: 'Image style',
     iconColor: 'Icon colour',
+    replace: 'Replace image',
   },
   noSlide: 'There is no slide to add it to',
+  replace: 'Replace the selected picture: {{name}}',
+  replaceHint:
+    'A picture is selected on the slide. The button in the corner of a picture here puts it in its place.',
   uploads: {
     upload: 'Upload images',
     emptyTitle: 'No images in the presentation yet',
