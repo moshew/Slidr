@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import type { Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type { Element } from '@slidr/model';
 import { onStage, row } from './objects-helpers';
 import type { TestParagraph } from './text-helpers';
@@ -83,4 +83,101 @@ export function rowOverflow(page: Page): Promise<number> {
     const to = Math.max(...boxes.map((rect) => rect.right));
     return Math.max(0, Math.round(Math.max(left - from, to - right)));
   });
+}
+
+/**
+ * The buttons of row B that reach past the row itself, by name: the measure the table suite
+ * holds its row to at 1366 (`table-more.spec.ts`), where the row runs into its own padding.
+ */
+export function toolsOutsideRow(page: Page): Promise<(string | null)[]> {
+  return row(page).evaluate((bar) => {
+    const outer = bar.getBoundingClientRect();
+    return [...bar.querySelectorAll('button')]
+      .filter((button) => {
+        const box = button.getBoundingClientRect();
+        return box.width > 0 && (box.left < outer.left - 0.5 || box.right > outer.right + 0.5);
+      })
+      .map((button) => button.getAttribute('aria-label') ?? button.textContent);
+  });
+}
+
+/* ---------------------------------------------------------------- the menu of the Stage */
+
+export const menu = (page: Page) => page.getByTestId('stage-menu');
+
+/** An item of the menu by its label: the accessible name of an item also holds its shortcut. */
+export const menuItem = (page: Page, name: string) =>
+  menu(page)
+    .getByRole('menuitem')
+    .filter({ has: page.getByText(name, { exact: true }) });
+
+/** The labels of the menu's items, top to bottom, checkbox items among them. */
+export const menuLabels = (page: Page) =>
+  menu(page)
+    .locator('[role^="menuitem"]')
+    .evaluateAll((nodes) =>
+      nodes.map((n) => n.querySelector('span.truncate')?.textContent?.trim() ?? ''),
+    );
+
+/** Opens a sub-menu as a hand does, and returns its content. */
+export async function openSub(page: Page, name: string, testId: string): Promise<Locator> {
+  await menuItem(page, name).hover();
+  const sub = page.getByTestId(testId);
+  await expect(sub).toBeVisible();
+  return sub;
+}
+
+/** Clicks an item of an open sub-menu, travelling along the row into it. */
+export async function clickInSub(page: Page, trigger: Locator, target: Locator): Promise<void> {
+  await expect(target).toBeInViewport();
+  const row = (await trigger.boundingBox())!;
+  const box = (await target.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, row.y + row.height / 2, { steps: 8 });
+  await target.click();
+}
+
+/* ---------------------------------------------------------------- a clipboard of the test's own */
+
+declare global {
+  interface Window {
+    /** What the last copy or cut of the page put on the test's clipboard, by format. */
+    __copied?: Record<string, string>;
+  }
+}
+
+/**
+ * Gives the page a clipboard of the test's own, in place of the computer's, which the person at
+ * it and every other run share:
+ * - what a click on a menu reads (`navigator.clipboard.read`) is `data`, by format; with null
+ *   the read is refused, as when the webview does not let the page see the clipboard;
+ * - a copy or a cut the app asks the browser for (`document.execCommand`) sends the event to the
+ *   element that has the keyboard, as the browser does, and keeps what the app's listeners put on
+ *   it in `window.__copied`.
+ */
+export async function fakeClipboard(
+  page: Page,
+  data: Record<string, string> | null,
+): Promise<void> {
+  await page.evaluate((formats) => {
+    const read = () => {
+      if (!formats) return Promise.reject(new DOMException('Read denied.', 'NotAllowedError'));
+      return Promise.resolve([
+        {
+          types: Object.keys(formats),
+          getType: (type: string) => Promise.resolve(new Blob([formats[type] ?? ''], { type })),
+        },
+      ]);
+    };
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { read } });
+    document.execCommand = (command: string) => {
+      const clipboardData = new DataTransfer();
+      (document.activeElement ?? document.body).dispatchEvent(
+        new ClipboardEvent(command, { clipboardData, bubbles: true, cancelable: true }),
+      );
+      window.__copied = Object.fromEntries(
+        clipboardData.types.map((type) => [type, clipboardData.getData(type)]),
+      );
+      return true;
+    };
+  }, data);
 }

@@ -100,7 +100,7 @@ test('the empty slide has a menu of its own', async ({ page }) => {
   await select(page, ['e_a']);
   await rightClickSlide(page);
   expect(await selected(page)).toEqual([]);
-  expect(await itemNames(page)).toEqual(['הדבקה', 'בחירת הכול', 'AI שקף']);
+  expect(await itemNames(page)).toEqual(['הדבקה', 'בחירת הכול', 'הדבקת טקסט', 'AI שקף']);
   await item(page, 'בחירת הכול').click();
   expect(await selected(page)).toEqual(['e_a', 'e_b', 'e_c']);
 });
