@@ -169,7 +169,7 @@ export interface StageMenuDefinition extends Registered {
    * A part of the menu of text that is being edited in place: it is drawn for a right click in
    * that text, where the parts about the element (delete, order, lock) are not. Off by default.
    */
-  inText?: boolean;
+  ofEditedText?: boolean;
   render: ComponentType<ContextToolProps>;
 }
 
@@ -178,19 +178,23 @@ const stageMenu = createRegistry<StageMenuDefinition>();
 export const registerStageMenu = stageMenu.register;
 
 /**
- * The parts of the menu for a kind of selection, in groups; with `inText`, the parts of the menu
- * of the text that is being edited instead.
+ * The parts of the menu for a kind of selection, in order and in groups; with `ofEditedText`,
+ * the parts of the menu of the text that is being edited instead.
  */
-export function useStageMenu(kind: SelectionKind, inText = false): StageMenuDefinition[][] {
-  const items = useStore(stageMenu.store, (s) => s.items);
-  return useMemo(
-    () =>
-      groupContextTools(
-        items.filter((item) => Boolean(item.inText) === inText),
-        kind,
-      ),
-    [items, kind, inText],
+export function stageMenuParts<T extends Omit<StageMenuDefinition, 'render'>>(
+  items: readonly T[],
+  kind: SelectionKind,
+  ofEditedText = false,
+): T[][] {
+  return groupContextTools(
+    items.filter((item) => Boolean(item.ofEditedText) === ofEditedText),
+    kind,
   );
+}
+
+export function useStageMenu(kind: SelectionKind, ofEditedText = false): StageMenuDefinition[][] {
+  const items = useStore(stageMenu.store, (s) => s.items);
+  return useMemo(() => stageMenuParts(items, kind, ofEditedText), [items, kind, ofEditedText]);
 }
 
 /* ---------------------------------------------------------------- Top Tools row A */

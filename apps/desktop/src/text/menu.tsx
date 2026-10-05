@@ -29,7 +29,7 @@ import { CLEAR_KEYS, LINK_KEYS, useText, type Text } from './toolbar/shared';
 /*
  * The right-click menu of text that is being edited in place (STG-06; ADR-060 left the browser's
  * own menu there): cut, copy and the kinds of paste, then the link and the character tools that
- * make sense at a caret. The parts are registered with the Stage's menu (`inText`), and each
+ * make sense at a caret. The parts are registered with the Stage's menu (`ofEditedText`), and each
  * item calls what its key or its button of row B calls.
  */
 

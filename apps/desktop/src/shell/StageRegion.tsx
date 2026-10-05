@@ -37,7 +37,7 @@ const TEXT_EDITED = new Set(['text', 'shape', 'html']);
 /**
  * In the app's own text editor: the text of a text box or of a shape, or of a table cell (the
  * whole cell is the editor's while it is typed in). A right click there opens the menu of the
- * text, whose parts the text area registers (`inText`).
+ * text, whose parts the text area registers (`ofEditedText`).
  */
 function inTextEditor(target: EventTarget): boolean {
   return (

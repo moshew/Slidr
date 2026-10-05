@@ -12,6 +12,7 @@ import {
   registerStageMenu,
   registries,
   shortcutsFor,
+  stageMenuParts,
   type ContextToolDefinition,
   type StageMenuDefinition,
   type ToolPanelDefinition,
@@ -108,6 +109,28 @@ describe("the Stage's right-click menu", () => {
     expect(ids('image')).toEqual([]);
     for (const remove of removes) remove();
     expect(ids('none')).toEqual([]);
+  });
+
+  it('is the menu of the text while text is edited, and of the element otherwise', () => {
+    const parts: Omit<StageMenuDefinition, 'render'>[] = [
+      { id: 'clipboard', group: 'clipboard', order: 10, kinds: ['text', 'table'] },
+      { id: 'order', group: 'order', order: 30, kinds: ['text'] },
+      { id: 'text.format', group: 'text', order: 20, kinds: ['text', 'table'], ofEditedText: true },
+      {
+        id: 'text.clipboard',
+        group: 'clipboard',
+        order: 10,
+        kinds: ['text', 'table'],
+        ofEditedText: true,
+      },
+    ];
+    const ids = (kind: ContextToolDefinition['kinds'][number], ofEditedText?: boolean) =>
+      stageMenuParts(parts, kind, ofEditedText).map((group) => group.map((p) => p.id));
+    expect(ids('text')).toEqual([['clipboard'], ['order']]);
+    expect(ids('text', true)).toEqual([['text.clipboard'], ['text.format']]);
+    expect(ids('table', true)).toEqual([['text.clipboard'], ['text.format']]);
+    // A kind without text has no such menu.
+    expect(ids('image', true)).toEqual([]);
   });
 });
 

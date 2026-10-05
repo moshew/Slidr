@@ -296,7 +296,7 @@ registerStageMenu({
   kinds: ['text', 'table'],
   group: 'text.clipboard',
   order: 10,
-  inText: true,
+  ofEditedText: true,
   render: TextClipboardItems,
 });
 registerStageMenu({
@@ -304,7 +304,7 @@ registerStageMenu({
   kinds: ['text', 'table'],
   group: 'text.format',
   order: 20,
-  inText: true,
+  ofEditedText: true,
   render: TextFormatItems,
 });
 // On the slide itself: text from outside as a new text box, with the same kinds of paste. In
