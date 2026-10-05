@@ -10,6 +10,7 @@ import type {
   HtmlSlideConversion,
 } from '@slidr/agent-tools';
 import {
+  allElementIds,
   createElement,
   createSlide,
   findSlide,
@@ -388,8 +389,8 @@ async function elementToHtml(
     ...(name ? { name } : {}),
     ...(role ? { role } : {}),
   });
-  const taken = new Set<string>();
-  for (const s of deck.slides) for (const e of s.elements) taken.add(e.id);
+  // Inside groups too: a card of a converted slide is a group, and its parts have ids.
+  const taken = allElementIds(deck);
   html.id = newId('e', (candidate) => taken.has(candidate));
   return { elements: [html], assets: [], editability: 0, notes: [] };
 }

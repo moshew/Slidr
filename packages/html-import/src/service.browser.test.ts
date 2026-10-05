@@ -4,14 +4,18 @@
  */
 import { createDeckApi, startTurn, type SessionScope, type ToolResult } from '@slidr/agent-tools';
 import {
+  allElementIds,
   CommandBus,
   createDeck,
+  createElement,
+  createSlide,
   findElementInDeck,
   findSlide,
   plainText,
+  richText,
   type Deck,
 } from '@slidr/model';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { createConversionService } from './service';
 import { testHost, testImage } from './testing';
@@ -247,6 +251,55 @@ describe('element_convert', () => {
     expect(text.type).toBe('text');
     expect(Math.abs(text.frame.x - before.frame.x)).toBeLessThan(0.5);
     expect(Math.abs(text.frame.y - before.frame.y)).toBeLessThan(0.5);
+  });
+
+  it('gives the html element an id that nothing in the deck has, inside a group either', async () => {
+    const TAKEN = 'e_00000000';
+    const deck = createDeck({
+      lang: 'en',
+      slides: [
+        createSlide({
+          id: 's_1',
+          elements: [
+            // A card as a converted slide has it: the box that holds the id is inside a group.
+            createElement.group({
+              id: 'e_card',
+              frame: { x: 400, y: 300, w: 600, h: 240 },
+              children: [
+                createElement.shape({ id: TAKEN, frame: { x: 0, y: 0, w: 600, h: 240 } }),
+                createElement.text({
+                  id: 'e_words',
+                  frame: { x: 40, y: 40, w: 400, h: 60 },
+                  content: richText('Inside the card'),
+                }),
+              ],
+            }),
+            createElement.text({
+              id: 'e_alone',
+              frame: { x: 400, y: 600, w: 600, h: 60 },
+              content: richText('Beside the card'),
+            }),
+          ],
+        }),
+      ],
+    });
+    const service = createConversionService(testHost());
+    // What ids are drawn from gives the id of the box for a good while, and only then another.
+    let drawn = 0;
+    const random = vi.spyOn(Math, 'random').mockImplementation(() => (drawn++ < 2000 ? 0 : 0.5));
+    try {
+      const { elements } = await service.convertElement(deck, {
+        slideId: 's_1',
+        elementId: 'e_alone',
+        to: 'html',
+      });
+      expect(elements).toHaveLength(1);
+      expect(elements[0]).toMatchObject({ type: 'html' });
+      expect(elements[0]!.id).not.toBe(TAKEN);
+      expect(allElementIds(deck).has(elements[0]!.id)).toBe(false);
+    } finally {
+      random.mockRestore();
+    }
   });
 
   it('refuses what cannot be converted, with a reason', async () => {
