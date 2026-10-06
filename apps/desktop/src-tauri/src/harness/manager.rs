@@ -45,7 +45,8 @@ const IDLE_CHECK: Duration = Duration::from_secs(30);
 /// said (AGT-06), and every session writes its folder anew.
 const THREAD_KEPT: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
-/// Where the files a user attached to a chat are kept, inside the folder of its thread.
+/// The agent's working copy of chat attachments, inside the folder of its thread. Saved decks
+/// also keep a copy beside the `.slidr` file in `chat_uploads/`.
 const ATTACHMENTS_DIR: &str = "attachments";
 /// The largest file a chat takes. A deck of scanned pages is tens of megabytes; more is a mistake.
 const MAX_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
@@ -112,6 +113,31 @@ impl HarnessManager {
     /// imported there before the session starts (SPEC 13.2).
     pub fn attachments_dir(&self, thread: &str) -> Result<PathBuf> {
         Ok(thread_dir(&self.root, thread)?.join(ATTACHMENTS))
+    }
+
+    /// Makes attachments from the open document available to a session after reopening it.
+    pub fn restore_attachments(&self, thread: &str, source: &Path) -> Result<()> {
+        let target = self.attachments_dir(thread)?;
+        let entries = match std::fs::read_dir(source) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(AgentError::io("read chat attachments", &error)),
+        };
+        std::fs::create_dir_all(&target)
+            .map_err(|error| AgentError::io("create the attachments folder", &error))?;
+        for entry in entries {
+            let entry = entry.map_err(|error| AgentError::io("read chat attachments", &error))?;
+            if !entry
+                .file_type()
+                .map_err(|error| AgentError::io("read chat attachment", &error))?
+                .is_file()
+            {
+                continue;
+            }
+            std::fs::copy(entry.path(), target.join(entry.file_name()))
+                .map_err(|error| AgentError::io("restore chat attachment", &error))?;
+        }
+        Ok(())
     }
 
     /// Checks one harness (AGT-03).
@@ -1044,6 +1070,26 @@ mod tests {
                 .err()
                 .map(|e| e.kind),
             Some(AgentErrorKind::InvalidInput)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn restored_chat_uploads_are_available_to_the_agent() -> TestResult {
+        let root = tempfile::tempdir()?;
+        let source = tempfile::tempdir()?;
+        let manager = manager(root.path())?;
+        std::fs::write(source.path().join("brief.pdf"), b"saved brief")?;
+        manager.restore_attachments("deck1/thread1", source.path())?;
+        let workdir = manager.attachments_dir("deck1/thread1")?;
+        assert_eq!(std::fs::read(workdir.join("brief.pdf"))?, b"saved brief");
+        assert_eq!(
+            manager.attach("deck1/thread1", "brief.pdf", b"saved brief")?,
+            "brief.pdf"
+        );
+        assert_eq!(
+            manager.attach("deck1/thread1", "brief.pdf", b"new brief")?,
+            "brief-2.pdf"
         );
         Ok(())
     }

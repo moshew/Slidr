@@ -32,15 +32,29 @@ pub async fn agent_probe(manager: Manager<'_>, harness_id: String) -> Result<Har
     manager.probe(&harness_id).await
 }
 
-/// `agent_start({ harnessId, thread, config, onEvent })`: starts a session; returns its id.
+/// `agent_start({ harnessId, thread, workspaceId?, config, onEvent })`: restores this chat's
+/// attachments from the open document and starts a session; returns its id.
 #[tauri::command]
 pub async fn agent_start(
     manager: Manager<'_>,
+    storage: State<'_, Arc<Storage>>,
     harness_id: String,
     thread: String,
+    workspace_id: Option<String>,
     config: SessionConfig,
     on_event: Channel<AgentEvent>,
 ) -> Result<String> {
+    if let Some(workspace_id) = workspace_id {
+        let (_, thread_id) = thread
+            .rsplit_once('/')
+            .ok_or_else(|| AgentError::invalid_input("invalid thread key"))?;
+        let source = storage
+            .chat_uploads_dir(&workspace_id, thread_id)
+            .map_err(|error| AgentError::invalid_input(error.message))?;
+        let manager_copy = Arc::clone(&manager);
+        let key = thread.clone();
+        off_main(move || manager_copy.restore_attachments(&key, &source)).await?;
+    }
     // From the first session on, a session nobody talks to is closed (AGT-07).
     manager.watch_idle();
     manager
@@ -137,10 +151,14 @@ pub async fn agent_chat_write(
 
 /// `agent_attach`: stores a file the user attached to a chat with the conversation it belongs
 /// to (CHT-U05), and returns its path relative to the session's working directory. The body is
-/// the raw bytes; the thread key and the file name travel as the headers `x-thread` and
-/// `x-file-name`, percent-encoded, as in `asset_import_bytes`.
+/// the raw bytes; the thread key, file name, and open workspace id travel as the headers
+/// `x-thread`, `x-file-name`, and `x-workspace-id`, as in `asset_import_bytes`.
 #[tauri::command]
-pub async fn agent_attach(manager: Manager<'_>, request: Request<'_>) -> Result<String> {
+pub async fn agent_attach(
+    manager: Manager<'_>,
+    storage: State<'_, Arc<Storage>>,
+    request: Request<'_>,
+) -> Result<String> {
     let header = |name: &str| -> Result<String> {
         let invalid = || AgentError::invalid_input(format!("missing or malformed header {name}"));
         let value = request.headers().get(name).ok_or_else(invalid)?;
@@ -152,11 +170,40 @@ pub async fn agent_attach(manager: Manager<'_>, request: Request<'_>) -> Result<
     };
     let thread = header("x-thread")?;
     let name = header("x-file-name")?;
+    let workspace_id = request
+        .headers()
+        .get("x-workspace-id")
+        .map(|_| header("x-workspace-id"))
+        .transpose()?;
     let bytes = match request.body() {
         InvokeBody::Raw(bytes) => bytes.clone(),
         InvokeBody::Json(value) => serde_json::from_value(value.clone())
             .map_err(|e| AgentError::invalid_input(format!("the body is not bytes: {e}")))?,
     };
     let manager = Arc::clone(&manager);
-    off_main(move || manager.attach(&thread, &name, &bytes)).await
+    let storage = Arc::clone(&storage);
+    off_main(move || {
+        if let Some(workspace_id) = workspace_id {
+            let (_, thread_id) = thread
+                .rsplit_once('/')
+                .ok_or_else(|| AgentError::invalid_input("invalid thread key"))?;
+            let source = storage
+                .chat_uploads_dir(&workspace_id, thread_id)
+                .map_err(|error| AgentError::invalid_input(error.message))?;
+            manager.restore_attachments(&thread, &source)?;
+            let file = manager.attach(&thread, &name, &bytes)?;
+            storage
+                .write_chat_upload(&workspace_id, thread_id, &file, &bytes)
+                .map_err(|error| {
+                    AgentError::io(
+                        "store chat attachment",
+                        &std::io::Error::other(error.message),
+                    )
+                })?;
+            Ok(file)
+        } else {
+            manager.attach(&thread, &name, &bytes)
+        }
+    })
+    .await
 }

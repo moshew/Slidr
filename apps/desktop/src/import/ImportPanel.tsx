@@ -483,21 +483,6 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
-          {waiting && (
-            <div
-              className="flex shrink-0 items-center gap-3 border-b border-ui-line bg-ui-accent-soft px-4 py-2"
-              data-testid="import-approve"
-            >
-              <span className="min-w-0 flex-1 text-sm text-ui-fg">{t('approve.waiting')}</span>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void thread.send(t('message.approve'))}
-              >
-                {t('approve.action')}
-              </Button>
-            </div>
-          )}
           {cut && (
             <div
               role="status"
@@ -531,7 +516,26 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
             </div>
           )}
           {/* The chat is laid out by this column: it takes the room that is left under the notes. */}
-          <Chat scope={scope} />
+          <Chat
+            scope={scope}
+            afterMessages={
+              waiting ? (
+                <div
+                  className="flex items-center gap-3 rounded-panel bg-ui-accent-soft px-3 py-2.5"
+                  data-testid="import-approve"
+                >
+                  <span className="min-w-0 flex-1 text-sm text-ui-fg">{t('approve.waiting')}</span>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void thread.send(t('message.approve'))}
+                  >
+                    {t('approve.action')}
+                  </Button>
+                </div>
+              ) : null
+            }
+          />
         </TabsContent>
         <TabsContent value="report" className="min-h-0 flex-1">
           <ScrollArea className="h-full">

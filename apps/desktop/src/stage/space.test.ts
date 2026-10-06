@@ -288,10 +288,16 @@ describe('resolvePress', () => {
     });
   });
 
-  it('leaves a text that is in no group to the double-click', () => {
+  it('edits text on a standalone shape where it is drawn, but leaves a text box to double-click', () => {
     expect(press(['solo'])).toEqual({ scope: [], id: 'solo' });
     expect(press(['solo'], [], ['solo'])).toEqual({ scope: [], id: 'solo' });
-    expect(press(['label'], [], ['label'])).toEqual({ scope: [], id: 'label' });
+    expect(press(['label'])).toEqual({
+      scope: [],
+      id: 'label',
+      inside: { scope: [], id: 'label', edit: true },
+    });
+    expect(press(['label'], [], ['label']).inside).toEqual({ scope: [], id: 'label', edit: true });
+    expect(press(['label'], [], [], offText)).toEqual({ scope: [], id: 'label' });
     // Also on the way out of a group that was entered.
     expect(press(['solo'], ['card', 'row'])).toEqual({ scope: [], id: 'solo' });
   });

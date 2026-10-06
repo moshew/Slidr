@@ -75,6 +75,23 @@ const rules = (check: DesignCheck) =>
   check.state.getState().findings.map((f) => `${f.slideId} ${f.rule}`);
 
 describe('the design check of the open deck', () => {
+  it('waits to judge the empty canvas of a new deck, then reports empty slides once the deck grows', async () => {
+    const first = createSlide({ id: 's_first' });
+    const { bus, check, measure } = setup(createDeck({ slides: [first] }));
+    expect(await check.check()).toEqual([]);
+    expect(measure).not.toHaveBeenCalled();
+
+    bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's_second' }) });
+    expect(rules(check)).toEqual([]);
+    expect((await check.check()).map((finding) => `${finding.slideId} ${finding.rule}`)).toEqual([
+      's_first L07',
+      's_second L07',
+    ]);
+
+    bus.undo();
+    expect(await check.check()).toEqual([]);
+  });
+
   it('finds what every rule finds, on every slide, and says which deck it is of', async () => {
     const { bus, check } = setup();
     expect(check.state.getState()).toMatchObject({ pending: true, deck: null });

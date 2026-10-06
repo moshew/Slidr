@@ -9,11 +9,14 @@
 //!     deck.json  meta.json  assets/  thumbs/  chat/  source/   <- packed into the .slidr file
 //!     .workspace.json  .lock                                  <- never packed
 //! <app_data>/recents.json
+//! <saved deck directory>/chat_uploads/<deck filename>/<thread id>/
+//!     <attached files>                                        <- outside the .slidr ZIP
 //! ```
 
 mod archive;
 mod atomic;
 mod backup;
+mod chat_uploads;
 mod deck;
 mod recents;
 mod source;

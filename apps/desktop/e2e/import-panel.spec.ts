@@ -25,6 +25,15 @@ test('imports a file: plan, approval, slides, report, and the chat goes on', asy
   expect(await slideNames(page)).toEqual([undefined]);
   await expect(page.getByTestId('import-count')).toHaveCount(0);
   const approve = page.getByTestId('import-approve');
+  await expect(
+    page
+      .getByTestId('chat')
+      .locator('[data-radix-scroll-area-viewport]')
+      .getByTestId('import-approve'),
+  ).toBeVisible();
+  expect(await approve.evaluate((node) => node.previousElementSibling?.getAttribute('data-testid'))).toBe(
+    'chat-assistant',
+  );
   await expect(approve).toContainText('ה-Agent מחכה לאישור התוכנית');
 
   await approve.getByRole('button').click();
@@ -113,6 +122,7 @@ test('the chat takes the room of the panel: the composer at its foot, the messag
   const end = await messages();
   expect(end.scrolled + end.room).toBeCloseTo(end.content, 0);
   await expect(turns(page).first().getByTestId('turn-usage')).toBeInViewport({ ratio: 1 });
+  await expect(page.getByTestId('import-approve').getByRole('button')).toBeInViewport({ ratio: 1 });
 });
 
 test('the capture turn is one undo step, and comes back on redo', async ({ page }) => {

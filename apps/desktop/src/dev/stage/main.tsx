@@ -252,7 +252,7 @@ function stageDeck(): Deck {
 
   // A card as a converted slide has it: a group of a background, a title, a chip (a shape with
   // text), a big shape with a short text, and a row that is a group of its own. Beside it a
-  // turned and mirrored card, and a text box that is in no group.
+  // turned and mirrored card, and a text box and a shape that are in no group.
   const label = (text: string) =>
     richText(text, { dir: 'ltr', align: 'center', marks: { color: { token: 'bg' } } });
   const cards = createSlide({
@@ -331,6 +331,12 @@ function stageDeck(): Deck {
         id: 'e_solo',
         frame: { x: 1080, y: 160, w: 600, h: 110 },
         content: richText('On its own', { dir: 'ltr', styleRef: 'heading' }),
+      }),
+      createElement.shape({
+        id: 'e_solo_shape',
+        frame: { x: 160, y: 750, w: 600, h: 140 },
+        fill: solid('primary'),
+        content: label('Standalone shape'),
       }),
     ],
   });

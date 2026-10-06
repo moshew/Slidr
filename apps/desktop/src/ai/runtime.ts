@@ -18,7 +18,7 @@ import type { AgentClient } from '../agent/agent';
 import { AgentService } from '../agent/agentService';
 import { captureWindowConversion, pageConversion } from '../agent/conversion';
 import { pageCapture } from '../agent/pageCapture';
-import { connectToolBridge, tauriAgent } from '../agent/tauriAgent';
+import { connectToolBridge, tauriAgentFor } from '../agent/tauriAgent';
 import type { ToolBridge, ToolHandler } from '../agent/toolBridge';
 import {
   memoryTranscripts,
@@ -191,7 +191,9 @@ function createAi(editor: Editor): AiRuntime {
       return result;
     },
   };
-  const harness = inApp ? { client: tauriAgent, connectBridge: connectToolBridge } : pageHarness();
+  const harness = inApp
+    ? { client: tauriAgentFor(workspaceId), connectBridge: connectToolBridge }
+    : pageHarness();
 
   // The conversations of the chat are kept with the document (AID-01). Conversations of the
   // slide and object chats of earlier versions stay in the file, and are not shown (ADR-072).

@@ -38,32 +38,45 @@ async function call<T>(command: string, args?: InvokeArgs, options?: InvokeOptio
 }
 
 /** The harness contract over Tauri IPC (the commands in `src-tauri/src/harness/ipc.rs`). */
-export const tauriAgent: AgentClient = {
-  harnesses: () => call<HarnessDescriptor[]>('agent_harnesses'),
-  probe: (harnessId) => call<HarnessStatus>('agent_probe', { harnessId }),
-  // One channel per session: ordered, typed, and only this webview receives it.
-  start: (harnessId, thread, config, onEvent) =>
-    call<string>('agent_start', {
-      harnessId,
-      thread,
-      config,
-      onEvent: new Channel<AgentEvent>(onEvent),
-    }),
-  // The bytes go as the raw body, the thread and the name as headers: a file is not JSON.
-  attach: (thread, file) =>
-    call<string>('agent_attach', file.bytes, {
-      headers: { 'x-thread': thread, 'x-file-name': encodeURIComponent(file.name) },
-    }),
-  send: async (sessionId, turn) => {
-    await call('agent_send', { sessionId, turn });
-  },
-  interrupt: async (sessionId) => {
-    await call('agent_interrupt', { sessionId });
-  },
-  close: async (sessionId) => {
-    await call('agent_close', { sessionId });
-  },
-};
+export function tauriAgentFor(workspaceId: () => string | null): AgentClient {
+  return {
+    harnesses: () => call<HarnessDescriptor[]>('agent_harnesses'),
+    probe: (harnessId) => call<HarnessStatus>('agent_probe', { harnessId }),
+    // One channel per session: ordered, typed, and only this webview receives it.
+    start: (harnessId, thread, config, onEvent) => {
+      const id = workspaceId();
+      return call<string>('agent_start', {
+        harnessId,
+        thread,
+        config,
+        onEvent: new Channel<AgentEvent>(onEvent),
+        ...(id ? { workspaceId: id } : {}),
+      });
+    },
+    // The bytes go as the raw body, the thread and the name as headers: a file is not JSON.
+    attach: (thread, file) => {
+      const id = workspaceId();
+      return call<string>('agent_attach', file.bytes, {
+        headers: {
+          'x-thread': thread,
+          'x-file-name': encodeURIComponent(file.name),
+          ...(id ? { 'x-workspace-id': id } : {}),
+        },
+      });
+    },
+    send: async (sessionId, turn) => {
+      await call('agent_send', { sessionId, turn });
+    },
+    interrupt: async (sessionId) => {
+      await call('agent_interrupt', { sessionId });
+    },
+    close: async (sessionId) => {
+      await call('agent_close', { sessionId });
+    },
+  };
+}
+
+export const tauriAgent = tauriAgentFor(() => null);
 
 /**
  * Connects this webview to the tool bridge (the `tool_bridge_*` commands): from now on `handler`

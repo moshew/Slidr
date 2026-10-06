@@ -20,7 +20,7 @@ import {
   type Usage,
   type UserTurn,
 } from './agent';
-import { tauriAgent } from './tauriAgent';
+import { tauriAgent, tauriAgentFor } from './tauriAgent';
 
 const { invoke, channels } = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -195,6 +195,29 @@ describe('tauriAgent', () => {
     const event: AgentEvent = { type: 'text_delta', text: 'hi' };
     channels[0]?.onmessage(event);
     expect(received).toEqual([event]);
+  });
+
+  it('passes the open workspace when storing and reopening chat attachments', async () => {
+    invoke.mockResolvedValue('brief.pdf');
+    const client = tauriAgentFor(() => 'workspace-1');
+    const bytes = new Uint8Array([1, 2, 3]);
+    await client.attach('deck-1/deck', { name: 'brief.pdf', bytes });
+    expect(invoke).toHaveBeenCalledWith('agent_attach', bytes, {
+      headers: {
+        'x-thread': 'deck-1/deck',
+        'x-file-name': 'brief.pdf',
+        'x-workspace-id': 'workspace-1',
+      },
+    });
+    const config: SessionConfig = { scope: { kind: 'deck' }, systemPrompt: 'p' };
+    await client.start('mock', 'deck-1/deck', config, () => undefined);
+    expect(invoke).toHaveBeenCalledWith('agent_start', {
+      harnessId: 'mock',
+      thread: 'deck-1/deck',
+      config,
+      onEvent: channels[0],
+      workspaceId: 'workspace-1',
+    });
   });
 
   it('maps every call to its command', async () => {

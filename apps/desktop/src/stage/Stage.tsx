@@ -226,6 +226,8 @@ type Gesture =
       duplicate: boolean;
       /** The selection the drag started from, to put back when a duplicating drag is cancelled. */
       restore: string[];
+      /** A text click enters directly; its group becomes selected only if the press turns into a drag. */
+      pendingSelection?: string;
       items: MoveItem[];
       /** The groups around the moved elements, when they share them; otherwise undefined. */
       path: GroupElement[] | undefined;
@@ -397,12 +399,14 @@ export function Stage({
   const [marquee, setMarquee] = useState<Frame | undefined>();
   const [spaceDown, setSpaceDown] = useState(false);
   const [overCrop, setOverCrop] = useState(false);
-  /** What is hovered is a text in a group, which a click goes straight into (ARR-01). */
+  /** The pointer is over text that a click goes straight into. */
   const [overText, setOverText] = useState(false);
   /** While several elements are turned together: the box they started in, and how far it turned. */
   const [turn, setTurn] = useState<{ frame: Frame; angle: number } | undefined>();
   /** The groups the user went into by a click or a double-click, outermost first (ARR-01). */
   const [entered, setEntered] = useState<string[]>([]);
+  /** A direct click into text does not make the group's background an explicit child selection. */
+  const textEnteredFromOutside = useRef<{ id: string; scope: string[] } | null>(null);
   /**
    * Where a click has already gone in, among the clicks that count together (a double-click is
    * two). The later ones go no further, so a double-click ends one level in, as it always did.
@@ -803,7 +807,25 @@ export function Stage({
     const chain = pickAt(clientX, clientY);
     if (previewing || crop) return resolveHit(chain, scope);
     const p = toSlide(clientX, clientY);
-    return resolvePress(chain, scope, index, selected, (shape) => onTextOf(shape, p));
+    const hit = resolvePress(chain, scope, index, selected, (shape) => onTextOf(shape, p));
+    const fromText = textEnteredFromOutside.current;
+    const top = index.get(chain[chain.length - 1] ?? '');
+    const parent = top?.path.at(-1);
+    if (
+      fromText &&
+      fromText.id === selected[0] &&
+      selected.length === 1 &&
+      top &&
+      parent &&
+      fromText.scope.includes(parent.id) &&
+      parent.children[0]?.id === top.element.id &&
+      top.element.type === 'shape'
+    ) {
+      // The first shape is the group's background. After entering its text directly, a click
+      // back on that background selects the whole group, just as it did before editing text.
+      return { scope: pathIds(index.get(parent.id)!), id: parent.id };
+    }
+    return hit;
   };
 
   /**
@@ -815,9 +837,14 @@ export function Stage({
     wentIn.current = inside;
     setEntered(inside.scope);
     if (inside.edit) {
+      if (textEnteredFromOutside.current || scope.length === 0)
+        textEnteredFromOutside.current = { id: inside.id, scope: inside.scope };
       setCaretAt(at);
       selection.getState().startEditing(inside.id);
-    } else selection.getState().selectElements([inside.id]);
+    } else {
+      textEnteredFromOutside.current = null;
+      selection.getState().selectElements([inside.id]);
+    }
   };
 
   /** The frame of the image being cropped contains the point. */
@@ -960,6 +987,7 @@ export function Stage({
     }
 
     const hit = pressAt(e.clientX, e.clientY);
+    if (!hit.inside?.edit) textEnteredFromOutside.current = null;
     // The slide draws nothing outside itself, so the part of an element that is off the slide
     // cannot be picked. A selected one is still taken by it there: one dragged to the edge of the
     // Stage is grabbed again (ADR-066). On the slide, picking stays the drawing's own (a line by
@@ -982,17 +1010,19 @@ export function Stage({
         return;
       }
       const before = state.selectedElementIds;
-      if (!before.includes(id)) state.selectElements([id]);
       // Only a plain press goes further in when it is released: a modifier asks for something
       // else of it (Alt for a copy), and so does any button but the first.
       const plain = e.button === 0 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey;
+      const pendingSelection = plain && hit.inside?.edit && !before.includes(id) ? id : undefined;
+      if (!before.includes(id) && !pendingSelection) state.selectElements([id]);
       begin({
         kind: 'move',
         txId: newId('tx'),
         start: p,
         moved: false,
         duplicate: e.altKey,
-        restore: selection.getState().selectedElementIds,
+        restore: pendingSelection ? [id] : selection.getState().selectedElementIds,
+        pendingSelection,
         items: [],
         path: undefined,
         snapBoxes: [],
@@ -1008,6 +1038,9 @@ export function Stage({
   /** The drag passed the threshold: copy the elements if Alt asks for it, and note where they are. */
   const startMove = (g: Extract<Gesture, { kind: 'move' }>, alt: boolean): boolean => {
     if (!slide) return false;
+    setHover(undefined);
+    setOverText(false);
+    if (g.pendingSelection) selection.getState().selectElements([g.pendingSelection]);
     g.duplicate ||= alt;
     let moving = movable(index);
     if (g.duplicate && moving.length) {
@@ -1255,7 +1288,10 @@ export function Stage({
     // here as well, since a quick drag can end before the frame in which it would have started.
     if (g?.kind !== 'move' || g.moved || !g.inside || wentIn.current) return;
     const p = toSlide(e.clientX, e.clientY);
-    if (Math.hypot(p.x - g.start.x, p.y - g.start.y) * scale >= DRAG_PX) return;
+    if (Math.hypot(p.x - g.start.x, p.y - g.start.y) * scale >= DRAG_PX) {
+      if (g.pendingSelection) selection.getState().selectElements([g.pendingSelection]);
+      return;
+    }
     goInside(g.inside, { x: e.clientX, y: e.clientY });
   };
 
@@ -1316,6 +1352,7 @@ export function Stage({
       }
     } else if (element.type === 'group') {
       // One level in: the child under the pointer is selected, the rest of the group stays put.
+      textEnteredFromOutside.current = null;
       const inside = [...hit.scope, element.id];
       const child = index.get(chain[inside.length] ?? '');
       setEntered(inside);
@@ -1554,6 +1591,7 @@ export function Stage({
       }
       if (target?.type === 'group' && single) {
         e.preventDefault();
+        textEnteredFromOutside.current = null;
         setEntered([...pathIds(single), target.id]);
         selection
           .getState()
@@ -1576,6 +1614,7 @@ export function Stage({
       else if (walkAt) stageKeys.setState({ cursor: null });
       else if (scope.length) {
         // Out of the group, one level: the group itself is selected.
+        textEnteredFromOutside.current = null;
         const group = scope[scope.length - 1] as string;
         setEntered(scope.slice(0, -1));
         selection.getState().selectElements([group]);
@@ -1914,9 +1953,17 @@ export function Stage({
   // not the text's. Otherwise the cursor is, also over a text that is selected: a click still
   // goes into it.
   const hovered =
-    hover && !selected.includes(hover) && !(overText && active) ? index.get(hover) : undefined;
+    hover && !selected.includes(hover) && (!active || active === 'move')
+      ? index.get(hover)
+      : undefined;
   const intoText = overText && hover !== undefined && !active && !previewing;
+  const overObject = hover !== undefined && !previewing;
   const enteredGroup = scope.length ? index.get(scope[scope.length - 1] as string) : undefined;
+  const textGroup = overText && hover ? index.get(hover)?.path.at(-1) : undefined;
+  const hoveredGroup =
+    textGroup && textGroup.id !== enteredGroup?.element.id && (!active || active === 'move')
+      ? index.get(textGroup.id)
+      : undefined;
 
   // The size or the angle, next to what a handle is changing.
   const sized = single ?? together;
@@ -1940,6 +1987,7 @@ export function Stage({
           ) : null;
         })}
         {enteredGroup ? <Outline located={enteredGroup} view={stageView} entered /> : null}
+        {hoveredGroup ? <Outline located={hoveredGroup} view={stageView} hoveredGroup /> : null}
         {hovered ? (
           isLine(hovered) ? (
             <LineOverlay located={hovered} view={stageView} hover />
@@ -1948,7 +1996,8 @@ export function Stage({
           )
         ) : null}
         {selectedLocated.map((located) =>
-          located.element.id === croppingId ? null : isLine(located) ? (
+          located.element.id === croppingId ||
+          located.element.id === hoveredGroup?.element.id ? null : isLine(located) ? (
             <LineOverlay
               key={located.element.id}
               located={located}
@@ -2087,7 +2136,10 @@ export function Stage({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onPaste={onPaste}
-      onPointerLeave={() => setHover(undefined)}
+      onPointerLeave={() => {
+        setHover(undefined);
+        setOverText(false);
+      }}
       onFocus={(e) => {
         if (e.target === e.currentTarget) setFocused(true);
       }}
@@ -2099,7 +2151,15 @@ export function Stage({
         overflow: 'hidden',
         outline: ring ? '2px solid var(--color-ui-focus)' : 'none',
         outlineOffset: -2,
-        cursor: spaceDown ? 'grab' : crop && overCrop ? 'move' : intoText ? 'text' : undefined,
+        cursor: spaceDown
+          ? 'grab'
+          : crop && overCrop
+            ? 'move'
+            : intoText
+              ? 'text'
+              : overObject
+                ? 'move'
+                : undefined,
         userSelect: 'none',
         touchAction: 'none',
         ...style,

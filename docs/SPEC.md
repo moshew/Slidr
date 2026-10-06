@@ -1633,7 +1633,7 @@ env = no CLAUDE* / ANTHROPIC* variables;  Windows: CREATE_NO_WINDOW
 
 **מגבלת מדיניות:** Anthropic אינה מתירה למוצרי צד שלישי להציע התחברות עם מנוי claude.ai. לשימוש אישי במחשב שבו Claude Code מותקן זה לא רלוונטי, אבל אם Slidr יופץ כמוצר, יידרש מעבר למפתח API. הארכיטקטורה תומכת בזה (הגדרת סביבה למתאם), ואין צורך בשינוי קוד.
 
-**שני ממצאים מהעבודה מול ה-CLI** ([ADR-054](adr/ADR-054-ai-finish-templates-outline-chat.md)): `total_cost_usd` ממשיך להצטבר גם אחרי `--resume`, ולכן תהליך שממשיך שיחה צריך לדעת מאיפה הסכום ממשיך; בלי זה לתור הראשון שלו אין עלות (`resumed_cost_usd`, 11.2). וקובץ מצורף נשמר ב-`attachments/` של השיחה (פקודת ה-IPC `agent_attach`, עד 50MB), והנתיב שנמסר ל-Agent הוא שם הקובץ בלבד, כי `attachments/` היא תיקיית העבודה של התהליך.
+**שני ממצאים מהעבודה מול ה-CLI** ([ADR-054](adr/ADR-054-ai-finish-templates-outline-chat.md)): `total_cost_usd` ממשיך להצטבר גם אחרי `--resume`, ולכן תהליך שממשיך שיחה צריך לדעת מאיפה הסכום ממשיך; בלי זה לתור הראשון שלו אין עלות (`resumed_cost_usd`, 11.2). וקובץ מצורף נשמר ב-`attachments/` של השיחה (פקודת ה-IPC `agent_attach`, עד 50MB), והנתיב שנמסר ל-Agent הוא שם הקובץ בלבד, כי `attachments/` היא תיקיית העבודה של התהליך. עותק קבוע של קובצי הצ׳אט נשמר לצד המצגת ב-`chat_uploads/<deck filename>/<thread id>/`; הוא מועתק לתיקיית העבודה בפתיחה מחדש ואינו נכנס ל-ZIP של `.slidr`.
 
 כפי שנמדד מול ה-CLI האמיתי, גרסה 2.1.287 ([ADR-066](adr/ADR-066-packaging-and-hardening.md)):
 

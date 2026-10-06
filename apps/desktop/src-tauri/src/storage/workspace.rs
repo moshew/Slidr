@@ -16,7 +16,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    ASSETS_DIR, DECK_FILE, LOCK_FILE, META_FILE, STATE_FILE, archive, atomic,
+    ASSETS_DIR, DECK_FILE, LOCK_FILE, META_FILE, STATE_FILE, archive, atomic, chat_uploads,
     deck::DeckInfo,
     recents::{self, RecentFile},
     source,
@@ -152,6 +152,26 @@ impl Storage {
         Ok(self.open_dir(&open, id)?.join(ASSETS_DIR))
     }
 
+    /// The attachments of one chat in an open workspace, for the agent's read-only workdir.
+    pub fn chat_uploads_dir(&self, id: &str, thread: &str) -> Result<PathBuf> {
+        let open = self.open_set();
+        chat_uploads::thread_dir(&self.open_dir(&open, id)?, thread)
+    }
+
+    /// Keeps an attachment with the open document and, once saved, beside its `.slidr` file.
+    pub fn write_chat_upload(
+        &self,
+        id: &str,
+        thread: &str,
+        name: &str,
+        bytes: &[u8],
+    ) -> Result<()> {
+        let open = self.open_set();
+        let dir = self.open_dir(&open, id)?;
+        let source = read_state(&dir).and_then(|state| state.source_path);
+        chat_uploads::write(&dir, source.as_deref().map(Path::new), thread, name, bytes)
+    }
+
     /// Creates a locked, empty workspace directory. The caller registers it as open once it is
     /// filled, or discards it.
     fn create(&self) -> Result<(String, PathBuf, File)> {
@@ -202,6 +222,7 @@ impl Storage {
     fn fill_from(&self, path: &Path, id: &str, dir: &Path) -> Result<OpenedDeck> {
         archive::unpack(path, dir)?;
         let deck_json = read_deck(dir)?;
+        chat_uploads::restore(path, dir)?;
         let source = display(path);
         let title = recents::title_of(&self.root, &source).unwrap_or_else(|| file_title(path));
         write_state(
@@ -247,6 +268,7 @@ impl Storage {
         let mut state = store_deck(&dir, id, deck_json, title)?;
         let saved_at = now_iso();
         write_meta(&dir, &info.schema_version, &saved_at)?;
+        chat_uploads::save(&dir, &target)?;
         let mut missing_assets = archive::pack(&dir, &target, &info.asset_files, &info.slide_ids)?;
         // A name that is no file name was never looked for: to the deck it is as missing.
         missing_assets.extend(info.unusable_assets);
@@ -956,6 +978,45 @@ mod tests {
             "slides":[{"id":"s_kept","elements":[]},{"id":"s_gone","elements":[]}]}"#;
         storage.save(&workspace.id, &target, restored, None)?;
         assert!(entries_of(&target)?.contains(&"chat/slide-s_gone.jsonl".to_owned()));
+        Ok(())
+    }
+
+    #[test]
+    fn chat_uploads_stay_beside_the_saved_file_and_follow_save_as() -> TestResult {
+        let fx = fixture()?;
+        let storage = Storage::new(fx.root.clone());
+        let workspace = storage.new_workspace()?;
+        let first = fx.files.join("first.slidr");
+        let second = fx.files.join("second.slidr");
+        let document = deck(&[]);
+        storage.write_chat_upload(&workspace.id, "deck", "brief.pdf", b"a brief")?;
+        storage.save(&workspace.id, &first, &document, None)?;
+
+        let uploads = fx.files.join("chat_uploads");
+        let first_uploads = uploads.join("first.slidr/deck");
+        let second_uploads = uploads.join("second.slidr/deck");
+        assert_eq!(fs::read(first_uploads.join("brief.pdf"))?, b"a brief");
+        assert!(
+            !entries_of(&first)?
+                .iter()
+                .any(|entry| entry.starts_with("chat_uploads/"))
+        );
+
+        storage.write_chat_upload(&workspace.id, "deck", "notes.txt", b"after save")?;
+        assert_eq!(fs::read(first_uploads.join("notes.txt"))?, b"after save");
+        storage.save(&workspace.id, &second, &document, None)?;
+        assert_eq!(fs::read(second_uploads.join("brief.pdf"))?, b"a brief");
+        assert_eq!(fs::read(second_uploads.join("notes.txt"))?, b"after save");
+
+        let reopened = storage.open(&second)?;
+        let restored = storage.chat_uploads_dir(&reopened.workspace.id, "deck")?;
+        assert_eq!(fs::read(restored.join("brief.pdf"))?, b"a brief");
+        assert_eq!(fs::read(restored.join("notes.txt"))?, b"after save");
+        assert!(
+            !entries_of(&second)?
+                .iter()
+                .any(|entry| entry.starts_with("chat_uploads/"))
+        );
         Ok(())
     }
 

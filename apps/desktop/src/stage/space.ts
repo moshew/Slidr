@@ -233,11 +233,10 @@ function holdsText(located: Located, onText: (shape: Located) => boolean): boole
  * picks, so a drag moves that: the group that was not entered, or the child of the one that was.
  * A press that is released where it began may go further:
  *
- * - On a text that is in a group, straight into editing that text, however deep it lies, and
- *   whether its group was entered or not, and whether the text was the selection or not: it is
- *   where the text is that counts. The text is the element `chain` ends in, the topmost one under
- *   the pointer, unless that one is locked or hidden. The empty part of a big shape is no text.
- *   A text in no group is left to the double-click.
+ * - On a text in a group, or on the text of a standalone shape, straight into editing it.
+ *   It is where the text is that counts. The text is the element `chain` ends in, the topmost
+ *   one under the pointer, unless that one is locked or hidden. The empty part of a big shape
+ *   is no text. A standalone text box is left to the double-click.
  * - On a group that was the whole selection before the press, to the child under the pointer, one
  *   level in: a second click on a group does what a double-click on it does.
  *
@@ -256,7 +255,13 @@ export function resolvePress(
   // A locked element is not taken by a press at all.
   if (!target || target.locked) return hit;
   const top = index.get(chain[chain.length - 1] ?? '');
-  if (top?.path.length && !top.locked && !top.hidden && holdsText(top, onText)) {
+  if (
+    top &&
+    (top.path.length > 0 || top.element.type === 'shape') &&
+    !top.locked &&
+    !top.hidden &&
+    holdsText(top, onText)
+  ) {
     return { ...hit, inside: { scope: pathIds(top), id: top.element.id, edit: true } };
   }
   // Besides a text, only a group has an inside to go to.

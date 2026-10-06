@@ -77,6 +77,9 @@ export function screenBox(f: Frame, view: StageView): CSSProperties {
 }
 
 const CURSORS = ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'] as const;
+const ROTATE_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M19.5 9a8 8 0 1 0 .3 5.5M19.5 9V3.5M19.5 9H14" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.5 9a8 8 0 1 0 .3 5.5M19.5 9V3.5M19.5 9H14" fill="none" stroke="#24303e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+)}") 12 12, grab`;
 
 /** The resize cursor of a handle, by where the handle points on the screen. */
 function handleCursor(handle: Handle, m: Matrix): string {
@@ -92,6 +95,7 @@ export function Outline({
   hover,
   dashed,
   entered,
+  hoveredGroup,
   placeholder,
   walk,
 }: {
@@ -106,18 +110,22 @@ export function Outline({
   walk?: boolean;
   /** The group the user is working inside: a quieter frame than a selection. */
   entered?: boolean;
+  /** The group a hovered text belongs to, before the user enters it. */
+  hoveredGroup?: boolean;
   /** An empty placeholder: the quietest frame, there so that the empty box can be seen. */
   placeholder?: boolean;
 }) {
   const { element } = located;
-  const quiet = entered || placeholder;
+  const quiet = entered || hoveredGroup || placeholder;
   const mark = entered
     ? { 'data-entered-group': element.id }
-    : placeholder
-      ? { 'data-placeholder': element.id }
-      : walk
-        ? { 'data-walk': element.id }
-        : { 'data-outline': element.id };
+    : hoveredGroup
+      ? { 'data-hovered-group': element.id }
+      : placeholder
+        ? { 'data-placeholder': element.id }
+        : walk
+          ? { 'data-walk': element.id }
+          : { 'data-outline': element.id };
   return (
     <div
       {...mark}
@@ -127,7 +135,7 @@ export function Outline({
           ? `2px dotted ${FOCUS}`
           : `${hover || quiet ? 1 : 1.5}px ${dashed || quiet ? 'dashed' : 'solid'} ${ACCENT}`,
         outlineOffset: walk ? 4 : undefined,
-        opacity: placeholder ? 0.45 : entered ? 0.7 : undefined,
+        opacity: placeholder ? 0.45 : entered || hoveredGroup ? 0.7 : undefined,
       }}
     />
   );
@@ -233,7 +241,7 @@ export function Handles({
             background: PANEL,
             border: `1.5px solid ${ACCENT}`,
             pointerEvents: 'auto',
-            cursor: 'grab',
+            cursor: ROTATE_CURSOR,
           }}
         />
       )}

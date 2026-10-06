@@ -801,7 +801,13 @@ function closingWords(entries: readonly ChatEntry[], busy: boolean, stopped: str
  * The chat of a session: the AI chat, a deck session, by default; the HTML import shows the
  * conversation of its own session with it, which is about a file and not about a selection.
  */
-export function Chat({ scope = DECK }: { scope?: SessionScope }) {
+export function Chat({
+  scope = DECK,
+  afterMessages,
+}: {
+  scope?: SessionScope;
+  afterMessages?: ReactNode;
+}) {
   const { t } = useTranslation('ai');
   const thread = useThread(scope);
   const focus = useFocus();
@@ -857,6 +863,7 @@ export function Chat({ scope = DECK }: { scope?: SessionScope }) {
           ),
         )}
         {state.busy && <Working activity={state.activity} stopping={state.stopping} />}
+        {afterMessages}
       </div>
     );
   }

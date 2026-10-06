@@ -242,7 +242,7 @@ const Thumb = memo(function Thumb({
       style={{
         position: 'absolute',
         insetInlineStart: PAD + slideIndex * STEP,
-        top: 10,
+        top: 7,
         width: THUMB_W,
       }}
     >
@@ -312,7 +312,8 @@ const Thumb = memo(function Thumb({
       <div
         style={{
           position: 'relative',
-          marginTop: 4,
+          // Keep the number above the strip's 10px horizontal scrollbar.
+          marginTop: 0,
           font: '500 11px/14px var(--font-ui)',
           color: current ? 'var(--color-ui-fg)' : 'var(--color-ui-fg-muted)',
           textAlign: 'center',
@@ -909,7 +910,7 @@ export function Filmstrip({
                 style={{
                   position: 'absolute',
                   insetInlineStart: PAD + slides.length * STEP,
-                  top: 10,
+                  top: 7,
                 }}
               >
                 {/* With layouts in the deck the button offers them (FLM-03). */}

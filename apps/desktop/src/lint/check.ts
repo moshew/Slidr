@@ -46,6 +46,14 @@ const keyOf = (deck: Deck, slide: Slide): Key => [
 ];
 const same = (a: Key, b: Key) => a.every((part, i) => part === b[i]);
 
+/** A new deck's lone empty canvas is a starting point, not a slide to review yet. */
+const isStarterCanvas = (deck: Deck, slide: Slide) =>
+  deck.slides.length === 1 &&
+  slide.elements.length === 0 &&
+  !slide.layoutId &&
+  !slide.background &&
+  !slide.css;
+
 /** Errors one "fix" may go on to fix after its own: each is one the step before it opened. */
 const MAX_FOLLOW_UPS = 4;
 
@@ -122,6 +130,9 @@ export class DesignCheck {
       for (const slide of deck.slides) {
         // The deck moved on: what would be found is already out of date.
         if (this.#bus.deck !== deck) return;
+        // L07 still catches empty slides in a deck. Only the blank canvas of a new,
+        // otherwise empty deck has no design to check yet.
+        if (isStarterCanvas(deck, slide)) continue;
         const key = keyOf(deck, slide);
         let entry = this.#measured.get(slide.id);
         if (!entry || !same(entry.key, key)) {
