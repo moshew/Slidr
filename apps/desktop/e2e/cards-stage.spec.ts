@@ -223,6 +223,9 @@ test('a click on the text of a shape inside a group edits it, at any depth; off 
   await page.mouse.click(tag.x, tag.y);
   expect((await state(page)).editing).toBe('g_card_tag');
   await expect(surface(page)).toHaveAttribute('data-entered', 'g_card g_card_row');
+  // The editor puts its caret where the click was once it has the keyboard: a key sent before
+  // that would be answered from wherever the caret was first.
+  await expect(editor(page)).toBeFocused();
   await page.keyboard.press('End');
   await page.keyboard.type('!');
   expect(await textOf(page, 'g_card_tag')).toBe('Nested!');
@@ -247,6 +250,7 @@ test('inside the card a click on another of its texts edits that one, and a drag
   const title = await center(page, el('g_card_title'));
   await page.mouse.click(title.x, title.y);
   expect((await state(page)).editing).toBe('g_card_title');
+  await expect(editor(page)).toBeFocused();
   await page.keyboard.press('Escape');
   expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: null });
   await expect(surface(page)).toHaveAttribute('data-entered', 'g_card');
@@ -271,12 +275,14 @@ test('inside the card a click on another of its texts edits that one, and a drag
   const frame = await box(page, el('g_card_title'));
   await page.mouse.click(frame.x + 2, frame.y + 26 * scale);
   expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: 'g_card_title' });
+  await expect(editor(page)).toBeFocused();
   await page.keyboard.type('Z');
   expect(await textOf(page, 'g_card_title')).toBe('ZCard title');
   await page.keyboard.press('Escape');
   expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: null });
   await page.mouse.click(title.x, title.y);
   expect((await state(page)).editing).toBe('g_card_title');
+  await expect(editor(page)).toBeFocused();
   await page.keyboard.press('Escape');
 
   // A drag from the text of the chip moves the chip, and nothing else of the card.
@@ -404,6 +410,7 @@ test('a double-click still goes one level in, and edits only what it always edit
   // On the shape itself, now that a click reaches it: its text is edited, as on any shape.
   await page.mouse.dblclick(icon.x, icon.y);
   expect((await state(page)).editing).toBe('g_card_icon');
+  await expect(editor(page)).toBeFocused();
   await page.keyboard.press('Escape');
 
   // The same from a card that is selected, on its background.
