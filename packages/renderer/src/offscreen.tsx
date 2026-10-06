@@ -31,9 +31,13 @@ export async function renderSlideOffscreen(
   { parent = document.body, hidden = true }: OffscreenOptions = {},
 ): Promise<OffscreenSlide> {
   const container = document.createElement('div');
+  // Hidden, and transparent as well: a part of the slide that says `visibility: visible` (the
+  // markup of an `html` element, the paths of a picture) is drawn under a hidden parent, and
+  // would show over the window for as long as the slide is measured. Nothing in the slide
+  // undoes the opacity of what it is in.
   container.style.cssText =
     'position:fixed;left:0;top:0;width:1920px;height:1080px;overflow:hidden;contain:strict;' +
-    `pointer-events:none;${hidden ? 'visibility:hidden;' : ''}`;
+    `pointer-events:none;${hidden ? 'visibility:hidden;opacity:0;' : ''}`;
   parent.append(container);
   const reactRoot = createRoot(container);
   flushSync(() => reactRoot.render(<SlideRenderer {...props} />));

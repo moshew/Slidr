@@ -93,10 +93,32 @@ export function normalizeColor(value: string): string {
 }
 
 /**
+ * A picture is shown where its element is shown, and nowhere else: not on a slide that is kept
+ * out of sight while it is measured or while its fonts load, and not before the element's
+ * entrance in a show. All of those hide with `visibility`, which a part that says `visible`
+ * goes over, and parts do say it: the HTML conversion writes on each of them what the page
+ * computed for it, and a drawing program writes the same into its files. Where nothing in the
+ * picture hides the part, the word says nothing of the picture, and is taken out. A part that
+ * the picture itself hides and shows again keeps it.
+ */
+function followElementVisibility(el: Element, hiddenAbove = false): void {
+  const inline = el instanceof SVGElement ? el.style.getPropertyValue('visibility') : '';
+  // A style goes over the presentation attribute of the same name.
+  const own = (inline || el.getAttribute('visibility') || '').trim().toLowerCase();
+  if (own === 'visible' && !hiddenAbove) {
+    if (el instanceof SVGElement) el.style.removeProperty('visibility');
+    el.removeAttribute('visibility');
+  }
+  const hidden = own === 'visible' ? false : own === 'hidden' || own === 'collapse' || hiddenAbove;
+  for (const child of Array.from(el.children)) followElementVisibility(child, hidden);
+}
+
+/**
  * The picture of an `svg` element as nodes, ready to be put into the shadow root the element
- * draws in: cleaned (SEC-06; `picture.ts` says what a picture may hold), sized to its frame, and
- * recoloured by `colorOverrides` (SHP-06). The nodes themselves, never their markup: a tree that
- * is written out and parsed again is not the tree that was cleaned (`sanitize.ts`).
+ * draws in: cleaned (SEC-06; `picture.ts` says what a picture may hold), sized to its frame,
+ * recoloured by `colorOverrides` (SHP-06), and hidden with its element
+ * (`followElementVisibility`). The nodes themselves, never their markup: a tree that is written
+ * out and parsed again is not the tree that was cleaned (`sanitize.ts`).
  *
  * The element draws the first `<svg>` of its markup and nothing else of it. Markup without one
  * draws nothing.
@@ -119,6 +141,7 @@ export function prepareSvg(
   if (!root) return picture;
   picture.append(root);
   cleanPicture(root);
+  followElementVisibility(root);
   const w = parseFloat(root.getAttribute('width') ?? '');
   const h = parseFloat(root.getAttribute('height') ?? '');
   if (!root.hasAttribute('viewBox') && w > 0 && h > 0)

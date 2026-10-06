@@ -274,6 +274,55 @@ describe('an svg element draws its picture', () => {
     expect(document.getElementById('g')).toBeNull();
     expect(picture(container, 'e_svg_blue')?.getElementById('g')?.innerHTML).toContain('#0000ff');
   });
+
+  it('hidden where its element is, whatever its parts say of being visible', () => {
+    // The HTML conversion writes on every part of an icon what the page computed for it, and a
+    // drawing program writes the same into its files: `visibility: visible`, which goes over
+    // what a part inherits. Such an icon was drawn where its element was hidden: before its
+    // entrance in a show, and over the show while its slides waited for their fonts.
+    const element = createElement.svg({
+      id: 'e_icon',
+      frame: frame(0),
+      markup:
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="visibility: visible">' +
+        '<path d="M4 20 L20 4" style="stroke: #000; visibility: visible;"/>' +
+        '<circle r="2" visibility="visible"/>' +
+        '<ellipse rx="2" ry="1" visibility="hidden" style="visibility: visible"/>' +
+        '<g visibility="hidden"><rect width="4" height="4" style="visibility: visible"/><line x2="4"/></g>' +
+        '</svg>',
+    });
+    const { deck, slide } = deckOf([element]);
+    const container = draw(deck, slide);
+    const root = picture(container, 'e_icon')!;
+    const parts = ['svg', 'path', 'circle', 'ellipse', 'g', 'rect', 'line'];
+    const visibility = () =>
+      parts.map((part) => getComputedStyle(root.querySelector(part)!).visibility);
+    // The picture is drawn as it was written: what it hides is hidden, and what it shows again
+    // inside that is shown.
+    expect(visibility()).toEqual([
+      'visible',
+      'visible',
+      'visible',
+      'visible',
+      'hidden',
+      'visible',
+      'hidden',
+    ]);
+    // The rest of what a part says stays as it was written.
+    expect(getComputedStyle(root.querySelector('path')!).stroke).toBe('rgb(0, 0, 0)');
+
+    container.querySelector<HTMLElement>('[data-element-id="e_icon"]')!.style.visibility = 'hidden';
+    // Only the part that the picture itself hid and showed again still goes its own way.
+    expect(visibility()).toEqual([
+      'hidden',
+      'hidden',
+      'hidden',
+      'hidden',
+      'hidden',
+      'visible',
+      'hidden',
+    ]);
+  });
 });
 
 describe('CSS of a deck styles its own slide or element, and nothing else', () => {
