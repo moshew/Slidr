@@ -259,7 +259,9 @@ test.describe('a tool that was reached with the keyboard', () => {
     expect((await elements(page)).at(-1)!.id).toBe('e_a');
     // The keyboard goes on along the row: the "AI" button comes after the Arrange menu.
     await page.keyboard.press('Tab');
-    await expect(rowB(page).getByRole('button', { name: 'AI on this object' })).toBeFocused();
+    await expect(
+      rowB(page).getByRole('button', { name: 'Ask AI about the selection' }),
+    ).toBeFocused();
   });
 
   test('a popover closes back onto its button', async ({ page }) => {
