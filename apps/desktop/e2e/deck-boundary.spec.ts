@@ -80,6 +80,9 @@ test('the editor keeps its own look whatever the CSS and the markup of a deck sa
   page,
 }) => {
   await openApp(page, { lang: 'en' });
+  // The editor is measured in its own letters both times: on a loaded machine the font of the
+  // UI can arrive after the Stage is up, and the buttons are then a few pixels narrower.
+  await page.evaluate(() => document.fonts.ready);
   const before = await chrome(page);
   expect(before.surfaces.length).toBeGreaterThan(5);
   expect(before.keyframes.join(' ')).toContain('rotate');
