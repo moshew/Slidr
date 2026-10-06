@@ -377,6 +377,23 @@ test.describe('the row', () => {
     }
   });
 
+  test('a row with no room for all the text tools holds them compact before it folds them', async ({
+    page,
+  }) => {
+    // At 1800 the row is about 1170 wide: the roomy tools take 1240 and more, the compact ones
+    // under 1100.
+    await page.setViewportSize({ width: 1800, height: 1032 });
+    for (const lang of ['he', 'en'] as const) {
+      await openApp(page, { lang });
+      await addSelected(page, boxes);
+      await expect(row(page).getByRole('textbox').first()).toBeVisible();
+      await expect(row(page).getByTestId('text-fold').getByRole('button')).toHaveCount(0);
+      // Compact: the text style is in "more", not in the row.
+      await expect(row(page).locator('[data-style]')).toHaveCount(0);
+      expect(await rowOverflow(page)).toBe(0);
+    }
+  });
+
   test('at 1366 the text tools fold into one button, and work from its popover', async ({
     page,
   }) => {

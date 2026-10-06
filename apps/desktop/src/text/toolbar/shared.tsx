@@ -260,7 +260,15 @@ const useDensity = create<{ level: Density }>(() => ({ level: 0 }));
 /** The width the row's content took in each layout, the last time it was measured in it. */
 const measured: number[] = [];
 
-function measureRow(toolbar: HTMLElement): void {
+/**
+ * `drawn` is the layout the row is drawn in. The row of several elements has two tools that
+ * measure it (the fold button and the font). When the first finds the row too wide and picks the
+ * next layout, the row is still drawn in the old one until React draws it again: measured then,
+ * its width would be taken for the new layout's, and a row too wide to be roomy would go straight
+ * to folded, without ever being compact.
+ */
+function measureRow(toolbar: HTMLElement, drawn: Density): void {
+  if (useDensity.getState().level !== drawn) return;
   const boxes = [...toolbar.children]
     .map((child) => child.getBoundingClientRect())
     .filter((box) => box.width > 0);
@@ -301,19 +309,24 @@ export function useFolded(): boolean {
 }
 
 /**
- * Measures the toolbar an element sits in and picks the layout. One tool of the row calls it (the
- * first); the others read `useCompact`.
+ * Measures the toolbar an element sits in and picks the layout. The font tool calls it, and in
+ * the row of several elements the fold button too (`SeveralTools.tsx`); the others read
+ * `useCompact`.
  */
 export function useMeasuredDensity(anchor: RefObject<HTMLElement | null>): void {
+  // The layout this render draws: the tool is drawn again whenever another one is picked.
+  const level = useDensity((s) => s.level);
+  const drawn = useRef(level);
   // After every render of the tool: what the row holds may have changed with the selection.
   useLayoutEffect(() => {
+    drawn.current = level;
     const toolbar = anchor.current?.closest<HTMLElement>('[role="toolbar"]');
-    if (toolbar) measureRow(toolbar);
+    if (toolbar) measureRow(toolbar, level);
   });
   useEffect(() => {
     const toolbar = anchor.current?.closest<HTMLElement>('[role="toolbar"]');
     if (!toolbar) return;
-    const observer = new ResizeObserver(() => measureRow(toolbar));
+    const observer = new ResizeObserver(() => measureRow(toolbar, drawn.current));
     observer.observe(toolbar);
     return () => observer.disconnect();
   }, [anchor]);
