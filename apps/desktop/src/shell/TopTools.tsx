@@ -10,84 +10,41 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   ChartColumn,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clapperboard,
-  FilePlus,
-  FolderOpen,
-  History,
-  House,
   Image,
-  Keyboard,
-  Play,
   RectangleHorizontal,
-  Redo2,
-  Save,
-  Search,
   Shapes,
-  Share,
-  SkipBack,
   Slash,
   Sparkles,
   Sticker,
   Table,
   Type,
-  Undo2,
   type LucideIcon,
 } from '@slidr/ui/icons';
+import { Button, cx, Icon, IconButton, Popover, PopoverContent, PopoverTrigger } from '@slidr/ui';
+import { useDeck, useSelection } from './editor';
 import {
-  Button,
-  cx,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-  Icon,
-  IconButton,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@slidr/ui';
-import type { RecentFile } from '../document/storage';
-import { useDeck, useEditor, useFile, useSelection } from './editor';
-import {
-  newDocument,
-  openDocument,
-  recentFiles,
-  saveDocument,
-  saveDocumentAs,
-} from './fileActions';
-import {
-  PanelId,
   useAction,
   useActionPopover,
   useContextTools,
-  usePanel,
-  useShortcut,
   type ActionPopoverProps,
   type ToolAction,
 } from './registry';
 import { aiKinds, selectionKind, type SelectionKind } from './selection';
-import { openAiChat, openPanel, setWelcome, setZoom, showShortcuts, useShell } from './store';
+import { openAiChat } from './store';
 import { watchToolFocus } from './toolFocus';
 
-/** Top Tools (SPEC 4.4): row A is fixed, row B follows the selection. */
+/** The creation toolbar. Selection tools float separately inside the workspace. */
 export function TopTools() {
   const rows = useRef<HTMLDivElement>(null);
   // A tool that is used with the pointer does not keep the keyboard (`toolFocus.ts`).
   useEffect(() => (rows.current ? watchToolFocus(rows.current) : undefined), []);
   return (
-    // A container, so that row B can tell how wide it is itself, whatever the window is.
+    // Creation tools scroll independently of the document actions in the title bar.
     <div ref={rows} className="@container shrink-0 bg-ui-panel">
       <RowA />
-      <RowB />
     </div>
   );
 }
@@ -103,15 +60,69 @@ function Group({ children, label }: { children: ReactNode; label?: string }) {
 
 /* ---------------------------------------------------------------- row A */
 
-const inserts: { action: ToolAction; icon: LucideIcon; label: string }[] = [
-  { action: 'insert.text', icon: Type, label: 'tools.insertText' },
-  { action: 'insert.image', icon: Image, label: 'tools.insertImage' },
-  { action: 'insert.shape', icon: Shapes, label: 'tools.insertShape' },
-  { action: 'insert.line', icon: Slash, label: 'tools.insertLine' },
-  { action: 'insert.table', icon: Table, label: 'tools.insertTable' },
-  { action: 'insert.chart', icon: ChartColumn, label: 'tools.insertChart' },
-  { action: 'insert.media', icon: Clapperboard, label: 'tools.insertMedia' },
-  { action: 'insert.icon', icon: Sticker, label: 'tools.insertIcon' },
+const inserts: {
+  action: ToolAction;
+  icon: LucideIcon;
+  label: string;
+  caption: string;
+  tone: string;
+}[] = [
+  {
+    action: 'insert.text',
+    icon: Type,
+    label: 'tools.insertText',
+    caption: 'tools.text',
+    tone: 'violet',
+  },
+  {
+    action: 'insert.image',
+    icon: Image,
+    label: 'tools.insertImage',
+    caption: 'tools.insertImage',
+    tone: 'blue',
+  },
+  {
+    action: 'insert.shape',
+    icon: Shapes,
+    label: 'tools.insertShape',
+    caption: 'tools.insertShape',
+    tone: 'pink',
+  },
+  {
+    action: 'insert.line',
+    icon: Slash,
+    label: 'tools.insertLine',
+    caption: 'tools.insertLine',
+    tone: 'teal',
+  },
+  {
+    action: 'insert.table',
+    icon: Table,
+    label: 'tools.insertTable',
+    caption: 'tools.insertTable',
+    tone: 'green',
+  },
+  {
+    action: 'insert.chart',
+    icon: ChartColumn,
+    label: 'tools.insertChart',
+    caption: 'tools.insertChart',
+    tone: 'orange',
+  },
+  {
+    action: 'insert.media',
+    icon: Clapperboard,
+    label: 'tools.insertMedia',
+    caption: 'tools.media',
+    tone: 'rose',
+  },
+  {
+    action: 'insert.icon',
+    icon: Sticker,
+    label: 'tools.insertIcon',
+    caption: 'tools.insertIcon',
+    tone: 'violet',
+  },
 ];
 
 function RowA() {
@@ -122,27 +133,23 @@ function RowA() {
       aria-label={t('panels.tools')}
       data-testid="top-tools-a"
       data-pane="tools"
-      className="flex h-toolbar-a items-center gap-4 border-b border-ui-line px-3"
+      className="flex h-toolbar-a min-w-0 items-center gap-3 border-b border-ui-line px-3"
     >
-      <FileMenu />
-      <UndoRedo />
-      {/* What is added to a slide is the part of this row that gives way when the row is narrow:
-          the document's menu, undo, the zoom and the three buttons at the end stay in place. */}
+      <span className="shrink-0 px-1 text-sm font-semibold text-ui-fg-muted">
+        {t('tools.create')}
+      </span>
       <ToolStrip testId="row-inserts">
-        <Group>
+        <div className="flex items-center gap-1">
           {inserts.map((insert) => (
             <ActionButton key={insert.action} {...insert} />
           ))}
-        </Group>
+        </div>
       </ToolStrip>
       <div className="flex-1" />
-      <ZoomMenu />
       <div className="flex shrink-0 items-center gap-2">
         <Button variant="soft" icon={Sparkles} data-testid="ask-ai" onClick={openAiChat}>
           {t('tools.aiChat')}
         </Button>
-        <ExportButton />
-        <PresentButton />
       </div>
     </div>
   );
@@ -152,278 +159,53 @@ function ActionButton({
   action,
   icon,
   label,
+  caption,
+  tone,
 }: {
   action: ToolAction;
   icon: LucideIcon;
   label: string;
+  caption: string;
+  tone: string;
 }) {
   const { t } = useTranslation();
   const run = useAction(action);
   const popover = useActionPopover(action);
-  if (popover) return <PopoverButton icon={icon} label={t(label)} content={popover} />;
-  return <IconButton icon={icon} label={t(label)} disabled={!run} onClick={run} />;
+  const trigger = (
+    <Button
+      variant="ghost"
+      aria-label={t(label)}
+      data-tool={action}
+      className="creation-tool"
+      disabled={!popover && !run}
+      onClick={popover ? undefined : run}
+    >
+      <span className="creation-tool-icon" data-tone={tone}>
+        <Icon icon={icon} size="lg" />
+      </span>
+      <span className="text-xs font-medium">{t(caption)}</span>
+    </Button>
+  );
+  if (popover) return <PopoverButton trigger={trigger} content={popover} />;
+  return trigger;
 }
 
 /** A row A button whose area registered a popover, such as the shape library. */
 function PopoverButton({
-  icon,
-  label,
+  trigger,
   content: Content,
 }: {
-  icon: LucideIcon;
-  label: string;
+  trigger: ReactNode;
   content: ComponentType<ActionPopoverProps>;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <IconButton icon={icon} label={label} />
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent>
         <Content close={() => setOpen(false)} />
       </PopoverContent>
     </Popover>
-  );
-}
-
-function ExportButton() {
-  return <ActionButton action="export" icon={Share} label="tools.export" />;
-}
-
-/**
- * "Present" as a split button: the button itself does what its area registered (from the
- * current slide), and the arrow beside it opens the two ways to start, which are the
- * registered shortcuts F5 and Shift+F5: the menu does what the keys do.
- */
-function PresentButton() {
-  const { t } = useTranslation();
-  const editor = useEditor();
-  const run = useAction('present');
-  const fromStart = useShortcut('present.fromStart');
-  const fromCurrent = useShortcut('present.fromCurrent');
-  const ways = [
-    { shortcut: fromStart, label: 'keys.presentStart', icon: SkipBack },
-    { shortcut: fromCurrent, label: 'keys.presentCurrent', icon: Play },
-  ];
-  return (
-    <div className="flex items-center" data-testid="present-button">
-      <Button
-        variant="primary"
-        icon={Play}
-        disabled={!run}
-        onClick={run}
-        className="rounded-e-none"
-      >
-        {t('tools.present')}
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="primary"
-            aria-label={t('tools.presentOptions')}
-            disabled={!fromStart && !fromCurrent}
-            className="rounded-s-none border-s border-ui-on-accent/25 px-1.5"
-          >
-            <Icon icon={ChevronDown} />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" data-testid="present-menu">
-          {ways.map(
-            ({ shortcut, label, icon }) =>
-              shortcut && (
-                <DropdownMenuItem
-                  key={shortcut.id}
-                  icon={icon}
-                  shortcut={shortcut.keys}
-                  onSelect={() => shortcut.run(editor, new KeyboardEvent('keydown'))}
-                >
-                  {t(label)}
-                </DropdownMenuItem>
-              ),
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
-}
-
-function UndoRedo() {
-  const { t } = useTranslation();
-  const { bus } = useEditor();
-  const canUndo = useDeck((s) => s.canUndo);
-  const canRedo = useDeck((s) => s.canRedo);
-  return (
-    <Group>
-      <IconButton
-        icon={Undo2}
-        mirror
-        label={t('tools.undo')}
-        shortcut="Ctrl+Z"
-        disabled={!canUndo}
-        onClick={() => bus.undo()}
-      />
-      <IconButton
-        icon={Redo2}
-        mirror
-        label={t('tools.redo')}
-        shortcut="Ctrl+Y"
-        disabled={!canRedo}
-        onClick={() => bus.redo()}
-      />
-    </Group>
-  );
-}
-
-function FileMenu() {
-  const { t } = useTranslation();
-  const editor = useEditor();
-  const busy = useFile((s) => s.busy);
-  const [recent, setRecent] = useState<RecentFile[] | null>(null);
-  const hasStorage = editor.document !== null;
-  // Find and replace is another area's: the menu offers what its shortcut does, when it is there.
-  const find = useShortcut('find.replace');
-  const toFind = useRef(false);
-  // So is HTML import: its panel asks for the file, and about the open document if it has work.
-  const htmlImport = usePanel(PanelId.htmlImport);
-
-  return (
-    <DropdownMenu
-      onOpenChange={(open) => {
-        if (open && hasStorage) void recentFiles(editor).then(setRecent);
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" iconEnd={ChevronDown} loading={busy !== null}>
-          {t('file.menu')}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        onCloseAutoFocus={(event) => {
-          if (toFind.current) event.preventDefault();
-          toFind.current = false;
-        }}
-      >
-        <DropdownMenuItem
-          icon={FilePlus}
-          shortcut="Ctrl+N"
-          onSelect={() => void newDocument(editor)}
-        >
-          {t('file.new')}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          icon={FolderOpen}
-          shortcut="Ctrl+O"
-          disabled={!hasStorage}
-          onSelect={() => void openDocument(editor)}
-        >
-          {t('file.open')}
-        </DropdownMenuItem>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger icon={History} disabled={!hasStorage}>
-            {t('file.recent')}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-w-96">
-            {recent?.length ? (
-              recent.slice(0, 10).map((file) => (
-                <DropdownMenuItem
-                  key={file.path}
-                  disabled={!file.exists}
-                  hint={file.exists ? undefined : t('file.missing')}
-                  onSelect={() => void openDocument(editor, file.path)}
-                >
-                  {file.title || file.path.split(/[\\/]/).at(-1)}
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <DropdownMenuItem disabled>{t('file.noRecent')}</DropdownMenuItem>
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        {htmlImport && (
-          <DropdownMenuItem icon={htmlImport.icon} onSelect={() => openPanel(htmlImport.id)}>
-            {t('file.importHtml')}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          icon={Save}
-          shortcut="Ctrl+S"
-          disabled={!hasStorage}
-          onSelect={() => void saveDocument(editor)}
-        >
-          {t('file.save')}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          shortcut="Ctrl+Shift+S"
-          disabled={!hasStorage}
-          onSelect={() => void saveDocumentAs(editor)}
-          className="ps-8"
-        >
-          {t('file.saveAs')}
-        </DropdownMenuItem>
-        {find && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              icon={Search}
-              shortcut={find.keys}
-              onSelect={() => {
-                // The find bar takes the keyboard; the menu must not hand it back to its button.
-                toFind.current = true;
-                find.run(editor, new KeyboardEvent('keydown'));
-              }}
-            >
-              {t('file.find')}
-            </DropdownMenuItem>
-          </>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem icon={Keyboard} shortcut="Ctrl+/" onSelect={() => showShortcuts()}>
-          {t('keys.shortcuts')}
-        </DropdownMenuItem>
-        <DropdownMenuItem icon={House} onSelect={() => setWelcome(true, true)}>
-          {t('welcome.show')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-const zoomSteps = [0.5, 1, 2];
-
-function ZoomMenu() {
-  const { t } = useTranslation();
-  const zoom = useShell((s) => s.zoom);
-  const viewScale = useShell((s) => s.viewScale);
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          iconEnd={ChevronDown}
-          aria-label={t('tools.zoom')}
-          className="tabular-nums"
-        >
-          {Math.round(viewScale * 100)}%
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup
-          value={String(zoom)}
-          onValueChange={(value) => setZoom(value === 'fit' ? 'fit' : Number(value))}
-        >
-          <DropdownMenuRadioItem value="fit" shortcut="Ctrl+0">
-            {t('tools.zoomFit')}
-          </DropdownMenuRadioItem>
-          {zoomSteps.map((step) => (
-            <DropdownMenuRadioItem key={step} value={String(step)}>
-              {step * 100}%
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 
@@ -522,6 +304,16 @@ function ToolStrip({
         ref={strip}
         data-row-tools
         onScroll={look}
+        onFocusCapture={(event) => {
+          // Browser focus can leave a partially visible button clipped. Bring the whole control
+          // and its focus ring into the strip, in either reading direction.
+          const room = event.currentTarget.getBoundingClientRect();
+          const box = event.target.getBoundingClientRect();
+          if (box.left < room.left + 4)
+            event.currentTarget.scrollBy({ left: box.left - room.left - 4 });
+          else if (box.right > room.right - 4)
+            event.currentTarget.scrollBy({ left: box.right - room.right + 4 });
+        }}
         onWheel={(event) => {
           // The wheel of a mouse turns one way only: over the strip it scrolls it sideways.
           if (event.deltaX === 0) strip.current?.scrollBy({ left: towardsEnd * event.deltaY });
@@ -563,6 +355,16 @@ function ToolStrip({
   );
 }
 
+export function ContextTools() {
+  const rows = useRef<HTMLDivElement>(null);
+  useEffect(() => (rows.current ? watchToolFocus(rows.current) : undefined), []);
+  return (
+    <div ref={rows} className="@container mx-3 mt-3 shrink-0">
+      <RowB />
+    </div>
+  );
+}
+
 function RowB() {
   const { t } = useTranslation();
   const { kind, count } = useSelectionKind();
@@ -580,7 +382,7 @@ function RowB() {
       // The groups are 12px apart: at 16 the row of a text box, the fullest one, did not hold the
       // tools of all the areas at 1920 or at 1366. In a row as narrow as the one of 1366 they are
       // 8px apart: at 12 the row of a table was wider than the editor there, in English.
-      className="flex h-toolbar-b items-center gap-3 border-b border-ui-line px-3 @max-4xl:gap-2"
+      className="mx-auto flex h-toolbar-b w-max max-w-full min-w-0 items-center gap-3 rounded-panel border border-ui-line bg-ui-raised px-3 shadow-floating @max-4xl:gap-2"
     >
       <span
         data-testid="selection-label"

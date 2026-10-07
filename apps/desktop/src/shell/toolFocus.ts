@@ -44,6 +44,8 @@ let way: 'pointer' | 'keys' | null = null;
 let keyAt: HTMLElement | null = null;
 /** The pointer is down on a tool of the rows: the focus that moves now is the press's own. */
 let pressing = false;
+/** Document, creation and contextual tools now live in separate parts of the shell. */
+const watchedToolbars = new Set<HTMLElement>();
 
 const within = (node: EventTarget | null, selector: string) =>
   node instanceof Element && node.closest(selector) !== null;
@@ -81,6 +83,7 @@ export function toolClosed(event: Event): void {
  * rows, so what happens inside it does not count as happening in them.
  */
 export function watchToolFocus(rows: HTMLElement): () => void {
+  watchedToolbars.add(rows);
   const inRows = (node: EventTarget | null): node is HTMLElement =>
     node instanceof HTMLElement && rows.contains(node);
   /** On a control of the rows that is no field and has nothing open: a tool that is done. */
@@ -138,8 +141,13 @@ export function watchToolFocus(rows: HTMLElement): () => void {
   const onKeyDown = (event: KeyboardEvent) => {
     // The keys of a menu, a popover or a dialog belong to the use of the tool that opened it.
     if (overlayOf(event.target)) return;
-    way = inRows(event.target) ? 'keys' : null;
-    keyAt = inRows(event.target) ? event.target : null;
+    // Every watcher sees the same key. Use all registered toolbars so a later watcher cannot
+    // clear the keyboard origin recorded by the toolbar that actually received it.
+    const target = event.target;
+    const inTools =
+      target instanceof HTMLElement && [...watchedToolbars].some((bar) => bar.contains(target));
+    way = inTools ? 'keys' : null;
+    keyAt = inTools ? target : null;
   };
 
   rows.addEventListener('pointerdown', onPointerDown, true);
@@ -159,8 +167,11 @@ export function watchToolFocus(rows: HTMLElement): () => void {
     document.removeEventListener('pointercancel', onPointerEnd, true);
     document.removeEventListener('focusin', onFocusIn);
     window.removeEventListener('keydown', onKeyDown, true);
-    way = null;
-    keyAt = null;
-    pressing = false;
+    watchedToolbars.delete(rows);
+    if (watchedToolbars.size === 0 || (keyAt && rows.contains(keyAt))) {
+      way = null;
+      keyAt = null;
+      pressing = false;
+    }
   };
 }

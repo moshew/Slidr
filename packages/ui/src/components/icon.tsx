@@ -3,8 +3,8 @@ import { cx } from '../cx';
 
 export type { LucideIcon };
 
-/** The two icon sizes of SPEC 4.0: 16 in controls and menus, 18 in the Activity Bar. */
-export const iconSizes = { sm: 16, md: 18 } as const;
+/** Compact controls, standard icons, and prominent creation/navigation tools. */
+export const iconSizes = { sm: 16, md: 18, lg: 24 } as const;
 export type IconSize = keyof typeof iconSizes;
 
 export interface IconProps {

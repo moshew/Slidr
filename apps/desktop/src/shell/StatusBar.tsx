@@ -4,7 +4,7 @@ import { cx, Spinner } from '@slidr/ui';
 import { autosaveFailure } from '../document/failures';
 import { useDeck, useFile, useSelection } from './editor';
 import { useStatusItem } from './registry';
-import { useShell } from './store';
+import { ZoomMenu } from './ZoomMenu';
 
 /**
  * The status bar (UI-07): slide n of total, zoom and save state at the start; the agent's state
@@ -15,7 +15,6 @@ export function StatusBar() {
   const { t } = useTranslation();
   const slides = useDeck((s) => s.deck.slides);
   const current = useSelection((s) => s.currentSlideId);
-  const scale = useShell((s) => s.viewScale);
   const index = slides.findIndex((s) => s.id === current);
   const Agent = useStatusItem('agent');
   const Lint = useStatusItem('lint');
@@ -32,12 +31,7 @@ export function StatusBar() {
           : t('status.slide', { current: index + 1, total: slides.length })}
       </span>
       {/* The word is for a screen reader: a number alone does not say what it measures. */}
-      <span>
-        <span className="sr-only">{t('status.zoom')} </span>
-        <span data-testid="status-zoom" className="tabular-nums">
-          {Math.round(scale * 100)}%
-        </span>
-      </span>
+      <ZoomMenu />
       <SaveState />
       <div className="flex-1" />
       {Agent ? (

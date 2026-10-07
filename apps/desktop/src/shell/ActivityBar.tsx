@@ -3,6 +3,13 @@ import { cx, Icon, Tooltip } from '@slidr/ui';
 import { usePanels, type PanelDefinition } from './registry';
 import { togglePanel, useShell } from './store';
 
+/** Short visible captions; tooltips and accessible names retain the full panel titles. */
+const captions: Record<string, string> = {
+  notes: 'navigation.notes',
+  lint: 'navigation.lint',
+  import: 'navigation.import',
+};
+
 /**
  * The Activity Bar (SPEC 4.2) at the outer edge of the AI area: the AI tools, the other
  * panels, and settings at the bottom. Clicking the open panel collapses the Tool Panel.
@@ -17,7 +24,7 @@ export function ActivityBar() {
       aria-label={t('panels.tools')}
       data-testid="activity-bar"
       data-pane="activity"
-      className="flex w-activitybar shrink-0 flex-col items-center gap-4 border-e border-ui-line bg-ui-chrome py-2"
+      className="flex w-activitybar shrink-0 flex-col items-center gap-3 overflow-y-auto border-e border-ui-line bg-ui-chrome py-3"
     >
       <Section panels={slot('ai')} />
       <Section panels={slot('tools')} />
@@ -30,7 +37,7 @@ export function ActivityBar() {
 function Section({ panels }: { panels: PanelDefinition[] }) {
   if (panels.length === 0) return null;
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex shrink-0 flex-col items-center gap-1">
       {panels.map((panel) => (
         <Item key={panel.id} panel={panel} />
       ))}
@@ -51,13 +58,16 @@ function Item({ panel }: { panel: PanelDefinition }) {
         data-panel={panel.id}
         onClick={() => togglePanel(panel.id)}
         className={cx(
-          'inline-flex size-10 cursor-default items-center justify-center rounded-control transition-colors',
+          'inline-flex w-16 shrink-0 cursor-default flex-col items-center justify-center gap-1 rounded-control px-1 py-2 transition-colors',
           active
             ? 'bg-ui-accent-soft text-ui-accent-fg'
             : 'text-ui-fg-muted hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed',
         )}
       >
-        <Icon icon={panel.icon} size="md" />
+        <Icon icon={panel.icon} size="lg" />
+        <span className="w-full truncate text-center text-xs font-medium">
+          {t(captions[panel.id] ?? panel.title)}
+        </span>
       </button>
     </Tooltip>
   );

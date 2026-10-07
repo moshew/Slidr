@@ -78,7 +78,7 @@ test('a new deck opens on the default template, and File > New does too', async 
   ]);
 
   // And File > New in the same window.
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'קובץ' }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
   await page.getByRole('menuitem', { name: 'מצגת חדשה' }).click();
   const fresh = await deck(page);
   expect(fresh.id).not.toBe(started.id);
@@ -191,7 +191,7 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
   );
 
   // A new deck opens on it, with its logo and the file behind it.
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'קובץ' }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
   await page.getByRole('menuitem', { name: 'מצגת חדשה' }).click();
   // The deck has unsaved changes: the app asks before it replaces it.
   await page.getByRole('button', { name: 'בלי לשמור' }).click();

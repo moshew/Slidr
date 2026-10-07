@@ -13,6 +13,7 @@
 
 /** The regions in the order of the key, which is the order they are laid out in. */
 export const PANES = [
+  'document',
   'activity',
   'panel',
   'tools',
@@ -94,10 +95,14 @@ export function paneTarget(pane: Pane): HTMLElement | undefined {
   const node = paneNode(pane);
   if (!node || !takesKeyboard(node) || covered(node)) return undefined;
   const remembered = last.get(pane);
-  if (remembered && node.contains(remembered) && remembered.matches(TABBABLE)) {
+  if (remembered && remembered.closest('[data-pane]') === node && remembered.matches(TABBABLE)) {
     if (takesKeyboard(remembered)) return remembered;
   }
-  const controls = [...node.querySelectorAll<HTMLElement>(TABBABLE)].filter(takesKeyboard);
+  // Context tools are now inside the Stage region. Each pane owns only its own controls;
+  // entering the Stage must reach the slide, rather than a button of the nested context pane.
+  const controls = [...node.querySelectorAll<HTMLElement>(TABBABLE)].filter(
+    (control) => control.closest('[data-pane]') === node && takesKeyboard(control),
+  );
   // Among the buttons of the Activity Bar, the one of the open panel.
   const open =
     pane === 'activity'

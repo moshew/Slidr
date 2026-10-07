@@ -27,11 +27,11 @@
   --animate-*: initial;
 
   /* Surfaces, from the window frame inwards. */
-  --color-ui-chrome: light-dark(#f4f4f6, #161618); /* title bar, Activity Bar, status bar */
-  --color-ui-panel: light-dark(#ffffff, #1c1c1f); /* Top Tools, Tool Panel, Filmstrip */
-  --color-ui-canvas: light-dark(#e9e9ed, #0f0f11); /* behind the slide on the Stage */
-  --color-ui-raised: light-dark(#ffffff, #26262a); /* menus, popovers, dialogs */
-  --color-ui-field: light-dark(#f4f4f6, #232327); /* inputs and tracks */
+  --color-ui-chrome: light-dark(#f8f7fc, #191721); /* Activity Bar, status bar */
+  --color-ui-panel: light-dark(#ffffff, #211e2b); /* Top Tools, Tool Panel, Filmstrip */
+  --color-ui-canvas: light-dark(#f0eef7, #14111c); /* behind the slide on the Stage */
+  --color-ui-raised: light-dark(#ffffff, #2b2737); /* menus, popovers, dialogs */
+  --color-ui-field: light-dark(#f5f3fa, #2a2635); /* inputs and tracks */
   --color-ui-hover: light-dark(#18181b0d, #ffffff0f);
   --color-ui-pressed: light-dark(#18181b17, #ffffff1a);
   --color-ui-thumb: light-dark(#ffffff, #3b3b42); /* the selected segment of a segmented control */
@@ -45,15 +45,42 @@
   --color-ui-line: light-dark(#e6e6ea, #2a2a2f);
   --color-ui-line-strong: light-dark(#d2d2d8, #3b3b42);
 
-  /* The one colour that stands out: the main action, selection, focus and AI. */
-  --color-ui-accent: light-dark(#5b5bd6, #5b5be0);
-  --color-ui-accent-hover: light-dark(#5050c8, #6666e8);
-  --color-ui-accent-pressed: light-dark(#4646b8, #5252d2);
+  /* Main action, selection, focus and AI. */
+  --color-ui-accent: light-dark(#7c3aed, #8045e6);
+  --color-ui-accent-hover: light-dark(#6d28d9, #8b50ed);
+  --color-ui-accent-pressed: light-dark(#5b21b6, #7033d1);
   --color-ui-on-accent: light-dark(#ffffff, #ffffff);
-  --color-ui-accent-soft: light-dark(#5b5bd61a, #7b7bf02b); /* selected items, AI tint */
-  --color-ui-accent-soft-hover: light-dark(#5b5bd630, #7b7bf047);
-  --color-ui-accent-fg: light-dark(#4b4bc4, #a9a8ff);
-  --color-ui-focus: light-dark(#5b5bd6, #8584f5);
+  --color-ui-accent-soft: light-dark(#f0e8ff, #3b2858); /* selected items, AI tint */
+  --color-ui-accent-soft-hover: light-dark(#e6d8ff, #4a336d);
+  --color-ui-accent-fg: light-dark(#6d28d9, #ceb1ff);
+  --color-ui-focus: light-dark(#7c3aed, #bc91ff);
+
+  /* Header and creation tools: paired foregrounds keep coloured controls readable. */
+  --color-ui-header-start: light-dark(#087e8b, #075b65);
+  --color-ui-header-middle: light-dark(#4c50c8, #373888);
+  --color-ui-header-end: light-dark(#8534d5, #612694);
+  --color-ui-header-fg: #ffffff;
+  --color-ui-header-hover: #ffffff24;
+  --color-ui-header-pressed: #ffffff38;
+  --color-ui-header-line: #ffffff40;
+  --color-ui-header-action: #ffffff;
+  --color-ui-header-action-hover: #f0e8ff;
+  --color-ui-header-action-pressed: #e6d8ff;
+  --color-ui-header-action-fg: #6425b6;
+  --color-ui-tool-violet: light-dark(#ede5ff, #3b2858);
+  --color-ui-tool-violet-fg: light-dark(#7030c9, #ceb1ff);
+  --color-ui-tool-blue: light-dark(#e3efff, #223858);
+  --color-ui-tool-blue-fg: light-dark(#245cc5, #a1c5ff);
+  --color-ui-tool-pink: light-dark(#fbe5f4, #4d2744);
+  --color-ui-tool-pink-fg: light-dark(#a32c80, #ffb0e4);
+  --color-ui-tool-teal: light-dark(#dbf4f3, #1c3c3c);
+  --color-ui-tool-teal-fg: light-dark(#08766f, #79ddd4);
+  --color-ui-tool-green: light-dark(#e2f4e8, #253d2f);
+  --color-ui-tool-green-fg: light-dark(#247340, #9cdeb0);
+  --color-ui-tool-orange: light-dark(#fff0db, #493423);
+  --color-ui-tool-orange-fg: light-dark(#a4590e, #ffd09a);
+  --color-ui-tool-rose: light-dark(#ffe5eb, #4c2934);
+  --color-ui-tool-rose-fg: light-dark(#b82d56, #ffabc2);
 
   /* Status. */
   --color-ui-danger: light-dark(#c42b1c, #c42b1c);
@@ -73,13 +100,15 @@
   /* Named sizes (`h-control`, `w-activitybar`): controls and the FHD regions of SPEC 4.1. */
   --spacing-control: 32px;
   --spacing-control-sm: 28px;
-  --spacing-titlebar: 36px;
+  --spacing-titlebar: 56px;
   --spacing-caption: 46px; /* a window control button */
-  --spacing-toolbar-a: 48px;
+  --spacing-toolbar-a: 80px;
   --spacing-toolbar-b: 44px;
   --spacing-filmstrip: 132px;
-  --spacing-statusbar: 24px;
-  --spacing-activitybar: 56px;
+  --spacing-statusbar: 32px;
+  --spacing-activitybar: 76px;
+  --spacing-creation-tool: 64px;
+  --spacing-creation-icon: 36px;
   --spacing-thumb-w: 176px; /* a filmstrip thumbnail, 176 × 99 (FLM-01) */
   --spacing-thumb-h: 99px;
   --spacing-menu: 224px; /* the minimum width of a menu */
@@ -87,17 +116,19 @@
   --spacing-dialog-wide: 720px; /* a dialog with a slide or a picture in it */
   --spacing-popover: 288px;
 
-  /* Radius: 8 for controls, 12 for panels, cards and floating surfaces. */
-  --radius-small: 4px;
-  --radius-inset: 6px; /* a control inside an 8px control (a segment), so the corners nest */
-  --radius-control: 8px;
-  --radius-panel: 12px;
+  /* Rounded controls and floating surfaces, with smaller nested corners. */
+  --radius-small: 6px;
+  --radius-inset: 8px;
+  --radius-control: 12px;
+  --radius-panel: 18px;
   --radius-full: 9999px;
 
   /* Depth: surfaces are told apart by tone; one soft shadow for whatever floats. */
   --shadow-raised: 0 1px 2px light-dark(#18181b14, #00000066);
   --shadow-overlay:
     0 12px 32px -8px light-dark(#18181b29, #000000a6), 0 2px 6px light-dark(#18181b0f, #00000052);
+  --shadow-floating:
+    0 4px 16px -4px light-dark(#46236b26, #00000066), 0 1px 3px light-dark(#46236b14, #00000040);
   --shadow-slide:
     0 1px 2px light-dark(#18181b14, #00000066), 0 8px 28px light-dark(#18181b14, #0000004d);
 

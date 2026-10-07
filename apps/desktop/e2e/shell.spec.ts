@@ -25,23 +25,28 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByTestId('stage-frame')).toBeVisible();
 });
 
-test('FHD: the regions of SPEC 4.1 and a 1232 × 693 slide', async ({ page }) => {
-  expect((await box(page, 'title-bar')).height).toBe(36);
-  expect((await box(page, 'top-tools-a')).height).toBe(48);
+test('FHD: the refreshed regions and the slide fitted below its floating tools', async ({
+  page,
+}) => {
+  expect((await box(page, 'title-bar')).height).toBe(56);
+  expect((await box(page, 'top-tools-a')).height).toBe(80);
   expect((await box(page, 'top-tools-b')).height).toBe(44);
   expect((await box(page, 'filmstrip')).height).toBe(132);
-  expect((await box(page, 'status-bar')).height).toBe(24);
-  expect((await box(page, 'activity-bar')).width).toBe(56);
+  expect((await box(page, 'status-bar')).height).toBe(32);
+  expect((await box(page, 'activity-bar')).width).toBe(76);
   expect((await box(page, 'tool-panel')).width).toBe(584);
 
   const stage = await box(page, 'stage');
-  expect([stage.width, stage.height]).toEqual([1280, 748]);
+  expect([stage.width, stage.height]).toEqual([1260, 732]);
+  const surface = await box(page, 'stage-surface');
+  const tools = await box(page, 'top-tools-b');
+  expect(surface.y).toBeGreaterThanOrEqual(tools.y + tools.height);
   const frame = await box(page, 'stage-frame');
-  expect(Math.round(frame.width)).toBe(1232);
-  expect(Math.round(frame.height)).toBe(693);
-  // Centred, so 24px on each side.
-  expect(Math.round(frame.x - stage.x)).toBe(24);
-  await expect(page.getByTestId('status-zoom')).toHaveText('64%');
+  const scale = Math.min((surface.width - 48) / 1920, (surface.height - 48) / 1080);
+  expect(frame.width).toBeCloseTo(1920 * scale, 0);
+  expect(frame.height).toBeCloseTo(1080 * scale, 0);
+  expect(frame.x - surface.x).toBeCloseTo((surface.width - frame.width) / 2, 0);
+  await expect(page.getByTestId('status-zoom')).toHaveText(`${Math.round(scale * 100)}%`);
 });
 
 test('the AI area is on the right in Hebrew and moves left in English, live', async ({ page }) => {
@@ -64,14 +69,14 @@ test('the AI area is on the right in Hebrew and moves left in English, live', as
   bar = await box(page, 'activity-bar');
   panel = await box(page, 'tool-panel');
   expect(bar.x).toBe(0);
-  expect(panel.x).toBe(56);
-  expect((await box(page, 'stage')).x).toBe(56 + 584);
+  expect(panel.x).toBe(76);
+  expect((await box(page, 'stage')).x).toBe(76 + 584);
   expect(await page.evaluate(() => (window as unknown as { marker?: number }).marker)).toBe(7);
 
   await page.getByRole('radio', { name: 'עברית' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByRole('button', { name: 'קובץ', exact: true })).toBeVisible();
-  expect((await box(page, 'activity-bar')).x).toBe(1920 - 56);
+  expect((await box(page, 'activity-bar')).x).toBe(1920 - 76);
 });
 
 test('the theme follows the OS and switches live', async ({ page }) => {
@@ -129,13 +134,16 @@ test('the splitter keeps the Tool Panel between 25% and 45% of the window', asyn
 });
 
 test('the Tool Panel collapses, the Activity Bar stays and the Stage grows', async ({ page }) => {
+  const fittedWidth = (await box(page, 'stage-frame')).width;
   await page.getByTestId('panel-collapse').click();
   await waitForPanelWidth(page, 0);
   await expect(page.getByTestId('tool-panel')).toHaveAttribute('data-open', 'false');
   await expect(page.getByTestId('activity-bar')).toBeVisible();
   await expect(page.getByTestId('panel-splitter')).toHaveCount(0);
-  expect((await box(page, 'stage')).width).toBe(1920 - 56);
-  await expect.poll(async () => (await box(page, 'stage-frame')).width).toBeGreaterThan(1232);
+  expect((await box(page, 'stage')).width).toBe(1920 - 76);
+  await expect
+    .poll(async () => (await box(page, 'stage-frame')).width)
+    .toBeGreaterThanOrEqual(fittedWidth);
 
   // The Activity Bar opens it again, on the panel that was clicked.
   await page.getByRole('button', { name: 'שכבות' }).click();

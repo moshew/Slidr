@@ -108,7 +108,7 @@ export function SelectionToolbar() {
       role="toolbar"
       aria-label={t('stage:toolbar.label')}
       data-testid="selection-toolbar"
-      className="flex animate-fade-in items-center gap-0.5 rounded-panel border border-ui-line bg-ui-raised p-1 shadow-overlay"
+      className="flex animate-fade-in items-center gap-0.5 rounded-full border border-ui-line bg-ui-raised p-1.5 shadow-floating"
       onKeyDown={(event) => {
         // Esc gives the keyboard back to the slide.
         if (event.key === 'Escape') focusStage();

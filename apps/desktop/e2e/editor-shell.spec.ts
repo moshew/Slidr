@@ -12,7 +12,7 @@ const welcome = (page: Page) => page.getByTestId('welcome');
 const stage = (page: Page) => page.getByTestId('stage-surface');
 
 async function fileItem(page: Page, name: string) {
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'קובץ' }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
   return page.getByRole('menuitem').filter({ has: page.getByText(name, { exact: true }) });
 }
 
@@ -107,14 +107,15 @@ test('zoom in and out from the keyboard', async ({ page }) => {
   await openApp(page);
   await stage(page).focus();
   const zoom = () => page.getByTestId('status-zoom').textContent();
-  expect(await zoom()).toBe('64%');
+  const fitted = await zoom();
+  expect(fitted).toMatch(/^\d+%$/);
   await page.keyboard.press('Control+=');
-  expect(await zoom()).toBe('80%');
+  expect(parseInt((await zoom())!)).toBeGreaterThan(parseInt(fitted!));
   await page.keyboard.press('Control+-');
   await page.keyboard.press('Control+-');
-  expect(await zoom()).toBe('51%');
+  expect(parseInt((await zoom())!)).toBeLessThan(parseInt(fitted!));
   await page.keyboard.press('Control+0');
-  expect(await zoom()).toBe('64%');
+  expect(await zoom()).toBe(fitted);
 });
 
 test('a plain key that no shortcut took still does what it does', async ({ page }) => {
@@ -126,7 +127,7 @@ test('a plain key that no shortcut took still does what it does', async ({ page 
     };
     registry.registerShortcut({ id: 't.enter', keys: 'Enter', run: () => false });
   }, '/src/shell/registry.ts');
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'קובץ' }).focus();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('menu')).toBeVisible();
 });

@@ -92,7 +92,7 @@ for (const theme of themes) {
       await page.setViewportSize(viewports[1]);
       await openApp(page, { lang, theme });
       await page
-        .getByTestId('top-tools-a')
+        .getByTestId('title-bar')
         .getByRole('button', { name: lang === 'he' ? 'קובץ' : 'File' })
         .click();
       await page

@@ -385,7 +385,7 @@ test('the dialogs: the shortcut map and its editor, export, a question', async (
   await page.keyboard.press('Escape');
   await expect(map).toBeHidden();
 
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'Export' }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'Export' }).click();
   await expect(page.getByTestId('export-dialog')).toBeVisible();
   await survey.audit('the export dialog');
   await survey.popups('[data-testid="export-dialog"]', 'the export dialog');

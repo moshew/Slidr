@@ -60,7 +60,7 @@ test('a popover opened from the keyboard keeps it, closes with Esc, and gives it
 
 test('a menu keeps the keyboard, closes with Esc, and gives it back', async ({ page }) => {
   await openApp(page, { lang: 'en' });
-  const trigger = rowA(page).getByRole('button', { name: 'File' });
+  const trigger = page.getByTestId('title-bar').getByRole('button', { name: 'File' });
   await trigger.focus();
   await page.keyboard.press('Enter');
   const menu = page.getByRole('menu');
@@ -78,7 +78,7 @@ test('a dialog keeps the keyboard, closes with Esc, and gives it back to its but
   page,
 }) => {
   await openApp(page, { lang: 'en' });
-  const trigger = rowA(page).getByRole('button', { name: 'Export' });
+  const trigger = page.getByTestId('title-bar').getByRole('button', { name: 'Export' });
   await trigger.focus();
   await page.keyboard.press('Enter');
   const dialog = page.getByTestId('export-dialog');
@@ -109,7 +109,7 @@ test('the shortcut map gives the keyboard back: to the Stage, and to the File me
 
   // From the File menu, by the keyboard: the menu is gone when the dialog closes, and the
   // keyboard goes to the button of the menu, not to nowhere.
-  const file = rowA(page).getByRole('button', { name: 'File' });
+  const file = page.getByTestId('title-bar').getByRole('button', { name: 'File' });
   await file.focus();
   await page.keyboard.press('Enter');
   await page.getByRole('menuitem', { name: 'Keyboard shortcuts' }).focus();

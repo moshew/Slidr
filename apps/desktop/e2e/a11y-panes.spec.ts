@@ -77,7 +77,16 @@ test('the key goes round every region that can take the keyboard, both ways', as
 
   // From the Stage: the Filmstrip, the status bar (its count of design findings is a button),
   // and round by the Activity Bar, the panel and the two rows of tools to the Stage again.
-  const round = ['filmstrip', 'status', 'activity', 'panel', 'tools', 'context', 'stage'];
+  const round = [
+    'filmstrip',
+    'status',
+    'document',
+    'activity',
+    'panel',
+    'tools',
+    'context',
+    'stage',
+  ];
   const forward: (string | null)[] = [];
   for (let presses = 0; presses < round.length; presses++) {
     await page.keyboard.press('F6');

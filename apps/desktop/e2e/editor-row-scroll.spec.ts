@@ -144,7 +144,9 @@ for (const lang of ['he', 'en'] as const) {
     // The ends of the row are where they were: the File menu, undo, the zoom, and the three
     // buttons at the end, "Present" last. Before, the row ran out of the window with them.
     await expect(page.getByTestId('present-button')).toBeInViewport({ ratio: 1 });
-    await expect(rowA.getByRole('button', { name: names.file })).toBeInViewport({ ratio: 1 });
+    await expect(
+      page.getByTestId('title-bar').getByRole('button', { name: names.file }),
+    ).toBeInViewport({ ratio: 1 });
     // What gave way is the insert buttons: the last of them is reached by the arrow.
     const last = rowA.getByRole('button', { name: names.icon, exact: true });
     const seen = () =>

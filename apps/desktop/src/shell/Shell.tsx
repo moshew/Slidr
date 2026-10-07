@@ -21,11 +21,11 @@ import { Welcome } from './Welcome';
  * (Activity Bar, Tool Panel) is on the right in Hebrew and on the left in English (UI-01, UI-05),
  * and switching the language mirrors everything without a reload.
  *
- *   title bar                                                   36
- *   ┌ Activity Bar 56 ┬ Tool Panel 584 ┬ Top Tools        48 + 44 ┐
- *   │                 │                │ Stage            rest    │
+ *   title bar + document actions                                56
+ *   ┌ Activity Bar 76 ┬ Tool Panel 584 ┬ Creation tools       80 ┐
+ *   │                 │                │ Stage + floating tools   │
  *   │                 │                │ Filmstrip        132     │
- *   status bar                                                  24
+ *   status bar + zoom                                           32
  *
  * Until a document is chosen, the welcome screen stands under the title bar in place of all of
  * it (DOC-05). The editor itself exists from the start; only what draws it waits.

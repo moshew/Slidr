@@ -22,7 +22,6 @@ import { addElement, line } from './objects-helpers';
 const surface = (page: Page) => page.getByTestId('stage-surface');
 const onStage = (page: Page, id: string) =>
   page.getByTestId('stage-frame').locator(`[data-element-id="${id}"]`);
-const rowA = (page: Page) => page.getByTestId('top-tools-a');
 const rowB = (page: Page) => page.getByTestId('top-tools-b');
 const types = async (page: Page) => (await elements(page)).map((e) => e.type);
 const zoom = (page: Page) => page.getByTestId('status-zoom').textContent();
@@ -33,7 +32,7 @@ test.describe('a key pressed in what stands over the window', () => {
   }) => {
     await openApp(page, { lang: 'en' });
     await addBoxes(page, THREE);
-    await rowA(page).getByRole('button', { name: 'File' }).click();
+    await page.getByTestId('title-bar').getByRole('button', { name: 'File' }).click();
     await expect(page.getByRole('menu')).toBeVisible();
     await page.keyboard.press('t');
     expect(await types(page)).toEqual(['shape', 'shape', 'shape']);

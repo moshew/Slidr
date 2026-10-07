@@ -146,10 +146,7 @@ for (const [deck, sign] of [
     await page.keyboard.press('Escape');
 
     // ---- The exported file ----
-    await page
-      .getByTestId('top-tools-a')
-      .getByRole('button', { name: 'ייצוא', exact: true })
-      .click();
+    await page.getByTestId('title-bar').getByRole('button', { name: 'ייצוא', exact: true }).click();
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.getByTestId('export-run').click(),

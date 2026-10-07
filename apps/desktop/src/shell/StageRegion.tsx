@@ -22,6 +22,7 @@ import { useDeck, useEditor, useSelection } from './editor';
 import { useStageLayers, useStageMenu } from './registry';
 import { selectionKind } from './selection';
 import { useShell } from './store';
+import { ContextTools } from './TopTools';
 
 /*
  * The Stage (WG2, src/stage) in the shell's layout. The component knows only the bus and the
@@ -129,10 +130,11 @@ export function StageRegion() {
           aria-label={t('stage.label')}
           data-testid="stage"
           data-pane="stage"
-          className="relative min-h-0 flex-1 overflow-hidden bg-ui-canvas"
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-ui-canvas"
         >
+          <ContextTools />
           <div
-            className="contents"
+            className="relative min-h-0 flex-1"
             onContextMenu={(event) => {
               const inText = inTextEditor(event.target);
               setMenuInText(inText);

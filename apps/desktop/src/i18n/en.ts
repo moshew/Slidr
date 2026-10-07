@@ -44,6 +44,11 @@ export const en: Messages<typeof he> = {
     recoverFailed: 'Couldn’t recover the presentation',
   },
   tools: {
+    documentTools: 'Document actions',
+    presentationTools: 'Export and present',
+    create: 'Add',
+    text: 'Text',
+    media: 'Media',
     undo: 'Undo',
     redo: 'Redo',
     insertText: 'Text box',
@@ -81,6 +86,11 @@ export const en: Messages<typeof he> = {
     html: 'HTML',
     group: 'Group',
     multiple: '{{n}} objects',
+  },
+  navigation: {
+    notes: 'Notes',
+    lint: 'Review',
+    import: 'Import',
   },
   panels: {
     ai: 'AI chat',

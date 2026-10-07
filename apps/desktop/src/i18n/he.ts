@@ -45,6 +45,11 @@ export const he = {
     recoverFailed: 'לא ניתן לשחזר את המצגת',
   },
   tools: {
+    documentTools: 'פעולות מסמך',
+    presentationTools: 'ייצוא והצגה',
+    create: 'הוספה',
+    text: 'טקסט',
+    media: 'מדיה',
     undo: 'ביטול פעולה',
     redo: 'ביצוע חוזר',
     insertText: 'תיבת טקסט',
@@ -82,6 +87,11 @@ export const he = {
     html: 'HTML',
     group: 'קבוצה',
     multiple: '{{n}} אובייקטים',
+  },
+  navigation: {
+    notes: 'הערות',
+    lint: 'בדיקה',
+    import: 'ייבוא',
   },
   panels: {
     ai: "צ'אט AI",

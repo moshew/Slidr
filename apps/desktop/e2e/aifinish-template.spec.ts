@@ -82,7 +82,7 @@ test('a template from a description and a logo is previewed, saved, and a new de
   await expect(card).toContainText('ברירת מחדל');
 
   // File > New opens a deck on it: its theme, its layouts, an opening slide, and its logo.
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'קובץ' }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
   await page.getByRole('menuitem', { name: 'מצגת חדשה' }).click();
   // The picture the user sent made the deck one with unsaved changes: the app asks first.
   await page.getByRole('button', { name: 'בלי לשמור' }).click();

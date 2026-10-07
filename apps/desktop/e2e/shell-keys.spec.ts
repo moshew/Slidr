@@ -110,7 +110,7 @@ test('every place that shows the key shows the new one', async ({ page }) => {
   await page.keyboard.press('Escape');
 
   // The File menu.
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'קובץ' }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
   const saveItem = page
     .getByRole('menuitem')
     .filter({ has: page.getByText('שמירה', { exact: true }) });

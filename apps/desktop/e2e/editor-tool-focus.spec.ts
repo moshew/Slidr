@@ -40,7 +40,7 @@ test.describe('a tool that is used with the pointer', () => {
     await page.keyboard.type(' again');
     await expect.poll(() => plain(page, 'e_t')).toBe('hello big world again');
 
-    await rowA(page).getByRole('button', { name: 'Undo' }).click();
+    await page.getByTestId('title-bar').getByRole('button', { name: 'Undo' }).click();
     await expect.poll(() => plain(page, 'e_t')).toBe('hello big world');
     await expect(page.locator('[data-text-editor]')).toBeFocused();
     // The space is typed, not a second press of the button; the "t" is a letter, not "text box".
@@ -56,9 +56,9 @@ test.describe('a tool that is used with the pointer', () => {
     await page.keyboard.type(' world');
     await expect.poll(() => plain(page, 'e_t')).toBe('hello world');
 
-    await rowA(page).getByRole('button', { name: 'Undo' }).click();
+    await page.getByTestId('title-bar').getByRole('button', { name: 'Undo' }).click();
     await expect.poll(() => plain(page, 'e_t')).toBe('hello');
-    await rowA(page).getByRole('button', { name: 'Redo' }).click();
+    await page.getByTestId('title-bar').getByRole('button', { name: 'Redo' }).click();
     await expect.poll(() => plain(page, 'e_t')).toBe('hello world');
     await expect(page.locator('[data-text-editor]')).toBeFocused();
   });
@@ -71,7 +71,7 @@ test.describe('a tool that is used with the pointer', () => {
     await onStage(page, 'e_b').click();
     await page.keyboard.press('ArrowRight');
     const moved = (await frames(page, ['e_b'])).e_b!.x;
-    await rowA(page).getByRole('button', { name: 'Undo' }).click();
+    await page.getByTestId('title-bar').getByRole('button', { name: 'Undo' }).click();
     await expect.poll(async () => (await frames(page, ['e_b'])).e_b!.x).toBe(moved - 1);
     await expect(surface(page)).toBeFocused();
     await page.keyboard.press('Delete');
@@ -201,7 +201,7 @@ test.describe('a tool that is used with the pointer', () => {
     await addBoxes(page, THREE);
     await onStage(page, 'e_b').click();
     const before = (await frames(page, ['e_b'])).e_b!;
-    await rowA(page).getByRole('button', { name: 'Start from' }).click();
+    await page.getByTestId('title-bar').getByRole('button', { name: 'Start from' }).click();
     await page.getByRole('menuitem', { name: 'Present from the current slide' }).click();
     const show = page.getByTestId('present');
     await expect(show).toBeVisible();

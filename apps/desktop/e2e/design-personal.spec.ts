@@ -49,7 +49,7 @@ test('a personal template is renamed, and updated in place from the open deck', 
   await expect(panel(page).locator('[data-template^="personal_"]')).toHaveCount(1);
 
   // A new deck opens on the template as it is now.
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'קובץ' }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
   await page.getByRole('menuitem', { name: 'מצגת חדשה' }).click();
   await page.getByRole('button', { name: 'בלי לשמור' }).click();
   await expect.poll(async () => (await deck(page)).theme.colors.primary).toBe('#aa0033');

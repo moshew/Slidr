@@ -5,3 +5,96 @@
 #root {
   height: 100%;
 }
+
+.editor-header {
+  background-image: linear-gradient(
+    110deg,
+    var(--color-ui-header-start),
+    var(--color-ui-header-middle) 55%,
+    var(--color-ui-header-end)
+  );
+  color: var(--color-ui-header-fg);
+}
+
+.header-button {
+  color: var(--color-ui-header-fg);
+
+  &:hover {
+    background-color: var(--color-ui-header-hover);
+    color: var(--color-ui-header-fg);
+  }
+  &:active {
+    background-color: var(--color-ui-header-pressed);
+  }
+  &:disabled,
+  &[aria-disabled='true'] {
+    color: var(--color-ui-header-fg);
+    opacity: 0.5;
+  }
+}
+
+.header-present {
+  background-color: var(--color-ui-header-action);
+  color: var(--color-ui-header-action-fg);
+
+  &:hover {
+    background-color: var(--color-ui-header-action-hover);
+  }
+  &:active {
+    background-color: var(--color-ui-header-action-pressed);
+  }
+}
+
+.editor-header :focus-visible {
+  outline-color: var(--color-ui-header-fg);
+}
+
+.creation-tool {
+  flex-direction: column;
+  width: var(--spacing-creation-tool);
+  height: var(--spacing-creation-tool);
+  padding: calc(var(--spacing) * 1.5);
+  gap: var(--spacing);
+}
+
+.creation-tool-icon {
+  display: flex;
+  width: var(--spacing-creation-icon);
+  height: var(--spacing-creation-icon);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  background-color: var(--color-ui-tool-violet);
+  color: var(--color-ui-tool-violet-fg);
+}
+
+.creation-tool:disabled .creation-tool-icon,
+.creation-tool[aria-disabled='true'] .creation-tool-icon {
+  background-color: var(--color-ui-field);
+  color: var(--color-ui-fg-subtle);
+}
+
+.creation-tool-icon[data-tone='blue'] {
+  background-color: var(--color-ui-tool-blue);
+  color: var(--color-ui-tool-blue-fg);
+}
+.creation-tool-icon[data-tone='pink'] {
+  background-color: var(--color-ui-tool-pink);
+  color: var(--color-ui-tool-pink-fg);
+}
+.creation-tool-icon[data-tone='teal'] {
+  background-color: var(--color-ui-tool-teal);
+  color: var(--color-ui-tool-teal-fg);
+}
+.creation-tool-icon[data-tone='green'] {
+  background-color: var(--color-ui-tool-green);
+  color: var(--color-ui-tool-green-fg);
+}
+.creation-tool-icon[data-tone='orange'] {
+  background-color: var(--color-ui-tool-orange);
+  color: var(--color-ui-tool-orange-fg);
+}
+.creation-tool-icon[data-tone='rose'] {
+  background-color: var(--color-ui-tool-rose);
+  color: var(--color-ui-tool-rose-fg);
+}

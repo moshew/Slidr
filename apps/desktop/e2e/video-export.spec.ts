@@ -26,7 +26,7 @@ const shot = (name: string) =>
   fileURLToPath(new URL(`../test-results/objects/${name}.png`, import.meta.url));
 
 async function openDialog(page: Page, label = 'ייצוא') {
-  await page.getByTestId('top-tools-a').getByRole('button', { name: label, exact: true }).click();
+  await page.getByTestId('title-bar').getByRole('button', { name: label, exact: true }).click();
   const dialog = page.getByTestId('export-dialog');
   await expect(dialog).toBeVisible();
   return dialog;
