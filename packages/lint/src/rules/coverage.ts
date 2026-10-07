@@ -1,4 +1,4 @@
-import { unionBounds, type Frame } from '@slidr/model';
+import { slideArchetype, unionBounds, type Frame } from '@slidr/model';
 import { area, contentArea, describeBox, intersection, slideArea } from '../geometry';
 import type { Drawn, Item, Rule } from '../rule';
 import { hasPhoto, isMeaningfulShape } from '../visual';
@@ -42,6 +42,9 @@ export const L07: Rule = {
     if (own.length === 0) {
       return [{ elementIds: [], message: `The slide has no content; ${need}. Fill the slide.` }];
     }
+    // These layouts intentionally leave most of the canvas open around their text.
+    const archetype = slideArchetype(ctx.deck, ctx.slide);
+    if (archetype === 'title' || archetype === 'text') return [];
     // A photo behind the slide fills it: on a full-image slide the picture is the content.
     if (hasPhoto(ctx.background)) return [];
     // What the layout draws around the content (cards, a colour field, a drawing) fills the

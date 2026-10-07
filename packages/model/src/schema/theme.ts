@@ -46,8 +46,10 @@ export type Theme = z.infer<typeof Theme>;
 export const Archetype = z.enum([
   'hero',
   'section',
+  'title',
   'bigNumber',
   'quote',
+  'text',
   'textImage',
   'fullImage',
   'cards',

@@ -77,6 +77,9 @@ describe('the template library', () => {
     await lib.load();
     expect(lib.state.getState()).toMatchObject({ loaded: true });
     expect(lib.state.getState().personal.map((t) => t.theme.id)).toEqual(['personal_one']);
+    const kinds = lib.find('personal_one')!.template.layouts.map((layout) => layout.archetype);
+    expect(kinds.indexOf('title')).toBe(kinds.indexOf('section') + 1);
+    expect(kinds.indexOf('text')).toBe(kinds.indexOf('textImage') - 1);
   });
 
   it('refuses to save over a built-in template', async () => {

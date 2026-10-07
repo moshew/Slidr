@@ -331,7 +331,7 @@ describe('applying a look', () => {
     expect(await applyLook(editor, library, NIGHT, 'החלפת תבנית')).toBe(true);
     expect(bus.deck.theme.id).toBe('test_night');
     // The template's layouts, then the ones of archetypes it lacks, which their slides keep.
-    const night = nightTemplate().layouts.map((layout) => layout.id);
+    const night = library.forDeck('test_night', deck.meta.lang)!.layouts.map((layout) => layout.id);
     expect(bus.deck.layouts.map((layout) => layout.id).slice(0, night.length)).toEqual(night);
     expect(bus.undoStack).toHaveLength(1);
     expect(bus.undoStack[0]).toMatchObject({ actor: 'user', label: 'החלפת תבנית' });

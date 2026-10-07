@@ -164,8 +164,10 @@ export const he = {
   archetype: {
     hero: 'פתיחה',
     section: 'מפריד מקטע',
+    title: 'כותרת',
     bigNumber: 'מספר גדול',
     quote: 'ציטוט',
+    text: 'טקסט',
     textImage: 'טקסט ותמונה',
     fullImage: 'תמונה מלאה',
     cards: 'כרטיסים',
@@ -379,8 +381,10 @@ export const en: typeof he = {
   archetype: {
     hero: 'Opening',
     section: 'Section divider',
+    title: 'Title',
     bigNumber: 'Big number',
     quote: 'Quote',
+    text: 'Text',
     textImage: 'Text and image',
     fullImage: 'Full image',
     cards: 'Cards',

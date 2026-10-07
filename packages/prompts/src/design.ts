@@ -8,8 +8,10 @@ import type { Archetype } from '@slidr/model';
 export const ARCHETYPES: Record<Archetype, string> = {
   hero: 'the opening slide: a display title, a line under it, a strong image or background',
   section: 'a section divider: a few words that open a new part of the deck',
+  title: 'a single title at the top of the slide',
   bigNumber: 'one big number or statistic, with a short line that says what it means',
   quote: 'a quotation and who said it',
+  text: 'a title and body text, with no image',
   textImage: 'text beside an image, in two columns',
   fullImage: 'a full-bleed image with a short text over it',
   cards: 'a grid of 3, 4 or 6 cards',
@@ -35,7 +37,7 @@ const archetypeList = Object.entries(ARCHETYPES)
  */
 export const DESIGN = `## Design guidelines
 
-A slide is read in a few seconds, from a distance, by someone who is also listening to a speaker. The guidelines below follow from that, and they hold for every slide you make or redesign. A title and a list of bullets on an empty background is not an acceptable result: every slide you hand over should look designed and use its surface.
+A slide is read in a few seconds by someone also listening to a speaker. Use the surface deliberately. The title and text layouts intentionally leave open space; other slides need a clear visual composition.
 
 **Canvas and grid**
 - The canvas is 1920×1080. Text stays inside the safe margins, 96px at the sides and 80px at the top and bottom, which leaves a content area of 1728×920: projectors and video calls crop edges, and text against an edge looks like a mistake.
@@ -43,7 +45,7 @@ A slide is read in a few seconds, from a distance, by someone who is also listen
 - Backgrounds, images and decorative elements may run past the margins to the edge of the slide (full-bleed), and are better for it. Text may not.
 
 **Using the surface**
-- Content fills the content area: the bounding box of all the meaningful elements covers at least 70% of it.
+- Except for the intentionally sparse title and text layouts, content fills the content area: the bounding box of meaningful elements covers at least 70% of it.
 - No dead zone. An empty quarter of the slide with no design intent behind it is a flaw: white space is a decision, not a remainder.
 - Fill by composing, not by stretching. A card taller than what it holds, its lower half empty, is a dead zone with a border around it; so is content pushed up under the title with a third of the slide bare below it. Give each block the height its content needs, then use the room that is left: larger type and numbers, a second row, a supporting visual, or the whole block centred in the space under the title. A quick test: under a title at the top, the content should end within about 100px of the bottom margin (near y 900 to 1000), or sit centred in that space on purpose.
 - Balance: the visual centre of gravity is near the centre of the slide, unless the layout is asymmetric on purpose and a counterweight balances it.

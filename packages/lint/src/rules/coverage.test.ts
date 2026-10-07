@@ -6,6 +6,14 @@ const body = (frame: Frame) =>
   createElement.text({ id: 'e_body', frame, content: richText('Three goals') });
 
 describe('L07: content that covers too little of the slide', () => {
+  it('allows deliberately sparse title and text layouts, but still reports an empty slide', () => {
+    const short = body({ x: 96, y: 110, w: 450, h: 100 });
+    for (const archetype of ['title', 'text'] as const) {
+      expect(check('L07', [short], {}, { slide: { archetype } })).toEqual([]);
+      expect(check('L07', [], {}, { slide: { archetype } })).toHaveLength(1);
+    }
+  });
+
   it('reports the share covered and the bounding box of the content', () => {
     // A Hebrew title and three short bullets: the glyphs hug the right side.
     const title = createElement.text({

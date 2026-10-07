@@ -174,6 +174,28 @@ function imageClip(e: ImageElement): {
   return r ? { style: { borderRadius: r }, radius: r } : { style: {} };
 }
 
+/**
+ * Whether a box and its outline are drawn as one box, the way a page draws a background and a
+ * border. As two layers, the fill and the outline over it, each is smoothed on its own along a
+ * round corner, and the fill shows on the outer edge of the outline: a card with a border then
+ * looks unlike the page it was read from. Only a width in whole pixels is a border: the browser
+ * rounds any other down to whole device pixels, so that one stays an inset shadow (ADR-005). An
+ * accent is laid out inside the outline, an image fill has an opacity the border must not take,
+ * and a `css` fill is a shorthand that says for itself where it is laid out: those keep their
+ * layers.
+ */
+function bordersItsFill(e: ShapeElement): e is ShapeElement & { stroke: Stroke } {
+  const { stroke, fill } = e;
+  return (
+    stroke !== undefined &&
+    stroke.width > 0 &&
+    Number.isInteger(stroke.width) &&
+    !e.accent &&
+    fill.kind !== 'image' &&
+    fill.kind !== 'css'
+  );
+}
+
 function BoxStroke({ stroke, radius }: { stroke: Stroke; radius?: number | string }) {
   if (stroke.width <= 0) return null;
   const color = colorCss(stroke.color);
@@ -465,7 +487,25 @@ function ShapeView({ element: e }: { element: ShapeElement }) {
           : e.effects?.radius;
     const accent = e.accent;
     let layers: ReactNode;
-    if (followsCorners(accent)) {
+    // The corners cut the layers of a box. A box that is one with its outline has its own
+    // corners, and cut a second time they would be smoothed twice.
+    let cut = true;
+    if (bordersItsFill(e)) {
+      const box: CSSProperties = {
+        boxSizing: 'border-box',
+        border: `${e.stroke.width}px ${e.stroke.dash ?? 'solid'} ${colorCss(e.stroke.color)}`,
+        borderRadius: radius,
+        // A gradient covers the whole box, under the border, as it does on a layer of its own.
+        backgroundOrigin: 'border-box',
+      };
+      layers =
+        e.fill.kind === 'none' ? (
+          <div aria-hidden style={{ ...FILL_PARENT, pointerEvents: 'none', ...box }} />
+        ) : (
+          <FillLayer fill={e.fill} ctx={ctx} style={box} />
+        );
+      cut = false;
+    } else if (followsCorners(accent)) {
       // The fill and the borders are one box, as they are on a page: a gradient is then laid
       // out inside the borders and shows through them, as the page's own background does. An
       // image fill has an opacity of its own, which the borders must not take.
@@ -494,8 +534,7 @@ function ShapeView({ element: e }: { element: ShapeElement }) {
       <div
         style={{
           ...FILL_PARENT,
-          overflow: 'hidden',
-          borderRadius: radius,
+          ...(cut ? { overflow: 'hidden', borderRadius: radius } : {}),
           transform: flipTransform(e),
         }}
       >

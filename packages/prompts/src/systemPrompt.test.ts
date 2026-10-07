@@ -297,14 +297,16 @@ describe('size', () => {
   // charts, which says what each chart type is for and which options there are (ADR-048): they
   // are about one percent above what is there. A fifth time when the deck chat became the one
   // chat of the app (ADR-072): it is told how to work on what the user points at, it can offer
-  // options, and every session hears of the selected text and of `text_replace`.
+  // options, and every session hears of the selected text and of `text_replace`. A sixth, by
+  // 300, for two sentences on cards (ADR-073): a card's shadow is written as `box-shadow`, and
+  // nothing on a card has a role, since either one written otherwise leaves the card in pieces.
   const LIMITS: Record<ScopeKind, number> = {
-    deck: 44_000,
-    slide: 32_750,
+    deck: 44_300,
+    slide: 33_050,
     object: 23_000,
     // With the five import tools in the catalogue the import module shows its capture step,
     // and it says what the isolated page is not (ADR-036).
-    import: 45_000,
+    import: 45_300,
   };
 
   it.each(SCOPES)('a %s prompt stays within its budget', (scope) => {

@@ -8,7 +8,7 @@
  * the store has answered, and must not wait for it.
  */
 import type { AssetMeta, Layout } from '@slidr/model';
-import { Template } from '@slidr/templates';
+import { Template, withStandardLayouts } from '@slidr/templates';
 import { builtInTemplates } from '@slidr/templates/builtin';
 import { createStore, type StoreApi } from 'zustand';
 import type { TemplateFile, TemplateStore } from './store';
@@ -95,10 +95,13 @@ export class TemplateLibrary {
     this.#store = store;
     this.#storage = options.storage;
     this.#nameOf = options.layoutName;
-    this.#builtIn = (options.builtIn ?? builtInTemplates()).map(forDecks);
+    this.#builtIn = (options.builtIn ?? builtInTemplates()).map((template) =>
+      forDecks(withStandardLayouts(template)),
+    );
     const prefs = readPrefs(this.#storage);
     const cached = Template.safeParse(prefs.template);
-    if (cached.success && cached.data.theme.id === prefs.defaultId) this.#cached = cached.data;
+    if (cached.success && cached.data.theme.id === prefs.defaultId)
+      this.#cached = withStandardLayouts(cached.data);
     this.state = createStore<LibraryState>(() => ({
       personal: [],
       defaultId: prefs.defaultId,
@@ -112,7 +115,7 @@ export class TemplateLibrary {
     for (const { id, json } of await this.#store.list()) {
       try {
         const template = Template.parse(JSON.parse(json));
-        if (template.theme.id === id) personal.push(template);
+        if (template.theme.id === id) personal.push(withStandardLayouts(template));
       } catch (error) {
         console.error(`The personal template "${id}" could not be read`, error);
       }
@@ -189,7 +192,7 @@ export class TemplateLibrary {
 
   /** Saves a personal template with its asset files; one with the same id is replaced. */
   async save(template: Template, files: readonly TemplateFile[]): Promise<void> {
-    const parsed = Template.parse(template);
+    const parsed = withStandardLayouts(Template.parse(template));
     const id = parsed.theme.id;
     if (this.#builtIn.some((builtIn) => builtIn.theme.id === id)) {
       throw new Error(`"${id}" is a built-in template.`);

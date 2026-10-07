@@ -227,7 +227,7 @@ export function acceptTemplate(
     { timeout: 120_000 },
     async ({ lang, dir }) => {
       const deck = sampleDeck(template, samples[lang], { lang, dir });
-      // Every layout is shown by the sample, so a clean sample is fourteen clean layouts.
+      // Every layout is shown by the sample, so a clean sample covers all sixteen layouts.
       const shown = new Set(deck.slides.map((slide) => slide.layoutId));
       expect(template.layouts.filter((layout) => !shown.has(layout.id))).toEqual([]);
 

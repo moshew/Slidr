@@ -517,6 +517,7 @@ describe('SlideRenderer', () => {
         box('e_cut', { accent }),
         box('e_follow', { accent: { ...accent, corners: 'follow' } }),
         box('e_plain', {}),
+        box('e_fine', { stroke: { color: { value: '#e2e8f0' }, width: 1.5 } }),
       ],
     });
     render(<SlideRenderer deck={{ ...deck, slides: [slide] }} slide={slide} />);
@@ -539,9 +540,19 @@ describe('SlideRenderer', () => {
     expect(bordered.borderRadius).toBe('18px');
     expect(bordered.backgroundColor).not.toBe('');
     expect(layers('e_follow').some((style) => style.boxShadow.includes('inset'))).toBe(false);
-    // Without an accent a shape is drawn as it always was.
-    expect(layers('e_plain').some((style) => style.boxShadow.includes('inset'))).toBe(true);
+    // Without an accent, an outline in whole pixels is the border of the box that holds the
+    // fill, and nothing around that box cuts its corners a second time.
+    const plain = layers('e_plain').find((style) => style.borderTopWidth === '2px')!;
+    expect(plain.borderLeftWidth).toBe('2px');
+    expect(plain.borderRadius).toBe('18px');
+    expect(plain.backgroundColor).not.toBe('');
+    expect(layers('e_plain').some((style) => style.boxShadow.includes('inset'))).toBe(false);
     expect(layers('e_plain').some((style) => style.width === '10px')).toBe(false);
+    const around = container.querySelector<HTMLElement>('[data-element-id="e_plain"] > div')!;
+    expect(around.style.overflow).toBe('');
+    // A fraction of a pixel is not a width a border keeps: that outline is an inset shadow.
+    expect(layers('e_fine').some((style) => style.boxShadow.includes('inset'))).toBe(true);
+    expect(layers('e_fine').some((style) => style.borderTopWidth !== '')).toBe(false);
   });
 
   it('leaves the room a shape asks for around its text, and its usual room when it asks for none', () => {

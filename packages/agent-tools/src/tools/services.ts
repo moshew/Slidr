@@ -345,8 +345,8 @@ export const templateApply = defineTool({
 
 const ThemeTokens = commandDefs['theme.update'].schema.shape.patch;
 
-/** A draft of fourteen layouts is fourteen conversions and two lint passes. */
-const TEMPLATE_TIMEOUT_MS = 180_000;
+/** A full draft of sixteen layouts is sixteen conversions and two lint passes. */
+const TEMPLATE_TIMEOUT_MS = 210_000;
 
 export const templateCreate = defineTool({
   name: 'template_create',

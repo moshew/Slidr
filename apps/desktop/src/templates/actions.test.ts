@@ -15,7 +15,7 @@ import {
   slideNumberHidden,
   type Template,
 } from '@slidr/templates';
-import { builtInTemplates, zeremTemplate } from '@slidr/templates/builtin';
+import { builtInTemplates } from '@slidr/templates/builtin';
 import { nightTemplate, paperTemplate } from '@slidr/templates/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 import type { Editor } from '../shell';
@@ -113,7 +113,7 @@ describe('a new deck', () => {
     const deck = startDeck(library, 'he');
     expect(deck.meta).toMatchObject({ lang: 'he', dir: 'rtl' });
     expect(deck.theme.id).toBe('test_paper');
-    expect(deck.layouts).toEqual(layoutsFor(paperTemplate(), 'rtl'));
+    expect(deck.layouts).toEqual(layoutsFor(library.forDeck('test_paper', 'he')!, 'rtl'));
     expect(deck.slides).toHaveLength(1);
     expect(deck.slides[0]).toMatchObject({ layoutId: 'l_paper_hero' });
     expect(deck.slides[0]!.elements.map((e) => e.role)).toEqual(['title', 'subtitle', 'image']);
@@ -137,9 +137,9 @@ describe('switching the deck to a template of the library', () => {
   });
 
   it('does nothing for a template that is not there, or the one the deck is on', async () => {
-    const deck = deckFromTemplate(paperTemplate(), { lang: 'en' });
-    const { editor, bus } = editorOn(deck);
     const library = libraryOf(paperTemplate());
+    const deck = deckFromTemplate(library.forDeck('test_paper', 'en')!, { lang: 'en' });
+    const { editor, bus } = editorOn(deck);
     expect(await applyLibraryTemplate(editor, library, 'nope')).toBe(false);
     expect(await applyLibraryTemplate(editor, library, 'test_paper')).toBe(true);
     expect(bus.undoStack).toHaveLength(0);
@@ -465,7 +465,13 @@ describe('saving the deck as a personal template', () => {
     expect(saved.theme.id).toMatch(/^personal_[0-9a-z]{26}$/);
     expect(saved.theme.colors.primary).toBe('#123456');
     expect(saved.dir).toBe('rtl');
-    expect(saved.layouts).toEqual(bus.deck.layouts);
+    expect(
+      bus.deck.layouts.every((layout) => saved.layouts.some((item) => item.id === layout.id)),
+    ).toBe(true);
+    expect(saved.layouts.map((layout) => layout.archetype)).toContain('title');
+    expect(saved.layouts.map((layout) => layout.archetype)).toContain('text');
+    expect(bus.deck.layouts.map((layout) => layout.archetype)).toContain('title');
+    expect(bus.deck.layouts.map((layout) => layout.archetype)).toContain('text');
     // The layout the template drew by hand for the other direction comes along, logo included.
     expect(saved.flipped?.map((l) => l.id)).toEqual(night.flipped!.map((l) => l.id));
     // The sample slides do not: a template made from a deck holds no slides.
@@ -487,9 +493,10 @@ describe('saving the deck as a personal template', () => {
 
   it('saves a plain deck as a template without layouts, and can make it the default', async () => {
     const library = libraryOf(paperTemplate());
-    const { editor } = editorOn(createDeck({ lang: 'en' }));
+    const { editor, bus } = editorOn(createDeck({ lang: 'en' }));
     const saved = await saveAsTemplate(editor, library, 'Plain', { setDefault: true });
-    expect(saved.layouts).toEqual([]);
+    expect(saved.layouts.map((layout) => layout.archetype)).toEqual(['title', 'text']);
+    expect(bus.deck.layouts.map((layout) => layout.archetype)).toEqual(['title', 'text']);
     expect(saved.assets).toBeUndefined();
     expect(library.state.getState().defaultId).toBe(saved.theme.id);
     const next = startDeck(library, 'en');
@@ -578,9 +585,11 @@ describe('the master components of the deck (SLD-04)', () => {
 
   it('a deck that set none of them gets the template as it was drawn', async () => {
     const { editor, bus } = editorOn(deckFromTemplate(tzukTemplate(), { lang: 'he' }));
-    await applyLibraryTemplate(editor, library(), 'zerem');
-    expect(bus.deck.layouts).toEqual(layoutsFor(zeremTemplate(), 'rtl'));
-    expect(switchCommands(bus.deck, zeremTemplate())).toEqual([]);
+    const templates = library();
+    await applyLibraryTemplate(editor, templates, 'zerem');
+    const zerem = templates.forDeck('zerem', 'he')!;
+    expect(bus.deck.layouts).toEqual(layoutsFor(zerem, 'rtl'));
+    expect(switchCommands(bus.deck, zerem)).toEqual([]);
   });
 
   it('a hidden logo stays hidden on the new template', async () => {
@@ -638,9 +647,12 @@ describe('a personal template that exists (THM-05)', () => {
     const { library, id } = await saved();
     const { editor, bus } = editorOn(deckFromTemplate(paperTemplate(), { lang: 'he' }));
     await updateTemplate(editor, library, id);
-    expect(library.find(id)?.template.layouts.map((l) => l.id)).toEqual(
-      bus.deck.layouts.map((l) => l.id),
-    );
+    const storedLayouts = library.find(id)!.template.layouts;
+    expect(
+      bus.deck.layouts.every((layout) => storedLayouts.some((item) => item.id === layout.id)),
+    ).toBe(true);
+    expect(storedLayouts.map((layout) => layout.archetype)).toContain('title');
+    expect(storedLayouts.map((layout) => layout.archetype)).toContain('text');
     expect(bus.deck.theme).toMatchObject({ id, name: 'החברה שלי' });
     expect(bus.undoStack).toHaveLength(1);
     expect(await updateTemplate(editor, library, 'test_paper')).toBeUndefined();

@@ -36,7 +36,7 @@ describe('L16: a slide without a visual element', () => {
         slideId: 's_1',
         elementIds: [],
         message:
-          'The slide has no visual element: no image, chart, icon, table or shape that carries the message, only text. Add one. If the slide is meant to be text alone, set its archetype to "quote", "section" or "bigNumber".',
+          'The slide has no visual element: no image, chart, icon, table or shape that carries the message, only text. Add one. If the slide is meant to be text alone, use a title, text, quote, section or bigNumber layout.',
       },
     ]);
   });
@@ -158,8 +158,8 @@ describe('L16: a slide without a visual element', () => {
     ).toHaveLength(1);
   });
 
-  it('lets quote, section and big-number slides be text alone', () => {
-    for (const archetype of ['quote', 'section', 'bigNumber'] as const) {
+  it('lets title, text, quote, section and big-number slides be text alone', () => {
+    for (const archetype of ['title', 'text', 'quote', 'section', 'bigNumber'] as const) {
       expect(check('L16', [title], {}, { slide: { archetype } }), archetype).toEqual([]);
       expect(
         check(

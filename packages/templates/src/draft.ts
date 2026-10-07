@@ -32,6 +32,7 @@ import { fillLayout, type RoleFill } from './createSlide';
 import { deckFromTemplate } from './deck';
 import { copyJson } from './json';
 import { layoutsFor, type Template } from './template';
+import { withStandardLayouts } from './standardLayouts';
 
 /** A layout as its designer drew it. */
 /** The box a part with a role was drawn in: what its designer gave it, not what its text fills. */
@@ -424,7 +425,7 @@ function layoutId(draftId: string, index: number, taken: ReadonlySet<string>): s
  */
 export function draftTemplate(input: DraftInput): Draft {
   const { id, name, theme, dir } = input;
-  const base = input.base ? turned(input.base, dir) : undefined;
+  const base = input.base ? turned(withStandardLayouts(input.base), dir) : undefined;
   const notes: string[] = [];
   const fills: Draft['fills'] = {};
   const layouts: Layout[] = copyJson(base?.layouts ?? []);
@@ -455,7 +456,7 @@ export function draftTemplate(input: DraftInput): Draft {
   const assets = Object.values({ ...base?.assets, ...input.assets }).filter((asset) =>
     drawn.includes(asset.id),
   );
-  const template: Template = {
+  const template: Template = withStandardLayouts({
     theme: { ...copyJson(theme), id, name },
     ...(input.description ? { description: input.description } : {}),
     dir,
@@ -464,7 +465,7 @@ export function draftTemplate(input: DraftInput): Draft {
     ...(assets.length > 0
       ? { assets: Object.fromEntries(assets.map((asset) => [asset.id, copyJson(asset)])) }
       : {}),
-  };
+  });
   return { template, fills, notes };
 }
 

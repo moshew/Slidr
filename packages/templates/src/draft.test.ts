@@ -15,6 +15,7 @@ import { draftTemplate, layoutFromSlide, sampleDeckOf, themeFrom, type DrawnLayo
 import { nightTemplate, paperTemplate } from './fixtures';
 import { showSlideNumber, slideNumberHidden, slideNumberLayouts } from './master';
 import { layoutsFor, Template } from './template';
+import { withStandardLayouts } from './standardLayouts';
 
 const LOGO: AssetMeta = {
   id: 'b'.repeat(64),
@@ -272,7 +273,7 @@ describe('the slide number of a drawn layout', () => {
     });
     for (const lang of ['en', 'he']) {
       const deck = deckFromTemplate(template, { lang });
-      expect(slideNumberLayouts(deck).map((l) => l.id)).toEqual([template.layouts[0]!.id]);
+      expect(slideNumberLayouts(deck).map((l) => l.id)).toEqual(['l_draft_x_1']);
       const bus = new CommandBus(deck, { validate: true });
       bus.batch(showSlideNumber(bus.deck, false));
       expect(slideNumberHidden(bus.deck)).toBe(true);
@@ -416,7 +417,11 @@ describe('draftTemplate', () => {
     const { template, fills } = made();
     expect(Template.safeParse(template).error?.issues).toBeUndefined();
     expect(template.theme).toMatchObject({ id: 'draft_1', name: 'Clay' });
-    expect(template.layouts.map((l) => l.id)).toEqual(['l_draft_1_1']);
+    expect(template.layouts.map((l) => l.id)).toEqual([
+      'l_draft_1_title',
+      'l_draft_1_1',
+      'l_draft_1_text',
+    ]);
     expect(Object.keys(template.assets ?? {})).toEqual([LOGO.id]);
     expect(Object.keys(fills)).toEqual(['l_draft_1_1']);
   });
@@ -462,12 +467,13 @@ describe('draftTemplate', () => {
     const second = base.layouts.filter((l) => l.archetype === 'cards')[1]!;
     const ids = template.layouts.map((l) => l.id);
     // The layouts of the base in their order, the two replaced under their own ids.
-    expect(ids.slice(0, base.layouts.length)).toEqual(base.layouts.map((l) => l.id));
+    const original = withStandardLayouts(base);
+    expect(ids.slice(0, original.layouts.length)).toEqual(original.layouts.map((l) => l.id));
     expect(template.layouts.find((l) => l.id === 'l_paper_hero')!.placeholders).toHaveLength(7);
     expect(template.layouts.find((l) => l.id === second.id)!.placeholders).toHaveLength(7);
     // A timeline is new to paper... unless paper has one, in which case it was replaced.
     const hadTimeline = base.layouts.some((l) => l.archetype === 'timeline');
-    expect(template.layouts).toHaveLength(base.layouts.length + (hadTimeline ? 0 : 1));
+    expect(template.layouts).toHaveLength(original.layouts.length + (hadTimeline ? 0 : 1));
     expect(Object.keys(fills)).toHaveLength(3);
     expect(notes).toEqual([]);
   });
@@ -496,7 +502,7 @@ describe('draftTemplate', () => {
     ]);
     // The first in the place of the layout it replaced, the second after the layouts of the base.
     expect(template.layouts.map((l) => l.id)).toEqual([
-      ...base.layouts.map((l) => l.id),
+      ...withStandardLayouts(base).layouts.map((l) => l.id),
       'l_draft_4_2',
     ]);
     // Each with the sample it was drawn with.
@@ -516,7 +522,7 @@ describe('draftTemplate', () => {
       ],
       base: paper,
     });
-    expect(twice.template.layouts).toHaveLength(paper.layouts.length + 1);
+    expect(twice.template.layouts).toHaveLength(withStandardLayouts(paper).layouts.length + 1);
     expect(twice.template.layouts.filter((l) => l.name === named.name).map((l) => l.id)).toEqual([
       named.id,
       'l_draft_5_2',
@@ -540,7 +546,7 @@ describe('draftTemplate', () => {
     expect(night.flipped).toHaveLength(1);
     expect(template.flipped?.map((l) => l.id)).toEqual(night.flipped!.map((l) => l.id));
     for (const dir of ['rtl', 'ltr'] as const) {
-      expect(layoutsFor(template, dir)).toEqual(layoutsFor(night, dir));
+      expect(layoutsFor(template, dir)).toEqual(layoutsFor(withStandardLayouts(night), dir));
     }
   });
 });
@@ -585,10 +591,13 @@ describe('sampleDeckOf', () => {
       const deck = sampleDeckOf(template, fills, { lang, dir });
       expect(Deck.safeParse(deck).error?.issues).toBeUndefined();
       expect(deck.slides.map((s) => [s.layoutId, s.name])).toEqual([
+        ['l_draft_1_title', 'Title'],
         ['l_draft_1_1', 'Cards'],
         ['l_draft_1_2', 'Photo'],
+        ['l_draft_1_text', 'Text'],
       ]);
-      const [title, , body] = deck.slides[0]!.elements;
+      const card = deck.slides.find((slide) => slide.layoutId === 'l_draft_1_1')!;
+      const [title, , body] = card.elements;
       expect(title).toMatchObject({ role: 'title', type: 'text' });
       expect(title?.type === 'text' && plainText(title.content)).toBe('Three things');
       // The layout's look, not the drawing's: the bold 30px of the drawing is gone.
@@ -598,7 +607,7 @@ describe('sampleDeckOf', () => {
       });
       // Mirrored for the other direction.
       expect(title?.frame.x).toBe(96);
-      expect(deck.slides[0]!.elements[1]?.frame.x).toBe(dir === 'ltr' ? 136 : 1320);
+      expect(card.elements[1]?.frame.x).toBe(dir === 'ltr' ? 136 : 1320);
     }
   });
 
@@ -608,7 +617,9 @@ describe('sampleDeckOf', () => {
       dir: 'ltr',
       fallback: (role) => (role === 'caption' ? 'A caption' : undefined),
     });
-    const [photo, caption] = deck.slides[1]!.elements;
+    const [photo, caption] = deck.slides.find(
+      (slide) => slide.layoutId === 'l_draft_1_2',
+    )!.elements;
     expect(photo).toMatchObject({ type: 'image', role: 'image' });
     expect(photo?.type === 'image' && photo.assetId).toBeUndefined();
     expect(caption?.type === 'text' && plainText(caption.content)).toBe('A caption');
@@ -618,7 +629,7 @@ describe('sampleDeckOf', () => {
       dir: 'ltr',
       assets: { ['d'.repeat(64)]: { ...LOGO, id: 'd'.repeat(64) } },
     });
-    const [shown] = withAsset.slides[1]!.elements;
+    const [shown] = withAsset.slides.find((slide) => slide.layoutId === 'l_draft_1_2')!.elements;
     expect(shown?.type === 'image' && shown.assetId).toBe('d'.repeat(64));
   });
 });

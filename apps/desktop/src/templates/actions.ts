@@ -389,10 +389,10 @@ export async function updateTemplate(
   const made = await templateFromDeck(editor, library, deck, entry.template.theme.name);
   const template: Template = { ...made.template, theme: { ...made.template.theme, id } };
   await library.save(template, made.files);
-  if (deck.theme.id !== id || deck.theme.name !== template.theme.name) {
-    editor.bus.dispatch({ type: 'theme.replace', theme: template.theme }, { label });
-  }
-  return template;
+  const saved = library.find(id)!.template;
+  const commands = switchCommands(editor.bus.deck, saved);
+  if (commands.length > 0) editor.bus.batch(commands, { label });
+  return saved;
 }
 
 /**
@@ -439,6 +439,7 @@ export async function saveAsTemplate(
   const { template, files } = await templateFromDeck(editor, library, editor.bus.deck, name);
   await library.save(template, files);
   if (options.setDefault) library.setDefault(template.theme.id);
-  editor.bus.dispatch({ type: 'theme.replace', theme: template.theme }, { label: options.label });
-  return template;
+  const saved = library.find(template.theme.id)!.template;
+  editor.bus.batch(switchCommands(editor.bus.deck, saved), { label: options.label });
+  return saved;
 }

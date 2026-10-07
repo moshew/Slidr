@@ -2,6 +2,7 @@
 // slides from layouts, and switching a deck to a template. Pure functions over the model: like
 // `compose` there, they compute commands and change nothing. The built-in templates are WG7-T04.
 export { Template, layoutsFor } from './template';
+export { withStandardLayouts } from './standardLayouts';
 export { mirrorElement, mirrorLayout } from './mirror';
 export {
   createSlide,

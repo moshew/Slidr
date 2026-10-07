@@ -143,7 +143,7 @@ describe('tool definitions for a transport adapter', () => {
   it('give the image tools, and the drafting of a template, more time than a call gets by default', () => {
     const slow = listing.filter((t) => t.timeoutMs !== undefined);
     expect(slow.map((t) => [t.name, t.timeoutMs])).toEqual([
-      ['template_create', 180_000],
+      ['template_create', 210_000],
       ['image_generate', 300_000],
       ['image_fill_placeholders', 300_000],
       ['image_edit', 300_000],

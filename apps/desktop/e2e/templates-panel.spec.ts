@@ -42,7 +42,7 @@ test('the library offers the built-in templates, and switching to one is one und
   await expect(card(page, 'zerem')).toHaveAttribute('data-current', 'true');
   const after = await deck(page);
   expect(after.theme.id).toBe('zerem');
-  expect(after.layouts).toHaveLength(14);
+  expect(after.layouts).toHaveLength(16);
   // Layouts are named in the deck's language.
   expect(after.layouts.map((l) => l.name)).toContain('ציר זמן');
   expect(await undoSteps(page)).toBe(1);
@@ -91,13 +91,32 @@ test('"New slide" offers the layouts of the template', async ({ page }) => {
   await page.getByTestId('new-slide').click();
   const choices = page.getByTestId('layout-choices');
   await expect(choices).toBeVisible();
-  // Blank, and the fourteen layouts.
-  await expect(choices.locator('[data-layout]')).toHaveCount(15);
+  // Blank, and the sixteen layouts.
+  await expect(choices.locator('[data-layout]')).toHaveCount(17);
+  const order = await choices
+    .locator('[data-layout]')
+    .evaluateAll((items) => items.map((item) => item.getAttribute('data-layout')));
+  expect(order.indexOf('l_zerem_text')).toBe(order.indexOf('l_zerem_text_image') - 1);
   await choices.locator('[data-layout="l_zerem_cards"]').click();
   const now = await deck(page);
   expect(now.slides).toHaveLength(2);
   expect(now.slides[1]!.layoutId).toBe('l_zerem_cards');
   expect(now.slides[1]!.elements.filter((e) => e.role === 'subtitle')).toHaveLength(3);
+});
+
+test('the title and text layouts create slides with only their requested content', async ({
+  page,
+}) => {
+  await openTemplates(page, { defaultTemplate: 'zerem' });
+  await page.getByTestId('new-slide').click();
+  await page.getByTestId('layout-choices').locator('[data-layout="l_zerem_title"]').click();
+  let now = await deck(page);
+  expect(now.slides[1]!.elements.map((element) => element.role)).toEqual(['title']);
+
+  await page.getByTestId('new-slide').click();
+  await page.getByTestId('layout-choices').locator('[data-layout="l_zerem_text"]').click();
+  now = await deck(page);
+  expect(now.slides[2]!.elements.map((element) => element.role)).toEqual(['title', 'body']);
 });
 
 test('the direction control turns the deck, layouts and slides, in one step', async ({ page }) => {

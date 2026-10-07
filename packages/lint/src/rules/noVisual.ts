@@ -4,10 +4,10 @@ import type { Rule, SlideContext } from '../rule';
 import { hasPhoto, showsVisual } from '../visual';
 
 /**
- * Slides that may be text alone. Quote and section divider are the two QG-04 names; a big
- * number is itself the visual of its slide (SPEC 9.4, step 1).
+ * Slides that may be text alone. The title and text layouts deliberately leave room open.
+ * A big number is itself the visual of its slide (SPEC 9.4, step 1).
  */
-const TEXT_ARCHETYPES: readonly Archetype[] = ['quote', 'section', 'bigNumber'];
+const TEXT_ARCHETYPES: readonly Archetype[] = ['quote', 'section', 'title', 'text', 'bigNumber'];
 
 function hasVisual(ctx: SlideContext): boolean {
   // A photo behind the text is the picture of a full-image slide.
@@ -32,7 +32,7 @@ export const L16: Rule = {
       {
         elementIds: [],
         message:
-          'The slide has no visual element: no image, chart, icon, table or shape that carries the message, only text. Add one. If the slide is meant to be text alone, set its archetype to "quote", "section" or "bigNumber".',
+          'The slide has no visual element: no image, chart, icon, table or shape that carries the message, only text. Add one. If the slide is meant to be text alone, use a title, text, quote, section or bigNumber layout.',
       },
     ];
   },
