@@ -26,6 +26,7 @@ const files = import.meta.glob<string>(
     '../../../../docs/reference-decks/images/lavan-chair-1.webp',
     '../../../../docs/reference-decks/images/nof-view-2.webp',
     '../../../../docs/reference-decks/images/defus-street-1.webp',
+    '../../../../docs/reference-decks/images/migdal-team-2.webp',
   ],
   { eager: true, query: '?url', import: 'default' },
 );
@@ -40,6 +41,7 @@ const covers: Record<string, AssetMeta> = {
   lavan: pictures.lavanChair1,
   nof: pictures.nofView2,
   defus: pictures.defusStreet1,
+  shidur: pictures.migdalTeam2,
 };
 
 /** The photograph of a template's cover; undefined when the template opens without one. */

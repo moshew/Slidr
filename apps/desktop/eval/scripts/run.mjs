@@ -104,6 +104,7 @@ const BUILT_IN = [
   'hod',
   'sirtut',
   'ziv',
+  'shidur',
 ];
 
 /**
