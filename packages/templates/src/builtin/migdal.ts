@@ -324,6 +324,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_migdal_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(SIDE, 116, WIDE, 66), 'title')],
+      decorations: frameOf('title').decorations,
+    },
+    {
       id: 'l_migdal_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -368,6 +375,16 @@ function layouts(): Layout[] {
         rect('d_migdal_quote_bar', at(176, 664, 96, 6), BLUE),
         ...frameOf('quote', { band: false, chip: WHITE }).decorations,
       ],
+    },
+    {
+      id: 'l_migdal_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(SIDE, 116, WIDE, 66), 'title'),
+        place('p_body', 'body', at(SIDE, 256, WIDE, 624), 'body'),
+      ],
+      decorations: frameOf('text').decorations,
     },
     {
       id: 'l_migdal_text_image',
@@ -1210,7 +1227,7 @@ const sampleEn: SampleSlide[] = [
 export const migdalSamples = { he: sampleHe, en: sampleEn };
 
 /**
- * The Migdal template: the theme, fourteen layouts for both directions, and its sample deck.
+ * The Migdal template: the theme, sixteen layouts for both directions, and its sample deck.
  * Nothing is drawn by hand for the other direction: the quotation mark is the same both ways.
  */
 export function migdalTemplate(): Template {

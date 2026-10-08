@@ -8,7 +8,7 @@ import { pictures } from './pictures.generated';
 /**
  * Bina: a light, illustrated introduction to AI. The reference uses violet display type,
  * lilac and cyan characters, thin neural doodles and generous cream space. Gan supplies the
- * fourteen editable role layouts; the palette, artwork and example story are Bina's own.
+ * sixteen editable role layouts; the palette, artwork and example story are Bina's own.
  */
 export const binaTheme: Theme = {
   id: 'bina',

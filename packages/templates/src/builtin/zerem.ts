@@ -99,6 +99,12 @@ const head = (width = 1728, lines = 1) => [
   place('p_title', 'title', at(96, 122, width, 81 * lines), 'title'),
 ];
 
+/** Where a slide has no line over its title, a short bar of the bright colour stands for it. */
+const lead = (name: string) =>
+  rect(`d_zerem_${name}_lead`, at(96, 95, 96, 4), solid(token('primary')), {
+    effects: { radius: 2 },
+  });
+
 /**
  * The foot of a content slide: a rule, the mark at the start, and at the end the deck's name
  * with the slide's number beyond it (SLD-04). The mark stands alone at its side, which leaves a
@@ -251,6 +257,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_zerem_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(96, 122, 1728, 81), 'title')],
+      decorations: [lead('title'), ...foot('title').decorations],
+    },
+    {
       id: 'l_zerem_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -290,6 +303,16 @@ function layouts(): Layout[] {
         rect('d_zerem_quote_bar', at(96, 700, 96, 4), solid(token('primary'))),
         ...foot('quote').decorations,
       ],
+    },
+    {
+      id: 'l_zerem_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 122, 1728, 81), 'title'),
+        place('p_body', 'body', at(96, 262, 1728, 618), 'body'),
+      ],
+      decorations: [lead('text'), ...foot('text').decorations],
     },
     {
       id: 'l_zerem_text_image',
@@ -1153,7 +1176,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const zeremSamples = { he: sampleHe, en: sampleEn };
 
-/** The Zerem template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Zerem template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function zeremTemplate(): Template {
   const flipped = backgrounds(true);
   const template: Template = {

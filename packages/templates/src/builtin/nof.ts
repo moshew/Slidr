@@ -414,6 +414,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_nof_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(M, 120, W, 76), 'title')],
+      decorations: frameOf('title').decorations,
+    },
+    {
       id: 'l_nof_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -465,6 +472,16 @@ function layouts(): Layout[] {
         quoteGlyph({ x: 935, y: 152, w: 50, h: 37 }, QUOTE_RTL),
         ...frameOf('quote', W, false).decorations,
       ],
+    },
+    {
+      id: 'l_nof_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(M, 120, W, 76), 'title'),
+        place('p_body', 'body', at(M, 244, W, 656), 'body'),
+      ],
+      decorations: frameOf('text').decorations,
     },
     {
       id: 'l_nof_text_image',
@@ -1304,7 +1321,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const nofSamples = { he: sampleHe, en: sampleEn };
 
-/** The Nof template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Nof template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function nofTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

@@ -329,6 +329,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_defus_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(96, 118, 1728, 71), 'title')],
+      decorations: frameOf('title').decorations,
+    },
+    {
       id: 'l_defus_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -373,6 +380,16 @@ function layouts(): Layout[] {
         rect('d_defus_quote_signal', at(96, 650, 144, 12), RED),
         ...frameOf('quote', false).decorations,
       ],
+    },
+    {
+      id: 'l_defus_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 118, 1728, 71), 'title'),
+        place('p_body', 'body', at(96, 240, 1728, 656), 'body'),
+      ],
+      decorations: frameOf('text').decorations,
     },
     {
       id: 'l_defus_text_image',
@@ -1204,7 +1221,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const defusSamples = { he: sampleHe, en: sampleEn };
 
-/** The Defus template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Defus template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function defusTemplate(): Template {
   const template: Template = {
     theme: copyJson(defusTheme),

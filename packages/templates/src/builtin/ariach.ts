@@ -377,6 +377,23 @@ function head(name: string, width = 1728, lines = 2) {
   };
 }
 
+/** The lime tile in the top corner of the end side, with its matrix, beside a title on the ground. */
+function limeCorner(name: string): Element[] {
+  return [
+    ...tile(`d_ariach_${name}_lime`, atEnd(48, 48, span(3), 164), 'lime'),
+    matrix(
+      `d_ariach_${name}_matrix`,
+      atEnd(80, 70, 374, 0),
+      11,
+      3,
+      '#111114',
+      [7, 1],
+      '#3d3bf3',
+      0.22,
+    ),
+  ];
+}
+
 /**
  * The foot of a content slide, under the tiles: the mark at the start, the deck's name after
  * it, and the slide's number in a white pill at the end (SLD-04).
@@ -524,6 +541,17 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_ariach_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(96, 122, 1300, 70), 'title')],
+      decorations: [
+        ...head('title', 1300, 1).decorations,
+        ...limeCorner('title'),
+        ...foot('title').decorations,
+      ],
+    },
+    {
       id: 'l_ariach_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -597,6 +625,22 @@ function layouts(): Layout[] {
           0.22,
         ),
         ...feet('quote').decorations,
+      ],
+    },
+    {
+      id: 'l_ariach_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 122, 1300, 70), 'title'),
+        place('p_body', 'body', at(96, 284, 1728, 604), 'body'),
+      ],
+      decorations: [
+        ...head('text', 1300, 1).decorations,
+        ...limeCorner('text'),
+        // The text stands on a tile, as all content does here.
+        ...tile('d_ariach_text_main', at(48, 236, 1824, 700), 'white'),
+        ...foot('text').decorations,
       ],
     },
     {
@@ -894,17 +938,7 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...tableHead.decorations,
-        ...tile('d_ariach_table_lime', atEnd(48, 48, span(3), 164), 'lime'),
-        matrix(
-          'd_ariach_table_matrix',
-          atEnd(80, 70, 374, 0),
-          11,
-          3,
-          '#111114',
-          [7, 1],
-          '#3d3bf3',
-          0.22,
-        ),
+        ...limeCorner('table'),
         ...tile('d_ariach_table_main', at(48, 236, 1824, 700), 'white'),
         ...feet('table').decorations,
       ],
@@ -1595,7 +1629,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const ariachSamples = { he: sampleHe, en: sampleEn };
 
-/** The Ariach template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Ariach template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function ariachTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

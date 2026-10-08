@@ -440,6 +440,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_shidur_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(96, 136, 1300, 74), 'title')],
+      decorations: [...corner('title'), ...head('title').decorations, ...foot('title').decorations],
+    },
+    {
       id: 'l_shidur_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -486,6 +493,16 @@ function layouts(): Layout[] {
         rect('d_shidur_quote_bar', at(96, 676, 120, 8), PINK, { effects: { radius: 4 } }),
         ...foot('quote').decorations,
       ],
+    },
+    {
+      id: 'l_shidur_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 136, 1300, 74), 'title'),
+        place('p_body', 'body', at(96, 262, 1728, 618), 'body'),
+      ],
+      decorations: [...corner('text'), ...head('text').decorations, ...foot('text').decorations],
     },
     {
       id: 'l_shidur_text_image',
@@ -1364,7 +1381,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const shidurSamples = { he: sampleHe, en: sampleEn };
 
-/** The Shidur template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Shidur template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function shidurTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

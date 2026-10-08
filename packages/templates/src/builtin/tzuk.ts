@@ -234,6 +234,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_tzuk_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(96, 122, 1728, 79), 'title')],
+      decorations: frameOf('title').decorations,
+    },
+    {
       id: 'l_tzuk_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -278,6 +285,16 @@ function layouts(): Layout[] {
         pageNumber('d_tzuk_quote_number', at(1044, 958, 60, 34)),
         mark('d_tzuk_quote_mark', at(96, 957, 34, 34)),
       ],
+    },
+    {
+      id: 'l_tzuk_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 122, 1728, 79), 'title'),
+        place('p_body', 'body', at(96, 262, 1728, 618), 'body'),
+      ],
+      decorations: frameOf('text').decorations,
     },
     {
       id: 'l_tzuk_text_image',
@@ -1149,7 +1166,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const tzukSamples = { he: sampleHe, en: sampleEn };
 
-/** The Tzuk template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Tzuk template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function tzukTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

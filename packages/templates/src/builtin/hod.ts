@@ -756,6 +756,14 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_hod_title',
+      name: 'Title',
+      archetype: 'title',
+      background: deep(),
+      placeholders: [place('p_title', 'title', at(96, 136, 1728, 80), 'title')],
+      decorations: [border('d_hod_title_border'), headLead('title'), ...foot('title').decorations],
+    },
+    {
       id: 'l_hod_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -854,6 +862,17 @@ function layouts(): Layout[] {
         diamonds('d_hod_quote_rule', at(780, 662, 360, 12)),
         ...foot('quote').decorations,
       ],
+    },
+    {
+      id: 'l_hod_text',
+      name: 'Text',
+      archetype: 'text',
+      background: deep(),
+      placeholders: [
+        place('p_title', 'title', at(96, 136, 1728, 80), 'title'),
+        place('p_body', 'body', at(96, 262, 1728, 638), 'body'),
+      ],
+      decorations: [border('d_hod_text_border'), headLead('text'), ...foot('text').decorations],
     },
     {
       id: 'l_hod_text_image',
@@ -1835,7 +1854,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const hodSamples = { he: sampleHe, en: sampleEn };
 
-/** The Hod template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Hod template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function hodTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

@@ -237,6 +237,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_shvil_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(96, 122, 1728, 84), 'title')],
+      decorations: [...head('title').decorations, ...foot('title').decorations],
+    },
+    {
       id: 'l_shvil_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -283,6 +290,16 @@ function layouts(): Layout[] {
         mark('d_shvil_quote_mark', at(144, 954, 36, 36)),
         pageNumber('d_shvil_quote_number', atEnd(504, 956, 60, 34)),
       ],
+    },
+    {
+      id: 'l_shvil_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 122, 1728, 84), 'title'),
+        place('p_body', 'body', at(96, 248, 1728, 640), 'body'),
+      ],
+      decorations: [...head('text').decorations, ...foot('text').decorations],
     },
     {
       id: 'l_shvil_text_image',
@@ -1239,7 +1256,7 @@ const sampleEn: SampleSlide[] = [
 export const shvilSamples = { he: sampleHe, en: sampleEn };
 
 /**
- * The Shvil template: the theme, fourteen layouts for both directions, and its sample deck. The
+ * The Shvil template: the theme, sixteen layouts for both directions, and its sample deck. The
  * layouts are drawn right-to-left, and the mirror is right for all but one of them: the
  * backgrounds are plain fields of colour, and a trail, a pin or a dotted rule reads the same from
  * the other side. The quote mark does not, so the quote layout has a twin of its own.

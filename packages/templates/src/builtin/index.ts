@@ -7,7 +7,7 @@
 import type { Theme } from '@slidr/model';
 import { withStandardLayouts } from '../standardLayouts';
 import type { Template } from '../template';
-import { sampleSlides, text, type SampleSlide } from './kit';
+import { bullets, para, sampleSlides, text, type SampleSlide } from './kit';
 import { ariachSamples, ariachTemplate, ariachTheme } from './ariach';
 import { binaSamples, binaTemplate, binaTheme } from './bina';
 import { boletSamples, boletTemplate, boletTheme } from './bolet';
@@ -99,10 +99,19 @@ function insertInLayoutOrder<T>(
 
 function standardSamples(template: Template, lang: 'he' | 'en'): [SampleSlide, SampleSlide] {
   const title = lang === 'he' ? 'כותרת השקף' : 'Slide title';
-  const body =
+  const lead =
     lang === 'he'
       ? 'כאן אפשר להציג את הרעיון המרכזי ולפרט אותו בכמה שורות.'
       : 'Present the main idea here and explain it in a few lines.';
+  const points =
+    lang === 'he'
+      ? ['נקודה ראשונה שתומכת ברעיון', 'נקודה שנייה, עם דוגמה או מספר', 'נקודה שלישית שמובילה הלאה']
+      : [
+          'A first point that supports the idea',
+          'A second point, with an example or a figure',
+          'A third point that leads on',
+        ];
+  const body = { paragraphs: [para(lead), ...bullets(...points).paragraphs] };
   return [
     {
       layout: template.layouts.find((layout) => layout.archetype === 'title')!.id,
@@ -112,7 +121,7 @@ function standardSamples(template: Template, lang: 'he' | 'en'): [SampleSlide, S
     {
       layout: template.layouts.find((layout) => layout.archetype === 'text')!.id,
       name: title,
-      content: { title: text(title), body: text(body) },
+      content: { title: text(title), body },
     },
   ];
 }

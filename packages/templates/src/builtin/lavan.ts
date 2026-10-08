@@ -289,6 +289,13 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_lavan_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(MARGIN, 142, WIDTH, 80), 'title')],
+      decorations: frameOf('title').decorations,
+    },
+    {
       id: 'l_lavan_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -328,6 +335,16 @@ function layouts(): Layout[] {
         rect('d_lavan_quote_split', at(column(2), 662, span(10), 1), HAIR),
         ...frameOf('quote', false).decorations,
       ],
+    },
+    {
+      id: 'l_lavan_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(MARGIN, 142, WIDTH, 80), 'title'),
+        place('p_body', 'body', at(MARGIN, 270, WIDTH, 630), 'body'),
+      ],
+      decorations: frameOf('text').decorations,
     },
     {
       id: 'l_lavan_text_image',
@@ -1183,7 +1200,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const lavanSamples = { he: sampleHe, en: sampleEn };
 
-/** The Lavan template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Lavan template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function lavanTemplate(): Template {
   const drawn = layouts();
   const template: Template = {
