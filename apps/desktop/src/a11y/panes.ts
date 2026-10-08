@@ -16,7 +16,6 @@ export const PANES = [
   'document',
   'activity',
   'panel',
-  'tools',
   'context',
   'stage',
   'filmstrip',

@@ -150,6 +150,8 @@ test('the icons and the photographs of the templates are files beside the execut
     'icons/hebrew.json',
     'images/templates/shvil-ridge.webp',
     'fonts/rubik/rubik-hebrew-wght-normal.woff2',
+    'templates/index.json',
+    'templates/zerem/template.json',
   ]) {
     expect(existsSync(join(media, file)), file).toBe(true);
   }
@@ -288,6 +290,26 @@ test('a file of the workspace is read over the asset protocol', async () => {
   );
   expect(read.url).toMatch(/^http:\/\/asset\.localhost\//);
   expect(read).toMatchObject({ status: 200, same: true, width: 1 });
+});
+
+test('the built-in templates are read from the folder beside the executable', async () => {
+  const { page } = app;
+  const media = join(dirname(appBinary()), 'media', 'templates');
+  const ids = JSON.parse(readFileSync(join(media, 'index.json'), 'utf8')) as string[];
+  expect(ids.length).toBeGreaterThan(10);
+  const zerem = JSON.parse(readFileSync(join(media, 'zerem', 'template.json'), 'utf8')) as {
+    theme: { id: string };
+  };
+  expect(zerem.theme.id).toBe('zerem');
+  // The library offers every one of them, in the order of the index.
+  await showPanel(page, 'templates');
+  const cards = page.getByTestId('template-library').locator('[data-template]');
+  await expect(cards.first()).toBeVisible();
+  const shown = await cards.evaluateAll((all) =>
+    all.map((card) => card.getAttribute('data-template')),
+  );
+  expect(shown.slice(0, ids.length)).toEqual(ids);
+  await showPanel(page, 'ai');
 });
 
 test('nothing was reported to the console along the way', () => {

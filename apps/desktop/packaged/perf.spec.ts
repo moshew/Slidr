@@ -691,10 +691,8 @@ test.describe('with a deck open', () => {
       let size = 0;
       for (let i = 0; i < 3; i++) {
         const written = join(FILES, `export-${i}.html`);
-        await page
-          .getByTestId('top-tools-a')
-          .getByRole('button', { name: 'ייצוא', exact: true })
-          .click();
+        await page.getByTestId('file-menu-trigger').click();
+        await page.getByRole('menuitem', { name: 'ייצוא HTML…', exact: true }).click();
         await expect(page.getByTestId('export-dialog')).toBeVisible();
         await answerDialog(page, 'save', written);
         const started = Date.now();

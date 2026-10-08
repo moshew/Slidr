@@ -28,7 +28,6 @@ import {
   LockOpen,
   LogIn,
   Scissors,
-  Sparkles,
   Spline,
   SquareDashedMousePointer,
   Table2,
@@ -51,15 +50,7 @@ import {
 } from '../arrange/actions';
 import { canPaste, pasteFromMemory } from '../arrange/clipboard';
 import { openData } from '../chart/session';
-import {
-  aiKinds,
-  openAiChat,
-  useDeck,
-  useEditor,
-  useSelection,
-  type ContextToolProps,
-  type Editor,
-} from '../shell';
+import { useDeck, useEditor, useSelection, type ContextToolProps, type Editor } from '../shell';
 import { enterTable } from '../table/session';
 import { stageCommand } from './keyboardSession';
 import { ORDER_MOVES } from './SelectionToolbar';
@@ -346,21 +337,5 @@ export function StateItems(_: ContextToolProps) {
         {t('arrange:menu.hide')}
       </ContextMenuItem>
     </>
-  );
-}
-
-/* ---------------------------------------------------------------- AI */
-
-/**
- * The way to the AI chat (SPEC 4.2, ADR-072): about the slide, or about what is selected on it.
- * The chat is the same one; what it is about goes to the agent with the message.
- */
-export function AiItems({ kind }: ContextToolProps) {
-  const { t } = useTranslation();
-  if (kind !== 'none' && !aiKinds.has(kind)) return null;
-  return (
-    <ContextMenuItem icon={Sparkles} shortcut="Ctrl+L" onSelect={openAiChat}>
-      {t(kind === 'none' ? 'tools.aiSlide' : 'tools.aiSelection')}
-    </ContextMenuItem>
   );
 }

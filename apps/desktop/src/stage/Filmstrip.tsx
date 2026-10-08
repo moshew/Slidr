@@ -46,7 +46,6 @@ import {
   Film,
   Plus,
   Scissors,
-  Sparkles,
   Trash2,
   type LucideIcon,
 } from '@slidr/ui/icons';
@@ -90,11 +89,6 @@ export interface FilmstripProps {
    * check's findings. A screen reader hears it as the thumbnail's description.
    */
   mark?: (slideId: string) => ReactNode;
-  /**
-   * Opens the host's AI chat about the slide the menu was opened on, which is the current slide
-   * by then. Without it the menu has no such item.
-   */
-  onAi?: () => void;
   className?: string;
 }
 
@@ -129,8 +123,6 @@ export interface FilmstripLabels {
   paste: string;
   /** The undo step of slides moved along the strip, by a drag or by the keyboard. */
   move: string;
-  /** The menu's way to the AI chat about the slide; shown when the host gives `onAi`. */
-  ai?: string;
 }
 
 export const THUMB_W = 176;
@@ -479,7 +471,6 @@ export function Filmstrip({
   clipboard,
   labels = DEFAULT_LABELS,
   mark,
-  onAi,
   className,
 }: FilmstripProps) {
   /** The strip: it scrolls and takes the pointer. */
@@ -971,11 +962,6 @@ export function Filmstrip({
               >
                 {hiddenAll ? labels.show : labels.hide}
               </ContextMenuItem>
-              {onAi && labels.ai ? (
-                <ContextMenuItem icon={Sparkles} shortcut="Ctrl+L" onSelect={onAi}>
-                  {labels.ai}
-                </ContextMenuItem>
-              ) : null}
             </>
           ) : null}
           {clipboard ? (

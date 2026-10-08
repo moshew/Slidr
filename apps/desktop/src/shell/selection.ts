@@ -18,21 +18,6 @@ const kindOfType: Record<Element['type'], SelectionKind> = {
   group: 'group',
 };
 
-/**
- * The selection kinds that get an "AI" entry to the chat about the selection (SPEC 4.2, 4.4):
- * several elements too, since the one chat works on any selection (ADR-072).
- */
-export const aiKinds: ReadonlySet<SelectionKind> = new Set([
-  'text',
-  'image',
-  'shape',
-  'table',
-  'chart',
-  'html',
-  'group',
-  'multiple',
-]);
-
 /** The row B kind of one element. */
 export function elementKind(element: Element): SelectionKind {
   return kindOfType[element.type];

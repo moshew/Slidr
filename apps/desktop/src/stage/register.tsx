@@ -32,7 +32,7 @@ import {
 import { cropSession, heldRatio, type CropPreset } from './cropSession';
 import { refitPatches, type Patch } from './groups';
 import { stageCommand } from './keyboardSession';
-import { AiItems, ClipboardItems, EditItems, GroupItems, OrderItems, StateItems } from './menu';
+import { ClipboardItems, EditItems, GroupItems, OrderItems, StateItems } from './menu';
 import { en, he } from './messages';
 import { indexElements, type Located } from './space';
 import { focusSelectionToolbar } from './SelectionToolbar';
@@ -386,8 +386,8 @@ const elementKinds: SelectionKind[] = [
 
 /*
  * Groups, top to bottom: the clipboard (10), the element's own way in (20), order and alignment
- * (30), grouping (40), lock and hide (50), and the AI tools last (90). Another area adds what
- * only it knows, between them: the table's rows and columns are at 25.
+ * (30), grouping (40), and lock and hide (50). Another area adds what only it knows, between
+ * them: the table's rows and columns are at 25.
  */
 const menu: {
   id: string;
@@ -400,6 +400,5 @@ const menu: {
   { id: 'order', order: 30, kinds: elementKinds, render: OrderItems },
   { id: 'group', order: 40, kinds: ['group', 'multiple'], render: GroupItems },
   { id: 'state', order: 50, kinds: elementKinds, render: StateItems },
-  { id: 'ai', order: 90, kinds: ['none', ...elementKinds], render: AiItems },
 ];
 for (const { id, ...part } of menu) registerStageMenu({ id: `stage.${id}`, group: id, ...part });

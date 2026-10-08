@@ -24,7 +24,7 @@ export {
   type ToolAction,
   type ToolPanelDefinition,
 } from './registry';
-export { aiKinds, selectionKind, elementKind, type SelectionKind } from './selection';
+export { selectionKind, elementKind, type SelectionKind } from './selection';
 export { StatusItem } from './StatusBar';
 export {
   getEditor,

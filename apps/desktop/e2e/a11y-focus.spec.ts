@@ -74,12 +74,14 @@ test('a menu keeps the keyboard, closes with Esc, and gives it back', async ({ p
   await expect(trigger).toBeFocused();
 });
 
-test('a dialog keeps the keyboard, closes with Esc, and gives it back to its button', async ({
+test('a dialog keeps the keyboard, closes with Esc, and gives it back to the File menu button', async ({
   page,
 }) => {
   await openApp(page, { lang: 'en' });
-  const trigger = page.getByTestId('title-bar').getByRole('button', { name: 'Export' });
+  const trigger = page.getByTestId('file-menu-trigger');
   await trigger.focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: 'Export HTML…' }).focus();
   await page.keyboard.press('Enter');
   const dialog = page.getByTestId('export-dialog');
   await expect(dialog).toBeVisible();

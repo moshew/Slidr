@@ -72,9 +72,9 @@ export function openPanel(id: string, tab?: AiTab): void {
 }
 
 /**
- * Shows the AI chat with the caret in its field: every "AI" button, menu item and Ctrl+L
- * (ADR-072). The selection stays as it is, also selected text in a box being edited: the chat
- * tells the agent about it with the next message.
+ * Shows the AI chat with the caret in its field (Ctrl+L). The selection stays as it is,
+ * also selected text in a box being edited: the chat tells the agent about it with the next
+ * message.
  */
 export function openAiChat(): void {
   openPanel(PanelId.ai, 'chat');

@@ -130,15 +130,14 @@ test('another selection starts its row from the first tool', async ({ page }) =>
 });
 
 for (const lang of ['he', 'en'] as const) {
-  test(`row A keeps "Present" and the document's menu in the window, and its insert buttons scroll, ${lang}`, async ({
+  test(`slide insertion tools scroll while document actions stay in view, ${lang}`, async ({
     page,
   }) => {
     await open(page, lang);
-    const rowA = page.getByTestId('top-tools-a');
-    const arrow = (side: 'start' | 'end') => page.getByTestId(`row-inserts-${side}`);
+    await select(page, []);
+    const row = rowB(page);
+    const arrow = (side: 'start' | 'end') => more(page, side);
     const names = lang === 'he' ? { file: 'קובץ', icon: 'אייקון' } : { file: 'File', icon: 'Icon' };
-    // At the width the layout is made for every insert button shows.
-    await expect(arrow('end')).toHaveCount(0);
     await widen(page);
 
     // The ends of the row are where they were: the File menu, undo, the zoom, and the three
@@ -148,7 +147,7 @@ for (const lang of ['he', 'en'] as const) {
       page.getByTestId('title-bar').getByRole('button', { name: names.file }),
     ).toBeInViewport({ ratio: 1 });
     // What gave way is the insert buttons: the last of them is reached by the arrow.
-    const last = rowA.getByRole('button', { name: names.icon, exact: true });
+    const last = row.getByRole('button', { name: names.icon, exact: true });
     const seen = () =>
       last.evaluate((button) => {
         const room = button.closest('[data-row-tools]')!.getBoundingClientRect();

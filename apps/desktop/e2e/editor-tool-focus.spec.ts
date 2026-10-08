@@ -12,7 +12,6 @@ import { addText, edit, para, plain } from './text-helpers';
 const surface = (page: Page) => page.getByTestId('stage-surface');
 const onStage = (page: Page, id: string) =>
   page.getByTestId('stage-frame').locator(`[data-element-id="${id}"]`);
-const rowA = (page: Page) => page.getByTestId('top-tools-a');
 const rowB = (page: Page) => page.getByTestId('top-tools-b');
 
 /** The text of an element of the first slide, a line for each paragraph. */
@@ -220,9 +219,9 @@ test.describe('a tool that is used with the pointer', () => {
 });
 
 test.describe('a tool that was reached with the keyboard', () => {
-  /** Brings the keyboard into row B the way Tab does, from the last control of row A. */
+  /** Moves between the floating toolbar's controls with Tab. */
   async function tabIntoRowB(page: Page) {
-    await rowA(page).getByRole('button').last().focus();
+    await rowB(page).getByRole('button').first().focus();
     await page.keyboard.press('Tab');
     await expect
       .poll(() =>
@@ -257,11 +256,9 @@ test.describe('a tool that was reached with the keyboard', () => {
     await expect(menu).toHaveCount(0);
     await expect(arrange).toBeFocused();
     expect((await elements(page)).at(-1)!.id).toBe('e_a');
-    // The keyboard goes on along the row: the "AI" button comes after the Arrange menu.
+    // Arrange is the last tool: Tab moves on to the Stage.
     await page.keyboard.press('Tab');
-    await expect(
-      rowB(page).getByRole('button', { name: 'Ask AI about the selection' }),
-    ).toBeFocused();
+    await expect(surface(page)).toBeFocused();
   });
 
   test('a popover closes back onto its button', async ({ page }) => {

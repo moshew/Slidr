@@ -79,7 +79,7 @@ export interface ToolPanelDefinition extends PanelBase {
 export type PanelDefinition = AiPanelDefinition | ToolPanelDefinition;
 
 /**
- * The panel ids the shell refers to: the AI chat of Ctrl+1 and of the "AI" buttons, and the HTML
+ * The panel ids the shell refers to: the AI chat of Ctrl+1 and Ctrl+L, and the HTML
  * import that the File menu and the welcome screen lead to.
  */
 export const PanelId = {

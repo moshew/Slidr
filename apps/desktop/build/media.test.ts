@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { mediaFile, mediaModule, mediaOrigin } from './media.ts';
+import { Template } from '@slidr/templates';
+import { builtInTemplates } from '@slidr/templates/builtin';
+import {
+  isTemplatesModule,
+  mediaFile,
+  mediaModule,
+  mediaOrigin,
+  templateFiles,
+  templatesModule,
+} from './media.ts';
 
 describe('the place of an import in the media library', () => {
   it('is a folder by kind: fonts by family, icons by set, the photographs of the templates', () => {
@@ -45,6 +54,35 @@ describe('the place of an import in the media library', () => {
     ]) {
       expect(mediaFile(id), id).toBeUndefined();
     }
+  });
+});
+
+describe('the built-in templates as files of the media library', () => {
+  const templates = builtInTemplates();
+  const files = templateFiles(templates);
+
+  it('are one file each, and an index that keeps their order', () => {
+    const ids = templates.map((template) => template.theme.id);
+    expect(JSON.parse(files.get('index.json')!)).toEqual(ids);
+    expect([...files.keys()].sort()).toEqual(
+      ['index.json', ...ids.map((id) => `${id}/template.json`)].sort(),
+    );
+  });
+
+  it('read back as the templates the code makes, without their samples', () => {
+    for (const { sample: _sample, assets: _assets, ...template } of templates) {
+      const read = Template.parse(JSON.parse(files.get(`${template.theme.id}/template.json`)!));
+      expect(read, template.theme.id).toEqual(template);
+    }
+  });
+
+  it('are read by the module that stands in for their code, and only there', () => {
+    expect(isTemplatesModule('C:\\repo\\apps\\desktop\\src\\templates\\builtIn.ts')).toBe(true);
+    expect(isTemplatesModule('/repo/apps/desktop/src/templates/library.ts')).toBe(false);
+    expect(isTemplatesModule('/repo/packages/templates/src/builtin/index.ts')).toBe(false);
+    const module = templatesModule('http://media.localhost/');
+    expect(module).toContain('fetch("http://media.localhost/templates/" + path)');
+    expect(module).toContain('export const builtIn = await load()');
   });
 });
 

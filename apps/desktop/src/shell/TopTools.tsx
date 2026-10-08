@@ -17,7 +17,6 @@ import {
   RectangleHorizontal,
   Shapes,
   Slash,
-  Sparkles,
   Sticker,
   Table,
   Type,
@@ -32,22 +31,8 @@ import {
   type ActionPopoverProps,
   type ToolAction,
 } from './registry';
-import { aiKinds, selectionKind, type SelectionKind } from './selection';
-import { openAiChat } from './store';
+import { selectionKind, type SelectionKind } from './selection';
 import { watchToolFocus } from './toolFocus';
-
-/** The creation toolbar. Selection tools float separately inside the workspace. */
-export function TopTools() {
-  const rows = useRef<HTMLDivElement>(null);
-  // A tool that is used with the pointer does not keep the keyboard (`toolFocus.ts`).
-  useEffect(() => (rows.current ? watchToolFocus(rows.current) : undefined), []);
-  return (
-    // Creation tools scroll independently of the document actions in the title bar.
-    <div ref={rows} className="@container shrink-0 bg-ui-panel">
-      <RowA />
-    </div>
-  );
-}
 
 function Group({ children, label }: { children: ReactNode; label?: string }) {
   return (
@@ -58,7 +43,7 @@ function Group({ children, label }: { children: ReactNode; label?: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- row A */
+/* ---------------------------------------------------------------- insertion tools */
 
 const inserts: {
   action: ToolAction;
@@ -125,36 +110,6 @@ const inserts: {
   },
 ];
 
-function RowA() {
-  const { t } = useTranslation();
-  return (
-    <div
-      role="toolbar"
-      aria-label={t('panels.tools')}
-      data-testid="top-tools-a"
-      data-pane="tools"
-      className="flex h-toolbar-a min-w-0 items-center gap-3 border-b border-ui-line px-3"
-    >
-      <span className="shrink-0 px-1 text-sm font-semibold text-ui-fg-muted">
-        {t('tools.create')}
-      </span>
-      <ToolStrip testId="row-inserts">
-        <div className="flex items-center gap-1">
-          {inserts.map((insert) => (
-            <ActionButton key={insert.action} {...insert} />
-          ))}
-        </div>
-      </ToolStrip>
-      <div className="flex-1" />
-      <div className="flex shrink-0 items-center gap-2">
-        <Button variant="soft" icon={Sparkles} data-testid="ask-ai" onClick={openAiChat}>
-          {t('tools.aiChat')}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function ActionButton({
   action,
   icon,
@@ -190,7 +145,7 @@ function ActionButton({
   return trigger;
 }
 
-/** A row A button whose area registered a popover, such as the shape library. */
+/** An insertion button whose area registered a popover, such as the shape library. */
 function PopoverButton({
   trigger,
   content: Content,
@@ -209,7 +164,7 @@ function PopoverButton({
   );
 }
 
-/* ---------------------------------------------------------------- row B */
+/* ---------------------------------------------------------------- selection tools */
 
 const kindIcons: Record<SelectionKind, LucideIcon> = {
   none: RectangleHorizontal,
@@ -236,10 +191,9 @@ function useSelectionKind(): { kind: SelectionKind; count: number } {
 const STRIP_STEP = 0.7;
 
 /**
- * Tools of a row, in a strip that takes the room the row has for them: the tools of row B, and
- * the insert buttons of row A. They fit at the resolutions the layout is made for; when the Tool
- * Panel is dragged wider on a small window the row is narrower than its tools, and then the
- * strip scrolls sideways: by the wheel, by the arrow that shows on the side where tools are out
+ * Selection tools and slide insertion buttons share a strip that takes the room the toolbar
+ * has for them. When the row is narrower than its tools, the strip scrolls sideways: by the
+ * wheel, by the arrow that shows on the side where tools are out
  * of sight, and by Tab, which brings the tool it lands on into view. No tool is ever out of
  * reach, and none is moved or folded away for it.
  */
@@ -355,17 +309,18 @@ function ToolStrip({
   );
 }
 
+/** One floating toolbar: insertion and slide tools, or the selected object's tools. */
 export function ContextTools() {
   const rows = useRef<HTMLDivElement>(null);
   useEffect(() => (rows.current ? watchToolFocus(rows.current) : undefined), []);
   return (
     <div ref={rows} className="@container mx-3 mt-3 shrink-0">
-      <RowB />
+      <ContextToolsRow />
     </div>
   );
 }
 
-function RowB() {
+function ContextToolsRow() {
   const { t } = useTranslation();
   const { kind, count } = useSelectionKind();
   const groups = useContextTools(kind);
@@ -382,7 +337,7 @@ function RowB() {
       // The groups are 12px apart: at 16 the row of a text box, the fullest one, did not hold the
       // tools of all the areas at 1920 or at 1366. In a row as narrow as the one of 1366 they are
       // 8px apart: at 12 the row of a table was wider than the editor there, in English.
-      className="mx-auto flex h-toolbar-b w-max max-w-full min-w-0 items-center gap-3 rounded-panel border border-ui-line bg-ui-raised px-3 shadow-floating @max-4xl:gap-2"
+      className="mx-auto flex h-toolbar w-max max-w-full min-w-0 items-center gap-3 rounded-panel border border-ui-line bg-ui-raised px-3 shadow-floating @max-4xl:gap-2"
     >
       <span
         data-testid="selection-label"
@@ -399,18 +354,16 @@ function RowB() {
             ))}
           </Group>
         ))}
+        {kind === 'none' && (
+          <div className="border-s border-ui-line ps-3">
+            <Group label={t('tools.create')}>
+              {inserts.map((insert) => (
+                <ActionButton key={insert.action} {...insert} />
+              ))}
+            </Group>
+          </div>
+        )}
       </ToolStrip>
-      {(kind === 'none' || aiKinds.has(kind)) && (
-        <Button
-          variant="soft"
-          size="sm"
-          icon={Sparkles}
-          aria-label={t(kind === 'none' ? 'tools.aiSlide' : 'tools.aiSelection')}
-          onClick={openAiChat}
-        >
-          {t('tools.ai')}
-        </Button>
-      )}
     </div>
   );
 }

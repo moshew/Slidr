@@ -5,7 +5,6 @@ import { Filmstrip, type FilmstripClipboard, type FilmstripLabels } from '../sta
 import { useAssetResolver } from './assets';
 import { useDeck, useEditor } from './editor';
 import { useSlideMarks } from './registry';
-import { openAiChat } from './store';
 
 /**
  * The Filmstrip region: 132px under the Stage (SPEC 4.1). The Filmstrip itself is a standalone
@@ -39,7 +38,6 @@ export function FilmstripRegion() {
       move: ta('slides.move'),
       transition: ty('strip.transition'),
       animations: (count: number) => ty('strip.animations', { count }),
-      ai: t('tools.aiSlide'),
     }),
     [t, ta, ty],
   );
@@ -73,7 +71,6 @@ export function FilmstripRegion() {
         clipboard={clipboard}
         labels={labels}
         mark={marks.length ? mark : undefined}
-        onAi={openAiChat}
         className="h-full"
       />
     </section>

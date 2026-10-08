@@ -4,7 +4,7 @@ import { en, he } from './messages';
 import { openExportDialog } from './open';
 
 /*
- * Export to HTML (WG9-T12): the row A button opens the export dialog. See
+ * Export to HTML (WG9-T12): the File menu opens the export dialog. See
  * docs/adr/ADR-032-export-dialog-and-fonts.md.
  */
 

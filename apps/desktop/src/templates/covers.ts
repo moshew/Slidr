@@ -16,7 +16,8 @@ import {
   type Slide,
 } from '@slidr/model';
 import { createSlide, deckFromTemplate, type Template } from '@slidr/templates';
-import { pictures } from '@slidr/templates/builtin';
+// The pictures alone: the templates' own code is not part of a packaged app (see `./builtIn`).
+import { pictures } from '@slidr/templates/builtin/pictures';
 import { library } from './app';
 
 const files = import.meta.glob<string>(

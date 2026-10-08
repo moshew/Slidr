@@ -29,15 +29,15 @@ test('FHD: the refreshed regions and the slide fitted below its floating tools',
   page,
 }) => {
   expect((await box(page, 'title-bar')).height).toBe(56);
-  expect((await box(page, 'top-tools-a')).height).toBe(80);
-  expect((await box(page, 'top-tools-b')).height).toBe(44);
+  await expect(page.getByTestId('top-tools-a')).toHaveCount(0);
+  expect((await box(page, 'top-tools-b')).height).toBe(80);
   expect((await box(page, 'filmstrip')).height).toBe(132);
   expect((await box(page, 'status-bar')).height).toBe(32);
   expect((await box(page, 'activity-bar')).width).toBe(76);
   expect((await box(page, 'tool-panel')).width).toBe(584);
 
   const stage = await box(page, 'stage');
-  expect([stage.width, stage.height]).toEqual([1260, 732]);
+  expect([stage.width, stage.height]).toEqual([1260, 812]);
   const surface = await box(page, 'stage-surface');
   const tools = await box(page, 'top-tools-b');
   expect(surface.y).toBeGreaterThanOrEqual(tools.y + tools.height);
@@ -154,7 +154,7 @@ test('the Tool Panel collapses, the Activity Bar stays and the Stage grows', asy
   await waitForPanelWidth(page, 0);
 });
 
-test('Ctrl+1 and the AI button open the one AI chat (ADR-072)', async ({ page }) => {
+test('Ctrl+1 and Ctrl+L open the one AI chat (ADR-072)', async ({ page }) => {
   await page.getByRole('button', { name: 'שכבות' }).click();
   await expect(page.getByRole('heading', { name: 'שכבות' })).toBeVisible();
   await page.keyboard.press('Control+1');
@@ -162,7 +162,10 @@ test('Ctrl+1 and the AI button open the one AI chat (ADR-072)', async ({ page })
   // What the next message is about: the slide on the Stage, as nothing is selected.
   await expect(page.getByTestId('focus-chip')).toContainText('שקף 1');
   await page.getByRole('button', { name: 'שכבות' }).click();
-  await page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }).click();
+  await expect(
+    page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }),
+  ).toHaveCount(0);
+  await page.keyboard.press('Control+l');
   await expect(page.getByRole('heading', { name: "צ'אט AI" })).toBeVisible();
   await expect(page.getByTestId('chat-input')).toBeFocused();
 });
@@ -220,7 +223,7 @@ test('row B follows the kind of selection', async ({ page }) => {
   await expect(page.getByTestId('selection-label')).toHaveText('טקסט');
   await expect(row.getByRole('button', { name: 'רקע' })).toHaveCount(0);
 
-  await row.getByRole('button', { name: 'שאלו את ה-AI על הבחירה' }).click();
+  await expect(row.getByRole('button', { name: 'שאלו את ה-AI על הבחירה' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: "צ'אט AI" })).toBeVisible();
   await expect(page.getByTestId('focus-chip')).toHaveText(/טקסט.*כותרת/);
 

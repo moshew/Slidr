@@ -23,8 +23,8 @@ import {
 
 /*
  * The AI chat in the shell (WG11-T04, T06, T07, T10; ADR-072), against the scripted mock agent:
- * one AI tool and every way into it, one conversation whatever is selected, the chip that says
- * what the next message is about (words selected in a text among them), the actions of the
+ * one AI tool with no duplicate chat buttons, one conversation whatever is selected, the chip
+ * that says what the next message is about (words selected in a text among them), the actions of the
  * selection, the slide and the deck as messages of that chat, and the controls that are not AI.
  */
 
@@ -52,7 +52,7 @@ async function selectWords(page: Page, words: string): Promise<void> {
   }, words);
 }
 
-test('one AI tool, and every way into it', async ({ page }) => {
+test('one AI tool, with no duplicate chat buttons in the editor', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page, { script: 'text-variations' });
   await addBody(page, 'להשיק את העורך החדש');
@@ -74,54 +74,53 @@ test('one AI tool, and every way into it', async ({ page }) => {
   await page.keyboard.press('Control+1');
   await expect(panel(page)).toBeVisible();
 
-  // Top Tools: "AI chat" in row A, and "AI" in row B, about the slide while nothing is selected.
-  // Each puts the caret in the chat.
+  // The creation and context toolbars have no duplicate chat buttons.
+  await expect(
+    page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByTestId('top-tools-b').getByRole('button', { name: /שאלו את ה-AI/ }),
+  ).toHaveCount(0);
   await leave(page);
-  await page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }).click();
+  await page.getByTestId('stage-surface').focus();
+  await page.keyboard.press('Control+l');
   await expect(input(page)).toBeFocused();
   await expect(focusChip(page)).toHaveAttribute('data-focus', 'slide');
   await expect(focusChip(page)).toContainText('שקף 1');
-  await leave(page);
-  await page
-    .getByTestId('top-tools-b')
-    .getByRole('button', { name: 'שאלו את ה-AI על השקף' })
-    .click();
-  await expect(input(page)).toBeFocused();
 
-  // Row B of a selected object: the same chat, about the object.
+  // Selecting an object updates the same chat, without adding a button to either toolbar.
   await select(page, ['e_title']);
-  await page
-    .getByTestId('top-tools-b')
-    .getByRole('button', { name: 'שאלו את ה-AI על הבחירה' })
-    .click();
-  await expect(input(page)).toBeFocused();
+  await expect(
+    page.getByTestId('top-tools-b').getByRole('button', { name: /שאלו את ה-AI/ }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByTestId('selection-toolbar').getByRole('button', { name: /שאלו את ה-AI/ }),
+  ).toHaveCount(0);
   await expect(focusChip(page)).toHaveAttribute('data-focus', 'object');
   await expect(focusChip(page)).toContainText(TITLE);
 
-  // A right click on an object selects it, and its menu leads to the chat about it.
-  await leave(page);
+  // Right-click menus select their target; the chat picks it up directly.
   await onStage(page, 'e_body').click({ button: 'right' });
-  await page
-    .getByTestId('stage-menu')
-    .getByRole('menuitem', { name: 'שאלו את ה-AI על הבחירה' })
-    .click();
+  await expect(
+    page.getByTestId('stage-menu').getByRole('menuitem', { name: /שאלו את ה-AI/ }),
+  ).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await expect(focusChip(page)).toContainText('להשיק את העורך החדש');
 
   // A right click on the slide itself clears the selection: the chat is about the slide.
   await page.getByTestId('stage-frame').click({ button: 'right', position: { x: 40, y: 600 } });
-  await page
-    .getByTestId('stage-menu')
-    .getByRole('menuitem', { name: 'שאלו את ה-AI על השקף' })
-    .click();
+  await expect(
+    page.getByTestId('stage-menu').getByRole('menuitem', { name: /שאלו את ה-AI/ }),
+  ).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await expect(focusChip(page)).toHaveAttribute('data-focus', 'slide');
 
-  // The Filmstrip's menu, on a slide.
-  await leave(page);
+  // The Filmstrip's menu has no chat entry either.
   await page.getByTestId('filmstrip').getByRole('option').first().click({ button: 'right' });
-  await page
-    .getByTestId('slide-menu')
-    .getByRole('menuitem', { name: 'שאלו את ה-AI על השקף' })
-    .click();
+  await expect(
+    page.getByTestId('slide-menu').getByRole('menuitem', { name: /שאלו את ה-AI/ }),
+  ).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await expect(panel(page)).toBeVisible();
 
   // Ctrl+L puts the caret in the chat, from the Actions tab too.

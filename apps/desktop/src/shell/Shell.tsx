@@ -13,7 +13,6 @@ import { StatusBar } from './StatusBar';
 import { useShell } from './store';
 import { TitleBar } from './TitleBar';
 import { ToolPanel } from './ToolPanel';
-import { TopTools } from './TopTools';
 import { Welcome } from './Welcome';
 
 /**
@@ -22,8 +21,8 @@ import { Welcome } from './Welcome';
  * and switching the language mirrors everything without a reload.
  *
  *   title bar + document actions                                56
- *   ┌ Activity Bar 76 ┬ Tool Panel 584 ┬ Creation tools       80 ┐
- *   │                 │                │ Stage + floating tools   │
+ *   ┌ Activity Bar 76 ┬ Tool Panel 584 ┬ Floating tools       80 ┐
+ *   │                 │                │ Stage                    │
  *   │                 │                │ Filmstrip        132     │
  *   status bar + zoom                                           32
  *
@@ -63,7 +62,6 @@ export function Shell() {
                 <ActivityBar />
                 <ToolPanel />
                 <main data-testid="editor" className="flex min-w-0 flex-1 flex-col bg-ui-panel">
-                  <TopTools />
                   <StageRegion />
                   <FilmstripRegion />
                 </main>

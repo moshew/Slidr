@@ -2,7 +2,6 @@ import { useMemo, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { findSlide, type ZOrderMove } from '@slidr/model';
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -19,20 +18,11 @@ import {
   Layers2,
   Lock,
   LockOpen,
-  Sparkles,
   Trash2,
 } from '@slidr/ui/icons';
 import { abilities } from '../arrange/abilities';
 import { duplicate, remove, reorder, toggleLock } from '../arrange/actions';
-import {
-  aiKinds,
-  focusStage,
-  openAiChat,
-  selectionKind,
-  useDeck,
-  useEditor,
-  useSelection,
-} from '../shell';
+import { focusStage, useDeck, useEditor, useSelection } from '../shell';
 
 /** The four moves of the layer order, front first, with the keys of SPEC Appendix A. */
 export const ORDER_MOVES: readonly { to: ZOrderMove; icon: LucideIcon; shortcut: string }[] = [
@@ -88,8 +78,8 @@ function moveAlong(event: KeyboardEvent<HTMLDivElement>) {
 }
 
 /**
- * The floating toolbar beside the selection (STG-05): duplicate, delete, lock, layer order and
- * "AI". The Stage places it and puts it away during a gesture; this is what is in it. A selection
+ * The floating toolbar beside the selection (STG-05): duplicate, delete, lock and layer order.
+ * The Stage places it and puts it away during a gesture; this is what is in it. A selection
  * that is all locked gets only the way out of the lock, which is the one thing it can do.
  */
 export function SelectionToolbar() {
@@ -100,7 +90,6 @@ export function SelectionToolbar() {
   const ids = useSelection((s) => s.selectedElementIds);
   const slide = slideId ? findSlide(deck, slideId) : undefined;
   const can = useMemo(() => abilities(slide, ids), [slide, ids]);
-  const kind = selectionKind(deck, slideId, ids);
   if (can.count === 0) return null;
 
   return (
@@ -172,17 +161,6 @@ export function SelectionToolbar() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
-      {aiKinds.has(kind) && (
-        <Button
-          variant="soft"
-          size="sm"
-          icon={Sparkles}
-          aria-label={t('tools.aiSelection')}
-          onClick={openAiChat}
-        >
-          {t('tools.ai')}
-        </Button>
       )}
     </div>
   );

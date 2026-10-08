@@ -13,7 +13,7 @@ import { watchToolFocus } from './toolFocus';
 /**
  * The custom title bar (DSN-03): the window has no OS frame (`decorations: false`). It drags the
  * window and double-click maximizes (Tauri's `data-tauri-drag-region`), shows the document name,
- * and has the window controls at the end, which mirrors them in Hebrew as Windows does.
+ * and keeps the window controls on the right in both interface languages.
  */
 export function TitleBar() {
   const { t } = useTranslation();
@@ -67,7 +67,7 @@ export function TitleBar() {
           <DocumentEndTools />
         </div>
       )}
-      <div className="flex shrink-0 items-stretch self-stretch">
+      <div className="flex shrink-0 items-stretch self-stretch rtl:order-first">
         <WindowControls />
       </div>
     </header>
@@ -116,7 +116,7 @@ function WindowControls() {
   };
 
   return (
-    <div className="flex items-stretch" data-testid="window-controls">
+    <div dir="ltr" className="flex items-stretch" data-testid="window-controls">
       <CaptionButton
         icon={Minus}
         label={t('window.minimize')}

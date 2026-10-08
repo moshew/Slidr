@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./fixtures": "./src/fixtures/index.ts",
-    "./builtin": "./src/builtin/index.ts"
+    "./builtin": "./src/builtin/index.ts",
+    "./builtin/pictures": "./src/builtin/pictures.generated.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

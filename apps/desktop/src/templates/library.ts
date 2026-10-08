@@ -2,15 +2,16 @@
  * The template library of the app (THM-01, THM-05, THM-08): the templates Slidr ships with,
  * the ones the user saved, and which of them a new deck opens with.
  *
- * Built-in templates are code. Personal ones are files (see `./store`), read once at startup.
+ * Built-in templates are code, which a packaged app reads as files of its media library (see
+ * `./builtIn`). Personal ones are files (see `./store`), read once at startup.
  * The choice of the default is a preference of this machine, kept where the shell keeps its
  * own (`localStorage`), with a copy of the template itself beside it: a new deck is made before
  * the store has answered, and must not wait for it.
  */
 import type { AssetMeta, Layout } from '@slidr/model';
 import { Template, withStandardLayouts } from '@slidr/templates';
-import { builtInTemplates } from '@slidr/templates/builtin';
 import { createStore, type StoreApi } from 'zustand';
+import { builtIn } from './builtIn';
 import type { TemplateFile, TemplateStore } from './store';
 
 const PREFS_KEY = 'slidr.templates';
@@ -95,7 +96,7 @@ export class TemplateLibrary {
     this.#store = store;
     this.#storage = options.storage;
     this.#nameOf = options.layoutName;
-    this.#builtIn = (options.builtIn ?? builtInTemplates()).map((template) =>
+    this.#builtIn = (options.builtIn ?? builtIn).map((template) =>
       forDecks(withStandardLayouts(template)),
     );
     const prefs = readPrefs(this.#storage);

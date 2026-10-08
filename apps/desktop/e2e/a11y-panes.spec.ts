@@ -76,17 +76,8 @@ test('the key goes round every region that can take the keyboard, both ways', as
   await tabToStage(page);
 
   // From the Stage: the Filmstrip, the status bar (its count of design findings is a button),
-  // and round by the Activity Bar, the panel and the two rows of tools to the Stage again.
-  const round = [
-    'filmstrip',
-    'status',
-    'document',
-    'activity',
-    'panel',
-    'tools',
-    'context',
-    'stage',
-  ];
+  // and round by the Activity Bar, the panel and the unified toolbar to the Stage again.
+  const round = ['filmstrip', 'status', 'document', 'activity', 'panel', 'context', 'stage'];
   const forward: (string | null)[] = [];
   for (let presses = 0; presses < round.length; presses++) {
     await page.keyboard.press('F6');
@@ -116,25 +107,25 @@ test('a region is come back to where the keyboard left it, and a collapsed panel
 }) => {
   await openApp(page, { lang: 'en' });
   await tabToStage(page);
-  // To row A, and along it to the second control.
+  // To the toolbar, and along it to the second control.
   await page.keyboard.press('Shift+F6');
-  await page.keyboard.press('Shift+F6');
-  expect(await pane(page)).toBe('tools');
-  await page.keyboard.press('Tab');
-  const left = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
-  expect(left).toBeTruthy();
-  await page.keyboard.press('F6');
   expect(await pane(page)).toBe('context');
+  const toolbar = page.getByTestId('top-tools-b');
+  await toolbar.getByRole('button', { name: 'Text box', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  const image = toolbar.getByRole('button', { name: 'Image', exact: true });
+  await expect(image).toBeFocused();
+  await page.keyboard.press('F6');
+  expect(await pane(page)).toBe('stage');
   await page.keyboard.press('Shift+F6');
-  expect(await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))).toBe(left);
+  await expect(image).toBeFocused();
 
-  // With the panel collapsed, back from row A is the Activity Bar: the panel has no control.
+  // With the panel collapsed, back from the toolbar is the Activity Bar.
   await page.getByTestId('panel-collapse').click();
   await expect(page.getByTestId('tool-panel')).toHaveAttribute('data-open', 'false');
   await surface(page).focus();
   await page.keyboard.press('Shift+F6');
-  await page.keyboard.press('Shift+F6');
-  expect(await pane(page)).toBe('tools');
+  expect(await pane(page)).toBe('context');
   await page.keyboard.press('Shift+F6');
   expect(await pane(page)).toBe('activity');
 });
@@ -192,7 +183,7 @@ test('in a layer of its own the key does nothing: a dialog, a popover, the show'
   await expect(show).toHaveCount(0);
 
   // A popover does not hold the keyboard itself: without the rule the key would walk out of it.
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'Shape' }).focus();
+  await page.getByTestId('top-tools-b').getByRole('button', { name: 'Shape' }).focus();
   await page.keyboard.press('Enter');
   const popover = page.getByRole('dialog');
   await expect(popover).toBeVisible();

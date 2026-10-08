@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentType, type ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
@@ -27,9 +27,6 @@ import {
   DropdownMenuTrigger,
   Icon,
   IconButton,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
 } from '@slidr/ui';
 import type { RecentFile } from '../document/storage';
 import { useDeck, useEditor, useFile } from './editor';
@@ -40,14 +37,7 @@ import {
   saveDocument,
   saveDocumentAs,
 } from './fileActions';
-import {
-  PanelId,
-  useAction,
-  useActionPopover,
-  usePanel,
-  useShortcut,
-  type ActionPopoverProps,
-} from './registry';
+import { PanelId, useAction, usePanel, useShortcut } from './registry';
 import { openPanel, setWelcome, showShortcuts } from './store';
 
 /** Global document actions belong to the title bar, independently of the slide tools. */
@@ -75,46 +65,8 @@ export function DocumentEndTools() {
       aria-label={t('tools.presentationTools')}
       className="flex shrink-0 items-center gap-2"
     >
-      <ExportButton />
       <PresentButton />
     </div>
-  );
-}
-
-function ExportButton() {
-  const { t } = useTranslation();
-  const run = useAction('export');
-  const content = useActionPopover('export');
-  const trigger = (
-    <Button
-      variant="ghost"
-      icon={Share}
-      className="header-button"
-      disabled={!content && !run}
-      onClick={content ? undefined : run}
-    >
-      {t('tools.export')}
-    </Button>
-  );
-  if (!content) return trigger;
-  return <DocumentPopover trigger={trigger} content={content} />;
-}
-
-function DocumentPopover({
-  trigger,
-  content: Content,
-}: {
-  trigger: ReactNode;
-  content: ComponentType<ActionPopoverProps>;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent>
-        <Content close={() => setOpen(false)} />
-      </PopoverContent>
-    </Popover>
   );
 }
 
@@ -212,9 +164,10 @@ function FileMenu() {
   const hasStorage = editor.document !== null;
   // Find and replace is another area's: the menu offers what its shortcut does, when it is there.
   const find = useShortcut('find.replace');
-  const toFind = useRef(false);
+  const focusTaken = useRef(false);
   // So is HTML import: its panel asks for the file, and about the open document if it has work.
   const htmlImport = usePanel(PanelId.htmlImport);
+  const runExport = useAction('export');
 
   return (
     <DropdownMenu
@@ -235,8 +188,8 @@ function FileMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         onCloseAutoFocus={(event) => {
-          if (toFind.current) event.preventDefault();
-          toFind.current = false;
+          if (focusTaken.current) event.preventDefault();
+          focusTaken.current = false;
         }}
       >
         <DropdownMenuItem
@@ -275,11 +228,6 @@ function FileMenu() {
             )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        {htmlImport && (
-          <DropdownMenuItem icon={htmlImport.icon} onSelect={() => openPanel(htmlImport.id)}>
-            {t('file.importHtml')}
-          </DropdownMenuItem>
-        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           icon={Save}
@@ -297,6 +245,23 @@ function FileMenu() {
         >
           {t('file.saveAs')}
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {htmlImport && (
+          <DropdownMenuItem icon={htmlImport.icon} onSelect={() => openPanel(htmlImport.id)}>
+            {t('file.importHtml')}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          icon={Share}
+          disabled={!runExport}
+          onSelect={() => {
+            // The dialog takes the keyboard; closing the menu must leave it there.
+            focusTaken.current = true;
+            runExport?.();
+          }}
+        >
+          {t('file.exportHtml')}
+        </DropdownMenuItem>
         {find && (
           <>
             <DropdownMenuSeparator />
@@ -305,7 +270,7 @@ function FileMenu() {
               shortcut={find.keys}
               onSelect={() => {
                 // The find bar takes the keyboard; the menu must not hand it back to its button.
-                toFind.current = true;
+                focusTaken.current = true;
                 find.run(editor, new KeyboardEvent('keydown'));
               }}
             >

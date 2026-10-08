@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { FHD, LAPTOP, loadDeck, openApp, shot } from './runtime-app-helpers';
 
-// The export dialog in the app (WG9-T12): the row A button, the choices of EXP-08 that mean
+// The export dialog in the app (WG9-T12): the File menu, the choices of EXP-08 that mean
 // something today, and the report. In a plain browser the file is a download; in the app it goes
 // through the save dialog and the Rust command, which the Tauri run checks.
 
@@ -54,7 +54,8 @@ async function addPictures(page: Page) {
 }
 
 async function openDialog(page: Page, label = 'ייצוא') {
-  await page.getByTestId('title-bar').getByRole('button', { name: label, exact: true }).click();
+  await page.getByTestId('file-menu-trigger').click();
+  await page.getByRole('menuitem', { name: `${label} HTML…`, exact: true }).click();
   const dialog = page.getByTestId('export-dialog');
   await expect(dialog).toBeVisible();
   return dialog;

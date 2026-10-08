@@ -8,11 +8,11 @@ import { addText, para } from './text-helpers';
 
 const OUT = fileURLToPath(new URL('../test-results/design-refresh/', import.meta.url));
 const header = (page: Page) => page.getByTestId('title-bar');
-const creation = (page: Page) => page.getByTestId('top-tools-a');
 const context = (page: Page) => page.getByTestId('top-tools-b');
+const creation = context;
 const stage = (page: Page) => page.getByTestId('stage-surface');
 
-// Each layout also runs four accessibility audits and captures a screenshot.
+// Each layout also audits the header, toolbar and Activity Bar and captures a screenshot.
 test.setTimeout(60_000);
 
 for (const lang of ['he', 'en'] as const) {
@@ -29,15 +29,14 @@ for (const lang of ['he', 'en'] as const) {
         await loadDeck(page, 'reference');
         const names =
           lang === 'he'
-            ? { file: 'קובץ', export: 'ייצוא', text: 'תיבת טקסט', shape: 'צורה' }
-            : { file: 'File', export: 'Export', text: 'Text box', shape: 'Shape' };
+            ? { file: 'קובץ', text: 'תיבת טקסט', shape: 'צורה' }
+            : { file: 'File', text: 'Text box', shape: 'Shape' };
         await expect(
           header(page).getByRole('button', { name: names.file, exact: true }),
         ).toBeVisible();
-        await expect(
-          header(page).getByRole('button', { name: names.export, exact: true }),
-        ).toBeVisible();
         await expect(header(page).getByTestId('present-button')).toBeInViewport({ ratio: 1 });
+        await expect(page.getByTestId('top-tools-a')).toHaveCount(0);
+        await expect(page.getByTestId('editor').getByRole('toolbar')).toHaveCount(1);
         await expect(creation(page).locator('[data-tool]')).toHaveCount(8);
         await expect(
           creation(page).getByRole('button', { name: names.text, exact: true }),
@@ -53,6 +52,7 @@ for (const lang of ['he', 'en'] as const) {
           await context(page).evaluate((node) => Boolean(node.closest('[data-testid="stage"]'))),
         ).toBe(true);
         const bar = (await context(page).boundingBox())!;
+        expect(bar.height).toBe(80);
         const frame = (await page.getByTestId('stage-frame').boundingBox())!;
         expect(frame.y).toBeGreaterThanOrEqual(bar.y + bar.height);
         expect(await context(page).evaluate((node) => getComputedStyle(node).borderRadius)).toBe(
@@ -63,7 +63,6 @@ for (const lang of ['he', 'en'] as const) {
         );
         for (const within of [
           '[data-testid="title-bar"]',
-          '[data-testid="top-tools-a"]',
           '[data-testid="top-tools-b"]',
           '[data-testid="activity-bar"]',
         ]) {
@@ -76,25 +75,30 @@ for (const lang of ['he', 'en'] as const) {
         await page.screenshot({ path: `${OUT}${lang}-${theme}-${viewport.width}.png` });
 
         // The largest panel still leaves the last creation and text tools reachable.
-        await addText(page, 'e_refresh', [para('Refresh')], {
-          frame: { x: 100, y: 600, w: 700, h: 150 },
-        });
-        await select(page, ['e_refresh']);
         await page.getByTestId('panel-splitter').focus();
         await page.keyboard.press('End');
-        await expect(context(page)).toHaveAttribute('data-selection', 'text');
         await creation(page).locator('[data-tool="insert.icon"]').focus();
         await expect(creation(page).locator('[data-tool="insert.icon"]')).toBeInViewport({
           ratio: 1,
         });
+        await addText(page, 'e_refresh', [para('Refresh')], {
+          frame: { x: 100, y: 600, w: 700, h: 150 },
+        });
+        await select(page, ['e_refresh']);
+        await expect(context(page)).toHaveAttribute('data-selection', 'text');
+        await expect(context(page).locator('[data-tool]')).toHaveCount(0);
         await page.getByTestId('arrange-menu').focus();
         await expect(page.getByTestId('arrange-menu')).toBeInViewport({ ratio: 1 });
         const wideBar = (await context(page).boundingBox())!;
+        expect(wideBar.height).toBe(80);
         const wideFrame = (await page.getByTestId('stage-frame').boundingBox())!;
         expect(wideFrame.y).toBeGreaterThanOrEqual(wideBar.y + wideBar.height);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
           viewport.width,
         );
+        await select(page, []);
+        await expect(context(page)).toHaveAttribute('data-selection', 'none');
+        await expect(context(page).locator('[data-tool]')).toHaveCount(8);
       });
     }
   }
@@ -110,7 +114,7 @@ for (const lang of ['he', 'en'] as const) {
             zoom: 'זום',
             from: 'מאיפה להתחיל',
             current: 'הצגה מהשקף הנוכחי',
-            export: 'ייצוא',
+            export: 'ייצוא HTML…',
           }
         : {
             text: 'Text box',
@@ -119,7 +123,7 @@ for (const lang of ['he', 'en'] as const) {
             zoom: 'Zoom',
             from: 'Start from',
             current: 'Present from the current slide',
-            export: 'Export',
+            export: 'Export HTML…',
           };
     const before = (await elements(page)).length;
     await creation(page).getByRole('button', { name: names.text, exact: true }).click();
@@ -152,7 +156,8 @@ for (const lang of ['he', 'en'] as const) {
     await expect(page.getByTestId('present')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('present')).toHaveCount(0);
-    await header(page).getByRole('button', { name: names.export, exact: true }).click();
+    await page.getByTestId('file-menu-trigger').click();
+    await page.getByRole('menuitem', { name: names.export, exact: true }).click();
     await expect(page.getByTestId('export-dialog')).toBeVisible();
   });
 }

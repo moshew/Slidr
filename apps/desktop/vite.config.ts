@@ -22,7 +22,12 @@ export default defineConfig({
     }),
     // The icons, the templates' photographs and the decks' fonts leave the bundle for a folder
     // of their own, installed beside the executable.
-    mediaLibrary({ dir: fileURLToPath(new URL('src-tauri/media', import.meta.url)) }),
+    mediaLibrary({
+      dir: fileURLToPath(new URL('src-tauri/media', import.meta.url)),
+      templates: fileURLToPath(
+        new URL('../../packages/templates/src/builtin/index.ts', import.meta.url),
+      ),
+    }),
     // The licences of everything the build contains, as a file inside it (WG13-T05).
     thirdPartyNotices({ app: tauri.productName, version: tauri.version, root: here }),
   ],
