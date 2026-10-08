@@ -473,6 +473,16 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_gan_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [place('p_title', 'title', at(96, 124, 1400, 76), 'title')],
+      decorations: [
+        corner('title', 'ball', ['sun', 'blue', 'tomato']),
+        ...frameOf('title', 'sun').decorations,
+      ],
+    },
+    {
       id: 'l_gan_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -540,6 +550,20 @@ function layouts(): Layout[] {
         bubble('d_gan_quote_bubble', at(96, 100, 1420, 600)),
         quoteSticker(at(48, 52, 124, 124), 'rtl'),
         ...frameOf('quote', undefined).decorations,
+      ],
+    },
+    {
+      id: 'l_gan_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 124, 1400, 76), 'title'),
+        // The body stops short of the corner, as the title does.
+        place('p_body', 'body', at(96, 248, 1400, 652), 'body'),
+      ],
+      decorations: [
+        corner('text', 'half', ['tomato', 'sun', 'blue']),
+        ...frameOf('text', 'tomato').decorations,
       ],
     },
     {
@@ -1436,7 +1460,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const ganSamples = { he: sampleHe, en: sampleEn };
 
-/** The Gan template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Gan template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function ganTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

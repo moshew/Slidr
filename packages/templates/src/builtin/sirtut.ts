@@ -833,6 +833,19 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_sirtut_title',
+      name: 'Title',
+      archetype: 'title',
+      background: ground(),
+      placeholders: [place('p_title', 'title', at(96, 128, 1728, 100), 'title')],
+      decorations: [
+        sheet('d_sirtut_title_sheet'),
+        sight('title'),
+        // The block without the cell of the deck's name: the layout seats no footer.
+        ...titleBlock('title', { width: 0 }).decorations,
+      ],
+    },
+    {
       id: 'l_sirtut_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -893,6 +906,21 @@ function layouts(): Layout[] {
         centreline('d_sirtut_quote_axis', atEnd(42, 515, 290, 12)),
         ...tag('d_sirtut_quote_tag', atEnd(116, 480, 82, 82), 'Q', true),
         ...titleBlock('quote').decorations,
+      ],
+    },
+    {
+      id: 'l_sirtut_text',
+      name: 'Text',
+      archetype: 'text',
+      background: ground(),
+      placeholders: [
+        place('p_title', 'title', at(96, 128, 1728, 100), 'title'),
+        place('p_body', 'body', at(96, 268, 1728, 612), 'body'),
+      ],
+      decorations: [
+        sheet('d_sirtut_text_sheet'),
+        sight('text'),
+        ...titleBlock('text', { width: 0 }).decorations,
       ],
     },
     {
@@ -1840,7 +1868,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const sirtutSamples = { he: sampleHe, en: sampleEn };
 
-/** The Sirtut template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Sirtut template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function sirtutTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

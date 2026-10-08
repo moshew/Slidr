@@ -614,6 +614,19 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_ziv_title',
+      name: 'Title',
+      archetype: 'title',
+      background: ground(0.0, 0.0, 0.6),
+      placeholders: [place('p_title', 'title', at(96, 148, 1728, 72), 'title')],
+      // No line over the title, so no gel pill to hold one: its star stands alone.
+      decorations: [
+        sparkles('d_ziv_title_sparkles', atEnd(40, 56, 150, 150)),
+        sticker('d_ziv_title_star', at(96, 84, 40, 40), LIME),
+        ...foot('title').decorations,
+      ],
+    },
+    {
       id: 'l_ziv_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -661,6 +674,21 @@ function layouts(): Layout[] {
         sparkles('d_ziv_quote_sparkles', atEnd(60, 136, 170, 170)),
         droplet('d_ziv_quote_drop', atEnd(150, 620, 110, 126)),
         ...quoteFoot.decorations,
+      ],
+    },
+    {
+      id: 'l_ziv_text',
+      name: 'Text',
+      archetype: 'text',
+      background: ground(0.0, 0.0, 0.6),
+      placeholders: [
+        place('p_title', 'title', at(96, 148, 1728, 72), 'title'),
+        place('p_body', 'body', at(96, 268, 1728, 632), 'body'),
+      ],
+      decorations: [
+        sparkles('d_ziv_text_sparkles', atEnd(40, 56, 150, 150)),
+        sticker('d_ziv_text_star', at(96, 84, 40, 40), LIME),
+        ...foot('text').decorations,
       ],
     },
     {
@@ -1594,7 +1622,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const zivSamples = { he: sampleHe, en: sampleEn };
 
-/** The Ziv template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Ziv template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function zivTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

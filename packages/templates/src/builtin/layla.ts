@@ -204,6 +204,16 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_layla_title',
+      name: 'Title',
+      archetype: 'title',
+      placeholders: [
+        // The title stands on the orange bar, as on every content slide.
+        place('p_title', 'title', at(96, 154, 1728, 76), 'title', { vAlign: 'bottom' }),
+      ],
+      decorations: frameOf('title').decorations,
+    },
+    {
       id: 'l_layla_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -244,6 +254,16 @@ function layouts(): Layout[] {
         // The foot without the bar that stands under a title.
         ...frameOf('quote').decorations.slice(1),
       ],
+    },
+    {
+      id: 'l_layla_text',
+      name: 'Text',
+      archetype: 'text',
+      placeholders: [
+        place('p_title', 'title', at(96, 154, 1728, 76), 'title', { vAlign: 'bottom' }),
+        place('p_body', 'body', at(96, 296, 1728, 604), 'body'),
+      ],
+      decorations: frameOf('text').decorations,
     },
     {
       id: 'l_layla_text_image',
@@ -1034,7 +1054,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const laylaSamples = { he: sampleHe, en: sampleEn };
 
-/** The Layla template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Layla template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function laylaTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

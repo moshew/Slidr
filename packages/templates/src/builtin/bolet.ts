@@ -677,6 +677,14 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_bolet_title',
+      name: 'Title',
+      archetype: 'title',
+      background: GROUND.lilac,
+      placeholders: [place('p_title', 'title', at(96, 126, 1728, 86), 'title')],
+      decorations: [...headDecor('title'), ...frameOf('title').decorations],
+    },
+    {
       id: 'l_bolet_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -734,6 +742,17 @@ function layouts(): Layout[] {
         }),
         ...frameOf('quote').decorations,
       ],
+    },
+    {
+      id: 'l_bolet_text',
+      name: 'Text',
+      archetype: 'text',
+      background: GROUND.lilac,
+      placeholders: [
+        place('p_title', 'title', at(96, 126, 1728, 86), 'title'),
+        place('p_body', 'body', at(96, 262, 1728, 640), 'body'),
+      ],
+      decorations: [...headDecor('text'), ...frameOf('text').decorations],
     },
     {
       id: 'l_bolet_text_image',
@@ -1751,7 +1770,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const boletSamples = { he: sampleHe, en: sampleEn };
 
-/** The Bolet template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Bolet template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function boletTemplate(): Template {
   const drawn = layouts();
   const template: Template = {

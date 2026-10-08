@@ -361,6 +361,14 @@ function layouts(): Layout[] {
       ],
     },
     {
+      id: 'l_zohar_title',
+      name: 'Title',
+      archetype: 'title',
+      background: ground(),
+      placeholders: [place('p_title', 'title', at(96, 122, 1728, 74), 'title')],
+      decorations: frameOf('title').decorations,
+    },
+    {
       id: 'l_zohar_big_number',
       name: 'Big number',
       archetype: 'bigNumber',
@@ -409,6 +417,17 @@ function layouts(): Layout[] {
         bar('d_zohar_quote_bar', at(152, 632, 96, 6)),
         ...frameOf('quote').decorations.filter((d) => d.id !== 'd_zohar_quote_spark'),
       ],
+    },
+    {
+      id: 'l_zohar_text',
+      name: 'Text',
+      archetype: 'text',
+      background: ground(),
+      placeholders: [
+        place('p_title', 'title', at(96, 122, 1728, 74), 'title'),
+        place('p_body', 'body', at(96, 246, 1728, 650), 'body'),
+      ],
+      decorations: frameOf('text').decorations,
     },
     {
       id: 'l_zohar_text_image',
@@ -1281,7 +1300,7 @@ const sampleEn: SampleSlide[] = [
 /** The sample decks of the template, by language. */
 export const zoharSamples = { he: sampleHe, en: sampleEn };
 
-/** The Zohar template: the theme, fourteen layouts for both directions, and its sample deck. */
+/** The Zohar template: the theme, sixteen layouts for both directions, and its sample deck. */
 export function zoharTemplate(): Template {
   const drawn = layouts();
   const template: Template = {
