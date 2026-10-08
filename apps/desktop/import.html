@@ -8,7 +8,10 @@
       and inherits this policy. No directive of it lets an address of the network through: the
       file loads what it carries (data:, blob:) and nothing else. Every directive, not only the
       ones a request falls under, because the browser lets a prefetch go when any directive
-      would allow its address. What the policy refuses, the browser reports to the page, and
+      would allow its address. The one address beside the page's own is the app's media
+      library, for fonts alone: the built-in fonts of a packaged app are files of that folder
+      on this machine, and a file may name one without carrying it. What the policy refuses,
+      the browser reports to the page, and
       the page hands the list over for the import report. Behind the policy, Rust refuses
       every request of the window that is not this page or the IPC, and writes down what it
       refused: the two together are the block.
@@ -20,7 +23,7 @@
         script-src 'self' data: blob: 'unsafe-inline' 'unsafe-eval';
         style-src 'self' data: blob: 'unsafe-inline';
         img-src 'self' data: blob:;
-        font-src 'self' data: blob:;
+        font-src 'self' data: blob: http://media.localhost;
         media-src data: blob:;
         frame-src data: blob:;
         worker-src data: blob:;

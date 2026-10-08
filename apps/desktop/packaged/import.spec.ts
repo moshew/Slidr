@@ -132,8 +132,11 @@ test('the import page is served under its own policy, not the app pages', async 
     // One policy, the page's own: a second one over it would leave only what both allow.
     expect(policies.header).toBeNull();
     expect(policies.own).toContain("default-src 'none'");
-    // And it names no server: what the file asks of the network has nowhere to go.
-    expect(policies.own).not.toMatch(/https?:\/\/(?!ipc\.localhost)/);
+    // And it names no server: what the file asks of the network has nowhere to go. (The media
+    // library is a folder of this machine, and the policy opens it to fonts alone.)
+    expect(policies.own).not.toMatch(/https?:\/\/(?!(ipc|media)\.localhost)/);
+    expect(policies.own.match(/http:\/\/media\.localhost/g)).toHaveLength(1);
+    expect(policies.own).toMatch(/font-src[^;]*http:\/\/media\.localhost/);
   } finally {
     await found.close();
   }

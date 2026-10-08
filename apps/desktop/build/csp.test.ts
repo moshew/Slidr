@@ -29,8 +29,9 @@ describe('the policy of tauri.conf.json (SEC-05)', () => {
   });
 
   it('names no server: only the app, its core, its files, and what the page makes itself', () => {
+    // `media` is the folder of graphics beside the executable, served by the core.
     const own =
-      /^('self'|'none'|'unsafe-inline'|'wasm-unsafe-eval'|data:|blob:|ipc:|asset:|http:\/\/(ipc|asset)\.localhost)$/;
+      /^('self'|'none'|'unsafe-inline'|'wasm-unsafe-eval'|data:|blob:|ipc:|asset:|media:|http:\/\/(ipc|asset|media)\.localhost)$/;
     for (const [directive, sources] of Object.entries(policy)) {
       for (const source of String(sources).split(/\s+/)) {
         expect(source, directive).toMatch(own);
@@ -111,7 +112,7 @@ describe('the header the dev server sends', () => {
     expect(directives.get('default-src')).toEqual(["'none'"]);
     for (const [name, sources] of directives) {
       for (const source of sources) {
-        expect(source, name).not.toMatch(/^https?:\/\/(?!(ipc|asset)\.localhost$)/);
+        expect(source, name).not.toMatch(/^https?:\/\/(?!(ipc|asset|media)\.localhost$)/);
       }
     }
     expect(IMPORT_IN_PAGE).toBe('import-in-page');

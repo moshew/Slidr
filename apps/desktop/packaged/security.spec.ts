@@ -79,7 +79,7 @@ test('the app is served under its policy, with a nonce of this load', async () =
   );
   for (const [name, sources] of directives) {
     for (const source of sources)
-      expect(source, name).not.toMatch(/^https?:\/\/(?!(ipc|asset)\.localhost$)/);
+      expect(source, name).not.toMatch(/^https?:\/\/(?!(ipc|asset|media)\.localhost$)/);
   }
 });
 

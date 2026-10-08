@@ -40,7 +40,7 @@ test('the app page is served under a policy that names no server and no inline s
   // No directive lets the page reach a server: what is not the app itself is its own core
   // (`ipc`), its own files (`asset`), or made in the page (`data:`, `blob:`).
   const own =
-    /^('self'|'none'|'unsafe-inline'|'wasm-unsafe-eval'|'nonce-[^']+'|data:|blob:|ipc:|asset:|http:\/\/(ipc|asset)\.localhost|ws:\/\/(localhost|127\.0\.0\.1):\d+)$/;
+    /^('self'|'none'|'unsafe-inline'|'wasm-unsafe-eval'|'nonce-[^']+'|data:|blob:|ipc:|asset:|media:|http:\/\/(ipc|asset|media)\.localhost|ws:\/\/(localhost|127\.0\.0\.1):\d+)$/;
   for (const [name, sources] of directives) {
     for (const source of sources) expect(source, name).toMatch(own);
   }

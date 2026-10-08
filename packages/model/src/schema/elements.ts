@@ -89,7 +89,27 @@ const ImageMask = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('ellipse') }),
   z.strictObject({ kind: z.literal('rounded'), radius: z.number().nonnegative() }),
   z.strictObject({ kind: z.literal('shape'), preset: z.string().min(1) }),
+  z.strictObject({
+    kind: z.literal('path'),
+    d: z.string().min(1),
+    viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
+  }),
 ]);
+
+/** Artwork stays above the photograph, in its original coordinate system. */
+export const SmartImageFrame = z
+  .strictObject({
+    viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
+    opening: Frame,
+    background: Fill.optional(),
+    decorations: z.array(z.lazy(() => z.union([ShapeElement, SvgElement, TextElement, LineElement]))),
+  })
+  .refine(
+    ({ opening: o, viewBox: v }) =>
+      o.w > 0 && o.h > 0 && o.x >= 0 && o.y >= 0 && o.x + o.w <= v.w && o.y + o.h <= v.h,
+    { message: 'the image opening must be a nonempty rectangle inside the frame viewBox' },
+  );
+export type SmartImageFrame = z.infer<typeof SmartImageFrame>;
 
 export const ImageElement = z.strictObject({
   ...base,
@@ -109,6 +129,7 @@ export const ImageElement = z.strictObject({
     .optional(),
   fit: z.enum(['cover', 'contain', 'fill']),
   mask: ImageMask.optional(),
+  smartFrame: SmartImageFrame.optional(),
   adjust: ImageAdjust.optional(),
   filterPreset: z.string().min(1).optional(),
   border: Stroke.optional(),

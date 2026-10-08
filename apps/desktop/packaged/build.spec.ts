@@ -1,8 +1,16 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { invoke, launchApp, showPanel, watchProblems, workspaces, type RunningApp } from './app';
+import {
+  appBinary,
+  invoke,
+  launchApp,
+  showPanel,
+  watchProblems,
+  workspaces,
+  type RunningApp,
+} from './app';
 
 /*
  * What the ADRs from 027 on wrote down as never run in a production build (WG13-T05), run in
@@ -107,7 +115,7 @@ test('the app carries the licences of what it is built from, and shows them', as
   await expect(page.getByTestId('chat-input')).toBeVisible();
 });
 
-test('the fonts of the app and of decks are served from the bundle', async () => {
+test('the fonts of the app are served from the bundle, and those of decks from the media library', async () => {
   const { page } = app;
   const fonts = await page.evaluate(async () => {
     await document.fonts.ready;
@@ -124,7 +132,45 @@ test('the fonts of the app and of decks are served from the bundle', async () =>
   expect(fonts.rubik).toBe('loaded');
   const woff = (await requested(page)).filter((url) => url.endsWith('.woff2'));
   expect(woff.length).toBeGreaterThan(2);
-  for (const url of woff) expect(url).toMatch(/^http:\/\/tauri\.localhost\/assets\//);
+  // The interface's own two families are files of the bundle; a deck's font is a file of the
+  // folder beside the executable.
+  for (const url of woff) {
+    expect(url).toMatch(/^http:\/\/(tauri\.localhost\/assets|media\.localhost\/fonts)\//);
+  }
+  expect(woff.some((url) => url.startsWith('http://media.localhost/fonts/rubik/'))).toBe(true);
+  expect(woff.some((url) => url.startsWith('http://tauri.localhost/assets/'))).toBe(true);
+});
+
+test('the icons and the photographs of the templates are files beside the executable', async () => {
+  const { page } = app;
+  const media = join(dirname(appBinary()), 'media');
+  for (const file of [
+    'icons/lucide/icon-nodes.json',
+    'icons/tabler/tabler-nodes-outline.json',
+    'icons/hebrew.json',
+    'images/templates/shvil-ridge.webp',
+    'fonts/rubik/rubik-hebrew-wght-normal.woff2',
+  ]) {
+    expect(existsSync(join(media, file)), file).toBe(true);
+  }
+  // None of them is in the bundle, which is what the executable carries.
+  const bundled = readdirSync(join(DIST, 'assets'));
+  expect(bundled.filter((name) => name.endsWith('.webp'))).toEqual([]);
+  for (const name of bundled.filter((name) => name.endsWith('.woff2'))) {
+    expect(name).toMatch(/^(inter|heebo)-/);
+  }
+  // And the app reads them from there: an icon set as text, a photograph as a picture.
+  const read = await page.evaluate(async () => {
+    const icons = await fetch('http://media.localhost/icons/lucide/icon-nodes.json');
+    const nodes = (await icons.json()) as Record<string, unknown>;
+    const image = new Image();
+    image.src = 'http://media.localhost/images/templates/shvil-ridge.webp';
+    await image.decode();
+    return { status: icons.status, star: 'star' in nodes, width: image.naturalWidth };
+  });
+  expect(read.status).toBe(200);
+  expect(read.star).toBe(true);
+  expect(read.width).toBeGreaterThan(100);
 });
 
 test('the scripted harness is offered because it was asked for', async () => {

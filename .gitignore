@@ -30,3 +30,6 @@ spikes/**/out-run*.txt
 
 # Matting models of local background removal: fetched by a developer, never committed (ADR-057)
 apps/desktop/src-tauri/models/
+
+# The media library of the packaged app: written by `pnpm build` (apps/desktop/build/media.ts)
+apps/desktop/src-tauri/media/*/

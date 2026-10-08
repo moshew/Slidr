@@ -181,14 +181,17 @@ pub fn gate<R: Runtime>(
     }
 }
 
-/// Whether the import window may load a URL: its own page and files, and the IPC. `home` is the
-/// origin the window's page came from, e.g. `http://tauri.localhost`.
+/// Whether the import window may load a URL: its own page and files, the IPC, and the app's
+/// built-in fonts, which a packaged app keeps in its media library ([`crate::media_dir`]) and
+/// which a file may name without carrying. `home` is the origin the window's page came from,
+/// e.g. `http://tauri.localhost`.
 pub fn request_allowed(home: &str, url: &str) -> bool {
     const IPC: [&str; 2] = ["http://ipc.localhost/", "https://ipc.localhost/"];
+    const FONTS: &str = "http://media.localhost/fonts/";
     let own = url
         .strip_prefix(home)
         .is_some_and(|rest| rest.is_empty() || rest.starts_with(['/', '?', '#']));
-    own || IPC.iter().any(|ipc| url.starts_with(ipc))
+    own || IPC.iter().any(|ipc| url.starts_with(ipc)) || url.starts_with(FONTS)
 }
 
 /// The answer that carries a page to the import window, before the window gets it: without the
@@ -962,10 +965,13 @@ mod tests {
             "http://tauri.localhost/import.html",
             "http://tauri.localhost/assets/import-abc.js",
             "http://ipc.localhost/import_job_take",
+            "http://media.localhost/fonts/heebo/heebo-hebrew-wght-normal.woff2",
         ] {
             assert!(request_allowed(home, url), "{url}");
         }
         for url in [
+            "http://media.localhost/icons/hebrew.json",
+            "http://media.localhost.evil.example/fonts/heebo.woff2",
             "https://fonts.googleapis.com/css2?family=Heebo",
             "https://unpkg.com/react",
             "http://tauri.localhost.evil.example/import.html",

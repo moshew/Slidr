@@ -14,7 +14,7 @@ import { isOpenPreset, shapeLibrary } from './shapes';
 export type Mask = NonNullable<ImageElement['mask']>;
 
 /** What the mask picker shows as chosen: `shape:<preset>` for a shape of the library. */
-export type MaskChoice = 'none' | 'rounded' | 'ellipse' | `shape:${string}`;
+export type MaskChoice = 'none' | 'rounded' | 'ellipse' | 'path' | `shape:${string}`;
 
 export function maskChoice(element: ImageElement): MaskChoice {
   const { mask } = element;
