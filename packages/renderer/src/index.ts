@@ -15,6 +15,7 @@ export {
   fontStack,
   hebrewFace,
   hebrewFaces,
+  shadowCss,
   themeVariables,
   themeVariablesCss,
 } from './theme';

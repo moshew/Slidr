@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { findElement, findSlide } from '@slidr/model';
 import {
   ChartColumn,
   ChevronLeft,
@@ -31,7 +32,7 @@ import {
   type ActionPopoverProps,
   type ToolAction,
 } from './registry';
-import { selectionKind, type SelectionKind } from './selection';
+import { elementDisplayKind, selectionKind, type SelectionKind } from './selection';
 import { watchToolFocus } from './toolFocus';
 
 function Group({ children, label }: { children: ReactNode; label?: string }) {
@@ -67,10 +68,10 @@ const inserts: {
     tone: 'blue',
   },
   {
-    action: 'insert.shape',
+    action: 'insert.elements',
     icon: Shapes,
-    label: 'tools.insertShape',
-    caption: 'tools.insertShape',
+    label: 'elements:title',
+    caption: 'elements:title',
     tone: 'pink',
   },
   {
@@ -100,13 +101,6 @@ const inserts: {
     label: 'tools.insertMedia',
     caption: 'tools.media',
     tone: 'rose',
-  },
-  {
-    action: 'insert.icon',
-    icon: Sticker,
-    label: 'tools.insertIcon',
-    caption: 'tools.insertIcon',
-    tone: 'violet',
   },
 ];
 
@@ -179,12 +173,23 @@ const kindIcons: Record<SelectionKind, LucideIcon> = {
   multiple: Shapes,
 };
 
-function useSelectionKind(): { kind: SelectionKind; count: number } {
+function useSelectionKind(): {
+  kind: SelectionKind;
+  count: number;
+  displayKind: SelectionKind | 'icon';
+} {
   const deck = useDeck((s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
   const elementIds = useSelection((s) => s.selectedElementIds);
   const editingId = useSelection((s) => s.editingElementId);
-  return { kind: selectionKind(deck, slideId, elementIds, editingId), count: elementIds.length };
+  const kind = selectionKind(deck, slideId, elementIds, editingId);
+  const slide = slideId ? findSlide(deck, slideId) : undefined;
+  const one = elementIds.length === 1 && slide ? findElement(slide, elementIds[0]!) : undefined;
+  return {
+    kind,
+    count: elementIds.length,
+    displayKind: one && kind === 'shape' ? elementDisplayKind(one) : kind,
+  };
 }
 
 /** How much of the strip one press on its edge brings into view. */
@@ -322,10 +327,10 @@ export function ContextTools() {
 
 function ContextToolsRow() {
   const { t } = useTranslation();
-  const { kind, count } = useSelectionKind();
+  const { kind, count, displayKind } = useSelectionKind();
   const groups = useContextTools(kind);
   const label =
-    kind === 'multiple' ? t('selection.multiple', { n: count }) : t(`selection.${kind}`);
+    kind === 'multiple' ? t('selection.multiple', { n: count }) : t(`selection.${displayKind}`);
 
   return (
     <div

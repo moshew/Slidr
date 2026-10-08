@@ -66,6 +66,77 @@ const transitions: Record<Played, (v: Vec) => Motion> = {
       { transform: turn(v, 0) },
     ],
   }),
+  crossfade: () => ({
+    from: [{ opacity: 1 }, { opacity: 0 }],
+    to: [{ opacity: 0 }, { opacity: 1 }],
+  }),
+  blur: () => ({
+    to: [
+      { opacity: 0, filter: 'blur(28px)', scale: '1.04' },
+      { opacity: 1, filter: 'blur(0px)', scale: '1' },
+    ],
+  }),
+  flash: () => ({
+    from: [{ opacity: 1 }, { opacity: 0 }],
+    to: [
+      { opacity: 0, filter: 'brightness(2)' },
+      { opacity: 0.8, filter: 'brightness(1.6)', offset: 0.5 },
+      { opacity: 1, filter: 'brightness(1)' },
+    ],
+  }),
+  slide: (v) => ({
+    to: [
+      { translate: at(v, -0.6), opacity: 0.4 },
+      { translate: '0% 0%', opacity: 1 },
+    ],
+  }),
+  split: () => ({
+    to: [
+      { clipPath: 'polygon(50% 0%, 50% 0%, 50% 100%, 50% 100%)' },
+      { clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)' },
+    ],
+  }),
+  iris: () => ({
+    to: [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }],
+  }),
+  dissolve: () => ({
+    from: [
+      { opacity: 1, filter: 'blur(0px)' },
+      { opacity: 0.8, filter: 'blur(2px)', offset: 0.3 },
+      { opacity: 0, filter: 'blur(14px)', offset: 0.8 },
+      { opacity: 0, filter: 'blur(14px)' },
+    ],
+    to: [
+      { opacity: 0, filter: 'blur(14px)' },
+      { opacity: 0.25, filter: 'blur(8px)', offset: 0.3 },
+      { opacity: 1, filter: 'blur(0px)', offset: 0.8 },
+      { opacity: 1, filter: 'blur(0px)' },
+    ],
+  }),
+  rotate: () => ({
+    from: [
+      { transform: 'rotate(0deg) scale(1)', opacity: 1 },
+      { transform: 'rotate(12deg) scale(1.08)', opacity: 0 },
+    ],
+    to: [
+      { transform: 'rotate(-12deg) scale(0.85)', opacity: 0 },
+      { transform: 'rotate(0deg) scale(1)', opacity: 1 },
+    ],
+  }),
+  cube: (v) => ({
+    from: [{ transform: turn(v, 0) }, { transform: turn(v, 1) }],
+    to: [{ transform: turn(v, -1) }, { transform: turn(v, 0) }],
+  }),
+  swap: (v) => ({
+    from: [
+      { translate: '0% 0%', scale: '1', opacity: 1 },
+      { translate: at(v, 0.35), scale: '0.8', opacity: 0 },
+    ],
+    to: [
+      { translate: at(v, -0.35), scale: '1.2', opacity: 0 },
+      { translate: '0% 0%', scale: '1', opacity: 1 },
+    ],
+  }),
 };
 
 export { transitionTypes } from './names';

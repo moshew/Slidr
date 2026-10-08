@@ -401,6 +401,8 @@ export function Stage({
   const [overCrop, setOverCrop] = useState(false);
   /** The pointer is over text that a click goes straight into. */
   const [overText, setOverText] = useState(false);
+  /** The pointer is over a child reached by a direct click through its group. */
+  const [overGroupChild, setOverGroupChild] = useState(false);
   /** While several elements are turned together: the box they started in, and how far it turned. */
   const [turn, setTurn] = useState<{ frame: Frame; angle: number } | undefined>();
   /** The groups the user went into by a click or a double-click, outermost first (ARR-01). */
@@ -830,8 +832,8 @@ export function Stage({
 
   /**
    * A press that was released where it began goes in (ARR-01): into the text it was on, with the
-   * caret where the pointer is, or to the child of the group it was on. The groups around either
-   * are entered, so that Esc comes out of them one at a time.
+   * caret where the pointer is, to a card object, or to the child of the group it was on. The
+   * groups around either are entered, so that Esc comes out of them one at a time.
    */
   const goInside = (inside: Inside, at: Point) => {
     wentIn.current = inside;
@@ -1013,7 +1015,7 @@ export function Stage({
       // Only a plain press goes further in when it is released: a modifier asks for something
       // else of it (Alt for a copy), and so does any button but the first.
       const plain = e.button === 0 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey;
-      const pendingSelection = plain && hit.inside?.edit && !before.includes(id) ? id : undefined;
+      const pendingSelection = plain && hit.inside && !before.includes(id) ? id : undefined;
       if (!before.includes(id) && !pendingSelection) state.selectElements([id]);
       begin({
         kind: 'move',
@@ -1040,6 +1042,7 @@ export function Stage({
     if (!slide) return false;
     setHover(undefined);
     setOverText(false);
+    setOverGroupChild(false);
     if (g.pendingSelection) selection.getState().selectElements([g.pendingSelection]);
     g.duplicate ||= alt;
     let moving = movable(index);
@@ -1083,15 +1086,16 @@ export function Stage({
       if (crop) {
         setOverCrop(inCropFrame(toSlide(e.clientX, e.clientY)));
         setHover(undefined);
+        setOverGroupChild(false);
         return;
       }
       const press = pressAt(e.clientX, e.clientY);
-      // A text that a click would go straight into is what the pointer is on, and not a
-      // group around it that a press would take.
+      // A direct click reaches the object under the pointer; a drag still takes its group.
       const text = press.inside?.edit ? press.inside.id : undefined;
-      const id = text ?? press.id;
+      const id = press.inside?.id ?? press.id;
       setHover(id && !index.get(id)?.locked ? id : undefined);
       setOverText(text !== undefined);
+      setOverGroupChild(Boolean(press.inside && press.inside.id !== press.id));
       return;
     }
     if (g.kind === 'pan') {
@@ -1948,10 +1952,9 @@ export function Stage({
 
   const stageView: StageView = { origin, scale };
   const active = activeKind;
-  // A press on a text takes the group around it, or the text box itself in a group that was
-  // entered, to move it: while it lasts, the text has no frame of its own, and the cursor is
-  // not the text's. Otherwise the cursor is, also over a text that is selected: a click still
-  // goes into it.
+  // A press on a directly reached child takes the group around it, or the child itself in a
+  // group that was entered, to move it. While the press lasts, the child has no hover frame.
+  // Otherwise the cursor follows what a click would reach, even over a selected text.
   const hovered =
     hover && !selected.includes(hover) && (!active || active === 'move')
       ? index.get(hover)
@@ -1959,10 +1962,10 @@ export function Stage({
   const intoText = overText && hover !== undefined && !active && !previewing;
   const overObject = hover !== undefined && !previewing;
   const enteredGroup = scope.length ? index.get(scope[scope.length - 1] as string) : undefined;
-  const textGroup = overText && hover ? index.get(hover)?.path.at(-1) : undefined;
+  const childGroup = overGroupChild && hover ? index.get(hover)?.path.at(-1) : undefined;
   const hoveredGroup =
-    textGroup && textGroup.id !== enteredGroup?.element.id && (!active || active === 'move')
-      ? index.get(textGroup.id)
+    childGroup && childGroup.id !== enteredGroup?.element.id && (!active || active === 'move')
+      ? index.get(childGroup.id)
       : undefined;
 
   // The size or the angle, next to what a handle is changing.
@@ -2139,6 +2142,7 @@ export function Stage({
       onPointerLeave={() => {
         setHover(undefined);
         setOverText(false);
+        setOverGroupChild(false);
       }}
       onFocus={(e) => {
         if (e.target === e.currentTarget) setFocused(true);

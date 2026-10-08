@@ -10,12 +10,8 @@
 
 export type IconSet = 'lucide' | 'tabler';
 
-export interface IconEntry {
-  /** `lucide:rocket`, `tabler:rocket`, `tabler:rocket-filled`: what `data-icon` takes. */
-  id: string;
-  set: IconSet;
-  /** The name in its set, as the id carries it. */
-  name: string;
+/** What the search compares a query with: the words of a thing, in English and in Hebrew. */
+export interface SearchWords {
   /** Drawn as a filled shape rather than in lines. */
   filled: boolean;
   /** The parts of the name, lower case. */
@@ -29,6 +25,14 @@ export interface IconEntry {
   /** Hebrew for the tags: whole terms, then their single words. */
   tagTerms: readonly string[];
   tagHebrew: readonly string[];
+}
+
+export interface IconEntry extends SearchWords {
+  /** `lucide:rocket`, `tabler:rocket`, `tabler:rocket-filled`: what `data-icon` takes. */
+  id: string;
+  set: IconSet;
+  /** The name in its set, as the id carries it. */
+  name: string;
 }
 
 /** English word to the Hebrew terms a user would type for it. */
@@ -93,7 +97,7 @@ function hebrewForms(word: string): string[] {
 }
 
 /** The Hebrew of some English words: the terms whole, and the single words they are made of. */
-function hebrewOf(
+export function hebrewOf(
   words: readonly string[],
   hebrew: HebrewTags,
 ): { terms: string[]; parts: string[] } {
@@ -203,7 +207,7 @@ export interface IconSearchOptions {
 }
 
 /** How well one word of the query matches one icon; 0 when it does not. */
-function score(icon: IconEntry, word: string): number {
+function score(icon: SearchWords, word: string): number {
   if (isHebrew(word)) {
     let best = 0;
     hebrewForms(word).forEach((form, i) => {
@@ -234,16 +238,16 @@ function score(icon: IconEntry, word: string): number {
  * icon comes first (`heart` before `heart-handshake`), and an icon of the first set before its
  * twin in the second.
  */
-export function searchIcons(
-  index: readonly IconEntry[],
+export function searchIcons<T extends SearchWords = IconEntry>(
+  index: readonly T[],
   query: string,
   options: IconSearchOptions,
-): IconEntry[] {
+): T[] {
   const words = wordsOf(query);
   if (words.length === 0) return [];
   // "rocket filled" asks for the filled style by name.
   const wantsFilled = options.style === 'filled';
-  const matches: { icon: IconEntry; total: number; order: number }[] = [];
+  const matches: { icon: T; total: number; order: number }[] = [];
   index.forEach((icon, order) => {
     if (icon.filled !== wantsFilled) return;
     let total = 0;

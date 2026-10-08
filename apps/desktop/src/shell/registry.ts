@@ -200,6 +200,7 @@ export type ToolAction =
   | 'insert.text'
   | 'insert.image'
   | 'insert.shape'
+  | 'insert.elements'
   | 'insert.line'
   | 'insert.table'
   | 'insert.chart'

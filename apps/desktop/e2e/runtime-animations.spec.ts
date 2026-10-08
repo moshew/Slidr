@@ -87,25 +87,51 @@ test('the panel lists the timeline as the show plays it: one group per click', a
   await expect(page.getByTestId('animation-editor')).toBeVisible();
 });
 
+test('animations and transitions have separate panels and category galleries', async ({ page }) => {
+  await openPanel(page);
+  await page.screenshot({ path: shot('animation-gallery-light-he') });
+  await expect(page.getByTestId('animation-preset-entrance-rise')).toBeVisible();
+  await expect(page.getByTestId('transition-editor')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'הדגשה' }).click();
+  await expect(page.getByTestId('animation-preset-emphasis-pulse')).toBeVisible();
+  await expect(page.getByTestId('animation-preset-entrance-rise')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'הדגשה' }).press('ArrowLeft');
+  await expect(page.getByRole('tab', { name: 'יציאה' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('animation-preset-exit-flyOut')).toBeVisible();
+  await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
+  await expect(page.getByTestId('animations-panel')).toHaveCount(0);
+  await expect(page.getByTestId('transitions-panel')).toBeVisible();
+  await page.screenshot({ path: shot('transition-gallery-light-he') });
+  await expect(page.getByRole('radio', { name: 'דחיפה' })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'היפוך' })).toBeVisible();
+});
+
+test('new animation and transition choices are stored and previewed', async ({ page }) => {
+  await openPanel(page);
+  await setCurrentSlide(page, 's_probe_c');
+  await select(page, ['r_title']);
+  await page.getByTestId('animation-preset-entrance-elastic').click();
+  expect((await timeline(page, 's_probe_c'))[0]).toMatchObject({
+    category: 'entrance',
+    preset: 'elastic',
+  });
+
+  await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
+  await page.getByRole('radio', { name: 'צמצם' }).click();
+  expect((await transitionOf(page, 's_probe_c'))?.type).toBe('iris');
+  await expect(page.getByRole('radio', { name: 'צמצם' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('transition-preview')).toBeVisible();
+});
+
 test('adds an animation to the selected objects, in one undo step', async ({ page }) => {
   await openPanel(page);
   await setCurrentSlide(page, 's_probe_c');
   await expect(page.getByTestId('animations-panel')).toContainText('אין אנימציות בשקף');
   // Nothing selected: nothing to add to.
-  await expect(page.getByTestId('animation-add')).toBeDisabled();
+  await expect(page.getByTestId('animation-preset-entrance-rise')).toBeDisabled();
   await select(page, ['r_title', 'r_home']);
   const steps = await undoSteps(page);
-  await page.getByTestId('animation-add').click();
-  const kind = page.getByRole('menuitem', { name: 'כניסה', exact: true });
-  await kind.hover();
-  const item = page.getByRole('menuitem', { name: 'עלייה' });
-  await expect(item).toBeInViewport();
-  // As a hand moves: along the row and into the submenu, then to the item. The submenu stays
-  // open for a pointer that travels towards it, not for one that jumps.
-  const row = (await kind.boundingBox())!;
-  const box = (await item.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, row.y + row.height / 2, { steps: 8 });
-  await item.click();
+  await page.getByTestId('animation-preset-entrance-rise').click();
   const added = await timeline(page, 's_probe_c');
   expect(added.map((s) => [s.elementId, s.category, s.preset, s.trigger])).toEqual([
     ['r_title', 'entrance', 'rise', 'onClick'],
@@ -176,6 +202,7 @@ test('a row is dragged to another place, removed with its button, and moved with
   page,
 }) => {
   await openPanel(page);
+  await page.getByRole('button', { name: 'הסתרת האפקטים' }).click();
   const ids = async () => (await timeline(page)).map((s) => s.id);
   expect(await ids()).toEqual(['a_0', 'a_1', 'a_2', 'a_3', 'a_4', 'a_5', 'a_6']);
 
@@ -383,8 +410,9 @@ test('the panel at 1366x768', async ({ page }) => {
   await openPanel(page);
   await page.locator('[data-group="1"] [data-row]').first().click();
   await page.screenshot({ path: shot('panel-light-he-1366') });
-  // The transition section under the timeline, scrolled into view.
-  await page.getByTestId('transition-editor').scrollIntoViewIfNeeded();
+  await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
+  await expect(page.getByTestId('animations-panel')).toHaveCount(0);
+  await expect(page.getByTestId('transitions-panel')).toBeVisible();
   await page.screenshot({ path: shot('panel-transition-light-he-1366') });
 });
 

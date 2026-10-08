@@ -35,6 +35,9 @@
   --color-ui-hover: light-dark(#18181b0d, #ffffff0f);
   --color-ui-pressed: light-dark(#18181b17, #ffffff1a);
   --color-ui-thumb: light-dark(#ffffff, #3b3b42); /* the selected segment of a segmented control */
+  /* Under art drawn in dark line for a light page: nothing in light, a sheet of paper in dark. */
+  --color-ui-paper: light-dark(#18181b00, #e6e4ee);
+  --color-ui-paper-hover: light-dark(#18181b0d, #ffffff);
   --color-ui-scrim: light-dark(#18181b47, #0000008c);
 
   /* Text, icons and lines. `fg` and `fg-muted` pass AA on every surface; `fg-subtle` is for

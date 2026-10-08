@@ -298,11 +298,11 @@ function stageDeck(): Deck {
                 fill: solid('secondary'),
                 content: label('Nested'),
               }),
-              createElement.shape({
+              createElement.svg({
                 id: 'g_card_icon',
                 frame: { x: 260, y: 0, w: 90, h: 90 },
-                geometry: { kind: 'preset', preset: 'ellipse' },
-                fill: solid('accent'),
+                markup:
+                  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90"><circle cx="45" cy="45" r="38" fill="#3b82f6"/><path d="M23 45h44M45 23v44" stroke="white" stroke-width="6"/></svg>',
               }),
             ],
           }),

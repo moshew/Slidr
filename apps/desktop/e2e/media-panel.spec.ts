@@ -185,10 +185,11 @@ test('icons are found in Hebrew and in English, and an inserted icon takes the t
   expect(errors).toEqual([]);
 });
 
-test('the icon button of row A opens the library', async ({ page }) => {
+test('the Elements button of row A opens the icon library', async ({ page }) => {
   await openApp(page, { lang: 'en' });
-  await page.getByRole('button', { name: 'Icon', exact: true }).click();
-  await expect(page.getByTestId('media-icons')).toBeVisible();
+  await page.getByTestId('top-tools-a').getByRole('button', { name: 'Elements' }).click();
+  await page.getByTestId('elements-panel').locator('[data-collection="icons"]').click();
+  await expect(page.getByTestId('elements-icons')).toBeVisible();
   await expect(icons(page).first()).toBeVisible();
 });
 

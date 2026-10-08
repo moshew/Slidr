@@ -4,6 +4,7 @@ import {
   collectErrors,
   deck,
   openTemplates,
+  openTextStyle,
   panel,
   redo,
   undo,
@@ -151,11 +152,15 @@ test('editing the theme changes the deck, each edit one undo step', async ({ pag
   await page.keyboard.press('Escape');
   expect(await undoSteps(page)).toBe(1);
 
-  // A text style.
+  // A text style: its row shows the size and the weight, and opens the fields.
+  const title = panel(page).locator('[data-text-style="title"]');
+  await expect(title.getByRole('button')).toContainText('72 · מודגש');
+  await openTextStyle(page, 'title');
   const size = panel(page).getByRole('textbox', { name: 'גודל של כותרת', exact: true });
   await size.fill('80');
   await size.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.textStyles.title.size).toBe(80);
+  await expect(title.getByRole('button')).toContainText('80 · מודגש');
   expect(await undoSteps(page)).toBe(2);
 
   // A font.
@@ -273,6 +278,7 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
   await step();
 
   // The line height and the letter spacing of a text style.
+  await openTextStyle(page, 'title');
   const lineHeight = panel(page).getByRole('textbox', { name: 'גובה השורה של כותרת', exact: true });
   await lineHeight.fill('1.3');
   await lineHeight.press('Enter');
@@ -289,6 +295,11 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
   await radius.fill('20');
   await radius.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.radius).toBe(20);
+  // The sample card above the fields is drawn at half the size of the slide.
+  await expect(panel(page).getByTestId('shape-sample').locator('div')).toHaveCSS(
+    'border-radius',
+    '10px',
+  );
   await step();
   const down = panel(page).getByRole('textbox', { name: 'הזזת הצל לגובה' });
   await down.fill('8');
@@ -345,6 +356,7 @@ test('the new fields of the theme read in English', async ({ page }) => {
   await expect(panel(page)).toContainText('Chart palette');
   await expect(panel(page)).toContainText('Corners and shadow');
   await expect(panel(page)).toContainText('Background variants');
+  await openTextStyle(page, 'title');
   await expect(panel(page).getByRole('textbox', { name: 'Line height of Title' })).toBeVisible();
   await expect(panel(page).getByRole('button', { name: 'Variant 1' })).toBeVisible();
   expect(errors).toEqual([]);

@@ -50,6 +50,13 @@ export type MediaTab = 'uploads' | 'stock' | 'icons' | 'ai';
 
 /** Shows a tab of the media panel. */
 export async function openMedia(page: Page, tab: MediaTab): Promise<Locator> {
+  if (tab === 'icons') {
+    await page.getByTestId('top-tools-a').locator('[data-tool="insert.elements"]').click();
+    await page.getByTestId('elements-panel').locator('[data-collection="icons"]').click();
+    const icons = page.getByTestId('elements-icons');
+    await expect(icons).toBeVisible();
+    return icons;
+  }
   await openPanel(page, 'media');
   await page.getByTestId(`media-tab-${tab}`).click();
   const body = page.getByTestId(`media-${tab}`);

@@ -2,7 +2,7 @@ import { findElement, findSlide } from '@slidr/model';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { layerSnippet } from '../arrange/layers';
-import { elementKind, useDeck, useSelection } from '../shell';
+import { elementDisplayKind, useDeck, useSelection } from '../shell';
 import { stageKeys } from './keyboardSession';
 
 /**
@@ -41,7 +41,7 @@ export function KeyboardStatus() {
       ? t('stage:at.handle', { where: t(`stage:at.handles.${handle}`) })
       : t('stage:at.picture');
   } else if (walked) {
-    const what = [t(`selection.${elementKind(walked)}`), walked.name ?? layerSnippet(walked)]
+    const what = [t(`selection.${elementDisplayKind(walked)}`), walked.name ?? layerSnippet(walked)]
       .filter(Boolean)
       .join(' · ');
     said = t(ids.includes(walked.id) ? 'stage:at.walkSelected' : 'stage:at.walkFree', { what });

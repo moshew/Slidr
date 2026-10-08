@@ -23,6 +23,11 @@ export function elementKind(element: Element): SelectionKind {
   return kindOfType[element.type];
 }
 
+/** The name shown to a person; an SVG icon still uses shape tools. */
+export function elementDisplayKind(element: Element): SelectionKind | 'icon' {
+  return element.type === 'svg' ? 'icon' : elementKind(element);
+}
+
 /**
  * The row B kind of a selection. A shape whose text is being edited counts as text: the caret is
  * in text, so the text tools are the ones wanted.

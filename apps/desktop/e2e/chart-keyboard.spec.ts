@@ -134,23 +134,23 @@ test('Enter on a button that has the focus still presses it, also with a chart s
     await page.mouse.click(box.x + 6, box.y + box.height - 6);
   };
   // Without a chart: a button of row A, reached with the keyboard.
-  const shape = page.getByTestId('top-tools-a').getByRole('button', { name: 'Shape', exact: true });
-  await shape.focus();
+  const line = page.getByTestId('top-tools-a').getByRole('button', { name: 'Line', exact: true });
+  await line.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('shape-library')).toBeVisible();
+  await expect(page.getByTestId('line-library')).toBeVisible();
   await besideTheSlide();
-  await expect(page.getByTestId('shape-library')).toBeHidden();
+  await expect(page.getByTestId('line-library')).toBeHidden();
 
   // With a chart selected: Enter on the button is the button's, not the chart's.
   await addChart(page);
   await selectChart(page);
-  await shape.focus();
+  await line.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('shape-library')).toBeVisible();
+  await expect(page.getByTestId('line-library')).toBeVisible();
   await expect(dataEditor(page)).toBeHidden();
   // The same for a button of row B: Enter opens its popover, not the data of the chart.
   await besideTheSlide();
-  await expect(page.getByTestId('shape-library')).toBeHidden();
+  await expect(page.getByTestId('line-library')).toBeHidden();
   await selectChart(page);
   await tool(page, 'Legend').focus();
   await page.keyboard.press('Enter');

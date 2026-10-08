@@ -182,8 +182,9 @@ for (const theme of themes) {
           await shot(page, `popover-background-${id}`, 700);
           await page.keyboard.press('Escape');
 
-          await page.getByTestId('top-tools-a').getByRole('button', { name: n.shape }).click();
-          await expect(page.getByTestId('shape-library')).toBeVisible();
+          await page.getByTestId('top-tools-a').locator('[data-tool="insert.elements"]').click();
+          await page.getByTestId('elements-panel').locator('[data-collection="shapes"]').click();
+          await expect(page.getByTestId('elements-shapes')).toBeVisible();
           await shot(page, `popover-shape-library-${id}`);
           await page.keyboard.press('Escape');
 

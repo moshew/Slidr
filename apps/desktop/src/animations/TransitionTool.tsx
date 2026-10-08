@@ -24,6 +24,11 @@ export function TransitionTool() {
         </Button>
       </PopoverTrigger>
       <PopoverContent
+        className="overflow-y-auto overscroll-contain"
+        style={{
+          width: 352,
+          maxHeight: 'min(80vh, var(--radix-popover-content-available-height))',
+        }}
         // To the chosen kind, not to the replay button, whose tooltip would open with the popover.
         onOpenAutoFocus={(event) => {
           event.preventDefault();

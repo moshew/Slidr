@@ -64,6 +64,8 @@ export const he = {
     headingLatin: 'גופן הכותרות באותיות לטיניות',
     bodyHe: 'גופן הטקסט בעברית',
     bodyLatin: 'גופן הטקסט באותיות לטיניות',
+    // A few letters of each script, drawn in the fonts themselves.
+    sample: 'אבגד Abc',
   },
   styles: {
     title: 'סגנונות טקסט',
@@ -83,6 +85,8 @@ export const he = {
     weight900: 'כבד',
     lineHeight: 'גובה השורה של {{style}}',
     letterSpacing: 'ריווח האותיות של {{style}}',
+    sizeShort: 'גודל',
+    weightShort: 'משקל',
     lineHeightShort: 'גובה שורה',
     letterSpacingShort: 'ריווח',
   },
@@ -279,6 +283,7 @@ export const en: typeof he = {
     headingLatin: 'The heading font for Latin letters',
     bodyHe: 'The body font for Hebrew',
     bodyLatin: 'The body font for Latin letters',
+    sample: 'Abc אבגד',
   },
   styles: {
     title: 'Text styles',
@@ -298,6 +303,8 @@ export const en: typeof he = {
     weight900: 'Black',
     lineHeight: 'Line height of {{style}}',
     letterSpacing: 'Letter spacing of {{style}}',
+    sizeShort: 'Size',
+    weightShort: 'Weight',
     lineHeightShort: 'Line height',
     letterSpacingShort: 'Spacing',
   },

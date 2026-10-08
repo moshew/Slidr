@@ -5,7 +5,6 @@ import { cx, EmptyState, Input, SegmentedControl, Skeleton, Tooltip } from '@sli
 import { tell, useEditor } from '../shell';
 import { findIcons, starterIcons, type FoundIcon } from './icons/library';
 import { insertIcon } from './insert';
-import { TabBody } from './parts';
 
 type Style = 'line' | 'filled';
 
@@ -17,8 +16,8 @@ const PAUSE_MS = 150;
 type View = { state: 'loading' } | { state: 'failed' } | { state: 'icons'; icons: FoundIcon[] };
 
 /**
- * The icon library (SHP-07, GEN-09, WG5-T11): search in Hebrew or in English, and add an icon
- * to the slide with a click. An icon is added in the theme's colour and follows the theme.
+ * The icon collection in Elements (SHP-07, GEN-09, WG5-T11): search in Hebrew or in English,
+ * and add an icon to the slide with a click. It follows the theme's colour.
  * The library's data is loaded when this tab first opens, not with the app.
  */
 export function IconsTab() {
@@ -48,7 +47,7 @@ export function IconsTab() {
   }, [text, style]);
 
   return (
-    <TabBody testId="media-icons">
+    <div className="flex flex-col gap-4" data-testid="elements-icons">
       <div className="flex flex-col gap-2">
         <Input
           icon={Search}
@@ -71,9 +70,9 @@ export function IconsTab() {
         />
       </div>
       {view.state === 'loading' && (
-        <div className="grid grid-cols-6 gap-1" aria-busy>
+        <div className="element-grid" data-size="icon" aria-busy>
           {Array.from({ length: 24 }, (_, i) => (
-            <Skeleton key={i} className="aspect-square w-full" />
+            <Skeleton key={i} className="m-1 aspect-square" />
           ))}
         </div>
       )}
@@ -98,7 +97,8 @@ export function IconsTab() {
           <div
             role="group"
             aria-label={t('icons.list')}
-            className="grid grid-cols-6 gap-1"
+            className="element-grid"
+            data-size="icon"
             data-testid="icon-results"
           >
             {view.icons.map((icon) => (
@@ -113,7 +113,7 @@ export function IconsTab() {
                   className={cx(
                     'flex aspect-square cursor-default items-center justify-center rounded-control text-ui-fg transition-colors',
                     'hover:bg-ui-hover active:bg-ui-pressed focus-visible:-outline-offset-2',
-                    '[&>svg]:size-6',
+                    '[&>svg]:size-7',
                   )}
                   // The library's own markup: paths in `currentColor`, built in `library.ts`.
                   dangerouslySetInnerHTML={{ __html: icon.svg }}
@@ -124,6 +124,6 @@ export function IconsTab() {
           <p className="text-xs text-ui-fg-muted">{t('icons.hint')}</p>
         </>
       )}
-    </TabBody>
+    </div>
   );
 }

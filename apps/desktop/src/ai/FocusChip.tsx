@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from '@slidr/ui/icons';
 import { cx, Icon } from '@slidr/ui';
-import { elementKind, useDeck, useEditor } from '../shell';
+import { elementDisplayKind, useDeck, useEditor } from '../shell';
 import { navigateTo } from './runtime';
 import type { Focus } from './focus';
 
@@ -56,9 +56,7 @@ export function FocusChip({ focus }: { focus: Focus }) {
   } else if (one) {
     view = {
       icon: SquareDashedMousePointer,
-      // An icon shares the tools of a shape in row B, which is its kind there; here it is named
-      // as what it is, as its actions do.
-      label: one.type === 'svg' ? ts('selection.icon') : ts(`selection.${elementKind(one)}`),
+      label: ts(`selection.${elementDisplayKind(one)}`),
       detail: elementLabel(one),
       onClick: () => navigateTo(editor, { slideId: slide?.id, elementIds: [one.id] }),
     };

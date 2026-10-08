@@ -3,11 +3,13 @@
  * a font the file carries becomes a font asset of the deck, and the app's own fonts are known
  * to a file that names one without carrying it.
  */
+import { embedFonts } from '@slidr/html-export';
 import { createImportPage, mountSlide, type ImportPage } from '@slidr/html-import';
 import { testHost } from '@slidr/html-import/testing';
 import { createDeck, type AssetMeta, type Slide } from '@slidr/model';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
+import { registerBuiltinFonts } from '../fonts';
 import { builtinFaces } from '../fonts/builtinFonts.generated';
 
 beforeAll(async () => {
@@ -387,5 +389,89 @@ describe('faces of an imported file that share one font file', () => {
     expect(second.slide.css).toBe(result.slide.css);
     expect(second.guard.faithful).toBe(true);
     expect(second.editability).toBe(1);
+  });
+});
+
+describe("a file that carries a cut of one of the app's own fonts", () => {
+  const HEADING = 'גידור מאינפלציה';
+  const LOOK = 'margin:0;font:700 56px Rubik, sans-serif;color:#111;white-space:pre';
+
+  /** How wide the glyphs of an element of the file are, to a fraction of a pixel. */
+  const widthOf = (imported: ImportPage, id: string) =>
+    imported
+      .evaluate(
+        `await document.fonts.ready; const r = document.createRange(); r.selectNodeContents(document.getElementById(${JSON.stringify(id)})); return r.getBoundingClientRect().width`,
+      )
+      .then(Number);
+
+  it("is drawn with the app's font, and the deck keeps no copy of the cut", async () => {
+    // What a deck exported from the app carries (`embedFonts`): Rubik cut down to the letters
+    // of the heading, and of the variable font one static font, for the weight in use.
+    registerBuiltinFonts();
+    const drawn = document.createElement('div');
+    drawn.style.cssText = 'position:fixed;left:0;top:0';
+    drawn.innerHTML = `<h2 dir="rtl" style="${LOOK}">${HEADING}</h2>`;
+    document.body.append(drawn);
+    await document.fonts.load('700 56px "Rubik"', HEADING);
+    const { css } = await embedFonts(drawn);
+    // As wide as the app's own font draws the heading: what the slide will be drawn with.
+    const range = document.createRange();
+    range.selectNodeContents(drawn.firstElementChild!);
+    const own = range.getBoundingClientRect().width;
+    drawn.remove();
+    expect(css).toMatch(/font-family: "Rubik";[^}]*font-weight: 700;[^}]*url\("data:font\/woff2/);
+
+    const html = `<!doctype html><html lang="he" dir="rtl"><head><style>${css}</style><style>
+      body { margin: 0; }
+      section { width: 1280px; height: 720px; background: #fff; padding: 60px; box-sizing: border-box; }
+    </style></head><body><section><h2 id="t" dir="rtl" style="${LOOK}">${HEADING}</h2></section></body></html>`;
+
+    // The cut by itself, as a browser draws the file: its letters are a font unit wider or
+    // narrower here and there, and the heading with them.
+    const alone = importPage(html);
+    await alone.setViewport({ width: 1280, height: 720 });
+    const cut = await widthOf(alone, 't');
+    alone.dispose();
+    expect(Math.abs(cut - own)).toBeGreaterThan(0.02);
+
+    const stored: AssetMeta[] = [];
+    const host = testHost();
+    const imported = importPage(html, {
+      appFonts: builtinFaces
+        .filter((face) => face.family === 'Rubik')
+        .map((face) => ({ ...face, url: new URL(face.url, location.href).href })),
+      host: {
+        ...host,
+        async storeAsset(data, info) {
+          const asset = await host.storeAsset(data, info);
+          stored.push(asset);
+          return asset;
+        },
+      },
+    });
+    await imported.setViewport({ width: 1280, height: 720 });
+    // The file is drawn with the app's Rubik now, from the app's files: no rule of the file's
+    // own is left, and its face is the weight the file declared.
+    expect(await widthOf(imported, 't')).toBeCloseTo(own, 2);
+    const faces = JSON.parse(
+      await imported.evaluate(
+        'return { rules: Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules)).filter((rule) => rule.constructor.name === "CSSFontFaceRule").length, weights: Array.from(document.fonts).filter((face) => face.family.replaceAll(\'"\', "") === "Rubik").map((face) => face.weight) }',
+      ),
+    ) as { rules: number; weights: string[] };
+    expect(faces.rules).toBe(0);
+    expect(new Set(faces.weights)).toEqual(new Set(['700']));
+
+    const result = await imported.capture({
+      selector: 'section',
+      deck: createDeck({ lang: 'he' }),
+      takenIds: [],
+    });
+    // The heading is a text element that looked like the source at the first try, and the cut
+    // is no font of the deck: the app has the whole font.
+    expect(result.guard).toMatchObject({ faithful: true, wholeSlide: false, rounds: 1 });
+    expect(result.editability).toBe(1);
+    expect(result.slide.elements.map((element) => element.type)).toEqual(['text']);
+    expect(stored.filter((asset) => asset.kind === 'font')).toEqual([]);
+    expect(result.assets.filter((asset) => asset.kind === 'font')).toEqual([]);
   });
 });

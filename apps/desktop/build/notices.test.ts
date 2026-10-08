@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { bundledPackages, noticesText } from './notices.ts';
+import { bundledPackages, dataNotices, noticesText } from './notices.ts';
 
 const require = createRequire(import.meta.url);
 
@@ -17,6 +18,30 @@ describe('the third-party notices (WG13-T05)', () => {
     expect(found[0]).toMatchObject({ name: 'react', license: 'MIT' });
     expect(found[0]!.version).toMatch(/^\d+\.\d+\.\d+/);
     expect(found[0]!.texts.join('\n')).toContain('Permission is hereby granted');
+  });
+
+  it('names who drew an art set, for a licence that asks for the credit', () => {
+    const [twemoji] = bundledPackages([require.resolve('@iconify-json/twemoji/icons.json')]);
+    expect(twemoji).toMatchObject({ name: '@iconify-json/twemoji', license: 'CC-BY-4.0' });
+    expect(twemoji!.author).toMatch(/^Twitter, https:/);
+    const text = noticesText({ name: 'Slidr', version: '0.1.0' }, [twemoji!], []);
+    expect(text).toMatch(
+      /@iconify-json\/twemoji \S+ {2}\| {2}CC-BY-4\.0 {2}\| {2}by Twitter, https:/,
+    );
+  });
+
+  it('takes the notice a data file of the app carries beside it', () => {
+    const catalog = new URL('../src/elements/emoji-catalog.json', import.meta.url);
+    const [unicode, ...others] = dataNotices([
+      fileURLToPath(catalog),
+      `${fileURLToPath(catalog)}?import`,
+      // A data file with nothing beside it is the app's own.
+      fileURLToPath(new URL('../src/elements/graphics-catalog.json', import.meta.url)),
+    ]);
+    expect(others).toEqual([]);
+    expect(unicode).toMatchObject({ license: 'Unicode-3.0' });
+    expect(unicode!.name).toContain('Unicode');
+    expect(unicode!.texts.join('\n')).toContain('UNICODE LICENSE V3');
   });
 
   it('lists who is in the app, and writes each licence text once', () => {

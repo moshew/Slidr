@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // Text in a group and in a standalone shape: hovering it shows a text cursor and a click edits
-// it directly. A drag still moves what the press takes, and a second click on a selected group
-// picks its child. On the Stage's dev page, on the slide of cards.
+// it directly. A click on another card object selects it directly, while a drag still moves
+// what the press takes. On the Stage's dev page, on the slide of cards.
 
 interface Frame {
   x: number;
@@ -151,16 +151,17 @@ test('over text inside a group the frame is the text own, and the cursor is the 
     'g_card_title',
     'text',
   );
-  // Off the text, the frame is the group's, which a press there takes.
+  // Bare background belongs to the card; foreground objects have their own hover frame.
   await expectOver(page, await bare(page), 'g_card', 'move');
-  await expectOver(page, await center(page, el('g_card_icon')), 'g_card', 'move');
+  await expectOver(page, await center(page, el('g_card_icon')), 'g_card_icon', 'move');
+  await expect(surface(page).locator('[data-hovered-group="g_card_row"]')).toBeVisible();
 
-  // A shape is its text only where the text is: the empty part of a big one is the group's.
+  // A shape has a text cursor on its words and a move cursor elsewhere on its own frame.
   await expectOver(page, await center(page, el('g_card_chip')), 'g_card_chip', 'text');
   const panel = await box(page, el('g_card_panel'));
   const middle = { x: panel.x + panel.width / 2, y: panel.y + panel.height / 2 };
   await expectOver(page, middle, 'g_card_panel', 'text');
-  await expectOver(page, { x: middle.x, y: panel.y + 24 * scale }, 'g_card', 'move');
+  await expectOver(page, { x: middle.x, y: panel.y + 24 * scale }, 'g_card_panel', 'move');
   // The block of the text is as wide as the shape lets its lines be.
   await expectOver(page, { x: panel.x + 30 * scale, y: middle.y }, 'g_card_panel', 'text');
 
@@ -176,7 +177,7 @@ test('over text inside a group the frame is the text own, and the cursor is the 
     x: tilted.x + 80 * Math.sin(turn) * scale,
     y: tilted.y - 80 * Math.cos(turn) * scale,
   };
-  await expectOver(page, off, 'g_tilt', 'move');
+  await expectOver(page, off, 'g_tilt_panel', 'move');
 
   // A standalone text box keeps its double-click editing behavior.
   await expectOver(page, await center(page, el('e_solo')), 'e_solo', 'move');
@@ -278,7 +279,7 @@ test('after editing text, the background selects and rotates the group', async (
   expect((await element(page, 'g_card_title'))!.rotation).toBe(0);
 });
 
-test('a click on the text of a shape inside a group edits it, at any depth; off its text it takes the group', async ({
+test('a click on the text of a shape inside a group edits it, at any depth; off its text it selects the shape', async ({
   page,
 }) => {
   const scale = await stageScale(page);
@@ -306,15 +307,15 @@ test('a click on the text of a shape inside a group edits it, at any depth; off 
   await page.keyboard.press('Escape');
   expect(await state(page)).toMatchObject({ selected: ['g_card_tag'], editing: null });
 
-  // The empty part of a big shape stands for the group: a click there selects the card.
+  // The empty part of a big shape still selects that shape directly.
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   expect((await state(page)).selected).toEqual([]);
   const panel = await box(page, el('g_card_panel'));
   await page.mouse.click(panel.x + panel.width / 2, panel.y + 24 * scale);
-  expect(await state(page)).toMatchObject({ selected: ['g_card'], editing: null });
-  await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
+  expect(await state(page)).toMatchObject({ selected: ['g_card_panel'], editing: null });
+  await expect(surface(page)).toHaveAttribute('data-entered', 'g_card');
 });
 
 test('inside the card a click on another of its texts edits that one, and a drag moves it alone', async ({
@@ -431,18 +432,11 @@ test('a drag from the text moves the whole group, and edits nothing', async ({ p
   expect(await textOf(page, 'g_card_chip')).toBe('Chip');
 });
 
-test('a second click on a selected group picks the child under the pointer, one level at a time', async ({
+test('a card icon is selected on the first click and dragging from the card moves the card', async ({
   page,
 }) => {
   const scale = await stageScale(page);
   const icon = await center(page, el('g_card_icon'));
-  await page.mouse.click(icon.x, icon.y);
-  expect((await state(page)).selected).toEqual(['g_card']);
-  await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
-
-  await page.mouse.click(icon.x, icon.y);
-  expect((await state(page)).selected).toEqual(['g_card_row']);
-  await expect(surface(page)).toHaveAttribute('data-entered', 'g_card');
   await page.mouse.click(icon.x, icon.y);
   expect((await state(page)).selected).toEqual(['g_card_icon']);
   await expect(surface(page)).toHaveAttribute('data-entered', 'g_card g_card_row');
@@ -450,12 +444,12 @@ test('a second click on a selected group picks the child under the pointer, one 
   await page.mouse.click(icon.x, icon.y);
   expect(await state(page)).toMatchObject({ selected: ['g_card_icon'], editing: null });
 
-  // A drag from a selected group moves it and does not go in.
+  // A drag from the icon moves the selected card and does not go in.
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   expect((await state(page)).selected).toEqual(['g_card']);
   const x = (await element(page, 'g_card'))!.frame.x;
-  await drag(page, await bare(page), { x: 80 * scale, y: 0 });
+  await drag(page, icon, { x: 80 * scale, y: 0 });
   expect(Math.abs((await element(page, 'g_card'))!.frame.x - (x + 80))).toBeLessThanOrEqual(1);
   expect((await state(page)).selected).toEqual(['g_card']);
   await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
@@ -467,28 +461,17 @@ test('a second click on a selected group picks the child under the pointer, one 
   await page.keyboard.up('Shift');
   expect((await state(page)).selected).toEqual([]);
   await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
+
+  // The first drag on the icon also takes the whole card, as a drag on its text does.
+  const next = (await element(page, 'g_card'))!.frame.x;
+  await drag(page, await center(page, el('g_card_icon')), { x: 60 * scale, y: 0 });
+  expect(Math.abs((await element(page, 'g_card'))!.frame.x - (next + 60))).toBeLessThanOrEqual(1);
+  expect(await state(page)).toMatchObject({ selected: ['g_card'], editing: null });
 });
 
-test('a double-click still goes one level in, and edits only what it always edited', async ({
+test('a double-click on the card background enters it; text and standalone shapes keep editing', async ({
   page,
 }) => {
-  // On a group that is not selected: into it, the child under the pointer selected.
-  const icon = await center(page, el('g_card_icon'));
-  await page.mouse.dblclick(icon.x, icon.y);
-  expect(await state(page)).toMatchObject({ selected: ['g_card_row'], editing: null });
-  await expect(surface(page)).toHaveAttribute('data-entered', 'g_card');
-  // On a group that is selected: one level, and not two. The child is a shape, and is not edited.
-  await page.mouse.dblclick(icon.x, icon.y);
-  expect(await state(page)).toMatchObject({ selected: ['g_card_icon'], editing: null });
-  await expect(surface(page)).toHaveAttribute('data-entered', 'g_card g_card_row');
-  await expect(editor(page)).toHaveCount(0);
-  // On the shape itself, now that a click reaches it: its text is edited, as on any shape.
-  await page.mouse.dblclick(icon.x, icon.y);
-  expect((await state(page)).editing).toBe('g_card_icon');
-  await expect(editor(page)).toBeFocused();
-  await page.keyboard.press('Escape');
-
-  // The same from a card that is selected, on its background.
   const nowhere = await empty(page);
   await page.mouse.click(nowhere.x, nowhere.y);
   expect((await state(page)).selected).toEqual([]);

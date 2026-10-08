@@ -147,6 +147,72 @@ const entrance: Record<(typeof entranceNames)[number], Preset> = {
       { offset: 1, blur: 0, opacity: 1 },
     ],
   },
+  slideIn: {
+    direction: 'end',
+    frames: ({ v, box }) => [
+      { offset: 0, x: -v.x * drift(box), y: -v.y * drift(box), opacity: 0 },
+      { offset: 1, x: 0, y: 0, opacity: 1 },
+    ],
+  },
+  dropIn: {
+    direction: 'down',
+    frames: () => [
+      { offset: 0, y: -120, opacity: 0 },
+      { offset: 0.7, y: 8, opacity: 1 },
+      { offset: 1, y: 0, opacity: 1 },
+    ],
+  },
+  scaleUp: {
+    direction: 'up',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, scale: 0.2, opacity: 0 },
+      { offset: 1, scale: 1, opacity: 1 },
+    ],
+  },
+  rotateIn: {
+    direction: 'up',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, rotate: -45, scale: 0.7, opacity: 0 },
+      { offset: 1, rotate: 0, scale: 1, opacity: 1 },
+    ],
+  },
+  swingIn: {
+    direction: 'up',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, rotate: -65, opacity: 0 },
+      { offset: 0.7, rotate: 8, opacity: 1 },
+      { offset: 1, rotate: 0, opacity: 1 },
+    ],
+  },
+  unfold: {
+    direction: 'down',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, clip: [0, 0, 1, 0] },
+      { offset: 1, clip: [0, 0, 0, 0] },
+    ],
+  },
+  expand: {
+    direction: 'up',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, clip: [0, 0.5, 0, 0.5] },
+      { offset: 1, clip: [0, 0, 0, 0] },
+    ],
+  },
+  elastic: {
+    direction: 'up',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, scale: 0.3, opacity: 0 },
+      { offset: 0.55, scale: 1.18, opacity: 1 },
+      { offset: 0.75, scale: 0.9 },
+      { offset: 1, scale: 1, opacity: 1 },
+    ],
+  },
 };
 
 const exit: Record<(typeof exitNames)[number], Preset> = {
@@ -211,6 +277,71 @@ const exit: Record<(typeof exitNames)[number], Preset> = {
       { offset: 1, blur: 24, opacity: 0 },
     ],
   },
+  slideOut: {
+    direction: 'end',
+    frames: ({ v, box }) => [
+      { offset: 0, x: 0, y: 0, opacity: 1 },
+      { offset: 1, x: v.x * drift(box), y: v.y * drift(box), opacity: 0 },
+    ],
+  },
+  dropOut: {
+    direction: 'down',
+    frames: () => [
+      { offset: 0, y: 0, opacity: 1 },
+      { offset: 1, y: 120, opacity: 0 },
+    ],
+  },
+  scaleDown: {
+    direction: 'down',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, scale: 1, opacity: 1 },
+      { offset: 1, scale: 0.2, opacity: 0 },
+    ],
+  },
+  rotateOut: {
+    direction: 'down',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, rotate: 0, scale: 1, opacity: 1 },
+      { offset: 1, rotate: 45, scale: 0.7, opacity: 0 },
+    ],
+  },
+  swingOut: {
+    direction: 'down',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, rotate: 0, opacity: 1 },
+      { offset: 0.3, rotate: -8, opacity: 1 },
+      { offset: 1, rotate: 65, opacity: 0 },
+    ],
+  },
+  fold: {
+    direction: 'down',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, clip: [0, 0, 0, 0] },
+      { offset: 1, clip: [0, 0, 1, 0] },
+    ],
+  },
+  contract: {
+    direction: 'down',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, clip: [0, 0, 0, 0] },
+      { offset: 1, clip: [0, 0.5, 0, 0.5] },
+    ],
+  },
+  elasticOut: {
+    direction: 'down',
+    inline: 'fade',
+    frames: () => [
+      { offset: 0, scale: 1, opacity: 1 },
+      { offset: 0.3, scale: 1.12 },
+      { offset: 0.55, scale: 0.82 },
+      { offset: 1, scale: 0.2, opacity: 0 },
+    ],
+  },
 };
 
 /** Emphasis draws attention and leaves the part as it was. */
@@ -273,6 +404,89 @@ const emphasis: Record<(typeof emphasisNames)[number], Preset> = {
       { offset: 0.5, opacity: 1 },
       { offset: 0.75, opacity: 0.15 },
       { offset: 1, opacity: 1 },
+    ],
+  },
+  growShrink: {
+    direction: 'up',
+    inline: 'flash',
+    frames: () => [
+      { offset: 0, scale: 1 },
+      { offset: 0.35, scale: 1.22 },
+      { offset: 0.7, scale: 0.88 },
+      { offset: 1, scale: 1 },
+    ],
+  },
+  sway: {
+    direction: 'up',
+    inline: 'shake',
+    frames: () => [
+      { offset: 0, rotate: 0 },
+      { offset: 0.25, rotate: -12 },
+      { offset: 0.5, rotate: 10 },
+      { offset: 0.75, rotate: -5 },
+      { offset: 1, rotate: 0 },
+    ],
+  },
+  jello: {
+    direction: 'up',
+    inline: 'flash',
+    frames: () => [
+      { offset: 0, rotate: 0, scale: 1 },
+      { offset: 0.3, rotate: -8, scale: 1.12 },
+      { offset: 0.6, rotate: 7, scale: 0.94 },
+      { offset: 0.8, rotate: -3, scale: 1.04 },
+      { offset: 1, rotate: 0, scale: 1 },
+    ],
+  },
+  tada: {
+    direction: 'up',
+    inline: 'flash',
+    frames: () => [
+      { offset: 0, rotate: 0, scale: 1 },
+      { offset: 0.2, rotate: -8, scale: 0.9 },
+      { offset: 0.45, rotate: 8, scale: 1.14 },
+      { offset: 0.7, rotate: -6, scale: 1.14 },
+      { offset: 1, rotate: 0, scale: 1 },
+    ],
+  },
+  heartbeat: {
+    direction: 'up',
+    inline: 'flash',
+    frames: () => [
+      { offset: 0, scale: 1 },
+      { offset: 0.2, scale: 1.18 },
+      { offset: 0.35, scale: 1 },
+      { offset: 0.55, scale: 1.24 },
+      { offset: 1, scale: 1 },
+    ],
+  },
+  flicker: {
+    direction: 'up',
+    frames: () => [
+      { offset: 0, opacity: 1 },
+      { offset: 0.12, opacity: 0.3 },
+      { offset: 0.25, opacity: 1 },
+      { offset: 0.4, opacity: 0.15 },
+      { offset: 0.62, opacity: 1 },
+      { offset: 0.78, opacity: 0.35 },
+      { offset: 1, opacity: 1 },
+    ],
+  },
+  float: {
+    direction: 'up',
+    frames: () => [
+      { offset: 0, y: 0 },
+      { offset: 0.5, y: -28 },
+      { offset: 1, y: 0 },
+    ],
+  },
+  tilt: {
+    direction: 'up',
+    inline: 'shake',
+    frames: () => [
+      { offset: 0, rotate: 0 },
+      { offset: 0.5, rotate: 18 },
+      { offset: 1, rotate: 0 },
     ],
   },
 };

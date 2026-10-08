@@ -48,6 +48,9 @@ const exempt: Record<string, string> = {
 
   // Colours of decks, kept as data: what a slide is drawn in, not what the app is drawn in.
   'apps/desktop/src/templates/curated.ts': 'the palettes a deck can take',
+
+  // Pictures, drawn in their own colours as a photo would be; the tiles around them are tokens.
+  'apps/desktop/src/elements/tiles.tsx': 'the pictures of the collections of Elements',
 };
 /** The colour picker's maths: the one file of the design system that writes colours. */
 const colourMaths = 'packages/ui/src/color.ts';

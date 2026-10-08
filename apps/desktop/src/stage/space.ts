@@ -7,6 +7,7 @@ import {
   type GroupElement,
   type Point,
 } from '@slidr/model';
+import { cardBox } from '../objects/card';
 
 /**
  * Coordinate spaces on the slide (WG5, ARR-01). A child of a group has its frame in the group's
@@ -209,7 +210,7 @@ export interface Inside {
   /** The entered groups once the click has gone in, outermost first. */
   scope: string[];
   id: string;
-  /** The element is a text the click starts editing; otherwise it becomes the selection. */
+  /** A text the click starts editing, or an object the click selects. */
   edit: boolean;
 }
 
@@ -237,6 +238,7 @@ function holdsText(located: Located, onText: (shape: Located) => boolean): boole
  *   It is where the text is that counts. The text is the element `chain` ends in, the topmost
  *   one under the pointer, unless that one is locked or hidden. The empty part of a big shape
  *   is no text. A standalone text box is left to the double-click.
+ * - On an object lying on a card, straight to that object. The card's background stays the card.
  * - On a group that was the whole selection before the press, to the child under the pointer, one
  *   level in: a second click on a group does what a double-click on it does.
  *
@@ -264,7 +266,13 @@ export function resolvePress(
   ) {
     return { ...hit, inside: { scope: pathIds(top), id: top.element.id, edit: true } };
   }
-  // Besides a text, only a group has an inside to go to.
+  // The foreground objects of a card have the same direct hover and click as its text. The
+  // press still takes the group at the current depth, so dragging one moves the group.
+  const card = top?.path.findLast((group) => cardBox(group));
+  if (top && card && top.element.id !== cardBox(card)?.id && !top.locked && !top.hidden) {
+    return { ...hit, inside: { scope: pathIds(top), id: top.element.id, edit: false } };
+  }
+  // Outside a card, a second click on a selected group still enters one level at a time.
   if (target.element.type !== 'group') return hit;
   const depth = hit.scope.length + 1;
   const child = index.get(chain[depth] ?? '');

@@ -93,7 +93,8 @@ test('an icon: icons of the library are offered in its place, and colourings fro
   await openApp(page, { script: 'icon-actions' });
   await addTitle(page, 'היעד שלנו');
   await addIcon(page);
-  // The chat says what the message is about: an icon, though row B gives it the tools of a shape.
+  // Row B names the selected SVG as an icon while keeping its shape tools.
+  await expect(page.getByTestId('selection-label')).toHaveText('אייקון');
   await openTool(page);
   await expect(page.getByTestId('focus-chip')).toHaveText(/^אייקון/);
   await openTool(page, 'actions');

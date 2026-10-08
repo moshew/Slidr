@@ -17,11 +17,11 @@ import { IconColorTool } from './IconColorTool';
 import { MediaPanel } from './MediaPanel';
 import { en, he } from './messages';
 import { StockSettings } from './StockSettings';
-import { MEDIA_PANEL, openMedia } from './store';
+import { MEDIA_PANEL } from './store';
 
 /*
  * The media area (WG5-T11, T13, WG12-T04 to T07): the media panel (the deck's pictures, stock
- * photos, icons, AI images), the stock photos' part of the settings, and the icon library.
+ * photos, AI images), and the stock photos' part of the settings. Icons live in Elements.
  * See docs/adr/ADR-051-media-and-settings.md.
  */
 
@@ -50,9 +50,6 @@ whenEditor((editor) => {
   const stop = installAssetDrop(editor);
   import.meta.hot?.dispose(stop);
 });
-
-/* Row A: the icon button opens the library. */
-registerAction('insert.icon', () => openMedia('icons'));
 
 /* Row B: the colour of a selected icon, before the effects every SVG has. */
 registerContextTool({

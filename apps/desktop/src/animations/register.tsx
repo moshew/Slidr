@@ -1,7 +1,8 @@
-import { Film } from '@slidr/ui/icons';
+import { Blend, Film } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
 import { registerContextTool, registerPanel } from '../shell';
 import { AnimationsPanel } from './AnimationsPanel';
+import { TransitionsPanel } from './TransitionEditor';
 import { en, he } from './messages';
 import { TransitionTool } from './TransitionTool';
 
@@ -21,6 +22,16 @@ registerPanel({
   title: 'panels.animations',
   icon: Film,
   content: AnimationsPanel,
+});
+
+registerPanel({
+  id: 'transitions',
+  kind: 'tool',
+  slot: 'tools',
+  order: 1.5,
+  title: 'panels.transitions',
+  icon: Blend,
+  content: TransitionsPanel,
 });
 
 registerContextTool({

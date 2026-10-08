@@ -31,12 +31,48 @@ describe('travel', () => {
 });
 
 describe('presets', () => {
-  it('lists the presets of SPEC 5.6 and the seven transitions', () => {
+  it('lists the built-in presets and transitions', () => {
     expect(animationPresets.entrance).toEqual(
       expect.arrayContaining(['fade', 'flyIn', 'zoom', 'wipe', 'rise']),
     );
-    expect(animationPresets.emphasis).toContain('pulse');
+    expect(animationPresets.entrance).toEqual(
+      expect.arrayContaining([
+        'slideIn',
+        'dropIn',
+        'scaleUp',
+        'rotateIn',
+        'swingIn',
+        'unfold',
+        'expand',
+        'elastic',
+      ]),
+    );
+    expect(animationPresets.emphasis).toEqual(
+      expect.arrayContaining([
+        'pulse',
+        'growShrink',
+        'sway',
+        'jello',
+        'tada',
+        'heartbeat',
+        'flicker',
+        'float',
+        'tilt',
+      ]),
+    );
     expect(animationPresets.exit).toEqual(expect.arrayContaining(['fade', 'flyOut', 'zoom']));
+    expect(animationPresets.exit).toEqual(
+      expect.arrayContaining([
+        'slideOut',
+        'dropOut',
+        'scaleDown',
+        'rotateOut',
+        'swingOut',
+        'fold',
+        'contract',
+        'elasticOut',
+      ]),
+    );
     expect(transitionTypes).toEqual([
       'none',
       'fade',
@@ -46,15 +82,25 @@ describe('presets', () => {
       'wipe',
       'zoom',
       'flip',
+      'crossfade',
+      'blur',
+      'flash',
+      'slide',
+      'split',
+      'iris',
+      'dissolve',
+      'rotate',
+      'cube',
+      'swap',
     ]);
   });
 
   it('tells a picker which presets and transitions take a direction', () => {
     const turning = (category: 'entrance' | 'emphasis' | 'exit') =>
       animationPresets[category].filter((name) => describePreset(category, name).directional);
-    expect(turning('entrance')).toEqual(['flyIn', 'rise', 'wipe']);
+    expect(turning('entrance')).toEqual(['flyIn', 'rise', 'wipe', 'slideIn']);
     expect(turning('emphasis')).toEqual([]);
-    expect(turning('exit')).toEqual(['flyOut', 'sink', 'wipe']);
+    expect(turning('exit')).toEqual(['flyOut', 'sink', 'wipe', 'slideOut']);
     expect(describePreset('entrance', 'wipe')).toEqual({
       known: true,
       directional: true,
@@ -68,6 +114,9 @@ describe('presets', () => {
       'reveal',
       'wipe',
       'flip',
+      'slide',
+      'cube',
+      'swap',
     ]);
     expect(transitionTurns('morph')).toBe(false);
   });

@@ -292,6 +292,18 @@ importers:
       '@fontsource/varela-round':
         specifier: ^5.3.0
         version: 5.3.0
+      '@iconify-json/fluent-color':
+        specifier: ^1.2.21
+        version: 1.2.21
+      '@iconify-json/streamline-kameleon-color':
+        specifier: ^1.2.2
+        version: 1.2.2
+      '@iconify-json/streamline-ultimate-color':
+        specifier: ^1.2.2
+        version: 1.2.2
+      '@iconify-json/twemoji':
+        specifier: ^1.2.5
+        version: 1.2.5
       '@lezer/highlight':
         specifier: ^1.2.5
         version: 1.2.5
@@ -796,6 +808,21 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@iconify-json/fluent-color@1.2.21':
+    resolution: {integrity: sha512-VETjGx7BMpVsCR3HV5g5t6oBGZ92XKzIRClS5xUvDn1YHAkQTF9OyF/aFdtxYOC8JROoI1SNO/Ql6jZeK7mroA==}
+
+  '@iconify-json/streamline-kameleon-color@1.2.2':
+    resolution: {integrity: sha512-6vFS3ILSmy3w6R1v2nVolNFf9pLuUihOUqyUNVXp0HliWIR6RpJIsWue0Fc6MVri7wde+SWzMJeLAXWU3zE43g==}
+
+  '@iconify-json/streamline-ultimate-color@1.2.2':
+    resolution: {integrity: sha512-NAbD3xLtg3069865B5CLUulp/eowPNCiDfJBxVAmA+LKLPpxU7EIEJ2+mSfWriPd+ahORWyqjRnoPVkTJopEgg==}
+
+  '@iconify-json/twemoji@1.2.5':
+    resolution: {integrity: sha512-uKpuIEV0v6K5BW3Mjdyl+XKFVAbbcPxAgifKvEMtZoUZB5+YiY5zaMm2uNNCxyXzAWU9yNLlj41WU6/mvgALsw==}
+
+  '@iconify/types@2.0.0':
+    resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -3290,6 +3317,24 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@iconify-json/fluent-color@1.2.21':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/streamline-kameleon-color@1.2.2':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/streamline-ultimate-color@1.2.2':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/twemoji@1.2.5':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify/types@2.0.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

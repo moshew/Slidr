@@ -3,19 +3,11 @@ import { animationPresets, describePreset, type TimelineGroup } from '@slidr/run
 import {
   Button,
   cx,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
   Field,
   Icon,
   IconButton,
   type LucideIcon,
   EmptyState,
-  Tooltip,
   SegmentedControl,
   Select,
   Separator,
@@ -26,11 +18,12 @@ import {
   LogIn,
   LogOut,
   Play,
-  Plus,
   Route,
   Sparkle,
   Square,
   Trash2,
+  ChevronDown,
+  ChevronUp,
 } from '@slidr/ui/icons';
 import {
   useEffect,
@@ -67,12 +60,12 @@ import {
 } from './model';
 import { DirectionField, nameLabel, SecondsField, useCurrentSlide, useSeconds } from './parts';
 import { playPreview, stageGroups, stageSlide, stopPreview, usePreview } from './preview';
-import { TransitionEditor } from './TransitionEditor';
+import { EffectTile } from './EffectTile';
 
 /*
  * The Animations panel (SPEC 4.2, WG8-T04): the timeline of the slide on the Stage, as the groups
  * a show plays it in; adding an animation to the selected objects; reordering by dragging; a
- * preview, played on the Stage by the runtime itself; and under it the transition into the slide.
+ * preview, played on the Stage by the runtime itself.
  * Everything is written through `slide.setTimeline`.
  */
 
@@ -90,6 +83,12 @@ const CATEGORY_TONE: Record<AnimationStep['category'], { text: string; bar: stri
   exit: { text: 'text-ui-danger-fg', bar: 'bg-ui-danger-fg' },
   motion: { text: 'text-ui-fg-subtle', bar: 'bg-ui-fg-subtle' },
 };
+
+const CATEGORY_TAB_TONE = {
+  entrance: 'bg-ui-tool-green text-ui-tool-green-fg',
+  emphasis: 'bg-ui-tool-orange text-ui-tool-orange-fg',
+  exit: 'bg-ui-tool-rose text-ui-tool-rose-fg',
+} as const;
 
 const EASINGS = ['ease-out', 'ease-in', 'ease-in-out', 'linear', 'ease'] as const;
 const TRIGGERS = ['onClick', 'withPrevious', 'afterPrevious'] as const;
@@ -112,6 +111,7 @@ export function AnimationsPanel() {
   const playing = usePreview((s) => (s.slideId === slide?.id ? s.group : null));
   /** The row whose settings are open. */
   const [open, setOpen] = useState<OpenRow | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(true);
   /** The groups as the runtime has them, read from the slide the Stage drew, and of which slide. */
   const [drawn, setDrawn] = useState<{ slide: Slide; groups: readonly TimelineGroup[] } | null>(
     null,
@@ -182,21 +182,38 @@ export function AnimationsPanel() {
   };
 
   return (
-    <div data-testid="animations-panel" className="flex flex-col gap-4 px-4 pb-4">
-      <div className="flex items-center gap-2">
-        <AddMenu canAdd={selected.length > 0} onAdd={add} />
-        <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={playing !== null ? Square : Play}
-          disabled={played.length === 0}
-          data-testid="animations-preview"
-          onClick={previewAll}
-        >
-          {playing !== null ? t('panel.stop') : t('panel.preview')}
-        </Button>
+    <div data-testid="animations-panel" className="flex flex-col gap-5 px-4 pb-5">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-ui-fg">{t('panel.galleryTitle')}</h3>
+          <p className="text-xs text-ui-fg-muted">{t('panel.galleryHint')}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <IconButton
+            icon={galleryOpen ? ChevronUp : ChevronDown}
+            size="sm"
+            label={galleryOpen ? t('panel.hideEffects') : t('panel.showEffects')}
+            aria-expanded={galleryOpen}
+            aria-controls="animation-gallery"
+            onClick={() => setGalleryOpen((value) => !value)}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={playing !== null ? Square : Play}
+            disabled={played.length === 0}
+            data-testid="animations-preview"
+            onClick={previewAll}
+          >
+            {playing !== null ? t('panel.stop') : t('panel.preview')}
+          </Button>
+        </div>
       </div>
+      <div id="animation-gallery" hidden={!galleryOpen}>
+        <AnimationGallery canAdd={selected.length > 0} onAdd={add} />
+      </div>
+      <Separator />
+      <h3 className="text-sm font-semibold text-ui-fg">{t('panel.timeline')}</h3>
       {timeline.length === 0 ? (
         <EmptyState icon={Film} title={t('panel.emptyTitle')} description={t('panel.emptyBody')} />
       ) : (
@@ -217,64 +234,91 @@ export function AnimationsPanel() {
           onPlay={(group) => void playPreview(editor, [group])}
         />
       )}
-      <Separator />
-      <section aria-label={t('transition.heading')} className="flex flex-col gap-3">
-        <h3 className="text-sm font-medium">{t('transition.heading')}</h3>
-        <TransitionEditor />
-      </section>
     </div>
   );
 }
 
 /* ---------------------------------------------------------------- adding */
 
-function AddMenu({
+function AnimationGallery({
   canAdd,
   onAdd,
 }: {
   canAdd: boolean;
   onAdd: (category: Category, preset: string) => void;
 }) {
-  const { t } = useTranslation('animations');
-  const button = (
-    <Button
-      variant="secondary"
-      size="sm"
-      icon={Plus}
-      disabled={!canAdd}
-      data-testid="animation-add"
-    >
-      {t('panel.add')}
-    </Button>
-  );
-  if (!canAdd) {
-    return (
-      <Tooltip content={t('panel.addHint')}>
-        {/* A disabled button gets no pointer events, so the tooltip hangs on a wrapper. */}
-        <span className="inline-flex">{button}</span>
-      </Tooltip>
-    );
-  }
+  const { t, i18n: ui } = useTranslation('animations');
+  const [category, setCategory] = useState<Category>('entrance');
+  const chooseWithKey = (event: KeyboardEvent<HTMLButtonElement>, current: Category) => {
+    const at = CATEGORIES.indexOf(current);
+    const direction = ui.dir() === 'rtl' ? -1 : 1;
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? CATEGORIES.length - 1
+          : event.key === 'ArrowRight'
+            ? (at + direction + CATEGORIES.length) % CATEGORIES.length
+            : event.key === 'ArrowLeft'
+              ? (at - direction + CATEGORIES.length) % CATEGORIES.length
+              : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    setCategory(CATEGORIES[next]!);
+    const tabs =
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    tabs?.[next]?.focus();
+  };
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {CATEGORIES.map((category) => (
-          <DropdownMenuSub key={category}>
-            <DropdownMenuSubTrigger icon={CATEGORY_ICONS[category]}>
-              {t(`category.${category}`)}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {animationPresets[category].map((preset) => (
-                <DropdownMenuItem key={preset} onSelect={() => onAdd(category, preset)}>
-                  {nameLabel(`preset.${category}.${preset}`, preset)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+    <div className="flex flex-col gap-4" data-testid="animation-gallery">
+      {!canAdd && (
+        <p className="rounded-control bg-ui-tool-violet px-3 py-2 text-xs font-medium text-ui-tool-violet-fg">
+          {t('panel.addHint')}
+        </p>
+      )}
+      <div role="tablist" aria-label={t('panel.categories')} className="grid grid-cols-3 gap-2">
+        {CATEGORIES.map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            id={`animation-category-${option}`}
+            aria-selected={category === option}
+            aria-controls="animation-effects-gallery"
+            tabIndex={category === option ? 0 : -1}
+            onClick={() => setCategory(option)}
+            onKeyDown={(event) => chooseWithKey(event, option)}
+            className={cx(
+              'flex min-w-0 cursor-default items-center justify-center gap-1 rounded-control px-1 py-2 text-xs font-semibold transition-[box-shadow,transform] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus',
+              'hover:-translate-y-0.5',
+              CATEGORY_TAB_TONE[option],
+              category === option && 'ring-2 ring-ui-accent',
+            )}
+          >
+            <Icon icon={CATEGORY_ICONS[option]} size="sm" />
+            {t(`category.${option}`)}
+          </button>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </div>
+      <div
+        id="animation-effects-gallery"
+        role="tabpanel"
+        aria-labelledby={`animation-category-${category}`}
+        className="grid grid-cols-3 gap-2"
+      >
+        {animationPresets[category].map((preset) => (
+          <EffectTile
+            key={preset}
+            data-testid={`animation-preset-${category}-${preset}`}
+            label={nameLabel(`preset.${category}.${preset}`, preset)}
+            effect={preset}
+            phase={category}
+            disabled={!canAdd}
+            onClick={() => onAdd(category, preset)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

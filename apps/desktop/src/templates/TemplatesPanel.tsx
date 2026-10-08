@@ -1,12 +1,13 @@
 import { TextStyleRef, type ColorToken, type FontPair, type TextStyle } from '@slidr/model';
-import { ScaledSlide } from '@slidr/renderer';
+import { fontStack, ScaledSlide } from '@slidr/renderer';
 import { deckFooter, footerLayouts, slideNumberHidden, slideNumberLayouts } from '@slidr/templates';
 import {
   Button,
   Checkbox,
   ColorPicker,
-  ColorSwatch,
   cx,
+  Field,
+  Icon,
   IconButton,
   Input,
   NumberField,
@@ -18,9 +19,29 @@ import {
   Separator,
   Toggle,
   Tooltip,
+  type LucideIcon,
 } from '@slidr/ui';
-import { Check, Eye, EyeOff, ImageUp, Pencil, RefreshCw, Star, Trash2 } from '@slidr/ui/icons';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  ALargeSmall,
+  ArrowLeftRight,
+  BookmarkPlus,
+  Check,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Hash,
+  ImageUp,
+  Palette,
+  Pencil,
+  RefreshCw,
+  SquareRoundCorner,
+  Stamp,
+  Star,
+  Trash2,
+  Type,
+  Wallpaper,
+} from '@slidr/ui/icons';
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { FontField, useGestureTx } from '../controls';
@@ -67,11 +88,69 @@ const WEIGHTS = ['300', '400', '500', '600', '700', '800', '900'] as const;
 /** Space between the two columns of template cards, in px: `gap-3`. */
 const CARD_GAP = 12;
 
+/** The library: a heading over the cards of the templates. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="text-xs font-medium text-ui-fg-muted">{title}</h3>
+      <h3 className="text-sm font-semibold text-ui-fg">{title}</h3>
       {children}
+    </section>
+  );
+}
+
+type Tone = 'violet' | 'blue' | 'pink' | 'teal' | 'green' | 'orange' | 'rose';
+
+/** The colours of a part's mark: those of the creation tools. */
+const TONES: Record<Tone, string> = {
+  violet: 'bg-ui-tool-violet text-ui-tool-violet-fg',
+  blue: 'bg-ui-tool-blue text-ui-tool-blue-fg',
+  pink: 'bg-ui-tool-pink text-ui-tool-pink-fg',
+  teal: 'bg-ui-tool-teal text-ui-tool-teal-fg',
+  green: 'bg-ui-tool-green text-ui-tool-green-fg',
+  orange: 'bg-ui-tool-orange text-ui-tool-orange-fg',
+  rose: 'bg-ui-tool-rose text-ui-tool-rose-fg',
+};
+
+/**
+ * One part of the deck's design: a card under its name and a mark in the part's own colour.
+ * `flush` leaves the sides to the content, for rows that reach the card's edges; `accent` is
+ * for the one part that is an action and not a setting.
+ */
+function Part({
+  title,
+  icon,
+  tone = 'violet',
+  flush = false,
+  accent = false,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  tone?: Tone;
+  flush?: boolean;
+  accent?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className={cx(
+        'flex flex-col overflow-hidden rounded-panel border',
+        accent ? 'border-transparent bg-ui-accent-soft' : 'border-ui-line',
+      )}
+    >
+      <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+        <span
+          aria-hidden
+          className={cx(
+            'flex size-control-sm shrink-0 items-center justify-center rounded-inset',
+            accent ? 'bg-ui-accent text-ui-on-accent' : TONES[tone],
+          )}
+        >
+          <Icon icon={icon} />
+        </span>
+        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-ui-fg">{title}</h3>
+      </div>
+      <div className={cx('flex flex-col gap-3', !flush && 'px-4 pb-4')}>{children}</div>
     </section>
   );
 }
@@ -272,7 +351,7 @@ function DirectionField() {
   const editor = useEditor();
   const dir = useDeck((s) => s.deck.meta.dir);
   return (
-    <Section title={t('direction.title')}>
+    <Part title={t('direction.title')} icon={ArrowLeftRight} tone="teal">
       <SegmentedControl<'rtl' | 'ltr'>
         aria-label={t('direction.title')}
         fill
@@ -284,7 +363,7 @@ function DirectionField() {
         ]}
       />
       <p className="text-xs text-ui-fg-muted">{t('direction.hint')}</p>
-    </Section>
+    </Part>
   );
 }
 
@@ -302,10 +381,15 @@ function ThemeColor({ token }: { token: ColorToken }) {
             type="button"
             aria-label={label}
             data-theme-color={token}
-            className="flex min-w-0 cursor-default items-center gap-2 rounded-control p-1.5 text-start text-sm text-ui-fg transition-colors hover:bg-ui-hover data-[state=open]:bg-ui-hover"
+            className="flex min-w-0 cursor-default flex-col gap-1.5 rounded-control p-1 text-xs text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg data-[state=open]:bg-ui-hover data-[state=open]:text-ui-fg"
           >
-            <ColorSwatch color={value} className="size-6 shrink-0" />
-            <span className="truncate">{label}</span>
+            {/* The deck's own colour, as it is on a slide. */}
+            <span
+              aria-hidden
+              style={{ background: value }}
+              className="block h-10 w-full rounded-inset border border-ui-line-strong"
+            />
+            <span className="w-full truncate text-center">{label}</span>
           </button>
         </PopoverTrigger>
       </Tooltip>
@@ -342,36 +426,56 @@ function ThemeColor({ token }: { token: ColorToken }) {
 function ThemeColors() {
   const { t } = useTranslation('templates');
   return (
-    <Section title={t('colors.title')}>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+    <Part title={t('colors.title')} icon={Palette} tone="pink">
+      <div className="-mx-1 grid grid-cols-4 gap-x-1 gap-y-2">
         {COLOR_TOKENS.map((token) => (
           <ThemeColor key={token} token={token} />
         ))}
       </div>
       <ChartPalette />
-    </Section>
+    </Part>
   );
 }
+
+/** The size the sample of a font pair is written in, in px. */
+const FONT_SAMPLE = 26;
 
 function ThemeFonts() {
   const { t } = useTranslation('templates');
   const editor = useEditor();
   const fonts = useDeck((s) => s.deck.theme.fonts);
+  const styles = useDeck((s) => s.deck.theme.textStyles);
   const set = (role: 'heading' | 'body', pair: FontPair) =>
     setThemeFont(editor, role, pair, t('undo.font'));
+  // Each pair in the weight of the style that is read most in it.
+  const weights = { heading: styles.title.weight, body: styles.body.weight };
   return (
-    <Section title={t('fonts.title')}>
+    <Part title={t('fonts.title')} icon={Type} tone="violet">
       {(['heading', 'body'] as const).map((role) => (
-        <div key={role} className="flex flex-col gap-1.5">
-          <span className="text-sm text-ui-fg">{t(`fonts.${role}`)}</span>
-          <div className="grid grid-cols-2 gap-3">
+        <div key={role} className="flex flex-col gap-2.5 rounded-control bg-ui-field p-3">
+          <div className="flex min-w-0 flex-col">
+            <span className="text-xs font-medium text-ui-fg-muted">{t(`fonts.${role}`)}</span>
+            <span
+              aria-hidden
+              style={{
+                fontFamily: fontStack(fonts[role]),
+                fontWeight: weights[role],
+                fontSize: FONT_SAMPLE,
+              }}
+              className="truncate leading-snug text-ui-fg"
+            >
+              {t('fonts.sample')}
+            </span>
+          </div>
+          {/* Side by side where a family's whole name fits in half the width. */}
+          <div className="grid grid-cols-1 gap-2 @sm:grid-cols-2">
             {(['he', 'latin'] as const).map((script) => (
               <div key={script} className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs text-ui-fg-muted">{t(`fonts.${script}`)}</span>
                 <FontField
                   label={t(`fonts.${role}${script === 'he' ? 'He' : 'Latin'}`)}
                   value={fonts[role][script]}
-                  className="w-full border border-ui-line"
+                  className="w-full border border-ui-line-strong bg-ui-panel"
                   onChange={(family) => set(role, { ...fonts[role], [script]: family })}
                 />
               </div>
@@ -379,86 +483,149 @@ function ThemeFonts() {
           </div>
         </div>
       ))}
-    </Section>
+    </Part>
   );
+}
+
+/** The sizes a style's name is written in, in px: the smallest, the largest, and the slope between. */
+const SPECIMEN = { min: 13, max: 30, base: 12, perSlidePixel: 0.16 };
+
+/** A size on the slide as the size of its specimen: 22 to 112 slide pixels are 14 to 28 here. */
+function specimenSize(size: number): number {
+  const { min, max, base, perSlidePixel } = SPECIMEN;
+  return Math.round(Math.min(max, Math.max(min, base + (size - base) * perSlidePixel)));
 }
 
 function ThemeTextStyles() {
   const { t } = useTranslation('templates');
+  /** The style whose fields are open. */
+  const [open, setOpen] = useState<TextStyleRef | null>(null);
+  return (
+    <Part title={t('styles.title')} icon={ALargeSmall} tone="blue" flush>
+      <div className="flex flex-col">
+        {TextStyleRef.options.map((ref) => (
+          <TextStyleRow
+            key={ref}
+            styleRef={ref}
+            open={open === ref}
+            onToggle={() => setOpen(open === ref ? null : ref)}
+          />
+        ))}
+      </div>
+    </Part>
+  );
+}
+
+/**
+ * One text style: its name written in the style's own font and weight, with its size beside it,
+ * and under it, once opened, the fields that change it.
+ */
+function TextStyleRow({
+  styleRef: ref,
+  open,
+  onToggle,
+}: {
+  styleRef: TextStyleRef;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation('templates');
   const editor = useEditor();
-  const styles = useDeck((s) => s.deck.theme.textStyles);
-  const set = (ref: TextStyleRef, patch: Partial<TextStyle>) => {
-    const style = { ...styles[ref], ...patch };
+  const style = useDeck((s) => s.deck.theme.textStyles[ref]);
+  const family = useDeck((s) => fontStack(s.deck.theme.fonts[style.font]));
+  const fields = useId();
+  const set = (patch: Partial<TextStyle>) => {
+    const next = { ...style, ...patch };
     // No spacing is stored as none, as the templates have it.
-    if (!style.letterSpacing) delete style.letterSpacing;
+    if (!next.letterSpacing) delete next.letterSpacing;
     editor.bus.dispatch(
-      { type: 'theme.update', patch: { textStyles: { [ref]: style } } },
+      { type: 'theme.update', patch: { textStyles: { [ref]: next } } },
       { label: t('undo.style') },
     );
   };
+  // `title` is also the key of the section's own heading.
+  const name = t(ref === 'title' ? 'styles.title_' : `styles.${ref}`);
+  const weight = WEIGHTS.find((w) => w === String(Math.round(style.weight / 100) * 100)) ?? null;
   return (
-    <Section title={t('styles.title')}>
-      <div className="flex flex-col gap-2">
-        {TextStyleRef.options.map((ref) => {
-          // `title` is also the key of the section's own heading.
-          const name = t(ref === 'title' ? 'styles.title_' : `styles.${ref}`);
-          const style = styles[ref];
-          const weight = String(Math.round(style.weight / 100) * 100);
-          return (
-            <div key={ref} className="flex flex-col gap-1.5" data-text-style={ref}>
-              <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm text-ui-fg">{name}</span>
-                <NumberField
-                  aria-label={t('styles.size', { style: name })}
-                  size="sm"
-                  className="w-20"
-                  value={style.size}
-                  min={12}
-                  max={400}
-                  step={1}
-                  onValueChange={(size) => set(ref, { size })}
-                />
-                <Select
-                  aria-label={t('styles.weight', { style: name })}
-                  size="sm"
-                  className="w-36"
-                  value={WEIGHTS.find((w) => w === weight) ?? null}
-                  onValueChange={(next) => set(ref, { weight: Number(next) })}
-                  options={WEIGHTS.map((w) => ({ value: w, label: t(`styles.weight${w}`) }))}
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <span className="text-xs text-ui-fg-muted">{t('styles.lineHeightShort')}</span>
-                <NumberField
-                  aria-label={t('styles.lineHeight', { style: name })}
-                  size="sm"
-                  className="w-20"
-                  value={style.lineHeight}
-                  min={0.8}
-                  max={3}
-                  step={0.05}
-                  precision={2}
-                  onValueChange={(lineHeight) => set(ref, { lineHeight })}
-                />
-                <span className="text-xs text-ui-fg-muted">{t('styles.letterSpacingShort')}</span>
-                <NumberField
-                  aria-label={t('styles.letterSpacing', { style: name })}
-                  size="sm"
-                  className="w-24"
-                  unit="px"
-                  value={style.letterSpacing ?? 0}
-                  min={-20}
-                  max={50}
-                  step={0.5}
-                  precision={1}
-                  onValueChange={(letterSpacing) => set(ref, { letterSpacing })}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </Section>
+    <div data-text-style={ref} className={cx('border-t border-ui-line', open && 'bg-ui-chrome')}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={open ? fields : undefined}
+        onClick={onToggle}
+        className="flex h-14 w-full cursor-default items-center gap-3 px-4 text-start transition-colors hover:bg-ui-hover active:bg-ui-pressed focus-visible:-outline-offset-2"
+      >
+        <span
+          style={{
+            fontFamily: family,
+            fontWeight: style.weight,
+            fontSize: specimenSize(style.size),
+          }}
+          className="min-w-0 flex-1 truncate leading-snug text-ui-fg"
+        >
+          {name}
+        </span>
+        <span className="shrink-0 text-xs text-ui-fg-muted tabular-nums">
+          {style.size} · {weight ? t(`styles.weight${weight}`) : style.weight}
+        </span>
+        <Icon
+          icon={ChevronDown}
+          className={cx('text-ui-fg-muted transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && (
+        // Two by two in a narrow panel; in a wide one a single row, where the weight, the one
+        // field that holds words, takes what the numbers leave.
+        <div id={fields} className="grid grid-cols-2 gap-3 px-4 pt-1 pb-4 @lg:flex">
+          <Field label={t('styles.sizeShort')} className="@lg:w-20">
+            <NumberField
+              aria-label={t('styles.size', { style: name })}
+              size="sm"
+              value={style.size}
+              min={12}
+              max={400}
+              step={1}
+              onValueChange={(size) => set({ size })}
+            />
+          </Field>
+          <Field label={t('styles.weightShort')} className="@lg:flex-1">
+            <Select
+              aria-label={t('styles.weight', { style: name })}
+              size="sm"
+              className="w-full"
+              value={weight}
+              onValueChange={(next) => set({ weight: Number(next) })}
+              options={WEIGHTS.map((w) => ({ value: w, label: t(`styles.weight${w}`) }))}
+            />
+          </Field>
+          <Field label={t('styles.lineHeightShort')} className="@lg:w-20">
+            <NumberField
+              aria-label={t('styles.lineHeight', { style: name })}
+              size="sm"
+              value={style.lineHeight}
+              min={0.8}
+              max={3}
+              step={0.05}
+              precision={2}
+              onValueChange={(lineHeight) => set({ lineHeight })}
+            />
+          </Field>
+          <Field label={t('styles.letterSpacingShort')} className="@lg:w-24">
+            <NumberField
+              aria-label={t('styles.letterSpacing', { style: name })}
+              size="sm"
+              unit="px"
+              value={style.letterSpacing ?? 0}
+              min={-20}
+              max={50}
+              step={0.5}
+              precision={1}
+              onValueChange={(letterSpacing) => set({ letterSpacing })}
+            />
+          </Field>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -475,7 +642,7 @@ function Master() {
   const seats = footerLayouts(deck).length;
   const footer = deckFooter(deck);
   return (
-    <Section title={t('master.title')}>
+    <Part title={t('master.title')} icon={Hash} tone="orange">
       <div className="flex items-center gap-2" data-testid="master-number">
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="text-sm text-ui-fg">{t('master.number')}</span>
@@ -495,13 +662,14 @@ function Master() {
         )}
       </div>
       <div className="flex flex-col gap-1.5">
+        <span className="text-sm text-ui-fg">{t('master.footer')}</span>
         {/* Keyed by the deck's footer, so the field follows an undo or a switch of template. */}
         <FooterField key={footer} footer={footer} disabled={seats === 0} />
         <p className="text-xs text-ui-fg-muted">
           {t(seats === 0 ? 'master.footerNone' : 'master.footerHint')}
         </p>
       </div>
-    </Section>
+    </Part>
   );
 }
 
@@ -553,13 +721,13 @@ function Logo() {
 
   if (places === 0) {
     return (
-      <Section title={t('logo.title')}>
+      <Part title={t('logo.title')} icon={Stamp} tone="rose">
         <p className="text-xs text-ui-fg-muted">{t('logo.none')}</p>
-      </Section>
+      </Part>
     );
   }
   return (
-    <Section title={t('logo.title')}>
+    <Part title={t('logo.title')} icon={Stamp} tone="rose">
       <div className="flex items-center gap-3">
         <div
           data-testid="logo-preview"
@@ -588,7 +756,7 @@ function Logo() {
           {t('logo.failed')}
         </p>
       )}
-    </Section>
+    </Part>
   );
 }
 
@@ -621,7 +789,7 @@ function SaveAsTemplate() {
   };
 
   return (
-    <Section title={t('save.title')}>
+    <Part title={t('save.title')} icon={BookmarkPlus} accent>
       <div className="flex items-center gap-2">
         <Input
           aria-label={t('save.name')}
@@ -644,30 +812,32 @@ function SaveAsTemplate() {
       >
         {message?.text ?? t('save.hint')}
       </p>
-    </Section>
+    </Part>
   );
 }
 
 export function TemplatesPanel() {
   const { t } = useTranslation('templates');
   return (
-    <div className="flex flex-col gap-6 px-4 pt-1 pb-6" data-testid="templates-panel">
+    <div className="@container flex flex-col gap-6 px-4 pt-1 pb-6" data-testid="templates-panel">
       <Library />
       <Separator />
-      <h2 className="text-sm font-medium text-ui-fg">{t('panel.thisDeck')}</h2>
-      <DirectionField />
-      <ThemeColors />
-      <ThemeFonts />
-      <ThemeTextStyles />
-      <Section title={t('shape.title')}>
-        <ShapeFields />
-      </Section>
-      <Section title={t('backgrounds.title')}>
-        <BackgroundFields />
-      </Section>
-      <Master />
-      <Logo />
-      <SaveAsTemplate />
+      <div className="flex flex-col gap-4">
+        <h2 className="text-md font-semibold text-ui-fg">{t('panel.thisDeck')}</h2>
+        <DirectionField />
+        <ThemeColors />
+        <ThemeFonts />
+        <ThemeTextStyles />
+        <Part title={t('shape.title')} icon={SquareRoundCorner} tone="green">
+          <ShapeFields />
+        </Part>
+        <Part title={t('backgrounds.title')} icon={Wallpaper} tone="teal">
+          <BackgroundFields />
+        </Part>
+        <Master />
+        <Logo />
+        <SaveAsTemplate />
+      </div>
     </div>
   );
 }

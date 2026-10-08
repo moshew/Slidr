@@ -111,7 +111,8 @@ for (const [deck, sign] of [
     expect(cut[sign === 1 ? 3 : 1]).toMatch(/^calc\(0%/);
 
     // The transition, as the editor previews it.
-    await page.getByTestId('transition-editor').scrollIntoViewIfNeeded();
+    await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
+    await expect(page.getByTestId('transitions-panel')).toBeVisible();
     await page
       .getByTestId('transition-editor')
       .getByRole('button', { name: 'ניגון המעבר' })

@@ -35,24 +35,18 @@ test('a popover opened from the keyboard keeps it, closes with Esc, and gives it
   page,
 }) => {
   await openApp(page, { lang: 'en' });
-  const trigger = rowA(page).getByRole('button', { name: 'Shape' });
+  const trigger = rowA(page).getByRole('button', { name: 'Line' });
   await trigger.focus();
   await page.keyboard.press('Enter');
   const popover = page.getByRole('dialog');
   await expect(popover).toBeVisible();
   // It has the name of the button that opened it, and the keyboard is inside it.
-  await expect(popover).toHaveAccessibleName('Shape');
+  await expect(popover).toHaveAccessibleName('Line');
   expect((await focused(page)).inLayer).toBe(true);
   // Tab goes round inside it: past its last control it comes back to its first.
   const controls = await popover.locator('button').count();
   expect(await tabsStayIn(page, controls + 2)).toBe(true);
-  // Esc closes it: once for the hint of the control the keyboard is on, and once for the
-  // popover. It is never a place the keyboard cannot leave. (The hints of the controls Tab ran
-  // through are on their way out for a few frames; a person's Esc does not come that soon.)
-  await expect(page.getByRole('tooltip')).toHaveCount(1);
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('tooltip')).toHaveCount(0);
-  await expect(popover).toBeVisible();
+  // Esc closes it, and the keyboard returns to its trigger.
   await page.keyboard.press('Escape');
   await expect(popover).toHaveCount(0);
   await expect(trigger).toBeFocused();

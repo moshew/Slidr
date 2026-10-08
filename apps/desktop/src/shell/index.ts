@@ -24,7 +24,12 @@ export {
   type ToolAction,
   type ToolPanelDefinition,
 } from './registry';
-export { selectionKind, elementKind, type SelectionKind } from './selection';
+export {
+  selectionKind,
+  elementKind,
+  elementDisplayKind,
+  type SelectionKind,
+} from './selection';
 export { StatusItem } from './StatusBar';
 export {
   getEditor,

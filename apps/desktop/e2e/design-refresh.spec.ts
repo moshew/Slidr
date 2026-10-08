@@ -77,8 +77,8 @@ for (const lang of ['he', 'en'] as const) {
         // The largest panel still leaves the last creation and text tools reachable.
         await page.getByTestId('panel-splitter').focus();
         await page.keyboard.press('End');
-        await creation(page).locator('[data-tool="insert.icon"]').focus();
-        await expect(creation(page).locator('[data-tool="insert.icon"]')).toBeInViewport({
+        await creation(page).locator('[data-tool="insert.media"]').focus();
+        await expect(creation(page).locator('[data-tool="insert.media"]')).toBeInViewport({
           ratio: 1,
         });
         await addText(page, 'e_refresh', [para('Refresh')], {

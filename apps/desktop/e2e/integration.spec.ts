@@ -34,8 +34,12 @@ async function element<T extends Element = Element>(page: Page, id: string): Pro
 
 test('a shape from the library takes text, and row B follows the caret', async ({ page }) => {
   await openApp(page);
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'צורה' }).click();
-  await page.getByRole('button', { name: 'מלבן', exact: true }).click();
+  await page.getByTestId('top-tools-a').locator('[data-tool="insert.elements"]').click();
+  await page.getByTestId('elements-panel').locator('[data-collection="shapes"]').click();
+  await page
+    .getByTestId('elements-shapes')
+    .getByRole('button', { name: 'מלבן', exact: true })
+    .click();
   await expect(row(page)).toHaveAttribute('data-selection', 'shape');
 
   // Enter edits the text of the selected shape: the caret is in text, so the text tools show.

@@ -1,28 +1,8 @@
 import type { Deck, Slide, Transition } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { runTransition, transitionTurns, transitionTypes } from '@slidr/runtime';
-import {
-  Button,
-  cx,
-  Field,
-  Icon,
-  IconButton,
-  type LucideIcon,
-  SegmentedControl,
-  Slider,
-} from '@slidr/ui';
-import {
-  Ban,
-  Blend,
-  CopyCheck,
-  FlipHorizontal2,
-  Layers2,
-  MoveRight,
-  PanelLeftOpen,
-  Play,
-  ScanLine,
-  ZoomIn,
-} from '@slidr/ui/icons';
+import { Button, cx, EmptyState, Field, IconButton, SegmentedControl, Slider } from '@slidr/ui';
+import { Blend, CopyCheck, Play } from '@slidr/ui/icons';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
@@ -37,23 +17,19 @@ import {
   withType,
 } from './model';
 import { DirectionField, SecondsField, useCurrentSlide, useSeconds } from './parts';
+import { EffectTile } from './EffectTile';
 
 /*
  * The transition into the slide on the Stage (WG8-T05, SPEC 4.4): its kind, the way it travels,
- * how long it takes, when the slide moves on, and "apply to all". It is drawn twice, in the row B
- * popover and at the foot of the animations panel, and writes through `slide.update`.
+ * how long it takes, when the slide moves on, and "apply to all". It is drawn in its own panel
+ * and in the row B popover, and writes through `slide.update`.
  */
 
-const ICONS: Record<string, LucideIcon> = {
-  none: Ban,
-  fade: Blend,
-  push: MoveRight,
-  cover: Layers2,
-  reveal: PanelLeftOpen,
-  wipe: ScanLine,
-  zoom: ZoomIn,
-  flip: FlipHorizontal2,
-};
+const GROUPS = [
+  { key: 'simple', types: ['none', 'fade', 'crossfade', 'dissolve', 'blur', 'flash'] },
+  { key: 'movement', types: ['push', 'cover', 'reveal', 'wipe', 'slide', 'swap'] },
+  { key: 'depth', types: ['zoom', 'flip', 'cube', 'rotate', 'split', 'iris'] },
+] as const;
 
 /** The longest transition the slider offers, in milliseconds; the field beside it takes more. */
 const SLIDER_MAX = 3000;
@@ -139,6 +115,22 @@ function TransitionPreview({
   );
 }
 
+export function TransitionsPanel() {
+  const { t } = useTranslation('animations');
+  const slide = useCurrentSlide();
+  if (!slide)
+    return <EmptyState icon={Blend} title={t('transition.noSlide')} className="min-h-80" />;
+  return (
+    <div data-testid="transitions-panel" className="flex flex-col gap-4 px-4 pb-5">
+      <div>
+        <h3 className="text-sm font-semibold text-ui-fg">{t('transition.heading')}</h3>
+        <p className="text-xs text-ui-fg-muted">{t('transition.galleryHint')}</p>
+      </div>
+      <TransitionEditor />
+    </div>
+  );
+}
+
 export function TransitionEditor() {
   const { t } = useTranslation('animations');
   const { bus } = useEditor();
@@ -169,8 +161,8 @@ export function TransitionEditor() {
   };
 
   return (
-    <div data-testid="transition-editor" className="flex flex-wrap gap-4">
-      <div className="relative self-start">
+    <div data-testid="transition-editor" className="flex flex-col gap-5">
+      <div className="relative self-start max-w-full">
         <TransitionPreview deck={deck} slide={slide} transition={transition} play={play} />
         <IconButton
           icon={Play}
@@ -182,28 +174,35 @@ export function TransitionEditor() {
           onClick={() => setPlay((n) => n + 1)}
         />
       </div>
-      <div className="flex min-w-60 flex-1 flex-col gap-3">
-        <div role="radiogroup" aria-label={t('transition.type')} className="grid grid-cols-4 gap-1">
-          {transitionTypes.map((type) => (
-            <button
-              key={type}
-              type="button"
-              role="radio"
-              aria-checked={transition.type === type}
-              data-transition={type}
-              onClick={() =>
-                change(withType(transition, type, transitionTurns(type)), { replay: true })
-              }
-              className={cx(
-                'flex cursor-default flex-col items-center gap-1 rounded-control px-1 py-2 text-xs transition-colors',
-                transition.type === type
-                  ? 'bg-ui-accent-soft font-medium text-ui-accent-fg'
-                  : 'text-ui-fg-muted hover:bg-ui-hover hover:text-ui-fg',
-              )}
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <div role="radiogroup" aria-label={t('transition.type')} className="flex flex-col gap-4">
+          {GROUPS.map((group) => (
+            <section
+              key={group.key}
+              aria-label={t(`transition.group.${group.key}`)}
+              className="flex flex-col gap-2"
             >
-              <Icon icon={ICONS[type] ?? Blend} size="md" />
-              <span className="max-w-full truncate">{t(`transition.${type}`)}</span>
-            </button>
+              <h4 className="text-xs font-semibold text-ui-fg">
+                {t(`transition.group.${group.key}`)}
+              </h4>
+              <div className="grid grid-cols-3 gap-2">
+                {group.types.map((type) => (
+                  <EffectTile
+                    key={type}
+                    role="radio"
+                    aria-checked={transition.type === type}
+                    data-transition={type}
+                    label={t(`transition.${type}`)}
+                    effect={type}
+                    phase="transition"
+                    selected={transition.type === type}
+                    onClick={() =>
+                      change(withType(transition, type, transitionTurns(type)), { replay: true })
+                    }
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
         {!known && (

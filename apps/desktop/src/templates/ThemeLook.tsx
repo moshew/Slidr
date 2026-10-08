@@ -1,9 +1,10 @@
 import type { AssetMeta, Background, Command, Shadow } from '@slidr/model';
+import { shadowCss } from '@slidr/renderer';
 import {
   Button,
   ColorPicker,
-  ColorSwatch,
   Field,
+  Icon,
   IconButton,
   NumberField,
   Popover,
@@ -17,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
 import { withAdjust, withFill } from '../objects/background';
 import { FillEditor } from '../objects/FillEditor';
-import { BackgroundSwatch, ColorRow, SliderField } from '../objects/parts';
+import { BackgroundSwatch, ColorRow, SliderField, useThemeColors } from '../objects/parts';
 import { useDeck, useEditor } from '../shell';
 import { MAX_CHART_COLORS, paletteCommands, variantCommands } from './themeCommands';
 
@@ -49,6 +50,44 @@ function usePickerLabels(): ColorPickerProps['labels'] {
   };
 }
 
+/** How much smaller than on the slide the sample card is drawn: about what the Stage shows. */
+const SAMPLE_SCALE = 0.5;
+
+/**
+ * The corners and the shadow on a card of the deck: the theme's surface over its background, at
+ * half the size of the slide, so a change shows here as it will on a slide.
+ */
+function ShapeSample({ radius, shadow }: { radius: number; shadow: Shadow }) {
+  const bg = useDeck((s) => s.deck.theme.colors.bg);
+  const surface = useDeck((s) => s.deck.theme.colors.surface);
+  // The shadow's colour may be a token of the theme: it resolves against these.
+  const colors = useThemeColors();
+  const scaled: Shadow = {
+    ...shadow,
+    x: shadow.x * SAMPLE_SCALE,
+    y: shadow.y * SAMPLE_SCALE,
+    blur: shadow.blur * SAMPLE_SCALE,
+    ...(shadow.spread ? { spread: shadow.spread * SAMPLE_SCALE } : {}),
+  };
+  return (
+    <div
+      aria-hidden
+      data-testid="shape-sample"
+      style={{ ...colors, background: bg }}
+      className="flex h-28 items-center justify-center overflow-hidden rounded-control border border-ui-line"
+    >
+      <div
+        style={{
+          background: surface,
+          borderRadius: radius * SAMPLE_SCALE,
+          boxShadow: shadowCss(scaled),
+        }}
+        className="h-14 w-36"
+      />
+    </div>
+  );
+}
+
 /** The corners and the shadow of the theme. */
 export function ShapeFields() {
   const { t } = useTranslation('templates');
@@ -78,6 +117,7 @@ export function ShapeFields() {
   };
   return (
     <div className="flex flex-col gap-3" data-testid="theme-shape">
+      <ShapeSample radius={radius} shadow={shadow} />
       <SliderField
         label={t('shape.radius')}
         value={radius}
@@ -136,6 +176,9 @@ export function ShapeFields() {
   );
 }
 
+/** The width of a background's tile, in px: `w-24`. */
+const TILE_WIDTH = 96;
+
 /** A background as a small slide, which opens its editor. */
 function BackgroundButton({
   background,
@@ -164,9 +207,9 @@ function BackgroundButton({
             type="button"
             aria-label={label}
             {...data}
-            className="h-9 w-16 shrink-0 cursor-default rounded-small transition-colors data-[state=open]:outline-2 data-[state=open]:outline-offset-2 data-[state=open]:outline-ui-accent"
+            className="h-13.5 w-24 shrink-0 cursor-default rounded-small shadow-raised transition-shadow hover:shadow-floating data-[state=open]:outline-2 data-[state=open]:outline-offset-2 data-[state=open]:outline-ui-accent"
           >
-            <BackgroundSwatch background={background} width={64} />
+            <BackgroundSwatch background={background} width={TILE_WIDTH} />
           </button>
         </PopoverTrigger>
       </Tooltip>
@@ -241,9 +284,9 @@ export function BackgroundFields() {
     if (commands.length > 0) bus.batch(withAsset(asset, commands), { txId: tx.id(), label });
   };
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-ui-fg">{t('backgrounds.theme')}</span>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-ui-fg-muted">{t('backgrounds.theme')}</span>
         <BackgroundButton
           background={background}
           label={t('backgrounds.theme')}
@@ -253,7 +296,7 @@ export function BackgroundFields() {
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm text-ui-fg">{t('backgrounds.variants')}</span>
+        <span className="text-xs font-medium text-ui-fg-muted">{t('backgrounds.variants')}</span>
         <div className="flex flex-wrap items-center gap-2">
           {variants.map((variant, index) => (
             <BackgroundButton
@@ -271,17 +314,22 @@ export function BackgroundFields() {
               }}
             />
           ))}
-          <IconButton
-            icon={Plus}
-            size="sm"
-            label={t('backgrounds.add')}
-            data-testid="variant-add"
-            onClick={() => {
-              tx.end();
-              setVariant(variants.length, background);
-              tx.end();
-            }}
-          />
+          {/* A tile of its own, the size of a variant: the place the next one takes. */}
+          <Tooltip content={t('backgrounds.add')}>
+            <button
+              type="button"
+              aria-label={t('backgrounds.add')}
+              data-testid="variant-add"
+              onClick={() => {
+                tx.end();
+                setVariant(variants.length, background);
+                tx.end();
+              }}
+              className="flex h-13.5 w-24 shrink-0 cursor-default items-center justify-center rounded-small border border-dashed border-ui-line-strong text-ui-fg-muted transition-colors hover:border-ui-fg-subtle hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed"
+            >
+              <Icon icon={Plus} />
+            </button>
+          </Tooltip>
         </div>
         <p className="text-xs text-ui-fg-muted">{t('backgrounds.hint')}</p>
       </div>
@@ -309,9 +357,14 @@ function ChartColor({ index, value, last }: { index: number; value: string; last
             aria-label={label}
             data-testid="chart-color"
             data-index={index}
-            className="flex cursor-default rounded-small p-0.5 transition-colors hover:bg-ui-hover data-[state=open]:bg-ui-hover"
+            className="flex cursor-default rounded-full p-0.5 transition-colors hover:bg-ui-pressed data-[state=open]:bg-ui-pressed"
           >
-            <ColorSwatch color={value} className="size-6" />
+            {/* The deck's own colour, as a chart draws it. */}
+            <span
+              aria-hidden
+              style={{ background: value }}
+              className="block size-7 rounded-full border border-ui-line-strong"
+            />
           </button>
         </PopoverTrigger>
       </Tooltip>
@@ -353,7 +406,7 @@ export function ChartPalette() {
   const palette = useDeck((s) => s.deck.theme.colors.chart);
   return (
     <div className="flex flex-col gap-1.5" data-testid="chart-palette">
-      <span className="text-sm text-ui-fg">{t('colors.chart')}</span>
+      <span className="text-xs font-medium text-ui-fg-muted">{t('colors.chart')}</span>
       <div className="flex flex-wrap items-center gap-1">
         {palette.map((color, index) => (
           <ChartColor key={index} index={index} value={color} last={palette.length === 1} />

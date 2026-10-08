@@ -44,6 +44,11 @@ export const panel = (page: Page): Locator => page.getByTestId('templates-panel'
 export const card = (page: Page, id: string): Locator =>
   panel(page).locator(`[data-template="${id}"]`);
 
+/** Opens the fields of a text style of the theme: they are under the style's row. */
+export async function openTextStyle(page: Page, style: string): Promise<void> {
+  await panel(page).locator(`[data-text-style="${style}"]`).getByRole('button').click();
+}
+
 /** The deck as the editor holds it. */
 export const deck = (page: Page): Promise<Deck> =>
   page.evaluate(() => (window as unknown as Page_).slidr.bus.deck);

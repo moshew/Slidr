@@ -110,7 +110,7 @@ export function Outline({
   walk?: boolean;
   /** The group the user is working inside: a quieter frame than a selection. */
   entered?: boolean;
-  /** The group a hovered text belongs to, before the user enters it. */
+  /** The group a directly hovered child belongs to, before the user enters it. */
   hoveredGroup?: boolean;
   /** An empty placeholder: the quietest frame, there so that the empty box can be seen. */
   placeholder?: boolean;

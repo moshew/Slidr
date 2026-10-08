@@ -14,9 +14,32 @@ export const entranceNames = [
   'pop',
   'wipe',
   'blur',
+  'slideIn',
+  'dropIn',
+  'scaleUp',
+  'rotateIn',
+  'swingIn',
+  'unfold',
+  'expand',
+  'elastic',
 ] as const;
 
-export const emphasisNames = ['pulse', 'spin', 'wiggle', 'shake', 'bounce', 'flash'] as const;
+export const emphasisNames = [
+  'pulse',
+  'spin',
+  'wiggle',
+  'shake',
+  'bounce',
+  'flash',
+  'growShrink',
+  'sway',
+  'jello',
+  'tada',
+  'heartbeat',
+  'flicker',
+  'float',
+  'tilt',
+] as const;
 
 export const exitNames = [
   'disappear',
@@ -27,6 +50,14 @@ export const exitNames = [
   'pop',
   'wipe',
   'blur',
+  'slideOut',
+  'dropOut',
+  'scaleDown',
+  'rotateOut',
+  'swingOut',
+  'fold',
+  'contract',
+  'elasticOut',
 ] as const;
 
 /** `none` shows the next slide at once; the others are played. */
@@ -39,6 +70,16 @@ export const transitionNames = [
   'wipe',
   'zoom',
   'flip',
+  'crossfade',
+  'blur',
+  'flash',
+  'slide',
+  'split',
+  'iris',
+  'dissolve',
+  'rotate',
+  'cube',
+  'swap',
 ] as const;
 
 export type Category = 'entrance' | 'emphasis' | 'exit';

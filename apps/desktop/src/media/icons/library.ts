@@ -26,7 +26,7 @@ type IconNode = [tag: string, attributes: Record<string, string | number>];
 type IconNodes = Readonly<Record<string, readonly IconNode[]>>;
 
 /** Loads a JSON file once, as text, and parses it. */
-function lazy<T>(load: () => Promise<{ default: string }>): () => Promise<T> {
+export function lazy<T>(load: () => Promise<{ default: string }>): () => Promise<T> {
   let loaded: Promise<T> | undefined;
   return () => {
     loaded ??= load()
@@ -55,7 +55,8 @@ const lucideTags = lazy<IconSources['lucide']>(
 const tablerIcons = lazy<IconSources['tabler']>(
   () => import('../../../node_modules/@tabler/icons/icons.json?raw'),
 );
-const hebrewTags = lazy<HebrewTags>(() => import('./hebrew.json?raw'));
+/** The app's dictionary: an English word to the Hebrew a user would type for it. */
+export const hebrewTags = lazy<HebrewTags>(() => import('./hebrew.json?raw'));
 
 let english: Promise<Map<string, string>> | undefined;
 

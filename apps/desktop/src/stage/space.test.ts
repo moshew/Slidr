@@ -216,6 +216,12 @@ describe('resolvePress', () => {
       text('fixed', { locked: true }),
       text('unseen', { hidden: true }),
       group('row', [chip('tag', 'Beta'), rect('icon', 140, 0, 40, 40)]),
+      createElement.svg({
+        id: 'svgIcon',
+        frame: { x: 230, y: 60, w: 40, h: 40 },
+        markup: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>',
+      }),
+      createElement.image({ id: 'photo', frame: { x: 280, y: 60, w: 40, h: 40 } }),
     ]),
     group('shut', [text('kept')], { locked: true }),
     text('solo'),
@@ -250,12 +256,24 @@ describe('resolvePress', () => {
 
   it('goes into the text of a shape only where its text is', () => {
     expect(press(['card', 'chip']).inside).toEqual({ scope: ['card'], id: 'chip', edit: true });
-    expect(press(['card', 'chip'], [], [], offText).inside).toBeUndefined();
-    // A shape without text, or with none left in it, has no text to be on.
+    expect(press(['card', 'chip'], [], [], offText).inside).toEqual({
+      scope: ['card'],
+      id: 'chip',
+      edit: false,
+    });
+    // A shape without text is still directly selectable as a card object.
     expect(press(['card', 'bg']).inside).toBeUndefined();
-    expect(press(['card', 'blank']).inside).toBeUndefined();
-    // The same inside the group the shape is in: off its text, a click only selects it.
-    expect(press(['card', 'chip'], ['card'], [], offText)).toEqual({ scope: ['card'], id: 'chip' });
+    expect(press(['card', 'blank']).inside).toEqual({
+      scope: ['card'],
+      id: 'blank',
+      edit: false,
+    });
+    // The same inside the group the shape is in: off its text, a click selects it.
+    expect(press(['card', 'chip'], ['card'], [], offText)).toEqual({
+      scope: ['card'],
+      id: 'chip',
+      inside: { scope: ['card'], id: 'chip', edit: false },
+    });
     expect(press(['card', 'bg'], ['card']).inside).toBeUndefined();
   });
 
@@ -310,16 +328,21 @@ describe('resolvePress', () => {
     expect(press(['shut', 'kept'], [], ['shut']).inside).toBeUndefined();
   });
 
-  it('picks the child under the pointer on a second click on a selected group', () => {
+  it('picks foreground objects on a card directly, including nested and SVG objects', () => {
     const child = (id: string, scope: string[]) => ({ scope, id, edit: false });
-    expect(press(['card', 'bg'], [], ['card']).inside).toEqual(child('bg', ['card']));
-    // One level at a time: the row first, and what is in the row on the click after that.
-    expect(press(['card', 'row', 'icon'], [], ['card']).inside).toEqual(child('row', ['card']));
-    expect(press(['card', 'row', 'icon'], ['card'], ['row']).inside).toEqual(
+    expect(press(['card', 'row', 'icon']).inside).toEqual(child('icon', ['card', 'row']));
+    expect(press(['card', 'svgIcon']).inside).toEqual(child('svgIcon', ['card']));
+    expect(press(['card', 'photo']).inside).toEqual(child('photo', ['card']));
+    expect(press(['card', 'row', 'icon'], ['card']).inside).toEqual(child('icon', ['card', 'row']));
+    expect(press(['card', 'row', 'icon'], [], ['card']).inside).toEqual(
       child('icon', ['card', 'row']),
     );
-    // A shape off its text is a child like any other.
-    expect(press(['card', 'chip'], [], ['card'], offText).inside).toEqual(child('chip', ['card']));
+    expect(press(['card', 'bg']).inside).toBeUndefined();
+  });
+
+  it('picks a background child only on a second click on the selected card', () => {
+    const child = (id: string, scope: string[]) => ({ scope, id, edit: false });
+    expect(press(['card', 'bg'], [], ['card']).inside).toEqual(child('bg', ['card']));
   });
 
   it('stays on the group when it was not the whole selection, or has no child to pick', () => {

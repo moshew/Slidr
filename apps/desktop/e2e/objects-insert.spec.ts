@@ -20,6 +20,14 @@ import {
 
 const rowA = (page: Page) => page.getByTestId('top-tools-a');
 
+async function openShapes(page: Page) {
+  await rowA(page).locator('[data-tool="insert.elements"]').click();
+  const panel = page.getByTestId('elements-panel');
+  const collection = panel.locator('[data-collection="shapes"]');
+  if (await collection.isVisible()) await collection.click();
+  return page.getByTestId('elements-shapes');
+}
+
 test.afterEach(({ page }) => {
   expect(pageProblems(page)).toEqual([]);
 });
@@ -30,24 +38,23 @@ test.describe('shapes', () => {
   });
 
   test('the library shows every preset, named, and a click inserts it', async ({ page }) => {
-    await rowA(page).getByRole('button', { name: 'צורה' }).click();
-    const library = page.getByTestId('shape-library');
+    const library = await openShapes(page);
     await expect(library).toBeVisible();
-    await expect(library.getByRole('button')).toHaveCount(shapePresets.length);
+    await expect(library.locator('[data-preset]')).toHaveCount(shapePresets.length);
     for (const group of ['בסיסיות', 'מצולעים וכוכבים', 'חצים', 'בועות דיבור', 'סוגריים']) {
       await expect(library.getByRole('group', { name: group })).toBeVisible();
     }
     // Every button has a name of its own, and a glyph.
     const names = await library
-      .getByRole('button')
+      .locator('[data-preset]')
       .evaluateAll((buttons) => buttons.map((b) => b.getAttribute('aria-label') ?? ''));
     expect(names.every((name) => /[֐-׿]/.test(name))).toBe(true);
     expect(new Set(names).size).toBe(names.length);
-    await expect(library.locator('svg path')).toHaveCount(shapePresets.length);
+    await expect(library.locator('[data-preset] svg path')).toHaveCount(shapePresets.length);
 
     const before = await undoDepth(page);
     await library.getByRole('button', { name: 'אליפסה' }).click();
-    await expect(library).toHaveCount(0);
+    await expect(library).toBeVisible();
     await expect(row(page)).toHaveAttribute('data-selection', 'shape');
 
     const ellipse = await selected<ShapeElement>(page);
@@ -71,9 +78,9 @@ test.describe('shapes', () => {
   test('after an insert the keyboard is the Stage one: arrows nudge, Delete removes', async ({
     page,
   }) => {
-    await rowA(page).getByRole('button', { name: 'צורה' }).click();
+    await openShapes(page);
     await page
-      .getByTestId('shape-library')
+      .getByTestId('elements-shapes')
       .getByRole('button', { name: 'מלבן', exact: true })
       .click();
     await expect(page.getByTestId('stage-surface')).toBeFocused();
@@ -86,8 +93,7 @@ test.describe('shapes', () => {
 
   test('the library is named in English too', async ({ page }) => {
     await openApp(page, { lang: 'en' });
-    await rowA(page).getByRole('button', { name: 'Shape' }).click();
-    const library = page.getByTestId('shape-library');
+    const library = await openShapes(page);
     await expect(library.getByRole('group', { name: 'Speech bubbles' })).toBeVisible();
     await library.getByRole('button', { name: '5-point star' }).click();
     expect((await selected<ShapeElement>(page)).geometry).toEqual({
@@ -97,8 +103,8 @@ test.describe('shapes', () => {
   });
 
   test('an open outline is stroked, and a second insert steps aside', async ({ page }) => {
-    await rowA(page).getByRole('button', { name: 'צורה' }).click();
-    await page.getByTestId('shape-library').getByRole('button', { name: 'סוגר שמאלי' }).click();
+    await openShapes(page);
+    await page.getByTestId('elements-shapes').getByRole('button', { name: 'סוגר שמאלי' }).click();
     const bracket = await selected<ShapeElement>(page);
     expect(bracket.fill).toEqual({ kind: 'none' });
     expect(bracket.stroke).toEqual({ color: { token: 'text' }, width: 4 });
@@ -106,8 +112,8 @@ test.describe('shapes', () => {
     await expect(row(page).getByRole('button', { name: 'קו מתאר' })).toBeVisible();
     await expect(row(page).getByRole('button', { name: 'מילוי' })).toHaveCount(0);
 
-    await rowA(page).getByRole('button', { name: 'צורה' }).click();
-    await page.getByTestId('shape-library').getByRole('button', { name: 'סוגר שמאלי' }).click();
+    await openShapes(page);
+    await page.getByTestId('elements-shapes').getByRole('button', { name: 'סוגר שמאלי' }).click();
     const second = await selected<ShapeElement>(page);
     expect(second.id).not.toBe(bracket.id);
     expect(second.frame).toMatchObject({ x: bracket.frame.x + 24, y: bracket.frame.y + 24 });

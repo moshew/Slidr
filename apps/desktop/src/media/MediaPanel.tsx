@@ -1,14 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@slidr/ui';
 import { AiTab } from './AiTab';
-import { IconsTab } from './IconsTab';
 import { StockTab } from './StockTab';
 import { MEDIA_TABS, setMediaTab, useMedia, type MediaTab } from './store';
 import { UploadsTab } from './UploadsTab';
 
 /**
- * The media panel (SPEC 4.2, WG5-T13): the deck's own pictures, stock photos, the icon library
- * and AI images, one tab each. Whatever a tab offers goes onto the current slide with a click,
+ * The media panel (SPEC 4.2, WG5-T13): the deck's own pictures, stock photos and AI images.
+ * Whatever a tab offers goes onto the current slide with a click,
  * as one undo step.
  */
 export function MediaPanel() {
@@ -35,10 +34,6 @@ export function MediaPanel() {
       {/* Kept mounted, so a search and its results are still there after a look at another tab. */}
       <TabsContent value="stock" forceMount hidden={tab !== 'stock'}>
         <StockTab />
-      </TabsContent>
-      {/* Mounted on demand: the icon library is megabytes, loaded when this tab first opens. */}
-      <TabsContent value="icons">
-        <IconsTab />
       </TabsContent>
       <TabsContent value="ai">
         <AiTab />

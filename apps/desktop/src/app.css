@@ -98,3 +98,23 @@
   background-color: var(--color-ui-tool-rose);
   color: var(--color-ui-tool-rose-fg);
 }
+
+/* Elements: a grid of drawings puts as many in a row as the panel has room for, since the
+   panel is as wide as the user made it. `--cell` is the narrowest a drawing gets. */
+.element-grid {
+  --cell: calc(var(--spacing) * 18);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--cell), 1fr));
+  gap: var(--spacing);
+
+  &[data-size='shape'] {
+    --cell: calc(var(--spacing) * 16);
+  }
+  &[data-size='icon'] {
+    --cell: calc(var(--spacing) * 13);
+  }
+  &[data-size='emoji'] {
+    --cell: calc(var(--spacing) * 11);
+    gap: calc(var(--spacing) / 2);
+  }
+}

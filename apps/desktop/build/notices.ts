@@ -12,6 +12,11 @@ import type { Plugin } from 'vite';
  * of the bundle came from (libraries, the icon sets, the built-in fonts, the chart library, the
  * font subsetting), and every crate the core links for this platform. A dependency that joins
  * the app joins the file with the next build.
+ *
+ * Two things a manifest does not say are read from beside it. An art set names who drew it in
+ * its `info.json`, and a licence that asks for credit is answered with that name. A data file of
+ * the app's own source that was made from someone else's data has its notice beside it, as
+ * `<name>.notice.json`, written by the script that made the file.
  */
 
 export const NOTICES_FILE = 'THIRD-PARTY-NOTICES.txt';
@@ -20,6 +25,8 @@ interface Notice {
   name: string;
   version: string;
   license: string;
+  /** Who made it, where the licence asks that they are named. */
+  author?: string;
   homepage?: string;
   /** The licence and notice files the package carries, as text. */
   texts: string[];
@@ -77,6 +84,19 @@ function homepageOf(manifest: Manifest): string | undefined {
   return manifest.homepage ?? repository?.replace(/^git\+/, '').replace(/\.git$/, '');
 }
 
+/** Who drew an art set, from the `info.json` its package carries beside the manifest. */
+function authorOf(dir: string): string | undefined {
+  try {
+    const info = JSON.parse(readFileSync(join(dir, 'info.json'), 'utf8')) as {
+      author?: { name?: string; url?: string };
+    };
+    const { name, url } = info.author ?? {};
+    return name && [name, url].filter(Boolean).join(', ');
+  } catch {
+    return undefined;
+  }
+}
+
 /** The packages the modules of a bundle came from. */
 export function bundledPackages(moduleIds: Iterable<string>): Notice[] {
   const found = new Map<string, Notice>();
@@ -90,15 +110,37 @@ export function bundledPackages(moduleIds: Iterable<string>): Notice[] {
     const key = `${name}@${version}`;
     if (found.has(key)) continue;
     const homepage = homepageOf(owner.manifest);
+    const author = authorOf(owner.dir);
     found.set(key, {
       name: name!,
       version: version!,
       license: licenceOf(owner.manifest),
+      ...(author ? { author } : {}),
       ...(homepage ? { homepage } : {}),
       texts: licenceTexts(owner.dir),
     });
   }
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The notices of the data files among the modules of a bundle: a file of the app's own source
+ * with a `<name>.notice.json` beside it was made from someone else's data, under that notice.
+ */
+export function dataNotices(moduleIds: Iterable<string>): Notice[] {
+  const found = new Map<string, Notice>();
+  for (const id of moduleIds) {
+    const file = id.replace(/^\0+/, '').split('?')[0]!.split('/').join(sep);
+    if (file.includes(`${sep}node_modules${sep}`) || !file.endsWith('.json')) continue;
+    const beside = file.replace(/\.json$/, '.notice.json');
+    if (found.has(beside) || !existsSync(beside)) continue;
+    const { text, ...notice } = JSON.parse(readFileSync(beside, 'utf8')) as Omit<
+      Notice,
+      'texts'
+    > & { text: string };
+    found.set(beside, { ...notice, texts: [text] });
+  }
+  return [...found.values()];
 }
 
 interface CargoPackage {
@@ -164,8 +206,10 @@ export function linkedCrates(cwd: string): Notice[] | undefined {
 
 function table(notices: readonly Notice[]): string {
   return notices
-    .map(({ name, version, license, homepage }) =>
-      [`${name} ${version}`, license, homepage].filter(Boolean).join('  |  '),
+    .map(({ name, version, license, author, homepage }) =>
+      [`${name} ${version}`, license, author && `by ${author}`, homepage]
+        .filter(Boolean)
+        .join('  |  '),
     )
     .join('\n');
 }
@@ -244,7 +288,9 @@ export function thirdPartyNotices(options: { app: string; version: string; root:
       // A stylesheet that is imported for its side effect (a font's) is a module of the graph
       // and of no chunk.
       for (const id of this.getModuleIds()) ids.add(id);
-      const packages = bundledPackages(ids);
+      const packages = [...bundledPackages(ids), ...dataNotices(ids)].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
       const crates = linkedCrates(options.root);
       if (!crates) this.warn('Cargo could not be run: the notices list no Rust crates.');
       this.emitFile({

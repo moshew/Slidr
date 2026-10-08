@@ -27,6 +27,13 @@ import {
 const out = (name: string) =>
   fileURLToPath(new URL(`../test-results/cards/${name}.png`, import.meta.url));
 
+async function openShapes(page: Page) {
+  await page.getByTestId('top-tools-a').locator('[data-tool="insert.elements"]').click();
+  const collection = page.getByTestId('elements-panel').locator('[data-collection="shapes"]');
+  if (await collection.isVisible()) await collection.click();
+  return page.getByTestId('elements-shapes');
+}
+
 const surface = { kind: 'solid', color: { token: 'surface' } };
 
 /** A card as a converted slide has it: a group of the box and of what lies on it. */
@@ -341,15 +348,13 @@ test.describe('a card selected as a group', () => {
 });
 
 test.describe('the card of the shape library', () => {
-  const rowA = (page: Page) => page.getByTestId('top-tools-a');
-
   test('inserts one group of a box and its text, selected; one undo removes it', async ({
     page,
   }) => {
     await openApp(page);
-    await rowA(page).getByRole('button', { name: 'צורה' }).click();
+    await openShapes(page);
     // The shapes are all there as they were; the card is under them.
-    await expect(page.getByTestId('shape-library').getByRole('button')).toHaveCount(
+    await expect(page.getByTestId('elements-shapes').locator('[data-preset]')).toHaveCount(
       shapePresets.length,
     );
     const cards = page.getByRole('group', { name: 'כרטיסים' });
@@ -357,7 +362,7 @@ test.describe('the card of the shape library', () => {
 
     const before = await undoDepth(page);
     await cards.getByRole('button', { name: 'כרטיס' }).click();
-    await expect(page.getByTestId('shape-library')).toHaveCount(0);
+    await expect(page.getByTestId('elements-shapes')).toBeVisible();
     await expect(row(page)).toHaveAttribute('data-selection', 'group');
     expect(await undoDepth(page)).toBe(before + 1);
 
@@ -399,7 +404,7 @@ test.describe('the card of the shape library', () => {
 
   test('speaks the language of the deck, and a second card steps aside', async ({ page }) => {
     await openApp(page, { lang: 'en' });
-    await rowA(page).getByRole('button', { name: 'Shape' }).click();
+    await openShapes(page);
     await page.getByRole('group', { name: 'Cards' }).getByRole('button', { name: 'Card' }).click();
     const first = await groupOf(page);
     const words = first.children[1] as TextElement;
@@ -408,7 +413,7 @@ test.describe('the card of the shape library', () => {
       'A few words about what this card is for, in a line or two.',
     ]);
 
-    await rowA(page).getByRole('button', { name: 'Shape' }).click();
+    await openShapes(page);
     await page.getByRole('group', { name: 'Cards' }).getByRole('button', { name: 'Card' }).click();
     const second = await groupOf(page);
     expect(second.id).not.toBe(first.id);
@@ -427,7 +432,7 @@ test.describe('for the design gate', () => {
     page,
   }) => {
     await openApp(page, { lang: 'he', theme: 'light' });
-    await page.getByTestId('top-tools-a').getByRole('button', { name: 'צורה' }).click();
+    await openShapes(page);
     await expect(page.getByRole('group', { name: 'כרטיסים' })).toBeVisible();
     await settle(page);
     await page.screenshot({ path: out('tools-library-light-rtl') });
@@ -443,7 +448,7 @@ test.describe('for the design gate', () => {
     page,
   }) => {
     await openApp(page, { lang: 'en', theme: 'dark' });
-    await page.getByTestId('top-tools-a').getByRole('button', { name: 'Shape' }).click();
+    await openShapes(page);
     await page.getByRole('group', { name: 'Cards' }).getByRole('button').click();
     const accent = await open(page, 'Colour stripe');
     await side(accent, 'Start side').click();

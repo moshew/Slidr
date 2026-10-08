@@ -6,7 +6,7 @@ import { insertAssetsCommands } from '../stage/insert';
 import type { FoundIcon } from './icons/library';
 
 /*
- * What the media panel puts on a slide: a picture of the deck, a stock photo, an icon. Each
+ * What Media and Elements put on a slide: a picture of the deck, a stock photo, an icon. Each
  * insert is one change on the bus, so one undo step; it lands in the middle of the current
  * slide and ends selected, like the Insert buttons of row A.
  */

@@ -12,13 +12,13 @@ import { BackgroundTool } from './BackgroundTool';
 import { CODE_PANEL, CodePanel } from './CodePanel';
 import { HtmlRow } from './htmlTools';
 import { insertImages } from './insert';
-import { LineLibrary, ShapeLibrary } from './library';
+import { LineLibrary } from './library';
 import { HtmlMenuItems, ImageMenuItems } from './menu';
 import { en, he } from './messages';
 import { CardRow, EffectsRow, ImageRow, SeveralRow, ShapeRow } from './tools';
 
 /*
- * The objects area (WG5): inserting pictures, shapes and lines, styling them, the slide
+ * The objects area (WG5): inserting pictures and lines, styling them and Elements' shapes, the slide
  * background, and the code of an `html` element. See docs/adr/ADR-014-objects.md and
  * ADR-057-objects-code-media-images.md.
  */
@@ -27,7 +27,6 @@ registerMessages('objects', { he, en });
 
 /* Row A: Insert. */
 registerAction('insert.image', () => void insertImages(getEditor()));
-registerActionPopover('insert.shape', ShapeLibrary);
 registerActionPopover('insert.line', LineLibrary);
 
 /*
