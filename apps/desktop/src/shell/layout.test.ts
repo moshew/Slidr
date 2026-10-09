@@ -8,20 +8,19 @@ describe('FHD layout (SPEC 4.1)', () => {
     expect(fit.height).toBeCloseTo(693, 6);
   });
 
-  it('gives the Tool Panel 584 at 1920 and 420 at 1366', () => {
-    expect(panelWidth(1920, null)).toBe(584);
-    expect(panelWidth(1366, null)).toBe(420);
-    expect(defaultPanelWidth(1600)).toBeGreaterThan(420);
-    expect(defaultPanelWidth(1600)).toBeLessThan(584);
+  it('gives the Tool Panel 360 at 1920 and 320 at 1366', () => {
+    expect(panelWidth(1920, null)).toBe(360);
+    expect(panelWidth(1366, null)).toBe(320);
+    expect(defaultPanelWidth(1600)).toBeGreaterThan(320);
+    expect(defaultPanelWidth(1600)).toBeLessThan(360);
   });
 
-  it('keeps the panel between 25% and 45% of the window (UI-01)', () => {
-    expect(panelLimits(1920)).toEqual({ min: 480, max: 864 });
-    expect(panelWidth(1920, 0.1)).toBe(480);
+  it('keeps the panel between 280 px and 45% of the window', () => {
+    expect(panelLimits(1920)).toEqual({ min: 280, max: 864 });
+    expect(panelWidth(1920, 0.1)).toBe(280);
     expect(panelWidth(1920, 0.9)).toBe(864);
     expect(panelWidth(1920, 0.35)).toBe(672);
-    // Wider than FHD the default share would fall under 25%.
-    expect(panelWidth(3000, null)).toBe(750);
+    expect(panelWidth(3000, null)).toBe(360);
   });
 
   it('fits by height when the Stage is wide and short', () => {

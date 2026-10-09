@@ -21,7 +21,7 @@ import { Welcome } from './Welcome';
  * and switching the language mirrors everything without a reload.
  *
  *   title bar + document actions                                56
- *   ┌ Activity Bar 76 ┬ Tool Panel 584 ┬ Floating tools       80 ┐
+ *   ┌ Activity Bar 76 ┬ Tool Panel 360 ┬ Floating tools       80 ┐
  *   │                 │                │ Stage                    │
  *   │                 │                │ Filmstrip        132     │
  *   status bar + zoom                                           32

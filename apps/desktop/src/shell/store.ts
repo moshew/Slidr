@@ -48,14 +48,17 @@ export const useShell = create<ShellState>()(
     }),
     {
       name: 'slidr.shell',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       // Version 1 had three AI tools, `ai.deck`, `ai.slide` and `ai.object`: one chat now (ADR-072).
       // Version 2 had a panel of the HTML import: its conversation is one of that chat's now.
+      // Version 3 saved widths chosen for the former wide default. Start the compact layout at
+      // its new default once; later splitter changes continue to persist normally.
       migrate: (stored, version) => {
         const state = (stored ?? {}) as Partial<ShellState>;
         if (version < 2 && state.activePanel?.startsWith('ai.')) state.activePanel = PanelId.ai;
         if (version < 3 && state.activePanel === 'import') state.activePanel = PanelId.ai;
+        if (version < 4) state.panelShare = null;
         return state;
       },
       partialize: ({ activePanel, panelOpen, panelShare, theme }) => ({

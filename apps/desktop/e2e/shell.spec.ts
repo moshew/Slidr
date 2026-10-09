@@ -34,10 +34,10 @@ test('FHD: the refreshed regions and the slide fitted below its floating tools',
   expect((await box(page, 'filmstrip')).height).toBe(132);
   expect((await box(page, 'status-bar')).height).toBe(32);
   expect((await box(page, 'activity-bar')).width).toBe(76);
-  expect((await box(page, 'tool-panel')).width).toBe(584);
+  expect((await box(page, 'tool-panel')).width).toBe(360);
 
   const stage = await box(page, 'stage');
-  expect([stage.width, stage.height]).toEqual([1260, 812]);
+  expect([stage.width, stage.height]).toEqual([1484, 812]);
   const surface = await box(page, 'stage-surface');
   const tools = await box(page, 'top-tools-b');
   expect(surface.y).toBeGreaterThanOrEqual(tools.y + tools.height);
@@ -70,7 +70,7 @@ test('the AI area is on the right in Hebrew and moves left in English, live', as
   panel = await box(page, 'tool-panel');
   expect(bar.x).toBe(0);
   expect(panel.x).toBe(76);
-  expect((await box(page, 'stage')).x).toBe(76 + 584);
+  expect((await box(page, 'stage')).x).toBe(76 + 360);
   expect(await page.evaluate(() => (window as unknown as { marker?: number }).marker)).toBe(7);
 
   await page.getByRole('radio', { name: 'עברית' }).click();
@@ -101,7 +101,7 @@ test('the theme follows the OS and switches live', async ({ page }) => {
   expect(await panelColor()).toBe(dark);
 });
 
-test('the splitter keeps the Tool Panel between 25% and 45% of the window', async ({ page }) => {
+test('the splitter keeps the Tool Panel between 280 px and 45% of the window', async ({ page }) => {
   const splitter = page.getByTestId('panel-splitter');
   const grip = await splitter.boundingBox();
   if (!grip) throw new Error('no splitter');
@@ -121,16 +121,43 @@ test('the splitter keeps the Tool Panel between 25% and 45% of the window', asyn
   await page.mouse.down();
   await page.mouse.move(1900, y, { steps: 5 });
   await page.mouse.up();
-  await waitForPanelWidth(page, 480);
+  await waitForPanelWidth(page, 280);
 
   // The keyboard reaches the same limits; a double click restores the default.
   await splitter.focus();
   await page.keyboard.press('End');
   await waitForPanelWidth(page, 864);
   await page.keyboard.press('Home');
-  await waitForPanelWidth(page, 480);
+  await waitForPanelWidth(page, 280);
   await splitter.dblclick();
-  await waitForPanelWidth(page, 584);
+  await waitForPanelWidth(page, 360);
+});
+
+test('an old saved panel width resets to the compact default once', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'slidr.shell',
+      JSON.stringify({
+        state: { activePanel: 'ai', panelOpen: true, panelShare: 0.35, theme: 'system' },
+        version: 3,
+      }),
+    );
+  });
+  await page.reload();
+  await waitForPanelWidth(page, 360);
+  expect(
+    await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('slidr.shell')!);
+      return { version: saved.version, share: saved.state.panelShare };
+    }),
+  ).toEqual({ version: 4, share: null });
+
+  const splitter = page.getByTestId('panel-splitter');
+  await splitter.focus();
+  await page.keyboard.press('End');
+  await waitForPanelWidth(page, 864);
+  await page.reload();
+  await waitForPanelWidth(page, 864);
 });
 
 test('the Tool Panel collapses, the Activity Bar stays and the Stage grows', async ({ page }) => {
@@ -147,7 +174,7 @@ test('the Tool Panel collapses, the Activity Bar stays and the Stage grows', asy
 
   // The Activity Bar opens it again, on the panel that was clicked.
   await page.getByRole('button', { name: 'שכבות' }).click();
-  await waitForPanelWidth(page, 584);
+  await waitForPanelWidth(page, 360);
   await expect(page.getByRole('heading', { name: 'שכבות' })).toBeVisible();
   // Clicking the open panel's button collapses it.
   await page.getByRole('button', { name: 'שכבות' }).click();
@@ -246,8 +273,8 @@ test('the File menu offers the document commands', async ({ page }) => {
 test.describe('at 1366 × 768', () => {
   test.use({ viewport: { width: 1366, height: 768 } });
 
-  test('the Tool Panel shrinks to 420 and the slide still fits', async ({ page }) => {
-    expect((await box(page, 'tool-panel')).width).toBe(420);
+  test('the Tool Panel shrinks to 320 and the slide still fits', async ({ page }) => {
+    expect((await box(page, 'tool-panel')).width).toBe(320);
     const stage = await box(page, 'stage');
     const frame = await box(page, 'stage-frame');
     expect(frame.width).toBeLessThanOrEqual(stage.width - 48);

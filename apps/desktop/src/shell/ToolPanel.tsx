@@ -22,7 +22,7 @@ import {
 import { setAiTab, setPanelOpen, setPanelShare, useShell } from './store';
 
 /**
- * The Tool Panel (SPEC 4.1–4.3) with its splitter. It keeps the panel between 25% and 45% of the
+ * The Tool Panel (SPEC 4.1–4.3) with its splitter. It keeps the panel between 280 px and 45% of the
  * window (UI-01) and collapses to nothing, leaving the Activity Bar (UI-02). The content keeps
  * its width while the panel animates, so nothing reflows mid-way.
  */

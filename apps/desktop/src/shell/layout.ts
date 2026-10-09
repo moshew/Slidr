@@ -5,14 +5,15 @@ import { SLIDE_HEIGHT, SLIDE_WIDTH } from '@slidr/model';
  * Top Tools, Filmstrip, status bar) are CSS tokens in @slidr/ui; these are the ones that move.
  */
 
-/** Tool Panel width in a maximized FHD window (1920 wide). */
-export const PANEL_WIDTH = 584;
+/** Compact Tool Panel width in a maximized FHD window (1920 wide). */
+export const PANEL_WIDTH = 360;
 /** Tool Panel width at the minimum supported resolution, 1366 × 768. */
-export const PANEL_WIDTH_SMALL = 420;
+export const PANEL_WIDTH_SMALL = 320;
 const WIDE = 1920;
 const NARROW = 1366;
-/** The splitter keeps the Tool Panel between these shares of the window width (UI-01). */
-export const PANEL_MIN_SHARE = 0.25;
+/** The fixed minimum keeps the panel compact on wide displays. */
+export const PANEL_MIN_WIDTH = 280;
+/** The splitter still allows a wide panel for dense tools. */
 export const PANEL_MAX_SHARE = 0.45;
 /** Space around the slide when it is fitted to the Stage. */
 export const STAGE_MARGIN = 24;
@@ -21,7 +22,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-/** The Tool Panel's width before the user drags the splitter: 584 at 1920, 420 at 1366. */
+/** The Tool Panel's width before the user drags the splitter: 360 at 1920, 320 at 1366. */
 export function defaultPanelWidth(windowWidth: number): number {
   const t = (windowWidth - NARROW) / (WIDE - NARROW);
   const width = PANEL_WIDTH_SMALL + clamp(t, 0, 1) * (PANEL_WIDTH - PANEL_WIDTH_SMALL);
@@ -30,7 +31,7 @@ export function defaultPanelWidth(windowWidth: number): number {
 
 export function panelLimits(windowWidth: number): { min: number; max: number } {
   return {
-    min: Math.ceil(windowWidth * PANEL_MIN_SHARE),
+    min: PANEL_MIN_WIDTH,
     max: Math.floor(windowWidth * PANEL_MAX_SHARE),
   };
 }
