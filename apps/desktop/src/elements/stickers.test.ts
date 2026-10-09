@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { HebrewTags } from '../media/icons/search';
@@ -14,17 +14,33 @@ import {
 } from './stickers';
 
 /*
- * The two catalogues against the art sets as the app's packages ship them. The data is read
- * here from the files; the app reads the same files through the bundler, when it first needs
- * them (`stickers.ts`).
+ * The two catalogues against the art sets: as the app's packages ship them, or as the drawings
+ * taken from a larger set were copied into `art/`. The data is read here from the files; the app
+ * reads the same files through the bundler, when it first needs them (`stickers.ts`).
  */
 
 const file = (path: string) =>
   JSON.parse(readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')) as unknown;
 
-const art = (set: string) =>
-  (file(`../../node_modules/@iconify-json/${set}/icons.json`) as { icons: Record<string, unknown> })
-    .icons;
+const sets = new Map<string, Record<string, unknown>>();
+
+/** A set's drawings: the ones copied into `art/`, or the whole of its package. */
+function art(set: string) {
+  const copied = `./art/${set}.json`;
+  const path = existsSync(fileURLToPath(new URL(copied, import.meta.url)))
+    ? copied
+    : `../../node_modules/@iconify-json/${set}/icons.json`;
+  if (!sets.has(set)) sets.set(set, (file(path) as { icons: Record<string, unknown> }).icons);
+  return sets.get(set)!;
+}
+
+/** The set each style takes more of its drawings from, and how many. */
+const MORE = {
+  glossy: 'fluent-emoji',
+  illustrated: 'fluent-emoji-flat',
+  outlined: 'streamline-emojis',
+};
+const TAKEN = 250;
 
 const graphicsCatalog = file('./graphics-catalog.json') as GraphicsCatalog;
 const graphics = graphicsOf(graphicsCatalog, file('../media/icons/hebrew.json') as HebrewTags);
@@ -33,15 +49,33 @@ const emoji = emojiOf(file('./emoji-catalog.json') as EmojiCatalog);
 const ids = (found: readonly { id: string }[]) => found.map(({ id }) => id);
 
 describe('the graphics', () => {
-  it('come in three styles, each a set of drawings the packages still have', () => {
+  it('come in three styles, each of drawings its sets still have', () => {
     expect(graphicsCatalog.map(({ id }) => id)).toEqual([...GRAPHIC_STYLES]);
-    for (const { set, icons } of graphicsCatalog) {
-      expect(icons.length).toBeGreaterThan(150);
-      const drawn = art(set);
-      expect(icons.filter((name) => !(name in drawn))).toEqual([]);
-    }
-    expect(graphics.length).toBeGreaterThan(1000);
+    for (const { icons } of graphicsCatalog) expect(icons.length).toBeGreaterThan(370);
+    expect(graphics.filter((graphic) => !(graphic.art in art(graphic.set)))).toEqual([]);
+    expect(graphics.length).toBeGreaterThan(1800);
     expect(new Set(ids(graphics)).size).toBe(graphics.length);
+  });
+
+  it('have more in each style from a larger set, whose drawings and notice are copied', () => {
+    for (const style of GRAPHIC_STYLES) {
+      const more = graphics.filter(({ group, set }) => group === style && set === MORE[style]);
+      expect(more).toHaveLength(TAKEN);
+      // The copy holds what is offered, and nothing else of the set.
+      expect(Object.keys(art(MORE[style])).sort()).toEqual(more.map((one) => one.art).sort());
+      expect(file(`./art/${MORE[style]}.notice.json`)).toMatchObject({
+        name: `@iconify-json/${MORE[style]}`,
+        license: expect.stringMatching(/^(MIT|CC-BY-4.0)$/) as string,
+        text: expect.stringMatching(/Microsoft|Streamline/) as string,
+      });
+      // None of them is called as another drawing of the style is.
+      const names = graphics.filter(({ group }) => group === style).map(({ label }) => label.en);
+      const twice = new Set(names.filter((name, at) => names.indexOf(name) !== at));
+      expect(more.filter(({ label }) => twice.has(label.en))).toEqual([]);
+    }
+    // The two Fluent sets draw the same subjects: a subject is in one of the two styles.
+    const flat = new Set(Object.keys(art(MORE.illustrated)));
+    expect(Object.keys(art(MORE.glossy)).filter((name) => flat.has(name))).toEqual([]);
   });
 
   it('leave out the logos and characters of other firms', () => {
@@ -65,14 +99,30 @@ describe('the graphics', () => {
         'graphic:glossy:trophy-48',
         'graphic:illustrated:space-shuttle',
         'graphic:outlined:startup-launch',
+        'graphic:glossy:rocket',
+        'graphic:illustrated:bar-chart',
+        'graphic:outlined:thumbs-up-1',
       ]
         .map((id) => graphics.find((graphic) => graphic.id === id)!)
         .map(stickerMarkup),
     );
     expect(markup[0]).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" viewBox="0 0 48 48">/);
-    expect(markup[1]).toContain('viewBox="0 0 48 48"');
+    expect(markup[1]).toContain('viewBox="9 9 30 30"');
     expect(markup[2]).toContain('viewBox="0 0 24 24"');
+    expect(markup[3]).toContain('viewBox="0 0 32 32"');
+    expect(markup[4]).toContain('viewBox="0 0 32 32"');
+    expect(markup[5]).toContain('viewBox="0 0 48 48"');
     expect(markup.every((svg) => svg?.endsWith('</svg>'))).toBe(true);
+  });
+
+  it('are without the disc the illustrated set draws everything on', async () => {
+    const drawn = art('streamline-kameleon-color') as Record<string, { body: string }>;
+    const paths = (svg: string) => svg.split('<path').length - 1;
+    for (const graphic of graphics.filter(({ set }) => set === 'streamline-kameleon-color')) {
+      const markup = (await stickerMarkup(graphic))!;
+      expect(markup, graphic.id).toContain('viewBox="9 9 30 30"');
+      expect(paths(markup), graphic.id).toBe(paths(drawn[graphic.art]!.body) - 1);
+    }
   });
 });
 

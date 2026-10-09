@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
+  DropdownMenuRadioIconItem,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -102,42 +103,7 @@ const SIDE_ICONS: Record<ReturnType<typeof alignSide>, LucideIcon> = {
 const alignNames = (kind: ContextToolProps['kind'] | undefined) =>
   inSeveralRow(kind) ? 'alignText' : 'align';
 
-/**
- * The four alignments as buttons. They are laid out in the direction of the paragraph, so the
- * button for the left is on the left whichever way the UI reads.
- */
-function AlignButtons({ text, names }: { text: Text; names: 'align' | 'alignText' }) {
-  const { t } = useTranslation('text');
-  const setParagraph = useSetParagraph(text);
-  const { align, direction } = text.format;
-  return (
-    <span
-      dir={direction}
-      role="group"
-      aria-label={t(`${names}.label`)}
-      className="inline-flex gap-0.5"
-    >
-      {ALIGNS.map((value) => {
-        const side = alignSide(value, direction);
-        return (
-          <TextToggle
-            key={value}
-            icon={SIDE_ICONS[side]}
-            label={t(`${names}.${side}`)}
-            data-align={value}
-            pressed={align === value}
-            onPressedChange={() => setParagraph({ align: value })}
-          />
-        );
-      })}
-    </span>
-  );
-}
-
-/**
- * In the row when there is room; a menu otherwise. The menu of a text box holds the direction of
- * the paragraph too, which has no button of its own in the compact layout.
- */
+/** The current alignment opens all four choices. Compact text rows include direction here too. */
 export function AlignTool({ kind }: Partial<ContextToolProps>) {
   const { t } = useTranslation('text');
   const compact = useCompact();
@@ -145,7 +111,6 @@ export function AlignTool({ kind }: Partial<ContextToolProps>) {
   const setParagraph = useSetParagraph(text);
   if (!text) return null;
   const names = alignNames(kind);
-  if (!compact) return <AlignButtons text={text} names={names} />;
   const { align, direction } = text.format;
   const current = isMixed(align) ? 'start' : align;
   return (
@@ -155,21 +120,35 @@ export function AlignTool({ kind }: Partial<ContextToolProps>) {
           size="sm"
           icon={SIDE_ICONS[alignSide(current, direction)]}
           label={t(`${names}.label`)}
+          data-align={isMixed(align) ? 'mixed' : align}
+          data-testid="text-align-menu"
+          className="data-[state=open]:bg-ui-hover"
           onMouseDown={keepFocus}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent onCloseAutoFocus={closeToText}>
+      <DropdownMenuContent
+        className={cx('rounded-inset!', !(compact && kind === 'text') && 'min-w-0!')}
+        onCloseAutoFocus={closeToText}
+      >
         <DropdownMenuRadioGroup
+          className="flex flex-col items-center"
           value={orNull(align) ?? ''}
           onValueChange={(next) => setParagraph({ align: next as Align })}
         >
-          {ALIGNS.map((value) => (
-            <DropdownMenuRadioItem key={value} value={value}>
-              {t(`${names}.${alignSide(value, direction)}`)}
-            </DropdownMenuRadioItem>
-          ))}
+          {ALIGNS.map((value) => {
+            const side = alignSide(value, direction);
+            return (
+              <DropdownMenuRadioIconItem
+                key={value}
+                value={value}
+                icon={SIDE_ICONS[side]}
+                label={t(`${names}.${side}`)}
+                data-align={value}
+              />
+            );
+          })}
         </DropdownMenuRadioGroup>
-        {kind === 'text' && (
+        {compact && kind === 'text' && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>{t('direction.label')}</DropdownMenuLabel>

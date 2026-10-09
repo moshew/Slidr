@@ -147,6 +147,31 @@ export function DropdownMenuRadioItem({
   );
 }
 
+/** A compact radio choice whose icon is its visible label. */
+export function DropdownMenuRadioIconItem({
+  icon,
+  label,
+  className,
+  ...props
+}: { icon: LucideIcon; label: string } & Omit<
+  ComponentPropsWithRef<typeof RadixDropdownMenu.RadioItem>,
+  'children' | 'aria-label'
+>) {
+  return (
+    <RadixDropdownMenu.RadioItem
+      aria-label={label}
+      className={cx(
+        'flex size-control-sm cursor-default items-center justify-center rounded-control text-ui-fg-muted outline-none select-none',
+        'data-highlighted:bg-ui-hover data-highlighted:text-ui-fg data-[state=checked]:bg-ui-accent-soft data-[state=checked]:text-ui-accent-fg',
+        className,
+      )}
+      {...props}
+    >
+      <Icon icon={icon} />
+    </RadixDropdownMenu.RadioItem>
+  );
+}
+
 export function DropdownMenuLabel({
   className,
   ...props

@@ -1,6 +1,6 @@
 import { Blend, Film } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
-import { registerContextTool, registerPanel } from '../shell';
+import { openPanel, registerAction, registerContextTool, registerPanel } from '../shell';
 import { AnimationsPanel } from './AnimationsPanel';
 import { TransitionsPanel } from './TransitionEditor';
 import { en, he } from './messages';
@@ -24,8 +24,10 @@ registerPanel({
   content: AnimationsPanel,
 });
 
+const TRANSITIONS_PANEL = 'transitions';
+
 registerPanel({
-  id: 'transitions',
+  id: TRANSITIONS_PANEL,
   kind: 'tool',
   slot: 'tools',
   order: 1.5,
@@ -33,6 +35,9 @@ registerPanel({
   icon: Blend,
   content: TransitionsPanel,
 });
+
+// A transition's mark in the Filmstrip makes its slide the current one, and opens the panel.
+registerAction('transition', () => openPanel(TRANSITIONS_PANEL));
 
 registerContextTool({
   id: 'slide.transition',

@@ -44,9 +44,11 @@ import {
 } from 'react';
 import { useStore } from 'zustand';
 import {
+  coversFrame,
   cropPan,
   cropPatch,
   cropResize,
+  cropStretch,
   cropView,
   cropZoom,
   cropZoomLevel,
@@ -99,6 +101,7 @@ import {
   AgentMark,
   Beside,
   CropOverlay,
+  CropPicture,
   elementBox,
   Handles,
   Label,
@@ -250,6 +253,11 @@ type Gesture =
       path: GroupElement[];
       handle: Handle;
       aspect: boolean;
+      /**
+       * The edge of an image is dragged (IMG-02): where its picture lay in the frame when the drag
+       * began. The edge cuts that picture or shows more of it, instead of sizing the image.
+       */
+      stretch?: CropView;
       snapBoxes: Frame[];
     }
   | { kind: 'rotate'; txId: string; start: Point; located: Located; inverse: Matrix; center: Point }
@@ -356,6 +364,13 @@ function sharedPath(items: readonly { path: GroupElement[] }[]): GroupElement[] 
 const isLine = (located: Located): located is Located & { element: LineElement } =>
   located.element.type === 'line';
 
+/**
+ * The box crop mode works in: the image's own, or, in a drawn frame (`smartFrame`), the opening
+ * that the picture shows through.
+ */
+const cropBox = (located: Located, view: CropView): Located =>
+  view.outer ? { ...located, element: { ...located.element, frame: view.frame } } : located;
+
 export function Stage({
   bus,
   deck,
@@ -425,12 +440,15 @@ export function Stage({
   const gesture = useRef<Gesture | null>(null);
   // What kind of drag is under way, for rendering; the gesture itself lives in the ref.
   const [activeKind, setActiveKind] = useState<Gesture['kind'] | null>(null);
+  /** The handle that is dragged, which stays lit, and whether its drag cuts a picture. */
+  const [held, setHeld] = useState<{ handle: string; cuts?: boolean } | null>(null);
   /** The slide the gesture under way began on: what it changes is written there. */
   const gestureSlide = useRef<string | null>(null);
-  const begin = (g: Gesture) => {
+  const begin = (g: Gesture, by: { handle: string; cuts?: boolean } | null = null) => {
     gesture.current = g;
     gestureSlide.current = currentSlideId;
     setActiveKind(g.kind);
+    setHeld(by);
     setStageGesture(true);
   };
   useEffect(() => () => setStageGesture(false), []);
@@ -531,14 +549,26 @@ export function Stage({
     if (!editing || image?.type !== 'image' || editing.locked) return undefined;
     const asset = image.assetId ? deck.assets[image.assetId] : undefined;
     if (!asset?.width || !asset.height) return undefined;
+    const view = cropView(image, { w: asset.width, h: asset.height });
     return {
       located: editing,
       image,
-      view: cropView(image, { w: asset.width, h: asset.height }),
+      view,
+      box: cropBox(editing, view),
       url: resolveAsset?.(asset),
     };
   }, [editing, deck.assets, resolveAsset]);
   const croppingId = crop?.image.id ?? null;
+
+  /** The picture of an image whose file has a known size: where it lies in the frame, and its file. */
+  const pictureOf = (image: ImageElement) => {
+    const asset = image.assetId ? deck.assets[image.assetId] : undefined;
+    if (!asset?.width || !asset.height) return undefined;
+    return {
+      view: cropView(image, { w: asset.width, h: asset.height }),
+      url: resolveAsset?.(asset),
+    };
+  };
 
   useEffect(() => {
     // An image without a picture, or a locked one, has nothing to crop.
@@ -554,6 +584,11 @@ export function Stage({
   useEffect(() => {
     if (editing?.element.type === 'html' && !htmlId) selection.getState().stopEditing();
   }, [editing, htmlId, selection]);
+  // The text box whose text is typed in. It keeps its frame: the handles size and turn it and the
+  // edge of the frame moves it, and the text stays open under all of them. A press on the text
+  // itself is the editor's, so without the frame the box could not be taken at all, and a new one
+  // could not be put in its place before its first word.
+  const typing = editing?.element.type === 'text' && !editing.locked ? editing : undefined;
   const wasHtml = useRef<string | undefined>(undefined);
   useEffect(() => {
     const ended = wasHtml.current !== undefined && htmlId === undefined;
@@ -593,7 +628,8 @@ export function Stage({
       ? Math.min(keys.point, single.element.points.length - 1)
       : null;
   // The crop handle that the arrows move; without one they move the picture under the frame.
-  const handleAt = crop ? keys.handle : null;
+  // The opening of a drawn frame has no handles: its picture is all there is to move.
+  const handleAt = crop && !crop.view.outer ? keys.handle : null;
   // The element the selection walk stands on, which Alt+Enter adds to the selection or takes out.
   const walkAt = keys.cursor !== null ? index.get(keys.cursor) : undefined;
   /** The selection is about to change by the walk's own toggle, which leaves the walk where it is. */
@@ -694,12 +730,20 @@ export function Stage({
     const g = gesture.current;
     gesture.current = null;
     setActiveKind(null);
+    setHeld(null);
     setStageGesture(false);
     if (frame.current !== undefined) cancelAnimationFrame(frame.current);
     frame.current = undefined;
     setGuides([]);
     setMarquee(undefined);
     setTurn(undefined);
+    // The text stayed open under a drag of its frame, and the press took the keyboard to the
+    // Stage: it goes back to the text, with its caret.
+    if (g && typing) {
+      slideRoot.current
+        ?.querySelector<HTMLElement>('[data-text-editor]')
+        ?.focus({ preventScroll: true });
+    }
     if (!g || !('txId' in g)) return;
     if (cancel) {
       bus.rollback(g.txId);
@@ -852,8 +896,8 @@ export function Stage({
   /** The frame of the image being cropped contains the point. */
   const inCropFrame = (p: Point): boolean => {
     if (!crop) return false;
-    const own = apply(invert(elementMatrix(crop.located)), p);
-    const { w, h } = crop.image.frame;
+    const own = apply(invert(elementMatrix(crop.box)), p);
+    const { w, h } = crop.view.frame;
     return own.x >= 0 && own.x <= w && own.y >= 0 && own.y <= h;
   };
 
@@ -906,7 +950,26 @@ export function Stage({
       }
       // A press anywhere else leaves crop mode, and then acts as it always does.
     }
-    if (editingId) selection.getState().stopEditing();
+    // On the frame of the text that is typed in, the press is for the box, and the text stays open.
+    const handle = dataOf(e.target, 'handle');
+    const moveFrame = Boolean(typing) && dataOf(e.target, 'move-frame') !== undefined;
+    if (editingId && !(typing && handle) && !moveFrame) selection.getState().stopEditing();
+    if (moveFrame) {
+      begin({
+        kind: 'move',
+        txId: newId('tx'),
+        start: p,
+        moved: false,
+        duplicate: false,
+        restore: selection.getState().selectedElementIds,
+        pendingSelection: undefined,
+        items: [],
+        path: undefined,
+        snapBoxes: [],
+        inside: undefined,
+      });
+      return;
+    }
 
     const pointIndex = dataOf(e.target, 'line-point');
     if (pointIndex !== undefined && single && isLine(single) && !single.locked) {
@@ -920,35 +983,50 @@ export function Stage({
       });
       return;
     }
-    const handle = dataOf(e.target, 'handle');
     if (handle && single && !single.locked) {
       const txId = newId('tx');
       const inverse = invert(single.space);
       const { frame: f } = single.element;
       if (handle === 'rotate') {
-        begin({
-          kind: 'rotate',
-          txId,
-          start: apply(inverse, p),
-          located: single,
-          inverse,
-          center: { x: f.x + f.w / 2, y: f.y + f.h / 2 },
-        });
+        begin(
+          {
+            kind: 'rotate',
+            txId,
+            start: apply(inverse, p),
+            located: single,
+            inverse,
+            center: { x: f.x + f.w / 2, y: f.y + f.h / 2 },
+          },
+          { handle },
+        );
       } else {
-        begin({
-          kind: 'resize',
-          txId,
-          start: p,
-          items: [single],
-          frame: f,
-          rotation: single.element.rotation,
-          space: single.space,
-          inverse,
-          path: single.path,
-          handle: HANDLES[handle as keyof typeof HANDLES],
-          aspect: keepsAspect(single.element),
-          snapBoxes: snapCandidates(index, new Set([single.element.id])),
-        });
+        const hd = HANDLES[handle as keyof typeof HANDLES];
+        const el = single.element;
+        // An edge of an image moves alone, and cuts the picture or shows more of it (IMG-02); a
+        // corner sizes the image whole, as every handle of an SVG and of a video does. An image
+        // in a drawn frame is sized with that frame by every handle. A picture that leaves part
+        // of its frame bare (`contain`) is fitted to the frame again, as it was.
+        const alone = el.type === 'image' && !el.smartFrame && (hd.x === 0 || hd.y === 0);
+        const picture = alone ? pictureOf(el)?.view : undefined;
+        const stretch = picture && coversFrame(picture) ? picture : undefined;
+        begin(
+          {
+            kind: 'resize',
+            txId,
+            start: p,
+            items: [single],
+            frame: f,
+            rotation: el.rotation,
+            space: single.space,
+            inverse,
+            path: single.path,
+            handle: hd,
+            aspect: keepsAspect(el) && !alone,
+            stretch,
+            snapBoxes: snapCandidates(index, new Set([el.id])),
+          },
+          { handle, cuts: Boolean(stretch) },
+        );
       }
       return;
     }
@@ -956,35 +1034,41 @@ export function Stage({
       // The rotation handle of the box around several elements turns them together.
       const f = together.element.frame;
       const inverse = invert(together.space);
-      begin({
-        kind: 'rotate-together',
-        txId: newId('tx'),
-        start: apply(inverse, p),
-        items: selectedLocated,
-        inverse,
-        frame: f,
-        center: { x: f.x + f.w / 2, y: f.y + f.h / 2 },
-        path: together.path,
-      });
+      begin(
+        {
+          kind: 'rotate-together',
+          txId: newId('tx'),
+          start: apply(inverse, p),
+          items: selectedLocated,
+          inverse,
+          frame: f,
+          center: { x: f.x + f.w / 2, y: f.y + f.h / 2 },
+          path: together.path,
+        },
+        { handle },
+      );
       setTurn({ frame: f, angle: 0 });
       return;
     }
     if (handle && together) {
       // The handles of the box around several elements resize them together.
-      begin({
-        kind: 'resize',
-        txId: newId('tx'),
-        start: p,
-        items: selectedLocated,
-        frame: together.element.frame,
-        rotation: 0,
-        space: together.space,
-        inverse: invert(together.space),
-        path: together.path,
-        handle: HANDLES[handle as keyof typeof HANDLES],
-        aspect: false,
-        snapBoxes: snapCandidates(index, new Set(selected)),
-      });
+      begin(
+        {
+          kind: 'resize',
+          txId: newId('tx'),
+          start: p,
+          items: selectedLocated,
+          frame: together.element.frame,
+          rotation: 0,
+          space: together.space,
+          inverse: invert(together.space),
+          path: together.path,
+          handle: HANDLES[handle as keyof typeof HANDLES],
+          aspect: false,
+          snapBoxes: snapCandidates(index, new Set(selected)),
+        },
+        { handle },
+      );
       return;
     }
 
@@ -1044,7 +1128,8 @@ export function Stage({
     setOverText(false);
     setOverGroupChild(false);
     if (g.pendingSelection) selection.getState().selectElements([g.pendingSelection]);
-    g.duplicate ||= alt;
+    // A box that is typed in is moved, not copied: the copy would be of a text half written.
+    g.duplicate ||= alt && !typing;
     let moving = movable(index);
     if (g.duplicate && moving.length) {
       const commands = duplicateElements(
@@ -1201,6 +1286,18 @@ export function Stage({
         };
         // What is in a group is stretched with it, and so are several elements with their box.
         const only = g.items.length === 1 ? g.items[0]?.element : undefined;
+        let own: Patch = { frame: rounded };
+        if (g.stretch && only?.type === 'image') {
+          // The edge of an image cuts its picture or shows more of it. Where the frame is as
+          // long as it was, and where Shift sizes the image whole, the picture is in the frame
+          // as it was when the drag began.
+          const wide = g.handle.x !== 0;
+          const size = wide ? rounded.w : rounded.h;
+          const cuts = !keepAspect && size !== Math.round(wide ? g.frame.w : g.frame.h);
+          own = cuts
+            ? cropPatch({ ...cropStretch(g.stretch, g.handle, size, alt), frame: rounded })
+            : { frame: rounded, crop: only.crop ?? null };
+        }
         const patches = !only
           ? resizeTogether(
               g.items.map((l) => l.element),
@@ -1209,7 +1306,7 @@ export function Stage({
             )
           : only.type === 'group'
             ? resizeGroup(only, rounded)
-            : new Map<string, Patch>([[only.id, { frame: rounded }]]);
+            : new Map<string, Patch>([[only.id, own]]);
         commit(g.txId, 'Resize', g.path, patches);
         return;
       }
@@ -1318,6 +1415,16 @@ export function Stage({
       }
       return;
     }
+    // On the frame of the text that is typed in, the second press is one more press on the frame:
+    // it does not go on to what lies under the frame. By position, as the Stage holds the pointer.
+    if (
+      typing &&
+      document
+        .elementsFromPoint(e.clientX, e.clientY)
+        .some((node) => node.hasAttribute('data-move-frame') || node.hasAttribute('data-handle'))
+    ) {
+      return;
+    }
     // A double-click on a point of the selected line removes it; on its stroke it adds one.
     if (single && isLine(single) && !single.locked) {
       const line = single.element;
@@ -1391,7 +1498,7 @@ export function Stage({
     if (cropped) {
       // The wheel scales the picture under the frame, around the pointer.
       const { located, image, view: v } = cropped;
-      const at = apply(invert(elementMatrix(located)), toSlide(e.clientX, e.clientY));
+      const at = apply(invert(elementMatrix(cropBox(located, v))), toSlide(e.clientX, e.clientY));
       const pivot = positionToOwn(v, {
         x: Math.min(v.frame.w, Math.max(0, at.x)),
         y: Math.min(v.frame.h, Math.max(0, at.y)),
@@ -1799,8 +1906,9 @@ export function Stage({
       }
       case 'part': {
         if (crop) {
-          // The picture itself, then the eight handles, clockwise from the top left corner.
-          const order = [null, ...HANDLE_ORDER];
+          // The picture itself, then the eight handles, clockwise from the top left corner. The
+          // opening of a drawn frame has none.
+          const order = crop.view.outer ? [null] : [null, ...HANDLE_ORDER];
           const to = order.indexOf(handleAt) + command.step;
           // Past either end the key is the browser's again, as it is past the last element of
           // the slide: the keyboard goes on to what is beside the Stage, and back from the
@@ -1978,6 +2086,13 @@ export function Stage({
   else if (turn && active === 'rotate-together')
     label = `${Math.round(turn.angle > 180 ? turn.angle - 360 : turn.angle)}°`;
 
+  // While the edge of an image is dragged, what its frame leaves out of the picture is drawn
+  // around it, dimmed, as in crop mode: the edge is seen to cut the picture, or the picture to grow.
+  const cut =
+    held?.cuts && active === 'resize' && single?.element.type === 'image'
+      ? pictureOf(single.element)
+      : undefined;
+
   let overlay: ReactNode = null;
   // The handles are where the real elements are, which a preview may have moved or replaced.
   if (slide && !previewing) {
@@ -2014,13 +2129,14 @@ export function Stage({
               located={located}
               view={stageView}
               dashed={located.locked}
+              typing={located === typing}
             />
           ),
         )}
         {together ? (
           <>
             <Outline located={together} view={stageView} dashed />
-            <Handles located={together} view={stageView} />
+            <Handles located={together} view={stageView} held={held?.handle} />
           </>
         ) : selectedLocated.length > 1 ? (
           <div
@@ -2045,15 +2161,27 @@ export function Stage({
         {tables.overlay}
         {crop ? (
           <CropOverlay
-            located={crop.located}
+            located={crop.box}
             view={stageView}
             crop={crop.view}
             url={crop.url}
             active={active === 'crop-resize' || active === 'crop-pan'}
             handle={handleAt}
           />
-        ) : single && !single.locked && editingId !== single.element.id ? (
-          <Handles located={single} view={stageView} rotateOnly={isLine(single)} />
+        ) : single && !single.locked && (editingId !== single.element.id || single === typing) ? (
+          <>
+            {cut?.url ? (
+              <CropPicture located={single} view={stageView} crop={cut.view} url={cut.url} />
+            ) : null}
+            <Handles
+              key={single.element.id}
+              located={single}
+              view={stageView}
+              rotateOnly={isLine(single)}
+              held={held?.handle}
+              typing={single === typing}
+            />
+          </>
         ) : null}
         {sized && label ? (
           <Label bounds={slideBounds(sized)} view={stageView} text={label} />

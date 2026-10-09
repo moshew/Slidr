@@ -171,11 +171,18 @@ describe('the library as the app loads it', () => {
     expect(await toEnglish('שמש')).toBe('sun');
   });
 
-  it('has every starter icon', async () => {
+  it('offers 500 additional distinct, drawable icons before a search', async () => {
     const line = await starterIcons();
-    expect(line.map((icon) => icon.name)).toEqual([...STARTERS]);
+    expect(line.slice(0, STARTERS.length).map((icon) => icon.name)).toEqual([...STARTERS]);
+    expect(line).toHaveLength(STARTERS.length + 500);
+    expect(new Set(line.map((icon) => icon.id)).size).toBe(line.length);
+    expect(line.every((icon) => icon.svg.startsWith('<svg ') && icon.svg.endsWith('</svg>'))).toBe(
+      true,
+    );
     const filled = await starterIcons('filled');
-    expect(filled.length).toBeGreaterThan(30);
+    expect(filled).toHaveLength(line.length);
+    expect(new Set(filled.map((icon) => icon.id)).size).toBe(filled.length);
+    expect(filled.every((icon) => icon.id.endsWith('-filled'))).toBe(true);
     expect(filled.every((icon) => icon.svg.includes('fill="currentColor"'))).toBe(true);
   });
 });

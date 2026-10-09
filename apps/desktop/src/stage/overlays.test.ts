@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { besidePosition } from './overlays';
+import { HANDLES } from './geometry';
+import { besidePosition, handleSize } from './overlays';
+
+describe('handleSize', () => {
+  it('draws a dot on a corner and a bar along an edge', () => {
+    expect(handleSize(HANDLES.nw, 300, 200)).toEqual({ w: 12, h: 12 });
+    expect(handleSize(HANDLES.n, 300, 200)).toEqual({ w: 16, h: 6 });
+    expect(handleSize(HANDLES.e, 300, 200)).toEqual({ w: 6, h: 16 });
+  });
+
+  it('shortens the bar on a short edge, and leaves it out where the dots leave no room', () => {
+    // A line of text: its sides are short, its top and bottom are not.
+    expect(handleSize(HANDLES.w, 300, 30)).toEqual({ w: 6, h: 10 });
+    expect(handleSize(HANDLES.s, 300, 30)).toEqual({ w: 16, h: 6 });
+    expect(handleSize(HANDLES.w, 300, 27)).toBeUndefined();
+    expect(handleSize(HANDLES.n, 20, 200)).toBeUndefined();
+    // A corner always has its dot.
+    expect(handleSize(HANDLES.se, 4, 4)).toEqual({ w: 12, h: 12 });
+  });
+});
 
 /* Where the toolbar goes beside the selection (STG-05), in screen pixels of the Stage. */
 

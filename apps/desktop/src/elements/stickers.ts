@@ -9,8 +9,10 @@ import {
 
 /*
  * The colour art of the Elements panel: graphics in three styles, and every emoji. Each is a
- * drawing of an art set of the app's packages, and goes onto a slide as an `svg` element with
- * the drawing's own markup, so a deck carries it wherever it is opened.
+ * drawing of an art set, and goes onto a slide as an `svg` element with the drawing's own
+ * markup, so a deck carries it wherever it is opened. A set is a package of the app's, or the
+ * drawings taken from a far larger set, copied into `art/` by the script that writes the
+ * graphics catalogue (`scripts/generate-graphics-catalog.mjs`).
  *
  * Nothing of it is loaded when the app starts. The two catalogues say what is offered, in what
  * order and under which words; a set's drawings are megabytes of JSON, read as text and parsed
@@ -68,12 +70,22 @@ const ART = {
     () => import('@iconify-json/streamline-ultimate-color/icons.json?raw'),
   ),
   twemoji: lazy<Art>(() => import('@iconify-json/twemoji/icons.json?raw')),
+  'fluent-emoji': lazy<Art>(() => import('./art/fluent-emoji.json?raw')),
+  'fluent-emoji-flat': lazy<Art>(() => import('./art/fluent-emoji-flat.json?raw')),
+  'streamline-emojis': lazy<Art>(() => import('./art/streamline-emojis.json?raw')),
 };
 
 export type ArtSet = keyof typeof ART;
 
 /** The side of a drawing's box when neither it nor its set states one. */
 const DEFAULT_BOX = 16;
+
+/**
+ * The illustrated set draws everything on a coloured disc that fills its box. The app leaves the
+ * disc out: a graphic is the drawing alone, which lies in the middle part of the box.
+ */
+const DISC = /^(<g fill="none">)<path fill="#[0-9a-f]+" d="M(?:24 47|48 23)\.[^"]*"\/>/;
+const ON_DISC = '9 9 30 30';
 
 /** A sticker as a whole SVG document, or undefined when its set no longer draws it. */
 export async function stickerMarkup(sticker: Sticker): Promise<string | undefined> {
@@ -82,13 +94,16 @@ export async function stickerMarkup(sticker: Sticker): Promise<string | undefine
   if (!drawing) return undefined;
   const width = drawing.width ?? art.width ?? DEFAULT_BOX;
   const height = drawing.height ?? art.height ?? DEFAULT_BOX;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">${drawing.body}</svg>`;
+  const body =
+    sticker.set === 'streamline-kameleon-color' ? drawing.body.replace(DISC, '$1') : drawing.body;
+  const viewBox = body === drawing.body ? `0 0 ${width} ${height}` : ON_DISC;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${body}</svg>`;
 }
 
 /* ---------------------------------------------------------------- graphics */
 
-/** The graphics catalogue: a style, the art set that draws it, and the drawings offered. */
-export type GraphicsCatalog = readonly { id: string; set: string; icons: readonly string[] }[];
+/** The graphics catalogue: a style, and the drawings offered in it, each as `set:name`. */
+export type GraphicsCatalog = readonly { id: string; icons: readonly string[] }[];
 
 /** A drawing's name as words: without the size or the serial number its set ends it with. */
 const spoken = (name: string) => name.replace(/(-\d+)+$/, '').replaceAll('-', ' ');
@@ -116,8 +131,11 @@ function graphic(style: string, set: ArtSet, art: string, hebrew: HebrewTags): S
 
 /** Every graphic, style by style. Its Hebrew words are the dictionary's for its English name. */
 export function graphicsOf(catalog: GraphicsCatalog, hebrew: HebrewTags): Sticker[] {
-  return catalog.flatMap(({ id, set, icons }) =>
-    icons.map((art) => graphic(id, set as ArtSet, art, hebrew)),
+  return catalog.flatMap(({ id, icons }) =>
+    icons.map((icon) => {
+      const [set = '', art = ''] = icon.split(':');
+      return graphic(id, set as ArtSet, art, hebrew);
+    }),
   );
 }
 

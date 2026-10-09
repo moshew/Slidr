@@ -3,6 +3,9 @@ import { useStore } from 'zustand';
 import { Ai } from '@slidr/ui/icons';
 import type { ChatThread } from '../agent/agentService';
 import { registerMessages } from '../i18n';
+import { importOpening } from '../import/flow';
+import { ImportChat, ImportOpening } from '../import/ImportChat';
+import { importState } from '../import/session';
 import {
   openAiChat,
   PanelId,
@@ -27,6 +30,19 @@ import { activityLabel, targetSlideNumber } from './toolLabels';
 
 registerMessages('ai', { he, en });
 
+/**
+ * The chat of the panel: a conversation of the deck, or the one of the HTML import the deck came
+ * from, which is listed with them (SPEC 13.3).
+ */
+function AiChat() {
+  const { sessions } = aiOf(useEditor());
+  const ofImport = useStore(sessions.chat) === 'import';
+  const file = useStore(importState, (s) => s.file);
+  const opening = useStore(importOpening);
+  if (opening) return <ImportOpening />;
+  return ofImport && file ? <ImportChat file={file} /> : <Chat />;
+}
+
 registerPanel({
   id: PanelId.ai,
   kind: 'ai',
@@ -35,7 +51,7 @@ registerPanel({
   shortcut: 'Ctrl+1',
   title: 'panels.ai',
   icon: Ai,
-  chat: Chat,
+  chat: AiChat,
   actions: AiActions,
 });
 

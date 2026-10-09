@@ -79,13 +79,11 @@ export interface ToolPanelDefinition extends PanelBase {
 export type PanelDefinition = AiPanelDefinition | ToolPanelDefinition;
 
 /**
- * The panel ids the shell refers to: the AI chat of Ctrl+1 and Ctrl+L, and the HTML
- * import that the File menu and the welcome screen lead to.
+ * The panel ids the shell refers to: the AI chat of Ctrl+1 and Ctrl+L, and settings.
  */
 export const PanelId = {
   ai: 'ai',
   settings: 'settings',
-  htmlImport: 'import',
 } as const;
 
 const panels = createRegistry<PanelDefinition>();
@@ -195,7 +193,11 @@ export function useStageMenu(kind: SelectionKind, ofEditedText = false): StageMe
 
 /* ---------------------------------------------------------------- Top Tools row A */
 
-/** The buttons of row A that other areas implement. Unhandled, a button is disabled. */
+/**
+ * The buttons of row A that other areas implement, and what the File menu, the welcome screen
+ * and the Filmstrip's marks of the transitions offer of other areas. Unhandled, a button is
+ * disabled.
+ */
 export type ToolAction =
   | 'insert.text'
   | 'insert.image'
@@ -207,7 +209,9 @@ export type ToolAction =
   | 'insert.media'
   | 'insert.icon'
   | 'present'
-  | 'export';
+  | 'export'
+  | 'import'
+  | 'transition';
 
 /** What a row A button opens instead of acting at once, e.g. the shape library. */
 export interface ActionPopoverProps {

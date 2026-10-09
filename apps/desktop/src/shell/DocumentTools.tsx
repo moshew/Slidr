@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
   FilePlus,
+  FileInput,
   FolderOpen,
   History,
   House,
@@ -37,8 +38,8 @@ import {
   saveDocument,
   saveDocumentAs,
 } from './fileActions';
-import { PanelId, useAction, usePanel, useShortcut } from './registry';
-import { openPanel, setWelcome, showShortcuts } from './store';
+import { useAction, useShortcut } from './registry';
+import { setWelcome, showShortcuts } from './store';
 
 /** Global document actions belong to the title bar, independently of the slide tools. */
 export function DocumentStartTools() {
@@ -63,7 +64,8 @@ export function DocumentEndTools() {
     <div
       role="toolbar"
       aria-label={t('tools.presentationTools')}
-      className="flex shrink-0 items-center gap-2"
+      // The window controls stay on the right: in Hebrew this end of the bar is the window's edge.
+      className="flex shrink-0 items-center gap-2 rtl:pe-4"
     >
       <PresentButton />
     </div>
@@ -89,11 +91,11 @@ function PresentButton() {
     <div className="flex items-center" data-testid="present-button">
       <Button
         variant="primary"
-        icon={Play}
         disabled={!run}
         onClick={run}
         className="header-present rounded-e-none"
       >
+        <Icon icon={Play} size="md" />
         {t('tools.present')}
       </Button>
       <DropdownMenu>
@@ -102,9 +104,9 @@ function PresentButton() {
             variant="primary"
             aria-label={t('tools.presentOptions')}
             disabled={!fromStart && !fromCurrent}
-            className="header-present rounded-s-none border-s border-ui-header-line px-1.5"
+            className="header-present header-present-more rounded-s-none border-s border-ui-header-line"
           >
-            <Icon icon={ChevronDown} />
+            <Icon icon={ChevronDown} size="md" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" data-testid="present-menu">
@@ -165,8 +167,8 @@ function FileMenu() {
   // Find and replace is another area's: the menu offers what its shortcut does, when it is there.
   const find = useShortcut('find.replace');
   const focusTaken = useRef(false);
-  // So is HTML import: its panel asks for the file, and about the open document if it has work.
-  const htmlImport = usePanel(PanelId.htmlImport);
+  // So is HTML import: it asks for the file, and about the open document if it has work.
+  const runImport = useAction('import');
   const runExport = useAction('export');
 
   return (
@@ -246,8 +248,8 @@ function FileMenu() {
           {t('file.saveAs')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        {htmlImport && (
-          <DropdownMenuItem icon={htmlImport.icon} onSelect={() => openPanel(htmlImport.id)}>
+        {runImport && (
+          <DropdownMenuItem icon={FileInput} data-testid="file-import" onSelect={runImport}>
             {t('file.importHtml')}
           </DropdownMenuItem>
         )}

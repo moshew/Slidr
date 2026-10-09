@@ -33,9 +33,17 @@
   }
 }
 
+/* "Present" is the title bar's one call to action: taller than the bar's other controls, and
+   in larger, heavier type. */
 .header-present {
+  height: calc(var(--spacing) * 10);
+  padding-inline: calc(var(--spacing) * 4);
+  gap: calc(var(--spacing) * 2);
   background-color: var(--color-ui-header-action);
   color: var(--color-ui-header-action-fg);
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+  font-weight: var(--font-weight-semibold);
 
   &:hover {
     background-color: var(--color-ui-header-action-hover);
@@ -44,59 +52,13 @@
     background-color: var(--color-ui-header-action-pressed);
   }
 }
+/* The arrow half of the split button. */
+.header-present-more {
+  padding-inline: calc(var(--spacing) * 2.5);
+}
 
 .editor-header :focus-visible {
   outline-color: var(--color-ui-header-fg);
-}
-
-.creation-tool {
-  flex-direction: column;
-  width: var(--spacing-creation-tool);
-  height: var(--spacing-creation-tool);
-  padding: calc(var(--spacing) * 1.5);
-  gap: var(--spacing);
-}
-
-.creation-tool-icon {
-  display: flex;
-  width: var(--spacing-creation-icon);
-  height: var(--spacing-creation-icon);
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-control);
-  background-color: var(--color-ui-tool-violet);
-  color: var(--color-ui-tool-violet-fg);
-}
-
-.creation-tool:disabled .creation-tool-icon,
-.creation-tool[aria-disabled='true'] .creation-tool-icon {
-  background-color: var(--color-ui-field);
-  color: var(--color-ui-fg-subtle);
-}
-
-.creation-tool-icon[data-tone='blue'] {
-  background-color: var(--color-ui-tool-blue);
-  color: var(--color-ui-tool-blue-fg);
-}
-.creation-tool-icon[data-tone='pink'] {
-  background-color: var(--color-ui-tool-pink);
-  color: var(--color-ui-tool-pink-fg);
-}
-.creation-tool-icon[data-tone='teal'] {
-  background-color: var(--color-ui-tool-teal);
-  color: var(--color-ui-tool-teal-fg);
-}
-.creation-tool-icon[data-tone='green'] {
-  background-color: var(--color-ui-tool-green);
-  color: var(--color-ui-tool-green-fg);
-}
-.creation-tool-icon[data-tone='orange'] {
-  background-color: var(--color-ui-tool-orange);
-  color: var(--color-ui-tool-orange-fg);
-}
-.creation-tool-icon[data-tone='rose'] {
-  background-color: var(--color-ui-tool-rose);
-  color: var(--color-ui-tool-rose-fg);
 }
 
 /* Elements: a grid of drawings puts as many in a row as the panel has room for, since the
@@ -107,8 +69,11 @@
   grid-template-columns: repeat(auto-fill, minmax(var(--cell), 1fr));
   gap: var(--spacing);
 
+  /* The Shapes collection is one grid for all of its groups (`.shape-group`), so the tiles of
+     every group stand in the same columns. */
   &[data-size='shape'] {
-    --cell: calc(var(--spacing) * 16);
+    column-gap: calc(var(--spacing) * 2);
+    row-gap: calc(var(--spacing) * 5);
   }
   &[data-size='icon'] {
     --cell: calc(var(--spacing) * 13);
@@ -116,5 +81,33 @@
   &[data-size='emoji'] {
     --cell: calc(var(--spacing) * 11);
     gap: calc(var(--spacing) / 2);
+  }
+}
+
+/* A group of the Shapes collection: a row of the page, or several, under its name. */
+.shape-group {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  row-gap: calc(var(--spacing) * 2);
+}
+/* A group of a few shapes takes only the columns it needs, and the next one stands beside it
+   when the row has room for both. From this width of the panel there are six columns, and
+   no such group has more than five tiles. */
+@container (min-width: 504px) {
+  .shape-group[data-tiles='1'] {
+    grid-column: span 1;
+  }
+  .shape-group[data-tiles='2'] {
+    grid-column: span 2;
+  }
+  .shape-group[data-tiles='3'] {
+    grid-column: span 3;
+  }
+  .shape-group[data-tiles='4'] {
+    grid-column: span 4;
+  }
+  .shape-group[data-tiles='5'] {
+    grid-column: span 5;
   }
 }

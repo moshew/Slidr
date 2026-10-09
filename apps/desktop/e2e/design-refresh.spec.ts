@@ -37,22 +37,22 @@ for (const lang of ['he', 'en'] as const) {
         await expect(header(page).getByTestId('present-button')).toBeInViewport({ ratio: 1 });
         await expect(page.getByTestId('top-tools-a')).toHaveCount(0);
         await expect(page.getByTestId('editor').getByRole('toolbar')).toHaveCount(1);
-        await expect(creation(page).locator('[data-tool]')).toHaveCount(8);
+        await expect(creation(page).locator('[data-tool]')).toHaveCount(7);
         await expect(
           creation(page).getByRole('button', { name: names.text, exact: true }),
-        ).toContainText(lang === 'he' ? 'טקסט' : 'Text');
+        ).toHaveText('');
         expect(
           await creation(page)
             .locator('[data-tool] svg')
             .evaluateAll((nodes) =>
-              nodes.every((node) => node.getBoundingClientRect().width === 24),
+              nodes.every((node) => node.getBoundingClientRect().width === 16),
             ),
         ).toBe(true);
         expect(
           await context(page).evaluate((node) => Boolean(node.closest('[data-testid="stage"]'))),
         ).toBe(true);
         const bar = (await context(page).boundingBox())!;
-        expect(bar.height).toBe(80);
+        expect(bar.height).toBe(44);
         const frame = (await page.getByTestId('stage-frame').boundingBox())!;
         expect(frame.y).toBeGreaterThanOrEqual(bar.y + bar.height);
         expect(await context(page).evaluate((node) => getComputedStyle(node).borderRadius)).toBe(
@@ -90,7 +90,7 @@ for (const lang of ['he', 'en'] as const) {
         await page.getByTestId('arrange-menu').focus();
         await expect(page.getByTestId('arrange-menu')).toBeInViewport({ ratio: 1 });
         const wideBar = (await context(page).boundingBox())!;
-        expect(wideBar.height).toBe(80);
+        expect(wideBar.height).toBe(44);
         const wideFrame = (await page.getByTestId('stage-frame').boundingBox())!;
         expect(wideFrame.y).toBeGreaterThanOrEqual(wideBar.y + wideBar.height);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
@@ -98,7 +98,7 @@ for (const lang of ['he', 'en'] as const) {
         );
         await select(page, []);
         await expect(context(page)).toHaveAttribute('data-selection', 'none');
-        await expect(context(page).locator('[data-tool]')).toHaveCount(8);
+        await expect(context(page).locator('[data-tool]')).toHaveCount(7);
       });
     }
   }
@@ -191,4 +191,14 @@ test('document actions respect startup, welcome, drag regions and F6', async ({ 
   await expect(page.getByTestId('welcome')).toBeVisible();
   await expect(page.getByTestId('file-menu-trigger')).toHaveCount(0);
   await expect(header(page).getByTestId('present-button')).toHaveCount(0);
+});
+
+test('the creation tools are as strong as the slide tools beside them', async ({ page }) => {
+  await openApp(page, { lang: 'en' });
+  const color = (name: string) =>
+    context(page)
+      .getByRole('button', { name, exact: true })
+      .evaluate((node) => getComputedStyle(node).color);
+  expect(await color('Text box')).toBe(await color('Background'));
+  expect(await color('Chart')).toBe(await color('Background'));
 });

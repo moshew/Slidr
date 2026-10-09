@@ -48,6 +48,12 @@ describe('the system prompt, by scope', () => {
     expect(at[0]).toBe(0);
   });
 
+  it('sets a visual quality bar and requires rendered review of designed slides', () => {
+    expect(DESIGN).toContain('publication-ready, distinct and written with original copy');
+    expect(DESIGN).toContain('At full size and thumbnail');
+    expect(DESIGN).toContain('crops and clipping correct');
+  });
+
   it('a deck session creates slides in HTML, manages them, and reviews the whole deck', () => {
     const prompt = full('deck');
     expect(prompt).toContain(HTML_CONVENTIONS);

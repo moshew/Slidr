@@ -17,8 +17,14 @@ const MAX = 12;
 export const useRecentStickers = create<{ stickers: RecentSticker[] }>()(
   persist((): { stickers: RecentSticker[] } => ({ stickers: [] }), {
     name: 'slidr.elements.recent',
-    version: 1,
+    version: 2,
     storage: createJSONStorage(() => localStorage),
+    // Until version 2 an illustrated graphic was kept on the disc it is no longer drawn on.
+    migrate: (kept) => ({
+      stickers: (kept as { stickers: RecentSticker[] }).stickers.filter(
+        ({ id }) => !id.startsWith('graphic:illustrated:'),
+      ),
+    }),
   }),
 );
 

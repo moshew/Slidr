@@ -24,12 +24,7 @@ export {
   type ToolAction,
   type ToolPanelDefinition,
 } from './registry';
-export {
-  selectionKind,
-  elementKind,
-  elementDisplayKind,
-  type SelectionKind,
-} from './selection';
+export { selectionKind, elementKind, elementDisplayKind, type SelectionKind } from './selection';
 export { StatusItem } from './StatusBar';
 export {
   getEditor,
@@ -47,6 +42,7 @@ export {
   openPanel,
   setAiTab,
   setPanelOpen,
+  setWelcome,
   setZoom,
   useShell,
   type AiTab,

@@ -1,5 +1,5 @@
 import { elementSchemas } from '@slidr/model';
-import { shapePresets } from '@slidr/renderer';
+import { extraShapes, presetPath, shapePresets } from '@slidr/renderer';
 import { describe, expect, it } from 'vitest';
 import { en, he } from './messages';
 import {
@@ -24,10 +24,28 @@ describe('the shape library', () => {
     expect(new Set(shown).size).toBe(shown.length);
   });
 
+  it('adds exactly 150 new editable outlines', () => {
+    expect(Object.keys(extraShapes)).toHaveLength(150);
+    const outlines = new Set<string>();
+    for (const preset of Object.keys(extraShapes)) {
+      expect(shapePresets).toContain(preset);
+      expect(newShape(preset, slide).geometry).toEqual({ kind: 'preset', preset });
+      const outline = presetPath(preset, 360, 360)?.d;
+      expect(outline, preset).toBeDefined();
+      outlines.add(outline!);
+    }
+    expect(outlines.size).toBe(150);
+  });
+
   it('names every preset and every group in both languages', () => {
     for (const preset of shapePresets) {
-      expect(he.shape, preset).toHaveProperty(preset);
-      expect(en.shape, preset).toHaveProperty(preset);
+      if (extraShapes[preset]) {
+        expect(extraShapes[preset].he, preset).not.toBe('');
+        expect(extraShapes[preset].en, preset).not.toBe('');
+      } else {
+        expect(he.shape, preset).toHaveProperty(preset);
+        expect(en.shape, preset).toHaveProperty(preset);
+      }
     }
     for (const group of SHAPE_GROUPS) {
       expect(he.library).toHaveProperty(group);

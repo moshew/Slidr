@@ -1,72 +1,29 @@
-# Slidr — תוכנית מימוש לרענון העיצוב
+# Slidr editor design refresh — implementation plan and status
 
-תאריך: 2026-10-07. אפיון מחייב: [SPEC.md](./SPEC.md).
+Created: 2026-10-07. Updated: 2026-10-09. Requirements: [SPEC.md](SPEC.md).
 
-## שלב 1 — בסיס עיצוב ומעטפת
+## Committed implementation
 
-- [x] עדכון tokens: צבע ראשי, משטחים, צבעי כלים, גרדיאנט כותרת, רדיוסים וצללים.
-- [x] הוספת גודל אייקון 24px ללא שינוי גדלי האייקונים בתוך תפריטים ושדות.
-- [x] התאמת מידות הכותרת, סרגל היצירה, שורת המצב והניווט.
+| Step | Work | Status and evidence |
+|---|---|---|
+| 1. Design tokens | Update colors, surfaces, corner radii, shadows, and large icon sizing | Committed in `6026d0d`; `packages/ui/src/theme.css` and `components/icon.tsx` |
+| 2. Document actions | Put File, Undo/Redo, Export, and Present in the title bar; keep startup and focus rules | Committed in `6026d0d`; `DocumentTools.tsx`, `TitleBar.tsx`, `a11y/panes.ts` |
+| 3. Creation and navigation | Add the creation row, move zoom to status, and support scrolling navigation | Committed in `6026d0d`; `TopTools.tsx`, `ActivityBar.tsx`, `StatusBar.tsx`, `ZoomMenu.tsx` |
+| 4. Contextual tools | Place the slide/selection toolbar in the workspace and reserve slide space | Committed in `6026d0d`; `StageRegion.tsx`, `SelectionToolbar.tsx` |
+| 5. First verification | Focused E2E, design rules, accessibility, color/language combinations, screenshots, frontend build | Reported in the original 2026-10-07 run; see details below |
+| 6. File and Elements follow-up | Move Export into the File menu and add the Elements browser | Committed in `abc5243` and `fdb2036`; see [ADR-075](../adr/ADR-075-elements-and-presets.md) |
 
-קבצים: `packages/ui/src/theme.css`, `packages/ui/src/components/icon.tsx`.
+The first verification reported 106 unit tests, 63 passing tests in the final focused E2E run, 11 new design-refresh E2E cases, and eight screenshots under ignored `apps/desktop/test-results/design-refresh/`. It used Edge and a simulated backend. Those counts describe that run, not a fresh check of today's working tree. The frontend build completed; a packaged installer and real Tauri visual review were not part of that run.
 
-## שלב 2 — פעולות מסמך בכותרת
+## Current working-tree follow-up
 
-- [x] חילוץ תפריט קובץ, ביטול/חזרה, ייצוא והצגה לרכיב ייעודי משותף.
-- [x] הטמעת הפעולות ב־TitleBar, סביב שם המצגת ואזורי הגרירה.
-- [x] שמירת תפריטי אחרונים, חיפוש, ייבוא והצגה מפוצלת; חסימת הפעולות בזמן startup והסתרתן במסך הפתיחה.
-- [x] החלת מדיניות המיקוד הקיימת גם על הפעולות שבכותרת, והוספת הכותרת למעבר אזורים במקלדת.
+The following changes are present locally on 2026-10-09 and are **not committed**:
 
-קבצים: `src/shell/DocumentTools.tsx`, `TitleBar.tsx`, `TopTools.tsx`, `src/a11y/panes.ts` ומחרוזות בשתי השפות.
+- Use compact, accessible icon buttons in the creation row and remove the redundant selection label in the contextual row (`TopTools.tsx`, `ActivityBar.tsx`).
+- Keep the HTML import in the AI chat instead of a separate navigation panel ([ADR-077](../adr/ADR-077-import-conversation.md)).
+- Refine Stage handles, image-edge crop behavior, in-place text-frame dragging, and paragraph alignment ([ADR-078](../adr/ADR-078-stage-editing-refinements.md)).
+- Add ten editable slide designs and richer, direction-aware shape/line previews to Elements ([ADR-079](../adr/ADR-079-elements-designs.md)).
+- Show transition settings beside the selected effect and scroll them into view ([ADR-080](../adr/ADR-080-transition-settings.md)).
+- Center the product/document identity in the title bar, simplify navigation icons, and add Filmstrip Ctrl+A ([ADR-081](../adr/ADR-081-shell-navigation-polish.md)).
 
-## שלב 3 — סרגל יצירה צבעוני
-
-- [x] כפתורי הוספה עם אייקון, משטח צבעוני וכיתוב קצר; שימוש ב־Button לשימור disabled/focus.
-- [x] שמירת הפעולות וה־popovers הרשומים והגלילה האופקית הקיימת.
-- [x] העברת תפריט הזום לשורת המצב.
-- [x] ניווט צד עם אייקונים גדולים וכיתובים נגישים; גלילה בגובה קטן.
-
-קבצים: `TopTools.tsx`, `ActivityBar.tsx`, `StatusBar.tsx`, `ZoomMenu.tsx`, `src/i18n/he.ts`, `en.ts`.
-
-## שלב 4 — סרגל הקשרי בתוך משטח העבודה
-
-- [x] פיצול כלי היצירה מהכלים ההקשריים ושילוב הסרגל ההקשרי בתוך StageRegion.
-- [x] משטח מעוגל עם צל ומרווחים; שמירת מקום כך שהכלים אינם מסתירים תוכן שקף.
-- [x] שמירת תגובות לבחירת שקף, אובייקט ובחירה מרובה, ושימור גלילה בתצוגה צרה.
-- [x] התאמת מעטפת סרגל האובייקט הצף לשפה החדשה.
-- [x] עדכון הערות התיעוד במעטפת המתארות את המבנה הישן.
-
-קבצים: `TopTools.tsx`, `StageRegion.tsx`, `Shell.tsx`, `src/stage/SelectionToolbar.tsx`.
-
-## שלב 5 — אימות וסגירת המקטע הראשון
-
-- [x] בדיקות E2E ממוקדות למיקום פעולות המסמך, כלי היצירה והסרגל ההקשרי.
-- [x] אימות ארבעת שילובי שפה/ערכת צבעים בשתי הרזולוציות ובפאנל רחב.
-- [x] אימות פעולה אמיתית של הוספה, שינוי רקע, ביטול, תפריטים והצגה.
-- [x] אימות ניגודיות עם axe, מיקוד בעכבר/מקלדת ו־F6.
-- [x] התאמת בדיקות קיימות שמסתמכות על מיקום קובץ/זום או מידות המעטפת הישנות.
-- [x] שמירת צילומי מסך של הממשק החדש, והרצת typecheck, lint, formatting וכללי העיצוב.
-- [x] תיעוד התוצאות, הקבצים והתלויות להמשך במסמך זה.
-
-בדיקות התנהגות עדיפות על צילום שמשווה לעיצוב הישן. בדיקות ויזואליות רחבות יידרשו לבסיסי תמונות חדשים לאחר סקירת העיצוב.
-
-## המשך לאחר המקטע הראשון
-
-סקירה חזותית עם המשתמש בחלון Tauri, כולל גרירה ומזעור/הגדלה; לאחריה אפשר לרענן באופן פרטני את תוכן ספריות המדיה והתבניות, מסך הפתיחה וכרטיסי הצ'אט. המשך כזה יוגדר לפי הסקירה, ללא שינוי בפעולות הליבה.
-
-## תוצאות
-
-שלבים 1–5 הושלמו. המקטע הראשון כולל כותרת עם פעולות מסמך, סרגל יצירה עם שמונה כפתורים צבעוניים, ניווט עם אייקונים וכיתובים, כלי שקף/בחירה במשטח צף ממורכז בתוך סביבת העבודה, זום בשורת המצב ורדיוסים וצבעים חדשים במערכת העיצוב.
-
-הועברו הפעולות הקיימות דרך אותו registry ואותו command bus. מנהל המיקוד תומך כעת במספר אזורי כלים; מעבר F6 מבחין בין כלי הבחירה המקוננים לבין משטח השקף. התאמת השקף מתבצעת לפי השטח הפנוי מתחת לסרגל. צבע הרקע של חלון Tauri נלקח מה־CSS ומנורמל למערך RGBA שמקבל ה־API המקורי.
-
-### בדיקות
-
-- 106 בדיקות יחידה ב־15 קובצי מעטפת ותרגום עברו, כולל כללי העיצוב; שמונת כללי העיצוב הורצו שוב אחרי ההתאמה האחרונה ועברו.
-- TypeScript במעטפת ובתצורת הפרויקט, ESLint לכל קובצי הקוד שהשתנו, Prettier ו־`git diff --check` עברו. בניית Vite הסתיימה בהצלחה. נותרו אזהרות הבנייה הקיימות על גודל chunks וייבוא דינמי, ו־Cargo לא היה ב־PATH של תהליך הבנייה ולכן רשימת רישיונות הבנייה הזו אינה כוללת crates של Rust; זו בניית frontend לבדיקה, לא חבילת הפצה.
-- 112 תרחישי E2E שונים ב־11 קבצים עברו בכמה ריצות ממוקדות. בריצה המסכמת עברו כל 63 הבדיקות של עיצוב חדש, מיקוד, F6, כלי עריכה, רקע וייצוא. שתי בדיקות שלא עברו בריצה קודמת עברו בריצה המסכמת; אחת דרשה שרת Vite נקי בגלל כפילות store שנוצרה בייבוא דינמי לאחר HMR, והשנייה תלויה בתזמון הקלדה.
-- 11 בדיקות חדשות ב־`apps/desktop/e2e/design-refresh.spec.ts`: שמונה שילובי שפה/ערכת צבעים/רזולוציה, שתי בדיקות פעולות אמיתיות ובדיקת startup/מסך פתיחה/מקלדת.
-- בדיקות axe על הכותרת, כלי היצירה, כלי הבחירה והניווט, כולל hover של כפתור ההצגה, עברו ללא ממצא חמור או קריטי. אומתו גלילת כלים ומעבר מיקוד גם בפאנל ברוחב 45%.
-- נוצרו שמונה צילומי תצוגה ב־`apps/desktop/test-results/design-refresh/`, למשל `he-light-1920.png` ו־`en-dark-1366.png`. התמונות נבדקו חזותית. תיקיית התוצאות מוחרגת מ־Git.
-
-כל הבדיקות הגרפיות רצו ב־Edge מול frontend עם backend מדומה. לא בוצעה סקירה בחלון Tauri אמיתי, בניית מתקין או הרצה של כלל בדיקות הרגרסיה הוויזואלית. בסיסי התמונות הישנים דורשים עדכון אחרי סקירת העיצוב. תוכן פנימי פרטני של ספריות, מסך הפתיחה והצ'אט נשאר להמשך המתואר למעלה; הוא כבר יורש את הצבעים והרדיוסים החדשים.
+Before treating this follow-up as complete, run typecheck and the focused design-refresh, import, Elements, animation, Stage, and text E2E files against the final working tree, then inspect the four language/theme combinations and a real Tauri window. The modified tests are present but have not been run for this documentation update.

@@ -18,15 +18,19 @@ import {
   TablesCollection,
   useLoaded,
 } from './collections';
+import { loadFrames, searchFrames } from './frames';
+import { FrameGrid, FramesCollection } from './FramesCollection';
 import { useRecentStickers } from './recent';
+import { DesignsCollection } from './DesignsCollection';
 import { StickerButton, StickerGrid } from './StickerGrid';
 import { loadEmoji, loadGraphics, searchStickers } from './stickers';
-import { COLLECTIONS, CollectionTile, type CollectionId } from './tiles';
+import { COLLECTIONS, CollectionTile, FrameThumbDefs, type CollectionId } from './tiles';
 
 /**
  * Elements: everything that can be put on a slide, by kind. The first screen offers the
- * collections (shapes, graphics, emoji, icons, photos, clips, tables, charts), what was used
- * lately, and one search over the drawings of all of them; a collection opens in its place.
+ * collections (designs, shapes, graphics, emoji, icons, photos, frames, clips, tables, charts),
+ * what was used lately, and one search over the drawings of all of them; a collection opens in
+ * its place.
  */
 export function ElementsPanel() {
   const [collection, setCollection] = useState<CollectionId | null>(null);
@@ -114,12 +118,13 @@ function Recent() {
 }
 
 /** How many of each kind the search of the first screen shows. */
-const FOUND = { graphics: 18, emoji: 24, icons: 24 };
+const FOUND = { graphics: 18, frames: 12, emoji: 24, icons: 24 };
 
 /** What a query finds across the collections that are searched by word. */
 function Found({ query }: { query: string }) {
   const { t } = useTranslation('elements');
   const allGraphics = useLoaded(loadGraphics);
+  const allFrames = useLoaded(loadFrames);
   const allEmoji = useLoaded(loadEmoji);
   const [icons, setIcons] = useState<{ query: string; icons: FoundIcon[] }>();
 
@@ -137,6 +142,10 @@ function Found({ query }: { query: string }) {
     () => (Array.isArray(allGraphics) ? searchStickers(allGraphics, query, FOUND.graphics) : []),
     [allGraphics, query],
   );
+  const frames = useMemo(
+    () => (Array.isArray(allFrames) ? searchFrames(allFrames, query, FOUND.frames) : []),
+    [allFrames, query],
+  );
   const emoji = useMemo(
     () => (Array.isArray(allEmoji) ? searchStickers(allEmoji, query, FOUND.emoji) : []),
     [allEmoji, query],
@@ -144,7 +153,7 @@ function Found({ query }: { query: string }) {
 
   // The icons found for an earlier query are not this query's.
   const foundIcons = icons?.query === query ? icons.icons : undefined;
-  if (!allGraphics || !allEmoji || !foundIcons) {
+  if (!allGraphics || !allFrames || !allEmoji || !foundIcons) {
     return (
       <div className="element-grid" data-size="graphic" aria-busy>
         {Array.from({ length: 12 }, (_, index) => (
@@ -153,12 +162,20 @@ function Found({ query }: { query: string }) {
       </div>
     );
   }
-  if (graphics.length + emoji.length + foundIcons.length === 0) return <NothingFound />;
+  if (graphics.length + frames.length + emoji.length + foundIcons.length === 0) {
+    return <NothingFound />;
+  }
   return (
     <div className="flex flex-col gap-5" data-testid="elements-found">
       {graphics.length > 0 && (
         <Section title={t('collection.graphics')} data-group="graphics">
           <StickerGrid stickers={graphics} size="graphic" label={t('collection.graphics')} />
+        </Section>
+      )}
+      {frames.length > 0 && (
+        <Section title={t('collection.frames')} data-group="frames">
+          <FrameThumbDefs />
+          <FrameGrid frames={frames} label={t('collection.frames')} />
         </Section>
       )}
       {emoji.length > 0 && (
@@ -203,10 +220,12 @@ function FoundIcons({ icons }: { icons: readonly FoundIcon[] }) {
 
 /** What each collection shows. Photos are the media panel's stock tab, which has its own gutter. */
 const views: Record<Exclude<CollectionId, 'photos'>, () => ReactNode> = {
+  designs: () => <DesignsCollection />,
   shapes: () => <ShapesCollection />,
   graphics: () => <GraphicsCollection />,
   emoji: () => <EmojiCollection />,
   icons: () => <IconsTab />,
+  frames: () => <FramesCollection />,
   clips: () => <ClipsCollection />,
   tables: () => <TablesCollection />,
   charts: () => <ChartsCollection />,

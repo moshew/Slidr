@@ -86,7 +86,6 @@ export const en: Messages<typeof he> = {
   navigation: {
     notes: 'Notes',
     lint: 'Review',
-    import: 'Import',
   },
   panels: {
     ai: 'AI chat',

@@ -13,7 +13,7 @@ import slideChat from '../../src-tauri/src/harness/fixtures/scripts/slide-chat.j
 import slideRedesign from '../../src-tauri/src/harness/fixtures/scripts/slide-redesign.json';
 import templateCreate from '../../src-tauri/src/harness/fixtures/scripts/template-create.json';
 import textVariations from '../../src-tauri/src/harness/fixtures/scripts/text-variations.json';
-// An import session on e2e/import-set/handwritten.html, for the import panel's suites. It is
+// An import session on e2e/import-set/handwritten.html, for the suites of the HTML import. It is
 // not one of the Rust mock's: its tool calls need the import page, which the mock does not drive.
 import importHandwritten from '../../e2e/import-set/handwritten.script.json';
 // The same import, cut after three slides and continued (IMP-09).

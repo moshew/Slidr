@@ -51,6 +51,9 @@ const exempt: Record<string, string> = {
 
   // Pictures, drawn in their own colours as a photo would be; the tiles around them are tokens.
   'apps/desktop/src/elements/tiles.tsx': 'the pictures of the collections of Elements',
+  'apps/desktop/src/elements/shapeArt.tsx': 'the pictures of the shapes, the lines and the card',
+  'apps/desktop/src/animations/effectArt.tsx':
+    'the pictures of the transitions and of the animation presets',
 };
 /** The colour picker's maths: the one file of the design system that writes colours. */
 const colourMaths = 'packages/ui/src/color.ts';

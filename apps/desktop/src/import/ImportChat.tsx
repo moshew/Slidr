@@ -1,48 +1,35 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { isTauri } from '@tauri-apps/api/core';
-import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 import {
+  ChevronDown,
   CircleCheck,
   CirclePause,
   Download,
   FileCode,
-  FileInput,
-  FilePlus,
   ListChecks,
   Pencil,
-  ShieldCheck,
   Trash2,
   TriangleAlert,
   WifiOff,
 } from '@slidr/ui/icons';
-import {
-  Button,
-  cx,
-  EmptyState,
-  Icon,
-  IconButton,
-  ScrollArea,
-  Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Toggle,
-} from '@slidr/ui';
-import { Chat } from '../ai/Chat';
+import { Button, cx, EmptyState, Icon, Spinner } from '@slidr/ui';
+import { Chat, useThread } from '../ai/Chat';
 import { ask, useDeck, useEditor } from '../shell';
-import { continueImport, importThread, startImport } from './flow';
+import { continueImport, followImport } from './flow';
 import { buildReport, type ImportReport, type ReportRow } from './report';
-import { exportSource, importState, pageSource, removeSource, type ImportSource } from './session';
+import { exportSource, importState, pageSource, removeSource } from './session';
 
 /*
- * The import panel (SPEC 13.3, IMP-03; WG9-T18): choosing a file, the agent's plan and its
- * approval, the slides coming in, the report, and the chat that goes on afterwards. The chat is
- * the AI panels' own component on an import session; the report is the app's. A deck that was
- * imported shows its import here whenever it is open, and an import that was cut is continued
- * from here (IMP-07, IMP-09).
+ * The conversation of an HTML import in the AI chat (SPEC 13.3, IMP-03; WG9-T18). It is the
+ * chat's own component on an import session: the request to import the file is its first
+ * message, and the agent's plan, the slides coming in and the talk that goes on afterwards are
+ * its turns. What the app itself has to say stands at the end of the conversation: the plan
+ * waiting for approval, an import that was cut and can be continued (IMP-09), and the report,
+ * which is the app's and not the agent's. A deck that was imported has this conversation
+ * whenever it is open (IMP-07).
  */
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -52,87 +39,6 @@ const percent = (share: number) => Math.round(share * 100);
 function duration(ms: number): string {
   const seconds = Math.round(ms / 1000);
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
-/* ---------------------------------------------------------------- choosing a file */
-
-function Start({ onChoose }: { onChoose: (source: ImportSource, confirm: boolean) => void }) {
-  const { t } = useTranslation('import');
-  const [confirm, setConfirm] = useState(true);
-  const input = useRef<HTMLInputElement>(null);
-
-  const choose = async () => {
-    if (!isTauri()) {
-      input.current?.click();
-      return;
-    }
-    const path = await openDialog({
-      multiple: false,
-      directory: false,
-      filters: [{ name: t('start.filter'), extensions: ['html', 'htm'] }],
-    });
-    if (path) onChoose({ path }, confirm);
-  };
-  const picked = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (file) onChoose({ file }, confirm);
-  };
-
-  return (
-    <div className="flex flex-col gap-5 px-4 pt-2 pb-6" data-testid="import-start">
-      <EmptyState
-        icon={FileInput}
-        title={t('start.title')}
-        description={t('start.body')}
-        action={
-          <Button variant="primary" icon={FilePlus} onClick={() => void choose()}>
-            {t('start.choose')}
-          </Button>
-        }
-      />
-      {/* A plain browser has no file dialog of the app's; the page's own picker stands in. */}
-      <input
-        ref={input}
-        type="file"
-        accept=".html,.htm,text/html"
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden
-        data-testid="import-file"
-        onChange={picked}
-      />
-      <div className="flex items-center gap-3 rounded-panel border border-ui-line px-3 py-2.5">
-        <Toggle
-          icon={ListChecks}
-          label={t('start.confirm')}
-          pressed={confirm}
-          onPressedChange={setConfirm}
-          data-testid="import-confirm"
-        />
-        <div className="min-w-0">
-          <div className="text-sm font-medium text-ui-fg">{t('start.confirm')}</div>
-          <div className="text-xs text-ui-fg-muted">
-            {t(confirm ? 'start.confirmOn' : 'start.confirmOff')}
-          </div>
-        </div>
-      </div>
-      <ul className="flex flex-col gap-2 text-xs leading-5 text-ui-fg-muted">
-        <li className="flex items-start gap-2">
-          <Icon icon={ShieldCheck} className="mt-0.5 shrink-0" />
-          <span>{t('start.isolated')}</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <Icon icon={FilePlus} className="mt-0.5 shrink-0" />
-          <span>{t('start.newDeck')}</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <Icon icon={FileCode} className="mt-0.5 shrink-0" />
-          <span>{t('start.kept')}</span>
-        </li>
-      </ul>
-    </div>
-  );
 }
 
 /* ---------------------------------------------------------------- the report */
@@ -256,14 +162,14 @@ function Report({ report, onOpen }: { report: ImportReport; onOpen: (slideId: st
         icon={ListChecks}
         title={t('report.empty')}
         description={t('report.emptyBody')}
-        className="min-h-80"
+        className="min-h-40"
       />
     );
   }
   // The figures are about the slides that still hold what was captured.
   const total = report.measured;
   return (
-    <div className="flex flex-col gap-4 px-4 pt-3 pb-6" data-testid="import-report">
+    <div className="flex flex-col gap-4 p-3" data-testid="import-report">
       <div className="grid grid-cols-2 gap-2">
         <Figure label={t('report.slides')} value={String(report.rows.length)} />
         <Figure
@@ -366,7 +272,7 @@ function SourceFile({ file }: { file: string }) {
       }
       const path = await saveDialog({
         defaultPath: file,
-        filters: [{ name: t('start.filter'), extensions: ['html', 'htm'] }],
+        filters: [{ name: t('filter'), extensions: ['html', 'htm'] }],
       });
       if (path) await exportSource(editor, path);
     } catch (error) {
@@ -376,7 +282,7 @@ function SourceFile({ file }: { file: string }) {
 
   return (
     <section
-      className="flex flex-col gap-1.5 border-t border-ui-line px-4 pt-3 pb-6"
+      className="flex flex-col gap-1.5 border-t border-ui-line p-3"
       data-testid="import-source"
     >
       <h3 className="flex items-center gap-2 text-sm font-medium text-ui-fg">
@@ -414,15 +320,71 @@ function SourceFile({ file }: { file: string }) {
   );
 }
 
-/* ---------------------------------------------------------------- a session */
+/**
+ * The report at the end of the conversation (SPEC 13.3 step 7), folded like the other things the
+ * app says in a chat: a line with how many slides came in (IMP-11), which opens on the figures,
+ * the slides one by one, what the page was refused, and the source file the deck keeps.
+ */
+function ReportCard({
+  report,
+  count,
+  source,
+  onOpen,
+}: {
+  report: ImportReport;
+  /** How many slides were captured, in words; absent before the first one. */
+  count?: string;
+  /** The kept source file, when the deck keeps one. */
+  source?: string;
+  onOpen: (slideId: string) => void;
+}) {
+  const { t } = useTranslation('import');
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-panel border border-ui-line" data-testid="import-report-card">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        data-testid="import-report-toggle"
+        className="flex h-control w-full cursor-default items-center gap-2 rounded-panel px-2.5 text-start text-sm text-ui-fg transition-colors hover:bg-ui-hover active:bg-ui-pressed"
+      >
+        <Icon icon={ListChecks} className="text-ui-fg-muted" />
+        <span className="min-w-0 flex-1 truncate">{t('report.title')}</span>
+        {count && (
+          <span
+            className="shrink-0 rounded-full bg-ui-accent-soft px-2 py-0.5 text-xs font-medium text-ui-accent-fg tabular-nums"
+            data-testid="import-count"
+          >
+            {count}
+          </span>
+        )}
+        <Icon
+          icon={ChevronDown}
+          className={cx('text-ui-fg-muted transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && (
+        <div className="border-t border-ui-line">
+          <Report report={report} onOpen={onOpen} />
+          {source && <SourceFile file={source} />}
+        </div>
+      )}
+    </div>
+  );
+}
 
-function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
+/* ---------------------------------------------------------------- the conversation */
+
+/** The conversation of the import the open deck came from, as the AI chat shows it. */
+export function ImportChat({ file }: { file: string }) {
   const { t } = useTranslation('import');
   const editor = useEditor();
   const state = useStore(importState);
   const deck = useDeck((s) => s.deck);
   const scope = useMemo(() => ({ kind: 'import', file }) as const, [file]);
-  const thread = useMemo(() => importThread(editor, file), [editor, file]);
+  // The conversation the chat shows, with its turns followed whichever one that is.
+  const thread = followImport(useThread(scope));
   const chat = useStore(thread.store);
   const report = useMemo(() => buildReport(state, deck, chat.entries), [state, deck, chat.entries]);
   const captured = report.rows.length;
@@ -431,6 +393,7 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
     state.planned === null
       ? t('captured', { n: captured })
       : t('capturedOf', { n: captured, total: state.planned });
+  const counted = captured > 0 || state.planned !== null;
   // The import was at work when its turn was stopped or failed, or when the app went (IMP-09).
   const cut = state.phase === 'cut' && !chat.busy;
   const [resuming, setResuming] = useState(false);
@@ -451,49 +414,43 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
     captured === 0 &&
     last?.type === 'assistant' &&
     last.outcome === 'completed';
+  // There is something to report once slides came in, or once a turn of the agent has ended;
+  // not beside a plan that waits for its approval, where nothing has happened yet.
+  const reported =
+    !waiting &&
+    (counted || cut || chat.entries.some((entry) => entry.type === 'assistant' && entry.outcome));
 
   return (
-    <div className="absolute inset-0 flex flex-col" data-testid="import-session">
-      <div className="flex shrink-0 items-center gap-2 px-4 pb-2">
-        <Icon icon={FileInput} className="shrink-0 text-ui-fg-muted" />
-        <span dir="auto" className="min-w-0 flex-1 truncate text-sm text-ui-fg">
-          {file}
-        </span>
-        {(captured > 0 || state.planned !== null) && (
-          <span
-            className="shrink-0 rounded-full bg-ui-accent-soft px-2 py-0.5 text-xs font-medium text-ui-accent-fg tabular-nums"
-            data-testid="import-count"
-          >
-            {count}
-          </span>
-        )}
-        <IconButton
-          icon={FilePlus}
-          size="sm"
-          label={t('another')}
-          disabled={chat.busy}
-          onClick={onAnother}
-        />
-      </div>
-      <Tabs defaultValue="chat" className="flex min-h-0 flex-1 flex-col">
-        <TabsList className="px-4">
-          <TabsTrigger value="chat">{t('tabs.chat')}</TabsTrigger>
-          <TabsTrigger value="report" data-testid="import-report-tab">
-            {t('tabs.report')}
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
+    <Chat
+      scope={scope}
+      afterMessages={
+        <>
+          {waiting && (
+            <div
+              className="flex items-center gap-3 rounded-panel bg-ui-accent-soft px-3 py-2.5"
+              data-testid="import-approve"
+            >
+              <span className="min-w-0 flex-1 text-sm text-ui-fg">{t('approve.waiting')}</span>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void thread.send(t('message.approve'))}
+              >
+                {t('approve.action')}
+              </Button>
+            </div>
+          )}
           {cut && (
             <div
               role="status"
-              className="flex shrink-0 items-start gap-3 border-b border-ui-line bg-ui-accent-soft px-4 py-2.5"
+              className="flex items-start gap-3 rounded-panel bg-ui-accent-soft px-3 py-2.5"
               data-testid="import-cut"
             >
               <Icon icon={CirclePause} className="mt-0.5 shrink-0 text-ui-warning-fg" />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-ui-fg">{t('cut.title')}</div>
                 <div className="text-xs text-ui-fg-muted tabular-nums">
-                  {captured > 0 || state.planned !== null ? count : t('cut.none')}
+                  {counted ? count : t('cut.none')}
                 </div>
                 {failure && (
                   <div role="alert" className="mt-1 text-xs text-ui-danger-fg">
@@ -511,96 +468,35 @@ function Session({ file, onAnother }: { file: string; onAnother: () => void }) {
           )}
           {/* A page that is closed is opened again when it is needed, if the deck keeps the file. */}
           {!state.open && !state.kept && (
-            <div className="shrink-0 border-b border-ui-line px-4 py-2 text-xs text-ui-fg-muted">
+            <p className="text-xs text-ui-fg-muted" data-testid="import-closed">
               {t('closed')}
-            </div>
+            </p>
           )}
-          {/* The chat is laid out by this column: it takes the room that is left under the notes. */}
-          <Chat
-            scope={scope}
-            afterMessages={
-              waiting ? (
-                <div
-                  className="flex items-center gap-3 rounded-panel bg-ui-accent-soft px-3 py-2.5"
-                  data-testid="import-approve"
-                >
-                  <span className="min-w-0 flex-1 text-sm text-ui-fg">{t('approve.waiting')}</span>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => void thread.send(t('message.approve'))}
-                  >
-                    {t('approve.action')}
-                  </Button>
-                </div>
-              ) : null
-            }
-          />
-        </TabsContent>
-        <TabsContent value="report" className="min-h-0 flex-1">
-          <ScrollArea className="h-full">
-            <Report
+          {reported && (
+            <ReportCard
               report={report}
+              count={counted ? count : undefined}
+              source={state.kept ? file : undefined}
               onOpen={(slideId) => editor.selection.getState().setCurrentSlide(slideId)}
             />
-            {state.kept && <SourceFile file={file} />}
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
-    </div>
+          )}
+        </>
+      }
+    />
   );
 }
 
-/* ---------------------------------------------------------------- the panel */
-
-export function ImportPanel() {
+/** The file that was chosen is loading in the isolated page: the request is not in the chat yet. */
+export function ImportOpening() {
   const { t } = useTranslation('import');
-  const editor = useEditor();
-  const file = useStore(importState, (s) => s.file);
-  const [opening, setOpening] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [choosing, setChoosing] = useState(false);
-
-  const choose = (source: ImportSource, confirm: boolean) => {
-    setOpening(true);
-    setFailure(null);
-    startImport(editor, source, { confirm })
-      .then(
-        (started) => {
-          if (started) setChoosing(false);
-        },
-        (error: unknown) => setFailure(error instanceof Error ? error.message : String(error)),
-      )
-      .finally(() => setOpening(false));
-  };
-
-  if (opening) {
-    return (
-      <div
-        className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 text-sm text-ui-fg-muted"
-        data-testid="import-opening"
-      >
-        <Spinner />
-        {t('opening')}
-      </div>
-    );
-  }
-  if (file && !choosing) return <Session file={file} onAnother={() => setChoosing(true)} />;
   return (
-    <>
-      {failure && (
-        <div
-          role="alert"
-          className="mx-4 mt-2 rounded-panel border border-ui-line bg-ui-danger-soft px-3 py-2 text-sm text-ui-fg"
-          data-testid="import-failed"
-        >
-          <div className="font-medium">{t('failed')}</div>
-          <div dir="ltr" className="text-start text-xs text-ui-fg-muted">
-            {failure}
-          </div>
-        </div>
-      )}
-      <Start onChoose={choose} />
-    </>
+    <div
+      role="status"
+      className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-sm text-ui-fg-muted"
+      data-testid="import-opening"
+    >
+      <Spinner />
+      {t('opening')}
+    </div>
   );
 }

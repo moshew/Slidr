@@ -32,6 +32,7 @@ export {
   type TableStyle,
 } from './tableStyle';
 export { presetPath, scalePath, shapePresets, isBoxPreset, type ShapePath } from './geometry';
+export { extraShapes, type ExtraShape } from './extraShapes';
 export { imagePlacement, linePath } from './elements';
 export {
   colorRgb,

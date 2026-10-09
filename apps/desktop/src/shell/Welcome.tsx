@@ -5,7 +5,7 @@ import { createSlide, slideFromLayout, type Deck } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { deckFromTemplate, type Template } from '@slidr/templates';
 import { Button, cx, EmptyState, Icon, ScrollArea, type LucideIcon } from '@slidr/ui';
-import { ArrowLeft, Clock, FilePlus, FolderOpen, Sparkles } from '@slidr/ui/icons';
+import { ArrowLeft, Clock, FileInput, FilePlus, FolderOpen, Sparkles } from '@slidr/ui/icons';
 import type { RecentFile } from '../document/storage';
 import { currentLanguage } from '../i18n';
 import { library } from '../templates/app';
@@ -13,14 +13,15 @@ import { coverAsset, coverOf } from '../templates/covers';
 import { useDeck, useEditor, useFile, type Editor } from './editor';
 import { newDocument, openDocument, recentFiles } from './fileActions';
 import { modalOpen, overlayOf } from './overlay';
-import { PanelId, usePanel } from './registry';
+import { PanelId, useAction } from './registry';
 import { openPanel, setWelcome, useShell } from './store';
 
 /*
  * The welcome screen (DOC-05): what the app opens on, in place of the editor. A new deck with
  * the agent, from a template or empty; a file to open; the recent files. Every way out of it
  * ends in the editor with a document, so the editor behind it never needs to know it was there.
- * "Import HTML" is one of the ways in once the import area has registered its panel.
+ * "Import HTML" is one of the ways in once the import area has registered what it does: it asks
+ * for the file, and leaves the screen itself when the import starts.
  *
  * Opened from the File menu, the screen stands over a document the user was working on. It then
  * has one more way out, which is the only one that keeps that document: back to it, by a button
@@ -172,7 +173,7 @@ export function Welcome() {
   const editor = useEditor();
   const busy = useFile((s) => s.busy);
   const hasStorage = editor.document !== null;
-  const htmlImport = usePanel(PanelId.htmlImport);
+  const runImport = useAction('import');
   // Built-in templates first, then the user's own; drawn again when the personal ones are read.
   useStore(library.state, (s) => s.personal);
   const templates = library.entries();
@@ -222,11 +223,6 @@ export function Welcome() {
   };
   const open = async (path?: string) => {
     if (await openDocument(editor, path)) setWelcome(false);
-  };
-  /** The import panel asks for the file, and about the open document if it has work in it. */
-  const toImport = (panel: string) => {
-    setWelcome(false);
-    openPanel(panel);
   };
 
   return (
@@ -280,13 +276,13 @@ export function Welcome() {
                 disabled={!hasStorage}
                 onClick={() => void open()}
               />
-              {htmlImport && (
+              {runImport && (
                 <Way
-                  icon={htmlImport.icon}
+                  icon={FileInput}
                   testId="welcome-import"
                   title={t('welcome.importHtml')}
                   body={t('welcome.importHtmlBody')}
-                  onClick={() => toImport(htmlImport.id)}
+                  onClick={runImport}
                 />
               )}
             </div>

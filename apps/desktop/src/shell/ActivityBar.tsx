@@ -7,12 +7,6 @@ import { togglePanel, useShell } from './store';
 const captions: Record<string, string> = {
   notes: 'navigation.notes',
   lint: 'navigation.lint',
-  import: 'navigation.import',
-};
-
-const effectTones: Record<string, string> = {
-  animations: 'bg-ui-tool-pink text-ui-tool-pink-fg',
-  transitions: 'bg-ui-tool-blue text-ui-tool-blue-fg',
 };
 
 /**
@@ -69,18 +63,7 @@ function Item({ panel }: { panel: PanelDefinition }) {
             : 'text-ui-fg-muted hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed',
         )}
       >
-        {effectTones[panel.id] ? (
-          <span
-            className={cx(
-              'flex size-8 items-center justify-center rounded-inset',
-              effectTones[panel.id],
-            )}
-          >
-            <Icon icon={panel.icon} size="lg" />
-          </span>
-        ) : (
-          <Icon icon={panel.icon} size="lg" />
-        )}
+        <Icon icon={panel.icon} size="lg" />
         <span className="w-full truncate text-center text-xs font-medium">
           {t(captions[panel.id] ?? panel.title)}
         </span>

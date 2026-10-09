@@ -50,12 +50,13 @@ import {
 import { isTarget, useTarget } from '../objects/target';
 import { focusStage, setAiTab, tell, useDeck, useEditor } from '../shell';
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
-import { DECK, useThread } from './Chat';
+import { useThread } from './Chat';
 import { DeckLook } from './DeckLook';
 import { useKept } from './kept';
 import { TemplateForm } from './TemplateForm';
 import { switchLayoutCommands } from './layout';
 import { aiOf } from './runtime';
+import { DECK } from './sessions';
 import { useFocus } from './focus';
 
 /*
@@ -118,6 +119,8 @@ function useRunner(about: About = {}): Runner {
         label: actionLabel(t, action),
         ...(attachments.length > 0 ? { attachments } : {}),
       });
+      // The conversation the action went to: the deck's, also from the one of an import.
+      ai.sessions.chat.setState('deck', true);
       setAiTab('chat');
     },
   };

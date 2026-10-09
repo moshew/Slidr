@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, SearchX, TriangleAlert } from '@slidr/ui/icons';
 import { cx, EmptyState, Input, SegmentedControl, Skeleton, Tooltip } from '@slidr/ui';
+import { ListEnd } from '../elements/StickerGrid';
 import { tell, useEditor } from '../shell';
 import { findIcons, starterIcons, type FoundIcon } from './icons/library';
 import { insertIcon } from './insert';
@@ -10,6 +11,8 @@ type Style = 'line' | 'filled';
 
 /** How many icons a search shows: a few screens of the grid. */
 const COUNT = 120;
+/** Keep the first paint small even though the browse list has hundreds of icons. */
+const PAGE = 60;
 /** How long after the last key the search runs. */
 const PAUSE_MS = 150;
 
@@ -26,13 +29,15 @@ export function IconsTab() {
   const [text, setText] = useState('');
   const [style, setStyle] = useState<Style>('line');
   const [view, setView] = useState<View>({ state: 'loading' });
+  const [shown, setShown] = useState(PAGE);
+  const more = useCallback(() => setShown((count) => count + PAGE), []);
 
   useEffect(() => {
     let current = true;
     const query = text.trim();
     const timer = setTimeout(
       () => {
-        // Before a query: the icons most decks use.
+        // Before a query: common icons first, then the larger browse catalog.
         const found = query ? findIcons(query, { count: COUNT, style }) : starterIcons(style);
         found
           .then((icons) => current && setView({ state: 'icons', icons }))
@@ -52,7 +57,10 @@ export function IconsTab() {
         <Input
           icon={Search}
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            setText(event.target.value);
+            setShown(PAGE);
+          }}
           placeholder={t('icons.placeholder')}
           aria-label={t('icons.search')}
           data-testid="icon-query"
@@ -62,7 +70,10 @@ export function IconsTab() {
           size="sm"
           fill
           value={style}
-          onValueChange={setStyle}
+          onValueChange={(next) => {
+            setStyle(next);
+            setShown(PAGE);
+          }}
           options={[
             { value: 'line', label: t('icons.line') },
             { value: 'filled', label: t('icons.filled') },
@@ -101,7 +112,7 @@ export function IconsTab() {
             data-size="icon"
             data-testid="icon-results"
           >
-            {view.icons.map((icon) => (
+            {view.icons.slice(0, shown).map((icon) => (
               <Tooltip key={icon.id} content={icon.name}>
                 <button
                   type="button"
@@ -121,6 +132,7 @@ export function IconsTab() {
               </Tooltip>
             ))}
           </div>
+          {view.icons.length > shown && <ListEnd onReach={more} at={shown} />}
           <p className="text-xs text-ui-fg-muted">{t('icons.hint')}</p>
         </>
       )}

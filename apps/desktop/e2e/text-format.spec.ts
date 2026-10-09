@@ -30,6 +30,14 @@ const row = (page: Page) => page.getByTestId('top-tools-b');
 const tool = (page: Page, name: string) => row(page).getByRole('button', { name, exact: true });
 const editor = (page: Page) => page.locator('[data-text-editor]');
 
+async function setAlignment(page: Page, align: 'start' | 'center' | 'end' | 'justify') {
+  await tool(page, 'יישור').click();
+  await page
+    .getByRole('menuitemradio')
+    .and(page.locator(`[data-align="${align}"]`))
+    .click();
+}
+
 /**
  * Closes the colour picker with Esc, as a person would: a swatch that was clicked shows its
  * tooltip, the first Esc closes that, and the next one the picker. The pause lets the tooltip
@@ -68,7 +76,8 @@ test.describe('a selected text box: the tools format all of its text', () => {
     await expect(row(page).getByRole('combobox', { name: 'משקל' })).toHaveText('רגיל');
     await expect(tool(page, 'מודגש')).toHaveAttribute('aria-pressed', 'false');
     // Both paragraphs resolve to different directions, but the alignment is one: start.
-    await expect(row(page).locator('[data-align="start"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(tool(page, 'יישור')).toHaveAttribute('data-align', 'start');
+    await expect(tool(page, 'יישור')).toHaveAttribute('aria-haspopup', 'menu');
   });
 
   test('font, from the picker', async ({ page }) => {
@@ -236,12 +245,12 @@ test.describe('a selected text box: the tools format all of its text', () => {
   });
 
   test('alignment and direction', async ({ page }) => {
-    await oneUndoStep(page, ID, () => row(page).locator('[data-align="center"]').click());
+    await oneUndoStep(page, ID, () => setAlignment(page, 'center'));
     expect((await paragraphs(page, ID)).map((p) => p.align)).toEqual(['center', 'center']);
-    await oneUndoStep(page, ID, () => row(page).locator('[data-align="justify"]').click());
-    await row(page).locator('[data-align="end"]').click();
+    await oneUndoStep(page, ID, () => setAlignment(page, 'justify'));
+    await setAlignment(page, 'end');
     expect((await paragraphs(page, ID)).map((p) => p.align)).toEqual(['end', 'end']);
-    await expect(row(page).locator('[data-align="end"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(tool(page, 'יישור')).toHaveAttribute('data-align', 'end');
 
     await oneUndoStep(page, ID, async () => {
       await tool(page, 'כיוון הפסקה').click();
@@ -257,21 +266,42 @@ test.describe('a selected text box: the tools format all of its text', () => {
     expect((await paragraphs(page, ID)).map((p) => p.dir)).toEqual(['auto', 'auto']);
   });
 
-  test('the alignment buttons show the side that start and end are on', async ({ page }) => {
+  test('the alignment menu names the side that start and end are on', async ({ page }) => {
     // The first paragraph is Hebrew: start is the right.
-    await expect(row(page).locator('[data-align="start"]')).toHaveAccessibleName('יישור לימין');
-    await expect(row(page).locator('[data-align="end"]')).toHaveAccessibleName('יישור לשמאל');
     await expect(tool(page, 'כיוון הפסקה')).toHaveAttribute('data-direction', 'rtl');
-    const start = await row(page).locator('[data-align="start"]').boundingBox();
-    const end = await row(page).locator('[data-align="end"]').boundingBox();
-    expect(start!.x).toBeGreaterThan(end!.x);
+    await expect(tool(page, 'יישור').locator('svg')).toHaveCount(1);
+    await tool(page, 'יישור').click();
+    const choices = page.getByRole('menuitemradio').and(page.locator('[data-align]'));
+    await expect(choices).toHaveCount(4);
+    await expect(choices.locator('svg')).toHaveCount(4);
+    await expect(choices).toHaveText(['', '', '', '']);
+    const positions = await choices.evaluateAll((items) =>
+      items.map((item) => {
+        const { x, y } = item.getBoundingClientRect();
+        return { x, y };
+      }),
+    );
+    expect(new Set(positions.map(({ x }) => x)).size).toBe(1);
+    const heights = positions.map(({ y }) => y);
+    expect(heights).toEqual([...heights].sort((a, b) => a - b));
+    expect(new Set(heights).size).toBe(4);
+    await expect(
+      page.getByRole('menuitemradio').and(page.locator('[data-align="start"]')),
+    ).toHaveAccessibleName('יישור לימין');
+    await expect(
+      page.getByRole('menuitemradio').and(page.locator('[data-align="end"]')),
+    ).toHaveAccessibleName('יישור לשמאל');
+    await page.keyboard.press('Escape');
 
     await page.keyboard.press('Control+Shift+x');
-    await expect(row(page).locator('[data-align="start"]')).toHaveAccessibleName('יישור לשמאל');
     await expect(tool(page, 'כיוון הפסקה')).toHaveAttribute('data-direction', 'ltr');
-    const startLtr = await row(page).locator('[data-align="start"]').boundingBox();
-    const endLtr = await row(page).locator('[data-align="end"]').boundingBox();
-    expect(startLtr!.x).toBeLessThan(endLtr!.x);
+    await tool(page, 'יישור').click();
+    await expect(
+      page.getByRole('menuitemradio').and(page.locator('[data-align="start"]')),
+    ).toHaveAccessibleName('יישור לשמאל');
+    await expect(
+      page.getByRole('menuitemradio').and(page.locator('[data-align="end"]')),
+    ).toHaveAccessibleName('יישור לימין');
   });
 
   test('spacing: line height, space before and after, first-line indent', async ({ page }) => {
@@ -613,7 +643,7 @@ test.describe('inside the text editor: the tools format the selection', () => {
   test('paragraph tools change the paragraphs the selection touches', async ({ page }) => {
     await edit(page, ID);
     // The caret is at the end: in the second paragraph, "Hello world".
-    await oneUndoStep(page, ID, () => row(page).locator('[data-align="center"]').click());
+    await oneUndoStep(page, ID, () => setAlignment(page, 'center'));
     expect((await paragraphs(page, ID)).map((p) => p.align)).toEqual(['start', 'center']);
     await expect(editor(page)).toBeFocused();
 
@@ -645,7 +675,7 @@ test.describe('inside the text editor: the tools format the selection', () => {
 
     // A selection across both paragraphs changes both.
     await page.keyboard.press('Control+a');
-    await row(page).locator('[data-align="end"]').click();
+    await setAlignment(page, 'end');
     expect((await paragraphs(page, ID)).map((p) => p.align)).toEqual(['end', 'end']);
   });
 
@@ -886,8 +916,7 @@ test.describe('row B for text, for the design gate', () => {
             expect(right).toBeLessThanOrEqual(bar!.x + bar!.width);
           }
 
-          const tools = await page.getByTestId('top-tools-a').boundingBox();
-          const clip = { x: bar!.x, y: tools!.y, width: bar!.width, height: 440 };
+          const clip = { x: bar!.x, y: bar!.y, width: bar!.width, height: 440 };
           await page.screenshot({ path: out(`row-b-${name}`), clip });
 
           const he = lang === 'he';
@@ -910,6 +939,10 @@ test.describe('row B for text, for the design gate', () => {
             await page.keyboard.press('Escape');
             await expect(editor(page)).toBeFocused();
           }
+          await tool(page, he ? 'יישור' : 'Alignment').click();
+          await page.screenshot({ path: out(`row-b-${name}-align`), clip });
+          await page.keyboard.press('Escape');
+          await expect(editor(page)).toBeFocused();
         });
       }
     }

@@ -118,7 +118,8 @@ function CropAspect() {
   const target = useCropTarget();
   const session = useStore(cropSession);
   const view = target?.view;
-  if (!target?.cropping || !view) return null;
+  // The opening of a drawn frame keeps the proportions that frame was drawn with.
+  if (!target?.cropping || !view || view.outer) return null;
   // An undo can take the frame out of the proportions a preset gave it: they no longer hold then.
   const preset = heldRatio(session.ratio, view.frame) === null ? 'free' : session.preset;
   const options: { value: CropPreset; label: string }[] = [
@@ -185,8 +186,9 @@ function CropReset() {
   const target = useCropTarget();
   const view = target?.view;
   if (!target?.cropping || !view) return null;
-  // Nothing to reset while the frame shows exactly the whole picture.
-  const whole = cropPatch(view).crop === null;
+  // Nothing to reset while the frame shows exactly the whole picture; in a drawn frame, while
+  // the picture fills the opening as it did when it was put there.
+  const whole = view.outer ? !target.image.crop : cropPatch(view).crop === null;
   return (
     <IconButton
       icon={RotateCcw}

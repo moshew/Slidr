@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import type { SessionScope } from '@slidr/agent-tools';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +15,14 @@ import { History, SquarePen } from '@slidr/ui/icons';
 import type { ChatThread, Conversation } from '../agent/agentService';
 import { useEditor } from '../shell';
 import { actionLabel } from './actionLabels';
-import { agentOf } from './runtime';
+import { aiOf } from './runtime';
+import type { ChatConversation } from './sessions';
 import { conversationUsage, formatCost, formatTokens, tokensOf } from './usage';
 
 /*
- * The bar over a chat (CHT-U06, CHT-U07): the conversations its tool keeps, a new one, and
+ * The bar over a chat (CHT-U06, CHT-U07): the conversations the chat keeps, a new one, and
  * what the conversation on screen has cost so far, as the harness reported it turn by turn.
+ * The conversation of an HTML import is listed with the deck's own (SPEC 13.3).
  */
 
 /** The title of a conversation: the start of its first message, or the name of the action it began with. */
@@ -33,11 +34,11 @@ function useTitle() {
   };
 }
 
-export function ConversationBar({ scope, thread }: { scope: SessionScope; thread: ChatThread }) {
+export function ConversationBar({ thread }: { thread: ChatThread }) {
   const { t, i18n } = useTranslation('ai');
-  const agent = agentOf(useEditor());
+  const { sessions } = aiOf(useEditor());
   const entries = useStore(thread.store, (s) => s.entries);
-  const [list, setList] = useState<Conversation[]>([]);
+  const [list, setList] = useState<ChatConversation[]>([]);
   const titleOf = useTitle();
   const used = conversationUsage(entries);
   const when = (iso: string | undefined) =>
@@ -50,7 +51,7 @@ export function ConversationBar({ scope, thread }: { scope: SessionScope; thread
       <DropdownMenu
         onOpenChange={(open) => {
           // Read when asked for: another window, or a turn that just ended, may have added one.
-          if (open) void agent.conversations(scope).then(setList);
+          if (open) void sessions.conversations().then(setList);
         }}
       >
         <DropdownMenuTrigger asChild>
@@ -65,7 +66,10 @@ export function ConversationBar({ scope, thread }: { scope: SessionScope; thread
           <DropdownMenuLabel>{t('conversations.heading')}</DropdownMenuLabel>
           <DropdownMenuRadioGroup
             value={thread.id}
-            onValueChange={(id) => agent.showConversation(scope, id)}
+            onValueChange={(id) => {
+              const picked = list.find((conversation) => conversation.id === id);
+              if (picked) sessions.open(picked);
+            }}
           >
             {list.map((conversation) => (
               <DropdownMenuRadioItem
@@ -119,7 +123,7 @@ export function ConversationBar({ scope, thread }: { scope: SessionScope; thread
         label={t('conversations.new')}
         disabled={entries.length === 0}
         data-testid="conversation-new"
-        onClick={() => agent.newConversation(scope)}
+        onClick={() => sessions.startNew()}
       />
     </div>
   );

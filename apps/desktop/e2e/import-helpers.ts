@@ -2,9 +2,9 @@ import { fileURLToPath } from 'node:url';
 import { expect, type Locator, type Page } from '@playwright/test';
 
 /*
- * Helpers for the import panel's suites. In a plain browser there is no import window: the file
- * runs in a hidden frame of the page, nothing can be pictured, and the fidelity guard accepts
- * whatever was proposed. The agent is the scripted mock, on a script written for the file.
+ * Helpers for the suites of the HTML import. In a plain browser there is no import window: the
+ * file runs in a hidden frame of the page, nothing can be pictured, and the fidelity guard
+ * accepts whatever was proposed. The agent is the scripted mock, on a script written for the file.
  */
 
 export const HANDWRITTEN = fileURLToPath(new URL('./import-set/handwritten.html', import.meta.url));
@@ -20,10 +20,12 @@ export interface ImportOptions {
   lang?: 'he' | 'en';
   theme?: 'light' | 'dark';
   script?: ImportScript;
+  /** The app opens on its welcome screen, as the app itself does. */
+  welcome?: boolean;
 }
 
-/** Opens the app on the import panel, with the scripted agent that imports the handwritten deck. */
-export async function openImportPanel(page: Page, options: ImportOptions = {}): Promise<void> {
+/** Opens the app with the scripted agent that imports the handwritten deck. */
+export async function openForImport(page: Page, options: ImportOptions = {}): Promise<void> {
   const { speed = 0, lang = 'he', theme = 'light', script = 'import-handwritten' } = options;
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
   await page.addInitScript(
@@ -39,15 +41,41 @@ export async function openImportPanel(page: Page, options: ImportOptions = {}): 
   // The file runs in a frame of this page, which the app pages' content policy refuses (it is
   // why the app imports in a window of its own). The dev server serves the page asked for this
   // way with what the import page allows itself (build/csp.ts, ADR-066).
-  await page.goto('/?import-in-page');
-  await page.locator('[data-testid="activity-bar"] [data-panel="import"]').click();
-  await expect(page.getByTestId('import-start')).toBeVisible();
+  await page.goto(options.welcome ? '/?import-in-page&welcome' : '/?import-in-page');
+  await expect(page.getByTestId(options.welcome ? 'welcome' : 'file-menu-trigger')).toBeVisible();
 }
 
-/** Chooses the file, as the user does through the picker. */
+/** The AI panel, where the import is a conversation of the chat. */
+export const aiPanel = (page: Page): Locator =>
+  page.locator('[data-testid="tool-panel"] [data-panel="ai"]');
+
+/** The conversation of the import, as the AI chat shows it. */
+export const importChat = (page: Page): Locator =>
+  aiPanel(page).locator('[data-testid="chat"][data-scope="import"]');
+
+/** A conversation of the deck's own, as the AI chat shows it. */
+export const deckChat = (page: Page): Locator =>
+  aiPanel(page).locator('[data-testid="chat"][data-scope="deck"]');
+
+/**
+ * "Import HTML" and the file given to the dialog it opens, as the user does: from the File menu,
+ * or from the button given (the card of the welcome screen).
+ */
+export async function pickFile(page: Page, path = HANDWRITTEN, from?: Locator): Promise<void> {
+  const dialog = page.waitForEvent('filechooser');
+  if (from) {
+    await from.click();
+  } else {
+    await page.getByTestId('file-menu-trigger').click();
+    await page.getByTestId('file-import').click();
+  }
+  await (await dialog).setFiles(path);
+}
+
+/** Imports the file: the dialog, and then the request in the AI chat. */
 export async function chooseFile(page: Page, path = HANDWRITTEN): Promise<void> {
-  await page.getByTestId('import-file').setInputFiles(path);
-  await expect(page.getByTestId('import-session')).toBeVisible({ timeout: 30_000 });
+  await pickFile(page, path);
+  await expect(importChat(page)).toBeVisible({ timeout: 30_000 });
 }
 
 export const turns = (page: Page): Locator => page.getByTestId('chat-assistant');
@@ -78,7 +106,7 @@ export const HANDWRITTEN_SLIDES = [
 /**
  * Imports the handwritten deck on the script that is cut: the plan is approved, three of the six
  * slides come in, and the turn ends badly. At the pace of a real session (`speed` 1 in
- * `openImportPanel`) the turn waits there and `stop` presses Stop; played at once, its usage
+ * `openForImport`) the turn waits there and `stop` presses Stop; played at once, its usage
  * runs out.
  */
 export async function importUntilCut(page: Page, options: { stop: boolean }): Promise<void> {
@@ -108,7 +136,7 @@ export async function reopenDeck(page: Page, between?: () => Promise<void>): Pro
     (window as unknown as { __closed: unknown }).__closed = editor.bus.deck;
     editor.bus.reset(newDeck('he') as never);
   }, '/src/shell/editor.tsx');
-  await expect(page.getByTestId('import-session')).toHaveCount(0);
+  await expect(importChat(page)).toHaveCount(0);
   await between?.();
   await page.evaluate(() => {
     window.slidr!.bus.reset((window as unknown as { __closed: never }).__closed);

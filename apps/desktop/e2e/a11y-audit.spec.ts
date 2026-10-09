@@ -4,7 +4,7 @@ import { HELD_BEYOND, Survey, type Found, type Seen } from './a11y-helpers';
 import { addBoxes, openApp, select, THREE } from './arrange-helpers';
 import { addChart } from './chart-helpers';
 import { card } from './code-helpers';
-import { importUntilCut, openImportPanel } from './import-helpers';
+import { importUntilCut, openForImport } from './import-helpers';
 import { addElement, importPicture, line } from './objects-helpers';
 import { addTable } from './table-helpers';
 import { addText, edit, para } from './text-helpers';
@@ -668,18 +668,17 @@ test('the window while its first document is on its way', async ({ page }) => {
   conclude(survey, 'starting', 1);
 });
 
-test('the import panel: before a file, a import that was cut short, and its report', async ({
+test('the import in the AI chat: an import that was cut short, and its report', async ({
   page,
 }) => {
   test.setTimeout(5 * 60_000);
-  await openImportPanel(page, { lang: 'en', script: 'import-cut' });
+  await openForImport(page, { lang: 'en', script: 'import-cut' });
   const survey = new Survey(page, IN_ALL);
-  await survey.audit('the import panel, before a file', { within: PANEL });
   await importUntilCut(page, { stop: false });
-  await survey.audit('the import panel, an import to continue', { within: PANEL });
-  await survey.popups(PANEL, 'the import panel, an import to continue');
-  await page.getByTestId('import-report-tab').click();
+  await survey.audit('the import, an import to continue', { within: PANEL });
+  await survey.popups(PANEL, 'the import, an import to continue');
+  await page.getByTestId('import-report-toggle').click();
   await expect(page.getByTestId('import-report')).toBeVisible();
-  await survey.audit('the import panel, the report and the source', { within: PANEL });
-  conclude(survey, 'import', 3);
+  await survey.audit('the import, the report and the source', { within: PANEL });
+  conclude(survey, 'import', 2);
 });

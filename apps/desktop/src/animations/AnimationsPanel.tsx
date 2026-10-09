@@ -90,6 +90,9 @@ const CATEGORY_TAB_TONE = {
   exit: 'bg-ui-tool-rose text-ui-tool-rose-fg',
 } as const;
 
+/** The colour of the tiles of each category, the bright one of its tab. */
+const CATEGORY_TILE_TONE = { entrance: 'green', emphasis: 'orange', exit: 'rose' } as const;
+
 const EASINGS = ['ease-out', 'ease-in', 'ease-in-out', 'linear', 'ease'] as const;
 const TRIGGERS = ['onClick', 'withPrevious', 'afterPrevious'] as const;
 const TEXT_BY = ['all', 'paragraph', 'word', 'char'] as const;
@@ -313,6 +316,7 @@ function AnimationGallery({
             label={nameLabel(`preset.${category}.${preset}`, preset)}
             effect={preset}
             phase={category}
+            tone={CATEGORY_TILE_TONE[category]}
             disabled={!canAdd}
             onClick={() => onAdd(category, preset)}
           />

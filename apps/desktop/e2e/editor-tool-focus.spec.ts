@@ -173,13 +173,13 @@ test.describe('a tool that is used with the pointer', () => {
     await expect.poll(async () => (await elements(page)).length).toBe(2);
   });
 
-  test('a press on the room between the tools does not take the keyboard from the Stage', async ({
+  test('a press on the toolbar padding does not take the keyboard from the Stage', async ({
     page,
   }) => {
     await openApp(page, { lang: 'en' });
     await addBoxes(page, THREE);
     await onStage(page, 'e_b').click();
-    await page.getByTestId('selection-label').click();
+    await rowB(page).click({ position: { x: 6, y: 22 } });
     await expect(surface(page)).toBeFocused();
   });
 

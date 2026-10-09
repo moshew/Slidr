@@ -19,8 +19,8 @@ registerPanel({
   id: 'templates',
   kind: 'tool',
   slot: 'tools',
-  // Before the media panel: the look of the deck comes first.
-  order: -1,
+  // Above Elements and media: the look of the deck comes first.
+  order: -2,
   title: 'templates:panel.title',
   icon: Palette,
   content: TemplatesPanel,

@@ -555,6 +555,63 @@ describe('SlideRenderer', () => {
     expect(layers('e_fine').some((style) => style.borderTopWidth !== '')).toBe(false);
   });
 
+  it('cuts a picture to an outline of its own, and draws the artwork of a frame over its opening', () => {
+    const outline = { kind: 'path', d: 'M0 0L100 0L50 100Z', viewBox: { w: 100, h: 100 } } as const;
+    const deck = createDeck({ lang: 'en' });
+    const slide = createSlide({
+      id: 's_frames',
+      elements: [
+        createElement.image({ id: 'e_cut', frame: { x: 0, y: 0, w: 400, h: 200 }, mask: outline }),
+        createElement.image({
+          id: 'e_framed',
+          frame: { x: 500, y: 0, w: 800, h: 960 },
+          mask: outline,
+          flipH: true,
+          smartFrame: {
+            viewBox: { w: 400, h: 480 },
+            opening: { x: 26, y: 26, w: 348, h: 348 },
+            decorations: [
+              createElement.shape({
+                id: 'e_card',
+                frame: { x: 0, y: 0, w: 400, h: 480 },
+                geometry: {
+                  kind: 'path',
+                  d: 'M0 0L400 0L400 480L0 480Z',
+                  viewBox: { w: 400, h: 480 },
+                },
+                fill: { kind: 'solid', color: { value: '#ffffff' } },
+              }),
+            ],
+          },
+        }),
+      ],
+    });
+    render(<SlideRenderer deck={{ ...deck, slides: [slide] }} slide={slide} />);
+    const inside = (id: string, selector: string) =>
+      container.querySelector<HTMLElement>(`[data-element-id="${id}"] ${selector}`)!;
+    // The outline is stretched from its own box to the picture's.
+    expect(inside('e_cut', '> div').style.clipPath).toBe("path('M0 0 L400 0 L200 200 Z')");
+    // Artwork drawn at twice its size: the opening is twice as far in and twice as large, and
+    // the photograph is cut inside it, at the size of the opening.
+    const opening = inside('e_framed', '[data-image-opening]');
+    expect([opening.style.left, opening.style.top]).toEqual(['52px', '52px']);
+    expect([opening.style.width, opening.style.height]).toEqual(['696px', '696px']);
+    const photograph = opening.firstElementChild as HTMLElement;
+    expect(photograph.style.clipPath).toBe("path('M0 0 L696 0 L348 696 Z')");
+    // The artwork is laid out in its own box and scaled with the picture. It is over the
+    // photograph, and it is not content of the slide.
+    const artwork = inside('e_framed', '[data-frame-artwork]');
+    expect(artwork.style.transform).toBe('scale(2, 2)');
+    expect(artwork.querySelector('[data-decoration-id="e_card"]')).not.toBeNull();
+    expect(container.querySelector('[data-element-id="e_card"]')).toBeNull();
+    expect(
+      opening.compareDocumentPosition(artwork) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // A mirrored picture is turned over whole, once: not the photograph again inside it.
+    expect(inside('e_framed', '[data-smart-image-frame]').style.transform).toBe('scale(-1, 1)');
+    expect(photograph.style.transform).toBe('');
+  });
+
   it('leaves the room a shape asks for around its text, and its usual room when it asks for none', () => {
     const label = (id: string, more: object) =>
       createElement.shape({

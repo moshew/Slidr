@@ -5,12 +5,12 @@ import { describe, expect, it } from 'vitest';
 import { en, he } from './messages';
 
 /*
- * The strings of the import panel. The design-system rules over the panel are the shell's
+ * The strings of the HTML import. The design-system rules over its components are the shell's
  * (`src/shell/designRules.test.ts` scans every folder of the app).
  */
 
 const dir = fileURLToPath(new URL('.', import.meta.url));
-/** The panel's sources, which ask for the strings. */
+/** The import's sources, which ask for the strings. */
 const files = readdirSync(dir).filter(
   (name) => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name),
 );
@@ -24,7 +24,7 @@ function keys(tree: object, prefix = ''): string[] {
   );
 }
 
-describe('the strings of the import panel', () => {
+describe('the strings of the HTML import', () => {
   it('exist in both languages, with the same placeholders', () => {
     expect(keys(en)).toEqual(keys(he));
     const placeholders = (text: string) =>

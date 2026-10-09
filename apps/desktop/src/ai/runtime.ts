@@ -250,7 +250,11 @@ function createAi(editor: Editor): AiRuntime {
     agent,
     gallery,
     images,
-    sessions: createSessions(agent, editor.bus),
+    // The conversation of the import the deck came from is one of the chat's (SPEC 13.3).
+    sessions: createSessions(agent, editor.bus, () => {
+      const { file, deckId } = importState.getState();
+      return file && deckId === editor.bus.deck.id ? { kind: 'import', file } : null;
+    }),
     drafts: createDrafts(),
     undone: createUndoneTurns(editor.bus),
     tools,

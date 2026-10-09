@@ -30,7 +30,7 @@ test('FHD: the refreshed regions and the slide fitted below its floating tools',
 }) => {
   expect((await box(page, 'title-bar')).height).toBe(56);
   await expect(page.getByTestId('top-tools-a')).toHaveCount(0);
-  expect((await box(page, 'top-tools-b')).height).toBe(80);
+  expect((await box(page, 'top-tools-b')).height).toBe(44);
   expect((await box(page, 'filmstrip')).height).toBe(132);
   expect((await box(page, 'status-bar')).height).toBe(32);
   expect((await box(page, 'activity-bar')).width).toBe(76);
@@ -220,7 +220,7 @@ test('row B follows the kind of selection', async ({ page }) => {
     editor.selection.getState().selectElements(['e_title001']);
   });
   await expect(row).toHaveAttribute('data-selection', 'text');
-  await expect(page.getByTestId('selection-label')).toHaveText('טקסט');
+  await expect(page.getByTestId('selection-label')).toHaveCount(0);
   await expect(row.getByRole('button', { name: 'רקע' })).toHaveCount(0);
 
   await expect(row.getByRole('button', { name: 'שאלו את ה-AI על הבחירה' })).toHaveCount(0);

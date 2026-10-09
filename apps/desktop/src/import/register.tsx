@@ -1,9 +1,7 @@
 import { createDeckApi, startTurn, type ToolResult } from '@slidr/agent-tools';
-import { FileInput } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
-import { getEditor, openPanel, PanelId, registerPanel, whenEditor } from '../shell';
-import { continueImport, importThread, startImport } from './flow';
-import { ImportPanel } from './ImportPanel';
+import { getEditor, registerAction, whenEditor } from '../shell';
+import { continueImport, importFile, importRestored, importThread, startImport } from './flow';
 import { en, he } from './messages';
 import { importBrief } from './progress';
 import { buildReport } from './report';
@@ -20,30 +18,18 @@ import {
 } from './session';
 
 /*
- * HTML import (SPEC ch. 13, WG9-T18): a panel of the Activity Bar. The shell's File menu and its
- * welcome screen lead to it by the panel's id. See docs/adr/ADR-036-html-import.md.
+ * HTML import (SPEC ch. 13, WG9-T18): "Import HTML" of the File menu and of the welcome screen
+ * asks for the file, and the import is a conversation of the AI chat from its first message on.
+ * See docs/adr/ADR-036-html-import.md.
  */
 
 registerMessages('import', { he, en });
 
-registerPanel({
-  id: 'import',
-  kind: 'tool',
-  slot: 'tools',
-  order: 90,
-  title: 'import:panel',
-  icon: FileInput,
-  content: ImportPanel,
-});
+registerAction('import', () => void importFile(getEditor()));
 
-// A deck that was imported has its import again when it is opened (IMP-07). One whose import
-// was cut is shown with the panel open, where going on with it is offered (IMP-09): the user
-// who comes back after a crash should not have to know where to look.
-whenEditor((editor) =>
-  watchDocuments(editor, (state) => {
-    if (state.phase === 'cut') openPanel(PanelId.htmlImport);
-  }),
-);
+// A deck that was imported has its import again when it is opened (IMP-07), and the AI chat
+// goes back to its conversation (`importRestored`).
+whenEditor((editor) => watchDocuments(editor, () => void importRestored(editor)));
 
 declare global {
   interface Window {
@@ -54,11 +40,11 @@ declare global {
       state: typeof importState;
       /** The chat of the session, once a file is being imported. */
       thread(): ReturnType<typeof importThread> | null;
-      /** The report the panel shows, with the refused requests read anew. */
+      /** The report the conversation shows, with the refused requests read anew. */
       report(): Promise<ReturnType<typeof buildReport> | null>;
       /** Opens a session on a file with no agent and no message: the page, and the kept source. */
       open: (source: ImportSource) => Promise<string>;
-      /** What the panel's "continue" does: the page again, and the message to the agent. */
+      /** What "continue the import" does: the page again, and the message to the agent. */
       resume: () => Promise<void>;
       /** Opens the isolated page again on the source the deck keeps. */
       reopen: () => Promise<void>;

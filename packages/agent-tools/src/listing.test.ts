@@ -136,8 +136,9 @@ describe('tool definitions for a transport adapter', () => {
 
   it('stay within a size the agent can afford', () => {
     const total = JSON.stringify(listing).length;
-    // About 92 KB (23k tokens) with every service. Raised from 90 KB for text_replace (ADR-072).
-    expect(total).toBeLessThan(93_000);
+    // About 94 KB (24k tokens) with every service. Raised from 90 KB for text_replace (ADR-072),
+    // and from 93 KB for a picture's outline mask and the artwork of its frame.
+    expect(total).toBeLessThan(95_000);
   });
 
   it('give the image tools, and the drafting of a template, more time than a call gets by default', () => {

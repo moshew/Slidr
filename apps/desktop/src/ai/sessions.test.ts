@@ -1,4 +1,4 @@
-import { createDeckApi } from '@slidr/agent-tools';
+import { createDeckApi, type SessionScope } from '@slidr/agent-tools';
 import { CommandBus, createDeck, createSlide } from '@slidr/model';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentClient } from '../agent/agent';
@@ -49,7 +49,7 @@ const rename: Script = {
 const twoSlides = () =>
   createDeck({ slides: [createSlide({ id: 's_1' }), createSlide({ id: 's_2' })] });
 
-function setup(speed = 0, script: Script = talk) {
+function setup(speed = 0, script: Script = talk, imported?: () => SessionScope | null) {
   const bus = new CommandBus(twoSlides());
   const agent = createScriptedAgent({ script }, { speed });
   const closed: string[] = [];
@@ -79,7 +79,7 @@ function setup(speed = 0, script: Script = talk) {
     transcripts: memoryTranscripts(),
     settings: () => ({ harnessId: 'mock' }),
   });
-  return { bus, sessions: createSessions(service, bus), closed, started };
+  return { bus, sessions: createSessions(service, bus, imported), closed, started };
 }
 
 function settled(thread: ChatThread): Promise<void> {
@@ -249,5 +249,51 @@ describe('the chat of a selection', () => {
       expect(threadIdOf(scope).length).toBeLessThanOrEqual(64);
     }
     expect(threadIdOf(first)).not.toBe(threadIdOf(selection(...five, 'e_ffffffff', 'e_gggggggg')));
+  });
+});
+
+describe('the conversations of the AI chat', () => {
+  const IMPORT = { kind: 'import', file: 'deck.html' } as const;
+  const listed = async (sessions: ReturnType<typeof setup>['sessions']) =>
+    (await sessions.conversations()).map(({ id, scope }) => [id, scope.kind]);
+
+  it('list the conversation of an import with those of the deck, and show the one picked', async () => {
+    const { sessions } = setup(0, talk, () => IMPORT);
+    // Nobody has written anything: the one on screen, the deck's first, and no other.
+    expect(await listed(sessions)).toEqual([['deck', 'deck']]);
+
+    // The request to import a file is the first message of its conversation.
+    const ofImport = sessions.thread(IMPORT);
+    await ofImport.send('Import the file "deck.html" as a deck.');
+    await settled(ofImport);
+    sessions.chat.setState('import', true);
+    // The deck's own conversation is empty, and no longer on screen.
+    expect(await listed(sessions)).toEqual([['import', 'import']]);
+
+    // A new conversation is the deck's, also from the conversation of the import.
+    sessions.startNew();
+    expect(sessions.chat.getState()).toBe('deck');
+    const list = await sessions.conversations();
+    expect(list.map(({ scope }) => scope.kind)).toEqual(['deck', 'import']);
+    expect(list[0]!.id).toMatch(/^deck-c/);
+    expect(list[1]).toMatchObject({
+      id: 'import',
+      title: 'Import the file "deck.html" as a deck.',
+    });
+
+    sessions.open(list[1]!);
+    expect(sessions.chat.getState()).toBe('import');
+    sessions.open(list[0]!);
+    expect(sessions.chat.getState()).toBe('deck');
+    expect(sessions.thread({ kind: 'deck' }).id).toBe(list[0]!.id);
+  });
+
+  it('are those of the deck when it came from no import, and when another one is opened', async () => {
+    const { bus, sessions } = setup();
+    sessions.chat.setState('import', true);
+    // The deck has no import to show the conversation of.
+    expect(await listed(sessions)).toEqual([['deck', 'deck']]);
+    bus.reset(twoSlides());
+    expect(sessions.chat.getState()).toBe('deck');
   });
 });

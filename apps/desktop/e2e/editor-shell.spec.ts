@@ -322,20 +322,25 @@ test('a template starts a deck that is set in it', async ({ page }) => {
   expect(deck.layouts).toBeGreaterThan(3);
 });
 
-test('"Import HTML" leads to the import panel, from the welcome screen and from the File menu', async ({
+test('"Import HTML" asks for the file at once, from the welcome screen and from the File menu', async ({
   page,
 }) => {
   await openWelcome(page);
+  // The dialog for the file, and nothing else: the screen stays while no file is chosen. What
+  // a chosen file starts is the import's own suite (`import-panel.spec.ts`).
+  const fromWelcome = page.waitForEvent('filechooser');
   await page.getByTestId('welcome-import').click();
-  await expect(welcome(page)).toHaveCount(0);
-  await expect(page.getByTestId('stage-frame')).toBeVisible();
-  await expect(page.getByTestId('import-start')).toBeVisible();
+  expect((await fromWelcome).isMultiple()).toBe(false);
+  await expect(welcome(page)).toBeVisible();
 
-  // The same panel from the menu, when another one is open.
-  await page.locator('[data-testid="activity-bar"] [data-panel="ai"]').click();
-  await expect(page.getByTestId('import-start')).toHaveCount(0);
+  await page.getByTestId('welcome-blank').click();
+  await expect(page.getByTestId('stage-frame')).toBeVisible();
+  const fromMenu = page.waitForEvent('filechooser');
   await (await fileItem(page, 'ייבוא HTML…')).click();
-  await expect(page.getByTestId('import-start')).toBeVisible();
+  await fromMenu;
+  // No panel of the import, and no view of it in the AI chat: the chat is as it was.
+  await expect(page.locator('[data-testid="activity-bar"] [data-panel="import"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="chat"][data-scope="deck"]')).toBeVisible();
 });
 
 test('on the welcome screen only the File keys answer, and the File menu comes back to it', async ({

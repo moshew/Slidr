@@ -23,7 +23,7 @@ export function TitleBar() {
   const starting = useFile((s) => s.starting);
   const welcome = useShell((s) => s.welcome);
   const header = useRef<HTMLElement>(null);
-  const name = documentName(path, title);
+  const name = path ? documentName(path, title) : null;
   useEffect(() => (header.current ? watchToolFocus(header.current) : undefined), []);
 
   return (
@@ -31,36 +31,46 @@ export function TitleBar() {
       ref={header}
       data-testid="title-bar"
       data-pane={welcome ? undefined : 'document'}
-      className="editor-header flex h-titlebar shrink-0 items-center gap-3"
+      className="editor-header relative flex h-titlebar shrink-0 items-center gap-3"
     >
-      <div data-tauri-drag-region className="flex shrink-0 items-center">
-        <span className="pointer-events-none flex w-activitybar items-center justify-center">
-          <img src="/favicon.svg" alt="" className="size-8" draggable={false} />
-        </span>
-        <span className="pointer-events-none text-lg font-semibold">{t('app.name')}</span>
-      </div>
       {!welcome && (
         <div inert={starting} aria-busy={starting || undefined}>
           <DocumentStartTools />
         </div>
       )}
+      <div data-tauri-drag-region className="min-w-0 flex-1 self-stretch" />
       <div
         data-tauri-drag-region
-        className="flex min-w-0 flex-1 items-center justify-center gap-2 self-stretch px-4"
-      >
-        <span
-          className="pointer-events-none truncate text-sm font-medium"
-          data-testid="document-name"
-        >
-          {name}
-        </span>
-        {dirty && (
-          <span
-            role="img"
-            aria-label={t('window.unsaved')}
-            className="pointer-events-none size-1.5 shrink-0 rounded-full bg-ui-header-fg"
-          />
+        className={cx(
+          'pointer-events-none absolute inset-0 flex items-center justify-center',
+          welcome ? 'px-40' : 'px-80',
         )}
+      >
+        <div className="flex min-w-0 max-w-full items-center gap-2">
+          <span className="flex shrink-0 items-center gap-2">
+            <img src="/favicon.svg" alt="" className="size-8" draggable={false} />
+            <span className="text-lg font-semibold">{t('app.name')}</span>
+          </span>
+          {name && (
+            <>
+              <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-ui-header-fg" />
+              <span
+                dir="auto"
+                className="min-w-0 truncate text-sm font-medium"
+                data-testid="document-name"
+              >
+                {name}
+              </span>
+            </>
+          )}
+          {dirty && (
+            <span
+              role="img"
+              aria-label={t('window.unsaved')}
+              className="size-1.5 shrink-0 rounded-full bg-ui-header-fg"
+            />
+          )}
+        </div>
       </div>
       {!welcome && (
         <div inert={starting} aria-busy={starting || undefined}>

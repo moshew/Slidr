@@ -9,6 +9,7 @@ import {
 import { ScaledSlide, type AssetResolver } from '@slidr/renderer';
 import {
   memo,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -28,6 +29,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
   ContextMenuTrigger,
+  cx,
   Icon,
   Popover,
   PopoverContent,
@@ -57,13 +59,15 @@ import {
   removeSlides,
   setSlidesHidden,
 } from '../arrange/slides';
+import { isCtrlLetter } from './keys';
 import { setStripCommands, stageKeys, type StageCommand } from './keyboardSession';
 
 /**
  * The Filmstrip (WG2-T07, WG5-T08, FLM-01..04): thumbnails of every slide, in the reading
  * direction of the UI. Only the thumbnails in view are rendered, so 200 slides scroll as smoothly
  * as 10 (NFR-05). Click picks a slide, Ctrl adds to the selection, Shift selects a range; dragging
- * reorders; a right click opens the slide menu, which acts on the whole selection.
+ * reorders; a right click opens the slide menu, which acts on the whole selection. Between two
+ * slides is the transition from the one to the other, and a press on it opens it.
  *
  * For the keyboard and for a screen reader (UI-06) the slides are a list with a name: the list
  * has the keyboard and says which slide it is on and how many there are; the strip around it
@@ -89,6 +93,17 @@ export interface FilmstripProps {
    * check's findings. A screen reader hears it as the thumbnail's description.
    */
   mark?: (slideId: string) => ReactNode;
+  /**
+   * Opens the transition into a slide, where the host has an editor for it; the slide is the
+   * current one by then. With it the marks between the slides are buttons, and a gap without a
+   * transition offers to add one. Without it a transition is marked, and that is all.
+   */
+  onTransition?: (slideId: string) => void;
+  /**
+   * The picture of a kind of transition, for its mark between two slides; `mirror` for one that
+   * is an arrow. Without it every kind is marked alike.
+   */
+  transitionGlyph?: (type: string) => { icon: LucideIcon; mirror?: boolean };
   className?: string;
 }
 
@@ -106,8 +121,12 @@ export interface FilmstripLabels {
   strip: string;
   addSlide: string;
   slide: (n: number) => string;
-  /** The mark of a slide that comes in with a transition (FLM-04). */
+  /** What a screen reader hears of a slide that comes in with a transition (FLM-04). */
   transition: string;
+  /** The mark between two slides: the transition into slide `n`, by its kind (FLM-04). */
+  transitionInto: (n: number, type: string) => string;
+  /** The same place without a transition: the offer to add one into slide `n`. */
+  addTransition: (n: number) => string;
   /** The mark of a slide whose elements are animated, by how many animations (FLM-04). */
   animations: (count: number) => string;
   /** The mark on a slide that is left out of the presentation. */
@@ -137,12 +156,18 @@ const WHEEL_LINE = 40;
 const DRAG_PX = 4;
 /** A layout in the "new slide" popover. */
 const LAYOUT_W = 120;
+/** The round mark of a transition: wider than the gap it sits in, so it lies over both slides. */
+const MARK = 24;
+/** How far over the slides on either side of a gap the pointer brings out the offer of one. */
+const REACH = 12;
 
 const DEFAULT_LABELS: FilmstripLabels = {
   strip: 'Slides',
   addSlide: 'New slide',
   slide: (n: number) => `Slide ${n}`,
   transition: 'Has a transition',
+  transitionInto: (n: number, type: string) => `Transition into slide ${n}: ${type}`,
+  addTransition: (n: number) => `Add a transition into slide ${n}`,
   animations: (count: number) => (count === 1 ? '1 animation' : `${count} animations`),
   hidden: 'Hidden',
   blank: 'Blank slide',
@@ -167,6 +192,9 @@ interface Drag {
 
 /** The id of a slide's place in the list, which the list names as where the keyboard is. */
 const optionId = (slideId: string) => `filmstrip-slide-${slideId}`;
+
+/** Whether a slide comes in with a transition. A transition of "none" is no transition. */
+const comesIn = (slide: Slide) => Boolean(slide.transition && slide.transition.type !== 'none');
 
 /**
  * A state of the slide, beside its number (FLM-04): an icon, with words for a screen reader,
@@ -213,8 +241,7 @@ const Thumb = memo(function Thumb({
   if (!slide) return null;
   const markId = `filmstrip-mark-${slide.id}`;
   const stateId = `filmstrip-state-${slide.id}`;
-  // A transition of "none" is no transition.
-  const transition = Boolean(slide.transition && slide.transition.type !== 'none');
+  const transition = comesIn(slide);
   const animations = slide.timeline.length;
   const hasState = transition || animations > 0;
   const described = [mark ? markId : '', hasState ? stateId : ''].filter(Boolean).join(' ');
@@ -324,16 +351,15 @@ const Thumb = memo(function Thumb({
           </div>
         )}
         {hasState && (
-          // The slide's own states, at the other end of the row: how it comes in, and whether
-          // anything on it moves. Beside the number too, for the same reason.
+          // The slide's own states, at the other end of the row: whether anything on it moves.
+          // Beside the number too, for the same reason. How it comes in is drawn between the
+          // slides (`TransitionMark`), and is only said here, with the rest of what the slide is.
           <div
             id={stateId}
             data-testid="slide-state"
             style={{ position: 'absolute', top: -1, insetInlineEnd: 0, display: 'flex', gap: 4 }}
           >
-            {transition && (
-              <StateMark icon={Blend} label={transitionLabel} testId="slide-transition-mark" />
-            )}
+            {transition && <span className="sr-only">{transitionLabel}</span>}
             {animations > 0 && (
               <StateMark
                 icon={Film}
@@ -344,6 +370,92 @@ const Thumb = memo(function Thumb({
           </div>
         )}
       </div>
+    </div>
+  );
+});
+
+/**
+ * The transition into a slide, drawn where it plays (FLM-04): in the gap between the slide and
+ * the one before it, as the picture of its kind. With an editor to open, it is a button, and a
+ * gap without a transition offers to add one to a pointer that comes near.
+ *
+ * It is no stop of Tab and no part of the list, which holds slides only: from the keyboard the
+ * transition of the current slide is reached where the host has its editor.
+ */
+const TransitionMark = memo(function TransitionMark({
+  slide,
+  slideIndex,
+  label,
+  icon = Blend,
+  mirror,
+  onOpen,
+}: {
+  slide: Slide;
+  slideIndex: number;
+  label: string;
+  /** The picture of the transition's kind; of the offer of one, that of transitions as such. */
+  icon?: LucideIcon;
+  mirror?: boolean;
+  onOpen?: (slideId: string) => void;
+}) {
+  const has = comesIn(slide);
+  if (!has && !onOpen) return null;
+  const glyph = <Icon icon={icon} mirror={mirror} />;
+  const look = {
+    className: cx(
+      'inline-flex shrink-0 cursor-default items-center justify-center rounded-full transition-[opacity,color,background-color]',
+      has
+        ? 'bg-ui-accent-soft text-ui-accent-fg'
+        : 'bg-ui-raised text-ui-fg-muted opacity-0 group-hover:opacity-100',
+      onOpen && (has ? 'hover:bg-ui-accent-soft-hover' : 'hover:text-ui-fg'),
+    ),
+    style: {
+      width: MARK,
+      height: MARK,
+      // A transition is cut out of the two pictures it lies over; an offer floats above them.
+      boxShadow: has
+        ? '0 0 0 2px var(--color-ui-panel)'
+        : 'var(--shadow-raised), 0 0 0 1px var(--color-ui-line)',
+    },
+  };
+  return (
+    <div
+      data-testid="slide-transition"
+      data-into={slide.id}
+      data-transition={has ? slide.transition?.type : undefined}
+      className="group"
+      style={{
+        position: 'absolute',
+        insetInlineStart: PAD + slideIndex * STEP - GAP - REACH,
+        top: 7,
+        width: GAP + 2 * REACH,
+        height: THUMB_H,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Tooltip content={label} side="top">
+        {onOpen ? (
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={label}
+            // The press is the mark's own, not the start of a drag of slides, and the keyboard
+            // stays where the strip puts it.
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onOpen(slide.id)}
+            {...look}
+          >
+            {glyph}
+          </button>
+        ) : (
+          <span role="img" aria-label={label} {...look}>
+            {glyph}
+          </span>
+        )}
+      </Tooltip>
     </div>
   );
 });
@@ -471,6 +583,8 @@ export function Filmstrip({
   clipboard,
   labels = DEFAULT_LABELS,
   mark,
+  onTransition,
+  transitionGlyph,
   className,
 }: FilmstripProps) {
   /** The strip: it scrolls and takes the pointer. */
@@ -694,6 +808,22 @@ export function Filmstrip({
     setMenu({ onSlide: Boolean(slide), canPaste: clipboard?.canPaste() ?? false });
   };
 
+  /**
+   * A press on the mark before a slide. The slide is the current one, as by a plain press on it,
+   * walk and keyboard included; then the host opens the transition into it.
+   */
+  const openTransition = useCallback(
+    (slideId: string) => {
+      if (stageKeys.getState().slide !== null) stageKeys.setState({ slide: null });
+      list.current?.focus({ preventScroll: true });
+      const state = selection.getState();
+      state.setCurrentSlide(slideId);
+      if (state.selectedSlideIds.length > 1) state.selectSlides([slideId], slideId);
+      onTransition?.(slideId);
+    },
+    [selection, onTransition],
+  );
+
   const add = (layoutId?: string) => addSlide(bus, selection, { layoutId, label: labels.addSlide });
   /** The slides the menu acts on, as they are when an item is chosen. */
   const chosen = () => selection.getState().selectedSlideIds;
@@ -723,6 +853,16 @@ export function Filmstrip({
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (e.target === list.current && isCtrlLetter(e, 'a') && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      if (slides.length) {
+        selection.getState().selectSlides(
+          slides.map((slide) => slide.id),
+          currentId ?? slides[0]!.id,
+        );
+      }
+      return;
+    }
     // Esc ends the selection walk, and leaves the selection as the walk made it.
     if (e.key === 'Escape' && walkId) {
       e.preventDefault();
@@ -897,6 +1037,30 @@ export function Filmstrip({
                   />
                 ))}
               </div>
+              {/* The transitions, in the gaps before the slides in view and outside the list.
+                  Not while slides are dragged: the place they would land in is drawn there. */}
+              {!drag?.active &&
+                slides.slice(Math.max(first, 1), last + 1).map((slide, i) => {
+                  const index = Math.max(first, 1) + i;
+                  // The kind of the transition into the slide, when it comes in with one.
+                  const type = comesIn(slide) ? slide.transition?.type : undefined;
+                  const glyph = type === undefined ? undefined : transitionGlyph?.(type);
+                  return (
+                    <TransitionMark
+                      key={slide.id}
+                      slide={slide}
+                      slideIndex={index}
+                      label={
+                        type === undefined
+                          ? labels.addTransition(index + 1)
+                          : labels.transitionInto(index + 1, type)
+                      }
+                      icon={glyph?.icon}
+                      mirror={glyph?.mirror}
+                      onOpen={onTransition && openTransition}
+                    />
+                  );
+                })}
               <div
                 style={{
                   position: 'absolute',

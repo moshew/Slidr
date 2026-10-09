@@ -1,63 +1,7 @@
-<div dir="rtl">
+# ADR-004 — Use Codex CLI as the default image provider
 
-# ADR-004 — ספק תמונות ברירת מחדל: `codex-cli`
+Status: Adopted. This is the current English summary of the decision. The original implementation log remains available in Git history.
 
-סטטוס: **הוכרע** · 2026-10-03 · spike: WG0-S4 · קוד: `spikes/s4-codex-images/`
+## Decision and current interpretation
 
-## ההחלטה
-
-`codex-cli` הוא ספק התמונות של ברירת המחדל: הוא עובד בלי מפתח API, על ההתחברות הקיימת של ChatGPT. `openai-api` (GEN-03, P1) נשאר הספק למי שרוצה מהירות, מסכה לעריכה או שליטה בגודל, ומופעל כשיש מפתח.
-
-נבדק מול Codex CLI ‏0.160.0 ב-Windows, עם התחברות ChatGPT קיימת: שבע ריצות, שמונה תמונות.
-
-## מה נמדד
-
-| בדיקה | תוצאה |
-|---|---|
-| יצירת תמונה אחת (16:9) | 51 שניות. PNG של 1672×941, כ-2MB |
-| ארבע תמונות במקביל, ארבעה תהליכים (GEN-04) | 60 שניות בסך הכול (43–60 לכל אחת). ארבע מתוך ארבע הצליחו, 1254×1254 כל אחת |
-| עריכה עם תמונת ייחוס (`-i`) | 95 שניות. התוצאה היא יצירה מחדש בהשראת המקור (לילה, ירח, אותה קומפוזיציה בערך), לא עריכה ששומרת פיקסלים. נוצרו **שני** קבצים, וה-Agent של Codex דיווח על אחד |
-| היכן הקובץ | `$CODEX_HOME/generated_images/<thread_id>/exec-<uuid>.png`. ה-`thread_id` מגיע באירוע `thread.started` של `--json` |
-| tokens לתמונה (לפי `turn.completed`) | 44–120 אלף קלט (רובם מה-cache), 300–600 פלט |
-
-## שורת הפקודה שנבדקה
-
-<div dir="ltr">
-
-```
-codex exec --json --skip-git-repo-check --ignore-user-config --ignore-rules --ephemeral
-  -s read-only  "<prompt>"  [-i <reference.png>]
-
-cwd = empty temp dir
-```
-
-</div>
-
-## כללים למימוש (WG12-T02)
-
-1. **את הקובץ מאתרים לפי `thread_id`, לא לפי הטקסט.** בשתיים משבע הריצות ה-Agent של Codex ענה "התמונה נוצרה, אבל לא הצלחתי לקבל את הנתיב", והקובץ היה במקומו. הספק קורא את התיקייה `generated_images/<thread_id>/`.
-2. **כשנוצר יותר מקובץ אחד**, לוקחים את זה שה-Agent דיווח עליו; אם לא דיווח, את האחרון.
-3. **ה-prompt בא לפני `-i`.** הדגל מקבל רשימת קבצים, ו-prompt שבא אחריו נבלע כשם קובץ (הריצה נכשלת בתוך 0.1 שנייה).
-4. **יחס התמונה נקבע בניסוח ה-prompt** ("wide 16:9", "square 1:1"), והגודל בפועל הוא מה שהמודל בחר. GEN-05 (יחס לפי מסגרת היעד) מתקיים בקירוב; ההתאמה הסופית היא החיתוך של אובייקט התמונה.
-5. **מקביליות היא ברמת התהליך:** N תמונות הן N תהליכי `codex exec`. ביטול (GEN-04) הוא הריגת התהליך.
-6. **התקדמות:** אין אירוע התקדמות; יש רק "התחיל" ו"הסתיים". הממשק מציג שלד (skeleton) לכל תמונה, לא אחוזים.
-
-## מגבלות
-
-- **איטי:** כדקה לתמונה. גלריה של ארבע וריאציות (AIO-03) מוכנה אחרי כדקה, לא אחרי שניות.
-- **אין עריכה אמיתית:** בלי מסכה, ובלי שמירה על הפיקסלים שלא התבקש לשנות. AIO-04 ("שינוי לפי הנחיה") יוצא כתמונה חדשה דומה. עריכה מדויקת דורשת את `openai-api`.
-- **לא API רשמי:** מיקום הקבצים ומבנה האירועים עלולים להשתנות בין גרסאות. `probe()` של הספק מריץ בדיקה של גרסת ה-CLI.
-- **הגדרות המשתמש דולפות פנימה:** `--ignore-user-config` לא מונע טעינה של skills מ-`~/.codex`; skill שבור של המשתמש הדפיס שגיאה ל-stderr בכל ריצה (בלי להשפיע על התוצאה).
-
-## מה לא נבדק
-
-- **צריכת המכסה של ChatGPT לתמונה.** ה-CLI לא מדווח עליה; נמדדו רק tokens.
-- **רקע שקוף** (GEN-07) ו**תמונת ייחוס לסגנון** בלי עריכה.
-- **מה קורה כשהמכסה נגמרת** או כשההתחברות פגה.
-
-## השלכות
-
-- **PLAN:** WG12-T02 (1.5 ימים) ללא שינוי. נקודת ההחלטה "ספק ברירת מחדל" נסגרת.
-- **SPEC 11.9:** הערת החיסרון של `codex-cli` מתעדכנת: אין עריכה אמיתית; כדקה לתמונה.
-
-</div>
+The initial default provider uses the existing ChatGPT login through `codex-cli`, avoiding a required API key. An optional `openai-api` provider offers API-based generation and exact masked editing when configured; see [ADR-051](ADR-051-media-and-settings.md). A request for several images runs separate provider calls in parallel. The original Windows spike under `spikes/s4-codex-images/` measured generation, concurrency, reference editing, and output discovery. [ADR-025](ADR-025-image-providers.md) defines the provider service used by the app.

@@ -87,7 +87,6 @@ export const he = {
   navigation: {
     notes: 'הערות',
     lint: 'בדיקה',
-    import: 'ייבוא',
   },
   panels: {
     ai: "צ'אט AI",

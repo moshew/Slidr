@@ -8,22 +8,19 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { findElement, findSlide } from '@slidr/model';
 import {
   ChartColumn,
   ChevronLeft,
   ChevronRight,
   Clapperboard,
   Image,
-  RectangleHorizontal,
   Shapes,
   Slash,
-  Sticker,
   Table,
   Type,
   type LucideIcon,
 } from '@slidr/ui/icons';
-import { Button, cx, Icon, IconButton, Popover, PopoverContent, PopoverTrigger } from '@slidr/ui';
+import { cx, IconButton, Popover, PopoverContent, PopoverTrigger } from '@slidr/ui';
 import { useDeck, useSelection } from './editor';
 import {
   useAction,
@@ -32,7 +29,7 @@ import {
   type ActionPopoverProps,
   type ToolAction,
 } from './registry';
-import { elementDisplayKind, selectionKind, type SelectionKind } from './selection';
+import { selectionKind } from './selection';
 import { watchToolFocus } from './toolFocus';
 
 function Group({ children, label }: { children: ReactNode; label?: string }) {
@@ -50,57 +47,41 @@ const inserts: {
   action: ToolAction;
   icon: LucideIcon;
   label: string;
-  caption: string;
-  tone: string;
 }[] = [
   {
     action: 'insert.text',
     icon: Type,
     label: 'tools.insertText',
-    caption: 'tools.text',
-    tone: 'violet',
   },
   {
     action: 'insert.image',
     icon: Image,
     label: 'tools.insertImage',
-    caption: 'tools.insertImage',
-    tone: 'blue',
   },
   {
     action: 'insert.elements',
     icon: Shapes,
     label: 'elements:title',
-    caption: 'elements:title',
-    tone: 'pink',
   },
   {
     action: 'insert.line',
     icon: Slash,
     label: 'tools.insertLine',
-    caption: 'tools.insertLine',
-    tone: 'teal',
   },
   {
     action: 'insert.table',
     icon: Table,
     label: 'tools.insertTable',
-    caption: 'tools.insertTable',
-    tone: 'green',
   },
   {
     action: 'insert.chart',
     icon: ChartColumn,
     label: 'tools.insertChart',
-    caption: 'tools.insertChart',
-    tone: 'orange',
   },
   {
     action: 'insert.media',
     icon: Clapperboard,
     label: 'tools.insertMedia',
-    caption: 'tools.media',
-    tone: 'rose',
   },
 ];
 
@@ -108,32 +89,26 @@ function ActionButton({
   action,
   icon,
   label,
-  caption,
-  tone,
 }: {
   action: ToolAction;
   icon: LucideIcon;
   label: string;
-  caption: string;
-  tone: string;
 }) {
   const { t } = useTranslation();
   const run = useAction(action);
   const popover = useActionPopover(action);
   const trigger = (
-    <Button
-      variant="ghost"
-      aria-label={t(label)}
+    <IconButton
+      icon={icon}
+      label={t(label)}
+      size="sm"
       data-tool={action}
-      className="creation-tool"
+      // As strong as the slide tools beside them, which carry their names: an icon button by
+      // itself is muted until it is hovered.
+      className="enabled:text-ui-fg"
       disabled={!popover && !run}
       onClick={popover ? undefined : run}
-    >
-      <span className="creation-tool-icon" data-tone={tone}>
-        <Icon icon={icon} size="lg" />
-      </span>
-      <span className="text-xs font-medium">{t(caption)}</span>
-    </Button>
+    />
   );
   if (popover) return <PopoverButton trigger={trigger} content={popover} />;
   return trigger;
@@ -160,36 +135,12 @@ function PopoverButton({
 
 /* ---------------------------------------------------------------- selection tools */
 
-const kindIcons: Record<SelectionKind, LucideIcon> = {
-  none: RectangleHorizontal,
-  text: Type,
-  image: Image,
-  shape: Shapes,
-  table: Table,
-  chart: ChartColumn,
-  media: Clapperboard,
-  html: Sticker,
-  group: Shapes,
-  multiple: Shapes,
-};
-
-function useSelectionKind(): {
-  kind: SelectionKind;
-  count: number;
-  displayKind: SelectionKind | 'icon';
-} {
+function useSelectionKind() {
   const deck = useDeck((s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
   const elementIds = useSelection((s) => s.selectedElementIds);
   const editingId = useSelection((s) => s.editingElementId);
-  const kind = selectionKind(deck, slideId, elementIds, editingId);
-  const slide = slideId ? findSlide(deck, slideId) : undefined;
-  const one = elementIds.length === 1 && slide ? findElement(slide, elementIds[0]!) : undefined;
-  return {
-    kind,
-    count: elementIds.length,
-    displayKind: one && kind === 'shape' ? elementDisplayKind(one) : kind,
-  };
+  return selectionKind(deck, slideId, elementIds, editingId);
 }
 
 /** How much of the strip one press on its edge brings into view. */
@@ -327,10 +278,8 @@ export function ContextTools() {
 
 function ContextToolsRow() {
   const { t } = useTranslation();
-  const { kind, count, displayKind } = useSelectionKind();
+  const kind = useSelectionKind();
   const groups = useContextTools(kind);
-  const label =
-    kind === 'multiple' ? t('selection.multiple', { n: count }) : t(`selection.${displayKind}`);
 
   return (
     <div
@@ -344,13 +293,6 @@ function ContextToolsRow() {
       // 8px apart: at 12 the row of a table was wider than the editor there, in English.
       className="mx-auto flex h-toolbar w-max max-w-full min-w-0 items-center gap-3 rounded-panel border border-ui-line bg-ui-raised px-3 shadow-floating @max-4xl:gap-2"
     >
-      <span
-        data-testid="selection-label"
-        className="flex shrink-0 items-center gap-1.5 ps-1 text-sm font-medium text-ui-fg"
-      >
-        <Icon icon={kindIcons[kind]} className="text-ui-fg-muted" />
-        {label}
-      </span>
       <ToolStrip testId="row-tools" startOver={kind} gaps="gap-3 @max-4xl:gap-2">
         {groups.map((group) => (
           <Group key={group[0]?.group}>

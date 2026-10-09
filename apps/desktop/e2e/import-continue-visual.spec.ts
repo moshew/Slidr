@@ -1,10 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { importUntilCut, openImportPanel, reopenDeck } from './import-helpers';
+import { chooseFile, importUntilCut, openForImport, reopenDeck } from './import-helpers';
 
 /*
- * Screenshots for the design gate (PLAN 1.2) of what the import panel shows since an import is
- * kept with its deck and continued (IMP-07, IMP-09, IMP-11): the size of the plan while slides
+ * Screenshots for the design gate (PLAN 1.2) of what the conversation of an import shows since
+ * it is kept with its deck and continued (IMP-07, IMP-09, IMP-11): the size of the plan while slides
  * come in, the import that was cut with the way on, and the report of a deck that was opened
  * again, with its source file. Both themes and both directions, at the editor's size, and the
  * narrowest window once. Written to test-results/import/ to be looked at; nothing is compared.
@@ -31,14 +31,15 @@ for (const theme of themes) {
     test(`an import that was cut, and its report after the deck is opened again ${name}`, async ({
       page,
     }) => {
-      await openImportPanel(page, { script: 'import-cut', speed: 1, lang, theme });
+      await openForImport(page, { script: 'import-cut', speed: 1, lang, theme });
       await importUntilCut(page, { stop: true });
       await settle(page);
       await page.screenshot({ path: out(`cut-${name}`) });
 
       await reopenDeck(page);
       await expect(page.getByTestId('import-cut')).toBeVisible();
-      await page.getByTestId('import-report-tab').click();
+      await page.getByTestId('import-report-toggle').click();
+      await page.getByTestId('import-source').scrollIntoViewIfNeeded();
       await expect(page.getByTestId('import-source')).toBeVisible();
       await settle(page);
       await page.screenshot({ path: out(`report-${name}`) });
@@ -55,10 +56,8 @@ for (const theme of themes) {
 }
 
 test('the size of the plan while the slides come in', async ({ page }) => {
-  await openImportPanel(page, { script: 'import-cut', speed: 1 });
-  await page
-    .getByTestId('import-file')
-    .setInputFiles(fileURLToPath(new URL('./import-set/handwritten.html', import.meta.url)));
+  await openForImport(page, { script: 'import-cut', speed: 1 });
+  await chooseFile(page);
   await page.getByTestId('import-approve').getByRole('button').click();
   await expect(page.getByTestId('import-count')).toContainText('3');
   await expect(page.getByTestId('chat-working')).toBeVisible();
@@ -70,7 +69,7 @@ test('the size of the plan while the slides come in', async ({ page }) => {
 
 test('an import that was cut, in the narrowest window', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
-  await openImportPanel(page, { script: 'import-cut', speed: 1, theme: 'dark' });
+  await openForImport(page, { script: 'import-cut', speed: 1, theme: 'dark' });
   await importUntilCut(page, { stop: true });
   await settle(page);
   await page.screenshot({ path: out('cut-dark-rtl-1366') });

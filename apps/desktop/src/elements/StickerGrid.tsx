@@ -15,7 +15,7 @@ export type StickerSize = 'graphic' | 'emoji';
  * How many drawings a grid puts in a row: as many as the panel has room for (`.element-grid`).
  * Zero until the grid is measured.
  */
-function useColumns(ref: RefObject<Element | null>): number {
+export function useColumns(ref: RefObject<Element | null>): number {
   const [columns, setColumns] = useState(0);
   useEffect(() => {
     const grid = ref.current;

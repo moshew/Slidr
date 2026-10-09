@@ -68,6 +68,7 @@ import { he } from './messages';
 import { ModelPicker } from './ModelPicker';
 import { OutlineCard } from './Outline';
 import { aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
+import { DECK } from './sessions';
 import { activityLabel, targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
 import { formatCost, formatTokens, tokensOf } from './usage';
 
@@ -76,11 +77,9 @@ import { formatCost, formatTokens, tokensOf } from './usage';
  * tool call, the design check's follow-ups as folded status lines, "undo changes" on every turn
  * that changed the deck, and a card that says what to do when the agent cannot run. There is one
  * chat, a deck session: what the user has selected goes to the agent with each message, and the
- * chip beside the composer says what that is.
+ * chip beside the composer says what that is. The conversation of an HTML import is one of its
+ * conversations, on a session of its own (SPEC 13.3).
  */
-
-/** The session of the chat: the whole deck, whatever the user points at in it. */
-export const DECK: SessionScope = { kind: 'deck' };
 
 /**
  * One conversation of a scope, in the document that is open now. A panel keeps what this gives
@@ -798,8 +797,9 @@ function closingWords(entries: readonly ChatEntry[], busy: boolean, stopped: str
 }
 
 /**
- * The chat of a session: the AI chat, a deck session, by default; the HTML import shows the
- * conversation of its own session with it, which is about a file and not about a selection.
+ * The chat of a session: the AI chat, a deck session, by default; the conversation of an HTML
+ * import is shown with it on its own session, which is about a file and not about a selection.
+ * `afterMessages`: what the app itself has to say at the end of the conversation.
  */
 export function Chat({
   scope = DECK,
@@ -843,6 +843,7 @@ export function Chat({
           className="min-h-56"
         />
         {deck && <Suggestions focus={focus} onPick={pick} />}
+        {afterMessages && <div className="flex flex-col gap-4 px-4 pb-3">{afterMessages}</div>}
       </>
     );
   } else {
@@ -876,7 +877,7 @@ export function Chat({
       data-thread={thread.id}
       className="flex min-h-0 flex-1 flex-col"
     >
-      <ConversationBar scope={scope} thread={thread} />
+      <ConversationBar thread={thread} />
       <div ref={frame} onScrollCapture={onScroll} className="flex min-h-0 flex-1 flex-col">
         <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
       </div>

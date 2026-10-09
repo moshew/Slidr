@@ -102,7 +102,9 @@ export const SmartImageFrame = z
     viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
     opening: Frame,
     background: Fill.optional(),
-    decorations: z.array(z.lazy(() => z.union([ShapeElement, SvgElement, TextElement, LineElement]))),
+    decorations: z.array(
+      z.lazy(() => z.union([ShapeElement, SvgElement, TextElement, LineElement])),
+    ),
   })
   .refine(
     ({ opening: o, viewBox: v }) =>

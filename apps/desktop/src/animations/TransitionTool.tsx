@@ -29,7 +29,7 @@ export function TransitionTool() {
           width: 352,
           maxHeight: 'min(80vh, var(--radix-popover-content-available-height))',
         }}
-        // To the chosen kind, not to the replay button, whose tooltip would open with the popover.
+        // To the chosen kind, not to the first tile of the gallery.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           (event.currentTarget as HTMLElement)

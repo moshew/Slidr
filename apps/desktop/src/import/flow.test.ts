@@ -15,9 +15,12 @@ const session = vi.hoisted(() => ({
 }));
 vi.mock('./session', () => session);
 const sent: string[] = [];
+/** Whose conversation the AI chat was put on. */
+const shown: string[] = [];
 vi.mock('../ai/runtime', () => ({
   aiOf: () => ({
     sessions: {
+      chat: { setState: (chat: string) => void shown.push(chat) },
       thread: () => ({
         send: (text: string) => Promise.resolve(void sent.push(text)),
         store: {
@@ -31,9 +34,11 @@ vi.mock('../ai/runtime', () => ({
 
 import { answer, pendingDialog } from '../shell/dialogs';
 import { createEditor, setNewDeck } from '../shell/editor';
+import { PanelId } from '../shell/registry';
+import { setWelcome, useShell } from '../shell/store';
 import { startDeck } from '../templates/actions';
 import { library } from '../templates/app';
-import { startImport } from './flow';
+import { importOpening, startImport } from './flow';
 
 const SOURCE = { path: 'C:\\in\\deck.html' };
 
@@ -48,7 +53,9 @@ function defaultTemplate(set: boolean): void {
 
 beforeEach(() => {
   session.openImport.mockClear();
+  session.openImport.mockImplementation(() => Promise.resolve('deck.html'));
   sent.length = 0;
+  shown.length = 0;
   sessionStorage.clear();
 });
 
@@ -108,5 +115,43 @@ describe('startImport', () => {
     expect(editor.bus.deck.layouts).toEqual([]);
     expect(editor.bus.deck.slides.map((slide) => slide.name)).toEqual([undefined]);
     expect(session.openImport).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts the request in the AI chat: the editor, the chat open, on the conversation of the import', async () => {
+    defaultTemplate(false);
+    const editor = createEditor({ lang: 'he', storage: null });
+    setWelcome(true);
+    useShell.setState({ activePanel: 'templates', panelOpen: false, aiTab: 'actions' });
+    // While the file loads the chat says so, and no request is in it yet.
+    let loaded!: (file: string) => void;
+    session.openImport.mockImplementation(() => new Promise<string>((done) => (loaded = done)));
+
+    const started = startImport(editor, SOURCE, { confirm: true });
+    await vi.waitFor(() => expect(importOpening.getState()).toBe(true));
+    expect(useShell.getState()).toMatchObject({
+      welcome: false,
+      activePanel: PanelId.ai,
+      panelOpen: true,
+      aiTab: 'chat',
+    });
+    expect(shown).toEqual([]);
+    expect(sent).toEqual([]);
+
+    loaded('deck.html');
+    expect(await started).toBe(true);
+    expect(importOpening.getState()).toBe(false);
+    expect(shown).toEqual(['import']);
+    // The strings are the app's to register: here a message is the keys it is made of.
+    expect(sent).toEqual(['message.import message.confirm']);
+  });
+
+  it('says nothing is loading any more when the file could not be opened', async () => {
+    defaultTemplate(false);
+    const editor = createEditor({ lang: 'he', storage: null });
+    session.openImport.mockImplementation(() => Promise.reject(new Error('no such file')));
+    await expect(startImport(editor, SOURCE, { confirm: true })).rejects.toThrow('no such file');
+    expect(importOpening.getState()).toBe(false);
+    expect(shown).toEqual([]);
+    expect(sent).toEqual([]);
   });
 });

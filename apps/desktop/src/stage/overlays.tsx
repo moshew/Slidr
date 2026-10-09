@@ -33,25 +33,56 @@ export interface StageView {
   scale: number;
 }
 
-const HANDLE_PX = 8;
+/** A corner handle is a dot; the handle of an edge is a short bar that lies along the edge. */
+const DOT_PX = 12;
+const BAR_PX = 16;
+const BAR_THICK_PX = 6;
+/** The shortest bar that is still drawn, and the room kept between a bar and the corner dots. */
+const BAR_MIN_PX = 8;
+const BAR_GAP_PX = 4;
+/** How far past what is drawn a handle still takes the pointer, on every side. */
+const GRIP_PX = 4;
 const ROTATE_OFFSET_PX = 24;
 const ACCENT = 'var(--color-ui-accent)';
 const PANEL = 'var(--color-ui-panel)';
+/**
+ * The handles lie on the slide, over whatever is drawn there, and not on the app's panels: they
+ * are white in either theme of the app, with a hairline and a soft shadow that set them off from
+ * a light picture as from a dark one.
+ */
+const HANDLE_FILL = '#fff';
+const HANDLE_EDGE = '0 0 0 1px rgb(36 48 62 / 0.28), 0 1px 4px rgb(36 48 62 / 0.3)';
 /** The ring around what the keyboard is on: a crop handle, a point of a line, the selection walk. */
 const FOCUS = 'var(--color-ui-focus)';
 const FOCUS_RING = `0 0 0 2px ${PANEL}, 0 0 0 4px ${FOCUS}`;
 
-/** A box of the element's size in screen pixels, laid over the element. */
-function boxStyle(located: Located, view: StageView, flips = false): CSSProperties {
+/**
+ * How far the editing frame stands from the sides of a text box. The caret at the start of a
+ * line needs horizontal room; vertically the frame keeps the text box's own height.
+ */
+const TYPING_PAD_PX = 6;
+
+/**
+ * A box of the element's size in screen pixels, laid over the element; `padX` and `padY` screen
+ * pixels larger on their respective sides, in the element's own axes.
+ */
+function boxStyle(
+  located: Located,
+  view: StageView,
+  flips = false,
+  padX = 0,
+  padY = padX,
+): CSSProperties {
   const { w, h } = located.element.frame;
+  const placed = screenTransform(elementMatrix(located, flips), view.origin, view.scale);
   return {
     position: 'absolute',
     left: 0,
     top: 0,
-    width: w * view.scale,
-    height: h * view.scale,
+    width: w * view.scale + 2 * padX,
+    height: h * view.scale + 2 * padY,
     transformOrigin: '0 0',
-    transform: screenTransform(elementMatrix(located, flips), view.origin, view.scale),
+    transform: padX || padY ? `${placed} translate(${-padX}px, ${-padY}px)` : placed,
   };
 }
 
@@ -98,11 +129,14 @@ export function Outline({
   hoveredGroup,
   placeholder,
   walk,
+  typing,
 }: {
   located: Located;
   view: StageView;
   hover?: boolean;
   dashed?: boolean;
+  /** A text box being edited: keep side room for its caret, with the normal box height. */
+  typing?: boolean;
   /**
    * Where the selection walk stands (UI-06): an element the keyboard is on that may not be
    * selected. A dotted ring outside the element, clear of the outline of a selected one.
@@ -130,7 +164,7 @@ export function Outline({
     <div
       {...mark}
       style={{
-        ...boxStyle(located, view),
+        ...boxStyle(located, view, false, typing ? TYPING_PAD_PX : 0, 0),
         outline: walk
           ? `2px dotted ${FOCUS}`
           : `${hover || quiet ? 1 : 1.5}px ${dashed || quiet ? 'dashed' : 'solid'} ${ACCENT}`,
@@ -182,12 +216,31 @@ export function AgentMark({
   );
 }
 
+/**
+ * What is drawn of a resize handle, in screen pixels: a dot on a corner, a bar along an edge. The
+ * bar is shorter on a short edge, and on an edge with no room for it between the dots of the
+ * corners there is none.
+ */
+export function handleSize(
+  handle: Handle,
+  sw: number,
+  sh: number,
+): { w: number; h: number } | undefined {
+  if (handle.x !== 0 && handle.y !== 0) return { w: DOT_PX, h: DOT_PX };
+  const along = handle.x === 0 ? sw : sh;
+  const long = Math.min(BAR_PX, along - DOT_PX - 2 * BAR_GAP_PX);
+  if (long < BAR_MIN_PX) return undefined;
+  return handle.x === 0 ? { w: long, h: BAR_THICK_PX } : { w: BAR_THICK_PX, h: long };
+}
+
 /** The eight resize handles and the rotation handle of one element. */
 export function Handles({
   located,
   view,
   rotateOnly,
   noRotate,
+  held,
+  typing,
 }: {
   located: Located;
   view: StageView;
@@ -195,51 +248,97 @@ export function Handles({
   rotateOnly?: boolean;
   /** Several elements together are resized, not turned. */
   noRotate?: boolean;
+  /** The handle that is being dragged: it stays lit though the pointer has left it. */
+  held?: string | null;
+  /**
+   * A text box whose text is typed in. The handles stand on its frame, with room at the sides of
+   * the text, and the edge of that frame takes the pointer and moves the box (`data-move-frame`): a
+   * press on the text itself is the editor's, so the box cannot be taken by what is in it.
+   */
+  typing?: boolean;
 }) {
   const { w, h } = located.element.frame;
-  const sw = w * view.scale;
+  const padX = typing ? TYPING_PAD_PX : 0;
+  const sw = w * view.scale + 2 * padX;
   const sh = h * view.scale;
   const matrix = elementMatrix(located);
+  /** The handle the pointer is over. */
+  const [over, setOver] = useState<string | null>(null);
+  const lit = (name: string) => (held ? held === name : over === name);
+  const enter = (name: string) => ({
+    onPointerEnter: () => setOver(name),
+    onPointerLeave: () => setOver((at) => (at === name ? null : at)),
+  });
   const handle = (name: keyof typeof HANDLES): ReactNode => {
     const hd = HANDLES[name];
-    // Handles that would sit on top of each other on a tiny box are left out.
-    if ((hd.x === 0 && sw < 3 * HANDLE_PX) || (hd.y === 0 && sh < 3 * HANDLE_PX)) return null;
+    const drawn = handleSize(hd, sw, sh);
+    if (!drawn) return null;
+    const gw = drawn.w + 2 * GRIP_PX;
+    const gh = drawn.h + 2 * GRIP_PX;
     return (
       <div
         key={name}
         data-handle={name}
+        data-lit={lit(name) || undefined}
+        {...enter(name)}
         style={{
           position: 'absolute',
-          left: ((hd.x + 1) / 2) * sw - HANDLE_PX / 2,
-          top: ((hd.y + 1) / 2) * sh - HANDLE_PX / 2,
-          width: HANDLE_PX,
-          height: HANDLE_PX,
-          boxSizing: 'border-box',
-          background: PANEL,
-          border: `1.5px solid ${ACCENT}`,
-          borderRadius: 2,
+          left: ((hd.x + 1) / 2) * sw - gw / 2,
+          top: ((hd.y + 1) / 2) * sh - gh / 2,
+          width: gw,
+          height: gh,
           pointerEvents: 'auto',
           cursor: handleCursor(hd, matrix),
         }}
-      />
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: GRIP_PX,
+            top: GRIP_PX,
+            width: drawn.w,
+            height: drawn.h,
+            borderRadius: Math.min(drawn.w, drawn.h) / 2,
+            background: lit(name) ? ACCENT : HANDLE_FILL,
+            boxShadow: HANDLE_EDGE,
+          }}
+        />
+      </div>
     );
   };
+  // The four sides of the frame, from the edge of the text out to a little past the line.
+  const sides: CSSProperties[] = typing
+    ? [
+        { left: -GRIP_PX, top: -GRIP_PX, width: sw + 2 * GRIP_PX, height: GRIP_PX },
+        { left: -GRIP_PX, top: sh, width: sw + 2 * GRIP_PX, height: GRIP_PX },
+        { left: -GRIP_PX, top: 0, width: padX + GRIP_PX, height: sh },
+        { left: sw - padX, top: 0, width: padX + GRIP_PX, height: sh },
+      ]
+    : [];
   return (
-    <div style={boxStyle(located, view)}>
+    <div style={boxStyle(located, view, false, padX, 0)}>
+      {sides.map((side, i) => (
+        <div
+          key={i}
+          data-move-frame
+          style={{ position: 'absolute', ...side, pointerEvents: 'auto', cursor: 'move' }}
+        />
+      ))}
       {rotateOnly ? null : (Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map(handle)}
       {noRotate ? null : (
         <div
           data-handle="rotate"
+          data-lit={lit('rotate') || undefined}
+          {...enter('rotate')}
           style={{
             position: 'absolute',
             left: sw / 2 - 5,
             top: -ROTATE_OFFSET_PX - 5,
             width: 10,
             height: 10,
-            boxSizing: 'border-box',
             borderRadius: '50%',
-            background: PANEL,
-            border: `1.5px solid ${ACCENT}`,
+            background: lit('rotate') ? ACCENT : HANDLE_FILL,
+            boxShadow: HANDLE_EDGE,
             pointerEvents: 'auto',
             cursor: ROTATE_CURSOR,
           }}
@@ -434,7 +533,7 @@ export function LineOverlay({
                   height: 12,
                   boxSizing: 'border-box',
                   borderRadius: '50%',
-                  // Filled, to tell a point of the line from the hollow rotation handle.
+                  // Filled, to tell a point of the line from the white rotation handle.
                   background: ACCENT,
                   border: `2px solid ${PANEL}`,
                   boxShadow: i === keyboardAt ? FOCUS_RING : `0 0 0 1px ${ACCENT}`,
@@ -516,9 +615,56 @@ function CropHandle({
 }
 
 /**
+ * The whole picture of an image, dimmed, around its frame: what the frame leaves out. Inside the
+ * frame the slide's own image shows through, so masks, borders and adjustments look as they will.
+ */
+export function CropPicture({
+  located,
+  view,
+  crop,
+  url,
+}: {
+  located: Located;
+  view: StageView;
+  crop: CropView;
+  url: string;
+}) {
+  const s = view.scale;
+  const { picture } = crop;
+  const sw = crop.frame.w * s;
+  const sh = crop.frame.h * s;
+  const pw = picture.w * s;
+  const ph = picture.h * s;
+  // The frame as a hole in the picture, in the picture's own pixels.
+  const x0 = -picture.x * s;
+  const y0 = -picture.y * s;
+  const hole = `polygon(evenodd, 0 0, ${pw}px 0, ${pw}px ${ph}px, 0 ${ph}px, 0 0, ${x0}px ${y0}px, ${x0}px ${y0 + sh}px, ${x0 + sw}px ${y0 + sh}px, ${x0 + sw}px ${y0}px, ${x0}px ${y0}px)`;
+  return (
+    // In the frame's mirrored axes, as the renderer lays the picture out.
+    <div data-crop-picture style={boxStyle(located, view, true)}>
+      <img
+        src={url}
+        alt=""
+        draggable={false}
+        style={{
+          position: 'absolute',
+          left: picture.x * s,
+          top: picture.y * s,
+          width: pw,
+          height: ph,
+          maxWidth: 'none',
+          opacity: 0.35,
+          clipPath: hole,
+          userSelect: 'none',
+        }}
+      />
+    </div>
+  );
+}
+
+/**
  * Crop mode (IMG-03): the whole picture, dimmed, around the frame; the frame with its crop
- * handles; a rule-of-thirds grid while something is dragged. Inside the frame the slide's own
- * image shows through, so masks, borders and adjustments look as they will.
+ * handles; a rule-of-thirds grid while something is dragged.
  */
 export function CropOverlay({
   located,
@@ -538,41 +684,13 @@ export function CropOverlay({
   /** A crop gesture is under way. */
   active: boolean;
 }) {
-  const s = view.scale;
-  const { picture } = crop;
-  const sw = crop.frame.w * s;
-  const sh = crop.frame.h * s;
-  const pw = picture.w * s;
-  const ph = picture.h * s;
-  // The frame as a hole in the picture, in the picture's own pixels.
-  const x0 = -picture.x * s;
-  const y0 = -picture.y * s;
-  const hole = `polygon(evenodd, 0 0, ${pw}px 0, ${pw}px ${ph}px, 0 ${ph}px, 0 0, ${x0}px ${y0}px, ${x0}px ${y0 + sh}px, ${x0 + sw}px ${y0 + sh}px, ${x0 + sw}px ${y0}px, ${x0}px ${y0}px)`;
+  const sw = crop.frame.w * view.scale;
+  const sh = crop.frame.h * view.scale;
   const matrix = elementMatrix(located);
   const third: CSSProperties = { position: 'absolute', background: PANEL, opacity: 0.6 };
   return (
     <>
-      {url ? (
-        // In the frame's mirrored axes, as the renderer lays the picture out.
-        <div data-crop-picture style={boxStyle(located, view, true)}>
-          <img
-            src={url}
-            alt=""
-            draggable={false}
-            style={{
-              position: 'absolute',
-              left: picture.x * s,
-              top: picture.y * s,
-              width: pw,
-              height: ph,
-              maxWidth: 'none',
-              opacity: 0.35,
-              clipPath: hole,
-              userSelect: 'none',
-            }}
-          />
-        </div>
-      ) : null}
+      {url ? <CropPicture located={located} view={view} crop={crop} url={url} /> : null}
       <div
         data-crop-frame={located.element.id}
         style={{ ...boxStyle(located, view), outline: `1.5px solid ${ACCENT}` }}
@@ -585,16 +703,19 @@ export function CropOverlay({
             <div style={{ ...third, top: (2 * sh) / 3, left: 0, height: 1, width: sw }} />
           </>
         ) : null}
-        {(Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map((name) => (
-          <CropHandle
-            key={name}
-            name={name}
-            sw={sw}
-            sh={sh}
-            matrix={matrix}
-            active={name === handle}
-          />
-        ))}
+        {/* The opening of a drawn frame is that frame's, and has no handles to change it by. */}
+        {crop.outer
+          ? null
+          : (Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map((name) => (
+              <CropHandle
+                key={name}
+                name={name}
+                sw={sw}
+                sh={sh}
+                matrix={matrix}
+                active={name === handle}
+              />
+            ))}
       </div>
     </>
   );

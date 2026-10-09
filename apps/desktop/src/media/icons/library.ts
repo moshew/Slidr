@@ -1,6 +1,6 @@
 /**
- * The built-in icon library (SHP-07, GEN-09, ADR-051): Lucide and Tabler, two sets of line
- * icons drawn alike (a 24 by 24 box, strokes of width 2, round caps), about 8,000 in all.
+ * The built-in icon library (SHP-07, GEN-09, ADR-051): Lucide and Tabler line icons
+ * (a 24 by 24 box, strokes of width 2, round caps), plus Tabler's filled icons.
  *
  * Nothing of it is loaded when the app starts. The sets' data are megabytes of JSON, read from
  * the two packages as text (`?raw`) and parsed the first time something asks: a search, or a
@@ -142,7 +142,7 @@ export async function findIcons(query: string, options: IconSearchOptions): Prom
   return drawn.flatMap(({ id, name, svg }) => (svg ? [{ id, name, svg }] : []));
 }
 
-/** The icons shown before the user has typed anything: common ones, in one set's style. */
+/** The common icons shown first, before the larger browse catalog. */
 export const STARTERS = [
   'star',
   'heart',
@@ -206,14 +206,17 @@ export const STARTERS = [
   'link',
 ] as const;
 
-/** The same for the filled style, which only the second set has. */
+/** Five hundred more Lucide icons to browse without knowing a search term. */
+const browseNames = lazy<readonly string[]>(() => import('./browse.json?raw'));
+
+/** The common filled icons shown first, from Tabler's filled set. */
 const FILLED_STARTERS = [
   'star',
   'heart',
   'circle-check',
   'bulb',
-  'rocket',
-  'target',
+  'check',
+  'compass',
   'user',
   'calendar',
   'clock',
@@ -256,14 +259,32 @@ const FILLED_STARTERS = [
   'square',
   'triangle',
   'hexagon',
+  'shopping-cart',
+  'car',
+  'plane',
+  'file-text',
+  'location',
+  'send',
+  'book',
+  'chart-pie',
+  'database',
+  'video',
+  'microphone',
+  'palette',
 ] as const;
 
-/** The starter icons, with their markup; a name a set has dropped is left out. */
+/** Five hundred more Tabler icons to browse in the filled style. */
+const filledBrowseNames = lazy<readonly string[]>(() => import('./filled-browse.json?raw'));
+
+/** Icons available before a search, with their markup; a name a set has dropped is left out. */
 export async function starterIcons(style: 'line' | 'filled' = 'line'): Promise<FoundIcon[]> {
   const ids =
     style === 'line'
-      ? STARTERS.map((name) => ({ id: `lucide:${name}`, name }))
-      : FILLED_STARTERS.map((name) => ({ id: `tabler:${name}-filled`, name: `${name}-filled` }));
+      ? [...STARTERS, ...(await browseNames())].map((name) => ({ id: `lucide:${name}`, name }))
+      : [...FILLED_STARTERS, ...(await filledBrowseNames())].map((name) => ({
+          id: `tabler:${name}-filled`,
+          name: `${name}-filled`,
+        }));
   const drawn = await Promise.all(
     ids.map(async ({ id, name }) => ({ id, name, svg: await iconMarkup(id) })),
   );

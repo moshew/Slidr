@@ -2,10 +2,12 @@ import { createElement, rotateVector, type ImageElement, type Point } from '@sli
 import { imagePlacement } from '@slidr/renderer';
 import { describe, expect, it } from 'vitest';
 import {
+  coversFrame,
   cropPan,
   cropPatch,
   cropReset,
   cropResize,
+  cropStretch,
   cropToRatio,
   cropView,
   cropZoom,
@@ -182,6 +184,135 @@ describe('cropResize', () => {
   });
 });
 
+describe('cropStretch', () => {
+  it('cuts the picture, which stays where it is, when the edge goes in', () => {
+    const element = image();
+    const view = cropView(element, NATURAL);
+    const out = cropStretch(view, HANDLES.e, 450);
+    expect(out.frame).toEqual({ x: 100, y: 100, w: 450, h: 400 });
+    expectSamePicture(view, out);
+    expect(cropPatch(out).crop).toEqual({ x: 0, y: 0, w: 0.75, h: 1 });
+    expectSamePicture(view, reload(element, out), 3);
+
+    // From the other side the frame's far edge stays, and the picture with it.
+    const west = cropStretch(view, HANDLES.w, 450);
+    expect(west.frame).toEqual({ x: 250, y: 100, w: 450, h: 400 });
+    expectSamePicture(view, west);
+    expect(cropPatch(west).crop).toEqual({ x: 0.25, y: 0, w: 0.75, h: 1 });
+  });
+
+  it('shows more of a picture that was cut, as far as the picture goes', () => {
+    const view = cropView(image(), NATURAL);
+    const cut = cropStretch(view, HANDLES.s, 250);
+    const back = cropStretch(cut, HANDLES.s, 400);
+    expect(back.frame).toEqual(view.frame);
+    expectSamePicture(view, back);
+    expect(cropPatch(back).crop).toBeNull();
+  });
+
+  it('makes the picture larger past its end, from the edge that stays', () => {
+    const element = image();
+    const view = cropView(element, NATURAL);
+    const out = cropStretch(view, HANDLES.e, 750);
+    expect(out.frame).toEqual({ x: 100, y: 100, w: 750, h: 400 });
+    // The picture is as wide as the frame, and what it gained in height is cut above and below.
+    expect(out.picture).toEqual({ x: 0, y: -50, w: 750, h: 500 });
+    expect(cropPatch(out).crop).toEqual({ x: 0, y: 0.1, w: 1, h: 0.8 });
+    expect(coversFrame(out)).toBe(true);
+    expectSamePicture(out, reload(element, out), 3);
+
+    // The height as well: the width is then cut on both sides.
+    const tall = cropStretch(view, HANDLES.n, 600);
+    expect(tall.frame).toEqual({ x: 100, y: -100, w: 600, h: 600 });
+    expect(tall.picture).toEqual({ x: -150, y: 0, w: 900, h: 600 });
+  });
+
+  it('first shows what was cut, and only then makes the picture larger', () => {
+    const view = cropView(image(), NATURAL);
+    // 150 pixels of the picture are out of sight on the right.
+    const cut = cropStretch(view, HANDLES.e, 450);
+    expectSamePicture(view, cropStretch(cut, HANDLES.e, 600));
+    const past = cropStretch(cut, HANDLES.e, 660);
+    expect(past.picture.w).toBeCloseTo(660, 6);
+    expect(past.picture.x).toBeCloseTo(0, 6);
+    expect(coversFrame(past)).toBe(true);
+  });
+
+  it('keeps what is at the edge that stays, also where the picture goes on past that edge', () => {
+    const view = cropView(image(), NATURAL);
+    // The frame shows the right half of the picture; its left edge is the middle of the picture.
+    const half = cropStretch(view, HANDLES.w, 300);
+    const out = cropStretch(half, HANDLES.e, 450);
+    expect(out.frame).toEqual({ x: 400, y: 100, w: 450, h: 400 });
+    // The middle of the picture is still on the frame's left edge.
+    expect(out.picture.x + out.picture.w / 2).toBeCloseTo(0, 6);
+    expect(out.picture.x + out.picture.w).toBeCloseTo(450, 6);
+  });
+
+  it('from the middle moves both edges, and the picture grows around the middle', () => {
+    const view = cropView(image(), NATURAL);
+    const narrow = cropStretch(view, HANDLES.e, 400, true);
+    expect(narrow.frame).toEqual({ x: 200, y: 100, w: 400, h: 400 });
+    expectSamePicture(view, narrow);
+    const wide = cropStretch(view, HANDLES.e, 900, true);
+    expect(wide.frame).toEqual({ x: -50, y: 100, w: 900, h: 400 });
+    expect(wide.picture).toEqual({ x: 0, y: -100, w: 900, h: 600 });
+  });
+
+  it.each([
+    { rotation: 30 },
+    { rotation: 0, flipH: true },
+    { rotation: -75, flipH: true },
+    { rotation: 140, flipV: true },
+    { rotation: 215, flipH: true, flipV: true },
+  ])('moves only the edge under the handle for %o', (transform) => {
+    const element = image(transform);
+    const view = cropView(element, NATURAL);
+    for (const name of ['e', 'w', 'n', 's'] as const) {
+      const handle = HANDLES[name];
+      const far = (v: CropView) => {
+        const c = { x: v.frame.x + v.frame.w / 2, y: v.frame.y + v.frame.h / 2 };
+        const r = rotateVector(
+          { x: (-handle.x * v.frame.w) / 2, y: (-handle.y * v.frame.h) / 2 },
+          v.rotation,
+        );
+        return { x: c.x + r.x, y: c.y + r.y };
+      };
+      for (const by of [-120, 90]) {
+        const out = cropStretch(view, handle, (handle.x ? 600 : 400) + by);
+        expect(out.frame.w).toBe(handle.x ? 600 + by : 600);
+        expect(out.frame.h).toBe(handle.y ? 400 + by : 400);
+        // The edge opposite the handle stays on the slide.
+        expect(far(out).x).toBeCloseTo(far(view).x, 6);
+        expect(far(out).y).toBeCloseTo(far(view).y, 6);
+        expect(coversFrame(out)).toBe(true);
+        // Going in, the picture stays on the slide; the renderer draws what was worked out.
+        if (by < 0) expectSamePicture(view, out);
+        expectSamePicture(out, reload(element, out), 2);
+      }
+    }
+  });
+
+  it('keeps a stretched picture as stretched as it was', () => {
+    const element = image({ fit: 'fill', frame: { x: 0, y: 0, w: 600, h: 600 } });
+    const view = cropView(element, NATURAL);
+    const out = cropStretch(view, HANDLES.e, 900);
+    expect(out.picture.w / out.picture.h).toBeCloseTo(view.picture.w / view.picture.h, 9);
+    expectSamePicture(out, reload(element, out), 2);
+  });
+});
+
+describe('coversFrame', () => {
+  it('tells a picture that fills its frame from one that leaves bars', () => {
+    const square = { x: 0, y: 0, w: 500, h: 500 };
+    expect(coversFrame(cropView(image({ frame: square }), NATURAL))).toBe(true);
+    expect(coversFrame(cropView(image({ frame: square, fit: 'fill' }), NATURAL))).toBe(true);
+    expect(coversFrame(cropView(image({ frame: square, fit: 'contain' }), NATURAL))).toBe(false);
+    // A contained picture of the frame's own proportions leaves nothing bare.
+    expect(coversFrame(cropView(image({ fit: 'contain' }), NATURAL))).toBe(true);
+  });
+});
+
 describe('cropPan and cropZoom', () => {
   it('moves the picture under the frame and never uncovers the frame', () => {
     const view = cropResize(cropView(image(), NATURAL), HANDLES.e, { x: -300, y: 0 });
@@ -326,6 +457,77 @@ describe('cropToRatio and cropReset', () => {
       frame: { x: -100, y: 0, w: 600, h: 400 },
       crop: null,
     });
+  });
+});
+
+describe('a picture in a drawn frame', () => {
+  /** An instant photo: a card with a square opening near its top, drawn at half the size. */
+  const smartFrame = {
+    viewBox: { w: 400, h: 480 },
+    opening: { x: 26, y: 26, w: 348, h: 348 },
+    decorations: [],
+  };
+  const card = { x: 700, y: 60, w: 800, h: 960 };
+  const framed = (extra: Partial<ImageElement> = {}) =>
+    image({ frame: card, smartFrame, ...extra });
+
+  it('is viewed through the opening, where the renderer lays it out', () => {
+    const view = cropView(framed(), NATURAL);
+    expect(view.frame).toEqual({ x: 752, y: 112, w: 696, h: 696 });
+    expect(view.outer).toEqual(card);
+    const theirs = imagePlacement({ w: 696, h: 696 }, NATURAL, undefined, 'cover');
+    expect(view.picture).toEqual({
+      x: theirs.left,
+      y: theirs.top,
+      w: theirs.width,
+      h: theirs.height,
+    });
+    // An image in a frame of its own has no other frame.
+    expect(cropView(image(), NATURAL).outer).toBeUndefined();
+  });
+
+  it('moves and scales the picture under the opening, and writes only the crop', () => {
+    const element = framed();
+    const view = cropView(element, NATURAL);
+    // 1044 wide in an opening of 696: 174 are out of sight on either side.
+    const panned = cropPan(view, { x: -100, y: 40 });
+    expect(panned.frame).toEqual(view.frame);
+    expect(cropPatch(panned)).toEqual({
+      frame: card,
+      crop: { x: round(274 / 1044), y: 0, w: round(696 / 1044), h: 1 },
+    });
+    expectSamePicture(panned, reload(element, panned), 2);
+
+    const zoomed = cropZoom(view, 'cover', 2);
+    expect(zoomed.picture.w).toBeCloseTo(2088, 6);
+    expect(cropPatch(zoomed).frame).toEqual(card);
+    expectSamePicture(zoomed, reload(element, zoomed), 2);
+
+    // Reset leaves the card, and the picture fills the opening again.
+    expect(resetPatch(zoomed)).toEqual({ frame: card, crop: null });
+  });
+
+  it.each([
+    { rotation: 30 },
+    { rotation: 0, flipH: true },
+    { rotation: -75, flipH: true, flipV: true },
+  ])('is where the artwork has its opening for %o', (transform) => {
+    const element = framed(transform);
+    const view = cropView(element, NATURAL);
+    // The middle of the opening is 80 above the middle of the card, in the card's own axes.
+    const up = rotateVector({ x: 0, y: transform.flipV ? 80 : -80 }, element.rotation);
+    expect(view.frame.x + 348).toBeCloseTo(1100 + up.x, 6);
+    expect(view.frame.y + 348).toBeCloseTo(540 + up.y, 6);
+    // The picture goes the way the pointer does, and comes back the same through the model.
+    const before = pictureOnSlide(view);
+    const panned = cropPan(view, { x: -60, y: 0 });
+    const along = rotateVector({ x: -60, y: 0 }, element.rotation);
+    pictureOnSlide(panned).forEach((p, i) => {
+      expect(p.x - before[i]!.x).toBeCloseTo(along.x, 6);
+      expect(p.y - before[i]!.y).toBeCloseTo(along.y, 6);
+    });
+    expect(cropPatch(panned).frame).toEqual(card);
+    expectSamePicture(panned, reload(element, panned), 2);
   });
 });
 

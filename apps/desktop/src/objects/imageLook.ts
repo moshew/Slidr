@@ -13,7 +13,10 @@ import { isOpenPreset, shapeLibrary } from './shapes';
 
 export type Mask = NonNullable<ImageElement['mask']>;
 
-/** What the mask picker shows as chosen: `shape:<preset>` for a shape of the library. */
+/**
+ * What the mask picker shows as chosen: `shape:<preset>` for a shape of the library, and `path`
+ * for an outline of its own, which a photo frame of Elements gives and the picker does not offer.
+ */
 export type MaskChoice = 'none' | 'rounded' | 'ellipse' | 'path' | `shape:${string}`;
 
 export function maskChoice(element: ImageElement): MaskChoice {
@@ -35,6 +38,8 @@ export function maxMaskRadius(element: ImageElement): number {
 /** The change that gives the picture a mask, or takes it away. */
 export function maskPatch(element: ImageElement, choice: MaskChoice): ElementPatch {
   if (choice === 'none') return { mask: null };
+  // An outline of its own is not picked here: the picture keeps the one it has.
+  if (choice === 'path') return {};
   if (choice === 'ellipse') return { mask: { kind: 'ellipse' } };
   if (choice === 'rounded') {
     const radius =

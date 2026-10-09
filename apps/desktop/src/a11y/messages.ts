@@ -8,9 +8,12 @@ export const he = {
     nextPane: 'אל האזור הבא של החלון',
     previousPane: 'אל האזור הקודם של החלון',
   },
-  // The Filmstrip: the name of its list, and the states of a slide beside its number (FLM-04).
+  // The Filmstrip: the name of its list, the states of a slide beside its number, and the mark
+  // of the transition between two slides (FLM-04).
   strip: {
     transition: 'יש מעבר',
+    transitionInto: 'המעבר אל שקף {{n}}: {{name}}',
+    addTransition: 'הוספת מעבר אל שקף {{n}}',
     animations_one: 'אנימציה אחת',
     animations_two: 'שתי אנימציות',
     animations_other: '{{count}} אנימציות',
@@ -34,6 +37,8 @@ export const en = {
   },
   strip: {
     transition: 'Has a transition',
+    transitionInto: 'Transition into slide {{n}}: {{name}}',
+    addTransition: 'Add a transition into slide {{n}}',
     animations_one: '1 animation',
     animations_two: '{{count}} animations',
     animations_other: '{{count}} animations',

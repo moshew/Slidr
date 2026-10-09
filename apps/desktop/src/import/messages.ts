@@ -1,22 +1,11 @@
 /**
- * The strings of the import panel. English has the same keys (`registerMessages` checks).
- * `message.*` are what the panel sends to the agent as the user's first message and approval,
- * in the language of the UI, like anything else the user would type.
+ * The strings of the HTML import: what its conversation shows in the AI chat. English has the
+ * same keys (`registerMessages` checks). `message.*` are what the app sends to the agent as the
+ * user's first message and approval, in the language of the UI, like anything else the user
+ * would type.
  */
 export const he = {
-  panel: 'ייבוא HTML',
-  start: {
-    title: 'ייבוא מצגת מקובץ HTML',
-    body: 'ה-Agent בוחן את הקובץ, מוצא את השקפים ומביא אותם כך שכל שקף נראה כמו המקור. מה שאפשר הופך לאובייקטים שעורכים; השאר נשאר HTML.',
-    isolated: 'הקובץ רץ בדף מבודד: בלי רשת ובלי גישה לאפליקציה.',
-    newDeck: 'הייבוא נפתח במצגת חדשה.',
-    kept: 'עותק של הקובץ נשמר בתוך קובץ המצגת. אפשר להסיר אותו משם אחר כך.',
-    choose: 'בחירת קובץ',
-    confirm: 'אישור התוכנית לפני הלכידה',
-    confirmOn: 'ה-Agent יציג מה מצא ויחכה לאישור שלכם',
-    confirmOff: 'ה-Agent ייבא בלי לעצור לאישור',
-    filter: 'דף HTML',
-  },
+  filter: 'דף HTML',
   opening: 'טוען את הקובץ בדף המבודד',
   failed: 'הייבוא לא התחיל',
   message: {
@@ -26,10 +15,8 @@ export const he = {
     approve: 'התוכנית מאושרת, אפשר ללכוד.',
     continue: 'המשך את הייבוא מהמקום שבו נעצר.',
   },
-  tabs: { chat: 'שיחה', report: 'דוח' },
   captured: 'נלכדו {{n}}',
   capturedOf: 'נלכדו {{n}} מתוך {{total}}',
-  another: 'ייבוא קובץ אחר',
   closed: 'הדף המבודד נסגר. השיחה ממשיכה כשיחת מצגת.',
   cut: {
     title: 'הייבוא נקטע לפני שהסתיים',
@@ -55,6 +42,7 @@ export const he = {
     action: 'אישור והמשך',
   },
   report: {
+    title: 'דוח הייבוא',
     empty: 'עוד לא נלכדו שקפים',
     emptyBody: 'הדוח נבנה מהמדידות של האפליקציה, שקף אחרי שקף.',
     slides: 'שקפים',
@@ -82,19 +70,7 @@ export const he = {
 };
 
 export const en: typeof he = {
-  panel: 'Import HTML',
-  start: {
-    title: 'Import a deck from an HTML file',
-    body: 'The agent examines the file, finds the slides and brings them in so that every slide looks like the original. What can be edited becomes regular objects; the rest stays HTML.',
-    isolated: 'The file runs in an isolated page: no network, and no access to the app.',
-    newDeck: 'The import opens in a new deck.',
-    kept: 'A copy of the file is kept inside the deck file. It can be removed from there later.',
-    choose: 'Choose a file',
-    confirm: 'Approve the plan before capturing',
-    confirmOn: 'The agent will show what it found and wait for you',
-    confirmOff: 'The agent will import without stopping for approval',
-    filter: 'HTML page',
-  },
+  filter: 'HTML page',
   opening: 'Loading the file in the isolated page',
   failed: 'The import did not start',
   message: {
@@ -104,10 +80,8 @@ export const en: typeof he = {
     approve: 'The plan is approved; go ahead and capture.',
     continue: 'Continue the import from where it stopped.',
   },
-  tabs: { chat: 'Chat', report: 'Report' },
   captured: '{{n}} captured',
   capturedOf: '{{n}} of {{total}} captured',
-  another: 'Import another file',
   closed: 'The isolated page was closed. The chat goes on as a deck chat.',
   cut: {
     title: 'The import was cut before it finished',
@@ -133,6 +107,7 @@ export const en: typeof he = {
     action: 'Approve and continue',
   },
   report: {
+    title: 'Import report',
     empty: 'No slides captured yet',
     emptyBody: "The report is built from the app's own measurements, slide by slide.",
     slides: 'Slides',

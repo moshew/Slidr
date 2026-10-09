@@ -91,9 +91,9 @@ A slide may go without a visual element (an image, a chart, an icon, a meaningfu
 
 **Before you call a slide done**, look at it and ask:
 - Is there one clear focal point, and is it what the eye meets first?
-- Does the content fill the slide, with no dead zone and no crowding?
+- Does it avoid dead zones and crowding?
 - Does the hierarchy read in one second: title, main point, details?
-- Is there a visual element that carries the message, and not only text?
+- Do imagery, typography and purposeful layers carry the message at the reference's level of detail?
 - Is the text short enough to read from a distance?
-- Does the slide look as if it belongs to the same deck as its neighbours, and still differ from them?
-- Are direction, alignment and spacing consistent?`;
+- Is it publication-ready, distinct and written with original copy?
+- At full size and thumbnail, are direction, alignment, crops and clipping correct?`;

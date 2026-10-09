@@ -9,10 +9,14 @@ import {
   Fill,
   Insets,
   Layout,
+  LineElement,
   RichText,
   Shadow,
+  ShapeElement,
   Slide,
   Stroke,
+  SvgElement,
+  TextElement,
   Theme,
   Transition,
 } from './schema';
@@ -23,6 +27,9 @@ export type JsonSchema = Record<string, unknown>;
  * Shared pieces that get a readable name and are written once under `$defs`. Everything else
  * is inlined: a reference to an anonymous `__schema0` that is just "a non-empty string" costs
  * the agent more than the string.
+ *
+ * The four kinds of element that the artwork of a picture's frame is made of are named too: an
+ * element is one of them and the artwork is a list of them, and inlined they were written twice.
  */
 const named = z.registry<{ id: string }>();
 for (const [id, schema] of Object.entries({
@@ -34,6 +41,10 @@ for (const [id, schema] of Object.entries({
   Insets,
   RichText,
   Element,
+  TextElement,
+  ShapeElement,
+  LineElement,
+  SvgElement,
   AnimationStep,
   Transition,
   Layout,

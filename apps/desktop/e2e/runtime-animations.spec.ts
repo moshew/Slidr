@@ -383,6 +383,101 @@ test('in an RTL deck the arrow that points right is `start`', async ({ page }) =
   expect(left!.x).toBeLessThan(right!.x);
 });
 
+/** Top and bottom of the card and of the tiles of the given kinds, read at one moment. */
+const cardAndTiles = (page: Page, types: string[]) =>
+  page.getByTestId('transition-editor').evaluate((editor, list) => {
+    const edges = (selector: string) => {
+      const box = editor.querySelector(selector)!.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom };
+    };
+    return {
+      card: edges('[data-testid="transition-settings"]'),
+      tiles: list.map((type) => edges(`[data-transition="${type}"]`)),
+    };
+  }, types);
+
+test('the card of a transition opens under the row of its tile, and scrolls into view', async ({
+  page,
+}) => {
+  await page.setViewportSize(LAPTOP);
+  await openApp(page, { deck: 'probe' });
+  // The last slide wipes in: a kind of the second group, whose row is below the fold.
+  await setCurrentSlide(page, 's_probe_c');
+  await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
+  const panel = page.getByTestId('transitions-panel');
+  const card = panel.getByTestId('transition-settings');
+  // The panel opens on the card of the slide's transition: the preview and the settings.
+  await expect(card).toBeInViewport({ ratio: 1 });
+  await expect(card.getByTestId('transition-preview')).toBeVisible();
+  await expect(panel.getByRole('radio', { name: 'ניגוב' })).toHaveAttribute('aria-checked', 'true');
+
+  // "None" has nothing to set, and no card.
+  await setCurrentSlide(page, 's_probe_a');
+  await expect(panel.getByRole('radio', { name: 'ללא' })).toHaveAttribute('aria-checked', 'true');
+  await expect(card).toHaveCount(0);
+  await expect(page.getByTestId('transition-preview')).toHaveCount(0);
+
+  // A kind of the first row of its group: the card lies between that row and the next.
+  await panel.getByRole('radio', { name: 'מיזוג שקפים' }).click();
+  await expect(card.getByRole('slider', { name: 'משך' })).toBeVisible();
+  await expect(card).toBeInViewport({ ratio: 1 });
+  const first = await cardAndTiles(page, ['crossfade', 'dissolve']);
+  expect(first.card.top).toBeGreaterThanOrEqual(first.tiles[0]!.bottom);
+  expect(first.card.bottom).toBeLessThanOrEqual(first.tiles[1]!.top);
+
+  // The last row of the gallery ends below the fold, and its card lower still: the panel
+  // scrolls until all of it shows, down to "apply to all".
+  await panel.getByRole('radio', { name: 'צמצם' }).click();
+  await expect(card).toBeInViewport({ ratio: 1 });
+  await expect(card.getByRole('button', { name: 'החלה על כל השקפים' })).toBeInViewport({
+    ratio: 1,
+  });
+  const last = await cardAndTiles(page, ['iris']);
+  expect(last.card.top).toBeGreaterThanOrEqual(last.tiles[0]!.bottom);
+
+  await panel.getByRole('radio', { name: 'ללא' }).click();
+  await expect(card).toHaveCount(0);
+  expect(await transitionOf(page, 's_probe_a')).toBeNull();
+});
+
+test('"none" keeps a card only for a slide that moves on by itself', async ({ page }) => {
+  await openApp(page, { deck: 'probe' });
+  await setCurrentSlide(page, 's_probe_a');
+  await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
+  const panel = page.getByTestId('transitions-panel');
+  const card = panel.getByTestId('transition-settings');
+  await panel.getByRole('radio', { name: 'עמעום' }).click();
+  await card.getByRole('radio', { name: 'לבד' }).click();
+  await panel.getByRole('radio', { name: 'ללא' }).click();
+  expect(await transitionOf(page, 's_probe_a')).toMatchObject({
+    type: 'none',
+    advance: { onClick: true, afterMs: 3000 },
+  });
+  // Nothing plays, so there is no preview and no duration; the card says that the slide moves
+  // on, and is where that is turned off.
+  await expect(card.getByRole('radio', { name: 'לבד' })).toHaveAttribute('aria-checked', 'true');
+  await expect(card.getByRole('slider', { name: 'משך' })).toHaveCount(0);
+  await expect(card.getByTestId('transition-preview')).toHaveCount(0);
+  await card.getByRole('radio', { name: 'בלחיצה' }).click();
+  await expect(card).toHaveCount(0);
+  expect(await transitionOf(page, 's_probe_a')).toBeNull();
+});
+
+test('the popover of row B opens on the card, and keeps it in view', async ({ page }) => {
+  await page.setViewportSize(LAPTOP);
+  await openApp(page, { deck: 'probe' });
+  await setCurrentSlide(page, 's_probe_c');
+  await page.getByTestId('transition-tool').click();
+  const editor = page.getByTestId('transition-editor');
+  const card = editor.getByTestId('transition-settings');
+  await expect(card).toBeInViewport({ ratio: 1 });
+  await editor.getByRole('radio', { name: 'היפוך' }).click();
+  await expect(card).toBeInViewport({ ratio: 1 });
+  const { card: box, tiles } = await cardAndTiles(page, ['flip', 'rotate']);
+  expect(box.top).toBeGreaterThanOrEqual(tiles[0]!.bottom);
+  expect(box.bottom).toBeLessThanOrEqual(tiles[1]!.top);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const lang of ['he', 'en'] as const) {
     test(`the panel and the transition popover: ${theme}, ${lang}`, async ({ page }) => {

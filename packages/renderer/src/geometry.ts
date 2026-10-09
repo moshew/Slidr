@@ -1,3 +1,5 @@
+import { extraShapes } from './extraShapes';
+
 /**
  * Shape geometry: SVG path data in the element's own pixels (SHP-01). Presets are drawn at the
  * frame's size rather than stretched from a fixed box, so corners, arrow heads and star points
@@ -317,7 +319,10 @@ const PRESETS: Record<string, Generator> = {
   },
 };
 
-export const shapePresets: readonly string[] = Object.keys(PRESETS);
+export const shapePresets: readonly string[] = [
+  ...Object.keys(PRESETS),
+  ...Object.keys(extraShapes),
+];
 
 /** The path of a preset at a size, or undefined for an unknown preset name. */
 export function presetPath(
@@ -327,7 +332,10 @@ export function presetPath(
   adjust: readonly number[] = [],
 ): ShapePath | undefined {
   const generate = PRESETS[preset];
-  if (!generate) return undefined;
+  if (!generate) {
+    const extra = extraShapes[preset];
+    return extra ? { d: extra.draw(w, h), closed: true } : undefined;
+  }
   const out = generate(w, h, adjust);
   return typeof out === 'string' ? { d: out, closed: true } : out;
 }

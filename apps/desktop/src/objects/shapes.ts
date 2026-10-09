@@ -5,7 +5,7 @@ import {
   type LineElement,
   type ShapeElement,
 } from '@slidr/model';
-import { presetPath, shapePresets } from '@slidr/renderer';
+import { extraShapes, presetPath, shapePresets } from '@slidr/renderer';
 
 /*
  * The shape library (SHP-01) and the lines of the Insert menu (SHP-05): what each one is called,
@@ -91,7 +91,7 @@ const CATALOGUE: Record<string, ShapeSpec> = {
 const UNLISTED: ShapeSpec = { group: 'basic', w: 360, h: 360 };
 
 function specOf(preset: string): ShapeSpec {
-  return CATALOGUE[preset] ?? UNLISTED;
+  return CATALOGUE[preset] ?? extraShapes[preset] ?? UNLISTED;
 }
 
 /** Every preset the renderer draws, by library group and in library order. */

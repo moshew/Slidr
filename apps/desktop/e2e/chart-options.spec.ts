@@ -48,7 +48,8 @@ test('row B for a chart has its tools, named in Hebrew and in English', async ({
   await openApp(page);
   await addChart(page);
   await selectChart(page);
-  await expect(page.getByTestId('selection-label')).toHaveText(he.chart);
+  await expect(row(page)).toHaveAttribute('data-selection', 'chart');
+  await expect(page.getByTestId('selection-label')).toHaveCount(0);
   for (const name of [he.type, he.data, he.title, he.legend, he.axes, he.labels, he.colors]) {
     await expect(tool(page, name)).toBeVisible();
   }
@@ -56,7 +57,7 @@ test('row B for a chart has its tools, named in Hebrew and in English', async ({
   await openApp(page, { lang: 'en' });
   await addChart(page);
   await selectChart(page);
-  await expect(page.getByTestId('selection-label')).toHaveText(en.chart);
+  await expect(row(page)).toHaveAttribute('data-selection', 'chart');
   for (const name of [en.type, en.data, en.title, en.legend, en.axes, en.labels, en.colors]) {
     await expect(tool(page, name)).toBeVisible();
   }

@@ -13,8 +13,8 @@ import {
  * The Filmstrip for the keyboard and for a screen reader (WG13-T06, UI-06, FLM-04): a list with a
  * name that holds slides and nothing else, says which slide the keyboard is on and how many there
  * are, shows that it has the keyboard, opens its menu about the current slide, selects slides
- * that are not next to each other without the pointer, and marks a slide's transition and its
- * animations beside the number.
+ * that are not next to each other without the pointer, and marks a slide's animations beside the
+ * number and its transition between it and the slide before, where a press opens it.
  */
 
 const strip = (page: Page) => page.locator('[data-filmstrip]');
@@ -191,12 +191,19 @@ test('on the Stage the same keys still walk the elements, not the slides', async
   await expect(strip(page).locator('[data-walk]')).toHaveCount(0);
 });
 
+/** The mark of the transition into a slide, in the gap before it, and the button in it. */
+const transitionMark = (page: Page, slideId: string) =>
+  strip(page).locator(`[data-testid="slide-transition"][data-into="${slideId}"]`);
+
 for (const lang of ['he', 'en'] as const) {
-  test(`a slide's transition and its animations are marked beside its number, ${lang}`, async ({
+  test(`a transition is marked between its two slides, and animations beside the number, ${lang}`, async ({
     page,
   }) => {
     await openApp(page, { lang });
     const [one, two, three] = await slides(page, 3);
+    // The second slide is the one looked at: no slide is before the first, so nothing is drawn
+    // of a transition into it.
+    await page.evaluate((id) => window.slidr!.selection.getState().setCurrentSlide(id), two!);
     await addBoxes(page, [{ id: 'e_a', x: 100, y: 100, w: 300, h: 200 }]);
     const step = (id: string) => ({
       id,
@@ -209,7 +216,7 @@ for (const lang of ['he', 'en'] as const) {
       easing: 'ease',
     });
     await page.evaluate(
-      ({ one, two, steps }) => {
+      ({ two, three, steps }) => {
         const { bus } = window.slidr!;
         const transition = {
           type: 'fade',
@@ -218,49 +225,134 @@ for (const lang of ['he', 'en'] as const) {
           advance: { onClick: true },
         };
         bus.batch([
-          { type: 'slide.update', slideId: one, patch: { transition } },
-          { type: 'slide.setTimeline', slideId: one, timeline: steps },
+          { type: 'slide.update', slideId: two, patch: { transition } },
+          { type: 'slide.setTimeline', slideId: two, timeline: steps },
           // A transition of "none" is no transition, and gets no mark.
           {
             type: 'slide.update',
-            slideId: two,
+            slideId: three,
             patch: { transition: { ...transition, type: 'none' } },
           },
         ] as never);
       },
-      { one: one!, two: two!, steps: [step('a_1'), step('a_2')] },
+      { two: two!, three: three!, steps: [step('a_1'), step('a_2')] },
     );
 
-    const first = thumb(page, one!);
-    const transition = first.getByTestId('slide-transition-mark');
-    const animations = first.getByTestId('slide-animations-mark');
+    const second = thumb(page, two!);
+    const transition = transitionMark(page, two!).getByRole('button');
+    const animations = second.getByTestId('slide-animations-mark');
     await expect(transition).toBeVisible();
+    await expect(transition).toHaveAccessibleName(
+      lang === 'he' ? 'המעבר אל שקף 2: עמעום' : 'Transition into slide 2: Fade',
+    );
+    // It is the picture of its kind, not one picture for every transition.
+    await expect(transition.locator('svg')).toHaveClass(/lucide-contrast/);
     await expect(animations).toBeVisible();
     // A screen reader hears both as the description of the slide.
-    await expect(first).toHaveAccessibleDescription(
+    await expect(second).toHaveAccessibleDescription(
       lang === 'he' ? /יש מעבר.*שתי אנימציות/ : /Has a transition.*2 animations/,
     );
-    await expect(thumb(page, two!).getByTestId('slide-transition-mark')).toHaveCount(0);
     await expect(thumb(page, three!).getByTestId('slide-animations-mark')).toHaveCount(0);
     await expect(thumb(page, three!)).toHaveAccessibleDescription('');
 
-    // Beside the number and not over the picture: the thumbnail stays the slide as it is drawn.
-    const picture = (await first.locator('.slidr-slide').boundingBox())!;
-    for (const mark of [transition, animations]) {
-      const box = (await mark.boundingBox())!;
-      expect(box.y).toBeGreaterThanOrEqual(picture.y + picture.height);
-    }
+    // The transition lies where it plays: between the slide before and its own, at their height,
+    // in the reading direction of the UI.
+    const before = (await thumb(page, one!).locator('.slidr-slide').boundingBox())!;
+    const picture = (await second.locator('.slidr-slide').boundingBox())!;
+    const at = (await transition.boundingBox())!;
+    const [left, right] = lang === 'he' ? [picture, before] : [before, picture];
+    const middle = at.x + at.width / 2;
+    expect(middle).toBeGreaterThan(left.x + left.width);
+    expect(middle).toBeLessThan(right.x);
+    expect(at.y).toBeGreaterThan(picture.y);
+    expect(at.y + at.height).toBeLessThan(picture.y + picture.height);
+    // The animations stay beside the number and not over the picture. By the middle of the mark:
+    // the row of the number begins a pixel inside the picture's box, to stay clear of the
+    // strip's scrollbar.
+    const moving = (await animations.boundingBox())!;
+    expect(moving.y + moving.height / 2).toBeGreaterThan(picture.y + picture.height);
+
+    // A gap without a transition keeps an offer of one out of sight until the pointer is near;
+    // no slide is before the first one, so no mark is.
+    const offer = transitionMark(page, three!).getByRole('button');
+    await expect(transitionMark(page, three!)).not.toHaveAttribute('data-transition');
+    await expect(offer).toHaveCSS('opacity', '0');
+    await transitionMark(page, three!).hover({ position: { x: 2, y: 2 } });
+    await expect(offer).toHaveCSS('opacity', '1');
+    await expect(offer).toHaveAccessibleName(
+      lang === 'he' ? 'הוספת מעבר אל שקף 3' : 'Add a transition into slide 3',
+    );
+    // The offer has the picture of transitions as such, which the panel of them has too.
+    await expect(offer.locator('svg')).toHaveClass(/lucide-blend/);
+    await expect(transitionMark(page, one!)).toHaveCount(0);
 
     // One animation is said as one, in the grammar of the language.
     await page.evaluate(
-      ({ one, steps }) =>
+      ({ two, steps }) =>
         window.slidr!.bus.dispatch({
           type: 'slide.setTimeline',
-          slideId: one,
+          slideId: two,
           timeline: steps,
         } as never),
-      { one: one!, steps: [step('a_1')] },
+      { two: two!, steps: [step('a_1')] },
     );
-    await expect(first).toHaveAccessibleDescription(lang === 'he' ? /אנימציה אחת/ : /1 animation$/);
+    await expect(second).toHaveAccessibleDescription(
+      lang === 'he' ? /אנימציה אחת/ : /1 animation$/,
+    );
   });
 }
+
+test('a press on the mark between two slides opens the transition into the second', async ({
+  page,
+}) => {
+  await openApp(page, { lang: 'en' });
+  const [one, two, three] = await slides(page, 3);
+  await page.evaluate(
+    (ids) => window.slidr!.selection.getState().selectSlides(ids, ids[0]),
+    [one!, two!],
+  );
+
+  // The offer in the gap before the third slide: the slide is the current one, alone, as by a
+  // press on it, and its transition is open in the panel.
+  await transitionMark(page, three!).hover();
+  await transitionMark(page, three!).getByRole('button').click();
+  expect(await currentSlide(page)).toBe(three);
+  expect(await selectedSlides(page)).toEqual([three]);
+  await expect(list(page)).toBeFocused();
+  const panel = page.getByTestId('transitions-panel');
+  await expect(panel).toBeVisible();
+
+  // What is chosen there is the transition into that slide, and the mark shows it.
+  await panel.locator('[data-transition="push"]').click();
+  expect(
+    await page.evaluate(() => window.slidr!.bus.deck.slides.map((s) => s.transition?.type ?? null)),
+  ).toEqual([null, null, 'push']);
+  await expect(transitionMark(page, three!)).toHaveAttribute('data-transition', 'push');
+  await expect(transitionMark(page, three!).getByRole('button')).toHaveAccessibleName(
+    'Transition into slide 3: Push',
+  );
+  await expect(transitionMark(page, three!).locator('svg')).toHaveClass(/lucide-chevrons-right/);
+  // It stays in sight once the pointer is away, and a press on it leads back to the same place.
+  await page.getByTestId('stage-surface').hover();
+  await expect(transitionMark(page, three!).getByRole('button')).toHaveCSS('opacity', '1');
+  await thumb(page, one!).click();
+  await transitionMark(page, three!).getByRole('button').click();
+  expect(await currentSlide(page)).toBe(three);
+  await expect(panel.locator('[data-transition="push"]')).toHaveAttribute('aria-checked', 'true');
+
+  // The marks are no stops of Tab: the list, then the "new slide" button, as before.
+  await focusFilmstrip(page);
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('new-slide')).toBeFocused();
+
+  // No mark is drawn while slides are dragged: the place they would land in is drawn there.
+  const from = (await thumb(page, one!).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 30, from.y + 40, { steps: 3 });
+  await expect(strip(page).getByTestId('slide-transition')).toHaveCount(0);
+  await page.mouse.move(from.x + from.width / 2, from.y + 40, { steps: 3 });
+  await page.mouse.up();
+  await expect(strip(page).getByTestId('slide-transition')).toHaveCount(2);
+  expect(await slideIds(page)).toEqual([one, two, three]);
+});

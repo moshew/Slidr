@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'node:url';
 import { test, type Page } from '@playwright/test';
-import { chooseFile, openImportPanel, turnsDone } from './import-helpers';
+import { chooseFile, openForImport, turnsDone } from './import-helpers';
 
 /*
- * Screenshots of the import panel for the design gate (PLAN 1.2): both themes, both directions
- * and both target resolutions. They are written to test-results/import/ to be looked at;
- * nothing is compared.
+ * Screenshots of the HTML import in the AI chat for the design gate (PLAN 1.2): both themes,
+ * both directions and both target resolutions. They are written to test-results/import/ to be
+ * looked at; nothing is compared.
  */
 
 const out = (name: string) =>
@@ -31,16 +31,9 @@ for (const theme of themes) {
     for (const viewport of viewports) {
       const name = `${theme}-${dir}-${viewport.width}`;
 
-      test(`choosing a file ${name}`, async ({ page }) => {
-        await page.setViewportSize(viewport);
-        await openImportPanel(page, { lang, theme });
-        await settle(page);
-        await page.screenshot({ path: out(`start-${name}`) });
-      });
-
       test(`the plan, waiting for approval ${name}`, async ({ page }) => {
         await page.setViewportSize(viewport);
-        await openImportPanel(page, { lang, theme });
+        await openForImport(page, { lang, theme });
         await chooseFile(page);
         await turnsDone(page, 1);
         await settle(page);
@@ -49,14 +42,15 @@ for (const theme of themes) {
 
       test(`imported, chat and report ${name}`, async ({ page }) => {
         await page.setViewportSize(viewport);
-        await openImportPanel(page, { lang, theme });
+        await openForImport(page, { lang, theme });
         await chooseFile(page);
         await turnsDone(page, 1);
         await page.getByTestId('import-approve').getByRole('button').click();
         await turnsDone(page, 2);
         await settle(page);
         await page.screenshot({ path: out(`imported-${name}`) });
-        await page.getByTestId('import-report-tab').click();
+        await page.getByTestId('import-report-toggle').click();
+        await page.getByTestId('import-source').scrollIntoViewIfNeeded();
         await settle(page);
         await page.screenshot({ path: out(`report-${name}`) });
       });
@@ -65,7 +59,7 @@ for (const theme of themes) {
 }
 
 test('the slides coming in, at the pace of a real session', async ({ page }) => {
-  await openImportPanel(page, { speed: 1 });
+  await openForImport(page, { speed: 1 });
   await chooseFile(page);
   await turnsDone(page, 1);
   await page.getByTestId('import-approve').getByRole('button').click();

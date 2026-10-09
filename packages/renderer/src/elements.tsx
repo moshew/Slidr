@@ -172,7 +172,10 @@ function imageClip(e: ImageElement): {
     if (path) return { style: { clipPath: `path('${path.d}')` }, path };
   }
   if (mask?.kind === 'path') {
-    const path = { d: scalePath(mask.d, e.frame.w / mask.viewBox.w, e.frame.h / mask.viewBox.h), closed: true };
+    const path = {
+      d: scalePath(mask.d, e.frame.w / mask.viewBox.w, e.frame.h / mask.viewBox.h),
+      closed: true,
+    };
     return { style: { clipPath: `path('${path.d}')` }, path };
   }
   const r = e.effects?.radius;
@@ -390,11 +393,37 @@ function SmartFrameView({ element: e }: { element: ImageElement }) {
   return (
     <div data-smart-image-frame style={{ ...FILL_PARENT, transform: flipTransform(e) }}>
       {design.background ? <FillLayer fill={design.background} ctx={ctx} /> : null}
-      <div data-image-opening style={{ position: 'absolute', left: opening.x, top: opening.y, width: opening.w, height: opening.h }}>
-        <PictureView element={{ ...e, smartFrame: undefined, frame: opening, flipH: false, flipV: false }} />
+      <div
+        data-image-opening
+        style={{
+          position: 'absolute',
+          left: opening.x,
+          top: opening.y,
+          width: opening.w,
+          height: opening.h,
+        }}
+      >
+        <PictureView
+          element={{ ...e, smartFrame: undefined, frame: opening, flipH: false, flipV: false }}
+        />
       </div>
-      <div data-frame-artwork aria-hidden style={{ position: 'absolute', left: 0, top: 0, width: design.viewBox.w, height: design.viewBox.h, transform: `scale(${sx}, ${sy})`, transformOrigin: '0 0', pointerEvents: 'none' }}>
-        {design.decorations.map((decoration, index) => <ElementView key={index} element={decoration} decoration />)}
+      <div
+        data-frame-artwork
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: design.viewBox.w,
+          height: design.viewBox.h,
+          transform: `scale(${sx}, ${sy})`,
+          transformOrigin: '0 0',
+          pointerEvents: 'none',
+        }}
+      >
+        {design.decorations.map((decoration, index) => (
+          <ElementView key={index} element={decoration} decoration />
+        ))}
       </div>
     </div>
   );

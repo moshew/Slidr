@@ -48,7 +48,7 @@ export interface ImportState {
   startedAt: number | null;
   /** How many slides the agent's plan has (IMP-11); null until it says. */
   planned: number | null;
-  /** Where the import stands; `cut` is what the panel offers to continue (IMP-09). */
+  /** Where the import stands; `cut` is what the conversation offers to continue (IMP-09). */
   phase: ImportPhase;
   /** By slide id. A slide the user or the agent has deleted since simply has no row. */
   records: Record<string, SlideRecord>;

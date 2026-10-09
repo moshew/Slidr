@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { extraShapes } from '@slidr/renderer';
 import {
   Flag,
   Hand,
@@ -30,10 +31,11 @@ import { CHART_TYPES, typeIcons } from '../chart/icons';
 import { insertChart } from '../chart/insert';
 import { insertClips } from '../media/insertClip';
 import { insertCard, insertLine, insertShape } from '../objects/insert';
-import { GLYPH_BOX, LINE_GLYPHS, LINE_KINDS, shapeGlyph, shapeLibrary } from '../objects/shapes';
-import { useEditor } from '../shell';
+import { LINE_KINDS, shapeLibrary } from '../objects/shapes';
+import { useDeck, useEditor } from '../shell';
 import { insertTable } from '../table/insert';
 import { TableInsert } from '../table/TableInsert';
+import { CardArt, LineArt, ShapeArt, ShapeInks } from './shapeArt';
 import { ListEnd, StickerGrid } from './StickerGrid';
 import {
   EMOJI_GROUPS,
@@ -99,7 +101,7 @@ export function NothingFound() {
   return <EmptyState icon={SearchX} title={t('empty')} description={t('emptyHint')} />;
 }
 
-function Loading() {
+export function Loading() {
   return (
     <div className="element-grid" data-size="graphic" aria-busy>
       {Array.from({ length: 12 }, (_, index) => (
@@ -109,7 +111,7 @@ function Loading() {
   );
 }
 
-function LoadFailed() {
+export function LoadFailed() {
   const { t } = useTranslation('elements');
   return <p className="py-8 text-center text-sm text-ui-fg-muted">{t('loadFailed')}</p>;
 }
@@ -323,17 +325,33 @@ export function EmojiCollection() {
 
 /* ---------------------------------------------------------------- shapes */
 
+/** A drawing of the collection: a soft tile that lifts off the panel under the pointer. */
 const tile =
-  'flex aspect-square cursor-default items-center justify-center rounded-control transition-colors hover:bg-ui-hover active:bg-ui-pressed focus-visible:-outline-offset-2';
+  'group flex aspect-square cursor-default items-center justify-center rounded-control bg-ui-field transition-[background-color,box-shadow] duration-(--duration-base) hover:bg-ui-raised hover:shadow-floating active:bg-ui-pressed active:shadow-none focus-visible:-outline-offset-2';
+/** The picture on a tile, which comes forward with it. */
+const tileArt =
+  'size-4/5 transition-transform duration-(--duration-base) ease-out group-hover:scale-110 group-active:scale-100';
 
-/** The colour of each group of the shape library, so the page is not one grey mass. */
-const shapeColors = [
-  'text-ui-tool-violet-fg',
-  'text-ui-tool-pink-fg',
-  'text-ui-tool-teal-fg',
-  'text-ui-tool-orange-fg',
-  'text-ui-tool-blue-fg',
-];
+/**
+ * A group of the Shapes collection: its name over its tiles, which stand in the columns of the
+ * whole page (`.shape-group`). `tiles` is how many it has, for the room it takes.
+ */
+function ShapeTiles({
+  title,
+  tiles,
+  children,
+}: {
+  title: string;
+  tiles: number;
+  children: ReactNode;
+}) {
+  return (
+    <section role="group" aria-label={title} className="shape-group" data-tiles={tiles}>
+      <h4 className="col-span-full truncate py-1 text-sm font-semibold text-ui-fg">{title}</h4>
+      {children}
+    </section>
+  );
+}
 
 /** The shape library, the lines and the card. */
 export function ShapesCollection() {
@@ -341,91 +359,61 @@ export function ShapesCollection() {
   const { t, i18n } = useTranslation('objects');
   const { t: own } = useTranslation('elements');
   const groups = useMemo(() => shapeLibrary(), []);
-  const nameOf = (preset: string) =>
-    i18n.exists(`objects:shape.${preset}`) ? t(`shape.${preset}`) : preset;
+  // A new line and the words of a new card run in the deck's reading direction, and so do
+  // their pictures.
+  const rtl = useDeck((s) => s.deck.meta.dir === 'rtl');
+  const nameOf = (preset: string) => {
+    const extra = extraShapes[preset];
+    if (extra) return i18n.language.startsWith('he') ? extra.he : extra.en;
+    return i18n.exists(`objects:shape.${preset}`) ? t(`shape.${preset}`) : preset;
+  };
   return (
-    <div className="flex flex-col gap-4" data-testid="elements-shapes">
-      {groups.map(({ group, presets }, groupIndex) => (
-        <Section key={group} title={t(`library.${group}`)}>
-          <div className="element-grid" data-size="shape">
-            {presets.map((preset) => {
-              const glyph = shapeGlyph(preset);
-              return (
-                <Tooltip key={preset} content={nameOf(preset)}>
-                  <button
-                    type="button"
-                    aria-label={nameOf(preset)}
-                    data-preset={preset}
-                    className={cx(tile, shapeColors[groupIndex % shapeColors.length])}
-                    onClick={() => insertShape(editor, preset)}
-                  >
-                    {glyph && (
-                      <svg
-                        aria-hidden
-                        viewBox={`0 0 ${GLYPH_BOX} ${GLYPH_BOX}`}
-                        className="size-12"
-                      >
-                        <path
-                          d={glyph.d}
-                          transform={`translate(${glyph.x} ${glyph.y})`}
-                          fill={glyph.closed ? 'currentColor' : 'none'}
-                          stroke="currentColor"
-                          strokeWidth={glyph.closed ? 0.6 : 1.4}
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                </Tooltip>
-              );
-            })}
-          </div>
-        </Section>
-      ))}
-      <Section title={own('lines')}>
-        <div className="element-grid" data-size="shape">
-          {LINE_KINDS.map((kind) => (
-            <Tooltip key={kind} content={t(`line.${kind}`)}>
+    <div className="element-grid" data-size="shape" data-testid="elements-shapes">
+      <ShapeInks />
+      {groups.map(({ group, presets }) => (
+        <ShapeTiles key={group} title={t(`library.${group}`)} tiles={presets.length}>
+          {presets.map((preset) => (
+            <Tooltip key={preset} content={nameOf(preset)}>
               <button
                 type="button"
-                aria-label={t(`line.${kind}`)}
-                data-line={kind}
-                className={cx(tile, 'text-ui-fg')}
-                onClick={() => insertLine(editor, kind)}
+                aria-label={nameOf(preset)}
+                data-preset={preset}
+                className={tile}
+                onClick={() => insertShape(editor, preset)}
               >
-                <svg aria-hidden viewBox="0 0 24 24" className="size-12">
-                  <path
-                    d={LINE_GLYPHS[kind]}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.4}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <ShapeArt preset={preset} className={tileArt} />
               </button>
             </Tooltip>
           ))}
-        </div>
-      </Section>
-      <Section title={t('library.cards')}>
-        <div className="element-grid" data-size="shape">
-          <Tooltip content={t('card.title')}>
+        </ShapeTiles>
+      ))}
+      <ShapeTiles title={own('lines')} tiles={LINE_KINDS.length}>
+        {LINE_KINDS.map((kind) => (
+          <Tooltip key={kind} content={t(`line.${kind}`)}>
             <button
               type="button"
-              aria-label={t('card.title')}
-              onClick={() => insertCard(editor)}
+              aria-label={t(`line.${kind}`)}
+              data-line={kind}
               className={tile}
+              onClick={() => insertLine(editor, kind)}
             >
-              <span className="flex h-11 w-12 flex-col justify-center gap-1 rounded-inset border border-ui-line-strong bg-ui-raised px-2 shadow-raised">
-                <span className="h-1.5 w-3/4 rounded-full bg-ui-accent" />
-                <span className="h-1 w-full rounded-full bg-ui-fg-subtle" />
-                <span className="h-1 w-2/3 rounded-full bg-ui-fg-subtle" />
-              </span>
+              <LineArt kind={kind} flip={rtl} className={tileArt} />
             </button>
           </Tooltip>
-        </div>
-      </Section>
+        ))}
+      </ShapeTiles>
+      <ShapeTiles title={t('library.cards')} tiles={1}>
+        <Tooltip content={t('card.title')}>
+          <button
+            type="button"
+            aria-label={t('card.title')}
+            onClick={() => insertCard(editor)}
+            className={tile}
+          >
+            <CardArt ink="violet" flip={rtl} className={tileArt} />
+          </button>
+        </Tooltip>
+      </ShapeTiles>
     </div>
   );
 }

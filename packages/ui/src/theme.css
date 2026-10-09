@@ -105,12 +105,10 @@
   --spacing-control-sm: 28px;
   --spacing-titlebar: 56px;
   --spacing-caption: 46px; /* a window control button */
-  --spacing-toolbar: 80px;
+  --spacing-toolbar: 44px;
   --spacing-filmstrip: 132px;
   --spacing-statusbar: 32px;
   --spacing-activitybar: 76px;
-  --spacing-creation-tool: 64px;
-  --spacing-creation-icon: 36px;
   --spacing-thumb-w: 176px; /* a filmstrip thumbnail, 176 × 99 (FLM-01) */
   --spacing-thumb-h: 99px;
   --spacing-menu: 224px; /* the minimum width of a menu */

@@ -1,82 +1,56 @@
-# Slidr — רענון עיצוב סביבת העריכה
+# Slidr editor design refresh — specification
 
-תאריך: 2026-10-07. מקור הדרישה: בקשת המשתמש ותמונת Canva המצורפת. מסמך זה מגדיר את השינוי בעיצוב האפליקציה ומשלים את `docs/SPEC.md`; במידות ובמיקום הכלים המפורטים כאן הוא מחליף את תיאור המעטפת הישן.
+Date: 2026-10-07. Updated: 2026-10-09. This document refines the shell and editor layout in [the main specification](../SPEC.md). The 2026-10-09 notes describe uncommitted working-tree changes.
 
-## 1. מטרה
+## Purpose
 
-להפוך את סביבת העריכה למודרנית, צבעונית ונעימה יותר, עם הפרדה ברורה בין פעולות המסמך, יצירת תוכן ועריכת השקף. ההשראה מ־Canva היא היררכיית הממשק: כותרת צבעונית, כלי יצירה מזוהים, משטח עבודה רגוע וסרגלי פעולה צפים. Slidr שומרת על השפה שלה ועל הצ'אט המשולב.
+Make document actions, creation tools, and contextual editing tools easy to find without changing deck content or exported slides. The shell supports Hebrew and English, light and dark themes, keyboard use, and narrow panels.
 
-## 2. מבנה הממשק
+## Layout
 
 ```text
-┌ כותרת: Slidr · קובץ · ביטול/חזרה | שם המצגת | ייצוא · הצגה · כפתורי חלון ┐
-├ ניווט ┬ פאנל כלי / צ'אט ┬ סרגל יצירה: טקסט · תמונה · צורה · קו · טבלה… ┤
-│       │                 │ משטח העבודה                                 │
-│       │                 │   ╭ כלי השקף / הבחירה, בסרגל צף ╮           │
-│       │                 │   ╰──────────────────────────────╯           │
-│       │                 │                השקף                          │
-│       │                 │     סרגל אובייקט צף ליד הבחירה               │
-│       │                 ├ רצועת שקפים                                  │
-└ שורת מצב: מספר שקף · זום · שמירה | מצב AI · בדיקת עיצוב ────────────────┘
+┌ Title: File · Undo/Redo | deck name | Export · Present · window controls ┐
+├ Navigation ┬ AI or tool panel ┬ Create: text · image · Elements · line · table… ┤
+│            │                  │ Workspace                                   │
+│            │                  │   Floating slide/selection toolbar          │
+│            │                  │   Slide and nearby object controls          │
+│            │                  ├ Filmstrip                                   │
+└ Status: slide number · zoom · save state | AI · design check ──────────────┘
 ```
 
-הסידור מתהפך במעבר בין עברית לאנגלית, כולל התפריטים, החצים, כיתובי הכלים וכפתורי החלון.
+The order mirrors with the UI language. Text direction inside a deck follows the deck and paragraph settings, not the shell alone.
 
-### 2.1 כותרת ופעולות מסמך
+### Title and document actions
 
-- כותרת בגובה 56px, עם גרדיאנט טורקיז–כחול–סגול וניגודיות מספקת לטקסט בהיר.
-- תפריט **קובץ** בכותרת מכיל את הפעולות הקיימות: חדש, פתיחה, אחרונים, ייבוא, שמירה, שמירה בשם, חיפוש, קיצורים וחזרה למסך הפתיחה.
-- ביטול וביצוע חוזר ליד התפריט; ייצוא וכפתור הצגה מפוצל בקצה השני.
-- שם המצגת מתקצר לפי המקום; סימון שינויים שלא נשמרו נשאר גלוי ונגיש.
-- אזורי גרירת החלון נמצאים בלוגו ובשטח שם המצגת. כפתורים ותפריטים אינם אזורי גרירה.
-- פעולות העריכה בכותרת אינן מופיעות במסך הפתיחה ונחסמות בזמן הכנת מסמך ראשון. כפתורי החלון ממשיכים לפעול.
+- The 56px title bar provides the File menu, Undo/Redo, deck name, Export, Present, and window controls. Its gradient must keep light text readable.
+- The File menu offers New, Open, Recent, Import HTML, Save, Save As, Search, keyboard shortcuts, and the way back to the welcome screen. Export is also accessible there; its implementation stays in the export domain.
+- In the current working tree, the product logo/name and open document name are centered together. The document name truncates within the available width, uses automatic text direction, and still shows unsaved state. Empty title-bar regions drag the window; controls remain clickable. Document editing actions are unavailable during startup and on the welcome screen. See [ADR-081](../adr/ADR-081-shell-navigation-polish.md).
 
-### 2.2 סרגל יצירה
+### Creation and navigation
 
-- שורה בגובה 80px עם שמונה פעולות ההוספה הקיימות, ואפשרות פתיחת צ'אט AI.
-- כל פעולה מוצגת ככפתור מעוגל: אייקון 24px בתוך משטח צבעוני עדין וכיתוב קצר מתחתיו.
-- צבעים לפי כלי: סגול לטקסט, כחול לתמונה, ורוד לצורות, טורקיז לקו, ירוק לטבלה, כתום לגרף, ורוד כהה למדיה וסגול לאייקונים.
-- שם נגיש מלא נשמר גם כשהכיתוב מקוצר ל״טקסט״ או ״מדיה״. אין הסתמכות על צבע בלבד.
-- הספריות הקיימות נפתחות באותם popovers והפעולות משתמשות באותו action registry.
-- כאשר הפאנל רחב, הסרגל גולל אופקית עם חצי המשך, גלגלת ו־Tab. אף כלי אינו נחתך ללא דרך להגיע אליו.
+- The 2026-10-07 implementation used eight colored, labeled creation buttons in an 80px row. The committed Elements change (`fdb2036`) combines shapes, graphics, emoji, icons, photos, clips, tables, and charts in one browser. The working tree adds ready-made slide designs and richer shape/line previews ([ADR-079](../adr/ADR-079-elements-designs.md)).
+- In the current working tree, the creation row uses compact icon buttons with accessible names. The navigation bar keeps large icons and short labels and scrolls when height is limited. A narrow tool panel can scroll its creation row horizontally.
+- Animations and Transitions use the same plain icon treatment as the other navigation items in the current working tree. Ctrl+A selects every slide only when the Filmstrip list has focus ([ADR-081](../adr/ADR-081-shell-navigation-polish.md)).
+- Zoom lives in the 32px status bar. Registered actions and popovers remain the source of behavior; shell controls do not duplicate domain commands.
 
-### 2.3 כלי השקף והבחירה בתוך משטח העבודה
+### Workspace and selection tools
 
-- הסרגל ההקשרי עובר לתוך אזור ה־Stage. הוא מוצג כמשטח לבן/כהה מעוגל וממורכז לפי רוחב הכלים, עם גבול עדין וצל, מרווח מקצוות משטח העבודה.
-- ללא בחירת אובייקט: כלי רקע, פריסה, מעבר ושאר פעולות השקף הקיימות. עם בחירה: כלים לפי סוג האובייקט, כולל טקסט, תמונות, טבלאות ובחירה מרובה.
-- לסרגל מוקצה מקום מעל משטח השקף, כדי שלא יכסה תוכן, ידיות או תוצאות חיפוש. התאמת הזום נמדדת לפי השטח שנותר לשקף.
-- הסרגל הצף של האובייקט נשאר ליד הבחירה, עם מסגרת מעוגלת יותר. מנגנון המיקום וההסתרה במחוות ממשיך לפעול.
-- הצגה מקדימה, תפריט קליק ימני, crop ועריכה במקום ממשיכים להשתמש במנגנונים הקיימים.
+- The contextual toolbar is a rounded, floating surface within the Stage area. Space is reserved above the slide so the toolbar does not cover slide content when fit-to-window zoom is calculated.
+- The toolbar changes with slide, object, or multiple selection. In the current working tree it omits the redundant selection label; the tools themselves keep accessible names.
+- The floating object bar stays near the selected object. Crop, right-click menus, in-place text editing, preview, and keyboard focus use their existing domain behavior, with the interaction refinements recorded in [ADR-078](../adr/ADR-078-stage-editing-refinements.md).
+- Transition settings appear below the selected effect row in the working tree and scroll into view on selection ([ADR-080](../adr/ADR-080-transition-settings.md)).
 
-### 2.4 שפה חזותית כוללת
+### Visual system
 
-- פינות: 12px לפקדים, 18px לפאנלים ומשטחים צפים; רכיבים מקוננים מקבלים רדיוס קטן יותר.
-- צבעי המשטחים עוברים לאפור־לבנדר בהיר ולגוונים כהים עם נטייה סגולה. צבע הבחירה וה־AI הוא סגול חי.
-- שורת הניווט ברוחב 76px: אייקונים גדולים וכיתוב קצר, מצב נבחר עם רקע סגול עדין. כאשר גובה החלון קטן, הניווט ניתן לגלילה.
-- שורת המצב בגובה 32px; תפריט הזום עובר אליה מתוך סרגל היצירה.
-- פאנלים, תפריטים, שדות, כרטיסים ודיאלוגים מקבלים את הרדיוסים והגוונים החדשים באמצעות tokens משותפים.
-- מסגרת השקף עצמו והתוכן המיוצא אינם מקבלים עיגול או שינוי צבע: המעטפת היא המשתנה.
-- צללים רכים מסמנים שכבות; אין אנימציות דקורטיביות מתמשכות. הגדרות reduced motion נשמרות.
+- Shared tokens in `packages/ui/src/theme.css` define both color schemes. Controls use approximately 12px corners; panels and floating surfaces use approximately 18px corners. Nested controls may use smaller radii.
+- The shell uses lavender-gray surfaces, a vivid purple accent for selection and AI, and soft shadows to separate layers. The slide canvas and export content retain their own design.
+- Decorative motion respects reduced-motion settings. No cloud-sharing control is shown without a working feature.
 
-## 3. נגישות והתנהגות
+## Accessibility and acceptance
 
-- תמיכה מלאה ב־RTL/LTR ובשתי ערכות הצבעים. כל צבעי הממשק מגיעים מ־`packages/ui/src/theme.css`.
-- כל כפתור נושא שם נגיש; מצב נבחר, חסימה וטעינה ממשיכים להשתמש ברכיבי מערכת העיצוב.
-- שמירת מיקוד: שימוש בעכבר בכלי מחזיר את המקלדת לעריכת השקף; כלי שהושג במקלדת שומר את המיקוד.
-- F6 ממשיך לעבור בין אזורי הממשק, וכולל גם את פעולות המסמך שבכותרת. Alt+F10 ממשיך להגיע לסרגל האובייקט.
-- צבעי טקסט ופקדים עוברים בדיקת ניגודיות; outline ברור על הכותרת הצבעונית ובמשטחים הבהירים/הכהים.
-- טקסט ארוך בשם המצגת או בכיתוב כלי לא גורם לגלילה של החלון או להסתרת פעולות ההצגה.
-
-## 4. גבולות השינוי
-
-השינוי מתמקד במעטפת ובמערכת העיצוב. אין שינוי בסכמת המצגת, ב־Deck API, באחסון, במנוע הרינדור, במנגנון undo או בתוצאת הייצוא. אין הוספת פעולות דמה כגון שיתוף בענן. רענון תוכן פנימי פרטני של ספריות, מסך הפתיחה והצ'אט יכול להמשיך בשלב הבא; בינתיים הם יורשים את ה־tokens החדשים.
-
-## 5. קריטריוני קבלה
-
-1. קובץ, ביטול/חזרה, ייצוא והצגה נמצאים בכותרת העליונה ופועלים.
-2. לכל שמונת כלי היצירה יש אייקון צבעוני גדול וכיתוב גלוי; ספריות והוספת טקסט עדיין פועלות.
-3. הסרגל ההקשרי נמצא בתוך ה־Stage, מתחלף לפי הבחירה ולא חופף לשקף במצב התאמה לחלון.
-4. ארבעת השילובים עברית/אנגלית × בהיר/כהה מוצגים ללא גלישת חלון ב־1920×1032 וב־1366×768, גם בפאנל ברוחב 45%.
-5. חצי הגלילה של הכלים, Tab, F6, החזרת מיקוד לשקף וסרגל האובייקט פועלים.
-6. מצבי טעינה ומסך פתיחה אינם מאפשרים פעולות עריכה בכותרת.
-7. typecheck, lint, בדיקות כללי העיצוב ובדיקות E2E ממוקדות עוברים; צילומי מסך נשמרים לסקירה חזותית. מגבלות אימות בחלון Tauri אמיתי מתועדות.
+1. The File menu, Undo/Redo, Export, and Present work from the title bar; startup blocks document edits.
+2. Every visible creation and contextual control has an accessible name and keyboard path. Color never carries the only meaning.
+3. F6 moves among interface regions, including document actions; Alt+F10 reaches object controls. Pointer use and keyboard use preserve the documented focus return rules.
+4. Hebrew/English × light/dark layouts fit at 1920×1032 and 1366×768, including a 45% tool panel, without hiding actions.
+5. The contextual toolbar changes with selection and does not cover the slide in fit-to-window mode.
+6. Typecheck, lint, design-rule checks, targeted E2E tests, and screenshots provide verification. A real Tauri window and installer need separate checks where noted in [the plan](PLAN.md).
