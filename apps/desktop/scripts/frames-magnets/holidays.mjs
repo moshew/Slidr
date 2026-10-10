@@ -385,51 +385,72 @@ export default function holidays(kit) {
     );
   }
 
-  /* ---- Hanukkah: a night-blue card with a window like a gate, the lit hanukkiah at its foot */
+  /* ---- Hanukkah: a night-blue card with a wide window like a gate, the greeting on a plate over
+     its top edge, the lit hanukkiah in its glow over the middle of its foot, a sufganiya and a
+     dreidel at the two ends. It is drawn for the wide slide. */
   function hanukkah() {
-    const opening = box(54, 138, 642, 610);
-    const radii = [140, 140, 18, 18];
+    const [W, H] = [1920, 1080];
+    const opening = box(55, 132, 1810, 720);
+    const radii = [240, 240, 18, 18];
     const next = random(2512);
+    /** A light of the night: a sparkle of gold, or a point. */
+    const light = (x, y, r, opacity, point = false) =>
+      point
+        ? `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="#fbeab0" fill-opacity="${opacity}"/>`
+        : `<path d="${sparkle(x, y, r)}" fill="#f3d27a" fill-opacity="${opacity}"/>`;
     const lights = (S) =>
       scattered(
         next,
-        44,
-        750,
-        1050,
-        [inset(opening, -22), box(100, 30, 550, 140), box(40, 984, 670, 66)],
-        36,
-        16,
+        84,
+        W,
+        H,
+        // The gate, the plate over it and the line of words stay clear.
+        [inset(opening, -26), box(590, 24, 740, 200), box(1080, 926, 580, 72)],
+        42,
+        18,
       )
         .map(([x, y]) => {
           const opacity = f(0.4 + next() * 0.6);
           return S.pin(
             next() < 0.5
-              ? `<path d="${sparkle(x, y, 5 + next() * 9)}" fill="#f3d27a" fill-opacity="${opacity}"/>`
-              : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.5 + next() * 2)}" fill="#fbeab0" fill-opacity="${opacity}"/>`,
+              ? light(x, y, 6 + next() * 11, opacity)
+              : light(x, y, 2 + next() * 2.4, opacity, true),
             [x, y],
           );
         })
+        .join('') +
+      // A few more in the corners that the shoulders of the gate leave: they keep to the corner.
+      [
+        [86, 158, 10],
+        [124, 144, 3],
+        [72, 212, 2.4],
+        [W - 86, 158, 10],
+        [W - 124, 144, 3],
+        [W - 72, 212, 2.4],
+      ]
+        .map(([x, y, r]) => S.pin(light(x, y, r, '.8', r < 5), [x, y], { x: 'near', y: 'near' }))
         .join('');
-    // The cartouche: a plate of night blue in a frame of gold, its corners cut inward.
+    // The cartouche: a plate of night blue in a frame of gold, its corners cut inward. It is
+    // drawn a fifth larger than its outline.
     const cut = (x, y, w, h, r) =>
       `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 0 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 0 ${x + w - r} ${y + h}` +
       `H${x + r}A${r} ${r} 0 0 0 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 0 ${x + r} ${y}Z`;
     const cartouche = art(
       'holidays-cartouche-gilt',
-      540,
-      124,
+      648,
+      149,
       `<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbeab0"/><stop offset=".5" stop-color="#d9a941"/><stop offset="1" stop-color="#f6dc93"/></linearGradient>` +
         `<linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#22357f"/><stop offset="1" stop-color="#0f1a4a"/></linearGradient>`,
-      `<path d="${cut(2, 2, 536, 120, 24)}" fill="url(#gold)"/>` +
+      `<g transform="scale(1.2)"><path d="${cut(2, 2, 536, 120, 24)}" fill="url(#gold)"/>` +
         `<path d="${cut(8, 8, 524, 108, 22)}" fill="url(#night)"/>` +
         `<path d="${cut(15, 15, 510, 94, 20)}" fill="none" stroke="url(#gold)" stroke-width="1.6"/>` +
-        `<path d="${sparkle(40, 62, 10, 0.3)}" fill="url(#gold)"/><path d="${sparkle(500, 62, 10, 0.3)}" fill="url(#gold)"/>`,
+        `<path d="${sparkle(40, 62, 10, 0.3)}" fill="url(#gold)"/><path d="${sparkle(500, 62, 10, 0.3)}" fill="url(#gold)"/></g>`,
     );
     return magnet(
       'magnet-hanukkah',
       'Hanukkah magnet',
       'מגנט לחנוכה',
-      [750, 1050, 28],
+      [W, H, 28],
       {
         opening,
         window: (S) =>
@@ -441,48 +462,53 @@ export default function holidays(kit) {
         draw: (S) => ({
           defs:
             `<linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1a2a6e"/><stop offset=".7" stop-color="#0d1642"/><stop offset="1" stop-color="#1b1330"/></linearGradient>` +
-            `<radialGradient id="glow" cx=".5" cy=".85" r=".5"><stop stop-color="#f7b23b" stop-opacity=".78"/><stop offset=".45" stop-color="#e98a2b" stop-opacity=".3"/><stop offset="1" stop-color="#e98a2b" stop-opacity="0"/></radialGradient>` +
+            `<radialGradient id="glow"><stop stop-color="#f7b23b" stop-opacity=".78"/><stop offset=".45" stop-color="#e98a2b" stop-opacity=".3"/><stop offset="1" stop-color="#e98a2b" stop-opacity="0"/></radialGradient>` +
             `<linearGradient id="foot" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0d0a22" stop-opacity="0"/><stop offset=".55" stop-color="#0d0a22" stop-opacity=".85"/><stop offset="1" stop-color="#0d0a22" stop-opacity=".95"/></linearGradient>` +
             `<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbeab0"/><stop offset=".5" stop-color="#e2b955"/><stop offset="1" stop-color="#f6dc93"/></linearGradient>`,
           body:
             ground(S, 'url(#night)') +
             onBorder(
               // A thin line of gold around the gate, and a thicker one on its edge.
-              rim(S, 14, radii, 'url(#gold)'),
-              rim(S, 12.4, radii, 'url(#night)'),
-              S.whole('fill="url(#glow)"'),
-              // The foot of the card is dark again, under the line of words.
+              rim(S, 18, radii, 'url(#gold)'),
+              rim(S, 15.8, radii, 'url(#night)'),
+              // The light of the candles, round the hanukkiah wherever the middle of the foot is.
+              S.pin(`<circle cx="960" cy="936" r="640" fill="url(#glow)"/>`, [960, 936], {
+                x: 'mid',
+                y: 'end',
+              }),
+              // The foot of the card is dark again, under the hanukkiah.
               strip(
                 S,
-                box(0, 940, 750, 110),
-                `<rect y="940" width="750" height="110" fill="url(#foot)"/>`,
+                box(0, 984, W, 96),
+                `<rect y="984" width="${W}" height="96" fill="url(#foot)"/>`,
               ),
               lights(S),
-              rim(S, 5, radii, 'url(#gold)'),
+              rim(S, 6, radii, 'url(#gold)'),
             ),
         }),
         extras: [
-          sticker(picture('holidays-hanukkah-2'), 24, 838, 196),
-          sticker(picture('holidays-hanukkah-1'), 208, 612, 334),
-          sticker(picture('holidays-hanukkah-3'), 574, 796, 126, { turn: 14 }),
-          label(cartouche, 105, 38, [
+          sticker(picture('holidays-hanukkah-2'), 48, 842, 274),
+          sticker(picture('holidays-hanukkah-1'), 743, 566, 434),
+          sticker(picture('holidays-hanukkah-3'), 1676, 808, 176, { turn: 14 }),
+          label(cartouche, 636, 58, [
             caption(
-              60,
-              22,
-              420,
-              80,
-              { text: 'חנוכה שמח', font: 'Suez One', size: 66 },
-              { text: 'Happy Hanukkah', font: 'Playfair Display', size: 43, weight: 800 },
+              72,
+              26,
+              504,
+              97,
+              { text: 'חנוכה שמח', font: 'Suez One', size: 80 },
+              { text: 'Happy Hanukkah', font: 'Playfair Display', size: 50, weight: 800 },
               { color: '#fbeab0' },
             ),
           ]),
+          // The line stands beside the foot of the hanukkiah, on the dreidel's side.
           caption(
-            75,
-            1000,
-            600,
-            44,
-            { text: 'נס גדול היה פה', font: 'Heebo', size: 30, weight: 500, spacing: 4 },
-            { text: 'A FESTIVAL OF LIGHTS', font: 'Montserrat', size: 28, weight: 600, spacing: 5 },
+            1084,
+            938,
+            562,
+            46,
+            { text: 'נס גדול היה פה', font: 'Heebo', size: 36, weight: 500, spacing: 5 },
+            { text: 'A FESTIVAL OF LIGHTS', font: 'Montserrat', size: 30, weight: 600, spacing: 4 },
             { color: '#f6dc93' },
           ),
         ],
@@ -1073,40 +1099,44 @@ export default function holidays(kit) {
     );
   }
 
-  /* ---- Lag BaOmer: a night that warms toward the fire, a bonfire over the foot of the photograph */
+  /* ---- Lag BaOmer: a night that warms toward the fire around a wide print, a bonfire over its
+     lower corner, the things of the night along its foot and a charred board at the other end.
+     It is drawn for the wide slide. */
   function lagBaomer() {
-    const opening = box(50, 56, 650, 660);
+    const [W, H] = [1920, 1080];
+    const opening = box(120, 56, 1680, 840);
     const next = random(1805);
     // Stars above, and sparks that rise from the fire.
     const stars = (S) =>
-      scattered(next, 26, 750, 520, [inset(opening, -14)], 30, 12)
+      scattered(next, 46, W, 560, [inset(opening, -16)], 30, 12)
         .map(([x, y]) =>
           S.pin(
             next() < 0.4
-              ? `<path d="${sparkle(x, y, 4 + next() * 7)}" fill="#fff6d6" fill-opacity="${f(0.5 + next() * 0.5)}"/>`
-              : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.4 + next() * 1.8)}" fill="#ffffff" fill-opacity="${f(0.45 + next() * 0.5)}"/>`,
+              ? `<path d="${sparkle(x, y, 5 + next() * 8)}" fill="#fff6d6" fill-opacity="${f(0.5 + next() * 0.5)}"/>`
+              : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.6 + next() * 2)}" fill="#ffffff" fill-opacity="${f(0.45 + next() * 0.5)}"/>`,
             [x, y],
           ),
         )
         .join('');
     const sparks = (S) =>
-      scattered(next, 46, 750, 1050, [inset(opening, -10), box(0, 0, 750, 520)], 26, 10)
+      scattered(next, 56, W, H, [inset(opening, -12), box(0, 0, W, 560)], 28, 10)
         .map(([x, y]) => {
-          const r = 1.6 + next() * 3.2;
+          const r = 1.8 + next() * 3.6;
           return S.pin(
             `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="${pick(next, ['#ffb347', '#ffd76a', '#ff7a2f'])}" fill-opacity="${f(0.45 + next() * 0.55)}"/>`,
             [x, y],
           );
         })
         .join('');
-    // The sign: a board the fire has blackened, with embers in its cracks.
+    // The sign: a board the fire has blackened, with embers in its cracks. It is drawn a
+    // quarter larger than its outline.
     const board = art(
       'holidays-plank-charred',
-      600,
-      150,
+      750,
+      188,
       `<linearGradient id="char" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#43302a"/><stop offset="1" stop-color="#1c1310"/></linearGradient>` +
         `<linearGradient id="ember" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#ff7a2f"/><stop offset=".5" stop-color="#ffc24a"/><stop offset="1" stop-color="#ff7a2f"/></linearGradient>`,
-      `<path d="M8 12 60 6l80 5 96-6 110 6 96-5 90 6 54-4 8 62-6 70-60 6-92-5-100 6-104-6-96 5-84-5-46 3-4-70Z" fill="url(#char)" stroke="#0e0907" stroke-width="2.4" stroke-linejoin="round"/>` +
+      `<g transform="scale(1.25)"><path d="M8 12 60 6l80 5 96-6 110 6 96-5 90 6 54-4 8 62-6 70-60 6-92-5-100 6-104-6-96 5-84-5-46 3-4-70Z" fill="url(#char)" stroke="#0e0907" stroke-width="2.4" stroke-linejoin="round"/>` +
         line(
           'M24 34q120-9 250 0t300-2M22 118q160 8 300 0t256 2',
           '#6a4e42',
@@ -1119,56 +1149,64 @@ export default function holidays(kit) {
           2.6,
           ' stroke-linecap="round" stroke-linejoin="round"',
         ) +
-        `<path d="M6 138 54 142l92-5 104 6 100-6 92 5 60-6 84 4" fill="none" stroke="#ff8a2f" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>`,
+        `<path d="M6 138 54 142l92-5 104 6 100-6 92 5 60-6 84 4" fill="none" stroke="#ff8a2f" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/></g>`,
     );
     return magnet(
       'magnet-lag-baomer',
       'Lag BaOmer magnet',
       'מגנט לל״ג בעומר',
-      [750, 1050, 26],
+      [W, H, 26],
       {
         opening,
         round: 18,
         draw: (S) => ({
           defs:
             `<linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#141a4c"/><stop offset=".6" stop-color="#241a50"/><stop offset=".86" stop-color="#5a2340"/><stop offset="1" stop-color="#8f3320"/></linearGradient>` +
-            `<radialGradient id="fire" cx=".28" cy=".9" r=".5"><stop stop-color="#ff9a2f" stop-opacity=".85"/><stop offset=".5" stop-color="#f0641f" stop-opacity=".35"/><stop offset="1" stop-color="#f0641f" stop-opacity="0"/></radialGradient>`,
+            `<radialGradient id="fire"><stop stop-color="#ff9a2f" stop-opacity=".85"/><stop offset=".5" stop-color="#f0641f" stop-opacity=".35"/><stop offset="1" stop-color="#f0641f" stop-opacity="0"/></radialGradient>`,
           body:
             ground(S, 'url(#night)') +
-            onBorder(S.whole('fill="url(#fire)"'), stars(S), sparks(S)) +
-            frameLine(S, 8, 26, '#ffb347', 1.6, ' stroke-opacity=".8"') +
-            frameLine(S, 0, 18, '#fff3d6', 6),
+            onBorder(
+              // The light of the fire, round the corner the fire burns at.
+              S.pin(`<circle cx="250" cy="972" r="620" fill="url(#fire)"/>`, [250, 972], {
+                x: 'start',
+                y: 'end',
+              }),
+              stars(S),
+              sparks(S),
+            ) +
+            frameLine(S, 9, 27, '#ffb347', 2, ' stroke-opacity=".8"') +
+            frameLine(S, 0, 18, '#fff3d6', 7),
         }),
         extras: [
-          sticker(picture('holidays-lagbaomer-1'), 36, 566, 330),
-          sticker(picture('holidays-lagbaomer-2'), 340, 664, 250, { flip: true }),
-          sticker(picture('holidays-lagbaomer-3'), 520, 730, 200),
+          sticker(picture('holidays-lagbaomer-1'), 28, 640, 412),
+          sticker(picture('holidays-lagbaomer-2'), 446, 716, 300, { flip: true }),
+          sticker(picture('holidays-lagbaomer-3'), 776, 852, 250),
           label(
             board,
-            75,
-            878,
+            1126,
+            814,
             [
               caption(
-                40,
-                16,
-                520,
-                62,
-                { text: 'המדורה של השכונה', font: 'Rubik', size: 48, weight: 800 },
-                { text: "Our Street's Bonfire", font: 'Space Grotesk', size: 46, weight: 700 },
+                50,
+                20,
+                650,
+                78,
+                { text: 'המדורה של השכונה', font: 'Rubik', size: 60, weight: 800 },
+                { text: "Our Street's Bonfire", font: 'Space Grotesk', size: 55, weight: 700 },
                 { color: '#fff1d6' },
               ),
               caption(
-                60,
-                96,
-                480,
-                40,
-                { text: 'ל״ג בעומר ברחוב התאנה', font: 'Rubik', size: 30, weight: 500 },
+                75,
+                120,
+                600,
+                50,
+                { text: 'ל״ג בעומר ברחוב התאנה', font: 'Rubik', size: 38, weight: 500 },
                 {
                   text: 'LAG BAOMER NIGHT',
                   font: 'Space Grotesk',
-                  size: 28,
+                  size: 34,
                   weight: 600,
-                  spacing: 5,
+                  spacing: 6,
                 },
                 { color: '#ffb347' },
               ),

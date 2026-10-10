@@ -243,51 +243,92 @@ export default function kids(kit) {
     );
   }
 
-  /* ---- space: a porthole with rivets, a rocket on its trail, a planet, a mission patch */
+  /* ---- space: a porthole in a ring of lights, a rocket on its trail, a planet, a mission patch.
+     It is drawn for the wide slide: the porthole is a gentle oval left of the middle, and the
+     space at its right holds the planet, the astronaut and the patch, one under the other. */
   function space() {
-    const opening = box(55, 60, 640, 640);
-    const [cx, cy, r] = [375, 380, 320];
+    const [W, H] = [1920, 1080];
+    const opening = box(180, 90, 1100, 900);
+    const [cx, cy] = [opening.x + opening.w / 2, opening.y + opening.h / 2];
+    /** How wide the ring of the porthole is. */
+    const RING = 38;
+    /**
+     * The porthole, `by` away from the photograph: a box whose four corners are the quarters of
+     * the oval, each of a size of its own. At the size the magnet lands in the quarters meet and
+     * the box is the oval. In a magnet made wider or taller they move apart and stay as round as
+     * they are, so the porthole gets a straight run between its round ends, and never a lens.
+     */
+    const porthole = (S, by, attrs) =>
+      `<rect ${attrs} style="${S.geometry(inset(opening, -by), opening.w / 2 + by)};ry:${f(opening.h / 2 + by)}px"/>`;
+    /** How far out a point is, in the measure of the oval `by` away from the photograph. */
+    const out = (x, y, by) =>
+      Math.hypot((x - cx) / (opening.w / 2 + by), (y - cy) / (opening.h / 2 + by));
+    // The lights of the ring: as far apart as puts a whole number of them around the oval.
+    const LIGHTS = 56;
+    const [a, b] = [opening.w / 2 + RING / 2, opening.h / 2 + RING / 2];
+    const between = (Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)))) / LIGHTS;
     const next = random(4242);
-    // Stars all over the card, the corners between the porthole and its box too.
-    const stars = (S) =>
-      twinkles(
-        S,
-        next,
-        scattered(next, 86, 750, 1050, [inset(opening, 96)], 34, 14).filter(
-          ([x, y]) => Math.hypot(x - cx, y - cy) > r + 44,
-        ),
-        ['#ffffff', '#ffe9a8', '#c9c2ff'],
-        10,
+    const colours = ['#ffffff', '#ffe9a8', '#c9c2ff'];
+    // Stars all over the card, the corners between the porthole and its box too. Beside the
+    // porthole a star keeps its side of the card; over or under it, in one of those corners, it
+    // goes with that corner of the porthole, which stays as round as it is.
+    const stars = (S) => {
+      const points = scattered(next, 176, W, H, [], 40, 16).filter(
+        ([x, y]) => out(x, y, RING + 22) > 1,
       );
+      const cornered = ([x]) => x > opening.x && x < opening.x + opening.w;
+      return (
+        twinkles(
+          S,
+          next,
+          points.filter((point) => !cornered(point)),
+          colours,
+          11,
+        ) +
+        points
+          .filter(cornered)
+          .map(([x, y]) =>
+            S.pin(
+              `<path d="${sparkle(x, y, 4 + next() * 7, 0.26)}" fill="${pick(next, colours)}" fill-opacity="${f(0.6 + next() * 0.4)}"/>`,
+              [x, y],
+              { x: x < cx ? 'start' : 'end', y: y < cy ? 'start' : 'end' },
+            ),
+          )
+          .join('')
+      );
+    };
     // A constellation: a few stars joined by a thin line.
     const constellation = (points) =>
       line(
         `M${points.map(([x, y]) => `${x} ${y}`).join('L')}`,
         '#c9c2ff',
-        1.4,
+        1.6,
         ' stroke-opacity=".55"',
-      ) + points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.200" fill="#ffffff"/>`).join('');
-    // The patch of the mission: a rim of orange with stitches, a night of its own inside.
+      ) + points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.800" fill="#ffffff"/>`).join('');
+    // The patch of the mission: a rim of orange with stitches, a night of its own inside. It is
+    // drawn 1.4 times as large as its own units.
     const patch = art(
       'kids-space-patch',
-      300,
-      300,
+      420,
+      420,
       `<radialGradient id="patch-deep" cx=".5" cy=".35" r=".75"><stop stop-color="#4a3bb8"/><stop offset="1" stop-color="#1b1a5c"/></radialGradient>`,
-      `<circle cx="150" cy="150" r="148" fill="#11123f"/>` +
+      `<g transform="scale(1.4)">` +
+        `<circle cx="150" cy="150" r="148" fill="#11123f"/>` +
         `<circle cx="150" cy="150" r="136" fill="url(#patch-deep)" stroke="#ff7a3d" stroke-width="13"/>` +
         `<circle cx="150" cy="150" r="136" fill="none" stroke="#ffd9b0" stroke-width="2.200" stroke-dasharray="6 5.500"/>` +
         `<circle cx="150" cy="150" r="124" fill="none" stroke="#ffe9a8" stroke-opacity=".7" stroke-width="2" stroke-dasharray="1 7" stroke-linecap="round"/>` +
         `<ellipse cx="150" cy="148" rx="112" ry="34" fill="none" stroke="#9d92f5" stroke-opacity=".5" stroke-width="2.500" transform="rotate(-18 150 148)"/>` +
-        `<g fill="#ffe9a8"><path d="${sparkle(58, 118, 9, 0.26)}"/><path d="${sparkle(244, 176, 11, 0.26)}"/><path d="${sparkle(226, 96, 6, 0.26)}"/><path d="${sparkle(70, 196, 6, 0.26)}"/><circle cx="92" cy="92" r="2.400"/><circle cx="212" cy="212" r="2.400"/><circle cx="250" cy="134" r="2"/><circle cx="46" cy="154" r="2"/></g>`,
+        `<g fill="#ffe9a8"><path d="${sparkle(58, 118, 9, 0.26)}"/><path d="${sparkle(244, 176, 11, 0.26)}"/><path d="${sparkle(226, 96, 6, 0.26)}"/><path d="${sparkle(70, 196, 6, 0.26)}"/><circle cx="92" cy="92" r="2.400"/><circle cx="212" cy="212" r="2.400"/><circle cx="250" cy="134" r="2"/><circle cx="46" cy="154" r="2"/></g>` +
+        `</g>`,
     );
     return magnet(
       'magnet-space',
       'Space party magnet',
       'מגנט למסיבת חלל',
-      [750, 1050, 30],
+      [W, H, 30],
       {
         opening,
-        window: (S) => S.ellipse(inset(opening, 1), 'fill="#000"'),
+        window: (S) => porthole(S, -1, 'fill="#000"'),
         draw: (S) => ({
           defs:
             `<linearGradient id="night" x1="0" y1="0" x2=".4" y2="1"><stop stop-color="#141650"/><stop offset=".6" stop-color="#2b2082"/><stop offset="1" stop-color="#4a2a9a"/></linearGradient>` +
@@ -300,83 +341,122 @@ export default function kids(kit) {
               S.whole('fill="url(#rose)"'),
               S.whole('fill="url(#teal)"'),
               stars(S),
+              // One constellation in the corner over the porthole, and two in the space at its
+              // right: between the ring and the planet, and under the patch.
               S.pin(
                 constellation([
-                  [30, 96],
-                  [58, 44],
-                  [112, 30],
-                  [150, 62],
+                  [40, 148],
+                  [84, 68],
+                  [168, 44],
+                  [226, 96],
                 ]),
-                [30, 30],
+                [40, 40],
                 { x: 'start', y: 'start' },
               ),
               S.pin(
                 constellation([
-                  [600, 742],
-                  [654, 728],
-                  [700, 766],
-                  [684, 820],
+                  [1296, 252],
+                  [1340, 160],
+                  [1412, 118],
+                  [1472, 176],
+                  [1444, 252],
                 ]),
-                [700, 766],
+                [1412, 118],
+                { x: 'end', y: 'start' },
+              ),
+              S.pin(
+                constellation([
+                  [1304, 884],
+                  [1372, 944],
+                  [1452, 914],
+                  [1530, 970],
+                  [1502, 1034],
+                ]),
+                [1452, 914],
                 { x: 'end', y: 'end' },
               ),
-              // The trail of the rocket, from the foot of the card up to its flame.
+              // The trail of the rocket, along the foot of the card under the porthole and up to
+              // its flame.
               S.pin(
                 line(
-                  'M214 1030C124 1024 44 962 48 818',
+                  'M566 1048C404 1072 132 1078 50 1014',
                   '#ffffff',
-                  5,
-                  ' stroke-opacity=".85" stroke-dasharray=".1 15" stroke-linecap="round"',
+                  5.5,
+                  ' stroke-opacity=".85" stroke-dasharray=".1 17" stroke-linecap="round"',
                 ),
-                [48, 1030],
+                [50, 1048],
                 { x: 'start', y: 'end' },
               ),
-              // The ring of the porthole, a line of shade on each side of it, and its rivets.
-              S.ellipse(inset(opening, -15), 'fill="none" stroke="url(#metal)" stroke-width="30"'),
-              S.ellipse(
-                inset(opening, -31),
+              // The ring of the porthole, a line of shade on each side of it, and its lights.
+              porthole(S, RING / 2, `fill="none" stroke="url(#metal)" stroke-width="${RING}"`),
+              porthole(
+                S,
+                RING + 1,
                 'fill="none" stroke="#0d0e3a" stroke-opacity=".55" stroke-width="3"',
               ),
-              S.ellipse(inset(opening, -2), 'fill="none" stroke="#4b3fae" stroke-width="5"'),
-              S.ellipse(
-                inset(opening, -15),
-                'fill="none" stroke="#fff6d6" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 47.840"',
+              porthole(S, 2, 'fill="none" stroke="#4b3fae" stroke-width="5"'),
+              porthole(
+                S,
+                RING / 2,
+                `fill="none" stroke="#fff6d6" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 ${between.toFixed(3)}"`,
               ),
             ),
         }),
         extras: [
-          sticker(picture('kids-planet'), 480, 52, 258, { turn: -6 }),
-          sticker(picture('kids-rocket'), 20, 608, 236),
-          sticker(picture('kids-astronaut'), 540, 796, 186, { turn: 8 }),
-          label(patch, 225, 708, [
-            caption(
-              65,
-              46,
-              170,
-              42,
-              { text: 'משימה', font: 'Rubik', size: 28, weight: 800, spacing: 5 },
-              { text: 'MISSION', font: 'Space Grotesk', size: 28, weight: 700, spacing: 3 },
-              { color: '#ffd9b0' },
-            ),
-            caption(
-              90,
-              88,
-              120,
-              122,
-              { text: '6', font: 'Rubik', size: 104, weight: 900 },
-              { text: '6', font: 'Space Grotesk', size: 104, weight: 700 },
-              { color: '#ffd45c' },
-            ),
-            caption(
-              50,
-              210,
-              200,
-              42,
-              { text: 'יום הולדת', font: 'Rubik', size: 30, weight: 800 },
-              { text: 'BIRTHDAY', font: 'Space Grotesk', size: 28, weight: 700, spacing: 2 },
-              { color: '#ffffff' },
-            ),
-          ]),
+          sticker(picture('kids-planet'), 1508, 30, 384, { turn: -6 }),
+          // The rocket flies in over the ring, its nose on the edge of the photograph.
+          sticker(picture('kids-rocket'), 30, 780, 290),
+          sticker(picture('kids-astronaut'), 1650, 770, 240, { turn: 8 }),
+          // The patch stands at the middle of the porthole's side, over the edge of its ring.
+          // When the magnet is made taller its box reaches from the top third of the card to
+          // the last: the two strips that lengthen are the clear edges of its drawing, so the
+          // patch itself stays round, in the middle of that box.
+          label(
+            patch,
+            1284,
+            330,
+            [
+              caption(
+                91,
+                64,
+                238,
+                59,
+                { text: 'משימה', font: 'Rubik', size: 39, weight: 800, spacing: 7 },
+                { text: 'MISSION', font: 'Space Grotesk', size: 39, weight: 700, spacing: 4 },
+                { color: '#ffd9b0' },
+              ),
+              caption(
+                126,
+                123,
+                168,
+                171,
+                { text: '6', font: 'Rubik', size: 146, weight: 900 },
+                { text: '6', font: 'Space Grotesk', size: 146, weight: 700 },
+                { color: '#ffd45c' },
+              ),
+              caption(
+                70,
+                294,
+                280,
+                59,
+                { text: 'יום הולדת', font: 'Rubik', size: 42, weight: 800 },
+                { text: 'BIRTHDAY', font: 'Space Grotesk', size: 39, weight: 700, spacing: 3 },
+                { color: '#ffffff' },
+              ),
+            ],
+            {
+              stretch: {
+                x: [
+                  [0, 2],
+                  [418, 420],
+                ],
+                y: [
+                  [0, 2],
+                  [418, 420],
+                ],
+              },
+            },
+          ),
         ],
       },
       {
@@ -740,52 +820,95 @@ export default function kids(kit) {
     );
   }
 
-  /* ---- princesses and knights: the window of a castle, a crown on its arch, a scroll below */
+  /* ---- princesses and knights: the gate of a castle, a crown on its arch, a scroll over its
+     foot. It is drawn for the wide slide: an arch of stones in the middle of a wall of bricks,
+     and on the wall at each side a pennant that hangs from it, with the wand under the one and
+     the shield under the other. */
   function kingdom() {
-    const opening = box(95, 160, 560, 690);
+    const [W, H] = [1920, 1080];
+    const opening = box(460, 130, 1000, 760);
+    /** The middle of the arch, and the radius of the half circle on top of it. */
+    const [mid, reach] = [opening.x + opening.w / 2, opening.w / 2];
     /** Where the round part of the arch ends and its foot begins, from the foot of the card. */
-    const FOOT = 260;
+    const FOOT = H - (opening.y + reach);
     /**
-     * An arch around the photograph, `by` away from it: half a circle above, as wide as the
-     * arch is at any size, straight sides and a flat foot. Above the foot it is a box with
-     * round corners, too tall for its lower corners to show; the foot is a plain box.
+     * An arch around the photograph, `by` away from it, built as the arch of the thirtieth is:
+     * half a circle above, as wide as the arch is whatever the card leaves beside it, straight
+     * sides and a flat foot. Above the foot it is a box with round corners, too tall for its
+     * lower corners to show; the foot is a plain box. The round part is never taller than the
+     * card leaves above the foot: in a magnet made much wider it is half an oval that still
+     * comes down onto its sides, where half a circle would be cut short with a step.
      */
     const arch = (S, by, attrs) => {
       const around = inset(opening, -by);
       const tall = S.geometry({ ...around, h: around.h + 2 * S.h });
+      const round = `rx:calc(50% - ${f((W - around.w) / 2)}px);ry:min(calc(100% - ${f(FOOT + around.y)}px), ${f(reach + by)}px)`;
       return (
-        `<rect ${attrs} clip-path="url(#above)" style="${tall};rx:calc(50% - ${f(around.x)}px)"/>` +
+        `<rect ${attrs} clip-path="url(#above)" style="${tall};${round}"/>` +
         `<rect ${attrs} clip-path="url(#foot)" style="${S.geometry(around)}"/>`
       );
     };
+    /** Whether a point is on the wall, `by` clear of the arch. */
+    const onWall = (x, y, by) =>
+      y < opening.y + reach
+        ? Math.hypot(x - mid, y - opening.y - reach) > reach + by
+        : Math.abs(x - mid) > reach + by || y > opening.y + opening.h + by;
     const next = random(5150);
-    const sparks = (S) =>
-      twinkles(
-        S,
+    const golds = ['#ffe39a', '#fff6d8', '#f6c453'];
+    // Sparkles on the wall, the corners over the shoulders of the arch too, and none under what
+    // stands on the wall. Beside the arch a sparkle keeps its side of the card; over a shoulder
+    // it goes with that corner of the card, clear of the arch however wide the arch becomes.
+    const sparks = (S) => {
+      const points = scattered(
         next,
-        scattered(
+        84,
+        W,
+        H,
+        [
+          box(556, 790, 808, 250),
+          box(810, 0, 300, 220),
+          box(70, 20, 240, 420),
+          box(1610, 20, 240, 420),
+          box(190, 500, 290, 460),
+          box(1440, 590, 300, 340),
+        ],
+        62,
+        26,
+      ).filter(([x, y]) => onWall(x, y, 64));
+      const over = ([x, y]) => y < opening.y + reach && Math.abs(x - mid) < reach;
+      return (
+        twinkles(
+          S,
           next,
-          40,
-          750,
-          1050,
-          [inset(opening, -52), box(40, 800, 670, 220), box(250, 0, 250, 170)],
-          44,
-          18,
-        ),
-        ['#ffe39a', '#fff6d8', '#f6c453'],
-        11,
+          points.filter((point) => !over(point)),
+          golds,
+          13,
+        ) +
+        points
+          .filter(over)
+          .map(([x, y]) =>
+            S.pin(
+              `<path d="${sparkle(x, y, 5 + next() * 8, 0.26)}" fill="${pick(next, golds)}" fill-opacity="${f(0.6 + next() * 0.4)}"/>`,
+              [x, y],
+              { x: x < mid ? 'start' : 'end', y: 'start' },
+            ),
+          )
+          .join('')
       );
-    // The scroll: parchment between two rolls, a line of gold along each edge.
+    };
+    // The scroll: parchment between two rolls, a line of gold along each edge. It is drawn 1.2
+    // times as large as its own units.
     const scroll = art(
       'kids-kingdom-scroll',
-      640,
-      190,
+      768,
+      204,
       `<linearGradient id="scroll-paper" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fbf0d2"/><stop offset=".6" stop-color="#f3e0b0"/><stop offset="1" stop-color="#e6c98c"/></linearGradient>` +
         `<linearGradient id="scroll-roll" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#c79f58"/><stop offset=".35" stop-color="#f6e3b4"/><stop offset="1" stop-color="#b98c45"/></linearGradient>`,
-      `<path fill="#a97f3d" fill-opacity=".45" d="M50 34Q320 22 590 34V180Q320 190 50 180Z"/>` +
-        `<path fill="url(#scroll-paper)" d="M50 26Q320 14 590 26V170Q320 182 50 170Z"/>` +
+      `<g transform="scale(1.2)">` +
+        `<path fill="#a97f3d" fill-opacity=".45" d="M50 34Q320 22 590 34V160Q320 170 50 160Z"/>` +
+        `<path fill="url(#scroll-paper)" d="M50 26Q320 14 590 26V150Q320 162 50 150Z"/>` +
         line(
-          'M70 39Q320 28 570 39M70 157Q320 168 570 157',
+          'M70 39Q320 28 570 39M70 137Q320 148 570 137',
           '#c9a04e',
           2,
           ' stroke-linecap="round"',
@@ -794,13 +917,63 @@ export default function kids(kit) {
           .map(
             (side) =>
               `<g${side ? ' transform="translate(640 0) scale(-1 1)"' : ''}>` +
-              `<rect x="14" y="12" width="46" height="172" rx="22" fill="url(#scroll-roll)"/>` +
+              `<rect x="14" y="12" width="46" height="152" rx="22" fill="url(#scroll-roll)"/>` +
               `<ellipse cx="37" cy="18" rx="23" ry="9" fill="#f9ecc6"/><ellipse cx="37" cy="18" rx="12" ry="4.500" fill="#b98c45"/>` +
-              `<ellipse cx="37" cy="178" rx="23" ry="9" fill="#a77b38"/>` +
-              `<rect x="56" y="30" width="12" height="138" fill="#8a6428" fill-opacity=".22"/>` +
+              `<ellipse cx="37" cy="158" rx="23" ry="9" fill="#a77b38"/>` +
+              `<rect x="56" y="30" width="12" height="118" fill="#8a6428" fill-opacity=".22"/>` +
               `</g>`,
           )
-          .join(''),
+          .join('') +
+        `</g>`,
+    );
+    /**
+     * A pennant that hangs on the wall from a nail: a rod of gold on two cords, and a cloth with
+     * a swallow's tail, a band across its head, a line of stitches and an emblem.
+     */
+    const pennant = (name, [light, deep], band, emblem) =>
+      art(
+        name,
+        170,
+        340,
+        `<linearGradient id="pennant-cloth" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${light}"/><stop offset="1" stop-color="${deep}"/></linearGradient>` +
+          `<linearGradient id="pennant-gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0b0"/><stop offset=".55" stop-color="#f3c14f"/><stop offset="1" stop-color="#d99a2b"/></linearGradient>`,
+        line(
+          'M16 44 85 12 154 44',
+          '#d9a637',
+          3,
+          ' stroke-linecap="round" stroke-linejoin="round"',
+        ) +
+          `<path d="M24 46H146V318L85 270 24 318Z" transform="translate(5 7)" fill="#5a2a82" fill-opacity=".28"/>` +
+          `<path d="M24 46H146V318L85 270 24 318Z" fill="url(#pennant-cloth)"/>` +
+          `<path d="M24 46H146V88H24Z" fill="${band}"/>` +
+          `<path d="M24 46H85V270L24 318Z" fill="#ffffff" fill-opacity=".12"/>` +
+          line(
+            'M35 98H135V297L85 258 35 297Z',
+            '#fff0b0',
+            2,
+            ' stroke-opacity=".85" stroke-dasharray="5 5" stroke-linejoin="round"',
+          ) +
+          emblem +
+          `<rect x="8" y="38" width="154" height="12" rx="6" fill="url(#pennant-gold)"/>` +
+          `<rect x="16" y="40.500" width="138" height="3" rx="1.500" fill="#fff8dc" fill-opacity=".8"/>` +
+          `<circle cx="8" cy="44" r="9" fill="url(#pennant-gold)"/><circle cx="162" cy="44" r="9" fill="url(#pennant-gold)"/>` +
+          `<circle cx="85" cy="12" r="7" fill="url(#pennant-gold)"/><circle cx="83" cy="10" r="2.200" fill="#fff8dc"/>`,
+      );
+    const starPennant = pennant(
+      'kids-kingdom-pennant-star',
+      ['#8a63dc', '#5f36b0'],
+      '#f29abd',
+      `<path d="${star(85, 178, 44, 0, 0.5)}" fill="url(#pennant-gold)" stroke="#fff6d8" stroke-width="3.500" stroke-linejoin="round"/>` +
+        `<path d="${star(85, 179, 20, 0, 0.5)}" fill="#fff6d8" fill-opacity=".85"/>` +
+        `<path d="${sparkle(85, 67, 9, 0.3)}" fill="#fff6d8"/>`,
+    );
+    const heartPennant = pennant(
+      'kids-kingdom-pennant-heart',
+      ['#f8b6d1', '#e87fae'],
+      '#7d55cf',
+      `<path d="M85 222C52 199 39 180 39 162 39 147 50 137 63 137c9 0 17 5 22 13 5-8 13-13 22-13 13 0 24 10 24 25 0 18-13 37-46 60Z" fill="url(#pennant-gold)" stroke="#fff6d8" stroke-width="3.500" stroke-linejoin="round"/>` +
+        line('M56 160c0-8 5-13 11-14', '#fff6d8', 4, ' stroke-linecap="round"') +
+        `<path d="${sparkle(85, 67, 9, 0.3)}" fill="#fff6d8"/>`,
     );
     // The wand: a star of gold on a stick, two ribbons under the star.
     const wand = art(
@@ -820,7 +993,7 @@ export default function kids(kit) {
       'magnet-kingdom',
       'Princess and knight party magnet',
       'מגנט למסיבת נסיכות ואבירים',
-      [750, 1050, 26],
+      [W, H, 26],
       {
         opening,
         window: (S) => arch(S, -1, 'fill="#000"'),
@@ -835,49 +1008,68 @@ export default function kids(kit) {
           body:
             ground(S, 'url(#wall-tone)') +
             onBorder(S.whole('fill="url(#wall)"'), S.whole('fill="url(#rose)"'), sparks(S)) +
-            S.outline(box(14, 14, 722, 1022), 14, 2.4, 'stroke="url(#gold)"') +
+            S.outline(box(14, 14, W - 28, H - 28), 14, 2.4, 'stroke="url(#gold)"') +
             // The stones of the arch: a band of cream, its joints, a line of gold on each side.
-            arch(S, 19, 'fill="none" stroke="#7d5bc0" stroke-opacity=".5" stroke-width="44"') +
-            arch(S, 17, 'fill="none" stroke="#fbf3e2" stroke-width="34"') +
+            // The joints are set so that each corner of the foot is one whole stone.
+            arch(S, 25, 'fill="none" stroke="#7d5bc0" stroke-opacity=".5" stroke-width="58"') +
+            arch(S, 23, 'fill="none" stroke="#fbf3e2" stroke-width="46"') +
             arch(
               S,
-              17,
-              'fill="none" stroke="#d6c4a2" stroke-width="34" stroke-dasharray="2.500 56"',
+              23,
+              'fill="none" stroke="#d6c4a2" stroke-width="46" stroke-dasharray="3 74" stroke-dashoffset="-25"',
             ) +
-            arch(S, 35, 'fill="none" stroke="url(#gold)" stroke-width="3"') +
-            arch(S, 1, 'fill="none" stroke="url(#gold)" stroke-width="3"'),
+            arch(S, 47, 'fill="none" stroke="url(#gold)" stroke-width="3.500"') +
+            arch(S, 1, 'fill="none" stroke="url(#gold)" stroke-width="3.500"'),
         }),
         extras: [
-          sticker(picture('kids-crown'), 257, 14, 236),
-          label(scroll, 55, 832, [
-            caption(
-              80,
-              34,
-              480,
-              46,
-              { text: 'הוד מעלתה', font: 'Frank Ruhl Libre', size: 34, weight: 700, spacing: 6 },
-              {
-                text: 'HER ROYAL HIGHNESS',
-                font: 'Playfair Display',
-                size: 28,
-                weight: 700,
-                spacing: 3,
+          sticker(starPennant, 96, 44, 190),
+          sticker(heartPennant, 1634, 44, 190),
+          sticker(picture('kids-crown'), 818, 4, 284),
+          // The scroll lies over the foot of the gate, and lengthens with it when the magnet is
+          // made wider: between its rolls, where the parchment is bare.
+          label(
+            scroll,
+            576,
+            810,
+            [
+              caption(
+                96,
+                34,
+                576,
+                53,
+                { text: 'הוד מעלתה', font: 'Frank Ruhl Libre', size: 41, weight: 700, spacing: 7 },
+                {
+                  text: 'HER ROYAL HIGHNESS',
+                  font: 'Playfair Display',
+                  size: 34,
+                  weight: 700,
+                  spacing: 4,
+                },
+                { color: '#77520f' },
+              ),
+              caption(
+                96,
+                86,
+                576,
+                101,
+                { text: 'תמר בת 5', font: 'Frank Ruhl Libre', size: 86, weight: 900 },
+                { text: 'Tamar is 5', font: 'Playfair Display', size: 77, weight: 800 },
+                { color: '#5a2a82' },
+              ),
+            ],
+            {
+              stretch: {
+                x: [
+                  [100, 180],
+                  [588, 668],
+                ],
+                y: [[68, 136]],
               },
-              { color: '#77520f' },
-            ),
-            caption(
-              80,
-              80,
-              480,
-              84,
-              { text: 'תמר בת 5', font: 'Frank Ruhl Libre', size: 72, weight: 900 },
-              { text: 'Tamar is 5', font: 'Playfair Display', size: 64, weight: 800 },
-              { color: '#5a2a82' },
-            ),
-          ]),
-          // The wand and the shield stand in front of the two rolls of the scroll.
-          sticker(wand, 42, 628, 104, { turn: -18 }),
-          sticker(picture('kids-shield'), 574, 716, 150, { turn: 8 }),
+            },
+          ),
+          // The wand leans on the wall at one foot of the gate, and the shield hangs at the other.
+          sticker(wand, 262, 524, 170, { turn: -18 }),
+          sticker(picture('kids-shield'), 1474, 620, 232, { turn: 8 }),
         ],
       },
       {
@@ -1148,21 +1340,29 @@ export default function kids(kit) {
     );
   }
 
-  /* ---- a safari: animals lean in from the sides of the photograph, the name on a signpost */
+  /* ---- a safari: animals lean in from the sides of the photograph, the name on a signpost. It
+     is drawn for the wide slide: a wide window in its green line, a column at the right where
+     the giraffe stands, and a band of sand under the window, the lion at one end of it and the
+     signpost at the other, over the corner of the photograph. */
   function safari() {
-    const opening = box(56, 66, 590, 740);
+    const [W, H] = [1920, 1080];
+    const opening = box(64, 56, 1440, 810);
+    /** How many units of the card a unit of the signpost's own drawing is. */
+    const K = 1.4;
     // The signpost: a post, a plank that points one way and a smaller one that points the other.
+    // The post goes on down to the foot of the card.
     const upper = 'M10 52 44 14H436L440 20V88L434 94H44Z';
     const lower = 'M36 112H396L430 150 396 190H36L30 184V118Z';
     const grain =
       'M60 36q70-7 150 0t150-4M70 72q90 8 170 0t130 4M70 136q80-6 150 0t130-2M80 170q70 6 140 0t110 2';
     const signpost = art(
       'kids-safari-signpost',
-      446,
-      212,
+      625,
+      328,
       `<linearGradient id="sign-plank" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e2b274"/><stop offset="1" stop-color="#c48a48"/></linearGradient>` +
         `<linearGradient id="sign-post" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#8a5a2c"/><stop offset=".5" stop-color="#a87340"/><stop offset="1" stop-color="#7a4d24"/></linearGradient>`,
-      `<rect x="208" y="0" width="30" height="212" rx="6" fill="url(#sign-post)"/>` +
+      `<g transform="scale(${K})">` +
+        `<path d="M208 6Q208 0 214 0H232Q238 0 238 6V240H208Z" fill="url(#sign-post)"/>` +
         `<path d="${upper}" transform="translate(0 7)" fill="#6e4520"/><path d="${upper}" fill="url(#sign-plank)"/>` +
         `<path d="${lower}" transform="translate(0 7)" fill="#6e4520"/><path d="${lower}" fill="url(#sign-plank)"/>` +
         line(grain, '#9a6630', 2, ' stroke-opacity=".45" stroke-linecap="round"') +
@@ -1177,59 +1377,91 @@ export default function kids(kit) {
             ([x, y]) =>
               `<circle cx="${x}" cy="${y}" r="4.500" fill="#4a2f14"/><circle cx="${x - 1.5}" cy="${y - 1.5}" r="1.600" fill="#c9b08e"/>`,
           )
-          .join(''),
+          .join('') +
+        `</g>`,
     );
-    // Big leaves grow in from the corners and up the side where the giraffe stands.
+    // Big leaves grow in from the corners, up the side where the giraffe stands, and in two
+    // tufts from the foot of the card, one beside the lion and one beside the signpost.
     const leaves = (S) =>
       [
         S.pin(
-          blade(748, -6, 214, 250, 62, '#2f8a4e', '#1d6639') +
-            blade(770, 60, 246, 220, 54, '#56ad6c', '#2f8a4e') +
-            blade(690, -18, 196, 170, 46, '#1f6e3f', '#3b9a5c'),
-          [750, 0],
+          blade(W - 2, -8, 214, 330, 82, '#2f8a4e', '#1d6639') +
+            blade(W + 26, 78, 246, 290, 70, '#56ad6c', '#2f8a4e') +
+            blade(W - 80, -24, 196, 220, 60, '#1f6e3f', '#3b9a5c'),
+          [W, 0],
           { x: 'end', y: 'start' },
         ),
         S.pin(
-          blade(770, 380, 262, 190, 50, '#2f8a4e', '#1d6639') +
-            blade(768, 300, 286, 170, 44, '#56ad6c', '#2f8a4e'),
-          [750, 340],
+          blade(W + 26, 424, 262, 240, 62, '#2f8a4e', '#1d6639') +
+            blade(W + 24, 336, 286, 215, 55, '#56ad6c', '#2f8a4e'),
+          [W, 380],
           { x: 'end' },
         ),
         S.pin(
-          blade(-14, 20, 128, 200, 52, '#56ad6c', '#2f8a4e') +
-            blade(30, -18, 162, 150, 44, '#1f6e3f', '#3b9a5c'),
+          blade(-18, 26, 128, 260, 68, '#56ad6c', '#2f8a4e') +
+            blade(39, -23, 162, 195, 57, '#1f6e3f', '#3b9a5c'),
           [0, 0],
           { x: 'start', y: 'start' },
         ),
         S.pin(
-          blade(-16, 1010, 52, 250, 64, '#2f8a4e', '#1d6639') +
-            blade(60, 1064, 22, 230, 58, '#56ad6c', '#2f8a4e') +
-            blade(-10, 900, 74, 170, 46, '#1f6e3f', '#3b9a5c'),
-          [0, 1050],
+          blade(-21, H - 52, 52, 325, 83, '#2f8a4e', '#1d6639') +
+            blade(78, H + 18, 22, 300, 75, '#56ad6c', '#2f8a4e') +
+            blade(-13, H - 195, 74, 221, 60, '#1f6e3f', '#3b9a5c'),
+          [0, H],
           { x: 'start', y: 'end' },
         ),
         S.pin(
-          blade(766, 1010, -50, 260, 64, '#1f6e3f', '#3b9a5c') +
-            blade(700, 1066, -18, 230, 58, '#2f8a4e', '#1d6639') +
-            blade(770, 880, -78, 180, 48, '#56ad6c', '#2f8a4e'),
-          [750, 1050],
+          blade(W + 21, H - 52, -50, 338, 83, '#1f6e3f', '#3b9a5c') +
+            blade(W - 65, H + 21, -18, 300, 75, '#2f8a4e', '#1d6639') +
+            blade(W + 26, H - 221, -78, 234, 62, '#56ad6c', '#2f8a4e'),
+          [W, H],
           { x: 'end', y: 'end' },
         ),
         S.pin(
-          blade(330, 1070, -8, 150, 44, '#56ad6c', '#2f8a4e') +
-            blade(290, 1068, -34, 130, 40, '#2f8a4e', '#1d6639'),
-          [320, 1050],
+          blade(398, H + 26, 8, 196, 56, '#56ad6c', '#2f8a4e') +
+            blade(356, H + 22, -26, 168, 50, '#2f8a4e', '#1d6639'),
+          [376, H],
           { x: 'start', y: 'end' },
         ),
+        S.pin(
+          blade(1180, H + 24, -12, 188, 54, '#2f8a4e', '#1d6639') +
+            blade(1218, H + 22, 20, 156, 48, '#56ad6c', '#2f8a4e'),
+          [1200, H],
+          { x: 'end', y: 'end' },
+        ),
       ].join('');
-    // Spots of the savannah on the sand: the marks of a paw here and there.
-    const paw = (x, y, turn) =>
-      `<g transform="translate(${x} ${y}) rotate(${turn})" fill="#b98a4a" fill-opacity=".5"><ellipse cy="5" rx="9" ry="7.500"/><circle cx="-10" cy="-5" r="3.800"/><circle cx="-3.500" cy="-10" r="3.800"/><circle cx="3.500" cy="-10" r="3.800"/><circle cx="10" cy="-5" r="3.800"/></g>`;
+    // Spots of the savannah on the sand: the marks of a paw, `k` times as large as they are.
+    const paw = (x, y, turn, k = 1) =>
+      `<g transform="translate(${x} ${y}) rotate(${turn}) scale(${k})" fill="#b98a4a" fill-opacity=".5"><ellipse cy="5" rx="9" ry="7.500"/><circle cx="-10" cy="-5" r="3.800"/><circle cx="-3.500" cy="-10" r="3.800"/><circle cx="3.500" cy="-10" r="3.800"/><circle cx="10" cy="-5" r="3.800"/></g>`;
+    // They walk along the top of the card and down its side, and across the band of sand from
+    // the lion to the signpost: along the photograph they spread as the card grows.
+    const paws = (S) =>
+      [
+        ...Array.from({ length: 8 }, (_, i) => [
+          388 + i * 158,
+          i % 2 ? 21 : 33,
+          i % 2 ? 98 : 82,
+          1,
+          { y: 'start' },
+        ]),
+        [27, 420, 6, 1, { x: 'start' }],
+        [23, 524, -10, 1, { x: 'start' }],
+        [29, 628, 8, 1, { x: 'start' }],
+        ...Array.from({ length: 6 }, (_, i) => [
+          520 + i * 112,
+          i % 2 ? 1016 : 962,
+          i % 2 ? 100 : 78,
+          1.5,
+          { y: 'end' },
+        ]),
+      ]
+        .map(([x, y, turn, k, ties]) => S.pin(paw(x, y, turn, k), [x, y], ties))
+        .join('');
     return magnet(
       'magnet-safari',
       'Safari party magnet',
       'מגנט למסיבת ספארי',
-      [750, 1050, 30],
+      [W, H, 30],
       {
         opening,
         round: 26,
@@ -1239,46 +1471,56 @@ export default function kids(kit) {
             `<pattern id="grains" width="46" height="40" patternUnits="userSpaceOnUse"><g fill="#c79f5c" fill-opacity=".4"><circle cx="6" cy="8" r="1.600"/><circle cx="28" cy="4" r="1.200"/><circle cx="38" cy="22" r="1.700"/><circle cx="16" cy="28" r="1.300"/><circle cx="30" cy="36" r="1.100"/></g></pattern>`,
           body:
             ground(S, 'url(#sand)') +
-            onBorder(
-              S.whole('fill="url(#grains)"'),
-              ...[
-                [250, 30, 80, { y: 'start' }],
-                [330, 20, 100, { y: 'start' }],
-                [410, 34, 84, { y: 'start' }],
-                [26, 420, 6, { x: 'start' }],
-                [22, 520, -10, { x: 'start' }],
-                [30, 620, 8, { x: 'start' }],
-                [250, 840, 60, { x: 'start', y: 'end' }],
-              ].map(([x, y, turn, ties]) => S.pin(paw(x, y, turn), [x, y], ties)),
-              leaves(S),
-            ) +
+            onBorder(S.whole('fill="url(#grains)"'), paws(S), leaves(S)) +
             frameLine(S, 3, 29, '#2f7a48', 14) +
             frameLine(S, 0, 26, '#fff8e4', 7),
         }),
         extras: [
-          sticker(picture('kids-monkey'), 14, 4, 220),
-          sticker(picture('kids-giraffe'), 526, 539, 224),
-          sticker(picture('kids-lion'), 8, 817, 250),
-          label(signpost, 300, 838, [
-            caption(
-              52,
-              26,
-              376,
-              56,
-              { text: 'הספארי של דניאל', font: 'Rubik', size: 38, weight: 800 },
-              { text: 'Daniel’s Safari', font: 'Poppins', size: 38, weight: 800 },
-              { color: '#4a2f14' },
-            ),
-            caption(
-              44,
-              126,
-              346,
-              52,
-              { text: 'חוגגים 4!', font: 'Rubik', size: 40, weight: 700 },
-              { text: 'Turning 4!', font: 'Poppins', size: 38, weight: 700 },
-              { color: '#4a2f14' },
-            ),
-          ]),
+          sticker(picture('kids-monkey'), 14, 0, 290),
+          // The giraffe leans in over the side of the photograph, its neck behind the planks.
+          sticker(picture('kids-giraffe'), 1436, 468, 326),
+          sticker(picture('kids-lion'), 4, 778, 325),
+          // The signpost stands in the last third of the card, so it keeps its size and its
+          // distance from the corner when the magnet is made wider.
+          label(
+            signpost,
+            1283,
+            752,
+            [
+              caption(
+                60,
+                34,
+                540,
+                84,
+                { text: 'הספארי של דניאל', font: 'Rubik', size: 52, weight: 800 },
+                { text: 'Daniel’s Safari', font: 'Poppins', size: 52, weight: 800 },
+                { color: '#4a2f14' },
+              ),
+              caption(
+                62,
+                176,
+                484,
+                74,
+                { text: 'חוגגים 4!', font: 'Rubik', size: 56, weight: 700 },
+                { text: 'Turning 4!', font: 'Poppins', size: 53, weight: 700 },
+                { color: '#4a2f14' },
+              ),
+            ],
+            // Lengthened by hand, the planks grow on both sides of the post, which keeps its
+            // width; made taller, each plank grows through its line of words.
+            {
+              stretch: {
+                x: [
+                  [90, 270],
+                  [350, 530],
+                ],
+                y: [
+                  [44, 110],
+                  [180, 244],
+                ],
+              },
+            },
+          ),
         ],
       },
       {

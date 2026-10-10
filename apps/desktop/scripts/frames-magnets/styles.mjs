@@ -94,10 +94,12 @@ export default function styles(kit) {
     );
   }
 
-  /* ---- black and gold: lines of gold foil on black, a window with its corners cut, a plaque */
+  /* ---- black and gold: lines of gold foil on black, a window with its corners cut, a plaque.
+     It is drawn for the wide slide: a wide window in its two lines, and under it a foot tall
+     enough for the plaque, the line of words and the rising sun. */
   function blackGold() {
-    const [W, H] = [750, 1050];
-    const opening = box(64, 64, 622, 770);
+    const [W, H] = [1920, 1080];
+    const opening = box(64, 64, 1792, 780);
     const [CUT, GROW] = [56, 2 - Math.SQRT2];
     /**
      * The window with its corners cut, `by` further out all around: a cut is as long at any
@@ -134,44 +136,46 @@ export default function styles(kit) {
         { x: sx < 0 ? 'end' : 'start', y: sy < 0 ? 'end' : 'start' },
       );
     // A rising sun at the foot of the card: every other ray of nine is foil.
-    const [cx, cy] = [375, 1030];
+    const [cx, cy] = [W / 2, H - 20];
     const rays = Array.from({ length: 5 }, (_, i) => {
       const at = (deg, r) => {
         const a = (deg * Math.PI) / 180;
         return `${f(cx + r * Math.cos(a))} ${f(cy + r * Math.sin(a))}`;
       };
       const [from, to] = [180 + i * 40, 200 + i * 40];
-      return `M${at(from, 18)}L${at(from, 62)}A62 62 0 0 1 ${at(to, 62)}L${at(to, 18)}A18 18 0 0 0 ${at(from, 18)}Z`;
+      return `M${at(from, 22)}L${at(from, 76)}A76 76 0 0 1 ${at(to, 76)}L${at(to, 22)}A22 22 0 0 0 ${at(from, 22)}Z`;
     }).join('');
     const sun =
       `<path ${foil} d="${rays}"/>` +
-      line(`M${cx - 72} ${cy}a72 72 0 0 1 144 0`, 'url(#foil)', 1.6) +
-      `<path ${foil} d="M${cx - 9} ${cy}a9 9 0 0 1 18 0Z"/>`;
+      line(`M${cx - 88} ${cy}a88 88 0 0 1 176 0`, 'url(#foil)', 1.6) +
+      `<path ${foil} d="M${cx - 11} ${cy}a11 11 0 0 1 22 0Z"/>`;
     // Three lines step out from the sun to each side, and go as far as the card is wide.
     const wings = (S) =>
       [0, 1, 2]
         .map((i) => {
-          const [y, step] = [1022 - i * 9, 64 + i * 38];
+          const [y, step, reach] = [H - 28 - i * 9, 64 + i * 38, cx - 100];
           return (
-            S.box(box(step, y, 293 - step, 2), 0, foil, { ties: { l: 'start', r: 'mid' } }) +
-            S.box(box(457, y, 293 - step, 2), 0, foil, { ties: { l: 'mid', r: 'end' } })
+            S.box(box(step, y, reach - step, 2), 0, foil, { ties: { l: 'start', r: 'mid' } }) +
+            S.box(box(W - reach, y, reach - step, 2), 0, foil, { ties: { l: 'mid', r: 'end' } })
           );
         })
         .join('');
     const gem = (x, y) => `<path ${foil} d="M${x} ${y - 11}l7 11-7 11-7-11Z"/>`;
-    // The plaque of the name: foil with steps for corners, and a hairline inside its edge.
+    // The plaque of the name: foil with steps for corners, and a hairline inside its edge. It
+    // is drawn 1.3 times as large as its numbers say.
     const stepped = (by) => {
       const [w, h, s] = [520 - by, 84 - by, 8];
       return `M${by + 2 * s} ${by}H${w - 2 * s}v${s}h${s}v${s}h${s}V${h - 2 * s}h${-s}v${s}h${-s}v${s}H${by + 2 * s}v${-s}h${-s}v${-s}h${-s}V${by + 2 * s}h${s}v${-s}h${s}Z`;
     };
     const plaque = art(
       'plaque-gold',
-      520,
-      84,
+      676,
+      109.2,
       tile('foil', 'styles-gold-foil', 260) +
         `<linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff6d0" stop-opacity=".45"/><stop offset=".45" stop-color="#fff6d0" stop-opacity="0"/><stop offset="1" stop-color="#4a2f00" stop-opacity=".4"/></linearGradient>`,
-      `<path ${foil} d="${stepped(0)}"/><path fill="url(#sheen)" d="${stepped(0)}"/>` +
-        line(stepped(6), '#2b1c05', 1.3, ' stroke-opacity=".75"'),
+      `<g transform="scale(1.3)"><path ${foil} d="${stepped(0)}"/><path fill="url(#sheen)" d="${stepped(0)}"/>` +
+        line(stepped(6), '#2b1c05', 1.3, ' stroke-opacity=".75"') +
+        `</g>`,
     );
     return magnet(
       'magnet-black-gold',
@@ -200,35 +204,36 @@ export default function styles(kit) {
             ]
               .map(([sx, sy]) => corner(S, sx, sy))
               .join('') +
-            S.pin(gem(20, 525), [20, 525], { x: 'start', y: 'mid' }) +
-            S.pin(gem(730, 525), [730, 525], { x: 'end', y: 'mid' }) +
-            S.pin(gem(375, 20), [375, 20], { x: 'mid', y: 'start' }) +
+            S.pin(gem(20, H / 2), [20, H / 2], { x: 'start', y: 'mid' }) +
+            S.pin(gem(W - 20, H / 2), [W - 20, H / 2], { x: 'end', y: 'mid' }) +
+            S.pin(gem(W / 2, 20), [W / 2, 20], { x: 'mid', y: 'start' }) +
             wings(S) +
             S.pin(sun, [cx, cy], { x: 'mid', y: 'end' }),
         }),
         extras: [
           caption(
-            95,
-            892,
             560,
+            908,
+            800,
             48,
-            { text: 'רגעים של זהב', font: 'Heebo', size: 30, weight: 400, spacing: 8 },
-            { text: 'GOLDEN MOMENTS', font: 'Montserrat', size: 28, weight: 500, spacing: 9 },
+            { text: 'רגעים של זהב', font: 'Heebo', size: 34, weight: 400, spacing: 9 },
+            { text: 'GOLDEN MOMENTS', font: 'Montserrat', size: 30, weight: 500, spacing: 10 },
             { color: '#ecc96f' },
           ),
-          label(plaque, 115, 792, [
+          // The plaque lies over the middle of the window's lower edge.
+          label(plaque, 622, 789, [
             caption(
-              25,
-              12,
-              470,
-              60,
-              { text: 'משפחת שגיא', font: 'Frank Ruhl Libre', size: 46, weight: 700 },
+              32,
+              15,
+              612,
+              79,
+              { text: 'משפחת שגיא', font: 'Frank Ruhl Libre', size: 66, weight: 700 },
               {
                 text: 'THE SAGI FAMILY',
                 font: 'Playfair Display',
-                size: 30,
+                size: 45,
                 weight: 700,
-                spacing: 4,
+                spacing: 5,
               },
               { color: '#1f1503' },
             ),
@@ -777,13 +782,15 @@ export default function styles(kit) {
     );
   }
 
-  /* ---- kraft and twine: a card of kraft paper smaller than the box, a print taped to it */
+  /* ---- kraft and twine: a card of kraft paper smaller than the box, a print taped to it. It is
+     drawn for the wide slide: the print takes the card from the twine to a foot of kraft, the
+     tag hangs over its lower left corner and the postmark is stamped at its lower right. */
   function kraft() {
-    const [W, H] = [750, 1050];
+    const [W, H] = [1920, 1080];
     /** The card of kraft: the box of the frame is bare to its right and below it. */
-    const sheet = box(34, 34, 640, 940);
-    const opening = box(98, 214, 512, 548);
-    const print = inset(opening, -16);
+    const sheet = box(36, 32, 1800, 990);
+    const opening = box(134, 168, 1604, 719);
+    const print = inset(opening, -18);
     const [rope, twist, inked] = ['#efe6d2', '#b2946a', '#1c110a'];
     /** Twine along a path: the cord, and the lighter turns of its twist. */
     const twine = (d, width = 7) =>
@@ -838,17 +845,20 @@ export default function styles(kit) {
         `<path d="${star(75, 37, 8)}${star(75, 114, 8)}" fill="${inked}" fill-opacity=".82"/>`,
     );
     // The tag of the words: card with its corners cut at the hole, and the twine it hangs by.
+    // It is drawn a quarter larger than its numbers say.
     const tag = art(
       'paper-tag',
-      384,
-      140,
+      480,
+      175,
       '',
-      twine('M36 72C14 54 10 26 34 6', 4.4) +
+      `<g transform="scale(1.25)">` +
+        twine('M36 72C14 54 10 26 34 6', 4.4) +
         twine('M36 72C30 46 46 22 74 10', 4.4) +
         `<path d="M44 8H376a4 4 0 0 1 4 4V132a4 4 0 0 1-4 4H44L8 104V40Z" fill="#fbf7ee" stroke="#d8cbb3" stroke-width="1.400"/>` +
         `<circle cx="36" cy="72" r="14" fill="none" stroke="#d2c3a6" stroke-width="5"/>` +
         `<circle cx="36" cy="72" r="8" fill="#b88c57"/>` +
-        twine('M36 72C24 62 16 50 14 38', 4.4),
+        twine('M36 72C24 62 16 50 14 38', 4.4) +
+        `</g>`,
     );
     return magnet(
       'magnet-kraft',
@@ -867,7 +877,7 @@ export default function styles(kit) {
             onBorder(
               S.outline(inset(sheet, 1), 7, 2, 'stroke="#7a5630" stroke-opacity=".35"'),
               // The twine goes twice around the card, under the bow.
-              ...[117, 129].flatMap((y) => [
+              ...[88, 100].flatMap((y) => [
                 S.box(box(sheet.x, y - 1.2, sheet.w, 9.4), 0, 'fill="#5e4124" fill-opacity=".4"'),
                 S.box(box(sheet.x, y, sheet.w, 7), 0, 'fill="url(#twist)"'),
               ]),
@@ -877,14 +887,18 @@ export default function styles(kit) {
             ),
         }),
         extras: [
-          sticker(picture('wc-florals-4'), 452, 822, 298, { flip: true, turn: 180, under: true }),
-          sticker(sage, 10, 180, 160, { turn: -38 }),
-          sticker(clay, 548, 178, 160, { turn: 36 }),
-          sticker(bow, 249, 62, 210),
+          sticker(picture('wc-florals-4'), 1580, 820, 340, { flip: true, turn: 180, under: true }),
+          // A strip of washi on each upper corner of the print, and the bow on the twine, its
+          // ends over the head of the print.
+          sticker(sage, 16, 122, 200, { turn: -38 }),
+          sticker(clay, 1656, 122, 200, { turn: 36 }),
+          sticker(bow, 810, 24, 252),
+          // The postmark is stamped over the lower right corner of the print: its date is on
+          // the kraft under it.
           label(
             postmark,
-            440,
-            806,
+            1597,
+            851,
             [
               caption(
                 27,
@@ -900,31 +914,31 @@ export default function styles(kit) {
           ),
           label(
             tag,
-            46,
-            806,
+            64,
+            826,
             [
               caption(
-                70,
-                16,
-                296,
-                58,
-                { text: 'רגעים קטנים', font: 'David Libre', size: 46, weight: 700 },
+                88,
+                20,
+                370,
+                72,
+                { text: 'רגעים קטנים', font: 'David Libre', size: 58, weight: 700 },
                 {
                   text: 'little moments',
                   font: 'Playfair Display',
-                  size: 40,
+                  size: 48,
                   weight: 600,
                   italic: true,
                 },
                 { color: '#3a2c1e' },
               ),
               caption(
-                70,
-                90,
-                296,
-                40,
-                { text: 'משפחת ברק', font: 'Heebo', size: 28, weight: 400, spacing: 3 },
-                { text: 'THE BARAKS', font: 'Montserrat', size: 28, weight: 500, spacing: 5 },
+                88,
+                112,
+                370,
+                50,
+                { text: 'משפחת ברק', font: 'Heebo', size: 35, weight: 400, spacing: 4 },
+                { text: 'THE BARAKS', font: 'Montserrat', size: 33, weight: 500, spacing: 6 },
                 { color: '#7d5f3c' },
               ),
             ],
@@ -939,16 +953,21 @@ export default function styles(kit) {
     );
   }
 
-  /* ---- the cover of a magazine: a masthead, the photograph nearly whole, lines of cover */
+  /* ---- the cover of a magazine: the photograph to the edges of the card, the masthead over its
+     head, lines of cover. It is drawn for the wide slide: the card is a shade over the head of
+     the photograph, which the masthead is read on, and everything else stands on the picture. */
   function magazine() {
-    const [W, H] = [750, 1050];
-    const opening = box(20, 178, 710, 852);
+    const [W, H] = [1920, 1080];
+    const opening = box(0, 0, W, H);
     const [ink, red, sun] = ['#111111', '#e02228', '#ffd400'];
     const strip = (name, w, h, fill) =>
       art(name, w, h, '', `<rect width="${w}" height="${h}" fill="${fill}"/>`);
-    const first = strip('cover-line-sun', 500, 70, sun);
-    const second = strip('cover-line-ink', 404, 56, ink);
-    const third = strip('cover-line-red', 384, 54, red);
+    // The lines of cover come in from the left edge of the card, each shorter than the one
+    // over it; their words begin inside the safe area. None is longer than a third of the
+    // card, so each keeps its length when the magnet is made wider.
+    const first = strip('cover-line-sun', 640, 82, sun);
+    const second = strip('cover-line-ink', 520, 66, ink);
+    const third = strip('cover-line-red', 500, 62, red);
     // The bars of a price code, on its white patch.
     const next = random(77);
     const bars = [];
@@ -966,13 +985,14 @@ export default function styles(kit) {
       '',
       `<rect width="150" height="100" fill="#ffffff"/><g fill="${ink}">${bars.join('')}</g>`,
     );
+    // The disc of the issue is drawn 1.3 times as large as its numbers say.
     const issue = art(
       'cover-issue',
-      132,
-      132,
+      172,
+      172,
       '',
-      `<circle cx="66" cy="66" r="66" fill="${red}"/>` +
-        `<circle cx="66" cy="66" r="58" fill="none" stroke="#ffffff" stroke-width="1.600" stroke-opacity=".85"/>`,
+      `<g transform="scale(1.3)"><circle cx="66" cy="66" r="66" fill="${red}"/>` +
+        `<circle cx="66" cy="66" r="58" fill="none" stroke="#ffffff" stroke-width="1.600" stroke-opacity=".85"/></g>`,
     );
     return magnet(
       'magnet-magazine',
@@ -981,76 +1001,78 @@ export default function styles(kit) {
       [W, H, 4],
       {
         opening,
-        draw: (S) => ({
-          body: ground(S, '#ffffff') + frameLine(S, 0, 0, ink, 1.5),
+        draw: () => ({
+          defs: `<linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#000000" stop-opacity=".62"/><stop offset=".5" stop-color="#000000" stop-opacity=".36"/><stop offset="1" stop-color="#000000" stop-opacity="0"/></linearGradient>`,
+          // The shade lies on the head of the photograph, as tall at any size.
+          body: `<rect width="100%" height="430" fill="url(#shade)"/>`,
         }),
         extras: [
           caption(
-            20,
-            4,
-            710,
-            174,
-            { text: 'רגעים', font: 'Frank Ruhl Libre', size: 150, weight: 900, spacing: 10 },
-            { text: 'MOMENTS', font: 'Playfair Display', size: 104, weight: 900, spacing: 3 },
-            { color: ink },
+            440,
+            79,
+            1040,
+            219,
+            { text: 'רגעים', font: 'Frank Ruhl Libre', size: 188, weight: 900, spacing: 12 },
+            { text: 'MOMENTS', font: 'Playfair Display', size: 150, weight: 900, spacing: 4 },
+            { color: '#ffffff' },
           ),
-          sticker(code, 582, 926, 134),
-          label(first, 0, 792, [
+          sticker(code, 1664, 884, 176),
+          label(first, 0, 776, [
             caption(
-              36,
+              96,
               5,
-              440,
-              60,
-              { text: 'הקיץ הכי יפה שלנו', font: 'Heebo', size: 43, weight: 900 },
-              { text: 'BEST SUMMER EVER', font: 'Montserrat', size: 33, weight: 900 },
+              520,
+              72,
+              { text: 'הקיץ הכי יפה שלנו', font: 'Heebo', size: 50, weight: 900 },
+              { text: 'BEST SUMMER EVER', font: 'Montserrat', size: 39, weight: 900 },
               { color: ink, align: 'left' },
             ),
           ]),
-          label(second, 0, 868, [
+          label(second, 0, 866, [
             caption(
-              36,
+              96,
               4,
-              350,
-              48,
-              { text: 'חיוכים, ים ושקיעות', font: 'Frank Ruhl Libre', size: 34, weight: 500 },
+              400,
+              58,
+              { text: 'חיוכים, ים ושקיעות', font: 'Frank Ruhl Libre', size: 40, weight: 500 },
               {
                 text: 'Smiles, sea & sunsets',
                 font: 'Playfair Display',
-                size: 30,
+                size: 35,
                 weight: 600,
                 italic: true,
               },
               { color: '#ffffff', align: 'left' },
             ),
           ]),
-          label(third, 0, 930, [
+          label(third, 0, 940, [
             caption(
-              36,
+              96,
               5,
-              324,
-              44,
-              { text: 'הסיפור המלא בפנים', font: 'Heebo', size: 28, weight: 700 },
-              { text: 'THE FULL STORY', font: 'Montserrat', size: 28, weight: 700, spacing: 1 },
+              384,
+              52,
+              { text: 'הסיפור המלא בפנים', font: 'Heebo', size: 34, weight: 700 },
+              { text: 'THE FULL STORY', font: 'Montserrat', size: 34, weight: 700, spacing: 1 },
               { color: '#ffffff', align: 'left' },
             ),
           ]),
-          label(issue, 592, 150, [
+          label(issue, 1660, 64, [
             caption(
-              4,
-              24,
-              124,
-              40,
-              { text: 'גיליון', font: 'Heebo', size: 28, weight: 700 },
-              { text: 'ISSUE', font: 'Montserrat', size: 28, weight: 700, spacing: 1 },
+              5,
+              31,
+              162,
+              52,
+              { text: 'גיליון', font: 'Heebo', size: 36, weight: 700 },
+              { text: 'ISSUE', font: 'Montserrat', size: 34, weight: 700, spacing: 1 },
               { color: '#ffffff' },
             ),
             caption(
-              10,
-              62,
-              112,
-              54,
-              { text: '07', font: 'Playfair Display', size: 46, weight: 800 },
-              { text: '07', font: 'Playfair Display', size: 46, weight: 800 },
+              13,
+              80,
+              146,
+              70,
+              { text: '07', font: 'Playfair Display', size: 60, weight: 800 },
+              { text: '07', font: 'Playfair Display', size: 60, weight: 800 },
               { color: '#ffffff' },
             ),
           ]),

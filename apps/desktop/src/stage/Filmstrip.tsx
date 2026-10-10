@@ -1,14 +1,12 @@
 import {
   slideFromLayout,
   type CommandBus,
-  type Color,
   type Deck,
-  type Fill,
   type Layout,
   type SelectionStore,
   type Slide,
 } from '@slidr/model';
-import { colorRgb, ScaledSlide, type AssetResolver } from '@slidr/renderer';
+import { ScaledSlide, type AssetResolver } from '@slidr/renderer';
 import {
   memo,
   useCallback,
@@ -200,148 +198,30 @@ const optionId = (slideId: string) => `filmstrip-slide-${slideId}`;
 /** Whether a slide comes in with a transition. A transition of "none" is no transition. */
 const comesIn = (slide: Slide) => Boolean(slide.transition && slide.transition.type !== 'none');
 
-type Rgba = [number, number, number, number];
-
-function sampleColor(deck: Deck, color: Color): Rgba {
-  const [r, g, b] = colorRgb('token' in color ? deck.theme.colors[color.token] : color.value);
-  return [r * 255, g * 255, b * 255, color.alpha ?? 1];
-}
-
-/** A model fill at the thumbnail's lower end corner, where its number sits. */
-function sampleFill(deck: Deck, fill: Fill): Rgba | undefined {
-  if (fill.kind === 'solid') return sampleColor(deck, fill.color);
-  if (fill.kind !== 'linear' && fill.kind !== 'radial' && fill.kind !== 'conic') return undefined;
-  const x = deck.meta.dir === 'rtl' ? 0 : 1;
-  const y = 1;
-  let at: number;
-  if (fill.kind === 'linear') {
-    const angle = (fill.angle * Math.PI) / 180;
-    const dx = Math.sin(angle) * THUMB_W;
-    const dy = -Math.cos(angle) * THUMB_H;
-    at = (x * dx + y * dy - Math.min(0, dx) - Math.min(0, dy)) / (Math.abs(dx) + Math.abs(dy) || 1);
-  } else if (fill.kind === 'radial') {
-    const center = fill.center ?? { x: 0.5, y: 0.5 };
-    const distance = (px: number, py: number) =>
-      Math.hypot((px - center.x) * THUMB_W, (py - center.y) * THUMB_H);
-    at =
-      distance(x, y) / Math.max(distance(0, 0), distance(0, 1), distance(1, 0), distance(1, 1), 1);
-  } else {
-    const center = fill.center ?? { x: 0.5, y: 0.5 };
-    const angle = (Math.atan2(x - center.x, center.y - y) * 180) / Math.PI;
-    at = ((((angle - fill.angle) % 360) + 360) % 360) / 360;
-  }
-  const stops = [...fill.stops].sort((a, b) => a.at - b.at);
-  const first = stops[0]!;
-  if (at <= first.at) return sampleColor(deck, first.color);
-  for (let i = 1; i < stops.length; i++) {
-    const next = stops[i]!;
-    if (at > next.at) continue;
-    const before = stops[i - 1]!;
-    const fraction = (at - before.at) / (next.at - before.at || 1);
-    const a = sampleColor(deck, before.color);
-    const b = sampleColor(deck, next.color);
-    return a.map((channel, index) => channel * (1 - fraction) + b[index]! * fraction) as Rgba;
-  }
-  return sampleColor(deck, stops.at(-1)!.color);
-}
-
-/** Black or white ink for the number over the slide's background. */
-function numberColor(deck: Deck, slide: Slide, imageColor?: Rgba): '#000000' | '#ffffff' {
-  const layout = deck.layouts.find((item) => item.id === slide.layoutId);
-  const background = slide.background ?? layout?.background ?? deck.theme.background;
-  const fallback = sampleColor(deck, { token: 'bg' });
-  const base = imageColor ?? sampleFill(deck, background.fill) ?? fallback;
-  const dim = background.dim ?? 0;
-  const under: [number, number, number] = [
-    (base[0] * base[3] + fallback[0] * (1 - base[3])) * (1 - dim),
-    (base[1] * base[3] + fallback[1] * (1 - base[3])) * (1 - dim),
-    (base[2] * base[3] + fallback[2] * (1 - base[3])) * (1 - dim),
-  ];
-  const over = background.overlay ? sampleFill(deck, background.overlay) : undefined;
-  const [r, g, b]: [number, number, number] = over
-    ? ([0, 1, 2].map((i) => under[i]! * (1 - over[3]) + over[i]! * over[3]) as [
-        number,
-        number,
-        number,
-      ])
-    : under;
-  const linear = (channel: number) => {
-    const value = channel / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-  return luminance < 0.179 ? '#ffffff' : '#000000';
-}
-
-/** An image background can be dark or light independently of the deck theme. */
-function SlideNumber({
-  deck,
-  slide,
-  index,
-  resolveAsset,
-}: {
-  deck: Deck;
-  slide: Slide;
-  index: number;
-  resolveAsset?: AssetResolver;
-}) {
-  const layout = deck.layouts.find((item) => item.id === slide.layoutId);
-  const background = slide.background ?? layout?.background ?? deck.theme.background;
-  const fill = background.fill;
-  const asset = fill.kind === 'image' ? deck.assets[fill.assetId] : undefined;
-  const src = asset && resolveAsset?.(asset);
-  const [sample, setSample] = useState<{ src: string; color: Rgba }>();
-  useEffect(() => {
-    if (!src || fill.kind !== 'image') return;
-    let active = true;
-    const picture = new Image();
-    picture.crossOrigin = 'anonymous';
-    picture.onload = () => {
-      const width = picture.naturalWidth;
-      const height = picture.naturalHeight;
-      if (!active || !width || !height) return;
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 1;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return;
-      const slideRatio = deck.size.w / deck.size.h;
-      const imageRatio = width / height;
-      // A contained image leaves the corner blank unless its ratio matches the slide.
-      if (fill.fit === 'contain' && Math.abs(slideRatio - imageRatio) > 0.01) return;
-      const cropWidth =
-        fill.fit === 'cover' && imageRatio > slideRatio ? height * slideRatio : width;
-      const cropHeight =
-        fill.fit === 'cover' && imageRatio < slideRatio ? width / slideRatio : height;
-      const left = (width - cropWidth) / 2;
-      const top = (height - cropHeight) / 2;
-      const x = left + (deck.meta.dir === 'rtl' ? 0 : cropWidth - 1);
-      const y = top + cropHeight - 1;
-      try {
-        ctx.drawImage(picture, x, y, 1, 1, 0, 0, 1, 1);
-        const [r, g, b, alpha] = ctx.getImageData(0, 0, 1, 1).data;
-        if (active) setSample({ src, color: [r!, g!, b!, (alpha! / 255) * (fill.opacity ?? 1)] });
-      } catch {
-        // A remote image without canvas access keeps the theme-based fallback.
-      }
-    };
-    picture.src = src;
-    return () => {
-      active = false;
-      picture.onload = null;
-    };
-  }, [src, fill, deck.size.w, deck.size.h, deck.meta.dir]);
+/**
+ * The slide's number, on a light badge of its own: whatever the slide puts in that corner, dark
+ * or light, background or element, the number reads the same.
+ */
+function SlideNumber({ index }: { index: number }) {
   return (
     <span
       data-testid="slide-number"
       aria-hidden="true"
       style={{
         position: 'absolute',
-        insetInlineEnd: 7,
-        bottom: 5,
-        color: numberColor(deck, slide, sample && sample.src === src ? sample.color : undefined),
-        font: '600 12px/14px var(--font-ui)',
+        insetInlineEnd: 4,
+        bottom: 4,
+        minWidth: 16,
+        height: 16,
+        padding: '0 4px',
+        boxSizing: 'border-box',
+        borderRadius: 8,
+        background: '#ffffffd9',
+        boxShadow: '0 0 0 1px #00000026, 0 1px 2px #00000033',
+        color: '#1f1f1f',
+        font: '600 11px/16px var(--font-ui)',
         fontVariantNumeric: 'tabular-nums',
-        textShadow: '0 1px 2px #00000040, 0 -1px 2px #ffffff40',
+        textAlign: 'center',
         pointerEvents: 'none',
       }}
     >
@@ -432,7 +312,7 @@ const Thumb = memo(function Thumb({
           mode="thumbnail"
           resolveAsset={resolveAsset}
         />
-        <SlideNumber deck={deck} slide={slide} index={slideIndex} resolveAsset={resolveAsset} />
+        <SlideNumber index={slideIndex} />
       </div>
       {walked ? (
         // The walk's ring, outside the frame of the picture as on the Stage. Not on the picture

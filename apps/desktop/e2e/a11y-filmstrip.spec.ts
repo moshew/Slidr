@@ -68,7 +68,7 @@ for (const lang of ['he', 'en'] as const) {
 }
 
 for (const lang of ['he', 'en'] as const) {
-  test(`slide numbers sit inside smaller thumbnails with background contrast, ${lang}`, async ({
+  test(`slide numbers sit inside smaller thumbnails on a badge of their own, ${lang}`, async ({
     page,
   }) => {
     await openApp(page, { lang });
@@ -142,13 +142,8 @@ for (const lang of ['he', 'en'] as const) {
       ],
     );
 
-    for (const [id, ink] of [
-      [light!, 'rgb(0, 0, 0)'],
-      [dark!, 'rgb(255, 255, 255)'],
-      [gradient!, 'rgb(255, 255, 255)'],
-      [darkImage!, 'rgb(255, 255, 255)'],
-      [lightImage!, 'rgb(0, 0, 0)'],
-    ] as const) {
+    // The number carries its own light badge, so it reads the same over any slide.
+    for (const id of [light!, dark!, gradient!, darkImage!, lightImage!]) {
       const option = thumb(page, id);
       const image = (await option.locator('.slidr-slide').boundingBox())!;
       const number = option.getByTestId('slide-number');
@@ -159,7 +154,8 @@ for (const lang of ['he', 'en'] as const) {
       expect(box.y + box.height).toBeLessThan(image.y + image.height);
       if (lang === 'he') expect(box.x).toBeLessThan(image.x + image.width / 2);
       else expect(box.x).toBeGreaterThan(image.x + image.width / 2);
-      await expect(number).toHaveCSS('color', ink);
+      await expect(number).toHaveCSS('color', 'rgb(31, 31, 31)');
+      await expect(number).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.85)');
     }
     expect((await page.getByTestId('filmstrip').boundingBox())!.height).toBe(96);
   });

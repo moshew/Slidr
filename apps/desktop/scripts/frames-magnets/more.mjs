@@ -179,9 +179,11 @@ export default function more(kit) {
     );
   }
 
-  /* ---- a day of love: a letter in its envelope on a red hill, hearts over the photograph */
+  /* ---- a day of love: a letter in its envelope on a red hill, hearts over the photograph. It
+     is drawn for the wide slide: the title over the head of the photograph, the letter on the
+     hill in the margin at its left, the hearts gathered at its right. */
   function love() {
-    const opening = box(54, 162, 642, 578);
+    const opening = box(338, 220, 1420, 798);
     // The hearts: one of each kind, a drawing 100 wide.
     const hearts = {
       red: art(
@@ -228,14 +230,15 @@ export default function more(kit) {
       ),
     };
     // The letter stands in its envelope: the open flap behind it, the pocket in front with its
-    // folds, and a seal of wax on the point of the pocket.
+    // folds, and a seal of wax on the point of the pocket. It is drawn a quarter larger than
+    // its numbers say.
     const envelope = art(
       'love-envelope',
-      460,
-      300,
+      575,
+      375,
       `<linearGradient id="front" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f9bcc5"/><stop offset="1" stop-color="#ee8a9d"/></linearGradient>` +
         `<linearGradient id="wax" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ee3d57"/><stop offset="1" stop-color="#a00c26"/></linearGradient>`,
-      `<path fill="#d4627a" d="M6 128 230 2 454 128Z"/>` +
+      `<g transform="scale(1.25)"><path fill="#d4627a" d="M6 128 230 2 454 128Z"/>` +
         `<rect x="42" y="14" width="376" height="214" rx="7" fill="#fffaf3"/>` +
         `<rect x="51" y="23" width="358" height="196" rx="3" fill="none" stroke="#f3c9c6" stroke-width="1.500"/>` +
         line('M150 120h52M258 120h52', '#e9a3ab', 2, ' stroke-linecap="round"') +
@@ -250,92 +253,109 @@ export default function more(kit) {
         ) +
         `<circle cx="230" cy="216" r="37" fill="url(#wax)"/>` +
         `<circle cx="230" cy="216" r="29.500" fill="none" stroke="#ffffff" stroke-opacity=".28" stroke-width="1.600"/>` +
-        `<path d="${heart(230, 215, 15)}" fill="#ffd9de"/>`,
+        `<path d="${heart(230, 215, 15)}" fill="#ffd9de"/></g>`,
+    );
+    // The rule under the title and its small heart: an element, so it goes with the words.
+    const rule = art(
+      'love-rule',
+      180,
+      24,
+      '',
+      line('M2 12H132', '#d7263d', 3.4, ' stroke-linecap="round"') +
+        `<path d="${heart(158, 11, 11)}" fill="#d7263d"/>`,
     );
     const hill = { ties: { l: 'start', r: 'end', t: 'end', b: 'end' } };
     return magnet(
       'magnet-love',
       'Day of love magnet',
       'מגנט ליום האהבה',
-      [750, 1050, 28],
+      [1920, 1080, 28],
       {
         set: 'holidays',
         opening,
-        round: 22,
+        round: 24,
         draw: (S) => ({
           defs: `<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="1.700" fill="#e58a98" fill-opacity=".55"/></pattern>`,
           body:
             ground(S, '#fff4ec') +
             onBorder(
               S.whole('fill="url(#dots)"'),
-              // A blush sun behind the corner of the photograph, and a red hill at the foot.
+              // A blush sun behind the upper right corner of the photograph, and a red hill
+              // that rises in the left margin and runs along the foot.
               S.pin(
-                `<circle cx="640" cy="104" r="226" fill="#f9d2cd"/>` +
-                  `<circle cx="640" cy="104" r="250" fill="none" stroke="#ef8fa0" stroke-width="2"/>`,
-                [640, 104],
+                `<circle cx="1800" cy="112" r="250" fill="#f9d2cd"/>` +
+                  `<circle cx="1800" cy="112" r="276" fill="none" stroke="#ef8fa0" stroke-width="2"/>`,
+                [1800, 112],
                 { x: 'end', y: 'start' },
               ),
-              S.ellipse(box(-360, 812, 1010, 600), 'fill="#d7263d"', hill),
+              S.ellipse(box(-180, 695, 1760, 880), 'fill="#d7263d"', hill),
               S.ellipse(
-                box(-378, 794, 1046, 636),
+                box(-198, 677, 1796, 916),
                 'fill="none" stroke="#ef8fa0" stroke-width="2"',
                 hill,
               ),
-              S.pin(
-                line('M58 140h118', '#d7263d', 3, ' stroke-linecap="round"') +
-                  `<path d="${heart(196, 139, 9)}" fill="#d7263d"/>`,
-                [58, 140],
-                { x: 'start', y: 'start' },
-              ),
             ) +
-            frameLine(S, 0, 22, '#ffffff', 8) +
-            frameLine(S, 10, 31, '#d7263d', 2),
+            frameLine(S, 0, 24, '#ffffff', 8) +
+            frameLine(S, 10, 33, '#d7263d', 2),
         }),
         extras: [
           caption(
-            56,
-            42,
-            560,
-            84,
-            { text: 'פשוט אוהבים', font: 'Frank Ruhl Libre', size: 68, weight: 700 },
+            338,
+            80,
+            700,
+            94,
+            { text: 'פשוט אוהבים', font: 'Frank Ruhl Libre', size: 80, weight: 700 },
             {
               text: 'Simply in love',
               font: 'Playfair Display',
-              size: 62,
+              size: 74,
               weight: 600,
               italic: true,
             },
             { color: '#a3122b', align: 'left' },
           ),
+          sticker(rule, 340, 176, 180),
+          // Two small hearts rise from the letter in the left margin.
+          sticker(hearts.blush, 77, 395, 54, { turn: 14 }),
+          sticker(hearts.line, 153, 508, 86, { turn: -12 }),
           label(
             envelope,
-            30,
-            720,
+            36,
+            664,
             [
               caption(
-                62,
-                34,
-                336,
-                72,
-                { text: 'באהבה, לתמיד', font: 'Frank Ruhl Libre', size: 46, weight: 700 },
+                78,
+                42,
+                420,
+                90,
+                { text: 'באהבה, לתמיד', font: 'Frank Ruhl Libre', size: 58, weight: 700 },
                 {
                   text: 'With love, always',
                   font: 'Playfair Display',
-                  size: 36,
+                  size: 44,
                   weight: 600,
                   italic: true,
                 },
                 { color: '#a3122b' },
               ),
             ],
-            { turn: -7 },
+            // Made taller or wider, the envelope lengthens below its seal and beside its note.
+            {
+              turn: -7,
+              stretch: {
+                x: [
+                  [20, 50],
+                  [525, 555],
+                ],
+                y: [[328, 358]],
+              },
+            },
           ),
           // The hearts gather over the lower right corner of the photograph, and one drifts up.
-          sticker(hearts.blush, 498, 652, 104, { turn: -16 }),
-          sticker(hearts.red, 544, 682, 178, { turn: 12 }),
-          sticker(hearts.striped, 640, 588, 84, { turn: 18 }),
-          sticker(hearts.line, 566, 868, 70, { turn: -12 }),
-          sticker(hearts.red, 668, 500, 46, { turn: -8 }),
+          sticker(hearts.blush, 1572, 823, 136, { turn: -16 }),
+          sticker(hearts.red, 1656, 841, 232, { turn: 12 }),
+          sticker(hearts.striped, 1788, 710, 108, { turn: 18 }),
+          sticker(hearts.red, 1820, 602, 60, { turn: -8 }),
         ],
       },
       {
@@ -484,35 +504,46 @@ export default function more(kit) {
     );
   }
 
-  /* ---- Eid al-Fitr: a pointed arch on emerald, lanterns and a crescent hung over its shoulders */
+  /* ---- Eid al-Fitr: a pointed arch on emerald, lanterns and a crescent hung over its shoulders.
+     It is drawn for the wide slide: a wide, low arch whose round shoulders turn into two
+     flanks that sweep up to a point (an ogee), and what hangs is in its two upper corners. */
   function eid() {
-    // The arch: its sides, where its head springs from them, how high the head rises, its foot.
-    const [SIDE, SPRING, RISE, FOOT] = [64, 430, 330, 800];
-    const opening = box(SIDE, 144, 750 - 2 * SIDE, FOOT - 144);
+    const [W, H] = [1920, 1080];
+    // The arch: its sides, its point, the line its shoulders reach, its foot, and how round
+    // the shoulders are.
+    const [SIDE, POINT, SHOULDER, FOOT, ROUND] = [70, 72, 272, 872, 130];
+    const opening = box(SIDE, POINT, W - 2 * SIDE, FOOT - POINT);
     /**
-     * One side of the head of the arch, `by` out from the window: an ellipse around the foot of
-     * the other side, as wide as the arch at any size and always as high. The head is what the
-     * two sides share, above the line they spring from: a pointed arch whose rise stays.
+     * A flank is the underside of an ellipse around the upper end of its shoulder, which reaches
+     * REACH of the width between the shoulders: so it leaves its shoulder level, and the two
+     * flanks cross in the middle of the arch, in its point. DEEP is how tall such an ellipse is
+     * for the point to rise as far as it does. The shoulders and the rise of the point keep
+     * their size; the flanks take up a change of the card's width.
      */
-    const curve = (by, at) =>
-      `cx:${at};cy:${SPRING}px;rx:calc(100% - ${f(2 * SIDE - by)}px);ry:${f(RISE + by)}px`;
+    const [INNER, REACH] = [SIDE + ROUND, 0.55];
+    const DEEP = (SHOULDER - POINT) / (1 - Math.sqrt(1 - (0.5 / REACH) ** 2));
     const offsets = { window: -1, mat: 6, in: 10, out: 14, fine: 21, finer: 22.6 };
-    const clips =
-      `<clipPath id="head"><rect width="100%" height="${SPRING}"/></clipPath>` +
+    const flank = (by, cx) =>
+      `<ellipse fill="#000" style="cx:${cx};cy:${f(SHOULDER - DEEP)}px;rx:calc(${f(REACH * 100)}% - ${f(REACH * 2 * INNER + by)}px);ry:${f(DEEP - by)}px"/>`;
+    /** What lies under the two flanks, `by` out from the window, for each line around the arch. */
+    const flanks = (S) =>
       Object.entries(offsets)
-        .map(
-          ([id, by]) =>
-            `<clipPath id="side-${id}"><ellipse style="${curve(by, `${SIDE}px`)}"/></clipPath>`,
+        .map(([id, by]) =>
+          S.mask(
+            `flanks-${id}`,
+            S.whole('fill="#fff"'),
+            flank(by, `${INNER}px`) + flank(by, `calc(100% - ${INNER}px)`),
+          ),
         )
         .join('');
+    /** The arch, `by` out from the window: a box with round shoulders, and the point on it. */
     const arch = (S, id, attrs) => {
       const by = offsets[id];
       return (
-        `<g clip-path="url(#head)"><ellipse ${attrs} clip-path="url(#side-${id})" style="${curve(by, `calc(100% - ${SIDE}px)`)}"/></g>` +
+        `<rect ${attrs} mask="url(#flanks-${id})" style="x:${INNER}px;width:calc(100% - ${2 * INNER}px);height:${SHOULDER + 2}px"/>` +
         S.box(
-          // The foot reaches a little into the head, where the head is as wide: no seam shows.
-          box(SIDE - by, SPRING - 8, 750 - 2 * SIDE + 2 * by, FOOT - SPRING + by + 8),
-          [0, 0, 8 + by, 8 + by],
+          box(SIDE - by, SHOULDER - by, W - 2 * SIDE + 2 * by, FOOT - SHOULDER + 2 * by),
+          [ROUND + by, ROUND + by, 8 + by, 8 + by],
           attrs,
           { ties: { t: 'start', b: 'end' } },
         )
@@ -536,41 +567,44 @@ export default function more(kit) {
           `<g transform="translate(0 ${chain})"><rect width="${wide}" height="${tall}" fill="url(#ornament)"/></g>`,
       );
     };
-    // A star of two squares on its chain, drawn: the fourth thing that hangs.
+    // A star of two squares on its chain, drawn: the fourth thing that hangs. Its chain is as
+    // short as keeps it over the arch, and it is drawn 1.3 times as large as its numbers.
     const hungStar = art(
       'eid-star',
-      68,
-      196,
+      88.4,
+      236.6,
       GOLD,
-      line('M34 0V132', '#a87a22', 3.6, ' stroke-dasharray="7 3.500" stroke-linecap="round"') +
-        line('M34 0V132', '#f6dc93', 1.3, ' stroke-dasharray="7 3.500" stroke-linecap="round"') +
-        `<circle cx="34" cy="132" r="5" fill="none" stroke="url(#gold)" stroke-width="2.600"/>` +
-        `<g transform="translate(34 164)"><rect x="-22" y="-22" width="44" height="44" fill="url(#gold)"/><rect x="-22" y="-22" width="44" height="44" fill="url(#gold)" transform="rotate(45)"/>` +
+      `<g transform="scale(1.3)">` +
+        line('M34 0V118', '#a87a22', 3.6, ' stroke-dasharray="7 3.500" stroke-linecap="round"') +
+        line('M34 0V118', '#f6dc93', 1.3, ' stroke-dasharray="7 3.500" stroke-linecap="round"') +
+        `<circle cx="34" cy="118" r="5" fill="none" stroke="url(#gold)" stroke-width="2.600"/>` +
+        `<g transform="translate(34 150)"><rect x="-22" y="-22" width="44" height="44" fill="url(#gold)"/><rect x="-22" y="-22" width="44" height="44" fill="url(#gold)" transform="rotate(45)"/>` +
         `<rect x="-12" y="-12" width="24" height="24" fill="none" stroke="#7a5a16" stroke-width="1.400"/><rect x="-12" y="-12" width="24" height="24" fill="none" stroke="#7a5a16" stroke-width="1.400" transform="rotate(45)"/>` +
-        `<circle r="4" fill="#0b5746"/></g>`,
+        `<circle r="4" fill="#0b5746"/></g></g>`,
     );
-    // The cartouche: a plaque of gold with pointed ends, a line of emerald inside it.
+    // The cartouche: a plaque of gold with pointed ends, a line of emerald inside it. It is
+    // drawn 1.3 times as large as its numbers.
     const cartouche = art(
       'eid-cartouche',
-      500,
-      124,
+      650,
+      161.2,
       GOLD +
         `<linearGradient id="shine" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".45"/><stop offset=".5" stop-color="#ffffff" stop-opacity="0"/></linearGradient>`,
-      `<path fill="url(#gold)" d="M70 4H430c16 0 22 12 30 24l32 34-32 34c-8 12-14 24-30 24H70c-16 0-22-12-30-24L8 62l32-34C48 16 54 4 70 4Z"/>` +
+      `<g transform="scale(1.3)"><path fill="url(#gold)" d="M70 4H430c16 0 22 12 30 24l32 34-32 34c-8 12-14 24-30 24H70c-16 0-22-12-30-24L8 62l32-34C48 16 54 4 70 4Z"/>` +
         `<path fill="url(#shine)" d="M70 4H430c16 0 22 12 30 24l32 34H8l32-34C48 16 54 4 70 4Z"/>` +
         `<path fill="none" stroke="#0b5746" stroke-width="1.800" d="M72 13H428c11 0 16 9 23 19l27 30-27 30c-7 10-12 19-23 19H72c-11 0-16-9-23-19L22 62l27-30c7-10 12-19 23-19Z"/>` +
-        `<path fill="#0b5746" d="M44 53l6.500 9-6.500 9-6.500-9ZM456 53l6.500 9-6.500 9-6.500-9Z"/>`,
+        `<path fill="#0b5746" d="M44 53l6.500 9-6.500 9-6.500-9ZM456 53l6.500 9-6.500 9-6.500-9Z"/></g>`,
     );
     const jewel =
-      line('M255 1006H345M405 1006H495', '#e2b955', 1.6, ' stroke-linecap="round"') +
-      `<g transform="translate(375 1006)" fill="#e2b955"><rect x="-9" y="-9" width="18" height="18"/><rect x="-9" y="-9" width="18" height="18" transform="rotate(45)"/></g>` +
-      `<circle cx="375" cy="1006" r="3.500" fill="#0b5746"/>` +
-      `<circle cx="345" cy="1006" r="3" fill="#e2b955"/><circle cx="405" cy="1006" r="3" fill="#e2b955"/>`;
+      line('M804 1034H921M999 1034H1116', '#e2b955', 2, ' stroke-linecap="round"') +
+      `<g transform="translate(960 1034)" fill="#e2b955"><rect x="-12" y="-12" width="24" height="24"/><rect x="-12" y="-12" width="24" height="24" transform="rotate(45)"/></g>` +
+      `<circle cx="960" cy="1034" r="4.500" fill="#0b5746"/>` +
+      `<circle cx="921" cy="1034" r="4" fill="#e2b955"/><circle cx="999" cy="1034" r="4" fill="#e2b955"/>`;
     return magnet(
       'magnet-eid',
       'Eid al-Fitr magnet',
       'מגנט לעיד אל־פיטר',
-      [750, 1050, 24],
+      [W, H, 24],
       {
         set: 'holidays',
         opening,
@@ -578,11 +612,11 @@ export default function more(kit) {
         draw: (S) => ({
           defs:
             GOLD +
-            clips +
             `<linearGradient id="emerald" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0f6b57"/><stop offset="1" stop-color="#06382f"/></linearGradient>` +
             `<radialGradient id="lamp" cx=".5" cy="0" r=".75"><stop stop-color="#3fb08f" stop-opacity=".5"/><stop offset="1" stop-color="#3fb08f" stop-opacity="0"/></radialGradient>` +
             // A lattice of eight-pointed stars: two squares, and the lines that join them.
             `<pattern id="lattice" width="64" height="64" patternUnits="userSpaceOnUse"><g fill="none" stroke="#ecd9a0" stroke-opacity=".26" stroke-width="1.200"><rect x="18" y="18" width="28" height="28"/><rect x="18" y="18" width="28" height="28" transform="rotate(45 32 32)"/><path d="M0 32h12.200M51.800 32H64M32 0v12.200M32 51.800V64"/><circle cx="0" cy="0" r="5"/><circle cx="64" cy="0" r="5"/><circle cx="0" cy="64" r="5"/><circle cx="64" cy="64" r="5"/></g></pattern>` +
+            flanks(S) +
             S.mask('eid-mat', arch(S, 'mat', 'fill="#fff"'), arch(S, 'window', 'fill="#000"')) +
             S.mask('eid-line', arch(S, 'out', 'fill="#fff"'), arch(S, 'in', 'fill="#000"')) +
             S.mask('eid-fine', arch(S, 'finer', 'fill="#fff"'), arch(S, 'fine', 'fill="#000"')),
@@ -591,39 +625,47 @@ export default function more(kit) {
             onBorder(
               S.whole('fill="url(#lamp)"'),
               S.whole('fill="url(#lattice)"'),
-              S.pin(jewel, [375, 1006], { x: 'mid', y: 'end' }),
+              S.pin(jewel, [960, 1034], { x: 'mid', y: 'end' }),
             ) +
-            S.outline(box(14, 14, 722, 1022), 14, 1.6, 'stroke="url(#gold)" stroke-opacity=".8"') +
+            S.outline(
+              box(14, 14, W - 28, H - 28),
+              14,
+              1.6,
+              'stroke="url(#gold)" stroke-opacity=".8"',
+            ) +
             S.whole('fill="#f8f1de" mask="url(#eid-mat)"') +
             S.whole('fill="url(#gold)" mask="url(#eid-line)"') +
             S.whole('fill="#e2b955" mask="url(#eid-fine)"'),
         }),
         extras: [
-          sticker(hungStar, 178, 0, 68),
-          sticker(hung('eid-lantern-tall', 'more-eid-1', 126, 62), 38, 0, 126),
-          sticker(hung('eid-lantern-round', 'more-eid-2', 104, 52), 496, 0, 104),
-          sticker(hung('eid-crescent', 'more-eid-3', 124, 168, 0.45), 600, 0, 124),
-          label(cartouche, 125, 770, [
+          // The star and the round lantern hang in the two upper corners, over the shoulders of
+          // the arch, which stay in sight; the tall lantern and the crescent hang beside them,
+          // across its flanks.
+          sticker(hungStar, 96, 0, 88),
+          sticker(hung('eid-lantern-tall', 'more-eid-1', 176, 56), 236, 0, 176),
+          sticker(hung('eid-lantern-round', 'more-eid-2', 140, 16), 1718, 0, 140),
+          sticker(hung('eid-crescent', 'more-eid-3', 176, 150, 0.45), 1500, 0, 176),
+          label(cartouche, 635, 778, [
             caption(
-              78,
-              22,
-              344,
-              80,
-              { text: 'עיד מבארכ', font: 'Frank Ruhl Libre', size: 62, weight: 800 },
-              { text: 'Eid Mubarak', font: 'Playfair Display', size: 48, weight: 700 },
+              101,
+              28,
+              448,
+              105,
+              { text: 'עיד מבארכ', font: 'Frank Ruhl Libre', size: 80, weight: 800 },
+              { text: 'Eid Mubarak', font: 'Playfair Display', size: 60, weight: 700 },
               { color: '#063a31' },
             ),
           ]),
           caption(
-            95,
-            912,
             560,
-            48,
-            { text: 'חג שמח ומבורך', font: 'Frank Ruhl Libre', size: 36, weight: 500, spacing: 1 },
+            946,
+            800,
+            50,
+            { text: 'חג שמח ומבורך', font: 'Frank Ruhl Libre', size: 40, weight: 500, spacing: 1 },
             {
               text: 'A blessed and joyful Eid',
               font: 'Playfair Display',
-              size: 34,
+              size: 38,
               weight: 500,
               italic: true,
             },
@@ -803,117 +845,176 @@ export default function more(kit) {
     );
   }
 
-  /* ---- a front page: a masthead, rules, a headline under the photograph, a stamp in red */
+  /* ---- a front page: a masthead across the head with its rules, the photograph at the left,
+     and beside it a column with the headline and the print of the article; a stamp in red. It
+     is drawn for the wide slide. */
   function newspaper() {
-    const opening = box(40, 228, 670, 456);
+    const [W, H] = [1920, 1080];
+    // The margins of the page, and the column beside the photograph.
+    const [LEFT, RIGHT, COLUMN] = [72, 1848, 1280];
+    const opening = box(LEFT, 320, 1172, 660);
+    // The stamp is drawn a quarter larger than its numbers say.
     const stamp = art(
       'newspaper-stamp',
-      280,
-      108,
+      350,
+      135,
       '',
-      `<rect x="2" y="2" width="276" height="104" rx="10" fill="#a50f17"/>` +
+      `<g transform="scale(1.25)"><rect x="2" y="2" width="276" height="104" rx="10" fill="#a50f17"/>` +
         `<rect x="10" y="10" width="260" height="88" rx="5" fill="none" stroke="#fff4e2" stroke-width="2.400"/>` +
-        `<path d="${star(27, 54, 7)}M${star(253, 54, 7).slice(1)}" fill="#fff4e2"/>`,
+        `<path d="${star(27, 54, 7)}M${star(253, 54, 7).slice(1)}" fill="#fff4e2"/></g>`,
     );
     const ink = '#1d1b1a';
+    // The short rule under the headline: an element, so it goes with the words.
+    const rule = art(
+      'newspaper-rule',
+      96,
+      6,
+      '',
+      `<rect y="1" width="96" height="4" fill="${ink}"/>`,
+    );
+    /**
+     * Where the app takes what stands at `v` of a side `size` long when the magnet changes its
+     * size, as a share of the side and a distance more: the first third of a side keeps its
+     * distance from the start, the last from the end, and the middle its place between the two.
+     * Card artwork that lies under a line of words follows the line by it.
+     */
+    const beside = (v, size) => {
+      const share = Math.min(1, Math.max(0, (3 * v) / size - 1));
+      return [share, v - share * size];
+    };
+    // The print of the article begins under the headline, and its last line stands on the foot:
+    // two columns of it, as many whole lines as there is room for. A paragraph is eight lines
+    // and a gap, and the second column is five lines into one where it begins.
+    const [PRINT, FOOT, PITCH] = [570, 1041.5, 15];
+    const [share, past] = beside(PRINT, H);
+    const article =
+      `<svg y="${f(share * 100)}%" overflow="visible"><g transform="translate(0 ${f(past)})">` +
+      [0, 5]
+        .map(
+          (into, i) =>
+            `<g transform="translate(0 ${-into * PITCH})"><rect y="${into * PITCH}" fill="url(#paragraphs)" style="x:calc(100% - ${W - COLUMN - i * 296}px);width:272px;height:calc(round(down, ${f((1 - share) * 100)}% + ${f(FOOT - H - past + PITCH - 6)}px, ${PITCH}px) - ${PITCH - 6.5}px)"/></g>`,
+        )
+        .join('') +
+      `</g></svg>`;
+    // Under the photograph three columns of print share its width, 24 apart, and go with the foot.
+    const under =
+      `<svg y="100%" overflow="visible"><g transform="translate(0 ${1005 - H})">` +
+      [0, 1, 2]
+        .map(
+          (column) =>
+            `<rect height="36.5" fill="url(#print)" style="x:calc(${f((column * 100) / 3)}% + ${f(LEFT - (column * (W - opening.w - 24)) / 3)}px);width:calc(33.33% - ${f((W - opening.w + 48) / 3)}px)"/>`,
+        )
+        .join('') +
+      `</g></svg>`;
     return magnet(
       'magnet-newspaper',
       'Front page magnet',
       'מגנט בסגנון עמוד ראשון',
-      [750, 1050, 6],
+      [W, H, 6],
       {
         opening,
         draw: (S) => ({
           defs:
             tile('newsprint', 'more-newsprint', 384) +
             // A column of print: lines of grey, as close at any size.
-            `<pattern id="print" y="904" width="24" height="15" patternUnits="userSpaceOnUse"><rect width="24" height="6.500" fill="#4b4744" fill-opacity=".42"/></pattern>`,
+            `<pattern id="print" width="24" height="${PITCH}" patternUnits="userSpaceOnUse"><rect width="24" height="6.500" fill="#4b4744" fill-opacity=".42"/></pattern>` +
+            `<pattern id="paragraphs" width="24" height="${9 * PITCH}" patternUnits="userSpaceOnUse"><rect width="24" height="${8 * PITCH}" fill="url(#print)"/></pattern>`,
           body:
             ground(S, 'url(#newsprint)') +
             onBorder(
               S.whole('fill="#efe9dc" fill-opacity=".35"'),
               // Rules over and under the masthead, and around the line of the edition.
-              S.box(box(40, 26, 670, 3), 0, `fill="${ink}"`),
-              S.box(box(40, 150, 670, 5), 0, `fill="${ink}"`),
-              S.box(box(40, 159, 670, 1.5), 0, `fill="${ink}"`),
-              S.box(box(40, 208, 670, 1.5), 0, `fill="${ink}"`),
-              // Under the headline: a rule, and three columns of print with a gap between them.
-              S.box(box(40, 884, 670, 2.5), 0, `fill="${ink}"`),
-              // The columns share the width between the margins, 20 apart, and go with the foot.
-              `<svg y="100%" overflow="visible"><g transform="translate(0 -1050)">${[0, 1, 2]
-                .map(
-                  (column) =>
-                    `<rect y="904" height="112" fill="url(#print)" style="x:calc(${f((column * 100) / 3)}% + ${40 - column * 20}px);width:calc(33.3% - 40px)"/>`,
-                )
-                .join('')}</g></svg>`,
-              S.box(box(40, 1024, 670, 1.5), 0, `fill="${ink}"`),
+              S.box(box(LEFT, 56, RIGHT - LEFT, 3), 0, `fill="${ink}"`),
+              S.box(box(LEFT, 234, RIGHT - LEFT, 5), 0, `fill="${ink}"`),
+              S.box(box(LEFT, 243, RIGHT - LEFT, 1.5), 0, `fill="${ink}"`),
+              S.box(box(LEFT, 300, RIGHT - LEFT, 1.5), 0, `fill="${ink}"`),
+              // A hairline between the photograph and the column, and the rule of the foot.
+              S.box(box(COLUMN - 19, 320, 1.5, 724), 0, `fill="${ink}" fill-opacity=".55"`, {
+                ties: { l: 'end', r: 'end', t: 'start', b: 'end' },
+              }),
+              article,
+              under,
+              S.box(box(LEFT, 1054, RIGHT - LEFT, 1.5), 0, `fill="${ink}"`),
             ) +
             frameLine(S, 0, 0, ink, 2),
         }),
         extras: [
           caption(
-            40,
-            34,
-            670,
-            114,
-            { text: 'חדשות המשפחה', font: 'Frank Ruhl Libre', size: 90, weight: 900 },
-            { text: 'The Family Times', font: 'Playfair Display', size: 67, weight: 900 },
+            96,
+            80,
+            1728,
+            146,
+            { text: 'חדשות המשפחה', font: 'Frank Ruhl Libre', size: 124, weight: 900 },
+            { text: 'The Family Times', font: 'Playfair Display', size: 112, weight: 900 },
             { color: ink },
           ),
           caption(
-            40,
-            164,
-            670,
-            42,
+            96,
+            250,
+            1728,
+            44,
             {
               text: 'מהדורה חגיגית  ·  מחיר: חיוך אחד',
               font: 'Frank Ruhl Libre',
-              size: 28,
+              size: 30,
               weight: 500,
             },
             {
               text: 'Special edition  ·  Price: one smile',
               font: 'Playfair Display',
-              size: 28,
+              size: 30,
               weight: 500,
               italic: true,
             },
             { color: ink },
           ),
           caption(
-            40,
-            700,
-            670,
-            88,
-            { text: 'התמונה שכולם', font: 'Frank Ruhl Libre', size: 76, weight: 900 },
-            { text: 'The photo everyone', font: 'Playfair Display', size: 60, weight: 900 },
+            COLUMN,
+            322,
+            RIGHT - COLUMN,
+            96,
+            { text: 'התמונה שכולם', font: 'Frank Ruhl Libre', size: 80, weight: 900 },
+            { text: 'The photo everyone', font: 'Playfair Display', size: 52, weight: 900 },
             { color: ink },
           ),
           caption(
-            40,
-            786,
-            670,
-            88,
-            { text: 'מדברים עליה', font: 'Frank Ruhl Libre', size: 76, weight: 900 },
-            { text: 'is talking about', font: 'Playfair Display', size: 60, weight: 900 },
+            COLUMN,
+            414,
+            RIGHT - COLUMN,
+            96,
+            { text: 'מדברים עליה', font: 'Frank Ruhl Libre', size: 80, weight: 900 },
+            { text: 'is talking about', font: 'Playfair Display', size: 52, weight: 900 },
             { color: ink },
           ),
+          sticker(rule, COLUMN + (RIGHT - COLUMN - 96) / 2, 526, 96),
+          // The stamp lies over the upper left corner of the photograph, where it keeps its size
+          // and its corner when the magnet is made wider. Made taller, it grows above and below
+          // its words alike.
           label(
             stamp,
-            456,
-            244,
+            75,
+            288,
             [
               caption(
-                40,
-                16,
-                200,
-                76,
-                { text: 'מיוחד!', font: 'Secular One', size: 57 },
-                { text: 'EXTRA!', font: 'Poppins', size: 42, weight: 900, italic: true },
+                50,
+                20,
+                250,
+                95,
+                { text: 'מיוחד!', font: 'Secular One', size: 70 },
+                { text: 'EXTRA!', font: 'Poppins', size: 52, weight: 900, italic: true },
                 { color: '#fffaf0' },
               ),
             ],
-            { turn: 10 },
+            {
+              turn: -8,
+              stretch: {
+                x: [[88, 262]],
+                y: [
+                  [16, 36],
+                  [99, 119],
+                ],
+              },
+            },
           ),
         ],
       },

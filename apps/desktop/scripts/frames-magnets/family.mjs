@@ -272,12 +272,15 @@ export default function family(kit) {
     );
   }
 
-  /* ---- an anniversary: a seal with the years on the corner of the photograph, and the names
-     on a plate of wine over its foot, roses on the plate's end */
+  /* ---- an anniversary: a wide photograph in a double line on blush, a seal with the years on
+     its upper corner, and the names on a plate of wine over its foot, toward the end of the
+     card, roses on the plate's start. It is drawn for the wide slide. */
   function anniversary() {
-    const opening = box(44, 44, 662, 886);
+    const [W, H] = [1920, 1080];
+    const opening = box(136, 46, 1648, 927);
     // The seal: scallops around a disc, two rings of cream, and room for a number and a word.
-    const SEAL = 228;
+    // It is drawn 228 across, and is `SEAL` across on the wide card.
+    const SEAL = 304;
     const seal = art(
       'seal-wine',
       SEAL,
@@ -286,32 +289,34 @@ export default function family(kit) {
         `<clipPath id="scallops"><circle cx="114" cy="114" r="100"/>${around(22)
           .map(([x, y]) => `<circle cx="${f(114 + x * 99)}" cy="${f(114 + y * 99)}" r="15"/>`)
           .join('')}</clipPath>`,
-      `<rect width="${SEAL}" height="${SEAL}" fill="url(#wine)" clip-path="url(#scallops)"/>` +
+      `<g transform="scale(${(SEAL / 228).toFixed(4)})"><rect width="228" height="228" fill="url(#wine)" clip-path="url(#scallops)"/>` +
         `<circle cx="114" cy="114" r="91" fill="none" stroke="#f8e3d3" stroke-width="1.500"/>` +
         `<circle cx="114" cy="114" r="86" fill="none" stroke="#f8e3d3" stroke-opacity=".6" stroke-width="1.600" stroke-dasharray=".1 6" stroke-linecap="round"/>` +
-        `<path d="M114 40c-6-8-16.500-2-11 5.500 3 4 7.500 6.500 11 9.500 3.500-3 8-5.500 11-9.500 5.500-7.500-5-13.500-11-5.500Z" fill="#f8e3d3"/>`,
+        `<path d="M114 40c-6-8-16.500-2-11 5.500 3 4 7.500 6.500 11 9.500 3.500-3 8-5.500 11-9.500 5.500-7.500-5-13.500-11-5.500Z" fill="#f8e3d3"/></g>`,
     );
     // The plate: a band of wine with a line of cream inside its edge, and roses over its start.
     // The roses are the shared watercolour, without the leaf of another bunch in its corner;
-    // they are of the plate, so on a magnet of any size the two stay together.
+    // they are of the plate, so on a magnet of any size the two stay together. It is drawn 724
+    // by 230, and is `PLATE` times as large on the wide card.
+    const PLATE = 1.4;
     const plate = art(
       'plate-wine',
-      724,
-      230,
+      1014,
+      322,
       `<linearGradient id="wine" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6c1128"/><stop offset=".55" stop-color="#8b1d39"/><stop offset="1" stop-color="#9e2a47"/></linearGradient>` +
         tile('roses', `${FLORALS}-3`, 262) +
         `<clipPath id="bunch"><path d="M42 0H262V212H0V32H42Z"/></clipPath>`,
-      `<g transform="translate(22 50)"><rect width="702" height="152" rx="9" fill="url(#wine)"/>` +
+      `<g transform="scale(${PLATE})"><g transform="translate(22 50)"><rect width="702" height="152" rx="9" fill="url(#wine)"/>` +
         `<rect x="8.500" y="8.500" width="685" height="135" rx="4" fill="none" stroke="#f8e3d3" stroke-opacity=".7" stroke-width="1.300"/>` +
         `<rect x="13" y="13" width="676" height="126" rx="2" fill="none" stroke="#f8e3d3" stroke-opacity=".35" stroke-width=".800"/></g>` +
-        `<g transform="translate(10 10) rotate(-4 131 106)"><rect width="262" height="212" fill="url(#roses)" clip-path="url(#bunch)"/></g>`,
+        `<g transform="translate(10 10) rotate(-4 131 106)"><rect width="262" height="212" fill="url(#roses)" clip-path="url(#bunch)"/></g></g>`,
     );
     const next = random(1010);
-    // Small hearts of blush in the margins of the card.
+    // Small hearts of blush over the whole ground of the card, all around the photograph.
     const hearts = (S) =>
-      scattered(next, 30, 750, 1050, [inset(opening, -14)], 46, 16)
+      scattered(next, 64, W, H, [inset(opening, -16)], 58, 18)
         .map(([x, y]) => {
-          const s = f(0.55 + next() * 0.5);
+          const s = f(0.8 + next() * 0.8);
           return S.pin(
             `<path transform="translate(${f(x)} ${f(y)}) rotate(${Math.round(next() * 50 - 25)}) scale(${s})" d="M0 9C-13-1-6-12 0-5 6-12 13-1 0 9Z" fill="#e7b3b0" fill-opacity="${f(0.45 + next() * 0.4)}"/>`,
             [x, y],
@@ -322,7 +327,7 @@ export default function family(kit) {
       'magnet-anniversary',
       'Anniversary magnet',
       'מגנט ליום נישואין',
-      [750, 1050, 22],
+      [W, H, 22],
       {
         opening,
         round: 6,
@@ -333,58 +338,77 @@ export default function family(kit) {
           body:
             ground(S, 'url(#cream)') +
             onBorder(S.whole('fill="url(#blush)"'), hearts(S)) +
-            S.outline(box(11, 11, 728, 1028), 13, 1.2, 'stroke="#8b1d39" stroke-opacity=".55"') +
-            frameLine(S, 4, 9, '#8b1d39', 2.4) +
-            frameLine(S, 10, 14, '#8b1d39', 0.9, ' stroke-opacity=".6"'),
+            S.outline(
+              box(11, 11, W - 22, H - 22),
+              13,
+              1.2,
+              'stroke="#8b1d39" stroke-opacity=".55"',
+            ) +
+            frameLine(S, 5, 10, '#8b1d39', 2.6) +
+            frameLine(S, 12, 16, '#8b1d39', 1, ' stroke-opacity=".6"'),
         }),
         extras: [
-          label(plate, 2, 808, [
-            caption(
-              274,
-              70,
-              420,
-              78,
-              { text: 'רונית ואבי', font: 'Frank Ruhl Libre', size: 64, weight: 700 },
-              {
-                text: 'Ronit & Avi',
-                font: 'Playfair Display',
-                size: 58,
-                weight: 600,
-                italic: true,
-              },
-              { color: '#fff3e6', align: 'right' },
-            ),
-            caption(
-              274,
-              144,
-              420,
-              48,
-              { text: 'ועדיין מאוהבים', font: 'Heebo', size: 30, weight: 400, spacing: 3 },
-              { text: 'STILL IN LOVE', font: 'Montserrat', size: 28, weight: 500, spacing: 5 },
-              { color: '#f3cdbd', align: 'right' },
-            ),
-          ]),
+          // The plate lies over the lower edge of the photograph, toward the end of the card. It
+          // lengthens with a wider magnet between the roses and its end, so the roses keep
+          // their shape.
           label(
-            seal,
-            17,
-            17,
+            plate,
+            826,
+            748,
             [
               caption(
-                52,
-                48,
-                124,
-                92,
-                { text: '10', font: 'Frank Ruhl Libre', size: 72, weight: 700 },
-                { text: '10', font: 'Playfair Display', size: 72, weight: 700 },
+                384,
+                88,
+                588,
+                106,
+                { text: 'רונית ואבי', font: 'Frank Ruhl Libre', size: 90, weight: 700 },
+                {
+                  text: 'Ronit & Avi',
+                  font: 'Playfair Display',
+                  size: 82,
+                  weight: 600,
+                  italic: true,
+                },
+                { color: '#fff3e6', align: 'right' },
+              ),
+              caption(
+                384,
+                194,
+                588,
+                56,
+                { text: 'ועדיין מאוהבים', font: 'Heebo', size: 42, weight: 400, spacing: 4 },
+                { text: 'STILL IN LOVE', font: 'Montserrat', size: 38, weight: 500, spacing: 7 },
+                { color: '#f3cdbd', align: 'right' },
+              ),
+            ],
+            {
+              stretch: {
+                x: [[430, 950]],
+                y: [[120, 200]],
+              },
+            },
+          ),
+          label(
+            seal,
+            34,
+            24,
+            [
+              caption(
+                69,
+                64,
+                166,
+                123,
+                { text: '10', font: 'Frank Ruhl Libre', size: 92, weight: 700 },
+                { text: '10', font: 'Playfair Display', size: 96, weight: 700 },
                 { color: '#fff3e6' },
               ),
               caption(
-                34,
-                145,
-                160,
-                46,
-                { text: 'שנים יחד', font: 'Heebo', size: 29, weight: 500 },
-                { text: 'YEARS', font: 'Montserrat', size: 28, weight: 600, spacing: 3 },
+                45,
+                195,
+                214,
+                62,
+                { text: 'שנים יחד', font: 'Heebo', size: 36, weight: 500 },
+                { text: 'YEARS', font: 'Montserrat', size: 36, weight: 600, spacing: 4 },
                 { color: '#fff6ee' },
               ),
             ],
@@ -600,21 +624,19 @@ export default function family(kit) {
     );
   }
 
-  /* ---- a brit or a britah: a print smaller than its box, an olive branch behind its top,
-     tape over its edge, and a tag that hangs on a thread */
+  /* ---- a brit or a britah: a print smaller than its box with a deep white foot, an olive
+     branch behind its upper corner, tape over its top, and a tag that hangs on a thread over
+     its other corner. It is drawn for the wide slide. */
   function brit() {
-    // The print: the box is bare above it and to its right, where the branch shows.
-    const print = box(34, 104, 664, 922);
-    const opening = box(64, 134, 604, 772);
-    // The olive branch of the shared watercolours, laid flat (it is painted on a diagonal) and
-    // cut a little under its stem: the print hides the rest, so the branch can lie high.
-    const olive = art(
-      'olive-peeking',
-      570,
-      142,
-      tile('olive', `${FLORALS}-4`, 442),
-      `<g transform="translate(195 -160) rotate(34)"><rect width="442" height="336" fill="url(#olive)"/></g>`,
-    );
+    const [W, H] = [1920, 1080];
+    // The print: the box is bare all around it, where the branch shows and the tag hangs out.
+    const print = box(244, 60, 1432, 968);
+    const opening = box(288, 104, 1344, 822);
+    // Where the line of the foot stands, between the photograph and the print's line of gold.
+    const FOOT = 969;
+    // The olive branch of the shared watercolours, as it is painted, on a diagonal: its stem
+    // is behind the print's upper corner, and its leaves reach out beside the print.
+    const olive = picture(`${FLORALS}-4`);
     // Tape of paper over the top of the print: torn at both ends, striped with light.
     const teeth = (x, y, dx, dy, count) =>
       Array.from({ length: count }, (_, i) => `${x + (i % 2 ? 0 : dx)} ${y + (i + 1) * dy}`).join(
@@ -630,12 +652,15 @@ export default function family(kit) {
         `<rect width="210" height="4" fill="#ffffff" fill-opacity=".3"/><rect y="52" width="210" height="4" fill="#a98a4a" fill-opacity=".22"/></g>`,
     );
     // The tag: a card with its upper corners cut, an eyelet of gold, and a thread tied in a bow.
+    // It is drawn 250 by 318, and is `TAG` times as large on the wide card.
+    const TAG = 1.4;
     const tag = art(
       'tag-welcome',
-      250,
-      318,
+      350,
+      446,
       fall('card', '#ffffff', '#eff3f6') + gold('gold', ['#f0dfae', '#c7a257', '#e0c684']),
-      `<path fill-rule="evenodd" d="M52 70H198L238 110V302a12 12 0 0 1-12 12H24a12 12 0 0 1-12-12V110ZM125 96a8 8 0 1 0 .010 0Z" fill="url(#card)"/>` +
+      `<g transform="scale(${TAG})">` +
+        `<path fill-rule="evenodd" d="M52 70H198L238 110V302a12 12 0 0 1-12 12H24a12 12 0 0 1-12-12V110ZM125 96a8 8 0 1 0 .010 0Z" fill="url(#card)"/>` +
         `<path d="M56 79.500H194L228.500 114V298.500a6 6 0 0 1-6 6H27.500a6 6 0 0 1-6-6V114Z" fill="none" stroke="url(#gold)" stroke-width="1.600"/>` +
         `<circle cx="125" cy="104" r="10.500" fill="none" stroke="url(#gold)" stroke-width="5"/>` +
         // The thread: up through the eyelet to a knot, two loops and two ends that fall aside.
@@ -645,13 +670,13 @@ export default function family(kit) {
         `<path d="M122 46C108 52 96 58 88 68"/><path d="M128 46C142 52 154 58 162 68"/></g>` +
         `<circle cx="125" cy="44" r="6" fill="#b08d4c"/>` +
         line('M78 196H172', '#c7a257', 1.4, ' stroke-linecap="round"') +
-        `<path d="${sparkle(125, 196, 8, 0.3)}" fill="url(#gold)"/>`,
+        `<path d="${sparkle(125, 196, 8, 0.3)}" fill="url(#gold)"/></g>`,
     );
     return magnet(
       'magnet-brit',
       'Brit and britah magnet',
       'מגנט לברית ולבריתה',
-      [750, 1050, 10],
+      [W, H, 10],
       {
         opening,
         round: 4,
@@ -668,52 +693,60 @@ export default function family(kit) {
             S.outline(inset(print, 11), 3, 1.3, 'stroke="url(#gold)"') +
             frameLine(S, 3, 6, '#ffffff', 6) +
             // Two sparks of gold beside the line at the foot: they keep to its middle.
-            [-292, 292]
+            [-420, 420]
               .map((dx) =>
                 S.pin(
-                  `<path d="${sparkle(375 + dx, 966, 9, 0.28)}" fill="url(#gold)"/>`,
-                  [375 + dx, 966],
+                  `<path d="${sparkle(W / 2 + dx, FOOT, 13, 0.28)}" fill="url(#gold)"/>`,
+                  [W / 2 + dx, FOOT],
                   { x: 'mid', y: 'end' },
                 ),
               )
               .join(''),
         }),
         extras: [
-          sticker(olive, 306, 12, 436, { turn: -3, under: true }),
-          sticker(tape, 268, 76, 210, { turn: -3 }),
+          sticker(olive, 1470, 14, 440, { under: true }),
+          sticker(tape, 815, 22, 290, { turn: -3 }),
+          // The tag hangs over the print's upper corner. On a taller magnet it lengthens between
+          // its eyelet and its words, so neither is stretched.
           label(
             tag,
-            24,
-            30,
+            176,
+            22,
             [
               caption(
-                23,
-                130,
-                204,
-                52,
-                { text: 'ברוך הבא', font: 'Heebo', size: 33, weight: 500, spacing: 1 },
-                { text: 'WELCOME', font: 'Montserrat', size: 28, weight: 600, spacing: 2 },
+                32,
+                182,
+                286,
+                73,
+                { text: 'ברוך הבא', font: 'Heebo', size: 46, weight: 500, spacing: 1 },
+                { text: 'WELCOME', font: 'Montserrat', size: 39, weight: 600, spacing: 3 },
                 { color: '#5b7288' },
               ),
               caption(
-                23,
-                208,
-                204,
-                84,
-                { text: 'אריאל', font: 'Frank Ruhl Libre', size: 58, weight: 700 },
-                { text: 'Ariel', font: 'Playfair Display', size: 60, weight: 700 },
+                32,
+                291,
+                286,
+                118,
+                { text: 'אריאל', font: 'Frank Ruhl Libre', size: 81, weight: 700 },
+                { text: 'Ariel', font: 'Playfair Display', size: 84, weight: 700 },
                 { color: '#2f4459' },
               ),
             ],
-            { turn: -7 },
+            {
+              turn: -7,
+              stretch: {
+                x: [[88, 262]],
+                y: [[164, 180]],
+              },
+            },
           ),
           caption(
-            104,
-            938,
-            542,
-            56,
-            { text: 'שמחה גדולה במשפחה', font: 'Heebo', size: 34, weight: 500, spacing: 2 },
-            { text: 'OUR FAMILY JUST GREW', font: 'Montserrat', size: 28, weight: 600, spacing: 4 },
+            460,
+            FOOT - 29,
+            1000,
+            58,
+            { text: 'שמחה גדולה במשפחה', font: 'Heebo', size: 44, weight: 500, spacing: 3 },
+            { text: 'OUR FAMILY JUST GREW', font: 'Montserrat', size: 36, weight: 600, spacing: 5 },
             { color: '#3f566c' },
           ),
         ],
@@ -1137,19 +1170,23 @@ export default function family(kit) {
     );
   }
 
-  /* ---- a bachelorette party: a print with a thick white edge on a block of yellow, a sash
-     across its corner, a mirror ball and a cocktail at its foot */
+  /* ---- a bachelorette party: a wide print with a thick white edge on a block of yellow, a
+     sash across its corner, the title under it at the left and a mirror ball, a cocktail and a
+     kiss at its other corner. It is drawn for the wide slide. */
   function bachelorette() {
-    const opening = box(66, 88, 590, 724);
+    const [W, H] = [1920, 1080];
+    const opening = box(218, 84, 1484, 742);
     const print = inset(opening, -14);
     /*
      * The sash crosses the upper left corner of the print at `LEAN` degrees. Its two ends are
      * cut along the print's own edges, the left one upright and the upper one level, so it
-     * reads as a sash worn by the print; and it is short enough for its middle to lie in the
-     * first third of the card, so on a larger magnet it stays on that corner.
+     * reads as a sash worn by the print; and it is short enough to lie in the first third of
+     * the card both ways, so on a magnet of another size it stays on that corner as it is.
+     * Turned, its box reaches above the print by its own height, which is why the print
+     * stands as low as it does.
      */
     const LEAN = 35;
-    const [long, tall] = [520, 88];
+    const [long, tall] = [560, 84];
     const [sin, cos] = [Math.sin((LEAN * Math.PI) / 180), Math.cos((LEAN * Math.PI) / 180)];
     const cuts = { left: (tall * sin) / cos, right: (tall * cos) / sin };
     const sashShape = `M${f(cuts.left)} 0H${f(long - cuts.right)}L${long} ${tall}H0Z`;
@@ -1165,8 +1202,8 @@ export default function family(kit) {
         `<g clip-path="url(#sash)">` +
         line(`M0 7.500H${long}M0 ${tall - 7.5}H${long}`, '#ff2d8a', 3.4) +
         line(`M0 13.500H${long}M0 ${tall - 13.5}H${long}`, '#e3a82b', 1.1) +
-        `<path d="M0 9C-13-1-6-12 0-5 6-12 13-1 0 9Z" transform="translate(56 46) scale(1.150)" fill="#ff2d8a"/>` +
-        `<path d="M0 9C-13-1-6-12 0-5 6-12 13-1 0 9Z" transform="translate(${long - 86} 46) scale(1.150)" fill="#ff2d8a"/></g>`,
+        `<path d="M0 9C-13-1-6-12 0-5 6-12 13-1 0 9Z" transform="translate(56 ${tall / 2 + 2}) scale(1.150)" fill="#ff2d8a"/>` +
+        `<path d="M0 9C-13-1-6-12 0-5 6-12 13-1 0 9Z" transform="translate(${long - 86} ${tall / 2 + 2}) scale(1.150)" fill="#ff2d8a"/></g>`,
     );
     // Where the sash is put so that its cut ends lie on the print's left and upper edges.
     const turned = { w: long * cos + tall * sin, h: long * sin + tall * cos };
@@ -1174,15 +1211,17 @@ export default function family(kit) {
       x: print.x - tall * sin + turned.w / 2 - long / 2,
       y: print.y - tall * cos + turned.h / 2 - tall / 2,
     };
+    // Where the title and its small line stand, under the print at the left.
+    const words = box(print.x, 860, 800, 140);
     const next = random(808);
-    // Sparks of a mirror ball over the card.
+    // Sparks of a mirror ball over the card, around the print and the words.
     const glints = (S) =>
-      scattered(next, 34, 750, 1050, [inset(opening, -44), box(30, 860, 500, 170)], 44, 16)
+      scattered(next, 60, W, H, [inset(opening, -44), inset(words, -12)], 50, 16)
         .map(([x, y]) =>
           S.pin(
             next() < 0.6
-              ? `<path d="${sparkle(x, y, 5 + next() * 9, 0.2)}" fill="#ffffff" fill-opacity="${f(0.55 + next() * 0.45)}"/>`
-              : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(2 + next() * 3)}" fill="#fff3a8" fill-opacity=".8"/>`,
+              ? `<path d="${sparkle(x, y, 6 + next() * 11, 0.2)}" fill="#ffffff" fill-opacity="${f(0.55 + next() * 0.45)}"/>`
+              : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(2 + next() * 3.5)}" fill="#fff3a8" fill-opacity=".8"/>`,
             [x, y],
           ),
         )
@@ -1191,7 +1230,7 @@ export default function family(kit) {
       'magnet-bachelorette',
       'Bachelorette party magnet',
       'מגנט למסיבת רווקות',
-      [750, 1050, 26],
+      [W, H, 26],
       {
         opening,
         round: 2,
@@ -1218,36 +1257,37 @@ export default function family(kit) {
             sashAt.y,
             [
               caption(
-                69,
-                15,
-                350,
+                74,
+                13,
+                392,
                 58,
-                { text: 'הכלה בדרך!', font: 'Secular One', size: 46 },
-                { text: 'BRIDE TO BE', font: 'Poppins', size: 34, weight: 800, spacing: 2 },
+                { text: 'הכלה בדרך!', font: 'Secular One', size: 50 },
+                { text: 'BRIDE TO BE', font: 'Poppins', size: 36, weight: 800, spacing: 2 },
                 { color: '#2a0d5c' },
               ),
             ],
             { turn: -LEAN },
           ),
-          sticker('mirror-ball', 524, 770, 204, { turn: 8 }),
-          sticker('cocktail-glass', 470, 886, 148, { turn: -10 }),
-          sticker('kiss-mark', 640, 944, 92, { turn: 14 }),
+          // The cluster hangs over the print's lower corner, across the card from the title.
+          sticker('mirror-ball', 1552, 736, 280, { turn: 8 }),
+          sticker('cocktail-glass', 1396, 850, 204, { turn: -10 }),
+          sticker('kiss-mark', 1752, 934, 126, { turn: 14 }),
           caption(
-            38,
-            872,
-            460,
-            106,
-            { text: 'הרווקות של דנה', font: 'Karantina', size: 84, weight: 700 },
-            { text: 'DANA’S BACHELORETTE', font: 'Karantina', size: 56, weight: 700 },
+            words.x,
+            words.y,
+            words.w,
+            104,
+            { text: 'הרווקות של דנה', font: 'Karantina', size: 90, weight: 700 },
+            { text: 'DANA’S BACHELORETTE', font: 'Karantina', size: 88, weight: 700 },
             { color: '#2a0d5c', align: 'left' },
           ),
           caption(
-            40,
-            976,
-            430,
-            44,
-            { text: 'רק בנות · רק הלילה', font: 'Rubik', size: 30, weight: 500 },
-            { text: 'GIRLS ONLY · TONIGHT', font: 'Poppins', size: 28, weight: 600, spacing: 1 },
+            words.x + 2,
+            words.y + 104,
+            words.w - 2,
+            36,
+            { text: 'רק בנות · רק הלילה', font: 'Rubik', size: 31, weight: 500 },
+            { text: 'GIRLS ONLY · TONIGHT', font: 'Poppins', size: 29, weight: 600, spacing: 1 },
             { color: '#2a0d5c', align: 'left' },
           ),
         ],

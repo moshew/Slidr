@@ -352,12 +352,13 @@ describe('the magnets of events', () => {
     // In the catalogue they are set by set, as the panel shows them.
     const order = magnets.map((one) => MAGNET_SETS.indexOf(one.set!));
     expect(order).toEqual([...order].sort((a, b) => a - b));
-    // Every one is 7 by 5, lying or upright.
+    // Every one lies wide, as the slide it covers does: a card of 7 by 5 whose window takes up
+    // the rest of the slide, or a card drawn for the whole slide.
     for (const one of magnets) {
-      expect(
-        [one.size.w, one.size.h].sort((a, b) => a - b),
-        one.id,
-      ).toEqual([750, 1050]);
+      expect([
+        [1050, 750],
+        [1920, 1080],
+      ]).toContainEqual([one.size.w, one.size.h]);
     }
   });
 

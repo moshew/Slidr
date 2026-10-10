@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createScriptedAgent } from './scriptedAgent';
-import { HarnessSetup, modelEfforts, selectionIssue } from './harnessSetup';
+import { HarnessSetup, latestModels, modelEfforts, selectionIssue } from './harnessSetup';
 import type { HarnessConnection, HarnessDescriptor, HarnessStatus } from './agent';
 
 const harness: HarnessDescriptor = {
@@ -24,6 +24,22 @@ const harness: HarnessDescriptor = {
 const ready: HarnessStatus = { state: 'ready', version: '1', account: null, detail: null };
 
 describe('harness setup', () => {
+  it('offers only the newest version of each model family', () => {
+    const labels = (names: string[]) =>
+      latestModels(names.map((label) => ({ label }))).map((model) => model.label);
+    expect(
+      labels(['Opus 5.5', 'Fable 5.1', 'Haiku 4.5', 'Sonnet 5', 'Opus 5', 'Fable 5', 'Opus 4.10']),
+    ).toEqual(['Opus 5.5', 'Fable 5.1', 'Haiku 4.5', 'Sonnet 5']);
+    expect(labels(['GPT-5 Codex', 'GPT-5.2', 'GPT-5.1 Codex', 'GPT-5'])).toEqual([
+      'GPT-5.2',
+      'GPT-5.1 Codex',
+    ]);
+    expect(labels(['Reasoning model', 'Simple model'])).toEqual([
+      'Reasoning model',
+      'Simple model',
+    ]);
+  });
+
   it('keeps delayed connections for different harnesses separate and shares an in-flight request', async () => {
     const { client } = createScriptedAgent({});
     let finish!: (connection: HarnessConnection) => void;

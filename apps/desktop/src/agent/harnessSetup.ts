@@ -87,6 +87,39 @@ export function modelEfforts(harness: HarnessDescriptor, modelId?: string): stri
   return model ? (model.effortLevels ?? harness.effortLevels) : [];
 }
 
+/**
+ * The newest version of each model family ("Opus 5.5" hides "Opus 5" and "Opus 4.8"), in the
+ * order the harness listed them. A label without a version number is its own family.
+ */
+export function latestModels<T extends { label: string }>(models: T[]): T[] {
+  const parse = (label: string) => {
+    const version = /\d+(?:\.\d+)*/.exec(label);
+    if (!version) return { family: label, parts: [] as number[] };
+    const rest =
+      label.slice(0, version.index) + ' ' + label.slice(version.index + version[0].length);
+    return {
+      family: rest
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim(),
+      parts: version[0].split('.').map(Number),
+    };
+  };
+  const newer = (a: number[], b: number[]) => {
+    for (let i = 0; i < Math.max(a.length, b.length); i++)
+      if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
+    return false;
+  };
+  const best = new Map<string, { model: T; parts: number[] }>();
+  for (const model of models) {
+    const { family, parts } = parse(model.label);
+    const current = best.get(family);
+    if (!current || newer(parts, current.parts)) best.set(family, { model, parts });
+  }
+  const kept = new Set([...best.values()].map((entry) => entry.model));
+  return models.filter((model) => kept.has(model));
+}
+
 export function selectionIssue(
   harness: HarnessDescriptor,
   model?: string,
