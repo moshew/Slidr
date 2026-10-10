@@ -1,6 +1,25 @@
 /* The strings of the AI panels (WG11), namespace `ai`. */
 
 export const he = {
+  setup: {
+    welcome: 'ברוכים הבאים לצ׳אט של Slidr',
+    intro: 'לפני שמתחילים, נבחר יחד שירות, מודל ורמת מאמץ. הבחירות יישמרו לשיחות הבאות.',
+    harness: 'עם מי תרצו לעבוד?',
+    model: 'באיזה מודל תרצו להשתמש?',
+    effort: 'מה תהיה רמת המאמץ?',
+    continue: 'המשך',
+    change: 'שינוי הבחירה',
+    connecting: 'מתחברים וטוענים את המודלים הזמינים…',
+    installing: 'מתקינים. זה עשוי להימשך כמה דקות…',
+    signingIn: 'השלימו את ההתחברות בחלון שנפתח. לאחר מכן נמשיך כאן.',
+    installDescription:
+      '{{name}} אינו מותקן במחשב. באישורכם, נוריד ונתקין אותו באמצעות Windows App Installer, ואז נמשיך כאן.',
+    install: 'אישור והתקנה',
+    signInDescription: 'יש להתחבר לחשבון כדי לטעון את המודלים הזמינים.',
+    signIn: 'התחברות לחשבון',
+    unavailable: 'לא הצלחנו לטעון את האפשרויות. נסו שוב או בחרו שירות אחר.',
+    retry: 'ניסיון נוסף',
+  },
   empty: {
     deck: {
       title: 'מה נבנה?',
@@ -485,6 +504,26 @@ export const he = {
 };
 
 export const en = {
+  setup: {
+    welcome: 'Welcome to Slidr chat',
+    intro:
+      'Let’s choose a service, model and effort level together. Your choices will be saved for future conversations.',
+    harness: 'Who would you like to work with?',
+    model: 'Which model would you like to use?',
+    effort: 'What effort level would you like?',
+    continue: 'Continue',
+    change: 'Change selection',
+    connecting: 'Connecting and loading available models…',
+    installing: 'Installing. This may take a few minutes…',
+    signingIn: 'Complete sign-in in the window that opened. We’ll continue here afterwards.',
+    installDescription:
+      '{{name}} is not installed on this computer. With your approval, we’ll download and install it using Windows App Installer, then continue here.',
+    install: 'Approve and install',
+    signInDescription: 'Sign in to your account to load the available models.',
+    signIn: 'Sign in',
+    unavailable: 'We couldn’t load the options. Try again or choose another service.',
+    retry: 'Try again',
+  },
   empty: {
     deck: {
       title: 'What shall we build?',

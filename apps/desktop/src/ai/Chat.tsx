@@ -66,6 +66,7 @@ import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
 import { ModelPicker } from './ModelPicker';
+import { ChatSetup, useChatSetup } from './ChatSetup';
 import { OutlineCard } from './Outline';
 import { aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
 import { DECK } from './sessions';
@@ -795,6 +796,7 @@ export function Chat({
 }) {
   const { t } = useTranslation('ai');
   const thread = useThread(scope);
+  const setup = useChatSetup();
   const focus = useFocus();
   const deck = scope.kind === 'deck';
   const state = useStore(thread.store);
@@ -818,6 +820,8 @@ export function Chat({
   let content: ReactNode;
   if (!state.ready) {
     content = <Loading />;
+  } else if (state.entries.length === 0 && setup.needed) {
+    content = <ChatSetup setup={setup} />;
   } else if (state.entries.length === 0) {
     content = (
       <>
@@ -850,6 +854,7 @@ export function Chat({
         )}
         {state.busy && <Working activity={state.activity} stopping={state.stopping} />}
         {afterMessages}
+        {setup.needed && <ChatSetup setup={setup} />}
       </div>
     );
   }
@@ -877,19 +882,21 @@ export function Chat({
       {deck && <Gallery />}
       {/* A template the agent drafted is shown before anything is saved (THM-06). */}
       {deck && <TemplateDraftCard />}
-      <Composer
-        focus={deck ? focus : null}
-        threadId={thread.id}
-        busy={state.busy}
-        stopping={state.stopping}
-        draft={draft}
-        onDraft={(change) => drafts.change(subject, change)}
-        onSend={(text, files) => {
-          stick();
-          void thread.send(text, files.length > 0 ? { attachments: files } : {});
-        }}
-        onStop={() => void thread.stop()}
-      />
+      {!setup.needed && (
+        <Composer
+          focus={deck ? focus : null}
+          threadId={thread.id}
+          busy={state.busy}
+          stopping={state.stopping}
+          draft={draft}
+          onDraft={(change) => drafts.change(subject, change)}
+          onSend={(text, files) => {
+            stick();
+            void thread.send(text, files.length > 0 ? { attachments: files } : {});
+          }}
+          onStop={() => void thread.stop()}
+        />
+      )}
     </div>
   );
 }

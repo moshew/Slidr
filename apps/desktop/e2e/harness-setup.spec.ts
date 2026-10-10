@@ -133,7 +133,64 @@ test('selection connects, installation needs approval, and sign-in loads models 
   await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', '');
 });
 
+test('chat handles installation, sign-in and a model without effort', async ({ page }) => {
+  await openApp(page, { lang: 'en' });
+  await fixtures(page);
+  await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
+  const setup = page.getByTestId('chat-setup');
+  await setup.getByRole('button', { name: 'Change selection' }).click();
+  await setup.getByRole('radio', { name: 'GitHub Copilot' }).check();
+  await setup.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(setup).toContainText('Windows App Installer');
+  await expect(page.locator('body')).not.toHaveAttribute('data-installed-harness');
+  await setup.getByRole('button', { name: 'Approve and install' }).click();
+  await setup.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await setup.getByRole('radio', { name: 'Simple model' }).check();
+  await setup.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(setup).toHaveCount(0);
+  await expect(page.getByTestId('model-picker')).toHaveAttribute(
+    'data-model',
+    'copilot-cli-simple',
+  );
+  await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', '');
+});
+
 for (const lang of ['he', 'en'] as const) {
+  test(`first-time setup stays in chat in ${lang}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await openApp(page, { lang });
+    await fixtures(page);
+    await page.evaluate(async () => {
+      const path = '/src/settings/index.ts';
+      const { setAgentSettings } = (await import(/* @vite-ignore */ path)) as typeof Settings;
+      setAgentSettings({ harnessId: undefined, model: undefined, effort: undefined });
+    });
+    await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
+    const setup = page.getByTestId('chat-setup');
+    await expect(setup).toBeVisible();
+    await expect(setup).not.toContainText('CLI');
+    await expect(page.getByTestId('chat-input')).toHaveCount(0);
+    await page.screenshot({ path: `test-results/chat-setup-${lang}.png` });
+    await setup.getByRole('radio', { name: 'Codex', exact: true }).check();
+    const next = () => setup.getByRole('button', { name: /^(Continue|המשך)$/ }).click();
+    await next();
+    await setup.getByRole('radio', { name: 'Reasoning model' }).check();
+    await next();
+    await expect(setup.getByRole('radio')).toHaveCount(2);
+    await setup.getByRole('radio').last().check();
+    await next();
+    await expect(setup).toHaveCount(0);
+    await expect(page.getByTestId('model-picker')).toHaveAttribute(
+      'data-model',
+      'codex-cli-reasoning',
+    );
+    await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', 'ultra');
+    await expect(page.getByTestId('chat-input')).toBeVisible();
+    await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+    await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
+    await expect(setup).toHaveCount(0);
+  });
+
   test(`model selection is readable in ${lang}`, async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await openApp(page, { lang });
