@@ -1,14 +1,19 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-Clears Slidr's Windows WebView2 disk caches after the app is closed.
+Clears Slidr's Windows caches, preferences, imported fonts and recovery workspaces after the app is closed.
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1 -WhatIf
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1
 .NOTES
-Preserves projects, recovery workspaces, agent conversations, settings, cookies,
-Local Storage and IndexedDB (including imported fonts). Does not clear caches
+Deletes settings.json, Local Storage, IndexedDB (imported fonts), and Session Storage.
+Also deletes the app's workspaces directory, including autosaves, unsaved changes,
+and any chat or assets held only in those workspaces. These cannot be recovered.
+Preserves .slidr files saved outside the app data directories, external attachments,
+the agent directory, cookies and API keys in Windows Credential Manager.
+Bundled/system fonts are unaffected.
+Does not clear caches
 of a separate browser running pnpm dev, or build/package-manager caches.
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
@@ -25,6 +30,11 @@ if ([string]::IsNullOrWhiteSpace($localData)) {
     throw 'Cannot locate LocalApplicationData.'
 }
 $appRoot = [IO.Path]::GetFullPath((Join-Path $localData 'dev.slidr.app'))
+$roamingData = [Environment]::GetFolderPath('ApplicationData')
+if ([string]::IsNullOrWhiteSpace($roamingData)) {
+    throw 'Cannot locate ApplicationData.'
+}
+$roamingRoot = [IO.Path]::GetFullPath((Join-Path $roamingData 'dev.slidr.app'))
 $webviewRoot = Join-Path $appRoot 'EBWebView'
 
 # Never stop the app forcibly: it may have unsaved work.
@@ -37,7 +47,8 @@ if (-not $WhatIfPreference) {
     }
 }
 
-# An explicit allowlist avoids deleting persistent application data.
+# An explicit allowlist includes recovery workspaces but never follows source
+# paths to the user's saved documents or their external attachments.
 $cachePaths = @(
     'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache',
     'DawnWebGPUCache', 'ShaderCache', 'GrShaderCache', 'GraphiteDawnCache',
@@ -46,13 +57,26 @@ $cachePaths = @(
     'Default\DawnCache', 'Default\DawnGraphiteCache', 'Default\DawnWebGPUCache',
     'Default\AutofillAiModelCache', 'Default\optimization_guide_hint_cache_store',
     'Default\Shared Dictionary', 'Default\Service Worker\CacheStorage',
-    'Default\Service Worker\ScriptCache'
+    'Default\Service Worker\ScriptCache',
+    'Default\Local Storage', 'Default\IndexedDB', 'Default\Session Storage'
+)
+$allowedTargets = @(
+    foreach ($relative in $cachePaths) {
+        [IO.Path]::GetFullPath((Join-Path $webviewRoot $relative))
+    }
+    [IO.Path]::GetFullPath((Join-Path $roamingRoot 'settings.json'))
+    [IO.Path]::GetFullPath((Join-Path $roamingRoot 'workspaces'))
 )
 
 function Assert-SafeTarget([string] $Target) {
-    $prefix = $appRoot.TrimEnd('\') + '\'
-    if (-not $Target.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Target is outside Slidr's data directory: $Target"
+    $insideRoot = $false
+    foreach ($root in @($appRoot, $roamingRoot)) {
+        if ($Target.StartsWith($root.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
+            $insideRoot = $true
+        }
+    }
+    if (-not $insideRoot -or $allowedTargets -notcontains $Target) {
+        throw "Target is not an allowed Slidr reset path: $Target"
     }
     # Check every ancestor and descendant before recursive removal. Junctions
     # and symbolic links must never redirect deletion to another directory.
@@ -79,8 +103,7 @@ function Assert-SafeTarget([string] $Target) {
 }
 
 $targets = @(
-    foreach ($relative in $cachePaths) {
-        $target = [IO.Path]::GetFullPath((Join-Path $webviewRoot $relative))
+    foreach ($target in $allowedTargets) {
         if (Test-Path -LiteralPath $target) {
             Assert-SafeTarget $target
             $target
@@ -89,7 +112,7 @@ $targets = @(
 )
 $removed = 0
 foreach ($target in $targets) {
-    if ($PSCmdlet.ShouldProcess($target, 'Delete Slidr cache')) {
+    if ($PSCmdlet.ShouldProcess($target, 'Delete Slidr cache, preferences, imported fonts or recovery workspaces')) {
         Assert-SafeTarget $target
         Remove-Item -LiteralPath $target -Recurse -Force
         Write-Host "Cleared: $target"
@@ -97,7 +120,7 @@ foreach ($target in $targets) {
     }
 }
 if ($WhatIfPreference) {
-    Write-Host "Preview complete: $($targets.Count) cache directories found. No files deleted."
+    Write-Host "Preview complete: $($targets.Count) reset targets found. No files deleted."
 } else {
-    Write-Host "Done: cleared $removed cache directories. Slidr rebuilds these caches when needed."
+    Write-Host "Done: cleared $removed targets. Preferences and imported fonts reset; recovery workspaces deleted. Externally saved projects preserved."
 }
