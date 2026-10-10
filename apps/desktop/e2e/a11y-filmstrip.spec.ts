@@ -13,8 +13,7 @@ import {
  * The Filmstrip for the keyboard and for a screen reader (WG13-T06, UI-06, FLM-04): a list with a
  * name that holds slides and nothing else, says which slide the keyboard is on and how many there
  * are, shows that it has the keyboard, opens its menu about the current slide, selects slides
- * that are not next to each other without the pointer, and marks a slide's animations below the
- * thumbnail and its transition between it and the slide before, where a press opens it.
+ * that are not next to each other without the pointer, and describes a slide's animations accessibly and its transition between it and the slide before, where a press opens it.
  */
 
 const strip = (page: Page) => page.locator('[data-filmstrip]');
@@ -154,15 +153,15 @@ for (const lang of ['he', 'en'] as const) {
       const image = (await option.locator('.slidr-slide').boundingBox())!;
       const number = option.getByTestId('slide-number');
       const box = (await number.boundingBox())!;
-      expect(image.width).toBe(160);
-      expect(image.height).toBe(90);
+      expect(image.width).toBeCloseTo((75 * 16) / 9, 1);
+      expect(image.height).toBe(75);
       expect(box.y).toBeGreaterThan(image.y);
       expect(box.y + box.height).toBeLessThan(image.y + image.height);
       if (lang === 'he') expect(box.x).toBeLessThan(image.x + image.width / 2);
       else expect(box.x).toBeGreaterThan(image.x + image.width / 2);
       await expect(number).toHaveCSS('color', ink);
     }
-    expect((await page.getByTestId('filmstrip').boundingBox())!.height).toBe(124);
+    expect((await page.getByTestId('filmstrip').boundingBox())!.height).toBe(96);
   });
 }
 
@@ -312,7 +311,7 @@ const transitionMark = (page: Page, slideId: string) =>
   strip(page).locator(`[data-testid="slide-transition"][data-into="${slideId}"]`);
 
 for (const lang of ['he', 'en'] as const) {
-  test(`a transition is marked between its two slides, and animations below the thumbnail, ${lang}`, async ({
+  test(`a transition is marked between its two slides, and animations are described without an icon, ${lang}`, async ({
     page,
   }) => {
     await openApp(page, { lang });
@@ -363,7 +362,7 @@ for (const lang of ['he', 'en'] as const) {
     );
     // It is the picture of its kind, not one picture for every transition.
     await expect(transition.locator('svg')).toHaveClass(/lucide-contrast/);
-    await expect(animations).toBeVisible();
+    await expect(animations).toHaveCount(0);
     // A screen reader hears both as the description of the slide.
     await expect(second).toHaveAccessibleDescription(
       lang === 'he' ? /יש מעבר.*שתי אנימציות/ : /Has a transition.*2 animations/,
@@ -382,12 +381,6 @@ for (const lang of ['he', 'en'] as const) {
     expect(middle).toBeLessThan(right.x);
     expect(at.y).toBeGreaterThan(picture.y);
     expect(at.y + at.height).toBeLessThan(picture.y + picture.height);
-    // The animations stay below the picture. By the middle of the mark:
-    // the row begins a pixel inside the picture's box, to stay clear of the
-    // strip's scrollbar.
-    const moving = (await animations.boundingBox())!;
-    expect(moving.y + moving.height / 2).toBeGreaterThan(picture.y + picture.height);
-
     // A gap without a transition keeps an offer of one out of sight until the pointer is near;
     // no slide is before the first one, so no mark is.
     const offer = transitionMark(page, three!).getByRole('button');
@@ -472,3 +465,32 @@ test('a press on the mark between two slides opens the transition into the secon
   await expect(strip(page).getByTestId('slide-transition')).toHaveCount(2);
   expect(await slideIds(page)).toEqual([one, two, three]);
 });
+
+for (const lang of ['he', 'en'] as const) {
+  test(`thumbnails fit a shorter panel with balanced scrollbar spacing, ${lang}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang });
+    const [first] = await slides(page, 20);
+    for (const height of [96, 76]) {
+      await page.getByTestId('filmstrip').evaluate((node, size) => {
+        node.style.height = `${size}px`;
+      }, height);
+      const picture = thumb(page, first!).locator('.slidr-slide');
+      await expect.poll(async () => (await picture.boundingBox())!.height).toBe(height - 21);
+      const frame = (await strip(page).boundingBox())!;
+      const image = (await picture.boundingBox())!;
+      expect(image.y - frame.y).toBe(7);
+      const scrollbarHeight = await strip(page).evaluate((node) =>
+        Math.max(6, (node as HTMLElement).offsetHeight - node.clientHeight),
+      );
+      expect(frame.y + frame.height - scrollbarHeight - image.y - image.height).toBeCloseTo(7);
+      expect(await strip(page).evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true);
+      await page
+        .getByTestId('filmstrip')
+        .screenshot({ path: `test-results/filmstrip-spacing/${lang}-${height}.png` });
+      await thumb(page, 's_2').click();
+      expect(await currentSlide(page)).toBe('s_2');
+    }
+  });
+}

@@ -42,9 +42,9 @@
         "license": "Apache-2.0",
         "bytes": 175997641
       },
-      "path": "/data/dev.slidr.app/models/u2net.onnx",
+      "path": "/data/slidr.app/models/u2net.onnx",
       "place": "app_data",
-      "installDir": "/data/dev.slidr.app/models",
+      "installDir": "/data/slidr.app/models",
       "supported": [
         {
           "id": "u2net",
@@ -74,7 +74,7 @@
       "model": null,
       "path": null,
       "place": null,
-      "installDir": "/data/dev.slidr.app/models",
+      "installDir": "/data/slidr.app/models",
       "supported": [
         {
           "id": "u2net",
@@ -111,9 +111,9 @@
           "license": "BSD-3-Clause",
           "bytes": 4862660
         },
-        "path": "/data/dev.slidr.app/models/realesr-general-x4v3.onnx",
+        "path": "/data/slidr.app/models/realesr-general-x4v3.onnx",
         "place": "app_data",
-        "installDir": "/data/dev.slidr.app/models",
+        "installDir": "/data/slidr.app/models",
         "supported": [
           {
             "id": "realesr-general-x4v3",
@@ -132,7 +132,7 @@
         "model": null,
         "path": null,
         "place": null,
-        "installDir": "/data/dev.slidr.app/models",
+        "installDir": "/data/slidr.app/models",
         "supported": [
           {
             "id": "realesr-general-x4v3",

@@ -89,7 +89,11 @@ export async function framePicture(
   const { deck } = editor.bus;
   const slide = findSlide(deck, picture.slideId);
   if (!slide) return;
-  const { command, select } = reframe(slide, picture.element, frame, deck.meta.lang, all);
+  const { command, select } = reframe(slide, picture.element, frame, deck.meta.lang, all, {
+    x: 0,
+    y: 0,
+    ...deck.size,
+  });
   editor.bus.dispatch(command, { label: i18n.t('elements:history.reframe') });
   editor.selection.getState().selectElements([select]);
   focusStage();

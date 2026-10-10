@@ -48,7 +48,6 @@ import {
   CopyPlus,
   Eye,
   EyeOff,
-  Film,
   Plus,
   Scissors,
   Trash2,
@@ -92,7 +91,7 @@ export interface FilmstripProps {
   /** Labels in the UI language. Default: English. */
   labels?: FilmstripLabels;
   /**
-   * What other areas mark a slide with, drawn under the thumbnail (FLM-04): the design
+   * What other areas mark a slide with, drawn over the thumbnail (FLM-04): the design
    * check's findings. A screen reader hears it as the thumbnail's description.
    */
   mark?: (slideId: string) => ReactNode;
@@ -130,7 +129,7 @@ export interface FilmstripLabels {
   transitionInto: (n: number, type: string) => string;
   /** The same place without a transition: the offer to add one into slide `n`. */
   addTransition: (n: number) => string;
-  /** The mark of a slide whose elements are animated, by how many animations (FLM-04). */
+  /** The accessible description of a slide with animated elements, by how many animations (FLM-04). */
   animations: (count: number) => string;
   /** The mark on a slide that is left out of the presentation. */
   hidden: string;
@@ -151,7 +150,9 @@ export const THUMB_W = 160;
 export const THUMB_H = 90;
 const GAP = 16;
 const PAD = 16;
-const STEP = THUMB_W + GAP;
+const VERTICAL_PAD = 7;
+/** Matches the filmstrip scrollbar in theme.css; reserve it even with overlay scrollbars. */
+const SCROLLBAR_HEIGHT = 6;
 /** Thumbnails rendered beyond each edge of the view. */
 const OVERSCAN = 3;
 /** What one line of a wheel that counts in lines scrolls the strip, in pixels. */
@@ -349,24 +350,11 @@ function SlideNumber({
   );
 }
 
-/**
- * A state of the slide, below its thumbnail (FLM-04): an icon, with words for a screen reader,
- * who hears them as the slide's description, and for whoever points at it.
- */
-function StateMark({ icon, label, testId }: { icon: LucideIcon; label: string; testId: string }) {
-  return (
-    <Tooltip content={label}>
-      <span data-testid={testId} className="inline-flex items-center text-ui-fg-muted">
-        <Icon icon={icon} />
-        <span className="sr-only">{label}</span>
-      </span>
-    </Tooltip>
-  );
-}
-
 const Thumb = memo(function Thumb({
   deck,
   slideIndex,
+  thumbWidth,
+  thumbHeight,
   selected,
   current,
   walked,
@@ -379,6 +367,8 @@ const Thumb = memo(function Thumb({
 }: {
   deck: Deck;
   slideIndex: number;
+  thumbWidth: number;
+  thumbHeight: number;
   selected: boolean;
   current: boolean;
   /** The selection walk stands on this slide (UI-06): the keyboard is here, selected or not. */
@@ -413,16 +403,16 @@ const Thumb = memo(function Thumb({
       data-walk={walked || undefined}
       style={{
         position: 'absolute',
-        insetInlineStart: PAD + slideIndex * STEP,
-        top: 7,
-        width: THUMB_W,
+        insetInlineStart: PAD + slideIndex * (thumbWidth + GAP),
+        top: VERTICAL_PAD,
+        width: thumbWidth,
       }}
     >
       <div
         style={{
           position: 'relative',
-          width: THUMB_W,
-          height: THUMB_H,
+          width: thumbWidth,
+          height: thumbHeight,
           borderRadius: 'var(--radius-small)',
           overflow: 'hidden',
           opacity: slide.hidden ? 0.45 : 1,
@@ -438,7 +428,7 @@ const Thumb = memo(function Thumb({
         <ScaledSlide
           deck={deck}
           slide={slide}
-          width={THUMB_W}
+          width={thumbWidth}
           mode="thumbnail"
           resolveAsset={resolveAsset}
         />
@@ -453,8 +443,8 @@ const Thumb = memo(function Thumb({
             position: 'absolute',
             top: 0,
             insetInlineStart: 0,
-            width: THUMB_W,
-            height: THUMB_H,
+            width: thumbWidth,
+            height: thumbHeight,
             borderRadius: 'var(--radius-small)',
             outline: '2px dotted var(--color-ui-focus)',
             outlineOffset: 4,
@@ -484,51 +474,20 @@ const Thumb = memo(function Thumb({
           <Icon icon={EyeOff} />
         </div>
       ) : null}
-      {(mark || hasState) && (
+      {mark && (
         <div
-          style={{
-            position: 'relative',
-            // Keep the marks above the strip's 10px horizontal scrollbar.
-            marginTop: 0,
-            height: 14,
-          }}
+          id={markId}
+          data-testid="slide-mark"
+          style={{ position: 'absolute', top: 4, insetInlineStart: 4, display: 'flex', gap: 4 }}
         >
-          {mark && (
-            // Under the picture: the thumbnail stays the slide as it is drawn.
-            // The mark draws itself, or nothing.
-            <div
-              id={markId}
-              data-testid="slide-mark"
-              style={{
-                position: 'absolute',
-                top: -1,
-                insetInlineStart: 0,
-                display: 'flex',
-                gap: 4,
-              }}
-            >
-              {mark(slide.id)}
-            </div>
-          )}
-          {hasState && (
-            // The slide's own states, at the other end of the row: whether anything on it moves.
-            // How it comes in is drawn between the slides (`TransitionMark`) and said here too.
-            <div
-              id={stateId}
-              data-testid="slide-state"
-              style={{ position: 'absolute', top: -1, insetInlineEnd: 0, display: 'flex', gap: 4 }}
-            >
-              {transition && <span className="sr-only">{transitionLabel}</span>}
-              {animations > 0 && (
-                <StateMark
-                  icon={Film}
-                  label={animationsLabel(animations)}
-                  testId="slide-animations-mark"
-                />
-              )}
-            </div>
-          )}
+          {mark(slide.id)}
         </div>
+      )}
+      {hasState && (
+        <span id={stateId} data-testid="slide-state" className="sr-only">
+          {transition && <span>{transitionLabel}</span>}
+          {animations > 0 && <span>{animationsLabel(animations)}</span>}
+        </span>
       )}
     </div>
   );
@@ -545,6 +504,8 @@ const Thumb = memo(function Thumb({
 const TransitionMark = memo(function TransitionMark({
   slide,
   slideIndex,
+  thumbWidth,
+  thumbHeight,
   label,
   icon = Blend,
   mirror,
@@ -552,6 +513,8 @@ const TransitionMark = memo(function TransitionMark({
 }: {
   slide: Slide;
   slideIndex: number;
+  thumbWidth: number;
+  thumbHeight: number;
   label: string;
   /** The picture of the transition's kind; of the offer of one, that of transitions as such. */
   icon?: LucideIcon;
@@ -586,10 +549,10 @@ const TransitionMark = memo(function TransitionMark({
       className="group"
       style={{
         position: 'absolute',
-        insetInlineStart: PAD + slideIndex * STEP - GAP - REACH,
-        top: 7,
+        insetInlineStart: PAD + slideIndex * (thumbWidth + GAP) - GAP - REACH,
+        top: VERTICAL_PAD,
         width: GAP + 2 * REACH,
-        height: THUMB_H,
+        height: thumbHeight,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -725,14 +688,20 @@ function LayoutChoices({
 const NO_KEYS = { ctrlKey: false, metaKey: false, shiftKey: false };
 
 /** Scrolls the strip so that the slide at an index is in view, if it is not. */
-function revealSlide(el: HTMLElement, index: number, behavior: ScrollBehavior): void {
+function revealSlide(
+  el: HTMLElement,
+  index: number,
+  behavior: ScrollBehavior,
+  thumbWidth: number,
+): void {
+  const step = thumbWidth + GAP;
   if (index < 0) return;
-  const start = PAD + index * STEP;
+  const start = PAD + index * step;
   const pos = Math.abs(el.scrollLeft);
   const rtl = getComputedStyle(el).direction === 'rtl';
   const to = (p: number) => el.scrollTo({ left: rtl ? -p : p, behavior });
   if (start < pos) to(start - PAD);
-  else if (start + THUMB_W > pos + el.clientWidth) to(start + THUMB_W + PAD - el.clientWidth);
+  else if (start + thumbWidth > pos + el.clientWidth) to(start + thumbWidth + PAD - el.clientWidth);
 }
 
 export function Filmstrip({
@@ -751,7 +720,7 @@ export function Filmstrip({
   const scroller = useRef<HTMLDivElement>(null);
   /** The list of slides in it: it takes the keyboard. */
   const list = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState({ pos: 0, width: 0 });
+  const [view, setView] = useState({ pos: 0, width: 0, height: 0 });
   const [drag, setDrag] = useState<Drag | null>(null);
   /** What the open menu is about: a slide (and the selection around it) or the empty strip. */
   const [menu, setMenu] = useState({ onSlide: false, canPaste: false });
@@ -760,7 +729,14 @@ export function Filmstrip({
   const selectedIds = useStore(selection, (s) => s.selectedSlideIds);
   const slides = deck.slides;
   const hasLayouts = deck.layouts.length > 0;
-  const total = PAD * 2 + slides.length * STEP + THUMB_W;
+  // Keep a separate scrollbar gutter so the bottom padding stays clear of the scroll thumb.
+  const thumbHeight = Math.min(
+    THUMB_H,
+    Math.max(1, (view.height || 95 - SCROLLBAR_HEIGHT) - VERTICAL_PAD * 2),
+  );
+  const thumbWidth = thumbHeight * (deck.size.w / deck.size.h);
+  const step = thumbWidth + GAP;
+  const total = PAD * 2 + slides.length * step + thumbWidth;
 
   // The selection walk (UI-06): the slide the keyboard is on without having selected it.
   const walkId = useStore(stageKeys, (s) => s.slide);
@@ -781,7 +757,12 @@ export function Filmstrip({
     const el = scroller.current;
     if (!el) return;
     // In RTL, Chromium reports scrollLeft as zero or negative; the distance from the start is what counts.
-    setView({ pos: Math.abs(el.scrollLeft), width: el.clientWidth });
+    setView({
+      pos: Math.abs(el.scrollLeft),
+      width: el.clientWidth,
+      // Reserve the gutter even without overflow, avoiding thumbnail size changes as slides are added.
+      height: el.offsetHeight - Math.max(SCROLLBAR_HEIGHT, el.offsetHeight - el.clientHeight),
+    });
   };
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -828,15 +809,16 @@ export function Filmstrip({
       el,
       slides.findIndex((s) => s.id === currentId),
       still?.matches ? 'instant' : 'smooth',
+      thumbWidth,
     );
-  }, [currentId, slides]);
+  }, [currentId, slides, thumbWidth]);
   // And the slide the walk stands on: the keyboard is there, so it has to be seen.
   useEffect(() => {
-    if (scroller.current) revealSlide(scroller.current, walkIndex, 'instant');
-  }, [walkIndex]);
+    if (scroller.current) revealSlide(scroller.current, walkIndex, 'instant', thumbWidth);
+  }, [walkIndex, thumbWidth]);
 
-  const first = Math.max(0, Math.floor((view.pos - PAD) / STEP) - OVERSCAN);
-  const last = Math.min(slides.length - 1, Math.ceil((view.pos + view.width) / STEP) + OVERSCAN);
+  const first = Math.max(0, Math.floor((view.pos - PAD) / step) - OVERSCAN);
+  const last = Math.min(slides.length - 1, Math.ceil((view.pos + view.width) / step) + OVERSCAN);
 
   /** The thumbnail slot under a pointer, 0..n, in the strip's own direction. */
   const slotAt = (clientX: number): number => {
@@ -845,7 +827,7 @@ export function Filmstrip({
     const rect = el.getBoundingClientRect();
     const rtl = getComputedStyle(el).direction === 'rtl';
     const inline = (rtl ? rect.right - clientX : clientX - rect.left) + Math.abs(el.scrollLeft);
-    return Math.max(0, Math.min(slides.length, Math.round((inline - PAD + GAP / 2) / STEP)));
+    return Math.max(0, Math.min(slides.length, Math.round((inline - PAD + GAP / 2) / step)));
   };
 
   const indexAt = (clientX: number): number => {
@@ -855,8 +837,8 @@ export function Filmstrip({
     const rtl = getComputedStyle(el).direction === 'rtl';
     const inline =
       (rtl ? rect.right - clientX : clientX - rect.left) + Math.abs(el.scrollLeft) - PAD;
-    const i = Math.floor(inline / STEP);
-    return inline - i * STEP <= THUMB_W && i >= 0 && i < slides.length ? i : -1;
+    const i = Math.floor(inline / step);
+    return inline - i * step <= thumbWidth && i >= 0 && i < slides.length ? i : -1;
   };
 
   const select = (index: number, e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => {
@@ -949,10 +931,10 @@ export function Filmstrip({
     // This event goes no further, so stopping the webview's own menu is done here too.
     e.preventDefault();
     e.stopPropagation();
-    revealSlide(el, index, 'instant');
+    revealSlide(el, index, 'instant', thumbWidth);
     const rect = el.getBoundingClientRect();
     const rtl = getComputedStyle(el).direction === 'rtl';
-    const inline = PAD + index * STEP + THUMB_W / 2 - Math.abs(el.scrollLeft);
+    const inline = PAD + index * step + thumbWidth / 2 - Math.abs(el.scrollLeft);
     el.dispatchEvent(
       new globalThis.MouseEvent('contextmenu', {
         bubbles: true,
@@ -960,7 +942,7 @@ export function Filmstrip({
         view: el.ownerDocument.defaultView,
         button: 2,
         clientX: rtl ? rect.right - inline : rect.left + inline,
-        clientY: rect.top + 10 + THUMB_H / 2,
+        clientY: rect.top + 10 + thumbHeight / 2,
       }),
     );
   };
@@ -1113,7 +1095,7 @@ export function Filmstrip({
     return () => setStripCommands(null);
   });
 
-  const indicator = drag?.active ? PAD + drag.slot * STEP - GAP / 2 - 1 : undefined;
+  const indicator = drag?.active ? PAD + drag.slot * step - GAP / 2 - 1 : undefined;
   // The slide the keyboard is on: where the walk stands, else the current one. The list names
   // it only while its thumbnail is drawn, as only the slides in view are.
   const activeIndex = walkIndex >= 0 ? walkIndex : slides.findIndex((s) => s.id === currentId);
@@ -1126,7 +1108,8 @@ export function Filmstrip({
       data-testid="new-slide"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={hasLayouts ? undefined : () => add()}
-      className="inline-flex h-thumb-h w-thumb-h cursor-default items-center justify-center rounded-small border border-dashed border-ui-line-strong text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed"
+      style={{ width: thumbHeight, height: thumbHeight }}
+      className="inline-flex cursor-default items-center justify-center rounded-small border border-dashed border-ui-line-strong text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed"
     >
       <Icon icon={Plus} size="md" />
     </button>
@@ -1197,6 +1180,8 @@ export function Filmstrip({
                   <Thumb
                     key={slide.id}
                     deck={deck}
+                    thumbWidth={thumbWidth}
+                    thumbHeight={thumbHeight}
                     slideIndex={first + i}
                     selected={selectedIds.includes(slide.id)}
                     current={slide.id === currentId}
@@ -1222,6 +1207,8 @@ export function Filmstrip({
                     <TransitionMark
                       key={slide.id}
                       slide={slide}
+                      thumbWidth={thumbWidth}
+                      thumbHeight={thumbHeight}
                       slideIndex={index}
                       label={
                         type === undefined
@@ -1237,8 +1224,8 @@ export function Filmstrip({
               <div
                 style={{
                   position: 'absolute',
-                  insetInlineStart: PAD + slides.length * STEP,
-                  top: 7,
+                  insetInlineStart: PAD + slides.length * step,
+                  top: VERTICAL_PAD,
                 }}
               >
                 {/* With layouts in the deck the button offers them (FLM-03). */}
@@ -1254,7 +1241,7 @@ export function Filmstrip({
                     insetInlineStart: indicator,
                     top: 6,
                     width: 2,
-                    height: THUMB_H + 8,
+                    height: thumbHeight + 2,
                     borderRadius: 1,
                     background: 'var(--color-ui-accent)',
                   }}

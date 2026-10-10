@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.media",
+  "identifier": "slidr.app.media",
   "build": {
     "devUrl": "http://localhost:1521",
     "beforeDevCommand": "pnpm exec vite --port 1521 --strictPort"

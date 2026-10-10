@@ -15,7 +15,7 @@ pub struct Keychain {
 }
 
 impl Keychain {
-    /// The entries of the app whose identifier is `service` (`dev.slidr.app`).
+    /// The entries of the app whose identifier is `service` (`slidr.app`).
     pub fn new(service: impl Into<String>) -> Self {
         Self {
             service: service.into(),
@@ -66,7 +66,7 @@ mod tests {
     #[test]
     #[ignore = "writes to the credential store of the machine"]
     fn real_credential_store_keeps_a_key_between_two_readers() -> TestResult {
-        let service = format!("dev.slidr.app.test-{}", uuid::Uuid::new_v4().simple());
+        let service = format!("slidr.app.test-{}", uuid::Uuid::new_v4().simple());
         let name = "openai-api";
         let first = Keychain::new(&service);
         assert_eq!(first.get(name)?, None);

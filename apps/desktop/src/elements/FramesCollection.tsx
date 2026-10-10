@@ -24,7 +24,7 @@ import {
 } from './frames';
 import { framePicture, insertFrame } from './insert';
 import { useColumns, useNear } from './StickerGrid';
-import { FRAME_PHOTO_URL, FrameThumbDefs } from './tiles';
+import { FRAME_PHOTO_URL } from './tiles';
 
 /*
  * The photo frames of Elements: what the collection shows, and a frame drawn small. A click on
@@ -37,11 +37,7 @@ const MOST_FOUND = 60;
 /** How many rows of a group the overview shows. */
 const PREVIEW_ROWS = 2;
 
-/**
- * A frame drawn small. The photograph it waits for is a landscape (`FrameThumbDefs`, which the
- * panel draws once), cut as the frame cuts it. A frame with artwork or with stickers is drawn
- * by the renderer instead, in the colours of the deck's theme.
- */
+/** Every thumbnail uses the same wide canvas and renderer as the inserted frame. */
 export function FrameThumb({ frame }: { frame: PhotoFrame }) {
   return <DrawnThumb frame={frame} />;
 }
@@ -348,7 +344,6 @@ export function FramesCollection() {
 
   return (
     <>
-      <FrameThumbDefs />
       <Input
         icon={Search}
         value={query}

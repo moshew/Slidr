@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.aitools",
+  "identifier": "slidr.app.aitools",
   "build": {
     "devUrl": "http://localhost:1501",
     "beforeDevCommand": "pnpm exec vite --port 1501 --strictPort"

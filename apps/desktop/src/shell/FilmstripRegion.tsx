@@ -8,7 +8,7 @@ import { useDeck, useEditor } from './editor';
 import { useAction, useSlideMarks } from './registry';
 
 /**
- * The Filmstrip region: 124px under the Stage. The Filmstrip itself is a standalone
+ * The Filmstrip region: 96px under the Stage. The Filmstrip itself is a standalone
  * component; this hands it the editor, the strings in the UI language, the window's clipboard,
  * the marks other areas put on a slide, and of a transition its picture and the way to its editor.
  */

@@ -298,7 +298,7 @@ test.describe('an agent session that sits idle (AGT-07, AGT-08)', () => {
     await expect(call.locator('pre')).toContainText('"source": "app"');
     // The file is under this copy's own data folder.
     await expect(dialog.getByTestId('log-path')).toContainText(
-      'dev.slidr.app.hardening\\agent\\diagnostics.jsonl',
+      'slidr.app.hardening\\agent\\diagnostics.jsonl',
     );
     await page.keyboard.press('Escape');
   });

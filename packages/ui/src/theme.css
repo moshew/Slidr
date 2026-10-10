@@ -106,7 +106,7 @@
   --spacing-titlebar: 56px;
   --spacing-caption: 46px; /* a window control button */
   --spacing-toolbar: 44px;
-  --spacing-filmstrip: 124px;
+  --spacing-filmstrip: 96px;
   --spacing-statusbar: 32px;
   --spacing-activitybar: 76px;
   --spacing-thumb-w: 160px; /* a filmstrip thumbnail, 160 × 90 (FLM-01) */
@@ -312,4 +312,12 @@
       transition-duration: 1ms !important;
     }
   }
+}
+
+/* Filmstrip reserves this scrollbar height separately from its thumbnail padding. */
+[data-filmstrip]::-webkit-scrollbar {
+  height: 6px;
+}
+[data-filmstrip]::-webkit-scrollbar-thumb {
+  border-width: 1px;
 }

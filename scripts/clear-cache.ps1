@@ -1,16 +1,17 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-Resets Slidr by deleting its Local and Roaming app data directories after the app is closed.
+Resets Slidr by deleting its current and legacy app data directories after the app is closed.
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1 -WhatIf
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1
 .NOTES
-Deletes %LOCALAPPDATA%\dev.slidr.app and %APPDATA%\dev.slidr.app entirely:
+Deletes slidr.app and the legacy dev.slidr.app directories in both
+%LOCALAPPDATA% and %APPDATA% entirely:
 caches, settings, imported fonts, cookies, recent-file list, agent data and all
 recovery workspaces (including unsaved changes). These cannot be recovered.
-Files saved outside these two directories are unaffected, including .slidr files
+Files saved outside these directories are unaffected, including .slidr files
 and external attachments. Does not uninstall Slidr or remove bundled/system fonts,
 API keys in Windows Credential Manager, external CLI sign-ins, separate browser
 data from pnpm dev, or build/package-manager caches.
@@ -28,26 +29,41 @@ $localData = [Environment]::GetFolderPath('LocalApplicationData')
 if ([string]::IsNullOrWhiteSpace($localData)) {
     throw 'Cannot locate LocalApplicationData.'
 }
-$appRoot = [IO.Path]::GetFullPath((Join-Path $localData 'dev.slidr.app'))
 $roamingData = [Environment]::GetFolderPath('ApplicationData')
 if ([string]::IsNullOrWhiteSpace($roamingData)) {
     throw 'Cannot locate ApplicationData.'
 }
-$roamingRoot = [IO.Path]::GetFullPath((Join-Path $roamingData 'dev.slidr.app'))
-$webviewRoot = Join-Path $appRoot 'EBWebView'
+# Only these exact absolute paths are eligible for recursive deletion.
+$identifiers = @('slidr.app', 'dev.slidr.app')
+$allowedTargets = @(
+    foreach ($dataRoot in @($localData, $roamingData)) {
+        foreach ($identifier in $identifiers) {
+            [IO.Path]::GetFullPath((Join-Path $dataRoot $identifier))
+        }
+    }
+) | Select-Object -Unique
+$webviewRoots = @(
+    foreach ($identifier in $identifiers) {
+        [IO.Path]::GetFullPath((Join-Path (Join-Path $localData $identifier) 'EBWebView'))
+    }
+)
 
 # Never stop the app forcibly: it may have unsaved work.
 if (-not $WhatIfPreference) {
     $running = @(Get-Process -Name slidr -ErrorAction SilentlyContinue)
     $webviews = @(Get-CimInstance Win32_Process -Filter "Name = 'msedgewebview2.exe'" |
-        Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($webviewRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0 })
+        Where-Object {
+            foreach ($webviewRoot in $webviewRoots) {
+                if ($_.CommandLine -and $_.CommandLine.IndexOf($webviewRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    return $true
+                }
+            }
+            return $false
+        })
     if ($running.Count -gt 0 -or $webviews.Count -gt 0) {
         throw 'Close Slidr and wait for its WebView2 processes to exit, then run this script again.'
     }
 }
-
-# Only these two exact absolute paths are eligible for recursive deletion.
-$allowedTargets = @($appRoot, $roamingRoot) | Select-Object -Unique
 
 function Assert-SafeTarget([string] $Target) {
     if ($allowedTargets -notcontains [IO.Path]::GetFullPath($Target)) {

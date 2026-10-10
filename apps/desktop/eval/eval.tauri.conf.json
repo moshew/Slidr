@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.quality",
+  "identifier": "slidr.app.quality",
   "build": {
     "devUrl": "http://localhost:1491/?hold",
     "beforeDevCommand": "pnpm exec vite --config eval/vite.config.ts"

@@ -39,7 +39,7 @@ import { writeReport } from './report.mjs';
 
 const APP_DIR = fileURLToPath(new URL('../..', import.meta.url));
 const OUT_ROOT = join(APP_DIR, 'test-results', 'eval');
-const IDENTIFIER = process.env.SLIDR_EVAL_IDENTIFIER ?? 'dev.slidr.app.quality';
+const IDENTIFIER = process.env.SLIDR_EVAL_IDENTIFIER ?? 'slidr.app.quality';
 const VITE_PORT = Number(process.env.SLIDR_EVAL_VITE_PORT ?? 1491);
 const CDP_PORT = Number(process.env.SLIDR_EVAL_CDP_PORT ?? 9291);
 const TAURI_CONFIG = process.env.SLIDR_EVAL_CONFIG ?? 'eval/eval.tauri.conf.json';
@@ -195,7 +195,7 @@ async function openApp(browser) {
   );
   // <data folder>/agent/diagnostics.jsonl
   const dataDir = String(log.path).replace(/[\\/]agent[\\/][^\\/]+$/, '');
-  if (!String(dataDir).includes(IDENTIFIER)) {
+  if (dataDir.split(/[\\/]/).at(-1) !== IDENTIFIER) {
     throw new Error(
       `The app's data folder is ${dataDir}, not the evaluation's own. Nothing was run.`,
     );

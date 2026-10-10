@@ -863,7 +863,11 @@ export function Chat({
       className="flex min-h-0 flex-1 flex-col"
     >
       <ConversationBar thread={thread} />
-      <div ref={frame} onScrollCapture={onScroll} className="flex min-h-0 flex-1 flex-col">
+      <div
+        ref={frame}
+        onScrollCapture={onScroll}
+        className="flex min-h-0 flex-1 flex-col select-text"
+      >
         <ScrollArea className="min-h-0 flex-1">{content}</ScrollArea>
       </div>
       {/* A conversation that is opened is not news: only what ends while it is open is said. */}

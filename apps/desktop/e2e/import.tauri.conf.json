@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.import",
+  "identifier": "slidr.app.import",
   "build": {
     "devUrl": "http://localhost:1471",
     "beforeDevCommand": "pnpm exec vite --port 1471 --strictPort"

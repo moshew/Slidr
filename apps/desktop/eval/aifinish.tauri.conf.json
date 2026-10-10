@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.aifinish",
+  "identifier": "slidr.app.aifinish",
   "build": {
     "devUrl": "http://localhost:1531/?hold",
     "beforeDevCommand": "pnpm exec vite --config eval/vite.config.ts"

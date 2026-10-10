@@ -297,10 +297,10 @@ mod tests {
 
     #[test]
     fn statuses_have_the_contract_shape() -> TestResult {
-        let install = PathBuf::from("/data/dev.slidr.app/models");
+        let install = PathBuf::from("/data/slidr.app/models");
         let found = Found {
             spec: &MODELS[0],
-            path: PathBuf::from("/data/dev.slidr.app/models/u2net.onnx"),
+            path: PathBuf::from("/data/slidr.app/models/u2net.onnx"),
             place: Place::AppData,
         };
         let statuses = [
@@ -347,8 +347,8 @@ mod tests {
     #[test]
     fn an_upscale_has_the_contract_shapes() -> TestResult {
         let contract = contract()?;
-        let install = PathBuf::from("/data/dev.slidr.app/models");
-        let file = PathBuf::from("/data/dev.slidr.app/models/realesr-general-x4v3.onnx");
+        let install = PathBuf::from("/data/slidr.app/models");
+        let file = PathBuf::from("/data/slidr.app/models/realesr-general-x4v3.onnx");
         let statuses = [
             UpscaleStatus::of(Some((&UPSCALERS[0], &file, Place::AppData)), &install),
             UpscaleStatus::of(None, &install),

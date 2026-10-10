@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.f-import",
+  "identifier": "slidr.app.f-import",
   "build": {
     "devUrl": "http://localhost:1585/?editor",
     "beforeDevCommand": "pnpm exec vite --port 1585 --strictPort"

@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.agent",
+  "identifier": "slidr.app.agent",
   "build": {
     "devUrl": "http://localhost:1441",
     "beforeDevCommand": "pnpm exec vite --port 1441 --strictPort"

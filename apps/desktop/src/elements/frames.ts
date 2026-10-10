@@ -663,8 +663,11 @@ function framedEffects(
  * its adjustments; its box takes the proportions of the frame, as large as fits inside the box
  * it had and around the same centre, and the photograph fills the frame.
  */
-export function framePatch(frame: PhotoFrame, picture: ImageElement): ElementPatch {
-  const box = fitted(frame.size, picture.frame);
+export function framePatch(
+  frame: PhotoFrame,
+  picture: ImageElement,
+  box = fitted(frame.size, picture.frame),
+): ElementPatch {
   return {
     frame: box,
     fit: 'cover',
@@ -700,17 +703,21 @@ export function reframe(
   frame: PhotoFrame,
   lang: string,
   all: readonly PhotoFrame[] = [],
+  canvas?: Frame,
 ): { command: Command; select: string } {
   const parent = locateElement(slide.elements, picture.id)?.parent;
   const host = parent && framedPicture(parent)?.id === picture.id ? parent : undefined;
   if (!host && !frame.extras?.length) {
     return {
-      command: updateElement(slide.id, picture.id, framePatch(frame, picture)),
+      command: updateElement(slide.id, picture.id, {
+        ...framePatch(frame, picture, canvas),
+        ...(canvas ? { rotation: 0 } : {}),
+      }),
       select: picture.id,
     };
   }
   const outer = host ?? picture;
-  const box = fitted(frame.size, outer.frame);
+  const box = canvas ?? fitted(frame.size, outer.frame);
   const { mask, smartFrame } = frameLook(frame, box);
   // What the user put into the group stays in it; what the earlier frame put there goes.
   const own = host?.children.filter(
@@ -747,7 +754,7 @@ export function reframe(
     return replaced({
       ...inside,
       frame: box,
-      rotation: normalizeAngle(outer.rotation + (host ? picture.rotation : 0)),
+      rotation: canvas ? 0 : normalizeAngle(outer.rotation + (host ? picture.rotation : 0)),
     });
   }
   const group =
@@ -763,9 +770,10 @@ export function reframe(
     ...group,
     frame: box,
     name: frame.id,
+    ...(canvas ? { rotation: 0 } : {}),
     children: [
       ...under,
-      { ...inside, rotation: host ? picture.rotation : 0 },
+      { ...inside, rotation: !canvas && host ? picture.rotation : 0 },
       ...(own ?? []),
       ...over,
     ],
@@ -793,7 +801,7 @@ export const drawnWhole = (frame: PhotoFrame): boolean =>
 
 /**
  * A frame alone on a slide, for a thumbnail that the renderer draws: the frame as it goes onto
- * a slide, at the corner of the slide and at its own size, in the colours of the given theme,
+ * a slide, at the corner of the slide and filling its wide canvas, in the colours of the given theme,
  * around a stand-in photograph. The slide has no ground: the thumbnail shows the frame's box.
  */
 export function framePreview(

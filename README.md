@@ -151,7 +151,9 @@ SLIDR_PERF=1 pnpm exec playwright test -c packaged/playwright.config.ts --projec
 SLIDR_REAL_AGENT=1 pnpm exec playwright test -c packaged/playwright.config.ts --project=agent  # against the real Claude Code CLI; costs money
 ```
 
-The app's identifier is compiled into the binary and decides the data folder. Built with that `--config`, the app keeps its data in `%APPDATA%\dev.slidr.app.hardening`, and the suites refuse a binary without the test identifier. A build without `--config` is the real app and writes to your own `%APPDATA%\dev.slidr.app`. The installer is unsigned and has not been run.
+The app's identifier is compiled into the binary and decides the data folder. Built with that `--config`, the app keeps its data in `%APPDATA%\slidr.app.hardening`, and the suites refuse a binary without the test identifier. A build without `--config` is the real app and writes to your own `%APPDATA%\slidr.app`. The installer is unsigned and has not been run.
+
+The identifier was renamed from `dev.slidr.app` to `slidr.app`. Rebuild the executable for the new name to take effect. Existing data and credential-store entries are not migrated: the new build starts with fresh preferences, and saved API keys must be entered again. Saved `.slidr` files outside the app data directories can still be opened. After closing Slidr, `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1` from the repository root deletes both the new and legacy Local/Roaming data directories, including recovery workspaces; add `-WhatIf` to preview without deleting anything. Credential Manager entries are not deleted by this script.
 
 ### The evaluation set
 

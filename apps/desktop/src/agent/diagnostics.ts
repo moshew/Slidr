@@ -156,7 +156,7 @@ function pageDiagnostics(): DiagnosticsSource {
   return {
     read: () =>
       Promise.resolve({
-        path: 'C:\\Users\\you\\AppData\\Roaming\\dev.slidr.app\\agent\\diagnostics.jsonl',
+        path: 'C:\\Users\\you\\AppData\\Roaming\\slidr.app\\agent\\diagnostics.jsonl',
         text: lines,
         bytes: new TextEncoder().encode(lines).length,
       }),

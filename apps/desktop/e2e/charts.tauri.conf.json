@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.charts",
+  "identifier": "slidr.app.charts",
   "build": {
     "devUrl": "http://localhost:1511",
     "beforeDevCommand": "pnpm exec vite --port 1511 --strictPort"

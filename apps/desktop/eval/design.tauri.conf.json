@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.design",
+  "identifier": "slidr.app.design",
   "build": {
     "devUrl": "http://localhost:1561/?hold",
     "beforeDevCommand": "pnpm exec vite --config eval/vite.config.ts"

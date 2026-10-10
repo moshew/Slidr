@@ -9,14 +9,14 @@ import { chromium, expect, type Browser, type Page } from '@playwright/test';
  * `tauri build` made, its WebView2 reached over the DevTools protocol.
  *
  * The app is built with an identifier of its own (`e2e/hardening.tauri.conf.json`), so its data
- * is `%APPDATA%\dev.slidr.app.hardening` and the user's `dev.slidr.app` is never touched. The
+ * is `%APPDATA%\slidr.app.hardening` and the user's `slidr.app` is never touched. The
  * identifier is compiled into the binary, and `launchApp` refuses a binary that carries another.
  *
  * `window.slidr` does not exist in a production build. What a test does, it does as a user
  * would: through the page. What it checks beyond the page, it reads from the files the app wrote.
  */
 
-export const IDENTIFIER = 'dev.slidr.app.hardening';
+export const IDENTIFIER = 'slidr.app.hardening';
 const CDP_PORT = Number(process.env.SLIDR_CDP_PORT) || 9371;
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -64,7 +64,12 @@ function assertIdentifier(binary: string): void {
     );
   }
   // The identifier decides the data folder, and is fixed when the binary is built.
-  if (!readFileSync(binary).includes(Buffer.from(IDENTIFIER, 'utf8'))) {
+  // The old identifier contains the new one as a substring; reject that build explicitly.
+  const bytes = readFileSync(binary);
+  if (
+    !bytes.includes(Buffer.from(IDENTIFIER, 'utf8')) ||
+    bytes.includes(Buffer.from(`dev.${IDENTIFIER}`, 'utf8'))
+  ) {
     throw new Error(
       `${binary} was not built with the identifier ${IDENTIFIER}: it would write into another ` +
         "copy's data. Build it with --config e2e/hardening.tauri.conf.json.",

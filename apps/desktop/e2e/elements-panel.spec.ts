@@ -380,7 +380,7 @@ test('frames are one collection in groups, and a click adds an empty frame', asy
     type: 'image',
     name: 'frame:circle',
     mask: { kind: 'ellipse' },
-    frame: { w: 480, h: 480 },
+    frame: { x: 0, y: 0, w: 1920, h: 1080 },
   });
   expect(circle.assetId).toBeUndefined();
   await expect(onStage(page, circle.id)).toBeVisible();
@@ -450,6 +450,7 @@ test('a selected photograph takes the frame that is clicked, and keeps what it s
     id: 'e_photo',
     type: 'image',
     frame: { x: 400, y: 200, w: 800, h: 400 },
+    rotation: 25,
     assetId,
     fit: 'cover',
     crop,
@@ -460,12 +461,13 @@ test('a selected photograph takes the frame that is clicked, and keeps what it s
   const heart = featured.locator('[data-frame="frame:heart"]');
   await expect(heart).toHaveAccessibleName('Put the selected picture in the frame Heart');
 
-  // The picture takes the proportions of the frame, inside the box it had.
+  // Applying a frame fills the same wide canvas as inserting a new one.
   const before = await undoDepth(page);
   await heart.click();
   const framed = await selected<ImageElement>(page);
   expect(framed).toMatchObject({ id: 'e_photo', assetId, crop, mask: { kind: 'path' } });
-  expect(framed.frame).toEqual({ x: 582, y: 200, w: 437, h: 400 });
+  expect(framed.frame).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
+  expect(framed.rotation).toBe(0);
   expect(await undoDepth(page)).toBe(before + 1);
   expect((await currentSlide(page)).elements).toHaveLength(1);
 
@@ -481,6 +483,7 @@ test('a selected photograph takes the frame that is clicked, and keeps what it s
   await undo(page);
   const back = (await currentSlide(page)).elements[0] as ImageElement;
   expect(back.frame).toEqual({ x: 400, y: 200, w: 800, h: 400 });
+  expect(back.rotation).toBe(25);
   expect(back.mask).toBeUndefined();
   expect(back.smartFrame).toBeUndefined();
 });
@@ -518,14 +521,14 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
   await expect(summer.locator('[data-smart-image-frame] img')).toBeVisible();
   await expect(summer.locator('[data-element-type="text"]')).toHaveText('Our Team Day');
 
-  // It lands as large as the safe margins allow: the picture, three stickers and the caption.
+  // It fills the slide: the picture, three stickers and the caption.
   const before = await undoDepth(page);
   await summer.click();
   const added = await selected<GroupElement>(page);
   expect(added).toMatchObject({
     type: 'group',
     name: 'frame:magnet-summer',
-    frame: { x: 316, y: 80, w: 1288, h: 920 },
+    frame: { x: 0, y: 0, w: 1920, h: 1080 },
   });
   expect(added.children.map((child) => child.type)).toEqual(['image', 'svg', 'svg', 'svg', 'text']);
   expect(await undoDepth(page)).toBe(before + 1);
@@ -662,7 +665,26 @@ test('a frame that is made larger keeps its artwork, and the photograph has the 
   // An instant photo: a card 26 wide around the photograph, and 106 below it.
   await groups.locator('[data-group="featured"] [data-frame="frame:instant"]').click();
   const added = await selected<ImageElement>(page);
-  expect(added).toMatchObject({ frame: { w: 400, h: 480 }, smartFrame: { scale: 1 } });
+  expect(added).toMatchObject({ frame: { w: 1920, h: 1080 }, smartFrame: { scale: 2.25 } });
+  // Start the handle exercise with a small card, leaving room for every drag on the stage.
+  await page.evaluate((element) => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.update',
+      slideId: editor.selection.getState().currentSlideId!,
+      elementId: element.id,
+      patch: {
+        frame: { x: 760, y: 300, w: 400, h: 480 },
+        smartFrame: { ...element.smartFrame!, scale: 1 },
+      },
+    });
+  }, added);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const opening = onStage(page, added.id).locator('[data-image-opening]');
   const artwork = onStage(page, added.id).locator('[data-frame-artwork]');
   /** The card around the photograph, in slide pixels: left, above, right and below. */
@@ -834,3 +856,18 @@ test('frames are in the exported file as they are on the slide', async ({ page }
   expect(html.match(/data-frame-artwork/g)).toHaveLength(1);
   expect(drawn(phone.id)).toContain('data-decoration-id');
 });
+
+for (const lang of ['he', 'en'] as const) {
+  test(`new frames cover the slide without cascading offsets (${lang})`, async ({ page }) => {
+    const panel = await openElements(page, lang);
+    await panel.locator('[data-collection="frames"]').click();
+    const featured = panel.locator('[data-group="featured"]');
+    for (const id of ['instant', 'heart', 'phone', 'instant']) {
+      await featured.locator(`[data-frame="frame:${id}"]`).click();
+      expect((await selected<ImageElement>(page)).frame).toEqual({ x: 0, y: 0, w: 1920, h: 1080 });
+    }
+    expect((await currentSlide(page)).elements).toHaveLength(4);
+    await undo(page);
+    expect((await currentSlide(page)).elements).toHaveLength(3);
+  });
+}

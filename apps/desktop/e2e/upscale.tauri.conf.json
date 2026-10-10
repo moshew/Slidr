@@ -1,5 +1,5 @@
 {
-  "identifier": "dev.slidr.app.f-media",
+  "identifier": "slidr.app.f-media",
   "build": {
     "devUrl": "http://localhost:1589/?editor",
     "beforeDevCommand": "pnpm exec vite --port 1589 --strictPort"
