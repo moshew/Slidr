@@ -128,7 +128,8 @@ describe('what a conversation chose for itself', () => {
   it("lies over the app's settings for that conversation, and leaves them as they are", async () => {
     setAgentSettings({ model: 'sonnet', effort: 'low', webAccess: false });
     setConversationSettings('deck', { model: 'opus' });
-    expect(agentSettings('deck')).toEqual({ model: 'opus', effort: 'low', webAccess: false });
+    // A different model must choose its own effort; support differs by model and harness.
+    expect(agentSettings('deck')).toEqual({ model: 'opus', effort: undefined, webAccess: false });
     // Another conversation, and the app itself, are where they were.
     expect(agentSettings('deck-c1')).toEqual({ model: 'sonnet', effort: 'low', webAccess: false });
     expect(agentSettings()).toEqual({ model: 'sonnet', effort: 'low', webAccess: false });

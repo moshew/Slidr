@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import {
   Ai,
-  Blend,
   Film,
   History,
   Images,
@@ -9,7 +8,6 @@ import {
   MessagesSquare,
   NotebookPen,
   PaintBucket,
-  ScanEye,
   Settings,
   Zap,
   type LucideIcon,
@@ -94,7 +92,6 @@ const tools = [
     icon: Film,
     body: 'panels.animationsBody',
   },
-  { id: 'lint', order: 4, title: 'panels.lint', icon: ScanEye, body: 'panels.lintBody' },
   { id: 'history', order: 5, title: 'panels.history', icon: History, body: 'panels.historyBody' },
 ];
 
@@ -140,7 +137,6 @@ function slideTool(icon: LucideIcon, label: string) {
 [
   { id: 'slide.background', icon: PaintBucket, label: 'tools.background' },
   { id: 'slide.layout', icon: LayoutTemplate, label: 'tools.layout' },
-  { id: 'slide.transition', icon: Blend, label: 'tools.transition' },
 ].forEach(({ id, icon, label }, order) =>
   registerContextTool({
     id,

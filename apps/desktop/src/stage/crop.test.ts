@@ -7,12 +7,14 @@ import {
   cropPatch,
   cropReset,
   cropResize,
+  cropScalePicture,
   cropStretch,
   cropToRatio,
   cropView,
   cropZoom,
   cropZoomLevel,
   MAX_CROP_ZOOM,
+  onCropPicture,
   picturePlacement,
   pictureRatio,
   positionToOwn,
@@ -21,7 +23,7 @@ import {
 } from './crop';
 import { heldRatio } from './cropSession';
 import { HANDLES } from './geometry';
-import { apply, boxMatrix } from './space';
+import { apply, boxMatrix, elementMatrix, indexElements } from './space';
 
 /** A 3:2 picture. */
 const NATURAL = { w: 2400, h: 1600 };
@@ -96,6 +98,31 @@ describe('picturePlacement', () => {
       frame: { x: 100, y: 100, w: 600, h: 400 },
       crop: null,
     });
+  });
+});
+
+describe('onCropPicture', () => {
+  it('recognizes dimmed parts outside the frame through rotation, mirroring and a group', () => {
+    for (const flips of [{}, { flipH: true }, { flipV: true }]) {
+      const element = image({
+        crop: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 },
+        rotation: 30,
+        ...flips,
+      });
+      const group = createElement.group({
+        frame: { x: 300, y: 200, w: 900, h: 700 },
+        rotation: -20,
+        flipH: true,
+        children: [element],
+      });
+      const located = indexElements([group]).get(element.id)!;
+      const view = cropView(element, NATURAL);
+      const toSlide = (point: Point) => apply(elementMatrix(located, true), point);
+
+      expect(onCropPicture(located, view, toSlide({ x: -100, y: 200 }))).toBe(true);
+      expect(onCropPicture(located, view, toSlide({ x: 300, y: 200 }))).toBe(true);
+      expect(onCropPicture(located, view, toSlide({ x: -310, y: 200 }))).toBe(false);
+    }
   });
 });
 
@@ -313,6 +340,31 @@ describe('coversFrame', () => {
   });
 });
 
+describe('cropScalePicture', () => {
+  it('scales from a picture corner with the opposite corner anchored and the frame fixed', () => {
+    const view = cropView(image(), NATURAL);
+    const fromSouthEast = cropScalePicture(view, 'cover', HANDLES.se, { x: 120, y: 80 });
+    expect(fromSouthEast.frame).toEqual(view.frame);
+    expect(fromSouthEast.picture).toEqual({ x: 0, y: 0, w: 720, h: 480 });
+    expect(cropPatch(fromSouthEast).crop).toMatchObject({ x: 0, y: 0 });
+    expect(
+      cropScalePicture(fromSouthEast, 'cover', HANDLES.se, { x: -120, y: -80 }).picture,
+    ).toEqual(view.picture);
+
+    const fromNorthWest = cropScalePicture(view, 'cover', HANDLES.nw, { x: -120, y: -80 });
+    expect(fromNorthWest.picture).toEqual({ x: -120, y: -80, w: 720, h: 480 });
+    expect(cropScalePicture(view, 'cover', HANDLES.se, { x: -500, y: -500 }).picture).toEqual(
+      view.picture,
+    );
+  });
+
+  it('follows the visible corner of a mirrored picture', () => {
+    const view = cropView(image({ flipH: true }), NATURAL);
+    const scaled = cropScalePicture(view, 'cover', HANDLES.se, { x: -120, y: 80 });
+    expect(scaled.picture).toEqual({ x: 0, y: 0, w: 720, h: 480 });
+  });
+});
+
 describe('cropPan and cropZoom', () => {
   it('moves the picture under the frame and never uncovers the frame', () => {
     const view = cropResize(cropView(image(), NATURAL), HANDLES.e, { x: -300, y: 0 });
@@ -461,10 +513,11 @@ describe('cropToRatio and cropReset', () => {
 });
 
 describe('a picture in a drawn frame', () => {
-  /** An instant photo: a card with a square opening near its top, drawn at half the size. */
+  /** An instant photo: a card with a square opening near its top, drawn at twice its size. */
   const smartFrame = {
     viewBox: { w: 400, h: 480 },
     opening: { x: 26, y: 26, w: 348, h: 348 },
+    scale: 2,
     decorations: [],
   };
   const card = { x: 700, y: 60, w: 800, h: 960 };

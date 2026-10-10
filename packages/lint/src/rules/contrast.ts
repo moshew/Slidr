@@ -147,8 +147,9 @@ function fixOf(ctx: SlideContext, item: Item, worst: Faint): Command[] | undefin
   const prose = proseOf(element);
   if (!prose) return undefined;
   const { theme } = ctx.deck;
+  const own = element.type === 'text' ? element.color : undefined;
   const colourOf = (run: Run, paragraph: Paragraph) =>
-    run.marks?.color ?? styleOf(theme, paragraph).color;
+    run.marks?.color ?? own ?? styleOf(theme, paragraph).color;
   const failing = (run: Run, paragraph: Paragraph) => {
     const drawn = colorRgb(theme, colourOf(run, paragraph));
     return drawn !== undefined && distance(drawn, worst.span.color) <= 4;

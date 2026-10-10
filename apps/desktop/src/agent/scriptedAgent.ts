@@ -100,10 +100,6 @@ function shorten(summary: string): string {
 function eventOf(step: ScriptStep): AgentEvent {
   const { delayMs: _delay, call: _call, ...event } = step;
   if (event.type === 'tool_call_started') return { source: 'app', ...event } as AgentEvent;
-  if (event.type === 'turn_completed') {
-    const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
-    return { ...event, usage: { ...usage, ...(event.usage as object) } } as AgentEvent;
-  }
   return event as AgentEvent;
 }
 
@@ -177,7 +173,6 @@ export function createScriptedAgent(
   }
 
   async function play(current: Session, steps: readonly ScriptStep[]): Promise<void> {
-    const began = Date.now();
     const wait = (ms: number) =>
       new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, ms);
@@ -218,14 +213,8 @@ export function createScriptedAgent(
     current.wake = null;
     current.busy = false;
     if (current.stopping) {
-      // What a real harness emits for an interrupted turn: no more output, nothing billed.
-      current.emit({
-        type: 'turn_completed',
-        outcome: 'interrupted',
-        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-        costUsd: 0,
-        durationMs: Date.now() - began,
-      });
+      // What a real harness emits for an interrupted turn: no more output.
+      current.emit({ type: 'turn_completed', outcome: 'interrupted' });
     }
   }
 

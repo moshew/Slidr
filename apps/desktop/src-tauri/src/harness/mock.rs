@@ -8,8 +8,7 @@
 //! { "description": "…",
 //!   "turns": [
 //!     [ { "delayMs": 400, "type": "text_delta", "text": "Hello" },
-//!       { "delayMs": 20,  "type": "turn_completed", "outcome": "completed",
-//!         "costUsd": 0.01, "durationMs": 420 } ] ] }
+//!       { "delayMs": 20, "type": "turn_completed", "outcome": "completed" } ] ] }
 //! ```
 //!
 //! Each step is an [`AgentEvent`] in its IPC shape plus `delayMs`, the wait before it. The n-th
@@ -41,12 +40,14 @@ use std::{
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
-use tokio::{sync::oneshot, task::JoinHandle, time::Instant};
+#[cfg(test)]
+use tokio::time::Instant;
+use tokio::{sync::oneshot, task::JoinHandle};
 
 use super::{
     AgentError, AgentEvent, AgentHarness, AgentSession, Capabilities, EventSink, HarnessDescriptor,
     HarnessState, HarnessStatus, ModelOption, Result, SessionConfig, ToolEndpoint, ToolSource,
-    TurnOutcome, Usage, UserTurn,
+    TurnOutcome, UserTurn,
 };
 use crate::tool_bridge::{self, Content};
 
@@ -359,6 +360,7 @@ impl AgentHarness for MockHarness {
                 .map(|(name, _)| ModelOption {
                     id: name.clone(),
                     label: name.clone(),
+                    effort_levels: None,
                 })
                 .collect(),
             default_model: self.scripts.first().map(|(name, _)| name.clone()),
@@ -456,7 +458,6 @@ impl AgentSession for MockSession {
         let results = Arc::clone(&self.results);
         let (stop, stopped) = oneshot::channel::<()>();
         let task = tokio::spawn(async move {
-            let began = Instant::now();
             let play = async {
                 for step in script.turns.get(index).into_iter().flatten() {
                     tokio::time::sleep(Duration::from_millis(step.delay_ms)).await;
@@ -470,15 +471,8 @@ impl AgentSession for MockSession {
             tokio::select! {
                 biased;
                 _ = stopped => {
-                    // What a real harness emits for an interrupted turn: no more output, then
-                    // the turn's end with nothing billed for it.
-                    sink.emit(AgentEvent::TurnCompleted {
-                        outcome: TurnOutcome::Interrupted,
-                        usage: Usage::default(),
-                        cost_usd: Some(0.0),
-                        duration_ms: u64::try_from(began.elapsed().as_millis())
-                            .unwrap_or(u64::MAX),
-                    });
+                    // What a real harness emits for an interrupted turn: no more output.
+                    sink.emit(AgentEvent::TurnCompleted { outcome: TurnOutcome::Interrupted });
                 }
                 () = play => {}
             }
@@ -527,31 +521,31 @@ mod tests {
             r#"{ "description": "", "turns": [] }"#,
             r#"{ "description": "", "turns": [[ { "type": "text_delta", "text": "no end" } ]] }"#,
             r#"{ "description": "", "turns": [[
-                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 },
+                { "type": "turn_completed", "outcome": "completed" },
                 { "type": "text_delta", "text": "after the end" } ]] }"#,
             r#"{ "description": "", "turns": [[ { "type": "exited", "code": 0 },
-                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
+                { "type": "turn_completed", "outcome": "completed" } ]] }"#,
             r#"{ "description": "", "turns": [[ { "type": "no_such_event" } ]] }"#,
             r#"{ "description": "", "turns": [], "extra": 1 }"#,
             // Only an app tool's call can be carried out, and then the script holds no result.
             r#"{ "description": "", "turns": [[ { "type": "text_delta", "text": "x", "call": true },
-                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
+                { "type": "turn_completed", "outcome": "completed" } ]] }"#,
             r#"{ "description": "", "turns": [[
                 { "type": "tool_call_started", "id": "t", "name": "WebSearch", "source": "harness",
                   "input": {}, "call": true },
-                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
+                { "type": "turn_completed", "outcome": "completed" } ]] }"#,
             r#"{ "description": "", "turns": [[
                 { "type": "tool_call_started", "id": "t", "name": "slide_get", "input": {}, "call": true },
                 { "type": "tool_call_finished", "id": "t", "ok": true, "summary": "scripted" },
-                { "type": "turn_completed", "outcome": "completed", "costUsd": null, "durationMs": 1 } ]] }"#,
+                { "type": "turn_completed", "outcome": "completed" } ]] }"#,
         ];
         for json in bad {
             assert!(Script::parse(json).is_err(), "{json}");
         }
     }
 
-    /// The realistic script keeps what the recorded transcript had: Hebrew text, two tool calls
-    /// in parallel, and the turn's real usage.
+    /// The realistic script keeps what the recorded transcript had: Hebrew text and two tool
+    /// calls in parallel.
     #[test]
     fn import_script_is_the_recorded_turn() -> TestResult {
         let script = Script::parse(BUILTIN[0].1)?;
@@ -587,11 +581,7 @@ mod tests {
         assert!(matches!(
             events.last(),
             Some(AgentEvent::TurnCompleted {
-                usage: Usage {
-                    output_tokens: 1097,
-                    ..
-                },
-                ..
+                outcome: TurnOutcome::Completed
             })
         ));
         Ok(())
@@ -623,13 +613,15 @@ mod tests {
                 break;
             }
         }
-        let Some(AgentEvent::TurnCompleted { duration_ms, .. }) = last else {
+        let Some(AgentEvent::TurnCompleted {
+            outcome: TurnOutcome::Completed,
+        }) = last
+        else {
             return Err("the turn did not complete".into());
         };
         // The script's delays were honoured (in paused, virtual time).
         let played = u64::try_from(began.elapsed().as_millis())?;
         assert!(played >= 1000, "played in {played}ms");
-        assert!(duration_ms > 0);
 
         session.close().await?;
         let mut rest = Vec::new();
@@ -665,8 +657,7 @@ mod tests {
                       "source": "harness", "input": {} },
                     { "delayMs": 5, "type": "tool_call_finished", "id": "t4", "ok": true,
                       "summary": "scripted" },
-                    { "delayMs": 5, "type": "turn_completed", "outcome": "completed",
-                      "costUsd": 0.0, "durationMs": 30 }
+                    { "delayMs": 5, "type": "turn_completed", "outcome": "completed" }
                 ]]
             })
             .to_string(),
@@ -852,16 +843,14 @@ mod tests {
                     [
                         { "type": "tool_call_started", "id": "t1", "name": "slide_create",
                           "input": { "html": "<p>" }, "call": true },
-                        { "type": "turn_completed", "outcome": "completed", "costUsd": 0.0,
-                          "durationMs": 1 }
+                        { "type": "turn_completed", "outcome": "completed" }
                     ],
                     [
                         { "type": "tool_call_started", "id": "t2", "name": "slide_replace",
                           "input": { "slideId": { "$ref": "t1.slideId" } }, "call": true },
                         { "type": "tool_call_started", "id": "t3", "name": "slide_replace",
                           "input": { "slideId": { "$ref": "t9.slideId" } }, "call": true },
-                        { "type": "turn_completed", "outcome": "completed", "costUsd": 0.0,
-                          "durationMs": 1 }
+                        { "type": "turn_completed", "outcome": "completed" }
                     ]
                 ]
             })

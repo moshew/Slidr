@@ -1,0 +1,30 @@
+# ADR-085 — Card sets: a few cards as one element, with a card added from row B
+
+Status: Implemented in the 2026-10-09 working tree; **not committed** at the time of this record. This adds a collection to the Elements browser of [ADR-075](ADR-075-elements-and-presets.md) and builds on the cards of [ADR-073](ADR-073-cards.md).
+
+## Context
+
+The user asked for a group in Elements, "כרטסות", whose elements are each made of three cards of different kinds with sample content (four where the design needs it, as in the reference picture: four bright boxes, two by two, each with an icon in a round, a heading and a line of text), for a way to add a card or several from the tools of the selected set "as in a chart", and for five examples.
+
+## Decision in the working tree
+
+- **A new collection, `cards` ("כרטסות" / "Card sets"), with five sets**, each for a purpose of its own and drawn unlike the others: `pop` (benefits: the reference's bright boxes with a heavy outline and a hard shadow, four cards two by two), `steps` (a numbered process: white cards with a large serif figure, a track and a time chip), `stats` (figures: deep gradients, one large number, what it counts), `plans` (plans and prices, one plan put forward) and `voices` (what customers said: pastel cards, a drawn quotation mark, a name). A single card is "כרטיס", as in the rest of the app; the collection has the user's word.
+- **A set is a group of groups, and each card is a card as ADR-073 has it**: a group whose first child is its box. Nothing was added to the model. A click on a card's text edits it, a second click selects the card, and a selected card has the tools of its box (fill, outline, accent, corners, shadow). The set is told from any other group by its name, `cards:<design>`, as a frame's group is told by `frame:`; the cards and their parts carry no name, so the Layers panel shows their own words.
+- **A set is drawn in its own colours and typefaces**, like the ready-made slides and unlike the single card of the shape library, which follows the theme: the look is the design. Each card stands on a field of its own, so its text reads on any ground, light or dark. The words are in the language of the deck (Hebrew, or English for any other), and the cards start on the side the deck reads from.
+- **Row B of a selected set has "Add card"**, after Ungroup: a gallery of the design's kinds (four to six, drawn by the renderer), which stays open so that several can be added. With a card of a set selected, the row also has "Remove card from set". Each is one `element.replace` of the set, so one undo step, and the set stays selected.
+- **A set keeps its width, and lays its cards out in it** (`cardSets.ts`): as few rows as the design allows (four in a row for `steps`, `stats` and `plans`, three for `voices`, two for `pop`), as even as they come, a row that is not full in the middle. So a fourth step makes the row denser, and a fifth starts a row. The set keeps its top while it fits above the bottom margin of the slide, and moves up when it does not, as far as the top margin or what lies above it on the slide (a title): it never moves over other content, and what still does not fit shows below the margin for the user to size. Each design has a most (4 to 8), beyond which the gallery offers no more.
+- **A card that is made narrower is laid out again, not stretched.** A design draws the parts of a card at any size, and only their frames depend on the size; a card on a slide that still has the parts its design drew takes those frames and keeps everything else (what was typed, what was painted). A stretch would turn a round badge into an oval. A card whose parts were changed by hand no longer matches, and is stretched as a handle would stretch it (`resizeGroup`). The height of the cards is the one they have on the slide, so a set that was made taller stays so.
+- **Every paragraph of a card names the theme's smallest text style** and every run says its own face, size, weight, colour and spacing. A line is never lower than its paragraph's style makes it, and a template's body style (26 to 30px) is larger than the small print of a card: without this the same card had other line heights in each template.
+
+## Verification
+
+- `cardSets.test.ts` (15 tests): the five sets as valid groups in both languages, each card a card, words in the deck's language, bundled typefaces at 24px and up, rows, adding up to the most and removing down to one with every card inside the set and none over another, a narrowed card equal to one drawn at that width, typed words and a painted box kept, a changed card stretched, the bottom margin, and insert and add as one undo step each through a `CommandBus`.
+- `elements-cards.spec.ts` (3 tests) on a dev server of its own: the collection draws five sets and a click puts one on the slide; row B adds a card until the set is full; a selected card is taken out and the others close up. The first test of `elements-panel.spec.ts` (the list of collections) was updated and passes. No other E2E file was run.
+- Every set was rendered at full slide size in Hebrew and in English, with three or four cards and after cards were added (up to the most), on light, cream and dark grounds, and at thumbnail size in the panel in the light and the dark interface. Each was put through the app's design check alone on a slide: what it reports is L11 (colours and fonts that are not the template's, as the ready-made designs do) and L07, since one set alone does not cover 60% of a slide.
+
+## Open for the user
+
+- The names and the sample copy (benefits, a seven-week process, figures, four plans with prices, five customers and their companies) are invented for the designs and stand for the user's own.
+- The sets do not follow the template's colours and fonts. A sixth set that does (in `primary`, `surface` and the theme's text styles) would be one more design in `cardSets.ts`.
+- Delete on a selected card removes it as it removes any element and leaves its place empty; only "Remove card from set" closes the others up.
+- A new step takes the figure of the kind that was chosen ("04"), not of its place in the row.

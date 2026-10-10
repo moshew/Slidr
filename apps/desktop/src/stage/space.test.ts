@@ -571,6 +571,140 @@ describe('resizeGroup', () => {
     expect(b.h).toBeCloseTo(after.frame.h, 2);
   });
 
+  describe('a picture in a drawn frame, with a sticker and a caption beside it', () => {
+    /** A card of 400 by 300 with the photograph in a window near its top, as a frame adds it. */
+    const magnet = () =>
+      createElement.group({
+        id: 'm',
+        name: 'frame:test',
+        frame: { x: 0, y: 0, w: 400, h: 300 },
+        children: [
+          createElement.image({
+            id: 'photo',
+            frame: { x: 0, y: 0, w: 400, h: 300 },
+            smartFrame: {
+              viewBox: { w: 400, h: 300 },
+              opening: { x: 20, y: 20, w: 360, h: 200 },
+              scale: 1,
+              decorations: [],
+            },
+          }),
+          createElement.svg({
+            id: 'sticker',
+            frame: { x: 340, y: 10, w: 50, h: 50 },
+            markup: '<svg/>',
+          }),
+          createElement.svg({
+            id: 'seal',
+            frame: { x: 180, y: 0, w: 40, h: 40 },
+            markup: '<svg/>',
+          }),
+          createElement.text({
+            id: 'caption',
+            frame: { x: 40, y: 240, w: 320, h: 40 },
+            content: richText('A day out'),
+          }),
+        ],
+      });
+
+    it('gives the stretch to the picture, and keeps what is beside it as large as it was', () => {
+      const out = resizeGroup(magnet(), { x: 0, y: 0, w: 800, h: 450 });
+      expect(out.get('photo')).toEqual({ frame: { x: 0, y: 0, w: 800, h: 450 } });
+      // On its corner, as far from it as it was.
+      expect(out.get('sticker')).toEqual({ frame: { x: 740, y: 10, w: 50, h: 50 } });
+      // Above the middle of the card, still above its middle.
+      expect(out.get('seal')).toEqual({ frame: { x: 380, y: 0, w: 40, h: 40 } });
+      // The caption keeps its distance from both sides and from the foot of the card.
+      expect(out.get('caption')).toEqual({ frame: { x: 40, y: 390, w: 720, h: 40 } });
+      expect(out.get('m')).toEqual({ frame: { x: 0, y: 0, w: 800, h: 450 } });
+    });
+
+    it('makes everything smaller together where the artwork itself is drawn smaller', () => {
+      const out = resizeGroup(magnet(), { x: 0, y: 0, w: 200, h: 150 });
+      expect(out.get('photo')).toEqual({ frame: { x: 0, y: 0, w: 200, h: 150 } });
+      expect(out.get('sticker')).toEqual({ frame: { x: 170, y: 5, w: 25, h: 25 } });
+      expect(out.get('caption')).toEqual({ frame: { x: 20, y: 120, w: 160, h: 20 } });
+    });
+
+    it('makes the words as much smaller as the artwork, in the type they are set in', () => {
+      const group = magnet();
+      const set = richText('A day out', { marks: { size: 30, letterSpacing: 2, weight: 700 } });
+      const sized = {
+        ...group,
+        children: group.children.map((child) =>
+          child.id === 'caption' ? { ...child, content: set } : child,
+        ),
+      };
+      const marks = (out: ReturnType<typeof resizeGroup>) =>
+        (out.get('caption') as { content?: typeof set }).content?.paragraphs[0]?.runs[0]?.marks;
+      expect(marks(resizeGroup(sized, { x: 0, y: 0, w: 200, h: 150 }))).toEqual({
+        size: 15,
+        letterSpacing: 1,
+        weight: 700,
+      });
+      // Made larger, the artwork keeps its size, and so does the type.
+      expect(resizeGroup(sized, { x: 0, y: 0, w: 800, h: 450 }).get('caption')).toEqual({
+        frame: { x: 40, y: 390, w: 720, h: 40 },
+      });
+    });
+
+    it('moves a label as one thing, and sizes its plate and its words together', () => {
+      const group = magnet();
+      /** A plate with its words on it, left of the middle of the foot of the card. */
+      const label = createElement.group({
+        id: 'label',
+        name: 'frame:test:label:ribbon',
+        frame: { x: 30, y: 230, w: 200, h: 60 },
+        rotation: -4,
+        children: [
+          createElement.svg({
+            id: 'plate',
+            frame: { x: 0, y: 0, w: 200, h: 60 },
+            markup: '<svg/>',
+          }),
+          createElement.text({
+            id: 'words',
+            frame: { x: 20, y: 10, w: 160, h: 40 },
+            content: richText('Noa', { marks: { size: 28 } }),
+          }),
+        ],
+      });
+      const labelled = { ...group, children: [...group.children.slice(0, 3), label] };
+      // Wider and taller: the label is as large as it was, near the corner it was near, and
+      // nothing in it is touched.
+      const wider = resizeGroup(labelled, { x: 0, y: 0, w: 800, h: 450 });
+      expect(wider.get('label')).toEqual({ frame: { x: 30, y: 380, w: 200, h: 60 } });
+      expect(wider.has('plate')).toBe(false);
+      expect(wider.has('words')).toBe(false);
+      // Half as large: the plate, the box of the words and their type are all half.
+      const half = resizeGroup(labelled, { x: 0, y: 0, w: 200, h: 150 });
+      expect(half.get('label')).toEqual({ frame: { x: 15, y: 115, w: 100, h: 30 } });
+      expect(half.get('plate')).toEqual({ frame: { x: 0, y: 0, w: 100, h: 30 } });
+      expect(half.get('words')).toMatchObject({ frame: { x: 10, y: 5, w: 80, h: 20 } });
+      const words = half.get('words') as { content: ReturnType<typeof richText> };
+      expect(words.content.paragraphs[0]?.runs[0]?.marks?.size).toBe(14);
+    });
+
+    it('stretches a group that no frame made as it does any other', () => {
+      const plain = { ...magnet(), name: 'Group' };
+      const out = resizeGroup(plain, { x: 0, y: 0, w: 800, h: 450 });
+      expect(out.get('sticker')).toEqual({ frame: { x: 680, y: 15, w: 100, h: 75 } });
+    });
+
+    it('stretches what is beside artwork that is itself stretched with its picture', () => {
+      // Artwork of one size says no scale; with no frame of the catalogue to take its place
+      // it is stretched as it always was, and the sticker with it.
+      const group = magnet();
+      const [photo, ...beside] = group.children;
+      if (photo?.type !== 'image' || !photo.smartFrame) throw new Error('no picture');
+      const { scale: _scale, ...stretched } = photo.smartFrame;
+      const old = { ...group, children: [{ ...photo, smartFrame: stretched }, ...beside] };
+      const out = resizeGroup(old, { x: 0, y: 0, w: 800, h: 450 });
+      expect(out.get('photo')).toEqual({ frame: { x: 0, y: 0, w: 800, h: 450 } });
+      expect(out.get('sticker')).toEqual({ frame: { x: 680, y: 15, w: 100, h: 75 } });
+    });
+  });
+
   it('resizes several elements together, around the box they share', () => {
     const elements = [rect('solo', 100, 100, 100, 50), group()];
     // `solo` and the group `g` (at 100, 100, 200 x 100) fill 100, 100, 200 x 100 between them.

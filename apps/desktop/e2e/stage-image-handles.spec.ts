@@ -69,7 +69,7 @@ const el = (id: string) => `[data-element-id="${id}"]`;
 const handle = (name: string) => `[data-handle="${name}"]`;
 /** What is drawn of a handle, inside the area that takes the pointer. */
 const drawn = (name: string) => `${handle(name)} > div`;
-/** The whole picture, dimmed, around the frame of an image whose edge is dragged. */
+/** The whole picture is shown only in crop mode. */
 const PICTURE = '[data-crop-picture] img';
 
 /** The zoom of the Stage: screen pixels per slide pixel. */
@@ -287,7 +287,7 @@ test('the edge of a turned and mirrored image cuts the side of the picture that 
   expect(Math.abs(after.width - picture.width)).toBeLessThan(1);
 });
 
-test('what the frame leaves out is drawn dimmed while the edge is dragged; Esc takes the drag back', async ({
+test('resizing shows only the framed image; the whole picture appears in crop mode', async ({
   page,
 }) => {
   const before = await image(page, 'e_crop_plain');
@@ -298,12 +298,9 @@ test('what the frame leaves out is drawn dimmed while the edge is dragged; Esc t
 
   await drag(page, await center(page, handle('s')), { x: 0, y: -100 * scale }, { release: false });
   expect((await image(page, 'e_crop_plain')).frame.h).toBe(300);
-  // The whole picture, around a frame that is now shorter than it.
-  const whole = await box(page, PICTURE);
   const frame = await box(page, el('e_crop_plain'));
-  expect(Math.abs(whole.height - 400 * scale)).toBeLessThan(0.5);
   expect(Math.abs(frame.height - 300 * scale)).toBeLessThan(0.5);
-  expect(Math.abs(whole.y - frame.y)).toBeLessThan(0.5);
+  await expect(surface(page).locator(PICTURE)).toHaveCount(0);
   await expect(page.getByText('600 × 300')).toBeVisible();
 
   await page.keyboard.press('Escape');
@@ -312,6 +309,11 @@ test('what the frame leaves out is drawn dimmed while the edge is dragged; Esc t
   expect(await image(page, 'e_crop_plain')).toEqual(before);
   expect(await steps(page)).toBe(count);
   await expect(surface(page).locator(PICTURE)).toHaveCount(0);
+
+  const middle = await center(page, el('e_crop_plain'));
+  await page.mouse.dblclick(middle.x, middle.y);
+  await expect(surface(page)).toHaveAttribute('data-cropping', 'e_crop_plain');
+  await expect(surface(page).locator(PICTURE)).toHaveCount(1);
 });
 
 test('the moving edge snaps to a guide, and the picture is cut at the guide', async ({ page }) => {

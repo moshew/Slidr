@@ -324,15 +324,7 @@
       {
         "delayMs": 150,
         "type": "turn_completed",
-        "outcome": "completed",
-        "usage": {
-          "inputTokens": 6,
-          "outputTokens": 1097,
-          "cacheReadTokens": 16387,
-          "cacheWriteTokens": 9914
-        },
-        "costUsd": 0.0539154,
-        "durationMs": 12431
+        "outcome": "completed"
       }
     ]
   ]

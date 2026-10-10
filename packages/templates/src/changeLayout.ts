@@ -9,7 +9,7 @@ import {
   type Placeholder,
   type PlaceholderRole,
 } from '@slidr/model';
-import { movesOf, relayout, seatsOf, sitsOn } from './relayout';
+import { arrivalsOf, movesOf, relayout, seatsOf, sitsOn } from './relayout';
 
 /**
  * The commands that move an existing slide to another layout of its deck (SLD-02), with its
@@ -62,7 +62,11 @@ export function changeLayout(
   if (from) {
     const moves = movesOf(slide, from, to);
     const left = slide.elements.filter((element) => untouched(element) && !moves.has(element.id));
-    const filled = new Set([...moves.values()].map((move) => move.to.id));
+    // A seat is filled by what moves to it, and by what already stands on it.
+    const filled = new Set([
+      ...[...moves.values()].map((move) => move.to.id),
+      ...[...arrivalsOf(slide, from, to).values()].map((seat) => seat.id),
+    ]);
     return [
       ...relayout(slide, from, to, deck.meta.dir),
       ...remove(left),
@@ -78,7 +82,7 @@ export function changeLayout(
     const nth = taken.get(element.role) ?? 0;
     taken.set(element.role, nth + 1);
     const seat = to.placeholders.filter((p) => p.role === element.role)[nth];
-    if (seat) moved.push(seatOn(slideId, element, seat.frame));
+    if (seat) moved.push(seatOn(slideId, element, seat));
   }
   return [...moved, onto];
 }
@@ -120,11 +124,15 @@ function holdsNothing(element: Element): boolean {
   }
 }
 
-function seatOn(slideId: string, element: Element, frame: Element['frame']): Command {
+/** An element on a seat: the seat's frame, and for text the colour the seat gives it. */
+function seatOn(slideId: string, element: Element, seat: Placeholder): Command {
   return {
     type: 'element.update',
     slideId,
     elementId: element.id,
-    patch: { frame: { ...frame } },
+    patch: {
+      frame: { ...seat.frame },
+      ...(element.type === 'text' && seat.color ? { color: { ...seat.color } } : {}),
+    },
   };
 }

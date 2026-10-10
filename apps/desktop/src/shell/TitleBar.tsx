@@ -19,7 +19,6 @@ export function TitleBar() {
   const { t } = useTranslation();
   const title = useDeck((s) => s.deck.meta.title);
   const path = useFile((s) => s.path);
-  const dirty = useFile((s) => s.dirty);
   const starting = useFile((s) => s.starting);
   const welcome = useShell((s) => s.welcome);
   const header = useRef<HTMLElement>(null);
@@ -51,25 +50,14 @@ export function TitleBar() {
             <img src="/favicon.svg" alt="" className="size-8" draggable={false} />
             <span className="text-lg font-semibold">{t('app.name')}</span>
           </span>
-          {name && (
-            <>
-              <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-ui-header-fg" />
-              <span
-                dir="auto"
-                className="min-w-0 truncate text-sm font-medium"
-                data-testid="document-name"
-              >
-                {name}
-              </span>
-            </>
-          )}
-          {dirty && (
-            <span
-              role="img"
-              aria-label={t('window.unsaved')}
-              className="size-1.5 shrink-0 rounded-full bg-ui-header-fg"
-            />
-          )}
+          <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-ui-header-fg" />
+          <span
+            dir="auto"
+            className="min-w-0 truncate text-sm font-medium"
+            data-testid="document-name"
+          >
+            {name ?? t('app.tagline')}
+          </span>
         </div>
       </div>
       {!welcome && (

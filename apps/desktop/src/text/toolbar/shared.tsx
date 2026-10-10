@@ -155,7 +155,16 @@ export function formatContext(
   { bus }: Pick<Editor, 'bus'>,
   target?: TextTarget | null,
 ): FormatContext {
-  return { theme: bus.deck.theme, dir: tableOf(target)?.dir ?? bus.deck.meta.dir };
+  // The text of one text box has the box's colour where no run sets one.
+  const color =
+    target && target.kind !== 'elements' && target.element.type === 'text'
+      ? target.element.color
+      : undefined;
+  return {
+    theme: bus.deck.theme,
+    dir: tableOf(target)?.dir ?? bus.deck.meta.dir,
+    ...(color ? { color } : {}),
+  };
 }
 
 export interface Text {

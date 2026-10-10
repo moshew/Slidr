@@ -103,13 +103,16 @@ const conversations = create<Record<string, ConversationSettings>>(() => ({}));
 
 /**
  * The settings a session runs with: the app's, and over them what the conversation chose for
- * itself. Without a thread, the app's alone. The defaults stand for what is absent: the first
- * harness the app offers, on its own default model, with web access and the design check on.
+ * itself. Without a thread, the app's alone. A different conversation model chooses its own
+ * effort. Real harnesses require explicit model/effort choices before starting a session.
  */
 export function agentSettings(threadId?: string): StoredAgentSettings {
   adopt();
   const own = threadId === undefined ? undefined : conversations.getState()[threadId];
-  return own ? { ...stored(), ...own } : stored();
+  const app = stored();
+  return own
+    ? { ...app, ...own, ...(own.model && own.model !== app.model ? { effort: own.effort } : {}) }
+    : app;
 }
 
 /**

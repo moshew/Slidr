@@ -103,9 +103,8 @@ function ActionButton({
       label={t(label)}
       size="sm"
       data-tool={action}
-      // As strong as the slide tools beside them, which carry their names: an icon button by
-      // itself is muted until it is hovered.
-      className="enabled:text-ui-fg"
+      // Match the slide tools beside them in size and contrast.
+      className="enabled:text-ui-fg [&_svg]:size-[18px]"
       disabled={!popover && !run}
       onClick={popover ? undefined : run}
     />
@@ -302,13 +301,11 @@ function ContextToolsRow() {
           </Group>
         ))}
         {kind === 'none' && (
-          <div className="border-s border-ui-line ps-3">
-            <Group label={t('tools.create')}>
-              {inserts.map((insert) => (
-                <ActionButton key={insert.action} {...insert} />
-              ))}
-            </Group>
-          </div>
+          <Group label={t('tools.create')}>
+            {inserts.map((insert) => (
+              <ActionButton key={insert.action} {...insert} />
+            ))}
+          </Group>
         )}
       </ToolStrip>
     </div>

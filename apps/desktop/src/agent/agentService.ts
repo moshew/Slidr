@@ -11,9 +11,9 @@
  *                                ─► not clean: a follow-up, twice at most (SPEC 9.4)
  * ```
  *
- * It knows no harness by name and no wire protocol: it works on `AgentClient` and `ToolBridge`,
- * which the app fills with the Tauri clients and the tests with fakes (ADR-010, ADR-022). The
- * order above is the one ADR-026 sets out.
+ * It works on `AgentClient` and `ToolBridge`, which the app fills with the Tauri clients and
+ * the tests with fakes (ADR-010, ADR-022). Codex and Copilot get one scoped attachment reader
+ * beside the Deck API tools. The order above is the one ADR-026 sets out.
  */
 import {
   startTurn,
@@ -53,10 +53,31 @@ import {
   type Scope,
   type ToolSource,
   type TurnOutcome,
-  type Usage,
 } from './agent';
 import { GATE_ROUNDS, isClean, TurnWatch } from './qualityGate';
-import { toReply, type ToolBridge, type ToolHandler } from './toolBridge';
+import { HarnessSetup, selectionIssue } from './harnessSetup';
+import { toReply, type BridgeTool, type ToolBridge, type ToolHandler } from './toolBridge';
+
+const ATTACHMENT_READ: BridgeTool = {
+  name: 'attachment_read',
+  description:
+    'Read UTF-8 text from a file attached to this chat. Use the path shown in slidr_attachments as name. Reads up to 32 KiB; continue at nextOffset until it equals size. Only attached files are available.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: 'The attachment path shown in slidr_attachments.' },
+      offset: {
+        type: 'integer',
+        minimum: 0,
+        description: 'Byte offset. Use 0 first, then nextOffset.',
+      },
+    },
+    required: ['name'],
+    additionalProperties: false,
+  },
+};
+
+const ATTACHMENT_HARNESSES = new Set(['codex-cli', 'copilot-cli']);
 import type {
   AssistantEntry,
   AssistantPart,
@@ -76,7 +97,7 @@ import type {
 export interface AgentSettings {
   /** The harness to run sessions on; the first registered one when absent. */
   harnessId?: string;
-  /** One of the harness's models; its default when absent. */
+  /** An explicit model returned by the connected CLI. Required for real harnesses. */
   model?: string;
   effort?: string;
   /** Web search and fetch (AID-07, D15). On unless turned off. */
@@ -364,22 +385,6 @@ function base64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-const NO_USAGE: Usage = {
-  inputTokens: 0,
-  outputTokens: 0,
-  cacheReadTokens: 0,
-  cacheWriteTokens: 0,
-};
-
-function addUsage(a: Usage, b: Usage): Usage {
-  return {
-    inputTokens: a.inputTokens + b.inputTokens,
-    outputTokens: a.outputTokens + b.outputTokens,
-    cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
-    cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
-  };
-}
-
 /** An open harness session of a thread. */
 interface Session {
   /** The harness layer's id of the session. */
@@ -394,7 +399,6 @@ interface Session {
   /** The conversation began with this session and no turn has been sent on it yet. */
   fresh: boolean;
   /** It goes on from an earlier session of the harness, with what that one had cost. */
-  resumed: boolean;
   /**
    * What the harness's running total for the conversation was when this session's process
    * began; absent when nobody knew. It is where the total goes back to if the process dies: a
@@ -402,7 +406,6 @@ interface Session {
    * too, and the one that resumes the conversation counts on from where this one started
    * (measured against the real CLI: `real_cli_running_total_across_processes`).
    */
-  baseline?: number;
   /** The settings it was started with: other settings need another session. */
   settings: string;
 }
@@ -456,9 +459,6 @@ interface Run {
    */
   preparing: boolean;
   problem?: ChatProblem;
-  usage: Usage;
-  costUsd: number | null;
-  durationMs: number;
   /**
    * The chips of the run's tool calls and the results of the calls arrive on two roads (the
    * harness's events, and the calls themselves through the bridge), in either order: whichever
@@ -792,7 +792,50 @@ export class ChatThread {
     const { api } = this.#options;
     const writes = api.tools.find((tool) => tool.name === name)?.writes ?? false;
     const before = run.watch.mark();
-    const result = await api.call(run.turn, name, input);
+    let result: ToolResult;
+    if (name === ATTACHMENT_READ.name && ATTACHMENT_HARNESSES.has(this.#session?.harnessId ?? '')) {
+      const args = input as { name?: unknown; offset?: unknown } | null;
+      const file = args?.name;
+      const offset = args?.offset ?? 0;
+      if (
+        typeof file !== 'string' ||
+        typeof offset !== 'number' ||
+        !Number.isSafeInteger(offset) ||
+        offset < 0
+      ) {
+        result = {
+          ok: false,
+          error: {
+            code: 'invalid_input',
+            message: 'Provide an attachment name and a nonnegative integer offset.',
+          },
+        };
+      } else if (!this.#options.client.readAttachment) {
+        result = {
+          ok: false,
+          error: { code: 'unavailable', message: 'Attachment reading is unavailable.' },
+        };
+      } else {
+        try {
+          const chunk = await this.#options.client.readAttachment(
+            `${this.#options.bus.deck.id}/${this.id}`,
+            file,
+            offset,
+          );
+          result = { ok: true, data: chunk, images: [] };
+        } catch (error) {
+          result = {
+            ok: false,
+            error: {
+              code: 'failed',
+              message: error instanceof Error ? error.message : String(error),
+            },
+          };
+        }
+      }
+    } else {
+      result = await api.call(run.turn, name, input);
+    }
     // The run ended while the call was at work (it was stopped, or its session went): the
     // chat may be showing another run by now, and the entry of this one is closed.
     if (this.#run !== run) {
@@ -869,9 +912,6 @@ export class ChatThread {
       retried: false,
       reopened: false,
       preparing: false,
-      usage: NO_USAGE,
-      costUsd: 0,
-      durationMs: 0,
       chips: [],
       results: [],
     };
@@ -1159,13 +1199,18 @@ export class ChatThread {
   async #openSession(): Promise<Session> {
     const { client, api, bus } = this.#options;
     const settings = this.#settings();
-    const harness = await this.#service.harness(settings.harnessId);
-    const status = await client.probe(harness.id);
+    let harness = await this.#service.harness(settings.harnessId);
+    const connection = client.connect ? await this.#service.setup.connect(harness.id) : null;
+    if (connection) harness = connection.harness;
+    const status = connection?.status ?? (await client.probe(harness.id));
     if (status.state !== 'ready') {
       throw new ProblemError({ kind: status.state, message: status.detail ?? '' });
     }
+    const issue = client.connect && selectionIssue(harness, settings.model, settings.effort);
+    if (issue) throw new ProblemError({ kind: 'invalid_input', message: issue });
     const bridge = await this.#service.bridge();
-    const tools = api.list(this.scope.kind);
+    const tools: BridgeTool[] = [...api.list(this.scope.kind)];
+    if (ATTACHMENT_HARNESSES.has(harness.id) && client.readAttachment) tools.push(ATTACHMENT_READ);
     const { sessionKey, endpoint } = await bridge.open(tools);
     const names = tools.map((tool) => tool.name);
     // A conversation continues only on the harness it was held on.
@@ -1187,9 +1232,6 @@ export class ChatThread {
           ...(settings.model ? { model: settings.model } : {}),
           ...(settings.effort ? { effort: settings.effort } : {}),
           ...(resume ? { resume } : {}),
-          ...(resume && this.#record.spentUsd !== undefined
-            ? { resumedCostUsd: this.#record.spentUsd }
-            : {}),
         },
         (event) => this.#enqueue(token, event),
       );
@@ -1204,30 +1246,10 @@ export class ChatThread {
       canLook: names.includes('slide_render'),
       imageInput: harness.capabilities.imageInput,
       fresh: !resume,
-      resumed: Boolean(resume),
-      // A session that begins counts from nothing; one that resumes, from what was kept.
-      ...(!resume
-        ? { baseline: 0 }
-        : this.#record.spentUsd === undefined
-          ? {}
-          : { baseline: this.#record.spentUsd }),
       settings: sessionSettings(settings),
     });
     this.#session = session;
     return session;
-  }
-
-  /** Keeps what the harness's session has cost, for the process that resumes it next. */
-  #spent(costUsd: number | null): void {
-    const before = this.#record.spentUsd;
-    this.#keepSpent(costUsd === null || before === undefined ? undefined : before + costUsd);
-  }
-
-  #keepSpent(spentUsd: number | undefined): void {
-    const { spentUsd: before, ...rest } = this.#record;
-    if (spentUsd === before) return;
-    this.#record = { ...rest, ...(spentUsd === undefined ? {} : { spentUsd }) };
-    this.#saveRecord();
   }
 
   async #endSession(session: Session): Promise<void> {
@@ -1253,8 +1275,6 @@ export class ChatThread {
           ...this.#record,
           harnessId: session.harnessId,
           nativeSessionId: event.nativeSessionId,
-          // A session that begins has cost nothing; one that goes on has cost what it had.
-          ...(session.resumed ? {} : { spentUsd: 0 }),
           updatedAt: this.#now(),
         };
         this.#saveRecord();
@@ -1328,12 +1348,6 @@ export class ChatThread {
         return;
       case 'exited': {
         this.#session = null;
-        // The process died (it was killed, or it crashed): what its turns added is gone from the
-        // harness's own total, so the next process is told what this one started from. Without
-        // this the turn that died, which has no cost, left every later process without a
-        // baseline, and the first turn of each without a cost. A session the app closes itself,
-        // or one that was closed for sitting idle, ends in order and keeps its total.
-        if (event.code !== 0 && this.#record.nativeSessionId) this.#keepSpent(session.baseline);
         // The run's turn is still on its way to a session: whoever is handing it over finds
         // this one gone and opens another. Read before anything is awaited here, so that the
         // two never both act on the run, and never both leave it to the other.
@@ -1364,14 +1378,8 @@ export class ChatThread {
     event: Extract<AgentEvent, { type: 'turn_completed' }>,
   ): Promise<void> {
     // The turn failed on a conversation that cannot be resumed: `exited` follows, and the
-    // message is sent again in a fresh session. The attempt ran nothing, and what it reports
-    // (no cost at all) is not the turn's.
+    // message is sent again in a fresh session.
     if (run.startOver && event.outcome === 'failed') return;
-    run.usage = addUsage(run.usage, event.usage);
-    run.durationMs += event.durationMs;
-    run.costUsd =
-      run.costUsd === null || event.costUsd === null ? null : run.costUsd + event.costUsd;
-    this.#spent(event.costUsd);
     const { bus, lint, client } = this.#options;
     // The harness could not reach its model. One more try before the user is told (ADR-042):
     // the harness has been trying for minutes by then, and the connection may be back. The
@@ -1470,9 +1478,6 @@ export class ChatThread {
       ...(run.wrote && run.turn ? { txId: run.turn.txId } : {}),
       ...(remaining ? { remaining } : {}),
       ...(run.problem ? { problem: run.problem } : {}),
-      usage: run.usage,
-      costUsd: run.costUsd,
-      durationMs: run.durationMs,
     }));
     this.store.setState({ busy: false, stopping: false, activity: null });
     const entry = this.store.getState().entries.find((e) => e.id === run.entryId);
@@ -1587,6 +1592,7 @@ export function threadIdOf(scope: SessionScope): string {
 }
 
 export class AgentService {
+  readonly setup: HarnessSetup;
   /** What changed behind each conversation's back since its last turn (CMD-08), by thread id. */
   readonly digest: ChangeDigest;
   /**
@@ -1605,6 +1611,7 @@ export class AgentService {
 
   constructor(options: AgentServiceOptions) {
     this.#options = options;
+    this.setup = new HarnessSetup(options.client, (id) => this.harness(id));
     this.digest = new ChangeDigest(options.bus);
     this.#unsubscribe = options.bus.subscribe((event) => {
       if (event.kind === 'reset') {

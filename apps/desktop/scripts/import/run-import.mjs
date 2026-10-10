@@ -2,7 +2,7 @@
 // and writes what the app measured: the report the import panel shows, built from the app's
 // own record, plus the calls the agent made.
 //   node scripts/import/run-import.mjs <file.html> <out.json> [--model sonnet] [--confirm]
-// The deck that is open is replaced by a new one. Costs usage on the signed-in account.
+// The deck that is open is replaced by a new one.
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { connect } from './cdp.mjs';
@@ -60,9 +60,6 @@ const read = () =>
       .map((e) => ({
         outcome: e.outcome ?? null,
         problem: e.problem ?? null,
-        costUsd: e.costUsd ?? null,
-        durationMs: e.durationMs ?? null,
-        usage: e.usage ?? null,
         tools: e.parts.filter((p) => p.type === 'tool').map((p) => `${p.name}:${p.state}`),
         text: e.parts
           .filter((p) => p.type === 'text')
@@ -142,9 +139,6 @@ for (;;) {
         medianEditability: r.medianEditability,
         medianText: r.medianTextEditability,
         wholeHtml: r.wholeHtml,
-        agentMs: r.durationMs,
-        costUsd: r.costUsd,
-        turns: r.turns,
         blocked: r.blocked.length,
         outcome: now.turns.at(-1)?.outcome,
         problem: now.turns.at(-1)?.problem,

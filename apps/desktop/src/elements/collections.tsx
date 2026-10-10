@@ -13,23 +13,18 @@ import {
   SearchX,
   Smile,
   Trophy,
-  Upload,
   type LucideIcon,
 } from '@slidr/ui/icons';
 import {
   Button,
   cx,
   EmptyState,
-  Icon,
   IconButton,
   Input,
   SegmentedControl,
   Skeleton,
   Tooltip,
 } from '@slidr/ui';
-import { CHART_TYPES, typeIcons } from '../chart/icons';
-import { insertChart } from '../chart/insert';
-import { insertClips } from '../media/insertClip';
 import { insertCard, insertLine, insertShape } from '../objects/insert';
 import { LINE_KINDS, shapeLibrary } from '../objects/shapes';
 import { useDeck, useEditor } from '../shell';
@@ -418,7 +413,7 @@ export function ShapesCollection() {
   );
 }
 
-/* ---------------------------------------------------------------- tables, charts, clips */
+/* ---------------------------------------------------------------- tables */
 
 /** The tints of row A's tools, for tiles that stand for a kind of element. */
 const tones = [
@@ -503,54 +498,5 @@ export function TablesCollection() {
         </div>
       </Section>
     </>
-  );
-}
-
-/** Charts: the eight types, each inserted with sample data at a click. */
-export function ChartsCollection() {
-  const { t } = useTranslation('chart');
-  const editor = useEditor();
-  return (
-    <div
-      role="group"
-      aria-label={t('insert.gallery')}
-      className={kindTiles}
-      data-testid="elements-charts"
-    >
-      {CHART_TYPES.map((chartType, index) => (
-        <button
-          key={chartType}
-          type="button"
-          data-chart-type={chartType}
-          className={kindTile}
-          onClick={() => insertChart(editor, chartType)}
-        >
-          <span className={cx(kindPicture, tones[(index + 3) % tones.length])}>
-            <Icon icon={typeIcons[chartType]} className="size-9" />
-          </span>
-          {t(`types.${chartType}`)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** Video and audio come from files of the user's: the collection is the way to the file dialog. */
-export function ClipsCollection() {
-  const { t } = useTranslation('elements');
-  const editor = useEditor();
-  return (
-    <button
-      type="button"
-      data-testid="elements-clips"
-      onClick={() => void insertClips(editor)}
-      className="flex cursor-default flex-col items-center gap-3 rounded-panel border border-dashed border-ui-line-strong px-6 py-10 text-center transition-colors hover:border-ui-accent hover:bg-ui-hover"
-    >
-      <span className="flex size-12 items-center justify-center rounded-full bg-ui-tool-rose text-ui-tool-rose-fg">
-        <Icon icon={Upload} size="lg" />
-      </span>
-      <span className="text-sm font-semibold text-ui-fg">{t('clips.pick')}</span>
-      <span className="text-xs text-ui-fg-muted">{t('clips.hint')}</span>
-    </button>
   );
 }

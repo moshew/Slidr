@@ -76,11 +76,7 @@ if (import.meta.env.DEV) {
       const chat = thread();
       if (!chat) return null;
       await refreshBlocked();
-      return buildReport(
-        importState.getState(),
-        getEditor().bus.deck,
-        chat.store.getState().entries,
-      );
+      return buildReport(importState.getState(), getEditor().bus.deck);
     },
     open: (source) => openImport(getEditor(), source),
     resume: () => continueImport(getEditor()),

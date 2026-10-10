@@ -1,8 +1,7 @@
 import { CommandBus, plainText, type Deck, type Element, type Layout } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { seatAlign } from './align';
-import { tzukTemplate } from './builtin/tzuk';
-import { zeremTemplate } from './builtin/zerem';
+import { tzukTemplate, zeremTemplate } from './builtin';
 import { applyTemplate, changeDirection, deckFromTemplate } from './deck';
 import {
   deckFooter,

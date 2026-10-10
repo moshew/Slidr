@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { nameLabel, useCurrentSlide } from './parts';
 import { TransitionEditor } from './TransitionEditor';
 
-/** The transition into the slide, in row B with nothing selected (SPEC 4.4). */
+/** The transition into the slide, used by the AI actions panel. */
 export function TransitionTool() {
   const { t } = useTranslation('animations');
   const slide = useCurrentSlide();

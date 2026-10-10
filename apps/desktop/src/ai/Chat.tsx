@@ -54,7 +54,7 @@ import type {
   UserEntry,
 } from '../agent/transcript';
 import { pickFiles } from '../objects/insert';
-import { ask, useDeck, useEditor } from '../shell';
+import { ask, openPanel, PanelId, useDeck, useEditor } from '../shell';
 import { TemplateDraftCard } from '../templates/DraftCard';
 import { actionLabel } from './actionLabels';
 import { accepted, ATTACHABLE, pastedFiles, readAttachment, refusals } from './attachments';
@@ -70,7 +70,6 @@ import { OutlineCard } from './Outline';
 import { aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
 import { DECK } from './sessions';
 import { activityLabel, targetSlideNumber, toolIcon, toolLabel } from './toolLabels';
-import { formatCost, formatTokens, tokensOf } from './usage';
 
 /*
  * The AI chat (SPEC 11.8, WG11-T01; ADR-072): the conversation as it streams, a chip for every
@@ -328,6 +327,13 @@ function ProblemCard({ problem }: { problem: ChatProblem }) {
       <div className="flex min-w-0 flex-col gap-0.5">
         <p className="text-sm font-medium text-ui-fg">{t(`problem.${kind}.title`)}</p>
         <p className="text-sm text-ui-fg">{t(`problem.${kind}.body`)}</p>
+        {['not_installed', 'not_logged_in', 'unavailable', 'invalid_input'].includes(
+          problem.kind,
+        ) && (
+          <Button size="sm" variant="ghost" onClick={() => openPanel(PanelId.settings)}>
+            {t('settings:agent.configure')}
+          </Button>
+        )}
         {problem.message && (
           <p dir="ltr" className="text-start text-xs wrap-anywhere text-ui-fg-muted">
             {problem.message}
@@ -453,26 +459,6 @@ function UndoTurn({ txId, disabled }: { txId: string; disabled: boolean }) {
   );
 }
 
-/** What a turn used, as the harness reported it (CHT-U06). */
-function TurnUsage({ entry }: { entry: AssistantEntry }) {
-  const { t } = useTranslation('ai');
-  if (!entry.outcome || !entry.usage) return null;
-  const tokens = formatTokens(tokensOf(entry.usage));
-  const time = t('usage.seconds', { n: Math.round((entry.durationMs ?? 0) / 1000) });
-  return (
-    <p
-      data-testid="turn-usage"
-      data-cost={typeof entry.costUsd === 'number' ? entry.costUsd : undefined}
-      // Quiet, and still text: the colour of disabled controls is not for words (DSN-08).
-      className="text-xs text-ui-fg-muted"
-    >
-      {typeof entry.costUsd === 'number'
-        ? t('usage.turn', { tokens, cost: formatCost(entry.costUsd), time })
-        : t('usage.turnNoCost', { tokens, time })}
-    </p>
-  );
-}
-
 function AssistantTurn({
   entry,
   busy,
@@ -523,7 +509,6 @@ function AssistantTurn({
         </p>
       )}
       {entry.txId && entry.outcome && <UndoTurn txId={entry.txId} disabled={busy} />}
-      <TurnUsage entry={entry} />
     </article>
   );
 }

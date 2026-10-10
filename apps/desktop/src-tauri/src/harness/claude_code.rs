@@ -29,17 +29,19 @@ use std::{
 
 use async_trait::async_trait;
 use serde_json::{Map, Value, json};
+#[cfg(test)]
+use tokio::time::Instant;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, ChildStderr, ChildStdin, ChildStdout},
     sync::{Notify, watch},
-    time::{Instant, timeout},
+    time::timeout,
 };
 
 use crate::harness::{
     AgentError, AgentErrorKind, AgentEvent, AgentHarness, AgentSession, Capabilities, EventSink,
-    HarnessDescriptor, HarnessState, HarnessStatus, ModelOption, Result, SessionConfig,
-    ToolEndpoint, ToolSource, TurnOutcome, Usage, UserTurn,
+    HarnessDescriptor, HarnessState, HarnessStatus, Result, SessionConfig, ToolEndpoint,
+    ToolSource, TurnOutcome, UserTurn,
 };
 
 const PROGRAM: &str = "claude";
@@ -49,15 +51,6 @@ const TOOL_PREFIX: &str = "mcp__slidr__";
 /// Built-in tools, an exact list (`--tools`): reading the attachments, and the web (AID-07).
 const FILE_TOOLS: [&str; 2] = ["Read", "Grep"];
 const WEB_TOOLS: [&str; 2] = ["WebSearch", "WebFetch"];
-/// Aliases the CLI resolves to the latest model of each family.
-const MODELS: [(&str, &str); 4] = [
-    ("sonnet", "Sonnet"),
-    ("opus", "Opus"),
-    ("haiku", "Haiku"),
-    ("fable", "Fable"),
-];
-const EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
-
 /// Windows: start the CLI without a console window (ADR-001 finding 5).
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -113,7 +106,12 @@ impl ClaudeCodeHarness {
     /// The CLI with the user's Claude and Anthropic variables removed (the app may itself run
     /// under Claude Code in development) and, on Windows, no console window.
     fn command(&self) -> std::process::Command {
-        let mut command = std::process::Command::new(&self.program);
+        let program = if self.program == PROGRAM {
+            crate::harness::setup::claude_program().into_os_string()
+        } else {
+            self.program.clone()
+        };
+        let mut command = std::process::Command::new(program);
         command.args(&self.prefix);
         for (key, _) in std::env::vars_os() {
             let upper = key.to_string_lossy().to_ascii_uppercase();
@@ -153,15 +151,9 @@ impl AgentHarness for ClaudeCodeHarness {
                 tool_endpoint: true,
                 thinking: true,
             },
-            models: MODELS
-                .iter()
-                .map(|(id, label)| ModelOption {
-                    id: (*id).into(),
-                    label: (*label).into(),
-                })
-                .collect(),
+            models: Vec::new(),
             default_model: None,
-            effort_levels: EFFORTS.iter().map(|e| (*e).into()).collect(),
+            effort_levels: Vec::new(),
         }
     }
 
@@ -224,12 +216,9 @@ impl AgentHarness for ClaudeCodeHarness {
         check_value("model", config.model.as_deref())?;
         check_value("resume", config.resume.as_deref())?;
         if let Some(effort) = &config.effort
-            && !EFFORTS.contains(&effort.as_str())
+            && (effort.is_empty() || !effort.chars().all(|c| c.is_ascii_lowercase() || c == '_'))
         {
-            return Err(AgentError::invalid_input(format!(
-                "unknown effort level {effort:?}; expected one of {}",
-                EFFORTS.join(", ")
-            )));
+            return Err(AgentError::invalid_input("invalid effort level"));
         }
         let files = SessionFiles::new(&config.workdir);
         files.write(&config).await?;
@@ -258,17 +247,13 @@ impl AgentHarness for ClaudeCodeHarness {
             stdin: tokio::sync::Mutex::new(Some(stdin)),
             native_id: Mutex::new(None),
             busy: watch::Sender::new(false),
-            turn_began: Mutex::new(None),
             closing: AtomicBool::new(false),
             stopped_by_kill: AtomicBool::new(false),
             explained: AtomicBool::new(false),
             kill: Notify::new(),
         });
         let (exited_tx, exited) = watch::channel(false);
-        let mut mapper = StreamMapper::new(config.resume.is_some(), config.tool_endpoint.is_some());
-        if config.resume.is_some() {
-            mapper.cost_baseline = config.resumed_cost_usd;
-        }
+        let mapper = StreamMapper::new(config.resume.is_some(), config.tool_endpoint.is_some());
         tokio::spawn(supervise(
             child,
             stdout,
@@ -428,7 +413,6 @@ struct Shared {
     native_id: Mutex<Option<String>>,
     /// A turn was written and its `result` has not arrived.
     busy: watch::Sender<bool>,
-    turn_began: Mutex<Option<Instant>>,
     closing: AtomicBool,
     /// The running turn ignored its interrupt and the process was ended.
     stopped_by_kill: AtomicBool,
@@ -455,7 +439,6 @@ impl Shared {
 
     fn end_turn(&self) {
         self.busy.send_replace(false);
-        lock(&self.turn_began).take();
     }
 }
 
@@ -489,15 +472,11 @@ async fn supervise(
     }
     let code = child.wait().await.ok().and_then(|status| status.code());
     let stderr = stderr.await.unwrap_or_default();
-    let began = lock(&shared.turn_began).take();
     let was_busy = shared.busy.send_replace(false);
     let closing = shared.closing.load(Ordering::SeqCst);
     if was_busy && shared.stopped_by_kill.load(Ordering::SeqCst) {
         sink.emit(AgentEvent::TurnCompleted {
             outcome: TurnOutcome::Interrupted,
-            usage: Usage::default(),
-            cost_usd: None,
-            duration_ms: began.map_or(0, millis),
         });
         if !closing {
             sink.emit(AgentEvent::Error {
@@ -571,10 +550,6 @@ async fn tail(stderr: ChildStderr) -> String {
     Vec::from(last).join("\n")
 }
 
-fn millis(since: Instant) -> u64 {
-    u64::try_from(since.elapsed().as_millis()).unwrap_or(u64::MAX)
-}
-
 /// The stdin message of a user turn (ADR-001): the context block, the images, then the text.
 fn user_message(turn: &UserTurn) -> Value {
     let mut content = Vec::new();
@@ -611,7 +586,6 @@ impl AgentSession for ClaudeSession {
         if *self.exited.borrow() {
             return Err(AgentError::process_exited("the CLI process has ended"));
         }
-        *lock(&self.shared.turn_began) = Some(Instant::now());
         self.shared.busy.send_replace(true);
         let written = self.shared.write(&user_message(&turn)).await;
         if written.is_err() {
@@ -683,11 +657,6 @@ struct StreamMapper {
     resumed: bool,
     /// Check every `init` for the app's tools (ADR-002).
     expect_app_tools: bool,
-    /// `total_cost_usd` is cumulative per conversation, across processes; the last value seen,
-    /// when known. On a resumed process it is what the app says the conversation had cost
-    /// (`SessionConfig::resumed_cost_usd`); without that it is unknown until the first `result`,
-    /// which then has no per-turn cost.
-    cost_baseline: Option<f64>,
     /// The id of the assistant message being streamed, and the ones whose text was streamed.
     current_message: Option<String>,
     streamed: HashSet<String>,
@@ -699,7 +668,6 @@ impl StreamMapper {
             started: false,
             resumed,
             expect_app_tools,
-            cost_baseline: if resumed { None } else { Some(0.0) },
             current_message: None,
             streamed: HashSet::new(),
         }
@@ -836,35 +804,7 @@ impl StreamMapper {
         if outcome == TurnOutcome::Failed {
             events.push(turn_error(line));
         }
-        let total = line["total_cost_usd"].as_f64();
-        let cost_usd = match (self.cost_baseline, total) {
-            // A total below the baseline: the baseline was not what the CLI had kept. The CLI
-            // keeps its running total when a process ends in order, and a process that is killed
-            // keeps nothing of what its turns added: the next one counts on from where the killed
-            // one began (measured: `real_cli_running_total_across_processes`). The app goes back
-            // to that baseline when it sees a process die. Where it could not (it died with the
-            // process), the total is read as this process's own, which it is for a conversation
-            // that never had a process end in order (ADR-066, finding 4).
-            (Some(before), Some(total)) if total < before => Some(total),
-            (Some(before), Some(total)) => Some(total - before),
-            _ => None,
-        };
-        if total.is_some() {
-            self.cost_baseline = total;
-        }
-        let usage = &line["usage"];
-        let tokens = |key: &str| usage[key].as_u64().unwrap_or(0);
-        events.push(AgentEvent::TurnCompleted {
-            outcome,
-            usage: Usage {
-                input_tokens: tokens("input_tokens"),
-                output_tokens: tokens("output_tokens"),
-                cache_read_tokens: tokens("cache_read_input_tokens"),
-                cache_write_tokens: tokens("cache_creation_input_tokens"),
-            },
-            cost_usd,
-            duration_ms: line["duration_ms"].as_u64().unwrap_or(0),
-        });
+        events.push(AgentEvent::TurnCompleted { outcome });
         self.current_message = None;
         self.streamed.clear();
         events
@@ -1020,7 +960,7 @@ mod tests {
     type TestResultOf<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
     /// Splits a stream into turns, each summarized as the text, the tool calls and the end.
-    fn turns(events: &[AgentEvent]) -> Vec<(String, Vec<String>, TurnOutcome, Option<f64>)> {
+    fn turns(events: &[AgentEvent]) -> Vec<(String, Vec<String>, TurnOutcome)> {
         let mut turns = Vec::new();
         let (mut text, mut tools) = (String::new(), Vec::new());
         for event in events {
@@ -1032,22 +972,15 @@ mod tests {
                 AgentEvent::ToolCallFinished { id, ok, .. } => {
                     tools.push(format!("{}={ok}", &id[id.len() - 4..]));
                 }
-                AgentEvent::TurnCompleted {
-                    outcome, cost_usd, ..
-                } => turns.push((
+                AgentEvent::TurnCompleted { outcome } => turns.push((
                     std::mem::take(&mut text),
                     std::mem::take(&mut tools),
                     *outcome,
-                    *cost_usd,
                 )),
                 _ => {}
             }
         }
         turns
-    }
-
-    fn close_to(a: Option<f64>, b: f64) -> bool {
-        a.is_some_and(|a| (a - b).abs() < 1e-9)
     }
 
     #[test]
@@ -1079,10 +1012,8 @@ mod tests {
         let turns = turns(&events);
         assert_eq!(turns.len(), 6);
         assert_eq!(turns[0].0, "ZEBRA-42");
-        assert!(close_to(turns[0].3, 0.002_652_3));
         assert_eq!(turns[1].0, "The word in the note is **HERON**.");
         assert_eq!(turns[1].1, ["Read:Harness:GCuD", "GCuD=true"]);
-        assert!(close_to(turns[1].3, 0.005_772_2 - 0.002_652_3));
         assert_eq!(
             turns[3].1,
             [
@@ -1092,10 +1023,10 @@ mod tests {
                 "RPyA=false"
             ]
         );
-        // The interrupted turn: what streamed before the stop, nothing billed, no error event.
+        // The interrupted turn: what streamed before the stop, no error event.
         assert_eq!(
-            (&turns[4].0[..], turns[4].2, turns[4].3),
-            ("1\n2\n3\n4", TurnOutcome::Interrupted, Some(0.0))
+            (&turns[4].0[..], turns[4].2),
+            ("1\n2\n3\n4", TurnOutcome::Interrupted)
         );
         assert_eq!(turns[5].0, "still alive");
         assert!(
@@ -1114,19 +1045,6 @@ mod tests {
         assert_eq!(
             finished.as_deref(),
             Some("1\tThe word in this note is HERON.\n2\t")
-        );
-        let usage = events.iter().find_map(|e| match e {
-            AgentEvent::TurnCompleted { usage, .. } => Some(*usage),
-            _ => None,
-        });
-        assert_eq!(
-            usage,
-            Some(Usage {
-                input_tokens: 10,
-                output_tokens: 60,
-                cache_read_tokens: 6223,
-                cache_write_tokens: 860
-            })
         );
         Ok(())
     }
@@ -1154,7 +1072,6 @@ mod tests {
         );
         assert!(turns[0].0.starts_with("Six slides, shown by toggling"));
         assert!(turns[0].0.contains("תוכנית עבודה 2027"));
-        assert!(close_to(turns[0].3, 0.053_915_4));
         Ok(())
     }
 
@@ -1179,85 +1096,11 @@ mod tests {
     }
 
     #[test]
-    fn cost_of_a_resumed_turn_is_known_when_the_app_says_what_was_spent() {
-        let result = |total: f64| {
-            json!({ "type": "result", "subtype": "success", "is_error": false, "result": "ok",
-                    "total_cost_usd": total, "duration_ms": 900, "usage": {} })
-        };
-        // The conversation had cost 0.6693 when its last process ended; the total goes on from it.
-        let mut mapper = StreamMapper::new(true, false);
-        mapper.cost_baseline = Some(0.6693);
-        mapper
-            .map(&json!({ "type": "system", "subtype": "init", "session_id": "s", "model": "m" }));
-        let costs: Vec<Option<f64>> = [0.8599, 0.8700]
-            .into_iter()
-            .flat_map(|total| mapper.map(&result(total)))
-            .filter_map(|event| match event {
-                AgentEvent::TurnCompleted { cost_usd, .. } => Some(cost_usd),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(costs.len(), 2);
-        assert!(close_to(costs[0], 0.1906));
-        assert!(close_to(costs[1], 0.0101));
-    }
-
-    #[test]
-    fn cost_of_a_turn_after_a_killed_process_is_its_own_total() {
-        let result = |total: f64| {
-            json!({ "type": "result", "subtype": "success", "is_error": false, "result": "ok",
-                    "total_cost_usd": total, "duration_ms": 900, "usage": {} })
-        };
-        // The app says the conversation had cost 0.6693, and the process that resumes it reports
-        // less: the CLI did not keep that total. That is a conversation whose only process so
-        // far was killed (ADR-066, finding 4), in an app that did not live to see it die: the
-        // next process counts from zero, and its first turn cost what its total says.
-        let mut mapper = StreamMapper::new(true, false);
-        mapper.cost_baseline = Some(0.6693);
-        mapper
-            .map(&json!({ "type": "system", "subtype": "init", "session_id": "s", "model": "m" }));
-        let costs: Vec<Option<f64>> = [0.0412, 0.0530]
-            .into_iter()
-            .flat_map(|total| mapper.map(&result(total)))
-            .filter_map(|event| match event {
-                AgentEvent::TurnCompleted { cost_usd, .. } => Some(cost_usd),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(costs.len(), 2);
-        assert!(close_to(costs[0], 0.0412));
-        assert!(close_to(costs[1], 0.0118));
-    }
-
-    #[test]
-    fn cost_of_the_first_resumed_turn_is_unknown() {
-        let result = |total: f64| {
-            json!({ "type": "result", "subtype": "success", "is_error": false,
-                    "total_cost_usd": total, "duration_ms": 900, "usage": {} })
-        };
-        let mut mapper = StreamMapper::new(true, false);
-        mapper
-            .map(&json!({ "type": "system", "subtype": "init", "session_id": "s", "model": "m" }));
-        let costs: Vec<Option<f64>> = [0.015, 0.016, 0.0185]
-            .into_iter()
-            .flat_map(|total| mapper.map(&result(total)))
-            .filter_map(|e| match e {
-                AgentEvent::TurnCompleted { cost_usd, .. } => Some(cost_usd),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(costs.len(), 3);
-        assert_eq!(costs[0], None);
-        assert!(close_to(costs[1], 0.001));
-        assert!(close_to(costs[2], 0.0025));
-    }
-
-    #[test]
     fn failed_turns_and_limits_become_errors() {
         let mut mapper = StreamMapper::new(false, false);
         let failed = mapper.map(&json!({
             "type": "result", "subtype": "success", "is_error": true, "api_error_status": 429,
-            "result": "You've hit your limit", "total_cost_usd": 0, "duration_ms": 10, "usage": {}
+            "result": "You've hit your limit"
         }));
         assert_eq!(
             failed,
@@ -1269,9 +1112,6 @@ mod tests {
                 },
                 AgentEvent::TurnCompleted {
                     outcome: TurnOutcome::Failed,
-                    usage: Usage::default(),
-                    cost_usd: Some(0.0),
-                    duration_ms: 10
                 }
             ]
         );
@@ -1324,8 +1164,6 @@ mod tests {
             &events[1],
             AgentEvent::TurnCompleted {
                 outcome: TurnOutcome::Failed,
-                duration_ms: 175_441,
-                ..
             }
         ));
         // A failure the API answered with is still the turn's own, whatever ended it.
@@ -1630,13 +1468,6 @@ mod tests {
                 },
                 AgentEvent::TurnCompleted {
                     outcome: TurnOutcome::Completed,
-                    usage: Usage {
-                        input_tokens: 3,
-                        output_tokens: 4,
-                        ..Usage::default()
-                    },
-                    cost_usd: Some(0.01),
-                    duration_ms: 5
                 }
             ]
         );
@@ -1672,8 +1503,6 @@ mod tests {
             turn.last(),
             Some(AgentEvent::TurnCompleted {
                 outcome: TurnOutcome::Interrupted,
-                cost_usd: Some(0.0),
-                ..
             })
         ));
         manager.send(&id, UserTurn::text("again")).await?;
@@ -1715,8 +1544,6 @@ mod tests {
             [
                 AgentEvent::TurnCompleted {
                     outcome: TurnOutcome::Interrupted,
-                    cost_usd: None,
-                    ..
                 },
                 AgentEvent::Error {
                     kind: AgentErrorKind::ProcessExited,
@@ -1827,8 +1654,6 @@ mod tests {
             end,
             Some(AgentEvent::TurnCompleted {
                 outcome: TurnOutcome::Completed,
-                cost_usd: Some(_),
-                ..
             })
         ));
 
@@ -1874,8 +1699,6 @@ mod tests {
             end,
             Some(AgentEvent::TurnCompleted {
                 outcome: TurnOutcome::Completed,
-                cost_usd: None,
-                ..
             })
         ));
         assert_eq!(manager.native_session_id(&id).await?, Some(native));
@@ -2037,10 +1860,8 @@ mod tests {
                 _,
                 AgentEvent::TurnCompleted {
                     outcome: TurnOutcome::Completed,
-                    cost_usd,
-                    ..
                 },
-            )) => println!("cost: {cost_usd:?} USD"),
+            )) => {}
             other => return Err(format!("the turn did not complete: {other:?}").into()),
         }
         Ok(())
@@ -2084,39 +1905,6 @@ mod tests {
             ]
         ));
         Ok(())
-    }
-
-    /// One real session for the test of the running total below: its events, and every
-    /// `total_cost_usd` its process reported, as the CLI wrote it.
-    async fn real_session(
-        workdir: &Path,
-        resume: Option<String>,
-        totals: &Arc<Mutex<Vec<f64>>>,
-    ) -> TestResultOf<(Box<dyn AgentSession>, Events)> {
-        let mut config = SessionConfig::new(
-            Scope::Deck,
-            "You are a terse test agent. Follow instructions exactly.",
-            workdir.to_path_buf(),
-        );
-        config.model = Some("haiku".into());
-        config.web_access = false;
-        config.resume = resume;
-        let (sender, events) = tokio::sync::mpsc::unbounded_channel();
-        let totals = Arc::clone(totals);
-        let sink = EventSink::new(move |event| {
-            let _ = sender.send(event);
-        })
-        .with_raw(move |line| {
-            let total = serde_json::from_str::<Value>(line)
-                .ok()
-                .filter(|value| value["type"] == "result")
-                .and_then(|value| value["total_cost_usd"].as_f64());
-            if let Some(total) = total {
-                lock(&totals).push(total);
-            }
-        });
-        let session = ClaudeCodeHarness::new().start(config, sink).await?;
-        Ok((session, events))
     }
 
     /// Events of a real session up to the first one `last` accepts; a real turn takes a while.
@@ -2240,9 +2028,6 @@ mod tests {
                     println!("  tool call finished, ok: {ok}: {shown}");
                     results.push((*ok, summary.clone()));
                 }
-                AgentEvent::TurnCompleted {
-                    cost_usd, usage, ..
-                } => println!("  cost: {cost_usd:?} USD, usage: {usage:?}"),
                 _ => {}
             }
         }
@@ -2259,92 +2044,6 @@ mod tests {
             results[0].0 && results[0].1.starts_with("{\"elements\":["),
             "{results:?}"
         );
-        Ok(())
-    }
-
-    /// The real CLI's running total across processes: what a turn's cost is read from
-    /// (`StreamMapper::result`), and what the app keeps as the baseline of the next process
-    /// (`resumed_cost_usd`). One conversation on Haiku, in seven processes: a fresh one; one that
-    /// resumes it after an orderly close; one that is killed in the middle of its turn; two that
-    /// resume after that; one that is killed after a whole turn; and one more. What it found
-    /// (2.1.287): the CLI keeps its total when a process ends in order, and a process that is
-    /// killed keeps nothing, its whole turns included. About two cents.
-    /// Run: `cargo test -p slidr real_cli_running_total -- --ignored --nocapture`.
-    #[tokio::test(flavor = "multi_thread")]
-    #[ignore = "runs the real Claude Code CLI on the owner's subscription"]
-    async fn real_cli_running_total_across_processes() -> TestResult {
-        let root = tempfile::tempdir()?;
-        let workdir = root.path().join("thread");
-        let totals = Arc::new(Mutex::new(Vec::new()));
-        let seen = |label: &str| println!("{label}: totals so far {:?}", lock(&totals));
-
-        let (mut a, mut events) = real_session(&workdir, None, &totals).await?;
-        a.send(UserTurn::text("Reply with exactly: one")).await?;
-        real_until(&mut events, turn_end).await?;
-        let native = a.native_session_id().ok_or("no session id")?;
-        a.close().await?;
-        seen("A, a fresh process, closed in order");
-
-        let (mut b, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
-        b.send(UserTurn::text("Reply with exactly: two")).await?;
-        real_until(&mut events, turn_end).await?;
-        b.close().await?;
-        seen("B, resumed after an orderly close");
-
-        let (mut c, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
-        c.send(UserTurn::text(
-            "Count from 1 to 400, one number per line, nothing else.",
-        ))
-        .await?;
-        real_until(&mut events, text_delta).await?;
-        // Dropped without `close`: the process is killed where it is, in the middle of the turn.
-        drop(c);
-        real_until(&mut events, exit).await?;
-        seen("C, resumed, killed in the middle of its turn");
-
-        let (mut d, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
-        d.send(UserTurn::text("Reply with exactly: four")).await?;
-        real_until(&mut events, turn_end).await?;
-        d.close().await?;
-        seen("D, resumed after the killed process");
-
-        let (mut e, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
-        e.send(UserTurn::text("Reply with exactly: five")).await?;
-        real_until(&mut events, turn_end).await?;
-        e.close().await?;
-        seen("E, resumed after an orderly close again");
-
-        let (mut f, mut events) = real_session(&workdir, Some(native.clone()), &totals).await?;
-        f.send(UserTurn::text("Reply with exactly: six")).await?;
-        real_until(&mut events, turn_end).await?;
-        seen("F, resumed, a whole turn");
-        f.send(UserTurn::text(
-            "Count from 1 to 400, one number per line, nothing else.",
-        ))
-        .await?;
-        real_until(&mut events, text_delta).await?;
-        drop(f);
-        real_until(&mut events, exit).await?;
-        seen("F, killed in the middle of its second turn");
-
-        let (mut g, mut events) = real_session(&workdir, Some(native), &totals).await?;
-        g.send(UserTurn::text("Reply with exactly: seven")).await?;
-        real_until(&mut events, turn_end).await?;
-        g.close().await?;
-        seen("G, resumed after a process that was killed after a whole turn");
-        let totals = lock(&totals).clone();
-        let [a, b, d, e, f, g] = totals[..] else {
-            return Err(
-                format!("a `result` for every turn but the killed ones: {totals:?}").into(),
-            );
-        };
-        // A process that ended in order kept its total: the next one counts on from it.
-        assert!(a < b && b < d && d < e && e < f, "{totals:?}");
-        // A process that was killed kept nothing, its whole turn (F's first) included: G counts
-        // on from where F began, which is where E ended. Had F's turn been kept, G would stand
-        // a whole turn above F; it stands about one turn above E.
-        let turn = f - e;
-        assert!(g - e < 2.0 * turn && g - f < 0.5 * turn, "{totals:?}");
         Ok(())
     }
 }

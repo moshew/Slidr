@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Deck } from '@slidr/model';
@@ -103,17 +102,6 @@ export async function choose(page: Page, click: () => Promise<void>, path: strin
   await (await chooser).setFiles(path);
 }
 
-/** What a script says each of its turns cost. */
-export function scriptCosts(script: Script): number[] {
-  const file = fileURLToPath(
-    new URL(`../src-tauri/src/harness/fixtures/scripts/${script}.json`, import.meta.url),
-  );
-  const { turns: played } = JSON.parse(readFileSync(file, 'utf8')) as {
-    turns: { type: string; costUsd?: number }[][];
-  };
-  return played.map((steps) => steps.find((step) => step.type === 'turn_completed')?.costUsd ?? 0);
-}
-
 /** Console errors and uncaught exceptions; a missing translation is one (src/i18n). */
 export function collectErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -139,18 +127,6 @@ export async function settle(page: Page): Promise<void> {
  */
 const RUNTIME = '/src/ai/runtime.ts';
 const TEMPLATES = '/src/templates/app.ts';
-
-/** The sum of the costs the deck chat's transcript holds for its turns. */
-export function heldCost(page: Page): Promise<number> {
-  return page.evaluate(async (path) => {
-    const { aiOf } = (await import(/* @vite-ignore */ path)) as typeof Runtime;
-    const { entries } = aiOf(window.slidr!).agent.thread({ kind: 'deck' }).store.getState();
-    return entries.reduce(
-      (sum, entry) => sum + (entry.type === 'assistant' ? (entry.costUsd ?? 0) : 0),
-      0,
-    );
-  }, RUNTIME);
-}
 
 /** What the deck chat was sent last: for an action, its `<slidr_action>` block. */
 export function lastSent(page: Page): Promise<string> {

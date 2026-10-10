@@ -177,7 +177,12 @@ test('the icons and the photographs of the templates are files beside the execut
 
 test('the scripted harness is offered because it was asked for', async () => {
   const harnesses = await invoke<{ id: string }[]>(app.page, 'agent_harnesses');
-  expect(harnesses.map((harness) => harness.id)).toEqual(['claude-code', 'mock']);
+  expect(harnesses.map((harness) => harness.id)).toEqual([
+    'claude-code',
+    'codex-cli',
+    'copilot-cli',
+    'mock',
+  ]);
 });
 
 test('a turn builds a slide: the bridge, the capture window, the conversion and its fonts', async () => {

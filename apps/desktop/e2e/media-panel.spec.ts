@@ -130,7 +130,7 @@ test('icons are found in Hebrew and in English, and an inserted icon takes the t
   await openApp(page);
   await openMedia(page, 'icons');
   // Before a query: the common icons.
-  await expect(icons(page).first()).toHaveAttribute('data-icon', 'lucide:star');
+  await expect(icons(page).first()).toHaveAttribute('data-icon', 'lucide:chart-line');
 
   await page.getByTestId('icon-query').fill('רקטה');
   await expect(icons(page).first()).toHaveAttribute('data-icon', 'lucide:rocket');
@@ -185,9 +185,9 @@ test('icons are found in Hebrew and in English, and an inserted icon takes the t
   expect(errors).toEqual([]);
 });
 
-test('the Elements button of row A opens the icon library', async ({ page }) => {
+test('the Elements panel opens the icon library', async ({ page }) => {
   await openApp(page, { lang: 'en' });
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'Elements' }).click();
+  await page.getByTestId('activity-bar').locator('[data-panel="elements"]').click();
   await page.getByTestId('elements-panel').locator('[data-collection="icons"]').click();
   await expect(page.getByTestId('elements-icons')).toBeVisible();
   await expect(icons(page).first()).toBeVisible();

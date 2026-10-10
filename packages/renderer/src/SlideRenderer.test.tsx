@@ -10,6 +10,7 @@ import {
   walkElements,
   type Deck,
   type Element,
+  type ImageElement,
 } from '@slidr/model';
 import { allElementsDeck } from '@slidr/model/fixtures';
 import { act, type ReactNode } from 'react';
@@ -89,6 +90,45 @@ describe('SlideRenderer', () => {
     render(<SlideRenderer deck={deck} slide={deck.slides[0]!} />);
     expect(ids('[data-decoration-id]')).toEqual(['e_layout_bar']);
     expect(container.querySelector('[data-element-id="e_layout_bar"]')).toBeNull();
+  });
+
+  it('draws the text of a box in the colour of the box, and a run in the colour of its own', () => {
+    const paragraph = (text: string, color?: { value: string }) => ({
+      dir: 'auto' as const,
+      align: 'start' as const,
+      runs: [{ text, ...(color ? { marks: { color } } : {}) }],
+    });
+    const deck = createDeck({
+      slides: [
+        createSlide({
+          id: 's_a',
+          elements: [
+            createElement.text({
+              id: 'e_card',
+              frame: { x: 96, y: 96, w: 600, h: 200 },
+              color: { token: 'bg' },
+              content: {
+                paragraphs: [paragraph('on the card'), paragraph('marked', { value: '#ff0000' })],
+              },
+            }),
+            createElement.text({
+              id: 'e_plain',
+              frame: { x: 96, y: 400, w: 600, h: 200 },
+              content: { paragraphs: [paragraph('on the slide')] },
+            }),
+          ],
+        }),
+      ],
+    });
+    render(<SlideRenderer deck={deck} slide={deck.slides[0]!} />);
+    const lines = (id: string) =>
+      Array.from(container.querySelectorAll<HTMLElement>(`[data-element-id="${id}"] p`));
+    const [onCard, marked] = lines('e_card');
+    // The box's colour stands in for the text style's; a mark is over both.
+    expect(onCard!.style.color).toBe('var(--color-bg)');
+    expect(marked!.style.color).toBe('var(--color-bg)');
+    expect(marked!.querySelector('span')!.style.color).toBe('#ff0000');
+    expect(lines('e_plain')[0]!.style.color).toBe('var(--color-text)');
   });
 
   it('writes the number of the slide in a slide-number text, of the layout or of the slide', () => {
@@ -570,6 +610,7 @@ describe('SlideRenderer', () => {
           smartFrame: {
             viewBox: { w: 400, h: 480 },
             opening: { x: 26, y: 26, w: 348, h: 348 },
+            scale: 2,
             decorations: [
               createElement.shape({
                 id: 'e_card',
@@ -598,15 +639,34 @@ describe('SlideRenderer', () => {
     expect([opening.style.width, opening.style.height]).toEqual(['696px', '696px']);
     const photograph = opening.firstElementChild as HTMLElement;
     expect(photograph.style.clipPath).toBe("path('M0 0 L696 0 L348 696 Z')");
-    // The artwork is laid out in its own box and scaled with the picture. It is over the
+    // The artwork is laid out in its own box and drawn at its scale. It is over the
     // photograph, and it is not content of the slide.
     const artwork = inside('e_framed', '[data-frame-artwork]');
     expect(artwork.style.transform).toBe('scale(2, 2)');
+    expect([artwork.style.width, artwork.style.height]).toEqual(['400px', '480px']);
     expect(artwork.querySelector('[data-decoration-id="e_card"]')).not.toBeNull();
     expect(container.querySelector('[data-element-id="e_card"]')).toBeNull();
     expect(
       opening.compareDocumentPosition(artwork) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Artwork that says no scale is a picture of one size: stretched with the element, and
+    // its opening with it.
+    const { scale: _scale, ...stretched } = (slide.elements[1] as ImageElement).smartFrame!;
+    const wide = {
+      ...slide.elements[1]!,
+      frame: { x: 0, y: 0, w: 1200, h: 960 },
+      smartFrame: stretched,
+    } as ImageElement;
+    render(
+      <SlideRenderer
+        deck={{ ...deck, slides: [{ ...slide, elements: [wide] }] }}
+        slide={{ ...slide, elements: [wide] }}
+      />,
+    );
+    expect(inside('e_framed', '[data-frame-artwork]').style.transform).toBe('scale(3, 2)');
+    expect(inside('e_framed', '[data-image-opening]').style.left).toBe('78px');
+    expect(inside('e_framed', '[data-image-opening]').style.width).toBe('1044px');
+    render(<SlideRenderer deck={{ ...deck, slides: [slide] }} slide={slide} />);
     // A mirrored picture is turned over whole, once: not the photograph again inside it.
     expect(inside('e_framed', '[data-smart-image-frame]').style.transform).toBe('scale(-1, 1)');
     expect(photograph.style.transform).toBe('');

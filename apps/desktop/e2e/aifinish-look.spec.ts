@@ -37,7 +37,7 @@ test('the template gallery: a hover shows the deck on the template, a click swit
   const depth = await undoDepth(page);
   expect(before.theme.id).toBe('zerem');
   expect(before.slides).toHaveLength(3);
-  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(16);
+  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(18);
   await expect(templateCard(page, 'zerem')).toHaveAttribute('data-current', 'true');
   await expect(templateCard(page, 'zerem')).toHaveAttribute('aria-pressed', 'true');
   // A cover is the template's opening slide, with the photograph of one that opens with one.
@@ -94,8 +94,8 @@ test('the palettes: a hover shows the colours on the slide, a click sets them in
   await openLook(page);
   const before = await deck(page);
   const depth = await undoDepth(page);
-  // The palettes of the sixteen templates, then the seven curated ones; the deck's own is marked.
-  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(23);
+  // The palettes of the eighteen templates, then the seven curated ones; the deck's own is marked.
+  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(25);
   await expect(paletteCard(page, 'template:zerem')).toHaveAttribute('data-current', 'true');
   await expect(look(page, 'palette').locator('[data-current]')).toHaveCount(1);
 
@@ -142,8 +142,8 @@ test('the font pairs: a hover shows the fonts on the slide, a click sets them in
   await openLook(page);
   const before = await deck(page);
   const depth = await undoDepth(page);
-  // The font pairs of the sixteen templates, then the seven curated ones.
-  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(23);
+  // The font pairs of the eighteen templates, two of which share one, then the seven curated ones.
+  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(24);
   await expect(look(page, 'fonts').locator('[data-current]')).toHaveCount(1);
   await expect(look(page, 'fonts').locator('[data-current]')).toHaveAttribute(
     'data-fonts',
@@ -274,13 +274,13 @@ test('a personal template is offered with its colours, and trying it shows its l
 
   // The Actions tab offers it after the built-in ones, with its palette; its fonts are Zerem's.
   await openTool(page, 'actions');
-  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(17);
+  await expect(look(page, 'template').locator('[data-template]')).toHaveCount(19);
   await expect(templateCard(page, mine)).toHaveAttribute('data-current', 'true');
   await expect(templateCard(page, mine)).toContainText('המותג שלנו');
   await expect(templateCard(page, mine)).toContainText('אישית');
-  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(24);
+  await expect(look(page, 'palette').locator('[data-palette]')).toHaveCount(26);
   await expect(paletteCard(page, `template:${mine}`)).toHaveAttribute('data-current', 'true');
-  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(23);
+  await expect(look(page, 'fonts').locator('[data-fonts]')).toHaveCount(24);
 
   await templateCard(page, 'tzuk').click();
   await expect(templateCard(page, 'tzuk')).toHaveAttribute('data-current', 'true');

@@ -13,14 +13,6 @@ export type ToolSource = 'app' | 'harness';
 /** How a turn ended. `failed` is preceded by an `error` event. */
 export type TurnOutcome = 'completed' | 'interrupted' | 'failed';
 
-/** Tokens of one turn. */
-export interface Usage {
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-}
-
 /** Closed set of failure categories, for both rejected calls and `error` events. */
 export const AGENT_ERROR_KINDS = [
   /** No harness with that id. */
@@ -70,14 +62,7 @@ export type AgentEvent =
   | { type: 'tool_call_started'; id: string; name: string; source: ToolSource; input: unknown }
   /** `summary`: a short text of the result (at most about 300 characters). */
   | { type: 'tool_call_finished'; id: string; ok: boolean; summary: string }
-  /** `costUsd`: this turn's cost, `null` when the harness cannot attribute one to the turn. */
-  | {
-      type: 'turn_completed';
-      outcome: TurnOutcome;
-      usage: Usage;
-      costUsd: number | null;
-      durationMs: number;
-    }
+  | { type: 'turn_completed'; outcome: TurnOutcome }
   /** `recoverable`: the session can take another turn. */
   | { type: 'error'; kind: AgentErrorKind; message: string; recoverable: boolean }
   /** The session is over. `code`: the process exit code, when there was one. */
@@ -112,13 +97,6 @@ export interface SessionConfig {
   effort?: string | null;
   /** A `nativeSessionId` from an earlier `session_started`. */
   resume?: string | null;
-  /**
-   * With `resume`: the running total the harness kept for the conversation, if known: what it
-   * had cost when the last process that ended in order ended (one that died kept nothing of
-   * its own). A harness reports a running total, so without it the first resumed turn has no
-   * cost.
-   */
-  resumedCostUsd?: number | null;
 }
 
 export interface ImageAttachment {
@@ -149,6 +127,13 @@ export interface ModelOption {
   /** What `SessionConfig.model` takes. */
   id: string;
   label: string;
+  /** Supported efforts reported by this model. Empty means no effort control. */
+  effortLevels?: string[];
+}
+
+export interface HarnessConnection {
+  status: HarnessStatus;
+  harness: HarnessDescriptor;
 }
 
 export interface HarnessDescriptor {
@@ -189,6 +174,9 @@ export interface AgentClient {
   harnesses(): Promise<HarnessDescriptor[]>;
   /** Installed? Which version? Signed in? */
   probe(harnessId: string): Promise<HarnessStatus>;
+  connect?(harnessId: string): Promise<HarnessConnection>;
+  install?(harnessId: string): Promise<void>;
+  login?(harnessId: string): Promise<void>;
   /**
    * Starts a session and returns its id. `thread` names the conversation, `<deckId>/<threadId>`
    * (letters, digits, `-`, `_`): the same thread gets the same folder, which resume needs.
@@ -202,10 +190,20 @@ export interface AgentClient {
   ): Promise<string>;
   /**
    * Stores a file the user attached to a chat with its conversation (`thread` as in `start`),
-   * where the agent's own file tool reads it (CHT-U05). Returns the file's path relative to the
+   * where its file-reading tool reads it (CHT-U05). Returns the file's path relative to the
    * session's working directory.
    */
   attach(thread: string, file: { name: string; bytes: Uint8Array }): Promise<string>;
+  /** Reads a bounded UTF-8 chunk of an attachment in this conversation. */
+  readAttachment?(
+    thread: string,
+    name: string,
+    offset: number,
+  ): Promise<{
+    text: string;
+    nextOffset: number;
+    size: number;
+  }>;
   /** Starts a turn; rejects with `busy` while one runs. */
   send(sessionId: string, turn: UserTurn): Promise<void>;
   /** Stops the running turn; it ends with `turn_completed` (`interrupted`). */

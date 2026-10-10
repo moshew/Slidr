@@ -66,10 +66,10 @@ test('the model chosen in the settings is the one the chat shows', async ({ page
   const section = await openSettings(page);
   await section.getByRole('combobox', { name: 'מודל' }).click();
   const options = page.getByRole('option');
-  await expect(options.first()).toHaveText('ברירת המחדל');
-  const second = options.nth(1);
-  const label = (await second.textContent())!;
-  await second.click();
+  await expect(options.first()).not.toHaveText('ברירת המחדל');
+  const first = options.first();
+  const label = (await first.textContent())!;
+  await first.click();
   const model = (await stored(page)).model as string;
   expect(model).toBeTruthy();
 

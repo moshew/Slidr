@@ -3,7 +3,7 @@ import { openPanel } from '../shell';
 
 export const MEDIA_PANEL = 'media';
 
-export const MEDIA_TABS = ['uploads', 'stock', 'ai'] as const;
+export const MEDIA_TABS = ['uploads', 'stock', 'ai', 'clips'] as const;
 
 export type MediaTab = (typeof MEDIA_TABS)[number];
 

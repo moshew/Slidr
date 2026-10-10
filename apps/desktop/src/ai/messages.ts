@@ -44,6 +44,9 @@ export const he = {
     default: 'ברירת המחדל',
     hint: 'חל מההודעה הבאה',
     efforts: {
+      none: 'ללא',
+      minimal: 'מזערית',
+      ultra: 'אולטרה',
       low: 'נמוכה',
       medium: 'בינונית',
       high: 'גבוהה',
@@ -56,15 +59,6 @@ export const he = {
     new: 'שיחה חדשה',
     untitled: 'שיחה חדשה',
     heading: 'שיחות',
-  },
-  usage: {
-    turn: '{{tokens}} tokens · {{cost}} · {{time}}',
-    turnNoCost: '{{tokens}} tokens · {{time}}',
-    total: 'עלות השיחה: {{cost}}',
-    totalTokens: 'השיחה עד כאן: {{tokens}} tokens',
-    detail:
-      'קלט {{input}} · פלט {{output}} · נקרא מהמטמון {{cacheRead}} · נכתב למטמון {{cacheWrite}}',
-    seconds: '{{n}} שנ׳',
   },
   outline: {
     title: 'מתווה מוצע',
@@ -534,6 +528,9 @@ export const en = {
     default: 'The default',
     hint: 'Takes effect from the next message',
     efforts: {
+      none: 'None',
+      minimal: 'Minimal',
+      ultra: 'Ultra',
       low: 'Low',
       medium: 'Medium',
       high: 'High',
@@ -546,15 +543,6 @@ export const en = {
     new: 'New conversation',
     untitled: 'New conversation',
     heading: 'Conversations',
-  },
-  usage: {
-    turn: '{{tokens}} tokens · {{cost}} · {{time}}',
-    turnNoCost: '{{tokens}} tokens · {{time}}',
-    total: 'Cost of the conversation: {{cost}}',
-    totalTokens: 'The conversation so far: {{tokens}} tokens',
-    detail:
-      'Input {{input}} · output {{output}} · cache read {{cacheRead}} · cache written {{cacheWrite}}',
-    seconds: '{{n}}s',
   },
   outline: {
     title: 'Proposed outline',

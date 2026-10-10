@@ -16,6 +16,7 @@ pub mod ipc;
 mod manager;
 mod mock;
 mod registry;
+pub(crate) mod setup;
 mod transcript;
 mod types;
 
@@ -29,9 +30,9 @@ pub use registry::builtin;
 #[allow(unused_imports)]
 // The whole contract is public, whether or not this crate uses each part.
 pub use types::{
-    AgentError, AgentErrorKind, AgentEvent, Capabilities, HarnessDescriptor, HarnessState,
-    HarnessStatus, ImageAttachment, ModelOption, Result, Scope, SessionConfig, ToolEndpoint,
-    ToolSource, TurnOutcome, Usage, UserTurn,
+    AgentError, AgentErrorKind, AgentEvent, Capabilities, HarnessConnection, HarnessDescriptor,
+    HarnessState, HarnessStatus, ImageAttachment, ModelOption, Result, Scope, SessionConfig,
+    ToolEndpoint, ToolSource, TurnOutcome, UserTurn,
 };
 
 /// An agent runtime the app can start sessions on.

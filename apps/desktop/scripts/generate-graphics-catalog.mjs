@@ -1,13 +1,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 /*
- * Writes `src/elements/graphics-catalog.json`: the colour graphics of the Elements panel, by
+ * Writes `Slidr-media/elements/catalogs/graphics-catalog.json`: the colour graphics of the Elements panel, by
  * style, each drawing as `set:name` in the order the panel shows it. It is checked in, so the
  * choice stays as it is when a package updates.
  *
  * Two art sets draw a style. The first is a package of the app, and most of it is offered. The
  * second is an emoji set that draws far more than is taken from it, so it is not in the app: the
- * drawings picked from it are copied into `src/elements/art/`, a file a set, with the set's
+ * drawings picked from it are copied into `Slidr-media/elements/art/`, a file a set, with the set's
  * notice beside it for the notices of a build (`build/notices.ts`).
  */
 
@@ -18,7 +18,10 @@ const read = (set, file) =>
 
 const write = (file, value) =>
   writeFileSync(
-    new URL(`../src/elements/${file}`, import.meta.url),
+    new URL(
+      `../../../../Slidr-media/elements/${file === 'graphics-catalog.json' ? 'catalogs/' : ''}${file}`,
+      import.meta.url,
+    ),
     `${JSON.stringify(value, null, 2)}\n`,
   );
 
@@ -218,7 +221,10 @@ function outlined() {
 /* ---------------------------------------------------------------- more of each style */
 
 /** How many drawings a style takes from its second set. */
-const MORE = 250;
+const MORE = 400;
+/** The existing catalogue had 250 drawings from each second set. */
+const ORIGINAL_MORE = 250;
+const NEW_PER_STYLE = 150;
 
 /** The longest colour drawing taken: the few above it are many times the usual one. */
 const HEAVY = 24_000;
@@ -456,6 +462,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE`;
+const APACHE_2 = readFileSync(new URL('./licenses/Apache-2.0.txt', import.meta.url), 'utf8');
 
 /**
  * Copies the drawings taken from a set that is not in the app, and writes the set's notice:
@@ -490,15 +497,98 @@ const more = {
   outlined: streamline(said('outlined')),
 };
 
-mkdirSync(new URL('../src/elements/art/', import.meta.url), { recursive: true });
+/** New subjects, without a second drawing bearing the same name in one style. */
+function supplement(style, set, candidates, first = []) {
+  const count = ORIGINAL_MORE + NEW_PER_STYLE - more[style].names.length;
+  const existing = new Set([...own[style].names, ...more[style].names].map(spoken));
+  const names = leading(mixed(candidates), first)
+    .filter((name) => {
+      const label = spoken(name);
+      if (existing.has(label)) return false;
+      existing.add(label);
+      return true;
+    })
+    .slice(0, count);
+  if (names.length !== count) throw new Error(`${set}: needed ${count}, found ${names.length}`);
+  return { set, names, first };
+}
+
+const notoCategories = read('noto', 'metadata.json').categories;
+const noto = supplement(
+  'glossy',
+  'noto',
+  ['Activities', 'Animals & Nature', 'Food & Drink', 'Objects', 'Travel & Places']
+    .flatMap((category) => notoCategories[category])
+    .filter(
+      (name) =>
+        !/^(cigarette|coffin|dagger|gun|pistol|toilet|syringe|cockroach|mosquito|rat|bikini|briefs|church|mosque|synagogue|kaaba|hindu-temple|shinto-shrine|japanese-.*|.*-suit|.*-oclock|.*-thirty)$/.test(
+          name,
+        ),
+    ),
+  ['mountain', 'evergreen-tree', 'snowflake', 'honey-pot', 'carousel-horse'],
+);
+const stickiesCategories = read('streamline-stickies-color', 'metadata.json').categories;
+const stickies = supplement(
+  'illustrated',
+  'streamline-stickies-color',
+  Object.entries(stickiesCategories)
+    .filter(([category]) => category !== 'InterfaceEssential')
+    .flatMap(([, names]) => names)
+    .filter((name) => !name.endsWith('-duo') && !/android|bomb|dangerous-chemical/.test(name)),
+  ['globe-1', 'backpack', 'lab-tools', 'reward', 'solar-power-battery'],
+);
+const flexCategories = read('streamline-flex-color', 'metadata.json').categories;
+const flex = supplement(
+  'outlined',
+  'streamline-flex-color',
+  Object.entries(flexCategories)
+    .filter(([category]) => category !== 'InterfaceEssential')
+    .flatMap(([, names]) => names)
+    .filter(
+      (name) =>
+        !name.endsWith('-flat') && !/adobe|android|apple|visa|rifle|cannabis|smoking/.test(name),
+    ),
+  ['camera-1', 'diamond-1', 'rocket', 'landscape-2', 'heart'],
+);
+
+const handdrawnLabels = new Set();
+const handdrawn = {
+  set: 'streamline-freehand-color',
+  names: Object.keys(read('streamline-freehand-color', 'icons.json').icons).filter((name) => {
+    if (/^(android-logo|bluetooth-logo|mobile-phone-blackberry-2)$/.test(name)) return false;
+    const label = spoken(name);
+    if (handdrawnLabels.has(label)) return false;
+    handdrawnLabels.add(label);
+    return true;
+  }),
+  first: [
+    'camera',
+    'amusement-park-ferris-wheel',
+    'business-deal-handshake',
+    'book-bookmark',
+    'analytics-graph-pie',
+    'concert-couple-duet',
+    'wealth-treasure-chest-open',
+    'design-tool-paint-brush',
+  ],
+};
+
+mkdirSync(new URL('../../../../Slidr-media/elements/art/', import.meta.url), { recursive: true });
 copied(more.glossy, MIT);
 copied(more.illustrated, MIT);
 copied(more.outlined);
-
-const catalog = Object.keys(own).map((id) => ({ id, icons: ordered(own[id], more[id]) }));
-write('graphics-catalog.json', catalog);
-console.log(
-  catalog
-    .map(({ id, icons }) => `${id}: ${icons.length} (${more[id].names.length} of ${more[id].set})`)
-    .join(', '),
+copied(
+  noto,
+  `Noto Emoji, by Google Inc (https://github.com/googlefonts/noto-emoji).\n\n${APACHE_2}`,
 );
+copied(stickies);
+copied(flex);
+copied(handdrawn);
+
+const added = { glossy: noto, illustrated: stickies, outlined: flex };
+const catalog = [
+  ...Object.keys(own).map((id) => ({ id, icons: ordered(own[id], more[id], added[id]) })),
+  { id: 'handdrawn', icons: ordered(handdrawn) },
+];
+write('graphics-catalog.json', catalog);
+console.log(catalog.map(({ id, icons }) => `${id}: ${icons.length}`).join(', '));

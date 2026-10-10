@@ -69,6 +69,12 @@ export const Placeholder = z.strictObject({
   role: PlaceholderRole,
   frame: Frame,
   styleRef: TextStyleRef.optional(),
+  /**
+   * The colour of the placeholder's text, in place of its text style's: for text the layout
+   * seats on a field of its own (a white card on a dark slide). Without it the text has the
+   * colour of its style, which reads on the grounds the theme offers.
+   */
+  color: Color.optional(),
   align: z.enum(['start', 'center', 'end']).optional(),
   vAlign: z.enum(['top', 'middle', 'bottom']).optional(),
 });

@@ -12,7 +12,13 @@ export type {
 export { travel, directionOf, slideDirection, type Dir, type Vec } from './direction';
 export { schedule, type Group, type Slot, type Timed } from './schedule';
 export { animationPresets, describePreset, type Category, type PresetInfo } from './presets';
-export { transitionTypes, transitionTurns, runTransition, type TransitionRun } from './transitions';
+export {
+  defaultTransitionDirection,
+  transitionTypes,
+  transitionTurns,
+  runTransition,
+  type TransitionRun,
+} from './transitions';
 export {
   createTimeline,
   type SlideTimeline,

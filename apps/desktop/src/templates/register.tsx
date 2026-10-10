@@ -27,7 +27,7 @@ registerPanel({
 });
 
 // Row B with nothing selected: the layout of the slide on the Stage (SLD-02), in the place the
-// shell kept for it between the background and the transition.
+// shell kept for it beside the background.
 registerContextTool({
   id: 'slide.layout',
   kinds: ['none'],

@@ -9,6 +9,7 @@ import type {
   Slide,
 } from '@slidr/model';
 import { seatAlign } from './align';
+import { equalJson } from './json';
 
 /*
  * Moving a slide from one layout to another (SPEC 5.5): the layout is found by archetype, and the
@@ -110,8 +111,8 @@ export function movesOf(slide: Slide, from: Layout, to: Layout): Map<string, Mov
 
 /**
  * What an element takes from its new placeholder, as an `element.update` patch. It follows the
- * layout in what it had from the old placeholder: the frame, the vertical alignment, and the
- * alignment and text style of each paragraph. A value set by hand differs from the old
+ * layout in what it had from the old placeholder: the frame, the vertical alignment, the
+ * colour the placeholder gives its text, and the alignment and text style of each paragraph. A value set by hand differs from the old
  * placeholder's, and stays (SPEC 5.5: an element with explicit values stays as it is).
  *
  * With the deck's direction, a paragraph that reads against the deck follows too: its alignment
@@ -145,6 +146,11 @@ export function followPatch(
   const vAlign = to.vAlign ?? 'top';
   if (element.vAlign === (from.vAlign ?? 'top') && element.vAlign !== vAlign) patch.vAlign = vAlign;
 
+  // The colour a card of the old layout gave the text goes with that card; `null` takes it off.
+  if (equalJson(element.color, from.color) && !equalJson(from.color, to.color)) {
+    patch.color = to.color ? { ...to.color } : null;
+  }
+
   const fromAlign = from.align ?? 'start';
   const toAlign = to.align ?? 'start';
   let changed = false;
@@ -172,6 +178,51 @@ export function followPatch(
 }
 
 /**
+ * The seats of a layout that elements of a slide already stand on without having come to them
+ * from a seat of their own: text the layout the slide leaves had no seat for, which stayed
+ * where a layout before it had put it. Such an element is not moved, and it is on the seat all
+ * the same: the seat counts as filled, and its text takes the colour the seat gives.
+ */
+export function arrivalsOf(slide: Slide, from: Layout, to: Layout): Map<string, Placeholder> {
+  const moves = movesOf(slide, from, to);
+  const taken = new Set([...moves.values()].map((move) => move.to.id));
+  const arrivals = new Map<string, Placeholder>();
+  for (const element of slide.elements) {
+    if (!element.role || moves.has(element.id)) continue;
+    const seat = to.placeholders.find(
+      (placeholder) =>
+        placeholder.role === element.role &&
+        !taken.has(placeholder.id) &&
+        sitsOn(element, placeholder),
+    );
+    if (!seat) continue;
+    taken.add(seat.id);
+    arrivals.set(element.id, seat);
+  }
+  return arrivals;
+}
+
+/**
+ * What an element that does not move takes or gives up of the colour a seat gives its text.
+ * One that stands on a seat of the new layout takes that seat's. One the new layout has no seat
+ * for stays where it is, and the field the old layout drew under it does not: the colour that
+ * field gave its text goes with the field.
+ */
+function colourPatch(
+  element: Element,
+  left: Placeholder | undefined,
+  arrived: Placeholder | undefined,
+): Record<string, unknown> {
+  if (element.type !== 'text') return {};
+  if (arrived) {
+    return equalJson(element.color, arrived.color)
+      ? {}
+      : { color: arrived.color ? { ...arrived.color } : null };
+  }
+  return left?.color && equalJson(element.color, left.color) ? { color: null } : {};
+}
+
+/**
  * The `element.update`s that take a slide's elements from one layout to another. `deckDir` is
  * the direction of the deck both layouts are drawn for (see `followPatch`).
  */
@@ -182,11 +233,14 @@ export function relayout(
   deckDir?: Direction,
 ): CommandOf<'element.update'>[] {
   const moves = movesOf(slide, from, to);
+  const seats = seatsOf(slide.elements, from);
+  const arrivals = arrivalsOf(slide, from, to);
   const commands: CommandOf<'element.update'>[] = [];
   for (const element of slide.elements) {
     const move = moves.get(element.id);
-    if (!move) continue;
-    const patch = followPatch(element, move, deckDir);
+    const patch = move
+      ? followPatch(element, move, deckDir)
+      : colourPatch(element, seats.get(element.id)?.placeholder, arrivals.get(element.id));
     if (Object.keys(patch).length > 0) {
       commands.push({ type: 'element.update', slideId: slide.id, elementId: element.id, patch });
     }
@@ -235,6 +289,7 @@ export function adoptLayout(
     if (element.type === 'text') {
       const vAlign = to.vAlign ?? 'top';
       if (element.vAlign !== vAlign) patch.vAlign = vAlign;
+      if (!equalJson(element.color, to.color)) patch.color = to.color ? { ...to.color } : null;
       const paragraphs = element.content.paragraphs.map((paragraph) => {
         const next = { ...paragraph, align: seatAlign(to.align ?? 'start', paragraph, deckDir) };
         if (to.styleRef) next.styleRef = to.styleRef;

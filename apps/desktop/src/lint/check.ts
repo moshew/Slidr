@@ -11,8 +11,8 @@ import { createStore, type StoreApi } from 'zustand';
 
 /*
  * The user's design check (LNT-03): the findings of every rule on every slide of the open deck,
- * kept up to date as the deck changes, and the fixes of those findings. The panel and the
- * status bar read it; the agent has a lint of its own (`createLintService`).
+ * kept up to date as the deck changes, and the fixes of those findings. The status bar reads it;
+ * the agent has a lint of its own (`createLintService`).
  */
 
 export interface CheckState {

@@ -14,7 +14,7 @@ import type {
   TextElement,
   VideoElement,
 } from '@slidr/model';
-import { imageOpening } from '@slidr/model';
+import { frameLayout, imageOpening, placedInFrame } from '@slidr/model';
 import {
   memo,
   useEffect,
@@ -43,6 +43,7 @@ import { Icon } from './icons';
 import { imageLook } from './imageLook';
 import { frameDocument, prepareSvg, resolveAssetRefs, resolveAssetUrls } from './markup';
 import { parseFragment, sanitizeFragment } from './sanitize';
+import { stretchSvg } from './stretchSvg';
 import { TableView } from './table';
 import { numberedText, opensAddress, TextBox, textFillStyle } from './text';
 import { colorCss, shadowCss } from './theme';
@@ -114,6 +115,7 @@ function TextView({ element: e }: { element: TextElement }) {
       columns={e.columns}
       wrap={e.wrap}
       size={e.frame}
+      color={e.color}
     >
       {ctx.textSlot?.(e)}
     </TextBox>
@@ -374,7 +376,14 @@ function PendingImage({ e, ctx }: { e: ImageElement; ctx: RenderContext }) {
         color: 'color-mix(in srgb, var(--color-muted) 70%, transparent)',
       }}
     >
-      {showHint && size >= 12 ? <Icon name="image" size={Math.min(size, 96)} /> : null}
+      {showHint && size >= 12 ? (
+        <span
+          data-slidr-picker-icon
+          style={{ cursor: ctx.mode === 'edit' ? 'pointer' : undefined }}
+        >
+          <Icon name="image" size={Math.min(size, 96)} />
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -384,12 +393,23 @@ function ImageView({ element: e }: { element: ImageElement }) {
   return <PictureView element={e} />;
 }
 
+/**
+ * A picture in a drawn frame. The artwork is laid out in its own units, in a box as large as the
+ * picture is in those units, and drawn at its scale: it keeps its size when the picture is made
+ * larger, and the photograph has what is left (`frameLayout`). A part of the artwork that says
+ * its own size (an SVG with no `viewBox`, a box with an outline) is laid out in that box anew.
+ * Artwork that says no scale is laid out in its own box and stretched to the picture's.
+ */
 function SmartFrameView({ element: e }: { element: ImageElement }) {
   const ctx = useRenderContext();
   const design = e.smartFrame!;
+  const layout = frameLayout(design, e.frame);
   const opening = imageOpening(e);
-  const sx = e.frame.w / design.viewBox.w;
-  const sy = e.frame.h / design.viewBox.h;
+  // Round corners of the cut are the artwork's, in its units, where the artwork has a scale.
+  const mask =
+    e.mask?.kind === 'rounded' && design.scale !== undefined
+      ? { ...e.mask, radius: num(e.mask.radius * layout.scale.x, 3) }
+      : e.mask;
   return (
     <div data-smart-image-frame style={{ ...FILL_PARENT, transform: flipTransform(e) }}>
       {design.background ? <FillLayer fill={design.background} ctx={ctx} /> : null}
@@ -404,7 +424,14 @@ function SmartFrameView({ element: e }: { element: ImageElement }) {
         }}
       >
         <PictureView
-          element={{ ...e, smartFrame: undefined, frame: opening, flipH: false, flipV: false }}
+          element={{
+            ...e,
+            smartFrame: undefined,
+            mask,
+            frame: opening,
+            flipH: false,
+            flipV: false,
+          }}
         />
       </div>
       <div
@@ -414,15 +441,19 @@ function SmartFrameView({ element: e }: { element: ImageElement }) {
           position: 'absolute',
           left: 0,
           top: 0,
-          width: design.viewBox.w,
-          height: design.viewBox.h,
-          transform: `scale(${sx}, ${sy})`,
+          width: num(layout.box.w, 3),
+          height: num(layout.box.h, 3),
+          transform: `scale(${num(layout.scale.x, 6)}, ${num(layout.scale.y, 6)})`,
           transformOrigin: '0 0',
           pointerEvents: 'none',
         }}
       >
         {design.decorations.map((decoration, index) => (
-          <ElementView key={index} element={decoration} decoration />
+          <ElementView
+            key={index}
+            element={{ ...decoration, frame: placedInFrame(design, layout, decoration.frame) }}
+            decoration
+          />
         ))}
       </div>
     </div>
@@ -828,13 +859,19 @@ function LineView({ element: e }: { element: LineElement }) {
  */
 function SvgPicture({ e, style }: { e: SvgElement; style: CSSProperties }) {
   const host = useRef<HTMLDivElement>(null);
-  const { markup, colorOverrides } = e;
+  const {
+    markup,
+    colorOverrides,
+    stretch,
+    frame: { w, h },
+  } = e;
   useLayoutEffect(() => {
     const el = host.current;
     if (!el) return;
     const root = el.shadowRoot ?? el.attachShadow({ mode: 'open', serializable: true });
-    root.replaceChildren(prepareSvg(markup ?? '', colorOverrides));
-  }, [markup, colorOverrides]);
+    const picture = prepareSvg(markup ?? '', colorOverrides);
+    root.replaceChildren(stretch ? stretchSvg(picture, stretch, { w, h }) : picture);
+  }, [markup, colorOverrides, stretch, w, h]);
   return <div ref={host} data-slidr-svg="" style={style} />;
 }
 

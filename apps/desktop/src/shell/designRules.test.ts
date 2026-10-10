@@ -48,6 +48,8 @@ const exempt: Record<string, string> = {
 
   // Colours of decks, kept as data: what a slide is drawn in, not what the app is drawn in.
   'apps/desktop/src/templates/curated.ts': 'the palettes a deck can take',
+  'apps/desktop/src/elements/designs.ts': 'the ready-made slides of Elements, in their own colours',
+  'apps/desktop/src/elements/cardSets.ts': 'the card sets of Elements, in their own colours',
 
   // Pictures, drawn in their own colours as a photo would be; the tiles around them are tokens.
   'apps/desktop/src/elements/tiles.tsx': 'the pictures of the collections of Elements',
@@ -100,8 +102,9 @@ describe('what the design rules are checked over', () => {
     expect(files.some((file) => posix(file).startsWith(`${designSystem}/`))).toBe(true);
     // No area is named here: whatever folder is found is scanned.
     expect(areas.length).toBeGreaterThan(15);
+    // A folder inside an area can be exempt too; it does not make its area unscanned.
     expect(areas.filter((area) => !scanned(area)).map((area) => `${app}/${area}/`)).toEqual(
-      Object.keys(exempt).filter((entry) => entry.endsWith('/')),
+      Object.keys(exempt).filter((entry) => areas.some((area) => entry === `${app}/${area}/`)),
     );
     expect(files.length).toBeGreaterThan(200);
   });

@@ -6,7 +6,6 @@ export const he = {
     aspect: 'יחס החיתוך',
     free: 'חופשי',
     original: 'מקורי',
-    zoom: 'זום התמונה',
     reset: 'איפוס החיתוך',
     done: 'סיום',
   },
@@ -43,7 +42,8 @@ export const he = {
   // Where the keyboard is on the slide beyond the selection, said to a screen reader.
   at: {
     point: 'נקודה {{n}} מתוך {{total}}. החיצים מזיזים אותה.',
-    picture: 'חיתוך: החיצים מזיזים את התמונה. Tab עובר לידיות.',
+    picture:
+      'חיתוך: החיצים מזיזים את התמונה. Ctrl עם חץ למעלה או למטה משנה את גודלה. Tab עובר לידיות.',
     handle: 'ידית החיתוך: {{where}}. החיצים מזיזים אותה.',
     walkSelected: '{{what}}: בתוך הבחירה',
     walkFree: '{{what}}: מחוץ לבחירה',
@@ -77,7 +77,6 @@ export const en = {
     aspect: 'Crop proportions',
     free: 'Free',
     original: 'Original',
-    zoom: 'Picture zoom',
     reset: 'Reset crop',
     done: 'Done',
   },
@@ -112,7 +111,8 @@ export const en = {
   },
   at: {
     point: 'Point {{n}} of {{total}}. The arrows move it.',
-    picture: 'Crop: the arrows move the picture. Tab goes to the handles.',
+    picture:
+      'Crop: the arrows move the picture. Ctrl+Up or Down scales it. Tab goes to the handles.',
     handle: 'Crop handle: {{where}}. The arrows move it.',
     walkSelected: '{{what}}: in the selection',
     walkFree: '{{what}}: not in the selection',

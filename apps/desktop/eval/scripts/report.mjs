@@ -71,8 +71,6 @@ function row(result, scores) {
     written: written.length,
     toolErrors: score.toolErrors.length,
     turns: score.turns,
-    seconds: Math.round(result.wallMs / 1000),
-    costUsd: score.costUsd,
     visual: scores[request.id]?.score ?? null,
   };
 }
@@ -105,8 +103,6 @@ export function summarize(runDir) {
       cleanFirstWrite: sum(rows, (r) => r.cleanFirstWrite),
       written: sum(rows, (r) => r.written),
       toolErrors: sum(rows, (r) => r.toolErrors),
-      seconds: sum(rows, (r) => r.seconds),
-      costUsd: sum(rows, (r) => r.costUsd ?? 0),
       // The user's, and only once they have given it: never filled in by the script.
       scored: scored.length,
       visual: scored.length === 0 ? null : sum(scored, (r) => r.visual) / scored.length,
@@ -128,8 +124,6 @@ function summaryText(summary) {
     pad('t+b', 4),
     pad('emoji', 6),
     pad('asked', 6),
-    pad('sec', 6),
-    pad('usd', 6),
     'visual',
   ].join('');
   const line = (r) =>
@@ -145,8 +139,6 @@ function summaryText(summary) {
       pad(r.titleAndBullets, 4),
       pad(r.emoji, 6),
       pad(r.approvals, 6),
-      pad(r.seconds, 6),
-      pad((r.costUsd ?? 0).toFixed(2), 6),
       r.visual ?? '–',
     ].join('');
   const t = summary.totals;
@@ -167,8 +159,6 @@ function summaryText(summary) {
       titleAndBullets: t.titleAndBullets,
       emoji: t.emoji,
       approvals: t.approvals,
-      seconds: t.seconds,
-      costUsd: t.costUsd,
       visual:
         t.visual === null ? 'not scored yet' : `${t.visual.toFixed(2)} (${t.scored}/${t.requests})`,
     }),
@@ -230,8 +220,6 @@ function requestSection(result, runDir) {
     ${chip('כותרת ותבליטים על רקע ריק', r.titleAndBullets, r.titleAndBullets > 0)}
     ${chip('שקפים עם emoji', r.emoji, r.emoji > 0)}
     ${chip('תורות', r.turns)}
-    ${chip('שניות', r.seconds)}
-    ${chip('עלות', `$${(r.costUsd ?? 0).toFixed(2)}`)}
     ${result.outcome === 'completed' ? '' : chip('סיום', result.outcome, true)}
   </p>
   ${sentBack ? `<p class="gate">השער החזיר: ${escapeHtml(sentBack)}</p>` : ''}
@@ -366,8 +354,6 @@ function reviewHtml(runDir) {
     ${chip('עריכוּת', percent(t.editability, 1))}
     ${chip('כותרת ותבליטים על רקע ריק', t.titleAndBullets, t.titleAndBullets > 0)}
     ${chip('שקפים עם emoji', t.emoji, t.emoji > 0)}
-    ${chip('דקות', Math.round(t.seconds / 60))}
-    ${chip('עלות', `$${t.costUsd.toFixed(2)}`)}
   </p>
   ${results.map((result) => requestSection(result, runDir)).join('\n')}
 </main>

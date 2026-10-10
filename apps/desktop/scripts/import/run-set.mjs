@@ -42,7 +42,6 @@ const FILES = [
 
 const outDir = here('../../test-results/import/runs');
 mkdirSync(outDir, { recursive: true });
-let total = 0;
 for (const file of FILES) {
   if (only && !only.includes(file.name)) continue;
   if (file.path === undefined) {
@@ -73,7 +72,6 @@ for (const file of FILES) {
     continue;
   }
   const { report, turns, deck } = JSON.parse(readFileSync(out, 'utf8'));
-  total += report.costUsd ?? 0;
   const percent = (share) => (share === null ? '-' : `${Math.round(share * 100)}%`);
   console.log(
     [
@@ -84,9 +82,6 @@ for (const file of FILES) {
       `editable ${percent(report.medianEditability)}`,
       `text ${percent(report.medianTextEditability)}`,
       `whole-html ${report.wholeHtml}`,
-      `${Math.round(report.durationMs / 1000)}s`,
-      `$${(report.costUsd ?? 0).toFixed(2)}`,
-      `turns ${report.turns}`,
       `blocked ${report.blocked.length}`,
       `fonts ${deck.assets.font ?? 0}`,
       turns.at(-1)?.outcome ?? '',
@@ -94,4 +89,3 @@ for (const file of FILES) {
     ].join(' | '),
   );
 }
-console.log(`total cost as the CLI reported it: $${total.toFixed(2)}`);

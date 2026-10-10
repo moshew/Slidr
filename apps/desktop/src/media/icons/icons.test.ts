@@ -26,7 +26,7 @@ const modules = '../../../node_modules/';
 const sources: IconSources = {
   lucide: file(`${modules}lucide-static/tags.json`) as IconSources['lucide'],
   tabler: file(`${modules}@tabler/icons/icons.json`) as IconSources['tabler'],
-  hebrew: file('./hebrew.json') as HebrewTags,
+  hebrew: file('../../../../../../Slidr-media/icons/hebrew.json') as HebrewTags,
 };
 const index = buildIndex(sources);
 const ids = (query: string, count = 5, style: 'line' | 'filled' = 'line') =>

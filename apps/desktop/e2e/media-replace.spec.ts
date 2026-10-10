@@ -148,6 +148,75 @@ test("a picture of the deck takes the selected picture's place, and only the fil
   expect(errors).toEqual([]);
 });
 
+test('with a magnet selected, a picture of the deck goes into the picture of its group', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openApp(page, { lang: 'en' });
+  const spare = await addAsset(page, 'spare.png', 'gold');
+  // A group as a frame of Elements makes it (ADR-083): named for the frame, with one picture.
+  await page.evaluate(() => {
+    const editor = window.slidr!;
+    const common = { rotation: 0, opacity: 1 };
+    editor.bus.dispatch({
+      type: 'element.add',
+      slideId: editor.selection.getState().currentSlideId!,
+      element: {
+        ...common,
+        id: 'e_magnet',
+        type: 'group',
+        name: 'frame:magnet-summer',
+        frame: { x: 400, y: 200, w: 700, h: 500 },
+        children: [
+          {
+            ...common,
+            id: 'e_photo',
+            type: 'image',
+            fit: 'cover',
+            frame: { x: 0, y: 0, w: 700, h: 500 },
+          },
+          {
+            ...common,
+            id: 'e_caption',
+            type: 'text',
+            name: 'frame:magnet-summer:caption',
+            frame: { x: 100, y: 420, w: 500, h: 60 },
+            autoFit: 'shrink',
+            vAlign: 'middle',
+            content: {
+              paragraphs: [{ dir: 'ltr', align: 'center', runs: [{ text: 'Our Team Day' }] }],
+            },
+          },
+        ],
+      } as unknown as Element,
+    });
+  });
+  const panel = await openMedia(page, 'uploads');
+  await select(page, ['e_magnet']);
+  const steps = await undoDepth(page);
+  await panel.locator(`[data-replace-with="${spare}"]`).click();
+  const [magnet] = await elements(page);
+  expect(await elements(page)).toHaveLength(1);
+  expect(magnet).toMatchObject({
+    id: 'e_magnet',
+    children: [{ id: 'e_photo', assetId: spare }, { id: 'e_caption' }],
+  });
+  expect(await undoDepth(page)).toBe(steps + 1);
+
+  // A group that no frame made is no picture: nothing to replace.
+  await page.evaluate(() => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.update',
+      slideId: editor.selection.getState().currentSlideId!,
+      elementId: 'e_magnet',
+      patch: { name: 'My group' },
+    });
+  });
+  await expect(panel.locator('[data-replace-with]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('a picture the AI made, and a stock photo with its credit, take its place the same way', async ({
   page,
 }) => {

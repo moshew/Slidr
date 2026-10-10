@@ -67,7 +67,8 @@ function useStyle(text: Text) {
     options: STYLES.map((value) => ({ value, label: t(`style.${value}`) })),
     apply: (next: TextStyleRef) => applyStyle(target, next, { label: t('step.style') }),
     /** Whether the text differs from its style in anything a style holds. */
-    canUpdate: styleRef !== null && matchStyle(format, ctx.theme.textStyles[styleRef]) !== null,
+    canUpdate:
+      styleRef !== null && matchStyle(format, ctx.theme.textStyles[styleRef], ctx.color) !== null,
     update: () => {
       if (styleRef) updateStyle(target, ctx, styleRef, { label: t('step.styleUpdate') });
     },

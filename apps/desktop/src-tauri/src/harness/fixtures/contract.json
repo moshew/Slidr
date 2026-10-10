@@ -18,25 +18,8 @@
       "input": { "query": "market size" }
     },
     { "type": "tool_call_finished", "id": "call_1", "ok": true, "summary": "created s_1" },
-    {
-      "type": "turn_completed",
-      "outcome": "completed",
-      "usage": {
-        "inputTokens": 10,
-        "outputTokens": 60,
-        "cacheReadTokens": 6223,
-        "cacheWriteTokens": 860
-      },
-      "costUsd": 0.0026,
-      "durationMs": 1032
-    },
-    {
-      "type": "turn_completed",
-      "outcome": "interrupted",
-      "usage": { "inputTokens": 0, "outputTokens": 0, "cacheReadTokens": 0, "cacheWriteTokens": 0 },
-      "costUsd": null,
-      "durationMs": 1390
-    },
+    { "type": "turn_completed", "outcome": "completed" },
+    { "type": "turn_completed", "outcome": "interrupted" },
     { "type": "error", "kind": "quota", "message": "usage limit reached", "recoverable": true },
     { "type": "exited", "code": 0 },
     { "type": "exited", "code": null }

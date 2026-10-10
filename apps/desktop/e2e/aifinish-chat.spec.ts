@@ -5,20 +5,18 @@ import {
   choose,
   collectErrors,
   deck,
-  heldCost,
   input,
   LOGO,
   messages,
   openApp,
   say,
-  scriptCosts,
   tab,
   turns,
 } from './aifinish-helpers';
 
 /*
  * The chat's own controls (WG11-T11, WG10-T10; CHT-U05 to U08), against the scripted mock: the
- * model of the next turn, what a conversation cost, the conversations of a tool, the files of a
+ * model of the next turn, the conversations of a tool, the files of a
  * message, and the openings of an empty chat. The mock's "models" are its scripts, so a turn
  * shows which model played it by what it says.
  */
@@ -57,27 +55,13 @@ test('the picker changes the model of the next turn, and keeps the conversation'
   expect((await agentSettings(page)).model).toBe('deck-build');
 });
 
-test('the cost of a conversation is what its turns cost, and each turn shows its own', async ({
-  page,
-}) => {
+test('completed turns show no usage metrics in the chat', async ({ page }) => {
   await openApp(page, { script: 'deck-build' });
+  await say(page, 'Build an opening slide');
+  await say(page, 'Add a second slide');
+  await expect(messages(page)).toHaveCount(2);
+  await expect(page.getByTestId('turn-usage')).toHaveCount(0);
   await expect(page.getByTestId('chat-cost')).toHaveCount(0);
-  await say(page, 'בנה שקף פתיחה');
-  await say(page, 'ועוד שקף עם המספר של השנה');
-  const [one, two] = scriptCosts('deck-build');
-
-  const usage = page.getByTestId('turn-usage');
-  await expect(usage).toHaveCount(2);
-  await expect(usage.nth(0)).toHaveAttribute('data-cost', String(one));
-  await expect(usage.nth(1)).toHaveAttribute('data-cost', String(two));
-  await expect(usage.nth(0)).toContainText(`$${one!.toFixed(3)}`);
-
-  // The sum is the sum of what the transcript holds for the turns.
-  const held = await heldCost(page);
-  expect(held).toBeCloseTo(one! + two!, 10);
-  const total = page.getByTestId('chat-cost');
-  expect(Number(await total.getAttribute('data-cost'))).toBeCloseTo(held, 10);
-  await expect(total).toContainText(`$${held.toFixed(3)}`);
 });
 
 test('a tool keeps several conversations: a new one, and the way back', async ({ page }) => {
@@ -107,7 +91,7 @@ test('a tool keeps several conversations: a new one, and the way back', async ({
   );
   await page.locator(`[data-conversation="${first}"]`).click();
 
-  // Back in the first: its message, its reply, and its own cost.
+  // Back in the first: its message, its reply, and its own history.
   await expect(chat(page)).toHaveAttribute('data-thread', first);
   await expect(messages(page)).toHaveCount(1);
   await expect(messages(page).first()).toContainText('שיחה ראשונה על המצגת');

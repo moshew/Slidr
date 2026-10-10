@@ -1,34 +1,25 @@
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { runnerImport, type Plugin } from 'vite';
+import type { Plugin } from 'vite';
 
 /*
- * The media library of the packaged app: the graphics the app offers (the icon sets, the
- * photographs of the built-in templates, the built-in fonts of decks) are not part of the
- * bundle, and so not part of the executable. A build writes them into a folder of their own,
- * which is installed beside the executable as `media/`:
+ * Authored content lives in the external Slidr-media directory beside the repository. Tauri
+ * installs its active folders beside the executable as `media/`:
  *
  *   media/icons/lucide/*.json     the Lucide set: its drawings and its search words
  *   media/icons/tabler/*.json     the Tabler set: line and filled drawings, its search words
  *   media/icons/hebrew.json       the Hebrew search words of both sets
  *   media/images/templates/*.webp the photographs of the built-in templates
+ *   media/images/designs/*.webp   the pictures of the ready-made slides of Elements
  *   media/fonts/<family>/*.woff2  the built-in fonts of decks
  *   media/templates/index.json    the built-in templates, by id, in the order they are shown
  *   media/templates/<id>/template.json   each of them: its theme, its master, its layouts
  *
- * The templates are code (`@slidr/templates/builtin`), not files: the build runs that code and
- * writes what it makes, and the app reads the files in its place (`templatesModule`, below).
- *
- * The code names these files where they live in the repository, as it always did: an import
- * with `?url` or `?raw`. In development and in the tests the bundler answers such an import
- * itself. In a build this plugin answers it: the import gives the file's address in the media
- * library (`?url`), or its text read from there when it is first asked for (`?raw`), and the
- * file is copied into the folder. The core serves the folder under that address
- * (`src-tauri/src/media_dir.rs`), so where the folder is, is decided there and nowhere else.
+ * The build generates individual template files from the external catalog. Imports of other
+ * media files use `?url` or `?raw`: during development Vite reads the external files; in a
+ * package this plugin returns an address under the core's media protocol. The active folders
+ * are declared as bundle resources in `src-tauri/tauri.conf.json`.
  */
-
-/** The subfolders a build writes, and empties first. */
-const FOLDERS = ['icons', 'images', 'fonts', 'templates'] as const;
 
 /**
  * Where the pages of the app reach the media library: the address of the core's `media`
@@ -47,41 +38,15 @@ export interface MediaFile {
   as: 'url' | 'text';
 }
 
-const RULES: readonly [
-  query: 'url' | 'raw',
-  file: RegExp,
-  path: (match: RegExpExecArray) => string,
-][] = [
-  [
-    'url',
-    /\/node_modules\/@fontsource(?:-variable)?\/([a-z0-9-]+)\/files\/([a-z0-9-]+\.woff2)$/,
-    ([, family, file]) => `fonts/${family}/${file}`,
-  ],
-  [
-    'url',
-    /\/docs\/reference-decks\/images\/([a-z0-9-]+\.webp)$/,
-    ([, file]) => `images/templates/${file}`,
-  ],
-  [
-    'raw',
-    /\/node_modules\/lucide-static\/((?:icon-nodes|tags)\.json)$/,
-    ([, file]) => `icons/lucide/${file}`,
-  ],
-  [
-    'raw',
-    /\/node_modules\/@tabler\/icons\/([a-z0-9-]+\.json)$/,
-    ([, file]) => `icons/tabler/${file}`,
-  ],
-  ['raw', /\/src\/media\/icons\/(hebrew\.json)$/, ([, file]) => `icons/${file}`],
-];
-
 /** The place of an imported module in the media library; undefined when it is not media. */
 export function mediaFile(id: string): (MediaFile & { source: string }) | undefined {
   const [source = '', query] = id.replace(/^\0+/, '').replaceAll('\\', '/').split('?');
-  for (const [wanted, file, path] of RULES) {
-    if (query !== wanted) continue;
-    const match = file.exec(source);
-    if (match) return { path: path(match), as: wanted === 'url' ? 'url' : 'text', source };
+  // Authored resources live in the media source beside the repository. Vite can import them
+  // during development; in a package the same imports become URLs into the installed media.
+  const external =
+    /\/Slidr-media\/((?:elements|fonts|icons|images|templates)\/[a-zA-Z0-9_./-]+)$/.exec(source);
+  if (external && (query === 'url' || query === 'raw')) {
+    return { path: external[1]!, as: query === 'url' ? 'url' : 'text', source };
   }
   return undefined;
 }
@@ -101,7 +66,7 @@ export function mediaModule(file: MediaFile, origin: string): string {
 /** The module of the app that hands the built-in templates to its library. */
 const TEMPLATES_MODULE = /\/src\/templates\/builtIn\.ts$/;
 
-/** Whether an imported module is the one that makes the built-in templates from their code. */
+/** Whether an imported module exposes the built-in template catalog to the app. */
 export function isTemplatesModule(id: string): boolean {
   return TEMPLATES_MODULE.test(id.replaceAll('\\', '/'));
 }
@@ -142,7 +107,7 @@ export const builtIn = await load().catch((error) => {
 `;
 }
 
-/** A template as the code makes it: what of it the files keep is decided in `templateFiles`. */
+/** The fields retained when the external catalog is split into installed template files. */
 interface BuiltTemplate {
   theme: { id: string };
   sample?: unknown;
@@ -164,15 +129,13 @@ export function templateFiles(templates: readonly BuiltTemplate[]): Map<string, 
 }
 
 export interface MediaLibraryOptions {
-  /** The folder the build writes: the one `tauri.conf.json` installs beside the executable. */
+  /** The media source beside the repository, installed beside the executable. */
   dir: string;
-  /** The module whose `builtInTemplates()` makes the templates the app ships with. */
-  templates: string;
 }
 
-export function mediaLibrary({ dir, templates }: MediaLibraryOptions): Plugin {
+export function mediaLibrary({ dir }: MediaLibraryOptions): Plugin {
   const origin = mediaOrigin();
-  /** What the bundle asked for: place in the library, to the file in the repository. */
+  /** What the bundle asked for: place in the library, to the external source file. */
   const files = new Map<string, string>();
   let asksForTemplates = false;
   return {
@@ -194,21 +157,17 @@ export function mediaLibrary({ dir, templates }: MediaLibraryOptions): Plugin {
       files.set(file.path, file.source);
       return mediaModule(file, origin);
     },
-    async writeBundle() {
-      for (const folder of FOLDERS) rmSync(join(dir, folder), { recursive: true, force: true });
-      for (const [path, source] of files) {
-        const target = join(dir, path);
-        mkdirSync(dirname(target), { recursive: true });
-        copyFileSync(source, target);
+    writeBundle() {
+      for (const source of files.values()) {
+        if (!existsSync(source)) throw new Error(`Missing media source: ${source}`);
       }
       let written = files.size;
       if (asksForTemplates) {
-        // The templates are code: it is run here, once, and what it makes is what is written.
-        const { module } = await runnerImport<{ builtInTemplates(): BuiltTemplate[] }>(templates, {
-          configFile: false,
-          logLevel: 'error',
-        });
-        for (const [path, text] of templateFiles(module.builtInTemplates())) {
+        const catalogFile = join(dir, 'templates', 'catalog.json');
+        const catalog = JSON.parse(readFileSync(catalogFile, 'utf8')) as {
+          templates: BuiltTemplate[];
+        };
+        for (const [path, text] of templateFiles(catalog.templates)) {
           const target = join(dir, 'templates', path);
           mkdirSync(dirname(target), { recursive: true });
           writeFileSync(target, text);

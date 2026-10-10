@@ -1,5 +1,5 @@
 // One picture for the samples of the built-in templates, generated through Codex CLI (ADR-004)
-// and stored as WebP under docs/reference-decks/images:
+// and stored as WebP under Slidr-media/images/templates:
 //   node docs/reference-decks/scripts/picture.mjs <name> "<what the picture shows>" [options]
 //   node docs/reference-decks/scripts/picture.mjs <name> --from <file.png> [options]
 // Options:
@@ -8,9 +8,18 @@
 //   --inset F      trim this share of each cell's sides before it is cut (default 0.01 with --grid)
 //   --width N      the longest side of each file, in pixels (default 1600)
 //   --from FILE    do not generate: cut and convert a picture that already exists
+//   --out DIR      write the WebP there instead of Slidr-media/images/templates, and leave the
+//                  templates' asset records alone (the pictures of Elements → Designs:
+//                  Slidr-media/images/designs)
+//   --work DIR     keep the PNG as it came and the ledger there (a ledger of its own per budget)
+//   --max-kb N     the largest file to accept, in kB (default 200)
+//   --trim         cut the picture to the box of what is not transparent (a cut-out subject:
+//                  its frame on the slide is then the subject's own size)
+//   --circle X,Y,R keep only what lies inside this circle of the source picture, in its pixels,
+//                  and make the rest transparent (a plate seen from above); use with --trim
 // Every generation uses the ChatGPT plan's quota. Each run is written to
 // apps/desktop/test-results/design/templates/pictures/ledger.json (not in git), with the PNG
-// as it came. The asset records the templates name (pictures.generated.ts) are written again.
+// as it came. The picture records in Slidr-media/templates/catalog.json are written again.
 /* global document, Image */
 import { spawn } from 'node:child_process';
 import {
@@ -24,9 +33,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { root } from './decks.mjs';
+import { projectRoot } from './decks.mjs';
 import { readLedger, record } from './ledger.mjs';
 import { writePictures } from './pictures.mjs';
 
@@ -43,6 +53,12 @@ const grid = flag('--grid');
 const from = flag('--from');
 const width = Number(flag('--width') ?? 1600);
 const inset = Number(flag('--inset') ?? (grid ? 0.01 : 0));
+const out = flag('--out');
+const workDir = flag('--work');
+const maxBytes = Number(flag('--max-kb') ?? MAX_BYTES / 1000) * 1000;
+const trimAt = args.indexOf('--trim');
+const trim = trimAt !== -1 && args.splice(trimAt, 1).length === 1;
+const circle = flag('--circle')?.split(',').map(Number);
 const [name, prompt] = args;
 if (!name || (!prompt && !from)) {
   console.error('usage: picture.mjs <name> "<prompt>" [--grid CxR] [--inset F] [--width N] | <name> --from <file>');
@@ -50,7 +66,9 @@ if (!name || (!prompt && !from)) {
 }
 const [columns, rows] = (grid ?? '1x1').split('x').map(Number);
 
-const work = join(root, '..', '..', 'apps', 'desktop', 'test-results', 'design', 'templates', 'pictures');
+const work = workDir
+  ? resolve(workDir)
+  : join(projectRoot, 'apps', 'desktop', 'test-results', 'design', 'templates', 'pictures');
 mkdirSync(work, { recursive: true });
 const ledgerFile = join(work, 'ledger.json');
 
@@ -104,19 +122,53 @@ const browser = await chromium.launch({ channel: 'msedge' });
 const page = await browser.newPage();
 const dataUrl = `data:image/png;base64,${readFileSync(source).toString('base64')}`;
 const cells = await page.evaluate(
-  async ({ dataUrl, columns, rows, inset, width, maxBytes }) => {
-    const image = new Image();
-    image.src = dataUrl;
-    await image.decode();
+  async ({ dataUrl, columns, rows, inset, width, maxBytes, trim, circle }) => {
+    const picture = new Image();
+    picture.src = dataUrl;
+    await picture.decode();
+    // What is cut and encoded: the picture, or only the part of it inside the circle.
+    const image = document.createElement('canvas');
+    image.naturalWidth = image.width = picture.naturalWidth;
+    image.naturalHeight = image.height = picture.naturalHeight;
+    const whole = image.getContext('2d');
+    if (circle) {
+      const [cx, cy, r] = circle;
+      // A rim two pixels soft, so the edge does not stair-step.
+      const rim = whole.createRadialGradient(cx, cy, r - 2, cx, cy, r);
+      rim.addColorStop(0, '#000');
+      rim.addColorStop(1, 'rgba(0,0,0,0)');
+      whole.fillStyle = rim;
+      whole.fillRect(0, 0, image.width, image.height);
+      whole.globalCompositeOperation = 'source-in';
+    }
+    whole.drawImage(picture, 0, 0);
+    /** The box of what is not transparent inside a box, two pixels wider on each side. */
+    const opaque = (x0, y0, w, h) => {
+      const data = whole.getImageData(x0, y0, w, h).data;
+      let [l, t, r, b] = [w, h, 0, 0];
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          if (data[(y * w + x) * 4 + 3] <= 12) continue;
+          l = Math.min(l, x);
+          r = Math.max(r, x);
+          t = Math.min(t, y);
+          b = Math.max(b, y);
+        }
+      }
+      l = Math.max(0, l - 2);
+      t = Math.max(0, t - 2);
+      return [x0 + l, y0 + t, Math.min(w - 1, r + 2) - l + 1, Math.min(h - 1, b + 2) - t + 1];
+    };
     const cw = image.naturalWidth / columns;
     const ch = image.naturalHeight / rows;
     const out = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < columns; c++) {
-        const sx = c * cw + cw * inset;
-        const sy = r * ch + ch * inset;
-        const sw = cw * (1 - 2 * inset);
-        const sh = ch * (1 - 2 * inset);
+        let sx = c * cw + cw * inset;
+        let sy = r * ch + ch * inset;
+        let sw = cw * (1 - 2 * inset);
+        let sh = ch * (1 - 2 * inset);
+        if (trim) [sx, sy, sw, sh] = opaque(Math.round(sx), Math.round(sy), Math.round(sw), Math.round(sh));
         let k = Math.min(1, width / Math.max(sw, sh));
         let quality = 0.86;
         for (;;) {
@@ -138,15 +190,18 @@ const cells = await page.evaluate(
     }
     return out;
   },
-  { dataUrl, columns, rows, inset, width, maxBytes: MAX_BYTES },
+  { dataUrl, columns, rows, inset, width, maxBytes, trim, circle },
 );
 await browser.close();
 
+const images = out
+  ? resolve(out)
+  : fileURLToPath(new URL('../../../../Slidr-media/images/templates/', import.meta.url));
 for (const [i, cell] of cells.entries()) {
   const file = `${name}${cells.length > 1 ? `-${i + 1}` : ''}.webp`;
-  const path = join(root, 'images', file);
+  const path = join(images, file);
   writeFileSync(path, Buffer.from(cell.url.slice(cell.url.indexOf(',') + 1), 'base64'));
-  console.log(`images/${file}: ${cell.w}x${cell.h}, ${Math.round(statSync(path).size / 1024)}kB`);
+  console.log(`${out ? path : `images/${file}`}: ${cell.w}x${cell.h}, ${Math.round(statSync(path).size / 1024)}kB`);
 }
-console.log(writePictures());
+if (!out) console.log(writePictures());
 console.log(`generations so far in this worktree: ${readLedger(ledgerFile).length}`);

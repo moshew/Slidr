@@ -124,7 +124,13 @@ export function formatOf(target: TextTarget, ctx: FormatContext): TextFormat {
   const key: object =
     target.kind === 'editor' ? target.view.state : (target.element.content ?? NO_TEXT);
   const cached = formats.get(key);
-  if (cached && cached.ctx.theme === ctx.theme && cached.ctx.dir === ctx.dir) return cached.format;
+  if (
+    cached &&
+    cached.ctx.theme === ctx.theme &&
+    cached.ctx.dir === ctx.dir &&
+    cached.ctx.color === ctx.color
+  )
+    return cached.format;
   const format = readFormat(sampleTarget(target), ctx);
   formats.set(key, { ctx, format });
   return format;
@@ -340,7 +346,7 @@ export function updateStyle(
   styleRef: TextStyleRef,
   step: Step = {},
 ): boolean {
-  const match = matchStyle(formatOf(target, ctx), ctx.theme.textStyles[styleRef]);
+  const match = matchStyle(formatOf(target, ctx), ctx.theme.textStyles[styleRef], ctx.color);
   if (!match) return false;
   const { bus } = target;
   const txId = step.txId ?? newId('tx');

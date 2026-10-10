@@ -1,7 +1,8 @@
 import type { AssetMeta, ImageElement } from '@slidr/model';
+import { framedPicture } from '../elements/frames';
 import { i18n } from '../i18n';
 import { replaceWith } from '../objects/replace';
-import { isTarget, useTarget, type Target } from '../objects/target';
+import { useTargetIn, type Target } from '../objects/target';
 import { focusStage, type Editor } from '../shell';
 
 /*
@@ -11,10 +12,13 @@ import { focusStage, type Editor } from '../shell';
  * frame, the crop, the mask and the adjustments stay, and it is one undo step.
  */
 
-/** The picture selected on the Stage: the one element that is selected, when it is an image. */
+/**
+ * The picture selected on the Stage: the one element that is selected, when it is an image, or
+ * the picture of the selected group when a frame made the group (a magnet with its stickers
+ * and its caption, ADR-083): a picture chosen in a panel goes into the frame.
+ */
 export function useSelectedPicture(): Target<ImageElement> | undefined {
-  const target = useTarget();
-  return isTarget(target, 'image') ? target : undefined;
+  return useTargetIn(framedPicture);
 }
 
 /**

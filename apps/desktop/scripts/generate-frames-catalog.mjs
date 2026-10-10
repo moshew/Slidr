@@ -1,10 +1,14 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { sheet, svg } from './frames-art.mjs';
+import { magnets } from './frames-magnets.mjs';
 
 /*
- * Writes `src/elements/frames-catalog.json`: the photo frames of the Elements panel, group by
+ * Writes `Slidr-media/elements/catalogs/frames-catalog.json`: the photo frames of the Elements panel, group by
  * group. A frame is a picture waiting for its photograph: most of them cut it to an outline (a
  * shape, a letter, a brush stroke), and the decorated ones draw artwork around an opening (an
- * instant photo, a phone, a picture frame).
+ * instant photo, a phone, a picture frame). The magnets of events also come with stickers and a
+ * caption beside the picture; `frames-magnets.mjs` draws them.
  *
  * Every outline is made here, from geometry, from seeded noise, or from the glyphs of Rubik at
  * its heaviest, which the app already ships. The catalogue is checked in, so a frame keeps its
@@ -336,37 +340,6 @@ function crescent([x1, y1, r1], [x2, y2, r2]) {
     .done();
 }
 
-/** The part of a polygon where `keep` is not negative; `keep` is linear in the point. */
-function kept(points, keep) {
-  const out = [];
-  points.forEach((p, i) => {
-    const q = points[(i + 1) % points.length];
-    const [kp, kq] = [keep(p), keep(q)];
-    if (kp >= 0) out.push(p);
-    if (kp < 0 !== kq < 0) {
-      const t = kp / (kp - kq);
-      out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
-    }
-  });
-  return out;
-}
-
-/** What shows of a convex polygon that lies under a box: the pieces around the box. */
-function showing(points, { x, y, w, h }) {
-  const beside = kept(
-    kept(points, ([, py]) => py - y),
-    ([, py]) => y + h - py,
-  );
-  return [
-    kept(points, ([, py]) => y - py),
-    kept(points, ([, py]) => py - (y + h)),
-    kept(beside, ([px]) => x - px),
-    kept(beside, ([px]) => px - (x + w)),
-  ]
-    .filter((piece) => piece.length > 2 && Math.abs(area(piece)) > 1)
-    .flatMap(polygon);
-}
-
 /** Numbers that look random and are the same on every run. */
 function random(seed) {
   let state = seed >>> 0;
@@ -406,28 +379,11 @@ function cut(id, en, he, path, size = SIDE, tags) {
 
 const SHADOW = { x: 0, y: 8, blur: 22, color: { value: '#000000', alpha: 0.24 } };
 
-const ink = (value, alpha) => ({
-  kind: 'solid',
-  color: alpha === undefined ? { value } : { value, alpha },
-});
-/** A colour of the deck's theme: the artwork follows the theme. */
-const theme = (token) => ({ kind: 'solid', color: { token } });
-
-const layer = (path, fill, shadow) => ({ d: data(path), fill, ...(shadow ? { shadow } : {}) });
+/** A colour of the deck's theme, as the style of a part: the artwork follows the theme. */
+const themed = (property, token) => `${property}:var(--color-${token});`;
 
 const box = (x, y, w, h) => ({ x, y, w, h });
 const inset = ({ x, y, w, h }, by) => ({ x: x + by, y: y + by, w: w - 2 * by, h: h - 2 * by });
-const boxPath = ({ x, y, w, h }, radius = 0) => roundRect(x, y, w, h, radius);
-
-/**
- * The window a card has for its photograph: a pixel inside the opening all around, so the edge
- * of the card lies over the edge of the photograph and no line of the slide shows between them.
- */
-const windowOf = (opening, radius = 0) =>
-  boxPath(
-    inset(opening, 1),
-    (Array.isArray(radius) ? radius : Array(4).fill(radius)).map((r) => Math.max(0, r - 1)),
-  );
 
 const cornersOf = ({ x, y, w, h }) => [
   [x, y],
@@ -438,16 +394,28 @@ const cornersOf = ({ x, y, w, h }) => [
 
 /**
  * A decorated frame: artwork in a box of `w` by `h`, drawn over the photograph, which shows
- * through `opening`. `clip` cuts the photograph inside the opening, in the opening's own box.
+ * through `opening`. `draw` writes the artwork on the sheet of that box (`frames-art.mjs`): it
+ * keeps its size when the frame is made larger, and the opening takes up the change. `clip`
+ * cuts the photograph inside the opening (in the opening's own box) and `round` rounds its
+ * corners; where the artwork lies over the photograph's corners neither is needed. `shadow` is
+ * cast by the whole frame, the photograph included, so none of it falls on the photograph.
  */
-function art(id, en, he, w, h, { opening, clip, layers }, tags) {
+function art(id, en, he, w, h, { opening, clip, round, shadow, draw }, tags) {
+  const drawn = draw(sheet(w, h, opening));
+  const { defs = '', body } = typeof drawn === 'string' ? { body: drawn } : drawn;
   return {
     id,
     en,
     he,
     w,
     h,
-    art: { opening, ...(clip ? { clip: data(clip) } : {}), layers },
+    art: {
+      opening,
+      ...(clip ? { clip: data(clip) } : {}),
+      ...(round ? { round } : {}),
+      drawing: svg(defs, body),
+    },
+    ...(shadow ? { shadow } : {}),
     ...words(tags),
   };
 }
@@ -1593,25 +1561,67 @@ async function letters() {
 
 const WHITE = '#ffffff';
 
+/** A box of the artwork from the top left corner of the frame. */
+const whole = (w, h) => box(0, 0, w, h);
+
+/** How the four corners of a box follow the frame: each with the corner of the frame it is at. */
+const AT_CORNERS = [
+  { x: 'start', y: 'start' },
+  { x: 'end', y: 'start' },
+  { x: 'end', y: 'end' },
+  { x: 'start', y: 'end' },
+];
+
+/**
+ * A card with a window for the photograph. `outline` is the card's box and `radius` its
+ * corners; `window` rounds the corners of the window. The window lies a pixel inside the
+ * opening all around, so the edge of the card lies over the edge of the photograph and no line
+ * of the slide shows between them.
+ */
+const card = (S, outline, radius = 0, colour = WHITE, window = 0) => ({
+  defs: S.mask(
+    'card',
+    S.box(outline, radius, 'fill="#fff"'),
+    S.box(inset(S.opening, 1), window, 'fill="#000"'),
+  ),
+  body: S.whole(`fill="${colour}" mask="url(#card)"`),
+});
+
+/**
+ * A sheet as large as a box, lying under it and turned a little. Its corners go with the
+ * corners of the frame, so as much of it shows at any size. Drawn with the mask of `keepsOff`,
+ * it keeps off the box.
+ */
+function under(S, over, turn, attrs, paint) {
+  const { x, y, w, h } = over;
+  const corners = cornersOf(over).map(spin(turn, x + w / 2, y + h / 2));
+  return S.shape(
+    corners.map(([px, py], i) => [px, py, AT_CORNERS[i]]),
+    `${attrs} mask="url(#around)"`,
+    paint,
+  );
+}
+
+/** The mask that keeps what lies under a box off it. */
+const keepsOff = (S, over) =>
+  S.mask('around', S.whole('fill="#fff"'), S.box(inset(over, 1), 0, 'fill="#000"'));
+
 function photo() {
-  /** A card with the photograph in a window of it. */
-  const card = (outline, opening, colour = WHITE) =>
-    layer(cutOut(outline, windowOf(opening)), ink(colour), SHADOW);
-  const tape = (cx, cy, turn, length = 132) =>
-    layer(turned(rect(cx - length / 2, cy - 19, length, 38), turn, cx, cy), ink('#f3d27a', 0.82));
+  /** A strip of sticking tape around a point, turned. It goes with that point. */
+  const tape = (S, cx, cy, turn, length, ties) =>
+    S.pin(
+      `<rect x="${cx - length / 2}" y="${cy - 19}" width="${length}" height="38" fill="#f3d27a" fill-opacity=".82" transform="rotate(${turn} ${cx} ${cy})"/>`,
+      [cx, cy],
+      ties,
+    );
   const instant = box(26, 26, 348, 348);
   const wideInstant = box(26, 26, 468, 320);
-  const print = inset(box(0, 0, 540, 400), 22);
-  const tallPrint = inset(box(0, 0, 400, 540), 22);
+  const print = inset(whole(540, 400), 22);
+  const tallPrint = inset(whole(400, 540), 22);
   const taped = box(26, 48, 348, 348);
   const corners = box(10, 16, 540, 392);
   const stack = box(40, 44, 480, 372);
-  const under = (turn, colour) =>
-    layer(showing(cornersOf(stack).map(spin(turn, 280, 230)), stack), ink(colour));
   const strip = box(34, 64, 572, 292);
-  const holes = [20, 374].flatMap((y) =>
-    Array.from({ length: 11 }, (_, i) => roundRect(22 + i * 56, y, 36, 26, 5)),
-  );
   const mount = box(72, 120, 336, 240);
   const stamp = box(40, 40, 360, 480);
   return [
@@ -1621,10 +1631,7 @@ function photo() {
       'תצלום מיידי',
       400,
       480,
-      {
-        opening: instant,
-        layers: [card(roundRect(0, 0, 400, 480, 6), instant)],
-      },
+      { opening: instant, shadow: SHADOW, draw: (S) => card(S, whole(400, 480), 6) },
       { en: 'polaroid', he: 'פולרואיד' },
     ),
     art(
@@ -1633,10 +1640,7 @@ function photo() {
       'תצלום מיידי רחב',
       520,
       440,
-      {
-        opening: wideInstant,
-        layers: [card(roundRect(0, 0, 520, 440, 6), wideInstant)],
-      },
+      { opening: wideInstant, shadow: SHADOW, draw: (S) => card(S, whole(520, 440), 6) },
       { en: 'polaroid', he: 'פולרואיד' },
     ),
     art(
@@ -1647,7 +1651,11 @@ function photo() {
       502,
       {
         opening: taped,
-        layers: [card(roundRect(0, 22, 400, 480, 6), taped), tape(200, 22, -4)],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, box(0, 22, 400, 480), 6);
+          return { defs, body: body + tape(S, 200, 22, -4, 132, { x: 'mid', y: 'start' }) };
+        },
       },
       { en: 'polaroid tape', he: 'פולרואיד סלוטייפ' },
     ),
@@ -1657,15 +1665,13 @@ function photo() {
       'תצלום מודפס',
       540,
       400,
-      {
-        opening: print,
-        layers: [card(rect(0, 0, 540, 400), print)],
-      },
+      { opening: print, shadow: SHADOW, draw: (S) => card(S, whole(540, 400)) },
       { en: 'border', he: 'שוליים לבנים' },
     ),
     art('print-tall', 'Tall photo print', 'תצלום מודפס לגובה', 400, 540, {
       opening: tallPrint,
-      layers: [card(rect(0, 0, 400, 540), tallPrint)],
+      shadow: SHADOW,
+      draw: (S) => card(S, whole(400, 540)),
     }),
     art(
       'print-taped',
@@ -1675,11 +1681,17 @@ function photo() {
       420,
       {
         opening: inset(corners, 20),
-        layers: [
-          card(boxPath(corners), inset(corners, 20)),
-          tape(44, 44, -42, 124),
-          tape(516, 44, 42, 124),
-        ],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, corners);
+          return {
+            defs,
+            body:
+              body +
+              tape(S, 44, 44, -42, 124, { x: 'start', y: 'start' }) +
+              tape(S, 516, 44, 42, 124, { x: 'end', y: 'start' }),
+          };
+        },
       },
       { en: 'tape scrapbook', he: 'סלוטייפ אלבום' },
     ),
@@ -1691,7 +1703,15 @@ function photo() {
       460,
       {
         opening: inset(stack, 20),
-        layers: [under(7, '#e4e4e7'), under(-5, '#f1f1f3'), card(boxPath(stack), inset(stack, 20))],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, stack);
+          return {
+            defs: defs + keepsOff(S, stack),
+            body:
+              under(S, stack, 7, 'fill="#e4e4e7"') + under(S, stack, -5, 'fill="#f1f1f3"') + body,
+          };
+        },
       },
       { en: 'pile photos', he: 'אלבום' },
     ),
@@ -1703,7 +1723,27 @@ function photo() {
       420,
       {
         opening: strip,
-        layers: [layer(cutOut(rect(0, 0, 640, 420), windowOf(strip), ...holes), ink('#18181b'))],
+        draw: (S) => {
+          // The perforations are one tile, laid from the middle of the strip along both of
+          // its edges: a longer strip has more of them, as far apart as they were. At the
+          // strip's own length eleven fit, and the twelfth ends where the strip does.
+          const row = (y, tie) =>
+            S.pin(
+              `<rect x="-4000" y="${y}" width="8640" height="26" fill="url(#holes)"/>`,
+              [320, y],
+              { x: 'mid', y: tie },
+            );
+          return {
+            defs:
+              `<pattern id="holes" x="292" y="20" width="56" height="354" patternUnits="userSpaceOnUse"><rect x="12.5" width="31" height="26" rx="5"/></pattern>` +
+              S.mask(
+                'film',
+                S.whole('fill="#fff"'),
+                S.box(inset(strip, 1), 0, 'fill="#000"') + row(20, 'start') + row(374, 'end'),
+              ),
+            body: S.whole('fill="#18181b" mask="url(#film)"'),
+          };
+        },
       },
       { en: 'cinema movie negative', he: 'קולנוע נגטיב' },
     ),
@@ -1715,15 +1755,18 @@ function photo() {
       480,
       {
         opening: mount,
-        clip: roundRect(0, 0, mount.w, mount.h, 10),
-        layers: [
-          layer(
-            cutOut(roundRect(0, 0, 480, 480, 30), boxPath(inset(mount, -8), 16)),
-            ink('#f4f4f5'),
-            SHADOW,
+        shadow: SHADOW,
+        draw: (S) => ({
+          defs: S.mask(
+            'mount',
+            S.box(whole(480, 480), 30, 'fill="#fff"'),
+            S.box(inset(mount, -8), 16, 'fill="#000"'),
           ),
-          layer(cutOut(boxPath(inset(mount, -8), 16), windowOf(mount, 10)), ink('#d4d4d8')),
-        ],
+          // The mount, and the lip that holds the film: it lies over the photograph's corners.
+          body:
+            S.whole('fill="#f4f4f5" mask="url(#mount)"') +
+            S.outline(inset(mount, -3.5), 12.5, 9, 'stroke="#d4d4d8"'),
+        }),
       },
       { en: 'retro', he: 'רטרו' },
     ),
@@ -1735,7 +1778,29 @@ function photo() {
       560,
       {
         opening: stamp,
-        layers: [card(perforated(440, 560, 11, 36), stamp)],
+        shadow: SHADOW,
+        draw: (S) => {
+          // The perforation: bites of one size, as far apart at any size, laid along every
+          // edge from its middle.
+          const bites = (x1, y1, x2, y2, at, ties) =>
+            S.pin(
+              `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#000" stroke-width="22" stroke-linecap="round" stroke-dasharray="0 36"/>`,
+              at,
+              ties,
+            );
+          return {
+            defs: S.mask(
+              'stamp',
+              S.whole('fill="#fff"'),
+              S.box(inset(stamp, 1), 0, 'fill="#000"') +
+                bites(-3398, 0, 4000, 0, [220, 0], { x: 'mid', y: 'start' }) +
+                bites(-3398, 560, 4000, 560, [220, 560], { x: 'mid', y: 'end' }) +
+                bites(0, -3320, 0, 4000, [0, 280], { x: 'start', y: 'mid' }) +
+                bites(440, -3320, 440, 4000, [440, 280], { x: 'end', y: 'mid' }),
+            ),
+            body: S.whole(`fill="${WHITE}" mask="url(#stamp)"`),
+          };
+        },
       },
       { en: 'post mail', he: 'דואר' },
     ),
@@ -1748,10 +1813,17 @@ function devices() {
   const tablet = box(24, 24, 592, 422);
   const laptop = box(96, 16, 568, 360);
   const monitor = box(16, 16, 648, 372);
-  const browser = box(2, 54, 676, 424);
+  // The page begins under the bar of the window, which covers its round corners there.
+  const browser = box(2, 42, 676, 436);
   const watch = box(48, 128, 224, 264);
   const tv = box(10, 10, 700, 394);
-  const leg = [
+  /** A leg of the television, a fifth of the way along it. */
+  const leg = (S, points) =>
+    S.pin(`<path d="M${points.map(([x, y]) => `${x} ${y}`).join('L')}Z" fill="#3f3f46"/>`, [
+      (points[0][0] + points[3][0]) / 2,
+      444,
+    ]);
+  const left = [
     [140, 420],
     [176, 420],
     [152, 468],
@@ -1766,11 +1838,12 @@ function devices() {
       610,
       {
         opening: phone,
-        clip: roundRect(0, 0, phone.w, phone.h, 36),
-        layers: [
-          layer(cutOut(roundRect(0, 0, 300, 610, 48), windowOf(phone, 36)), ink(BODY), SHADOW),
-          layer(roundRect(105, 28, 90, 26, 13), ink(BODY)),
-        ],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, whole(300, 610), 48, BODY, 35);
+          const island = `<rect x="105" y="28" width="90" height="26" rx="13" fill="${BODY}"/>`;
+          return { defs, body: body + S.pin(island, [150, 41], { x: 'mid', y: 'start' }) };
+        },
       },
       { en: 'mobile smartphone screen', he: 'נייד סמארטפון מסך' },
     ),
@@ -1782,11 +1855,12 @@ function devices() {
       470,
       {
         opening: tablet,
-        clip: roundRect(0, 0, tablet.w, tablet.h, 10),
-        layers: [
-          layer(cutOut(roundRect(0, 0, 640, 470, 30), windowOf(tablet, 10)), ink(BODY), SHADOW),
-          layer(circle(320, 12, 4), ink('#3f3f46')),
-        ],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, whole(640, 470), 30, BODY, 9);
+          const camera = `<circle cx="320" cy="12" r="4" fill="#3f3f46"/>`;
+          return { defs, body: body + S.pin(camera, [320, 12], { x: 'mid', y: 'start' }) };
+        },
       },
       { en: 'screen', he: 'מסך' },
     ),
@@ -1798,12 +1872,19 @@ function devices() {
       440,
       {
         opening: laptop,
-        clip: roundRect(0, 0, laptop.w, laptop.h, 6),
-        layers: [
-          layer(cutOut(roundRect(80, 0, 600, 404, [20, 20, 0, 0]), windowOf(laptop, 6)), ink(BODY)),
-          layer(roundRect(0, 404, 760, 28, [4, 4, 16, 16]), ink('#d4d4d8'), SHADOW),
-          layer(roundRect(320, 404, 120, 10, [0, 0, 8, 8]), ink('#a1a1aa')),
-        ],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, box(80, 0, 600, 404), [20, 20, 0, 0], BODY, 5);
+          return {
+            defs,
+            body:
+              body +
+              S.box(box(0, 404, 760, 28), [4, 4, 16, 16], 'fill="#d4d4d8"') +
+              S.box(box(320, 404, 120, 10), [0, 0, 8, 8], 'fill="#a1a1aa"', {
+                ties: { x: 'mid' },
+              }),
+          };
+        },
       },
       { en: 'computer screen', he: 'לפטופ מסך' },
     ),
@@ -1815,20 +1896,23 @@ function devices() {
       544,
       {
         opening: monitor,
-        clip: roundRect(0, 0, monitor.w, monitor.h, 6),
-        layers: [
-          layer(
-            polygon([
-              [292, 416],
-              [388, 416],
-              [408, 522],
-              [272, 522],
-            ]),
-            ink('#a1a1aa'),
-          ),
-          layer(roundRect(206, 518, 268, 26, 13), ink('#d4d4d8'), SHADOW),
-          layer(cutOut(roundRect(0, 0, 680, 420, 18), windowOf(monitor, 6)), ink(BODY)),
-        ],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, whole(680, 420), 18, BODY, 5);
+          const neck = [
+            [292, 416],
+            [388, 416],
+            [408, 522],
+            [272, 522],
+          ].map(([x, y]) => [x, y, { x: 'mid', y: 'end' }]);
+          return {
+            defs,
+            body:
+              S.shape(neck, 'fill="#a1a1aa"') +
+              S.box(box(206, 518, 268, 26), 13, 'fill="#d4d4d8"', { ties: { x: 'mid' } }) +
+              body,
+          };
+        },
       },
       { en: 'computer display', he: 'מחשב שולחני צג' },
     ),
@@ -1840,18 +1924,26 @@ function devices() {
       480,
       {
         opening: browser,
-        clip: roundRect(0, 0, browser.w, browser.h, [0, 0, 12, 12]),
-        layers: [
-          layer(
-            cutOut(roundRect(0, 0, 680, 480, 14), windowOf(browser, [0, 0, 12, 12])),
-            ink('#e4e4e7'),
-            SHADOW,
-          ),
-          layer(circle(28, 27, 7), ink('#f87171')),
-          layer(circle(52, 27, 7), ink('#fbbf24')),
-          layer(circle(76, 27, 7), ink('#34d399')),
-          layer(roundRect(112, 13, 456, 28, 14), ink(WHITE)),
-        ],
+        round: 12,
+        shadow: SHADOW,
+        draw: (S) => {
+          const lights = [
+            [28, '#f87171'],
+            [52, '#fbbf24'],
+            [76, '#34d399'],
+          ]
+            .map(([cx, colour]) => `<circle cx="${cx}" cy="27" r="7" fill="${colour}"/>`)
+            .join('');
+          return (
+            S.box(box(0, 0, 680, 54), [14, 14, 0, 0], 'fill="#e4e4e7"', { ties: { y: 'start' } }) +
+            S.outline(inset(whole(680, 480), 1), 13, 2, 'stroke="#e4e4e7"') +
+            S.pin(lights, [52, 27], { x: 'start', y: 'start' }) +
+            // The address bar is as long as the window leaves it.
+            S.box(box(112, 13, 456, 28), 14, `fill="${WHITE}"`, {
+              ties: { l: 'start', r: 'end', y: 'start' },
+            })
+          );
+        },
       },
       { en: 'website web', he: 'אתר אינטרנט' },
     ),
@@ -1863,13 +1955,19 @@ function devices() {
       520,
       {
         opening: watch,
-        clip: roundRect(0, 0, watch.w, watch.h, 48),
-        layers: [
-          layer(roundRect(72, 0, 176, 120, [28, 28, 0, 0]), ink('#3f3f46')),
-          layer(roundRect(72, 400, 176, 120, [0, 0, 28, 28]), ink('#3f3f46')),
-          layer(roundRect(288, 220, 18, 60, 8), ink('#52525b')),
-          layer(cutOut(roundRect(30, 110, 260, 300, 66), windowOf(watch, 48)), ink(BODY), SHADOW),
-        ],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, box(30, 110, 260, 300), 66, BODY, 47);
+          const strap = { l: 'start', r: 'end' };
+          return {
+            defs,
+            body:
+              S.box(box(72, 0, 176, 120), [28, 28, 0, 0], 'fill="#3f3f46"', { ties: strap }) +
+              S.box(box(72, 400, 176, 120), [0, 0, 28, 28], 'fill="#3f3f46"', { ties: strap }) +
+              S.box(box(288, 220, 18, 60), 8, 'fill="#52525b"', { ties: { y: 'mid' } }) +
+              body,
+          };
+        },
       },
       { en: 'clock', he: 'שעון יד' },
     ),
@@ -1881,12 +1979,20 @@ function devices() {
       470,
       {
         opening: tv,
-        clip: roundRect(0, 0, tv.w, tv.h, 4),
-        layers: [
-          layer(polygon(leg), ink('#3f3f46')),
-          layer(polygon(leg.map(([x, y]) => [720 - x, y])), ink('#3f3f46')),
-          layer(cutOut(roundRect(0, 0, 720, 420, 10), windowOf(tv, 4)), ink('#18181b'), SHADOW),
-        ],
+        shadow: SHADOW,
+        draw: (S) => {
+          const { defs, body } = card(S, whole(720, 420), 10, '#18181b', 3);
+          return {
+            defs,
+            body:
+              leg(S, left) +
+              leg(
+                S,
+                left.map(([x, y]) => [720 - x, y]),
+              ) +
+              body,
+          };
+        },
       },
       { en: 'screen', he: 'מסך' },
     ),
@@ -1894,33 +2000,42 @@ function devices() {
 }
 
 function framed() {
-  /** A band between two boxes: a border. */
-  const band = (outer, inner, radius = 0, innerRadius = radius) =>
-    cutOut(boxPath(outer, radius), boxPath(inner, innerRadius));
-  const wide = box(0, 0, 560, 440);
-  const tall = box(0, 0, 440, 560);
+  const wide = whole(560, 440);
   /** A dark frame and a white mount around the photograph, as in a gallery. */
-  const gallery = (outer) => {
-    const opening = inset(outer, 72);
-    return {
-      opening,
-      layers: [
-        layer(band(inset(outer, 16), opening), ink(WHITE)),
-        layer(band(inset(opening, -3), inset(opening, 1)), ink('#e7e5e4')),
-        layer(band(outer, inset(outer, 16)), ink('#1c1917'), SHADOW),
-      ],
-    };
-  };
+  const gallery = (w, h) => ({
+    opening: inset(whole(w, h), 72),
+    shadow: SHADOW,
+    draw: (S) =>
+      // The mount, its lip at the photograph, and the frame over the mount's edge.
+      S.outline(inset(whole(w, h), 44), 0, 57, `stroke="${WHITE}"`) +
+      S.outline(inset(S.opening, -1), 0, 4, 'stroke="#e7e5e4"') +
+      S.outline(inset(whole(w, h), 8), 0, 16, 'stroke="#1c1917"'),
+  });
   /** A moulded frame: its body, a line of light near the outside, a lip of shade inside. */
   const moulded = (body, light, shade) => ({
     opening: inset(wide, 34),
-    layers: [
-      layer(band(wide, inset(wide, 34)), ink(body), SHADOW),
-      layer(band(inset(wide, 6), inset(wide, 11)), ink(light)),
-      layer(band(inset(wide, 27), inset(wide, 35)), ink(shade)),
-    ],
+    shadow: SHADOW,
+    draw: (S) => {
+      // Where two sides of the moulding meet, a joint runs from the corner to the photograph.
+      const joint = ([x, y], [dx, dy], ties) =>
+        S.pin(
+          `<path d="M${x} ${y}l${dx * 34} ${dy * 34}" stroke="#000" stroke-opacity=".22" stroke-width="1.2"/>`,
+          [x, y],
+          ties,
+        );
+      return (
+        S.outline(inset(wide, 17), 0, 34, `stroke="${body}"`) +
+        S.outline(inset(wide, 8.5), 0, 5, `stroke="${light}"`) +
+        S.outline(inset(wide, 31), 0, 8, `stroke="${shade}"`) +
+        cornersOf(wide)
+          .map((corner, i) =>
+            joint(corner, [i === 0 || i === 3 ? 1 : -1, i < 2 ? 1 : -1], AT_CORNERS[i]),
+          )
+          .join('')
+      );
+    },
   });
-  const line = box(0, 0, 520, 400);
+  const line = whole(520, 400);
   const corner = [
     [0, 0],
     [74, 0],
@@ -1929,32 +2044,34 @@ function framed() {
     [9, 74],
     [0, 74],
   ];
-  const cornersAt = (w, h) =>
-    [
-      ([x, y]) => [x, y],
-      ([x, y]) => [w - x, y],
-      ([x, y]) => [w - x, h - y],
-      ([x, y]) => [x, h - y],
-    ].flatMap((to) => polygon(corner.map(to)));
+  /** A mark in every corner of a box of `w` by `h`: each goes with its corner. */
+  const marks = (S, w, h) =>
+    [([x, y]) => [x, y], ([x, y]) => [w - x, y], ([x, y]) => [w - x, h - y], ([x, y]) => [x, h - y]]
+      .map((to, i) => {
+        const points = corner.map(to);
+        return S.pin(
+          `<path d="M${points.map(([x, y]) => `${x} ${y}`).join('L')}Z" style="${themed('fill', 'primary')}"/>`,
+          points[0],
+          AT_CORNERS[i],
+        );
+      })
+      .join('');
   const shifted = box(0, 0, 500, 380);
   const round = box(36, 36, 408, 408);
   const disc = box(0, 0, 440, 440);
   const dotted = box(40, 20, 440, 440);
-  const dots = Array.from({ length: 25 }, (_, i) => [
-    12 + (i % 5) * 28,
-    376 + Math.floor(i / 5) * 28,
-  ])
-    .filter(([x, y]) => Math.hypot(x - 260, y - 240) > 236)
-    .flatMap(([x, y]) => circle(x, y, 7));
   const arched = box(21, 21, 398, 518);
-  const soft = box(0, 0, 520, 400);
+  const soft = whole(520, 400);
   const tilted = box(40, 40, 440, 340);
+  /** Keeps what is drawn with it off a round photograph: the photograph lies in `over`. */
+  const offDisc = (S, over) =>
+    S.mask('off', S.whole('fill="#fff"'), S.ellipse(inset(over, 1), 'fill="#000"'));
   return [
-    art('gallery', 'Gallery frame', 'מסגרת גלריה', 560, 440, gallery(wide), {
+    art('gallery', 'Gallery frame', 'מסגרת גלריה', 560, 440, gallery(560, 440), {
       en: 'mount passe-partout',
       he: 'פספרטו',
     }),
-    art('gallery-tall', 'Tall gallery frame', 'מסגרת גלריה לגובה', 440, 560, gallery(tall)),
+    art('gallery-tall', 'Tall gallery frame', 'מסגרת גלריה לגובה', 440, 560, gallery(440, 560)),
     art('wood', 'Wooden frame', 'מסגרת עץ', 560, 440, moulded('#8b5a2b', '#b9834c', '#5c3a1a')),
     art('gold', 'Gold frame', 'מסגרת זהב', 560, 440, moulded('#d4a94a', '#f4dc94', '#a67c23'), {
       en: 'classic',
@@ -1968,16 +2085,15 @@ function framed() {
       400,
       {
         opening: inset(line, 22),
-        layers: [layer(band(line, inset(line, 4)), theme('text'))],
+        draw: (S) => S.outline(inset(line, 2), 0, 4, '', { paint: themed('stroke', 'text') }),
       },
       { en: 'outline', he: 'קו מתאר' },
     ),
     art('line-double', 'Double line frame', 'מסגרת קו כפול', 520, 400, {
       opening: inset(line, 30),
-      layers: [
-        layer(band(line, inset(line, 5)), theme('primary')),
-        layer(band(inset(line, 13), inset(line, 15)), theme('primary')),
-      ],
+      draw: (S) =>
+        S.outline(inset(line, 2.5), 0, 5, '', { paint: themed('stroke', 'primary') }) +
+        S.outline(inset(line, 14), 0, 2, '', { paint: themed('stroke', 'primary') }),
     }),
     art(
       'corners',
@@ -1985,10 +2101,7 @@ function framed() {
       'פינות',
       520,
       400,
-      {
-        opening: inset(line, 26),
-        layers: [layer(cornersAt(520, 400), theme('primary'))],
-      },
+      { opening: inset(line, 26), draw: (S) => marks(S, 520, 400) },
       { en: 'brackets', he: 'סוגריים' },
     ),
     art(
@@ -1999,19 +2112,20 @@ function framed() {
       420,
       {
         opening: shifted,
-        layers: [
-          layer(
-            polygon([
-              [500, 40],
-              [540, 40],
-              [540, 420],
-              [40, 420],
-              [40, 380],
-              [500, 380],
-            ]),
-            theme('primary'),
+        draw: (S) =>
+          // What shows of a block as large as the photograph, a little down and to the side.
+          S.shape(
+            [
+              [499, 40, { x: 'end', y: 'start' }],
+              [540, 40, { x: 'end', y: 'start' }],
+              [540, 420, { x: 'end', y: 'end' }],
+              [40, 420, { x: 'start', y: 'end' }],
+              [40, 379, { x: 'start', y: 'end' }],
+              [499, 379, { x: 'end', y: 'end' }],
+            ],
+            '',
+            themed('fill', 'primary'),
           ),
-        ],
       },
       { en: 'offset shadow', he: 'צל מוסט' },
     ),
@@ -2023,51 +2137,91 @@ function framed() {
       420,
       {
         opening: shifted,
-        layers: [
-          layer(
-            [
-              rect(534, 40, 6, 380),
-              rect(40, 414, 500, 6),
-              rect(500, 40, 40, 6),
-              rect(40, 380, 6, 40),
-            ].flat(),
-            theme('primary'),
-          ),
-        ],
+        draw: (S) => {
+          const paint = { paint: themed('fill', 'primary') };
+          const piece = (rect, ties) => S.box(rect, 0, '', { ...paint, ties });
+          return (
+            piece(box(534, 40, 6, 380), { x: 'end', t: 'start', b: 'end' }) +
+            piece(box(40, 414, 500, 6), { l: 'start', r: 'end', y: 'end' }) +
+            piece(box(499, 40, 41, 6), { x: 'end', y: 'start' }) +
+            piece(box(40, 379, 6, 41), { x: 'start', y: 'end' })
+          );
+        },
       },
       { en: 'offset', he: 'מוסט' },
     ),
     art('tilted-behind', 'Tilted block behind', 'בלוק מוטה מאחור', 520, 420, {
       opening: tilted,
-      layers: [layer(showing(cornersOf(tilted).map(spin(7, 260, 210)), tilted), theme('accent'))],
+      draw: (S) => ({
+        defs: keepsOff(S, tilted),
+        body: under(S, tilted, 7, '', themed('fill', 'accent')),
+      }),
     }),
     art('round-ring', 'Circle in a ring', 'עיגול בטבעת', 480, 480, {
       opening: round,
       clip: ellipse(round.w / 2, round.h / 2, round.w / 2, round.h / 2),
-      layers: [layer(cutOut(circle(240, 240, 240), circle(240, 240, 228)), theme('primary'))],
+      draw: (S) =>
+        S.ellipse(inset(whole(480, 480), 6), 'fill="none" stroke-width="12"', {
+          paint: themed('stroke', 'primary'),
+        }),
     }),
     art('round-behind', 'Circle with a circle behind', 'עיגול עם עיגול מאחור', 500, 480, {
       opening: disc,
       clip: ellipse(disc.w / 2, disc.h / 2, disc.w / 2, disc.h / 2),
-      layers: [layer(crescent([280, 260, 220], [220, 220, 220]), theme('accent'))],
+      draw: (S) => ({
+        defs: offDisc(S, disc),
+        // A circle as large as the photograph, a little down and to the side of it.
+        body: S.ellipse(box(60, 40, 440, 440), 'mask="url(#off)"', {
+          paint: themed('fill', 'accent'),
+        }),
+      }),
     }),
     art('round-dots', 'Circle with dots', 'עיגול עם נקודות', 520, 500, {
       opening: dotted,
       clip: ellipse(dotted.w / 2, dotted.h / 2, dotted.w / 2, dotted.h / 2),
-      layers: [
-        layer(dots, theme('primary')),
-        layer(cutOut(circle(476, 44, 36), circle(476, 44, 27)), theme('accent')),
-      ],
+      draw: (S) => {
+        const dots = Array.from(
+          { length: 25 },
+          (_, i) =>
+            `<circle cx="${12 + (i % 5) * 28}" cy="${376 + Math.floor(i / 5) * 28}" r="7"/>`,
+        ).join('');
+        const ring = `<circle cx="476" cy="44" r="31.5" fill="none" stroke-width="9" style="${themed('stroke', 'accent')}"/>`;
+        return {
+          defs: offDisc(S, dotted),
+          body:
+            // The photograph lies over a part of the field of dots.
+            `<g mask="url(#off)">${S.pin(`<g style="${themed('fill', 'primary')}">${dots}</g>`, [68, 432], { x: 'start', y: 'end' })}</g>` +
+            S.pin(ring, [476, 44], { x: 'end', y: 'start' }),
+        };
+      },
     }),
     art('arch-line', 'Arch in an outline', 'קשת בקו מתאר', 440, 560, {
       opening: arched,
       clip: arch(arched.w, arched.h),
-      layers: [layer(cutOut(arch(440, 560), arch(430, 550, 5, 5)), theme('primary'))],
+      draw: (S) => {
+        // The photograph's arch is stretched with its opening, so its top is half an ellipse
+        // that is as high as so much of the opening's height. The line runs around it at one
+        // distance: its own top is half an ellipse about the same middle.
+        const rise = arched.w / 2 / arched.h;
+        const margin = 560 - arched.h;
+        const middle = `calc(${(rise * 100).toFixed(3)}% + ${(arched.y - rise * margin).toFixed(2)}px)`;
+        const high = `calc(${(rise * 100).toFixed(3)}% + ${(arched.y - rise * margin - 2.5).toFixed(2)}px)`;
+        const paint = themed('stroke', 'primary');
+        const edge = S.geometry(inset(whole(440, 560), 2.5));
+        return {
+          defs:
+            `<clipPath id="top"><rect width="100%" style="height:${middle}"/></clipPath>` +
+            `<clipPath id="legs"><rect width="100%" height="100%" style="y:${middle}"/></clipPath>`,
+          body:
+            `<rect fill="none" stroke-width="5" clip-path="url(#top)" style="${paint}${edge};rx:calc(50% - 2.5px);ry:${high}"/>` +
+            `<rect fill="none" stroke-width="5" clip-path="url(#legs)" style="${paint}${edge}"/>`,
+        };
+      },
     }),
     art('soft-line', 'Rounded outline', 'קו מתאר מעוגל', 520, 400, {
       opening: inset(soft, 20),
-      clip: roundRect(0, 0, 480, 360, 24),
-      layers: [layer(band(soft, inset(soft, 5), 42, 37), theme('primary'))],
+      round: 24,
+      draw: (S) => S.outline(inset(soft, 2.5), 39.5, 5, '', { paint: themed('stroke', 'primary') }),
     }),
   ];
 }
@@ -2075,6 +2229,18 @@ function framed() {
 /* ---------------------------------------------------------------- the catalogue */
 
 const { hebrew, latin, digits } = await letters();
+/**
+ * `--magnets a,b` draws only those files of magnets, and `--out file` writes the catalogue there:
+ * a file of magnets is looked at while it is drawn, and the catalogue of the app is left alone.
+ */
+const flag = (name) => {
+  const at = process.argv.indexOf(name);
+  return at === -1 ? undefined : process.argv[at + 1];
+};
+const events = await magnets(
+  { data, moved, scaled, smooth, around, random, box, inset, SHADOW, words },
+  flag('--magnets')?.split(','),
+);
 
 /** The frames shown first: twenty of the best, plain ones and special ones together. */
 const featured = [
@@ -2104,6 +2270,7 @@ const groups = [
   { id: 'basic', frames: basic() },
   { id: 'photo', frames: photo() },
   { id: 'framed', frames: framed() },
+  { id: 'magnets', frames: events.frames },
   { id: 'devices', frames: devices() },
   { id: 'arches', frames: arches() },
   { id: 'organic', frames: organic() },
@@ -2122,13 +2289,35 @@ const twice = ids.filter((id, i) => ids.indexOf(id) !== i);
 if (twice.length > 0) throw new Error(`Two frames are called ${twice.join(', ')}`);
 const unknown = featured.filter((id) => !ids.includes(id));
 if (unknown.length > 0) throw new Error(`No frame is called ${unknown.join(', ')}`);
+// A number that did not come out is looked for in what was drawn, not in the data of a picture
+// a card carries: letters of base64 spell "NaN" now and then.
+const drawn = (frame) => JSON.stringify(frame).replace(/data:image\/[^"'\\)]+/g, '');
 const broken = groups
   .flatMap(({ frames }) => frames)
-  .filter((frame) => /NaN|Infinity/.test(JSON.stringify(frame)) || !(frame.w > 0 && frame.h > 0));
+  .filter((frame) => /NaN|Infinity/.test(drawn(frame)) || !(frame.w > 0 && frame.h > 0));
 if (broken.length > 0) throw new Error(`Not drawn: ${broken.map(({ id }) => id).join(', ')}`);
 
-const json = `${JSON.stringify({ featured, groups }, null, 2)}\n`;
-writeFileSync(new URL('../src/elements/frames-catalog.json', import.meta.url), json);
+const json = `${JSON.stringify({ featured, stickers: events.stickers, groups }, null, 2)}\n`;
+const out = flag('--out');
+if (out) {
+  mkdirSync(dirname(resolve(out)), { recursive: true });
+  writeFileSync(out, json);
+} else {
+  writeFileSync(
+    new URL('../../../../Slidr-media/elements/catalogs/frames-catalog.json', import.meta.url),
+    json,
+  );
+  // The stickers of the magnets are drawings of Fluent Emoji: the catalogue is under its notice.
+  writeFileSync(
+    new URL(
+      '../../../../Slidr-media/elements/catalogs/frames-catalog.notice.json',
+      import.meta.url,
+    ),
+    readFileSync(
+      new URL('../../../../Slidr-media/elements/art/fluent-emoji.notice.json', import.meta.url),
+    ),
+  );
+}
 console.log(
   `${groups.map(({ id, frames }) => `${id}: ${frames.length}`).join(', ')}; ${ids.length} frames, ${Math.round(json.length / 1024)} kB`,
 );

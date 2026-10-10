@@ -49,15 +49,8 @@ pub enum AgentEvent {
         ok: bool,
         summary: String,
     },
-    /// The turn is over. `cost_usd` is this turn's cost when the harness reports one and it can
-    /// be attributed to the turn; `usage` is this turn's tokens.
-    TurnCompleted {
-        outcome: TurnOutcome,
-        #[serde(default)]
-        usage: Usage,
-        cost_usd: Option<f64>,
-        duration_ms: u64,
-    },
+    /// The turn is over.
+    TurnCompleted { outcome: TurnOutcome },
     /// Something the user should see (CHT-U09). `recoverable`: the session can take another turn.
     Error {
         kind: AgentErrorKind,
@@ -87,16 +80,6 @@ pub enum TurnOutcome {
     Interrupted,
     /// The harness reported an error, or the session ended mid-turn. An `error` event precedes it.
     Failed,
-}
-
-/// Tokens of one turn.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct Usage {
-    pub input_tokens: u64,
-    pub output_tokens: u64,
-    pub cache_read_tokens: u64,
-    pub cache_write_tokens: u64,
 }
 
 /// What a session works on (SPEC 11.2). The harness passes it through; the scope guard behind
@@ -152,18 +135,12 @@ pub struct SessionConfig {
     /// One of the descriptor's `models`; the harness's default when absent.
     #[serde(default)]
     pub model: Option<String>,
-    /// One of the descriptor's `effort_levels`.
+    /// One of the selected model's `effort_levels`, as returned by connection discovery.
     #[serde(default)]
     pub effort: Option<String>,
     /// A `native_session_id` from an earlier `session_started`.
     #[serde(default)]
     pub resume: Option<String>,
-    /// With `resume`: the running total the harness kept for the conversation, if the app
-    /// knows: what it had cost when the last process that ended in order ended (a process that
-    /// died kept nothing of its own). A harness reports a running total, so without it the
-    /// first turn of a resumed process has no cost of its own.
-    #[serde(default)]
-    pub resumed_cost_usd: Option<f64>,
     /// The session's own folder: the harness keeps its files here and lets the agent read only
     /// `<workdir>/attachments/`. Set by the manager from the thread key, never by the webview.
     #[serde(skip)]
@@ -186,7 +163,6 @@ impl SessionConfig {
             model: None,
             effort: None,
             resume: None,
-            resumed_cost_usd: None,
             workdir,
         }
     }
@@ -294,6 +270,15 @@ pub struct ModelOption {
     /// What `SessionConfig::model` takes.
     pub id: String,
     pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effort_levels: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HarnessConnection {
+    pub status: HarnessStatus,
+    pub harness: HarnessDescriptor,
 }
 
 /// The result of `probe` (AGT-03).
@@ -448,20 +433,9 @@ mod tests {
             },
             AgentEvent::TurnCompleted {
                 outcome: TurnOutcome::Completed,
-                usage: Usage {
-                    input_tokens: 10,
-                    output_tokens: 60,
-                    cache_read_tokens: 6223,
-                    cache_write_tokens: 860,
-                },
-                cost_usd: Some(0.0026),
-                duration_ms: 1032,
             },
             AgentEvent::TurnCompleted {
                 outcome: TurnOutcome::Interrupted,
-                usage: Usage::default(),
-                cost_usd: None,
-                duration_ms: 1390,
             },
             AgentEvent::Error {
                 kind: AgentErrorKind::Quota,
@@ -538,6 +512,7 @@ mod tests {
             models: vec![ModelOption {
                 id: "fast".into(),
                 label: "Fast".into(),
+                effort_levels: None,
             }],
             default_model: None,
             effort_levels: vec!["low".into(), "high".into()],

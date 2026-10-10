@@ -12,6 +12,7 @@ export const he = {
     stock: 'סטוק',
     icons: 'אייקונים',
     ai: 'תמונות AI',
+    clips: 'וידאו ושמע',
   },
   history: {
     insert: 'הוספת תמונה',
@@ -119,6 +120,16 @@ export const he = {
   // Video and audio on a slide (WG5-T12): the insert of row A and the tools of row B.
   clip: {
     files: 'וידאו ואודיו',
+    upload: 'העלאת וידאו או שמע',
+    emptyTitle: 'אין עדיין וידאו או שמע במצגת',
+    emptyBody: 'קבצים שתעלו או תגררו למצגת יופיעו כאן, ואפשר יהיה להוסיף אותם שוב לכל שקף.',
+    list: 'הווידאו והשמע של המצגת',
+    video: 'וידאו',
+    audio: 'שמע',
+    insert: 'הוספה לשקף: {{name}}',
+    remove: 'הסרה מהמצגת: {{name}}',
+    inUse: 'הקובץ בשימוש במצגת, ולכן אי אפשר להסיר אותו',
+    removed: 'הסרת וידאו או שמע מהמצגת',
     insertFailed: 'לא ניתן להוסיף את הקובץ',
     notMedia: 'הקובץ אינו וידאו או אודיו. אפשר להוסיף קובצי mp4, webm, mp3, wav ו-m4a.',
     history: {
@@ -176,6 +187,7 @@ export const en: Messages<typeof he> = {
     stock: 'Stock',
     icons: 'Icons',
     ai: 'AI images',
+    clips: 'Video / audio',
   },
   history: {
     insert: 'Insert image',
@@ -285,6 +297,17 @@ export const en: Messages<typeof he> = {
   },
   clip: {
     files: 'Video and audio',
+    upload: 'Upload video or audio',
+    emptyTitle: 'No video or audio in the presentation yet',
+    emptyBody:
+      'Files you upload or drop into the presentation appear here, ready to add to any slide.',
+    list: "The presentation's video and audio",
+    video: 'Video',
+    audio: 'Audio',
+    insert: 'Add to the slide: {{name}}',
+    remove: 'Remove from the presentation: {{name}}',
+    inUse: 'The presentation uses this file, so it cannot be removed',
+    removed: 'Remove video or audio from the presentation',
     insertFailed: 'The file could not be added',
     notMedia:
       'The file is not video or audio. Files of type mp4, webm, mp3, wav and m4a can be added.',

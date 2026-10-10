@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useStore } from 'zustand';
+import { modelEfforts } from '../agent/harnessSetup';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
@@ -13,7 +15,7 @@ import {
 import { ChevronDown } from '@slidr/ui/icons';
 import type { HarnessDescriptor } from '../agent/agent';
 import { setConversationSettings, useAgentSettings, useConversationSettings } from '../settings';
-import { useEditor } from '../shell';
+import { openPanel, PanelId, useEditor } from '../shell';
 import { he } from './messages';
 import { agentOf } from './runtime';
 
@@ -37,13 +39,27 @@ export function ModelPicker({ threadId }: { threadId: string }) {
   const agent = agentOf(useEditor());
   const app = useAgentSettings();
   const own = useConversationSettings(threadId);
-  const settings = { ...app, ...own };
-  const [harness, setHarness] = useState<HarnessDescriptor | null>(null);
+  const settings = {
+    ...app,
+    ...own,
+    effort: own.model && own.model !== app.model ? own.effort : (own.effort ?? app.effort),
+  };
+  const [descriptor, setDescriptor] = useState<HarnessDescriptor | null>(null);
+  const connection = useStore(agent.setup.store, (states) =>
+    descriptor ? states[descriptor.id] : undefined,
+  );
+  const harness =
+    connection?.connection?.status.state === 'ready' ? connection.connection.harness : null;
   useEffect(() => {
     let current = true;
     agent.harness(app.harnessId).then(
-      (found) => current && setHarness(found),
-      () => current && setHarness(null),
+      (found) => {
+        if (current) {
+          setDescriptor(found);
+          void agent.setup.connect(found.id).catch(() => undefined);
+        }
+      },
+      () => current && setDescriptor(null),
     );
     return () => {
       current = false;
@@ -58,13 +74,30 @@ export function ModelPicker({ threadId }: { threadId: string }) {
   /** "The default", with what the app's setting is when it names one. */
   const defaultName = (named: string | undefined) =>
     named ? `${t('picker.default')} · ${named}` : t('picker.default');
+  const efforts = harness ? modelEfforts(harness, settings.model) : [];
   const shown = [
-    modelName(settings.model) ?? t('picker.default'),
-    ...(settings.effort ? [effortName(settings.effort)] : []),
+    modelName(settings.model) ?? t('settings:agent.chooseModel'),
+    ...(efforts.length
+      ? [
+          settings.effort && efforts.includes(settings.effort)
+            ? effortName(settings.effort)
+            : t('settings:agent.chooseEffort'),
+        ]
+      : []),
   ].join(' · ');
-  // A harness with one model and no effort levels leaves nothing to pick.
-  const offered =
-    harness && (harness.models.length > 0 || harness.effortLevels.length > 0) ? harness : null;
+  const offered = harness;
+  if (!offered || !settings.model || !offered.models.some((model) => model.id === settings.model)) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => openPanel(PanelId.settings)}
+        data-testid="model-picker-setup"
+      >
+        {t('settings:agent.configure')}
+      </Button>
+    );
+  }
 
   return (
     offered && (
@@ -91,11 +124,13 @@ export function ModelPicker({ threadId }: { threadId: string }) {
               <DropdownMenuLabel>{t('picker.models')}</DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={own.model ?? DEFAULT}
-                onValueChange={(value) => choose({ model: value || undefined })}
+                onValueChange={(value) => choose({ model: value || undefined, effort: undefined })}
               >
-                <DropdownMenuRadioItem value={DEFAULT}>
-                  {defaultName(modelName(app.model))}
-                </DropdownMenuRadioItem>
+                {app.model && (
+                  <DropdownMenuRadioItem value={DEFAULT}>
+                    {defaultName(modelName(app.model))}
+                  </DropdownMenuRadioItem>
+                )}
                 {offered.models.map((option) => (
                   <DropdownMenuRadioItem key={option.id} value={option.id} data-model={option.id}>
                     {option.label}
@@ -104,7 +139,7 @@ export function ModelPicker({ threadId }: { threadId: string }) {
               </DropdownMenuRadioGroup>
             </>
           )}
-          {offered.effortLevels.length > 0 && (
+          {efforts.length > 0 && (
             <>
               {offered.models.length > 0 && <DropdownMenuSeparator />}
               <DropdownMenuLabel>{t('picker.effort')}</DropdownMenuLabel>
@@ -112,10 +147,14 @@ export function ModelPicker({ threadId }: { threadId: string }) {
                 value={own.effort ?? DEFAULT}
                 onValueChange={(value) => choose({ effort: value || undefined })}
               >
-                <DropdownMenuRadioItem value={DEFAULT}>
-                  {defaultName(app.effort ? effortName(app.effort) : undefined)}
-                </DropdownMenuRadioItem>
-                {offered.effortLevels.map((level) => (
+                {(!own.model || own.model === app.model) &&
+                  app.effort &&
+                  efforts.includes(app.effort) && (
+                    <DropdownMenuRadioItem value={DEFAULT}>
+                      {defaultName(effortName(app.effort))}
+                    </DropdownMenuRadioItem>
+                  )}
+                {efforts.map((level) => (
                   <DropdownMenuRadioItem key={level} value={level} data-effort={level}>
                     {effortName(level)}
                   </DropdownMenuRadioItem>

@@ -47,15 +47,7 @@
       {
         "delayMs": 60,
         "type": "turn_completed",
-        "outcome": "completed",
-        "usage": {
-          "inputTokens": 12,
-          "outputTokens": 418,
-          "cacheReadTokens": 7083,
-          "cacheWriteTokens": 1210
-        },
-        "costUsd": 0.0061,
-        "durationMs": 4110
+        "outcome": "completed"
       }
     ],
     [
@@ -84,15 +76,7 @@
       {
         "delayMs": 80,
         "type": "turn_completed",
-        "outcome": "completed",
-        "usage": {
-          "inputTokens": 9,
-          "outputTokens": 212,
-          "cacheReadTokens": 8293,
-          "cacheWriteTokens": 431
-        },
-        "costUsd": 0.0024,
-        "durationMs": 5000
+        "outcome": "completed"
       }
     ],
     [
@@ -118,15 +102,7 @@
       {
         "delayMs": 60,
         "type": "turn_completed",
-        "outcome": "completed",
-        "usage": {
-          "inputTokens": 21,
-          "outputTokens": 260,
-          "cacheReadTokens": 9120,
-          "cacheWriteTokens": 2930
-        },
-        "costUsd": 0.0112,
-        "durationMs": 5140
+        "outcome": "completed"
       }
     ]
   ]

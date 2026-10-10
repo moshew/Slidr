@@ -344,7 +344,7 @@ test.describe('the handles of a crop', () => {
 
   test('Tab goes to a handle, and the arrows crop with it', async ({ page }) => {
     await expect(said(page)).toHaveText(
-      'Crop: the arrows move the picture. Tab goes to the handles.',
+      'Crop: the arrows move the picture. Ctrl+Up or Down scales it. Tab goes to the handles.',
     );
     await page.keyboard.press('Tab');
     await expect(handle(page, 'nw')).toHaveAttribute('data-active', 'true');
@@ -384,6 +384,17 @@ test.describe('the handles of a crop', () => {
     const after = await model(page);
     expect(after.frame).toEqual(before.frame);
     expect(after.crop!.x).toBeCloseTo(before.crop!.x + 1 / 600, 5);
+  });
+
+  test('Ctrl with Up or Down scales the picture while the frame stays fixed', async ({ page }) => {
+    const before = await model(page);
+    await expectOneStep(page, () => page.keyboard.press('Control+ArrowUp'));
+    const grown = await model(page);
+    expect(grown.frame).toEqual(before.frame);
+    expect(grown.crop!.w).toBeLessThan(1);
+
+    await page.keyboard.press('Control+ArrowDown');
+    expect((await model(page)).crop).toBeUndefined();
   });
 
   test('Tab goes through the eight handles, and past the last one it leaves the Stage', async ({
@@ -452,12 +463,11 @@ test.describe('the handles of a crop', () => {
     await expect.poll(async () => (await model(page)).crop).toBeUndefined();
     expect((await model(page)).frame).toEqual({ x: 660, y: 340, w: 600, h: 400 });
 
-    // And the zoom of the picture, which had the wheel and the pointer alone.
+    // Done remains reachable from the Stage after the crop tools changed.
     await surface(page).focus();
-    await backTo('Picture zoom');
-    await page.keyboard.press('ArrowRight');
-    await expect.poll(async () => (await model(page)).crop?.w ?? 1).toBeLessThan(1);
-    await expect(surface(page)).toHaveAttribute('data-cropping', 'e_picture');
+    await backTo('Done');
+    await page.keyboard.press('Enter');
+    await expect(surface(page)).not.toHaveAttribute('data-cropping', /./);
   });
 });
 

@@ -1,12 +1,14 @@
 import {
   slideFromLayout,
   type CommandBus,
+  type Color,
   type Deck,
+  type Fill,
   type Layout,
   type SelectionStore,
   type Slide,
 } from '@slidr/model';
-import { ScaledSlide, type AssetResolver } from '@slidr/renderer';
+import { colorRgb, ScaledSlide, type AssetResolver } from '@slidr/renderer';
 import {
   memo,
   useCallback,
@@ -31,6 +33,7 @@ import {
   ContextMenuTrigger,
   cx,
   Icon,
+  keyboardInUse,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -89,7 +92,7 @@ export interface FilmstripProps {
   /** Labels in the UI language. Default: English. */
   labels?: FilmstripLabels;
   /**
-   * What other areas mark a slide with, drawn beside its number under the thumbnail (FLM-04): the design
+   * What other areas mark a slide with, drawn under the thumbnail (FLM-04): the design
    * check's findings. A screen reader hears it as the thumbnail's description.
    */
   mark?: (slideId: string) => ReactNode;
@@ -144,8 +147,8 @@ export interface FilmstripLabels {
   move: string;
 }
 
-export const THUMB_W = 176;
-export const THUMB_H = 99;
+export const THUMB_W = 160;
+export const THUMB_H = 90;
 const GAP = 16;
 const PAD = 16;
 const STEP = THUMB_W + GAP;
@@ -196,8 +199,158 @@ const optionId = (slideId: string) => `filmstrip-slide-${slideId}`;
 /** Whether a slide comes in with a transition. A transition of "none" is no transition. */
 const comesIn = (slide: Slide) => Boolean(slide.transition && slide.transition.type !== 'none');
 
+type Rgba = [number, number, number, number];
+
+function sampleColor(deck: Deck, color: Color): Rgba {
+  const [r, g, b] = colorRgb('token' in color ? deck.theme.colors[color.token] : color.value);
+  return [r * 255, g * 255, b * 255, color.alpha ?? 1];
+}
+
+/** A model fill at the thumbnail's lower end corner, where its number sits. */
+function sampleFill(deck: Deck, fill: Fill): Rgba | undefined {
+  if (fill.kind === 'solid') return sampleColor(deck, fill.color);
+  if (fill.kind !== 'linear' && fill.kind !== 'radial' && fill.kind !== 'conic') return undefined;
+  const x = deck.meta.dir === 'rtl' ? 0 : 1;
+  const y = 1;
+  let at: number;
+  if (fill.kind === 'linear') {
+    const angle = (fill.angle * Math.PI) / 180;
+    const dx = Math.sin(angle) * THUMB_W;
+    const dy = -Math.cos(angle) * THUMB_H;
+    at = (x * dx + y * dy - Math.min(0, dx) - Math.min(0, dy)) / (Math.abs(dx) + Math.abs(dy) || 1);
+  } else if (fill.kind === 'radial') {
+    const center = fill.center ?? { x: 0.5, y: 0.5 };
+    const distance = (px: number, py: number) =>
+      Math.hypot((px - center.x) * THUMB_W, (py - center.y) * THUMB_H);
+    at =
+      distance(x, y) / Math.max(distance(0, 0), distance(0, 1), distance(1, 0), distance(1, 1), 1);
+  } else {
+    const center = fill.center ?? { x: 0.5, y: 0.5 };
+    const angle = (Math.atan2(x - center.x, center.y - y) * 180) / Math.PI;
+    at = ((((angle - fill.angle) % 360) + 360) % 360) / 360;
+  }
+  const stops = [...fill.stops].sort((a, b) => a.at - b.at);
+  const first = stops[0]!;
+  if (at <= first.at) return sampleColor(deck, first.color);
+  for (let i = 1; i < stops.length; i++) {
+    const next = stops[i]!;
+    if (at > next.at) continue;
+    const before = stops[i - 1]!;
+    const fraction = (at - before.at) / (next.at - before.at || 1);
+    const a = sampleColor(deck, before.color);
+    const b = sampleColor(deck, next.color);
+    return a.map((channel, index) => channel * (1 - fraction) + b[index]! * fraction) as Rgba;
+  }
+  return sampleColor(deck, stops.at(-1)!.color);
+}
+
+/** Black or white ink for the number over the slide's background. */
+function numberColor(deck: Deck, slide: Slide, imageColor?: Rgba): '#000000' | '#ffffff' {
+  const layout = deck.layouts.find((item) => item.id === slide.layoutId);
+  const background = slide.background ?? layout?.background ?? deck.theme.background;
+  const fallback = sampleColor(deck, { token: 'bg' });
+  const base = imageColor ?? sampleFill(deck, background.fill) ?? fallback;
+  const dim = background.dim ?? 0;
+  const under: [number, number, number] = [
+    (base[0] * base[3] + fallback[0] * (1 - base[3])) * (1 - dim),
+    (base[1] * base[3] + fallback[1] * (1 - base[3])) * (1 - dim),
+    (base[2] * base[3] + fallback[2] * (1 - base[3])) * (1 - dim),
+  ];
+  const over = background.overlay ? sampleFill(deck, background.overlay) : undefined;
+  const [r, g, b]: [number, number, number] = over
+    ? ([0, 1, 2].map((i) => under[i]! * (1 - over[3]) + over[i]! * over[3]) as [
+        number,
+        number,
+        number,
+      ])
+    : under;
+  const linear = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  return luminance < 0.179 ? '#ffffff' : '#000000';
+}
+
+/** An image background can be dark or light independently of the deck theme. */
+function SlideNumber({
+  deck,
+  slide,
+  index,
+  resolveAsset,
+}: {
+  deck: Deck;
+  slide: Slide;
+  index: number;
+  resolveAsset?: AssetResolver;
+}) {
+  const layout = deck.layouts.find((item) => item.id === slide.layoutId);
+  const background = slide.background ?? layout?.background ?? deck.theme.background;
+  const fill = background.fill;
+  const asset = fill.kind === 'image' ? deck.assets[fill.assetId] : undefined;
+  const src = asset && resolveAsset?.(asset);
+  const [sample, setSample] = useState<{ src: string; color: Rgba }>();
+  useEffect(() => {
+    if (!src || fill.kind !== 'image') return;
+    let active = true;
+    const picture = new Image();
+    picture.crossOrigin = 'anonymous';
+    picture.onload = () => {
+      const width = picture.naturalWidth;
+      const height = picture.naturalHeight;
+      if (!active || !width || !height) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+      const slideRatio = deck.size.w / deck.size.h;
+      const imageRatio = width / height;
+      // A contained image leaves the corner blank unless its ratio matches the slide.
+      if (fill.fit === 'contain' && Math.abs(slideRatio - imageRatio) > 0.01) return;
+      const cropWidth =
+        fill.fit === 'cover' && imageRatio > slideRatio ? height * slideRatio : width;
+      const cropHeight =
+        fill.fit === 'cover' && imageRatio < slideRatio ? width / slideRatio : height;
+      const left = (width - cropWidth) / 2;
+      const top = (height - cropHeight) / 2;
+      const x = left + (deck.meta.dir === 'rtl' ? 0 : cropWidth - 1);
+      const y = top + cropHeight - 1;
+      try {
+        ctx.drawImage(picture, x, y, 1, 1, 0, 0, 1, 1);
+        const [r, g, b, alpha] = ctx.getImageData(0, 0, 1, 1).data;
+        if (active) setSample({ src, color: [r!, g!, b!, (alpha! / 255) * (fill.opacity ?? 1)] });
+      } catch {
+        // A remote image without canvas access keeps the theme-based fallback.
+      }
+    };
+    picture.src = src;
+    return () => {
+      active = false;
+      picture.onload = null;
+    };
+  }, [src, fill, deck.size.w, deck.size.h, deck.meta.dir]);
+  return (
+    <span
+      data-testid="slide-number"
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        insetInlineEnd: 7,
+        bottom: 5,
+        color: numberColor(deck, slide, sample && sample.src === src ? sample.color : undefined),
+        font: '600 12px/14px var(--font-ui)',
+        fontVariantNumeric: 'tabular-nums',
+        textShadow: '0 1px 2px #00000040, 0 -1px 2px #ffffff40',
+        pointerEvents: 'none',
+      }}
+    >
+      {index + 1}
+    </span>
+  );
+}
+
 /**
- * A state of the slide, beside its number (FLM-04): an icon, with words for a screen reader,
+ * A state of the slide, below its thumbnail (FLM-04): an icon, with words for a screen reader,
  * who hears them as the slide's description, and for whoever points at it.
  */
 function StateMark({ icon, label, testId }: { icon: LucideIcon; label: string; testId: string }) {
@@ -267,15 +420,17 @@ const Thumb = memo(function Thumb({
     >
       <div
         style={{
+          position: 'relative',
           width: THUMB_W,
           height: THUMB_H,
           borderRadius: 'var(--radius-small)',
           overflow: 'hidden',
           opacity: slide.hidden ? 0.45 : 1,
-          boxShadow: current
-            ? '0 0 0 2px var(--color-ui-accent)'
-            : selected
-              ? '0 0 0 2px var(--color-ui-accent-soft-hover)'
+          // Every selected slide is framed like the current one: a paler frame for the others
+          // read as no selection at all.
+          boxShadow:
+            current || selected
+              ? '0 0 0 2px var(--color-ui-accent)'
               : '0 0 0 1px var(--color-ui-line)',
           transition: 'box-shadow var(--duration-fast) var(--ease-standard)',
         }}
@@ -287,6 +442,7 @@ const Thumb = memo(function Thumb({
           mode="thumbnail"
           resolveAsset={resolveAsset}
         />
+        <SlideNumber deck={deck} slide={slide} index={slideIndex} resolveAsset={resolveAsset} />
       </div>
       {walked ? (
         // The walk's ring, outside the frame of the picture as on the Stage. Not on the picture
@@ -328,48 +484,52 @@ const Thumb = memo(function Thumb({
           <Icon icon={EyeOff} />
         </div>
       ) : null}
-      <div
-        style={{
-          position: 'relative',
-          // Keep the number above the strip's 10px horizontal scrollbar.
-          marginTop: 0,
-          font: '500 11px/14px var(--font-ui)',
-          color: current ? 'var(--color-ui-fg)' : 'var(--color-ui-fg-muted)',
-          textAlign: 'center',
-        }}
-      >
-        {slideIndex + 1}
-        {mark && (
-          // Beside the number, not over the picture: the thumbnail stays the slide as it is drawn.
-          // The mark draws itself, or nothing.
-          <div
-            id={markId}
-            data-testid="slide-mark"
-            style={{ position: 'absolute', top: -1, insetInlineStart: 0, display: 'flex', gap: 4 }}
-          >
-            {mark(slide.id)}
-          </div>
-        )}
-        {hasState && (
-          // The slide's own states, at the other end of the row: whether anything on it moves.
-          // Beside the number too, for the same reason. How it comes in is drawn between the
-          // slides (`TransitionMark`), and is only said here, with the rest of what the slide is.
-          <div
-            id={stateId}
-            data-testid="slide-state"
-            style={{ position: 'absolute', top: -1, insetInlineEnd: 0, display: 'flex', gap: 4 }}
-          >
-            {transition && <span className="sr-only">{transitionLabel}</span>}
-            {animations > 0 && (
-              <StateMark
-                icon={Film}
-                label={animationsLabel(animations)}
-                testId="slide-animations-mark"
-              />
-            )}
-          </div>
-        )}
-      </div>
+      {(mark || hasState) && (
+        <div
+          style={{
+            position: 'relative',
+            // Keep the marks above the strip's 10px horizontal scrollbar.
+            marginTop: 0,
+            height: 14,
+          }}
+        >
+          {mark && (
+            // Under the picture: the thumbnail stays the slide as it is drawn.
+            // The mark draws itself, or nothing.
+            <div
+              id={markId}
+              data-testid="slide-mark"
+              style={{
+                position: 'absolute',
+                top: -1,
+                insetInlineStart: 0,
+                display: 'flex',
+                gap: 4,
+              }}
+            >
+              {mark(slide.id)}
+            </div>
+          )}
+          {hasState && (
+            // The slide's own states, at the other end of the row: whether anything on it moves.
+            // How it comes in is drawn between the slides (`TransitionMark`) and said here too.
+            <div
+              id={stateId}
+              data-testid="slide-state"
+              style={{ position: 'absolute', top: -1, insetInlineEnd: 0, display: 'flex', gap: 4 }}
+            >
+              {transition && <span className="sr-only">{transitionLabel}</span>}
+              {animations > 0 && (
+                <StateMark
+                  icon={Film}
+                  label={animationsLabel(animations)}
+                  testId="slide-animations-mark"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 });
@@ -608,9 +768,14 @@ export function Filmstrip({
   const endWalk = () => {
     if (stageKeys.getState().slide !== null) stageKeys.setState({ slide: null });
   };
-  // The list shows that it has the keyboard while the keyboard is what is being used (DSN-08).
-  const [focused, setFocused] = useState(false);
-  const ring = useKeyboardInUse() && focused;
+  // The list shows that it has the keyboard when the keyboard is what brought it there (DSN-08):
+  // by Tab or F6, or handed back by a layer that the keys closed. After a press of the pointer
+  // the frames of the slides say where the keyboard is, and the keys that follow add no ring:
+  // around the whole strip it read as the strip being selected, and not the slides (Ctrl+A).
+  const [arrived, setArrived] = useState(false);
+  /** The window took the keyboard away, and the list is still the one that had it. */
+  const away = useRef(false);
+  const ring = useKeyboardInUse() && arrived;
 
   const measure = () => {
     const el = scroller.current;
@@ -981,6 +1146,8 @@ export function Filmstrip({
             data-filmstrip=""
             className={className}
             onScroll={measure}
+            // Any press in the strip, on a slide or between two: the pointer is at work here now.
+            onPointerDownCapture={() => setArrived(false)}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -1010,11 +1177,17 @@ export function Filmstrip({
                 tabIndex={0}
                 onKeyDown={onKeyDown}
                 onFocus={(e) => {
-                  if (e.target === e.currentTarget) setFocused(true);
+                  if (e.target !== e.currentTarget) return;
+                  // Coming back to the window is no arrival: the list had the keyboard all along.
+                  if (!away.current) setArrived(keyboardInUse());
+                  away.current = false;
                 }}
                 onBlur={(e) => {
                   if (e.target !== e.currentTarget) return;
-                  setFocused(false);
+                  // When it is the window that lost the keyboard, the list is still the
+                  // document's active element.
+                  away.current = document.activeElement === e.currentTarget;
+                  if (!away.current) setArrived(false);
                   // The walk is the keyboard's place in the list, and ends when it leaves.
                   endWalk();
                 }}

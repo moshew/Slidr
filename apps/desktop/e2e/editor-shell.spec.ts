@@ -306,10 +306,10 @@ test('"with AI" leads to the chat of the deck tool, ready for typing', async ({ 
 test('a template starts a deck that is set in it', async ({ page }) => {
   await openWelcome(page);
   const cards = welcome(page).locator('[data-welcome-template]');
-  // One row of them shows; the rest of the built-in sixteen come when they are asked for.
+  // One row of them shows; the rest of the built-in eighteen come when they are asked for.
   await expect(cards).toHaveCount(4);
   await page.getByTestId('welcome-all-templates').click();
-  await expect(cards).toHaveCount(16);
+  await expect(cards).toHaveCount(18);
   const id = await cards.nth(1).getAttribute('data-welcome-template');
   await cards.nth(1).click();
   await expect(page.getByTestId('stage-frame')).toBeVisible();

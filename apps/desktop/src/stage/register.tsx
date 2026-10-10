@@ -1,11 +1,10 @@
 import { findSlide, type ImageElement } from '@slidr/model';
-import { Button, Icon, IconButton, Select, Slider, Toggle } from '@slidr/ui';
-import { Check, Crop, RotateCcw, ZoomIn } from '@slidr/ui/icons';
+import { Button, IconButton, Select, Toggle } from '@slidr/ui';
+import { Check, Crop, RotateCcw } from '@slidr/ui/icons';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { hide, toggleLock } from '../arrange/actions';
-import { useGestureTx } from '../controls';
 import { registerMessages } from '../i18n';
 import {
   registerContextTool,
@@ -18,17 +17,7 @@ import {
   type Editor,
   type SelectionKind,
 } from '../shell';
-import {
-  cropPatch,
-  cropToRatio,
-  cropView,
-  cropZoom,
-  cropZoomLevel,
-  MAX_CROP_ZOOM,
-  pictureRatio,
-  resetPatch,
-  type CropView,
-} from './crop';
+import { cropPatch, cropToRatio, cropView, pictureRatio, resetPatch, type CropView } from './crop';
 import { cropSession, heldRatio, type CropPreset } from './cropSession';
 import { refitPatches, type Patch } from './groups';
 import { stageCommand } from './keyboardSession';
@@ -151,35 +140,6 @@ function CropAspect() {
   );
 }
 
-function CropZoom() {
-  const { t } = useTranslation('stage');
-  const editor = useEditor();
-  const target = useCropTarget();
-  const tx = useGestureTx();
-  const view = target?.view;
-  if (!target?.cropping || !view) return null;
-  const { fit } = target.image;
-  return (
-    <div className="ms-2 flex items-center gap-2">
-      <Icon icon={ZoomIn} className="text-ui-fg-muted" />
-      {/* The slider fills what it is in, so the width is the wrapper's. */}
-      <div className="w-28">
-        <Slider
-          aria-label={t('crop.zoom')}
-          min={1}
-          max={MAX_CROP_ZOOM}
-          step={0.01}
-          value={Math.min(MAX_CROP_ZOOM, Math.max(1, cropZoomLevel(view, fit)))}
-          onValueChange={(level) =>
-            applyCrop(editor, target, cropPatch(cropZoom(view, fit, level)), tx.id())
-          }
-          onValueCommit={() => tx.end()}
-        />
-      </div>
-    </div>
-  );
-}
-
 function CropReset() {
   const { t } = useTranslation('stage');
   const editor = useEditor();
@@ -226,7 +186,6 @@ function CropDone() {
 const tools = [
   { id: 'image.crop', order: 10, render: CropToggle },
   { id: 'image.crop.aspect', order: 10.1, render: CropAspect },
-  { id: 'image.crop.zoom', order: 10.2, render: CropZoom },
   { id: 'image.crop.reset', order: 10.3, render: CropReset },
   { id: 'image.crop.done', order: 10.4, render: CropDone },
 ];

@@ -26,60 +26,79 @@ const sets = new Map<string, Record<string, unknown>>();
 
 /** A set's drawings: the ones copied into `art/`, or the whole of its package. */
 function art(set: string) {
-  const copied = `./art/${set}.json`;
-  const path = existsSync(fileURLToPath(new URL(copied, import.meta.url)))
-    ? copied
-    : `../../node_modules/@iconify-json/${set}/icons.json`;
+  const path = `../../../../../Slidr-media/elements/art/${set}.json`;
   if (!sets.has(set)) sets.set(set, (file(path) as { icons: Record<string, unknown> }).icons);
   return sets.get(set)!;
 }
 
-/** The set each style takes more of its drawings from, and how many. */
-const MORE = {
-  glossy: 'fluent-emoji',
-  illustrated: 'fluent-emoji-flat',
-  outlined: 'streamline-emojis',
-};
-const TAKEN = 250;
+/** The copied drawings that grow the existing styles and establish the fourth. */
+const COPIED = {
+  glossy: [
+    ['fluent-emoji', 365],
+    ['noto', 35],
+  ],
+  illustrated: [
+    ['fluent-emoji-flat', 365],
+    ['streamline-stickies-color', 35],
+  ],
+  outlined: [
+    ['streamline-emojis', 304],
+    ['streamline-flex-color', 96],
+  ],
+  handdrawn: [['streamline-freehand-color', 986]],
+} as const;
+const COUNTS = { glossy: 599, illustrated: 533, outlined: 1178, handdrawn: 986 };
 
-const graphicsCatalog = file('./graphics-catalog.json') as GraphicsCatalog;
-const graphics = graphicsOf(graphicsCatalog, file('../media/icons/hebrew.json') as HebrewTags);
-const emoji = emojiOf(file('./emoji-catalog.json') as EmojiCatalog);
+const graphicsCatalog = file('../../../../../Slidr-media/elements/catalogs/graphics-catalog.json') as GraphicsCatalog;
+const graphics = graphicsOf(graphicsCatalog, file('../../../../../Slidr-media/icons/hebrew.json') as HebrewTags);
+const emoji = emojiOf(file('../../../../../Slidr-media/elements/catalogs/emoji-catalog.json') as EmojiCatalog);
 
 const ids = (found: readonly { id: string }[]) => found.map(({ id }) => id);
 
 describe('the graphics', () => {
-  it('come in three styles, each of drawings its sets still have', () => {
+  it('come in four styles, each of drawings its sets still have', () => {
     expect(graphicsCatalog.map(({ id }) => id)).toEqual([...GRAPHIC_STYLES]);
-    for (const { icons } of graphicsCatalog) expect(icons.length).toBeGreaterThan(370);
+    for (const { id, icons } of graphicsCatalog) {
+      expect(icons).toHaveLength(COUNTS[id as keyof typeof COUNTS]);
+    }
     expect(graphics.filter((graphic) => !(graphic.art in art(graphic.set)))).toEqual([]);
-    expect(graphics.length).toBeGreaterThan(1800);
+    expect(graphics).toHaveLength(3296);
     expect(new Set(ids(graphics)).size).toBe(graphics.length);
   });
 
-  it('have more in each style from a larger set, whose drawings and notice are copied', () => {
+  it('copy only the offered drawings and their licence notices', () => {
     for (const style of GRAPHIC_STYLES) {
-      const more = graphics.filter(({ group, set }) => group === style && set === MORE[style]);
-      expect(more).toHaveLength(TAKEN);
-      // The copy holds what is offered, and nothing else of the set.
-      expect(Object.keys(art(MORE[style])).sort()).toEqual(more.map((one) => one.art).sort());
-      expect(file(`./art/${MORE[style]}.notice.json`)).toMatchObject({
-        name: `@iconify-json/${MORE[style]}`,
-        license: expect.stringMatching(/^(MIT|CC-BY-4.0)$/) as string,
-        text: expect.stringMatching(/Microsoft|Streamline/) as string,
-      });
-      // None of them is called as another drawing of the style is.
+      for (const [set, count] of COPIED[style]) {
+        const taken = graphics.filter(
+          ({ group, set: source }) => group === style && source === set,
+        );
+        expect(taken).toHaveLength(count);
+        expect(Object.keys(art(set)).sort()).toEqual(taken.map((one) => one.art).sort());
+        expect(file(`../../../../../Slidr-media/elements/art/${set}.notice.json`)).toMatchObject({
+          name: `@iconify-json/${set}`,
+          license: expect.stringMatching(/^(MIT|Apache-2.0|CC-BY-4.0)$/) as string,
+          text: expect.stringMatching(/Microsoft|Streamline|Google/) as string,
+        });
+      }
       const names = graphics.filter(({ group }) => group === style).map(({ label }) => label.en);
       const twice = new Set(names.filter((name, at) => names.indexOf(name) !== at));
-      expect(more.filter(({ label }) => twice.has(label.en))).toEqual([]);
+      const newSets = new Set<string>(COPIED[style].map(([set]) => set));
+      expect(
+        graphics.filter(
+          ({ group, set, label }) => group === style && newSets.has(set) && twice.has(label.en),
+        ),
+        style,
+      ).toEqual([]);
     }
     // The two Fluent sets draw the same subjects: a subject is in one of the two styles.
-    const flat = new Set(Object.keys(art(MORE.illustrated)));
-    expect(Object.keys(art(MORE.glossy)).filter((name) => flat.has(name))).toEqual([]);
+    const flat = new Set(Object.keys(art('fluent-emoji-flat')));
+    expect(Object.keys(art('fluent-emoji')).filter((name) => flat.has(name))).toEqual([]);
   });
 
   it('leave out the logos and characters of other firms', () => {
-    expect(ids(graphics).filter((id) => /logo|spongebob|pokeball|blackberry/.test(id))).toEqual([]);
+    expect(
+      ids(graphics).filter((id) => /(?:^|-)logo(?:-|$)|spongebob|pokeball|blackberry/.test(id)),
+    ).toEqual([]);
   });
 
   it('are found by an English word of their name, and by its Hebrew', () => {
@@ -102,6 +121,7 @@ describe('the graphics', () => {
         'graphic:glossy:rocket',
         'graphic:illustrated:bar-chart',
         'graphic:outlined:thumbs-up-1',
+        'graphic:handdrawn:camera',
       ]
         .map((id) => graphics.find((graphic) => graphic.id === id)!)
         .map(stickerMarkup),
@@ -112,6 +132,7 @@ describe('the graphics', () => {
     expect(markup[3]).toContain('viewBox="0 0 32 32"');
     expect(markup[4]).toContain('viewBox="0 0 32 32"');
     expect(markup[5]).toContain('viewBox="0 0 48 48"');
+    expect(markup[6]).toContain('viewBox="0 0 24 24"');
     expect(markup.every((svg) => svg?.endsWith('</svg>'))).toBe(true);
   });
 

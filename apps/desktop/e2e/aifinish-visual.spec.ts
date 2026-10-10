@@ -76,16 +76,17 @@ for (const theme of themes) {
         await settle(page);
         await page.screenshot({ path: out(`chat-${name}-empty`) });
 
-        // A turn with what it cost, and the picker of the model and the effort open.
+        // A completed turn, and the picker of the model and the effort open.
         await say(page, words[lang].first);
-        await expect(page.getByTestId('turn-usage').first()).toBeVisible();
+        await expect(page.getByTestId('turn-usage')).toHaveCount(0);
+        await expect(page.getByTestId('chat-cost')).toHaveCount(0);
         await page.getByTestId('model-picker').click();
         await expect(page.getByRole('menu')).toBeVisible();
         await settle(page);
         await page.screenshot({ path: out(`chat-${name}-picker`) });
         await page.keyboard.press('Escape');
 
-        // A second conversation, and the list of both with what each cost.
+        // A second conversation, and the list of both.
         await page.getByTestId('conversation-new').click();
         await say(page, words[lang].second);
         await page.getByTestId('conversations').click();

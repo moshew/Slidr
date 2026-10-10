@@ -552,6 +552,8 @@ const CROP_BAR = 4;
 const CROP_ARM = 16;
 /** The area around a crop handle that takes the pointer. */
 const CROP_GRIP = 24;
+const PICTURE_DOT = 12;
+const PICTURE_GRIP = 18;
 
 /** A crop handle: a corner bracket or an edge bar, with a larger area around it to grab. */
 function CropHandle({
@@ -573,6 +575,7 @@ function CropHandle({
   // out; the one the keyboard is on is drawn whatever the size, so it can be seen.
   const crowded = (hd.x === 0 && sw < 3 * CROP_ARM) || (hd.y === 0 && sh < 3 * CROP_ARM);
   if (crowded && !active) return null;
+  const corner = hd.x !== 0 && hd.y !== 0;
   const bar: CSSProperties = {
     position: 'absolute',
     background: ACCENT,
@@ -580,8 +583,10 @@ function CropHandle({
     borderRadius: 1,
   };
   // The bars hug the frame from the inside: `near` is the grip's side that lies on the frame.
-  const nearX = hd.x < 0 ? { left: CROP_GRIP / 2 } : { right: CROP_GRIP / 2 };
-  const nearY = hd.y < 0 ? { top: CROP_GRIP / 2 } : { bottom: CROP_GRIP / 2 };
+  const nearX =
+    hd.x < 0 ? { left: corner ? 0 : CROP_GRIP / 2 } : { right: corner ? 0 : CROP_GRIP / 2 };
+  const nearY =
+    hd.y < 0 ? { top: corner ? 0 : CROP_GRIP / 2 } : { bottom: corner ? 0 : CROP_GRIP / 2 };
   const midX = { left: (CROP_GRIP - CROP_ARM) / 2 };
   const midY = { top: (CROP_GRIP - CROP_ARM) / 2 };
   return (
@@ -590,8 +595,8 @@ function CropHandle({
       data-active={active || undefined}
       style={{
         position: 'absolute',
-        left: ((hd.x + 1) / 2) * sw - CROP_GRIP / 2,
-        top: ((hd.y + 1) / 2) * sh - CROP_GRIP / 2,
+        left: ((hd.x + 1) / 2) * sw - CROP_GRIP / 2 - (corner ? (hd.x * CROP_GRIP) / 2 : 0),
+        top: ((hd.y + 1) / 2) * sh - CROP_GRIP / 2 - (corner ? (hd.y * CROP_GRIP) / 2 : 0),
         width: CROP_GRIP,
         height: CROP_GRIP,
         borderRadius: 4,
@@ -687,6 +692,7 @@ export function CropOverlay({
   const sw = crop.frame.w * view.scale;
   const sh = crop.frame.h * view.scale;
   const matrix = elementMatrix(located);
+  const pictureMatrix = elementMatrix(located, true);
   const third: CSSProperties = { position: 'absolute', background: PANEL, opacity: 0.6 };
   return (
     <>
@@ -717,6 +723,47 @@ export function CropOverlay({
               />
             ))}
       </div>
+      {url ? (
+        <div data-crop-picture-bounds style={boxStyle(located, view, true)}>
+          <div
+            style={{
+              position: 'absolute',
+              left: crop.picture.x * view.scale,
+              top: crop.picture.y * view.scale,
+              width: crop.picture.w * view.scale,
+              height: crop.picture.h * view.scale,
+              outline: `1.5px solid ${ACCENT}`,
+            }}
+          />
+          {(['nw', 'ne', 'se', 'sw'] as const).map((name) => {
+            const corner = HANDLES[name];
+            return (
+              <div
+                key={name}
+                data-picture-handle={name}
+                style={{
+                  position: 'absolute',
+                  left:
+                    (crop.picture.x + (corner.x > 0 ? crop.picture.w : 0)) * view.scale -
+                    PICTURE_GRIP / 2,
+                  top:
+                    (crop.picture.y + (corner.y > 0 ? crop.picture.h : 0)) * view.scale -
+                    PICTURE_GRIP / 2,
+                  width: PICTURE_GRIP,
+                  height: PICTURE_GRIP,
+                  borderRadius: '50%',
+                  background: HANDLE_FILL,
+                  border: `${(PICTURE_GRIP - PICTURE_DOT) / 2}px solid transparent`,
+                  backgroundClip: 'padding-box',
+                  boxShadow: HANDLE_EDGE,
+                  pointerEvents: 'auto',
+                  cursor: handleCursor(corner, pictureMatrix),
+                }}
+              />
+            );
+          })}
+        </div>
+      ) : null}
     </>
   );
 }

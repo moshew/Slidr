@@ -10,7 +10,7 @@ import {
   undoSteps,
 } from './runtime-app-helpers';
 
-// The Animations panel and the transition tool in the app (WG8-T04, T05), on the runtime's
+// The Animations and Transitions panels in the app (WG8-T04, T05), on the runtime's
 // `probe` deck. The first slide has six clicks: two boxes, a list by paragraph, an emphasis and
 // two exits (src/dev/runtime/decks.ts).
 
@@ -41,6 +41,16 @@ async function openPanel(page: Page, options: Parameters<typeof openApp>[1] = {}
     .getByRole('button', { name: options.lang === 'en' ? 'Animations' : 'אנימציות' })
     .click();
   await expect(page.getByTestId('animations-panel')).toBeVisible();
+}
+
+async function openTransitions(page: Page, lang: 'he' | 'en' = 'he') {
+  await page
+    .getByTestId('activity-bar')
+    .getByRole('button', {
+      name: lang === 'en' ? 'Transitions' : 'מעברים',
+    })
+    .click();
+  await expect(page.getByTestId('transitions-panel')).toBeVisible();
 }
 
 /** The rows of the list by group: the labels of the groups, and how many rows each has. */
@@ -293,12 +303,10 @@ test('a preview stops before the text of the slide is edited, and on any change'
   await idle(page);
 });
 
-test('the transition tool of row B sets the kind, the direction and the duration', async ({
-  page,
-}) => {
+test('the transitions panel sets the kind, the direction and the duration', async ({ page }) => {
   await openApp(page, { deck: 'probe' });
   await setCurrentSlide(page, 's_probe_b');
-  await page.getByTestId('transition-tool').click();
+  await openTransitions(page);
   const editor = page.getByTestId('transition-editor');
   await expect(editor.getByRole('radio', { name: 'דחיפה' })).toHaveAttribute(
     'aria-checked',
@@ -352,7 +360,7 @@ test('the transition tool of row B sets the kind, the direction and the duration
 test('"apply to all" gives every slide the transition, in one undo step', async ({ page }) => {
   await openApp(page, { deck: 'probe' });
   await setCurrentSlide(page, 's_probe_b');
-  await page.getByTestId('transition-tool').click();
+  await openTransitions(page);
   const steps = await undoSteps(page);
   await page.getByRole('button', { name: 'החלה על כל השקפים' }).click();
   const types = () =>
@@ -368,7 +376,7 @@ test('"apply to all" gives every slide the transition, in one undo step', async 
 test('in an RTL deck the arrow that points right is `start`', async ({ page }) => {
   await openApp(page, { deck: 'probe-rtl' });
   await setCurrentSlide(page, 's_probe_b');
-  await page.getByTestId('transition-tool').click();
+  await openTransitions(page);
   const editor = page.getByTestId('transition-editor');
   // The deck's push travels towards `start`, which is rightwards here.
   await expect(editor.getByRole('radio', { name: 'ימינה' })).toHaveAttribute(
@@ -381,6 +389,21 @@ test('in an RTL deck the arrow that points right is `start`', async ({ page }) =
   const left = await editor.getByRole('radio', { name: 'שמאלה' }).boundingBox();
   const right = await editor.getByRole('radio', { name: 'ימינה' }).boundingBox();
   expect(left!.x).toBeLessThan(right!.x);
+});
+
+test('a new transition defaults to left in an RTL deck', async ({ page }) => {
+  await openApp(page, { deck: 'probe-rtl' });
+  await setCurrentSlide(page, 's_probe_a');
+  await openTransitions(page);
+  const editor = page.getByTestId('transition-editor');
+  await editor.getByRole('radio', { name: 'דחיפה' }).click();
+
+  await expect(editor.getByRole('radio', { name: 'שמאלה' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  expect(await transitionOf(page, 's_probe_a')).toMatchObject({ type: 'push' });
+  expect('direction' in (await transitionOf(page, 's_probe_a'))!).toBe(false);
 });
 
 /** Top and bottom of the card and of the tiles of the given kinds, read at one moment. */
@@ -463,11 +486,11 @@ test('"none" keeps a card only for a slide that moves on by itself', async ({ pa
   expect(await transitionOf(page, 's_probe_a')).toBeNull();
 });
 
-test('the popover of row B opens on the card, and keeps it in view', async ({ page }) => {
+test('the transitions panel opens on the card, and keeps it in view', async ({ page }) => {
   await page.setViewportSize(LAPTOP);
   await openApp(page, { deck: 'probe' });
   await setCurrentSlide(page, 's_probe_c');
-  await page.getByTestId('transition-tool').click();
+  await openTransitions(page);
   const editor = page.getByTestId('transition-editor');
   const card = editor.getByTestId('transition-settings');
   await expect(card).toBeInViewport({ ratio: 1 });
@@ -480,7 +503,7 @@ test('the popover of row B opens on the card, and keeps it in view', async ({ pa
 
 for (const theme of ['light', 'dark'] as const) {
   for (const lang of ['he', 'en'] as const) {
-    test(`the panel and the transition popover: ${theme}, ${lang}`, async ({ page }) => {
+    test(`the animation and transition panels: ${theme}, ${lang}`, async ({ page }) => {
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
       page.on('console', (message) => {
@@ -492,7 +515,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.screenshot({ path: shot(`panel-${theme}-${lang}`) });
       await page.keyboard.press('Escape');
       await setCurrentSlide(page, 's_probe_b');
-      await page.getByTestId('transition-tool').click();
+      await openTransitions(page, lang);
       await expect(page.getByTestId('transition-preview').first()).toBeVisible();
       await page.screenshot({ path: shot(`transition-${theme}-${lang}`) });
       expect(errors).toEqual([]);

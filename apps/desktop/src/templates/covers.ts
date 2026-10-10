@@ -4,7 +4,7 @@
  *
  * The photograph on the cover of a built-in template is the one the opening slide of its sample
  * deck shows. Only these files are part of the app; the other pictures of the samples stay with
- * the reference decks (`docs/reference-decks/images`).
+ * the external media library (`Slidr-media/images/templates`).
  */
 import {
   createDeck,
@@ -22,12 +22,13 @@ import { library } from './app';
 
 const files = import.meta.glob<string>(
   [
-    '../../../../docs/reference-decks/images/shvil-ridge.webp',
-    '../../../../docs/reference-decks/images/tzuk-warehouse.webp',
-    '../../../../docs/reference-decks/images/lavan-chair-1.webp',
-    '../../../../docs/reference-decks/images/nof-view-2.webp',
-    '../../../../docs/reference-decks/images/defus-street-1.webp',
-    '../../../../docs/reference-decks/images/migdal-team-2.webp',
+    '../../../../../Slidr-media/images/templates/shvil-ridge.webp',
+    '../../../../../Slidr-media/images/templates/tzuk-warehouse.webp',
+    '../../../../../Slidr-media/images/templates/lavan-chair-1.webp',
+    '../../../../../Slidr-media/images/templates/nof-view-2.webp',
+    '../../../../../Slidr-media/images/templates/defus-street-1.webp',
+    '../../../../../Slidr-media/images/templates/migdal-team-2.webp',
+    '../../../../../Slidr-media/images/templates/mifgash-call.webp',
   ],
   { eager: true, query: '?url', import: 'default' },
 );
@@ -37,12 +38,13 @@ const urlOf = (picture: AssetMeta): string | undefined =>
 
 /** The cover photograph of each built-in template that opens with one, by template id. */
 const covers: Record<string, AssetMeta> = {
-  shvil: pictures.shvilRidge,
-  tzuk: pictures.tzukWarehouse,
-  lavan: pictures.lavanChair1,
-  nof: pictures.nofView2,
-  defus: pictures.defusStreet1,
-  shidur: pictures.migdalTeam2,
+  shvil: pictures.shvilRidge!,
+  tzuk: pictures.tzukWarehouse!,
+  lavan: pictures.lavanChair1!,
+  nof: pictures.nofView2!,
+  defus: pictures.defusStreet1!,
+  shidur: pictures.migdalTeam2!,
+  mifgash: pictures.mifgashCall!,
 };
 
 /** The photograph of a template's cover; undefined when the template opens without one. */

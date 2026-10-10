@@ -12,6 +12,10 @@ mod codex_cli;
 #[path = "openai_api.rs"]
 mod openai_api;
 
+pub(crate) fn codex_executable() -> std::result::Result<std::path::PathBuf, String> {
+    codex_cli::CodexCli::executable()
+}
+
 /// Set to offer the mock provider in a release build (end-to-end tests).
 const MOCK_ENV: &str = "SLIDR_IMAGE_MOCK";
 

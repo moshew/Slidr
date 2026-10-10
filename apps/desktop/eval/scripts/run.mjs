@@ -11,7 +11,6 @@
 //   --label <name>     added to the run folder's name
 //   --images <id>      the image provider: mock (default) or codex-cli
 //   --max-images <n>   with a real provider: after n image jobs the run goes back to the mock (15)
-//   --budget <usd>     stop before a request once every run together has cost this much (30)
 //   --no-gate          switch the design check off
 //   --template <id>    the template every request's deck starts on (a built-in one, such as
 //                      zerem), several with commas between them, or `all`: each in turn, by
@@ -20,8 +19,7 @@
 //   --attach           use the app that is already running on the CDP port
 //   --requests <file>  another set of requests, in the shape of ../requests.json
 //   --check            start the app, check its data folder and prepare the first request's
-//                      document, and stop there: nothing is sent to the agent and nothing is
-//                      spent. For seeing that the runner still starts after the app changed.
+//                      document, and stop there: nothing is sent to the agent.
 //
 // A session that shares the machine with others runs the set under an identifier and ports of
 // its own: SLIDR_EVAL_IDENTIFIER, SLIDR_EVAL_VITE_PORT, SLIDR_EVAL_CDP_PORT, and
@@ -32,7 +30,7 @@
 // `report.mjs` turns a run into the review page and the summary.
 /* global window -- the functions given to page.evaluate run in the app's page */
 import { spawn, spawnSync } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createWriteStream, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +39,6 @@ import { writeReport } from './report.mjs';
 
 const APP_DIR = fileURLToPath(new URL('../..', import.meta.url));
 const OUT_ROOT = join(APP_DIR, 'test-results', 'eval');
-const LEDGER = join(OUT_ROOT, 'ledger.json');
 const IDENTIFIER = process.env.SLIDR_EVAL_IDENTIFIER ?? 'dev.slidr.app.quality';
 const VITE_PORT = Number(process.env.SLIDR_EVAL_VITE_PORT ?? 1491);
 const CDP_PORT = Number(process.env.SLIDR_EVAL_CDP_PORT ?? 9291);
@@ -57,7 +54,6 @@ function parseArgs(argv) {
     label: '',
     images: 'mock',
     maxImages: 15,
-    budget: 30,
     gate: true,
     attach: false,
     template: null,
@@ -76,7 +72,6 @@ function parseArgs(argv) {
     else if (flag === '--label') args.label = value();
     else if (flag === '--images') args.images = value();
     else if (flag === '--max-images') args.maxImages = Number(value());
-    else if (flag === '--budget') args.budget = Number(value());
     else if (flag === '--no-gate') args.gate = false;
     else if (flag === '--template') args.template = value();
     else if (flag === '--attach') args.attach = true;
@@ -105,6 +100,7 @@ const BUILT_IN = [
   'sirtut',
   'ziv',
   'shidur',
+  'mifgash',
 ];
 
 /**
@@ -127,19 +123,6 @@ function stamp() {
 }
 const writeJson = (file, value) => writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 const jsonl = (items) => items.map((item) => `${JSON.stringify(item)}\n`).join('');
-
-/** What every run so far has cost, as the CLI reported it: the budget is on the total. */
-function readLedger() {
-  return existsSync(LEDGER) ? JSON.parse(readFileSync(LEDGER, 'utf8')) : { totalUsd: 0, items: [] };
-}
-
-function charge(run, request, model, costUsd) {
-  const ledger = readLedger();
-  ledger.items.push({ run, request, model, costUsd });
-  ledger.totalUsd = ledger.items.reduce((sum, item) => sum + (item.costUsd ?? 0), 0);
-  writeJson(LEDGER, ledger);
-  return ledger.totalUsd;
-}
 
 async function cdpIsUp() {
   try {
@@ -335,11 +318,6 @@ async function main() {
     (request) => !args.only || args.only.some((id) => request.id.startsWith(id)),
   );
   if (requests.length === 0) throw new Error('No request matches --only.');
-  const spent = readLedger().totalUsd;
-  if (spent >= args.budget) {
-    throw new Error(`The runs so far cost $${spent.toFixed(2)}; the budget is $${args.budget}.`);
-  }
-
   const run = [stamp(), args.model, args.label].filter(Boolean).join('-');
   const runDir = join(OUT_ROOT, run);
   mkdirSync(runDir, { recursive: true });
@@ -385,11 +363,6 @@ async function main() {
     }
     const images = { count: 0, capped: false };
     for (const request of requests) {
-      const total = readLedger().totalUsd;
-      if (total >= args.budget) {
-        console.log(`stopped before ${request.id}: $${total.toFixed(2)} of $${args.budget} spent`);
-        break;
-      }
       const on = templateOf(args, set, request);
       console.log(`${request.id}${on ? ` on ${on}` : ''} …`);
       let result;
@@ -401,13 +374,11 @@ async function main() {
         continue;
       }
       const { score } = result;
-      const totalUsd = charge(run, request.id, args.model, score.costUsd);
       console.log(
         `  ${result.outcome}: ${score.slides.length} slides, ` +
           `${score.findings.error} errors, ${score.findings.warning} warnings, ` +
           `gate ${score.gate.passedFirstRound}/${score.gate.judged}, ` +
-          `${Math.round(result.wallMs / 1000)}s, $${(score.costUsd ?? 0).toFixed(2)} ` +
-          `(all runs: $${totalUsd.toFixed(2)})`,
+          `${Math.round(result.wallMs / 1000)}s`,
       );
     }
     await page.evaluate(() => window.slidrEval.close()).catch(() => undefined);

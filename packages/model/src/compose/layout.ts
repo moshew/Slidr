@@ -33,8 +33,8 @@ export interface SlideFromLayoutOptions {
 
 /**
  * A `slide.add` with a new slide of a layout (SLD-01), with one empty element for each
- * placeholder, in the order of the placeholders: a text box carrying the role, text style and
- * alignment, an image frame, a chart without data, or a table of empty cells in the deck's
+ * placeholder, in the order of the placeholders: a text box carrying the role, text style,
+ * alignment and the colour the placeholder gives its text, an image frame, a chart without data, or a table of empty cells in the deck's
  * direction. The decorations and the background stay with the layout, which the slide points at,
  * so the renderer draws them. A placeholder for the slide number gives nothing: no element shows
  * the number of its slide yet (SLD-04). Filling the elements with content by role, and layouts
@@ -50,7 +50,7 @@ export function slideFromLayout(
   const fresh = deckIdSource(deck, options.random);
 
   const elements: Element[] = [];
-  for (const { role, frame, styleRef, align, vAlign } of layout.placeholders) {
+  for (const { role, frame, styleRef, color, align, vAlign } of layout.placeholders) {
     if (TEXT_ROLES.has(role)) {
       elements.push(
         createElement.text({
@@ -58,6 +58,7 @@ export function slideFromLayout(
           role,
           frame: { ...frame },
           vAlign: vAlign ?? 'top',
+          ...(color ? { color: { ...color } } : {}),
           content: richText('', { align: align ?? 'start', styleRef }),
         }),
       );

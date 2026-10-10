@@ -19,7 +19,8 @@ import {
   type TextElement,
 } from '@slidr/model';
 import { SlideRenderer, type AssetResolver, type HtmlSlot, type TextSlot } from '@slidr/renderer';
-import { useKeyboardInUse } from '@slidr/ui';
+import { keyboardInUse, useKeyboardInUse } from '@slidr/ui';
+import { freshFrame, freshTextBackground } from '../elements/frames';
 import { fitRows } from '../table/fit';
 import { useTableStage } from '../table/stage';
 import { syncGrowHeights } from '../text/actions';
@@ -48,10 +49,12 @@ import {
   cropPan,
   cropPatch,
   cropResize,
+  cropScalePicture,
   cropStretch,
   cropView,
   cropZoom,
   cropZoomLevel,
+  onCropPicture,
   positionToOwn,
   type CropView,
 } from './crop';
@@ -73,7 +76,7 @@ import {
   refitAll,
   refitGroups,
   refitPatches,
-  resizeGroup,
+  resizeOne,
   resizeTogether,
   rotateTogether,
   type Patch,
@@ -101,7 +104,6 @@ import {
   AgentMark,
   Beside,
   CropOverlay,
-  CropPicture,
   elementBox,
   Handles,
   Label,
@@ -158,6 +160,8 @@ export interface StageProps {
    * The host imports them as assets and inserts them (see `insert.ts`).
    */
   onFiles?: (files: File[], at: Point) => void;
+  /** Choosing the icon in an empty picture opens a file for that picture's frame. */
+  onEmptyImageClick?: (slideId: string, elementId: string) => void;
   /**
    * A deck to draw in place of `deck`: a proposed change, shown without making it (STG-10). Only
    * the picture changes: the handles step aside, and the pointer and the keys still work on
@@ -282,7 +286,7 @@ type Gesture =
       snapBoxes: Frame[];
     }
   | {
-      kind: 'crop-resize' | 'crop-pan';
+      kind: 'crop-resize' | 'crop-pan' | 'crop-scale';
       txId: string;
       start: Point;
       located: Located;
@@ -384,6 +388,7 @@ export function Stage({
   selectionToolbar,
   marked,
   placeholderHint,
+  onEmptyImageClick,
   label: name,
   className,
   style,
@@ -432,19 +437,26 @@ export function Stage({
   /** Where the keyboard is beyond the selection: a crop handle, a point of a line, the walk. */
   const keys = useStore(stageKeys);
   /**
-   * The Stage has the keyboard and the keyboard is what the user works with: it shows (DSN-08).
-   * After a press on the slide what is selected says it, and the ring comes with the first key.
+   * The Stage has the keyboard and the keyboard is what brought it there: it shows (DSN-08). By
+   * Tab or F6, or handed over by a control or a layer that the keys worked. After a press on the
+   * slide what is selected says where the keyboard is, and the keys that follow add no ring:
+   * around the whole Stage it read as the slide being selected, and not its elements (Ctrl+A).
+   * The text typed in on the slide is part of the Stage: going into it and back out is no arrival.
    */
   const [focused, setFocused] = useState(false);
-  const ring = useKeyboardInUse() && focused;
+  const [arrived, setArrived] = useState(false);
+  /** The window took the keyboard away, and the Stage is still the one that had it. */
+  const away = useRef(false);
+  const ring = useKeyboardInUse() && focused && arrived;
   const gesture = useRef<Gesture | null>(null);
+  const emptyImagePress = useRef<string | null>(null);
   // What kind of drag is under way, for rendering; the gesture itself lives in the ref.
   const [activeKind, setActiveKind] = useState<Gesture['kind'] | null>(null);
-  /** The handle that is dragged, which stays lit, and whether its drag cuts a picture. */
-  const [held, setHeld] = useState<{ handle: string; cuts?: boolean } | null>(null);
+  /** The handle that is dragged, which stays lit. */
+  const [held, setHeld] = useState<{ handle: string } | null>(null);
   /** The slide the gesture under way began on: what it changes is written there. */
   const gestureSlide = useRef<string | null>(null);
-  const begin = (g: Gesture, by: { handle: string; cuts?: boolean } | null = null) => {
+  const begin = (g: Gesture, by: { handle: string } | null = null) => {
     gesture.current = g;
     gestureSlide.current = currentSlideId;
     setActiveKind(g.kind);
@@ -494,6 +506,12 @@ export function Stage({
     .map((id) => index.get(id))
     .filter((l): l is Located => Boolean(l));
   const single = selectedLocated.length === 1 ? selectedLocated[0] : undefined;
+  const selectedElement = single?.element;
+  // Warm the catalogue when a saved frame is selected, so its old label can gain flexible
+  // strips in the resize's own undo step, including when its plate is selected directly.
+  useEffect(() => {
+    if (selectedElement) freshTextBackground(selectedElement);
+  }, [selectedElement]);
 
   // The group being worked in: the one around the selection, or the one entered last.
   const first = selectedLocated[0];
@@ -909,6 +927,19 @@ export function Stage({
 
   const onPointerDown = (e: PointerEvent) => {
     if (!slide) return;
+    // Pointer capture sends the later click to the Stage itself, so remember the empty picture
+    // under the original press and open its picker only if the press ends as a click.
+    const icon =
+      e.button === 0 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !previewing && !crop
+        ? (e.target instanceof Element ? e.target : null)?.closest('[data-slidr-picker-icon]')
+        : null;
+    const placeholder = icon?.closest('[data-slidr-placeholder="image"]');
+    const imageId = placeholder?.closest('[data-element-id]')?.getAttribute('data-element-id');
+    const image = imageId ? index.get(imageId) : undefined;
+    emptyImagePress.current =
+      image?.element.type === 'image' && !image.element.assetId && !image.locked && !image.hidden
+        ? imageId!
+        : null;
     // Inside the text editor the pointer is the editor's: caret, selection, drag-select.
     if (isInEditor(e.target)) return;
     if (e.button === 2) {
@@ -936,15 +967,20 @@ export function Stage({
     }
     if (crop) {
       const name = dataOf(e.target, 'crop-handle');
-      if (name || inCropFrame(p)) {
+      const pictureHandle = dataOf(e.target, 'picture-handle');
+      if (name || pictureHandle || inCropFrame(p) || onCropPicture(crop.box, crop.view, p)) {
         begin({
-          kind: name ? 'crop-resize' : 'crop-pan',
+          kind: name ? 'crop-resize' : pictureHandle ? 'crop-scale' : 'crop-pan',
           txId: newId('tx'),
           start: p,
           located: crop.located,
           inverse: invert(crop.located.space),
           view: crop.view,
-          handle: name ? HANDLES[name as keyof typeof HANDLES] : { x: 0, y: 0 },
+          handle: name
+            ? HANDLES[name as keyof typeof HANDLES]
+            : pictureHandle
+              ? HANDLES[pictureHandle as keyof typeof HANDLES]
+              : { x: 0, y: 0 },
         });
         return;
       }
@@ -1003,11 +1039,23 @@ export function Stage({
         const hd = HANDLES[handle as keyof typeof HANDLES];
         const el = single.element;
         // An edge of an image moves alone, and cuts the picture or shows more of it (IMG-02); a
-        // corner sizes the image whole, as every handle of an SVG and of a video does. An image
-        // in a drawn frame is sized with that frame by every handle. A picture that leaves part
-        // of its frame bare (`contain`) is fitted to the frame again, as it was.
-        const alone = el.type === 'image' && !el.smartFrame && (hd.x === 0 || hd.y === 0);
-        const picture = alone ? pictureOf(el)?.view : undefined;
+        // corner sizes the image whole. A text background also has independent edges; other
+        // SVGs and videos keep their proportions. In a
+        // drawn frame an edge moves alone too: the artwork keeps its size, and the photograph
+        // fills an opening that is as much longer. Only artwork that is stretched with its
+        // picture, and has no newer to take its place, is sized whole by every handle. A
+        // picture that leaves part of its frame bare (`contain`) is fitted to the frame again,
+        // as it was.
+        const stretched =
+          el.type === 'image' &&
+          el.smartFrame !== undefined &&
+          el.smartFrame.scale === undefined &&
+          !freshFrame(el);
+        const background = el.type === 'svg' && (el.stretch || freshTextBackground(el)?.has(el.id));
+        const alone =
+          ((el.type === 'image' && !stretched) || background) && (hd.x === 0 || hd.y === 0);
+        const picture =
+          alone && el.type === 'image' && !el.smartFrame ? pictureOf(el)?.view : undefined;
         const stretch = picture && coversFrame(picture) ? picture : undefined;
         begin(
           {
@@ -1025,7 +1073,7 @@ export function Stage({
             stretch,
             snapBoxes: snapCandidates(index, new Set([el.id])),
           },
-          { handle, cuts: Boolean(stretch) },
+          { handle },
         );
       }
       return;
@@ -1169,7 +1217,8 @@ export function Stage({
     const g = gesture.current;
     if (!g) {
       if (crop) {
-        setOverCrop(inCropFrame(toSlide(e.clientX, e.clientY)));
+        const p = toSlide(e.clientX, e.clientY);
+        setOverCrop(inCropFrame(p) || onCropPicture(crop.box, crop.view, p));
         setHover(undefined);
         setOverGroupChild(false);
         return;
@@ -1286,7 +1335,7 @@ export function Stage({
         };
         // What is in a group is stretched with it, and so are several elements with their box.
         const only = g.items.length === 1 ? g.items[0]?.element : undefined;
-        let own: Patch = { frame: rounded };
+        let own: Patch & { frame: Frame } = { frame: rounded };
         if (g.stretch && only?.type === 'image') {
           // The edge of an image cuts its picture or shows more of it. Where the frame is as
           // long as it was, and where Shift sizes the image whole, the picture is in the frame
@@ -1304,9 +1353,7 @@ export function Stage({
               g.frame,
               rounded,
             )
-          : only.type === 'group'
-            ? resizeGroup(only, rounded)
-            : new Map<string, Patch>([[only.id, own]]);
+          : resizeOne(only, own);
         commit(g.txId, 'Resize', g.path, patches);
         return;
       }
@@ -1374,6 +1421,10 @@ export function Stage({
         const locked = heldRatio(cropSession.getState().ratio, g.view.frame);
         const ratio = shift ? (locked ? undefined : w / h) : (locked ?? undefined);
         next = cropResize(g.view, g.handle, delta, { ratio });
+      } else if (g.kind === 'crop-scale') {
+        const image = g.located.element;
+        next =
+          image.type === 'image' ? cropScalePicture(g.view, image.fit, g.handle, delta) : g.view;
       } else next = cropPan(g.view, delta);
       commit(g.txId, 'Crop', g.located.path, new Map([[g.located.element.id, cropPatch(next)]]));
     });
@@ -1384,6 +1435,23 @@ export function Stage({
       container.current.releasePointerCapture(e.pointerId);
     const g = gesture.current;
     endGesture(false);
+    const emptyImageId = emptyImagePress.current;
+    emptyImagePress.current = null;
+    if (
+      emptyImageId &&
+      slide &&
+      onEmptyImageClick &&
+      g?.kind === 'move' &&
+      !g.moved &&
+      Math.hypot(
+        toSlide(e.clientX, e.clientY).x - g.start.x,
+        toSlide(e.clientX, e.clientY).y - g.start.y,
+      ) *
+        scale <
+        DRAG_PX
+    ) {
+      onEmptyImageClick(slide.id, emptyImageId);
+    }
     // A press that never became a drag, and is let go where it began, is a click: it goes in,
     // unless the click before it in the same double-click already did. The distance is taken
     // here as well, since a quick drag can end before the frame in which it would have started.
@@ -1631,7 +1699,12 @@ export function Stage({
     const { element } = one;
     // A line is shaped by its points, not by its box.
     if (element.type === 'line') return;
-    const keepAspect = keepsAspect(element);
+    const keepAspect =
+      keepsAspect(element) &&
+      !(
+        element.type === 'svg' &&
+        (element.stretch || freshTextBackground(element)?.has(element.id))
+      );
     const handle = keepAspect ? HANDLES.se : by.x !== 0 ? HANDLES.e : HANDLES.s;
     // The key moves an edge along the element's own axes, wherever it is turned.
     const fitted = resizeFrame(
@@ -1647,11 +1720,7 @@ export function Stage({
       w: Math.max(1, Math.round(fitted.w)),
       h: Math.max(1, Math.round(fitted.h)),
     };
-    const patches =
-      element.type === 'group'
-        ? resizeGroup(element, frame)
-        : new Map<string, Patch>([[element.id, { frame }]]);
-    commit(txId, 'Resize', one.path, patches);
+    commit(txId, 'Resize', one.path, resizeOne(element, { frame }));
     // A table cannot be shorter than its text: its rows are written as they came out.
     if (element.type === 'table') fitRows(bus, element.id, txId);
     grown();
@@ -1825,8 +1894,19 @@ export function Stage({
     const cropped = liveCrop();
     if (cropped) {
       // In crop mode the arrows move the picture under the frame, or the crop handle that Tab
-      // went to: that handle goes the way the arrow points on the slide, as if it were dragged.
+      // went to. Ctrl+Up/Down scales the picture when the keyboard is on the picture.
       const { located, view: v, image } = cropped;
+      if (!handleAt && (e.ctrlKey || e.metaKey) && !e.altKey && dir.y !== 0) {
+        const factor = Math.pow(1.1, -dir.y * (e.shiftKey ? 5 : 1));
+        const level = cropZoomLevel(v, image.fit) * factor;
+        commit(
+          txId,
+          'Crop',
+          located.path,
+          new Map([[image.id, cropPatch(cropZoom(v, image.fit, level))]]),
+        );
+        return;
+      }
       const delta = toFrameAxes(invert(located.space), v.rotation, by);
       const ratio = heldRatio(cropSession.getState().ratio, v.frame) ?? undefined;
       const next = handleAt
@@ -2086,13 +2166,6 @@ export function Stage({
   else if (turn && active === 'rotate-together')
     label = `${Math.round(turn.angle > 180 ? turn.angle - 360 : turn.angle)}°`;
 
-  // While the edge of an image is dragged, what its frame leaves out of the picture is drawn
-  // around it, dimmed, as in crop mode: the edge is seen to cut the picture, or the picture to grow.
-  const cut =
-    held?.cuts && active === 'resize' && single?.element.type === 'image'
-      ? pictureOf(single.element)
-      : undefined;
-
   let overlay: ReactNode = null;
   // The handles are where the real elements are, which a preview may have moved or replaced.
   if (slide && !previewing) {
@@ -2165,14 +2238,11 @@ export function Stage({
             view={stageView}
             crop={crop.view}
             url={crop.url}
-            active={active === 'crop-resize' || active === 'crop-pan'}
+            active={active === 'crop-resize' || active === 'crop-pan' || active === 'crop-scale'}
             handle={handleAt}
           />
         ) : single && !single.locked && (editingId !== single.element.id || single === typing) ? (
           <>
-            {cut?.url ? (
-              <CropPicture located={single} view={stageView} crop={cut.view} url={cut.url} />
-            ) : null}
             <Handles
               key={single.element.id}
               located={single}
@@ -2252,6 +2322,9 @@ export function Stage({
       data-previewing={previewing || undefined}
       className={className}
       tabIndex={0}
+      // Any press on the Stage, on the slide or in the text typed in on it: the pointer is at
+      // work here now.
+      onPointerDownCapture={() => setArrived(false)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -2273,10 +2346,21 @@ export function Stage({
         setOverGroupChild(false);
       }}
       onFocus={(e) => {
-        if (e.target === e.currentTarget) setFocused(true);
+        if (e.target !== e.currentTarget) return;
+        setFocused(true);
+        // Back from the text on the slide, or back to the window: no arrival, the Stage had the
+        // keyboard all along.
+        if (!away.current && !e.currentTarget.contains(e.relatedTarget))
+          setArrived(keyboardInUse());
+        away.current = false;
       }}
       onBlur={(e) => {
-        if (e.target === e.currentTarget) setFocused(false);
+        if (e.target !== e.currentTarget) return;
+        setFocused(false);
+        // When it is the window that lost the keyboard, the Stage is still the document's active
+        // element.
+        away.current = document.activeElement === e.currentTarget;
+        if (!away.current && !e.currentTarget.contains(e.relatedTarget)) setArrived(false);
       }}
       style={{
         position: 'relative',

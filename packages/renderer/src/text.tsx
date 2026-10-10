@@ -1,4 +1,5 @@
 import type {
+  Color,
   Direction,
   Insets,
   ListInfo,
@@ -495,6 +496,7 @@ export function TextBox({
   wrap,
   size,
   styleRef = 'body',
+  color,
   children,
 }: {
   content: RichText;
@@ -506,6 +508,8 @@ export function TextBox({
   /** The size of the element's frame: text that shrinks to fit is fitted again when it changes. */
   size?: { w: number; h: number };
   styleRef?: TextStyleRef;
+  /** The colour of the text where a run sets none, in place of the text style's (`TextElement.color`). */
+  color?: Color;
   /** Shown instead of the text (a `TextSlot`); the box around it stays the same. */
   children?: ReactNode;
 }) {
@@ -566,7 +570,11 @@ export function TextBox({
             <RichTextView
               content={content}
               theme={ctx.theme}
-              defaults={{ styleRef, wrap: wrap ?? true }}
+              defaults={{
+                styleRef,
+                wrap: wrap ?? true,
+                ...(color ? { color: colorCss(color) } : {}),
+              }}
               dir={ctx.dir}
             />
           )}

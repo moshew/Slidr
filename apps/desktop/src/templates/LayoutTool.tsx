@@ -1,7 +1,7 @@
 import { CommandBus, findSlide, type Deck, type Layout, type Slide } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { changeLayout } from '@slidr/templates';
-import { Button, cx, Popover, PopoverContent, PopoverTrigger } from '@slidr/ui';
+import { cx, IconButton, Popover, PopoverContent, PopoverTrigger } from '@slidr/ui';
 import { LayoutTemplate } from '@slidr/ui/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,9 +92,13 @@ export function LayoutTool() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" icon={LayoutTemplate} data-testid="layout-tool">
-          {t('layout.button')}
-        </Button>
+        <IconButton
+          icon={LayoutTemplate}
+          label={t('layout.button')}
+          size="sm"
+          data-testid="layout-tool"
+          className="[&_svg]:size-[18px]"
+        />
       </PopoverTrigger>
       <PopoverContent className="w-xl">
         {deck.layouts.length === 0 ? (

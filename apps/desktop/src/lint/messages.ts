@@ -41,6 +41,10 @@ export const he = {
   severity: { error: 'שגיאה', warning: 'אזהרה', info: 'הערה' },
   undo: { fix: 'תיקון ממצא עיצוב', fixAll: 'תיקון ממצאי העיצוב' },
   status: {
+    title: 'בדיקת עיצוב',
+    explainer: 'הבדיקה רצה אוטומטית אחרי כל שינוי במצגת.',
+    choose: 'לחצו על ממצא כדי להגיע אליו ולתקן אותו בשקף.',
+    cleanBody: 'אין ממצאים שדורשים תיקון.',
     none: 'אין ממצאי עיצוב',
     checking: 'בודק את העיצוב',
     error: 'שגיאת עיצוב אחת',
@@ -190,6 +194,10 @@ export const en: typeof he = {
   severity: { error: 'Error', warning: 'Warning', info: 'Note' },
   undo: { fix: 'Fix a design finding', fixAll: 'Fix the design findings' },
   status: {
+    title: 'Design check',
+    explainer: 'The deck is checked automatically after every change.',
+    choose: 'Choose a finding to go to it and fix it on the slide.',
+    cleanBody: 'No issues need attention.',
     none: 'No design issues',
     checking: 'Checking the design',
     error: '1 design error',

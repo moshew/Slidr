@@ -391,6 +391,30 @@ describe('slideFromLayout', () => {
     expect(after.slides[1]!.id).toBe(slide.id);
   });
 
+  it('gives the text of a placeholder the colour the placeholder names, as a copy of its own', () => {
+    const ink = { token: 'bg' } as const;
+    const deck = createDeck({
+      layouts: [
+        {
+          id: 'l_card',
+          name: 'Card',
+          archetype: 'cards',
+          placeholders: [
+            { id: 'p_title', role: 'title', frame: box(96, 80, 800, 80), styleRef: 'title' },
+            { id: 'p_body', role: 'body', frame: box(96, 200, 800, 200), color: ink },
+          ],
+          decorations: [],
+        },
+      ],
+    });
+    const [title, body] = slideFromLayout(deck, 'l_card').slide.elements;
+    // Without a colour of the placeholder's, the text has its text style's.
+    expect(title).not.toHaveProperty('color');
+    const given = body?.type === 'text' ? body.color : undefined;
+    expect(given).toEqual(ink);
+    expect(given).not.toBe(deck.layouts[0]!.placeholders[1]!.color);
+  });
+
   it('gives a chart and a table their elements, skips the slide number, and reports a missing layout', () => {
     const deck = createDeck({
       lang: 'he',

@@ -18,8 +18,8 @@ const combinations = (['he', 'en'] as const).flatMap((lang) =>
 
 /**
  * Brings the keyboard to the Stage the way a person does, with Tab from the tool before it, and
- * not with `focus()` from the test: the Stage shows its ring while the keyboard is what the user
- * works with, which is from a key pressed until the next press of the pointer.
+ * not with `focus()` from the test: the Stage shows its ring when the keyboard is what brought
+ * the focus to it, until the next press of the pointer.
  */
 async function tabToStage(page: Page) {
   await page.getByTestId('top-tools-b').getByRole('button').last().focus();
@@ -160,11 +160,12 @@ for (const { lang, theme } of combinations) {
     await expect(panel.getByRole('tabpanel')).toBeFocused();
     await panel.screenshot({ path: `${DIR}/tabpanel-ring-${lang}-${theme}.png` });
 
-    // The Stage, pressed with the pointer and then worked with a key: the ring comes with the key.
+    // The Stage, pressed with the pointer and then worked with keys: what is selected says where
+    // the keyboard is, and no ring is drawn around the Stage.
     const box = (await surface(page).locator('[data-element-id="e_b"]').boundingBox())!;
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Control+a');
     await expect(surface(page)).toBeFocused();
-    await shoot(page, `stage-ring-after-press-${lang}-${theme}`);
+    await shoot(page, `stage-after-press-${lang}-${theme}`);
   });
 }

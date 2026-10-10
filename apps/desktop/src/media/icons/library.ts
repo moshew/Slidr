@@ -41,22 +41,22 @@ export function lazy<T>(load: () => Promise<{ default: string }>): () => Promise
 }
 
 const lucideNodes = lazy<IconNodes>(
-  () => import('../../../node_modules/lucide-static/icon-nodes.json?raw'),
+  () => import('../../../../../../Slidr-media/icons/lucide/icon-nodes.json?raw'),
 );
 const tablerNodes = lazy<IconNodes>(
-  () => import('../../../node_modules/@tabler/icons/tabler-nodes-outline.json?raw'),
+  () => import('../../../../../../Slidr-media/icons/tabler/tabler-nodes-outline.json?raw'),
 );
 const tablerFilledNodes = lazy<IconNodes>(
-  () => import('../../../node_modules/@tabler/icons/tabler-nodes-filled.json?raw'),
+  () => import('../../../../../../Slidr-media/icons/tabler/tabler-nodes-filled.json?raw'),
 );
 const lucideTags = lazy<IconSources['lucide']>(
-  () => import('../../../node_modules/lucide-static/tags.json?raw'),
+  () => import('../../../../../../Slidr-media/icons/lucide/tags.json?raw'),
 );
 const tablerIcons = lazy<IconSources['tabler']>(
-  () => import('../../../node_modules/@tabler/icons/icons.json?raw'),
+  () => import('../../../../../../Slidr-media/icons/tabler/icons.json?raw'),
 );
 /** The app's dictionary: an English word to the Hebrew a user would type for it. */
-export const hebrewTags = lazy<HebrewTags>(() => import('./hebrew.json?raw'));
+export const hebrewTags = lazy<HebrewTags>(() => import('../../../../../../Slidr-media/icons/hebrew.json?raw'));
 
 let english: Promise<Map<string, string>> | undefined;
 
@@ -144,6 +144,31 @@ export async function findIcons(query: string, options: IconSearchOptions): Prom
 
 /** The common icons shown first, before the larger browse catalog. */
 export const STARTERS = [
+  'chart-line',
+  'messages-square',
+  'hand-heart',
+  'folder-kanban',
+  'mic-vocal',
+  'screen-share',
+  'receipt-text',
+  'wallet-cards',
+  'calendar-range',
+  'map-pinned',
+  'plane-takeoff',
+  'heart-pulse',
+  'brain',
+  'tree-pine',
+  'mountain-snow',
+  'cloud-sun',
+  'shield-lock',
+  'user-shield',
+  'cloud-upload',
+  'monitor-smartphone',
+  'pencil-sparkles',
+  'book-open-text',
+  'badge-percent',
+  'flower-2',
+  'ship-wheel',
   'star',
   'heart',
   'check',
@@ -207,10 +232,35 @@ export const STARTERS = [
 ] as const;
 
 /** Five hundred more Lucide icons to browse without knowing a search term. */
-const browseNames = lazy<readonly string[]>(() => import('./browse.json?raw'));
+const browseNames = lazy<readonly string[]>(() => import('../../../../../../Slidr-media/icons/browse.json?raw'));
 
 /** The common filled icons shown first, from Tabler's filled set. */
 const FILLED_STARTERS = [
+  'presentation-analytics',
+  'chart-donut',
+  'chart-bubble',
+  'message-chatbot',
+  'medical-cross',
+  'file-invoice',
+  'file-check',
+  'folder-open',
+  'gift-card',
+  'plane-arrival',
+  'train',
+  'basket',
+  'building-broadcast-tower',
+  'receipt-dollar',
+  'car-4wd',
+  'stars',
+  'video-plus',
+  'file-code',
+  'battery-vertical',
+  'bell-ringing-2',
+  'cloud-data-connection',
+  'keyframes',
+  'phone-check',
+  'shield-half',
+  'chart-area-line',
   'star',
   'heart',
   'circle-check',
@@ -274,7 +324,7 @@ const FILLED_STARTERS = [
 ] as const;
 
 /** Five hundred more Tabler icons to browse in the filled style. */
-const filledBrowseNames = lazy<readonly string[]>(() => import('./filled-browse.json?raw'));
+const filledBrowseNames = lazy<readonly string[]>(() => import('../../../../../../Slidr-media/icons/filled-browse.json?raw'));
 
 /** Icons available before a search, with their markup; a name a set has dropped is left out. */
 export async function starterIcons(style: 'line' | 'filled' = 'line'): Promise<FoundIcon[]> {

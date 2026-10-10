@@ -1,12 +1,12 @@
 /**
  * The pictures of the built-in templates' sample decks. The files are the reference decks'
- * (`docs/reference-decks/images`); the asset records come from `@slidr/templates/builtin`,
+ * (`Slidr-media/images/templates`); the asset records come from `@slidr/templates/builtin`,
  * where the samples name them by id.
  */
 import type { AssetMeta } from '@slidr/model';
 import { pictures } from '@slidr/templates/builtin';
 
-const files = import.meta.glob<string>('../../../../docs/reference-decks/images/*.webp', {
+const files = import.meta.glob<string>('../../../../../Slidr-media/images/templates/*.webp', {
   eager: true,
   query: '?url',
   import: 'default',

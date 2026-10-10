@@ -1,5 +1,14 @@
 import type { AssetMeta, Background, Command, Fill } from '@slidr/model';
-import { Button, cx, Field, Popover, PopoverContent, PopoverTrigger, Separator } from '@slidr/ui';
+import {
+  Button,
+  cx,
+  Field,
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Separator,
+} from '@slidr/ui';
 import { CopyCheck, PaintBucket, RotateCcw } from '@slidr/ui/icons';
 import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
@@ -91,9 +100,12 @@ export function BackgroundTool() {
   return (
     <Popover onOpenChange={(open) => !open && tx.end()}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" icon={PaintBucket}>
-          {t('background.title')}
-        </Button>
+        <IconButton
+          icon={PaintBucket}
+          label={t('background.title')}
+          size="sm"
+          className="[&_svg]:size-[18px]"
+        />
       </PopoverTrigger>
       <PopoverContent>
         <div data-testid="background-editor" className="flex flex-col gap-3">

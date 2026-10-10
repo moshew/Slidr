@@ -48,9 +48,6 @@ import {
 const done = (extra: Partial<ScriptStep> = {}): ScriptStep => ({
   type: 'turn_completed',
   outcome: 'completed',
-  usage: { inputTokens: 10, outputTokens: 20, cacheReadTokens: 30, cacheWriteTokens: 40 },
-  costUsd: 0.01,
-  durationMs: 100,
   ...extra,
 });
 const say = (text: string): ScriptStep => ({ type: 'text_delta', text });
@@ -242,9 +239,6 @@ describe('a turn', () => {
     ]);
     expect(entry).toMatchObject({
       outcome: 'completed',
-      usage: { inputTokens: 10, outputTokens: 20, cacheReadTokens: 30, cacheWriteTokens: 40 },
-      costUsd: 0.01,
-      durationMs: 100,
     });
     expect(thread.store.getState()).toMatchObject({ busy: false, stopping: false, activity: null });
     expect(touched).toEqual(['s_1']);
@@ -558,9 +552,6 @@ describe('the transcript', () => {
           {
             type: 'turn_completed',
             outcome: 'failed',
-            usage: NO_USAGE,
-            costUsd: null,
-            durationMs: 0,
           },
           { type: 'exited', code: 1 },
         ];
@@ -576,16 +567,12 @@ describe('the transcript', () => {
     expect(seen.sends.map((s) => s.text)).toEqual(['היי', 'היי']);
     expect(entry).toMatchObject({ outcome: 'completed', parts: [{ type: 'text', text: 'שלום.' }] });
     expect(entry.problem).toBeUndefined();
-    // The attempt that could not resume is not part of the turn: its cost is the fresh one's.
-    expect(entry.costUsd).toBe(0.01);
     const index = JSON.parse(transcripts.files.get('threads.json') ?? '{}') as {
       threads: Record<string, { nativeSessionId: string }>;
     };
     expect(index.threads.deck!.nativeSessionId).toMatch(/^mock-/);
   });
 });
-
-const NO_USAGE = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
 
 describe('the design check', () => {
   it('sends the agent back for findings, and closes the turn when they are fixed', async () => {
@@ -615,9 +602,8 @@ describe('the design check', () => {
       },
     ]);
     expect(entry.remaining).toBeUndefined();
-    // Both rounds are billed to the one entry, and are one undo step.
-    expect(entry).toMatchObject({ outcome: 'completed', costUsd: 0.02, durationMs: 200 });
-    expect(entry.usage?.outputTokens).toBe(40);
+    // Both rounds belong to one entry and are one undo step.
+    expect(entry.outcome).toBe('completed');
     expect(service.undoInfo(entry.txId!)).toEqual({ steps: 1, otherEdits: 0 });
     service.undoTurn(entry.txId!);
     expect(bus.deck.slides[0]!.name).toBe('first');
@@ -928,7 +914,7 @@ describe('stopping and failing', () => {
         message: "API Error: Can't reach the API server (ENOTFOUND)",
         recoverable: true,
       },
-      done({ outcome: 'failed', costUsd: 0, durationMs: 175_000 }),
+      done({ outcome: 'failed' }),
     ];
 
     it('sends a turn that failed for want of a connection once more, and the user sees one turn', async () => {
@@ -952,8 +938,7 @@ describe('stopping and failing', () => {
       expect(seen.sends[0]!.text).toBe('Rename the first slide');
       expect(seen.sends[1]!.text).toContain('Go on with my last request');
       expect(seen.sends[1]!.context).toContain('<slidr_context>');
-      // Both tries are the turn's time; the work of both is one undo step.
-      expect(entry.durationMs).toBe(175_100);
+      // Both tries are one undo step.
       expect(bus.undoStack).toHaveLength(1);
     });
 
@@ -1341,9 +1326,6 @@ function givingUp(client: AgentClient): AgentClient {
       events.get(sessionId)?.({
         type: 'turn_completed',
         outcome: 'interrupted',
-        usage: NO_USAGE,
-        costUsd: 0,
-        durationMs: 5,
       });
       return Promise.resolve();
     },
@@ -1650,9 +1632,6 @@ describe('a session that cannot remember its conversation (AGT-06)', () => {
           {
             type: 'turn_completed',
             outcome: 'failed',
-            usage: NO_USAGE,
-            costUsd: null,
-            durationMs: 0,
           },
           { type: 'exited', code: 1 },
         ];
@@ -1780,6 +1759,47 @@ describe('the model of the next turn (CHT-U06)', () => {
   const a = script([say('A1.'), done()], [say('A2.'), done()]);
   const b = script([say('B1.'), done()]);
 
+  it.each(['claude-code', 'codex-cli', 'copilot-cli'])(
+    '%s waits for explicit model and effort, then passes both to the session',
+    async (harnessId) => {
+      const settings: AgentSettings = { harnessId, qualityGate: false };
+      const { thread, seen } = setup(
+        { a },
+        {
+          settings,
+          wrap: (client) => ({
+            ...client,
+            harnesses: async () => [{ ...(await client.harnesses())[0]!, id: harnessId }],
+            connect: async () => ({
+              status: await client.probe('mock'),
+              harness: {
+                ...(await client.harnesses())[0]!,
+                id: harnessId,
+                models: [{ id: 'a', label: 'A', effortLevels: ['low', 'ultra'] }],
+              },
+            }),
+            start: (_id, key, config, onEvent) => client.start('mock', key, config, onEvent),
+          }),
+        },
+      );
+      expect(await ask(thread, 'one')).toMatchObject({
+        outcome: 'failed',
+        problem: { kind: 'invalid_input' },
+      });
+      expect(seen.starts).toHaveLength(0);
+      settings.model = 'a';
+      expect(await ask(thread, 'two')).toMatchObject({
+        outcome: 'failed',
+        problem: { kind: 'invalid_input' },
+      });
+      expect(seen.starts).toHaveLength(0);
+      settings.effort = 'ultra';
+      expect(await ask(thread, 'three')).toMatchObject({ outcome: 'completed' });
+      expect(seen.starts).toHaveLength(1);
+      expect(seen.starts[0]!.config).toMatchObject({ model: 'a', effort: 'ultra' });
+    },
+  );
+
   it('starts the session again on the new model, and resumes the conversation there', async () => {
     const settings: AgentSettings = { model: 'a' };
     const { thread, seen } = setup({ a, b }, { settings });
@@ -1798,96 +1818,6 @@ describe('the model of the next turn (CHT-U06)', () => {
     // Resumed, so the agent remembers: no record of the conversation goes with the turn.
     expect(seen.sends.at(-1)!.context).not.toContain('<slidr_conversation>');
     expect(thread.store.getState().entries).toHaveLength(6);
-  });
-
-  it('tells the session that resumes what the conversation had cost, so its first turn has a cost', async () => {
-    const settings: AgentSettings = { model: 'a' };
-    const { thread, seen } = setup({ a, b }, { settings });
-    await ask(thread, 'one');
-    await ask(thread, 'two');
-    // A session that begins has cost nothing, and says so to nobody.
-    expect(seen.starts[0]!.config.resumedCostUsd).toBeUndefined();
-
-    // A harness reports a running total: the two turns so far are where the next one starts.
-    settings.model = 'b';
-    await ask(thread, 'three');
-    expect(seen.starts[1]!.config.resumedCostUsd).toBeCloseTo(0.02);
-
-    settings.model = 'a';
-    await ask(thread, 'four');
-    expect(seen.starts[2]!.config.resumedCostUsd).toBeCloseTo(0.03);
-  });
-
-  it('says nothing of the cost once a turn of the session had none', async () => {
-    const settings: AgentSettings = { model: 'a' };
-    const unknown = script([say('?'), done({ costUsd: null })]);
-    const { thread, seen } = setup({ a, b, unknown }, { settings });
-    await ask(thread, 'one');
-    settings.model = 'unknown';
-    await ask(thread, 'two');
-    expect(seen.starts[1]!.config.resumedCostUsd).toBeCloseTo(0.01);
-    // What that turn cost is not known, so neither is the total the next process goes on from.
-    settings.model = 'b';
-    await ask(thread, 'three');
-    expect(seen.starts[2]!.config).not.toHaveProperty('resumedCostUsd');
-  });
-
-  it('goes back to what a process started from when it dies, so the next turns have a cost', async () => {
-    // A process that is killed keeps nothing of what its turns added to the harness's running
-    // total, the whole turns too: the one that resumes counts on from where the dead one began.
-    const events = new Map<string, (event: AgentEvent) => void>();
-    const sessions: string[] = [];
-    const wrap = (client: AgentClient): AgentClient => ({
-      ...client,
-      start: async (harnessId, thread, config, onEvent) => {
-        const id = await client.start(harnessId, thread, config, onEvent);
-        events.set(id, onEvent);
-        sessions.push(id);
-        return id;
-      },
-    });
-    const long = script(
-      [say('A1.'), done()],
-      [say('A2'), { ...say('…'), delayMs: 60_000 }, done()],
-    );
-    const settings: AgentSettings = { model: 'b' };
-    const { thread, seen } = setup({ b, long }, { settings, speed: 1, wrap });
-    await ask(thread, 'one');
-    settings.model = 'long';
-    await ask(thread, 'two');
-    expect(seen.starts[1]!.config.resumedCostUsd).toBeCloseTo(0.01);
-
-    // The third turn is running when its process is killed: the harness layer closes the turn
-    // without a cost, and says that the session ended.
-    await thread.send('three');
-    await vi.waitFor(() => expect(thread.store.getState().activity?.kind).toBe('writing'));
-    const emit = events.get(sessions[1]!)!;
-    emit({
-      type: 'turn_completed',
-      outcome: 'failed',
-      usage: NO_USAGE,
-      costUsd: null,
-      durationMs: 9,
-    });
-    emit({ type: 'exited', code: 1 });
-    await settled(thread);
-    await vi.waitFor(() => expect(thread.sessionKey).toBeNull());
-    expect(thread.store.getState().entries.at(-1)).toMatchObject({
-      outcome: 'failed',
-      costUsd: null,
-    });
-
-    // The process that resumes is told what the dead one started from: not nothing (its first
-    // turn would have no cost, and so on for good), and not the dead one's own turn on top.
-    settings.model = 'b';
-    const next = await ask(thread, 'four');
-    expect(seen.starts[2]!.config.resume).toMatch(/^mock-/);
-    expect(seen.starts[2]!.config.resumedCostUsd).toBeCloseTo(0.01);
-    expect(next.costUsd).toBe(0.01);
-    // And from there the count goes on as before.
-    settings.model = 'long';
-    await ask(thread, 'five');
-    expect(seen.starts[3]!.config.resumedCostUsd).toBeCloseTo(0.02);
   });
 
   it('counts effort and web access as settings of a session too', async () => {
@@ -1949,6 +1879,42 @@ describe('the files of a message (CHT-U05)', () => {
     bytes: 3,
     origin: 'upload' as const,
   };
+
+  it.each(['codex-cli', 'copilot-cli'])(
+    'lets %s read a text attachment through its scoped app tool',
+    async (harnessId) => {
+      const read = vi.fn((_thread: string, _name: string, _offset: number) =>
+        Promise.resolve({ text: '# H', nextOffset: 3, size: 3 }),
+      );
+      const reading = script([
+        call('read', 'attachment_read', { name: 'brief.md', offset: 0 }),
+        say('Read the brief.'),
+        done(),
+      ]);
+      const { bus, thread, seen } = setup(
+        { reading },
+        {
+          settings: { harnessId, model: 'reading', qualityGate: false },
+          wrap: (client) => ({
+            ...client,
+            harnesses: async () => [{ ...(await client.harnesses())[0]!, id: harnessId }],
+            probe: () => client.probe('mock'),
+            start: (_id, key, config, onEvent) => client.start('mock', key, config, onEvent),
+            readAttachment: read,
+          }),
+        },
+      );
+      await thread.send('Read this', { attachments: [doc] });
+      await settled(thread);
+      const reply = thread.store.getState().entries.at(-1);
+      expect(reply?.type).toBe('assistant');
+      expect(seen.starts[0]?.config.systemPrompt).toContain('file-reading tool');
+      expect(read).toHaveBeenCalledWith(`${bus.deck.id}/deck`, 'brief.md', 0);
+      expect(tools(reply as AssistantEntry)).toMatchObject([
+        { name: 'attachment_read', state: 'ok' },
+      ]);
+    },
+  );
 
   function attaching(extra: { fail?: boolean } = {}) {
     const attached: { thread: string; name: string; bytes: number }[] = [];

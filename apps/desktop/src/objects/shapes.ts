@@ -6,6 +6,7 @@ import {
   type ShapeElement,
 } from '@slidr/model';
 import { extraShapes, presetPath, shapePresets } from '@slidr/renderer';
+import authored from '../../../../../Slidr-media/elements/catalogs/shapes.json?raw';
 
 /*
  * The shape library (SHP-01) and the lines of the Insert menu (SHP-05): what each one is called,
@@ -14,14 +15,6 @@ import { extraShapes, presetPath, shapePresets } from '@slidr/renderer';
  */
 
 export type ShapeGroup = 'basic' | 'polygons' | 'arrows' | 'callouts' | 'brackets';
-
-export const SHAPE_GROUPS: readonly ShapeGroup[] = [
-  'basic',
-  'polygons',
-  'arrows',
-  'callouts',
-  'brackets',
-];
 
 interface ShapeSpec {
   group: ShapeGroup;
@@ -32,61 +25,14 @@ interface ShapeSpec {
   glyph?: readonly [number, number];
 }
 
-/** The box of a regular polygon standing on a vertex, so it is inserted with equal sides. */
-function regularBox(sides: number, size = 360): { w: number; h: number } {
-  const xs: number[] = [];
-  const ys: number[] = [];
-  for (let i = 0; i < sides; i++) {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / sides;
-    xs.push(Math.cos(a));
-    ys.push(Math.sin(a));
-  }
-  const w = Math.max(...xs) - Math.min(...xs);
-  const h = Math.max(...ys) - Math.min(...ys);
-  const scale = size / Math.max(w, h);
-  return { w: Math.round(w * scale), h: Math.round(h * scale) };
-}
-
-const polygon = (sides: number): ShapeSpec => ({ group: 'polygons', ...regularBox(sides) });
-
 /** In library order. A preset the renderer adds later shows at the end of `basic` until listed. */
-const CATALOGUE: Record<string, ShapeSpec> = {
-  rect: { group: 'basic', w: 480, h: 320 },
-  roundRect: { group: 'basic', w: 480, h: 320 },
-  ellipse: { group: 'basic', w: 360, h: 360 },
-  triangle: { group: 'basic', w: 400, h: 346 },
-  rightTriangle: { group: 'basic', w: 400, h: 320 },
-  diamond: { group: 'basic', w: 360, h: 360 },
-  parallelogram: { group: 'basic', w: 480, h: 300 },
-  trapezoid: { group: 'basic', w: 480, h: 300 },
-  plus: { group: 'basic', w: 320, h: 320 },
-  donut: { group: 'basic', w: 360, h: 360 },
-  frame: { group: 'basic', w: 480, h: 360 },
-  heart: { group: 'basic', w: 360, h: 330 },
-  pentagon: polygon(5),
-  hexagon: polygon(6),
-  heptagon: polygon(7),
-  octagon: polygon(8),
-  decagon: polygon(10),
-  star4: polygon(4),
-  star5: polygon(5),
-  star6: polygon(6),
-  star8: polygon(8),
-  star12: polygon(12),
-  arrowRight: { group: 'arrows', w: 480, h: 240 },
-  arrowLeft: { group: 'arrows', w: 480, h: 240 },
-  arrowUp: { group: 'arrows', w: 240, h: 480 },
-  arrowDown: { group: 'arrows', w: 240, h: 480 },
-  arrowLeftRight: { group: 'arrows', w: 560, h: 240 },
-  chevron: { group: 'arrows', w: 400, h: 280 },
-  homePlate: { group: 'arrows', w: 480, h: 240 },
-  wedgeRectCallout: { group: 'callouts', w: 480, h: 280 },
-  wedgeRoundRectCallout: { group: 'callouts', w: 480, h: 280 },
-  leftBracket: { group: 'brackets', w: 80, h: 400, glyph: [7, 18] },
-  rightBracket: { group: 'brackets', w: 80, h: 400, glyph: [7, 18] },
-  leftBrace: { group: 'brackets', w: 100, h: 400, glyph: [9, 18] },
-  rightBrace: { group: 'brackets', w: 100, h: 400, glyph: [9, 18] },
+const library = JSON.parse(authored) as {
+  groups: ShapeGroup[];
+  shapes: Record<string, ShapeSpec>;
+  lines: Record<LineKind, string>;
 };
+export const SHAPE_GROUPS: readonly ShapeGroup[] = library.groups;
+const CATALOGUE = library.shapes;
 
 const UNLISTED: ShapeSpec = { group: 'basic', w: 360, h: 360 };
 
@@ -183,7 +129,7 @@ export function newShape(preset: string, slide: Size, taken: readonly Frame[] = 
 
 export type LineKind = 'line' | 'arrow' | 'doubleArrow' | 'elbow' | 'curved';
 
-export const LINE_KINDS: readonly LineKind[] = ['line', 'arrow', 'doubleArrow', 'elbow', 'curved'];
+export const LINE_KINDS: readonly LineKind[] = Object.keys(library.lines) as LineKind[];
 
 /**
  * A new line. It runs in the reading direction of the deck, so an arrow points forward: to the
@@ -212,10 +158,4 @@ export function newLine(
 }
 
 /** The lines of the Insert menu drawn small, in a 24 box, running left to right. */
-export const LINE_GLYPHS: Record<LineKind, string> = {
-  line: 'M4 12H20',
-  arrow: 'M4 12H20M14 6l6 6-6 6',
-  doubleArrow: 'M4 12H20M14 6l6 6-6 6M10 6l-6 6 6 6',
-  elbow: 'M4 6H12V18H20',
-  curved: 'M4 6C12 6 12 18 20 18',
-};
+export const LINE_GLYPHS: Record<LineKind, string> = library.lines;

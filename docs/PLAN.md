@@ -19,9 +19,10 @@ The committed baseline is `fdb2036` (2026-10-08). The table covers the commits f
 | Elements browser, graphics/emoji stickers, expanded motion presets | `fdb2036` | [ADR-075](adr/ADR-075-elements-and-presets.md). |
 | Import as an AI conversation | Working tree | [ADR-077](adr/ADR-077-import-conversation.md). The old import panel is removed in the working tree. |
 | Image-edge crop, active text-frame handles, compact creation/alignment controls | Working tree | [ADR-078](adr/ADR-078-stage-editing-refinements.md). |
-| Ten ready-made designs and richer shape/line tiles | Working tree | [ADR-079](adr/ADR-079-elements-designs.md). |
+| 250 ready-made designs in sixteen groups, and richer shape/line tiles | Working tree | [ADR-079](adr/ADR-079-elements-designs.md). |
 | Transition settings beside the chosen effect | Working tree | [ADR-080](adr/ADR-080-transition-settings.md). |
 | Centered document identity and Filmstrip select-all | Working tree | [ADR-081](adr/ADR-081-shell-navigation-polish.md). |
+| Mifgash template and a colour a placeholder gives its text | Working tree | [ADR-082](adr/ADR-082-mifgash-and-placeholder-colour.md). The working tree holds 18 built-in templates. |
 
 The merge commit `25d32f6` adds no separate feature to this list. Historical ADRs that described an unmerged branch now describe the decision and point to the current source state. No code or test changes are part of this documentation update.
 
@@ -53,7 +54,7 @@ The milestone names M0–M7 and workgroups WG0–WG13 in earlier plans are histo
 
 - Confirm the working-tree import route from File and Welcome: cancel without deck mutation, initial request, approval, report, source access, interruption/restart, conversation switching, and persisted panel-state migration. Check browser E2E and the real Tauri file dialog separately.
 - Confirm active text-frame and image-edge interactions with pointer and keyboard at several zoom levels, in nested/rotated groups, Hebrew and English decks, and after undo/redo. Check crop overlay and image `smartFrame` exceptions.
-- Confirm each of the ten ready-made designs inserts an editable slide after the current slide, with localized preview/copy and a single undo step. Check the new shape and line previews in both deck directions.
+- Confirm each of the 250 ready-made designs inserts an editable slide after the current slide, with localized preview/copy and a single undo step, and that the gallery's groups and search find them. Check the new shape and line previews in both deck directions.
 - Confirm transition settings appear under the selected row, remain reachable in a narrow/scrolling panel, and do not change saved transition data or playback. Check reduced-motion scrolling.
 - Confirm the centered title identity and window drag regions in both UI directions, and that Filmstrip Ctrl+A does not capture the shortcut from text or other controls.
 - Run focused TypeScript/unit and Playwright suites for the changed domains, then the repository's normal check gate. Run a packaged Windows build for generated media, native capture, import isolation, export, and installer contents before claiming release readiness.

@@ -1,11 +1,11 @@
 import { safeEasing, travel, type Dir, type Vec } from './direction';
 import type { transitionNames } from './names';
-import type { Transition, Warn } from './types';
+import type { FlowDirection, Transition, Warn } from './types';
 
 /**
  * The ready-made slide transitions (SPEC 5.6, WG8-T02), as Web Animations on the two slides.
- * `direction` is the way the slides travel; without one they travel towards `start`, which is how
- * a deck reads forwards: leftwards in LTR, rightwards in RTL.
+ * `direction` is the way the slides travel; without one they travel left on screen in both
+ * reading directions.
  */
 
 interface Motion {
@@ -141,6 +141,11 @@ const transitions: Record<Played, (v: Vec) => Motion> = {
 
 export { transitionTypes } from './names';
 
+/** Keep the default physical direction leftward while `start` and `end` follow the deck. */
+export function defaultTransitionDirection(dir: Dir): FlowDirection {
+  return dir === 'rtl' ? 'end' : 'start';
+}
+
 /** Whether `direction` changes a transition; a picker offers a direction only then. */
 export function transitionTurns(type: string): boolean {
   const make = (transitions as Record<string, ((v: Vec) => Motion) | undefined>)[type];
@@ -173,7 +178,9 @@ export function runTransition(
   const make = (transitions as Record<string, ((v: Vec) => Motion) | undefined>)[transition.type];
   // `morph` is not here yet (WG8-T08); it and any unknown name cross-fade.
   if (!make) warn?.(`Transition "${transition.type}" is not supported; fading instead`);
-  const motion = (make ?? fade)(travel(transition.direction ?? 'start', dir));
+  const motion = (make ?? fade)(
+    travel(transition.direction ?? defaultTransitionDirection(dir), dir),
+  );
   const timing: KeyframeAnimationOptions = {
     duration: transition.duration,
     easing: safeEasing(transition.easing),

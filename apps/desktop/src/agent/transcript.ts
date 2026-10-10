@@ -6,7 +6,7 @@
  */
 import type { LintFinding, SessionScope } from '@slidr/agent-tools';
 import { invoke } from '@tauri-apps/api/core';
-import type { AgentErrorKind, HarnessState, ToolSource, TurnOutcome, Usage } from './agent';
+import type { AgentErrorKind, HarnessState, ToolSource, TurnOutcome } from './agent';
 
 /** A piece of the agent's reply. */
 export interface TextPart {
@@ -100,10 +100,6 @@ export interface AssistantEntry {
   /** What the design check gave up on after its rounds (QG-05). */
   remaining?: GateReport;
   problem?: ChatProblem;
-  usage?: Usage;
-  /** Null when the harness could not attribute a cost to the turn. */
-  costUsd?: number | null;
-  durationMs?: number;
 }
 
 export type ChatEntry = UserEntry | AssistantEntry;
@@ -115,12 +111,6 @@ export interface ThreadRecord {
   harnessId?: string;
   /** What resumes the conversation on that harness (AGT-05: used for nothing else). */
   nativeSessionId?: string;
-  /**
-   * The harness's running total for the conversation, as the sum of its turns: the baseline of
-   * the next process that resumes it. A process that died is taken back out of it, since the
-   * harness kept nothing of that one. Absent once a turn's cost was unknown.
-   */
-  spentUsd?: number;
   updatedAt?: string;
   /** The start of the conversation's first message, for the list of conversations (CHT-U07). */
   title?: string;

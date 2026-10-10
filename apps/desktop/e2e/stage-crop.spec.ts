@@ -208,6 +208,32 @@ test.describe('on the Stage', () => {
     expect(await image(page, 'e_crop_plain')).toEqual(before);
   });
 
+  test('the dimmed picture outside the crop frame can be grabbed and dragged', async ({ page }) => {
+    await enterCrop(page, 'e_crop_plain');
+    const scale = await stageScale(page);
+    await drag(page, await center(page, handle('e')), { x: -150 * scale, y: 0 });
+    const before = await image(page, 'e_crop_plain');
+    const { steps } = await state(page);
+    const frame = await box(page, '[data-crop-frame]');
+    const picture = await box(page, PICTURE);
+    const from = {
+      x: frame.x + frame.width + (picture.x + picture.width - frame.x - frame.width) / 2,
+      y: frame.y + frame.height / 2,
+    };
+
+    await page.mouse.move(from.x, from.y);
+    await expect(surface(page)).toHaveCSS('cursor', 'move');
+    await drag(page, from, { x: -80 * scale, y: 0 });
+
+    const after = await image(page, 'e_crop_plain');
+    expect(after.frame).toEqual(before.frame);
+    expect(after.crop!.x).toBeGreaterThan(before.crop!.x);
+    expect((await state(page)).steps).toBe(steps + 1);
+    expect((await state(page)).editing).toBe('e_crop_plain');
+    await undo(page);
+    expect(await image(page, 'e_crop_plain')).toEqual(before);
+  });
+
   test('Esc during a crop drag rolls that drag back and stays in crop mode', async ({ page }) => {
     const before = await image(page, 'e_crop_plain');
     await enterCrop(page, 'e_crop_plain');
@@ -432,7 +458,8 @@ test.describe('the crop tools', () => {
     await expect(surface(page)).toHaveAttribute('data-cropping', 'e_picture');
     await expect(crop).toHaveAttribute('aria-pressed', 'true');
     await expect(rowB(page).getByRole('combobox', { name: 'Crop proportions' })).toBeVisible();
-    await expect(rowB(page).getByRole('slider', { name: 'Picture zoom' })).toBeVisible();
+    await expect(rowB(page).getByRole('slider', { name: 'Picture zoom' })).toHaveCount(0);
+    await expect(surface(page).locator('[data-picture-handle]')).toHaveCount(4);
     await expect(rowB(page).getByRole('button', { name: 'Reset crop' })).toBeDisabled();
     // The Stage has the focus, so Esc leaves at once.
     await expect(surface(page)).toBeFocused();
@@ -452,7 +479,7 @@ test.describe('the crop tools', () => {
 
     // Esc also leaves from a crop tool that has the focus.
     await crop.click();
-    await rowB(page).getByRole('slider', { name: 'Picture zoom' }).focus();
+    await rowB(page).getByRole('button', { name: 'Reset crop' }).focus();
     await page.keyboard.press('Escape');
     await expect(surface(page)).not.toHaveAttribute('data-cropping', /./);
   });
@@ -532,46 +559,53 @@ test.describe('the crop tools', () => {
     expect(await image(page, 'e_picture')).toEqual(free);
   });
 
-  test('the zoom slider scales the picture in its frame, a drag being one undo step', async ({
+  test('picture corner points scale the picture in its fixed frame, one undo step per drag', async ({
     page,
   }) => {
     await openApp(page, 'en');
     const before = await image(page, 'e_picture');
     await rowB(page).getByRole('button', { name: 'Crop', exact: true }).click();
     const { steps } = await state(page);
-    const slider = rowB(page).getByRole('slider', { name: 'Picture zoom' });
-    await expect(slider).toHaveAttribute('aria-valuenow', '1');
-
-    const thumb = (await slider.boundingBox())!;
-    const from = { x: thumb.x + thumb.width / 2, y: thumb.y + thumb.height / 2 };
-    await drag(page, from, { x: 40, y: 0 });
+    const scale = await stageScale(page);
+    const from = await center(page, '[data-picture-handle="se"]');
+    await drag(page, from, { x: 120 * scale, y: 80 * scale });
     let zoomed = await image(page, 'e_picture');
     expect(zoomed.frame).toEqual(before.frame);
-    expect(zoomed.crop!.w).toBeLessThan(0.8);
-    // Around the middle of the frame.
-    expect(zoomed.crop!.x + zoomed.crop!.w / 2).toBeCloseTo(0.5, 5);
+    expect(zoomed.crop!.w).toBeCloseTo(1 / 1.2, 3);
+    // The opposite corner stays in place as the picture grows.
+    expect(zoomed.crop!.x).toBeCloseTo(0, 5);
+    expect(zoomed.crop!.y).toBeCloseTo(0, 5);
     expect(zoomed.crop!.w / zoomed.crop!.h).toBeCloseTo(1, 5);
     expect((await state(page)).steps).toBe(steps + 1);
-    expect(Number(await slider.getAttribute('aria-valuenow'))).toBeCloseTo(1 / zoomed.crop!.w, 1);
 
-    // The whole drag is undone at once, and the slider goes back with the picture.
+    // The whole drag is undone at once.
     await undo(page);
     expect(await image(page, 'e_picture')).toEqual(before);
-    await expect(slider).toHaveAttribute('aria-valuenow', '1');
-    await drag(page, from, { x: 40, y: 0 });
+    await drag(page, from, { x: 120 * scale, y: 80 * scale });
     zoomed = await image(page, 'e_picture');
-    expect(zoomed.crop!.w).toBeLessThan(0.8);
+    expect(zoomed.crop!.w).toBeCloseTo(1 / 1.2, 3);
 
-    // The wheel on the Stage moves the slider too.
+    await drag(page, await center(page, '[data-picture-handle="se"]'), {
+      x: -120 * scale,
+      y: -80 * scale,
+    });
+    expect((await image(page, 'e_picture')).crop).toBeNull();
+
+    await drag(page, await center(page, '[data-picture-handle="se"]'), {
+      x: 120 * scale,
+      y: 80 * scale,
+    });
+    zoomed = await image(page, 'e_picture');
+
+    // The wheel still scales the picture under the pointer.
     const c = await center(page, el('e_picture'));
     await page.mouse.move(c.x, c.y);
     await page.mouse.wheel(0, -200);
     await expect
-      .poll(async () => Number(await slider.getAttribute('aria-valuenow')))
-      .toBeGreaterThan(1 / zoomed.crop!.w + 0.1);
+      .poll(async () => (await image(page, 'e_picture')).crop?.w ?? 1)
+      .toBeLessThan(zoomed.crop!.w);
 
-    await slider.focus();
-    await page.keyboard.press('Home');
+    await rowB(page).getByRole('button', { name: 'Reset crop' }).click();
     expect((await image(page, 'e_picture')).crop).toBeNull();
   });
 

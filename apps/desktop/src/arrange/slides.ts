@@ -21,7 +21,7 @@ function inDeckOrder(deck: Deck, slideIds: readonly string[]): string[] {
 }
 
 /**
- * Adds a slide after the current one and shows it: built from a layout when one is given
+ * Adds a slide at the end of the deck and shows it: built from a layout when one is given
  * (FLM-03), blank otherwise.
  */
 export function addSlide(
@@ -30,11 +30,10 @@ export function addSlide(
   options: { layoutId?: string; label?: string } = {},
 ): void {
   const { deck } = bus;
-  const index = deck.slides.findIndex((s) => s.id === selection.getState().currentSlideId) + 1;
   const command =
     options.layoutId !== undefined
-      ? slideFromLayout(deck, options.layoutId, { index })
-      : ({ type: 'slide.add', slide: createSlide(), index } as const);
+      ? slideFromLayout(deck, options.layoutId)
+      : ({ type: 'slide.add', slide: createSlide() } as const);
   bus.dispatch(command, { label: options.label });
   selection.getState().setCurrentSlide(command.slide.id);
 }

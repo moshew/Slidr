@@ -114,7 +114,7 @@ test('the slide menu acts on the multi-selection: duplicate, hide and show, dele
   expect(await slideIds(page)).toEqual(ids);
 });
 
-test('a right click outside the selection acts on that slide alone; "new slide" adds after it', async ({
+test('a right click outside the selection acts on that slide alone; "new slide" appends', async ({
   page,
 }) => {
   const ids = await fourSlides(page);
@@ -125,28 +125,34 @@ test('a right click outside the selection acts on that slide alone; "new slide" 
   await expectOneStep(page, () => add.click());
   const after = await slideIds(page);
   expect(after).toHaveLength(5);
-  expect(after[0]).toBe(ids[0]);
-  expect(after.slice(2)).toEqual(ids.slice(1));
-  expect(await currentSlide(page)).toBe(after[1]);
+  expect(after.slice(0, -1)).toEqual(ids);
+  expect(await currentSlide(page)).toBe(after.at(-1));
 });
 
-test('Ctrl+M adds a slide after the current one; Ctrl+D in the Filmstrip duplicates slides', async ({
-  page,
-}) => {
+test('the new-slide button appends even when a middle slide is selected', async ({ page }) => {
+  const ids = await fourSlides(page);
+  await thumb(page, ids[1]!).click();
+  await expectOneStep(page, () => page.getByTestId('new-slide').click());
+  const after = await slideIds(page);
+  expect(after.slice(0, -1)).toEqual(ids);
+  expect(await currentSlide(page)).toBe(after.at(-1));
+});
+
+test('Ctrl+M appends a slide; Ctrl+D in the Filmstrip duplicates slides', async ({ page }) => {
   const ids = await fourSlides(page);
   await thumb(page, ids[1]!).click();
   await expectOneStep(page, () => page.keyboard.press('Control+m'));
   let now = await slideIds(page);
   expect(now).toHaveLength(5);
-  expect(now.slice(0, 2)).toEqual(ids.slice(0, 2));
-  expect(await currentSlide(page)).toBe(now[2]);
+  expect(now.slice(0, -1)).toEqual(ids);
+  expect(await currentSlide(page)).toBe(now.at(-1));
 
   // The focus is in the Filmstrip: Ctrl+D is about slides.
   await thumb(page, ids[3]!).click();
   await expectOneStep(page, () => page.keyboard.press('Control+d'));
   const deck = await slides(page);
-  expect(deck.map((s) => s.name).slice(-2)).toEqual(['Slide 4', 'Slide 4']);
-  expect(await currentSlide(page)).toBe(deck.at(-1)!.id);
+  expect(deck.map((s) => s.name).slice(3, 5)).toEqual(['Slide 4', 'Slide 4']);
+  expect(await currentSlide(page)).toBe(deck[4]!.id);
 
   // On the Stage it is about the selected element, and the slides stay as they are.
   await thumb(page, ids[1]!).click();

@@ -8,8 +8,7 @@ import {
   type Element,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { tzukTemplate } from './builtin/tzuk';
-import { zeremTemplate } from './builtin/zerem';
+import { mifgashTemplate, tzukTemplate, zeremTemplate } from './builtin';
 import { changeLayout } from './changeLayout';
 import { deckFromTemplate } from './deck';
 
@@ -193,5 +192,56 @@ describe('moving a slide to another layout (SLD-02)', () => {
     expect(changeLayout(deck, 's_one', 'l_tzuk_cards')).toEqual([]);
     expect(changeLayout(deck, 's_one', 'l_nowhere')).toEqual([]);
     expect(changeLayout(deck, 's_gone', 'l_tzuk_quote')).toEqual([]);
+  });
+});
+
+describe('the colour of text on a card of the layout', () => {
+  const ink = { token: 'bg' };
+  /** A deck on the online-session template with one slide of its cards, every text filled in. */
+  function sessions(): Deck {
+    const deck = deckFromTemplate(mifgashTemplate(), { lang: 'he' });
+    const { slide } = slideFromLayout(deck, 'l_mifgash_cards');
+    for (const element of slide.elements) {
+      if (element.type === 'text') element.content = richText(`${element.role}`);
+    }
+    return { ...deck, slides: [{ ...slide, id: 's_one' }] };
+  }
+  const coloured = (deck: Deck) =>
+    deck.slides[0]!.elements.filter((e) => e.type === 'text' && e.color !== undefined);
+
+  it('is the card’s: a new slide has it, and it leaves and returns with the layout', () => {
+    const start = sessions();
+    // Three cards, each with a note, a heading and a body, in the blue of the ground.
+    expect(coloured(start)).toHaveLength(9);
+    for (const element of coloured(start)) expect(element).toMatchObject({ color: ink });
+
+    const bus = new CommandBus(start, { validate: true });
+    bus.batch(changeLayout(bus.deck, 's_one', 'l_mifgash_text'));
+    // The text layout draws no card: what stays where a card was is the slide's own text again.
+    expect(bus.deck.slides[0]!.elements).toHaveLength(start.slides[0]!.elements.length);
+    expect(coloured(bus.deck)).toEqual([]);
+
+    bus.batch(changeLayout(bus.deck, 's_one', 'l_mifgash_cards'));
+    // Back on the cards every text stands on its seat: nothing is added, and the slide is as it was.
+    expect(bus.deck).toEqual(start);
+  });
+
+  it('is taken by the text of a slide without a layout that is seated on a card', () => {
+    const slide = createSlide({
+      id: 's_one',
+      elements: [
+        createElement.text({
+          id: 'e_heading',
+          role: 'subtitle',
+          frame: { x: 100, y: 100, w: 900, h: 100 },
+          content: richText('כותרת של כרטיס'),
+        }),
+      ],
+    });
+    const bus = new CommandBus({ ...sessions(), slides: [slide] }, { validate: true });
+    bus.batch(changeLayout(bus.deck, 's_one', 'l_mifgash_cards'));
+    const seated = bus.deck.slides[0]!.elements[0]!;
+    expect(seated.frame).toEqual(seats(bus.deck, 'l_mifgash_cards', 'subtitle')[0]!.frame);
+    expect(seated).toMatchObject({ color: ink });
   });
 });

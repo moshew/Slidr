@@ -142,8 +142,6 @@ function pageDiagnostics(): DiagnosticsSource {
           data: {
             type: 'turn_completed',
             outcome: 'completed',
-            costUsd: 0.0412,
-            durationMs: 10722,
           },
         },
         {

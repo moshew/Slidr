@@ -10,7 +10,7 @@ import {
   type TextElement,
   type Theme,
 } from '@slidr/model';
-import { cellTextDefaults } from '@slidr/renderer';
+import { cellTextDefaults, colorCss } from '@slidr/renderer';
 import { Extension } from '@tiptap/core';
 import { Plugin, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
@@ -231,6 +231,8 @@ export function TextEditor({
   // weight. The renderer draws the cell with the same, so nothing changes when editing starts.
   const defaults =
     element.type === 'table' && cell ? cellTextDefaults(element, cell.row, cell.col) : undefined;
+  // A text box draws its text in a colour of its own where its layout gave it one.
+  const ink = element.type === 'text' && element.color ? colorCss(element.color) : defaults?.color;
 
   const editor = useEditor(
     {
@@ -240,7 +242,7 @@ export function TextEditor({
           getTheme: () => theme,
           styleRef: 'body',
           wrap: element.type === 'text' ? (element.wrap ?? true) : true,
-          color: defaults?.color,
+          color: ink,
           weight: defaults?.weight,
           alignTo: defaults?.alignTo,
         }),
@@ -258,6 +260,17 @@ export function TextEditor({
               'Mod-ArrowRight': () => wordMoveAtEdge(ed.view, 'right'),
               'Shift-Mod-ArrowLeft': () => wordMoveAtEdge(ed.view, 'left'),
               'Shift-Mod-ArrowRight': () => wordMoveAtEdge(ed.view, 'right'),
+              // All the text, from the start of its first line to the end of its last, as the
+              // menu selects it: what is typed over it keeps the first paragraph, with its
+              // direction and alignment, and the type the text was set in. The editor's own
+              // "select all" takes the paragraphs too, and what is typed then is bare.
+              'Mod-a': () => {
+                const { doc, tr } = ed.state;
+                ed.view.dispatch(
+                  tr.setSelection(TextSelection.create(doc, 1, doc.content.size - 1)),
+                );
+                return true;
+              },
               Escape: () => {
                 exitRef.current();
                 return true;
@@ -429,7 +442,7 @@ export function TextEditor({
         kept.current = { anchor, head, focused: true };
       },
     },
-    [theme, defaults?.color, defaults?.weight, defaults?.alignTo],
+    [theme, ink, defaults?.weight, defaults?.alignTo],
   );
 
   useEffect(() => {

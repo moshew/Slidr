@@ -1,10 +1,10 @@
 import type { Direction, TextElement, Theme } from '@slidr/model';
-import { paragraphStyle, runStyle } from '@slidr/renderer';
+import { colorCss, paragraphStyle, runStyle } from '@slidr/renderer';
 
 /**
  * What an empty placeholder says on the Stage (ADR-040): the words of its role, drawn as its
- * text would be drawn, in the text style, the alignment and the place of the placeholder, and
- * faint. It stands where the text will: the Stage hands it to the renderer as the box's content,
+ * text would be drawn, in the text style, the colour, the alignment and the place of the
+ * placeholder, and faint. It stands where the text will: the Stage hands it to the renderer as the box's content,
  * so it is on the Stage only, never in a thumbnail, a capture, the show or an exported file.
  */
 export function PlaceholderHint({
@@ -24,7 +24,11 @@ export function PlaceholderHint({
     align: 'start' as const,
     runs: [],
   };
-  const style = paragraphStyle(paragraph, theme, { styleRef: 'body', wrap: element.wrap ?? true });
+  const style = paragraphStyle(paragraph, theme, {
+    styleRef: 'body',
+    wrap: element.wrap ?? true,
+    ...(element.color ? { color: colorCss(element.color) } : {}),
+  });
   const font = theme.textStyles[paragraph.styleRef ?? 'body'].font;
   return (
     <p

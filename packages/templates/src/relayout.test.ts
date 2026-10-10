@@ -1,6 +1,13 @@
-import { createElement, richText, type Paragraph, type Placeholder } from '@slidr/model';
+import {
+  createElement,
+  createSlide,
+  richText,
+  type Layout,
+  type Paragraph,
+  type Placeholder,
+} from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { followPatch, sitsOn } from './relayout';
+import { arrivalsOf, followPatch, relayout, sitsOn } from './relayout';
 
 const frame = { x: 96, y: 80, w: 800, h: 100 };
 const seat = (align: NonNullable<Placeholder['align']>): Placeholder => ({
@@ -126,5 +133,69 @@ describe('what a paragraph takes from its new placeholder', () => {
     const centred = { ...latin, content: there.content as (typeof latin)['content'] };
     const back = followPatch(centred, { from: seat('center'), to: seat('start') }, 'rtl');
     expect(aligned(back)).toBe('end');
+  });
+});
+
+describe('the colour a placeholder gives its text', () => {
+  const ink = { token: 'bg' } as const;
+  const second = { x: 96, y: 300, w: 800, h: 100 };
+  const plain: Placeholder = { id: 'p_plain', role: 'body', frame };
+  const onCard: Placeholder = { id: 'p_card', role: 'body', frame, color: ink };
+  const layout = (id: string, placeholders: Placeholder[]): Layout => ({
+    id,
+    name: id,
+    archetype: 'cards',
+    placeholders,
+    decorations: [],
+  });
+
+  it('comes with the seat, and goes with it', () => {
+    const bare = text('שלום', 'start');
+    expect(followPatch(bare, { from: plain, to: onCard }, 'rtl')).toEqual({ color: ink });
+    const seated = { ...bare, color: ink };
+    expect(followPatch(seated, { from: onCard, to: plain }, 'rtl')).toEqual({ color: null });
+    expect(followPatch(seated, { from: onCard, to: onCard }, 'rtl')).toEqual({});
+  });
+
+  it('stays when the text did not take it from its seat', () => {
+    const own = { ...text('שלום', 'start'), color: { token: 'accent' } as const };
+    expect(followPatch(own, { from: onCard, to: plain }, 'rtl')).toEqual({});
+    expect(followPatch(own, { from: plain, to: onCard }, 'rtl')).toEqual({});
+  });
+
+  it('is taken off text the new layout has no seat for, and back on text that stands on a seat', () => {
+    const cards = layout('l_cards', [
+      onCard,
+      { id: 'p_card2', role: 'body', frame: second, color: ink },
+    ]);
+    const one = layout('l_text', [plain]);
+    const first = { ...text('א', 'start'), id: 'e_a' };
+    const other = { ...text('ב', 'start'), id: 'e_b', frame: second };
+    const update = (elementId: string, color: unknown) => ({
+      type: 'element.update',
+      slideId: 's',
+      elementId,
+      patch: { color },
+    });
+
+    // The layout with one seat takes the first text. The second stays where its card was, and
+    // the card is gone: its text is the slide's again.
+    const onCards = createSlide({
+      id: 's',
+      layoutId: 'l_cards',
+      elements: [
+        { ...first, color: ink },
+        { ...other, color: ink },
+      ],
+    });
+    expect(relayout(onCards, cards, one, 'rtl')).toEqual([
+      update('e_a', null),
+      update('e_b', null),
+    ]);
+
+    // Back on the cards the first follows its seat, and the second already stands on the other.
+    const onText = createSlide({ id: 's', layoutId: 'l_text', elements: [first, other] });
+    expect(relayout(onText, one, cards, 'rtl')).toEqual([update('e_a', ink), update('e_b', ink)]);
+    expect([...arrivalsOf(onText, one, cards)]).toEqual([['e_b', cards.placeholders[1]]]);
   });
 });

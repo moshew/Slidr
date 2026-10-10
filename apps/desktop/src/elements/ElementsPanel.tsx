@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Search } from '@slidr/ui/icons';
-import { IconButton, Input, Skeleton, Tooltip } from '@slidr/ui';
+import { Button, IconButton, Input, Skeleton, Tooltip } from '@slidr/ui';
 import { findIcons, type FoundIcon } from '../media/icons/library';
 import { IconsTab } from '../media/IconsTab';
 import { insertIcon } from '../media/insert';
-import { StockTab } from '../media/StockTab';
 import { tell, useEditor } from '../shell';
 import {
-  ChartsCollection,
-  ClipsCollection,
   EmojiCollection,
   GraphicsCollection,
   NothingFound,
@@ -20,20 +17,21 @@ import {
 } from './collections';
 import { loadFrames, searchFrames } from './frames';
 import { FrameGrid, FramesCollection } from './FramesCollection';
-import { useRecentStickers } from './recent';
+import { useRecentStickers, type RecentSticker } from './recent';
+import { CardSetsCollection } from './CardSetsCollection';
 import { DesignsCollection } from './DesignsCollection';
-import { StickerButton, StickerGrid } from './StickerGrid';
+import { StickerButton, StickerGrid, useColumns } from './StickerGrid';
 import { loadEmoji, loadGraphics, searchStickers } from './stickers';
 import { COLLECTIONS, CollectionTile, FrameThumbDefs, type CollectionId } from './tiles';
 
 /**
  * Elements: everything that can be put on a slide, by kind. The first screen offers the
- * collections (designs, shapes, graphics, emoji, icons, photos, frames, clips, tables, charts),
+ * collections (designs, card sets, shapes, graphics, emoji, icons, frames, tables),
  * what was used lately, and one search over the drawings of all of them; a collection opens in
  * its place.
  */
 export function ElementsPanel() {
-  const [collection, setCollection] = useState<CollectionId | null>(null);
+  const [collection, setCollection] = useState<CollectionId | 'recent' | null>(null);
   return (
     <div className="@container flex flex-col" data-testid="elements-panel">
       {collection ? (
@@ -50,7 +48,7 @@ export function ElementsPanel() {
 /** How long the search waits after the last key before it looks. */
 const PAUSE_MS = 150;
 
-function Home({ onOpen }: { onOpen: (id: CollectionId) => void }) {
+function Home({ onOpen }: { onOpen: (id: CollectionId | 'recent') => void }) {
   const { t } = useTranslation('elements');
   const [text, setText] = useState('');
   const [query, setQuery] = useState('');
@@ -73,12 +71,9 @@ function Home({ onOpen }: { onOpen: (id: CollectionId) => void }) {
         <Found query={query} />
       ) : (
         <>
-          <Recent />
+          <Recent onShowAll={() => onOpen('recent')} />
           <Section title={t('browse')}>
-            <div
-              className="grid grid-cols-3 gap-x-1 gap-y-2 @md:grid-cols-4"
-              data-testid="element-collections"
-            >
+            <div className="grid grid-cols-4 gap-x-1 gap-y-2" data-testid="element-collections">
               {COLLECTIONS.map((id) => (
                 <button
                   key={id}
@@ -100,21 +95,57 @@ function Home({ onOpen }: { onOpen: (id: CollectionId) => void }) {
 }
 
 /** The graphics and emoji used lately, the latest first. Nothing before the first one is used. */
-function Recent() {
-  const { t } = useTranslation('elements');
+function Recent({ onShowAll }: { onShowAll: () => void }) {
   const stickers = useRecentStickers((state) => state.stickers);
   if (stickers.length === 0) return null;
+  return <RecentPreview stickers={stickers} onShowAll={onShowAll} />;
+}
+
+function RecentPreview({
+  stickers,
+  onShowAll,
+}: {
+  stickers: readonly RecentSticker[];
+  onShowAll: () => void;
+}) {
+  const { t } = useTranslation('elements');
+  const grid = useRef<HTMLDivElement>(null);
+  const columns = useColumns(grid);
   return (
-    <Section title={t('recent')}>
-      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" data-testid="elements-recent">
-        {stickers.map((sticker) => (
-          <div key={sticker.id} className="w-18 shrink-0">
-            <StickerButton sticker={sticker} size="graphic" />
-          </div>
-        ))}
-      </div>
+    <Section
+      title={t('recent')}
+      action={
+        columns > 0 && stickers.length > 2 * columns ? (
+          <Button variant="ghost" size="sm" onClick={onShowAll}>
+            {t('showAll')}
+          </Button>
+        ) : undefined
+      }
+    >
+      <RecentGrid ref={grid} stickers={stickers.slice(0, 2 * columns)} />
     </Section>
   );
+}
+
+function RecentGrid({
+  ref,
+  stickers,
+}: {
+  ref?: Ref<HTMLDivElement>;
+  stickers: readonly RecentSticker[];
+}) {
+  return (
+    <div ref={ref} className="element-grid" data-size="graphic" data-testid="elements-recent">
+      {stickers.map((sticker) => (
+        <StickerButton key={sticker.id} sticker={sticker} size="graphic" />
+      ))}
+    </div>
+  );
+}
+
+function AllRecent() {
+  const stickers = useRecentStickers((state) => state.stickers);
+  return <RecentGrid stickers={stickers} />;
 }
 
 /** How many of each kind the search of the first screen shows. */
@@ -218,36 +249,32 @@ function FoundIcons({ icons }: { icons: readonly FoundIcon[] }) {
 
 /* ---------------------------------------------------------------- an open collection */
 
-/** What each collection shows. Photos are the media panel's stock tab, which has its own gutter. */
-const views: Record<Exclude<CollectionId, 'photos'>, () => ReactNode> = {
+/** What each collection shows. */
+const views: Record<CollectionId | 'recent', () => ReactNode> = {
+  recent: () => <AllRecent />,
   designs: () => <DesignsCollection />,
+  cards: () => <CardSetsCollection />,
   shapes: () => <ShapesCollection />,
   graphics: () => <GraphicsCollection />,
   emoji: () => <EmojiCollection />,
   icons: () => <IconsTab />,
   frames: () => <FramesCollection />,
-  clips: () => <ClipsCollection />,
   tables: () => <TablesCollection />,
-  charts: () => <ChartsCollection />,
 };
 
-function Collection({ id, onBack }: { id: CollectionId; onBack: () => void }) {
+function Collection({ id, onBack }: { id: CollectionId | 'recent'; onBack: () => void }) {
   const { t } = useTranslation('elements');
   return (
     <>
       <div className="sticky top-0 z-10 flex items-center gap-1 bg-ui-panel px-2 pt-2 pb-1">
         <IconButton icon={ArrowLeft} mirror label={t('back')} onClick={onBack} />
         <h3 className="min-w-0 flex-1 truncate text-md font-semibold text-ui-fg">
-          {t(`collection.${id}`)}
+          {id === 'recent' ? t('recent') : t(`collection.${id}`)}
         </h3>
       </div>
-      {id === 'photos' ? (
-        <StockTab />
-      ) : (
-        <div className="flex flex-col gap-4 px-4 pt-2 pb-6" data-collection-view={id}>
-          {views[id]()}
-        </div>
-      )}
+      <div className="flex flex-col gap-4 px-4 pt-2 pb-6" data-collection-view={id}>
+        {views[id]()}
+      </div>
     </>
   );
 }

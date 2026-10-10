@@ -4,7 +4,6 @@
  * the turns of the chat. Nothing in it is taken from the agent's own account.
  */
 import type { Deck, Element } from '@slidr/model';
-import type { ChatEntry } from '../agent/transcript';
 import type { ImportState, SlideRecord } from './session';
 
 export interface ReportRow extends SlideRecord {
@@ -32,11 +31,6 @@ export interface ImportReport {
   medianTextEditability: number | null;
   /** Slides that are one `html` element. */
   wholeHtml: number;
-  /** What the agent's turns took, as the harness reported them. */
-  durationMs: number;
-  /** As the harness reported it; null when it could not say for some turn. */
-  costUsd: number | null;
-  turns: number;
   blocked: string[];
 }
 
@@ -58,11 +52,7 @@ function holdsAny(elements: readonly Element[], ids: ReadonlySet<string>): boole
   );
 }
 
-export function buildReport(
-  state: ImportState,
-  deck: Deck,
-  entries: readonly ChatEntry[],
-): ImportReport {
+export function buildReport(state: ImportState, deck: Deck): ImportReport {
   const rows: ReportRow[] = [];
   deck.slides.forEach((slide, index) => {
     const record = state.records[slide.id];
@@ -77,15 +67,6 @@ export function buildReport(
     });
   });
   const measured = rows.filter((row) => !row.rebuilt);
-  let durationMs = 0;
-  let costUsd: number | null = 0;
-  let turns = 0;
-  for (const entry of entries) {
-    if (entry.type !== 'assistant' || entry.outcome === undefined) continue;
-    turns++;
-    durationMs += entry.durationMs ?? 0;
-    costUsd = costUsd === null || entry.costUsd == null ? null : costUsd + entry.costUsd;
-  }
   return {
     rows,
     measured: measured.length,
@@ -94,9 +75,6 @@ export function buildReport(
     medianEditability: median(measured.map((row) => row.editability)),
     medianTextEditability: median(measured.map((row) => row.textEditability)),
     wholeHtml: measured.filter((row) => row.wholeSlideHtml).length,
-    durationMs,
-    costUsd: turns === 0 ? null : costUsd,
-    turns,
     blocked: state.blocked,
   };
 }

@@ -7,7 +7,7 @@
 // been captured, while the capture is still going, and then the import is continued as the
 // panel's button continues it. `app` kills the app itself and ends there: start the app again and
 // run `--continue`, which recovers the workspace the crash left and continues the import in it.
-// The deck that is open is replaced. Costs usage on the signed-in account.
+// The deck that is open is replaced.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -59,8 +59,6 @@ const read = () =>
         .map((e) => ({
           outcome: e.outcome ?? null,
           problem: e.problem ?? null,
-          costUsd: e.costUsd ?? null,
-          durationMs: e.durationMs ?? null,
           tools: e.parts.filter((p) => p.type === 'tool').map((p) => `${p.name}:${p.state}`),
           text: e.parts
             .filter((p) => p.type === 'text')
@@ -83,9 +81,6 @@ const read = () =>
         medianEditability: report.medianEditability,
         medianTextEditability: report.medianTextEditability,
         wholeHtml: report.wholeHtml,
-        durationMs: report.durationMs,
-        costUsd: report.costUsd,
-        turns: report.turns,
       },
     };
   });
@@ -239,7 +234,6 @@ console.log(
         slides: end.slides.map((s) => s.name),
         report: end.report,
         outcomes: end.turns.map((t) => t.outcome),
-        costs: end.turns.map((t) => t.costUsd),
         phase: end.phase,
         banner: end.banner,
       },

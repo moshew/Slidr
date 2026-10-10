@@ -144,11 +144,11 @@ describe('an outline that waits for an answer', () => {
             call: true,
           },
           { type: 'text_delta', text: 'This is the outline I propose.' },
-          { type: 'turn_completed', outcome: 'completed', usage: {}, costUsd: 0, durationMs: 1 },
+          { type: 'turn_completed', outcome: 'completed' },
         ],
         [
           { type: 'text_delta', text: 'Building.' },
-          { type: 'turn_completed', outcome: 'completed', usage: {}, costUsd: 0, durationMs: 1 },
+          { type: 'turn_completed', outcome: 'completed' },
         ],
       ],
     };
@@ -189,9 +189,6 @@ describe('an outline that waits for an answer', () => {
               emit({
                 type: 'turn_completed',
                 outcome: 'failed',
-                usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-                costUsd: null,
-                durationMs: 0,
               });
               emit({ type: 'exited', code: 1 });
             });

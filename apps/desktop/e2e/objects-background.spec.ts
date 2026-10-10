@@ -83,15 +83,30 @@ test.beforeEach(async ({ page }) => {
   await expect(row(page)).toHaveAttribute('data-selection', 'none');
 });
 
-test('the real tool replaces the placeholder, beside the layout tool', async ({ page }) => {
+test('slide tools are icon-only beside the insertion tools', async ({ page }) => {
   const button = row(page).getByRole('button', { name: 'רקע', exact: true });
   await expect(button).toBeEnabled();
-  // The layout is a real tool too (src/templates), and so is the transition (src/animations).
-  await expect(row(page).getByRole('button', { name: 'פריסה' })).toBeEnabled();
-  await expect(row(page).getByRole('button', { name: 'מעבר' })).toBeEnabled();
-  // Background first, as SPEC 4.4 lists the row.
-  const names = await row(page).getByRole('button').allInnerTexts();
-  expect(names.slice(0, 3)).toEqual(['רקע', 'פריסה', 'מעבר']);
+  const layout = row(page).getByRole('button', { name: 'פריסה', exact: true });
+  await expect(layout).toBeEnabled();
+  await expect(row(page).getByRole('button', { name: 'מעבר', exact: true })).toHaveCount(0);
+  await expect(button).toHaveText('');
+  await expect(layout).toHaveText('');
+  expect(
+    await row(page)
+      .locator('[data-row-tools] button')
+      .evaluateAll((buttons) =>
+        buttons
+          .slice(0, 2)
+          .map((button) => [
+            button.getAttribute('aria-label'),
+            button.querySelector('svg')?.getBoundingClientRect().width,
+          ]),
+      ),
+  ).toEqual([
+    ['רקע', 18],
+    ['פריסה', 18],
+  ]);
+  await expect(row(page).locator('.border-s')).toHaveCount(0);
 });
 
 test('a variant of the theme, and back to the theme background', async ({ page }) => {

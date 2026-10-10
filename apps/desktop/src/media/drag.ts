@@ -1,7 +1,11 @@
-import type { Point } from '@slidr/model';
+import { findSlide, type ImageElement, type Point } from '@slidr/model';
 import { i18n } from '../i18n';
+import { isPicture } from '../objects/insert';
+import { replaceWith } from '../objects/replace';
+import { targetOf } from '../objects/target';
 import { focusStage, type Editor } from '../shell';
 import { insertAssetsCommands } from '../stage/insert';
+import { indexElements } from '../stage/space';
 
 /*
  * Dragging a picture from the media panel onto the slide (WG5-T13): the tile carries the id of
@@ -42,6 +46,25 @@ export function startAssetDrag(event: DragEvent | React.DragEvent, assetId: stri
 const overStage = (target: EventTarget | null) =>
   target instanceof Element && target.closest(STAGE) !== null;
 
+/** The empty picture under a drop, including one nested in an editable group. */
+export function emptyImageAt(
+  target: EventTarget | null,
+  editor: Pick<Editor, 'bus'>,
+  slideId: string,
+): ImageElement | undefined {
+  if (!(target instanceof Element)) return undefined;
+  const placeholder = target.closest('[data-slidr-placeholder="image"]');
+  const id = placeholder?.closest('[data-element-id]')?.getAttribute('data-element-id');
+  const slide = findSlide(editor.bus.deck, slideId);
+  const located = id && slide ? indexElements(slide.elements).get(id) : undefined;
+  return located?.element.type === 'image' &&
+    !located.element.assetId &&
+    !located.locked &&
+    !located.hidden
+    ? located.element
+    : undefined;
+}
+
 /**
  * Lets the Stage take a dragged asset. Returns a function that stops listening.
  */
@@ -62,6 +85,13 @@ export function installAssetDrop(editor: Editor): () => void {
     const slideId = selection.getState().currentSlideId;
     const slide = document.querySelector(SLIDE);
     if (!asset || !slideId || !slide) return;
+    const empty = isPicture(asset) ? emptyImageAt(event.target, editor, slideId) : undefined;
+    if (empty) {
+      replaceWith(editor, targetOf(bus, slideId, empty), asset, i18n.t('media:history.replace'));
+      selection.getState().selectElements([empty.id]);
+      focusStage();
+      return;
+    }
     const { size } = bus.deck;
     const at = slidePoint(event, slide.getBoundingClientRect(), size);
     const { commands, elementIds } = insertAssetsCommands(slideId, [asset], size, at, () => true);

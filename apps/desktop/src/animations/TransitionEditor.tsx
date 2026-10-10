@@ -1,6 +1,11 @@
 import type { Deck, Slide, Transition } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
-import { runTransition, transitionTurns, transitionTypes } from '@slidr/runtime';
+import {
+  defaultTransitionDirection,
+  runTransition,
+  transitionTurns,
+  transitionTypes,
+} from '@slidr/runtime';
 import {
   Button,
   cx,
@@ -412,7 +417,7 @@ export function TransitionEditor() {
           <SettingRow icon={Move} chip={CHIP.direction} label={t('field.direction')}>
             <DirectionField
               label={t('field.direction')}
-              value={transition.direction ?? 'start'}
+              value={transition.direction ?? defaultTransitionDirection(deck.meta.dir)}
               deckDir={deck.meta.dir}
               onChange={(direction) => change({ ...transition, direction }, { replay: true })}
             />

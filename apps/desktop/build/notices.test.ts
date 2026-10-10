@@ -31,12 +31,12 @@ describe('the third-party notices (WG13-T05)', () => {
   });
 
   it('takes the notice a data file of the app carries beside it', () => {
-    const catalog = new URL('../src/elements/emoji-catalog.json', import.meta.url);
+    const catalog = new URL('../../../../Slidr-media/elements/catalogs/emoji-catalog.json', import.meta.url);
     const [unicode, ...others] = dataNotices([
       fileURLToPath(catalog),
       `${fileURLToPath(catalog)}?import`,
       // A data file with nothing beside it is the app's own.
-      fileURLToPath(new URL('../src/elements/graphics-catalog.json', import.meta.url)),
+      fileURLToPath(new URL('../../../../Slidr-media/elements/catalogs/graphics-catalog.json', import.meta.url)),
     ]);
     expect(others).toEqual([]);
     expect(unicode).toMatchObject({ license: 'Unicode-3.0' });

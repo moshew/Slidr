@@ -95,6 +95,15 @@ impl Default for CodexCli {
 }
 
 impl CodexCli {
+    /// The native executable is shared with the agent harness. On Windows the PATH entry is
+    /// usually an npm .cmd shim; launching that would leave the real CLI running after cancel.
+    pub(crate) fn executable() -> std::result::Result<PathBuf, String> {
+        Self::new()
+            .program()
+            .map(|program| program.path)
+            .map_err(|error| error.message)
+    }
+
     /// The provider for the `codex` on the PATH.
     pub fn new() -> Self {
         Self {
@@ -115,8 +124,7 @@ impl CodexCli {
                 "The Codex CLI has no build for this platform.".into(),
             ));
         };
-        let path = std::env::var_os("PATH").unwrap_or_default();
-        match locate(std::env::split_paths(&path), &target) {
+        match locate(crate::harness::setup::search_paths().into_iter(), &target) {
             Located::Program(path) => Ok(Program {
                 path,
                 prefix: Vec::new(),

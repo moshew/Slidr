@@ -10,8 +10,8 @@
 //!
 //! The pages reach it through a protocol of its own, `media` (`http://media.localhost/<path>`
 //! in WebView2), and never by a path: where the folder is, is known here alone. A build of the
-//! interface writes the folder and the addresses its code asks for (`build/media.ts`); the
-//! bundle's resources put it beside the executable.
+//! source content lives in a sibling `Slidr-media` directory. The bundle's resources copy
+//! its active folders beside the executable; `build/media.ts` supplies their protocol addresses.
 //!
 //! The protocol only reads: a `GET` of a file inside the folder answers with the file, and
 //! anything else with an error.

@@ -80,7 +80,7 @@ test('a drawn slide follows a template it is switched to, and the check finds it
   expect(box!.effects).toEqual({ radius: 0 });
   expect(await undoSteps(page)).toBe(1);
 
-  await page.locator('[data-panel="lint"]').click();
+  await page.getByTestId('status-lint').click();
   await checked(page);
   expect(await ofColour(page)).toEqual([]);
 

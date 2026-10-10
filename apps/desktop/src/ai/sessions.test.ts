@@ -20,9 +20,6 @@ const talk: Script = {
       {
         type: 'turn_completed',
         outcome: 'completed',
-        usage: {},
-        costUsd: 0,
-        durationMs: 10,
         delayMs: 10,
       },
     ],
@@ -41,7 +38,7 @@ const rename: Script = {
         input: { slideId: 's_1', name: 'Renamed' },
         call: true,
       },
-      { type: 'turn_completed', outcome: 'completed', usage: {}, costUsd: 0, durationMs: 10 },
+      { type: 'turn_completed', outcome: 'completed' },
     ],
   ],
 };

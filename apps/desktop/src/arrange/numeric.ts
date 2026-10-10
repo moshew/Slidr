@@ -1,5 +1,5 @@
 import { normalizeAngle, type Command, type Element, type Frame, type Slide } from '@slidr/model';
-import { refitPatches, resizeGroup, type Patch } from '../stage/groups';
+import { refitPatches, resizeOne, type Patch } from '../stage/groups';
 import { indexElements } from '../stage/space';
 
 /*
@@ -75,10 +75,7 @@ export function placementCommands(
     const frame = frameWith(element.frame, field, value, keepAspect);
     if (JSON.stringify(frame) === JSON.stringify(element.frame)) return [];
     const resized = frame.w !== element.frame.w || frame.h !== element.frame.h;
-    patches =
-      element.type === 'group' && resized
-        ? resizeGroup(element, frame)
-        : new Map([[element.id, { frame }]]);
+    patches = resized ? resizeOne(element, { frame }) : new Map([[element.id, { frame }]]);
   }
   return Array.from(refitPatches(located.path, patches), ([id, patch]) => ({
     type: 'element.update' as const,

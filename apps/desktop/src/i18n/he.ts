@@ -5,6 +5,7 @@
 export const he = {
   app: {
     name: 'Slidr',
+    tagline: 'כאן הרעיונות שלכם מקבלים במה',
     untitled: 'מצגת ללא שם',
   },
   window: {

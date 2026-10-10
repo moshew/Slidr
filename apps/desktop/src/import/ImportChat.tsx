@@ -36,11 +36,6 @@ const reason = (error: unknown) => (error instanceof Error ? error.message : Str
 
 const percent = (share: number) => Math.round(share * 100);
 
-function duration(ms: number): string {
-  const seconds = Math.round(ms / 1000);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
 /* ---------------------------------------------------------------- the report */
 
 /**
@@ -187,12 +182,6 @@ function Report({ report, onOpen }: { report: ImportReport; onOpen: (slideId: st
           value={
             report.medianTextEditability === null ? '' : `${percent(report.medianTextEditability)}%`
           }
-        />
-        <Figure label={t('report.time')} value={duration(report.durationMs)} />
-        <Figure
-          label={t('report.cost')}
-          value={report.costUsd === null ? t('report.unknown') : `$${report.costUsd.toFixed(2)}`}
-          words={report.costUsd === null}
         />
       </div>
       <ul className="flex flex-col">
@@ -386,7 +375,7 @@ export function ImportChat({ file }: { file: string }) {
   // The conversation the chat shows, with its turns followed whichever one that is.
   const thread = followImport(useThread(scope));
   const chat = useStore(thread.store);
-  const report = useMemo(() => buildReport(state, deck, chat.entries), [state, deck, chat.entries]);
+  const report = useMemo(() => buildReport(state, deck), [state, deck]);
   const captured = report.rows.length;
   // Against the size of the agent's plan, once it has said it (IMP-11).
   const count =

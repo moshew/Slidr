@@ -4,9 +4,9 @@
 // `deck` reads the report of a run that measured that deck alone (VITE_REFERENCE_DECK).
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { root } from './decks.mjs';
+import { projectRoot } from './decks.mjs';
 
-const results = join(root, '..', '..', 'apps', 'desktop', 'test-results', 'templates');
+const results = join(projectRoot, 'apps', 'desktop', 'test-results', 'templates');
 const args = process.argv.slice(2);
 const brief = args.includes('brief');
 const summary = args.includes('summary');

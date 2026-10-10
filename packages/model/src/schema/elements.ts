@@ -63,6 +63,12 @@ export const TextElement = z.strictObject({
   ...base,
   type: z.literal('text'),
   content: RichText,
+  /**
+   * The colour of the text where a run sets none, in place of its text style's. A layout gives
+   * it to the text of a placeholder that stands on a field of the layout's own, a card for
+   * one, where the colour the style has on the slide's ground would not read (SPEC 5.5).
+   */
+  color: Color.optional(),
   autoFit: z.enum(['none', 'shrink', 'growHeight']),
   vAlign: z.enum(['top', 'middle', 'bottom']),
   padding: Insets.optional(),
@@ -96,11 +102,20 @@ const ImageMask = z.discriminatedUnion('kind', [
   }),
 ]);
 
-/** Artwork stays above the photograph, in its original coordinate system. */
+/**
+ * Artwork around a photograph, drawn above it in a box of `viewBox`; the photograph shows
+ * through `opening`. Artwork that says its `scale` keeps its size: in a picture that is larger
+ * than the artwork, or of other proportions, the margins around the opening are as wide as
+ * they were and the opening takes up the difference (`frameLayout`). The cut of the photograph
+ * (`mask`) is then part of the artwork: its round corners are in the artwork's units. Artwork
+ * that says no scale is a picture of one size, stretched with the element.
+ */
 export const SmartImageFrame = z
   .strictObject({
     viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
     opening: Frame,
+    /** Slide pixels to a unit of the artwork: the size the artwork is drawn at, and keeps. */
+    scale: z.number().positive().optional(),
     background: Fill.optional(),
     decorations: z.array(
       z.lazy(() => z.union([ShapeElement, SvgElement, TextElement, LineElement])),
@@ -198,6 +213,31 @@ export const LineElement = z.strictObject({
 });
 export type LineElement = z.infer<typeof LineElement>;
 
+/** Parts of a text background that may lengthen; everything between them keeps its scale. */
+const StretchBands = z
+  .array(z.tuple([z.number().nonnegative(), z.number().positive()]))
+  .min(1)
+  .max(4);
+export const SvgStretch = z
+  .strictObject({
+    viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
+    scale: z.number().positive(),
+    x: StretchBands,
+    y: StretchBands,
+  })
+  .refine(
+    (value) =>
+      (['x', 'y'] as const).every((axis) => {
+        const size = value.viewBox[axis === 'x' ? 'w' : 'h'];
+        return value[axis].every(
+          ([start, end], i, bands) =>
+            start < end && end <= size && (i === 0 || start > bands[i - 1]![1]),
+        );
+      }),
+    { message: 'stretch bands must be ordered, separate, and inside the drawing' },
+  );
+export type SvgStretch = z.infer<typeof SvgStretch>;
+
 export const SvgElement = z
   .strictObject({
     ...base,
@@ -206,9 +246,14 @@ export const SvgElement = z
     markup: z.string().min(1).optional(),
     /** Source colour -> replacement, so icons and illustrations can follow the theme. */
     colorOverrides: z.record(z.string().min(1), Color).optional(),
+    /** A resizable text background: its flexible bands grow while corners and ornaments stay. */
+    stretch: SvgStretch.optional(),
   })
   .refine((e) => Boolean(e.assetId) !== Boolean(e.markup), {
     message: 'an svg element has either assetId or markup',
+  })
+  .refine((e) => !e.stretch || Boolean(e.markup), {
+    message: 'a stretchable svg carries its drawing as markup',
   });
 export type SvgElement = z.infer<typeof SvgElement>;
 

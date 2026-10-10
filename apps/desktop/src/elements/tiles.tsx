@@ -9,15 +9,13 @@ import { cx } from '@slidr/ui';
 
 export const COLLECTIONS = [
   'designs',
+  'cards',
   'shapes',
   'graphics',
   'emoji',
   'icons',
-  'photos',
   'frames',
-  'clips',
   'tables',
-  'charts',
 ] as const;
 
 export type CollectionId = (typeof COLLECTIONS)[number];
@@ -40,6 +38,14 @@ const LINE_ICONS = [
   'M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z',
 ];
 
+/** Four small cards, each with the dot of its own colour: where it stands, and its colour. */
+const SMALL_CARDS: readonly (readonly [x: number, y: number, tone: string])[] = [
+  [27, 30, '#ff5a47'],
+  [53, 30, '#ffd93b'],
+  [27, 53, '#57c4ff'],
+  [53, 53, '#5fe3a1'],
+];
+
 const TILES: Record<CollectionId, TileArt> = {
   designs: {
     front: ['#84ccf5', '#3367db'],
@@ -51,6 +57,27 @@ const TILES: Record<CollectionId, TileArt> = {
         <circle cx="57" cy="44" r="6" fill="#fbbf24" />
         <path d="m31 65 14-17 8 9 5-5 15 13Z" fill="#1f7777" />
         <path d="M35 74h31" stroke={WHITE} strokeWidth="3" strokeLinecap="round" />
+      </>
+    ),
+  },
+  cards: {
+    front: ['#f0abfc', '#c026d3'],
+    back: ['#fde68a', '#f59e0b'],
+    art: () => (
+      <>
+        {SMALL_CARDS.map(([x, y, tone]) => (
+          <g key={tone}>
+            <rect x={x} y={y} width="22" height="19" rx="4" fill={WHITE} />
+            <circle cx={x + 6} cy={y + 6.5} r="3" fill={tone} />
+            <path
+              d={`M${x + 12} ${y + 6.5}h6M${x + 4} ${y + 13}h14`}
+              stroke="#86198f"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity=".5"
+            />
+          </g>
+        ))}
       </>
     ),
   },
@@ -130,26 +157,6 @@ const TILES: Record<CollectionId, TileArt> = {
       </g>
     ),
   },
-  photos: {
-    front: ['#93c5fd', '#2563eb'],
-    back: ['#fde047', '#f59e0b'],
-    art: (id) => (
-      <>
-        <defs>
-          <clipPath id={`${id}-photo`}>
-            <rect x="30.5" y="32.5" width="41" height="35" rx="3.5" />
-          </clipPath>
-        </defs>
-        <rect x="27" y="29" width="48" height="42" rx="6.5" fill={WHITE} />
-        <g clipPath={`url(#${id}-photo)`}>
-          <rect x="30" y="32" width="42" height="36" fill="#bae6fd" />
-          <circle cx="62" cy="42" r="5" fill="#fde047" />
-          <path d="m26 70 16-21 11 14 6-7 15 16H26Z" fill="#22c55e" />
-          <path d="m42 49 11 14-5 7H26l16-21Z" fill="#16a34a" />
-        </g>
-      </>
-    ),
-  },
   frames: {
     front: ['#bef264', '#65a30d'],
     back: ['#c4b5fd', '#7c3aed'],
@@ -178,24 +185,6 @@ const TILES: Record<CollectionId, TileArt> = {
       </>
     ),
   },
-  clips: {
-    front: ['#f0abfc', '#c026d3'],
-    back: ['#a5b4fc', '#6366f1'],
-    art: () => (
-      <>
-        <circle cx="47" cy="54" r="16" fill={WHITE} />
-        <path
-          d="M43 46.800v14.400a1.2 1.2 0 0 0 1.8 1l12.3-7.200a1.2 1.2 0 0 0 0-2L44.8 45.800a1.2 1.2 0 0 0-1.8 1Z"
-          fill="#c026d3"
-        />
-        <g fill="#fde047">
-          <path d="M65 42.500V29.600a1.5 1.5 0 0 1 1.1-1.400l8-2.300a1.5 1.5 0 0 1 1.9 1.400v11.900h-3v-8.200l-5 1.400v10.100Z" />
-          <circle cx="64.5" cy="42.5" r="3.5" />
-          <circle cx="72.5" cy="39.3" r="3.5" />
-        </g>
-      </>
-    ),
-  },
   tables: {
     front: ['#fda4af', '#e11d48'],
     back: ['#fcd34d', '#f59e0b'],
@@ -215,28 +204,6 @@ const TILES: Record<CollectionId, TileArt> = {
             strokeWidth="1.6"
           />
         </g>
-      </>
-    ),
-  },
-  charts: {
-    front: ['#a5b4fc', '#4f46e5'],
-    back: ['#6ee7b7', '#10b981'],
-    art: () => (
-      <>
-        <g fill={WHITE}>
-          <rect x="29" y="56" width="10" height="16" rx="3" opacity=".7" />
-          <rect x="43" y="48" width="10" height="24" rx="3" opacity=".85" />
-          <rect x="57" y="38" width="10" height="34" rx="3" />
-        </g>
-        <path
-          d="m28 46 12-9 11 5 19-13"
-          fill="none"
-          stroke="#fde047"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle cx="70" cy="29" r="4" fill="#fde047" stroke={WHITE} strokeWidth="1.5" />
       </>
     ),
   },
@@ -288,12 +255,24 @@ export function CollectionTile({ id, className }: { id: CollectionId; className?
 
 /** What the thumbnails of the photo frames share, by id. */
 export const FRAME_PHOTO = 'elements-frame-photo';
-export const FRAME_SHADOW = 'elements-frame-shadow';
+
+/**
+ * The landscape of `FrameThumbDefs` as a picture of its own: the photograph in the thumbnail of
+ * a frame that the renderer draws, which takes a picture by its address.
+ */
+export const FRAME_PHOTO_URL = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" preserveAspectRatio="xMidYMid slice">' +
+    '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="#7dd3fc"/><stop offset="1" stop-color="#e0f2fe"/></linearGradient></defs>' +
+    '<rect width="120" height="120" fill="url(#sky)"/><circle cx="84" cy="36" r="12" fill="#fde047"/>' +
+    '<path d="M0 120V78l30-30 34 38 14-12 42 34v12Z" fill="#86efac"/>' +
+    '<path d="M0 120v-18l44-30 40 26 36-14v36Z" fill="#22c55e"/></svg>',
+)}`;
 
 /**
  * What the thumbnails of the photo frames draw with, once for all of them: a landscape that
- * stands in for the photograph a frame waits for, and the shadow under a card. In their own
- * colours, as the pictures above are.
+ * stands in for the photograph a frame waits for. In its own colours, as the pictures above
+ * are.
  */
 export function FrameThumbDefs() {
   return (
@@ -309,9 +288,6 @@ export function FrameThumbDefs() {
           <path d="M0 120V78l30-30 34 38 14-12 42 34v12Z" fill="#86efac" />
           <path d="M0 120v-18l44-30 40 26 36-14v36Z" fill="#22c55e" />
         </symbol>
-        <filter id={FRAME_SHADOW} x="-20%" y="-20%" width="140%" height="150%">
-          <feDropShadow dx="0" dy="6" stdDeviation="9" floodColor="#000000" floodOpacity=".28" />
-        </filter>
       </defs>
     </svg>
   );

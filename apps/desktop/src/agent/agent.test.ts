@@ -17,7 +17,6 @@ import {
   type SessionConfig,
   type ToolSource,
   type TurnOutcome,
-  type Usage,
   type UserTurn,
 } from './agent';
 import { tauriAgent, tauriAgentFor } from './tauriAgent';
@@ -45,16 +44,10 @@ const EVENT_FIELDS: { [T in AgentEvent['type']]: (keyof Extract<AgentEvent, { ty
   thinking_delta: ['type', 'text'],
   tool_call_started: ['type', 'id', 'name', 'source', 'input'],
   tool_call_finished: ['type', 'id', 'ok', 'summary'],
-  turn_completed: ['type', 'outcome', 'usage', 'costUsd', 'durationMs'],
+  turn_completed: ['type', 'outcome'],
   error: ['type', 'kind', 'message', 'recoverable'],
   exited: ['type', 'code'],
 };
-const USAGE_FIELDS: (keyof Usage)[] = [
-  'inputTokens',
-  'outputTokens',
-  'cacheReadTokens',
-  'cacheWriteTokens',
-];
 const SOURCES: ToolSource[] = ['app', 'harness'];
 const OUTCOMES: TurnOutcome[] = ['completed', 'interrupted', 'failed'];
 const STATES: HarnessState[] = ['ready', 'not_installed', 'not_logged_in', 'unavailable'];
@@ -72,9 +65,6 @@ function expectEvent(event: Record<string, unknown>, exact: boolean) {
   if (type === 'error') expect(AGENT_ERROR_KINDS).toContain(event.kind);
   if (type === 'turn_completed') {
     expect(OUTCOMES).toContain(event.outcome);
-    const usage = Object.keys(event.usage ?? {});
-    if (exact) expect(sorted(usage)).toEqual(sorted(USAGE_FIELDS));
-    else expect(USAGE_FIELDS).toEqual(expect.arrayContaining(usage));
   }
 }
 
@@ -224,12 +214,14 @@ describe('tauriAgent', () => {
     invoke.mockResolvedValue(undefined);
     await tauriAgent.harnesses();
     await tauriAgent.probe('mock');
+    await tauriAgent.readAttachment?.('deck/main', 'brief.md', 32);
     await tauriAgent.send('s', { text: 'hello' });
     await tauriAgent.interrupt('s');
     await tauriAgent.close('s');
     expect(invoke.mock.calls).toEqual([
       ['agent_harnesses', undefined],
       ['agent_probe', { harnessId: 'mock' }],
+      ['agent_read_attachment', { thread: 'deck/main', name: 'brief.md', offset: 32 }],
       ['agent_send', { sessionId: 's', turn: { text: 'hello' } }],
       ['agent_interrupt', { sessionId: 's' }],
       ['agent_close', { sessionId: 's' }],

@@ -33,7 +33,11 @@ export interface Target<T extends Element = Element> {
 }
 
 /** An element of a slide as a target. `element.update` finds it by its id, also inside a group. */
-function targetOf<T extends Element>(bus: CommandBus, slideId: string, element: T): Target<T> {
+export function targetOf<T extends Element>(
+  bus: CommandBus,
+  slideId: string,
+  element: T,
+): Target<T> {
   return {
     slideId,
     element,
@@ -64,6 +68,22 @@ export function useTarget(): Target | undefined {
     () => selected && targetOf(bus, selected.slide.id, selected.element),
     [bus, selected],
   );
+}
+
+/**
+ * An element that the selected one stands for, as a target: `pick` finds it in the selected
+ * element, which may be that element itself (the picture of a group that a frame made, or a
+ * picture that is selected as it is). `pick` is a function of the module, not made on a render.
+ */
+export function useTargetIn<T extends Element>(
+  pick: (selected: Element) => T | undefined,
+): Target<T> | undefined {
+  const { bus } = useEditor();
+  const selected = useSelected();
+  return useMemo(() => {
+    const element = selected && pick(selected.element);
+    return selected && element ? targetOf(bus, selected.slide.id, element) : undefined;
+  }, [bus, selected, pick]);
 }
 
 /**

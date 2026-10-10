@@ -8,9 +8,9 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
-import { deckFiles, readDeck, root } from './decks.mjs';
+import { deckFiles, readDeck, projectRoot, root } from './decks.mjs';
 
-const out = join(root, '..', '..', 'apps', 'desktop', 'test-results', 'templates', 'reference');
+const out = join(projectRoot, 'apps', 'desktop', 'test-results', 'templates', 'reference');
 mkdirSync(out, { recursive: true });
 const args = process.argv.slice(2);
 const index = args[0] === 'index';

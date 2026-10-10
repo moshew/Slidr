@@ -44,6 +44,8 @@ export interface FormatContext {
   dir: Direction;
   /** The text style of a paragraph without `styleRef` (the renderer's rule: `body`). */
   styleRef?: TextStyleRef;
+  /** The colour of the text box, which its text has where a run sets none (`TextElement.color`). */
+  color?: Color;
 }
 
 /** From this weight up, text counts as bold. */
@@ -314,7 +316,7 @@ export function readFormat(sample: TextSample, ctx: FormatContext): TextFormat {
     italic: spans.every((span) => span.marks?.italic === true),
     underline: spans.every((span) => span.marks?.underline === true),
     strike: spans.every((span) => span.marks?.strike === true),
-    color: common(spans.map((span) => span.marks?.color ?? style(span).color)),
+    color: common(spans.map((span) => span.marks?.color ?? ctx.color ?? style(span).color)),
     highlight: common(spans.map((span) => span.marks?.highlight ?? null)),
     script: common(spans.map((span) => span.marks?.script ?? null)),
     case: common(spans.map((span) => span.marks?.case ?? style(span).case ?? null)),
@@ -354,16 +356,21 @@ const STYLE_FIELDS = ['size', 'weight', 'color', 'letterSpacing', 'case'] as con
  * the change that takes from the text the marks and the line height that then only repeat the
  * style. A value the text has more than one of is left out, and the style keeps its own. The
  * font is not taken: a style names a role of the theme (`heading` or `body`), not a family.
- * Null when the style already matches.
+ * Neither is the colour of the text box (`boxColor`): it is the box's, given by its layout for
+ * the field the box stands on, and says nothing about the style. Null when the style already
+ * matches.
  */
 export function matchStyle(
   format: TextFormat,
   style: TextStyle,
+  boxColor?: Color,
 ): { style: TextStyle; marks: MarksChange; paragraphs: ParagraphChange } | null {
   const next: TextStyle = { ...style };
   if (!isMixed(format.size)) next.size = format.size;
   if (!isMixed(format.weight)) next.weight = format.weight;
-  if (!isMixed(format.color)) next.color = format.color;
+  if (!isMixed(format.color) && !(boxColor && sameValue(format.color, boxColor))) {
+    next.color = format.color;
+  }
   if (!isMixed(format.lineHeight)) next.lineHeight = format.lineHeight;
   // No spacing and no case are the absence of the field, in a style as in the marks.
   if (!isMixed(format.letterSpacing)) {

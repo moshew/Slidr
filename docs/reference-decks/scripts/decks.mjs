@@ -3,10 +3,11 @@
 // inside a <div class="frame"> that belongs to the page, not to the slide.
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+export const root = fileURLToPath(new URL('../../../../Slidr-media/templates/reference-decks/', import.meta.url));
+export const projectRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 /** The deck files, in the order the index shows them. */
 export function deckFiles() {
@@ -75,9 +76,10 @@ export function writeAssetIds(file) {
   const path = join(root, file);
   const html = readFileSync(path, 'utf8');
   const next = html.replace(/<[a-z]+\b[^>]*\bdata-asset="[^"]*"[^>]*>/g, (tag) => {
-    const picture = /images\/([\w-]+\.webp)/.exec(tag)?.[1];
+    const picture = /images\/(?:templates\/)?([\w-]+\.webp)/.exec(tag)?.[1];
     if (!picture) throw new Error(`${file}: an element with data-asset names no picture`);
-    const id = createHash('sha256').update(readFileSync(join(root, 'images', picture))).digest('hex');
+    const images = fileURLToPath(new URL('../../../../Slidr-media/images/templates/', import.meta.url));
+    const id = createHash('sha256').update(readFileSync(join(images, picture))).digest('hex');
     return tag.replace(/data-asset="[^"]*"/, `data-asset="${id}"`);
   });
   if (next !== html) writeFileSync(path, next);

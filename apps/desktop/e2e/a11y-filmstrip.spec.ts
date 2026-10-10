@@ -13,8 +13,8 @@ import {
  * The Filmstrip for the keyboard and for a screen reader (WG13-T06, UI-06, FLM-04): a list with a
  * name that holds slides and nothing else, says which slide the keyboard is on and how many there
  * are, shows that it has the keyboard, opens its menu about the current slide, selects slides
- * that are not next to each other without the pointer, and marks a slide's animations beside the
- * number and its transition between it and the slide before, where a press opens it.
+ * that are not next to each other without the pointer, and marks a slide's animations below the
+ * thumbnail and its transition between it and the slide before, where a press opens it.
  */
 
 const strip = (page: Page) => page.locator('[data-filmstrip]');
@@ -68,6 +68,104 @@ for (const lang of ['he', 'en'] as const) {
   });
 }
 
+for (const lang of ['he', 'en'] as const) {
+  test(`slide numbers sit inside smaller thumbnails with background contrast, ${lang}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang });
+    const [light, dark, gradient, darkImage, lightImage] = await slides(page, 5);
+    await page.evaluate(
+      async ([lightId, darkId, gradientId, darkImageId, lightImageId]) => {
+        const { bus, assets } = window.slidr!;
+        const image = async (shade: string) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 160;
+          canvas.height = 90;
+          const context = canvas.getContext('2d')!;
+          context.fillStyle = shade;
+          context.fillRect(0, 0, 160, 90);
+          const blob = await new Promise<Blob>((resolve) =>
+            canvas.toBlob((result) => resolve(result!), 'image/png'),
+          );
+          return assets.import(new File([blob], `${shade.slice(1)}.png`, { type: 'image/png' }));
+        };
+        const darkAsset = await image('#111827');
+        const lightAsset = await image('#ffffff');
+        bus.batch([
+          { type: 'asset.add', asset: darkAsset },
+          { type: 'asset.add', asset: lightAsset },
+          {
+            type: 'slide.update',
+            slideId: lightId,
+            patch: { background: { fill: { kind: 'solid', color: { value: '#ffffff' } } } },
+          },
+          {
+            type: 'slide.update',
+            slideId: darkId,
+            patch: { background: { fill: { kind: 'solid', color: { value: '#111827' } } } },
+          },
+          {
+            type: 'slide.update',
+            slideId: gradientId,
+            patch: {
+              background: {
+                fill: {
+                  kind: 'linear',
+                  angle: 180,
+                  stops: [
+                    { at: 0, color: { value: '#ffffff' } },
+                    { at: 1, color: { value: '#111827' } },
+                  ],
+                },
+              },
+            },
+          },
+          {
+            type: 'slide.update',
+            slideId: darkImageId,
+            patch: { background: { fill: { kind: 'image', assetId: darkAsset.id, fit: 'cover' } } },
+          },
+          {
+            type: 'slide.update',
+            slideId: lightImageId,
+            patch: {
+              background: { fill: { kind: 'image', assetId: lightAsset.id, fit: 'cover' } },
+            },
+          },
+        ]);
+      },
+      [light!, dark!, gradient!, darkImage!, lightImage!] as [
+        string,
+        string,
+        string,
+        string,
+        string,
+      ],
+    );
+
+    for (const [id, ink] of [
+      [light!, 'rgb(0, 0, 0)'],
+      [dark!, 'rgb(255, 255, 255)'],
+      [gradient!, 'rgb(255, 255, 255)'],
+      [darkImage!, 'rgb(255, 255, 255)'],
+      [lightImage!, 'rgb(0, 0, 0)'],
+    ] as const) {
+      const option = thumb(page, id);
+      const image = (await option.locator('.slidr-slide').boundingBox())!;
+      const number = option.getByTestId('slide-number');
+      const box = (await number.boundingBox())!;
+      expect(image.width).toBe(160);
+      expect(image.height).toBe(90);
+      expect(box.y).toBeGreaterThan(image.y);
+      expect(box.y + box.height).toBeLessThan(image.y + image.height);
+      if (lang === 'he') expect(box.x).toBeLessThan(image.x + image.width / 2);
+      else expect(box.x).toBeGreaterThan(image.x + image.width / 2);
+      await expect(number).toHaveCSS('color', ink);
+    }
+    expect((await page.getByTestId('filmstrip').boundingBox())!.height).toBe(124);
+  });
+}
+
 test('the strip shows that it has the keyboard, and not after a press of the pointer', async ({
   page,
 }) => {
@@ -85,9 +183,27 @@ test('the strip shows that it has the keyboard, and not after a press of the poi
   await page.mouse.click(box.x + box.width / 2, box.y + 40);
   await expect(list(page)).toBeFocused();
   expect(await outline()).toBe('none');
-  // Once the keys take over, the ring is back.
+  // Nor by the keys that follow the press: a ring around the strip read as the strip selected.
   await page.keyboard.press('ArrowRight');
+  expect(await currentSlide(page)).toBe('s_3');
+  expect(await outline()).toBe('none');
+  // The window going away and coming back is no arrival by the keyboard either.
+  await list(page).evaluate((node) => {
+    node.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    node.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+  });
+  expect(await outline()).toBe('none');
+  // The ring is back when the keyboard is what brings the focus: away by Tab, and back.
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('new-slide')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(list(page)).toBeFocused();
   expect(await outline()).toBe('solid');
+  // And a press between two slides, beside their numbers, selects nothing and takes it off again.
+  await page.mouse.click(box.x + box.width + 8, box.y + box.height - 6);
+  await expect(list(page)).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  expect(await outline()).toBe('none');
 });
 
 test('the menu opened from the keyboard is about the current slide, and opens beside it', async ({
@@ -196,7 +312,7 @@ const transitionMark = (page: Page, slideId: string) =>
   strip(page).locator(`[data-testid="slide-transition"][data-into="${slideId}"]`);
 
 for (const lang of ['he', 'en'] as const) {
-  test(`a transition is marked between its two slides, and animations beside the number, ${lang}`, async ({
+  test(`a transition is marked between its two slides, and animations below the thumbnail, ${lang}`, async ({
     page,
   }) => {
     await openApp(page, { lang });
@@ -266,8 +382,8 @@ for (const lang of ['he', 'en'] as const) {
     expect(middle).toBeLessThan(right.x);
     expect(at.y).toBeGreaterThan(picture.y);
     expect(at.y + at.height).toBeLessThan(picture.y + picture.height);
-    // The animations stay beside the number and not over the picture. By the middle of the mark:
-    // the row of the number begins a pixel inside the picture's box, to stay clear of the
+    // The animations stay below the picture. By the middle of the mark:
+    // the row begins a pixel inside the picture's box, to stay clear of the
     // strip's scrollbar.
     const moving = (await animations.boundingBox())!;
     expect(moving.y + moving.height / 2).toBeGreaterThan(picture.y + picture.height);

@@ -581,7 +581,7 @@ test('the actions of the selection for every kind it has actions for', async ({ 
   conclude(survey, 'actions', 5);
 });
 
-test('the design check with findings, and after a fix', async ({ page }) => {
+test('the design check with findings', async ({ page }) => {
   test.setTimeout(3 * 60_000);
   await open(page);
   // A slide with what the check finds: text out of its box, an object off the slide.
@@ -589,21 +589,15 @@ test('the design check with findings, and after a fix', async ({ page }) => {
     frame: { x: 1700, y: 900, w: 400, h: 60 },
   });
   await addBoxes(page, [{ id: 'e_off', x: 1800, y: -80, w: 300, h: 200 }]);
-  await openPanel(page, 'lint');
+  await page.getByTestId('status-lint').click();
   const panel = page.getByTestId('design-check');
   await expect(panel).toBeVisible();
   const finding = panel.locator('[data-finding]').first();
   await expect(finding).toBeVisible();
   const survey = new Survey(page, IN_ALL);
-  await survey.audit('the design check, with findings', { within: PANEL });
-  // A finding opened: what to do about it, and the details under it.
-  await finding.getByRole('button').first().click();
-  await expect(finding).toHaveAttribute('data-open', 'true');
-  await finding.locator('summary').click();
-  await survey.audit('the design check, a finding opened to its details', { within: PANEL });
-  await survey.popups(PANEL, 'the design check');
+  await survey.audit('the design check, with findings', { within: '[data-testid="design-check"]' });
   await survey.audit('the status bar with findings', { within: '[data-pane="status"]' });
-  conclude(survey, 'design-check', 3);
+  conclude(survey, 'design-check', 2);
 });
 
 test('the tools of an image at work: a crop, and an upscale that is running', async ({ page }) => {

@@ -130,9 +130,6 @@ describe('the score of a request', () => {
     { type: 'user', id: 'm_0', at: '2026-10-03T18:00:00.000Z', text: 'בנה מצגת' },
     assistant({
       outcome: 'completed',
-      costUsd: 0.4,
-      durationMs: 60_000,
-      usage: { inputTokens: 10, outputTokens: 2000, cacheReadTokens: 5000, cacheWriteTokens: 300 },
       parts: [
         { type: 'gate', round: 1, unseen: ['s_3'], findings: [finding('s_2', 'L16', 'warning')] },
         { type: 'gate', round: 2, unseen: [], findings: [finding('s_2', 'L16', 'warning')] },
@@ -220,19 +217,7 @@ describe('the score of a request', () => {
     expect(score.toolErrors).toEqual([{ name: 'text_set', code: 'not_found', message: 'gone' }]);
   });
 
-  it('adds up the time, the cost and the tokens of the turns', () => {
-    expect(score).toMatchObject({ turns: 1, durationMs: 60_000, costUsd: 0.4 });
-    expect(score.usage.outputTokens).toBe(2000);
-  });
-
-  it('has no cost when the harness could not attribute one to a turn', () => {
-    const unknown = scoreRequest({
-      before,
-      deck,
-      entries: [assistant({ costUsd: null })],
-      tools: [],
-      findings: [],
-    });
-    expect(unknown.costUsd).toBeNull();
+  it('counts the assistant turns', () => {
+    expect(score.turns).toBe(1);
   });
 });

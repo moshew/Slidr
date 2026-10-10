@@ -75,9 +75,6 @@ test('imports a file: plan, approval, slides, report, and the chat goes on', asy
   await expect(report.getByTestId('import-row')).toHaveCount(6);
   await expect(report).toContainText('6 מתוך 6');
   await expect(report.getByTestId('import-row').nth(4)).toContainText('תקציב ההקמה');
-  // The agent's time and the usage come from the turns, as the harness reported them.
-  await expect(report).toContainText('0:31');
-  await expect(report).toContainText('$0.06');
   // A row takes the Stage to its slide.
   await report.getByTestId('import-row').nth(2).getByRole('button').first().click();
   const third = await page.evaluate(() => window.slidr!.bus.deck.slides[2]!.id);
@@ -189,9 +186,9 @@ test('the chat takes the room of the panel: the composer at its foot, the messag
   const approveButton = page.getByTestId('import-approve').getByRole('button');
   await approveButton.scrollIntoViewIfNeeded();
   await expect(approveButton).toBeInViewport();
-  const usage = turns(page).first().getByTestId('turn-usage');
-  await usage.scrollIntoViewIfNeeded();
-  await expect(usage).toBeInViewport();
+  const endOfTurn = turns(page).first().locator(':scope > :last-child');
+  await endOfTurn.scrollIntoViewIfNeeded();
+  await expect(endOfTurn).toBeInViewport();
 });
 
 test('the capture turn is one undo step, and comes back on redo', async ({ page }) => {

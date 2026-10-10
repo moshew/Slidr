@@ -183,7 +183,8 @@ test('crop mode works on the opening: no handles, no proportions, and the pictur
   // The opening is the drawn frame's: nothing here changes it.
   await expect(surface(page).locator('[data-crop-handle]')).toHaveCount(0);
   await expect(rowB(page).getByRole('combobox', { name: 'Crop proportions' })).toHaveCount(0);
-  await expect(rowB(page).getByRole('slider', { name: 'Picture zoom' })).toBeVisible();
+  await expect(surface(page).locator('[data-picture-handle]')).toHaveCount(4);
+  await expect(rowB(page).getByRole('slider', { name: 'Picture zoom' })).toHaveCount(0);
   await expect(rowB(page).getByRole('button', { name: 'Reset crop' })).toBeDisabled();
 
   // A press on the card around the opening leaves crop mode, as a press beside any image does.
@@ -241,6 +242,24 @@ test('a drag, the wheel and the arrows move and scale the picture under the open
   const back = await box(page, PHOTO);
   expect(Math.abs(back.x - photo.x)).toBeLessThan(0.5);
   expect(Math.abs(back.width - photo.width)).toBeLessThan(0.5);
+});
+
+test('a picture corner scales the photograph while the drawn frame stays fixed', async ({
+  page,
+}) => {
+  await openApp(page);
+  await enterCrop(page);
+  const before = await image(page);
+  const scale = await stageScale(page);
+  const from = await center(page, '[data-picture-handle="se"]');
+
+  await drag(page, from, { x: 80 * scale, y: 60 * scale });
+
+  const after = await image(page);
+  expect(after.frame).toEqual(CARD);
+  expect(after.crop!.w).toBeLessThan(before.crop?.w ?? 1);
+  await expectSameBox(page, CROP_FRAME, HOLE);
+  await expectSameBox(page, PICTURE, PHOTO);
 });
 
 test('in a turned and mirrored card the opening and the picture are where the slide draws them', async ({

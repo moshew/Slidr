@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 /*
- * Writes `src/elements/emoji-catalog.json`: every emoji the art set draws, in Unicode's own
+ * Writes `Slidr-media/elements/catalogs/emoji-catalog.json`: every emoji the art set draws, in Unicode's own
  * order and groups, with its name and keywords in English and in Hebrew.
  *
  * The art is Twemoji's, from the installed package. The order comes from Unicode's
@@ -105,11 +105,11 @@ for (const line of test.split('\n')) {
 const count = groups.reduce((sum, { emoji }) => sum + emoji.length, 0);
 if (count < 1500) throw new Error(`Only ${count} emoji were matched to the art set`);
 writeFileSync(
-  new URL('../src/elements/emoji-catalog.json', import.meta.url),
+  new URL('../../../../Slidr-media/elements/catalogs/emoji-catalog.json', import.meta.url),
   `${JSON.stringify(groups, null, 2)}\n`,
 );
 writeFileSync(
-  new URL('../src/elements/emoji-catalog.notice.json', import.meta.url),
+  new URL('../../../../Slidr-media/elements/catalogs/emoji-catalog.notice.json', import.meta.url),
   `${JSON.stringify(
     {
       name: 'Unicode emoji data and CLDR annotations',

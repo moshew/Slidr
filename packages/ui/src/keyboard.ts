@@ -6,9 +6,11 @@ import { useSyncExternalStore } from 'react';
  *
  *   - The ring of a surface that draws its own focus. The Stage and the Filmstrip take the focus
  *     by script when they are pressed, and a browser's own rule for showing a ring
- *     (`:focus-visible`) has nothing to go by then. The ring shows while the surface has the
- *     focus and the keyboard is what the user is working with, which is from the first key
- *     pressed until the next press of the pointer.
+ *     (`:focus-visible`) has nothing to go by then. Each asks here when the focus comes to it,
+ *     and shows its ring when the keyboard is what brought it: the keyboard is in use from the
+ *     first key pressed until the next press of the pointer. After a press on the surface what
+ *     is selected there says where the keyboard is, and the keys that follow add no ring: around
+ *     a whole surface it read as the surface being selected.
  *   - Who gets the keyboard back when a layer closes. A dialog knows the button it was opened
  *     from only when that button is its own trigger; most dialogs of the app are opened by a
  *     function, from a key or from an item of a menu.

@@ -45,7 +45,7 @@ for (const lang of ['he', 'en'] as const) {
           await creation(page)
             .locator('[data-tool] svg')
             .evaluateAll((nodes) =>
-              nodes.every((node) => node.getBoundingClientRect().width === 16),
+              nodes.every((node) => node.getBoundingClientRect().width === 18),
             ),
         ).toBe(true);
         expect(

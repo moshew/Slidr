@@ -6,7 +6,7 @@ import {
   type Point,
 } from '@slidr/model';
 import type { Handle } from './geometry';
-import { tidyFrame } from './space';
+import { apply, elementMatrix, invert, tidyFrame, type Located } from './space';
 
 /**
  * Crop mode (WG5-T02, IMG-03, IMG-04, IMG-12), as pure functions.
@@ -141,6 +141,13 @@ export function positionToOwn(view: CropView, p: Point): Point {
     x: view.flipH ? view.frame.w - p.x : p.x,
     y: view.flipV ? view.frame.h - p.y : p.y,
   };
+}
+
+/** Whether a slide point is on the whole picture, including the dimmed part outside its frame. */
+export function onCropPicture(located: Located, view: CropView, point: Point): boolean {
+  const own = apply(invert(elementMatrix(located, true)), point);
+  const { x, y, w, h } = view.picture;
+  return own.x >= x && own.x <= x + w && own.y >= y && own.y <= y + h;
 }
 
 /**
@@ -358,6 +365,23 @@ export function cropZoom(view: CropView, fit: Fit, level: number, pivot?: Point)
       h: picture.h * k,
     }),
   };
+}
+
+/** Scale the whole picture from a corner while the opposite corner stays in place when possible. */
+export function cropScalePicture(view: CropView, fit: Fit, corner: Point, delta: Point): CropView {
+  const d = toOwn(view, delta);
+  const { picture } = view;
+  const diagonal = { x: corner.x * picture.w, y: corner.y * picture.h };
+  const factor =
+    1 + (d.x * diagonal.x + d.y * diagonal.y) / (picture.w * picture.w + picture.h * picture.h);
+  const opposite = {
+    x: picture.x + (corner.x > 0 ? 0 : picture.w),
+    y: picture.y + (corner.y > 0 ? 0 : picture.h),
+  };
+  const level = cropZoomLevel(view, fit) * factor;
+  // The model rounds crops to six decimals between drags. Snap a returned corner to the
+  // smallest size so an outward drag followed by the same inward drag restores the whole image.
+  return cropZoom(view, fit, level <= 1.0001 ? 1 : level, opposite);
 }
 
 /**

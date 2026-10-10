@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { createDeck, createElement, createSlide, richText, type Deck } from '@slidr/model';
 
 /*
- * Shared by the suites of the design check (WG7-T07, T08): the app with the panel open over a
+ * Shared by the suites of the design check (WG7-T07, T08): the app with the status popover over a
  * deck whose findings are known, and the deck as the model has it. The agent is the scripted
  * mock of a plain browser page, as in the suites of the AI tools.
  */
@@ -106,7 +106,7 @@ export function flawedDeck(): Deck {
   });
 }
 
-/** Opens the app on a deck, with the Design check panel open and its first check done. */
+/** Opens the app on a deck, with the Design check popover open and its first check done. */
 export async function openCheck(page: Page, options: OpenOptions = {}): Promise<void> {
   const { lang = 'he', theme = 'light', deck = flawedDeck() } = options;
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
@@ -122,7 +122,7 @@ export async function openCheck(page: Page, options: OpenOptions = {}): Promise<
   await page.goto('/');
   await expect(page.getByTestId('stage-frame')).toBeVisible();
   await page.evaluate((d) => window.slidr!.bus.reset(d as never), deck);
-  await page.locator('[data-panel="lint"]').click();
+  await page.getByTestId('status-lint').click();
   await expect(panel(page)).toBeVisible();
   await checked(page);
 }
@@ -137,19 +137,16 @@ export async function checked(page: Page): Promise<void> {
   );
 }
 
-/** The findings of a slide, as the panel lists them. */
+/** The actionable findings of a slide, as the popover lists them. */
 export const group = (page: Page, slideId: string): Locator =>
-  panel(page).locator(`section[data-slide="${slideId}"]`);
+  panel(page).locator(`li[data-slide="${slideId}"]`);
 
-/** The rules of the findings the panel shows, slide by slide: `slide rule`. */
+/** The actionable findings the popover shows, in deck order: `slide rule`. */
 export const shown = (page: Page): Promise<string[]> =>
   panel(page)
     .locator('li[data-finding]')
     .evaluateAll((rows) =>
-      rows.map(
-        (row) =>
-          `${row.closest('section')?.getAttribute('data-slide')} ${row.getAttribute('data-finding')}`,
-      ),
+      rows.map((row) => `${row.getAttribute('data-slide')} ${row.getAttribute('data-finding')}`),
     );
 
 export const deck = (page: Page): Promise<Deck> => page.evaluate(() => window.slidr!.bus.deck);

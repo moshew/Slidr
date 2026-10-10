@@ -4,10 +4,7 @@ import { usePanels, type PanelDefinition } from './registry';
 import { togglePanel, useShell } from './store';
 
 /** Short visible captions; tooltips and accessible names retain the full panel titles. */
-const captions: Record<string, string> = {
-  notes: 'navigation.notes',
-  lint: 'navigation.lint',
-};
+const captions: Record<string, string> = { notes: 'navigation.notes' };
 
 /**
  * The Activity Bar (SPEC 4.2) at the outer edge of the AI area: the AI tools, the other

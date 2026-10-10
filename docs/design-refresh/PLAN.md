@@ -22,7 +22,7 @@ The following changes are present locally on 2026-10-09 and are **not committed*
 - Use compact, accessible icon buttons in the creation row and remove the redundant selection label in the contextual row (`TopTools.tsx`, `ActivityBar.tsx`).
 - Keep the HTML import in the AI chat instead of a separate navigation panel ([ADR-077](../adr/ADR-077-import-conversation.md)).
 - Refine Stage handles, image-edge crop behavior, in-place text-frame dragging, and paragraph alignment ([ADR-078](../adr/ADR-078-stage-editing-refinements.md)).
-- Add ten editable slide designs and richer, direction-aware shape/line previews to Elements ([ADR-079](../adr/ADR-079-elements-designs.md)).
+- Add 250 editable slide designs, in sixteen groups, and richer, direction-aware shape/line previews to Elements ([ADR-079](../adr/ADR-079-elements-designs.md)).
 - Show transition settings beside the selected effect and scroll them into view ([ADR-080](../adr/ADR-080-transition-settings.md)).
 - Center the product/document identity in the title bar, simplify navigation icons, and add Filmstrip Ctrl+A ([ADR-081](../adr/ADR-081-shell-navigation-polish.md)).
 

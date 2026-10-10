@@ -576,3 +576,25 @@ describe('the format painter', () => {
     ).toEqual({ kind: 'bullet', level: 2, glyph: '–' });
   });
 });
+
+describe('the colour of the text box', () => {
+  const ink = { token: 'bg' } as const;
+  const onCard: FormatContext = { ...ctx, color: ink };
+
+  it('is the colour of text that sets none, and a mark is over it', () => {
+    expect(read(text(p([{ text: 'a' }])), onCard).color).toEqual(ink);
+    expect(read(text(p([{ text: 'a' }]))).color).toEqual(theme.textStyles.body.color);
+    const marked = text(p([{ text: 'a', marks: { color: { token: 'accent' } } }]));
+    expect(read(marked, onCard).color).toEqual({ token: 'accent' });
+  });
+
+  it('is not a difference from the text style: the style is not updated with it', () => {
+    const body = theme.textStyles.body;
+    const plain = text(p([{ text: 'a' }]));
+    // Text on a card as its layout made it matches its style, whatever the card's colour.
+    expect(matchStyle(read(plain, onCard), body, ink)).toBeNull();
+    // What the user changed goes to the style; the colour of the card does not.
+    const bigger = text(p([{ text: 'a', marks: { size: 44 } }]));
+    expect(matchStyle(read(bigger, onCard), body, ink)?.style).toEqual({ ...body, size: 44 });
+  });
+});

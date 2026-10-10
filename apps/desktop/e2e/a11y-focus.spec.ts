@@ -267,30 +267,78 @@ test('a key that makes its own control go away leaves the keyboard in the region
     .toBe('panel');
 });
 
-test('the Stage shows its ring once keys follow a press of the pointer', async ({ page }) => {
+test('the Stage shows its ring when the keyboard brings the focus, and not for keys after a press', async ({
+  page,
+}) => {
   await openApp(page, { lang: 'en' });
-  await addBoxes(page, THREE);
+  await addBoxes(page, [...THREE, { id: 'e_t', x: 1300, y: 100, w: 400, h: 200, text: 'Text' }]);
   const ring = () => surface(page).evaluate((node) => getComputedStyle(node).outlineStyle);
-  const box = (await surface(page).locator('[data-element-id="e_b"]').boundingBox())!;
+  const editor = surface(page).locator('[data-text-editor]');
+  const press = async (id: string, times = 1) => {
+    const box = (await surface(page).locator(`[data-element-id="${id}"]`).boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { clickCount: times });
+  };
+  /** The window loses the keyboard and gets it back: the Stage is the active element throughout. */
+  const awayAndBack = () =>
+    surface(page).evaluate((node) => {
+      node.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+      node.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    });
+
   // A press on an element: the Stage has the keyboard, and what is selected says so.
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await press('e_b');
   await expect(surface(page)).toBeFocused();
   expect(await ring()).toBe('none');
-  // The keys take over: from here on the keyboard is what works the Stage, and it shows.
+  // Nor by the keys that follow the press: a ring around the whole Stage read as the slide being
+  // selected, and not its elements.
   await page.keyboard.press('ArrowRight');
-  expect(await ring()).toBe('solid');
-  // A tool pressed with the pointer hands the keyboard back by script: no ring comes of that.
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   expect(await ring()).toBe('none');
+  await page.keyboard.press('Control+a');
+  expect(await selected(page)).toEqual(['e_a', 'e_b', 'e_c', 'e_t']);
+  expect(await ring()).toBe('none');
+  // A tool pressed with the pointer hands the keyboard back by script: no ring comes of that.
+  await press('e_b');
   await page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('[data-testid="stage-surface"]');
     stage?.blur();
     stage?.focus();
   });
   expect(await ring()).toBe('none');
-  // And with nothing selected, a key still shows where the keyboard is.
+  // With nothing selected it is the same.
   await page.keyboard.press('Escape');
+  expect(await selected(page)).toEqual([]);
+  expect(await ring()).toBe('none');
+  // The text typed in on the slide is part of the Stage: out of it with Esc is no arrival.
+  await press('e_t', 2);
+  await expect(editor).toBeFocused();
+  await page.keyboard.type('!');
+  await page.keyboard.press('Escape');
+  await expect(surface(page)).toBeFocused();
+  expect(await ring()).toBe('none');
+  // Nor is the window that went away and came back.
+  await awayAndBack();
+  expect(await ring()).toBe('none');
+
+  // The ring is there when the keyboard is what brings the focus: to the Filmstrip and back.
+  await page.keyboard.press('F6');
+  await expect(page.getByTestId('filmstrip').getByRole('listbox')).toBeFocused();
+  await page.keyboard.press('Shift+F6');
+  await expect(surface(page)).toBeFocused();
   expect(await ring()).toBe('solid');
+  // Into the text and back out by the keys, and over the window going and coming, it is kept.
+  expect(await selected(page)).toEqual(['e_t']);
+  await page.keyboard.press('Enter');
+  await expect(editor).toBeFocused();
+  await page.keyboard.type('?');
+  await page.keyboard.press('Escape');
+  await expect(surface(page)).toBeFocused();
+  expect(await ring()).toBe('solid');
+  await awayAndBack();
+  expect(await ring()).toBe('solid');
+  // A press takes it off again, whatever keys come after.
+  await press('e_a');
+  await page.keyboard.press('ArrowLeft');
+  expect(await ring()).toBe('none');
 });
 
 test('wherever Tab takes the keyboard in the editor, it can be seen', async ({ page }) => {

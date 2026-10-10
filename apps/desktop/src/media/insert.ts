@@ -37,7 +37,13 @@ export function insertAsset(editor: Editor, asset: AssetMeta): boolean {
     (id) => id in editor.bus.deck.assets,
   );
   if (commands.length === 0) return false;
-  editor.bus.batch(commands, { label: i18n.t('media:history.insert') });
+  editor.bus.batch(commands, {
+    label: i18n.t(
+      asset.kind === 'video' || asset.kind === 'audio'
+        ? 'media:clip.history.insert'
+        : 'media:history.insert',
+    ),
+  });
   editor.selection.getState().selectElements(elementIds);
   focusStage();
   return true;

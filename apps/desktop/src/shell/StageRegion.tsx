@@ -11,6 +11,8 @@ import {
 } from '@slidr/ui';
 import { languages } from '../i18n';
 import { insertFiles } from '../objects/takeIn';
+import { replaceImage } from '../objects/replace';
+import { targetOf } from '../objects/target';
 import { layerSnippet } from '../arrange/layers';
 import { KeyboardStatus } from '../stage/KeyboardStatus';
 import { stagePreview } from '../stage/preview';
@@ -87,6 +89,19 @@ export function StageRegion() {
     [editor, t],
   );
 
+  const onEmptyImageClick = useCallback(
+    (targetSlideId: string, elementId: string) => {
+      const targetSlide = findSlide(editor.bus.deck, targetSlideId);
+      const element = targetSlide && findElement(targetSlide, elementId);
+      if (element?.type !== 'image' || element.assetId || element.locked) return;
+      void replaceImage(editor, targetOf(editor.bus, targetSlideId, element), {
+        history: t('objects:history.replace'),
+        failed: t('objects:insert.failed'),
+      });
+    },
+    [editor, t],
+  );
+
   // An empty placeholder says what it is for, in the language of the deck and not of the app:
   // the words stand where the deck's own text will be.
   const deckLang = deck.meta.lang;
@@ -153,6 +168,7 @@ export function StageRegion() {
               onViewScale={onViewScale}
               resolveAsset={resolveAsset}
               onFiles={(files, at) => void onFiles(files, at)}
+              onEmptyImageClick={onEmptyImageClick}
               preview={preview}
               selectionToolbar={<SelectionToolbar />}
               marked={marked}

@@ -3,6 +3,7 @@ import type { he, Messages } from './he';
 export const en: Messages<typeof he> = {
   app: {
     name: 'Slidr',
+    tagline: 'Where your ideas take the stage',
     untitled: 'Untitled presentation',
   },
   window: {

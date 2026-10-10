@@ -33,7 +33,7 @@ export function useColumns(ref: RefObject<Element | null>): number {
 const AHEAD = '600px 0px';
 
 /** True once the element has come near the visible part of the panel; it then stays true. */
-function useNear<T extends Element>(): [RefObject<T | null>, boolean] {
+export function useNear<T extends Element>(): [RefObject<T | null>, boolean] {
   const ref = useRef<T>(null);
   const [near, setNear] = useState(false);
   useEffect(() => {
@@ -164,7 +164,7 @@ export function StickerButton({ sticker, size }: { sticker: RecentSticker; size:
           '[&>svg]:size-full [&>svg]:transition-transform hover:[&>svg]:scale-110',
           size === 'graphic' ? 'p-2.5' : 'p-1.5',
           // Drawings in black line are lost on the dark panel: there they sit on paper.
-          sticker.id.startsWith('graphic:outlined:')
+          sticker.id.startsWith('graphic:outlined:') || sticker.id.startsWith('graphic:handdrawn:')
             ? 'bg-ui-paper hover:bg-ui-paper-hover'
             : 'hover:bg-ui-hover active:bg-ui-pressed',
         )}

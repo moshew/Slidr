@@ -6,6 +6,7 @@ import {
   type AgentErrorKind,
   type AgentEvent,
   type HarnessDescriptor,
+  type HarnessConnection,
   type HarnessStatus,
 } from './agent';
 import {
@@ -42,6 +43,9 @@ export function tauriAgentFor(workspaceId: () => string | null): AgentClient {
   return {
     harnesses: () => call<HarnessDescriptor[]>('agent_harnesses'),
     probe: (harnessId) => call<HarnessStatus>('agent_probe', { harnessId }),
+    connect: (harnessId) => call<HarnessConnection>('agent_connect', { harnessId }),
+    install: (harnessId) => call('agent_install', { harnessId }),
+    login: (harnessId) => call('agent_login', { harnessId }),
     // One channel per session: ordered, typed, and only this webview receives it.
     start: (harnessId, thread, config, onEvent) => {
       const id = workspaceId();
@@ -64,6 +68,8 @@ export function tauriAgentFor(workspaceId: () => string | null): AgentClient {
         },
       });
     },
+    readAttachment: (thread, name, offset) =>
+      call('agent_read_attachment', { thread, name, offset }),
     send: async (sessionId, turn) => {
       await call('agent_send', { sessionId, turn });
     },

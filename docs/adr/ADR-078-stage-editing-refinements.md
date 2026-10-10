@@ -9,7 +9,7 @@ An image edge, an image corner, and a text box that is currently being typed in 
 ## Decision in the working tree
 
 - For a regular image whose picture covers its frame, an edge handle moves the frame edge while keeping the picture in place. It crops or reveals more of the picture. If the edge passes the picture, the picture grows to keep the frame covered. A corner sizes the whole image; an image in a `smartFrame`, an SVG, and video keep their existing resize behavior. `cropStretch` and `coversFrame` calculate the image view in `stage/crop.ts`.
-- The Stage shows the picture outside the frame, dimmed, during such an edge drag. Corner dots and edge bars have larger, distinct targets; the active handle remains highlighted. This is a view and interaction change, not a new image schema field.
+- During an edge drag, the Stage shows only the image within its frame. The dimmed picture outside the frame appears in crop mode, entered by double-clicking the image. Corner dots and edge bars have larger, distinct targets; the active handle remains highlighted. This is a view and interaction change, not a new image schema field.
 - A text box can be moved, resized, or rotated by its frame while its text editor remains open. The caret regains focus after the drag; Alt-drag of a box being typed in moves it instead of duplicating unfinished text.
 - Paragraph alignment opens an icon menu in both normal and compact layouts. The compact text menu also contains paragraph direction. The creation row uses compact icon buttons, and the contextual row no longer repeats a selection label.
 

@@ -3,6 +3,7 @@
 
 use std::{
     collections::HashMap,
+    io::{Read, Seek, SeekFrom},
     path::{Path, PathBuf},
     sync::{
         Arc, Mutex, MutexGuard, PoisonError,
@@ -11,12 +12,13 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use serde::Serialize;
 use serde_json::json;
 use tokio::time::Instant;
 
 use super::{
     AgentError, AgentErrorKind, AgentEvent, AgentHarness, AgentSession, EventSink,
-    HarnessDescriptor, HarnessStatus, Result, SessionConfig, TurnOutcome, Usage, UserTurn,
+    HarnessDescriptor, HarnessStatus, Result, SessionConfig, TurnOutcome, UserTurn,
     diagnostics::{DEFAULT_TAIL_BYTES, Diagnostics, DiagnosticsView},
 };
 
@@ -54,6 +56,15 @@ const MAX_ATTACHMENT_BYTES: usize = 50 * 1024 * 1024;
 const MAX_ATTACHMENT_NAME: usize = 120;
 /// How many different files of one name a conversation keeps.
 const MAX_SAME_NAME: usize = 99;
+const MAX_READ_BYTES: usize = 32 * 1024;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachmentChunk {
+    pub text: String,
+    pub next_offset: usize,
+    pub size: usize,
+}
 
 /// Owns the harnesses and the open sessions. Shared by the IPC commands; testable without Tauri.
 pub struct HarnessManager {
@@ -115,6 +126,58 @@ impl HarnessManager {
         Ok(thread_dir(&self.root, thread)?.join(ATTACHMENTS))
     }
 
+    /// Reads only a named text attachment from this conversation, in bounded chunks.
+    pub fn read_attachment(
+        &self,
+        thread: &str,
+        name: &str,
+        offset: usize,
+    ) -> Result<AttachmentChunk> {
+        if name.is_empty() || name != attachment_name(name) || name == "." || name == ".." {
+            return Err(AgentError::invalid_input("invalid attachment name"));
+        }
+        let dir = self.attachments_dir(thread)?;
+        let path = dir.join(name);
+        let canonical_dir = std::fs::canonicalize(&dir)
+            .map_err(|error| AgentError::io("find attachments folder", &error))?;
+        let canonical_file = std::fs::canonicalize(&path)
+            .map_err(|error| AgentError::io("find attachment", &error))?;
+        if canonical_file.parent() != Some(canonical_dir.as_path()) {
+            return Err(AgentError::invalid_input(
+                "attachment is outside this conversation",
+            ));
+        }
+        let mut file = std::fs::File::open(&canonical_file)
+            .map_err(|error| AgentError::io("open attachment", &error))?;
+        let size = file
+            .metadata()
+            .map_err(|error| AgentError::io("inspect attachment", &error))?
+            .len() as usize;
+        if offset > size {
+            return Err(AgentError::invalid_input(
+                "attachment offset is past the end",
+            ));
+        }
+        file.seek(SeekFrom::Start(offset as u64))
+            .map_err(|error| AgentError::io("seek attachment", &error))?;
+        let mut bytes = vec![0; MAX_READ_BYTES.min(size - offset)];
+        file.read_exact(&mut bytes)
+            .map_err(|error| AgentError::io("read attachment", &error))?;
+        // Keep the next offset on a UTF-8 boundary, so successive calls never split a letter.
+        while !bytes.is_empty()
+            && std::str::from_utf8(&bytes).is_err_and(|error| error.error_len().is_none())
+        {
+            bytes.pop();
+        }
+        let text = String::from_utf8(bytes)
+            .map_err(|_| AgentError::invalid_input("this attachment is not UTF-8 text"))?;
+        Ok(AttachmentChunk {
+            next_offset: offset + text.len(),
+            text,
+            size,
+        })
+    }
+
     /// Makes attachments from the open document available to a session after reopening it.
     pub fn restore_attachments(&self, thread: &str, source: &Path) -> Result<()> {
         let target = self.attachments_dir(thread)?;
@@ -143,6 +206,11 @@ impl HarnessManager {
     /// Checks one harness (AGT-03).
     pub async fn probe(&self, harness_id: &str) -> Result<HarnessStatus> {
         Ok(self.harness(harness_id)?.probe().await)
+    }
+
+    pub async fn connect(&self, harness_id: &str) -> Result<super::HarnessConnection> {
+        let harness = self.harness(harness_id)?;
+        Ok(super::setup::connect(harness.descriptor(), harness.probe().await).await)
     }
 
     /// Starts a session on `harness_id` and returns its id. `thread` names the conversation
@@ -329,8 +397,8 @@ impl HarnessManager {
     }
 
     /// Stores a file the user attached to a chat (CHT-U05) in the folder of its thread, under
-    /// `attachments/`: the working directory of the thread's sessions, where the agent's own
-    /// file tool reads it. Returns the file's path relative to that directory, which is its
+    /// `attachments/`: the working directory of the thread's sessions, where its file-reading
+    /// tool reads it. Returns the file's path relative to that directory, which is its
     /// name. The same file under the same name is stored once; another file of that name gets a
     /// number.
     pub fn attach(&self, thread: &str, name: &str, bytes: &[u8]) -> Result<String> {
@@ -628,12 +696,9 @@ impl TurnGuard {
             }
             AgentEvent::Exited { .. } => {
                 self.close_tools(&mut state, "the session ended");
-                if let Some(began) = state.turn.take() {
+                if state.turn.take().is_some() {
                     (self.deliver)(AgentEvent::TurnCompleted {
                         outcome: TurnOutcome::Failed,
-                        usage: Usage::default(),
-                        cost_usd: None,
-                        duration_ms: millis(began),
                     });
                 }
                 state.exited = true;
@@ -652,10 +717,6 @@ impl TurnGuard {
             });
         }
     }
-}
-
-fn millis(since: Instant) -> u64 {
-    u64::try_from(since.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
 #[cfg(test)]
@@ -684,9 +745,7 @@ mod tests {
                           "name": "slide_create", "input": { "layout": "title" } },
                         { "delayMs": 300, "type": "tool_call_finished", "id": "t1", "ok": true,
                           "summary": "created s_1" },
-                        { "delayMs": 50, "type": "turn_completed", "outcome": "completed",
-                          "usage": { "inputTokens": 10, "outputTokens": 20 },
-                          "costUsd": 0.01, "durationMs": 550 }
+                        { "delayMs": 50, "type": "turn_completed", "outcome": "completed" }
                     ],
                     [
                         { "delayMs": 100, "type": "text_delta", "text": "1, " },
@@ -694,8 +753,7 @@ mod tests {
                           "name": "WebSearch", "source": "harness", "input": {} },
                         { "delayMs": 5000, "type": "tool_call_finished", "id": "t2", "ok": true,
                           "summary": "" },
-                        { "delayMs": 100, "type": "turn_completed", "outcome": "completed",
-                          "costUsd": 0.02, "durationMs": 5300 }
+                        { "delayMs": 100, "type": "turn_completed", "outcome": "completed" }
                     ]
                 ]
             })
@@ -783,8 +841,9 @@ mod tests {
         );
         assert!(matches!(
             &turn[4],
-            AgentEvent::TurnCompleted { outcome: TurnOutcome::Completed, cost_usd: Some(c), usage, .. }
-                if (*c - 0.01).abs() < 1e-9 && usage.output_tokens == 20
+            AgentEvent::TurnCompleted {
+                outcome: TurnOutcome::Completed
+            }
         ));
 
         // Turn 2 is interrupted while the web search runs: the open tool call is closed first.
@@ -818,8 +877,6 @@ mod tests {
             &turn[3],
             AgentEvent::TurnCompleted {
                 outcome: TurnOutcome::Interrupted,
-                duration_ms: 1000,
-                ..
             }
         ));
 
@@ -968,9 +1025,6 @@ mod tests {
         );
         guard.emit(AgentEvent::TurnCompleted {
             outcome: TurnOutcome::Completed,
-            usage: Usage::default(),
-            cost_usd: None,
-            duration_ms: 1,
         });
         assert_eq!(guard.retire_if_idle(Duration::ZERO), Some("idle"));
         assert_eq!(guard.retire_if_idle(Duration::ZERO), None, "retired once");
@@ -1090,6 +1144,32 @@ mod tests {
         assert_eq!(
             manager.attach("deck1/thread1", "brief.pdf", b"new brief")?,
             "brief-2.pdf"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn attachment_read_is_chunked_and_confined_to_the_chat() -> TestResult {
+        let root = tempfile::tempdir()?;
+        let manager = manager(root.path())?;
+        manager.attach("deck1/thread1", "brief.txt", "א".repeat(20_000).as_bytes())?;
+        let first = manager.read_attachment("deck1/thread1", "brief.txt", 0)?;
+        assert!(first.next_offset < first.size);
+        assert_eq!(first.text.chars().count(), first.next_offset / 2);
+        let second = manager.read_attachment("deck1/thread1", "brief.txt", first.next_offset)?;
+        assert_eq!(format!("{}{}", first.text, second.text), "א".repeat(20_000));
+        assert_eq!(second.next_offset, second.size);
+        assert_eq!(
+            manager
+                .read_attachment("deck1/thread1", "../system.md", 0)
+                .err()
+                .map(|e| e.kind),
+            Some(AgentErrorKind::InvalidInput)
+        );
+        assert!(
+            manager
+                .read_attachment("deck1/other", "brief.txt", 0)
+                .is_err()
         );
         Ok(())
     }

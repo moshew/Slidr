@@ -40,7 +40,11 @@ test('the app starts on an empty deck, with no development hooks', async () => {
   expect(page.url()).toBe('http://tauri.localhost/');
   // The scripted harness is compiled in, and offered only to a run that asks for it.
   const harnesses = await invoke<{ id: string }[]>(page, 'agent_harnesses');
-  expect(harnesses.map((harness) => harness.id)).toEqual(['claude-code']);
+  expect(harnesses.map((harness) => harness.id)).toEqual([
+    'claude-code',
+    'codex-cli',
+    'copilot-cli',
+  ]);
 });
 
 test('edit: a text box is added and typed into, and a second slide is added', async () => {

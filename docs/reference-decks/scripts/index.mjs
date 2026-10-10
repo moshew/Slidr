@@ -3,10 +3,10 @@
 // about it. The slides are live HTML, inlined and scaled; nothing here is a picture of a slide.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { deckFiles, readDeck, root } from './decks.mjs';
+import { deckFiles, readDeck, projectRoot, root } from './decks.mjs';
 import { ALL_WEIGHTS, fontFaces } from './fonts.mjs';
 
-const results = join(root, '..', '..', 'apps', 'desktop', 'test-results', 'templates');
+const results = join(projectRoot, 'apps', 'desktop', 'test-results', 'templates');
 const readJson = (file) =>
   existsSync(join(results, file)) ? JSON.parse(readFileSync(join(results, file), 'utf8')) : null;
 

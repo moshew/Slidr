@@ -14,7 +14,7 @@ use tauri::{
 
 use super::{
     AgentError, AgentEvent, DiagnosticsView, HarnessDescriptor, HarnessManager, HarnessStatus,
-    Result, SessionConfig, UserTurn, transcript,
+    Result, SessionConfig, UserTurn, manager::AttachmentChunk, transcript,
 };
 use crate::storage::Storage;
 
@@ -30,6 +30,24 @@ pub async fn agent_harnesses(manager: Manager<'_>) -> Result<Vec<HarnessDescript
 #[tauri::command]
 pub async fn agent_probe(manager: Manager<'_>, harness_id: String) -> Result<HarnessStatus> {
     manager.probe(&harness_id).await
+}
+
+#[tauri::command]
+pub async fn agent_connect(
+    manager: Manager<'_>,
+    harness_id: String,
+) -> Result<super::HarnessConnection> {
+    manager.connect(&harness_id).await
+}
+
+#[tauri::command]
+pub async fn agent_install(harness_id: String) -> Result<()> {
+    super::setup::install(&harness_id).await
+}
+
+#[tauri::command]
+pub async fn agent_login(harness_id: String) -> Result<()> {
+    super::setup::login(&harness_id).await
 }
 
 /// `agent_start({ harnessId, thread, workspaceId?, config, onEvent })`: restores this chat's
@@ -206,4 +224,17 @@ pub async fn agent_attach(
         }
     })
     .await
+}
+
+/// `agent_read_attachment({ thread, name, offset })`: a text-only, bounded read from the
+/// attachments of one conversation. Codex exposes it as an app tool without shell access.
+#[tauri::command]
+pub async fn agent_read_attachment(
+    manager: Manager<'_>,
+    thread: String,
+    name: String,
+    offset: usize,
+) -> Result<AttachmentChunk> {
+    let manager = Arc::clone(&manager);
+    off_main(move || manager.read_attachment(&thread, &name, offset)).await
 }

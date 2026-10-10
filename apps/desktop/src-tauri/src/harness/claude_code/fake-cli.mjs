@@ -33,20 +33,15 @@ fs.writeFileSync(
 
 let timer = null;
 let ignoreInterrupt = false;
-let total = 0;
 
 const finish = (subtype, reason) => {
   clearInterval(timer);
   timer = null;
-  if (subtype === 'success') total += 0.01;
   out({
     type: 'result',
     subtype,
     is_error: subtype !== 'success',
     terminal_reason: reason,
-    total_cost_usd: total,
-    duration_ms: 5,
-    usage: { input_tokens: 3, output_tokens: 4 },
     session_id: 'fake-session',
   });
 };

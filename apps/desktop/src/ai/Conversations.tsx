@@ -9,7 +9,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   IconButton,
-  Tooltip,
 } from '@slidr/ui';
 import { History, SquarePen } from '@slidr/ui/icons';
 import type { ChatThread, Conversation } from '../agent/agentService';
@@ -17,11 +16,9 @@ import { useEditor } from '../shell';
 import { actionLabel } from './actionLabels';
 import { aiOf } from './runtime';
 import type { ChatConversation } from './sessions';
-import { conversationUsage, formatCost, formatTokens, tokensOf } from './usage';
 
 /*
- * The bar over a chat (CHT-U06, CHT-U07): the conversations the chat keeps, a new one, and
- * what the conversation on screen has cost so far, as the harness reported it turn by turn.
+ * The bar over a chat (CHT-U07): the conversations the chat keeps and a new one.
  * The conversation of an HTML import is listed with the deck's own (SPEC 13.3).
  */
 
@@ -40,7 +37,6 @@ export function ConversationBar({ thread }: { thread: ChatThread }) {
   const entries = useStore(thread.store, (s) => s.entries);
   const [list, setList] = useState<ChatConversation[]>([]);
   const titleOf = useTitle();
-  const used = conversationUsage(entries);
   const when = (iso: string | undefined) =>
     iso
       ? new Date(iso).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })
@@ -95,28 +91,6 @@ export function ConversationBar({ thread }: { thread: ChatThread }) {
         </DropdownMenuContent>
       </DropdownMenu>
       <span className="min-w-0 flex-1" />
-      {used.turns > 0 && (
-        <Tooltip
-          content={t('usage.detail', {
-            input: formatTokens(used.usage.inputTokens),
-            output: formatTokens(used.usage.outputTokens),
-            cacheRead: formatTokens(used.usage.cacheReadTokens),
-            cacheWrite: formatTokens(used.usage.cacheWriteTokens),
-          })}
-        >
-          <span
-            data-testid="chat-cost"
-            data-cost={used.costUsd}
-            data-turns={used.turns}
-            className="truncate text-xs text-ui-fg-muted"
-          >
-            {/* A harness that reported no cost for any turn has only tokens to show. */}
-            {used.uncosted < used.turns
-              ? t('usage.total', { cost: formatCost(used.costUsd) })
-              : t('usage.totalTokens', { tokens: formatTokens(tokensOf(used.usage)) })}
-          </span>
-        </Tooltip>
-      )}
       <IconButton
         icon={SquarePen}
         size="sm"

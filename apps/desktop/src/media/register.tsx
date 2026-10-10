@@ -21,7 +21,7 @@ import { MEDIA_PANEL } from './store';
 
 /*
  * The media area (WG5-T11, T13, WG12-T04 to T07): the media panel (the deck's pictures, stock
- * photos, AI images), and the stock photos' part of the settings. Icons live in Elements.
+ * photos, AI images, video and audio), and the stock photos' part of the settings. Icons live in Elements.
  * See docs/adr/ADR-051-media-and-settings.md.
  */
 

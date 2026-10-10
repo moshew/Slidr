@@ -377,9 +377,21 @@ importers:
       '@iconify-json/fluent-emoji-flat':
         specifier: ^1.2.6
         version: 1.2.6
+      '@iconify-json/noto':
+        specifier: 1.2.6
+        version: 1.2.6
       '@iconify-json/streamline-emojis':
         specifier: ^1.2.4
         version: 1.2.4
+      '@iconify-json/streamline-flex-color':
+        specifier: 1.2.2
+        version: 1.2.2
+      '@iconify-json/streamline-freehand-color':
+        specifier: 1.2.2
+        version: 1.2.2
+      '@iconify-json/streamline-stickies-color':
+        specifier: 1.2.2
+        version: 1.2.2
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
@@ -827,11 +839,23 @@ packages:
   '@iconify-json/fluent-emoji@1.2.7':
     resolution: {integrity: sha512-D8G6bKAyIsyxP1rzZtIWr/gg/fO4Rg1+DyCWlfqKK4h8W+4Em/Y0P6QYgJUQTlUcagzJvSyg+9OBv4hz4Hc/QA==}
 
+  '@iconify-json/noto@1.2.6':
+    resolution: {integrity: sha512-/op9JHrJv8RZgM0trdlLoedcx9jBNZ6kYvTTRQrp9t8OWpqR60k0tHZ5Nt9SxT/ebQsrPbtVPUuv+odWwlQkUQ==}
+
   '@iconify-json/streamline-emojis@1.2.4':
     resolution: {integrity: sha512-iNr9T9XuZVTyQPJO8ZlLxBzPkpi7qMl+z1l0C31vpEMqhPMelth3n7CeWQYtixdetDPdI81yeG4ROqjWpYJE6A==}
 
+  '@iconify-json/streamline-flex-color@1.2.2':
+    resolution: {integrity: sha512-EphxHZHzxcR2B8AU7skOnq27cuOoZDzn69EzLysRkN+Nla7tyqF0eacsFCk70t2T9BhT3LBy9GgGeY3+Db2KPQ==}
+
+  '@iconify-json/streamline-freehand-color@1.2.2':
+    resolution: {integrity: sha512-ql3aN0gPHIClR74SkG89oykRB1LxmwhIWYDM425bVsoZRNhl2uHtNMmIs6CADrCcyhdNQwtieaj49BIT0Idu5A==}
+
   '@iconify-json/streamline-kameleon-color@1.2.2':
     resolution: {integrity: sha512-6vFS3ILSmy3w6R1v2nVolNFf9pLuUihOUqyUNVXp0HliWIR6RpJIsWue0Fc6MVri7wde+SWzMJeLAXWU3zE43g==}
+
+  '@iconify-json/streamline-stickies-color@1.2.2':
+    resolution: {integrity: sha512-OisPU3Q/VMAHTtJbzRa2lmK8UN+n7D5US0txeL488yrEmoALvRerzIOS8zTNiojNDghJ2/6cp0eh5IK4ezukpA==}
 
   '@iconify-json/streamline-ultimate-color@1.2.2':
     resolution: {integrity: sha512-NAbD3xLtg3069865B5CLUulp/eowPNCiDfJBxVAmA+LKLPpxU7EIEJ2+mSfWriPd+ahORWyqjRnoPVkTJopEgg==}
@@ -3348,11 +3372,27 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
+  '@iconify-json/noto@1.2.6':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify-json/streamline-emojis@1.2.4':
     dependencies:
       '@iconify/types': 2.0.0
 
+  '@iconify-json/streamline-flex-color@1.2.2':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/streamline-freehand-color@1.2.2':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify-json/streamline-kameleon-color@1.2.2':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/streamline-stickies-color@1.2.2':
     dependencies:
       '@iconify/types': 2.0.0
 

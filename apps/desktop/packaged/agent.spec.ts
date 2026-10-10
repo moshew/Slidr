@@ -105,31 +105,15 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (!app) return;
-  // What the run cost. The app shows a turn's cost only where it can tell it apart: the first
-  // turn of a resumed process has none. So the sum here is of the CLI's own result lines, one
-  // total for each process. It is the most the run can have cost: a process that resumes one
-  // that ended in order starts its total from that one's. A turn that was killed reports none.
   const entries = await log(app.page).catch(() => []);
   const turns = entries
     .filter((entry) => entry.kind === 'event' && entry.data.type === 'turn_completed')
     .map((entry) => ({
       at: entry.at,
       outcome: entry.data.outcome,
-      costUsd: entry.data.costUsd,
-      durationMs: entry.data.durationMs,
     }));
-  const results = entries
-    .filter((entry) => entry.kind === 'raw' && entry.data.type === 'result')
-    .map((entry) => ({ at: entry.at, totalCostUsd: Number(entry.data.total_cost_usd) || 0 }));
-  const costUsdAtMost = results.reduce((sum, result) => sum + result.totalCostUsd, 0);
   mkdirSync(OUT, { recursive: true });
-  writeFileSync(
-    join(OUT, 'agent.json'),
-    `${JSON.stringify({ costUsdAtMost, results, turns }, null, 2)}\n`,
-  );
-  console.log(
-    `CLI-reported cost of the run: at most $${costUsdAtMost.toFixed(4)}, over ${turns.length} turns`,
-  );
+  writeFileSync(join(OUT, 'agent.json'), `${JSON.stringify({ turns }, null, 2)}\n`);
   await app.kill();
 });
 

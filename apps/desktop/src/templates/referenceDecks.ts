@@ -4,7 +4,7 @@
  * pictures they use are in `./pictures`: `data-asset` names them by id.
  */
 
-const files = import.meta.glob<string>('../../../../docs/reference-decks/*.html', {
+const files = import.meta.glob<string>('../../../../../Slidr-media/templates/reference-decks/*.html', {
   eager: true,
   query: '?raw',
   import: 'default',

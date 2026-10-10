@@ -14,7 +14,6 @@ import {
   type Element,
   type Slide,
 } from '@slidr/model';
-import type { Usage } from '../src/agent/agent';
 import type { ChatEntry } from '../src/agent/transcript';
 
 /** One tool call of the session as the Deck API answered it, images left out. */
@@ -88,10 +87,6 @@ export interface RequestScore {
   toolErrors: { name: string; code: string; message: string }[];
   /** Assistant entries: 2 when the agent proposed an outline and waited for the go-ahead. */
   turns: number;
-  durationMs: number;
-  /** Null when the harness could not attribute a cost to a turn. */
-  costUsd: number | null;
-  usage: Usage;
 }
 
 const HTML_WRITES = new Set(['slide_create_from_html', 'slide_replace_from_html']);
@@ -205,15 +200,9 @@ export function scoreRequest({ before, deck, entries, tools, findings }: ScoreIn
   const rounds: GateRound[] = [];
   let remaining = 0;
   let turns = 0;
-  let durationMs = 0;
-  let costUsd: number | null = 0;
-  const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
   for (const entry of entries) {
     if (entry.type !== 'assistant') continue;
     turns++;
-    durationMs += entry.durationMs ?? 0;
-    costUsd = costUsd === null || entry.costUsd == null ? null : costUsd + entry.costUsd;
-    for (const key of Object.keys(usage) as (keyof Usage)[]) usage[key] += entry.usage?.[key] ?? 0;
     remaining += (entry.remaining?.unseen.length ?? 0) + (entry.remaining?.findings.length ?? 0);
     for (const part of entry.parts) {
       if (part.type !== 'gate') continue;
@@ -268,9 +257,6 @@ export function scoreRequest({ before, deck, entries, tools, findings }: ScoreIn
         message: call.error?.message ?? '',
       })),
     turns,
-    durationMs,
-    costUsd,
-    usage,
   };
 }
 
