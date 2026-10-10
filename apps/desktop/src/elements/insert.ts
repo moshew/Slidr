@@ -42,8 +42,7 @@ export function insertFrame(editor: Editor, frame: PhotoFrame): boolean {
   const slideId = editor.selection.getState().currentSlideId;
   if (!slideId) return false;
   const { deck } = editor.bus;
-  const taken: Frame[] = findSlide(deck, slideId)?.elements.map((e) => e.frame) ?? [];
-  const box = centredFrame(frameSizeOn(frame, deck.size), deck.size, taken);
+  const box = { x: 0, y: 0, ...frameSizeOn(frame, deck.size) };
   const element = framedElement(frame, box, deck.meta.lang);
   editor.bus.dispatch(
     { type: 'element.add', slideId, element },

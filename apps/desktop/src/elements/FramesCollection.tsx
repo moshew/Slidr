@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react';
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AssetMeta, ImageElement, Theme } from '@slidr/model';
 import { SlideRenderer } from '@slidr/renderer';
@@ -10,10 +10,9 @@ import type { Target } from '../objects/target';
 import { tell, useDeck, useEditor, useElementSize } from '../shell';
 import { LoadFailed, Loading, NothingFound, Section, useLoaded } from './collections';
 import {
-  drawnWhole,
+  FRAME_CANVAS,
   featuredFrames,
   FRAME_GROUPS,
-  frameOutline,
   framePreview,
   loadFrames,
   MAGNET_SETS,
@@ -25,7 +24,7 @@ import {
 } from './frames';
 import { framePicture, insertFrame } from './insert';
 import { useColumns, useNear } from './StickerGrid';
-import { FRAME_PHOTO, FRAME_PHOTO_URL, FrameThumbDefs } from './tiles';
+import { FRAME_PHOTO_URL, FrameThumbDefs } from './tiles';
 
 /*
  * The photo frames of Elements: what the collection shows, and a frame drawn small. A click on
@@ -44,7 +43,7 @@ const PREVIEW_ROWS = 2;
  * by the renderer instead, in the colours of the deck's theme.
  */
 export function FrameThumb({ frame }: { frame: PhotoFrame }) {
-  return drawnWhole(frame) ? <DrawnThumb frame={frame} /> : <OutlineThumb frame={frame} />;
+  return <DrawnThumb frame={frame} />;
 }
 
 /**
@@ -63,7 +62,7 @@ export function DrawnFrame({
   width: number;
 }) {
   const { deck, slide } = useMemo(() => framePreview(frame, lang, theme), [frame, lang, theme]);
-  const scale = width / frame.size.w;
+  const scale = width / FRAME_CANVAS.w;
   return (
     // The slide is scaled from its left corner, in a panel that may read from the right. It is
     // cut to the frame, with room around it for the shadow the frame casts.
@@ -71,7 +70,7 @@ export function DrawnFrame({
       aria-hidden
       dir="ltr"
       className="relative overflow-clip [overflow-clip-margin:12px]"
-      style={{ width, height: frame.size.h * scale }}
+      style={{ width, height: FRAME_CANVAS.h * scale }}
     >
       <div className="absolute start-0 top-0 origin-top-left" style={{ scale }}>
         <SlideRenderer deck={deck} slide={slide} mode="thumbnail" resolveAsset={samplePhoto} />
@@ -90,25 +89,11 @@ function DrawnThumb({ frame }: { frame: PhotoFrame }) {
   const lang = useDeck((s) => s.deck.meta.lang);
   const tile = useRef<HTMLDivElement>(null);
   const { width, height } = useElementSize(tile);
-  const fit = Math.floor(Math.min(width, (height * frame.size.w) / frame.size.h));
+  const fit = Math.floor(Math.min(width, (height * FRAME_CANVAS.w) / FRAME_CANVAS.h));
   return (
     <div ref={tile} className="flex size-full items-center justify-center">
       {fit > 0 && <DrawnFrame frame={frame} lang={lang} theme={theme} width={fit} />}
     </div>
-  );
-}
-
-function OutlineThumb({ frame }: { frame: PhotoFrame }) {
-  const clip = `frame${useId().replace(/[^\w-]/g, '')}`;
-  const { size } = frame;
-  const outline = useMemo(() => frameOutline(frame), [frame]);
-  return (
-    <svg aria-hidden viewBox={`0 0 ${size.w} ${size.h}`} className="overflow-visible">
-      <clipPath id={clip}>
-        <path d={outline} />
-      </clipPath>
-      <use href={`#${FRAME_PHOTO}`} width={size.w} height={size.h} clipPath={`url(#${clip})`} />
-    </svg>
   );
 }
 
@@ -140,7 +125,7 @@ function FrameButton({
           else if (!insertFrame(editor, frame)) void tell(t('media:noSlide'));
         }}
         className={cx(
-          'flex aspect-square w-full cursor-default items-center justify-center rounded-control p-2 transition-colors',
+          'flex aspect-video w-full cursor-default items-center justify-center rounded-control p-2 transition-colors',
           'focus-visible:-outline-offset-2',
           '[&>svg]:size-full [&>*]:transition-transform hover:[&>*]:scale-105',
           // Artwork with a dark body is lost on the dark panel: there it sits on paper.

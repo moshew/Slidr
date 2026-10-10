@@ -1,20 +1,19 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-Clears Slidr's Windows caches, preferences, imported fonts and recovery workspaces after the app is closed.
+Resets Slidr by deleting its Local and Roaming app data directories after the app is closed.
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1 -WhatIf
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1
 .NOTES
-Deletes settings.json, Local Storage, IndexedDB (imported fonts), and Session Storage.
-Also deletes the app's workspaces directory, including autosaves, unsaved changes,
-and any chat or assets held only in those workspaces. These cannot be recovered.
-Preserves .slidr files saved outside the app data directories, external attachments,
-the agent directory, cookies and API keys in Windows Credential Manager.
-Bundled/system fonts are unaffected.
-Does not clear caches
-of a separate browser running pnpm dev, or build/package-manager caches.
+Deletes %LOCALAPPDATA%\dev.slidr.app and %APPDATA%\dev.slidr.app entirely:
+caches, settings, imported fonts, cookies, recent-file list, agent data and all
+recovery workspaces (including unsaved changes). These cannot be recovered.
+Files saved outside these two directories are unaffected, including .slidr files
+and external attachments. Does not uninstall Slidr or remove bundled/system fonts,
+API keys in Windows Credential Manager, external CLI sign-ins, separate browser
+data from pnpm dev, or build/package-manager caches.
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param()
@@ -47,35 +46,11 @@ if (-not $WhatIfPreference) {
     }
 }
 
-# An explicit allowlist includes recovery workspaces but never follows source
-# paths to the user's saved documents or their external attachments.
-$cachePaths = @(
-    'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache',
-    'DawnWebGPUCache', 'ShaderCache', 'GrShaderCache', 'GraphiteDawnCache',
-    'GPUPersistentCache', 'component_crx_cache', 'extensions_crx_cache',
-    'Default\Cache', 'Default\Code Cache', 'Default\GPUCache',
-    'Default\DawnCache', 'Default\DawnGraphiteCache', 'Default\DawnWebGPUCache',
-    'Default\AutofillAiModelCache', 'Default\optimization_guide_hint_cache_store',
-    'Default\Shared Dictionary', 'Default\Service Worker\CacheStorage',
-    'Default\Service Worker\ScriptCache',
-    'Default\Local Storage', 'Default\IndexedDB', 'Default\Session Storage'
-)
-$allowedTargets = @(
-    foreach ($relative in $cachePaths) {
-        [IO.Path]::GetFullPath((Join-Path $webviewRoot $relative))
-    }
-    [IO.Path]::GetFullPath((Join-Path $roamingRoot 'settings.json'))
-    [IO.Path]::GetFullPath((Join-Path $roamingRoot 'workspaces'))
-)
+# Only these two exact absolute paths are eligible for recursive deletion.
+$allowedTargets = @($appRoot, $roamingRoot) | Select-Object -Unique
 
 function Assert-SafeTarget([string] $Target) {
-    $insideRoot = $false
-    foreach ($root in @($appRoot, $roamingRoot)) {
-        if ($Target.StartsWith($root.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
-            $insideRoot = $true
-        }
-    }
-    if (-not $insideRoot -or $allowedTargets -notcontains $Target) {
+    if ($allowedTargets -notcontains [IO.Path]::GetFullPath($Target)) {
         throw "Target is not an allowed Slidr reset path: $Target"
     }
     # Check every ancestor and descendant before recursive removal. Junctions
@@ -112,7 +87,7 @@ $targets = @(
 )
 $removed = 0
 foreach ($target in $targets) {
-    if ($PSCmdlet.ShouldProcess($target, 'Delete Slidr cache, preferences, imported fonts or recovery workspaces')) {
+    if ($PSCmdlet.ShouldProcess($target, 'Delete all Slidr data in this directory, including unsaved work')) {
         Assert-SafeTarget $target
         Remove-Item -LiteralPath $target -Recurse -Force
         Write-Host "Cleared: $target"
@@ -122,5 +97,5 @@ foreach ($target in $targets) {
 if ($WhatIfPreference) {
     Write-Host "Preview complete: $($targets.Count) reset targets found. No files deleted."
 } else {
-    Write-Host "Done: cleared $removed targets. Preferences and imported fonts reset; recovery workspaces deleted. Externally saved projects preserved."
+    Write-Host "Done: deleted $removed Slidr data directories. Files saved outside them are unchanged."
 }

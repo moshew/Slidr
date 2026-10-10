@@ -522,12 +522,12 @@ describe('the magnets of events', () => {
     }
   });
 
-  it('come as large as the safe margins of the slide allow, and scale with their box', () => {
+  it('cover the whole slide, and scale captions with their box', () => {
     const slide = { w: 1920, h: 1080 };
-    expect(frameSizeOn(frame('magnet-summer'), slide)).toEqual({ w: 1288, h: 920 });
-    expect(frameSizeOn(frame('magnet-wedding'), slide)).toEqual({ w: 657, h: 920 });
-    // A frame without a caption comes at its own size.
-    expect(frameSizeOn(frame('instant'), slide)).toEqual({ w: 400, h: 480 });
+    expect(frameSizeOn(frame('magnet-summer'), slide)).toEqual(slide);
+    expect(frameSizeOn(frame('magnet-wedding'), slide)).toEqual(slide);
+    // Every catalogue frame uses the same edge-to-edge canvas.
+    for (const one of frames) expect(frameSizeOn(one, slide)).toEqual(slide);
 
     const summer = frame('magnet-summer');
     const [whole] = captions(group(summer, 'he'));
