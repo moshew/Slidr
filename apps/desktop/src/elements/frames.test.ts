@@ -352,13 +352,12 @@ describe('the magnets of events', () => {
     // In the catalogue they are set by set, as the panel shows them.
     const order = magnets.map((one) => MAGNET_SETS.indexOf(one.set!));
     expect(order).toEqual([...order].sort((a, b) => a - b));
-    // Every one lies wide, as the slide it covers does: a card of 7 by 5 whose window takes up
-    // the rest of the slide, or a card drawn for the whole slide.
+    // Every one is 7 by 5, lying or upright.
     for (const one of magnets) {
-      expect([
-        [1050, 750],
-        [1920, 1080],
-      ]).toContainEqual([one.size.w, one.size.h]);
+      expect(
+        [one.size.w, one.size.h].sort((a, b) => a - b),
+        one.id,
+      ).toEqual([750, 1050]);
     }
   });
 
@@ -523,12 +522,12 @@ describe('the magnets of events', () => {
     }
   });
 
-  it('cover the whole slide, and scale captions with their box', () => {
+  it('come as large as the safe margins of the slide allow, and scale with their box', () => {
     const slide = { w: 1920, h: 1080 };
-    expect(frameSizeOn(frame('magnet-summer'), slide)).toEqual(slide);
-    expect(frameSizeOn(frame('magnet-wedding'), slide)).toEqual(slide);
-    // Every catalogue frame uses the same edge-to-edge canvas.
-    for (const one of frames) expect(frameSizeOn(one, slide)).toEqual(slide);
+    expect(frameSizeOn(frame('magnet-summer'), slide)).toEqual({ w: 1288, h: 920 });
+    expect(frameSizeOn(frame('magnet-wedding'), slide)).toEqual({ w: 657, h: 920 });
+    // A frame without a caption comes at its own size.
+    expect(frameSizeOn(frame('instant'), slide)).toEqual({ w: 400, h: 480 });
 
     const summer = frame('magnet-summer');
     const [whole] = captions(group(summer, 'he'));

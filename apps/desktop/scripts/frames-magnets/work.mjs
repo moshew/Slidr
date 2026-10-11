@@ -235,12 +235,10 @@ export default function work(kit) {
     );
   }
 
-  /* ---- a holiday toast: a wide plaque of wine red and gold, glasses on its top, and in the band
-     at its foot a tag that hangs from the photograph at the left, with the line in the middle
-     of the band. It is drawn for the wide slide. */
+  /* ---- a holiday toast: a plaque of wine red and gold, glasses on its top, a tag below */
   function toast() {
-    const opening = box(65, 110, 1790, 800);
-    const R = 46;
+    const opening = box(58, 184, 634, 566);
+    const R = 42;
     const GOLD = '#dcbb6c';
     /** A disc on every corner of the photograph, which goes with that corner. */
     const discs = (S, r, attrs) =>
@@ -294,55 +292,39 @@ export default function work(kit) {
       }
       return `<g transform="translate(${x} ${y}) rotate(${turn})" stroke-opacity=".88">${parts.join('')}</g>`;
     };
-    /** What is drawn at the left of the card, as its like at the right. */
-    const mirrored = (body) => `<g transform="translate(1920 0) scale(-1 1)">${body}</g>`;
-    const [above, corner] = [sprig(806, 60, 184, 300, 9, 12), sprig(48, 1046, -19, 200, 7, -18)];
     const next = random(915);
-    // Bubbles of gold in the band above the photograph, to either side of the sprigs.
+    // Bubbles of gold in the band above the photograph.
     const bubbles = (S) =>
-      scattered(next, 40, 1920, 100, [box(470, 0, 980, 100)], 34, 24)
+      scattered(next, 26, 750, 176, [box(245, 0, 260, 176)], 30, 22)
         .map(([x, y]) =>
           S.pin(
             next() < 0.45
-              ? `<path d="${sparkle(x, y, 6 + next() * 8)}" fill="#f1dca0" fill-opacity="${f(0.5 + next() * 0.5)}"/>`
-              : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.8 + next() * 3)}" fill="#f1dca0" fill-opacity="${f(0.35 + next() * 0.5)}"/>`,
+              ? `<path d="${sparkle(x, y, 5 + next() * 7)}" fill="#f1dca0" fill-opacity="${f(0.5 + next() * 0.5)}"/>`
+              : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.6 + next() * 2.6)}" fill="#f1dca0" fill-opacity="${f(0.35 + next() * 0.5)}"/>`,
             [x, y],
-            { x: x < 960 ? 'start' : 'end', y: 'start' },
+            { x: x < 375 ? 'start' : 'end', y: 'start' },
           ),
         )
         .join('');
-    // The tag: paper on a loop of gold thread, which hangs from a pin. It is drawn at 280 by
-    // 236 and made larger for the wide card.
-    const TAG = 1.3;
+    // The tag: paper on a loop of gold thread, which hangs from a pin.
     const tag = art(
       'toast-tag',
-      364,
-      307,
+      280,
+      236,
       `<linearGradient id="tag-paper" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fbf5e4"/><stop offset="1" stop-color="#f1e5c8"/></linearGradient>`,
-      `<g transform="scale(${TAG})">` +
-        line('M140 10C116 34 124 58 140 74M140 10C164 34 156 58 140 74', '#c9a14a', 2.2) +
+      line('M140 10C116 34 124 58 140 74M140 10C164 34 156 58 140 74', '#c9a14a', 2.2) +
         `<path fill="url(#tag-paper)" d="M52 52H228L270 96V224a10 10 0 0 1-10 10H20a10 10 0 0 1-10-10V96Z"/>` +
         line('M57 62H223L260 100V220a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4V100Z', '#c9a14a', 1.6) +
         `<circle cx="140" cy="80" r="11" fill="#e6c477"/><circle cx="140" cy="80" r="5.500" fill="#5b1226"/>` +
         `<circle cx="140" cy="10" r="7" fill="#e6c477"/><circle cx="138" cy="8" r="2.400" fill="#fff6d8"/>` +
         line('M96 200H126M154 200H184', '#c9a14a', 1.6, ' stroke-linecap="round"') +
-        `<path d="${sparkle(140, 200, 9, 0.3)}" fill="#c9a14a"/></g>`,
-    );
-    // The rule under the line at the foot, as the tag has it: an element, so it goes with
-    // the words.
-    const rule = art(
-      'toast-rule',
-      240,
-      20,
-      '',
-      line('M2 10H96M144 10H238', GOLD, 1.8, ' stroke-linecap="round"') +
-        `<path d="${sparkle(120, 10, 10, 0.3)}" fill="${GOLD}"/>`,
+        `<path d="${sparkle(140, 200, 9, 0.3)}" fill="#c9a14a"/>`,
     );
     return magnet(
       'magnet-toast',
       'Holiday toast magnet',
       'מגנט להרמת כוסית',
-      [1920, 1080, 26],
+      [750, 1050, 26],
       {
         opening,
         // The plaque: a box with its corners cut round, on the inside.
@@ -360,55 +342,51 @@ export default function work(kit) {
               onBorder(
                 S.whole('fill="url(#warm)"'),
                 bubbles(S),
-                // Olive on either side of the glasses, and up from the two lower corners into
-                // the band at the foot.
-                S.pin(above, [806, 60], { x: 'mid', y: 'start' }),
-                S.pin(mirrored(above), [1114, 60], { x: 'mid', y: 'start' }),
-                S.pin(corner, [50, 1046], { x: 'start', y: 'end' }),
-                S.pin(mirrored(corner), [1870, 1046], { x: 'end', y: 'end' }),
+                // Olive on either side of the glasses, and up from the two lower corners.
+                S.pin(sprig(238, 112, 190, 176, 7, 26), [238, 112], { x: 'mid', y: 'start' }),
+                S.pin(sprig(512, 112, -10, 176, 7, -26), [512, 112], { x: 'mid', y: 'start' }),
+                S.pin(sprig(44, 1012, -62, 250, 9, -34), [44, 1012], { x: 'start', y: 'end' }),
+                S.pin(sprig(706, 1012, -118, 250, 9, 34), [706, 1012], { x: 'end', y: 'end' }),
               ) +
-              S.outline(box(14, 14, 1892, 1052), 15, 1.6, `stroke="${GOLD}" stroke-opacity=".8"`) +
+              S.outline(box(14, 14, 722, 1022), 15, 1.6, `stroke="${GOLD}" stroke-opacity=".8"`) +
               outer.body +
               inner.body,
           };
         },
         extras: [
-          sticker(picture('work-gold-2'), 845, 6, 230),
-          // The tag hangs from its pin in the photograph, over the plaque's foot at the left;
-          // the line and its rule hold the middle of the band, under the glasses.
+          sticker(picture('work-gold-2'), 272, 4, 206),
           label(
             tag,
-            272,
-            722,
+            235,
+            714,
             [
               caption(
-                31,
-                135,
-                302,
-                112,
-                { text: 'לחיים!', font: 'Frank Ruhl Libre', size: 91, weight: 900 },
-                { text: 'Cheers!', font: 'Playfair Display', size: 70, weight: 700, italic: true },
+                24,
+                104,
+                232,
+                86,
+                { text: 'לחיים!', font: 'Frank Ruhl Libre', size: 70, weight: 900 },
+                { text: 'Cheers!', font: 'Playfair Display', size: 54, weight: 700, italic: true },
                 { color: '#5b1226' },
               ),
             ],
             { turn: -4 },
           ),
           caption(
-            640,
-            932,
-            640,
-            62,
+            75,
+            972,
+            600,
+            46,
             {
               text: 'מרימים כוסית לחג',
               font: 'Frank Ruhl Libre',
-              size: 52,
+              size: 36,
               weight: 500,
               spacing: 1,
             },
-            { text: 'A HOLIDAY TOAST', font: 'Montserrat', size: 34, weight: 500, spacing: 7 },
+            { text: 'A HOLIDAY TOAST', font: 'Montserrat', size: 28, weight: 500, spacing: 7 },
             { color: '#ecd596' },
           ),
-          sticker(rule, 840, 1010, 240),
         ],
       },
       {
@@ -822,45 +800,30 @@ export default function work(kit) {
     );
   }
 
-  /* ---- a first day, in the deck's theme: a wide window in its line on a ground of confetti, a
-     name badge on its loop over the foot of the photograph at the right, and the line beside
-     it in the band at the foot. It is drawn for the wide slide. */
+  /* ---- a first day, in the deck's theme: a name badge on its clip over the foot of the photograph */
   function welcome() {
-    const opening = box(50, 50, 1820, 804);
-    // Where the line stands, beside the badge.
-    const words = box(412, 882, 872, 110);
+    const opening = box(50, 50, 650, 690);
     const next = random(1101);
-    // Where the line begins, less a little air.
-    const LEFT = words.x - 24;
-    /**
-     * A dot in the band at the foot, left of the line: it keeps its place between the left of
-     * the card and where the line begins, which is as far from the right of the card at any
-     * size. The sheet has no tie for a place along a part of the card.
-     */
-    const beforeWords = (body, [x]) =>
-      `<svg x="${f((x / LEFT) * 100)}%" y="100%" overflow="visible"><g transform="translate(${f((-x / LEFT) * (1920 - LEFT) - x)} -1080)">${body}</g></svg>`;
-    // Dots of the theme's colours all over the card, but not under the line at its foot. The
-    // dots around the line and the badge keep their distance from the right of the card, as
-    // those do, so a wider card has no dot under its words.
+    // Dots of the theme's colours all over the card, but not under the line down its side.
     const confetti = (S) =>
-      scattered(next, 100, 1920, 1080, [inset(opening, -10), inset(words, -8)], 36, 14)
+      scattered(next, 84, 750, 1050, [inset(opening, -8), box(0, 150, 50, 500)], 34, 14)
         .map(([x, y]) => {
           const token = pick(next, ['primary', 'accent', 'secondary', 'bg', 'primary']);
-          const dot = `<circle cx="${f(x)}" cy="${f(y)}" r="${f(5 + next() * 11)}" style="${themed('fill', token)}" fill-opacity="${token === 'bg' ? 0.9 : f(0.35 + next() * 0.6)}"/>`;
-          if (y < opening.y + opening.h) return S.pin(dot, [x, y]);
-          return x > LEFT ? S.pin(dot, [x, y], { x: 'end' }) : beforeWords(dot, [x, y]);
+          return S.pin(
+            `<circle cx="${f(x)}" cy="${f(y)}" r="${f(4 + next() * 9)}" style="${themed('fill', token)}" fill-opacity="${token === 'bg' ? 0.9 : f(0.35 + next() * 0.6)}"/>`,
+            [x, y],
+          );
         })
         .join('');
     // The badge: the loop of its lanyard lies on the photograph, and goes through the slot
-    // of the card. It is drawn at 400 by 380 and made larger for the wide card.
-    const BADGE = 1.35;
+    // of the card.
     const loop = 'M200 142C130 92 152 9 200 9C248 9 270 92 200 142';
     const badge = art(
       'welcome-badge',
-      540,
-      513,
+      400,
+      380,
       `<clipPath id="badge-card"><rect y="126" width="400" height="254" rx="24"/></clipPath>`,
-      `<g transform="scale(${BADGE})"><path d="${loop}" fill="none" style="${themed('stroke', 'accent')}" stroke-width="18" stroke-linejoin="round"/>` +
+      `<path d="${loop}" fill="none" style="${themed('stroke', 'accent')}" stroke-width="18" stroke-linejoin="round"/>` +
         `<path d="${loop}" fill="none" style="${themed('stroke', 'text')}" stroke-opacity=".2" stroke-width="2" stroke-dasharray="7 6"/>` +
         `<g clip-path="url(#badge-card)"><rect y="126" width="400" height="254" style="${themed('fill', 'bg')}"/>` +
         `<rect y="126" width="400" height="88" style="${themed('fill', 'primary')}"/>` +
@@ -868,16 +831,16 @@ export default function work(kit) {
         `<rect x=".750" y="126.750" width="398.500" height="252.500" rx="23.300" fill="none" style="${themed('stroke', 'text')}" stroke-opacity=".22" stroke-width="1.500"/>` +
         `<rect x="166" y="136" width="68" height="14" rx="7" style="${themed('fill', 'text')}" fill-opacity=".6"/>` +
         `<path style="${themed('fill', 'accent')}" d="M186 118h28l-4 30h-20Z"/>` +
-        `<rect x="183" y="112" width="34" height="13" rx="4" style="${themed('fill', 'muted')}"/></g>`,
+        `<rect x="183" y="112" width="34" height="13" rx="4" style="${themed('fill', 'muted')}"/>`,
     );
     return magnet(
       'magnet-welcome',
       'Welcome to the team magnet',
       'מגנט ליום הראשון בעבודה',
-      [1920, 1080, 22],
+      [750, 1050, 22],
       {
         opening,
-        round: 18,
+        round: 14,
         draw: (S) => ({
           body:
             // A tint of the theme's own colour, so that the card of the badge stands out on it.
@@ -886,56 +849,44 @@ export default function work(kit) {
               'fill:color-mix(in srgb, var(--color-primary) 13%, var(--color-bg))',
             ) +
             onBorder(confetti(S)) +
-            S.outline(opening, 18, 6, '', { paint: `${themed('stroke', 'primary')};` }),
+            S.outline(opening, 14, 5, '', { paint: `${themed('stroke', 'primary')};` }),
         }),
         extras: [
-          // In the band at the foot, ending where the badge hangs: both keep their distance
-          // from the right of the card.
+          // Down the side of the photograph, read from its foot.
           caption(
-            words.x,
-            words.y,
-            words.w,
-            words.h,
-            { text: 'היום הראשון שלי', size: 92, weight: 700, spacing: 2 },
-            { text: 'MY FIRST DAY', size: 80, weight: 700, spacing: 8 },
-            { color: { token: 'text' }, align: 'right' },
+            -176,
+            378,
+            400,
+            40,
+            { text: 'היום הראשון שלי', size: 30, weight: 700, spacing: 2 },
+            { text: 'MY FIRST DAY', size: 28, weight: 700, spacing: 6 },
+            { color: { token: 'text' }, turn: -90 },
           ),
-          // A taller magnet has a longer loop, and the card of the badge as it is: the loop is
-          // the strip of the plate that lengthens.
           label(
             badge,
-            1320,
-            486,
+            175,
+            596,
             [
               caption(
-                54,
-                213,
-                432,
-                65,
-                { text: 'שלום, אני', size: 46, weight: 700 },
-                { text: 'HELLO, I’M', size: 40, weight: 700, spacing: 5 },
+                40,
+                158,
+                320,
+                48,
+                { text: 'שלום, אני', size: 34, weight: 700 },
+                { text: 'HELLO, I’M', size: 30, weight: 700, spacing: 4 },
                 { color: { token: 'bg' } },
               ),
               caption(
-                40,
-                308,
-                460,
-                184,
-                { text: 'תמר', size: 148, weight: 800 },
-                { text: 'Tamar', size: 116, weight: 800 },
+                30,
+                228,
+                340,
+                136,
+                { text: 'תמר', size: 110, weight: 800 },
+                { text: 'Tamar', size: 86, weight: 800 },
                 { color: { token: 'text' } },
               ),
             ],
-            {
-              turn: -5,
-              stretch: {
-                x: [
-                  [40, 189],
-                  [351, 500],
-                ],
-                y: [[40, 135]],
-              },
-            },
+            { turn: -5 },
           ),
         ],
       },

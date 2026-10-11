@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Dialog, DialogContent, Field, Select, Skeleton, Switch } from '@slidr/ui';
 import { useStore } from 'zustand';
-import { modelEfforts } from '../agent/harnessSetup';
+import { latestModels, modelEfforts } from '../agent/harnessSetup';
 import type { HarnessDescriptor } from '../agent/agent';
 import { DEFAULT_OUTLINE } from '../agent/agentService';
 import { agentOf } from '../ai/runtime';
@@ -70,6 +70,7 @@ export function AgentSection() {
   const status = state?.connection?.status;
   const ready = status?.state === 'ready' && !state?.busy;
   const selectedModel = harness?.models.find((model) => model.id === settings.model);
+  const latest = latestModels(harness?.models ?? []);
   const efforts = harness ? modelEfforts(harness, settings.model) : [];
   const retry = () =>
     selectedId && void agent.setup.connect(selectedId, true).catch(() => undefined);
@@ -165,7 +166,10 @@ export function AgentSection() {
               aria-label={t('agent.model')}
               placeholder={t('agent.chooseModel')}
               value={selectedModel?.id ?? null}
-              options={harness.models.map((model) => ({ value: model.id, label: model.label }))}
+              // The newest of each family, and the chosen model even when it is an older one.
+              options={harness.models
+                .filter((model) => model === selectedModel || latest.includes(model))
+                .map((model) => ({ value: model.id, label: model.label }))}
               onValueChange={(model) => setAgentSettings({ model, effort: undefined })}
             />
           </Field>

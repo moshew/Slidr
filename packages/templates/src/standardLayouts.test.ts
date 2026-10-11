@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { tzukTemplate } from './builtin';
 import { nightTemplate } from './fixtures';
+import { Template } from './template';
 import { withStandardLayouts } from './standardLayouts';
 
-describe('the standard title and text layouts', () => {
+describe('the standard text layout', () => {
   it('adds them to an older template in the requested order without changing its drawing', () => {
     const old = nightTemplate();
     const complete = withStandardLayouts(old);
     const kinds = complete.layouts.map((layout) => layout.archetype);
-    expect(kinds.indexOf('title')).toBe(kinds.indexOf('section') + 1);
+    expect(kinds).not.toContain('title');
     expect(kinds.indexOf('text')).toBe(kinds.indexOf('textImage') - 1);
-    const title = complete.layouts.find((layout) => layout.archetype === 'title')!;
-    expect(title.placeholders.map((place) => place.role)).toEqual(['title']);
     expect(
       complete.layouts
         .find((layout) => layout.archetype === 'text')
@@ -27,13 +26,11 @@ describe('the standard title and text layouts', () => {
     const complete = withStandardLayouts(night);
     const style = night.theme.textStyles.title;
     const line = Math.ceil(style.size * style.lineHeight);
-    const [title] = complete.layouts.find((layout) => layout.archetype === 'title')!.placeholders;
     const [textTitle, body] = complete.layouts.find(
       (layout) => layout.archetype === 'text',
     )!.placeholders;
     // The table of the template sets its title at the top margin, across the slide.
-    expect(title!.frame).toEqual({ x: 96, y: 96, w: 1728, h: line });
-    expect(textTitle!.frame).toEqual(title!.frame);
+    expect(textTitle!.frame).toEqual({ x: 96, y: 96, w: 1728, h: line });
     expect(body!.frame.x).toBe(96);
     expect(body!.frame.w).toBe(1728);
     expect(body!.frame.y).toBeGreaterThan(96 + line);
@@ -49,7 +46,7 @@ describe('the standard title and text layouts', () => {
     };
     const complete = withStandardLayouts(older);
     const table = tzuk.layouts.find((layout) => layout.archetype === 'table')!;
-    for (const archetype of ['title', 'text'] as const) {
+    for (const archetype of ['text'] as const) {
       const layout = complete.layouts.find((l) => l.archetype === archetype)!;
       expect(layout.placeholders[0]!.frame.y).toBe(
         table.placeholders.find((place) => place.role === 'title')!.frame.y,
@@ -79,4 +76,21 @@ describe('the standard title and text layouts', () => {
     };
     expect(withStandardLayouts(outOfOrder).layouts).toEqual(complete.layouts);
   });
+});
+
+it('removes saved title-only layouts, their flipped versions and previews', () => {
+  const original = nightTemplate();
+  const title = { ...original.layouts[0]!, id: 'retired_title', archetype: 'title' as const };
+  const template = {
+    ...original,
+    layouts: [...original.layouts, title],
+    flipped: [title],
+    sample: [{ id: 's_retired', layoutId: title.id, elements: [], timeline: [] }],
+  };
+  const result = withStandardLayouts(template);
+  expect(result.layouts.some((layout) => layout.archetype === 'title')).toBe(false);
+  expect(result.flipped).toEqual([]);
+  expect(result.sample).toEqual([]);
+  expect(Template.safeParse(result).success).toBe(true);
+  expect(template.layouts).toContain(title);
 });

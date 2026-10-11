@@ -214,10 +214,17 @@ describe('the HTML conventions (SPEC 11.5)', () => {
     }
   });
 
-  it('list the archetypes and roles of the model as the values to write', () => {
+  it('list the archetypes of the model as the values to write', () => {
     for (const archetype of Archetype.options)
       expect(HTML_CONVENTIONS).toContain(`\`${archetype}\``);
-    for (const role of PlaceholderRole.options) expect(HTML_CONVENTIONS).toContain(`\`${role}\``);
+  });
+
+  it('ask for one role in a slide, the title, and list the roles where a layout is drawn', () => {
+    // A role on one of several like texts keeps it out of the text box the others share.
+    expect(HTML_CONVENTIONS).toContain('`data-role="title"`');
+    expect(HTML_CONVENTIONS).toMatch(/Write no other `data-role` in a slide/);
+    const guide = full('deck');
+    for (const role of PlaceholderRole.options) expect(guide).toContain(`\`${role}\``);
   });
 
   it('name a variable for every colour token of the theme, and the font, radius and shadow ones', () => {

@@ -226,23 +226,19 @@ export default function leisure(kit) {
     );
   }
 
-  /* ---- a day at the beach: sand around a wide print, the sea coming in along the foot with the
-     family's name on it, a surfboard stood up at the right with its tail in the water. It is
-     drawn for the wide slide. */
+  /* ---- a day at the beach: sand, the sea coming in below, a surfboard stood up on the right */
   function beach() {
-    const [W, H] = [1920, 1080];
-    const opening = box(64, 36, 1624, 812);
-    // The board lies as it is drawn, nose to the right, and is stood on its tail by a turn. It
-    // is drawn a tenth larger than its outline, so it stands nearly as tall as the card.
+    const opening = box(40, 46, 556, 800);
+    // The board lies as it is drawn, nose to the right, and is stood on its tail by a turn.
     const deck =
       'M14 75C14 46 40 20 120 13C300-2 600 4 800 40Q870 54 892 75Q870 96 800 110C600 146 300 152 120 137C40 130 14 104 14 75Z';
     const board = art(
       'beach-surfboard',
-      990,
-      165,
+      900,
+      150,
       `<clipPath id="deck"><path d="${deck}"/></clipPath>` +
         `<linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".75"/><stop offset=".35" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#8a5a2b" stop-opacity=".28"/></linearGradient>`,
-      `<g transform="scale(1.1)"><path d="${deck}" fill="#fff5df"/>` +
+      `<path d="${deck}" fill="#fff5df"/>` +
         `<g clip-path="url(#deck)">` +
         `<rect x="706" width="194" height="150" fill="#ff6b57"/><rect x="682" width="12" height="150" fill="#11a3a8"/><rect x="664" width="6" height="150" fill="#11a3a8"/>` +
         `<rect width="138" height="150" fill="#11a3a8"/><rect x="150" width="12" height="150" fill="#ffc94d"/><rect x="174" width="6" height="150" fill="#ff6b57"/>` +
@@ -250,24 +246,15 @@ export default function leisure(kit) {
         `<path d="${deck}" fill="url(#gloss)"/></g>` +
         `<path d="${deck}" fill="none" stroke="#0e5f66" stroke-opacity=".4" stroke-width="2"/>` +
         // The fin, seen through the board at its tail.
-        `<path d="M58 75q26-22 60-16-22 8-28 16Z" fill="#0b6f75" fill-opacity=".55"/></g>`,
+        `<path d="M58 75q26-22 60-16-22 8-28 16Z" fill="#0b6f75" fill-opacity=".55"/>`,
     );
-    // The line of the shore across the card, `dy` lower: four slow swells.
     const shore = (dy) =>
-      `M0 ${884 + dy}C80 ${866 + dy} 160 ${896 + dy} 240 ${880 + dy}S400 ${862 + dy} 480 ${884 + dy}S640 ${898 + dy} 720 ${882 + dy}` +
-      `S880 ${864 + dy} 960 ${886 + dy}S1120 ${900 + dy} 1200 ${884 + dy}S1360 ${866 + dy} 1440 ${882 + dy}S1600 ${898 + dy} 1680 ${886 + dy}S1840 ${870 + dy} 1920 ${888 + dy}`;
-    const swell = (dy, width, opacity) =>
-      line(
-        shore(dy),
-        '#ffffff',
-        width,
-        ` stroke-opacity="${opacity}" stroke-linecap="round" vector-effect="non-scaling-stroke"`,
-      );
+      `M0 ${886 + dy}C90 ${868 + dy} 170 ${898 + dy} 260 ${882 + dy}S430 ${864 + dy} 520 ${886 + dy}S680 ${874 + dy} 750 ${890 + dy}`;
     return magnet(
       'magnet-beach',
       'Beach day magnet',
       'מגנט ליום ים',
-      [W, H, 22],
+      [750, 1050, 22],
       {
         opening,
         round: 6,
@@ -286,13 +273,28 @@ export default function leisure(kit) {
               // The sea comes in along the foot of the card: wet sand, foam, then the water.
               footStrip(
                 S,
-                250,
-                `<path fill="#dcbf87" d="${shore(-22)}V${H}H0Z"/>` +
-                  `<path fill="#ffffff" d="${shore(-6)}V${H}H0Z"/>` +
-                  `<path fill="url(#sea)" d="${shore(8)}V${H}H0Z"/>` +
-                  swell(27, 3, 0.45) +
-                  swell(106, 2.5, 0.28) +
-                  swell(152, 2, 0.2),
+                200,
+                `<path fill="#dcbf87" d="${shore(-22)}V1050H0Z"/>` +
+                  `<path fill="#ffffff" d="${shore(-6)}V1050H0Z"/>` +
+                  `<path fill="url(#sea)" d="${shore(8)}V1050H0Z"/>` +
+                  line(
+                    shore(40),
+                    '#ffffff',
+                    3,
+                    ' stroke-opacity=".45" stroke-linecap="round" vector-effect="non-scaling-stroke"',
+                  ) +
+                  line(
+                    shore(84),
+                    '#ffffff',
+                    2.5,
+                    ' stroke-opacity=".28" stroke-linecap="round" vector-effect="non-scaling-stroke"',
+                  ) +
+                  line(
+                    shore(126),
+                    '#ffffff',
+                    2,
+                    ' stroke-opacity=".2" stroke-linecap="round" vector-effect="non-scaling-stroke"',
+                  ),
               ),
             ) +
             frameLine(S, 0, 6, '#ffffff', 11),
@@ -305,44 +307,41 @@ export default function leisure(kit) {
               0,
               [
                 caption(
-                  216,
-                  20,
-                  495,
-                  128,
-                  { text: 'יום ים', font: 'Karantina', size: 104, weight: 700, spacing: 3 },
-                  { text: 'BEACH DAY', font: 'Karantina', size: 100, weight: 700, spacing: 4 },
+                  196,
+                  18,
+                  450,
+                  116,
+                  { text: 'יום ים', font: 'Karantina', size: 100, weight: 700, spacing: 3 },
+                  { text: 'BEACH DAY', font: 'Karantina', size: 96, weight: 700, spacing: 4 },
                   { color: '#0c5661' },
                 ),
               ],
-              // The plain deck between the stripes lengthens; the nose and the tail keep
-              // their shape.
-              { turn: -90, stretch: { x: [[205, 720]], y: [[55, 110]] } },
+              { turn: -90 },
             ),
-            [W, H],
-            { right: 80, top: 40 },
+            [750, 1050],
+            { right: 14, top: 56 },
           ),
-          sticker(picture('leisure-shells'), 28, 772, 330, { turn: -6 }),
-          // The name at the shells' end of the water, the place at the board's end.
+          sticker(picture('leisure-shells'), 12, 800, 250, { turn: -6 }),
           caption(
-            396,
-            912,
-            640,
-            86,
-            { text: 'משפחת דרור', font: 'Rubik', size: 72, weight: 800 },
-            { text: 'The Drors', font: 'Poppins', size: 72, weight: 800 },
+            270,
+            926,
+            304,
+            58,
+            { text: 'משפחת דרור', font: 'Rubik', size: 44, weight: 800 },
+            { text: 'The Drors', font: 'Poppins', size: 44, weight: 800 },
             { color: '#ffffff', align: 'left' },
           ),
           caption(
-            1236,
-            941,
-            400,
+            270,
+            984,
+            304,
             46,
-            { text: 'חוף דור · יולי', font: 'Heebo', size: 38, weight: 500 },
-            { text: 'Dor Beach, July', font: 'Poppins', size: 36, weight: 500 },
-            { color: '#effcfc', align: 'right' },
+            { text: 'חוף דור · יולי', font: 'Heebo', size: 30, weight: 500 },
+            { text: 'Dor Beach, July', font: 'Poppins', size: 28, weight: 500 },
+            { color: '#d9f6f6', align: 'left' },
           ),
-          tucked(sticker(picture('leisure-shades'), 0, 0, 270, { turn: -14 }), [W, H], {
-            left: 8,
+          tucked(sticker(picture('leisure-shades'), 0, 0, 216, { turn: -14 }), [750, 1050], {
+            left: 6,
             top: 6,
           }),
         ],
@@ -505,43 +504,37 @@ export default function leisure(kit) {
     );
   }
 
-  /* ---- a music festival: dusk over the crowd, the name in a band above a wide print with the
-     ticket at its other end, a wristband across the lower corner. It is drawn for the wide
-     slide. */
+  /* ---- a music festival: dusk over the crowd, the name above, a wristband across a corner */
   function festival() {
-    const [W, H] = [1920, 1080];
-    const opening = box(44, 192, 1832, 728);
-    // A wristband of woven cloth, with the clasp that locks it: drawn a quarter larger than
-    // its outline.
+    const opening = box(44, 168, 662, 690);
+    // A wristband of woven cloth, with the clasp that locks it.
     const band = art(
       'festival-wristband',
-      550,
-      130,
+      440,
+      104,
       `<linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#007680"/><stop offset="1" stop-color="#00565f"/></linearGradient>` +
         `<pattern id="zig" width="12" height="16" patternUnits="userSpaceOnUse"><path d="M1 0 11 8 1 16" fill="none" stroke="#ff7ab6" stroke-width="2.400"/></pattern>` +
         `<linearGradient id="clasp" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#1c2748"/><stop offset=".5" stop-color="#33416e"/><stop offset="1" stop-color="#141c36"/></linearGradient>`,
-      `<g transform="scale(1.25)"><rect y="6" width="440" height="92" rx="5" fill="url(#cloth)"/>` +
+      `<rect y="6" width="440" height="92" rx="5" fill="url(#cloth)"/>` +
         `<rect y="6" width="440" height="7" rx="3" fill="#ffd23f"/><rect y="91" width="440" height="7" rx="3" fill="#ffd23f"/>` +
         // The weave shows at the two ends only: the word lies on plain cloth.
         `<rect x="6" y="20" width="24" height="64" fill="url(#zig)"/><rect x="338" y="20" width="24" height="64" fill="url(#zig)"/>` +
         `<rect x="398" y="6" width="42" height="92" fill="#00353b" fill-opacity=".35"/>` +
         `<rect x="368" width="32" height="104" rx="9" fill="url(#clasp)"/>` +
         `<rect x="378" y="12" width="12" height="80" rx="6" fill="#0b1126"/>` +
-        line('M373 8V96', '#ffffff', 1.6, ' stroke-opacity=".3" stroke-linecap="round"') +
-        `</g>`,
+        line('M373 8V96', '#ffffff', 1.6, ' stroke-opacity=".3" stroke-linecap="round"'),
     );
-    // A ticket with its stub: the tear between them is a line of holes. It is drawn a fifth
-    // larger than its outline.
+    // A ticket with its stub: the tear between them is a line of holes.
     const ticket = art(
       'festival-ticket',
-      396,
-      180,
+      330,
+      150,
       `<clipPath id="paper"><path d="M10 0H224a12 12 0 0 0 24 0H320a10 10 0 0 1 10 10V140a10 10 0 0 1-10 10H248a12 12 0 0 0-24 0H10A10 10 0 0 1 0 140V10A10 10 0 0 1 10 0Z"/></clipPath>`,
-      `<g transform="scale(1.2)"><g clip-path="url(#paper)"><rect width="330" height="150" fill="#fff4dc"/><rect x="236" width="94" height="150" fill="#ffd23f"/>` +
+      `<g clip-path="url(#paper)"><rect width="330" height="150" fill="#fff4dc"/><rect x="236" width="94" height="150" fill="#ffd23f"/>` +
         `<rect x="8" y="8" width="220" height="134" rx="6" fill="none" stroke="#b0185f" stroke-width="2.400"/>` +
         `<rect x="244" y="8" width="78" height="134" rx="6" fill="none" stroke="#7a1244" stroke-width="2.400"/></g>` +
         line('M236 16V134', '#7a1244', 2.4, ' stroke-dasharray=".1 7" stroke-linecap="round"') +
-        `<path d="${star(283, 75, 26, 0, 0.5)}" fill="#b0185f"/></g>`,
+        `<path d="${star(283, 75, 26, 0, 0.5)}" fill="#b0185f"/>`,
     );
     const bunting = ['#ffd23f', '#00a3ad', '#fff4dc', '#ff4f9a']
       .map((colour, i) => `<path d="M${6 + i * 34} 0h28l-14 26Z" fill="${colour}"/>`)
@@ -556,7 +549,7 @@ export default function leisure(kit) {
       'magnet-festival',
       'Music festival magnet',
       'מגנט לפסטיבל',
-      [W, H, 26],
+      [750, 1050, 26],
       {
         opening,
         round: 14,
@@ -564,54 +557,51 @@ export default function leisure(kit) {
           defs:
             `<linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4f1787"/><stop offset=".34" stop-color="#b3175f"/><stop offset=".78" stop-color="#f4582a"/><stop offset="1" stop-color="#ffab40"/></linearGradient>` +
             `<radialGradient id="sun"><stop stop-color="#fff1a8"/><stop offset=".55" stop-color="#ffd24a" stop-opacity=".85"/><stop offset="1" stop-color="#ffb02e" stop-opacity="0"/></radialGradient>` +
-            // The flags hang larger over a band this wide.
-            `<pattern id="flags" width="136" height="28" patternUnits="userSpaceOnUse" patternTransform="scale(1.7)">${bunting}</pattern>` +
-            `<pattern id="crowd" y="${H - 96}" width="160" height="96" patternUnits="userSpaceOnUse">${crowd}</pattern>` +
+            `<pattern id="flags" width="136" height="28" patternUnits="userSpaceOnUse">${bunting}</pattern>` +
+            `<pattern id="crowd" y="954" width="160" height="96" patternUnits="userSpaceOnUse">${crowd}</pattern>` +
             // The rows behind: the same heads, smaller and further off.
-            `<pattern id="rows" x="70" y="${H - 104}" width="128" height="77" patternUnits="userSpaceOnUse"><g transform="scale(.8)" opacity=".5">${crowd}</g></pattern>`,
+            `<pattern id="rows" x="70" y="938" width="128" height="77" patternUnits="userSpaceOnUse"><g transform="scale(.8)" opacity=".5">${crowd}</g></pattern>`,
           body:
             ground(S, 'url(#dusk)') +
             onBorder(
-              // The lights of the stage, up from the foot of the card: they fan across the band
-              // of the name.
+              // The lights of the stage, up from the foot of the card.
               stretched(
                 S,
-                box(0, 0, W, H),
-                `<g fill="#ffffff" fill-opacity=".09"><path d="M960 1080-190 0H50Z"/><path d="M960 1080 310 0H520Z"/><path d="M960 1080 745 0H895Z"/><path d="M960 1080 1025 0H1175Z"/><path d="M960 1080 1400 0H1610Z"/><path d="M960 1080 1870 0H2110Z"/></g>`,
+                box(0, 0, 750, 1050),
+                `<g fill="#ffffff" fill-opacity=".09"><path d="M375 1050-70 0H70Z"/><path d="M375 1050 232 0H330Z"/><path d="M375 1050 452 0H560Z"/><path d="M375 1050 700 0H850Z"/></g>`,
               ),
-              S.pin(`<circle cx="960" cy="1104" r="340" fill="url(#sun)"/>`, [960, 1104], {
+              S.pin(`<circle cx="375" cy="1058" r="230" fill="url(#sun)"/>`, [375, 1058], {
                 x: 'mid',
                 y: 'end',
               }),
               S.pin(
-                `<rect x="-3000" y="${H - 104}" width="9000" height="77" fill="url(#rows)"/>`,
-                [0, H],
+                `<rect x="-3000" y="938" width="9000" height="77" fill="url(#rows)"/>`,
+                [0, 1050],
                 { x: 'start', y: 'end' },
               ),
               footRow(S, 'crowd', 96),
-              `<rect width="100%" height="47" fill="url(#flags)"/>` +
-                `<rect width="100%" height="4" fill="#2a0b3d"/>`,
+              `<rect width="100%" height="28" fill="url(#flags)"/>` +
+                `<rect width="100%" height="3" fill="#2a0b3d"/>`,
             ) +
             frameLine(S, 0, 14, '#fff4dc', 6),
         }),
         extras: [
-          // The name and its line stand side by side in the band, on one baseline.
           caption(
+            46,
+            30,
+            350,
             96,
-            82,
-            400,
-            104,
-            { text: 'צלילי מדבר', font: 'Karantina', size: 90, weight: 700 },
-            { text: 'DESERT BEAT', font: 'Karantina', size: 80, weight: 700, spacing: 1 },
+            { text: 'צלילי מדבר', font: 'Karantina', size: 82, weight: 700 },
+            { text: 'DESERT BEAT', font: 'Karantina', size: 73, weight: 700, spacing: 1 },
             { color: '#ffffff', align: 'left' },
           ),
           caption(
-            450,
-            130,
-            520,
-            46,
-            { text: 'שלושה ימים של מוזיקה', font: 'Heebo', size: 34, weight: 700 },
-            { text: '3 DAYS OF MUSIC', font: 'DM Sans', size: 34, weight: 700 },
+            48,
+            120,
+            350,
+            44,
+            { text: 'שלושה ימים של מוזיקה', font: 'Heebo', size: 28, weight: 700 },
+            { text: '3 DAYS OF MUSIC', font: 'DM Sans', size: 28, weight: 700 },
             { color: '#ffe08a', align: 'left' },
           ),
           tucked(
@@ -621,37 +611,36 @@ export default function leisure(kit) {
               0,
               [
                 caption(
-                  14,
-                  14,
-                  255,
-                  51,
-                  { text: 'כרטיס כניסה', font: 'Heebo', size: 34, weight: 800 },
-                  { text: 'ADMIT ONE', font: 'Space Grotesk', size: 34, weight: 700 },
+                  12,
+                  12,
+                  212,
+                  42,
+                  { text: 'כרטיס כניסה', font: 'Heebo', size: 28, weight: 800 },
+                  { text: 'ADMIT ONE', font: 'Space Grotesk', size: 28, weight: 700 },
                   { color: '#b0185f' },
                 ),
                 caption(
-                  14,
-                  74,
-                  255,
-                  92,
-                  { text: 'במה מרכזית', font: 'Karantina', size: 64, weight: 700 },
-                  { text: 'MAIN STAGE', font: 'Karantina', size: 58, weight: 700 },
+                  12,
+                  62,
+                  212,
+                  76,
+                  { text: 'במה מרכזית', font: 'Karantina', size: 54, weight: 700 },
+                  { text: 'MAIN STAGE', font: 'Karantina', size: 48, weight: 700 },
                   { color: '#3a0f3f' },
                 ),
               ],
-              // The middle of the ticket lengthens; its tear and its stub keep their shape.
-              { turn: 4, stretch: { x: [[40, 250]], y: [[60, 120]] } },
+              { turn: 4 },
             ),
-            [W, H],
-            { right: 30, top: 62 },
+            [750, 1050],
+            { right: 10, top: 12 },
           ),
           caption(
-            1300,
-            928,
-            524,
-            50,
-            { text: 'רוקדים עד הזריחה', font: 'Karantina', size: 42, weight: 700 },
-            { text: 'DANCE TILL SUNRISE', font: 'Karantina', size: 38, weight: 700 },
+            466,
+            884,
+            240,
+            56,
+            { text: 'רוקדים עד הזריחה', font: 'Karantina', size: 38, weight: 700 },
+            { text: 'DANCE TILL SUNRISE', font: 'Karantina', size: 32, weight: 700 },
             { color: '#2a0b3d', align: 'right' },
           ),
           tucked(
@@ -661,19 +650,19 @@ export default function leisure(kit) {
               0,
               [
                 caption(
-                  45,
-                  25,
-                  370,
-                  80,
-                  { text: 'פסטיבל', font: 'Karantina', size: 66, weight: 700, spacing: 4 },
-                  { text: 'FESTIVAL', font: 'Karantina', size: 66, weight: 700, spacing: 5 },
+                  36,
+                  20,
+                  296,
+                  64,
+                  { text: 'פסטיבל', font: 'Karantina', size: 54, weight: 700, spacing: 3 },
+                  { text: 'FESTIVAL', font: 'Karantina', size: 54, weight: 700, spacing: 4 },
                   { color: '#ffffff' },
                 ),
               ],
               { turn: -8 },
             ),
-            [W, H],
-            { left: 28, bottom: 80 },
+            [750, 1050],
+            { left: 8, bottom: 96 },
           ),
         ],
       },
@@ -1417,20 +1406,16 @@ export default function leisure(kit) {
     );
   }
 
-  /* ---- a race: electric blue at speed around a wide print, the bib over its lower corner, the
-     tape of the line across its upper one, the distance and a shoe at the foot. It is drawn for
-     the wide slide. */
+  /* ---- a race: electric blue at speed, the bib over the photograph, the tape at the line */
   function run() {
-    const [W, H] = [1920, 1080];
-    const opening = box(60, 44, 1800, 900);
-    // The bib of a runner: paper with a hole in each corner, the race, the number, the name. It
-    // is drawn three tenths larger than its outline.
+    const opening = box(44, 44, 662, 760);
+    // The bib of a runner: paper with a hole in each corner, the race, the number, the name.
     const bib = art(
       'run-bib',
-      520,
-      372,
+      400,
+      286,
       `<linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#e9edf5"/></linearGradient>`,
-      `<g transform="scale(1.3)"><rect width="400" height="286" rx="14" fill="url(#paper)"/>` +
+      `<rect width="400" height="286" rx="14" fill="url(#paper)"/>` +
         // The four holes for the pins.
         [
           [22, 22],
@@ -1445,42 +1430,38 @@ export default function leisure(kit) {
           .join('') +
         `<rect x="44" y="10" width="312" height="48" rx="8" fill="#e4ff3a"/>` +
         `<rect x="44" y="272" width="312" height="5" rx="2.500" fill="#1447e6"/>` +
-        line('M70 220H330', '#c5cde0', 1.6, ' stroke-dasharray="3 5"') +
-        `</g>`,
+        line('M70 220H330', '#c5cde0', 1.6, ' stroke-dasharray="3 5"'),
     );
-    // The tape at the finishing line, with warning stripes at its two ends: a quarter larger
-    // than its outline.
+    // The tape at the finishing line, with warning stripes at its two ends.
     const tape = art(
       'run-tape',
-      475,
-      120,
+      380,
+      96,
       `<pattern id="hazard" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="skewX(-30)"><rect width="13" height="26" fill="#0b1437"/></pattern>` +
         `<linearGradient id="fold" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".4"/><stop offset=".45" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".16"/></linearGradient>`,
-      `<g transform="scale(1.25)"><rect y="6" width="380" height="84" fill="#e4ff3a"/>` +
+      `<rect y="6" width="380" height="84" fill="#e4ff3a"/>` +
         `<rect y="6" width="56" height="84" fill="url(#hazard)"/><rect x="324" y="6" width="56" height="84" fill="url(#hazard)"/>` +
         `<rect y="6" width="380" height="84" fill="url(#fold)"/>` +
-        line('M0 6H380M0 90H380', '#0b1437', 2.6) +
-        `</g>`,
+        line('M0 6H380M0 90H380', '#0b1437', 2.6),
     );
-    // A seal with rays around it, for how far the race was: three tenths larger than its
-    // outline.
+    // A seal with rays around it, for how far the race was.
     const seal = art(
       'run-seal',
-      221,
-      221,
+      170,
+      170,
       `<linearGradient id="lime" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f4ff8a"/><stop offset="1" stop-color="#cfe82a"/></linearGradient>`,
-      `<g transform="scale(1.3)"><path d="M${Array.from({ length: 40 }, (_, i) => {
+      `<path d="M${Array.from({ length: 40 }, (_, i) => {
         const a = ((i + 0.5) * Math.PI) / 20;
         const r = i % 2 ? 73 : 84;
         return `${f(85 + r * Math.sin(a))} ${f(85 - r * Math.cos(a))}`;
       }).join('L')}Z" fill="url(#lime)"/>` +
-        `<circle cx="85" cy="85" r="65" fill="none" stroke="#0b1437" stroke-width="2.400"/></g>`,
+        `<circle cx="85" cy="85" r="65" fill="none" stroke="#0b1437" stroke-width="2.400"/>`,
     );
     return magnet(
       'magnet-run',
       'Race day magnet',
       'מגנט למרוץ',
-      [W, H, 24],
+      [750, 1050, 24],
       {
         opening,
         round: 12,
@@ -1504,46 +1485,46 @@ export default function leisure(kit) {
               0,
               [
                 caption(
-                  82,
-                  20,
-                  310,
-                  80,
-                  { text: 'קו הסיום', font: 'Karantina', size: 58, weight: 700, spacing: 2 },
-                  { text: 'FINISH', font: 'Karantina', size: 58, weight: 700, spacing: 7 },
+                  66,
+                  16,
+                  248,
+                  64,
+                  { text: 'קו הסיום', font: 'Karantina', size: 46, weight: 700, spacing: 2 },
+                  { text: 'FINISH', font: 'Karantina', size: 46, weight: 700, spacing: 6 },
                   { color: '#0b1437' },
                 ),
               ],
-              { turn: 12 },
+              { turn: 10 },
             ),
-            [W, H],
-            { right: 4, top: 30 },
+            [750, 1050],
+            { right: 4, top: 10 },
           ),
           tucked(
             label(seal, 0, 0, [
               caption(
-                39,
-                31,
-                143,
-                94,
-                { text: '10', font: 'Rubik', size: 76, weight: 800 },
-                { text: '10', font: 'Rubik', size: 76, weight: 800 },
+                30,
+                24,
+                110,
+                72,
+                { text: '10', font: 'Rubik', size: 58, weight: 800 },
+                { text: '10', font: 'Rubik', size: 58, weight: 800 },
                 { color: '#0b1437' },
               ),
               caption(
-                49,
-                125,
-                123,
-                52,
-                { text: 'ק״מ', font: 'Rubik', size: 36, weight: 800 },
-                { text: 'KM', font: 'Rubik', size: 36, weight: 800, spacing: 3 },
+                38,
+                96,
+                94,
+                40,
+                { text: 'ק״מ', font: 'Rubik', size: 28, weight: 800 },
+                { text: 'KM', font: 'Rubik', size: 28, weight: 800, spacing: 2 },
                 { color: '#0b1437' },
               ),
             ]),
-            [W, H],
-            { right: 159, bottom: 99 },
+            [750, 1050],
+            { right: 114, bottom: 114 },
           ),
-          tucked(sticker('running-shoe', 0, 0, 195, { turn: -10 }), [W, H], {
-            right: 16,
+          tucked(sticker('running-shoe', 0, 0, 150, { turn: -10 }), [750, 1050], {
+            right: 14,
             bottom: 8,
           }),
           tucked(
@@ -1553,37 +1534,37 @@ export default function leisure(kit) {
               0,
               [
                 caption(
+                  52,
+                  12,
+                  296,
+                  44,
+                  { text: 'מרוץ הלילה', font: 'Rubik', size: 32, weight: 800 },
+                  { text: 'CITY NIGHT RUN', font: 'Rubik', size: 28, weight: 800, spacing: 1 },
+                  { color: '#0b1437' },
+                ),
+                caption(
+                  30,
                   68,
-                  16,
-                  384,
-                  57,
-                  { text: 'מרוץ הלילה', font: 'Rubik', size: 42, weight: 800 },
-                  { text: 'CITY NIGHT RUN', font: 'Rubik', size: 36, weight: 800, spacing: 1 },
+                  340,
+                  146,
+                  { text: '248', font: 'Rubik', size: 116, weight: 900 },
+                  { text: '248', font: 'Rubik', size: 116, weight: 900 },
                   { color: '#0b1437' },
                 ),
                 caption(
-                  39,
-                  88,
-                  442,
-                  190,
-                  { text: '248', font: 'Rubik', size: 150, weight: 900 },
-                  { text: '248', font: 'Rubik', size: 150, weight: 900 },
-                  { color: '#0b1437' },
-                ),
-                caption(
-                  78,
-                  294,
-                  364,
-                  57,
-                  { text: 'עומר', font: 'Rubik', size: 44, weight: 800 },
-                  { text: 'OMER', font: 'Rubik', size: 42, weight: 800, spacing: 5 },
+                  60,
+                  226,
+                  280,
+                  44,
+                  { text: 'עומר', font: 'Rubik', size: 34, weight: 800 },
+                  { text: 'OMER', font: 'Rubik', size: 32, weight: 800, spacing: 4 },
                   { color: '#1238c9' },
                 ),
               ],
               { turn: -3 },
             ),
-            [W, H],
-            { left: 22, bottom: 54 },
+            [750, 1050],
+            { left: 26, bottom: 16 },
           ),
         ],
       },

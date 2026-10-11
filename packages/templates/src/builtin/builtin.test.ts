@@ -15,7 +15,9 @@ import { contractGaps } from './contract';
 import { builtInSamples, builtInTemplates, builtInThemes, sampleDeck } from './index';
 
 const templates = builtInTemplates();
-const DRAWN = Archetype.options.filter((archetype) => archetype !== 'blank');
+const DRAWN = Archetype.options.filter(
+  (archetype) => archetype !== 'blank' && archetype !== 'title',
+);
 
 describe.each(templates.map((template) => [template.theme.id, template] as const))(
   'the built-in template %s',

@@ -1,6 +1,7 @@
 import type { Theme } from '@slidr/model';
 import source from '../../../../../Slidr-media/templates/catalog.json?raw';
 import type { Template } from '../template';
+import { withoutTitleLayout } from '../standardLayouts';
 import { sampleDeck, type SampleSlide } from './kit';
 import { pictures } from './pictures.generated';
 
@@ -20,10 +21,22 @@ export const builtInThemes: Record<string, Theme> = Object.fromEntries(
 );
 
 export function builtInTemplates(): Template[] {
-  return copy(catalog.templates);
+  return copy(catalog.templates).map(withoutTitleLayout);
 }
 
-export const builtInSamples = catalog.samples;
+export const builtInSamples = Object.fromEntries(
+  builtInTemplates().map((template) => {
+    const ids = new Set(template.layouts.map((layout) => layout.id));
+    const samples = catalog.samples[template.theme.id]!;
+    return [
+      template.theme.id,
+      {
+        he: samples.he.filter((slide) => ids.has(slide.layout)),
+        en: samples.en.filter((slide) => ids.has(slide.layout)),
+      },
+    ];
+  }),
+);
 
 /** Original, pre-standard-layout variants used by template composition checks. */
 export const zeremTemplate = (): Template => copy(catalog.originals.zerem!);

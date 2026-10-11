@@ -396,28 +396,15 @@ export function frameExtras(
 ): { under: Element[]; over: Element[] } {
   const hebrew = lang.startsWith('he');
   const scale = Math.min(box.w / frame.size.w, box.h / frame.size.h);
-  // Pin ornaments to their side of the expanded card. Captions may widen; drawings keep
-  // their proportions. Label lines use coordinates local to their plate.
-  const axis = (at: number, original: number, grown: number) => {
-    const third = original / 3;
-    if (at <= third) return at * scale;
-    if (at >= 2 * third) return grown - (original - at) * scale;
-    return third * scale + ((at - third) / third) * (grown - 2 * third * scale);
-  };
-  const placed = (extra: Placed, local = false) => {
-    const caption = 'kind' in extra && extra.kind === 'caption';
-    const x = (at: number) => (local ? at * scale : axis(at, frame.size.w, box.w));
-    const y = (at: number) => (local ? at * scale : axis(at, frame.size.h, box.h));
-    return {
-      frame: {
-        x: Math.round(caption ? x(extra.x) : x(extra.x + extra.w / 2) - (extra.w * scale) / 2),
-        y: Math.round(caption ? y(extra.y) : y(extra.y + extra.h / 2) - (extra.h * scale) / 2),
-        w: Math.max(1, Math.round(caption ? x(extra.x + extra.w) - x(extra.x) : extra.w * scale)),
-        h: Math.max(1, Math.round(caption ? y(extra.y + extra.h) - y(extra.y) : extra.h * scale)),
-      },
-      ...(extra.rotation ? { rotation: extra.rotation } : {}),
-    };
-  };
+  const placed = (extra: Placed) => ({
+    frame: {
+      x: Math.round(extra.x * scale),
+      y: Math.round(extra.y * scale),
+      w: Math.max(1, Math.round(extra.w * scale)),
+      h: Math.max(1, Math.round(extra.h * scale)),
+    },
+    ...(extra.rotation ? { rotation: extra.rotation } : {}),
+  });
   const drawing = (extra: (StickerExtra | LabelExtra) & { markup: string }, at = placed(extra)) =>
     createElement.svg({
       ...at,
@@ -426,7 +413,7 @@ export function frameExtras(
       ...(extra.flip ? { flipH: true } : {}),
     });
   let said = 0;
-  const line = (extra: CaptionExtra, local = false) => {
+  const line = (extra: CaptionExtra) => {
     const set = hebrew ? extra.he : extra.en;
     const says = words[said++] ?? set.text;
     // Words with no Hebrew letter (an age, a time, a code) read from the left in a Hebrew deck
@@ -453,7 +440,7 @@ export function frameExtras(
       })),
     };
     return createElement.text({
-      ...placed(extra, local),
+      ...placed(extra),
       name: `${frame.id}:caption`,
       autoFit: 'shrink',
       vAlign: 'middle',
@@ -471,7 +458,7 @@ export function frameExtras(
     const element = createElement.group({
       ...at,
       name: labelName(frame, extra),
-      children: [plate, ...extra.lines.map((caption) => line(caption, true))],
+      children: [plate, ...extra.lines.map(line)],
     });
     return { extra, element };
   });
@@ -481,12 +468,20 @@ export function frameExtras(
   };
 }
 
-/** The wide canvas used by every frame's catalogue preview. */
-export const FRAME_CANVAS = { w: 1920, h: 1080 };
+/** The slide's safe margins (SPEC 9.1): at the sides, and above and below. */
+const MARGIN = { x: 96, y: 80 };
 
-/** New frames cover the slide edge to edge, with no placement margins. */
-export function frameSizeOn(_frame: PhotoFrame, slide: Size): Size {
-  return { ...slide };
+/**
+ * The size a frame has when it is added to a slide of the given size: its own, or for a frame
+ * with a caption, as large as fits inside the slide's safe margins. Such a frame is the subject
+ * of its slide; and when a group is made larger by hand its text keeps its size, so the frame
+ * comes large and is made smaller, which its captions follow.
+ */
+export function frameSizeOn(frame: PhotoFrame, slide: Size): Size {
+  const { size } = frame;
+  if (!frame.extras?.length) return size;
+  const scale = Math.min((slide.w - 2 * MARGIN.x) / size.w, (slide.h - 2 * MARGIN.y) / size.h);
+  return { w: Math.round(size.w * scale), h: Math.round(size.h * scale) };
 }
 
 /**
@@ -663,11 +658,8 @@ function framedEffects(
  * its adjustments; its box takes the proportions of the frame, as large as fits inside the box
  * it had and around the same centre, and the photograph fills the frame.
  */
-export function framePatch(
-  frame: PhotoFrame,
-  picture: ImageElement,
-  box = fitted(frame.size, picture.frame),
-): ElementPatch {
+export function framePatch(frame: PhotoFrame, picture: ImageElement): ElementPatch {
+  const box = fitted(frame.size, picture.frame);
   return {
     frame: box,
     fit: 'cover',
@@ -703,21 +695,17 @@ export function reframe(
   frame: PhotoFrame,
   lang: string,
   all: readonly PhotoFrame[] = [],
-  canvas?: Frame,
 ): { command: Command; select: string } {
   const parent = locateElement(slide.elements, picture.id)?.parent;
   const host = parent && framedPicture(parent)?.id === picture.id ? parent : undefined;
   if (!host && !frame.extras?.length) {
     return {
-      command: updateElement(slide.id, picture.id, {
-        ...framePatch(frame, picture, canvas),
-        ...(canvas ? { rotation: 0 } : {}),
-      }),
+      command: updateElement(slide.id, picture.id, framePatch(frame, picture)),
       select: picture.id,
     };
   }
   const outer = host ?? picture;
-  const box = canvas ?? fitted(frame.size, outer.frame);
+  const box = fitted(frame.size, outer.frame);
   const { mask, smartFrame } = frameLook(frame, box);
   // What the user put into the group stays in it; what the earlier frame put there goes.
   const own = host?.children.filter(
@@ -754,7 +742,7 @@ export function reframe(
     return replaced({
       ...inside,
       frame: box,
-      rotation: canvas ? 0 : normalizeAngle(outer.rotation + (host ? picture.rotation : 0)),
+      rotation: normalizeAngle(outer.rotation + (host ? picture.rotation : 0)),
     });
   }
   const group =
@@ -770,10 +758,9 @@ export function reframe(
     ...group,
     frame: box,
     name: frame.id,
-    ...(canvas ? { rotation: 0 } : {}),
     children: [
       ...under,
-      { ...inside, rotation: !canvas && host ? picture.rotation : 0 },
+      { ...inside, rotation: host ? picture.rotation : 0 },
       ...(own ?? []),
       ...over,
     ],
@@ -801,7 +788,7 @@ export const drawnWhole = (frame: PhotoFrame): boolean =>
 
 /**
  * A frame alone on a slide, for a thumbnail that the renderer draws: the frame as it goes onto
- * a slide, at the corner of the slide and filling its wide canvas, in the colours of the given theme,
+ * a slide, at the corner of the slide and at its own size, in the colours of the given theme,
  * around a stand-in photograph. The slide has no ground: the thumbnail shows the frame's box.
  */
 export function framePreview(
@@ -809,7 +796,7 @@ export function framePreview(
   lang: string,
   theme: Theme,
 ): { deck: Deck; slide: Slide } {
-  const element = framedElement(frame, { x: 0, y: 0, ...FRAME_CANVAS }, lang);
+  const element = framedElement(frame, { x: 0, y: 0, ...frame.size }, lang);
   const filled = (child: Element): Element =>
     child.type === 'image' ? { ...child, assetId: SAMPLE_PHOTO.id } : child;
   const slide = createSlide({

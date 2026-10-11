@@ -9,17 +9,15 @@
  *
  * What is derived, so it cannot drift:
  * - the values of `data-archetype` are the model's `Archetype` (through `ARCHETYPES`);
- * - the values of `data-role` are the model's `PlaceholderRole`;
  * - the colour variables are the colour tokens of the model's `Theme`, under the names the
  *   renderer sets on every slide root (`themeVariables` in `packages/renderer/src/theme.ts`).
  */
-import { ChartType, PlaceholderRole, Theme } from '@slidr/model';
+import { ChartType, Theme } from '@slidr/model';
 import { ARCHETYPES } from './design';
 
 const code = (text: string) => `\`${text}\``;
 
 const archetypes = Object.keys(ARCHETYPES).map(code).join(', ');
-const roles = PlaceholderRole.options.map(code).join(', ');
 const chartTypes = ChartType.options.join(', ');
 /** `chart` is a list, not one colour: its variables are numbered. */
 const colorVariables = Object.keys(Theme.shape.colors.shape)
@@ -43,7 +41,7 @@ The conventions below do not change how a slide looks. They decide how editable 
 - **Icons.** \`<i data-icon="lucide:rocket"></i>\` places an icon of the built-in library (line icons, in the sets \`lucide:\` and \`tabler:\`) by its id, drawn at the text's \`font-size\` and in its \`color\`, so a theme variable keeps it linked to the theme. Leave the element empty, and take ids from the icon search: an unknown id draws nothing, and the notes of the result name it. It works only in a session that has an icon search among its tools; otherwise the attribute is ignored and nothing is drawn. Without the library, draw an icon as a small inline \`<svg>\`: a 24×24 \`viewBox\`, a few strokes of width 2 in \`currentColor\`, no fill, every icon of the deck in that one style. Or let a number or a letter in a coloured circle do the job. Do not use emoji as icons: they are drawn differently on every machine and never in the deck's colours.
 - **Charts.** A series of numbers is a chart element, not boxes: \`<div data-chart='{"chartType": "column", "data": {"categories": ["Q1", "Q2", "Q3"], "series": [{"name": "Revenue", "values": [12, 18, 16]}]}, "options": {"labels": true}}' style="width: 900px; height: 520px"></div>\`. The app draws it in the theme's chart colours and fonts, mirrored in a right-to-left deck. The user edits its data in a table and changes its type, and in a show and in the exported file it builds up and answers the pointer with a tooltip; with \`data-anim\` it builds on its own click. \`chartType\` is one of ${chartTypes}: column to compare categories, bar when the names are long or the order is a ranking, line for a trend over time, area for a volume over time, pie or donut for the shares of a whole in up to five slices, scatter for how two measures go together, radar for a profile over several dimensions. Every series has one value per category, \`null\` for a gap; a scatter series has \`"values": []\` and \`"points": [{"x": 10, "y": 22}]\`. \`options\` and each of its keys are optional, but a key that is given is given whole: \`"title": "…"\`; \`"labels": true\`, which writes the values on the marks and suits a chart of up to a dozen of them; \`"legend": {"show": false, "position": "bottom"}\` (top, bottom, start or end), which a single series does not need; \`"axes": {"x": {"show": true}, "y": {"show": true, "title": "USD millions"}}\`, where \`x\` is the axis of the categories and \`y\` of the values. Give the chart a box of definite size with room in it, 700×400 at the least: it draws its own axes, labels and legend at the size of caption text, so write none of those around it. Let the slide's heading say what the data shows, and leave the chart's own title out unless the slide holds several charts. The app fills the box, so look at the render that comes back. One figure is not a chart: a big number, a progress bar or a ring drawn with \`conic-gradient\` says "86%" better than a pie of two slices. A chart drawn any other way (inline SVG, a canvas) may look the same but stays \`html\`, and its data cannot be edited.
 - **Tables.** A \`<table>\` becomes a table element the user edits cell by cell, with the fills and borders you gave its cells. Give it a definite width, and rows tall enough for their text at the size you set.
-- **Names and roles.** \`data-name\` gives an element a name, which the user sees in the editor and you see when you read the slide. \`data-role\` says what part an element plays: ${roles}. Roles are how a change of template knows where each piece of content goes, and how the outline finds a slide's title, so mark the title at least.
+- **Names and the title.** \`data-name\` gives an element a name, which the user sees in the editor and you see when you read the slide. Mark the slide's title with \`data-role="title"\`: the outline finds it by that. Write no other \`data-role\` in a slide. Roles are the placeholders of a template's layout, and in a slide a text with a role stays a box of its own, apart from the lines it belongs with.
 - **Entrance.** \`data-anim\` on an element gives it an entrance animation, by preset name (\`fade\`, \`rise\`, \`zoom\`, \`flyIn\`, \`wipe\`). Each marked element enters on its own click, in document order; on a container, everything inside enters together.
 - **Keeping HTML.** \`data-keep-html\` on an element tells the app not to take it apart, even where it could. Use it for a piece whose meaning is in its structure.
 - **Scripts.** A \`<script>\` anywhere makes the whole slide one \`html\` element that is neither converted nor compared, so leave scripts out unless the slide cannot exist without one.

@@ -43,7 +43,10 @@ export function useChatSetup() {
   const mock =
     descriptor?.id === 'mock' ||
     (!settings.harnessId && harnesses?.length === 1 && harnesses[0]?.id === 'mock');
-  const choosingHarness = !descriptor || (!settings.model && confirmedHarness !== descriptor.id);
+  // Asked for from a problem in the conversation: the agent is chosen again, here.
+  const [reselecting, setReselecting] = useState(false);
+  const choosingHarness =
+    reselecting || !descriptor || (!settings.model && confirmedHarness !== descriptor.id);
   const state = useStore(agent.setup.store, (states) =>
     descriptor ? states[descriptor.id] : undefined,
   );
@@ -67,7 +70,12 @@ export function useChatSetup() {
     needed,
     failed,
     choosingHarness,
-    confirmHarness: setConfirmedHarness,
+    reselecting,
+    reselect: setReselecting,
+    confirmHarness: (id: string) => {
+      setConfirmedHarness(id);
+      setReselecting(false);
+    },
     retry: () => setAttempt((value) => value + 1),
   };
 }
@@ -212,6 +220,11 @@ export function ChatSetup({ setup }: { setup: ReturnType<typeof useChatSetup> })
           </fieldset>
           <div className="flex justify-end gap-2">
             {back}
+            {setup.reselecting && (
+              <Button variant="ghost" onClick={() => setup.reselect(false)}>
+                {t('turn.cancel')}
+              </Button>
+            )}
             <Button
               variant="primary"
               type="submit"

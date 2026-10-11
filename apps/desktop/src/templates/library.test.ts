@@ -78,7 +78,7 @@ describe('the template library', () => {
     expect(lib.state.getState()).toMatchObject({ loaded: true });
     expect(lib.state.getState().personal.map((t) => t.theme.id)).toEqual(['personal_one']);
     const kinds = lib.find('personal_one')!.template.layouts.map((layout) => layout.archetype);
-    expect(kinds.indexOf('title')).toBe(kinds.indexOf('section') + 1);
+    expect(kinds).not.toContain('title');
     expect(kinds.indexOf('text')).toBe(kinds.indexOf('textImage') - 1);
   });
 

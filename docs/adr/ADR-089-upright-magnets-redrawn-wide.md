@@ -1,6 +1,6 @@
 # ADR-089 — The upright event magnets are drawn again for the wide slide
 
-Status: Implemented in the 2026-10-10 working tree; **not committed** at the time of this record. It follows the change of the same day by which every frame is added so that it covers the whole slide (`4382349`), and extends the event magnets of [ADR-083](ADR-083-event-magnets.md), [ADR-086](ADR-086-frames-keep-their-artwork.md), [ADR-087](ADR-087-magnets-labels-and-sets.md) and [ADR-088](ADR-088-stretchable-text-backgrounds.md).
+Status: **Withdrawn on 2026-10-11** (see the last section). Implemented in the 2026-10-10 working tree; **not committed** at the time of this record. It follows the change of the same day by which every frame is added so that it covers the whole slide (`4382349`), and extends the event magnets of [ADR-083](ADR-083-event-magnets.md), [ADR-086](ADR-086-frames-keep-their-artwork.md), [ADR-087](ADR-087-magnets-labels-and-sets.md) and [ADR-088](ADR-088-stretchable-text-backgrounds.md).
 
 ## Context
 
@@ -43,3 +43,23 @@ One builder redrew the thirtieth as the worked example; five builders redrew the
 - **What a builder changed from its direction:** the stamp of the sixtieth and of the newspaper stands on the top left corner of the photograph, not the right (in the middle third a label lengthens); the masthead of the magazine is white on a shade over the photograph, not ink; the arch of Eid is an ogee; the three lines of the discharge are one block beside a bar.
 - **A magnet that is on a slide already keeps the artwork it has.** Clicking the magnet again in the panel gives the one of now.
 - The tools of the round are in `apps/desktop/test-results/frames/tools/wide/` (a review page, `render.mjs`, the brief), with the catalogue as it was (`wide/backup/`) and the renders (`wide/app/`, `wide/<file>/`). They are not in git.
+
+## Follow-up, 2026-10-11
+
+The user looked at the 26 in the app and found most of the conversions poor: "the result is bad in most cases. Try to improve; if it does not look good, delete it and make a new frame", and asked that the guidelines say every frame is 16:9.
+
+- **Four were composed again from nothing**, where the first round had kept a shaped window that left the photograph small in a field of scattered pieces: the kingdom (a wide gate between two towers, in place of a narrow arch on a bare wall), space (the wide viewport of a ship with the countdown on its foot, in place of an oval beside an empty column), the wedding (a wide photograph under a canopy, the names on a plate under a medallion of rings between two sprays of laurel, all drawn; the emoji dove, glasses and bouquet are gone) and the day of love (a wide photograph, the letter over its lower corner, the title on the foot).
+- **Hanukkah:** the hanukkiah stood over the middle of the photograph's foot, where people are. It stands over the lower corner at the end now, the dreidel beside the sufganiya, and the line of words holds the middle of the foot at a size that reads.
+- The other 21 were looked at again and left as they are.
+- `AGENTS.md` says now that every frame is drawn at 16:9, 1920×1080, and how the photograph and the words share it. **The 74 lying magnets are still cards of 7 by 5** whose window takes up the rest of the slide; they were not redrawn in this round.
+- The five were rendered from the app's catalogue in both languages at full size, in the four other sizes and as thumbnails, and looked at; the check prints `ok` for all ten renders. The catalogue as it was is in `apps/desktop/test-results/frames/wide/backup/frames-catalog.before-round3.json`.
+
+## Withdrawn, 2026-10-11
+
+The user decided the other way: "cancel all the changes that were made to force the 16:9 format; return the magnets to their original size (from git)".
+
+- **The ten files of magnets are as they were in `15ad71a`**: 74 lying (1050×750) and 26 upright (750×1050). The wide drawings of the 26, of both rounds, are gone from the working tree.
+- **A frame no longer covers the slide when it is added** (`4382349` and what `c471c16` built on it): `frames.ts`, `insert.ts`, `FramesCollection.tsx`, `frames.test.ts` and `e2e/elements-panel.spec.ts` are as in `15ad71a`. A frame with a caption comes as large as the safe margins allow, any other at its own size, and a picture that takes a frame keeps its box and its rotation.
+- The line of `AGENTS.md` that said every frame is drawn at 16:9 is removed.
+- The catalogue was generated again: of 366 frames, the 26 are upright again and the other 340 are byte for byte what they were.
+- Unit tests of `src/elements`, `stage/space.test.ts` and `stage/textBackground.test.ts` (111) pass and the types check. No E2E was run and the magnets were not rendered and looked at again.

@@ -468,9 +468,9 @@ describe('saving the deck as a personal template', () => {
     expect(
       bus.deck.layouts.every((layout) => saved.layouts.some((item) => item.id === layout.id)),
     ).toBe(true);
-    expect(saved.layouts.map((layout) => layout.archetype)).toContain('title');
+    expect(saved.layouts.map((layout) => layout.archetype)).not.toContain('title');
     expect(saved.layouts.map((layout) => layout.archetype)).toContain('text');
-    expect(bus.deck.layouts.map((layout) => layout.archetype)).toContain('title');
+    expect(bus.deck.layouts.map((layout) => layout.archetype)).not.toContain('title');
     expect(bus.deck.layouts.map((layout) => layout.archetype)).toContain('text');
     // The layout the template drew by hand for the other direction comes along, logo included.
     expect(saved.flipped?.map((l) => l.id)).toEqual(night.flipped!.map((l) => l.id));
@@ -495,8 +495,8 @@ describe('saving the deck as a personal template', () => {
     const library = libraryOf(paperTemplate());
     const { editor, bus } = editorOn(createDeck({ lang: 'en' }));
     const saved = await saveAsTemplate(editor, library, 'Plain', { setDefault: true });
-    expect(saved.layouts.map((layout) => layout.archetype)).toEqual(['title', 'text']);
-    expect(bus.deck.layouts.map((layout) => layout.archetype)).toEqual(['title', 'text']);
+    expect(saved.layouts.map((layout) => layout.archetype)).toEqual(['text']);
+    expect(bus.deck.layouts.map((layout) => layout.archetype)).toEqual(['text']);
     expect(saved.assets).toBeUndefined();
     expect(library.state.getState().defaultId).toBe(saved.theme.id);
     const next = startDeck(library, 'en');
@@ -651,7 +651,7 @@ describe('a personal template that exists (THM-05)', () => {
     expect(
       bus.deck.layouts.every((layout) => storedLayouts.some((item) => item.id === layout.id)),
     ).toBe(true);
-    expect(storedLayouts.map((layout) => layout.archetype)).toContain('title');
+    expect(storedLayouts.map((layout) => layout.archetype)).not.toContain('title');
     expect(storedLayouts.map((layout) => layout.archetype)).toContain('text');
     expect(bus.deck.theme).toMatchObject({ id, name: 'החברה שלי' });
     expect(bus.undoStack).toHaveLength(1);

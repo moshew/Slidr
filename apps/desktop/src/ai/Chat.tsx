@@ -66,7 +66,7 @@ import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
 import { ModelPicker } from './ModelPicker';
-import { ChatSetup, useChatSetup } from './ChatSetup';
+import { ChatSetup, harnessName, useChatSetup } from './ChatSetup';
 import { OutlineCard } from './Outline';
 import { aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
 import { DECK } from './sessions';
@@ -313,31 +313,108 @@ function isProblemKind(kind: string): kind is Exclude<keyof typeof he.problem, '
   return kind !== 'other' && Object.hasOwn(he.problem, kind);
 }
 
-/** Why the agent could not run, and what to do about it (CHT-U09). */
-function ProblemCard({ problem }: { problem: ChatProblem }) {
+type Setup = ReturnType<typeof useChatSetup>;
+
+/** The problems that are the agent's program itself: they are put right in the conversation. */
+const SETUP_PROBLEMS = ['not_installed', 'not_logged_in', 'unavailable'];
+
+const isSetupProblem = (entry: ChatEntry | undefined) =>
+  entry?.type === 'assistant' && SETUP_PROBLEMS.includes(entry.problem?.kind ?? '');
+
+/**
+ * Why the agent could not run, and what to do about it (CHT-U09). With `setup`, the card of the
+ * last turn, a missing or signed-out agent is put right here: installed, signed in, checked
+ * again (the user may have fixed it meanwhile) or swapped for another agent.
+ */
+function ProblemCard({ problem, setup }: { problem: ChatProblem; setup?: Setup }) {
   const { t } = useTranslation('ai');
-  const kind = isProblemKind(problem.kind) ? problem.kind : 'other';
+  const descriptor = SETUP_PROBLEMS.includes(problem.kind) ? setup?.descriptor : undefined;
+  const state = descriptor ? setup?.state : undefined;
+  // The agent the problem was about: another one chosen since is judged by its own state.
+  const [origin] = useState(descriptor?.id);
+  const [rechecked, setRechecked] = useState(false);
+  const checked = rechecked || descriptor?.id !== origin;
+  const status = state?.connection?.status;
+  // A connection kept from before the problem may still say "ready": then the problem is right.
+  const live = status && (checked || status.state !== 'ready') ? status.state : undefined;
+  const fixed = live === 'ready' && !state?.error;
+  const shown = fixed ? undefined : (live ?? problem.kind);
+  const kind = shown && isProblemKind(shown) ? shown : 'other';
+  const act = (work: Promise<unknown>) =>
+    void work.catch(() => undefined).finally(() => setRechecked(true));
+  const detail = state?.error ?? (live ? status?.detail : problem.message);
   return (
     <div
       role="alert"
       data-testid="chat-problem"
       data-kind={problem.kind}
-      className="flex items-start gap-2.5 rounded-panel bg-ui-danger-soft p-3"
+      data-fixed={fixed || undefined}
+      className={cx(
+        'flex items-start gap-2.5 rounded-panel p-3',
+        fixed ? 'bg-ui-field' : 'bg-ui-danger-soft',
+      )}
     >
-      <Icon icon={CircleAlert} className="mt-0.5 text-ui-danger-fg" />
+      <Icon
+        icon={fixed ? Check : CircleAlert}
+        className={cx('mt-0.5', fixed ? 'text-ui-success-fg' : 'text-ui-danger-fg')}
+      />
       <div className="flex min-w-0 flex-col gap-0.5">
-        <p className="text-sm font-medium text-ui-fg">{t(`problem.${kind}.title`)}</p>
-        <p className="text-sm text-ui-fg">{t(`problem.${kind}.body`)}</p>
-        {['not_installed', 'not_logged_in', 'unavailable', 'invalid_input'].includes(
-          problem.kind,
-        ) && (
+        <p className="text-sm font-medium text-ui-fg">
+          {fixed ? t('repair.fixedTitle') : t(`problem.${kind}.title`)}
+        </p>
+        <p className="text-sm text-ui-fg">
+          {fixed
+            ? t('repair.fixedBody')
+            : descriptor && kind === 'not_installed'
+              ? t('setup.installDescription', { name: harnessName(descriptor) })
+              : t(`problem.${kind}.body`)}
+        </p>
+        {descriptor && state?.busy && (
+          <p className="flex items-center gap-2 pt-1 text-sm text-ui-fg-muted">
+            <Spinner />
+            {t(`setup.${state.busy}`)}
+          </p>
+        )}
+        {descriptor && setup && !state?.busy && !fixed && !setup.choosingHarness && (
+          <div className="flex flex-wrap gap-1.5 pt-1.5">
+            {kind === 'not_installed' && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => act(setup.agent.setup.run(descriptor.id, 'install'))}
+              >
+                {t('setup.install')}
+              </Button>
+            )}
+            {kind === 'not_logged_in' && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => act(setup.agent.setup.run(descriptor.id, 'login'))}
+              >
+                {t('setup.signIn')}
+              </Button>
+            )}
+            <Button size="sm" variant="soft" onClick={() => setup.reselect(true)}>
+              {t('repair.otherAgent')}
+            </Button>
+            <Button
+              size="sm"
+              variant="soft"
+              onClick={() => act(setup.agent.setup.connect(descriptor.id, true))}
+            >
+              {t('repair.recheck')}
+            </Button>
+          </div>
+        )}
+        {problem.kind === 'invalid_input' && (
           <Button size="sm" variant="ghost" onClick={() => openPanel(PanelId.settings)}>
             {t('settings:agent.configure')}
           </Button>
         )}
-        {problem.message && (
+        {detail && !fixed && (
           <p dir="ltr" className="text-start text-xs wrap-anywhere text-ui-fg-muted">
-            {problem.message}
+            {detail}
           </p>
         )}
       </div>
@@ -465,6 +542,7 @@ function AssistantTurn({
   busy,
   last,
   thread,
+  setup,
   onRetry,
 }: {
   entry: AssistantEntry;
@@ -472,6 +550,8 @@ function AssistantTurn({
   /** Nothing was said after this turn: what it offered still waits for an answer. */
   last: boolean;
   thread: ChatThread;
+  /** The chat's setup, for the turn whose problem can still be put right. */
+  setup?: Setup;
   onRetry: () => void;
 }) {
   const { t } = useTranslation('ai');
@@ -501,7 +581,7 @@ function AssistantTurn({
           <GateLine key={`gate-${part.round}`} part={part} />
         ),
       )}
-      {entry.problem && <ProblemCard problem={entry.problem} />}
+      {entry.problem && <ProblemCard problem={entry.problem} setup={setup} />}
       {entry.remaining && <Remaining report={entry.remaining} disabled={busy} onRetry={onRetry} />}
       {entry.outcome === 'interrupted' && (
         <p className="flex items-center gap-1.5 text-xs text-ui-fg-muted">
@@ -817,6 +897,14 @@ export function Chat({
     });
   };
 
+  // A missing or signed-out agent is put right in the card of the turn it failed, not in a
+  // second setup under it; choosing another agent, and its model, is the setup's.
+  const inCard =
+    isSetupProblem(state.entries.at(-1)) &&
+    !!setup.descriptor &&
+    !setup.choosingHarness &&
+    setup.state?.connection?.status.state !== 'ready';
+
   let content: ReactNode;
   if (!state.ready) {
     content = <Loading />;
@@ -848,13 +936,14 @@ export function Chat({
               busy={state.busy}
               last={index === state.entries.length - 1}
               thread={thread}
+              setup={index === state.entries.length - 1 ? setup : undefined}
               onRetry={() => void thread.retryFixes(entry.id)}
             />
           ),
         )}
         {state.busy && <Working activity={state.activity} stopping={state.stopping} />}
         {afterMessages}
-        {setup.needed && <ChatSetup setup={setup} />}
+        {setup.needed && !inCard && <ChatSetup setup={setup} />}
       </div>
     );
   }

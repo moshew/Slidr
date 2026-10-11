@@ -394,12 +394,6 @@ describe('drafting a template (WG7-T11a)', () => {
         editability: 1,
       },
       {
-        id: `l_${templateId}_title`,
-        name: 'Title',
-        archetype: 'title',
-        placeholders: 'title',
-      },
-      {
         id: `l_${templateId}_2`,
         name: 'Cards',
         archetype: 'cards',
@@ -416,7 +410,7 @@ describe('drafting a template (WG7-T11a)', () => {
     // The lint ran on the sample as drawn and mirrored, and on the app's own words in Hebrew and
     // in English. The rule about how much a slide says is left out, and what the sample already
     // showed of a layout is said once.
-    expect(linted).toEqual(['ltr:4', 'rtl:4', 'rtl:4', 'ltr:4']);
+    expect(linted).toEqual(['ltr:3', 'rtl:3', 'rtl:3', 'ltr:3']);
     const overflows = { layout: 'Opening', rule: 'L01', severity: 'error', message: 'overflows' };
     expect(result.data.findings).toEqual([
       { ...overflows, dir: 'ltr', text: 'sample' },
@@ -431,7 +425,7 @@ describe('drafting a template (WG7-T11a)', () => {
       },
     ]);
     expect(result.data.notes).toEqual(['Layout "Cards": a ring stayed HTML']);
-    expect(result.images).toEqual([{ mimeType: 'image/png', data: 'sheet-of-4' }]);
+    expect(result.images).toEqual([{ mimeType: 'image/png', data: 'sheet-of-3' }]);
 
     // Nothing is saved and the deck is as it was; the draft is there for the user to see.
     expect(bus.undoStack).toHaveLength(0);
@@ -444,12 +438,7 @@ describe('drafting a template (WG7-T11a)', () => {
     // The logo is drawn by the layout, under its role, and its asset travels with the template.
     expect(draft.template.layouts[0]!.decorations.map((d) => d.role)).toEqual([undefined, 'logo']);
     expect(Object.keys(draft.template.assets ?? {})).toEqual([PHOTO.id]);
-    expect(draft.sample.slides.map((slide) => slide.name)).toEqual([
-      'Opening',
-      'Title',
-      'Cards',
-      'Text',
-    ]);
+    expect(draft.sample.slides.map((slide) => slide.name)).toEqual(['Opening', 'Cards', 'Text']);
     // A placeholder is as tall as the box it was drawn in, not as its one line of sample.
     expect(
       draft.template.layouts
@@ -476,7 +465,6 @@ describe('drafting a template (WG7-T11a)', () => {
     // The opening was redrawn under its id; the cards layout and its sample came along.
     expect(revised.template.layouts.map((l) => [l.name, l.placeholders.length])).toEqual([
       ['Opening', 4],
-      ['Title', 1],
       ['Cards', 4],
       ['Text', 2],
     ]);

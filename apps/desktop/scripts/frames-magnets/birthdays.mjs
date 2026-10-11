@@ -322,29 +322,22 @@ export default function birthdays(kit) {
     );
   }
 
-  /* ---- a teenager's birthday: a print askew on lilac, stickers cut out in white, two strips.
-     It is drawn for the wide slide: a wide print with its stickers on its corners, and the two
-     strips over its lower corner at the right, where the tilt lifts the print off the foot of
-     the card. */
+  /* ---- a teenager's birthday: a print askew on lilac, stickers cut out in white, two strips */
   function teen() {
-    const [W, H] = [1920, 1080];
     // The photograph, and the paper it is printed on: both turned about the same point.
-    const about = [920, 488];
+    const about = [375, 430];
     const turn = -3;
-    const seen = askew(box(256, 73, 1328, 830), turn, about);
-    const paper = askew(box(234, 51, 1372, 882), turn, about);
-    const opening = held(askew(box(255, 72, 1330, 832), turn, about));
-    /** A strip of a label maker, `w` units long, drawn `k` times as large as its own units. */
-    const strip = (name, w, colour, edge, k = 1.3) =>
+    const seen = askew(box(96, 111, 558, 638), turn, about);
+    const paper = askew(box(74, 89, 602, 690), turn, about);
+    const opening = held(askew(box(95, 110, 560, 640), turn, about));
+    const strip = (name, w, colour, edge) =>
       art(
         name,
-        Math.round(w * k),
-        Math.round(106 * k),
+        w,
+        106,
         '',
-        `<g transform="scale(${k})">` +
-          `<rect x="9" y="10" width="${w - 9}" height="96" fill="#111014"/>` +
-          `<rect x="2.500" y="2.500" width="${w - 14}" height="91" fill="${colour}" stroke="${edge}" stroke-width="5"/>` +
-          `</g>`,
+        `<rect x="9" y="10" width="${w - 9}" height="96" fill="#111014"/>` +
+          `<rect x="2.500" y="2.500" width="${w - 14}" height="91" fill="${colour}" stroke="${edge}" stroke-width="5"/>`,
       );
     const smiley = art(
       'bd-teen-smiley',
@@ -401,7 +394,7 @@ export default function birthdays(kit) {
       'magnet-teen',
       'Teen birthday magnet',
       'מגנט ליום הולדת לנוער',
-      [W, H, 26],
+      [750, 1050, 26],
       {
         opening,
         window: (S) => S.shape(cornered(seen), 'fill="#000"'),
@@ -414,45 +407,40 @@ export default function birthdays(kit) {
             ground(S, 'url(#lilac)') +
             onBorder(
               S.whole('fill="url(#plus)"'),
-              // A disc of lime behind the corner of the print that the tilt lifts.
-              S.pin(`<circle cx="1790" cy="60" r="240" fill="#c8ff3e"/>`, [1790, 60], {
+              S.pin(`<circle cx="706" cy="52" r="150" fill="#c8ff3e"/>`, [706, 52], {
                 x: 'end',
                 y: 'start',
               }),
               // A strip of checks along the foot, as many as the card is wide.
               S.pin(
-                `<rect x="-4000" y="${H - 44}" width="12000" height="44" fill="url(#check)"/>`,
-                [0, H - 44],
+                `<rect x="-4000" y="1006" width="8750" height="44" fill="url(#check)"/>`,
+                [0, 1006],
                 {
                   x: 'start',
                   y: 'end',
                 },
               ),
-              S.shape(cornered(paper, 14, 16), 'fill="#111014"'),
+              S.shape(cornered(paper, 12, 14), 'fill="#111014"'),
               S.shape(cornered(paper), 'fill="#ffffff"'),
             ),
         }),
         extras: [
-          // A sticker on each corner of the print, and one on each of its sides.
-          sticker(smiley, 128, 24, 200, { turn: -12 }),
-          sticker(bolt, 1521, 23, 150, { turn: 10 }),
-          sticker(flower, 153, 525, 150, { turn: -10 }),
-          sticker(heart, 1558, 556, 165, { turn: 14 }),
-          sticker(cutStar, 136, 850, 200, { turn: 12 }),
-          // The two strips lie over the lower corner of the print, in the last third of the
-          // card both ways: they keep their size and their corner when the magnet is resized.
+          sticker(smiley, 20, 26, 156, { turn: -12 }),
+          sticker(bolt, 600, 20, 122, { turn: 10 }),
+          sticker(flower, 12, 548, 118, { turn: -10 }),
+          sticker(heart, 600, 640, 132, { turn: 14 }),
           label(
             strip('bd-teen-strip-lime', 470, '#c8ff3e', '#111014'),
-            1280,
-            738,
+            30,
+            792,
             [
               caption(
-                21,
-                5,
-                551,
-                114,
-                { text: 'יום הולדת 15', font: 'Karantina', size: 98, weight: 700 },
-                { text: '15TH BIRTHDAY', font: 'Karantina', size: 98, weight: 700 },
+                16,
+                4,
+                424,
+                88,
+                { text: 'יום הולדת 15', font: 'Karantina', size: 76, weight: 700 },
+                { text: '15TH BIRTHDAY', font: 'Karantina', size: 76, weight: 700 },
                 { color: '#111014' },
               ),
             ],
@@ -460,21 +448,22 @@ export default function birthdays(kit) {
           ),
           label(
             strip('bd-teen-strip-black', 330, '#111014', '#c8ff3e'),
-            1420,
-            868,
+            150,
+            894,
             [
               caption(
-                21,
-                5,
-                369,
-                114,
-                { text: 'רוני חוגגת', font: 'Karantina', size: 91, weight: 700 },
-                { text: 'RONI’S DAY', font: 'Karantina', size: 91, weight: 700 },
+                16,
+                4,
+                284,
+                88,
+                { text: 'רוני חוגגת', font: 'Karantina', size: 70, weight: 700 },
+                { text: 'RONI’S DAY', font: 'Karantina', size: 70, weight: 700 },
                 { color: '#c8ff3e' },
               ),
             ],
             { turn: -5 },
           ),
+          sticker(cutStar, 566, 846, 160, { turn: 12 }),
         ],
       },
       {
@@ -608,35 +597,20 @@ export default function birthdays(kit) {
     );
   }
 
-  /* ---- the thirtieth: an arch on cream at the left, a block of terracotta behind it, and the
-     type set beside it. It is drawn for the wide slide: the arch keeps the proportions of an
-     arch, and the words have a column of their own. */
+  /* ---- the thirtieth: an arch on cream, a block of terracotta behind it, type set to the left */
   function thirty() {
-    const [W, H] = [1920, 1080];
-    const opening = box(112, 64, 1000, 936);
+    const opening = box(84, 60, 582, 690);
     /** Where the round part of the arch ends and its foot begins, from the foot of the card. */
-    const FOOT = H - (opening.y + opening.w / 2);
-    /**
-     * An arch around the photograph, `by` away from it, as the arch of the wedding is built.
-     * Its top is half a circle as wide as the arch is, whatever the card leaves beside it.
-     */
+    const FOOT = 330;
+    /** An arch around the photograph, `by` away from it, as the arch of the wedding is built. */
     const arch = (S, by, attrs) => {
       const around = inset(opening, -by);
       const tall = S.geometry({ ...around, h: around.h + 2 * S.h });
       return (
-        `<rect ${attrs} clip-path="url(#above)" style="${tall};rx:calc(50% - ${f((W - around.w) / 2)}px)"/>` +
+        `<rect ${attrs} clip-path="url(#above)" style="${tall};rx:calc(50% - ${f(around.x)}px)"/>` +
         `<rect ${attrs} clip-path="url(#foot)" style="${S.geometry(around)}"/>`
       );
     };
-    // The rule between the two pairs of lines: an element, so it goes with the words.
-    const rule = art(
-      'bd-rule-thirty',
-      150,
-      12,
-      '',
-      line('M2 6H126', '#1d1b19', 2.6, ' stroke-linecap="round"') +
-        `<circle cx="140" cy="6" r="5" fill="#c8643c"/>`,
-    );
     const seal = art(
       'bd-seal-thirty',
       164,
@@ -651,41 +625,38 @@ export default function birthdays(kit) {
       'magnet-thirty',
       'Thirtieth birthday magnet',
       'מגנט ליום הולדת 30',
-      [W, H, 22],
+      [750, 1050, 22],
       {
         opening,
         window: (S) => arch(S, -1, 'fill="#000"'),
         draw: (S) => ({
           defs:
             `<linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f6eee0"/><stop offset="1" stop-color="#efe3d0"/></linearGradient>` +
-            // The two halves of the arch overlap by a few units: one alone leaves a hairline
-            // across the photograph where they meet, when the magnet is drawn small.
-            `<clipPath id="above"><rect width="100%" style="height:calc(100% - ${FOOT - 4}px)"/></clipPath>` +
+            `<clipPath id="above"><rect width="100%" style="height:calc(100% - ${FOOT - 1}px)"/></clipPath>` +
             `<clipPath id="foot"><rect width="100%" height="100%" style="y:calc(100% - ${FOOT}px)"/></clipPath>`,
           body:
             ground(S, 'url(#paper)') +
             onBorder(
-              // A sun behind the shoulder of the arch, a second one low beside the words, and the
-              // arch again in terracotta, a step away.
-              S.pin(`<circle cx="150" cy="150" r="128" fill="#ecc3a6"/>`, [150, 150], {
+              // A sun behind the shoulder of the arch, and the arch again in terracotta, a step away.
+              S.pin(`<circle cx="96" cy="100" r="86" fill="#ecc3a6"/>`, [96, 100], {
                 x: 'start',
                 y: 'start',
               }),
-              S.pin(
-                `<circle cx="1790" cy="1010" r="210" fill="#ecc3a6" fill-opacity=".55"/>`,
-                [1790, 1010],
-                { x: 'end', y: 'end' },
-              ),
-              `<g transform="translate(20 16)">${arch(S, 0, 'fill="#c8643c"')}</g>`,
+              `<g transform="translate(16 14)">${arch(S, 0, 'fill="#c8643c"')}</g>`,
+              S.pin(line('M70 921H178', '#1d1b19', 2.4), [70, 921], { x: 'start', y: 'end' }),
+              S.pin(`<circle cx="186" cy="921" r="4" fill="#c8643c"/>`, [186, 921], {
+                x: 'start',
+                y: 'end',
+              }),
             ) +
-            arch(S, 0, 'fill="none" stroke="#1d1b19" stroke-width="2.600"'),
+            arch(S, 0, 'fill="none" stroke="#1d1b19" stroke-width="2.400"'),
         }),
         extras: [
-          sticker(picture('birthdays-botanic-1'), 968, 664, 330),
+          sticker(picture('birthdays-botanic-1'), 480, 700, 254),
           label(
             seal,
-            1012,
-            96,
+            512,
+            62,
             [
               caption(
                 22,
@@ -697,72 +668,57 @@ export default function birthdays(kit) {
                 { color: '#f6eee0' },
               ),
             ],
-            // The seal stays round when the magnet is made wider: only the clear edge of its
-            // drawing lengthens, not the disc.
-            {
-              turn: -8,
-              stretch: {
-                x: [
-                  [0, 2],
-                  [162, 164],
-                ],
-                y: [
-                  [0, 2],
-                  [162, 164],
-                ],
-              },
-            },
+            { turn: -8 },
           ),
           caption(
-            1240,
-            306,
-            584,
-            150,
-            { text: 'שלושים,', font: 'Frank Ruhl Libre', size: 128, weight: 900 },
-            { text: 'Thirty,', font: 'Playfair Display', size: 124, weight: 800 },
+            66,
+            754,
+            480,
+            104,
+            { text: 'שלושים,', font: 'Frank Ruhl Libre', size: 90, weight: 900 },
+            { text: 'Thirty,', font: 'Playfair Display', size: 88, weight: 800 },
             { color: '#1d1b19', align: 'left' },
           ),
           caption(
-            1242,
-            462,
-            582,
-            76,
-            { text: 'וזה רק מתחיל', font: 'Frank Ruhl Libre', size: 62, weight: 500 },
+            68,
+            858,
+            480,
+            54,
+            { text: 'וזה רק מתחיל', font: 'Frank Ruhl Libre', size: 46, weight: 500 },
             {
               text: 'and just getting started',
               font: 'Playfair Display',
-              size: 44,
+              size: 36,
               weight: 500,
               italic: true,
             },
             { color: '#a34724', align: 'left' },
           ),
-          sticker(rule, 1244, 566, 150),
           caption(
-            1242,
-            600,
-            582,
-            48,
-            { text: 'חוגגים את טל', font: 'Heebo', size: 36, weight: 800, spacing: 2 },
-            { text: 'CELEBRATING TAL', font: 'Montserrat', size: 30, weight: 700, spacing: 5 },
+            68,
+            930,
+            620,
+            46,
+            { text: 'חוגגים את טל', font: 'Heebo', size: 32, weight: 800, spacing: 2 },
+            { text: 'CELEBRATING TAL', font: 'Montserrat', size: 28, weight: 700, spacing: 5 },
             { color: '#1d1b19', align: 'left' },
           ),
           caption(
-            1242,
-            654,
-            582,
-            40,
+            68,
+            976,
+            620,
+            42,
             {
               text: 'ארוחת ערב · חברים · יין טוב',
               font: 'Heebo',
-              size: 30,
+              size: 28,
               weight: 400,
               spacing: 1,
             },
             {
               text: 'DINNER · FRIENDS · GOOD WINE',
               font: 'Montserrat',
-              size: 26,
+              size: 28,
               weight: 400,
               spacing: 1,
             },
@@ -1014,16 +970,10 @@ export default function birthdays(kit) {
     );
   }
 
-  /* ---- the sixtieth and up: a page of the album, corners that hold the print, a stamp. It is
-     drawn for the wide slide: the print takes the left two thirds of the page, and a column at
-     its right is the caption the album leaves room for, from the heading with its rule down to
-     the pressed flowers at its foot. */
+  /* ---- the sixtieth and up: a page of the album, corners that hold the print, a stamp */
   function sixty() {
-    const [W, H] = [1920, 1080];
-    const opening = box(92, 140, 1200, 840);
+    const opening = box(88, 190, 574, 586);
     const print = inset(opening, -16);
-    /** Where the lines of the column begin, and how wide their boxes are. */
-    const [COLUMN, WIDE] = [1384, 504];
     const next = random(6060);
     // The fibres of the paper: one tile of short hairs, which the page repeats.
     const fibres = Array.from({ length: 26 }, () => {
@@ -1041,50 +991,24 @@ export default function birthdays(kit) {
         line('M12 46 46 12', '#d9c49a', 1, ' stroke-opacity=".35" stroke-linecap="round"'),
     );
     // The stamp: a scalloped edge, a field of brick red, and the waves of the postmark over it.
-    // It is drawn 1.15 times as large as its own units and mirrored, the stamp at the left and
-    // the postmark trailing to its right, for the left corner of the print.
     const stamp = art(
       'bd-stamp-age',
-      302,
-      237,
+      262,
+      206,
       '',
-      `<g transform="translate(301.300 0) scale(-1.150 1.150)">` +
-        `<rect x="100" y="12" width="150" height="182" fill="#fbf3df" stroke="#fbf3df" stroke-width="11" stroke-dasharray=".1 13.280" stroke-linecap="round"/>` +
+      `<rect x="100" y="12" width="150" height="182" fill="#fbf3df" stroke="#fbf3df" stroke-width="11" stroke-dasharray=".1 13.280" stroke-linecap="round"/>` +
         `<rect x="100" y="12" width="150" height="182" fill="#fbf3df"/>` +
         `<rect x="111" y="23" width="128" height="160" fill="#a8412c"/>` +
         `<rect x="117" y="29" width="116" height="148" fill="none" stroke="#fbf3df" stroke-opacity=".7" stroke-width="1.400"/>` +
         `<g fill="none" stroke="#3b332b" stroke-opacity=".62" stroke-width="2.600" stroke-linecap="round">` +
         `<path d="M4 58q14-12 28 0t28 0 28 0 28 0 28 0"/><path d="M4 78q14-12 28 0t28 0 28 0 28 0 28 0"/><path d="M4 98q14-12 28 0t28 0 28 0 28 0 28 0"/><path d="M4 118q14-12 28 0t28 0 28 0 28 0 28 0"/>` +
-        `<path d="M52 160a40 40 0 0 1 72-28" /><path d="M60 162a31 31 0 0 1 56-22"/></g>` +
-        `</g>`,
-    );
-    // The rule under the heading of the page, and a line the page leaves to write on: elements,
-    // so each goes with the line of words it belongs to.
-    const rule = art(
-      'bd-album-rule',
-      250,
-      14,
-      '',
-      line('M1 7H224', '#8a6a3a', 1.4, ' stroke-opacity=".6"') +
-        `<path d="${sparkle(238, 7, 6, 0.3)}" fill="#8a6a3a" fill-opacity=".7"/>`,
-    );
-    const written = art(
-      'bd-album-line',
-      420,
-      6,
-      '',
-      line(
-        'M2 3H418',
-        '#8a6a3a',
-        1.6,
-        ' stroke-opacity=".5" stroke-dasharray="1 7" stroke-linecap="round"',
-      ),
+        `<path d="M52 160a40 40 0 0 1 72-28" /><path d="M60 162a31 31 0 0 1 56-22"/></g>`,
     );
     return magnet(
       'magnet-sixty',
       'Sixtieth birthday magnet',
       'מגנט ליום הולדת 60 ומעלה',
-      [W, H, 18],
+      [750, 1050, 18],
       {
         opening,
         round: 3,
@@ -1098,111 +1022,111 @@ export default function birthdays(kit) {
             onBorder(
               S.whole('fill="url(#fibres)"'),
               S.whole('fill="url(#aged)"'),
-              S.outline(
-                box(22, 22, W - 44, H - 44),
-                6,
-                1.4,
-                'stroke="#8a6a3a" stroke-opacity=".5"',
-              ),
-              S.outline(
-                box(29, 29, W - 58, H - 58),
-                3,
-                0.8,
-                'stroke="#8a6a3a" stroke-opacity=".4"',
-              ),
+              S.outline(box(22, 22, 706, 1006), 6, 1.4, 'stroke="#8a6a3a" stroke-opacity=".5"'),
+              S.outline(box(29, 29, 692, 992), 3, 0.8, 'stroke="#8a6a3a" stroke-opacity=".4"'),
               // The print: white paper around the photograph, and the line of its edge.
               S.box(print, 2, 'fill="#fffdf8"'),
               S.outline(print, 2, 1.2, 'stroke="#6f5632" stroke-opacity=".4"'),
+              // The lines the page leaves to write on, and the rule under its heading.
+              S.pin(
+                line(
+                  'M70 884H470M70 956H470',
+                  '#8a6a3a',
+                  1.4,
+                  ' stroke-opacity=".45" stroke-dasharray="1 7" stroke-linecap="round"',
+                ),
+                [70, 884],
+                { x: 'start', y: 'end' },
+              ),
+              S.pin(
+                line('M70 134H292', '#8a6a3a', 1.4, ' stroke-opacity=".6"') +
+                  `<path d="${sparkle(304, 134, 6, 0.3)}" fill="#8a6a3a" fill-opacity=".7"/>`,
+                [70, 134],
+                { x: 'start', y: 'start' },
+              ),
             ),
         }),
         extras: [
-          sticker(corner, 66, 114, 110),
-          sticker(corner, 1208, 114, 110, { turn: 90 }),
-          sticker(corner, 1208, 896, 110, { turn: 180 }),
-          sticker(corner, 66, 896, 110, { turn: 270 }),
-          sticker(picture('birthdays-botanic-2'), 1474, 664, 320, { turn: 8 }),
-          // The stamp lies over the top of the print beside its left corner, in the first third
-          // of the card both ways: it keeps its size and its corner when the magnet is resized.
+          sticker(corner, 64, 166, 84),
+          sticker(corner, 602, 166, 84, { turn: 90 }),
+          sticker(corner, 602, 716, 84, { turn: 180 }),
+          sticker(corner, 64, 716, 84, { turn: 270 }),
+          sticker(picture('birthdays-botanic-2'), 520, 776, 216, { turn: 8 }),
           label(
             stamp,
-            184,
-            62,
+            334,
+            34,
             [
               caption(
-                26,
-                28,
-                148,
-                113,
-                { text: '60', font: 'DM Serif Display', size: 96 },
-                { text: '60', font: 'DM Serif Display', size: 96 },
+                111,
+                24,
+                128,
+                98,
+                { text: '60', font: 'DM Serif Display', size: 84 },
+                { text: '60', font: 'DM Serif Display', size: 84 },
                 { color: '#fbf3df' },
               ),
               caption(
-                26,
-                154,
-                148,
-                51,
-                { text: 'שנה', font: 'Frank Ruhl Libre', size: 36, weight: 700, spacing: 3.4 },
-                { text: 'YEARS', font: 'Playfair Display', size: 32, weight: 700, spacing: 2.3 },
+                111,
+                134,
+                128,
+                44,
+                { text: 'שנה', font: 'Frank Ruhl Libre', size: 32, weight: 700, spacing: 3 },
+                { text: 'YEARS', font: 'Playfair Display', size: 28, weight: 700, spacing: 2 },
                 { color: '#fbf3df' },
               ),
             ],
-            { turn: -7 },
+            { turn: 7 },
           ),
-          // The column: the heading of the page and its rule, then the caption of the print,
-          // the name larger than the greeting over it, each on a line the page leaves to write on.
           caption(
-            COLUMN,
-            132,
-            440,
-            46,
-            { text: 'אלבום המשפחה', font: 'David Libre', size: 34, weight: 500, spacing: 2 },
-            { text: 'FAMILY ALBUM', font: 'Playfair Display', size: 30, weight: 500, spacing: 3 },
+            70,
+            84,
+            290,
+            44,
+            { text: 'אלבום המשפחה', font: 'David Libre', size: 30, weight: 500, spacing: 2 },
+            { text: 'FAMILY ALBUM', font: 'Playfair Display', size: 28, weight: 500, spacing: 3 },
             { color: '#6b5433', align: 'left' },
           ),
-          sticker(rule, COLUMN, 186, 300),
           caption(
-            COLUMN,
-            318,
-            WIDE,
-            76,
-            { text: 'עד מאה ועשרים,', font: 'David Libre', size: 62, weight: 700 },
+            66,
+            812,
+            480,
+            74,
+            { text: 'עד מאה ועשרים,', font: 'David Libre', size: 60, weight: 700 },
             {
               text: 'Many happy returns,',
               font: 'Playfair Display',
-              size: 44,
+              size: 42,
               weight: 700,
               italic: true,
             },
             { color: '#3a2f25', align: 'left' },
           ),
-          sticker(written, COLUMN, 400, 420),
           caption(
-            COLUMN,
-            408,
-            WIDE,
-            98,
-            { text: 'סבתא רחל', font: 'David Libre', size: 80, weight: 700 },
+            66,
+            886,
+            480,
+            72,
+            { text: 'סבתא רחל', font: 'David Libre', size: 60, weight: 700 },
             {
               text: 'Grandma Rachel',
               font: 'Playfair Display',
-              size: 54,
+              size: 48,
               weight: 700,
               italic: true,
             },
             { color: '#3a2f25', align: 'left' },
           ),
-          sticker(written, COLUMN, 512, 420),
           caption(
-            COLUMN + 2,
-            530,
-            WIDE,
+            68,
+            962,
+            480,
             48,
-            { text: 'באהבה, כל הנכדים', font: 'David Libre', size: 36, weight: 500 },
+            { text: 'באהבה, כל הנכדים', font: 'David Libre', size: 34, weight: 500 },
             {
               text: 'Love, all your grandchildren',
               font: 'Playfair Display',
-              size: 30,
+              size: 28,
               weight: 500,
             },
             { color: '#8a3a26', align: 'left' },

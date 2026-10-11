@@ -506,11 +506,9 @@ export default function school(kit) {
     );
   }
 
-  /* ---- a prom: black and gold, a wide window with stepped corners, a sign with lamps on its
-     foot. It is drawn for the wide slide: the sign and the line under it hold the middle of the
-     foot, over a fan of light, with rules of gold to either side. */
+  /* ---- a prom: black and gold, a window with stepped corners, a sign with lamps */
   function prom() {
-    const [x0, y0, x1, y1, step] = [66, 92, 1854, 836, 32];
+    const [x0, y0, x1, y1, step] = [66, 100, 684, 800, 28];
     const opening = box(x0, y0, x1 - x0, y1 - y0);
     /** The window with two steps cut into each corner, `by` larger all around. */
     const stepped = (by) => {
@@ -539,86 +537,55 @@ export default function school(kit) {
         [l, b - 2 * s],
       ]);
     };
-    // A fan of light from the foot of the card: wedges of a lighter black, a line of gold along
-    // either side of each.
-    const fan = Array.from({ length: 15 }, (_, i) => {
-      const [from, to] = [-87 + i * 12, -81 + i * 12].map((turn) => spun(0, -2600, turn));
-      const ray = ([x, y]) =>
-        line(`M960 1080 ${f(960 + x)} ${f(1080 + y)}`, '#d9b45a', 1.2, ' stroke-opacity=".42"');
+    // A fan of light from the foot of the card: wedges of a lighter black, a line of gold on each.
+    const fan = Array.from({ length: 13 }, (_, i) => {
+      const [from, to] = [-84 + i * 14, -84 + i * 14 + 7].map((turn) => spun(0, -1900, turn));
       return (
-        `<path fill="#1d1c22" d="M960 1080 ${f(960 + from[0])} ${f(1080 + from[1])} ${f(960 + to[0])} ${f(1080 + to[1])}Z"/>` +
-        ray(from) +
-        ray(to)
+        `<path fill="#1d1c22" d="M375 1050 ${f(375 + from[0])} ${f(1050 + from[1])} ${f(375 + to[0])} ${f(1050 + to[1])}Z"/>` +
+        line(
+          `M375 1050 ${f(375 + from[0])} ${f(1050 + from[1])}`,
+          '#d9b45a',
+          1.2,
+          ' stroke-opacity=".5"',
+        )
       );
     }).join('');
     const crest =
-      `<path d="M960 22 975 43 960 64 945 43Z" fill="url(#gold)"/>` +
-      `<path d="M628 36l6 7-6 7-6-7ZM1292 36l6 7-6 7-6-7Z" fill="#d9b45a"/>` +
+      `<path d="M375 26 391 48 375 70 359 48Z" fill="url(#gold)"/>` +
       line(
-        'M650 43H924M996 43H1270M740 34H916M1004 34H1180M740 52H916M1004 52H1180',
+        'M232 48H343M407 48H518M262 38H337M413 38H488M262 58H337M413 58H488',
         '#d9b45a',
         1.8,
         ' stroke-linecap="round"',
       );
     const foot =
-      `<path d="M960 1030l9 12-9 12-9-12Z" fill="url(#gold)"/>` +
-      `<path d="M930 1036l5 6-5 6-5-6ZM990 1036l5 6-5 6-5-6Z" fill="#d9b45a"/>` +
-      line('M690 1042H911M1009 1042H1230', '#d9b45a', 1.4, ' stroke-linecap="round"');
-    /**
-     * Rules of gold beside the line under the sign, as the crest has them: a long one between
-     * two shorter, and a diamond where they end. `side` is -1 at the left and 1 at the right.
-     */
-    const rules = (side) => {
-      const at = (x) => 960 + side * x;
-      return (
-        `<path d="M${at(398)} 968l6 7-6 7-6-7Z" fill="#d9b45a"/>` +
-        line(
-          `M${at(418)} 975H${at(820)}M${at(418)} 966H${at(620)}M${at(418)} 984H${at(620)}`,
-          '#d9b45a',
-          1.6,
-          ' stroke-linecap="round"',
-        )
-      );
-    };
-    // The sign of a theatre: a black board in a rim of gold, a row of lamps all around it. It
-    // is drawn at 590 by 184 and made larger for the wide card.
-    const SIGN = 1.3;
-    const [across, down] = [
-      Array.from({ length: 18 }, (_, i) => 42 + i * 29.8),
-      Array.from({ length: 4 }, (_, i) => 47 + i * 30),
-    ];
+      `<path d="M375 1000l9 12-9 12-9-12Z" fill="url(#gold)"/>` +
+      `<path d="M345 1006l5 6-5 6-5-6ZM405 1006l5 6-5 6-5-6Z" fill="#d9b45a"/>` +
+      line('M200 1012H326M424 1012H550', '#d9b45a', 1.4, ' stroke-linecap="round"');
+    // The sign of a theatre: a black board in a rim of gold, a row of lamps all around it.
     const lamps = [
-      ...across.map((x) => [x, 17]),
-      ...across.map((x) => [x, 167]),
-      ...down.map((y) => [17, y]),
-      ...down.map((y) => [573, y]),
+      ...Array.from({ length: 18 }, (_, i) => [42 + i * 29.8, 17]),
+      ...Array.from({ length: 18 }, (_, i) => [42 + i * 29.8, 167]),
+      ...Array.from({ length: 4 }, (_, i) => [17, 47 + i * 30]),
+      ...Array.from({ length: 4 }, (_, i) => [573, 47 + i * 30]),
     ]
       .map(
         ([x, y]) =>
           `<circle cx="${f(x)}" cy="${y}" r="10" fill="#ffcf70" fill-opacity=".22"/><circle cx="${f(x)}" cy="${y}" r="5.600" fill="url(#lamp)"/>`,
       )
       .join('');
-    /**
-     * The strips of the sign that lengthen with it: the gaps after the lamps given of a row, so
-     * that a longer sign has its lamps in groups further apart and every lamp stays round. A
-     * plate has four strips a side at most.
-     */
-    const between = (row, after) =>
-      after.map((i) =>
-        [(row[i] + 10.6) * SIGN, (row[i + 1] - 10.6) * SIGN].map((v) => Number(f(v))),
-      );
     const sign = art(
       'school-marquee',
-      767,
-      239,
+      590,
+      184,
       `<linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7e3a1"/><stop offset=".5" stop-color="#c9992e"/><stop offset="1" stop-color="#f1d98c"/></linearGradient>` +
         `<radialGradient id="lamp" cx=".4" cy=".35" r=".7"><stop stop-color="#fffdf2"/><stop offset=".6" stop-color="#ffe29a"/><stop offset="1" stop-color="#f0a92e"/></radialGradient>` +
         `<linearGradient id="board" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1c1a20"/><stop offset="1" stop-color="#0c0b0f"/></linearGradient>`,
-      `<g transform="scale(${SIGN})"><rect x="3" y="3" width="584" height="178" rx="24" fill="#0a090c"/>` +
+      `<rect x="3" y="3" width="584" height="178" rx="24" fill="#0a090c"/>` +
         `<rect x="3" y="3" width="584" height="178" rx="24" fill="none" stroke="url(#rim)" stroke-width="5"/>` +
         `<rect x="32" y="32" width="526" height="120" rx="9" fill="url(#board)"/>` +
         `<rect x="32" y="32" width="526" height="120" rx="9" fill="none" stroke="url(#rim)" stroke-width="2"/>` +
-        `${lamps}</g>`,
+        lamps,
     );
     const sparks = art(
       'school-gold-sparks',
@@ -633,7 +600,7 @@ export default function school(kit) {
       'magnet-prom',
       'Prom magnet',
       'מגנט לנשף סיום',
-      [1920, 1080, 18],
+      [750, 1050, 18],
       {
         opening,
         window: (S) => S.shape(stepped(-1), 'fill="#000"'),
@@ -656,44 +623,35 @@ export default function school(kit) {
           body:
             ground(S, 'url(#night)') +
             onBorder(
-              S.pin(fan, [960, 1080], { x: 'mid', y: 'end' }),
-              S.pin(crest, [960, 43], { x: 'mid', y: 'start' }),
-              S.pin(foot, [960, 1042], { x: 'mid', y: 'end' }),
-              // The sign keeps its distance from either side of the card, and so do the rules.
-              S.pin(rules(-1), [330, 975], { x: 'start', y: 'end' }),
-              S.pin(rules(1), [1590, 975], { x: 'end', y: 'end' }),
+              S.pin(fan, [375, 1050], { x: 'mid', y: 'end' }),
+              S.pin(crest, [375, 48], { x: 'mid', y: 'start' }),
+              S.pin(foot, [375, 1012], { x: 'mid', y: 'end' }),
             ) +
-            S.outline(box(13, 13, 1894, 1054), 8, 2, 'stroke="url(#gold)"') +
+            S.outline(box(13, 13, 724, 1024), 8, 2, 'stroke="url(#gold)"') +
             S.whole('fill="url(#glitter)" mask="url(#band)"') +
             S.whole('fill="#e7c873" mask="url(#hair)"'),
         }),
         extras: [
-          sticker(sparks, 1708, 40, 148, { turn: 8 }),
+          sticker(sparks, 574, 62, 112, { turn: 8 }),
           // The sign stands on the foot of the photograph, half on it and half on the card.
-          label(
-            sign,
-            576,
-            700,
-            [
-              caption(
-                52,
-                44,
-                663,
-                151,
-                { text: 'נשף י״ב', font: 'Karantina', size: 127, weight: 700, spacing: 4 },
-                { text: 'PROM NIGHT', font: 'Karantina', size: 127, weight: 700, spacing: 5 },
-                { color: '#f6dc93' },
-              ),
-            ],
-            { stretch: { x: between(across, [2, 6, 10, 14]), y: between(down, [0, 1, 2]) } },
-          ),
+          label(sign, 80, 722, [
+            caption(
+              40,
+              34,
+              510,
+              116,
+              { text: 'נשף י״ב', font: 'Karantina', size: 98, weight: 700, spacing: 3 },
+              { text: 'PROM NIGHT', font: 'Karantina', size: 98, weight: 700, spacing: 4 },
+              { color: '#f6dc93' },
+            ),
+          ]),
           caption(
-            576,
-            950,
-            767,
+            50,
+            922,
+            650,
             48,
-            { text: 'תיכון אורנים · מחזור נ״ב', font: 'Heebo', size: 40, weight: 500, spacing: 5 },
-            { text: 'ORANIM HIGH SCHOOL', font: 'Montserrat', size: 34, weight: 600, spacing: 12 },
+            { text: 'תיכון אורנים · מחזור נ״ב', font: 'Heebo', size: 31, weight: 500, spacing: 3 },
+            { text: 'ORANIM HIGH SCHOOL', font: 'Montserrat', size: 28, weight: 600, spacing: 7 },
             { color: '#ecd48b' },
           ),
         ],
@@ -1175,25 +1133,22 @@ export default function school(kit) {
     );
   }
 
-  /* ---- a discharge party: sunrise, a wide window torn open at the top, the big trip packed. It
-     is drawn for the wide slide: the name stands large on the hill at the left with its two
-     lines beside it, and the sun comes up at the right, where the backpack waits. */
+  /* ---- a discharge party: sunrise, a window torn open at the top, the big trip packed */
   function discharge() {
-    const opening = box(44, 114, 1832, 762);
+    const opening = box(44, 150, 662, 606);
     const next = random(1809);
     // The torn edge: where the card was ripped open over the photograph.
-    const TEETH = 90;
-    const tear = Array.from({ length: TEETH + 1 }, (_, i) => {
-      const x = opening.x + (opening.w * i) / TEETH;
-      const y = i % TEETH === 0 ? opening.y + 12 : opening.y + (i % 2 ? 0 : 12) + next() * 22;
+    const tear = Array.from({ length: 34 }, (_, i) => {
+      const x = opening.x + (opening.w * i) / 33;
+      const y = i % 33 === 0 ? opening.y + 12 : opening.y + (i % 2 ? 0 : 12) + next() * 22;
       return [x, i === 7 ? opening.y : y];
     });
     const torn = (by) => tear.map(([x, y]) => [x, y + by, { y: 'start' }]);
     const pane = [
       ...torn(0),
       ...tied([
-        [1876, 876],
-        [44, 876],
+        [706, 756],
+        [44, 756],
       ]),
     ];
     // The white of the paper shows along the tear, a little further down than the card ends.
@@ -1209,9 +1164,7 @@ export default function school(kit) {
         3.6,
         ' stroke-linecap="round" stroke-opacity=".5"',
       );
-    // A strip torn from a sheet of paper, with a piece of tape at each end. It is drawn at 470
-    // by 118 and made larger for the wide card.
-    const STRIP = 1.3;
+    // A strip torn from a sheet of paper, with a piece of tape at each end.
     const edge = (x, side) =>
       Array.from({ length: 9 }, (_, i) => [
         x + side * (i % 2 ? 9 : 2) + side * next() * 5,
@@ -1219,108 +1172,93 @@ export default function school(kit) {
       ]);
     const strip = art(
       'school-torn-strip',
-      611,
-      153,
+      470,
+      118,
       `<linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#f4ecdb"/></linearGradient>`,
-      `<g transform="scale(${STRIP})"><path fill="url(#sheet)" d="M${points([...edge(14, -1), ...edge(456, 1).reverse()])}Z"/>` +
+      `<path fill="url(#sheet)" d="M${points([...edge(14, -1), ...edge(456, 1).reverse()])}Z"/>` +
         `<rect x="-4" y="38" width="58" height="34" fill="#ffd166" fill-opacity=".82" transform="rotate(-18 25 55)"/>` +
-        `<rect x="416" y="46" width="58" height="34" fill="#ffd166" fill-opacity=".82" transform="rotate(-14 445 63)"/></g>`,
-    );
-    // The bar between the two lines and the name: an element, so it goes with the words.
-    const bar = art(
-      'school-sun-bar',
-      6,
-      104,
-      '',
-      `<rect width="6" height="104" rx="3" fill="#ffd76a"/>`,
+        `<rect x="416" y="46" width="58" height="34" fill="#ffd166" fill-opacity=".82" transform="rotate(-14 445 63)"/>`,
     );
     return magnet(
       'magnet-discharge',
       'Discharge party magnet',
       'מגנט למסיבת שחרור',
-      [1920, 1080, 22],
+      [750, 1050, 22],
       {
         opening,
         window: (S) => S.shape(pane, 'fill="#000"'),
         draw: (S) => ({
           defs:
             `<linearGradient id="dawn" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e23e6d"/><stop offset=".5" stop-color="#ff7550"/><stop offset=".86" stop-color="#ffb347"/><stop offset="1" stop-color="#ffd76a"/></linearGradient>` +
-            // Two rows of the count fill the band over the tear.
-            `<pattern id="tally" width="196" height="62" patternUnits="userSpaceOnUse" patternTransform="scale(.92)">${tally(14, 0)}${tally(78, 2)}${tally(144, -1)}</pattern>` +
+            `<pattern id="tally" width="196" height="62" patternUnits="userSpaceOnUse">${tally(14, 0)}${tally(78, 2)}${tally(144, -1)}</pattern>` +
             `<radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset=".55" stop-color="#fff3b0" stop-opacity=".55"/><stop offset="1" stop-color="#fff3b0" stop-opacity="0"/></radialGradient>`,
           body:
             ground(S, 'url(#dawn)') +
             onBorder(
-              S.box(box(0, 0, 1920, 114), 0, 'fill="url(#tally)"'),
-              // The sun comes up behind the hills, beside the backpack that waits for the trip.
+              S.box(box(0, 0, 750, 124), 0, 'fill="url(#tally)"'),
+              // The sun comes up behind the hills, where the trip waits.
               S.pin(
-                `<circle cx="1410" cy="986" r="232" fill="url(#halo)"/><circle cx="1410" cy="986" r="124" fill="#fff0a8"/><circle cx="1410" cy="986" r="106" fill="#ffe066"/>`,
-                [1410, 986],
+                `<circle cx="462" cy="884" r="210" fill="url(#halo)"/><circle cx="462" cy="884" r="112" fill="#fff0a8"/><circle cx="462" cy="884" r="96" fill="#ffe066"/>`,
+                [462, 884],
                 { x: 'end', y: 'end' },
               ),
-              // The hills stand high under the left of the photograph, where the words are, and
-              // dip to the right, where the sun shows.
               footed(
                 S,
-                box(0, 850, 1920, 230),
-                `<path fill="#6a1b4a" d="M0 868C300 858 640 860 900 880S1240 956 1420 966S1750 916 1920 926V1080H0Z"/>` +
-                  `<path fill="#4c1136" d="M0 952C300 930 640 942 920 986S1500 1048 1920 1008V1080H0Z"/>`,
+                box(0, 760, 750, 290),
+                `<path fill="#6a1b4a" d="M0 826C140 786 300 800 430 858S650 922 750 892V1050H0Z"/>` +
+                  `<path fill="#4c1136" d="M0 912C150 872 330 908 470 950S680 996 750 978V1050H0Z"/>`,
               ),
             ) +
             S.shape(fibre, 'fill="#fffaf0"'),
         }),
         extras: [
-          // The strip lies over the tear, as low as its word has to stand on a slide.
           label(
             strip,
-            654,
-            73,
+            140,
+            74,
             [
               caption(
-                57,
-                10,
-                497,
-                133,
-                { text: 'משתחרר!', font: 'Karantina', size: 112, weight: 700, spacing: 3 },
-                { text: 'FREE AT LAST!', font: 'Karantina', size: 91, weight: 700, spacing: 3 },
+                44,
+                8,
+                382,
+                102,
+                { text: 'משתחרר!', font: 'Karantina', size: 86, weight: 700, spacing: 2 },
+                { text: 'FREE AT LAST!', font: 'Karantina', size: 70, weight: 700, spacing: 2 },
                 { color: '#26141f' },
               ),
             ],
-            { turn: -4 },
+            { turn: -5 },
           ),
-          sticker('palm-tree', 1662, 606, 230, { turn: 6 }),
-          sticker(picture('school-kit-3'), 1556, 732, 324),
-          sticker('airplane', 1216, 758, 170, { turn: -8, flip: true }),
-          // The two lines end at the bar and the name begins at it: one block, and a name of
-          // any length has the hill to its right to run on.
+          sticker('palm-tree', 548, 656, 190, { turn: 6 }),
+          sticker(picture('school-kit-3'), 478, 794, 240),
+          sticker('airplane', 384, 700, 128, { turn: -8, flip: true }),
           caption(
-            96,
-            884,
-            480,
-            52,
-            { text: 'סוף סוף אזרח', font: 'Heebo', size: 44, weight: 700, spacing: 1 },
-            { text: 'FINALLY A CIVILIAN', font: 'Montserrat', size: 32, weight: 700, spacing: 4 },
-            { color: '#ffd76a', align: 'right' },
+            44,
+            838,
+            440,
+            44,
+            { text: 'סוף סוף אזרח', font: 'Heebo', size: 32, weight: 700, spacing: 1 },
+            { text: 'FINALLY A CIVILIAN', font: 'Montserrat', size: 28, weight: 700, spacing: 3 },
+            { color: '#ffd76a', align: 'left' },
           ),
           caption(
-            624,
-            876,
-            556,
-            124,
-            { text: 'אורי', font: 'Secular One', size: 107 },
-            { text: 'Uri', font: 'Secular One', size: 107 },
+            44,
+            880,
+            400,
+            112,
+            { text: 'אורי', font: 'Secular One', size: 96 },
+            { text: 'Uri', font: 'Secular One', size: 96 },
             { color: '#ffffff', align: 'left' },
           ),
           caption(
-            96,
-            940,
-            480,
-            48,
-            { text: 'הטיול הגדול מתחיל', font: 'Heebo', size: 40, weight: 500 },
-            { text: 'The big trip starts now', font: 'DM Sans', size: 36, weight: 500 },
-            { color: '#ffe9d6', align: 'right' },
+            44,
+            990,
+            400,
+            42,
+            { text: 'הטיול הגדול מתחיל', font: 'Heebo', size: 30, weight: 500 },
+            { text: 'The big trip starts now', font: 'DM Sans', size: 28, weight: 500 },
+            { color: '#ffe9d6', align: 'left' },
           ),
-          sticker(bar, 596, 884, 6),
         ],
       },
       {

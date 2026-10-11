@@ -215,6 +215,12 @@ export const he = {
       body: 'התור לא הושלם. נסו לשלוח את ההודעה שוב.',
     },
   },
+  repair: {
+    otherAgent: 'בחירת Agent אחר',
+    recheck: 'בדקו שוב',
+    fixedTitle: 'ה-Agent מוכן',
+    fixedBody: 'אפשר לשלוח את ההודעה שוב.',
+  },
   tool: {
     deck_get_outline: 'קריאת מבנה המצגת',
     deck_get_theme: 'קריאת ערכת העיצוב',
@@ -726,6 +732,12 @@ export const en = {
       title: 'Something went wrong',
       body: 'The turn did not complete. Try sending the message again.',
     },
+  },
+  repair: {
+    otherAgent: 'Choose another agent',
+    recheck: 'Check again',
+    fixedTitle: 'The agent is ready',
+    fixedBody: 'You can send the message again.',
   },
   tool: {
     deck_get_outline: 'Reading the deck outline',

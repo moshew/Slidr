@@ -417,11 +417,7 @@ describe('draftTemplate', () => {
     const { template, fills } = made();
     expect(Template.safeParse(template).error?.issues).toBeUndefined();
     expect(template.theme).toMatchObject({ id: 'draft_1', name: 'Clay' });
-    expect(template.layouts.map((l) => l.id)).toEqual([
-      'l_draft_1_title',
-      'l_draft_1_1',
-      'l_draft_1_text',
-    ]);
+    expect(template.layouts.map((l) => l.id)).toEqual(['l_draft_1_1', 'l_draft_1_text']);
     expect(Object.keys(template.assets ?? {})).toEqual([LOGO.id]);
     expect(Object.keys(fills)).toEqual(['l_draft_1_1']);
   });
@@ -591,7 +587,6 @@ describe('sampleDeckOf', () => {
       const deck = sampleDeckOf(template, fills, { lang, dir });
       expect(Deck.safeParse(deck).error?.issues).toBeUndefined();
       expect(deck.slides.map((s) => [s.layoutId, s.name])).toEqual([
-        ['l_draft_1_title', 'Title'],
         ['l_draft_1_1', 'Cards'],
         ['l_draft_1_2', 'Photo'],
         ['l_draft_1_text', 'Text'],

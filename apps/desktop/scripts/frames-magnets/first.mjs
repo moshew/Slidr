@@ -165,74 +165,54 @@ export default function first(kit) {
     );
   }
 
-  /* ---- a wedding: an arch on ivory left of the middle, lines of gold around it, and the names
-     in a column beside it, under a dove and over two glasses. It is drawn for the wide slide:
-     the arch keeps the proportions of an arch, and the words have a column of their own. */
+  /* ---- a wedding: an arch on ivory, lines of gold, the names below */
   function wedding() {
-    const [W, H] = [1920, 1080];
-    const opening = box(76, 68, 936, 944);
+    const opening = box(70, 64, 610, 716);
     /** Where the round part of an arch ends and its foot begins, from the foot of the card. */
-    const FOOT = H - (opening.y + opening.w / 2);
-    /** The middle of the column of the names: between the arch's outer line and the card's. */
-    const AXIS = Math.round((opening.x + opening.w + 23 + W - 16) / 2);
+    const FOOT = 290;
     /**
      * An arch around the photograph, `by` away from it: half a circle above, as wide as the
      * arch is at any size, straight sides, and a flat foot. Above the foot it is a box with
      * round corners that is too tall for its lower corners to show; the foot is a plain box.
-     * The two lie over each other for a few units of the card, so no seam shows between them
-     * when the magnet is drawn small. The arch stands beside the column of the names, so its
-     * radius is half of what the card leaves it on both sides.
+     * The two share a line of the card, so no seam shows between them.
      */
     const arch = (S, by, attrs) => {
       const around = inset(opening, -by);
       const tall = S.geometry({ ...around, h: around.h + 2 * S.h });
       return (
-        `<rect ${attrs} clip-path="url(#above)" style="${tall};rx:calc(50% - ${f((W - around.w) / 2)}px)"/>` +
+        `<rect ${attrs} clip-path="url(#above)" style="${tall};rx:calc(50% - ${f(around.x)}px)"/>` +
         `<rect ${attrs} clip-path="url(#foot)" style="${S.geometry(around)}"/>`
       );
     };
     const next = random(77);
-    // Sparks of gold in the corners the arch leaves free, and around the dove and the glasses.
-    // Those at the arch's left shoulder keep to the start of the card; the others to its end,
-    // as the arch's right side and the column do.
+    // Sparks of gold in the corners the arch leaves free.
     const sparks = (S) =>
       [
-        [140, 116, 20],
-        [72, 212, 10],
-        [230, 60, 9],
-        [948, 116, 18],
-        [1018, 212, 10],
-        [860, 60, 8],
-        [1250, 232, 11],
-        [1694, 150, 16],
-        [1772, 262, 8],
-        [1226, 846, 9],
-        [1716, 800, 14],
-        [1790, 906, 8],
+        [112, 104, 15],
+        [66, 168, 8],
+        [176, 62, 7],
+        [640, 96, 14],
+        [690, 170, 8],
+        [584, 58, 6],
       ]
         .map(([x, y, r]) =>
           S.pin(
             `<path d="${sparkle(x, y, r)}" fill="#c9a557" fill-opacity="${f(0.55 + next() * 0.4)}"/>`,
             [x, y],
-            { x: x < opening.x + opening.w / 2 ? 'start' : 'end', y: y < H / 2 ? 'start' : 'end' },
+            { x: x < 375 ? 'start' : 'end', y: 'start' },
           ),
         )
         .join('');
-    // Over the names: a small jewel on a line. It is an element, so it goes with the words.
-    const jewel = art(
-      'jewel-gold',
-      300,
-      44,
-      `<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e3c98c"/><stop offset=".5" stop-color="#c39d4f"/><stop offset="1" stop-color="#dcbf7c"/></linearGradient>`,
-      line('M6 22H112M188 22H294', '#c39d4f', 2, ' stroke-linecap="round"') +
-        `<path d="${sparkle(150, 22, 21, 0.3)}" fill="url(#gold)"/>` +
-        `<circle cx="112" cy="22" r="3.600" fill="#c39d4f"/><circle cx="188" cy="22" r="3.600" fill="#c39d4f"/>`,
-    );
+    // Between the flowers and the glasses: a small jewel on a line.
+    const jewel =
+      line('M262 842H346M404 842H488', '#c39d4f', 1.6, ' stroke-linecap="round"') +
+      `<path d="${sparkle(375, 842, 17, 0.3)}" fill="url(#gold)"/>` +
+      `<circle cx="346" cy="842" r="3" fill="#c39d4f"/><circle cx="404" cy="842" r="3" fill="#c39d4f"/>`;
     return magnet(
       'magnet-wedding',
       'Wedding magnet',
       'מגנט לחתונה',
-      [W, H, 24],
+      [750, 1050, 24],
       {
         set: 'family',
         opening,
@@ -241,58 +221,45 @@ export default function first(kit) {
           defs:
             `<radialGradient id="blush" cx="0" cy="1" r=".9"><stop stop-color="#f4d8cd" stop-opacity=".9"/><stop offset="1" stop-color="#f4d8cd" stop-opacity="0"/></radialGradient>` +
             `<radialGradient id="sage" cx="1" cy="0" r=".8"><stop stop-color="#dfe8d8" stop-opacity=".95"/><stop offset="1" stop-color="#dfe8d8" stop-opacity="0"/></radialGradient>` +
-            `<radialGradient id="glow"><stop stop-color="#f1cbbd" stop-opacity=".95"/><stop offset=".55" stop-color="#f4d8cd" stop-opacity=".5"/><stop offset="1" stop-color="#f4d8cd" stop-opacity="0"/></radialGradient>` +
             `<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e3c98c"/><stop offset=".5" stop-color="#c39d4f"/><stop offset="1" stop-color="#dcbf7c"/></linearGradient>` +
-            `<clipPath id="above"><rect width="100%" style="height:calc(100% - ${FOOT - 4}px)"/></clipPath>` +
+            `<clipPath id="above"><rect width="100%" style="height:calc(100% - ${FOOT - 1}px)"/></clipPath>` +
             `<clipPath id="foot"><rect width="100%" height="100%" style="y:calc(100% - ${FOOT}px)"/></clipPath>`,
           body:
             ground(S, '#fbf6ec') +
-            onBorder(
-              S.whole('fill="url(#blush)"'),
-              S.whole('fill="url(#sage)"'),
-              // Blush at the foot of the column, as the sage is behind the dove: the glasses are
-              // pale, and stand on it.
-              S.pin(`<circle cx="${AXIS}" cy="846" r="210" fill="url(#glow)"/>`, [AXIS, 846], {
-                x: 'end',
-                y: 'end',
-              }),
-              sparks(S),
-            ) +
-            S.outline(box(16, 16, W - 32, H - 32), 13, 2, 'stroke="url(#gold)"') +
+            onBorder(S.whole('fill="url(#blush)"'), S.whole('fill="url(#sage)"'), sparks(S)) +
+            S.outline(box(16, 16, 718, 1018), 13, 2, 'stroke="url(#gold)"') +
             arch(S, 12, 'fill="none" stroke="url(#gold)" stroke-width="3"') +
-            arch(S, 23, 'fill="none" stroke="url(#gold)" stroke-width="1.3"'),
+            arch(S, 23, 'fill="none" stroke="url(#gold)" stroke-width="1.3"') +
+            S.pin(jewel, [375, 842], { x: 'mid', y: 'end' }),
         }),
         extras: [
-          // The bouquet lies over the foot of the arch; the rest stands on the column's middle,
-          // one under the other: the dove, the jewel, the names, the thanks and the glasses.
-          sticker('bouquet', 10, 814, 232, { turn: -4 }),
-          sticker('dove', AXIS - 95, 136, 190, { turn: -6 }),
-          sticker(jewel, AXIS - 150, 398, 300),
+          sticker('dove', 26, 26, 122, { turn: -6 }),
+          sticker('bouquet', 26, 722, 164, { turn: -4 }),
+          sticker('clinking-glasses', 566, 724, 158, { turn: 4 }),
           caption(
-            AXIS - 354,
-            446,
-            708,
-            140,
-            { text: 'מאיה ויונתן', font: 'Frank Ruhl Libre', size: 110, weight: 700 },
+            75,
+            880,
+            600,
+            92,
+            { text: 'מאיה ויונתן', font: 'Frank Ruhl Libre', size: 76, weight: 700 },
             {
               text: 'Maya & Jonathan',
               font: 'Playfair Display',
-              size: 72,
+              size: 60,
               weight: 600,
               italic: true,
             },
             { color: '#4d6650' },
           ),
           caption(
-            AXIS - 354,
-            596,
-            708,
-            54,
-            { text: 'תודה שחגגתם איתנו', font: 'Heebo', size: 38, weight: 500, spacing: 3 },
-            { text: 'THANK YOU FOR COMING', font: 'Montserrat', size: 32, weight: 600, spacing: 4 },
+            95,
+            970,
+            560,
+            46,
+            { text: 'תודה שחגגתם איתנו', font: 'Heebo', size: 32, weight: 500, spacing: 2 },
+            { text: 'THANK YOU FOR COMING', font: 'Montserrat', size: 28, weight: 600, spacing: 3 },
             { color: '#7d6126' },
           ),
-          sticker('clinking-glasses', AXIS - 115, 726, 230, { turn: 4 }),
         ],
       },
       {
@@ -654,38 +621,30 @@ export default function first(kit) {
     );
   }
 
-  /* ---- a party at night: tubes of neon around a wide photograph, a mirror ball on its corner,
-     the title in a band under it and the beat along the foot. It is drawn for the wide slide. */
+  /* ---- a party at night: tubes of neon around the photograph, a mirror ball, the beat below */
   function party() {
-    const [W, H] = [1920, 1080];
-    const opening = box(56, 46, 1808, 774);
-    // The band under the photograph, below its tubes; in it, where the title and its small line
-    // stand. The lights are in the band, around the words and above the beat.
-    const band = opening.y + opening.h + 36;
-    const words = box(520, band, 880, 160);
+    const opening = box(48, 48, 654, 760);
     const next = random(2330);
     const lights = (S) =>
-      scattered(next, 46, W, H, [box(0, 0, W, band), words, box(0, BARS.y - 10, W, H)], 46, 18)
+      scattered(next, 30, 750, 1050, [inset(opening, -30), box(50, 834, 650, 170)], 40, 18)
         .map(([x, y]) =>
           S.pin(
             next() < 0.4
-              ? `<path d="${sparkle(x, y, 6 + next() * 9)}" fill="#ffffff" fill-opacity="${f(0.5 + next() * 0.5)}"/>`
+              ? `<path d="${sparkle(x, y, 5 + next() * 8)}" fill="#ffffff" fill-opacity="${f(0.5 + next() * 0.5)}"/>`
               : `<circle cx="${f(x)}" cy="${f(y)}" r="${f(2 + next() * 5)}" fill="${pick(next, ['#ff3ea5', '#29e7ff', '#ffe14d'])}" fill-opacity="${f(0.35 + next() * 0.4)}"/>`,
             [x, y],
           ),
         )
         .join('');
-    // The bars of an equaliser along the foot of the card, under the words and as wide as the
-    // photograph: one tile of them, in the box of the foot. A wider card has the beat go on,
-    // with bars as wide as they were (`long` is as far as the tiles are laid).
-    const BARS = { count: 91, pitch: 20, x: 56, y: 1012, h: 46, long: 6 * 91 * 20 };
+    // The bars of an equaliser along the foot of the card: one tile of them, in the box of
+    // the foot. A wider card has the beat go on, with bars as wide as they were.
+    const BARS = { count: 35, pitch: 17.8, x: 66, y: 992, h: 40 };
     const bars = () =>
       Array.from({ length: BARS.count }, (_, i) => {
-        const tall =
-          7 + 1.15 * Math.abs(Math.sin(i * 0.9) * 15 + Math.sin(i * 2.3) * 8) + next() * 6;
-        return `<rect x="${f(i * BARS.pitch)}" y="${f(BARS.h - tall)}" width="11" height="${f(tall)}" rx="5.500"/>`;
+        const tall = 6 + Math.abs(Math.sin(i * 0.9) * 15 + Math.sin(i * 2.3) * 8) + next() * 5;
+        return `<rect x="${f(i * BARS.pitch)}" y="${f(BARS.h - tall)}" width="10" height="${f(tall)}" rx="5"/>`;
       }).join('');
-    const foot = box(BARS.x - 4, BARS.y, opening.w + 8, BARS.h);
+    const foot = box(BARS.x - 4, BARS.y, BARS.count * BARS.pitch + 2, BARS.h);
     const tube = (S, by, radius, colour, width) =>
       frameLine(S, by, radius, colour, width * 3.2, ' stroke-opacity=".55" filter="url(#blur)"') +
       frameLine(S, by, radius, colour, width) +
@@ -694,11 +653,11 @@ export default function first(kit) {
       'magnet-party',
       'Party night magnet',
       'מגנט למסיבה',
-      [W, H, 26],
+      [750, 1050, 26],
       {
         set: 'leisure',
         opening,
-        round: 22,
+        round: 20,
         draw: (S) => {
           // The lights are scattered before the bars are cut, as they always were.
           const lit = lights(S);
@@ -707,12 +666,9 @@ export default function first(kit) {
               `<linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1a0d38"/><stop offset="1" stop-color="#09051a"/></linearGradient>` +
               `<radialGradient id="pink" cx=".1" cy=".95" r=".6"><stop stop-color="#ff2e97" stop-opacity=".5"/><stop offset="1" stop-color="#ff2e97" stop-opacity="0"/></radialGradient>` +
               `<radialGradient id="cyan" cx=".95" cy=".9" r=".55"><stop stop-color="#1ee3f7" stop-opacity=".4"/><stop offset="1" stop-color="#1ee3f7" stop-opacity="0"/></radialGradient>` +
-              // The beat goes from pink to cyan along the whole card at any size, as the light of
-              // the foot does: the tiles of the bars are what the colour shows through.
-              `<linearGradient id="beat" gradientUnits="userSpaceOnUse" x1="0%" y1="0" x2="100%" y2="0"><stop stop-color="#ff3ea5"/><stop offset=".5" stop-color="#b56bff"/><stop offset="1" stop-color="#29e7ff"/></linearGradient>` +
+              `<linearGradient id="beat" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#ff3ea5"/><stop offset=".5" stop-color="#b56bff"/><stop offset="1" stop-color="#29e7ff"/></linearGradient>` +
               `<filter id="blur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="7"/></filter>` +
-              `<pattern id="bars" x="${BARS.x}" y="${BARS.y}" width="${f(BARS.count * BARS.pitch)}" height="${BARS.h}" patternUnits="userSpaceOnUse"><g fill="#fff">${bars()}</g></pattern>` +
-              `<mask id="beats" maskUnits="userSpaceOnUse" x="${BARS.x}" y="${BARS.y}" width="${BARS.long}" height="${BARS.h}"><rect x="${BARS.x}" y="${BARS.y}" width="${BARS.long}" height="${BARS.h}" fill="url(#bars)"/></mask>` +
+              `<pattern id="bars" x="${BARS.x}" y="${BARS.y}" width="${f(BARS.count * BARS.pitch)}" height="${BARS.h}" patternUnits="userSpaceOnUse"><g fill="url(#beat)">${bars()}</g></pattern>` +
               `<clipPath id="foot"><rect style="${S.geometry(foot)}"/></clipPath>`,
             body:
               ground(S, 'url(#night)') +
@@ -720,37 +676,36 @@ export default function first(kit) {
                 S.whole('fill="url(#pink)"'),
                 S.whole('fill="url(#cyan)"'),
                 lit,
-                // The beat begins with a whole bar at the start of the foot, at any size.
                 `<g clip-path="url(#foot)">${S.pin(
-                  `<rect x="${BARS.x}" y="${BARS.y}" width="${BARS.long}" height="${BARS.h}" fill="url(#beat)" mask="url(#beats)"/>`,
-                  [BARS.x, BARS.y],
-                  { x: 'start', y: 'end' },
+                  `<rect x="-4000" y="${BARS.y}" width="8750" height="${BARS.h}" fill="url(#bars)"/>`,
+                  [375, BARS.y],
+                  { x: 'mid', y: 'end' },
                 )}</g>`,
-                tube(S, 10, 30, '#ff3ea5', 5),
-                tube(S, 22, 42, '#29e7ff', 3.2),
+                tube(S, 10, 28, '#ff3ea5', 5),
+                tube(S, 22, 40, '#29e7ff', 3.2),
               ),
           };
         },
         extras: [
-          sticker('mirror-ball', 14, 14, 210, { turn: -6 }),
-          sticker('bottle-with-popping-cork', 1712, 14, 190, { turn: 6 }),
-          sticker('clinking-glasses', 1688, 716, 210, { turn: 6 }),
+          sticker('mirror-ball', 18, 14, 150, { turn: -6 }),
+          sticker('bottle-with-popping-cork', 590, 22, 136, { turn: 6 }),
+          sticker('clinking-glasses', 574, 716, 150, { turn: 6 }),
           caption(
-            480,
-            850,
-            960,
-            122,
-            { text: 'לילה שלא נשכח', font: 'Karantina', size: 106, weight: 700 },
-            { text: 'A Night to Remember', font: 'Karantina', size: 96, weight: 700 },
+            55,
+            820,
+            640,
+            130,
+            { text: 'לילה שלא נשכח', font: 'Karantina', size: 112, weight: 700 },
+            { text: 'A Night to Remember', font: 'Karantina', size: 82, weight: 700 },
             { color: '#ffffff' },
           ),
           caption(
-            560,
-            962,
-            800,
-            38,
-            { text: 'רוקדים עד הבוקר', font: 'Heebo', size: 32, weight: 500, spacing: 5 },
-            { text: 'DANCING TILL DAWN', font: 'Poppins', size: 28, weight: 600, spacing: 7 },
+            105,
+            950,
+            540,
+            46,
+            { text: 'רוקדים עד הבוקר', font: 'Heebo', size: 32, weight: 500, spacing: 4 },
+            { text: 'DANCING TILL DAWN', font: 'Poppins', size: 28, weight: 600, spacing: 6 },
             { color: '#7df1ff' },
           ),
         ],

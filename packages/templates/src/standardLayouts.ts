@@ -31,12 +31,13 @@ const FOOT_GAP = 40;
 const FOOT_ZONE = 24;
 
 /**
- * The two simple layouts every template offers, including older personal templates. A template
+ * The simple text layout every template offers, including older personal templates. A template
  * that draws its own keeps them; for one that does not they are made from its content slides:
  * the title on one line where their title stands, the body right under it, and the ground, the
  * frame and the foot (rule, mark, slide number) those slides have.
  */
 export function withStandardLayouts(template: Template): Template {
+  template = withoutTitleLayout(template);
   const layouts = [...template.layouts];
   const source = SOURCES.map((archetype) =>
     layouts.find(
@@ -102,17 +103,6 @@ export function withStandardLayouts(template: Template): Template {
     // A title that grows upwards from its line in the template keeps doing so here.
     vAlign: seat?.vAlign === 'bottom' ? 'bottom' : 'top',
   });
-  if (!layouts.some((layout) => layout.archetype === 'title')) {
-    const afterSection = layouts.findIndex((layout) => layout.archetype === 'section');
-    const afterHero = layouts.findIndex((layout) => layout.archetype === 'hero');
-    layouts.splice(afterSection >= 0 ? afterSection + 1 : afterHero >= 0 ? afterHero + 1 : 0, 0, {
-      id: id('title'),
-      name: 'Title',
-      archetype: 'title',
-      placeholders: [title()],
-      ...drawn('title'),
-    });
-  }
   if (!layouts.some((layout) => layout.archetype === 'text')) {
     const beforeImage = layouts.findIndex((layout) => layout.archetype === 'textImage');
     layouts.splice(beforeImage < 0 ? layouts.length : beforeImage, 0, {
@@ -167,5 +157,26 @@ function renamed(decoration: Element, archetype: 'title' | 'text'): Element {
     ...decoration,
     id: id(decoration.id),
     children: decoration.children.map((child) => renamed(child, archetype)),
+  };
+}
+
+/** Remove the retired title-only choice and its previews in both directions. */
+export function withoutTitleLayout(template: Template): Template {
+  const removed = new Set(
+    template.layouts.filter((layout) => layout.archetype === 'title').map((layout) => layout.id),
+  );
+  return {
+    ...template,
+    layouts: template.layouts.filter((layout) => !removed.has(layout.id)),
+    ...(template.flipped
+      ? { flipped: template.flipped.filter((layout) => !removed.has(layout.id)) }
+      : {}),
+    ...(template.sample
+      ? {
+          sample: template.sample.filter(
+            (slide) => !slide.layoutId || !removed.has(slide.layoutId),
+          ),
+        }
+      : {}),
   };
 }

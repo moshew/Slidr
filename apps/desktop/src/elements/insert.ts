@@ -42,7 +42,8 @@ export function insertFrame(editor: Editor, frame: PhotoFrame): boolean {
   const slideId = editor.selection.getState().currentSlideId;
   if (!slideId) return false;
   const { deck } = editor.bus;
-  const box = { x: 0, y: 0, ...frameSizeOn(frame, deck.size) };
+  const taken: Frame[] = findSlide(deck, slideId)?.elements.map((e) => e.frame) ?? [];
+  const box = centredFrame(frameSizeOn(frame, deck.size), deck.size, taken);
   const element = framedElement(frame, box, deck.meta.lang);
   editor.bus.dispatch(
     { type: 'element.add', slideId, element },
@@ -89,11 +90,7 @@ export async function framePicture(
   const { deck } = editor.bus;
   const slide = findSlide(deck, picture.slideId);
   if (!slide) return;
-  const { command, select } = reframe(slide, picture.element, frame, deck.meta.lang, all, {
-    x: 0,
-    y: 0,
-    ...deck.size,
-  });
+  const { command, select } = reframe(slide, picture.element, frame, deck.meta.lang, all);
   editor.bus.dispatch(command, { label: i18n.t('elements:history.reframe') });
   editor.selection.getState().selectElements([select]);
   focusStage();
