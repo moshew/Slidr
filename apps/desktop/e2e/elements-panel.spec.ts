@@ -485,6 +485,68 @@ test('a selected photograph takes the frame that is clicked, and keeps what it s
   expect(back.smartFrame).toBeUndefined();
 });
 
+for (const lang of ['he', 'en'] as const) {
+  test(`magnets show a loading state until headings and pictures can appear together (${lang})`, async ({
+    page,
+  }) => {
+    const panel = await openElements(page, lang);
+    await panel.locator('[data-collection="frames"]').click();
+    const showAll = panel
+      .locator('[data-group="magnets"]')
+      .getByRole('button', { name: lang === 'he' ? 'הצגת הכול' : 'Show all' });
+    await expect(showAll).toBeVisible();
+
+    // Hold decoding of the embedded artwork, even when it is already in the browser cache.
+    await page.evaluate(() => {
+      // The saved native method is explicitly called with each image as its receiver below.
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      const decode = HTMLImageElement.prototype.decode;
+      const released = new Promise<void>((resolve) =>
+        window.addEventListener('release-magnet-pictures', () => resolve(), { once: true }),
+      );
+      HTMLImageElement.prototype.decode = async function () {
+        await decode.call(this);
+        if (this.src.startsWith('data:image/webp')) await released;
+      };
+    });
+    await showAll.click();
+    const magnets = panel.getByTestId('frame-results');
+    const loading = panel.getByTestId('magnets-loading');
+    await expect(loading).toHaveText(lang === 'he' ? 'טוען מגנטים…' : 'Loading magnets…');
+    await expect(loading).toBeVisible();
+    await expect(magnets).toHaveAttribute('aria-busy', 'true');
+    await expect(magnets.locator('[data-slide-id]')).toHaveCount(100);
+    await expect(magnets.getByRole('heading')).toHaveCount(0);
+    await expect(magnets.getByRole('button')).toHaveCount(0);
+    await expect(magnets.locator('[data-magnet-set]')).toHaveCount(0);
+    await expect(magnets.locator('h4').first()).toBeHidden();
+    await expect(magnets.locator('[data-frame]').first()).toBeHidden();
+    await loading.screenshot({ path: `test-results/frames/magnets-loading-${lang}.png` });
+
+    await page.evaluate(() => window.dispatchEvent(new Event('release-magnet-pictures')));
+    await expect(loading).toHaveCount(0);
+    await expect(magnets).toHaveAttribute('aria-busy', 'false');
+    await expect(magnets.getByRole('heading')).toHaveCount(8);
+    await expect(magnets.getByRole('button')).toHaveCount(100);
+    await expect(magnets.locator('h4').first()).toBeVisible();
+    await expect(magnets.locator('[data-frame]').first().locator('img')).toBeVisible();
+    expect(
+      await magnets
+        .locator('img')
+        .evaluateAll((images) =>
+          images.every(
+            (image) =>
+              image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0,
+          ),
+        ),
+    ).toBe(true);
+    // The panel's actual pixels in both reading directions, after the single reveal.
+    await page.getByTestId('tool-panel').screenshot({
+      path: `test-results/frames/magnets-gallery-${lang}.png`,
+    });
+  });
+}
+
 test('a magnet of an event is a group: its picture, with stickers and a caption of its own', async ({
   page,
 }) => {
@@ -494,11 +556,10 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
   const preview = panel.locator('[data-group="magnets"] [data-frame]');
   await expect(preview).toHaveCount(4);
   await panel.locator('[data-group="magnets"]').getByRole('button', { name: 'Show all' }).click();
-  // The magnets are a hundred: shown set by set, or one set alone.
+  // All hundred magnets appear under their set headings, with no extra filter row.
   const magnets = panel.getByTestId('frame-results');
-  const sets = magnets.locator('[data-magnet-set]');
-  await expect(sets).toHaveText([
-    'All',
+  await expect(magnets).toHaveAttribute('aria-busy', 'false');
+  await expect(magnets.getByRole('heading')).toHaveText([
     'Family celebrations',
     'Birthdays',
     'Children',
@@ -508,11 +569,10 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
     'Holidays',
     'Styles',
   ]);
+  await expect(magnets.locator('[data-magnet-set]')).toHaveCount(0);
   await expect(magnets.locator('[data-group="magnets-family"] [data-frame]')).toHaveCount(13);
-  await sets.filter({ hasText: 'Work' }).click();
-  await expect(sets.filter({ hasText: 'Work' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(magnets.locator('section')).toHaveCount(1);
-  await expect(magnets.locator('[data-frame]')).toHaveCount(12);
+  await expect(magnets.locator('section')).toHaveCount(8);
+  await expect(magnets.locator('[data-frame]')).toHaveCount(100);
   // A magnet is drawn small as the slide draws it: by the renderer, around a stand-in photograph.
   const summer = magnets.locator('[data-frame="frame:magnet-summer"]');
   await expect(summer.locator('[data-smart-image-frame] img')).toBeVisible();
@@ -564,7 +624,6 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
   expect(words(await selected<GroupElement>(page))).toEqual(['Sales Kickoff']);
 
   // Another magnet for the same photograph: the group takes its place, with the words typed.
-  await sets.filter({ hasText: 'Leisure and trips' }).click();
   await magnets.locator('[data-frame="frame:magnet-trip"]').click();
   const trip = await selected<GroupElement>(page);
   expect(trip).toMatchObject({ id: added.id, name: 'frame:magnet-trip', frame: added.frame });
@@ -577,7 +636,6 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
 
   // A magnet that says its words on a ribbon: the ribbon is a label, a group of its own in the
   // magnet, and the words typed are on it. No ribbon is drawn on the card.
-  await sets.filter({ hasText: 'Birthdays' }).click();
   await magnets.locator('[data-frame="frame:magnet-birthday"]').click();
   const birthday = await selected<GroupElement>(page);
   expect(birthday).toMatchObject({ id: added.id, name: 'frame:magnet-birthday' });
@@ -705,7 +763,6 @@ test('a frame that is made larger keeps its artwork, and the photograph has the 
   await page.evaluate(() => window.slidr!.selection.getState().selectElements([]));
   await groups.locator('[data-group="magnets"]').getByRole('button', { name: 'Show all' }).click();
   const magnets = panel.getByTestId('frame-results');
-  await magnets.locator('[data-magnet-set="work"]').click();
   await magnets.locator('[data-frame="frame:magnet-summer"]').click();
   const magnet = await selected<GroupElement>(page);
   const [, sun] = magnet.children as [ImageElement, SvgElement];
@@ -729,7 +786,6 @@ test('a frame that is made larger keeps its artwork, and the photograph has the 
 
   // A label crossing the card lengthens with it; its height and type remain the same.
   await page.evaluate(() => window.slidr!.selection.getState().selectElements([]));
-  await magnets.locator('[data-magnet-set="birthdays"]').click();
   await magnets.locator('[data-frame="frame:magnet-birthday"]').click();
   const birthday = await selected<GroupElement>(page);
   const ribbon = birthday.children.at(-1) as GroupElement;

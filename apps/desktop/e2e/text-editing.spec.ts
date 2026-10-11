@@ -109,6 +109,8 @@ test('Enter on a selected text box edits it; a click outside ends editing', asyn
     .locator('[data-element-id="e_en_goals_body"]')
     .boundingBox();
   await page.mouse.click(box!.x + box!.width - 20, box!.y + box!.height - 20);
+  await expect(page.locator('[data-text-editor]')).toBeFocused();
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Enter');
   expect(await editing(page)).toBe('e_en_goals_body');
   await expect(page.locator('[data-text-editor]')).toBeFocused();

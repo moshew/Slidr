@@ -28,6 +28,8 @@ export interface FontPickerLabels {
   all: string;
   /** The accessible name of the Hebrew mark, e.g. "Supports Hebrew". */
   hebrew: string;
+  /** A Hebrew phrase drawn in each family that supports Hebrew. */
+  hebrewPreview: string;
   /** Shown when the search matches nothing. */
   empty: string;
 }
@@ -58,10 +60,10 @@ const OVERSCAN = 4;
 /** The lines in view until the list is measured. */
 const IN_VIEW = 9;
 
-/** The height of a line: that of a control (`h-control`), read from the token. */
-function controlHeight(): number {
-  const token = getComputedStyle(document.documentElement).getPropertyValue('--spacing-control');
-  return parseFloat(token) || 32;
+/** Rows leave room to compare the letterforms, including tall display faces. */
+function fontRowHeight(): number {
+  const token = getComputedStyle(document.documentElement).getPropertyValue('--spacing-font-row');
+  return parseFloat(token) || 44;
 }
 
 /** A family name as a CSS string. */
@@ -74,7 +76,7 @@ const quoted = (family: string) => `"${family.replace(/["\\]/g, '\\$&')}"`;
  *
  * Only the lines in view are drawn. A name in its own face costs the loading of that font, and a
  * computer has hundreds of them: drawn all at once, the list took two seconds to appear. Every
- * line, a heading too, has the height of a control, so the place of a line is its index.
+ * line, a heading too, has the same height, so the place of a line is its index.
  */
 export function FontPicker({
   groups,
@@ -89,7 +91,7 @@ export function FontPicker({
   const viewport = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const [lineHeight] = useState(controlHeight);
+  const [lineHeight] = useState(fontRowHeight);
   /** The first line in view, and how many lines the list shows. */
   const [view, setView] = useState({ first: 0, count: IN_VIEW });
 
@@ -186,7 +188,7 @@ export function FontPicker({
         <li
           key={`heading:${at}`}
           role="presentation"
-          className="flex h-control items-end px-2 pb-1 text-xs font-medium text-ui-fg-muted"
+          className="flex h-font-row items-end px-3 pb-2 text-xs font-medium text-ui-fg-muted"
         >
           {line.heading}
         </li>
@@ -206,7 +208,12 @@ export function FontPicker({
         data-active={line.row === activeRow || undefined}
         onPointerMove={() => setActive(line.row)}
         onClick={() => onValueChange(family)}
-        className="relative flex h-control cursor-default items-center gap-2 rounded-control ps-8 pe-2 select-none data-active:bg-ui-hover"
+        className={cx(
+          'relative flex h-font-row cursor-default items-center gap-2 rounded-inset ps-8 pe-3 select-none',
+          selected
+            ? 'bg-ui-accent-soft data-active:bg-ui-accent-soft-hover'
+            : 'data-active:bg-ui-hover',
+        )}
       >
         {selected && (
           <span className="absolute start-2 inline-flex size-4 items-center justify-center text-ui-accent-fg">
@@ -214,19 +221,21 @@ export function FontPicker({
           </span>
         )}
         <span
+          dir="auto"
           style={symbol ? undefined : { fontFamily: quoted(family) }}
-          className="min-w-0 flex-1 truncate text-md"
+          className="min-w-0 truncate text-lg ltr:text-left rtl:text-right"
         >
           {family}
         </span>
-        {hebrew && (
+        {hebrew && !symbol && (
           <span
             role="img"
             aria-label={labels.hebrew}
+            dir="rtl"
             style={{ fontFamily: quoted(family) }}
-            className="shrink-0 text-md text-ui-fg-muted"
+            className="shrink-0 text-lg whitespace-nowrap text-ui-fg-muted"
           >
-            אבג
+            {labels.hebrewPreview}
           </span>
         )}
       </li>
@@ -261,7 +270,7 @@ export function FontPicker({
       />
       <ScrollArea
         type="always"
-        className="-mx-1 h-72"
+        className="-mx-1 h-font-list max-h-[max(var(--spacing-font-row),calc(var(--radix-popover-content-available-height,100vh)-var(--spacing-control)-8*var(--spacing)))]"
         viewportRef={attach}
         onScroll={(event) => look(event.currentTarget)}
       >

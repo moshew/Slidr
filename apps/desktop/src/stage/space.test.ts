@@ -306,9 +306,14 @@ describe('resolvePress', () => {
     });
   });
 
-  it('edits text on a standalone shape where it is drawn, but leaves a text box to double-click', () => {
-    expect(press(['solo'])).toEqual({ scope: [], id: 'solo' });
-    expect(press(['solo'], [], ['solo'])).toEqual({ scope: [], id: 'solo' });
+  it('edits standalone text boxes and the text on standalone shapes on a click', () => {
+    const solo = {
+      scope: [],
+      id: 'solo',
+      inside: { scope: [], id: 'solo', edit: true },
+    };
+    expect(press(['solo'])).toEqual(solo);
+    expect(press(['solo'], [], ['solo'])).toEqual(solo);
     expect(press(['label'])).toEqual({
       scope: [],
       id: 'label',
@@ -317,7 +322,7 @@ describe('resolvePress', () => {
     expect(press(['label'], [], ['label']).inside).toEqual({ scope: [], id: 'label', edit: true });
     expect(press(['label'], [], [], offText)).toEqual({ scope: [], id: 'label' });
     // Also on the way out of a group that was entered.
-    expect(press(['solo'], ['card', 'row'])).toEqual({ scope: [], id: 'solo' });
+    expect(press(['solo'], ['card', 'row'])).toEqual(solo);
   });
 
   it('does not go into what is locked or hidden', () => {

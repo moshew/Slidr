@@ -233,6 +233,39 @@ export function handleSize(
   return handle.x === 0 ? { w: long, h: BAR_THICK_PX } : { w: BAR_THICK_PX, h: long };
 }
 
+/** The text box's frame takes the pointer for moving; its interior is reserved for editing. */
+export function TextMoveFrame({
+  located,
+  view,
+  typing,
+}: {
+  located: Located;
+  view: StageView;
+  typing?: boolean;
+}) {
+  const padX = typing ? TYPING_PAD_PX : 0;
+  const sw = located.element.frame.w * view.scale + 2 * padX;
+  const sh = located.element.frame.h * view.scale;
+  // Keep the targets outside the text, including the caret at the start of its first line.
+  const sides: CSSProperties[] = [
+    { left: -GRIP_PX, top: -GRIP_PX, width: sw + 2 * GRIP_PX, height: GRIP_PX },
+    { left: -GRIP_PX, top: sh, width: sw + 2 * GRIP_PX, height: GRIP_PX },
+    { left: -GRIP_PX, top: 0, width: padX + GRIP_PX, height: sh },
+    { left: sw - padX, top: 0, width: padX + GRIP_PX, height: sh },
+  ];
+  return (
+    <div style={boxStyle(located, view, false, padX, 0)}>
+      {sides.map((side, i) => (
+        <div
+          key={i}
+          data-move-frame={located.element.id}
+          style={{ position: 'absolute', ...side, pointerEvents: 'auto', cursor: 'move' }}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** The eight resize handles and the rotation handle of one element. */
 export function Handles({
   located,
@@ -306,45 +339,34 @@ export function Handles({
       </div>
     );
   };
-  // The four sides of the frame, from the edge of the text out to a little past the line.
-  const sides: CSSProperties[] = typing
-    ? [
-        { left: -GRIP_PX, top: -GRIP_PX, width: sw + 2 * GRIP_PX, height: GRIP_PX },
-        { left: -GRIP_PX, top: sh, width: sw + 2 * GRIP_PX, height: GRIP_PX },
-        { left: -GRIP_PX, top: 0, width: padX + GRIP_PX, height: sh },
-        { left: sw - padX, top: 0, width: padX + GRIP_PX, height: sh },
-      ]
-    : [];
   return (
-    <div style={boxStyle(located, view, false, padX, 0)}>
-      {sides.map((side, i) => (
-        <div
-          key={i}
-          data-move-frame
-          style={{ position: 'absolute', ...side, pointerEvents: 'auto', cursor: 'move' }}
-        />
-      ))}
-      {rotateOnly ? null : (Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map(handle)}
-      {noRotate ? null : (
-        <div
-          data-handle="rotate"
-          data-lit={lit('rotate') || undefined}
-          {...enter('rotate')}
-          style={{
-            position: 'absolute',
-            left: sw / 2 - 5,
-            top: -ROTATE_OFFSET_PX - 5,
-            width: 10,
-            height: 10,
-            borderRadius: '50%',
-            background: lit('rotate') ? ACCENT : HANDLE_FILL,
-            boxShadow: HANDLE_EDGE,
-            pointerEvents: 'auto',
-            cursor: ROTATE_CURSOR,
-          }}
-        />
-      )}
-    </div>
+    <>
+      {located.element.type === 'text' ? (
+        <TextMoveFrame located={located} view={view} typing={typing} />
+      ) : null}
+      <div style={boxStyle(located, view, false, padX, 0)}>
+        {rotateOnly ? null : (Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map(handle)}
+        {noRotate ? null : (
+          <div
+            data-handle="rotate"
+            data-lit={lit('rotate') || undefined}
+            {...enter('rotate')}
+            style={{
+              position: 'absolute',
+              left: sw / 2 - 5,
+              top: -ROTATE_OFFSET_PX - 5,
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: lit('rotate') ? ACCENT : HANDLE_FILL,
+              boxShadow: HANDLE_EDGE,
+              pointerEvents: 'auto',
+              cursor: ROTATE_CURSOR,
+            }}
+          />
+        )}
+      </div>
+    </>
   );
 }
 

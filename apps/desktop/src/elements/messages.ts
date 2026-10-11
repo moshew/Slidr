@@ -373,8 +373,7 @@ export const he = {
     reframeHint: 'לחיצה על מסגרת מכניסה אליה את התמונה שנבחרה בשקף.',
     emptyHint: 'במסגרת שנבחרה אין עדיין תמונה.',
     pick: 'בחירת תמונה מהמחשב',
-    sets: 'סוגי מגנטים',
-    allSets: 'הכול',
+    loading: 'טוען מגנטים…',
     set: {
       family: 'שמחות משפחתיות',
       birthdays: 'ימי הולדת',
@@ -783,8 +782,7 @@ export const en: Messages<typeof he> = {
     reframeHint: 'A click on a frame puts the picture selected on the slide in it.',
     emptyHint: 'The selected frame has no picture yet.',
     pick: 'Choose a picture from the computer',
-    sets: 'Kinds of magnets',
-    allSets: 'All',
+    loading: 'Loading magnets…',
     set: {
       family: 'Family celebrations',
       birthdays: 'Birthdays',

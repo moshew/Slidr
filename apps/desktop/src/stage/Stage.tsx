@@ -25,6 +25,7 @@ import { fitRows } from '../table/fit';
 import { useTableStage } from '../table/stage';
 import { syncGrowHeights } from '../text/actions';
 import { createHtmlTextEditing } from '../text/htmlEditing';
+import { beginPointerSelection } from '../text/pointerSelection';
 import { TextEditor } from '../text/TextEditor';
 import {
   useCallback,
@@ -110,6 +111,7 @@ import {
   LineOverlay,
   Outline,
   screenBox,
+  TextMoveFrame,
   toScreen,
   type StageView,
 } from './overlays';
@@ -893,8 +895,8 @@ export function Stage({
   };
 
   /**
-   * A press that was released where it began goes in (ARR-01): into the text it was on, with the
-   * caret where the pointer is, to a card object, or to the child of the group it was on. The
+   * Direct entry (ARR-01): into text with the caret where the pointer is, to a card object, or
+   * to the child of the group it was on. A text box opens on press; other objects on release. The
    * groups around either are entered, so that Esc comes out of them one at a time.
    */
   const goInside = (inside: Inside, at: Point) => {
@@ -986,17 +988,25 @@ export function Stage({
       }
       // A press anywhere else leaves crop mode, and then acts as it always does.
     }
-    // On the frame of the text that is typed in, the press is for the box, and the text stays open.
+    // A text box's frame moves the box, including before editing; an open editor stays open.
     const handle = dataOf(e.target, 'handle');
-    const moveFrame = Boolean(typing) && dataOf(e.target, 'move-frame') !== undefined;
-    if (editingId && !(typing && handle) && !moveFrame) selection.getState().stopEditing();
+    const frameId = dataOf(e.target, 'move-frame');
+    const frame = frameId ? index.get(frameId) : undefined;
+    const moveFrame =
+      frame?.element.type === 'text' && !frame.locked && !frame.hidden ? frame : undefined;
+    const keepEditing = moveFrame?.element.id === editingId;
+    if (editingId && !(typing && handle) && !keepEditing) selection.getState().stopEditing();
     if (moveFrame) {
+      const state = selection.getState();
+      setEntered(pathIds(moveFrame));
+      if (state.selectedElementIds.length !== 1 || state.selectedElementIds[0] !== frameId)
+        state.selectElements([moveFrame.element.id]);
       begin({
         kind: 'move',
         txId: newId('tx'),
         start: p,
         moved: false,
-        duplicate: false,
+        duplicate: e.altKey && !keepEditing,
         restore: selection.getState().selectedElementIds,
         pendingSelection: undefined,
         items: [],
@@ -1147,6 +1157,16 @@ export function Stage({
       // Only a plain press goes further in when it is released: a modifier asks for something
       // else of it (Alt for a copy), and so does any button but the first.
       const plain = e.button === 0 && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey;
+      if (plain && hit.inside?.edit && index.get(hit.inside.id)?.element.type === 'text') {
+        // Text is editable from the press itself, regardless of how long it is held or moved.
+        // Release the Stage's capture so subsequent events belong to the text editor.
+        if (container.current?.hasPointerCapture(e.pointerId))
+          container.current.releasePointerCapture(e.pointerId);
+        e.preventDefault();
+        beginPointerSelection(hit.inside.id, e);
+        goInside(hit.inside, { x: e.clientX, y: e.clientY });
+        return;
+      }
       const pendingSelection = plain && hit.inside && !before.includes(id) ? id : undefined;
       if (!before.includes(id) && !pendingSelection) state.selectElements([id]);
       begin({
@@ -1223,8 +1243,16 @@ export function Stage({
         setOverGroupChild(false);
         return;
       }
+      const frameId = dataOf(e.target, 'move-frame');
+      const frame = frameId ? index.get(frameId) : undefined;
+      if (frame && !frame.locked && !frame.hidden) {
+        setHover(frame.element.id);
+        setOverText(false);
+        setOverGroupChild(false);
+        return;
+      }
       const press = pressAt(e.clientX, e.clientY);
-      // A direct click reaches the object under the pointer; a drag still takes its group.
+      // Hover follows directly reached text and foreground objects.
       const text = press.inside?.edit ? press.inside.id : undefined;
       const id = press.inside?.id ?? press.id;
       setHover(id && !index.get(id)?.locked ? id : undefined);
@@ -1483,13 +1511,16 @@ export function Stage({
       }
       return;
     }
-    // On the frame of the text that is typed in, the second press is one more press on the frame:
+    // On a text box's frame, the second press is one more press on the frame:
     // it does not go on to what lies under the frame. By position, as the Stage holds the pointer.
     if (
-      typing &&
       document
         .elementsFromPoint(e.clientX, e.clientY)
-        .some((node) => node.hasAttribute('data-move-frame') || node.hasAttribute('data-handle'))
+        .some(
+          (node) =>
+            node.hasAttribute('data-move-frame') ||
+            (single?.element.type === 'text' && node.hasAttribute('data-handle')),
+        )
     ) {
       return;
     }
@@ -2142,12 +2173,12 @@ export function Stage({
   const active = activeKind;
   // A press on a directly reached child takes the group around it, or the child itself in a
   // group that was entered, to move it. While the press lasts, the child has no hover frame.
-  // Otherwise the cursor follows what a click would reach, even over a selected text.
+  // Editable text keeps a text cursor, even when its box is selected or editing has ended.
   const hovered =
     hover && !selected.includes(hover) && (!active || active === 'move')
       ? index.get(hover)
       : undefined;
-  const intoText = overText && hover !== undefined && !active && !previewing;
+  const textCursor = overText && hover !== undefined && !active && !previewing;
   const overObject = hover !== undefined && !previewing;
   const enteredGroup = scope.length ? index.get(scope[scope.length - 1] as string) : undefined;
   const childGroup = overGroupChild && hover ? index.get(hover)?.path.at(-1) : undefined;
@@ -2185,6 +2216,9 @@ export function Stage({
           ) : (
             <Outline located={hovered} view={stageView} hover />
           )
+        ) : null}
+        {hovered?.element.type === 'text' ? (
+          <TextMoveFrame located={hovered} view={stageView} />
         ) : null}
         {selectedLocated.map((located) =>
           located.element.id === croppingId ||
@@ -2282,9 +2316,11 @@ export function Stage({
         ))}
         {marquee ? (
           <div
+            data-marquee
             style={{
               ...screenBox(marquee, stageView),
-              background: 'var(--color-ui-accent-soft)',
+              // Keep the slide visible while choosing objects, in either app theme.
+              background: 'color-mix(in srgb, var(--color-ui-accent) 10%, transparent)',
               outline: '1px solid var(--color-ui-accent)',
             }}
           />
@@ -2371,7 +2407,7 @@ export function Stage({
           ? 'grab'
           : crop && overCrop
             ? 'move'
-            : intoText
+            : textCursor
               ? 'text'
               : overObject
                 ? 'move'

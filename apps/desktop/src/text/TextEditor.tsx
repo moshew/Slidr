@@ -26,6 +26,7 @@ import { editorCommand, type EditorCommand } from './editorKeys';
 import { levelChange, type FormatContext } from './format';
 import { finishOpening, takeOpening } from './opening';
 import { knowInstalledFonts, sourceContext } from './pasteSource';
+import { attachPointerSelection } from './pointerSelection';
 import {
   blurredSelectionPlugin,
   clipboardPlugin,
@@ -59,7 +60,7 @@ export interface TextEditorProps {
   /** For a table: the cell whose text is edited. */
   cell?: CellRef;
   theme: Theme;
-  /** Where the user double-clicked, to put the caret there. Without it the caret goes to the end. */
+  /** Where the user clicked, to put the caret there. Without it the caret goes to the end. */
   caretAt?: { x: number; y: number };
   /** Without `caretAt`: the caret at the end of the text (the default), or all of it selected. */
   select?: 'end' | 'all';
@@ -345,7 +346,7 @@ export function TextEditor({
           'data-text-editor': '',
           spellcheck: 'false',
           style:
-            'outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: auto;',
+            'outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: auto; cursor: text;',
         },
       },
       onSelectionUpdate: ({ transaction }) => {
@@ -413,7 +414,7 @@ export function TextEditor({
           return;
         }
         // Opened by a typed character or from row B (`opening.ts`): the caret goes to the end,
-        // wherever the last double click was.
+        // wherever the last pointer click was.
         const opening = takeOpening(element.id);
         const point = opening ? undefined : caretAt;
         const pos = point ? ed.view.posAtCoords({ left: point.x, top: point.y }) : null;
@@ -438,6 +439,7 @@ export function TextEditor({
           openedTyping.current = performance.now();
           ed.view.dispatch(ed.state.tr.insertText(opening.typed));
         }
+        ed.on('destroy', attachPointerSelection(element.id, ed.view));
         const { anchor, head } = ed.state.selection;
         kept.current = { anchor, head, focused: true };
       },

@@ -179,8 +179,8 @@ test('over text inside a group the frame is the text own, and the cursor is the 
   };
   await expectOver(page, off, 'g_tilt_panel', 'move');
 
-  // A standalone text box keeps its double-click editing behavior.
-  await expectOver(page, await center(page, el('e_solo')), 'e_solo', 'move');
+  // A standalone text box has a text cursor too.
+  await expectOver(page, await center(page, el('e_solo')), 'e_solo', 'text');
   await expectOver(page, await center(page, el('e_solo_shape')), 'e_solo_shape', 'text');
   // Nothing was pressed: nothing is selected and nothing is edited.
   expect(await state(page)).toMatchObject({ selected: [], editing: null });
@@ -193,14 +193,45 @@ test('clicking text keeps the group frame visible without selecting the group fi
   await page.mouse.move(title.x, title.y);
   await expect(surface(page).locator('[data-hovered-group="g_card"]')).toBeVisible();
   await page.mouse.down();
-  expect((await state(page)).selected).toEqual([]);
-  await expect(surface(page).locator('[data-hovered-group="g_card"]')).toBeVisible();
+  expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: 'g_card_title' });
+  await expect(editor(page)).toBeFocused();
+  await expect(surface(page).locator('[data-entered-group="g_card"]')).toBeVisible();
   await page.mouse.up();
   expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: 'g_card_title' });
   await expect(surface(page).locator('[data-entered-group="g_card"]')).toHaveCSS(
     'outline-style',
     'dashed',
   );
+});
+
+test('the hovered frame moves its text box without moving the card or opening editing', async ({
+  page,
+}) => {
+  const scale = await stageScale(page);
+  const before = (await element(page, 'g_card'))!;
+  const { steps } = await state(page);
+  const title = await center(page, el('g_card_title'));
+  await page.mouse.move(title.x, title.y);
+  const frame = surface(page).locator('[data-move-frame="g_card_title"]').first();
+  await expect(frame).toBeVisible();
+  const bounds = (await frame.boundingBox())!;
+  const at = { x: bounds.x + bounds.width / 4, y: bounds.y + bounds.height / 2 };
+  await page.mouse.move(at.x, at.y);
+  await expect(surface(page)).toHaveCSS('cursor', 'move');
+  await drag(page, at, { x: 80 * scale, y: 40 * scale });
+  const after = (await element(page, 'g_card'))!;
+  const titleOf = (card: Model) => card.children!.find((child) => child.id === 'g_card_title')!;
+  expect(Math.abs(titleOf(after).frame.x - (titleOf(before).frame.x + 80))).toBeLessThanOrEqual(1);
+  expect(Math.abs(titleOf(after).frame.y - (titleOf(before).frame.y + 40))).toBeLessThanOrEqual(1);
+  expect(after.frame).toEqual(before.frame);
+  const others = (card: Model) => card.children!.filter((child) => child.id !== 'g_card_title');
+  expect(others(after)).toEqual(others(before));
+  expect(await state(page)).toMatchObject({
+    selected: ['g_card_title'],
+    editing: null,
+    steps: steps + 1,
+  });
+  await expect(editor(page)).toHaveCount(0);
 });
 
 test('a standalone shape edits on its text and shows move and rotate cursors elsewhere', async ({
@@ -392,7 +423,9 @@ test('inside the card a click on another of its texts edits that one, and a drag
   await expect(surface(page)).toHaveAttribute('data-entered', 'g_card');
 });
 
-test('a drag from the text moves the whole group, and edits nothing', async ({ page }) => {
+test('pressing a text box edits immediately; a drag from the card background moves the group', async ({
+  page,
+}) => {
   const scale = await stageScale(page);
   const before = (await element(page, 'g_card'))!;
   const { steps } = await state(page);
@@ -400,16 +433,17 @@ test('a drag from the text moves the whole group, and edits nothing', async ({ p
   await page.mouse.move(title.x, title.y);
   await expect(surface(page)).toHaveCSS('cursor', 'text');
   await page.mouse.down();
-  // Until this becomes a drag, the text and its group's frame stay as they were on hover.
-  await expect(surface(page).locator('[data-outline="g_card_title"]')).toBeVisible();
-  await expect(surface(page).locator('[data-hovered-group="g_card"]')).toBeVisible();
-  await expect(surface(page)).toHaveCSS('cursor', 'move');
+  await expect(editor(page)).toBeFocused();
+  expect((await state(page)).editing).toBe('g_card_title');
+  await page.waitForTimeout(700);
+  await page.mouse.move(title.x + 100 * scale, title.y + 20 * scale, { steps: 8 });
+  expect(await element(page, 'g_card')).toEqual(before);
   await page.mouse.up();
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
-  await drag(page, title, { x: 200 * scale, y: 100 * scale });
+  await drag(page, await bare(page), { x: 200 * scale, y: 100 * scale });
   const after = (await element(page, 'g_card'))!;
   expect(Math.abs(after.frame.x - (before.frame.x + 200))).toBeLessThanOrEqual(1);
   expect(Math.abs(after.frame.y - (before.frame.y + 100))).toBeLessThanOrEqual(1);
@@ -491,11 +525,13 @@ test('a double-click on the card background enters it; text and standalone shape
   await expect(editor(page)).toBeFocused();
   await page.keyboard.press('Escape');
 
-  // A text box in no group: a click selects it, a double-click edits it.
+  // A text box in no group opens its editor on a single click too.
   const free = await center(page, el('e_solo'));
   await page.mouse.click(free.x, free.y);
-  expect(await state(page)).toMatchObject({ selected: ['e_solo'], editing: null });
+  expect(await state(page)).toMatchObject({ selected: ['e_solo'], editing: 'e_solo' });
+  await expect(editor(page)).toBeFocused();
   await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
+  await page.keyboard.press('Escape');
   await page.mouse.dblclick(free.x, free.y);
   expect((await state(page)).editing).toBe('e_solo');
   await expect(editor(page)).toBeFocused();

@@ -1,9 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AssetMeta, ImageElement, Theme } from '@slidr/model';
-import { SlideRenderer } from '@slidr/renderer';
+import { settle, SlideRenderer } from '@slidr/renderer';
 import { ImageUp, Replace, Search } from '@slidr/ui/icons';
-import { Button, cx, Icon, Input, Tooltip } from '@slidr/ui';
+import { Button, cx, Icon, Input, Spinner, Tooltip } from '@slidr/ui';
 import { useSelectedPicture } from '../media/replace';
 import { replaceImage } from '../objects/replace';
 import type { Target } from '../objects/target';
@@ -24,7 +24,7 @@ import {
   type PhotoFrame,
 } from './frames';
 import { framePicture, insertFrame } from './insert';
-import { useColumns, useNear } from './StickerGrid';
+import { useColumns } from './StickerGrid';
 import { FRAME_PHOTO, FRAME_PHOTO_URL, FrameThumbDefs } from './tiles';
 
 /*
@@ -216,55 +216,115 @@ function mixed(frames: readonly PhotoFrame[]): PhotoFrame[] {
   return Array.from({ length: most }, (_, i) => sets.flatMap((one) => one.slice(i, i + 1))).flat();
 }
 
-/** One set of magnets under its name: drawn once it comes near the visible part of the panel. */
+/** One set of magnets, with its name and all its previews prepared together. */
 function MagnetSet({ set, frames }: { set: MagnetSet; frames: readonly PhotoFrame[] }) {
   const { t } = useTranslation('elements');
-  const [room, near] = useNear<HTMLDivElement>();
   const title = t(`frames.set.${set}`);
   return (
     <Section title={title} data-group={`magnets-${set}`}>
-      <div ref={room} className="min-h-24">
-        {near && <FrameGrid frames={frames} label={title} group="magnets" />}
-      </div>
+      <FrameGrid frames={frames} label={title} group="magnets" />
     </Section>
   );
 }
 
+/** Raster artwork inside SVGs lives in the renderer's open shadow roots, too. */
+function embeddedPictures(root: Element | ShadowRoot): string[] {
+  const urls = Array.from(root.querySelectorAll('image')).flatMap((picture) => {
+    const url = picture.getAttribute('href') ?? picture.getAttribute('xlink:href');
+    return url ? [url] : [];
+  });
+  for (const element of Array.from(root.querySelectorAll('*'))) {
+    if (element.shadowRoot) urls.push(...embeddedPictures(element.shadowRoot));
+  }
+  return urls;
+}
+
 /**
- * The magnets in full. They are a hundred, so they are shown by set, what the event is or that
- * the magnet is a style with no event: every set under its name, or one set alone.
+ * Prepare the entire gallery behind a loading state. Measuring the tiles, loading their
+ * pictures and settling the renderer must finish before any set heading is exposed.
  */
 function Magnets({ frames }: { frames: readonly PhotoFrame[] }) {
   const { t } = useTranslation('elements');
-  const [set, setSet] = useState<MagnetSet | 'all'>('all');
+  const [mounted, setMounted] = useState(false);
+  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const sets = useMemo(() => bySet(frames).filter((one) => one.frames.length > 0), [frames]);
   const list = useRef<HTMLDivElement>(null);
-  // The list opens at its top. The panel was scrolled down to the group it was opened from,
-  // and a set that is not in view yet is not drawn: the first one would wait above the fold.
+  const previews = useRef<HTMLDivElement>(null);
   useEffect(() => {
     list.current?.closest('section')?.scrollIntoView({ block: 'start' });
+    // Let the loading state paint before constructing the hundred slide previews.
+    let next = requestAnimationFrame(() => {
+      next = requestAnimationFrame(() => setMounted(true));
+    });
+    return () => cancelAnimationFrame(next);
   }, []);
+
+  useEffect(() => {
+    const root = previews.current;
+    if (!mounted || !root) return;
+    let current = true;
+    let preparing = false;
+    const prepare = () => {
+      // DrawnThumb first measures its tile, then mounts the slide at the measured size.
+      if (
+        preparing ||
+        root.querySelectorAll('[data-frame] [data-slide-id]').length < frames.length
+      ) {
+        return;
+      }
+      preparing = true;
+      observer.disconnect();
+      const pictures = Array.from(new Set(embeddedPictures(root))).map((url) => {
+        const image = new Image();
+        image.src = url;
+        return image.decode();
+      });
+      void Promise.all([...pictures, settle(root.ownerDocument)])
+        .then(() => current && setState('ready'))
+        .catch(() => current && setState('failed'));
+    };
+    const observer = new MutationObserver(prepare);
+    observer.observe(root, { childList: true, subtree: true });
+    prepare();
+    return () => {
+      current = false;
+      observer.disconnect();
+    };
+  }, [frames, mounted]);
+
   return (
-    <div ref={list} className="flex flex-col gap-3" data-testid="frame-results">
-      <div role="group" aria-label={t('frames.sets')} className="flex flex-wrap gap-1">
-        {(['all', ...sets.map((one) => one.set)] as const).map((id) => (
-          <Button
-            key={id}
-            variant={id === set ? 'soft' : 'ghost'}
-            size="sm"
-            aria-pressed={id === set}
-            data-magnet-set={id}
-            onClick={() => setSet(id)}
-          >
-            {id === 'all' ? t('frames.allSets') : t(`frames.set.${id}`)}
-          </Button>
-        ))}
-      </div>
-      {sets
-        .filter((one) => set === 'all' || one.set === set)
-        .map((one) => (
-          <MagnetSet key={one.set} set={one.set} frames={one.frames} />
-        ))}
+    <div
+      ref={list}
+      className={cx('relative', state !== 'ready' && 'min-h-48 overflow-hidden')}
+      data-testid="frame-results"
+      aria-busy={state === 'loading'}
+    >
+      {state === 'loading' && (
+        <div
+          role="status"
+          data-testid="magnets-loading"
+          className="flex min-h-48 flex-col items-center justify-center gap-3 text-sm text-ui-fg-muted"
+        >
+          <Spinner size="lg" />
+          <span>{t('frames.loading')}</span>
+        </div>
+      )}
+      {state === 'failed' && <LoadFailed />}
+      {mounted && state !== 'failed' && (
+        <div
+          ref={previews}
+          aria-hidden={state !== 'ready'}
+          inert={state !== 'ready'}
+          className={cx(
+            'flex flex-col gap-3',
+            state !== 'ready' && 'invisible absolute inset-x-0 top-0',
+          )}
+        >
+          {sets.map((one) => (
+            <MagnetSet key={one.set} set={one.set} frames={one.frames} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

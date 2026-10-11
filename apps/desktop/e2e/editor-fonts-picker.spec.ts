@@ -69,12 +69,14 @@ const list = (page: Page, name = 'כל הגופנים') => page.getByRole('listb
 const search = (page: Page, name = 'חיפוש גופן') => page.getByRole('combobox', { name });
 const options = (page: Page) => list(page).getByRole('option');
 
-/** Scrolls the list to a line, as the wheel would. Every line has the height of a control. */
+/** Scrolls the list to a line, as the wheel would, using the rendered row height. */
 async function scrollToLine(page: Page, line: number, name?: string): Promise<void> {
   await list(page, name).evaluate((ul, at) => {
     const viewport = ul.closest('[data-radix-scroll-area-viewport]');
     if (!viewport) throw new Error('the list has no scroll area');
-    viewport.scrollTop = at * 32;
+    const row = ul.querySelector('[role="option"]');
+    if (!row) throw new Error('the list has no font row');
+    viewport.scrollTop = at * parseFloat(getComputedStyle(row).height);
   }, line);
 }
 
@@ -129,7 +131,7 @@ test('every name is drawn in its own font, but that of a symbol font; Hebrew is 
   await search(page).fill('times');
   await expect(name('Times New Roman')).toHaveCSS('font-family', '"Times New Roman"');
   const mark = options(page).getByRole('img', { name: 'תומך בעברית' });
-  await expect(mark).toHaveText('אבג');
+  await expect(mark).toHaveText('סגנון הגופן');
   await expect(mark).toHaveCSS('font-family', '"Times New Roman"');
 
   // Wingdings would draw its own name as pictures: it is set in the font of the UI.
@@ -210,9 +212,12 @@ test('hundreds of families: the list draws the lines in view, and the keys reach
   // Ten lines in view and four beyond: not four hundred.
   expect(await options(page).count()).toBeLessThan(25);
 
-  // The whole list is there to scroll through: 423 fonts and two headings, 32px each.
-  const height = await list(page).evaluate((ul) => ul.scrollHeight);
-  expect(height).toBe(425 * 32);
+  // The whole list is there to scroll through: 423 fonts and two equally tall headings.
+  const { height, rowHeight } = await list(page).evaluate((ul) => ({
+    height: ul.scrollHeight,
+    rowHeight: parseFloat(getComputedStyle(ul.querySelector('[role="option"]')!).height),
+  }));
+  expect(height).toBe(425 * rowHeight);
 
   // Arrows walk past what is drawn; the active font stays in view and is the one Enter takes.
   for (let i = 0; i < 40; i++) await search(page).press('ArrowDown');
@@ -266,13 +271,18 @@ for (const theme of ['light', 'dark'] as const) {
         await language(page, look.lang);
         await start(page, installed);
 
-        // Where the library ends and the computer's fonts begin.
+        await button(page, look.tool).screenshot({ path: out(`fonts-label-${name}`) });
         await button(page, look.tool).click();
+        await page.evaluate(() => document.fonts.ready);
+        await page.getByRole('dialog').screenshot({ path: out(`fonts-library-detail-${name}`) });
+
+        // Where the library ends and the computer's fonts begin.
         await scrollToLine(page, 20, look.all);
         await expect(list(page, look.all).getByText('Arial')).toBeVisible();
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(300);
         await page.screenshot({ path: out(`fonts-picker-${name}`) });
+        await page.getByRole('dialog').screenshot({ path: out(`fonts-picker-detail-${name}`) });
 
         // A search that finds fonts in both sections.
         await search(page, look.find).fill('ri');
@@ -280,6 +290,7 @@ for (const theme of ['light', 'dark'] as const) {
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(300);
         await page.screenshot({ path: out(`fonts-search-${name}`) });
+        await page.getByRole('dialog').screenshot({ path: out(`fonts-search-detail-${name}`) });
       });
     }
   }

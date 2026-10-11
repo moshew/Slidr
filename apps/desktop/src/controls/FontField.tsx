@@ -122,12 +122,20 @@ export function FontField({
               className ?? 'w-36',
             )}
           >
-            <span className={cx('min-w-0 truncate', mixed && 'text-ui-fg-muted')}>{shown}</span>
+            <span
+              dir="auto"
+              className={cx('min-w-0 flex-1 truncate text-start', mixed && 'text-ui-fg-muted')}
+            >
+              {shown}
+            </span>
             <Icon icon={ChevronDown} className="-me-0.5 opacity-70" />
           </button>
         </PopoverTrigger>
       </Tooltip>
-      <PopoverContent onCloseAutoFocus={onCloseAutoFocus} className="p-2">
+      <PopoverContent
+        onCloseAutoFocus={onCloseAutoFocus}
+        className="w-font-picker! max-w-[calc(100vw-4*var(--spacing))] p-3!"
+      >
         <FontPicker
           groups={groups}
           recent={recent}
@@ -137,6 +145,7 @@ export function FontField({
             recent: t('font.recent'),
             all: t('font.all'),
             hebrew: t('font.hebrew'),
+            hebrewPreview: t('font.hebrewPreview'),
             empty: t('font.empty'),
           }}
           onValueChange={(family) => {

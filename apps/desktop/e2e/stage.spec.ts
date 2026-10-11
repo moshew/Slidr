@@ -134,28 +134,51 @@ test('the corner handle resizes and the rotate handle snaps to 15 degrees with S
   expect(rotated!.rotation % 15).toBe(0);
 });
 
-test('a marquee from empty space selects what it touches; arrows nudge; Delete removes', async ({
-  page,
-}) => {
-  const a = await center(page, 'e_fx_opacity');
-  const b = await center(page, 'e_fx_blur');
-  // From below-left of the first box to above the second, through empty space.
-  await drag(page, { x: a.x - 40, y: a.y + 120 }, { x: b.x, y: b.y });
-  expect((await selected(page)).sort()).toEqual(['e_fx_blur', 'e_fx_opacity']);
+for (const theme of ['light', 'dark'] as const) {
+  test(`a translucent marquee selects what it touches; arrows nudge; Delete removes (${theme})`, async ({
+    page,
+  }) => {
+    await page.evaluate((value) => (document.documentElement.dataset.theme = value), theme);
+    const a = await center(page, 'e_fx_opacity');
+    const b = await center(page, 'e_fx_blur');
+    // From below-left of the first box to above the second, through empty space.
+    await page.mouse.move(a.x - 40, a.y + 120);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 8 });
+    const marquee = page.locator('[data-marquee]');
+    await expect(marquee).toBeVisible();
+    // Resolve the actual painted colour, including colour-mix(), to catch an opaque fill.
+    const alpha = await marquee.evaluate((el) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = getComputedStyle(el).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      return context.getImageData(0, 0, 1, 1).data[3]! / 255;
+    });
+    expect(alpha).toBeGreaterThan(0);
+    expect(alpha).toBeLessThanOrEqual(0.2);
+    await expect(marquee).toHaveCSS('outline-style', 'solid');
+    await expect(marquee).toHaveCSS('outline-width', '1px');
+    await page.screenshot({ path: `test-results/stage/marquee-${theme}.png` });
+    await page.mouse.up();
+    await expect(marquee).toHaveCount(0);
+    expect((await selected(page)).sort()).toEqual(['e_fx_blur', 'e_fx_opacity']);
 
-  const before = await element(page, 'e_fx_blur');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('Shift+ArrowDown');
-  const nudged = await element(page, 'e_fx_blur');
-  expect(nudged!.frame.x).toBe(before!.frame.x + 1);
-  expect(nudged!.frame.y).toBe(before!.frame.y + 10);
+    const before = await element(page, 'e_fx_blur');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Shift+ArrowDown');
+    const nudged = await element(page, 'e_fx_blur');
+    expect(nudged!.frame.x).toBe(before!.frame.x + 1);
+    expect(nudged!.frame.y).toBe(before!.frame.y + 10);
 
-  await page.keyboard.press('Delete');
-  await expect(
-    page.getByTestId('stage-surface').locator('[data-element-id="e_fx_blur"]'),
-  ).toHaveCount(0);
-  expect(await selected(page)).toEqual([]);
-});
+    await page.keyboard.press('Delete');
+    await expect(
+      page.getByTestId('stage-surface').locator('[data-element-id="e_fx_blur"]'),
+    ).toHaveCount(0);
+    expect(await selected(page)).toEqual([]);
+  });
+}
 
 test('the stage looks right with a selection', async ({ page }) => {
   // On the card of the group, beside its text: a click on the text goes into editing it. The

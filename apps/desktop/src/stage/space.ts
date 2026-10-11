@@ -230,14 +230,14 @@ function holdsText(located: Located, onText: (shape: Located) => boolean): boole
 }
 
 /**
- * What a press means, as PowerPoint has it (ARR-01). The press itself takes what `resolveHit`
- * picks, so a drag moves that: the group that was not entered, or the child of the one that was.
- * A press that is released where it began may go further:
+ * What a press reaches (ARR-01). `resolveHit` picks an object for selection or moving; `inside`
+ * identifies editable text or a child reached directly. Text boxes open on press; other children
+ * are entered on release when the press did not become a drag:
  *
- * - On a text in a group, or on the text of a standalone shape, straight into editing it.
+ * - On a text box, or on the text of a shape, straight into editing it.
  *   It is where the text is that counts. The text is the element `chain` ends in, the topmost
  *   one under the pointer, unless that one is locked or hidden. The empty part of a big shape
- *   is no text. A standalone text box is left to the double-click.
+ *   is no text.
  * - On an object lying on a card, straight to that object. The card's background stays the card.
  * - On a group that was the whole selection before the press, to the child under the pointer, one
  *   level in: a second click on a group does what a double-click on it does.
@@ -257,13 +257,7 @@ export function resolvePress(
   // A locked element is not taken by a press at all.
   if (!target || target.locked) return hit;
   const top = index.get(chain[chain.length - 1] ?? '');
-  if (
-    top &&
-    (top.path.length > 0 || top.element.type === 'shape') &&
-    !top.locked &&
-    !top.hidden &&
-    holdsText(top, onText)
-  ) {
+  if (top && !top.locked && !top.hidden && holdsText(top, onText)) {
     return { ...hit, inside: { scope: pathIds(top), id: top.element.id, edit: true } };
   }
   // The foreground objects of a card have the same direct hover and click as its text. The

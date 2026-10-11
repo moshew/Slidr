@@ -42,7 +42,7 @@ The order mirrors with the UI language. Text direction inside a deck follows the
 
 ### Visual system
 
-- Shared tokens in `packages/ui/src/theme.css` define both color schemes. Controls use approximately 12px corners; panels and floating surfaces use approximately 18px corners. Nested controls may use smaller radii.
+- Shared tokens in `packages/ui/src/theme.css` define both color schemes. Controls use 6px corners; panels, menus and floating toolbars use 8px corners. Smaller and nested controls use 4px corners.
 - The shell uses lavender-gray surfaces, a vivid purple accent for selection and AI, and soft shadows to separate layers. The slide canvas and export content retain their own design.
 - Decorative motion respects reduced-motion settings. No cloud-sharing control is shown without a working feature.
 
