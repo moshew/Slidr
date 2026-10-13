@@ -45,18 +45,22 @@ export function ModelPicker({ threadId }: { threadId: string }) {
     effort: own.model && own.model !== app.model ? own.effort : (own.effort ?? app.effort),
   };
   const [descriptor, setDescriptor] = useState<HarnessDescriptor | null>(null);
+  const harnessId = app.harnessId ?? descriptor?.id;
   const connection = useStore(agent.setup.store, (states) =>
-    descriptor ? states[descriptor.id] : undefined,
+    harnessId ? states[harnessId] : undefined,
   );
   const harness =
-    connection?.connection?.status.state === 'ready' ? connection.connection.harness : null;
+    connection?.connection?.harness ??
+    (descriptor && (!app.harnessId || descriptor.id === app.harnessId) ? descriptor : null);
   useEffect(() => {
+    // The browser mock has a static model list. Real agents are connected only by a request
+    // or explicit setup; the saved model is still shown without a live model list.
+    if (app.harnessId && app.harnessId !== 'mock') return;
     let current = true;
     agent.harness(app.harnessId).then(
       (found) => {
         if (current) {
           setDescriptor(found);
-          void agent.setup.connect(found.id).catch(() => undefined);
         }
       },
       () => current && setDescriptor(null),
@@ -77,9 +81,9 @@ export function ModelPicker({ threadId }: { threadId: string }) {
   const efforts = harness ? modelEfforts(harness, settings.model) : [];
   const shown = [
     modelName(settings.model) ?? t('settings:agent.chooseModel'),
-    ...(efforts.length
+    ...(efforts.length || settings.effort
       ? [
-          settings.effort && efforts.includes(settings.effort)
+          settings.effort && (!harness || efforts.includes(settings.effort))
             ? effortName(settings.effort)
             : t('settings:agent.chooseEffort'),
         ]
@@ -92,9 +96,14 @@ export function ModelPicker({ threadId }: { threadId: string }) {
         variant="ghost"
         size="sm"
         onClick={() => openPanel(PanelId.settings)}
-        data-testid="model-picker-setup"
+        data-testid={settings.model ? 'model-picker' : 'model-picker-setup'}
+        data-model={settings.model ?? DEFAULT}
+        data-effort={settings.effort ?? DEFAULT}
+        data-own={own.model !== undefined || own.effort !== undefined}
+        aria-label={settings.model ? `${t('composer.model')}: ${shown}` : undefined}
+        className="min-w-0 shrink text-ui-fg-muted"
       >
-        {t('settings:agent.configure')}
+        <span className="truncate">{settings.model ? shown : t('settings:agent.configure')}</span>
       </Button>
     );
   }

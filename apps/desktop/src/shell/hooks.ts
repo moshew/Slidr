@@ -30,3 +30,25 @@ export function useElementSize(ref: RefObject<HTMLElement | null>): {
   }, [ref]);
   return size;
 }
+
+/** The air left around the card when the panel scrolls to show it, in pixels. */
+const REVEAL_MARGIN = 16;
+
+/**
+ * Scrolls what the card scrolls in, and nothing else, until the card is in view; a card taller
+ * than the view shows from its top. Not `scrollIntoView`, which also moves every clipped
+ * ancestor it can, the shell's own regions among them.
+ */
+export function reveal(card: HTMLElement, smooth: boolean): void {
+  let scroller = card.parentElement;
+  while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) {
+    scroller = scroller.parentElement;
+  }
+  if (!scroller) return;
+  const view = scroller.getBoundingClientRect();
+  const { top, bottom } = card.getBoundingClientRect();
+  const down = bottom + REVEAL_MARGIN - view.bottom;
+  const up = top - REVEAL_MARGIN - view.top;
+  const by = down > 0 ? Math.min(down, up) : Math.min(up, 0);
+  if (by !== 0) scroller.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
+}

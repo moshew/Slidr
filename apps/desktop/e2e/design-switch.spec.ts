@@ -63,7 +63,8 @@ test('a drawn slide follows a template it is switched to, and the check finds it
 
   await page.locator('[data-panel="templates"]').click();
   await expect(templates(page)).toBeVisible();
-  await card(page, 'defus').getByRole('button', { name: 'החלה על המצגת' }).click();
+  await card(page, 'defus').getByTestId('template-cover').click();
+  await page.getByTestId('template-slides-apply').click();
   await expect(card(page, 'defus')).toHaveAttribute('data-current', 'true');
 
   const after = await deck(page);

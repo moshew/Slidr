@@ -28,7 +28,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGestureTx } from '../controls';
-import { useAssetResolver, useDeck, useEditor } from '../shell';
+import { reveal, useAssetResolver, useDeck, useEditor } from '../shell';
 import {
   applyTransitionToAll,
   opensTheShow,
@@ -97,28 +97,6 @@ const SLIDER_MAX = 3000;
 const AUTO_AFTER_MS = 3000;
 /** The width the two slides of the preview are drawn at. */
 const PREVIEW_W = 256;
-/** The air left around the card when the panel scrolls to show it, in pixels. */
-const REVEAL_MARGIN = 16;
-
-/**
- * Scrolls what the card scrolls in, and nothing else, until the card is in view; a card taller
- * than the view shows from its top. Not `scrollIntoView`, which also moves every clipped
- * ancestor it can, the shell's own regions among them.
- */
-function reveal(card: HTMLElement, smooth: boolean): void {
-  let scroller = card.parentElement;
-  while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) {
-    scroller = scroller.parentElement;
-  }
-  if (!scroller) return;
-  const view = scroller.getBoundingClientRect();
-  const { top, bottom } = card.getBoundingClientRect();
-  const down = bottom + REVEAL_MARGIN - view.bottom;
-  const up = top - REVEAL_MARGIN - view.top;
-  const by = down > 0 ? Math.min(down, up) : Math.min(up, 0);
-  if (by !== 0) scroller.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
-}
-
 /**
  * The transition, played small: the slide before this one gives way to it, by the runtime's own
  * `runTransition`. It plays when `play` changes.

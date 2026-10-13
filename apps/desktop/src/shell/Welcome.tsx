@@ -10,6 +10,7 @@ import type { RecentFile } from '../document/storage';
 import { currentLanguage } from '../i18n';
 import { library } from '../templates/app';
 import { coverAsset, coverOf } from '../templates/covers';
+import { templateName } from '../templates/names';
 import { useDeck, useEditor, useFile, type Editor } from './editor';
 import { newDocument, openDocument, recentFiles } from './fileActions';
 import { modalOpen, overlayOf } from './overlay';
@@ -106,6 +107,7 @@ function Way({
 }
 
 function TemplateCard({ template, onPick }: { template: Template; onPick: () => void }) {
+  const { i18n } = useTranslation();
   const like = useDeck((s) => s.deck);
   const { theme } = template;
   // The cover follows the language and the direction of the UI's deck, not every edit of it.
@@ -132,7 +134,7 @@ function TemplateCard({ template, onPick }: { template: Template; onPick: () => 
         />
       </span>
       <span className="truncate px-1 text-sm font-medium text-ui-fg" dir="auto">
-        {theme.name}
+        {templateName(theme, i18n.language)}
       </span>
     </button>
   );

@@ -1,9 +1,8 @@
-import { isTauri } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 
 /**
  * Full screen for the show (PRS-01), on the screen the window is on. In the app it is the window
- * that goes full screen (`core:window:allow-set-fullscreen`); in a plain browser (the Vite page,
+ * that goes full screen (the `show_screen_set` command); in a plain browser (the Vite page,
  * Playwright) the show's element does, through the browser.
  */
 export interface Screen {
@@ -19,28 +18,23 @@ function windowScreen(): Screen {
   let full = false;
   /** The window was maximized when it went full screen, and goes back to that. */
   let wasMaximized = false;
-  /** One change at a time: each is several calls to the window, and two would interleave. */
+  /** One change at a time: the second has to know how the first left the window. */
   let last: Promise<boolean> = Promise.resolve(false);
 
   const change = async (next: boolean): Promise<boolean> => {
     if (next === full) return full;
-    const appWindow = getCurrentWindow();
     try {
-      if (next) {
-        // A maximized window without an OS frame keeps the room it leaves for the taskbar
-        // when it is told to go full screen (measured: the page stays 1920x1032 on a 1080
-        // screen). Restored first, it takes the whole screen.
-        wasMaximized = await appWindow.isMaximized();
-        if (wasMaximized) await appWindow.toggleMaximize();
-        await appWindow.setFullscreen(true);
-      } else {
-        await appWindow.setFullscreen(false);
-        if (wasMaximized) await appWindow.toggleMaximize();
-        wasMaximized = false;
-      }
+      // A maximized window without an OS frame keeps the room it leaves for the taskbar when
+      // it is told to go full screen (measured: the page stays 1920x1032 on a 1080 screen), so
+      // it is restored first. The command does both as one change, without the window's
+      // animations: done from here they were two, and the window was seen between them.
+      wasMaximized = await invoke<boolean>('show_screen_set', {
+        full: next,
+        maximized: wasMaximized,
+      });
       full = next;
     } catch (error) {
-      // Without the permission the show still runs, in the window as it is.
+      // Refused, the show still runs, in the window as it is.
       console.error('Could not change full screen', error);
     }
     return full;

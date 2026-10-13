@@ -94,7 +94,8 @@ test('the footer of the deck is on every slide with a place for one, and stays w
   await expect(footer).toHaveText('זרם · סקירת ארכיטקטורה');
 
   // The business template, and the same footer on its layouts.
-  await card(page, 'tzuk').getByRole('button', { name: 'החלה על המצגת' }).click();
+  await card(page, 'tzuk').getByTestId('template-cover').click();
+  await page.getByTestId('template-slides-apply').click();
   await expect(card(page, 'tzuk')).toHaveAttribute('data-current', 'true');
   await expect(footer).toHaveText('זרם · סקירת ארכיטקטורה');
   await expect(field).toHaveValue('זרם · סקירת ארכיטקטורה');

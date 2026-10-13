@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, Icon, Skeleton, cx } from '@slidr/ui';
 import { Ai, Check } from '@slidr/ui/icons';
 import type { HarnessDescriptor } from '../agent/agent';
+import type { ChatProblem } from '../agent/transcript';
 import { latestModels, modelEfforts, selectionIssue } from '../agent/harnessSetup';
 import { setAgentSettings, useAgentSettings } from '../settings';
 import { useEditor } from '../shell';
@@ -14,7 +15,7 @@ export const harnessName = (harness: HarnessDescriptor) =>
     harness.id
   ] ?? harness.name.replace(/\s+CLI\b/gi, '');
 
-export function useChatSetup() {
+export function useChatSetup(problem?: ChatProblem) {
   const agent = agentOf(useEditor());
   const settings = useAgentSettings();
   const [harnesses, setHarnesses] = useState<HarnessDescriptor[]>();
@@ -22,7 +23,35 @@ export function useChatSetup() {
   const [attempt, setAttempt] = useState(0);
   // An old/default harness id alone is not a completed user choice.
   const [confirmedHarness, setConfirmedHarness] = useState<string>();
+  const state = useStore(agent.setup.store, (states) =>
+    settings.harnessId ? states[settings.harnessId] : undefined,
+  );
+  const connection = state?.connection;
+  const descriptor = harnesses
+    ? harnesses.find((h) => h.id === settings.harnessId)
+    : connection?.harness;
+  const mock =
+    settings.harnessId === 'mock' ||
+    (!settings.harnessId && harnesses?.length === 1 && harnesses[0]?.id === 'mock');
+  const [reselecting, setReselecting] = useState(false);
+  // Saved choices are enough to open the chat. Live status and model validation matter only
+  // after a request has failed; opening the panel never starts a connection check.
+  const missingChoices =
+    !settings.harnessId ||
+    !settings.model ||
+    (!!connection &&
+      modelEfforts(connection.harness, settings.model).length > 0 &&
+      !settings.effort);
+  const repair =
+    !!problem &&
+    (!!state?.error ||
+      (problem.kind === 'unknown_harness' && !descriptor) ||
+      (!!connection &&
+        (connection.status.state !== 'ready' ||
+          !!selectionIssue(connection.harness, settings.model, settings.effort))));
+  const needed = !mock && (missingChoices || reselecting || repair);
   useEffect(() => {
+    if (!needed) return;
     let current = true;
     agent.harnesses().then(
       (found) => {
@@ -38,35 +67,23 @@ export function useChatSetup() {
     return () => {
       current = false;
     };
-  }, [agent, attempt]);
-  const descriptor = harnesses?.find((h) => h.id === settings.harnessId);
-  const mock =
-    descriptor?.id === 'mock' ||
-    (!settings.harnessId && harnesses?.length === 1 && harnesses[0]?.id === 'mock');
+  }, [agent, attempt, needed]);
   // Asked for from a problem in the conversation: the agent is chosen again, here.
-  const [reselecting, setReselecting] = useState(false);
   const choosingHarness =
     reselecting || !descriptor || (!settings.model && confirmedHarness !== descriptor.id);
-  const state = useStore(agent.setup.store, (states) =>
-    descriptor ? states[descriptor.id] : undefined,
-  );
   useEffect(() => {
-    if (descriptor && !mock && !choosingHarness)
+    // Continuing the first-time setup is an explicit request to load this agent's models.
+    if (descriptor && !mock && !choosingHarness && confirmedHarness === descriptor.id)
       void agent.setup.connect(descriptor.id).catch(() => undefined);
-  }, [agent, descriptor, mock, choosingHarness]);
-  const connection = state?.connection;
-  const needed =
-    !mock &&
-    (choosingHarness ||
-      !connection ||
-      connection.status.state !== 'ready' ||
-      !!selectionIssue(connection.harness, settings.model, settings.effort));
+  }, [agent, descriptor, mock, choosingHarness, confirmedHarness]);
+  const checking = needed && !harnesses && !failed && !descriptor;
   return {
     agent,
     settings,
     harnesses,
     descriptor,
     state,
+    checking,
     needed,
     failed,
     choosingHarness,

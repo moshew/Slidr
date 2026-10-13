@@ -1,11 +1,18 @@
 import { Palette } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
-import { registerContextTool, registerPanel, setNewDeck, whenEditor } from '../shell';
+import {
+  registerContextTool,
+  registerPanel,
+  registerStageLayer,
+  setNewDeck,
+  whenEditor,
+} from '../shell';
 import { startDeck, supplyAssets } from './actions';
 import { drafts, library } from './app';
 import { LayoutTool } from './LayoutTool';
 import { en, he } from './messages';
 import { TemplatesPanel } from './TemplatesPanel';
+import { TemplateSlidesLayer } from './TemplateSlides';
 
 /*
  * Templates in the app (WG7-T04, T09): the Templates panel of the Activity Bar, the default
@@ -25,6 +32,9 @@ registerPanel({
   icon: Palette,
   content: TemplatesPanel,
 });
+
+// The slides that show a template of the library, spread over the Stage.
+registerStageLayer({ id: 'templates.slides', render: TemplateSlidesLayer });
 
 // Row B with nothing selected: the layout of the slide on the Stage (SLD-02), in the place the
 // shell kept for it beside the background.

@@ -1200,7 +1200,9 @@ export class ChatThread {
     const { client, api, bus } = this.#options;
     const settings = this.#settings();
     let harness = await this.#service.harness(settings.harnessId);
-    const connection = client.connect ? await this.#service.setup.connect(harness.id) : null;
+    // Check when the user asks for a turn, before opening its session. The chat itself uses
+    // saved choices and never probes a CLI just because its panel was opened.
+    const connection = client.connect ? await this.#service.setup.connect(harness.id, true) : null;
     if (connection) harness = connection.harness;
     const status = connection?.status ?? (await client.probe(harness.id));
     if (status.state !== 'ready') {

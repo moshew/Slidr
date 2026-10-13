@@ -48,6 +48,15 @@ async function drawn(doc: Document): Promise<void> {
   await doc.fonts.ready;
 }
 
+/** The page has been laid out and painted at the size the window has now. */
+function painted(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    // A window in the background gets no frames.
+    setTimeout(resolve, 250);
+  });
+}
+
 /** Every slide of the deck, drawn once: a step of the show changes nothing React draws here. */
 const Slides = memo(function Slides({
   deck,
@@ -71,6 +80,8 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
   const stage = useRef<HTMLDivElement>(null);
   const player = useRef<Player | undefined>(undefined);
   const screen = useRef<Screen | undefined>(undefined);
+  /** The window has the size the show opens in: the slides are first seen at that size. */
+  const settled = useRef<Promise<unknown>>(Promise.resolve());
   const [layer, setLayer] = useState<HTMLDivElement | null>(null);
   const [state, setState] = useState<PlayerState>({ slide: start, step: 0 });
   const [full, setFull] = useState(false);
@@ -83,7 +94,8 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
     if (exiting.current) return;
     exiting.current = true;
     const at = player.current?.state.slide ?? start;
-    void (screen.current?.set(false) ?? Promise.resolve()).then(() => onExit(at));
+    // The editor under the show takes the window's size back before it is seen again.
+    void (screen.current?.set(false) ?? Promise.resolve()).then(painted).then(() => onExit(at));
   }, [onExit, start]);
 
   const toggleFull = useCallback(() => {
@@ -99,7 +111,7 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
     view.focus({ preventScroll: true });
     const current = showScreen(view);
     screen.current = current;
-    if (fullscreen) void current.set(true).then(setFull);
+    if (fullscreen) settled.current = current.set(true).then(setFull);
     // Esc in a browser's full screen never reaches the page: the show ends with it.
     const stop = current.onLeft(() => onExit(player.current?.state.slide ?? start));
     return () => {
@@ -118,33 +130,35 @@ export function Show({ deck, resolveAsset, start, dir, fullscreen, onExit }: Sho
     let unbind: (() => void) | undefined;
     // Until the fonts are in the slides are a column of unscaled pages: keep them out of sight.
     root.style.visibility = 'hidden';
-    void drawn(view.ownerDocument).then(() => {
-      if (stopped) return;
-      root.style.visibility = '';
-      const sections = Array.from(root.children) as HTMLElement[];
-      const show = createPlayer({
-        viewport: view,
-        stage: root,
-        slides: deck.slides.map((slide, i) => ({
-          el: sections[i] as HTMLElement,
-          id: slide.id,
-          transition: slide.transition,
-          timeline: slide.timeline,
-          hidden: slide.hidden,
-        })),
-        size: deck.size,
-        start,
-        // Past the last step the screen goes black and says so; one more step is the way out.
-        end: { text: i18n.t('present:end'), leave: exit },
-        onWarn: (message) => console.warn(message),
+    void settled.current
+      .then(() => drawn(view.ownerDocument))
+      .then(() => {
+        if (stopped) return;
+        root.style.visibility = '';
+        const sections = Array.from(root.children) as HTMLElement[];
+        const show = createPlayer({
+          viewport: view,
+          stage: root,
+          slides: deck.slides.map((slide, i) => ({
+            el: sections[i] as HTMLElement,
+            id: slide.id,
+            transition: slide.transition,
+            timeline: slide.timeline,
+            hidden: slide.hidden,
+          })),
+          size: deck.size,
+          start,
+          // Past the last step the screen goes black and says so; one more step is the way out.
+          end: { text: i18n.t('present:end'), leave: exit },
+          onWarn: (message) => console.warn(message),
+        });
+        // No hash: the address is the app's. F is the window's full screen, not the browser's.
+        unbind = bindControls(show, { viewport: view, hash: false, fullscreen: toggleFull });
+        show.subscribe(setState);
+        setState(show.state);
+        player.current = show;
+        view.dataset.ready = 'true';
       });
-      // No hash: the address is the app's. F is the window's full screen, not the browser's.
-      unbind = bindControls(show, { viewport: view, hash: false, fullscreen: toggleFull });
-      show.subscribe(setState);
-      setState(show.state);
-      player.current = show;
-      view.dataset.ready = 'true';
-    });
     return () => {
       stopped = true;
       unbind?.();

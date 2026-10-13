@@ -70,9 +70,10 @@ tract-linalg = { version = "0.23.8", features = ["multithread-mm"] }
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
 windows-core = "0.62"
-# The installed fonts (SPEC appendix B): DirectWrite's system font collection. The crate and the
-# version Tauri already builds, with one more of its features.
-windows = { version = "0.62", features = ["Win32_Graphics_DirectWrite"] }
+# The installed fonts (SPEC appendix B): DirectWrite's system font collection; and the window
+# itself, to take the show to full screen in one quiet step. The crate and the version Tauri
+# already builds, with a few more of its features.
+windows = { version = "0.62", features = ["Win32_Graphics_DirectWrite", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"

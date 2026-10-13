@@ -61,7 +61,10 @@ export function Shell() {
               <div className="flex min-h-0 flex-1">
                 <ActivityBar />
                 <ToolPanel />
-                <main data-testid="editor" className="flex min-w-0 flex-1 flex-col bg-ui-panel">
+                <main
+                  data-testid="editor"
+                  className="relative flex min-w-0 flex-1 flex-col bg-ui-panel"
+                >
                   <StageRegion />
                   <FilmstripRegion />
                 </main>

@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::error::{AppError, Result};
 
 #[cfg(windows)]
-// COM calls into DirectWrite: one of the app's three places for `unsafe`, with
-// `capture/webview2.rs` and `import_window/network.rs`.
+// COM calls into DirectWrite: one of the app's four places for `unsafe`, with
+// `capture/webview2.rs`, `import_window/network.rs` and `show_screen/win32.rs`.
 #[allow(unsafe_code)]
 mod directwrite;
 

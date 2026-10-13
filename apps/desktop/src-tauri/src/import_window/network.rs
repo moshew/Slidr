@@ -3,8 +3,8 @@
 //! policy refuses is answered here with 403 and never leaves the machine. `data:`, `blob:` and
 //! `about:` are not requests and are not seen.
 //!
-//! COM calls in windows-rs are `unsafe`; this file, `capture/webview2.rs` and
-//! `fonts/directwrite.rs` are the three places the app allows it.
+//! COM calls in windows-rs are `unsafe`; this file, `capture/webview2.rs`,
+//! `fonts/directwrite.rs` and `show_screen/win32.rs` are the four places the app allows it.
 
 use std::time::Duration;
 

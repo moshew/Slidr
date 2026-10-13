@@ -876,10 +876,11 @@ export function Chat({
 }) {
   const { t } = useTranslation('ai');
   const thread = useThread(scope);
-  const setup = useChatSetup();
+  const state = useStore(thread.store);
+  const last = state.entries.at(-1);
+  const setup = useChatSetup(last?.type === 'assistant' ? last.problem : undefined);
   const focus = useFocus();
   const deck = scope.kind === 'deck';
-  const state = useStore(thread.store);
   const said = closingWords(state.entries, state.busy, t('turn.interrupted'));
   const { frame, onScroll, stick } = useStickToEnd(state);
   // What is being written belongs to what the chat is about, whichever of its conversations is
@@ -906,7 +907,7 @@ export function Chat({
     setup.state?.connection?.status.state !== 'ready';
 
   let content: ReactNode;
-  if (!state.ready) {
+  if (!state.ready || (state.entries.length === 0 && setup.checking)) {
     content = <Loading />;
   } else if (state.entries.length === 0 && setup.needed) {
     content = <ChatSetup setup={setup} />;
@@ -971,7 +972,7 @@ export function Chat({
       {deck && <Gallery />}
       {/* A template the agent drafted is shown before anything is saved (THM-06). */}
       {deck && <TemplateDraftCard />}
-      {!setup.needed && (
+      {!setup.needed && !setup.checking && (
         <Composer
           focus={deck ? focus : null}
           threadId={thread.id}

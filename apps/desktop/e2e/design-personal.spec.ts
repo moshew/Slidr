@@ -27,10 +27,6 @@ test('a personal template is renamed, and updated in place from the open deck', 
   await field.press('Enter');
   await expect(mine).toContainText('המותג החדש');
   await expect(panel(page).locator('[data-template^="personal_"]')).toHaveCount(1);
-  await expect(mine.getByRole('button', { name: /ברירת המחדל למצגות חדשות/ })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
   // Escape leaves the name as it is.
   await mine.getByRole('button', { name: 'שינוי שם התבנית' }).click();
   await mine.getByRole('textbox', { name: 'שם התבנית' }).fill('לא זה');

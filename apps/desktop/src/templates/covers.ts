@@ -19,6 +19,7 @@ import { createSlide, deckFromTemplate, type Template } from '@slidr/templates';
 // The pictures alone: the templates' own code is not part of a packaged app (see `./builtIn`).
 import { pictures } from '@slidr/templates/builtin/pictures';
 import { library } from './app';
+import { templateName } from './names';
 
 const files = import.meta.glob<string>(
   [
@@ -64,15 +65,16 @@ export function coverUrl(asset: AssetMeta): string | undefined {
 export const coverAsset = (asset: AssetMeta) => coverUrl(asset) ?? library.assetUrl(asset);
 
 /**
- * One slide that shows a template: its opening layout with the template's name on it, and the
- * photograph of a built-in template that opens with one.
+ * One slide that shows a template: its opening layout with the template's name on it, in the
+ * language of the deck, and the photograph of a built-in template that opens with one.
  */
 export function coverOf(template: Template, like: Deck): { deck: Deck; slide: Slide } {
   const deck = deckFromTemplate(template, { lang: like.meta.lang, dir: like.meta.dir });
+  const name = templateName(template.theme, like.meta.lang);
   const first = deck.layouts[0];
   if (first) {
-    const title = richText(template.theme.name, { dir: 'auto' });
     const has = (role: string) => first.placeholders.some((p) => p.role === role);
+    const title = richText(name, { dir: 'auto' });
     const picture = has('image') ? coverPicture(template.theme.id) : undefined;
     if (picture) deck.assets[picture.id] = picture;
     const { slide } = createSlide(deck, {
@@ -91,7 +93,7 @@ export function coverOf(template: Template, like: Deck): { deck: Deck; slide: Sl
       createElement.text({
         frame: { x: 160, y: 380, w: 1600, h: 320 },
         vAlign: 'middle',
-        content: richText(template.theme.name, { align: 'center', styleRef: 'display' }),
+        content: richText(name, { align: 'center', styleRef: 'display' }),
       }),
     ],
   });

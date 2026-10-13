@@ -17,7 +17,6 @@ import {
   SegmentedControl,
   Select,
   Separator,
-  Toggle,
   Tooltip,
   type LucideIcon,
 } from '@slidr/ui';
@@ -36,19 +35,17 @@ import {
   RefreshCw,
   SquareRoundCorner,
   Stamp,
-  Star,
   Trash2,
   Type,
   Wallpaper,
 } from '@slidr/ui/icons';
-import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { FontField, useGestureTx } from '../controls';
 import { IMAGE_FILES, pickFiles } from '../objects/insert';
 import { ask, useAssetResolver, useDeck, useEditor, useElementSize } from '../shell';
 import {
-  applyLibraryTemplate,
   logoAsset,
   logoHidden,
   logoLayouts,
@@ -65,11 +62,14 @@ import {
 import { library } from './app';
 import { coverAsset, coverOf } from './covers';
 import type { LibraryEntry } from './library';
+import { templateName } from './names';
+import { showTemplateSlides, templateSlides } from './TemplateSlides';
 import { BackgroundFields, ChartPalette, ShapeFields } from './ThemeLook';
 
 /*
  * The Templates panel (WG7-T09 and the wiring of T04; THM-04, THM-05, THM-08): the library with
- * the default for new decks, and the design of the open deck: its direction, the theme's
+ * the default for new decks, where pressing the picture of a template spreads the slides that
+ * show it over the Stage (`./TemplateSlides`); and the design of the open deck: its direction, the theme's
  * colours and chart palette, fonts, text styles, corners, shadow and backgrounds, the logo of its
  * layouts, and saving all of it as a personal template. Every edit is a command of the catalogue on the open deck, so the slides on the
  * Stage are the preview and undo works as everywhere.
@@ -87,7 +87,6 @@ const COLOR_TOKENS: readonly ColorToken[] = [
 const WEIGHTS = ['300', '400', '500', '600', '700', '800', '900'] as const;
 /** Space between the two columns of template cards, in px: `gap-3`. */
 const CARD_GAP = 12;
-
 /** The library: a heading over the cards of the templates. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -159,20 +158,24 @@ function TemplateCard({
   entry,
   width,
   current,
-  isDefault,
+  open,
+  onToggle,
 }: {
   entry: LibraryEntry;
   width: number;
   current: boolean;
-  isDefault: boolean;
+  /** The slides that show the template are spread over the Stage. */
+  open: boolean;
+  onToggle: () => void;
 }) {
-  const { t } = useTranslation('templates');
+  const { t, i18n } = useTranslation('templates');
   const editor = useEditor();
   const like = useDeck((s) => s.deck);
   const { template, personal } = entry;
   const { theme } = template;
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const name = templateName(theme, i18n.language);
   // The cover follows the deck's direction and language, not every edit of the deck.
   const cover = useMemo(
     () => coverOf(library.forDeck(theme.id, like.meta.lang) ?? template, like),
@@ -180,14 +183,6 @@ function TemplateCard({
     [template, theme.id, like.meta.lang, like.meta.dir],
   );
 
-  const apply = async () => {
-    setBusy(true);
-    try {
-      await applyLibraryTemplate(editor, library, theme.id, t('undo.apply'));
-    } finally {
-      setBusy(false);
-    }
-  };
   const remove = async () => {
     const answer = await ask({
       title: t('panel.removeTitle', { name: theme.name }),
@@ -227,100 +222,96 @@ function TemplateCard({
     <article
       data-template={theme.id}
       data-current={current || undefined}
-      className={cx(
-        'flex min-w-0 flex-col gap-2 rounded-panel border p-2',
-        current ? 'border-ui-accent bg-ui-accent-soft' : 'border-ui-line',
-      )}
+      className="flex min-w-0 flex-col gap-1"
     >
-      {/* A picture of the cover: a screen reader is told the template's name, not its words. */}
-      <div aria-hidden className="overflow-hidden rounded-inset">
-        {width > 0 && (
-          <ScaledSlide
-            deck={cover.deck}
-            slide={cover.slide}
-            mode="thumbnail"
-            width={width}
-            resolveAsset={coverAsset}
-          />
+      {/* A picture of the cover, which opens the slides that show the template, where it is
+          applied. A screen reader is told what the button does, not the words of the picture. */}
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={t('panel.preview', { name })}
+        data-testid="template-cover"
+        onClick={onToggle}
+        className={cx(
+          'relative block cursor-default overflow-hidden rounded-inset shadow-slide transition-shadow hover:shadow-raised',
+          (open || current) && 'ring-2 ring-ui-accent',
         )}
-      </div>
-      <div className="flex min-w-0 items-center gap-1">
-        <div className="flex min-w-0 flex-1 flex-col">
-          {renaming ? (
-            <Input
-              aria-label={t('panel.renameField')}
-              defaultValue={theme.name}
-              dir="auto"
-              autoFocus
-              onBlur={(event) => void rename(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') event.currentTarget.blur();
-                if (event.key === 'Escape') setRenaming(false);
-              }}
-            />
-          ) : (
-            <span className="truncate text-sm font-medium text-ui-fg" dir="auto">
-              {theme.name}
-            </span>
-          )}
-          <span className="truncate text-xs text-ui-fg-muted">
-            {isDefault ? t('panel.defaultBadge') : t(personal ? 'panel.personal' : 'panel.builtIn')}
-          </span>
-        </div>
-        <Toggle
-          icon={Star}
-          size="sm"
-          label={t(isDefault ? 'panel.isDefault' : 'panel.makeDefault')}
-          pressed={isDefault}
-          onPressedChange={(pressed) => library.setDefault(pressed ? theme.id : null)}
-        />
-      </div>
-      {personal && (
-        // A personal template is the user's own: its name, what it holds, and whether it stays.
-        <div className="flex items-center justify-end gap-1" data-testid="template-actions">
-          <IconButton
-            icon={Pencil}
-            size="sm"
-            label={t('panel.rename')}
-            onClick={() => setRenaming(true)}
-          />
-          <IconButton
-            icon={RefreshCw}
-            size="sm"
-            label={t('panel.update')}
-            disabled={busy}
-            onClick={() => void update()}
-          />
-          <IconButton
-            icon={Trash2}
-            size="sm"
-            label={t('panel.remove')}
-            onClick={() => void remove()}
-          />
-        </div>
-      )}
-      <Button
-        size="sm"
-        variant={current ? 'ghost' : 'secondary'}
-        icon={current ? Check : undefined}
-        disabled={current}
-        loading={busy}
-        onClick={() => void apply()}
       >
-        {t(current ? 'panel.current' : 'panel.apply')}
-      </Button>
+        {current && (
+          // The template of the open deck.
+          <span
+            aria-hidden
+            className="absolute end-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-ui-accent text-ui-on-accent"
+          >
+            <Icon icon={Check} />
+          </span>
+        )}
+        {width > 0 && (
+          <span aria-hidden className="block">
+            <ScaledSlide
+              deck={cover.deck}
+              slide={cover.slide}
+              mode="thumbnail"
+              width={width}
+              resolveAsset={coverAsset}
+            />
+          </span>
+        )}
+      </button>
+      {renaming ? (
+        <Input
+          aria-label={t('panel.renameField')}
+          defaultValue={theme.name}
+          dir="auto"
+          autoFocus
+          onBlur={(event) => void rename(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') setRenaming(false);
+          }}
+        />
+      ) : (
+        personal && (
+          // A personal template is the user's own: its name, what it holds, and whether it stays.
+          <div className="flex items-center justify-end gap-1" data-testid="template-actions">
+            <IconButton
+              icon={Pencil}
+              size="sm"
+              label={t('panel.rename')}
+              onClick={() => setRenaming(true)}
+            />
+            <IconButton
+              icon={RefreshCw}
+              size="sm"
+              label={t('panel.update')}
+              disabled={busy}
+              onClick={() => void update()}
+            />
+            <IconButton
+              icon={Trash2}
+              size="sm"
+              label={t('panel.remove')}
+              onClick={() => void remove()}
+            />
+          </div>
+        )
+      )}
     </article>
   );
 }
 
 function Library() {
   const { t } = useTranslation('templates');
-  const { personal, defaultId, loaded } = useStore(library.state);
+  const { personal, loaded } = useStore(library.state);
   const themeId = useDeck((s) => s.deck.theme.id);
+  /** The template whose slides are spread over the Stage, by id. */
+  const open = useStore(templateSlides, (s) => s.id);
+  // The slides are opened from here: they do not stay when the panel is gone.
+  useEffect(() => () => showTemplateSlides(null), []);
   const grid = useRef<HTMLDivElement>(null);
   const { width } = useElementSize(grid);
-  // Two cards to a row; a card has a border and padding of 9px on each side.
-  const thumb = Math.max(0, Math.floor((width - CARD_GAP) / 2) - 18);
+  // Two cards to a row, each as wide as its picture.
+  const thumb = Math.max(0, Math.floor((width - CARD_GAP) / 2));
   const entries = useMemo(
     () => library.entries(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -329,19 +320,21 @@ function Library() {
   return (
     <Section title={t('panel.library')}>
       <div ref={grid} className="grid grid-cols-2 gap-3" data-testid="template-library">
-        {entries.map((entry) => (
-          <TemplateCard
-            key={entry.template.theme.id}
-            entry={entry}
-            width={thumb}
-            current={entry.template.theme.id === themeId}
-            isDefault={entry.template.theme.id === defaultId}
-          />
-        ))}
+        {entries.map((entry) => {
+          const { id } = entry.template.theme;
+          return (
+            <TemplateCard
+              key={id}
+              entry={entry}
+              width={thumb}
+              current={id === themeId}
+              open={id === open}
+              onToggle={() => showTemplateSlides(id === open ? null : id)}
+            />
+          );
+        })}
       </div>
-      <p className="text-xs text-ui-fg-muted">
-        {loaded ? (defaultId ? null : t('panel.noDefault')) : t('panel.loading')}
-      </p>
+      {!loaded && <p className="text-xs text-ui-fg-muted">{t('panel.loading')}</p>}
     </Section>
   );
 }

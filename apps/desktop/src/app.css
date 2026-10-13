@@ -111,3 +111,58 @@
     grid-column: span 5;
   }
 }
+
+/* The slides that show a template (src/templates/TemplateSlides.tsx): a card that is drawn out
+   over the editor from the side of the Templates panel, as a sheet from under it, and goes back
+   the same way. Its slides are in it as it opens. Slower than a menu: it crosses the whole
+   editor. */
+@property --template-slides-hidden {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.template-slides {
+  --unfold-from: -1;
+  /* What is not drawn yet is cut from the far edge: the panel is at the start of the row. The
+     card's shadow is left room on the other sides. */
+  clip-path: inset(-48px var(--template-slides-hidden) -48px -48px);
+  animation: template-slides-unfold 400ms var(--ease-standard) backwards;
+
+  &:dir(rtl) {
+    --unfold-from: 1;
+    clip-path: inset(-48px -48px -48px var(--template-slides-hidden));
+  }
+  &[data-state='closed'] {
+    animation: template-slides-fold var(--duration-slow) var(--ease-standard) both;
+  }
+}
+/* The slides of a template come in as those of the one before go out, in the same place. */
+.template-slides-grid {
+  animation: template-slides-in 260ms var(--ease-standard) backwards;
+
+  &[data-leaving] {
+    animation: template-slides-out 260ms var(--ease-standard) both;
+  }
+}
+@keyframes template-slides-unfold {
+  from {
+    --template-slides-hidden: 100%;
+    transform: translateX(calc(var(--unfold-from) * 24px));
+  }
+}
+@keyframes template-slides-fold {
+  to {
+    --template-slides-hidden: 100%;
+    transform: translateX(calc(var(--unfold-from) * 24px));
+  }
+}
+@keyframes template-slides-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes template-slides-out {
+  to {
+    opacity: 0;
+  }
+}

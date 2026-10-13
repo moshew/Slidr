@@ -39,7 +39,8 @@ test('the library offers the built-in templates, and switching to one is one und
   const before = await deck(page);
   expect(before.theme.id).toBe('basic');
 
-  await card(page, 'zerem').getByRole('button', { name: 'החלה על המצגת' }).click();
+  await card(page, 'zerem').getByTestId('template-cover').click();
+  await page.getByTestId('template-slides-apply').click();
   await expect(card(page, 'zerem')).toHaveAttribute('data-current', 'true');
   const after = await deck(page);
   expect(after.theme.id).toBe('zerem');
@@ -60,10 +61,10 @@ test('a new deck opens on the default template, and File > New does too', async 
   await openTemplates(page);
   // Out of the box there is no default: the deck is plain.
   expect((await deck(page)).theme.id).toBe('basic');
-  await card(page, 'zerem').getByRole('button', { name: 'קביעה כברירת מחדל למצגות חדשות' }).click();
-  await expect(
-    card(page, 'zerem').getByRole('button', { name: /ברירת המחדל למצגות חדשות/ }),
-  ).toHaveAttribute('aria-pressed', 'true');
+  // The default is a preference of this machine.
+  await page.evaluate(() =>
+    localStorage.setItem('slidr.templates', JSON.stringify({ defaultId: 'zerem' })),
+  );
 
   // The next start of the app.
   await page.reload();
@@ -209,10 +210,6 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
   expect(saved.theme.id).toMatch(/^personal_/);
   const mine = card(page, saved.theme.id);
   await expect(mine).toHaveAttribute('data-current', 'true');
-  await expect(mine.getByRole('button', { name: /ברירת המחדל למצגות חדשות/ })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
 
   // A new deck opens on it, with its logo and the file behind it.
   await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
@@ -230,7 +227,6 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
   await page.getByRole('button', { name: 'מחיקה', exact: true }).click();
   await expect(mine).toHaveCount(0);
   expect((await deck(page)).theme.id).toBe(saved.theme.id);
-  await expect(panel(page)).toContainText('בלי ברירת מחדל, מצגת חדשה נפתחת ריקה.');
   expect(errors).toEqual([]);
 });
 

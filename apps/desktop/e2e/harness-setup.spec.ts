@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type * as Runtime from '../src/ai/runtime';
+import type * as RequestHarness from './harness-request-page';
 import type * as Setup from '../src/agent/harnessSetup';
 import type * as Settings from '../src/settings';
 import type { AgentClient, HarnessDescriptor, HarnessStatus } from '../src/agent/agent';
@@ -162,7 +163,137 @@ test('chat handles installation, sign-in and a model without effort', async ({ p
   await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', '');
 });
 
+for (const outcome of ['ready', 'not_logged_in', 'model_missing', 'error', 'list_error'] as const) {
+  test(`saved chat checks only after a request: ${outcome}`, async ({ page }) => {
+    await openApp(page, { lang: 'en' });
+    await fixtures(page);
+    await page.getByTestId('activity-bar').locator('[data-panel="elements"]').click();
+    await page.evaluate(async (result) => {
+      const runtimePath =
+        performance
+          .getEntriesByType('resource')
+          .map((entry) => entry.name)
+          .findLast((name) => /\/src\/ai\/runtime\.ts(?:\?|$)/.test(name)) ?? '/src/ai/runtime.ts';
+      const fixturePath = '/e2e/harness-request-page.ts';
+      const { aiOf } = (await import(/* @vite-ignore */ runtimePath)) as typeof Runtime;
+      const { installRequestHarness } = (await import(
+        /* @vite-ignore */ fixturePath
+      )) as typeof RequestHarness;
+      await installRequestHarness(aiOf(window.slidr!), result);
+    }, outcome);
+    const ai = page.getByTestId('activity-bar').locator('[data-panel="ai"]');
+    await ai.click();
+    const input = page.getByTestId('chat-input');
+    await expect(input).toBeVisible();
+    await expect(page.getByTestId('model-picker')).toHaveAttribute(
+      'data-model',
+      'claude-code-reasoning',
+    );
+    await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', 'ultra');
+    await input.fill('Check when I ask');
+    await expect(page.getByTestId('chat-setup')).toHaveCount(0);
+    await expect(page.locator('body')).toHaveAttribute('data-harness-reads', '0');
+    await expect(page.locator('body')).toHaveAttribute('data-connection-checks', '0');
+    if (outcome === 'ready')
+      await page.screenshot({ path: 'test-results/chat-saved-before-request-en.png' });
+    // Reopening a configured chat also stays local, even without an in-memory connection.
+    await page.getByTestId('activity-bar').locator('[data-panel="elements"]').click();
+    await ai.click();
+    await expect(input).toHaveValue('Check when I ask');
+    await expect(page.locator('body')).toHaveAttribute('data-harness-reads', '0');
+    await expect(page.locator('body')).toHaveAttribute('data-connection-checks', '0');
+    await input.press('Enter');
+    await expect(page.locator('body')).toHaveAttribute('data-harness-reads', '1');
+    await expect(page.locator('body')).toHaveAttribute('data-connection-checks', '0');
+    await page.evaluate(() => document.dispatchEvent(new Event('release-harnesses')));
+    if (outcome !== 'list_error') {
+      await expect(page.locator('body')).toHaveAttribute('data-connection-checks', '1');
+      await expect(page.getByTestId('chat-setup')).toHaveCount(0);
+      await page.evaluate(() => document.dispatchEvent(new Event('release-connection')));
+    }
+    const turn = page.getByTestId('chat-assistant');
+    if (outcome === 'ready') {
+      await expect(turn).toHaveAttribute('data-outcome', 'completed');
+      await expect(turn).toContainText('Connected on request.');
+      await expect(page.getByTestId('chat-setup')).toHaveCount(0);
+      await expect(input).toBeVisible();
+    } else {
+      await expect(turn).toHaveAttribute('data-outcome', 'failed');
+      await expect(page.getByTestId('chat-problem')).toBeVisible();
+      if (outcome === 'not_logged_in')
+        await expect(
+          page.getByTestId('chat-problem').getByRole('button', { name: 'Sign in', exact: true }),
+        ).toBeVisible();
+      else if (outcome === 'model_missing')
+        await expect(
+          page.getByTestId('chat-setup').getByRole('radio', { name: 'Simple model' }),
+        ).toBeVisible();
+    }
+  });
+}
+
 for (const lang of ['he', 'en'] as const) {
+  test(`configured chat reopens without loading or checking harnesses in ${lang}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang });
+    await fixtures(page);
+    await page.evaluate(async () => {
+      const path = '/src/settings/index.ts';
+      const { setAgentSettings } = (await import(/* @vite-ignore */ path)) as typeof Settings;
+      setAgentSettings({ model: 'claude-code-reasoning', effort: 'ultra' });
+    });
+    const ai = page.getByTestId('activity-bar').locator('[data-panel="ai"]');
+    await ai.click();
+    await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', 'ultra');
+    await page.getByTestId('chat-input').fill('Keep this draft');
+    await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+    await expect(page.getByTestId('harness-connection')).toContainText(/Connected|מחובר/);
+    await page.evaluate(async () => {
+      const path =
+        performance
+          .getEntriesByType('resource')
+          .map((entry) => entry.name)
+          .findLast((name) => /\/src\/ai\/runtime\.ts(?:\?|$)/.test(name)) ?? '/src/ai/runtime.ts';
+      const { agentOf } = (await import(/* @vite-ignore */ path)) as typeof Runtime;
+      const agent = agentOf(window.slidr!);
+      const harnesses = await agent.harnesses();
+      const connect = agent.setup.connect.bind(agent.setup);
+      agent.setup.connect = (...args) => {
+        document.body.dataset.connectionCheck = 'called';
+        return connect(...args);
+      };
+      const pending = new Promise<HarnessDescriptor[]>((resolve) => {
+        document.addEventListener('release-harnesses', () => resolve(harnesses), { once: true });
+      });
+      agent.harnesses = () => {
+        document.body.dataset.harnessCheck = 'waiting';
+        return pending;
+      };
+      document.body.dataset.setupAppeared = 'false';
+      new MutationObserver(() => {
+        if (
+          document.querySelector('[data-testid="chat-setup"], [data-testid="model-picker-setup"]')
+        )
+          document.body.dataset.setupAppeared = 'true';
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    await ai.click();
+    await expect(page.locator('body')).not.toHaveAttribute('data-harness-check');
+    await expect(page.locator('body')).not.toHaveAttribute('data-connection-check');
+    await expect(page.getByTestId('chat-input')).toHaveValue('Keep this draft');
+    await expect(page.getByTestId('model-picker')).toHaveAttribute(
+      'data-model',
+      'claude-code-reasoning',
+    );
+    await expect(page.getByTestId('chat-setup')).toHaveCount(0);
+    await expect(page.locator('body')).toHaveAttribute('data-setup-appeared', 'false');
+    await page.screenshot({ path: `test-results/chat-configured-reopened-${lang}.png` });
+    await page.evaluate(() => document.dispatchEvent(new Event('release-harnesses')));
+    await expect(page.getByTestId('chat-input')).toHaveValue('Keep this draft');
+    await expect(page.locator('body')).toHaveAttribute('data-setup-appeared', 'false');
+  });
+
   test(`first-time setup stays in chat in ${lang}`, async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await openApp(page, { lang });

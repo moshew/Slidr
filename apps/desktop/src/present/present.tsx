@@ -57,10 +57,11 @@ export function startPresenting(editor: Editor, options: PresentOptions): boolea
   };
   const onExit = (slide: number) => {
     if (!ending) return;
-    ending();
-    // Back in the editor on the slide the show ended on.
+    // Back in the editor on the slide the show ended on: there before the show is gone, so
+    // the editor is not seen changing slides.
     const id = deck.slides[slide]?.id;
     if (id) editor.selection.getState().setCurrentSlide(id);
+    ending();
     focusStage();
   };
   root.render(

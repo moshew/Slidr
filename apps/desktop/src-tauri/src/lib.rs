@@ -14,6 +14,7 @@ mod media_dir;
 mod net;
 mod secrets;
 mod settings;
+mod show_screen;
 mod stock;
 mod storage;
 mod templates;
@@ -145,6 +146,7 @@ pub fn run() {
             image_process::ipc::image_upscale,
             image_process::ipc::image_upscale_cancel,
             image_process::ipc::image_upscale_status,
+            show_screen::show_screen_set,
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");

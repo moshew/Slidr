@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./fixtures": "./src/fixtures/index.ts",
     "./builtin": "./src/builtin/index.ts",
+    "./builtin/kit": "./src/builtin/kit.ts",
     "./builtin/pictures": "./src/builtin/pictures.generated.ts"
   },
   "scripts": {
