@@ -623,13 +623,14 @@ const WIDTH = 1920 - START - END;
 const AFTER = START + 42;
 
 /** The kicker on its node, and the title. */
-function head(name: string, width = 1240, lines = 1) {
+function head(name: string, width = 1240, lines = 2) {
   return {
     placeholders: [
-      place('p_kicker', 'caption', at(AFTER, 96, Math.min(900, width - 42), 34), 'caption'),
-      place('p_title', 'title', at(START, 138, width, 74 * lines), 'title'),
+      place('p_kicker', 'caption', at(AFTER, 84, Math.min(900, width - 42), 34), 'caption'),
+      // Room for two lines: a title another deck brings may run to a second.
+      place('p_title', 'title', at(START, 122, width, 74 * lines), 'title'),
     ],
-    decorations: [node(`d_anan_${name}_node`, START, 100)],
+    decorations: [node(`d_anan_${name}_node`, START, 88)],
   };
 }
 
@@ -1448,7 +1449,7 @@ const columns4 = [START, START + 416, START + 832, START + 1248];
 const steps5 = [START, START + 341, START + 682, START + 1023, START + 1364];
 const team4 = [START, START + 428, START + 856, START + 1284];
 const rows3 = [292, 486, 680];
-const tiles3 = [262, 474, 686];
+const tiles3 = [284, 492, 700];
 const lines3 = [520, 630, 740];
 
 function layouts(): Layout[] {
@@ -1487,23 +1488,23 @@ function layouts(): Layout[] {
     return scenes.map((s) => s.fitting(w, h, pad, scale, 1, 1));
   };
   const steps = steps5.map((_, i) => stepIcon(i));
-  const stepFits = fitted(steps, 210, 196, 6);
+  const stepFits = fitted(steps, 210, 188, 6);
   const blocks = columns4.map((_, i) => rolloutBlock(i));
   const blockFits = fitted(
     blocks.map((b) => b.s),
     250,
-    270,
+    262,
     6,
   );
-  const stepFrame = (start: number) => at(start, 230, 210, 196);
-  const blockFrame = (start: number) => at(start, 226, 250, 270);
+  const stepFrame = (start: number) => at(start, 252, 210, 188);
+  const blockFrame = (start: number) => at(start, 244, 250, 262);
   // The tops of the blocks, on the slide.
   const tops = blocks.map((b, i) => {
     const [X, Y] = blockFits[i]!.map(b.top);
     const f = blockFrame(columns4[i]!);
     return [f.x + X, f.y + Y] as const;
   });
-  const rise = at(START, 200, WIDTH, 300);
+  const rise = at(START, 214, WIDTH, 300);
   const riseArcs = tops
     .slice(0, -1)
     .map(([ax, ay], i) => {
@@ -1606,9 +1607,9 @@ function layouts(): Layout[] {
       archetype: 'bigNumber',
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START, 262, 920, 135), 'display', { color: token('primary') }),
-        place('p_label', 'subtitle', at(START, 404, 920, 53), 'heading'),
-        place('p_body', 'body', at(START, 470, 880, 135), 'body'),
+        place('p_number', 'number', at(START, 284, 920, 135), 'display', { color: token('primary') }),
+        place('p_label', 'subtitle', at(START, 426, 920, 53), 'heading'),
+        place('p_body', 'body', at(START, 492, 880, 135), 'body'),
         ...tiles3.flatMap((top, i) => [
           place(`p_stat${i + 1}`, 'number', atEnd(END + 206, top + 26, 450, 79), 'title'),
           place(`p_stat${i + 1}_label`, 'caption', atEnd(END + 206, top + 108, 450, 68), 'caption'),
@@ -1617,7 +1618,7 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...head('big_number').decorations,
-        lettered('d_anan_big_number_days', at(START, 652, 920, 118), (dir) => uptimeStrip(920, dir)),
+        lettered('d_anan_big_number_days', at(START, 672, 920, 118), (dir) => uptimeStrip(920, dir)),
         ...tiles3.flatMap((top, i) => [
           card(`d_anan_big_number_tile${i + 1}`, atEnd(END, top, 680, 192)),
           drawing(`d_anan_big_number_spark${i + 1}`, atEnd(END + 22, top + 48, 170, 96), sparkline(i), PAINT),
@@ -1662,8 +1663,8 @@ function layouts(): Layout[] {
       name: 'Text',
       archetype: 'text',
       placeholders: [
-        place('p_title', 'title', at(START, 138, 1080, 74), 'title'),
-        place('p_body', 'body', at(START, 262, 1080, 620), 'body'),
+        place('p_title', 'title', at(START, 122, 1080, 148), 'title'),
+        place('p_body', 'body', at(START, 282, 1080, 610), 'body'),
       ],
       decorations: [
         drawing('d_anan_text_scene', textArt, migrationFit.markup(), PAINT),
@@ -1677,11 +1678,11 @@ function layouts(): Layout[] {
       name: 'Text and image',
       archetype: 'textImage',
       placeholders: [
-        ...head('text_image', 820, 1).placeholders,
+        ...head('text_image', 820).placeholders,
         place('p_image', 'image', atEnd(END + 14, 156, 752, 742)),
         ...rows3.flatMap((top, i) => [
           place(`p_point${i + 1}`, 'subtitle', at(START + 90, top, 740, 53), 'heading'),
-          place(`p_point${i + 1}_body`, 'body', at(START + 90, top + 58, 740, 128), 'body'),
+          place(`p_point${i + 1}_body`, 'body', at(START + 90, top + 56, 740, 136), 'caption'),
         ]),
         ...foot('text_image').placeholders,
       ],
@@ -1742,32 +1743,32 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...cards3.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 66, 444, 420, 34), 'caption'),
-          place(`p_card${i + 1}`, 'subtitle', at(start + 32, 496, 456, 96), 'heading', { vAlign: 'bottom' }),
-          place(`p_card${i + 1}_body`, 'body', at(start + 32, 600, 456, 190), 'body'),
+          place(`p_card${i + 1}_note`, 'caption', at(start + 66, 456, 420, 34), 'caption'),
+          place(`p_card${i + 1}`, 'subtitle', at(start + 32, 504, 456, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_card${i + 1}_body`, 'body', at(start + 32, 608, 456, 190), 'body'),
         ]),
-        place('p_takeaway', 'body', at(AFTER, 822, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
+        place('p_takeaway', 'body', at(AFTER, 830, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
         ...foot('cards').placeholders,
       ],
       decorations: [
         ...head('cards').decorations,
         ...cards3.flatMap((start, i) => [
-          card(`d_anan_cards_card${i + 1}`, at(start, 262, 520, 540)),
-          rect(`d_anan_cards_stage${i + 1}`, at(start + 12, 274, 496, 214), STAGE, { effects: { radius: 14 } }),
-          lattice(`d_anan_cards_lattice${i + 1}`, at(start + 12, 274, 496, 214), 0.28),
+          card(`d_anan_cards_card${i + 1}`, at(start, 284, 520, 530)),
+          rect(`d_anan_cards_stage${i + 1}`, at(start + 12, 296, 496, 204), STAGE, { effects: { radius: 14 } }),
+          lattice(`d_anan_cards_lattice${i + 1}`, at(start + 12, 296, 496, 204), 0.28),
           drawing(
             `d_anan_cards_icon${i + 1}`,
-            at(start + 12, 280, 496, 160),
-            serviceIcon((['gateway', 'ledger', 'risk'] as const)[i]!).fit(496, 160, 12),
+            at(start + 12, 300, 496, 152),
+            serviceIcon((['gateway', 'ledger', 'risk'] as const)[i]!).fit(496, 152, 12),
             PAINT,
           ),
           art(
             `d_anan_cards_light${i + 1}`,
-            at(start + 32, 449, 24, 24),
+            at(start + 32, 461, 24, 24),
             `<circle cx="12" cy="12" r="11" fill="${GREEN}" fill-opacity=".2"/><circle cx="12" cy="12" r="5.6" fill="${GREEN}"/>`,
           ),
         ]),
-        node('d_anan_cards_takeaway_node', START, 854, TEAL),
+        node('d_anan_cards_takeaway_node', START, 862, TEAL),
         ...foot('cards').decorations,
       ],
     },
@@ -1778,11 +1779,11 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('timeline').placeholders,
         ...columns4.flatMap((start, i) => [
-          place(`p_when${i + 1}`, 'number', at(start, 530, 392, 79), 'title', { color: token('primary') }),
-          place(`p_what${i + 1}`, 'subtitle', at(start, 612, 380, 96), 'heading', { vAlign: 'bottom' }),
-          place(`p_what${i + 1}_body`, 'body', at(start, 714, 380, 150), 'caption'),
+          place(`p_when${i + 1}`, 'number', at(start, 546, 392, 79), 'title', { color: token('primary') }),
+          place(`p_what${i + 1}`, 'subtitle', at(start, 628, 380, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_what${i + 1}_body`, 'body', at(start, 728, 380, 142), 'caption'),
         ]),
-        place('p_note', 'caption', at(AFTER, 880, WIDTH - 42, 34), 'caption'),
+        place('p_note', 'caption', at(AFTER, 884, WIDTH - 42, 34), 'caption'),
         ...foot('timeline').placeholders,
       ],
       decorations: [
@@ -1791,7 +1792,7 @@ function layouts(): Layout[] {
         ...columns4.map((start, i) =>
           drawing(`d_anan_timeline_block${i + 1}`, blockFrame(start), blockFits[i]!.markup(), PAINT),
         ),
-        node('d_anan_timeline_note_node', START, 884, ORANGE),
+        node('d_anan_timeline_note_node', START, 888, ORANGE),
         ...foot('timeline').decorations,
       ],
     },
@@ -1802,13 +1803,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...steps5.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start, 512, 300, 96), 'heading', { vAlign: 'bottom' }),
-          place(`p_step${i + 1}_body`, 'caption', at(start, 616, 300, 136), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start, 440, 300, 79), 'title', {
+          place(`p_step${i + 1}`, 'subtitle', at(start, 538, 300, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_step${i + 1}_body`, 'caption', at(start, 640, 300, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start, 456, 300, 79), 'title', {
             color: token('primary'),
           }),
         ]),
-        place('p_summary', 'body', at(AFTER, 800, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
+        place('p_summary', 'body', at(AFTER, 814, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
         ...foot('process').placeholders,
       ],
       decorations: [
@@ -1820,7 +1821,7 @@ function layouts(): Layout[] {
         ...steps5.slice(0, -1).map((start, i) =>
           art(
             `d_anan_process_hop${i + 1}`,
-            at(start + 222, 364, 341 - 222 - 10, 20),
+            at(start + 222, 380, 341 - 222 - 10, 20),
             `<path d="M${341 - 222 - 14} 10H14" stroke="${i === 3 ? TEAL : BLUE}" stroke-width="2.6" stroke-dasharray="${i === 3 ? '3 6' : '7 7'}" stroke-linecap="round"/>` +
               arrowhead(30, 10, 4, 10, i === 3 ? TEAL : BLUE, 11) +
               (i === 1 ? `<circle cx="${(341 - 232) / 2}" cy="10" r="12" fill="${ORANGE}" fill-opacity=".18"/><circle cx="${(341 - 232) / 2}" cy="10" r="6" fill="${ORANGE}"/>` : ''),
@@ -1835,7 +1836,7 @@ function layouts(): Layout[] {
             const w = Math.round(((WIDTH - 12) * v) / total);
             const el = rect(
               `d_anan_process_budget${i + 1}`,
-              at(start, 772, w - 4, 10),
+              at(start, 794, w - 4, 10),
               solid(token(i === 3 ? 'secondary' : 'primary', i === 2 || i === 3 ? 0.9 : 0.45)),
               { effects: { radius: 5 } },
             );
@@ -1843,7 +1844,7 @@ function layouts(): Layout[] {
             return el;
           });
         })(),
-        node('d_anan_process_summary_node', START, 832, TEAL),
+        node('d_anan_process_summary_node', START, 846, TEAL),
         ...foot('process').decorations,
       ],
     },
@@ -1859,9 +1860,9 @@ function layouts(): Layout[] {
             ['after', START + 864],
           ] as const
         ).flatMap(([side, start]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 76, 460, 690, 34), 'caption'),
-          place(`p_${side}`, 'subtitle', at(start + 42, 512, 716, 96), 'heading', { vAlign: 'bottom' }),
-          place(`p_${side}_body`, 'body', at(start + 42, 614, 716, 270), 'body'),
+          place(`p_${side}_tag`, 'caption', at(start + 76, 472, 690, 34), 'caption'),
+          place(`p_${side}`, 'subtitle', at(start + 42, 520, 716, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_${side}_body`, 'body', at(start + 42, 622, 716, 270), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1873,19 +1874,19 @@ function layouts(): Layout[] {
             ['after', START + 864, GREEN, afterScene()],
           ] as const
         ).flatMap(([side, start, light, scene]) => [
-          card(`d_anan_comparison_${side}`, at(start, 262, 800, 638)),
-          rect(`d_anan_comparison_${side}_stage`, at(start + 12, 274, 776, 230), STAGE, { effects: { radius: 14 } }),
-          lattice(`d_anan_comparison_${side}_lattice`, at(start + 12, 274, 776, 230), 0.26),
-          drawing(`d_anan_comparison_${side}_scene`, at(start + 12, 278, 776, 178), scene.fit(776, 178, 8), PAINT),
+          card(`d_anan_comparison_${side}`, at(start, 284, 800, 626)),
+          rect(`d_anan_comparison_${side}_stage`, at(start + 12, 296, 776, 216), STAGE, { effects: { radius: 14 } }),
+          lattice(`d_anan_comparison_${side}_lattice`, at(start + 12, 296, 776, 216), 0.26),
+          drawing(`d_anan_comparison_${side}_scene`, at(start + 12, 300, 776, 166), scene.fit(776, 166, 8), PAINT),
           art(
             `d_anan_comparison_${side}_light`,
-            at(start + 42, 465, 24, 24),
+            at(start + 42, 477, 24, 24),
             `<circle cx="12" cy="12" r="11" fill="${light}" fill-opacity=".2"/><circle cx="12" cy="12" r="5.6" fill="${light}"/>`,
           ),
         ]),
         art(
           'd_anan_comparison_arrow',
-          at(START + 800, 560, 64, 64),
+          at(START + 800, 580, 64, 64),
           `<circle cx="32" cy="32" r="30" fill="${WHITE}" stroke="${NAVY}" stroke-opacity=".1" stroke-width="1.5"/><path d="M42 32H22m8-9-9 9 9 9" stroke="${BLUE}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>`,
         ),
         ...foot('comparison').decorations,
@@ -1897,30 +1898,30 @@ function layouts(): Layout[] {
       archetype: 'chart',
       placeholders: [
         ...head('chart', 1100).placeholders,
-        place('p_chart', 'chart', at(START + 24, 336, 1052, 556)),
-        place('p_stat1', 'number', atEnd(END, 262, 480, 135), 'display', { color: token('primary') }),
-        place('p_stat1_body', 'body', atEnd(END, 400, 480, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END, 566, 480, 135), 'display'),
-        place('p_stat2_body', 'body', atEnd(END, 704, 480, 92), 'body'),
-        place('p_source', 'caption', atEnd(END, 822, 480, 68), 'caption'),
+        place('p_chart', 'chart', at(START + 24, 356, 1052, 540)),
+        place('p_stat1', 'number', atEnd(END, 284, 480, 135), 'display', { color: token('primary') }),
+        place('p_stat1_body', 'body', atEnd(END, 422, 480, 135), 'body'),
+        place('p_stat2', 'number', atEnd(END, 580, 480, 135), 'display'),
+        place('p_stat2_body', 'body', atEnd(END, 718, 480, 92), 'body'),
+        place('p_source', 'caption', atEnd(END, 828, 480, 68), 'caption'),
         ...foot('chart').placeholders,
       ],
       decorations: [
         ...head('chart').decorations,
-        card('d_anan_chart_panel', at(START, 262, 1100, 646)),
-        lettered('d_anan_chart_bar', at(START, 262, 1100, 56), (dir) =>
+        card('d_anan_chart_panel', at(START, 284, 1100, 624)),
+        lettered('d_anan_chart_bar', at(START, 284, 1100, 56), (dir) =>
           svg(1100, 56, panelBar(1100, 'metrics / latency.p95', [['edge', BLUE]], dir)),
         ),
-        rect('d_anan_chart_bar_rule', at(START, 318, 1100, 1.5), solid(token('text', 0.08))),
-        rect('d_anan_chart_divider', atEnd(END, 540, 480, 1.5), solid(token('text', 0.1))),
+        rect('d_anan_chart_bar_rule', at(START, 340, 1100, 1.5), solid(token('text', 0.08))),
+        rect('d_anan_chart_divider', atEnd(END, 564, 480, 1.5), solid(token('text', 0.1))),
         art(
           'd_anan_chart_mark1',
-          atEnd(END + 480 + 18, 300, 14, 60),
+          atEnd(END + 480 + 18, 322, 14, 60),
           `<rect x="2" width="10" height="60" rx="5" fill="${BLUE}"/>`,
         ),
         art(
           'd_anan_chart_mark2',
-          atEnd(END + 480 + 18, 604, 14, 60),
+          atEnd(END + 480 + 18, 618, 14, 60),
           `<rect x="2" width="10" height="60" rx="5" fill="${TEAL}"/>`,
         ),
         ...foot('chart').decorations,
@@ -1932,14 +1933,15 @@ function layouts(): Layout[] {
       archetype: 'table',
       placeholders: [
         ...head('table', 1100).placeholders,
-        place('p_table', 'table', at(START + 20, 246, WIDTH - 40, 612)),
-        place('p_note', 'caption', at(AFTER, 884, 1500, 34), 'caption'),
+        place('p_table', 'table', at(START + 20, 292, WIDTH - 40, 612)),
+        // The note stands under the filters, as a console says how fresh its data is.
+        place('p_note', 'caption', atEnd(END, 146, 500, 68), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: [
         ...head('table').decorations,
-        card('d_anan_table_panel', at(START, 232, WIDTH, 640)),
-        lettered('d_anan_table_filters', atEnd(END, 150, 470, 46), (dir) => {
+        card('d_anan_table_panel', at(START, 280, WIDTH, 632)),
+        lettered('d_anan_table_filters', atEnd(END, 82, 470, 46), (dir) => {
           const a = chipMarkup('window: 30d', BLUE, { size: 17 });
           const b = chipMarkup('regions: all', GREEN, { size: 17 });
           const gap = 12;
@@ -1952,7 +1954,7 @@ function layouts(): Layout[] {
             `<g transform="translate(${x0} 6)">${inner(a.markup)}</g><g transform="translate(${x0 + a.w + gap} 6)">${inner(b.markup)}</g>`,
           );
         }),
-        node('d_anan_table_note_node', START, 888, TEAL),
+        node('d_anan_table_note_node', at(START + WIDTH - 500 - 40, 150, 26, 26).x === 0 ? 0 : END + 500 + 14, 150, TEAL),
         ...foot('table').decorations,
       ],
     },
@@ -1963,10 +1965,10 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('team').placeholders,
         ...team4.flatMap((start, i) => [
-          place(`p_person${i + 1}_photo`, 'image', at(start, 262, 380, 340)),
-          place(`p_person${i + 1}`, 'subtitle', at(start, 626, 380, 53), 'heading'),
-          place(`p_person${i + 1}_role`, 'caption', at(start + 42, 682, 338, 34), 'caption'),
-          place(`p_person${i + 1}_body`, 'body', at(start, 722, 380, 102), 'caption'),
+          place(`p_person${i + 1}_photo`, 'image', at(start, 284, 380, 330)),
+          place(`p_person${i + 1}`, 'subtitle', at(start, 636, 380, 53), 'heading'),
+          place(`p_person${i + 1}_role`, 'caption', at(start + 42, 692, 338, 34), 'caption'),
+          place(`p_person${i + 1}_body`, 'body', at(start, 732, 380, 102), 'caption'),
         ]),
         ...foot('team').placeholders,
       ],
@@ -1976,21 +1978,21 @@ function layouts(): Layout[] {
           // The long shadow of the picture, cast toward the end and down as the drawings cast theirs.
           art(
             `d_anan_team_shadow${i + 1}`,
-            at(start, 262, 440, 400),
+            at(start, 284, 440, 390),
             `<defs><linearGradient id="s" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${NAVY}" stop-opacity=".1"/><stop offset=".7" stop-color="${NAVY}" stop-opacity="0"/></linearGradient></defs>` +
-              `<path d="M60 0 0 60V400H380L440 340V0Z" fill="url(#s)"/>`,
+              `<path d="M60 0 0 60V390H380L440 330V0Z" fill="url(#s)"/>`,
           ),
-          rect(`d_anan_team_mat${i + 1}`, at(start - 8, 254, 396, 356), solid(token('surface')), {
+          rect(`d_anan_team_mat${i + 1}`, at(start - 8, 276, 396, 346), solid(token('surface')), {
             stroke: { color: token('text', 0.08), width: 1.5 },
             effects: { radius: 6 },
           }),
           art(
             `d_anan_team_light${i + 1}`,
-            at(start, 687, 24, 24),
+            at(start, 697, 24, 24),
             `<circle cx="12" cy="12" r="11" fill="${i === 0 ? GREEN : NAVY}" fill-opacity="${i === 0 ? 0.2 : 0.06}"/><circle cx="12" cy="12" r="5.4" fill="${i === 0 ? GREEN : MUTED}" fill-opacity="${i === 0 ? 1 : 0.5}"/>`,
           ),
         ]),
-        lettered('d_anan_team_rotation', at(START, 842, WIDTH, 52), (dir) =>
+        lettered('d_anan_team_rotation', at(START, 854, WIDTH, 52), (dir) =>
           rotation(
             WIDTH,
             team4.map((s) => s - START),
