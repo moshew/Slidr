@@ -44,7 +44,7 @@ test('the library offers the built-in templates, and switching to one is one und
   await expect(card(page, 'zerem')).toHaveAttribute('data-current', 'true');
   const after = await deck(page);
   expect(after.theme.id).toBe('zerem');
-  expect(after.layouts).toHaveLength(16);
+  expect(after.layouts).toHaveLength(15);
   // Layouts are named in the deck's language.
   expect(after.layouts.map((l) => l.name)).toContain('ציר זמן');
   expect(await undoSteps(page)).toBe(1);
@@ -72,7 +72,10 @@ test('a new deck opens on the default template, and File > New does too', async 
   expect(started.theme.id).toBe('zerem');
   expect(started.slides).toHaveLength(1);
   expect(started.slides[0]!.layoutId).toBe('l_zerem_hero');
-  expect(started.slides[0]!.elements.map((e) => e.role)).toEqual([
+  // After the layout's objects (ADR-091), an element for each placeholder.
+  const hero = started.layouts.find((l) => l.id === 'l_zerem_hero')!;
+  const seated = started.slides[0]!.elements.slice(hero.objects?.length ?? 0);
+  expect(seated.map((e) => e.role)).toEqual([
     'caption',
     'title',
     'subtitle',
@@ -93,8 +96,8 @@ test('"New slide" offers the layouts of the template', async ({ page }) => {
   await page.getByTestId('new-slide').click();
   const choices = page.getByTestId('layout-choices');
   await expect(choices).toBeVisible();
-  // Blank, and the sixteen layouts.
-  await expect(choices.locator('[data-layout]')).toHaveCount(17);
+  // Blank, and the fifteen layouts.
+  await expect(choices.locator('[data-layout]')).toHaveCount(16);
   const order = await choices
     .locator('[data-layout]')
     .evaluateAll((items) => items.map((item) => item.getAttribute('data-layout')));
@@ -106,19 +109,19 @@ test('"New slide" offers the layouts of the template', async ({ page }) => {
   expect(now.slides[1]!.elements.filter((e) => e.role === 'subtitle')).toHaveLength(3);
 });
 
-test('the title and text layouts create slides with only their requested content', async ({
-  page,
-}) => {
+test('the text layout creates a slide with only its requested content', async ({ page }) => {
   await openTemplates(page, { defaultTemplate: 'zerem' });
   await page.getByTestId('new-slide').click();
-  await page.getByTestId('layout-choices').locator('[data-layout="l_zerem_title"]').click();
-  let now = await deck(page);
-  expect(now.slides[1]!.elements.map((element) => element.role)).toEqual(['title']);
-
-  await page.getByTestId('new-slide').click();
+  // The title-only layout is retired: a template offers none.
+  await expect(
+    page.getByTestId('layout-choices').locator('[data-layout="l_zerem_title"]'),
+  ).toHaveCount(0);
   await page.getByTestId('layout-choices').locator('[data-layout="l_zerem_text"]').click();
-  now = await deck(page);
-  expect(now.slides[2]!.elements.map((element) => element.role)).toEqual(['title', 'body']);
+  const now = await deck(page);
+  // The layout's objects come first (ADR-091); its placeholders give a title and a body only.
+  const text = now.layouts.find((l) => l.id === 'l_zerem_text')!;
+  const seated = now.slides[1]!.elements.slice(text.objects?.length ?? 0);
+  expect(seated.map((element) => element.role)).toEqual(['title', 'body']);
 });
 
 test('the direction control turns the deck, layouts and slides, in one step', async ({ page }) => {
@@ -195,7 +198,7 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
   const withLogo = await deck(page);
   const logos = withLogo.layouts.flatMap((l) => l.decorations.filter((d) => d.role === 'logo'));
   // Every layout but the two that draw no mark: the section divider and the full image.
-  expect(logos).toHaveLength(12);
+  expect(logos).toHaveLength(13);
   expect(logos.every((logo) => logo.type === 'image')).toBe(true);
   expect(await undoSteps(page)).toBe(1);
 

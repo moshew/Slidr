@@ -100,6 +100,21 @@ const ImageMask = z.discriminatedUnion('kind', [
     d: z.string().min(1),
     viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
   }),
+  /**
+   * The window of a card that the photograph shows through, the window going where the
+   * photograph goes (a magnet's photograph, ADR-092). `markup` is the card, an SVG that lays
+   * itself out: the photograph shows wherever it does not paint. The photograph is the card's
+   * `opening`: the card around it is laid out at `scale` (slide pixels to a unit of `viewBox`)
+   * with its margins as they are, and drawn smaller only around a photograph smaller than the
+   * opening (`windowLayout`).
+   */
+  z.strictObject({
+    kind: z.literal('window'),
+    markup: z.string().min(1),
+    viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
+    opening: Frame,
+    scale: z.number().positive(),
+  }),
 ]);
 
 /**
@@ -248,12 +263,26 @@ export const SvgElement = z
     colorOverrides: z.record(z.string().min(1), Color).optional(),
     /** A resizable text background: its flexible bands grow while corners and ornaments stay. */
     stretch: SvgStretch.optional(),
+    /**
+     * A drawing that lays itself out (no `viewBox`), as the artwork of a frame does (ADR-086):
+     * drawn at `scale`, slide pixels to a unit, in a box of its units never smaller than
+     * `viewBox`. Made larger, it keeps its margins and ornaments as they are (`artworkLayout`).
+     */
+    layout: z
+      .strictObject({
+        viewBox: z.strictObject({ w: z.number().positive(), h: z.number().positive() }),
+        scale: z.number().positive(),
+      })
+      .optional(),
   })
   .refine((e) => Boolean(e.assetId) !== Boolean(e.markup), {
     message: 'an svg element has either assetId or markup',
   })
   .refine((e) => !e.stretch || Boolean(e.markup), {
     message: 'a stretchable svg carries its drawing as markup',
+  })
+  .refine((e) => !e.layout || (Boolean(e.markup) && !e.stretch), {
+    message: 'an svg that lays itself out carries its drawing as markup, and is not stretched',
   });
 export type SvgElement = z.infer<typeof SvgElement>;
 

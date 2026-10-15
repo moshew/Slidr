@@ -34,7 +34,8 @@ export async function openTemplates(page: Page, options: OpenOptions = {}): Prom
     [lang, defaultTemplate ?? ''],
   );
   await page.goto('/');
-  await page.locator('[data-panel="templates"]').click();
+  // The button: the panel itself, hidden, is drawn ahead and has the same mark.
+  await page.getByTestId('activity-bar').locator('[data-panel="templates"]').click();
   await expect(panel(page)).toBeVisible();
 }
 

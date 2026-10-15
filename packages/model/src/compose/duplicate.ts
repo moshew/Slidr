@@ -27,9 +27,14 @@ function renameIds(text: string, ids: ReadonlyMap<string, string>): string {
   return out;
 }
 
+/** The ids of a deck's slides and elements: what a new id must not be. */
+export function takenIds(deck: Deck): Set<string> {
+  return new Set([...deck.slides.map((s) => s.id), ...allElementIds(deck)]);
+}
+
 /** Ids for slides and elements that are free in the deck; each one handed out is taken. */
 export function deckIdSource(deck: Deck, random?: () => number): (prefix: IdPrefix) => string {
-  return idSource(new Set([...deck.slides.map((s) => s.id), ...allElementIds(deck)]), random);
+  return idSource(takenIds(deck), random);
 }
 
 /**
@@ -42,9 +47,15 @@ export function copySlide(
   random?: () => number,
 ): Slide {
   const renamed = new Map<string, string>();
+  // The copies of a layout's objects are named after their slide (`layoutObjects`), and are
+  // named after the copy here, so they are still its layout's.
+  const own = `${source.id}_`;
+  const named = [...walkElements(source.elements)].some((element) => element.id.startsWith(own));
+  const slideId = named ? fresh('s') : undefined;
   const elements = source.elements.map((element) =>
     cloneElement(element, (oldId) => {
-      const id = fresh('e');
+      const id =
+        slideId && oldId.startsWith(own) ? `${slideId}_${oldId.slice(own.length)}` : fresh('e');
       renamed.set(oldId, id);
       return id;
     }),
@@ -52,7 +63,7 @@ export function copySlide(
   const stepIds = idSource(new Set(source.timeline.map((step) => step.id)), random);
   const slide: Slide = {
     ...copyJson(source),
-    id: fresh('s'),
+    id: slideId ?? fresh('s'),
     elements,
     timeline: source.timeline.map((step) => ({
       ...copyJson(step),

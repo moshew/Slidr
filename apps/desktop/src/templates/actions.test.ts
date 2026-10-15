@@ -598,6 +598,17 @@ describe('the master components of the deck (SLD-04)', () => {
     await applyLibraryTemplate(editor, library(), 'zerem');
     expect(logoHidden(bus.deck)).toBe(true);
   });
+
+  it('a switch hides the slide number when asked to, or shows the one the deck hid, in its step', async () => {
+    const { editor, bus } = editorOn(deckFromTemplate(tzukTemplate(), { lang: 'he' }));
+    const templates = library();
+    await applyLibraryTemplate(editor, templates, 'zerem', 'החלפת תבנית', { slideNumber: false });
+    expect(bus.undoStack.map((step) => step.label)).toEqual(['החלפת תבנית']);
+    expect(slideNumberHidden(bus.deck)).toBe(true);
+    await applyLibraryTemplate(editor, templates, 'tzuk', undefined, { slideNumber: true });
+    expect(slideNumberHidden(bus.deck)).toBe(false);
+    expect(bus.undoStack).toHaveLength(2);
+  });
 });
 
 const tzukTemplate = () => builtInTemplates().find((template) => template.theme.id === 'tzuk')!;

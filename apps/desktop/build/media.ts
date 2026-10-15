@@ -11,6 +11,7 @@ import type { Plugin } from 'vite';
  *   media/icons/hebrew.json       the Hebrew search words of both sets
  *   media/images/templates/*.webp the photographs of the built-in templates
  *   media/images/designs/*.webp   the pictures of the ready-made slides of Elements
+ *   media/images/frames/<lang>/*.webp   the event magnets as the Elements panel shows them, small
  *   media/fonts/<family>/*.woff2  the built-in fonts of decks
  *   media/templates/index.json    the built-in templates, by id, in the order they are shown
  *   media/templates/<id>/template.json   each of them: its theme, its master, its layouts

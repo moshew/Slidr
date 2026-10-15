@@ -46,10 +46,11 @@ function createRegistry<T extends Registered>(): Registry<T> {
 
 /* ---------------------------------------------------------------- panels */
 
-/** Where a panel's button sits in the Activity Bar: the AI tools, the others, or the bottom. */
+/** Where a panel's button sits in the Activity Bar: the AI panels, the others, or the bottom. */
 export type PanelSlot = 'ai' | 'tools' | 'footer';
 
-interface PanelBase extends Registered {
+/** A panel of the Tool Panel: the shell draws the title bar, the panel draws the rest. */
+export interface PanelDefinition extends Registered {
   /** An i18n key; `namespace:key` for strings outside the shell's namespace. */
   title: string;
   icon: LucideIcon;
@@ -58,31 +59,21 @@ interface PanelBase extends Registered {
   order: number;
   /** Shown in the Activity Bar tooltip. The shell handles Ctrl+1 for the AI chat. */
   shortcut?: string;
-}
-
-/**
- * The AI tool (SPEC 4.3, ADR-072). The shell draws its frame: the title and the Chat and Actions
- * tabs; the panel supplies what goes in the tabs, including what the chat sees of the selection.
- */
-export interface AiPanelDefinition extends PanelBase {
-  kind: 'ai';
-  chat: ComponentType;
-  actions: ComponentType;
-}
-
-/** Any other panel: the shell draws the title bar, the panel draws the rest. */
-export interface ToolPanelDefinition extends PanelBase {
-  kind: 'tool';
   content: ComponentType;
+  /**
+   * The panel takes the room under the title and scrolls what it has itself, as the chat does:
+   * its messages scroll and its composer stays in place. Otherwise the shell scrolls the panel.
+   */
+  fill?: boolean;
 }
 
-export type PanelDefinition = AiPanelDefinition | ToolPanelDefinition;
-
 /**
- * The panel ids the shell refers to: the AI chat of Ctrl+1 and Ctrl+L, and settings.
+ * The panel ids the shell refers to: the AI chat of Ctrl+1 and Ctrl+L, the AI actions that are
+ * sent to it (SPEC 4.3, ADR-072), and settings.
  */
 export const PanelId = {
   ai: 'ai',
+  actions: 'actions',
   settings: 'settings',
 } as const;
 

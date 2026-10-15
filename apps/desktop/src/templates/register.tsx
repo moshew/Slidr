@@ -11,6 +11,8 @@ import { startDeck, supplyAssets } from './actions';
 import { drafts, library } from './app';
 import { LayoutTool } from './LayoutTool';
 import { en, he } from './messages';
+import { preloadTemplateFonts } from './preload';
+import { readSamplesAhead } from './previews';
 import { TemplatesPanel } from './TemplatesPanel';
 import { TemplateSlidesLayer } from './TemplateSlides';
 
@@ -24,7 +26,6 @@ registerMessages('templates', { he, en });
 
 registerPanel({
   id: 'templates',
-  kind: 'tool',
   slot: 'tools',
   // Above Elements and media: the look of the deck comes first.
   order: -2,
@@ -79,5 +80,22 @@ whenEditor((editor) => {
     .then(supply)
     .catch((error: unknown) => {
       console.error('The personal templates could not be read', error);
-    });
+    })
+    // The fonts of the covers, once the app is idle, before a panel that shows them is opened;
+    // then the samples the slides of a built-in template are made from, before one is pressed.
+    .then(() =>
+      whenIdle(async () => {
+        await preloadTemplateFonts(library.entries().map((e) => e.template));
+        await readSamplesAhead();
+      }),
+    );
 });
+
+function whenIdle(run: () => Promise<void>): void {
+  const go = () =>
+    void run().catch((error: unknown) => {
+      console.error('The templates could not be prepared ahead', error);
+    });
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 3000 });
+  else window.setTimeout(go, 1000);
+}

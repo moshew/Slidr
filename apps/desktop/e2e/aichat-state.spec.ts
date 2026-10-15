@@ -72,7 +72,7 @@ test('what was typed and attached in a chat is there after a look elsewhere', as
   await choose(page, () => page.getByTestId('chat-attach').click(), LOGO.path);
   await expect(attached).toHaveCount(1);
 
-  // The Actions tab of the tool, where its template gallery is, and back (finding 3).
+  // The Actions panel of the tool, where its template gallery is, and back (finding 3).
   await tab(page, 'actions');
   await tab(page, 'chat');
   await expect(input(page)).toHaveValue(request);
@@ -280,7 +280,9 @@ test('the template form says which file it left out, and a new logo takes the pl
   await expect(refused).toHaveCount(0);
 });
 
-test('what is filled in on the Actions tab is there after a look at the chat', async ({ page }) => {
+test('what is filled in on the Actions panel is there after a look at the chat', async ({
+  page,
+}) => {
   const logo = readFileSync(LOGO.path);
   await openApp(page, { script: 'image-alternatives' });
 

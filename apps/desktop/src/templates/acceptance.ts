@@ -330,11 +330,38 @@ export function acceptTemplate(
   );
 }
 
-/** The one difference the templates have between them: only the marketing cards seat photographs. */
+/** The opening layouts that seat a cover photo, which the other templates have no place for. */
+const COVERS = new Set(
+  builtInTemplates()
+    .flatMap((template) => template.layouts)
+    .filter(
+      (layout) =>
+        layout.archetype === 'hero' && layout.placeholders.some((p) => p.role === 'image'),
+    )
+    .map((layout) => layout.id),
+);
+
+/**
+ * The one difference the templates have between them: the photographs some of them seat and the
+ * others do not (`OPTIONAL` of the role contract). On a template without the seat a photo stays
+ * where it was, as nothing is deleted by a switch, and the lint reports the contrast of the text
+ * under it: the text of the other template's cards that lands on the marketing cards' photos,
+ * and the words of the new layout's own drawing (`Layout.objects`, ADR-091) that a cover photo
+ * now lies over. Those copies are named after their slide.
+ */
 export const knownSwitchError = (
   finding: LintFinding,
   cameFrom: ReadonlyMap<string, string | undefined>,
-) => finding.rule === 'L05' && cameFrom.get(finding.slideId) === 'l_shvil_cards';
+) => {
+  if (finding.rule !== 'L05') return false;
+  const from = cameFrom.get(finding.slideId);
+  if (from === 'l_shvil_cards') return true;
+  return (
+    from !== undefined &&
+    COVERS.has(from) &&
+    finding.elementIds.every((id) => id.startsWith(`${finding.slideId}_`))
+  );
+};
 
 /**
  * Everything a template that is still being drawn is tried by, as the whole of a test file of

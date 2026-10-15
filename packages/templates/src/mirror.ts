@@ -107,8 +107,8 @@ export function mirrorBackground(background: Background): Background {
 }
 
 /**
- * A layout for the other direction: placeholders and decorations change sides, and so do the
- * gradients of its background. Alignment is `start` / `end` already, so it needs no change.
+ * A layout for the other direction: placeholders, decorations and objects change sides, and so
+ * do the gradients of its background. Alignment is `start` / `end` already, so it needs no change.
  */
 export function mirrorLayout(layout: Layout): Layout {
   return {
@@ -116,5 +116,6 @@ export function mirrorLayout(layout: Layout): Layout {
     ...(layout.background ? { background: mirrorBackground(layout.background) } : {}),
     placeholders: layout.placeholders.map((p) => ({ ...p, frame: mirrorFrame(p.frame) })),
     decorations: layout.decorations.map((d) => mirrorElement(d)),
+    ...(layout.objects ? { objects: layout.objects.map((o) => mirrorElement(o)) } : {}),
   };
 }

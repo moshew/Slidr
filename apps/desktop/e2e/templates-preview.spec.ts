@@ -82,29 +82,44 @@ test('the card applies its template and folds away, and does not outlive the pan
   await cover(page, 'shvil').click();
   await expect(slides(page)).toHaveCount(1);
   await page.locator('button[data-panel="transitions"]').click();
-  await expect(panel(page)).toHaveCount(0);
+  await expect(panel(page)).toBeHidden();
   await expect(slides(page)).toHaveCount(0);
 });
 
-test('the card unfolds from the side of the panel and folds back into it', async ({ page }) => {
+test('the card unfolds beside the panel with its slides in it, and folds back towards it', async ({
+  page,
+}) => {
   await openTemplates(page);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  // Every animation of the card itself, as it starts.
+  // Every animation of the card itself, as it starts, and how many slides it held as it opened.
   await page.evaluate(() => {
-    const started: string[] = [];
-    (window as unknown as { started: string[] }).started = started;
+    const record = window as unknown as { started: string[]; slidesAtOpening: number };
+    record.started = [];
     window.addEventListener('animationstart', (event) => {
-      if ((event.target as Element).matches('[data-testid="template-slides"]'))
-        started.push(event.animationName);
+      const target = event.target as Element;
+      if (!target.matches('[data-testid="template-slides"]')) return;
+      record.started.push(event.animationName);
+      if (event.animationName === 'template-slides-unfold')
+        record.slidesAtOpening = target.querySelectorAll('[data-testid="template-slide"]').length;
     });
   });
   const started = () => page.evaluate(() => (window as unknown as { started: string[] }).started);
 
   await cover(page, 'ariach').click();
   await expect.poll(started).toEqual(['template-slides-unfold']);
+  // Not an empty card that the slides fill a moment later.
+  expect(
+    await page.evaluate(() => (window as unknown as { slidesAtOpening: number }).slidesAtOpening),
+  ).toBeGreaterThan(8);
   await page.waitForTimeout(80);
   await page.screenshot({ path: out('slides-unfolding') });
   await expect.poll(() => shown(page).count()).toBeGreaterThan(8);
+  // It does not reach over the panel.
+  const [panelBox, cardBox] = await Promise.all([
+    panel(page).boundingBox(),
+    slides(page).boundingBox(),
+  ]);
+  expect(cardBox!.x + cardBox!.width).toBeLessThanOrEqual(panelBox!.x);
 
   await page.keyboard.press('Escape');
   await expect.poll(started).toEqual(['template-slides-unfold', 'template-slides-fold']);
@@ -150,7 +165,15 @@ for (const lang of ['he', 'en'] as const) {
     for (const id of ids) {
       await cover(page, id).click();
       await expect(slides(page)).toHaveCount(1);
-      await expect.poll(() => shown(page).count(), { message: id }).toBeGreaterThan(11);
+      // Sixteen slides: one for each layout of the template and one more section divider, the
+      // text slide among them.
+      await expect.poll(() => shown(page).count(), { message: id }).toBe(16);
+      await expect(
+        shown(page)
+          .locator('figcaption')
+          .getByText(lang === 'he' ? 'טקסט' : 'Text', { exact: true }),
+        id,
+      ).toHaveCount(1);
       // No slide of the app's own words for a role, and no picture frame left empty.
       await expect(slides(page).getByText(/^(כותרת השקף|Slide title)$/)).toHaveCount(0);
       await expect(slides(page).locator('[data-slidr-placeholder]')).toHaveCount(0);

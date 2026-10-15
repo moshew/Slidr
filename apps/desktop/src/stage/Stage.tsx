@@ -1061,7 +1061,10 @@ export function Stage({
           el.smartFrame !== undefined &&
           el.smartFrame.scale === undefined &&
           !freshFrame(el);
-        const background = el.type === 'svg' && (el.stretch || freshTextBackground(el)?.has(el.id));
+        // A card that lays itself out (a magnet's, ADR-092) keeps its artwork's size, as a
+        // drawn frame does: an edge moves alone.
+        const background =
+          el.type === 'svg' && (el.stretch || el.layout || freshTextBackground(el)?.has(el.id));
         const alone =
           ((el.type === 'image' && !stretched) || background) && (hd.x === 0 || hd.y === 0);
         const picture =

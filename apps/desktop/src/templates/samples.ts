@@ -51,18 +51,26 @@ function samples(): Promise<Samples> {
   return read;
 }
 
-/** The layouts every template has for a slide of words alone: their samples are the app's own words. */
-const PLAIN = new Set(['title', 'text']);
+/** Reads the catalog now, ahead of the first sample that is asked for. */
+export async function readSamples(): Promise<void> {
+  await samples();
+}
+
+/**
+ * The name of the slide the catalog gives a text layout nobody wrote a sample for
+ * (`scripts/export-templates.mjs`): the app's own words, "Slide title" and no more.
+ */
+const UNWRITTEN = new Set(['כותרת השקף', 'Slide title']);
 
 /**
  * Whether a sample slide shows the template as a finished slide. Not one of a layout the
- * library's template does not keep, which has nothing to be drawn on; not one of the plain
- * layouts, whose sample is "Slide title" and no more; and not one whose picture is only
- * described, which would be drawn as an empty frame.
+ * library's template does not keep, which has nothing to be drawn on; not one that says only
+ * the app's own words, which a template is given where its sample has no text slide; and not
+ * one whose picture is only described, which would be drawn as an empty frame.
  */
 function finished(slide: SampleSlide, template: Template): boolean {
   const layout = template.layouts.find((candidate) => candidate.id === slide.layout);
-  if (!layout || PLAIN.has(layout.archetype)) return false;
+  if (!layout || UNWRITTEN.has(slide.name)) return false;
   return !Object.values(slide.content)
     .flat()
     .some((fill) => 'imagePrompt' in fill);

@@ -5,6 +5,9 @@
  */
 import {
   createElement,
+  refitAll,
+  rotatedBounds,
+  SLIDE_HEIGHT,
   SLIDE_WIDTH,
   type AssetMeta,
   type Background,
@@ -174,6 +177,92 @@ export function drawing(
   return createElement.svg({ id, frame, markup, colorOverrides: colors, ...rest });
 }
 
+/** How far above the top of the foot a decoration may start and still be part of it. */
+const FOOT_ZONE = 24;
+
+/** The share of the slide a decoration covers from which it is the slide's ground. */
+const GROUND = 0.9;
+
+/** An element with every group in it fitted to what it holds (ARR-01), as the Stage keeps them. */
+function fitted(element: Element): Element {
+  const placements = refitAll([element]);
+  if (placements.size === 0) return element;
+  const fit = (one: Element): Element => {
+    const placed: Element = { ...one, ...placements.get(one.id) };
+    return placed.type === 'group' ? { ...placed, children: placed.children.map(fit) } : placed;
+  };
+  return fit(element);
+}
+
+/**
+ * Whether a decoration of a layout frames every slide, and so stays the layout's: a master
+ * component (the logo, the slide's number, the deck's footer: SLD-04), what stands in the foot
+ * of the slide with them, and a ground that covers the slide, which a press anywhere on the
+ * slide would pick if the slide held it. A hidden decoration stays as it is.
+ */
+function framesTheSlide(layout: Layout): (decoration: Element) => boolean {
+  const master = (d: Element) =>
+    d.role === 'logo' || d.role === 'slideNumber' || d.role === 'footer';
+  const low = [
+    ...layout.decorations.filter(master).map((d) => d.frame.y),
+    ...layout.placeholders.filter((p) => p.role === 'footer').map((p) => p.frame.y),
+  ].filter((y) => y > SLIDE_HEIGHT / 2);
+  const foot = low.length > 0 ? Math.min(...low) - FOOT_ZONE : Infinity;
+  return (decoration) => {
+    if (master(decoration) || decoration.hidden) return true;
+    const box = rotatedBounds(decoration.frame, decoration.rotation);
+    if (box.y >= foot) return true;
+    const x = Math.max(0, Math.min(box.x + box.w, SLIDE_WIDTH) - Math.max(box.x, 0));
+    const y = Math.max(0, Math.min(box.y + box.h, SLIDE_HEIGHT) - Math.max(box.y, 0));
+    return x * y >= GROUND * SLIDE_WIDTH * SLIDE_HEIGHT;
+  };
+}
+
+/** Whether two boxes share some area. */
+const overlap = (a: Frame, b: Frame) =>
+  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * A template whose layouts give what makes up their slides as objects (`Layout.objects`): the
+ * slide holds them, and the user moves, restyles and deletes them like anything else. Every
+ * decoration that does not frame the slide (`framesTheSlide`) goes over, in its order, with its
+ * groups fitted to what they hold; the layouts drawn for the other direction are split the same
+ * way. Called before the sample is made, so the sample holds the objects.
+ *
+ * What a decoration that stays is drawn over stays under it: the slide's objects are drawn over
+ * every decoration, and the card the slide's number stands on would cover the number.
+ */
+export function withObjects(template: Template): Template {
+  const split = (layout: Layout): Layout => {
+    const frames = framesTheSlide(layout);
+    const drawn = layout.decorations.map(fitted);
+    const boxes = drawn.map((d) => rotatedBounds(d.frame, d.rotation));
+    const kept = new Set(drawn.filter(frames));
+    for (let grew = true; grew;) {
+      grew = false;
+      drawn.forEach((d, i) => {
+        if (kept.has(d)) return;
+        const under = drawn.some((k, j) => j > i && kept.has(k) && overlap(boxes[i]!, boxes[j]!));
+        if (under) {
+          kept.add(d);
+          grew = true;
+        }
+      });
+    }
+    const objects = [...(layout.objects ?? []), ...drawn.filter((d) => !kept.has(d))];
+    return {
+      ...layout,
+      decorations: drawn.filter((d) => kept.has(d)),
+      ...(objects.length > 0 ? { objects } : {}),
+    };
+  };
+  return {
+    ...template,
+    layouts: template.layouts.map(split),
+    ...(template.flipped ? { flipped: template.flipped.map(split) } : {}),
+  };
+}
+
 /**
  * Layouts for the other direction that the mirror alone does not get right (`Template.flipped`):
  * the mirror of each, with the background drawn by hand. Free CSS is the case: a glow in a
@@ -205,6 +294,27 @@ export function text(...lines: string[]): RichText {
 /** A bulleted list. */
 export function bullets(...lines: string[]): RichText {
   return { paragraphs: lines.map((line) => para(line, { list: { kind: 'bullet', level: 0 } })) };
+}
+
+/**
+ * A list whose lines each open with a few words in bold, as the text slide of a sample has it:
+ * `[opening, rest]` a line, bulleted or numbered, the marks in the colour `mark`, and `gap`
+ * pixels between one line and the next.
+ */
+export function points(
+  lines: readonly (readonly [opening: string, rest?: string])[],
+  look: { kind?: 'bullet' | 'number'; mark?: Color; gap?: number } = {},
+): RichText {
+  const { kind = 'bullet', mark, gap = 0 } = look;
+  return {
+    paragraphs: lines.map(([opening, rest], i) =>
+      para('', {
+        list: { kind, level: 0, ...(mark ? { color: mark } : {}) },
+        ...(gap > 0 && i < lines.length - 1 ? { spaceAfter: gap } : {}),
+        runs: [{ text: opening, marks: { weight: 700 } }, ...(rest ? [{ text: rest }] : [])],
+      }),
+    ),
+  };
 }
 
 const RTL_LETTER = /[\p{Script=Hebrew}\p{Script=Arabic}]/u;

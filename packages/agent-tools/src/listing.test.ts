@@ -131,14 +131,16 @@ describe('tool definitions for a transport adapter', () => {
 
   it('do not copy the element schema twice', () => {
     const add = listing.find((t) => t.name === 'element_add')!;
-    expect(JSON.stringify(add.inputSchema).length).toBeLessThan(30_000);
+    // Raised from 30 KB for the card of a magnet and the window of its photograph (ADR-092).
+    expect(JSON.stringify(add.inputSchema).length).toBeLessThan(31_000);
   });
 
   it('stay within a size the agent can afford', () => {
     const total = JSON.stringify(listing).length;
-    // About 94 KB (24k tokens) with every service. Raised from 90 KB for text_replace (ADR-072),
-    // and from 93 KB for a picture's outline mask and the artwork of its frame.
-    expect(total).toBeLessThan(95_000);
+    // About 96 KB (25k tokens) with every service. Raised from 90 KB for text_replace (ADR-072),
+    // from 93 KB for a picture's outline mask and the artwork of its frame, and from 95 KB for
+    // the card of a magnet and the window of its photograph (ADR-092).
+    expect(total).toBeLessThan(97_000);
   });
 
   it('give the image tools, and the drafting of a template, more time than a call gets by default', () => {

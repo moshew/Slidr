@@ -1,5 +1,5 @@
 import { TextStyleRef, type ColorToken, type FontPair, type TextStyle } from '@slidr/model';
-import { fontStack, ScaledSlide } from '@slidr/renderer';
+import { FittedSlide, fontStack } from '@slidr/renderer';
 import { deckFooter, footerLayouts, slideNumberHidden, slideNumberLayouts } from '@slidr/templates';
 import {
   Button,
@@ -39,12 +39,12 @@ import {
   Type,
   Wallpaper,
 } from '@slidr/ui/icons';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { FontField, useGestureTx } from '../controls';
 import { IMAGE_FILES, pickFiles } from '../objects/insert';
-import { ask, useAssetResolver, useDeck, useEditor, useElementSize } from '../shell';
+import { ask, useAssetResolver, useDeck, useEditor } from '../shell';
 import {
   logoAsset,
   logoHidden,
@@ -63,6 +63,7 @@ import { library } from './app';
 import { coverAsset, coverOf } from './covers';
 import type { LibraryEntry } from './library';
 import { templateName } from './names';
+import { readyPreview } from './previews';
 import { showTemplateSlides, templateSlides } from './TemplateSlides';
 import { BackgroundFields, ChartPalette, ShapeFields } from './ThemeLook';
 
@@ -85,8 +86,6 @@ const COLOR_TOKENS: readonly ColorToken[] = [
   'accent',
 ];
 const WEIGHTS = ['300', '400', '500', '600', '700', '800', '900'] as const;
-/** Space between the two columns of template cards, in px: `gap-3`. */
-const CARD_GAP = 12;
 /** The library: a heading over the cards of the templates. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -156,13 +155,11 @@ function Part({
 
 function TemplateCard({
   entry,
-  width,
   current,
   open,
   onToggle,
 }: {
   entry: LibraryEntry;
-  width: number;
   current: boolean;
   /** The slides that show the template are spread over the Stage. */
   open: boolean;
@@ -170,17 +167,35 @@ function TemplateCard({
 }) {
   const { t, i18n } = useTranslation('templates');
   const editor = useEditor();
-  const like = useDeck((s) => s.deck);
+  // The cover follows the deck's direction and language, not every edit of the deck: an edit
+  // does not draw the cards again.
+  const lang = useDeck((s) => s.deck.meta.lang);
+  const dir = useDeck((s) => s.deck.meta.dir);
   const { template, personal } = entry;
   const { theme } = template;
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const name = templateName(theme, i18n.language);
-  // The cover follows the deck's direction and language, not every edit of the deck.
   const cover = useMemo(
-    () => coverOf(library.forDeck(theme.id, like.meta.lang) ?? template, like),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [template, theme.id, like.meta.lang, like.meta.dir],
+    () => coverOf(library.forDeck(theme.id, lang) ?? template, { meta: { lang, dir } }),
+    [template, theme.id, lang, dir],
+  );
+  // The same picture while the cover stays: a card drawn again for its ring or its mark does not
+  // draw its slide again. It fits the card by itself, so it is drawn with the panel ahead of time;
+  // its photograph is decoded with it, so the card does not appear first without it.
+  const picture = useMemo(
+    () => (
+      <span aria-hidden className="block">
+        <FittedSlide
+          deck={cover.deck}
+          slide={cover.slide}
+          mode="thumbnail"
+          resolveAsset={coverAsset}
+          decoding="sync"
+        />
+      </span>
+    ),
+    [cover],
   );
 
   const remove = async () => {
@@ -231,6 +246,9 @@ function TemplateCard({
         aria-expanded={open}
         aria-label={t('panel.preview', { name })}
         data-testid="template-cover"
+        // The slides it opens are made while it is pointed at, so they are there when it is pressed.
+        onPointerEnter={() => void readyPreview(entry, editor.bus.deck)}
+        onFocus={() => void readyPreview(entry, editor.bus.deck)}
         onClick={onToggle}
         className={cx(
           'relative block cursor-default overflow-hidden rounded-inset shadow-slide transition-shadow hover:shadow-raised',
@@ -246,17 +264,7 @@ function TemplateCard({
             <Icon icon={Check} />
           </span>
         )}
-        {width > 0 && (
-          <span aria-hidden className="block">
-            <ScaledSlide
-              deck={cover.deck}
-              slide={cover.slide}
-              mode="thumbnail"
-              width={width}
-              resolveAsset={coverAsset}
-            />
-          </span>
-        )}
+        {picture}
       </button>
       {renaming ? (
         <Input
@@ -308,10 +316,6 @@ function Library() {
   const open = useStore(templateSlides, (s) => s.id);
   // The slides are opened from here: they do not stay when the panel is gone.
   useEffect(() => () => showTemplateSlides(null), []);
-  const grid = useRef<HTMLDivElement>(null);
-  const { width } = useElementSize(grid);
-  // Two cards to a row, each as wide as its picture.
-  const thumb = Math.max(0, Math.floor((width - CARD_GAP) / 2));
   const entries = useMemo(
     () => library.entries(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -319,14 +323,14 @@ function Library() {
   );
   return (
     <Section title={t('panel.library')}>
-      <div ref={grid} className="grid grid-cols-2 gap-3" data-testid="template-library">
+      {/* Two cards to a row, each as wide as its picture. */}
+      <div className="grid grid-cols-2 gap-3" data-testid="template-library">
         {entries.map((entry) => {
           const { id } = entry.template.theme;
           return (
             <TemplateCard
               key={id}
               entry={entry}
-              width={thumb}
               current={id === themeId}
               open={id === open}
               onToggle={() => showTemplateSlides(id === open ? null : id)}

@@ -61,7 +61,7 @@ test('a drawn slide follows a template it is switched to, and the check finds it
   await openCheck(page, { deck: drawnDeck() });
   expect(await ofColour(page)).toEqual([]);
 
-  await page.locator('[data-panel="templates"]').click();
+  await page.getByTestId('activity-bar').locator('[data-panel="templates"]').click();
   await expect(templates(page)).toBeVisible();
   await card(page, 'defus').getByTestId('template-cover').click();
   await page.getByTestId('template-slides-apply').click();

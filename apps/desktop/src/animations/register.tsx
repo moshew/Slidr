@@ -15,7 +15,6 @@ registerMessages('animations', { he, en });
 
 registerPanel({
   id: 'animations',
-  kind: 'tool',
   slot: 'tools',
   order: 1,
   title: 'panels.animations',
@@ -27,7 +26,6 @@ const TRANSITIONS_PANEL = 'transitions';
 
 registerPanel({
   id: TRANSITIONS_PANEL,
-  kind: 'tool',
   slot: 'tools',
   order: 1.5,
   title: 'panels.transitions',

@@ -15,15 +15,14 @@ import {
   stageMenuParts,
   type ContextToolDefinition,
   type StageMenuDefinition,
-  type ToolPanelDefinition,
+  type PanelDefinition,
 } from './registry';
 
 const Nothing = () => null;
 
-function panel(id: string, extra: Partial<ToolPanelDefinition> = {}): ToolPanelDefinition {
+function panel(id: string, extra: Partial<PanelDefinition> = {}): PanelDefinition {
   return {
     id,
-    kind: 'tool',
     title: id,
     icon: Settings,
     slot: 'tools',

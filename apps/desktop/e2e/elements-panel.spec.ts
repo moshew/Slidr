@@ -10,6 +10,7 @@ import {
   openApp,
   pageProblems,
   pngBytes,
+  row,
   selected,
   undo,
   undoDepth,
@@ -98,17 +99,19 @@ test('the first screen offers the collections by kind, each with a name', async 
 test('designs are shown by group, found by name, and add an editable slide', async ({ page }) => {
   const panel = await openElements(page);
   await panel.locator('[data-collection="designs"]').click();
-  // The first screen: the sixteen groups, each with its first four designs, as finished slides.
+  // The first screen: the nineteen groups, each with its first four designs, as finished slides.
   const designs = panel.locator('[data-design]');
-  await expect(panel.locator('[data-group]')).toHaveCount(16);
-  await expect(designs).toHaveCount(64);
+  await expect(panel.locator('[data-group]')).toHaveCount(19);
+  await expect(designs).toHaveCount(76);
   await expect(designs.first().locator('[data-slide-id]')).toBeVisible();
 
-  // One group in full, and back to all of them.
+  // One group in full, under its own name alone, and back to all of them.
   await panel.locator('[data-group="deck"]').getByRole('button', { name: 'Show all' }).click();
   await expect(panel.getByTestId('design-results').locator('[data-design]')).toHaveCount(32);
-  await panel.getByRole('button', { name: 'All groups' }).click();
-  await expect(designs).toHaveCount(64);
+  await expect(panel.getByRole('heading')).toHaveText(['Presentation slides']);
+  await panel.getByRole('button', { name: 'Back to Designs' }).click();
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveText('Designs');
+  await expect(designs).toHaveCount(76);
 
   // A search of the names, in every group at once.
   await panel.getByTestId('designs-query').fill('invitation');
@@ -144,6 +147,57 @@ test('designs are shown by group, found by name, and add an editable slide', asy
   }
   expect(new Set(pictures.map((p) => (p.type === 'image' ? p.assetId : ''))).size).toBe(2);
   expect(await undoDepth(page)).toBe(before + 2);
+});
+
+test('a level that is opened comes in from the end, the one gone back to from the start', async ({
+  page,
+}) => {
+  const panel = await openElements(page);
+  const levels = panel.locator('.elements-drill');
+  // The first screen is there with the panel: it does not move in.
+  await expect(levels.first()).not.toHaveAttribute('data-way');
+
+  await panel.locator('[data-collection="designs"]').click();
+  await expect(levels.first()).toHaveAttribute('data-way', 'deeper');
+  await panel.locator('[data-group="deck"]').getByRole('button', { name: 'Show all' }).click();
+  await expect(levels.last()).toHaveAttribute('data-way', 'deeper');
+
+  // What a search found, and the group again once it is cleared, take the place of the list
+  // where it is: no level was opened or left.
+  await panel.getByTestId('designs-query').fill('invitation');
+  await expect(levels).toHaveCount(1);
+  await panel.getByTestId('designs-query').fill('');
+  await expect(panel.getByTestId('design-results').locator('[data-design]')).toHaveCount(32);
+  await expect(levels.last()).not.toHaveAttribute('data-way');
+
+  await panel.getByRole('button', { name: 'Back to Designs' }).click();
+  await expect(levels.last()).toHaveAttribute('data-way', 'back');
+  await panel.getByRole('button', { name: 'Back to collections' }).click();
+  await expect(levels).toHaveCount(1);
+  await expect(levels.first()).toHaveAttribute('data-way', 'back');
+});
+
+test('a group opens at the top of the panel, and the groups are back where they were left', async ({
+  page,
+}) => {
+  const panel = await openElements(page);
+  const scroller = page.locator('[data-panel="elements"] [data-radix-scroll-area-viewport]');
+  const scrolled = () => scroller.evaluate((element) => Math.round(element.scrollTop));
+  await panel.locator('[data-collection="frames"]').click();
+  const composed = panel.locator('[data-group="composed"]');
+  await composed.scrollIntoViewIfNeeded();
+  const left = await scrolled();
+  expect(left).toBeGreaterThan(0);
+
+  await composed.getByRole('button', { name: 'Show all' }).click();
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveText('Compositions');
+  expect(await scrolled()).toBe(0);
+  await scroller.evaluate((element) => element.scrollBy(0, 200));
+
+  // The groups fill their rows again once they have measured them: the panel waits for that.
+  await panel.getByRole('button', { name: 'Back to Frames' }).click();
+  await expect(composed).toBeVisible();
+  await expect.poll(scrolled).toBe(left);
 });
 
 test('graphics are one collection, in four styles, and a click adds one', async ({ page }) => {
@@ -372,7 +426,8 @@ test('frames are one collection in groups, and a click adds an empty frame', asy
     await expect(groups.locator(`[data-group="${group}"] [data-frame]`).first()).toBeVisible();
   }
 
-  // A plain frame is a picture with no photograph yet, cut to its outline.
+  // A plain frame is a picture with no photograph yet, cut to its outline. Nothing in the
+  // collection asks to fill it.
   const before = await undoDepth(page);
   await featured.locator('[data-frame="frame:circle"]').click();
   const circle = await selected<ImageElement>(page);
@@ -384,6 +439,7 @@ test('frames are one collection in groups, and a click adds an empty frame', asy
   });
   expect(circle.assetId).toBeUndefined();
   await expect(onStage(page, circle.id)).toBeVisible();
+  await expect(panel.getByTestId('frames-hint')).toHaveCount(0);
   expect(await undoDepth(page)).toBe(before + 1);
 
   // A decorated frame carries its artwork, around an opening for the photograph. The frame
@@ -397,11 +453,21 @@ test('frames are one collection in groups, and a click adds an empty frame', asy
   ).toHaveCount(1);
   expect((await currentSlide(page)).elements).toHaveLength(2);
 
-  // One group in full, and back to all of them.
+  // One group in full, under its own name alone, and back to all of them.
   await groups.locator('[data-group="hebrew"]').getByRole('button', { name: 'Show all' }).click();
   await expect(panel.getByTestId('frame-results').locator('[data-frame]')).toHaveCount(27);
-  await panel.getByRole('button', { name: 'All groups' }).click();
+  await expect(panel.getByRole('heading')).toHaveText(['Hebrew letters']);
+  // A search is of every group, so the collection has its name back while it is shown.
+  await panel.getByTestId('frames-query').fill('heart');
+  await expect(panel.getByRole('heading')).toHaveText(['Frames']);
+  await panel.getByTestId('frames-query').fill('');
+  await expect(panel.getByRole('heading')).toHaveText(['Hebrew letters']);
+  await panel.getByRole('button', { name: 'Back to Frames' }).click();
   await expect(groups).toBeVisible();
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveText('Frames');
+  // From the collection, the same button goes to the first screen.
+  await panel.getByRole('button', { name: 'Back to collections' }).click();
+  await expect(panel.getByTestId('element-collections')).toBeVisible();
 });
 
 test('frames are found in Hebrew, and an empty frame takes a picture from the computer', async ({
@@ -426,11 +492,12 @@ test('frames are found in Hebrew, and an empty frame takes a picture from the co
   await results.locator('[data-frame="frame:phone"]').click();
   const phone = await selected<ImageElement>(page);
   expect(phone.assetId).toBeUndefined();
-  // The new frame is selected and empty: the collection offers to fill it.
-  await expect(panel.getByTestId('frames-hint')).toContainText('אין עדיין תמונה');
+  // The new frame is selected and empty. Nothing in the collection asks to fill it: the picture
+  // comes as it does for any empty picture, from row B or from the placeholder on the slide.
+  await expect(panel.getByTestId('frames-hint')).toHaveCount(0);
   const file = await pngBytes(page);
   const chooser = page.waitForEvent('filechooser');
-  await panel.getByTestId('frames-pick').click();
+  await row(page).getByRole('button', { name: 'החלפת תמונה' }).click();
   await (await chooser).setFiles({ name: 'view.png', mimeType: 'image/png', buffer: file });
   await expect.poll(async () => (await selected<ImageElement>(page)).assetId).toBeTruthy();
   const filled = await selected<ImageElement>(page);
@@ -486,63 +553,53 @@ test('a selected photograph takes the frame that is clicked, and keeps what it s
 });
 
 for (const lang of ['he', 'en'] as const) {
-  test(`magnets show a loading state until headings and pictures can appear together (${lang})`, async ({
-    page,
-  }) => {
+  test(`magnets are shown at once, from pictures made ahead (${lang})`, async ({ page }) => {
     const panel = await openElements(page, lang);
     await panel.locator('[data-collection="frames"]').click();
     const showAll = panel
       .locator('[data-group="magnets"]')
       .getByRole('button', { name: lang === 'he' ? 'הצגת הכול' : 'Show all' });
     await expect(showAll).toBeVisible();
-
-    // Hold decoding of the embedded artwork, even when it is already in the browser cache.
-    await page.evaluate(() => {
-      // The saved native method is explicitly called with each image as its receiver below.
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const decode = HTMLImageElement.prototype.decode;
-      const released = new Promise<void>((resolve) =>
-        window.addEventListener('release-magnet-pictures', () => resolve(), { once: true }),
-      );
-      HTMLImageElement.prototype.decode = async function () {
-        await decode.call(this);
-        if (this.src.startsWith('data:image/webp')) await released;
-      };
-    });
     await showAll.click();
-    const magnets = panel.getByTestId('frame-results');
-    const loading = panel.getByTestId('magnets-loading');
-    await expect(loading).toHaveText(lang === 'he' ? 'טוען מגנטים…' : 'Loading magnets…');
-    await expect(loading).toBeVisible();
-    await expect(magnets).toHaveAttribute('aria-busy', 'true');
-    await expect(magnets.locator('[data-slide-id]')).toHaveCount(100);
-    await expect(magnets.getByRole('heading')).toHaveCount(0);
-    await expect(magnets.getByRole('button')).toHaveCount(0);
-    await expect(magnets.locator('[data-magnet-set]')).toHaveCount(0);
-    await expect(magnets.locator('h4').first()).toBeHidden();
-    await expect(magnets.locator('[data-frame]').first()).toBeHidden();
-    await loading.screenshot({ path: `test-results/frames/magnets-loading-${lang}.png` });
 
-    await page.evaluate(() => window.dispatchEvent(new Event('release-magnet-pictures')));
-    await expect(loading).toHaveCount(0);
-    await expect(magnets).toHaveAttribute('aria-busy', 'false');
+    // No loading state: every set is there under its name, with a button for every magnet.
+    const magnets = panel.getByTestId('frame-results');
     await expect(magnets.getByRole('heading')).toHaveCount(8);
     await expect(magnets.getByRole('button')).toHaveCount(100);
-    await expect(magnets.locator('h4').first()).toBeVisible();
-    await expect(magnets.locator('[data-frame]').first().locator('img')).toBeVisible();
-    expect(
-      await magnets
-        .locator('img')
-        .evaluateAll((images) =>
+    await expect(panel.getByRole('status')).toHaveCount(0);
+    // A magnet is a picture of its design, with its words in the language of the deck. The
+    // renderer draws none of the hundred: the four that follow the deck's theme are far below.
+    const pictures = magnets.locator('[data-frame] img');
+    await expect(pictures).toHaveCount(96);
+    await expect(pictures.first()).toBeVisible();
+    await expect(pictures.first()).toHaveAttribute(
+      'src',
+      new RegExp(`/images/frames/${lang}/magnet-[\\w-]+\\.webp`),
+    );
+    await expect(magnets.locator('[data-slide-id]')).toHaveCount(0);
+    await expect
+      .poll(() =>
+        pictures.evaluateAll((images) =>
           images.every(
             (image) =>
               image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0,
           ),
         ),
-    ).toBe(true);
-    // The panel's actual pixels in both reading directions, after the single reveal.
+      )
+      .toBe(true);
+    // The panel's actual pixels in both reading directions.
     await page.getByTestId('tool-panel').screenshot({
       path: `test-results/frames/magnets-gallery-${lang}.png`,
+    });
+
+    // A magnet in the colours and the type of the deck has no picture: the renderer draws it,
+    // around a stand-in photograph, once it is near the visible part of the panel.
+    const company = magnets.locator('[data-frame="frame:magnet-company"]');
+    await company.scrollIntoViewIfNeeded();
+    await expect(company.locator('[data-element-type="image"] img')).toBeVisible();
+    await expect(company.locator('[data-element-type="text"]').first()).toBeVisible();
+    await page.getByTestId('tool-panel').screenshot({
+      path: `test-results/frames/magnets-gallery-work-${lang}.png`,
     });
   });
 }
@@ -558,7 +615,6 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
   await panel.locator('[data-group="magnets"]').getByRole('button', { name: 'Show all' }).click();
   // All hundred magnets appear under their set headings, with no extra filter row.
   const magnets = panel.getByTestId('frame-results');
-  await expect(magnets).toHaveAttribute('aria-busy', 'false');
   await expect(magnets.getByRole('heading')).toHaveText([
     'Family celebrations',
     'Birthdays',
@@ -573,12 +629,15 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
   await expect(magnets.locator('[data-group="magnets-family"] [data-frame]')).toHaveCount(13);
   await expect(magnets.locator('section')).toHaveCount(8);
   await expect(magnets.locator('[data-frame]')).toHaveCount(100);
-  // A magnet is drawn small as the slide draws it: by the renderer, around a stand-in photograph.
+  // A magnet is shown from a picture of its design, made ahead with its words in English.
   const summer = magnets.locator('[data-frame="frame:magnet-summer"]');
-  await expect(summer.locator('[data-smart-image-frame] img')).toBeVisible();
-  await expect(summer.locator('[data-element-type="text"]')).toHaveText('Our Team Day');
+  await expect(summer.locator('img')).toHaveAttribute(
+    'src',
+    /\/images\/frames\/en\/magnet-summer\.webp/,
+  );
 
-  // It lands as large as the safe margins allow: the picture, three stickers and the caption.
+  // It lands as large as the safe margins allow: the card, the picture on it, three stickers and
+  // the caption.
   const before = await undoDepth(page);
   await summer.click();
   const added = await selected<GroupElement>(page);
@@ -587,22 +646,65 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
     name: 'frame:magnet-summer',
     frame: { x: 316, y: 80, w: 1288, h: 920 },
   });
-  expect(added.children.map((child) => child.type)).toEqual(['image', 'svg', 'svg', 'svg', 'text']);
+  expect(added.children.map((child) => child.type)).toEqual([
+    'svg',
+    'image',
+    'svg',
+    'svg',
+    'svg',
+    'text',
+  ]);
   expect(await undoDepth(page)).toBe(before + 1);
-  const [picture, sun] = added.children as [ImageElement, SvgElement];
+  const [card, picture, sun] = added.children as [SvgElement, ImageElement, SvgElement];
   const caption = added.children.at(-1) as TextElement;
+  expect(card).toMatchObject({ name: 'frame:magnet-summer:card', frame: { x: 0, y: 0 } });
   await expect(onStage(page, sun.id).locator('[data-slidr-svg]')).toBeVisible();
 
-  // The group is selected, and the collection offers to fill the picture in it.
-  await expect(panel.getByTestId('frames-hint')).toContainText('no picture yet');
-  const chooser = page.waitForEvent('filechooser');
-  await panel.getByTestId('frames-pick').click();
-  await (
-    await chooser
-  ).setFiles({ name: 'view.png', mimeType: 'image/png', buffer: await pngBytes(page) });
-  const inGroup = async () => (await selected<GroupElement>(page)).children;
-  await expect.poll(async () => ((await inGroup())[0] as ImageElement).assetId).toBeTruthy();
-  await expect(onStage(page, picture.id).locator('[data-image-opening] img')).toBeVisible();
+  // The picture is empty, and nothing in the collection asks to fill it. Its placeholder is an
+  // object of its own on the card: a double click takes it, and it is moved and sized alone,
+  // its window with it. The card stays as it is.
+  expect(picture.assetId).toBeUndefined();
+  await expect(panel.getByTestId('frames-hint')).toHaveCount(0);
+  const placeholder = onStage(page, picture.id).locator('[data-slidr-placeholder="image"]');
+  await expect(placeholder).toBeVisible();
+  await page.evaluate(() => window.slidr!.selection.getState().clearSelection());
+  const spot = (await onStage(page, picture.id).boundingBox())!;
+  await page.mouse.dblclick(spot.x + spot.width * 0.5, spot.y + spot.height * 0.7);
+  const chosen = () =>
+    page.evaluate(() => window.slidr!.selection.getState().selectedElementIds.join(','));
+  await expect.poll(chosen).toBe(picture.id);
+  const inMagnet = async (id: string) =>
+    ((await currentSlide(page)).elements[0] as GroupElement).children.find((c) => c.id === id)!;
+  const corner = (await page.locator('[data-handle="se"]').first().boundingBox())!;
+  await dragBy(page, corner, -150);
+  const smaller = await inMagnet(picture.id);
+  expect(smaller.frame.w).toBeLessThan(picture.frame.w - 100);
+  expect(Math.abs(smaller.frame.x - picture.frame.x)).toBeLessThan(1);
+  await dragBy(page, (await onStage(page, picture.id).boundingBox())!, 120);
+  const shifted = await inMagnet(picture.id);
+  expect(shifted.frame.x).toBeGreaterThan(smaller.frame.x + 100);
+  expect(Math.abs(shifted.frame.w - smaller.frame.w)).toBeLessThan(1);
+  expect(await inMagnet(card.id)).toEqual(card);
+  expect(await chosen()).toBe(picture.id);
+  await undo(page);
+  await undo(page);
+  expect((await inMagnet(picture.id)).frame).toEqual(picture.frame);
+  // Once a photograph is in it, a click on another magnet changes the frame around it.
+  await page.evaluate(() => window.slidr!.selection.getState().clearSelection());
+  const photo = await importPicture(page, 'view.png');
+  const slideId = (await currentSlide(page)).id;
+  await page.evaluate(
+    ({ slideId, elementId, assetId }) =>
+      window.slidr!.bus.dispatch({
+        type: 'element.update',
+        slideId,
+        elementId,
+        patch: { assetId },
+      }),
+    { slideId, elementId: picture.id, assetId: photo },
+  );
+  await page.evaluate((id) => window.slidr!.selection.getState().selectElements([id]), added.id);
+  await expect(panel.getByTestId('frames-hint')).toBeVisible();
 
   // The caption is a text of the slide: a double click goes into it.
   await onStage(page, caption.id).dblclick();
@@ -628,11 +730,10 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
   const trip = await selected<GroupElement>(page);
   expect(trip).toMatchObject({ id: added.id, name: 'frame:magnet-trip', frame: added.frame });
   expect(words(trip)).toEqual(['Sales Kickoff']);
-  expect(trip.children[0]).toMatchObject({ id: picture.id, type: 'image' });
+  expect(trip.children[1]).toMatchObject({ id: picture.id, type: 'image', assetId: photo });
+  expect(trip.children[0]).toMatchObject({ type: 'svg', name: 'frame:magnet-trip:card' });
   expect(trip.children.some((child) => child.name?.startsWith('frame:magnet-summer:'))).toBe(false);
-  await expect(
-    onStage(page, trip.id).locator('[data-frame-artwork] [data-slidr-svg]'),
-  ).toBeVisible();
+  await expect(onStage(page, trip.children[0]!.id).locator('[data-slidr-svg]')).toBeVisible();
 
   // A magnet that says its words on a ribbon: the ribbon is a label, a group of its own in the
   // magnet, and the words typed are on it. No ribbon is drawn on the card.
@@ -670,7 +771,8 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
     ribbon.children.map((child) => child.frame),
   );
   const magnet = (await currentSlide(page)).elements[0] as GroupElement;
-  expect(magnet.children[0]).toMatchObject({ id: picture.id, frame: birthday.children[0]!.frame });
+  expect(magnet.children[0]).toEqual(birthday.children[0]);
+  expect(magnet.children[1]).toMatchObject({ id: picture.id, frame: birthday.children[1]!.frame });
   // A click on its words goes into them: they are typed over where they stand.
   await select(added.id);
   await onStage(page, ribbon.children[1]!.id).click();
@@ -692,7 +794,7 @@ test('a magnet of an event is a group: its picture, with stickers and a caption 
   });
 
   // A frame that is a picture alone takes the photograph out of the group.
-  await panel.getByRole('button', { name: 'All groups' }).click();
+  await panel.getByRole('button', { name: 'Back to Frames' }).click();
   await panel.locator('[data-group="featured"] [data-frame="frame:circle"]').click();
   const alone = await selected<ImageElement>(page);
   expect(alone).toMatchObject({ id: picture.id, type: 'image', mask: { kind: 'ellipse' } });
@@ -765,15 +867,23 @@ test('a frame that is made larger keeps its artwork, and the photograph has the 
   const magnets = panel.getByTestId('frame-results');
   await magnets.locator('[data-frame="frame:magnet-summer"]').click();
   const magnet = await selected<GroupElement>(page);
-  const [, sun] = magnet.children as [ImageElement, SvgElement];
+  const [, photo, sun] = magnet.children as [SvgElement, ImageElement, SvgElement];
   const caption = magnet.children.at(-1) as TextElement;
   await drag('e', 120, 0);
   const grown = await selected<GroupElement>(page);
-  const [picture, sunAfter] = grown.children as [ImageElement, SvgElement];
+  const [cardAfter, picture, sunAfter] = grown.children as [SvgElement, ImageElement, SvgElement];
   const captionAfter = grown.children.at(-1) as TextElement;
   expect(grown.frame.w).toBeGreaterThan(magnet.frame.w + 100);
   expect(grown.frame.h).toBe(magnet.frame.h);
-  expect(picture.frame).toMatchObject({ x: 0, y: 0, w: grown.frame.w, h: grown.frame.h });
+  // The card takes the whole of the group; the photograph on it grows with its opening, the
+  // card's margins around it as wide as they were.
+  expect(cardAfter.frame).toMatchObject({ x: 0, y: 0, w: grown.frame.w, h: grown.frame.h });
+  expect(picture.frame.x).toBeCloseTo(photo.frame.x, 1);
+  expect(picture.frame.h).toBeCloseTo(photo.frame.h, 1);
+  expect(grown.frame.w - picture.frame.x - picture.frame.w).toBeCloseTo(
+    magnet.frame.w - photo.frame.x - photo.frame.w,
+    1,
+  );
   const fromEnd = (group: GroupElement, child: { frame: { x: number; w: number } }) =>
     group.frame.w - child.frame.x - child.frame.w;
   expect([sunAfter.frame.w, sunAfter.frame.h]).toEqual([sun.frame.w, sun.frame.h]);

@@ -49,7 +49,7 @@ const counted = (t: TFunction<'objects'>, key: string, n: number): string =>
  * A region of a slide, drawn by the renderer itself and scaled to the width it is given: the
  * same DOM the Stage draws, so the preview is the element and not a picture of it.
  */
-function Region({
+export function Region({
   deck,
   slideId,
   region,

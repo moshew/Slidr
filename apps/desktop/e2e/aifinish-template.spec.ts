@@ -64,8 +64,8 @@ test('a template from a description and a logo is previewed, saved, and a new de
   expect(during.layouts).toEqual(before.layouts);
   expect(during.slides).toEqual(before.slides);
   expect(Object.keys(during.assets)).toEqual([LOGO.assetId]);
-  await page.locator('[data-panel="templates"]').click();
-  await expect(page.locator('[data-template^="personal_"]')).toHaveCount(0);
+  await page.getByTestId('activity-bar').locator('[data-panel="templates"]').click();
+  await expect(page.getByTestId('template-library').locator('[data-template^="personal_"]')).toHaveCount(0);
   await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
   await tab(page, 'chat');
 
@@ -76,8 +76,8 @@ test('a template from a description and a logo is previewed, saved, and a new de
   const id = (await draft(page).getAttribute('data-saved'))!;
 
   // It is in the library, under its name, with a cover.
-  await page.locator('[data-panel="templates"]').click();
-  const card = page.locator(`[data-template="${id}"]`);
+  await page.getByTestId('activity-bar').locator('[data-panel="templates"]').click();
+  const card = page.getByTestId('template-library').locator(`[data-template="${id}"]`);
   await expect(card).toContainText('חימר');
   await expect(card).toContainText('ברירת מחדל');
 

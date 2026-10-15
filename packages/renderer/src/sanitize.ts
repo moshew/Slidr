@@ -4,7 +4,7 @@
  * runs in a sandboxed frame instead.
  *
  * The boundary: markup of a deck is drawn and never run, whoever wrote it (the agent, a deck
- * somebody else made, a paste, the code panel). This removes what can run code or start a
+ * somebody else made, a paste, the code dialog). This removes what can run code or start a
  * document of its own, and keeps everything that only draws, so that "any HTML renders as it
  * is" (SPEC 5.9) holds for everything that is not a script. An `svg` element is held to more
  * (`picture.ts`).

@@ -86,19 +86,26 @@ export async function copyAssets(
   return stored;
 }
 
+/** What the user chose for the deck as a template is applied, in place of what the deck had. */
+export interface SwitchChoices {
+  /** Whether the slides show their number. Unset keeps what the deck had. */
+  slideNumber?: boolean;
+}
+
 /** Switches the deck to a template of the library (THM-04). False when there is no such template. */
 export async function applyLibraryTemplate(
   editor: Editor,
   library: TemplateLibrary,
   id: string,
   label?: string,
+  choices: SwitchChoices = {},
 ): Promise<boolean> {
   const template = library.forDeck(id, editor.bus.deck.meta.lang);
   if (!template) return false;
   // The files before the commands that name them, so the deck never points at a missing file.
   const layouts = layoutsFor(template, editor.bus.deck.meta.dir);
   await copyAssets(editor, library, template, layoutAssets(template, layouts));
-  const commands = switchCommands(editor.bus.deck, template);
+  const commands = switchCommands(editor.bus.deck, template, choices);
   // With a transaction, so the files of a font of the user's that the template names join this
   // step (see `setThemeFont`).
   if (commands.length > 0) editor.bus.batch(commands, { txId: newId('tx'), label });
@@ -109,10 +116,15 @@ export async function applyLibraryTemplate(
  * The commands that switch a deck to a template and keep what the user set on every slide: the
  * footer they wrote, a slide number they hid, and their logo (SLD-04). A switch replaces the
  * layouts, and the master components live in the layouts, so they are set again on the new
- * ones. A deck that set none of them gets the template as it was drawn.
+ * ones. A deck that set none of them gets the template as it was drawn. `choices` overrides
+ * what the deck had: a number shown or hidden on the new template.
  */
-export function switchCommands(deck: Deck, template: Template): Command[] {
-  return switchTo(deck, template).commands;
+export function switchCommands(
+  deck: Deck,
+  template: Template,
+  choices: SwitchChoices = {},
+): Command[] {
+  return switchTo(deck, template, choices).commands;
 }
 
 /**
@@ -120,7 +132,11 @@ export function switchCommands(deck: Deck, template: Template): Command[] {
  * on a bus of their own, so that deck is at hand: a preview of the switch (the deck tool's
  * gallery of looks) draws it, and does not apply the commands a second time.
  */
-export function switchTo(deck: Deck, template: Template): { commands: Command[]; deck: Deck } {
+export function switchTo(
+  deck: Deck,
+  template: Template,
+  choices: SwitchChoices = {},
+): { commands: Command[]; deck: Deck } {
   const apply = applyTemplate(deck, template);
   if (apply.length === 0) return { commands: apply, deck };
   // Each step is worked out on the deck the one before it leaves.
@@ -133,8 +149,10 @@ export function switchTo(deck: Deck, template: Template): { commands: Command[];
     commands.push(...step);
   };
   const logo = logoAsset(deck);
+  const master = masterState(deck);
+  if (choices.slideNumber !== undefined) master.numberHidden = !choices.slideNumber;
   then(() => apply);
-  then((after) => restoreMaster(after, masterState(deck)));
+  then((after) => restoreMaster(after, master));
   if (logo) then((after) => onLogos(after, (mark) => logoPicture(mark, logo)));
   if (logoHidden(deck)) then((after) => onLogos(after, (mark) => ({ ...mark, hidden: true })));
   return { commands, deck: scratch.deck };

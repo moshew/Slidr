@@ -20,9 +20,9 @@ import {
 } from './designs';
 
 describe('Elements designs', () => {
-  it('ships 260 valid slides with real, editable copy in both languages', () => {
-    expect(DESIGN_IDS).toHaveLength(260);
-    expect(new Set(DESIGN_IDS).size).toBe(260);
+  it('ships 296 valid slides with real, editable copy in both languages', () => {
+    expect(DESIGN_IDS).toHaveLength(296);
+    expect(new Set(DESIGN_IDS).size).toBe(296);
     for (const lang of ['he', 'en']) {
       for (const id of DESIGN_IDS) {
         const slide = designSlide(id, lang, 'test-image', 'test-backdrop');
@@ -51,9 +51,10 @@ describe('Elements designs', () => {
   });
 
   it('files every design under one group, and every group has designs', () => {
-    expect(DESIGN_GROUPS).toHaveLength(16);
+    expect(DESIGN_GROUPS).toHaveLength(19);
     expect(DESIGN_GROUPS.flatMap(designsOf).sort()).toEqual([...DESIGN_IDS].sort());
-    for (const group of DESIGN_GROUPS) expect(designsOf(group).length).toBeGreaterThanOrEqual(9);
+    // The gallery opens on the first four designs of each group: no group has fewer.
+    for (const group of DESIGN_GROUPS) expect(designsOf(group).length).toBeGreaterThanOrEqual(4);
   });
 
   it('knows the size of every bundled picture, so the gallery can draw a cropped one', () => {

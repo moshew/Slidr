@@ -14,7 +14,13 @@ import type {
   TextElement,
   VideoElement,
 } from '@slidr/model';
-import { frameLayout, imageOpening, placedInFrame } from '@slidr/model';
+import {
+  artworkLayout,
+  frameLayout,
+  imageOpening,
+  placedInFrame,
+  windowLayout,
+} from '@slidr/model';
 import {
   memo,
   useEffect,
@@ -159,6 +165,47 @@ export function imagePlacement(
   };
 }
 
+/**
+ * The window of a card as the mask of the photograph that shows through it: the card, laid out
+ * as large as it is around the photograph (`windowLayout`) and placed so that its opening is the
+ * photograph's box, taken out of the whole. The photograph shows wherever the card does not
+ * paint, as it did with the card lying over it.
+ */
+function windowMask(
+  mask: Extract<ImageElement['mask'], { kind: 'window' }>,
+  size: { w: number; h: number },
+): CSSProperties {
+  const { scale, box, at } = windowLayout(mask, size);
+  // A picture of its own does not see the slide's theme. Only where the card paints counts, not
+  // in what colour, so every colour of the theme it takes is one that paints.
+  const themed = new Set(Array.from(mask.markup.matchAll(/var\(\s*(--[\w-]+)/g), (m) => m[1]));
+  const theme = themed.size
+    ? `<style>:root{${[...themed].map((name) => `${name}:#000`).join(';')}}</style>`
+    : '';
+  const sized = mask.markup.replace(
+    /^\s*<svg\b([^>]*)>/,
+    `<svg width="${num(box.w, 3)}" height="${num(box.h, 3)}"$1>${theme}`,
+  );
+  const card = `url("data:image/svg+xml,${encodeURIComponent(sized)}")`;
+  const image = `linear-gradient(#000, #000), ${card}`;
+  const place = {
+    size: `100% 100%, ${num(box.w * scale, 3)}px ${num(box.h * scale, 3)}px`,
+    position: `0 0, ${num(-at.x * scale, 3)}px ${num(-at.y * scale, 3)}px`,
+  };
+  return {
+    maskImage: image,
+    maskSize: place.size,
+    maskPosition: place.position,
+    maskRepeat: 'no-repeat',
+    maskComposite: 'exclude',
+    WebkitMaskImage: image,
+    WebkitMaskSize: place.size,
+    WebkitMaskPosition: place.position,
+    WebkitMaskRepeat: 'no-repeat',
+    WebkitMaskComposite: 'xor',
+  };
+}
+
 /** The clip of an image's frame: its mask, or else the element's corner radius (IMG-05, IMG-08). */
 function imageClip(e: ImageElement): {
   style: CSSProperties;
@@ -180,6 +227,7 @@ function imageClip(e: ImageElement): {
     };
     return { style: { clipPath: `path('${path.d}')` }, path };
   }
+  if (mask?.kind === 'window') return { style: windowMask(mask, e.frame) };
   const r = e.effects?.radius;
   return r ? { style: { borderRadius: r }, radius: r } : { style: {} };
 }
@@ -489,7 +537,7 @@ function PictureView({ element: e }: { element: ImageElement }) {
         src={url}
         alt={e.alt ?? ''}
         draggable={false}
-        decoding="async"
+        decoding={ctx.decoding ?? 'async'}
         style={
           placement
             ? { ...imgBase, ...placement }
@@ -865,19 +913,50 @@ function SvgPicture({ e, style }: { e: SvgElement; style: CSSProperties }) {
     stretch,
     frame: { w, h },
   } = e;
+  // Cleaned and sized as the slide is drawn, so a slide drawn ahead and hidden (`Activity`) has
+  // its pictures ready before it is shown, when only this effect runs.
+  const picture = useMemo(() => {
+    const prepared = prepareSvg(markup ?? '', colorOverrides);
+    return stretch ? stretchSvg(prepared, stretch, { w, h }) : prepared;
+  }, [markup, colorOverrides, stretch, w, h]);
+  /** The picture the shadow root holds. */
+  const drawn = useRef<DocumentFragment | null>(null);
   useLayoutEffect(() => {
     const el = host.current;
     if (!el) return;
+    // A slide shown again after it was hidden runs this again, with the picture still in place.
+    if (el.shadowRoot && drawn.current === picture) return;
     const root = el.shadowRoot ?? el.attachShadow({ mode: 'open', serializable: true });
-    const picture = prepareSvg(markup ?? '', colorOverrides);
-    root.replaceChildren(stretch ? stretchSvg(picture, stretch, { w, h }) : picture);
-  }, [markup, colorOverrides, stretch, w, h]);
+    root.replaceChildren(picture);
+    drawn.current = picture;
+  }, [picture]);
   return <div ref={host} data-slidr-svg="" style={style} />;
 }
 
 function SvgView({ element: e }: { element: SvgElement }) {
   const ctx = useRenderContext();
   const style: CSSProperties = { ...FILL_PARENT, transform: flipTransform(e) };
+  if (e.markup && e.layout) {
+    // Laid out in a box of its own units, and drawn at its scale (`artworkLayout`), as the
+    // artwork of a frame is.
+    const { scale, box } = artworkLayout(e.layout, e.frame);
+    return (
+      <div style={style}>
+        <SvgPicture
+          e={e}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: num(box.w, 3),
+            height: num(box.h, 3),
+            transform: `scale(${num(scale, 6)})`,
+            transformOrigin: '0 0',
+          }}
+        />
+      </div>
+    );
+  }
   if (e.markup) return <SvgPicture e={e} style={style} />;
   // An SVG asset is drawn as an image. Its colours cannot be overridden that way (SHP-06, WG5-T10).
   const url = e.assetId ? ctx.assetUrl(e.assetId) : undefined;

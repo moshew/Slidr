@@ -53,7 +53,7 @@ function pristine(editor: Editor): boolean {
 
 /** Puts the caret in the AI chat, once the editor is on the screen. */
 function focusChat(): void {
-  openPanel(PanelId.ai, 'chat');
+  openPanel(PanelId.ai);
   requestAnimationFrame(() =>
     requestAnimationFrame(() =>
       document.querySelector<HTMLElement>('[data-testid="chat-input"]')?.focus(),

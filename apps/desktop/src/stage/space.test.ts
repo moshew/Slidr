@@ -708,6 +708,63 @@ describe('resizeGroup', () => {
       expect(out.get('photo')).toEqual({ frame: { x: 0, y: 0, w: 800, h: 450 } });
       expect(out.get('sticker')).toEqual({ frame: { x: 680, y: 15, w: 100, h: 75 } });
     });
+
+    describe('with its card an element of its own, under the photograph (ADR-092)', () => {
+      const window = {
+        kind: 'window' as const,
+        markup: '<svg/>',
+        viewBox: { w: 400, h: 300 },
+        opening: { x: 20, y: 20, w: 360, h: 200 },
+        scale: 1,
+      };
+      const carded = (photo = { x: 20, y: 20, w: 360, h: 200 }) => {
+        const group = magnet();
+        return {
+          ...group,
+          children: [
+            createElement.svg({
+              id: 'card',
+              name: 'frame:test:card',
+              frame: { x: 0, y: 0, w: 400, h: 300 },
+              markup: '<svg/>',
+              layout: { viewBox: { w: 400, h: 300 }, scale: 1 },
+            }),
+            createElement.image({ id: 'photo', frame: photo, mask: window }),
+            ...group.children.slice(1),
+          ],
+        };
+      };
+
+      it('gives the stretch to the card, and the photograph grows with its opening', () => {
+        const out = resizeGroup(carded(), { x: 0, y: 0, w: 800, h: 450 });
+        expect(out.get('card')).toEqual({ frame: { x: 0, y: 0, w: 800, h: 450 } });
+        // The margins of the card around the photograph are as wide as they were.
+        expect(out.get('photo')).toEqual({ frame: { x: 20, y: 20, w: 760, h: 350 } });
+        expect(out.get('sticker')).toEqual({ frame: { x: 740, y: 10, w: 50, h: 50 } });
+        expect(out.get('caption')).toEqual({ frame: { x: 40, y: 390, w: 720, h: 40 } });
+        // Its window is laid out around it again: the photograph keeps the mask it has.
+        expect(out.get('photo')).not.toHaveProperty('mask');
+      });
+
+      it('keeps a photograph that was moved and made smaller at its place along the opening', () => {
+        // Its middle a sixth of the way along the opening, and a fifth of the way down: so it
+        // is after the opening grows, and as large as it was.
+        const out = resizeGroup(carded({ x: 40, y: 30, w: 80, h: 60 }), {
+          x: 0,
+          y: 0,
+          w: 800,
+          h: 450,
+        });
+        expect(out.get('photo')).toEqual({ frame: { x: 106.667, y: 60, w: 80, h: 60 } });
+      });
+
+      it('makes everything smaller together where the card itself is drawn smaller', () => {
+        const out = resizeGroup(carded(), { x: 0, y: 0, w: 200, h: 150 });
+        expect(out.get('card')).toEqual({ frame: { x: 0, y: 0, w: 200, h: 150 } });
+        expect(out.get('photo')).toEqual({ frame: { x: 10, y: 10, w: 180, h: 100 } });
+        expect(out.get('sticker')).toEqual({ frame: { x: 170, y: 5, w: 25, h: 25 } });
+      });
+    });
   });
 
   it('resizes several elements together, around the box they share', () => {

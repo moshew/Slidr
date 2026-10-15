@@ -16,4 +16,15 @@ The built-in library gained the webinar-oriented `shidur` design and the AI-intr
 
 Template authors can draw special simple layouts explicitly; otherwise the fallback must use the template's own design. Tests in `packages/templates/src/standardLayouts.test.ts` and `master.test.ts` cover the derived layouts, and desktop template tests cover selection and previews. This record does not imply a new test run.
 
+## Addition: three templates by subject (2026-10-13)
+
+The user asked for a template for each of three subjects. The library grows from eighteen to twenty-one.
+
+- `kod` (hi-tech): dark graphite and electric lime in the language of a code editor: a tab bar and window dots, a tick gutter, braces around a section number, a diff for the comparison, a commit graph for the timeline and a commit log for the process, a terminal for the closing. Noto Sans Hebrew with Space Grotesk. A monospaced Latin heading face was tried and dropped: the spaces and commas of a heading come from the Latin face, and in a Hebrew line they stood a full cell wide.
+- `luach` (product management): a working board with sticky notes in three tints, pins, tape and marker strokes; lanes for the roadmap, a dotted route for the release process. Assistant with DM Sans.
+- `magen` (defence-tech): dark olive-slate and signal amber: a range-ring scope with a sweep, viewfinder brackets, hexagonal cells, segmented status bars and contour lines. Noto Sans Hebrew with Montserrat. Its sample is about detection and protection, with an invented company; nothing in it aims at a person.
+- Each draws fourteen layouts and a sample deck of fifteen slides in Hebrew and in English, with six generated pictures (three calls of Codex CLI each, nine in all). None seats a picture on its opening slide, so none has a cover photograph in `covers.ts`.
+- **Where a template is written now.** The catalog of the media library is what the app reads, and until now nothing wrote a template into it. `apps/desktop/scripts/export-templates.mjs` does: it loads `Slidr-media/archive/templates-source/<id>.ts` (the three stand beside the sources of the eighteen), adds the standard text layout and its sample, holds the result to the role contract, and writes the catalog, `templates/index.json` and `templates/<id>/template.json`.
+- **How it was built and checked.** Three agents drew the three at the same time, each against the acceptance tests of a draft (`acceptDraft`): the contract, every layout in both languages with no error and no L07 or L16, every background variant, and its sample deck moved to each of the eighteen templates and theirs to it. Each builder looked at its slides at full size; the lead looked at both contact sheets of each and at single slides. This record does not say what the tests of the whole library reported afterwards.
+
 See also [ADR-039](ADR-039-reference-decks-and-templates.md), [ADR-040](ADR-040-templates-in-the-app.md), and [ADR-063](ADR-063-design-check-and-templates.md).

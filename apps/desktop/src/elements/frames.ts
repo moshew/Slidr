@@ -2,6 +2,7 @@ import {
   createDeck,
   createElement,
   createSlide,
+  frameLayout,
   locateElement,
   normalizeAngle,
   plainText,
@@ -20,6 +21,7 @@ import {
   type Shadow,
   type Slide,
   type SmartImageFrame,
+  type SvgElement,
   type SvgStretch,
   type TextElement,
   type Theme,
@@ -484,9 +486,79 @@ export function frameSizeOn(frame: PhotoFrame, slide: Size): Size {
   return { w: Math.round(size.w * scale), h: Math.round(size.h * scale) };
 }
 
+/*
+ * A magnet's card and its photograph are two elements (ADR-092). The card's drawing has a window
+ * for the photograph, cut by its mask `border`: the card in white, the window in black
+ * (`frames-magnets/kit.mjs`). On a slide the card lies under the photograph with its window
+ * filled, so the photograph can be moved and sized on it like any picture. The photograph is cut
+ * by the card as it was drawn, window and all: it shows wherever that card does not paint, as it
+ * did when the card lay over it, and the window goes where the photograph goes.
+ */
+
+/** The mask of a magnet's card that cuts its window. */
+const BORDER = /<mask id="border"[^>]*>[\s\S]*?<\/mask>/;
+
+const decimal = (value: number) => String(Math.round(value * 100) / 100);
+
+/**
+ * The card of a magnet as it lies under its photograph: its drawing with the window filled. The
+ * filling is the opening, tied to the box as the opening is, so it fills the window at any size.
+ */
+function cardDrawing({ drawing, opening: o }: FrameArt, size: Size): string {
+  const filled =
+    `<rect fill="white" style="x:${decimal(o.x)}px;y:${decimal(o.y)}px;` +
+    `width:calc(100% - ${decimal(size.w - o.w)}px);height:calc(100% - ${decimal(size.h - o.h)}px)"/>`;
+  return drawing.replace(BORDER, (mask) => mask.replace(/<\/mask>$/, `${filled}</mask>`));
+}
+
+/**
+ * A magnet's card and its photograph, in the given box: the card under the photograph, drawn as
+ * large as the box is to the frame's own and keeping that size, and the photograph in its
+ * opening, cut by its window. `undefined` for artwork that has no window of a card.
+ */
+function magnetParts(frame: PhotoFrame, box: Frame): [SvgElement, ImageElement] | undefined {
+  const { art, size } = frame;
+  if (!art || !BORDER.test(art.drawing)) return undefined;
+  const scale = scaleIn(frame, box);
+  const laid = frameLayout({ viewBox: size, opening: art.opening, scale, decorations: [] }, box);
+  const o = laid.opening;
+  const card = createElement.svg({
+    frame: { ...box },
+    name: `${frame.id}:card`,
+    markup: cardDrawing(art, size),
+    layout: { viewBox: { ...size }, scale },
+  });
+  const photo = createElement.image({
+    frame: {
+      x: box.x + o.x * laid.scale.x,
+      y: box.y + o.y * laid.scale.y,
+      w: o.w * laid.scale.x,
+      h: o.h * laid.scale.y,
+    },
+    name: frame.id,
+    mask: {
+      kind: 'window',
+      markup: art.drawing,
+      viewBox: { ...size },
+      opening: { ...art.opening },
+      scale,
+    },
+  });
+  return [card, photo];
+}
+
+/** The card of a magnet's group (`magnetParts`), when it has one. */
+export function magnetCard(group: GroupElement): SvgElement | undefined {
+  return group.children.find(
+    (child): child is SvgElement =>
+      child.type === 'svg' && child.layout !== undefined && child.name === `${group.name}:card`,
+  );
+}
+
 /**
  * A frame as it goes onto a slide, in the given box: the picture alone, or with what the frame
- * puts beside it, as a group that is moved and sized as one.
+ * puts beside it, as a group that is moved and sized as one. In a magnet the card and the
+ * photograph are elements of their own.
  */
 export function framedElement(
   frame: PhotoFrame,
@@ -495,11 +567,16 @@ export function framedElement(
 ): ImageElement | GroupElement {
   if (!frame.extras?.length) return frameElement(frame, box);
   const { under, over } = frameExtras(frame, box, lang);
+  const inner = { x: 0, y: 0, w: box.w, h: box.h };
   return createElement.group({
     frame: box,
     name: frame.id,
     ...(frame.shadow ? { effects: { shadow: frame.shadow } } : {}),
-    children: [...under, frameElement(frame, { x: 0, y: 0, w: box.w, h: box.h }, false), ...over],
+    children: [
+      ...under,
+      ...(magnetParts(frame, inner) ?? [frameElement(frame, inner, false)]),
+      ...over,
+    ],
   });
 }
 
@@ -714,14 +791,26 @@ export function reframe(
   const grouped = Boolean(frame.extras?.length || own?.length);
   const effects = framedEffects(picture, frame.shadow, grouped);
   const { mask: _mask, smartFrame: _smartFrame, effects: _effects, ...kept } = picture;
-  const inside: ImageElement = {
-    ...kept,
-    frame: { x: 0, y: 0, w: box.w, h: box.h },
-    fit: 'cover',
-    ...(mask ? { mask } : {}),
-    ...(smartFrame ? { smartFrame } : {}),
-    ...(effects ? { effects } : {}),
-  };
+  // A magnet has a card of its own under the photograph, which takes the card's window.
+  const parts = frame.extras?.length
+    ? magnetParts(frame, { x: 0, y: 0, w: box.w, h: box.h })
+    : undefined;
+  const inside: ImageElement = parts
+    ? {
+        ...kept,
+        frame: parts[1].frame,
+        fit: 'cover',
+        mask: parts[1].mask!,
+        ...(effects ? { effects } : {}),
+      }
+    : {
+        ...kept,
+        frame: { x: 0, y: 0, w: box.w, h: box.h },
+        fit: 'cover',
+        ...(mask ? { mask } : {}),
+        ...(smartFrame ? { smartFrame } : {}),
+        ...(effects ? { effects } : {}),
+      };
   const earlier = host && all.find((one) => one.id === host.name);
   const came = linesOf(earlier?.extras).map((line) => [line.he.text, line.en.text]);
   const words = (host ? captionsOf(host) : []).map((caption, i) => {
@@ -760,6 +849,7 @@ export function reframe(
     name: frame.id,
     children: [
       ...under,
+      ...(parts ? [parts[0]] : []),
       { ...inside, rotation: host ? picture.rotation : 0 },
       ...(own ?? []),
       ...over,
@@ -812,6 +902,65 @@ export function framePreview(
     assets: { [SAMPLE_PHOTO.id]: SAMPLE_PHOTO },
   };
   return { deck, slide };
+}
+
+/**
+ * Whether a frame is drawn in the colours or the type of the deck: a part of its artwork or of
+ * what stands beside its picture in a colour of the theme, or a line of words in the deck's own
+ * font. Such a frame looks different from deck to deck.
+ */
+export function followsTheme(frame: PhotoFrame): boolean {
+  const themed = (markup: string) => markup.includes('var(--');
+  return (
+    themed(frame.art?.drawing ?? '') ||
+    (frame.extras ?? []).some((extra) => extra.kind !== 'caption' && themed(extra.markup)) ||
+    linesOf(frame.extras).some((line) => !('value' in line.color) || !line.he.font || !line.en.font)
+  );
+}
+
+/**
+ * Whether the panel shows a frame from a small picture that was made ahead
+ * (`scripts/generate-frames-thumbs.mjs`), not from a drawing of the renderer: a whole design,
+ * with its stickers and its words, that looks the same in every deck. A hundred of those drawn
+ * live are tens of thousands of nodes, and megabytes of pictures to clean, each time they are
+ * shown.
+ */
+export const picturedAhead = (frame: PhotoFrame): boolean =>
+  Boolean(frame.extras?.length) && !followsTheme(frame);
+
+/** Raised when frames are drawn another way: the pictures made ahead are then of none of them. */
+const THUMB_DRAWING = 1;
+
+const revs = new WeakMap<PhotoFrame, string>();
+
+/**
+ * A short word for what a frame draws: its box, its cut, its artwork, what stands beside its
+ * picture and its shadow. A picture that was made of a frame ahead carries the word, so the
+ * panel knows it is of the frame as the catalogue has it now.
+ */
+export function frameRev(frame: PhotoFrame): string {
+  let rev = revs.get(frame);
+  if (rev === undefined) {
+    const { size, mask, art, extras, shadow } = frame;
+    const drawn = [THUMB_DRAWING, size, mask ?? null, art ?? null, extras ?? null, shadow ?? null];
+    rev = hashed(JSON.stringify(drawn));
+    revs.set(frame, rev);
+  }
+  return rev;
+}
+
+/** A text as a word of about ten letters: the same for the same text, another for another. */
+function hashed(text: string): string {
+  let a = 0xdeadbeef;
+  let b = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    a = Math.imul(a ^ code, 2654435761);
+    b = Math.imul(b ^ code, 1597334677);
+  }
+  a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909);
+  b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909);
+  return (b >>> 0).toString(36) + (a >>> 0).toString(36);
 }
 
 /** The outline a frame cuts its photograph to, as path data in the frame's own box. */

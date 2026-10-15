@@ -121,7 +121,7 @@ describe('startImport', () => {
     defaultTemplate(false);
     const editor = createEditor({ lang: 'he', storage: null });
     setWelcome(true);
-    useShell.setState({ activePanel: 'templates', panelOpen: false, aiTab: 'actions' });
+    useShell.setState({ activePanel: PanelId.actions, panelOpen: false });
     // While the file loads the chat says so, and no request is in it yet.
     let loaded!: (file: string) => void;
     session.openImport.mockImplementation(() => new Promise<string>((done) => (loaded = done)));
@@ -132,7 +132,6 @@ describe('startImport', () => {
       welcome: false,
       activePanel: PanelId.ai,
       panelOpen: true,
-      aiTab: 'chat',
     });
     expect(shown).toEqual([]);
     expect(sent).toEqual([]);

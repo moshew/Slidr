@@ -88,11 +88,16 @@ export function withStandardLayouts(template: Template): Template {
     const under = foot !== undefined && y >= foot - FOOT_ZONE;
     return whole || over || under;
   };
-  const drawn = (archetype: 'title' | 'text'): Pick<Layout, 'background' | 'decorations'> => ({
+  const drawn = (
+    archetype: 'title' | 'text',
+  ): Pick<Layout, 'background' | 'decorations' | 'objects'> => ({
     ...(source?.background ? { background: source.background } : {}),
     decorations: (source?.decorations ?? [])
       .filter(around)
       .map((decoration) => renamed(decoration, archetype)),
+    ...(source?.objects
+      ? { objects: source.objects.filter(around).map((object) => renamed(object, archetype)) }
+      : {}),
   });
   const title = (): Placeholder => ({
     id: 'p_title',

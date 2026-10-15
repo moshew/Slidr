@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import { Ai } from '@slidr/ui/icons';
+import { Ai, Zap } from '@slidr/ui/icons';
 import type { ChatThread } from '../agent/agentService';
 import { registerMessages } from '../i18n';
 import { importOpening } from '../import/flow';
@@ -23,9 +23,10 @@ import { aiOf } from './runtime';
 import { activityLabel, targetSlideNumber } from './toolLabels';
 
 /*
- * The AI panel (WG11, ADR-072): one chat and its actions, under the shell's own id for it, so it
- * takes the place of the placeholder. The chat is a deck session; what the user has selected (a
- * slide, elements, words in a text) goes to the agent with each message.
+ * The AI panels (WG11, ADR-072): one chat, and the actions that are sent to it, each a panel of
+ * its own under the shell's id for it, so it takes the place of the placeholder. The chat is a
+ * deck session; what the user has selected (a slide, elements, words in a text) goes to the agent
+ * with each message.
  */
 
 registerMessages('ai', { he, en });
@@ -45,14 +46,22 @@ function AiChat() {
 
 registerPanel({
   id: PanelId.ai,
-  kind: 'ai',
   slot: 'ai',
   order: 0,
   shortcut: 'Ctrl+1',
   title: 'panels.ai',
   icon: Ai,
-  chat: AiChat,
-  actions: AiActions,
+  fill: true,
+  content: AiChat,
+});
+
+registerPanel({
+  id: PanelId.actions,
+  slot: 'ai',
+  order: 1,
+  title: 'panels.actions',
+  icon: Zap,
+  content: AiActions,
 });
 
 /* ---------------------------------------------------------------- the status bar (UI-07) */

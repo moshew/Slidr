@@ -71,9 +71,10 @@ test('a slide without a layout takes one; a deck without layouts says so', async
   await expect(page.getByRole('dialog')).toContainText('במצגת הזו אין פריסות');
   await page.keyboard.press('Escape');
 
-  await page.locator('[data-template="tzuk"]').getByTestId('template-cover').click();
+  const tzuk = page.getByTestId('template-library').locator('[data-template="tzuk"]');
+  await tzuk.getByTestId('template-cover').click();
   await page.getByTestId('template-slides-apply').click();
-  await expect(page.locator('[data-template="tzuk"]')).toHaveAttribute('data-current', 'true');
+  await expect(tzuk).toHaveAttribute('data-current', 'true');
   await tool(page).click();
   await choice(page, 'l_tzuk_quote').click();
   const slide = (await deck(page)).slides[0]!;

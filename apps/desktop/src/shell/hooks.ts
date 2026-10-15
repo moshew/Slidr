@@ -40,10 +40,7 @@ const REVEAL_MARGIN = 16;
  * ancestor it can, the shell's own regions among them.
  */
 export function reveal(card: HTMLElement, smooth: boolean): void {
-  let scroller = card.parentElement;
-  while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) {
-    scroller = scroller.parentElement;
-  }
+  const scroller = scrollerOf(card);
   if (!scroller) return;
   const view = scroller.getBoundingClientRect();
   const { top, bottom } = card.getBoundingClientRect();
@@ -51,4 +48,13 @@ export function reveal(card: HTMLElement, smooth: boolean): void {
   const up = top - REVEAL_MARGIN - view.top;
   const by = down > 0 ? Math.min(down, up) : Math.min(up, 0);
   if (by !== 0) scroller.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+/** What an element scrolls in: the nearest of its ancestors that scrolls up and down. */
+export function scrollerOf(element: HTMLElement): HTMLElement | null {
+  let scroller = element.parentElement;
+  while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) {
+    scroller = scroller.parentElement;
+  }
+  return scroller;
 }

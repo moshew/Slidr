@@ -48,10 +48,12 @@ export const messages = (page: Page): Locator => page.getByTestId('chat-user');
 export const draft = (page: Page): Locator => page.getByTestId('template-draft');
 export const outline = (page: Page): Locator => page.getByTestId('outline');
 
-/** The tab of the deck tool: its chat, or its actions. */
+/** Shows the AI chat, or the panel of its actions, from the Activity Bar. */
 export async function tab(page: Page, name: 'chat' | 'actions'): Promise<void> {
-  const label = name === 'chat' ? /^(צ'אט|Chat)$/ : /^(פעולות|Actions)$/;
-  await page.locator('section[data-panel="ai"]').getByRole('tab', { name: label }).click();
+  const id = name === 'chat' ? 'ai' : 'actions';
+  const button = page.getByTestId('activity-bar').locator(`[data-panel="${id}"]`);
+  if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
+  await expect(page.locator(`section[data-panel="${id}"]`)).toBeVisible();
 }
 
 /** Waits for the latest turn, with every round of the design check, to end. */

@@ -95,6 +95,7 @@ export const layoutUpdate = defineCommand(
         background: Background.nullable(),
         placeholders: z.array(Placeholder),
         decorations: z.array(Element),
+        objects: z.array(Element),
       })
       .partial(),
   }),

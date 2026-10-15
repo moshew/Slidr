@@ -1,8 +1,8 @@
 import { IconButton, Tooltip } from '@slidr/ui';
 import { CodeXml, Ungroup } from '@slidr/ui/icons';
 import { useTranslation } from 'react-i18next';
-import { openPanel, useEditor } from '../shell';
-import { CODE_PANEL } from './CodePanel';
+import { useEditor } from '../shell';
+import { openCodeDialog } from './CodeDialog';
 import { decomposeBlock } from './decompose';
 import { openDecomposeDialog } from './DecomposeDialog';
 import { ToolGroup } from './parts';
@@ -38,7 +38,7 @@ export function HtmlRow() {
         size="sm"
         label={t('code.open')}
         data-testid="html-code"
-        onClick={() => openPanel(CODE_PANEL)}
+        onClick={() => openCodeDialog(editor, slideId, element.id)}
       />
       {block ? (
         <Tooltip content={t(`decompose.blocked.${block}`)}>

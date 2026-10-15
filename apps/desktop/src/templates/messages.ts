@@ -6,6 +6,7 @@ export const he = {
     thisDeck: 'העיצוב של המצגת הזו',
     current: 'במצגת הזו',
     apply: 'החלה על המצגת',
+    slideNumbers: 'מיספור שקפים',
     applied: 'התבנית הוחלה',
     rename: 'שינוי שם התבנית',
     renameField: 'שם התבנית',
@@ -44,6 +45,9 @@ export const he = {
     shidur: 'שידור',
     bina: 'בינה',
     mifgash: 'מפגש',
+    kod: 'קוד',
+    luach: 'לוח',
+    magen: 'מגן',
   },
   // What each built-in template feels like, in a sentence beside its name.
   tagline: {
@@ -65,6 +69,9 @@ export const he = {
     shidur: 'כחול חי ומגנטה, שמזמינים את כולם להצטרף לשידור',
     bina: 'סגול רך וצורות עגולות, שהופכים רעיון מורכב לפשוט',
     mifgash: 'כחול עז ונגיעה של ורוד, למפגש שמקרב גם מרחוק',
+    kod: 'גרפיט כהה וליים חשמלי, בשפה של עורך קוד, לצוותים שבונים תוכנה',
+    luach: 'לוח עבודה ופתקים צבעוניים, למוצר שנבנה צעד אחר צעד',
+    magen: 'ירוק זית כהה וכתום של התרעה, בדיוק של מסך בקרה',
   },
   direction: {
     title: 'כיוון המצגת',
@@ -264,6 +271,7 @@ export const en: typeof he = {
     thisDeck: 'The design of this deck',
     current: 'In this deck',
     apply: 'Apply to the deck',
+    slideNumbers: 'Slide numbering',
     applied: 'The template was applied',
     rename: 'Rename the template',
     renameField: 'The name of the template',
@@ -301,6 +309,9 @@ export const en: typeof he = {
     shidur: 'Shidur',
     bina: 'Bina',
     mifgash: 'Mifgash',
+    kod: 'Kod',
+    luach: 'Luach',
+    magen: 'Magen',
   },
   tagline: {
     zerem: 'Technology in motion, turquoise glowing on a deep blue night',
@@ -321,6 +332,9 @@ export const en: typeof he = {
     shidur: 'Vivid blue and magenta that invite everyone to tune in',
     bina: 'Soft purple and rounded shapes that make a complex idea simple',
     mifgash: 'Bold blue and a touch of pink, for a session that brings people close from afar',
+    kod: 'Dark graphite and electric lime in the language of a code editor, for teams that build software',
+    luach: 'A working board of coloured sticky notes, for a product built one step at a time',
+    magen: 'Dark olive and alert orange, with the precision of a control display',
   },
   direction: {
     title: 'Deck direction',

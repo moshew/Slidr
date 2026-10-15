@@ -88,5 +88,12 @@ export const Layout = z.strictObject({
   placeholders: z.array(Placeholder),
   /** Visual elements that come with the layout and are not edited by default. */
   decorations: z.array(Element),
+  /**
+   * Elements a new slide of the layout starts with, under the elements of its placeholders: the
+   * slide holds copies of them, so a card, a number or a drawing of the template is moved,
+   * changed and deleted like anything put there by hand. The copies go with the layout when the
+   * slide changes layout or template, changed or not, unless the user wrote in them.
+   */
+  objects: z.array(Element).optional(),
 });
 export type Layout = z.infer<typeof Layout>;

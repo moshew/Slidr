@@ -115,7 +115,10 @@ for (const lang of ['he', 'en'] as const) {
     expect(extended.frame.w).toBeGreaterThan(sign.frame.w + 50);
     expect(extended.frame.h).toBe(sign.frame.h);
     expect((extended.children[1] as TextElement).content).toEqual(words.content);
-    for (const sticker of magnet.children.filter((child) => child.type === 'svg')) {
+    // The card under the photograph takes the stretch; the stickers on it keep their size.
+    const card = magnet.children.find((child) => child.name === `${magnet.name}:card`)!;
+    expect((await read<SvgElement>(card.id)).frame.w).toBe(grown.frame.w);
+    for (const sticker of magnet.children.filter((c) => c.type === 'svg' && c !== card)) {
       const after = await read<SvgElement>(sticker.id);
       expect([after.frame.w, after.frame.h]).toEqual([sticker.frame.w, sticker.frame.h]);
     }

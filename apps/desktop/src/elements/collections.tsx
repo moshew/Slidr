@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { extraShapes } from '@slidr/renderer';
 import {
@@ -27,7 +37,7 @@ import {
 } from '@slidr/ui';
 import { insertCard, insertLine, insertShape } from '../objects/insert';
 import { LINE_KINDS, shapeLibrary } from '../objects/shapes';
-import { useDeck, useEditor } from '../shell';
+import { scrollerOf, useDeck, useEditor } from '../shell';
 import { insertTable } from '../table/insert';
 import { TableInsert } from '../table/TableInsert';
 import { CardArt, LineArt, ShapeArt, ShapeInks } from './shapeArt';
@@ -61,6 +71,131 @@ export function useLoaded<T>(load: () => Promise<T>): T | 'failed' | undefined {
     };
   }, [load]);
   return value;
+}
+
+/** A group of a collection that is opened in full: its name, and the way back to the collection. */
+export interface OpenGroup {
+  title: string;
+  onBack: () => void;
+}
+
+/** Tells the header of the panel which group of the collection is open, if one is. */
+export const OpenGroupContext = createContext<(group: OpenGroup | undefined) => void>(() => {});
+
+/**
+ * Gives the header of the panel to a group that is opened in full: the header names the group in
+ * place of the collection, and its back button returns to the collection. `onBack` has to stay
+ * the same function between renders.
+ */
+export function useOpenGroup(title: string | undefined, onBack: () => void) {
+  const show = useContext(OpenGroupContext);
+  // Before the paint, so the header never names the collection over the frames of a group.
+  useLayoutEffect(() => {
+    if (title === undefined) return;
+    show({ title, onBack });
+    return () => show(undefined);
+  }, [show, title, onBack]);
+}
+
+/**
+ * One level of the panel, in the place of the one shown before it: a collection opened from the
+ * first screen, a group of it opened in full, and the way back. The level that was opened comes
+ * in from the end of the line, the one gone back to from its start (`.elements-drill`). It moves
+ * only when `screen` changes to a level at another `depth`, not when it first shows.
+ *
+ * The level that was opened shows from the top of the panel, and the one gone back to where the
+ * panel was when it was left.
+ */
+export function Drill({
+  screen,
+  depth,
+  className,
+  children,
+}: {
+  screen: string;
+  depth: number;
+  className?: string;
+  children: ReactNode;
+}) {
+  const [shown, setShown] = useState<{ screen: string; depth: number; way?: 'deeper' | 'back' }>({
+    screen,
+    depth,
+  });
+  let way = shown.way;
+  if (shown.screen !== screen) {
+    way = depth > shown.depth ? 'deeper' : depth < shown.depth ? 'back' : undefined;
+    setShown({ screen, depth, way });
+  }
+
+  const level = useRef<HTMLDivElement>(null);
+  // How far the panel is scrolled, as last seen: by the time a level has taken the place of
+  // another, the panel has already cut the scroll to what the new one is tall.
+  const scrolled = useRef(0);
+  // How far it was scrolled on each level that a deeper one was opened from.
+  const left = useRef(new Map<string, number>());
+  const before = useRef(screen);
+
+  useEffect(() => {
+    const scroller = level.current && scrollerOf(level.current);
+    if (!scroller) return;
+    const see = () => {
+      scrolled.current = scroller.scrollTop;
+    };
+    see();
+    scroller.addEventListener('scroll', see, { passive: true });
+    return () => scroller.removeEventListener('scroll', see);
+  }, []);
+
+  // Before the paint, so the level never shows at the scroll of the one it took the place of.
+  useLayoutEffect(() => {
+    const from = before.current;
+    before.current = screen;
+    const scroller = level.current && scrollerOf(level.current);
+    if (from === screen || !way || !scroller || !level.current) return;
+    if (way === 'deeper') {
+      left.current.set(from, scrolled.current);
+      scroller.scrollTo({ top: 0 });
+      return;
+    }
+    const top = left.current.get(screen) ?? 0;
+    left.current.delete(screen);
+    return scrollBack(scroller, level.current, top);
+  }, [screen, way]);
+
+  return (
+    <div ref={level} key={screen} className={cx('elements-drill', className)} data-way={way}>
+      {children}
+    </div>
+  );
+}
+
+/** How long a level gone back to may take to be as tall again as it was when it was left. */
+const REGROW_MS = 1000;
+
+/** What tells that the user moves the panel, and it should no longer be moved for them. */
+const USER_SCROLL = ['wheel', 'pointerdown', 'keydown'] as const;
+
+/**
+ * Scrolls the panel back to where a level was left. The level may not be as tall yet as it was
+ * then (a grid fills its rows once it has measured them), so the panel follows it as it grows:
+ * until it is there, the user scrolls, or a moment has passed. Returns what stops following it.
+ */
+function scrollBack(scroller: HTMLElement, level: HTMLElement, top: number) {
+  const there = () => {
+    scroller.scrollTop = top;
+    return scroller.scrollTop >= top - 1;
+  };
+  if (there()) return undefined;
+  const observer = new ResizeObserver(() => there() && stop());
+  const timer = window.setTimeout(() => stop(), REGROW_MS);
+  const stop = () => {
+    observer.disconnect();
+    window.clearTimeout(timer);
+    for (const type of USER_SCROLL) scroller.removeEventListener(type, stop);
+  };
+  observer.observe(level);
+  for (const type of USER_SCROLL) scroller.addEventListener(type, stop, { passive: true });
+  return stop;
 }
 
 /** A heading inside a collection, with room for a button at its end. */

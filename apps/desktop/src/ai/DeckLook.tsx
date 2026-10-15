@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'reac
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import type { FontPair } from '@slidr/model';
-import { ScaledSlide } from '@slidr/renderer';
+import { FittedSlide } from '@slidr/renderer';
 import { Check } from '@slidr/ui/icons';
 import { cx, Icon } from '@slidr/ui';
 import { useDeck, useEditor, useElementSize } from '../shell';
@@ -24,25 +24,21 @@ import {
 } from './look';
 
 /*
- * The look of the deck in the Actions tab of the AI chat (AID-05, THM-03): the template
+ * The look of the deck in the Actions panel of the AI chat (AID-05, THM-03): the template
  * gallery, the colour palettes and the font pairs. Hovering a card, or reaching it with the
  * keyboard, shows it on the Stage without changing the deck, and a click applies it as one undo
  * step. They are the user's own edits, not actions of the agent, so they stay usable while the
  * chat is in a turn, like the layout, background and transition of the slide.
  */
 
-/** Space between the cards of a row: Tailwind's 2. */
-const GAP = 8;
-/** A template card's padding and border, on both sides. */
-const CARD_EDGE = 2 * (GAP + 1);
 /**
  * How many cards a row takes, by the width the panel gives it: the narrowest panel (a quarter of
  * a 1366 window) keeps a cover readable, and a wide one does not blow the cards up.
  */
 const TEMPLATE_COLUMNS = [
-  { from: 720, className: 'grid-cols-4', count: 4 },
-  { from: 360, className: 'grid-cols-3', count: 3 },
-  { from: 0, className: 'grid-cols-2', count: 2 },
+  { from: 720, className: 'grid-cols-4' },
+  { from: 360, className: 'grid-cols-3' },
+  { from: 0, className: 'grid-cols-2' },
 ] as const;
 const PALETTE_COLUMNS = [
   { from: 520, className: 'grid-cols-6' },
@@ -143,15 +139,7 @@ function CurrentMark() {
 
 /* ---------------------------------------------------------------- the template gallery */
 
-function TemplateCard({
-  entry,
-  width,
-  trying,
-}: {
-  entry: LibraryEntry;
-  width: number;
-  trying: Trying;
-}) {
+function TemplateCard({ entry, trying }: { entry: LibraryEntry; trying: Trying }) {
   const { t } = useTranslation('ai');
   const { bus } = useEditor();
   const { template, personal } = entry;
@@ -166,6 +154,19 @@ function TemplateCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [template, id, lang, dir],
   );
+  // The cover fits its card by itself, so it is drawn with the panel ahead of time, and a card
+  // drawn again as it becomes the current one does not draw its slide again.
+  const picture = useMemo(
+    () => (
+      <FittedSlide
+        deck={cover.deck}
+        slide={cover.slide}
+        mode="thumbnail"
+        resolveAsset={coverAsset}
+      />
+    ),
+    [cover],
+  );
   return (
     <button
       {...tryingProps(trying, look, t('look.template.undo'), current)}
@@ -178,17 +179,7 @@ function TemplateCard({
           : 'border-ui-line hover:border-ui-accent hover:bg-ui-hover active:bg-ui-pressed',
       )}
     >
-      <div className="aspect-video overflow-hidden rounded-small">
-        {width > 0 && (
-          <ScaledSlide
-            deck={cover.deck}
-            slide={cover.slide}
-            mode="thumbnail"
-            width={width}
-            resolveAsset={coverAsset}
-          />
-        )}
-      </div>
+      <div className="aspect-video overflow-hidden rounded-small">{picture}</div>
       <span className="flex min-w-0 items-center gap-1">
         <span className="flex min-w-0 flex-1 flex-col">
           {/* A name is in its own language; the line stays on the side the panel reads from. */}
@@ -211,10 +202,6 @@ function Templates({ trying }: { trying: Trying }) {
   const grid = useRef<HTMLDivElement>(null);
   const { width } = useElementSize(grid);
   const columns = columnsFor(TEMPLATE_COLUMNS, width);
-  const thumb = Math.max(
-    0,
-    Math.floor((width - GAP * (columns.count - 1)) / columns.count) - CARD_EDGE,
-  );
   const entries = useMemo(
     () => library.entries(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,12 +213,7 @@ function Templates({ trying }: { trying: Trying }) {
       <div className="px-2">
         <div ref={grid} className={cx('grid gap-2', columns.className)}>
           {entries.map((entry) => (
-            <TemplateCard
-              key={entry.template.theme.id}
-              entry={entry}
-              width={thumb}
-              trying={trying}
-            />
+            <TemplateCard key={entry.template.theme.id} entry={entry} trying={trying} />
           ))}
         </div>
       </div>

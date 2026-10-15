@@ -266,10 +266,10 @@ export const he = {
     shadow: 'רק לחלק מהאובייקטים שנבחרו יש צל. בחירה כאן תחול על כולם.',
   },
   code: {
-    title: 'קוד',
     open: 'עריכת הקוד',
-    emptyTitle: 'בחרו אובייקט HTML',
-    emptyBody: 'ה-HTML וה-CSS של אובייקט HTML נבחר מוצגים כאן לעריכה, והשקף מתעדכן תוך כדי הקלדה.',
+    close: 'סגירה',
+    done: 'סיום',
+    preview: 'האובייקט כפי שהוא נראה בשקף',
     parts: 'חלק הקוד',
     markup: 'HTML',
     styles: 'CSS',
@@ -608,11 +608,10 @@ export const en: Messages<typeof he> = {
     shadow: 'Only some of the selected objects have a shadow. A choice here goes to all of them.',
   },
   code: {
-    title: 'Code',
     open: 'Edit the code',
-    emptyTitle: 'Select an HTML object',
-    emptyBody:
-      'The HTML and CSS of the selected HTML object are shown here for editing, and the slide follows as you type.',
+    close: 'Close',
+    done: 'Done',
+    preview: 'The object as the slide shows it',
     parts: 'Part of the code',
     markup: 'HTML',
     styles: 'CSS',

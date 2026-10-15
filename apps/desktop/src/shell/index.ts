@@ -11,7 +11,6 @@ export {
   registerStageMenu,
   registerStatusItem,
   type ActionPopoverProps,
-  type AiPanelDefinition,
   type ContextToolDefinition,
   type ContextToolProps,
   type PanelDefinition,
@@ -22,7 +21,6 @@ export {
   type StageLayerDefinition,
   type StageMenuDefinition,
   type ToolAction,
-  type ToolPanelDefinition,
 } from './registry';
 export { selectionKind, elementKind, elementDisplayKind, type SelectionKind } from './selection';
 export { StatusItem } from './StatusBar';
@@ -40,17 +38,15 @@ export {
 export {
   openAiChat,
   openPanel,
-  setAiTab,
   setPanelOpen,
   setWelcome,
   setZoom,
   useShell,
-  type AiTab,
   type ShellState,
 } from './store';
 export { ask, tell, type DialogAction, type DialogRequest } from './dialogs';
 export { fitSlide, STAGE_MARGIN, type SlideFit } from './layout';
-export { reveal, useElementSize } from './hooks';
+export { reveal, scrollerOf, useElementSize } from './hooks';
 export { useAssetResolver } from './assets';
 export {
   focusStage,

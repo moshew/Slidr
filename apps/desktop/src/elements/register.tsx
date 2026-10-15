@@ -11,7 +11,6 @@ export const ELEMENTS_PANEL = 'elements';
 
 registerPanel({
   id: ELEMENTS_PANEL,
-  kind: 'tool',
   slot: 'tools',
   order: -1,
   title: 'elements:title',

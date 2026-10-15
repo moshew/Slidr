@@ -114,7 +114,7 @@ test('a deck that is opened again has its import: the report, the chat, and the 
     await expect(deckChat(page)).toBeVisible();
     await expect(page.getByTestId('chat-user')).toHaveCount(0);
     await elsewhere(page);
-    await expect(aiPanel(page)).toHaveCount(0);
+    await expect(aiPanel(page)).toBeHidden();
   });
 
   // An import that was cut opens the AI chat by itself, on its conversation, with the way on.
@@ -190,7 +190,7 @@ test('a finished import that is opened again is not offered to continue, and its
   await reopenDeck(page, () => elsewhere(page));
   // Nothing was cut: the chat is not opened over what the user is doing.
   await expect.poll(async () => (await state(page)).file).toBe('handwritten.html');
-  await expect(aiPanel(page)).toHaveCount(0);
+  await expect(aiPanel(page)).toBeHidden();
   // The AI chat is where it was left, on the conversation of the import, which was the last
   // one written in. It offers nothing to continue.
   await page.locator('[data-testid="activity-bar"] [data-panel="ai"]').click();

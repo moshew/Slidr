@@ -4,7 +4,7 @@ import { openApp, openTool, panel, type OpenOptions } from './aitools-helpers';
 
 /*
  * Shared by the suites of the deck's look in the deck tool (WG11-T04, WG7-T11b): a deck of
- * three slides on a built-in template, the Actions tab open, and what the Stage is drawing.
+ * three slides on a built-in template, the Actions panel open, and what the Stage is drawing.
  */
 
 const TITLE = 'תוכנית העבודה של הצוות לשנת 2027';
@@ -43,7 +43,7 @@ async function addSlide(page: Page, layoutId: string): Promise<void> {
 
 /**
  * Opens the app on a deck of three slides on the Zerem template, with the Stage on the opening
- * slide and the deck tool on its Actions tab.
+ * slide and the deck tool on its Actions panel.
  */
 export async function openLook(
   page: Page,
@@ -69,11 +69,11 @@ export async function openLook(
   await expect(look(page, 'template')).toBeVisible();
 }
 
-/** A section of the deck's look in the Actions tab. */
+/** A section of the deck's look in the Actions panel. */
 export const look = (page: Page, name: 'template' | 'palette' | 'fonts'): Locator =>
   panel(page).locator(`section[data-look="${name}"]`);
 
-/** Scrolls the Actions tab so a section of the look starts at its top, heading and all. */
+/** Scrolls the Actions panel so a section of the look starts at its top, heading and all. */
 export async function scrollTo(page: Page, name: 'template' | 'palette' | 'fonts'): Promise<void> {
   await look(page, name).evaluate((section) => {
     section.scrollIntoView();

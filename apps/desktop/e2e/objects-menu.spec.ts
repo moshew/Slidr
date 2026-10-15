@@ -78,6 +78,9 @@ test('the code of an html element opens from the menu, and so does decompose', a
   await rightClick(page, onStage(page, HTML_ID));
   await item(page, 'עריכת הקוד').click();
   await expect(codePanel(page).getByTestId('code-editor')).toHaveAttribute('data-state', 'ready');
+  // The code is a dialog over the Stage: it is closed before the Stage is reached again.
+  await codePanel(page).getByTestId('code-done').click();
+  await expect(codePanel(page)).toHaveCount(0);
 
   await rightClick(page, onStage(page, HTML_ID));
   await item(page, 'פירוק לאובייקטים').click();
