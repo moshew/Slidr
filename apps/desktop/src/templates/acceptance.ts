@@ -9,7 +9,7 @@
  * the folder of the test file, which is this one.
  */
 import type { LintFinding } from '@slidr/agent-tools';
-import { CommandBus, type Deck } from '@slidr/model';
+import { CommandBus, languageDir, languagesOf, type Deck, type Localized } from '@slidr/model';
 import { fixtureDecks } from '@slidr/model/fixtures';
 import { renderSlideOffscreen, type OffscreenSlide } from '@slidr/renderer';
 import { applyTemplate, type Template } from '@slidr/templates';
@@ -31,7 +31,8 @@ export const LANGUAGES = [
   { lang: 'en', dir: 'ltr' },
 ] as const;
 
-export type Samples = Record<(typeof LANGUAGES)[number]['lang'], SampleSlide[]>;
+/** A template's sample decks: in Hebrew and in English, and in any other language it is written in. */
+export type Samples = Localized<SampleSlide[]>;
 
 export interface RebuiltSlide {
   name: string;
@@ -222,11 +223,12 @@ export function acceptTemplate(
   samples: Samples,
   { report = emptyReport(), each = false }: AcceptOptions = {},
 ): void {
-  test.each(LANGUAGES)(
+  // In every language the sample is written in, each in its own direction.
+  test.each(languagesOf(samples).map((lang) => ({ lang, dir: languageDir(lang) })))(
     'every layout passes the lint with no error, in $lang',
     { timeout: 120_000 },
     async ({ lang, dir }) => {
-      const deck = sampleDeck(template, samples[lang], { lang, dir });
+      const deck = sampleDeck(template, samples[lang]!, { lang, dir });
       // Every layout is shown by the sample, so a clean sample covers all sixteen layouts.
       const shown = new Set(deck.slides.map((slide) => slide.layoutId));
       expect(template.layouts.filter((layout) => !shown.has(layout.id))).toEqual([]);

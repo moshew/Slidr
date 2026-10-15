@@ -21,6 +21,7 @@ import {
   type ToolContext,
   type ToolDef,
   type ToolErrorCode,
+  type ToolOutput,
   type ToolResult,
   type Turn,
   type WriteSummary,
@@ -45,9 +46,16 @@ export interface DeckApi {
   /**
    * Runs one tool call of a turn. It never throws: every failure comes back as an error
    * result with a message for the agent, and leaves the deck as the last successful write
-   * of the call left it.
+   * of the call left it. The work of the turn's calls that ended since its last call is told
+   * with it: `meanwhile` in the data, or at the end of the message of a failure (ADR-097).
    */
   call(turn: Turn, name: string, input: unknown): Promise<ToolResult>;
+  /**
+   * Resolves once the turn's work that the call would show the agent a picture of has ended
+   * (ADR-097): a picture of a slide waits for the images still being made for it. At once for
+   * any other call. Never rejects.
+   */
+  ready(turn: Turn, name: string, input: unknown): Promise<void>;
 }
 
 export interface DeckApiOptions {
@@ -168,6 +176,15 @@ function failure(code: ToolErrorCode, message: string): ToolResult {
 const TURN_OVER =
   'the turn this call belongs to is over (it was stopped, or another document was opened).';
 
+/** A result with the work of the turn that ended since its last call (ADR-097). */
+function withFinished(turn: Turn, result: ToolResult): ToolResult {
+  const finished = turn.background?.takeFinished() ?? [];
+  if (finished.length === 0) return result;
+  if (result.ok) return { ...result, data: { ...result.data, meanwhile: finished } };
+  const message = `${result.error.message}\nMeanwhile: ${JSON.stringify(finished)}`;
+  return { ok: false, error: { ...result.error, message } };
+}
+
 /** "deck sessions", "deck and slide sessions", "deck, slide and object sessions". */
 function scopeNames(scopes: readonly ScopeKind[]): string {
   const names =
@@ -218,7 +235,18 @@ export function createDeckApi(
       });
   }
 
+  async function ready(turn: Turn, name: string, input: unknown): Promise<void> {
+    const tool = byName.get(name);
+    if (!tool?.looksAt || !turn.background) return;
+    const parsed = tool.input.safeParse(input ?? {});
+    if (parsed.success) await turn.background.settled(tool.looksAt(parsed.data));
+  }
+
   async function call(turn: Turn, name: string, input: unknown): Promise<ToolResult> {
+    return withFinished(turn, await run(turn, name, input));
+  }
+
+  async function run(turn: Turn, name: string, input: unknown): Promise<ToolResult> {
     const tool = byName.get(name);
     if (!tool) {
       const known = deckTools.find((t) => t.name === name);
@@ -249,6 +277,8 @@ export function createDeckApi(
     let after: Deck | undefined;
     let affected: Affected | undefined;
     const refitted: Record<string, unknown> = {};
+    // The work the call leaves running after its result, in a turn that takes it (ADR-097).
+    let going: Promise<ToolResult> | undefined;
     const ctx: ToolContext = {
       get deck() {
         return bus.deck;
@@ -303,10 +333,19 @@ export function createDeckApi(
         affected = affected ? mergeAffected(affected, done) : done;
         return summarizeWrite(start, after, done);
       },
+      async later(slideIds, work, meanwhile) {
+        const { background } = turn;
+        if (!background) return work();
+        // Its result is made as the call's would be: what the call wrote by then, and the findings.
+        const done = work().then(complete).catch(fail);
+        going = done;
+        background.add({ tool: name, input: parsed.data, slideIds, done });
+        return meanwhile;
+      },
     };
 
-    try {
-      const output = await tool.run(parsed.data, ctx);
+    /** The result of a call whose tool returned `output`. */
+    const complete = async (output: ToolOutput): Promise<ToolResult> => {
       const data: Record<string, unknown> = { ...output.data };
       if (tool.writes) {
         const summary =
@@ -329,7 +368,10 @@ export function createDeckApi(
         }
       }
       return { ok: true, data, images: output.images ?? [] };
-    } catch (error) {
+    };
+
+    /** The result of a call whose tool threw `error`. */
+    const fail = (error: unknown): ToolResult => {
       const result = toToolError(error);
       if (before && after && affected) {
         // A tool that failed after writing: what it wrote stays, as part of the turn.
@@ -337,8 +379,19 @@ export function createDeckApi(
         result.message += `\nChanges made before the failure were kept: ${JSON.stringify(summary)}`;
       }
       return { ok: false, error: result };
+    };
+
+    try {
+      // A picture shows the slides with the images that are still being made for them.
+      if (tool.looksAt && turn.background) {
+        await turn.background.settled(tool.looksAt(parsed.data));
+      }
+      const result = await complete(await tool.run(parsed.data, ctx));
+      return result.ok && going ? { ...result, later: going } : result;
+    } catch (error) {
+      return fail(error);
     }
   }
 
-  return { tools, list, call };
+  return { tools, list, call, ready };
 }

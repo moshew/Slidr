@@ -44,7 +44,8 @@ export function ArtPeek({ set, names: wanted }: { set: string; names?: string[] 
   const art = useRead(() => readSet(set), [set]);
   if (!art.value) return <span className="peek" />;
   const named = wanted?.filter((name) => art.value!.icons[name]) ?? [];
-  const names = named.length > 0 ? named : Object.keys(art.value.icons).slice(0, 8);
+  // As many as a card of the overview holds.
+  const names = (named.length > 0 ? named : Object.keys(art.value.icons)).slice(0, 6);
   return (
     <span className="peek">
       {names.map((name) => (

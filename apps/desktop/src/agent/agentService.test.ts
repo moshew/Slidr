@@ -3,6 +3,7 @@ import {
   type CaptureService,
   type ConversionService,
   type HtmlImportService,
+  type ImageService,
   type LintFinding,
   type LintService,
   type Services,
@@ -12,6 +13,7 @@ import {
   createDeck,
   createElement,
   createSlide,
+  findElementInDeck,
   findSlide,
   richText,
 } from '@slidr/model';
@@ -2091,5 +2093,158 @@ describe('the outline setting (AID-03)', () => {
     const slide = service.thread({ kind: 'slide', slideId: 's_1' });
     await ask(slide, 'Shorten this');
     expect(seen.sends[2]!.context).not.toContain('outline:');
+  });
+});
+
+describe('an image made while the agent goes on (ADR-097)', () => {
+  /** An image service whose one image comes when the test releases it. */
+  function heldImage() {
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const id = 'b'.repeat(64);
+    const images: ImageService = {
+      generate: async () => {
+        await ready;
+        const asset = {
+          id,
+          file: `${id}.png`,
+          mime: 'image/png',
+          kind: 'image',
+          bytes: 10,
+          origin: 'ai',
+          width: 1024,
+          height: 576,
+        } as const;
+        return [{ asset, preview: { mimeType: 'image/png', data: 'AAAA' } }];
+      },
+      edit: () => Promise.resolve([]),
+      process: () => Promise.reject(new Error('unused')),
+    };
+    return { images, release, assetId: id };
+  }
+
+  const withPlaceholder = () =>
+    new CommandBus(
+      createDeck({
+        slides: [
+          createSlide({
+            id: 's_1',
+            name: 'first',
+            elements: [
+              createElement.image({
+                id: 'e_img',
+                frame: { x: 0, y: 0, w: 1600, h: 900 },
+                prompt: 'a lighthouse at dusk',
+              }),
+            ],
+          }),
+        ],
+      }),
+      { validate: true },
+    );
+  const assetIn = (bus: CommandBus) =>
+    (findElementInDeck(bus.deck, 'e_img')?.element as { assetId?: string } | undefined)?.assetId;
+  const chip = (thread: ChatThread, id: string) =>
+    tools(thread.store.getState().entries.at(-1) as AssistantEntry).find((c) => c.id === id);
+  const aMoment = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+  it('goes on to the next call, and a picture of the slide waits for the image', async () => {
+    const held = heldImage();
+    const bus = withPlaceholder();
+    const build = script([
+      call('t1', 'image_generate', { elementId: 'e_img' }),
+      call('t2', 'slide_update', { slideId: 's_1', name: 'Intro' }),
+      call('t3', 'slide_render', { slideId: 's_1' }),
+      say('Done.'),
+      done(),
+    ]);
+    const { service, thread } = setup({ build }, { bus, services: { images: held.images } });
+    await thread.send('Build the opening slide');
+
+    // The next call ran while the image is being made, and the picture waits for it.
+    await vi.waitFor(() => expect(chip(thread, 't3')).toMatchObject({ state: 'running' }));
+    await aMoment();
+    expect(bus.deck.slides[0]!.name).toBe('Intro');
+    expect(assetIn(bus)).toBeUndefined();
+    expect(chip(thread, 't2')).toMatchObject({ state: 'ok' });
+    // The harness has the result of the image call; its chip stays at work all the same.
+    expect(chip(thread, 't1')).toMatchObject({ state: 'running', target: { slideId: 's_1' } });
+    expect(chip(thread, 't3')).toMatchObject({ state: 'running' });
+
+    held.release();
+    await settled(thread);
+    const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(assetIn(bus)).toBe(held.assetId);
+    expect(tools(entry).map((c) => [c.id, c.state])).toEqual([
+      ['t1', 'ok'],
+      ['t2', 'ok'],
+      ['t3', 'ok'],
+    ]);
+    expect(tools(entry)[0]!.summary).toContain(held.assetId);
+    // The picture was taken with the image in: the design check has nothing to send back.
+    expect(gates(entry)).toEqual([]);
+    expect(entry.outcome).toBe('completed');
+    // The image is part of the turn's one undo step.
+    expect(service.undoInfo(entry.txId!)).toEqual({ steps: 1, otherEdits: 0 });
+    expect(service.undoTurn(entry.txId!)).toBe(true);
+    expect(assetIn(bus)).toBeUndefined();
+    expect(bus.deck.slides[0]!.name).toBe('first');
+  });
+
+  it('ends once the image is in, and the design check judges the slide with it', async () => {
+    const held = heldImage();
+    const bus = withPlaceholder();
+    const build = script(
+      [call('t1', 'image_generate', { elementId: 'e_img' }), say('On its way.'), done()],
+      // The design check sends the agent back to look at the slide the image changed.
+      [call('t2', 'slide_render', { slideId: 's_1' }), done()],
+    );
+    const { thread } = setup({ build }, { bus, services: { images: held.images } });
+    await thread.send('Add the picture');
+
+    await vi.waitFor(() =>
+      expect(thread.store.getState().activity).toEqual({
+        kind: 'tool',
+        name: 'image_generate',
+        source: 'app',
+        target: { slideId: 's_1' },
+      }),
+    );
+    expect(thread.store.getState().busy).toBe(true);
+    held.release();
+    await settled(thread);
+
+    const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(assetIn(bus)).toBe(held.assetId);
+    expect(gates(entry)).toEqual([expect.objectContaining({ round: 1, unseen: ['s_1'] })]);
+    expect(chip(thread, 't1')).toMatchObject({ state: 'ok' });
+    expect(entry.outcome).toBe('completed');
+  });
+
+  it('stops waiting when the user stops the turn, and the image goes nowhere', async () => {
+    const held = heldImage();
+    const bus = withPlaceholder();
+    const build = script([call('t1', 'image_generate', { elementId: 'e_img' }), done()]);
+    const { thread } = setup({ build }, { bus, services: { images: held.images } });
+    await thread.send('Add the picture');
+    await vi.waitFor(() =>
+      expect(thread.store.getState().activity).toMatchObject({ name: 'image_generate' }),
+    );
+
+    await thread.stop();
+    await settled(thread);
+    const entry = thread.store.getState().entries.at(-1) as AssistantEntry;
+    expect(entry.outcome).toBe('interrupted');
+    expect(chip(thread, 't1')).toMatchObject({ state: 'failed' });
+
+    held.release();
+    await aMoment();
+    expect(assetIn(bus)).toBeUndefined();
+    expect(chip(thread, 't1')).toMatchObject({
+      state: 'failed',
+      summary: expect.stringContaining('the turn this call belongs to is over') as string,
+    });
   });
 });

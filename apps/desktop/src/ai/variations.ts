@@ -199,6 +199,8 @@ function setterCommands(
       commands.push(...written);
       return NOTHING_WRITTEN;
     },
+    // The setters leave nothing running: whatever would is waited for.
+    later: (_slideIds, work) => work(),
   });
   if (output instanceof Promise) {
     output.catch(() => undefined);

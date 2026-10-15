@@ -12,8 +12,14 @@ async function box(page: Page, testId: string) {
   return rect;
 }
 
-async function openSettings(page: Page, name: 'הגדרות' | 'Settings') {
+async function openSettings(page: Page, name: string) {
   await page.getByRole('button', { name, exact: true }).click();
+}
+
+/** Picks a UI language in the open settings screen: the picker is named in the UI's language. */
+async function chooseLanguage(page: Page, picker: string, name: string) {
+  await page.getByRole('combobox', { name: picker }).click();
+  await page.getByRole('option', { name, exact: true }).click();
 }
 
 async function waitForPanelWidth(page: Page, width: number) {
@@ -60,7 +66,7 @@ test('the AI area is on the right in Hebrew and moves left in English, live', as
   // A marker on the window survives only if the page is not reloaded.
   await page.evaluate(() => ((window as unknown as { marker: number }).marker = 7));
   await openSettings(page, 'הגדרות');
-  await page.getByRole('radio', { name: 'English' }).click();
+  await chooseLanguage(page, 'שפת הממשק', 'English');
 
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   // By its whole name: the settings screen, which is open, has "Add a font file" in it too.
@@ -73,10 +79,36 @@ test('the AI area is on the right in Hebrew and moves left in English, live', as
   expect((await box(page, 'stage')).x).toBe(76 + 360);
   expect(await page.evaluate(() => (window as unknown as { marker?: number }).marker)).toBe(7);
 
-  await page.getByRole('radio', { name: 'עברית' }).click();
+  await chooseLanguage(page, 'Interface language', 'עברית');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByRole('button', { name: 'קובץ', exact: true })).toBeVisible();
   expect((await box(page, 'activity-bar')).x).toBe(1920 - 76);
+});
+
+test.describe('on a German system', () => {
+  test.use({ locale: 'de-DE' });
+
+  test('the UI starts in the system’s language, until the user picks another', async ({ page }) => {
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+    await expect(page.getByRole('button', { name: 'Datei', exact: true })).toBeVisible();
+
+    // By its whole title: the Activity Bar's caption, "Optionen", is a short form of it.
+    await openSettings(page, 'Einstellungen');
+    await chooseLanguage(page, 'Sprache der Benutzeroberfläche', 'العربية');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  });
+});
+
+test.describe('on a system in a language the app does not have', () => {
+  test.use({ locale: 'pl-PL' });
+
+  test('the UI starts in English', async ({ page }) => {
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.getByRole('button', { name: 'File', exact: true })).toBeVisible();
+  });
 });
 
 test('the theme follows the OS and switches live', async ({ page }) => {

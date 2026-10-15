@@ -20,54 +20,62 @@ import { tr } from './tr';
 import { vi } from './vi';
 import { zhCN } from './zh-CN';
 
+/** A title of one line, or the lines it breaks into where the box would break it badly. */
+export type Title = string | string[];
+
 export interface AtlasCopy {
   /** The deck's footer. */
   footer: string;
   hero: { name: string; org: string; title: string[]; subtitle: string[]; meta: string };
   section: { name: string; part: string; title: string[]; subtitle: string };
-  agenda: { name: string; title: string; intro: string; items: string[] };
+  agenda: { name: string; title: Title; intro: string; items: string[] };
   figures: {
     name: string;
     kicker: string;
-    title: string;
+    title: Title;
     hero: { value: string; label: string; note: string };
     others: [value: string, label: string][];
   };
-  project: { name: string; kicker: string; title: string; items: [title: string, body: string][] };
+  project: {
+    name: string;
+    kicker: string;
+    title: Title;
+    items: [title: string, body: string][];
+  };
   coast: { name: string; place: string; title: string[]; body: string };
   quote: { name: string; text: string; who: string; role: string };
   programmes: {
     name: string;
     kicker: string;
-    title: string;
+    title: Title;
     cards: [label: string, title: string, body: string][];
     note: string;
   };
   milestones: {
     name: string;
     kicker: string;
-    title: string;
+    title: Title;
     stops: [year: string, title: string, body: string][];
     note: string;
   };
   joining: {
     name: string;
     kicker: string;
-    title: string;
+    title: Title;
     steps: [step: string, caption: string][];
     note: string;
   };
   together: {
     name: string;
     kicker: string;
-    title: string;
+    title: Title;
     before: [label: string, title: string, body: string];
     after: [label: string, title: string, body: string];
   };
   reuse: {
     name: string;
     kicker: string;
-    title: string;
+    title: Title;
     source: string;
     series: [network: string, best: string];
     figures: [value: string, body: string][];
@@ -75,12 +83,17 @@ export interface AtlasCopy {
   cities: {
     name: string;
     kicker: string;
-    title: string;
+    title: Title;
     note: string;
     header: string[];
     rows: string[][];
   };
-  team: { name: string; kicker: string; title: string; people: [city: string, name: string, role: string][] };
+  team: {
+    name: string;
+    kicker: string;
+    title: Title;
+    people: [city: string, name: string, role: string][];
+  };
   closing: { name: string; kicker: string; title: string[]; lines: string[]; meta: string };
 }
 

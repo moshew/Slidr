@@ -26,7 +26,7 @@ import {
   type TextElement,
 } from '@slidr/model';
 
-export type Group = 'hitech' | 'techproduct' | 'defense';
+export type Group = 'hitech' | 'techproduct' | 'defense' | 'food' | 'tourism';
 
 export interface DesignEntry {
   id: string;

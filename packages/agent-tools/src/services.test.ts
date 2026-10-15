@@ -12,6 +12,7 @@ import {
 } from '@slidr/model';
 import { allElementsDeck, hebrewDeck } from '@slidr/model/fixtures';
 import { describe, expect, it, vi } from 'vitest';
+import { Background } from './background';
 import { checkWrite } from './scope';
 import type {
   CaptureService,
@@ -21,9 +22,11 @@ import type {
   LintService,
   OptionsService,
   PngImage,
+  StoredImage,
   TemplateService,
 } from './services';
 import { failed, ok, PIXEL, setup } from './testing';
+import { startTurn } from './tool';
 
 const png: PngImage = { mimeType: 'image/png', data: PIXEL, width: 1, height: 1 };
 
@@ -983,5 +986,201 @@ describe('an image that takes a minute to make, and may cost money', () => {
     expect(await ok(call('image_generate', { prompt: 'a harbour' }))).not.toHaveProperty(
       'notPlaced',
     );
+  });
+});
+
+describe('an image made while the agent goes on (ADR-097)', () => {
+  const placeholder = (id: string, prompt: string) =>
+    createElement.image({ id, frame: { x: 0, y: 0, w: 1600, h: 900 }, prompt });
+  const twoSlides = () =>
+    createDeck({
+      slides: [
+        createSlide({ id: 's_one', elements: [placeholder('e_one', 'a lighthouse')] }),
+        createSlide({ id: 's_two', elements: [placeholder('e_two', 'a harbour')] }),
+      ],
+    });
+
+  /** An image service whose images come when the test lets each one come, in order. */
+  function heldImages() {
+    const waiting: { prompt: string; settle: (images: StoredImage[] | Error) => void }[] = [];
+    let made = 0;
+    const images: ImageService = {
+      generate: ({ prompt }) =>
+        new Promise((resolve, reject) => {
+          waiting.push({
+            prompt,
+            settle: (outcome) => (outcome instanceof Error ? reject(outcome) : resolve(outcome)),
+          });
+        }),
+      edit: () => Promise.resolve([]),
+      process: () => Promise.reject(new Error('unused')),
+    };
+    return {
+      images,
+      asked: () => waiting.length,
+      /** Lets the oldest image that is still being made come, or fail. */
+      next(failure?: Error) {
+        const job = waiting.shift();
+        if (!job) throw new Error('No image is being made.');
+        job.settle(failure ?? [{ asset: asset(String(++made)), preview: png }]);
+      },
+    };
+  }
+
+  function inBackground(services: Parameters<typeof setup>[1]) {
+    const env = setup(twoSlides(), services);
+    // The end of the turn, as the chat's `AbortSignal` would say it.
+    const over = { aborted: false };
+    const background = new Background();
+    const turn = startTurn('sess', { kind: 'deck' }, { ended: over, background });
+    const txIds = new Set<string | undefined>();
+    env.bus.subscribe((event) => {
+      if (event.kind === 'apply') txIds.add(event.txId);
+    });
+    return {
+      ...env,
+      turn,
+      over,
+      background,
+      txIds,
+      call: (name: string, input: unknown = {}) => env.api.call(turn, name, input),
+    };
+  }
+
+  const assetOf = (deck: Deck, id: string) =>
+    (findElementInDeck(deck, id)?.element as { assetId?: string } | undefined)?.assetId;
+
+  it('image_generate into an element returns at once, and the image goes in when it comes', async () => {
+    const held = heldImages();
+    const { call, bus, turn, background, txIds } = inBackground({ images: held.images });
+
+    const result = await call('image_generate', { elementId: 'e_one' });
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.data).toMatchObject({
+      making: [{ slideId: 's_one', elementId: 'e_one' }],
+      note: expect.stringMatching(/^Being made/) as string,
+    });
+    expect(result.images).toEqual([]);
+    expect(held.asked()).toBe(1);
+    expect(assetOf(bus.deck, 'e_one')).toBeUndefined();
+    expect(background.running).toEqual([
+      { tool: 'image_generate', input: { elementId: 'e_one' }, slideIds: ['s_one'] },
+    ]);
+
+    held.next();
+    const final = await result.later!;
+    if (!final.ok) throw new Error(final.error.message);
+    expect(final.data.assets).toEqual([{ assetId: '1'.repeat(64), width: 1024, height: 576 }]);
+    expect(final.images).toHaveLength(1);
+    expect(assetOf(bus.deck, 'e_one')).toBe('1'.repeat(64));
+    // In the turn's own transaction: one undo step with the rest of the turn.
+    expect([...txIds]).toEqual([turn.txId]);
+    expect(background.running).toEqual([]);
+
+    // The agent hears of it with its next call, once.
+    const next = await ok(call('deck_get_outline'));
+    expect(next.meanwhile).toEqual([
+      {
+        tool: 'image_generate',
+        input: { elementId: 'e_one' },
+        ok: true,
+        data: expect.objectContaining({
+          assets: [expect.objectContaining({ assetId: '1'.repeat(64) })],
+        }) as Record<string, unknown>,
+      },
+    ]);
+    expect(await ok(call('deck_get_outline'))).not.toHaveProperty('meanwhile');
+  });
+
+  it('a picture of a slide waits for the images of that slide only', async () => {
+    const held = heldImages();
+    const { call, bus } = inBackground({ images: held.images, capture });
+    await ok(call('image_generate', { elementId: 'e_one' }));
+    await ok(call('image_generate', { elementId: 'e_two' }));
+    renderSlide.mockClear();
+
+    // Slide two's image comes second; a picture of slide two waits for it, and not for slide one's.
+    let shown = false;
+    const looking = call('slide_render', { slideId: 's_two' }).then((r) => {
+      shown = true;
+      return r;
+    });
+    await Promise.resolve();
+    expect(renderSlide).not.toHaveBeenCalled();
+    held.next();
+    await vi.waitFor(() => expect(assetOf(bus.deck, 'e_one')).toBeDefined());
+    expect(shown).toBe(false);
+    held.next();
+    const data = await ok(looking);
+    expect(renderSlide).toHaveBeenCalledTimes(1);
+    const [deck] = renderSlide.mock.calls[0] as unknown as [Deck];
+    expect(assetOf(deck, 'e_two')).toBe('2'.repeat(64));
+    // What ended while the picture waited is told with it.
+    expect(data.meanwhile).toHaveLength(2);
+  });
+
+  it('tells the agent of an image that failed, and the chip of the call hears it', async () => {
+    const held = heldImages();
+    const { call, bus } = inBackground({ images: held.images });
+    const result = await call('image_generate', { elementId: 'e_one' });
+    if (!result.ok) throw new Error(result.error.message);
+    held.next(new Error('The provider refused the prompt.'));
+
+    expect(await result.later).toEqual({
+      ok: false,
+      error: { code: 'failed', message: 'The provider refused the prompt.' },
+    });
+    expect(assetOf(bus.deck, 'e_one')).toBeUndefined();
+    const error = await failed(call('element_get', { elementId: 'e_missing' }));
+    expect(error.message).toMatch(/\nMeanwhile: \[\{"tool":"image_generate".*"ok":false/);
+    expect(error.message).toContain('The provider refused the prompt.');
+  });
+
+  it('writes nothing once the turn is over', async () => {
+    const held = heldImages();
+    const { call, bus, over } = inBackground({ images: held.images });
+    const result = await call('image_generate', { elementId: 'e_one' });
+    if (!result.ok) throw new Error(result.error.message);
+    over.aborted = true;
+    held.next();
+    const final = await result.later!;
+    expect(final.ok).toBe(false);
+    expect(assetOf(bus.deck, 'e_one')).toBeUndefined();
+  });
+
+  it('image_fill_placeholders returns at once, and fills the placeholders when the images come', async () => {
+    const held = heldImages();
+    const { call, bus, background } = inBackground({ images: held.images, capture });
+    const result = await call('image_fill_placeholders');
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.data).toMatchObject({
+      making: [
+        { slideId: 's_one', elementId: 'e_one' },
+        { slideId: 's_two', elementId: 'e_two' },
+      ],
+      remaining: 0,
+    });
+    expect(held.asked()).toBe(2);
+    held.next();
+    held.next();
+    await background.settled();
+    expect(assetOf(bus.deck, 'e_one')).toBe('1'.repeat(64));
+    expect(assetOf(bus.deck, 'e_two')).toBe('2'.repeat(64));
+    const final = await result.later!;
+    if (!final.ok) throw new Error(final.error.message);
+    expect(final.data).toMatchObject({ filled: [{ elementId: 'e_one' }, { elementId: 'e_two' }] });
+  });
+
+  it('waits for images the agent places itself or offers to the user', async () => {
+    const held = heldImages();
+    const { call, background } = inBackground({ images: held.images });
+    const pending = call('image_generate', { prompt: 'a harbour' });
+    await vi.waitFor(() => expect(held.asked()).toBe(1));
+    expect(background.running).toEqual([]);
+    held.next();
+    const result = await pending;
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result.later).toBeUndefined();
+    expect(result.data.assets).toEqual([{ assetId: '1'.repeat(64), width: 1024, height: 576 }]);
   });
 });

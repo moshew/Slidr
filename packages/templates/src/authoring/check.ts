@@ -37,7 +37,8 @@ const colorOf = (theme: Theme, c: Color, over: Rgb): Rgb => {
 
 export default async function check(id: string) {
   // The module alone, so another template being drawn in this folder cannot break the check.
-  const module = (await import(/* @vite-ignore */ `./${id}.ts`)) as {
+  // By its URL: on Windows the path Vite makes of `./<id>.ts` is not found.
+  const module = (await import(/* @vite-ignore */ new URL(`./${id}.ts`, import.meta.url).href)) as {
     entry?: Authored;
   };
   const entry = module.entry;

@@ -17,6 +17,7 @@
  * above is the one ADR-026 sets out.
  */
 import {
+  Background,
   startTurn,
   type DeckApi,
   type LintService,
@@ -281,12 +282,15 @@ const texts = (value: unknown) =>
 
 /**
  * Where a tool call points: the slide and elements it names, or, for a call that made a slide,
- * the slide it reports. What the chip navigates to (CHT-U02).
+ * the slide it reports, or the first slide of the images it left being made (ADR-097). What the
+ * chip navigates to (CHT-U02).
  */
 export function toolTarget(input: unknown, result?: ToolResult): ToolTarget | undefined {
   const args = isRecord(input) ? input : {};
   const data = result?.ok ? result.data : {};
-  const slideId = text(data.slideId) ?? text(args.slideId) ?? texts(data.slides)[0];
+  const making = Array.isArray(data.making) && isRecord(data.making[0]) ? data.making[0] : {};
+  const slideId =
+    text(data.slideId) ?? text(args.slideId) ?? texts(data.slides)[0] ?? text(making.slideId);
   const one = text(args.elementId);
   const elementIds = one ? [one] : texts(args.elementIds);
   if (!slideId && elementIds.length === 0) return undefined;
@@ -466,7 +470,12 @@ interface Run {
    * comes first waits here for the other.
    */
   chips: (Pairing & { partId: string })[];
-  results: (Pairing & { target: ToolTarget | undefined })[];
+  results: (Pairing & { target: ToolTarget | undefined; later?: Promise<ToolResult> })[];
+  /**
+   * The chips of calls whose work went on after their results (ADR-097): what that work does
+   * decides how they end, not what the harness says of the call.
+   */
+  following: Set<string>;
 }
 
 /** A tool result waiting for its chip, or a chip waiting for its result. */
@@ -792,6 +801,9 @@ export class ChatThread {
     }
     const { api } = this.#options;
     const writes = api.tools.find((tool) => tool.name === name)?.writes ?? false;
+    // A picture of a slide waits for the images still being made for it (ADR-097), and is a
+    // look at the slide as they left it.
+    await api.ready(run.turn, name, input);
     const before = run.watch.mark();
     let result: ToolResult;
     if (name === ATTACHMENT_READ.name && ATTACHMENT_HARNESSES.has(this.#session?.harnessId ?? '')) {
@@ -915,6 +927,7 @@ export class ChatThread {
       preparing: false,
       chips: [],
       results: [],
+      following: new Set(),
     };
     this.#run = run;
     this.#heldWatch = null;
@@ -1006,6 +1019,8 @@ export class ChatThread {
     run.turn ??= startTurn(this.id, this.scope, {
       ...(label ? { label } : {}),
       ended: run.over.signal,
+      // An image is made while the agent goes on, and the turn ends once it is in (ADR-097).
+      background: new Background(),
     });
     this.#registerAssets(run);
     // A brief that fails is a turn without one: the agent reads what it needs with its tools.
@@ -1323,7 +1338,7 @@ export class ChatThread {
         if (!run) return;
         this.#patchParts(run.entryId, (parts) =>
           parts.map((part) =>
-            part.type === 'tool' && part.id === event.id
+            part.type === 'tool' && part.id === event.id && !run.following.has(part.id)
               ? { ...part, state: event.ok ? 'ok' : 'failed', summary: event.summary }
               : part,
           ),
@@ -1419,6 +1434,7 @@ export class ChatThread {
       this.#finish(run, run.stopRequested ? 'interrupted' : event.outcome);
       return;
     }
+    if (!(await this.#untilMade(run))) return;
 
     const gated = (this.#settings().qualityGate ?? true) && this.scope.kind !== 'import';
     let report: GateReport = { unseen: [], findings: [] };
@@ -1464,6 +1480,38 @@ export class ChatThread {
     }
   }
 
+  /**
+   * The agent is done, and images it asked for are still being made (ADR-097): they go into their
+   * slides before the turn is judged and ends, since a write after its end is refused. The chat
+   * shows the call that is at work. False when the run ended meanwhile: the user stopped it.
+   */
+  async #untilMade(run: Run): Promise<boolean> {
+    const background = run.turn?.background;
+    const first = background?.running[0];
+    if (!background || !first) return true;
+    const slideId = first.slideIds[0];
+    this.store.setState({
+      activity: {
+        kind: 'tool',
+        name: first.tool,
+        source: 'app',
+        ...(slideId ? { target: { slideId } } : {}),
+      },
+    });
+    const { signal } = run.over;
+    const stopped = new Promise<void>((resolve) => {
+      if (signal.aborted) resolve();
+      else signal.addEventListener('abort', () => resolve(), { once: true });
+    });
+    await Promise.race([background.settled(), stopped]);
+    if (this.#run !== run) return false;
+    if (run.stopRequested) {
+      this.#finish(run, 'interrupted');
+      return false;
+    }
+    return true;
+  }
+
   /** Closes the run's entry and keeps it with the deck. */
   #finish(run: Run, outcome: TurnOutcome, remaining?: GateReport): void {
     if (this.#run !== run) return;
@@ -1499,19 +1547,45 @@ export class ChatThread {
     }
     const [result] = run.results.splice(at, 1);
     this.#setTarget(run, partId, result?.target);
+    if (result?.later) this.#follow(run, partId, result.later);
   }
 
   /** A result came in: give its target to the chip of the call, if the chip is already shown. */
   #pairResult(run: Run, name: string, input: unknown, result: ToolResult): void {
     const target = toolTarget(input, result);
+    const later = result.ok ? result.later : undefined;
     const key = JSON.stringify(input ?? {});
     const at = run.chips.findIndex((c) => c.name === name && c.key === key);
     if (at < 0) {
-      run.results.push({ name, key, target });
+      run.results.push({ name, key, target, ...(later ? { later } : {}) });
       return;
     }
     const [chip] = run.chips.splice(at, 1);
-    if (chip) this.#setTarget(run, chip.partId, target);
+    if (!chip) return;
+    this.#setTarget(run, chip.partId, target);
+    if (later) this.#follow(run, chip.partId, later);
+  }
+
+  /**
+   * The chip of a call whose work went on after its result (ADR-097): at work until the work
+   * ends, and then it says how the work went. A run that is over by then kept its entry with the
+   * chip failed (`#finish`): it is put right, and the entry is kept again.
+   */
+  #follow(run: Run, partId: string, later: Promise<ToolResult>): void {
+    run.following.add(partId);
+    void later.then((result) => {
+      let settled = false;
+      this.#patchParts(run.entryId, (parts) =>
+        parts.map((part) => {
+          if (part.type !== 'tool' || part.id !== partId) return part;
+          settled = true;
+          return { ...part, state: result.ok ? 'ok' : 'failed', summary: summaryOf(result) };
+        }),
+      );
+      if (this.#run === run) return;
+      const entry = this.store.getState().entries.find((e) => e.id === run.entryId);
+      if (settled && entry) this.#persist([entry]);
+    });
   }
 
   #setTarget(run: Run, partId: string, target: ToolTarget | undefined): void {

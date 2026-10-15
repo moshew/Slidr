@@ -105,8 +105,16 @@ export const de: AtlasCopy = {
         'Gründung in Marseille',
         'Fünf Städte unterzeichnen eine Charta, um Daten und Entwürfe zu teilen.',
       ],
-      ['2024', 'Ein gemeinsames Labor', 'Genua eröffnet ein Testlabor, das jeder Partner buchen kann.'],
-      ['2025', 'Zehn Städte', 'Tunis, Izmir und Split treten bei, die Wiederverwendung liegt über 30 %.'],
+      [
+        '2024',
+        'Ein gemeinsames Labor',
+        'Genua eröffnet ein Testlabor, das jeder Partner buchen kann.',
+      ],
+      [
+        '2025',
+        'Zehn Städte',
+        'Tunis, Izmir und Split treten bei, die Wiederverwendung liegt über 30 %.',
+      ],
       ['2026', 'Vierzehn Städte', 'Die Hafenanlage von Limassol beginnt, Wasser zu erzeugen.'],
     ],
     note: 'Jede neue Stadt bringt in ihrem ersten Jahr ein eigenes Projekt in das Netzwerk ein.',
@@ -114,7 +122,7 @@ export const de: AtlasCopy = {
   joining: {
     name: 'Beitritt',
     kicker: 'Dem Netzwerk beitreten',
-    title: 'Wie eine Stadt beitritt, in fünf Schritten',
+    title: 'In fünf Schritten ins Netzwerk',
     steps: [
       ['Antrag', 'Ein Brief der Stadtspitze'],
       ['Prüfung', 'Zwei Wochen mit unseren Fachleuten'],
@@ -142,7 +150,7 @@ export const de: AtlasCopy = {
   reuse: {
     name: 'Wiederverwendung',
     kicker: 'Wiederverwendung',
-    title: 'Die Wiederverwendung steigt in jeder Stadt',
+    title: ['Die Wiederverwendung', 'steigt in jeder Stadt'],
     source: 'Anteil des wiederverwendeten geklärten Abwassers in Prozent, 2023–2026.',
     series: ['Netzwerk-Durchschnitt', 'Limassol'],
     figures: [

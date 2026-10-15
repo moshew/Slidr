@@ -70,6 +70,8 @@ A development build and the dev server read another copy when `SLIDR_MEDIA_URL` 
 
 The management tool (`management/`) publishes the designs it makes into a catalog of their own, `elements/designs/managed.json`, so that it never writes over the authored `index.json`. Their ids start with `m-`. Their pictures are `images/designs/<id>.webp` (and `<id>-bg.webp`) like the others, but their pixel sizes and their names in both languages are in `managed.json`, not in `sizes.json` or the app's messages.
 
+A design's slide, and a template's sample, is written in Hebrew and in English, and may be written in any other language of `packages/model/src/languages.ts` (`slides[id].<code>`, `samples[template].<code>`). A deck gets the one in its own language, else the English one ([ADR-098](adr/ADR-098-content-in-every-language.md)). The fonts catalog tags each family with the scripts it ships (`he`, `latin`, `arabic`, `cyrillic`, `vietnamese`, `devanagari`).
+
 The app reads `managed.json` after `index.json` and puts its designs after the authored ones: in a group the authored catalog has, after its designs; in a group of their own, after the authored groups. Where both have an id, the authored design is kept.
 
 A publication is the whole library, from one copy. An author who publishes from another copy pulls first: `pnpm media:pull` adds what the copy lacks, so the managed designs are not taken away. Pull before changing anything, since it also puts the published bytes back over a file that differs.

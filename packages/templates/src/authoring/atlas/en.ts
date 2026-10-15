@@ -44,7 +44,7 @@ export const en: AtlasCopy = {
   project: {
     name: 'Project of the year',
     kicker: 'Project of the year · Limassol',
-    title: 'A harbour that makes its own water',
+    title: ['A harbour that makes', 'its own water'],
     items: [
       [
         'Run on sunlight',

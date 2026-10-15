@@ -44,7 +44,7 @@ export const ptBR: AtlasCopy = {
   project: {
     name: 'Projeto do ano',
     kicker: 'Projeto do ano · Limassol',
-    title: 'Um porto que produz a própria água',
+    title: ['Um porto que produz', 'a própria água'],
     items: [
       [
         'Movido a luz do sol',
@@ -100,8 +100,16 @@ export const ptBR: AtlasCopy = {
     kicker: 'Marcos',
     title: 'Três anos, quatro paradas',
     stops: [
-      ['2023', 'Fundada em Marselha', 'Cinco cidades assinam uma carta para dividir dados e projetos.'],
-      ['2024', 'Um laboratório comum', 'Gênova abre um laboratório de testes que qualquer parceiro pode reservar.'],
+      [
+        '2023',
+        'Fundada em Marselha',
+        'Cinco cidades assinam uma carta para dividir dados e projetos.',
+      ],
+      [
+        '2024',
+        'Um laboratório comum',
+        'Gênova abre um laboratório de testes que qualquer parceiro pode reservar.',
+      ],
       ['2025', 'Dez cidades', 'Túnis, Esmirna e Split entram, e o reúso passa de 30%.'],
       ['2026', 'Catorze cidades', 'A usina do porto de Limassol começa a produzir água.'],
     ],
@@ -151,7 +159,7 @@ export const ptBR: AtlasCopy = {
     kicker: 'As cidades',
     title: 'Cinco das catorze, em números',
     note: 'Dados de 2026, como cada cidade os informou em janeiro de 2027.',
-    header: ['Cidade', 'Adesão', 'Água reutilizada', 'Economia, milhões de m³', 'Programas'],
+    header: ['Cidade', 'Adesão', 'Reúso', 'Economia, milhões de m³', 'Programas'],
     rows: [
       ['Valência', '2023', '52%', '31', '3'],
       ['Marselha', '2023', '44%', '27', '2'],

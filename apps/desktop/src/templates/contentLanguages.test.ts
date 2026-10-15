@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { BASE_LANGUAGES, CONTENT_LANGUAGES, languageDir } from '@slidr/model';
 import i18n from 'i18next';
 import { describe, expect, it } from 'vitest';

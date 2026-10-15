@@ -55,6 +55,26 @@ Designs from the studio go to their own catalog, `elements/designs/managed.json`
 
 Publishing needs a Cloudflare API token with Pages edit rights. Give it in the panel, where it is kept in the server's memory only, or set `CLOUDFLARE_API_TOKEN` in the environment. The account defaults to the library's (`CLOUDFLARE_ACCOUNT_ID` overrides it).
 
+## The library
+
+The "ספרייה" tab shows the media library as it is published, as every installed app reads it. It only reads: changing the library goes through publishing. The page reads the site directly (`@slidr/media-library`), and the server takes no part.
+
+- **Overview.** Each part of the library, with its number of files and their size, and the date the library was published.
+- **Parts.** Ready-made designs, templates, card sets, frames, shapes and lines, graphics, emoji, art sets, icons and fonts. Each is read and drawn by the app's own code in `apps/desktop/src` (`web/src/library/app.ts` names the modules): the same catalogs, names, renderer and search in Hebrew and English. A part is loaded when it is opened.
+- **An item up close.** A click opens it full size, in Hebrew or English, beside what it is made of:
+  - a design shows its thumbnail as the gallery shows it, its pictures and its catalog, and links to its request when the studio made it;
+  - a template shows its whole sample deck, its colours, fonts and layouts;
+  - a card set shows every kind of card, and the set at every number of cards;
+  - a frame is drawn around a photograph, with its pictures made ahead and whether they are still current;
+  - an icon, a graphic or a drawing is shown at several sizes, with its markup and its licence;
+  - a font shows each of its weights, its files and its licence.
+
+  The arrow keys step through the part, and the browser's Back button goes back out.
+
+- **All files.** Every file of the manifest, folder by folder, with its size and SHA-256. Pictures, JSON, fonts and the reference decks open in place.
+
+The library is read once each time the page is loaded; "רענון" reads it again.
+
 ## Settings
 
 | Variable                                               | Default                          |

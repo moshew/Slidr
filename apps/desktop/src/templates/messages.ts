@@ -51,6 +51,7 @@ export const he = {
     magen: 'מגן',
     shvav: 'שבב',
     mutzar: 'מוצר',
+    atlas: 'אטלס',
   },
   // What each built-in template feels like, in a sentence beside its name.
   tagline: {
@@ -78,6 +79,7 @@ export const he = {
     magen: 'ירוק זית כהה וכתום של התרעה, בדיוק של מסך בקרה',
     shvav: 'ירוק של מעגל מודפס ונחושת, לחומרה שיוצאת לייצור',
     mutzar: 'חלונות של מוצר, סמנים והתראות, להשקה של גרסה חדשה',
+    atlas: 'גלובוס, מסלולים ובולי דואר על נייר של מפה, בכל השפות, למה שחוצה גבולות',
   },
   direction: {
     title: 'כיוון המצגת',
@@ -321,6 +323,7 @@ export const en: typeof he = {
     magen: 'Magen',
     shvav: 'Shvav',
     mutzar: 'Mutzar',
+    atlas: 'Atlas',
   },
   tagline: {
     zerem: 'Technology in motion, turquoise glowing on a deep blue night',
@@ -347,6 +350,8 @@ export const en: typeof he = {
     magen: 'Dark olive and alert orange, with the precision of a control display',
     shvav: 'Circuit-board green and copper, for hardware on its way to production',
     mutzar: 'Product windows, cursors and notifications, for the launch of a new version',
+    atlas:
+      'A globe, routes and postage stamps on map paper, in every language, for what crosses borders',
   },
   direction: {
     title: 'Deck direction',

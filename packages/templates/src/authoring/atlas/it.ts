@@ -6,7 +6,9 @@ export const it: AtlasCopy = {
     name: 'Apertura',
     org: 'Medwater · Alleanza delle città portuali del Mediterraneo',
     title: ['Acqua', 'senza confini'],
-    subtitle: ['Come quattordici città portuali condividono ogni goccia che imparano a risparmiare'],
+    subtitle: [
+      'Come quattordici città portuali condividono ogni goccia che imparano a risparmiare',
+    ],
     meta: 'Assemblea dei partner · Valencia · 18 marzo 2027',
   },
   section: {
@@ -44,7 +46,7 @@ export const it: AtlasCopy = {
   project: {
     name: 'Progetto dell’anno',
     kicker: 'Progetto dell’anno · Limassol',
-    title: 'Un porto che produce la propria acqua',
+    title: ['Un porto che produce', 'la propria acqua'],
     items: [
       [
         'Alimentato dal sole',
@@ -100,8 +102,16 @@ export const it: AtlasCopy = {
     kicker: 'Le tappe',
     title: 'Tre anni, quattro scali',
     stops: [
-      ['2023', 'Nata a Marsiglia', 'Cinque città firmano una carta per condividere dati e progetti.'],
-      ['2024', 'Un laboratorio comune', 'Genova apre un laboratorio di prova che ogni partner può prenotare.'],
+      [
+        '2023',
+        'Nata a Marsiglia',
+        'Cinque città firmano una carta per condividere dati e progetti.',
+      ],
+      [
+        '2024',
+        'Un laboratorio comune',
+        'Genova apre un laboratorio di prova che ogni partner può prenotare.',
+      ],
       ['2025', 'Dieci città', 'Entrano Tunisi, Smirne e Spalato, e il riutilizzo supera il 30%.'],
       ['2026', 'Quattordici città', 'L’impianto del porto di Limassol inizia a produrre acqua.'],
     ],
@@ -151,7 +161,7 @@ export const it: AtlasCopy = {
     kicker: 'Le città',
     title: 'Cinque delle quattordici, in cifre',
     note: 'Dati del 2026, come ogni città li ha comunicati a gennaio 2027.',
-    header: ['Città', 'Adesione', 'Acqua riutilizzata', 'Risparmio, milioni di m³', 'Programmi'],
+    header: ['Città', 'Adesione', 'Riutilizzo', 'Risparmio, milioni di m³', 'Programmi'],
     rows: [
       ['Valencia', '2023', '52%', '31', '3'],
       ['Marsiglia', '2023', '44%', '27', '2'],

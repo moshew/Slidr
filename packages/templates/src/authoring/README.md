@@ -1,7 +1,7 @@
 # Authored templates and designs
 
-The sources of three technology templates (Anan, Shvav and Mutzar) and of the
-ready-made slides of Elements → Designs, the pictures of their samples, and the scripts that
+The sources of three technology templates (Anan, Shvav and Mutzar), of Atlas, a template written
+in every language of the app, and of the ready-made slides of Elements → Designs, the pictures of their samples, and the scripts that
 render, check and package them. The app does not read this folder. It reads the media library
 (docs/media-library.md); what is authored here reaches the library through
 `tools/merge-into-library.mjs` and `pnpm media:publish`.
@@ -14,6 +14,7 @@ take their place when merged.
 | Path                                   | What it is                                                                                                                               |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `<id>.ts`                              | A template: theme, layouts for both directions, the sample in Hebrew and English. It exports `entry`.                                    |
+| `atlas/<lang>.ts`                      | The words of Atlas's sample, a module a language (`atlas/copy.ts` lists them).                                                           |
 | `designs/kit.ts`, `designs/<topic>.ts` | Ready-made slides in the shape of `elements/designs/managed.json`. Each topic module exports `designs`.                                  |
 | `pictures/`                            | The pictures of the samples (`<id>-<name>.webp`, recorded in `<id>.json`) and of the designs (`designs/<id>.webp`, size in `<id>.json`). |
 | `artwork/`                             | The HTML and three.js pages the pictures were rendered from.                                                                             |
@@ -21,6 +22,16 @@ take their place when merged.
 | `catalog.ts`                           | Writes the catalog fragments and copies the pictures into a folder laid out like the library.                                            |
 | `check.ts`                             | The structural checks the app's unit tests make of a template.                                                                           |
 | `tools/`                               | The scripts below.                                                                                                                       |
+
+## Languages
+
+Everything is written in Hebrew and English. A template's sample, and a design, may also be written
+in any other language of `packages/model/src/languages.ts`, and only when it is asked for
+(`AGENTS.md`): a template's `samples` take a key a language, a design its other languages in
+`more`. A deck in a language a piece has gets it; any other gets the English one. Atlas
+(`atlas.ts`) and the designs of `designs/world.ts` are written in all sixteen; their drawings hold
+no words, and each run of a design names a family with the letters of its language. Look at each
+language on the review page (`lang=<code>`), at full size and as a thumbnail.
 
 ## Working on a template
 

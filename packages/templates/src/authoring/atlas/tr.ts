@@ -100,8 +100,16 @@ export const tr: AtlasCopy = {
     kicker: 'Kilometre taşları',
     title: 'Üç yıl, dört durak',
     stops: [
-      ['2023', 'Marsilya’da kuruldu', 'Beş kent veri ve tasarım paylaşmak için bir şart imzalıyor.'],
-      ['2024', 'Ortak laboratuvar', 'Cenova, her ortağın kullanabileceği bir test laboratuvarı açıyor.'],
+      [
+        '2023',
+        'Marsilya’da kuruldu',
+        'Beş kent veri ve tasarım paylaşmak için bir şart imzalıyor.',
+      ],
+      [
+        '2024',
+        'Ortak laboratuvar',
+        'Cenova, her ortağın kullanabileceği bir test laboratuvarı açıyor.',
+      ],
       ['2025', 'On kent', 'Tunus, İzmir ve Split katılıyor; yeniden kullanım %30’u geçiyor.'],
       ['2026', 'On dört kent', 'Limasol liman tesisi su üretmeye başlıyor.'],
     ],

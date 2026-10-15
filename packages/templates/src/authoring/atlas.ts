@@ -1,6 +1,5 @@
 import {
   CONTENT_LANGUAGES,
-  languageDir,
   type ContentLanguage,
   type Element,
   type Frame,
@@ -61,9 +60,9 @@ export const atlasTheme: Theme = {
     text: '#13233b',
     muted: '#55606f',
     primary: '#1b5a87',
-    secondary: '#d4442a',
+    secondary: '#c43c22',
     accent: '#c4892b',
-    chart: ['#1b5a87', '#d4442a', '#2c8a73', '#c4892b', '#13233b', '#8fb2cc'],
+    chart: ['#1b5a87', '#c43c22', '#2c8a73', '#c4892b', '#13233b', '#8fb2cc'],
   },
   // A geometric face of a map's lettering for what is said aloud (Montserrat, with Rubik for
   // Hebrew and Arabic), and Inter for what is read; Rubik carries the Hebrew and the Arabic of both.
@@ -92,10 +91,10 @@ export const atlasTheme: Theme = {
     body: { font: 'body', size: 27, weight: 400, lineHeight: 1.5, color: { token: 'text' } },
     caption: {
       font: 'body',
-      size: 22,
+      size: 24,
       weight: 600,
       lineHeight: 1.4,
-      letterSpacing: 0.4,
+      letterSpacing: 0.3,
       color: { token: 'muted' },
     },
   },
@@ -125,7 +124,7 @@ export const atlasTheme: Theme = {
 const INK = '#13233b';
 const MUTED = '#55606f';
 const OCEAN = '#1b5a87';
-const VERMILION = '#d4442a';
+const VERMILION = '#c43c22';
 const OCHRE = '#c4892b';
 const PAPER = '#f3eee3';
 const WHITE = '#fffdf8';
@@ -154,12 +153,13 @@ const art = (id: string, frame: Frame, body: string) =>
 /**
  * The drawings that a left-to-right deck must not see mirrored: the globe (a mirrored world is
  * another world), and those with figures in them. Their mirror moves them to the other side
- * and leaves them as they are.
+ * and leaves them as they are, or takes the drawing given for that direction: a globe that
+ * stands to one side of its box stands to the other.
  */
-const UPRIGHT = new Set<string>();
+const UPRIGHT = new Map<string, string | undefined>();
 
-const upright = (id: string, frame: Frame, body: string) => {
-  UPRIGHT.add(id);
+const upright = (id: string, frame: Frame, body: string, ltr?: string) => {
+  UPRIGHT.set(id, ltr === undefined ? undefined : svg(frame.w, frame.h, ltr));
   return art(id, frame, body);
 };
 
@@ -270,85 +270,103 @@ function visiblePath(points: { x: number; y: number; front: boolean }[], cx: num
 
 interface GlobeOptions {
   r: number;
-  margin: number;
+  /** The point of the earth at the middle of the disc. */
   centre: LatLon;
+  /** The box of the drawing, and where the middle of the globe is in it. */
+  w: number;
+  h: number;
+  cx: number;
+  cy: number;
+  /** Degrees between the lines of the graticule. */
+  step?: number;
   /** The route drawn in the colour of what matters; the others are quieter. */
   highlight?: [string, string];
-  /** Pins whose names are kept: the ports the drawing marks. */
-  quiet?: boolean;
+  /** A shadow on the ground under the globe, when the globe stands whole on the slide. */
+  shadow?: boolean;
+  /** How far the routes rise off the surface, as a share of the radius. */
+  lift?: number;
 }
 
 /**
  * A globe in orthographic projection: the ocean shaded as a sphere under the light, the
- * graticule every fifteen degrees, the network's routes lifted off the surface as flight paths,
- * and a pin on every port. Geography without a coastline: the routes and the pins are where the
- * cities are.
+ * graticule, the network's routes lifted off the surface as flight paths, and a pin on every
+ * port. Geography without a coastline: the routes and the pins are where the cities are. The
+ * box crops the globe where it is smaller than it.
  */
 function globe(id: string, o: GlobeOptions) {
-  const size = 2 * (o.r + o.margin);
-  const c = size / 2;
+  const { cx, cy } = o;
+  const step = o.step ?? 15;
   const project = projection(o.r, o.centre);
   const lines: string[] = [];
-  for (let lon = -180; lon < 180; lon += 15) {
+  // The meridians stop short of the poles, where they would crowd into a star.
+  for (let lon = -180; lon < 180; lon += step) {
     const points = [];
-    for (let lat = -90; lat <= 90; lat += 2) points.push(project(lat, lon));
-    lines.push(visiblePath(points, c, c));
+    for (let lat = -90 + step; lat <= 90 - step; lat += 1.5) points.push(project(lat, lon));
+    lines.push(visiblePath(points, cx, cy));
   }
-  for (let lat = -75; lat <= 75; lat += 15) {
+  for (let lat = -90 + step; lat < 90; lat += step) {
     const points = [];
-    for (let lon = -180; lon <= 180; lon += 2) points.push(project(lat, lon));
-    lines.push(visiblePath(points, c, c));
+    for (let lon = -180; lon <= 180; lon += 1.5) points.push(project(lat, lon));
+    lines.push(visiblePath(points, cx, cy));
   }
   const equator = visiblePath(
-    Array.from({ length: 181 }, (_, i) => project(0, -180 + i * 2)),
-    c,
-    c,
+    Array.from({ length: 241 }, (_, i) => project(0, -180 + i * 1.5)),
+    cx,
+    cy,
   );
+  const lift = o.lift ?? 0.035;
   const routes = ROUTES.map(([a, b]) => {
-    const points = greatCircle(PORTS[a]!, PORTS[b]!, 40).map(([lat, lon], i, all) =>
-      project(lat, lon, 1 + 0.035 * Math.sin((Math.PI * i) / (all.length - 1))),
+    const points = greatCircle(PORTS[a]!, PORTS[b]!, 48).map(([lat, lon], i, all) =>
+      project(lat, lon, 1 + lift * Math.sin((Math.PI * i) / (all.length - 1))),
     );
     const hot = o.highlight && o.highlight.includes(a) && o.highlight.includes(b);
-    return { d: visiblePath(points, c, c), hot };
+    return { d: visiblePath(points, cx, cy), hot };
   });
   const pins = Object.entries(PORTS).map(([name, [lat, lon]]) => {
     const p = project(lat, lon);
-    return { name, x: c + p.x, y: c + p.y };
+    return { name, x: cx + p.x, y: cy + p.y };
   });
   const g = (name: string) => `${id}-${name}`;
-  return {
-    size,
-    markup:
-      `<defs>` +
-      `<radialGradient id="${g('sea')}" cx="38%" cy="30%" r="78%">` +
-      `<stop offset="0" stop-color="${WHITE}"/><stop offset=".5" stop-color="${OCEAN}" stop-opacity=".1"/>` +
-      `<stop offset="1" stop-color="${OCEAN}" stop-opacity=".3"/></radialGradient>` +
-      `<radialGradient id="${g('shadow')}" cx="50%" cy="50%" r="50%">` +
-      `<stop offset="0" stop-color="${INK}" stop-opacity=".2"/><stop offset="1" stop-color="${INK}" stop-opacity="0"/></radialGradient>` +
-      `</defs>` +
-      `<ellipse cx="${c}" cy="${r1(c + o.r + o.margin * 0.55)}" rx="${r1(o.r * 0.82)}" ry="${r1(o.margin * 0.32)}" fill="url(#${g('shadow')})"/>` +
-      `<circle cx="${c}" cy="${c}" r="${r1(o.r + 16)}" stroke="${OCEAN}" stroke-opacity=".2" stroke-width="1.2" stroke-dasharray="1 7" stroke-linecap="round"/>` +
-      `<circle cx="${c}" cy="${c}" r="${o.r}" fill="url(#${g('sea')})"/>` +
-      `<path d="${lines.join('')}" stroke="${OCEAN}" stroke-opacity=".3" stroke-width="1.1"/>` +
-      `<path d="${equator}" stroke="${OCEAN}" stroke-opacity=".55" stroke-width="1.4" stroke-dasharray="3 6"/>` +
-      `<circle cx="${c}" cy="${c}" r="${o.r}" stroke="${INK}" stroke-width="2.2"/>` +
-      routes
-        .map(
-          ({ d, hot }) =>
-            `<path d="${d}" stroke="${VERMILION}" stroke-opacity="${hot ? 1 : o.highlight ? 0.38 : 0.85}" stroke-width="${hot ? 3.2 : 2.2}" stroke-dasharray="${hot ? '1 0' : '2 6'}" stroke-linecap="round"/>`,
-        )
-        .join('') +
-      pins
-        .map(({ name, x, y }) => {
-          const hot = o.highlight?.includes(name);
-          const r = hot ? 7 : 4.6;
-          return (
-            `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r * 2.4}" fill="${VERMILION}" fill-opacity=".16"/>` +
-            `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r}" fill="${VERMILION}" stroke="${WHITE}" stroke-width="1.6"/>`
-          );
-        })
-        .join(''),
-  };
+  const scale = Math.max(1, o.r / 330);
+  return (
+    `<defs>` +
+    `<radialGradient id="${g('sea')}" cx="38%" cy="30%" r="78%">` +
+    `<stop offset="0" stop-color="${WHITE}"/><stop offset=".5" stop-color="${OCEAN}" stop-opacity=".1"/>` +
+    `<stop offset="1" stop-color="${OCEAN}" stop-opacity=".3"/></radialGradient>` +
+    `<radialGradient id="${g('shadow')}" cx="50%" cy="50%" r="50%">` +
+    `<stop offset="0" stop-color="${INK}" stop-opacity=".2"/><stop offset="1" stop-color="${INK}" stop-opacity="0"/></radialGradient>` +
+    `</defs>` +
+    (o.shadow
+      ? `<ellipse cx="${cx}" cy="${r1(cy + o.r + 34)}" rx="${r1(o.r * 0.82)}" ry="20" fill="url(#${g('shadow')})"/>`
+      : '') +
+    `<circle cx="${cx}" cy="${cy}" r="${r1(o.r + 16 * scale)}" stroke="${OCEAN}" stroke-opacity=".22" stroke-width="1.2" stroke-dasharray="1 7" stroke-linecap="round"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="${o.r}" fill="url(#${g('sea')})"/>` +
+    `<path d="${lines.join('')}" stroke="${OCEAN}" stroke-opacity=".3" stroke-width="1.1"/>` +
+    `<path d="${equator}" stroke="${OCEAN}" stroke-opacity=".55" stroke-width="1.4" stroke-dasharray="3 6"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="${o.r}" stroke="${INK}" stroke-width="2.2"/>` +
+    routes
+      .map(
+        ({ d, hot }) =>
+          `<path d="${d}" stroke="${VERMILION}" stroke-opacity="${hot ? 1 : o.highlight ? 0.4 : 0.9}" stroke-width="${r1((hot ? 3.4 : 2.4) * Math.sqrt(scale))}" stroke-dasharray="${hot ? '1 0' : '2 7'}" stroke-linecap="round"/>`,
+      )
+      .join('') +
+    pins
+      .map(({ name, x, y }) => {
+        const hot = o.highlight?.includes(name);
+        const r = (hot ? 7 : 4.8) * Math.sqrt(scale);
+        // The end of the highlighted route: the destination, ringed.
+        const destination = hot && o.highlight![1] === name;
+        return (
+          (destination
+            ? `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r1(r * 4.2)}" stroke="${VERMILION}" stroke-width="1.6"/>` +
+              `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r1(r * 6.4)}" stroke="${VERMILION}" stroke-opacity=".45" stroke-width="1.2"/>`
+            : '') +
+          `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r1(r * 2.5)}" fill="${VERMILION}" fill-opacity=".16"/>` +
+          `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r1(r)}" fill="${VERMILION}" stroke="${WHITE}" stroke-width="1.8"/>`
+        );
+      })
+      .join('')
+  );
 }
 
 /** A smooth closed path through points (Catmull-Rom as cubic Béziers). */
@@ -590,14 +608,24 @@ const WIDTH = 1920 - START - END;
 const kickerPin = (id: string, top: number) =>
   art(id, at(START, top + 1, 24, 32), pinGlyph(12, 11, 10));
 
-/** The kicker on its pin, and the title. */
-function head(name: string, width = 1100, lines = 2) {
+/** The kicker on its pin, and the title; without a kicker, the title on the pin. */
+function head(name: string, width = 1100, lines = 2, kicker = true) {
+  // Room for the leading a script may need beyond the theme's (`LEADING`).
+  const title = at(START, 132, width, Math.round(56 * 1.3 * lines) + 4);
+  if (!kicker) {
+    return {
+      placeholders: [
+        place('p_title', 'title', { ...at(START + 44, 108, width - 44, title.h) }, 'title'),
+      ],
+      decorations: [kickerPin(`d_atlas_${name}_pin`, 126)],
+    };
+  }
   return {
     placeholders: [
-      place('p_kicker', 'caption', at(START + 38, 90, Math.min(900, width - 38), 34), 'caption', {
+      place('p_kicker', 'caption', at(START + 38, 90, Math.min(900, width - 38), 36), 'caption', {
         color: token('primary'),
       }),
-      place('p_title', 'title', at(START, 132, width, Math.round(56 * 1.14 * lines) + 4), 'title'),
+      place('p_title', 'title', title, 'title'),
     ],
     decorations: [kickerPin(`d_atlas_${name}_pin`, 90)],
   };
@@ -630,7 +658,7 @@ function mark(id: string, frame: Frame): Element {
 function foot(name: string, withFooter = true) {
   return {
     placeholders: withFooter
-      ? [place('p_footer', 'footer', at(START + 56, 960, 900, 34), 'caption')]
+      ? [place('p_footer', 'footer', at(START + 56, 958, 900, 36), 'caption')]
       : [],
     decorations: [
       mark(`d_atlas_${name}_mark`, at(START, 956, 40, 40)),
@@ -640,7 +668,7 @@ function foot(name: string, withFooter = true) {
         atEnd(END, 948, 58, 58),
         `<circle cx="29" cy="29" r="27" stroke="${VERMILION}" stroke-width="2"/><circle cx="29" cy="29" r="22" stroke="${VERMILION}" stroke-opacity=".35" stroke-width="1"/>`,
       ),
-      pageNumber(`d_atlas_${name}_number`, atEnd(END, 960, 58, 34), 'caption', {
+      pageNumber(`d_atlas_${name}_number`, atEnd(END, 959, 58, 36), 'caption', {
         color: token('text'),
         weight: 700,
         align: 'center',
@@ -711,16 +739,31 @@ const steps5 = [START, START + 337, START + 674, START + 1011, START + 1348];
 const team4 = [START, START + 428, START + 856, START + 1284];
 
 function layouts(): Layout[] {
-  const heroGlobe = globe('d_atlas_hero_globe', {
-    r: 330,
-    margin: 60,
-    centre: [37, 15],
-  });
+  // The opening's globe rises out of the end corner of the sheet, cropped by its border: the
+  // Mediterranean high on its face, where the slide's eye falls.
+  const heroArt = atEnd(INNER, INNER, 900, 1080 - INNER * 2);
+  const heroGlobe = (side: 'start' | 'end') =>
+    globe('d_atlas_hero_globe', {
+      r: 600,
+      centre: [12, 17],
+      w: heroArt.w,
+      h: heroArt.h,
+      cx: side === 'end' ? 330 - INNER : heroArt.w - (330 - INNER),
+      cy: 880 - INNER,
+      step: 10,
+      lift: 0.05,
+    });
+  const closingSize = 712;
   const closingGlobe = globe('d_atlas_closing_globe', {
     r: 300,
-    margin: 56,
     centre: [39, 12],
+    w: closingSize,
+    h: closingSize,
+    cx: closingSize / 2,
+    cy: closingSize / 2 - 20,
     highlight: ['valencia', 'genoa'],
+    shadow: true,
+    lift: 0.09,
   });
 
   // The flight of the timeline: a gentle arc from the first stop to the last, and where the
@@ -748,16 +791,16 @@ function layouts(): Layout[] {
       name: 'Hero',
       archetype: 'hero',
       placeholders: [
-        place('p_kicker', 'caption', at(START + 38, 300, 840, 34), 'caption', {
+        place('p_kicker', 'caption', at(START + 38, 300, 840, 36), 'caption', {
           color: token('primary'),
         }),
-        place('p_title', 'title', at(START, 350, 900, 222), 'display'),
+        place('p_title', 'title', at(START, 344, 900, 252), 'display'),
         place('p_subtitle', 'subtitle', at(START, 604, 840, 136), 'heading'),
-        place('p_meta', 'caption', at(START + 46, 806, 820, 34), 'caption'),
+        place('p_meta', 'caption', at(START + 46, 806, 820, 36), 'caption'),
       ],
       decorations: [
         neatline('d_atlas_hero_frame', true),
-        upright('d_atlas_hero_globe', atEnd(110, 150, heroGlobe.size, heroGlobe.size), heroGlobe.markup),
+        upright('d_atlas_hero_globe', heroArt, heroGlobe('end'), heroGlobe('start')),
         kickerPin('d_atlas_hero_pin', 300),
         art(
           'd_atlas_hero_route',
@@ -783,10 +826,10 @@ function layouts(): Layout[] {
           vAlign: 'middle',
           color: token('primary'),
         }),
-        place('p_kicker', 'caption', at(START + 38, 372, 780, 34), 'caption', {
+        place('p_kicker', 'caption', at(START + 38, 372, 780, 36), 'caption', {
           color: token('primary'),
         }),
-        place('p_title', 'title', at(START, 422, 860, 222), 'display', { vAlign: 'middle' }),
+        place('p_title', 'title', at(START, 416, 860, 252), 'display', { vAlign: 'middle' }),
         place('p_subtitle', 'subtitle', at(START, 676, 820, 136), 'heading'),
       ],
       decorations: [
@@ -811,33 +854,34 @@ function layouts(): Layout[] {
       archetype: 'bigNumber',
       placeholders: [
         ...head('big_number', 1000, 1).placeholders,
-        place('p_number', 'number', at(START, 352, 720, 120), 'display', {
+        place('p_number', 'number', at(START, 344, 440, 134), 'display', {
           color: token('secondary'),
         }),
-        place('p_label', 'subtitle', at(START, 488, 700, 96), 'heading'),
-        place('p_note', 'body', at(START, 604, 680, 128), 'body'),
+        place('p_label', 'subtitle', at(START, 494, 700, 96), 'heading'),
+        place('p_note', 'body', at(START, 610, 680, 128), 'body'),
         ...[0, 1, 2].flatMap((i) => [
-          place(`p_number${i + 2}`, 'number', atEnd(END + 128, 318 + i * 196, 520, 70), 'title', {
+          place(`p_number${i + 2}`, 'number', atEnd(END + 128, 330 + i * 190, 520, 70), 'title', {
             color: token('primary'),
           }),
-          place(`p_label${i + 2}`, 'caption', atEnd(END + 128, 392 + i * 196, 520, 64), 'caption'),
+          place(`p_label${i + 2}`, 'caption', atEnd(END + 128, 402 + i * 190, 520, 74), 'caption'),
         ]),
         ...foot('big_number').placeholders,
       ],
       decorations: [
         neatline('d_atlas_big_number_frame', false),
         ...head('big_number', 1000, 1).decorations,
+        // The summit the figure stands for: a hill beside it, clear of every line of text.
         art(
           'd_atlas_big_number_hill',
-          at(START - 60, 250, 860, 560),
+          at(START + 460, 262, 440, 220),
           contours(
             [
-              { x: 300, y: 300, rx: 380, ry: 230, seed: 1.2, levels: 11 },
-              { x: 700, y: 420, rx: 150, ry: 110, seed: 3.1, levels: 5 },
+              { x: 250, y: 112, rx: 170, ry: 88, seed: 1.2, levels: 9 },
+              { x: 64, y: 150, rx: 50, ry: 40, seed: 3.1, levels: 4 },
             ],
             OCEAN,
-            0.16,
-          ),
+            0.26,
+          ) + pinGlyph(268, 70, 14),
         ),
         card('d_atlas_big_number_legend', atEnd(END, 290, 700, 610)),
         art(
@@ -848,7 +892,7 @@ function layouts(): Layout[] {
           ).join(''),
         ),
         ...[0, 1, 2].flatMap((i) => {
-          const y = 318 + i * 196;
+          const y = 330 + i * 190;
           const keys = [
             // A pin, a route, a hill: the three keys of the legend.
             pinGlyph(32, 26, 18),
@@ -858,7 +902,13 @@ function layouts(): Layout[] {
           return [
             art(`d_atlas_big_number_key${i + 2}`, atEnd(END + 36, y + 4, 64, 64), keys[i]!),
             ...(i < 2
-              ? [rect(`d_atlas_big_number_rule${i + 2}`, atEnd(END + 36, y + 170, 628, 1.5), solid(token('text', 0.1)))]
+              ? [
+                  rect(
+                    `d_atlas_big_number_rule${i + 2}`,
+                    atEnd(END + 36, y + 162, 628, 1.5),
+                    solid(token('text', 0.1)),
+                  ),
+                ]
               : []),
           ];
         }),
@@ -874,12 +924,21 @@ function layouts(): Layout[] {
         place('p_attribution', 'attribution', atEnd(290, 536, 420, 50), 'heading', {
           vAlign: 'bottom',
         }),
-        place('p_caption', 'caption', atEnd(290, 610, 420, 62), 'caption', { vAlign: 'bottom' }),
+        place('p_caption', 'caption', atEnd(290, 598, 420, 74), 'caption', { vAlign: 'bottom' }),
         ...foot('quote').placeholders,
       ],
       decorations: [
         neatline('d_atlas_quote_frame', true),
-        lifted(art('d_atlas_quote_card', at(220, 150, 1480, 740), `<rect x="0" y="0" width="1480" height="740" rx="10" fill="${WHITE}" stroke="${INK}" stroke-opacity=".08" stroke-width="1.5"/>`), 22, 50, 0.14),
+        lifted(
+          art(
+            'd_atlas_quote_card',
+            at(220, 150, 1480, 740),
+            `<rect x="0" y="0" width="1480" height="740" rx="10" fill="${WHITE}" stroke="${INK}" stroke-opacity=".08" stroke-width="1.5"/>`,
+          ),
+          22,
+          50,
+          0.14,
+        ),
         rect('d_atlas_quote_divider', at(220 + 960, 210, 2, 620), solid(token('text', 0.16))),
         upright(
           'd_atlas_quote_marks',
@@ -901,7 +960,11 @@ function layouts(): Layout[] {
         ),
         art('d_atlas_quote_postmark', atEnd(390, 214, 300, 140), postmark(70, 70, 56, 4, 200)),
         ...[0, 1, 2].map((i) =>
-          rect(`d_atlas_quote_line${i + 1}`, atEnd(290, 590 + i * 86, 420, 2), solid(token('text', 0.22))),
+          rect(
+            `d_atlas_quote_line${i + 1}`,
+            atEnd(290, 590 + i * 86, 420, 2),
+            solid(token('text', 0.22)),
+          ),
         ),
         ...foot('quote').decorations,
       ],
@@ -911,12 +974,12 @@ function layouts(): Layout[] {
       name: 'Text',
       archetype: 'text',
       placeholders: [
-        ...head('text', 1040).placeholders,
-        place('p_body', 'body', at(START, 312, 1000, 560), 'body'),
+        ...head('text', 1040, 2, false).placeholders,
+        place('p_body', 'body', at(START, 290, 1000, 610), 'body', { vAlign: 'middle' }),
       ],
       decorations: [
         neatline('d_atlas_text_frame', false),
-        ...head('text', 1040).decorations,
+        ...head('text', 1040, 2, false).decorations,
         card('d_atlas_text_inset', atEnd(END, 140, 520, 760)),
         art(
           'd_atlas_text_map',
@@ -981,7 +1044,9 @@ function layouts(): Layout[] {
           at(START + 26, 380, 4, 360),
           `<path d="M2 2V358" stroke="${VERMILION}" stroke-width="2.2" stroke-dasharray="2 8" stroke-linecap="round"/>`,
         ),
-        ...[0, 1, 2].map((i) => numberPin(`d_atlas_text_image_pin${i + 1}`, at(START, 326 + i * 176, 54, 54), i + 1)),
+        ...[0, 1, 2].map((i) =>
+          numberPin(`d_atlas_text_image_pin${i + 1}`, at(START, 326 + i * 176, 54, 54), i + 1),
+        ),
         ...foot('text_image').decorations,
       ],
     },
@@ -991,7 +1056,7 @@ function layouts(): Layout[] {
       archetype: 'fullImage',
       placeholders: [
         place('p_image', 'image', atEnd(INNER, INNER, 1920 - INNER * 2, 690)),
-        place('p_place', 'caption', at(START + 38, 780, 760, 34), 'caption', {
+        place('p_place', 'caption', at(START + 38, 780, 760, 36), 'caption', {
           color: token('primary'),
         }),
         place('p_title', 'title', at(START, 824, 800, 134), 'title'),
@@ -999,7 +1064,11 @@ function layouts(): Layout[] {
       ],
       decorations: [
         neatline('d_atlas_full_image_frame', true),
-        rect('d_atlas_full_image_edge', atEnd(INNER, INNER + 690, 1920 - INNER * 2, 2), solid(token('text'))),
+        rect(
+          'd_atlas_full_image_edge',
+          atEnd(INNER, INNER + 690, 1920 - INNER * 2, 2),
+          solid(token('text')),
+        ),
         kickerPin('d_atlas_full_image_pin', 780),
         art(
           'd_atlas_full_image_compass',
@@ -1008,7 +1077,11 @@ function layouts(): Layout[] {
             `<path d="${bezel(75, 75, 62)}" stroke="${INK}" stroke-width="1" stroke-opacity=".7"/>` +
             rose(75, 75, 50, 26, 9),
         ),
-        rect('d_atlas_full_image_rule', atEnd(END + 196, 790, 1.5, 168), solid(token('text', 0.16))),
+        rect(
+          'd_atlas_full_image_rule',
+          atEnd(END + 196, 790, 1.5, 168),
+          solid(token('text', 0.16)),
+        ),
       ],
     },
     {
@@ -1018,11 +1091,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards', 1100).placeholders,
         ...cards3.flatMap((s, i) => [
-          place(`p_label${i + 1}`, 'caption', at(s + 40, 512, 408, 32), 'caption', {
+          place(`p_label${i + 1}`, 'caption', at(s + 36, 510, 420, 36), 'caption', {
             color: token('primary'),
           }),
-          place(`p_card${i + 1}_title`, 'subtitle', at(s + 40, 548, 408, 96), 'heading'),
-          place(`p_card${i + 1}_body`, 'body', at(s + 40, 652, 408, 168), 'body'),
+          place(`p_card${i + 1}_title`, 'subtitle', at(s + 36, 548, 420, 96), 'heading', {
+            vAlign: 'bottom',
+          }),
+          place(`p_card${i + 1}_body`, 'body', at(s + 36, 652, 420, 168), 'body'),
         ]),
         place('p_note', 'body', at(START, 878, 1400, 44), 'body'),
         ...foot('cards').placeholders,
@@ -1039,7 +1114,12 @@ function layouts(): Layout[] {
                 at(s, 290, 488, 556),
                 stamp(488, 556, colour, 20) +
                   `<rect x="30" y="30" width="428" height="170" fill="${colour}" fill-opacity=".09"/>` +
-                  contours([{ x: 330, y: 115, rx: 150, ry: 70, seed: i * 1.9 + 0.5, levels: 6 }], colour, 0.3, 1.2),
+                  contours(
+                    [{ x: 160, y: 116, rx: 112, ry: 56, seed: i * 1.9 + 0.5, levels: 6 }],
+                    colour,
+                    0.3,
+                    1.2,
+                  ),
               ),
               10,
               22,
@@ -1061,10 +1141,10 @@ function layouts(): Layout[] {
           place(`p_when${i + 1}`, 'number', at(s, 516, 380, 66), 'title', {
             color: token('primary'),
           }),
-          place(`p_stop${i + 1}`, 'subtitle', at(s, 588, 380, 96), 'heading'),
+          place(`p_stop${i + 1}`, 'subtitle', at(s, 588, 380, 96), 'heading', { vAlign: 'bottom' }),
           place(`p_stop${i + 1}_body`, 'body', at(s, 692, 380, 166), 'body'),
         ]),
-        place('p_note', 'caption', at(START + 38, 884, 1300, 34), 'caption'),
+        place('p_note', 'caption', at(START + 38, 884, 1300, 36), 'caption'),
         ...foot('timeline').placeholders,
       ],
       decorations: [
@@ -1106,7 +1186,7 @@ function layouts(): Layout[] {
             color: token('text'),
           }),
           place(`p_step${i + 1}`, 'subtitle', at(s, 500, 300, 50), 'heading', { align: 'center' }),
-          place(`p_step${i + 1}_caption`, 'caption', at(s, 556, 300, 64), 'caption', {
+          place(`p_step${i + 1}_caption`, 'caption', at(s, 556, 300, 74), 'caption', {
             align: 'center',
           }),
         ]),
@@ -1145,14 +1225,27 @@ function layouts(): Layout[] {
       archetype: 'comparison',
       placeholders: [
         ...head('comparison', 1100).placeholders,
-        ...([
-          ['before', at(START, 296, 780, 590)],
-          ['after', atEnd(END, 296, 780, 590)],
-        ] as const).flatMap(([side, f]) => [
-          place(`p_${side}_label`, 'caption', { x: f.x + 40, y: f.y + 268, w: 700, h: 32 }, 'caption', {
-            color: side === 'after' ? token('secondary') : token('muted'),
-          }),
-          place(`p_${side}_title`, 'subtitle', { x: f.x + 40, y: f.y + 306, w: 700, h: 50 }, 'heading'),
+        ...(
+          [
+            ['before', at(START, 296, 780, 590)],
+            ['after', atEnd(END, 296, 780, 590)],
+          ] as const
+        ).flatMap(([side, f]) => [
+          place(
+            `p_${side}_label`,
+            'caption',
+            { x: f.x + 40, y: f.y + 266, w: 700, h: 36 },
+            'caption',
+            {
+              color: side === 'after' ? token('secondary') : token('muted'),
+            },
+          ),
+          place(
+            `p_${side}_title`,
+            'subtitle',
+            { x: f.x + 40, y: f.y + 306, w: 700, h: 50 },
+            'heading',
+          ),
           place(`p_${side}_body`, 'body', { x: f.x + 40, y: f.y + 364, w: 700, h: 200 }, 'body'),
         ]),
         ...foot('comparison').placeholders,
@@ -1175,7 +1268,12 @@ function layouts(): Layout[] {
             'd_atlas_comparison_alone',
             at(START + 20, 316, 740, 230),
             `<rect x="0" y="0" width="740" height="230" rx="8" fill="${INK}" fill-opacity=".04"/>` +
-              contours([{ x: 380, y: 130, rx: 330, ry: 90, seed: 1.1, levels: 4 }], MUTED, 0.22, 1.1) +
+              contours(
+                [{ x: 380, y: 130, rx: 330, ry: 90, seed: 1.1, levels: 4 }],
+                MUTED,
+                0.22,
+                1.1,
+              ) +
               dots
                 .map(
                   ([x, y]) =>
@@ -1193,7 +1291,7 @@ function layouts(): Layout[] {
             [560, 80],
             [660, 160],
           ];
-          const links = [
+          const links: [number, number][] = [
             [0, 1],
             [1, 2],
             [2, 3],
@@ -1206,7 +1304,12 @@ function layouts(): Layout[] {
             'd_atlas_comparison_together',
             atEnd(END + 20, 316, 740, 230),
             `<rect x="0" y="0" width="740" height="230" rx="8" fill="${OCEAN}" fill-opacity=".07"/>` +
-              contours([{ x: 380, y: 130, rx: 330, ry: 90, seed: 1.1, levels: 4 }], OCEAN, 0.22, 1.1) +
+              contours(
+                [{ x: 380, y: 130, rx: 330, ry: 90, seed: 1.1, levels: 4 }],
+                OCEAN,
+                0.22,
+                1.1,
+              ) +
               links
                 .map(([a, b]) => {
                   const [x1, y1] = dots[a]!;
@@ -1238,23 +1341,23 @@ function layouts(): Layout[] {
       archetype: 'chart',
       placeholders: [
         ...head('chart', 1080).placeholders,
-        place('p_chart', 'chart', at(START + 32, 316, 1016, 500)),
-        place('p_source', 'caption', at(START + 32, 834, 1016, 34), 'caption'),
-        place('p_figure1', 'number', atEnd(END, 318, 480, 112), 'display', {
+        place('p_chart', 'chart', at(START + 38, 316, 1004, 500)),
+        place('p_source', 'caption', at(START + 38, 834, 1004, 36), 'caption'),
+        place('p_figure1', 'number', atEnd(END, 306, 480, 134), 'display', {
           color: token('primary'),
         }),
-        place('p_figure1_body', 'body', atEnd(END, 438, 480, 124), 'body'),
-        place('p_figure2', 'number', atEnd(END, 604, 480, 112), 'display', {
+        place('p_figure1_body', 'body', atEnd(END, 444, 480, 124), 'body'),
+        place('p_figure2', 'number', atEnd(END, 598, 480, 134), 'display', {
           color: token('secondary'),
         }),
-        place('p_figure2_body', 'body', atEnd(END, 724, 480, 124), 'body'),
+        place('p_figure2_body', 'body', atEnd(END, 736, 480, 124), 'body'),
         ...foot('chart').placeholders,
       ],
       decorations: [
         neatline('d_atlas_chart_frame', false),
         ...head('chart', 1080).decorations,
         card('d_atlas_chart_panel', at(START, 290, 1080, 600)),
-        rect('d_atlas_chart_rule', atEnd(END, 578, 480, 1.5), solid(token('text', 0.14))),
+        rect('d_atlas_chart_rule', atEnd(END, 582, 480, 1.5), solid(token('text', 0.14))),
         ...foot('chart').decorations,
       ],
     },
@@ -1264,24 +1367,26 @@ function layouts(): Layout[] {
       archetype: 'table',
       placeholders: [
         ...head('table', 1200).placeholders,
-        place('p_table', 'table', at(START + 32, 318, WIDTH - 64, 500)),
-        place('p_note', 'caption', at(START + 38, 874, 1300, 34), 'caption'),
+        place('p_table', 'table', at(START + 38, 316, WIDTH - 76, 540)),
+        place('p_note', 'caption', at(START + 38, 896, 1300, 36), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: [
         neatline('d_atlas_table_frame', false),
         ...head('table', 1200).decorations,
-        card('d_atlas_table_panel', at(START, 290, WIDTH, 556)),
+        card('d_atlas_table_panel', at(START, 290, WIDTH, 590)),
         art(
           'd_atlas_table_band',
           at(START, 290, WIDTH, 10),
           Array.from({ length: 17 }, (_, i) =>
-            i % 2 ? '' : `<rect x="${r1((i * WIDTH) / 17)}" y="0" width="${r1(WIDTH / 17)}" height="10" fill="${INK}"/>`,
+            i % 2
+              ? ''
+              : `<rect x="${r1((i * WIDTH) / 17)}" y="0" width="${r1(WIDTH / 17)}" height="10" fill="${INK}"/>`,
           ).join(''),
         ),
         art(
           'd_atlas_table_note_pin',
-          at(START, 876, 24, 30),
+          at(START, 899, 24, 30),
           `<circle cx="12" cy="15" r="6" stroke="${VERMILION}" stroke-width="2.4"/>`,
         ),
         ...foot('table').decorations,
@@ -1295,11 +1400,11 @@ function layouts(): Layout[] {
         ...head('team', 1100).placeholders,
         ...team4.flatMap((s, i) => [
           place(`p_photo${i + 1}`, 'image', at(s + 30, 318, 300, 340)),
-          place(`p_city${i + 1}`, 'caption', at(s, 714, 360, 32), 'caption', {
+          place(`p_city${i + 1}`, 'caption', at(s, 714, 360, 36), 'caption', {
             color: token('primary'),
           }),
           place(`p_name${i + 1}`, 'subtitle', at(s, 750, 360, 50), 'heading'),
-          place(`p_role${i + 1}`, 'body', at(s, 804, 360, 124), 'body'),
+          place(`p_role${i + 1}`, 'body', at(s, 804, 384, 124), 'body'),
         ]),
         ...foot('team').placeholders,
       ],
@@ -1308,7 +1413,11 @@ function layouts(): Layout[] {
         ...head('team', 1100).decorations,
         ...team4.flatMap((s, i) => [
           lifted(
-            art(`d_atlas_team_stamp${i + 1}`, at(s, 288, 360, 400), stamp(360, 400, [OCEAN, VERMILION, OCHRE, SEA][i]!, 22)),
+            art(
+              `d_atlas_team_stamp${i + 1}`,
+              at(s, 288, 360, 400),
+              stamp(360, 400, [OCEAN, VERMILION, OCHRE, SEA][i]!, 22),
+            ),
             10,
             22,
             0.16,
@@ -1327,24 +1436,20 @@ function layouts(): Layout[] {
       name: 'Closing',
       archetype: 'closing',
       placeholders: [
-        place('p_kicker', 'caption', at(START + 38, 262, 820, 34), 'caption', {
+        place('p_kicker', 'caption', at(START + 38, 262, 820, 36), 'caption', {
           color: token('primary'),
         }),
-        place('p_title', 'title', at(START, 312, 900, 222), 'display'),
+        place('p_title', 'title', at(START, 308, 900, 252), 'display'),
         ...[0, 1, 2].map((i) =>
           place(`p_line${i + 1}`, 'body', at(START + 56, 586 + i * 72, 840, 44), 'body', {
             vAlign: 'middle',
           }),
         ),
-        place('p_meta', 'caption', at(START + 46, 846, 820, 34), 'caption'),
+        place('p_meta', 'caption', at(START + 46, 846, 820, 36), 'caption'),
       ],
       decorations: [
         neatline('d_atlas_closing_frame', true),
-        upright(
-          'd_atlas_closing_globe',
-          atEnd(140, 184, closingGlobe.size, closingGlobe.size),
-          closingGlobe.markup,
-        ),
+        upright('d_atlas_closing_globe', atEnd(140, 184, closingSize, closingSize), closingGlobe),
         kickerPin('d_atlas_closing_pin', 262),
         ...[0, 1, 2].map((i) =>
           art(
@@ -1381,7 +1486,8 @@ function flipped(drawn: readonly Layout[]): Layout[] {
       decorations: mirrored.decorations.map((decoration) => {
         if (!UPRIGHT.has(decoration.id) || decoration.type !== 'svg') return decoration;
         const { flipH: _flipH, ...rest } = decoration;
-        return rest;
+        const ltr = UPRIGHT.get(decoration.id);
+        return ltr ? { ...rest, markup: ltr } : rest;
       }),
     };
   });
@@ -1390,13 +1496,50 @@ function flipped(drawn: readonly Layout[]): Layout[] {
 // ---------------------------------------------------------------------------------------------
 // The sample: the annual report of an alliance of fourteen Mediterranean port cities
 
-const TABLE_COLS = [384, 300, 300, 300, 300];
+const TABLE_COLS = [280, 230, 290, 472, 300];
 const TABLE_ROW = 80;
 const NETWORK = [23, 29, 35, 41];
 const BEST = [48, 55, 63, 71];
 
+/** A text of one line, or of the lines it is given. */
+const lines = (value: string | string[]) => text(...(Array.isArray(value) ? value : [value]));
+
+/**
+ * The leading of the titles and the quote where a script needs more than the theme's: the
+ * vowel signs above and below Devanagari meet across lines set as tight as Latin display type.
+ * The display titles of the opening, a part and the closing, and every other title.
+ */
+const LEADING: Partial<
+  Record<ContentLanguage, { display: number; title: number; subtitle: number }>
+> = {
+  hi: { display: 1.18, title: 1.3, subtitle: 1.42 },
+};
+const DISPLAYED = new Set(['l_atlas_hero', 'l_atlas_section', 'l_atlas_closing']);
+
 /** The sample deck in one language, from its copy. */
-function sample(copy: AtlasCopy): SampleSlide[] {
+function sample(copy: AtlasCopy, lang: ContentLanguage): SampleSlide[] {
+  const slides = drawSample(copy);
+  const leading = LEADING[lang];
+  if (!leading) return slides;
+  return slides.map((slide) => {
+    const content = { ...slide.content };
+    const lineHeight = DISPLAYED.has(slide.layout) ? leading.display : leading.title;
+    const roles = { title: lineHeight, quote: lineHeight, subtitle: leading.subtitle };
+    for (const [role, value] of Object.entries(roles) as [keyof typeof roles, number][]) {
+      // The subtitles of the opening and of a part, which run to two lines in a deep box.
+      if (role === 'subtitle' && !DISPLAYED.has(slide.layout)) continue;
+      const fill = content[role];
+      if (fill && !Array.isArray(fill) && 'paragraphs' in fill) {
+        content[role] = {
+          paragraphs: fill.paragraphs.map((p) => ({ ...p, lineHeight: value })),
+        };
+      }
+    }
+    return { ...slide, content };
+  });
+}
+
+function drawSample(copy: AtlasCopy): SampleSlide[] {
   const footer = text(copy.footer);
   return [
     {
@@ -1422,11 +1565,11 @@ function sample(copy: AtlasCopy): SampleSlide[] {
       layout: 'l_atlas_text',
       name: copy.agenda.name,
       content: {
-        title: text(copy.agenda.title),
+        title: lines(copy.agenda.title),
         body: {
           paragraphs: [
-            para(copy.agenda.intro, { spaceAfter: 12 }),
-            ...bullets(...copy.agenda.items).paragraphs.map((p) => ({ ...p, spaceAfter: 10 })),
+            para(copy.agenda.intro, { spaceAfter: 24 }),
+            ...bullets(...copy.agenda.items).paragraphs.map((p) => ({ ...p, spaceAfter: 18 })),
           ],
         },
       },
@@ -1439,7 +1582,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
           text(copy.figures.kicker),
           ...copy.figures.others.map(([, label]) => text(label)),
         ],
-        title: text(copy.figures.title),
+        title: lines(copy.figures.title),
         number: [
           text(copy.figures.hero.value),
           ...copy.figures.others.map(([value]) => text(value)),
@@ -1454,7 +1597,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
       name: copy.project.name,
       content: {
         caption: text(copy.project.kicker),
-        title: text(copy.project.title),
+        title: lines(copy.project.title),
         image: { assetId: pictures.plant.id },
         subtitle: copy.project.items.map(([title]) => text(title)),
         body: copy.project.items.map(([, body]) => text(body)),
@@ -1489,7 +1632,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
           text(copy.programmes.kicker),
           ...copy.programmes.cards.map(([label]) => text(label)),
         ],
-        title: text(copy.programmes.title),
+        title: lines(copy.programmes.title),
         subtitle: copy.programmes.cards.map(([, title]) => text(title)),
         body: [
           ...copy.programmes.cards.map(([, , body]) => text(body)),
@@ -1503,7 +1646,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
       name: copy.milestones.name,
       content: {
         caption: [text(copy.milestones.kicker), text(copy.milestones.note)],
-        title: text(copy.milestones.title),
+        title: lines(copy.milestones.title),
         number: copy.milestones.stops.map(([year]) => text(year)),
         subtitle: copy.milestones.stops.map(([, title]) => text(title)),
         body: copy.milestones.stops.map(([, , body]) => text(body)),
@@ -1518,7 +1661,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
           text(copy.joining.kicker),
           ...copy.joining.steps.map(([, caption]) => text(caption)),
         ],
-        title: text(copy.joining.title),
+        title: lines(copy.joining.title),
         number: copy.joining.steps.map((_, i) => text(String(i + 1))),
         subtitle: copy.joining.steps.map(([step]) => text(step)),
         body: text(copy.joining.note),
@@ -1534,7 +1677,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
           text(copy.together.before[0]),
           text(copy.together.after[0]),
         ],
-        title: text(copy.together.title),
+        title: lines(copy.together.title),
         subtitle: [text(copy.together.before[1]), text(copy.together.after[1])],
         body: [text(copy.together.before[2]), text(copy.together.after[2])],
         footer,
@@ -1545,7 +1688,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
       name: copy.reuse.name,
       content: {
         caption: [text(copy.reuse.kicker), text(copy.reuse.source)],
-        title: text(copy.reuse.title),
+        title: lines(copy.reuse.title),
         number: copy.reuse.figures.map(([value]) => text(value)),
         body: copy.reuse.figures.map(([, body]) => text(body)),
         footer,
@@ -1566,7 +1709,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
       name: copy.cities.name,
       content: {
         caption: [text(copy.cities.kicker), text(copy.cities.note)],
-        title: text(copy.cities.title),
+        title: lines(copy.cities.title),
         footer,
       },
       table: {
@@ -1580,7 +1723,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
       name: copy.team.name,
       content: {
         caption: [text(copy.team.kicker), ...copy.team.people.map(([city]) => text(city))],
-        title: text(copy.team.title),
+        title: lines(copy.team.title),
         image: pictures.team.map((p) => ({ assetId: p.id })),
         subtitle: copy.team.people.map(([, name]) => text(name)),
         body: copy.team.people.map(([, , role]) => text(role)),
@@ -1603,7 +1746,7 @@ function sample(copy: AtlasCopy): SampleSlide[] {
 export const atlasSamples = Object.fromEntries(
   CONTENT_LANGUAGES.filter((lang) => ATLAS_COPY[lang]).map((lang) => [
     lang,
-    sample(ATLAS_COPY[lang]!),
+    sample(ATLAS_COPY[lang]!, lang),
   ]),
 ) as Localized<SampleSlide[]>;
 
@@ -1624,8 +1767,3 @@ export function atlasTemplate(): Template {
 }
 
 export const entry = { id: 'atlas', template: atlasTemplate, samples: atlasSamples };
-
-/** The direction each sample is drawn in, for the tools that render them. */
-export const atlasDirections = Object.fromEntries(
-  Object.keys(atlasSamples).map((lang) => [lang, languageDir(lang)]),
-) as Record<ContentLanguage, 'rtl' | 'ltr'>;

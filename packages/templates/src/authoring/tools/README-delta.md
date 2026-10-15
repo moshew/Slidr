@@ -1,13 +1,20 @@
-# Technology templates and designs for the media library
+# Templates and designs for the media library
 
 This folder adds to the Slidr media library:
 
-- **Three technology templates** (`templates/catalog.tech.json`, pictures in `images/templates/`):
+- **Four templates** (`templates/catalog.tech.json`, pictures in `images/templates/`):
   - **Anan** (ענן): cloud and DevOps architecture.
   - **Shvav** (שבב): hardware, IoT and chips.
   - **Mutzar** (מוצר): software product launches.
-- **Fifteen ready-made slides** for the topics הייטק, מוצר טכנולוגי and דיפנס־טק, five each
-  (`elements/designs/managed.tech.json`, pictures in `images/designs/`).
+  - **Atlas** (אטלס): a modern atlas for what crosses borders, its sample written in all sixteen
+    languages of the app.
+- **Seventeen ready-made slides** (`elements/designs/managed.tech.json`, pictures in
+  `images/designs/`): five each for the topics הייטק, מוצר טכנולוגי and דיפנס־טק, and two in all
+  sixteen languages, a night market (אוכל ומסעדות) and a panorama train (טיולים ותיירות).
+
+Atlas and its two neighbours need the fonts catalog regenerated in the same copy of the library,
+for their Arabic, Cyrillic, Vietnamese and Devanagari letters
+(`SLIDR_MEDIA_DIR=../Slidr-media node apps/desktop/scripts/gen-builtin-fonts.mjs`).
 
 ## Adding them to the library
 

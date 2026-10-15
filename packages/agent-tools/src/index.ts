@@ -24,6 +24,7 @@ export {
   type Turn,
   type WriteSummary,
 } from './tool';
+export { Background, type Finished } from './background';
 export { formatZodError, toToolError } from './errors';
 export { markdownToRichText, paragraphDir, parseInline, type MarkdownOptions } from './markdown';
 export { deckTools } from './tools';

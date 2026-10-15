@@ -52,6 +52,10 @@
   text-decoration: none;
 }
 
+.lib-nav > button {
+  align-self: flex-start;
+}
+
 .lib-sections {
   display: flex;
   flex-direction: column;

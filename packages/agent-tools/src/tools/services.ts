@@ -20,7 +20,7 @@ import { z } from 'zod';
 import { closestAspect, imagePlaceholders, slidePlaceholders, styledPrompt } from '../images';
 import { getElement, getSlide, slideNumber } from '../lookup';
 import type { HtmlSlideConversion, PngImage, StoredImage } from '../services';
-import { DeckApiError, defineTool, type ToolContext } from '../tool';
+import { DeckApiError, defineTool, type ToolContext, type ToolOutput } from '../tool';
 import { animatesItself, withDefaultMotion } from '../motion';
 import { afterSlide, indexAfter } from './shared';
 
@@ -82,6 +82,7 @@ export const slideRender = defineTool({
   scopes: ALL,
   writes: false,
   requires: 'capture',
+  looksAt: ({ slideId }) => [slideId],
   async run({ slideId, width }, ctx) {
     getSlide(ctx.deck, slideId);
     const image = await ctx.services.capture!.renderSlide(ctx.deck, slideId, {
@@ -102,6 +103,7 @@ export const deckRenderContactSheet = defineTool({
   scopes: ['deck'],
   writes: false,
   requires: 'capture',
+  looksAt: ({ slideIds }) => slideIds,
   async run({ slideIds, columns }, ctx) {
     const ids = slideIds ?? ctx.deck.slides.map((s) => s.id);
     for (const id of ids) getSlide(ctx.deck, id);
@@ -514,10 +516,14 @@ function placeImages(
  */
 const IMAGE_TIMEOUT_MS = 300_000;
 
+/** What a call that left its images being made says of them (ADR-097). */
+const MAKING =
+  'Being made: each image goes into its element when it is ready, in about a minute. Go on with the rest of the work meanwhile. A later result says under `meanwhile` how it went, and slide_render of the slide waits for it.';
+
 export const imageGenerate = defineTool({
   name: 'image_generate',
   description:
-    "Generates images from a prompt and adds them to the deck's assets. Say what the image shows; the app adds the deck's image style and palette to every prompt, so the images of one deck belong together. With elementId (an image element, e.g. a placeholder), the first image goes into it, keeping its frame and crop; a placeholder carries a prompt of its own, which is used when you give none. With optionsFor (an image element), none is placed: the user sees them as alternatives for it and picks one. Returns `assets` (ids, sizes) and previews.",
+    "Generates images from a prompt and adds them to the deck's assets. Say what the image shows; the app adds the deck's image style and palette to every prompt, so the images of one deck belong together. With elementId (an image element, e.g. a placeholder), the first image goes into it, keeping its frame and crop; a placeholder carries a prompt of its own, which is used when you give none. With optionsFor (an image element), none is placed: the user sees them as alternatives for it and picks one. With elementId it returns at once (`making`), and the image goes into the element about a minute later; a later result says how it went, under `meanwhile`. Otherwise it returns `assets` (ids, sizes) and previews.",
   input: z.strictObject({
     prompt: z
       .string()
@@ -571,13 +577,21 @@ export const imageGenerate = defineTool({
       );
     }
     const frame = target.frame ?? shape.frame;
-    const images = await ctx.services.images!.generate({
-      prompt: styledPrompt(ctx.deck, subject),
-      count: count ?? 1,
-      aspect: aspect ?? (frame ? closestAspect(frame) : '16:9'),
-      ...(transparent ? { transparent } : {}),
+    const make = async () => {
+      const images = await ctx.services.images!.generate({
+        prompt: styledPrompt(ctx.deck, subject),
+        count: count ?? 1,
+        aspect: aspect ?? (frame ? closestAspect(frame) : '16:9'),
+        ...(transparent ? { transparent } : {}),
+      });
+      return placeImages(ctx, images, target);
+    };
+    // An image that goes into an element is made while the agent goes on (ADR-097). Images
+    // without one are waited for: the agent places them, or offers them to the user.
+    if (!target.slideId || !target.elementId) return make();
+    return ctx.later([target.slideId], make, {
+      data: { making: [{ slideId: target.slideId, elementId: target.elementId }], note: MAKING },
     });
-    return placeImages(ctx, images, target);
   },
 });
 
@@ -586,7 +600,7 @@ const MAX_FILL = 8;
 
 export const imageFillPlaceholders = defineTool({
   name: 'image_fill_placeholders',
-  description: `Generates an image for every image placeholder that carries a prompt (the ones <img data-image-prompt="..."> leaves), each from its own prompt with the deck's image style and palette, at the aspect nearest to its frame, and puts each into its placeholder. The images are made side by side, so several placeholders take little longer than one. With slideId, only that slide; without it, the whole deck. At most ${MAX_FILL} per call. Returns \`filled\` (slide, element and asset ids), \`failed\` (element ids with the reason), \`remaining\` (placeholders left for another call) and previews.`,
+  description: `Generates an image for every image placeholder that carries a prompt (the ones <img data-image-prompt="..."> leaves), each from its own prompt with the deck's image style and palette, at the aspect nearest to its frame, and puts each into its placeholder. The images are made side by side, so several placeholders take little longer than one. With slideId, only that slide; without it, the whole deck. At most ${MAX_FILL} per call. It returns at once (\`making\`, and \`remaining\`: placeholders left for another call), and the images go into their placeholders about a minute later; a later result says how it went (\`filled\`, \`failed\` with the reason), under \`meanwhile\`.`,
   input: z.strictObject({
     slideId: Id.optional().describe('Default: every slide; in a slide session, its slide.'),
   }),
@@ -605,53 +619,63 @@ export const imageFillPlaceholders = defineTool({
     ctx.allowed(batch.map((p) => placement(p.slideId, p.elementId, '')));
 
     const images = ctx.services.images!;
-    const settled = await Promise.allSettled(
-      batch.map((placeholder) =>
-        images.generate({
-          prompt: styledPrompt(ctx.deck, placeholder.prompt),
-          count: 1,
-          aspect: closestAspect(placeholder.frame),
-        }),
-      ),
-    );
-    const filled: { slideId: string; elementId: string; image: StoredImage }[] = [];
-    const failed: { elementId: string; reason: string }[] = [];
-    settled.forEach((outcome, i) => {
-      const { slideId: slide, elementId } = batch[i]!;
-      const image = outcome.status === 'fulfilled' ? outcome.value[0] : undefined;
-      if (image) filled.push({ slideId: slide, elementId, image });
-      else {
-        const reason =
-          outcome.status === 'rejected' && outcome.reason instanceof Error
-            ? outcome.reason.message
-            : 'The image service returned no image.';
-        failed.push({ elementId, reason });
-      }
-    });
-    // Nothing was made: the first reason is the answer, as for one image.
-    if (filled.length === 0) throw new DeckApiError('failed', failed[0]!.reason);
+    const remaining = waiting.length - batch.length;
+    const fill = async (): Promise<ToolOutput> => {
+      const settled = await Promise.allSettled(
+        batch.map((placeholder) =>
+          images.generate({
+            prompt: styledPrompt(ctx.deck, placeholder.prompt),
+            count: 1,
+            aspect: closestAspect(placeholder.frame),
+          }),
+        ),
+      );
+      const filled: { slideId: string; elementId: string; image: StoredImage }[] = [];
+      const failed: { elementId: string; reason: string }[] = [];
+      settled.forEach((outcome, i) => {
+        const { slideId: slide, elementId } = batch[i]!;
+        const image = outcome.status === 'fulfilled' ? outcome.value[0] : undefined;
+        if (image) filled.push({ slideId: slide, elementId, image });
+        else {
+          const reason =
+            outcome.status === 'rejected' && outcome.reason instanceof Error
+              ? outcome.reason.message
+              : 'The image service returned no image.';
+          failed.push({ elementId, reason });
+        }
+      });
+      // Nothing was made: the first reason is the answer, as for one image.
+      if (filled.length === 0) throw new DeckApiError('failed', failed[0]!.reason);
 
-    // The deck may have changed while the images were made: a placeholder that is gone, or
-    // was filled by the user in the meantime, is left alone, and its image stays an asset.
-    const still = new Set(imagePlaceholders(ctx.deck).map((p) => p.elementId));
-    ctx.write([
-      ...registerAssets(filled.map(({ image }) => image.asset)),
-      ...filled
-        .filter(({ elementId }) => still.has(elementId))
-        .map(({ slideId: slide, elementId, image }) => placement(slide, elementId, image.asset.id)),
-    ]);
-    return {
-      data: {
-        filled: filled.map(({ slideId: slide, elementId, image }) => ({
-          slideId: slide,
-          elementId,
-          assetId: image.asset.id,
-        })),
-        failed,
-        remaining: waiting.length - batch.length,
-      },
-      images: filled.map(({ image }) => image.preview),
+      // The deck may have changed while the images were made: a placeholder that is gone, or
+      // was filled by the user in the meantime, is left alone, and its image stays an asset.
+      const still = new Set(imagePlaceholders(ctx.deck).map((p) => p.elementId));
+      ctx.write([
+        ...registerAssets(filled.map(({ image }) => image.asset)),
+        ...filled
+          .filter(({ elementId }) => still.has(elementId))
+          .map(({ slideId: slide, elementId, image }) =>
+            placement(slide, elementId, image.asset.id),
+          ),
+      ]);
+      return {
+        data: {
+          filled: filled.map(({ slideId: slide, elementId, image }) => ({
+            slideId: slide,
+            elementId,
+            assetId: image.asset.id,
+          })),
+          failed,
+          remaining,
+        },
+        images: filled.map(({ image }) => image.preview),
+      };
     };
+    // Made while the agent goes on (ADR-097), as an image for one element is.
+    const making = batch.map(({ slideId: slide, elementId }) => ({ slideId: slide, elementId }));
+    return ctx.later([...new Set(batch.map((p) => p.slideId))], fill, {
+      data: { making, remaining, note: MAKING },
+    });
   },
 });
 

@@ -100,8 +100,16 @@ export const vi: AtlasCopy = {
     kicker: 'Các cột mốc',
     title: 'Ba năm, bốn chặng dừng',
     stops: [
-      ['2023', 'Thành lập ở Marseille', 'Năm thành phố ký hiến chương chia sẻ dữ liệu và thiết kế.'],
-      ['2024', 'Phòng thí nghiệm chung', 'Genoa mở phòng thử nghiệm mà mọi đối tác đều có thể đặt lịch.'],
+      [
+        '2023',
+        'Thành lập ở Marseille',
+        'Năm thành phố ký hiến chương chia sẻ dữ liệu và thiết kế.',
+      ],
+      [
+        '2024',
+        'Phòng thí nghiệm chung',
+        'Genoa mở phòng thử nghiệm mà mọi đối tác đều có thể đặt lịch.',
+      ],
       ['2025', 'Mười thành phố', 'Tunis, Izmir và Split gia nhập, tỷ lệ tái sử dụng vượt 30%.'],
       ['2026', 'Mười bốn thành phố', 'Nhà máy ở cảng Limassol bắt đầu sản xuất nước.'],
     ],
@@ -110,7 +118,7 @@ export const vi: AtlasCopy = {
   joining: {
     name: 'Gia nhập',
     kicker: 'Gia nhập mạng lưới',
-    title: 'Một thành phố gia nhập qua năm bước',
+    title: ['Một thành phố gia nhập', 'qua năm bước'],
     steps: [
       ['Đăng ký', 'Thư từ thị trưởng'],
       ['Đánh giá', 'Hai tuần với kỹ sư của chúng tôi'],
@@ -163,7 +171,7 @@ export const vi: AtlasCopy = {
   team: {
     name: 'Đội ngũ',
     kicker: 'Nhóm điều phối',
-    title: 'Những người giữ cho mạng lưới gắn kết',
+    title: ['Những người giữ cho', 'mạng lưới gắn kết'],
     people: [
       ['Tunis', 'Leila Haddad', 'Kỹ sư trưởng, điều hành phòng thí nghiệm chung'],
       ['Genoa', 'Marco Bellini', 'Giám đốc cảng, chủ tịch mạng lưới'],

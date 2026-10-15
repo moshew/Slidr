@@ -57,16 +57,7 @@ const PEEKS: Record<string, () => ReactNode> = {
   emoji: () => (
     <ArtPeek
       set="twemoji"
-      names={[
-        'grinning-face',
-        'party-popper',
-        'red-heart',
-        'thumbs-up',
-        'rocket',
-        'star-struck',
-        'sparkles',
-        'light-bulb',
-      ]}
+      names={['grinning-face', 'party-popper', 'red-heart', 'thumbs-up', 'rocket', 'light-bulb']}
     />
   ),
   art: () => <ArtPeek set="noto" />,

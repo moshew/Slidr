@@ -9,7 +9,9 @@ export const fr: AtlasCopy = {
     name: 'Ouverture',
     org: 'Medwater · Alliance des villes portuaires de la Méditerranée',
     title: ['L’eau', 'sans frontières'],
-    subtitle: ['Comment quatorze villes portuaires partagent chaque goutte qu’elles apprennent à économiser'],
+    subtitle: [
+      'Comment quatorze villes portuaires partagent chaque goutte qu’elles apprennent à économiser',
+    ],
     meta: 'Assemblée des partenaires · Valence · 18 mars 2027',
   },
   section: {
@@ -103,9 +105,21 @@ export const fr: AtlasCopy = {
     kicker: 'Les grandes étapes',
     title: 'Trois ans, quatre escales',
     stops: [
-      ['2023', 'Fondé à Marseille', 'Cinq villes signent une charte pour partager données et plans.'],
-      ['2024', 'Un laboratoire commun', 'Gênes ouvre un laboratoire d’essais que chaque partenaire peut réserver.'],
-      ['2025', 'Dix villes', `Tunis, Izmir et Split nous rejoignent, et la réutilisation dépasse 30${N}%.`],
+      [
+        '2023',
+        'Fondé à Marseille',
+        'Cinq villes signent une charte pour partager données et plans.',
+      ],
+      [
+        '2024',
+        'Un laboratoire commun',
+        'Gênes ouvre un laboratoire d’essais que chaque partenaire peut réserver.',
+      ],
+      [
+        '2025',
+        'Dix villes',
+        `Tunis, Izmir et Split nous rejoignent, et la réutilisation dépasse 30${N}%.`,
+      ],
       ['2026', 'Quatorze villes', 'L’usine du port de Limassol commence à produire de l’eau.'],
     ],
     note: 'Chaque nouvelle ville apporte au réseau un projet à elle dès sa première année.',
@@ -113,7 +127,7 @@ export const fr: AtlasCopy = {
   joining: {
     name: 'Adhésion',
     kicker: 'Rejoindre le réseau',
-    title: 'Comment une ville nous rejoint, en cinq étapes',
+    title: ['Comment une ville nous rejoint,', 'en cinq étapes'],
     steps: [
       ['Candidater', 'Une lettre du maire'],
       ['Diagnostic', 'Deux semaines avec nos ingénieurs'],
@@ -141,7 +155,7 @@ export const fr: AtlasCopy = {
   reuse: {
     name: 'Réutilisation de l’eau',
     kicker: 'Réutilisation de l’eau',
-    title: 'La réutilisation progresse dans chaque ville',
+    title: ['La réutilisation progresse', 'dans chaque ville'],
     source: 'Part des eaux usées traitées réutilisées, en pourcentage, 2023–2026.',
     series: ['Moyenne du réseau', 'Limassol'],
     figures: [

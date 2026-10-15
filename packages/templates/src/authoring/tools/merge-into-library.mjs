@@ -104,6 +104,8 @@ if (designs) {
     hitech: { he: 'הייטק', en: 'High-tech' },
     techproduct: { he: 'מוצר טכנולוגי', en: 'Tech products' },
     defense: { he: 'דיפנס־טק', en: 'Defence tech' },
+    food: { he: 'אוכל ומסעדות', en: 'Food & restaurants' },
+    tourism: { he: 'טיולים ותיירות', en: 'Travel & tourism' },
   };
   let count = 0;
   for (const [group, ids] of Object.entries(designs.groupIds)) {

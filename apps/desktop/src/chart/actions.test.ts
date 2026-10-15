@@ -166,8 +166,10 @@ describe('inserting a chart', () => {
       'Category 4',
     ]);
     expect(english?.data.series.map((s) => s.name)).toEqual(['Series 1', 'Series 2']);
-    // A language the app has no strings in gets the English labels, and no error.
-    expect(sampleData('column', 'fr').series[0]?.name).toBe('Series 1');
+    // A translated language gets its own labels, whatever its region; a language the app has no
+    // strings in gets the English ones, and no error.
+    expect(sampleData('column', 'fr-CA').series[0]?.name).toBe('Série 1');
+    expect(sampleData('column', 'pl').series[0]?.name).toBe('Series 1');
   });
 
   it('gives every type sample data that suits it', () => {

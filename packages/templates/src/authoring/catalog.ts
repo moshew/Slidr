@@ -21,7 +21,7 @@ import { newDesigns } from './designs/registry';
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 
 /** The order the library shows them in: after the templates it has. */
-const ORDER = ['anan', 'shvav', 'mutzar'];
+const ORDER = ['anan', 'shvav', 'mutzar', 'atlas'];
 
 export default function build(out: string, only?: string) {
   const ids = Object.keys(authored)

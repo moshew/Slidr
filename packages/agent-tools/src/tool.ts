@@ -1,5 +1,6 @@
 import { agentActor, newId, type Actor, type Command, type Deck } from '@slidr/model';
 import type { z } from 'zod';
+import type { Background } from './background';
 import type { ScopeKind, SessionScope } from './scope';
 import type { PngImage, ServiceName, Services } from './services';
 
@@ -22,6 +23,11 @@ export interface Turn {
    * that a harness gave a call up). Absent for a turn that nobody ends.
    */
   readonly ended?: EndSignal;
+  /**
+   * Where the turn's calls leave the work that goes on after their results (ADR-097): an image
+   * is made while the agent goes on. Absent for a turn whose calls wait for all their work.
+   */
+  readonly background?: Background;
 }
 
 /** Goes off once and stays off. (An `AbortSignal` is one.) */
@@ -33,7 +39,7 @@ export interface EndSignal {
 export function startTurn(
   sessionId: string,
   scope: SessionScope,
-  options: { turnId?: string; label?: string; ended?: EndSignal } = {},
+  options: { turnId?: string; label?: string; ended?: EndSignal; background?: Background } = {},
 ): Turn {
   const txId = newId('tx');
   return {
@@ -43,6 +49,7 @@ export function startTurn(
     txId,
     ...(options.label ? { label: options.label } : {}),
     ...(options.ended ? { ended: options.ended } : {}),
+    ...(options.background ? { background: options.background } : {}),
   };
 }
 
@@ -83,6 +90,18 @@ export interface ToolContext {
    * money at some providers): a write the session may not make is refused before it is paid for.
    */
   allowed(commands: readonly Command[]): void;
+  /**
+   * Work that may go on after the call's result, in a turn that takes such work (ADR-097): the
+   * call returns `meanwhile` at once, and what `work` returns is its final result, which its chip
+   * shows and the agent is told of in a later result. In any other turn the call waits for `work`
+   * and returns what it returns. `slideIds` are the slides it changes: a picture of one of them
+   * waits for it.
+   */
+  later(
+    slideIds: readonly string[],
+    work: () => Promise<ToolOutput>,
+    meanwhile: ToolOutput,
+  ): Promise<ToolOutput>;
 }
 
 /** What a tool returns. The registry adds the write summary and lint findings to `data`. */
@@ -114,6 +133,11 @@ export interface ToolDef<S extends z.ZodType = z.ZodType> {
    * transport gives a call by default (SPEC 11.4): generating an image takes about a minute.
    */
   readonly timeoutMs?: number;
+  /**
+   * The slides a call shows the agent a picture of, all of them when it returns undefined: the
+   * call waits for the turn's work on them that is still going on (ADR-097).
+   */
+  looksAt?(input: z.output<S>): readonly string[] | undefined;
   run(input: z.output<S>, ctx: ToolContext): ToolOutput | Promise<ToolOutput>;
 }
 
@@ -158,6 +182,11 @@ export type ToolResult =
        */
       data: Record<string, unknown>;
       images: PngImage[];
+      /**
+       * The call's work goes on after this result (`ToolContext.later`): its final result, once
+       * the work has ended. Never rejects. The agent is not sent it.
+       */
+      later?: Promise<ToolResult>;
     }
   | { ok: false; error: ToolError };
 
