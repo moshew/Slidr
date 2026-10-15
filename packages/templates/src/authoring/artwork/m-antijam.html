@@ -1,227 +1,484 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8" />
-<!-- m-antijam: an anti-jam GNSS antenna in an exploded view: the radome lifted off, the
+  <head>
+    <meta charset="utf-8" />
+    <!-- m-antijam: an anti-jam GNSS antenna in an exploded view: the radome lifted off, the
      seven-element patch array on its board, the machined base with its connectors.
      Studio lighting from an environment map and a soft key light; transparent ground.
      Render: node render-art.mjs m-antijam.html out.png 900 1000 2 -->
-<style>html, body { margin: 0; background: transparent; overflow: hidden; } canvas { display: block; }</style>
-<script>document.documentElement.dataset.wait = 'true';</script>
-<script type="importmap">{"imports": {
-  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
-  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
-}}</script>
-</head>
-<body>
-<script type="module">
-import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: transparent;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+          "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from 'three';
+      import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+      import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-const W = innerWidth, H = innerHeight;
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(devicePixelRatio);
-renderer.setSize(W, H);
-renderer.setClearColor(0x000000, 0);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.VSMShadowMap;
-document.body.appendChild(renderer.domElement);
+      const W = innerWidth,
+        H = innerHeight;
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+      });
+      renderer.setPixelRatio(devicePixelRatio);
+      renderer.setSize(W, H);
+      renderer.setClearColor(0x000000, 0);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.VSMShadowMap;
+      document.body.appendChild(renderer.domElement);
 
-const scene = new THREE.Scene();
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.03).texture;
-scene.environmentIntensity = 0.9;
+      const scene = new THREE.Scene();
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.03).texture;
+      scene.environmentIntensity = 0.9;
 
-const key = new THREE.DirectionalLight(0xffffff, 2.2);
-key.position.set(-14, 80, 18);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-key.shadow.camera.left = -30; key.shadow.camera.right = 30; key.shadow.camera.top = 30; key.shadow.camera.bottom = -30;
-key.shadow.radius = 14; key.shadow.blurSamples = 25;
-key.shadow.bias = -0.0005;
-scene.add(key);
-const rim = new THREE.DirectionalLight(0xdfe8ff, 1.4);
-rim.position.set(35, 25, -40);
-scene.add(rim);
+      const key = new THREE.DirectionalLight(0xffffff, 2.2);
+      key.position.set(-14, 80, 18);
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      key.shadow.camera.left = -30;
+      key.shadow.camera.right = 30;
+      key.shadow.camera.top = 30;
+      key.shadow.camera.bottom = -30;
+      key.shadow.radius = 14;
+      key.shadow.blurSamples = 25;
+      key.shadow.bias = -0.0005;
+      scene.add(key);
+      const rim = new THREE.DirectionalLight(0xdfe8ff, 1.4);
+      rim.position.set(35, 25, -40);
+      scene.add(rim);
 
-// ---- materials -------------------------------------------------------------------------------
-const anodized = new THREE.MeshPhysicalMaterial({ color: 0x2c3036, metalness: 0.85, roughness: 0.38, clearcoat: 0.2 });
-const machined = new THREE.MeshPhysicalMaterial({ color: 0xb9bec4, metalness: 1, roughness: 0.22 });
-// concentric machining marks for the ground plane, as a roughness and colour map
-const rings = (() => {
-  const c = document.createElement('canvas'); c.width = c.height = 2048;
-  const g = c.getContext('2d');
-  g.fillStyle = '#b4b9bf'; g.fillRect(0, 0, 2048, 2048);
-  for (let r = 3; r < 1024; r += 0.9) {
-    const v = 176 + Math.round((Math.random() - 0.5) * 26);
-    g.strokeStyle = `rgb(${v},${v + 2},${v + 5})`; g.lineWidth = 0.9;
-    g.beginPath(); g.arc(1024, 1024, r, 0, Math.PI * 2); g.stroke();
-  }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
-})();
-const plate = new THREE.MeshPhysicalMaterial({ color: 0xc7ccd2, map: rings, metalness: 1, roughness: 0.3, roughnessMap: rings });
-const radome = new THREE.MeshPhysicalMaterial({ color: 0xe9e7e1, metalness: 0, roughness: 0.48, sheen: 0.3, sheenRoughness: 0.6, clearcoat: 0.15 });
-const signal = new THREE.MeshPhysicalMaterial({ color: 0xff5a1f, metalness: 0, roughness: 0.4, clearcoat: 0.4 });
-const board = new THREE.MeshPhysicalMaterial({ color: 0x14181d, metalness: 0.1, roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25 });
-const gold = new THREE.MeshPhysicalMaterial({ color: 0xe0b45c, metalness: 1, roughness: 0.25 });
-const ceramic = new THREE.MeshPhysicalMaterial({ color: 0xd8d2c4, metalness: 0, roughness: 0.62 });
-const silver = new THREE.MeshPhysicalMaterial({ color: 0xd6d9dc, metalness: 1, roughness: 0.18 });
-const rubber = new THREE.MeshPhysicalMaterial({ color: 0x1a1b1d, metalness: 0, roughness: 0.8 });
-const chip = new THREE.MeshPhysicalMaterial({ color: 0x232527, metalness: 0.2, roughness: 0.45 });
+      // ---- materials -------------------------------------------------------------------------------
+      const anodized = new THREE.MeshPhysicalMaterial({
+        color: 0x2c3036,
+        metalness: 0.85,
+        roughness: 0.38,
+        clearcoat: 0.2,
+      });
+      const machined = new THREE.MeshPhysicalMaterial({
+        color: 0xb9bec4,
+        metalness: 1,
+        roughness: 0.22,
+      });
+      // concentric machining marks for the ground plane, as a roughness and colour map
+      const rings = (() => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 2048;
+        const g = c.getContext('2d');
+        g.fillStyle = '#b4b9bf';
+        g.fillRect(0, 0, 2048, 2048);
+        for (let r = 3; r < 1024; r += 0.9) {
+          const v = 176 + Math.round((Math.random() - 0.5) * 26);
+          g.strokeStyle = `rgb(${v},${v + 2},${v + 5})`;
+          g.lineWidth = 0.9;
+          g.beginPath();
+          g.arc(1024, 1024, r, 0, Math.PI * 2);
+          g.stroke();
+        }
+        const t = new THREE.CanvasTexture(c);
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+        return t;
+      })();
+      const plate = new THREE.MeshPhysicalMaterial({
+        color: 0xc7ccd2,
+        map: rings,
+        metalness: 1,
+        roughness: 0.3,
+        roughnessMap: rings,
+      });
+      const radome = new THREE.MeshPhysicalMaterial({
+        color: 0xe9e7e1,
+        metalness: 0,
+        roughness: 0.48,
+        sheen: 0.3,
+        sheenRoughness: 0.6,
+        clearcoat: 0.15,
+      });
+      const signal = new THREE.MeshPhysicalMaterial({
+        color: 0xff5a1f,
+        metalness: 0,
+        roughness: 0.4,
+        clearcoat: 0.4,
+      });
+      const board = new THREE.MeshPhysicalMaterial({
+        color: 0x14181d,
+        metalness: 0.1,
+        roughness: 0.55,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.25,
+      });
+      const gold = new THREE.MeshPhysicalMaterial({
+        color: 0xe0b45c,
+        metalness: 1,
+        roughness: 0.25,
+      });
+      const ceramic = new THREE.MeshPhysicalMaterial({
+        color: 0xd8d2c4,
+        metalness: 0,
+        roughness: 0.62,
+      });
+      const silver = new THREE.MeshPhysicalMaterial({
+        color: 0xd6d9dc,
+        metalness: 1,
+        roughness: 0.18,
+      });
+      const rubber = new THREE.MeshPhysicalMaterial({
+        color: 0x1a1b1d,
+        metalness: 0,
+        roughness: 0.8,
+      });
+      const chip = new THREE.MeshPhysicalMaterial({
+        color: 0x232527,
+        metalness: 0.2,
+        roughness: 0.45,
+      });
 
-const add = (geometry, material, x = 0, y = 0, z = 0, parent = scene) => {
-  const m = new THREE.Mesh(geometry, material);
-  m.position.set(x, y, z);
-  m.castShadow = true;
-  m.receiveShadow = true;
-  parent.add(m);
-  return m;
-};
-const lathe = (pts, segments = 160) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segments);
+      const add = (geometry, material, x = 0, y = 0, z = 0, parent = scene) => {
+        const m = new THREE.Mesh(geometry, material);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        parent.add(m);
+        return m;
+      };
+      const lathe = (pts, segments = 160) =>
+        new THREE.LatheGeometry(
+          pts.map(([r, y]) => new THREE.Vector2(r, y)),
+          segments,
+        );
 
-// ---- the base: a machined flange and a low housing ---------------------------------------------
-const base = new THREE.Group();
-scene.add(base);
-add(lathe([[0, 0], [10.6, 0], [10.8, 0.15], [10.8, 0.75], [10.6, 0.9], [9.6, 0.9], [9.4, 1.05], [9.4, 2.6], [9.2, 2.85], [0, 2.85]]), anodized, 0, 0, 0, base);
-add(lathe([[9.0, 2.84], [9.25, 2.84], [9.25, 2.9], [9.0, 2.9]]), machined, 0, 0, 0, base); // a bright machined edge
-{
-  const top = new THREE.CircleGeometry(8.8, 160);
-  top.rotateX(-Math.PI / 2);
-  add(top, plate, 0, 2.96, 0, base); // the ground plane
-  add(lathe([[8.8, 2.85], [8.8, 2.96]]), machined, 0, 0, 0, base);
-}
-// bolts on the flange
-for (let i = 0; i < 6; i++) {
-  const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
-  const b = add(new THREE.CylinderGeometry(0.42, 0.42, 0.32, 6), machined, Math.cos(a) * 10.05, 1.05, Math.sin(a) * 10.05, base);
-  b.rotation.y = a;
-  add(new THREE.CylinderGeometry(0.18, 0.18, 0.06, 16), anodized, Math.cos(a) * 10.05, 1.23, Math.sin(a) * 10.05, base);
-}
-// connectors: two N-type and a round power plug
-function nConnector(angle, y) {
-  const g = new THREE.Group();
-  add(new THREE.CylinderGeometry(0.95, 0.95, 0.5, 6), machined, 0, 0.25, 0, g);
-  add(new THREE.CylinderGeometry(0.8, 0.8, 1.8, 48), silver, 0, 1.2, 0, g);
-  for (let k = 0; k < 6; k++) add(new THREE.TorusGeometry(0.8, 0.05, 8, 48), machined, 0, 0.55 + k * 0.22, 0, g).rotation.x = Math.PI / 2;
-  add(new THREE.CylinderGeometry(0.52, 0.52, 0.2, 32), ceramic, 0, 2.1, 0, g);
-  add(new THREE.CylinderGeometry(0.13, 0.13, 0.4, 16), gold, 0, 2.2, 0, g);
-  g.rotation.z = -Math.PI / 2;
-  g.position.set(Math.cos(angle) * 9.3, y, Math.sin(angle) * 9.3);
-  g.rotation.y = -angle;
-  const outer = new THREE.Group();
-  outer.add(g);
-  base.add(outer);
-}
-nConnector(Math.PI * 0.42, 1.85);
-nConnector(Math.PI * 0.62, 1.85);
-{
-  const g = new THREE.Group();
-  add(new THREE.CylinderGeometry(0.75, 0.75, 1.2, 40), rubber, 0, 0.6, 0, g);
-  add(new THREE.CylinderGeometry(0.85, 0.85, 0.3, 40), machined, 0, 0.15, 0, g);
-  add(new THREE.TorusGeometry(0.62, 0.08, 10, 40), signal, 0, 1.2, 0, g).rotation.x = Math.PI / 2;
-  g.rotation.z = -Math.PI / 2;
-  g.position.set(Math.cos(Math.PI * 0.27) * 9.3, 1.85, Math.sin(Math.PI * 0.27) * 9.3);
-  g.rotation.y = -Math.PI * 0.27;
-  base.add(g);
-}
-// a nameplate on the housing
-{
-  const plate = add(new RoundedBoxGeometry(4.4, 1.1, 0.12, 2, 0.1), machined, 0, 1.85, 0, base);
-  plate.position.set(Math.cos(Math.PI * 0.78) * 9.42, 1.85, Math.sin(Math.PI * 0.78) * 9.42);
-  plate.lookAt(Math.cos(Math.PI * 0.78) * 30, 1.85, Math.sin(Math.PI * 0.78) * 30);
-}
+      // ---- the base: a machined flange and a low housing ---------------------------------------------
+      const base = new THREE.Group();
+      scene.add(base);
+      add(
+        lathe([
+          [0, 0],
+          [10.6, 0],
+          [10.8, 0.15],
+          [10.8, 0.75],
+          [10.6, 0.9],
+          [9.6, 0.9],
+          [9.4, 1.05],
+          [9.4, 2.6],
+          [9.2, 2.85],
+          [0, 2.85],
+        ]),
+        anodized,
+        0,
+        0,
+        0,
+        base,
+      );
+      add(
+        lathe([
+          [9.0, 2.84],
+          [9.25, 2.84],
+          [9.25, 2.9],
+          [9.0, 2.9],
+        ]),
+        machined,
+        0,
+        0,
+        0,
+        base,
+      ); // a bright machined edge
+      {
+        const top = new THREE.CircleGeometry(8.8, 160);
+        top.rotateX(-Math.PI / 2);
+        add(top, plate, 0, 2.96, 0, base); // the ground plane
+        add(
+          lathe([
+            [8.8, 2.85],
+            [8.8, 2.96],
+          ]),
+          machined,
+          0,
+          0,
+          0,
+          base,
+        );
+      }
+      // bolts on the flange
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        const b = add(
+          new THREE.CylinderGeometry(0.42, 0.42, 0.32, 6),
+          machined,
+          Math.cos(a) * 10.05,
+          1.05,
+          Math.sin(a) * 10.05,
+          base,
+        );
+        b.rotation.y = a;
+        add(
+          new THREE.CylinderGeometry(0.18, 0.18, 0.06, 16),
+          anodized,
+          Math.cos(a) * 10.05,
+          1.23,
+          Math.sin(a) * 10.05,
+          base,
+        );
+      }
+      // connectors: two N-type and a round power plug
+      function nConnector(angle, y) {
+        const g = new THREE.Group();
+        add(new THREE.CylinderGeometry(0.95, 0.95, 0.5, 6), machined, 0, 0.25, 0, g);
+        add(new THREE.CylinderGeometry(0.8, 0.8, 1.8, 48), silver, 0, 1.2, 0, g);
+        for (let k = 0; k < 6; k++)
+          add(
+            new THREE.TorusGeometry(0.8, 0.05, 8, 48),
+            machined,
+            0,
+            0.55 + k * 0.22,
+            0,
+            g,
+          ).rotation.x = Math.PI / 2;
+        add(new THREE.CylinderGeometry(0.52, 0.52, 0.2, 32), ceramic, 0, 2.1, 0, g);
+        add(new THREE.CylinderGeometry(0.13, 0.13, 0.4, 16), gold, 0, 2.2, 0, g);
+        g.rotation.z = -Math.PI / 2;
+        g.position.set(Math.cos(angle) * 9.3, y, Math.sin(angle) * 9.3);
+        g.rotation.y = -angle;
+        const outer = new THREE.Group();
+        outer.add(g);
+        base.add(outer);
+      }
+      nConnector(Math.PI * 0.42, 1.85);
+      nConnector(Math.PI * 0.62, 1.85);
+      {
+        const g = new THREE.Group();
+        add(new THREE.CylinderGeometry(0.75, 0.75, 1.2, 40), rubber, 0, 0.6, 0, g);
+        add(new THREE.CylinderGeometry(0.85, 0.85, 0.3, 40), machined, 0, 0.15, 0, g);
+        add(new THREE.TorusGeometry(0.62, 0.08, 10, 40), signal, 0, 1.2, 0, g).rotation.x =
+          Math.PI / 2;
+        g.rotation.z = -Math.PI / 2;
+        g.position.set(Math.cos(Math.PI * 0.27) * 9.3, 1.85, Math.sin(Math.PI * 0.27) * 9.3);
+        g.rotation.y = -Math.PI * 0.27;
+        base.add(g);
+      }
+      // a nameplate on the housing
+      {
+        const plate = add(
+          new RoundedBoxGeometry(4.4, 1.1, 0.12, 2, 0.1),
+          machined,
+          0,
+          1.85,
+          0,
+          base,
+        );
+        plate.position.set(Math.cos(Math.PI * 0.78) * 9.42, 1.85, Math.sin(Math.PI * 0.78) * 9.42);
+        plate.lookAt(Math.cos(Math.PI * 0.78) * 30, 1.85, Math.sin(Math.PI * 0.78) * 30);
+      }
 
-// ---- the array board: seven ceramic patches round a centre one ---------------------------------
-const array = new THREE.Group();
-array.position.y = 9.5;
-scene.add(array);
-add(new THREE.CylinderGeometry(8.6, 8.6, 0.24, 160), board, 0, 0, 0, array);
-add(new THREE.TorusGeometry(8.35, 0.08, 8, 160), gold, 0, 0.13, 0, array).rotation.x = Math.PI / 2;
-add(new THREE.TorusGeometry(7.6, 0.035, 8, 160), gold, 0, 0.13, 0, array).rotation.x = Math.PI / 2;
-const patchAt = [[0, 0]];
-for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + Math.PI / 6; patchAt.push([Math.cos(a) * 5.0, Math.sin(a) * 5.0]); }
-for (const [x, z] of patchAt) {
-  add(new RoundedBoxGeometry(2.7, 0.55, 2.7, 3, 0.12), ceramic, x, 0.39, z, array);
-  add(new RoundedBoxGeometry(2.05, 0.06, 2.05, 2, 0.03), silver, x, 0.69, z, array);
-  add(new THREE.CylinderGeometry(0.17, 0.17, 0.08, 20), gold, x + 0.45, 0.72, z + 0.45, array);
-  // the feed line out to the edge of the board
-  const len = Math.hypot(x, z);
-  if (len > 0) {
-    const t = add(new THREE.BoxGeometry(0.16, 0.03, 1.4), gold, x * (1 + 1.95 / len), 0.13, z * (1 + 1.95 / len), array);
-    t.lookAt(new THREE.Vector3(x * 3, 9.5 + 0.13, z * 3));
-  }
-}
-// small parts between the patches
-let seed = 5;
-const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-for (let i = 0; i < 26; i++) {
-  const a = rnd() * Math.PI * 2, r = 2.3 + rnd() * 5.6;
-  const x = Math.cos(a) * r, z = Math.sin(a) * r;
-  if (patchAt.some(([px, pz]) => Math.abs(px - x) < 1.75 && Math.abs(pz - z) < 1.75)) continue;
-  const big = rnd() < 0.25;
-  const c = add(new THREE.BoxGeometry(big ? 0.9 : 0.42, big ? 0.16 : 0.12, big ? 0.9 : 0.22), big ? chip : ceramic, x, 0.19, z, array);
-  c.rotation.y = rnd() * Math.PI;
-}
+      // ---- the array board: seven ceramic patches round a centre one ---------------------------------
+      const array = new THREE.Group();
+      array.position.y = 9.5;
+      scene.add(array);
+      add(new THREE.CylinderGeometry(8.6, 8.6, 0.24, 160), board, 0, 0, 0, array);
+      add(new THREE.TorusGeometry(8.35, 0.08, 8, 160), gold, 0, 0.13, 0, array).rotation.x =
+        Math.PI / 2;
+      add(new THREE.TorusGeometry(7.6, 0.035, 8, 160), gold, 0, 0.13, 0, array).rotation.x =
+        Math.PI / 2;
+      const patchAt = [[0, 0]];
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        patchAt.push([Math.cos(a) * 5.0, Math.sin(a) * 5.0]);
+      }
+      for (const [x, z] of patchAt) {
+        add(new RoundedBoxGeometry(2.7, 0.55, 2.7, 3, 0.12), ceramic, x, 0.39, z, array);
+        add(new RoundedBoxGeometry(2.05, 0.06, 2.05, 2, 0.03), silver, x, 0.69, z, array);
+        add(
+          new THREE.CylinderGeometry(0.17, 0.17, 0.08, 20),
+          gold,
+          x + 0.45,
+          0.72,
+          z + 0.45,
+          array,
+        );
+        // the feed line out to the edge of the board
+        const len = Math.hypot(x, z);
+        if (len > 0) {
+          const t = add(
+            new THREE.BoxGeometry(0.16, 0.03, 1.4),
+            gold,
+            x * (1 + 1.95 / len),
+            0.13,
+            z * (1 + 1.95 / len),
+            array,
+          );
+          t.lookAt(new THREE.Vector3(x * 3, 9.5 + 0.13, z * 3));
+        }
+      }
+      // small parts between the patches
+      let seed = 5;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 26; i++) {
+        const a = rnd() * Math.PI * 2,
+          r = 2.3 + rnd() * 5.6;
+        const x = Math.cos(a) * r,
+          z = Math.sin(a) * r;
+        if (patchAt.some(([px, pz]) => Math.abs(px - x) < 1.75 && Math.abs(pz - z) < 1.75))
+          continue;
+        const big = rnd() < 0.25;
+        const c = add(
+          new THREE.BoxGeometry(big ? 0.9 : 0.42, big ? 0.16 : 0.12, big ? 0.9 : 0.22),
+          big ? chip : ceramic,
+          x,
+          0.19,
+          z,
+          array,
+        );
+        c.rotation.y = rnd() * Math.PI;
+      }
 
-// ---- the radome, lifted off ---------------------------------------------------------------------
-const dome = new THREE.Group();
-dome.position.y = 17.2;
-scene.add(dome);
-{
-  const pts = [];
-  pts.push([9.25, 0]);
-  pts.push([9.3, 0.15]);
-  pts.push([9.3, 1.25]);
-  for (let i = 0; i <= 24; i++) {
-    const t = i / 24;
-    const a = t * Math.PI / 2;
-    pts.push([9.3 * Math.cos(a) * (1 - 0.0 * t), 1.25 + Math.sin(a) * 3.0]);
-  }
-  pts.push([0, 4.25]);
-  const outer = lathe(pts);
-  add(outer, radome, 0, 0, 0, dome);
-  add(lathe([[9.31, 0.18], [9.36, 0.22], [9.36, 0.72], [9.31, 0.76]]), signal, 0, 0, 0, dome); // the orange band
-  add(lathe([[0, 0], [9.25, 0], [9.25, 0.02], [0, 0.02]]), radome, 0, 0, 0, dome);
-}
+      // ---- the radome, lifted off ---------------------------------------------------------------------
+      const dome = new THREE.Group();
+      dome.position.y = 17.2;
+      scene.add(dome);
+      {
+        const pts = [];
+        pts.push([9.25, 0]);
+        pts.push([9.3, 0.15]);
+        pts.push([9.3, 1.25]);
+        for (let i = 0; i <= 24; i++) {
+          const t = i / 24;
+          const a = (t * Math.PI) / 2;
+          pts.push([9.3 * Math.cos(a) * (1 - 0.0 * t), 1.25 + Math.sin(a) * 3.0]);
+        }
+        pts.push([0, 4.25]);
+        const outer = lathe(pts);
+        add(outer, radome, 0, 0, 0, dome);
+        add(
+          lathe([
+            [9.31, 0.18],
+            [9.36, 0.22],
+            [9.36, 0.72],
+            [9.31, 0.76],
+          ]),
+          signal,
+          0,
+          0,
+          0,
+          dome,
+        ); // the orange band
+        add(
+          lathe([
+            [0, 0],
+            [9.25, 0],
+            [9.25, 0.02],
+            [0, 0.02],
+          ]),
+          radome,
+          0,
+          0,
+          0,
+          dome,
+        );
+      }
 
-array.traverse((o) => { if (o.isMesh) o.castShadow = false; });
-dome.traverse((o) => { if (o.isMesh) o.castShadow = false; });
-// vias and silkscreen on the board
-for (let i = 0; i < 64; i++) {
-  const a = (i / 64) * Math.PI * 2;
-  add(new THREE.CylinderGeometry(0.09, 0.09, 0.02, 10), gold, Math.cos(a) * 7.95, 0.13, Math.sin(a) * 7.95, array);
-}
-add(new THREE.TorusGeometry(2.6, 0.025, 6, 120), new THREE.MeshStandardMaterial({ color: 0xd9dcd6, roughness: 0.7 }), 0, 0.13, 0, array).rotation.x = Math.PI / 2;
+      array.traverse((o) => {
+        if (o.isMesh) o.castShadow = false;
+      });
+      dome.traverse((o) => {
+        if (o.isMesh) o.castShadow = false;
+      });
+      // vias and silkscreen on the board
+      for (let i = 0; i < 64; i++) {
+        const a = (i / 64) * Math.PI * 2;
+        add(
+          new THREE.CylinderGeometry(0.09, 0.09, 0.02, 10),
+          gold,
+          Math.cos(a) * 7.95,
+          0.13,
+          Math.sin(a) * 7.95,
+          array,
+        );
+      }
+      add(
+        new THREE.TorusGeometry(2.6, 0.025, 6, 120),
+        new THREE.MeshStandardMaterial({ color: 0xd9dcd6, roughness: 0.7 }),
+        0,
+        0.13,
+        0,
+        array,
+      ).rotation.x = Math.PI / 2;
 
-// a soft contact shadow under the base
-{
-  const c = document.createElement('canvas'); c.width = c.height = 512;
-  const g = c.getContext('2d');
-  const grad = g.createRadialGradient(256, 256, 0, 256, 256, 256);
-  grad.addColorStop(0, 'rgba(20,24,30,0.55)'); grad.addColorStop(0.62, 'rgba(20,24,30,0.32)'); grad.addColorStop(1, 'rgba(20,24,30,0)');
-  g.fillStyle = grad; g.fillRect(0, 0, 512, 512);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
-  m.rotation.x = -Math.PI / 2; m.position.y = 0.02; scene.add(m);
-}
+      // a soft contact shadow under the base
+      {
+        const c = document.createElement('canvas');
+        c.width = c.height = 512;
+        const g = c.getContext('2d');
+        const grad = g.createRadialGradient(256, 256, 0, 256, 256, 256);
+        grad.addColorStop(0, 'rgba(20,24,30,0.55)');
+        grad.addColorStop(0.62, 'rgba(20,24,30,0.32)');
+        grad.addColorStop(1, 'rgba(20,24,30,0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 512, 512);
+        const m = new THREE.Mesh(
+          new THREE.PlaneGeometry(30, 30),
+          new THREE.MeshBasicMaterial({
+            map: new THREE.CanvasTexture(c),
+            transparent: true,
+            depthWrite: false,
+          }),
+        );
+        m.rotation.x = -Math.PI / 2;
+        m.position.y = 0.02;
+        scene.add(m);
+      }
 
-// ---- shadow catcher -----------------------------------------------------------------------------
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.ShadowMaterial({ opacity: 0.22 }));
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
+      // ---- shadow catcher -----------------------------------------------------------------------------
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(200, 200),
+        new THREE.ShadowMaterial({ opacity: 0.22 }),
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
 
-// ---- camera -------------------------------------------------------------------------------------
-const camera = new THREE.PerspectiveCamera(24, W / H, 1, 400);
-camera.position.set(-38, 50, 74);
-camera.lookAt(0, 9.6, 0);
+      // ---- camera -------------------------------------------------------------------------------------
+      const camera = new THREE.PerspectiveCamera(24, W / H, 1, 400);
+      camera.position.set(-38, 50, 74);
+      camera.lookAt(0, 9.6, 0);
 
-renderer.render(scene, camera);
-const p = (v) => { const q = v.clone().project(camera); return [Math.round((q.x + 1) / 2 * W), Math.round((1 - q.y) / 2 * H)]; };
-console.log('board centre', p(new THREE.Vector3(0, 9.5, 0)), 'dome top', p(new THREE.Vector3(0, 21.5, 0)), 'base', p(new THREE.Vector3(0, 0, 0)));
-document.documentElement.dataset.ready = 'true';
-</script>
-</body>
+      renderer.render(scene, camera);
+      const p = (v) => {
+        const q = v.clone().project(camera);
+        return [Math.round(((q.x + 1) / 2) * W), Math.round(((1 - q.y) / 2) * H)];
+      };
+      console.log(
+        'board centre',
+        p(new THREE.Vector3(0, 9.5, 0)),
+        'dome top',
+        p(new THREE.Vector3(0, 21.5, 0)),
+        'base',
+        p(new THREE.Vector3(0, 0, 0)),
+      );
+      document.documentElement.dataset.ready = 'true';
+    </script>
+  </body>
 </html>

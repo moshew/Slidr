@@ -9,7 +9,6 @@ import {
   linear,
   picture,
   radial,
-  rule,
   shape,
   slide,
   textBox,
@@ -22,7 +21,12 @@ import {
 /** The x of a frame drawn on the English slide, and its mirror on the Hebrew one. */
 const X = (lang: Lang, x: number, w: number) => (lang === 'en' ? x : 1920 - x - w);
 /** A frame of the English composition, mirrored for Hebrew. */
-const at = (lang: Lang, x: number, y: number, w: number, h: number): Frame => ({ x: X(lang, x, w), y, w, h });
+const at = (lang: Lang, x: number, y: number, w: number, h: number): Frame => ({
+  x: X(lang, x, w),
+  y,
+  w,
+  h,
+});
 /** Looks in one family, by size, weight and colour. */
 const looks =
   (font: string) =>
@@ -70,7 +74,10 @@ function hackathon(lang: Lang): Slide {
     : {
         kicker: 'HACKATHON  ·  3RD EDITION  ·  JAFFA PORT',
         title: ['48 hours', 'from idea to demo'],
-        lead: ['Bring a team of up to four and a half-baked idea.', 'Leave with a working demo and a jury’s verdict.'],
+        lead: [
+          'Bring a team of up to four and a half-baked idea.',
+          'Leave with a working demo and a jury’s verdict.',
+        ],
         figures: [
           ['320', 'builders'],
           ['₪150K', 'in prizes'],
@@ -120,15 +127,29 @@ function hackathon(lang: Lang): Slide {
       fill: radial(0.5, 0.5, ['#7A90FF', 0, 0.5], ['#7A90FF', 0.72, 0]),
     }),
     picture(pic, 'A split-flap clock reading 48:00'),
-    textBox({ frame: at(lang, 120, 100, 1100, 44), lines: [copy.kicker], look: t(26, 600, soft, he ? 1 : 4), lang }),
+    textBox({
+      frame: at(lang, 120, 100, 1100, 44),
+      lines: [copy.kicker],
+      look: t(26, 600, soft, he ? 1 : 4),
+      lang,
+    }),
     textBox({
       frame: at(lang, 112, 140, 1320, 292),
-      lines: [[piece(copy.title[0]!, t(128, 700, white, -2))], [piece(copy.title[1]!, t(128, 700, peach, -2))]],
+      lines: [
+        [piece(copy.title[0]!, t(128, 700, white, -2))],
+        [piece(copy.title[1]!, t(128, 700, peach, -2))],
+      ],
       look: t(128, 700, white, -2),
       lang,
       lineHeight: 1.0,
     }),
-    textBox({ frame: at(lang, 120, 466, 800, 100), lines: copy.lead, look: t(32, 400, '#DDE2FF'), lang, lineHeight: 1.4 }),
+    textBox({
+      frame: at(lang, 120, 466, 800, 100),
+      lines: copy.lead,
+      look: t(32, 400, '#DDE2FF'),
+      lang,
+      lineHeight: 1.4,
+    }),
     shape({ frame: at(lang, 120, 620, 640, 2), fill: fill(white, 0.28) }),
     ...figureEls,
     shape({
@@ -138,7 +159,12 @@ function hackathon(lang: Lang): Slide {
       shadow: { x: 0, y: 14, blur: 30, color: '#0B124F', alpha: 0.35 },
       label: { text: copy.button, look: t(28, 700, '#0E1452'), lang },
     }),
-    textBox({ frame: at(lang, 512, 896, 640, 80), lines: [copy.when], look: t(28, 600, white), lang }),
+    textBox({
+      frame: at(lang, 512, 896, 640, 80),
+      lines: [copy.when],
+      look: t(28, 600, white),
+      lang,
+    }),
   ]);
 }
 
@@ -160,7 +186,10 @@ function apilaunch(lang: Lang): Slide {
     ? {
         chip: '●  באוויר עכשיו  ·  v3.0',
         title: ['API v3 באוויר', 'ומהיר פי שלושה'],
-        lead: ['ערכות SDK עם טיפוסים בתשע שפות, וובהוקים', 'שאפשר לשדר מחדש ונקודת קצה אחת לכל אזור.'],
+        lead: [
+          'ערכות SDK עם טיפוסים בתשע שפות, וובהוקים',
+          'שאפשר לשדר מחדש ונקודת קצה אחת לכל אזור.',
+        ],
         figures: [
           ['38ms', 'זמן תגובה חציוני'],
           ['9', 'ערכות SDK רשמיות'],
@@ -172,7 +201,10 @@ function apilaunch(lang: Lang): Slide {
     : {
         chip: '●  Live now  ·  v3.0',
         title: ['API v3 is live', 'and 3× faster'],
-        lead: ['Typed SDKs in nine languages, webhooks you', 'can replay, and one endpoint for every region.'],
+        lead: [
+          'Typed SDKs in nine languages, webhooks you',
+          'can replay, and one endpoint for every region.',
+        ],
         figures: [
           ['38 ms', 'median latency'],
           ['9', 'official SDKs'],
@@ -224,12 +256,21 @@ function apilaunch(lang: Lang): Slide {
     }),
     textBox({
       frame: at(lang, 112, 222, 900, 260),
-      lines: [[piece(copy.title[0]!, t(108, 800, ink, -3))], [piece(copy.title[1]!, t(108, 800, violet, -3))]],
+      lines: [
+        [piece(copy.title[0]!, t(108, 800, ink, -3))],
+        [piece(copy.title[1]!, t(108, 800, violet, -3))],
+      ],
       look: t(108, 800, ink, -3),
       lang,
       lineHeight: 1.08,
     }),
-    textBox({ frame: at(lang, 120, 508, 760, 100), lines: copy.lead, look: t(32, 500, grey), lang, lineHeight: 1.4 }),
+    textBox({
+      frame: at(lang, 120, 508, 760, 100),
+      lines: copy.lead,
+      look: t(32, 500, grey),
+      lang,
+      lineHeight: 1.4,
+    }),
     ...figureEls,
     shape({
       frame: at(lang, 120, 864, 330, 84),
@@ -238,7 +279,13 @@ function apilaunch(lang: Lang): Slide {
       shadow: { x: 0, y: 16, blur: 36, color: '#2B1F8F', alpha: 0.28 },
       label: { text: copy.button, look: t(28, 700, '#FFFFFF'), lang },
     }),
-    textBox({ frame: at(lang, 484, 864, 330, 84), lines: copy.note, look: t(24, 500, grey), lang, lineHeight: 1.3 }),
+    textBox({
+      frame: at(lang, 484, 864, 330, 84),
+      lines: copy.note,
+      look: t(24, 500, grey),
+      lang,
+      lineHeight: 1.3,
+    }),
   ]);
 }
 
@@ -269,7 +316,10 @@ function bugbounty(lang: Lang): Slide {
     : {
         kicker: 'SECURITY  ·  BUG BOUNTY PROGRAM',
         title: ['Find a bug.', 'Get paid for it.'],
-        lead: ['We pay researchers who responsibly report', 'flaws in our apps, our API and our cloud.'],
+        lead: [
+          'We pay researchers who responsibly report',
+          'flaws in our apps, our API and our cloud.',
+        ],
         head: ['SEVERITY', 'REWARD, UP TO'],
         levels: ['Critical', 'High', 'Medium', 'Low'],
         button: 'Submit a report  →',
@@ -296,9 +346,22 @@ function bugbounty(lang: Lang): Slide {
         fill: fill(color),
         shadow: { x: 0, y: 0, blur: 14, color, alpha: 0.8 },
       }),
-      textBox({ frame: at(lang, left + 40, y + 8, 180, 56), lines: [copy.levels[i]!], look: t(30, 600, '#FFFFFF'), lang }),
-      shape({ frame: at(lang, track.x, y + 33, track.w, 6), fill: fill('#FFFFFF', 0.1), round: 0.5 }),
-      shape({ frame: at(lang, track.x, y + 33, Math.round(track.w * share), 6), fill: fill(color), round: 0.5 }),
+      textBox({
+        frame: at(lang, left + 40, y + 8, 180, 56),
+        lines: [copy.levels[i]!],
+        look: t(30, 600, '#FFFFFF'),
+        lang,
+      }),
+      shape({
+        frame: at(lang, track.x, y + 33, track.w, 6),
+        fill: fill('#FFFFFF', 0.1),
+        round: 0.5,
+      }),
+      shape({
+        frame: at(lang, track.x, y + 33, Math.round(track.w * share), 6),
+        fill: fill(color),
+        round: 0.5,
+      }),
       textBox({
         frame: at(lang, 1580, y + 8, 220, 56),
         lines: [amount],
@@ -343,16 +406,36 @@ function bugbounty(lang: Lang): Slide {
     }),
     art({ x: 0, y: 0, w: 1920, h: 1080 }, svg(lang, 1920, 1080, sight)),
     // the beetle has no letters, so the Hebrew slide turns it to walk the other way
-    { ...picture(at(lang, BUG_PIC.x, BUG_PIC.y, BUG_PIC.w, BUG_PIC.h), 'An emerald jewel beetle seen from above'), ...(he ? { flipH: true } : {}) },
-    textBox({ frame: at(lang, left, 104, 720, 44), lines: [copy.kicker], look: t(24, 700, lime, he ? 1 : 3), lang }),
+    {
+      ...picture(
+        at(lang, BUG_PIC.x, BUG_PIC.y, BUG_PIC.w, BUG_PIC.h),
+        'An emerald jewel beetle seen from above',
+      ),
+      ...(he ? { flipH: true } : {}),
+    },
+    textBox({
+      frame: at(lang, left, 104, 720, 44),
+      lines: [copy.kicker],
+      look: t(24, 700, lime, he ? 1 : 3),
+      lang,
+    }),
     textBox({
       frame: at(lang, left - 8, 144, 752, 250),
-      lines: [[piece(copy.title[0]!, t(98, 800, '#FFFFFF', -2))], [piece(copy.title[1]!, t(98, 800, lime, -2))]],
+      lines: [
+        [piece(copy.title[0]!, t(98, 800, '#FFFFFF', -2))],
+        [piece(copy.title[1]!, t(98, 800, lime, -2))],
+      ],
       look: t(98, 800, '#FFFFFF', -2),
       lang,
       lineHeight: 1.08,
     }),
-    textBox({ frame: at(lang, left, 404, 720, 96), lines: copy.lead, look: t(30, 400, grey), lang, lineHeight: 1.4 }),
+    textBox({
+      frame: at(lang, left, 404, 720, 96),
+      lines: copy.lead,
+      look: t(30, 400, grey),
+      lang,
+      lineHeight: 1.4,
+    }),
     textBox({ frame: at(lang, left, 552, 300, 40), lines: [copy.head[0]!], look: head, lang }),
     textBox({
       frame: at(lang, 1500, 552, 300, 40),
@@ -370,7 +453,12 @@ function bugbounty(lang: Lang): Slide {
       shadow: { x: 0, y: 0, blur: 40, color: lime, alpha: 0.35 },
       label: { text: copy.button, look: t(28, 700, '#0A0B0D'), lang },
     }),
-    textBox({ frame: at(lang, left + 360, 916, 380, 80), lines: [copy.note], look: t(26, 500, grey), lang }),
+    textBox({
+      frame: at(lang, left + 360, 916, 380, 80),
+      lines: [copy.note],
+      look: t(26, 500, grey),
+      lang,
+    }),
   ]);
 }
 
@@ -408,7 +496,10 @@ function cfp(lang: Lang): Slide {
     : {
         kicker: 'DEVSHORE 2027  ·  CALL FOR PAPERS',
         title: ['Your talk', 'belongs here.'],
-        lead: ['We’re looking for 40 talks from engineers who', 'built something real and learned something hard.'],
+        lead: [
+          'We’re looking for 40 talks from engineers who',
+          'built something real and learned something hard.',
+        ],
         tracks: [
           ['AI in production', 262],
           ['Platform & infra', 258],
@@ -447,30 +538,55 @@ function cfp(lang: Lang): Slide {
       textBox({ frame: at(lang, x, 836, 300, 40), lines: [label!], look: t(24, 500, rose), lang }),
     ];
   });
-  return slide({ fill: radial(he ? 0.27 : 0.73, 0.55, ['#6A1830', 0], ['#3E0B1A', 0.55], ['#24050E', 1]) }, [
-    { ...picture(at(lang, CFP_PIC.x, CFP_PIC.y, CFP_PIC.w, CFP_PIC.h), 'An empty lectern in a spotlight on a round stage'), ...(he ? { flipH: true } : {}) },
-    textBox({ frame: at(lang, 120, 108, 800, 40), lines: [copy.kicker], look: t(24, 700, peach, he ? 1 : 3), lang }),
-    textBox({
-      frame: at(lang, 112, 146, 860, 280),
-      lines: [
-        [piece(copy.title[0]!, serif(120, he ? 900 : 700, cream))],
-        [piece(copy.title[1]!, { ...serif(120, he ? 900 : 700, peach), ...(he ? {} : { italic: true }) })],
-      ],
-      look: serif(120, 700, cream),
-      lang,
-      lineHeight: 1.05,
-    }),
-    textBox({ frame: at(lang, 120, 450, 800, 96), lines: copy.lead, look: t(30, 400, rose), lang, lineHeight: 1.45 }),
-    ...chipEls,
-    ...dateEls,
-    shape({
-      frame: at(lang, 120, 916, 320, 80),
-      fill: fill(cream),
-      round: 0.5,
-      shadow: { x: 0, y: 14, blur: 34, color: '#12020A', alpha: 0.5 },
-      label: { text: copy.button, look: t(28, 700, '#4A0D1F'), lang },
-    }),
-  ]);
+  return slide(
+    { fill: radial(he ? 0.27 : 0.73, 0.55, ['#6A1830', 0], ['#3E0B1A', 0.55], ['#24050E', 1]) },
+    [
+      {
+        ...picture(
+          at(lang, CFP_PIC.x, CFP_PIC.y, CFP_PIC.w, CFP_PIC.h),
+          'An empty lectern in a spotlight on a round stage',
+        ),
+        ...(he ? { flipH: true } : {}),
+      },
+      textBox({
+        frame: at(lang, 120, 108, 800, 40),
+        lines: [copy.kicker],
+        look: t(24, 700, peach, he ? 1 : 3),
+        lang,
+      }),
+      textBox({
+        frame: at(lang, 112, 146, 860, 280),
+        lines: [
+          [piece(copy.title[0]!, serif(120, he ? 900 : 700, cream))],
+          [
+            piece(copy.title[1]!, {
+              ...serif(120, he ? 900 : 700, peach),
+              ...(he ? {} : { italic: true }),
+            }),
+          ],
+        ],
+        look: serif(120, 700, cream),
+        lang,
+        lineHeight: 1.05,
+      }),
+      textBox({
+        frame: at(lang, 120, 450, 800, 96),
+        lines: copy.lead,
+        look: t(30, 400, rose),
+        lang,
+        lineHeight: 1.45,
+      }),
+      ...chipEls,
+      ...dateEls,
+      shape({
+        frame: at(lang, 120, 916, 320, 80),
+        fill: fill(cream),
+        round: 0.5,
+        shadow: { x: 0, y: 14, blur: 34, color: '#12020A', alpha: 0.5 },
+        label: { text: copy.button, look: t(28, 700, '#4A0D1F'), lang },
+      }),
+    ],
+  );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -492,7 +608,10 @@ function modelrelease(lang: Lang): Slide {
     ? {
         kicker: 'השקת מודל  ·  משקלים פתוחים',
         title: ['שקד 2 חושב', 'קודם כול בעברית.'],
-        lead: ['70 מיליארד פרמטרים ו־4 טריליון טוקנים של אימון,', 'שליש מהם בעברית. חופשי לשימוש מחקרי.'],
+        lead: [
+          '70 מיליארד פרמטרים ו־4 טריליון טוקנים של אימון,',
+          'שליש מהם בעברית. חופשי לשימוש מחקרי.',
+        ],
         legend: ['שקד 2', 'שקד 1'],
         rows: ['שאלות בעברית', 'הסקה', 'קוד', 'מתמטיקה'],
         button: 'לקריאת המאמר  ←',
@@ -501,7 +620,10 @@ function modelrelease(lang: Lang): Slide {
     : {
         kicker: 'MODEL RELEASE  ·  OPEN WEIGHTS',
         title: ['Shaked 2 reasons', 'in Hebrew first.'],
-        lead: ['70 billion parameters, 4 trillion training tokens,', 'a third of them in Hebrew. Free for research.'],
+        lead: [
+          '70 billion parameters, 4 trillion training tokens,',
+          'a third of them in Hebrew. Free for research.',
+        ],
         legend: ['Shaked 2', 'Shaked 1'],
         rows: ['Hebrew QA', 'Reasoning', 'Code', 'Math'],
         button: 'Read the paper  →',
@@ -517,9 +639,22 @@ function modelrelease(lang: Lang): Slide {
   const rowEls = scores.flatMap(([now, before], i) => {
     const y = 604 + i * 74;
     return [
-      textBox({ frame: at(lang, 120, y + 2, 200, 40), lines: [copy.rows[i]!], look: t(26, 600, ink), lang }),
-      shape({ frame: at(lang, bar.x, y + 10, Math.round((bar.w * now) / 100), 16), fill: fill(indigo), round: 0.5 }),
-      shape({ frame: at(lang, bar.x, y + 36, Math.round((bar.w * before) / 100), 8), fill: fill(old), round: 0.5 }),
+      textBox({
+        frame: at(lang, 120, y + 2, 200, 40),
+        lines: [copy.rows[i]!],
+        look: t(26, 600, ink),
+        lang,
+      }),
+      shape({
+        frame: at(lang, bar.x, y + 10, Math.round((bar.w * now) / 100), 16),
+        fill: fill(indigo),
+        round: 0.5,
+      }),
+      shape({
+        frame: at(lang, bar.x, y + 36, Math.round((bar.w * before) / 100), 8),
+        fill: fill(old),
+        round: 0.5,
+      }),
       textBox({
         frame: at(lang, 770, y - 4, 110, 36),
         lines: [String(now)],
@@ -538,45 +673,83 @@ function modelrelease(lang: Lang): Slide {
       }),
     ];
   });
-  return slide({ fill: radial(he ? 0.25 : 0.75, 0.5, ['#FFFDF8', 0], ['#F6F3EC', 0.6], ['#EDE8DE', 1]) }, [
-    // a faint baseline grid, as on graph paper, behind the letter
-    art(
-      { x: 0, y: 0, w: 1920, h: 1080 },
-      svg(
-        lang,
-        1920,
-        1080,
-        '<defs><pattern id="mr-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#15183A" stroke-opacity=".05" stroke-width="1.5"/></pattern><radialGradient id="mr-fade" cx=".72" cy=".55" r=".45"><stop offset=".3" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="mr-mask"><rect width="1920" height="1080" fill="url(#mr-fade)"/></mask></defs><rect width="1920" height="1080" fill="url(#mr-grid)" mask="url(#mr-mask)"/>',
+  return slide(
+    { fill: radial(he ? 0.25 : 0.75, 0.5, ['#FFFDF8', 0], ['#F6F3EC', 0.6], ['#EDE8DE', 1]) },
+    [
+      // a faint baseline grid, as on graph paper, behind the letter
+      art(
+        { x: 0, y: 0, w: 1920, h: 1080 },
+        svg(
+          lang,
+          1920,
+          1080,
+          '<defs><pattern id="mr-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#15183A" stroke-opacity=".05" stroke-width="1.5"/></pattern><radialGradient id="mr-fade" cx=".72" cy=".55" r=".45"><stop offset=".3" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="mr-mask"><rect width="1920" height="1080" fill="url(#mr-fade)"/></mask></defs><rect width="1920" height="1080" fill="url(#mr-grid)" mask="url(#mr-mask)"/>',
+        ),
       ),
-    ),
-    picture(
-      { x: he ? 1920 - ALEPH_PIC.x - ALEPH_PIC.w : ALEPH_PIC.x, y: ALEPH_PIC.y, w: ALEPH_PIC.w, h: ALEPH_PIC.h },
-      'The letter aleph made of points, its top rising away as tokens',
-    ),
-    textBox({ frame: at(lang, 120, 104, 800, 40), lines: [copy.kicker], look: t(24, 700, '#B53A08', he ? 1 : 3), lang }),
-    textBox({
-      frame: at(lang, 112, 146, 860, 236),
-      lines: [[piece(copy.title[0]!, t(100, 800, ink, -3))], [piece(copy.title[1]!, t(100, 800, orange, -3))]],
-      look: t(100, 800, ink, -3),
-      lang,
-      lineHeight: 1.05,
-    }),
-    textBox({ frame: at(lang, 120, 400, 800, 92), lines: copy.lead, look: t(28, 400, grey), lang, lineHeight: 1.45 }),
-    shape({ frame: at(lang, 120, 547, 22, 22), fill: fill(indigo), round: 0.2 }),
-    textBox({ frame: at(lang, 154, 538, 150, 40), lines: [copy.legend[0]!], look: t(24, 600, ink), lang }),
-    shape({ frame: at(lang, 304, 547, 22, 22), fill: fill(old), round: 0.2 }),
-    textBox({ frame: at(lang, 338, 538, 150, 40), lines: [copy.legend[1]!], look: t(24, 500, grey), lang }),
-    shape({ frame: at(lang, 120, 590, 760, 1.5), fill: fill(ink, 0.15) }),
-    ...rowEls,
-    shape({
-      frame: at(lang, 120, 916, 330, 80),
-      fill: fill(ink),
-      round: 0.5,
-      shadow: { x: 0, y: 14, blur: 32, color: '#15183A', alpha: 0.25 },
-      label: { text: copy.button, look: t(28, 700, '#FFFFFF'), lang },
-    }),
-    textBox({ frame: at(lang, 484, 916, 360, 80), lines: copy.note, look: t(24, 500, grey), lang, lineHeight: 1.3 }),
-  ]);
+      picture(
+        {
+          x: he ? 1920 - ALEPH_PIC.x - ALEPH_PIC.w : ALEPH_PIC.x,
+          y: ALEPH_PIC.y,
+          w: ALEPH_PIC.w,
+          h: ALEPH_PIC.h,
+        },
+        'The letter aleph made of points, its top rising away as tokens',
+      ),
+      textBox({
+        frame: at(lang, 120, 104, 800, 40),
+        lines: [copy.kicker],
+        look: t(24, 700, '#B53A08', he ? 1 : 3),
+        lang,
+      }),
+      textBox({
+        frame: at(lang, 112, 146, 860, 236),
+        lines: [
+          [piece(copy.title[0]!, t(100, 800, ink, -3))],
+          [piece(copy.title[1]!, t(100, 800, orange, -3))],
+        ],
+        look: t(100, 800, ink, -3),
+        lang,
+        lineHeight: 1.05,
+      }),
+      textBox({
+        frame: at(lang, 120, 400, 800, 92),
+        lines: copy.lead,
+        look: t(28, 400, grey),
+        lang,
+        lineHeight: 1.45,
+      }),
+      shape({ frame: at(lang, 120, 547, 22, 22), fill: fill(indigo), round: 0.2 }),
+      textBox({
+        frame: at(lang, 154, 538, 150, 40),
+        lines: [copy.legend[0]!],
+        look: t(24, 600, ink),
+        lang,
+      }),
+      shape({ frame: at(lang, 304, 547, 22, 22), fill: fill(old), round: 0.2 }),
+      textBox({
+        frame: at(lang, 338, 538, 150, 40),
+        lines: [copy.legend[1]!],
+        look: t(24, 500, grey),
+        lang,
+      }),
+      shape({ frame: at(lang, 120, 590, 760, 1.5), fill: fill(ink, 0.15) }),
+      ...rowEls,
+      shape({
+        frame: at(lang, 120, 916, 330, 80),
+        fill: fill(ink),
+        round: 0.5,
+        shadow: { x: 0, y: 14, blur: 32, color: '#15183A', alpha: 0.25 },
+        label: { text: copy.button, look: t(28, 700, '#FFFFFF'), lang },
+      }),
+      textBox({
+        frame: at(lang, 484, 916, 360, 80),
+        lines: copy.note,
+        look: t(24, 500, grey),
+        lang,
+        lineHeight: 1.3,
+      }),
+    ],
+  );
 }
 
 export const designs: DesignEntry[] = [

@@ -1,170 +1,601 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8" />
-<link rel="stylesheet" href="fonts.css" />
-<style>
-  @font-face { font-family: 'Assistant'; src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/assistant/files/assistant-hebrew-wght-normal.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
-  @font-face { font-family: 'Assistant'; src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/assistant/files/assistant-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0000-00FF; }
-  :root { --coral: #f4512f; --violet: #6f5ef0; --mint: #12a073; --ink: #18171d; --muted: #6e6b75; --line: rgba(24,23,29,.09); --canvas: #f6f4ef; }
-  html, body { margin: 0; width: 652px; height: 772px; overflow: hidden; background: #fbfaf7; }
-  body { font-family: Inter, Assistant, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
-  [dir=rtl] body, body[dir=rtl] { font-family: Assistant, Inter, sans-serif; }
-  .top { position: absolute; inset: 0 0 auto 0; height: 52px; background: #fff; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 9px; padding: 0 12px; box-sizing: border-box; }
-  .logo { width: 26px; height: 26px; border-radius: 8px; background: var(--coral); display: grid; place-items: center; }
-  .crumb { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-  .crumb b { color: var(--ink); font-weight: 600; }
-  .pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
-  .live { background: rgba(18,160,115,.12); color: var(--mint); }
-  .spacer { flex: 1; }
-  .avs { display: flex; }
-  .av { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; margin-inline-start: -7px; color: #fff; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; }
-  .btn { font-size: 12.5px; font-weight: 600; padding: 7px 12px; border-radius: 9px; display: flex; align-items: center; gap: 6px; }
-  .ghost { border: 1px solid var(--line); background: #fff; }
-  .primary { background: var(--coral); color: #fff; box-shadow: 0 2px 6px rgba(244,81,47,.35); }
-  .rail { position: absolute; top: 52px; bottom: 0; inset-inline-start: 0; width: 48px; background: #fff; border-inline-end: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 12px; box-sizing: border-box; }
-  .ri { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; }
-  .ri.on { background: rgba(244,81,47,.12); }
-  .canvas { position: absolute; top: 52px; bottom: 0; inset-inline-start: 48px; inset-inline-end: 0; background-color: var(--canvas); background-image: radial-gradient(rgba(24,23,29,.17) 1.1px, transparent 1.3px); background-size: 18px 18px; overflow: hidden; }
-  .wires { position: absolute; inset: 0; }
-  [dir=rtl] .wires { transform: scaleX(-1); }
-  .node { position: absolute; width: 214px; background: #fff; border-radius: 13px; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(59,36,20,.06), 0 8px 20px rgba(59,36,20,.08); padding: 10px 12px 11px; box-sizing: border-box; }
-  .kind { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
-  [dir=rtl] .kind { letter-spacing: 0; font-size: 12px; }
-  .ic { width: 22px; height: 22px; border-radius: 6.5px; display: grid; place-items: center; }
-  .ttl { font-size: 13.5px; font-weight: 600; margin-top: 7px; white-space: nowrap; }
-  [dir=rtl] .ttl { font-size: 15px; }
-  .sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-  [dir=rtl] .sub { font-size: 13px; }
-  .sel { outline: 2px solid var(--coral); outline-offset: 3px; }
-  .h { position: absolute; width: 7px; height: 7px; background: #fff; border: 1.5px solid var(--coral); }
-  .chip { position: absolute; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #fff; border: 1px solid var(--line); }
-  [dir=rtl] .chip { font-size: 12.5px; }
-  .plus { position: absolute; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1px solid var(--line); display: grid; place-items: center; box-shadow: 0 2px 5px rgba(59,36,20,.1); }
-  .ai { position: absolute; display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 10px; border-radius: 11px; background: #fff; border: 1px solid rgba(111,94,240,.35); box-shadow: 0 8px 22px rgba(111,94,240,.18); font-size: 12px; }
-  [dir=rtl] .ai { font-size: 13.5px; padding: 7px 10px 7px 8px; }
-  .ai .add { background: var(--violet); color: #fff; font-weight: 600; padding: 4px 9px; border-radius: 7px; font-size: 11.5px; }
-  .run { position: absolute; inset-inline-start: 16px; inset-inline-end: 16px; bottom: 14px; height: 46px; background: #fff; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 8px 22px rgba(59,36,20,.1); display: flex; align-items: center; gap: 10px; padding: 0 12px; box-sizing: border-box; font-size: 12.5px; }
-  [dir=rtl] .run { font-size: 14px; }
-  .ok { width: 22px; height: 22px; border-radius: 50%; background: var(--mint); display: grid; place-items: center; }
-  .steps { display: flex; gap: 3px; }
-  .steps i { width: 16px; height: 6px; border-radius: 3px; background: var(--mint); opacity: .85; display: block; }
-  .cur { position: absolute; }
-  .cur span { position: absolute; top: 19px; inset-inline-start: 13px; color: #fff; font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
-  [dir=rtl] .cur span { font-size: 12.5px; }
-  [dir=rtl] .cur svg { transform: scaleX(-1); }
-  .zoom { position: absolute; inset-inline-end: 16px; top: 14px; display: flex; align-items: center; gap: 2px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 3px; font-size: 11.5px; font-weight: 600; color: var(--muted); box-shadow: 0 2px 6px rgba(59,36,20,.06); }
-  .zoom b { padding: 3px 7px; }
-  .zoom i { width: 22px; height: 22px; display: grid; place-items: center; font-style: normal; font-size: 14px; }
-</style>
-</head>
-<body>
-<div class="top">
-  <div class="logo"><svg width="16" height="16" viewBox="0 0 40 40"><circle cx="12" cy="13" r="5" fill="#fff"/><circle cx="28" cy="27" r="5" fill="#fff"/><path d="M16 13h4.5c4 0 4 14 8 14" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></svg></div>
-  <div class="crumb"><span data-t="ops"></span><span>›</span><b data-t="flow"></b></div>
-  <span class="pill live" data-t="live"></span>
-  <div class="spacer"></div>
-  <div class="avs"><div class="av" style="background:#f4512f" data-t="a1"></div><div class="av" style="background:#6f5ef0" data-t="a2"></div><div class="av" style="background:#12a073" data-t="a3"></div></div>
-  <div class="btn ghost"><svg width="13" height="13" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="#18171d"/></svg><span data-t="test"></span></div>
-  <div class="btn primary" data-t="publish"></div>
-</div>
-<div class="rail" id="rail"></div>
-<div class="canvas" id="canvas">
-  <svg class="wires" id="wires" width="604" height="720" viewBox="0 0 604 720"></svg>
-  <div class="zoom"><i>−</i><b>100%</b><i>+</i></div>
-</div>
-<script>
-  const he = location.search.includes('lang=he');
-  document.documentElement.dir = he ? 'rtl' : 'ltr';
-  document.documentElement.lang = he ? 'he' : 'en';
-  const T = {
-    ops: ['Operations', 'תפעול'], flow: ['Order intake', 'קליטת הזמנות'], live: ['● Live', '● פעיל'],
-    a1: ['N', 'נ'], a2: ['E', 'א'], a3: ['M', 'מ'], test: ['Test run', 'הרצת בדיקה'], publish: ['Publish', 'פרסום'],
-  };
-  for (const el of document.querySelectorAll('[data-t]')) el.textContent = T[el.dataset.t][he ? 1 : 0];
-  const ICON = {
-    flow: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h3.5a3 3 0 0 1 3 3V14"/>',
-    inbox: '<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/>',
-    chart: '<path d="M4 20h17M7 16v-5M12 16V6M17 16v-8"/>',
-    plug: '<path d="M9 3v5M15 3v5M6 8h12v3.5a6 6 0 0 1-12 0zM12 17.5V21"/>',
-    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
-    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
-    bolt: '<path d="M13 2.5 4.5 13.5h7l-1 8 8.5-11h-7z"/>',
-    split: '<path d="M6 3v6a6 6 0 0 0 6 6h0a6 6 0 0 1 6 6M18 3v6a6 6 0 0 1-6 6"/>',
-    box: '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
-    send: '<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
-    spark: '<path d="M11 3.5l1.8 4.9 4.9 1.8-4.9 1.8L11 16.9l-1.8-4.9-4.9-1.8 4.9-1.8z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
-    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-    db: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
-  };
-  const svgIcon = (name, color, size = 14, w = 2.2) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</svg>`;
-  document.getElementById('rail').innerHTML = ['flow', 'inbox', 'chart', 'plug', 'users'].map((n, i) => `<div class="ri ${i ? '' : 'on'}">${svgIcon(n, i ? '#8d8a94' : '#f4512f', 18, 2)}</div>`).join('') + `<div style="flex:1"></div><div class="ri" style="margin-bottom:12px">${svgIcon('gear', '#8d8a94', 18, 2)}</div>`;
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="fonts.css" />
+    <style>
+      @font-face {
+        font-family: 'Assistant';
+        src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/assistant/files/assistant-hebrew-wght-normal.woff2')
+          format('woff2');
+        font-weight: 200 800;
+        unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+      }
+      @font-face {
+        font-family: 'Assistant';
+        src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/assistant/files/assistant-latin-wght-normal.woff2')
+          format('woff2');
+        font-weight: 200 800;
+        unicode-range: U+0000-00FF;
+      }
+      :root {
+        --coral: #f4512f;
+        --violet: #6f5ef0;
+        --mint: #12a073;
+        --ink: #18171d;
+        --muted: #6e6b75;
+        --line: rgba(24, 23, 29, 0.09);
+        --canvas: #f6f4ef;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 652px;
+        height: 772px;
+        overflow: hidden;
+        background: #fbfaf7;
+      }
+      body {
+        font-family: Inter, Assistant, sans-serif;
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      [dir='rtl'] body,
+      body[dir='rtl'] {
+        font-family: Assistant, Inter, sans-serif;
+      }
+      .top {
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 52px;
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 0 12px;
+        box-sizing: border-box;
+      }
+      .logo {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: var(--coral);
+        display: grid;
+        place-items: center;
+      }
+      .crumb {
+        font-size: 13px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .crumb b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .pill {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 9px;
+        border-radius: 999px;
+      }
+      .live {
+        background: rgba(18, 160, 115, 0.12);
+        color: var(--mint);
+      }
+      .spacer {
+        flex: 1;
+      }
+      .avs {
+        display: flex;
+      }
+      .av {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        margin-inline-start: -7px;
+        color: #fff;
+        font-size: 10.5px;
+        font-weight: 700;
+        display: grid;
+        place-items: center;
+      }
+      .btn {
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 7px 12px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ghost {
+        border: 1px solid var(--line);
+        background: #fff;
+      }
+      .primary {
+        background: var(--coral);
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(244, 81, 47, 0.35);
+      }
+      .rail {
+        position: absolute;
+        top: 52px;
+        bottom: 0;
+        inset-inline-start: 0;
+        width: 48px;
+        background: #fff;
+        border-inline-end: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding-top: 12px;
+        box-sizing: border-box;
+      }
+      .ri {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+      }
+      .ri.on {
+        background: rgba(244, 81, 47, 0.12);
+      }
+      .canvas {
+        position: absolute;
+        top: 52px;
+        bottom: 0;
+        inset-inline-start: 48px;
+        inset-inline-end: 0;
+        background-color: var(--canvas);
+        background-image: radial-gradient(rgba(24, 23, 29, 0.17) 1.1px, transparent 1.3px);
+        background-size: 18px 18px;
+        overflow: hidden;
+      }
+      .wires {
+        position: absolute;
+        inset: 0;
+      }
+      [dir='rtl'] .wires {
+        transform: scaleX(-1);
+      }
+      .node {
+        position: absolute;
+        width: 214px;
+        background: #fff;
+        border-radius: 13px;
+        border: 1px solid var(--line);
+        box-shadow:
+          0 1px 2px rgba(59, 36, 20, 0.06),
+          0 8px 20px rgba(59, 36, 20, 0.08);
+        padding: 10px 12px 11px;
+        box-sizing: border-box;
+      }
+      .kind {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      [dir='rtl'] .kind {
+        letter-spacing: 0;
+        font-size: 12px;
+      }
+      .ic {
+        width: 22px;
+        height: 22px;
+        border-radius: 6.5px;
+        display: grid;
+        place-items: center;
+      }
+      .ttl {
+        font-size: 13.5px;
+        font-weight: 600;
+        margin-top: 7px;
+        white-space: nowrap;
+      }
+      [dir='rtl'] .ttl {
+        font-size: 15px;
+      }
+      .sub {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      [dir='rtl'] .sub {
+        font-size: 13px;
+      }
+      .sel {
+        outline: 2px solid var(--coral);
+        outline-offset: 3px;
+      }
+      .h {
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        background: #fff;
+        border: 1.5px solid var(--coral);
+      }
+      .chip {
+        position: absolute;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line);
+      }
+      [dir='rtl'] .chip {
+        font-size: 12.5px;
+      }
+      .plus {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #fff;
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 2px 5px rgba(59, 36, 20, 0.1);
+      }
+      .ai {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 8px 7px 10px;
+        border-radius: 11px;
+        background: #fff;
+        border: 1px solid rgba(111, 94, 240, 0.35);
+        box-shadow: 0 8px 22px rgba(111, 94, 240, 0.18);
+        font-size: 12px;
+      }
+      [dir='rtl'] .ai {
+        font-size: 13.5px;
+        padding: 7px 10px 7px 8px;
+      }
+      .ai .add {
+        background: var(--violet);
+        color: #fff;
+        font-weight: 600;
+        padding: 4px 9px;
+        border-radius: 7px;
+        font-size: 11.5px;
+      }
+      .run {
+        position: absolute;
+        inset-inline-start: 16px;
+        inset-inline-end: 16px;
+        bottom: 14px;
+        height: 46px;
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        box-shadow: 0 8px 22px rgba(59, 36, 20, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 12px;
+        box-sizing: border-box;
+        font-size: 12.5px;
+      }
+      [dir='rtl'] .run {
+        font-size: 14px;
+      }
+      .ok {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--mint);
+        display: grid;
+        place-items: center;
+      }
+      .steps {
+        display: flex;
+        gap: 3px;
+      }
+      .steps i {
+        width: 16px;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--mint);
+        opacity: 0.85;
+        display: block;
+      }
+      .cur {
+        position: absolute;
+      }
+      .cur span {
+        position: absolute;
+        top: 19px;
+        inset-inline-start: 13px;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 7px;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+      [dir='rtl'] .cur span {
+        font-size: 12.5px;
+      }
+      [dir='rtl'] .cur svg {
+        transform: scaleX(-1);
+      }
+      .zoom {
+        position: absolute;
+        inset-inline-end: 16px;
+        top: 14px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 3px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--muted);
+        box-shadow: 0 2px 6px rgba(59, 36, 20, 0.06);
+      }
+      .zoom b {
+        padding: 3px 7px;
+      }
+      .zoom i {
+        width: 22px;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        font-style: normal;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="logo">
+        <svg width="16" height="16" viewBox="0 0 40 40">
+          <circle cx="12" cy="13" r="5" fill="#fff" />
+          <circle cx="28" cy="27" r="5" fill="#fff" />
+          <path
+            d="M16 13h4.5c4 0 4 14 8 14"
+            stroke="#fff"
+            stroke-width="4"
+            fill="none"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+      <div class="crumb"><span data-t="ops"></span><span>›</span><b data-t="flow"></b></div>
+      <span class="pill live" data-t="live"></span>
+      <div class="spacer"></div>
+      <div class="avs">
+        <div class="av" style="background: #f4512f" data-t="a1"></div>
+        <div class="av" style="background: #6f5ef0" data-t="a2"></div>
+        <div class="av" style="background: #12a073" data-t="a3"></div>
+      </div>
+      <div class="btn ghost">
+        <svg width="13" height="13" viewBox="0 0 24 24">
+          <path d="M8 5.5v13l10.5-6.5z" fill="#18171d" /></svg
+        ><span data-t="test"></span>
+      </div>
+      <div class="btn primary" data-t="publish"></div>
+    </div>
+    <div class="rail" id="rail"></div>
+    <div class="canvas" id="canvas">
+      <svg class="wires" id="wires" width="604" height="720" viewBox="0 0 604 720"></svg>
+      <div class="zoom"><i>−</i><b>100%</b><i>+</i></div>
+    </div>
+    <script>
+      const he = location.search.includes('lang=he');
+      document.documentElement.dir = he ? 'rtl' : 'ltr';
+      document.documentElement.lang = he ? 'he' : 'en';
+      const T = {
+        ops: ['Operations', 'תפעול'],
+        flow: ['Order intake', 'קליטת הזמנות'],
+        live: ['● Live', '● פעיל'],
+        a1: ['N', 'נ'],
+        a2: ['E', 'א'],
+        a3: ['M', 'מ'],
+        test: ['Test run', 'הרצת בדיקה'],
+        publish: ['Publish', 'פרסום'],
+      };
+      for (const el of document.querySelectorAll('[data-t]'))
+        el.textContent = T[el.dataset.t][he ? 1 : 0];
+      const ICON = {
+        flow: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h3.5a3 3 0 0 1 3 3V14"/>',
+        inbox: '<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/>',
+        chart: '<path d="M4 20h17M7 16v-5M12 16V6M17 16v-8"/>',
+        plug: '<path d="M9 3v5M15 3v5M6 8h12v3.5a6 6 0 0 1-12 0zM12 17.5V21"/>',
+        users:
+          '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
+        gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+        bolt: '<path d="M13 2.5 4.5 13.5h7l-1 8 8.5-11h-7z"/>',
+        split: '<path d="M6 3v6a6 6 0 0 0 6 6h0a6 6 0 0 1 6 6M18 3v6a6 6 0 0 1-6 6"/>',
+        box: '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
+        send: '<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
+        spark:
+          '<path d="M11 3.5l1.8 4.9 4.9 1.8-4.9 1.8L11 16.9l-1.8-4.9-4.9-1.8 4.9-1.8z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
+        check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+        db: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+      };
+      const svgIcon = (name, color, size = 14, w = 2.2) =>
+        `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</svg>`;
+      document.getElementById('rail').innerHTML =
+        ['flow', 'inbox', 'chart', 'plug', 'users']
+          .map(
+            (n, i) =>
+              `<div class="ri ${i ? '' : 'on'}">${svgIcon(n, i ? '#8d8a94' : '#f4512f', 18, 2)}</div>`,
+          )
+          .join('') +
+        `<div style="flex:1"></div><div class="ri" style="margin-bottom:12px">${svgIcon('gear', '#8d8a94', 18, 2)}</div>`;
 
-  // The flow, laid out left to right (the mirror lays it out for Hebrew): x is the node's start.
-  const canvas = document.getElementById('canvas');
-  const W = 214;
-  const nodes = {
-    a: { x: 195, y: 40, c: '#f4512f', i: 'bolt', k: ['Trigger', 'טריגר'], t: ['New order received', 'התקבלה הזמנה חדשה'], s: ['Online store · instantly', 'חנות אונליין · מיידי'] },
-    b: { x: 195, y: 160, c: '#18171d', i: 'split', k: ['Condition', 'תנאי'], t: ['Is every item in stock?', 'כל הפריטים במלאי?'], s: ['Inventory · 3 warehouses', 'מלאי · 3 מחסנים'] },
-    c: { x: 26, y: 300, c: '#12a073', i: 'box', k: ['Action', 'פעולה'], t: ['Reserve the items', 'שריון הפריטים'], s: ['Warehouse system', 'מערכת המחסן'] },
-    d: { x: 26, y: 420, c: '#12a073', i: 'send', k: ['Action', 'פעולה'], t: ['Send tracking to buyer', 'שליחת מעקב ללקוח'], s: ['Email and text message', 'מייל והודעת SMS'] },
-    e: { x: 364, y: 300, c: '#6f5ef0', i: 'spark', k: ['AI agent', 'סוכן AI'], t: ['Draft a supplier order', 'ניסוח הזמנה מהספק'], s: ['From 90 days of sales', 'לפי 90 ימי מכירות'] },
-    f: { x: 364, y: 420, c: '#ffb547', i: 'users', k: ['Approval', 'אישור'], t: ['Ops lead approves', 'אישור מנהלת התפעול'], s: ['Noa B. · within 2 hours', 'נועה ב. · תוך שעתיים'] },
-    g: { x: 112, y: 548, c: '#f4512f', i: 'db', k: ['Action', 'פעולה'], t: ['Update the order in CRM', 'עדכון ההזמנה ב-CRM'], s: ['Status, stock and invoice', 'סטטוס, מלאי וחשבונית'] },
-  };
-  const H = 82;
-  for (const [id, n] of Object.entries(nodes)) {
-    const el = document.createElement('div');
-    el.className = 'node' + (id === 'g' ? ' sel' : '');
-    el.style.insetInlineStart = n.x + 'px';
-    el.style.top = n.y + 'px';
-    el.innerHTML = `<div class="kind"><div class="ic" style="background:${n.c}">${svgIcon(n.i, n.c === '#ffb547' ? '#18171d' : '#fff', 13, 2.4)}</div>${n.k[he ? 1 : 0]}</div><div class="ttl">${n.t[he ? 1 : 0]}</div><div class="sub">${n.s[he ? 1 : 0]}</div>`;
-    canvas.append(el);
-  }
-  // The handles of the selected node.
-  const g = nodes.g;
-  for (const [dx, dy] of [[-8, -8], [W + 1, -8], [-8, H + 1], [W + 1, H + 1]]) {
-    const h = document.createElement('div');
-    h.className = 'h';
-    h.style.insetInlineStart = g.x + dx + 'px';
-    h.style.top = g.y + dy + 'px';
-    canvas.append(h);
-  }
-  // The wires, in left-to-right coordinates.
-  const wires = document.getElementById('wires');
-  const mid = (n) => n.x + W / 2;
-  const curve = (x1, y1, x2, y2) => `M${x1} ${y1}C${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`;
-  const links = [['a', 'b'], ['b', 'c'], ['b', 'e'], ['c', 'd'], ['e', 'f'], ['d', 'g'], ['f', 'g']];
-  wires.innerHTML = links.map(([p, q]) => {
-    const a = nodes[p], b = nodes[q];
-    const hot = p === 'b' && q === 'e' || p === 'e';
-    return `<path d="${curve(mid(a), a.y + H, mid(b), b.y)}" fill="none" stroke="${hot ? '#6f5ef0' : '#b9b4ab'}" stroke-width="${hot ? 2.2 : 1.8}" ${hot ? 'stroke-dasharray="5 4"' : ''}/>` +
-      `<circle cx="${mid(b)}" cy="${b.y}" r="3.6" fill="#fff" stroke="${hot ? '#6f5ef0' : '#b9b4ab'}" stroke-width="1.8"/>`;
-  }).join('');
-  // Branch labels and the buttons that add a step.
-  const place = (cls, x, y, html, style = '') => {
-    const el = document.createElement('div');
-    el.className = cls;
-    el.style.insetInlineStart = x + 'px';
-    el.style.top = y + 'px';
-    el.style.cssText += style;
-    el.innerHTML = html;
-    canvas.append(el);
-  };
-  place('chip', 110, 262, he ? 'כן' : 'Yes', 'color:#12a073');
-  place('chip', 470, 262, he ? 'לא' : 'No', 'color:#f4512f');
-  place('plus', mid(nodes.c) - 10, 392, svgIcon('check', '#8d8a94', 0));
-  canvas.lastChild.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1v8M1 5h8" stroke="#6e6b75" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  place('plus', mid(nodes.a) - 10, 131, '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1v8M1 5h8" stroke="#6e6b75" stroke-width="1.6" stroke-linecap="round"/></svg>');
-  // The agent's suggestion beside its node.
-  place('ai', 352, 566, `${svgIcon('spark', '#6f5ef0', 15, 2.2)}<span>${he ? 'ספק חלופי?' : 'Backup supplier?'}</span><span class="add">${he ? 'הוספה' : 'Add'}</span>`);
-  // A teammate's cursor on the selected node.
-  place('cur', 296, 604, `<svg width="18" height="22" viewBox="0 0 24 30"><path d="M2 2v24l6.5-6.2 4.3 9.7 4.3-1.9-4.3-9.5H21z" fill="#6f5ef0" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg><span style="background:#6f5ef0">${he ? 'איתן' : 'Eitan'}</span>`);
-  // The result of the last test run.
-  const run = document.createElement('div');
-  run.className = 'run';
-  run.innerHTML = `<div class="ok">${svgIcon('check', '#fff', 13, 3)}</div><b style="font-weight:600">${he ? 'הרצת הבדיקה עברה' : 'Test run passed'}</b><span style="color:#6e6b75">${he ? '7 שלבים · 1.4 שניות' : '7 steps · 1.4 s'}</span><div class="steps">${'<i></i>'.repeat(7)}</div><div style="flex:1"></div><span style="color:#f4512f;font-weight:600">${he ? 'יומן הריצה' : 'Run log'}</span>`;
-  canvas.append(run);
-</script>
-</body>
+      // The flow, laid out left to right (the mirror lays it out for Hebrew): x is the node's start.
+      const canvas = document.getElementById('canvas');
+      const W = 214;
+      const nodes = {
+        a: {
+          x: 195,
+          y: 40,
+          c: '#f4512f',
+          i: 'bolt',
+          k: ['Trigger', 'טריגר'],
+          t: ['New order received', 'התקבלה הזמנה חדשה'],
+          s: ['Online store · instantly', 'חנות אונליין · מיידי'],
+        },
+        b: {
+          x: 195,
+          y: 160,
+          c: '#18171d',
+          i: 'split',
+          k: ['Condition', 'תנאי'],
+          t: ['Is every item in stock?', 'כל הפריטים במלאי?'],
+          s: ['Inventory · 3 warehouses', 'מלאי · 3 מחסנים'],
+        },
+        c: {
+          x: 26,
+          y: 300,
+          c: '#12a073',
+          i: 'box',
+          k: ['Action', 'פעולה'],
+          t: ['Reserve the items', 'שריון הפריטים'],
+          s: ['Warehouse system', 'מערכת המחסן'],
+        },
+        d: {
+          x: 26,
+          y: 420,
+          c: '#12a073',
+          i: 'send',
+          k: ['Action', 'פעולה'],
+          t: ['Send tracking to buyer', 'שליחת מעקב ללקוח'],
+          s: ['Email and text message', 'מייל והודעת SMS'],
+        },
+        e: {
+          x: 364,
+          y: 300,
+          c: '#6f5ef0',
+          i: 'spark',
+          k: ['AI agent', 'סוכן AI'],
+          t: ['Draft a supplier order', 'ניסוח הזמנה מהספק'],
+          s: ['From 90 days of sales', 'לפי 90 ימי מכירות'],
+        },
+        f: {
+          x: 364,
+          y: 420,
+          c: '#ffb547',
+          i: 'users',
+          k: ['Approval', 'אישור'],
+          t: ['Ops lead approves', 'אישור מנהלת התפעול'],
+          s: ['Noa B. · within 2 hours', 'נועה ב. · תוך שעתיים'],
+        },
+        g: {
+          x: 112,
+          y: 548,
+          c: '#f4512f',
+          i: 'db',
+          k: ['Action', 'פעולה'],
+          t: ['Update the order in CRM', 'עדכון ההזמנה ב-CRM'],
+          s: ['Status, stock and invoice', 'סטטוס, מלאי וחשבונית'],
+        },
+      };
+      const H = 82;
+      for (const [id, n] of Object.entries(nodes)) {
+        const el = document.createElement('div');
+        el.className = 'node' + (id === 'g' ? ' sel' : '');
+        el.style.insetInlineStart = n.x + 'px';
+        el.style.top = n.y + 'px';
+        el.innerHTML = `<div class="kind"><div class="ic" style="background:${n.c}">${svgIcon(n.i, n.c === '#ffb547' ? '#18171d' : '#fff', 13, 2.4)}</div>${n.k[he ? 1 : 0]}</div><div class="ttl">${n.t[he ? 1 : 0]}</div><div class="sub">${n.s[he ? 1 : 0]}</div>`;
+        canvas.append(el);
+      }
+      // The handles of the selected node.
+      const g = nodes.g;
+      for (const [dx, dy] of [
+        [-8, -8],
+        [W + 1, -8],
+        [-8, H + 1],
+        [W + 1, H + 1],
+      ]) {
+        const h = document.createElement('div');
+        h.className = 'h';
+        h.style.insetInlineStart = g.x + dx + 'px';
+        h.style.top = g.y + dy + 'px';
+        canvas.append(h);
+      }
+      // The wires, in left-to-right coordinates.
+      const wires = document.getElementById('wires');
+      const mid = (n) => n.x + W / 2;
+      const curve = (x1, y1, x2, y2) =>
+        `M${x1} ${y1}C${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`;
+      const links = [
+        ['a', 'b'],
+        ['b', 'c'],
+        ['b', 'e'],
+        ['c', 'd'],
+        ['e', 'f'],
+        ['d', 'g'],
+        ['f', 'g'],
+      ];
+      wires.innerHTML = links
+        .map(([p, q]) => {
+          const a = nodes[p],
+            b = nodes[q];
+          const hot = (p === 'b' && q === 'e') || p === 'e';
+          return (
+            `<path d="${curve(mid(a), a.y + H, mid(b), b.y)}" fill="none" stroke="${hot ? '#6f5ef0' : '#b9b4ab'}" stroke-width="${hot ? 2.2 : 1.8}" ${hot ? 'stroke-dasharray="5 4"' : ''}/>` +
+            `<circle cx="${mid(b)}" cy="${b.y}" r="3.6" fill="#fff" stroke="${hot ? '#6f5ef0' : '#b9b4ab'}" stroke-width="1.8"/>`
+          );
+        })
+        .join('');
+      // Branch labels and the buttons that add a step.
+      const place = (cls, x, y, html, style = '') => {
+        const el = document.createElement('div');
+        el.className = cls;
+        el.style.insetInlineStart = x + 'px';
+        el.style.top = y + 'px';
+        el.style.cssText += style;
+        el.innerHTML = html;
+        canvas.append(el);
+      };
+      place('chip', 110, 262, he ? 'כן' : 'Yes', 'color:#12a073');
+      place('chip', 470, 262, he ? 'לא' : 'No', 'color:#f4512f');
+      place('plus', mid(nodes.c) - 10, 392, svgIcon('check', '#8d8a94', 0));
+      canvas.lastChild.innerHTML =
+        '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1v8M1 5h8" stroke="#6e6b75" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      place(
+        'plus',
+        mid(nodes.a) - 10,
+        131,
+        '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1v8M1 5h8" stroke="#6e6b75" stroke-width="1.6" stroke-linecap="round"/></svg>',
+      );
+      // The agent's suggestion beside its node.
+      place(
+        'ai',
+        352,
+        566,
+        `${svgIcon('spark', '#6f5ef0', 15, 2.2)}<span>${he ? 'ספק חלופי?' : 'Backup supplier?'}</span><span class="add">${he ? 'הוספה' : 'Add'}</span>`,
+      );
+      // A teammate's cursor on the selected node.
+      place(
+        'cur',
+        296,
+        604,
+        `<svg width="18" height="22" viewBox="0 0 24 30"><path d="M2 2v24l6.5-6.2 4.3 9.7 4.3-1.9-4.3-9.5H21z" fill="#6f5ef0" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg><span style="background:#6f5ef0">${he ? 'איתן' : 'Eitan'}</span>`,
+      );
+      // The result of the last test run.
+      const run = document.createElement('div');
+      run.className = 'run';
+      run.innerHTML = `<div class="ok">${svgIcon('check', '#fff', 13, 3)}</div><b style="font-weight:600">${he ? 'הרצת הבדיקה עברה' : 'Test run passed'}</b><span style="color:#6e6b75">${he ? '7 שלבים · 1.4 שניות' : '7 steps · 1.4 s'}</span><div class="steps">${'<i></i>'.repeat(7)}</div><div style="flex:1"></div><span style="color:#f4512f;font-weight:600">${he ? 'יומן הריצה' : 'Run log'}</span>`;
+      canvas.append(run);
+    </script>
+  </body>
 </html>

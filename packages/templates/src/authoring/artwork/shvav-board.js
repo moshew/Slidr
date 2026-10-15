@@ -38,18 +38,30 @@ const PARTS = [
   { kind: 'ufl', ref: 'J3', x: 53, y: 30 },
   // Passives: [ref, x, y, rotation, size, kind]
   ...[
-    ['C1', 24.6, 16.2, 0, '0402', 'cap'], ['C2', 35.4, 16.2, 0, '0402', 'cap'],
-    ['C3', 24.6, 25.8, 0, '0402', 'cap'], ['C4', 35.4, 25.8, 0, '0402', 'cap'],
-    ['C5', 22.4, 14.6, 0, '0402', 'cap'], ['C6', 22.4, 9.8, 0, '0402', 'cap'],
-    ['C7', 37.6, 21, 90, '0402', 'cap'], ['C8', 40.8, 16.4, 0, '0603', 'cap'],
-    ['R1', 19.6, 18.4, 90, '0402', 'res'], ['R2', 20.6, 21.6, 0, '0402', 'res'],
-    ['R3', 20.6, 23.4, 0, '0402', 'res'], ['R4', 41.6, 9.6, 0, '0402', 'res'],
-    ['R5', 39.6, 31.4, 90, '0402', 'res'], ['R6', 46.8, 25.2, 0, '0402', 'res'],
-    ['C11', 46.8, 31.8, 0, '0402', 'cap'], ['C12', 39.8, 25.6, 90, '0402', 'cap'],
-    ['C13', 44.6, 16.2, 0, '0603', 'cap'], ['C14', 48.4, 13.4, 90, '0603', 'cap'],
-    ['C15', 13.2, 26.6, 0, '0603', 'cap'], ['R7', 9.6, 17.2, 90, '0402', 'res'],
-    ['R8', 9.6, 24.8, 90, '0402', 'res'], ['C16', 27.6, 31.2, 0, '0402', 'cap'],
-    ['C17', 32.4, 31.2, 0, '0402', 'cap'], ['R9', 50.2, 26.2, 90, '0402', 'res'],
+    ['C1', 24.6, 16.2, 0, '0402', 'cap'],
+    ['C2', 35.4, 16.2, 0, '0402', 'cap'],
+    ['C3', 24.6, 25.8, 0, '0402', 'cap'],
+    ['C4', 35.4, 25.8, 0, '0402', 'cap'],
+    ['C5', 22.4, 14.6, 0, '0402', 'cap'],
+    ['C6', 22.4, 9.8, 0, '0402', 'cap'],
+    ['C7', 37.6, 21, 90, '0402', 'cap'],
+    ['C8', 40.8, 16.4, 0, '0603', 'cap'],
+    ['R1', 19.6, 18.4, 90, '0402', 'res'],
+    ['R2', 20.6, 21.6, 0, '0402', 'res'],
+    ['R3', 20.6, 23.4, 0, '0402', 'res'],
+    ['R4', 41.6, 9.6, 0, '0402', 'res'],
+    ['R5', 39.6, 31.4, 90, '0402', 'res'],
+    ['R6', 46.8, 25.2, 0, '0402', 'res'],
+    ['C11', 46.8, 31.8, 0, '0402', 'cap'],
+    ['C12', 39.8, 25.6, 90, '0402', 'cap'],
+    ['C13', 44.6, 16.2, 0, '0603', 'cap'],
+    ['C14', 48.4, 13.4, 90, '0603', 'cap'],
+    ['C15', 13.2, 26.6, 0, '0603', 'cap'],
+    ['R7', 9.6, 17.2, 90, '0402', 'res'],
+    ['R8', 9.6, 24.8, 90, '0402', 'res'],
+    ['C16', 27.6, 31.2, 0, '0402', 'cap'],
+    ['C17', 32.4, 31.2, 0, '0402', 'cap'],
+    ['R9', 50.2, 26.2, 90, '0402', 'res'],
     ['C18', 50.2, 33.6, 90, '0402', 'cap'],
   ].map(([ref, x, y, rot, size, kind]) => ({ kind: 'chip', ref, x, y, rot, size, part: kind })),
 ];
@@ -81,7 +93,7 @@ function lqfpPins({ x, y, body, n, pitch }) {
 
 function seeded(seed) {
   let s = seed;
-  return () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+  return () => (s = (s * 9301 + 49297) % 233280) / 233280;
 }
 
 /** The traces: polylines in millimetres, each with its width. Routed at 0 and 45 degrees. */
@@ -106,37 +118,210 @@ function routes() {
     const far = 0.8 + rnd() * 2.2;
     const cx = bx + p.dx * far;
     const cy = by + p.dy * far;
-    out.push({ pts: [[p.x + p.dx * 0.9, p.y + p.dy * 0.9], [ax, ay], [bx, by], [cx, cy]], w: 0.2, via: true });
+    out.push({
+      pts: [
+        [p.x + p.dx * 0.9, p.y + p.dy * 0.9],
+        [ax, ay],
+        [bx, by],
+        [cx, cy],
+      ],
+      w: 0.2,
+      via: true,
+    });
   }
   // Longer runs: the flash, the crystal, the sensor front end, the radio to the antenna.
   out.push(
-    { pts: [[19.4, 11.7], [21.2, 11.7], [23.2, 9.7], [26.5, 9.7], [28.4, 11.6], [28.4, 14.1]], w: 0.2 },
-    { pts: [[19.4, 12.4], [21, 12.4]], w: 0.2 },
-    { pts: [[19.4, 14.3], [20.2, 15.1], [24.4, 15.1], [26.1, 16.8]], w: 0.2 },
-    { pts: [[11.6, 13.6], [10.2, 13.6], [8.6, 15.2], [8.6, 26.6], [10.4, 28.4], [12, 28.4]], w: 0.25 },
-    { pts: [[11.6, 12.4], [9.8, 12.4], [7.4, 14.8], [7.4, 19.4], [6.4, 20.4]], w: 0.2 },
-    { pts: [[5.9, 21.6], [7.2, 22.9], [7.2, 28.6], [9.8, 31.2]], w: 0.4 },
-    { pts: [[5.9, 20.6], [12.6, 20.6], [14.6, 22.6], [21.4, 22.6]], w: 0.2 },
-    { pts: [[5.9, 19.6], [8.2, 17.3], [8.2, 16.1]], w: 0.2 },
-    { pts: [[37.4, 23.6], [41, 27.2], [41, 30.2]], w: 0.2 },
-    { pts: [[37.4, 24.2], [38.6, 25.4], [38.6, 33.2], [40.4, 35]], w: 0.2 },
-    { pts: [[45, 26.5], [45, 24.2], [47.2, 22], [52.2, 22], [55.4, 18.8]], w: 0.2 },
-    { pts: [[37.5, 18.2], [41.7, 14], [43.1, 14]], w: 0.3 },
-    { pts: [[46, 12.5], [48.4, 12.5], [48.4, 10.2], [50.6, 8]], w: 0.3 },
-    { pts: [[39.4, 9.6], [41.1, 9.6]], w: 0.2 },
-    { pts: [[42.1, 9.6], [44, 9.6], [45.6, 11.2]], w: 0.2 },
-    { pts: [[37.5, 19.2], [44.4, 19.2], [46.2, 21], [50.4, 21], [53, 23.6], [53, 28.6]], w: 0.35 },
-    { pts: [[17.6, 31], [24.4, 31], [26.2, 29.2], [26.2, 26.8]], w: 0.5 },
-    { pts: [[12.2, 31], [14.2, 31]], w: 0.5 },
-    { pts: [[33, 29.2], [33.8, 30], [36.6, 30], [38.6, 32], [38.6, 35.6]], w: 0.2 },
-    { pts: [[28.4, 28.4], [28.4, 34.2], [30.4, 36.2], [44, 36.2], [46.8, 33.4]], w: 0.25 },
+    {
+      pts: [
+        [19.4, 11.7],
+        [21.2, 11.7],
+        [23.2, 9.7],
+        [26.5, 9.7],
+        [28.4, 11.6],
+        [28.4, 14.1],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [19.4, 12.4],
+        [21, 12.4],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [19.4, 14.3],
+        [20.2, 15.1],
+        [24.4, 15.1],
+        [26.1, 16.8],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [11.6, 13.6],
+        [10.2, 13.6],
+        [8.6, 15.2],
+        [8.6, 26.6],
+        [10.4, 28.4],
+        [12, 28.4],
+      ],
+      w: 0.25,
+    },
+    {
+      pts: [
+        [11.6, 12.4],
+        [9.8, 12.4],
+        [7.4, 14.8],
+        [7.4, 19.4],
+        [6.4, 20.4],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [5.9, 21.6],
+        [7.2, 22.9],
+        [7.2, 28.6],
+        [9.8, 31.2],
+      ],
+      w: 0.4,
+    },
+    {
+      pts: [
+        [5.9, 20.6],
+        [12.6, 20.6],
+        [14.6, 22.6],
+        [21.4, 22.6],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [5.9, 19.6],
+        [8.2, 17.3],
+        [8.2, 16.1],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [37.4, 23.6],
+        [41, 27.2],
+        [41, 30.2],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [37.4, 24.2],
+        [38.6, 25.4],
+        [38.6, 33.2],
+        [40.4, 35],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [45, 26.5],
+        [45, 24.2],
+        [47.2, 22],
+        [52.2, 22],
+        [55.4, 18.8],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [37.5, 18.2],
+        [41.7, 14],
+        [43.1, 14],
+      ],
+      w: 0.3,
+    },
+    {
+      pts: [
+        [46, 12.5],
+        [48.4, 12.5],
+        [48.4, 10.2],
+        [50.6, 8],
+      ],
+      w: 0.3,
+    },
+    {
+      pts: [
+        [39.4, 9.6],
+        [41.1, 9.6],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [42.1, 9.6],
+        [44, 9.6],
+        [45.6, 11.2],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [37.5, 19.2],
+        [44.4, 19.2],
+        [46.2, 21],
+        [50.4, 21],
+        [53, 23.6],
+        [53, 28.6],
+      ],
+      w: 0.35,
+    },
+    {
+      pts: [
+        [17.6, 31],
+        [24.4, 31],
+        [26.2, 29.2],
+        [26.2, 26.8],
+      ],
+      w: 0.5,
+    },
+    {
+      pts: [
+        [12.2, 31],
+        [14.2, 31],
+      ],
+      w: 0.5,
+    },
+    {
+      pts: [
+        [33, 29.2],
+        [33.8, 30],
+        [36.6, 30],
+        [38.6, 32],
+        [38.6, 35.6],
+      ],
+      w: 0.2,
+    },
+    {
+      pts: [
+        [28.4, 28.4],
+        [28.4, 34.2],
+        [30.4, 36.2],
+        [44, 36.2],
+        [46.8, 33.4],
+      ],
+      w: 0.25,
+    },
   );
   return out;
 }
 
 /** The meander of the antenna, at the far end of the board, kept clear of the ground pour. */
 const ANTENNA = (() => {
-  const pts = [[53, 28.6], [53, 26.6], [58.2, 26.6]];
+  const pts = [
+    [53, 28.6],
+    [53, 26.6],
+    [58.2, 26.6],
+  ];
   let y = 26.6;
   let right = true;
   while (y > 6) {
@@ -160,10 +345,22 @@ const VIAS = (() => {
 })();
 
 const TESTPOINTS = [
-  ['TP1', 24.5, 35.6], ['TP2', 20.5, 35.6], ['TP3', 47.6, 8.6], ['TP4', 7.4, 35],
+  ['TP1', 24.5, 35.6],
+  ['TP2', 20.5, 35.6],
+  ['TP3', 47.6, 8.6],
+  ['TP4', 7.4, 35],
 ];
-const FIDUCIALS = [[6, 4], [58, 36.2], [6, 36.2]];
-const HOLES = [[2.8, 2.8], [61.2, 2.8], [2.8, 37.2], [61.2, 37.2]];
+const FIDUCIALS = [
+  [6, 4],
+  [58, 36.2],
+  [6, 36.2],
+];
+const HOLES = [
+  [2.8, 2.8],
+  [61.2, 2.8],
+  [2.8, 37.2],
+  [61.2, 37.2],
+];
 
 function canvas(w, h) {
   const c = document.createElement('canvas');
@@ -214,14 +411,21 @@ function padsOf(part) {
     pads.push(r ? [part.x, part.y + d, pw, pl] : [part.x + d, part.y, pl, pw]);
   } else if (part.kind === 'xtal' || part.kind === 'ind' || part.kind === 'tant') {
     const d = part.w / 2;
-    pads.push([part.x - d, part.y, part.w * 0.3, part.h * 0.8], [part.x + d, part.y, part.w * 0.3, part.h * 0.8]);
+    pads.push(
+      [part.x - d, part.y, part.w * 0.3, part.h * 0.8],
+      [part.x + d, part.y, part.w * 0.3, part.h * 0.8],
+    );
   } else if (part.kind === 'led') {
     pads.push([part.x - 0.8, part.y, 0.8, 0.9], [part.x + 0.8, part.y, 0.8, 0.9]);
   } else if (part.kind === 'jst') {
     for (let i = 0; i < 4; i++) pads.push([part.x + 2.1, part.y + (i - 1.5) * 1, 1.4, 0.6]);
     pads.push([part.x - 1.2, part.y - 3.4, 1.8, 1.2], [part.x - 1.2, part.y + 3.4, 1.8, 1.2]);
   } else if (part.kind === 'ufl') {
-    pads.push([part.x, part.y - 1.2, 1.0, 0.8], [part.x - 1.3, part.y + 0.5, 0.6, 1.8], [part.x + 1.3, part.y + 0.5, 0.6, 1.8]);
+    pads.push(
+      [part.x, part.y - 1.2, 1.0, 0.8],
+      [part.x - 1.3, part.y + 0.5, 0.6, 1.8],
+      [part.x + 1.3, part.y + 0.5, 0.6, 1.8],
+    );
   }
   return pads;
 }
@@ -274,7 +478,14 @@ export async function paintBoard({ label = 'WM-10', rev = 'REV C' } = {}) {
     paint('laminate', (g) => {
       for (const t of traces) polyline(g, t.pts, t.w + 0.5);
       polyline(g, ANTENNA, 0.9);
-      for (const part of parts) for (const [x, y, w, h] of padsOf(part)) g.fillRect((x - w / 2 - 0.25) * PX, (y - h / 2 - 0.25) * PX, (w + 0.5) * PX, (h + 0.5) * PX);
+      for (const part of parts)
+        for (const [x, y, w, h] of padsOf(part))
+          g.fillRect(
+            (x - w / 2 - 0.25) * PX,
+            (y - h / 2 - 0.25) * PX,
+            (w + 0.5) * PX,
+            (h + 0.5) * PX,
+          );
       for (const [x, y] of [...FIDUCIALS, ...HOLES]) {
         g.beginPath();
         g.arc(x * PX, y * PX, 1.9 * PX, 0, Math.PI * 2);
@@ -305,7 +516,9 @@ export async function paintBoard({ label = 'WM-10', rev = 'REV C' } = {}) {
     });
     // 4. The pads: solder where a part sits, gold where nothing does.
     paint('solder', (g) => {
-      for (const part of parts) for (const [x, y, w, h] of padsOf(part)) g.fillRect((x - w / 2) * PX, (y - h / 2) * PX, w * PX, h * PX);
+      for (const part of parts)
+        for (const [x, y, w, h] of padsOf(part))
+          g.fillRect((x - w / 2) * PX, (y - h / 2) * PX, w * PX, h * PX);
     });
     paint('gold', (g) => {
       for (const [, x, y] of TESTPOINTS) {
@@ -357,10 +570,18 @@ export async function paintBoard({ label = 'WM-10', rev = 'REV C' } = {}) {
           const k = 1.2 * PX;
           const [X, Y, WW, HH] = [x0, y0, w * PX, h * PX];
           g.beginPath();
-          g.moveTo(X, Y + k); g.lineTo(X, Y); g.lineTo(X + k, Y);
-          g.moveTo(X + WW - k, Y); g.lineTo(X + WW, Y); g.lineTo(X + WW, Y + k);
-          g.moveTo(X + WW, Y + HH - k); g.lineTo(X + WW, Y + HH); g.lineTo(X + WW - k, Y + HH);
-          g.moveTo(X + k, Y + HH); g.lineTo(X, Y + HH); g.lineTo(X, Y + HH - k);
+          g.moveTo(X, Y + k);
+          g.lineTo(X, Y);
+          g.lineTo(X + k, Y);
+          g.moveTo(X + WW - k, Y);
+          g.lineTo(X + WW, Y);
+          g.lineTo(X + WW, Y + k);
+          g.moveTo(X + WW, Y + HH - k);
+          g.lineTo(X + WW, Y + HH);
+          g.lineTo(X + WW - k, Y + HH);
+          g.moveTo(X + k, Y + HH);
+          g.lineTo(X, Y + HH);
+          g.lineTo(X, Y + HH - k);
           g.stroke();
           g.beginPath();
           g.arc(X - 0.6 * PX, Y - 0.6 * PX, 0.32 * PX, 0, Math.PI * 2);
@@ -395,8 +616,13 @@ export async function paintBoard({ label = 'WM-10', rev = 'REV C' } = {}) {
       name('J3', 53, 33.3);
       name('ANT1', 59.4, 31.6);
       for (const [n, x, y] of TESTPOINTS) name(n, x, y + 1.5);
-      name('C1', 24.6, 17.3); name('C2', 35.4, 17.3); name('C3', 24.6, 24.7); name('C4', 35.4, 24.7);
-      name('R1', 18.6, 18.4, 'right'); name('C8', 40.8, 17.5); name('C13', 44.6, 17.3);
+      name('C1', 24.6, 17.3);
+      name('C2', 35.4, 17.3);
+      name('C3', 24.6, 24.7);
+      name('C4', 35.4, 24.7);
+      name('R1', 18.6, 18.4, 'right');
+      name('C8', 40.8, 17.5);
+      name('C13', 44.6, 17.3);
       // The board's own lettering.
       g.font = `700 ${1.6 * PX}px "Space Grotesk"`;
       g.textAlign = 'left';
@@ -440,7 +666,8 @@ export async function paintBoard({ label = 'WM-10', rev = 'REV C' } = {}) {
     draw(c);
     b.fillStyle = b.strokeStyle = grey(bmp);
     draw(b);
-    m.fillStyle = m.strokeStyle = `rgb(${Math.round(cc * 255)},${Math.round(rough * 255)},${Math.round(metal * 255)})`;
+    m.fillStyle =
+      m.strokeStyle = `rgb(${Math.round(cc * 255)},${Math.round(rough * 255)},${Math.round(metal * 255)})`;
     draw(m);
   });
   // A faint mottle in the mask, as a real one has.
@@ -471,7 +698,17 @@ export async function paintBoard({ label = 'WM-10', rev = 'REV C' } = {}) {
 // ---------------------------------------------------------------------------------------------
 // The parts as meshes
 
-function markTexture(lines, { size = 512, ratio = 1, ink = '#646b67', ground = '#151816', font = 'JetBrains Mono', scale = 1 } = {}) {
+function markTexture(
+  lines,
+  {
+    size = 512,
+    ratio = 1,
+    ink = '#646b67',
+    ground = '#151816',
+    font = 'JetBrains Mono',
+    scale = 1,
+  } = {},
+) {
   const cv = canvas(size, Math.round(size / ratio));
   const g = cv.getContext('2d');
   g.fillStyle = ground;
@@ -503,7 +740,12 @@ function markTexture(lines, { size = 512, ratio = 1, ink = '#646b67', ground = '
 
 export function materials() {
   return {
-    epoxy: new THREE.MeshPhysicalMaterial({ color: '#16191a', roughness: 0.55, clearcoat: 0.15, clearcoatRoughness: 0.5 }),
+    epoxy: new THREE.MeshPhysicalMaterial({
+      color: '#16191a',
+      roughness: 0.55,
+      clearcoat: 0.15,
+      clearcoatRoughness: 0.5,
+    }),
     tin: new THREE.MeshStandardMaterial({ color: '#d4d8d8', metalness: 1, roughness: 0.28 }),
     solder: new THREE.MeshStandardMaterial({ color: '#dfe2e2', metalness: 1, roughness: 0.16 }),
     gold: new THREE.MeshStandardMaterial({ color: '#e7b85c', metalness: 1, roughness: 0.25 }),
@@ -516,7 +758,13 @@ export function materials() {
     housing: new THREE.MeshStandardMaterial({ color: '#e9dfc9', roughness: 0.55 }),
     dark: new THREE.MeshStandardMaterial({ color: '#0b0d0c', roughness: 0.8 }),
     ledBody: new THREE.MeshStandardMaterial({ color: '#f1efe8', roughness: 0.4 }),
-    ledLens: new THREE.MeshPhysicalMaterial({ color: '#ffd9c4', emissive: '#ff6a3a', emissiveIntensity: 30, roughness: 0.15, transmission: 0.2 }),
+    ledLens: new THREE.MeshPhysicalMaterial({
+      color: '#ffd9c4',
+      emissive: '#ff6a3a',
+      emissiveIntensity: 30,
+      roughness: 0.15,
+      transmission: 0.2,
+    }),
     edge: new THREE.MeshStandardMaterial({ color: '#5f6a3c', roughness: 0.7 }),
   };
 }
@@ -553,8 +801,18 @@ export function partMeshes(part, M, cache = {}) {
     const lq = part.kind === 'lqfp';
     const bw = lq ? part.body : 4.9;
     const bd = lq ? part.body : 3.9;
-    const top = (cache[`mark_${part.ref}`] ??= markTexture(part.mark, { ratio: bw / bd, scale: lq ? 1 : 1.25 }));
-    const mats = [M.epoxy, M.epoxy, new THREE.MeshPhysicalMaterial({ map: top, roughness: 0.6, clearcoat: 0.1 }), M.epoxy, M.epoxy, M.epoxy];
+    const top = (cache[`mark_${part.ref}`] ??= markTexture(part.mark, {
+      ratio: bw / bd,
+      scale: lq ? 1 : 1.25,
+    }));
+    const mats = [
+      M.epoxy,
+      M.epoxy,
+      new THREE.MeshPhysicalMaterial({ map: top, roughness: 0.6, clearcoat: 0.1 }),
+      M.epoxy,
+      M.epoxy,
+      M.epoxy,
+    ];
     at(new THREE.Mesh(new RoundedBoxGeometry(bw, 1.4, bd, 2, 0.12), mats), 0, 0.8, 0);
     const leg = (cache.leg ??= gullWing());
     const pins = lq
@@ -569,12 +827,29 @@ export function partMeshes(part, M, cache = {}) {
     }
   } else if (part.kind === 'qfn') {
     const top = (cache[`mark_${part.ref}`] ??= markTexture(part.mark, { scale: 1.2 }));
-    const mats = [M.epoxy, M.epoxy, new THREE.MeshPhysicalMaterial({ map: top, roughness: 0.6 }), M.epoxy, M.epoxy, M.epoxy];
-    at(new THREE.Mesh(new RoundedBoxGeometry(part.size, 0.85, part.size, 2, 0.06), mats), 0, 0.45, 0);
+    const mats = [
+      M.epoxy,
+      M.epoxy,
+      new THREE.MeshPhysicalMaterial({ map: top, roughness: 0.6 }),
+      M.epoxy,
+      M.epoxy,
+      M.epoxy,
+    ];
+    at(
+      new THREE.Mesh(new RoundedBoxGeometry(part.size, 0.85, part.size, 2, 0.06), mats),
+      0,
+      0.45,
+      0,
+    );
     for (let i = 0; i < 6; i++) {
       const o = (i - 2.5) * 0.5;
       const e = part.size / 2;
-      for (const [x, z, w, d] of [[-e, o, 0.5, 0.24], [e, o, 0.5, 0.24], [o, -e, 0.24, 0.5], [o, e, 0.24, 0.5]]) {
+      for (const [x, z, w, d] of [
+        [-e, o, 0.5, 0.24],
+        [e, o, 0.5, 0.24],
+        [o, -e, 0.24, 0.5],
+        [o, e, 0.24, 0.5],
+      ]) {
         at(new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, d), M.solder), x, 0.06, z);
       }
     }
@@ -582,12 +857,34 @@ export function partMeshes(part, M, cache = {}) {
     const [l, w, h] = CHIP[part.size];
     const cap = part.part === 'cap';
     const end = l * 0.22;
-    at(new THREE.Mesh(new RoundedBoxGeometry(l - end * 2 + 0.02, h, w, 1, 0.04), cap ? M.ceramic : M.resistorSide), 0, h / 2 + 0.03, 0);
-    if (!cap) at(new THREE.Mesh(new THREE.BoxGeometry(l - end * 2, 0.02, w * 0.96), M.resistor), 0, h + 0.04, 0);
+    at(
+      new THREE.Mesh(
+        new RoundedBoxGeometry(l - end * 2 + 0.02, h, w, 1, 0.04),
+        cap ? M.ceramic : M.resistorSide,
+      ),
+      0,
+      h / 2 + 0.03,
+      0,
+    );
+    if (!cap)
+      at(
+        new THREE.Mesh(new THREE.BoxGeometry(l - end * 2, 0.02, w * 0.96), M.resistor),
+        0,
+        h + 0.04,
+        0,
+      );
     for (const s of [-1, 1]) {
-      at(new THREE.Mesh(new RoundedBoxGeometry(end, h + 0.02, w + 0.02, 1, 0.05), M.tin), s * (l / 2 - end / 2), h / 2 + 0.03, 0);
+      at(
+        new THREE.Mesh(new RoundedBoxGeometry(end, h + 0.02, w + 0.02, 1, 0.05), M.tin),
+        s * (l / 2 - end / 2),
+        h / 2 + 0.03,
+        0,
+      );
       // The fillet of solder, out onto the pad.
-      const f = new THREE.Mesh(new THREE.CylinderGeometry(0.01, h * 0.55, w * 1.02, 3, 1), M.solder);
+      const f = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.01, h * 0.55, w * 1.02, 3, 1),
+        M.solder,
+      );
       f.rotation.x = Math.PI / 2;
       f.rotation.y = s > 0 ? 0 : Math.PI;
       at(f, s * (l / 2 + 0.02), 0.06, 0).scale.set(0.5, 1, 0.35);
@@ -595,30 +892,66 @@ export function partMeshes(part, M, cache = {}) {
     g.rotation.y = part.rot === 90 ? Math.PI / 2 : 0;
   } else if (part.kind === 'xtal') {
     at(new THREE.Mesh(new RoundedBoxGeometry(part.w, 0.3, part.h, 1, 0.05), M.ceramic), 0, 0.15, 0);
-    at(new THREE.Mesh(new RoundedBoxGeometry(part.w * 0.9, 0.5, part.h * 0.86, 2, 0.12), M.tin), 0, 0.45, 0);
+    at(
+      new THREE.Mesh(new RoundedBoxGeometry(part.w * 0.9, 0.5, part.h * 0.86, 2, 0.12), M.tin),
+      0,
+      0.45,
+      0,
+    );
   } else if (part.kind === 'ind') {
-    const top = (cache[`mark_${part.ref}`] ??= markTexture([part.mark], { ground: '#3a3e3f', ink: '#c9cbc6', ratio: part.w / part.h }));
-    const mats = [M.ferrite, M.ferrite, new THREE.MeshStandardMaterial({ map: top, roughness: 0.5 }), M.ferrite, M.ferrite, M.ferrite];
+    const top = (cache[`mark_${part.ref}`] ??= markTexture([part.mark], {
+      ground: '#3a3e3f',
+      ink: '#c9cbc6',
+      ratio: part.w / part.h,
+    }));
+    const mats = [
+      M.ferrite,
+      M.ferrite,
+      new THREE.MeshStandardMaterial({ map: top, roughness: 0.5 }),
+      M.ferrite,
+      M.ferrite,
+      M.ferrite,
+    ];
     at(new THREE.Mesh(new RoundedBoxGeometry(part.w, 1.2, part.h, 2, 0.15), mats), 0, 0.62, 0);
   } else if (part.kind === 'tant') {
-    at(new THREE.Mesh(new RoundedBoxGeometry(part.w * 0.82, 1.7, part.h, 2, 0.25), M.tantalum), 0, 0.86, 0);
-    at(new THREE.Mesh(new THREE.BoxGeometry(part.w * 0.16, 0.02, part.h * 0.86), M.stripe), -part.w * 0.26, 1.72, 0);
-    for (const s of [-1, 1]) at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.9, part.h * 0.6), M.tin), s * part.w * 0.43, 0.45, 0);
+    at(
+      new THREE.Mesh(new RoundedBoxGeometry(part.w * 0.82, 1.7, part.h, 2, 0.25), M.tantalum),
+      0,
+      0.86,
+      0,
+    );
+    at(
+      new THREE.Mesh(new THREE.BoxGeometry(part.w * 0.16, 0.02, part.h * 0.86), M.stripe),
+      -part.w * 0.26,
+      1.72,
+      0,
+    );
+    for (const s of [-1, 1])
+      at(
+        new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.9, part.h * 0.6), M.tin),
+        s * part.w * 0.43,
+        0.45,
+        0,
+      );
   } else if (part.kind === 'led') {
     at(new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.35, 0.8, 1, 0.05), M.ledBody), 0, 0.2, 0);
-    for (const s of [-1, 1]) at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.82), M.tin), s * 0.68, 0.2, 0);
+    for (const s of [-1, 1])
+      at(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.82), M.tin), s * 0.68, 0.2, 0);
     at(new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.36, 0.72, 2, 0.14), M.ledLens), 0, 0.52, 0);
   } else if (part.kind === 'jst') {
     at(new THREE.Mesh(new RoundedBoxGeometry(4.2, 2.9, 6.2, 2, 0.12), M.housing), -0.4, 1.45, 0);
     at(new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.1, 5.0), M.dark), -2.52, 1.4, 0);
-    for (let i = 0; i < 4; i++) at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.3), M.tin), 2.0, 0.08, (i - 1.5) * 1);
-    for (const s of [-1, 1]) at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.15), M.tin), -1.2, 0.7, s * 3.3);
+    for (let i = 0; i < 4; i++)
+      at(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.3), M.tin), 2.0, 0.08, (i - 1.5) * 1);
+    for (const s of [-1, 1])
+      at(new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.15), M.tin), -1.2, 0.7, s * 3.3);
   } else if (part.kind === 'ufl') {
     at(new THREE.Mesh(new RoundedBoxGeometry(2.6, 0.4, 2.6, 1, 0.08), M.housing), 0, 0.2, 0);
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.85, 40, 1, true), M.gold);
     at(ring, 0, 0.6, 0);
     at(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.9, 20), M.gold), 0, 0.5, 0);
-    for (const s of [-1, 1]) at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 1.8), M.tin), s * 1.3, 0.08, 0.5);
+    for (const s of [-1, 1])
+      at(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 1.8), M.tin), s * 1.3, 0.08, 0.5);
   }
   return g;
 }
@@ -640,7 +973,14 @@ export async function buildBoard(options = {}) {
     clearcoatRoughness: 0.24,
   });
   const board = new THREE.Group();
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(BOARD.w, BOARD.t, BOARD.h), [M.edge, M.edge, top, M.edge, M.edge, M.edge]);
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(BOARD.w, BOARD.t, BOARD.h), [
+    M.edge,
+    M.edge,
+    top,
+    M.edge,
+    M.edge,
+    M.edge,
+  ]);
   slab.position.y = -BOARD.t / 2;
   slab.receiveShadow = true;
   board.add(slab);

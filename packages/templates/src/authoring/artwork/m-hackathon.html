@@ -1,229 +1,326 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8" />
-<link rel="stylesheet" href="fonts.css" />
-<!-- The picture of m-hackathon: a cream split-flap clock reading 48:00, its last flap falling to
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="fonts.css" />
+    <!-- The picture of m-hackathon: a cream split-flap clock reading 48:00, its last flap falling to
      start the countdown, on a transparent ground.
      node <scratchpad>/hitech/render.mjs m-hackathon.html out.png 1400 760 2 -->
-<style>
-  html, body { margin: 0; overflow: hidden; background: transparent; }
-  canvas { display: block; }
-</style>
-<script>document.documentElement.dataset.wait = 'true';</script>
-<script type="importmap">{"imports": {
-  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
-  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
-}}</script>
-</head>
-<body>
-<script type="module">
-import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { renderAccumulated } from './hitech-render.js';
+    <style>
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+          "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from 'three';
+      import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+      import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+      import { renderAccumulated } from './hitech-render.js';
 
-const W = innerWidth, H = innerHeight;
-// the shot can be tried from the address: ?cam=x,y,z&look=x,y,z&fov=n&frames=n …
-const Q = new URLSearchParams(location.search);
-const num = (k, d) => (Q.has(k) ? Q.get(k).split(',').map(Number) : d);
-await document.fonts.load('700 200px "Space Grotesk"');
+      const W = innerWidth,
+        H = innerHeight;
+      // the shot can be tried from the address: ?cam=x,y,z&look=x,y,z&fov=n&frames=n …
+      const Q = new URLSearchParams(location.search);
+      const num = (k, d) => (Q.has(k) ? Q.get(k).split(',').map(Number) : d);
+      await document.fonts.load('700 200px "Space Grotesk"');
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(devicePixelRatio);
-renderer.setSize(W, H);
-renderer.setClearColor(0x000000, 0);
-renderer.toneMapping = THREE.NeutralToneMapping;
-renderer.toneMappingExposure = num('exp', [1.0])[0];
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
-document.body.append(renderer.domElement);
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+      });
+      renderer.setPixelRatio(devicePixelRatio);
+      renderer.setSize(W, H);
+      renderer.setClearColor(0x000000, 0);
+      renderer.toneMapping = THREE.NeutralToneMapping;
+      renderer.toneMappingExposure = num('exp', [1.0])[0];
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
+      document.body.append(renderer.domElement);
 
-const scene = new THREE.Scene();
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = num('env', [0.5])[0];
+      const scene = new THREE.Scene();
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environmentIntensity = num('env', [0.5])[0];
 
-// --- the cards ---------------------------------------------------------------------------------
-const CARD_W = 2.0, CARD_H = 3.0, GAP = 0.05, T = 0.05;
-const DIGIT = '#F4EFE6';
+      // --- the cards ---------------------------------------------------------------------------------
+      const CARD_W = 2.0,
+        CARD_H = 3.0,
+        GAP = 0.05,
+        T = 0.05;
+      const DIGIT = '#F4EFE6';
 
-/** A digit drawn on a whole card; each flap shows one half of it. */
-function digitCanvas(d) {
-  const c = document.createElement('canvas');
-  c.width = 400; c.height = 600;
-  const g = c.getContext('2d');
-  const grad = g.createLinearGradient(0, 0, 0, 600);
-  grad.addColorStop(0, '#26272F'); grad.addColorStop(0.5, '#18191F'); grad.addColorStop(0.5, '#1C1D24'); grad.addColorStop(1, '#121318');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 400, 600);
-  g.fillStyle = DIGIT;
-  g.font = '700 470px "Space Grotesk"';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillText(String(d), 200, 318);
-  return c;
-}
+      /** A digit drawn on a whole card; each flap shows one half of it. */
+      function digitCanvas(d) {
+        const c = document.createElement('canvas');
+        c.width = 400;
+        c.height = 600;
+        const g = c.getContext('2d');
+        const grad = g.createLinearGradient(0, 0, 0, 600);
+        grad.addColorStop(0, '#26272F');
+        grad.addColorStop(0.5, '#18191F');
+        grad.addColorStop(0.5, '#1C1D24');
+        grad.addColorStop(1, '#121318');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 400, 600);
+        g.fillStyle = DIGIT;
+        g.font = '700 470px "Space Grotesk"';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(String(d), 200, 318);
+        return c;
+      }
 
-function flapGeometry(top) {
-  // a half card with its two outer corners rounded
-  const w = CARD_W, h = CARD_H / 2 - GAP / 2, r = 0.16;
-  const s = new THREE.Shape();
-  if (top) {
-    s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(w / 2, h - r); s.quadraticCurveTo(w / 2, h, w / 2 - r, h);
-    s.lineTo(-w / 2 + r, h); s.quadraticCurveTo(-w / 2, h, -w / 2, h - r); s.lineTo(-w / 2, 0);
-  } else {
-    s.moveTo(-w / 2, 0); s.lineTo(-w / 2, -h + r); s.quadraticCurveTo(-w / 2, -h, -w / 2 + r, -h);
-    s.lineTo(w / 2 - r, -h); s.quadraticCurveTo(w / 2, -h, w / 2, -h + r); s.lineTo(w / 2, 0); s.lineTo(-w / 2, 0);
-  }
-  const geo = new THREE.ExtrudeGeometry(s, { depth: T, bevelEnabled: false, curveSegments: 10 });
-  // planar uv over the whole card, so a flap shows its half of the digit
-  const pos = geo.attributes.position, uv = geo.attributes.uv;
-  for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i) + (top ? GAP / 2 : -GAP / 2);
-    uv.setXY(i, pos.getX(i) / CARD_W + 0.5, y / CARD_H + 0.5);
-  }
-  geo.translate(0, top ? GAP / 2 : -GAP / 2, -T / 2);
-  return geo;
-}
-const topGeo = flapGeometry(true), bottomGeo = flapGeometry(false);
+      function flapGeometry(top) {
+        // a half card with its two outer corners rounded
+        const w = CARD_W,
+          h = CARD_H / 2 - GAP / 2,
+          r = 0.16;
+        const s = new THREE.Shape();
+        if (top) {
+          s.moveTo(-w / 2, 0);
+          s.lineTo(w / 2, 0);
+          s.lineTo(w / 2, h - r);
+          s.quadraticCurveTo(w / 2, h, w / 2 - r, h);
+          s.lineTo(-w / 2 + r, h);
+          s.quadraticCurveTo(-w / 2, h, -w / 2, h - r);
+          s.lineTo(-w / 2, 0);
+        } else {
+          s.moveTo(-w / 2, 0);
+          s.lineTo(-w / 2, -h + r);
+          s.quadraticCurveTo(-w / 2, -h, -w / 2 + r, -h);
+          s.lineTo(w / 2 - r, -h);
+          s.quadraticCurveTo(w / 2, -h, w / 2, -h + r);
+          s.lineTo(w / 2, 0);
+          s.lineTo(-w / 2, 0);
+        }
+        const geo = new THREE.ExtrudeGeometry(s, {
+          depth: T,
+          bevelEnabled: false,
+          curveSegments: 10,
+        });
+        // planar uv over the whole card, so a flap shows its half of the digit
+        const pos = geo.attributes.position,
+          uv = geo.attributes.uv;
+        for (let i = 0; i < pos.count; i++) {
+          const y = pos.getY(i) + (top ? GAP / 2 : -GAP / 2);
+          uv.setXY(i, pos.getX(i) / CARD_W + 0.5, y / CARD_H + 0.5);
+        }
+        geo.translate(0, top ? GAP / 2 : -GAP / 2, -T / 2);
+        return geo;
+      }
+      const topGeo = flapGeometry(true),
+        bottomGeo = flapGeometry(false);
 
-function cardMaterial(d) {
-  const tex = new THREE.CanvasTexture(digitCanvas(d));
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
-  return new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.35 });
-}
-const edgeMat = new THREE.MeshStandardMaterial({ color: 0x060608, roughness: 0.85 });
+      function cardMaterial(d) {
+        const tex = new THREE.CanvasTexture(digitCanvas(d));
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        return new THREE.MeshPhysicalMaterial({
+          map: tex,
+          roughness: 0.42,
+          clearcoat: 0.35,
+          clearcoatRoughness: 0.35,
+        });
+      }
+      const edgeMat = new THREE.MeshStandardMaterial({ color: 0x060608, roughness: 0.85 });
 
-function flap(geo, mat) {
-  const m = new THREE.Mesh(geo, [mat, edgeMat]);
-  m.castShadow = m.receiveShadow = true;
-  return m;
-}
+      function flap(geo, mat) {
+        const m = new THREE.Mesh(geo, [mat, edgeMat]);
+        m.castShadow = m.receiveShadow = true;
+        return m;
+      }
 
-// --- the clock ----------------------------------------------------------------------------------
-const clock = new THREE.Group();
-scene.add(clock);
-const CREAM = 0xefeae0;
-const bodyW = 12.2, bodyH = 4.3, bodyD = 2.2;
-const body = new THREE.Mesh(new RoundedBoxGeometry(bodyW, bodyH, bodyD, 10, 0.42),
-  new THREE.MeshPhysicalMaterial({ color: CREAM, roughness: 0.38, clearcoat: 0.25, clearcoatRoughness: 0.5 }));
-body.position.set(0, bodyH / 2, 0);
-body.castShadow = body.receiveShadow = true;
-clock.add(body);
+      // --- the clock ----------------------------------------------------------------------------------
+      const clock = new THREE.Group();
+      scene.add(clock);
+      const CREAM = 0xefeae0;
+      const bodyW = 12.2,
+        bodyH = 4.3,
+        bodyD = 2.2;
+      const body = new THREE.Mesh(
+        new RoundedBoxGeometry(bodyW, bodyH, bodyD, 10, 0.42),
+        new THREE.MeshPhysicalMaterial({
+          color: CREAM,
+          roughness: 0.38,
+          clearcoat: 0.25,
+          clearcoatRoughness: 0.5,
+        }),
+      );
+      body.position.set(0, bodyH / 2, 0);
+      body.castShadow = body.receiveShadow = true;
+      clock.add(body);
 
-// a dark band the digits sit in
-const band = new THREE.Mesh(new RoundedBoxGeometry(bodyW - 0.7, bodyH - 0.7, 0.3, 8, 0.12),
-  new THREE.MeshStandardMaterial({ color: 0x0f1014, roughness: 0.65 }));
-band.position.set(0, bodyH / 2, bodyD / 2 - 0.08);
-band.receiveShadow = true;
-clock.add(band);
+      // a dark band the digits sit in
+      const band = new THREE.Mesh(
+        new RoundedBoxGeometry(bodyW - 0.7, bodyH - 0.7, 0.3, 8, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0x0f1014, roughness: 0.65 }),
+      );
+      band.position.set(0, bodyH / 2, bodyD / 2 - 0.08);
+      band.receiveShadow = true;
+      clock.add(band);
 
-const pinMat = new THREE.MeshStandardMaterial({ color: 0x9a9ca6, metalness: 1, roughness: 0.28 });
-const slotX = [-4.45, -2.2, 2.2, 4.45];
-const digits = ['4', '8', '0', '0'];
-const zFace = bodyD / 2 + 0.12;
-digits.forEach((d, i) => {
-  const x = slotX[i];
-  const mat = cardMaterial(d);
-  const last = Q.has('flip') && i === 3;
-  const top = flap(topGeo, last ? cardMaterial('9') : mat);
-  const bottom = flap(bottomGeo, mat);
-  top.position.set(x, bodyH / 2, zFace);
-  bottom.position.set(x, bodyH / 2, zFace);
-  clock.add(top, bottom);
-  // hinge pins in the split
-  for (const side of [-1, 1]) {
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.16, 16), pinMat);
-    pin.rotation.z = Math.PI / 2;
-    pin.position.set(x + side * (CARD_W / 2 + 0.06), bodyH / 2, zFace);
-    clock.add(pin);
-  }
-  if (last) {
-    // the top half of the 0 falls toward us, showing the 9 behind it
-    const hinge = new THREE.Group();
-    hinge.position.set(x, bodyH / 2, zFace + 0.02);
-    hinge.rotation.x = THREE.MathUtils.degToRad(num('flip', [58])[0]);
-    hinge.add(flap(topGeo, mat));
-    clock.add(hinge);
-  }
-});
+      const pinMat = new THREE.MeshStandardMaterial({
+        color: 0x9a9ca6,
+        metalness: 1,
+        roughness: 0.28,
+      });
+      const slotX = [-4.45, -2.2, 2.2, 4.45];
+      const digits = ['4', '8', '0', '0'];
+      const zFace = bodyD / 2 + 0.12;
+      digits.forEach((d, i) => {
+        const x = slotX[i];
+        const mat = cardMaterial(d);
+        const last = Q.has('flip') && i === 3;
+        const top = flap(topGeo, last ? cardMaterial('9') : mat);
+        const bottom = flap(bottomGeo, mat);
+        top.position.set(x, bodyH / 2, zFace);
+        bottom.position.set(x, bodyH / 2, zFace);
+        clock.add(top, bottom);
+        // hinge pins in the split
+        for (const side of [-1, 1]) {
+          const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.16, 16), pinMat);
+          pin.rotation.z = Math.PI / 2;
+          pin.position.set(x + side * (CARD_W / 2 + 0.06), bodyH / 2, zFace);
+          clock.add(pin);
+        }
+        if (last) {
+          // the top half of the 0 falls toward us, showing the 9 behind it
+          const hinge = new THREE.Group();
+          hinge.position.set(x, bodyH / 2, zFace + 0.02);
+          hinge.rotation.x = THREE.MathUtils.degToRad(num('flip', [58])[0]);
+          hinge.add(flap(topGeo, mat));
+          clock.add(hinge);
+        }
+      });
 
-// the colon: two orange lights
-const dotMat = new THREE.MeshPhysicalMaterial({ color: 0xff5a1f, emissive: 0xff4a10, emissiveIntensity: 0.6, roughness: 0.3, clearcoat: 0.6 });
-for (const y of [-0.55, 0.55]) {
-  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 16), dotMat);
-  dot.scale.z = 0.5;
-  dot.position.set(0, bodyH / 2 + y, bodyD / 2 + 0.1);
-  dot.castShadow = true;
-  clock.add(dot);
-}
-// a little orange switch on the top
-const knob = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.24, 0.5, 4, 0.08), new THREE.MeshPhysicalMaterial({ color: 0xff5a1f, roughness: 0.4, clearcoat: 0.4 }));
-knob.position.set(4.6, bodyH + 0.08, -0.2);
-knob.castShadow = true;
-clock.add(knob);
-// feet
-for (const fx of [-5.2, 5.2]) {
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.18, 32), new THREE.MeshStandardMaterial({ color: 0x2a2b31, roughness: 0.8 }));
-  foot.position.set(fx, -0.09, 0);
-  clock.add(foot);
-}
-clock.position.y = 0.18;
-clock.rotation.y = num('rot', [0.2])[0];
+      // the colon: two orange lights
+      const dotMat = new THREE.MeshPhysicalMaterial({
+        color: 0xff5a1f,
+        emissive: 0xff4a10,
+        emissiveIntensity: 0.6,
+        roughness: 0.3,
+        clearcoat: 0.6,
+      });
+      for (const y of [-0.55, 0.55]) {
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 16), dotMat);
+        dot.scale.z = 0.5;
+        dot.position.set(0, bodyH / 2 + y, bodyD / 2 + 0.1);
+        dot.castShadow = true;
+        clock.add(dot);
+      }
+      // a little orange switch on the top
+      const knob = new THREE.Mesh(
+        new RoundedBoxGeometry(1.1, 0.24, 0.5, 4, 0.08),
+        new THREE.MeshPhysicalMaterial({ color: 0xff5a1f, roughness: 0.4, clearcoat: 0.4 }),
+      );
+      knob.position.set(4.6, bodyH + 0.08, -0.2);
+      knob.castShadow = true;
+      clock.add(knob);
+      // feet
+      for (const fx of [-5.2, 5.2]) {
+        const foot = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.42, 0.46, 0.18, 32),
+          new THREE.MeshStandardMaterial({ color: 0x2a2b31, roughness: 0.8 }),
+        );
+        foot.position.set(fx, -0.09, 0);
+        clock.add(foot);
+      }
+      clock.position.y = 0.18;
+      clock.rotation.y = num('rot', [0.2])[0];
 
-// --- ground ---------------------------------------------------------------------------------------
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShadowMaterial({ opacity: num('shadow', [0.42])[0], color: 0x050c38 }));
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
-{
-  // a soft contact shadow right under the body
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 160;
-  const g = c.getContext('2d');
-  g.filter = 'blur(16px)';
-  g.fillStyle = '#000';
-  g.beginPath(); g.roundRect(40, 40, 432, 80, 30); g.fill();
-  const tex = new THREE.CanvasTexture(c);
-  const contact = new THREE.Mesh(new THREE.PlaneGeometry(bodyW + 2, bodyD + 2), new THREE.MeshBasicMaterial({ map: tex, color: 0x050c38, transparent: true, opacity: 0.6, depthWrite: false }));
-  contact.rotation.x = -Math.PI / 2;
-  contact.position.y = -0.17;
-  clock.add(contact);
-}
+      // --- ground ---------------------------------------------------------------------------------------
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(80, 80),
+        new THREE.ShadowMaterial({ opacity: num('shadow', [0.42])[0], color: 0x050c38 }),
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      {
+        // a soft contact shadow right under the body
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 160;
+        const g = c.getContext('2d');
+        g.filter = 'blur(16px)';
+        g.fillStyle = '#000';
+        g.beginPath();
+        g.roundRect(40, 40, 432, 80, 30);
+        g.fill();
+        const tex = new THREE.CanvasTexture(c);
+        const contact = new THREE.Mesh(
+          new THREE.PlaneGeometry(bodyW + 2, bodyD + 2),
+          new THREE.MeshBasicMaterial({
+            map: tex,
+            color: 0x050c38,
+            transparent: true,
+            opacity: 0.6,
+            depthWrite: false,
+          }),
+        );
+        contact.rotation.x = -Math.PI / 2;
+        contact.position.y = -0.17;
+        clock.add(contact);
+      }
 
-// --- light ---------------------------------------------------------------------------------------
-const key = new THREE.DirectionalLight(0xfff1e2, num('key', [3.2])[0]);
-key.position.set(...num('light', [-6, 14, 9]));
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-Object.assign(key.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 60 });
-key.shadow.camera.updateProjectionMatrix();
-key.shadow.bias = -0.0005;
-key.shadow.normalBias = 0.02;
-scene.add(key, key.target);
-const rim = new THREE.DirectionalLight(0xc8d2ff, 1.4);
-rim.position.set(10, 6, -8);
-const fill = new THREE.DirectionalLight(0xe9eeff, 0.5);
-fill.position.set(6, 4, 14);
-scene.add(rim, fill, new THREE.HemisphereLight(0xffffff, 0x3a4aa8, 0.3));
+      // --- light ---------------------------------------------------------------------------------------
+      const key = new THREE.DirectionalLight(0xfff1e2, num('key', [3.2])[0]);
+      key.position.set(...num('light', [-6, 14, 9]));
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      Object.assign(key.shadow.camera, {
+        left: -12,
+        right: 12,
+        top: 12,
+        bottom: -12,
+        near: 1,
+        far: 60,
+      });
+      key.shadow.camera.updateProjectionMatrix();
+      key.shadow.bias = -0.0005;
+      key.shadow.normalBias = 0.02;
+      scene.add(key, key.target);
+      const rim = new THREE.DirectionalLight(0xc8d2ff, 1.4);
+      rim.position.set(10, 6, -8);
+      const fill = new THREE.DirectionalLight(0xe9eeff, 0.5);
+      fill.position.set(6, 4, 14);
+      scene.add(rim, fill, new THREE.HemisphereLight(0xffffff, 0x3a4aa8, 0.3));
 
-// --- camera ----------------------------------------------------------------------------------------
-const camera = new THREE.PerspectiveCamera(num('fov', [30])[0], W / H, 0.1, 200);
-camera.position.set(...num('cam', [-8, 8.5, 15]));
-camera.lookAt(...num('look', [-1.1, 1.9, 0]));
+      // --- camera ----------------------------------------------------------------------------------------
+      const camera = new THREE.PerspectiveCamera(num('fov', [30])[0], W / H, 0.1, 200);
+      camera.position.set(...num('cam', [-8, 8.5, 15]));
+      camera.lookAt(...num('look', [-1.1, 1.9, 0]));
 
-const t0 = performance.now();
-await renderAccumulated(renderer, scene, camera, {
-  frames: num('frames', [28])[0],
-  focus: new THREE.Vector3(...num('focus', [-2.6, 2.3, 1.8])),
-  aperture: num('ap', [0.22])[0],
-  lights: [key],
-  lightRadius: num('lr', [2.2])[0],
-  onFrame: (i) => console.log('frame', i, Math.round(performance.now() - t0)),
-});
-document.documentElement.dataset.ready = 'true';
-</script>
-</body>
+      const t0 = performance.now();
+      await renderAccumulated(renderer, scene, camera, {
+        frames: num('frames', [28])[0],
+        focus: new THREE.Vector3(...num('focus', [-2.6, 2.3, 1.8])),
+        aperture: num('ap', [0.22])[0],
+        lights: [key],
+        lightRadius: num('lr', [2.2])[0],
+        onFrame: (i) => console.log('frame', i, Math.round(performance.now() - t0)),
+      });
+      document.documentElement.dataset.ready = 'true';
+    </script>
+  </body>
 </html>

@@ -32,7 +32,10 @@ const materials = new Map();
 export function mat(color, rest = {}) {
   const key = color + JSON.stringify(rest);
   if (!materials.has(key)) {
-    materials.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0, ...rest }));
+    materials.set(
+      key,
+      new THREE.MeshStandardMaterial({ color, roughness: 0.62, metalness: 0, ...rest }),
+    );
   }
   return materials.get(key);
 }
@@ -45,7 +48,11 @@ const shadowed = (mesh) => {
 
 /** The stage: renderer, camera, lights and ground, sized to the page. */
 export function stage({ width, height, view, target = [0, 0, 0], light = [5, 12, -7], fog }) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    preserveDrawingBuffer: true,
+  });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(width, height);
   renderer.shadowMap.enabled = true;
@@ -65,7 +72,14 @@ export function stage({ width, height, view, target = [0, 0, 0], light = [5, 12,
   if (fog) scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
 
   const aspect = width / height;
-  const camera = new THREE.OrthographicCamera((-view * aspect) / 2, (view * aspect) / 2, view / 2, -view / 2, 0.1, 400);
+  const camera = new THREE.OrthographicCamera(
+    (-view * aspect) / 2,
+    (view * aspect) / 2,
+    view / 2,
+    -view / 2,
+    0.1,
+    400,
+  );
   const t = new THREE.Vector3(...target);
   camera.position.set(t.x + 60, t.y + 60, t.z + 60);
   camera.lookAt(t);
@@ -78,7 +92,14 @@ export function stage({ width, height, view, target = [0, 0, 0], light = [5, 12,
   sun.castShadow = true;
   sun.shadow.mapSize.set(4096, 4096);
   const reach = view * aspect * 0.9;
-  Object.assign(sun.shadow.camera, { left: -reach, right: reach, top: reach, bottom: -reach, near: 0.5, far: 80 });
+  Object.assign(sun.shadow.camera, {
+    left: -reach,
+    right: reach,
+    top: reach,
+    bottom: -reach,
+    near: 0.5,
+    far: 80,
+  });
   sun.shadow.radius = 5;
   sun.shadow.blurSamples = 16;
   sun.shadow.bias = -0.0004;
@@ -104,8 +125,21 @@ export function stage({ width, height, view, target = [0, 0, 0], light = [5, 12,
       const composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
       const gtao = new GTAOPass(scene, camera, width, height);
-      gtao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 16 });
-      gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+      gtao.updateGtaoMaterial({
+        radius: 0.45,
+        distanceExponent: 1.4,
+        thickness: 1.2,
+        scale: 1.1,
+        samples: 16,
+      });
+      gtao.updatePdMaterial({
+        lumaPhi: 10,
+        depthPhi: 2,
+        normalPhi: 3,
+        radius: 6,
+        rings: 2,
+        samples: 16,
+      });
       gtao.blendIntensity = 0.85;
       composer.addPass(gtao);
       const over = new RenderPass(glows, camera);
@@ -121,8 +155,14 @@ export function stage({ width, height, view, target = [0, 0, 0], light = [5, 12,
 }
 
 /** The ground: a plane that takes the shadows, and the isometric lattice of dots on it. */
-export function ground(scene, { size = 80, color = C.ground, dots = true, spacing = 0.5, center = [0, 0] } = {}) {
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshStandardMaterial({ color, roughness: 1 }));
+export function ground(
+  scene,
+  { size = 80, color = C.ground, dots = true, spacing = 0.5, center = [0, 0] } = {},
+) {
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(size, size),
+    new THREE.MeshStandardMaterial({ color, roughness: 1 }),
+  );
   plane.rotation.x = -Math.PI / 2;
   plane.position.set(center[0], 0, center[1]);
   plane.receiveShadow = true;
@@ -153,27 +193,43 @@ export function ground(scene, { size = 80, color = C.ground, dots = true, spacin
 
 /** A rounded block, its foot at (x, y, z) on the ground, by its size along x, z and up. */
 export function block(scene, [x, y, z], [w, d, h], color = C.white, r = 0.05) {
-  const mesh = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, h / 2.2, w / 2.2)), mat(color)));
+  const mesh = shadowed(
+    new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, h / 2.2, w / 2.2)), mat(color)),
+  );
   mesh.position.set(x + w / 2, y + h / 2, z + d / 2);
   scene.add(mesh);
   return mesh;
 }
 
 /** A server: a block with slots and lights on the faces the camera sees. */
-export function server(scene, [x, y, z], [w, d, h], { color = C.white, lights = C.green, every = 0.22, accent } = {}) {
+export function server(
+  scene,
+  [x, y, z],
+  [w, d, h],
+  { color = C.white, lights = C.green, every = 0.22, accent } = {},
+) {
   block(scene, [x, y, z], [w, d, h], color);
   const rows = Math.max(1, Math.floor((h - 0.12) / every));
   const ink = color === C.white || color === C.legacy || color === C.sky ? C.slot : '#ffffff';
   for (let i = 0; i < rows; i++) {
     const yy = y + h - 0.14 - i * every;
     // The lit face (x + w) and the face in shade (z + d).
-    const slotA = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.035, d * 0.5), mat(ink, { roughness: 0.8 }));
+    const slotA = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, 0.035, d * 0.5),
+      mat(ink, { roughness: 0.8 }),
+    );
     slotA.position.set(x + w + 0.004, yy, z + d * 0.58);
-    const slotB = new THREE.Mesh(new THREE.BoxGeometry(w * 0.5, 0.035, 0.012), mat(ink, { roughness: 0.8 }));
+    const slotB = new THREE.Mesh(
+      new THREE.BoxGeometry(w * 0.5, 0.035, 0.012),
+      mat(ink, { roughness: 0.8 }),
+    );
     slotB.position.set(x + w * 0.42, yy, z + d + 0.004);
     const led = new THREE.Mesh(
       new THREE.SphereGeometry(0.024, 12, 8),
-      mat(i === 1 && accent ? accent : lights, { emissive: i === 1 && accent ? accent : lights, emissiveIntensity: 0.9 }),
+      mat(i === 1 && accent ? accent : lights, {
+        emissive: i === 1 && accent ? accent : lights,
+        emissiveIntensity: 0.9,
+      }),
     );
     led.position.set(x + w + 0.01, yy, z + d * 0.18);
     const led2 = led.clone();
@@ -183,32 +239,59 @@ export function server(scene, [x, y, z], [w, d, h], { color = C.white, lights = 
 }
 
 /** A database: disks stacked with a seam between them, tinted, a light on each. */
-export function database(scene, [x, y, z], r, h, { disks = 3, tint = C.tealPale, top = '#3cc2b5', light = C.green } = {}) {
+export function database(
+  scene,
+  [x, y, z],
+  r,
+  h,
+  { disks = 3, tint = C.tealPale, top = '#3cc2b5', light = C.green } = {},
+) {
   const gap = 0.035;
   const dh = (h - gap * (disks - 1)) / disks;
   for (let i = 0; i < disks; i++) {
     const mesh = shadowed(
-      new THREE.Mesh(new THREE.CylinderGeometry(r, r, dh, 48), mat(i === disks - 1 ? tint : C.white)),
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(r, r, dh, 48),
+        mat(i === disks - 1 ? tint : C.white),
+      ),
     );
     mesh.position.set(x, y + dh / 2 + i * (dh + gap), z);
     scene.add(mesh);
-    const core = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.96, r * 0.96, gap + 0.002, 48), mat(top, { roughness: 0.5 }));
+    const core = new THREE.Mesh(
+      new THREE.CylinderGeometry(r * 0.96, r * 0.96, gap + 0.002, 48),
+      mat(top, { roughness: 0.5 }),
+    );
     if (i < disks - 1) {
       core.position.set(x, y + (i + 1) * (dh + gap) - gap / 2, z);
       scene.add(core);
     }
-    const led = new THREE.Mesh(new THREE.SphereGeometry(0.026, 12, 8), mat(light, { emissive: light, emissiveIntensity: 0.9 }));
+    const led = new THREE.Mesh(
+      new THREE.SphereGeometry(0.026, 12, 8),
+      mat(light, { emissive: light, emissiveIntensity: 0.9 }),
+    );
     const a = Math.PI / 4;
-    led.position.set(x + Math.cos(a) * (r + 0.005), y + dh * 0.55 + i * (dh + gap), z + Math.sin(a) * (r + 0.005));
+    led.position.set(
+      x + Math.cos(a) * (r + 0.005),
+      y + dh * 0.55 + i * (dh + gap),
+      z + Math.sin(a) * (r + 0.005),
+    );
     scene.add(led);
   }
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.56, r * 0.56, 0.012, 48), mat(top, { roughness: 0.4 }));
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(r * 0.56, r * 0.56, 0.012, 48),
+    mat(top, { roughness: 0.4 }),
+  );
   cap.position.set(x, y + h + 0.004, z);
   scene.add(cap);
 }
 
 /** A dashed line along the ground (or at a height), from a to b, with an arrowhead at b. */
-export function dashed(scene, a, b, { color = C.blue, width = 0.05, dash = 0.16, gap = 0.12, head = true, lift = 0.02 } = {}) {
+export function dashed(
+  scene,
+  a,
+  b,
+  { color = C.blue, width = 0.05, dash = 0.16, gap = 0.12, head = true, lift = 0.02 } = {},
+) {
   const A = new THREE.Vector3(...a);
   const B = new THREE.Vector3(...b);
   const dir = B.clone().sub(A);
@@ -236,7 +319,10 @@ export function dashed(scene, a, b, { color = C.blue, width = 0.05, dash = 0.16,
 
 /** A packet of traffic: a small bright ball and its glow. */
 export function packet(scene, p, color = C.orange, size = 0.07, glow = true) {
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(size, 20, 14), mat(color, { emissive: color, emissiveIntensity: 0.7 }));
+  const ball = new THREE.Mesh(
+    new THREE.SphereGeometry(size, 20, 14),
+    mat(color, { emissive: color, emissiveIntensity: 0.7 }),
+  );
   ball.position.set(...p);
   ball.castShadow = true;
   scene.add(ball);
@@ -249,24 +335,44 @@ export function packet(scene, p, color = C.orange, size = 0.07, glow = true) {
   grad.addColorStop(1, color + '00');
   g.fillStyle = grad;
   g.fillRect(0, 0, 64, 64);
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthWrite: false }));
+  const halo = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthWrite: false }),
+  );
   halo.position.set(...p);
   halo.scale.setScalar(size * 6);
   (scene.userData.glows ?? scene).add(halo);
 }
 
 /** A region: a rounded plate with a dashed boundary inset on its top. */
-export function plate(scene, [x, z], [w, d], { h = 0.18, color = C.white, line = C.blue, y = 0 } = {}) {
+export function plate(
+  scene,
+  [x, z],
+  [w, d],
+  { h = 0.18, color = C.white, line = C.blue, y = 0 } = {},
+) {
   block(scene, [x, y, z], [w, d, h], color, 0.08);
   const m = 0.16;
   const top = y + h + 0.004;
   const edges = [
-    [[x + m, top, z + m], [x + w - m, top, z + m]],
-    [[x + w - m, top, z + m], [x + w - m, top, z + d - m]],
-    [[x + w - m, top, z + d - m], [x + m, top, z + d - m]],
-    [[x + m, top, z + d - m], [x + m, top, z + m]],
+    [
+      [x + m, top, z + m],
+      [x + w - m, top, z + m],
+    ],
+    [
+      [x + w - m, top, z + m],
+      [x + w - m, top, z + d - m],
+    ],
+    [
+      [x + w - m, top, z + d - m],
+      [x + m, top, z + d - m],
+    ],
+    [
+      [x + m, top, z + d - m],
+      [x + m, top, z + m],
+    ],
   ];
-  for (const [a, b] of edges) dashed(scene, a, b, { color: line, width: 0.03, dash: 0.12, gap: 0.09, head: false, lift: 0 });
+  for (const [a, b] of edges)
+    dashed(scene, a, b, { color: line, width: 0.03, dash: 0.12, gap: 0.09, head: false, lift: 0 });
   return top;
 }
 
@@ -301,7 +407,12 @@ export function cloud(scene, [x, y, z], s = 1) {
 }
 
 /** A chip of the console over a point of the picture: a status light and a name in mono. */
-export function chip(st, p, label, { light = C.green, dy = -10, size = 1, sub, below = false } = {}) {
+export function chip(
+  st,
+  p,
+  label,
+  { light = C.green, dy = -10, size = 1, sub, below = false } = {},
+) {
   const [X, Y] = st.project(p);
   const el = document.createElement('div');
   el.className = below ? 'chip below' : 'chip';

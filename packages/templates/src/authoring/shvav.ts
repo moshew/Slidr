@@ -8,7 +8,6 @@ import {
   atEnd,
   bullets,
   drawing,
-  NO_FILL,
   pageNumber,
   para,
   place,
@@ -20,7 +19,7 @@ import {
   token,
   type SampleSlide,
 } from '../builtin/kit';
-import { techPictures as pictures } from './pictures';
+import { picture } from './pictures';
 
 /**
  * Shvav (שבב, a chip): the slide is a printed circuit board. A deep solder-mask green ground,
@@ -67,7 +66,14 @@ export const shvavTheme: Theme = {
       letterSpacing: -1.5,
       color: { token: 'text' },
     },
-    title: { font: 'heading', size: 60, weight: 700, lineHeight: 1.12, letterSpacing: -0.5, color: { token: 'text' } },
+    title: {
+      font: 'heading',
+      size: 60,
+      weight: 700,
+      lineHeight: 1.12,
+      letterSpacing: -0.5,
+      color: { token: 'text' },
+    },
     heading: { font: 'heading', size: 36, weight: 700, lineHeight: 1.2, color: { token: 'text' } },
     body: { font: 'body', size: 28, weight: 400, lineHeight: 1.5, color: { token: 'text' } },
     caption: { font: 'body', size: 24, weight: 500, lineHeight: 1.4, color: { token: 'muted' } },
@@ -86,10 +92,7 @@ export const shvavTheme: Theme = {
       ],
     },
   },
-  backgroundVariants: [
-    SURFACE,
-    { fill: { kind: 'solid', color: { token: 'bg' } } },
-  ],
+  backgroundVariants: [SURFACE, { fill: { kind: 'solid', color: { token: 'bg' } } }],
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -125,7 +128,7 @@ const PAINT = {
   [PANEL]: token('surface'),
 };
 
-const MONO = "font-family=\"'JetBrains Mono', ui-monospace, monospace\"";
+const MONO = 'font-family="\'JetBrains Mono\', ui-monospace, monospace"';
 const SANS = "font-family=\"'Space Grotesk', 'Manrope', sans-serif\"";
 
 /** The gradients of gold, tin and moulding compound, and the glow of the LED. */
@@ -184,7 +187,8 @@ function letters(list: readonly Letter[], w: number, dir: Dir): string {
       const mirror = dir === 'ltr';
       const x = mirror ? w - l.x : l.x;
       const a = l.anchor ?? 'start';
-      const anchor = mirror && !l.rot ? (a === 'start' ? 'end' : a === 'end' ? 'start' : 'middle') : a;
+      const anchor =
+        mirror && !l.rot ? (a === 'start' ? 'end' : a === 'end' ? 'start' : 'middle') : a;
       const rot = l.rot ? ` transform="rotate(${l.rot} ${f1(x)} ${l.y})"` : '';
       const spacing = l.spacing ? ` letter-spacing="${l.spacing}"` : '';
       const op = l.op !== undefined ? ` fill-opacity="${l.op}"` : '';
@@ -270,7 +274,14 @@ function brackets(x: number, y: number, w: number, h: number, k = 36, op = 0.55)
  * A quad flat package: a body of moulding compound with `n` tinned legs a side, the dimple of
  * pin 1 at its top-start corner.
  */
-function qfp(cx: number, cy: number, s: number, n: number, leg = { len: 30, w: 11 }, dimple = true): string {
+function qfp(
+  cx: number,
+  cy: number,
+  s: number,
+  n: number,
+  leg = { len: 30, w: 11 },
+  dimple = true,
+): string {
   const pitch = (s * 0.84) / (n - 1);
   const half = s / 2;
   let legs = '';
@@ -294,7 +305,14 @@ function qfp(cx: number, cy: number, s: number, n: number, leg = { len: 30, w: 1
 }
 
 /** A package with legs along its two long sides only (an SOIC, laid on its side). */
-function soic(x: number, y: number, w: number, h: number, n: number, leg = { len: 30, w: 20 }): string {
+function soic(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  n: number,
+  leg = { len: 30, w: 20 },
+): string {
   const pitch = (w * 0.92) / (n - 1);
   let legs = '';
   for (let i = 0; i < n; i++) {
@@ -311,7 +329,14 @@ function soic(x: number, y: number, w: number, h: number, n: number, leg = { len
 }
 
 /** An SMD chip part: a capacitor (ceramic) or a resistor (black), with tinned ends. */
-function passive(cx: number, cy: number, kind: 'cap' | 'res', vertical = false, l = 40, w = 20): string {
+function passive(
+  cx: number,
+  cy: number,
+  kind: 'cap' | 'res',
+  vertical = false,
+  l = 40,
+  w = 20,
+): string {
   const [L, Wd] = vertical ? [w, l] : [l, w];
   const end = l * 0.24;
   const body = kind === 'cap' ? CERAMIC : '#1a1c1b';
@@ -319,9 +344,15 @@ function passive(cx: number, cy: number, kind: 'cap' | 'res', vertical = false, 
     ? `<rect x="${f1(cx - Wd / 2 - 0)}" y="${f1(cy - l / 2)}" width="${Wd}" height="${f1(end)}" rx="2" fill="url(#sn)"/><rect x="${f1(cx - Wd / 2)}" y="${f1(cy + l / 2 - end)}" width="${Wd}" height="${f1(end)}" rx="2" fill="url(#sn)"/>`
     : `<rect x="${f1(cx - l / 2)}" y="${f1(cy - w / 2)}" width="${f1(end)}" height="${w}" rx="2" fill="url(#sn)"/><rect x="${f1(cx + l / 2 - end)}" y="${f1(cy - w / 2)}" width="${f1(end)}" height="${w}" rx="2" fill="url(#sn)"/>`;
   const pads = vertical
-    ? pad(cx, cy - l / 2 + end / 2, Wd + 6, end + 8, 2) + pad(cx, cy + l / 2 - end / 2, Wd + 6, end + 8, 2)
-    : pad(cx - l / 2 + end / 2, cy, end + 8, w + 6, 2) + pad(cx + l / 2 - end / 2, cy, end + 8, w + 6, 2);
-  return pads + `<rect x="${f1(cx - L / 2)}" y="${f1(cy - Wd / 2)}" width="${f1(L)}" height="${f1(Wd)}" rx="3" fill="${body}"/>` + ends;
+    ? pad(cx, cy - l / 2 + end / 2, Wd + 6, end + 8, 2) +
+      pad(cx, cy + l / 2 - end / 2, Wd + 6, end + 8, 2)
+    : pad(cx - l / 2 + end / 2, cy, end + 8, w + 6, 2) +
+      pad(cx + l / 2 - end / 2, cy, end + 8, w + 6, 2);
+  return (
+    pads +
+    `<rect x="${f1(cx - L / 2)}" y="${f1(cy - Wd / 2)}" width="${f1(L)}" height="${f1(Wd)}" rx="3" fill="${body}"/>` +
+    ends
+  );
 }
 
 /** The LED, lit: its glow, its pads, its white housing and the lens. */
@@ -353,7 +384,7 @@ const tantalum = (cx: number, cy: number) =>
 /** A data matrix in silkscreen: the serial number every board carries. */
 function dataMatrix(x: number, y: number, n = 14, m = 8): string {
   let seed = 41;
-  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
   let cells = '';
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
@@ -406,7 +437,24 @@ function ground(x = 0.5, y = 0.45): Background {
 
 /** The test point before a kicker, fed by a trace that drops in from the board's edge. */
 const kickerPad = (id: string, top: number) =>
-  drawing(id, at(START, 0, 22, top + 22), svg(22, top + 22, DEFS + tr([[11, -10], [11, top + 2]], { ...UNDER, op: 0.34, w: 5 }) + testPoint(11, top + 11, 10)), PAINT);
+  drawing(
+    id,
+    at(START, 0, 22, top + 22),
+    svg(
+      22,
+      top + 22,
+      DEFS +
+        tr(
+          [
+            [11, -10],
+            [11, top + 2],
+          ],
+          { ...UNDER, op: 0.34, w: 5 },
+        ) +
+        testPoint(11, top + 11, 10),
+    ),
+    PAINT,
+  );
 
 /**
  * The head of a content slide: the kicker on its test point, and the title. `lines` is the room
@@ -415,13 +463,23 @@ const kickerPad = (id: string, top: number) =>
 function head(name: string, width = 1400, lines = 2, net = true) {
   return {
     placeholders: [
-      place('p_kicker', 'caption', at(START + 44, KICKER, Math.min(900, width - 44), 34), 'caption'),
+      place(
+        'p_kicker',
+        'caption',
+        at(START + 44, KICKER, Math.min(900, width - 44), 34),
+        'caption',
+      ),
       place('p_title', 'title', at(START, KICKER + 38, width, 72 * lines), 'title'),
     ],
     decorations: [
       net
         ? kickerPad(`d_shvav_${name}_kicker_pad`, KICKER + 6)
-        : drawing(`d_shvav_${name}_kicker_pad`, at(START, KICKER + 6, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
+        : drawing(
+            `d_shvav_${name}_kicker_pad`,
+            at(START, KICKER + 6, 22, 22),
+            svg(22, 22, DEFS + testPoint(11, 11, 10)),
+            PAINT,
+          ),
     ],
   };
 }
@@ -461,20 +519,37 @@ function foot(name: string) {
         svg(
           1920,
           80,
-          tr([[SX - 20, 26], [SX - 20, 34], [SX - 38, 52], [END + 62, 52], [END + 44, 34], [END + 44, 30]], { ...UNDER, op: 0.3, w: 5 }) +
+          tr(
+            [
+              [SX - 20, 26],
+              [SX - 20, 34],
+              [SX - 38, 52],
+              [END + 62, 52],
+              [END + 44, 34],
+              [END + 44, 30],
+            ],
+            { ...UNDER, op: 0.3, w: 5 },
+          ) +
             tented(SX - 220, 52, 7) +
             tented(980, 52, 7),
         ),
         PAINT,
       ),
       mark(`d_shvav_${name}_mark`, at(START, FOOT - 3, 40, 40)),
-      rect(`d_shvav_${name}_folio`, atEnd(END, FOOT - 6, 88, 46), solid(token('primary')), { effects: { radius: 8 } }),
+      rect(`d_shvav_${name}_folio`, atEnd(END, FOOT - 6, 88, 46), solid(token('primary')), {
+        effects: { radius: 8 },
+      }),
       pageNumber(`d_shvav_${name}_number`, atEnd(END, FOOT, 88, 34), 'caption', {
         color: token('bg'),
         weight: 700,
         align: 'center',
       }),
-      drawing(`d_shvav_${name}_fiducial`, atEnd(36, 36, 40, 40), svg(40, 40, DEFS + fiducial(20, 20)), PAINT),
+      drawing(
+        `d_shvav_${name}_fiducial`,
+        atEnd(36, 36, 40, 40),
+        svg(40, 40, DEFS + fiducial(20, 20)),
+        PAINT,
+      ),
     ],
   };
 }
@@ -495,8 +570,27 @@ function heroArt() {
     const up = i < 6;
     const d = up ? (5 - i) * 12 : (i - 6) * 12;
     const yy = up ? y - d : y + d;
-    if (i === 2 || i === 9) g += tr([[205, y], [175, y], [175 - d, yy], [104, yy]], UNDER) + tented(96, yy);
-    else g += tr([[205, y], [175, y], [175 - d, yy], [-10, yy]], UNDER);
+    if (i === 2 || i === 9)
+      g +=
+        tr(
+          [
+            [205, y],
+            [175, y],
+            [175 - d, yy],
+            [104, yy],
+          ],
+          UNDER,
+        ) + tented(96, yy);
+    else
+      g += tr(
+        [
+          [205, y],
+          [175, y],
+          [175 - d, yy],
+          [-10, yy],
+        ],
+        UNDER,
+      );
   }
   // Top: up and off the board.
   for (let i = 0; i < 12; i++) {
@@ -504,18 +598,40 @@ function heroArt() {
     const left = i < 6;
     const d = left ? (5 - i) * 12 : (i - 6) * 12;
     const xx = left ? x - d : x + d;
-    g += tr([[x, 235], [x, 205], [xx, 205 - d], [xx, -10]], UNDER);
+    g += tr(
+      [
+        [x, 235],
+        [x, 205],
+        [xx, 205 - d],
+        [xx, -10],
+      ],
+      UNDER,
+    );
   }
   // Right, above: escape vias in two staggered rows.
   for (let i = 0; i < 6; i++) {
     const y = cy + o(i);
     const x = 622 + (i % 2) * 30;
-    g += tr([[595, y], [x, y]], BARE) + goldVia(x + 6, y, 8);
+    g +=
+      tr(
+        [
+          [595, y],
+          [x, y],
+        ],
+        BARE,
+      ) + goldVia(x + 6, y, 8);
   }
   for (const i of [6, 7]) {
     const y = cy + o(i);
     const x = 628 + (i % 2) * 30;
-    g += tr([[595, y], [x, y]], UNDER) + tented(x + 6, y, 8);
+    g +=
+      tr(
+        [
+          [595, y],
+          [x, y],
+        ],
+        UNDER,
+      ) + tented(x + 6, y, 8);
   }
   // Right, below: a bus of four that runs out under the words to the meta line.
   for (let i = 8; i < 12; i++) {
@@ -524,20 +640,62 @@ function heroArt() {
     const b = 776 + (i - 8) * 22;
     const xd = xt + (b - y);
     if (i === 11) {
-      g += tr([[595, y], [xt, y], [xd, b], [SX - 70, b], [SX - 11, b + 59]], BARE);
+      g += tr(
+        [
+          [595, y],
+          [xt, y],
+          [xd, b],
+          [SX - 70, b],
+          [SX - 11, b + 59],
+        ],
+        BARE,
+      );
     } else {
       const xe = SX - 150 - (10 - i) * 46;
-      g += tr([[595, y], [xt, y], [xd, b], [xe, b]], BARE) + goldVia(xe + 8, b, 8);
+      g +=
+        tr(
+          [
+            [595, y],
+            [xt, y],
+            [xd, b],
+            [xe, b],
+          ],
+          BARE,
+        ) + goldVia(xe + 8, b, 8);
     }
   }
   // Bottom: ten pins to the ten fingers, and the two outer ones to vias.
   for (let k = 0; k < 10; k++) {
     const x = cx + o(k + 1);
     const fx = 150 + k * 56;
-    g += tr([[x, 625], [x, 660], [fx, 660 + Math.abs(fx - x)], [fx, 980]], BARE);
+    g += tr(
+      [
+        [x, 625],
+        [x, 660],
+        [fx, 660 + Math.abs(fx - x)],
+        [fx, 980],
+      ],
+      BARE,
+    );
   }
-  g += tr([[cx + o(0), 625], [cx + o(0), 650], [cx + o(0) - 30, 680]], BARE) + goldVia(cx + o(0) - 30, 680, 9);
-  g += tr([[cx + o(11), 625], [cx + o(11), 650], [cx + o(11) + 30, 680]], BARE) + goldVia(cx + o(11) + 30, 680, 9);
+  g +=
+    tr(
+      [
+        [cx + o(0), 625],
+        [cx + o(0), 650],
+        [cx + o(0) - 30, 680],
+      ],
+      BARE,
+    ) + goldVia(cx + o(0) - 30, 680, 9);
+  g +=
+    tr(
+      [
+        [cx + o(11), 625],
+        [cx + o(11), 650],
+        [cx + o(11) + 30, 680],
+      ],
+      BARE,
+    ) + goldVia(cx + o(11) + 30, 680, 9);
   // The edge connector: gold fingers off the bottom of the board, and its keep-out line.
   g += `<path d="M118 946H686" stroke="${INK}" stroke-opacity=".35" stroke-width="2.5" stroke-dasharray="10 8"/>`;
   for (let k = 0; k < 10; k++) {
@@ -546,20 +704,91 @@ function heroArt() {
   }
   // The parts round the microcontroller.
   g += crystal(120, 150) + passive(84, 206, 'cap') + passive(134, 206, 'cap');
-  g += tr([[78, 150], [52, 150], [40, 162]], UNDER) + tr([[162, 150], [180, 150]], UNDER);
-  g += led(742, 172) + passive(742, 232, 'res') + tr([[722, 232], [700, 232], [688, 244], [688, 262]], UNDER) + tented(688, 268, 7);
-  g += tr([[759, 172], [800, 172], [812, 160], [812, -10]], UNDER);
-  g += testPoint(100, 760, 14) + tr([[100, 774], [100, 820], [118, 838]], UNDER) + tented(124, 844, 7);
-  g += passive(700, 900, 'cap') + passive(760, 900, 'cap') + tr([[680, 900], [660, 900]], UNDER);
+  g +=
+    tr(
+      [
+        [78, 150],
+        [52, 150],
+        [40, 162],
+      ],
+      UNDER,
+    ) +
+    tr(
+      [
+        [162, 150],
+        [180, 150],
+      ],
+      UNDER,
+    );
+  g +=
+    led(742, 172) +
+    passive(742, 232, 'res') +
+    tr(
+      [
+        [722, 232],
+        [700, 232],
+        [688, 244],
+        [688, 262],
+      ],
+      UNDER,
+    ) +
+    tented(688, 268, 7);
+  g += tr(
+    [
+      [759, 172],
+      [800, 172],
+      [812, 160],
+      [812, -10],
+    ],
+    UNDER,
+  );
+  g +=
+    testPoint(100, 760, 14) +
+    tr(
+      [
+        [100, 774],
+        [100, 820],
+        [118, 838],
+      ],
+      UNDER,
+    ) +
+    tented(124, 844, 7);
+  g +=
+    passive(700, 900, 'cap') +
+    passive(760, 900, 'cap') +
+    tr(
+      [
+        [680, 900],
+        [660, 900],
+      ],
+      UNDER,
+    );
   // The chip itself, its silkscreen and pin 1.
   g += qfp(cx, cy, s, 12) + brackets(cx - s / 2 - 46, cy - s / 2 - 46, s + 92, s + 92, 40);
   g += `<circle cx="${cx - s / 2 - 58}" cy="${cy - s / 2 - 58}" r="6" fill="${INK}" fill-opacity=".7"/>`;
   // The board's own marks: holes, fiducials, the kicker's and the meta line's test points.
   g += mountHole(64, 64) + mountHole(1852, 1012) + fiducial(1858, 62) + fiducial(62, 934);
-  g += tr([[SX - 11, -10], [SX - 11, 293]], { ...UNDER, op: 0.34, w: 5 }) + testPoint(SX - 11, 303, 10);
+  g +=
+    tr(
+      [
+        [SX - 11, -10],
+        [SX - 11, 293],
+      ],
+      { ...UNDER, op: 0.34, w: 5 },
+    ) + testPoint(SX - 11, 303, 10);
   g += testPoint(SX - 11, 901, 10);
   const words: Letter[] = [
-    { x: cx, y: cy - 36, t: 'SHVAV', size: 54, sans: true, weight: 700, fill: LASER, anchor: 'middle', spacing: 8 },
+    {
+      x: cx,
+      y: cy - 36,
+      t: 'SHVAV',
+      size: 54,
+      sans: true,
+      weight: 700,
+      fill: LASER,
+      anchor: 'middle',
+      spacing: 8,
+    },
     { x: cx, y: cy + 22, t: 'SV32-L4  LoRa', size: 25, fill: LASER, anchor: 'middle', weight: 500 },
     { x: cx, y: cy + 62, t: '2648 · A3', size: 22, fill: LASER, anchor: 'middle', weight: 500 },
     { x: cx + s / 2 + 46, y: cy - s / 2 - 62, t: 'U1', size: 24, anchor: 'end' },
@@ -592,26 +821,91 @@ function sectionArt() {
     // Left, to the edge.
     const y = cy + o(i);
     const yy = firstHalf ? y - d : y + d;
-    g += tr([[cx - half - len, y], [cx - half - 64, y], [cx - half - 64 - d, yy], [-10, yy]], UNDER);
+    g += tr(
+      [
+        [cx - half - len, y],
+        [cx - half - 64, y],
+        [cx - half - 64 - d, yy],
+        [-10, yy],
+      ],
+      UNDER,
+    );
     // Top and bottom, off the board.
     const x = cx + o(i);
     const xx = firstHalf ? x - d : x + d;
-    g += tr([[x, cy - half - len], [x, cy - half - 64], [xx, cy - half - 64 - d], [xx, -10]], UNDER);
-    g += tr([[x, cy + half + len], [x, cy + half + 64], [xx, cy + half + 64 + d], [xx, 1090]], i % 3 === 1 ? BARE : UNDER);
+    g += tr(
+      [
+        [x, cy - half - len],
+        [x, cy - half - 64],
+        [xx, cy - half - 64 - d],
+        [xx, -10],
+      ],
+      UNDER,
+    );
+    g += tr(
+      [
+        [x, cy + half + len],
+        [x, cy + half + 64],
+        [xx, cy + half + 64 + d],
+        [xx, 1090],
+      ],
+      i % 3 === 1 ? BARE : UNDER,
+    );
     // Right: the upper half turns up, the lower half down, before the words begin.
     const xt = firstHalf ? 652 + i * 22 : 652 + (n - 1 - i) * 22;
     g += firstHalf
-      ? tr([[cx + half + len, y], [xt - 12, y], [xt, y - 12], [xt, -10]], i % 2 ? UNDER : BARE)
-      : tr([[cx + half + len, y], [xt - 12, y], [xt, y + 12], [xt, 1090]], i % 2 ? BARE : UNDER);
+      ? tr(
+          [
+            [cx + half + len, y],
+            [xt - 12, y],
+            [xt, y - 12],
+            [xt, -10],
+          ],
+          i % 2 ? UNDER : BARE,
+        )
+      : tr(
+          [
+            [cx + half + len, y],
+            [xt - 12, y],
+            [xt, y + 12],
+            [xt, 1090],
+          ],
+          i % 2 ? BARE : UNDER,
+        );
   }
   g += qfp(cx, cy, s, n, { len, w: 11 });
   g += brackets(cx - half - 50, cy - half - 50, s + 100, s + 100, 44);
   g += `<circle cx="${cx - half - 62}" cy="${cy - half - 62}" r="6" fill="${INK}" fill-opacity=".7"/>`;
   g += mountHole(64, 64) + mountHole(1852, 1012) + fiducial(1858, 62) + fiducial(62, 1016);
-  g += tr([[SX - 11, -10], [SX - 11, 373]], { ...UNDER, op: 0.34, w: 5 }) + testPoint(SX - 11, 383, 10);
+  g +=
+    tr(
+      [
+        [SX - 11, -10],
+        [SX - 11, 373],
+      ],
+      { ...UNDER, op: 0.34, w: 5 },
+    ) + testPoint(SX - 11, 383, 10);
   const words: Letter[] = [
-    { x: cx, y: cy - half + 62, t: 'SHVAV', size: 30, sans: true, weight: 700, fill: LASER, anchor: 'middle', spacing: 6 },
-    { x: cx, y: cy + half - 34, t: '2648 · A3', size: 20, fill: LASER, anchor: 'middle', weight: 500 },
+    {
+      x: cx,
+      y: cy - half + 62,
+      t: 'SHVAV',
+      size: 30,
+      sans: true,
+      weight: 700,
+      fill: LASER,
+      anchor: 'middle',
+      spacing: 6,
+    },
+    {
+      x: cx,
+      y: cy + half - 34,
+      t: '2648 · A3',
+      size: 20,
+      fill: LASER,
+      anchor: 'middle',
+      weight: 500,
+    },
     { x: cx - half - 50, y: cy - half - 72, t: 'U2', size: 24, anchor: 'start' },
   ];
   return art(1920, 1080, g, words);
@@ -633,16 +927,44 @@ function bigNumberArt() {
   for (let i = 0; i < n; i++) {
     const px = x + w / 2 + (i - (n - 1) / 2) * pitch;
     const vy = i % 2 ? y - 64 : y - 50;
-    g += tr([[px, y - 30], [px, vy]], UNDER) + tented(px, vy - 4, 7);
+    g +=
+      tr(
+        [
+          [px, y - 30],
+          [px, vy],
+        ],
+        UNDER,
+      ) + tented(px, vy - 4, 7);
   }
   g += soic(x, y, w, h, n);
   g += `<circle cx="${x + 30}" cy="${y + 30}" r="7" fill="#000000" fill-opacity=".5" stroke="#ffffff" stroke-opacity=".1"/>`;
   // The test points: on one trace down the side, which joins the foot's net.
-  g += tr([[650, STATS[0]! + 40], [650, NET_Y]], { ...BARE, w: 6 });
+  g += tr(
+    [
+      [650, STATS[0]! + 40],
+      [650, NET_Y],
+    ],
+    { ...BARE, w: 6 },
+  );
   for (const top of STATS) g += testPoint(650, top + 40, 13);
-  g += tr([[SX - 11, -10], [SX - 11, KICKER + 6]], { ...UNDER, op: 0.34, w: 5 });
+  g += tr(
+    [
+      [SX - 11, -10],
+      [SX - 11, KICKER + 6],
+    ],
+    { ...UNDER, op: 0.34, w: 5 },
+  );
   const words: Letter[] = [
-    { x: x + 52, y: y + 40, t: 'SHVAV', size: 26, sans: true, weight: 700, fill: LASER, spacing: 5 },
+    {
+      x: x + 52,
+      y: y + 40,
+      t: 'SHVAV',
+      size: 26,
+      sans: true,
+      weight: 700,
+      fill: LASER,
+      spacing: 5,
+    },
     { x: x + 52, y: y + h - 26, t: '2648 · A3', size: 18, fill: LASER, weight: 500 },
     { x: x - 12, y: y - 40, t: 'U1', size: 22, anchor: 'end' },
     ...STATS.map((top, i) => ({ x: 674, y: top + 47, t: `TP${i + 1}`, size: 18, op: 0.75 })),
@@ -676,13 +998,57 @@ function quoteArt() {
   let g = silkBox(x0, y0, x1 - x0, y1 - y0, 0.42);
   // The tab of the note, in silkscreen with its letters knocked out.
   g += `<rect x="${x1 - 196}" y="${y0 - 18}" width="160" height="36" rx="3" fill="${INK}" fill-opacity=".85"/>`;
-  for (const [cx, cy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]] as const) g += pad(cx, cy, 18, 18, 2);
-  g += tr([[x0, y0], [x0 - 52, y0 - 52], [-10, y0 - 52]], UNDER);
-  g += tr([[x1, y1], [x1 + 52, y1 + 52], [1930, y1 + 52]], UNDER);
-  g += tr([[x0, y1], [x0 - 40, y1 + 40], [-10, y1 + 40]], UNDER);
-  g += tr([[x1, y0], [x1, y0 - 70], [x1 + 30, y0 - 100]], UNDER) + tented(x1 + 36, y0 - 106, 7);
+  for (const [cx, cy] of [
+    [x0, y0],
+    [x1, y0],
+    [x0, y1],
+    [x1, y1],
+  ] as const)
+    g += pad(cx, cy, 18, 18, 2);
+  g += tr(
+    [
+      [x0, y0],
+      [x0 - 52, y0 - 52],
+      [-10, y0 - 52],
+    ],
+    UNDER,
+  );
+  g += tr(
+    [
+      [x1, y1],
+      [x1 + 52, y1 + 52],
+      [1930, y1 + 52],
+    ],
+    UNDER,
+  );
+  g += tr(
+    [
+      [x0, y1],
+      [x0 - 40, y1 + 40],
+      [-10, y1 + 40],
+    ],
+    UNDER,
+  );
+  g +=
+    tr(
+      [
+        [x1, y0],
+        [x1, y0 - 70],
+        [x1 + 30, y0 - 100],
+      ],
+      UNDER,
+    ) + tented(x1 + 36, y0 - 106, 7);
   // A rule before the speaker: a short trace between two vias.
-  g += tr([[SX - 196, 652], [SX - 316, 652]], BARE) + goldVia(SX - 192, 652, 8) + goldVia(SX - 320, 652, 8);
+  g +=
+    tr(
+      [
+        [SX - 196, 652],
+        [SX - 316, 652],
+      ],
+      BARE,
+    ) +
+    goldVia(SX - 192, 652, 8) +
+    goldVia(SX - 320, 652, 8);
   // The serial number of the board, in the corner of the block.
   g += dataMatrix(x0 + 44, y1 - 44 - 112);
   const words: Letter[] = [
@@ -696,8 +1062,34 @@ function quoteArt() {
 // ---------------------------------------------------------------------------------------------
 // Beside the text: a radio module and its pinout
 
-const PINS_START = ['GND', '3V3', 'VBAT', 'EN', 'TX', 'RX', 'SDA', 'SCL', 'IRQ', 'WAKE', 'ADC0', 'GND'];
-const PINS_END = ['GND', 'ANT', 'GND', 'MOSI', 'MISO', 'SCK', 'CS', 'PA8', 'PA9', 'SWDIO', 'SWCLK', 'GND'];
+const PINS_START = [
+  'GND',
+  '3V3',
+  'VBAT',
+  'EN',
+  'TX',
+  'RX',
+  'SDA',
+  'SCL',
+  'IRQ',
+  'WAKE',
+  'ADC0',
+  'GND',
+];
+const PINS_END = [
+  'GND',
+  'ANT',
+  'GND',
+  'MOSI',
+  'MISO',
+  'SCK',
+  'CS',
+  'PA8',
+  'PA9',
+  'SWDIO',
+  'SWCLK',
+  'GND',
+];
 
 function pinKind(name: string): 'gnd' | 'pwr' | 'bus' | 'io' {
   if (name === 'GND') return 'gnd';
@@ -736,7 +1128,10 @@ function pinoutArt() {
     });
   };
   for (const [k, y] of ys.entries()) {
-    for (const [x, out] of [[l, -1], [r, 1]] as const) {
+    for (const [x, out] of [
+      [l, -1],
+      [r, 1],
+    ] as const) {
       g += `<rect x="${out > 0 ? x - 2 : x - 18}" y="${y - 10}" width="20" height="20" rx="2" fill="url(#au)"/>`;
       g += `<circle cx="${x}" cy="${y}" r="10" fill="url(#au)"/><path d="M${x} ${y - 5}A5 5 0 0 ${out > 0 ? 0 : 1} ${x} ${y + 5}Z" fill="${HOLE}"/>`;
       g += `<path d="M${x + out * 18} ${y}H${x + out * 32}" stroke="${INK}" stroke-opacity=".35" stroke-width="2"/>`;
@@ -746,20 +1141,56 @@ function pinoutArt() {
   }
   // The antenna: a meander of bare copper in its keep-out, fed from the can.
   let meander = `M${l + 30} 370V${top + 26}`;
-  for (let x = l + 30, k = 0; x < r - 40; x += 18, k++) meander += `H${x + 18}V${k % 2 ? top + 26 : 350}`;
+  for (let x = l + 30, k = 0; x < r - 40; x += 18, k++)
+    meander += `H${x + 18}V${k % 2 ? top + 26 : 350}`;
   g += `<path d="${meander}" stroke="${GOLD}" stroke-opacity=".85" stroke-width="5" stroke-linejoin="round"/>`;
   // The shield can over the radio, stamped, with the marking of the module.
   g += `<rect x="${l + 18}" y="388" width="${r - l - 36}" height="292" rx="8" fill="url(#sn)"/>`;
   g += `<rect x="${l + 30}" y="400" width="${r - l - 60}" height="268" rx="5" stroke="#8a908e" stroke-opacity=".8" stroke-width="2"/>`;
-  for (const [cx, cy] of [[l + 42, 412], [r - 42, 412], [l + 42, 656], [r - 42, 656]] as const) g += `<circle cx="${cx}" cy="${cy}" r="4" fill="#8a908e"/>`;
+  for (const [cx, cy] of [
+    [l + 42, 412],
+    [r - 42, 412],
+    [l + 42, 656],
+    [r - 42, 656],
+  ] as const)
+    g += `<circle cx="${cx}" cy="${cy}" r="4" fill="#8a908e"/>`;
   // Below the can: the crystal, two passives and the status LED.
-  g += crystal(l + 66, 722, 64, 28) + passive(r - 60, 708, 'cap', false, 30, 15) + passive(r - 60, 740, 'res', false, 30, 15);
+  g +=
+    crystal(l + 66, 722, 64, 28) +
+    passive(r - 60, 708, 'cap', false, 30, 15) +
+    passive(r - 60, 740, 'res', false, 30, 15);
   g += led((l + r) / 2, 800, 64);
   g += `<circle cx="${l - 8}" cy="${top - 14}" r="6" fill="${INK}" fill-opacity=".75"/>`;
   words.push(
-    { x: (l + r) / 2, y: 520, t: 'SHVAV', size: 30, sans: true, weight: 700, fill: '#5d6461', anchor: 'middle', spacing: 5 },
-    { x: (l + r) / 2, y: 556, t: 'SV32-M · LoRa', size: 17, fill: '#5d6461', anchor: 'middle', weight: 600 },
-    { x: (l + r) / 2, y: 584, t: '868 MHz', size: 17, fill: '#5d6461', anchor: 'middle', weight: 600 },
+    {
+      x: (l + r) / 2,
+      y: 520,
+      t: 'SHVAV',
+      size: 30,
+      sans: true,
+      weight: 700,
+      fill: '#5d6461',
+      anchor: 'middle',
+      spacing: 5,
+    },
+    {
+      x: (l + r) / 2,
+      y: 556,
+      t: 'SV32-M · LoRa',
+      size: 17,
+      fill: '#5d6461',
+      anchor: 'middle',
+      weight: 600,
+    },
+    {
+      x: (l + r) / 2,
+      y: 584,
+      t: '868 MHz',
+      size: 17,
+      fill: '#5d6461',
+      anchor: 'middle',
+      weight: 600,
+    },
     { x: r, y: top - 14, t: 'M1', size: 22, anchor: 'end' },
   );
   return art(w, 1080, g, words);
@@ -780,15 +1211,31 @@ function photoFrameArt() {
   const b = 12;
   const L = (x: number, y: number, dx: number, dy: number) =>
     `<path d="M${x + dx * k} ${y}H${x}V${y + dy * k}" stroke="${GOLD}" stroke-width="5" stroke-linecap="square"/>`;
-  g += L(x0 - b, y0 - b, 1, 1) + L(x1 + b, y0 - b, -1, 1) + L(x0 - b, y1 + b, 1, -1) + L(x1 + b, y1 + b, -1, -1);
+  g +=
+    L(x0 - b, y0 - b, 1, 1) +
+    L(x1 + b, y0 - b, -1, 1) +
+    L(x0 - b, y1 + b, 1, -1) +
+    L(x1 + b, y1 + b, -1, -1);
   g += fiducial(w - 20, 20);
-  const words: Letter[] = [{ x: x0 - 22, y: 30, t: 'TOP SIDE', size: 18, anchor: 'start', op: 0.7 }];
+  const words: Letter[] = [
+    { x: x0 - 22, y: 30, t: 'TOP SIDE', size: 18, anchor: 'start', op: 0.7 },
+  ];
   return art(w, h, g, words);
 }
 
 /** A numbered pad before a point. */
 const numberPad = (id: string, frame: Frame, n: number) =>
-  lettered(id, frame, svg(48, 48, DEFS + `<rect x="1" y="1" width="46" height="46" rx="8" fill="url(#au)"/>` + `<text x="24" y="33" text-anchor="middle" ${MONO} font-size="26" font-weight="700" fill="${BG}">${n}</text>`));
+  lettered(
+    id,
+    frame,
+    svg(
+      48,
+      48,
+      DEFS +
+        `<rect x="1" y="1" width="46" height="46" rx="8" fill="url(#au)"/>` +
+        `<text x="24" y="33" text-anchor="middle" ${MONO} font-size="26" font-weight="700" fill="${BG}">${n}</text>`,
+    ),
+  );
 
 // ---------------------------------------------------------------------------------------------
 // Under the full picture: the castellations of a module, the fingers of the edge
@@ -798,8 +1245,24 @@ function fullImageArt() {
   for (let x = SX - 11; x > -20; x -= 64) {
     g += `<circle cx="${x}" cy="640" r="15" fill="url(#au)"/><circle cx="${x}" cy="640" r="6.5" fill="${HOLE}"/>`;
   }
-  g += tr([[SX - 11, 655], [SX - 11, 697]], BARE) + testPoint(SX - 11, 707, 10);
-  g += tr([[694, 700], [694, 924]], UNDER) + tented(694, 692, 8) + tented(694, 932, 8);
+  g +=
+    tr(
+      [
+        [SX - 11, 655],
+        [SX - 11, 697],
+      ],
+      BARE,
+    ) + testPoint(SX - 11, 707, 10);
+  g +=
+    tr(
+      [
+        [694, 700],
+        [694, 924],
+      ],
+      UNDER,
+    ) +
+    tented(694, 692, 8) +
+    tented(694, 932, 8);
   g += `<path d="M92 946H640" stroke="${INK}" stroke-opacity=".35" stroke-width="2.5" stroke-dasharray="10 8"/>`;
   for (let k = 0; k < 10; k++) {
     const fx = 114 + k * 56;
@@ -835,14 +1298,40 @@ function cardsArt() {
     const from = edges[k]![0];
     const to = edges[k + 1]![1];
     rows.forEach((y, j) => {
-      if (j % 2 === 0) g += tr([[from - 14, y], [to + 14, y]], { ...BARE, w: 6 });
-      else g += tr([[from - 14, y], [from - 24, y + 10]], UNDER);
+      if (j % 2 === 0)
+        g += tr(
+          [
+            [from - 14, y],
+            [to + 14, y],
+          ],
+          { ...BARE, w: 6 },
+        );
+      else
+        g += tr(
+          [
+            [from - 14, y],
+            [from - 24, y + 10],
+          ],
+          UNDER,
+        );
     });
   }
   rows.forEach((y, j) => {
     if (j % 3 !== 1) {
-      g += tr([[edges[0]![1] + 14, y], [1930, y]], j % 2 ? UNDER : { ...BARE, w: 5, op: 0.6 });
-      g += tr([[edges[2]![0] - 14, y], [-10, y]], j % 2 ? UNDER : { ...BARE, w: 5, op: 0.6 });
+      g += tr(
+        [
+          [edges[0]![1] + 14, y],
+          [1930, y],
+        ],
+        j % 2 ? UNDER : { ...BARE, w: 5, op: 0.6 },
+      );
+      g += tr(
+        [
+          [edges[2]![0] - 14, y],
+          [-10, y],
+        ],
+        j % 2 ? UNDER : { ...BARE, w: 5, op: 0.6 },
+      );
     }
   });
   // The parts of each module along its foot: the MCU, the radio under its can, the sensor's front
@@ -850,17 +1339,28 @@ function cardsArt() {
   for (const [k, [l, r]] of edges.entries()) {
     const y = CARD.top + CARD.h - 30;
     g += `<path d="M${l + 36} ${y - 28}H${r - 36}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
-    if (k === 0) g += qfp(r - 80, y, 36, 6, { len: 6, w: 4 }) + passive(r - 140, y, 'cap', false, 30, 15) + passive(r - 186, y, 'res', false, 30, 15) + crystal(r - 252, y, 50, 22);
+    if (k === 0)
+      g +=
+        qfp(r - 80, y, 36, 6, { len: 6, w: 4 }) +
+        passive(r - 140, y, 'cap', false, 30, 15) +
+        passive(r - 186, y, 'res', false, 30, 15) +
+        crystal(r - 252, y, 50, 22);
     if (k === 1) {
       let m = `M${r - 214} ${y + 12}`;
-      for (let x = r - 214, j = 0; x < r - 150; x += 10, j++) m += `V${j % 2 ? y - 14 : y + 12}H${x + 10}`;
+      for (let x = r - 214, j = 0; x < r - 150; x += 10, j++)
+        m += `V${j % 2 ? y - 14 : y + 12}H${x + 10}`;
       g += `<rect x="${r - 136}" y="${y - 20}" width="80" height="40" rx="5" fill="url(#sn)"/><rect x="${r - 130}" y="${y - 14}" width="68" height="28" rx="3" stroke="#8a908e" stroke-width="1.5"/>`;
-      g += `<path d="${m}" stroke="${GOLD}" stroke-opacity=".85" stroke-width="3"/>` + passive(r - 250, y, 'cap', false, 30, 15);
+      g +=
+        `<path d="${m}" stroke="${GOLD}" stroke-opacity=".85" stroke-width="3"/>` +
+        passive(r - 250, y, 'cap', false, 30, 15);
     }
     if (k === 2) {
-      g += qfp(r - 80, y, 34, 5, { len: 0.1, w: 4 }, false) + passive(r - 136, y, 'cap', false, 30, 15);
+      g +=
+        qfp(r - 80, y, 34, 5, { len: 0.1, w: 4 }, false) +
+        passive(r - 136, y, 'cap', false, 30, 15);
       g += `<rect x="${r - 236}" y="${y - 18}" width="66" height="36" rx="4" fill="#e9dfc9"/><rect x="${r - 230}" y="${y - 10}" width="54" height="10" rx="2" fill="#2a2e2c"/>`;
-      for (let j = 0; j < 4; j++) g += `<rect x="${r - 228 + j * 14}" y="${y + 18}" width="6" height="10" fill="url(#sn)"/>`;
+      for (let j = 0; j < 4; j++)
+        g += `<rect x="${r - 228 + j * 14}" y="${y + 18}" width="6" height="10" fill="url(#sn)"/>`;
     }
   }
   return g;
@@ -879,14 +1379,28 @@ function timelineArt(): string {
     pts.push([x, TRACE_Y]);
     const next = k < xs.length - 1 ? xs[k + 1]! : -40;
     const mid = (x + next) / 2;
-    pts.push([mid + 64, TRACE_Y], [mid + 36, TRACE_Y + 28], [mid - 36, TRACE_Y + 28], [mid - 64, TRACE_Y]);
+    pts.push(
+      [mid + 64, TRACE_Y],
+      [mid + 36, TRACE_Y + 28],
+      [mid - 36, TRACE_Y + 28],
+      [mid - 64, TRACE_Y],
+    );
   }
   pts.push([-10, TRACE_Y]);
   let g = `<circle cx="${xs[0]}" cy="${TRACE_Y}" r="120" fill="url(#glow)"/>`;
   g += tr(pts, { c: GOLD, op: 0.3, w: 22 }) + tr(pts, { c: GOLD, op: 0.95, w: 8 });
   for (const x of xs) {
-    g += tr([[x, TRACE_Y], [x, TRACE_Y + 52]], UNDER) + tented(x, TRACE_Y + 58, 7);
-    g += `<circle cx="${x}" cy="${TRACE_Y}" r="34" stroke="${INK}" stroke-opacity=".3" stroke-width="2.5"/>` + goldVia(x, TRACE_Y, 24);
+    g +=
+      tr(
+        [
+          [x, TRACE_Y],
+          [x, TRACE_Y + 52],
+        ],
+        UNDER,
+      ) + tented(x, TRACE_Y + 58, 7);
+    g +=
+      `<circle cx="${x}" cy="${TRACE_Y}" r="34" stroke="${INK}" stroke-opacity=".3" stroke-width="2.5"/>` +
+      goldVia(x, TRACE_Y, 24);
   }
   return svg(1920, 1080, DEFS + g);
 }
@@ -906,7 +1420,12 @@ function processArt() {
     // A transducer: its plate, and the waves of the water on the start side.
     (c: number) =>
       `<rect x="${c - 8}" y="${cy - 38}" width="16" height="76" rx="3" ${S}/>` +
-      [22, 40, 58].map((r) => `<path d="M${c + 8 + r * 0.5} ${cy - r * 0.9}Q${c + 8 + r} ${cy} ${c + 8 + r * 0.5} ${cy + r * 0.9}" ${S}/>`).join(''),
+      [22, 40, 58]
+        .map(
+          (r) =>
+            `<path d="M${c + 8 + r * 0.5} ${cy - r * 0.9}Q${c + 8 + r} ${cy} ${c + 8 + r * 0.5} ${cy + r * 0.9}" ${S}/>`,
+        )
+        .join(''),
     // An amplifier, and the steps of a converter.
     (c: number) =>
       `<path d="M${c + 46} ${cy - 40}V${cy + 40}L${c - 18} ${cy}Z" ${S}/>` +
@@ -914,11 +1433,18 @@ function processArt() {
       `<rect x="${c - 76}" y="${cy - 22}" width="44" height="44" rx="4" ${S}/>` +
       `<path d="M${c - 70} ${cy + 14}h8v-8h8v-8h8v-8h8" ${S}/>`,
     // The microcontroller.
-    (c: number) => qfp(c, cy, 70, 6, { len: 12, w: 6 }) + `<circle cx="${c - 24}" cy="${cy - 24}" r="4" fill="${GOLD}"/>`,
+    (c: number) =>
+      qfp(c, cy, 70, 6, { len: 12, w: 6 }) +
+      `<circle cx="${c - 24}" cy="${cy - 24}" r="4" fill="${GOLD}"/>`,
     // An antenna, radiating.
     (c: number) =>
       `<path d="M${c} ${cy + 36}V${cy - 30}M${c} ${cy - 30}l-22 -26M${c} ${cy - 30}l22 -26M${c - 22} ${cy - 56}h44" ${S}/>` +
-      [26, 44].map((r) => `<path d="M${c - r} ${cy - 30 - r * 0.7}Q${c - r * 1.35} ${cy - 30} ${c - r} ${cy - 30 + r * 0.7}M${c + r} ${cy - 30 - r * 0.7}Q${c + r * 1.35} ${cy - 30} ${c + r} ${cy - 30 + r * 0.7}" ${S} stroke-opacity=".55"/>`).join(''),
+      [26, 44]
+        .map(
+          (r) =>
+            `<path d="M${c - r} ${cy - 30 - r * 0.7}Q${c - r * 1.35} ${cy - 30} ${c - r} ${cy - 30 + r * 0.7}M${c + r} ${cy - 30 - r * 0.7}Q${c + r * 1.35} ${cy - 30} ${c + r} ${cy - 30 + r * 0.7}" ${S} stroke-opacity=".55"/>`,
+        )
+        .join(''),
     // The cloud, and what goes up to it.
     (c: number) =>
       `<path d="M${c - 52} ${cy + 26}H${c + 50}A26 26 0 0 0 ${c + 44} ${cy - 24}A36 36 0 0 0 ${c - 22} ${cy - 30}A28 28 0 0 0 ${c - 52} ${cy + 26}Z" ${S}/>` +
@@ -933,14 +1459,52 @@ function processArt() {
     const c = (l + r) / 2;
     g += silkBox(l, STEP.top, STEP.w, STEP.h, 0.38, 8);
     // The signal in at the start side, out at the end side.
-    if (k > 0 && k < 3) g += tr([[r, cy], [c + reach[k]!, cy]], BARE);
+    if (k > 0 && k < 3)
+      g += tr(
+        [
+          [r, cy],
+          [c + reach[k]!, cy],
+        ],
+        BARE,
+      );
     // The antenna is fed at the foot of its mast.
-    if (k === 3) g += tr([[r, cy], [c + 30, cy], [c, cy + 30], [c, cy + 36]], BARE);
-    if (k < 4 && k !== 3) g += tr([[c - (k === 1 ? 76 : reach[k]!), cy], [l, cy]], BARE);
-    if (k === 4) g += tr([[r, cy], [c + 60, cy]], { c: GOLD, op: 0.9, w: 5 }).replace('/>', ' stroke-dasharray="2 12"/>');
+    if (k === 3)
+      g += tr(
+        [
+          [r, cy],
+          [c + 30, cy],
+          [c, cy + 30],
+          [c, cy + 36],
+        ],
+        BARE,
+      );
+    if (k < 4 && k !== 3)
+      g += tr(
+        [
+          [c - (k === 1 ? 76 : reach[k]!), cy],
+          [l, cy],
+        ],
+        BARE,
+      );
+    if (k === 4)
+      g += tr(
+        [
+          [r, cy],
+          [c + 60, cy],
+        ],
+        { c: GOLD, op: 0.9, w: 5 },
+      ).replace('/>', ' stroke-dasharray="2 12"/>');
     g += symbols[k]!(c);
     g += `<circle cx="${r - 18}" cy="${STEP.top + 18}" r="4.5" fill="${INK}" fill-opacity=".6"/>`;
-    if (DESIGNATORS[k]) words.push({ x: r - 32, y: STEP.top + 25, t: DESIGNATORS[k]!, size: 18, anchor: 'end', op: 0.7 });
+    if (DESIGNATORS[k])
+      words.push({
+        x: r - 32,
+        y: STEP.top + 25,
+        t: DESIGNATORS[k],
+        size: 18,
+        anchor: 'end',
+        op: 0.7,
+      });
     // Between two steps: an arrow the way the signal goes.
     if (k < 4) {
       const gx = l - 20;
@@ -958,7 +1522,7 @@ const SIDES = [
   ['after', START + 876],
 ] as const;
 const BOARD_TOP = 286;
-const BOARD_H = 630;
+const BOARD_H = 640;
 const BOARD_W = 820;
 
 function comparisonArt(): string {
@@ -966,28 +1530,68 @@ function comparisonArt(): string {
   for (const [side, s] of SIDES) {
     const r = 1920 - s;
     const l = r - BOARD_W;
-    for (const [x, y] of [[l + 32, BOARD_TOP + 32], [r - 32, BOARD_TOP + 32], [l + 32, BOARD_TOP + BOARD_H - 32], [r - 32, BOARD_TOP + BOARD_H - 32]] as const) {
-      g += side === 'after' ? goldVia(x, y, 14) : `<circle cx="${x}" cy="${y}" r="14" stroke="${MUTED}" stroke-opacity=".6" stroke-width="3"/><circle cx="${x}" cy="${y}" r="6" fill="${HOLE}"/>`;
+    for (const [x, y] of [
+      [l + 32, BOARD_TOP + 32],
+      [r - 32, BOARD_TOP + 32],
+      [l + 32, BOARD_TOP + BOARD_H - 32],
+      [r - 32, BOARD_TOP + BOARD_H - 32],
+    ] as const) {
+      g +=
+        side === 'after'
+          ? goldVia(x, y, 14)
+          : `<circle cx="${x}" cy="${y}" r="14" stroke="${MUTED}" stroke-opacity=".6" stroke-width="3"/><circle cx="${x}" cy="${y}" r="6" fill="${HOLE}"/>`;
     }
-    // At the head of each board, its parts: rev B crowded, rev C down to one chip, and lit.
-    const y = BOARD_TOP + 66;
+    // At the top-end corner, by the mounting hole: a fiducial and the blank silkscreen box a
+    // board's serial is written in.
+    g += fiducial(l + 76, BOARD_TOP + 30);
+    g += `<rect x="${l + 106}" y="${BOARD_TOP + 16}" width="74" height="24" rx="2" stroke="${INK}" stroke-opacity=".45" stroke-width="2"/><path d="M${l + 116} ${BOARD_TOP + 34}h20" stroke="${INK}" stroke-opacity=".45" stroke-width="2"/>`;
+    // Along the foot of each board, under its text and clear of it, its parts: rev B crowded,
+    // rev C down to one chip, and lit.
+    const y = BOARD_TOP + BOARD_H - 50;
     g += `<rect x="${l + 66}" y="${y - 44}" width="${BOARD_W - 132}" height="88" rx="8" stroke="${INK}" stroke-opacity=".16" stroke-width="2" stroke-dasharray="8 8"/>`;
-    g += tr([[r - 90, y + 26], [l + 90, y + 26]], { ...UNDER, w: 4 }) + tr([[r - 90, y - 28], [l + 90, y - 28]], { ...UNDER, w: 4 });
+    g +=
+      tr(
+        [
+          [r - 90, y + 26],
+          [l + 90, y + 26],
+        ],
+        { ...UNDER, w: 4 },
+      ) +
+      tr(
+        [
+          [r - 90, y - 28],
+          [l + 90, y - 28],
+        ],
+        { ...UNDER, w: 4 },
+      );
     if (side === 'before') {
-      g += qfp(r - 130, y, 50, 8, { len: 8, w: 4 }) + qfp(r - 236, y, 44, 6, { len: 0.1, w: 5 }, false);
+      g +=
+        qfp(r - 130, y, 50, 8, { len: 8, w: 4 }) +
+        qfp(r - 236, y, 44, 6, { len: 0.1, w: 5 }, false);
       g += crystal(r - 330, y - 14, 60, 26) + crystal(r - 330, y + 22, 46, 22);
-      for (let k = 0; k < 4; k++) g += passive(r - 404 - k * 40, y + (k % 2 ? 12 : -12), k % 2 ? 'res' : 'cap', true, 30, 15);
-      g += tantalum(l + 214, y) + `<rect x="${l + 96}" y="${y - 30}" width="72" height="60" rx="6" fill="url(#sn)"/><rect x="${l + 104}" y="${y - 22}" width="56" height="44" rx="4" stroke="#8a908e" stroke-width="2"/>`;
+      for (let k = 0; k < 4; k++)
+        g += passive(r - 404 - k * 40, y + (k % 2 ? 12 : -12), k % 2 ? 'res' : 'cap', true, 30, 15);
+      g +=
+        tantalum(l + 214, y) +
+        `<rect x="${l + 96}" y="${y - 30}" width="72" height="60" rx="6" fill="url(#sn)"/><rect x="${l + 104}" y="${y - 22}" width="56" height="44" rx="4" stroke="#8a908e" stroke-width="2"/>`;
     } else {
       g += qfp(r - 136, y, 54, 8, { len: 8, w: 4 }) + crystal(r - 252, y, 60, 26);
       g += passive(r - 330, y, 'cap', true, 30, 15) + passive(r - 374, y, 'cap', true, 30, 15);
-      g += led(r - 470, y, 90);
+      g += led(r - 470, y, 46);
     }
   }
   // Between the boards: from the old revision to the new one.
   const mid = 1920 - START - BOARD_W - 28;
   const y = BOARD_TOP + BOARD_H / 2;
-  g += tr([[mid + 22, y], [mid - 14, y]], BARE) + `<path d="M${mid - 2} ${y - 16}L${mid - 20} ${y}L${mid - 2} ${y + 16}" stroke="${GOLD}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  g +=
+    tr(
+      [
+        [mid + 22, y],
+        [mid - 14, y],
+      ],
+      BARE,
+    ) +
+    `<path d="M${mid - 2} ${y - 16}L${mid - 20} ${y}L${mid - 2} ${y + 16}" stroke="${GOLD}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`;
   return svg(1920, 1080, DEFS + g);
 }
 
@@ -1090,12 +1694,14 @@ function panelArt(): string {
       // Tabs to the next board or the rail.
       for (const tx of [x + bw * 0.3, x + bw * 0.7]) {
         g += `<rect x="${f1(tx - 22)}" y="${f1(y - gap - 2)}" width="44" height="${gap + 4}" fill="${PANEL}"/>`;
-        for (let k = 0; k < 5; k++) g += `<circle cx="${f1(tx - 16 + k * 8)}" cy="${f1(y - 2)}" r="2.2" fill="${HOLE}"/>`;
+        for (let k = 0; k < 5; k++)
+          g += `<circle cx="${f1(tx - 16 + k * 8)}" cy="${f1(y - 2)}" r="2.2" fill="${HOLE}"/>`;
       }
       if (r === 2) {
         for (const tx of [x + bw * 0.3, x + bw * 0.7]) {
           g += `<rect x="${f1(tx - 22)}" y="${f1(y + bh - 2)}" width="44" height="${gap + 4}" fill="${PANEL}"/>`;
-          for (let k = 0; k < 5; k++) g += `<circle cx="${f1(tx - 16 + k * 8)}" cy="${f1(y + bh + 2)}" r="2.2" fill="${HOLE}"/>`;
+          for (let k = 0; k < 5; k++)
+            g += `<circle cx="${f1(tx - 16 + k * 8)}" cy="${f1(y + bh + 2)}" r="2.2" fill="${HOLE}"/>`;
         }
       }
       g += `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(bw)}" height="${f1(bh)}" rx="12" fill="#0e4430"/>`;
@@ -1103,18 +1709,56 @@ function panelArt(): string {
       // the LED, all small.
       const cx = x + 150;
       const cy = y + bh / 2 + 4;
-      g += tr([[cx - 46, cy - 20], [x + 40, cy - 20], [x + 26, cy - 34], [x + 26, y + 18]], { ...UNDER, w: 4 });
-      g += tr([[cx + 46, cy + 10], [cx + 100, cy + 10], [cx + 124, cy + 34], [x + bw - 70, cy + 34]], { ...UNDER, w: 4 });
-      g += tr([[cx, cy + 46], [cx, cy + 70], [cx - 20, cy + 90], [x + 40, cy + 90]], { ...UNDER, w: 4 });
-      g += tr([[cx + 20, cy - 46], [cx + 20, y + 30], [cx + 80, y + 30]], { ...UNDER, w: 4 });
+      g += tr(
+        [
+          [cx - 46, cy - 20],
+          [x + 40, cy - 20],
+          [x + 26, cy - 34],
+          [x + 26, y + 18],
+        ],
+        { ...UNDER, w: 4 },
+      );
+      g += tr(
+        [
+          [cx + 46, cy + 10],
+          [cx + 100, cy + 10],
+          [cx + 124, cy + 34],
+          [x + bw - 70, cy + 34],
+        ],
+        { ...UNDER, w: 4 },
+      );
+      g += tr(
+        [
+          [cx, cy + 46],
+          [cx, cy + 70],
+          [cx - 20, cy + 90],
+          [x + 40, cy + 90],
+        ],
+        { ...UNDER, w: 4 },
+      );
+      g += tr(
+        [
+          [cx + 20, cy - 46],
+          [cx + 20, y + 30],
+          [cx + 80, y + 30],
+        ],
+        { ...UNDER, w: 4 },
+      );
       let ant = `M${f1(x + bw - 64)} ${f1(cy + 34)}`;
       for (let k = 0; k < 3; k++) ant += `V${f1(y + 30)}h7V${f1(y + bh - 30)}h7`;
       g += `<path d="${ant}" stroke="${LIGHT}" stroke-opacity=".3" stroke-width="3"/>`;
       g += qfp(cx, cy, 70, 7, { len: 10, w: 5 }, false);
       g += crystal(x + 66, y + 40, 52, 24) + tantalum(x + 70, y + bh - 44);
-      g += passive(cx + 70, cy - 30, 'cap', false, 26, 13) + passive(cx + 70, cy + 54, 'res', false, 26, 13);
+      g +=
+        passive(cx + 70, cy - 30, 'cap', false, 26, 13) +
+        passive(cx + 70, cy + 54, 'res', false, 26, 13);
       g += led(x + bw - 112, y + 34, 54);
-      for (const [hx, hy] of [[x + 14, y + 14], [x + bw - 14, y + 14], [x + 14, y + bh - 14], [x + bw - 14, y + bh - 14]] as const) {
+      for (const [hx, hy] of [
+        [x + 14, y + 14],
+        [x + bw - 14, y + 14],
+        [x + 14, y + bh - 14],
+        [x + bw - 14, y + bh - 14],
+      ] as const) {
         g += `<circle cx="${f1(hx)}" cy="${f1(hy)}" r="6" fill="url(#au)"/><circle cx="${f1(hx)}" cy="${f1(hy)}" r="2.6" fill="${HOLE}"/>`;
       }
       g += brackets(cx - 54, cy - 54, 108, 108, 16, 0.5);
@@ -1124,7 +1768,8 @@ function panelArt(): string {
   for (const y of [rail / 2, h - rail / 2]) {
     g += mountHole(38, y, 0.62) + mountHole(w - 38, y, 0.62);
     g += fiducial(100, y) + fiducial(w - 100, y);
-    for (let x = 160; x < w - 160; x += 40) g += `<rect x="${x}" y="${y - 3}" width="22" height="6" rx="2" fill="${GOLD}" fill-opacity=".55"/>`;
+    for (let x = 160; x < w - 160; x += 40)
+      g += `<rect x="${x}" y="${y - 3}" width="22" height="6" rx="2" fill="${GOLD}" fill-opacity=".55"/>`;
   }
   return svg(w, h, DEFS + g);
 }
@@ -1175,7 +1820,10 @@ function layouts(): Layout[] {
       background: ground(0.6, 0.4),
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START + 44, 400, 960, 135), 'display', { color: token('primary'), vAlign: 'middle' }),
+        place('p_number', 'number', at(START + 44, 400, 960, 135), 'display', {
+          color: token('primary'),
+          vAlign: 'middle',
+        }),
         place('p_label', 'subtitle', at(START, 648, 1000, 53), 'heading'),
         place('p_body', 'body', at(START, 708, 940, 135), 'body'),
         ...STATS.flatMap((top, i) => [
@@ -1186,7 +1834,12 @@ function layouts(): Layout[] {
       ],
       decorations: [
         lettered('d_shvav_big_number_chip', at(0, 0, 1920, 1080), bigNumberArt()),
-        drawing('d_shvav_big_number_kicker_pad', at(START, KICKER + 6, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
+        drawing(
+          'd_shvav_big_number_kicker_pad',
+          at(START, KICKER + 6, 22, 22),
+          svg(22, 22, DEFS + testPoint(11, 11, 10)),
+          PAINT,
+        ),
         ...foot('big_number').decorations,
       ],
     },
@@ -1217,7 +1870,12 @@ function layouts(): Layout[] {
         place('p_body', 'body', at(START, 282, 1080, 618), 'body'),
       ],
       decorations: [
-        drawing('d_shvav_text_title_pad', at(START - 54, 147, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
+        drawing(
+          'd_shvav_text_title_pad',
+          at(START - 54, 147, 22, 22),
+          svg(22, 22, DEFS + testPoint(11, 11, 10)),
+          PAINT,
+        ),
         drawing(
           'd_shvav_text_bus',
           at(0, 0, 1920, 1080),
@@ -1229,15 +1887,35 @@ function layouts(): Layout[] {
                 .map((x, k) => {
                   const y = 920 + k * 16;
                   const e = 1500 + k * 60;
-                  return tr([[x, 846], [x, y - 20], [x + 20, y], [e, y]], { ...UNDER, w: 5 }) + tented(e + 8, y, 7);
+                  return (
+                    tr(
+                      [
+                        [x, 846],
+                        [x, y - 20],
+                        [x + 20, y],
+                        [e, y],
+                      ],
+                      { ...UNDER, w: 5 },
+                    ) + tented(e + 8, y, 7)
+                  );
                 })
                 .join(''),
           ),
           PAINT,
         ),
         lettered('d_shvav_text_module', atEnd(0, 0, 700, 1080), pinoutArt()),
-        drawing('d_shvav_text_fiducial', atEnd(36, 36, 40, 40), svg(40, 40, DEFS + fiducial(20, 20)), PAINT),
-        drawing('d_shvav_text_hole', at(28, 972, 80, 80), svg(80, 80, DEFS + mountHole(40, 40)), PAINT),
+        drawing(
+          'd_shvav_text_fiducial',
+          atEnd(36, 36, 40, 40),
+          svg(40, 40, DEFS + fiducial(20, 20)),
+          PAINT,
+        ),
+        drawing(
+          'd_shvav_text_hole',
+          at(28, 972, 80, 80),
+          svg(80, 80, DEFS + mountHole(40, 40)),
+          PAINT,
+        ),
       ],
     },
     {
@@ -1256,14 +1934,30 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...head('text_image', 900, 2).decorations,
-        lettered('d_shvav_text_image_courtyard', atEnd(END + 24 - 64, 120 - 64, 808, 918), photoFrameArt()),
+        lettered(
+          'd_shvav_text_image_courtyard',
+          atEnd(END + 24 - 64, 120 - 64, 808, 918),
+          photoFrameArt(),
+        ),
         drawing(
           'd_shvav_text_image_net',
           at(START, ROWS[0]!, 48, ROWS[2]! - ROWS[0]! + 48),
-          svg(48, ROWS[2]! - ROWS[0]! + 48, tr([[24, 30], [24, ROWS[2]! - ROWS[0]! + 18]], { ...UNDER, op: 0.34 })),
+          svg(
+            48,
+            ROWS[2]! - ROWS[0]! + 48,
+            tr(
+              [
+                [24, 30],
+                [24, ROWS[2]! - ROWS[0]! + 18],
+              ],
+              { ...UNDER, op: 0.34 },
+            ),
+          ),
           PAINT,
         ),
-        ...ROWS.map((top, i) => numberPad(`d_shvav_text_image_n${i + 1}`, at(START, top + 2, 48, 48), i + 1)),
+        ...ROWS.map((top, i) =>
+          numberPad(`d_shvav_text_image_n${i + 1}`, at(START, top + 2, 48, 48), i + 1),
+        ),
         ...foot('text_image').decorations,
       ],
     },
@@ -1290,23 +1984,48 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...CARDS.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 44, CARD.top + 26, 452, 76), 'caption'),
+          place(
+            `p_card${i + 1}_note`,
+            'caption',
+            at(start + 44, CARD.top + 26, 452, 76),
+            'caption',
+          ),
           place(`p_card${i + 1}`, 'subtitle', at(start + 44, CARD.top + 108, 452, 106), 'heading'),
           place(`p_card${i + 1}_body`, 'body', at(start + 44, CARD.top + 222, 452, 210), 'body'),
         ]),
-        place('p_takeaway', 'body', at(START + 70, 816, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
+        place('p_takeaway', 'body', at(START + 70, 816, WIDTH - 70, 90), 'body', {
+          vAlign: 'middle',
+        }),
         ...foot('cards').placeholders,
       ],
       decorations: [
         ...head('cards').decorations,
         ...CARDS.map((start, i) =>
-          rect(`d_shvav_cards_module${i + 1}`, at(start, CARD.top, CARD.w, CARD.h), solid(token('surface')), {
-            stroke: { color: token('text', 0.14), width: 1.5 },
-            effects: { radius: 12, shadow: { x: 0, y: 14, blur: 30, color: { value: '#01100a', alpha: 0.45 } } },
-          }),
+          rect(
+            `d_shvav_cards_module${i + 1}`,
+            at(start, CARD.top, CARD.w, CARD.h),
+            solid(token('surface')),
+            {
+              stroke: { color: token('text', 0.14), width: 1.5 },
+              effects: {
+                radius: 12,
+                shadow: { x: 0, y: 14, blur: 30, color: { value: '#01100a', alpha: 0.45 } },
+              },
+            },
+          ),
         ),
-        drawing('d_shvav_cards_castellations', at(0, 0, 1920, 1080), svg(1920, 1080, DEFS + cardsArt()), PAINT),
-        drawing('d_shvav_cards_led', at(START - 22, 815, 92, 92), svg(92, 92, DEFS + led(46, 46, 46)), PAINT),
+        drawing(
+          'd_shvav_cards_castellations',
+          at(0, 0, 1920, 1080),
+          svg(1920, 1080, DEFS + cardsArt()),
+          PAINT,
+        ),
+        drawing(
+          'd_shvav_cards_led',
+          at(START - 22, 815, 92, 92),
+          svg(92, 92, DEFS + led(46, 46, 46)),
+          PAINT,
+        ),
         ...foot('cards').decorations,
       ],
     },
@@ -1318,7 +2037,10 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('timeline').placeholders,
         ...COLUMNS.flatMap((start, i) => [
-          place(`p_when${i + 1}`, 'number', at(start, 316, 394, 79), 'title', { vAlign: 'bottom', color: token('primary') }),
+          place(`p_when${i + 1}`, 'number', at(start, 316, 394, 79), 'title', {
+            vAlign: 'bottom',
+            color: token('primary'),
+          }),
           place(`p_what${i + 1}`, 'subtitle', at(start, 542, 360, 96), 'heading'),
           place(`p_what${i + 1}_body`, 'body', at(start, 640, 360, 170), 'caption'),
         ]),
@@ -1340,17 +2062,26 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...STEPS.flatMap((start, i) => [
-          place(`p_step${i + 1}_number`, 'number', at(start, 474, 308, 79), 'title', { color: token('primary') }),
+          place(`p_step${i + 1}_number`, 'number', at(start, 474, 308, 79), 'title', {
+            color: token('primary'),
+          }),
           place(`p_step${i + 1}`, 'subtitle', at(start, 562, 308, 96), 'heading'),
           place(`p_step${i + 1}_body`, 'caption', at(start, 660, 304, 136), 'caption'),
         ]),
-        place('p_summary', 'body', at(START + 70, 836, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
+        place('p_summary', 'body', at(START + 70, 836, WIDTH - 70, 90), 'body', {
+          vAlign: 'middle',
+        }),
         ...foot('process').placeholders,
       ],
       decorations: [
         ...head('process').decorations,
         lettered('d_shvav_process_chain', at(0, 0, 1920, 1080), processArt()),
-        drawing('d_shvav_process_tp', at(START + 2, 859, 44, 44), svg(44, 44, DEFS + goldVia(22, 22, 18)), PAINT),
+        drawing(
+          'd_shvav_process_tp',
+          at(START + 2, 859, 44, 44),
+          svg(44, 44, DEFS + goldVia(22, 22, 18)),
+          PAINT,
+        ),
         ...foot('process').decorations,
       ],
     },
@@ -1362,22 +2093,27 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('comparison').placeholders,
         ...SIDES.flatMap(([side, start]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 60, BOARD_TOP + 126, 680, 34), 'caption'),
-          place(`p_${side}`, 'subtitle', at(start + 60, BOARD_TOP + 166, 708, 106), 'heading'),
-          place(`p_${side}_body`, 'body', at(start + 60, BOARD_TOP + 274, 708, 350), 'body'),
+          place(`p_${side}_tag`, 'caption', at(start + 60, BOARD_TOP + 42, 660, 34), 'caption'),
+          place(`p_${side}`, 'subtitle', at(start + 60, BOARD_TOP + 84, 708, 106), 'heading'),
+          place(`p_${side}_body`, 'body', at(start + 60, BOARD_TOP + 192, 708, 350), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
       decorations: [
         ...head('comparison').decorations,
         ...SIDES.map(([side, start]) =>
-          rect(`d_shvav_comparison_${side}`, at(start, BOARD_TOP, BOARD_W, BOARD_H), solid(token('surface', side === 'after' ? 1 : 0.55)), {
-            stroke:
-              side === 'after'
-                ? { color: token('primary', 0.85), width: 3 }
-                : { color: token('muted', 0.45), width: 2, dash: 'dashed' },
-            effects: { radius: 26 },
-          }),
+          rect(
+            `d_shvav_comparison_${side}`,
+            at(start, BOARD_TOP, BOARD_W, BOARD_H),
+            solid(token('surface', side === 'after' ? 1 : 0.55)),
+            {
+              stroke:
+                side === 'after'
+                  ? { color: token('primary', 0.85), width: 3 }
+                  : { color: token('muted', 0.45), width: 2, dash: 'dashed' },
+              effects: { radius: 26 },
+            },
+          ),
         ),
         drawing('d_shvav_comparison_boards', at(0, 0, 1920, 1080), comparisonArt(), PAINT),
         ...foot('comparison').decorations,
@@ -1391,9 +2127,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('chart').placeholders,
         place('p_chart', 'chart', at(START + 30, 326, 1100, 592)),
-        place('p_stat1', 'number', atEnd(END, 290, 470, 135), 'display', { color: token('primary') }),
+        place('p_stat1', 'number', atEnd(END, 290, 470, 135), 'display', {
+          color: token('primary'),
+        }),
         place('p_stat1_body', 'body', atEnd(END, 428, 470, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END, 590, 470, 135), 'display', { color: token('secondary') }),
+        place('p_stat2', 'number', atEnd(END, 590, 470, 135), 'display', {
+          color: token('secondary'),
+        }),
         place('p_stat2_body', 'body', atEnd(END, 728, 470, 96), 'body'),
         place('p_source', 'caption', atEnd(END, 842, 470, 68), 'caption'),
         ...foot('chart').placeholders,
@@ -1401,7 +2141,10 @@ function layouts(): Layout[] {
       decorations: [
         ...head('chart').decorations,
         rect('d_shvav_chart_bezel_shadow', SCOPE, solid(token('bg')), {
-          effects: { radius: 22, shadow: { x: 0, y: 24, blur: 50, color: { value: '#010a06', alpha: 0.6 } } },
+          effects: {
+            radius: 22,
+            shadow: { x: 0, y: 24, blur: 50, color: { value: '#010a06', alpha: 0.6 } },
+          },
         }),
         lettered('d_shvav_chart_scope', SCOPE, scopeArt()('rtl')),
         rect('d_shvav_chart_divider', atEnd(END, 574, 470, 1.5), solid(token('text', 0.16))),
@@ -1443,7 +2186,11 @@ function layouts(): Layout[] {
       decorations: [
         ...head('team').decorations,
         ...PEOPLE.map((start, i) =>
-          lettered(`d_shvav_team_footprint${i + 1}`, at(start - 34, PORTRAIT.top - 34, 448, 448), footprintArt(i + 1)),
+          lettered(
+            `d_shvav_team_footprint${i + 1}`,
+            at(start - 34, PORTRAIT.top - 34, 448, 448),
+            footprintArt(i + 1),
+          ),
         ),
         ...foot('team').decorations,
       ],
@@ -1457,7 +2204,9 @@ function layouts(): Layout[] {
         place('p_kicker', 'caption', at(START + 44, 190, 760, 34), 'caption'),
         place('p_title', 'title', at(START, 238, 860, 240), 'display'),
         ...LINES.map((top, i) =>
-          place(`p_line${i + 1}`, 'body', at(START + 70, top, 760, 92), 'body', { vAlign: 'middle' }),
+          place(`p_line${i + 1}`, 'body', at(START + 70, top, 760, 92), 'body', {
+            vAlign: 'middle',
+          }),
         ),
         place('p_contact', 'caption', at(START + 44, 892, 760, 34), 'caption'),
       ],
@@ -1469,9 +2218,23 @@ function layouts(): Layout[] {
             220,
             1080,
             DEFS +
-              tr([[81, -10], [81, 197]], { ...UNDER, op: 0.34, w: 5 }) +
+              tr(
+                [
+                  [81, -10],
+                  [81, 197],
+                ],
+                { ...UNDER, op: 0.34, w: 5 },
+              ) +
               testPoint(81, 207, 10) +
-              tr([[70, LINES[0]! + 46], [70, LINES[2]! + 46], [70, 888], [81, 899]], { ...UNDER, op: 0.34 }) +
+              tr(
+                [
+                  [70, LINES[0]! + 46],
+                  [70, LINES[2]! + 46],
+                  [70, 888],
+                  [81, 899],
+                ],
+                { ...UNDER, op: 0.34 },
+              ) +
               testPoint(81, 909, 10) +
               mountHole(156, 1012),
           ),
@@ -1482,14 +2245,27 @@ function layouts(): Layout[] {
           lettered(
             `d_shvav_closing_check${i + 1}`,
             at(START, top + 24, 44, 44),
-            svg(44, 44, DEFS + `<rect x="1" y="1" width="42" height="42" rx="8" fill="url(#au)"/><path d="M12 22.5l7 7 13-14" stroke="${BG}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>`),
+            svg(
+              44,
+              44,
+              DEFS +
+                `<rect x="1" y="1" width="42" height="42" rx="8" fill="url(#au)"/><path d="M12 22.5l7 7 13-14" stroke="${BG}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>`,
+            ),
           ),
         ),
         rect('d_shvav_closing_panel_shadow', atEnd(64, 104, 796, 872), solid(token('bg')), {
-          effects: { radius: 14, shadow: { x: 0, y: 30, blur: 60, color: { value: '#010a06', alpha: 0.6 } } },
+          effects: {
+            radius: 14,
+            shadow: { x: 0, y: 30, blur: 60, color: { value: '#010a06', alpha: 0.6 } },
+          },
         }),
         drawing('d_shvav_closing_panel', atEnd(64, 104, 796, 872), panelArt(), PAINT),
-        drawing('d_shvav_closing_fiducial', atEnd(36, 36, 40, 40), svg(40, 40, DEFS + fiducial(20, 20)), PAINT),
+        drawing(
+          'd_shvav_closing_fiducial',
+          atEnd(36, 36, 40, 40),
+          svg(40, 40, DEFS + fiducial(20, 20)),
+          PAINT,
+        ),
       ],
     },
   ];
@@ -1508,7 +2284,7 @@ function flipped(drawn: readonly Layout[]): Layout[] {
         if (!READABLE.has(decoration.id) || decoration.type !== 'svg') return decoration;
         const { flipH: _flipH, ...rest } = decoration;
         const ltr = READABLE.get(decoration.id);
-        return (ltr ? { ...rest, markup: ltr } : rest) as Element;
+        return ltr ? { ...rest, markup: ltr } : rest;
       }),
     };
   });
@@ -1517,6 +2293,15 @@ function flipped(drawn: readonly Layout[]): Layout[] {
 // ---------------------------------------------------------------------------------------------
 // The sample: a hardware startup's EVT review of a smart water meter that runs ten years on one
 // battery
+
+const pictures = {
+  shvavBoard: picture('shvavBoard'),
+  shvavLine: picture('shvavLine'),
+  shvavTeam1: picture('shvavTeam1'),
+  shvavTeam2: picture('shvavTeam2'),
+  shvavTeam3: picture('shvavTeam3'),
+  shvavTeam4: picture('shvavTeam4'),
+};
 
 const FOOTER_HE = text('Zrima Labs · סקירת EVT של WM-10');
 const FOOTER_EN = text('Zrima Labs · WM-10 EVT review');
@@ -1585,11 +2370,16 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_shvav_cards',
     name: 'שלושה חלקים',
     content: {
-      caption: [text('שלושה חלקים, תקציב אחד'), text('U1 · בקר'), text('U1 · רדיו'), text('U3 · חיישן')],
+      caption: [
+        text('שלושה חלקים, תקציב אחד'),
+        text('U1 · בקר'),
+        text('U1 · רדיו'),
+        text('U3 · חיישן'),
+      ],
       title: text('מי צורך מה'),
       subtitle: [text('בקר שישן עמוק'), text('רדיו פעם ביום'), text('חיישן בלי מגע')],
       body: [
-        text('מתעורר ל-40 מילישניות כל 15 דקות, וחוזר לישון.'),
+        text('מתעורר כל 15 דקות, מודד 40 מילישניות וחוזר לישון.'),
         text('הודעה אחת ביום, 1.2 שניות באוויר.'),
         text('גלי קול, בלי חלקים נעים שנשחקים.'),
         text('יחד: פי מאה פחות מנורית LED דולקת.'),
@@ -1620,7 +2410,12 @@ const sampleHe: SampleSlide[] = [
       caption: [text('הדרך לייצור'), text('כל מעבר שלב מותנה בתקציב ההספק ובאמינות.')],
       title: text('מ-EVT לייצור סדרתי'),
       number: [text('EVT'), text('DVT'), text('PVT'), text('MP')],
-      subtitle: [text('אב־טיפוס הנדסי'), text('אימות התכנון'), text('אימות הייצור'), text('ייצור סדרתי')],
+      subtitle: [
+        text('אב־טיפוס הנדסי'),
+        text('אימות התכנון'),
+        text('אימות הייצור'),
+        text('ייצור סדרתי'),
+      ],
       body: [
         text('ינואר 2027', '60 מונים בשטח'),
         text('אפריל 2027', '200 יחידות למבחני מאמץ'),
@@ -1715,7 +2510,9 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_shvav_quote',
     name: 'מהשטח',
     content: {
-      quote: text('התקנו את המונים בבורות הכי רטובים שמצאנו. אחרי חודשיים, כולם עדיין מדווחים כל בוקר.'),
+      quote: text(
+        'התקנו את המונים בבורות הכי רטובים שמצאנו. אחרי חודשיים, כולם עדיין מדווחים כל בוקר.',
+      ),
       attribution: text('שירה גולן'),
       caption: text('מנהלת תפעול, תאגיד המים של הפיילוט'),
       footer: FOOTER_HE,
@@ -1725,7 +2522,13 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_shvav_team',
     name: 'הצוות',
     content: {
-      caption: [text('הצוות'), text('מנהלת חומרה'), text('RF ואנטנות'), text('קושחה'), text('ייצור')],
+      caption: [
+        text('הצוות'),
+        text('מנהלת חומרה'),
+        text('RF ואנטנות'),
+        text('קושחה'),
+        text('ייצור'),
+      ],
       title: text('מי בנה את הלוח'),
       image: [
         { assetId: pictures.shvavTeam1.id },
@@ -1809,7 +2612,9 @@ const sampleEn: SampleSlide[] = [
       title: text('Where the current goes in rev C'),
       number: [text('24µA'), text('1.8µA'), text('2.6Ah'), text('10.8 yrs')],
       subtitle: text('Average draw over a whole day'),
-      body: text('The meter sleeps most of the time. It wakes every 15 minutes to measure, and transmits once a day.'),
+      body: text(
+        'The meter sleeps most of the time. It wakes every 15 minutes to measure, and transmits once a day.',
+      ),
       footer: FOOTER_EN,
     },
   },
@@ -1817,14 +2622,23 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_shvav_cards',
     name: 'Three parts',
     content: {
-      caption: [text('Three parts, one budget'), text('U1 · MCU'), text('U1 · Radio'), text('U3 · Sensor')],
+      caption: [
+        text('Three parts, one budget'),
+        text('U1 · MCU'),
+        text('U1 · Radio'),
+        text('U3 · Sensor'),
+      ],
       title: text('Who draws what'),
-      subtitle: [text('An MCU that sleeps'), text('A radio, once a day'), text('No-contact sensing')],
+      subtitle: [
+        text('An MCU that sleeps'),
+        text('A radio, once a day'),
+        text('No-contact sensing'),
+      ],
       body: [
-        text('Wakes for 40 ms, then sleeps for 15 minutes.'),
+        text('Wakes for 40 ms, measures, and goes back to sleep.'),
         text('One message a day, 1.2 s on air.'),
         text('Ultrasound, with no parts to wear.'),
-        text('Together: a hundredth of one LED left on.'),
+        text('Together: a hundredth of one lit LED.'),
       ],
       footer: FOOTER_EN,
     },
@@ -1836,7 +2650,11 @@ const sampleEn: SampleSlide[] = [
       caption: text('Rev C up close'),
       title: text('One board,', '38 parts'),
       image: { assetId: pictures.shvavBoard.id },
-      subtitle: [text('MCU and radio in one chip'), text('Four layers, not six'), text('A coat against the damp')],
+      subtitle: [
+        text('MCU and radio in one chip'),
+        text('Four layers, not six'),
+        text('A coat against the damp'),
+      ],
       body: [
         text('The built-in radio saves a chip, two crystals and 9 µA.'),
         text('New routing cut the board cost by 31%, antenna intact.'),
@@ -1849,10 +2667,18 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_shvav_timeline',
     name: 'The road to production',
     content: {
-      caption: [text('The road to production'), text('Each gate depends on the power budget and reliability.')],
+      caption: [
+        text('The road to production'),
+        text('Each gate depends on the power budget and reliability.'),
+      ],
       title: text('From EVT to mass production'),
       number: [text('EVT'), text('DVT'), text('PVT'), text('MP')],
-      subtitle: [text('Engineering build'), text('Design validation'), text('Production validation'), text('Mass production')],
+      subtitle: [
+        text('Engineering build'),
+        text('Design validation'),
+        text('Production validation'),
+        text('Mass production'),
+      ],
       body: [
         text('January 2027', '60 meters in the field'),
         text('April 2027', '200 stress-test units'),
@@ -1889,7 +2715,11 @@ const sampleEn: SampleSlide[] = [
       title: text('Rev B against rev C'),
       subtitle: [text('61 µA on average'), text('24 µA on average')],
       body: [
-        bullets('Six layers and 52 parts', 'An NB-IoT radio on its own chip', '4.1 years of battery'),
+        bullets(
+          'Six layers and 52 parts',
+          'An NB-IoT radio on its own chip',
+          '4.1 years of battery',
+        ),
         bullets('Four layers and 38 parts', 'A LoRa radio inside the MCU', '10.8 years of battery'),
       ],
       footer: FOOTER_EN,
@@ -1915,7 +2745,10 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_shvav_table',
     name: 'Bill of materials',
     content: {
-      caption: [text('Bill of materials'), text('Prices at 10,000 units, from supplier quotes of March 2027.')],
+      caption: [
+        text('Bill of materials'),
+        text('Prices at 10,000 units, from supplier quotes of March 2027.'),
+      ],
       title: text('What one board costs'),
       footer: FOOTER_EN,
     },
@@ -1947,7 +2780,9 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_shvav_quote',
     name: 'From the field',
     content: {
-      quote: text('We put the meters in the wettest pits we could find. Two months on, every one still reports each morning.'),
+      quote: text(
+        'We put the meters in the wettest pits we could find. Two months on, every one still reports each morning.',
+      ),
       attribution: text('Shira Golan'),
       caption: text('Head of operations, the pilot’s water utility'),
       footer: FOOTER_EN,
@@ -1957,7 +2792,13 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_shvav_team',
     name: 'The team',
     content: {
-      caption: [text('The team'), text('Hardware lead'), text('RF & antenna'), text('Firmware'), text('Manufacturing')],
+      caption: [
+        text('The team'),
+        text('Hardware lead'),
+        text('RF & antenna'),
+        text('Firmware'),
+        text('Manufacturing'),
+      ],
       title: text('Who built the board'),
       image: [
         { assetId: pictures.shvavTeam1.id },
@@ -1968,9 +2809,9 @@ const sampleEn: SampleSlide[] = [
       subtitle: [text('Ruti Almog'), text('Yoav Karmi'), text('Michal Segev'), text('Avi Nahum')],
       body: [
         text('Led rev C from schematic to EVT.'),
-        text('Tuned the antenna inside a box full of water.'),
-        text('Wrote firmware that sleeps 99.9% of the time.'),
-        text('Built the test station of the line.'),
+        text('Tuned the antenna underwater.'),
+        text('Firmware that sleeps 99.9%.'),
+        text('Built the line’s test station.'),
       ],
       footer: FOOTER_EN,
     },

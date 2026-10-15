@@ -705,6 +705,134 @@ const NAMES: Words[] = [
   w2('מאיה', 'Maya'),
 ];
 
+/** The text layout's page: the column of the document, and where the rail of its comments begins. */
+const DOC = 1080;
+const RAIL_EDGE = START + 30 + DOC + 36;
+
+/**
+ * The comments beside the document, 504 wide: a thread with its reactions and a reply, a
+ * resolved note, the page's activity and the field for a new comment. Drawn for each direction.
+ */
+function commentRail(dir: Dir): string {
+  const w = 504;
+  const t = (
+    k: number,
+    y: number,
+    size: number,
+    words: Words | string,
+    attrs: string,
+    anchor: 'start' | 'middle' | 'end' = 'start',
+  ) => say(dir, w, k, y, size, words, attrs, anchor);
+  const person = (k: number, cy: number, r: number, color: string, letter: Words) =>
+    `<circle cx="${bx(dir, w, k)}" cy="${cy}" r="${r}" fill="${color}"/>` +
+    `<text x="${bx(dir, w, k)}" y="${cy + r * 0.36}" text-anchor="middle" ${UI} font-size="${r}" font-weight="700" fill="${color === AMBER ? INK : WHITE}">${dir === 'rtl' ? letter.he : letter.en}</text>`;
+  const card = (y: number, h: number) =>
+    `<rect x="1" y="${y}" width="${w - 2}" height="${h}" rx="18" fill="${WHITE}" stroke="${INK}" stroke-opacity=".08" filter="url(#c)"/>`;
+  const chip = (k: number, cw: number, name: Icon, count: string, on: boolean) =>
+    `<rect x="${bx(dir, w, k, cw)}" y="212" width="${cw}" height="36" rx="18" fill="${on ? CORAL : INK}" fill-opacity="${on ? 0.12 : 0.05}" stroke="${on ? CORAL : INK}" stroke-opacity="${on ? 0.45 : 0.08}" stroke-width="1.5"/>` +
+    icon(name, bx(dir, w, k + 12, 18), 221, 18, on ? CORAL : MUTED, 2.1) +
+    (count ? t(k + 38, 236, 16, count, `font-weight="600" fill="${on ? CORAL : MUTED}"`) : '');
+  const activity: [string, Words, string][] = [
+    [MINT, w2('מאיה ערכה את הכותרת', 'Maya edited the title'), '14:02'],
+    [VIOLET, w2('איתן הוסיף תגובה', 'Eitan added a comment'), '13:48'],
+    [CORAL, w2('נועה שיתפה עם 12 אנשים', 'Noa shared with 12 people'), '13:30'],
+  ];
+  return svg(
+    w,
+    820,
+    `<defs><filter id="c" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#3b2414" flood-opacity=".08"/></filter></defs>` +
+      // The heading of the rail: the comments, how many, and a filter.
+      t(0, 26, 20, w2('תגובות', 'Comments'), `font-weight="700" fill="${INK}"`) +
+      `<rect x="${bx(dir, w, dir === 'rtl' ? 78 : 112, 30)}" y="6" width="30" height="26" rx="13" fill="${CORAL}" fill-opacity=".14"/>` +
+      `<text x="${bx(dir, w, (dir === 'rtl' ? 78 : 112) + 15)}" y="24.5" text-anchor="middle" ${UI} font-size="15" font-weight="700" fill="${CORAL}">3</text>` +
+      icon('filter', bx(dir, w, w - 22, 22), 6, 22, MUTED, 2) +
+      // The open thread, marked as the one in view.
+      card(56, 300) +
+      `<rect x="${bx(dir, w, 1, 4)}" y="76" width="4" height="56" rx="2" fill="${CORAL}"/>` +
+      person(44, 100, 20, VIOLET, w2('א', 'E')) +
+      t(76, 96, 18, w2('איתן שגב', 'Eitan Segev'), `font-weight="700" fill="${INK}"`) +
+      t(76, 120, 15, w2('לפני 2 דק׳', '2 min ago'), `fill="${MUTED}"`) +
+      `<circle cx="${bx(dir, w, w - 38)}" cy="100" r="16" stroke="${MINT}" stroke-width="2.2"/>` +
+      icon('check', bx(dir, w, w - 38) - 10, 90, 20, MINT, 2.6) +
+      t(
+        24,
+        164,
+        19,
+        w2('הסדר מצוין. אפשר לשתף עם כל', 'Great order. Ready to share with'),
+        `fill="${INK}"`,
+      ) +
+      t(
+        24,
+        192,
+        19,
+        w2('הצוותים לפני ההדגמה של הערב.', "every team before tonight's demo."),
+        `fill="${INK}"`,
+      ) +
+      chip(24, 74, 'heart', '4', true) +
+      chip(108, 74, 'thumb', '2', false) +
+      chip(192, 44, 'smile', '', false) +
+      `<path d="M${bx(dir, w, 24)} 268H${bx(dir, w, w - 24)}" stroke="${INK}" stroke-opacity=".08"/>` +
+      person(44, 302, 16, CORAL, w2('נ', 'N')) +
+      t(72, 298, 16, w2('נועה ברק', 'Noa Barak'), `font-weight="700" fill="${INK}"`) +
+      t(w - 24, 298, 14, w2('עכשיו', 'now'), `fill="${MUTED}"`, 'end') +
+      t(
+        72,
+        328,
+        18,
+        w2('תודה! משתפים בעוד רגע.', 'Thanks! Sharing it in a minute.'),
+        `fill="${INK}" fill-opacity=".85"`,
+      ) +
+      // A resolved note.
+      card(376, 140) +
+      person(44, 418, 18, MINT, w2('מ', 'M')) +
+      t(74, 425, 17, w2('מאיה כרמי', 'Maya Carmi'), `font-weight="700" fill="${INK}"`) +
+      `<rect x="${bx(dir, w, w - 24 - 84, 84)}" y="405" width="84" height="26" rx="13" fill="${MINT}" fill-opacity=".14"/>` +
+      t(
+        w - 24 - 42,
+        423,
+        14,
+        w2('נפתר', 'Resolved'),
+        `font-weight="700" fill="${MINT}"`,
+        'middle',
+      ) +
+      t(
+        24,
+        482,
+        18,
+        w2('הוספתי קישור להרשמה בסוף העמוד.', 'Added a sign-up link at the end.'),
+        `fill="${MUTED}"`,
+      ) +
+      // What happened on the page.
+      t(
+        0,
+        566,
+        15,
+        w2('פעילות', 'ACTIVITY'),
+        `font-weight="700" letter-spacing="${dir === 'rtl' ? 0 : 1.2}" fill="${MUTED}"`,
+      ) +
+      `<path d="M${bx(dir, w, 6)} 600V680" stroke="${INK}" stroke-opacity=".1" stroke-width="2"/>` +
+      activity
+        .map(
+          ([c, words, time], i) =>
+            `<circle cx="${bx(dir, w, 6)}" cy="${600 + i * 40}" r="6" fill="${c}" stroke="${CANVAS}" stroke-width="3"/>` +
+            t(26, 606 + i * 40, 16, words, `fill="${INK}" fill-opacity=".8"`) +
+            t(w, 606 + i * 40, 14, time, `fill="${MUTED}"`, 'end'),
+        )
+        .join('') +
+      // The field for a new comment.
+      `<rect x="1" y="736" width="${w - 2}" height="52" rx="26" fill="${WHITE}" stroke="${INK}" stroke-opacity=".1"/>` +
+      t(
+        22,
+        768,
+        16,
+        w2('הוספת תגובה, או @ כדי לתייג', 'Add a comment, or @ to mention'),
+        `fill="${MUTED}"`,
+      ) +
+      `<circle cx="${bx(dir, w, w - 28)}" cy="762" r="18" fill="${CORAL}"/>` +
+      icon('send', bx(dir, w, w - 28) - 9, 753, 18, WHITE, 2.6),
+  );
+}
+
 /** Where the opening's command palette starts: at the end side, beside the title. */
 const PALETTE = 1920 - END - 700;
 
@@ -858,7 +986,7 @@ function layouts(): Layout[] {
         }),
         keycap('d_mutzar_hero_cmd', atEnd(130, 18, 230, 230), keyIcon('command'), -9),
         keycap('d_mutzar_hero_k', atEnd(318, 52, 210, 210), keyLetter('K'), 7),
-        cursor('d_mutzar_hero_cursor1', [1920 - 470, 222], VIOLET, NAMES[1]!),
+        cursor('d_mutzar_hero_cursor1', [1920 - 330, 168], VIOLET, NAMES[1]!),
         ...toast(
           'hero',
           atEnd(END + 20, 770, 450, 76),
@@ -1035,14 +1163,14 @@ function layouts(): Layout[] {
       name: 'Text',
       archetype: 'text',
       placeholders: [
-        place('p_title', 'title', at(START + 30, 224, 1400, 136), 'title'),
-        place('p_body', 'body', at(START + 30, 390, WIDTH - 60, 606), 'body'),
+        place('p_title', 'title', at(START + 30, 224, DOC, 136), 'title'),
+        place('p_body', 'body', at(START + 30, 390, DOC, 606), 'body'),
       ],
       decorations: [
         board('text'),
         ...browser('text', at(START - 24, 56, WIDTH + 48, 960), 'zrima.app/docs/launch-night'),
         // The page's cover, and its icon standing on the cover's edge.
-        rect('d_mutzar_text_cover', at(START - 23, 109, WIDTH + 46, 60), {
+        rect('d_mutzar_text_cover', at(START - 23, 109, RAIL_EDGE - (START - 23), 60), {
           kind: 'linear',
           angle: 90,
           stops: [
@@ -1060,7 +1188,22 @@ function layouts(): Layout[] {
           at(START + 42, 148, 48, 48),
           svg(48, 48, icon('page', 4, 4, 40, CORAL, 2)),
         ),
-        rect('d_mutzar_text_rule', at(START + 30, 374, WIDTH - 60, 1), solid(token('text', 0.08))),
+        rect('d_mutzar_text_rule', at(START + 30, 374, DOC, 1), solid(token('text', 0.08))),
+        // The comments of the page, in a rail at the end side: drawn, never written in.
+        rect(
+          'd_mutzar_text_rail',
+          atEnd(END - 23, 109, 1920 - RAIL_EDGE - (END - 23), 906),
+          solid(token('bg', 0.7)),
+          {
+            geometry: {
+              kind: 'path',
+              d: `M0 0H${1920 - RAIL_EDGE - (END - 23)}V906H22Q0 906 0 884Z`,
+              viewBox: { w: 1920 - RAIL_EDGE - (END - 23), h: 906 },
+            },
+          },
+        ),
+        rect('d_mutzar_text_rail_rule', at(RAIL_EDGE, 109, 1, 906), solid(token('text', 0.08))),
+        lettered('d_mutzar_text_comments', atEnd(END + 6, 136, 504, 820), commentRail),
         presence('text', atEnd(END - 24 + 14, 58, 248, 48)),
       ],
     },
@@ -1553,7 +1696,7 @@ function layouts(): Layout[] {
         board('table'),
         ...head('table').decorations,
         presence('table'),
-        ...browser('table', at(START, 264, WIDTH, 680), '', (dir, w) => {
+        ...browser('table', at(START, 264, WIDTH, 676), '', (dir, w) => {
           // The views of the data at the start side, after the lights, and a search at the end.
           const views = [w2('טבלה', 'Table'), w2('לוח', 'Board'), w2('ציר זמן', 'Timeline')];
           return (
@@ -2000,7 +2143,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [text('Launch night · Zrima 2.0'), text('Noa Barak, CEO · Tel Aviv · 8 Dec 2026')],
       title: text('Ops on', 'autopilot'),
-      subtitle: text('Zrima 2.0 connects your ops tools and runs the busywork.'),
+      subtitle: text('Zrima 2.0 connects your ops tools and runs the busywork for you.'),
     },
   },
   {

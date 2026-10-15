@@ -17,7 +17,10 @@ const quadVertex = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4
 export async function renderAccumulated(renderer, scene, camera, options = {}) {
   const { frames = 32, focus, aperture = 0, lights = [], lightRadius = 0, onFrame } = options;
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-  const frame = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: options.samples ?? 0 });
+  const frame = new THREE.WebGLRenderTarget(size.x, size.y, {
+    type: THREE.HalfFloatType,
+    samples: options.samples ?? 0,
+  });
   const sum = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType });
 
   const quadCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -58,11 +61,14 @@ export async function renderAccumulated(renderer, scene, camera, options = {}) {
 
   camera.updateMatrixWorld();
   const base = camera.position.clone();
-  const right = new THREE.Vector3(), up = new THREE.Vector3(), forward = new THREE.Vector3();
+  const right = new THREE.Vector3(),
+    up = new THREE.Vector3(),
+    forward = new THREE.Vector3();
   camera.matrixWorld.extractBasis(right, up, forward);
   forward.negate();
   const focusDistance = focus ? focus.clone().sub(base).dot(forward) : 10;
-  const pxPerUnit = size.y / (2 * focusDistance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  const pxPerUnit =
+    size.y / (2 * focusDistance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
   const lightBase = lights.map((l) => l.position.clone());
 
   const clear = renderer.getClearColor(new THREE.Color());
@@ -72,15 +78,23 @@ export async function renderAccumulated(renderer, scene, camera, options = {}) {
   renderer.setClearColor(0x000000, 0);
   for (let i = 0; i < frames; i++) {
     // a Vogel spiral over the lens, and another, turned, over each light's area
-    const r = Math.sqrt((i + 0.5) / frames), th = i * 2.399963;
-    const dx = r * Math.cos(th) * aperture, dy = r * Math.sin(th) * aperture;
+    const r = Math.sqrt((i + 0.5) / frames),
+      th = i * 2.399963;
+    const dx = r * Math.cos(th) * aperture,
+      dy = r * Math.sin(th) * aperture;
     camera.position.copy(base).addScaledVector(right, dx).addScaledVector(up, dy);
-    const jx = ((i * 0.618034) % 1) - 0.5, jy = ((i * 0.754878) % 1) - 0.5;
+    const jx = ((i * 0.618034) % 1) - 0.5,
+      jy = ((i * 0.754878) % 1) - 0.5;
     camera.setViewOffset(size.x, size.y, -dx * pxPerUnit + jx, dy * pxPerUnit + jy, size.x, size.y);
     camera.updateMatrixWorld();
     lights.forEach((light, n) => {
-      const lr = Math.sqrt(((i * 7 + n * 3) % frames + 0.5) / frames) * lightRadius, lt = i * 2.399963 + n * 1.3;
-      light.position.copy(lightBase[n]).add(new THREE.Vector3(Math.cos(lt) * lr, Math.sin(lt * 1.7) * lr * 0.3, Math.sin(lt) * lr));
+      const lr = Math.sqrt((((i * 7 + n * 3) % frames) + 0.5) / frames) * lightRadius,
+        lt = i * 2.399963 + n * 1.3;
+      light.position
+        .copy(lightBase[n])
+        .add(
+          new THREE.Vector3(Math.cos(lt) * lr, Math.sin(lt * 1.7) * lr * 0.3, Math.sin(lt) * lr),
+        );
     });
     renderer.setRenderTarget(frame);
     renderer.clear();

@@ -23,7 +23,12 @@ import {
 /** The x of a frame drawn on the English slide, and its mirror on the Hebrew one. */
 const X = (lang: Lang, x: number, w: number) => (lang === 'en' ? x : 1920 - x - w);
 /** A frame of the English composition, mirrored for Hebrew. */
-const at = (lang: Lang, x: number, y: number, w: number, h: number): Frame => ({ x: X(lang, x, w), y, w, h });
+const at = (lang: Lang, x: number, y: number, w: number, h: number): Frame => ({
+  x: X(lang, x, w),
+  y,
+  w,
+  h,
+});
 /** Looks in one family, by size, weight and colour. */
 const looks =
   (font: string) =>
@@ -36,7 +41,8 @@ const looks =
   });
 const mono = looks('JetBrains Mono');
 /** The picture, turned round for the Hebrew slide when its composition is mirrored. */
-const flipped = (lang: Lang, image: ImageElement): ImageElement => (lang === 'he' ? { ...image, flipH: true } : image);
+const flipped = (lang: Lang, image: ImageElement): ImageElement =>
+  lang === 'he' ? { ...image, flipH: true } : image;
 /** An SVG drawing; `ltr` keeps its Latin letters in order on a Hebrew slide. */
 const svg = (w: number, h: number, body: string, ltr = false) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"${
@@ -50,7 +56,16 @@ const mirrored = (lang: Lang, w: number, body: string) =>
 function figures(
   lang: Lang,
   items: [value: string, label: string][],
-  o: { x: number; y: number; w: number; gap: number; value: Look; label: Look; rule: string; ruleAlpha?: number },
+  o: {
+    x: number;
+    y: number;
+    w: number;
+    gap: number;
+    value: Look;
+    label: Look;
+    rule: string;
+    ruleAlpha?: number;
+  },
 ): Element[] {
   const out: Element[] = [];
   items.forEach(([value, label], i) => {
@@ -58,7 +73,10 @@ function figures(
     const f = at(lang, x, o.y, o.w, 0);
     const latin = /^[\x20-\x7E×−–°<>·]+$/.test(value);
     out.push(
-      rule([f.x, o.y], [f.x + o.w, o.y], { color: { value: o.rule, ...(o.ruleAlpha !== undefined ? { alpha: o.ruleAlpha } : {}) }, width: 2 }),
+      rule([f.x, o.y], [f.x + o.w, o.y], {
+        color: { value: o.rule, ...(o.ruleAlpha !== undefined ? { alpha: o.ruleAlpha } : {}) },
+        width: 2,
+      }),
       textBox({
         frame: at(lang, x, o.y + 18, o.w, Math.round(o.value.size * 1.25)),
         lines: [value],
@@ -104,7 +122,10 @@ function thermal(lang: Lang): Slide {
     : {
         kicker: 'EMBER T640  ·  THERMAL SEARCH CAMERA',
         title: ['Darkness hides.', 'Heat doesn’t.'],
-        lead: ['A thermal camera for rescue drones. It finds', 'a person under trees or in smoke, 1.2 km away.'],
+        lead: [
+          'A thermal camera for rescue drones. It finds',
+          'a person under trees or in smoke, 1.2 km away.',
+        ],
         figures: [
           ['1.2 km', 'to spot a person'],
           ['640×512', 'thermal pixels'],
@@ -117,7 +138,18 @@ function thermal(lang: Lang): Slide {
   // the reticle round the hiker (English slide), and its reading
   const box = { x: 1282, y: 580, w: 182, h: 290 };
   const corner = (cx: number, cy: number, d: string) =>
-    art(at(lang, cx, cy, 40, 40), svg(40, 40, mirrored(lang, 40, `<path d="${d}" fill="none" stroke="${amber}" stroke-width="4" stroke-linecap="square"/>`)));
+    art(
+      at(lang, cx, cy, 40, 40),
+      svg(
+        40,
+        40,
+        mirrored(
+          lang,
+          40,
+          `<path d="${d}" fill="none" stroke="${amber}" stroke-width="4" stroke-linecap="square"/>`,
+        ),
+      ),
+    );
   const ironbow: [string, number][] = [
     ['#000008', 0],
     ['#1C0554', 0.14],
@@ -131,13 +163,27 @@ function thermal(lang: Lang): Slide {
   const scaleX = 1790;
   return slide({ fill: fill(ink) }, [
     // the picture is drawn a quarter larger than the slide, so the hiker is big enough to find
-    flipped(lang, picture(at(lang, -240, -135, 2400, 1350), 'A hiker found at night in a forest clearing, seen through a thermal camera')),
+    flipped(
+      lang,
+      picture(
+        at(lang, -240, -135, 2400, 1350),
+        'A hiker found at night in a forest clearing, seen through a thermal camera',
+      ),
+    ),
     shape({
       frame: at(lang, 0, 0, 1150, 1080),
       fill: linear(he ? 270 : 90, [ink, 0, 0.96], [ink, 0.52, 0.84], [ink, 1, 0]),
     }),
-    shape({ frame: { x: 0, y: 860, w: 1920, h: 220 }, fill: linear(180, [ink, 0, 0], [ink, 1, 0.55]) }),
-    textBox({ frame: at(lang, 120, 150, 1000, 40), lines: [copy.kicker], look: t(24, 700, amber, he ? undefined : 4), lang }),
+    shape({
+      frame: { x: 0, y: 860, w: 1920, h: 220 },
+      fill: linear(180, [ink, 0, 0], [ink, 1, 0.55]),
+    }),
+    textBox({
+      frame: at(lang, 120, 150, 1000, 40),
+      lines: [copy.kicker],
+      look: t(24, 700, amber, he ? undefined : 4),
+      lang,
+    }),
     textBox({
       frame: at(lang, 120, 204, 1000, 222),
       lines: [copy.title[0]!, [[copy.title[1]!, t(96, 800, amber)]]],
@@ -145,7 +191,13 @@ function thermal(lang: Lang): Slide {
       lang,
       lineHeight: 1.12,
     }),
-    textBox({ frame: at(lang, 120, 456, 900, 92), lines: copy.lead, look: t(30, 400, '#D6CCD9'), lang, lineHeight: 1.45 }),
+    textBox({
+      frame: at(lang, 120, 456, 900, 92),
+      lines: copy.lead,
+      look: t(30, 400, '#D6CCD9'),
+      lang,
+      lineHeight: 1.45,
+    }),
     ...figures(lang, copy.figures, {
       x: 120,
       y: 612,
@@ -162,21 +214,34 @@ function thermal(lang: Lang): Slide {
       round: 0.5,
       label: { text: copy.button, look: t(26, 700, '#1A0D05'), lang },
     }),
-    textBox({ frame: at(lang, 512, 818, 460, 72), lines: [copy.note], look: t(24, 400, '#ADA1B4'), lang }),
+    textBox({
+      frame: at(lang, 512, 818, 460, 72),
+      lines: [copy.note],
+      look: t(24, 400, '#ADA1B4'),
+      lang,
+    }),
     // the find
     corner(box.x, box.y, 'M2 38V2h36'),
     corner(box.x + box.w - 40, box.y, 'M2 2h36v36'),
     corner(box.x, box.y + box.h - 40, 'M2 2v36h36'),
     corner(box.x + box.w - 40, box.y + box.h - 40, 'M38 2v36H2'),
-    rule(
-      [X(lang, box.x + box.w, 0), box.y],
-      [X(lang, box.x + box.w + 44, 0), box.y - 30],
-      { color: { value: amber }, width: 3 },
-    ),
-    shape({ frame: at(lang, box.x + box.w + 44, box.y - 56, 248, 52), fill: fill(amber), round: 0.18 }),
+    rule([X(lang, box.x + box.w, 0), box.y], [X(lang, box.x + box.w + 44, 0), box.y - 30], {
+      color: { value: amber },
+      width: 3,
+    }),
+    shape({
+      frame: at(lang, box.x + box.w + 44, box.y - 56, 248, 52),
+      fill: fill(amber),
+      round: 0.18,
+    }),
     textBox({
       frame: at(lang, box.x + box.w + 44, box.y - 56, 248, 52),
-      lines: [[[copy.found, he ? t(24, 700, '#1A0D05') : mono(24, 700, '#1A0D05')], ['  36.4°C', mono(24, 700, '#1A0D05')]]],
+      lines: [
+        [
+          [copy.found, he ? t(24, 700, '#1A0D05') : mono(24, 700, '#1A0D05')],
+          ['  36.4°C', mono(24, 700, '#1A0D05')],
+        ],
+      ],
       look: mono(24, 700, '#1A0D05'),
       lang,
       align: 'center',
@@ -211,7 +276,8 @@ function thermal(lang: Lang): Slide {
 // seven-element array, machined base) floats over its own reception pattern, whose three nulls
 // point at three jammers. A datasheet column of specs and a button sit on the cool grey ground.
 function antijamPattern(lang: Lang): string {
-  const S = 1060, c = S / 2;
+  const S = 1060,
+    c = S / 2;
   const flip = lang === 'he' ? -1 : 1;
   const pt = (deg: number, r: number) => {
     const a = (deg * Math.PI) / 180;
@@ -220,11 +286,19 @@ function antijamPattern(lang: Lang): string {
   const xy = ([x, y]: readonly [number, number]) => `${x.toFixed(1)},${y.toFixed(1)}`;
   const jammers = [40, 150, 258];
   const parts: string[] = [];
-  for (const r of [240, 340, 440]) parts.push(`<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#C6CED6" stroke-width="1.5"/>`);
-  parts.push(`<circle cx="${c}" cy="${c}" r="510" fill="none" stroke="#C6CED6" stroke-width="1.5" stroke-dasharray="3 7"/>`);
+  for (const r of [240, 340, 440])
+    parts.push(
+      `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#C6CED6" stroke-width="1.5"/>`,
+    );
+  parts.push(
+    `<circle cx="${c}" cy="${c}" r="510" fill="none" stroke="#C6CED6" stroke-width="1.5" stroke-dasharray="3 7"/>`,
+  );
   for (let d = 0; d < 360; d += 5) {
-    const [x1, y1] = pt(d, d % 30 ? 500 : 488), [x2, y2] = pt(d, 510);
-    parts.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#AEB7C0" stroke-width="1.5"/>`);
+    const [x1, y1] = pt(d, d % 30 ? 500 : 488),
+      [x2, y2] = pt(d, 510);
+    parts.push(
+      `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#AEB7C0" stroke-width="1.5"/>`,
+    );
   }
   // what the antenna hears: everything round it, except three narrow wedges aimed at the jammers
   const ring: string[] = [];
@@ -293,13 +367,18 @@ function antijam(lang: Lang): Slide {
         ] as [string, string][],
         button: 'Get the datasheet',
       };
-  const cx = 1390, cy = 545;
+  const cx = 1390,
+    cy = 545;
   const specs: Element[] = [];
   copy.specs.forEach(([value, label], i) => {
-    const x = 120 + (i % 2) * 380, y = 626 + Math.floor(i / 2) * 128;
+    const x = 120 + (i % 2) * 380,
+      y = 626 + Math.floor(i / 2) * 128;
     const latin = /^[\x20-\x7E×−°]+$/.test(value);
     specs.push(
-      rule([X(lang, x, 340), y], [X(lang, x, 340) + 340, y], { color: { value: '#C3CBD3' }, width: 2 }),
+      rule([X(lang, x, 340), y], [X(lang, x, 340) + 340, y], {
+        color: { value: '#C3CBD3' },
+        width: 2,
+      }),
       textBox({
         frame: at(lang, x, y + 14, 340, 58),
         lines: [value],
@@ -307,13 +386,29 @@ function antijam(lang: Lang): Slide {
         lang,
         ...(he && latin ? { dir: 'ltr' as const, align: 'end' as const } : {}),
       }),
-      textBox({ frame: at(lang, x, y + 74, 340, 40), lines: [label], look: t(24, 400, muted), lang }),
+      textBox({
+        frame: at(lang, x, y + 74, 340, 40),
+        lines: [label],
+        look: t(24, 400, muted),
+        lang,
+      }),
     );
   });
   return slide({ fill: radial(he ? 0.28 : 0.72, 0.5, ['#FAFBFC', 0], ['#E4E8EC', 0.78]) }, [
     art(at(lang, cx - 530, cy - 530, 1060, 1060), antijamPattern(lang), 'Reception pattern'),
-    flipped(lang, picture(at(lang, 1020, 216, 740, 760), 'An anti-jam GNSS antenna in an exploded view: radome, seven-element array and base')),
-    textBox({ frame: at(lang, 120, 156, 760, 40), lines: [copy.kicker], look: t(24, 700, rust, he ? undefined : 3), lang }),
+    flipped(
+      lang,
+      picture(
+        at(lang, 1020, 216, 740, 760),
+        'An anti-jam GNSS antenna in an exploded view: radome, seven-element array and base',
+      ),
+    ),
+    textBox({
+      frame: at(lang, 120, 156, 760, 40),
+      lines: [copy.kicker],
+      look: t(24, 700, rust, he ? undefined : 3),
+      lang,
+    }),
     textBox({
       frame: at(lang, 120, 208, 800, 196),
       lines: [copy.title[0]!, [[copy.title[1]!, t(84, 700, orange)]]],
@@ -321,7 +416,13 @@ function antijam(lang: Lang): Slide {
       lang,
       lineHeight: 1.12,
     }),
-    textBox({ frame: at(lang, 120, 428, 780, 136), lines: copy.lead, look: t(30, 400, body), lang, lineHeight: 1.45 }),
+    textBox({
+      frame: at(lang, 120, 428, 780, 136),
+      lines: copy.lead,
+      look: t(30, 400, body),
+      lang,
+      lineHeight: 1.45,
+    }),
     ...specs,
     shape({
       frame: at(lang, 120, 906, 330, 70),
@@ -347,7 +448,11 @@ function meshradio(lang: Lang): Slide {
     ? {
         kicker: 'MESHLINK R4  ·  רשת קשר לצוותי חילוץ',
         title: ['כל מכשיר', 'הוא ממסר.'],
-        lead: ['כשאנטנות הסלולר קורסות, מכשירי הצוות', 'מתחברים זה לזה ומעבירים כל שיחה', 'מעל הרכס, ממכשיר למכשיר.'],
+        lead: [
+          'כשאנטנות הסלולר קורסות, מכשירי הצוות',
+          'מתחברים זה לזה ומעבירים כל שיחה',
+          'מעל הרכס, ממכשיר למכשיר.',
+        ],
         figures: [
           ['64', 'מכשירים ברשת'],
           ['12 km', 'בין שני מכשירים'],
@@ -360,7 +465,11 @@ function meshradio(lang: Lang): Slide {
     : {
         kicker: 'MESHLINK R4  ·  RESCUE MESH RADIO',
         title: ['Every radio', 'is a tower.'],
-        lead: ['When cell towers are down, the team’s', 'radios link up on their own and pass', 'every call over the ridge.'],
+        lead: [
+          'When cell towers are down, the team’s',
+          'radios link up on their own and pass',
+          'every call over the ridge.',
+        ],
         figures: [
           ['64', 'radios per mesh'],
           ['12 km', 'between radios'],
@@ -382,11 +491,22 @@ function meshradio(lang: Lang): Slide {
     textBox({ frame: at(lang, x + 38, y, w - 52, 46), lines: [text], look: t(24, 600, ink), lang }),
   ];
   return slide({ fill: linear(180, ['#F6F3EC', 0], ['#ECE7DC', 1]) }, [
-    flipped(lang, picture(at(lang, 40, 170, 1100, 767), 'A relief model of a ridge and two valleys with a mesh of rescue radios linked over it')),
+    flipped(
+      lang,
+      picture(
+        at(lang, 40, 170, 1100, 767),
+        'A relief model of a ridge and two valleys with a mesh of rescue radios linked over it',
+      ),
+    ),
     ...tag(636, 576, 196, copy.tags[0]!),
     ...tag(580, 184, 210, copy.tags[1]!),
     ...tag(770, 338, 322, copy.tags[2]!),
-    textBox({ frame: at(lang, 1200, 196, 620, 40), lines: [copy.kicker], look: t(24, 700, cobalt, he ? undefined : 3), lang }),
+    textBox({
+      frame: at(lang, 1200, 196, 620, 40),
+      lines: [copy.kicker],
+      look: t(24, 700, cobalt, he ? undefined : 3),
+      lang,
+    }),
     textBox({
       frame: at(lang, 1200, 244, 620, 224),
       lines: [copy.title[0]!, [[copy.title[1]!, t(92, 700, cobalt)]]],
@@ -394,7 +514,13 @@ function meshradio(lang: Lang): Slide {
       lang,
       lineHeight: 1.12,
     }),
-    textBox({ frame: at(lang, 1200, 484, 620, 136), lines: copy.lead, look: t(30, 400, body), lang, lineHeight: 1.45 }),
+    textBox({
+      frame: at(lang, 1200, 484, 620, 136),
+      lines: copy.lead,
+      look: t(30, 400, body),
+      lang,
+      lineHeight: 1.45,
+    }),
     ...figures(lang, copy.figures, {
       x: 1200,
       y: 664,
@@ -410,7 +536,12 @@ function meshradio(lang: Lang): Slide {
       round: 0.5,
       label: { text: copy.button, look: t(26, 700, '#FFFFFF'), lang },
     }),
-    textBox({ frame: at(lang, 1530, 867, 290, 70), lines: [copy.note], look: t(24, 400, muted), lang }),
+    textBox({
+      frame: at(lang, 1530, 867, 290, 70),
+      lines: [copy.note],
+      look: t(24, 400, muted),
+      lang,
+    }),
   ]);
 }
 
@@ -427,30 +558,72 @@ function cyberrange(lang: Lang): Slide {
   const muted = '#A9ADBF';
   const title: Line[] = he
     ? [
-        [['תוקפים', t(88, 800, red)], [' עיר.', t(88, 800, white)]],
-        [['ולומדים ', t(88, 800, white)], ['להגן', t(88, 800, blue)], [' עליה.', t(88, 800, white)]],
+        [
+          ['תוקפים', t(88, 800, red)],
+          [' עיר.', t(88, 800, white)],
+        ],
+        [
+          ['ולומדים ', t(88, 800, white)],
+          ['להגן', t(88, 800, blue)],
+          [' עליה.', t(88, 800, white)],
+        ],
       ]
     : [
-        [['Attack', t(88, 700, red)], [' a city.', t(88, 700, white)]],
-        [['Learn to ', t(88, 700, white)], ['defend', t(88, 700, blue)], [' one.', t(88, 700, white)]],
+        [
+          ['Attack', t(88, 700, red)],
+          [' a city.', t(88, 700, white)],
+        ],
+        [
+          ['Learn to ', t(88, 700, white)],
+          ['defend', t(88, 700, blue)],
+          [' one.', t(88, 700, white)],
+        ],
       ];
   const kicker: Line[] = he
-    ? [[['RANGE 27  ·  ', t(24, 700, muted)], ['צוות אדום', t(24, 700, red)], ['  מול  ', t(24, 700, muted)], ['צוות כחול', t(24, 700, blue)]]]
-    : [[['RANGE 27  ·  ', t(24, 700, muted, 4)], ['RED TEAM', t(24, 700, red, 4)], ['  VS  ', t(24, 700, muted, 4)], ['BLUE TEAM', t(24, 700, blue, 4)]]];
+    ? [
+        [
+          ['RANGE 27  ·  ', t(24, 700, muted)],
+          ['צוות אדום', t(24, 700, red)],
+          ['  מול  ', t(24, 700, muted)],
+          ['צוות כחול', t(24, 700, blue)],
+        ],
+      ]
+    : [
+        [
+          ['RANGE 27  ·  ', t(24, 700, muted, 4)],
+          ['RED TEAM', t(24, 700, red, 4)],
+          ['  VS  ', t(24, 700, muted, 4)],
+          ['BLUE TEAM', t(24, 700, blue, 4)],
+        ],
+      ];
   const copy = he
     ? {
-        lead: ['48 שעות על העתק מלא של רשתות המים והחשמל של עיר.', 'חמישה מגינים בכל צוות, מול צוות אדום שלא ישן.'],
+        lead: [
+          '48 שעות על העתק מלא של רשתות המים והחשמל של עיר.',
+          'חמישה מגינים בכל צוות, מול צוות אדום שלא ישן.',
+        ],
         when: '10-11.3.2027  ·  באר שבע', // a hyphen keeps the range in order inside right-to-left text
         button: 'לרישום צוות',
       }
     : {
-        lead: ['48 hours on a full replica of a city’s water and power networks.', 'Five defenders a team, against a red team that never sleeps.'],
+        lead: [
+          '48 hours on a full replica of a city’s water and power networks.',
+          'Five defenders a team, against a red team that never sleeps.',
+        ],
         when: '10–11.3.2027  ·  Beersheba',
         button: 'Register a team',
       };
   return slide({ fill: fill('#0D0E12') }, [
-    shape({ frame: { x: -260, y: 300, w: 1200, h: 980 }, fill: radial(0.5, 0.5, ['#FF3B3B', 0, 0.2], ['#FF3B3B', 0.7, 0]), preset: 'ellipse' }),
-    shape({ frame: { x: 980, y: 300, w: 1200, h: 980 }, fill: radial(0.5, 0.5, ['#3D7BFF', 0, 0.22], ['#3D7BFF', 0.7, 0]), preset: 'ellipse' }),
+    shape({
+      frame: { x: -260, y: 300, w: 1200, h: 980 },
+      fill: radial(0.5, 0.5, ['#FF3B3B', 0, 0.2], ['#FF3B3B', 0.7, 0]),
+      preset: 'ellipse',
+    }),
+    shape({
+      frame: { x: 980, y: 300, w: 1200, h: 980 },
+      fill: radial(0.5, 0.5, ['#3D7BFF', 0, 0.22], ['#3D7BFF', 0.7, 0]),
+      preset: 'ellipse',
+    }),
     art(
       { x: 0, y: 0, w: 1920, h: 560 },
       svg(
@@ -460,11 +633,40 @@ function cyberrange(lang: Lang): Slide {
       ),
       'Dot grid',
     ),
-    picture({ x: 180, y: 548, w: 1560, h: 640 }, 'The console of a red team and blue team exercise on a replica of a city’s networks'),
-    textBox({ frame: { x: 260, y: 88, w: 1400, h: 40 }, lines: kicker, look: t(24, 700, muted), lang, align: 'center' }),
-    textBox({ frame: { x: 160, y: 126, w: 1600, h: 228 }, lines: title, look: t(88, 700, white), lang, align: 'center', lineHeight: 1.1 }),
-    textBox({ frame: { x: 260, y: 356, w: 1400, h: 92 }, lines: copy.lead, look: t(28, 400, muted), lang, align: 'center', lineHeight: 1.45 }),
-    textBox({ frame: at(lang, 500, 466, 440, 64), lines: [copy.when], look: t(28, 600, white), lang, align: 'end' }),
+    picture(
+      { x: 180, y: 548, w: 1560, h: 640 },
+      'The console of a red team and blue team exercise on a replica of a city’s networks',
+    ),
+    textBox({
+      frame: { x: 260, y: 88, w: 1400, h: 40 },
+      lines: kicker,
+      look: t(24, 700, muted),
+      lang,
+      align: 'center',
+    }),
+    textBox({
+      frame: { x: 160, y: 126, w: 1600, h: 228 },
+      lines: title,
+      look: t(88, 700, white),
+      lang,
+      align: 'center',
+      lineHeight: 1.1,
+    }),
+    textBox({
+      frame: { x: 260, y: 356, w: 1400, h: 92 },
+      lines: copy.lead,
+      look: t(28, 400, muted),
+      lang,
+      align: 'center',
+      lineHeight: 1.45,
+    }),
+    textBox({
+      frame: at(lang, 500, 466, 440, 64),
+      lines: [copy.when],
+      look: t(28, 600, white),
+      lang,
+      align: 'end',
+    }),
     shape({
       frame: at(lang, 980, 466, 300, 64),
       fill: fill(white),
@@ -487,7 +689,10 @@ function simtraining(lang: Lang): Slide {
     ? {
         kicker: 'SKYRIG H6  ·  סימולטור טיסה בתנועה מלאה',
         title: ['טסים בסערה.', 'נשארים על הקרקע.'],
-        lead: ['תא טייס על במת תנועה לצוותי מסוקי חילוץ:', 'חילוץ בכננה בלילה, חילוץ מהים ותקלת מנוע.'],
+        lead: [
+          'תא טייס על במת תנועה לצוותי מסוקי חילוץ:',
+          'חילוץ בכננה בלילה, חילוץ מהים ותקלת מנוע.',
+        ],
         figures: [
           ['6 DOF', 'תנועה מלאה'],
           ['220°', 'שדה ראייה'],
@@ -499,7 +704,10 @@ function simtraining(lang: Lang): Slide {
     : {
         kicker: 'SKYRIG H6  ·  FULL-MOTION SIMULATOR',
         title: ['Fly the storm.', 'Stay grounded.'],
-        lead: ['A full-motion cockpit for rescue helicopter crews:', 'night hoists, sea rescues and engine failures.'],
+        lead: [
+          'A full-motion cockpit for rescue helicopter crews:',
+          'night hoists, sea rescues and engine failures.',
+        ],
         figures: [
           ['6 DOF', 'full motion'],
           ['220°', 'field of view'],
@@ -509,13 +717,40 @@ function simtraining(lang: Lang): Slide {
         note: 'Haifa training centre, from February 2027',
       };
   return slide(
-    { fill: radial(he ? 0.28 : 0.72, 0.76, ['#F6AA70', 0], ['#C8605C', 0.2], ['#5A3758', 0.44], ['#211B37', 0.9]) },
+    {
+      fill: radial(
+        he ? 0.28 : 0.72,
+        0.76,
+        ['#F6AA70', 0],
+        ['#C8605C', 0.2],
+        ['#5A3758', 0.44],
+        ['#211B37', 0.9],
+      ),
+    },
     [
-      shape({ frame: { x: 0, y: 768, w: 1920, h: 312 }, fill: linear(180, ['#3A2734', 0], ['#140F17', 1]) }),
-      shape({ frame: at(lang, 780, 700, 1200, 330), fill: radial(0.5, 0.42, ['#F2A06C', 0, 0.28], ['#F2A06C', 0.62, 0]), preset: 'ellipse' }),
+      shape({
+        frame: { x: 0, y: 768, w: 1920, h: 312 },
+        fill: linear(180, ['#3A2734', 0], ['#140F17', 1]),
+      }),
+      shape({
+        frame: at(lang, 780, 700, 1200, 330),
+        fill: radial(0.5, 0.42, ['#F2A06C', 0, 0.28], ['#F2A06C', 0.62, 0]),
+        preset: 'ellipse',
+      }),
       rule([0, 768], [1920, 768], { color: { value: '#F4B183', alpha: 0.45 }, width: 2 }),
-      flipped(lang, picture(at(lang, 880, 300, 1000, 649), 'A full-motion flight simulator: a white cockpit pod on a six-actuator motion platform')),
-      textBox({ frame: at(lang, 120, 150, 760, 40), lines: [copy.kicker], look: t(24, 700, peach, he ? undefined : 3), lang }),
+      flipped(
+        lang,
+        picture(
+          at(lang, 880, 300, 1000, 649),
+          'A full-motion flight simulator: a white cockpit pod on a six-actuator motion platform',
+        ),
+      ),
+      textBox({
+        frame: at(lang, 120, 150, 760, 40),
+        lines: [copy.kicker],
+        look: t(24, 700, peach, he ? undefined : 3),
+        lang,
+      }),
       textBox({
         frame: at(lang, 120, 190, 860, 252),
         lines: [copy.title[0]!, [[copy.title[1]!, d(he ? 96 : 104, he ? 700 : 400, peach)]]],
@@ -523,7 +758,13 @@ function simtraining(lang: Lang): Slide {
         lang,
         lineHeight: 1.08,
       }),
-      textBox({ frame: at(lang, 120, 458, 820, 92), lines: copy.lead, look: t(30, 400, '#EBDCE3'), lang, lineHeight: 1.45 }),
+      textBox({
+        frame: at(lang, 120, 458, 820, 92),
+        lines: copy.lead,
+        look: t(30, 400, '#EBDCE3'),
+        lang,
+        lineHeight: 1.45,
+      }),
       ...figures(lang, copy.figures, {
         x: 120,
         y: 598,
@@ -540,7 +781,12 @@ function simtraining(lang: Lang): Slide {
         round: 0.5,
         label: { text: copy.button, look: t(26, 700, '#2A1622'), lang },
       }),
-      textBox({ frame: at(lang, 120, 930, 760, 40), lines: [copy.note], look: t(24, 400, '#C9B3C0'), lang }),
+      textBox({
+        frame: at(lang, 120, 930, 760, 40),
+        lines: [copy.note],
+        look: t(24, 400, '#C9B3C0'),
+        lang,
+      }),
     ],
   );
 }

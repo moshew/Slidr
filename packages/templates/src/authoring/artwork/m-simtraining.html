@@ -1,218 +1,370 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8" />
-<!-- m-simtraining: a full-motion flight simulator for rescue helicopter crews, a white cockpit pod
+  <head>
+    <meta charset="utf-8" />
+    <!-- m-simtraining: a full-motion flight simulator for rescue helicopter crews, a white cockpit pod
      on a six-actuator motion platform, lit warm from the front like a hangar at dusk.
      Transparent ground with a soft shadow. Render: node render-art.mjs m-simtraining.html out.png 1300 900 2 -->
-<link rel="stylesheet" href="fonts.css" />
-<style>html, body { margin: 0; background: transparent; overflow: hidden; } canvas { display: block; }</style>
-<script>document.documentElement.dataset.wait = 'true';</script>
-<script type="importmap">{"imports": {
-  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
-  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
-}}</script>
-</head>
-<body>
-<script type="module">
-import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+    <link rel="stylesheet" href="fonts.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: transparent;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+          "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import * as THREE from 'three';
+      import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+      import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-const W = innerWidth, H = innerHeight;
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(devicePixelRatio);
-renderer.setSize(W, H);
-renderer.setClearColor(0x000000, 0);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.VSMShadowMap;
-document.body.appendChild(renderer.domElement);
+      const W = innerWidth,
+        H = innerHeight;
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+      });
+      renderer.setPixelRatio(devicePixelRatio);
+      renderer.setSize(W, H);
+      renderer.setClearColor(0x000000, 0);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.VSMShadowMap;
+      document.body.appendChild(renderer.domElement);
 
-const scene = new THREE.Scene();
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.75;
+      const scene = new THREE.Scene();
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environmentIntensity = 0.75;
 
-const key = new THREE.DirectionalLight(0xffd2a8, 2.6); // low warm light from the hangar door
-key.position.set(-8, 12, 9);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-Object.assign(key.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 40 });
-key.shadow.radius = 10; key.shadow.blurSamples = 20; key.shadow.bias = -0.0004;
-scene.add(key);
-const top = new THREE.DirectionalLight(0xffffff, 1.0);
-top.position.set(2, 12, 2);
-top.castShadow = true;
-top.shadow.mapSize.set(2048, 2048);
-Object.assign(top.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 0.5, far: 30 });
-top.shadow.radius = 18; top.shadow.blurSamples = 25; top.shadow.bias = -0.0004;
-scene.add(top);
-const rim = new THREE.DirectionalLight(0x9db8ff, 1.6); // cool rim from behind
-rim.position.set(8, 5, -8);
-scene.add(rim);
+      const key = new THREE.DirectionalLight(0xffd2a8, 2.6); // low warm light from the hangar door
+      key.position.set(-8, 12, 9);
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      Object.assign(key.shadow.camera, {
+        left: -8,
+        right: 8,
+        top: 8,
+        bottom: -8,
+        near: 0.5,
+        far: 40,
+      });
+      key.shadow.radius = 10;
+      key.shadow.blurSamples = 20;
+      key.shadow.bias = -0.0004;
+      scene.add(key);
+      const top = new THREE.DirectionalLight(0xffffff, 1.0);
+      top.position.set(2, 12, 2);
+      top.castShadow = true;
+      top.shadow.mapSize.set(2048, 2048);
+      Object.assign(top.shadow.camera, {
+        left: -6,
+        right: 6,
+        top: 6,
+        bottom: -6,
+        near: 0.5,
+        far: 30,
+      });
+      top.shadow.radius = 18;
+      top.shadow.blurSamples = 25;
+      top.shadow.bias = -0.0004;
+      scene.add(top);
+      const rim = new THREE.DirectionalLight(0x9db8ff, 1.6); // cool rim from behind
+      rim.position.set(8, 5, -8);
+      scene.add(rim);
 
-// ---- materials -------------------------------------------------------------------------------
-const paint = new THREE.MeshPhysicalMaterial({ color: 0xf1efea, metalness: 0, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.12 });
-const graphite = new THREE.MeshPhysicalMaterial({ color: 0x2a2d31, metalness: 0.5, roughness: 0.45, clearcoat: 0.3 });
-const steel = new THREE.MeshPhysicalMaterial({ color: 0x4a4f56, metalness: 0.8, roughness: 0.4 });
-const chrome = new THREE.MeshPhysicalMaterial({ color: 0xe8eaec, metalness: 1, roughness: 0.08 });
-const accent = new THREE.MeshPhysicalMaterial({ color: 0xff7a1a, metalness: 0, roughness: 0.35, clearcoat: 0.6 });
-const glass = new THREE.MeshPhysicalMaterial({ color: 0x0b1118, metalness: 0.2, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
-const rubber = new THREE.MeshPhysicalMaterial({ color: 0x17181a, metalness: 0, roughness: 0.85 });
+      // ---- materials -------------------------------------------------------------------------------
+      const paint = new THREE.MeshPhysicalMaterial({
+        color: 0xf1efea,
+        metalness: 0,
+        roughness: 0.32,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.12,
+      });
+      const graphite = new THREE.MeshPhysicalMaterial({
+        color: 0x2a2d31,
+        metalness: 0.5,
+        roughness: 0.45,
+        clearcoat: 0.3,
+      });
+      const steel = new THREE.MeshPhysicalMaterial({
+        color: 0x4a4f56,
+        metalness: 0.8,
+        roughness: 0.4,
+      });
+      const chrome = new THREE.MeshPhysicalMaterial({
+        color: 0xe8eaec,
+        metalness: 1,
+        roughness: 0.08,
+      });
+      const accent = new THREE.MeshPhysicalMaterial({
+        color: 0xff7a1a,
+        metalness: 0,
+        roughness: 0.35,
+        clearcoat: 0.6,
+      });
+      const glass = new THREE.MeshPhysicalMaterial({
+        color: 0x0b1118,
+        metalness: 0.2,
+        roughness: 0.05,
+        clearcoat: 1,
+        clearcoatRoughness: 0.02,
+        envMapIntensity: 1.6,
+      });
+      const rubber = new THREE.MeshPhysicalMaterial({
+        color: 0x17181a,
+        metalness: 0,
+        roughness: 0.85,
+      });
 
-const add = (g, m, parent = scene) => { const o = new THREE.Mesh(g, m); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o; };
+      const add = (g, m, parent = scene) => {
+        const o = new THREE.Mesh(g, m);
+        o.castShadow = true;
+        o.receiveShadow = true;
+        parent.add(o);
+        return o;
+      };
 
-// ---- the base frame on the floor -----------------------------------------------------------------
-const R_LOW = 2.55, R_UP = 1.75, Z_UP = 1.75;
-{
-  const hex = new THREE.CylinderGeometry(2.95, 3.05, 0.16, 6);
-  add(hex, graphite).position.y = 0.08;
-  const lip = new THREE.CylinderGeometry(2.62, 2.62, 0.04, 6);
-  const l = add(lip, steel); l.position.y = 0.18;
-}
-// joint positions: pairs on the floor, pairs under the platform, crossing as on a Stewart platform
-const low = [], up = [];
-for (let i = 0; i < 3; i++) {
-  const a = (i / 3) * Math.PI * 2 + Math.PI / 2;
-  for (const s of [-1, 1]) low.push(new THREE.Vector3(Math.cos(a + s * 0.2) * R_LOW, 0.32, Math.sin(a + s * 0.2) * R_LOW));
-}
-for (let i = 0; i < 3; i++) {
-  const a = (i / 3) * Math.PI * 2 + Math.PI / 2 + Math.PI / 3;
-  for (const s of [-1, 1]) up.push(new THREE.Vector3(Math.cos(a + s * 0.3) * R_UP, Z_UP, Math.sin(a + s * 0.3) * R_UP));
-}
-// pair each floor joint with the nearest platform joint of the neighbouring pair
-const pairs = [[0, 5], [1, 2], [2, 1], [3, 4], [4, 3], [5, 0]];
-const order = [5, 0, 1, 2, 3, 4];
-for (let i = 0; i < 6; i++) {
-  const a = low[i], b = up[order[i]];
-  // floor clevis
-  const clevis = add(new RoundedBoxGeometry(0.42, 0.24, 0.42, 3, 0.05), steel); clevis.position.set(a.x, 0.26, a.z);
-  add(new THREE.SphereGeometry(0.15, 32, 24), chrome).position.copy(a);
-  add(new THREE.SphereGeometry(0.13, 32, 24), chrome).position.copy(b);
-  const dir = b.clone().sub(a); const len = dir.length(); dir.normalize();
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-  const body = 0.58 * len, rod = 0.5 * len;
-  const cyl = add(new THREE.CylinderGeometry(0.15, 0.15, body, 40), paint);
-  cyl.quaternion.copy(q); cyl.position.copy(a.clone().add(dir.clone().multiplyScalar(0.12 + body / 2)));
-  const cap = add(new THREE.CylinderGeometry(0.165, 0.165, 0.09, 40), graphite);
-  cap.quaternion.copy(q); cap.position.copy(a.clone().add(dir.clone().multiplyScalar(0.12 + body)));
-  const band = add(new THREE.CylinderGeometry(0.155, 0.155, 0.07, 40), accent);
-  band.quaternion.copy(q); band.position.copy(a.clone().add(dir.clone().multiplyScalar(0.12 + body * 0.82)));
-  const r = add(new THREE.CylinderGeometry(0.07, 0.07, rod, 32), chrome);
-  r.quaternion.copy(q); r.position.copy(b.clone().sub(dir.clone().multiplyScalar(0.1 + rod / 2)));
-}
+      // ---- the base frame on the floor -----------------------------------------------------------------
+      const R_LOW = 2.55,
+        R_UP = 1.75,
+        Z_UP = 1.75;
+      {
+        const hex = new THREE.CylinderGeometry(2.95, 3.05, 0.16, 6);
+        add(hex, graphite).position.y = 0.08;
+        const lip = new THREE.CylinderGeometry(2.62, 2.62, 0.04, 6);
+        const l = add(lip, steel);
+        l.position.y = 0.18;
+      }
+      // joint positions: pairs on the floor, pairs under the platform, crossing as on a Stewart platform
+      const low = [],
+        up = [];
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + Math.PI / 2;
+        for (const s of [-1, 1])
+          low.push(
+            new THREE.Vector3(Math.cos(a + s * 0.2) * R_LOW, 0.32, Math.sin(a + s * 0.2) * R_LOW),
+          );
+      }
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + Math.PI / 2 + Math.PI / 3;
+        for (const s of [-1, 1])
+          up.push(
+            new THREE.Vector3(Math.cos(a + s * 0.3) * R_UP, Z_UP, Math.sin(a + s * 0.3) * R_UP),
+          );
+      }
+      // pair each floor joint with the nearest platform joint of the neighbouring pair
+      const pairs = [
+        [0, 5],
+        [1, 2],
+        [2, 1],
+        [3, 4],
+        [4, 3],
+        [5, 0],
+      ];
+      const order = [5, 0, 1, 2, 3, 4];
+      for (let i = 0; i < 6; i++) {
+        const a = low[i],
+          b = up[order[i]];
+        // floor clevis
+        const clevis = add(new RoundedBoxGeometry(0.42, 0.24, 0.42, 3, 0.05), steel);
+        clevis.position.set(a.x, 0.26, a.z);
+        add(new THREE.SphereGeometry(0.15, 32, 24), chrome).position.copy(a);
+        add(new THREE.SphereGeometry(0.13, 32, 24), chrome).position.copy(b);
+        const dir = b.clone().sub(a);
+        const len = dir.length();
+        dir.normalize();
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        const body = 0.58 * len,
+          rod = 0.5 * len;
+        const cyl = add(new THREE.CylinderGeometry(0.15, 0.15, body, 40), paint);
+        cyl.quaternion.copy(q);
+        cyl.position.copy(a.clone().add(dir.clone().multiplyScalar(0.12 + body / 2)));
+        const cap = add(new THREE.CylinderGeometry(0.165, 0.165, 0.09, 40), graphite);
+        cap.quaternion.copy(q);
+        cap.position.copy(a.clone().add(dir.clone().multiplyScalar(0.12 + body)));
+        const band = add(new THREE.CylinderGeometry(0.155, 0.155, 0.07, 40), accent);
+        band.quaternion.copy(q);
+        band.position.copy(a.clone().add(dir.clone().multiplyScalar(0.12 + body * 0.82)));
+        const r = add(new THREE.CylinderGeometry(0.07, 0.07, rod, 32), chrome);
+        r.quaternion.copy(q);
+        r.position.copy(b.clone().sub(dir.clone().multiplyScalar(0.1 + rod / 2)));
+      }
 
-// ---- the moving platform -------------------------------------------------------------------------
-{
-  const plat = add(new THREE.CylinderGeometry(2.0, 2.05, 0.22, 6), graphite);
-  plat.position.y = Z_UP + 0.18;
-  plat.rotation.y = Math.PI / 6;
-  const edge = add(new THREE.CylinderGeometry(2.06, 2.06, 0.05, 6), accent);
-  edge.position.y = Z_UP + 0.07;
-  edge.rotation.y = Math.PI / 6;
-}
+      // ---- the moving platform -------------------------------------------------------------------------
+      {
+        const plat = add(new THREE.CylinderGeometry(2.0, 2.05, 0.22, 6), graphite);
+        plat.position.y = Z_UP + 0.18;
+        plat.rotation.y = Math.PI / 6;
+        const edge = add(new THREE.CylinderGeometry(2.06, 2.06, 0.05, 6), accent);
+        edge.position.y = Z_UP + 0.07;
+        edge.rotation.y = Math.PI / 6;
+      }
 
-// ---- the cockpit pod -----------------------------------------------------------------------------
-const pod = new THREE.Group();
-pod.position.y = Z_UP - 0.1;
-pod.rotation.y = -0.28;
-pod.scale.setScalar(1.18);
-scene.add(pod);
-// the shell's shape: a sphere stretched into a capsule with a fuller nose (+z)
-const shape = (x, y, z) => {
-  const front = z > 0 ? 1 + z * 0.1 : 1;
-  const nose = z > 0 ? 1 - Math.max(0, -y) * z * 0.18 : 1; // the chin tucks in under the nose
-  return [x * 1.3 * nose, Math.max(y * 1.1, -0.66), z * 1.75 * front];
-};
-const shell = (r, ...args) => {
-  const g = new THREE.SphereGeometry(r, ...args);
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) p.setXYZ(i, ...shape(p.getX(i), p.getY(i), p.getZ(i)));
-  g.computeVertexNormals();
-  return g;
-};
-const at = (m) => { m.position.y = 1.0; return m; };
-// one shell with its livery painted in UV space: white paint, a dark glass windscreen and side
-// windows framed in graphite, a door seam and an orange waist stripe. u runs round the shell
-// (the nose at 0.25), v from the top (0) to the bottom (1); the shapes are rounded rectangles.
-{
-  const CW = 4096, CH = 2048;
-  const canvas = document.createElement('canvas'); canvas.width = CW; canvas.height = CH;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(CW, CH);
-  const rough = document.createElement('canvas'); rough.width = CW; rough.height = CH;
-  const rctx = rough.getContext('2d');
-  const rimg = rctx.createImageData(CW, CH);
-  const box = (u, v, cu, cv, hu, hv, e) => Math.pow(Math.pow(Math.abs(u - cu) / hu, e) + Math.pow(Math.abs(v - cv) / hv, e), 1 / e);
-  const ss = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
-  const WHITE = [241, 239, 234], GLASS = [10, 15, 21], FRAME = [42, 45, 49], ORANGE = [255, 122, 26], SEAM = [168, 165, 158];
-  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  for (let y = 0; y < CH; y++) {
-    const v = y / CH;
-    for (let x = 0; x < CW; x++) {
-      const u = x / CW;
-      const aa = 0.0012;
-      let c = WHITE, r = 0.3;
-      // the waist stripe
-      c = mix(c, ORANGE, ss(0.0135, 0.0115, Math.abs(v - 0.6)));
-      // the door seam on the right side
-      const door = box(u, v, 0.5, 0.42, 0.075, 0.2, 6);
-      if (v < 0.62) c = mix(c, SEAM, ss(0.012, 0.006, Math.abs(door - 1)) * 0.9);
-      const ws = box(u, v, 0.25, 0.37, 0.17, 0.17, 5);
-      const side = Math.min(box(u, v, 0.5, 0.33, 0.05, 0.085, 4), box(u, v, 0, 0.33, 0.05, 0.085, 4), box(u, v, 1, 0.33, 0.05, 0.085, 4));
-      const d = Math.min(ws, side);
-      const frame = ss(1.045 + 0.004, 1.045 - 0.004, d);
-      c = mix(c, FRAME, frame);
-      const glass = ss(1 + 0.003, 1 - 0.003, d);
-      c = mix(c, GLASS, glass);
-      r = 0.3 - glass * 0.26;
-      if (ws < 1) c = mix(c, FRAME, ss(0.0035, 0.002, Math.abs(u - 0.25)));
-      const k = (y * CW + x) * 4;
-      img.data[k] = c[0]; img.data[k + 1] = c[1]; img.data[k + 2] = c[2]; img.data[k + 3] = 255;
-      rimg.data[k] = rimg.data[k + 1] = rimg.data[k + 2] = Math.round(r * 255); rimg.data[k + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  // the door handle (no lettering: the picture is mirrored for the Hebrew slide)
-  ctx.fillStyle = '#2a2d31';
-  ctx.beginPath(); ctx.roundRect(CW * 0.553, CH * 0.43, 46, 16, 8); ctx.fill();
-  rctx.putImageData(rimg, 0, 0);
-  const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 8;
-  const roughnessMap = new THREE.CanvasTexture(rough); roughnessMap.anisotropy = 8;
-  const m = new THREE.MeshPhysicalMaterial({ map, roughnessMap, roughness: 1, metalness: 0, clearcoat: 0.9, clearcoatRoughness: 0.08 });
-  at(add(shell(1, 256, 192), m, pod));
-}
-// a fairing where the shell sits on the platform
-{
+      // ---- the cockpit pod -----------------------------------------------------------------------------
+      const pod = new THREE.Group();
+      pod.position.y = Z_UP - 0.1;
+      pod.rotation.y = -0.28;
+      pod.scale.setScalar(1.18);
+      scene.add(pod);
+      // the shell's shape: a sphere stretched into a capsule with a fuller nose (+z)
+      const shape = (x, y, z) => {
+        const front = z > 0 ? 1 + z * 0.1 : 1;
+        const nose = z > 0 ? 1 - Math.max(0, -y) * z * 0.18 : 1; // the chin tucks in under the nose
+        return [x * 1.3 * nose, Math.max(y * 1.1, -0.66), z * 1.75 * front];
+      };
+      const shell = (r, ...args) => {
+        const g = new THREE.SphereGeometry(r, ...args);
+        const p = g.attributes.position;
+        for (let i = 0; i < p.count; i++) p.setXYZ(i, ...shape(p.getX(i), p.getY(i), p.getZ(i)));
+        g.computeVertexNormals();
+        return g;
+      };
+      const at = (m) => {
+        m.position.y = 1.0;
+        return m;
+      };
+      // one shell with its livery painted in UV space: white paint, a dark glass windscreen and side
+      // windows framed in graphite, a door seam and an orange waist stripe. u runs round the shell
+      // (the nose at 0.25), v from the top (0) to the bottom (1); the shapes are rounded rectangles.
+      {
+        const CW = 4096,
+          CH = 2048;
+        const canvas = document.createElement('canvas');
+        canvas.width = CW;
+        canvas.height = CH;
+        const ctx = canvas.getContext('2d');
+        const img = ctx.createImageData(CW, CH);
+        const rough = document.createElement('canvas');
+        rough.width = CW;
+        rough.height = CH;
+        const rctx = rough.getContext('2d');
+        const rimg = rctx.createImageData(CW, CH);
+        const box = (u, v, cu, cv, hu, hv, e) =>
+          Math.pow(Math.pow(Math.abs(u - cu) / hu, e) + Math.pow(Math.abs(v - cv) / hv, e), 1 / e);
+        const ss = (e0, e1, x) => {
+          const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+          return t * t * (3 - 2 * t);
+        };
+        const WHITE = [241, 239, 234],
+          GLASS = [10, 15, 21],
+          FRAME = [42, 45, 49],
+          ORANGE = [255, 122, 26],
+          SEAM = [168, 165, 158];
+        const mix = (a, b, t) => [
+          a[0] + (b[0] - a[0]) * t,
+          a[1] + (b[1] - a[1]) * t,
+          a[2] + (b[2] - a[2]) * t,
+        ];
+        for (let y = 0; y < CH; y++) {
+          const v = y / CH;
+          for (let x = 0; x < CW; x++) {
+            const u = x / CW;
+            const aa = 0.0012;
+            let c = WHITE,
+              r = 0.3;
+            // the waist stripe
+            c = mix(c, ORANGE, ss(0.0135, 0.0115, Math.abs(v - 0.6)));
+            // the door seam on the right side
+            const door = box(u, v, 0.5, 0.42, 0.075, 0.2, 6);
+            if (v < 0.62) c = mix(c, SEAM, ss(0.012, 0.006, Math.abs(door - 1)) * 0.9);
+            const ws = box(u, v, 0.25, 0.37, 0.17, 0.17, 5);
+            const side = Math.min(
+              box(u, v, 0.5, 0.33, 0.05, 0.085, 4),
+              box(u, v, 0, 0.33, 0.05, 0.085, 4),
+              box(u, v, 1, 0.33, 0.05, 0.085, 4),
+            );
+            const d = Math.min(ws, side);
+            const frame = ss(1.045 + 0.004, 1.045 - 0.004, d);
+            c = mix(c, FRAME, frame);
+            const glass = ss(1 + 0.003, 1 - 0.003, d);
+            c = mix(c, GLASS, glass);
+            r = 0.3 - glass * 0.26;
+            if (ws < 1) c = mix(c, FRAME, ss(0.0035, 0.002, Math.abs(u - 0.25)));
+            const k = (y * CW + x) * 4;
+            img.data[k] = c[0];
+            img.data[k + 1] = c[1];
+            img.data[k + 2] = c[2];
+            img.data[k + 3] = 255;
+            rimg.data[k] = rimg.data[k + 1] = rimg.data[k + 2] = Math.round(r * 255);
+            rimg.data[k + 3] = 255;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+        // the door handle (no lettering: the picture is mirrored for the Hebrew slide)
+        ctx.fillStyle = '#2a2d31';
+        ctx.beginPath();
+        ctx.roundRect(CW * 0.553, CH * 0.43, 46, 16, 8);
+        ctx.fill();
+        rctx.putImageData(rimg, 0, 0);
+        const map = new THREE.CanvasTexture(canvas);
+        map.colorSpace = THREE.SRGBColorSpace;
+        map.anisotropy = 8;
+        const roughnessMap = new THREE.CanvasTexture(rough);
+        roughnessMap.anisotropy = 8;
+        const m = new THREE.MeshPhysicalMaterial({
+          map,
+          roughnessMap,
+          roughness: 1,
+          metalness: 0,
+          clearcoat: 0.9,
+          clearcoatRoughness: 0.08,
+        });
+        at(add(shell(1, 256, 192), m, pod));
+      }
+      // a fairing where the shell sits on the platform
+      {
+      }
+      // an antenna on the roof
+      {
+        const ant = add(new THREE.CylinderGeometry(0.02, 0.03, 0.4, 12), graphite, pod);
+        ant.position.set(0.3, 2.22, -0.9);
+      }
 
-}
-// an antenna on the roof
-{
-  const ant = add(new THREE.CylinderGeometry(0.02, 0.03, 0.4, 12), graphite, pod);
-  ant.position.set(0.3, 2.22, -0.9);
-}
+      // ---- a cable chain from the floor to the platform ------------------------------------------------
+      {
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-2.7, 0.2, -1.2),
+          new THREE.Vector3(-3.1, 0.5, -0.9),
+          new THREE.Vector3(-2.8, 1.4, -0.7),
+          new THREE.Vector3(-1.9, 1.95, -0.6),
+        ]);
+        add(new THREE.TubeGeometry(curve, 64, 0.09, 16), rubber);
+      }
 
-// ---- a cable chain from the floor to the platform ------------------------------------------------
-{
-  const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-2.7, 0.2, -1.2), new THREE.Vector3(-3.1, 0.5, -0.9), new THREE.Vector3(-2.8, 1.4, -0.7), new THREE.Vector3(-1.9, 1.95, -0.6),
-  ]);
-  add(new THREE.TubeGeometry(curve, 64, 0.09, 16), rubber);
-}
+      // ---- shadow catcher ------------------------------------------------------------------------------
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(80, 80),
+        new THREE.ShadowMaterial({ opacity: 0.32 }),
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
 
-// ---- shadow catcher ------------------------------------------------------------------------------
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShadowMaterial({ opacity: 0.32 }));
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
-
-const camera = new THREE.PerspectiveCamera(26, W / H, 0.5, 200);
-camera.position.set(12.5, 4.8, 15);
-camera.lookAt(0.2, 2.05, 0);
-renderer.render(scene, camera);
-document.documentElement.dataset.ready = 'true';
-</script>
-</body>
+      const camera = new THREE.PerspectiveCamera(26, W / H, 0.5, 200);
+      camera.position.set(12.5, 4.8, 15);
+      camera.lookAt(0.2, 2.05, 0);
+      renderer.render(scene, camera);
+      document.documentElement.dataset.ready = 'true';
+    </script>
+  </body>
 </html>

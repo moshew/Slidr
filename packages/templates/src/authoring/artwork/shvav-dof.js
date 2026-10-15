@@ -22,7 +22,8 @@ const blurShader = (withCoc) => ({
     near: { value: 1 },
     far: { value: 1000 },
   },
-  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  vertexShader:
+    'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
     #include <packing>
     varying vec2 vUv;
@@ -55,7 +56,12 @@ const blurShader = (withCoc) => ({
  * Renders `scene` from `camera` with the focus at `focus` (a distance), a blur of `K` pixels for
  * what is infinitely far (at the canvas's own pixel ratio), and bloom over `threshold`.
  */
-export function renderWithFocus(renderer, scene, camera, { focus, K = 24, maxR = 48, bloom = 0.6, radius = 0.4, threshold = 3 }) {
+export function renderWithFocus(
+  renderer,
+  scene,
+  camera,
+  { focus, K = 24, maxR = 48, bloom = 0.6, radius = 0.4, threshold = 3 },
+) {
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
   const dpr = renderer.getPixelRatio();
   const make = (depth) =>
@@ -94,7 +100,9 @@ export function renderWithFocus(renderer, scene, camera, { focus, K = 24, maxR =
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new TexturePass(down.texture));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(size.x / dpr, size.y / dpr), bloom, radius, threshold));
+  composer.addPass(
+    new UnrealBloomPass(new THREE.Vector2(size.x / dpr, size.y / dpr), bloom, radius, threshold),
+  );
   composer.addPass(new OutputPass());
   composer.render();
 }
