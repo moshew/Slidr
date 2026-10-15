@@ -101,6 +101,11 @@ const BUILT_IN = [
   'ziv',
   'shidur',
   'mifgash',
+  'kod',
+  'anan',
+  'magen',
+  'shvav',
+  'mutzar',
 ];
 
 /**

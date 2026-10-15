@@ -63,6 +63,13 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 
+  // The tools that render, check and package the authored templates and designs
+  // (packages/templates/src/authoring): Node, and a headless browser driven from it.
+  {
+    files: ['packages/templates/src/authoring/tools/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+
   // Dependency rule of SPEC 14.2: `model` stands alone and never touches React or the DOM.
   {
     files: ['packages/model/src/**/*.ts'],

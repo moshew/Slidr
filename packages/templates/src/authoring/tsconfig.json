@@ -1,0 +1,10 @@
+{
+  // The sources of the technology templates and designs, and the scripts that build them: run
+  // in Node and in a browser through Vite, so not held to the package's rule of no DOM.
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

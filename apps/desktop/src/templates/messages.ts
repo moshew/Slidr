@@ -44,6 +44,11 @@ export const he = {
     shidur: 'שידור',
     bina: 'בינה',
     mifgash: 'מפגש',
+    kod: 'קוד',
+    anan: 'ענן',
+    magen: 'מגן',
+    shvav: 'שבב',
+    mutzar: 'מוצר',
   },
   // What each built-in template feels like, in a sentence beside its name.
   tagline: {
@@ -65,6 +70,11 @@ export const he = {
     shidur: 'כחול חי ומגנטה, שמזמינים את כולם להצטרף לשידור',
     bina: 'סגול רך וצורות עגולות, שהופכים רעיון מורכב לפשוט',
     mifgash: 'כחול עז ונגיעה של ורוד, למפגש שמקרב גם מרחוק',
+    kod: 'עורך קוד בצבעי תחביר על רקע פחם, להרצאה של מפתחים',
+    anan: 'שמיים בהירים ותרשימים איזומטריים, לארכיטקטורה שעולה לענן',
+    magen: 'שחור, אדום של התראה וכוונות של מסך בקרה, לתדריך אבטחה',
+    shvav: 'ירוק של מעגל מודפס ונחושת, לחומרה שיוצאת לייצור',
+    mutzar: 'חלונות של מוצר, סמנים והתראות, להשקה של גרסה חדשה',
   },
   direction: {
     title: 'כיוון המצגת',
@@ -301,6 +311,11 @@ export const en: typeof he = {
     shidur: 'Shidur',
     bina: 'Bina',
     mifgash: 'Mifgash',
+    kod: 'Kod',
+    anan: 'Anan',
+    magen: 'Magen',
+    shvav: 'Shvav',
+    mutzar: 'Mutzar',
   },
   tagline: {
     zerem: 'Technology in motion, turquoise glowing on a deep blue night',
@@ -321,6 +336,11 @@ export const en: typeof he = {
     shidur: 'Vivid blue and magenta that invite everyone to tune in',
     bina: 'Soft purple and rounded shapes that make a complex idea simple',
     mifgash: 'Bold blue and a touch of pink, for a session that brings people close from afar',
+    kod: 'A code editor in syntax colours on charcoal, for a talk by developers',
+    anan: 'Clear skies and isometric diagrams, for architecture on its way to the cloud',
+    magen: 'Black, alert red and the brackets of a control screen, for a security briefing',
+    shvav: 'Circuit-board green and copper, for hardware on its way to production',
+    mutzar: 'Product windows, cursors and notifications, for the launch of a new version',
   },
   direction: {
     title: 'Deck direction',
