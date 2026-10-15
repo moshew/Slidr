@@ -350,6 +350,23 @@ const tantalum = (cx: number, cy: number) =>
   `<rect x="${cx - 32}" y="${cy - 22}" width="64" height="44" rx="6" fill="${TANTALUM}"/>` +
   `<rect x="${cx - 32}" y="${cy - 22}" width="14" height="44" rx="3" fill="#7a4a12"/>`;
 
+/** A data matrix in silkscreen: the serial number every board carries. */
+function dataMatrix(x: number, y: number, n = 14, m = 8): string {
+  let seed = 41;
+  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+  let cells = '';
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const finder = i === 0 || j === n - 1;
+      const timing = (j === 0 && i % 2 === 0) || (i === n - 1 && j % 2 === 1);
+      if (finder || timing || (i > 0 && j > 0 && i < n - 1 && j < n - 1 && rnd() > 0.52)) {
+        cells += `<rect x="${x + i * m}" y="${y + j * m}" width="${m}" height="${m}"/>`;
+      }
+    }
+  }
+  return `<g fill="${INK}" fill-opacity=".72">${cells}</g>`;
+}
+
 // ---------------------------------------------------------------------------------------------
 // What the layouts share
 
@@ -664,7 +681,13 @@ function quoteArt() {
   g += tr([[x1, y0], [x1, y0 - 70], [x1 + 30, y0 - 100]], UNDER) + tented(x1 + 36, y0 - 106, 7);
   // A rule before the speaker: a short trace between two vias.
   g += tr([[SX - 196, 652], [SX - 316, 652]], BARE) + goldVia(SX - 192, 652, 8) + goldVia(SX - 320, 652, 8);
-  const words: Letter[] = [{ x: x1 - 116, y: y0 + 7, t: 'NOTE 1', size: 19, fill: BG, anchor: 'middle', weight: 700 }];
+  // The serial number of the board, in the corner of the block.
+  g += dataMatrix(x0 + 44, y1 - 44 - 112);
+  const words: Letter[] = [
+    { x: x1 - 116, y: y0 + 7, t: 'NOTE 1', size: 19, fill: BG, anchor: 'middle', weight: 700 },
+    { x: x0 + 44 + 112 + 18, y: y1 - 50, t: 'SN 2648-0417', size: 17, op: 0.6 },
+    { x: x0 + 44 + 112 + 18, y: y1 - 74, t: 'PCB-04L · 1.6', size: 17, op: 0.45 },
+  ];
   return art(1920, 1080, g, words);
 }
 
@@ -1193,6 +1216,23 @@ function layouts(): Layout[] {
       ],
       decorations: [
         drawing('d_shvav_text_title_pad', at(START - 54, 158, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
+        drawing(
+          'd_shvav_text_bus',
+          at(0, 0, 1920, 1080),
+          svg(
+            1920,
+            1080,
+            DEFS +
+              [395, 370, 345, 320]
+                .map((x, k) => {
+                  const y = 920 + k * 16;
+                  const e = 1500 + k * 60;
+                  return tr([[x, 846], [x, y - 20], [x + 20, y], [e, y]], { ...UNDER, w: 5 }) + tented(e + 8, y, 7);
+                })
+                .join(''),
+          ),
+          PAINT,
+        ),
         lettered('d_shvav_text_module', atEnd(0, 0, 700, 1080), pinoutArt()),
         drawing('d_shvav_text_fiducial', atEnd(36, 36, 40, 40), svg(40, 40, DEFS + fiducial(20, 20)), PAINT),
         drawing('d_shvav_text_hole', at(28, 972, 80, 80), svg(80, 80, DEFS + mountHole(40, 40)), PAINT),

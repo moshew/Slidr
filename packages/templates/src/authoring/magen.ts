@@ -2133,8 +2133,8 @@ const sampleEn: SampleSlide[] = [
     name: 'The ransomware drill',
     content: {
       caption: [
-        text('Ransomware drill · 9 December 2026'),
-        text('Target: 24 hours to recover. We beat it by almost 20.'),
+        text('Ransomware drill · 9 Dec 2026'),
+        text('Target: 24 hours. We beat it by almost 20.'),
       ],
       title: text('Alert to recovery: 4 h 12 min'),
       number: [text('T+00:00'), text('T+00:04'), text('T+00:38'), text('T+04:12')],
