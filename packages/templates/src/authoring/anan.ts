@@ -1936,7 +1936,8 @@ function layouts(): Layout[] {
         ...head('table', 1100).placeholders,
         place('p_table', 'table', at(START + 20, 292, WIDTH - 40, 612)),
         // The note stands under the filters, as a console says how fresh its data is.
-        place('p_note', 'caption', atEnd(END, 146, 500, 68), 'caption'),
+        // Three lines: the notes of other decks' tables run longer than this one's.
+        place('p_note', 'caption', atEnd(END, 146, 500, 102), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: [
@@ -2111,13 +2112,13 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [
         text('זמינות'),
-        text('השבתה בזמן המעבר'),
+        text('זמינות התשלומים מאז המעבר'),
         text('זמן תגובה p95, לפני ואחרי'),
         text('אזורים שמשרתים במקביל'),
       ],
       title: text('שלושה חודשים בלי לעצור'),
-      number: [text('99.995%'), text('0 דק׳'), text('−38%'), text('3')],
-      subtitle: text('זמינות התשלומים מאז המעבר'),
+      number: [text('0'), text('99.995%'), text('−38%'), text('3')],
+      subtitle: text('דקות של השבתה בזמן המעבר'),
       body: text('פחות משבע דקות של שירות חלקי ב-90 ימים.'),
       footer: FOOTER_HE,
     },
@@ -2347,13 +2348,13 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [
         text('Availability'),
-        text('Downtime during the move'),
+        text('Availability since the move'),
         text('p95 latency, before and after'),
         text('Regions serving at once'),
       ],
-      title: text('Three months without a stop'),
-      number: [text('99.995%'), text('0 min'), text('−38%'), text('3')],
-      subtitle: text('Availability since the move'),
+      title: text('Ninety days, no stop'),
+      number: [text('0'), text('99.995%'), text('−38%'), text('3')],
+      subtitle: text('Minutes of downtime in the move'),
       body: text('Under seven minutes of partial service in 90 days.'),
       footer: FOOTER_EN,
     },

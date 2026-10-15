@@ -63,7 +63,7 @@ export const shvavTheme: Theme = {
       font: 'heading',
       size: 112,
       weight: 800,
-      lineHeight: 1.02,
+      lineHeight: 1.06,
       letterSpacing: -1.5,
       color: { token: 'text' },
     },
@@ -378,6 +378,8 @@ const WIDTH = 1920 - START - END;
 const SX = 1920 - START;
 /** The top of the footer's line, and the y of the trace under it that joins the mark to the number. */
 const FOOT = 960;
+/** The top of a content slide's kicker; the title under it has room for two lines, to 266. */
+const KICKER = 84;
 const NET_Y = FOOT + 62;
 
 /** The ground of a content slide: the mask lit from where the content is, darker at the edges. */
@@ -410,16 +412,16 @@ const kickerPad = (id: string, top: number) =>
  * The head of a content slide: the kicker on its test point, and the title. `lines` is the room
  * the title has.
  */
-function head(name: string, width = 1400, lines = 1, net = true) {
+function head(name: string, width = 1400, lines = 2, net = true) {
   return {
     placeholders: [
-      place('p_kicker', 'caption', at(START + 44, 92, Math.min(900, width - 44), 34), 'caption'),
-      place('p_title', 'title', at(START, 136, width, 72 * lines), 'title'),
+      place('p_kicker', 'caption', at(START + 44, KICKER, Math.min(900, width - 44), 34), 'caption'),
+      place('p_title', 'title', at(START, KICKER + 38, width, 72 * lines), 'title'),
     ],
     decorations: [
       net
-        ? kickerPad(`d_shvav_${name}_kicker_pad`, 98)
-        : drawing(`d_shvav_${name}_kicker_pad`, at(START, 98, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
+        ? kickerPad(`d_shvav_${name}_kicker_pad`, KICKER + 6)
+        : drawing(`d_shvav_${name}_kicker_pad`, at(START, KICKER + 6, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
     ],
   };
 }
@@ -560,7 +562,7 @@ function heroArt() {
     { x: cx, y: cy - 36, t: 'SHVAV', size: 54, sans: true, weight: 700, fill: LASER, anchor: 'middle', spacing: 8 },
     { x: cx, y: cy + 22, t: 'SV32-L4  LoRa', size: 25, fill: LASER, anchor: 'middle', weight: 500 },
     { x: cx, y: cy + 62, t: '2648 · A3', size: 22, fill: LASER, anchor: 'middle', weight: 500 },
-    { x: cx - s / 2 - 46, y: cy - s / 2 - 66, t: 'U1', size: 24, anchor: 'start' },
+    { x: cx + s / 2 + 46, y: cy - s / 2 - 62, t: 'U1', size: 24, anchor: 'end' },
     { x: 120, y: 118, t: 'Y1', size: 20, anchor: 'middle', op: 0.75 },
     { x: 742, y: 132, t: 'D1', size: 20, anchor: 'middle', op: 0.75 },
     { x: 772, y: 239, t: 'R12', size: 18, anchor: 'start', op: 0.7 },
@@ -618,19 +620,19 @@ function sectionArt() {
 // ---------------------------------------------------------------------------------------------
 // The key figure in a long package, and test points down the side
 
-const STATS = [282, 496, 710];
+const STATS = [300, 510, 720];
 
 function bigNumberArt() {
   const x = SX - 1040;
-  const y = 286;
+  const y = 344;
   const w = 1040;
-  const h = 270;
+  const h = 246;
   const n = 20;
   const pitch = (w * 0.92) / (n - 1);
   let g = '';
   for (let i = 0; i < n; i++) {
     const px = x + w / 2 + (i - (n - 1) / 2) * pitch;
-    const vy = i % 2 ? 222 : 236;
+    const vy = i % 2 ? y - 64 : y - 50;
     g += tr([[px, y - 30], [px, vy]], UNDER) + tented(px, vy - 4, 7);
   }
   g += soic(x, y, w, h, n);
@@ -638,7 +640,7 @@ function bigNumberArt() {
   // The test points: on one trace down the side, which joins the foot's net.
   g += tr([[650, STATS[0]! + 40], [650, NET_Y]], { ...BARE, w: 6 });
   for (const top of STATS) g += testPoint(650, top + 40, 13);
-  g += tr([[SX - 11, -10], [SX - 11, 98]], { ...UNDER, op: 0.34, w: 5 });
+  g += tr([[SX - 11, -10], [SX - 11, KICKER + 6]], { ...UNDER, op: 0.34, w: 5 });
   const words: Letter[] = [
     { x: x + 52, y: y + 40, t: 'SHVAV', size: 26, sans: true, weight: 700, fill: LASER, spacing: 5 },
     { x: x + 52, y: y + h - 26, t: '2648 · A3', size: 18, fill: LASER, weight: 500 },
@@ -677,7 +679,7 @@ function quoteArt() {
   for (const [cx, cy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]] as const) g += pad(cx, cy, 18, 18, 2);
   g += tr([[x0, y0], [x0 - 52, y0 - 52], [-10, y0 - 52]], UNDER);
   g += tr([[x1, y1], [x1 + 52, y1 + 52], [1930, y1 + 52]], UNDER);
-  g += tr([[x0, y1], [x0 - 40, y1 + 40], [x0 - 40, y1 + 90]], UNDER) + tented(x0 - 40, y1 + 98, 7);
+  g += tr([[x0, y1], [x0 - 40, y1 + 40], [-10, y1 + 40]], UNDER);
   g += tr([[x1, y0], [x1, y0 - 70], [x1 + 30, y0 - 100]], UNDER) + tented(x1 + 36, y0 - 106, 7);
   // A rule before the speaker: a short trace between two vias.
   g += tr([[SX - 196, 652], [SX - 316, 652]], BARE) + goldVia(SX - 192, 652, 8) + goldVia(SX - 320, 652, 8);
@@ -779,7 +781,7 @@ function photoFrameArt() {
   const L = (x: number, y: number, dx: number, dy: number) =>
     `<path d="M${x + dx * k} ${y}H${x}V${y + dy * k}" stroke="${GOLD}" stroke-width="5" stroke-linecap="square"/>`;
   g += L(x0 - b, y0 - b, 1, 1) + L(x1 + b, y0 - b, -1, 1) + L(x0 - b, y1 + b, 1, -1) + L(x1 + b, y1 + b, -1, -1);
-  g += fiducial(w - 20, 20) + fiducial(20, h - 20);
+  g += fiducial(w - 20, 20);
   const words: Letter[] = [{ x: x0 - 22, y: 30, t: 'TOP SIDE', size: 18, anchor: 'start', op: 0.7 }];
   return art(w, h, g, words);
 }
@@ -812,7 +814,7 @@ function fullImageArt() {
 // The cards: modules with castellated edges, soldered side by side
 
 const CARDS = [START, START + 588, START + 1176];
-const CARD = { w: 520, top: 262, h: 508 };
+const CARD = { w: 520, top: 286, h: 500 };
 
 function cardsArt() {
   let g = '';
@@ -846,8 +848,8 @@ function cardsArt() {
   // The parts of each module along its foot: the MCU, the radio under its can, the sensor's front
   // end and connector.
   for (const [k, [l, r]] of edges.entries()) {
-    const y = CARD.top + CARD.h - 36;
-    g += `<path d="M${l + 36} ${y - 30}H${r - 36}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
+    const y = CARD.top + CARD.h - 30;
+    g += `<path d="M${l + 36} ${y - 28}H${r - 36}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
     if (k === 0) g += qfp(r - 80, y, 36, 6, { len: 6, w: 4 }) + passive(r - 140, y, 'cap', false, 30, 15) + passive(r - 186, y, 'res', false, 30, 15) + crystal(r - 252, y, 50, 22);
     if (k === 1) {
       let m = `M${r - 214} ${y + 12}`;
@@ -868,7 +870,7 @@ function cardsArt() {
 // The timeline: one trace, a via at every stage
 
 const COLUMNS = [START, START + 434, START + 868, START + 1302];
-const TRACE_Y = 436;
+const TRACE_Y = 456;
 
 function timelineArt(): string {
   const xs = COLUMNS.map((s) => 1920 - s - 22);
@@ -893,7 +895,7 @@ function timelineArt(): string {
 // The process: a signal chain of schematic symbols
 
 const STEPS = [START, START + 347, START + 694, START + 1041, START + 1388];
-const STEP = { w: 308, top: 262, h: 176 };
+const STEP = { w: 308, top: 288, h: 170 };
 
 const DESIGNATORS = ['X1', 'U2', 'U1', 'ANT1', ''];
 
@@ -955,8 +957,8 @@ const SIDES = [
   ['before', START],
   ['after', START + 876],
 ] as const;
-const BOARD_TOP = 262;
-const BOARD_H = 668;
+const BOARD_TOP = 286;
+const BOARD_H = 630;
 const BOARD_W = 820;
 
 function comparisonArt(): string {
@@ -968,16 +970,16 @@ function comparisonArt(): string {
       g += side === 'after' ? goldVia(x, y, 14) : `<circle cx="${x}" cy="${y}" r="14" stroke="${MUTED}" stroke-opacity=".6" stroke-width="3"/><circle cx="${x}" cy="${y}" r="6" fill="${HOLE}"/>`;
     }
     // At the head of each board, its parts: rev B crowded, rev C down to one chip, and lit.
-    const y = BOARD_TOP + 82;
-    g += `<rect x="${l + 66}" y="${y - 50}" width="${BOARD_W - 132}" height="100" rx="8" stroke="${INK}" stroke-opacity=".16" stroke-width="2" stroke-dasharray="8 8"/>`;
-    g += tr([[r - 90, y + 30], [l + 90, y + 30]], { ...UNDER, w: 4 }) + tr([[r - 90, y - 32], [l + 90, y - 32]], { ...UNDER, w: 4 });
+    const y = BOARD_TOP + 66;
+    g += `<rect x="${l + 66}" y="${y - 44}" width="${BOARD_W - 132}" height="88" rx="8" stroke="${INK}" stroke-opacity=".16" stroke-width="2" stroke-dasharray="8 8"/>`;
+    g += tr([[r - 90, y + 26], [l + 90, y + 26]], { ...UNDER, w: 4 }) + tr([[r - 90, y - 28], [l + 90, y - 28]], { ...UNDER, w: 4 });
     if (side === 'before') {
-      g += qfp(r - 130, y, 58, 8, { len: 9, w: 5 }) + qfp(r - 236, y, 46, 6, { len: 0.1, w: 5 }, false);
+      g += qfp(r - 130, y, 50, 8, { len: 8, w: 4 }) + qfp(r - 236, y, 44, 6, { len: 0.1, w: 5 }, false);
       g += crystal(r - 330, y - 14, 60, 26) + crystal(r - 330, y + 22, 46, 22);
-      for (let k = 0; k < 5; k++) g += passive(r - 404 - k * 40, y + (k % 2 ? 12 : -12), k % 2 ? 'res' : 'cap', true, 30, 15);
-      g += tantalum(l + 230, y) + `<rect x="${l + 96}" y="${y - 30}" width="72" height="60" rx="6" fill="url(#sn)"/><rect x="${l + 104}" y="${y - 22}" width="56" height="44" rx="4" stroke="#8a908e" stroke-width="2"/>`;
+      for (let k = 0; k < 4; k++) g += passive(r - 404 - k * 40, y + (k % 2 ? 12 : -12), k % 2 ? 'res' : 'cap', true, 30, 15);
+      g += tantalum(l + 214, y) + `<rect x="${l + 96}" y="${y - 30}" width="72" height="60" rx="6" fill="url(#sn)"/><rect x="${l + 104}" y="${y - 22}" width="56" height="44" rx="4" stroke="#8a908e" stroke-width="2"/>`;
     } else {
-      g += qfp(r - 136, y, 62, 8, { len: 10, w: 5 }) + crystal(r - 252, y, 60, 26);
+      g += qfp(r - 136, y, 54, 8, { len: 8, w: 4 }) + crystal(r - 252, y, 60, 26);
       g += passive(r - 330, y, 'cap', true, 30, 15) + passive(r - 374, y, 'cap', true, 30, 15);
       g += led(r - 470, y, 90);
     }
@@ -992,16 +994,16 @@ function comparisonArt(): string {
 // ---------------------------------------------------------------------------------------------
 // The chart: an oscilloscope's screen
 
-const SCOPE = at(START, 250, 1160, 660);
+const SCOPE = at(START, 282, 1160, 652);
 
 function scopeArt() {
   const w = SCOPE.w;
   const h = SCOPE.h;
   // The graticule, over the chart's own box.
   const gx = 30;
-  const gy = 52;
+  const gy = 44;
   const gw = 1100;
-  const gh = 588;
+  const gh = 592;
   let grid = '';
   for (let i = 1; i < 10; i++) {
     const x = gx + (gw * i) / 10;
@@ -1019,15 +1021,15 @@ function scopeArt() {
     `<rect x="${gx - 8}" y="${gy - 8}" width="${gw + 16}" height="${gh + 16}" rx="10" stroke="${LIGHT}" stroke-opacity=".35" stroke-width="10" filter="url(#soft)"/>` +
     `<rect x="${gx - 8}" y="${gy - 8}" width="${gw + 16}" height="${gh + 16}" rx="10" stroke="${LIGHT}" stroke-opacity=".45" stroke-width="2"/>` +
     grid +
-    `<rect x="${gx}" y="12" width="64" height="28" rx="5" fill="${GOLD}"/>` +
-    `<circle cx="${w - 128}" cy="26" r="6" fill="${LIGHT}"/>`;
+    `<rect x="${gx}" y="6" width="64" height="24" rx="5" fill="${GOLD}"/>` +
+    `<circle cx="${w - 128}" cy="18" r="6" fill="${LIGHT}"/>`;
   // The readouts of the strip above the screen: the scope's own, in English as a scope's are.
   const words: Letter[] = [
-    { x: gx + 32, y: 33, t: 'CH1', size: 18, fill: BG, anchor: 'middle', weight: 700 },
-    { x: gx + 84, y: 33, t: '10.0 mA/div', size: 18, op: 0.8 },
-    { x: gx + 290, y: 33, t: 'M 100 ms', size: 18, op: 0.8 },
-    { x: gx + 450, y: 33, t: 'TRIG ↑ 2.0 mA', size: 18, op: 0.8 },
-    { x: w - 112, y: 33, t: 'RUN', size: 18, fill: LIGHT, weight: 700 },
+    { x: gx + 32, y: 24, t: 'CH1', size: 17, fill: BG, anchor: 'middle', weight: 700 },
+    { x: gx + 84, y: 24, t: '10.0 mA/div', size: 17, op: 0.8 },
+    { x: gx + 290, y: 24, t: 'M 100 ms', size: 17, op: 0.8 },
+    { x: gx + 450, y: 24, t: 'TRIG ↑ 2.0 mA', size: 17, op: 0.8 },
+    { x: w - 112, y: 24, t: 'RUN', size: 17, fill: LIGHT, weight: 700 },
   ];
   return art(w, h, g, words);
 }
@@ -1052,7 +1054,7 @@ function tapeArt(): string {
 // The team: each portrait in the footprint of a part
 
 const PEOPLE = [START, START + 439, START + 877, START + 1316];
-const PORTRAIT = { w: 380, top: 262 };
+const PORTRAIT = { w: 380, top: 290 };
 
 function footprintArt(n: number) {
   const w = 448;
@@ -1173,9 +1175,9 @@ function layouts(): Layout[] {
       background: ground(0.6, 0.4),
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START + 44, 354, 960, 135), 'display', { color: token('primary'), vAlign: 'middle' }),
-        place('p_label', 'subtitle', at(START, 620, 1000, 53), 'heading'),
-        place('p_body', 'body', at(START, 682, 940, 135), 'body'),
+        place('p_number', 'number', at(START + 44, 400, 960, 135), 'display', { color: token('primary'), vAlign: 'middle' }),
+        place('p_label', 'subtitle', at(START, 648, 1000, 53), 'heading'),
+        place('p_body', 'body', at(START, 708, 940, 135), 'body'),
         ...STATS.flatMap((top, i) => [
           place(`p_stat${i + 1}`, 'number', atEnd(END, top, 500, 79), 'title'),
           place(`p_stat${i + 1}_label`, 'caption', atEnd(END, top + 86, 500, 68), 'caption'),
@@ -1184,7 +1186,7 @@ function layouts(): Layout[] {
       ],
       decorations: [
         lettered('d_shvav_big_number_chip', at(0, 0, 1920, 1080), bigNumberArt()),
-        drawing('d_shvav_big_number_kicker_pad', at(START, 98, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
+        drawing('d_shvav_big_number_kicker_pad', at(START, KICKER + 6, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
         ...foot('big_number').decorations,
       ],
     },
@@ -1211,11 +1213,11 @@ function layouts(): Layout[] {
       archetype: 'text',
       background: ground(0.6, 0.45),
       placeholders: [
-        place('p_title', 'title', at(START, 136, 1300, 72), 'title'),
-        place('p_body', 'body', at(START, 262, 1080, 640), 'body'),
+        place('p_title', 'title', at(START, 124, 1300, 144), 'title'),
+        place('p_body', 'body', at(START, 282, 1080, 618), 'body'),
       ],
       decorations: [
-        drawing('d_shvav_text_title_pad', at(START - 54, 158, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
+        drawing('d_shvav_text_title_pad', at(START - 54, 147, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
         drawing(
           'd_shvav_text_bus',
           at(0, 0, 1920, 1080),
@@ -1288,11 +1290,11 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...CARDS.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 44, CARD.top + 28, 436, 76), 'caption'),
-          place(`p_card${i + 1}`, 'subtitle', at(start + 44, CARD.top + 114, 436, 106), 'heading'),
-          place(`p_card${i + 1}_body`, 'body', at(start + 44, CARD.top + 232, 436, 210), 'body'),
+          place(`p_card${i + 1}_note`, 'caption', at(start + 44, CARD.top + 26, 436, 76), 'caption'),
+          place(`p_card${i + 1}`, 'subtitle', at(start + 44, CARD.top + 108, 436, 106), 'heading'),
+          place(`p_card${i + 1}_body`, 'body', at(start + 44, CARD.top + 222, 436, 210), 'body'),
         ]),
-        place('p_takeaway', 'body', at(START + 70, 808, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
+        place('p_takeaway', 'body', at(START + 70, 816, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
         ...foot('cards').placeholders,
       ],
       decorations: [
@@ -1304,7 +1306,7 @@ function layouts(): Layout[] {
           }),
         ),
         drawing('d_shvav_cards_castellations', at(0, 0, 1920, 1080), svg(1920, 1080, DEFS + cardsArt()), PAINT),
-        drawing('d_shvav_cards_led', at(START - 22, 802, 92, 92), svg(92, 92, DEFS + led(46, 46, 46)), PAINT),
+        drawing('d_shvav_cards_led', at(START - 22, 815, 92, 92), svg(92, 92, DEFS + led(46, 46, 46)), PAINT),
         ...foot('cards').decorations,
       ],
     },
@@ -1316,9 +1318,9 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('timeline').placeholders,
         ...COLUMNS.flatMap((start, i) => [
-          place(`p_when${i + 1}`, 'number', at(start, 296, 394, 79), 'title', { vAlign: 'bottom', color: token('primary') }),
-          place(`p_what${i + 1}`, 'subtitle', at(start, 522, 360, 96), 'heading'),
-          place(`p_what${i + 1}_body`, 'body', at(start, 620, 360, 170), 'caption'),
+          place(`p_when${i + 1}`, 'number', at(start, 316, 394, 79), 'title', { vAlign: 'bottom', color: token('primary') }),
+          place(`p_what${i + 1}`, 'subtitle', at(start, 542, 360, 96), 'heading'),
+          place(`p_what${i + 1}_body`, 'body', at(start, 640, 360, 170), 'caption'),
         ]),
         place('p_note', 'caption', at(START, 866, WIDTH, 34), 'caption'),
         ...foot('timeline').placeholders,
@@ -1338,17 +1340,17 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...STEPS.flatMap((start, i) => [
-          place(`p_step${i + 1}_number`, 'number', at(start, 456, 308, 79), 'title', { color: token('primary') }),
-          place(`p_step${i + 1}`, 'subtitle', at(start, 546, 308, 96), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start, 646, 304, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start, 474, 308, 79), 'title', { color: token('primary') }),
+          place(`p_step${i + 1}`, 'subtitle', at(start, 562, 308, 96), 'heading'),
+          place(`p_step${i + 1}_body`, 'caption', at(start, 660, 304, 136), 'caption'),
         ]),
-        place('p_summary', 'body', at(START + 70, 830, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
+        place('p_summary', 'body', at(START + 70, 836, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
         ...foot('process').placeholders,
       ],
       decorations: [
         ...head('process').decorations,
         lettered('d_shvav_process_chain', at(0, 0, 1920, 1080), processArt()),
-        drawing('d_shvav_process_tp', at(START + 2, 853, 44, 44), svg(44, 44, DEFS + goldVia(22, 22, 18)), PAINT),
+        drawing('d_shvav_process_tp', at(START + 2, 859, 44, 44), svg(44, 44, DEFS + goldVia(22, 22, 18)), PAINT),
         ...foot('process').decorations,
       ],
     },
@@ -1360,9 +1362,9 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('comparison').placeholders,
         ...SIDES.flatMap(([side, start]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 60, BOARD_TOP + 150, 680, 34), 'caption'),
-          place(`p_${side}`, 'subtitle', at(start + 60, BOARD_TOP + 192, 708, 106), 'heading'),
-          place(`p_${side}_body`, 'body', at(start + 60, BOARD_TOP + 302, 708, 350), 'body'),
+          place(`p_${side}_tag`, 'caption', at(start + 60, BOARD_TOP + 126, 680, 34), 'caption'),
+          place(`p_${side}`, 'subtitle', at(start + 60, BOARD_TOP + 166, 708, 106), 'heading'),
+          place(`p_${side}_body`, 'body', at(start + 60, BOARD_TOP + 274, 708, 350), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1388,12 +1390,12 @@ function layouts(): Layout[] {
       background: ground(0.62, 0.45),
       placeholders: [
         ...head('chart').placeholders,
-        place('p_chart', 'chart', at(START + 30, 302, 1100, 588)),
-        place('p_stat1', 'number', atEnd(END, 262, 470, 135), 'display', { color: token('primary') }),
-        place('p_stat1_body', 'body', atEnd(END, 400, 470, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END, 570, 470, 135), 'display', { color: token('secondary') }),
-        place('p_stat2_body', 'body', atEnd(END, 708, 470, 96), 'body'),
-        place('p_source', 'caption', atEnd(END, 826, 470, 68), 'caption'),
+        place('p_chart', 'chart', at(START + 30, 326, 1100, 592)),
+        place('p_stat1', 'number', atEnd(END, 290, 470, 135), 'display', { color: token('primary') }),
+        place('p_stat1_body', 'body', atEnd(END, 428, 470, 135), 'body'),
+        place('p_stat2', 'number', atEnd(END, 590, 470, 135), 'display', { color: token('secondary') }),
+        place('p_stat2_body', 'body', atEnd(END, 728, 470, 96), 'body'),
+        place('p_source', 'caption', atEnd(END, 842, 470, 68), 'caption'),
         ...foot('chart').placeholders,
       ],
       decorations: [
@@ -1401,8 +1403,8 @@ function layouts(): Layout[] {
         rect('d_shvav_chart_bezel_shadow', SCOPE, solid(token('bg')), {
           effects: { radius: 22, shadow: { x: 0, y: 24, blur: 50, color: { value: '#010a06', alpha: 0.6 } } },
         }),
-        lettered('d_shvav_chart_scope', SCOPE, scopeArt()),
-        rect('d_shvav_chart_divider', atEnd(END, 540, 470, 1.5), solid(token('text', 0.16))),
+        lettered('d_shvav_chart_scope', SCOPE, scopeArt()('rtl')),
+        rect('d_shvav_chart_divider', atEnd(END, 574, 470, 1.5), solid(token('text', 0.16))),
         ...foot('chart').decorations,
       ],
     },
@@ -1412,13 +1414,13 @@ function layouts(): Layout[] {
       archetype: 'table',
       background: ground(0.5, 0.45),
       placeholders: [
-        ...head('table', 1400, 1, false).placeholders,
-        place('p_table', 'table', at(START, 250, WIDTH, 616)),
-        place('p_note', 'caption', at(START, 884, WIDTH, 34), 'caption'),
+        ...head('table', 1400, 2, false).placeholders,
+        place('p_table', 'table', at(START, 282, WIDTH, 610)),
+        place('p_note', 'caption', at(START, 904, WIDTH, 34), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: [
-        ...head('table', 1400, 1, false).decorations,
+        ...head('table', 1400, 2, false).decorations,
         drawing('d_shvav_table_tape', at(22, 0, 64, 1080), tapeArt(), PAINT),
         ...foot('table').decorations,
       ],
@@ -1432,9 +1434,9 @@ function layouts(): Layout[] {
         ...head('team').placeholders,
         ...PEOPLE.flatMap((start, i) => [
           place(`p_person${i + 1}_photo`, 'image', at(start, PORTRAIT.top, PORTRAIT.w, PORTRAIT.w)),
-          place(`p_person${i + 1}`, 'subtitle', at(start, 668, PORTRAIT.w, 53), 'heading'),
-          place(`p_person${i + 1}_role`, 'caption', at(start, 724, PORTRAIT.w, 34), 'caption'),
-          place(`p_person${i + 1}_body`, 'body', at(start, 764, PORTRAIT.w, 102), 'caption'),
+          place(`p_person${i + 1}`, 'subtitle', at(start, 690, PORTRAIT.w, 53), 'heading'),
+          place(`p_person${i + 1}_role`, 'caption', at(start, 746, PORTRAIT.w, 34), 'caption'),
+          place(`p_person${i + 1}_body`, 'body', at(start, 786, PORTRAIT.w, 102), 'caption'),
         ]),
         ...foot('team').placeholders,
       ],
@@ -1476,11 +1478,11 @@ function layouts(): Layout[] {
           PAINT,
         ),
         ...LINES.map((top, i) =>
-          drawing(
+          // A tick reads the same way in both directions: drawn once, never mirrored.
+          lettered(
             `d_shvav_closing_check${i + 1}`,
             at(START, top + 24, 44, 44),
             svg(44, 44, DEFS + `<rect x="1" y="1" width="42" height="42" rx="8" fill="url(#au)"/><path d="M12 22.5l7 7 13-14" stroke="${BG}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>`),
-            PAINT,
           ),
         ),
         rect('d_shvav_closing_panel_shadow', atEnd(64, 104, 796, 872), solid(token('bg')), {
@@ -1531,7 +1533,7 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [text('Zrima Labs · Hardware'), text('רותי אלמוג · 14.3.2027 · סקירת EVT')],
       title: text('עשר שנים', 'על סוללה אחת'),
-      subtitle: text('מונה המים החכם WM-10, והדרך שלו מאב־טיפוס לייצור'),
+      subtitle: text('מונה המים WM-10, מאב־טיפוס ועד ייצור'),
     },
   },
   {
@@ -1541,7 +1543,7 @@ const sampleHe: SampleSlide[] = [
       number: text('01'),
       caption: text('חלק ראשון'),
       title: text('תקציב', 'ההספק'),
-      subtitle: text('כל מיקרו־אמפר נספר, כי הסוללה צריכה להחזיק עשור.'),
+      subtitle: text('כל מיקרו־אמפר נספר, עשר שנים.'),
     },
   },
   {
@@ -1665,7 +1667,7 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_shvav_chart',
     name: 'על הסקופ',
     content: {
-      caption: [text('מדידה במעבדה'), text('יחידה 17, שידור יומי אחד, מרץ 2027.')],
+      caption: [text('מדידה במעבדה'), text('יחידה 17 במעבדה, מרץ 2027.')],
       title: text('שידור אחד, על הסקופ'),
       number: [text('1.2s'), text('99.3%')],
       body: [text('באוויר, פעם אחת ביממה.'), text('מהקריאות הגיעו לענן בפיילוט.')],
@@ -1763,7 +1765,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [text('Zrima Labs · Hardware'), text('Ruti Almog · EVT review · 14 Mar 2027')],
       title: text('Ten years,', 'one battery'),
-      subtitle: text('The WM-10 smart water meter, on its way from prototype to production'),
+      subtitle: text('The WM-10 smart water meter,', 'from prototype to production'),
     },
   },
   {
@@ -1773,7 +1775,7 @@ const sampleEn: SampleSlide[] = [
       number: text('01'),
       caption: text('Part one'),
       title: text('The power', 'budget'),
-      subtitle: text('Every microamp counts when the battery has to last a decade.'),
+      subtitle: text('Every microamp counts, for ten years.'),
     },
   },
   {
@@ -1897,7 +1899,7 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_shvav_chart',
     name: 'On the scope',
     content: {
-      caption: [text('Lab measurement'), text('Unit 17, one daily transmission, March 2027.')],
+      caption: [text('Lab measurement'), text('Lab unit 17, March 2027.')],
       title: text('One transmission, on the scope'),
       number: [text('1.2s'), text('99.3%')],
       body: [text('On air, once a day.'), text('Of pilot readings reached the cloud.')],

@@ -700,8 +700,41 @@ const NAMES: Words[] = [
   w2('מאיה', 'Maya'),
 ];
 
+/** Where the opening's command palette starts: at the end side, beside the title. */
+const PALETTE = 1920 - END - 700;
+
+/** The suggestions of the palette: an icon, its colour, what it does and its shortcut. */
+const PALETTE_ROWS: [Icon, string, Words, string][] = [
+  ['sparkles', CORAL, w2('פרסום גרסה 2.0 לכל הצוותים', 'Publish 2.0 to every team'), ''],
+  ['users', VIOLET, w2('הזמנת הצוות לסביבת העבודה', 'Invite your team'), 'I'],
+  ['chart', MINT, w2('פתיחת מפת הדרכים', 'Open the roadmap'), 'R'],
+  ['bolt', AMBER, w2('הפעלת סוכן AI', 'Turn on an AI agent'), 'A'],
+];
+
+/** One suggestion of the palette, 676 wide: its icon, its words and, but for the first, its keys. */
+function paletteRow(dir: Dir, name: Icon, color: string, words: Words, key: string, on: boolean): string {
+  const w = 676;
+  const keys = key
+    ? [0, 1]
+        .map((i) => {
+          const x = bx(dir, w, w - 18 - (i === 0 ? 76 : 36), 34);
+          return `<rect x="${x}" y="17" width="34" height="34" rx="8" fill="${CANVAS}" stroke="${INK}" stroke-opacity=".1"/>`;
+        })
+        .join('') +
+      icon('command', bx(dir, w, w - 94 + 8, 18), 25, 18, MUTED, 2) +
+      `<text x="${bx(dir, w, w - 54 + 17)}" y="40" text-anchor="middle" ${UI} font-size="16" font-weight="600" fill="${MUTED}">${key}</text>`
+    : '';
+  return svg(
+    w,
+    68,
+    `<rect x="${bx(dir, w, 16, 44)}" y="12" width="44" height="44" rx="12" fill="${color}" fill-opacity="${on ? 1 : 0.15}"/>` +
+      icon(name, bx(dir, w, 26, 24), 22, 24, on ? WHITE : color === AMBER ? '#c98317' : color, 2.1) +
+      say(dir, w, 78, 41, 21, words, `font-weight="${on ? 600 : 500}" fill="${INK}" fill-opacity="${on ? 1 : 0.75}"`) +
+      keys,
+  );
+}
+
 function layouts(): Layout[] {
-  const palette = at(START, 250, 1180, 668);
   const textWindow = atEnd(END, 96, 676, 836);
   const shot = { x: 96, y: 96, w: 1728, h: 568 };
   return [
@@ -710,91 +743,77 @@ function layouts(): Layout[] {
       name: 'Hero',
       archetype: 'hero',
       placeholders: [
-        place('p_kicker', 'caption', at(START + 104, 187, 780, 34), 'caption'),
-        place('p_title', 'title', at(START + 124, 280, 1010, 240), 'display'),
-        place('p_subtitle', 'subtitle', at(START + 132, 596, 850, 140), 'heading', {
-          vAlign: 'middle',
-        }),
-        place('p_meta', 'caption', at(START + 44, 862, 720, 34), 'caption'),
+        // The kicker is what was typed into the palette; the title and the subtitle stand on the
+        // slide's own ground, so they read on whatever ground a deck gives the slide.
+        place('p_kicker', 'caption', at(PALETTE + 86, 266, 500, 34), 'caption'),
+        place('p_title', 'title', at(START, 300, 900, 240), 'display'),
+        place('p_subtitle', 'subtitle', at(START, 562, 860, 140), 'heading'),
+        place('p_meta', 'caption', at(START + 62, 752, 760, 34), 'caption'),
       ],
       decorations: [
         board('hero'),
-        glow('d_mutzar_hero_glow', atEnd(0, 60, 1000, 1020), CORAL, 0.22),
-        glow('d_mutzar_hero_glow2', at(380, 0, 1000, 560), VIOLET, 0.1),
-        badge('d_mutzar_hero_new', at(START, 186, 86, 36), w2('חדש', 'NEW'), CORAL, true),
-        rect('d_mutzar_hero_palette', palette, WHITE_FILL, {
+        glow('d_mutzar_hero_glow', atEnd(0, 120, 1000, 900), CORAL, 0.2),
+        glow('d_mutzar_hero_glow2', at(200, 0, 1000, 560), VIOLET, 0.08),
+        badge('d_mutzar_hero_new', at(START, 250, 86, 36), w2('חדש', 'NEW'), CORAL, true),
+        avatar('d_mutzar_hero_presenter', at(START, 747, 44, 44)),
+        rect('d_mutzar_hero_palette', at(PALETTE, 236, 700, 494), WHITE_FILL, {
           stroke: HAIR,
           effects: {
-            radius: 30,
+            radius: 28,
             shadow: { x: 0, y: 40, blur: 90, color: { value: '#3b2414', alpha: 0.14 } },
           },
         }),
         still(
           'd_mutzar_hero_search',
-          at(START + 40, 308, 60, 60),
-          svg(60, 60, icon('search', 6, 6, 48, CORAL, 2.4)),
+          at(PALETTE + 26, 261, 44, 44),
+          svg(44, 44, icon('search', 4, 4, 36, CORAL, 2.4)),
         ),
-        rect('d_mutzar_hero_rule', at(START, 542, 1180, 1), solid(token('text', 0.08))),
-        lettered('d_mutzar_hero_group', at(START + 44, 552, 400, 26), (dir) =>
+        lettered(
+          'd_mutzar_hero_shortcut',
+          at(PALETTE + 700 - 24 - 66, 267, 66, 32),
           svg(
-            400,
-            26,
+            66,
+            32,
+            `<rect x="1" y="1" width="64" height="30" rx="8" fill="${CANVAS}" stroke="${INK}" stroke-opacity=".1"/>` +
+              icon('command', 12, 8, 16, MUTED, 2) +
+              `<text x="45" y="22" text-anchor="middle" ${UI} font-size="16" font-weight="600" fill="${MUTED}">K</text>`,
+          ),
+        ),
+        rect('d_mutzar_hero_rule', at(PALETTE, 322, 700, 1), solid(token('text', 0.08))),
+        lettered('d_mutzar_hero_group', at(PALETTE + 30, 336, 300, 24), (dir) =>
+          svg(
+            300,
+            24,
             say(
               dir,
-              400,
+              300,
               0,
-              19,
-              16,
+              18,
+              15,
               w2('הצעות', 'SUGGESTED'),
               `font-weight="600" letter-spacing="${dir === 'rtl' ? 0 : 1.2}" fill="${MUTED}"`,
             ),
           ),
         ),
-        rect(
-          'd_mutzar_hero_selected',
-          at(START + 20, 582, 1140, 168),
-          solid(token('secondary', 0.07)),
-          {
-            effects: { radius: 18 },
-          },
-        ),
-        rect('d_mutzar_hero_selected_bar', at(START + 20, 606, 5, 120), CORAL_FILL, {
-          effects: { radius: 3 },
+        rect('d_mutzar_hero_selected', at(PALETTE + 12, 366, 676, 76), solid(token('secondary', 0.08)), {
+          effects: { radius: 14 },
         }),
-        tile('d_mutzar_hero_selected_icon', at(START + 48, 634, 64, 64), 'sparkles', CORAL),
-        keycap('d_mutzar_hero_enter', at(START + 1044, 622, 112, 100), keyIcon('enter')),
-        lettered('d_mutzar_hero_row', at(START + 20, 760, 1140, 64), (dir) =>
-          svg(
-            1140,
-            64,
-            `<rect x="${bx(dir, 1140, 28, 44)}" y="10" width="44" height="44" rx="12" fill="${VIOLET}" fill-opacity=".13"/>` +
-              icon('users', bx(dir, 1140, 38, 24), 20, 24, VIOLET, 2.1) +
-              say(
-                dir,
-                1140,
-                112,
-                40,
-                24,
-                w2('הזמנת הצוות לסביבת העבודה', 'Invite your team to the workspace'),
-                `fill="${INK}" fill-opacity=".72"`,
-              ) +
-              [0, 1]
-                .map((i) => {
-                  const x = bx(dir, 1140, 1140 - 28 - (i === 0 ? 76 : 36), 36);
-                  return `<rect x="${x}" y="14" width="36" height="36" rx="9" fill="${CANVAS}" stroke="${INK}" stroke-opacity=".1"/>`;
-                })
-                .join('') +
-              icon('command', bx(dir, 1140, 1140 - 104 + 9, 18), 23, 18, MUTED, 2) +
-              `<text x="${bx(dir, 1140, 1140 - 64 + 18)}" y="38.5" text-anchor="middle" ${UI} font-size="17" font-weight="600" fill="${MUTED}">I</text>`,
+        rect('d_mutzar_hero_selected_bar', at(PALETTE + 12, 384, 4, 40), CORAL_FILL, {
+          effects: { radius: 2 },
+        }),
+        ...PALETTE_ROWS.map(([name, color, words, key], i) =>
+          lettered(`d_mutzar_hero_row${i + 1}`, at(PALETTE + 12, 370 + i * 70, 676, 68), (dir) =>
+            paletteRow(dir, name, color, words, key, i === 0),
           ),
         ),
-        rect('d_mutzar_hero_foot_rule', at(START, 838, 1180, 1), solid(token('text', 0.08))),
-        lettered('d_mutzar_hero_hints', at(START + 800, 864, 356, 30), (dir) => {
-          const w = 356;
-          const key = (s: number, kw: number, glyph: string) =>
-            `<rect x="${bx(dir, w, s, kw)}" y="1" width="${kw}" height="28" rx="7" fill="${CANVAS}" stroke="${INK}" stroke-opacity=".1"/>` +
-            `<text x="${bx(dir, w, s + kw / 2)}" y="20.5" text-anchor="middle" ${UI} font-size="15" font-weight="600" fill="${MUTED}">${glyph}</text>`;
-          // Towards the end side: the arrows and what they do, the return key, then escape.
+        keycap('d_mutzar_hero_enter', at(PALETTE + 700 - 12 - 96, 372, 88, 72), keyIcon('enter')),
+        rect('d_mutzar_hero_foot_rule', at(PALETTE, 664, 700, 1), solid(token('text', 0.08))),
+        lettered('d_mutzar_hero_hints', at(PALETTE + 30, 681, 640, 30), (dir) => {
+          const w = 640;
+          const key = (k: number, kw: number, glyph: string) =>
+            `<rect x="${bx(dir, w, k, kw)}" y="1" width="${kw}" height="28" rx="7" fill="${CANVAS}" stroke="${INK}" stroke-opacity=".1"/>` +
+            `<text x="${bx(dir, w, k + kw / 2)}" y="20.5" text-anchor="middle" ${UI} font-size="15" font-weight="600" fill="${MUTED}">${glyph}</text>`;
+          // From the start: the arrows and what they do, the return key, and escape at the end.
           return svg(
             w,
             30,
@@ -805,16 +824,16 @@ function layouts(): Layout[] {
               key(w - 44, 44, 'esc'),
           );
         }),
-        keycap('d_mutzar_hero_cmd', atEnd(120, 250, 320, 320), keyIcon('command'), -9),
-        keycap('d_mutzar_hero_k', atEnd(310, 346, 320, 320), keyLetter('K'), 7),
-        cursor('d_mutzar_hero_cursor1', [1920 - 640, 336], CORAL, NAMES[0]!),
-        cursor('d_mutzar_hero_cursor2', [1920 - 384, 628], VIOLET, NAMES[1]!),
+        keycap('d_mutzar_hero_cmd', atEnd(130, 18, 230, 230), keyIcon('command'), -9),
+        keycap('d_mutzar_hero_k', atEnd(318, 52, 210, 210), keyLetter('K'), 7),
+        cursor('d_mutzar_hero_cursor1', [1920 - 470, 222], VIOLET, NAMES[1]!),
         ...toast(
           'hero',
-          atEnd(110, 740, 450, 76),
+          atEnd(END + 20, 770, 450, 76),
           w2('גרסה 2.0 באוויר', 'Version 2.0 is live'),
           w2('לצפייה', 'View'),
         ),
+        cursor('d_mutzar_hero_cursor2', [1920 - 206, 822], CORAL, NAMES[0]!),
       ],
     },
     {
