@@ -1,10 +1,15 @@
 # Authored templates and designs
 
-The sources of the technology templates (Kod, and the four that follow it) and of the
+The sources of three technology templates (Anan, Shvav and Mutzar) and of the
 ready-made slides of Elements → Designs, the pictures of their samples, and the scripts that
 render, check and package them. The app does not read this folder. It reads the media library
 (docs/media-library.md); what is authored here reaches the library through
 `tools/merge-into-library.mjs` and `pnpm media:publish`.
+
+Kod and Magen, the other technology templates of the library, are written in the author's copy
+of the library (`archive/templates-source/`) and put into its catalog by
+`apps/desktop/scripts/export-templates.mjs`, not here: a template of that id authored here would
+take their place when merged.
 
 | Path                                   | What it is                                                                                                                               |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,7 +27,7 @@ render, check and package them. The app does not read this folder. It reads the 
 From `packages/templates`:
 
 ```sh
-node src/authoring/tools/run-ts.mjs src/authoring/check.ts kod     # structure, contract, contrast
+node src/authoring/tools/run-ts.mjs src/authoring/check.ts anan    # structure, contract, contrast
 ```
 
 To look at it, stage a copy of the library and bring up the servers, then take screenshots of the
@@ -31,8 +36,8 @@ review page (`apps/desktop/dev/review.html`):
 ```sh
 node src/authoring/tools/stage.mjs ../../../Slidr-media /tmp/slidr-site
 SITE=/tmp/slidr-site src/authoring/tools/up.sh
-SLIDR_CHECK=1 node src/authoring/tools/shot.mjs /tmp/kod-he.png "t=kod&lang=he&w=470&cols=4"
-SLIDR_CHECK=1 node src/authoring/tools/shot.mjs /tmp/kod-en-1.png "t=kod&lang=en&slide=0&w=1280"
+SLIDR_CHECK=1 node src/authoring/tools/shot.mjs /tmp/anan-he.png "t=anan&lang=he&w=470&cols=4"
+SLIDR_CHECK=1 node src/authoring/tools/shot.mjs /tmp/anan-en-1.png "t=anan&lang=en&slide=0&w=1280"
 SLIDR_CHECK=1 node src/authoring/tools/shot.mjs /tmp/designs.png "d=group:hitech&src=new&lang=he&w=460"
 ```
 

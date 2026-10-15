@@ -5,8 +5,12 @@
 // Playwright's; `SLIDR_REVIEW_URL` a dev server other than the one on port 1420.
 import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+// A path is imported as a URL: on Windows a bare path reads as a URL whose scheme is its drive.
 const pw = await import(
-  createRequire(new URL('../../../../../package.json', import.meta.url)).resolve('playwright')
+  pathToFileURL(
+    createRequire(new URL('../../../../../package.json', import.meta.url)).resolve('playwright'),
+  ).href
 );
 const chromium = pw.chromium ?? pw.default.chromium;
 const jobs = [];

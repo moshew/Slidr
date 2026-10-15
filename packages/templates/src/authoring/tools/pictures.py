@@ -1,5 +1,5 @@
 # Writes pictures into the authoring folder as webp and records them in pictures.json.
-#   python3 pictures.py <name> <source.png> [quality]   e.g. kod-editor shots/kod-editor.png
+#   python3 pictures.py <name> <source.png> [quality]   e.g. anan-city shots/anan-city.png
 import hashlib, json, os, re, sys
 from PIL import Image
 A = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pictures')
@@ -13,7 +13,7 @@ im.save(out, 'WEBP', quality=quality, method=6)
 data = open(out, 'rb').read()
 sha = hashlib.sha256(data).hexdigest()
 key = re.sub(r'-(\w)', lambda m: m.group(1).upper(), name)
-# One file a template, named by the first part of the picture's name: kod-editor -> kod.json.
+# One file a template, named by the first part of the picture's name: anan-city -> anan.json.
 manifest_path = os.path.join(A, name.split('-')[0] + '.json')
 manifest = json.load(open(manifest_path)) if os.path.exists(manifest_path) else {}
 manifest[key] = {

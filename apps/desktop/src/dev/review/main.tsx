@@ -61,7 +61,7 @@ type ManagedCatalog = {
 async function load(): Promise<Drawn[]> {
   const t = query.get('t');
   if (t) {
-    const own = authored[t];
+    const own = query.get('src') === 'library' ? undefined : authored[t];
     const template = own ? own.template() : builtInTemplates().find((x) => x.theme.id === t);
     const samples = own ? own.samples : builtInSamples[t];
     if (!template || !samples) throw new Error(`no template ${t}`);

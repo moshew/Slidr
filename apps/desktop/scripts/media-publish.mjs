@@ -93,43 +93,50 @@ if (report) {
   console.log(`Report written to ${file}`);
 }
 
-if (blocked) {
-  console.error(blocked);
-  process.exit(1);
-}
+// From here on the script sets its exit code and ends rather than calling process.exit(): after
+// the fetch above, process.exit() aborts Node 24 on Windows while the connection is closing
+// ("Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)", exit code 0xC0000409).
+process.exitCode = publish();
 
-if (flag('--dry-run')) {
-  console.log('Dry run: nothing is published.');
-  process.exit(0);
-}
-
-for (const name of ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']) {
-  if (!process.env[name]) {
-    console.error(`${name} is not set: Cloudflare cannot be reached.`);
-    process.exit(1);
+function publish() {
+  if (blocked) {
+    console.error(blocked);
+    return 1;
   }
-}
 
-// npx is a script on Windows, which only a shell runs; the shell takes the words apart again.
-const windows = process.platform === 'win32';
-const quoted = (arg) =>
-  windows && /[\s"&|<>^]/.test(arg) ? `"${arg.replaceAll('"', '""')}"` : arg;
-const deploy = spawnSync(
-  'npx',
-  [
-    '--yes',
-    WRANGLER,
-    'pages',
-    'deploy',
-    target,
-    '--project-name',
-    PROJECT,
-    '--branch',
-    branch,
-    '--commit-dirty=true',
-    '--commit-message',
-    `Media library ${manifest.published}`,
-  ].map(quoted),
-  { stdio: 'inherit', shell: windows },
-);
-process.exit(deploy.status ?? 1);
+  if (flag('--dry-run')) {
+    console.log('Dry run: nothing is published.');
+    return 0;
+  }
+
+  for (const name of ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID']) {
+    if (!process.env[name]) {
+      console.error(`${name} is not set: Cloudflare cannot be reached.`);
+      return 1;
+    }
+  }
+
+  // npx is a script on Windows, which only a shell runs; the shell takes the words apart again.
+  const windows = process.platform === 'win32';
+  const quoted = (arg) =>
+    windows && /[\s"&|<>^]/.test(arg) ? `"${arg.replaceAll('"', '""')}"` : arg;
+  const deploy = spawnSync(
+    'npx',
+    [
+      '--yes',
+      WRANGLER,
+      'pages',
+      'deploy',
+      target,
+      '--project-name',
+      PROJECT,
+      '--branch',
+      branch,
+      '--commit-dirty=true',
+      '--commit-message',
+      `Media library ${manifest.published}`,
+    ].map(quoted),
+    { stdio: 'inherit', shell: windows },
+  );
+  return deploy.status ?? 1;
+}

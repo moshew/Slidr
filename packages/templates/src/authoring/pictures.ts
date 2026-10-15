@@ -12,7 +12,7 @@ export const techPictures: Record<string, AssetMeta> = Object.assign(
   ...Object.values(files),
 ) as Record<string, AssetMeta>;
 
-/** A picture by its key (`kodEditor` for `kod-editor.webp`). */
+/** A picture by its key (`ananCity` for `anan-city.webp`). */
 export function picture(key: string): AssetMeta {
   const asset = techPictures[key];
   if (!asset) throw new Error(`No picture "${key}" in pictures/*.json`);

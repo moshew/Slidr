@@ -2,10 +2,8 @@
 
 This folder adds to the Slidr media library:
 
-- **Five technology templates** (`templates/catalog.tech.json`, pictures in `images/templates/`):
-  - **Kod** (קוד): a code editor for tech talks and engineering reviews.
+- **Three technology templates** (`templates/catalog.tech.json`, pictures in `images/templates/`):
   - **Anan** (ענן): cloud and DevOps architecture.
-  - **Magen** (מגן): cybersecurity briefings.
   - **Shvav** (שבב): hardware, IoT and chips.
   - **Mutzar** (מוצר): software product launches.
 - **Fifteen ready-made slides** for the topics הייטק, מוצר טכנולוגי and דיפנס־טק, five each
