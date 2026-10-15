@@ -1547,8 +1547,8 @@ function comparisonArt(): string {
     g += `<rect x="${l + 106}" y="${BOARD_TOP + 16}" width="74" height="24" rx="2" stroke="${INK}" stroke-opacity=".45" stroke-width="2"/><path d="M${l + 116} ${BOARD_TOP + 34}h20" stroke="${INK}" stroke-opacity=".45" stroke-width="2"/>`;
     // Along the foot of each board, under its text and clear of it, its parts: rev B crowded,
     // rev C down to one chip, and lit.
-    const y = BOARD_TOP + BOARD_H - 50;
-    g += `<rect x="${l + 66}" y="${y - 44}" width="${BOARD_W - 132}" height="88" rx="8" stroke="${INK}" stroke-opacity=".16" stroke-width="2" stroke-dasharray="8 8"/>`;
+    const y = BOARD_TOP + BOARD_H - 56;
+    g += `<rect x="${l + 66}" y="${y - 40}" width="${BOARD_W - 132}" height="80" rx="8" stroke="${INK}" stroke-opacity=".16" stroke-width="2" stroke-dasharray="8 8"/>`;
     g +=
       tr(
         [

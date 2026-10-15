@@ -898,9 +898,9 @@ function layouts(): Layout[] {
       name: 'Hero',
       archetype: 'hero',
       placeholders: [
-        // The kicker is what was typed into the palette; the title and the subtitle stand on the
-        // slide's own ground, so they read on whatever ground a deck gives the slide.
-        place('p_kicker', 'caption', at(PALETTE + 86, 266, 500, 34), 'caption'),
+        // Every word of the slide stands on its own ground at the start side, so it reads on
+        // whatever ground or picture a deck brings to the end side, where the palette is.
+        place('p_kicker', 'caption', at(START + 104, 251, 760, 34), 'caption'),
         place('p_title', 'title', at(START, 300, 900, 240), 'display'),
         place('p_subtitle', 'subtitle', at(START, 562, 860, 140), 'heading'),
         place('p_meta', 'caption', at(START + 62, 752, 760, 34), 'caption'),
@@ -922,6 +922,23 @@ function layouts(): Layout[] {
           'd_mutzar_hero_search',
           at(PALETTE + 26, 261, 44, 44),
           svg(44, 44, icon('search', 4, 4, 36, CORAL, 2.4)),
+        ),
+        // The palette's empty field: the caret, and what it asks for.
+        lettered('d_mutzar_hero_query', at(PALETTE + 82, 263, 500, 40), (dir) =>
+          svg(
+            500,
+            40,
+            `<rect x="${bx(dir, 500, 4, 3)}" y="7" width="3" height="27" rx="1.5" fill="${CORAL}"/>` +
+              say(
+                dir,
+                500,
+                18,
+                28,
+                22,
+                w2('חיפוש או פקודה…', 'Search or type a command…'),
+                `fill="${MUTED}"`,
+              ),
+          ),
         ),
         lettered(
           'd_mutzar_hero_shortcut',
@@ -1686,17 +1703,16 @@ function layouts(): Layout[] {
       name: 'Table',
       archetype: 'table',
       placeholders: [
-        ...head('table').placeholders,
-        place('p_table', 'table', at(START + 30, 324, WIDTH - 60, 612)),
-        // The note says what the table shows, in the window's toolbar between its views and its search.
-        place('p_note', 'caption', at(START + 430, 273, WIDTH - 430 - 260, 34), 'caption'),
+        ...head('table', 1000).placeholders,
+        place('p_table', 'table', at(START + 30, 322, WIDTH - 60, 612)),
+        // The note says what the table shows, at the end side of the head, across from the title.
+        place('p_note', 'caption', atEnd(END, 126, 660, 102), 'caption', { align: 'end' }),
         ...foot('table').placeholders,
       ],
       decorations: [
         board('table'),
-        ...head('table').decorations,
-        presence('table'),
-        ...browser('table', at(START, 264, WIDTH, 676), '', (dir, w) => {
+        ...head('table', 1000).decorations,
+        ...browser('table', at(START, 262, WIDTH, 680), 'zrima.app/pricing', (dir, w) => {
           // The views of the data at the start side, after the lights, and a search at the end.
           const views = [w2('טבלה', 'Table'), w2('לוח', 'Board'), w2('ציר זמן', 'Timeline')];
           return (
