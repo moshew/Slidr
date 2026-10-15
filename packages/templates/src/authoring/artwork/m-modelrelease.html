@@ -2,10 +2,11 @@
 <html>
 <head>
 <meta charset="utf-8" />
-<!-- The picture of m-modelrelease: a form of thought, rings of ink-dark points lifted into hills, the
-     highest of them lit amber, with depth of field, on a transparent ground.
-     node <scratchpad>/hitech/render.mjs m-modelrelease.html out.png 1000 1000 2 -->
+<!-- The picture of m-modelrelease: the letter aleph as a cloud of ink-dark points, turned in depth,
+     its top dissolving into amber tokens that rise away, with depth of field, on a transparent
+     ground. node <scratchpad>/hitech/render.mjs m-modelrelease.html out.png 1000 1000 2 -->
 <style>
+  @font-face { font-family: 'Frank Ruhl'; src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/frank-ruhl-libre/files/frank-ruhl-libre-hebrew-wght-normal.woff2') format('woff2'); font-weight: 300 900; }
   html, body { margin: 0; overflow: hidden; background: transparent; }
   canvas { display: block; }
 </style>
@@ -23,6 +24,7 @@ import { renderAccumulated } from './hitech-render.js';
 const W = innerWidth, H = innerHeight;
 const Q = new URLSearchParams(location.search);
 const num = (k, d) => (Q.has(k) ? Q.get(k).split(',').map(Number) : d);
+await document.fonts.load('800 400px "Frank Ruhl"');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(devicePixelRatio);
@@ -32,55 +34,68 @@ renderer.toneMapping = THREE.NoToneMapping;
 document.body.append(renderer.domElement);
 const scene = new THREE.Scene();
 
-let seed = 11;
+let seed = 5;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(2 * Math.PI * rnd());
 
-// a smooth field over the sphere: rotation about a tilted axis, bent by two slow waves
+// the letter, as a mask
+const S = 1024;
+const mask = document.createElement('canvas');
+mask.width = mask.height = S;
+const g = mask.getContext('2d');
+g.fillStyle = '#000';
+g.font = `800 ${num('glyph', [860])[0]}px "Frank Ruhl"`;
+g.textAlign = 'center';
+g.textBaseline = 'middle';
+g.fillText('א', S / 2, S * 0.53);
+const data = g.getImageData(0, 0, S, S).data;
+const inside = (x, y) => x >= 0 && y >= 0 && x < S && y < S && data[(Math.floor(y) * S + Math.floor(x)) * 4 + 3] > 128;
+
 const positions = [], colors = [], sizes = [], alphas = [];
-const INK = new THREE.Color(num('ink', [0x161a3a])[0]);
-const INDIGO = new THREE.Color(0x3b3fd8);
-const AMBER = new THREE.Color(0xff7a1a);
+const INK = new THREE.Color(num('ink', [0x15183a])[0]);
+const INDIGO = new THREE.Color(0x3a3fd6);
+const AMBER = new THREE.Color(0xff7417);
 function add(p, color, size, alpha) {
   positions.push(p.x, p.y, p.z);
   colors.push(color.r, color.g, color.b);
   sizes.push(size);
   alphas.push(alpha);
 }
+const toWorld = (x, y, z) => new THREE.Vector3((x - S / 2) / 400, -(y - S / 2) / 400, z);
+const DEPTH = num('depth', [0.22])[0];
 
-// a smooth field of hills over the sphere, from a few crossed waves
-function hills(d) {
-  const { x, y, z } = d;
-  return (
-    Math.sin(2.1 * x + 1.2) * Math.sin(1.7 * y + 0.4) * Math.sin(2.4 * z + 2.2) +
-    0.55 * Math.sin(4.3 * x - 0.6 * y + 0.9) * Math.cos(3.7 * z + 1.1 * y) +
-    0.3 * Math.sin(7.1 * y + 2.0 * z) * Math.cos(6.3 * x - 0.5)
-  );
-}
-
-// rings of dots round the sphere, each lifted by the hills: a surface of contour lines
-const rings = num("rings", [56])[0];
-const AMP = num("amp", [0.15])[0];
-const spacing = num('spacing', [0.006])[0];
-for (let i = 0; i < rings; i++) {
-  const theta = (Math.PI * (i + 0.5)) / rings;
-  const n = Math.max(6, Math.floor((2 * Math.PI * Math.sin(theta)) / spacing));
-  for (let j = 0; j < n; j++) {
-    const phi = (2 * Math.PI * j) / n + i * 0.37;
-    const d = new THREE.Vector3(Math.sin(theta) * Math.cos(phi), Math.cos(theta), Math.sin(theta) * Math.sin(phi));
-    const h = hills(d);
-    const p = d.clone().multiplyScalar(1 + AMP * h);
-    const lit = THREE.MathUtils.smoothstep(h, 0.62, 0.95);
-    const color = INK.clone().lerp(INDIGO, THREE.MathUtils.clamp(0.5 + h * 0.5, 0, 1) * 0.7).lerp(AMBER, lit);
-    add(p, color, 1.15 + lit * 0.9, 0.5 + 0.45 * Math.max(lit, THREE.MathUtils.clamp(h, 0, 1) * 0.6));
+// the body: points through the thickness of the letter, denser and darker at its edges
+const want = num('points', [90000])[0];
+let made = 0, tries = 0;
+while (made < want && tries < want * 40) {
+  tries++;
+  const x = rnd() * S, y = rnd() * S;
+  if (!inside(x, y)) continue;
+  const edge = !inside(x + 7, y) || !inside(x - 7, y) || !inside(x, y + 7) || !inside(x, y - 7);
+  if (!edge && rnd() < 0.35) continue;
+  // the edges make the walls of the letter, the rest lies mostly on its face
+  const z = edge ? (rnd() - 0.5) * DEPTH : rnd() < 0.6 ? DEPTH / 2 - rnd() * 0.02 : (rnd() - 0.5) * DEPTH;
+  const p = toWorld(x, y, z);
+  // the top of the letter comes apart: the higher, the more of it rises away as tokens
+  const loose = THREE.MathUtils.smoothstep(1 - y / S, 0.56, 0.8);
+  if (rnd() < loose * 0.6) {
+    const t = Math.pow(rnd(), 1.5);
+    p.y += t * 1.15 + 0.04;
+    p.x += gauss() * 0.22 * t + t * 0.12;
+    p.z += gauss() * 0.3 * t;
+    add(p, AMBER, 1.1 + rnd() * 1.7 * (1 - t), 0.9 - t * 0.6);
+    made++;
+    continue;
   }
+  const tint = INK.clone().lerp(INDIGO, rnd() * 0.45);
+  add(p, edge ? INK : tint, edge ? 1.25 : 1.0, edge ? 0.75 : 0.32);
+  made++;
 }
-// a few sparks just off the surface over the highest hills
-for (let i = 0; i < 1400; i++) {
-  const d = new THREE.Vector3(gauss(), gauss(), gauss()).normalize();
-  const h = hills(d);
-  if (h < 0.7) continue;
-  add(d.multiplyScalar(1 + AMP * h + 0.04 + rnd() * 0.12), AMBER, 1.4 + rnd() * 1.2, 0.35 + rnd() * 0.4);
+// a few amber sparks inside the letter, where it is thinking
+for (let i = 0; i < 900; i++) {
+  const x = rnd() * S, y = rnd() * S;
+  if (!inside(x, y)) continue;
+  add(toWorld(x, y, (rnd() - 0.5) * DEPTH), AMBER, 1.6 + rnd() * 1.4, 0.7);
 }
 
 const geo = new THREE.BufferGeometry();
@@ -88,7 +103,7 @@ geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 geo.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
 geo.setAttribute('alpha', new THREE.Float32BufferAttribute(alphas, 1));
-const scale = num('dot', [2.4])[0] * devicePixelRatio;
+const scale = num('dot', [2.2])[0] * devicePixelRatio;
 const mat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false,
   uniforms: { scale: { value: scale } },
@@ -96,29 +111,28 @@ const mat = new THREE.ShaderMaterial({
     varying vec3 vColor; varying float vAlpha;
     void main() {
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      // nearer points are larger and darker; the far side of the sphere fades into the paper
-      float depth = clamp((-mv.z - 3.2) / 2.2, 0.0, 1.0);
       vColor = color;
-      vAlpha = alpha * mix(1.0, 0.16, depth);
-      gl_PointSize = size * scale * (4.2 / -mv.z);
+      vAlpha = alpha;
+      gl_PointSize = size * scale * (4.6 / -mv.z);
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `varying vec3 vColor; varying float vAlpha;
     void main() { vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5) discard;
-      gl_FragColor = vec4(vColor, vAlpha * smoothstep(0.5, 0.2, d)); }`,
+      gl_FragColor = vec4(vColor, vAlpha * smoothstep(0.5, 0.15, d)); }`,
 });
 const cloud = new THREE.Points(geo, mat);
-cloud.rotation.set(...num('rot', [1.1, 0.2, 0.4]));
+cloud.rotation.set(...num('rot', [0.1, 0.42, -0.02]));
+cloud.position.set(...num('pos', [0, -0.35, 0]));
 scene.add(cloud);
 
 const camera = new THREE.PerspectiveCamera(num('fov', [30])[0], W / H, 0.1, 100);
-camera.position.set(0, 0, num('dist', [5.1])[0]);
+camera.position.set(0, 0, num('dist', [4.6])[0]);
 camera.lookAt(0, 0, 0);
 
 await renderAccumulated(renderer, scene, camera, {
   frames: num('frames', [24])[0],
-  focus: new THREE.Vector3(0, 0, num('focus', [0.6])[0]),
-  aperture: num('ap', [0.03])[0],
+  focus: new THREE.Vector3(0, 0, num('focus', [0.2])[0]),
+  aperture: num('ap', [0.05])[0],
 });
 document.documentElement.dataset.ready = 'true';
 </script>

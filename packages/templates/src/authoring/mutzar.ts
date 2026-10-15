@@ -1108,11 +1108,11 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('chart').placeholders,
         place('p_chart', 'chart', at(START + 30, 352, 1020, 560)),
-        place('p_stat1', 'number', atEnd(END, 256, 540, 124), 'display', { color: token('secondary') }),
-        place('p_stat1_body', 'body', atEnd(END, 384, 540, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END, 580, 540, 124), 'display', { color: token('accent') }),
-        place('p_stat2_body', 'body', atEnd(END, 708, 540, 100), 'body'),
-        place('p_source', 'caption', atEnd(END, 850, 540, 68), 'caption'),
+        place('p_stat1', 'number', atEnd(END + 22, 256, 520, 124), 'display', { color: token('secondary') }),
+        place('p_stat1_body', 'body', atEnd(END + 22, 384, 520, 135), 'body'),
+        place('p_stat2', 'number', atEnd(END + 22, 580, 520, 124), 'display', { color: token('accent') }),
+        place('p_stat2_body', 'body', atEnd(END + 22, 708, 520, 100), 'body'),
+        place('p_source', 'caption', atEnd(END + 22, 850, 520, 68), 'caption'),
         ...foot('chart').placeholders,
       ],
       decorations: [
@@ -1132,8 +1132,8 @@ function layouts(): Layout[] {
         }),
         ...panels(
           [
-            ['d_mutzar_chart_stat1', atEnd(100, 236, 580, 300)],
-            ['d_mutzar_chart_stat2', atEnd(100, 560, 580, 270)],
+            ['d_mutzar_chart_stat1', atEnd(END, 236, 564, 300)],
+            ['d_mutzar_chart_stat2', atEnd(END, 560, 564, 270)],
           ],
           24,
         ),
@@ -1167,9 +1167,10 @@ function layouts(): Layout[] {
                 );
               })
               .join('') +
-            `<rect x="${bx(dir, w, w - 24, 200)}" y="11" width="200" height="30" rx="15" fill="${CANVAS}"/>` +
-            icon('search', bx(dir, w, w - 24 - 14, 16), 18, 16, MUTED, 2.2) +
-            say(dir, w, w - 24 - 194 + 40, 31, 15, w2('חיפוש', 'Search'), `fill="${MUTED}"`)
+            // The search field at the end side: its icon first, then the word.
+            `<rect x="${bx(dir, w, w - 224, 200)}" y="11" width="200" height="30" rx="15" fill="${CANVAS}"/>` +
+            icon('search', bx(dir, w, w - 210, 16), 18, 16, MUTED, 2.2) +
+            say(dir, w, w - 184, 31, 15, w2('חיפוש', 'Search'), `fill="${MUTED}"`)
           );
         }),
         ...foot('table').decorations,
@@ -1554,7 +1555,7 @@ const sampleEn: SampleSlide[] = [
       number: text('01'),
       caption: text('Part one'),
       title: text("What's new", 'in version 2.0'),
-      subtitle: text("Three things you asked for, and one you didn't see coming."),
+      subtitle: text('Three things you asked for, and one surprise we saved for tonight.'),
     },
   },
   {
@@ -1617,7 +1618,7 @@ const sampleEn: SampleSlide[] = [
       image: { assetId: pictures.mutzarBuilderEn.id },
       subtitle: [text('Drag and connect'), text('AI drafts the flow'), text('Test, then publish')],
       body: [
-        text('Each step is a card on the canvas. Draw an arrow, and the data flows.'),
+        text('Each step is a card. Draw an arrow, and the data flows.'),
         text('Describe the outcome, and Zrima drafts the workflow.'),
         text('Run it on real data in a sandbox, then go live.'),
       ],
