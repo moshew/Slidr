@@ -607,7 +607,7 @@ function bigNumberArt() {
   const x = SX - 1040;
   const y = 286;
   const w = 1040;
-  const h = 236;
+  const h = 270;
   const n = 20;
   const pitch = (w * 0.92) / (n - 1);
   let g = '';
@@ -820,6 +820,24 @@ function cardsArt() {
       g += tr([[edges[2]![0] - 14, y], [-10, y]], j % 2 ? UNDER : { ...BARE, w: 5, op: 0.6 });
     }
   });
+  // The parts of each module along its foot: the MCU, the radio under its can, the sensor's front
+  // end and connector.
+  for (const [k, [l, r]] of edges.entries()) {
+    const y = CARD.top + CARD.h - 36;
+    g += `<path d="M${l + 36} ${y - 30}H${r - 36}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
+    if (k === 0) g += qfp(r - 80, y, 36, 6, { len: 6, w: 4 }) + passive(r - 140, y, 'cap', false, 30, 15) + passive(r - 186, y, 'res', false, 30, 15) + crystal(r - 252, y, 50, 22);
+    if (k === 1) {
+      let m = `M${r - 214} ${y + 12}`;
+      for (let x = r - 214, j = 0; x < r - 150; x += 10, j++) m += `V${j % 2 ? y - 14 : y + 12}H${x + 10}`;
+      g += `<rect x="${r - 136}" y="${y - 20}" width="80" height="40" rx="5" fill="url(#sn)"/><rect x="${r - 130}" y="${y - 14}" width="68" height="28" rx="3" stroke="#8a908e" stroke-width="1.5"/>`;
+      g += `<path d="${m}" stroke="${GOLD}" stroke-opacity=".85" stroke-width="3"/>` + passive(r - 250, y, 'cap', false, 30, 15);
+    }
+    if (k === 2) {
+      g += qfp(r - 80, y, 34, 5, { len: 0.1, w: 4 }, false) + passive(r - 136, y, 'cap', false, 30, 15);
+      g += `<rect x="${r - 236}" y="${y - 18}" width="66" height="36" rx="4" fill="#e9dfc9"/><rect x="${r - 230}" y="${y - 10}" width="54" height="10" rx="2" fill="#2a2e2c"/>`;
+      for (let j = 0; j < 4; j++) g += `<rect x="${r - 228 + j * 14}" y="${y + 18}" width="6" height="10" fill="url(#sn)"/>`;
+    }
+  }
   return g;
 }
 
@@ -854,7 +872,9 @@ function timelineArt(): string {
 const STEPS = [START, START + 347, START + 694, START + 1041, START + 1388];
 const STEP = { w: 308, top: 262, h: 176 };
 
-function processArt(): string {
+const DESIGNATORS = ['X1', 'U2', 'U1', 'ANT1', ''];
+
+function processArt() {
   const cy = STEP.top + STEP.h / 2;
   const S = `stroke="${INK}" stroke-opacity=".85" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"`;
   const symbols = [
@@ -881,6 +901,7 @@ function processArt(): string {
   ];
   const reach = [8, 46, 47, 0, 52];
   let g = '';
+  const words: Letter[] = [];
   for (const [k, s] of STEPS.entries()) {
     const r = 1920 - s;
     const l = r - STEP.w;
@@ -894,13 +915,14 @@ function processArt(): string {
     if (k === 4) g += tr([[r, cy], [c + 60, cy]], { c: GOLD, op: 0.9, w: 5 }).replace('/>', ' stroke-dasharray="2 12"/>');
     g += symbols[k]!(c);
     g += `<circle cx="${r - 18}" cy="${STEP.top + 18}" r="4.5" fill="${INK}" fill-opacity=".6"/>`;
+    if (DESIGNATORS[k]) words.push({ x: r - 32, y: STEP.top + 25, t: DESIGNATORS[k]!, size: 18, anchor: 'end', op: 0.7 });
     // Between two steps: an arrow the way the signal goes.
     if (k < 4) {
       const gx = l - 20;
       g += `<path d="M${gx + 7} ${cy - 11}L${gx - 5} ${cy}L${gx + 7} ${cy + 11}" stroke="${GOLD}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
   }
-  return svg(1920, 1080, DEFS + g);
+  return art(1920, 1080, g, words);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -911,7 +933,7 @@ const SIDES = [
   ['after', START + 876],
 ] as const;
 const BOARD_TOP = 262;
-const BOARD_H = 640;
+const BOARD_H = 668;
 const BOARD_W = 820;
 
 function comparisonArt(): string {
@@ -922,18 +944,19 @@ function comparisonArt(): string {
     for (const [x, y] of [[l + 32, BOARD_TOP + 32], [r - 32, BOARD_TOP + 32], [l + 32, BOARD_TOP + BOARD_H - 32], [r - 32, BOARD_TOP + BOARD_H - 32]] as const) {
       g += side === 'after' ? goldVia(x, y, 14) : `<circle cx="${x}" cy="${y}" r="14" stroke="${MUTED}" stroke-opacity=".6" stroke-width="3"/><circle cx="${x}" cy="${y}" r="6" fill="${HOLE}"/>`;
     }
-    // Along the foot of each board, its parts: rev B crowded, rev C down to one chip and lit.
-    const y = BOARD_TOP + BOARD_H - 48;
-    g += `<path d="M${l + 70} ${y - 34}H${r - 70}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
+    // At the head of each board, its parts: rev B crowded, rev C down to one chip, and lit.
+    const y = BOARD_TOP + 82;
+    g += `<rect x="${l + 66}" y="${y - 50}" width="${BOARD_W - 132}" height="100" rx="8" stroke="${INK}" stroke-opacity=".16" stroke-width="2" stroke-dasharray="8 8"/>`;
+    g += tr([[r - 90, y + 30], [l + 90, y + 30]], { ...UNDER, w: 4 }) + tr([[r - 90, y - 32], [l + 90, y - 32]], { ...UNDER, w: 4 });
     if (side === 'before') {
-      g += qfp(r - 118, y, 40, 6, { len: 7, w: 4 }) + qfp(r - 200, y, 34, 5, { len: 0.1, w: 4 }, false);
-      g += crystal(r - 282, y, 54, 24) + crystal(r - 354, y, 40, 22);
-      for (let k = 0; k < 5; k++) g += passive(r - 424 - k * 42, y + (k % 2 ? 6 : -6), k % 2 ? 'res' : 'cap', true, 26, 13);
-      g += tantalum(l + 180, y) + `<rect x="${l + 76}" y="${y - 22}" width="54" height="44" rx="5" fill="url(#sn)"/>`;
+      g += qfp(r - 130, y, 58, 8, { len: 9, w: 5 }) + qfp(r - 236, y, 46, 6, { len: 0.1, w: 5 }, false);
+      g += crystal(r - 330, y - 14, 60, 26) + crystal(r - 330, y + 22, 46, 22);
+      for (let k = 0; k < 5; k++) g += passive(r - 404 - k * 40, y + (k % 2 ? 12 : -12), k % 2 ? 'res' : 'cap', true, 30, 15);
+      g += tantalum(l + 230, y) + `<rect x="${l + 96}" y="${y - 30}" width="72" height="60" rx="6" fill="url(#sn)"/><rect x="${l + 104}" y="${y - 22}" width="56" height="44" rx="4" stroke="#8a908e" stroke-width="2"/>`;
     } else {
-      g += qfp(r - 122, y, 44, 6, { len: 8, w: 4 }) + crystal(r - 214, y, 50, 22);
-      g += passive(r - 286, y, 'cap', true, 26, 13) + passive(r - 326, y, 'cap', true, 26, 13);
-      g += led(r - 420, y, 64);
+      g += qfp(r - 136, y, 62, 8, { len: 10, w: 5 }) + crystal(r - 252, y, 60, 26);
+      g += passive(r - 330, y, 'cap', true, 30, 15) + passive(r - 374, y, 'cap', true, 30, 15);
+      g += led(r - 470, y, 90);
     }
   }
   // Between the boards: from the old revision to the new one.
@@ -1015,7 +1038,7 @@ function footprintArt(n: number) {
   let g = silkBox(x0 - 10, y0 - 10, x1 - x0 + 20, y1 - y0 + 20, 0.45, 4);
   for (let k = 0; k < 4; k++) {
     const y = y0 + 62 + k * 86;
-    g += pad(x0 - 18, y, 28, 26, 3) + pad(x1 + 18, y, 28, 26, 3);
+    g += pad(x0 - 14, y, 18, 26, 3) + pad(x1 + 14, y, 18, 26, 3);
   }
   g += `<circle cx="${x1 + 22}" cy="12" r="6" fill="${INK}" fill-opacity=".75"/>`;
   const words: Letter[] = [{ x: x1 + 4, y: 19, t: `U${n}`, size: 20, anchor: 'end' }];
@@ -1060,7 +1083,7 @@ function panelArt(): string {
       g += tr([[cx, cy + 46], [cx, cy + 70], [cx - 20, cy + 90], [x + 40, cy + 90]], { ...UNDER, w: 4 });
       g += tr([[cx + 20, cy - 46], [cx + 20, y + 30], [cx + 80, y + 30]], { ...UNDER, w: 4 });
       let ant = `M${f1(x + bw - 64)} ${f1(cy + 34)}`;
-      for (let k = 0; k < 6; k++) ant += `V${f1(y + 26 + (k % 2 ? 0 : 6))}h10V${f1(y + bh - 26)}h10`;
+      for (let k = 0; k < 3; k++) ant += `V${f1(y + 30)}h7V${f1(y + bh - 30)}h7`;
       g += `<path d="${ant}" stroke="${LIGHT}" stroke-opacity=".3" stroke-width="3"/>`;
       g += qfp(cx, cy, 70, 7, { len: 10, w: 5 }, false);
       g += crystal(x + 66, y + 40, 52, 24) + tantalum(x + 70, y + bh - 44);
@@ -1127,9 +1150,9 @@ function layouts(): Layout[] {
       background: ground(0.6, 0.4),
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START + 44, 336, 960, 135), 'display', { color: token('primary'), vAlign: 'middle' }),
-        place('p_label', 'subtitle', at(START, 592, 1000, 53), 'heading'),
-        place('p_body', 'body', at(START, 654, 940, 135), 'body'),
+        place('p_number', 'number', at(START + 44, 354, 960, 135), 'display', { color: token('primary'), vAlign: 'middle' }),
+        place('p_label', 'subtitle', at(START, 620, 1000, 53), 'heading'),
+        place('p_body', 'body', at(START, 682, 940, 135), 'body'),
         ...STATS.flatMap((top, i) => [
           place(`p_stat${i + 1}`, 'number', atEnd(END, top, 500, 79), 'title'),
           place(`p_stat${i + 1}_label`, 'caption', atEnd(END, top + 86, 500, 68), 'caption'),
@@ -1275,16 +1298,16 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...STEPS.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start, 460, 308, 96), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start, 552, 304, 136), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start, 700, 308, 79), 'title', { color: token('primary') }),
+          place(`p_step${i + 1}_number`, 'number', at(start, 456, 308, 79), 'title', { color: token('primary') }),
+          place(`p_step${i + 1}`, 'subtitle', at(start, 546, 308, 96), 'heading'),
+          place(`p_step${i + 1}_body`, 'caption', at(start, 646, 304, 136), 'caption'),
         ]),
         place('p_summary', 'body', at(START + 70, 830, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
         ...foot('process').placeholders,
       ],
       decorations: [
         ...head('process').decorations,
-        drawing('d_shvav_process_chain', at(0, 0, 1920, 1080), processArt(), PAINT),
+        lettered('d_shvav_process_chain', at(0, 0, 1920, 1080), processArt()),
         drawing('d_shvav_process_tp', at(START + 2, 853, 44, 44), svg(44, 44, DEFS + goldVia(22, 22, 18)), PAINT),
         ...foot('process').decorations,
       ],
@@ -1297,9 +1320,9 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('comparison').placeholders,
         ...SIDES.flatMap(([side, start]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 56, BOARD_TOP + 30, 680, 34), 'caption'),
-          place(`p_${side}`, 'subtitle', at(start + 56, BOARD_TOP + 82, 712, 106), 'heading'),
-          place(`p_${side}_body`, 'body', at(start + 56, BOARD_TOP + 196, 712, 350), 'body'),
+          place(`p_${side}_tag`, 'caption', at(start + 56, BOARD_TOP + 150, 680, 34), 'caption'),
+          place(`p_${side}`, 'subtitle', at(start + 56, BOARD_TOP + 192, 712, 106), 'heading'),
+          place(`p_${side}_body`, 'body', at(start + 56, BOARD_TOP + 302, 712, 350), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],

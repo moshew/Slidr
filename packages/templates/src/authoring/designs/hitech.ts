@@ -346,7 +346,7 @@ function bugbounty(lang: Lang): Slide {
     { ...picture(at(lang, BUG_PIC.x, BUG_PIC.y, BUG_PIC.w, BUG_PIC.h), 'An emerald jewel beetle seen from above'), ...(he ? { flipH: true } : {}) },
     textBox({ frame: at(lang, left, 104, 720, 44), lines: [copy.kicker], look: t(24, 700, lime, he ? 1 : 3), lang }),
     textBox({
-      frame: at(lang, left - 8, 144, 760, 250),
+      frame: at(lang, left - 8, 144, 752, 250),
       lines: [[piece(copy.title[0]!, t(98, 800, '#FFFFFF', -2))], [piece(copy.title[1]!, t(98, 800, lime, -2))]],
       look: t(98, 800, '#FFFFFF', -2),
       lang,
@@ -370,7 +370,7 @@ function bugbounty(lang: Lang): Slide {
       shadow: { x: 0, y: 0, blur: 40, color: lime, alpha: 0.35 },
       label: { text: copy.button, look: t(28, 700, '#0A0B0D'), lang },
     }),
-    textBox({ frame: at(lang, left + 360, 916, 400, 80), lines: [copy.note], look: t(26, 500, grey), lang }),
+    textBox({ frame: at(lang, left + 360, 916, 380, 80), lines: [copy.note], look: t(26, 500, grey), lang }),
   ]);
 }
 

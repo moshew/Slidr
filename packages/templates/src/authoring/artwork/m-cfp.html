@@ -7,7 +7,8 @@
      node <scratchpad>/hitech/render.mjs m-cfp.html out.png 1000 1100 2 -->
 <style>
   html, body { margin: 0; overflow: hidden; background: transparent; }
-  canvas { display: block; }
+  /* the stage falls away into the dark at both sides, so the picture has no hard edge on the slide */
+  canvas { display: block; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%); }
 </style>
 <script>document.documentElement.dataset.wait = 'true';</script>
 <script type="importmap">{"imports": {
@@ -217,8 +218,8 @@ scene.add(rim, fill);
 }
 
 const camera = new THREE.PerspectiveCamera(num('fov', [30])[0], W / H, 0.1, 100);
-camera.position.set(...num('cam', [-2.0, 1.7, 7.4]));
-camera.lookAt(...num('look', [0, 1.15, 0]));
+camera.position.set(...num('cam', [-1.6, 1.25, 6.2]));
+camera.lookAt(...num('look', [0, 1.0, 0]));
 
 await renderAccumulated(renderer, scene, camera, {
   frames: num('frames', [28])[0],
