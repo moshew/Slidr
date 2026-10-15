@@ -1,18 +1,21 @@
 import {
+  artworkLayout,
   frameLayout,
   normalizeAngle,
+  placedAround,
   refitAll,
   rotatedBounds,
   rotateVector,
   svgStretchLayout,
   textBackground,
+  type Artwork,
   type Element,
   type Frame,
   type GroupElement,
   type PlacementPatch,
   type Point,
 } from '@slidr/model';
-import { framedPicture, freshFrame, freshTextBackground } from '../elements/frames';
+import { framedPicture, freshFrame, freshTextBackground, magnetCard } from '../elements/frames';
 import { fitLine, linePoints } from './line';
 import { tidy, tidyFrame } from './space';
 
@@ -282,6 +285,59 @@ function besidePicture(
 }
 
 /**
+ * The children of a magnet whose card is an element of its own (ADR-092), stretched by `kx` and
+ * `ky`. The card takes the stretch and keeps its artwork's size; the photograph goes with the
+ * opening as a part of the artwork does (`placedAround`): one that fills it grows with it. What
+ * stands beside them follows its part of the card (`besidePicture`).
+ */
+function aroundCard(
+  group: GroupElement,
+  card: Element,
+  art: Artwork,
+  kx: number,
+  ky: number,
+  out: Map<string, Patch>,
+): Element[] {
+  const grown = scaleElement(card, kx, ky, out);
+  const was = artworkLayout(art, card.frame);
+  const now = artworkLayout(art, grown.frame);
+  const drawn = now.scale / was.scale;
+  const ratio = Math.abs(drawn - 1) < 1e-6 ? 1 : drawn;
+  const photo = framedPicture(group);
+  return group.children.map((child) => {
+    if (child.id === card.id) return grown;
+    if (child.id !== photo?.id || photo.mask?.kind !== 'window' || photo.rotation !== 0) {
+      return besidePicture(child, card.frame, grown.frame, ratio, out);
+    }
+    const { opening: o } = photo.mask;
+    const opening = {
+      ...o,
+      w: o.w + was.box.w - art.viewBox.w,
+      h: o.h + was.box.h - art.viewBox.h,
+    };
+    const { frame: f } = photo;
+    const placed = placedAround(
+      opening,
+      {
+        x: (f.x - card.frame.x) / was.scale,
+        y: (f.y - card.frame.y) / was.scale,
+        w: f.w / was.scale,
+        h: f.h / was.scale,
+      },
+      { w: now.box.w - was.box.w, h: now.box.h - was.box.h },
+    );
+    const frame = tidyFrame({
+      x: grown.frame.x + placed.x * now.scale,
+      y: grown.frame.y + placed.y * now.scale,
+      w: placed.w * now.scale,
+      h: placed.h * now.scale,
+    });
+    out.set(photo.id, { ...out.get(photo.id), frame });
+    return { ...photo, frame };
+  });
+}
+
+/**
  * The children of a group stretched by `kx` and `ky`. A label uses its plate's flexible bands
  * for both its drawing and its text boxes. In a framed picture the artwork and stickers keep
  * their size, the photograph fills the opening, and text backgrounds lengthen with the frame.
@@ -296,6 +352,8 @@ function scaleChildren(
 ): Element[] {
   if (textBackground(group)) return scaleLabel(group, kx, ky, out, artworkRatio);
   const picture = framedPicture(group);
+  const card = magnetCard(group);
+  if (card?.layout && card.rotation === 0) return aroundCard(group, card, card.layout, kx, ky, out);
   const design = picture?.smartFrame;
   if (!picture || design?.scale === undefined || picture.rotation !== 0) {
     return group.children.map((child) => scaleElement(child, kx, ky, out, artworkRatio));

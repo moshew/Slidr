@@ -131,48 +131,77 @@
   }
 }
 
-/* The slides that show a template (src/templates/TemplateSlides.tsx): a card that is drawn out
-   over the editor from the side of the Templates panel, as a sheet from under it, and goes back
-   the same way. Its slides are in it as it opens. Slower than a menu: it crosses the whole
-   editor. */
-@property --template-slides-hidden {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: 0%;
-}
-.template-slides {
-  --unfold-from: -1;
-  /* What is not drawn yet is cut from the far edge: the panel is at the start of the row. The
-     card's shadow is left room on the other sides. */
-  clip-path: inset(-48px var(--template-slides-hidden) -48px -48px);
-  animation: template-slides-unfold 400ms var(--ease-standard) backwards;
+/* Elements: a level of the panel that takes the place of another (`Drill` in
+   src/elements/collections.tsx). The level opened comes in from the end of the line and the one
+   gone back to from its start, a short way: it settles, it does not fly. */
+.elements-drill {
+  --line-end: 1;
 
   &:dir(rtl) {
-    --unfold-from: 1;
-    clip-path: inset(-48px -48px -48px var(--template-slides-hidden));
+    --line-end: -1;
+  }
+  &[data-way] {
+    animation: elements-drill var(--duration-slow) var(--ease-out) backwards;
+  }
+  &[data-way='deeper'] {
+    --drill-from: var(--line-end);
+  }
+  &[data-way='back'] {
+    --drill-from: calc(-1 * var(--line-end));
+  }
+}
+@keyframes elements-drill {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--drill-from) * 16px));
+  }
+}
+
+/* The slides that show a template (src/templates/TemplateSlides.tsx): a card that comes out
+   beside the Templates panel with its slides already in it and spreads over the editor, away
+   from the panel, and goes back the same way. It starts in the gap between them, never over the
+   panel. Only its opacity and transform move, so a card full of slides is not drawn again on
+   every frame. Slower than a menu: it crosses the whole editor. */
+.template-slides {
+  /* The panel is at the start of the row. */
+  --towards-panel: -1;
+  transform-origin: left center;
+  animation: template-slides-unfold 360ms var(--ease-out) backwards;
+
+  &:dir(rtl) {
+    --towards-panel: 1;
+    transform-origin: right center;
+  }
+  /* Laid out, for its slides to be fitted to it, and not seen until they are ready. */
+  &[data-state='pending'] {
+    visibility: hidden;
+    animation: none;
   }
   &[data-state='closed'] {
     animation: template-slides-fold var(--duration-slow) var(--ease-standard) both;
   }
 }
-/* The slides of a template come in as those of the one before go out, in the same place. */
+/* The slides of a template come in as those of the one before go out, in the same place. The
+   first come with the card. */
 .template-slides-grid {
-  animation: template-slides-in 260ms var(--ease-standard) backwards;
-
+  &[data-entering] {
+    animation: template-slides-in 260ms var(--ease-standard) backwards;
+  }
   &[data-leaving] {
     animation: template-slides-out 260ms var(--ease-standard) both;
   }
 }
+/* Less than the gap to the panel (`inset-3`): the card's edge does not reach it. */
 @keyframes template-slides-unfold {
   from {
-    --template-slides-hidden: 100%;
-    transform: translateX(calc(var(--unfold-from) * 24px));
+    opacity: 0;
+    transform: translateX(calc(var(--towards-panel) * 8px)) scale(0.98);
   }
 }
 @keyframes template-slides-fold {
   to {
-    --template-slides-hidden: 100%;
-    transform: translateX(calc(var(--unfold-from) * 24px));
+    opacity: 0;
+    transform: translateX(calc(var(--towards-panel) * 8px)) scale(0.98);
   }
 }
 @keyframes template-slides-in {

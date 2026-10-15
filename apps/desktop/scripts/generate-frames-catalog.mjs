@@ -2321,3 +2321,6 @@ if (out) {
 console.log(
   `${groups.map(({ id, frames }) => `${id}: ${frames.length}`).join(', ')}; ${ids.length} frames, ${Math.round(json.length / 1024)} kB`,
 );
+// The panel shows a magnet from a picture that was made of it: one whose drawing changed here
+// is drawn live, slowly, until its picture is made again.
+if (!out) console.log('Then, for the pictures of the magnets: generate-frames-thumbs.mjs');

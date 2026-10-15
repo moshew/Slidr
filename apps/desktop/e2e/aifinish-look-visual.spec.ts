@@ -11,7 +11,7 @@ import {
 } from './aifinish-look-helpers';
 
 /*
- * Screenshots of the deck's look in the Actions tab of the deck tool for the design gate
+ * Screenshots of the deck's look in the Actions panel of the deck tool for the design gate
  * (PLAN 1.2): both themes, both directions and both target resolutions. They are written to
  * test-results/ai-finish/ to be looked at; nothing is compared.
  */

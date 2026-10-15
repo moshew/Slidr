@@ -100,7 +100,7 @@ export const importOpening = createStore<boolean>(() => false);
 /** Shows the conversation of the open deck's import in the AI chat. */
 function showImportChat(editor: Editor): void {
   aiOf(editor).sessions.chat.setState('import', true);
-  openPanel(PanelId.ai, 'chat');
+  openPanel(PanelId.ai);
 }
 
 /**
@@ -123,7 +123,7 @@ export async function startImport(
   }
   // From here the import is what the window shows: the editor, with the AI chat open.
   setWelcome(false);
-  openPanel(PanelId.ai, 'chat');
+  openPanel(PanelId.ai);
   importOpening.setState(true, true);
   let file: string;
   try {

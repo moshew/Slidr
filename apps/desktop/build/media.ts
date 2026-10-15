@@ -28,6 +28,7 @@ import type { Plugin } from 'vite';
  *   fonts/catalog.json             the built-in fonts of decks, and fonts/<family>/*.woff2
  *   images/templates/*.webp        the photographs of the built-in templates
  *   images/designs/*.webp          the pictures of the ready-made slides of Elements
+ *   images/frames/<lang>/*.webp    the event magnets as the Elements panel shows them, small
  *   elements/...                   the designs, card sets, shapes, graphics, frames, emoji, art
  *   templates/catalog.json         the built-in templates with their samples, as authored
  *   templates/index.json           their ids, in the order they are shown (written here)

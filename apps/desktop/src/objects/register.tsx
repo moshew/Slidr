@@ -1,15 +1,12 @@
-import { CodeXml } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
 import {
   getEditor,
   registerAction,
   registerActionPopover,
   registerContextTool,
-  registerPanel,
   registerStageMenu,
 } from '../shell';
 import { BackgroundTool } from './BackgroundTool';
-import { CODE_PANEL, CodePanel } from './CodePanel';
 import { HtmlRow } from './htmlTools';
 import { insertImages } from './insert';
 import { LineLibrary } from './library';
@@ -90,22 +87,8 @@ registerContextTool({
 });
 
 /*
- * The code panel (HTM-04): after the panels of SPEC 4.2. It shows the selected `html` element,
- * and row B's "Edit the code" opens it.
- */
-registerPanel({
-  id: CODE_PANEL,
-  kind: 'tool',
-  slot: 'tools',
-  order: 6,
-  title: 'objects:code.title',
-  icon: CodeXml,
-  content: CodePanel,
-});
-
-/*
- * The Stage's right-click menu (STG-06): replace a picture, edit the code of an `html` element and
- * decompose it, in the group of the element's own way in (crop, edit the text).
+ * The Stage's right-click menu (STG-06): replace a picture, edit the code of an `html` element (in a
+ * dialog, `CodeDialog.tsx`: HTM-04) and decompose it, in the group of the element's own way in (crop, edit the text).
  */
 registerStageMenu({
   id: 'objects.image',

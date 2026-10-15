@@ -97,12 +97,10 @@ export const en: Messages<typeof he> = {
     layers: 'Layers',
     notes: 'Speaker notes',
     lint: 'Design check',
-    history: 'History',
     settings: 'Settings',
     tools: 'Tools',
     collapse: 'Collapse panel',
     resize: 'Resize panel',
-    chat: 'Chat',
     actions: 'Actions',
     chatEmptyTitle: 'Chat isn’t connected yet',
     chatEmptyBody:
@@ -114,7 +112,6 @@ export const en: Messages<typeof he> = {
     animationsBody: 'Animation effects and the slide timeline.',
     notesBody: 'Speaker notes for the current slide.',
     lintBody: 'Design check findings, with automatic fixes.',
-    historyBody: 'Every change, yours and the agent’s, with a way back to any point.',
   },
   settings: {
     appearance: 'Appearance',

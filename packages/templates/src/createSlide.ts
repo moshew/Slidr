@@ -97,8 +97,9 @@ export function createSlide(
     waiting.set(role as PlaceholderRole, isList(value) ? [...value] : [value]);
   }
 
-  // The elements are in the order of the placeholders they came from; some placeholders give none.
-  let next = 0;
+  // The layout's objects come first, then the elements in the order of the placeholders they
+  // came from; some placeholders give none.
+  let next = layout?.objects?.length ?? 0;
   for (const placeholder of layout?.placeholders ?? []) {
     const element = slide.elements[next];
     if (element?.role !== placeholder.role) continue;
@@ -125,7 +126,7 @@ export function fillLayout(
   const { slide } = slideFromLayout(deck, request.layoutId, options);
   if (request.name) slide.name = request.name;
   const layout = deck.layouts.find((l) => l.id === request.layoutId);
-  let next = 0;
+  let next = layout?.objects?.length ?? 0;
   for (const [index, placeholder] of (layout?.placeholders ?? []).entries()) {
     const element = slide.elements[next];
     if (element?.role !== placeholder.role) continue;

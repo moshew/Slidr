@@ -1,10 +1,10 @@
 import { ScaledSlide } from '@slidr/renderer';
 import { Button, Input } from '@slidr/ui';
 import { Search } from '@slidr/ui/icons';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { focusStage, tell, useDeck, useEditor, useElementSize } from '../shell';
-import { NothingFound, Section } from './collections';
+import { Drill, NothingFound, Section, useOpenGroup } from './collections';
 import { designAssetFile, designBackdropFile } from './designAssets';
 import {
   DESIGN_GROUPS,
@@ -114,8 +114,8 @@ function DesignList({
 }
 
 /**
- * Ready compositions, by what they are for: the first of every group, one group in full, or
- * what a search of their names found.
+ * Ready compositions, by what they are for: the first of every group, one group in full under
+ * its own name, or what a search of their names found.
  */
 export function DesignsCollection() {
   const { t } = useTranslation('elements');
@@ -132,6 +132,10 @@ export function DesignsCollection() {
       (id) => id.includes(wanted) || names.design(id).toLowerCase().includes(wanted),
     );
   }, [query, names]);
+  // One group in full has the header of the panel: its name, and the way back to all of them.
+  const opened = found ? undefined : group;
+  const showGroups = useCallback(() => setGroup(undefined), []);
+  useOpenGroup(opened && names.group(opened), showGroups);
 
   const choose = (id: DesignId) => {
     setBusy(true);
@@ -184,38 +188,32 @@ export function DesignsCollection() {
         ) : (
           <DesignList ids={found} testId="design-results" busy={busy} onChoose={choose} />
         )
-      ) : group ? (
-        <Section
-          title={names.group(group)}
-          data-group={group}
-          action={
-            <Button variant="ghost" size="sm" onClick={() => setGroup(undefined)}>
-              {t('designs.allGroups')}
-            </Button>
-          }
-        >
-          <DesignList
-            ids={designsOf(group)}
-            testId="design-results"
-            busy={busy}
-            onChoose={choose}
-          />
-        </Section>
       ) : (
-        DESIGN_GROUPS.map((id) => (
-          <Section
-            key={id}
-            title={names.group(id)}
-            data-group={id}
-            action={
-              <Button variant="ghost" size="sm" onClick={() => setGroup(id)}>
-                {t('showAll')}
-              </Button>
-            }
-          >
-            <DesignList ids={designsOf(id).slice(0, PREVIEW)} busy={busy} onChoose={choose} />
-          </Section>
-        ))
+        <Drill screen={group ?? 'groups'} depth={group ? 1 : 0} className="flex flex-col gap-4">
+          {group ? (
+            <DesignList
+              ids={designsOf(group)}
+              testId="design-results"
+              busy={busy}
+              onChoose={choose}
+            />
+          ) : (
+            DESIGN_GROUPS.map((id) => (
+              <Section
+                key={id}
+                title={names.group(id)}
+                data-group={id}
+                action={
+                  <Button variant="ghost" size="sm" onClick={() => setGroup(id)}>
+                    {t('showAll')}
+                  </Button>
+                }
+              >
+                <DesignList ids={designsOf(id).slice(0, PREVIEW)} busy={busy} onChoose={choose} />
+              </Section>
+            ))
+          )}
+        </Drill>
       )}
     </div>
   );

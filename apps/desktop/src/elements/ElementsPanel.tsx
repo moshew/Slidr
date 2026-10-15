@@ -9,11 +9,14 @@ import { tell, useEditor } from '../shell';
 import {
   EmojiCollection,
   GraphicsCollection,
+  Drill,
   NothingFound,
+  OpenGroupContext,
   Section,
   ShapesCollection,
   TablesCollection,
   useLoaded,
+  type OpenGroup,
 } from './collections';
 import { loadFrames, searchFrames } from './frames';
 import { FrameGrid, FramesCollection } from './FramesCollection';
@@ -34,11 +37,13 @@ export function ElementsPanel() {
   const [collection, setCollection] = useState<CollectionId | 'recent' | null>(null);
   return (
     <div className="@container flex flex-col" data-testid="elements-panel">
-      {collection ? (
-        <Collection id={collection} onBack={() => setCollection(null)} />
-      ) : (
-        <Home onOpen={setCollection} />
-      )}
+      <Drill screen={collection ?? 'home'} depth={collection ? 1 : 0} className="flex flex-col">
+        {collection ? (
+          <Collection id={collection} onBack={() => setCollection(null)} />
+        ) : (
+          <Home onOpen={setCollection} />
+        )}
+      </Drill>
     </div>
   );
 }
@@ -262,19 +267,33 @@ const views: Record<CollectionId | 'recent', () => ReactNode> = {
   tables: () => <TablesCollection />,
 };
 
+/**
+ * A collection under its name and the way back to the first screen. While one of its groups is
+ * opened in full, the header is the group's: its name, and the way back to the collection.
+ */
 function Collection({ id, onBack }: { id: CollectionId | 'recent'; onBack: () => void }) {
   const { t } = useTranslation('elements');
+  const [group, setGroup] = useState<OpenGroup>();
+  const name = id === 'recent' ? t('recent') : t(`collection.${id}`);
   return (
-    <>
+    <OpenGroupContext value={setGroup}>
       <div className="sticky top-0 z-10 flex items-center gap-1 bg-ui-panel px-2 pt-2 pb-1">
-        <IconButton icon={ArrowLeft} mirror label={t('back')} onClick={onBack} />
-        <h3 className="min-w-0 flex-1 truncate text-md font-semibold text-ui-fg">
-          {id === 'recent' ? t('recent') : t(`collection.${id}`)}
+        <IconButton
+          icon={ArrowLeft}
+          mirror
+          label={group ? t('backTo', { name }) : t('back')}
+          onClick={group ? group.onBack : onBack}
+        />
+        <h3
+          key={group ? group.title : name}
+          className="min-w-0 flex-1 animate-fade-in truncate text-md font-semibold text-ui-fg"
+        >
+          {group ? group.title : name}
         </h3>
       </div>
       <div className="flex flex-col gap-4 px-4 pt-2 pb-6" data-collection-view={id}>
         {views[id]()}
       </div>
-    </>
+    </OpenGroupContext>
   );
 }

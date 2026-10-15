@@ -89,7 +89,9 @@ export function modelEfforts(harness: HarnessDescriptor, modelId?: string): stri
 
 /**
  * The newest version of each model family ("Opus 5.5" hides "Opus 5" and "Opus 4.8"), in the
- * order the harness listed them. A label without a version number is its own family.
+ * order the harness listed them. A label without a version number is its own family. These are
+ * the models every choice offers: the chat's first-time setup, Settings and a conversation's
+ * own picker.
  */
 export function latestModels<T extends { label: string }>(models: T[]): T[] {
   const parse = (label: string) => {

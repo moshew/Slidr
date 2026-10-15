@@ -30,7 +30,6 @@ registerMessages('media', { he, en });
 // Replaces the shell's placeholder of the same id.
 registerPanel({
   id: MEDIA_PANEL,
-  kind: 'tool',
   slot: 'tools',
   order: 0,
   title: 'panels.media',

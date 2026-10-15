@@ -48,7 +48,7 @@ import {
   MaskTool,
 } from '../objects/imageTools';
 import { isTarget, useTarget } from '../objects/target';
-import { focusStage, setAiTab, tell, useDeck, useEditor } from '../shell';
+import { focusStage, openPanel, PanelId, tell, useDeck, useEditor } from '../shell';
 import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
 import { useThread } from './Chat';
 import { DeckLook } from './DeckLook';
@@ -60,7 +60,7 @@ import { DECK } from './sessions';
 import { useFocus } from './focus';
 
 /*
- * The Actions tab of the AI tool (SPEC 4.3; AID-05, AIS-02, AIS-04, AIO-02 to AIO-08; ADR-072):
+ * The Actions panel of the AI chat (SPEC 4.3; AID-05, AIS-02, AIS-04, AIO-02 to AIO-08; ADR-072):
  * what the user has selected first, then the slide on the Stage, then the whole deck. An AI action
  * is a template of `@slidr/prompts`, sent to the one chat in place of a typed message, with the
  * slide or the element it is about; a deterministic control acts at once.
@@ -121,14 +121,14 @@ function useRunner(about: About = {}): Runner {
       });
       // The conversation the action went to: the deck's, also from the one of an import.
       ai.sessions.chat.setState('deck', true);
-      setAiTab('chat');
+      openPanel(PanelId.ai);
     },
   };
 }
 
-/* ---------------------------------------------------------------- the pieces of a tab */
+/* ---------------------------------------------------------------- the pieces of the panel */
 
-/** What a part of the tab is about: the selection, the slide, the deck. */
+/** What a part of the panel is about: the selection, the slide, the deck. */
 function Group({
   id,
   title,
@@ -862,7 +862,7 @@ function SelectionActions({
 }
 
 /**
- * The Actions tab: the selection, the slide on the Stage and the deck, each in a group of its
+ * The Actions panel: the selection, the slide on the Stage and the deck, each in a group of its
  * own. A group is drawn anew for another slide or another selection, so no choice made in a
  * form (a count, a tone, a painted mask) carries over to something else.
  */

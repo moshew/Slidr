@@ -152,7 +152,7 @@ for (const { lang, theme } of combinations) {
     await openApp(page, { lang, theme });
     await addBoxes(page, THREE);
     // The panel of a tab is a stop of Tab: it draws a ring inside its edge.
-    const open = page.locator('[data-testid="activity-bar"] button[data-panel="ai"]');
+    const open = page.locator('[data-testid="activity-bar"] button[data-panel="media"]');
     if ((await open.getAttribute('aria-pressed')) !== 'true') await open.click();
     const panel = page.getByTestId('tool-panel');
     await panel.getByRole('tab').first().focus();

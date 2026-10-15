@@ -362,8 +362,12 @@ export function select(page: Page, ids: string[]): Promise<void> {
   }, ids);
 }
 
-/** The Tool Panel while it shows the AI chat (ADR-072). */
-export const panel = (page: Page): Locator => page.locator('section[data-panel="ai"]');
+/**
+ * The Tool Panel while it shows the AI chat or its actions (ADR-072): one of them at a time. The
+ * one shown: a panel that is not is kept, hidden.
+ */
+export const panel = (page: Page): Locator =>
+  page.locator('section[data-panel="ai"], section[data-panel="actions"]').filter({ visible: true });
 
 /** What the next message is about, beside the composer. */
 export const focusChip = (page: Page): Locator => page.getByTestId('focus-chip');
@@ -379,13 +383,12 @@ export const cards = (page: Page): Locator => page.getByTestId('option-card');
 export const onStage = (page: Page, elementId: string): Locator =>
   page.getByTestId('stage-frame').locator(`[data-element-id="${elementId}"]`);
 
-/** Opens the AI chat from the Activity Bar, on a tab. */
+/** Opens the AI chat, or the panel of its actions, from the Activity Bar. */
 export async function openTool(page: Page, tab: 'chat' | 'actions' = 'chat'): Promise<void> {
-  const button = page.getByTestId('activity-bar').locator('[data-panel="ai"]');
+  const id = tab === 'chat' ? 'ai' : 'actions';
+  const button = page.getByTestId('activity-bar').locator(`[data-panel="${id}"]`);
   if ((await button.getAttribute('aria-pressed')) !== 'true') await button.click();
-  await expect(panel(page)).toBeVisible();
-  const name = tab === 'chat' ? /^(צ'אט|Chat)$/ : /^(פעולות|Actions)$/;
-  await panel(page).getByRole('tab', { name }).click();
+  await expect(page.locator(`section[data-panel="${id}"]`)).toBeVisible();
 }
 
 /** Waits for the turn that is running, with every round of the design check, to end. */
@@ -404,7 +407,7 @@ export async function say(page: Page, message: string): Promise<Locator> {
   return turnEnds(page, before);
 }
 
-/** Presses an action of the Actions tab that is open, and waits for its turn in the chat. */
+/** Presses an action of the Actions panel that is open, and waits for its turn in the chat. */
 export async function runAction(page: Page, action: string): Promise<Locator> {
   await page.locator(`[data-action="${action}"]`).click();
   // The panel turns to the chat, where the action is a message.

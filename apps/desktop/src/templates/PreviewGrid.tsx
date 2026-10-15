@@ -1,10 +1,11 @@
-import type { Deck, Slide } from '@slidr/model';
+import { CommandBus, type Deck, type Slide } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
+import { showSlideNumber } from '@slidr/templates';
 import { cx } from '@slidr/ui';
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LibraryEntry } from './library';
-import { previewOf, type TemplatePreview } from './previews';
+import { madePreview, readyPreview, type TemplatePreview } from './previews';
 
 /*
  * The slides that show a template, laid out to fill a space with nothing to scroll, each under
@@ -20,8 +21,6 @@ const SLIDE_GAP = 16;
 const CAPTION = 24;
 /** How long the slides of one template give way to those of the next, in ms: as in app.css. */
 const SWAP = 260;
-/** The longest the pictures of a template are waited for before its slides are shown, in ms. */
-const PICTURES_WAIT = 700;
 
 export interface Size {
   width: number;
@@ -78,40 +77,32 @@ export interface Shown extends TemplatePreview {
   personal: boolean;
 }
 
-/**
- * Waits for the pictures the slides of a preview show, so that they are in the slides when
- * these come in and do not arrive one by one after them. Not for long: a picture that is slow
- * or missing does not hold the slides back.
- */
-async function picturesOf({ deck, resolveAsset }: TemplatePreview): Promise<void> {
-  const drawn = JSON.stringify([deck.slides, deck.layouts]);
-  const loads = Object.values(deck.assets)
-    .filter((asset) => asset.mime.startsWith('image/') && drawn.includes(asset.id))
-    .flatMap((asset) => {
-      const url = resolveAsset(asset);
-      if (!url) return [];
-      const image = new Image();
-      image.src = url;
-      return [image.decode().catch(() => undefined)];
-    });
-  await Promise.race([
-    Promise.all(loads),
-    new Promise((resolve) => setTimeout(resolve, PICTURES_WAIT)),
-  ]);
+/** The slides of a template that are drawn: see `usePreviewLayers`. */
+export interface PreviewLayers {
+  shown: Shown | null;
+  leaving: Shown | null;
+  entering: boolean;
 }
 
 /**
  * The slides of a template that are shown, and the ones before them while they fade away under
  * these. The slides of the template before stay until those of the next one are ready. They
- * follow the language and the direction of `like`, not every edit of it.
+ * follow the language and the direction of `like`, not every edit of it. `entering`: the shown
+ * slides came after the card they are in was `opened` (by default, always), and fade in. A
+ * preview that was made ahead is there from the first drawing.
  */
 export function usePreviewLayers(
   entry: LibraryEntry,
   like: Deck,
-): { shown: Shown | null; leaving: Shown | null } {
-  const [layers, setLayers] = useState<{ shown: Shown | null; leaving: Shown | null }>({
-    shown: null,
-    leaving: null,
+  opened?: RefObject<boolean>,
+): PreviewLayers {
+  const [layers, setLayers] = useState<PreviewLayers>(() => {
+    const made = madePreview(entry, like);
+    return {
+      shown: made ? { ...made, personal: entry.personal } : null,
+      leaving: null,
+      entering: false,
+    };
   });
   // The latest deck, for the preview to take its language and direction from when it is made.
   const latest = useRef(like);
@@ -121,15 +112,23 @@ export function usePreviewLayers(
   const { lang, dir } = like.meta;
   useEffect(() => {
     let gone = false;
-    void previewOf(entry, latest.current).then(async (made) => {
-      await picturesOf(made);
+    void readyPreview(entry, latest.current).then((made) => {
       if (gone) return;
-      setLayers((was) => ({ shown: { ...made, personal: entry.personal }, leaving: was.shown }));
+      setLayers((was) =>
+        // The slides that are shown already (back to them before the next ones came) stay.
+        was.shown?.deck === made.deck
+          ? was
+          : {
+              shown: { ...made, personal: entry.personal },
+              leaving: was.shown,
+              entering: opened?.current ?? true,
+            },
+      );
     });
     return () => {
       gone = true;
     };
-  }, [entry, lang, dir]);
+  }, [entry, lang, dir, opened]);
   // The slides that fade away are gone when they have.
   const { leaving } = layers;
   useEffect(() => {
@@ -140,23 +139,42 @@ export function usePreviewLayers(
   return layers;
 }
 
+/** A deck with the slide number its layouts draw shown or hidden (SLD-04). */
+function numbered(deck: Deck, shown: boolean): Deck {
+  const commands = showSlideNumber(deck, shown);
+  if (commands.length === 0) return deck;
+  const bus = new CommandBus(deck);
+  bus.batch(commands);
+  return bus.deck;
+}
+
 /**
- * The slides of a template, laid out to fill a space; `leaving` while they fade away. With a
- * `hero`, the first slide, the one a deck opens on, is drawn at twice the size of the others.
+ * The slides of a template, laid out to fill a space; `leaving` while they fade away, `entering`
+ * while they fade in over slides that were there. `numbers`: whether they show the slide number,
+ * as the template has it when not given. With a `hero`, the first slide, the one a deck opens on,
+ * is drawn at twice the size of the others. The card around it is drawn again as it opens; its
+ * slides are not.
  */
-export function PreviewGrid({
+export const PreviewGrid = memo(function PreviewGrid({
   shown,
   size,
   leaving,
+  entering = false,
+  numbers,
   hero = false,
 }: {
   shown: Shown;
   size: Size;
   leaving: boolean;
+  entering?: boolean;
+  numbers?: boolean;
   hero?: boolean;
 }) {
   const { t } = useTranslation('templates');
-  const { deck } = shown;
+  const deck = useMemo(
+    () => (numbers === undefined ? shown.deck : numbered(shown.deck, numbers)),
+    [shown.deck, numbers],
+  );
   const big = hero && deck.slides.length > 2;
   const { columns, thumb } = fit(deck.slides.length, size, big);
   /** A slide is named by its layout: a built-in one by its archetype, in the UI's language. */
@@ -169,6 +187,7 @@ export function PreviewGrid({
   return (
     <div
       data-leaving={leaving || undefined}
+      data-entering={entering || undefined}
       className="template-slides-grid absolute inset-0 grid grid-flow-dense place-content-center gap-4"
       style={{ gridTemplateColumns: `repeat(${columns}, ${thumb}px)` }}
     >
@@ -181,12 +200,14 @@ export function PreviewGrid({
             className={cx('flex min-w-0 flex-col gap-1.5', first && 'col-span-2 row-span-2')}
           >
             <div className="overflow-hidden rounded-inset shadow-slide">
+              {/* Its pictures are drawn with it, not a moment after. */}
               <ScaledSlide
                 deck={deck}
                 slide={slide}
                 mode="thumbnail"
                 width={first ? thumb * 2 + SLIDE_GAP : thumb}
                 resolveAsset={shown.resolveAsset}
+                decoding="sync"
               />
             </div>
             <figcaption className="flex h-4 min-w-0 items-baseline gap-1.5 px-0.5 text-xs leading-4 text-ui-fg-muted">
@@ -200,4 +221,4 @@ export function PreviewGrid({
       })}
     </div>
   );
-}
+});

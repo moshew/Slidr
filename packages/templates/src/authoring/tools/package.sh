@@ -4,6 +4,7 @@
 #   tools/package.sh <out-dir>        e.g. tools/package.sh /tmp/slidr-tech
 set -euo pipefail
 OUT=${1:?out dir}
+case $OUT in /*) ;; *) OUT=$PWD/$OUT ;; esac   # the steps below run from other folders
 HERE=$(cd "$(dirname "$0")/.." && pwd)            # packages/templates/src/authoring
 TOOLS=$HERE/tools
 rm -rf "$OUT" && mkdir -p "$OUT"

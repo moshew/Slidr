@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Ai,
   Film,
-  History,
   Images,
   LayoutTemplate,
   MessagesSquare,
@@ -28,7 +27,6 @@ import { PanelEmpty } from './ToolPanel';
 
 registerPanel({
   id: PanelId.settings,
-  kind: 'tool',
   title: 'panels.settings',
   icon: Settings,
   slot: 'footer',
@@ -60,17 +58,27 @@ function ActionsPlaceholder() {
   );
 }
 
-/** The one AI tool: a chat about the deck and about whatever the user has selected in it. */
+/** The one AI chat: about the deck and about whatever the user has selected in it. */
 const ai = { id: PanelId.ai, title: 'panels.ai', icon: Ai, shortcut: 'Ctrl+1' } as const;
 
 registerPanel({
   ...ai,
-  kind: 'ai',
   slot: 'ai',
   order: 0,
   placeholder: true,
-  chat: ChatPlaceholder,
-  actions: ActionsPlaceholder,
+  fill: true,
+  content: ChatPlaceholder,
+});
+
+/** The AI actions: ready-made requests that are sent to that chat. */
+registerPanel({
+  id: PanelId.actions,
+  title: 'panels.actions',
+  icon: Zap,
+  slot: 'ai',
+  order: 1,
+  placeholder: true,
+  content: ActionsPlaceholder,
 });
 
 /* ---------------------------------------------------------------- other panels */
@@ -92,13 +100,11 @@ const tools = [
     icon: Film,
     body: 'panels.animationsBody',
   },
-  { id: 'history', order: 5, title: 'panels.history', icon: History, body: 'panels.historyBody' },
 ];
 
 tools.forEach(({ body, ...tool }) =>
   registerPanel({
     ...tool,
-    kind: 'tool',
     slot: 'tools',
     placeholder: true,
     content: soon(tool.icon, body),
@@ -108,7 +114,6 @@ tools.forEach(({ body, ...tool }) =>
 // The speaker notes of the current slide (SPEC 4.2, panel 7).
 registerPanel({
   id: 'notes',
-  kind: 'tool',
   slot: 'tools',
   order: 3,
   title: 'panels.notes',

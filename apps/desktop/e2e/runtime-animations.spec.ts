@@ -109,7 +109,7 @@ test('animations and transitions have separate panels and category galleries', a
   await expect(page.getByRole('tab', { name: 'יציאה' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('animation-preset-exit-flyOut')).toBeVisible();
   await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
-  await expect(page.getByTestId('animations-panel')).toHaveCount(0);
+  await expect(page.getByTestId('animations-panel')).toBeHidden();
   await expect(page.getByTestId('transitions-panel')).toBeVisible();
   await page.screenshot({ path: shot('transition-gallery-light-he') });
   await expect(page.getByRole('radio', { name: 'דחיפה' })).toBeVisible();
@@ -529,7 +529,7 @@ test('the panel at 1366x768', async ({ page }) => {
   await page.locator('[data-group="1"] [data-row]').first().click();
   await page.screenshot({ path: shot('panel-light-he-1366') });
   await page.getByTestId('activity-bar').getByRole('button', { name: 'מעברים' }).click();
-  await expect(page.getByTestId('animations-panel')).toHaveCount(0);
+  await expect(page.getByTestId('animations-panel')).toBeHidden();
   await expect(page.getByTestId('transitions-panel')).toBeVisible();
   await page.screenshot({ path: shot('panel-transition-light-he-1366') });
 });

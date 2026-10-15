@@ -1,14 +1,21 @@
-import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AssetMeta, ImageElement, Theme } from '@slidr/model';
-import { settle, SlideRenderer } from '@slidr/renderer';
-import { ImageUp, Replace, Search } from '@slidr/ui/icons';
-import { Button, cx, Icon, Input, Spinner, Tooltip } from '@slidr/ui';
+import { SlideRenderer } from '@slidr/renderer';
+import { Replace, Search } from '@slidr/ui/icons';
+import { Button, cx, Icon, Input, Tooltip } from '@slidr/ui';
 import { useSelectedPicture } from '../media/replace';
-import { replaceImage } from '../objects/replace';
 import type { Target } from '../objects/target';
 import { tell, useDeck, useEditor, useElementSize } from '../shell';
-import { LoadFailed, Loading, NothingFound, Section, useLoaded } from './collections';
+import {
+  Drill,
+  LoadFailed,
+  Loading,
+  NothingFound,
+  Section,
+  useLoaded,
+  useOpenGroup,
+} from './collections';
 import {
   drawnWhole,
   featuredFrames,
@@ -23,8 +30,9 @@ import {
   type MagnetSet,
   type PhotoFrame,
 } from './frames';
+import { frameThumb, prepareFrameThumbs, type FrameThumbPicture } from './frameThumbs';
 import { framePicture, insertFrame } from './insert';
-import { useColumns } from './StickerGrid';
+import { useColumns, useNear } from './StickerGrid';
 import { FRAME_PHOTO, FRAME_PHOTO_URL, FrameThumbDefs } from './tiles';
 
 /*
@@ -40,27 +48,58 @@ const PREVIEW_ROWS = 2;
 
 /**
  * A frame drawn small. The photograph it waits for is a landscape (`FrameThumbDefs`, which the
- * panel draws once), cut as the frame cuts it. A frame with artwork or with stickers is drawn
- * by the renderer instead, in the colours of the deck's theme.
+ * panel draws once), cut as the frame cuts it. A frame with artwork is drawn by the renderer
+ * instead, in the colours of the deck's theme. A whole design, with stickers and words, is
+ * shown from the picture that was made of it ahead (`frameThumbs.ts`); one that has no such
+ * picture is drawn by the renderer too, once it comes near the visible part of the panel.
  */
 export function FrameThumb({ frame }: { frame: PhotoFrame }) {
-  return drawnWhole(frame) ? <DrawnThumb frame={frame} /> : <OutlineThumb frame={frame} />;
+  const lang = useDeck((s) => s.deck.meta.lang);
+  const picture = frameThumb(frame, lang);
+  if (picture) return <PictureThumb picture={picture} />;
+  if (!drawnWhole(frame)) return <OutlineThumb frame={frame} />;
+  return frame.extras?.length ? <LateDrawnThumb frame={frame} /> : <DrawnThumb frame={frame} />;
+}
+
+/**
+ * The picture of a frame that was made ahead. The frame is as large in its tile as the renderer
+ * would draw it there, and the room of its shadow reaches past the tile on every side.
+ */
+function PictureThumb({ picture: { url, spread } }: { picture: FrameThumbPicture }) {
+  const size = `${spread * 100}%`;
+  const away = `${((1 - spread) / 2) * 100}%`;
+  return (
+    <span aria-hidden className="relative block size-full">
+      <img
+        src={url}
+        alt=""
+        draggable={false}
+        // Small, and its tile waits for it: decoded with the frame that first shows it.
+        decoding="sync"
+        className="absolute max-w-none object-contain"
+        style={{ width: size, height: size, left: away, top: away }}
+      />
+    </span>
+  );
 }
 
 /**
  * A frame as the renderer draws it on a slide, `width` wide: its picture around a stand-in
- * photograph, and the stickers and the caption beside it in the language given.
+ * photograph, and the stickers and the caption beside it in the language given. `bleed` is the
+ * room around it for the shadow the frame casts, in pixels.
  */
 export function DrawnFrame({
   frame,
   lang,
   theme,
   width,
+  bleed = 12,
 }: {
   frame: PhotoFrame;
   lang: string;
   theme: Theme;
   width: number;
+  bleed?: number;
 }) {
   const { deck, slide } = useMemo(() => framePreview(frame, lang, theme), [frame, lang, theme]);
   const scale = width / frame.size.w;
@@ -70,8 +109,8 @@ export function DrawnFrame({
     <div
       aria-hidden
       dir="ltr"
-      className="relative overflow-clip [overflow-clip-margin:12px]"
-      style={{ width, height: frame.size.h * scale }}
+      className="relative overflow-clip"
+      style={{ width, height: frame.size.h * scale, overflowClipMargin: bleed }}
     >
       <div className="absolute start-0 top-0 origin-top-left" style={{ scale }}>
         <SlideRenderer deck={deck} slide={slide} mode="thumbnail" resolveAsset={samplePhoto} />
@@ -94,6 +133,19 @@ function DrawnThumb({ frame }: { frame: PhotoFrame }) {
   return (
     <div ref={tile} className="flex size-full items-center justify-center">
       {fit > 0 && <DrawnFrame frame={frame} lang={lang} theme={theme} width={fit} />}
+    </div>
+  );
+}
+
+/**
+ * The thumbnail of a whole design that has no picture made ahead: drawn by the renderer once its
+ * tile is near the visible part of the panel, so a list of many such frames opens at once.
+ */
+function LateDrawnThumb({ frame }: { frame: PhotoFrame }) {
+  const [tile, near] = useNear<HTMLDivElement>();
+  return (
+    <div ref={tile} className="size-full">
+      {near && <DrawnThumb frame={frame} />}
     </div>
   );
 }
@@ -216,7 +268,7 @@ function mixed(frames: readonly PhotoFrame[]): PhotoFrame[] {
   return Array.from({ length: most }, (_, i) => sets.flatMap((one) => one.slice(i, i + 1))).flat();
 }
 
-/** One set of magnets, with its name and all its previews prepared together. */
+/** One set of magnets, under its name. */
 function MagnetSet({ set, frames }: { set: MagnetSet; frames: readonly PhotoFrame[] }) {
   const { t } = useTranslation('elements');
   const title = t(`frames.set.${set}`);
@@ -227,104 +279,17 @@ function MagnetSet({ set, frames }: { set: MagnetSet; frames: readonly PhotoFram
   );
 }
 
-/** Raster artwork inside SVGs lives in the renderer's open shadow roots, too. */
-function embeddedPictures(root: Element | ShadowRoot): string[] {
-  const urls = Array.from(root.querySelectorAll('image')).flatMap((picture) => {
-    const url = picture.getAttribute('href') ?? picture.getAttribute('xlink:href');
-    return url ? [url] : [];
-  });
-  for (const element of Array.from(root.querySelectorAll('*'))) {
-    if (element.shadowRoot) urls.push(...embeddedPictures(element.shadowRoot));
-  }
-  return urls;
-}
-
 /**
- * Prepare the entire gallery behind a loading state. Measuring the tiles, loading their
- * pictures and settling the renderer must finish before any set heading is exposed.
+ * Every magnet, set by set under the name of each set. A magnet is shown from the picture that
+ * was made of it ahead (`FrameThumb`), so the list is there at once, each time it is opened.
  */
 function Magnets({ frames }: { frames: readonly PhotoFrame[] }) {
-  const { t } = useTranslation('elements');
-  const [mounted, setMounted] = useState(false);
-  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const sets = useMemo(() => bySet(frames).filter((one) => one.frames.length > 0), [frames]);
-  const list = useRef<HTMLDivElement>(null);
-  const previews = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    list.current?.closest('section')?.scrollIntoView({ block: 'start' });
-    // Let the loading state paint before constructing the hundred slide previews.
-    let next = requestAnimationFrame(() => {
-      next = requestAnimationFrame(() => setMounted(true));
-    });
-    return () => cancelAnimationFrame(next);
-  }, []);
-
-  useEffect(() => {
-    const root = previews.current;
-    if (!mounted || !root) return;
-    let current = true;
-    let preparing = false;
-    const prepare = () => {
-      // DrawnThumb first measures its tile, then mounts the slide at the measured size.
-      if (
-        preparing ||
-        root.querySelectorAll('[data-frame] [data-slide-id]').length < frames.length
-      ) {
-        return;
-      }
-      preparing = true;
-      observer.disconnect();
-      const pictures = Array.from(new Set(embeddedPictures(root))).map((url) => {
-        const image = new Image();
-        image.src = url;
-        return image.decode();
-      });
-      void Promise.all([...pictures, settle(root.ownerDocument)])
-        .then(() => current && setState('ready'))
-        .catch(() => current && setState('failed'));
-    };
-    const observer = new MutationObserver(prepare);
-    observer.observe(root, { childList: true, subtree: true });
-    prepare();
-    return () => {
-      current = false;
-      observer.disconnect();
-    };
-  }, [frames, mounted]);
-
   return (
-    <div
-      ref={list}
-      className={cx('relative', state !== 'ready' && 'min-h-48 overflow-hidden')}
-      data-testid="frame-results"
-      aria-busy={state === 'loading'}
-    >
-      {state === 'loading' && (
-        <div
-          role="status"
-          data-testid="magnets-loading"
-          className="flex min-h-48 flex-col items-center justify-center gap-3 text-sm text-ui-fg-muted"
-        >
-          <Spinner size="lg" />
-          <span>{t('frames.loading')}</span>
-        </div>
-      )}
-      {state === 'failed' && <LoadFailed />}
-      {mounted && state !== 'failed' && (
-        <div
-          ref={previews}
-          aria-hidden={state !== 'ready'}
-          inert={state !== 'ready'}
-          className={cx(
-            'flex flex-col gap-3',
-            state !== 'ready' && 'invisible absolute inset-x-0 top-0',
-          )}
-        >
-          {sets.map((one) => (
-            <MagnetSet key={one.set} set={one.set} frames={one.frames} />
-          ))}
-        </div>
-      )}
+    <div className="flex flex-col gap-3" data-testid="frame-results">
+      {sets.map((one) => (
+        <MagnetSet key={one.set} set={one.set} frames={one.frames} />
+      ))}
     </div>
   );
 }
@@ -361,49 +326,26 @@ function GroupPreview({
   );
 }
 
-/**
- * What the selection on the Stage means here: a picture takes the frame that is clicked, and
- * an empty frame waits for a photograph, which can be chosen from the computer at once.
- */
+/** What the selection on the Stage means here: a photograph takes the frame that is clicked. */
 function SelectionHint() {
   const { t } = useTranslation('elements');
-  const { t: objects } = useTranslation('objects');
-  const editor = useEditor();
-  const picture = useSelectedPicture();
-  if (!picture) return null;
-  const empty = !picture.element.assetId;
+  if (!useFramedPicture()) return null;
   return (
-    <div
+    <p
+      role="status"
       data-testid="frames-hint"
-      className="flex flex-col items-start gap-2 rounded-control bg-ui-field px-3 py-2 text-xs text-ui-fg"
+      className="flex items-start gap-2 rounded-control bg-ui-field px-3 py-2 text-xs text-ui-fg"
     >
-      <p role="status" className="flex items-start gap-2">
-        {!empty && <Icon icon={Replace} className="mt-0.5" />}
-        <span className="min-w-0 flex-1">
-          {t(empty ? 'frames.emptyHint' : 'frames.reframeHint')}
-        </span>
-      </p>
-      {empty && (
-        <Button
-          variant="soft"
-          size="sm"
-          icon={ImageUp}
-          data-testid="frames-pick"
-          onClick={() =>
-            void replaceImage(editor, picture, {
-              history: objects('history.replace'),
-              failed: objects('insert.failed'),
-            })
-          }
-        >
-          {t('frames.pick')}
-        </Button>
-      )}
-    </div>
+      <Icon icon={Replace} className="mt-0.5" />
+      <span className="min-w-0 flex-1">{t('frames.reframeHint')}</span>
+    </p>
   );
 }
 
-/** The photo frames: the best of them and every group's first rows, one group in full, or what a search found. */
+/**
+ * The photo frames: the best of them and every group's first rows, one group in full under its
+ * own name, or what a search found.
+ */
 export function FramesCollection() {
   const { t } = useTranslation('elements');
   const all = useLoaded(loadFrames);
@@ -420,6 +362,17 @@ export function FramesCollection() {
     () => (frames && query.trim() ? searchFrames(frames, query, MOST_FOUND) : undefined),
     [frames, query],
   );
+  // The magnets are shown from pictures, which are at hand before their group is opened.
+  const lang = useDeck((s) => s.deck.meta.lang);
+  const magnets = byGroup.find(({ id }) => id === 'magnets')?.frames;
+  useEffect(
+    () => (magnets?.length ? prepareFrameThumbs(magnets, lang) : undefined),
+    [magnets, lang],
+  );
+  // One group in full has the header of the panel: its name, and the way back to all of them.
+  const opened = frames && !found ? group : undefined;
+  const showGroups = useCallback(() => setGroup(undefined), []);
+  useOpenGroup(opened && t(`frames.group.${opened}`), showGroups);
 
   return (
     <>
@@ -443,36 +396,28 @@ export function FramesCollection() {
         ) : (
           <FrameGrid frames={found} label={t('collection.frames')} testId="frame-results" />
         )
-      ) : group ? (
-        <Section
-          title={t(`frames.group.${group}`)}
-          data-group={group}
-          action={
-            <Button variant="ghost" size="sm" onClick={() => setGroup(undefined)}>
-              {t('frames.allGroups')}
-            </Button>
-          }
-        >
+      ) : (
+        <Drill screen={group ?? 'groups'} depth={group ? 1 : 0} className="flex flex-col">
           {group === 'magnets' ? (
             <Magnets frames={byGroup.find(({ id }) => id === group)?.frames ?? []} />
-          ) : (
+          ) : group ? (
             <FrameGrid
               frames={byGroup.find(({ id }) => id === group)?.frames ?? []}
               label={t(`frames.group.${group}`)}
               group={group}
               testId="frame-results"
             />
+          ) : (
+            <div className="flex flex-col gap-4" data-testid="frame-groups">
+              <Section title={t('frames.featured')} data-group="featured">
+                <FrameGrid frames={featured} label={t('frames.featured')} />
+              </Section>
+              {byGroup.map(({ id, frames: ofGroup }) => (
+                <GroupPreview key={id} group={id} frames={ofGroup} onShowAll={() => setGroup(id)} />
+              ))}
+            </div>
           )}
-        </Section>
-      ) : (
-        <div className="flex flex-col gap-4" data-testid="frame-groups">
-          <Section title={t('frames.featured')} data-group="featured">
-            <FrameGrid frames={featured} label={t('frames.featured')} />
-          </Section>
-          {byGroup.map(({ id, frames: ofGroup }) => (
-            <GroupPreview key={id} group={id} frames={ofGroup} onShowAll={() => setGroup(id)} />
-          ))}
-        </div>
+        </Drill>
       )}
     </>
   );

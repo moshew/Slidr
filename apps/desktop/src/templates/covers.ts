@@ -60,7 +60,10 @@ export const coverAsset = (asset: AssetMeta) => coverUrl(asset) ?? library.asset
  * One slide that shows a template: its opening layout with the template's name on it, in the
  * language of the deck, and the photograph of a built-in template that opens with one.
  */
-export function coverOf(template: Template, like: Deck): { deck: Deck; slide: Slide } {
+export function coverOf(
+  template: Template,
+  like: { meta: Pick<Deck['meta'], 'lang' | 'dir'> },
+): { deck: Deck; slide: Slide } {
   const deck = deckFromTemplate(template, { lang: like.meta.lang, dir: like.meta.dir });
   const name = templateName(template.theme, like.meta.lang);
   const first = deck.layouts[0];

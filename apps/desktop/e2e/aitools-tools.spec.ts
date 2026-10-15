@@ -123,7 +123,7 @@ test('one AI tool, with no duplicate chat buttons in the editor', async ({ page 
   await page.keyboard.press('Escape');
   await expect(panel(page)).toBeVisible();
 
-  // Ctrl+L puts the caret in the chat, from the Actions tab too.
+  // Ctrl+L puts the caret in the chat, from the Actions panel too.
   await openTool(page, 'actions');
   await page.getByTestId('stage-surface').focus();
   await page.keyboard.press('Control+l');
@@ -204,7 +204,7 @@ test('words selected in a text are what the next message is about (ADR-072)', as
   expect(errors).toEqual([]);
 });
 
-test('the Actions tab: the selection, then the slide, then the deck', async ({ page }) => {
+test('the Actions panel: the selection, then the slide, then the deck', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page, { script: 'text-variations' });
   await addTitle(page);

@@ -142,7 +142,7 @@ function Slides({
   const { t, i18n } = useTranslation();
   const space = useRef<HTMLDivElement>(null);
   const size = useLaidOutSize(space);
-  const { shown, leaving } = usePreviewLayers(entry, like);
+  const { shown, leaving, entering } = usePreviewLayers(entry, like);
   const { theme } = entry.template;
   const name = templateName(theme, i18n.language);
   const tagline = templateTagline(theme, i18n.language);
@@ -183,7 +183,14 @@ function Slides({
       <div ref={space} aria-hidden className="relative mx-6 mb-6 min-h-0 flex-1">
         {leaving && <PreviewGrid key={leaving.deck.id} shown={leaving} size={size} leaving hero />}
         {shown ? (
-          <PreviewGrid key={shown.deck.id} shown={shown} size={size} leaving={false} hero />
+          <PreviewGrid
+            key={shown.deck.id}
+            shown={shown}
+            size={size}
+            leaving={false}
+            entering={entering}
+            hero
+          />
         ) : (
           <span className="absolute inset-0 flex items-center justify-center text-ui-fg-muted">
             <Spinner size="lg" />

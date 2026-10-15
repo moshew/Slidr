@@ -62,7 +62,7 @@ export function fixWithAi(editor: Editor, target: FixTarget): boolean {
   );
   // The conversation the action went to: the deck's, also from the one of an import.
   aiOf(editor).sessions.chat.setState('deck', true);
-  openPanel(PanelId.ai, 'chat');
+  openPanel(PanelId.ai);
   return true;
 }
 

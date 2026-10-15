@@ -13,8 +13,8 @@ export type StickerSize = 'graphic' | 'emoji';
 
 /**
  * How many drawings a grid puts in a row: as many as the panel has room for (`.element-grid`).
- * Zero until the grid is measured. It is measured before the first paint, so a grid sized by it
- * does not show empty and then fill, pushing what is below it down.
+ * Zero until the grid is measured, which is before it is first painted: a grid that was painted
+ * empty and filled a moment later would push down everything under it.
  */
 export function useColumns(ref: RefObject<Element | null>): number {
   const [columns, setColumns] = useState(0);

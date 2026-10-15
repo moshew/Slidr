@@ -64,16 +64,19 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
 
   it('files every design under one group, and every group has designs', () => {
     expect(DESIGN_GROUPS.flatMap(designsOf).sort()).toEqual([...DESIGN_IDS].sort());
-    for (const group of DESIGN_GROUPS) expect(designsOf(group).length, group).toBeGreaterThan(0);
+    // The gallery opens on the first four designs of each group: no group has fewer.
+    for (const group of DESIGN_GROUPS) {
+      expect(designsOf(group).length, group).toBeGreaterThanOrEqual(4);
+    }
   });
 
-  it.skipIf(AUTHORED.length === 0)('ships the 260 authored designs, in 16 groups', () => {
-    expect(AUTHORED).toHaveLength(260);
-    expect(new Set(AUTHORED).size).toBe(260);
-    expect(AUTHORED_GROUPS).toHaveLength(16);
+  it.skipIf(AUTHORED.length === 0)('ships the 296 authored designs, in 19 groups', () => {
+    expect(AUTHORED).toHaveLength(296);
+    expect(new Set(AUTHORED).size).toBe(296);
+    expect(AUTHORED_GROUPS).toHaveLength(19);
     for (const group of AUTHORED_GROUPS) {
       const authored = designsOf(group).filter((id) => !MANAGED_DESIGN_IDS.has(id));
-      expect(authored.length, group).toBeGreaterThanOrEqual(9);
+      expect(authored.length, group).toBeGreaterThanOrEqual(4);
     }
   });
 

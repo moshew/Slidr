@@ -1,10 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { card, codePanel, dialog, openCode, openDecompose } from './code-helpers';
+import { card, codePanel, dialog, HTML_ID, openCode, openDecompose } from './code-helpers';
 import { addElement, openApp } from './objects-helpers';
 
 /*
- * Screenshots of the code panel and of the decompose dialog for the design gate (PLAN 1.2): both
+ * Screenshots of the code dialog and of the decompose dialog for the design gate (PLAN 1.2): both
  * themes, both directions and both target resolutions. They are written to test-results/objects/
  * to be looked at; nothing is compared.
  */
@@ -49,14 +49,14 @@ for (const theme of themes) {
     for (const viewport of viewports) {
       const name = `${theme}-${dir}-${viewport.width}`;
 
-      test(`the code panel ${name}`, async ({ page }) => {
+      test(`the code dialog ${name}`, async ({ page }) => {
         await page.setViewportSize(viewport);
         await openApp(page, { lang, theme });
         await addElement(page, card());
         await openCode(page);
         await expect(codePanel(page).getByTestId('code-html')).toBeVisible();
         await settle(page);
-        await page.screenshot({ path: out(`code-panel-${name}`) });
+        await page.screenshot({ path: out(`code-dialog-${name}`) });
       });
 
       test(`the decompose dialog ${name}`, async ({ page }) => {
@@ -85,24 +85,30 @@ test('the decompose dialog: after, and a result that looks the same', async ({ p
   await page.screenshot({ path: out('decompose-state-same') });
 });
 
-test('the code panel: the CSS tab, and an element with scripts', async ({ page }) => {
+test('the code dialog: the CSS, and an element with scripts', async ({ page }) => {
   await openApp(page, { lang: 'he', theme: 'light' });
   await addElement(page, card());
   await openCode(page);
   await codePanel(page).getByRole('radio', { name: 'CSS' }).click();
   await expect(codePanel(page).getByTestId('code-css')).toBeVisible();
   await settle(page);
-  await page.screenshot({ path: out('code-panel-state-css') });
+  await page.screenshot({ path: out('code-dialog-state-css') });
 
-  await addElement(
-    page,
-    card({
-      id: 'e_scripted',
-      markup: '<canvas id="c"></canvas><script>document.title = "x"</script>',
-      hasScripts: true,
-    }),
-  );
+  await codePanel(page).getByTestId('code-done').click();
+  await page.evaluate((id) => {
+    const editor = window.slidr!;
+    editor.bus.dispatch({
+      type: 'element.update',
+      slideId: editor.selection.getState().currentSlideId ?? '',
+      elementId: id,
+      patch: {
+        markup: '<canvas id="c"></canvas><script>document.title = "x"</script>',
+        hasScripts: true,
+      },
+    });
+  }, HTML_ID);
+  await openCode(page);
   await expect(codePanel(page).getByTestId('code-scripts')).toBeVisible();
   await settle(page);
-  await page.screenshot({ path: out('code-panel-state-scripts') });
+  await page.screenshot({ path: out('code-dialog-state-scripts') });
 });

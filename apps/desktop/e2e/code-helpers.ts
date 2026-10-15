@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 import type { Element } from '@slidr/model';
 import { row } from './objects-helpers';
 
-/* Shared by the specs of the code panel and of "Decompose into objects" (WG5-T16b). */
+/* Shared by the specs of the code dialog and of "Decompose into objects" (WG5-T16b). */
 
 export const HTML_ID = 'e_html';
 
@@ -47,9 +47,9 @@ export async function htmlElement(page: Page) {
     Extract<Element, { type: 'html' }> | undefined;
 }
 
-export const codePanel = (page: Page) => page.locator('[data-panel="code"]');
+export const codePanel = (page: Page) => page.getByTestId('code-dialog');
 
-/** Opens the code panel from row B and waits for the editor to be there. */
+/** Opens the code dialog from row B and waits for the editor to be there. */
 export async function openCode(page: Page) {
   await row(page).getByTestId('html-code').click();
   await expect(codePanel(page).getByTestId('code-editor')).toHaveAttribute('data-state', 'ready');

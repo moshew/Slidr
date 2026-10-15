@@ -8,6 +8,14 @@ import { chartSpec } from './spec';
 /** The engine and the chart library with it: a chunk of its own, loaded by the first chart. */
 const loadEngine = () => import('./engine');
 
+/**
+ * Loads the chart library ahead of the first chart, for a host that is about to show slides with
+ * charts and wants them drawn as the slides appear, not a moment after.
+ */
+export async function loadCharts(): Promise<void> {
+  await loadEngine();
+}
+
 const FILL: CSSProperties = { position: 'absolute', inset: 0, margin: 0, padding: 0 };
 
 /** Whether a chart has a value to show. A layout's chart placeholder has none until it is filled. */

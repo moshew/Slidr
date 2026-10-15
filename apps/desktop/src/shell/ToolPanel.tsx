@@ -1,30 +1,31 @@
-import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  Activity,
+  memo,
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelLeftClose } from '@slidr/ui/icons';
-import {
-  cx,
-  EmptyState,
-  IconButton,
-  ScrollArea,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@slidr/ui';
+import { cx, EmptyState, IconButton, ScrollArea } from '@slidr/ui';
 import { useWindowWidth } from './hooks';
 import { panelLimits, panelWidth } from './layout';
-import {
-  usePanels,
-  type AiPanelDefinition,
-  type PanelDefinition,
-  type ToolPanelDefinition,
-} from './registry';
-import { setAiTab, setPanelOpen, setPanelShare, useShell } from './store';
+import { usePanels, type PanelDefinition } from './registry';
+import { setPanelOpen, setPanelShare, useShell } from './store';
 
 /**
  * The Tool Panel (SPEC 4.1–4.3) with its splitter. It keeps the panel between 280 px and 45% of the
  * window (UI-01) and collapses to nothing, leaving the Activity Bar (UI-02). The content keeps
  * its width while the panel animates, so nothing reflows mid-way.
+ *
+ * A panel is drawn once and kept: the one that is not shown is hidden, with its state, and its
+ * effects stopped until it is shown again. Once the app has had a quiet moment, the panels not
+ * yet opened are drawn too, hidden, so opening any of them shows what is already there.
  */
 export function ToolPanel() {
   const windowWidth = useWindowWidth();
@@ -35,6 +36,7 @@ export function ToolPanel() {
   const [dragging, setDragging] = useState(false);
   const width = panelWidth(windowWidth, share);
   const panel = panels.find((p) => p.id === activeId) ?? panels[0];
+  const prepared = useQuietMoment();
 
   return (
     <>
@@ -52,7 +54,9 @@ export function ToolPanel() {
         )}
       >
         <div className="flex h-full w-(--panel-width) flex-col">
-          {panel && <PanelView key={panel.id} panel={panel} />}
+          {panels.map((p) =>
+            p === panel || prepared ? <PanelView key={p.id} panel={p} shown={p === panel} /> : null,
+          )}
         </div>
       </aside>
       {open && <Splitter width={width} windowWidth={windowWidth} onDragging={setDragging} />}
@@ -140,7 +144,7 @@ function PanelHeader({ title }: { title: string }) {
   const { t } = useTranslation();
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 ps-4 pe-2">
-      <h2 className="min-w-0 flex-1 truncate text-md font-semibold">{title}</h2>
+      <h2 className="min-w-0 flex-1 animate-fade-in truncate text-md font-semibold">{title}</h2>
       <IconButton
         icon={PanelLeftClose}
         mirror
@@ -153,58 +157,54 @@ function PanelHeader({ title }: { title: string }) {
   );
 }
 
-function PanelView({ panel }: { panel: PanelDefinition }) {
-  return panel.kind === 'ai' ? <AiPanelView panel={panel} /> : <ToolPanelView panel={panel} />;
+/**
+ * Whether the app has had a quiet moment since it opened: the first idle time of the page, or a
+ * few seconds, whichever comes first.
+ */
+function useQuietMoment(): boolean {
+  const [quiet, setQuiet] = useState(false);
+  useEffect(() => {
+    const done = () => startTransition(() => setQuiet(true));
+    if (typeof requestIdleCallback !== 'function') {
+      const timer = window.setTimeout(done, 1000);
+      return () => window.clearTimeout(timer);
+    }
+    const id = requestIdleCallback(done, { timeout: 3000 });
+    return () => cancelIdleCallback(id);
+  }, []);
+  return quiet;
 }
 
-function ToolPanelView({ panel }: { panel: ToolPanelDefinition }) {
+/** A panel's own content: it does not draw again because the shell around it did. */
+const PanelContent = memo(function PanelContent({ content: Content }: { content: ComponentType }) {
+  return <Content />;
+});
+
+/**
+ * A panel, shown or hidden. Hidden, its content is kept and drawn at a lower priority than what is
+ * on screen, and its effects are stopped (`Activity`). Only the shown panel has a title bar.
+ */
+function PanelView({ panel, shown }: { panel: PanelDefinition; shown: boolean }) {
   const { t } = useTranslation();
-  const Content = panel.content;
   return (
     <section
       aria-label={t(panel.title)}
       data-panel={panel.id}
-      className="flex min-h-0 flex-1 flex-col"
+      className={cx('min-h-0 flex-1 flex-col', shown ? 'flex' : 'hidden')}
     >
-      <PanelHeader title={t(panel.title)} />
-      <ScrollArea className="min-h-0 flex-1">
-        <Content />
-      </ScrollArea>
-    </section>
-  );
-}
-
-/** The frame of the AI tool (SPEC 4.3): title, Chat and Actions. */
-function AiPanelView({ panel }: { panel: AiPanelDefinition }) {
-  const { t } = useTranslation();
-  const tab = useShell((s) => s.aiTab);
-  const { chat: Chat, actions: Actions } = panel;
-  return (
-    <section
-      aria-label={t(panel.title)}
-      data-panel={panel.id}
-      className="flex min-h-0 flex-1 flex-col"
-    >
-      <PanelHeader title={t(panel.title)} />
-      <Tabs
-        value={tab}
-        onValueChange={(value) => setAiTab(value === 'actions' ? 'actions' : 'chat')}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <TabsList className="px-4">
-          <TabsTrigger value="chat">{t('panels.chat')}</TabsTrigger>
-          <TabsTrigger value="actions">{t('panels.actions')}</TabsTrigger>
-        </TabsList>
-        {/* A chat scrolls its own messages and keeps its composer in place: it gets the room. */}
-        <TabsContent value="chat" className="flex min-h-0 flex-1 flex-col">
-          <Chat />
-        </TabsContent>
-        <TabsContent value="actions" className="min-h-0 flex-1">
-          <ScrollArea className="h-full">
-            <Actions />
+      {shown && <PanelHeader title={t(panel.title)} />}
+      <Activity mode={shown ? 'visible' : 'hidden'}>
+        {panel.fill ? (
+          // A chat scrolls its own messages and keeps its composer in place: it gets the room.
+          <div className="flex min-h-0 flex-1 animate-panel-in flex-col">
+            <PanelContent content={panel.content} />
+          </div>
+        ) : (
+          <ScrollArea className="min-h-0 flex-1 animate-panel-in">
+            <PanelContent content={panel.content} />
           </ScrollArea>
-        </TabsContent>
-      </Tabs>
+        )}
+      </Activity>
     </section>
   );
 }

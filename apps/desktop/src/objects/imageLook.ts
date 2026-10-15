@@ -15,13 +15,15 @@ export type Mask = NonNullable<ImageElement['mask']>;
 
 /**
  * What the mask picker shows as chosen: `shape:<preset>` for a shape of the library, and `path`
- * for an outline of its own, which a photo frame of Elements gives and the picker does not offer.
+ * for an outline of its own, which a photo frame of Elements gives and the picker does not offer:
+ * a path, or the window of a magnet's card.
  */
 export type MaskChoice = 'none' | 'rounded' | 'ellipse' | 'path' | `shape:${string}`;
 
 export function maskChoice(element: ImageElement): MaskChoice {
   const { mask } = element;
   if (!mask) return 'none';
+  if (mask.kind === 'window') return 'path';
   return mask.kind === 'shape' ? `shape:${mask.preset}` : mask.kind;
 }
 

@@ -95,7 +95,6 @@ registerContextTool({
 
 registerPanel({
   id: LAYERS_PANEL,
-  kind: 'tool',
   slot: 'tools',
   order: 2,
   title: 'panels.layers',

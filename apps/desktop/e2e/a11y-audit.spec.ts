@@ -244,11 +244,10 @@ test('every panel of the Activity Bar, tab by tab, on a slide with every kind of
   const ids = await page
     .locator('[data-testid="activity-bar"] button[data-panel]')
     .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('data-panel') ?? ''));
-  // Eleven since the three AI tools became one chat (ADR-072); thirteen before it.
-  expect(ids.length).toBeGreaterThanOrEqual(11);
+  // Ten: the chat and its actions are a panel each, and the panels of the history and of the
+  // code are gone (the code of an html object is a dialog).
+  expect(ids.length).toBeGreaterThanOrEqual(10);
   for (const id of ids) {
-    // The Code panel is about an html object; every other panel, about the text box.
-    await select(page, [id === 'code' ? 'e_html' : 'e_text']);
     await openPanel(page, id);
     const tabs = page.locator(`${PANEL} [role="tab"]`);
     const count = await tabs.count();
@@ -338,10 +337,9 @@ async function say(page: Page, message: string) {
   await expect(page.getByTestId('chat-working')).toHaveCount(0);
 }
 
-/** Opens an AI tool on one of its tabs: the first is the chat, the second the actions. */
-async function openTool(page: Page, id: string, tab: 0 | 1) {
-  await openPanel(page, id);
-  await page.locator(`${PANEL} [role="tab"]`).nth(tab).click();
+/** Opens the AI chat (0) or the panel of its actions (1). */
+async function openTool(page: Page, _id: string, tab: 0 | 1) {
+  await openPanel(page, tab === 0 ? 'ai' : 'actions');
 }
 
 test('the welcome screen', async ({ page }) => {

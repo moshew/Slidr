@@ -17,6 +17,7 @@ export {
   duplicateSlide,
   type DuplicateElementsOptions,
   type DuplicateSlideOptions,
+  takenIds,
 } from './duplicate';
 export {
   assetsUsedBy,
@@ -26,7 +27,7 @@ export {
   type PasteElementsOptions,
   type PasteSlidesOptions,
 } from './clipboard';
-export { slideFromLayout, type SlideFromLayoutOptions } from './layout';
+export { layoutObjects, slideFromLayout, type SlideFromLayoutOptions } from './layout';
 export {
   batchFitted,
   refitAfter,

@@ -93,11 +93,11 @@ test('the import is a conversation of the AI chat: listed with the others, and l
   await openForImport(page);
   // The user is elsewhere when the file is chosen: the chat comes up with the request in it.
   await page.locator('[data-testid="activity-bar"] [data-panel="templates"]').click();
-  await expect(aiPanel(page)).toHaveCount(0);
+  await expect(aiPanel(page)).toBeHidden();
   await chooseFile(page);
   await turnsDone(page, 1);
-  // The frame is the AI chat's own: its tabs, its bar of conversations, its composer.
-  await expect(aiPanel(page).getByRole('tab')).toHaveCount(2);
+  // The frame is the AI chat's own: its bar of conversations, its composer.
+  await expect(aiPanel(page)).toBeVisible();
   await expect(importChat(page).getByTestId('conversations')).toBeVisible();
   await expect(importChat(page).getByTestId('chat-input')).toBeVisible();
 

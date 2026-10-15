@@ -5,7 +5,6 @@ import { PanelId } from './registry';
 import { startsOnWelcome } from './startup';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
-export type AiTab = 'chat' | 'actions';
 
 /** The shell's own state: layout, view and appearance. Not part of the document. */
 export interface ShellState {
@@ -13,8 +12,6 @@ export interface ShellState {
   activePanel: string;
   /** False when the Tool Panel is collapsed (UI-02); the Activity Bar stays. */
   panelOpen: boolean;
-  /** The tab an AI tool shows (SPEC 4.3). One for the three tools: they share a frame. */
-  aiTab: AiTab;
   /** The tab the settings screen shows (SPEC 4.2 ⚙). Not kept: the screen opens on its first. */
   settingsPage: SettingsPageId;
   /** Tool Panel width as a share of the window, once the user drags the splitter. */
@@ -40,7 +37,6 @@ export const useShell = create<ShellState>()(
     (): ShellState => ({
       activePanel: PanelId.ai,
       panelOpen: true,
-      aiTab: 'chat',
       settingsPage: 'general',
       panelShare: null,
       zoom: 'fit',
@@ -52,18 +48,23 @@ export const useShell = create<ShellState>()(
     }),
     {
       name: 'slidr.shell',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       // Version 1 had three AI tools, `ai.deck`, `ai.slide` and `ai.object`: one chat now (ADR-072).
       // Version 2 had a panel of the HTML import: its conversation is one of that chat's now.
       // Version 3 saved widths chosen for the former wide default. Start the compact layout at
       // its new default once; later splitter changes continue to persist normally.
+      // Version 5 had panels of the history and of the code of an `html` element: the first is
+      // gone, and the code is edited in a dialog now.
       migrate: (stored, version) => {
         const state = (stored ?? {}) as Partial<ShellState>;
         if (version < 2 && state.activePanel?.startsWith('ai.')) state.activePanel = PanelId.ai;
         if (version < 3 && state.activePanel === 'import') state.activePanel = PanelId.ai;
         if (version < 4) state.panelShare = null;
         if (version < 5 && state.activePanel === 'lint') state.activePanel = PanelId.ai;
+        if (version < 6 && ['history', 'code'].includes(state.activePanel ?? '')) {
+          state.activePanel = PanelId.ai;
+        }
         return state;
       },
       partialize: ({ activePanel, panelOpen, panelShare, theme }) => ({
@@ -76,9 +77,9 @@ export const useShell = create<ShellState>()(
   ),
 );
 
-/** Shows a panel in the Tool Panel, opening it if it was collapsed; an AI tool, on a tab. */
-export function openPanel(id: string, tab?: AiTab): void {
-  useShell.setState({ activePanel: id, panelOpen: true, ...(tab ? { aiTab: tab } : {}) });
+/** Shows a panel in the Tool Panel, opening it if it was collapsed. */
+export function openPanel(id: string): void {
+  useShell.setState({ activePanel: id, panelOpen: true });
 }
 
 /**
@@ -87,15 +88,11 @@ export function openPanel(id: string, tab?: AiTab): void {
  * message.
  */
 export function openAiChat(): void {
-  openPanel(PanelId.ai, 'chat');
+  openPanel(PanelId.ai);
   // The panel may only be opening: the field is there after the next frame.
   requestAnimationFrame(() =>
     document.querySelector<HTMLElement>('[data-testid="chat-input"]')?.focus(),
   );
-}
-
-export function setAiTab(aiTab: AiTab): void {
-  useShell.setState({ aiTab });
 }
 
 /**

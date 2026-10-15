@@ -8,6 +8,7 @@ fonts/catalog.json             the built-in fonts of decks, and fonts/<family>/*
 icons/                         the Lucide and Tabler sets, their search words, hebrew.json
 images/templates/*.webp        the photographs of the built-in templates
 images/designs/                the pictures of the ready-made slides, and sizes.json
+images/frames/                 the event magnets as the Elements panel shows them, and index.json
 elements/designs/index.json    the ready-made slides of Elements
 elements/designs/managed.json  the ready-made slides the management tool makes
 elements/cards/catalog.json    the card sets
@@ -48,6 +49,10 @@ The unit tests that check the library's content (templates, designs, card sets, 
 ## Changing it
 
 Authors keep a copy of the library in a folder, by default `../Slidr-media` beside the repository, with two more folders that are not published: `elements/source` (the inputs of the generators) and `archive`. The generators in `apps/desktop/scripts` write into that copy.
+
+A ready-made slide is written in a pack file under `elements/source/design-packs/` and put into `elements/designs/index.json` by `apps/desktop/scripts/export-designs.mjs`. A built-in template is written as `archive/templates-source/<id>.ts`, beside the files the first eighteen were made from, and put into `templates/catalog.json` (with `templates/index.json` and `templates/<id>/template.json`) by `apps/desktop/scripts/export-templates.mjs`. Each script's header lists the steps for adding one.
+
+The photo frames are written into `elements/catalogs/frames-catalog.json` by `apps/desktop/scripts/generate-frames-catalog.mjs`. The Elements panel shows an event magnet from a small picture of it, `images/frames/<language>/<frame>.webp`, which `apps/desktop/scripts/generate-frames-thumbs.mjs` makes of the renderer's own drawing: run it after the catalogue is written. A magnet whose picture is of an earlier drawing is drawn live in the panel until then, and `frames.test.ts` fails.
 
 ```sh
 pnpm media:pull                      # the published library into ../Slidr-media (--to <dir>)

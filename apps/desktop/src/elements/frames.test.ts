@@ -1,4 +1,4 @@
-import { readMediaJson } from '@slidr/media-library';
+import { mediaFiles, readMediaJson } from '@slidr/media-library';
 import {
   CommandBus,
   createDeck,
@@ -11,12 +11,14 @@ import {
   richText,
   rotatedBounds,
   type GroupElement,
+  type SvgElement,
   type TextElement,
 } from '@slidr/model';
 import { presetPath } from '@slidr/renderer';
 import { describe, expect, it } from 'vitest';
 import {
   featuredFrames,
+  followsTheme,
   FRAME_GROUPS,
   framedElement,
   framedPicture,
@@ -24,10 +26,13 @@ import {
   frameLook,
   frameOutline,
   framePatch,
+  frameRev,
   frameSizeOn,
   framesOf,
   freshFrame,
+  magnetCard,
   MAGNET_SETS,
+  picturedAhead,
   reframe,
   searchFrames,
   type FramesCatalog,
@@ -274,7 +279,12 @@ describe.skipIf(!catalog)('a frame of an earlier catalogue on a slide', () => {
   it('gives a magnet its card again, and its stickers the size the frame draws them', () => {
     const summer = frame('magnet-summer');
     const added = framedElement(summer, { x: 0, y: 0, ...summer.size }, 'he') as GroupElement;
-    const [picture, sun, ...rest] = added.children as [ImageElement, ...GroupElement['children']];
+    // The earlier catalogue had no card of its own: the picture carried it as its artwork.
+    const [, picture, sun, ...rest] = added.children as [
+      SvgElement,
+      ImageElement,
+      ...GroupElement['children'],
+    ];
     // As the old code left it after a stretch to twice the width: the sun twice as wide.
     const wide = {
       ...added,
@@ -293,7 +303,7 @@ describe.skipIf(!catalog)('a frame of an earlier catalogue on a slide', () => {
     expect(fresh?.get(sun!.id)).toEqual({ frame: { x: 1788, y: 16, w: 184, h: 184 } });
     // Every sticker is given its size, and the caption is left as it is.
     expect([...(fresh?.keys() ?? [])].sort()).toEqual(
-      [picture.id, ...added.children.filter((c) => c.type === 'svg').map((c) => c.id)].sort(),
+      [picture.id, ...wide.children.filter((c) => c.type === 'svg').map((c) => c.id)].sort(),
     );
   });
 
@@ -378,15 +388,37 @@ describe.skipIf(!catalog)('the magnets of events', () => {
       expect(parsed.success, `${one.id}: ${parsed.error?.message}`).toBe(true);
       expect(element).toMatchObject({ type: 'group', name: one.id, frame: { ...one.size } });
       expect(element.effects?.shadow, one.id).toBeDefined();
-      // The picture takes the whole of the group, and carries the card as its artwork.
+      // The card takes the whole of the group, as a drawing of its own that keeps its size.
+      const card = magnetCard(element)!;
+      expect(card, one.id).toMatchObject({
+        type: 'svg',
+        frame: { x: 0, y: 0, ...one.size },
+        layout: { viewBox: one.size, scale: 1 },
+      });
+      // The photograph waits in the opening, an element of its own, cut by the card's window.
       const picture = framedPicture(element)!;
-      expect(picture).toMatchObject({ type: 'image', frame: { x: 0, y: 0, ...one.size } });
+      expect(picture.type).toBe('image');
+      for (const side of ['x', 'y', 'w', 'h'] as const) {
+        expect(picture.frame[side], `${one.id} ${side}`).toBeCloseTo(one.art!.opening[side], 6);
+      }
       expect(picture.assetId).toBeUndefined();
-      expect(picture.smartFrame?.decorations.at(-1)?.type).toBe('svg');
-      // What lies under the picture comes before it in the group, and the rest after it.
+      expect(picture.smartFrame).toBeUndefined();
+      expect(picture.mask, one.id).toMatchObject({
+        kind: 'window',
+        viewBox: one.size,
+        opening: one.art!.opening,
+        scale: 1,
+      });
+      // The photograph is cut by the card as it is drawn, window and all; the card under it has
+      // its window filled.
+      expect(picture.mask?.kind === 'window' && picture.mask.markup, one.id).toBe(one.art!.drawing);
+      expect(card.markup, one.id).toMatch(/<rect fill="white" style="x:[^"]*"\/><\/mask>/);
+      // What lies under the card comes before it in the group, the photograph right after the
+      // card, and the rest after them.
       const under = (one.extras ?? []).filter((extra) => extra.under).length;
-      expect(element.children.indexOf(picture), one.id).toBe(under);
-      const beside = element.children.filter((child) => child !== picture);
+      expect(element.children.indexOf(card), one.id).toBe(under);
+      expect(element.children.indexOf(picture), one.id).toBe(under + 1);
+      const beside = element.children.filter((child) => child !== picture && child !== card);
       expect(beside).toHaveLength(one.extras?.length ?? 0);
       for (const child of beside) {
         expect(['svg', 'text', 'group'], one.id).toContain(child.type);
@@ -566,6 +598,7 @@ describe.skipIf(!catalog)('the magnets of events', () => {
         rotation: 10,
       });
       expect(made.effects?.shadow).toBeDefined();
+      // The photograph in the card's opening, cut by its window; the card under it.
       const picture = framedPicture(made)!;
       expect(picture).toMatchObject({
         id: 'e_photo',
@@ -573,9 +606,11 @@ describe.skipIf(!catalog)('the magnets of events', () => {
         crop: { x: 0.1, y: 0, w: 0.8, h: 1 },
         fit: 'cover',
         rotation: 0,
-        frame: { x: 0, y: 0, w: 1050, h: 750 },
+        frame: { x: 38, y: 38, w: 974, h: 592 },
+        mask: { kind: 'window', viewBox: { w: 1050, h: 750 } },
       });
-      expect(picture.smartFrame?.viewBox).toEqual({ w: 1050, h: 750 });
+      expect(picture.smartFrame).toBeUndefined();
+      expect(made.children.indexOf(picture)).toBe(made.children.indexOf(magnetCard(made)!) + 1);
       expect(said(made)).toEqual(['יום הגיבוש שלנו']);
       bus.undo();
       expect(slideOf(bus).elements).toEqual([photo()]);
@@ -678,5 +713,60 @@ describe.skipIf(!catalog)('the search of frames', () => {
     expect(ids(searchFrames(frames, 'א', 3))[0]).toBe('frame:he-alef');
     expect(ids(searchFrames(frames, 'b', 40))).toContain('frame:letter-b');
     expect(ids(searchFrames(frames, '7', 5))).toContain('frame:digit-7');
+  });
+});
+
+describe.skipIf(!catalog)('the small pictures of the magnets', () => {
+  const magnets = frames.filter((one) => one.group === 'magnets');
+
+  it('are for the whole designs that look the same in every deck', () => {
+    // A magnet in the colours and the type of the deck is drawn by the renderer, in them.
+    expect(followsTheme(frame('magnet-company'))).toBe(true);
+    expect(picturedAhead(frame('magnet-company'))).toBe(false);
+    expect(followsTheme(frame('magnet-summer'))).toBe(false);
+    expect(picturedAhead(frame('magnet-summer'))).toBe(true);
+    expect(magnets.filter(picturedAhead).length).toBeGreaterThan(90);
+    // A frame that is a picture alone is drawn as it was: by its outline, or by the renderer.
+    expect(ids(frames.filter((one) => one.group !== 'magnets' && picturedAhead(one)))).toEqual([]);
+  });
+
+  it('are told from the drawing they were made of by a word of their frame', () => {
+    const summer = frame('magnet-summer');
+    expect(frameRev(summer)).toMatch(/^[0-9a-z]{6,14}$/);
+    expect(frameRev({ ...summer })).toBe(frameRev(summer));
+    expect(new Set(magnets.map(frameRev)).size).toBe(magnets.length);
+    // Another word on the card, another sticker or another shadow is another drawing.
+    const [first, ...others] = summer.extras ?? [];
+    expect(frameRev({ ...summer, extras: others })).not.toBe(frameRev(summer));
+    expect(frameRev({ ...summer, extras: [{ ...first!, x: first!.x + 1 }, ...others] })).not.toBe(
+      frameRev(summer),
+    );
+    expect(frameRev({ ...summer, shadow: undefined })).not.toBe(frameRev(summer));
+    // What it is called and found by is not drawn.
+    expect(frameRev({ ...summer, label: { en: 'Another', he: 'אחר' } })).toBe(frameRev(summer));
+  });
+
+  // Fails when the catalogue was written again and the pictures were not: until
+  // `node scripts/generate-frames-thumbs.mjs` runs, the panel draws those magnets live.
+  it('are in the media library for every such magnet, of the drawing it has now', async () => {
+    const index = (await readMediaJson<{
+      scale: number;
+      bleed: number;
+      frames: Record<string, string>;
+    }>('images/frames/index.json'))!;
+    expect(index).toBeDefined();
+    const files = await mediaFiles();
+    expect(index.scale).toBeGreaterThan(0);
+    expect(index.bleed).toBeGreaterThanOrEqual(0);
+    const pictured = magnets.filter(picturedAhead);
+    const name = (one: PhotoFrame) => one.id.replace(/^frame:/, '');
+    expect(ids(pictured.filter((one) => index.frames[name(one)] !== frameRev(one)))).toEqual([]);
+    expect(Object.keys(index.frames).sort()).toEqual(pictured.map(name).sort());
+    for (const lang of ['he', 'en']) {
+      expect(
+        ids(pictured.filter((one) => !files.has(`images/frames/${lang}/${name(one)}.webp`))),
+        lang,
+      ).toEqual([]);
+    }
   });
 });

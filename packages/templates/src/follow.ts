@@ -136,9 +136,11 @@ export function followTheme(deck: Deck, to: Theme, layouts: readonly Layout[] = 
   for (const layout of layouts) {
     const background = layout.background && linkBackground(layout.background, from);
     const decorations = layout.decorations.map((decoration) => followed(decoration, from, to));
+    const objects = layout.objects?.map((object) => followed(object, from, to));
     const patch = {
       ...(background !== layout.background ? { background } : {}),
       ...(equalJson(decorations, layout.decorations) ? {} : { decorations }),
+      ...(objects && !equalJson(objects, layout.objects) ? { objects } : {}),
     };
     if (Object.keys(patch).length > 0) {
       commands.push({ type: 'layout.update', layoutId: layout.id, patch });

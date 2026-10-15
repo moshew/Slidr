@@ -3,8 +3,8 @@ import { ContextMenuItem } from '@slidr/ui';
 import { CodeXml, ImageUp, Ungroup } from '@slidr/ui/icons';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { openPanel, useEditor, useSelection, type ContextToolProps } from '../shell';
-import { CODE_PANEL } from './CodePanel';
+import { useEditor, useSelection, type ContextToolProps } from '../shell';
+import { openCodeDialog } from './CodeDialog';
 import { decomposeBlock } from './decompose';
 import { openDecomposeDialog } from './DecomposeDialog';
 import { replaceImage } from './replace';
@@ -49,7 +49,7 @@ export function HtmlMenuItems(_: ContextToolProps) {
   const block = decomposeBlock(element);
   return (
     <>
-      <ContextMenuItem icon={CodeXml} onSelect={() => openPanel(CODE_PANEL)}>
+      <ContextMenuItem icon={CodeXml} onSelect={() => openCodeDialog(editor, slideId, element.id)}>
         {t('code.open')}
       </ContextMenuItem>
       <ContextMenuItem

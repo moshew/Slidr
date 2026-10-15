@@ -42,7 +42,7 @@ for (const theme of themes) {
         await choose(page, () => page.getByTestId('chat-attach').click(), LOGO.path);
         await choose(page, () => page.getByTestId('chat-attach').click(), big);
         await input(page).fill(words);
-        await expect(page.getByTestId('files-refused')).toBeVisible();
+        await expect(page.getByTestId('chat').getByTestId('files-refused')).toBeVisible();
         await settle(page);
         await page.screenshot({ path: out(`refused-composer-${name}`) });
 
@@ -56,8 +56,8 @@ for (const theme of themes) {
         await (
           await chooser
         ).setFiles(Array.from({ length: 11 }, (_, i) => picture(`example-${i + 1}.png`)));
-        await expect(page.getByTestId('files-refused')).toBeVisible();
-        await page.getByTestId('files-refused').scrollIntoViewIfNeeded();
+        await expect(page.getByTestId('template-form').getByTestId('files-refused')).toBeVisible();
+        await page.getByTestId('template-form').getByTestId('files-refused').scrollIntoViewIfNeeded();
         await settle(page);
         await page.screenshot({ path: out(`refused-template-${name}`) });
       } finally {

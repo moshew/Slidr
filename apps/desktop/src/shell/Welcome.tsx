@@ -67,7 +67,7 @@ const CHAT_WAIT = 2000;
  * the user put the focus on in the meantime keeps it.
  */
 function focusChat(): void {
-  openPanel(PanelId.ai, 'chat');
+  openPanel(PanelId.ai);
   const until = performance.now() + CHAT_WAIT;
   const attempt = () => {
     if (document.activeElement && document.activeElement !== document.body) return;

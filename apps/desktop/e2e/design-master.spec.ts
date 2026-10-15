@@ -112,10 +112,62 @@ test('the footer of the deck is on every slide with a place for one, and stays w
   expect(errors).toEqual([]);
 });
 
+test('a template is applied without the slide number when its button is let up', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openTemplates(page);
+  await card(page, 'zerem').getByTestId('template-cover').click();
+  const slides = page.getByTestId('template-slides');
+  const numbers = slides.locator('[data-decoration-id$="_number"]');
+  const toggle = page.getByTestId('template-slides-numbers');
+  // The slides of the template show the number, as the pressed button beside "Apply" says.
+  await expect(toggle).toHaveText('מיספור שקפים');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(numbers.first()).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(numbers).toHaveCount(0);
+
+  const steps = await undoSteps(page);
+  await page.getByTestId('template-slides-apply').click();
+  await expect(card(page, 'zerem')).toHaveAttribute('data-current', 'true');
+  expect(await undoSteps(page)).toBe(steps + 1);
+  const numbered = (await deck(page)).layouts.flatMap((layout) =>
+    layout.decorations.filter((decoration) => decoration.role === 'slideNumber'),
+  );
+  expect(numbered.length).toBeGreaterThan(0);
+  expect(numbered.every((decoration) => decoration.hidden)).toBe(true);
+  await expect(panel(page).getByTestId('master-number')).toContainText('מוסתר');
+
+  // On the template the deck is on, the button is the deck's own: it shows the number at once.
+  await card(page, 'zerem').getByTestId('template-cover').click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.click();
+  await expect(panel(page).getByTestId('master-number')).toContainText('מוצג בשקפי התוכן');
+  await expect(numbers.first()).toBeVisible();
+  expect(await undoSteps(page)).toBe(steps + 2);
+  expect(errors).toEqual([]);
+});
+
 for (const { lang, theme, viewport, name } of [
   { lang: 'he', theme: 'light', viewport: { width: 1920, height: 1032 }, name: 'light-rtl-1920' },
   { lang: 'en', theme: 'dark', viewport: { width: 1366, height: 768 }, name: 'dark-ltr-1366' },
 ] as const) {
+  test(`the choice of the slide number beside "Apply" ${name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openTemplates(page, { lang, theme });
+    await card(page, 'zerem').getByTestId('template-cover').click();
+    await expect(page.getByTestId('template-slide').first()).toBeVisible();
+    await settle(page);
+    await page.screenshot({ path: out(`template-numbers-on-${name}`) });
+    await page.getByTestId('template-slides-numbers').click();
+    // Off as it rests, not under the pointer that pressed it.
+    await page.mouse.move(0, viewport.height - 1);
+    await settle(page);
+    await page.screenshot({ path: out(`template-numbers-off-${name}`) });
+  });
+
   test(`the master components in the panel, and on a slide ${name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openTemplates(page, { lang, theme, defaultTemplate: 'tzuk' });

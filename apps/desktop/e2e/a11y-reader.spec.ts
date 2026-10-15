@@ -137,7 +137,6 @@ test('the chat says the closing words of a turn once it ends, and who said a mes
   await page.goto('/');
   await expect(page.getByTestId('stage-frame')).toBeVisible();
   await openPanel(page, 'ai');
-  await page.locator(`${PANEL} [role="tab"]`).first().click();
   const said = page.getByTestId('chat-said');
   await expect(said).toHaveAttribute('role', 'status');
   await expect(said).toHaveText('');

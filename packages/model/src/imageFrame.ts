@@ -30,8 +30,7 @@ export function frameLayout(design: SmartImageFrame, size: { w: number; h: numbe
       opening: { ...opening },
     };
   }
-  const drawn = Math.min(design.scale, size.w / viewBox.w, size.h / viewBox.h) || design.scale;
-  const box = { w: Math.max(viewBox.w, size.w / drawn), h: Math.max(viewBox.h, size.h / drawn) };
+  const { scale: drawn, box } = artworkLayout({ viewBox, scale: design.scale }, size);
   return {
     scale: { x: drawn, y: drawn },
     box,
@@ -41,6 +40,48 @@ export function frameLayout(design: SmartImageFrame, size: { w: number; h: numbe
       w: opening.w + box.w - viewBox.w,
       h: opening.h + box.h - viewBox.h,
     },
+  };
+}
+
+/** Artwork that lays itself out, drawn at a scale: a frame's, or a card's of its own. */
+export interface Artwork {
+  /** The artwork's own box, in its units. */
+  viewBox: { w: number; h: number };
+  /** Slide pixels to a unit: the size the artwork is drawn at, and keeps. */
+  scale: number;
+}
+
+/**
+ * How artwork that keeps its size lies in a box of a given size: at its scale, in a box of its
+ * units as large as the given one, or as its own where the given one is smaller. Only a box too
+ * small for the artwork has it drawn smaller, whole.
+ */
+export function artworkLayout(
+  { viewBox, scale }: Artwork,
+  size: { w: number; h: number },
+): { scale: number; box: { w: number; h: number } } {
+  const drawn = Math.min(scale, size.w / viewBox.w, size.h / viewBox.h) || scale;
+  return {
+    scale: drawn,
+    box: { w: Math.max(viewBox.w, size.w / drawn), h: Math.max(viewBox.h, size.h / drawn) },
+  };
+}
+
+/**
+ * How the card of a window lies around a photograph of a given size (an image's `window` mask):
+ * the photograph is the card's opening, and the margins around it are as wide as the card has
+ * them. Only a photograph smaller than the opening has the card drawn smaller around it.
+ * `box` is the card in its units, and `at` where the photograph's corner is in it.
+ */
+export function windowLayout(
+  { viewBox, opening, scale }: Artwork & { opening: Frame },
+  size: { w: number; h: number },
+): { scale: number; box: { w: number; h: number }; at: { x: number; y: number } } {
+  const drawn = Math.min(scale, size.w / opening.w, size.h / opening.h) || scale;
+  return {
+    scale: drawn,
+    box: { w: size.w / drawn + viewBox.w - opening.w, h: size.h / drawn + viewBox.h - opening.h },
+    at: { x: opening.x, y: opening.y },
   };
 }
 
@@ -67,9 +108,20 @@ function along(
  * it was, and over the opening it stays at the same place along it.
  */
 export function placedInFrame(design: SmartImageFrame, layout: FrameLayout, part: Frame): Frame {
-  const { viewBox, opening } = design;
-  const [x, w] = along(part.x, part.w, opening.x, opening.w, layout.box.w - viewBox.w);
-  const [y, h] = along(part.y, part.h, opening.y, opening.h, layout.box.h - viewBox.h);
+  const { viewBox } = design;
+  return placedAround(design.opening, part, {
+    w: layout.box.w - viewBox.w,
+    h: layout.box.h - viewBox.h,
+  });
+}
+
+/**
+ * Where a part of artwork goes when its opening grows by `grown` (`placedInFrame`): the part and
+ * the opening in the same units, the part's box before the change.
+ */
+export function placedAround(opening: Frame, part: Frame, grown: { w: number; h: number }): Frame {
+  const [x, w] = along(part.x, part.w, opening.x, opening.w, grown.w);
+  const [y, h] = along(part.y, part.h, opening.y, opening.h, grown.h);
   return { x, y, w, h };
 }
 

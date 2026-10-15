@@ -49,6 +49,13 @@ export interface SlideRendererProps {
    * widen them: an address no slide may open stays unopened. Keep it stable.
    */
   opensLink?: (address: string) => boolean;
+  /**
+   * How the slide's pictures are decoded. `async`, the default, lets the page show a frame before
+   * a large picture is ready, and the picture follows; `sync` holds the frame until the pictures
+   * are drawn with the rest, for a slide that is shown whole the moment it appears, such as a
+   * template's cover in a panel that was drawn ahead.
+   */
+  decoding?: 'sync' | 'async';
   className?: string;
   /** Applied to the slide root, after the renderer's own styles. */
   style?: CSSProperties;
@@ -74,6 +81,7 @@ export function SlideRenderer({
   htmlSlot,
   scriptNonce: givenNonce,
   opensLink: hostOpens,
+  decoding,
   className,
   style,
 }: SlideRendererProps) {
@@ -99,6 +107,7 @@ export function SlideRenderer({
       htmlSlot,
       ...(scriptNonce ? { scriptNonce } : {}),
       opensLink: (address) => opensAddress(address) && (hostOpens?.(address) ?? true),
+      ...(decoding ? { decoding } : {}),
     }),
     [
       theme,
@@ -114,6 +123,7 @@ export function SlideRenderer({
       htmlSlot,
       scriptNonce,
       hostOpens,
+      decoding,
     ],
   );
   const vars = useMemo(() => themeVariables(theme), [theme]);
@@ -222,6 +232,39 @@ export function ScaledSlide({ width, ...props }: SlideRendererProps & { width: n
           top: 0,
           transformOrigin: '0 0',
           transform: `scale(${scale})`,
+        }}
+      >
+        <SlideRenderer {...props} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A slide as wide as the box it is in, scaled by CSS against that box (a container query): it
+ * needs no measuring, so it can be drawn before it is laid out, in a panel drawn ahead and
+ * hidden, and a box that changes its width does not draw it again.
+ */
+export function FittedSlide(props: SlideRendererProps) {
+  const { w, h } = props.deck.size;
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        aspectRatio: `${w} / ${h}`,
+        overflow: 'hidden',
+        containerType: 'inline-size',
+      }}
+    >
+      {/* Physical left/top, as in `ScaledSlide`. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          transformOrigin: '0 0',
+          transform: `scale(calc(100cqw / ${w}px))`,
         }}
       >
         <SlideRenderer {...props} />

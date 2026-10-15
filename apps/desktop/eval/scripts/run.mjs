@@ -102,6 +102,7 @@ const BUILT_IN = [
   'shidur',
   'mifgash',
   'kod',
+  'luach',
   'anan',
   'magen',
   'shvav',

@@ -2,6 +2,8 @@ import {
   CommandBus,
   createDeck,
   isAssetFileName,
+  layoutObjects,
+  takenIds,
   walkElements,
   type AssetMeta,
   type Command,
@@ -10,11 +12,13 @@ import {
   type Direction,
   type Element,
   type Layout,
+  type Slide,
 } from '@slidr/model';
 import { followTheme } from './follow';
 import { copyJson, equalJson } from './json';
 import { isMaster } from './master';
 import { mirrorBackground, mirrorElement, mirrorLayout } from './mirror';
+import { layoutCopies, sameDrawing, sameObjects, untouchedObjects } from './objects';
 import {
   adoptLayout,
   followPatch,
@@ -42,6 +46,9 @@ import { layoutsFor, type Template } from './template';
  * - Each slide moves to the layout `matchLayout` finds for it, and its elements follow their
  *   placeholders there (see `followPatch`). Nothing is deleted: an element whose role has no
  *   placeholder in the new layout stays where it is.
+ * - The copies of the old layout's objects on a slide (`Layout.objects`) go, moved or restyled,
+ *   and the new layout's come in under everything else (see `objectsFollow`). One the user
+ *   wrote in stays.
  * - A slide whose archetype the template does not have keeps its layout, which stays in the deck
  *   after the template's own and follows the new theme through its tokens.
  * - A slide without a layout takes the layout of its archetype when that layout has a place for
@@ -54,17 +61,28 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
   const moving: { slideId: string; to: Layout; updates: Command[] }[] = [];
   const adopting: typeof moving = [];
   const kept = new Set<string>();
+  const taken = takenIds(deck);
+  const gone = new Set<string>();
   for (const slide of deck.slides) {
     const from = deck.layouts.find((layout) => layout.id === slide.layoutId);
     if (!from) {
       const adopted = adoptLayout(slide, next, deck.meta.dir);
-      if (adopted)
+      // Such a slide was designed as a whole: it takes no objects of the layout (ADR-091).
+      if (adopted) {
         adopting.push({ slideId: slide.id, to: adopted.layout, updates: adopted.updates });
+      }
       continue;
     }
     const to = matchLayout(slide, from, next);
     if (to) {
-      moving.push({ slideId: slide.id, to, updates: relayout(slide, from, to, deck.meta.dir) });
+      moving.push({
+        slideId: slide.id,
+        to,
+        updates: [
+          ...relayout(slide, from, to, deck.meta.dir),
+          ...objectsFollow(slide, from, to, taken, gone),
+        ],
+      });
     } else kept.add(from.id);
   }
 
@@ -95,8 +113,48 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
   }
   if (themed) {
     const staying = deck.layouts.filter((layout) => kept.has(layout.id));
-    commands.push(...followTheme(deck, template.theme, staying));
+    // What went with its layout has nothing left to follow.
+    const following = followTheme(deck, template.theme, staying).filter(
+      (command) => command.type !== 'element.update' || !gone.has(command.elementId),
+    );
+    commands.push(...following);
   }
+  return commands;
+}
+
+/**
+ * The commands that hand a slide from the objects of one layout to those of another
+ * (`Layout.objects`): the copies of the old layout's objects are removed (`layoutCopies`), and
+ * copies of the new layout's are put at the bottom of the slide, in its order
+ * (`layoutObjects`, with the ids in use in the deck in `taken`). The ids of what goes, and of
+ * what is inside it, move from `taken` to `gone`. Nothing changes when both layouts have the
+ * same objects: what the slide took away of them stays away.
+ */
+export function objectsFollow(
+  slide: Slide,
+  from: Layout | undefined,
+  to: Layout,
+  taken: Set<string>,
+  gone: Set<string>,
+): Command[] {
+  if (from && sameObjects(from, to)) return [];
+  const commands: Command[] = [];
+  const copies = layoutCopies(slide, from);
+  const theirs = slide.elements.filter((element) => copies.has(element.id));
+  if (theirs.length > 0) {
+    commands.push({
+      type: 'element.remove',
+      slideId: slide.id,
+      elementIds: theirs.map((element) => element.id),
+    });
+    for (const element of walkElements(theirs)) {
+      gone.add(element.id);
+      taken.delete(element.id);
+    }
+  }
+  layoutObjects(to, slide.id, taken).forEach((element, index) =>
+    commands.push({ type: 'element.add', slideId: slide.id, element, index }),
+  );
   return commands;
 }
 
@@ -138,6 +196,7 @@ function drawing(layout: Layout) {
     background: layout.background,
     placeholders: layout.placeholders,
     decorations: layout.decorations.filter((decoration) => !isMaster(decoration)),
+    objects: layout.objects ?? [],
   };
 }
 
@@ -182,12 +241,13 @@ export function turnedLayout(layout: Layout, drawn?: Layout, drawnTurned?: Layou
   const known = new Set(drawnTurned.decorations.map((decoration) => decoration.id));
   for (const [id, decoration] of mineTurned) if (!known.has(id)) decorations.push(decoration);
 
-  const { background: _background, ...rest } = mirrored;
+  const { background: _background, objects: _objects, ...rest } = mirrored;
   return {
     ...rest,
     ...(drawnTurned.background ? { background: drawnTurned.background } : {}),
     placeholders: drawnTurned.placeholders,
     decorations,
+    ...(drawnTurned.objects ? { objects: drawnTurned.objects } : {}),
   };
 }
 
@@ -228,6 +288,9 @@ export function layoutsDirection(deck: Deck, template: Template): Direction | un
  *   (`Template.flipped`) comes with its corrections.
  * - An element that sits on its placeholder goes where the placeholder went. Every other element
  *   is mirrored where it stands; nested elements are mirrored inside their group.
+ * - An object of the layout that the slide still has as it was (`Layout.objects`) becomes the
+ *   object of the new layout: the mirror of it, unless the layout was drawn by hand for the new
+ *   direction, and then a copy of what was drawn, in the same place among the elements.
  * - The text itself is not touched: the direction of a paragraph belongs to its language.
  *
  * Turning the deck back gives the deck back.
@@ -249,9 +312,11 @@ export function changeDirection(deck: Deck, dir: Direction, template?: Template)
         background: to.background ?? null,
         placeholders: to.placeholders,
         decorations: to.decorations,
+        ...(to.objects ? { objects: to.objects } : {}),
       },
     });
   }
+  const taken = takenIds(deck);
 
   for (const slide of deck.slides) {
     if (slide.background) {
@@ -263,7 +328,19 @@ export function changeDirection(deck: Deck, dir: Direction, template?: Template)
     const from = deck.layouts.find((layout) => layout.id === slide.layoutId);
     const to = from && turned.get(from.id);
     const moves = from && to ? movesOf(slide, from, to) : new Map<string, Move>();
-    for (const element of slide.elements) {
+    const theirs = untouchedObjects(slide, from);
+    for (const [index, element] of slide.elements.entries()) {
+      const object = to?.objects?.[theirs.get(element.id) ?? -1];
+      if (object && !sameDrawing(mirrorElement(element), object)) {
+        // The layout was drawn by hand for this direction: the slide takes what was drawn.
+        for (const inside of walkElements([element])) taken.delete(inside.id);
+        const [copy] = layoutObjects({ ...to, objects: [object] }, slide.id, taken);
+        commands.push(
+          { type: 'element.remove', slideId: slide.id, elementIds: [element.id] },
+          { type: 'element.add', slideId: slide.id, element: copy!, index },
+        );
+        continue;
+      }
       const before = [...walkElements([element])];
       const after = [...walkElements([mirrorElement(element)])];
       const move = moves.get(element.id);

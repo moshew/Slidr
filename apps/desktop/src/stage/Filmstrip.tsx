@@ -463,7 +463,10 @@ const TransitionMark = memo(function TransitionMark({
   );
 });
 
-/** A layout as a small picture: its background and decorations, and where its placeholders sit. */
+/**
+ * A layout as a small picture: its background, decorations and objects, and where its
+ * placeholders sit.
+ */
 function LayoutPreview({
   deck,
   layout,
@@ -473,11 +476,12 @@ function LayoutPreview({
   layout: Layout;
   resolveAsset?: AssetResolver;
 }) {
-  // The slide of the layout without its (empty) elements: the renderer draws the rest.
-  const slide = useMemo(
-    () => ({ ...slideFromLayout(deck, layout.id).slide, elements: [] }),
-    [deck, layout.id],
-  );
+  // The slide of the layout with its objects, which come first, and without the (empty)
+  // elements of its placeholders: the renderer draws the rest.
+  const slide = useMemo(() => {
+    const made = slideFromLayout(deck, layout.id).slide;
+    return { ...made, elements: made.elements.slice(0, layout.objects?.length ?? 0) };
+  }, [deck, layout]);
   const scale = LAYOUT_W / deck.size.w;
   return (
     <div style={{ position: 'relative', width: LAYOUT_W, height: deck.size.h * scale }}>

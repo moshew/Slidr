@@ -1,5 +1,5 @@
 // SlideRenderer and the element renderers: model -> DOM (SPEC 7, ADR-009).
-export { SlideRenderer, ScaledSlide, type SlideRendererProps } from './SlideRenderer';
+export { FittedSlide, SlideRenderer, ScaledSlide, type SlideRendererProps } from './SlideRenderer';
 export type {
   AssetResolver,
   CellSlot,
@@ -67,6 +67,7 @@ export {
 export { scopeSlideCss } from './css';
 export { settle } from './settle';
 export { chartsSettled } from './chart/controller';
+export { loadCharts } from './chart/view';
 export { CHART_ATTRIBUTE, CHART_EVENT, type ChartCue } from './chart/cue';
 export { chartSpec, type ChartSpec } from './chart/spec';
 export { clipAttributes, CLIP_ATTRIBUTE, CLIP_TOGGLE_ATTRIBUTE } from './clip';

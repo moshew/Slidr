@@ -3,7 +3,12 @@ import type * as Runtime from '../src/ai/runtime';
 import type * as RequestHarness from './harness-request-page';
 import type * as Setup from '../src/agent/harnessSetup';
 import type * as Settings from '../src/settings';
-import type { AgentClient, HarnessDescriptor, HarnessStatus } from '../src/agent/agent';
+import type {
+  AgentClient,
+  HarnessDescriptor,
+  HarnessStatus,
+  ModelOption,
+} from '../src/agent/agent';
 import { openApp } from './arrange-helpers';
 
 test.beforeEach(async ({ page }) => {
@@ -11,8 +16,9 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => performance.setResourceTimingBufferSize(5000));
 });
 
-async function fixtures(page: Page) {
-  await page.evaluate(async () => {
+/** `models`: what every harness lists once connected; by default two without a version. */
+async function fixtures(page: Page, models?: ModelOption[]) {
+  await page.evaluate(async (listed) => {
     const runtimePath =
       performance
         .getEntriesByType('resource')
@@ -78,7 +84,7 @@ async function fixtures(page: Page) {
           status: { state: states[id]!, version: '1.2.3', account: null, detail: null },
           harness: {
             ...descriptors.find((h) => h.id === id)!,
-            models: [
+            models: listed ?? [
               { id: `${id}-reasoning`, label: 'Reasoning model', effortLevels: ['low', 'ultra'] },
               { id: `${id}-simple`, label: 'Simple model', effortLevels: [] },
             ],
@@ -99,7 +105,7 @@ async function fixtures(page: Page) {
     agent.harnesses = () => Promise.resolve(descriptors);
     Object.assign(agent, { setup: new HarnessSetup(client, (id) => agent.harness(id)) });
     setAgentSettings({ harnessId: 'claude-code', model: undefined, effort: undefined });
-  });
+  }, models);
   await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
   await page.locator('[data-settings-tab="agent"]').click();
   await expect(page.getByTestId('harness-connection')).toContainText(/Connected|מחובר/);
@@ -141,6 +147,76 @@ test('selection connects, installation needs approval, and sign-in loads models 
   await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
   await expect(page.getByTestId('model-picker')).toContainText('Simple model');
   await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', '');
+});
+
+test('the first-time setup, Settings and the chat picker offer only the newest of each model', async ({
+  page,
+}) => {
+  const efforts = ['low', 'high'];
+  await openApp(page, { lang: 'en' });
+  await fixtures(page, [
+    { id: 'opus-5-5', label: 'Opus 5.5', effortLevels: efforts },
+    { id: 'sonnet-5-5', label: 'Sonnet 5.5', effortLevels: efforts },
+    { id: 'opus-5', label: 'Opus 5', effortLevels: efforts },
+    { id: 'sonnet-4-8', label: 'Sonnet 4.8', effortLevels: efforts },
+  ]);
+  const newest = ['Opus 5.5', 'Sonnet 5.5'];
+  const ai = page.getByTestId('activity-bar').locator('[data-panel="ai"]');
+  const settings = async () => {
+    await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+    await page.locator('[data-settings-tab="agent"]').click();
+  };
+
+  // First use: the chat asks for the agent, then its model.
+  await ai.click();
+  const setup = page.getByTestId('chat-setup');
+  await setup.getByRole('radio', { name: 'Claude', exact: true }).check();
+  await setup.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(setup.getByRole('radio')).toHaveCount(newest.length);
+  for (const label of newest) await expect(setup.getByRole('radio', { name: label })).toBeVisible();
+  await setup.getByRole('radio', { name: 'Opus 5.5' }).check();
+  await setup.getByRole('button', { name: 'Continue', exact: true }).click();
+  await setup.getByRole('radio', { name: 'High' }).check();
+  await setup.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(setup).toHaveCount(0);
+
+  // The conversation's own picker.
+  const picker = page.getByTestId('model-picker');
+  await expect(picker).toHaveAttribute('data-model', 'opus-5-5');
+  await picker.click();
+  const menu = page.getByRole('menu');
+  await expect(menu.locator('[data-model]')).toHaveText(newest);
+  await page.screenshot({ path: 'test-results/model-picker-newest-en.png' });
+  await page.keyboard.press('Escape');
+
+  // Settings.
+  await settings();
+  const model = page.getByRole('combobox', { name: 'Model', exact: true });
+  await expect(model).toContainText('Opus 5.5');
+  await model.click();
+  await expect(page.getByRole('option')).toHaveText(newest);
+  await page.getByRole('option', { name: 'Sonnet 5.5', exact: true }).click();
+  await expect(model).toContainText('Sonnet 5.5');
+
+  // An older model chosen before still shows what runs, but cannot be chosen again.
+  await page.evaluate(async () => {
+    const path = '/src/settings/index.ts';
+    const { setAgentSettings } = (await import(/* @vite-ignore */ path)) as typeof Settings;
+    setAgentSettings({ model: 'opus-5', effort: 'high' });
+  });
+  await expect(model).toContainText('Opus 5');
+  await model.click();
+  await expect(page.getByRole('option')).toHaveText([...newest, 'Opus 5']);
+  await expect(page.getByRole('option', { name: 'Opus 5', exact: true })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await page.screenshot({ path: 'test-results/settings-model-newest-en.png' });
+  await page.keyboard.press('Escape');
+  await ai.click();
+  await expect(picker).toHaveAttribute('data-model', 'opus-5');
+  await picker.click();
+  await expect(menu.locator('[data-model]')).toHaveText(newest);
 });
 
 test('chat handles installation, sign-in and a model without effort', async ({ page }) => {

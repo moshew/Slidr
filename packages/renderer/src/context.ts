@@ -100,6 +100,8 @@ export interface RenderContext {
    * Without it, every address a slide may open is followed (`opensAddress`).
    */
   opensLink?: (address: string) => boolean;
+  /** How the slide's pictures are decoded (`SlideRendererProps.decoding`); `async` by default. */
+  decoding?: 'sync' | 'async';
 }
 
 export const RenderContextValue = createContext<RenderContext | null>(null);
