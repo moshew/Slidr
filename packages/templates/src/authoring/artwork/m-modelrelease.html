@@ -51,11 +51,13 @@ g.fillText('א', S / 2, S * 0.53);
 const data = g.getImageData(0, 0, S, S).data;
 const inside = (x, y) => x >= 0 && y >= 0 && x < S && y < S && data[(Math.floor(y) * S + Math.floor(x)) * 4 + 3] > 128;
 
-const positions = [], colors = [], sizes = [], alphas = [];
+const positions = [], colors = [], sizes = [], alphas = [], shapes = [];
 const INK = new THREE.Color(num('ink', [0x15183a])[0]);
 const INDIGO = new THREE.Color(0x3a3fd6);
 const AMBER = new THREE.Color(0xff7417);
-function add(p, color, size, alpha) {
+/** A point: round, or a little square (a token) when `square`. */
+function add(p, color, size, alpha, square = 0) {
+  shapes.push(square);
   positions.push(p.x, p.y, p.z);
   colors.push(color.r, color.g, color.b);
   sizes.push(size);
@@ -78,12 +80,13 @@ while (made < want && tries < want * 40) {
   const p = toWorld(x, y, z);
   // the top of the letter comes apart: the higher, the more of it rises away as tokens
   const loose = THREE.MathUtils.smoothstep(1 - y / S, 0.56, 0.8);
-  if (rnd() < loose * 0.6) {
+  if (rnd() < loose * 0.42) {
     const t = Math.pow(rnd(), 1.5);
     p.y += t * 1.15 + 0.04;
     p.x += gauss() * 0.22 * t + t * 0.12;
     p.z += gauss() * 0.3 * t;
-    add(p, AMBER, 1.1 + rnd() * 1.7 * (1 - t), 0.9 - t * 0.6);
+    const square = rnd() < 0.55 ? 1 : 0;
+    add(p, square ? AMBER : INDIGO.clone().lerp(AMBER, 0.5 + rnd() * 0.5), (square ? 1.5 : 1.0) + rnd() * 1.6 * (1 - t), 0.9 - t * 0.6, square);
     made++;
     continue;
   }
@@ -103,22 +106,25 @@ geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 geo.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
 geo.setAttribute('alpha', new THREE.Float32BufferAttribute(alphas, 1));
+geo.setAttribute('shape', new THREE.Float32BufferAttribute(shapes, 1));
 const scale = num('dot', [2.2])[0] * devicePixelRatio;
 const mat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false,
   uniforms: { scale: { value: scale } },
-  vertexShader: `attribute float size; attribute float alpha; attribute vec3 color; uniform float scale;
-    varying vec3 vColor; varying float vAlpha;
+  vertexShader: `attribute float size; attribute float alpha; attribute float shape; attribute vec3 color; uniform float scale;
+    varying vec3 vColor; varying float vAlpha; varying float vShape;
     void main() {
+      vShape = shape;
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
       vColor = color;
       vAlpha = alpha;
       gl_PointSize = size * scale * (4.6 / -mv.z);
       gl_Position = projectionMatrix * mv;
     }`,
-  fragmentShader: `varying vec3 vColor; varying float vAlpha;
-    void main() { vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5) discard;
-      gl_FragColor = vec4(vColor, vAlpha * smoothstep(0.5, 0.15, d)); }`,
+  fragmentShader: `varying vec3 vColor; varying float vAlpha; varying float vShape;
+    void main() { vec2 c = gl_PointCoord - 0.5;
+      float d = vShape > 0.5 ? max(abs(c.x), abs(c.y)) * 1.15 : length(c); if (d > 0.5) discard;
+      gl_FragColor = vec4(vColor, vAlpha * smoothstep(0.5, vShape > 0.5 ? 0.4 : 0.15, d)); }`,
 });
 const cloud = new THREE.Points(geo, mat);
 cloud.rotation.set(...num('rot', [0.1, 0.42, -0.02]));
