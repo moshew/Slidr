@@ -193,7 +193,15 @@ export interface CreateDeckOptions {
   now?: Date;
 }
 
-/** A new deck. Without `dir`, Hebrew and Arabic decks are right-to-left. */
+/** Languages written right to left: Hebrew, Arabic, Persian, Urdu and their neighbours. */
+const RTL = new Set(['he', 'iw', 'yi', 'ar', 'fa', 'ur', 'ps', 'sd', 'ug', 'ckb', 'dv']);
+
+/** Whether a language tag is of a language written right to left: "he", "ar-EG", "fa-IR". */
+export function isRtlLanguage(lang: string): boolean {
+  return RTL.has(lang.toLowerCase().split(/[-_]/)[0] ?? '');
+}
+
+/** A new deck. Without `dir`, a deck in a right-to-left language is right-to-left. */
 export function createDeck(options: CreateDeckOptions = {}): Deck {
   const lang = options.lang ?? 'he';
   const now = (options.now ?? new Date()).toISOString();
@@ -203,7 +211,7 @@ export function createDeck(options: CreateDeckOptions = {}): Deck {
     meta: {
       title: options.title ?? '',
       lang,
-      dir: options.dir ?? (lang === 'he' || lang === 'ar' ? 'rtl' : 'ltr'),
+      dir: options.dir ?? (isRtlLanguage(lang) ? 'rtl' : 'ltr'),
       createdAt: now,
       updatedAt: now,
     },

@@ -1,18 +1,20 @@
 /**
  * The page the server opens in a headless browser (`tools/snap.mjs`): it converts a variant's
- * two HTML files with the app's engine, checks them, and shows each language at full size and
- * as the gallery's thumbnail, for the script to take pictures of. When everything is drawn it
- * sets `window.__snap`.
+ * HTML files, one for each language of its request, with the app's engine, checks them, and
+ * shows each language at full size and as the gallery's thumbnail (`<lang>-full`,
+ * `<lang>-thumb`), for the script to take pictures of. When everything is drawn it sets
+ * `window.__snap`.
  */
+import { languagesOf } from '@slidr/model';
 import { ScaledSlide, settle } from '@slidr/renderer';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import {
   convertDesign,
   designDeck,
-  LANGS,
   pictureResolver,
   type DesignResult,
+  type Lang,
   type Picture,
 } from './design';
 import { registerLibraryFonts } from './fonts';
@@ -29,8 +31,8 @@ function Views({ result, picture }: { result: DesignResult; picture: Picture }) 
   const resolve = pictureResolver(picture);
   return (
     <>
-      {LANGS.map((lang) => {
-        const slide = result.langs[lang].slide;
+      {languagesOf(result.langs).map((lang) => {
+        const slide = result.langs[lang]?.slide;
         if (!slide) return null;
         const deck = designDeck(lang, picture, [slide]);
         return (
@@ -69,7 +71,9 @@ async function run(): Promise<void> {
   const input = (await response.json()) as {
     designId: string;
     revision: number;
-    html: { he: string; en: string };
+    /** The variant's languages; a server from before there was a choice sends none. */
+    languages?: Lang[];
+    html: Partial<Record<Lang, string>>;
     image: Picture;
   };
   await registerLibraryFonts();

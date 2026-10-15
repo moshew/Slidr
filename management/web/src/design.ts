@@ -1,6 +1,7 @@
 /**
- * A design of the Elements gallery, from the two HTML files Claude wrote to the slides the app's
- * catalog holds (`elements/designs/managed.json`):
+ * A design of the Elements gallery, from the HTML files Claude wrote, one for each language of
+ * its request (Hebrew and English always, and any other content language chosen), to the slides
+ * the app's catalog holds (`elements/designs/managed.json`):
  *
  * - converted by the app's own engine (`@slidr/html-import`), as the agent's slides are;
  * - made independent of any deck: text styles linked to the theme are written out on the runs,
@@ -13,14 +14,20 @@ import type { HtmlSlideConversion } from '@slidr/agent-tools';
 import { createConversionService } from '@slidr/html-import';
 import { lintSlide } from '@slidr/lint';
 import {
+  BASE_LANGUAGES,
+  CONTENT_LANGUAGES,
   createDeck,
+  languageDir,
+  languagesOf,
   plainText,
   Slide,
   walkElements,
   type AssetMeta,
   type Color,
+  type ContentLanguage,
   type Deck,
   type Element,
+  type Localized,
   type Marks,
   type Slide as SlideModel,
   type TextStyleRef,
@@ -30,8 +37,15 @@ import { measureSlide, renderSlideOffscreen, type AssetResolver } from '@slidr/r
 import { familiesIn, loadFamilies } from './fonts';
 
 export const SUBJECT = '__subject__';
-export const LANGS = ['he', 'en'] as const;
-export type Lang = (typeof LANGS)[number];
+/** A language a design is made in: any content language of the app (`@slidr/model`). */
+export type Lang = ContentLanguage;
+
+const isBase = (lang: Lang) => (BASE_LANGUAGES as readonly Lang[]).includes(lang);
+
+/** The languages of a design: those asked for, Hebrew and English always, in the app's order. */
+export function designLanguages(wanted: readonly Lang[]): Lang[] {
+  return CONTENT_LANGUAGES.filter((lang) => isBase(lang) || wanted.includes(lang));
+}
 
 export interface Picture {
   url: string;
@@ -63,10 +77,11 @@ export interface LangResult {
 export interface DesignResult {
   designId: string;
   revision: number;
-  langs: Record<Lang, LangResult>;
+  /** Each language the design was made in: Hebrew and English, and any other asked for. */
+  langs: Localized<LangResult>;
   /** A point on the picture's subject, in left-to-right slide pixels. */
   subject: [number, number] | null;
-  /** Issues that concern both languages. */
+  /** Issues that concern every language. */
   issues: string[];
   /** The contract holds: the design may be approved and published. */
   publishable: boolean;
@@ -175,6 +190,8 @@ function literal(color: Color, theme: Theme): Color {
  */
 export function detachFromTheme(slide: SlideModel, theme: Theme, lang: Lang): SlideModel {
   const copy = structuredClone(slide);
+  // A run that names no font gets the theme's Hebrew family in Hebrew, its Latin one in any other
+  // language (where the Latin family lacks the letters, the system's font draws them).
   const fontOf = (role: 'heading' | 'body') => {
     const pair = theme.fonts[role];
     return lang === 'he' ? pair.he : pair.latin;
@@ -210,7 +227,39 @@ export function detachFromTheme(slide: SlideModel, theme: Theme, lang: Lang): Sl
 
 /* ---------------------------------------------------------------- the contract */
 
-const PLACEHOLDER = /lorem ipsum|placeholder|add your text|your text here|טקסט לדוגמה|הכנס טקסט/i;
+/** The words of a placeholder, in the languages a design may be made in. */
+const PLACEHOLDER = new RegExp(
+  [
+    'lorem ipsum',
+    'placeholder',
+    'add your text',
+    'your text here',
+    'טקסט לדוגמה',
+    'הכנס טקסט',
+    'نص تجريبي',
+    'أدخل النص',
+    'platzhalter',
+    'ihr text hier',
+    'texto de ejemplo',
+    'texte d’exemple',
+    "texte d'exemple",
+    'votre texte ici',
+    'testo segnaposto',
+    'seu texto aqui',
+    'текст-заполнитель',
+    'ваш текст здесь',
+    'metninizi buraya',
+    'văn bản mẫu',
+    'teks contoh',
+    'यहाँ टेक्स्ट',
+    'ダミーテキスト',
+    'ここにテキスト',
+    '여기에 텍스트',
+    '占位文本',
+    '在此输入文本',
+  ].join('|'),
+  'i',
+);
 
 function worded(elements: readonly Element[]) {
   return elements.flatMap((element) =>
@@ -277,15 +326,20 @@ const isPicture = (element: Element | undefined) =>
   element?.type === 'image' && element.assetId === SUBJECT;
 
 /**
- * A point on the picture where the picture is what lies on top in both languages, the English
- * point mirrored in Hebrew: what the gallery's test checks, and where a click selects the
- * picture. The point nearest the middle of the largest frame of the picture wins.
+ * A point on the picture where the picture is what lies on top in every language: at the
+ * English point in a left-to-right slide, mirrored in a right-to-left one (Hebrew, Arabic). What
+ * the gallery's test checks, and where a click selects the picture. The point nearest the middle
+ * of the largest frame of the English picture wins.
  */
 export function subjectPoint(
-  en: SlideModel,
-  he: SlideModel,
+  slides: Partial<Record<Lang, SlideModel>> & { en: SlideModel },
   width = 1920,
 ): [number, number] | null {
+  const { en } = slides;
+  const sides = languagesOf(slides).map((lang) => ({
+    slide: slides[lang]!,
+    mirrored: languageDir(lang) === 'rtl',
+  }));
   const frames = en.elements
     .filter((element) => isPicture(element))
     .sort((a, b) => b.frame.w * b.frame.h - a.frame.w * a.frame.h);
@@ -300,9 +354,11 @@ export function subjectPoint(
     points.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
     for (const [px, py] of points) {
       const visibleX = Math.min(Math.max(px, 0), width);
-      const top = en.elements.findLast((element) => within(element, visibleX, py));
-      const mirrored = he.elements.findLast((element) => within(element, width - visibleX, py));
-      if (isPicture(top) && isPicture(mirrored)) return [Math.round(visibleX), Math.round(py)];
+      const onTop = sides.every(({ slide, mirrored }) => {
+        const at = mirrored ? width - visibleX : visibleX;
+        return isPicture(slide.elements.findLast((element) => within(element, at, py)));
+      });
+      if (onTop) return [Math.round(visibleX), Math.round(py)];
     }
   }
   return null;
@@ -336,20 +392,39 @@ async function designCheck(deck: Deck, slide: SlideModel, picture: Picture): Pro
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+/** What a design names the files of its languages by. */
+const fileOf = (lang: Lang) => `${lang}.html`;
+
+/** The files as a list: "he.html and en.html", "he.html, en.html and ar.html". */
+const listOf = (langs: readonly Lang[]) => {
+  const names = langs.map(fileOf);
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+};
+
+/**
+ * Converts and checks a design in each of its languages: `languages` (the request's, which the
+ * server sends), else those `html` has; Hebrew and English always.
+ */
 export async function convertDesign(input: {
   designId: string;
   revision: number;
-  html: Record<Lang, string>;
+  html: Partial<Record<Lang, string>>;
+  languages?: readonly Lang[];
   image: Picture;
   debug?: boolean;
 }): Promise<DesignResult> {
   const convert = service(input.image);
-  const langs = {} as Record<Lang, LangResult>;
-  for (const lang of LANGS) {
+  const languages = designLanguages(input.languages ?? languagesOf(input.html));
+  const langs = {} as Localized<LangResult>;
+  for (const lang of languages) {
     const html = input.html[lang];
-    const fonts = familiesIn(html);
+    const fonts = html === undefined ? [] : familiesIn(html);
     const side: LangResult = { issues: [], findings: [], fonts };
     langs[lang] = side;
+    if (html === undefined) {
+      side.error = `${fileOf(lang)} was not written.`;
+      continue;
+    }
     try {
       await loadFamilies(fonts);
       if (fonts.length === 0) {
@@ -378,19 +453,29 @@ export async function convertDesign(input: {
   }
   const issues: string[] = [];
   let subject: [number, number] | null = null;
-  if (langs.he.slide && langs.en.slide) {
-    subject = subjectPoint(langs.en.slide, langs.he.slide);
+  const en = langs.en.slide;
+  const slides = Object.fromEntries(
+    languages.flatMap((lang) => (langs[lang]?.slide ? [[lang, langs[lang].slide]] : [])),
+  ) as Partial<Record<Lang, SlideModel>>;
+  // Only when every language has a slide: a language without one has its own error.
+  if (en && languages.every((lang) => slides[lang])) {
+    subject = subjectPoint({ ...slides, en });
     if (!subject) {
+      const ltr = languages.filter((lang) => languageDir(lang) === 'ltr');
+      const rtl = languages.filter((lang) => languageDir(lang) === 'rtl');
       issues.push(
-        'No point of the picture lies on top in both languages at mirrored places: mirror the picture frame exactly between he.html and en.html, keep its <img> a direct child of the root, and let nothing cover the middle of its subject.',
+        languages.length === 2
+          ? 'No point of the picture lies on top in both languages at mirrored places: mirror the picture frame exactly between he.html and en.html, keep its <img> a direct child of the root, and let nothing cover the middle of its subject.'
+          : `No point of the picture lies on top in every language at the same place (mirrored in the right-to-left files): keep the picture frame where it is in en.html in ${listOf(ltr)}, mirror it exactly in ${listOf(rtl)}, keep its <img> a direct child of the root, and let nothing cover the middle of its subject.`,
       );
     }
   }
   const publishable =
     issues.length === 0 &&
-    LANGS.every(
-      (lang) => !langs[lang].error && langs[lang].issues.length === 0 && langs[lang].slide,
-    );
+    languages.every((lang) => {
+      const side = langs[lang];
+      return side && !side.error && side.issues.length === 0 && side.slide;
+    });
   return {
     designId: input.designId,
     revision: input.revision,

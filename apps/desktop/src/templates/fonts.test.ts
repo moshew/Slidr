@@ -8,16 +8,13 @@ import { builtinFamilies } from '../fonts/builtinFonts.generated';
  * so this holds the two lists together.
  */
 describe('the fonts the agent may give a template', () => {
-  const carried = (script: 'he' | 'latin', only = false) =>
-    builtinFamilies
-      .filter(({ scripts }) =>
-        only ? scripts.length === 1 && scripts[0] === script : scripts.some((s) => s === script),
-      )
-      .map(({ family }) => family);
+  const carried = (script: string) =>
+    builtinFamilies.filter(({ scripts }) => scripts.includes(script)).map(({ family }) => family);
 
   it('are the families the app carries, each under the letters it has', () => {
     expect([...TEMPLATE_FONTS.hebrew].sort()).toEqual(carried('he').sort());
-    expect([...TEMPLATE_FONTS.latin].sort()).toEqual(carried('latin', true).sort());
+    const latinOnly = builtinFamilies.filter(({ scripts }) => !scripts.includes('he'));
+    expect([...TEMPLATE_FONTS.latin].sort()).toEqual(latinOnly.map(({ family }) => family).sort());
   });
 
   it('name every family once', () => {

@@ -158,8 +158,8 @@ describe('the system prompt, by scope', () => {
 describe('the design guidelines (SPEC 9.1)', () => {
   it('keep the right-to-left guidance whole, in every session', () => {
     const rtl = [
-      'In a Hebrew deck the layout is mirrored: text on the right, image on the left; a timeline or a process runs from right to left.',
-      'Align to `start`, not to `right`. Numbers and Latin terms inside Hebrew text stay left-to-right.',
+      'In a Hebrew or Arabic deck the layout is mirrored: text on the right, image on the left; a timeline or a process runs from right to left.',
+      'Align to `start`, not to `right`. Numbers and Latin terms inside Hebrew or Arabic text stay left-to-right.',
       'Font pairing: a Hebrew face and a Latin face that match in weight and height.',
     ];
     for (const scope of SCOPES) for (const line of rtl) expect(full(scope)).toContain(line);

@@ -12,13 +12,14 @@ import {
 } from '@slidr/ui';
 import { History, SquarePen } from '@slidr/ui/icons';
 import type { ChatThread, Conversation } from '../agent/agentService';
-import { useEditor } from '../shell';
+import { PanelActions, useEditor } from '../shell';
 import { actionLabel } from './actionLabels';
 import { aiOf } from './runtime';
 import type { ChatConversation } from './sessions';
 
 /*
- * The bar over a chat (CHT-U07): the conversations the chat keeps and a new one.
+ * The buttons of a chat in the panel's title bar (CHT-U07): the conversations the chat keeps and
+ * a new one.
  * The conversation of an HTML import is listed with the deck's own (SPEC 13.3).
  */
 
@@ -43,7 +44,8 @@ export function ConversationBar({ thread }: { thread: ChatThread }) {
       : '';
 
   return (
-    <div className="flex h-control shrink-0 items-center gap-1 px-2">
+    // In the panel's title bar, after its title.
+    <PanelActions>
       <DropdownMenu
         onOpenChange={(open) => {
           // Read when asked for: another window, or a turn that just ended, may have added one.
@@ -58,7 +60,7 @@ export function ConversationBar({ thread }: { thread: ChatThread }) {
             data-testid="conversations"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-w-80">
+        <DropdownMenuContent align="end" className="max-w-80">
           <DropdownMenuLabel>{t('conversations.heading')}</DropdownMenuLabel>
           <DropdownMenuRadioGroup
             value={thread.id}
@@ -90,7 +92,6 @@ export function ConversationBar({ thread }: { thread: ChatThread }) {
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      <span className="min-w-0 flex-1" />
       <IconButton
         icon={SquarePen}
         size="sm"
@@ -99,6 +100,6 @@ export function ConversationBar({ thread }: { thread: ChatThread }) {
         data-testid="conversation-new"
         onClick={() => sessions.startNew()}
       />
-    </div>
+    </PanelActions>
   );
 }

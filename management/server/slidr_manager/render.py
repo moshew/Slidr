@@ -1,14 +1,14 @@
 """Converting and rendering a design with the app's own engine, in a headless browser.
 
 `management/web/tools/snap.mjs` opens the studio's render page (`render.html`) in the installed
-Edge. The page converts both HTML files with `@slidr/html-import`, renders the slides with
-`@slidr/renderer`, runs the app's design check (`@slidr/lint`) and the gallery's contract, and
-the script takes the pictures:
+Edge. The page converts the HTML file of every language of the variant with `@slidr/html-import`,
+renders the slides with `@slidr/renderer`, runs the app's design check (`@slidr/lint`) and the
+gallery's contract, and the script takes the pictures, two for each language:
 
 ```text
-work/renders/r<n>/he-full.png  en-full.png    1920×1080
-work/renders/r<n>/he-thumb.png en-thumb.png   384 px wide, as the gallery shows a design
-work/renders/r<n>/result.json                 the slides, findings, conversion notes, subject point
+work/renders/r<n>/<lang>-full.png    1920×1080 (he-full.png, en-full.png, ar-full.png…)
+work/renders/r<n>/<lang>-thumb.png   384 px wide, as the gallery shows a design
+work/renders/r<n>/result.json        the slides, findings, conversion notes, subject point
 ```
 
 Each revision has a folder of its own: on Windows a folder that something holds open (an

@@ -1,6 +1,45 @@
+import { BASE_LANGUAGES, CONTENT_LANGUAGES, LANGUAGE_NAMES } from '@slidr/model';
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, type LibraryInfo, type StudioRequest } from './api';
+import { api, type Lang, type LibraryInfo, type StudioRequest } from './api';
+import { designLanguages } from './design';
 import { EFFORTS, MODELS } from './labels';
+
+const isBase = (lang: Lang) => (BASE_LANGUAGES as readonly Lang[]).includes(lang);
+
+/**
+ * The languages to make the designs in. Hebrew and English are always made (the app gives the
+ * English design to a deck in a language it was not made in), so they are ticked and fixed; any
+ * other is made only when ticked for this request.
+ */
+function Languages({ extra, onChange }: { extra: Lang[]; onChange: (extra: Lang[]) => void }) {
+  return (
+    <fieldset className="languages">
+      <legend>שפות</legend>
+      <div className="language-list">
+        {CONTENT_LANGUAGES.map((lang) => {
+          const base = isBase(lang);
+          return (
+            <label key={lang} className="language" title={LANGUAGE_NAMES[lang].english}>
+              <input
+                type="checkbox"
+                checked={base || extra.includes(lang)}
+                disabled={base}
+                onChange={(event) =>
+                  onChange(
+                    event.target.checked ? [...extra, lang] : extra.filter((one) => one !== lang),
+                  )
+                }
+              />
+              <span lang={lang} dir="auto">
+                {LANGUAGE_NAMES[lang].native}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
 
 const EXAMPLES = [
   'הזמנה לערב השקה של ספר שירה בבית קפה תל-אביבי, אווירה אינטימית וחמה',
@@ -17,6 +56,8 @@ export function RequestForm({ onCreated }: { onCreated: (request: StudioRequest)
   const [model, setModel] = useState('');
   const [effort, setEffort] = useState('');
   const [reviewRounds, setReviewRounds] = useState(2);
+  // The languages ticked beside Hebrew and English: none by default.
+  const [extra, setExtra] = useState<Lang[]>([]);
   const [library, setLibrary] = useState<LibraryInfo>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -30,7 +71,10 @@ export function RequestForm({ onCreated }: { onCreated: (request: StudioRequest)
     setBusy(true);
     setError(undefined);
     try {
-      onCreated(await api.newRequest({ prompt, count, group, model, effort, reviewRounds }));
+      const languages = designLanguages(extra);
+      onCreated(
+        await api.newRequest({ prompt, count, group, model, effort, reviewRounds, languages }),
+      );
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
       setBusy(false);
@@ -43,8 +87,8 @@ export function RequestForm({ onCreated }: { onCreated: (request: StudioRequest)
         <h2>בקשה חדשה</h2>
         <p>
           תארו את העיצוב שאתם צריכים. Claude יתכנן קונספטים שונים, Codex ייצור לכל אחד תמונה,
-          והעיצובים יומרו לשקופיות עם המנוע של Slidr, בעברית ובאנגלית. תראו את התוצאות, תבקשו
-          שינויים ותאשרו לפני שמשהו נשלח לספרייה.
+          והעיצובים יומרו לשקופיות עם המנוע של Slidr, בעברית ובאנגלית, ובכל שפה נוספת שתסמנו. תראו
+          את התוצאות, תבקשו שינויים ותאשרו לפני שמשהו נשלח לספרייה.
         </p>
       </div>
 
@@ -124,11 +168,17 @@ export function RequestForm({ onCreated }: { onCreated: (request: StudioRequest)
         </label>
       </div>
       <p className="hint">
-        בכל סבב Claude מסתכל על הרינדור בגודל מלא ובגודל ממוזער, בשתי השפות, יחד עם ממצאי בדיקת
-        העיצוב של האפליקציה, ומתקן.
+        בכל סבב Claude מסתכל על הרינדור בגודל מלא ובגודל ממוזער, בכל השפות של הבקשה, יחד עם ממצאי
+        בדיקת העיצוב של האפליקציה, ומתקן.
         {library &&
           !library.reachable &&
           ' (הספרייה ב-Cloudflare לא זמינה כרגע — הקבוצות לא נטענו.)'}
+      </p>
+
+      <Languages extra={extra} onChange={setExtra} />
+      <p className="hint">
+        עברית ואנגלית נוצרות תמיד: מצגת בשפה שהעיצוב לא נכתב בה מקבלת את העיצוב באנגלית. כל שפה
+        נוספת היא עוד קובץ, עוד רינדור ועוד בדיקה בכל הצעה, ו״עוד הצעות״ בבקשה הזאת יהיו באותן שפות.
       </p>
 
       {error && <p className="error-text">{error}</p>}

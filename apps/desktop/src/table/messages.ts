@@ -5,7 +5,7 @@ import { registerMessages } from '../i18n';
  * (`stage.tsx`) uses none of them: the Stage does not load the app's strings.
  */
 
-const he = {
+export const he = {
   insert: {
     hint: 'בחרו את גודל הטבלה',
     size: '{{cols}} עמודות × {{rows}} שורות',
@@ -94,7 +94,7 @@ const he = {
   },
 };
 
-const en: typeof he = {
+export const en: typeof he = {
   insert: {
     hint: 'Choose the size of the table',
     size: '{{cols}} columns × {{rows}} rows',

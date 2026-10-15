@@ -1,10 +1,10 @@
 // The ready-made slides being authored here, in the shape of `elements/designs/managed.json`:
 // every module of this folder that exports `designs`, and the sizes of their pictures.
-import type { Slide } from '@slidr/model';
+import type { Localized, Slide } from '@slidr/model';
 import type { DesignEntry } from './kit';
 
 export interface DesignCatalog {
-  slides: Record<string, { he: Slide; en: Slide }>;
+  slides: Record<string, Localized<Slide>>;
   sizes: Record<string, number[]>;
   groupIds: Record<string, string[]>;
   subjects: Record<string, [number, number]>;
@@ -34,7 +34,7 @@ export function newDesigns(): DesignCatalog {
   }
   for (const module of Object.values(modules)) {
     for (const design of module.designs ?? []) {
-      catalog.slides[design.id] = { he: design.he, en: design.en };
+      catalog.slides[design.id] = { he: design.he, en: design.en, ...design.more };
       (catalog.groupIds[design.group] ??= []).push(design.id);
       catalog.subjects[design.id] = design.subject;
       catalog.names[design.id] = design.name;

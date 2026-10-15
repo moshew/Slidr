@@ -1,15 +1,59 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, isRunning, useStudio, type Lang, type ServerStatus } from './api';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { api, isRunning, useStudio, type DisplayLang, type ServerStatus } from './api';
+import type { LibraryRoute } from './library/shared';
+import './library/library.css';
 import { PublishPanel } from './PublishPanel';
 import { RequestForm } from './RequestForm';
 import { RequestView } from './RequestView';
 import { VariantDetail } from './VariantDetail';
 
-const NEW = 'new';
+// The browser of the published library, loaded when it is first opened.
+const Library = lazy(() => import('./library/Library').then((m) => ({ default: m.Library })));
 
-function readHash(): { tab: string; variant?: string } {
+const NEW = 'new';
+const LIBRARY = 'library';
+
+interface Route {
+  tab: string;
+  variant?: string;
+  /** Where the library browser is, when it is the tab open. */
+  lib?: LibraryRoute;
+}
+
+function readHash(): Route {
   const params = new URLSearchParams(location.hash.slice(1));
+  const section = params.get('lib');
+  if (section !== null) {
+    const slide = params.get('s');
+    return {
+      tab: LIBRARY,
+      lib: {
+        section,
+        group: params.get('g') ?? undefined,
+        item: params.get('i') ?? undefined,
+        folder: params.get('f') ?? undefined,
+        slide: slide === null ? undefined : Number(slide),
+      },
+    };
+  }
   return { tab: params.get('tab') ?? NEW, variant: params.get('v') ?? undefined };
+}
+
+function hashOf(route: Route): string {
+  if (route.lib) {
+    const { section, group, item, folder, slide } = route.lib;
+    const params = new URLSearchParams({ lib: section });
+    if (group) params.set('g', group);
+    if (folder) params.set('f', folder);
+    if (item) params.set('i', item);
+    if (slide !== undefined) params.set('s', String(slide));
+    return `#${params}`;
+  }
+  const params = new URLSearchParams({
+    tab: route.tab,
+    ...(route.variant ? { v: route.variant } : {}),
+  });
+  return `#${params}`;
 }
 
 function Programs({ status }: { status?: ServerStatus }) {
@@ -39,7 +83,8 @@ export function Studio() {
   const studio = useStudio();
   const [route, setRoute] = useState(readHash);
   const openVariant = route.variant;
-  const [lang, setLang] = useState<Lang>('he');
+  // Every design is made in Hebrew and English; one made in more shows them in its detail view.
+  const [lang, setLang] = useState<DisplayLang>('he');
   const [status, setStatus] = useState<ServerStatus>();
   const [publishing, setPublishing] = useState(false);
 
@@ -51,21 +96,26 @@ export function Studio() {
   useEffect(() => {
     const onHash = () => setRoute(readHash());
     window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    window.addEventListener('popstate', onHash);
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      window.removeEventListener('popstate', onHash);
+    };
   }, []);
 
-  const go = (next: { tab: string; variant?: string }) => {
-    const params = new URLSearchParams({
-      tab: next.tab,
-      ...(next.variant ? { v: next.variant } : {}),
-    });
-    history.replaceState(null, '', `#${params}`);
+  const go = (next: Route) => {
+    // Browsing the library is kept in the history, so Back leaves an item or a section.
+    if (next.lib || route.lib) history.pushState(null, '', hashOf(next));
+    else history.replaceState(null, '', hashOf(next));
     setRoute(next);
   };
 
   const requests = studio.requests;
   // A closed tab, or one another page deleted: the last tab is shown in its place.
-  const known = route.tab === NEW || requests.some((request) => request.id === route.tab);
+  const known =
+    route.tab === NEW ||
+    route.tab === LIBRARY ||
+    requests.some((request) => request.id === route.tab);
   const tab = known || !studio.loaded ? route.tab : (requests.at(-1)?.id ?? NEW);
   const active = requests.find((request) => request.id === tab);
 
@@ -116,6 +166,26 @@ export function Studio() {
       </header>
 
       <nav className="tabs" aria-label="בקשות">
+        <button
+          type="button"
+          className="tab library-tab"
+          aria-current={route.lib ? 'page' : undefined}
+          onClick={() => go({ tab: LIBRARY, lib: { section: 'overview' } })}
+          title="מה שפורסם בספריית המדיה"
+        >
+          <svg aria-hidden viewBox="0 0 24 24" className="tab-icon">
+            <path
+              d="M4 19.5V5a2 2 0 0 1 2-2h13v15H6.5a2.5 2.5 0 0 0 0 5H19M8 7h7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          ספרייה
+        </button>
+        <span className="tabs-divider" aria-hidden />
         {requests.map((request) => {
           const variants = variantsOf(request.id);
           const running = request.status === 'planning' || variants.some(isRunning);
@@ -154,7 +224,18 @@ export function Studio() {
       </nav>
 
       <main>
-        {!studio.loaded ? (
+        {route.lib ? (
+          <Suspense fallback={<p className="muted">טוען את הספרייה…</p>}>
+            <Library
+              route={route.lib}
+              go={(lib) => go({ tab: LIBRARY, lib })}
+              lang={lang}
+              variants={studio.variants}
+              serverUrl={status?.media.url}
+              onOpenVariant={(variant) => go({ tab: variant.requestId, variant: variant.id })}
+            />
+          </Suspense>
+        ) : !studio.loaded ? (
           <p className="muted">טוען…</p>
         ) : tab === NEW || !active ? (
           <RequestForm onCreated={(request) => go({ tab: request.id })} />

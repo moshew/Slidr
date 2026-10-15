@@ -9,7 +9,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@slidr/ui';
-import { languages } from '../i18n';
+import { languageOf } from '../i18n';
 import { insertFiles } from '../objects/takeIn';
 import { replaceImage } from '../objects/replace';
 import { targetOf } from '../objects/target';
@@ -109,7 +109,7 @@ export function StageRegion() {
     (element: TextElement) => {
       const key = `stage:hint.${element.role}`;
       if (!element.role || !i18n.exists(key)) return undefined;
-      const lang = (languages as readonly string[]).includes(deckLang) ? deckLang : i18n.language;
+      const lang = languageOf(deckLang) ?? i18n.language;
       return i18n.getFixedT(lang)(key);
     },
     [deckLang, i18n],

@@ -4,14 +4,14 @@ import {
   Button,
   cx,
   Icon,
-  SegmentedControl,
+  Select,
   Skeleton,
   Tabs,
   TabsContent,
   TabsTile,
   TabsTileList,
 } from '@slidr/ui';
-import { currentLanguage, setLanguage, type Language } from '../i18n';
+import { currentLanguage, languages, nativeName, setLanguage, type Language } from '../i18n';
 import {
   loadSettings,
   SETTINGS_PAGES,
@@ -165,16 +165,13 @@ function General() {
       {/* Choices that show themselves, as the theme's tiles do, need no card around them. */}
       <section className="flex flex-col gap-2" data-settings-section="language">
         <h4 className="px-1 text-xs font-semibold text-ui-fg-muted">{t('settings.language')}</h4>
-        <SegmentedControl<Language>
+        <Select<Language>
           aria-label={t('settings.language')}
-          fill
+          className="w-full"
           value={language}
           onValueChange={(next) => void setLanguage(next)}
-          // Each language is named in itself, so it can be found from either UI.
-          options={[
-            { value: 'he', label: 'עברית' },
-            { value: 'en', label: 'English' },
-          ]}
+          // Each language is named in itself, so it can be found from any UI.
+          options={languages.map((value) => ({ value, label: nativeName(value) }))}
         />
         <p className="px-1 text-xs text-ui-fg-muted">{t('settings.languageHint')}</p>
       </section>

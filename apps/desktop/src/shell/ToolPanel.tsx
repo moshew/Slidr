@@ -1,7 +1,9 @@
 import {
   Activity,
+  createContext,
   memo,
   startTransition,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -9,9 +11,11 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { PanelLeftClose } from '@slidr/ui/icons';
+import { PanelLeft } from '@slidr/ui/icons';
 import { cx, EmptyState, IconButton, ScrollArea } from '@slidr/ui';
 import { useWindowWidth } from './hooks';
 import { panelLimits, panelWidth } from './layout';
@@ -140,19 +144,39 @@ function Splitter({
 
 /* ---------------------------------------------------------------- panel views */
 
-function PanelHeader({ title }: { title: string }) {
+/** Where the shown panel's own buttons go in its title bar (`PanelActions`). */
+const PanelActionsSlot = createContext<HTMLElement | null>(null);
+
+/**
+ * Buttons of a panel's own, drawn at the end of its title bar: the chat's conversations, for one.
+ * A hidden panel has no title bar, and its buttons are not drawn.
+ */
+export function PanelActions({ children }: { children: ReactNode }) {
+  const slot = useContext(PanelActionsSlot);
+  return slot ? createPortal(children, slot) : null;
+}
+
+/** The title bar: the button that collapses the panel beside its title, and the panel's buttons. */
+function PanelHeader({
+  title,
+  actions,
+}: {
+  title: string;
+  actions: (slot: HTMLDivElement | null) => void;
+}) {
   const { t } = useTranslation();
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2 ps-4 pe-2">
-      <h2 className="min-w-0 flex-1 animate-fade-in truncate text-md font-semibold">{title}</h2>
+    <div className="flex h-12 shrink-0 items-center gap-1 px-2">
       <IconButton
-        icon={PanelLeftClose}
+        icon={PanelLeft}
         mirror
         size="sm"
         label={t('panels.collapse')}
         data-testid="panel-collapse"
         onClick={() => setPanelOpen(false)}
       />
+      <h2 className="min-w-0 flex-1 animate-fade-in truncate text-md font-semibold">{title}</h2>
+      <div ref={actions} className="flex shrink-0 items-center gap-1" />
     </div>
   );
 }
@@ -186,25 +210,28 @@ const PanelContent = memo(function PanelContent({ content: Content }: { content:
  */
 function PanelView({ panel, shown }: { panel: PanelDefinition; shown: boolean }) {
   const { t } = useTranslation();
+  const [actions, setActions] = useState<HTMLElement | null>(null);
   return (
     <section
       aria-label={t(panel.title)}
       data-panel={panel.id}
       className={cx('min-h-0 flex-1 flex-col', shown ? 'flex' : 'hidden')}
     >
-      {shown && <PanelHeader title={t(panel.title)} />}
-      <Activity mode={shown ? 'visible' : 'hidden'}>
-        {panel.fill ? (
-          // A chat scrolls its own messages and keeps its composer in place: it gets the room.
-          <div className="flex min-h-0 flex-1 animate-panel-in flex-col">
-            <PanelContent content={panel.content} />
-          </div>
-        ) : (
-          <ScrollArea className="min-h-0 flex-1 animate-panel-in">
-            <PanelContent content={panel.content} />
-          </ScrollArea>
-        )}
-      </Activity>
+      {shown && <PanelHeader title={t(panel.title)} actions={setActions} />}
+      <PanelActionsSlot value={actions}>
+        <Activity mode={shown ? 'visible' : 'hidden'}>
+          {panel.fill ? (
+            // A chat scrolls its own messages and keeps its composer in place: it gets the room.
+            <div className="flex min-h-0 flex-1 animate-panel-in flex-col">
+              <PanelContent content={panel.content} />
+            </div>
+          ) : (
+            <ScrollArea className="min-h-0 flex-1 animate-panel-in">
+              <PanelContent content={panel.content} />
+            </ScrollArea>
+          )}
+        </Activity>
+      </PanelActionsSlot>
     </section>
   );
 }

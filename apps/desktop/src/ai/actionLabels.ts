@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { isActionId } from '@slidr/prompts';
 import type { EntryAction } from '../agent/transcript';
+import type { Language } from '../i18n';
 import { he } from './messages';
 
 /*
@@ -11,6 +12,33 @@ import { he } from './messages';
 /** The languages an action can translate into, by the English name the agent is given. */
 export const LANGUAGES = Object.keys(he.actions.languages) as (keyof typeof he.actions.languages)[];
 export type LanguageName = (typeof LANGUAGES)[number];
+
+/** Each UI language as a language to translate into. */
+export const TRANSLATION_LANGUAGE: Record<Language, LanguageName> = {
+  he: 'Hebrew',
+  en: 'English',
+  ar: 'Arabic',
+  'zh-CN': 'Chinese',
+  fr: 'French',
+  de: 'German',
+  hi: 'Hindi',
+  id: 'Indonesian',
+  it: 'Italian',
+  ja: 'Japanese',
+  ko: 'Korean',
+  'pt-BR': 'Portuguese',
+  ru: 'Russian',
+  es: 'Spanish',
+  tr: 'Turkish',
+  vi: 'Vietnamese',
+};
+
+/**
+ * A choice in a list starts with a capital letter. The names of the languages and the tones are
+ * written as they read inside a sentence ("Traduire en français"), lower case in many languages.
+ */
+export const listed = (word: string, lng: string): string =>
+  word.charAt(0).toLocaleUpperCase(lng) + word.slice(1);
 
 export const TONES = Object.keys(he.actions.tones) as (keyof typeof he.actions.tones)[];
 export type ToneName = (typeof TONES)[number];

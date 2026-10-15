@@ -66,12 +66,30 @@ function fullscreenButton(viewport: HTMLElement): void {
 
 /**
  * What the end of the show says in a file, in the language the file says it is in (`<html
- * lang>`, the deck's): the two languages of the app, and English for any other.
+ * lang>`, the deck's): the languages of the app, and English for any other.
  */
-const END_TEXT = { he: 'סוף ההצגה', en: 'End of the show' };
+const END_TEXT: Record<string, string> = {
+  en: 'End of the show',
+  he: 'סוף ההצגה',
+  ar: 'نهاية العرض',
+  de: 'Ende der Präsentation',
+  es: 'Fin de la presentación',
+  fr: 'Fin du diaporama',
+  hi: 'प्रस्तुति समाप्त',
+  id: 'Akhir presentasi',
+  it: 'Fine della presentazione',
+  ja: 'スライドショーの終わり',
+  ko: '슬라이드 쇼 끝',
+  pt: 'Fim da apresentação',
+  ru: 'Конец показа',
+  tr: 'Slayt gösterisinin sonu',
+  vi: 'Kết thúc trình chiếu',
+  zh: '放映结束',
+};
 
 function endText(doc: Document): string {
-  return /^he\b/i.test(doc.documentElement.lang) ? END_TEXT.he : END_TEXT.en;
+  const language = doc.documentElement.lang.toLowerCase().split(/[-_]/)[0] ?? '';
+  return END_TEXT[language === 'iw' ? 'he' : language] ?? 'End of the show';
 }
 
 /** Starts the show of an exported document. */

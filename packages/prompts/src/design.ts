@@ -78,8 +78,8 @@ ${archetypeList}
 A slide may go without a visual element (an image, a chart, an icon, a meaningful shape, a table) only when it is a \`quote\` or a \`section\`.
 
 **Right-to-left decks**
-- In a Hebrew deck the layout is mirrored: text on the right, image on the left; a timeline or a process runs from right to left.
-- Align to \`start\`, not to \`right\`. Numbers and Latin terms inside Hebrew text stay left-to-right.
+- In a Hebrew or Arabic deck the layout is mirrored: text on the right, image on the left; a timeline or a process runs from right to left.
+- Align to \`start\`, not to \`right\`. Numbers and Latin terms inside Hebrew or Arabic text stay left-to-right.
 - Font pairing: a Hebrew face and a Latin face that match in weight and height.
 
 **Motion**

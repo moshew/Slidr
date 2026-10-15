@@ -446,12 +446,18 @@ importers:
       '@slidr/lint':
         specifier: workspace:*
         version: link:../../packages/lint
+      '@slidr/media-library':
+        specifier: workspace:*
+        version: link:../../packages/media-library
       '@slidr/model':
         specifier: workspace:*
         version: link:../../packages/model
       '@slidr/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
+      '@slidr/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       react:
         specifier: ^19.3.0
         version: 19.3.0

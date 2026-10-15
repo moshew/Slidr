@@ -6,7 +6,7 @@ import {
   type Deck,
   type Frame,
 } from '@slidr/model';
-import { i18n } from '../i18n';
+import { deckLanguage, i18n } from '../i18n';
 // By file, not through the shell's index: a plain function, and the index loads the app.
 import { focusStage } from '../shell/stageDom';
 import type { ChartData, SeriesName } from './data';
@@ -32,10 +32,10 @@ export function chartFrame(deck: Deck): Frame {
 
 /**
  * The language the labels of a chart are written in: the deck's, not the UI's. A chart made in a
- * Hebrew deck says "סדרה 1" also when the app is in English. The app has strings in two
- * languages; a deck in any other gets the English ones.
+ * Hebrew deck says "סדרה 1" also when the app is in English. A deck in a language the app does
+ * not have gets the English ones.
  */
-const labelLanguage = (lang: string) => (lang.toLowerCase().startsWith('he') ? 'he' : 'en');
+const labelLanguage = deckLanguage;
 
 /** The name a series has until it is given one, in the language of the deck. */
 export function seriesNames(lang: string): SeriesName {

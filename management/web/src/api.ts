@@ -2,11 +2,24 @@
  * The studio's state, as the server keeps it, and the calls that change it. The server pushes
  * every change over server-sent events; a page that reconnects reads the whole state again.
  */
+import { BASE_LANGUAGES, languagesOf, type BaseLanguage } from '@slidr/model';
 import { useSyncExternalStore } from 'react';
-import type { DesignResult } from './design';
+import type { DesignResult, Lang } from './design';
 
-export type Lang = 'he' | 'en';
+export type { Lang } from './design';
+/** The languages the studio shows its designs in by default, and names them in. */
+export type DisplayLang = BaseLanguage;
+/** A name in the gallery: in Hebrew and English, whatever languages the design is made in. */
 export type Named = { he: string; en: string };
+
+/**
+ * The languages a variant is made in: its own, else those of its render, else Hebrew and English
+ * (a variant from before a request chose its languages).
+ */
+export function languagesOfVariant(variant: Variant, result?: DesignResult): Lang[] {
+  if (variant.languages?.length) return variant.languages;
+  return result ? languagesOf(result.langs) : [...BASE_LANGUAGES];
+}
 
 export interface StudioRequest {
   id: string;
@@ -20,6 +33,8 @@ export interface StudioRequest {
   model: string;
   effort: string;
   reviewRounds: number;
+  /** Hebrew and English, and the other languages asked for; none on a request from before. */
+  languages?: Lang[];
   variantIds: string[];
   error: string | null;
   cost: number;
@@ -48,6 +63,8 @@ export interface Variant {
     art?: string;
     image: { prompt: string; aspect: string };
   };
+  /** The languages it is made in, its request's; none on a variant from before (`languagesOfVariant`). */
+  languages?: Lang[];
   status: VariantStatus;
   stage: string | null;
   error: string | null;
@@ -234,6 +251,7 @@ export const api = {
     model: string;
     effort: string;
     reviewRounds: number;
+    languages: Lang[];
   }) => post<StudioRequest>('/api/requests', body),
   more: (rid: string, count: number) => post(`/api/requests/${rid}/more`, { count }),
   cancelRequest: (rid: string) => post(`/api/requests/${rid}/cancel`),

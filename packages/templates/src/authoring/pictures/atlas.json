@@ -1,0 +1,68 @@
+{
+  "atlasPlant": {
+    "id": "51beb2feb29d96082dfe2e3b93fd88575526cbc4282e4b588a1d62897a9abcb6",
+    "file": "51beb2feb29d96082dfe2e3b93fd88575526cbc4282e4b588a1d62897a9abcb6.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 293610,
+    "width": 1448,
+    "height": 1086,
+    "origin": "import",
+    "name": "atlas-plant.webp"
+  },
+  "atlasCoast": {
+    "id": "527e19fd7e440c529fdd43326260dcbe007926350046757c1883f267db0cd884",
+    "file": "527e19fd7e440c529fdd43326260dcbe007926350046757c1883f267db0cd884.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 371230,
+    "width": 1672,
+    "height": 941,
+    "origin": "import",
+    "name": "atlas-coast.webp"
+  },
+  "atlasTeam1": {
+    "id": "60298b80add99c37baf3c2413ead10d5f3ec33538fb37dcd2c2649afd603d98c",
+    "file": "60298b80add99c37baf3c2413ead10d5f3ec33538fb37dcd2c2649afd603d98c.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 33014,
+    "width": 720,
+    "height": 720,
+    "origin": "ai",
+    "name": "atlas-team-1.webp"
+  },
+  "atlasTeam2": {
+    "id": "5e1bf8736db7df72b99c9c04f5064c58668139b8f963480c7b1acd0d9c19304c",
+    "file": "5e1bf8736db7df72b99c9c04f5064c58668139b8f963480c7b1acd0d9c19304c.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 47706,
+    "width": 720,
+    "height": 720,
+    "origin": "ai",
+    "name": "atlas-team-2.webp"
+  },
+  "atlasTeam3": {
+    "id": "b1e8d65c3824090eb0f9f8bf9615540b4c4a671c87e349aa8e1d12a3636fed55",
+    "file": "b1e8d65c3824090eb0f9f8bf9615540b4c4a671c87e349aa8e1d12a3636fed55.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 55484,
+    "width": 720,
+    "height": 720,
+    "origin": "ai",
+    "name": "atlas-team-3.webp"
+  },
+  "atlasTeam4": {
+    "id": "8c6331a7d46f3f06950e00543d3f2cd1a9500535a4f4e44c204f3ea9e1a9e5d3",
+    "file": "8c6331a7d46f3f06950e00543d3f2cd1a9500535a4f4e44c204f3ea9e1a9e5d3.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 37004,
+    "width": 720,
+    "height": 720,
+    "origin": "ai",
+    "name": "atlas-team-4.webp"
+  }
+}

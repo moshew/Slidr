@@ -1,8 +1,9 @@
 /**
  * Scratch review page (not part of the app):
- *   ?t=<template>&lang=he|en[&slide=<n>][&w=1920]      a template's sample deck, or one slide of it
+ *   ?t=<template>&lang=<code>[&slide=<n>][&w=1920]     a template's sample deck, or one slide of it
  *   &src=library                                      the library's template, not one authored here
- *   ?d=<id,id,...>|all&src=managed|new&lang=he|en[&w=]  ready-made slides
+ *   ?d=<id,id,...>|all&src=managed|new&lang=<code>[&w=] ready-made slides
+ * A language a sample or a design is not written in shows the English one, as the app does.
  *   &cols=<n>                                         columns of a sheet
  * `window.__lines()` measures text against its boxes, `window.__lint()` runs the design check.
  */
@@ -10,9 +11,12 @@ import { readMediaJson, mediaUrl } from '@slidr/media-library';
 import {
   createDeck,
   duplicateSlide,
+  languageDir,
+  pieceLanguage,
   walkElements,
   type AssetMeta,
   type Deck,
+  type Localized,
   type Slide,
 } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
@@ -28,7 +32,6 @@ import { pictureUrl } from '../../templates/pictures';
 
 const query = new URLSearchParams(location.search);
 const lang = query.get('lang') ?? 'he';
-const dir = lang === 'he' ? 'rtl' : 'ltr';
 const width = Number(query.get('w') ?? 1920);
 const cols = Number(query.get('cols') ?? 4);
 
@@ -53,7 +56,7 @@ interface Drawn {
 let resolve: (asset: AssetMeta) => string | undefined = () => undefined;
 
 type ManagedCatalog = {
-  slides: Record<string, { he: Slide; en: Slide }>;
+  slides: Record<string, Localized<Slide>>;
   sizes: Record<string, number[]>;
   groupIds: Record<string, string[]>;
   subjects?: Record<string, [number, number]>;
@@ -66,7 +69,11 @@ async function load(): Promise<Drawn[]> {
     const template = own ? own.template() : builtInTemplates().find((x) => x.theme.id === t);
     const samples = own ? own.samples : builtInSamples[t];
     if (!template || !samples) throw new Error(`no template ${t}`);
-    const deck = sampleDeck(template, lang === 'he' ? samples.he : samples.en, { lang, dir });
+    const written = pieceLanguage(samples, lang);
+    const deck = sampleDeck(template, samples[written]!, {
+      lang: written,
+      dir: languageDir(written),
+    });
     const local = new Map(Object.values(template.assets ?? {}).map((a) => [a.id, a.name]));
     resolve = (asset) =>
       pictureUrl(asset) ?? (local.has(asset.id) ? PICTURES[local.get(asset.id)!] : undefined);
@@ -88,9 +95,10 @@ async function load(): Promise<Drawn[]> {
         : want.split(',');
   const urls = new Map<string, string>();
   const drawn = ids.map((id) => {
-    const authoredSlide = catalog.slides[id]![lang === 'he' ? 'he' : 'en'];
+    const written = pieceLanguage(catalog.slides[id]!, lang);
+    const authoredSlide = catalog.slides[id]![written]!;
     const slide = duplicateSlide(createDeck({ slides: [authoredSlide] }), authoredSlide.id).slide;
-    const deck = createDeck({ lang, slides: [slide] });
+    const deck = createDeck({ lang: written, slides: [slide] });
     for (const [name, suffix] of [
       ['__subject__', ''],
       ['__backdrop__', '-bg'],
@@ -148,7 +156,7 @@ function Page({ drawn }: { drawn: Drawn[] }) {
     <div
       style={{
         display: 'grid',
-        direction: dir,
+        direction: languageDir(lang),
         gridTemplateColumns: `repeat(${cols}, ${width}px)`,
         gap: 12,
         padding: 12,
@@ -231,7 +239,7 @@ async function main() {
 
   /** Per design: what is on top at its subject point, and the runs of text without a font. */
   hooks.__subject = () =>
-    drawn.map(({ key, slide, subject }) => {
+    drawn.map(({ key, deck, slide, subject }) => {
       const images = slide.elements.filter((element) => element.type === 'image');
       const bare = slide.elements.flatMap((element) =>
         element.type === 'text' || element.type === 'shape'
@@ -244,7 +252,7 @@ async function main() {
       );
       if (!subject) return { key, images: images.length, bare };
       const [x, y] = subject;
-      const at = lang.startsWith('he') ? 1920 - x : x;
+      const at = deck.meta.dir === 'rtl' ? 1920 - x : x;
       const top = slide.elements.findLast(
         ({ frame }) =>
           at >= frame.x && at <= frame.x + frame.w && y >= frame.y && y <= frame.y + frame.h,

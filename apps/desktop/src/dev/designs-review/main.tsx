@@ -14,12 +14,7 @@ import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { settle } from '../../capture/settle';
 import { designAssetUrl } from '../../elements/designAssets';
-import {
-  DESIGN_IDS,
-  DESIGN_SUBJECTS,
-  designPreview,
-  designsOf,
-} from '../../elements/designs';
+import { DESIGN_IDS, DESIGN_SUBJECTS, designPreview, designsOf } from '../../elements/designs';
 import { registerBuiltinFonts } from '../../fonts';
 import { lintSlides } from '../../lint/deckLint';
 
@@ -180,7 +175,8 @@ async function main() {
     });
     if (!subject) return { images: images.length, missing };
     const [x, y] = subject;
-    const at = lang.startsWith('he') ? 1920 - x : x;
+    // The point is on the English slide; a right-to-left one is its mirror.
+    const at = deck.meta.dir === 'rtl' ? 1920 - x : x;
     const top = slide.elements.findLast(
       ({ frame }) =>
         at >= frame.x && at <= frame.x + frame.w && y >= frame.y && y <= frame.y + frame.h,

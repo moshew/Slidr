@@ -3,9 +3,10 @@
 //
 //   node management/web/tools/snap.mjs --url <render page URL> --out <folder> [--channel msedge]
 //
-//   <folder>/he-full.png en-full.png     the slide at 1920×1080
-//   <folder>/he-thumb.png en-thumb.png   the gallery's thumbnail, 384 px wide
-//   <folder>/result.json                 the slides, findings, conversion notes, subject point
+//   <folder>/<lang>-full.png    the slide at 1920×1080, for every language of the variant
+//                               (he-full.png, en-full.png, ar-full.png, zh-CN-full.png…)
+//   <folder>/<lang>-thumb.png   the gallery's thumbnail, 384 px wide
+//   <folder>/result.json        the slides, findings, conversion notes, subject point
 //
 // The page's conversion engine compares its result with the HTML it converts, by pictures of the
 // page: this script gives it real ones (`window.__slidrCapture`), as the app's capture window
@@ -66,16 +67,20 @@ try {
     console.error(snap.error ?? 'The render page gave no result.');
     failed = true;
   } else {
-    for (const name of ['he-full', 'he-thumb', 'en-full', 'en-thumb']) {
+    // Every view the page drew: a full-size slide and a thumbnail for each language it converted.
+    const names = await page.$$eval('[data-snap]', (views) =>
+      views.map((view) => view.getAttribute('data-snap')),
+    );
+    for (const name of names) {
       const view = page.locator(`[data-snap="${name}"]`);
-      if ((await view.count()) === 0) continue;
       await view.screenshot({ path: join(out, `${name}.png`), animations: 'disabled' });
     }
     writeFileSync(join(out, 'result.json'), JSON.stringify(snap.result));
     const { langs, publishable } = snap.result;
-    console.log(
-      `rendered: publishable=${publishable}, he ${langs.he.findings.length} findings, en ${langs.en.findings.length} findings`,
+    const counts = Object.entries(langs).map(
+      ([lang, side]) => `${lang} ${side.error ? 'failed' : `${side.findings.length} findings`}`,
     );
+    console.log(`rendered: publishable=${publishable}, ${counts.join(', ')}`);
   }
 } finally {
   await browser.close();

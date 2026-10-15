@@ -398,6 +398,52 @@ main {
   margin: 0;
 }
 
+.languages {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.languages legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0 0.3rem;
+}
+
+.language-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.language {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  padding: 0.15rem 0.65rem 0.15rem 0.55rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+}
+
+.language:has(input:checked) {
+  border-color: var(--accent);
+}
+
+.language:has(input:disabled) {
+  cursor: default;
+  color: var(--muted);
+}
+
+.language input {
+  margin: 0;
+}
+
 .form-actions {
   display: flex;
   gap: 0.5rem;

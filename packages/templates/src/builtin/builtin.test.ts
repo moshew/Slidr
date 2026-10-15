@@ -2,6 +2,8 @@ import {
   Archetype,
   CommandBus,
   createBaseTheme,
+  languageDir,
+  languagesOf,
   type Background,
   type Color,
   type Fill,
@@ -55,11 +57,18 @@ describe.each(templates.map((template) => [template.theme.id, template] as const
       }
     });
 
-    it('shows every layout in its sample, in Hebrew and in English', () => {
+    it('shows every layout in its sample, in every language the sample is written in', () => {
       const samples = builtInSamples[id]!;
-      for (const sample of [samples.he, samples.en]) {
-        const shown = new Set(sample.map((slide) => slide.layout));
-        expect(template.layouts.filter((layout) => !shown.has(layout.id))).toEqual([]);
+      expect(languagesOf(samples).slice(0, 2)).toEqual(['he', 'en']);
+      for (const lang of languagesOf(samples)) {
+        const shown = new Set(samples[lang]!.map((slide) => slide.layout));
+        expect(
+          template.layouts.filter((layout) => !shown.has(layout.id)),
+          lang,
+        ).toEqual([]);
+        // Drawn in the language's own direction, every slide finds its places.
+        const deck = sampleDeck(template, samples[lang]!, { lang, dir: languageDir(lang) });
+        expect(deck.slides, lang).toHaveLength(samples[lang]!.length);
       }
     });
 

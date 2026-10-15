@@ -1,5 +1,5 @@
 import { readMediaJson } from '@slidr/media-library';
-import type { Theme } from '@slidr/model';
+import { languagesOf, type Localized, type Theme } from '@slidr/model';
 import type { Template } from '../template';
 import { withoutTitleLayout } from '../standardLayouts';
 import { sampleDeck, type SampleSlide } from './kit';
@@ -7,7 +7,8 @@ import { pictures } from './pictures.generated';
 
 interface Catalog {
   templates: Template[];
-  samples: Record<string, { he: SampleSlide[]; en: SampleSlide[] } | undefined>;
+  /** In Hebrew and in English, and in any other language the template's author wrote them. */
+  samples: Record<string, Localized<SampleSlide[]> | undefined>;
   originals: Record<string, Template | undefined>;
 }
 
@@ -38,15 +39,21 @@ export function builtInTemplates(): Template[] {
   return copy(catalog.templates).map(withoutTitleLayout);
 }
 
-export const builtInSamples = Object.fromEntries(
+export const builtInSamples: Record<string, Localized<SampleSlide[]>> = Object.fromEntries(
   builtInTemplates().map((template) => {
     const ids = new Set(template.layouts.map((layout) => layout.id));
     const samples = catalog.samples[template.theme.id] ?? { he: [], en: [] };
+    const shown = (slides: SampleSlide[] = []) => slides.filter((slide) => ids.has(slide.layout));
     return [
       template.theme.id,
       {
-        he: samples.he.filter((slide) => ids.has(slide.layout)),
-        en: samples.en.filter((slide) => ids.has(slide.layout)),
+        he: shown(samples.he),
+        en: shown(samples.en),
+        ...Object.fromEntries(
+          languagesOf(samples)
+            .filter((lang) => lang !== 'he' && lang !== 'en')
+            .map((lang) => [lang, shown(samples[lang])]),
+        ),
       },
     ];
   }),

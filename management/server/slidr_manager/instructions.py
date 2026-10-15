@@ -11,10 +11,27 @@ from __future__ import annotations
 import asyncio
 import json
 import urllib.request
+from collections.abc import Sequence
 from pathlib import Path
 
 from .config import REPO, WEB, Settings
+from .languages import NAMES, SCRIPT, files, listing, names
 from .programs import creation_flags, find_node
+
+#: The script tags of the font catalog, by name.
+SCRIPT_NAMES = {
+    "he": "Hebrew",
+    "latin": "Latin",
+    "arabic": "Arabic",
+    "cyrillic": "Cyrillic",
+    "vietnamese": "Vietnamese",
+    "devanagari": "Devanagari",
+    "japanese": "Japanese",
+    "korean": "Korean",
+    "chinese": "Chinese",
+}
+#: The font of Windows that draws a language's letters when no family of the library has them.
+SYSTEM_FONTS = {"ja": "Yu Gothic", "ko": "Malgun Gothic", "zh-CN": "Microsoft YaHei", "hi": "Nirmala UI"}
 
 SOURCES = [
     REPO / "packages" / "prompts" / "src" / "design.ts",
@@ -97,18 +114,55 @@ class Instructions:
         return self._fonts
 
 
-def fonts_text(fonts: list[dict]) -> str:
-    hebrew = [f["family"] for f in fonts if "he" in f["scripts"]]
-    latin_only = [f["family"] for f in fonts if "he" not in f["scripts"]]
-    return (
+def _has(font: dict, script: str) -> bool:
+    tags = font.get("scripts") or []
+    # A family the catalog tags with nothing is taken for a Latin one.
+    return script in tags or (script == "latin" and not tags)
+
+
+def fonts_text(fonts: list[dict], langs: Sequence[str]) -> str:
+    """The library's families by the letters they have, for the scripts of a request's
+    languages (the catalog's `scripts` tags), and how a file is set whose letters no family has:
+    Japanese, Korean and Chinese always, and any other the catalog tags no family with."""
+    scripts: dict[str, list[str]] = {}
+    for lang in langs:
+        scripts.setdefault(SCRIPT[lang], []).append(lang)
+    lines: list[str] = []
+    bare: list[str] = []
+    for script, of in scripts.items():
+        families = [f["family"] for f in fonts if _has(f, script)]
+        lines.append(f"- {SCRIPT_NAMES[script]} ({files(of)}): {', '.join(families) or 'none'}")
+        if not families:
+            bare += of
+    text = (
         "## Fonts\n\n"
         "These are the fonts the app has; no other font will be there when a user inserts the "
-        "design. Name them exactly as written.\n\n"
-        f"- With Hebrew and Latin: {', '.join(hebrew)}\n"
-        f"- Latin only: {', '.join(latin_only)}\n\n"
-        "Hebrew text must be set in a family with Hebrew. The English file may use a Latin-only "
-        "family for display type, paired with the Hebrew one in the Hebrew file."
+        "design. Name them exactly as written. By the letters they have:\n\n"
+        + "\n".join(lines)
+        + "\n\nSet the text of each file in a family that has its letters: Hebrew text in a family "
+        "with Hebrew. A left-to-right file may use a family without Hebrew for display type, paired "
+        "with a Hebrew one in the Hebrew file."
     )
+    if bare:
+        # The generic family last: the browser then draws the letters the family lacks in the same
+        # font when it converts the HTML as when the app draws the slide, which ends every run's
+        # font list in `sans-serif`. Without it the conversion measures other letters and keeps
+        # the text as HTML.
+        systems = [f"{SYSTEM_FONTS[lang]} for {NAMES[lang]}" for lang in bare if lang in SYSTEM_FONTS]
+        latin = [f for f in fonts if _has(f, "latin")]
+        example = next((f["family"] for f in latin if "he" not in f["scripts"]), None) or next(
+            (f["family"] for f in latin), "Inter"
+        )
+        text += (
+            f"\n\nNo family of the library has {names(bare, 'or')} letters. In {files(bare)}, every "
+            "element with text names one family of the library, for the Latin letters and the "
+            f"figures, then the generic `sans-serif`, and nothing else: `font-family: '{example}', "
+            "sans-serif`. Name no system font: it is not in the library, and a deck does not carry "
+            "it. The app draws the letters the family lacks in the system's sans serif for the "
+            "language" + (f" (on Windows, {listing(systems)})" if systems else "") + ": choose a "
+            "family whose Latin sits well beside it."
+        )
+    return text
 
 
 def read_text(path: Path) -> str:

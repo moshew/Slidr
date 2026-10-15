@@ -1,5 +1,5 @@
 import { findSlide, type AssetMeta, type Element, type Frame } from '@slidr/model';
-import { i18n } from '../i18n';
+import { deckLanguage, i18n } from '../i18n';
 import { focusStage, type Editor } from '../shell';
 import { newCard } from './card';
 import { newLine, newShape, type LineKind } from './shapes';
@@ -80,12 +80,11 @@ export function insertLine(editor: Editor, kind: LineKind): void {
 /**
  * A card: a box in the theme's colours with a heading and a paragraph on it, as one group (see
  * `newCard`). Its words stand where the deck's own text will be, so they are in the language of
- * the deck and not of the app; the app has them in two languages, and a deck in any other gets
- * the English ones.
+ * the deck and not of the app; a deck in a language the app does not have gets the English ones.
  */
 export function insertCard(editor: Editor): void {
   const { size, theme, meta } = editor.bus.deck;
-  const lng = meta.lang.toLowerCase().startsWith('he') ? 'he' : 'en';
+  const lng = deckLanguage(meta.lang);
   const words = {
     heading: i18n.t('objects:card.heading', { lng }),
     body: i18n.t('objects:card.body', { lng }),

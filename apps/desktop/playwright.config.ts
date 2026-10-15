@@ -18,6 +18,9 @@ export default defineConfig({
     baseURL: 'http://localhost:1420',
     channel: 'msedge',
     viewport: { width: 1920, height: 1032 },
+    // As on a Hebrew system: the UI starts in the system's language, and a test that wants
+    // another one sets it.
+    locale: 'he-IL',
     trace: 'retain-on-failure',
   },
   webServer: {

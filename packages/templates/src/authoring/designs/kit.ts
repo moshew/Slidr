@@ -1,13 +1,17 @@
 /**
  * What the ready-made slides of Elements → Designs are written with, in the shape of the media
- * library's `elements/designs/managed.json`: a slide in Hebrew and one in English, each drawn by
- * hand for its direction, with every run of text naming its font, size, weight and colour, and
- * one picture, `__subject__`, that the app swaps for the design's file when it is inserted.
+ * library's `elements/designs/managed.json`: a slide in Hebrew and one in English, and one in each
+ * other language the design is written in (`@slidr/model` languages), each drawn by hand for its
+ * direction, with every run of text naming its font, size, weight and colour, and one picture,
+ * `__subject__`, that the app swaps for the design's file when it is inserted.
  */
 import {
   createElement,
   createSlide,
+  languageDir,
   type Background,
+  type BaseLanguage,
+  type ContentLanguage,
   type Color,
   type Element,
   type Fill,
@@ -27,14 +31,20 @@ export type Group = 'hitech' | 'techproduct' | 'defense';
 export interface DesignEntry {
   id: string;
   group: Group;
+  /** Its name in the gallery, in the two languages names are written in. */
   name: { he: string; en: string };
-  /** A point on the subject of the picture, in the English slide (the Hebrew one is its mirror): nothing may cover it. */
+  /**
+   * A point on the subject of the picture, in the English slide (a right-to-left slide is its
+   * mirror): nothing may cover it.
+   */
   subject: [number, number];
   he: Slide;
   en: Slide;
+  /** The slide in the other languages the design is written in, by language. */
+  more?: Partial<Record<Exclude<ContentLanguage, BaseLanguage>, Slide>>;
 }
 
-export type Lang = 'he' | 'en';
+export type Lang = ContentLanguage;
 
 /** A colour by its CSS value. */
 export const c = (value: string, alpha?: number): Color =>
@@ -98,7 +108,7 @@ export interface TextInit {
 
 /** A text box whose lines never wrap: each line is written as it should break. */
 export function textBox(init: TextInit): TextElement {
-  const dir = init.dir ?? (init.lang === 'he' ? 'rtl' : 'ltr');
+  const dir = init.dir ?? languageDir(init.lang);
   const paragraphs: Paragraph[] = init.lines.map((line) => ({
     dir,
     align: init.align ?? 'start',
@@ -168,7 +178,7 @@ export function shape(init: ShapeInit): ShapeElement {
     ...(init.rotation !== undefined ? { rotation: init.rotation } : {}),
   });
   if (init.label) {
-    const dir = init.label.dir ?? (init.label.lang === 'he' ? 'rtl' : 'ltr');
+    const dir = init.label.dir ?? languageDir(init.label.lang);
     element.content = {
       paragraphs: [
         {

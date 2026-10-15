@@ -1,4 +1,4 @@
-import type { Slide } from '@slidr/model';
+import type { Localized, Slide } from '@slidr/model';
 
 /**
  * The catalogs of Elements → Designs as the media library holds them, and how the app makes one
@@ -11,11 +11,14 @@ export interface DesignNames {
   en?: string;
 }
 
-/** The ready-made slides of `elements/designs/index.json`, authored. */
+/**
+ * The ready-made slides of `elements/designs/index.json`, authored. A design's slide is drawn in
+ * Hebrew and in English, and in whatever other language its author drew it.
+ */
 export interface DesignCatalog {
   groups: string[];
   groupIds: Record<string, string[]>;
-  slides: Record<string, { he: Slide; en: Slide }>;
+  slides: Record<string, Localized<Slide>>;
   subjects: Record<string, [number, number]>;
 }
 
@@ -62,7 +65,7 @@ export function mergeCatalogs(
   authored: Partial<DesignCatalog> | undefined,
   managed: Partial<ManagedDesignCatalog> | undefined,
 ): MergedDesignCatalog {
-  const slides = { ...record<{ he: Slide; en: Slide }>(authored?.slides) };
+  const slides = { ...record<Localized<Slide>>(authored?.slides) };
   const has = (id: string) => Object.hasOwn(slides, id);
   const groups = strings(authored?.groups);
   const groupIds = Object.fromEntries(
@@ -73,7 +76,7 @@ export function mergeCatalogs(
   );
   const subjects = { ...record<[number, number]>(authored?.subjects) };
 
-  const managedSlides = record<{ he: Slide; en: Slide } | undefined>(managed?.slides);
+  const managedSlides = record<Localized<Slide> | undefined>(managed?.slides);
   const managedIds = record<unknown>(managed?.groupIds);
   const managedSubjects = record<unknown>(managed?.subjects);
   const managedNames = record<unknown>(managed?.names);

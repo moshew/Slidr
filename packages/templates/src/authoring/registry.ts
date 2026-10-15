@@ -1,12 +1,14 @@
 // The templates being authored here, for the review page and the catalog builder: every module
 // of this folder that exports an `entry`.
+import type { Localized } from '@slidr/model';
 import type { Template } from '../template';
 import type { SampleSlide } from '../builtin/kit';
 
 export interface Authored {
   id: string;
   template: () => Template;
-  samples: { he: SampleSlide[]; en: SampleSlide[] };
+  /** In Hebrew and in English, and in any other language the template is written in. */
+  samples: Localized<SampleSlide[]>;
 }
 
 // Not the modules that build, check or describe the templates, nor an author's local scratch files

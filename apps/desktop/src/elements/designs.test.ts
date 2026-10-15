@@ -5,6 +5,7 @@ import {
   createDeck,
   createSelectionStore,
   createSlide,
+  languageDir,
   plainText,
   Slide,
 } from '@slidr/model';
@@ -15,6 +16,7 @@ import {
   DESIGN_IDS,
   DESIGN_SUBJECTS,
   designGroupName,
+  designLanguages,
   designName,
   designsOf,
   designSlide,
@@ -30,35 +32,38 @@ const AUTHORED_GROUPS = DESIGN_GROUPS.filter((group) =>
   designsOf(group).some((id) => !MANAGED_DESIGN_IDS.has(id)),
 );
 const has = (id: string) => DESIGN_IDS.includes(id);
+/** Every design in every language it is drawn in. */
+const DRAWN = DESIGN_IDS.flatMap((id) => designLanguages(id).map((lang) => [lang, id] as const));
 
 // The designs are content of the media library: without it there is nothing to test.
 describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
-  it('ships valid slides with real, editable copy in both languages', () => {
+  it('ships valid slides with real, editable copy in each of their languages', () => {
     expect(new Set(DESIGN_IDS).size).toBe(DESIGN_IDS.length);
-    for (const lang of ['he', 'en']) {
-      for (const id of DESIGN_IDS) {
-        const slide = designSlide(id, lang, 'test-image', 'test-backdrop');
-        const parsed = Slide.safeParse(slide);
-        expect(parsed.success, `${lang}/${id}: ${parsed.error?.issues[0]?.message}`).toBe(true);
-        // One picture file, or two where a photographic backdrop lies under a cut-out subject.
-        // A design may show its one picture in several frames (four faces of one sheet).
-        const pictures = slide.elements.flatMap((element) =>
-          element.type === 'image' ? [element.assetId] : [],
-        );
-        expect([...new Set(pictures)].sort(), `${lang}/${id}`).toEqual(
-          previewBackdrop(id) ? ['test-backdrop', 'test-image'] : ['test-image'],
-        );
-        // Words stand in text boxes and in shapes that carry their own (a button, a chip).
-        const worded = slide.elements.flatMap((element) =>
-          (element.type === 'text' || element.type === 'shape') && element.content
-            ? [element.content]
-            : [],
-        );
-        expect(worded.length, `${lang}/${id}`).toBeGreaterThanOrEqual(3);
-        const copy = worded.map((content) => plainText(content)).join(' ');
-        expect(copy).not.toMatch(/lorem ipsum|placeholder|add your text|טקסט לדוגמה/i);
-        expect(copy.length, `${lang}/${id}`).toBeGreaterThan(25);
-      }
+    for (const id of DESIGN_IDS) expect(designLanguages(id).slice(0, 2), id).toEqual(['he', 'en']);
+    for (const [lang, id] of DRAWN) {
+      const slide = designSlide(id, lang, 'test-image', 'test-backdrop');
+      const parsed = Slide.safeParse(slide);
+      expect(parsed.success, `${lang}/${id}: ${parsed.error?.issues[0]?.message}`).toBe(true);
+      // One picture file, or two where a photographic backdrop lies under a cut-out subject.
+      // A design may show its one picture in several frames (four faces of one sheet).
+      const pictures = slide.elements.flatMap((element) =>
+        element.type === 'image' ? [element.assetId] : [],
+      );
+      expect([...new Set(pictures)].sort(), `${lang}/${id}`).toEqual(
+        previewBackdrop(id) ? ['test-backdrop', 'test-image'] : ['test-image'],
+      );
+      // Words stand in text boxes and in shapes that carry their own (a button, a chip).
+      const worded = slide.elements.flatMap((element) =>
+        (element.type === 'text' || element.type === 'shape') && element.content
+          ? [element.content]
+          : [],
+      );
+      expect(worded.length, `${lang}/${id}`).toBeGreaterThanOrEqual(3);
+      const copy = worded.map((content) => plainText(content)).join(' ');
+      expect(copy, `${lang}/${id}`).not.toMatch(
+        /lorem ipsum|placeholder|add your text|טקסט לדוגמה|texte d'exemple|texto de ejemplo|beispieltext/i,
+      );
+      expect(copy.length, `${lang}/${id}`).toBeGreaterThan(25);
     }
   });
 
@@ -133,14 +138,12 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
   );
 
   it("sets every line in a typeface of the design, not in the deck's", () => {
-    for (const lang of ['he', 'en']) {
-      for (const id of DESIGN_IDS) {
-        for (const element of designSlide(id, lang, 'photo').elements) {
-          if (element.type !== 'text' && element.type !== 'shape') continue;
-          for (const paragraph of element.content?.paragraphs ?? []) {
-            for (const run of paragraph.runs) {
-              expect(run.marks?.font, `${lang}/${id}: "${run.text}"`).toBeTruthy();
-            }
+    for (const [lang, id] of DRAWN) {
+      for (const element of designSlide(id, lang, 'photo').elements) {
+        if (element.type !== 'text' && element.type !== 'shape') continue;
+        for (const paragraph of element.content?.paragraphs ?? []) {
+          for (const run of paragraph.runs) {
+            expect(run.marks?.font, `${lang}/${id}: "${run.text}"`).toBeTruthy();
           }
         }
       }
@@ -223,9 +226,10 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
     );
     Object.assign(subjects, DESIGN_SUBJECTS);
     expect(Object.keys(subjects).sort()).toEqual([...DESIGN_IDS].sort());
-    for (const lang of ['en', 'he']) {
-      for (const [id, [x, y]] of Object.entries(subjects)) {
-        const at = lang === 'he' ? 1920 - x : x;
+    for (const [id, [x, y]] of Object.entries(subjects)) {
+      for (const lang of designLanguages(id)) {
+        // The point is on the English slide; a right-to-left slide is its mirror.
+        const at = languageDir(lang) === 'rtl' ? 1920 - x : x;
         const slide = designSlide(id, lang, 'photo');
         const top = slide.elements.findLast(
           ({ frame }) =>

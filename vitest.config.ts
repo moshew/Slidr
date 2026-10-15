@@ -20,6 +20,8 @@ export default defineConfig({
       'apps/*/eval/**/*.test.{ts,tsx}',
       'apps/*/build/**/*.test.{ts,tsx}',
     ],
+    // As on a Hebrew system, so that the UI starts in Hebrew (vitest.setup.ts).
+    setupFiles: ['./vitest.setup.ts'],
     // Real-browser tests have their own config: vitest.browser.config.ts (`pnpm test:browser`).
     exclude: [...configDefaults.exclude, '**/*.browser.test.{ts,tsx}'],
     // Tests read the media library from its site. happy-dom asks another origin with OPTIONS

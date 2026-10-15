@@ -33,6 +33,7 @@ from PIL import Image
 
 from .config import REPO, Settings
 from .events import EventBus
+from .languages import BASE_LANGUAGES, CONTENT_LANGUAGES
 from .programs import creation_flags, find_node
 from .render import render_dir
 from .store import Store, now, read_json, write_json
@@ -84,8 +85,10 @@ def empty_catalog() -> dict:
 def merge_design(catalog: dict, design: dict) -> dict:
     """Puts one design into a managed catalog, replacing it in place when it is there.
 
-    `design`: id, name {he, en}, group, groupName {he, en}, slides {he, en}, subject [x, y],
-    size [w, h]. A design has one group: it leaves any other it was filed under.
+    `design`: id, name {he, en}, group, groupName {he, en}, slides {he, en, and any other content
+    language it was made in: ar, de, ja…}, subject [x, y], size [w, h]. The names stay in Hebrew
+    and English, the languages the gallery names its designs in. A design has one group: it
+    leaves any other it was filed under.
     """
     for key, value in empty_catalog().items():
         catalog.setdefault(key, value)
@@ -258,6 +261,15 @@ class Library:
         result = read_json(render_dir(work, revision) / "result.json") if revision else None
         if not isinstance(result, dict) or not result.get("publishable"):
             raise LibraryError(f"{variant['designId']}: its last render did not pass the checks.")
+        # A slide for every language the design was rendered in, in the registry's order.
+        sides = result.get("langs") or {}
+        slides = {
+            lang: sides[lang]["slide"]
+            for lang in CONTENT_LANGUAGES
+            if isinstance(sides.get(lang), dict) and sides[lang].get("slide")
+        }
+        if any(lang not in slides for lang in BASE_LANGUAGES):
+            raise LibraryError(f"{variant['designId']}: its last render has no Hebrew or English slide.")
         webp, size = to_webp(work / "subject.png")
         brief = variant["brief"]
         record = {
@@ -265,7 +277,7 @@ class Library:
             "name": brief["name"],
             "group": brief["group"],
             "groupName": brief.get("groupName") or {"he": brief["group"], "en": brief["group"]},
-            "slides": {"he": result["langs"]["he"]["slide"], "en": result["langs"]["en"]["slide"]},
+            "slides": slides,
             "subject": result["subject"],
             "size": list(size),
         }

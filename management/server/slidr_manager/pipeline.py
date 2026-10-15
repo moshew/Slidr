@@ -2,13 +2,17 @@
 
 ```text
 request ──plan (Claude, structured)──► N concepts ──► one variant each, side by side:
-variant: picture (Codex) ─► HTML in two languages (Claude, looking at the picture)
+variant: picture (Codex) ─► HTML in each language of the request (Claude, looking at it)
          ─► render + design check (headless, the app's engine) ─► review rounds (Claude looks
          at the renders and fixes) ─► ready: the person approves, or asks for a change
 ```
 
 Each variant keeps one Claude conversation, so a review or a change asked for later is a turn
 of the same session, with everything it saw before.
+
+A request names its languages (`languages.py`): Hebrew and English always, and the others the
+person chose. Every concept of it is planned, written, rendered, reviewed and published in
+exactly those, one HTML file per language; a request without a choice is Hebrew and English.
 """
 
 from __future__ import annotations
@@ -23,7 +27,7 @@ from typing import Any
 
 from PIL import Image
 
-from . import claude_cli, codex_cli, prompts
+from . import claude_cli, codex_cli, languages, prompts
 from .config import Settings
 from .instructions import Instructions, quality_bar
 from .library import Library
@@ -31,7 +35,6 @@ from .render import forget_old, render_dir, snap
 from .store import RUNNING, Store, read_json, write_json
 
 TOOLS = ["Read", "Write", "Edit", "Glob"]
-WATCHED = ("he.html", "en.html", "brief.json")
 ASPECTS = set(codex_cli.SHAPES)
 SLUG = re.compile(r"[^a-z0-9]+")
 
@@ -54,10 +57,20 @@ def unique_id(slug: str, taken: set[str]) -> str:
     return candidate
 
 
-def fingerprint(work: Path) -> dict[str, str | None]:
+def watched(langs: list[str]) -> list[str]:
+    """The files Claude writes: one HTML file for each language, and the brief."""
+    return [languages.file_of(lang) for lang in langs] + ["brief.json"]
+
+
+def missing_files(work: Path, langs: list[str]) -> list[str]:
+    """The design's HTML files that are not written yet."""
+    return [name for name in map(languages.file_of, langs) if not (work / name).exists()]
+
+
+def fingerprint(work: Path, langs: list[str]) -> dict[str, str | None]:
     return {
         name: hashlib.sha256((work / name).read_bytes()).hexdigest() if (work / name).exists() else None
-        for name in WATCHED
+        for name in watched(langs)
     }
 
 
@@ -112,15 +125,15 @@ class Studio:
 
     # ------------------------------------------------------------------ prompts
 
-    async def _system_files(self, folder: Path) -> tuple[Path, Path]:
+    async def _system_files(self, folder: Path, langs: list[str]) -> tuple[Path, Path]:
         app = await self.instructions.app()
         fonts = await self.instructions.fonts()
         quality = quality_bar()
         folder.mkdir(parents=True, exist_ok=True)
         plan = folder / "system-plan.md"
         design = folder / "system-design.md"
-        plan.write_text(prompts.system_prompt(app, quality, fonts, with_html=False), encoding="utf-8")
-        design.write_text(prompts.system_prompt(app, quality, fonts, with_html=True), encoding="utf-8")
+        plan.write_text(prompts.system_prompt(app, quality, fonts, langs, with_html=False), encoding="utf-8")
+        design.write_text(prompts.system_prompt(app, quality, fonts, langs, with_html=True), encoding="utf-8")
         return plan, design
 
     # ------------------------------------------------------------------ requests
@@ -148,14 +161,15 @@ class Studio:
             known = await self.library.known()
             taken = set(known["ids"]) | store.all_design_ids()
             plan_dir = store.request_dir(request["id"]) / "plan"
-            system_plan, _ = await self._system_files(plan_dir)
+            langs = languages.chosen(request.get("languages"))
+            system_plan, _ = await self._system_files(plan_dir, langs)
             made = [
                 f"{v['brief']['name']['en']}: {v['brief'].get('concept', '')}"
                 for v in (store.variants.get(vid) for vid in request["variantIds"])
                 if v
             ]
             prompt = prompts.plan_prompt(
-                request["prompt"], count, known["groups"], sorted(taken), request.get("group") or None
+                request["prompt"], count, known["groups"], sorted(taken), request.get("group") or None, langs
             )
             if made:
                 prompt += (
@@ -172,7 +186,7 @@ class Studio:
                         session_id=str(uuid.uuid4()),
                         model=request.get("model") or None,
                         effort=request.get("effort") or None,
-                        json_schema=prompts.PLAN_SCHEMA,
+                        json_schema=prompts.plan_schema(langs),
                         timeout=20 * 60,
                     )
                 )
@@ -240,6 +254,11 @@ class Studio:
     def _options(self, variant: dict) -> dict:
         return self.store.requests.get(variant["requestId"]) or {}
 
+    def languages_of(self, variant: dict) -> list[str]:
+        """The languages a variant is made in: its own, else its request's, else Hebrew and
+        English (a variant from before there was a choice)."""
+        return languages.chosen(variant.get("languages"), self._options(variant).get("languages"))
+
     async def _guard(self, variant: dict, work: Coroutine[Any, Any, None]) -> None:
         try:
             await work
@@ -263,10 +282,13 @@ class Studio:
             write_json(work / "brief.json", variant["brief"])
         if not (work / "subject.png").exists():
             await self._image(variant)
-        if not (variant.get("sessionId") and (work / "he.html").exists() and (work / "en.html").exists()):
+        langs = self.languages_of(variant)
+        if not (variant.get("sessionId") and not missing_files(work, langs)):
             variant["sessionId"] = None
             await self._turn(
-                variant, "writing", prompts.build_prompt(variant["brief"], picture_size(work / "subject.png"))
+                variant,
+                "writing",
+                prompts.build_prompt(variant["brief"], picture_size(work / "subject.png"), langs),
             )
             await self._apply_brief(variant)
         result = await self._render(variant)
@@ -274,7 +296,9 @@ class Studio:
         while variant["reviews"] < rounds:
             variant["reviews"] += 1
             changed = await self._turn(
-                variant, "reviewing", prompts.review_prompt(result, variant["reviews"], rounds, self._renders(variant))
+                variant,
+                "reviewing",
+                prompts.review_prompt(result, variant["reviews"], rounds, self._renders(variant), langs),
             )
             if not changed:
                 self.store.log(variant, "info", "Claude reviewed the renders and changed nothing.")
@@ -285,7 +309,7 @@ class Studio:
         # whatever number of review rounds was asked for.
         if not result.get("publishable"):
             self.store.log(variant, "info", "The design breaks the gallery's contract; Claude fixes it.")
-            if await self._turn(variant, "reviewing", prompts.fix_prompt(result, self._renders(variant))):
+            if await self._turn(variant, "reviewing", prompts.fix_prompt(result, self._renders(variant), langs)):
                 await self._apply_brief(variant)
                 await self._render(variant)
 
@@ -297,8 +321,9 @@ class Studio:
     async def _turn(self, variant: dict, stage: str, prompt: str) -> bool:
         """One turn of the variant's Claude session. True when it changed a file."""
         work = self.store.work_dir(variant)
-        _, system_design = await self._system_files(self.store.variant_dir(variant))
-        before = fingerprint(work)
+        langs = self.languages_of(variant)
+        _, system_design = await self._system_files(self.store.variant_dir(variant), langs)
+        before = fingerprint(work, langs)
         self._set(variant, stage, "waiting for Claude")
         async with self.claude_slots:
             self._set(variant, stage, None)
@@ -329,9 +354,10 @@ class Studio:
         if result.text:
             self.store.log(variant, "claude", result.text[:1500], save=False)
         self.store.save_variant(variant)
-        after = fingerprint(work)
-        if not ((work / "he.html").exists() and (work / "en.html").exists()):
-            raise StudioError("Claude did not write he.html and en.html.")
+        after = fingerprint(work, langs)
+        missing = missing_files(work, langs)
+        if missing:
+            raise StudioError(f"Claude did not write {languages.listing(missing)}.")
         return before != after
 
     async def _apply_brief(self, variant: dict) -> None:
@@ -453,11 +479,12 @@ class Studio:
         self._spawn(vid, self._guard(variant, self._refine_steps(variant, feedback)))
 
     async def _refine_steps(self, variant: dict, feedback: str) -> None:
-        await self._turn(variant, "writing", prompts.feedback_prompt(feedback))
+        langs = self.languages_of(variant)
+        await self._turn(variant, "writing", prompts.feedback_prompt(feedback, langs))
         await self._apply_brief(variant)
         result = await self._render(variant)
         if has_errors(result):
-            if await self._turn(variant, "reviewing", prompts.fix_prompt(result, self._renders(variant))):
+            if await self._turn(variant, "reviewing", prompts.fix_prompt(result, self._renders(variant), langs)):
                 await self._apply_brief(variant)
                 await self._render(variant)
 
@@ -492,9 +519,12 @@ class Studio:
         self.store.save_variant(variant)
 
     def render_input(self, vid: str) -> dict:
+        """What the render page converts: the HTML of every language of the variant, and its
+        picture."""
         variant = self._variant(vid)
         work = self.store.work_dir(variant)
-        missing = [n for n in ("he.html", "en.html", "subject.png") if not (work / n).exists()]
+        langs = self.languages_of(variant)
+        missing = missing_files(work, langs) + ([] if (work / "subject.png").exists() else ["subject.png"])
         if missing:
             raise StudioError(f"Not written yet: {', '.join(missing)}")
         w, h = picture_size(work / "subject.png")
@@ -502,10 +532,8 @@ class Studio:
             "id": variant["id"],
             "designId": variant["designId"],
             "revision": variant.get("revision", 0),
-            "html": {
-                "he": (work / "he.html").read_text(encoding="utf-8"),
-                "en": (work / "en.html").read_text(encoding="utf-8"),
-            },
+            "languages": langs,
+            "html": {lang: (work / languages.file_of(lang)).read_text(encoding="utf-8") for lang in langs},
             "image": {
                 "url": f"/api/variants/{vid}/files/subject.png?r={variant.get('imageRevision', 0)}",
                 "width": w,

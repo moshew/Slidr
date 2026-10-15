@@ -343,7 +343,10 @@ function ProblemCard({ problem, setup }: { problem: ChatProblem; setup?: Setup }
   const kind = shown && isProblemKind(shown) ? shown : 'other';
   const act = (work: Promise<unknown>) =>
     void work.catch(() => undefined).finally(() => setRechecked(true));
-  const detail = state?.error ?? (live ? status?.detail : problem.message);
+  // The program's own hint of a missing CLI says no more than the body, in English.
+  const detail =
+    state?.error ??
+    (kind === 'not_installed' ? undefined : live ? status?.detail : problem.message);
   return (
     <div
       role="alert"

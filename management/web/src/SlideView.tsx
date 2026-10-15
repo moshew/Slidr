@@ -1,3 +1,4 @@
+import { pieceLanguage } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { pictureUrl, renderResult, type Lang, type Variant } from './api';
@@ -40,7 +41,8 @@ export function useResult(variant: Variant): DesignResult | undefined {
 
 /**
  * A variant's slide in one language, drawn by the app's renderer from the converted model, at a
- * fixed width or at the width of its container.
+ * fixed width or at the width of its container. A language the variant was not made in shows
+ * its English slide.
  */
 export function SlideView({
   variant,
@@ -64,10 +66,12 @@ export function SlideView({
         : undefined,
     [variant],
   );
-  const slide = data?.langs[lang]?.slide;
+  // A variant not made in the language asked for is shown in English, as the app gives it.
+  const shown = data ? pieceLanguage(data.langs, lang) : lang;
+  const slide = data?.langs[shown]?.slide;
   const deck = useMemo(
-    () => (slide && picture ? designDeck(lang, picture, [slide]) : undefined),
-    [slide, picture, lang],
+    () => (slide && picture ? designDeck(shown, picture, [slide]) : undefined),
+    [slide, picture, shown],
   );
   const resolve = useMemo(() => (picture ? pictureResolver(picture) : undefined), [picture]);
   return (

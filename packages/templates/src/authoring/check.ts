@@ -3,7 +3,7 @@
  * `node tools/run-ts.mjs src/authoring/check.ts <id>` (from packages/templates). Prints what is
  * wrong, or "ok".
  */
-import { Archetype, type Color, type Theme } from '@slidr/model';
+import { Archetype, languageDir, languagesOf, type Color, type Theme } from '@slidr/model';
 import { contractGaps } from '../builtin/contract';
 import { sampleSlides } from '../builtin/kit';
 import { Template } from '../template';
@@ -72,12 +72,13 @@ export default async function check(id: string) {
       problems.push(`${l.id}: seats a footer but draws no slide number`);
     if (!roles.includes('logo')) problems.push(`${l.id}: seats a footer but draws no logo`);
   }
-  for (const lang of ['he', 'en'] as const) {
-    const shown = new Set(entry.samples[lang].map((s) => s.layout));
+  for (const lang of languagesOf(entry.samples)) {
+    const slides = entry.samples[lang]!;
+    const shown = new Set(slides.map((s) => s.layout));
     const missing = template.layouts.filter((l) => !shown.has(l.id)).map((l) => l.id);
     if (missing.length) problems.push(`${lang} sample does not show ${missing.join(', ')}`);
     try {
-      sampleSlides(template, entry.samples[lang], { dir: lang === 'he' ? 'rtl' : 'ltr', lang });
+      sampleSlides(template, slides, { dir: languageDir(lang), lang });
     } catch (error) {
       problems.push(`${lang} sample: ${(error as Error).message}`);
     }

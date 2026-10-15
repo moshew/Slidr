@@ -35,7 +35,7 @@ describe('UI strings (UI-05)', () => {
     expect(used.filter((key) => !known.has(key))).toEqual([]);
   });
 
-  it('defaults to Hebrew, and switching mirrors the document', async () => {
+  it('starts in the system’s language, Hebrew in the tests, and switching mirrors the document', async () => {
     expect(currentLanguage()).toBe('he');
     expect(document.documentElement.dir).toBe('rtl');
     await setLanguage('en');

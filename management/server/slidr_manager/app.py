@@ -7,12 +7,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from . import programs
 from .config import Settings
 from .events import EventBus
 from .instructions import Instructions
+from .languages import BASE_LANGUAGES, parse as parse_languages
 from .library import Library, LibraryError
 from .pipeline import Studio, StudioError
 from .render import render_dir
@@ -29,6 +30,15 @@ class NewRequest(BaseModel):
     model: str = ""
     effort: str = ""
     reviewRounds: int = Field(default=2, ge=0, le=3)
+    #: The languages the designs are made in: Hebrew and English always (added when left out),
+    #: and any other content language asked for; none asked for means Hebrew and English only.
+    #: A code the registry does not know is refused.
+    languages: list[str] = Field(default_factory=lambda: list(BASE_LANGUAGES), max_length=64)
+
+    @field_validator("languages")
+    @classmethod
+    def _known_languages(cls, value: list[str]) -> list[str]:
+        return parse_languages(value)
 
 
 class More(BaseModel):

@@ -3,8 +3,19 @@ import { cx, Icon, Tooltip } from '@slidr/ui';
 import { usePanels, type PanelDefinition } from './registry';
 import { togglePanel, useShell } from './store';
 
-/** Short visible captions; tooltips and accessible names retain the full panel titles. */
-const captions: Record<string, string> = { notes: 'navigation.notes' };
+/**
+ * Short visible captions; tooltips and accessible names retain the full panel titles. A caption
+ * is the panel's title in Hebrew and English, and a shorter word where a translation of the title
+ * is wider than the bar ("Optionen" for "Einstellungen").
+ */
+const captions: Record<string, string> = {
+  notes: 'navigation.notes',
+  ai: 'navigation.ai',
+  templates: 'navigation.templates',
+  animations: 'navigation.animations',
+  transitions: 'navigation.transitions',
+  settings: 'navigation.settings',
+};
 
 /**
  * The Activity Bar (SPEC 4.2) at the outer edge of the AI area: the AI tools, the other

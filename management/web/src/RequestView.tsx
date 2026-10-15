@@ -1,3 +1,4 @@
+import { BASE_LANGUAGES, LANGUAGE_NAMES } from '@slidr/model';
 import { useState } from 'react';
 import { api, isRunning, type Lang, type StudioRequest, type Variant } from './api';
 import { money, STAGE, STATUS } from './labels';
@@ -97,6 +98,8 @@ export function RequestView({
   const shown = variants.filter((variant) => !variant.discarded);
   const hidden = variants.length - shown.length;
   const [showHidden, setShowHidden] = useState(false);
+  // A request from before there was a choice is made in Hebrew and English.
+  const languages: readonly Lang[] = request.languages?.length ? request.languages : BASE_LANGUAGES;
 
   const run = (work: Promise<unknown>) =>
     work.then(
@@ -119,7 +122,14 @@ export function RequestView({
         <div>
           <p className="prompt">{request.prompt}</p>
           <p className="muted small">
-            {request.count} הצעות · סבבי בדיקה: {request.reviewRounds}
+            {request.count} הצעות · שפות:{' '}
+            {languages.map((lang, i) => (
+              <span key={lang}>
+                {i > 0 && ', '}
+                <bdi lang={lang}>{LANGUAGE_NAMES[lang].native}</bdi>
+              </span>
+            ))}{' '}
+            · סבבי בדיקה: {request.reviewRounds}
             {request.model && ` · ${request.model}`}
             {request.effort && ` · מאמץ ${request.effort}`}
             {request.group && ` · קבוצה ${request.group}`}

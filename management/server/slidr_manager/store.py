@@ -1,12 +1,16 @@
 """Requests (the studio's tabs) and their variants, kept as JSON files.
 
 ```text
-<data>/requests/<rid>/request.json          the request: prompt, options, plan, its variants
+<data>/requests/<rid>/request.json          the request: prompt, options, languages, plan, variants
 <data>/requests/<rid>/plan/                 the planning call's folder
-<data>/requests/<rid>/<vid>/state.json      a variant: stage, log, renders, approval
-<data>/requests/<rid>/<vid>/work/           Claude's folder: brief.json, he.html, en.html,
-                                            subject.png, renders/r<n>/ (renders and the conversion)
+<data>/requests/<rid>/<vid>/state.json      a variant: languages, stage, log, renders, approval
+<data>/requests/<rid>/<vid>/work/           Claude's folder: brief.json, an HTML file for each
+                                            language (he.html, en.html, ar.html…), subject.png,
+                                            renders/r<n>/ (renders and the conversion)
 ```
+
+A request's `languages` are those its designs are made in (`languages.py`); a request or variant
+stored before there was a choice has none, and is made in Hebrew and English.
 
 State files are outside the folder Claude works in, so nothing it writes can change them.
 """
@@ -21,6 +25,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from . import languages
 from .events import EventBus
 
 #: Stages a variant can be in. `ready`, `failed` and `cancelled` are at rest.
@@ -134,6 +139,7 @@ class Store:
             "index": index,
             "designId": brief["id"],
             "brief": brief,
+            "languages": languages.chosen(request.get("languages")),
             "status": "queued",
             "stage": None,
             "error": None,

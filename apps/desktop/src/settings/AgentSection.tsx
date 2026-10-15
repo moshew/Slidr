@@ -97,6 +97,8 @@ export function AgentSection() {
   const harness = state?.connection?.harness;
   const status = state?.connection?.status;
   const ready = status?.state === 'ready' && !state?.busy;
+  // The program's own hint of a missing CLI says no more than the line above it, in English.
+  const detail = state?.error ?? (status?.state === 'not_installed' ? undefined : status?.detail);
   const selectedModel = harness?.models.find((model) => model.id === settings.model);
   const latest = latestModels(harness?.models ?? []);
   const efforts = harness ? modelEfforts(harness, settings.model) : [];
@@ -152,9 +154,9 @@ export function AgentSection() {
             <p className="text-xs text-ui-fg-muted">
               {t(state?.busy ? `agent.${state.busy}` : `agent.${status?.state ?? 'unavailable'}`)}
             </p>
-            {(state?.error || status?.detail) && (
+            {detail && (
               <p role="alert" className="break-words text-xs text-ui-danger-fg" dir="auto">
-                {state?.error ?? status?.detail}
+                {detail}
               </p>
             )}
           </div>

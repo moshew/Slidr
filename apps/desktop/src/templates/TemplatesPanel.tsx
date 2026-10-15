@@ -558,11 +558,13 @@ function TextStyleRow({
             fontWeight: style.weight,
             fontSize: specimenSize(style.size),
           }}
-          className="min-w-0 flex-1 truncate leading-snug text-ui-fg"
+          // The name, drawn in the style, is the sample: it keeps its width, and where a
+          // translation leaves too little room the size and weight beside it give way.
+          className="flex-none leading-snug text-ui-fg"
         >
           {name}
         </span>
-        <span className="shrink-0 text-xs text-ui-fg-muted tabular-nums">
+        <span className="min-w-0 flex-1 truncate text-end text-xs text-ui-fg-muted tabular-nums">
           {style.size} · {weight ? t(`styles.weight${weight}`) : style.weight}
         </span>
         <Icon

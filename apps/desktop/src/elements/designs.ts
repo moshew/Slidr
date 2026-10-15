@@ -2,8 +2,11 @@ import { readMediaJson } from '@slidr/media-library';
 import {
   createDeck,
   duplicateSlide,
+  languagesOf,
+  pieceLanguage,
   walkElements,
   type AssetMeta,
+  type ContentLanguage,
   type Command,
   type CommandBus,
   type SelectionStore,
@@ -47,6 +50,19 @@ export function designsOf(group: DesignGroup): DesignId[] {
   return catalog.groupIds[group]?.slice() ?? [];
 }
 
+/** The languages a design is drawn in: Hebrew and English, and any its author added. */
+export function designLanguages(id: DesignId): ContentLanguage[] {
+  return languagesOf(catalog.slides[id] ?? {});
+}
+
+/**
+ * The language a deck in `lang` gets a design in: its own when the design is drawn in it, else
+ * English, drawn left to right as it was composed.
+ */
+export function designLanguage(id: DesignId, lang: string): ContentLanguage {
+  return pieceLanguage(catalog.slides[id] ?? {}, lang);
+}
+
 /** Each insertion gets new slide and element ids; the media file is never changed in place. */
 export function designSlide(
   id: DesignId,
@@ -54,7 +70,7 @@ export function designSlide(
   assetId: string,
   backdropId = assetId,
 ): Slide {
-  const authored = catalog.slides[id]?.[lang.startsWith('he') ? 'he' : 'en'];
+  const authored = catalog.slides[id]?.[designLanguage(id, lang)];
   if (!authored) throw new Error(`No design in media: ${id}`);
   const slide = duplicateSlide(createDeck({ slides: [authored] }), authored.id).slide;
   for (const element of walkElements(slide.elements)) {
@@ -70,7 +86,7 @@ export function designPreview(id: DesignId, lang: string) {
   const asset = previewAsset(id);
   const backdrop = previewBackdrop(id);
   const slide = designSlide(id, lang, asset.id, backdrop?.id);
-  const deck = createDeck({ lang, slides: [slide] });
+  const deck = createDeck({ lang: designLanguage(id, lang), slides: [slide] });
   deck.assets[asset.id] = asset;
   if (backdrop) deck.assets[backdrop.id] = backdrop;
   return { slide, deck, resolveAsset: designAssetUrl };

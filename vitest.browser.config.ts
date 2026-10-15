@@ -17,7 +17,11 @@ export default defineConfig({
       enabled: true,
       headless: true,
       screenshotFailures: false,
-      provider: playwright({ launchOptions: { channel: 'msedge' } }),
+      // As on a Hebrew system, so that the UI starts in Hebrew, as in the other tests.
+      provider: playwright({
+        launchOptions: { channel: 'msedge' },
+        contextOptions: { locale: 'he-IL' },
+      }),
       instances: [{ browser: 'chromium', viewport: { width: 1920, height: 1080 } }],
     },
   },

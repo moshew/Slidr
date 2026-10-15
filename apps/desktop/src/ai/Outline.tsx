@@ -7,6 +7,7 @@ import { Button, Icon, IconButton, Input } from '@slidr/ui';
 import { ArrowDown, ArrowUp, ListOrdered, Plus, RotateCcw, Trash2 } from '@slidr/ui/icons';
 import type { ChatThread } from '../agent/agentService';
 import type { ToolPart } from '../agent/transcript';
+import { currentLanguage, englishName } from '../i18n';
 import { actionLabel } from './actionLabels';
 import {
   added,
@@ -57,7 +58,7 @@ export function OutlineCard({
   /** The outline waits for an answer: it is the last thing in the chat, and no turn runs. */
   open: boolean;
 }) {
-  const { t, i18n } = useTranslation(['ai', 'templates']);
+  const { t } = useTranslation(['ai', 'templates']);
   const key = `${entryId}:${part.id}`;
   const [rejected, setRejected] = useState(turnedDown.has(key));
   const proposed = useMemo(() => outlineOf(part.input), [part.input]);
@@ -119,11 +120,7 @@ export function OutlineCard({
 
   const approve = () => {
     if (toBuild.length === 0) return;
-    const { message, action } = approval(
-      toBuild,
-      edited,
-      i18n.language === 'he' ? 'Hebrew' : 'English',
-    );
+    const { message, action } = approval(toBuild, edited, englishName(currentLanguage()));
     void thread.send(message, { action, label: actionLabel(t, action) });
   };
   const reject = () => {

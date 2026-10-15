@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import { threadIdOf } from '../agent/agentService';
 import { actionLabel } from '../ai/actionLabels';
 import { aiOf } from '../ai/runtime';
-import { i18n } from '../i18n';
+import { currentLanguage, englishName, i18n } from '../i18n';
 import { openPanel, PanelId, useEditor, type Editor } from '../shell';
 
 /*
@@ -56,7 +56,7 @@ export function fixWithAi(editor: Editor, target: FixTarget): boolean {
     actionMessage({
       action: action.id,
       params,
-      replyIn: i18n.language === 'he' ? 'Hebrew' : 'English',
+      replyIn: englishName(currentLanguage()),
     }),
     { action, label: actionLabel(i18n.getFixedT(null, 'ai'), action) },
   );

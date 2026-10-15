@@ -96,9 +96,9 @@ test('the import is a conversation of the AI chat: listed with the others, and l
   await expect(aiPanel(page)).toBeHidden();
   await chooseFile(page);
   await turnsDone(page, 1);
-  // The frame is the AI chat's own: its bar of conversations, its composer.
+  // The frame is the AI chat's own: its conversations in the title bar, its composer.
   await expect(aiPanel(page)).toBeVisible();
-  await expect(importChat(page).getByTestId('conversations')).toBeVisible();
+  await expect(aiPanel(page).getByTestId('conversations')).toBeVisible();
   await expect(importChat(page).getByTestId('chat-input')).toBeVisible();
 
   // A new conversation is a conversation of the deck, with nothing of the import in it.

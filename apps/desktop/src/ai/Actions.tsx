@@ -35,6 +35,7 @@ import {
 import { Button, Icon, IconButton, SegmentedControl, Select, Textarea, Toggle } from '@slidr/ui';
 import type { Attachment } from '../agent/agentService';
 import { TransitionTool } from '../animations/TransitionTool';
+import { currentLanguage, englishName, languageOf } from '../i18n';
 import { expandImage, useExpandWorking } from '../images/expand';
 import type { ImageProviderState } from '../images/images';
 import { paintMask } from '../images/MaskPainter';
@@ -49,7 +50,15 @@ import {
 } from '../objects/imageTools';
 import { isTarget, useTarget } from '../objects/target';
 import { focusStage, openPanel, PanelId, tell, useDeck, useEditor } from '../shell';
-import { actionLabel, LANGUAGES, TONES, type LanguageName, type ToneName } from './actionLabels';
+import {
+  actionLabel,
+  LANGUAGES,
+  TONES,
+  listed,
+  TRANSLATION_LANGUAGE,
+  type LanguageName,
+  type ToneName,
+} from './actionLabels';
 import { useThread } from './Chat';
 import { DeckLook } from './DeckLook';
 import { useKept } from './kept';
@@ -89,7 +98,7 @@ interface About {
 
 /** The actions of a group, sent to the chat about what the group is about. */
 function useRunner(about: About = {}): Runner {
-  const { t, i18n } = useTranslation('ai');
+  const { t } = useTranslation('ai');
   const ai = aiOf(useEditor());
   const thread = useThread(DECK);
   const busy = useStore(thread.store, (s) => s.busy);
@@ -112,7 +121,7 @@ function useRunner(about: About = {}): Runner {
       const message = actionMessage({
         action: id,
         params: all,
-        replyIn: i18n.language === 'he' ? 'Hebrew' : 'English',
+        replyIn: englishName(currentLanguage()),
       });
       void thread.send(message, {
         action,
@@ -199,23 +208,31 @@ function LanguageSelect({
   value: LanguageName;
   onChange: (value: LanguageName) => void;
 }) {
-  const { t } = useTranslation('ai');
+  const { t, i18n } = useTranslation('ai');
   return (
     <Select
       aria-label={t('actions.language')}
       size="sm"
       className="w-28 shrink-0"
-      options={LANGUAGES.map((name) => ({ value: name, label: t(`actions.languages.${name}`) }))}
+      options={LANGUAGES.map((name) => ({
+        value: name,
+        label: listed(t(`actions.languages.${name}`), i18n.language),
+      }))}
       value={value}
       onValueChange={onChange}
     />
   );
 }
 
-/** The language a translation goes to unless the user says otherwise: not the deck's own. */
+/**
+ * The language a translation goes to unless the user says otherwise: the UI's, when the deck is
+ * in another one; else English, or Hebrew for a deck that is in English.
+ */
 function useTargetLanguage() {
-  const lang = useDeck((s) => s.deck.meta.lang);
-  return useState<LanguageName>(lang.startsWith('he') ? 'English' : 'Hebrew');
+  const deck = languageOf(useDeck((s) => s.deck.meta.lang));
+  const ui = currentLanguage();
+  const to = deck !== ui ? TRANSLATION_LANGUAGE[ui] : deck === 'en' ? 'Hebrew' : 'English';
+  return useState<LanguageName>(to);
 }
 
 function CountControl({
@@ -373,7 +390,7 @@ function SlideActions({ slideId, slideNumber }: { slideId: string; slideNumber: 
 /* ---------------------------------------------------------------- the selection (AIO-02 to AIO-05) */
 
 function TextActions({ runner }: { runner: Runner }) {
-  const { t } = useTranslation('ai');
+  const { t, i18n } = useTranslation('ai');
   const [count, setCount] = useState(4);
   const [tone, setTone] = useState<ToneName>('formal');
   const [language, setLanguage] = useTargetLanguage();
@@ -413,7 +430,10 @@ function TextActions({ runner }: { runner: Runner }) {
             aria-label={t('actions.toneChoice')}
             size="sm"
             className="w-28 shrink-0"
-            options={TONES.map((name) => ({ value: name, label: t(`actions.tones.${name}`) }))}
+            options={TONES.map((name) => ({
+              value: name,
+              label: listed(t(`actions.tones.${name}`), i18n.language),
+            }))}
             value={tone}
             onValueChange={setTone}
           />

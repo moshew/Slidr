@@ -1,19 +1,28 @@
+import { LANGUAGE_NAMES, languagesOf } from '@slidr/model';
 import { useEffect, useRef, useState } from 'react';
-import { api, isRunning, type Lang, type Variant } from './api';
+import { api, isRunning, languagesOfVariant, type Lang, type Variant } from './api';
 import type { DesignResult } from './design';
 import { LOG_KIND, money, time } from './labels';
 import { StatusLine } from './RequestView';
 import { SlideView, useResult } from './SlideView';
 
 const THUMB = 384;
+const nameOf = (lang: Lang) => LANGUAGE_NAMES[lang].native;
 
 function Findings({ result }: { result: DesignResult }) {
   const rows: { lang: string; kind: string; text: string; severe: boolean }[] = [];
+  const langs = languagesOf(result.langs);
   for (const issue of result.issues)
-    rows.push({ lang: 'שתיהן', kind: 'חוזה', text: issue, severe: true });
-  for (const lang of ['he', 'en'] as const) {
+    rows.push({
+      lang: langs.length === 2 ? 'שתיהן' : 'כולן',
+      kind: 'חוזה',
+      text: issue,
+      severe: true,
+    });
+  for (const lang of langs) {
     const side = result.langs[lang];
-    const name = lang === 'he' ? 'עברית' : 'English';
+    if (!side) continue;
+    const name = nameOf(lang);
     if (side.error) rows.push({ lang: name, kind: 'המרה', text: side.error, severe: true });
     for (const issue of side.issues)
       rows.push({ lang: name, kind: 'חוזה', text: issue, severe: true });
@@ -33,7 +42,9 @@ function Findings({ result }: { result: DesignResult }) {
     <ul className="findings">
       {rows.map((row, i) => (
         <li key={i} className={row.severe ? 'severe' : ''}>
-          <span className="tag">{row.lang}</span>
+          <span className="tag" dir="auto">
+            {row.lang}
+          </span>
           <span className="tag">{row.kind}</span>
           <span dir="auto">{row.text}</span>
         </li>
@@ -63,7 +74,50 @@ function Log({ variant }: { variant: Variant }) {
   );
 }
 
-/** One variant, up close: both languages at full size and as the gallery's thumbnail. */
+/** The language shown: buttons for Hebrew and English, a list when there are more. */
+function LanguageSwitch({
+  langs,
+  lang,
+  onChange,
+}: {
+  langs: Lang[];
+  lang: Lang;
+  onChange: (lang: Lang) => void;
+}) {
+  if (langs.length > 2) {
+    return (
+      <select
+        value={lang}
+        onChange={(event) => onChange(event.target.value as Lang)}
+        aria-label="שפה"
+        lang={lang}
+      >
+        {langs.map((option) => (
+          <option key={option} value={option} lang={option}>
+            {nameOf(option)}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <div className="segmented" role="group" aria-label="שפה">
+      {langs.map((option) => (
+        <button
+          type="button"
+          key={option}
+          lang={option}
+          aria-pressed={lang === option}
+          onClick={() => onChange(option)}
+        >
+          {nameOf(option)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** One variant, up close: every language at full size and as the gallery's thumbnail. */
 export function VariantDetail({
   variant,
   lang: initial,
@@ -81,6 +135,7 @@ export function VariantDetail({
   const result = useResult(variant);
   const running = isRunning(variant);
   const render = variant.render;
+  const langs = languagesOfVariant(variant, result);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -131,14 +186,7 @@ export function VariantDetail({
             </p>
           </div>
           <div className="actions">
-            <div className="segmented" role="group" aria-label="שפה">
-              <button type="button" aria-pressed={lang === 'he'} onClick={() => setLang('he')}>
-                עברית
-              </button>
-              <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
-                English
-              </button>
-            </div>
+            <LanguageSwitch langs={langs} lang={lang} onChange={setLang} />
             <button type="button" className="ghost" onClick={onClose} aria-label="סגור">
               ✕
             </button>
@@ -152,17 +200,25 @@ export function VariantDetail({
                 <SlideView variant={variant} lang={lang} result={result} />
                 <h3>כך זה ייראה בגלריה (384 פיקסלים)</h3>
                 <div className="thumbs">
-                  {(['he', 'en'] as const).map((side) => (
+                  {langs.map((side) => (
                     <figure key={side}>
                       <SlideView variant={variant} lang={side} width={THUMB} result={result} />
-                      <figcaption>{side === 'he' ? 'עברית' : 'English'}</figcaption>
+                      <figcaption lang={side} dir="auto">
+                        {nameOf(side)}
+                      </figcaption>
                     </figure>
                   ))}
                 </div>
                 <p className="muted small">
-                  ההמרה: עברית {Math.round((render.editability.he ?? 0) * 100)}% ניתן לעריכה ·
-                  English {Math.round((render.editability.en ?? 0) * 100)}% ניתן לעריכה. הרינדור
-                  והבדיקה נעשים עם המנוע, הרנדרר ובדיקת העיצוב של Slidr עצמה.
+                  ההמרה:{' '}
+                  {langs.map((side, i) => (
+                    <span key={side}>
+                      {i > 0 && ' · '}
+                      <bdi lang={side}>{nameOf(side)}</bdi>{' '}
+                      {Math.round((render.editability[side] ?? 0) * 100)}% ניתן לעריכה
+                    </span>
+                  ))}
+                  . הרינדור והבדיקה נעשים עם המנוע, הרנדרר ובדיקת העיצוב של Slidr עצמה.
                 </p>
               </>
             ) : (

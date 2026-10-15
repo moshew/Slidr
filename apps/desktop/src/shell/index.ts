@@ -26,6 +26,7 @@ export {
 } from './registry';
 export { selectionKind, elementKind, elementDisplayKind, type SelectionKind } from './selection';
 export { StatusItem } from './StatusBar';
+export { PanelActions } from './ToolPanel';
 export {
   getEditor,
   setNewDeck,

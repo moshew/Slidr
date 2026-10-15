@@ -3,11 +3,12 @@
  * slides the template was authored with, and where their pictures load from.
  *
  * The samples are read from the catalog of the media library when a template is first opened,
- * not with the app: the catalog holds every template with its samples, in both languages. So
+ * not with the app: the catalog holds every template with its samples, in Hebrew and in English
+ * and in whatever other language a template's author wrote them (`@slidr/model` languages). So
  * nothing here imports `@slidr/templates/builtin`, whose catalog is read as it is imported.
  */
 import { mediaFiles, mediaUrl, requireMediaJson } from '@slidr/media-library';
-import type { AssetMeta, Deck } from '@slidr/model';
+import { writtenIn, type AssetMeta, type Deck, type Localized } from '@slidr/model';
 import type { Template } from '@slidr/templates';
 import { sampleDeck, type SampleSlide } from '@slidr/templates/builtin/kit';
 import { pictures } from '@slidr/templates/builtin/pictures';
@@ -29,7 +30,7 @@ export function pictureUrl(asset: AssetMeta): string | undefined {
   return urls.get(asset.id);
 }
 
-type Samples = Record<string, { he: SampleSlide[]; en: SampleSlide[] }>;
+type Samples = Record<string, Localized<SampleSlide[]>>;
 
 let read: Promise<Samples> | undefined;
 
@@ -77,13 +78,16 @@ function finished(slide: SampleSlide, template: Template): boolean {
 export async function builtInSampleDeck(template: Template, like: Deck): Promise<Deck | undefined> {
   const mine = (await samples())[template.theme.id];
   if (!mine) return undefined;
-  const slides = (like.meta.lang === 'he' ? mine.he : mine.en).filter((slide) =>
-    finished(slide, template),
-  );
+  // A deck in a language the sample is not written in is shown the English one as it was
+  // written, left to right, and not English text in a mirrored layout.
+  const own = writtenIn(mine, like.meta.lang);
+  const written = own !== undefined;
+  const slides = (own ? mine[own]! : mine.en).filter((slide) => finished(slide, template));
   if (slides.length === 0) return undefined;
   const assets = { ...pictureAssets, ...template.assets };
-  return sampleDeck({ ...template, assets }, slides, {
-    lang: like.meta.lang,
-    dir: like.meta.dir,
-  });
+  return sampleDeck(
+    { ...template, assets },
+    slides,
+    written ? { lang: like.meta.lang, dir: like.meta.dir } : { lang: 'en', dir: 'ltr' },
+  );
 }

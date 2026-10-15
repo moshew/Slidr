@@ -6,6 +6,7 @@ export * from './svgStretch';
 export * from './cssColors';
 export * from './queries';
 export * from './factories';
+export * from './languages';
 export * from './commands';
 export * from './bus';
 export * from './digest';

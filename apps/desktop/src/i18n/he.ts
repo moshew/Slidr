@@ -89,6 +89,11 @@ export const he = {
   navigation: {
     notes: 'הערות',
     lint: 'בדיקה',
+    ai: "צ'אט AI",
+    templates: 'תבניות',
+    animations: 'אנימציות',
+    transitions: 'מעברים',
+    settings: 'הגדרות',
   },
   panels: {
     ai: "צ'אט AI",

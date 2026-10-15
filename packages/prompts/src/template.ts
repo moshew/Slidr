@@ -35,7 +35,7 @@ export const TEMPLATE_FONTS = {
     'Suez One',
     'Karantina',
   ],
-  /** Families with Latin letters only. */
+  /** Families with Latin letters and no Hebrew. */
   latin: [
     'Inter',
     'Poppins',

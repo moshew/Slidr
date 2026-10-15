@@ -12,8 +12,10 @@
     "@slidr/agent-tools": "workspace:*",
     "@slidr/html-import": "workspace:*",
     "@slidr/lint": "workspace:*",
+    "@slidr/media-library": "workspace:*",
     "@slidr/model": "workspace:*",
     "@slidr/renderer": "workspace:*",
+    "@slidr/templates": "workspace:*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

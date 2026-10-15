@@ -1,8 +1,8 @@
 {
-  // Root-level config files only. Each package and app has its own tsconfig.
+  // Root-level config files and the test setup only. Each package and app has its own tsconfig.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["*.config.ts"]
+  "include": ["*.config.ts", "vitest.setup.ts"]
 }

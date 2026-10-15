@@ -4,15 +4,24 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 
 import pytest
 from PIL import Image
+from pydantic import ValidationError
 
-from slidr_manager import claude_cli, codex_cli, prompts
-from slidr_manager.library import empty_catalog, merge_design, to_webp
-from slidr_manager.pipeline import has_errors, slugify, unique_id
+from slidr_manager import claude_cli, codex_cli, languages, prompts
+from slidr_manager.app import NewRequest
+from slidr_manager.config import REPO, Settings
+from slidr_manager.events import EventBus
+from slidr_manager.instructions import Instructions
+from slidr_manager.library import Library, LibraryError, empty_catalog, merge_design, to_webp
+from slidr_manager.pipeline import Studio, StudioError, has_errors, slugify, unique_id, watched
+from slidr_manager.store import Store, write_json
+
+BASE = ["he", "en"]
 
 
 # ---------------------------------------------------------------- Claude Code
@@ -182,28 +191,241 @@ def test_findings_reach_the_review_prompt():
             "en": {"issues": ["Only 2 blocks"], "findings": [], "editability": 0.5, "notes": ["kept html"]},
         },
     }
-    text = prompts.review_prompt(result, 1, 2, "renders/r3")
+    text = prompts.review_prompt(result, 1, 2, "renders/r3", BASE)
     assert "renders/r3/he-thumb.png" in text
+    assert "- both · contract: No point" in text
     assert "- he · error · L01: overflow" in text
     assert "- en · contract: Only 2 blocks" in text
     assert "en 50% editable (notes: kept html)" in text
+    assert "all four pictures" in text and "keep them mirrored" in text
     assert has_errors(result)
     assert not has_errors({"publishable": True, "langs": {"he": {"findings": [{"severity": "warning"}]}}})
 
 
+def test_findings_and_renders_of_every_chosen_language_reach_the_prompts():
+    langs = ["he", "en", "ar", "ja"]
+    result = {
+        "publishable": False,
+        "issues": ["No point of the picture lies on top."],
+        "langs": {
+            "he": {"issues": [], "findings": [], "editability": 1},
+            "en": {"issues": [], "findings": [], "editability": 1},
+            "ar": {"issues": [], "findings": [{"severity": "error", "rule": "L02", "message": "clipped"}],
+                   "editability": 0.9},
+            "ja": {"error": "no slide", "issues": ["No text names a font"], "findings": []},
+        },
+    }
+    review = prompts.review_prompt(result, 2, 2, "renders/r4", langs)
+    for lang in langs:
+        assert f"renders/r4/{lang}-full.png" in review and f"renders/r4/{lang}-thumb.png" in review
+    assert "de-full.png" not in review
+    assert "all eight pictures" in review
+    assert "- all · contract: No point" in review
+    assert "- ar · error · L02: clipped" in review
+    assert "- ja · conversion failed: no slide" in review and "- ja · contract: No text names a font" in review
+    assert "ar 90% editable" in review
+    assert "`he.html`, `en.html`, `ar.html` and `ja.html`" in review
+    assert "every right-to-left file its mirror" in review
+    fix = prompts.fix_prompt(result, "renders/r4", langs)
+    assert "`renders/r4/ja-full.png`" in fix and "`ja.html`" in fix and "- ar · error" in fix
+    feedback = prompts.feedback_prompt("Make the title bigger", langs)
+    assert "`ar.html` and `ja.html`" in feedback
+    assert "mirrored, the Hebrew still natural Hebrew" in prompts.feedback_prompt("x", BASE)
+
+
+FONTS = [
+    {"family": "Heebo", "scripts": ["he", "latin"]},
+    {"family": "Rubik", "scripts": ["he", "latin", "cyrillic", "arabic"]},
+    {"family": "Inter", "scripts": ["latin", "cyrillic", "vietnamese"]},
+    {"family": "Poppins", "scripts": ["latin", "devanagari"]},
+]
+APP = {"design": "## Design guidelines\nDG", "html": "## Writing a slide as HTML\nHC"}
+
+
 def test_system_prompt_carries_the_apps_instructions():
-    app = {"design": "## Design guidelines\nDG", "html": "## Writing a slide as HTML\nHC"}
     fonts = [{"family": "Heebo", "scripts": ["he", "latin"]}, {"family": "Inter", "scripts": ["latin"]}]
-    text = prompts.system_prompt(app, "QUALITY", fonts, with_html=True)
-    for part in ("QUALITY", "DG", "HC", "data-asset=\"__subject__\"", "Heebo", "Latin only: Inter"):
+    text = prompts.system_prompt(APP, "QUALITY", fonts, BASE, with_html=True)
+    for part in ("QUALITY", "DG", "HC", "data-asset=\"__subject__\"", "Hebrew (`he.html`): Heebo",
+                 "Latin (`en.html`): Heebo, Inter"):
         assert part in text
-    plan = prompts.system_prompt(app, "QUALITY", fonts, with_html=False)
+    plan = prompts.system_prompt(APP, "QUALITY", fonts, BASE, with_html=False)
     assert "HC" not in plan and "## This folder" not in plan
+
+
+@pytest.mark.parametrize("langs", [BASE, ["he", "en", "ar", "pt-BR", "ja", "zh-CN"]])
+def test_prompts_name_exactly_the_files_of_the_chosen_languages(langs: list[str]):
+    system = prompts.system_prompt(APP, "QUALITY", FONTS, langs, with_html=True)
+    build = prompts.build_prompt({"id": "m-x"}, (1536, 1024), langs)
+    for lang in languages.CONTENT_LANGUAGES:
+        for text in (system, build):
+            assert (f"`{lang}.html`" in text) == (lang in langs), lang
+    if langs == BASE:
+        assert "This request is made in Hebrew and English only" in system
+        assert "in Hebrew and English, so it must be finished work" in system
+    else:
+        assert "made in Hebrew, English, Arabic, Brazilian Portuguese, Japanese and Simplified Chinese, and in no other language" in system
+        assert '`ar.html`: Arabic, `dir="rtl" lang="ar"`' in system
+        assert '`zh-CN.html`: Simplified Chinese, `dir="ltr" lang="zh-CN"`' in system
+        # Left to right in the English composition, right to left its mirror.
+        assert "Every right-to-left file (`he.html` and `ar.html`) is its mirror" in system
+        assert "Brazilian Portuguese runs longer than English" in system
+        assert "Japanese and Simplified Chinese may break a line" in system
+
+
+def test_fonts_by_the_letters_of_the_chosen_languages():
+    text = prompts.system_prompt(APP, "Q", FONTS, ["he", "en", "ar", "ru", "hi", "ja", "ko"], with_html=True)
+    assert "- Arabic (`ar.html`): Rubik" in text
+    assert "- Cyrillic (`ru.html`): Rubik, Inter" in text
+    assert "- Devanagari (`hi.html`): Poppins" in text
+    assert "- Japanese (`ja.html`): none" in text
+    assert "No family of the library has Japanese or Korean letters. In `ja.html` and `ko.html`" in text
+    assert "Yu Gothic for Japanese and Malgun Gothic for Korean" in text
+    # A family of the library, then the generic family the app's runs end in: nothing else.
+    assert "`font-family: 'Inter', sans-serif`" in text and "Name no system font" in text
+    assert "Nirmala UI" not in text
+    # A catalog tagged with Hebrew and Latin only: the others take the system's letters.
+    old = [{"family": "Heebo", "scripts": ["he", "latin"]}, {"family": "Inter", "scripts": ["latin"]}]
+    text = prompts.system_prompt(APP, "Q", old, ["he", "en", "ru", "hi"], with_html=True)
+    assert "No family of the library has Russian or Hindi letters. In `ru.html` and `hi.html`" in text
+    assert "Nirmala UI for Hindi" in text
+    # The default names no other script.
+    text = prompts.system_prompt(APP, "Q", FONTS, BASE, with_html=True)
+    assert "Cyrillic" not in text and "No family of the library has" not in text
 
 
 @pytest.mark.parametrize("count", [1, 3])
 def test_plan_prompt(count: int):
     text = prompts.plan_prompt("an invitation", count, [{"id": "invites", "he": "הזמנות", "en": "Invites"}],
-                               ["m-x"], None)
+                               ["m-x"], None, BASE)
     assert "an invitation" in text and "`invites`: הזמנות / Invites" in text and "m-x" in text
     assert ("Plan one design." in text) == (count == 1)
+    assert "Each design is made in Hebrew and English, and in no other language." in text
+    assert "under its code (`he` and `en`)" in text
+
+
+def test_plan_asks_for_copy_in_every_chosen_language_and_names_in_two():
+    langs = ["he", "en", "de", "ko"]
+    text = prompts.plan_prompt("a sale", 2, [], [], None, langs)
+    assert "Each design is made in Hebrew, English, German and Korean, and in no other language." in text
+    assert "under its code (`he`, `en`, `de` and `ko`)" in text
+    item = prompts.plan_schema(langs)["properties"]["concepts"]["items"]["properties"]
+    assert item["copy"]["required"] == langs and sorted(item["copy"]["properties"]) == sorted(langs)
+    assert item["name"]["required"] == BASE and item["groupName"]["required"] == BASE
+    assert prompts.plan_schema(BASE)["properties"]["concepts"]["items"]["properties"]["copy"]["required"] == BASE
+
+
+# ---------------------------------------------------------------- languages
+
+
+def _ts_block(text: str, start: str) -> str:
+    """The text of a constant of a TypeScript file, from its name to the end of its value."""
+    at = text.index(start)
+    ends = [text.find(end, at) for end in ("] as const", "};")]
+    return text[at : min(end for end in ends if end >= 0)]
+
+
+def test_the_language_list_is_the_models():
+    source = (REPO / "packages" / "model" / "src" / "languages.ts").read_text(encoding="utf-8")
+    codes = re.findall(r"'([\w-]+)'", _ts_block(source, "export const CONTENT_LANGUAGES"))
+    assert tuple(codes) == languages.CONTENT_LANGUAGES
+    base = re.findall(r"'([\w-]+)'", _ts_block(source, "export const BASE_LANGUAGES"))
+    assert tuple(base) == languages.BASE_LANGUAGES
+    names = dict(re.findall(r"'?([\w-]+)'?: \{ native: '[^']*', english: '([^']*)' \}",
+                            _ts_block(source, "export const LANGUAGE_NAMES")))
+    assert names == languages.NAMES
+    scripts = dict(re.findall(r"'?([\w-]+)'?: '(\w+)'", _ts_block(source, "export const LANGUAGE_SCRIPT")))
+    assert scripts == languages.SCRIPT
+    # The right-to-left ones, as the model's `languageDir` says (`isRtlLanguage`).
+    factories = (REPO / "packages" / "model" / "src" / "factories.ts").read_text(encoding="utf-8")
+    rtl = set(re.findall(r"'(\w+)'", re.search(r"const RTL = new Set\(\[([^\]]*)\]\)", factories).group(1)))
+    assert {code for code in codes if code.split("-")[0].lower() in rtl} == languages.RTL
+    assert [languages.direction(code) for code in ("he", "ar", "en", "zh-CN")] == ["rtl", "rtl", "ltr", "ltr"]
+
+
+def test_a_request_is_made_in_hebrew_and_english_unless_more_are_chosen():
+    assert NewRequest(prompt="an invitation").languages == BASE
+    assert NewRequest(prompt="an invitation", languages=[]).languages == BASE
+    # Hebrew and English always; each language once, in the registry's order, in its own case.
+    chosen = NewRequest(prompt="an invitation", languages=["ja", "ar", "JA", "pt-br", "en"])
+    assert chosen.languages == ["he", "en", "ar", "pt-BR", "ja"]
+    # A code the registry does not know is refused, not dropped.
+    with pytest.raises(ValidationError, match="Unknown language xx"):
+        NewRequest(prompt="an invitation", languages=["de", "xx"])
+    with pytest.raises(ValidationError):
+        NewRequest(prompt="an invitation", languages=["zh-TW"])
+    # What was stored is read leniently; nothing stored is Hebrew and English.
+    assert languages.chosen(None, None) == BASE
+    assert languages.chosen(None, ["ko", "xx"]) == ["he", "en", "ko"]
+    assert languages.chosen(["de"], ["ko"]) == ["he", "en", "de"]
+
+
+# ---------------------------------------------------------------- variants in more languages
+
+
+def _studio(tmp_path: Path) -> tuple[Studio, Store, Library]:
+    settings = Settings(data=tmp_path)
+    bus = EventBus()
+    store = Store(settings.requests_dir, bus)
+    library = Library(settings, store, bus)
+    return Studio(settings, store, Instructions(settings), library), store, library
+
+
+BRIEF = {"id": "m-x", "name": {"he": "שם", "en": "Name"}, "group": "g", "groupName": {"he": "ק", "en": "G"}}
+
+
+def test_a_variant_is_rendered_in_the_languages_of_its_request(tmp_path: Path):
+    studio, store, _ = _studio(tmp_path)
+    request = store.create_request({"prompt": "x", "languages": ["he", "en", "ar", "ja"]})
+    variant = store.create_variant(request, 0, dict(BRIEF))
+    assert variant["languages"] == ["he", "en", "ar", "ja"]
+    work = store.work_dir(variant)
+    work.mkdir(parents=True)
+    Image.new("RGB", (32, 18)).save(work / "subject.png")
+    for lang in ("he", "en", "ar"):
+        (work / f"{lang}.html").write_text(f"<div lang='{lang}'></div>", encoding="utf-8")
+    with pytest.raises(StudioError, match=r"ja\.html"):
+        studio.render_input(variant["id"])
+    (work / "ja.html").write_text("<div lang='ja'>日本語</div>", encoding="utf-8")
+    data = studio.render_input(variant["id"])
+    assert data["languages"] == ["he", "en", "ar", "ja"]
+    assert list(data["html"]) == ["he", "en", "ar", "ja"] and "日本語" in data["html"]["ja"]
+    assert watched(data["languages"]) == ["he.html", "en.html", "ar.html", "ja.html", "brief.json"]
+
+
+def test_a_variant_from_before_the_choice_is_hebrew_and_english(tmp_path: Path):
+    studio, store, _ = _studio(tmp_path)
+    request = store.create_request({"prompt": "x"})
+    variant = store.create_variant(request, 0, dict(BRIEF))
+    variant.pop("languages")
+    work = store.work_dir(variant)
+    work.mkdir(parents=True)
+    Image.new("RGB", (32, 18)).save(work / "subject.png")
+    for lang in BASE:
+        (work / f"{lang}.html").write_text("<div></div>", encoding="utf-8")
+    assert studio.languages_of(variant) == BASE
+    assert list(studio.render_input(variant["id"])["html"]) == BASE
+
+
+def test_a_design_is_published_with_a_slide_for_every_language(tmp_path: Path):
+    _, store, library = _studio(tmp_path)
+    request = store.create_request({"prompt": "x", "languages": ["he", "en", "ar", "zh-CN"]})
+    variant = store.create_variant(request, 0, dict(BRIEF))
+    work = store.work_dir(variant)
+    work.mkdir(parents=True)
+    Image.new("RGB", (64, 36), (10, 20, 30)).save(work / "subject.png")
+    variant["render"] = {"revision": 1}
+    sides = {lang: {"slide": {"id": lang}, "issues": [], "findings": []} for lang in ("zh-CN", "en", "ar", "he")}
+    write_json(work / "renders" / "r1" / "result.json", {"publishable": True, "langs": sides, "subject": [5, 6]})
+    record, webp = library._design_record(variant)
+    assert list(record["slides"]) == ["he", "en", "ar", "zh-CN"]
+    assert record["slides"]["zh-CN"] == {"id": "zh-CN"}
+    assert record["name"] == {"he": "שם", "en": "Name"} and record["groupName"] == {"he": "ק", "en": "G"}
+    assert record["size"] == [64, 36] and webp[:4] == b"RIFF"
+    catalog = merge_design(empty_catalog(), record)
+    assert set(catalog["slides"]["m-x"]) == {"he", "en", "ar", "zh-CN"}
+    assert catalog["names"]["m-x"] == {"he": "שם", "en": "Name"}
+    # Without the English slide it is not published.
+    del sides["en"]
+    write_json(work / "renders" / "r1" / "result.json", {"publishable": True, "langs": sides, "subject": [5, 6]})
+    with pytest.raises(LibraryError):
+        library._design_record(variant)
