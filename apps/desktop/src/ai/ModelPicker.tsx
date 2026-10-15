@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import { modelEfforts } from '../agent/harnessSetup';
+import { latestModels, modelEfforts } from '../agent/harnessSetup';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
@@ -24,6 +24,7 @@ import { agentOf } from './runtime';
  * choice, made in the settings screen, is the default; what is picked here is the conversation's
  * own, over it, and does not change the default. A session started with other settings is
  * started again before the user's next message, so the conversation goes on with the new ones.
+ * Like the chat's setup and Settings, it offers only the newest version of each model family.
  */
 
 /** A choice that leaves the setting to the app's own. */
@@ -108,6 +109,8 @@ export function ModelPicker({ threadId }: { threadId: string }) {
     );
   }
 
+  const models = latestModels(offered.models);
+
   return (
     offered && (
       <DropdownMenu>
@@ -128,7 +131,7 @@ export function ModelPicker({ threadId }: { threadId: string }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="top">
-          {offered.models.length > 0 && (
+          {models.length > 0 && (
             <>
               <DropdownMenuLabel>{t('picker.models')}</DropdownMenuLabel>
               <DropdownMenuRadioGroup
@@ -140,7 +143,7 @@ export function ModelPicker({ threadId }: { threadId: string }) {
                     {defaultName(modelName(app.model))}
                   </DropdownMenuRadioItem>
                 )}
-                {offered.models.map((option) => (
+                {models.map((option) => (
                   <DropdownMenuRadioItem key={option.id} value={option.id} data-model={option.id}>
                     {option.label}
                   </DropdownMenuRadioItem>
@@ -150,7 +153,7 @@ export function ModelPicker({ threadId }: { threadId: string }) {
           )}
           {efforts.length > 0 && (
             <>
-              {offered.models.length > 0 && <DropdownMenuSeparator />}
+              {models.length > 0 && <DropdownMenuSeparator />}
               <DropdownMenuLabel>{t('picker.effort')}</DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={own.effort ?? DEFAULT}
