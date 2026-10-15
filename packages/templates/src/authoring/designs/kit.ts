@@ -22,7 +22,7 @@ import {
   type TextElement,
 } from '@slidr/model';
 
-export type Group = 'hitech' | 'techproduct' | 'defence';
+export type Group = 'hitech' | 'techproduct' | 'defense';
 
 export interface DesignEntry {
   id: string;

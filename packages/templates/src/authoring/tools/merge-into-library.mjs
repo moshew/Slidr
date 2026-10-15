@@ -103,7 +103,7 @@ if (designs) {
   const TOPICS = {
     hitech: { he: 'הייטק', en: 'High-tech' },
     techproduct: { he: 'מוצר טכנולוגי', en: 'Tech products' },
-    defence: { he: 'דיפנס־טק', en: 'Defence tech' },
+    defense: { he: 'דיפנס־טק', en: 'Defence tech' },
   };
   let count = 0;
   for (const [group, ids] of Object.entries(designs.groupIds)) {

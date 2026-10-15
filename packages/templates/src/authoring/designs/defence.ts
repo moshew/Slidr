@@ -794,7 +794,7 @@ function simtraining(lang: Lang): Slide {
 export const designs: DesignEntry[] = [
   {
     id: 'm-thermal',
-    group: 'defence',
+    group: 'defense',
     name: { he: 'מצלמה תרמית לחילוץ', en: 'Thermal search camera' },
     subject: [1372, 727],
     he: thermal('he'),
@@ -802,7 +802,7 @@ export const designs: DesignEntry[] = [
   },
   {
     id: 'm-antijam',
-    group: 'defence',
+    group: 'defense',
     name: { he: 'אנטנה נגד שיבוש', en: 'Anti-jam antenna' },
     subject: [1390, 545],
     he: antijam('he'),
@@ -810,7 +810,7 @@ export const designs: DesignEntry[] = [
   },
   {
     id: 'm-meshradio',
-    group: 'defence',
+    group: 'defense',
     name: { he: 'רשת קשר לחילוץ', en: 'Rescue mesh radio' },
     subject: [560, 430],
     he: meshradio('he'),
@@ -818,7 +818,7 @@ export const designs: DesignEntry[] = [
   },
   {
     id: 'm-cyberrange',
-    group: 'defence',
+    group: 'defense',
     name: { he: 'תרגיל סייבר', en: 'Cyber range exercise' },
     subject: [960, 800],
     he: cyberrange('he'),
@@ -826,7 +826,7 @@ export const designs: DesignEntry[] = [
   },
   {
     id: 'm-simtraining',
-    group: 'defence',
+    group: 'defense',
     name: { he: 'סימולטור טיסה', en: 'Flight simulator' },
     subject: [1213, 478],
     he: simtraining('he'),
