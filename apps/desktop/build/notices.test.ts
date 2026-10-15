@@ -1,5 +1,7 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { bundledPackages, dataNotices, noticesText } from './notices.ts';
 
@@ -31,17 +33,30 @@ describe('the third-party notices (WG13-T05)', () => {
   });
 
   it('takes the notice a data file of the app carries beside it', () => {
-    const catalog = new URL('../../../../Slidr-media/elements/catalogs/emoji-catalog.json', import.meta.url);
-    const [unicode, ...others] = dataNotices([
-      fileURLToPath(catalog),
-      `${fileURLToPath(catalog)}?import`,
+    const dir = mkdtempSync(join(tmpdir(), 'slidr-notices-'));
+    try {
+      const catalog = join(dir, 'emoji-catalog.json');
+      writeFileSync(catalog, '[]');
+      writeFileSync(
+        join(dir, 'emoji-catalog.notice.json'),
+        JSON.stringify({
+          name: 'Unicode CLDR annotations',
+          version: '47',
+          license: 'Unicode-3.0',
+          text: 'UNICODE LICENSE V3',
+        }),
+      );
       // A data file with nothing beside it is the app's own.
-      fileURLToPath(new URL('../../../../Slidr-media/elements/catalogs/graphics-catalog.json', import.meta.url)),
-    ]);
-    expect(others).toEqual([]);
-    expect(unicode).toMatchObject({ license: 'Unicode-3.0' });
-    expect(unicode!.name).toContain('Unicode');
-    expect(unicode!.texts.join('\n')).toContain('UNICODE LICENSE V3');
+      const own = join(dir, 'graphics-catalog.json');
+      writeFileSync(own, '[]');
+      const [unicode, ...others] = dataNotices([catalog, `${catalog}?import`, own]);
+      expect(others).toEqual([]);
+      expect(unicode).toMatchObject({ license: 'Unicode-3.0' });
+      expect(unicode!.name).toContain('Unicode');
+      expect(unicode!.texts.join('\n')).toContain('UNICODE LICENSE V3');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('lists who is in the app, and writes each licence text once', () => {

@@ -182,7 +182,7 @@ pub fn gate<R: Runtime>(
 }
 
 /// Whether the import window may load a URL: its own page and files, the IPC, and the app's
-/// built-in fonts, which a packaged app keeps in its media library ([`crate::media_dir`]) and
+/// built-in fonts, which the app reads from its media library ([`crate::media_library`]) and
 /// which a file may name without carrying. `home` is the origin the window's page came from,
 /// e.g. `http://tauri.localhost`.
 pub fn request_allowed(home: &str, url: &str) -> bool {

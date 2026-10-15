@@ -27,6 +27,7 @@ async function showPanel(page: Page, id: string) {
 /** The agent's part of the settings screen, open. */
 async function settingsSection(page: Page) {
   await showPanel(page, 'settings');
+  await page.locator('[data-settings-tab="agent"]').click();
   const section = page.locator('[data-settings-section="agent"]');
   await expect(section.getByTestId('settings-agent')).toBeVisible();
   return section;

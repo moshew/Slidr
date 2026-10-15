@@ -3,12 +3,11 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import { devContentPolicy } from './build/csp.ts';
-import { mediaLibrary } from './build/media.ts';
+import { mediaLibraryServer } from './build/media.ts';
 import { thirdPartyNotices } from './build/notices.ts';
 import tauri from './src-tauri/tauri.conf.json' with { type: 'json' };
 
 const here = fileURLToPath(new URL('.', import.meta.url));
-const media = fileURLToPath(new URL('../../../Slidr-media/', import.meta.url));
 
 // Port and host are fixed because `tauri.conf.json` points `devUrl` at them.
 // Any HTML file under this folder is a page of the dev server, e.g. `/dev/gallery.html`.
@@ -21,11 +20,10 @@ export default defineConfig({
       policy: tauri.app.security.csp,
       pages: ['/', '/index.html', '/capture.html'],
     }),
-    // The icons, the templates' photographs and the decks' fonts leave the bundle for a folder
-    // of their own, installed beside the executable.
-    mediaLibrary({
-      dir: media,
-    }),
+    // The icons, the templates and their photographs, the decks' fonts and the content of
+    // Elements are not part of the app: it reads them from the media library while it runs. A
+    // page in a plain browser reads them from this server, which reads the library's site.
+    mediaLibraryServer(),
     // The licences of everything the build contains, as a file inside it (WG13-T05).
     thirdPartyNotices({ app: tauri.productName, version: tauri.version, root: here }),
   ],
@@ -35,7 +33,7 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
-    fs: { allow: [searchForWorkspaceRoot(here), media] },
+    fs: { allow: [searchForWorkspaceRoot(here)] },
     watch: { ignored: ['**/src-tauri/**'] },
   },
   envPrefix: ['VITE_', 'TAURI_ENV_'],

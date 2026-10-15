@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { readMediaJson } from '@slidr/media-library';
 import { describe, expect, it } from 'vitest';
 import { findIcons, iconMarkup, STARTERS, starterIcons, toEnglish } from './library';
 import {
@@ -14,25 +15,27 @@ import {
 } from './search';
 
 /*
- * The icon library against the real sets, as the app's packages ship them. The data is read
- * here from the files; the app reads the same files through the bundler, when it first needs
- * them (`library.ts`).
+ * The icon library against the real sets, as the app's packages ship them, and the app's Hebrew
+ * words from the media library. The sets are read here from the packages; the app reads the same
+ * files from the media library, when it first needs them (`library.ts`). Without the library
+ * there are no Hebrew words to check, and the tests are skipped.
  */
 
 const file = (path: string) =>
   JSON.parse(readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')) as unknown;
 
+const hebrew = await readMediaJson<HebrewTags>('icons/hebrew.json');
 const modules = '../../../node_modules/';
 const sources: IconSources = {
   lucide: file(`${modules}lucide-static/tags.json`) as IconSources['lucide'],
   tabler: file(`${modules}@tabler/icons/icons.json`) as IconSources['tabler'],
-  hebrew: file('../../../../../../Slidr-media/icons/hebrew.json') as HebrewTags,
+  hebrew: hebrew ?? {},
 };
 const index = buildIndex(sources);
 const ids = (query: string, count = 5, style: 'line' | 'filled' = 'line') =>
   searchIcons(index, query, { count, style }).map((icon) => icon.id);
 
-describe('the index', () => {
+describe.skipIf(!hebrew)('the index', () => {
   it('holds both sets, line icons first and filled ones under their own ids', () => {
     const count = (test: (id: string) => boolean) => index.filter((icon) => test(icon.id)).length;
     const lucide = count((id) => id.startsWith('lucide:'));
@@ -72,7 +75,7 @@ describe('the index', () => {
   });
 });
 
-describe('search', () => {
+describe.skipIf(!hebrew)('search', () => {
   it('finds an icon by its English name, the plainest icon first', () => {
     expect(ids('rocket', 3)).toEqual(['lucide:rocket', 'tabler:rocket', 'tabler:rocket-off']);
     expect(ids('heart', 1)).toEqual(['lucide:heart']);
@@ -127,7 +130,7 @@ describe('search', () => {
   });
 });
 
-describe('a Hebrew query for a library that indexes English', () => {
+describe.skipIf(!hebrew)('a Hebrew query for a library that indexes English', () => {
   const english = hebrewToEnglish(sources.hebrew);
 
   it('is translated word by word, and left alone when a word is not known', () => {
@@ -141,7 +144,7 @@ describe('a Hebrew query for a library that indexes English', () => {
   });
 });
 
-describe('the library as the app loads it', () => {
+describe.skipIf(!hebrew)('the library as the app loads it', () => {
   it('draws an icon of either set in currentColor', async () => {
     const lucide = await iconMarkup('lucide:rocket');
     expect(lucide).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 24 24" /);

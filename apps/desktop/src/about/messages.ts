@@ -6,7 +6,6 @@ import type { Messages } from '../i18n/he';
  * translated: its entries are the harness's own words.
  */
 export const he = {
-  title: 'אודות ואבחון',
   version: 'גרסה {{version}}',
   close: 'סגירה',
   licenses: {
@@ -36,7 +35,6 @@ export const he = {
 };
 
 export const en: Messages<typeof he> = {
-  title: 'About and diagnostics',
   version: 'Version {{version}}',
   close: 'Close',
   licenses: {

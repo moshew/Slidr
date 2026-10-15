@@ -368,6 +368,7 @@ impl ImageProvider for OpenAiApi {
                 quality: true,
             },
             key: Some(SecretName::OpenaiApi),
+            harness: None,
         }
     }
 

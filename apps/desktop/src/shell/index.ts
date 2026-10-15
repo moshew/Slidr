@@ -40,8 +40,10 @@ export {
 export {
   openAiChat,
   openPanel,
+  openSettings,
   setAiTab,
   setPanelOpen,
+  setSettingsPage,
   setWelcome,
   setZoom,
   useShell,

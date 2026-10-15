@@ -6,7 +6,7 @@ import {
   enterKey,
   openApp,
   openMedia,
-  openPanel,
+  openSettings,
 } from './media-helpers';
 
 /*
@@ -36,7 +36,7 @@ test('the settings screen lists the providers, and a key is entered once and nev
 }) => {
   const errors = collectErrors(page);
   await openApp(page);
-  const settings = await openPanel(page, 'settings');
+  const settings = await openSettings(page, 'media');
   await expect(settings.locator('[data-settings-section="images"]')).toBeVisible();
   await expect(settings.locator('[data-settings-section="stock"]')).toBeVisible();
 
@@ -75,7 +75,7 @@ test('the settings screen lists the providers, and a key is entered once and nev
 test('the provider chosen in the settings is where an image is made', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page);
-  await openPanel(page, 'settings');
+  await openSettings(page, 'media');
   await provider(page, 'mock-api').click();
   await enterKey(page, 'openai-api', KEY);
 
@@ -120,7 +120,7 @@ test('the provider chosen in the settings is where an image is made', async ({ p
   });
 
   // Back to the first provider: the next image is made there.
-  await openPanel(page, 'settings');
+  await openSettings(page, 'media');
   await provider(page, 'mock').click();
   await expect(provider(page, 'mock')).toHaveAttribute('aria-checked', 'true');
   expect(await made('a blue barn')).toMatchObject({ provider: 'mock' });
@@ -131,7 +131,7 @@ test('a provider that takes a quality offers it, and the choice is kept in the s
   page,
 }) => {
   await openApp(page, { lang: 'en' });
-  const settings = await openPanel(page, 'settings');
+  const settings = await openSettings(page, 'media');
   // Only the provider that takes a quality shows the control.
   await expect(settings.getByRole('radiogroup', { name: 'Image quality' })).toHaveCount(0);
   await provider(page, 'mock-api').click();
@@ -157,7 +157,7 @@ test('a provider that takes a quality offers it, and the choice is kept in the s
 test('a photo library is searched once its key is entered', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page);
-  await openPanel(page, 'settings');
+  await openSettings(page, 'media');
   const stock = page.getByTestId('stock-sources');
   await expect(stock.getByTestId('key-unsplash')).toHaveAttribute('data-stored', 'false');
   // One library is ready without a key: there is nothing to choose between yet.

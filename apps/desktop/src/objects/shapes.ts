@@ -1,3 +1,4 @@
+import { readMediaJson } from '@slidr/media-library';
 import {
   createElement,
   type Direction,
@@ -6,7 +7,6 @@ import {
   type ShapeElement,
 } from '@slidr/model';
 import { extraShapes, presetPath, shapePresets } from '@slidr/renderer';
-import authored from '../../../../../Slidr-media/elements/catalogs/shapes.json?raw';
 
 /*
  * The shape library (SHP-01) and the lines of the Insert menu (SHP-05): what each one is called,
@@ -25,11 +25,96 @@ interface ShapeSpec {
   glyph?: readonly [number, number];
 }
 
-/** In library order. A preset the renderer adds later shows at the end of `basic` until listed. */
-const library = JSON.parse(authored) as {
+interface ShapeCatalog {
   groups: ShapeGroup[];
+  /** In library order. A preset the renderer adds later shows at the end of `basic` until listed. */
   shapes: Record<string, ShapeSpec>;
+  /** The lines of the Insert menu drawn small, in a 24 box, running left to right. */
   lines: Record<LineKind, string>;
+}
+
+/** The box of a regular polygon standing on a vertex, so it is inserted with equal sides. */
+function regularBox(sides: number, size = 360): { w: number; h: number } {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let i = 0; i < sides; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / sides;
+    xs.push(Math.cos(a));
+    ys.push(Math.sin(a));
+  }
+  const w = Math.max(...xs) - Math.min(...xs);
+  const h = Math.max(...ys) - Math.min(...ys);
+  const scale = size / Math.max(w, h);
+  return { w: Math.round(w * scale), h: Math.round(h * scale) };
+}
+
+const polygon = (sides: number): ShapeSpec => ({ group: 'polygons', ...regularBox(sides) });
+
+/**
+ * The library as the app knew it before it became a file of the media library: what the shapes
+ * and lines are when that file cannot be read. The shapes are the renderer's, so without the
+ * file they still draw, and the Insert menu still offers them.
+ */
+const BUILT_IN: ShapeCatalog = {
+  groups: ['basic', 'polygons', 'arrows', 'callouts', 'brackets'],
+  shapes: {
+    rect: { group: 'basic', w: 480, h: 320 },
+    roundRect: { group: 'basic', w: 480, h: 320 },
+    ellipse: { group: 'basic', w: 360, h: 360 },
+    triangle: { group: 'basic', w: 400, h: 346 },
+    rightTriangle: { group: 'basic', w: 400, h: 320 },
+    diamond: { group: 'basic', w: 360, h: 360 },
+    parallelogram: { group: 'basic', w: 480, h: 300 },
+    trapezoid: { group: 'basic', w: 480, h: 300 },
+    plus: { group: 'basic', w: 320, h: 320 },
+    donut: { group: 'basic', w: 360, h: 360 },
+    frame: { group: 'basic', w: 480, h: 360 },
+    heart: { group: 'basic', w: 360, h: 330 },
+    pentagon: polygon(5),
+    hexagon: polygon(6),
+    heptagon: polygon(7),
+    octagon: polygon(8),
+    decagon: polygon(10),
+    star4: polygon(4),
+    star5: polygon(5),
+    star6: polygon(6),
+    star8: polygon(8),
+    star12: polygon(12),
+    arrowRight: { group: 'arrows', w: 480, h: 240 },
+    arrowLeft: { group: 'arrows', w: 480, h: 240 },
+    arrowUp: { group: 'arrows', w: 240, h: 480 },
+    arrowDown: { group: 'arrows', w: 240, h: 480 },
+    arrowLeftRight: { group: 'arrows', w: 560, h: 240 },
+    chevron: { group: 'arrows', w: 400, h: 280 },
+    homePlate: { group: 'arrows', w: 480, h: 240 },
+    wedgeRectCallout: { group: 'callouts', w: 480, h: 280 },
+    wedgeRoundRectCallout: { group: 'callouts', w: 480, h: 280 },
+    leftBracket: { group: 'brackets', w: 80, h: 400, glyph: [7, 18] },
+    rightBracket: { group: 'brackets', w: 80, h: 400, glyph: [7, 18] },
+    leftBrace: { group: 'brackets', w: 100, h: 400, glyph: [9, 18] },
+    rightBrace: { group: 'brackets', w: 100, h: 400, glyph: [9, 18] },
+  },
+  lines: {
+    line: 'M4 12H20',
+    arrow: 'M4 12H20M14 6l6 6-6 6',
+    doubleArrow: 'M4 12H20M14 6l6 6-6 6M10 6l-6 6 6 6',
+    elbow: 'M4 6H12V18H20',
+    curved: 'M4 6C12 6 12 18 20 18',
+  },
+};
+
+const isRecord = (value: unknown): value is Record<string, never> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The library authored in the media library (`elements/catalogs/shapes.json`), part by part. */
+const authored = await readMediaJson<Partial<ShapeCatalog>>('elements/catalogs/shapes.json');
+const library: ShapeCatalog = {
+  groups:
+    Array.isArray(authored?.groups) && authored.groups.length > 0
+      ? authored.groups
+      : BUILT_IN.groups,
+  shapes: isRecord(authored?.shapes) ? authored.shapes : BUILT_IN.shapes,
+  lines: isRecord(authored?.lines) ? authored.lines : BUILT_IN.lines,
 };
 export const SHAPE_GROUPS: readonly ShapeGroup[] = library.groups;
 const CATALOGUE = library.shapes;

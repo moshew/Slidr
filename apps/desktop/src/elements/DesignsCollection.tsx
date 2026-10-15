@@ -135,6 +135,15 @@ export function DesignsCollection() {
     })();
   };
 
+  if (DESIGN_IDS.length === 0) {
+    // The designs are read from the media library: without it there are none to offer.
+    return (
+      <p className="py-8 text-center text-sm text-ui-fg-muted" data-testid="elements-designs">
+        {t('loadFailed')}
+      </p>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4" data-testid="elements-designs">
       <Input

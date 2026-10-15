@@ -75,7 +75,8 @@
         "transparent": false,
         "maxParallel": 4,
         "quality": false
-      }
+      },
+      "harness": "codex-cli"
     },
     {
       "id": "exact",

@@ -16,6 +16,17 @@
   color: var(--color-ui-header-fg);
 }
 
+/* The "system" theme in the settings: a picture of the app in its dark colours, cut on the
+   diagonal over the same picture in its light ones, so the light half is at the start of the
+   line and the dark half at its end. */
+.theme-split {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+
+  &:dir(rtl) {
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+  }
+}
+
 .header-button {
   color: var(--color-ui-header-fg);
 

@@ -16,7 +16,7 @@ registerMessages('fonts', { he, en });
 
 registerSettingsSection({
   id: 'fonts',
-  title: 'fonts:title',
+  page: 'fonts',
   order: SettingsOrder.fonts,
   render: FontsSection,
 });

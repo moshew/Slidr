@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tzukTemplate } from './builtin';
+import { builtInAvailable, tzukTemplate } from './builtin';
 import { nightTemplate } from './fixtures';
 import { Template } from './template';
 import { withStandardLayouts } from './standardLayouts';
@@ -37,35 +37,38 @@ describe('the standard text layout', () => {
     expect(body!.frame.y).toBeLessThan(96 + 2 * line);
   });
 
-  it('draws them on the ground and in the frame of the content slides', () => {
-    // A built-in template as it was before it drew a title and a text layout of its own.
-    const tzuk = tzukTemplate();
-    const older = {
-      ...tzuk,
-      layouts: tzuk.layouts.filter((l) => l.archetype !== 'title' && l.archetype !== 'text'),
-    };
-    const complete = withStandardLayouts(older);
-    const table = tzuk.layouts.find((layout) => layout.archetype === 'table')!;
-    for (const archetype of ['text'] as const) {
-      const layout = complete.layouts.find((l) => l.archetype === archetype)!;
-      expect(layout.placeholders[0]!.frame.y).toBe(
-        table.placeholders.find((place) => place.role === 'title')!.frame.y,
-      );
-      // The brass rule over the title, and the rule, the mark and the number of the foot, under
-      // ids of their own; nothing of the table itself, and no footer: the layouts seat only what
-      // they are asked for.
-      expect(layout.decorations.map((d) => d.id)).toEqual([
-        `d_tzuk_table_tick_${archetype}`,
-        `d_tzuk_table_rule_${archetype}`,
-        `d_tzuk_table_mark_${archetype}`,
-        `d_tzuk_table_number_${archetype}`,
-      ]);
-      expect(layout.decorations.map((d) => d.role)).toContain('slideNumber');
-      expect(layout.decorations.map((d) => d.role)).toContain('logo');
-      const body = layout.placeholders.find((place) => place.role === 'body');
-      if (body) expect(body.frame.y + body.frame.h).toBeLessThanOrEqual(940);
-    }
-  });
+  it.skipIf(!builtInAvailable)(
+    'draws them on the ground and in the frame of the content slides',
+    () => {
+      // A built-in template as it was before it drew a title and a text layout of its own.
+      const tzuk = tzukTemplate();
+      const older = {
+        ...tzuk,
+        layouts: tzuk.layouts.filter((l) => l.archetype !== 'title' && l.archetype !== 'text'),
+      };
+      const complete = withStandardLayouts(older);
+      const table = tzuk.layouts.find((layout) => layout.archetype === 'table')!;
+      for (const archetype of ['text'] as const) {
+        const layout = complete.layouts.find((l) => l.archetype === archetype)!;
+        expect(layout.placeholders[0]!.frame.y).toBe(
+          table.placeholders.find((place) => place.role === 'title')!.frame.y,
+        );
+        // The brass rule over the title, and the rule, the mark and the number of the foot, under
+        // ids of their own; nothing of the table itself, and no footer: the layouts seat only what
+        // they are asked for.
+        expect(layout.decorations.map((d) => d.id)).toEqual([
+          `d_tzuk_table_tick_${archetype}`,
+          `d_tzuk_table_rule_${archetype}`,
+          `d_tzuk_table_mark_${archetype}`,
+          `d_tzuk_table_number_${archetype}`,
+        ]);
+        expect(layout.decorations.map((d) => d.role)).toContain('slideNumber');
+        expect(layout.decorations.map((d) => d.role)).toContain('logo');
+        const body = layout.placeholders.find((place) => place.role === 'body');
+        if (body) expect(body.frame.y + body.frame.h).toBeLessThanOrEqual(940);
+      }
+    },
+  );
 
   it('places a previously saved text layout before a newly added text and image layout', () => {
     const complete = withStandardLayouts(nightTemplate());

@@ -126,15 +126,17 @@ describe('the IPC contract (src-tauri/src/image_providers/fixtures/contract.json
     ];
     const edits: EditSupport[] = ['regenerate', 'exact', 'none'];
     for (const d of contract.descriptors) {
-      // `key` is there only for a provider that needs one.
-      const optional: keyof ImageProviderDescriptor = 'key';
-      expect(sorted(Object.keys(d).filter((field) => field !== optional))).toEqual(
+      // `key` is there only for a provider that needs one, `harness` for one that runs on a CLI.
+      const optional: (keyof ImageProviderDescriptor)[] = ['key', 'harness'];
+      expect(sorted(Object.keys(d).filter((field) => !optional.some((o) => o === field)))).toEqual(
         sorted(descriptor),
       );
       expect(sorted(Object.keys(d.capabilities))).toEqual(sorted(capabilities));
     }
     const keys = contract.descriptors.flatMap((d) => ('key' in d ? [d.key] : []));
     expect(keys).toEqual(['openai-api']);
+    const harnesses = contract.descriptors.flatMap((d) => ('harness' in d ? [d.harness] : []));
+    expect(harnesses).toEqual(['codex-cli']);
     expect(SECRET_NAMES).toEqual(expect.arrayContaining(keys));
     expect(contract.descriptors.map((d) => d.capabilities.edit)).toEqual(edits);
     const status: (keyof ImageProviderStatus)[] = ['state', 'version', 'account', 'detail'];

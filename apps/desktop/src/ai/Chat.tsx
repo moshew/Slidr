@@ -54,7 +54,7 @@ import type {
   UserEntry,
 } from '../agent/transcript';
 import { pickFiles } from '../objects/insert';
-import { ask, openPanel, PanelId, useDeck, useEditor } from '../shell';
+import { ask, openSettings, useDeck, useEditor } from '../shell';
 import { TemplateDraftCard } from '../templates/DraftCard';
 import { actionLabel } from './actionLabels';
 import { accepted, ATTACHABLE, pastedFiles, readAttachment, refusals } from './attachments';
@@ -408,7 +408,7 @@ function ProblemCard({ problem, setup }: { problem: ChatProblem; setup?: Setup }
           </div>
         )}
         {problem.kind === 'invalid_input' && (
-          <Button size="sm" variant="ghost" onClick={() => openPanel(PanelId.settings)}>
+          <Button size="sm" variant="ghost" onClick={() => openSettings('agent')}>
             {t('settings:agent.configure')}
           </Button>
         )}

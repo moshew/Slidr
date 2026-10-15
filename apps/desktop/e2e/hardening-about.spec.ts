@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { collectErrors, openApp, openPanel } from './media-helpers';
+import { collectErrors, openApp, openSettings } from './media-helpers';
 
 /*
  * "About and diagnostics" in the settings screen (WG13-T05, AGT-08): the version, the licences
@@ -17,19 +17,24 @@ const out = (name: string) =>
   fileURLToPath(new URL(`../test-results/hardening/${name}.png`, import.meta.url));
 
 async function openAbout(page: Page) {
-  const settings = await openPanel(page, 'settings');
+  const settings = await openSettings(page, 'about');
   const about = settings.locator('[data-settings-section="about"]');
   await about.scrollIntoViewIfNeeded();
   await expect(about.getByTestId('about')).toBeVisible();
   return about;
 }
 
+/** The name of the tab, in its header: the section is the whole tab, and has no heading. */
+const tabTitle = (page: Page) =>
+  page.locator('[data-settings-page="about"]').getByRole('heading').first();
+
 test('the section says which version this is', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page);
   const about = await openAbout(page);
-  await expect(about.getByRole('heading')).toHaveText('אודות ואבחון');
-  await expect(about.getByTestId('about-version')).toHaveText(/^Slidr · גרסה .?\d+\.\d+\.\d+.?$/);
+  await expect(tabTitle(page)).toHaveText('אודות ואבחון');
+  await expect(about.getByTestId('about')).toContainText('Slidr');
+  await expect(about.getByTestId('about-version')).toHaveText(/^גרסה .?\d+\.\d+\.\d+.?$/);
   expect(errors).toEqual([]);
 });
 
@@ -84,7 +89,7 @@ test('the licences open in a dialog, in English too', async ({ page }) => {
   const errors = collectErrors(page);
   await openApp(page, { lang: 'en' });
   const about = await openAbout(page);
-  await expect(about.getByRole('heading')).toHaveText('About and diagnostics');
+  await expect(tabTitle(page)).toHaveText('About and diagnostics');
   await about.getByTestId('about-licenses').click();
   const dialog = page.getByTestId('licenses-dialog');
   await expect(dialog.getByRole('heading')).toHaveText('Open-source licences');

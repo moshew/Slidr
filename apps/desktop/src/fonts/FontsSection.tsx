@@ -1,8 +1,17 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, IconButton, ScrollArea } from '@slidr/ui';
-import { ChevronDown, ChevronUp, Trash2, Upload } from '@slidr/ui/icons';
+import { Button, cx, Icon, IconButton, ScrollArea } from '@slidr/ui';
+import {
+  ChevronDown,
+  HardDrive,
+  Library,
+  Presentation,
+  Trash2,
+  Upload,
+  type LucideIcon,
+} from '@slidr/ui/icons';
 import { pickFiles } from '../objects/insert';
+import { SettingsCard, SettingsGroup } from '../settings';
 import { useDeck } from '../shell';
 import { builtinFamilies } from './builtinFonts.generated';
 import { useSystemFonts } from './systemFonts';
@@ -26,9 +35,19 @@ const FONT_FILES = '.woff2,.ttf,.otf';
 /** A list longer than this scrolls inside its own height. */
 const LONG = 8;
 
-type Source = 'mine' | 'deck' | 'library' | 'system';
+/** Where fonts come from, but the user's own files, which have a card of their own. */
+type Elsewhere = 'deck' | 'library' | 'system';
 
-/** One of the places fonts come from: its name, how many families, and the list when opened. */
+const sourceIcons: Record<Elsewhere, LucideIcon> = {
+  deck: Presentation,
+  library: Library,
+  system: HardDrive,
+};
+
+/**
+ * One of the places fonts come from: its name and how many families, a row of the card that
+ * opens to say what being from there means, and to list them.
+ */
 function SourceList({
   source,
   count,
@@ -36,7 +55,7 @@ function SourceList({
   onToggle,
   children,
 }: {
-  source: Source;
+  source: Elsewhere;
   count: number;
   open: boolean;
   onToggle: () => void;
@@ -44,24 +63,27 @@ function SourceList({
 }) {
   const { t } = useTranslation('fonts');
   return (
-    <div data-font-source={source} data-count={count} className="flex flex-col gap-1">
-      {/* Wider than the section by the button's own padding, so its words start where the
-          section's do. */}
-      <div className="-mx-2.5 flex">
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-expanded={open}
-          iconEnd={open ? ChevronUp : ChevronDown}
-          className="min-w-0 flex-1"
-          onClick={onToggle}
-        >
-          <span className="min-w-0 flex-1 truncate text-start">{t(`source.${source}`)}</span>
-          <span className="font-normal text-ui-fg-muted">{count}</span>
-        </Button>
-      </div>
+    <div data-font-source={source} data-count={count} className="flex flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex min-w-0 cursor-default items-center gap-3 px-3 py-2.5 text-start transition-colors hover:bg-ui-hover focus-visible:-outline-offset-2 active:bg-ui-pressed"
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-control bg-ui-field text-ui-fg-muted">
+          <Icon icon={sourceIcons[source]} />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm text-ui-fg">{t(`source.${source}`)}</span>
+        <span className="rounded-full bg-ui-field px-2 text-xs font-medium text-ui-fg-muted tabular-nums">
+          {count}
+        </span>
+        <Icon
+          icon={ChevronDown}
+          className={cx('text-ui-fg-muted transition-transform', open && 'rotate-180')}
+        />
+      </button>
       {open && (
-        <div className="flex flex-col gap-1.5 pb-1">
+        <div className="flex flex-col gap-2 px-3 pb-3">
           <p className="text-xs text-ui-fg-muted">{t(`from.${source}`)}</p>
           {children}
         </div>
@@ -74,7 +96,7 @@ function SourceList({
 function Names({ names, empty }: { names: readonly string[]; empty?: string }) {
   if (names.length === 0) return empty ? <p className="text-sm text-ui-fg-muted">{empty}</p> : null;
   const list = (
-    <ul className="flex flex-col">
+    <ul className="flex flex-col px-2.5 py-1.5">
       {names.map((name) => (
         <li key={name} className="truncate py-0.5 text-sm">
           <bdi>{name}</bdi>
@@ -82,7 +104,11 @@ function Names({ names, empty }: { names: readonly string[]; empty?: string }) {
       ))}
     </ul>
   );
-  return names.length > LONG ? <ScrollArea className="h-48">{list}</ScrollArea> : list;
+  return (
+    <div className="overflow-hidden rounded-control bg-ui-field">
+      {names.length > LONG ? <ScrollArea className="h-48">{list}</ScrollArea> : list}
+    </div>
+  );
 }
 
 const unique = (names: readonly string[]) =>
@@ -90,12 +116,30 @@ const unique = (names: readonly string[]) =>
     a.localeCompare(b),
   );
 
+/** A sample of a font of the user's, drawn in it: Hebrew letters when it has them. */
+function Sample({ font }: { font: UserFont }) {
+  const face: CSSProperties = {
+    fontFamily: `"${font.family}"`,
+    fontWeight: font.weight.split(' ')[0],
+    fontStyle: font.style,
+  };
+  return (
+    <span
+      aria-hidden
+      className="flex size-9 shrink-0 items-center justify-center rounded-control bg-ui-tool-orange text-lg text-ui-tool-orange-fg"
+      style={face}
+    >
+      {font.hebrew ? 'אב' : 'Aa'}
+    </span>
+  );
+}
+
 export function FontsSection() {
   const { t } = useTranslation('fonts');
   const mine = useUserFonts();
   const assets = useDeck((s) => s.deck.assets);
   const installed = useSystemFonts();
-  const [open, setOpen] = useState<Source | null>('mine');
+  const [open, setOpen] = useState<Elsewhere | null>(null);
   const [adding, setAdding] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
 
@@ -110,7 +154,7 @@ export function FontsSection() {
   );
   const library = useMemo(() => builtinFamilies.map(({ family }) => family), []);
   const system = useMemo(() => installed.map(({ family }) => family), [installed]);
-  const toggle = (source: Source) => () => setOpen((now) => (now === source ? null : source));
+  const toggle = (source: Elsewhere) => () => setOpen((now) => (now === source ? null : source));
 
   const add = async () => {
     const files = await pickFiles(FONT_FILES, true);
@@ -125,7 +169,6 @@ export function FontsSection() {
       }
     }
     setAdding(false);
-    setOpen('mine');
     setProblems(
       (['unreadable', 'storage'] as const).flatMap((problem) =>
         failed[problem].length > 0 ? [t(problem, { files: failed[problem].join(', ') })] : [],
@@ -141,39 +184,27 @@ export function FontsSection() {
     ].join(' · ');
 
   return (
-    <div className="flex flex-col gap-3" data-testid="settings-fonts">
-      <p className="text-xs text-ui-fg-muted">{t('about')}</p>
-      <div className="flex flex-col items-start gap-1.5">
-        <Button icon={Upload} loading={adding} data-testid="font-add" onClick={() => void add()}>
-          {t('add')}
-        </Button>
-        <p className="text-xs text-ui-fg-muted">{t('formats')}</p>
-        {problems.map((problem) => (
-          <p key={problem} role="alert" className="text-xs text-ui-danger-fg">
-            {problem}
-          </p>
-        ))}
-      </div>
-      <div className="flex flex-col">
-        <SourceList
-          source="mine"
-          count={unique(mine.map((font) => font.family)).length}
-          open={open === 'mine'}
-          onToggle={toggle('mine')}
-        >
+    <div className="flex flex-col gap-6" data-testid="settings-fonts">
+      <div
+        data-font-source="mine"
+        data-count={unique(mine.map((font) => font.family)).length}
+        className="flex flex-col gap-2"
+      >
+        <SettingsGroup title={t('source.mine')} note={t('about')}>
           {mine.length === 0 ? (
-            <p className="text-sm text-ui-fg-muted">{t('none.mine')}</p>
+            <p className="px-3 py-3 text-sm text-ui-fg-muted">{t('none.mine')}</p>
           ) : (
-            <ul className="flex flex-col">
+            <ul className="flex flex-col divide-y divide-ui-line">
               {mine.map((font) => (
                 <li
                   key={font.id}
                   data-user-font={font.family}
                   data-weight={font.weight}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-3 py-2 ps-3 pe-2"
                 >
-                  <span className="flex min-w-0 flex-1 flex-col py-0.5">
-                    <span className="truncate text-sm">
+                  <Sample font={font} />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm text-ui-fg">
                       <bdi>{font.family}</bdi>
                     </span>
                     <span className="truncate text-xs text-ui-fg-muted">
@@ -190,31 +221,53 @@ export function FontsSection() {
               ))}
             </ul>
           )}
-        </SourceList>
-        <SourceList
-          source="deck"
-          count={carried.length}
-          open={open === 'deck'}
-          onToggle={toggle('deck')}
-        >
-          <Names names={carried} empty={t('none.deck')} />
-        </SourceList>
-        <SourceList
-          source="library"
-          count={library.length}
-          open={open === 'library'}
-          onToggle={toggle('library')}
-        >
-          <Names names={library} />
-        </SourceList>
-        <SourceList
-          source="system"
-          count={system.length}
-          open={open === 'system'}
-          onToggle={toggle('system')}
-        >
-          <Names names={system} empty={t('none.system')} />
-        </SourceList>
+          <div className="flex flex-col items-start gap-1.5 px-3 py-3">
+            <Button
+              icon={Upload}
+              size="sm"
+              loading={adding}
+              data-testid="font-add"
+              onClick={() => void add()}
+            >
+              {t('add')}
+            </Button>
+            <p className="text-xs text-ui-fg-muted">{t('formats')}</p>
+          </div>
+        </SettingsGroup>
+        {problems.map((problem) => (
+          <p key={problem} role="alert" className="px-1 text-xs text-ui-danger-fg">
+            {problem}
+          </p>
+        ))}
+      </div>
+      <div className="flex flex-col gap-2">
+        <h4 className="px-1 text-xs font-semibold text-ui-fg-muted">{t('elsewhere')}</h4>
+        <SettingsCard>
+          <SourceList
+            source="deck"
+            count={carried.length}
+            open={open === 'deck'}
+            onToggle={toggle('deck')}
+          >
+            <Names names={carried} empty={t('none.deck')} />
+          </SourceList>
+          <SourceList
+            source="library"
+            count={library.length}
+            open={open === 'library'}
+            onToggle={toggle('library')}
+          >
+            <Names names={library} />
+          </SourceList>
+          <SourceList
+            source="system"
+            count={system.length}
+            open={open === 'system'}
+            onToggle={toggle('system')}
+          >
+            <Names names={system} empty={t('none.system')} />
+          </SourceList>
+        </SettingsCard>
       </div>
     </div>
   );

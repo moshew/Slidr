@@ -101,6 +101,7 @@ async function fixtures(page: Page) {
     setAgentSettings({ harnessId: 'claude-code', model: undefined, effort: undefined });
   });
   await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  await page.locator('[data-settings-tab="agent"]').click();
   await expect(page.getByTestId('harness-connection')).toContainText(/Connected|מחובר/);
 }
 
@@ -248,6 +249,7 @@ for (const lang of ['he', 'en'] as const) {
     await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', 'ultra');
     await page.getByTestId('chat-input').fill('Keep this draft');
     await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+    await page.locator('[data-settings-tab="agent"]').click();
     await expect(page.getByTestId('harness-connection')).toContainText(/Connected|מחובר/);
     await page.evaluate(async () => {
       const path =

@@ -61,6 +61,10 @@ pub struct ProviderDescriptor {
     /// settings screen offers a field for it; `probe` says whether the key works.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub key: Option<SecretName>,
+    /// The agent harness whose CLI the provider runs, for one that runs on a CLI the app can
+    /// install and sign in. The settings screen offers both through that harness.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub harness: Option<String>,
 }
 
 /// Feature flags of a provider.
@@ -424,13 +428,17 @@ mod tests {
                 quality: false,
             },
             key: None,
+            harness: None,
         };
+        // A provider that runs on an agent CLI.
+        let mut example = descriptor("example", "Example", EditSupport::Regenerate, false, 4);
+        example.harness = Some("codex-cli".into());
         // A provider that is a web API: it needs a key, and takes a quality.
         let mut exact = descriptor("exact", "Exact", EditSupport::Exact, true, 2);
         exact.key = Some(SecretName::OpenaiApi);
         exact.capabilities.quality = true;
         let descriptors = [
-            descriptor("example", "Example", EditSupport::Regenerate, false, 4),
+            example,
             exact,
             descriptor("plain", "Plain", EditSupport::None, false, 1),
         ];

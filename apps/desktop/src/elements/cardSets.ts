@@ -1,3 +1,4 @@
+import { readMediaJson } from '@slidr/media-library';
 import {
   cloneElement,
   createDeck,
@@ -12,7 +13,6 @@ import {
   type Slide,
   type Theme,
 } from '@slidr/model';
-import source from '../../../../../Slidr-media/elements/cards/catalog.json?raw';
 import { resizeGroup } from '../stage/groups';
 
 interface Size {
@@ -40,9 +40,21 @@ interface CardSetDesign {
 interface MediaDesign extends Omit<CardSetDesign, 'card'> {
   variants: Record<string, Record<string, Element[][]>>;
 }
-const catalog = JSON.parse(source) as { order: string[]; designs: Record<string, MediaDesign> };
+/**
+ * The authored cards: the catalog of the media library (`elements/cards/catalog.json`). Without
+ * it there are no card sets to add, and a set already on a slide is a plain group.
+ */
+const read = await readMediaJson<{ order?: unknown; designs?: Record<string, MediaDesign> }>(
+  'elements/cards/catalog.json',
+);
+const catalog = {
+  order: Array.isArray(read?.order) ? read.order : [],
+  designs: read?.designs ?? {},
+};
 export type CardSetId = 'pop' | 'steps' | 'stats' | 'plans' | 'voices';
-export const CARD_SETS: readonly CardSetId[] = catalog.order as CardSetId[];
+export const CARD_SETS: readonly CardSetId[] = catalog.order.filter(
+  (id): id is CardSetId => typeof id === 'string' && id in catalog.designs,
+);
 
 const whole = ({ w, h }: Size): Frame => ({ x: 0, y: 0, w, h });
 const widthFor = (count: number, design: MediaDesign): number => {

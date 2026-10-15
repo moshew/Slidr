@@ -1,4 +1,5 @@
-import { hebrewTags, lazy } from '../media/icons/library';
+import { lazyMediaJson, requireMediaJson } from '@slidr/media-library';
+import { hebrewTags } from '../media/icons/library';
 import {
   hebrewOf,
   searchIcons,
@@ -62,21 +63,17 @@ interface Art {
 }
 
 const ART = {
-  'fluent-color': lazy<Art>(() => import('../../../../../Slidr-media/elements/art/fluent-color.json?raw')),
-  'streamline-kameleon-color': lazy<Art>(
-    () => import('../../../../../Slidr-media/elements/art/streamline-kameleon-color.json?raw'),
-  ),
-  'streamline-ultimate-color': lazy<Art>(
-    () => import('../../../../../Slidr-media/elements/art/streamline-ultimate-color.json?raw'),
-  ),
-  twemoji: lazy<Art>(() => import('../../../../../Slidr-media/elements/art/twemoji.json?raw')),
-  'fluent-emoji': lazy<Art>(() => import('../../../../../Slidr-media/elements/art/fluent-emoji.json?raw')),
-  'fluent-emoji-flat': lazy<Art>(() => import('../../../../../Slidr-media/elements/art/fluent-emoji-flat.json?raw')),
-  'streamline-emojis': lazy<Art>(() => import('../../../../../Slidr-media/elements/art/streamline-emojis.json?raw')),
-  noto: lazy<Art>(() => import('../../../../../Slidr-media/elements/art/noto.json?raw')),
-  'streamline-stickies-color': lazy<Art>(() => import('../../../../../Slidr-media/elements/art/streamline-stickies-color.json?raw')),
-  'streamline-flex-color': lazy<Art>(() => import('../../../../../Slidr-media/elements/art/streamline-flex-color.json?raw')),
-  'streamline-freehand-color': lazy<Art>(() => import('../../../../../Slidr-media/elements/art/streamline-freehand-color.json?raw')),
+  'fluent-color': lazyMediaJson<Art>('elements/art/fluent-color.json'),
+  'streamline-kameleon-color': lazyMediaJson<Art>('elements/art/streamline-kameleon-color.json'),
+  'streamline-ultimate-color': lazyMediaJson<Art>('elements/art/streamline-ultimate-color.json'),
+  twemoji: lazyMediaJson<Art>('elements/art/twemoji.json'),
+  'fluent-emoji': lazyMediaJson<Art>('elements/art/fluent-emoji.json'),
+  'fluent-emoji-flat': lazyMediaJson<Art>('elements/art/fluent-emoji-flat.json'),
+  'streamline-emojis': lazyMediaJson<Art>('elements/art/streamline-emojis.json'),
+  noto: lazyMediaJson<Art>('elements/art/noto.json'),
+  'streamline-stickies-color': lazyMediaJson<Art>('elements/art/streamline-stickies-color.json'),
+  'streamline-flex-color': lazyMediaJson<Art>('elements/art/streamline-flex-color.json'),
+  'streamline-freehand-color': lazyMediaJson<Art>('elements/art/streamline-freehand-color.json'),
 };
 
 export type ArtSet = keyof typeof ART;
@@ -146,8 +143,11 @@ export function graphicsOf(catalog: GraphicsCatalog, hebrew: HebrewTags): Sticke
 let graphics: Promise<Sticker[]> | undefined;
 
 export function loadGraphics(): Promise<Sticker[]> {
-  graphics ??= Promise.all([import('../../../../../Slidr-media/elements/catalogs/graphics-catalog.json?raw'), hebrewTags()])
-    .then(([module, hebrew]) => graphicsOf(JSON.parse(module.default), hebrew))
+  graphics ??= Promise.all([
+    requireMediaJson<GraphicsCatalog>('elements/catalogs/graphics-catalog.json'),
+    hebrewTags(),
+  ])
+    .then(([catalog, hebrew]) => graphicsOf(catalog, hebrew))
     .catch((error: unknown) => {
       graphics = undefined;
       throw error;
@@ -206,8 +206,8 @@ export function emojiOf(catalog: EmojiCatalog): Sticker[] {
 let emoji: Promise<Sticker[]> | undefined;
 
 export function loadEmoji(): Promise<Sticker[]> {
-  emoji ??= import('../../../../../Slidr-media/elements/catalogs/emoji-catalog.json?raw')
-    .then((module) => emojiOf(JSON.parse(module.default)))
+  emoji ??= requireMediaJson<EmojiCatalog>('elements/catalogs/emoji-catalog.json')
+    .then(emojiOf)
     .catch((error: unknown) => {
       emoji = undefined;
       throw error;

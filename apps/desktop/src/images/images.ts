@@ -41,6 +41,8 @@ export interface ImageProviderDescriptor {
   capabilities: ImageCapabilities;
   /** The key the provider needs, when it calls a web API with the user's own key. */
   key?: SecretName;
+  /** The agent harness whose CLI the provider runs: Settings installs it and signs in through it. */
+  harness?: string;
 }
 
 export type ImageProviderState = 'ready' | 'not_installed' | 'not_logged_in' | 'unavailable';

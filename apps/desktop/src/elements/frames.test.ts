@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readMediaJson } from '@slidr/media-library';
 import {
   CommandBus,
   createDeck,
@@ -36,20 +35,13 @@ import {
 } from './frames';
 
 /*
- * The catalogue of photo frames as it is checked in, and what a frame becomes on a slide. The
- * catalogue is read here from its file; the app reads the same file through the bundler, when
- * it first shows the frames (`frames.ts`).
+ * The catalogue of photo frames as the media library holds it, and what a frame becomes on a
+ * slide. The catalogue is read here from the library, as the app reads it when it first shows the
+ * frames (`frames.ts`). Without the library there is nothing to check, and the tests are skipped.
  */
 
-const catalog = JSON.parse(
-  readFileSync(
-    fileURLToPath(
-      new URL('../../../../../Slidr-media/elements/catalogs/frames-catalog.json', import.meta.url),
-    ),
-    'utf8',
-  ),
-) as FramesCatalog;
-const frames = framesOf(catalog);
+const catalog = await readMediaJson<FramesCatalog>('elements/catalogs/frames-catalog.json');
+const frames = catalog ? framesOf(catalog) : [];
 
 const ids = (found: readonly { id: string }[]) => found.map(({ id }) => id);
 const frame = (id: string): PhotoFrame => {
@@ -58,10 +50,10 @@ const frame = (id: string): PhotoFrame => {
   return found;
 };
 
-describe('the catalogue of frames', () => {
+describe.skipIf(!catalog)('the catalogue of frames', () => {
   it('has its groups in the order the panel shows them, none of them empty', () => {
-    expect(catalog.groups.map(({ id }) => id)).toEqual([...FRAME_GROUPS]);
-    for (const { frames: ofGroup } of catalog.groups) expect(ofGroup.length).toBeGreaterThan(5);
+    expect(catalog!.groups.map(({ id }) => id)).toEqual([...FRAME_GROUPS]);
+    for (const { frames: ofGroup } of catalog!.groups) expect(ofGroup.length).toBeGreaterThan(5);
     expect(frames.length).toBeGreaterThan(250);
     expect(new Set(ids(frames)).size).toBe(frames.length);
   });
@@ -73,7 +65,7 @@ describe('the catalogue of frames', () => {
 
   it('shows twenty frames first, plain ones and decorated ones, in the order it names them', () => {
     const featured = featuredFrames(frames);
-    expect(ids(featured)).toEqual(catalog.featured.map((id) => `frame:${id}`));
+    expect(ids(featured)).toEqual(catalog!.featured.map((id) => `frame:${id}`));
     expect(featured).toHaveLength(20);
     expect(featured.filter((one) => one.art).length).toBeGreaterThan(5);
     expect(featured.filter((one) => !one.art).length).toBeGreaterThan(5);
@@ -98,7 +90,7 @@ describe('the catalogue of frames', () => {
   });
 });
 
-describe('a frame on a slide', () => {
+describe.skipIf(!catalog)('a frame on a slide', () => {
   const box = { x: 100, y: 100, w: 400, h: 400 };
 
   it('is a picture with no photograph yet, valid for the model, whatever the frame', () => {
@@ -178,7 +170,7 @@ describe('a frame on a slide', () => {
   });
 });
 
-describe('putting a picture in a frame', () => {
+describe.skipIf(!catalog)('putting a picture in a frame', () => {
   const photo = (more: Partial<ImageElement> = {}) =>
     createElement.image({
       frame: { x: 200, y: 100, w: 800, h: 400 },
@@ -233,7 +225,7 @@ describe('putting a picture in a frame', () => {
   });
 });
 
-describe('a frame of an earlier catalogue on a slide', () => {
+describe.skipIf(!catalog)('a frame of an earlier catalogue on a slide', () => {
   /** A picture as the frames once made it: artwork of one size, with no scale. */
   const old = (id: string, more: Partial<ImageElement> = {}) => {
     const { size, art } = frame(id);
@@ -332,7 +324,7 @@ describe('a frame of an earlier catalogue on a slide', () => {
   });
 });
 
-describe('the magnets of events', () => {
+describe.skipIf(!catalog)('the magnets of events', () => {
   const magnets = frames.filter((one) => one.group === 'magnets');
   const group = (one: PhotoFrame, lang = 'he', box = { x: 0, y: 0, ...one.size }) =>
     framedElement(one, box, lang) as GroupElement;
@@ -372,7 +364,7 @@ describe('the magnets of events', () => {
       }
     }
     // The stickers are in the catalogue once, whatever number of magnets has them.
-    expect(Object.keys(catalog.stickers ?? {}).length).toBeGreaterThan(20);
+    expect(Object.keys(catalog!.stickers ?? {}).length).toBeGreaterThan(20);
     // The three kinds of things a magnet puts beside its picture are all in use.
     expect(new Set(extras.map(({ extra }) => extra.kind))).toEqual(
       new Set(['sticker', 'caption', 'label']),
@@ -661,7 +653,7 @@ describe('the magnets of events', () => {
   });
 });
 
-describe('the search of frames', () => {
+describe.skipIf(!catalog)('the search of frames', () => {
   it('finds a magnet by the event it is for, in both languages', () => {
     expect(ids(searchFrames(frames, 'חתונה', 8))).toContain('frame:magnet-wedding');
     expect(ids(searchFrames(frames, 'birthday', 20))).toContain('frame:magnet-birthday');

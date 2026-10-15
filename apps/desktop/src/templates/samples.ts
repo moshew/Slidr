@@ -6,22 +6,18 @@
  * not with the app: the catalog holds every template with its samples, in both languages. So
  * nothing here imports `@slidr/templates/builtin`, whose catalog is read as it is imported.
  */
+import { mediaFiles, mediaUrl, requireMediaJson } from '@slidr/media-library';
 import type { AssetMeta, Deck } from '@slidr/model';
 import type { Template } from '@slidr/templates';
 import { sampleDeck, type SampleSlide } from '@slidr/templates/builtin/kit';
 import { pictures } from '@slidr/templates/builtin/pictures';
-import catalogUrl from '../../../../../Slidr-media/templates/catalog.json?url';
 
-const files = import.meta.glob<string>('../../../../../Slidr-media/images/templates/*.webp', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
+const files = await mediaFiles();
 
 const urls = new Map<string, string>();
 for (const picture of Object.values(pictures)) {
-  const path = Object.keys(files).find((file) => file.endsWith(`/${picture.name}`));
-  if (path) urls.set(picture.id, files[path]!);
+  const path = `images/templates/${picture.name}`;
+  if (files.has(path)) urls.set(picture.id, mediaUrl(path));
 }
 
 const pictureAssets: Record<string, AssetMeta> = Object.fromEntries(
@@ -39,11 +35,8 @@ let read: Promise<Samples> | undefined;
 
 /** The samples of the catalog, by template id. Read once; a failed read is tried again. */
 function samples(): Promise<Samples> {
-  read ??= fetch(catalogUrl)
-    .then(async (response) => {
-      if (!response.ok) throw new Error(`The catalog of the templates: ${response.status}`);
-      return ((await response.json()) as { samples: Samples }).samples;
-    })
+  read ??= requireMediaJson<{ samples?: Samples }>('templates/catalog.json')
+    .then((catalog) => catalog.samples ?? {})
     .catch((error: unknown) => {
       read = undefined;
       throw error;

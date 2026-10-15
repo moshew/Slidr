@@ -10,7 +10,17 @@ import { removeSecret, saveSecret, useSettings } from './store';
  * that it is stored. The text lives in this component until it is saved, then it is dropped:
  * the app cannot show a stored key, so replacing one means pasting it again.
  */
-export function KeyField({ name }: { name: SecretName }) {
+export function KeyField({
+  name,
+  quiet = false,
+}: {
+  name: SecretName;
+  /**
+   * Leaves out the line about where the key is kept, for a group of keys that says it once for
+   * all of them. A reason the key was turned back is still shown.
+   */
+  quiet?: boolean;
+}) {
   const { t } = useTranslation('settings');
   const stored = useSettings((state) => state.keys[name]);
   const [replacing, setReplacing] = useState(false);
@@ -103,7 +113,7 @@ export function KeyField({ name }: { name: SecretName }) {
           spellCheck={false}
           dir="ltr"
           invalid={Boolean(error)}
-          aria-describedby={messageId}
+          aria-describedby={error || !quiet ? messageId : undefined}
           className="min-w-0 flex-1"
         />
         <Button type="submit" variant="primary" loading={busy} disabled={!value.trim()}>
@@ -123,13 +133,15 @@ export function KeyField({ name }: { name: SecretName }) {
           </Button>
         )}
       </div>
-      <p
-        id={messageId}
-        role={error ? 'alert' : undefined}
-        className={error ? 'text-xs text-ui-danger-fg' : 'text-xs text-ui-fg-muted'}
-      >
-        {error ?? t('keys.where')}
-      </p>
+      {(error || !quiet) && (
+        <p
+          id={messageId}
+          role={error ? 'alert' : undefined}
+          className={error ? 'text-xs text-ui-danger-fg' : 'text-xs text-ui-fg-muted'}
+        >
+          {error ?? t('keys.where')}
+        </p>
+      )}
     </form>
   );
 }

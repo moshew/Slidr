@@ -319,6 +319,9 @@ importers:
       '@slidr/lint':
         specifier: workspace:*
         version: link:../../packages/lint
+      '@slidr/media-library':
+        specifier: workspace:*
+        version: link:../../packages/media-library
       '@slidr/model':
         specifier: workspace:*
         version: link:../../packages/model
@@ -502,6 +505,8 @@ importers:
         specifier: workspace:*
         version: link:../model
 
+  packages/media-library: {}
+
   packages/model:
     dependencies:
       immer:
@@ -549,6 +554,9 @@ importers:
 
   packages/templates:
     dependencies:
+      '@slidr/media-library':
+        specifier: workspace:*
+        version: link:../media-library
       '@slidr/model':
         specifier: workspace:*
         version: link:../model

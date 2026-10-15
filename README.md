@@ -77,7 +77,7 @@ Prerequisites:
 - Microsoft Edge, for the end-to-end tests.
 - One of Claude Code CLI, Codex CLI or GitHub Copilot CLI for the AI chat and HTML import. Select it in Settings → Agent: Slidr checks the connection, offers installation through Windows App Installer with your approval if missing, and opens sign-in if needed. It then reads the available models and each model's supported effort levels from the CLI. Choose a model and effort explicitly; the chat shows that choice. The rest of the editor works without a CLI.
 - Optional: Codex CLI, logged in, for image generation with the default provider; an OpenAI, Unsplash or Pexels key, entered in the settings, for the other image provider and for stock photos.
-- The sibling `Slidr-media` directory, with Elements content, templates, pictures, icons and deck fonts. See [media library](docs/media-library.md).
+- The network, the first time the app or the dev server runs: templates, Elements content, pictures, icons and deck fonts come from the media library at https://slidr-media.pages.dev; what the app uses is kept on the machine, the rest stays on the site. See [media library](docs/media-library.md).
 
 ```sh
 pnpm install
@@ -96,7 +96,7 @@ With the dev server running, a few pages are useful on their own:
 | `/dev/stage.html?deck=reference` | The stage and filmstrip on a real deck                                     |
 | `/dev/runtime.html`              | The runtime player and the HTML export; `?deck=charts` for charts          |
 
-[the reference deck index](../Slidr-media/templates/reference-decks/index.html) opens by double-click, with no server.
+The reference decks are part of the media library (`templates/reference-decks/`); `pnpm media:pull` copies them into `../Slidr-media`, where their index opens by double-click, with no server.
 
 ## Checks
 

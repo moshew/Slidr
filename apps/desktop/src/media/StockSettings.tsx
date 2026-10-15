@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Select, Skeleton } from '@slidr/ui';
-import { KeyField, updateSection, useSection, useSettings } from '../settings';
+import { Field, Select, Skeleton } from '@slidr/ui';
+import {
+  KeyField,
+  SettingsGroup,
+  SettingsItem,
+  updateSection,
+  useSection,
+  useSettings,
+} from '../settings';
 import { useEditor } from '../shell/editor';
 import { stockOf } from './appStock';
 import type { StockSource } from './stock';
@@ -39,7 +46,7 @@ export function StockSettings() {
         {t('settings.listFailed')}
       </p>
     ) : (
-      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-24 w-full rounded-panel" />
     );
   }
 
@@ -47,28 +54,41 @@ export function StockSettings() {
   const ready = sources.filter((source) => source.state === 'ready');
 
   return (
-    <div className="flex flex-col gap-3" data-testid="stock-sources">
+    <div className="flex flex-col gap-4" data-testid="stock-sources">
       <p className="text-xs text-ui-fg-muted">{t('settings.hint')}</p>
-      {keyed.map((source) => source.key && <KeyField key={source.id} name={source.key} />)}
-      {ready.length > 1 && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-ui-fg-muted">{t('settings.source')}</span>
-          <Select
-            aria-label={t('settings.source')}
-            value={
-              typeof chosen === 'string' && ready.some((source) => source.id === chosen)
-                ? chosen
-                : AUTO
-            }
-            onValueChange={(next) =>
-              void updateSection('stock', { source: next === AUTO ? undefined : next })
-            }
-            options={[
-              { value: AUTO, label: t('settings.auto') },
-              ...ready.map((source) => ({ value: source.id, label: source.name })),
-            ]}
-          />
-        </div>
+      {/* Where a key is kept is said once, under the card, for all the libraries' keys. */}
+      {(keyed.length > 0 || ready.length > 1) && (
+        <SettingsGroup note={keyed.length > 0 ? t('settings:keys.where') : undefined}>
+          {keyed.map(
+            (source) =>
+              source.key && (
+                <SettingsItem key={source.id}>
+                  <KeyField name={source.key} quiet />
+                </SettingsItem>
+              ),
+          )}
+          {ready.length > 1 && (
+            <SettingsItem>
+              <Field label={t('settings.source')}>
+                <Select
+                  aria-label={t('settings.source')}
+                  value={
+                    typeof chosen === 'string' && ready.some((source) => source.id === chosen)
+                      ? chosen
+                      : AUTO
+                  }
+                  onValueChange={(next) =>
+                    void updateSection('stock', { source: next === AUTO ? undefined : next })
+                  }
+                  options={[
+                    { value: AUTO, label: t('settings.auto') },
+                    ...ready.map((source) => ({ value: source.id, label: source.name })),
+                  ]}
+                />
+              </Field>
+            </SettingsItem>
+          )}
+        </SettingsGroup>
       )}
     </div>
   );

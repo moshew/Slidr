@@ -5,6 +5,34 @@ import type { Messages } from '../i18n/he';
  * (WG3-T08, SEC-04). Hebrew is the source of the keys; `en` must have the same ones.
  */
 export const he = {
+  topics: 'נושאי ההגדרות',
+  pages: {
+    general: {
+      tab: 'כללי',
+      title: 'כללי',
+      description: 'המראה של האפליקציה ושפת הממשק.',
+    },
+    agent: {
+      tab: 'Agent',
+      title: 'ה-Agent',
+      description: 'החיבור, המודל שכל שיחה מתחילה בו, ומה מותר לו לעשות בדרך.',
+    },
+    media: {
+      tab: 'תמונות',
+      title: 'תמונות',
+      description: 'יצירת תמונות ב-AI, ומאגרי תמונות הסטוק.',
+    },
+    fonts: {
+      tab: 'גופנים',
+      title: 'גופנים',
+      description: 'הגופנים שבורר הגופן מציע, וגופנים משלכם.',
+    },
+    about: {
+      tab: 'אודות',
+      title: 'אודות ואבחון',
+      description: 'הגרסה, רישיונות הקוד הפתוח ויומן האבחון.',
+    },
+  },
   keys: {
     name: {
       'openai-api': 'מפתח API של OpenAI',
@@ -45,6 +73,16 @@ export const he = {
     configure: 'בחירת מודל בהגדרות',
 
     title: 'ה-Agent',
+    connection: 'חיבור',
+    state: {
+      ready: 'מחובר',
+      not_installed: 'לא מותקן',
+      not_logged_in: 'לא מחובר',
+      unavailable: 'לא זמין',
+      busy: 'בתהליך…',
+    },
+    defaults: 'ברירת המחדל של שיחות',
+    behaviour: 'התנהגות',
     harness: 'Harness',
     model: 'מודל',
     effort: 'רמת מאמץ',
@@ -62,6 +100,35 @@ export const he = {
 };
 
 export const en: Messages<typeof he> = {
+  topics: 'Settings topics',
+  pages: {
+    general: {
+      tab: 'General',
+      title: 'General',
+      description: "The app's appearance and the language of its interface.",
+    },
+    agent: {
+      tab: 'Agent',
+      title: 'The agent',
+      description:
+        'Its connection, the model every chat starts with, and what it may do on the way.',
+    },
+    media: {
+      tab: 'Images',
+      title: 'Images',
+      description: 'Making images with AI, and the stock photo libraries.',
+    },
+    fonts: {
+      tab: 'Fonts',
+      title: 'Fonts',
+      description: 'The fonts the font picker offers, and fonts of your own.',
+    },
+    about: {
+      tab: 'About',
+      title: 'About and diagnostics',
+      description: 'The version, open-source licences and the diagnostics log.',
+    },
+  },
   keys: {
     name: {
       'openai-api': 'OpenAI API key',
@@ -102,6 +169,16 @@ export const en: Messages<typeof he> = {
     configure: 'Choose a model in Settings',
 
     title: 'The agent',
+    connection: 'Connection',
+    state: {
+      ready: 'Connected',
+      not_installed: 'Not installed',
+      not_logged_in: 'Signed out',
+      unavailable: 'Unavailable',
+      busy: 'Working…',
+    },
+    defaults: 'Defaults for chats',
+    behaviour: 'Behaviour',
     harness: 'Harness',
     model: 'Model',
     effort: 'Effort',

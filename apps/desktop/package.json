@@ -52,6 +52,7 @@
     "@slidr/html-export": "workspace:*",
     "@slidr/html-import": "workspace:*",
     "@slidr/lint": "workspace:*",
+    "@slidr/media-library": "workspace:*",
     "@slidr/model": "workspace:*",
     "@slidr/prompts": "workspace:*",
     "@slidr/renderer": "workspace:*",

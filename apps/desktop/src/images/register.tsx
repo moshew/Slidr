@@ -13,6 +13,7 @@ registerMessages('images', { he, en });
 
 registerSettingsSection({
   id: 'images',
+  page: 'media',
   title: 'images:settings.title',
   order: SettingsOrder.images,
   render: ImageSettings,

@@ -290,33 +290,36 @@ export function Welcome() {
             </div>
           </section>
 
-          <section className="flex flex-col gap-3">
-            <div className="flex h-control-sm items-center justify-between">
-              <Heading>{t('welcome.templates')}</Heading>
-              {templates.length > TEMPLATE_COLUMNS && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  data-testid="welcome-all-templates"
-                  aria-expanded={allTemplates}
-                  onClick={() => setAllTemplates((all) => !all)}
-                >
-                  {t(allTemplates ? 'welcome.fewerTemplates' : 'welcome.allTemplates')}
-                </Button>
-              )}
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              {(allTemplates ? templates : templates.slice(0, TEMPLATE_COLUMNS)).map(
-                ({ template }) => (
-                  <TemplateCard
-                    key={template.theme.id}
-                    template={template}
-                    onPick={() => void onTemplate(template)}
-                  />
-                ),
-              )}
-            </div>
-          </section>
+          {/* Without the media library and without templates of the user's own, nothing to offer. */}
+          {templates.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <div className="flex h-control-sm items-center justify-between">
+                <Heading>{t('welcome.templates')}</Heading>
+                {templates.length > TEMPLATE_COLUMNS && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    data-testid="welcome-all-templates"
+                    aria-expanded={allTemplates}
+                    onClick={() => setAllTemplates((all) => !all)}
+                  >
+                    {t(allTemplates ? 'welcome.fewerTemplates' : 'welcome.allTemplates')}
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {(allTemplates ? templates : templates.slice(0, TEMPLATE_COLUMNS)).map(
+                  ({ template }) => (
+                    <TemplateCard
+                      key={template.theme.id}
+                      template={template}
+                      onPick={() => void onTemplate(template)}
+                    />
+                  ),
+                )}
+              </div>
+            </section>
+          )}
 
           <section className="flex flex-col gap-3">
             <Heading>{t('welcome.recent')}</Heading>

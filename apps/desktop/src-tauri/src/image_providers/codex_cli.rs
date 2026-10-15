@@ -290,8 +290,9 @@ impl ImageProvider for CodexCli {
                 max_parallel: 4,
                 quality: false,
             },
-            // It runs on the CLI's own sign-in.
+            // It runs on the CLI's own sign-in, the one the agent harness of the same CLI has.
             key: None,
+            harness: Some("codex-cli".into()),
         }
     }
 

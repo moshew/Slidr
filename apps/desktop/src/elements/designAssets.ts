@@ -1,23 +1,22 @@
+import { mediaFiles, mediaUrl, readMediaJson } from '@slidr/media-library';
 import type { AssetMeta } from '@slidr/model';
 import type { DesignId } from './designs';
 
-const sizes = JSON.parse(
-  (await import('../../../../../Slidr-media/images/designs/sizes.json?raw')).default,
-) as Record<string, number[] | undefined>;
+const sizes =
+  (await readMediaJson<Record<string, number[] | undefined>>('images/designs/sizes.json')) ?? {};
 
 /**
- * Bundled originals, by file name: `<id>.webp` is a design's picture, and `<id>-bg.webp` the
- * photographic backdrop a few designs lay under their subject. They are imported into the
- * document when a design is chosen. Where a design has a subject of its own (a person, a
- * product), the picture is the subject alone on a transparent ground, so it stays usable when
- * the background behind it is changed.
+ * The originals in the media library, by file name: `<id>.webp` is a design's picture, and
+ * `<id>-bg.webp` the photographic backdrop a few designs lay under their subject. They are
+ * imported into the document when a design is chosen. Where a design has a subject of its own (a
+ * person, a product), the picture is the subject alone on a transparent ground, so it stays usable
+ * when the background behind it is changed.
  */
-const files = import.meta.glob<string>('../../../../../Slidr-media/images/designs/*.webp', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
-const url = (name: string) => files[`../../../../../Slidr-media/images/designs/${name}.webp`];
+const files = await mediaFiles();
+const url = (name: string) => {
+  const path = `images/designs/${name}.webp`;
+  return files.has(path) ? mediaUrl(path) : undefined;
+};
 
 export const previewAssetId = (id: DesignId) => `design-preview-${id}`;
 export const previewBackdropId = (id: DesignId) => `design-preview-${id}-bg`;

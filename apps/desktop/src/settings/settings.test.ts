@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import contract from '../../src-tauri/src/stock/fixtures/contract.json';
 import { memorySettings } from './memorySettings';
-import { registerSettingsSection, settingsSections, SettingsOrder } from './sections';
+import {
+  registerSettingsSection,
+  SETTINGS_PAGES,
+  settingsPages,
+  settingsSections,
+  SettingsOrder,
+} from './sections';
 import { SECRET_NAMES, SettingsError, type SecretStatus } from './settings';
 import { tauriSettings } from './tauriSettings';
 
@@ -121,18 +127,21 @@ describe('the sections of the settings screen', () => {
     const remove = [
       registerSettingsSection({
         id: 'b',
+        page: 'media',
         title: 'x:b',
         order: SettingsOrder.stock,
         render: Nothing,
       }),
       registerSettingsSection({
         id: 'a',
+        page: 'agent',
         title: 'x:a',
         order: SettingsOrder.agent,
         render: Nothing,
       }),
       registerSettingsSection({
         id: 'b',
+        page: 'media',
         title: 'x:b2',
         order: SettingsOrder.images,
         render: Nothing,
@@ -143,9 +152,18 @@ describe('the sections of the settings screen', () => {
       ['a', 'x:a'],
       ['b', 'x:b2'],
     ]);
-    // The agent's section has its place before the image providers'.
-    expect(SettingsOrder.agent).toBeLessThan(SettingsOrder.images);
+    // On the media tab, the image providers come before the photo libraries.
+    expect(SettingsOrder.images).toBeLessThan(SettingsOrder.stock);
     remove.forEach((undo) => undo());
     expect(settingsSections.getState().items).toEqual([]);
+  });
+
+  it('are on topics, a tab each: general first, about last, each with its mark', () => {
+    expect(SETTINGS_PAGES[0]).toBe('general');
+    expect(SETTINGS_PAGES.at(-1)).toBe('about');
+    for (const page of SETTINGS_PAGES) {
+      expect(settingsPages[page].icon, page).toBeTruthy();
+      expect(settingsPages[page].tone, page).toBeTruthy();
+    }
   });
 });

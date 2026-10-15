@@ -1,3 +1,4 @@
+import { readMediaJson } from '@slidr/media-library';
 import {
   createDeck,
   duplicateSlide,
@@ -8,7 +9,6 @@ import {
   type SelectionStore,
   type Slide,
 } from '@slidr/model';
-import source from '../../../../../Slidr-media/elements/designs/index.json?raw';
 import { designAssetUrl, previewAsset, previewBackdrop } from './designAssets';
 
 /** Authored slide content is installed in media; this module only inserts it into a deck. */
@@ -19,7 +19,24 @@ interface DesignCatalog {
   subjects: Record<string, [number, number]>;
 }
 
-const catalog = JSON.parse(source) as DesignCatalog;
+/**
+ * The ready-made slides: the catalog of the media library (`elements/designs/index.json`).
+ * Without it the gallery has no designs to offer.
+ */
+const read = await readMediaJson<Partial<DesignCatalog>>('elements/designs/index.json');
+const slides = read?.slides ?? {};
+const catalog: DesignCatalog = {
+  groups: Array.isArray(read?.groups) ? read.groups : [],
+  // Only the designs the catalog has a slide for.
+  groupIds: Object.fromEntries(
+    Object.entries(read?.groupIds ?? {}).map(([group, ids]) => [
+      group,
+      Array.isArray(ids) ? ids.filter((id) => id in slides) : [],
+    ]),
+  ),
+  slides,
+  subjects: read?.subjects ?? {},
+};
 export type DesignGroup = string;
 export type DesignId = string;
 export const DESIGN_GROUPS: readonly DesignGroup[] = catalog.groups;

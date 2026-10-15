@@ -11,10 +11,10 @@ import { registerSettingsSection, SettingsOrder } from './sections';
 
 registerMessages('settings', { he, en });
 
-// The agent's own section: before the image providers, as `SettingsOrder` places it.
+// The agent's own section: the whole of its tab, which names it.
 registerSettingsSection({
   id: 'agent',
-  title: 'settings:agent.title',
+  page: 'agent',
   order: SettingsOrder.agent,
   render: AgentSection,
 });

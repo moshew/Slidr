@@ -1,5 +1,5 @@
 import { registerMessages } from '../i18n';
-import { registerSettingsSection } from '../settings';
+import { registerSettingsSection, SettingsOrder } from '../settings';
 import { AboutSettings } from './AboutSettings';
 import { en, he } from './messages';
 
@@ -13,8 +13,8 @@ registerMessages('about', { he, en });
 
 registerSettingsSection({
   id: 'about',
-  title: 'about:title',
-  // After everything a user sets: this part is for reading.
-  order: 90,
+  // The last tab, after everything a user sets: this part is for reading.
+  page: 'about',
+  order: SettingsOrder.about,
   render: AboutSettings,
 });
