@@ -24,7 +24,10 @@ import { techPictures } from './pictures';
 import own from './pictures/mutzar.json';
 
 /** The pictures of the sample: this template's own manifest, read directly as well as through the folder's. */
-const pictures: Record<string, AssetMeta> = { ...techPictures, ...(own as Record<string, AssetMeta>) };
+const pictures: Record<string, AssetMeta> = {
+  ...techPictures,
+  ...(own as Record<string, AssetMeta>),
+};
 
 /**
  * Mutzar (product): the slide is the canvas of a collaborative product. A warm off-white board
@@ -200,15 +203,18 @@ const ICONS = {
   plug: '<path d="M9 3v5M15 3v5M6 8h12v3.5a6 6 0 0 1-12 0zM12 17.5V21"/>',
   users:
     '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
-  shield: '<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  shield:
+    '<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
   page: '<path d="M6 2.5h8l5 5v14H6z"/><path d="M14 2.5v5h5M9 13h7M9 17h5"/>',
   flow: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h3.5a3 3 0 0 1 3 3V14"/>',
   enter: '<path d="M19 5v7a3 3 0 0 1-3 3H5"/><path d="M9 11l-4 4 4 4"/>',
-  command:
-    '<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>',
-  heart: '<path d="M12 20s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>',
-  thumb: '<path d="M7 10v10H4V10zM7 10l4-7c1.7 0 2.6 1.1 2.3 2.8L12.8 9H19a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.8 20H7"/>',
-  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/>',
+  command: '<path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/>',
+  heart:
+    '<path d="M12 20s-7.5-4.6-7.5-10.3A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>',
+  thumb:
+    '<path d="M7 10v10H4V10zM7 10l4-7c1.7 0 2.6 1.1 2.3 2.8L12.8 9H19a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.8 20H7"/>',
+  smile:
+    '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2 1.8 3.5 1.8s2.6-.6 3.5-1.8M9 9.5h.01M15 9.5h.01"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   arrow: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   send: '<path d="M12 19V5M6 11l6-6 6 6"/>',
@@ -272,10 +278,18 @@ const panel = (id: string, frame: Frame, radius = 24, shadow: Shadow = LIFT) =>
  * Panels side by side: every shadow first, then every face over them, so no panel's shadow falls
  * across its neighbour.
  */
-function panels(items: [id: string, frame: Frame][], radius: number, shadow: Shadow = LIFT_SM): Element[] {
+function panels(
+  items: [id: string, frame: Frame][],
+  radius: number,
+  shadow: Shadow = LIFT_SM,
+): Element[] {
   return [
-    ...items.map(([id, frame]) => rect(`${id}_shadow`, frame, WHITE_FILL, { effects: { radius, shadow } })),
-    ...items.map(([id, frame]) => rect(id, frame, WHITE_FILL, { stroke: HAIR, effects: { radius } })),
+    ...items.map(([id, frame]) =>
+      rect(`${id}_shadow`, frame, WHITE_FILL, { effects: { radius, shadow } }),
+    ),
+    ...items.map(([id, frame]) =>
+      rect(id, frame, WHITE_FILL, { stroke: HAIR, effects: { radius } }),
+    ),
   ];
 }
 
@@ -283,13 +297,20 @@ function panels(items: [id: string, frame: Frame][], radius: number, shadow: Sha
  * A browser window: the panel, its bar with the lights at the start and the address in the
  * middle, and the hairline under the bar.
  */
-function browser(name: string, frame: Frame, url: string, extra?: (dir: Dir, w: number) => string): Element[] {
+function browser(
+  name: string,
+  frame: Frame,
+  url: string,
+  extra?: (dir: Dir, w: number) => string,
+): Element[] {
   const { w } = frame;
   const bar = (dir: Dir) =>
     svg(
       w,
       52,
-      LIGHTS.map((c, i) => `<circle cx="${bx(dir, w, 28 + i * 22)}" cy="26" r="6.5" fill="${c}"/>`).join('') +
+      LIGHTS.map(
+        (c, i) => `<circle cx="${bx(dir, w, 28 + i * 22)}" cy="26" r="6.5" fill="${c}"/>`,
+      ).join('') +
         `<rect x="${w / 2 - 170}" y="12" width="340" height="28" rx="14" fill="${CANVAS}"/>` +
         icon('lock', w / 2 - 6 - wide(url, 15) / 2 - 12, 18.5, 15, MUTED, 2.2) +
         `<text x="${w / 2 + 6}" y="31" text-anchor="middle" ${UI} font-size="15" fill="${MUTED}">${esc(url)}</text>` +
@@ -297,7 +318,11 @@ function browser(name: string, frame: Frame, url: string, extra?: (dir: Dir, w: 
     );
   return [
     panel(`d_mutzar_${name}_window`, frame, 22),
-    rect(`d_mutzar_${name}_window_rule`, { x: frame.x, y: frame.y + 52, w, h: 1 }, solid(token('text', 0.08))),
+    rect(
+      `d_mutzar_${name}_window_rule`,
+      { x: frame.x, y: frame.y + 52, w, h: 1 },
+      solid(token('text', 0.08)),
+    ),
     lettered(`d_mutzar_${name}_window_bar`, { x: frame.x, y: frame.y, w, h: 52 }, bar),
   ];
 }
@@ -306,7 +331,13 @@ function browser(name: string, frame: Frame, url: string, extra?: (dir: Dir, w: 
  * A multiplayer cursor: the arrow, pointing up and towards the start, and its name tag. The
  * frame's top corner at the start side is the arrow's tip.
  */
-function cursor(id: string, top: [number, number], color: string, name: Words, ink = WHITE): Element {
+function cursor(
+  id: string,
+  top: [number, number],
+  color: string,
+  name: Words,
+  ink = WHITE,
+): Element {
   const size = 18;
   const tw = Math.max(wide(name.he, size), wide(name.en, size)) + 28;
   const w = 18 + tw;
@@ -326,10 +357,17 @@ function cursor(id: string, top: [number, number], color: string, name: Words, i
 }
 
 /** A key cap: its face, the edge under it and its shadow, with a glyph on it. */
-function keycap(id: string, frame: Frame, glyph: (cx: number, cy: number, s: number) => string, tilt = 0): Element {
+function keycap(
+  id: string,
+  frame: Frame,
+  glyph: (cx: number, cy: number, s: number) => string,
+  tilt = 0,
+): Element {
   const { w, h } = frame;
   // Room for the shadow, and for the corners of a tilted key.
-  const pad = Math.round(Math.max(w, h) * (0.11 + Math.abs(Math.sin((tilt * Math.PI) / 180)) * 0.5));
+  const pad = Math.round(
+    Math.max(w, h) * (0.11 + Math.abs(Math.sin((tilt * Math.PI) / 180)) * 0.5),
+  );
   const kw = w - 2 * pad;
   const kh = h - 2 * pad;
   const r = Math.min(kw, kh) * 0.2;
@@ -345,8 +383,10 @@ function keycap(id: string, frame: Frame, glyph: (cx: number, cy: number, s: num
   return lettered(id, frame, svg(w, h, body));
 }
 
-const keyIcon = (name: Icon, color = INK) => (cx: number, cy: number, s: number) =>
-  icon(name, cx - s * 0.2, cy - s * 0.2, s * 0.4, color, 2.1);
+const keyIcon =
+  (name: Icon, color = INK) =>
+  (cx: number, cy: number, s: number) =>
+    icon(name, cx - s * 0.2, cy - s * 0.2, s * 0.4, color, 2.1);
 const keyLetter = (letter: string) => (cx: number, cy: number, s: number) =>
   `<text x="${cx}" y="${cy + s * 0.15}" text-anchor="middle" font-family="'DM Sans', Inter, sans-serif" font-weight="600" font-size="${s * 0.42}" fill="${INK}">${letter}</text>`;
 
@@ -369,7 +409,16 @@ function badge(id: string, frame: Frame, words: Words, color: string, filled = f
       w,
       h,
       `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="${color}" fill-opacity="${filled ? 1 : 0.13}"/>` +
-        say(dir, w, w / 2, h / 2 + 5.5, 16, words, `font-weight="700" letter-spacing="${dir === 'rtl' ? 0 : 1}" fill="${filled ? WHITE : color}"`, 'middle'),
+        say(
+          dir,
+          w,
+          w / 2,
+          h / 2 + 5.5,
+          16,
+          words,
+          `font-weight="700" letter-spacing="${dir === 'rtl' ? 0 : 1}" fill="${filled ? WHITE : color}"`,
+          'middle',
+        ),
     ),
   );
 }
@@ -449,7 +498,16 @@ function presence(name: string, frame: Frame = atEnd(END, 94, 248, 48)): Element
         })
         .join('') +
         `<rect x="${bx(dir, w, 124, 124)}" y="4" width="124" height="40" rx="20" fill="${INK}"/>` +
-        say(dir, w, 186, 30, 17, w2('שיתוף', 'Share'), `font-weight="600" fill="${WHITE}"`, 'middle'),
+        say(
+          dir,
+          w,
+          186,
+          30,
+          17,
+          w2('שיתוף', 'Share'),
+          `font-weight="600" fill="${WHITE}"`,
+          'middle',
+        ),
     );
   return lettered(`d_mutzar_${name}_presence`, frame, draw);
 }
@@ -475,7 +533,11 @@ function head(name: string, width = 1180, lines = 1) {
 
 function liveDot(name: string, top: number): Element[] {
   return [
-    dot(`d_mutzar_${name}_live_halo`, at(START - 3, top + 4, 26, 26), solid(token('secondary', 0.18))),
+    dot(
+      `d_mutzar_${name}_live_halo`,
+      at(START - 3, top + 4, 26, 26),
+      solid(token('secondary', 0.18)),
+    ),
     dot(`d_mutzar_${name}_live`, at(START + 3, top + 10, 14, 14), CORAL_FILL),
   ];
 }
@@ -513,11 +575,17 @@ function areaChart(id: string, frame: Frame): Element {
   const right = w - 24;
   const top = 24;
   const bottom = h - 18;
-  const xy = pts.map((v, i) => [left + (i * (right - left)) / (pts.length - 1), bottom - v * (bottom - top)] as const);
+  const xy = pts.map(
+    (v, i) =>
+      [left + (i * (right - left)) / (pts.length - 1), bottom - v * (bottom - top)] as const,
+  );
   const line = xy.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join('');
   const [lx, ly] = xy[xy.length - 1]!;
   const grid = [0, 1, 2, 3]
-    .map((i) => `<path d="M${left} ${top + (i * (bottom - top)) / 3}H${right}" stroke="${INK}" stroke-opacity=".07" stroke-width="1.5" stroke-dasharray="${i === 3 ? '' : '4 6'}"/>`)
+    .map(
+      (i) =>
+        `<path d="M${left} ${top + (i * (bottom - top)) / 3}H${right}" stroke="${INK}" stroke-opacity=".07" stroke-width="1.5" stroke-dasharray="${i === 3 ? '' : '4 6'}"/>`,
+    )
     .join('');
   // Drawn for right to left: the curve rises towards the end side, where time runs on.
   const body =
@@ -544,15 +612,24 @@ function workPath(id: string, frame: Frame, tidy: boolean): Element {
   const x0 = w - 14;
   const x1 = 14;
   // The way runs from the start side to the end side; the check at its end stays a check.
-  const turn = (dir: Dir, body: string) => (dir === 'rtl' ? body : `<g transform="translate(${w} 0) scale(-1 1)">${body}</g>`);
+  const turn = (dir: Dir, body: string) =>
+    dir === 'rtl' ? body : `<g transform="translate(${w} 0) scale(-1 1)">${body}</g>`;
   const end = (dir: Dir) => (dir === 'rtl' ? x1 + 10 : w - x1 - 10);
   if (tidy) {
     const line =
       `<path d="M${x0} ${y}H${x1 + 24}" stroke="${CORAL}" stroke-width="3.5" stroke-linecap="round"/>` +
       `<circle cx="${x0}" cy="${y}" r="7" fill="${CORAL}"/>` +
-      [0.28, 0.5, 0.72].map((t) => `<circle cx="${x0 - t * (x0 - x1)}" cy="${y}" r="5" fill="${WHITE}"/>`).join('');
+      [0.28, 0.5, 0.72]
+        .map((t) => `<circle cx="${x0 - t * (x0 - x1)}" cy="${y}" r="5" fill="${WHITE}"/>`)
+        .join('');
     return lettered(id, frame, (dir) =>
-      svg(w, h, turn(dir, line) + `<circle cx="${end(dir)}" cy="${y}" r="15" fill="${MINT}"/>` + icon('check', end(dir) - 9, y - 9, 18, WHITE, 3)),
+      svg(
+        w,
+        h,
+        turn(dir, line) +
+          `<circle cx="${end(dir)}" cy="${y}" r="15" fill="${MINT}"/>` +
+          icon('check', end(dir) - 9, y - 9, 18, WHITE, 3),
+      ),
     );
   }
   // A prolate trochoid: where its swing is wider than its step, it loops back on itself.
@@ -598,7 +675,12 @@ const steps5 = [0, 1, 2, 3, 4].map((i) => START + i * 336);
 const rows3 = [296, 504, 712];
 const buttons3 = [470, 594, 718];
 const PEOPLE = [CORAL, VIOLET, MINT, AMBER] as const;
-const NAMES: Words[] = [w2('נועה', 'Noa'), w2('יואב', 'Yoav'), w2('איתן', 'Eitan'), w2('מאיה', 'Maya')];
+const NAMES: Words[] = [
+  w2('נועה', 'Noa'),
+  w2('יואב', 'Yoav'),
+  w2('איתן', 'Eitan'),
+  w2('מאיה', 'Maya'),
+];
 
 function layouts(): Layout[] {
   const palette = at(START, 250, 1180, 668);
@@ -612,7 +694,9 @@ function layouts(): Layout[] {
       placeholders: [
         place('p_kicker', 'caption', at(START + 104, 187, 780, 34), 'caption'),
         place('p_title', 'title', at(START + 124, 280, 1010, 240), 'display'),
-        place('p_subtitle', 'subtitle', at(START + 132, 596, 850, 140), 'heading', { vAlign: 'middle' }),
+        place('p_subtitle', 'subtitle', at(START + 132, 596, 850, 140), 'heading', {
+          vAlign: 'middle',
+        }),
         place('p_meta', 'caption', at(START + 44, 862, 720, 34), 'caption'),
       ],
       decorations: [
@@ -622,17 +706,43 @@ function layouts(): Layout[] {
         badge('d_mutzar_hero_new', at(START, 186, 86, 36), w2('חדש', 'NEW'), CORAL, true),
         rect('d_mutzar_hero_palette', palette, WHITE_FILL, {
           stroke: HAIR,
-          effects: { radius: 30, shadow: { x: 0, y: 40, blur: 90, color: { value: '#3b2414', alpha: 0.14 } } },
+          effects: {
+            radius: 30,
+            shadow: { x: 0, y: 40, blur: 90, color: { value: '#3b2414', alpha: 0.14 } },
+          },
         }),
-        still('d_mutzar_hero_search', at(START + 40, 308, 60, 60), svg(60, 60, icon('search', 6, 6, 48, CORAL, 2.4))),
+        still(
+          'd_mutzar_hero_search',
+          at(START + 40, 308, 60, 60),
+          svg(60, 60, icon('search', 6, 6, 48, CORAL, 2.4)),
+        ),
         rect('d_mutzar_hero_rule', at(START, 542, 1180, 1), solid(token('text', 0.08))),
         lettered('d_mutzar_hero_group', at(START + 44, 552, 400, 26), (dir) =>
-          svg(400, 26, say(dir, 400, 0, 19, 16, w2('הצעות', 'SUGGESTED'), `font-weight="600" letter-spacing="${dir === 'rtl' ? 0 : 1.2}" fill="${MUTED}"`)),
+          svg(
+            400,
+            26,
+            say(
+              dir,
+              400,
+              0,
+              19,
+              16,
+              w2('הצעות', 'SUGGESTED'),
+              `font-weight="600" letter-spacing="${dir === 'rtl' ? 0 : 1.2}" fill="${MUTED}"`,
+            ),
+          ),
         ),
-        rect('d_mutzar_hero_selected', at(START + 20, 582, 1140, 168), solid(token('secondary', 0.07)), {
-          effects: { radius: 18 },
+        rect(
+          'd_mutzar_hero_selected',
+          at(START + 20, 582, 1140, 168),
+          solid(token('secondary', 0.07)),
+          {
+            effects: { radius: 18 },
+          },
+        ),
+        rect('d_mutzar_hero_selected_bar', at(START + 20, 606, 5, 120), CORAL_FILL, {
+          effects: { radius: 3 },
         }),
-        rect('d_mutzar_hero_selected_bar', at(START + 20, 606, 5, 120), CORAL_FILL, { effects: { radius: 3 } }),
         tile('d_mutzar_hero_selected_icon', at(START + 48, 634, 64, 64), 'sparkles', CORAL),
         keycap('d_mutzar_hero_enter', at(START + 1044, 622, 112, 100), keyIcon('enter')),
         lettered('d_mutzar_hero_row', at(START + 20, 760, 1140, 64), (dir) =>
@@ -641,7 +751,15 @@ function layouts(): Layout[] {
             64,
             `<rect x="${bx(dir, 1140, 28, 44)}" y="10" width="44" height="44" rx="12" fill="${VIOLET}" fill-opacity=".13"/>` +
               icon('users', bx(dir, 1140, 38, 24), 20, 24, VIOLET, 2.1) +
-              say(dir, 1140, 112, 40, 24, w2('הזמנת הצוות לסביבת העבודה', 'Invite your team to the workspace'), `fill="${INK}" fill-opacity=".72"`) +
+              say(
+                dir,
+                1140,
+                112,
+                40,
+                24,
+                w2('הזמנת הצוות לסביבת העבודה', 'Invite your team to the workspace'),
+                `fill="${INK}" fill-opacity=".72"`,
+              ) +
               [0, 1]
                 .map((i) => {
                   const x = bx(dir, 1140, 1140 - 28 - (i === 0 ? 76 : 36), 36);
@@ -673,7 +791,12 @@ function layouts(): Layout[] {
         keycap('d_mutzar_hero_k', atEnd(310, 346, 320, 320), keyLetter('K'), 7),
         cursor('d_mutzar_hero_cursor1', [1920 - 640, 336], CORAL, NAMES[0]!),
         cursor('d_mutzar_hero_cursor2', [1920 - 384, 628], VIOLET, NAMES[1]!),
-        ...toast('hero', atEnd(110, 740, 450, 76), w2('גרסה 2.0 באוויר', 'Version 2.0 is live'), w2('לצפייה', 'View')),
+        ...toast(
+          'hero',
+          atEnd(110, 740, 450, 76),
+          w2('גרסה 2.0 באוויר', 'Version 2.0 is live'),
+          w2('לצפייה', 'View'),
+        ),
       ],
     },
     {
@@ -696,9 +819,25 @@ function layouts(): Layout[] {
         ...liveDot('section', 334),
         keycap('d_mutzar_section_key', atEnd(150, 232, 600, 560), () => ''),
         lettered('d_mutzar_section_legend', atEnd(256, 336, 388, 30), (dir) =>
-          svg(392, 30, say(dir, 392, 8, 22, 18, w2('פרק', 'PART'), `font-weight="600" letter-spacing="${dir === 'rtl' ? 0 : 1.5}" fill="${MUTED}"`)),
+          svg(
+            392,
+            30,
+            say(
+              dir,
+              392,
+              8,
+              22,
+              18,
+              w2('פרק', 'PART'),
+              `font-weight="600" letter-spacing="${dir === 'rtl' ? 0 : 1.5}" fill="${MUTED}"`,
+            ),
+          ),
         ),
-        still('d_mutzar_section_legend_mark', atEnd(262, 618, 40, 40), svg(40, 40, icon('enter', 6, 6, 28, MUTED, 2))),
+        still(
+          'd_mutzar_section_legend_mark',
+          atEnd(262, 618, 40, 40),
+          svg(40, 40, icon('enter', 6, 6, 28, MUTED, 2)),
+        ),
         keycap('d_mutzar_section_cmd', atEnd(70, 130, 220, 220), keyIcon('command'), -12),
         keycap('d_mutzar_section_k', atEnd(600, 700, 200, 190), keyLetter('K'), 10),
         cursor('d_mutzar_section_cursor', [1920 - 596, 650], MINT, NAMES[3]!),
@@ -710,7 +849,9 @@ function layouts(): Layout[] {
       archetype: 'bigNumber',
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START + 48, 314, 920, 124), 'display', { color: token('secondary') }),
+        place('p_number', 'number', at(START + 48, 314, 920, 124), 'display', {
+          color: token('secondary'),
+        }),
         place('p_label', 'subtitle', at(START + 48, 444, 920, 53), 'heading'),
         place('p_body', 'body', at(START + 48, 506, 900, 135), 'body'),
         ...cards3.flatMap((start, i) => [
@@ -725,9 +866,18 @@ function layouts(): Layout[] {
         presence('big_number'),
         ...browser('big_number', at(START, 236, WIDTH, 450), 'zrima.app/insights'),
         areaChart('d_mutzar_big_number_curve', atEnd(END + 36, 316, 640, 340)),
-        ...panels(cards3.map((start, i) => [`d_mutzar_big_number_tile${i + 1}`, at(start, 708, 536, 196)]), 20),
+        ...panels(
+          cards3.map((start, i) => [`d_mutzar_big_number_tile${i + 1}`, at(start, 708, 536, 196)]),
+          20,
+        ),
         ...cards3.flatMap((start, i) => [
-          tile(`d_mutzar_big_number_icon${i + 1}`, at(start + 30, 736, 56, 56), (['users', 'clock', 'shield'] as const)[i]!, [CORAL, VIOLET, MINT][i]!, true),
+          tile(
+            `d_mutzar_big_number_icon${i + 1}`,
+            at(start + 30, 736, 56, 56),
+            (['users', 'clock', 'shield'] as const)[i]!,
+            [CORAL, VIOLET, MINT][i]!,
+            true,
+          ),
         ]),
         ...foot('big_number').decorations,
       ],
@@ -763,14 +913,28 @@ function layouts(): Layout[] {
             `<rect x="${bx(dir, w, s, cw)}" y="2" width="${cw}" height="44" rx="22" fill="${on ? CORAL : INK}" fill-opacity="${on ? 0.12 : 0.05}" stroke="${on ? CORAL : INK}" stroke-opacity="${on ? 0.5 : 0.08}" stroke-width="1.5"/>` +
             icon(name, bx(dir, w, s + 16, 22), 13, 22, on ? CORAL : MUTED, 2.1) +
             say(dir, w, s + 46, 31, 19, count, `font-weight="600" fill="${on ? CORAL : MUTED}"`);
-          return svg(w, 48, chip(0, 100, 'heart', '48', true) + chip(114, 100, 'thumb', '31', false) + chip(228, 58, 'smile', '', false));
+          return svg(
+            w,
+            48,
+            chip(0, 100, 'heart', '48', true) +
+              chip(114, 100, 'thumb', '31', false) +
+              chip(228, 58, 'smile', '', false),
+          );
         }),
         lettered('d_mutzar_quote_reply', at(START + 128, 810, 1424, 50), (dir) =>
           svg(
             1424,
             50,
             `<rect x="1" y="1" width="1422" height="48" rx="24" fill="${CANVAS}" stroke="${INK}" stroke-opacity=".08"/>` +
-              say(dir, 1424, 28, 32, 19, w2('השב או הזכר מישהו עם @', 'Reply, or mention someone with @'), `fill="${MUTED}"`) +
+              say(
+                dir,
+                1424,
+                28,
+                32,
+                19,
+                w2('השב או הזכר מישהו עם @', 'Reply, or mention someone with @'),
+                `fill="${MUTED}"`,
+              ) +
               `<circle cx="${bx(dir, 1424, 1424 - 25)}" cy="25" r="19" fill="${CORAL}"/>` +
               icon('send', bx(dir, 1424, 1424 - 25) - 10, 15, 20, WHITE, 2.6),
           ),
@@ -788,7 +952,11 @@ function layouts(): Layout[] {
           ),
           PAINT,
         ),
-        still('d_mutzar_quote_pin_icon', at(START + 4 + 28, 128 + 30, 28, 28), svg(28, 28, icon('page', 0, 0, 28, WHITE, 2.2))),
+        still(
+          'd_mutzar_quote_pin_icon',
+          at(START + 4 + 28, 128 + 30, 28, 28),
+          svg(28, 28, icon('page', 0, 0, 28, WHITE, 2.2)),
+        ),
         cursor('d_mutzar_quote_cursor', [1920 - 300, 264], VIOLET, NAMES[2]!),
         ...foot('quote').decorations,
       ],
@@ -818,7 +986,11 @@ function layouts(): Layout[] {
           stroke: HAIR,
           effects: { radius: 20, shadow: LIFT_SM },
         }),
-        still('d_mutzar_text_icon', at(START + 46, 176, 48, 48), svg(48, 48, icon('page', 4, 4, 40, CORAL, 2))),
+        still(
+          'd_mutzar_text_icon',
+          at(START + 46, 176, 48, 48),
+          svg(48, 48, icon('page', 4, 4, 40, CORAL, 2)),
+        ),
         rect('d_mutzar_text_rule', at(START + 30, 350, WIDTH - 60, 1), solid(token('text', 0.08))),
         presence('text', atEnd(END - 24 + 14, 66, 248, 48)),
       ],
@@ -840,7 +1012,9 @@ function layouts(): Layout[] {
         board('text_image'),
         ...head('text_image', 920, 2).decorations,
         ...browser('text_image', textWindow, 'zrima.app/builder'),
-        ...rows3.map((top, i) => toggle(`d_mutzar_text_image_switch${i + 1}`, at(START, top + 8, 64, 36), true)),
+        ...rows3.map((top, i) =>
+          toggle(`d_mutzar_text_image_switch${i + 1}`, at(START, top + 8, 64, 36), true),
+        ),
         ...foot('text_image').decorations,
       ],
     },
@@ -859,12 +1033,22 @@ function layouts(): Layout[] {
       decorations: [
         board('full_image'),
         ...liveDot('full_image', 714),
-        rect('d_mutzar_full_image_mat', { x: 86, y: 86, w: 1748, h: 588 }, solid(token('surface')), {
-          effects: { shadow: LIFT },
-        }),
-        rect('d_mutzar_full_image_selection', { x: 86, y: 86, w: 1748, h: 588 }, { kind: 'none' }, {
-          stroke: { color: token('secondary'), width: 2.5 },
-        }),
+        rect(
+          'd_mutzar_full_image_mat',
+          { x: 86, y: 86, w: 1748, h: 588 },
+          solid(token('surface')),
+          {
+            effects: { shadow: LIFT },
+          },
+        ),
+        rect(
+          'd_mutzar_full_image_selection',
+          { x: 86, y: 86, w: 1748, h: 588 },
+          { kind: 'none' },
+          {
+            stroke: { color: token('secondary'), width: 2.5 },
+          },
+        ),
         ...[
           [79, 79],
           [1827, 79],
@@ -880,13 +1064,25 @@ function layouts(): Layout[] {
             420,
             30,
             `<path d="M${bx(dir, 420, 4)} 8v14M${bx(dir, 420, 16)} 8v14M${bx(dir, 420, 0)} 12h${dir === 'rtl' ? -20 : 20}M${bx(dir, 420, 0)} 18h${dir === 'rtl' ? -20 : 20}" stroke="${CORAL}" stroke-width="2" stroke-linecap="round"/>` +
-              say(dir, 420, 32, 21, 17, w2('מסך הבית · Zrima 2.0', 'Home screen · Zrima 2.0'), `font-weight="600" fill="${CORAL}"`),
+              say(
+                dir,
+                420,
+                32,
+                21,
+                17,
+                w2('מסך הבית · Zrima 2.0', 'Home screen · Zrima 2.0'),
+                `font-weight="600" fill="${CORAL}"`,
+              ),
           ),
         ),
         lettered(
           'd_mutzar_full_image_size',
           { x: 960 - 76, y: 690, w: 152, h: 32 },
-          svg(152, 32, `<rect width="152" height="32" rx="8" fill="${CORAL}"/><text x="76" y="22" text-anchor="middle" ${UI} font-size="16" font-weight="600" fill="${WHITE}">1728 × 568</text>`),
+          svg(
+            152,
+            32,
+            `<rect width="152" height="32" rx="8" fill="${CORAL}"/><text x="76" y="22" text-anchor="middle" ${UI} font-size="16" font-weight="600" fill="${WHITE}">1728 × 568</text>`,
+          ),
         ),
       ],
     },
@@ -901,16 +1097,26 @@ function layouts(): Layout[] {
           place(`p_card${i + 1}`, 'subtitle', at(start + 30, 424, 476, 100), 'heading'),
           place(`p_card${i + 1}_body`, 'body', at(start + 30, 530, 476, 210), 'body'),
         ]),
-        place('p_takeaway', 'body', at(START + 96, 798, WIDTH - 130, 90), 'body', { vAlign: 'middle' }),
+        place('p_takeaway', 'body', at(START + 96, 798, WIDTH - 130, 90), 'body', {
+          vAlign: 'middle',
+        }),
         ...foot('cards').placeholders,
       ],
       decorations: [
         board('cards'),
         ...head('cards').decorations,
         presence('cards'),
-        ...panels(cards3.map((start, i) => [`d_mutzar_cards_card${i + 1}`, at(start, 244, 536, 522)]), 24),
+        ...panels(
+          cards3.map((start, i) => [`d_mutzar_cards_card${i + 1}`, at(start, 244, 536, 522)]),
+          24,
+        ),
         ...cards3.flatMap((start, i) => [
-          tile(`d_mutzar_cards_icon${i + 1}`, at(start + 30, 272, 60, 60), (['sparkles', 'plug', 'shield'] as const)[i]!, [CORAL, VIOLET, MINT][i]!),
+          tile(
+            `d_mutzar_cards_icon${i + 1}`,
+            at(start + 30, 272, 60, 60),
+            (['sparkles', 'plug', 'shield'] as const)[i]!,
+            [CORAL, VIOLET, MINT][i]!,
+          ),
           badge(
             `d_mutzar_cards_badge${i + 1}`,
             at(start + 104, 286, 92, 32),
@@ -918,16 +1124,26 @@ function layouts(): Layout[] {
             i === 2 ? VIOLET : CORAL,
           ),
           toggle(`d_mutzar_cards_switch${i + 1}`, at(start + 536 - 28 - 76, 282, 76, 40), true),
-          rect(`d_mutzar_cards_rule${i + 1}`, at(start + 30, 340, 476, 1), solid(token('text', 0.07))),
+          rect(
+            `d_mutzar_cards_rule${i + 1}`,
+            at(start + 30, 340, 476, 1),
+            solid(token('text', 0.07)),
+          ),
         ]),
         rect('d_mutzar_cards_banner', at(START, 790, WIDTH, 106), solid(token('secondary', 0.07)), {
           effects: { radius: 20 },
         }),
-        rect('d_mutzar_cards_banner_bar', at(START, 812, 5, 62), CORAL_FILL, { effects: { radius: 3 } }),
+        rect('d_mutzar_cards_banner_bar', at(START, 812, 5, 62), CORAL_FILL, {
+          effects: { radius: 3 },
+        }),
         still(
           'd_mutzar_cards_banner_icon',
           at(START + 30, 819, 48, 48),
-          svg(48, 48, `<circle cx="24" cy="24" r="23" fill="${CORAL}"/>${icon('bolt', 12, 12, 24, WHITE, 2.2)}`),
+          svg(
+            48,
+            48,
+            `<circle cx="24" cy="24" r="23" fill="${CORAL}"/>${icon('bolt', 12, 12, 24, WHITE, 2.2)}`,
+          ),
         ),
         ...foot('cards').decorations,
       ],
@@ -953,9 +1169,18 @@ function layouts(): Layout[] {
         rect('d_mutzar_timeline_track', at(START, 398, WIDTH, 10), solid(token('text', 0.08)), {
           effects: { radius: 5 },
         }),
-        rect('d_mutzar_timeline_progress', at(START, 398, 449, 10), CORAL_FILL, { effects: { radius: 5 } }),
-        ...panels(columns4.map((start, i) => [`d_mutzar_timeline_card${i + 1}`, at(start, 452, 390, 330)]), 22),
-        dot('d_mutzar_timeline_halo', at(START + 429 - 12, 371, 64, 64), solid(token('secondary', 0.16))),
+        rect('d_mutzar_timeline_progress', at(START, 398, 449, 10), CORAL_FILL, {
+          effects: { radius: 5 },
+        }),
+        ...panels(
+          columns4.map((start, i) => [`d_mutzar_timeline_card${i + 1}`, at(start, 452, 390, 330)]),
+          22,
+        ),
+        dot(
+          'd_mutzar_timeline_halo',
+          at(START + 429 - 12, 371, 64, 64),
+          solid(token('secondary', 0.16)),
+        ),
         ...columns4.flatMap((start, i) => {
           const badges: [Words, string][] = [
             [w2('זמין', 'GA'), MINT],
@@ -965,23 +1190,46 @@ function layouts(): Layout[] {
           ];
           const [words, color] = badges[i]!;
           return [
-            badge(`d_mutzar_timeline_badge${i + 1}`, at(start, 250, i === 1 ? 150 : 104, 34), words, color, i === 1),
-            rect(`d_mutzar_timeline_stem${i + 1}`, at(start + 18, 420, 4, 32), solid(token(i < 2 ? 'secondary' : 'text', i < 2 ? 1 : 0.14))),
+            badge(
+              `d_mutzar_timeline_badge${i + 1}`,
+              at(start, 250, i === 1 ? 150 : 104, 34),
+              words,
+              color,
+              i === 1,
+            ),
+            rect(
+              `d_mutzar_timeline_stem${i + 1}`,
+              at(start + 18, 420, 4, 32),
+              solid(token(i < 2 ? 'secondary' : 'text', i < 2 ? 1 : 0.14)),
+            ),
             i < 2
               ? still(
                   `d_mutzar_timeline_node${i + 1}`,
                   at(start, 383, 40, 40),
-                  svg(40, 40, `<circle cx="20" cy="20" r="18" fill="${CORAL}" stroke="${WHITE}" stroke-width="${i === 1 ? 4 : 0}"/>${icon('check', 9, 9, 22, WHITE, 3)}`),
+                  svg(
+                    40,
+                    40,
+                    `<circle cx="20" cy="20" r="18" fill="${CORAL}" stroke="${WHITE}" stroke-width="${i === 1 ? 4 : 0}"/>${icon('check', 9, 9, 22, WHITE, 3)}`,
+                  ),
                 )
               : drawing(
                   `d_mutzar_timeline_node${i + 1}`,
                   at(start, 383, 40, 40),
-                  svg(40, 40, `<circle cx="20" cy="20" r="16" fill="${WHITE}" stroke="${i === 2 ? VIOLET : INK}" stroke-opacity="${i === 2 ? 1 : 0.35}" stroke-width="4" stroke-dasharray="${i === 2 ? '' : '5 4'}"/>`),
+                  svg(
+                    40,
+                    40,
+                    `<circle cx="20" cy="20" r="16" fill="${WHITE}" stroke="${i === 2 ? VIOLET : INK}" stroke-opacity="${i === 2 ? 1 : 0.35}" stroke-width="4" stroke-dasharray="${i === 2 ? '' : '5 4'}"/>`,
+                  ),
                   PAINT,
                 ),
           ];
         }),
-        cursor('d_mutzar_timeline_cursor', [START + 429 + 34, 412], CORAL, w2('אנחנו כאן', 'We are here')),
+        cursor(
+          'd_mutzar_timeline_cursor',
+          [START + 429 + 34, 412],
+          CORAL,
+          w2('אנחנו כאן', 'We are here'),
+        ),
         ...foot('timeline').decorations,
       ],
     },
@@ -998,7 +1246,9 @@ function layouts(): Layout[] {
             color: token('secondary'),
           }),
         ]),
-        place('p_summary', 'body', at(START + 100, 822, WIDTH - 140, 90), 'body', { vAlign: 'middle' }),
+        place('p_summary', 'body', at(START + 100, 822, WIDTH - 140, 90), 'body', {
+          vAlign: 'middle',
+        }),
         ...foot('process').placeholders,
       ],
       decorations: [
@@ -1007,11 +1257,28 @@ function layouts(): Layout[] {
         presence('process'),
         panel('d_mutzar_process_panel', at(START, 236, WIDTH, 556), 26),
         lettered('d_mutzar_process_progress_label', at(START + 30, 256, 600, 34), (dir) =>
-          svg(600, 34, say(dir, 600, 0, 24, 19, w2('הקמת סביבת העבודה · 4 מתוך 5', 'Workspace setup · 4 of 5'), `font-weight="600" fill="${INK}"`)),
+          svg(
+            600,
+            34,
+            say(
+              dir,
+              600,
+              0,
+              24,
+              19,
+              w2('הקמת סביבת העבודה · 4 מתוך 5', 'Workspace setup · 4 of 5'),
+              `font-weight="600" fill="${INK}"`,
+            ),
+          ),
         ),
-        rect('d_mutzar_process_progress_track', atEnd(END + 36, 266, 560, 12), solid(token('text', 0.08)), {
-          effects: { radius: 6 },
-        }),
+        rect(
+          'd_mutzar_process_progress_track',
+          atEnd(END + 36, 266, 560, 12),
+          solid(token('text', 0.08)),
+          {
+            effects: { radius: 6 },
+          },
+        ),
         rect('d_mutzar_process_progress', at(1920 - END - 36 - 560, 266, 448, 12), CORAL_FILL, {
           effects: { radius: 6 },
         }),
@@ -1021,12 +1288,20 @@ function layouts(): Layout[] {
             ? still(
                 `d_mutzar_process_dot${i + 1}`,
                 at(start + 30, 334, 52, 52),
-                svg(52, 52, `<circle cx="26" cy="26" r="24" fill="${CORAL}"/>${icon('check', 14, 14, 24, WHITE, 3)}`),
+                svg(
+                  52,
+                  52,
+                  `<circle cx="26" cy="26" r="24" fill="${CORAL}"/>${icon('check', 14, 14, 24, WHITE, 3)}`,
+                ),
               )
             : drawing(
                 `d_mutzar_process_dot${i + 1}`,
                 at(start + 30, 334, 52, 52),
-                svg(52, 52, `<circle cx="26" cy="26" r="22" fill="${WHITE}" stroke="${CORAL}" stroke-width="4"/><circle cx="26" cy="26" r="8" fill="${CORAL}"/>`),
+                svg(
+                  52,
+                  52,
+                  `<circle cx="26" cy="26" r="22" fill="${WHITE}" stroke="${CORAL}" stroke-width="4"/><circle cx="26" cy="26" r="8" fill="${CORAL}"/>`,
+                ),
                 PAINT,
               ),
           ...(i < 4
@@ -1037,7 +1312,11 @@ function layouts(): Layout[] {
                   i < 3 ? CORAL_FILL : solid(token('secondary', 0.3)),
                   { effects: { radius: 2 } },
                 ),
-                rect(`d_mutzar_process_divider${i + 1}`, at(start + 334, 418, 1, 330), solid(token('text', 0.07))),
+                rect(
+                  `d_mutzar_process_divider${i + 1}`,
+                  at(start + 334, 418, 1, 330),
+                  solid(token('text', 0.07)),
+                ),
               ]
             : []),
         ]),
@@ -1048,7 +1327,11 @@ function layouts(): Layout[] {
         still(
           'd_mutzar_process_toast_check',
           at(START + 32, 843, 48, 48),
-          svg(48, 48, `<circle cx="24" cy="24" r="23" fill="${MINT}"/>${icon('check', 12, 12, 24, WHITE, 3)}`),
+          svg(
+            48,
+            48,
+            `<circle cx="24" cy="24" r="23" fill="${MINT}"/>${icon('check', 12, 12, 24, WHITE, 3)}`,
+          ),
         ),
         ...foot('process').decorations,
       ],
@@ -1065,9 +1348,27 @@ function layouts(): Layout[] {
             ['after', START + 860, token('surface')],
           ] as const
         ).flatMap(([side, start, color]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 126, 280, 660, 34), 'caption', color ? { color: token('surface', 0.78) } : {}),
-          place(`p_${side}`, 'subtitle', at(start + 30, 348, 760, 106), 'heading', color ? { color } : {}),
-          place(`p_${side}_body`, 'body', at(start + 30, 470, 760, 350), 'body', color ? { color } : {}),
+          place(
+            `p_${side}_tag`,
+            'caption',
+            at(start + 126, 280, 660, 34),
+            'caption',
+            color ? { color: token('surface', 0.78) } : {},
+          ),
+          place(
+            `p_${side}`,
+            'subtitle',
+            at(start + 30, 348, 760, 106),
+            'heading',
+            color ? { color } : {},
+          ),
+          place(
+            `p_${side}_body`,
+            'body',
+            at(start + 30, 470, 760, 350),
+            'body',
+            color ? { color } : {},
+          ),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1077,13 +1378,24 @@ function layouts(): Layout[] {
         presence('comparison'),
         // The card of the automated way first: its coral glow goes under the other card.
         rect('d_mutzar_comparison_after', at(START + 860, 240, 820, 666), PRIMARY_FILL, {
-          effects: { radius: 28, shadow: { x: 0, y: 30, blur: 70, color: { token: 'secondary', alpha: 0.3 } } },
+          effects: {
+            radius: 28,
+            shadow: { x: 0, y: 30, blur: 70, color: { token: 'secondary', alpha: 0.3 } },
+          },
         }),
         panel('d_mutzar_comparison_before', at(START, 240, 820, 666), 28, LIFT_SM),
         toggle('d_mutzar_comparison_before_switch', at(START + 30, 278, 76, 40), false),
         toggle('d_mutzar_comparison_after_switch', at(START + 890, 278, 76, 40), true),
-        rect('d_mutzar_comparison_after_rule', at(START + 890, 330, 760, 1), solid(token('surface', 0.12))),
-        rect('d_mutzar_comparison_before_rule', at(START + 30, 330, 760, 1), solid(token('text', 0.07))),
+        rect(
+          'd_mutzar_comparison_after_rule',
+          at(START + 890, 330, 760, 1),
+          solid(token('surface', 0.12)),
+        ),
+        rect(
+          'd_mutzar_comparison_before_rule',
+          at(START + 30, 330, 760, 1),
+          solid(token('text', 0.07)),
+        ),
         workPath('d_mutzar_comparison_before_path', at(START + 30, 828, 760, 60), false),
         workPath('d_mutzar_comparison_after_path', at(START + 890, 828, 760, 60), true),
         drawing(
@@ -1108,9 +1420,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('chart').placeholders,
         place('p_chart', 'chart', at(START + 30, 352, 1020, 560)),
-        place('p_stat1', 'number', atEnd(END + 22, 256, 520, 124), 'display', { color: token('secondary') }),
+        place('p_stat1', 'number', atEnd(END + 22, 256, 520, 124), 'display', {
+          color: token('secondary'),
+        }),
         place('p_stat1_body', 'body', atEnd(END + 22, 384, 520, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END + 22, 580, 520, 124), 'display', { color: token('accent') }),
+        place('p_stat2', 'number', atEnd(END + 22, 580, 520, 124), 'display', {
+          color: token('accent'),
+        }),
         place('p_stat2_body', 'body', atEnd(END + 22, 708, 520, 100), 'body'),
         place('p_source', 'caption', atEnd(END + 22, 850, 520, 68), 'caption'),
         ...foot('chart').placeholders,
@@ -1127,7 +1443,20 @@ function layouts(): Layout[] {
             40,
             `<rect width="${w}" height="40" rx="12" fill="${CANVAS}"/>` +
               `<rect x="${bx(dir, w, 4, 120)}" y="4" width="120" height="32" rx="9" fill="${WHITE}" stroke="${INK}" stroke-opacity=".08"/>` +
-              opts.map((o, i) => say(dir, w, 64 + i * 124, 26, 16, o, `font-weight="600" fill="${i ? MUTED : INK}"`, 'middle')).join(''),
+              opts
+                .map((o, i) =>
+                  say(
+                    dir,
+                    w,
+                    64 + i * 124,
+                    26,
+                    16,
+                    o,
+                    `font-weight="600" fill="${i ? MUTED : INK}"`,
+                    'middle',
+                  ),
+                )
+                .join(''),
           );
         }),
         ...panels(
@@ -1163,7 +1492,9 @@ function layouts(): Layout[] {
                 const s = 110 + i * 96;
                 return (
                   say(dir, w, s, 31, 16, v, `font-weight="600" fill="${i ? MUTED : INK}"`) +
-                  (i === 0 ? `<rect x="${bx(dir, w, s, 44)}" y="48" width="44" height="3" rx="1.5" fill="${CORAL}"/>` : '')
+                  (i === 0
+                    ? `<rect x="${bx(dir, w, s, 44)}" y="48" width="44" height="3" rx="1.5" fill="${CORAL}"/>`
+                    : '')
                 );
               })
               .join('') +
@@ -1197,15 +1528,27 @@ function layouts(): Layout[] {
         board('team'),
         ...head('team').decorations,
         presence('team'),
-        ...panels(columns4.map((start, i) => [`d_mutzar_team_card${i + 1}`, at(start, 236, 394, 636)]), 26),
+        ...panels(
+          columns4.map((start, i) => [`d_mutzar_team_card${i + 1}`, at(start, 236, 394, 636)]),
+          26,
+        ),
         ...columns4.flatMap((start, i) => [
-          rect(`d_mutzar_team_tag${i + 1}`, at(start + 14, 608, 366, 60), solid({ value: PEOPLE[i]! }), {
-            effects: { radius: 14 },
-          }),
+          rect(
+            `d_mutzar_team_tag${i + 1}`,
+            at(start + 14, 608, 366, 60),
+            solid({ value: PEOPLE[i]! }),
+            {
+              effects: { radius: 14 },
+            },
+          ),
           drawing(
             `d_mutzar_team_arrow${i + 1}`,
             at(start + 2, 594, 30, 36),
-            svg(30, 36, `<path d="M28 2v26l-7-6.6-4.6 10.4-4.6-2 4.6-10.2H5z" fill="${PEOPLE[i]}" stroke="${WHITE}" stroke-width="2.4" stroke-linejoin="round"/>`),
+            svg(
+              30,
+              36,
+              `<path d="M28 2v26l-7-6.6-4.6 10.4-4.6-2 4.6-10.2H5z" fill="${PEOPLE[i]}" stroke="${WHITE}" stroke-width="2.4" stroke-linejoin="round"/>`,
+            ),
             PAINT,
           ),
         ]),
@@ -1238,29 +1581,57 @@ function layouts(): Layout[] {
             i === 0 ? PRIMARY_FILL : i === 1 ? WHITE_FILL : solid(token('secondary', 0.1)),
             {
               ...(i === 1 ? { stroke: { color: token('text', 0.14), width: 1.5 } } : {}),
-              effects: { radius: 52, ...(i === 0 ? { shadow: { x: 0, y: 16, blur: 36, color: { value: '#3b2414', alpha: 0.22 } } } : {}) },
+              effects: {
+                radius: 52,
+                ...(i === 0
+                  ? { shadow: { x: 0, y: 16, blur: 36, color: { value: '#3b2414', alpha: 0.22 } } }
+                  : {}),
+              },
             },
           ),
           // The arrow of the first button points the way the slide reads; the others have no way.
-          (i === 0 ? (id: string, frame: Frame, markup: string) => drawing(id, frame, markup, PAINT) : still)(
+          (i === 0
+            ? (id: string, frame: Frame, markup: string) => drawing(id, frame, markup, PAINT)
+            : still)(
             `d_mutzar_closing_button${i + 1}_icon`,
             at(START + 860 - 30 - 48, top + 28, 48, 48),
             svg(
               48,
               48,
               `<circle cx="24" cy="24" r="23" fill="${i === 0 ? CORAL : i === 1 ? INK : CORAL}" fill-opacity="${i === 1 ? 0.06 : 1}"/>` +
-                icon((['arrow', 'play', 'tag'] as const)[i]!, 12, 12, 24, i === 1 ? INK : WHITE, 2.4),
+                icon(
+                  (['arrow', 'play', 'tag'] as const)[i]!,
+                  12,
+                  12,
+                  24,
+                  i === 1 ? INK : WHITE,
+                  2.4,
+                ),
             ),
           ),
         ]),
-        still('d_mutzar_closing_mail', at(START, 864, 32, 30), svg(32, 30, icon('mail', 2, 1, 28, CORAL, 2.2))),
+        still(
+          'd_mutzar_closing_mail',
+          at(START, 864, 32, 30),
+          svg(32, 30, icon('mail', 2, 1, 28, CORAL, 2.2)),
+        ),
         keycap('d_mutzar_closing_cmd', atEnd(150, 360, 320, 320), keyIcon('command'), -8),
         keycap('d_mutzar_closing_enter', atEnd(380, 470, 320, 300), keyIcon('enter', CORAL), 6),
-        ...toast('closing', atEnd(150, 236, 470, 76), w2('התהליך פורסם', 'Workflow published'), w2('פתיחה', 'Open')),
+        ...toast(
+          'closing',
+          atEnd(150, 236, 470, 76),
+          w2('התהליך פורסם', 'Workflow published'),
+          w2('פתיחה', 'Open'),
+        ),
         cursor('d_mutzar_closing_cursor', [START + 860 - 78, 526], VIOLET, NAMES[1]!),
-        dot('d_mutzar_closing_click', at(START + 860 - 78 - 22, 504, 44, 44), { kind: 'none' }, {
-          stroke: { color: token('accent', 0.5), width: 2.5 },
-        }),
+        dot(
+          'd_mutzar_closing_click',
+          at(START + 860 - 78 - 22, 504, 44, 44),
+          { kind: 'none' },
+          {
+            stroke: { color: token('accent', 0.5), width: 2.5 },
+          },
+        ),
       ],
     },
   ];
@@ -1279,7 +1650,7 @@ function flipped(drawn: readonly Layout[]): Layout[] {
         if (!READABLE.has(decoration.id) || decoration.type !== 'svg') return decoration;
         const { flipH: _flipH, ...rest } = decoration;
         const ltr = READABLE.get(decoration.id);
-        return (ltr ? { ...rest, markup: ltr } : rest) as Element;
+        return ltr ? { ...rest, markup: ltr } : rest;
       }),
     };
   });
@@ -1308,7 +1679,9 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [text('ערב ההשקה · Zrima 2.0'), text('נועה ברק, מנכ״לית · תל אביב · 8.12.2026')],
       title: text('התפעול', 'על טייס אוטומטי'),
-      subtitle: text('Zrima 2.0 מחברת את כל המערכות של צוות התפעול, ומריצה בשבילכם את העבודה שחוזרת על עצמה.'),
+      subtitle: text(
+        'Zrima 2.0 מחברת את כל המערכות של צוות התפעול, ומריצה בשבילכם את העבודה שחוזרת על עצמה.',
+      ),
     },
   },
   {
@@ -1395,7 +1768,12 @@ const sampleHe: SampleSlide[] = [
       caption: [text('מפת הדרכים'), text('התאריכים של 2.1 ו-3.0 הם יעד, ועוד עשויים לזוז.')],
       title: text('מ-1.0 ועד 3.0'),
       number: [text('v1.0'), text('v2.0'), text('v2.1'), text('v3.0')],
-      subtitle: [text('הבסיס'), text('בונה חדש ו-AI'), text('אפליקציה לנייד'), text('תהליכים בין חברות')],
+      subtitle: [
+        text('הבסיס'),
+        text('בונה חדש ו-AI'),
+        text('אפליקציה לנייד'),
+        text('תהליכים בין חברות'),
+      ],
       body: [
         text('2025: ארבעים חיבורים ותהליכים פשוטים.'),
         text('דצמבר 2026: הבונה, סוכני AI ו-400 חיבורים.'),
@@ -1453,7 +1831,10 @@ const sampleHe: SampleSlide[] = [
       caption: [text('אימוץ'), text('נתוני השימוש של Zrima, יוני עד נובמבר 2026.')],
       title: text('צוותים לא רק נרשמו, הם נשארו'),
       number: [text('×13'), text('92%')],
-      body: [text('גידול בתהליכים הפעילים מאז תחילת הבטא ביוני.'), text('מהצוותים עדיין פעילים אחרי 60 יום.')],
+      body: [
+        text('גידול בתהליכים הפעילים מאז תחילת הבטא ביוני.'),
+        text('מהצוותים עדיין פעילים אחרי 60 יום.'),
+      ],
       footer: FOOTER_HE,
     },
     chart: {
@@ -1469,7 +1850,10 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_mutzar_table',
     name: 'מסלולים',
     content: {
-      caption: [text('מסלולים ומחירים'), text('מחירי השקה, בתוקף עד 31.1.2027 לכל מי שנרשם עכשיו.')],
+      caption: [
+        text('מסלולים ומחירים'),
+        text('מחירי השקה, בתוקף עד 31.1.2027 לכל מי שנרשם עכשיו.'),
+      ],
       title: text('שלושה מסלולים, אותו מוצר'),
       footer: FOOTER_HE,
     },
@@ -1500,7 +1884,9 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_mutzar_quote',
     name: 'ציטוט',
     content: {
-      quote: text('פעם העתקנו כל הזמנה בין שש מערכות. היום הצוות שלי מטפל רק בחריגים, וכל השאר זורם לבד.'),
+      quote: text(
+        'פעם העתקנו כל הזמנה בין שש מערכות. היום הצוות שלי מטפל רק בחריגים, וכל השאר זורם לבד.',
+      ),
       attribution: text('רותם אלון'),
       caption: text('מנהלת תפעול ברשת חנויות לציוד ספורט · לקוחה מהבטא'),
       footer: FOOTER_HE,
@@ -1510,7 +1896,13 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_mutzar_team',
     name: 'המייסדים',
     content: {
-      caption: [text('המייסדים'), text('מנכ״לית'), text('CTO'), text('סמנכ״ל מוצר'), text('מובילת עיצוב')],
+      caption: [
+        text('המייסדים'),
+        text('מנכ״לית'),
+        text('CTO'),
+        text('סמנכ״ל מוצר'),
+        text('מובילת עיצוב'),
+      ],
       title: text('מי בונה את Zrima'),
       image: TEAM_PICTURES(),
       subtitle: [text('נועה ברק'), text('יואב לנדאו'), text('איתן שגב'), text('מאיה כרמי')],
@@ -1545,7 +1937,9 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [text('Launch night · Zrima 2.0'), text('Noa Barak, CEO · Tel Aviv · 8 Dec 2026')],
       title: text('Ops on', 'autopilot'),
-      subtitle: text('Zrima 2.0 connects every tool your operations team uses, and runs the repetitive work for you.'),
+      subtitle: text(
+        'Zrima 2.0 connects every tool your operations team uses, and runs the repetitive work for you.',
+      ),
     },
   },
   {
@@ -1589,7 +1983,9 @@ const sampleEn: SampleSlide[] = [
       title: text('The beta in numbers'),
       number: [text('1.8M'), text('4,200'), text('−63%'), text('99.98%')],
       subtitle: text('Workflows run in beta, hands-free'),
-      body: text('In their first week, teams built 14 workflows on average, then let them run on their own.'),
+      body: text(
+        'In their first week, teams built 14 workflows on average, then let them run on their own.',
+      ),
       footer: FOOTER_EN,
     },
   },
@@ -1632,7 +2028,12 @@ const sampleEn: SampleSlide[] = [
       caption: [text('Roadmap'), text('The dates of 2.1 and 3.0 are targets.')],
       title: text('From 1.0 to 3.0'),
       number: [text('v1.0'), text('v2.0'), text('v2.1'), text('v3.0')],
-      subtitle: [text('Foundation'), text('Builder and AI'), text('Mobile app'), text('Cross-company flows')],
+      subtitle: [
+        text('Foundation'),
+        text('Builder and AI'),
+        text('Mobile app'),
+        text('Cross-company flows'),
+      ],
       body: [
         text('2025: forty integrations, simple flows.'),
         text('Dec 2026: the builder, AI agents, 400 integrations.'),
@@ -1655,7 +2056,13 @@ const sampleEn: SampleSlide[] = [
         text('Hours saved, every week'),
       ],
       title: text('Fifteen minutes to a first flow'),
-      subtitle: [text('Sign up'), text('Connect'), text('Invite'), text('Automate'), text('Report')],
+      subtitle: [
+        text('Sign up'),
+        text('Connect'),
+        text('Invite'),
+        text('Automate'),
+        text('Report'),
+      ],
       number: [text('1 min'), text('3 min'), text('1 min'), text('10 min'), text('Weekly')],
       body: text('Beta average: fifteen minutes to a first live workflow.'),
       footer: FOOTER_EN,
@@ -1690,7 +2097,10 @@ const sampleEn: SampleSlide[] = [
       caption: [text('Adoption'), text('Zrima usage data, June to November 2026.')],
       title: text('Teams signed up, and stayed'),
       number: [text('×13'), text('92%')],
-      body: [text('Growth in active workflows since the beta began in June.'), text('Of teams still active after 60 days.')],
+      body: [
+        text('Growth in active workflows since the beta began in June.'),
+        text('Of teams still active after 60 days.'),
+      ],
       footer: FOOTER_EN,
     },
     chart: {
@@ -1706,7 +2116,10 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_mutzar_table',
     name: 'Plans',
     content: {
-      caption: [text('Plans and pricing'), text('Launch prices, valid until 31 Jan 2027 for anyone who signs up now.')],
+      caption: [
+        text('Plans and pricing'),
+        text('Launch prices, valid until 31 Jan 2027 for anyone who signs up now.'),
+      ],
       title: text('Three plans, one product'),
       footer: FOOTER_EN,
     },
@@ -1730,14 +2143,18 @@ const sampleEn: SampleSlide[] = [
       image: { assetId: pictures.mutzarHeroEn.id },
       caption: text('The new home screen'),
       title: text('One board for', 'all of operations'),
-      body: text('Orders, stock, suppliers and tickets in real time, on one screen the whole team shares.'),
+      body: text(
+        'Orders, stock, suppliers and tickets in real time, on one screen the whole team shares.',
+      ),
     },
   },
   {
     layout: 'l_mutzar_quote',
     name: 'Quote',
     content: {
-      quote: text('We used to copy every order across six systems. Now my team handles only the exceptions, and the rest just flows.'),
+      quote: text(
+        'We used to copy every order across six systems. Now my team handles only the exceptions, and the rest just flows.',
+      ),
       attribution: text('Rotem Alon'),
       caption: text('Head of operations at a sports retail chain · beta customer'),
       footer: FOOTER_EN,
@@ -1747,7 +2164,13 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_mutzar_team',
     name: 'The founders',
     content: {
-      caption: [text('The founders'), text('CEO'), text('CTO'), text('VP Product'), text('Design lead')],
+      caption: [
+        text('The founders'),
+        text('CEO'),
+        text('CTO'),
+        text('VP Product'),
+        text('Design lead'),
+      ],
       title: text('Who builds Zrima'),
       image: TEAM_PICTURES(),
       subtitle: [text('Noa Barak'), text('Yoav Landau'), text('Eitan Segev'), text('Maya Carmi')],

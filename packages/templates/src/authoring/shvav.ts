@@ -526,7 +526,7 @@ function heroArt() {
     g += `<rect x="${fx - 18}" y="966" width="36" height="140" rx="7" fill="url(#au)"/><rect x="${fx - 12}" y="972" width="7" height="100" rx="3" fill="#ffffff" fill-opacity=".18"/>`;
   }
   // The parts round the microcontroller.
-  g += crystal(120, 150) + passive(92, 204, 'cap') + passive(150, 204, 'cap');
+  g += crystal(120, 150) + passive(84, 206, 'cap') + passive(134, 206, 'cap');
   g += tr([[78, 150], [52, 150], [40, 162]], UNDER) + tr([[162, 150], [180, 150]], UNDER);
   g += led(742, 172) + passive(742, 232, 'res') + tr([[722, 232], [700, 232], [688, 244], [688, 262]], UNDER) + tented(688, 268, 7);
   g += tr([[759, 172], [800, 172], [812, 160], [812, -10]], UNDER);
@@ -607,7 +607,7 @@ function bigNumberArt() {
   const x = SX - 1040;
   const y = 286;
   const w = 1040;
-  const h = 190;
+  const h = 236;
   const n = 20;
   const pitch = (w * 0.92) / (n - 1);
   let g = '';
@@ -669,26 +669,74 @@ function quoteArt() {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The programming header beside the text
+// Beside the text: a radio module and its pinout
 
-function headerArt() {
-  const w = 340;
-  const names = ['VBAT', '3V3', 'SWDIO', 'SWCLK', 'NRST', 'TXD', 'RXD', 'SENSE'];
-  const rows = names.map((_, k) => 300 + k * 72);
-  let g = silkBox(88, 262, 164, 580, 0.5);
-  g += tr([[262, -10], [262, 1090]], { ...UNDER, op: 0.3 });
-  for (const [k, y] of rows.entries()) {
-    g += tr([[210, y], [262, y]], UNDER);
-    g += k === 0 ? pad(130, y, 42, 42, 4) + `<circle cx="130" cy="${y}" r="8" fill="${HOLE}"/>` : goldVia(130, y, 21);
-    g += goldVia(210, y, 21);
+const PINS_START = ['GND', '3V3', 'VBAT', 'EN', 'TX', 'RX', 'SDA', 'SCL', 'IRQ', 'WAKE', 'ADC0', 'GND'];
+const PINS_END = ['GND', 'ANT', 'GND', 'MOSI', 'MISO', 'SCK', 'CS', 'PA8', 'PA9', 'SWDIO', 'SWCLK', 'GND'];
+
+function pinKind(name: string): 'gnd' | 'pwr' | 'bus' | 'io' {
+  if (name === 'GND') return 'gnd';
+  if (name === '3V3' || name === 'VBAT') return 'pwr';
+  if (['TX', 'RX', 'SDA', 'SCL', 'MOSI', 'MISO', 'SCK', 'CS', 'ANT'].includes(name)) return 'bus';
+  return 'io';
+}
+
+function pinoutArt() {
+  const w = 700;
+  const [l, r, top, bottom] = [262, 482, 236, 846];
+  const ys = PINS_START.map((_, k) => top + 52 + k * 46);
+  // The module: its own board, castellated down both sides.
+  let g = `<rect x="${l}" y="${top}" width="${r - l}" height="${bottom - top}" rx="10" fill="#062619" stroke="${INK}" stroke-opacity=".18" stroke-width="1.5"/>`;
+  const words: Letter[] = [];
+  const tag = (x: number, y: number, name: string, side: 'start' | 'end') => {
+    const kind = pinKind(name);
+    const tw = 112;
+    const tx = side === 'end' ? x - tw : x;
+    const fill =
+      kind === 'gnd'
+        ? `fill="${INK}" fill-opacity=".88"`
+        : kind === 'pwr'
+          ? `fill="${GOLD}"`
+          : `fill="${BG}" stroke="${kind === 'bus' ? LIGHT : INK}" stroke-opacity="${kind === 'bus' ? 0.75 : 0.4}" stroke-width="2"`;
+    g += `<rect x="${tx}" y="${y - 15}" width="${tw}" height="30" rx="7" ${fill}/>`;
+    words.push({
+      x: tx + tw / 2,
+      y: y + 6,
+      t: name,
+      size: 16,
+      anchor: 'middle',
+      weight: 700,
+      fill: kind === 'gnd' || kind === 'pwr' ? BG : kind === 'bus' ? LIGHT : INK,
+      op: kind === 'io' ? 0.8 : 1,
+    });
+  };
+  for (const [k, y] of ys.entries()) {
+    for (const [x, out] of [[l, -1], [r, 1]] as const) {
+      g += `<rect x="${out > 0 ? x - 2 : x - 18}" y="${y - 10}" width="20" height="20" rx="2" fill="url(#au)"/>`;
+      g += `<circle cx="${x}" cy="${y}" r="10" fill="url(#au)"/><path d="M${x} ${y - 5}A5 5 0 0 ${out > 0 ? 0 : 1} ${x} ${y + 5}Z" fill="${HOLE}"/>`;
+      g += `<path d="M${x + out * 18} ${y}H${x + out * 32}" stroke="${INK}" stroke-opacity=".35" stroke-width="2"/>`;
+    }
+    tag(l - 32, y, PINS_START[k]!, 'end');
+    tag(r + 32, y, PINS_END[k]!, 'start');
   }
-  g += `<path d="M78 290l-12-8v16z" fill="${INK}" fill-opacity=".7"/>`;
-  g += tented(262, 220, 8) + tented(262, 900, 8);
-  const words: Letter[] = [
-    ...names.map((t, k) => ({ x: 92 - 34, y: rows[k]! + 7, t, size: 19, anchor: 'end' as const, op: 0.72 })),
-    { x: 170, y: 244, t: 'J1', size: 24, anchor: 'middle' },
-    { x: 290, y: 200, t: 'GND', size: 18, anchor: 'start', op: 0.6, rot: -90 },
-  ];
+  // The antenna: a meander of bare copper in its keep-out, fed from the can.
+  let meander = `M${l + 30} 370V${top + 26}`;
+  for (let x = l + 30, k = 0; x < r - 40; x += 18, k++) meander += `H${x + 18}V${k % 2 ? top + 26 : 350}`;
+  g += `<path d="${meander}" stroke="${GOLD}" stroke-opacity=".85" stroke-width="5" stroke-linejoin="round"/>`;
+  // The shield can over the radio, stamped, with the marking of the module.
+  g += `<rect x="${l + 18}" y="388" width="${r - l - 36}" height="292" rx="8" fill="url(#sn)"/>`;
+  g += `<rect x="${l + 30}" y="400" width="${r - l - 60}" height="268" rx="5" stroke="#8a908e" stroke-opacity=".8" stroke-width="2"/>`;
+  for (const [cx, cy] of [[l + 42, 412], [r - 42, 412], [l + 42, 656], [r - 42, 656]] as const) g += `<circle cx="${cx}" cy="${cy}" r="4" fill="#8a908e"/>`;
+  // Below the can: the crystal, two passives and the status LED.
+  g += crystal(l + 66, 722, 64, 28) + passive(r - 60, 708, 'cap', false, 30, 15) + passive(r - 60, 740, 'res', false, 30, 15);
+  g += led((l + r) / 2, 800, 64);
+  g += `<circle cx="${l - 8}" cy="${top - 14}" r="6" fill="${INK}" fill-opacity=".75"/>`;
+  words.push(
+    { x: (l + r) / 2, y: 520, t: 'SHVAV', size: 30, sans: true, weight: 700, fill: '#5d6461', anchor: 'middle', spacing: 5 },
+    { x: (l + r) / 2, y: 556, t: 'SV32-M · LoRa', size: 17, fill: '#5d6461', anchor: 'middle', weight: 600 },
+    { x: (l + r) / 2, y: 584, t: '868 MHz', size: 17, fill: '#5d6461', anchor: 'middle', weight: 600 },
+    { x: r, y: top - 14, t: 'M1', size: 22, anchor: 'end' },
+  );
   return art(w, 1080, g, words);
 }
 
@@ -708,8 +756,8 @@ function photoFrameArt() {
   const L = (x: number, y: number, dx: number, dy: number) =>
     `<path d="M${x + dx * k} ${y}H${x}V${y + dy * k}" stroke="${GOLD}" stroke-width="5" stroke-linecap="square"/>`;
   g += L(x0 - b, y0 - b, 1, 1) + L(x1 + b, y0 - b, -1, 1) + L(x0 - b, y1 + b, 1, -1) + L(x1 + b, y1 + b, -1, -1);
-  g += fiducial(20, 20) + fiducial(w - 20, h - 20);
-  const words: Letter[] = [{ x: x1 + 22, y: 30, t: 'TOP · 1:1', size: 18, anchor: 'end', op: 0.7 }];
+  g += fiducial(w - 20, 20) + fiducial(20, h - 20);
+  const words: Letter[] = [{ x: x0 - 22, y: 30, t: 'TOP SIDE', size: 18, anchor: 'start', op: 0.7 }];
   return art(w, h, g, words);
 }
 
@@ -779,7 +827,7 @@ function cardsArt() {
 // The timeline: one trace, a via at every stage
 
 const COLUMNS = [START, START + 434, START + 868, START + 1302];
-const TRACE_Y = 420;
+const TRACE_Y = 436;
 
 function timelineArt(): string {
   const xs = COLUMNS.map((s) => 1920 - s - 22);
@@ -794,7 +842,7 @@ function timelineArt(): string {
   let g = `<circle cx="${xs[0]}" cy="${TRACE_Y}" r="120" fill="url(#glow)"/>`;
   g += tr(pts, { c: GOLD, op: 0.3, w: 22 }) + tr(pts, { c: GOLD, op: 0.95, w: 8 });
   for (const x of xs) {
-    g += tr([[x, TRACE_Y], [x, 478]], UNDER) + tented(x, 484, 7);
+    g += tr([[x, TRACE_Y], [x, TRACE_Y + 52]], UNDER) + tented(x, TRACE_Y + 58, 7);
     g += `<circle cx="${x}" cy="${TRACE_Y}" r="34" stroke="${INK}" stroke-opacity=".3" stroke-width="2.5"/>` + goldVia(x, TRACE_Y, 24);
   }
   return svg(1920, 1080, DEFS + g);
@@ -874,7 +922,19 @@ function comparisonArt(): string {
     for (const [x, y] of [[l + 32, BOARD_TOP + 32], [r - 32, BOARD_TOP + 32], [l + 32, BOARD_TOP + BOARD_H - 32], [r - 32, BOARD_TOP + BOARD_H - 32]] as const) {
       g += side === 'after' ? goldVia(x, y, 14) : `<circle cx="${x}" cy="${y}" r="14" stroke="${MUTED}" stroke-opacity=".6" stroke-width="3"/><circle cx="${x}" cy="${y}" r="6" fill="${HOLE}"/>`;
     }
-    if (side === 'after') g += led(l + 74, BOARD_TOP + BOARD_H - 76, 70);
+    // Along the foot of each board, its parts: rev B crowded, rev C down to one chip and lit.
+    const y = BOARD_TOP + BOARD_H - 48;
+    g += `<path d="M${l + 70} ${y - 34}H${r - 70}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
+    if (side === 'before') {
+      g += qfp(r - 118, y, 40, 6, { len: 7, w: 4 }) + qfp(r - 200, y, 34, 5, { len: 0.1, w: 4 }, false);
+      g += crystal(r - 282, y, 54, 24) + crystal(r - 354, y, 40, 22);
+      for (let k = 0; k < 5; k++) g += passive(r - 424 - k * 42, y + (k % 2 ? 6 : -6), k % 2 ? 'res' : 'cap', true, 26, 13);
+      g += tantalum(l + 180, y) + `<rect x="${l + 76}" y="${y - 22}" width="54" height="44" rx="5" fill="url(#sn)"/>`;
+    } else {
+      g += qfp(r - 122, y, 44, 6, { len: 8, w: 4 }) + crystal(r - 214, y, 50, 22);
+      g += passive(r - 286, y, 'cap', true, 26, 13) + passive(r - 326, y, 'cap', true, 26, 13);
+      g += led(r - 420, y, 64);
+    }
   }
   // Between the boards: from the old revision to the new one.
   const mid = 1920 - START - BOARD_W - 28;
@@ -901,14 +961,8 @@ function scopeArt() {
     const x = gx + (gw * i) / 10;
     grid += `<path d="M${f1(x)} ${gy}V${gy + gh}" stroke="${INK}" stroke-opacity="${i === 5 ? 0.2 : 0.08}" stroke-width="1.5" ${i === 5 ? '' : 'stroke-dasharray="3 7"'}/>`;
   }
-  for (let j = 1; j < 8; j++) {
-    const y = gy + (gh * j) / 8;
-    grid += `<path d="M${gx} ${f1(y)}H${gx + gw}" stroke="${INK}" stroke-opacity="${j === 4 ? 0.2 : 0.08}" stroke-width="1.5" ${j === 4 ? '' : 'stroke-dasharray="3 7"'}/>`;
-  }
-  for (let t = 1; t < 50; t++) {
-    const x = gx + (gw * t) / 50;
-    grid += `<path d="M${f1(x)} ${gy + gh / 2 - 6}v12" stroke="${INK}" stroke-opacity=".2" stroke-width="1.5"/>`;
-  }
+  // Across, the chart draws its own lines; the time divisions and the centre's ticks are the
+  // scope's.
   for (let t = 1; t < 40; t++) {
     const y = gy + (gh * t) / 40;
     grid += `<path d="M${gx + gw / 2 - 6} ${f1(y)}h12" stroke="${INK}" stroke-opacity=".2" stroke-width="1.5"/>`;
@@ -1073,9 +1127,9 @@ function layouts(): Layout[] {
       background: ground(0.6, 0.4),
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START + 44, 312, 960, 135), 'display', { color: token('primary') }),
-        place('p_label', 'subtitle', at(START, 524, 1000, 53), 'heading'),
-        place('p_body', 'body', at(START, 588, 940, 135), 'body'),
+        place('p_number', 'number', at(START + 44, 336, 960, 135), 'display', { color: token('primary'), vAlign: 'middle' }),
+        place('p_label', 'subtitle', at(START, 592, 1000, 53), 'heading'),
+        place('p_body', 'body', at(START, 654, 940, 135), 'body'),
         ...STATS.flatMap((top, i) => [
           place(`p_stat${i + 1}`, 'number', atEnd(END, top, 500, 79), 'title'),
           place(`p_stat${i + 1}_label`, 'caption', atEnd(END, top + 86, 500, 68), 'caption'),
@@ -1112,11 +1166,11 @@ function layouts(): Layout[] {
       background: ground(0.6, 0.45),
       placeholders: [
         place('p_title', 'title', at(START, 136, 1300, 72), 'title'),
-        place('p_body', 'body', at(START, 262, 1260, 640), 'body'),
+        place('p_body', 'body', at(START, 262, 1080, 640), 'body'),
       ],
       decorations: [
         drawing('d_shvav_text_title_pad', at(START - 54, 158, 22, 22), svg(22, 22, DEFS + testPoint(11, 11, 10)), PAINT),
-        lettered('d_shvav_text_header', atEnd(END + 24, 0, 340, 1080), headerArt()),
+        lettered('d_shvav_text_module', atEnd(0, 0, 700, 1080), pinoutArt()),
         drawing('d_shvav_text_fiducial', atEnd(36, 36, 40, 40), svg(40, 40, DEFS + fiducial(20, 20)), PAINT),
         drawing('d_shvav_text_hole', at(28, 972, 80, 80), svg(80, 80, DEFS + mountHole(40, 40)), PAINT),
       ],
@@ -1199,17 +1253,17 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('timeline').placeholders,
         ...COLUMNS.flatMap((start, i) => [
-          place(`p_when${i + 1}`, 'number', at(start, 284, 394, 79), 'title', { vAlign: 'bottom', color: token('primary') }),
-          place(`p_what${i + 1}`, 'subtitle', at(start, 506, 360, 106), 'heading'),
-          place(`p_what${i + 1}_body`, 'body', at(start, 618, 360, 170), 'caption'),
+          place(`p_when${i + 1}`, 'number', at(start, 296, 394, 79), 'title', { vAlign: 'bottom', color: token('primary') }),
+          place(`p_what${i + 1}`, 'subtitle', at(start, 522, 360, 96), 'heading'),
+          place(`p_what${i + 1}_body`, 'body', at(start, 620, 360, 170), 'caption'),
         ]),
-        place('p_note', 'caption', at(START, 862, WIDTH, 34), 'caption'),
+        place('p_note', 'caption', at(START, 866, WIDTH, 34), 'caption'),
         ...foot('timeline').placeholders,
       ],
       decorations: [
         ...head('timeline').decorations,
         drawing('d_shvav_timeline_trace', at(0, 0, 1920, 1080), timelineArt(), PAINT),
-        rect('d_shvav_timeline_rule', at(START, 834, WIDTH, 1.5), solid(token('text', 0.16))),
+        rect('d_shvav_timeline_rule', at(START, 842, WIDTH, 1.5), solid(token('text', 0.16))),
         ...foot('timeline').decorations,
       ],
     },
@@ -1221,17 +1275,17 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...STEPS.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start, 462, 308, 106), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start, 570, 304, 136), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start, 714, 308, 79), 'title', { color: token('primary') }),
+          place(`p_step${i + 1}`, 'subtitle', at(start, 460, 308, 96), 'heading'),
+          place(`p_step${i + 1}_body`, 'caption', at(start, 552, 304, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start, 700, 308, 79), 'title', { color: token('primary') }),
         ]),
-        place('p_summary', 'body', at(START + 70, 836, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
+        place('p_summary', 'body', at(START + 70, 830, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
         ...foot('process').placeholders,
       ],
       decorations: [
         ...head('process').decorations,
         drawing('d_shvav_process_chain', at(0, 0, 1920, 1080), processArt(), PAINT),
-        drawing('d_shvav_process_tp', at(START + 2, 859, 44, 44), svg(44, 44, DEFS + goldVia(22, 22, 18)), PAINT),
+        drawing('d_shvav_process_tp', at(START + 2, 853, 44, 44), svg(44, 44, DEFS + goldVia(22, 22, 18)), PAINT),
         ...foot('process').decorations,
       ],
     },
@@ -1245,7 +1299,7 @@ function layouts(): Layout[] {
         ...SIDES.flatMap(([side, start]) => [
           place(`p_${side}_tag`, 'caption', at(start + 56, BOARD_TOP + 30, 680, 34), 'caption'),
           place(`p_${side}`, 'subtitle', at(start + 56, BOARD_TOP + 82, 712, 106), 'heading'),
-          place(`p_${side}_body`, 'body', at(start + 56, BOARD_TOP + 204, 712, 350), 'body'),
+          place(`p_${side}_body`, 'body', at(start + 56, BOARD_TOP + 196, 712, 350), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1412,7 +1466,7 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_shvav_hero',
     name: 'פתיחה',
     content: {
-      caption: [text('Zrima Labs · Hardware'), text('רותי אלמוג · סקירת EVT · 14.3.2027')],
+      caption: [text('Zrima Labs · Hardware'), text('רותי אלמוג · 14.3.2027 · סקירת EVT')],
       title: text('עשר שנים', 'על סוללה אחת'),
       subtitle: text('מונה המים החכם WM-10, והדרך שלו מאב־טיפוס לייצור'),
     },
@@ -1423,7 +1477,7 @@ const sampleHe: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('חלק ראשון'),
-      title: text('תקציב ההספק'),
+      title: text('תקציב', 'ההספק'),
       subtitle: text('כל מיקרו־אמפר נספר, כי הסוללה צריכה להחזיק עשור.'),
     },
   },
@@ -1434,12 +1488,12 @@ const sampleHe: SampleSlide[] = [
       title: text('מה בסקירה'),
       body: {
         paragraphs: [
-          para('ארבע שאלות מחליטות אם עוברים ל-DVT:'),
+          para('הסקירה עונה על ארבע שאלות. אם התשובה לכולן חיובית, עוברים ל-DVT כבר באפריל.'),
           ...bullets(
-            'האם תקציב ההספק מחזיק עשר שנים',
-            'כמה עולה לוח אחד בכמות של 10,000',
-            'מה למדנו מ-60 מונים בשטח',
-            'מה נשאר לסגור לפני הייצור',
+            'האם תקציב ההספק מחזיק עשר שנים, גם בחורף קר',
+            'כמה עולה לוח אחד בכמות של 10,000 יחידות',
+            'מה למדנו מ-60 מונים שעובדים בשטח מינואר',
+            'מה עוד צריך לסגור לפני שמזמינים ייצור',
           ).paragraphs,
         ],
       },
@@ -1503,10 +1557,10 @@ const sampleHe: SampleSlide[] = [
       number: [text('EVT'), text('DVT'), text('PVT'), text('MP')],
       subtitle: [text('אב־טיפוס הנדסי'), text('אימות התכנון'), text('אימות הייצור'), text('ייצור סדרתי')],
       body: [
-        text('60 מונים בפיילוט, ינואר 2027'),
-        text('200 יחידות למאמץ ולאקלים, אפריל 2027'),
-        text('1,000 יחידות מקו הייצור, יוני 2027'),
-        text('10,000 מונים ברבעון, מספטמבר 2027'),
+        text('ינואר 2027', '60 מונים בפיילוט'),
+        text('אפריל 2027', '200 יחידות למאמץ ולאקלים'),
+        text('יוני 2027', '1,000 יחידות מקו הייצור'),
+        text('ספטמבר 2027', '10,000 מונים ברבעון'),
       ],
       footer: FOOTER_HE,
     },
@@ -1655,7 +1709,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('Part one'),
-      title: text('The power budget'),
+      title: text('The power', 'budget'),
       subtitle: text('Every microamp counts when the battery has to last a decade.'),
     },
   },
@@ -1666,12 +1720,12 @@ const sampleEn: SampleSlide[] = [
       title: text('What this review covers'),
       body: {
         paragraphs: [
-          para('Four questions decide whether we move on to DVT:'),
+          para('This review answers four questions. If every answer is yes, we move on to DVT in April.'),
           ...bullets(
-            'Does the power budget hold for ten years',
+            'Does the power budget hold ten years, even in winter',
             'What one board costs at 10,000 units',
-            'What 60 meters in the field taught us',
-            'What is left to close before production',
+            'What 60 meters in the field since January taught us',
+            'What is left to close before we order production',
           ).paragraphs,
         ],
       },
@@ -1735,10 +1789,10 @@ const sampleEn: SampleSlide[] = [
       number: [text('EVT'), text('DVT'), text('PVT'), text('MP')],
       subtitle: [text('Engineering build'), text('Design validation'), text('Production validation'), text('Mass production')],
       body: [
-        text('60 meters in a pilot, January 2027'),
-        text('200 units for stress and climate, April 2027'),
-        text('1,000 units off the line, June 2027'),
-        text('10,000 meters a quarter from September 2027'),
+        text('January 2027', '60 meters in a pilot'),
+        text('April 2027', '200 units for stress tests'),
+        text('June 2027', '1,000 units off the line'),
+        text('September 2027', '10,000 meters a quarter'),
       ],
       footer: FOOTER_EN,
     },

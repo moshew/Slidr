@@ -90,8 +90,8 @@ while (made < want && tries < want * 40) {
     made++;
     continue;
   }
-  const tint = INK.clone().lerp(INDIGO, rnd() * 0.45);
-  add(p, edge ? INK : tint, edge ? 1.25 : 1.0, edge ? 0.75 : 0.32);
+  const tint = INK.clone().lerp(INDIGO, 0.25 + rnd() * 0.5);
+  add(p, edge ? INK : tint, edge ? 1.25 : 1.05, edge ? 0.8 : 0.42);
   made++;
 }
 // a few amber sparks inside the letter, where it is thinking
