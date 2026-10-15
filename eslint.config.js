@@ -15,6 +15,9 @@ export default tseslint.config(
       'examples/**',
       // Spikes are throwaway feasibility code; their findings live in docs/adr.
       'spikes/**',
+      // Slidr Studio's Python environment, and its local requests and renders.
+      'management/server/.venv/**',
+      'management/.data*/**',
     ],
   },
 
@@ -51,6 +54,19 @@ export default tseslint.config(
   // for the app's pages inside.
   {
     files: ['apps/desktop/scripts/import/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+
+  // The studio's tools (management/README.md): Node, and a headless browser driven from it.
+  {
+    files: ['management/web/tools/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+
+  // The tools that render, check and package the authored templates and designs
+  // (packages/templates/src/authoring): Node, and a headless browser driven from it.
+  {
+    files: ['packages/templates/src/authoring/tools/**/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 

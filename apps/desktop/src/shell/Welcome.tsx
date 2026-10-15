@@ -1,41 +1,49 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
-import { createSlide, slideFromLayout, type Deck } from '@slidr/model';
+import { createDeck, createSlide, slideFromLayout, type Deck } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { deckFromTemplate, type Template } from '@slidr/templates';
 import { Button, cx, EmptyState, Icon, ScrollArea, type LucideIcon } from '@slidr/ui';
-import { ArrowLeft, Clock, FileInput, FilePlus, FolderOpen, Sparkles } from '@slidr/ui/icons';
+import {
+  ArrowLeft,
+  ChevronDown,
+  Clock,
+  CodeXml,
+  FilePlus,
+  FolderOpen,
+  LayoutTemplate,
+  Sparkles,
+} from '@slidr/ui/icons';
 import type { RecentFile } from '../document/storage';
 import { currentLanguage } from '../i18n';
 import { library } from '../templates/app';
 import { coverAsset, coverOf } from '../templates/covers';
-import { templateName } from '../templates/names';
-import { useDeck, useEditor, useFile, type Editor } from './editor';
-import { newDocument, openDocument, recentFiles } from './fileActions';
+import type { LibraryEntry } from '../templates/library';
+import { TemplateShowroom } from '../templates/TemplateShowroom';
+import { useEditor, useFile, type Editor } from './editor';
+import { loadFile, newDocument, openDocument, recentFiles } from './fileActions';
 import { modalOpen, overlayOf } from './overlay';
-import { PanelId, useAction } from './registry';
+import { PanelId, useAction, useImporters } from './registry';
+import { SlidrMark } from './SlidrMark';
 import { openPanel, setWelcome, useShell } from './store';
 
 /*
- * The welcome screen (DOC-05): what the app opens on, in place of the editor. A new deck with
- * the agent, from a template or empty; a file to open; the recent files. Every way out of it
- * ends in the editor with a document, so the editor behind it never needs to know it was there.
- * "Import HTML" is one of the ways in once the import area has registered what it does: it asks
- * for the file, and leaves the screen itself when the import starts.
+ * The welcome screen (DOC-05): what the app opens on, in place of the editor. Three ways to a
+ * deck: an empty one; a file, where a Slidr file is opened and an HTML page is imported; or a
+ * template, whose covers and slides are shown only once that way was chosen
+ * (`TemplateShowroom`). Under them, the recent files. The AI is not a way of its own: a new deck
+ * opens with the AI chat ready for typing, and an import is a conversation of that chat. Every
+ * way out of the screen ends in the editor with a document, so the editor behind it never needs
+ * to know it was there.
  *
  * Opened from the File menu, the screen stands over a document the user was working on. It then
  * has one more way out, which is the only one that keeps that document: back to it, by a button
- * at the top and by Esc.
+ * at the top and by Esc. Esc closes the templates first, when they are open.
  */
 
-/**
- * The templates of one row, under the four ways of the row above; the first row shows until the
- * user asks for all of them, so the recent files stay in sight however many templates there are.
- */
-const TEMPLATE_COLUMNS = 4;
-/** The width a template's cover is drawn at, in screen pixels: inside a card of that row. */
-const COVER_WIDTH = 212;
+/** The width of each cover in the fan of the "from template" way, in screen pixels. */
+const FAN_WIDTH = 144;
 
 /** A deck that starts on a template: its opening layout as the first slide (THM-08). */
 function deckOn(template: Template, lang: string): Deck {
@@ -51,90 +59,172 @@ function pristine(editor: Editor): boolean {
   return !path && !dirty;
 }
 
-/** Puts the caret in the AI chat, once the editor is on the screen. */
+/** The longest the caret waits for the chat's field, in ms: the chat reads its conversations first. */
+const CHAT_WAIT = 2000;
+
+/**
+ * Puts the caret in the AI chat, once the editor and the chat's field are on the screen. What
+ * the user put the focus on in the meantime keeps it.
+ */
 function focusChat(): void {
   openPanel(PanelId.ai);
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() =>
-      document.querySelector<HTMLElement>('[data-testid="chat-input"]')?.focus(),
-    ),
-  );
+  const until = performance.now() + CHAT_WAIT;
+  const attempt = () => {
+    if (document.activeElement && document.activeElement !== document.body) return;
+    const field = document.querySelector<HTMLElement>('[data-testid="chat-input"]');
+    if (field) field.focus();
+    else if (performance.now() < until) requestAnimationFrame(attempt);
+  };
+  requestAnimationFrame(attempt);
 }
 
 function Heading({ children }: { children: ReactNode }) {
   return <h2 className="text-xs font-medium text-ui-fg-muted">{children}</h2>;
 }
 
-function Way({
-  icon,
-  title,
-  body,
-  accent = false,
-  disabled = false,
-  onClick,
-  testId,
-}: {
-  icon: LucideIcon;
-  title: string;
-  body: string;
-  /** The way the app is for: drawn in the accent, as every AI entry is (SPEC 4.0). */
-  accent?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  testId: string;
-}) {
+/* ---------------------------------------------------------------- the pictures of the ways */
+
+/** An empty slide, with the caret in its title and the AI's spark at its corner. */
+function BlankArt() {
   return (
-    <button
-      type="button"
-      data-testid={testId}
-      disabled={disabled}
-      onClick={onClick}
-      className={cx(
-        'flex min-w-0 flex-1 cursor-default flex-col items-start gap-2 rounded-panel border p-4 text-start transition-colors',
-        'disabled:pointer-events-none disabled:text-ui-fg-subtle',
-        accent
-          ? 'border-transparent bg-ui-accent-soft hover:bg-ui-accent-soft-hover'
-          : 'border-ui-line bg-ui-panel hover:bg-ui-hover active:bg-ui-pressed',
-      )}
-    >
-      <Icon icon={icon} size="md" className={accent ? 'text-ui-accent-fg' : 'text-ui-fg-muted'} />
-      <span className={cx('text-md font-semibold', accent ? 'text-ui-accent-fg' : 'text-ui-fg')}>
-        {title}
+    <span className="welcome-art-blank">
+      <span className="welcome-sheet">
+        <span className="welcome-sheet-title">
+          <span className="welcome-caret" />
+        </span>
+        <span className="welcome-sheet-line" />
+        <span className="welcome-sheet-line" data-short />
+        <span className="welcome-spark">
+          <Icon icon={Sparkles} size="sm" />
+        </span>
       </span>
-      <span className="text-sm text-ui-fg-muted">{body}</span>
-    </button>
+    </span>
   );
 }
 
-function TemplateCard({ template, onPick }: { template: Template; onPick: () => void }) {
-  const { i18n } = useTranslation();
-  const like = useDeck((s) => s.deck);
-  const { theme } = template;
-  // The cover follows the language and the direction of the UI's deck, not every edit of it.
+/** The two kinds of file the way takes: a page of HTML behind a Slidr file. */
+function FileArt() {
+  return (
+    <span className="welcome-art-files">
+      <span className="welcome-file" data-kind="html">
+        <Icon icon={CodeXml} size="lg" />
+        <span className="welcome-file-tag" dir="ltr">
+          HTML
+        </span>
+      </span>
+      <span className="welcome-file" data-kind="slidr">
+        <span className="welcome-file-mark editor-header">
+          <SlidrMark className="size-7" />
+        </span>
+        <span className="welcome-file-tag" dir="ltr">
+          .slidr
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function FanCover({ entry, like }: { entry: LibraryEntry; like: Deck }) {
+  const { template } = entry;
   const cover = useMemo(
-    () => coverOf(library.forDeck(theme.id, like.meta.lang) ?? template, like),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [template, theme.id, like.meta.lang, like.meta.dir],
+    () => coverOf(library.forDeck(template.theme.id, like.meta.lang) ?? template, like),
+    [template, like],
   );
   return (
+    <ScaledSlide
+      deck={cover.deck}
+      slide={cover.slide}
+      mode="thumbnail"
+      width={FAN_WIDTH}
+      resolveAsset={coverAsset}
+    />
+  );
+}
+
+/** The covers of the first templates, fanned out; empty cards while there are none. */
+function TemplatesArt({ entries, like }: { entries: readonly LibraryEntry[]; like: Deck }) {
+  // The first template in front, the next two behind it at either side.
+  const fan = [entries[1], entries[2], entries[0]];
+  return (
+    <span className="welcome-art-fan">
+      {fan.map((entry, index) => (
+        <span key={index} className="welcome-fan-card" data-at={index}>
+          {entry && <FanCover entry={entry} like={like} />}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/* ---------------------------------------------------------------- the ways */
+
+function Way({
+  art,
+  icon,
+  title,
+  body,
+  testId,
+  onClick,
+  disabled = false,
+  expanded,
+  ref,
+}: {
+  art: ReactNode;
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  testId: string;
+  onClick: () => void;
+  disabled?: boolean;
+  /** For the way that opens what is under it: whether that is open. */
+  expanded?: boolean;
+  ref?: Ref<HTMLButtonElement>;
+}) {
+  return (
     <button
+      ref={ref}
       type="button"
-      data-welcome-template={theme.id}
-      onClick={onPick}
-      className="group flex min-w-0 cursor-default flex-col gap-2 rounded-panel border border-ui-line bg-ui-panel p-2 text-start transition-colors hover:border-ui-line-strong hover:bg-ui-hover"
+      data-testid={testId}
+      disabled={disabled}
+      aria-expanded={disabled ? undefined : expanded}
+      onClick={onClick}
+      className={cx(
+        'welcome-way group flex min-w-0 cursor-default flex-col overflow-hidden rounded-panel border bg-ui-panel text-start transition-[border-color,box-shadow,translate]',
+        'disabled:pointer-events-none',
+        expanded
+          ? 'border-ui-accent shadow-floating ring-1 ring-ui-accent'
+          : 'border-ui-line hover:-translate-y-0.5 hover:border-ui-line-strong hover:shadow-floating',
+      )}
     >
-      {/* The cover is a picture, with every word of its slide: the card is named by its name. */}
-      <span aria-hidden className="pointer-events-none block overflow-hidden rounded-inset">
-        <ScaledSlide
-          deck={cover.deck}
-          slide={cover.slide}
-          mode="thumbnail"
-          width={COVER_WIDTH}
-          resolveAsset={coverAsset}
-        />
+      <span
+        aria-hidden
+        className="welcome-art relative block h-36 overflow-hidden border-b border-ui-line"
+      >
+        {art}
       </span>
-      <span className="truncate px-1 text-sm font-medium text-ui-fg" dir="auto">
-        {templateName(theme, i18n.language)}
+      <span className="flex flex-col gap-1 px-4 pt-3.5 pb-4">
+        <span className="flex items-center gap-2">
+          <Icon
+            icon={icon}
+            size="md"
+            className={disabled ? 'text-ui-fg-subtle' : 'text-ui-accent-fg'}
+          />
+          <span
+            className={cx(
+              'min-w-0 flex-1 text-md font-semibold',
+              disabled ? 'text-ui-fg-subtle' : 'text-ui-fg',
+            )}
+          >
+            {title}
+          </span>
+          {expanded !== undefined && !disabled && (
+            <Icon
+              icon={ChevronDown}
+              className={cx('text-ui-fg-muted transition-transform', expanded && 'rotate-180')}
+            />
+          )}
+        </span>
+        <span className="text-sm text-ui-fg-muted">{body}</span>
       </span>
     </button>
   );
@@ -171,30 +261,52 @@ function Recent({ files, onOpen }: { files: RecentFile[]; onOpen: (path: string)
 }
 
 export function Welcome() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const editor = useEditor();
   const busy = useFile((s) => s.busy);
   const hasStorage = editor.document !== null;
   const runImport = useAction('import');
+  const importers = useImporters();
   // Built-in templates first, then the user's own; drawn again when the personal ones are read.
-  useStore(library.state, (s) => s.personal);
-  const templates = library.entries();
-  const [allTemplates, setAllTemplates] = useState(false);
+  const personal = useStore(library.state, (s) => s.personal);
+  const defaultId = useStore(library.state, (s) => s.defaultId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const entries = useMemo(() => library.entries(), [personal]);
+  // The deck a new one will be like: in the language of the UI, whatever document is behind.
+  const lang = currentLanguage();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const like = useMemo(() => createDeck({ lang }), [lang, i18n.language]);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const showroom = useRef<HTMLElement>(null);
+  const templateWay = useRef<HTMLButtonElement>(null);
   const [recent, setRecent] = useState<RecentFile[] | null>(hasStorage ? null : []);
   const back = useShell((s) => s.welcomeBack);
 
   useEffect(() => {
-    if (!back) return;
-    // Esc goes back to the document, unless it is the key of a dialog or a menu that is open.
+    if (!back && !templatesOpen) return;
+    // Esc closes the templates, else goes back to the document, unless it is the key of a
+    // dialog or a menu that is open.
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       if (modalOpen() || overlayOf(event.target)) return;
       event.preventDefault();
-      setWelcome(false);
+      if (templatesOpen) {
+        setTemplatesOpen(false);
+        templateWay.current?.focus();
+      } else setWelcome(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [back]);
+  }, [back, templatesOpen]);
+
+  // The templates come into sight as they open, with the focus on the one that is picked.
+  useEffect(() => {
+    const opened = showroom.current;
+    if (!templatesOpen || !opened) return;
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    opened.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'nearest' });
+    opened.querySelector<HTMLElement>('[aria-checked="true"]')?.focus({ preventScroll: true });
+  }, [templatesOpen]);
 
   useEffect(() => {
     if (!hasStorage) return;
@@ -211,19 +323,22 @@ export function Welcome() {
     return newDocument(editor, deck);
   };
   const blank = async () => {
-    if (await start()) setWelcome(false);
-  };
-  const withAgent = async () => {
     if (!(await start())) return;
     setWelcome(false);
     focusChat();
   };
-  const onTemplate = async (template: Template) => {
-    const lang = currentLanguage();
+  const fromTemplate = async ({ template }: LibraryEntry) => {
     const deck = deckOn(library.forDeck(template.theme.id, lang) ?? template, lang);
-    if (await newDocument(editor, deck)) setWelcome(false);
+    if (!(await start(deck))) return;
+    setWelcome(false);
+    focusChat();
   };
-  const open = async (path?: string) => {
+  // In a plain browser there are no files of the app's own: the HTML import alone, by its dialog.
+  const load = () => {
+    if (hasStorage) void loadFile(editor, importers);
+    else runImport?.();
+  };
+  const open = async (path: string) => {
     if (await openDocument(editor, path)) setWelcome(false);
   };
 
@@ -234,102 +349,87 @@ export function Welcome() {
       className="flex min-h-0 flex-1 flex-col bg-ui-canvas"
     >
       <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-8 py-10">
-          <header className="flex flex-col gap-1">
-            {back && (
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="welcome-back"
-                className="-ms-2.5 mb-3 self-start"
-                onClick={() => setWelcome(false)}
-              >
-                <Icon icon={ArrowLeft} mirror />
-                {t('welcome.back')}
-              </Button>
-            )}
-            <h1 className="text-xl font-semibold text-ui-fg">{t('welcome.title')}</h1>
-            <p className="text-md text-ui-fg-muted">{t('welcome.subtitle')}</p>
-          </header>
-
-          <section className="flex flex-col gap-3">
-            <Heading>{t('welcome.start')}</Heading>
-            <div className="flex gap-3">
-              <Way
-                icon={Sparkles}
-                accent
-                testId="welcome-ai"
-                title={t('welcome.ai')}
-                body={t('welcome.aiBody')}
-                onClick={() => void withAgent()}
-              />
-              <Way
-                icon={FilePlus}
-                testId="welcome-blank"
-                title={t('welcome.blank')}
-                body={t('welcome.blankBody')}
-                onClick={() => void blank()}
-              />
-              <Way
-                icon={FolderOpen}
-                testId="welcome-open"
-                title={t('welcome.open')}
-                body={t('welcome.openBody')}
-                disabled={!hasStorage}
-                onClick={() => void open()}
-              />
-              {runImport && (
-                <Way
-                  icon={FileInput}
-                  testId="welcome-import"
-                  title={t('welcome.importHtml')}
-                  body={t('welcome.importHtmlBody')}
-                  onClick={runImport}
-                />
-              )}
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <div className="flex h-control-sm items-center justify-between">
-              <Heading>{t('welcome.templates')}</Heading>
-              {templates.length > TEMPLATE_COLUMNS && (
+        <div className="welcome-page relative">
+          <div className="relative mx-auto flex w-full max-w-screen-2xl flex-col gap-8 px-8 pt-10 pb-12">
+            <header className="flex flex-col gap-1">
+              {back && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  data-testid="welcome-all-templates"
-                  aria-expanded={allTemplates}
-                  onClick={() => setAllTemplates((all) => !all)}
+                  data-testid="welcome-back"
+                  className="-ms-2.5 mb-3 self-start"
+                  onClick={() => setWelcome(false)}
                 >
-                  {t(allTemplates ? 'welcome.fewerTemplates' : 'welcome.allTemplates')}
+                  <Icon icon={ArrowLeft} mirror />
+                  {t('welcome.back')}
                 </Button>
               )}
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              {(allTemplates ? templates : templates.slice(0, TEMPLATE_COLUMNS)).map(
-                ({ template }) => (
-                  <TemplateCard
-                    key={template.theme.id}
-                    template={template}
-                    onPick={() => void onTemplate(template)}
-                  />
-                ),
-              )}
-            </div>
-          </section>
+              <h1 className="text-xl font-semibold text-ui-fg">{t('welcome.title')}</h1>
+              <p className="flex items-center gap-1.5 text-md text-ui-fg-muted">
+                <Icon icon={Sparkles} className="shrink-0 text-ui-accent-fg" />
+                {t('welcome.subtitle')}
+              </p>
+            </header>
 
-          <section className="flex flex-col gap-3">
-            <Heading>{t('welcome.recent')}</Heading>
-            {recent === null ? null : recent.length === 0 ? (
-              <EmptyState
-                icon={Clock}
-                title={t('welcome.noRecentTitle')}
-                description={t(hasStorage ? 'welcome.noRecentBody' : 'welcome.noStorage')}
+            <section className="flex flex-col gap-3">
+              <Heading>{t('welcome.start')}</Heading>
+              <div className="grid grid-cols-3 gap-4">
+                <Way
+                  icon={FilePlus}
+                  art={<BlankArt />}
+                  testId="welcome-blank"
+                  title={t('welcome.blank')}
+                  body={t('welcome.blankBody')}
+                  onClick={() => void blank()}
+                />
+                <Way
+                  icon={FolderOpen}
+                  art={<FileArt />}
+                  testId="welcome-load"
+                  title={t('welcome.load')}
+                  body={t('welcome.loadBody')}
+                  disabled={!hasStorage && !runImport}
+                  onClick={load}
+                />
+                {/* Without the media library and without templates of the user's own, nothing
+                    to offer: the way stays, and says so. */}
+                <Way
+                  ref={templateWay}
+                  icon={LayoutTemplate}
+                  art={<TemplatesArt entries={entries} like={like} />}
+                  testId="welcome-template"
+                  title={t('welcome.template')}
+                  body={t(entries.length > 0 ? 'welcome.templateBody' : 'welcome.noTemplates')}
+                  disabled={entries.length === 0}
+                  expanded={templatesOpen}
+                  onClick={() => setTemplatesOpen((open) => !open)}
+                />
+              </div>
+            </section>
+
+            {templatesOpen && entries.length > 0 && (
+              <TemplateShowroom
+                ref={showroom}
+                entries={entries}
+                like={like}
+                initial={defaultId}
+                onCreate={fromTemplate}
               />
-            ) : (
-              <Recent files={recent} onOpen={(path) => void open(path)} />
             )}
-          </section>
+
+            <section className="flex flex-col gap-3">
+              <Heading>{t('welcome.recent')}</Heading>
+              {recent === null ? null : recent.length === 0 ? (
+                <EmptyState
+                  icon={Clock}
+                  title={t('welcome.noRecentTitle')}
+                  description={t(hasStorage ? 'welcome.noRecentBody' : 'welcome.noStorage')}
+                />
+              ) : (
+                <Recent files={recent} onOpen={(path) => void open(path)} />
+              )}
+            </section>
+          </div>
         </div>
       </ScrollArea>
     </main>

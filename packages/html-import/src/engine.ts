@@ -22,6 +22,7 @@ import {
   type Slide,
 } from '@slidr/model';
 import { renderSlideOffscreen, themeVariables } from '@slidr/renderer';
+import { ANIM_MARK, timelineOf, type Entering } from './anim';
 import {
   compose,
   elementsOf,
@@ -561,6 +562,8 @@ export async function startConversion(root: Element, options: ConvertOptions): P
     nextId,
     storeImage,
     ...(options.placement ? { placement: options.placement } : {}),
+    // An imported page's own `data-anim` means whatever that page made it mean.
+    animAttribute: options.foreign ? ANIM_MARK : 'data-anim',
   });
   const { space, notes } = proposal;
   for (const work of proposal.pending) await work();
@@ -698,8 +701,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   /** The proposal as it nests, once it was put together (`composed`); flat until then. */
   let nested: Part[] | undefined;
   const assemble = (): Slide => {
-    const groups = new Set<number>();
-    const timeline: AnimationStep[] = [];
+    const entering: Entering[] = [];
     const steps = new Set<string>();
     const parts: Part[] = nested ?? proposal.items.map((item) => ({ item }));
     /** The `data-anim` everything in a part enters with, when it is one. */
@@ -716,23 +718,15 @@ export async function startConversion(root: Element, options: ConvertOptions): P
         part.group?.parts.forEach(enter);
         return;
       }
-      const id = newId('a', (candidate) => steps.has(candidate));
-      steps.add(id);
-      timeline.push({
-        id,
-        // A group whose every part enters with one `data-anim` enters as the one thing it is.
-        elementId: part.group?.id ?? part.item.element.id,
-        // The elements one `data-anim` produced enter together.
-        trigger: groups.has(anim.group) ? 'withPrevious' : 'onClick',
-        category: 'entrance',
-        preset: anim.preset,
-        duration: 500,
-        delay: 0,
-        easing: 'ease-out',
-      });
-      groups.add(anim.group);
+      // A group whose every part enters with one `data-anim` enters as the one thing it is.
+      entering.push({ elementId: part.group?.id ?? part.item.element.id, anim });
     };
     parts.forEach(enter);
+    const timeline: AnimationStep[] = timelineOf(entering, () => {
+      const id = newId('a', (candidate) => steps.has(candidate));
+      steps.add(id);
+      return id;
+    });
     const css = [options.css, fonts, keyframesText(doc, proposal.keyframes)]
       .filter(Boolean)
       .join('\n');

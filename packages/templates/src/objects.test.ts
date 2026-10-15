@@ -10,7 +10,7 @@ import {
   type Frame,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { mifgashTemplate, tzukTemplate } from './builtin';
+import { builtInAvailable, mifgashTemplate, tzukTemplate } from './builtin';
 import { changeLayout } from './changeLayout';
 import { createSlide } from './createSlide';
 import { applyTemplate, changeDirection, deckFromTemplate } from './deck';
@@ -84,7 +84,8 @@ const ids = (elements: readonly Element[]) => [...walkElements(elements)].map((e
 const drawsAs = (elements: readonly Element[], objects: readonly Element[]) =>
   elements.length === objects.length && elements.every((e, i) => sameDrawing(e, objects[i]!));
 
-describe('the objects of a layout', () => {
+// The layouts are those of the media library's templates: without it there is nothing to test.
+describe.skipIf(!builtInAvailable)('the objects of a layout', () => {
   it('are on a new slide as its own elements, under its placeholders and under new ids', () => {
     const deck = deckFromTemplate(tzuk(), { lang: 'he' });
     const { slide } = slideFromLayout(deck, 'l_tzuk_cards');

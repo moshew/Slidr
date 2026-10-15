@@ -1,5 +1,5 @@
 import { findElement, type AnimationStep, type Slide } from '@slidr/model';
-import { animationPresets, describePreset, type TimelineGroup } from '@slidr/runtime';
+import { animationPresets, describePreset, keyframesOf, type TimelineGroup } from '@slidr/runtime';
 import {
   Button,
   cx,
@@ -100,7 +100,9 @@ const TEXT_BY = ['all', 'paragraph', 'word', 'char'] as const;
 const seconds = (ms: number) => `${Number((ms / 1000).toFixed(2))}`;
 
 /** What a step is called: its preset, in the words of its category. */
+/** What a step is called: its preset, or the original motion an import carried over. */
 function effectLabel(step: AnimationStep): string {
+  if (keyframesOf(step.preset)) return nameLabel('panel.original', 'Original motion');
   return nameLabel(`preset.${step.category}.${step.preset}`, step.preset);
 }
 
@@ -709,7 +711,7 @@ function StepEditor({
           aria-label={t('field.effect')}
           size="sm"
           value={names.includes(step.preset) ? step.preset : null}
-          placeholder={step.preset}
+          placeholder={effectLabel(step)}
           onValueChange={(preset) => onChange(step, withPreset(step, preset))}
           options={names.map((value) => ({
             value,
@@ -772,6 +774,9 @@ function StepEditor({
           options={EASINGS.map((value) => ({ value, label: t(`easing.${value}`) }))}
         />
       </Field>
+      {keyframesOf(step.preset) && (
+        <p className="col-span-2 text-xs text-ui-fg-muted">{t('panel.originalHint')}</p>
+      )}
     </div>
   );
 }

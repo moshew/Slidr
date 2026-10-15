@@ -1,10 +1,13 @@
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
+import { mediaLibraryServer } from './apps/desktop/build/media';
 
 // Tests that need a real layout engine (HTML conversion, lint measurements): `*.browser.test.ts`.
 // They run headless in the installed Edge, the same Chromium engine WebView2 uses, served by
 // Vitest itself on its own port. No dev server and no app, so they do not touch port 1420.
 export default defineConfig({
+  // The media library, as the dev server serves it to a page (apps/desktop/build/media.ts).
+  plugins: [mediaLibraryServer()],
   test: {
     include: ['packages/*/src/**/*.browser.test.{ts,tsx}', 'apps/*/src/**/*.browser.test.{ts,tsx}'],
     // These tests take screenshots, and the files run side by side in one browser: a test that

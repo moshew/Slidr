@@ -30,6 +30,7 @@ const mine = (page: Page) => source(page, 'mine').locator('[data-user-font]');
 
 async function openFonts(page: Page) {
   await page.getByTestId('activity-bar').locator('[data-panel="settings"]').click();
+  await page.locator('[data-settings-tab="fonts"]').click();
   await expect(section(page)).toBeVisible();
   await section(page).scrollIntoViewIfNeeded();
 }
@@ -112,9 +113,10 @@ test('a font file the user adds is listed with what the file says of itself', as
   ]);
   await expect(mine(page).nth(1)).toContainText('משקל 400 · fixture-sans-regular.woff2');
   await expect(mine(page).nth(2)).toContainText('משקל 700 · fixture-sans-bold.ttf');
-  // The app can draw text in it at once.
-  expect(await page.evaluate(() => document.fonts.check('700 20px "Slidr Fixture Sans"'))).toBe(
-    false,
+  // The app can draw text in it at once: the list draws a sample of each file in its own face.
+  await expect(mine(page).nth(2).locator('[aria-hidden]').first()).toHaveCSS(
+    'font-family',
+    `"${SANS}"`,
   );
   await page.evaluate(() => document.fonts.load('700 20px "Slidr Fixture Sans"'));
   expect(await page.evaluate(() => document.fonts.check('700 20px "Slidr Fixture Sans"'))).toBe(
@@ -215,9 +217,10 @@ test('a font is there again after the app starts again, and can be taken out', a
   await addFonts(page, THREE);
   await expect(mine(page)).toHaveCount(3);
 
-  // The window comes back on the panel it had: the settings.
+  // The window comes back on the panel it had, the settings, on their first tab.
   await page.reload();
   await expect(page.getByTestId('stage-frame')).toBeVisible();
+  await page.locator('[data-settings-tab="fonts"]').click();
   await expect(section(page)).toBeVisible();
   await expect(mine(page)).toHaveCount(3);
 

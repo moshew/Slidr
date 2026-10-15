@@ -282,14 +282,14 @@ describe('a box and what lies on it', () => {
 
   it('enters as one thing when everything in it enters with one data-anim', async () => {
     const r = await convert(`<div style="${SLIDE}">
-      <div data-anim="fade-in" style="position:absolute;left:200px;top:200px;width:600px;padding:36px;background:#fff;border:2px solid #e2e8f0;border-radius:20px">
+      <div data-anim="zoom" style="position:absolute;left:200px;top:200px;width:600px;padding:36px;background:#fff;border:2px solid #e2e8f0;border-radius:20px">
         <h3 style="margin:0 0 14px;font-size:36px;line-height:1.2">Enters whole</h3>
         <p style="margin:0;font-size:26px;line-height:1.5;color:#475569">The box and its words, in one step.</p>
       </div>
     </div>`);
     const [card] = groups(r.slide.elements);
     expect(r.slide.timeline).toHaveLength(1);
-    expect(r.slide.timeline[0]).toMatchObject({ elementId: card!.id, preset: 'fade-in' });
+    expect(r.slide.timeline[0]).toMatchObject({ elementId: card!.id, preset: 'zoom' });
   });
 });
 
@@ -358,5 +358,55 @@ describe('the coloured side of a card', () => {
     expect(kinds(onIt).sort()).toEqual(['shape', 'text']);
     expect(r.editability).toBe(1);
     expect(r.guard.fallbacks).toEqual([]);
+  });
+});
+
+describe('animation written in HTML', () => {
+  const TEXT = 'margin:0;width:900px;font-size:40px;line-height:1.3';
+
+  it('takes the fields of a step as JSON, and orders the steps by `order`', async () => {
+    const r = await convert(`<div style="${SLIDE};padding:120px">
+      <p data-name="third" data-anim='{"preset":"rise","order":2}' style="${TEXT}">Third, on the second click</p>
+      <p data-name="first" data-anim='{"preset":"fade","order":0,"delay":200,"duration":800,"easing":"ease-in-out"}' style="${TEXT}">First, as the slide opens</p>
+      <p data-name="second" data-anim='{"preset":"flyIn","direction":"start","order":1}' style="${TEXT}">Second, on the first click</p>
+      <p data-name="with-second" data-anim='{"preset":"pulse","category":"emphasis","order":1,"delay":300}' style="${TEXT}">With the second</p>
+    </div>`);
+    const name = (id: string) => r.slide.elements.find((e) => e.id === id)?.name;
+    expect(
+      r.slide.timeline.map((s) => [name(s.elementId), s.trigger, s.preset, s.category, s.delay]),
+    ).toEqual([
+      ['first', 'withPrevious', 'fade', 'entrance', 200],
+      ['second', 'onClick', 'flyIn', 'entrance', 0],
+      ['with-second', 'withPrevious', 'pulse', 'emphasis', 300],
+      ['third', 'onClick', 'rise', 'entrance', 0],
+    ]);
+    expect(r.slide.timeline[0]).toMatchObject({ duration: 800, easing: 'ease-in-out' });
+    expect(r.slide.timeline[1]).toMatchObject({ direction: 'start', duration: 500 });
+  });
+
+  it('leaves out what no preset plays, and says so; `none` stops what an ancestor gives', async () => {
+    const r = await convert(`<div style="${SLIDE};padding:120px">
+      <div data-anim="rise">
+        <p data-name="rises" style="${TEXT}">Rises with its container</p>
+        <p data-name="still" data-anim="none" style="${TEXT};margin-top:200px">Stays where it is</p>
+      </div>
+      <p data-name="unknown" data-anim="fade-up" style="${TEXT};margin-top:200px">An unknown preset</p>
+    </div>`);
+    const name = (id: string) => r.slide.elements.find((e) => e.id === id)?.name;
+    expect(r.slide.timeline.map((s) => [name(s.elementId), s.preset])).toEqual([['rises', 'rise']]);
+    expect(r.notes.some((note) => note.includes('"fade-up" is not an entrance preset'))).toBe(true);
+  });
+
+  it("plays the slide's own @keyframes by `css:` and carries them in the slide's css", async () => {
+    const r = await convert(`<style>
+        @keyframes swing-up { from { opacity: 0; transform: translateY(60px) rotate(-4deg); } to { opacity: 1; transform: none; } }
+      </style>
+      <div style="${SLIDE};padding:120px">
+        <p data-name="own" data-anim='{"preset":"css:swing-up","order":0,"duration":900}' style="${TEXT}">Moves as written</p>
+      </div>`);
+    expect(r.slide.timeline).toMatchObject([
+      { preset: 'css:swing-up', trigger: 'withPrevious', duration: 900 },
+    ]);
+    expect(r.slide.css).toContain('@keyframes swing-up');
   });
 });

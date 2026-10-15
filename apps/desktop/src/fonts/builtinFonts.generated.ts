@@ -1,4 +1,11 @@
-import source from '../../../../../Slidr-media/fonts/catalog.json?raw';
+import { mediaUrl, readMediaJson } from '@slidr/media-library';
+
+/*
+ * The built-in fonts of decks (SPEC appendix B): the catalog of the media library
+ * (`fonts/catalog.json`, written by `scripts/gen-builtin-fonts.mjs`) and its files, read as the
+ * app starts. Without the library there are none: text is set in the fonts of the system, and
+ * the font lists offer those and the user's own.
+ */
 
 export interface BuiltinFace {
   family: string;
@@ -12,20 +19,18 @@ interface MediaFace extends Omit<BuiltinFace, 'url'> {
   path: string;
 }
 
-const catalog = JSON.parse(source) as {
+interface Catalog {
   families: { family: string; scripts: string[] }[];
   faces: MediaFace[];
+}
+
+const read = await readMediaJson<Partial<Catalog>>('fonts/catalog.json');
+const catalog: Catalog = {
+  families: Array.isArray(read?.families) ? read.families : [],
+  faces: Array.isArray(read?.faces) ? read.faces : [],
 };
-const files = import.meta.glob<string>('../../../../../Slidr-media/fonts/**/*.woff2', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
-const prefix = '../../../../../Slidr-media/';
 
 export const builtinFamilies = catalog.families;
-export const builtinFaces: BuiltinFace[] = catalog.faces.map(({ path, ...face }) => {
-  const url = files[`${prefix}${path}`];
-  if (!url) throw new Error(`Missing built-in font in media: ${path}`);
-  return { ...face, url };
-});
+export const builtinFaces: BuiltinFace[] = catalog.faces
+  .filter((face) => typeof face.path === 'string')
+  .map(({ path, ...face }) => ({ ...face, url: mediaUrl(path) }));

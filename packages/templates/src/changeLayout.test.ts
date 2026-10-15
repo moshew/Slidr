@@ -8,7 +8,7 @@ import {
   type Element,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
-import { mifgashTemplate, tzukTemplate, zeremTemplate } from './builtin';
+import { builtInAvailable, mifgashTemplate, tzukTemplate, zeremTemplate } from './builtin';
 import { changeLayout } from './changeLayout';
 import { deckFromTemplate } from './deck';
 
@@ -25,7 +25,7 @@ const layout = (deck: Deck, id: string) => deck.layouts.find((l) => l.id === id)
 const seats = (deck: Deck, id: string, role: string) =>
   layout(deck, id).placeholders.filter((p) => p.role === role);
 
-describe('moving a slide to another layout (SLD-02)', () => {
+describe.skipIf(!builtInAvailable)('moving a slide to another layout (SLD-02)', () => {
   it('takes the content along by role, as one step that undo takes back', () => {
     const start = deckWith('l_tzuk_cards');
     const bus = new CommandBus(start, { validate: true });
@@ -195,7 +195,7 @@ describe('moving a slide to another layout (SLD-02)', () => {
   });
 });
 
-describe('the colour of text on a card of the layout', () => {
+describe.skipIf(!builtInAvailable)('the colour of text on a card of the layout', () => {
   const ink = { token: 'bg' };
   /** A deck on the online-session template with one slide of its cards, every text filled in. */
   function sessions(): Deck {

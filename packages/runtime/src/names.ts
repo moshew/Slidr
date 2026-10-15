@@ -93,3 +93,18 @@ export const animationPresets: Record<Category, readonly string[]> = {
 
 /** The names of the transitions, for a picker and for the agent's prompt. */
 export const transitionTypes: readonly string[] = transitionNames;
+
+/**
+ * A preset written `css:<name>` plays the `@keyframes <name>` of the slide's own `css` instead of
+ * a ready-made motion: an animation carried over from an imported file as that file wrote it, or
+ * one written for the slide. Nothing about it is known before the slide is drawn, so a picker
+ * shows it as the original animation of its element.
+ */
+export const KEYFRAMES_PREFIX = 'css:';
+
+/** The name of the `@keyframes` a preset plays, when it is one of the slide's own. */
+export function keyframesOf(preset: string): string | undefined {
+  return preset.startsWith(KEYFRAMES_PREFIX) && preset.length > KEYFRAMES_PREFIX.length
+    ? preset.slice(KEYFRAMES_PREFIX.length)
+    : undefined;
+}

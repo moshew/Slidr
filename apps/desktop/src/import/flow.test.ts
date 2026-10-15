@@ -32,6 +32,7 @@ vi.mock('../ai/runtime', () => ({
   }),
 }));
 
+import { paperTemplate } from '@slidr/templates/fixtures';
 import { answer, pendingDialog } from '../shell/dialogs';
 import { createEditor, setNewDeck } from '../shell/editor';
 import { PanelId } from '../shell/registry';
@@ -42,11 +43,15 @@ import { importOpening, startImport } from './flow';
 
 const SOURCE = { path: 'C:\\in\\deck.html' };
 
-/** Sets the template new decks start on, as the Templates panel does; null for none. */
-function defaultTemplate(set: boolean): void {
-  const builtIn = library.entries().find((entry) => !entry.personal);
-  expect(builtIn).toBeDefined();
-  library.setDefault(set ? builtIn!.template.theme.id : null);
+/**
+ * Sets the template new decks start on, as the Templates panel does; null for none. A built-in
+ * one, or without the media library a personal one.
+ */
+async function defaultTemplate(set: boolean): Promise<void> {
+  if (library.entries().length === 0) await library.save(paperTemplate(), []);
+  const template = library.entries()[0];
+  expect(template).toBeDefined();
+  library.setDefault(set ? template!.template.theme.id : null);
   // What templates/register.tsx does when the app starts.
   setNewDeck((lang) => startDeck(library, lang));
 }
@@ -61,7 +66,7 @@ beforeEach(() => {
 
 describe('startImport', () => {
   it('uses the deck that is open when nobody has put anything into it', async () => {
-    defaultTemplate(false);
+    await defaultTemplate(false);
     const editor = createEditor({ lang: 'he', storage: null });
     const open = editor.bus.deck.id;
     expect(await startImport(editor, SOURCE, { confirm: false })).toBe(true);
@@ -71,7 +76,7 @@ describe('startImport', () => {
   });
 
   it('starts in a plain deck for a user whose new decks start on a template', async () => {
-    defaultTemplate(true);
+    await defaultTemplate(true);
     const editor = createEditor({ lang: 'he', storage: null });
     // The deck the app started with is the template's: a slide of its first layout.
     const started = editor.bus.deck;
@@ -94,7 +99,7 @@ describe('startImport', () => {
   });
 
   it('asks about unsaved work first, and does not start when the user keeps it', async () => {
-    defaultTemplate(true);
+    await defaultTemplate(true);
     const editor = createEditor({ lang: 'he', storage: null });
     editor.bus.dispatch({ type: 'slide.add', slide: createSlide({ name: 'Mine' }) });
     const mine = editor.bus.deck.id;
@@ -118,7 +123,7 @@ describe('startImport', () => {
   });
 
   it('puts the request in the AI chat: the editor, the chat open, on the conversation of the import', async () => {
-    defaultTemplate(false);
+    await defaultTemplate(false);
     const editor = createEditor({ lang: 'he', storage: null });
     setWelcome(true);
     useShell.setState({ activePanel: PanelId.actions, panelOpen: false });
@@ -145,7 +150,7 @@ describe('startImport', () => {
   });
 
   it('says nothing is loading any more when the file could not be opened', async () => {
-    defaultTemplate(false);
+    await defaultTemplate(false);
     const editor = createEditor({ lang: 'he', storage: null });
     session.openImport.mockImplementation(() => Promise.reject(new Error('no such file')));
     await expect(startImport(editor, SOURCE, { confirm: true })).rejects.toThrow('no such file');

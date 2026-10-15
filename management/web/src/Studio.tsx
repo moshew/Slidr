@@ -1,0 +1,198 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, isRunning, useStudio, type Lang, type ServerStatus } from './api';
+import { PublishPanel } from './PublishPanel';
+import { RequestForm } from './RequestForm';
+import { RequestView } from './RequestView';
+import { VariantDetail } from './VariantDetail';
+
+const NEW = 'new';
+
+function readHash(): { tab: string; variant?: string } {
+  const params = new URLSearchParams(location.hash.slice(1));
+  return { tab: params.get('tab') ?? NEW, variant: params.get('v') ?? undefined };
+}
+
+function Programs({ status }: { status?: ServerStatus }) {
+  if (!status) return null;
+  return (
+    <div className="programs">
+      {status.programs.map((program) => (
+        <span
+          key={program.name}
+          className={`chip ${program.ready ? 'ok' : 'bad'}`}
+          title={[program.path, program.version, program.note].filter(Boolean).join('\n')}
+        >
+          {program.ready ? '●' : '○'} {program.name}
+        </span>
+      ))}
+      {!status.media.exists && (
+        <span className="chip bad" title={status.media.dir}>
+          ○ עותק הספרייה
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The studio: a tab for each request, the variants of the open one, and publishing. */
+export function Studio() {
+  const studio = useStudio();
+  const [route, setRoute] = useState(readHash);
+  const openVariant = route.variant;
+  const [lang, setLang] = useState<Lang>('he');
+  const [status, setStatus] = useState<ServerStatus>();
+  const [publishing, setPublishing] = useState(false);
+
+  const refreshStatus = useCallback(() => {
+    api.status().then(setStatus, () => undefined);
+  }, []);
+  useEffect(refreshStatus, [refreshStatus]);
+
+  useEffect(() => {
+    const onHash = () => setRoute(readHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const go = (next: { tab: string; variant?: string }) => {
+    const params = new URLSearchParams({
+      tab: next.tab,
+      ...(next.variant ? { v: next.variant } : {}),
+    });
+    history.replaceState(null, '', `#${params}`);
+    setRoute(next);
+  };
+
+  const requests = studio.requests;
+  // A closed tab, or one another page deleted: the last tab is shown in its place.
+  const known = route.tab === NEW || requests.some((request) => request.id === route.tab);
+  const tab = known || !studio.loaded ? route.tab : (requests.at(-1)?.id ?? NEW);
+  const active = requests.find((request) => request.id === tab);
+
+  const variantsOf = (rid: string) =>
+    (requests.find((request) => request.id === rid)?.variantIds ?? [])
+      .map((vid) => studio.variants[vid])
+      .filter((variant) => variant !== undefined);
+
+  const approved = useMemo(
+    () =>
+      Object.values(studio.variants).filter((variant) => variant.approved && !variant.discarded),
+    [studio.variants],
+  );
+  const detail = openVariant ? studio.variants[openVariant] : undefined;
+  const publishBusy = studio.publish.phase === 'preparing' || studio.publish.phase === 'publishing';
+
+  return (
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <span className="logo" aria-hidden>
+            S
+          </span>
+          <div>
+            <h1>Slidr Studio</h1>
+            <p>עיצובים מוכנים ל-Elements · Claude, Codex ו-Cloudflare</p>
+          </div>
+        </div>
+        <div className="topbar-actions">
+          <Programs status={status} />
+          {!studio.connected && <span className="chip bad">מנותק מהשרת</span>}
+          <div className="segmented" role="group" aria-label="שפת התצוגה">
+            <button type="button" aria-pressed={lang === 'he'} onClick={() => setLang('he')}>
+              עברית
+            </button>
+            <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
+              English
+            </button>
+          </div>
+          <button
+            type="button"
+            className={approved.length || publishBusy ? 'primary' : ''}
+            onClick={() => setPublishing(true)}
+          >
+            {publishBusy ? 'מפרסם…' : `פרסום${approved.length ? ` · ${approved.length}` : ''}`}
+          </button>
+        </div>
+      </header>
+
+      <nav className="tabs" aria-label="בקשות">
+        {requests.map((request) => {
+          const variants = variantsOf(request.id);
+          const running = request.status === 'planning' || variants.some(isRunning);
+          const ready = variants.filter((variant) => variant.status === 'ready').length;
+          return (
+            <button
+              type="button"
+              key={request.id}
+              className="tab"
+              aria-current={request.id === tab ? 'page' : undefined}
+              onClick={() => go({ tab: request.id })}
+              title={request.prompt}
+            >
+              {running ? (
+                <span className="spinner" aria-hidden />
+              ) : (
+                <span className="dot" aria-hidden />
+              )}
+              <span className="tab-title">{request.title}</span>
+              {variants.length > 0 && (
+                <span className="tab-count">
+                  {ready}/{variants.length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className="tab new"
+          aria-current={tab === NEW ? 'page' : undefined}
+          onClick={() => go({ tab: NEW })}
+        >
+          + בקשה חדשה
+        </button>
+      </nav>
+
+      <main>
+        {!studio.loaded ? (
+          <p className="muted">טוען…</p>
+        ) : tab === NEW || !active ? (
+          <RequestForm onCreated={(request) => go({ tab: request.id })} />
+        ) : (
+          <RequestView
+            key={active.id}
+            request={active}
+            variants={variantsOf(active.id)}
+            lang={lang}
+            onOpen={(vid) => go({ tab: active.id, variant: vid })}
+            onClosed={() => go({ tab: NEW })}
+          />
+        )}
+      </main>
+
+      {detail && (
+        <VariantDetail
+          key={detail.id}
+          variant={detail}
+          lang={lang}
+          onClose={() => go({ tab: detail.requestId })}
+        />
+      )}
+      {publishing && (
+        <PublishPanel
+          publish={studio.publish}
+          approved={
+            studio.publish.phase === 'idle'
+              ? approved
+              : studio.publish.items
+                  .map((vid) => studio.variants[vid])
+                  .filter((v) => v !== undefined)
+          }
+          status={status}
+          onStatus={refreshStatus}
+          onClose={() => setPublishing(false)}
+        />
+      )}
+    </div>
+  );
+}

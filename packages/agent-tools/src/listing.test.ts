@@ -137,10 +137,11 @@ describe('tool definitions for a transport adapter', () => {
 
   it('stay within a size the agent can afford', () => {
     const total = JSON.stringify(listing).length;
-    // About 96 KB (25k tokens) with every service. Raised from 90 KB for text_replace (ADR-072),
-    // from 93 KB for a picture's outline mask and the artwork of its frame, and from 95 KB for
-    // the card of a magnet and the window of its photograph (ADR-092).
-    expect(total).toBeLessThan(97_000);
+    // About 98 KB (25k tokens) with every service. Raised from 90 KB for text_replace (ADR-072),
+    // from 93 KB for a picture's outline mask and the artwork of its frame, from 95 KB for the
+    // card of a magnet and the window of its photograph (ADR-092), and from 97 KB for the motion
+    // an import carries over and a new slide gets by default (ADR-092).
+    expect(total).toBeLessThan(98_000);
   });
 
   it('give the image tools, and the drafting of a template, more time than a call gets by default', () => {

@@ -104,7 +104,9 @@ async function deckOnTemplate(page: Page, lang: 'he' | 'en', theme: 'light' | 'd
   await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
   await page.addInitScript((language) => localStorage.setItem('slidr.language', language), lang);
   await page.goto('/?welcome');
+  await page.getByTestId('welcome-template').click();
   await page.locator('[data-welcome-template]').nth(1).click();
+  await page.getByTestId('welcome-create').click();
   await expect(page.getByTestId('stage-frame')).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }

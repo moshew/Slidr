@@ -1,3 +1,4 @@
+import { mediaFiles, mediaUrl, readMediaJson } from '@slidr/media-library';
 import { frameRev, picturedAhead, type PhotoFrame } from './frames';
 
 /*
@@ -21,29 +22,9 @@ interface ThumbsIndex {
   frames: Readonly<Record<string, string>>;
 }
 
-// Read through globs, so a media library that has no pictures yet has none, and nothing fails.
-const indexes = import.meta.glob<string>('../../../../../Slidr-media/images/frames/index.json', {
-  eager: true,
-  query: '?raw',
-  import: 'default',
-});
-const files = import.meta.glob<string>('../../../../../Slidr-media/images/frames/*/*.webp', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
-
-function read(): ThumbsIndex | undefined {
-  const [text] = Object.values(indexes);
-  if (!text) return undefined;
-  try {
-    return JSON.parse(text) as ThumbsIndex;
-  } catch {
-    return undefined;
-  }
-}
-
-const index = read();
+// A media library that has no pictures yet has none, and nothing fails.
+const index = await readMediaJson<ThumbsIndex>('images/frames/index.json');
+const files = await mediaFiles();
 
 export interface FrameThumbPicture {
   url: string;
@@ -62,10 +43,10 @@ const found = new WeakMap<PhotoFrame, Partial<Record<Language, FrameThumbPicture
 function find(frame: PhotoFrame, lang: Language): FrameThumbPicture | null {
   if (!index || !picturedAhead(frame)) return null;
   const name = frame.id.replace(/^frame:/, '');
-  const url = files[`../../../../../Slidr-media/images/frames/${lang}/${name}.webp`];
-  if (!url || index.frames[name] !== frameRev(frame)) return null;
+  const path = `images/frames/${lang}/${name}.webp`;
+  if (!files.has(path) || index.frames[name] !== frameRev(frame)) return null;
   const longer = Math.max(frame.size.w, frame.size.h) * index.scale;
-  return { url, spread: (longer + 2 * index.bleed) / longer };
+  return { url: mediaUrl(path), spread: (longer + 2 * index.bleed) / longer };
 }
 
 /**

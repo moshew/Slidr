@@ -15,7 +15,7 @@ import {
 import { ChevronDown } from '@slidr/ui/icons';
 import type { HarnessDescriptor } from '../agent/agent';
 import { setConversationSettings, useAgentSettings, useConversationSettings } from '../settings';
-import { openPanel, PanelId, useEditor } from '../shell';
+import { openSettings, useEditor } from '../shell';
 import { he } from './messages';
 import { agentOf } from './runtime';
 
@@ -95,7 +95,7 @@ export function ModelPicker({ threadId }: { threadId: string }) {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => openPanel(PanelId.settings)}
+        onClick={() => openSettings('agent')}
         data-testid={settings.model ? 'model-picker' : 'model-picker-setup'}
         data-model={settings.model ?? DEFAULT}
         data-effort={settings.effort ?? DEFAULT}

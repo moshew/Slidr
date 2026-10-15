@@ -1,3 +1,4 @@
+import { lazyMediaJson } from '@slidr/media-library';
 import {
   createDeck,
   createElement,
@@ -27,7 +28,6 @@ import {
   type Theme,
 } from '@slidr/model';
 import { presetPath } from '@slidr/renderer';
-import { lazy } from '../media/icons/library';
 import { searchIcons, wordsOf, type SearchWords } from '../media/icons/search';
 
 /*
@@ -241,9 +241,7 @@ export function framesOf(catalog: FramesCatalog): PhotoFrame[] {
   );
 }
 
-const catalog = lazy<FramesCatalog>(
-  () => import('../../../../../Slidr-media/elements/catalogs/frames-catalog.json?raw'),
-);
+const catalog = lazyMediaJson<FramesCatalog>('elements/catalogs/frames-catalog.json');
 
 let frames: Promise<PhotoFrame[]> | undefined;
 let atHand: readonly PhotoFrame[] | undefined;

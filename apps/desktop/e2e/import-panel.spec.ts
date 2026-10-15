@@ -118,7 +118,7 @@ test('the import is a conversation of the AI chat: listed with the others, and l
   await expect(page.getByTestId('import-approve')).toBeVisible();
 });
 
-test('from the welcome screen: the dialog, and then the editor with the request in the chat', async ({
+test('from "Load from file" of the welcome screen: the dialog, and then the editor with the request in the chat', async ({
   page,
 }) => {
   await openForImport(page, { welcome: true });
@@ -126,11 +126,11 @@ test('from the welcome screen: the dialog, and then the editor with the request 
   await expect(welcome).toBeVisible();
   // The screen stays while no file is chosen: the dialog alone changes nothing.
   const dialog = page.waitForEvent('filechooser');
-  await page.getByTestId('welcome-import').click();
+  await page.getByTestId('welcome-load').click();
   await dialog;
   await expect(welcome).toBeVisible();
 
-  await pickFile(page, undefined, page.getByTestId('welcome-import'));
+  await pickFile(page, undefined, page.getByTestId('welcome-load'));
   await expect(welcome).toHaveCount(0);
   await expect(page.getByTestId('stage-frame')).toBeVisible();
   await expect(importChat(page)).toBeVisible({ timeout: 30_000 });

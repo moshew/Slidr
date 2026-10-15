@@ -166,7 +166,15 @@ export async function importFile(editor: Editor): Promise<void> {
   // One at a time: a file that is still loading is the import that was asked for.
   if (importOpening.getState()) return;
   const source = await chooseSource();
-  if (!source) return;
+  if (source) await importSource(editor, source);
+}
+
+/**
+ * The import of a file that was already chosen: by "Import HTML", or by "Load from file" of the
+ * welcome screen, whose dialog offers HTML beside the app's own files.
+ */
+export async function importSource(editor: Editor, source: ImportSource): Promise<void> {
+  if (importOpening.getState()) return;
   try {
     await startImport(editor, source, { confirm: true });
   } catch (error) {

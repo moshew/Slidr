@@ -1,21 +1,18 @@
 /**
- * The pictures of the built-in templates' sample decks. The files are the reference decks'
- * (`Slidr-media/images/templates`); the asset records come from `@slidr/templates/builtin`,
- * where the samples name them by id.
+ * The pictures of the built-in templates' sample decks. The files are in the media library
+ * (`images/templates`); the asset records come from `@slidr/templates/builtin`, where the
+ * samples name them by id.
  */
+import { mediaFiles, mediaUrl } from '@slidr/media-library';
 import type { AssetMeta } from '@slidr/model';
 import { pictures } from '@slidr/templates/builtin';
 
-const files = import.meta.glob<string>('../../../../../Slidr-media/images/templates/*.webp', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
+const files = await mediaFiles();
 
 const urls = new Map<string, string>();
 for (const picture of Object.values(pictures)) {
-  const path = Object.keys(files).find((file) => file.endsWith(`/${picture.name}`));
-  if (path) urls.set(picture.id, files[path]!);
+  const path = `images/templates/${picture.name}`;
+  if (files.has(path)) urls.set(picture.id, mediaUrl(path));
 }
 
 /** The pictures as assets of a deck, by id. */

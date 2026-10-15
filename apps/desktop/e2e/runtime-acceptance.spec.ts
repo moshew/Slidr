@@ -23,7 +23,7 @@ interface Playing {
 
 /**
  * The animations running under `root` that move something: the holds, which only keep an element
- * hidden until its turn, are left out. Sorted, so two views of one step compare as lists.
+ * hidden (and transparent) until its turn, are left out. Sorted, so two views of one step compare as lists.
  */
 const playing = (page: Page, root: string): Promise<Playing[]> =>
   page.evaluate((selector) => {
@@ -44,6 +44,7 @@ const playing = (page: Page, root: string): Promise<Playing[]> =>
         easing: String(effect.getTiming().easing),
         keyframes: effect.getKeyframes().map((k): Record<string, unknown> => ({ ...k })),
       }))
+      .filter((a) => !a.keyframes.every((k) => k.visibility === 'hidden'))
       .filter((a) => a.keyframes.some((k) => Object.keys(k).some((name) => !timing.has(name))))
       .sort((a, b) => `${a.id}${a.delay}`.localeCompare(`${b.id}${b.delay}`));
   }, root);

@@ -244,6 +244,34 @@ export function useActionPopover(id: ToolAction): ComponentType<ActionPopoverPro
   return useStore(actions.store, (s) => s.items.find((a) => a.id === id)?.popover);
 }
 
+/* ---------------------------------------------------------------- importers */
+
+/**
+ * A kind of file the app takes in by importing it rather than opening it, such as a page of HTML
+ * (ADR-036). "Load from file" of the welcome screen offers its files in the same dialog as the
+ * app's own, and hands it the one chosen.
+ */
+export interface FileImporter extends Registered {
+  /** The extensions of its files, without the dot: `['html', 'htm']`. */
+  extensions: readonly string[];
+  /** What its files are called in the system's file dialog, in the language of the UI. */
+  filterName: () => string;
+  /** Imports the file the user chose. */
+  open: (path: string) => void;
+}
+
+const importers = createRegistry<FileImporter>();
+
+/** Lets "Load from file" take a kind of file in. Returns a function that removes it. */
+export function registerImporter(importer: FileImporter): () => void {
+  return importers.register(importer);
+}
+
+/** The kinds of file that are imported, in the order they registered. */
+export function useImporters(): readonly FileImporter[] {
+  return useStore(importers.store, (s) => s.items);
+}
+
 /* ---------------------------------------------------------------- keyboard shortcuts */
 
 /** The headings of the shortcut map (UI-06), in the order it shows them. */

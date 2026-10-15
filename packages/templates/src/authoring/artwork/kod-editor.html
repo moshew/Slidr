@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="fonts.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 668px;
+        height: 724px;
+        background: #15161e;
+        overflow: hidden;
+      }
+      body {
+        font-family: 'JetBrains Mono', monospace;
+        color: #e9e7f3;
+      }
+      .bar {
+        height: 40px;
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        padding-left: 10px;
+        background: #1b1c27;
+        border-bottom: 1px solid #2a2c3d;
+      }
+      .tab {
+        height: 32px;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        color: #8f8da6;
+        border-radius: 7px 7px 0 0;
+      }
+      .tab.on {
+        background: #15161e;
+        color: #e9e7f3;
+        box-shadow: inset 0 2px 0 #7ee787;
+      }
+      .tab i {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .graph {
+        position: relative;
+        height: 390px;
+        background: radial-gradient(120% 80% at 70% 30%, #1d2033 0%, #15161e 70%);
+        border-bottom: 1px solid #2a2c3d;
+      }
+      .graph h4 {
+        position: absolute;
+        left: 18px;
+        top: 12px;
+        margin: 0;
+        font-size: 12px;
+        font-weight: 500;
+        color: #a3a1ba;
+        letter-spacing: 0.5px;
+      }
+      .legend {
+        position: absolute;
+        right: 16px;
+        top: 10px;
+        display: flex;
+        gap: 14px;
+        font-size: 11.5px;
+        color: #a3a1ba;
+      }
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .legend b {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      svg {
+        position: absolute;
+        inset: 0;
+      }
+      .term {
+        padding: 14px 18px;
+        font-size: 12.6px;
+        line-height: 21.5px;
+        white-space: pre;
+      }
+      .term .p {
+        color: #7ee787;
+      }
+      .term .m {
+        color: #8f8da6;
+      }
+      .term .a {
+        color: #ffb86b;
+      }
+      .term .g {
+        color: #7ee787;
+      }
+      .term .v {
+        color: #c3a6ff;
+      }
+      .term .b {
+        color: #82aaff;
+      }
+      .panelbar {
+        height: 30px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 0 18px;
+        font-size: 11px;
+        letter-spacing: 1px;
+        color: #8f8da6;
+        background: #191a24;
+        border-bottom: 1px solid #2a2c3d;
+      }
+      .panelbar .on {
+        color: #e9e7f3;
+        border-bottom: 2px solid #7ee787;
+        padding-bottom: 6px;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <div class="tab on"><i style="background: #82aaff"></i>graph.ts</div>
+      <div class="tab"><i style="background: #ffb86b; opacity: 0.6"></i>affected.ts</div>
+      <div class="tab"><i style="background: #c3a6ff; opacity: 0.6"></i>nivo.json</div>
+    </div>
+    <div class="graph">
+      <h4>DEPENDENCY GRAPH · 412 PACKAGES</h4>
+      <div class="legend">
+        <span><b style="background: #ffb86b"></b>affected 18</span
+        ><span><b style="background: #7ee787"></b>cached 394</span>
+      </div>
+      <svg id="g" width="668" height="390" viewBox="0 0 668 390"></svg>
+    </div>
+    <div class="panelbar">
+      <span class="on">TERMINAL</span><span>PROBLEMS</span><span>OUTPUT</span>
+    </div>
+    <div class="term">
+      <span class="p">❯</span> nivo build --affected --since=main <span class="g">✓</span> resolved
+      graph <span class="m">412 packages 0.4s</span> <span class="g">↺</span> restored from cache
+      <span class="m">394 packages 6.1s</span> <span class="a">▸</span> building
+      <span class="a">18 packages</span> <span class="g">✓</span>
+      <span class="b">@nivo/payments</span> <span class="m">32.0s</span> <span class="g">✓</span>
+      <span class="b">@nivo/checkout-ui</span> <span class="m">41.2s</span> <span class="g">✓</span>
+      <span class="b">@nivo/api-gateway</span> <span class="m">27.5s</span>
+      <span class="m">… 15 more</span>
+      <span class="v">Done in 1m 40s</span> <span class="m">·</span>
+      <span class="g">cache hit 91%</span> <span class="m">preview →</span>
+      <span class="b">https://pr-2481.nivo.example</span> <span class="p">❯</span>
+      <span style="background: #7ee787; color: #7ee787">_</span>
+    </div>
+    <script>
+      // A layered graph of packages: five layers, edges to the next layer, and one path of a change
+      // drawn in amber from the changed package up to the apps that depend on it.
+      const svg = document.getElementById('g');
+      const NS = 'http://www.w3.org/2000/svg';
+      let seed = 7;
+      const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+      const layers = [7, 10, 12, 9, 5];
+      const nodes = [];
+      layers.forEach((n, L) => {
+        for (let i = 0; i < n; i++) {
+          const x = 44 + (L * (668 - 88)) / (layers.length - 1) + (rnd() - 0.5) * 26;
+          const y = 62 + ((i + 0.5) * (390 - 86)) / n + (rnd() - 0.5) * 14;
+          nodes.push({ L, i, x, y });
+        }
+      });
+      const byLayer = (L) => nodes.filter((n) => n.L === L);
+      const edges = [];
+      for (let L = 0; L < layers.length - 1; L++) {
+        for (const a of byLayer(L)) {
+          const next = byLayer(L + 1);
+          const k = 1 + Math.floor(rnd() * 3);
+          for (let j = 0; j < k; j++) edges.push([a, next[Math.floor(rnd() * next.length)]]);
+        }
+      }
+      const hot = new Set();
+      const path = [byLayer(0)[3], byLayer(1)[5], byLayer(2)[6], byLayer(3)[4], byLayer(4)[2]];
+      const path2 = [byLayer(1)[5], byLayer(2)[8], byLayer(3)[6], byLayer(4)[3]];
+      const path3 = [byLayer(2)[6], byLayer(3)[2], byLayer(4)[1]];
+      for (const p of [path, path2, path3]) {
+        p.forEach((n) => hot.add(n));
+        for (let i = 0; i < p.length - 1; i++) edges.push([p[i], p[i + 1], true]);
+      }
+      const curve = (a, b) => {
+        const mx = (a.x + b.x) / 2;
+        return `M${a.x} ${a.y}C${mx} ${a.y} ${mx} ${b.y} ${b.x} ${b.y}`;
+      };
+      const defs = document.createElementNS(NS, 'defs');
+      defs.innerHTML =
+        '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+      svg.append(defs);
+      for (const [a, b, isHot] of edges.sort((e) => (e[2] ? 1 : -1))) {
+        const p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', curve(a, b));
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', isHot ? '#ffb86b' : '#7d8099');
+        p.setAttribute('stroke-opacity', isHot ? '0.95' : '0.22');
+        p.setAttribute('stroke-width', isHot ? '2.6' : '1.2');
+        if (isHot) p.setAttribute('filter', 'url(#glow)');
+        svg.append(p);
+      }
+      for (const n of nodes) {
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', n.x);
+        c.setAttribute('cy', n.y);
+        c.setAttribute('r', hot.has(n) ? 8 : 6);
+        c.setAttribute('fill', hot.has(n) ? '#ffb86b' : '#15161e');
+        c.setAttribute('stroke', hot.has(n) ? '#ffd3a1' : '#7ee787');
+        c.setAttribute('stroke-width', hot.has(n) ? 2.5 : 2);
+        if (hot.has(n)) c.setAttribute('filter', 'url(#glow)');
+        svg.append(c);
+      }
+      const labelAt = (n, t, dx, dy, color) => {
+        const tx = document.createElementNS(NS, 'text');
+        tx.setAttribute('x', n.x + dx);
+        tx.setAttribute('y', n.y + dy);
+        tx.setAttribute('fill', color);
+        tx.setAttribute('font-size', '11');
+        tx.setAttribute('font-family', 'JetBrains Mono');
+        tx.textContent = t;
+        svg.append(tx);
+      };
+      labelAt(path[0], 'core/money.ts', -30, -14, '#ffd3a1');
+      labelAt(path[4], 'apps/web', -60, -14, '#ffd3a1');
+      labelAt(byLayer(4)[0], 'apps/admin', -70, -12, '#8f8da6');
+    </script>
+  </body>
+</html>

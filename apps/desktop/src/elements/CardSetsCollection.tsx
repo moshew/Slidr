@@ -52,6 +52,15 @@ export function CardSetsCollection() {
   const { width } = useElementSize(list);
   const pictureWidth = Math.max(0, Math.floor(width - 18));
 
+  if (sets.length === 0) {
+    // The cards are read from the media library: without it there are none to offer.
+    return (
+      <p className="py-8 text-center text-sm text-ui-fg-muted" data-testid="elements-cards">
+        {t('loadFailed')}
+      </p>
+    );
+  }
+
   return (
     <div ref={list} className="flex flex-col gap-3" data-testid="elements-cards">
       <p className="text-xs leading-relaxed text-ui-fg-muted">{t('cards.hint')}</p>

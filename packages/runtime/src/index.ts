@@ -11,7 +11,15 @@ export type {
 } from './types';
 export { travel, directionOf, slideDirection, type Dir, type Vec } from './direction';
 export { schedule, type Group, type Slot, type Timed } from './schedule';
-export { animationPresets, describePreset, type Category, type PresetInfo } from './presets';
+export {
+  animationPresets,
+  describePreset,
+  KEYFRAMES_PREFIX,
+  keyframesOf,
+  type Category,
+  type PresetInfo,
+} from './presets';
+export { keyframesOfRule, slideKeyframes } from './keyframes';
 export {
   defaultTransitionDirection,
   transitionTypes,

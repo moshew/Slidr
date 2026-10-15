@@ -88,11 +88,13 @@ test('a card with a picture of a slide is named by its name, not by the words of
   await page.goto('/?welcome');
   const welcome = page.getByTestId('welcome');
   await expect(welcome).toBeVisible();
+  await page.getByTestId('welcome-template').click();
   const template = welcome.locator('[data-welcome-template="zerem"]');
   await expect(template).toHaveAccessibleName('Zerem');
   // The cover is still drawn, with its words: it is only kept out of the name.
   await expect(template.locator('.slidr-slide')).toBeVisible();
   await template.click();
+  await page.getByTestId('welcome-create').click();
   await expect(page.getByTestId('stage-frame')).toBeVisible();
 
   // The layouts of "new slide" in the strip, and of the "Layout" tool of row B.

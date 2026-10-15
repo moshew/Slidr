@@ -11,9 +11,10 @@
     "./builtin/pictures": "./src/builtin/pictures.generated.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/authoring"
   },
   "dependencies": {
+    "@slidr/media-library": "workspace:*",
     "@slidr/model": "workspace:*",
     "zod": "^4.6.5"
   }

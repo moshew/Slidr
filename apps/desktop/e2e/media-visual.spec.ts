@@ -5,7 +5,7 @@ import {
   enterKey,
   openApp,
   openMedia,
-  openPanel,
+  openSettings,
   type OpenOptions,
 } from './media-helpers';
 
@@ -74,7 +74,7 @@ for (const theme of themes) {
       test(`the settings screen ${name}`, async ({ page }) => {
         await page.setViewportSize(viewport);
         await open(page, { lang, theme });
-        await openPanel(page, 'settings');
+        await openSettings(page, 'media');
         await page.locator('[data-provider="mock-api"]').click();
         await enterKey(page, 'unsplash', 'unsplash-key-0123456789');
         await expect(page.locator('[data-provider="mock-api"]')).toHaveAttribute(
@@ -164,7 +164,7 @@ test('the states of the panel: nothing yet, no key, a failed search', async ({ p
   await settle(page);
   await page.screenshot({ path: out('state-icons-filled') });
 
-  await openPanel(page, 'settings');
+  await openSettings(page, 'media');
   await page.locator('[data-provider="mock-api"]').click();
   const field = page.getByTestId('key-openai-api');
   await field.locator('input').fill('not a key');

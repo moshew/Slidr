@@ -10,12 +10,25 @@ export {
   type ConversationSettings,
   type StoredAgentSettings,
 } from './agentSettings';
+export { InstallDialog } from './InstallDialog';
 export { KeyField } from './KeyField';
 export {
+  SettingsCard,
+  SettingsGroup,
+  SettingsItem,
+  SettingsRow,
+  StatusPill,
+  type StatusTone,
+} from './layout';
+export {
   registerSettingsSection,
+  SETTINGS_PAGES,
   SettingsOrder,
+  settingsPages,
   useSettingsSections,
+  type SettingsPageId,
   type SettingsSection,
+  type SettingsTone,
 } from './sections';
 export {
   SECRET_NAMES,

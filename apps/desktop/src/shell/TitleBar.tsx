@@ -7,6 +7,7 @@ import { cx, Icon, Tooltip, type LucideIcon } from '@slidr/ui';
 import { useDeck, useEditor, useFile, type Editor } from './editor';
 import { documentName, prepareToClose } from './fileActions';
 import { DocumentEndTools, DocumentStartTools } from './DocumentTools';
+import { SlidrMark } from './SlidrMark';
 import { useShell } from './store';
 import { watchToolFocus } from './toolFocus';
 
@@ -45,15 +46,17 @@ export function TitleBar() {
           welcome ? 'px-40' : 'px-80',
         )}
       >
-        <div className="flex min-w-0 max-w-full items-center gap-2">
-          <span className="flex shrink-0 items-center gap-2">
-            <img src="/favicon.svg" alt="" className="size-8" draggable={false} />
-            <span className="text-lg font-semibold">{t('app.name')}</span>
+        <div className="flex min-w-0 max-w-full items-center gap-3">
+          {/* The mark and the name are one Latin logo: the mark leads it in Hebrew too. */}
+          <span dir="ltr" className="flex shrink-0 items-center gap-2">
+            <SlidrMark className="size-8" />
+            <span className="text-header font-bold tracking-tight">{t('app.name')}</span>
           </span>
-          <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-ui-header-fg" />
+          <span aria-hidden="true" className="h-5 w-px shrink-0 bg-ui-header-line" />
+          {/* The document's name is what the bar is for; the tagline only fills in for it. */}
           <span
             dir="auto"
-            className="min-w-0 truncate text-sm font-medium"
+            className={cx('min-w-0 truncate text-header', name ? 'font-medium' : 'opacity-90')}
             data-testid="document-name"
           >
             {name ?? t('app.tagline')}

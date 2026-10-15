@@ -1,8 +1,10 @@
 // Generates the media font catalog from the installed @fontsource packages.
 // (SPEC appendix B, RND-05). Each face is registered under its plain family name ("Inter", not
-// "Inter Variable"), which is the name decks store. Run after adding or updating a font package:
+// "Inter Variable"), which is the name decks store. Beside each family's files it writes the
+// family's notice, `fonts/<family>/<family>.notice.json`: the app lists it among its licences
+// (src/about/notices.ts). Run after adding or updating a font package:
 //   node apps/desktop/scripts/gen-builtin-fonts.mjs
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,9 +60,38 @@ function parseFaces(css) {
   return faces;
 }
 
+const media = new URL('../../../../Slidr-media/fonts/', import.meta.url);
+
+/** The notice of a family: its package, its licence, and the licence's text with the copyright. */
+function writeNotice(font, dir) {
+  const { version, license, author, homepage } = JSON.parse(
+    readFileSync(join(dir, 'package.json'), 'utf8'),
+  );
+  const folder = font.pkg.split('/').at(-1);
+  const target = new URL(`${folder}/`, media);
+  mkdirSync(target, { recursive: true });
+  writeFileSync(
+    new URL(`${folder}.notice.json`, target),
+    `${JSON.stringify(
+      {
+        name: font.pkg,
+        version,
+        license,
+        ...(author ? { author: typeof author === 'string' ? author : author.name } : {}),
+        ...(homepage ? { homepage } : {}),
+        text: readFileSync(join(dir, 'LICENSE'), 'utf8'),
+      },
+      null,
+      2,
+    )}
+`,
+  );
+}
+
 const entries = [];
 for (const font of FONTS) {
   const dir = join(root, 'node_modules', ...font.pkg.split('/'));
+  writeNotice(font, dir);
   // Variable packages: one face per subset (index.css) plus italics. Static packages: one CSS file
   // per weight and style.
   const cssFiles = font.pkg.startsWith('@fontsource-variable/')
@@ -69,15 +100,13 @@ for (const font of FONTS) {
   if (!cssFiles.length) throw new Error(`no CSS in ${font.pkg}`);
   for (const cssFile of cssFiles) {
     for (const face of parseFaces(readFileSync(join(dir, cssFile), 'utf8'))) {
-      entries.push(
-        {
-          family: font.family,
-          style: face.style,
-          weight: face.weight,
-          path: `fonts/${font.pkg.split('/').at(-1)}/${face.file}`,
-          ...(face.unicodeRange ? { unicodeRange: face.unicodeRange } : {}),
-        },
-      );
+      entries.push({
+        family: font.family,
+        style: face.style,
+        weight: face.weight,
+        path: `fonts/${font.pkg.split('/').at(-1)}/${face.file}`,
+        ...(face.unicodeRange ? { unicodeRange: face.unicodeRange } : {}),
+      });
     }
   }
 }
@@ -86,8 +115,5 @@ const out = {
   families: FONTS.map(({ family, scripts }) => ({ family, scripts })),
   faces: entries,
 };
-writeFileSync(
-  new URL('../../../../Slidr-media/fonts/catalog.json', import.meta.url),
-  `${JSON.stringify(out, null, 2)}\n`,
-);
+writeFileSync(new URL('catalog.json', media), `${JSON.stringify(out, null, 2)}\n`);
 console.log(`${entries.length} faces from ${FONTS.length} families`);

@@ -12,7 +12,7 @@ import {
   Spinner,
 } from '@slidr/ui';
 import { useSettings } from '../settings';
-import { isWebAddress, openPanel, PanelId, tell, useDeck, useEditor } from '../shell';
+import { isWebAddress, openSettings, tell, useDeck, useEditor } from '../shell';
 import { stockOf } from './appStock';
 import { toEnglish } from './icons/library';
 import { insertAsset } from './insert';
@@ -170,7 +170,7 @@ export function StockTab() {
           title={t('stock.noKeyTitle')}
           description={t('stock.noKeyBody')}
           action={
-            <Button variant="primary" onClick={() => openPanel(PanelId.settings)}>
+            <Button variant="primary" onClick={() => openSettings('media')}>
               {t('stock.openSettings')}
             </Button>
           }
@@ -248,7 +248,7 @@ export function StockTab() {
           title={t('stock.error.title')}
           description={view.message}
           action={
-            <Button variant="secondary" onClick={() => openPanel(PanelId.settings)}>
+            <Button variant="secondary" onClick={() => openSettings('media')}>
               {t('stock.openSettings')}
             </Button>
           }

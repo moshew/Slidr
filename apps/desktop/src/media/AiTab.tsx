@@ -6,7 +6,7 @@ import { Button, EmptyState, Spinner, Textarea } from '@slidr/ui';
 import { imagesOf } from '../images/appImages';
 import { providerStateLabel, type ProviderStateLabel } from '../images/ImageSettings';
 import { loadSettings, useSettings } from '../settings';
-import { openPanel, PanelId, tell, useDeck, useEditor } from '../shell';
+import { openSettings, tell, useDeck, useEditor } from '../shell';
 import { insertAsset } from './insert';
 import { AssetTile, Group, ReplaceHint, TabBody, TileGrid } from './parts';
 import { cancelFill, fillPlaceholder, fillPlaceholders } from './placeholders';
@@ -56,7 +56,7 @@ export function AiTab() {
           <p className="min-w-0 flex-1 text-xs text-ui-fg">
             {t('ai.notReady', { state: t(`images:state.${provider}`) })}
           </p>
-          <Button size="sm" onClick={() => openPanel(PanelId.settings)}>
+          <Button size="sm" onClick={() => openSettings('media')}>
             {t('stock.openSettings')}
           </Button>
         </div>

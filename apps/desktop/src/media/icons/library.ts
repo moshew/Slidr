@@ -2,14 +2,13 @@
  * The built-in icon library (SHP-07, GEN-09, ADR-051): Lucide and Tabler line icons
  * (a 24 by 24 box, strokes of width 2, round caps), plus Tabler's filled icons.
  *
- * Nothing of it is loaded when the app starts. The sets' data are megabytes of JSON, read from
- * the two packages as text (`?raw`) and parsed the first time something asks: a search, or a
- * slide whose HTML carries `data-icon`. Each file is a chunk of its own, so drawing one Lucide
- * icon does not load Tabler.
- *
- * The files are read by path, not by package name: the Tabler package's `exports` does not
- * list its data files, and a path into `node_modules` is the same for both sets.
+ * Nothing of it is loaded when the app starts. The sets' data are megabytes of JSON, files of the
+ * media library (`icons/`), read and parsed the first time something asks: a search, or a slide
+ * whose HTML carries `data-icon`. Each file is read on its own, so drawing one Lucide icon does
+ * not load Tabler. Without the library a read fails, and the icons panel says so; it is tried
+ * again the next time something asks.
  */
+import { lazyMediaJson } from '@slidr/media-library';
 import {
   buildIndex,
   englishQuery,
@@ -25,38 +24,13 @@ import {
 type IconNode = [tag: string, attributes: Record<string, string | number>];
 type IconNodes = Readonly<Record<string, readonly IconNode[]>>;
 
-/** Loads a JSON file once, as text, and parses it. */
-export function lazy<T>(load: () => Promise<{ default: string }>): () => Promise<T> {
-  let loaded: Promise<T> | undefined;
-  return () => {
-    loaded ??= load()
-      .then((module) => JSON.parse(module.default) as T)
-      .catch((error: unknown) => {
-        // A failed load is tried again by the next call.
-        loaded = undefined;
-        throw error;
-      });
-    return loaded;
-  };
-}
-
-const lucideNodes = lazy<IconNodes>(
-  () => import('../../../../../../Slidr-media/icons/lucide/icon-nodes.json?raw'),
-);
-const tablerNodes = lazy<IconNodes>(
-  () => import('../../../../../../Slidr-media/icons/tabler/tabler-nodes-outline.json?raw'),
-);
-const tablerFilledNodes = lazy<IconNodes>(
-  () => import('../../../../../../Slidr-media/icons/tabler/tabler-nodes-filled.json?raw'),
-);
-const lucideTags = lazy<IconSources['lucide']>(
-  () => import('../../../../../../Slidr-media/icons/lucide/tags.json?raw'),
-);
-const tablerIcons = lazy<IconSources['tabler']>(
-  () => import('../../../../../../Slidr-media/icons/tabler/icons.json?raw'),
-);
+const lucideNodes = lazyMediaJson<IconNodes>('icons/lucide/icon-nodes.json');
+const tablerNodes = lazyMediaJson<IconNodes>('icons/tabler/tabler-nodes-outline.json');
+const tablerFilledNodes = lazyMediaJson<IconNodes>('icons/tabler/tabler-nodes-filled.json');
+const lucideTags = lazyMediaJson<IconSources['lucide']>('icons/lucide/tags.json');
+const tablerIcons = lazyMediaJson<IconSources['tabler']>('icons/tabler/icons.json');
 /** The app's dictionary: an English word to the Hebrew a user would type for it. */
-export const hebrewTags = lazy<HebrewTags>(() => import('../../../../../../Slidr-media/icons/hebrew.json?raw'));
+export const hebrewTags = lazyMediaJson<HebrewTags>('icons/hebrew.json');
 
 let english: Promise<Map<string, string>> | undefined;
 
@@ -232,7 +206,7 @@ export const STARTERS = [
 ] as const;
 
 /** Five hundred more Lucide icons to browse without knowing a search term. */
-const browseNames = lazy<readonly string[]>(() => import('../../../../../../Slidr-media/icons/browse.json?raw'));
+const browseNames = lazyMediaJson<readonly string[]>('icons/browse.json');
 
 /** The common filled icons shown first, from Tabler's filled set. */
 const FILLED_STARTERS = [
@@ -324,7 +298,7 @@ const FILLED_STARTERS = [
 ] as const;
 
 /** Five hundred more Tabler icons to browse in the filled style. */
-const filledBrowseNames = lazy<readonly string[]>(() => import('../../../../../../Slidr-media/icons/filled-browse.json?raw'));
+const filledBrowseNames = lazyMediaJson<readonly string[]>('icons/filled-browse.json');
 
 /** Icons available before a search, with their markup; a name a set has dropped is left out. */
 export async function starterIcons(style: 'line' | 'filled' = 'line'): Promise<FoundIcon[]> {

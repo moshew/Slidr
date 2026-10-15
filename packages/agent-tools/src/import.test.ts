@@ -150,6 +150,7 @@ describe('import_capture', () => {
         editablePercent: 50,
         textEditablePercent: 100,
         elements: '1 text, 1 html',
+        motion: 'none: the page played no transition and no animation as the slide came in',
         remarks: [
           'The captured element is 1280x720 (1.78:1, not 16:9): check that it is the whole slide.',
           'Kept as HTML (element e_1): a pseudo-element.',
@@ -157,6 +158,63 @@ describe('import_capture', () => {
       },
       expect.objectContaining({ number: before + 2, slideId: second!.id, faithful: true }),
     ]);
+  });
+
+  it('keeps the motion the page played, and the transition the agent names in its place', async () => {
+    const moving = (): ImportedSlide => {
+      const base = captured();
+      const [text] = base.slide.elements;
+      const step = (id: string, trigger: 'withPrevious' | 'onClick') => ({
+        id,
+        elementId: text!.id,
+        trigger,
+        category: 'entrance' as const,
+        preset: 'css:slidr-abc',
+        duration: 700,
+        delay: 0,
+        easing: 'linear',
+      });
+      return {
+        ...base,
+        slide: {
+          ...base.slide,
+          transition: {
+            type: 'push',
+            direction: 'start',
+            duration: 800,
+            easing: 'ease',
+            advance: { onClick: true },
+          },
+          timeline: [step('a_1', 'withPrevious'), step('a_2', 'onClick')],
+        },
+      };
+    };
+    const service = importer({ capture: vi.fn(() => Promise.resolve(moving())) });
+    const { bus, call } = setup(hebrewDeck(), { importer: service }, IMPORT);
+    const data = await ok(
+      call('import_capture', {
+        slides: [
+          { selector: '#one' },
+          { selector: '#two', transition: 'zoom' },
+          { selector: '#three', transition: null },
+        ],
+      }),
+    );
+    const [one, two, three] = bus.deck.slides.slice(-3);
+    expect(one!.transition).toMatchObject({ type: 'push', direction: 'start', duration: 800 });
+    // The type the agent named, with the timing the page played.
+    expect(two!.transition).toMatchObject({ type: 'zoom', duration: 800, easing: 'ease' });
+    expect(three!.transition).toBeUndefined();
+    expect(one!.timeline).toHaveLength(2);
+    expect((data.captured as { motion: string }[]).map((c) => c.motion)).toEqual([
+      'transition push start, 800 ms; 2 animation steps: 1 as the slide opens, 1 on click',
+      'transition zoom start, 800 ms; 2 animation steps: 1 as the slide opens, 1 on click',
+      '2 animation steps: 1 as the slide opens, 1 on click',
+    ]);
+    const refused = await ok(
+      call('import_capture', { slides: [{ selector: '#four', transition: 'teleport' }] }),
+    );
+    expect((refused.captured as { error: string }[])[0]!.error).toMatch(/Unknown transition type/);
   });
 
   it('says what to look into: an odd shape, an approximate comparison, a slide that differs', async () => {

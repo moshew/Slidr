@@ -46,6 +46,17 @@ export async function openPanel(page: Page, id: 'media' | 'settings'): Promise<L
   return panel;
 }
 
+/** Shows the settings screen on the tab of a topic. */
+export async function openSettings(
+  page: Page,
+  tab: 'general' | 'agent' | 'media' | 'fonts' | 'about',
+): Promise<Locator> {
+  const settings = await openPanel(page, 'settings');
+  await settings.locator(`[data-settings-tab="${tab}"]`).click();
+  await expect(settings.locator(`[data-settings-page="${tab}"]`)).toBeVisible();
+  return settings;
+}
+
 export type MediaTab = 'uploads' | 'stock' | 'icons' | 'ai' | 'clips';
 
 /** Shows a tab of the media panel. */

@@ -54,14 +54,15 @@ function Item({ panel }: { panel: PanelDefinition }) {
         data-panel={panel.id}
         onClick={() => togglePanel(panel.id)}
         className={cx(
-          'inline-flex w-16 shrink-0 cursor-default flex-col items-center justify-center gap-1 rounded-control px-1 py-2 transition-colors',
+          // Nearly the bar's width, so that the longest English caption ("Animations") fits whole.
+          'inline-flex w-17 shrink-0 cursor-default flex-col items-center justify-center gap-1 rounded-control px-0.5 py-2 transition-colors',
           active
             ? 'bg-ui-accent-soft text-ui-accent-fg'
             : 'text-ui-fg-muted hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed',
         )}
       >
         <Icon icon={panel.icon} size="lg" />
-        <span className="w-full truncate text-center text-xs font-medium">
+        <span className="w-full truncate text-center text-2xs font-medium">
           {t(captions[panel.id] ?? panel.title)}
         </span>
       </button>

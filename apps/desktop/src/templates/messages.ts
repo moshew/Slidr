@@ -47,7 +47,10 @@ export const he = {
     mifgash: 'מפגש',
     kod: 'קוד',
     luach: 'לוח',
+    anan: 'ענן',
     magen: 'מגן',
+    shvav: 'שבב',
+    mutzar: 'מוצר',
   },
   // What each built-in template feels like, in a sentence beside its name.
   tagline: {
@@ -71,7 +74,10 @@ export const he = {
     mifgash: 'כחול עז ונגיעה של ורוד, למפגש שמקרב גם מרחוק',
     kod: 'גרפיט כהה וליים חשמלי, בשפה של עורך קוד, לצוותים שבונים תוכנה',
     luach: 'לוח עבודה ופתקים צבעוניים, למוצר שנבנה צעד אחר צעד',
+    anan: 'שמיים בהירים ותרשימים איזומטריים, לארכיטקטורה שעולה לענן',
     magen: 'ירוק זית כהה וכתום של התרעה, בדיוק של מסך בקרה',
+    shvav: 'ירוק של מעגל מודפס ונחושת, לחומרה שיוצאת לייצור',
+    mutzar: 'חלונות של מוצר, סמנים והתראות, להשקה של גרסה חדשה',
   },
   direction: {
     title: 'כיוון המצגת',
@@ -311,7 +317,10 @@ export const en: typeof he = {
     mifgash: 'Mifgash',
     kod: 'Kod',
     luach: 'Luach',
+    anan: 'Anan',
     magen: 'Magen',
+    shvav: 'Shvav',
+    mutzar: 'Mutzar',
   },
   tagline: {
     zerem: 'Technology in motion, turquoise glowing on a deep blue night',
@@ -334,7 +343,10 @@ export const en: typeof he = {
     mifgash: 'Bold blue and a touch of pink, for a session that brings people close from afar',
     kod: 'Dark graphite and electric lime in the language of a code editor, for teams that build software',
     luach: 'A working board of coloured sticky notes, for a product built one step at a time',
+    anan: 'Clear skies and isometric diagrams, for architecture on its way to the cloud',
     magen: 'Dark olive and alert orange, with the precision of a control display',
+    shvav: 'Circuit-board green and copper, for hardware on its way to production',
+    mutzar: 'Product windows, cursors and notifications, for the launch of a new version',
   },
   direction: {
     title: 'Deck direction',

@@ -10,7 +10,7 @@ mod harness;
 mod image_process;
 mod image_providers;
 mod import_window;
-mod media_dir;
+mod media_library;
 mod net;
 mod secrets;
 mod settings;
@@ -37,14 +37,26 @@ pub fn run() {
         // A link that leaves the app opens in the browser of the system. The capability allows
         // `open_url` for http and https addresses and nothing else of the plugin.
         .plugin(tauri_plugin_opener::init())
-        // The icons, the templates' photographs and the decks' fonts: read from the folder
-        // beside the executable, not from the bundle.
-        .register_uri_scheme_protocol(media_dir::SCHEME, |context, request| {
-            let root = media_dir::root(context.app_handle());
-            media_dir::respond(root.as_deref(), &request)
-        })
+        // The icons, the templates and their photographs, the decks' fonts and the content of
+        // Elements: the media library, published on the web and kept on this machine.
+        .register_asynchronous_uri_scheme_protocol(
+            media_library::SCHEME,
+            |context, request, responder| {
+                let library = context
+                    .app_handle()
+                    .try_state::<Arc<media_library::MediaLibrary>>()
+                    .map(|library| Arc::clone(&library));
+                tauri::async_runtime::spawn(async move {
+                    responder.respond(match library {
+                        Some(library) => library.respond(&request).await,
+                        None => media_library::unavailable(),
+                    });
+                });
+            },
+        )
         .setup(|app| {
             let root = app.path().app_data_dir()?;
+            manage_library(app)?;
             app.manage(Arc::new(harness::HarnessManager::new(
                 root.join("agent"),
                 harness::builtin(),
@@ -150,6 +162,19 @@ pub fn run() {
         ]))
         .run(tauri::generate_context!())
         .expect("failed to start the Slidr application");
+}
+
+/// The media library, read from the web into a cache of this machine's own: not of the roaming
+/// profile, since all of it is to be had again.
+fn manage_library(app: &tauri::App) -> tauri::Result<()> {
+    let Some(base) = media_library::base_url() else {
+        return Ok(());
+    };
+    let dir = app.path().app_local_data_dir()?.join("media");
+    let library = media_library::MediaLibrary::new(base, dir);
+    library.start();
+    app.manage(library);
+    Ok(())
 }
 
 /// The settings and the keys, and what reads them: the image providers and the photo libraries

@@ -11,6 +11,7 @@ export const he = {
     title: 'תמונות AI',
     hint: 'מי יוצר את התמונות: בכלים של האפליקציה ובכלים של ה-Agent.',
     providers: 'ספק התמונות',
+    forProvider: 'ההגדרות של {{name}}',
     chooseFailed: 'הספק לא הוחלף. נסו שוב.',
     listFailed: 'לא ניתן לקרוא את רשימת הספקים',
     quality: 'איכות התמונה',
@@ -41,6 +42,16 @@ export const he = {
     signIn: 'בלי מפתח, על ההתחברות של הכלי',
   },
   account: 'מחובר דרך {{account}}',
+  // A provider that runs on an agent CLI (its `harness`): the app installs the CLI and signs it in.
+  setup: {
+    busy: 'בתהליך…',
+    not_installed: 'הכלי לא מותקן במחשב.',
+    not_logged_in: 'הכלי מותקן. נדרשת התחברות לחשבון.',
+    installing: 'מתקינים את הכלי. הפעולה עשויה להימשך כמה דקות…',
+    signingIn: 'השלימו את ההתחברות בחלון שנפתח.',
+    install: 'התקנה…',
+    signIn: 'התחברות לחשבון',
+  },
   mask: {
     title: 'סימון האזור לשינוי',
     description: 'צבעו על התמונה את החלק שה-AI רשאי לשנות. כל מה שלא נצבע יישאר בדיוק כמו שהוא.',
@@ -75,6 +86,7 @@ export const en: Messages<typeof he> = {
     title: 'AI images',
     hint: "Who makes the images: for the app's own tools and for the agent's.",
     providers: 'Image provider',
+    forProvider: '{{name}} settings',
     chooseFailed: 'The provider was not changed. Try again.',
     listFailed: 'The list of providers could not be read',
     quality: 'Image quality',
@@ -105,6 +117,15 @@ export const en: Messages<typeof he> = {
     signIn: "No key: it uses the tool's own sign-in",
   },
   account: 'Signed in with {{account}}',
+  setup: {
+    busy: 'Working…',
+    not_installed: 'The tool is not installed on this computer.',
+    not_logged_in: 'The tool is installed. Sign in to your account to use it.',
+    installing: 'Installing the tool. This may take a few minutes…',
+    signingIn: 'Complete sign-in in the window that opened.',
+    install: 'Install…',
+    signIn: 'Sign in',
+  },
   mask: {
     title: 'Mark the area to change',
     description:

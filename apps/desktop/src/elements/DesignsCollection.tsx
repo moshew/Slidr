@@ -9,6 +9,8 @@ import { designAssetFile, designBackdropFile } from './designAssets';
 import {
   DESIGN_GROUPS,
   DESIGN_IDS,
+  designGroupName,
+  designName,
   designPreview,
   designsOf,
   insertDesign,
@@ -19,6 +21,25 @@ import { useNear } from './StickerGrid';
 
 /** How many designs of a group the overview shows. */
 const PREVIEW = 4;
+
+/**
+ * The names of designs and of their groups, in the language of the interface: the app's own,
+ * else the one `managed.json` gives a design of the management tool, else the id. A name that
+ * neither has is reported as a missing string.
+ */
+function useDesignNames() {
+  const { t, i18n } = useTranslation('elements');
+  const lang = i18n.language;
+  return useMemo(() => {
+    const named = (key: string, managed: string | undefined, id: string) =>
+      i18n.exists(key, { ns: 'elements' }) ? t(key) : (managed ?? t(key, { defaultValue: id }));
+    return {
+      design: (id: DesignId) => named(`designs.name.${id}`, designName(id, lang), id),
+      group: (group: DesignGroup) =>
+        named(`designs.group.${group}`, designGroupName(group, lang), group),
+    };
+  }, [t, i18n, lang]);
+}
 
 /**
  * One design: a click adds a new slide after the current one, in one undo step. The slide is
@@ -35,12 +56,13 @@ function DesignTile({
   onChoose: (id: DesignId) => void;
 }) {
   const { t } = useTranslation('elements');
+  const names = useDesignNames();
   const lang = useDeck((state) => state.deck.meta.lang);
   const [tile, near] = useNear<HTMLButtonElement>();
   const picture = useRef<HTMLSpanElement>(null);
   const { width } = useElementSize(picture);
   const preview = useMemo(() => (near ? designPreview(id, lang) : undefined), [near, id, lang]);
-  const name = t(`designs.name.${id}`);
+  const name = names.design(id);
   return (
     <button
       ref={tile}
@@ -97,6 +119,7 @@ function DesignList({
  */
 export function DesignsCollection() {
   const { t } = useTranslation('elements');
+  const names = useDesignNames();
   const editor = useEditor();
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
@@ -106,13 +129,13 @@ export function DesignsCollection() {
     const wanted = query.trim().toLowerCase();
     if (!wanted) return undefined;
     return DESIGN_IDS.filter(
-      (id) => id.includes(wanted) || t(`designs.name.${id}`).toLowerCase().includes(wanted),
+      (id) => id.includes(wanted) || names.design(id).toLowerCase().includes(wanted),
     );
-  }, [query, t]);
+  }, [query, names]);
   // One group in full has the header of the panel: its name, and the way back to all of them.
   const opened = found ? undefined : group;
   const showGroups = useCallback(() => setGroup(undefined), []);
-  useOpenGroup(opened && t(`designs.group.${opened}`), showGroups);
+  useOpenGroup(opened && names.group(opened), showGroups);
 
   const choose = (id: DesignId) => {
     setBusy(true);
@@ -125,7 +148,7 @@ export function DesignsCollection() {
           editor.bus,
           editor.selection,
           id,
-          t(`designs.name.${id}`),
+          names.design(id),
           t('designs.history'),
           asset,
           backdrop,
@@ -138,6 +161,15 @@ export function DesignsCollection() {
       }
     })();
   };
+
+  if (DESIGN_IDS.length === 0) {
+    // The designs are read from the media library: without it there are none to offer.
+    return (
+      <p className="py-8 text-center text-sm text-ui-fg-muted" data-testid="elements-designs">
+        {t('loadFailed')}
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4" data-testid="elements-designs">
@@ -169,7 +201,7 @@ export function DesignsCollection() {
             DESIGN_GROUPS.map((id) => (
               <Section
                 key={id}
-                title={t(`designs.group.${id}`)}
+                title={names.group(id)}
                 data-group={id}
                 action={
                   <Button variant="ghost" size="sm" onClick={() => setGroup(id)}>

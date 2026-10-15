@@ -39,6 +39,7 @@ registerPanel({
 
 registerSettingsSection({
   id: 'stock',
+  page: 'media',
   title: 'media:settings.title',
   order: SettingsOrder.stock,
   render: StockSettings,

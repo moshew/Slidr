@@ -129,6 +129,7 @@ impl ImageProvider for MockProvider {
                 quality: false,
             },
             key: None,
+            harness: None,
         }
     }
 

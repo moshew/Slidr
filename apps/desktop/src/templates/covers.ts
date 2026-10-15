@@ -3,8 +3,8 @@
  * shows the template, and where its pictures load from.
  *
  * The photograph on the cover of a built-in template is the one the opening slide of its sample
- * deck shows. Only these files are part of the app; the other pictures of the samples stay with
- * the external media library (`Slidr-media/images/templates`).
+ * deck shows, from the media library (`images/templates`). Without the library, or without the
+ * photograph in it, the cover is the template's opening layout without a picture.
  */
 import {
   createDeck,
@@ -15,37 +15,29 @@ import {
   type Deck,
   type Slide,
 } from '@slidr/model';
+import { mediaFiles, mediaUrl } from '@slidr/media-library';
 import { createSlide, deckFromTemplate, type Template } from '@slidr/templates';
 // The pictures alone: the templates' own code is not part of a packaged app (see `./builtIn`).
 import { pictures } from '@slidr/templates/builtin/pictures';
 import { library } from './app';
 import { templateName } from './names';
 
-const files = import.meta.glob<string>(
-  [
-    '../../../../../Slidr-media/images/templates/shvil-ridge.webp',
-    '../../../../../Slidr-media/images/templates/tzuk-warehouse.webp',
-    '../../../../../Slidr-media/images/templates/lavan-chair-1.webp',
-    '../../../../../Slidr-media/images/templates/nof-view-2.webp',
-    '../../../../../Slidr-media/images/templates/defus-street-1.webp',
-    '../../../../../Slidr-media/images/templates/migdal-team-2.webp',
-    '../../../../../Slidr-media/images/templates/mifgash-call.webp',
-  ],
-  { eager: true, query: '?url', import: 'default' },
-);
+const files = await mediaFiles();
 
-const urlOf = (picture: AssetMeta): string | undefined =>
-  Object.entries(files).find(([path]) => path.endsWith(`/${picture.name}`))?.[1];
+const urlOf = (picture: AssetMeta): string | undefined => {
+  const path = `images/templates/${picture.name}`;
+  return files.has(path) ? mediaUrl(path) : undefined;
+};
 
 /** The cover photograph of each built-in template that opens with one, by template id. */
-const covers: Record<string, AssetMeta> = {
-  shvil: pictures.shvilRidge!,
-  tzuk: pictures.tzukWarehouse!,
-  lavan: pictures.lavanChair1!,
-  nof: pictures.nofView2!,
-  defus: pictures.defusStreet1!,
-  shidur: pictures.migdalTeam2!,
-  mifgash: pictures.mifgashCall!,
+const covers: Record<string, AssetMeta | undefined> = {
+  shvil: pictures.shvilRidge,
+  tzuk: pictures.tzukWarehouse,
+  lavan: pictures.lavanChair1,
+  nof: pictures.nofView2,
+  defus: pictures.defusStreet1,
+  shidur: pictures.migdalTeam2,
+  mifgash: pictures.mifgashCall,
 };
 
 /** The photograph of a template's cover; undefined when the template opens without one. */
@@ -56,7 +48,7 @@ export function coverPicture(templateId: string): AssetMeta | undefined {
 
 /** Where a cover photograph loads from; undefined for any other asset. */
 export function coverUrl(asset: AssetMeta): string | undefined {
-  return Object.values(covers).some((picture) => picture.id === asset.id)
+  return Object.values(covers).some((picture) => picture?.id === asset.id)
     ? urlOf(asset)
     : undefined;
 }

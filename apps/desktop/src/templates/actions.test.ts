@@ -15,7 +15,7 @@ import {
   slideNumberHidden,
   type Template,
 } from '@slidr/templates';
-import { builtInTemplates } from '@slidr/templates/builtin';
+import { builtInAvailable, builtInTemplates } from '@slidr/templates/builtin';
 import { nightTemplate, paperTemplate } from '@slidr/templates/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 import type { Editor } from '../shell';
@@ -228,166 +228,172 @@ describe('turning the deck', () => {
     expect(bus.deck).toEqual(deck);
   });
 
-  describe('a direction that differs from what it was, with the layouts already turned', () => {
-    // The wrapper around a tool call of the agent reads the direction before the call and after
-    // it, and asks what has to follow. All it knows is that the two differ.
-    const library = () =>
-      new TemplateLibrary(memoryTemplateStore(), {
-        layoutName: (archetype, lang) => `${lang}: ${archetype}`,
+  describe.skipIf(!builtInAvailable)(
+    'a direction that differs from what it was, with the layouts already turned',
+    () => {
+      // The wrapper around a tool call of the agent reads the direction before the call and after
+      // it, and asks what has to follow. All it knows is that the two differ.
+      const library = () =>
+        new TemplateLibrary(memoryTemplateStore(), {
+          layoutName: (archetype, lang) => `${lang}: ${archetype}`,
+        });
+      const onTzuk = (lib: TemplateLibrary) => {
+        const template = lib.forDeck('tzuk', 'he')!;
+        const deck = deckFromTemplate(template, { lang: 'he' });
+        deck.slides = [slideFromLayout(deck, deck.layouts[0]!.id).slide];
+        return { template, ...editorOn(deck) };
+      };
+
+      it('follows nothing when the user turned the deck during the call', () => {
+        const lib = library();
+        const { editor, bus, template } = onTzuk(lib);
+        const from = bus.deck.meta.dir;
+        turnDeck(editor, lib, 'ltr');
+        expect(bus.deck.layouts).toEqual(layoutsFor(template, 'ltr'));
+        // Before, this was 19 commands that mirrored every layout back.
+        expect(followDirection(bus.deck, from, lib)).toEqual([]);
       });
-    const onTzuk = (lib: TemplateLibrary) => {
-      const template = lib.forDeck('tzuk', 'he')!;
-      const deck = deckFromTemplate(template, { lang: 'he' });
-      deck.slides = [slideFromLayout(deck, deck.layouts[0]!.id).slide];
-      return { template, ...editorOn(deck) };
-    };
 
-    it('follows nothing when the user turned the deck during the call', () => {
-      const lib = library();
-      const { editor, bus, template } = onTzuk(lib);
-      const from = bus.deck.meta.dir;
-      turnDeck(editor, lib, 'ltr');
-      expect(bus.deck.layouts).toEqual(layoutsFor(template, 'ltr'));
-      // Before, this was 19 commands that mirrored every layout back.
-      expect(followDirection(bus.deck, from, lib)).toEqual([]);
-    });
+      it('follows nothing when the deck has a footer and a logo of its own, either', async () => {
+        const lib = library();
+        const { editor, bus } = onTzuk(lib);
+        setFooter(editor, 'ACME 2026');
+        await setLogo(editor, new File([new Uint8Array([7])], 'logo.png'));
+        turnDeck(editor, lib, 'ltr');
+        expect(followDirection(bus.deck, 'rtl', lib)).toEqual([]);
+      });
 
-    it('follows nothing when the deck has a footer and a logo of its own, either', async () => {
-      const lib = library();
-      const { editor, bus } = onTzuk(lib);
-      setFooter(editor, 'ACME 2026');
-      await setLogo(editor, new File([new Uint8Array([7])], 'logo.png'));
-      turnDeck(editor, lib, 'ltr');
-      expect(followDirection(bus.deck, 'rtl', lib)).toEqual([]);
-    });
+      it('follows nothing when an undo took a turn back during the call', () => {
+        const lib = library();
+        const { editor, bus } = onTzuk(lib);
+        turnDeck(editor, lib, 'ltr');
+        const from = bus.deck.meta.dir;
+        bus.undo();
+        expect(bus.deck.meta.dir).toBe('rtl');
+        expect(followDirection(bus.deck, from, lib)).toEqual([]);
+      });
 
-    it('follows nothing when an undo took a turn back during the call', () => {
-      const lib = library();
-      const { editor, bus } = onTzuk(lib);
-      turnDeck(editor, lib, 'ltr');
-      const from = bus.deck.meta.dir;
-      bus.undo();
-      expect(bus.deck.meta.dir).toBe('rtl');
-      expect(followDirection(bus.deck, from, lib)).toEqual([]);
-    });
+      it('follows nothing when another document, of the other direction, was opened during the call', () => {
+        const lib = library();
+        const { bus } = onTzuk(lib);
+        const from = bus.deck.meta.dir;
+        bus.reset(deckFromTemplate(lib.forDeck('zerem', 'en')!, { lang: 'en' }));
+        expect(bus.deck.meta.dir).toBe('ltr');
+        expect(followDirection(bus.deck, from, lib)).toEqual([]);
+      });
 
-    it('follows nothing when another document, of the other direction, was opened during the call', () => {
-      const lib = library();
-      const { bus } = onTzuk(lib);
-      const from = bus.deck.meta.dir;
-      bus.reset(deckFromTemplate(lib.forDeck('zerem', 'en')!, { lang: 'en' }));
-      expect(bus.deck.meta.dir).toBe('ltr');
-      expect(followDirection(bus.deck, from, lib)).toEqual([]);
-    });
-
-    it('still follows a direction the agent set on the field alone, with the language', () => {
-      const lib = library();
-      const { bus, template } = onTzuk(lib);
-      const names = bus.deck.layouts.map((layout) => layout.name);
-      bus.dispatch({ type: 'deck.setMeta', patch: { dir: 'ltr', lang: 'en' } }, { txId: 'tx' });
-      const follow = followDirection(bus.deck, 'rtl', lib);
-      bus.batch(follow, { txId: 'tx' });
-      // The layouts are the template's own for the direction, the quote drawn by hand among
-      // them, under the names the deck had: the library names them in English now.
-      const theirs = layoutsFor(template, 'ltr');
-      expect(bus.deck.layouts.map(({ name: _name, ...rest }) => rest)).toEqual(
-        theirs.map(({ name: _name, ...rest }) => rest),
-      );
-      expect(bus.deck.layouts.map((layout) => layout.name)).toEqual(names);
-      expect(lib.forDeck('tzuk', 'en')!.layouts[0]!.name).not.toBe(names[0]);
-      // Asked again, there is nothing more to follow.
-      expect(followDirection(bus.deck, 'rtl', lib)).toEqual([]);
-      expect(bus.undoStack).toHaveLength(1);
-    });
-
-    it('takes the field at its word where no template can tell', () => {
-      // A deck whose theme is not in the library: nothing says what its layouts are drawn for.
-      const lib = library();
-      const { bus } = onTzuk(lib);
-      bus.dispatch({ type: 'theme.update', patch: { name: 'Mine' } });
-      const unknown = { ...bus.deck, theme: { ...bus.deck.theme, id: 'somewhere_else' } };
-      const turned = { ...unknown, meta: { ...unknown.meta, dir: 'ltr' as const } };
-      expect(followDirection(turned, 'rtl', lib).length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('a deck with a footer, a logo and a hidden number of its own', () => {
-    const builtIn = () => new TemplateLibrary(memoryTemplateStore());
-    /** A deck on a built-in template with all three master components set, as the panel sets them. */
-    async function withMaster(id: string, library: TemplateLibrary) {
-      const template = library.forDeck(id, 'he')!;
-      const made = editorOn(deckFromTemplate(template, { lang: 'he' }));
-      setFooter(made.editor, 'ACME 2026');
-      showNumber(made.editor, false);
-      await setLogo(made.editor, new File([new Uint8Array([7])], 'logo.png'));
-      return { ...made, template };
-    }
-    const drawing = ({ background, placeholders, decorations }: Layout) => ({
-      background,
-      placeholders,
-      decorations: decorations.filter(
-        (d) => d.role !== 'footer' && d.role !== 'logo' && d.role !== 'slideNumber',
-      ),
-    });
-
-    // The four that draw something by hand for the other direction in different ways: a
-    // quotation mark (tzuk, shvil, lavan), and backgrounds of free CSS (zerem).
-    it.each(['tzuk', 'zerem', 'shvil', 'lavan'])(
-      '%s: turns onto the layouts its template drew by hand, with what it set, and back',
-      async (id) => {
-        const library = builtIn();
-        const { editor, bus, template } = await withMaster(id, library);
-        const set = bus.deck;
-        turnDeck(editor, library, 'ltr');
-        expect(bus.undoStack).toHaveLength(4);
-
+      it('still follows a direction the agent set on the field alone, with the language', () => {
+        const lib = library();
+        const { bus, template } = onTzuk(lib);
+        const names = bus.deck.layouts.map((layout) => layout.name);
+        bus.dispatch({ type: 'deck.setMeta', patch: { dir: 'ltr', lang: 'en' } }, { txId: 'tx' });
+        const follow = followDirection(bus.deck, 'rtl', lib);
+        bus.batch(follow, { txId: 'tx' });
+        // The layouts are the template's own for the direction, the quote drawn by hand among
+        // them, under the names the deck had: the library names them in English now.
         const theirs = layoutsFor(template, 'ltr');
-        expect(template.flipped!.length).toBeGreaterThan(0);
-        expect(bus.deck.layouts.map(drawing)).toEqual(theirs.map(drawing));
-        // What the deck set is still there, on the side the turned layouts have for it.
-        expect(masterState(bus.deck)).toEqual({ footer: 'ACME 2026', numberHidden: true });
-        const logo = logoAsset(bus.deck)!;
-        for (const [i, layout] of bus.deck.layouts.entries()) {
-          const mine = layout.decorations.find((d) => d.role === 'logo');
-          const mark = theirs[i]!.decorations.find((d) => d.role === 'logo');
-          if (!mark) continue;
-          // As tall as the template's mark and on its side of the slide; the picture, not the mark.
-          expect(mine).toMatchObject({ type: 'image', assetId: logo.id });
-          expect(mine!.frame.y).toBe(mark.frame.y);
-          expect(mine!.frame.x + mine!.frame.w / 2 < 960).toBe(
-            mark.frame.x + mark.frame.w / 2 < 960,
-          );
-        }
+        expect(bus.deck.layouts.map(({ name: _name, ...rest }) => rest)).toEqual(
+          theirs.map(({ name: _name, ...rest }) => rest),
+        );
+        expect(bus.deck.layouts.map((layout) => layout.name)).toEqual(names);
+        expect(lib.forDeck('tzuk', 'en')!.layouts[0]!.name).not.toBe(names[0]);
+        // Asked again, there is nothing more to follow.
+        expect(followDirection(bus.deck, 'rtl', lib)).toEqual([]);
+        expect(bus.undoStack).toHaveLength(1);
+      });
 
-        turnDeck(editor, library, 'rtl');
-        expect(bus.deck).toEqual(set);
-      },
-    );
+      it('takes the field at its word where no template can tell', () => {
+        // A deck whose theme is not in the library: nothing says what its layouts are drawn for.
+        const lib = library();
+        const { bus } = onTzuk(lib);
+        bus.dispatch({ type: 'theme.update', patch: { name: 'Mine' } });
+        const unknown = { ...bus.deck, theme: { ...bus.deck.theme, id: 'somewhere_else' } };
+        const turned = { ...unknown, meta: { ...unknown.meta, dir: 'ltr' as const } };
+        expect(followDirection(turned, 'rtl', lib).length).toBeGreaterThan(0);
+      });
+    },
+  );
 
-    it.each(['tzuk', 'zerem'])(
-      '%s: saved as a personal template, gives a deck of the other direction what turning gives',
-      async (id) => {
-        const library = builtIn();
-        const turned = await withMaster(id, library);
-        turnDeck(turned.editor, library, 'ltr');
-
-        const { editor } = await withMaster(id, library);
-        const saved = await saveAsTemplate(editor, library, 'Mine');
-        expect(layoutsFor(saved, 'ltr')).toEqual(turned.bus.deck.layouts);
-      },
-    );
-
-    it('a personal template of a deck that set nothing has the layouts of its template in both directions', async () => {
-      const library = builtIn();
-      for (const id of ['tzuk', 'zerem']) {
+  describe.skipIf(!builtInAvailable)(
+    'a deck with a footer, a logo and a hidden number of its own',
+    () => {
+      const builtIn = () => new TemplateLibrary(memoryTemplateStore());
+      /** A deck on a built-in template with all three master components set, as the panel sets them. */
+      async function withMaster(id: string, library: TemplateLibrary) {
         const template = library.forDeck(id, 'he')!;
-        const { editor } = editorOn(deckFromTemplate(template, { lang: 'he' }));
-        const saved = await saveAsTemplate(editor, library, `Mine ${id}`);
-        expect(layoutsFor(saved, 'rtl')).toEqual(layoutsFor(template, 'rtl'));
-        expect(layoutsFor(saved, 'ltr')).toEqual(layoutsFor(template, 'ltr'));
+        const made = editorOn(deckFromTemplate(template, { lang: 'he' }));
+        setFooter(made.editor, 'ACME 2026');
+        showNumber(made.editor, false);
+        await setLogo(made.editor, new File([new Uint8Array([7])], 'logo.png'));
+        return { ...made, template };
       }
-    });
-  });
+      const drawing = ({ background, placeholders, decorations }: Layout) => ({
+        background,
+        placeholders,
+        decorations: decorations.filter(
+          (d) => d.role !== 'footer' && d.role !== 'logo' && d.role !== 'slideNumber',
+        ),
+      });
+
+      // The four that draw something by hand for the other direction in different ways: a
+      // quotation mark (tzuk, shvil, lavan), and backgrounds of free CSS (zerem).
+      it.each(['tzuk', 'zerem', 'shvil', 'lavan'])(
+        '%s: turns onto the layouts its template drew by hand, with what it set, and back',
+        async (id) => {
+          const library = builtIn();
+          const { editor, bus, template } = await withMaster(id, library);
+          const set = bus.deck;
+          turnDeck(editor, library, 'ltr');
+          expect(bus.undoStack).toHaveLength(4);
+
+          const theirs = layoutsFor(template, 'ltr');
+          expect(template.flipped!.length).toBeGreaterThan(0);
+          expect(bus.deck.layouts.map(drawing)).toEqual(theirs.map(drawing));
+          // What the deck set is still there, on the side the turned layouts have for it.
+          expect(masterState(bus.deck)).toEqual({ footer: 'ACME 2026', numberHidden: true });
+          const logo = logoAsset(bus.deck)!;
+          for (const [i, layout] of bus.deck.layouts.entries()) {
+            const mine = layout.decorations.find((d) => d.role === 'logo');
+            const mark = theirs[i]!.decorations.find((d) => d.role === 'logo');
+            if (!mark) continue;
+            // As tall as the template's mark and on its side of the slide; the picture, not the mark.
+            expect(mine).toMatchObject({ type: 'image', assetId: logo.id });
+            expect(mine!.frame.y).toBe(mark.frame.y);
+            expect(mine!.frame.x + mine!.frame.w / 2 < 960).toBe(
+              mark.frame.x + mark.frame.w / 2 < 960,
+            );
+          }
+
+          turnDeck(editor, library, 'rtl');
+          expect(bus.deck).toEqual(set);
+        },
+      );
+
+      it.each(['tzuk', 'zerem'])(
+        '%s: saved as a personal template, gives a deck of the other direction what turning gives',
+        async (id) => {
+          const library = builtIn();
+          const turned = await withMaster(id, library);
+          turnDeck(turned.editor, library, 'ltr');
+
+          const { editor } = await withMaster(id, library);
+          const saved = await saveAsTemplate(editor, library, 'Mine');
+          expect(layoutsFor(saved, 'ltr')).toEqual(turned.bus.deck.layouts);
+        },
+      );
+
+      it('a personal template of a deck that set nothing has the layouts of its template in both directions', async () => {
+        const library = builtIn();
+        for (const id of ['tzuk', 'zerem']) {
+          const template = library.forDeck(id, 'he')!;
+          const { editor } = editorOn(deckFromTemplate(template, { lang: 'he' }));
+          const saved = await saveAsTemplate(editor, library, `Mine ${id}`);
+          expect(layoutsFor(saved, 'rtl')).toEqual(layoutsFor(template, 'rtl'));
+          expect(layoutsFor(saved, 'ltr')).toEqual(layoutsFor(template, 'ltr'));
+        }
+      });
+    },
+  );
 });
 
 describe('the logo', () => {
@@ -543,7 +549,7 @@ describe('saving the deck as a personal template', () => {
   });
 });
 
-describe('the master components of the deck (SLD-04)', () => {
+describe.skipIf(!builtInAvailable)('the master components of the deck (SLD-04)', () => {
   const library = () => libraryOf(...builtInTemplates());
   const png = (name: string) => new File([new Uint8Array([1, 2, 3])], name, { type: 'image/png' });
 

@@ -70,6 +70,7 @@
   --color-ui-header-action-hover: #f0e8ff;
   --color-ui-header-action-pressed: #e6d8ff;
   --color-ui-header-action-fg: #6425b6;
+  --color-ui-header-spark: #ffc94d; /* the spark of the Slidr mark */
   --color-ui-tool-violet: light-dark(#ede5ff, #3b2858);
   --color-ui-tool-violet-fg: light-dark(#7030c9, #ceb1ff);
   --color-ui-tool-blue: light-dark(#e3efff, #223858);
@@ -145,6 +146,10 @@
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
+  --font-weight-bold: 700; /* the Slidr wordmark */
+  /* Captions under icons in a narrow rail (the Activity Bar), where a whole word has to fit. */
+  --text-2xs: 11px;
+  --text-2xs--line-height: 14px;
   --text-xs: 12px;
   --text-xs--line-height: 16px;
   --text-sm: 13px;
@@ -153,6 +158,9 @@
   --text-md--line-height: 20px;
   --text-lg: 16px;
   --text-lg--line-height: 24px;
+  /* The title bar: the app's name and, beside it, the tagline or the document's name. */
+  --text-header: 18px;
+  --text-header--line-height: 24px;
   --text-xl: 20px;
   --text-xl--line-height: 28px;
   --default-font-family: var(--font-ui);

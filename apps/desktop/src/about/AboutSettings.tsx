@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, cx, Dialog, DialogContent, ScrollArea } from '@slidr/ui';
+import { Scale, ScrollText, type LucideIcon } from '@slidr/ui/icons';
+import { Button, cx, Dialog, DialogContent, Icon, ScrollArea } from '@slidr/ui';
 import {
   diagnostics,
   entrySummary,
@@ -9,7 +10,9 @@ import {
   type DiagnosticsView,
 } from '../agent/diagnostics';
 import { formatBytes, ltr } from '../export/exportDeck';
-import { loadNotices, NOTICES_PATH } from './notices';
+import { SettingsCard, SettingsItem } from '../settings';
+import { SlidrMark } from '../shell/SlidrMark';
+import { loadLibraryNotices, loadNotices, NOTICES_PATH } from './notices';
 
 /** The version this build was made as; absent where nothing built it (a unit test). */
 const VERSION = import.meta.env.VITE_SLIDR_VERSION as string | undefined;
@@ -55,46 +58,55 @@ export function AboutSettings() {
   };
 
   return (
-    <div className="flex flex-col gap-4" data-testid="about">
-      {VERSION && (
-        <p className="text-sm text-ui-fg" data-testid="about-version">
-          Slidr · {t('version', { version: ltr(VERSION) })}
-        </p>
-      )}
-      <Row label={t('licenses.label')} hint={t('licenses.hint')}>
-        <Button size="sm" onClick={() => setOpen('licenses')} data-testid="about-licenses">
-          {t('licenses.open')}
-        </Button>
-      </Row>
-      <Row label={t('diagnostics.label')} hint={t('diagnostics.hint')}>
-        <p
-          role={logFailed ? 'alert' : undefined}
-          className={cx('text-xs', logFailed ? 'text-ui-danger-fg' : 'text-ui-fg-muted')}
-          data-testid="about-log-size"
-        >
-          {logFailed
-            ? t('diagnostics.failed')
-            : !log
-              ? ''
-              : log.bytes === 0
-                ? t('diagnostics.empty')
-                : t('diagnostics.size', { size: ltr(formatBytes(log.bytes)) })}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => setOpen('log')} data-testid="about-log">
-            {t('diagnostics.open')}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!log || log.bytes === 0}
-            onClick={() => void clear()}
-            data-testid="about-log-clear"
-          >
-            {t('diagnostics.clear')}
-          </Button>
+    <div className="flex flex-col gap-6" data-testid="about">
+      {/* The app as its title bar shows it: its mark on the header's colours. */}
+      <div className="editor-header flex items-center gap-3 rounded-panel p-4 shadow-raised">
+        <SlidrMark className="size-12 shrink-0" />
+        <div className="flex min-w-0 flex-col">
+          <p className="text-xl font-bold tracking-tight">Slidr</p>
+          {VERSION && (
+            <p className="text-xs opacity-85" data-testid="about-version">
+              {t('version', { version: ltr(VERSION) })}
+            </p>
+          )}
         </div>
-      </Row>
+      </div>
+      <SettingsCard>
+        <Row icon={Scale} label={t('licenses.label')} hint={t('licenses.hint')}>
+          <Button size="sm" onClick={() => setOpen('licenses')} data-testid="about-licenses">
+            {t('licenses.open')}
+          </Button>
+        </Row>
+        <Row icon={ScrollText} label={t('diagnostics.label')} hint={t('diagnostics.hint')}>
+          <p
+            role={logFailed ? 'alert' : undefined}
+            className={cx('text-xs', logFailed ? 'text-ui-danger-fg' : 'text-ui-fg-muted')}
+            data-testid="about-log-size"
+          >
+            {logFailed
+              ? t('diagnostics.failed')
+              : !log
+                ? ''
+                : log.bytes === 0
+                  ? t('diagnostics.empty')
+                  : t('diagnostics.size', { size: ltr(formatBytes(log.bytes)) })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setOpen('log')} data-testid="about-log">
+              {t('diagnostics.open')}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={!log || log.bytes === 0}
+              onClick={() => void clear()}
+              data-testid="about-log-clear"
+            >
+              {t('diagnostics.clear')}
+            </Button>
+          </div>
+        </Row>
+      </SettingsCard>
       <LicensesDialog open={open === 'licenses'} onClose={() => setOpen(null)} />
       <LogDialog
         open={open === 'log'}
@@ -107,13 +119,30 @@ export function AboutSettings() {
   );
 }
 
-function Row({ label, hint, children }: { label: string; hint: string; children: ReactNode }) {
+function Row({
+  icon,
+  label,
+  hint,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  hint: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-start gap-1.5">
-      <p className="text-sm font-medium text-ui-fg">{label}</p>
-      <p className="text-xs text-ui-fg-muted">{hint}</p>
-      {children}
-    </div>
+    <SettingsItem>
+      <div className="flex items-start gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-control bg-ui-tool-teal text-ui-tool-teal-fg">
+          <Icon icon={icon} />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+          <p className="text-sm font-medium text-ui-fg">{label}</p>
+          <p className="text-xs text-ui-fg-muted">{hint}</p>
+          {children}
+        </div>
+      </div>
+    </SettingsItem>
   );
 }
 
@@ -131,8 +160,9 @@ function LicensesDialog({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => {
     if (!open || text !== null) return;
     let alive = true;
-    loadNotices().then(
-      (notices) => alive && setText(notices),
+    // The build's own, then the media library's, which never fail the list.
+    Promise.all([loadNotices(), loadLibraryNotices().catch(() => '')]).then(
+      ([notices, library]) => alive && setText(library ? `${notices}\n${library}` : notices),
       (error: unknown) => {
         console.error(`${NOTICES_PATH} could not be read`, error);
         if (alive) setFailed(true);

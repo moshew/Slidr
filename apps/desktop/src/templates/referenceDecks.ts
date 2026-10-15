@@ -1,14 +1,21 @@
 /**
- * The reference decks (`docs/reference-decks/*.html`) as the tests and the dev page read them:
- * the slides one by one, as the HTML an agent would hand to `slide_create_from_html`. The
- * pictures they use are in `./pictures`: `data-asset` names them by id.
+ * The reference decks (`templates/reference-decks/*.html` of the media library) as the tests and
+ * the dev page read them: the slides one by one, as the HTML an agent would hand to
+ * `slide_create_from_html`. The pictures they use are in `./pictures`: `data-asset` names them by
+ * id. Without the library there are none.
  */
+import { mediaFiles, readMediaText } from '@slidr/media-library';
 
-const files = import.meta.glob<string>('../../../../../Slidr-media/templates/reference-decks/*.html', {
-  eager: true,
-  query: '?raw',
-  import: 'default',
-});
+const FOLDER = 'templates/reference-decks/';
+
+const paths = [...(await mediaFiles())]
+  .filter((path) => path.startsWith(FOLDER) && path.endsWith('.html'))
+  .sort();
+const files: Record<string, string> = Object.fromEntries(
+  (await Promise.all(paths.map(async (path) => [path, await readMediaText(path)] as const))).filter(
+    (entry): entry is readonly [string, string] => entry[1] !== undefined,
+  ),
+);
 export interface ReferenceSlide {
   /** `s01`, `s02`, ... */
   id: string;

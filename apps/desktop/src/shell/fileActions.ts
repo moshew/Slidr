@@ -6,6 +6,7 @@ import { currentLanguage, i18n } from '../i18n';
 import { ask, tell } from './dialogs';
 import type { Deck } from '@slidr/model';
 import { newDeck, syncFileState, type Editor } from './editor';
+import type { FileImporter } from './registry';
 import { WORKSPACE_KEY } from './startup';
 import { setWelcome } from './store';
 
@@ -253,6 +254,39 @@ export async function openDocument(editor: Editor, path?: string): Promise<boole
     await report(t('file.openFailed'), error);
     return false;
   }
+}
+
+/**
+ * "Load from file" of the welcome screen: one dialog for every file the app takes in, and what
+ * suits the file that was chosen. A `.slidr` file is opened; a file of an importer (an HTML
+ * page) is imported, which makes a document of its own. True when a file was chosen.
+ */
+export async function loadFile(
+  editor: Editor,
+  importers: readonly FileImporter[],
+): Promise<boolean> {
+  if (!editor.document) return false;
+  const imported = importers.flatMap((importer) => importer.extensions);
+  const chosen = await openDialog({
+    multiple: false,
+    directory: false,
+    filters: [
+      { name: t('file.filterAll'), extensions: [EXTENSION, ...imported] },
+      ...filters(),
+      ...importers.map((importer) => ({
+        name: importer.filterName(),
+        extensions: [...importer.extensions],
+      })),
+    ],
+  });
+  if (!chosen) return false;
+  const extension = chosen.split('.').at(-1)?.toLowerCase() ?? '';
+  const importer = importers.find((candidate) => candidate.extensions.includes(extension));
+  if (importer) {
+    importer.open(chosen);
+    return true;
+  }
+  return openDocument(editor, chosen);
 }
 
 /** Saves to the document's file, or asks for one. True when the deck was saved. */

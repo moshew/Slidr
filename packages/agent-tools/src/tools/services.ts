@@ -21,13 +21,14 @@ import { closestAspect, imagePlaceholders, slidePlaceholders, styledPrompt } fro
 import { getElement, getSlide, slideNumber } from '../lookup';
 import type { HtmlSlideConversion, PngImage, StoredImage } from '../services';
 import { DeckApiError, defineTool, type ToolContext } from '../tool';
+import { animatesItself, withDefaultMotion } from '../motion';
 import { afterSlide, indexAfter } from './shared';
 
 const Id = z.string().min(1);
 const ALL = ['deck', 'slide', 'object'] as const;
 
 const HTML_HELP =
-  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute), and give every block of text a definite width. Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> an empty placeholder for an image to generate; data-name names an element, data-role="title" marks the title (the only role in a slide); data-anim gives an entrance by preset name; data-keep-html keeps a subtree as HTML; data-archetype on the root states the kind of slide. <i data-icon="lucide:rocket"></i> places an icon of the built-in library by its id (icon_search finds ids, when it is among your tools), sized by font-size and coloured by color. <div data-chart=\'{"chartType": …, "data": {"categories": […], "series": [{"name": …, "values": […]}]}}\'> with a definite size makes a chart element, which the app draws in the theme colours and the user edits as data: use it for a series of numbers.';
+  'Write the slide as HTML/CSS for a 1920x1080 root, with any layout (flex, grid, absolute), and give every block of text a definite width. Use theme variables (var(--color-primary), var(--font-heading)) so template changes follow. <img data-asset="<id>"> places an asset, <img data-image-prompt="..."> an empty placeholder for an image to generate; data-name names an element, data-role="title" marks the title (the only role in a slide); data-anim sets an element’s entrance: a preset name, or JSON with animation_set step fields and order (0 as the slide opens, n on the n-th click); without any, the slide gets the deck’s transition and its content after the title rises in, in order; data-anim="none" on the root keeps it still; data-keep-html keeps a subtree as HTML; data-archetype on the root states the kind of slide. <i data-icon="lucide:rocket"></i> places an icon of the built-in library by its id (icon_search finds ids, when it is among your tools), sized by font-size and coloured by color. <div data-chart=\'{"chartType": …, "data": {"categories": […], "series": [{"name": …, "values": […]}]}}\'> with a definite size makes a chart element, which the app draws in the theme colours and the user edits as data: use it for a series of numbers.';
 
 /**
  * The image placeholders of a slide (`data-image-prompt`), for the result of an HTML write: the
@@ -148,7 +149,13 @@ export const slideCreate = defineTool({
       ...(name ? { name } : {}),
     });
     const index = indexAfter(ctx.deck, afterSlideId, ctx.deck.slides.length);
-    ctx.write([{ type: 'slide.add', slide, index }]);
+    ctx.write([
+      {
+        type: 'slide.add',
+        slide: withDefaultMotion(slide, ctx.deck, index, { timeline: true }),
+        index,
+      },
+    ]);
     // Like a slide written as HTML: the render that comes back is the look the design check asks
     // for, so a slide made exactly as its layout draws it needs no second call.
     return { data: { slideId: slide.id }, images: await renderIfPossible(ctx, slide.id) };
@@ -180,10 +187,11 @@ export const slideCreateFromHtml = defineTool({
     const end = ctx.deck.slides.length;
     const there = afterSlideId == null || ctx.deck.slides.some((s) => s.id === afterSlideId);
     const index = there ? indexAfter(ctx.deck, afterSlideId, end) : end;
-    ctx.write([
-      ...registerAssets(result.assets),
-      { type: 'slide.add', slide: result.slide, index },
-    ]);
+    // It moves by default: the deck's transition, and an entrance unless the HTML chose its own.
+    const slide = withDefaultMotion(result.slide, ctx.deck, index, {
+      timeline: !animatesItself(html),
+    });
+    ctx.write([...registerAssets(result.assets), { type: 'slide.add', slide, index }]);
     return {
       data: conversionData(result.slide.id, result),
       images: await renderIfPossible(ctx, result.slide.id),
@@ -213,6 +221,10 @@ export const slideReplaceFromHtml = defineTool({
       });
     }
     for (const element of slide.elements) commands.push({ type: 'element.add', slideId, element });
+    // The new design moves by default, as a new slide does; the transition it has stays.
+    const moving = withDefaultMotion(slide, ctx.deck, ctx.deck.slides.indexOf(current), {
+      timeline: !animatesItself(html),
+    });
     commands.push(
       {
         type: 'slide.update',
@@ -223,9 +235,10 @@ export const slideReplaceFromHtml = defineTool({
           css: slide.css ?? null,
           layoutId: null,
           archetype: slide.archetype ?? null,
+          ...(current.transition ? {} : { transition: moving.transition }),
         },
       },
-      { type: 'slide.setTimeline', slideId, timeline: slide.timeline },
+      { type: 'slide.setTimeline', slideId, timeline: moving.timeline },
     );
     ctx.write(commands);
     return {

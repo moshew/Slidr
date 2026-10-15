@@ -70,6 +70,8 @@ import {
   Tabs,
   TabsContent,
   TabsList,
+  TabsTile,
+  TabsTileList,
   TabsTrigger,
   Textarea,
   TextField,
@@ -590,6 +592,14 @@ function TabsDemo({ c }: { c: Copy }) {
           <Skeleton className="h-3 w-1/2" />
           <Skeleton className="h-3 w-2/3" />
         </TabsContent>
+      </Tabs>
+      {/* As tiles, for a few topics in a narrow column: the settings screen. */}
+      <Tabs defaultValue="chat" className="mt-6 w-72">
+        <TabsTileList>
+          <TabsTile value="chat" icon={Sparkles} label={c.tabNames[0]} />
+          <TabsTile value="actions" icon={Images} label={c.tabNames[1]} data-preview="hover" />
+          <TabsTile value="history" icon={History} label={c.tabNames[2]} disabled />
+        </TabsTileList>
       </Tabs>
     </Card>
   );

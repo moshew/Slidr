@@ -1,7 +1,7 @@
 import { CommandBus, plainText, type Deck, type Element, type Layout } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { seatAlign } from './align';
-import { tzukTemplate, zeremTemplate } from './builtin';
+import { builtInAvailable, tzukTemplate, zeremTemplate } from './builtin';
 import { applyTemplate, changeDirection, deckFromTemplate } from './deck';
 import {
   deckFooter,
@@ -24,7 +24,7 @@ const numbers = (deck: Deck) =>
   deck.layouts.flatMap((layout) => layout.decorations.filter((d) => d.role === 'slideNumber'));
 const seat = (layout: Layout) => layout.placeholders.find((p) => p.role === 'footer');
 
-describe('the master components of a deck (SLD-04)', () => {
+describe.skipIf(!builtInAvailable)('the master components of a deck (SLD-04)', () => {
   it('a built-in template draws the slide number on its content layouts, and no footer yet', () => {
     const deck = start();
     // Every layout with a foot: those that seat a footer, and the title and text layouts, which

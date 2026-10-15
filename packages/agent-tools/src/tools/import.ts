@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { markdownToRichText } from '../markdown';
 import type { ImportedSlide } from '../services';
 import { defineTool } from '../tool';
+import { checkTransitionType } from './content';
 
 const IMPORT = ['import'] as const;
 
@@ -134,6 +135,27 @@ function countByType(slide: Slide): string {
 
 const percent = (share: number) => Math.round(share * 100);
 
+/** What a captured slide moves with, in a line: what the page played, as the slide keeps it. */
+function motionReport(slide: Slide): string {
+  const parts: string[] = [];
+  const t = slide.transition;
+  if (t && t.type !== 'none') {
+    parts.push(`transition ${t.type}${t.direction ? ` ${t.direction}` : ''}, ${t.duration} ms`);
+  }
+  const steps = slide.timeline.length;
+  if (steps > 0) {
+    const clicks = slide.timeline.filter((s) => s.trigger === 'onClick').length;
+    const first = slide.timeline.findIndex((s) => s.trigger === 'onClick');
+    const opening = first < 0 ? steps : first;
+    parts.push(
+      `${steps} animation step${steps === 1 ? '' : 's'}: ${opening} as the slide opens, ${clicks} on click${clicks === 1 ? '' : 's'}`,
+    );
+  }
+  return parts.length > 0
+    ? parts.join('; ')
+    : 'none: the page played no transition and no animation as the slide came in';
+}
+
 /** What the agent reads about one captured slide: the measurements, and what to look into. */
 function slideReport(deck: Deck, imported: ImportedSlide): Record<string, unknown> {
   const { slide, source } = imported;
@@ -176,6 +198,7 @@ function slideReport(deck: Deck, imported: ImportedSlide): Record<string, unknow
     editablePercent: percent(imported.editability),
     textEditablePercent: percent(imported.textEditability),
     elements: countByType(slide),
+    motion: motionReport(slide),
     ...(remarks.length > 0 ? { remarks } : {}),
   };
 }
@@ -183,7 +206,9 @@ function slideReport(deck: Deck, imported: ImportedSlide): Record<string, unknow
 export const importCapture = defineTool({
   name: 'import_capture',
   description:
-    'Captures elements of the page as slides, in the order given, and appends them to the deck. For each: runs `before` (optional JavaScript, as in import_eval) to bring the slide into its final state, waits, then copies the element with the styles, images and fonts it uses, converts what it can into editable elements, compares the result with the source, and keeps as html whatever did not convert faithfully. Returns `captured`, with for each slide its id and number, `faithful`, the share that became editable, element counts and remarks; a slide that could not be captured is reported with the reason (among them: the page draws something over the element that is not part of it). A long call stops early and says which slides are left: call again for those.',
+    'Captures elements of the page as slides, in the order given, and appends them to the deck. For each: runs `before` (optional JavaScript, as in import_eval) to bring the slide into its final state, waits, then copies the element with the styles, images and fonts it uses, converts what it can into editable elements, compares the result with the source, and keeps as html whatever did not convert faithfully. ' +
+    'Motion comes along: from just before `before` runs, the app records what the page plays as the slide comes in, the transition (matched to the nearest type, with its duration and easing) and the entrances, with the file\'s own keyframes and timing. So leave the deck\'s animations on, and reach each slide the way the deck does. Build steps that wait for a click: reveal them in `before` and mark each with `el.dataset.slidrAnim = JSON.stringify({ order: n })`, n its click from 1; the motion seen comes with the mark, which may also set fields of an animation_set step or be "none", for that capture only. `transition` replaces what was seen; null is none. ' +
+    'Returns `captured`, with for each slide its id and number, `faithful`, the share that became editable, element counts, `motion` (what the slide moves with), and remarks; a slide that could not be captured is reported with the reason (among them: the page draws something over the element that is not part of it). A long call stops early and says which slides are left: call again for those.',
   input: z.strictObject({
     slides: z
       .array(
@@ -211,6 +236,14 @@ export const importCapture = defineTool({
             .max(5000)
             .optional()
             .describe('Wait after `before`, for transitions. Default 250.'),
+          transition: z
+            .string()
+            .min(1)
+            .nullable()
+            .optional()
+            .describe(
+              'A transition type (as in animation_set) in place of the one seen on the page, with its timing; null for none.',
+            ),
         }),
       )
       .min(1)
@@ -248,11 +281,12 @@ export const importCapture = defineTool({
         left = slides.length - index;
         break;
       }
-      const { name, notes, replaces, ...where } = request;
+      const { name, notes, replaces, transition, ...where } = request;
       try {
         if (replaces && !ctx.deck.slides.some((s) => s.id === replaces)) {
           throw new Error(`No slide ${replaces} in the deck to replace. Nothing was captured.`);
         }
+        if (transition) checkTransitionType(transition);
         const captured = await importer.capture(ctx.deck, where);
         // The turn was stopped, or its session ended, while the page worked on this slide: it
         // stays out of the deck, which may by now be another document's.
@@ -269,16 +303,31 @@ export const importCapture = defineTool({
             `Slide ${replaces} was removed from the deck while the page worked on its capture, so there is nothing to replace. The capture was not added; capture it again without \`replaces\` if it is still wanted.`,
           );
         }
-        // A slide captured again keeps the name and the notes the first capture was given.
+        // A slide captured again keeps the name and the notes the first capture was given, and
+        // its transition when the page played none this time (it was on screen already).
         const old = replaced >= 0 ? ctx.deck.slides[replaced] : undefined;
+        const { transition: seen, ...shot } = captured.slide;
+        const into =
+          transition === null
+            ? undefined
+            : transition
+              ? {
+                  duration: 600,
+                  easing: 'ease-in-out',
+                  advance: { onClick: true },
+                  ...(seen ?? old?.transition),
+                  type: transition,
+                }
+              : (seen ?? old?.transition);
         const slide: Slide = {
-          ...captured.slide,
+          ...shot,
           ...(name ? { name } : old?.name ? { name: old.name } : {}),
           ...(notes
             ? { notes: markdownToRichText(notes, { deckDir: ctx.deck.meta.dir }) }
             : old?.notes
               ? { notes: old.notes }
               : {}),
+          ...(into ? { transition: into } : {}),
         };
         const imported = { ...captured, slide };
         const placeholder = untouchedOnlySlide(ctx.deck);

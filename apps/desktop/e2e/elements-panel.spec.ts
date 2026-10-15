@@ -267,6 +267,61 @@ test('every emoji is in one list by group, found in Hebrew, and added with a cli
   await expect(onStage(page, emoji.id)).toBeVisible();
 });
 
+test('an edge of an emoji moves alone, as an edge of a picture does; a corner sizes it whole', async ({
+  page,
+}) => {
+  const panel = await openElements(page);
+  await panel.locator('[data-collection="emoji"]').click();
+  await panel.locator('[data-sticker="emoji:grinning-face"]').click();
+  const emoji = await selected<SvgElement>(page);
+  const { x, y, w, h } = emoji.frame;
+  const scale = (await page.getByTestId('stage-frame').boundingBox())!.width / 1920;
+  // Ctrl keeps the edge off the guides: it goes exactly as far as the pointer.
+  const drag = async (handle: string, dx: number, dy: number, shift = false) => {
+    const grip = await page
+      .getByTestId('stage-surface')
+      .locator(`[data-handle="${handle}"]`)
+      .boundingBox();
+    const from = { x: grip!.x + grip!.width / 2, y: grip!.y + grip!.height / 2 };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.keyboard.down('Control');
+    if (shift) await page.keyboard.down('Shift');
+    await page.mouse.move(from.x + dx * scale, from.y + dy * scale, { steps: 8 });
+    await page.mouse.up();
+    if (shift) await page.keyboard.up('Shift');
+    await page.keyboard.up('Control');
+  };
+  const frame = async () => (await selected<SvgElement>(page)).frame;
+  /** The drawing is scaled alike on both axes: the face is not stretched with its frame. */
+  const drawnEvenly = () =>
+    onStage(page, emoji.id)
+      .locator('svg')
+      .first()
+      .evaluate((svg) => {
+        const m = (svg as SVGSVGElement).getScreenCTM()!;
+        return Math.abs(m.a - m.d) < 1e-6;
+      });
+
+  const depth = await undoDepth(page);
+  await drag('e', 100, 0);
+  expect(await frame()).toEqual({ x, y, w: w + 100, h });
+  expect(await drawnEvenly()).toBe(true);
+  await drag('n', 0, -60);
+  expect(await frame()).toEqual({ x, y: y - 60, w: w + 100, h: h + 60 });
+  expect(await drawnEvenly()).toBe(true);
+  expect(await undoDepth(page)).toBe(depth + 2);
+  await undo(page);
+  await undo(page);
+  expect(await frame()).toEqual(emoji.frame);
+
+  // With Shift an edge sizes it whole, around the middle of the other side; so does a corner.
+  await drag('e', 100, 0, true);
+  expect(await frame()).toEqual({ x, y: y - 50, w: w + 100, h: h + 100 });
+  await drag('se', 40, 0);
+  expect(await frame()).toEqual({ x, y: y - 50, w: w + 140, h: h + 140 });
+});
+
 test('what was used is offered again on the first screen', async ({ page }) => {
   const panel = await openElements(page);
   await panel.locator('[data-collection="emoji"]').click();
@@ -285,19 +340,42 @@ test('what was used is offered again on the first screen', async ({ page }) => {
   expect((await currentSlide(page)).elements).toHaveLength(3);
 });
 
+/** Twelve emoji used lately, as an earlier session left them. */
+async function rememberTwelve(page: Parameters<typeof openApp>[0]) {
+  await page.addInitScript(() => {
+    const stickers = Array.from({ length: 12 }, (_, index) => ({
+      id: `emoji:recent-${index}`,
+      label: { en: `Recent ${index}`, he: `אחרון ${index}` },
+      markup: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#e89645"/></svg>`,
+    }));
+    localStorage.setItem(
+      'slidr.elements.recent',
+      JSON.stringify({ state: { stickers }, version: 2 }),
+    );
+  });
+}
+
+test('the recent stickers are in place in the first frame the panel paints', async ({ page }) => {
+  await rememberTwelve(page);
+  await openApp(page, { lang: 'he' });
+  // Looks at every frame before it is painted: a row that shows empty and fills a frame later
+  // pushes the collections down, and the panel flickers.
+  await page.evaluate(() => {
+    const look = () => {
+      const grid = document.querySelector('[data-testid="elements-recent"]');
+      if (grid)
+        document.body.dataset.firstRecent = String(grid.querySelectorAll('[data-sticker]').length);
+      else requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await page.getByTestId('activity-bar').locator('[data-panel="elements"]').click();
+  await expect(page.locator('body')).toHaveAttribute('data-first-recent', '8');
+});
+
 for (const lang of ['en', 'he'] as const) {
   test(`recent stickers use two rows and open the full list in ${lang}`, async ({ page }) => {
-    await page.addInitScript(() => {
-      const stickers = Array.from({ length: 12 }, (_, index) => ({
-        id: `emoji:recent-${index}`,
-        label: { en: `Recent ${index}`, he: `אחרון ${index}` },
-        markup: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#e89645"/></svg>`,
-      }));
-      localStorage.setItem(
-        'slidr.elements.recent',
-        JSON.stringify({ state: { stickers }, version: 2 }),
-      );
-    });
+    await rememberTwelve(page);
     const panel = await openElements(page, lang);
     const preview = panel.getByTestId('elements-recent');
     await expect(preview.locator('[data-sticker]')).toHaveCount(8);

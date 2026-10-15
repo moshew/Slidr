@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { SettingsPageId } from '../settings/sections';
 import { PanelId } from './registry';
 import { startsOnWelcome } from './startup';
 
@@ -11,6 +12,8 @@ export interface ShellState {
   activePanel: string;
   /** False when the Tool Panel is collapsed (UI-02); the Activity Bar stays. */
   panelOpen: boolean;
+  /** The tab the settings screen shows (SPEC 4.2 ⚙). Not kept: the screen opens on its first. */
+  settingsPage: SettingsPageId;
   /** Tool Panel width as a share of the window, once the user drags the splitter. */
   panelShare: number | null;
   /** The zoom the user picked: fit to the Stage, or a scale (1 = 100%). */
@@ -34,6 +37,7 @@ export const useShell = create<ShellState>()(
     (): ShellState => ({
       activePanel: PanelId.ai,
       panelOpen: true,
+      settingsPage: 'general',
       panelShare: null,
       zoom: 'fit',
       viewScale: 1,
@@ -89,6 +93,22 @@ export function openAiChat(): void {
   requestAnimationFrame(() =>
     document.querySelector<HTMLElement>('[data-testid="chat-input"]')?.focus(),
   );
+}
+
+/**
+ * Shows the settings screen, on the tab of a topic when one is named: the way in from a place that
+ * needs a setting, such as a model for the chat or a key for a photo library.
+ */
+export function openSettings(page?: SettingsPageId): void {
+  useShell.setState({
+    activePanel: PanelId.settings,
+    panelOpen: true,
+    ...(page ? { settingsPage: page } : {}),
+  });
+}
+
+export function setSettingsPage(settingsPage: SettingsPageId): void {
+  useShell.setState({ settingsPage });
 }
 
 /** The Activity Bar click: the open panel collapses, any other one opens. */

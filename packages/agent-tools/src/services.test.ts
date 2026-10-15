@@ -160,6 +160,33 @@ describe('conversion', () => {
     expect(result.images).toEqual([png]);
   });
 
+  it('slide_create_from_html gives a new slide motion of its own, unless its HTML chose', async () => {
+    const deck = hebrewDeck();
+    for (const slide of deck.slides) delete slide.transition;
+    const { call, bus } = setup(deck, { conversion });
+    const made = async (html: string) => {
+      const data = await ok(call('slide_create_from_html', { html }));
+      return findSlide(bus.deck, data.slideId as string)!;
+    };
+    // A deck with no transition yet: the default one, and an entrance for what is on the slide.
+    const first = await made('<div>x</div>');
+    expect(first.transition).toEqual({
+      type: 'fade',
+      duration: 600,
+      easing: 'ease-in-out',
+      advance: { onClick: true },
+    });
+    expect(first.timeline).toMatchObject([
+      { elementId: first.elements[0]!.id, preset: 'rise', trigger: 'withPrevious', delay: 0 },
+    ]);
+    // The slide before says how the deck moves, a cut included.
+    const cut = { type: 'none', duration: 0, easing: 'linear', advance: { onClick: true } };
+    await ok(call('slide_update', { slideId: first.id, transition: cut }));
+    expect((await made('<div>x</div>')).transition).toEqual(cut);
+    // HTML that says how it moves is taken at its word.
+    expect((await made('<div data-anim="none">x</div>')).timeline).toEqual([]);
+  });
+
   it('an HTML write names the image placeholders it left, for image_generate', async () => {
     const frame = { x: 0, y: 0, w: 800, h: 600 };
     const withImages: ConversionService = {
@@ -283,7 +310,8 @@ describe('conversion', () => {
     expect(slide).toMatchObject({
       name: 'All element types',
       css: '@keyframes x {}',
-      timeline: [],
+      // A new design moves by default, as a new slide does (ADR-092).
+      timeline: [{ elementId: slide.elements[0]!.id, preset: 'rise', trigger: 'withPrevious' }],
     });
     expect(slide.layoutId).toBeUndefined();
     expect(slide.notes).toBeDefined();

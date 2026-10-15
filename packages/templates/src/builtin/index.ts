@@ -1,20 +1,34 @@
+import { readMediaJson } from '@slidr/media-library';
 import type { Theme } from '@slidr/model';
-import source from '../../../../../Slidr-media/templates/catalog.json?raw';
 import type { Template } from '../template';
 import { withoutTitleLayout } from '../standardLayouts';
 import { sampleDeck, type SampleSlide } from './kit';
 import { pictures } from './pictures.generated';
 
-/** The authored template layouts and sample content live in the external media library. */
-const catalog = JSON.parse(source) as {
+interface Catalog {
   templates: Template[];
-  samples: Record<string, { he: SampleSlide[]; en: SampleSlide[] }>;
-  originals: Record<string, Template>;
+  samples: Record<string, { he: SampleSlide[]; en: SampleSlide[] } | undefined>;
+  originals: Record<string, Template | undefined>;
+}
+
+/**
+ * The authored template layouts and sample content: the catalog of the media library
+ * (`templates/catalog.json`), read as this module is imported. Without it (no network, no
+ * library, an empty one) there are no built-in templates, and `builtInAvailable` says so.
+ */
+const read = await readMediaJson<Partial<Catalog>>('templates/catalog.json');
+const catalog: Catalog = {
+  templates: Array.isArray(read?.templates) ? read.templates : [],
+  samples: read?.samples ?? {},
+  originals: read?.originals ?? {},
 };
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 export { contractGaps, OPTIONAL, ROLE_CONTRACT } from './contract';
 export { pictures, sampleDeck, type SampleSlide };
+
+/** Whether the media library's catalog of templates was read: the tests of its content need it. */
+export const builtInAvailable = catalog.templates.length > 0;
 
 export const builtInThemes: Record<string, Theme> = Object.fromEntries(
   catalog.templates.map((template) => [template.theme.id, template.theme]),
@@ -27,7 +41,7 @@ export function builtInTemplates(): Template[] {
 export const builtInSamples = Object.fromEntries(
   builtInTemplates().map((template) => {
     const ids = new Set(template.layouts.map((layout) => layout.id));
-    const samples = catalog.samples[template.theme.id]!;
+    const samples = catalog.samples[template.theme.id] ?? { he: [], en: [] };
     return [
       template.theme.id,
       {
@@ -38,7 +52,13 @@ export const builtInSamples = Object.fromEntries(
   }),
 );
 
+function original(id: string): Template {
+  const template = catalog.originals[id];
+  if (!template) throw new Error(`The media library has no original of the template "${id}".`);
+  return copy(template);
+}
+
 /** Original, pre-standard-layout variants used by template composition checks. */
-export const zeremTemplate = (): Template => copy(catalog.originals.zerem!);
-export const tzukTemplate = (): Template => copy(catalog.originals.tzuk!);
-export const mifgashTemplate = (): Template => copy(catalog.originals.mifgash!);
+export const zeremTemplate = (): Template => original('zerem');
+export const tzukTemplate = (): Template => original('tzuk');
+export const mifgashTemplate = (): Template => original('mifgash');

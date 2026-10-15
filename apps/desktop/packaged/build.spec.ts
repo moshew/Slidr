@@ -133,7 +133,7 @@ test('the fonts of the app are served from the bundle, and those of decks from t
   const woff = (await requested(page)).filter((url) => url.endsWith('.woff2'));
   expect(woff.length).toBeGreaterThan(2);
   // The interface's own two families are files of the bundle; a deck's font is a file of the
-  // folder beside the executable.
+  // media library.
   for (const url of woff) {
     expect(url).toMatch(/^http:\/\/(tauri\.localhost\/assets|media\.localhost\/fonts)\//);
   }
@@ -141,38 +141,44 @@ test('the fonts of the app are served from the bundle, and those of decks from t
   expect(woff.some((url) => url.startsWith('http://tauri.localhost/assets/'))).toBe(true);
 });
 
-test('the icons and the photographs of the templates are files beside the executable', async () => {
+test('the icons, the fonts of decks and the photographs come from the media library, not the bundle', async () => {
   const { page } = app;
-  const media = join(dirname(appBinary()), 'media');
-  for (const file of [
-    'icons/lucide/icon-nodes.json',
-    'icons/tabler/tabler-nodes-outline.json',
-    'icons/hebrew.json',
-    'images/templates/shvil-ridge.webp',
-    'fonts/rubik/rubik-hebrew-wght-normal.woff2',
-    'templates/index.json',
-    'templates/zerem/template.json',
-  ]) {
-    expect(existsSync(join(media, file)), file).toBe(true);
-  }
-  // None of them is in the bundle, which is what the executable carries.
+  // Nothing of the library comes with the app: it is read from the web and kept in the app's
+  // own data (src-tauri/src/media_library.rs).
+  expect(existsSync(join(dirname(appBinary()), 'media'))).toBe(false);
   const bundled = readdirSync(join(DIST, 'assets'));
   expect(bundled.filter((name) => name.endsWith('.webp'))).toEqual([]);
   for (const name of bundled.filter((name) => name.endsWith('.woff2'))) {
     expect(name).toMatch(/^(inter|heebo)-/);
   }
-  // And the app reads them from there: an icon set as text, a photograph as a picture.
+  // The app reads the library through its protocol: the manifest, an icon set as text, and a
+  // photograph of a template as a picture when the library has one.
   const read = await page.evaluate(async () => {
+    const manifest = (await (await fetch('http://media.localhost/manifest.json')).json()) as {
+      files: Record<string, unknown>;
+    };
     const icons = await fetch('http://media.localhost/icons/lucide/icon-nodes.json');
     const nodes = (await icons.json()) as Record<string, unknown>;
-    const image = new Image();
-    image.src = 'http://media.localhost/images/templates/shvil-ridge.webp';
-    await image.decode();
-    return { status: icons.status, star: 'star' in nodes, width: image.naturalWidth };
+    const photo = Object.keys(manifest.files).find((path) => path.startsWith('images/templates/'));
+    let width = 0;
+    if (photo) {
+      const image = new Image();
+      image.src = `http://media.localhost/${photo}`;
+      await image.decode();
+      width = image.naturalWidth;
+    }
+    return {
+      files: Object.keys(manifest.files).length,
+      status: icons.status,
+      star: 'star' in nodes,
+      photo,
+      width,
+    };
   });
+  expect(read.files).toBeGreaterThan(100);
   expect(read.status).toBe(200);
   expect(read.star).toBe(true);
-  expect(read.width).toBeGreaterThan(100);
+  if (read.photo) expect(read.width).toBeGreaterThan(100);
 });
 
 test('the scripted harness is offered because it was asked for', async () => {
@@ -297,22 +303,20 @@ test('a file of the workspace is read over the asset protocol', async () => {
   expect(read).toMatchObject({ status: 200, same: true, width: 1 });
 });
 
-test('the built-in templates are read from the folder beside the executable', async () => {
+test('the built-in templates are read from the media library', async () => {
   const { page } = app;
-  const media = join(dirname(appBinary()), 'media', 'templates');
-  const ids = JSON.parse(readFileSync(join(media, 'index.json'), 'utf8')) as string[];
-  expect(ids.length).toBeGreaterThan(10);
-  const zerem = JSON.parse(readFileSync(join(media, 'zerem', 'template.json'), 'utf8')) as {
-    theme: { id: string };
-  };
-  expect(zerem.theme.id).toBe('zerem');
-  // The library offers every one of them, in the order of the index.
+  const ids = await page.evaluate(async () => {
+    const index = await fetch('http://media.localhost/templates/index.json');
+    return index.ok ? ((await index.json()) as string[]) : [];
+  });
+  // The library offers every one of them, in the order of the index; a library without
+  // templates leaves the user's own.
   await showPanel(page, 'templates');
-  const cards = page.getByTestId('template-library').locator('[data-template]');
-  await expect(cards.first()).toBeVisible();
-  const shown = await cards.evaluateAll((all) =>
-    all.map((card) => card.getAttribute('data-template')),
-  );
+  await expect(page.getByTestId('template-library')).toBeVisible();
+  const shown = await page
+    .getByTestId('template-library')
+    .locator('[data-template]')
+    .evaluateAll((all) => all.map((card) => card.getAttribute('data-template')));
   expect(shown.slice(0, ids.length)).toEqual(ids);
   await showPanel(page, 'ai');
 });

@@ -1,5 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readMediaJson } from '@slidr/media-library';
 import { describe, expect, it } from 'vitest';
 import type { HebrewTags } from '../media/icons/search';
 import {
@@ -14,22 +13,11 @@ import {
 } from './stickers';
 
 /*
- * The two catalogues against the art sets: as the app's packages ship them, or as the drawings
- * taken from a larger set were copied into `art/`. The data is read here from the files; the app
- * reads the same files through the bundler, when it first needs them (`stickers.ts`).
+ * The two catalogues against the art sets, as the media library holds them: a set whose drawings
+ * were taken from a larger one keeps only those, in `elements/art/`. The data is read here from
+ * the library, as the app reads it when it first needs it (`stickers.ts`). Without the library
+ * there is nothing to check, and the tests are skipped.
  */
-
-const file = (path: string) =>
-  JSON.parse(readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')) as unknown;
-
-const sets = new Map<string, Record<string, unknown>>();
-
-/** A set's drawings: the ones copied into `art/`, or the whole of its package. */
-function art(set: string) {
-  const path = `../../../../../Slidr-media/elements/art/${set}.json`;
-  if (!sets.has(set)) sets.set(set, (file(path) as { icons: Record<string, unknown> }).icons);
-  return sets.get(set)!;
-}
 
 /** The copied drawings that grow the existing styles and establish the fourth. */
 const COPIED = {
@@ -49,13 +37,37 @@ const COPIED = {
 } as const;
 const COUNTS = { glossy: 599, illustrated: 533, outlined: 1178, handdrawn: 986 };
 
-const graphicsCatalog = file('../../../../../Slidr-media/elements/catalogs/graphics-catalog.json') as GraphicsCatalog;
-const graphics = graphicsOf(graphicsCatalog, file('../../../../../Slidr-media/icons/hebrew.json') as HebrewTags);
-const emoji = emojiOf(file('../../../../../Slidr-media/elements/catalogs/emoji-catalog.json') as EmojiCatalog);
+const SETS = [
+  'fluent-color',
+  'streamline-kameleon-color',
+  'streamline-ultimate-color',
+  'twemoji',
+  ...Object.values(COPIED).flatMap((sets) => sets.map(([set]) => set)),
+];
+const PATHS = [
+  'elements/catalogs/graphics-catalog.json',
+  'elements/catalogs/emoji-catalog.json',
+  'icons/hebrew.json',
+  ...SETS.map((set) => `elements/art/${set}.json`),
+  ...SETS.slice(4).map((set) => `elements/art/${set}.notice.json`),
+];
+const read = new Map(
+  await Promise.all(PATHS.map(async (path) => [path, await readMediaJson(path)] as const)),
+);
+const available = [...read.values()].every((value) => value !== undefined);
+const file = (path: string) => read.get(path);
+
+/** A set's drawings, as the library holds them. */
+const art = (set: string) =>
+  (file(`elements/art/${set}.json`) as { icons: Record<string, unknown> }).icons;
+
+const graphicsCatalog = (file('elements/catalogs/graphics-catalog.json') ?? []) as GraphicsCatalog;
+const graphics = graphicsOf(graphicsCatalog, (file('icons/hebrew.json') ?? {}) as HebrewTags);
+const emoji = emojiOf((file('elements/catalogs/emoji-catalog.json') ?? []) as EmojiCatalog);
 
 const ids = (found: readonly { id: string }[]) => found.map(({ id }) => id);
 
-describe('the graphics', () => {
+describe.skipIf(!available)('the graphics', () => {
   it('come in four styles, each of drawings its sets still have', () => {
     expect(graphicsCatalog.map(({ id }) => id)).toEqual([...GRAPHIC_STYLES]);
     for (const { id, icons } of graphicsCatalog) {
@@ -74,7 +86,7 @@ describe('the graphics', () => {
         );
         expect(taken).toHaveLength(count);
         expect(Object.keys(art(set)).sort()).toEqual(taken.map((one) => one.art).sort());
-        expect(file(`../../../../../Slidr-media/elements/art/${set}.notice.json`)).toMatchObject({
+        expect(file(`elements/art/${set}.notice.json`)).toMatchObject({
           name: `@iconify-json/${set}`,
           license: expect.stringMatching(/^(MIT|Apache-2.0|CC-BY-4.0)$/) as string,
           text: expect.stringMatching(/Microsoft|Streamline|Google/) as string,
@@ -147,7 +159,7 @@ describe('the graphics', () => {
   });
 });
 
-describe('the emoji', () => {
+describe.skipIf(!available)('the emoji', () => {
   it('are all there, in Unicode order and groups, each with art and a Hebrew name', () => {
     expect([...new Set(emoji.map(({ group }) => group))]).toEqual([...EMOJI_GROUPS]);
     expect(emoji.length).toBeGreaterThan(1800);

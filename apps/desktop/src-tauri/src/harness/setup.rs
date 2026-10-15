@@ -13,6 +13,33 @@ use super::{
     ModelOption, Result,
 };
 
+/// The winget packages of the CLIs the app installs, by harness.
+const PACKAGES: [(&str, &str); 3] = [
+    ("claude-code", "Anthropic.ClaudeCode"),
+    ("codex-cli", "OpenAI.Codex"),
+    ("copilot-cli", "GitHub.Copilot"),
+];
+
+/// Winget's exit codes for a package that is already installed and current:
+/// `UPDATE_NOT_APPLICABLE` and `PACKAGE_ALREADY_INSTALLED`.
+const ALREADY_INSTALLED: [u32; 2] = [0x8A15_002B, 0x8A15_0061];
+
+/// The folders under `root` that winget installed `PACKAGES` into. When Windows does not let
+/// winget make links (no Developer Mode), these go on the user's PATH instead of `Links`.
+fn winget_packages(root: PathBuf) -> impl Iterator<Item = PathBuf> {
+    std::fs::read_dir(root)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .and_then(|name| name.split_once('_'))
+                .is_some_and(|(id, _)| PACKAGES.iter().any(|(_, package)| *package == id))
+        })
+}
+
 /// Include package-manager locations even if this app started before installation.
 pub(crate) fn search_paths() -> Vec<PathBuf> {
     let mut paths: Vec<_> =
@@ -21,10 +48,14 @@ pub(crate) fn search_paths() -> Vec<PathBuf> {
         paths.push(PathBuf::from(home).join(".local/bin"));
     }
     if let Some(local) = std::env::var_os("LOCALAPPDATA") {
-        paths.push(PathBuf::from(local).join("Microsoft/WinGet/Links"));
+        let winget = PathBuf::from(local).join("Microsoft/WinGet");
+        paths.push(winget.join("Links"));
+        paths.extend(winget_packages(winget.join("Packages")));
     }
     if let Some(programs) = std::env::var_os("ProgramFiles") {
-        paths.push(PathBuf::from(programs).join("WinGet/Links"));
+        let winget = PathBuf::from(programs).join("WinGet");
+        paths.push(winget.join("Links"));
+        paths.extend(winget_packages(winget.join("Packages")));
     }
     if let Some(roaming) = std::env::var_os("APPDATA") {
         paths.push(PathBuf::from(roaming).join("npm"));
@@ -364,11 +395,8 @@ fn parse_models(harness: &str, value: &Value) -> Vec<ModelOption> {
 
 /// Called only after the installation confirmation in Settings.
 pub async fn install(id: &str) -> Result<()> {
-    let package = match id {
-        "claude-code" => "Anthropic.ClaudeCode",
-        "codex-cli" => "OpenAI.Codex",
-        "copilot-cli" => "GitHub.Copilot",
-        _ => return Err(AgentError::invalid_input("unknown install package")),
+    let Some(&(_, package)) = PACKAGES.iter().find(|(harness, _)| *harness == id) else {
+        return Err(AgentError::invalid_input("unknown install package"));
     };
     if !cfg!(windows) {
         return Err(AgentError::new(
@@ -402,7 +430,12 @@ pub async fn install(id: &str) -> Result<()> {
         )
     })?
     .map_err(|error| AgentError::io("run Windows App Installer (winget)", &error))?;
-    if !output.status.success() {
+    let installed = output.status.success()
+        || output
+            .status
+            .code()
+            .is_some_and(|code| ALREADY_INSTALLED.contains(&(code as u32)));
+    if !installed {
         return Err(AgentError::new(
             AgentErrorKind::ProcessExited,
             format!(

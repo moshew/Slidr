@@ -1,18 +1,8 @@
-import { CommandBus, type Deck, type Slide } from '@slidr/model';
-import { chartsSettled, ScaledSlide } from '@slidr/renderer';
-import { showSlideNumber, slideNumberHidden } from '@slidr/templates';
+import { chartsSettled } from '@slidr/renderer';
+import { slideNumberHidden } from '@slidr/templates';
 import { Button, cx, IconButton } from '@slidr/ui';
 import { Check, Hash, X } from '@slidr/ui/icons';
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
@@ -23,7 +13,7 @@ import { applyLibraryTemplate, showNumber } from './actions';
 import { library } from './app';
 import type { LibraryEntry } from './library';
 import { templateName, templateTagline } from './names';
-import { madePreview, readyPreview, type TemplatePreview } from './previews';
+import { PreviewGrid, useLaidOutSize, usePreviewLayers } from './PreviewGrid';
 
 /*
  * The slides that show a template, spread over the editor: for a built-in template its sample
@@ -46,57 +36,6 @@ export function showTemplateSlides(id: string | null): void {
   if (templateSlides.getState().id !== id) templateSlides.setState({ id });
 }
 
-/** Space between the slides, in px: `gap-4`. */
-const SLIDE_GAP = 16;
-/** The height a slide's name takes under it, with the space between them, in px. */
-const CAPTION = 24;
-
-interface Size {
-  width: number;
-  height: number;
-}
-
-/**
- * The size an element is laid out at, kept current. Not the size it is drawn at: the card is
- * drawn in part while it opens, and its slides are sized for the card as it will be.
- */
-function useLaidOutSize(ref: RefObject<HTMLElement | null>): Size {
-  const [size, setSize] = useState<Size>({ width: 0, height: 0 });
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const update = () =>
-      setSize((was) =>
-        was.width === element.clientWidth && was.height === element.clientHeight
-          ? was
-          : { width: element.clientWidth, height: element.clientHeight },
-      );
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [ref]);
-  return size;
-}
-
-/**
- * The columns and the width of a slide at which `count` slides of 16:9, each over its name,
- * fill a space without leaving it: of every number of columns, the one that draws them largest.
- */
-function fit(count: number, { width, height }: Size): { columns: number; thumb: number } {
-  let best = { columns: 1, thumb: 0 };
-  for (let columns = 1; columns <= count; columns += 1) {
-    const rows = Math.ceil(count / columns);
-    const wide = (width - SLIDE_GAP * (columns - 1)) / columns;
-    const tall = (((height - SLIDE_GAP * (rows - 1)) / rows - CAPTION) * 16) / 9;
-    const thumb = Math.floor(Math.min(wide, tall));
-    if (thumb > best.thumb) best = { columns, thumb };
-  }
-  return best;
-}
-
-/** How long the slides of one template give way to those of the next, in ms: as in app.css. */
-const SWAP = 260;
 /**
  * The longest the card waits for its slides before it opens without them, in ms; they then come
  * into it. A preview that was made ahead is there at once.
@@ -111,84 +50,6 @@ function frames(count: number): Promise<void> {
     next(count);
   });
 }
-
-/** The slides of one template, as they are drawn. */
-interface Shown extends TemplatePreview {
-  personal: boolean;
-}
-
-/** A deck with the slide number its layouts draw shown or hidden (SLD-04). */
-function numbered(deck: Deck, shown: boolean): Deck {
-  const commands = showSlideNumber(deck, shown);
-  if (commands.length === 0) return deck;
-  const bus = new CommandBus(deck);
-  bus.batch(commands);
-  return bus.deck;
-}
-
-/**
- * The slides of a template, laid out to fill a space; `leaving` while they fade away, `entering`
- * while they fade in over a card that is open already. `numbers`: whether they show the slide
- * number. The card around it is drawn again as it opens; its slides are not.
- */
-const Grid = memo(function Grid({
-  shown,
-  size,
-  leaving,
-  entering,
-  numbers,
-}: {
-  shown: Shown;
-  size: Size;
-  leaving: boolean;
-  entering: boolean;
-  numbers: boolean;
-}) {
-  const { t } = useTranslation('templates');
-  const deck = useMemo(() => numbered(shown.deck, numbers), [shown.deck, numbers]);
-  const { columns, thumb } = fit(deck.slides.length, size);
-  /** A slide is named by its layout: a built-in one by its archetype, in the UI's language. */
-  const nameOf = (slide: Slide): string => {
-    const layout = deck.layouts.find((candidate) => candidate.id === slide.layoutId);
-    if (!layout) return slide.name ?? '';
-    return shown.personal ? layout.name : t(`archetype.${layout.archetype}`);
-  };
-  if (thumb <= 0) return null;
-  return (
-    <div
-      data-leaving={leaving || undefined}
-      data-entering={entering || undefined}
-      className="template-slides-grid absolute inset-0 grid place-content-center gap-4"
-      style={{ gridTemplateColumns: `repeat(${columns}, ${thumb}px)` }}
-    >
-      {deck.slides.map((slide, index) => (
-        <figure
-          key={slide.id}
-          data-testid={leaving ? undefined : 'template-slide'}
-          className="flex min-w-0 flex-col gap-1.5"
-        >
-          <div className="overflow-hidden rounded-inset shadow-slide">
-            {/* Its pictures are drawn with it, not a moment after. */}
-            <ScaledSlide
-              deck={deck}
-              slide={slide}
-              mode="thumbnail"
-              width={thumb}
-              resolveAsset={shown.resolveAsset}
-              decoding="sync"
-            />
-          </div>
-          <figcaption className="flex h-4 min-w-0 items-baseline gap-1.5 px-0.5 text-xs leading-4 text-ui-fg-muted">
-            <span className="tabular-nums">{index + 1}</span>
-            <span dir="auto" className="min-w-0 truncate">
-              {nameOf(slide)}
-            </span>
-          </figcaption>
-        </figure>
-      ))}
-    </div>
-  );
-});
 
 /**
  * The card. It is laid out from the start, for its slides to be fitted to it, and opens once they
@@ -207,25 +68,13 @@ function Slides({
   const editor = useEditor();
   const like = useDeck((s) => s.deck);
   const current = like.theme.id === entry.template.theme.id;
-  const { lang, dir } = like.meta;
   const space = useRef<HTMLDivElement>(null);
   const size = useLaidOutSize(space);
-  // The slides that are shown, and the ones before them while they fade away under these. The
-  // slides of the template before stay until those of the next one are ready. `entering`: the
-  // shown slides came into the card after it opened, and fade in; the first come in with it.
-  // A preview that was made ahead is in the card from its first drawing.
-  const [{ shown, leaving, entering }, setLayers] = useState<{
-    shown: Shown | null;
-    leaving: Shown | null;
-    entering: boolean;
-  }>(() => {
-    const made = madePreview(entry, like);
-    return {
-      shown: made ? { ...made, personal: entry.personal } : null,
-      leaving: null,
-      entering: false,
-    };
-  });
+  // Whether the card had opened when the slides came: those that come into it after it opened
+  // fade in; the first come in with it.
+  const wasOpened = useRef(false);
+  // The preview follows the deck's direction and language, not every edit of the deck.
+  const { shown, leaving, entering } = usePreviewLayers(entry, like, wasOpened);
   // The first slides are put in the card while it is not seen yet, and it opens once their charts
   // are drawn too: a chart's library draws it a moment after its slide. A card whose slides are
   // slow to come opens without them.
@@ -253,7 +102,6 @@ function Slides({
     return () => clearTimeout(timer);
   }, []);
   const opened = ready || late;
-  const wasOpened = useRef(opened);
   useEffect(() => {
     wasOpened.current = opened;
   });
@@ -273,37 +121,6 @@ function Slides({
     setNumbers(on);
     if (current) showNumber(editor, on, t('undo.number'));
   };
-  // The latest deck, for the preview to take its language and direction from when it is made.
-  const latest = useRef(like);
-  useEffect(() => {
-    latest.current = like;
-  });
-  // The preview follows the deck's direction and language, not every edit of the deck.
-  useEffect(() => {
-    let gone = false;
-    void readyPreview(entry, latest.current).then((made) => {
-      if (gone) return;
-      setLayers((was) =>
-        // The slides that are shown already (back to them before the next ones came) stay.
-        was.shown?.deck === made.deck
-          ? was
-          : {
-              shown: { ...made, personal: entry.personal },
-              leaving: was.shown,
-              entering: wasOpened.current,
-            },
-      );
-    });
-    return () => {
-      gone = true;
-    };
-  }, [entry, lang, dir]);
-  // The slides that fade away are gone when they have.
-  useEffect(() => {
-    if (!leaving) return;
-    const timer = setTimeout(() => setLayers((was) => ({ ...was, leaving: null })), SWAP);
-    return () => clearTimeout(timer);
-  }, [leaving]);
   // Escape folds the slides away, unless a dialog or a menu is open over them.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -383,17 +200,16 @@ function Slides({
         {/* Pictures of slides: a screen reader was told whose they are. */}
         <div ref={space} aria-hidden className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
           {leaving && (
-            <Grid
+            <PreviewGrid
               key={leaving.deck.id}
               shown={leaving}
               size={size}
               leaving
-              entering={false}
               numbers={shownNumbers}
             />
           )}
           {shown && (
-            <Grid
+            <PreviewGrid
               key={shown.deck.id}
               shown={shown}
               size={size}

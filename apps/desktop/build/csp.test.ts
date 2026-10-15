@@ -29,7 +29,7 @@ describe('the policy of tauri.conf.json (SEC-05)', () => {
   });
 
   it('names no server: only the app, its core, its files, and what the page makes itself', () => {
-    // `media` is the folder of graphics beside the executable, served by the core.
+    // `media` is the media library, served by the core: it reads the web, never the page.
     const own =
       /^('self'|'none'|'unsafe-inline'|'wasm-unsafe-eval'|data:|blob:|ipc:|asset:|media:|http:\/\/(ipc|asset|media)\.localhost)$/;
     for (const [directive, sources] of Object.entries(policy)) {

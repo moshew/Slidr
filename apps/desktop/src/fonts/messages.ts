@@ -6,9 +6,9 @@ import type { Messages } from '../i18n/he';
  * same ones.
  */
 export const he = {
-  title: 'גופנים',
   about:
-    'הגופנים שבורר הגופן מציע, לפי המקור שלהם. גופן שהוספתם זמין בכל מצגת. מצגת שמשתמשת בו שומרת את הקובץ שלו בתוכה, וכך גם קובץ HTML שמיוצא ממנה.',
+    'גופן שהוספתם זמין בכל מצגת. מצגת שמשתמשת בו שומרת את הקובץ שלו בתוכה, וכך גם קובץ HTML שמיוצא ממנה.',
+  elsewhere: 'מקורות אחרים',
   add: 'הוספת קובץ גופן…',
   formats: 'קובץ WOFF2, TTF או OTF. ודאו שרישיון הגופן מתיר להטמיע אותו בקבצים.',
   unreadable: 'לא ניתן לקרוא כגופן: {{files}}',
@@ -23,7 +23,6 @@ export const he = {
     system: 'במחשב הזה',
   },
   from: {
-    mine: 'קבצים שהוספתם כאן.',
     deck: 'גופנים שקובץ המצגת נושא בתוכו: כאלה שהגיעו עם ייבוא, וכאלה שלכם שהמצגת משתמשת בהם.',
     library: 'מגיעים עם האפליקציה, ונטמעים בכל קובץ מיוצא.',
     system: 'מותקנים במחשב הזה. הם אינם נשמרים במצגת, ואינם נטמעים בקובץ מיוצא.',
@@ -39,9 +38,9 @@ export const he = {
 };
 
 export const en: Messages<typeof he> = {
-  title: 'Fonts',
   about:
-    'The fonts the font picker offers, by where they come from. A font you added is there in every presentation. A presentation that uses it keeps its file inside, and so does an HTML file exported from it.',
+    'A font you added is there in every presentation. A presentation that uses it keeps its file inside, and so does an HTML file exported from it.',
+  elsewhere: 'Other sources',
   add: 'Add a font file…',
   formats:
     'A WOFF2, TTF or OTF file. Make sure the licence of the font lets you embed it in files.',
@@ -57,7 +56,6 @@ export const en: Messages<typeof he> = {
     system: 'On this computer',
   },
   from: {
-    mine: 'Files you added here.',
     deck: 'Fonts the presentation file carries: the ones an import brought, and yours that it uses.',
     library: 'They come with the app, and are embedded in every exported file.',
     system:

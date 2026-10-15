@@ -27,6 +27,7 @@ export {
 export { formatZodError, toToolError } from './errors';
 export { markdownToRichText, paragraphDir, parseInline, type MarkdownOptions } from './markdown';
 export { deckTools } from './tools';
+export { DEFAULT_TRANSITION, deckTransition, defaultTimeline, withDefaultMotion } from './motion';
 export { appearances, occurrenceAt, replaceInText } from './textReplace';
 export {
   closestAspect,

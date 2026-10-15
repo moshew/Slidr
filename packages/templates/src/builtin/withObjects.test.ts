@@ -2,7 +2,7 @@ import { createElement, type Element, type Layout } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { mirrorLayout } from '../mirror';
 import type { Template } from '../template';
-import { builtInTemplates, tzukTemplate } from './index';
+import { builtInAvailable, builtInTemplates, tzukTemplate } from './index';
 import { at, pageNumber, rect, solid, token, withObjects } from './kit';
 
 /* What of a built-in layout becomes the slide's own (`withObjects`, ADR-091). */
@@ -24,7 +24,8 @@ function template(...layouts: Layout[]): Template {
   return { theme, dir: 'rtl', layouts, flipped: layouts.map(mirrorLayout) };
 }
 
-describe('the objects of a built-in layout', () => {
+// The theme and the templates are the media library's: without it there is nothing to test.
+describe.skipIf(!builtInAvailable)('the objects of a built-in layout', () => {
   const ground = rect('d_ground', at(0, 0, 1920, 1080), solid(token('surface')));
   const card = rect('d_card', at(96, 260, 600, 560), solid(token('surface')));
   const label = rect('d_label', at(140, 300, 80, 80), solid(token('primary')));
