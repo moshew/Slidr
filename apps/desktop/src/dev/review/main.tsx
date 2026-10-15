@@ -1,6 +1,7 @@
 /**
  * Scratch review page (not part of the app):
  *   ?t=<template>&lang=he|en[&slide=<n>][&w=1920]      a template's sample deck, or one slide of it
+ *   &src=library                                      the library's template, not one authored here
  *   ?d=<id,id,...>|all&src=managed|new&lang=he|en[&w=]  ready-made slides
  *   &cols=<n>                                         columns of a sheet
  * `window.__lines()` measures text against its boxes, `window.__lint()` runs the design check.
