@@ -210,10 +210,15 @@ export function AgentSection() {
                 aria-label={t('agent.model')}
                 placeholder={t('agent.chooseModel')}
                 value={selectedModel?.id ?? null}
-                // The newest of each family, and the chosen model even when it is an older one.
+                // The newest of each family, as in the chat's setup. An older model chosen before
+                // stays listed, greyed, only so the field still shows what runs.
                 options={harness.models
                   .filter((model) => model === selectedModel || latest.includes(model))
-                  .map((model) => ({ value: model.id, label: model.label }))}
+                  .map((model) => ({
+                    value: model.id,
+                    label: model.label,
+                    disabled: !latest.includes(model),
+                  }))}
                 onValueChange={(model) => setAgentSettings({ model, effort: undefined })}
               />
             </Field>
