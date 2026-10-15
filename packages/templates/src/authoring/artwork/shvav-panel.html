@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!-- The wide shot of the Shvav sample (fullImage): panels of eight meter boards on the rails of
+     the test line, the nearest board in focus, every board's LED lit as it passes its test.
+     Render: render-art.mjs shvav-panel.html out.png 1920 640 2 -->
+<link rel="stylesheet" href="fonts.css" />
+<style>
+  html, body { margin: 0; width: 1920px; height: 640px; overflow: hidden; background: #030b08; }
+  canvas { display: block; }
+  .grade { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(90% 120% at 46% 62%, transparent 40%, rgba(2, 12, 8, .66) 100%),
+      linear-gradient(180deg, rgba(2, 12, 8, .45), transparent 30%); }
+</style>
+<script>document.documentElement.dataset.wait = 'true';</script>
+<script type="importmap">{"imports": {
+  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+}}</script>
+</head>
+<body>
+<div class="grade"></div>
+<script type="module">
+  import * as THREE from 'three';
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+  import { renderWithFocus } from './shvav-dof.js';
+  import { BOARD, buildBoard } from './shvav-board.js';
+
+  const W = 1920, H = 640;
+  const params = new URLSearchParams(location.search);
+  const num = (k, d) => Number(params.get(k) ?? d);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(W, H);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = num('ex', 0.95);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.body.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#030b08');
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = num('env', 0.35);
+
+  // One board, painted once; the panels hold clones of it.
+  const { board } = await buildBoard();
+  const COLS = 4, ROWS = 2, GAP = 2.4, RAIL = 9;
+  const PW = COLS * BOARD.w + (COLS - 1) * GAP + 2 * 5;
+  const PH = ROWS * BOARD.h + (ROWS - 1) * GAP + 2 * RAIL;
+
+  // The rails of a panel: solder mask, tooling holes, fiducials and the panel's silkscreen.
+  const railTex = (() => {
+    const px = 24;
+    const c = document.createElement('canvas');
+    c.width = PW * px; c.height = RAIL * px;
+    const g = c.getContext('2d');
+    g.fillStyle = '#0c4630'; g.fillRect(0, 0, c.width, c.height);
+    const ring = (x, y, r, hole) => {
+      g.fillStyle = '#05241a'; g.beginPath(); g.arc(x * px, y * px, (r + 0.9) * px, 0, 7); g.fill();
+      g.fillStyle = '#e2b45e'; g.beginPath(); g.arc(x * px, y * px, r * px, 0, 7); g.fill();
+      if (hole) { g.fillStyle = '#030605'; g.beginPath(); g.arc(x * px, y * px, hole * px, 0, 7); g.fill(); }
+    };
+    ring(5, RAIL / 2, 2.4, 1.6); ring(PW - 5, RAIL / 2, 2.4, 1.6);
+    ring(13, RAIL / 2, 0.6); ring(PW - 13, RAIL / 2, 0.6);
+    g.fillStyle = '#efece2';
+    g.font = `600 ${3.2 * px}px "JetBrains Mono"`;
+    g.textBaseline = 'middle';
+    g.fillText('WM-10 REV C  ·  PNL 2×4  ·  2648', 22 * px, RAIL / 2 * px);
+    for (let x = 140; x < PW - 20; x += 6) { g.fillStyle = '#e2b45e'; g.fillRect(x * px, (RAIL / 2 - 0.4) * px, 2.4 * px, 0.8 * px); }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    return t;
+  })();
+  const railMat = new THREE.MeshPhysicalMaterial({ map: railTex, roughness: 0.32, clearcoat: 0.4, clearcoatRoughness: 0.24 });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: '#5f6a3c', roughness: 0.7 });
+
+  function panel() {
+    const p = new THREE.Group();
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const b = board.clone();
+        b.position.set(-PW / 2 + 5 + BOARD.w / 2 + c * (BOARD.w + GAP), 0, -PH / 2 + RAIL + BOARD.h / 2 + r * (BOARD.h + GAP));
+        p.add(b);
+      }
+    }
+    for (const s of [-1, 1]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(PW, BOARD.t, RAIL), [edgeMat, edgeMat, railMat, edgeMat, edgeMat, edgeMat]);
+      rail.position.set(0, -BOARD.t / 2, s * (PH / 2 - RAIL / 2));
+      rail.receiveShadow = true;
+      p.add(rail);
+    }
+    // The tabs that hold the boards in the panel, with their mouse bites.
+    const tab = new THREE.BoxGeometry(5, BOARD.t, GAP + 0.4);
+    for (let c = 0; c < COLS; c++) {
+      for (let k = 0; k <= ROWS; k++) {
+        const z = -PH / 2 + RAIL + k * (BOARD.h + GAP) - GAP / 2 - (k === ROWS ? -GAP / 2 : 0) - (k === 0 ? GAP / 2 : 0);
+        for (const off of [-16, 16]) {
+          const m = new THREE.Mesh(tab, [edgeMat, edgeMat, railMat, edgeMat, edgeMat, edgeMat]);
+          m.position.set(-PW / 2 + 5 + BOARD.w / 2 + c * (BOARD.w + GAP) + off, -BOARD.t / 2, z);
+          p.add(m);
+        }
+      }
+    }
+    return p;
+  }
+
+  // The test line: two rails of anodised aluminium, the panels on them, one after another.
+  const alu = new THREE.MeshStandardMaterial({ color: '#8d969a', metalness: 1, roughness: 0.38 });
+  const line = new THREE.Group();
+  const LEN = 1400;
+  for (const s of [-1, 1]) {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(LEN, 7, 6), alu);
+    r.position.set(LEN / 2 - 200, -4.2, s * (PH / 2 + 2));
+    r.castShadow = r.receiveShadow = true;
+    line.add(r);
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(LEN, 1.2, 4), alu);
+    lip.position.set(LEN / 2 - 200, 0.8, s * (PH / 2 + 1.2));
+    line.add(lip);
+  }
+  scene.add(line);
+  for (let i = 0; i < 4; i++) {
+    const p = panel();
+    p.position.set(i * (PW + 26), 0, 0);
+    scene.add(p);
+  }
+  // A second line beyond the first, out of focus.
+  const line2 = line.clone();
+  line2.position.set(-150, 0, num('z2', -240));
+  scene.add(line2);
+  for (let i = 0; i < 5; i++) {
+    const p = panel();
+    p.position.set(-150 + i * (PW + 26), 0, num('z2', -240));
+    scene.add(p);
+  }
+  const key = new THREE.DirectionalLight('#fff4e6', num('key', 2.4));
+  key.position.set(-200, 160, 120);
+  key.castShadow = true;
+  key.shadow.mapSize.set(4096, 4096);
+  Object.assign(key.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, far: 1000 });
+  key.shadow.bias = -0.0004;
+  scene.add(key);
+  const rim = new THREE.DirectionalLight('#cfe9ff', num('rim', 0.15));
+  rim.position.set(300, 120, -300);
+  scene.add(rim);
+
+  // Low over the near corner of the first panel, looking down the line.
+  const target = new THREE.Vector3(num('tx', -40), num('ty', -6), num('tz', 6));
+  const camera = new THREE.PerspectiveCamera(num('fov', 24), W / H, 2, 6000);
+  camera.position.set(num('cx', -190), num('cy', 50), num('cz', 120));
+  camera.lookAt(target);
+  camera.updateMatrixWorld();
+  // The lamps of the hall, far beyond the lines, where the frame is empty.
+  const warm = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffb070').multiplyScalar(8) });
+  const cool = new THREE.MeshBasicMaterial({ color: new THREE.Color('#bdf0d0').multiplyScalar(5) });
+  let seed = 3;
+  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+  for (let i = 0; i < num('lamps', 26); i++) {
+    const ndc = new THREE.Vector3(-1.05 + rnd() * 1.4, 0.15 + rnd() * 0.85, 0.5).unproject(camera);
+    const dir = ndc.sub(camera.position).normalize();
+    const m = new THREE.Mesh(new THREE.SphereGeometry(3 + rnd() * 5, 16, 10), rnd() > 0.3 ? warm : cool);
+    m.position.copy(camera.position).addScaledVector(dir, 1400 + rnd() * 1600);
+    scene.add(m);
+  }
+
+  renderWithFocus(renderer, scene, camera, {
+    focus: camera.position.distanceTo(target),
+    K: num('k', 26),
+    maxR: num('maxr', 34),
+    bloom: num('bl', 0.6),
+    threshold: num('th', 3),
+  });
+  document.documentElement.dataset.ready = 'true';
+</script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+{
+  "ananTeam1": {
+    "id": "56f4a3a1c01fbd8768e25dc5f700d73b2e78a80cbfba4d3b21715079a7d76ccd",
+    "file": "56f4a3a1c01fbd8768e25dc5f700d73b2e78a80cbfba4d3b21715079a7d76ccd.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 38666,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "anan-team-1.webp"
+  },
+  "ananTeam2": {
+    "id": "92162767dd111094fa9f1f8ea38cca5f358f29d0ca966f4e08983cfd0eedac3d",
+    "file": "92162767dd111094fa9f1f8ea38cca5f358f29d0ca966f4e08983cfd0eedac3d.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 26052,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "anan-team-2.webp"
+  },
+  "ananTeam3": {
+    "id": "e0afe23cb3273099d717cc0a1945095053af4a4258e7a59cf389c090d48395bb",
+    "file": "e0afe23cb3273099d717cc0a1945095053af4a4258e7a59cf389c090d48395bb.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 31988,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "anan-team-3.webp"
+  },
+  "ananTeam4": {
+    "id": "80abc32f4833ccfe54d9caf2df2acb06070e8e3aeed67aa2b4036c262b11b03c",
+    "file": "80abc32f4833ccfe54d9caf2df2acb06070e8e3aeed67aa2b4036c262b11b03c.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 21342,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "anan-team-4.webp"
+  },
+  "ananArchitecture": {
+    "id": "b8da02f33c7e9e9b7ae76ae43bef5c5c7955d7b40fa7ba944fa1339daf86d4ba",
+    "file": "b8da02f33c7e9e9b7ae76ae43bef5c5c7955d7b40fa7ba944fa1339daf86d4ba.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 113742,
+    "width": 1520,
+    "height": 1500,
+    "origin": "import",
+    "name": "anan-architecture.webp"
+  },
+  "ananCity": {
+    "id": "17e25405538b867d0a84e8b0705deed460995db18a253a91230799f972324661",
+    "file": "17e25405538b867d0a84e8b0705deed460995db18a253a91230799f972324661.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 9576,
+    "width": 3840,
+    "height": 1380,
+    "origin": "import",
+    "name": "anan-city.webp"
+  }
+}

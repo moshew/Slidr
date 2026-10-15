@@ -1,0 +1,374 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!-- m-thermal: a night search seen through a thermal camera. The scene is modelled in three.js as
+     temperatures (terrain, rocks, a creek, shrubs, a hiker), then drawn through a sensor pass:
+     a little blur, a thermal halo round hot bodies, sensor noise and the ironbow palette.
+     Render: node render-art.mjs m-thermal.html out.png 1920 1080 2 -->
+<style>html, body { margin: 0; background: #000; overflow: hidden; } canvas { display: block; }</style>
+<script>document.documentElement.dataset.wait = 'true';</script>
+<script type="importmap">{"imports": {
+  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+}}</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
+
+const W = innerWidth, H = innerHeight, DPR = devicePixelRatio;
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(DPR);
+renderer.setSize(W, H);
+document.body.appendChild(renderer.domElement);
+
+// ---- noise -------------------------------------------------------------------------------
+function hash3(x, y, z) {
+  let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(z, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function noise3(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+  const l = (a, b, t) => a + (b - a) * t;
+  return l(
+    l(l(hash3(xi, yi, zi), hash3(xi + 1, yi, zi), u), l(hash3(xi, yi + 1, zi), hash3(xi + 1, yi + 1, zi), u), v),
+    l(l(hash3(xi, yi, zi + 1), hash3(xi + 1, yi, zi + 1), u), l(hash3(xi, yi + 1, zi + 1), hash3(xi + 1, yi + 1, zi + 1), u), v),
+    w,
+  );
+}
+function fbm(x, y, z, o = 5) {
+  let a = 0.5, f = 1, s = 0, n = 0;
+  for (let i = 0; i < o; i++) { s += a * noise3(x * f + i * 17.3, y * f, z * f); n += a; a *= 0.5; f *= 2.03; }
+  return s / n;
+}
+let seed = 7;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+// ---- the hiker sits here; the creek runs on the left of the frame --------------------------
+const HIKER = new THREE.Vector3(0, 0, 0);
+const creekX = (z) => -6.2 + Math.sin(z * 0.22) * 1.4 + z * 0.18;
+const trailX = (z) => 3.4 + Math.sin(z * 0.25 + 1.2) * 1.4 - z * 0.16;
+
+function groundHeight(x, z) {
+  let h = (fbm(x * 0.08, 0, z * 0.08, 4) - 0.5) * 3.2 + (fbm(x * 0.5, 3, z * 0.5, 3) - 0.5) * 0.35;
+  h += z * -0.05 + x * 0.06; // the slope falls toward the creek and the camera
+  h += Math.max(0, -z - 22) * 0.32 + (fbm(x * 0.03, 7, z * 0.03, 3) - 0.5) * Math.max(0, -z - 18) * 0.25; // the ridge behind
+  const dc = Math.abs(x - creekX(z));
+  h -= 0.8 * Math.exp(-(dc * dc) / 0.9); // the creek bed
+  return h;
+}
+const hikerY = groundHeight(HIKER.x, HIKER.z);
+
+// ---- materials: temperature in, red channel out ---------------------------------------------
+const vert = `attribute float temp; varying float vT; varying vec3 vN; varying vec3 vW;
+  void main() { vT = temp; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz;
+    vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }`;
+const frag = `uniform float grazing; uniform float grain; varying float vT; varying vec3 vN; varying vec3 vW;
+  float h(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+  float vn(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
+               mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z); }
+  void main() {
+    vec3 V = normalize(cameraPosition - vW);
+    float e = mix(1.0 - grazing, 1.0, pow(abs(dot(normalize(vN), V)), 0.6));
+    float g = (vn(vW * 9.0) - 0.5) * 0.6 + (vn(vW * 23.0) - 0.5) * 0.4;
+    float t = vT * e + g * grain;
+    float d = length(cameraPosition - vW);
+    t = mix(t, 0.3, smoothstep(14.0, 70.0, d) * 0.55);
+    gl_FragColor = vec4(t, 0.0, 0.0, 1.0);
+  }`;
+const material = (grazing, grain) =>
+  new THREE.ShaderMaterial({ vertexShader: vert, fragmentShader: frag, uniforms: { grazing: { value: grazing }, grain: { value: grain } } });
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0, 0, 0);
+const WEST = new THREE.Vector3(-0.8, 0.35, -0.5).normalize();
+
+function withTemp(geometry, fn) {
+  const p = geometry.attributes.position, n = geometry.attributes.normal;
+  const t = new Float32Array(p.count);
+  const P = new THREE.Vector3(), N = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) { P.fromBufferAttribute(p, i); N.fromBufferAttribute(n, i); t[i] = fn(P, N, i); }
+  geometry.setAttribute('temp', new THREE.BufferAttribute(t, 1));
+  return geometry;
+}
+
+// ---- the creek -------------------------------------------------------------------------------
+{
+  const g = new THREE.PlaneGeometry(70, 70, 280, 280);
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, 0, -16);
+  const p = g.attributes.position;
+  const level = (z) => groundHeight(creekX(z), z) + 0.42;
+  for (let i = 0; i < p.count; i++) {
+    const near = Math.abs(p.getX(i) - creekX(p.getZ(i))) < 1.6 && p.getZ(i) > -24;
+    p.setY(i, near ? level(p.getZ(i)) + (fbm(p.getX(i) * 0.9, 5, p.getZ(i) * 2.2, 3) - 0.5) * 0.04 : -50);
+  }
+  g.computeVertexNormals();
+  withTemp(g, (P) => 0.25 + 0.1 * (fbm(P.x * 2.4, 9, P.z * 0.7, 3) - 0.5) + 0.06 * (fbm(P.x * 7, 3, P.z * 2.5, 2) - 0.5));
+  scene.add(new THREE.Mesh(g, material(0.0, 0.02)));
+}
+
+// ---- rocks -----------------------------------------------------------------------------------
+function rock(x, z, size, squash = 0.7, rot = 0) {
+  let g = new THREE.IcosahedronGeometry(1, 4);
+  g.deleteAttribute('normal');
+  g.deleteAttribute('uv');
+  g = mergeVertices(g);
+  const p = g.attributes.position;
+  const s = rnd() * 100;
+  for (let i = 0; i < p.count; i++) {
+    const v = new THREE.Vector3().fromBufferAttribute(p, i);
+    const k = 1 + (fbm(v.x * 0.9 + s, v.y * 0.9, v.z * 0.9, 4) - 0.5) * 1.1 + (fbm(v.x * 3 + s, v.y * 3, v.z * 3, 2) - 0.5) * 0.18;
+    v.multiplyScalar(k);
+    const yy = Math.min(v.y, 0.55 + (fbm(v.x * 2 + s, 0, v.z * 2, 2) - 0.5) * 0.3);
+    p.setXYZ(i, v.x * size, yy * size * squash, v.z * size * (0.8 + (s % 1) * 0.4));
+  }
+  g.computeVertexNormals();
+  g.rotateY(rot);
+  const y = groundHeight(x, z) + size * squash * 0.15;
+  g.translate(x, y, z);
+  g.computeVertexNormals();
+  withTemp(g, (P, N) => {
+    let t = 0.44 + 0.2 * Math.max(0, N.dot(WEST)) - 0.1 * N.y + 0.14 * (fbm(P.x * 2.1, P.y * 2.1, P.z * 2.1, 3) - 0.5);
+    const base = groundHeight(P.x, P.z);
+    t -= 0.06 * Math.exp(-Math.max(0, P.y - base) * 3.0); // cooler where it meets the ground
+    return t;
+  });
+  scene.add(new THREE.Mesh(g, material(0.12, 0.04)));
+}
+// the boulder the hiker leans on
+rock(HIKER.x - 1.05, HIKER.z - 0.95, 1.1, 0.8, 0.4);
+rock(HIKER.x + 0.6, HIKER.z - 1.9, 0.75, 0.75, 1.2);
+rock(HIKER.x - 2.3, HIKER.z + 0.2, 0.45, 0.6, 2.0);
+for (let i = 0; i < 18; i++) {
+  const x = HIKER.x - 5 + rnd() * 10, z = HIKER.z - 5 + rnd() * 9;
+  if (Math.hypot(x - HIKER.x, z - HIKER.z) < 2.2) continue;
+  if (Math.abs(x - creekX(z)) < 0.9) continue;
+  const big = rnd();
+  rock(x, z, big > 0.92 ? 0.6 + rnd() * 0.5 : 0.1 + rnd() * 0.3, 0.45 + rnd() * 0.3, rnd() * 6);
+}
+// stones in the creek bed
+for (let i = 0; i < 40; i++) {
+  const z = -40 + rnd() * 52, x = creekX(z) + (rnd() - 0.5) * 1.6;
+  rock(x, z, 0.12 + rnd() * 0.25, 0.5, rnd() * 6);
+}
+
+// ---- shrubs ----------------------------------------------------------------------------------
+function shrub(x, z, size) {
+  const n = 5 + Math.floor(rnd() * 5);
+  for (let i = 0; i < n; i++) {
+    let g = new THREE.IcosahedronGeometry(size * (0.45 + rnd() * 0.4), 3);
+    g.deleteAttribute('normal'); g.deleteAttribute('uv'); g = mergeVertices(g);
+    const p = g.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      const v = new THREE.Vector3().fromBufferAttribute(p, k);
+      v.multiplyScalar(1 + (fbm(v.x * 6 + i, v.y * 6, v.z * 6, 3) - 0.5) * 0.7);
+      p.setXYZ(k, v.x, v.y * 0.75, v.z);
+    }
+    const ox = (rnd() - 0.5) * size * 1.2, oz = (rnd() - 0.5) * size * 1.2;
+    g.translate(x + ox, groundHeight(x + ox, z + oz) + size * (0.25 + rnd() * 0.3), z + oz);
+    g.computeVertexNormals();
+    withTemp(g, (P, N) => 0.47 - 0.05 * N.y + 0.08 * (fbm(P.x * 5, P.y * 5, P.z * 5, 2) - 0.5));
+    scene.add(new THREE.Mesh(g, material(0.18, 0.08)));
+  }
+}
+// ---- trees: from above, round canopies; the ground beneath them keeps a little warmth ---------
+const canopies = [];
+const clumpBase = new THREE.IcosahedronGeometry(1, 2);
+function tree(x, z, r, lift = 1.7) {
+  canopies.push([x, z, r]);
+  const y0 = groundHeight(x, z) + r * lift;
+  const warmth = 0.4 + rnd() * 0.08;
+  const parts = [];
+  const n = Math.round(26 * r * r);
+  for (let i = 0; i < n; i++) {
+    // a clump of leaves somewhere in the crown, more of them near its surface
+    const u = rnd() * 2 - 1, a = rnd() * Math.PI * 2, d = Math.pow(rnd(), 0.35);
+    const q = Math.sqrt(1 - u * u);
+    const cx = Math.cos(a) * q * d, cy = u * d * 0.7, cz = Math.sin(a) * q * d;
+    const cr = r * (0.16 + rnd() * 0.16);
+    const g = clumpBase.clone();
+    const pos = g.attributes.position;
+    const s0 = rnd() * 99;
+    for (let k = 0; k < pos.count; k++) {
+      const vx = pos.getX(k), vy = pos.getY(k), vz = pos.getZ(k);
+      const f = cr * (1 + (noise3(vx * 2.5 + s0, vy * 2.5, vz * 2.5) - 0.5) * 0.7);
+      pos.setXYZ(k, vx * f, vy * f * 0.8, vz * f);
+    }
+    g.translate(x + cx * r, y0 + cy * r, z + cz * r);
+    g.computeVertexNormals();
+    const own = warmth + (rnd() - 0.5) * 0.1 + 0.07 * (1 - d) - 0.05 * cy;
+    withTemp(g, (P, N) => own + 0.05 * Math.max(0, N.dot(WEST)) - 0.05 * N.y);
+    g.deleteAttribute('uv');
+    parts.push(g);
+  }
+  scene.add(new THREE.Mesh(mergeGeometries(parts), material(0.35, 0.1)));
+}
+
+// a forest on a jittered grid, with a clearing round the hiker, the creek and the trail left open
+for (let gx = -40; gx <= 34; gx += 2.6) for (let gz = -56; gz <= 16; gz += 2.6) {
+  const x = gx + (rnd() - 0.5) * 2.2, z = gz + (rnd() - 0.5) * 2.2;
+  const r = 0.9 + rnd() * 0.8;
+  const clearing = 2.3 + 1.6 * fbm(x * 0.2, 4, z * 0.2, 2);
+  if (Math.hypot((x - HIKER.x) * 0.85, z - HIKER.z) < clearing + r * 0.5) continue;
+  if (Math.abs(x - creekX(z)) < 1.6 + r * 0.6) continue;
+  if (Math.abs(x - trailX(z)) < 0.9 + r * 0.6) continue;
+  if (rnd() < 0.12) continue;
+  tree(x, z, r);
+}
+for (let i = 0; i < 60; i++) {
+  const x = HIKER.x - 14 + rnd() * 26, z = HIKER.z - 14 + rnd() * 22;
+  if (Math.hypot(x - HIKER.x, z - HIKER.z) < 1.9) continue;
+  if (Math.abs(x - creekX(z)) < 1.1) continue;
+  tree(x, z, 0.35 + rnd() * 0.35, 0.55);
+}
+
+// ---- terrain ---------------------------------------------------------------------------------
+{
+  const g = new THREE.PlaneGeometry(120, 120, 900, 900);
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, 0, -50);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, groundHeight(p.getX(i), p.getZ(i)));
+  g.computeVertexNormals();
+  withTemp(g, (P, N) => {
+    let t = 0.33 + 0.16 * (fbm(P.x * 0.25, 1, P.z * 0.25, 4) - 0.5) + 0.12 * (fbm(P.x * 1.6, 2, P.z * 1.6, 3) - 0.5) + 0.08 * (fbm(P.x * 5.0, 4, P.z * 5.0, 2) - 0.5);
+    t -= 0.06 * N.y;
+    t += 0.07 * Math.max(0, N.dot(WEST));
+    const dt = Math.abs(P.x - trailX(P.z));
+    t += 0.11 * Math.exp(-(dt * dt) / 0.22) + 0.04 * Math.exp(-(dt * dt) / 1.2);
+    const dc = Math.abs(P.x - creekX(P.z));
+    t -= 0.09 * Math.exp(-(dc * dc) / 2.5); // damp, cool banks
+    const dx = P.x - (HIKER.x + 0.1), dz = P.z - (HIKER.z + 0.05);
+    t += 0.2 * Math.exp(-(dx * dx + dz * dz) / 0.3); // the ground the hiker has warmed
+    for (const [cx, cz, r] of canopies) {
+      const d2 = ((P.x - cx) ** 2 + (P.z - cz) ** 2) / (r * r);
+      if (d2 < 2.2) t += 0.05 * Math.exp(-d2 * 1.4); // sheltered from the open sky
+    }
+    return t;
+  });
+  scene.add(new THREE.Mesh(g, material(0.05, 0.07)));
+}
+
+// ---- the hiker: metaballs, so the body reads soft and whole, as it does on a thermal sensor ----
+{
+  const SIZE = 1.9; // metres across the field
+  const mc = new MarchingCubes(110, new THREE.ShaderMaterial({
+    vertexShader: `attribute vec3 color; varying float vT; varying vec3 vN; varying vec3 vW;
+      void main() { vT = color.r / max(color.g, 0.001); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz;
+        vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: frag,
+    uniforms: { grazing: { value: 0.3 }, grain: { value: 0.0 } },
+  }), false, true, 200000);
+  mc.isolation = 80;
+  const SUB = 12;
+  const ball = (p, r, temp) => {
+    // a ball of radius r metres at p (hiker space, centred on the field)
+    const u = r / SIZE;
+    mc.addBall(0.5 + p[0] / SIZE, 0.5 + (p[1] - 0.75) / SIZE, 0.5 + p[2] / SIZE, u * u * (80 + SUB), SUB, [temp, 1, 0]);
+  };
+  const limb = (a, b, r0, r1, temp0, temp1 = temp0) => {
+    const n = Math.max(2, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / (Math.min(r0, r1) * 0.55)));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      ball([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t], (r0 + (r1 - r0) * t) * 0.62, temp0 + (temp1 - temp0) * t);
+    }
+  };
+  // seated on the ground against the boulder, legs out in front, one arm raised to the drone
+  limb([0, 0.16, -0.32], [0, 0.6, -0.5], 0.21, 0.22, 0.7, 0.76); // hips to chest, a padded jacket
+  limb([-0.2, 0.62, -0.5], [0.2, 0.62, -0.5], 0.12, 0.12, 0.76); // shoulders
+  limb([0, 0.64, -0.52], [0, 0.78, -0.53], 0.08, 0.08, 0.86); // neck
+  ball([0, 0.9, -0.5], 0.13, 1.0); // head
+  ball([0, 0.86, -0.62], 0.12, 0.7); // hood behind
+  limb([-0.1, 0.13, -0.25], [-0.12, 0.17, 0.18], 0.13, 0.11, 0.64); // thighs along the ground
+  limb([0.1, 0.13, -0.25], [0.14, 0.26, 0.14], 0.13, 0.11, 0.64); // the right knee a little up
+  limb([-0.12, 0.17, 0.18], [-0.13, 0.1, 0.6], 0.1, 0.085, 0.6, 0.55); // shins
+  limb([0.14, 0.26, 0.14], [0.17, 0.1, 0.55], 0.1, 0.085, 0.6, 0.55);
+  limb([-0.13, 0.1, 0.62], [-0.13, 0.2, 0.68], 0.075, 0.07, 0.48); // boots, toes up
+  limb([0.17, 0.1, 0.57], [0.19, 0.2, 0.63], 0.075, 0.07, 0.48);
+  limb([-0.22, 0.62, -0.48], [-0.32, 0.36, -0.3], 0.08, 0.075, 0.74); // left arm, hand on the thigh
+  limb([-0.32, 0.36, -0.3], [-0.2, 0.26, -0.02], 0.072, 0.065, 0.76, 0.86);
+  ball([-0.17, 0.25, 0.04], 0.06, 0.96); // hand
+  limb([0.22, 0.64, -0.48], [0.4, 0.98, -0.44], 0.08, 0.075, 0.76); // right arm, waving
+  limb([0.4, 0.98, -0.44], [0.42, 1.3, -0.36], 0.072, 0.065, 0.78, 0.88);
+  ball([0.43, 1.39, -0.34], 0.064, 0.98); // hand
+  limb([-0.66, 0.12, -0.32], [-0.68, 0.42, -0.38], 0.2, 0.17, 0.46); // the backpack, set down
+  mc.update();
+  mc.scale.setScalar(SIZE / 2);
+  mc.position.set(HIKER.x, hikerY + 0.75, HIKER.z);
+  mc.rotation.y = 0.85;
+  scene.add(mc);
+}
+
+// ---- camera: a drone hovering above and in front ------------------------------------------
+const camera = new THREE.PerspectiveCamera(34, W / H, 0.1, 300);
+camera.position.set(HIKER.x + 1.6, hikerY + 13.2, HIKER.z + 8.4);
+camera.lookAt(HIKER.x - 3.6, hikerY - 0.2, HIKER.z - 0.6);
+
+// ---- sensor pass -----------------------------------------------------------------------------
+// the sensor sees the scene at a little under the output's resolution, then the optics soften it
+const SR = 0.6;
+const rt = new THREE.WebGLRenderTarget(Math.round(W * DPR * SR), Math.round(H * DPR * SR), { type: THREE.HalfFloatType, samples: 4 });
+renderer.setRenderTarget(rt);
+renderer.render(scene, camera);
+renderer.setRenderTarget(null);
+
+const post = new THREE.ShaderMaterial({
+  uniforms: { tScene: { value: rt.texture }, px: { value: new THREE.Vector2(1 / (W * DPR * SR), 1 / (H * DPR * SR)) } },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `uniform sampler2D tScene; uniform vec2 px; varying vec2 vUv;
+    float h(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    vec3 ironbow(float t) {
+      t = clamp(t, 0.0, 1.0);
+      vec3 c0 = vec3(0.0, 0.0, 0.03), c1 = vec3(0.11, 0.02, 0.33), c2 = vec3(0.45, 0.02, 0.56), c3 = vec3(0.79, 0.12, 0.42),
+           c4 = vec3(0.96, 0.38, 0.1), c5 = vec3(1.0, 0.72, 0.1), c6 = vec3(1.0, 0.95, 0.55), c7 = vec3(1.0, 1.0, 0.97);
+      if (t < 0.14) return mix(c0, c1, t / 0.14);
+      if (t < 0.32) return mix(c1, c2, (t - 0.14) / 0.18);
+      if (t < 0.48) return mix(c2, c3, (t - 0.32) / 0.16);
+      if (t < 0.63) return mix(c3, c4, (t - 0.48) / 0.15);
+      if (t < 0.77) return mix(c4, c5, (t - 0.63) / 0.14);
+      if (t < 0.9) return mix(c5, c6, (t - 0.77) / 0.13);
+      return mix(c6, c7, (t - 0.9) / 0.1);
+    }
+    void main() {
+      float t = 0.0, wsum = 0.0;
+      for (int i = -2; i <= 2; i++) for (int j = -2; j <= 2; j++) {
+        float w = exp(-float(i * i + j * j) / 3.0);
+        t += texture2D(tScene, vUv + vec2(float(i), float(j)) * px * 0.8).r * w; wsum += w;
+      }
+      t /= wsum;
+      float halo = 0.0;
+      for (int k = 0; k < 24; k++) {
+        float a = float(k) * 2.39996, r = (5.0 + float(k) * 2.0);
+        float s = texture2D(tScene, vUv + vec2(cos(a), sin(a)) * px * r).r;
+        halo += max(0.0, s - 0.68);
+      }
+      t += halo / 24.0 * 0.45;
+      // the stretch of an automatic gain: the scene spans the palette, the hiker burns white
+      t = (t - 0.2) / 0.62;
+      t += (h(gl_FragCoord.xy) - 0.5) * 0.03 + (h(vec2(floor(gl_FragCoord.x / 2.0), 3.0)) - 0.5) * 0.006;
+      vec2 c = vUv - 0.5; c.x *= 1.6;
+      t -= dot(c, c) * 0.16;
+      gl_FragColor = vec4(pow(ironbow(t), vec3(1.0)), 1.0);
+    }`,
+});
+const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post);
+const postScene = new THREE.Scene();
+postScene.add(quad);
+renderer.render(postScene, new THREE.Camera());
+
+// where the hiker landed on the frame
+const v = new THREE.Vector3(HIKER.x, hikerY + 0.6, HIKER.z - 0.4).project(camera);
+console.log('hiker at', Math.round((v.x + 1) / 2 * W), Math.round((1 - v.y) / 2 * H));
+document.documentElement.dataset.ready = 'true';
+</script>
+</body>
+</html>

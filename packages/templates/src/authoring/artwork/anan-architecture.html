@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!-- Anan's textImage picture: the architecture of three active regions behind one edge, drawn
+     in the template's isometric world. Render: render-art.mjs anan-architecture.html out.png 760 750 2 -->
+<link rel="stylesheet" href="fonts.css" />
+<style id="chips"></style>
+<style>
+  html, body { margin: 0; width: 760px; height: 750px; overflow: hidden; }
+  body { position: relative; background: linear-gradient(180deg, #f7fafe 0%, #edf4fc 55%, #e6effb 100%); }
+  #canvas, #labels { position: absolute; inset: 0; }
+  .card { position: absolute; padding: 14px 18px 16px; border-radius: 16px; background: rgba(255,255,255,.97);
+    box-shadow: 0 0 0 1.5px rgba(12,26,51,.08), 0 16px 34px rgba(12,26,51,.12); font-family: Manrope, sans-serif; color: #0c1a33; }
+  .card b { display: block; font: 600 13px 'JetBrains Mono', monospace; color: #55667f; letter-spacing: .02em; text-transform: uppercase; }
+  .card strong { display: block; font-size: 30px; font-weight: 800; letter-spacing: -.02em; margin-top: 4px; }
+  .card strong small { font-size: 16px; font-weight: 600; color: #55667f; margin-left: 4px; }
+  .bars { display: flex; gap: 3px; margin-top: 10px; align-items: flex-end; height: 22px; }
+  .bars i { width: 5px; height: 22px; border-radius: 2px; background: #13b3a5; opacity: .85; }
+  .bars i.o { background: #ff7a29; height: 13px; opacity: 1; }
+  .card .down { display: inline-block; margin-left: 10px; padding: 3px 9px; border-radius: 999px; font: 700 14px 'JetBrains Mono', monospace;
+    color: #0e8a7e; background: rgba(19,179,165,.14); vertical-align: 6px; letter-spacing: 0; }
+  .spark { display: block; margin-top: 8px; }
+</style>
+<script>document.documentElement.dataset.wait = 'true';</script>
+<script type="importmap">{"imports": {
+  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+}}</script>
+</head>
+<body>
+<div id="canvas"></div>
+<div id="labels"></div>
+<script type="module">
+  import { C, CHIP_CSS, stage, ground, block, server, database, dashed, packet, plate, cloud, chip } from './anan-iso.js';
+  document.getElementById('chips').textContent = CHIP_CSS;
+
+  const W = 760, H = 750;
+  const st = stage({ width: W, height: H, view: 10.2, target: [2.55, 0.95, 2.55], light: [3.2, 6.4, -9] });
+  const { scene } = st;
+  ground(scene, { size: 60, center: [2.5, 2.5], color: '#eef4fb' });
+
+  // The account's boundary, dashed on the ground.
+  const B = [-1.25, 6.35];
+  for (const [a, b] of [
+    [[B[0], 0, B[0]], [B[1], 0, B[0]]], [[B[1], 0, B[0]], [B[1], 0, B[1]]],
+    [[B[1], 0, B[1]], [B[0], 0, B[1]]], [[B[0], 0, B[1]], [B[0], 0, B[0]]],
+  ]) dashed(scene, a, b, { color: C.blue, width: 0.035, dash: 0.08, gap: 0.14, head: false, lift: 0.004 });
+
+  // The edge, under the users' cloud.
+  const top0 = plate(scene, [-0.6, -0.6], [1.7, 1.7]);
+  block(scene, [-0.25, top0, -0.25], [1.0, 1.0, 0.42], C.blue, 0.07);
+  block(scene, [-0.05, top0 + 0.42, -0.05], [0.6, 0.6, 0.16], C.sky, 0.05);
+  cloud(scene, [0.25, 3.05, 0.25], 0.8);
+  dashed(scene, [0.25, 2.55, 0.25], [0.25, top0 + 0.62, 0.25], { color: C.orange, width: 0.05, dash: 0.14, gap: 0.1 });
+  packet(scene, [0.25, 1.55, 0.25]);
+
+  // The three regions, fanned out from the edge.
+  const R = 2.7;
+  const regions = { west: [-0.15, 3.25], central: [3.25, -0.15], il: [3.25, 3.25] };
+  const t = {};
+  for (const [name, [x, z]] of Object.entries(regions)) t[name] = plate(scene, [x, z], [R, R]);
+
+  // eu-west-1 (to the left): two servers and a database.
+  {
+    const [x, z] = regions.west; const y = t.west;
+    server(scene, [x + 0.35, y, z + 0.35], [0.62, 0.62, 1.25]);
+    server(scene, [x + 1.25, y, z + 0.35], [0.62, 0.62, 0.85], { color: C.sky });
+    database(scene, [x + 0.68, y, z + 1.95], 0.36, 0.78);
+    database(scene, [x + 1.85, y, z + 1.9], 0.28, 0.5, { disks: 2 });
+  }
+  // eu-central-1 (to the right).
+  {
+    const [x, z] = regions.central; const y = t.central;
+    server(scene, [x + 0.35, y, z + 0.35], [0.62, 0.62, 0.95], { color: C.sky });
+    server(scene, [x + 0.35, y, z + 1.25], [0.62, 0.62, 1.2]);
+    database(scene, [x + 1.95, y, z + 0.68], 0.36, 0.78);
+    block(scene, [x + 1.6, y, z + 1.6], [0.7, 0.7, 0.26], C.white, 0.05);
+    block(scene, [x + 1.75, y + 0.26, z + 1.75], [0.4, 0.4, 0.2], C.orange, 0.05);
+  }
+  // il-central-1, in front: the busiest.
+  {
+    const [x, z] = regions.il; const y = t.il;
+    server(scene, [x + 0.35, y, z + 0.35], [0.62, 0.62, 1.45]);
+    server(scene, [x + 1.25, y, z + 0.35], [0.62, 0.62, 1.1], { color: C.sky });
+    server(scene, [x + 0.35, y, z + 1.25], [0.62, 0.62, 0.9], { color: C.sky });
+    database(scene, [x + 1.62, y, z + 1.62], 0.4, 0.9);
+    database(scene, [x + 2.25, y, z + 2.2], 0.26, 0.5, { disks: 2 });
+  }
+
+  // From the edge to each region, with traffic on the way.
+  const e = 0.2;
+  dashed(scene, [0.25, 0, 1.15], [0.25, 0, 3.2], { width: 0.055 });
+  dashed(scene, [1.15, 0, 0.25], [3.2, 0, 0.25], { width: 0.055 });
+  dashed(scene, [1.15, 0, 1.15], [3.25, 0, 3.25], { width: 0.055 });
+  packet(scene, [0.25, 0.12, 2.25]);
+  packet(scene, [2.2, 0.12, 2.2]);
+  packet(scene, [2.1, 0.12, 0.25], C.blue, 0.06);
+
+  // Replication between the databases, in teal, above the plates.
+  dashed(scene, [-0.15 + 0.68 + 0.4, 0.62, 3.25 + 1.95], [3.25 + 1.2, 0.62, 3.25 + 1.62], { color: C.teal, width: 0.04, dash: 0.08, gap: 0.1 });
+  dashed(scene, [3.25 + 1.95, 0.62, -0.15 + 0.68 + 0.4], [3.25 + 1.62, 0.62, 3.25 + 1.2], { color: C.teal, width: 0.04, dash: 0.08, gap: 0.1 });
+  packet(scene, [2.4, 0.62, 5.0], C.teal, 0.055);
+  packet(scene, [5.0, 0.62, 2.4], C.teal, 0.055);
+
+  st.render();
+
+  chip(st, [-0.15 + R * 0.42, 0.2, 3.25 + R], 'eu-west-1', { sub: 'Ireland', below: true, dy: 16 });
+  chip(st, [3.25 + R, 0.2, -0.15 + R * 0.42], 'eu-central-1', { sub: 'Frankfurt', below: true, dy: 16 });
+  chip(st, [3.25 + R, 0.2, 3.25 + R], 'il-central-1', { sub: 'Tel Aviv', below: true, dy: 16 });
+  chip(st, [0.25, 1.0, 0.25], 'edge', { light: C.blue, dy: -6 });
+
+  // A card of the console in the corner: the availability of the month, day by day.
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = 'left: 26px; top: 26px;';
+  card.innerHTML = `<b>availability · 30d</b><strong>99.995<small>%</small></strong><div class="bars">${Array.from({ length: 30 }, (_, i) => `<i class="${i === 19 ? 'o' : ''}"></i>`).join('')}</div>`;
+  document.getElementById('labels').append(card);
+
+  const p95 = document.createElement('div');
+  p95.className = 'card';
+  p95.style.cssText = 'right: 24px; bottom: 24px;';
+  p95.innerHTML = `<b>p95 latency · edge</b><strong>180<small>ms</small><span class="down">−38%</span></strong>` +
+    `<svg class="spark" width="170" height="30" viewBox="0 0 170 30"><path d="M2 7 L24 6 L46 9 L68 8 L90 14 L112 21 L136 25 L166 26" fill="none" stroke="#1a7fe8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="166" cy="26" r="4" fill="#1a7fe8"/></svg>`;
+  document.getElementById('labels').append(p95);
+
+  document.documentElement.dataset.ready = 'true';
+</script>
+</body>
+</html>

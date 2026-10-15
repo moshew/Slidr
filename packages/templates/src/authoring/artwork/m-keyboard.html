@@ -1,0 +1,285 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!-- The picture of m-keyboard: a 75% mechanical keyboard in silver aluminium with chalk, charcoal
+     and orange keycaps, three of them lifted off their switches, on a transparent ground.
+     node tools/render-art.mjs m-keyboard.html out.png 1400 900 2 -->
+<style>html, body { margin: 0; width: 1400px; height: 900px; overflow: hidden; background: transparent; }</style>
+<script>document.documentElement.dataset.wait = 'true';</script>
+<script type="importmap">{"imports": {
+  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+}}</script>
+</head>
+<body>
+<script type="module">
+import { THREE, studio, softboxes, contactShadow, shadowGround, canvasTexture, grain, anchors, loadFont, done } from './techproduct-studio.js';
+
+await loadFont('Inter', '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2', '100 900');
+const W = 1400, H = 900;
+const { renderer, scene, camera } = studio({ width: W, height: H, fov: 20, exposure: 1.05, tone: 'neutral' });
+scene.environment = softboxes(renderer, {
+  top: '#d4d8e2', horizon: '#a3a8b4', bottom: '#4a4e58', power: 0.75,
+  panels: [
+    { at: [-10, 14, 10], size: [12, 8], power: 2.6 },
+    { at: [14, 6, -4], size: [3, 12], power: 2.2, color: '#dfe6ff' },
+    { at: [0, 16, -10], size: [16, 4], power: 1.6 },
+    { at: [4, 3, 16], size: [10, 3], power: 0.9 },
+  ],
+});
+
+// ---- The layout: a 75% board, rows of [legend, width in u, kind] ---------------------------
+const A = 'alpha', M = 'mod', X = 'accent';
+const rows = [
+  [['Esc', 1, X], [null, 0.25], ['F1', 1, M], ['F2', 1, M], ['F3', 1, M], ['F4', 1, M], [null, 0.25], ['F5', 1, A], ['F6', 1, A], ['F7', 1, A], ['F8', 1, A], [null, 0.25], ['F9', 1, M], ['F10', 1, M], ['F11', 1, M], ['F12', 1, M], [null, 0.25], ['Del', 1, X]],
+  [['~', 1, A], ['1', 1, A], ['2', 1, A], ['3', 1, A], ['4', 1, A], ['5', 1, A], ['6', 1, A], ['7', 1, A], ['8', 1, A], ['9', 1, A], ['0', 1, A], ['-', 1, A], ['=', 1, A], ['Back', 2, M], ['Home', 1, M]],
+  [['Tab', 1.5, M], ['Q', 1, A], ['W', 1, A], ['E', 1, A], ['R', 1, A], ['T', 1, A], ['Y', 1, A], ['U', 1, A], ['I', 1, A], ['O', 1, A], ['P', 1, A], ['[', 1, A], [']', 1, A], ['\\', 1.5, M], ['PgUp', 1, M]],
+  [['Caps', 1.75, M], ['A', 1, A], ['S', 1, A], ['D', 1, A], ['F', 1, A], ['G', 1, A], ['H', 1, A], ['J', 1, A], ['K', 1, A], ['L', 1, A], [';', 1, A], ["'", 1, A], ['Enter', 2.25, X], ['PgDn', 1, M]],
+  [['Shift', 2.25, M], ['Z', 1, A], ['X', 1, A], ['C', 1, A], ['V', 1, A], ['B', 1, A], ['N', 1, A], ['M', 1, A], [',', 1, A], ['.', 1, A], ['/', 1, A], ['Shift', 1.75, M], ['↑', 1, M], ['End', 1, M]],
+  [['Ctrl', 1.25, M], ['Opt', 1.25, M], ['Cmd', 1.25, M], ['', 6.25, A], ['Cmd', 1, M], ['Fn', 1, M], ['Ctrl', 1, M], ['←', 1, M], ['↓', 1, M], ['→', 1, M]],
+];
+const LIFT = { 'K': [0.0, 3.4, -0.22, 0.2], 'Enter': [0.0, 2.7, 0.18, -0.16], 'Del': [0.0, 3.9, 0.3, 0.26] };
+
+// ---- Keycap geometry: a loft of rounded rectangles, sculpted with a cylindrical dish -------
+function roundedRing(hw, hd, r, y, z, n) {
+  r = Math.max(0.0001, Math.min(r, hw, hd));
+  const pts = [];
+  const sx = hw - r, sz = hd - r;
+  const corners = [[sx, sz, 0], [-sx, sz, Math.PI / 2], [-sx, -sz, Math.PI], [sx, -sz, Math.PI * 1.5]];
+  for (const [cx, cz, a0] of corners) {
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (i / (n - 1)) * (Math.PI / 2);
+      pts.push([cx + Math.cos(a) * r, y, z + cz + Math.sin(a) * r]);
+    }
+  }
+  return pts;
+}
+function loft(levels, n = 8) {
+  const rings = levels.map((l) => roundedRing(l.hw, l.hd, l.r, l.y, l.z, n));
+  const per = rings[0].length;
+  const positions = [];
+  for (const ring of rings) for (const p of ring) positions.push(...p);
+  // A centre point closes the top.
+  const top = levels[levels.length - 1];
+  positions.push(0, top.y, top.z);
+  const centre = positions.length / 3 - 1;
+  const index = [];
+  for (let i = 0; i < rings.length - 1; i++) {
+    for (let j = 0; j < per; j++) {
+      const a = i * per + j, b = i * per + ((j + 1) % per), c = a + per, d = b + per;
+      index.push(a, c, b, b, c, d);
+    }
+  }
+  const last = (rings.length - 1) * per;
+  for (let j = 0; j < per; j++) index.push(last + j, centre, last + ((j + 1) % per));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setIndex(index);
+  return g;
+}
+const capCache = new Map();
+function keycap(w, h) {
+  const k = `${w}|${h}`;
+  if (capCache.has(k)) return capCache.get(k);
+  const bw = w / 2 - 0.035, bd = 0.5 - 0.035;
+  const tw = bw - 0.17, td = bd - 0.2;
+  const levels = [];
+  const steps = 7;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const e = t ** 1.15;
+    levels.push({ hw: bw + (tw - bw) * e, hd: bd + (td - bd) * e, r: 0.07 - 0.02 * t, y: t * (h - 0.05), z: -0.035 * t });
+  }
+  // The rounded top edge.
+  for (let i = 1; i <= 4; i++) {
+    const a = (i / 4) * (Math.PI / 2);
+    const inset = 0.05 * (1 - Math.cos(a));
+    levels.push({ hw: tw - inset, hd: td - inset, r: 0.05 - inset, y: h - 0.05 + 0.05 * Math.sin(a), z: -0.035 });
+  }
+  // The top, inward to the centre.
+  for (const f of [0.82, 0.6, 0.38, 0.16]) {
+    levels.push({ hw: (tw - 0.05) * f + (1 - f) * Math.max(0, tw - td), hd: (td - 0.05) * f, r: 0.02 * f, y: h, z: -0.035 });
+  }
+  const g = loft(levels, 7);
+  // The dish: a shallow cylinder across the width of the top.
+  const p = g.attributes.position;
+  const half = tw - 0.05;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i);
+    if (y > h - 1e-4) {
+      const u = Math.min(1, Math.abs(p.getX(i)) / Math.max(half, 0.3));
+      p.setY(i, y - 0.035 * (1 - u * u) * Math.min(1, half / 0.3));
+    }
+  }
+  g.computeVertexNormals();
+  const out = { geometry: g, tw, td, h };
+  capCache.set(k, out);
+  return out;
+}
+
+// ---- Materials ------------------------------------------------------------------------------
+const capGrain = grain(256, { base: 165, spread: 34, seed: 21 });
+capGrain.repeat.set(1, 1);
+const capMats = {
+  alpha: new THREE.MeshPhysicalMaterial({ color: '#e9e4da', roughness: 0.58, roughnessMap: capGrain, sheen: 0.25, sheenColor: '#ffffff', clearcoat: 0.08 }),
+  mod: new THREE.MeshPhysicalMaterial({ color: '#34373d', roughness: 0.55, roughnessMap: capGrain, sheen: 0.2, sheenColor: '#9aa0aa', clearcoat: 0.05 }),
+  accent: new THREE.MeshPhysicalMaterial({ color: '#ff6a2b', roughness: 0.55, roughnessMap: capGrain, sheen: 0.25, sheenColor: '#ffd2b8', clearcoat: 0.06 }),
+};
+const legendInk = { alpha: '#2a2c31', mod: '#e4e6ea', accent: '#ffffff' };
+
+// The legends: one atlas, a cell for each key.
+const keys = [];
+rows.forEach((row, r) => row.forEach(([legend, w, kind]) => { if (legend !== null) keys.push({ legend, w, kind, r }); }));
+const CELL = 128, COLS = 16;
+const atlas = canvasTexture(CELL * COLS, CELL * Math.ceil(keys.length / COLS) * 1, (ctx) => {
+  keys.forEach((k, i) => {
+    const cx = (i % COLS) * CELL, cy = Math.floor(i / COLS) * CELL;
+    ctx.fillStyle = legendInk[k.kind];
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const long = k.legend.length > 2;
+    ctx.font = `${long ? 600 : 600} ${long ? 34 : 58}px Inter`;
+    ctx.fillText(k.legend, cx + CELL / 2, cy + CELL / 2 + 1);
+  });
+});
+const legendMat = new THREE.MeshBasicMaterial({ map: atlas, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+// Basic material stays unlit; shade it a little with the cap by multiplying a soft colour.
+legendMat.color.set('#f0f0f0');
+
+// ---- The board ------------------------------------------------------------------------------
+const board = new THREE.Group();
+scene.add(board);
+const ROW_H = [0.5, 0.5, 0.47, 0.45, 0.47, 0.47];
+const ROW_TILT = [-0.14, -0.1, -0.05, 0.0, 0.07, 0.07];
+const rowZ = (r) => (r === 0 ? -3.25 : r - 3) + 0.625;
+const lifted = {};
+let ki = 0;
+rows.forEach((row, r) => {
+  let x = -8;
+  for (const [legend, w, kind] of row) {
+    if (legend === null) { x += w; continue; }
+    const cx = x + w / 2, cz = rowZ(r);
+    const { geometry, tw, td, h } = keycap(w, ROW_H[r]);
+    const cap = new THREE.Group();
+    const body = new THREE.Mesh(geometry, capMats[kind]);
+    body.castShadow = true; body.receiveShadow = true;
+    cap.add(body);
+    if (legend) {
+      const i = ki;
+      const lw = 0.5;
+      const plane = new THREE.PlaneGeometry(lw, lw, 6, 6);
+      plane.rotateX(-Math.PI / 2);
+      const uv = plane.attributes.uv;
+      const rowsN = Math.ceil(keys.length / COLS);
+      const u0 = (i % COLS) / COLS, v0 = 1 - (Math.floor(i / COLS) + 1) / rowsN;
+      for (let j = 0; j < uv.count; j++) uv.setXY(j, u0 + uv.getX(j) / COLS, v0 + uv.getY(j) / rowsN);
+      const pp = plane.attributes.position;
+      const half = tw - 0.05;
+      for (let j = 0; j < pp.count; j++) {
+        const px = pp.getX(j);
+        const uu = Math.min(1, Math.abs(px) / Math.max(half, 0.3));
+        pp.setY(j, h + 0.004 - 0.035 * (1 - uu * uu) * Math.min(1, half / 0.3));
+        pp.setZ(j, pp.getZ(j) - 0.035);
+      }
+      const decal = new THREE.Mesh(plane, legendMat);
+      decal.renderOrder = 2;
+      cap.add(decal);
+    }
+    ki += legend ? 1 : 0;
+    cap.rotation.x = ROW_TILT[r];
+    cap.position.set(cx, 0.32, cz);
+    if (LIFT[legend] && !lifted[legend]) {
+      const [dx, dy, rx, rz] = LIFT[legend];
+      lifted[legend] = { x: cx, z: cz, w };
+      cap.position.y += dy; cap.position.x += dx;
+      cap.rotation.x += rx; cap.rotation.z += rz;
+      // The switch it came off: a smoky housing and an orange stem.
+      const sw = new THREE.Group();
+      const housing = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.22, 0.74), new THREE.MeshPhysicalMaterial({ color: '#2b2d33', roughness: 0.35, transmission: 0.0, clearcoat: 0.4 }));
+      housing.position.y = 0.11;
+      const topH = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.16, 0.66), new THREE.MeshPhysicalMaterial({ color: '#c9ccd2', roughness: 0.15, transmission: 0.6, thickness: 0.2, transparent: true, opacity: 0.9, clearcoat: 1 }));
+      topH.position.y = 0.3;
+      const stemA = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.2, 0.06), new THREE.MeshStandardMaterial({ color: '#ff6a2b', roughness: 0.4 }));
+      const stemB = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.22), stemA.material);
+      stemA.position.y = stemB.position.y = 0.46;
+      const stemBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 24), stemA.material);
+      stemBase.position.y = 0.39;
+      for (const m of [housing, topH, stemA, stemB, stemBase]) { m.castShadow = true; sw.add(m); }
+      sw.position.set(cx, 0.0, cz);
+      board.add(sw);
+    }
+    board.add(cap);
+    x += w;
+  }
+});
+
+// The case: silver anodised aluminium, a frame with chamfered edges around a dark plate.
+function roundedRectShape(w, d, r) {
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2 + r, -d / 2);
+  s.lineTo(w / 2 - r, -d / 2); s.quadraticCurveTo(w / 2, -d / 2, w / 2, -d / 2 + r);
+  s.lineTo(w / 2, d / 2 - r); s.quadraticCurveTo(w / 2, d / 2, w / 2 - r, d / 2);
+  s.lineTo(-w / 2 + r, d / 2); s.quadraticCurveTo(-w / 2, d / 2, -w / 2, d / 2 - r);
+  s.lineTo(-w / 2, -d / 2 + r); s.quadraticCurveTo(-w / 2, -d / 2, -w / 2 + r, -d / 2);
+  return s;
+}
+const caseW = 16 + 0.9, caseD = 6.25 + 0.9, caseH = 0.7;
+const outer = roundedRectShape(caseW, caseD, 0.32);
+const hole = roundedRectShape(16.1, 6.35, 0.08);
+outer.holes.push(hole);
+const caseGeo = new THREE.ExtrudeGeometry(outer, { depth: caseH, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 4, curveSegments: 12 });
+caseGeo.rotateX(-Math.PI / 2);
+const beadBlast = grain(512, { base: 120, spread: 30, seed: 8 });
+beadBlast.repeat.set(8, 8);
+const alu = new THREE.MeshPhysicalMaterial({ color: '#c9ccd1', metalness: 0.92, roughness: 0.36, roughnessMap: beadBlast, clearcoat: 0.1 });
+const shell = new THREE.Mesh(caseGeo, alu);
+shell.position.set(0, -0.36, 0);
+shell.castShadow = true; shell.receiveShadow = true;
+board.add(shell);
+const plate = new THREE.Mesh(new THREE.BoxGeometry(16.1, 0.1, 6.35), new THREE.MeshStandardMaterial({ color: '#1d1f24', roughness: 0.6, metalness: 0.4 }));
+plate.position.set(0, 0.02, 0);
+plate.receiveShadow = true;
+board.add(plate);
+// A thin orange line along the front of the case: the bottom half of the shell is anodised orange.
+const stripe = new THREE.Mesh(new THREE.BoxGeometry(caseW - 0.5, 0.05, 0.02), new THREE.MeshStandardMaterial({ color: '#ff6a2b', roughness: 0.4, metalness: 0.3 }));
+stripe.position.set(0, -0.12, caseD / 2 + 0.07);
+board.add(stripe);
+
+// The typing angle.
+board.rotation.x = 0.07;
+board.position.y = 0.42;
+
+const key = new THREE.DirectionalLight('#fffaf2', 1.9);
+key.position.set(-12, 17, 7);
+key.castShadow = true;
+key.shadow.mapSize.set(4096, 4096);
+key.shadow.camera.left = -12; key.shadow.camera.right = 12; key.shadow.camera.top = 10; key.shadow.camera.bottom = -10;
+key.shadow.radius = 5; key.shadow.bias = -0.0002; key.shadow.normalBias = 0.03;
+scene.add(key);
+const fillL = new THREE.DirectionalLight('#dfe7ff', 0.5);
+fillL.position.set(10, 6, 6);
+scene.add(fillL);
+
+board.rotation.y = -0.32;
+camera.position.set(2, 17, 38);
+camera.lookAt(0.4, 1.0, 0.4);
+
+const ground = shadowGround({ opacity: 0.22, center: [0, 0], fade: [9, 12] });
+scene.add(ground);
+const contact = contactShadow(renderer, scene, { width: 22, depth: 12, height: 1.0, blur: 2.5, darkness: 1.6, opacity: 0.7, resolution: 1024 });
+const ambient = contactShadow(renderer, scene, { width: 26, depth: 16, height: 4, blur: 6, darkness: 0.7, opacity: 0.45, resolution: 1024 });
+ground.visible = false; ambient.plane.visible = false;
+contact.update(); contact.plane.visible = false; ambient.update(); contact.plane.visible = true;
+ground.visible = true;
+
+renderer.render(scene, camera);
+const pts = {};
+board.updateMatrixWorld(true);
+const w = (x, y, z) => board.localToWorld(new THREE.Vector3(x, y, z)).toArray();
+for (const [k, v] of Object.entries(lifted)) { pts[k + '_cap'] = w(v.x, 0.32 + LIFT[k][1] + 0.5, v.z); pts[k + '_switch'] = w(v.x, 0.5, v.z); }
+pts.frontLeft = w(-8.45, -0.4, 3.6); pts.frontRight = w(8.45, -0.4, 3.6); pts.backLeft = w(-8.45, 0.3, -3.6); pts.backRight = w(8.45, 0.3, -3.6); pts.center = w(0, 0.6, 0);
+anchors(camera, W, H, pts);
+done();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "shvavTeam1": {
+    "id": "c76b73fbd36463e066a7f87023b94c4087276ebabdb8a4459fb73383af20626e",
+    "file": "c76b73fbd36463e066a7f87023b94c4087276ebabdb8a4459fb73383af20626e.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 19772,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "shvav-team-1.webp"
+  },
+  "shvavTeam2": {
+    "id": "0e052d4363fde8a3bd568c4594e18f6dc09d33cd9ecfb7969eee936e72bb2cec",
+    "file": "0e052d4363fde8a3bd568c4594e18f6dc09d33cd9ecfb7969eee936e72bb2cec.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 20508,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "shvav-team-2.webp"
+  },
+  "shvavTeam3": {
+    "id": "69fe01e5cf46fdef3ed65a49b9f737af0e80023d37130eda7957d001d3f65fed",
+    "file": "69fe01e5cf46fdef3ed65a49b9f737af0e80023d37130eda7957d001d3f65fed.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 21038,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "shvav-team-3.webp"
+  },
+  "shvavTeam4": {
+    "id": "b856e3ee9656c833cd8dae0b295e99e2bd680b9a5525f36a348afec6148b2ef7",
+    "file": "b856e3ee9656c833cd8dae0b295e99e2bd680b9a5525f36a348afec6148b2ef7.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 23106,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "shvav-team-4.webp"
+  }
+}
