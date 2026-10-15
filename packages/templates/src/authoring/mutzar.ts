@@ -329,9 +329,11 @@ function browser(
       LIGHTS.map(
         (c, i) => `<circle cx="${bx(dir, w, 28 + i * 22)}" cy="26" r="6.5" fill="${c}"/>`,
       ).join('') +
-        `<rect x="${w / 2 - 170}" y="12" width="340" height="28" rx="14" fill="${CANVAS}"/>` +
-        icon('lock', w / 2 - 6 - wide(url, 15) / 2 - 12, 18.5, 15, MUTED, 2.2) +
-        `<text x="${w / 2 + 6}" y="31" text-anchor="middle" ${UI} font-size="15" fill="${MUTED}">${esc(url)}</text>` +
+        (url
+          ? `<rect x="${w / 2 - 170}" y="12" width="340" height="28" rx="14" fill="${CANVAS}"/>` +
+            icon('lock', w / 2 - 6 - wide(url, 15) / 2 - 12, 18.5, 15, MUTED, 2.2) +
+            `<text x="${w / 2 + 6}" y="31" text-anchor="middle" ${UI} font-size="15" fill="${MUTED}">${esc(url)}</text>`
+          : '') +
         (extra ? extra(dir, w) : ''),
     );
   return [
@@ -494,7 +496,7 @@ const mark = (id: string, frame: Frame) =>
   );
 
 /** Who else is on the board, and the share button, at the top of the end side. */
-function presence(name: string, frame: Frame = atEnd(END, 94, 248, 48)): Element {
+function presence(name: string, frame: Frame = atEnd(END, 74, 248, 48)): Element {
   const w = 248;
   const h = 48;
   const people: [string, Words][] = [
@@ -538,14 +540,17 @@ const START = 120;
 const END = 120;
 const WIDTH = 1920 - START - END;
 
-/** The kicker with a live dot before it, and the title under it. */
-function head(name: string, width = 1180, lines = 1) {
+/**
+ * The kicker with a live dot before it, and the title under it, with room for two lines: the
+ * content of every layout starts below the second line.
+ */
+function head(name: string, width = 1180) {
   return {
     placeholders: [
-      place('p_kicker', 'caption', at(START + 30, 92, Math.min(900, width - 30), 34), 'caption'),
-      place('p_title', 'title', at(START, 134, width, 70 * lines), 'title'),
+      place('p_kicker', 'caption', at(START + 30, 80, Math.min(900, width - 30), 34), 'caption'),
+      place('p_title', 'title', at(START, 116, width, 136), 'title'),
     ],
-    decorations: liveDot(name, 92),
+    decorations: liveDot(name, 80),
   };
 }
 
@@ -712,7 +717,14 @@ const PALETTE_ROWS: [Icon, string, Words, string][] = [
 ];
 
 /** One suggestion of the palette, 676 wide: its icon, its words and, but for the first, its keys. */
-function paletteRow(dir: Dir, name: Icon, color: string, words: Words, key: string, on: boolean): string {
+function paletteRow(
+  dir: Dir,
+  name: Icon,
+  color: string,
+  words: Words,
+  key: string,
+  on: boolean,
+): string {
   const w = 676;
   const keys = key
     ? [0, 1]
@@ -728,14 +740,29 @@ function paletteRow(dir: Dir, name: Icon, color: string, words: Words, key: stri
     w,
     68,
     `<rect x="${bx(dir, w, 16, 44)}" y="12" width="44" height="44" rx="12" fill="${color}" fill-opacity="${on ? 1 : 0.15}"/>` +
-      icon(name, bx(dir, w, 26, 24), 22, 24, on ? WHITE : color === AMBER ? '#c98317' : color, 2.1) +
-      say(dir, w, 78, 41, 21, words, `font-weight="${on ? 600 : 500}" fill="${INK}" fill-opacity="${on ? 1 : 0.75}"`) +
+      icon(
+        name,
+        bx(dir, w, 26, 24),
+        22,
+        24,
+        on ? WHITE : color === AMBER ? '#c98317' : color,
+        2.1,
+      ) +
+      say(
+        dir,
+        w,
+        78,
+        41,
+        21,
+        words,
+        `font-weight="${on ? 600 : 500}" fill="${INK}" fill-opacity="${on ? 1 : 0.75}"`,
+      ) +
       keys,
   );
 }
 
 function layouts(): Layout[] {
-  const textWindow = atEnd(END, 96, 676, 836);
+  const textWindow = atEnd(END, 84, 676, 836);
   const shot = { x: 96, y: 96, w: 1728, h: 568 };
   return [
     {
@@ -795,9 +822,14 @@ function layouts(): Layout[] {
             ),
           ),
         ),
-        rect('d_mutzar_hero_selected', at(PALETTE + 12, 366, 676, 76), solid(token('secondary', 0.08)), {
-          effects: { radius: 14 },
-        }),
+        rect(
+          'd_mutzar_hero_selected',
+          at(PALETTE + 12, 366, 676, 76),
+          solid(token('secondary', 0.08)),
+          {
+            effects: { radius: 14 },
+          },
+        ),
         rect('d_mutzar_hero_selected_bar', at(PALETTE + 12, 384, 4, 40), CORAL_FILL, {
           effects: { radius: 2 },
         }),
@@ -847,7 +879,7 @@ function layouts(): Layout[] {
           color: token('secondary'),
         }),
         place('p_kicker', 'caption', at(START + 30, 334, 760, 34), 'caption'),
-        place('p_title', 'title', at(START, 380, 960, 240), 'display'),
+        place('p_title', 'title', at(START, 380, 960, 240), 'display', { vAlign: 'middle' }),
         place('p_subtitle', 'subtitle', at(START, 642, 900, 110), 'heading'),
       ],
       decorations: [
@@ -886,14 +918,14 @@ function layouts(): Layout[] {
       archetype: 'bigNumber',
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START + 48, 314, 920, 124), 'display', {
+        place('p_number', 'number', at(START + 48, 338, 920, 124), 'display', {
           color: token('secondary'),
         }),
-        place('p_label', 'subtitle', at(START + 48, 444, 920, 53), 'heading'),
-        place('p_body', 'body', at(START + 48, 506, 900, 135), 'body'),
+        place('p_label', 'subtitle', at(START + 48, 466, 920, 53), 'heading'),
+        place('p_body', 'body', at(START + 48, 528, 900, 135), 'body'),
         ...cards3.flatMap((start, i) => [
-          place(`p_stat${i + 1}`, 'number', at(start + 104, 724, 404, 79), 'title'),
-          place(`p_stat${i + 1}_label`, 'caption', at(start + 30, 810, 478, 68), 'caption'),
+          place(`p_stat${i + 1}`, 'number', at(start + 104, 730, 404, 79), 'title'),
+          place(`p_stat${i + 1}_label`, 'caption', at(start + 30, 814, 478, 68), 'caption'),
         ]),
         ...foot('big_number').placeholders,
       ],
@@ -901,16 +933,16 @@ function layouts(): Layout[] {
         board('big_number'),
         ...head('big_number').decorations,
         presence('big_number'),
-        ...browser('big_number', at(START, 236, WIDTH, 450), 'zrima.app/insights'),
-        areaChart('d_mutzar_big_number_curve', atEnd(END + 36, 316, 640, 340)),
+        ...browser('big_number', at(START, 268, WIDTH, 424), 'zrima.app/insights'),
+        areaChart('d_mutzar_big_number_curve', atEnd(END + 36, 338, 640, 330)),
         ...panels(
-          cards3.map((start, i) => [`d_mutzar_big_number_tile${i + 1}`, at(start, 708, 536, 196)]),
+          cards3.map((start, i) => [`d_mutzar_big_number_tile${i + 1}`, at(start, 712, 536, 192)]),
           20,
         ),
         ...cards3.flatMap((start, i) => [
           tile(
             `d_mutzar_big_number_icon${i + 1}`,
-            at(start + 30, 736, 56, 56),
+            at(start + 30, 740, 56, 56),
             (['users', 'clock', 'shield'] as const)[i]!,
             [CORAL, VIOLET, MINT][i]!,
             true,
@@ -1003,14 +1035,14 @@ function layouts(): Layout[] {
       name: 'Text',
       archetype: 'text',
       placeholders: [
-        place('p_title', 'title', at(START + 30, 258, 1400, 70), 'title'),
-        place('p_body', 'body', at(START + 30, 372, WIDTH - 60, 566), 'body'),
+        place('p_title', 'title', at(START + 30, 224, 1400, 136), 'title'),
+        place('p_body', 'body', at(START + 30, 390, WIDTH - 60, 606), 'body'),
       ],
       decorations: [
         board('text'),
-        ...browser('text', at(START - 24, 64, WIDTH + 48, 920), 'zrima.app/docs/launch-night'),
+        ...browser('text', at(START - 24, 56, WIDTH + 48, 960), 'zrima.app/docs/launch-night'),
         // The page's cover, and its icon standing on the cover's edge.
-        rect('d_mutzar_text_cover', at(START - 23, 117, WIDTH + 46, 84), {
+        rect('d_mutzar_text_cover', at(START - 23, 109, WIDTH + 46, 60), {
           kind: 'linear',
           angle: 90,
           stops: [
@@ -1019,17 +1051,17 @@ function layouts(): Layout[] {
             { color: token('accent', 0.16), at: 1 },
           ],
         }),
-        rect('d_mutzar_text_icon_box', at(START + 30, 160, 80, 80), WHITE_FILL, {
+        rect('d_mutzar_text_icon_box', at(START + 30, 136, 72, 72), WHITE_FILL, {
           stroke: HAIR,
           effects: { radius: 20, shadow: LIFT_SM },
         }),
         still(
           'd_mutzar_text_icon',
-          at(START + 46, 176, 48, 48),
+          at(START + 42, 148, 48, 48),
           svg(48, 48, icon('page', 4, 4, 40, CORAL, 2)),
         ),
-        rect('d_mutzar_text_rule', at(START + 30, 350, WIDTH - 60, 1), solid(token('text', 0.08))),
-        presence('text', atEnd(END - 24 + 14, 66, 248, 48)),
+        rect('d_mutzar_text_rule', at(START + 30, 374, WIDTH - 60, 1), solid(token('text', 0.08))),
+        presence('text', atEnd(END - 24 + 14, 58, 248, 48)),
       ],
     },
     {
@@ -1037,8 +1069,8 @@ function layouts(): Layout[] {
       name: 'Text and image',
       archetype: 'textImage',
       placeholders: [
-        ...head('text_image', 920, 2).placeholders,
-        place('p_image', 'image', atEnd(END + 12, 148, 652, 772)),
+        ...head('text_image', 920).placeholders,
+        place('p_image', 'image', atEnd(END + 12, 136, 652, 772)),
         ...rows3.flatMap((top, i) => [
           place(`p_point${i + 1}`, 'subtitle', at(START + 84, top, 880, 53), 'heading'),
           place(`p_point${i + 1}_body`, 'body', at(START + 84, top + 56, 880, 132), 'body'),
@@ -1047,7 +1079,7 @@ function layouts(): Layout[] {
       ],
       decorations: [
         board('text_image'),
-        ...head('text_image', 920, 2).decorations,
+        ...head('text_image', 920).decorations,
         ...browser('text_image', textWindow, 'zrima.app/builder'),
         ...rows3.map((top, i) =>
           toggle(`d_mutzar_text_image_switch${i + 1}`, at(START, top + 8, 64, 36), true),
@@ -1130,11 +1162,11 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...cards3.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 30, 352, 476, 68), 'caption'),
-          place(`p_card${i + 1}`, 'subtitle', at(start + 30, 424, 476, 100), 'heading'),
-          place(`p_card${i + 1}_body`, 'body', at(start + 30, 530, 476, 210), 'body'),
+          place(`p_card${i + 1}_note`, 'caption', at(start + 30, 372, 476, 68), 'caption'),
+          place(`p_card${i + 1}`, 'subtitle', at(start + 30, 444, 476, 100), 'heading'),
+          place(`p_card${i + 1}_body`, 'body', at(start + 30, 550, 476, 210), 'body'),
         ]),
-        place('p_takeaway', 'body', at(START + 96, 798, WIDTH - 130, 90), 'body', {
+        place('p_takeaway', 'body', at(START + 96, 803, WIDTH - 130, 90), 'body', {
           vAlign: 'middle',
         }),
         ...foot('cards').placeholders,
@@ -1144,38 +1176,38 @@ function layouts(): Layout[] {
         ...head('cards').decorations,
         presence('cards'),
         ...panels(
-          cards3.map((start, i) => [`d_mutzar_cards_card${i + 1}`, at(start, 244, 536, 522)]),
+          cards3.map((start, i) => [`d_mutzar_cards_card${i + 1}`, at(start, 268, 536, 510)]),
           24,
         ),
         ...cards3.flatMap((start, i) => [
           tile(
             `d_mutzar_cards_icon${i + 1}`,
-            at(start + 30, 272, 60, 60),
+            at(start + 30, 294, 60, 60),
             (['sparkles', 'plug', 'shield'] as const)[i]!,
             [CORAL, VIOLET, MINT][i]!,
           ),
           badge(
             `d_mutzar_cards_badge${i + 1}`,
-            at(start + 104, 286, 92, 32),
+            at(start + 104, 308, 92, 32),
             i === 2 ? w2('בטא', 'BETA') : w2('חדש', 'NEW'),
             i === 2 ? VIOLET : CORAL,
           ),
-          toggle(`d_mutzar_cards_switch${i + 1}`, at(start + 536 - 28 - 76, 282, 76, 40), true),
+          toggle(`d_mutzar_cards_switch${i + 1}`, at(start + 536 - 28 - 76, 304, 76, 40), true),
           rect(
             `d_mutzar_cards_rule${i + 1}`,
-            at(start + 30, 340, 476, 1),
+            at(start + 30, 362, 476, 1),
             solid(token('text', 0.07)),
           ),
         ]),
-        rect('d_mutzar_cards_banner', at(START, 790, WIDTH, 106), solid(token('secondary', 0.07)), {
+        rect('d_mutzar_cards_banner', at(START, 796, WIDTH, 104), solid(token('secondary', 0.07)), {
           effects: { radius: 20 },
         }),
-        rect('d_mutzar_cards_banner_bar', at(START, 812, 5, 62), CORAL_FILL, {
+        rect('d_mutzar_cards_banner_bar', at(START, 817, 5, 62), CORAL_FILL, {
           effects: { radius: 3 },
         }),
         still(
           'd_mutzar_cards_banner_icon',
-          at(START + 30, 819, 48, 48),
+          at(START + 30, 824, 48, 48),
           svg(
             48,
             48,
@@ -1192,30 +1224,30 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('timeline').placeholders,
         ...columns4.flatMap((start, i) => [
-          place(`p_when${i + 1}`, 'number', at(start, 290, 390, 79), 'title', { vAlign: 'bottom' }),
-          place(`p_what${i + 1}`, 'subtitle', at(start + 30, 476, 338, 106), 'heading'),
-          place(`p_what${i + 1}_body`, 'body', at(start + 30, 588, 338, 170), 'caption'),
+          place(`p_when${i + 1}`, 'number', at(start, 308, 390, 79), 'title', { vAlign: 'bottom' }),
+          place(`p_what${i + 1}`, 'subtitle', at(start + 30, 494, 338, 106), 'heading'),
+          place(`p_what${i + 1}_body`, 'body', at(start + 30, 604, 338, 170), 'caption'),
         ]),
-        place('p_note', 'caption', at(START + 30, 836, WIDTH - 30, 34), 'caption'),
+        place('p_note', 'caption', at(START + 30, 834, WIDTH - 30, 34), 'caption'),
         ...foot('timeline').placeholders,
       ],
       decorations: [
         board('timeline'),
         ...head('timeline').decorations,
         presence('timeline'),
-        rect('d_mutzar_timeline_track', at(START, 398, WIDTH, 10), solid(token('text', 0.08)), {
+        rect('d_mutzar_timeline_track', at(START, 418, WIDTH, 10), solid(token('text', 0.08)), {
           effects: { radius: 5 },
         }),
-        rect('d_mutzar_timeline_progress', at(START, 398, 449, 10), CORAL_FILL, {
+        rect('d_mutzar_timeline_progress', at(START, 418, 449, 10), CORAL_FILL, {
           effects: { radius: 5 },
         }),
         ...panels(
-          columns4.map((start, i) => [`d_mutzar_timeline_card${i + 1}`, at(start, 452, 390, 330)]),
+          columns4.map((start, i) => [`d_mutzar_timeline_card${i + 1}`, at(start, 472, 390, 324)]),
           22,
         ),
         dot(
           'd_mutzar_timeline_halo',
-          at(START + 429 - 12, 371, 64, 64),
+          at(START + 429 - 12, 391, 64, 64),
           solid(token('secondary', 0.16)),
         ),
         ...columns4.flatMap((start, i) => {
@@ -1229,20 +1261,20 @@ function layouts(): Layout[] {
           return [
             badge(
               `d_mutzar_timeline_badge${i + 1}`,
-              at(start, 250, i === 1 ? 150 : 104, 34),
+              at(start, 272, i === 1 ? 150 : 104, 34),
               words,
               color,
               i === 1,
             ),
             rect(
               `d_mutzar_timeline_stem${i + 1}`,
-              at(start + 18, 420, 4, 32),
+              at(start + 18, 440, 4, 32),
               solid(token(i < 2 ? 'secondary' : 'text', i < 2 ? 1 : 0.14)),
             ),
             i < 2
               ? still(
                   `d_mutzar_timeline_node${i + 1}`,
-                  at(start, 383, 40, 40),
+                  at(start, 403, 40, 40),
                   svg(
                     40,
                     40,
@@ -1251,7 +1283,7 @@ function layouts(): Layout[] {
                 )
               : drawing(
                   `d_mutzar_timeline_node${i + 1}`,
-                  at(start, 383, 40, 40),
+                  at(start, 403, 40, 40),
                   svg(
                     40,
                     40,
@@ -1263,7 +1295,7 @@ function layouts(): Layout[] {
         }),
         cursor(
           'd_mutzar_timeline_cursor',
-          [START + 429 + 34, 412],
+          [START + 429 + 34, 432],
           CORAL,
           w2('אנחנו כאן', 'We are here'),
         ),
@@ -1277,13 +1309,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...steps5.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start + 30, 408, 302, 106), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start + 30, 516, 302, 136), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start + 30, 676, 302, 79), 'title', {
+          place(`p_step${i + 1}`, 'subtitle', at(start + 30, 420, 302, 106), 'heading'),
+          place(`p_step${i + 1}_body`, 'caption', at(start + 30, 528, 302, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start + 30, 690, 302, 79), 'title', {
             color: token('secondary'),
           }),
         ]),
-        place('p_summary', 'body', at(START + 100, 822, WIDTH - 140, 90), 'body', {
+        place('p_summary', 'body', at(START + 100, 819, WIDTH - 140, 90), 'body', {
           vAlign: 'middle',
         }),
         ...foot('process').placeholders,
@@ -1292,8 +1324,8 @@ function layouts(): Layout[] {
         board('process'),
         ...head('process').decorations,
         presence('process'),
-        panel('d_mutzar_process_panel', at(START, 236, WIDTH, 556), 26),
-        lettered('d_mutzar_process_progress_label', at(START + 30, 256, 600, 34), (dir) =>
+        panel('d_mutzar_process_panel', at(START, 266, WIDTH, 530), 26),
+        lettered('d_mutzar_process_progress_label', at(START + 30, 282, 600, 34), (dir) =>
           svg(
             600,
             34,
@@ -1310,21 +1342,21 @@ function layouts(): Layout[] {
         ),
         rect(
           'd_mutzar_process_progress_track',
-          atEnd(END + 36, 266, 560, 12),
+          atEnd(END + 36, 292, 560, 12),
           solid(token('text', 0.08)),
           {
             effects: { radius: 6 },
           },
         ),
-        rect('d_mutzar_process_progress', at(1920 - END - 36 - 560, 266, 448, 12), CORAL_FILL, {
+        rect('d_mutzar_process_progress', at(1920 - END - 36 - 560, 292, 448, 12), CORAL_FILL, {
           effects: { radius: 6 },
         }),
-        rect('d_mutzar_process_rule', at(START, 308, WIDTH, 1), solid(token('text', 0.07))),
+        rect('d_mutzar_process_rule', at(START, 330, WIDTH, 1), solid(token('text', 0.07))),
         ...steps5.flatMap((start, i) => [
           i < 4
             ? still(
                 `d_mutzar_process_dot${i + 1}`,
-                at(start + 30, 334, 52, 52),
+                at(start + 30, 350, 52, 52),
                 svg(
                   52,
                   52,
@@ -1333,7 +1365,7 @@ function layouts(): Layout[] {
               )
             : drawing(
                 `d_mutzar_process_dot${i + 1}`,
-                at(start + 30, 334, 52, 52),
+                at(start + 30, 350, 52, 52),
                 svg(
                   52,
                   52,
@@ -1345,25 +1377,25 @@ function layouts(): Layout[] {
             ? [
                 rect(
                   `d_mutzar_process_link${i + 1}`,
-                  at(start + 98, 358, 336 - 86, 4),
+                  at(start + 98, 374, 336 - 86, 4),
                   i < 3 ? CORAL_FILL : solid(token('secondary', 0.3)),
                   { effects: { radius: 2 } },
                 ),
                 rect(
                   `d_mutzar_process_divider${i + 1}`,
-                  at(start + 334, 418, 1, 330),
+                  at(start + 334, 430, 1, 340),
                   solid(token('text', 0.07)),
                 ),
               ]
             : []),
         ]),
-        rect('d_mutzar_process_toast', at(START, 814, WIDTH, 106), WHITE_FILL, {
+        rect('d_mutzar_process_toast', at(START, 812, WIDTH, 104), WHITE_FILL, {
           stroke: HAIR,
           effects: { radius: 22, shadow: LIFT_SM },
         }),
         still(
           'd_mutzar_process_toast_check',
-          at(START + 32, 843, 48, 48),
+          at(START + 32, 840, 48, 48),
           svg(
             48,
             48,
@@ -1388,21 +1420,21 @@ function layouts(): Layout[] {
           place(
             `p_${side}_tag`,
             'caption',
-            at(start + 126, 280, 660, 34),
+            at(start + 126, 303, 660, 34),
             'caption',
             color ? { color: token('surface', 0.78) } : {},
           ),
           place(
             `p_${side}`,
             'subtitle',
-            at(start + 30, 348, 760, 106),
+            at(start + 30, 368, 760, 106),
             'heading',
             color ? { color } : {},
           ),
           place(
             `p_${side}_body`,
             'body',
-            at(start + 30, 470, 760, 350),
+            at(start + 30, 484, 760, 350),
             'body',
             color ? { color } : {},
           ),
@@ -1414,30 +1446,30 @@ function layouts(): Layout[] {
         ...head('comparison').decorations,
         presence('comparison'),
         // The card of the automated way first: its coral glow goes under the other card.
-        rect('d_mutzar_comparison_after', at(START + 860, 240, 820, 666), PRIMARY_FILL, {
+        rect('d_mutzar_comparison_after', at(START + 860, 266, 820, 650), PRIMARY_FILL, {
           effects: {
             radius: 28,
             shadow: { x: 0, y: 30, blur: 70, color: { token: 'secondary', alpha: 0.3 } },
           },
         }),
-        panel('d_mutzar_comparison_before', at(START, 240, 820, 666), 28, LIFT_SM),
-        toggle('d_mutzar_comparison_before_switch', at(START + 30, 278, 76, 40), false),
-        toggle('d_mutzar_comparison_after_switch', at(START + 890, 278, 76, 40), true),
+        panel('d_mutzar_comparison_before', at(START, 266, 820, 650), 28, LIFT_SM),
+        toggle('d_mutzar_comparison_before_switch', at(START + 30, 300, 76, 40), false),
+        toggle('d_mutzar_comparison_after_switch', at(START + 890, 300, 76, 40), true),
         rect(
           'd_mutzar_comparison_after_rule',
-          at(START + 890, 330, 760, 1),
+          at(START + 890, 354, 760, 1),
           solid(token('surface', 0.12)),
         ),
         rect(
           'd_mutzar_comparison_before_rule',
-          at(START + 30, 330, 760, 1),
+          at(START + 30, 354, 760, 1),
           solid(token('text', 0.07)),
         ),
-        workPath('d_mutzar_comparison_before_path', at(START + 30, 828, 760, 60), false),
-        workPath('d_mutzar_comparison_after_path', at(START + 890, 828, 760, 60), true),
+        workPath('d_mutzar_comparison_before_path', at(START + 30, 846, 760, 56), false),
+        workPath('d_mutzar_comparison_after_path', at(START + 890, 846, 760, 56), true),
         drawing(
           'd_mutzar_comparison_switch',
-          at(START + 808, 541, 64, 64),
+          at(START + 808, 559, 64, 64),
           svg(
             64,
             64,
@@ -1456,23 +1488,23 @@ function layouts(): Layout[] {
       archetype: 'chart',
       placeholders: [
         ...head('chart').placeholders,
-        place('p_chart', 'chart', at(START + 30, 352, 1020, 560)),
-        place('p_stat1', 'number', atEnd(END + 22, 256, 520, 124), 'display', {
+        place('p_chart', 'chart', at(START + 30, 384, 1020, 536)),
+        place('p_stat1', 'number', atEnd(END + 22, 284, 520, 124), 'display', {
           color: token('secondary'),
         }),
-        place('p_stat1_body', 'body', atEnd(END + 22, 384, 520, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END + 22, 580, 520, 124), 'display', {
+        place('p_stat1_body', 'body', atEnd(END + 22, 412, 520, 135), 'body'),
+        place('p_stat2', 'number', atEnd(END + 22, 598, 520, 124), 'display', {
           color: token('accent'),
         }),
-        place('p_stat2_body', 'body', atEnd(END + 22, 708, 520, 100), 'body'),
-        place('p_source', 'caption', atEnd(END + 22, 850, 520, 68), 'caption'),
+        place('p_stat2_body', 'body', atEnd(END + 22, 726, 520, 100), 'body'),
+        place('p_source', 'caption', atEnd(END + 22, 862, 520, 68), 'caption'),
         ...foot('chart').placeholders,
       ],
       decorations: [
         board('chart'),
         ...head('chart').decorations,
-        ...browser('chart', at(START, 236, 1080, 690), 'zrima.app/insights/adoption'),
-        lettered('d_mutzar_chart_range', at(START + 30, 300, 380, 40), (dir) => {
+        ...browser('chart', at(START, 266, 1080, 664), 'zrima.app/insights/adoption'),
+        lettered('d_mutzar_chart_range', at(START + 30, 332, 380, 40), (dir) => {
           const w = 380;
           const opts = [w2('חודש', 'Month'), w2('רבעון', 'Quarter'), w2('שנה', 'Year')];
           return svg(
@@ -1498,8 +1530,8 @@ function layouts(): Layout[] {
         }),
         ...panels(
           [
-            ['d_mutzar_chart_stat1', atEnd(END, 236, 564, 300)],
-            ['d_mutzar_chart_stat2', atEnd(END, 560, 564, 270)],
+            ['d_mutzar_chart_stat1', atEnd(END, 266, 564, 296)],
+            ['d_mutzar_chart_stat2', atEnd(END, 582, 564, 262)],
           ],
           24,
         ),
@@ -1512,15 +1544,16 @@ function layouts(): Layout[] {
       archetype: 'table',
       placeholders: [
         ...head('table').placeholders,
-        place('p_table', 'table', at(START + 30, 278, WIDTH - 60, 612)),
-        place('p_note', 'caption', at(START + 30, 914, WIDTH - 30, 34), 'caption'),
+        place('p_table', 'table', at(START + 30, 324, WIDTH - 60, 612)),
+        // The note says what the table shows, in the window's toolbar between its views and its search.
+        place('p_note', 'caption', at(START + 430, 273, WIDTH - 430 - 260, 34), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: [
         board('table'),
         ...head('table').decorations,
         presence('table'),
-        ...browser('table', at(START, 214, WIDTH, 690), 'zrima.app/pricing', (dir, w) => {
+        ...browser('table', at(START, 264, WIDTH, 680), '', (dir, w) => {
           // The views of the data at the start side, after the lights, and a search at the end.
           const views = [w2('טבלה', 'Table'), w2('לוח', 'Board'), w2('ציר זמן', 'Timeline')];
           return (
@@ -1551,13 +1584,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('team').placeholders,
         ...columns4.flatMap((start, i) => [
-          place(`p_person${i + 1}_photo`, 'image', at(start + 14, 250, 366, 340)),
-          place(`p_person${i + 1}`, 'subtitle', at(start + 30, 612, 344, 52), 'heading', {
+          place(`p_person${i + 1}_photo`, 'image', at(start + 14, 282, 366, 320)),
+          place(`p_person${i + 1}`, 'subtitle', at(start + 30, 622, 344, 52), 'heading', {
             vAlign: 'middle',
             color: token(i === 1 ? 'surface' : 'text'),
           }),
-          place(`p_person${i + 1}_role`, 'caption', at(start + 14, 682, 376, 34), 'caption'),
-          place(`p_person${i + 1}_body`, 'body', at(start + 14, 720, 376, 136), 'caption'),
+          place(`p_person${i + 1}_role`, 'caption', at(start + 14, 690, 376, 34), 'caption'),
+          place(`p_person${i + 1}_body`, 'body', at(start + 14, 728, 376, 136), 'caption'),
         ]),
         ...foot('team').placeholders,
       ],
@@ -1566,13 +1599,13 @@ function layouts(): Layout[] {
         ...head('team').decorations,
         presence('team'),
         ...panels(
-          columns4.map((start, i) => [`d_mutzar_team_card${i + 1}`, at(start, 236, 394, 636)]),
+          columns4.map((start, i) => [`d_mutzar_team_card${i + 1}`, at(start, 268, 394, 628)]),
           26,
         ),
         ...columns4.flatMap((start, i) => [
           rect(
             `d_mutzar_team_tag${i + 1}`,
-            at(start + 14, 608, 366, 60),
+            at(start + 14, 618, 366, 60),
             solid({ value: PEOPLE[i]! }),
             {
               effects: { radius: 14 },
@@ -1580,7 +1613,7 @@ function layouts(): Layout[] {
           ),
           drawing(
             `d_mutzar_team_arrow${i + 1}`,
-            at(start + 2, 594, 30, 36),
+            at(start + 2, 604, 30, 36),
             svg(
               30,
               36,
@@ -1710,10 +1743,8 @@ const sampleHe: SampleSlide[] = [
     name: 'פתיחה',
     content: {
       caption: [text('ערב ההשקה · Zrima 2.0'), text('נועה ברק, מנכ״לית · תל אביב · 8.12.2026')],
-      title: text('התפעול', 'על טייס אוטומטי'),
-      subtitle: text(
-        'Zrima 2.0 מחברת את כל המערכות של צוות התפעול, ומריצה בשבילכם את העבודה שחוזרת על עצמה.',
-      ),
+      title: text('התפעול', 'רץ לבד'),
+      subtitle: text('Zrima 2.0 מחברת את מערכות התפעול ומריצה את העבודה החוזרת.'),
     },
   },
   {
@@ -1722,7 +1753,7 @@ const sampleHe: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('חלק ראשון'),
-      title: text('מה חדש', 'בגרסה 2.0'),
+      title: text('מה חדש'),
       subtitle: text('שלוש יכולות שביקשתם, ואחת שלא ציפיתם לה.'),
     },
   },
@@ -1804,7 +1835,7 @@ const sampleHe: SampleSlide[] = [
         text('הבסיס'),
         text('בונה חדש ו-AI'),
         text('אפליקציה לנייד'),
-        text('תהליכים בין חברות'),
+        text('תהליכים משותפים'),
       ],
       body: [
         text('2025: ארבעים חיבורים ותהליכים פשוטים.'),
@@ -1969,9 +2000,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [text('Launch night · Zrima 2.0'), text('Noa Barak, CEO · Tel Aviv · 8 Dec 2026')],
       title: text('Ops on', 'autopilot'),
-      subtitle: text(
-        'Zrima 2.0 connects every tool your operations team uses, and runs the repetitive work for you.',
-      ),
+      subtitle: text('Zrima 2.0 connects your ops tools and runs the busywork.'),
     },
   },
   {
@@ -1980,8 +2009,8 @@ const sampleEn: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('Part one'),
-      title: text("What's new", 'in version 2.0'),
-      subtitle: text('Three things you asked for, and one surprise we saved for tonight.'),
+      title: text("What's new"),
+      subtitle: text('Three things you asked for, and one surprise.'),
     },
   },
   {
@@ -2064,7 +2093,7 @@ const sampleEn: SampleSlide[] = [
         text('Foundation'),
         text('Builder and AI'),
         text('Mobile app'),
-        text('Cross-company flows'),
+        text('Shared flows'),
       ],
       body: [
         text('2025: forty integrations, simple flows.'),

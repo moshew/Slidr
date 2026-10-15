@@ -1290,9 +1290,9 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...CARDS.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 44, CARD.top + 26, 436, 76), 'caption'),
-          place(`p_card${i + 1}`, 'subtitle', at(start + 44, CARD.top + 108, 436, 106), 'heading'),
-          place(`p_card${i + 1}_body`, 'body', at(start + 44, CARD.top + 222, 436, 210), 'body'),
+          place(`p_card${i + 1}_note`, 'caption', at(start + 44, CARD.top + 26, 452, 76), 'caption'),
+          place(`p_card${i + 1}`, 'subtitle', at(start + 44, CARD.top + 108, 452, 106), 'heading'),
+          place(`p_card${i + 1}_body`, 'body', at(start + 44, CARD.top + 222, 452, 210), 'body'),
         ]),
         place('p_takeaway', 'body', at(START + 70, 816, WIDTH - 70, 90), 'body', { vAlign: 'middle' }),
         ...foot('cards').placeholders,
@@ -1434,9 +1434,9 @@ function layouts(): Layout[] {
         ...head('team').placeholders,
         ...PEOPLE.flatMap((start, i) => [
           place(`p_person${i + 1}_photo`, 'image', at(start, PORTRAIT.top, PORTRAIT.w, PORTRAIT.w)),
-          place(`p_person${i + 1}`, 'subtitle', at(start, 690, PORTRAIT.w, 53), 'heading'),
-          place(`p_person${i + 1}_role`, 'caption', at(start, 746, PORTRAIT.w, 34), 'caption'),
-          place(`p_person${i + 1}_body`, 'body', at(start, 786, PORTRAIT.w, 102), 'caption'),
+          place(`p_person${i + 1}`, 'subtitle', at(start, 690, PORTRAIT.w + 24, 53), 'heading'),
+          place(`p_person${i + 1}_role`, 'caption', at(start, 746, PORTRAIT.w + 24, 34), 'caption'),
+          place(`p_person${i + 1}_body`, 'body', at(start, 786, PORTRAIT.w + 24, 102), 'caption'),
         ]),
         ...foot('team').placeholders,
       ],
