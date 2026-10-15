@@ -1,4 +1,4 @@
-# ADR-090 — The event magnets are shown from pictures made ahead
+# ADR-093 — The event magnets are shown from pictures made ahead
 
 Status: Implemented in the 2026-10-13 working tree; **not committed** at the time of this record. It replaces the loading state of the magnets' list, and changes how the panel shows the magnets of [ADR-083](ADR-083-event-magnets.md) and [ADR-087](ADR-087-magnets-labels-and-sets.md). What a magnet is on a slide is not changed.
 

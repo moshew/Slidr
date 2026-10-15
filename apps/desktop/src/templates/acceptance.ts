@@ -346,7 +346,7 @@ const COVERS = new Set(
  * others do not (`OPTIONAL` of the role contract). On a template without the seat a photo stays
  * where it was, as nothing is deleted by a switch, and the lint reports the contrast of the text
  * under it: the text of the other template's cards that lands on the marketing cards' photos,
- * and the words of the new layout's own drawing (`Layout.objects`, ADR-091) that a cover photo
+ * and the words of the new layout's own drawing (`Layout.objects`, ADR-094) that a cover photo
  * now lies over. Those copies are named after their slide.
  */
 export const knownSwitchError = (

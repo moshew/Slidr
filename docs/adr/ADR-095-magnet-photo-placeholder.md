@@ -1,4 +1,4 @@
-# ADR-092 — A magnet's photograph is an object of its own, on its card
+# ADR-095 — A magnet's photograph is an object of its own, on its card
 
 Status: Implemented in the 2026-10-14 working tree; **not committed** at the time of this record. It changes what a magnet of [ADR-083](ADR-083-event-magnets.md) is on a slide. The other photo frames, plain and decorated ([ADR-086](ADR-086-frames-keep-their-artwork.md)), are not changed.
 

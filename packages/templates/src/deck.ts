@@ -67,7 +67,7 @@ export function applyTemplate(deck: Deck, template: Template): Command[] {
     const from = deck.layouts.find((layout) => layout.id === slide.layoutId);
     if (!from) {
       const adopted = adoptLayout(slide, next, deck.meta.dir);
-      // Such a slide was designed as a whole: it takes no objects of the layout (ADR-091).
+      // Such a slide was designed as a whole: it takes no objects of the layout (ADR-094).
       if (adopted) {
         adopting.push({ slideId: slide.id, to: adopted.layout, updates: adopted.updates });
       }

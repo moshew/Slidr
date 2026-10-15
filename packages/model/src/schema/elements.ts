@@ -102,7 +102,7 @@ const ImageMask = z.discriminatedUnion('kind', [
   }),
   /**
    * The window of a card that the photograph shows through, the window going where the
-   * photograph goes (a magnet's photograph, ADR-092). `markup` is the card, an SVG that lays
+   * photograph goes (a magnet's photograph, ADR-095). `markup` is the card, an SVG that lays
    * itself out: the photograph shows wherever it does not paint. The photograph is the card's
    * `opening`: the card around it is laid out at `scale` (slide pixels to a unit of `viewBox`)
    * with its margins as they are, and drawn smaller only around a photograph smaller than the

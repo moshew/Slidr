@@ -5,7 +5,7 @@ import type { Template } from '../template';
 import { builtInAvailable, builtInTemplates, tzukTemplate } from './index';
 import { at, pageNumber, rect, solid, token, withObjects } from './kit';
 
-/* What of a built-in layout becomes the slide's own (`withObjects`, ADR-091). */
+/* What of a built-in layout becomes the slide's own (`withObjects`, ADR-094). */
 
 const ids = (elements: readonly Element[] = []) => elements.map((element) => element.id);
 

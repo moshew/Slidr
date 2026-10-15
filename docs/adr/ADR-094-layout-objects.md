@@ -1,4 +1,4 @@
-# ADR-091 — The objects of a layout are the slide's
+# ADR-094 — The objects of a layout are the slide's
 
 Status: Implemented in the 2026-10-14 working tree, first for the Zerem template as a trial and then, at the user's request, for all twenty-one; **not committed** at the time of this record. This extends the template engine in [ADR-023](ADR-023-template-engine.md) and the built-in catalog in [ADR-076](ADR-076-template-layouts.md).
 

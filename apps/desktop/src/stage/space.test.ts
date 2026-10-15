@@ -709,7 +709,7 @@ describe('resizeGroup', () => {
       expect(out.get('sticker')).toEqual({ frame: { x: 680, y: 15, w: 100, h: 75 } });
     });
 
-    describe('with its card an element of its own, under the photograph (ADR-092)', () => {
+    describe('with its card an element of its own, under the photograph (ADR-095)', () => {
       const window = {
         kind: 'window' as const,
         markup: '<svg/>',

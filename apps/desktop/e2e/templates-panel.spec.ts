@@ -72,7 +72,7 @@ test('a new deck opens on the default template, and File > New does too', async 
   expect(started.theme.id).toBe('zerem');
   expect(started.slides).toHaveLength(1);
   expect(started.slides[0]!.layoutId).toBe('l_zerem_hero');
-  // After the layout's objects (ADR-091), an element for each placeholder.
+  // After the layout's objects (ADR-094), an element for each placeholder.
   const hero = started.layouts.find((l) => l.id === 'l_zerem_hero')!;
   const seated = started.slides[0]!.elements.slice(hero.objects?.length ?? 0);
   expect(seated.map((e) => e.role)).toEqual([
@@ -118,7 +118,7 @@ test('the text layout creates a slide with only its requested content', async ({
   ).toHaveCount(0);
   await page.getByTestId('layout-choices').locator('[data-layout="l_zerem_text"]').click();
   const now = await deck(page);
-  // The layout's objects come first (ADR-091); its placeholders give a title and a body only.
+  // The layout's objects come first (ADR-094); its placeholders give a title and a body only.
   const text = now.layouts.find((l) => l.id === 'l_zerem_text')!;
   const seated = now.slides[1]!.elements.slice(text.objects?.length ?? 0);
   expect(seated.map((element) => element.role)).toEqual(['title', 'body']);

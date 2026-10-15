@@ -485,7 +485,7 @@ export function frameSizeOn(frame: PhotoFrame, slide: Size): Size {
 }
 
 /*
- * A magnet's card and its photograph are two elements (ADR-092). The card's drawing has a window
+ * A magnet's card and its photograph are two elements (ADR-095). The card's drawing has a window
  * for the photograph, cut by its mask `border`: the card in white, the window in black
  * (`frames-magnets/kit.mjs`). On a slide the card lies under the photograph with its window
  * filled, so the photograph can be moved and sized on it like any picture. The photograph is cut

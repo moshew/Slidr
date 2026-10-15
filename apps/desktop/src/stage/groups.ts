@@ -285,7 +285,7 @@ function besidePicture(
 }
 
 /**
- * The children of a magnet whose card is an element of its own (ADR-092), stretched by `kx` and
+ * The children of a magnet whose card is an element of its own (ADR-095), stretched by `kx` and
  * `ky`. The card takes the stretch and keeps its artwork's size; the photograph goes with the
  * opening as a part of the artwork does (`placedAround`): one that fills it grows with it. What
  * stands beside them follows its part of the card (`besidePicture`).

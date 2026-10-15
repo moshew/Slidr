@@ -131,7 +131,7 @@ describe('tool definitions for a transport adapter', () => {
 
   it('do not copy the element schema twice', () => {
     const add = listing.find((t) => t.name === 'element_add')!;
-    // Raised from 30 KB for the card of a magnet and the window of its photograph (ADR-092).
+    // Raised from 30 KB for the card of a magnet and the window of its photograph (ADR-095).
     expect(JSON.stringify(add.inputSchema).length).toBeLessThan(31_000);
   });
 
@@ -139,7 +139,7 @@ describe('tool definitions for a transport adapter', () => {
     const total = JSON.stringify(listing).length;
     // About 98 KB (25k tokens) with every service. Raised from 90 KB for text_replace (ADR-072),
     // from 93 KB for a picture's outline mask and the artwork of its frame, from 95 KB for the
-    // card of a magnet and the window of its photograph (ADR-092), and from 97 KB for the motion
+    // card of a magnet and the window of its photograph (ADR-095), and from 97 KB for the motion
     // an import carries over and a new slide gets by default (ADR-092).
     expect(total).toBeLessThan(98_000);
   });
