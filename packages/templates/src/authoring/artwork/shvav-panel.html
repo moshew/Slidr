@@ -147,9 +147,9 @@
   scene.add(rim);
 
   // Low over the near corner of the first panel, looking down the line.
-  const target = new THREE.Vector3(num('tx', -40), num('ty', -6), num('tz', 6));
-  const camera = new THREE.PerspectiveCamera(num('fov', 24), W / H, 2, 6000);
-  camera.position.set(num('cx', -190), num('cy', 50), num('cz', 120));
+  const target = new THREE.Vector3(num('tx', -20), num('ty', -6), num('tz', 0));
+  const camera = new THREE.PerspectiveCamera(num('fov', 19), W / H, 2, 6000);
+  camera.position.set(num('cx', -200), num('cy', 46), num('cz', 110));
   camera.lookAt(target);
   camera.updateMatrixWorld();
   // The lamps of the hall, far beyond the lines, where the frame is empty.

@@ -1360,9 +1360,9 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('comparison').placeholders,
         ...SIDES.flatMap(([side, start]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 56, BOARD_TOP + 150, 680, 34), 'caption'),
-          place(`p_${side}`, 'subtitle', at(start + 56, BOARD_TOP + 192, 712, 106), 'heading'),
-          place(`p_${side}_body`, 'body', at(start + 56, BOARD_TOP + 302, 712, 350), 'body'),
+          place(`p_${side}_tag`, 'caption', at(start + 60, BOARD_TOP + 150, 680, 34), 'caption'),
+          place(`p_${side}`, 'subtitle', at(start + 60, BOARD_TOP + 192, 708, 106), 'heading'),
+          place(`p_${side}_body`, 'body', at(start + 60, BOARD_TOP + 302, 708, 350), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1551,7 +1551,7 @@ const sampleHe: SampleSlide[] = [
       title: text('מה בסקירה'),
       body: {
         paragraphs: [
-          para('הסקירה עונה על ארבע שאלות. אם התשובה לכולן חיובית, עוברים ל-DVT כבר באפריל.'),
+          para('ארבע שאלות מחליטות אם עוברים ל-DVT באפריל:'),
           ...bullets(
             'האם תקציב ההספק מחזיק עשר שנים, גם בחורף קר',
             'כמה עולה לוח אחד בכמות של 10,000 יחידות',
@@ -1604,9 +1604,9 @@ const sampleHe: SampleSlide[] = [
       image: { assetId: pictures.shvavBoard.id },
       subtitle: [text('בקר ורדיו בשבב אחד'), text('ארבע שכבות במקום שש'), text('ציפוי נגד לחות')],
       body: [
-        text('רדיו LoRa מובנה חוסך שבב, שני גבישים ו-9µA בממוצע.'),
-        text('הניתוב החדש הוריד את עלות הלוח ב-31%, בלי לפגוע באנטנה.'),
-        text('המונה יושב בבור רטוב כל השנה, והלוח צריך לשרוד את זה.'),
+        text('הרדיו המובנה חוסך שבב, שני גבישים ו-9µA.'),
+        text('ניתוב חדש הוריד 31% מעלות הלוח, בלי לפגוע באנטנה.'),
+        text('המונה חי בבור רטוב, כל השנה.'),
       ],
       footer: FOOTER_HE,
     },
@@ -1615,15 +1615,15 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_shvav_timeline',
     name: 'הדרך לייצור',
     content: {
-      caption: [text('הדרך לייצור'), text('כל מעבר שלב מותנה בתקציב ההספק ובבדיקות האמינות.')],
+      caption: [text('הדרך לייצור'), text('כל מעבר שלב מותנה בתקציב ההספק ובאמינות.')],
       title: text('מ-EVT לייצור סדרתי'),
       number: [text('EVT'), text('DVT'), text('PVT'), text('MP')],
       subtitle: [text('אב־טיפוס הנדסי'), text('אימות התכנון'), text('אימות הייצור'), text('ייצור סדרתי')],
       body: [
-        text('ינואר 2027', '60 מונים בפיילוט'),
-        text('אפריל 2027', '200 יחידות למאמץ ולאקלים'),
-        text('יוני 2027', '1,000 יחידות מקו הייצור'),
-        text('ספטמבר 2027', '10,000 מונים ברבעון'),
+        text('ינואר 2027', '60 מונים בשטח'),
+        text('אפריל 2027', '200 יחידות למבחני מאמץ'),
+        text('יוני 2027', '1,000 יחידות מהקו'),
+        text('ספטמבר 2027', '10,000 ברבעון'),
       ],
       footer: FOOTER_HE,
     },
@@ -1783,7 +1783,7 @@ const sampleEn: SampleSlide[] = [
       title: text('What this review covers'),
       body: {
         paragraphs: [
-          para('This review answers four questions. If every answer is yes, we move on to DVT in April.'),
+          para('Four questions decide whether we move on to DVT in April:'),
           ...bullets(
             'Does the power budget hold ten years, even in winter',
             'What one board costs at 10,000 units',
@@ -1819,7 +1819,7 @@ const sampleEn: SampleSlide[] = [
       title: text('Who draws what'),
       subtitle: [text('An MCU that sleeps'), text('A radio, once a day'), text('No-contact sensing')],
       body: [
-        text('Wakes for 40 ms every 15 minutes.'),
+        text('Wakes for 40 ms, then sleeps for 15 minutes.'),
         text('One message a day, 1.2 s on air.'),
         text('Ultrasound, with no parts to wear.'),
         text('Together: a hundredth of one LED left on.'),
@@ -1836,9 +1836,9 @@ const sampleEn: SampleSlide[] = [
       image: { assetId: pictures.shvavBoard.id },
       subtitle: [text('MCU and radio in one chip'), text('Four layers, not six'), text('A coat against the damp')],
       body: [
-        text('A built-in LoRa radio saves a chip, two crystals and 9 µA on average.'),
-        text('The new routing cut the cost of the board by 31%, with no loss at the antenna.'),
-        text('The meter sits in a wet pit all year, and the board has to survive it.'),
+        text('The built-in radio saves a chip, two crystals and 9 µA.'),
+        text('New routing cut the board cost by 31%, antenna intact.'),
+        text('The meter lives in a wet pit, all year round.'),
       ],
       footer: FOOTER_EN,
     },
@@ -1847,15 +1847,15 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_shvav_timeline',
     name: 'The road to production',
     content: {
-      caption: [text('The road to production'), text('Every gate depends on the power budget and the reliability tests.')],
+      caption: [text('The road to production'), text('Each gate depends on the power budget and reliability.')],
       title: text('From EVT to mass production'),
       number: [text('EVT'), text('DVT'), text('PVT'), text('MP')],
       subtitle: [text('Engineering build'), text('Design validation'), text('Production validation'), text('Mass production')],
       body: [
-        text('January 2027', '60 meters in a pilot'),
-        text('April 2027', '200 units for stress tests'),
-        text('June 2027', '1,000 units off the line'),
-        text('September 2027', '10,000 meters a quarter'),
+        text('January 2027', '60 meters in the field'),
+        text('April 2027', '200 stress-test units'),
+        text('June 2027', '1,000 off the line'),
+        text('September 2027', '10,000 a quarter'),
       ],
       footer: FOOTER_EN,
     },

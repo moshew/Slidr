@@ -1568,7 +1568,8 @@ function layouts(): Layout[] {
           color: token('primary'),
         }),
         place('p_kicker', 'caption', at(AFTER, 372, 760, 34), 'caption'),
-        place('p_title', 'title', at(START, 422, 820, 262), 'display'),
+        // A title of one line sits midway between its kicker and its subtitle; one of two fills the box.
+        place('p_title', 'title', at(START, 422, 820, 262), 'display', { vAlign: 'middle' }),
         place('p_subtitle', 'subtitle', at(START, 708, 800, 140), 'heading'),
       ],
       decorations: [
@@ -1954,7 +1955,7 @@ function layouts(): Layout[] {
             `<g transform="translate(${x0} 6)">${inner(a.markup)}</g><g transform="translate(${x0 + a.w + gap} 6)">${inner(b.markup)}</g>`,
           );
         }),
-        node('d_anan_table_note_node', at(START + WIDTH - 500 - 40, 150, 26, 26).x === 0 ? 0 : END + 500 + 14, 150, TEAL),
+        node('d_anan_table_note_node', 1920 - END - 500 - 12 - 26, 150, TEAL),
         ...foot('table').decorations,
       ],
     },
@@ -2082,8 +2083,8 @@ const sampleHe: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('חלק ראשון'),
-      title: text('אזור אחד,', 'סיכון אחד'),
-      subtitle: text('כל תקלה באזור היחיד שלנו עצרה את כל התשלומים, גם כשהיא לא הייתה שלנו.'),
+      title: text('אזור אחד'),
+      subtitle: text('תקלה אחת שם עצרה את כל התשלומים.'),
     },
   },
   {
@@ -2117,7 +2118,7 @@ const sampleHe: SampleSlide[] = [
       title: text('שלושה חודשים בלי לעצור'),
       number: [text('99.995%'), text('0 דק׳'), text('−38%'), text('3')],
       subtitle: text('זמינות התשלומים מאז המעבר'),
-      body: text('פחות משבע דקות של שירות חלקי ב-90 ימים, ואף תשלום לא נדחה בגללן.'),
+      body: text('פחות משבע דקות של שירות חלקי ב-90 ימים.'),
       footer: FOOTER_HE,
     },
   },
@@ -2229,7 +2230,7 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_anan_table',
     name: 'האזורים',
     content: {
-      caption: [text('האזורים'), text('ממוצעים של 30 הימים האחרונים, נכון ל-10 בינואר 2027.')],
+      caption: [text('האזורים'), text('ממוצעי 30 יום, נכון ל-10 בינואר 2027.')],
       title: text('שלושה אזורים במספרים'),
       footer: FOOTER_HE,
     },
@@ -2309,7 +2310,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [text('Nativ Pay · Platform team'), text('Architecture review · 14 January 2027')],
       title: text('Payments in', '3 regions'),
-      subtitle: text('How we moved the payments core to three cloud regions without a minute of downtime'),
+      subtitle: text('Moving the payments core to three regions, with zero downtime'),
     },
   },
   {
@@ -2318,8 +2319,8 @@ const sampleEn: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('Part one'),
-      title: text('One region,', 'one risk'),
-      subtitle: text('Every outage in our single region stopped every payment, even when it was not ours.'),
+      title: text('One region'),
+      subtitle: text('One outage there stopped every payment.'),
     },
   },
   {
@@ -2353,7 +2354,7 @@ const sampleEn: SampleSlide[] = [
       title: text('Three months without a stop'),
       number: [text('99.995%'), text('0 min'), text('−38%'), text('3')],
       subtitle: text('Availability since the move'),
-      body: text('Under seven minutes of partial service in 90 days, and not one payment declined for it.'),
+      body: text('Under seven minutes of partial service in 90 days.'),
       footer: FOOTER_EN,
     },
   },

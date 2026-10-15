@@ -65,7 +65,7 @@ function hackathon(lang: Lang): Slide {
         ],
         button: 'רשמו צוות  ←',
         // the dates isolated left to right, or the bidi algorithm turns 21–23 around
-        when: '\u206621–23.1.2027\u2069  ·  האנגר 11, נמל יפו',
+        when: '\u206621–23.1.2027\u2069  ·  האנגר 2, נמל יפו',
       }
     : {
         kicker: 'HACKATHON  ·  3RD EDITION  ·  JAFFA PORT',
@@ -77,7 +77,7 @@ function hackathon(lang: Lang): Slide {
           ['40', 'mentors'],
         ],
         button: 'Register your team  →',
-        when: '21–23.1.2027  ·  Hangar 11, Jaffa Port',
+        when: '21–23.1.2027  ·  Hangar 2, Jaffa Port',
       };
   const columns = he
     ? ([
@@ -491,18 +491,18 @@ function modelrelease(lang: Lang): Slide {
   const copy = he
     ? {
         kicker: 'השקת מודל  ·  משקלים פתוחים',
-        title: ['סלע 2 חושב', 'קודם כול בעברית.'],
+        title: ['שקד 2 חושב', 'קודם כול בעברית.'],
         lead: ['70 מיליארד פרמטרים ו־4 טריליון טוקנים של אימון,', 'שליש מהם בעברית. חופשי לשימוש מחקרי.'],
-        legend: ['סלע 2', 'סלע 1'],
+        legend: ['שקד 2', 'שקד 1'],
         rows: ['שאלות בעברית', 'הסקה', 'קוד', 'מתמטיקה'],
         button: 'לקריאת המאמר  ←',
         note: ['API ומשקלים', 'מ־3.2.2027'],
       }
     : {
         kicker: 'MODEL RELEASE  ·  OPEN WEIGHTS',
-        title: ['Sela 2 reasons', 'in Hebrew first.'],
+        title: ['Shaked 2 reasons', 'in Hebrew first.'],
         lead: ['70 billion parameters, 4 trillion training tokens,', 'a third of them in Hebrew. Free for research.'],
-        legend: ['Sela 2', 'Sela 1'],
+        legend: ['Shaked 2', 'Shaked 1'],
         rows: ['Hebrew QA', 'Reasoning', 'Code', 'Math'],
         button: 'Read the paper  →',
         note: ['API and weights', 'from 3.2.2027'],

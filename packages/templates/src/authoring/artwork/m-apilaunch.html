@@ -56,9 +56,9 @@
     <div class="card dark" style="left:150px; top:210px; width:760px; height:500px; transform: translateZ(0px);">
       <div class="bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span>
         <span class="file">checkout.ts</span><span class="tab">TypeScript · SDK 3.0</span></div>
-<pre><span class="ln">1</span><span class="k">import</span> { <span class="f">Meridian</span> } <span class="k">from</span> <span class="s">'@meridian/sdk'</span>;
+<pre><span class="ln">1</span><span class="k">import</span> { <span class="f">Tavlo</span> } <span class="k">from</span> <span class="s">'@tavlo/sdk'</span>;
 <span class="ln">2</span>
-<span class="ln">3</span><span class="k">const</span> api = <span class="k">new</span> <span class="f">Meridian</span>({ version: <span class="s">'3'</span> });
+<span class="ln">3</span><span class="k">const</span> api = <span class="k">new</span> <span class="f">Tavlo</span>({ version: <span class="s">'3'</span> });
 <span class="ln">4</span>
 <span class="hl"><span class="ln">5</span><span class="k">const</span> order = <span class="k">await</span> api.orders.<span class="f">create</span>({</span><span class="ln">6</span>  items: [{ sku: <span class="s">'TLV-204'</span>, qty: <span class="n">2</span> }],
 <span class="ln">7</span>  region: <span class="s">'il-central'</span>,
@@ -71,7 +71,7 @@
     <!-- the terminal, in front -->
     <div class="card dark" style="left:40px; top:690px; width:520px; height:200px; transform: translateZ(170px);">
       <div class="bar" style="height:48px"><span class="dot" style="background:#3A3F5C"></span><span class="dot" style="background:#3A3F5C"></span><span class="dot" style="background:#3A3F5C"></span><span class="file" style="font-size:17px">zsh</span></div>
-<pre style="font-size:20px; padding:20px 30px"><span class="p">$</span> npm i @meridian/sdk@3
+<pre style="font-size:20px; padding:20px 30px"><span class="p">$</span> npm i @tavlo/sdk@3
 <span style="color:#7EE787">✓</span> added 1 package in 1.2s
 <span class="p">$</span> <span style="display:inline-block; width:11px; height:22px; background:#DADDF0; vertical-align:-3px"></span></pre>
       <div class="sheen"></div>
