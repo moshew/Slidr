@@ -9,8 +9,19 @@ export interface Authored {
   samples: { he: SampleSlide[]; en: SampleSlide[] };
 }
 
+// Not the modules that build, check or describe the templates, nor an author's local scratch files
+// (`*.local.ts`), which may use Node and would stop the review page.
 const modules = import.meta.glob<{ entry?: Authored }>(
-  ['./*.ts', '!./registry.ts', '!./pictures.ts', '!./legacyCatalog.ts', '!./catalog.ts'],
+  [
+    './*.ts',
+    '!./registry.ts',
+    '!./pictures.ts',
+    '!./catalog.ts',
+    '!./check.ts',
+    '!./legacyCatalog.ts',
+    '!./*.local.ts',
+    '!./*.d.ts',
+  ],
   { eager: true },
 );
 

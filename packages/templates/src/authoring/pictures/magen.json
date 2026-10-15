@@ -1,0 +1,68 @@
+{
+  "magenThreatmap": {
+    "id": "88588c93dc88bb5da5065e515121153c2ba7b408fd1780b9af780ca0ec415a29",
+    "file": "88588c93dc88bb5da5065e515121153c2ba7b408fd1780b9af780ca0ec415a29.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 397026,
+    "width": 3840,
+    "height": 1424,
+    "origin": "import",
+    "name": "magen-threatmap.webp"
+  },
+  "magenTriage": {
+    "id": "a06753ae5f1f8e325790ddd55cde5f56da06e29f377a646f5655dd16f9987fbe",
+    "file": "a06753ae5f1f8e325790ddd55cde5f56da06e29f377a646f5655dd16f9987fbe.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 113714,
+    "width": 1400,
+    "height": 1440,
+    "origin": "import",
+    "name": "magen-triage.webp"
+  },
+  "magenTeam1": {
+    "id": "41a0ea571e978da1eb33c39c5cdca7cf0b723a1342279053dca3af72f0b78ff0",
+    "file": "41a0ea571e978da1eb33c39c5cdca7cf0b723a1342279053dca3af72f0b78ff0.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 19002,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "magen-team-1.webp"
+  },
+  "magenTeam2": {
+    "id": "080b130502a0940457eaaca044ac84345138e04a6eca58363b140d4b05cc2c73",
+    "file": "080b130502a0940457eaaca044ac84345138e04a6eca58363b140d4b05cc2c73.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 20106,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "magen-team-2.webp"
+  },
+  "magenTeam3": {
+    "id": "32f84fa616c52876da9a9dd677e4cf02743125969da22b90d77f91c04c007fcc",
+    "file": "32f84fa616c52876da9a9dd677e4cf02743125969da22b90d77f91c04c007fcc.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 16492,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "magen-team-3.webp"
+  },
+  "magenTeam4": {
+    "id": "86b8d0095366a29b27d2f94b2ce788584b2a9630e7b6d21ddaf79c33250cea9a",
+    "file": "86b8d0095366a29b27d2f94b2ce788584b2a9630e7b6d21ddaf79c33250cea9a.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 25284,
+    "width": 614,
+    "height": 614,
+    "origin": "ai",
+    "name": "magen-team-4.webp"
+  }
+}

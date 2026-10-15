@@ -1,0 +1,677 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="fonts.css" />
+    <style>
+      @font-face {
+        font-family: 'Assistant';
+        src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/assistant/files/assistant-hebrew-wght-normal.woff2')
+          format('woff2');
+        font-weight: 200 800;
+        unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+      }
+      @font-face {
+        font-family: 'Assistant';
+        src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/assistant/files/assistant-latin-wght-normal.woff2')
+          format('woff2');
+        font-weight: 200 800;
+        unicode-range: U+0000-00FF;
+      }
+      @font-face {
+        font-family: 'Rubik';
+        src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/rubik/files/rubik-hebrew-wght-normal.woff2')
+          format('woff2');
+        font-weight: 300 900;
+        unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        src: url('/home/user/Slidr/apps/desktop/node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2')
+          format('woff2');
+        font-weight: 100 1000;
+      }
+      :root {
+        --coral: #f4512f;
+        --violet: #6f5ef0;
+        --mint: #12a073;
+        --amber: #ffb547;
+        --ink: #18171d;
+        --muted: #6e6b75;
+        --line: rgba(24, 23, 29, 0.08);
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1728px;
+        height: 568px;
+        overflow: hidden;
+      }
+      body {
+        font-family: Inter, Assistant, sans-serif;
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+        position: relative;
+        background:
+          radial-gradient(
+            42% 70% at 50% 18%,
+            rgba(255, 252, 248, 0.95),
+            rgba(255, 252, 248, 0) 70%
+          ),
+          radial-gradient(40% 90% at 12% 80%, rgba(244, 81, 47, 0.22), transparent 70%),
+          radial-gradient(40% 90% at 90% 70%, rgba(111, 94, 240, 0.18), transparent 70%),
+          linear-gradient(90deg, #fbe7dd, #f6f1ea 50%, #ece8fa);
+      }
+      [dir='rtl'] body {
+        font-family: Assistant, Inter, sans-serif;
+      }
+      .dots {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(24, 23, 29, 0.13) 1.2px, transparent 1.5px);
+        background-size: 26px 26px;
+        -webkit-mask: radial-gradient(60% 90% at 50% 40%, #000, transparent 85%);
+        mask: radial-gradient(60% 90% at 50% 40%, #000, transparent 85%);
+      }
+      .stage {
+        position: absolute;
+        inset: 0;
+        perspective: 2300px;
+        perspective-origin: 50% 0%;
+      }
+      .win {
+        position: absolute;
+        left: 50%;
+        top: 58px;
+        width: 1180px;
+        height: 760px;
+        margin-left: -590px;
+        background: #fff;
+        border-radius: 22px;
+        border: 1px solid rgba(24, 23, 29, 0.07);
+        transform: rotateX(24deg) rotateZ(-4deg) translateZ(0);
+        transform-origin: 50% 0;
+        box-shadow:
+          0 2px 4px rgba(59, 36, 20, 0.04),
+          0 40px 80px rgba(59, 36, 20, 0.16),
+          0 90px 140px rgba(59, 36, 20, 0.12);
+        overflow: hidden;
+      }
+      [dir='rtl'] .win {
+        transform: rotateX(24deg) rotateZ(4deg);
+      }
+      .bar {
+        height: 46px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        padding: 0 18px;
+        gap: 8px;
+        position: relative;
+      }
+      .bar i {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: block;
+      }
+      .url {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #f6f4ef;
+        border-radius: 999px;
+        padding: 5px 60px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .app {
+        display: flex;
+        height: calc(100% - 47px);
+      }
+      .side {
+        width: 210px;
+        border-inline-end: 1px solid var(--line);
+        padding: 18px 14px;
+        box-sizing: border-box;
+        background: #fcfbf9;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-family: 'DM Sans', Rubik, sans-serif;
+        font-weight: 700;
+        font-size: 18px;
+        margin-bottom: 22px;
+        padding-inline-start: 6px;
+      }
+      .brand b {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: var(--coral);
+        display: grid;
+        place-items: center;
+      }
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        border-radius: 10px;
+        font-size: 14px;
+        color: #4b4952;
+        margin-bottom: 3px;
+      }
+      [dir='rtl'] .nav {
+        font-size: 15.5px;
+      }
+      .nav.on {
+        background: rgba(244, 81, 47, 0.1);
+        color: var(--coral);
+        font-weight: 600;
+      }
+      .nav .n {
+        margin-inline-start: auto;
+        background: var(--coral);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 1px 7px;
+        border-radius: 999px;
+      }
+      .main {
+        flex: 1;
+        padding: 22px 26px;
+        box-sizing: border-box;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .head h1 {
+        margin: 0;
+        font-family: 'DM Sans', Rubik, sans-serif;
+        font-size: 25px;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+      }
+      .head .date {
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+      .search {
+        margin-inline-start: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 7px 10px;
+        width: 210px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .search kbd {
+        margin-inline-start: auto;
+        font: 600 11px Inter;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 1px 5px;
+        background: #f6f4ef;
+      }
+      .new {
+        background: var(--ink);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 14px;
+        border-radius: 10px;
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+      .kpi {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px 16px;
+      }
+      .kpi .l {
+        font-size: 12.5px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      [dir='rtl'] .kpi .l {
+        font-size: 14px;
+      }
+      .kpi .v {
+        font-family: 'DM Sans', Rubik, sans-serif;
+        font-size: 30px;
+        font-weight: 700;
+        margin-top: 6px;
+        letter-spacing: -0.5px;
+      }
+      .kpi .d {
+        font-family: Inter, Assistant, sans-serif;
+        font-size: 11.5px;
+        font-weight: 700;
+        margin-inline-start: 8px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        vertical-align: 5px;
+        letter-spacing: 0;
+      }
+      [dir='rtl'] .kpi .d {
+        font-size: 12.5px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 14px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px 16px;
+        height: 330px;
+        box-sizing: border-box;
+      }
+      .card h3 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      [dir='rtl'] .card h3 {
+        font-size: 15.5px;
+      }
+      .wf {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      [dir='rtl'] .wf {
+        font-size: 14.5px;
+      }
+      .wf .ic {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+      }
+      .chip {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        margin-inline-start: auto;
+      }
+      [dir='rtl'] .chip {
+        font-size: 12px;
+      }
+      .runs {
+        width: 54px;
+        text-align: end;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .float {
+        position: absolute;
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid rgba(24, 23, 29, 0.06);
+        box-shadow:
+          0 2px 4px rgba(59, 36, 20, 0.05),
+          0 24px 50px rgba(59, 36, 20, 0.16);
+      }
+      .appr {
+        left: 92px;
+        top: 236px;
+        width: 318px;
+        padding: 16px 18px;
+        transform: rotate(-3deg);
+      }
+      [dir='rtl'] .appr {
+        left: auto;
+        right: 92px;
+        transform: rotate(3deg);
+      }
+      .appr .t {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--amber);
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      [dir='rtl'] .appr .t {
+        font-size: 13.5px;
+        letter-spacing: 0;
+        color: #c98317;
+      }
+      .appr .who {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 12px 0 14px;
+      }
+      .av {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+      }
+      .appr .who b {
+        display: block;
+        font-size: 15px;
+      }
+      [dir='rtl'] .appr .who b {
+        font-size: 16.5px;
+      }
+      .appr .who span {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      [dir='rtl'] .appr .who span {
+        font-size: 14px;
+      }
+      .btns {
+        display: flex;
+        gap: 8px;
+      }
+      .btns div {
+        flex: 1;
+        text-align: center;
+        padding: 8px 0;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      [dir='rtl'] .btns div {
+        font-size: 14.5px;
+      }
+      .agent {
+        right: 76px;
+        top: 262px;
+        width: 336px;
+        padding: 16px 18px;
+        transform: rotate(2.5deg);
+      }
+      [dir='rtl'] .agent {
+        right: auto;
+        left: 84px;
+        transform: rotate(-2.5deg);
+      }
+      .agent .t {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--violet);
+      }
+      [dir='rtl'] .agent .t {
+        font-size: 14.5px;
+      }
+      .agent p {
+        margin: 10px 0 12px;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      [dir='rtl'] .agent p {
+        font-size: 15.5px;
+      }
+      .bars {
+        display: flex;
+        gap: 5px;
+        align-items: flex-end;
+        height: 34px;
+      }
+      .bars i {
+        flex: 1;
+        border-radius: 4px 4px 2px 2px;
+        background: rgba(111, 94, 240, 0.22);
+        display: block;
+      }
+      .toast {
+        right: 236px;
+        top: 46px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px 12px 12px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 600;
+        transform: rotate(1.5deg);
+      }
+      [dir='rtl'] .toast {
+        right: auto;
+        left: 236px;
+        padding: 12px 12px 12px 16px;
+        font-size: 15.5px;
+        transform: rotate(-1.5deg);
+      }
+      .ok {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--mint);
+        display: grid;
+        place-items: center;
+      }
+      .kchip {
+        left: 236px;
+        top: 74px;
+        padding: 12px 16px;
+        border-radius: 14px;
+        transform: rotate(-2deg);
+      }
+      [dir='rtl'] .kchip {
+        left: auto;
+        right: 236px;
+        transform: rotate(2deg);
+      }
+      .kchip .l {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      [dir='rtl'] .kchip .l {
+        font-size: 13.5px;
+      }
+      .kchip .v {
+        font-family: 'DM Sans', Rubik, sans-serif;
+        font-size: 26px;
+        font-weight: 700;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .kchip .v span {
+        font-family: Inter;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--mint);
+      }
+      .cur {
+        position: absolute;
+      }
+      .cur span {
+        position: absolute;
+        top: 22px;
+        inset-inline-start: 16px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 4px 9px;
+        border-radius: 8px;
+        white-space: nowrap;
+      }
+      [dir='rtl'] .cur svg {
+        transform: scaleX(-1);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dots"></div>
+    <div class="stage"><div class="win" id="win"></div></div>
+    <div id="floats"></div>
+    <script>
+      const he = location.search.includes('lang=he');
+      document.documentElement.dir = he ? 'rtl' : 'ltr';
+      const L = (en, h) => (he ? h : en);
+      const I = {
+        home: '<path d="M3 11 12 4l9 7v9H3z"/><path d="M9 20v-6h6v6"/>',
+        flow: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h3.5a3 3 0 0 1 3 3V14"/>',
+        inbox: '<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/>',
+        chart: '<path d="M4 20h17M7 16v-5M12 16V6M17 16v-8"/>',
+        plug: '<path d="M9 3v5M15 3v5M6 8h12v3.5a6 6 0 0 1-12 0zM12 17.5V21"/>',
+        users:
+          '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
+        search: '<circle cx="11" cy="11" r="7"/><path d="M20.5 20.5 16 16"/>',
+        box: '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/>',
+        clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        alert: '<path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>',
+        spark:
+          '<path d="M11 3.5l1.8 4.9 4.9 1.8-4.9 1.8L11 16.9l-1.8-4.9-4.9-1.8 4.9-1.8z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
+        check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+        truck:
+          '<path d="M2 6h11v10H2zM13 10h4l4 4v2h-8"/><circle cx="6" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/>',
+        send: '<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
+        bill: '<path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+      };
+      const ic = (n, c, s = 16, w = 2) =>
+        `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+      const mark = `<svg width="15" height="15" viewBox="0 0 40 40"><circle cx="12" cy="13" r="5" fill="#fff"/><circle cx="28" cy="27" r="5" fill="#fff"/><path d="M16 13h4.5c4 0 4 14 8 14" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`;
+
+      // The bars of orders by hour: a working day, a peak at noon, and the hour now.
+      const hours = [8, 14, 22, 38, 54, 61, 72, 88, 80, 69, 74, 92, 64];
+      const chart = `<svg width="100%" height="236" viewBox="0 0 520 236" preserveAspectRatio="none">${[0, 1, 2, 3].map((i) => `<path d="M0 ${20 + i * 64}H520" stroke="#18171d" stroke-opacity=".06" stroke-dasharray="${i === 3 ? '' : '4 6'}"/>`).join('')}${hours.map((v, i) => `<rect x="${10 + i * 39.5}" y="${212 - v * 2}" width="24" height="${v * 2}" rx="6" fill="${i === 11 ? '#f4512f' : 'rgba(244,81,47,.22)'}"/>`).join('')}</svg>`;
+      const flows = [
+        [
+          'box',
+          '#12a073',
+          L('Order intake', 'קליטת הזמנות'),
+          L('Running', 'פועל'),
+          'rgba(18,160,115,.12)',
+          '#12a073',
+          '1,284',
+        ],
+        [
+          'truck',
+          '#f4512f',
+          L('Delivery updates', 'עדכוני משלוח'),
+          L('Running', 'פועל'),
+          'rgba(18,160,115,.12)',
+          '#12a073',
+          '912',
+        ],
+        [
+          'spark',
+          '#6f5ef0',
+          L('Supplier reorders', 'הזמנות מספקים'),
+          L('AI agent', 'סוכן AI'),
+          'rgba(111,94,240,.12)',
+          '#6f5ef0',
+          '48',
+        ],
+        [
+          'bill',
+          '#c98317',
+          L('Invoice matching', 'התאמת חשבוניות'),
+          L('Running', 'פועל'),
+          'rgba(18,160,115,.12)',
+          '#12a073',
+          '366',
+        ],
+        [
+          'send',
+          '#18171d',
+          L('Weekly report', 'דוח שבועי'),
+          L('Scheduled', 'מתוזמן'),
+          'rgba(24,23,29,.07)',
+          '#6e6b75',
+          '1',
+        ],
+      ];
+      document.getElementById('win').innerHTML = `
+    <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><div class="url">zrima.app/home</div></div>
+    <div class="app">
+      <div class="side">
+        <div class="brand"><b>${mark}</b>Zrima</div>
+        ${[
+          ['home', L('Home', 'בית'), 1],
+          ['flow', L('Workflows', 'תהליכים')],
+          ['inbox', L('Inbox', 'תיבת הודעות'), 0, 3],
+          ['chart', L('Insights', 'תובנות')],
+          ['plug', L('Integrations', 'חיבורים')],
+          ['users', L('Team', 'צוות')],
+        ]
+          .map(
+            ([n, t, on, badge]) =>
+              `<div class="nav ${on ? 'on' : ''}">${ic(n, on ? '#f4512f' : '#6e6b75', 17)}${t}${badge ? `<span class="n">${badge}</span>` : ''}</div>`,
+          )
+          .join('')}
+      </div>
+      <div class="main">
+        <div class="head"><h1>${L('Good evening, Noa', 'ערב טוב, נועה')}</h1><span class="date">${L('Tuesday, 8 December', 'יום שלישי, 8 בדצמבר')}</span>
+          <div class="search">${ic('search', '#6e6b75', 15)}${L('Search', 'חיפוש')}<kbd>⌘K</kbd></div><div class="new">${L('+ New workflow', '+ תהליך חדש')}</div></div>
+        <div class="kpis">
+          ${[
+            [L('Orders today', 'הזמנות היום'), '1,284', '▲ 12%', '#12a073', 'box'],
+            [L('On-time delivery', 'משלוחים בזמן'), '98.2%', '▲ 4.1', '#12a073', 'truck'],
+            [L('Exceptions', 'חריגים'), '7', L('2 new', 'שניים חדשים'), '#f4512f', 'alert'],
+            [L('Hours saved', 'שעות שנחסכו'), '312', L('this week', 'השבוע'), '#6e6b75', 'clock'],
+          ]
+            .map(
+              ([l, v, d, c, n]) =>
+                `<div class="kpi"><div class="l">${ic(n, '#6e6b75', 15)}${l}</div><div class="v"><span dir="ltr">${v}</span><span class="d" style="color:${c};background:${c}1a">${d}</span></div></div>`,
+            )
+            .join('')}
+        </div>
+        <div class="row">
+          <div class="card"><h3>${L('Orders by hour', 'הזמנות לפי שעה')}<span class="chip" style="background:rgba(244,81,47,.1);color:#f4512f">${L('Live', 'חי')}</span></h3>${chart}</div>
+          <div class="card"><h3>${L('Live workflows', 'תהליכים פעילים')}</h3>
+            ${flows.map(([n, c, name, st, bg, fg, runs]) => `<div class="wf"><div class="ic" style="background:${c}1f">${ic(n, c, 15)}</div>${name}<span class="chip" style="background:${bg};color:${fg}">${st}</span><span class="runs">${runs}</span></div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+      const cursor = (x, y, color, name, side) =>
+        `<div class="cur" style="${side}:${x}px;top:${y}px"><svg width="22" height="27" viewBox="0 0 24 30"><path d="M2 2v24l6.5-6.2 4.3 9.7 4.3-1.9-4.3-9.5H21z" fill="${color}" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg><span style="background:${color}">${name}</span></div>`;
+      const side = he ? 'right' : 'left';
+      const other = he ? 'left' : 'right';
+      document.getElementById('floats').innerHTML = `
+    <div class="float kchip"><div class="l">${L('On-time delivery', 'משלוחים בזמן')}</div><div class="v">98.2%<span>▲ 4.1</span></div></div>
+    <div class="float appr"><div class="t">${ic('clock', he ? '#c98317' : '#ffb547', 15, 2.4)}${L('Approval needed', 'ממתין לאישור')}</div>
+      <div class="who"><div class="av" style="background:#ffb547;color:#18171d">${L('S', 'ס')}</div><div><b>${L('Supplier order #4821', 'הזמנה מספק #4821')}</b><span>${L('$4,960 · 3 items · Drafted by AI', '₪ 18,400 · 3 פריטים · טיוטת AI')}</span></div></div>
+      <div class="btns"><div style="background:#18171d;color:#fff">${L('Approve', 'אישור')}</div><div style="border:1px solid rgba(24,23,29,.12)">${L('Review', 'בדיקה')}</div></div></div>
+    <div class="float agent"><div class="t">${ic('spark', '#6f5ef0', 17, 2.2)}${L('AI agent · tonight', 'סוכן AI · הלילה')}</div>
+      <p>${L('Drafted 12 supplier orders before stock ran low.', 'ניסח 12 הזמנות מספקים לפני שהמלאי נגמר.')}</p>
+      <div class="bars">${[30, 45, 38, 62, 55, 80, 70, 100].map((h, i) => `<i style="height:${h}%;${i === 7 ? 'background:#6f5ef0' : ''}"></i>`).join('')}</div></div>
+    <div class="float toast"><div class="ok">${ic('check', '#fff', 16, 3)}</div>${L('Workflow published', 'התהליך פורסם')}<span style="color:#f4512f;margin-inline-start:6px">${L('View', 'לצפייה')}</span></div>
+    ${cursor(he ? 236 : 240, 352, '#12a073', L('Maya', 'מאיה'), side)}
+    ${cursor(he ? 580 : 968, he ? 384 : 352, '#f4512f', L('Noa', 'נועה'), he ? 'right' : 'left')}`;
+    </script>
+  </body>
+</html>

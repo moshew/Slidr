@@ -1,0 +1,90 @@
+{
+  "mutzarTeam1": {
+    "id": "c23b4575bb0d32dbba8637f8164232048e82a4c1827a3110052d617179e3cb6d",
+    "file": "c23b4575bb0d32dbba8637f8164232048e82a4c1827a3110052d617179e3cb6d.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 27222,
+    "width": 600,
+    "height": 600,
+    "origin": "ai",
+    "name": "mutzar-team-1.webp"
+  },
+  "mutzarTeam2": {
+    "id": "de21fcce17eb798d118976b2c7194fe860a270b3fed682b4a8f960c6495b9696",
+    "file": "de21fcce17eb798d118976b2c7194fe860a270b3fed682b4a8f960c6495b9696.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 21780,
+    "width": 600,
+    "height": 600,
+    "origin": "ai",
+    "name": "mutzar-team-2.webp"
+  },
+  "mutzarTeam3": {
+    "id": "8b88b727171eb990ef240a3b1897f18495d24f15f675ee5f89761f16082aef8b",
+    "file": "8b88b727171eb990ef240a3b1897f18495d24f15f675ee5f89761f16082aef8b.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 21730,
+    "width": 600,
+    "height": 600,
+    "origin": "ai",
+    "name": "mutzar-team-3.webp"
+  },
+  "mutzarTeam4": {
+    "id": "dde554b1a228f6888380f591b9ba4e4763f5600b75ededcc425560848cbeb53c",
+    "file": "dde554b1a228f6888380f591b9ba4e4763f5600b75ededcc425560848cbeb53c.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 17774,
+    "width": 600,
+    "height": 600,
+    "origin": "ai",
+    "name": "mutzar-team-4.webp"
+  },
+  "mutzarBuilderHe": {
+    "id": "a1af8434909189175617dcf3722648b6eb3d8f7f56982e6e4f7e70a055872ceb",
+    "file": "a1af8434909189175617dcf3722648b6eb3d8f7f56982e6e4f7e70a055872ceb.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 56114,
+    "width": 1304,
+    "height": 1544,
+    "origin": "import",
+    "name": "mutzar-builder-he.webp"
+  },
+  "mutzarBuilderEn": {
+    "id": "96c7d293cfcd49dd29e1c3582fbd21f21f02f5545a027793e66e81d5323928ce",
+    "file": "96c7d293cfcd49dd29e1c3582fbd21f21f02f5545a027793e66e81d5323928ce.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 71006,
+    "width": 1304,
+    "height": 1544,
+    "origin": "import",
+    "name": "mutzar-builder-en.webp"
+  },
+  "mutzarHeroHe": {
+    "id": "0faae2e0d4b2666477ffb1b3f1b0cb321315d4c000d152f7110e93920674b8ff",
+    "file": "0faae2e0d4b2666477ffb1b3f1b0cb321315d4c000d152f7110e93920674b8ff.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 86664,
+    "width": 3456,
+    "height": 1136,
+    "origin": "import",
+    "name": "mutzar-hero-he.webp"
+  },
+  "mutzarHeroEn": {
+    "id": "fa4ce42aeea82d06490a96841d00138b3bea43ea12ddff395d9054b60089c841",
+    "file": "fa4ce42aeea82d06490a96841d00138b3bea43ea12ddff395d9054b60089c841.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 100064,
+    "width": 3456,
+    "height": 1136,
+    "origin": "import",
+    "name": "mutzar-hero-en.webp"
+  }
+}
