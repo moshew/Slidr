@@ -69,7 +69,7 @@ export const mutzarTheme: Theme = {
     bg: '#f6f4ef',
     surface: '#ffffff',
     text: '#18171d',
-    muted: '#66636d',
+    muted: '#5b5862',
     primary: '#201e2a',
     secondary: '#f4512f',
     accent: '#6f5ef0',
@@ -128,7 +128,7 @@ export const mutzarTheme: Theme = {
 const CORAL = '#f4512f';
 const VIOLET = '#6f5ef0';
 const INK = '#18171d';
-const MUTED = '#66636d';
+const MUTED = '#5b5862';
 const CANVAS = '#f6f4ef';
 const WHITE = '#ffffff';
 /**

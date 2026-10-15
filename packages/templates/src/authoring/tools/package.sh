@@ -11,6 +11,10 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 cp "$TOOLS/merge-into-library.mjs" "$OUT/"
 cp "$TOOLS/README-delta.md" "$OUT/README.md"
 mkdir -p "$OUT/source"
-(cd "$HERE" && cp -r ./*.ts README.md tsconfig.json designs artwork tools "$OUT/source/")
+# What git holds of this folder, but the pictures: they are in images/ already.
+(cd "$HERE" && git ls-files -- . ':!:pictures/*.webp' ':!:pictures/designs/*.webp' |
+  while read -r file; do
+    mkdir -p "$OUT/source/$(dirname "$file")" && cp "$file" "$OUT/source/$file"
+  done)
 (cd "$(dirname "$OUT")" && rm -f "$(basename "$OUT").zip" && zip -qr "$(basename "$OUT").zip" "$(basename "$OUT")")
 echo "packaged: $OUT.zip ($(du -h "$OUT.zip" | cut -f1))"
