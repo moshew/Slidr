@@ -6,7 +6,16 @@ import {
   type ChartBuild,
 } from './charts';
 import { safeEasing, slideDirection, travel, type Dir } from './direction';
-import { findPreset, inlinePreset, toKeyframes, type Box, type Preset } from './presets';
+import { onOwnLook, slideKeyframes, type OwnLook } from './keyframes';
+import { keyframesOf } from './names';
+import {
+  fallbackPreset,
+  findPreset,
+  inlinePreset,
+  toKeyframes,
+  type Box,
+  type Preset,
+} from './presets';
 import { schedule, type Group } from './schedule';
 import { countParts, paragraphsOf, splitText, type Part, type Split } from './text';
 import type { AnimationStep, Size, Trigger, Warn } from './types';
@@ -78,6 +87,11 @@ interface Effect {
   target: HTMLElement;
   by: 'self' | 'word' | 'char';
   preset: Preset;
+  /**
+   * The keyframes of the slide's own `@keyframes`, for a step whose preset names one. They play
+   * on the element and on its paragraphs; words and characters take `preset`.
+   */
+  custom?: Keyframe[];
   /** Milliseconds between the starts of consecutive words or characters. */
   stagger: number;
   trigger: Trigger;
@@ -117,9 +131,21 @@ function resolveEffects(root: HTMLElement, steps: readonly AnimationStep[], warn
       continue;
     }
     const kind: Kind = step.category;
-    const { preset, known } = findPreset(kind, step.preset);
+    const own = keyframesOf(step.preset);
+    const custom = own ? slideKeyframes(root, own) : undefined;
+    const { preset, known } = own
+      ? { preset: fallbackPreset(kind), known: true }
+      : findPreset(kind, step.preset);
     if (!known) warn(`Animation ${step.id}: unknown ${kind} preset "${step.preset}"`);
-    const base = { step, kind, preset, trigger: step.trigger, delay: step.delay };
+    if (own && !custom) warn(`Animation ${step.id}: the slide has no @keyframes "${own}"`);
+    const base = {
+      step,
+      kind,
+      preset,
+      ...(custom ? { custom } : {}),
+      trigger: step.trigger,
+      delay: step.delay,
+    };
     const by = step.textBy ?? 'all';
     if (by === 'paragraph') {
       // Every paragraph is an effect of its own with the step's trigger: a step that starts on
@@ -218,7 +244,9 @@ const CHART_SLACK_MS = 50;
 
 function hide(node: HTMLElement, from: number, to: number): Animation | undefined {
   if (to <= from) return undefined;
-  const hidden = { visibility: ['hidden', 'hidden'] };
+  // Opacity too: a part that says `visibility: visible` of itself (the copied markup of an
+  // `html` element is one) shows under a hidden parent, and nothing shows under a transparent one.
+  const hidden = { visibility: ['hidden', 'hidden'], opacity: [0, 0] };
   return to === Infinity
     ? node.animate(hidden, { delay: from, duration: 0, fill: 'forwards' })
     : node.animate(hidden, { delay: from, duration: to - from });
@@ -310,11 +338,28 @@ export function createTimeline(
       current.animations.push(animation);
     };
 
-    // What is hidden, and when, while the group plays.
-    const before = states[index] as Set<HTMLElement>;
-    for (const [target, turns] of turnsOf(group, effects)) {
+    const turning = turnsOf(group, effects);
+    for (const target of turning.keys()) {
       holds.get(target)?.cancel();
       holds.delete(target);
+    }
+    // How each part looks by itself, read before anything hides it: an effect starts from that
+    // look and comes back to it.
+    const looks = new Map<HTMLElement, OwnLook>();
+    for (const slot of group.slots) {
+      const { target } = effects[slot.index] as Effect;
+      if (looks.has(target)) continue;
+      const own = getComputedStyle(target);
+      looks.set(target, {
+        opacity: Number(own.opacity),
+        filter: own.filter && own.filter !== 'none' ? own.filter : '',
+        transform: own.transform || 'none',
+      });
+    }
+
+    // What is hidden, and when, while the group plays.
+    const before = states[index] as Set<HTMLElement>;
+    for (const [target, turns] of turning) {
       let hidden = before.has(target);
       let since = 0;
       for (const turn of turns) {
@@ -360,16 +405,27 @@ export function createTimeline(
             ? 'forwards'
             : 'none';
       parts.forEach((part, i) => {
-        const own = part.node === effect.target ? getComputedStyle(part.node) : undefined;
-        const preset = part.box ? effect.preset : inlinePreset(effect.kind, effect.preset);
-        const frames = preset.frames({ v, box: boxOf(part.node), slide: size });
-        const keyframes = toKeyframes(frames, {
-          box: part.box,
-          opacity: own ? Number(own.opacity) : 1,
-          filter: own && own.filter !== 'none' ? own.filter : '',
-          // Shrunken text is zoomed: a pixel inside it is less than a slide pixel.
-          unit: 1 / (part.node.currentCSSZoom || 1),
-        });
+        const own = part.node === effect.target ? looks.get(effect.target) : undefined;
+        const opacity = own ? own.opacity : 1;
+        const filter = own ? own.filter : '';
+        let keyframes: Keyframe[];
+        if (effect.custom && !split) {
+          keyframes = onOwnLook(effect.custom, {
+            opacity,
+            filter,
+            transform: own?.transform ?? 'none',
+          });
+        } else {
+          const preset = part.box ? effect.preset : inlinePreset(effect.kind, effect.preset);
+          const frames = preset.frames({ v, box: boxOf(part.node), slide: size });
+          keyframes = toKeyframes(frames, {
+            box: part.box,
+            opacity,
+            filter,
+            // Shrunken text is zoomed: a pixel inside it is less than a slide pixel.
+            unit: 1 / (part.node.currentCSSZoom || 1),
+          });
+        }
         add(
           part.node.animate(keyframes, {
             duration: step.duration,

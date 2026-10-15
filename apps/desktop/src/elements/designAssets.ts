@@ -1,6 +1,7 @@
 import { mediaFiles, mediaUrl, readMediaJson } from '@slidr/media-library';
 import type { AssetMeta } from '@slidr/model';
 import type { DesignId } from './designs';
+import { managedPictureSize } from './managedDesigns';
 
 const sizes =
   (await readMediaJson<Record<string, number[] | undefined>>('images/designs/sizes.json')) ?? {};
@@ -23,10 +24,11 @@ export const previewBackdropId = (id: DesignId) => `design-preview-${id}-bg`;
 
 /**
  * The record of a bundled picture, for the gallery. It carries the picture's size in pixels
- * (`scripts/design-asset-sizes.mjs`): a cropped picture cannot be drawn without it.
+ * (`scripts/design-asset-sizes.mjs`; a managed design's, from `managed.json`): a cropped picture
+ * cannot be drawn without it.
  */
 function meta(id: string, name: string): AssetMeta {
-  const size = sizes[name];
+  const size = sizes[name] ?? managedPictureSize(name);
   const file = `${name}.webp`;
   return {
     id,

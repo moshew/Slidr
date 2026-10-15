@@ -18,3 +18,8 @@ apps/desktop/e2e/import-set/**/*.html
 
 # The media library of the packaged app: written by a build
 apps/desktop/src-tauri/media/*/
+
+# Slidr Studio: its Python environment, and its local requests and renders (management/README.md)
+management/server/.venv/
+management/server/.pytest_cache/
+management/.data*/

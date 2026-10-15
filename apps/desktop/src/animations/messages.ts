@@ -19,6 +19,8 @@ export const he = {
     drag: 'גרירה לשינוי הסדר',
     paragraph: 'פסקה {{n}} מתוך {{total}}',
     row: '{{effect}} של {{name}}',
+    original: 'התנועה המקורית',
+    originalHint: 'התנועה שהגיעה מהקובץ המיובא, כפי שנכתבה בו. בחירת אפקט אחר מחליפה אותה.',
   },
   group: {
     leadIn: 'עם פתיחת השקף',
@@ -205,6 +207,9 @@ export const en: typeof he = {
     drag: 'Drag to reorder',
     paragraph: 'Paragraph {{n}} of {{total}}',
     row: '{{effect}} of {{name}}',
+    original: 'Original motion',
+    originalHint:
+      'The motion the imported file played, as it wrote it. Choosing another effect replaces it.',
   },
   group: {
     leadIn: 'When the slide opens',

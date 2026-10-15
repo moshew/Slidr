@@ -9,6 +9,8 @@ import { designAssetFile, designBackdropFile } from './designAssets';
 import {
   DESIGN_GROUPS,
   DESIGN_IDS,
+  designGroupName,
+  designName,
   designPreview,
   designsOf,
   insertDesign,
@@ -19,6 +21,25 @@ import { useNear } from './StickerGrid';
 
 /** How many designs of a group the overview shows. */
 const PREVIEW = 4;
+
+/**
+ * The names of designs and of their groups, in the language of the interface: the app's own,
+ * else the one `managed.json` gives a design of the management tool, else the id. A name that
+ * neither has is reported as a missing string.
+ */
+function useDesignNames() {
+  const { t, i18n } = useTranslation('elements');
+  const lang = i18n.language;
+  return useMemo(() => {
+    const named = (key: string, managed: string | undefined, id: string) =>
+      i18n.exists(key, { ns: 'elements' }) ? t(key) : (managed ?? t(key, { defaultValue: id }));
+    return {
+      design: (id: DesignId) => named(`designs.name.${id}`, designName(id, lang), id),
+      group: (group: DesignGroup) =>
+        named(`designs.group.${group}`, designGroupName(group, lang), group),
+    };
+  }, [t, i18n, lang]);
+}
 
 /**
  * One design: a click adds a new slide after the current one, in one undo step. The slide is
@@ -35,12 +56,13 @@ function DesignTile({
   onChoose: (id: DesignId) => void;
 }) {
   const { t } = useTranslation('elements');
+  const names = useDesignNames();
   const lang = useDeck((state) => state.deck.meta.lang);
   const [tile, near] = useNear<HTMLButtonElement>();
   const picture = useRef<HTMLSpanElement>(null);
   const { width } = useElementSize(picture);
   const preview = useMemo(() => (near ? designPreview(id, lang) : undefined), [near, id, lang]);
-  const name = t(`designs.name.${id}`);
+  const name = names.design(id);
   return (
     <button
       ref={tile}
@@ -97,6 +119,7 @@ function DesignList({
  */
 export function DesignsCollection() {
   const { t } = useTranslation('elements');
+  const names = useDesignNames();
   const editor = useEditor();
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
@@ -106,9 +129,9 @@ export function DesignsCollection() {
     const wanted = query.trim().toLowerCase();
     if (!wanted) return undefined;
     return DESIGN_IDS.filter(
-      (id) => id.includes(wanted) || t(`designs.name.${id}`).toLowerCase().includes(wanted),
+      (id) => id.includes(wanted) || names.design(id).toLowerCase().includes(wanted),
     );
-  }, [query, t]);
+  }, [query, names]);
 
   const choose = (id: DesignId) => {
     setBusy(true);
@@ -121,7 +144,7 @@ export function DesignsCollection() {
           editor.bus,
           editor.selection,
           id,
-          t(`designs.name.${id}`),
+          names.design(id),
           t('designs.history'),
           asset,
           backdrop,
@@ -163,7 +186,7 @@ export function DesignsCollection() {
         )
       ) : group ? (
         <Section
-          title={t(`designs.group.${group}`)}
+          title={names.group(group)}
           data-group={group}
           action={
             <Button variant="ghost" size="sm" onClick={() => setGroup(undefined)}>
@@ -182,7 +205,7 @@ export function DesignsCollection() {
         DESIGN_GROUPS.map((id) => (
           <Section
             key={id}
-            title={t(`designs.group.${id}`)}
+            title={names.group(id)}
             data-group={id}
             action={
               <Button variant="ghost" size="sm" onClick={() => setGroup(id)}>

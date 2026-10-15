@@ -83,8 +83,8 @@ A slide may go without a visual element (an image, a chart, an icon, a meaningfu
 - Font pairing: a Hebrew face and a Latin face that match in weight and height.
 
 **Motion**
-- Animation serves the reading order; it is not decoration. Durations of 300–600ms, and one easing throughout.
-- One transition type for the deck, or one per section. Lists and cards enter staggered.
+- A slide you make moves by default: the transition of the slide before it, and what follows the title rising in, in reading order, unless you set its animation.
+- Animation serves the reading order, not decoration: 300–600ms, one easing, one transition for the deck or per section.
 
 **Accessibility**
 - Contrast to WCAG AA: 4.5:1 for regular text, 3:1 for large text (above 48px). The app measures it on the rendered slide, so settle it before you write: mid-tone colours, as accent and secondary colours usually are, fail both as the colour of text on a light background, even at display size, and as a fill under white text. Keep them for shapes, bars and lines, and for text on a dark background; on a mid-tone fill, write in the theme's dark text colour. Text made paler with opacity loses contrast the same way.

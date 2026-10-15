@@ -1049,8 +1049,9 @@ export function Stage({
         const hd = HANDLES[handle as keyof typeof HANDLES];
         const el = single.element;
         // An edge of an image moves alone, and cuts the picture or shows more of it (IMG-02); a
-        // corner sizes the image whole. A text background also has independent edges; other
-        // SVGs and videos keep their proportions. In a
+        // corner sizes the image whole. An edge of an SVG (an icon, an emoji, a text
+        // background) moves alone as well, and its drawing stays fitted to the frame; videos
+        // keep their proportions. In a
         // drawn frame an edge moves alone too: the artwork keeps its size, and the photograph
         // fills an opening that is as much longer. Only artwork that is stretched with its
         // picture, and has no newer to take its place, is sized whole by every handle. A
@@ -1061,9 +1062,8 @@ export function Stage({
           el.smartFrame !== undefined &&
           el.smartFrame.scale === undefined &&
           !freshFrame(el);
-        const background = el.type === 'svg' && (el.stretch || freshTextBackground(el)?.has(el.id));
         const alone =
-          ((el.type === 'image' && !stretched) || background) && (hd.x === 0 || hd.y === 0);
+          ((el.type === 'image' && !stretched) || el.type === 'svg') && (hd.x === 0 || hd.y === 0);
         const picture =
           alone && el.type === 'image' && !el.smartFrame ? pictureOf(el)?.view : undefined;
         const stretch = picture && coversFrame(picture) ? picture : undefined;

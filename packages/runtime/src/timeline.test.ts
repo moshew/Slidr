@@ -219,3 +219,59 @@ describe('createTimeline', () => {
     expect(slide.innerHTML).toBe(before);
   });
 });
+
+describe("a step that plays the slide's own @keyframes", () => {
+  const OWN = `
+    <div data-slide-id="s1">
+      <style>
+        @keyframes kin {
+          from { opacity: 0; transform: translateY(80px); animation-timing-function: ease-in; }
+          60% { opacity: 1; }
+          to { transform: none; }
+        }
+      </style>
+      <div data-element-id="box" style="opacity: 0.5; transform: rotate(10deg)"></div>
+      <div data-element-id="plain" style="opacity: 1"></div>
+    </div>`;
+
+  beforeEach(() => {
+    document.body.innerHTML = OWN;
+    slide = document.body.firstElementChild as HTMLElement;
+  });
+
+  it('plays the keyframes on the element, on top of its own look', () => {
+    const t = timeline([step('box', { preset: 'css:kin', duration: 800, delay: 120 })]);
+    expect(warnings).toEqual([]);
+    void t.play(1);
+    const [played] = effects();
+    expect(played?.target).toBe(node('box'));
+    expect(played?.options).toMatchObject({ duration: 800, delay: 120 });
+    expect(played?.keyframes).toEqual([
+      { offset: 0, opacity: 0, transform: 'translateY(80px) rotate(10deg)', easing: 'ease-in' },
+      { offset: 0.6, opacity: 0.5 },
+      { offset: 1, transform: 'rotate(10deg)' },
+    ]);
+  });
+
+  it('keeps the values as written on an element with no look of its own', () => {
+    const t = timeline([step('plain', { preset: 'css:kin' })]);
+    void t.play(1);
+    expect(effects()[0]?.keyframes).toEqual([
+      { offset: 0, opacity: '0', transform: 'translateY(80px)', easing: 'ease-in' },
+      { offset: 0.6, opacity: '1' },
+      { offset: 1, transform: 'none' },
+    ]);
+  });
+
+  it('fades in when the slide has no such keyframes, and says so', () => {
+    const t = timeline([step('plain', { preset: 'css:gone' })]);
+    expect(warnings).toEqual(['Animation a_plain_entrance: the slide has no @keyframes "gone"']);
+    t.apply(0);
+    expect(fake.hidden(node('plain'))).toBe(true);
+    void t.play(1);
+    expect(effects()[0]?.keyframes).toEqual([
+      { offset: 0, opacity: 0 },
+      { offset: 1, opacity: 1 },
+    ]);
+  });
+});

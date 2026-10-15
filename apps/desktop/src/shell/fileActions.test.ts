@@ -7,12 +7,14 @@ import { answer, pendingDialog } from './dialogs';
 import { createEditor, type Editor } from './editor';
 import {
   confirmDiscard,
+  loadFile,
   newDocument,
   openDocument,
   prepareToClose,
   saveDocument,
   startDocument,
 } from './fileActions';
+import type { FileImporter } from './registry';
 
 const dialog = vi.hoisted(() => ({
   open: vi.fn<() => Promise<string | null>>(),
@@ -566,6 +568,46 @@ describe('with storage', () => {
         expect(editor.file.getState().dirty).toBe(true);
       });
     });
+  });
+
+  it('loads from one dialog: a Slidr file is opened, an HTML page imported', async () => {
+    const { storage, files, log } = fakeStorage();
+    const editor = createEditor({ lang: 'he', storage });
+    await startDocument(editor);
+    files.set('C:\\decks\\talk.slidr', JSON.stringify(createDeck({ title: 'Talk' })));
+    const imported: string[] = [];
+    const html: FileImporter = {
+      id: 'html',
+      extensions: ['html', 'htm'],
+      filterName: () => 'HTML',
+      open: (path) => imported.push(path),
+    };
+
+    dialog.open.mockResolvedValueOnce('C:\\pages\\Deck.HTM');
+    expect(await loadFile(editor, [html])).toBe(true);
+    expect(imported).toEqual(['C:\\pages\\Deck.HTM']);
+    // Every file the app takes in, then each kind of them on its own.
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        multiple: false,
+        filters: [
+          { name: expect.any(String) as string, extensions: ['slidr', 'html', 'htm'] },
+          { name: expect.any(String) as string, extensions: ['slidr'] },
+          { name: 'HTML', extensions: ['html', 'htm'] },
+        ],
+      }),
+    );
+
+    dialog.open.mockResolvedValueOnce('C:\\decks\\talk.slidr');
+    expect(await loadFile(editor, [html])).toBe(true);
+    expect(log).toContain('open C:\\decks\\talk.slidr');
+    expect(editor.bus.deck.meta.title).toBe('Talk');
+    expect(imported).toHaveLength(1);
+
+    // A dialog that was cancelled changes nothing.
+    dialog.open.mockResolvedValueOnce(null);
+    expect(await loadFile(editor, [html])).toBe(false);
+    expect(imported).toHaveLength(1);
   });
 
   it('lets go of the workspace when the window closes', async () => {

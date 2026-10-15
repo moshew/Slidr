@@ -2,3 +2,5 @@
 packages:
   - apps/*
   - packages/*
+  # The studio that makes Elements content and publishes it to the media library (management/README.md).
+  - management/web

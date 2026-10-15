@@ -1,8 +1,14 @@
 import type { Vec } from './direction';
-import type { Category, emphasisNames, entranceNames, exitNames } from './names';
+import {
+  keyframesOf,
+  type Category,
+  type emphasisNames,
+  type entranceNames,
+  type exitNames,
+} from './names';
 import type { FlowDirection, Size } from './types';
 
-export { animationPresets, type Category } from './names';
+export { animationPresets, KEYFRAMES_PREFIX, keyframesOf, type Category } from './names';
 
 /**
  * The ready-made animations (SPEC 5.6, WG8-T03). A preset describes its motion once, in slide
@@ -504,12 +510,17 @@ const COUNTERPART: Record<Category, Record<string, string>> = {
 /** What plays when the name is unknown. The step still shows or hides its element. */
 const FALLBACK: Record<Category, string> = { entrance: 'fade', exit: 'fade', emphasis: 'pulse' };
 
+/** What plays in place of a name the runtime does not have. */
+export function fallbackPreset(category: Category): Preset {
+  return presets[category][FALLBACK[category]] as Preset;
+}
+
 /** The preset a step names, and whether the name was known. */
 export function findPreset(category: Category, name: string): { preset: Preset; known: boolean } {
   const set = presets[category];
   const preset = set[name] ?? set[COUNTERPART[category][name] ?? ''];
   if (preset) return { preset, known: true };
-  return { preset: set[FALLBACK[category]] as Preset, known: false };
+  return { preset: fallbackPreset(category), known: false };
 }
 
 /** The preset for a part that is inline text. */
@@ -538,6 +549,8 @@ function turns(preset: Preset): boolean {
 }
 
 export function describePreset(category: Category, name: string): PresetInfo {
+  // The slide's own keyframes say how the element moves; there is no direction to choose.
+  if (keyframesOf(name)) return { known: true, directional: false, direction: 'up' };
   const { preset, known } = findPreset(category, name);
   return { known, directional: turns(preset), direction: preset.direction };
 }

@@ -480,9 +480,18 @@ fn locate(dirs: impl Iterator<Item = PathBuf>, target: &Target) -> Located {
     let mut shim = None;
     for dir in dirs {
         if target.windows {
-            // A standalone install: the program itself is on the PATH.
-            let program = dir.join(target.program_name());
-            if program.is_file() {
+            // A standalone install: the program itself is on the PATH. Winget's package folder
+            // keeps it under its build name; `codex.exe` is only the link winget makes when
+            // Windows lets it.
+            let names = [
+                target.program_name().to_owned(),
+                format!("codex-{}.exe", target.triple),
+            ];
+            if let Some(program) = names
+                .iter()
+                .map(|name| dir.join(name))
+                .find(|p| p.is_file())
+            {
                 return Located::Program(program);
             }
         }
@@ -986,12 +995,13 @@ mod tests {
     #[test]
     fn finds_the_native_program_behind_the_npm_shim() -> TestResult {
         let root = tempfile::tempdir()?;
-        let (empty, npm, hoisted, bare, standalone) = (
+        let (empty, npm, hoisted, bare, standalone, winget) = (
             root.path().join("empty"),
             root.path().join("npm"),
             root.path().join("hoisted"),
             root.path().join("bare"),
             root.path().join("standalone"),
+            root.path().join("winget"),
         );
         let native = Path::new("vendor/x86_64-pc-windows-msvc/bin/codex.exe");
         let package = Path::new("node_modules/@openai/codex");
@@ -1019,6 +1029,8 @@ mod tests {
                 .join(native),
         )?;
         touch(&standalone.join("codex.exe"))?;
+        // Winget's package folder, on the PATH when Windows does not let winget make links.
+        touch(&winget.join("codex-x86_64-pc-windows-msvc.exe"))?;
 
         let found = |dirs: &[&PathBuf]| locate(dirs.iter().map(|dir| (*dir).clone()), &WINDOWS);
         assert_eq!(found(&[&empty]), Located::Nothing);
@@ -1032,6 +1044,10 @@ mod tests {
             Located::Program(standalone.join("codex.exe"))
         );
         assert_eq!(found(&[&npm, &standalone]), Located::Program(nested));
+        assert_eq!(
+            found(&[&empty, &winget]),
+            Located::Program(winget.join("codex-x86_64-pc-windows-msvc.exe"))
+        );
         Ok(())
     }
 

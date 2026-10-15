@@ -43,10 +43,17 @@ for (const theme of themes) {
         await page.addInitScript((l) => localStorage.setItem('slidr.language', l), lang);
         await page.goto('/?welcome');
         await expect(page.getByTestId('welcome')).toBeVisible();
-        // The first row of templates; the covers are drawn before the picture is taken.
-        await expect(page.locator('[data-welcome-template]')).toHaveCount(4);
+        // The fan of covers over "Create from template" is drawn before the picture is taken.
+        await expect(page.locator('.welcome-fan-card .slidr-slide')).toHaveCount(3);
         await settle(page);
         await page.screenshot({ path: out(`welcome-${tag}`) });
+
+        // The templates, with every slide of the one that is picked.
+        await page.getByTestId('welcome-template').click();
+        await expect(page.locator('[data-welcome-template]')).toHaveCount(18);
+        await expect(page.getByTestId('template-slide').first()).toBeVisible();
+        await settle(page);
+        await page.screenshot({ path: out(`welcome-templates-${tag}`) });
       });
 
       test(`the shortcut map, the notes and the Present menu: ${tag}`, async ({ page }) => {

@@ -11,7 +11,8 @@ import {
 } from '../agent/diagnostics';
 import { formatBytes, ltr } from '../export/exportDeck';
 import { SettingsCard, SettingsItem } from '../settings';
-import { loadNotices, NOTICES_PATH } from './notices';
+import { SlidrMark } from '../shell/SlidrMark';
+import { loadLibraryNotices, loadNotices, NOTICES_PATH } from './notices';
 
 /** The version this build was made as; absent where nothing built it (a unit test). */
 const VERSION = import.meta.env.VITE_SLIDR_VERSION as string | undefined;
@@ -60,9 +61,9 @@ export function AboutSettings() {
     <div className="flex flex-col gap-6" data-testid="about">
       {/* The app as its title bar shows it: its mark on the header's colours. */}
       <div className="editor-header flex items-center gap-3 rounded-panel p-4 shadow-raised">
-        <img src="/favicon.svg" alt="" className="size-12 shrink-0" draggable={false} />
+        <SlidrMark className="size-12 shrink-0" />
         <div className="flex min-w-0 flex-col">
-          <p className="text-lg font-semibold">Slidr</p>
+          <p className="text-xl font-bold tracking-tight">Slidr</p>
           {VERSION && (
             <p className="text-xs opacity-85" data-testid="about-version">
               {t('version', { version: ltr(VERSION) })}
@@ -159,8 +160,9 @@ function LicensesDialog({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => {
     if (!open || text !== null) return;
     let alive = true;
-    loadNotices().then(
-      (notices) => alive && setText(notices),
+    // The build's own, then the media library's, which never fail the list.
+    Promise.all([loadNotices(), loadLibraryNotices().catch(() => '')]).then(
+      ([notices, library]) => alive && setText(library ? `${notices}\n${library}` : notices),
       (error: unknown) => {
         console.error(`${NOTICES_PATH} could not be read`, error);
         if (alive) setFailed(true);

@@ -9,6 +9,7 @@ icons/                         the Lucide and Tabler sets, their search words, h
 images/templates/*.webp        the photographs of the built-in templates
 images/designs/                the pictures of the ready-made slides, and sizes.json
 elements/designs/index.json    the ready-made slides of Elements
+elements/designs/managed.json  the ready-made slides the management tool makes
 elements/cards/catalog.json    the card sets
 elements/catalogs/             shapes, graphics, frames and emoji, with their notices
 elements/art/                  the drawings of the art sets, with their notices
@@ -60,6 +61,14 @@ A file of the library is at most 25 MB, the limit of Pages.
 
 A development build and the dev server read another copy when `SLIDR_MEDIA_URL` names one: a preview deployment, or a server on this machine. A release build reads the published library.
 
+## Designs made by the management tool
+
+The management tool (`management/`) publishes the designs it makes into a catalog of their own, `elements/designs/managed.json`, so that it never writes over the authored `index.json`. Their ids start with `m-`. Their pictures are `images/designs/<id>.webp` (and `<id>-bg.webp`) like the others, but their pixel sizes and their names in both languages are in `managed.json`, not in `sizes.json` or the app's messages.
+
+The app reads `managed.json` after `index.json` and puts its designs after the authored ones: in a group the authored catalog has, after its designs; in a group of their own, after the authored groups. Where both have an id, the authored design is kept.
+
+A publication is the whole library, from one copy. An author who publishes from another copy pulls first: `pnpm media:pull` adds what the copy lacks, so the managed designs are not taken away. Pull before changing anything, since it also puts the published bytes back over a file that differs.
+
 ## Licences
 
-Content made from someone else's data carries its notice beside it (`<name>.notice.json`), and is published with it. The app's own `THIRD-PARTY-NOTICES.txt` lists what its build contains, which is no longer this content.
+Content made from someone else's data carries its notice beside it (`<name>.notice.json`), and is published with it: the art sets and the emoji catalog from their generators, and each font family of decks as `fonts/<family>/<family>.notice.json` from `scripts/gen-builtin-fonts.mjs` (the package, its licence, and the licence's text with the copyright). The app's own `THIRD-PARTY-NOTICES.txt` lists what its build contains, which is no longer this content; the licences dialog adds every notice the manifest names, read from the library when the dialog is opened (`src/about/notices.ts`). One that cannot be read then (no network, not read before) is counted as missing.

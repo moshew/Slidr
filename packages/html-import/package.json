@@ -13,6 +13,7 @@
   "dependencies": {
     "@slidr/agent-tools": "workspace:*",
     "@slidr/model": "workspace:*",
-    "@slidr/renderer": "workspace:*"
+    "@slidr/renderer": "workspace:*",
+    "@slidr/runtime": "workspace:*"
   }
 }

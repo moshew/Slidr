@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cx, Skeleton, Tooltip } from '@slidr/ui';
 import { tell, useEditor } from '../shell';
@@ -13,15 +13,17 @@ export type StickerSize = 'graphic' | 'emoji';
 
 /**
  * How many drawings a grid puts in a row: as many as the panel has room for (`.element-grid`).
- * Zero until the grid is measured.
+ * Zero until the grid is measured. It is measured before the first paint, so a grid sized by it
+ * does not show empty and then fill, pushing what is below it down.
  */
 export function useColumns(ref: RefObject<Element | null>): number {
   const [columns, setColumns] = useState(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const grid = ref.current;
     if (!grid) return;
     const measure = () =>
       setColumns(getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+    measure();
     const observer = new ResizeObserver(measure);
     observer.observe(grid);
     return () => observer.disconnect();

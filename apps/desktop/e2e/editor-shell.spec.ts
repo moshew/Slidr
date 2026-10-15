@@ -284,34 +284,55 @@ test('a plain page starts in the editor, and the welcome screen shows when it is
   await openWelcome(page);
   await expect(page.getByTestId('stage-frame')).toHaveCount(0);
   await expect(page.getByTestId('title-bar')).toBeVisible();
-  // Without storage there are no files: "open" waits for the app itself.
-  await expect(page.getByTestId('welcome-open')).toBeDisabled();
+  // Without storage there are no files of the app's own: "load" takes an HTML page alone.
+  await expect(page.getByTestId('welcome-load')).toBeEnabled();
+  // The templates are not shown until they are asked for.
+  await expect(page.getByTestId('welcome-templates')).toHaveCount(0);
 });
 
-test('an empty deck leads to the editor', async ({ page }) => {
+test('an empty deck leads to the editor, with the AI chat ready for typing', async ({ page }) => {
   await openWelcome(page);
   await page.getByTestId('welcome-blank').click();
   await expect(welcome(page)).toHaveCount(0);
-  await expect(page.getByTestId('stage-frame')).toBeVisible();
-});
-
-test('"with AI" leads to the chat of the deck tool, ready for typing', async ({ page }) => {
-  await openWelcome(page);
-  await page.getByTestId('welcome-ai').click();
   await expect(page.getByTestId('stage-frame')).toBeVisible();
   await expect(page.locator('[data-panel="ai"]').first()).toBeVisible();
   await expect(page.getByTestId('chat-input')).toBeFocused();
 });
 
-test('a template starts a deck that is set in it', async ({ page }) => {
+test('a template is picked by its slides, and starts a deck that is set in it', async ({
+  page,
+}) => {
   await openWelcome(page);
-  const cards = welcome(page).locator('[data-welcome-template]');
-  // One row of them shows; the rest of the built-in eighteen come when they are asked for.
-  await expect(cards).toHaveCount(4);
-  await page.getByTestId('welcome-all-templates').click();
-  await expect(cards).toHaveCount(18);
-  const id = await cards.nth(1).getAttribute('data-welcome-template');
-  await cards.nth(1).click();
+  const way = page.getByTestId('welcome-template');
+  const covers = welcome(page).locator('[data-welcome-template]');
+  // The templates come when they are asked for: all of the built-in eighteen.
+  await expect(covers).toHaveCount(0);
+  await way.click();
+  await expect(way).toHaveAttribute('aria-expanded', 'true');
+  await expect(covers).toHaveCount(18);
+  // Esc folds them away, and the focus goes back to the way that opened them.
+  await page.keyboard.press('Escape');
+  await expect(covers).toHaveCount(0);
+  await expect(welcome(page)).toBeVisible();
+  await expect(way).toBeFocused();
+
+  await way.click();
+  // The picked cover has the focus, and the arrows walk the covers as they stand: from the right.
+  await expect(covers.first()).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(covers.nth(1)).toBeFocused();
+  await expect(covers.nth(1)).toHaveAttribute('aria-checked', 'true');
+  await expect(covers.first()).toHaveAttribute('aria-checked', 'false');
+  await covers.nth(2).click();
+  await expect(covers.nth(2)).toHaveAttribute('aria-checked', 'true');
+  const id = await covers.nth(1).getAttribute('data-welcome-template');
+  await covers.nth(1).click();
+  await expect(covers.nth(1)).toHaveAttribute('aria-checked', 'true');
+  // Every slide of the picked template is shown before the deck is made.
+  const slides = page.getByTestId('welcome-templates').getByTestId('template-slide');
+  await expect(slides.first()).toBeVisible();
+  expect(await slides.count()).toBeGreaterThan(3);
+  await page.getByTestId('welcome-create').click();
   await expect(page.getByTestId('stage-frame')).toBeVisible();
   const deck = await page.evaluate(() => {
     const { theme, slides, layouts } = window.slidr!.bus.deck;
@@ -320,16 +341,15 @@ test('a template starts a deck that is set in it', async ({ page }) => {
   expect(deck.theme).toBe(id);
   expect(deck.slides).toBe(1);
   expect(deck.layouts).toBeGreaterThan(3);
+  await expect(page.getByTestId('chat-input')).toBeFocused();
 });
 
-test('"Import HTML" asks for the file at once, from the welcome screen and from the File menu', async ({
-  page,
-}) => {
+test('"Load from file" and "Import HTML" ask for the file at once', async ({ page }) => {
   await openWelcome(page);
   // The dialog for the file, and nothing else: the screen stays while no file is chosen. What
   // a chosen file starts is the import's own suite (`import-panel.spec.ts`).
   const fromWelcome = page.waitForEvent('filechooser');
-  await page.getByTestId('welcome-import').click();
+  await page.getByTestId('welcome-load').click();
   expect((await fromWelcome).isMultiple()).toBe(false);
   await expect(welcome(page)).toBeVisible();
 

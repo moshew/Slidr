@@ -1,7 +1,14 @@
 import { createDeckApi, startTurn, type ToolResult } from '@slidr/agent-tools';
-import { registerMessages } from '../i18n';
-import { getEditor, registerAction, whenEditor } from '../shell';
-import { continueImport, importFile, importRestored, importThread, startImport } from './flow';
+import { i18n, registerMessages } from '../i18n';
+import { getEditor, registerAction, registerImporter, whenEditor } from '../shell';
+import {
+  continueImport,
+  importFile,
+  importRestored,
+  importSource,
+  importThread,
+  startImport,
+} from './flow';
 import { en, he } from './messages';
 import { importBrief } from './progress';
 import { buildReport } from './report';
@@ -26,6 +33,14 @@ import {
 registerMessages('import', { he, en });
 
 registerAction('import', () => void importFile(getEditor()));
+
+// "Load from file" of the welcome screen takes an HTML file as this import does.
+registerImporter({
+  id: 'html',
+  extensions: ['html', 'htm'],
+  filterName: () => i18n.t('filter', { ns: 'import' }),
+  open: (path) => void importSource(getEditor(), { path }),
+});
 
 // A deck that was imported has its import again when it is opened (IMP-07), and the AI chat
 // goes back to its conversation (`importRestored`).

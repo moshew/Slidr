@@ -13,6 +13,7 @@
 //   node scripts/export-designs.mjs --check <pack>[=<group>] ... compare, and write nothing
 //   node scripts/export-designs.mjs --source <dir> ...          a folder other than elements/source
 //   node scripts/export-designs.mjs --order a,b,c ...           the gallery's order of groups
+//   node scripts/export-designs.mjs --managed ...               into the managed catalog instead
 //
 // A pack joins the group of its own name unless one is given (`talk=deck`). A group that is not
 // in the catalog yet is added after the others, in the order of the arguments; a design that is
@@ -26,18 +27,31 @@
 // and give it a name in both `designs.name` blocks of `src/elements/messages.ts` (and its group
 // one in `designs.group`, if the group is new). `src/elements/designs.test.ts` counts the designs
 // and the groups. Run from apps/desktop.
+//
+// With --managed the packs go to the managed catalog, `elements/designs/managed.json`, beside the
+// authored one (src/elements/designCatalog.ts): each id takes the prefix `m-`, and so does its
+// picture (`m-<id>.webp`); a design names itself (`name: { he, en }`) and a pack names its group
+// (`export const <pack>Group = { he, en }`), so no message of the app has to; and the catalog
+// keeps the pixel sizes of its pictures, which `images/designs/sizes.json` does not. Designs that
+// are written by hand but published apart from the hand-authored catalog go there: that catalog
+// is not on every author's machine, and the managed one is merged, not replaced, whenever it is
+// published.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
+import { webpSize } from './design-asset-sizes.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const media = resolve(desktop, '..', '..', '..', 'Slidr-media');
-const catalogFile = join(media, 'elements', 'designs', 'index.json');
 const pictures = join(media, 'images', 'designs');
 
 const args = process.argv.slice(2);
 const check = args.includes('--check');
+const managed = args.includes('--managed');
+const catalogFile = join(media, 'elements', 'designs', managed ? 'managed.json' : 'index.json');
+/** The id a design has in the catalog: a managed one starts with `m-`. */
+const idOf = (id) => (managed && !id.startsWith('m-') ? `m-${id}` : id);
 const sourceAt = args.indexOf('--source');
 const source = sourceAt === -1 ? join(media, 'elements', 'source') : resolve(args[sourceAt + 1]);
 const orderAt = args.indexOf('--order');
@@ -54,7 +68,9 @@ const packs = args
     return { pack, group };
   });
 if (packs.length === 0) {
-  console.error('usage: export-designs.mjs [--check] [--source <dir>] <pack>[=<group>] ...');
+  console.error(
+    'usage: export-designs.mjs [--check] [--managed] [--source <dir>] <pack>[=<group>] ...',
+  );
   process.exit(2);
 }
 
@@ -102,16 +118,40 @@ function withoutIds(value) {
 let failed = 0;
 try {
   const kit = await server.ssrLoadModule(join(source, 'designKit.ts'));
-  const catalog = JSON.parse(readFileSync(catalogFile, 'utf8'));
+  const catalog =
+    managed && !existsSync(catalogFile)
+      ? {
+          version: 1,
+          groups: [],
+          groupNames: {},
+          groupIds: {},
+          slides: {},
+          subjects: {},
+          names: {},
+          sizes: {},
+        }
+      : JSON.parse(readFileSync(catalogFile, 'utf8'));
   let added = 0;
   let replaced = 0;
   for (const { pack, group } of packs) {
     const file = join(source, 'design-packs', `${pack}.ts`);
     if (!existsSync(file)) throw new Error(`no pack file: ${file}`);
-    const designs = (await server.ssrLoadModule(file))[pack];
+    const module = await server.ssrLoadModule(file);
+    const designs = module[pack];
     if (!designs) throw new Error(`${file} does not export "${pack}"`);
+    const groupName = module[`${pack}Group`];
+    if (managed && !groupName && !catalog.groupNames[group]) {
+      throw new Error(`${file} does not name its group: export const ${pack}Group = { he, en }`);
+    }
     const differ = [];
-    for (const [id, design] of Object.entries(designs)) {
+    for (const [key, design] of Object.entries(designs)) {
+      const id = idOf(key);
+      if (managed && !(design.name?.he && design.name?.en)) {
+        console.error(
+          `  ${id}: a managed design names itself in both languages (name: { he, en })`,
+        );
+        failed += 1;
+      }
       const slides = {
         he: kit.drawDesign(id, design, 'he', '__subject__', '__backdrop__'),
         en: kit.drawDesign(id, design, 'en', '__subject__', '__backdrop__'),
@@ -136,6 +176,7 @@ try {
           held &&
           JSON.stringify(withoutIds(held)) === JSON.stringify(withoutIds(slides)) &&
           JSON.stringify(catalog.subjects[id]) === JSON.stringify(design.subject) &&
+          (!managed || JSON.stringify(catalog.names[id]) === JSON.stringify(design.name)) &&
           (catalog.groupIds[group] ?? []).includes(id);
         if (!same) differ.push(id);
         continue;
@@ -153,7 +194,16 @@ try {
       }
       catalog.slides[id] = slides;
       catalog.subjects[id] = design.subject;
+      if (managed) {
+        catalog.names[id] = design.name;
+        for (const name of [id, `${id}-bg`]) {
+          const picture = join(pictures, `${name}.webp`);
+          if (existsSync(picture)) catalog.sizes[name] = webpSize(readFileSync(picture));
+          else delete catalog.sizes[name];
+        }
+      }
     }
+    if (managed && !check && groupName) catalog.groupNames[group] = groupName;
     const count = Object.keys(designs).length;
     if (check) {
       failed += differ.length;
@@ -179,6 +229,11 @@ try {
     catalog.groupIds = Object.fromEntries(
       catalog.groups.map((name) => [name, catalog.groupIds[name]]),
     );
+    if (managed) {
+      catalog.groupNames = Object.fromEntries(
+        catalog.groups.map((name) => [name, catalog.groupNames[name]]),
+      );
+    }
     writeFileSync(catalogFile, JSON.stringify(catalog));
     const total = catalog.groups.reduce((sum, name) => sum + catalog.groupIds[name].length, 0);
     console.log(

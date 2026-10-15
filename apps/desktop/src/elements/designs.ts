@@ -10,33 +10,19 @@ import {
   type Slide,
 } from '@slidr/model';
 import { designAssetUrl, previewAsset, previewBackdrop } from './designAssets';
-
-/** Authored slide content is installed in media; this module only inserts it into a deck. */
-interface DesignCatalog {
-  groups: string[];
-  groupIds: Record<string, string[]>;
-  slides: Record<string, { he: Slide; en: Slide }>;
-  subjects: Record<string, [number, number]>;
-}
+import { localName, mergeCatalogs, type DesignCatalog } from './designCatalog';
+import { MANAGED_DESIGNS } from './managedDesigns';
 
 /**
- * The ready-made slides: the catalog of the media library (`elements/designs/index.json`).
- * Without it the gallery has no designs to offer.
+ * The ready-made slides: the catalog of the media library (`elements/designs/index.json`), and
+ * after it the designs the management tool publishes (`elements/designs/managed.json`). Slide
+ * content is installed in media; this module only inserts it into a deck. Without the catalogs
+ * the gallery has no designs to offer.
  */
-const read = await readMediaJson<Partial<DesignCatalog>>('elements/designs/index.json');
-const slides = read?.slides ?? {};
-const catalog: DesignCatalog = {
-  groups: Array.isArray(read?.groups) ? read.groups : [],
-  // Only the designs the catalog has a slide for.
-  groupIds: Object.fromEntries(
-    Object.entries(read?.groupIds ?? {}).map(([group, ids]) => [
-      group,
-      Array.isArray(ids) ? ids.filter((id) => id in slides) : [],
-    ]),
-  ),
-  slides,
-  subjects: read?.subjects ?? {},
-};
+const catalog = mergeCatalogs(
+  await readMediaJson<Partial<DesignCatalog>>('elements/designs/index.json'),
+  MANAGED_DESIGNS,
+);
 export type DesignGroup = string;
 export type DesignId = string;
 export const DESIGN_GROUPS: readonly DesignGroup[] = catalog.groups;
@@ -44,6 +30,18 @@ export const DESIGN_IDS: readonly DesignId[] = catalog.groups.flatMap(
   (group) => catalog.groupIds[group] ?? [],
 );
 export const DESIGN_SUBJECTS: Readonly<Record<string, [number, number]>> = catalog.subjects;
+/** The designs of the catalog that came from `managed.json`. */
+export const MANAGED_DESIGN_IDS: ReadonlySet<DesignId> = catalog.managed;
+
+/** The name `managed.json` gives a managed design; the app's messages name the authored ones. */
+export function designName(id: DesignId, lang: string): string | undefined {
+  return localName(catalog.names.get(id), lang);
+}
+
+/** The name `managed.json` gives a group of designs, in the language of `lang`. */
+export function designGroupName(group: DesignGroup, lang: string): string | undefined {
+  return localName(catalog.groupNames.get(group), lang);
+}
 
 export function designsOf(group: DesignGroup): DesignId[] {
   return catalog.groupIds[group]?.slice() ?? [];

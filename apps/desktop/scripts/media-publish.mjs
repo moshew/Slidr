@@ -5,15 +5,20 @@
 //   pnpm media:publish --from <dir>         another copy
 //   pnpm media:publish --dry-run            stage it and say what would change, and no more
 //   pnpm media:publish --branch preview     a preview deployment, not the published library
+//   pnpm media:publish --report <file>      also write what it found to <file>, as JSON
+//
+// The report is written once the changes are known, before anything below can stop the
+// publication: the files and bytes staged, the paths added, changed and removed against the
+// published library, and `blocked`, the reason it stops without --force (else null).
 //
 // Cloudflare is reached with CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID from the
 // environment; wrangler is run through npx at a fixed version. A publication that would leave the
 // library empty, or take away most of it, stops unless --force is given: a copy that is not all
 // there (another machine, a folder not yet pulled) would otherwise empty the app's library.
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { changes, publishedUrl, stageLibrary } from '../build/media.ts';
 
@@ -50,16 +55,46 @@ const { added, changed, removed } = changes(before, manifest);
 console.log(
   `Against the published library: ${added.length} added, ${changed.length} changed, ${removed.length} removed.`,
 );
-for (const path of removed.slice(0, 20)) console.log(`  - ${path}`);
-if (removed.length > 20) console.log(`  … and ${removed.length - 20} more`);
+for (const [sign, list] of [
+  ['+', added],
+  ['~', changed],
+  ['-', removed],
+]) {
+  for (const path of list.slice(0, 20)) console.log(`  ${sign} ${path}`);
+  if (list.length > 20) console.log(`  … and ${list.length - 20} more`);
+}
 
 const published = Object.keys(before?.files ?? {}).length;
-if (!flag('--force') && (paths.length === 0 || removed.length > published / 2)) {
-  console.error(
-    paths.length === 0
+const blocked =
+  flag('--force') || (paths.length > 0 && removed.length <= published / 2)
+    ? null
+    : paths.length === 0
       ? `${source} holds no files of the library. Nothing is published; --force publishes an empty library.`
-      : `This would take away ${removed.length} of the ${published} published files. Nothing is published; --force publishes it as it is.`,
-  );
+      : `This would take away ${removed.length} of the ${published} published files. Nothing is published; --force publishes it as it is.`;
+
+const report = option('--report');
+if (report) {
+  const file = resolve(report);
+  const found = {
+    source,
+    target,
+    files: paths.length,
+    bytes,
+    published: manifest.published,
+    before: published,
+    added,
+    changed,
+    removed,
+    blocked,
+    dryRun: flag('--dry-run'),
+  };
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(found, null, 2)}\n`);
+  console.log(`Report written to ${file}`);
+}
+
+if (blocked) {
+  console.error(blocked);
   process.exit(1);
 }
 

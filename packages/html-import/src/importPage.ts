@@ -17,6 +17,7 @@ import type { ConversionHost } from './host';
 import { drawnOver, nameOf, notPainted } from './drawnOver';
 import { composedChildNodes, composedChildren, viewportOffset } from './measure';
 import { createSourceFonts, type AppFontFace } from './sourceFonts';
+import { clearMarks, markMotion, recordMotion, type MotionRecorder } from './motion';
 
 /** Which element: a CSS selector (open shadow roots are searched too), or JavaScript for it. */
 export interface ImportTarget {
@@ -665,12 +666,61 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
 
     async capture(request) {
       await ready();
-      if (request.before) {
-        await run(request.before);
+      // Watched from before the slide is brought into view: how it comes in is part of it.
+      const recorder = recordMotion(page().doc);
+      try {
+        if (request.before) {
+          await run(request.before);
+        }
+        await sleep(Math.min(5_000, Math.max(0, request.waitMs ?? 250)));
+        return await captureRoot(request, recorder);
+      } finally {
+        recorder.stop();
+        const doc = frame?.contentDocument;
+        if (doc) clearMarks(doc);
       }
-      await sleep(Math.min(5_000, Math.max(0, request.waitMs ?? 250)));
+    },
+
+    refused() {
+      if (!frame) return [];
+      // The page that holds the frame is asked too: the file can reach it, and a request it
+      // makes from there is reported there. Its frames, the file's among them, come with it.
+      const holder = frame.ownerDocument.defaultView;
+      const found = new Set<string>();
+      try {
+        if (holder) refusedIn(holder, found);
+      } catch {
+        // A page in the middle of loading has no window to ask yet.
+      }
+      return Array.from(found).slice(0, MAX_REFUSED);
+    },
+
+    dispose() {
+      frame?.remove();
+      frame = null;
+      if (url) URL.revokeObjectURL(url);
+      url = null;
+    },
+  };
+
+  /** The capture itself, once the slide is in view: `recorder` has watched it come in. */
+  async function captureRoot(
+    request: ImportCaptureRequest,
+    recorder: MotionRecorder,
+  ): Promise<ImportCapture> {
+    {
       const root = resolve(request, true)!;
       const doc = root.ownerDocument;
+      // Every motion is brought to its end here; what it did is kept for the slide.
+      const laidOutW = (root as HTMLElement).offsetWidth || root.getBoundingClientRect().width;
+      const laidOutH = (root as HTMLElement).offsetHeight || root.getBoundingClientRect().height;
+      const k =
+        laidOutW > 0 && laidOutH > 0
+          ? Math.min(request.deck.size.w / laidOutW, request.deck.size.h / laidOutH)
+          : 1;
+      const view = doc.defaultView;
+      const dir = view?.getComputedStyle(root).direction === 'rtl' ? 'rtl' : 'ltr';
+      const motion = recorder.take(root, { k, dir });
       await Promise.race([settle(doc), sleep(5_000)]);
 
       let at = onPage(root);
@@ -711,19 +761,29 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
       const notes = await fonts.sync(page().doc);
       await doc.fonts.ready;
       const faces = fonts.css();
-      const result = await convertSubtree(root, {
-        deck: { ...request.deck, slides: [], assets: Object.fromEntries(assets) },
-        host,
-        foreign: true,
-        behind: 'page',
-        takenIds: new Set(request.takenIds),
-        fontFaces: false,
-        ...(faces ? { css: faces } : {}),
-      });
-      const written = JSON.stringify(result.slide);
+      // What moved is marked on the page for the conversion, and taken off again after it.
+      const unmark = markMotion(root, motion);
+      let result: Awaited<ReturnType<typeof convertSubtree>>;
+      try {
+        result = await convertSubtree(root, {
+          deck: { ...request.deck, slides: [], assets: Object.fromEntries(assets) },
+          host,
+          foreign: true,
+          behind: 'page',
+          takenIds: new Set(request.takenIds),
+          fontFaces: false,
+          ...(faces ? { css: faces } : {}),
+        });
+      } finally {
+        unmark();
+      }
+      const slide = motion.transition
+        ? { ...result.slide, transition: motion.transition }
+        : result.slide;
+      const written = JSON.stringify(slide);
       const { faithful, exact, rounds, wholeSlide, diffPixels } = result.guard;
       return {
-        slide: result.slide,
+        slide,
         assets: Array.from(assets.values()).filter(
           (asset) => asset.kind === 'font' || written.includes(asset.id),
         ),
@@ -738,27 +798,6 @@ export function createImportPage(options: ImportPageOptions): ImportPage {
         },
         ms: result.ms,
       };
-    },
-
-    refused() {
-      if (!frame) return [];
-      // The page that holds the frame is asked too: the file can reach it, and a request it
-      // makes from there is reported there. Its frames, the file's among them, come with it.
-      const holder = frame.ownerDocument.defaultView;
-      const found = new Set<string>();
-      try {
-        if (holder) refusedIn(holder, found);
-      } catch {
-        // A page in the middle of loading has no window to ask yet.
-      }
-      return Array.from(found).slice(0, MAX_REFUSED);
-    },
-
-    dispose() {
-      frame?.remove();
-      frame = null;
-      if (url) URL.revokeObjectURL(url);
-      url = null;
-    },
-  };
+    }
+  }
 }

@@ -104,7 +104,7 @@ function PresentButton() {
             variant="primary"
             aria-label={t('tools.presentOptions')}
             disabled={!fromStart && !fromCurrent}
-            className="header-present header-present-more rounded-s-none border-s border-ui-header-line"
+            className="header-present header-present-more rounded-s-none border-s"
           >
             <Icon icon={ChevronDown} size="md" />
           </Button>
@@ -182,7 +182,7 @@ function FileMenu() {
           variant="ghost"
           iconEnd={ChevronDown}
           loading={busy !== null}
-          className="header-button"
+          className="header-button header-file"
           data-testid="file-menu-trigger"
         >
           {t('file.menu')}

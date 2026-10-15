@@ -3,7 +3,8 @@
 // A design is drawn in the gallery from its bundled file, before any deck has imported it, and
 // a picture that is cropped (one face of a sheet of four) can only be drawn from a record that
 // knows its size. `designs.test.ts` fails when a picture and this table disagree: run this again
-// after adding or replacing a picture.
+// after adding or replacing a picture. The pictures of the designs the management tool publishes
+// (`m-<id>.webp`) are not listed: their sizes are in `elements/designs/managed.json`.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -30,11 +31,11 @@ export function webpSize(bytes) {
   throw new Error(`unknown WebP chunk "${chunk}"`);
 }
 
-/** Every picture of the folder by its name without `.webp`, in the order of the names. */
+/** Every authored picture of the folder by its name without `.webp`, in the order of the names. */
 export function measure() {
   return Object.fromEntries(
     readdirSync(assetsDir)
-      .filter((name) => name.endsWith('.webp'))
+      .filter((name) => name.endsWith('.webp') && !name.startsWith('m-'))
       .sort()
       .map((name) => [name.slice(0, -5), webpSize(readFileSync(join(assetsDir, name)))]),
   );

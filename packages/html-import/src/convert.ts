@@ -39,6 +39,7 @@ import {
   uniformScale,
   type Line,
 } from './css';
+import { parseAnim, type Anim } from './anim';
 import type { ConversionHost, Rect } from './host';
 import { BLANK_IMAGE_ATTRIBUTE, type CopyStrategy } from './htmlCopy';
 import {
@@ -128,8 +129,8 @@ export interface Item {
   /** For `html` elements: how the copy is made, and why the region is HTML. */
   copy?: CopyStrategy;
   reason?: string;
-  /** The `data-anim` preset the element enters with, and the group it enters in. */
-  anim?: { preset: string; group: number };
+  /** What the element enters with (`data-anim`), and the group it enters in. */
+  anim?: Anim;
   /** The element stands for this pseudo-element of the node, not for the node's own box. */
   pseudo?: '::before' | '::after';
 }
@@ -170,6 +171,11 @@ export interface WalkOptions {
   storeImage(url: string): Promise<string | undefined>;
   /** Slide px per CSS px of the root, and where its corner goes. Default: fitted and centred. */
   placement?: { k: number; x: number; y: number };
+  /**
+   * The attribute that says how an element enters. Default `data-anim`, the agent's own; an
+   * imported page is read by the marks the import put on it (`ANIM_MARK`).
+   */
+  animAttribute?: string;
 }
 
 /** Elements the model has no equivalent for: they stay HTML whatever they contain. */
@@ -204,7 +210,7 @@ interface Inherited {
   z: ZKey;
   /** The scale of the transforms between the root and the element's parent. */
   scale: number;
-  anim?: { preset: string; group: number };
+  anim?: Anim;
   /** `data-role` of an ancestor that made no element of its own: its content takes the role. */
   role?: PlaceholderRole;
   /** The part of the page the boxes that clip their overflow leave visible. */
@@ -347,6 +353,16 @@ export function propose(root: Element, options: WalkOptions): Proposal {
   let visit = 0;
   let emitted = 0;
   let groups = 0;
+  const animAttribute = options.animAttribute ?? 'data-anim';
+  /** What an element enters with: its own attribute, or what it inherits. */
+  const animOf = (el: Element, inherited: Anim | undefined): Anim | undefined => {
+    const parsed = parseAnim(el.getAttribute(animAttribute), animAttribute);
+    if (!parsed) return inherited;
+    for (const note of parsed.notes) if (!notes.includes(note)) notes.push(note);
+    if ('none' in parsed) return undefined;
+    for (const name of parsed.keyframes) proposal.keyframes.add(name);
+    return parsed.steps.length > 0 ? { steps: parsed.steps, group: groups++ } : inherited;
+  };
 
   const toFrame = (r: { left: number; top: number; width: number; height: number }): Frame => ({
     x: round(((r.left - rootRect.left) / viewScale) * k + space.offX),
@@ -1323,8 +1339,7 @@ export function propose(root: Element, options: WalkOptions): Proposal {
     }
     const z = isRoot ? { path: [], seq: visit++ } : zKeyOf(el, cs, inherited.z, visit++);
     const opacity = isRoot ? 1 : inherited.opacity * parseFloat(cs.opacity);
-    const animName = el.getAttribute('data-anim')?.trim();
-    const anim = animName ? { preset: animName, group: groups++ } : inherited.anim;
+    const anim = animOf(el, inherited.anim);
     // `own`: the element as one thing, under its ancestors' opacity. `inner`: what is in it.
     const role = roleOf(el) ?? inherited.role;
     const own: State = { z, opacity: inherited.opacity, anim, role };

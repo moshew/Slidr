@@ -20,7 +20,7 @@ The content the app offers (built-in templates and their photographs, the design
 
 - An installed app needs the network for content it has not used yet; what it used works offline. A new publication reaches it at its next start.
 - The installer no longer carries the library; `tauri.conf.json` has no resources, and `vite build` needs no local folder.
-- The notices of third-party content are files of the library, published with it; the app's `THIRD-PARTY-NOTICES.txt` lists only what the build contains.
+- The notices of third-party content are files of the library, published with it; the app's `THIRD-PARTY-NOTICES.txt` lists only what the build contains. The licences dialog adds the library's notices, read when it is opened, so what the library holds is credited in the app as it was when the build carried it. The fonts of decks, which no notice credited before, have one per family since this change (`gen-builtin-fonts.mjs`); the published library got them the same day (221 files).
 - On 2026-10-15 the site was created and seeded with what could be rebuilt on a machine without the authored folder: the deck fonts and their catalog (`gen-builtin-fonts.mjs` and the `@fontsource` packages), the icon sets (the `lucide-static` and `@tabler/icons` packages, and `hebrew.json`, `browse.json` and `filled-browse.json` from `15ad71a^`), the graphics and emoji catalogs and their art (`generate-graphics-catalog.mjs`, `generate-emoji-catalog.mjs`, and the four whole `@iconify-json` sets): 198 files, 31 MB. The templates, designs, card sets, shapes, frames and photographs are authored content that only the author's folder holds; they are published from there with `pnpm media:publish`.
 
 ## Checks
