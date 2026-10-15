@@ -64,10 +64,15 @@ export default tseslint.config(
   },
 
   // The tools that render, check and package the authored templates and designs
-  // (packages/templates/src/authoring): Node, and a headless browser driven from it.
+  // (packages/templates/src/authoring): Node, and a headless browser driven from it; and the
+  // three.js scenes their pictures were rendered from, which run in that browser.
   {
     files: ['packages/templates/src/authoring/tools/**/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
+    files: ['packages/templates/src/authoring/artwork/**/*.js'],
+    languageOptions: { globals: globals.browser },
   },
 
   // Dependency rule of SPEC 14.2: `model` stands alone and never touches React or the DOM.

@@ -1,0 +1,336 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="fonts.css" />
+    <!-- Glass code cards floating in depth over a soft gradient light: the picture of the API v3 launch (m-apilaunch). -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 1000px;
+        overflow: hidden;
+        background: transparent;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        perspective: 2200px;
+        perspective-origin: 40% 45%;
+      }
+      .lights {
+        position: absolute;
+        inset: 0;
+        -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 98%);
+        mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 98%);
+      }
+      .light {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(70px);
+      }
+      .stage {
+        position: absolute;
+        inset: 0;
+        transform-style: preserve-3d;
+        transform: translate(20px, -20px) scale(0.86) rotateY(-24deg) rotateX(11deg)
+          rotateZ(-2.5deg);
+      }
+      .card {
+        position: absolute;
+        border-radius: 26px;
+        transform-style: preserve-3d;
+        overflow: hidden;
+      }
+      .dark {
+        background: linear-gradient(160deg, rgba(30, 32, 52, 0.94), rgba(14, 15, 28, 0.96));
+        border: 1.5px solid rgba(255, 255, 255, 0.12);
+        box-shadow:
+          0 60px 120px -20px rgba(28, 22, 90, 0.45),
+          0 20px 40px -10px rgba(10, 10, 30, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      }
+      .glass {
+        background: linear-gradient(150deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.38));
+        backdrop-filter: blur(22px) saturate(150%);
+        border: 1.5px solid rgba(255, 255, 255, 0.85);
+        box-shadow:
+          0 50px 100px -24px rgba(40, 30, 110, 0.35),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      }
+      .bar {
+        height: 58px;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 0 26px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+      }
+      .file {
+        margin-left: 18px;
+        font: 500 19px 'JetBrains Mono';
+        color: #a9aecb;
+      }
+      .tab {
+        margin-left: auto;
+        font: 600 16px 'JetBrains Mono';
+        color: #8f95b8;
+        letter-spacing: 0.5px;
+      }
+      pre {
+        margin: 0;
+        padding: 26px 34px;
+        font: 400 21px/1.62 'JetBrains Mono';
+        color: #daddf0;
+        white-space: pre;
+      }
+      .ln {
+        color: #4b5072;
+        display: inline-block;
+        width: 38px;
+      }
+      .k {
+        color: #c792ea;
+      }
+      .s {
+        color: #a5e37a;
+      }
+      .f {
+        color: #82aaff;
+      }
+      .n {
+        color: #ffb86b;
+      }
+      .c {
+        color: #6b7194;
+        font-style: italic;
+      }
+      .p {
+        color: #89ddff;
+      }
+      .hl {
+        background: linear-gradient(90deg, rgba(122, 108, 255, 0.28), rgba(122, 108, 255, 0));
+        margin: 0 -34px;
+        padding: 0 34px;
+        display: block;
+      }
+      .sheen {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          115deg,
+          rgba(255, 255, 255, 0.1) 0%,
+          rgba(255, 255, 255, 0) 32%
+        );
+        pointer-events: none;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        font: 600 18px 'Inter';
+      }
+    </style>
+  </head>
+  <body>
+    <!-- the coloured light the glass sits in, fading out well before the edges of the picture -->
+    <div class="lights">
+      <div
+        class="light"
+        style="
+          left: 250px;
+          top: 120px;
+          width: 700px;
+          height: 600px;
+          background: radial-gradient(circle at 45% 45%, #7b6bff, rgba(123, 107, 255, 0) 68%);
+          opacity: 0.95;
+        "
+      ></div>
+      <div
+        class="light"
+        style="
+          left: 560px;
+          top: 400px;
+          width: 560px;
+          height: 480px;
+          background: radial-gradient(circle at 50% 50%, #ff7a59, rgba(255, 122, 89, 0) 68%);
+          opacity: 0.9;
+        "
+      ></div>
+      <div
+        class="light"
+        style="
+          left: 140px;
+          top: 520px;
+          width: 500px;
+          height: 400px;
+          background: radial-gradient(circle at 50% 50%, #2dd4bf, rgba(45, 212, 191, 0) 68%);
+          opacity: 0.75;
+        "
+      ></div>
+    </div>
+
+    <div class="stage">
+      <!-- the response, behind -->
+      <div
+        class="card glass"
+        style="
+          left: 700px;
+          top: 40px;
+          width: 470px;
+          height: 380px;
+          transform: translateZ(-300px);
+          filter: blur(1.4px);
+        "
+      >
+        <div style="display: flex; align-items: center; gap: 14px; padding: 26px 30px 6px">
+          <span class="pill" style="background: #ddf7e8; color: #11804a">● 200 OK</span>
+          <span style="font: 600 19px 'JetBrains Mono'; color: #4a4f72">38 ms</span>
+          <span style="margin-left: auto; font: 500 17px 'JetBrains Mono'; color: #8a8fb0"
+            >POST /v3/orders</span
+          >
+        </div>
+        <pre style="color: #2b2f4a; font-size: 20px; padding-top: 14px">{
+  <span style="color:#6A4DF5">"id"</span>: <span style="color:#C2410C">"ord_8Kq2xV"</span>,
+  <span style="color:#6A4DF5">"status"</span>: <span style="color:#C2410C">"confirmed"</span>,
+  <span style="color:#6A4DF5">"total"</span>: <span style="color:#0E7490">248.00</span>,
+  <span style="color:#6A4DF5">"currency"</span>: <span style="color:#C2410C">"ILS"</span>,
+  <span style="color:#6A4DF5">"region"</span>: <span style="color:#C2410C">"il-central"</span>
+}</pre>
+      </div>
+
+      <!-- the editor, in the middle -->
+      <div
+        class="card dark"
+        style="left: 150px; top: 210px; width: 760px; height: 500px; transform: translateZ(0px)"
+      >
+        <div class="bar">
+          <span class="dot" style="background: #ff5f57"></span
+          ><span class="dot" style="background: #febc2e"></span
+          ><span class="dot" style="background: #28c840"></span>
+          <span class="file">checkout.ts</span><span class="tab">TypeScript · SDK 3.0</span>
+        </div>
+        <pre><span class="ln">1</span><span class="k">import</span> { <span class="f">Tavlo</span> } <span class="k">from</span> <span class="s">'@tavlo/sdk'</span>;
+<span class="ln">2</span>
+<span class="ln">3</span><span class="k">const</span> api = <span class="k">new</span> <span class="f">Tavlo</span>({ version: <span class="s">'3'</span> });
+<span class="ln">4</span>
+<span class="hl"><span class="ln">5</span><span class="k">const</span> order = <span class="k">await</span> api.orders.<span class="f">create</span>({</span><span class="ln">6</span>  items: [{ sku: <span class="s">'TLV-204'</span>, qty: <span class="n">2</span> }],
+<span class="ln">7</span>  region: <span class="s">'il-central'</span>,
+<span class="ln">8</span>});
+<span class="ln">9</span>
+<span class="ln">10</span>order.status <span class="c">// "confirmed", typed</span></pre>
+        <div class="sheen"></div>
+      </div>
+
+      <!-- the terminal, in front -->
+      <div
+        class="card dark"
+        style="left: 40px; top: 690px; width: 520px; height: 200px; transform: translateZ(170px)"
+      >
+        <div class="bar" style="height: 48px">
+          <span class="dot" style="background: #3a3f5c"></span
+          ><span class="dot" style="background: #3a3f5c"></span
+          ><span class="dot" style="background: #3a3f5c"></span
+          ><span class="file" style="font-size: 17px">zsh</span>
+        </div>
+        <pre style="font-size: 20px; padding: 20px 30px"><span class="p">$</span> npm i @tavlo/sdk@3
+<span style="color:#7EE787">✓</span> added 1 package in 1.2s
+<span class="p">$</span> <span style="display:inline-block; width:11px; height:22px; background:#DADDF0; vertical-align:-3px"></span></pre>
+        <div class="sheen"></div>
+      </div>
+
+      <!-- latency, in front, to the right -->
+      <div
+        class="card glass"
+        style="left: 690px; top: 600px; width: 400px; height: 250px; transform: translateZ(230px)"
+      >
+        <div
+          style="
+            padding: 26px 30px 0;
+            font: 600 18px 'Inter';
+            color: #5a5f82;
+            letter-spacing: 1.5px;
+          "
+        >
+          P50 LATENCY
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 14px; padding: 4px 30px 0">
+          <span style="font: 700 64px 'Inter'; color: #14152a; letter-spacing: -2px">38</span
+          ><span style="font: 600 26px 'Inter'; color: #14152a">ms</span>
+          <span
+            class="pill"
+            style="margin-left: auto; background: #e9e5ff; color: #5b3df5; font-size: 17px"
+            >▼ 64% vs v2</span
+          >
+        </div>
+        <svg
+          width="400"
+          height="90"
+          viewBox="0 0 400 90"
+          style="position: absolute; left: 0; bottom: 0"
+        >
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#6D5BFF" stop-opacity=".35" />
+              <stop offset="1" stop-color="#6D5BFF" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0 18 L40 22 L80 16 L120 24 L160 20 L190 54 L220 60 L260 58 L300 62 L340 59 L400 61 L400 90 L0 90Z"
+            fill="url(#g)"
+          />
+          <path
+            d="M0 18 L40 22 L80 16 L120 24 L160 20 L190 54 L220 60 L260 58 L300 62 L340 59 L400 61"
+            fill="none"
+            stroke="#5B3DF5"
+            stroke-width="4"
+            stroke-linejoin="round"
+          />
+          <circle cx="190" cy="54" r="7" fill="#fff" stroke="#5B3DF5" stroke-width="4" />
+        </svg>
+      </div>
+
+      <!-- a webhook, far left, behind -->
+      <div
+        class="card glass"
+        style="
+          left: 40px;
+          top: 80px;
+          width: 380px;
+          height: 150px;
+          transform: translateZ(-120px);
+          filter: blur(0.6px);
+        "
+      >
+        <div style="display: flex; align-items: center; gap: 16px; padding: 28px 28px 0">
+          <span
+            style="
+              width: 46px;
+              height: 46px;
+              border-radius: 14px;
+              background: #14152a;
+              display: grid;
+              place-items: center;
+              color: #7ee787;
+              font: 700 24px 'Inter';
+            "
+            >✓</span
+          >
+          <div>
+            <div style="font: 600 21px 'JetBrains Mono'; color: #14152a">order.confirmed</div>
+            <div style="font: 500 17px 'Inter'; color: #6a6f92; margin-top: 4px">
+              Webhook delivered · replayable
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

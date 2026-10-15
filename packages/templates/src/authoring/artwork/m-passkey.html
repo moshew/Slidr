@@ -1,0 +1,322 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- The picture of m-passkey: a hardware security key in black with a gold touch disc, a green
+     light ring, a USB-C plug and a steel key ring, floating over a soft shadow on a transparent
+     ground. node tools/render-art.mjs m-passkey.html out.png 900 1000 2 -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 900px;
+        height: 1000px;
+        overflow: hidden;
+        background: transparent;
+      }
+    </style>
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+          "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import {
+        THREE,
+        studio,
+        softboxes,
+        contactShadow,
+        canvasTexture,
+        grain,
+        anchors,
+        loadFont,
+        done,
+      } from './techproduct-studio.js';
+
+      await loadFont(
+        'Inter',
+        '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
+        '100 900',
+      );
+      const W = 900,
+        H = 1000;
+      const { renderer, scene, camera } = studio({
+        width: W,
+        height: H,
+        fov: 22,
+        exposure: 1.0,
+        tone: 'neutral',
+      });
+      scene.environment = softboxes(renderer, {
+        top: '#9fa4ad',
+        horizon: '#5d616a',
+        bottom: '#1d1f24',
+        power: 0.7,
+        panels: [
+          { at: [-6, 7, 5], size: [6, 3.5], power: 3.4 },
+          { at: [7, 5, 3], size: [1.2, 9], power: 3.0, color: '#eef3ff' },
+          { at: [-7, 1, -4], size: [1.0, 8], power: 2.4 },
+          { at: [0, 10, -3], size: [8, 1.6], power: 2.0 },
+          { at: [3, 2, 9], size: [4, 2], power: 1.2, color: '#fff3e0' },
+          { at: [-2, 8, 8], size: [3, 3], power: 3.0, color: '#fff1d6' },
+          { at: [1, 9, 14], size: [6, 3], power: 3.4, color: '#fff4e2' },
+        ],
+      });
+
+      // Units: 1 = 1 cm. The key is 4.6 x 1.8 x 0.33 cm.
+      const L = 4.6,
+        Wd = 1.8,
+        T = 0.34;
+      const key = new THREE.Group();
+      scene.add(key);
+
+      // The body: a rounded slab with soft bevels and a hole for the ring.
+      function bodyShape() {
+        const s = new THREE.Shape();
+        const r = 0.62,
+          hw = Wd / 2,
+          x0 = -L / 2,
+          x1 = L / 2 - 0.05;
+        s.moveTo(x0 + r, -hw);
+        s.lineTo(x1 - 0.25, -hw);
+        s.quadraticCurveTo(x1, -hw, x1, -hw + 0.25);
+        s.lineTo(x1, hw - 0.25);
+        s.quadraticCurveTo(x1, hw, x1 - 0.25, hw);
+        s.lineTo(x0 + r, hw);
+        s.absarc(x0 + r, hw - r, r, Math.PI / 2, Math.PI, false);
+        s.lineTo(x0, -hw + r);
+        s.absarc(x0 + r, -hw + r, r, Math.PI, Math.PI * 1.5, false);
+        const hole = new THREE.Path();
+        hole.absarc(x0 + 0.5, 0, 0.24, 0, Math.PI * 2, true);
+        s.holes.push(hole);
+        return s;
+      }
+      const bevel = 0.07;
+      const bodyGeo = new THREE.ExtrudeGeometry(bodyShape(), {
+        depth: T - bevel * 2,
+        bevelEnabled: true,
+        bevelThickness: bevel,
+        bevelSize: bevel,
+        bevelSegments: 6,
+        curveSegments: 48,
+      });
+      bodyGeo.translate(0, 0, -(T - bevel * 2) / 2);
+      bodyGeo.rotateX(-Math.PI / 2);
+      const soft = grain(512, { base: 120, spread: 30, seed: 17 });
+      soft.repeat.set(3, 3);
+      const black = new THREE.MeshPhysicalMaterial({
+        color: '#16171a',
+        roughness: 0.42,
+        roughnessMap: soft,
+        clearcoat: 0.55,
+        clearcoatRoughness: 0.22,
+        sheen: 0.3,
+        sheenColor: '#7d8592',
+      });
+      const body = new THREE.Mesh(bodyGeo, black);
+      body.castShadow = true;
+      key.add(body);
+
+      // The touch disc: gold, finely turned, a little proud of the face, inside a green light ring.
+      const discX = -0.32;
+      const turned = canvasTexture(
+        1024,
+        1024,
+        (ctx, w, h) => {
+          ctx.fillStyle = '#808080';
+          ctx.fillRect(0, 0, w, h);
+          for (let r = 4; r < w / 2; r += 2.2) {
+            const v = 128 + Math.sin(r * 0.9) * 26 + (Math.random() - 0.5) * 30;
+            ctx.strokeStyle = `rgb(${v},${v},${v})`;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 2, r, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        },
+        { srgb: false },
+      );
+      const ringGlow = new THREE.Mesh(
+        new THREE.TorusGeometry(0.5, 0.028, 16, 128),
+        new THREE.MeshStandardMaterial({
+          color: '#000000',
+          emissive: '#3dff9a',
+          emissiveIntensity: 1.6,
+          toneMapped: false,
+        }),
+      );
+      ringGlow.rotation.x = -Math.PI / 2;
+      ringGlow.position.set(discX, T / 2 + 0.002, 0);
+      key.add(ringGlow);
+      const well = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.47, 0.47, 0.02, 96),
+        new THREE.MeshStandardMaterial({ color: '#0b0c0e', roughness: 0.6 }),
+      );
+      well.position.set(discX, T / 2 - 0.004, 0);
+      key.add(well);
+      const gold = new THREE.MeshPhysicalMaterial({
+        color: '#f4cd80',
+        metalness: 1,
+        roughness: 0.34,
+        roughnessMap: turned,
+        clearcoat: 0.3,
+        clearcoatRoughness: 0.1,
+      });
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.41, 0.05, 128), gold);
+      disc.position.set(discX, T / 2 + 0.012, 0);
+      key.add(disc);
+      // The print on the face: the name, near the plug.
+      const print = canvasTexture(512, 256, (ctx, w, h) => {
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '700 92px Inter';
+        ctx.letterSpacing = '18px';
+        ctx.fillText('SEAL', w / 2 + 9, h / 2);
+      });
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.9, 0.45),
+        new THREE.MeshStandardMaterial({
+          color: '#8f949c',
+          alphaMap: print,
+          transparent: true,
+          roughness: 0.5,
+        }),
+      );
+      label.rotation.x = -Math.PI / 2;
+      label.rotation.z = -Math.PI / 2;
+      label.position.set(1.12, T / 2 + 0.001, 0);
+      key.add(label);
+
+      // The USB-C plug: a steel sleeve with a dark tongue.
+      const plugShape = new THREE.Shape();
+      {
+        const hw = 0.42,
+          hh = 0.13,
+          r = 0.13;
+        plugShape.moveTo(-hw + r, -hh);
+        plugShape.lineTo(hw - r, -hh);
+        plugShape.absarc(hw - r, 0, r, -Math.PI / 2, Math.PI / 2, false);
+        plugShape.lineTo(-hw + r, hh);
+        plugShape.absarc(-hw + r, 0, r, Math.PI / 2, Math.PI * 1.5, false);
+        const inner = new THREE.Path();
+        const iw = 0.37,
+          ih = 0.085,
+          ir = 0.085;
+        inner.moveTo(-iw + ir, -ih);
+        inner.lineTo(iw - ir, -ih);
+        inner.absarc(iw - ir, 0, ir, -Math.PI / 2, Math.PI / 2, false);
+        inner.lineTo(-iw + ir, ih);
+        inner.absarc(-iw + ir, 0, ir, Math.PI / 2, Math.PI * 1.5, false);
+        plugShape.holes.push(inner);
+      }
+      const plugGeo = new THREE.ExtrudeGeometry(plugShape, {
+        depth: 0.68,
+        bevelEnabled: true,
+        bevelThickness: 0.01,
+        bevelSize: 0.01,
+        bevelSegments: 2,
+        curveSegments: 32,
+      });
+      plugGeo.rotateY(Math.PI / 2);
+      const steel = new THREE.MeshPhysicalMaterial({
+        color: '#d9dce1',
+        metalness: 1,
+        roughness: 0.18,
+        clearcoat: 0.2,
+      });
+      const plug = new THREE.Mesh(plugGeo, steel);
+      // The sleeve's width runs across the key (z), its height through it (y), its length along x.
+      plug.position.set(L / 2 - 0.12, 0, 0);
+      plug.castShadow = true;
+      key.add(plug);
+      const tongue = new THREE.Mesh(
+        new THREE.BoxGeometry(0.62, 0.05, 0.52),
+        new THREE.MeshStandardMaterial({ color: '#1a1b1f', roughness: 0.5 }),
+      );
+      tongue.position.set(L / 2 + 0.26, 0, 0);
+      key.add(tongue);
+      const neck = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, 0.24, 0.9),
+        new THREE.MeshStandardMaterial({ color: '#202226', roughness: 0.45 }),
+      );
+      neck.position.set(L / 2 - 0.06, 0, 0);
+      key.add(neck);
+
+      // The ring: a steel split ring through the hole.
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.045, 24, 160), steel);
+      ring.position.set(-L / 2 + 0.5 - 0.78 + 0.12, 0, 0);
+      ring.rotation.set(Math.PI / 2 - 0.35, 0.0, 0.5);
+      ring.castShadow = true;
+      key.add(ring);
+
+      // The pose: floating, turned and tipped toward the camera.
+      key.rotation.set(0.62, 0.55, 0.34);
+      key.position.set(0, 2.2, 0);
+
+      // Its spare, in ivory, a step behind: keys come in pairs, one for the drawer.
+      const spare = key.clone(true);
+      const ivory = new THREE.MeshPhysicalMaterial({
+        color: '#ebe7df',
+        roughness: 0.45,
+        roughnessMap: soft,
+        clearcoat: 0.4,
+        clearcoatRoughness: 0.3,
+        sheen: 0.3,
+        sheenColor: '#ffffff',
+      });
+      spare.traverse((o) => {
+        if (o.isMesh && o.material === black) o.material = ivory;
+      });
+      spare.remove(
+        spare.children.find(
+          (o) => o.geometry && o.geometry.type === 'TorusGeometry' && o.material === steel,
+        ),
+      );
+      spare.rotation.set(0.7, 2.55, 0.3);
+      spare.position.set(2.3, 1.0, -4.4);
+      scene.add(spare);
+
+      const keyLight = new THREE.DirectionalLight('#ffffff', 1.2);
+      keyLight.position.set(-4, 9, 4);
+      scene.add(keyLight);
+
+      camera.position.set(1.0, 7.0, 19.5);
+      camera.lookAt(0.55, 1.75, 0);
+
+      const contact = contactShadow(renderer, scene, {
+        width: 8,
+        depth: 6.4,
+        x: 0.5,
+        z: -0.8,
+        height: 3.4,
+        blur: 5.5,
+        darkness: 1.1,
+        opacity: 0.5,
+        resolution: 1024,
+      });
+      contact.update();
+
+      renderer.render(scene, camera);
+      key.updateMatrixWorld(true);
+      const w = (x, y, z) => key.localToWorld(new THREE.Vector3(x, y, z)).toArray();
+      anchors(camera, W, H, {
+        disc: w(discX, T / 2, 0),
+        plug: w(L / 2 + 0.55, 0, 0),
+        ring: w(-L / 2 - 0.7, 0, 0),
+        centre: w(0, 0, 0),
+        hole: w(-L / 2 + 0.5, 0, 0),
+        shadow: [0, 0, 0],
+      });
+      done();
+    </script>
+  </body>
+</html>

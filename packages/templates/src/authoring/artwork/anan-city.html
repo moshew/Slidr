@@ -1,0 +1,275 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- Anan's fullImage picture: a cloud city, a wide isometric map of regions and services joined by
+     dashed roads of traffic, under floating clouds. Render: render-art.mjs anan-city.html out.png 1920 690 2 -->
+    <link rel="stylesheet" href="fonts.css" />
+    <style id="chips"></style>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 690px;
+        overflow: hidden;
+      }
+      body {
+        position: relative;
+        background: #eef4fb;
+      }
+      #canvas,
+      #labels {
+        position: absolute;
+        inset: 0;
+      }
+      /* The sky over the far side: the map fades into it. */
+      #haze {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(243, 247, 252, 0.9) 0%,
+            rgba(243, 247, 252, 0.3) 12%,
+            rgba(243, 247, 252, 0) 24%
+          ),
+          radial-gradient(
+            70% 95% at 50% 62%,
+            rgba(243, 247, 252, 0) 45%,
+            rgba(243, 247, 252, 0.62) 100%
+          );
+      }
+    </style>
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+          "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="canvas"></div>
+    <div id="haze"></div>
+    <div id="labels"></div>
+    <script type="module">
+      import {
+        C,
+        CHIP_CSS,
+        stage,
+        ground,
+        block,
+        server,
+        database,
+        dashed,
+        packet,
+        plate,
+        cloud,
+        chip,
+      } from './anan-iso.js';
+      document.getElementById('chips').textContent = CHIP_CSS;
+
+      // Drawn after the page has loaded: a large picture takes longer than a page load may.
+      setTimeout(draw, 0);
+      function draw() {
+        const W = 1920,
+          H = 690;
+        const st = stage({
+          width: W,
+          height: H,
+          view: 11.2,
+          target: [2.6, 0.7, 2.6],
+          light: [3.2, 6.4, -9],
+        });
+        const { scene } = st;
+        ground(scene, { size: 90, color: '#eef4fb' });
+
+        let seed = 7;
+        const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+        const pick = (list) => list[Math.floor(rnd() * list.length)];
+
+        const STEP = 3.4;
+        const SIZE = 2.5;
+        // The three regions with names, near the middle; the edge at the very middle.
+        const named = { '0,0': 'edge', '1,1': 'il', '1,0': 'central', '0,1': 'west' };
+        const cells = [];
+        for (let i = -8; i <= 8; i++) {
+          for (let j = -8; j <= 8; j++) {
+            const x = i * STEP,
+              z = j * STEP;
+            // Only what the picture shows, with a margin.
+            if (Math.abs(x - z) > 24 || x + z > 20 || x + z < -16) continue;
+            cells.push({ i, j, x, z, name: named[`${i},${j}`] });
+          }
+        }
+
+        // The account: a pale field under the edge and its three regions, with a dashed boundary.
+        {
+          const a = -0.7,
+            b = STEP + SIZE + 0.7;
+          block(scene, [a, 0, a], [b - a, b - a, 0.05], '#dceafb', 0.04);
+          for (const [p, q] of [
+            [
+              [a, 0, a],
+              [b, 0, a],
+            ],
+            [
+              [b, 0, a],
+              [b, 0, b],
+            ],
+            [
+              [b, 0, b],
+              [a, 0, b],
+            ],
+            [
+              [a, 0, b],
+              [a, 0, a],
+            ],
+          ]) {
+            dashed(scene, p, q, {
+              color: C.blue,
+              width: 0.05,
+              dash: 0.1,
+              gap: 0.16,
+              head: false,
+              lift: 0.06,
+            });
+          }
+        }
+
+        // The roads first: between neighbours, dashed, a few with traffic.
+        for (const c of cells) {
+          for (const [di, dj] of [
+            [1, 0],
+            [0, 1],
+          ]) {
+            const n = cells.find((o) => o.i === c.i + di && o.j === c.j + dj);
+            if (!n || rnd() < 0.25) continue;
+            const cx = c.x + SIZE / 2,
+              cz = c.z + SIZE / 2;
+            const a = di ? [c.x + SIZE + 0.05, 0, cz] : [cx, 0, c.z + SIZE + 0.05];
+            const b = di ? [n.x - 0.05, 0, cz] : [cx, 0, n.z - 0.05];
+            const near = Math.abs(c.i) + Math.abs(c.j) <= 2;
+            dashed(scene, a, b, {
+              color: C.blue,
+              width: near ? 0.06 : 0.045,
+              dash: 0.15,
+              gap: 0.12,
+              head: near,
+            });
+            if (near && rnd() < 0.8)
+              packet(
+                scene,
+                [(a[0] + b[0]) / 2, 0.12, (a[2] + b[2]) / 2],
+                rnd() < 0.5 ? C.orange : C.blue,
+                0.08,
+                false,
+              );
+          }
+        }
+
+        for (const c of cells) {
+          const { x, z, name } = c;
+          const y = plate(scene, [x, z], [SIZE, SIZE], { h: name ? 0.22 : 0.16 });
+          if (name === 'edge') {
+            block(scene, [x + 0.55, y, z + 0.55], [1.4, 1.4, 0.5], C.blue, 0.08);
+            block(scene, [x + 0.85, y + 0.5, z + 0.85], [0.8, 0.8, 0.18], C.sky, 0.05);
+            continue;
+          }
+          if (name) {
+            // A region: a row of servers, a tall one, and its databases.
+            server(scene, [x + 0.3, y, z + 0.3], [0.6, 0.6, 1.5 + rnd() * 0.4]);
+            server(scene, [x + 1.1, y, z + 0.3], [0.6, 0.6, 1.0 + rnd() * 0.3], { color: C.sky });
+            server(scene, [x + 0.3, y, z + 1.1], [0.6, 0.6, 0.9 + rnd() * 0.3], { color: C.sky });
+            database(scene, [x + 1.65, y, z + 1.6], 0.38, 0.86);
+            if (name === 'central')
+              block(scene, [x + 1.75, y, z + 0.4], [0.5, 0.5, 0.3], C.orange, 0.05);
+            continue;
+          }
+          // A service: one of a few kinds, as a city has.
+          const ring = Math.max(Math.abs(c.i - 0.5), Math.abs(c.j - 0.5));
+          const kind =
+            ring > 2.5
+              ? pick(['low', 'low', 'servers', 'db', 'mixed'])
+              : pick(['servers', 'servers', 'db', 'mixed', 'low', 'tower']);
+          const far = Math.abs(c.x - c.z) > 14 || c.x + c.z < -6 ? 0.65 : 0.85;
+          if (kind === 'servers') {
+            for (const [ox, oz] of [
+              [0.35, 0.35],
+              [1.25, 0.35],
+              [0.35, 1.25],
+            ]) {
+              if (rnd() < 0.2) continue;
+              server(scene, [x + ox, y, z + oz], [0.6, 0.6, (0.5 + rnd() * 0.9) * far], {
+                color: rnd() < 0.35 ? C.sky : C.white,
+              });
+            }
+          } else if (kind === 'db') {
+            database(scene, [x + 0.8, y, z + 0.8], 0.4, 0.7 * far + 0.2);
+            database(scene, [x + 1.75, y, z + 1.7], 0.3, 0.5, { disks: 2 });
+          } else if (kind === 'mixed') {
+            server(scene, [x + 0.35, y, z + 0.35], [0.6, 0.6, (0.8 + rnd() * 0.6) * far]);
+            database(scene, [x + 1.7, y, z + 0.75], 0.32, 0.6);
+            block(scene, [x + 0.45, y, z + 1.5], [0.7, 0.7, 0.22], C.white, 0.05);
+          } else if (kind === 'low') {
+            for (const [ox, oz] of [
+              [0.3, 0.3],
+              [1.0, 0.3],
+              [0.3, 1.0],
+              [1.0, 1.0],
+              [1.7, 1.0],
+              [1.0, 1.7],
+            ]) {
+              if (rnd() < 0.3) continue;
+              block(
+                scene,
+                [x + ox, y, z + oz],
+                [0.52, 0.52, 0.18 + rnd() * 0.25],
+                rnd() < 0.3 ? C.sky : C.white,
+                0.05,
+              );
+            }
+          } else {
+            server(scene, [x + 0.7, y, z + 0.7], [0.9, 0.9, (1.6 + rnd() * 0.8) * far], {
+              color: rnd() < 0.5 ? C.white : C.sky,
+            });
+          }
+        }
+
+        // Clouds over the city, and the users' cloud over the edge, with their traffic coming down.
+        cloud(scene, [1.25, 2.95, 1.25], 1.2);
+        dashed(scene, [1.25, 2.45, 1.25], [1.25, 0.95, 1.25], {
+          color: C.orange,
+          width: 0.06,
+          dash: 0.15,
+          gap: 0.11,
+        });
+        packet(scene, [1.25, 1.7, 1.25], C.orange, 0.09, false);
+        for (const [cx, cy, cz, s] of [
+          [-7.5, 3.6, 5.5, 0.8],
+          [8.5, 3.9, -6.0, 0.9],
+          [-12, 3.4, -2, 0.7],
+          [11, 3.2, 3.5, 0.65],
+          [2.5, 4.4, -9.5, 0.7],
+        ]) {
+          cloud(scene, [cx, cy, cz], s);
+        }
+
+        st.render();
+
+        const corner = (i, j, u, v) => [i * STEP + u * SIZE, 0.2, j * STEP + v * SIZE];
+        chip(st, corner(1, 1, 1, 1), 'il-central-1', { sub: 'Tel Aviv', below: true, dy: 18 });
+        chip(st, corner(1, 0, 1, 0.3), 'eu-central-1', { sub: 'Frankfurt', below: true, dy: 18 });
+        chip(st, corner(0, 1, 0.3, 1), 'eu-west-1', { sub: 'Ireland', below: true, dy: 18 });
+        chip(st, [SIZE + 0.35, 0.3, -0.35], 'global edge', { light: C.blue, dy: -6 });
+        document.documentElement.dataset.ready = 'true';
+      }
+    </script>
+  </body>
+</html>

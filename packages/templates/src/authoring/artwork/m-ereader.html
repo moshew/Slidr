@@ -1,0 +1,414 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!-- The picture of m-ereader: an e-ink reader in ink-blue with a page-turn grip, its screen showing
+     an engraved chapter opener (a lighthouse at sea), standing over a soft shadow on a transparent
+     ground. node tools/render-art.mjs m-ereader.html out.png 900 1000 2 -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 900px;
+        height: 1000px;
+        overflow: hidden;
+        background: transparent;
+      }
+    </style>
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+          "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import {
+        THREE,
+        studio,
+        softboxes,
+        contactShadow,
+        canvasTexture,
+        grain,
+        seeded,
+        anchors,
+        loadFont,
+        done,
+      } from './techproduct-studio.js';
+      import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+      await loadFont(
+        'Playfair Display',
+        '@fontsource-variable/playfair-display/files/playfair-display-latin-wght-normal.woff2',
+        '400 900',
+      );
+      const W = 900,
+        H = 1000;
+      const { renderer, scene, camera } = studio({
+        width: W,
+        height: H,
+        fov: 20,
+        exposure: 1.0,
+        tone: 'neutral',
+      });
+      scene.environment = softboxes(renderer, {
+        top: '#c9c6bf',
+        horizon: '#8d8a84',
+        bottom: '#3a3936',
+        power: 0.85,
+        panels: [
+          { at: [-7, 8, 8], size: [7, 5], power: 2.6, color: '#fff6ea' },
+          { at: [8, 3, 4], size: [1.4, 8], power: 2.4, color: '#eef2ff' },
+          { at: [0, 10, -4], size: [8, 2], power: 1.4 },
+          { at: [-3, 2, 12], size: [5, 2.2], power: 1.6, color: '#fff3e2' },
+          { at: [9, 0, 9], size: [5, 16], power: 0.9, color: '#ffffff' },
+        ],
+      });
+
+      // ---- The page on the screen: an engraved chapter opener, drawn line by line ----------------
+      const SW = 1080,
+        SH = 1440;
+      const page = canvasTexture(SW, SH, (ctx, w, h) => {
+        const rnd = seeded(42);
+        ctx.fillStyle = '#eceae4';
+        ctx.fillRect(0, 0, w, h);
+        const ink = '#2a2a28';
+        // The chapter numeral and a rule with a small diamond.
+        ctx.fillStyle = ink;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '500 92px "Playfair Display"';
+        ctx.fillText('III', w / 2, 150);
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w / 2 - 170, 236);
+        ctx.lineTo(w / 2 - 22, 236);
+        ctx.moveTo(w / 2 + 22, 236);
+        ctx.lineTo(w / 2 + 170, 236);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(w / 2, 224);
+        ctx.lineTo(w / 2 + 12, 236);
+        ctx.lineTo(w / 2, 248);
+        ctx.lineTo(w / 2 - 12, 236);
+        ctx.closePath();
+        ctx.fill();
+        // The plate: a framed engraving.
+        const px = 120,
+          py = 320,
+          pw = w - 240,
+          ph = 980;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(px, py, pw, ph);
+        ctx.clip();
+        // Sky: horizontal hatching, denser toward the top; the moon left blank with a ring.
+        const moon = [px + pw * 0.72, py + 210, 78];
+        for (let y = py; y < py + ph * 0.56; y += 7) {
+          const t = (y - py) / (ph * 0.56);
+          ctx.lineWidth = 3.4 * (1 - t) + 0.6;
+          ctx.beginPath();
+          let pen = false;
+          for (let x = px; x <= px + pw; x += 6) {
+            const d = Math.hypot(x - moon[0], y - moon[1]);
+            const inside = d < moon[2] + 14;
+            if (!inside && !pen) {
+              ctx.moveTo(x, y + Math.sin(x * 0.01 + y) * 0.6);
+              pen = true;
+            } else if (!inside) ctx.lineTo(x, y + Math.sin(x * 0.01 + y) * 0.6);
+            else pen = false;
+          }
+          ctx.stroke();
+        }
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(moon[0], moon[1], moon[2], 0, Math.PI * 2);
+        ctx.stroke();
+        // Sea: wavy lines, heavier toward the bottom, with crests left white.
+        const horizon = py + ph * 0.56;
+        for (let y = horizon; y < py + ph; y += 9) {
+          const t = (y - horizon) / (ph * 0.44);
+          ctx.lineWidth = 1 + t * 3.2;
+          ctx.beginPath();
+          for (let x = px; x <= px + pw; x += 5) {
+            const yy = y + Math.sin(x * (0.03 - t * 0.012) + y * 0.7) * (2 + t * 7);
+            if (x === px) ctx.moveTo(x, yy);
+            else ctx.lineTo(x, yy);
+          }
+          ctx.stroke();
+        }
+        // The light's beam: a fan of lines from the lamp.
+        const lamp = [px + pw * 0.3, py + 300];
+        ctx.lineWidth = 1.2;
+        for (let a = -0.18; a <= 0.18; a += 0.03) {
+          ctx.beginPath();
+          ctx.moveTo(lamp[0], lamp[1]);
+          ctx.lineTo(lamp[0] + Math.cos(a) * 700, lamp[1] + Math.sin(a) * 700);
+          ctx.stroke();
+        }
+        // Rocks: a dark mass of cross-hatching under the tower.
+        ctx.fillStyle = '#eceae4';
+        ctx.beginPath();
+        ctx.moveTo(px - 10, py + ph);
+        ctx.lineTo(px - 10, horizon + 80);
+        ctx.quadraticCurveTo(px + 120, horizon - 10, px + 230, horizon + 30);
+        ctx.quadraticCurveTo(px + 360, horizon + 60, px + 470, horizon + 150);
+        ctx.quadraticCurveTo(px + 560, horizon + 260, px + 640, py + ph);
+        ctx.closePath();
+        ctx.fill();
+        ctx.save();
+        ctx.clip();
+        for (let i = -ph; i < pw + ph; i += 8) {
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(px + i, py);
+          ctx.lineTo(px + i - ph, py + ph);
+          ctx.stroke();
+        }
+        for (let i = -ph; i < pw + ph; i += 11) {
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(px + i, py + ph * 0.6);
+          ctx.lineTo(px + i + ph, py + ph * 1.6);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(px - 10, horizon + 80);
+        ctx.quadraticCurveTo(px + 120, horizon - 10, px + 230, horizon + 30);
+        ctx.quadraticCurveTo(px + 360, horizon + 60, px + 470, horizon + 150);
+        ctx.quadraticCurveTo(px + 560, horizon + 260, px + 640, py + ph);
+        ctx.stroke();
+        // The tower: tapered, shaded on its right with vertical hatching, banded, a lantern on top.
+        const tx = lamp[0],
+          top = lamp[1] + 70,
+          base = horizon + 40;
+        const tw0 = 70,
+          tw1 = 46;
+        ctx.fillStyle = '#eceae4';
+        ctx.beginPath();
+        ctx.moveTo(tx - tw0, base);
+        ctx.lineTo(tx - tw1, top);
+        ctx.lineTo(tx + tw1, top);
+        ctx.lineTo(tx + tw0, base);
+        ctx.closePath();
+        ctx.fill();
+        ctx.save();
+        ctx.clip();
+        for (let x = tx - 6; x < tx + tw0; x += 6) {
+          ctx.lineWidth = 1 + ((x - tx) / tw0) * 3;
+          ctx.beginPath();
+          ctx.moveTo(x, top);
+          ctx.lineTo(x, base);
+          ctx.stroke();
+        }
+        for (let b = 0; b < 3; b++) {
+          const y = top + 70 + b * 95;
+          ctx.fillStyle = ink;
+          ctx.fillRect(tx - tw0, y, tw0 * 2, 30);
+        }
+        ctx.restore();
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(tx - tw0, base);
+        ctx.lineTo(tx - tw1, top);
+        ctx.lineTo(tx + tw1, top);
+        ctx.lineTo(tx + tw0, base);
+        ctx.stroke();
+        ctx.fillStyle = ink;
+        ctx.fillRect(tx - tw1 - 14, top - 10, (tw1 + 14) * 2, 12);
+        ctx.strokeRect(tx - 30, top - 74, 60, 64);
+        ctx.beginPath();
+        ctx.moveTo(tx - 40, top - 74);
+        ctx.lineTo(tx, top - 118);
+        ctx.lineTo(tx + 40, top - 74);
+        ctx.closePath();
+        ctx.fill();
+        // Gulls.
+        ctx.lineWidth = 2.6;
+        for (const [gx, gy, s] of [
+          [px + 520, py + 420, 1],
+          [px + 590, py + 470, 0.8],
+          [px + 470, py + 500, 0.7],
+        ]) {
+          ctx.beginPath();
+          ctx.moveTo(gx - 18 * s, gy);
+          ctx.quadraticCurveTo(gx - 9 * s, gy - 10 * s, gx, gy);
+          ctx.quadraticCurveTo(gx + 9 * s, gy - 10 * s, gx + 18 * s, gy);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = ink;
+        ctx.strokeRect(px, py, pw, ph);
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(px - 12, py - 12, pw + 24, ph + 24);
+        // The page number: three small dots of progress at the foot.
+        ctx.fillStyle = ink;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.arc(w / 2 - 24 + i * 24, h - 62, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // E-ink grain.
+        const img = ctx.getImageData(0, 0, w, h);
+        for (let i = 0; i < img.data.length; i += 4) {
+          const n = (rnd() - 0.5) * 14;
+          img.data[i] += n;
+          img.data[i + 1] += n;
+          img.data[i + 2] += n;
+        }
+        ctx.putImageData(img, 0, 0);
+      });
+
+      // ---- The reader: 13.6 x 16 x 0.6 cm, a grip on the left with two page-turn keys -------------
+      const BW = 13.6,
+        BH = 16.0,
+        BT = 0.62;
+      const reader = new THREE.Group();
+      scene.add(reader);
+      const shellGrain = grain(512, { base: 140, spread: 34, seed: 31 });
+      shellGrain.repeat.set(4, 4);
+      const shell = new THREE.MeshPhysicalMaterial({
+        color: '#2e3c50',
+        roughness: 0.62,
+        roughnessMap: shellGrain,
+        sheen: 0.4,
+        sheenRoughness: 0.6,
+        sheenColor: '#8fa0b8',
+        clearcoat: 0.1,
+      });
+      const body = new THREE.Mesh(new RoundedBoxGeometry(BW, BH, BT, 10, 0.29), shell);
+      body.castShadow = true;
+      reader.add(body);
+      // The grip: the left edge swells toward the back.
+      const grip = new THREE.Mesh(new RoundedBoxGeometry(2.4, BH - 0.2, 0.5, 10, 0.24), shell);
+      grip.position.set(-BW / 2 + 1.25, 0, -BT / 2 - 0.12);
+      grip.castShadow = true;
+      reader.add(grip);
+      // The front: flush black glass over the bezel, the page set into it.
+      const glass = new THREE.MeshPhysicalMaterial({
+        color: '#0f1216',
+        roughness: 0.12,
+        metalness: 0,
+        clearcoat: 1,
+        clearcoatRoughness: 0.06,
+      });
+      const glassShape = new THREE.Shape();
+      {
+        const hw = BW / 2 - 0.09,
+          hh = BH / 2 - 0.09,
+          r = 0.22;
+        glassShape.moveTo(-hw + r, -hh);
+        glassShape.lineTo(hw - r, -hh);
+        glassShape.absarc(hw - r, -hh + r, r, -Math.PI / 2, 0, false);
+        glassShape.lineTo(hw, hh - r);
+        glassShape.absarc(hw - r, hh - r, r, 0, Math.PI / 2, false);
+        glassShape.lineTo(-hw + r, hh);
+        glassShape.absarc(-hw + r, hh - r, r, Math.PI / 2, Math.PI, false);
+        glassShape.lineTo(-hw, -hh + r);
+        glassShape.absarc(-hw + r, -hh + r, r, Math.PI, Math.PI * 1.5, false);
+      }
+      const front = new THREE.Mesh(
+        new THREE.ExtrudeGeometry(glassShape, {
+          depth: 0.02,
+          bevelEnabled: true,
+          bevelThickness: 0.012,
+          bevelSize: 0.012,
+          bevelSegments: 3,
+          curveSegments: 24,
+        }),
+        glass,
+      );
+      front.position.z = BT / 2 - 0.01;
+      reader.add(front);
+      const screenW = 10.2,
+        screenH = 13.6;
+      const screenX = BW / 2 - 0.6 - screenW / 2;
+      const screen = new THREE.Mesh(
+        new THREE.PlaneGeometry(screenW, screenH),
+        new THREE.MeshPhysicalMaterial({
+          map: page,
+          roughness: 0.85,
+          clearcoat: 0.5,
+          clearcoatRoughness: 0.12,
+          color: '#ffffff',
+          emissiveMap: page,
+          emissive: '#fff4e4',
+          emissiveIntensity: 0.5,
+        }),
+      );
+      screen.position.set(screenX, 0, BT / 2 + 0.035);
+      reader.add(screen);
+      // Page-turn keys on the grip: two slim bars, a hair proud of the glass.
+      for (const y of [1.4, -1.4]) {
+        const k = new THREE.Mesh(
+          new RoundedBoxGeometry(0.22, 2.0, 0.06, 4, 0.03),
+          new THREE.MeshPhysicalMaterial({ color: '#3a4656', roughness: 0.4, clearcoat: 0.5 }),
+        );
+        k.position.set(-BW / 2 + 1.15, y, BT / 2 + 0.03);
+        reader.add(k);
+      }
+
+      // The pose: standing, turned a little to show the grip, leaning back a touch.
+      reader.rotation.set(-0.06, 0.32, 0.0);
+      reader.position.set(0, BH / 2 + 0.25, 0);
+
+      const key = new THREE.DirectionalLight('#fff8ee', 1.3);
+      key.position.set(-6, 10, 9);
+      scene.add(key);
+
+      camera.near = 10;
+      camera.updateProjectionMatrix();
+      camera.position.set(-2.95, 13.5, 63);
+      camera.lookAt(-0.25, 8.6, 0);
+
+      const contact = contactShadow(renderer, scene, {
+        width: 22,
+        depth: 9,
+        height: 4,
+        blur: 3,
+        darkness: 1.4,
+        opacity: 0.55,
+        resolution: 1024,
+      });
+      const ambient = contactShadow(renderer, scene, {
+        width: 24,
+        depth: 11,
+        height: 12,
+        blur: 7,
+        darkness: 0.7,
+        opacity: 0.35,
+        resolution: 1024,
+      });
+      ambient.plane.visible = false;
+      contact.update();
+      contact.plane.visible = false;
+      ambient.update();
+      contact.plane.visible = true;
+
+      renderer.render(scene, camera);
+      reader.updateMatrixWorld(true);
+      const w = (x, y, z) => reader.localToWorld(new THREE.Vector3(x, y, z)).toArray();
+      anchors(camera, W, H, {
+        topLeft: w(-BW / 2, BH / 2, 0),
+        topRight: w(BW / 2, BH / 2, 0),
+        bottomLeft: w(-BW / 2, -BH / 2, 0),
+        bottomRight: w(BW / 2, -BH / 2, 0),
+        screenCentre: w(screenX, 0, BT / 2),
+        gripKey: w(-BW / 2 + 1.15, 1.4, BT / 2),
+        edgeRight: w(BW / 2, 0, 0),
+        edgeRightBack: w(BW / 2, 0, -BT / 2),
+      });
+      done();
+    </script>
+  </body>
+</html>

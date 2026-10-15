@@ -1,0 +1,504 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!--
+  Magen, the picture of the full-image slide: a world threat map seen in perspective. A dot map of
+  the land on a dark plane, the arcs of a day's attacks rising from their sources and breaking on
+  a dome over the bank's data centres, and the overlay of a SOC's wall screen.
+  render-art.mjs magen-threatmap.html out.png 1920 712 2
+  The land is world-atlas (Natural Earth, 50m), drawn with d3-geo and topojson-client, all from the
+  scratch folder's node_modules.
+-->
+    <link rel="stylesheet" href="fonts.css" />
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script src="/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/d3-array/dist/d3-array.min.js"></script>
+    <script src="/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/d3-geo/dist/d3-geo.min.js"></script>
+    <script src="/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/topojson-client/dist/topojson-client.min.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 712px;
+        overflow: hidden;
+        background: #07090c;
+      }
+      canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 712px;
+      }
+      .hud {
+        position: absolute;
+        font-family: 'JetBrains Mono', monospace;
+        color: #c3ccd6;
+        letter-spacing: 0.04em;
+      }
+      .panel {
+        left: 40px;
+        top: 36px;
+        padding: 18px 22px;
+        background: rgba(10, 13, 17, 0.72);
+        border: 1px solid rgba(195, 204, 214, 0.16);
+        border-left: 3px solid #ff3b4a;
+      }
+      .panel .t {
+        font-size: 15px;
+        color: #8f9aa6;
+      }
+      .panel .n {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 44px;
+        color: #eef1f4;
+        letter-spacing: 0;
+        margin-top: 4px;
+      }
+      .panel .r {
+        font-size: 14px;
+        margin-top: 10px;
+        display: flex;
+        gap: 18px;
+        color: #8f9aa6;
+      }
+      .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 7px;
+      }
+      .live {
+        right: 40px;
+        top: 36px;
+        font-size: 15px;
+        color: #eef1f4;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .chip {
+        padding: 5px 10px;
+        border: 1px solid rgba(255, 59, 74, 0.7);
+        color: #ff6b77;
+      }
+      .lab {
+        font-size: 13px;
+        color: #c3ccd6;
+        white-space: nowrap;
+        transform: translate(10px, -22px);
+      }
+      .lab b {
+        color: #ff6b77;
+        font-weight: 600;
+      }
+      .scan {
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(255, 255, 255, 0.018) 0 1px,
+          transparent 1px 3px
+        );
+        pointer-events: none;
+      }
+      .vig {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          120% 140% at 55% 60%,
+          transparent 50%,
+          rgba(4, 5, 7, 0.75) 100%
+        );
+      }
+      .axis {
+        left: 0;
+        right: 0;
+        bottom: 14px;
+        height: 18px;
+        font-size: 12px;
+        color: rgba(195, 204, 214, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="3840" height="1424"></canvas>
+    <div class="vig"></div>
+    <div class="scan"></div>
+    <div id="hud"></div>
+    <div class="hud panel">
+      <div class="t">THREAT MAP · LAST 24 H</div>
+      <div class="n">
+        11,482 <span style="font-size: 22px; color: #8f9aa6; font-weight: 500">blocked</span>
+      </div>
+      <div class="r">
+        <span><i class="dot" style="background: #ff3b4a"></i>attack source</span
+        ><span><i class="dot" style="background: #ffb21e"></i>probe</span
+        ><span><i class="dot" style="background: #3ee08a"></i>shielded</span>
+      </div>
+    </div>
+    <div class="hud live">
+      <span class="chip">● LIVE</span><span>UTC 03:12:44</span
+      ><span style="color: #8f9aa6">SENSORS 412/412</span>
+    </div>
+    <script>
+      const W = 1920,
+        H = 712,
+        DPR = 2;
+      const cv = document.getElementById('c');
+      const ctx = cv.getContext('2d');
+      ctx.scale(DPR, DPR);
+
+      // ---- The land, as a mask in degrees -----------------------------------------------------------
+      const xhr = new XMLHttpRequest();
+      xhr.open(
+        'GET',
+        '/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/world-atlas/land-50m.json',
+        false,
+      );
+      xhr.send();
+      const topo = JSON.parse(xhr.responseText);
+      const land = topojson.feature(topo, topo.objects.land);
+      const MW = 1800,
+        MH = 900; // 0.2 degree a pixel
+      const mask = document.createElement('canvas');
+      mask.width = MW;
+      mask.height = MH;
+      const mctx = mask.getContext('2d');
+      const proj = d3
+        .geoEquirectangular()
+        .scale(MW / (2 * Math.PI))
+        .translate([MW / 2, MH / 2]);
+      mctx.fillStyle = '#fff';
+      mctx.beginPath();
+      d3.geoPath(proj, mctx)(land);
+      mctx.fill();
+      const md = mctx.getImageData(0, 0, MW, MH).data;
+      const isLand = (lon, lat) => {
+        const x = Math.floor(((lon + 180) / 360) * MW),
+          y = Math.floor(((90 - lat) / 180) * MH);
+        if (x < 0 || y < 0 || x >= MW || y >= MH) return false;
+        return md[(y * MW + x) * 4] > 128;
+      };
+
+      // ---- The camera ------------------------------------------------------------------------------
+      const LON0 = 34.8,
+        LAT0 = 31.9; // the data centres
+      const P = (lon, lat, h = 0) => [lon - LON0, h, -(lat - LAT0)];
+      const eye = [-4, 62, 92];
+      const look = [-6, 0, -12];
+      const sub = (a, b) => a.map((v, i) => v - b[i]);
+      const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const cross = (a, b) => [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+      ];
+      const norm = (a) => {
+        const l = Math.hypot(...a);
+        return a.map((v) => v / l);
+      };
+      const f = norm(sub(look, eye));
+      const r = norm(cross(f, [0, 1, 0]));
+      const u = cross(r, f);
+      const FOV = (44 * Math.PI) / 180;
+      const F = (H / 2 / Math.tan(FOV / 2)) * 1.0;
+      const CY = H * 0.46;
+      function project(p) {
+        const d = sub(p, eye);
+        const z = dot3(d, f);
+        if (z < 0.5) return null;
+        return [W / 2 + (dot3(d, r) / z) * F, CY - (dot3(d, u) / z) * F, z];
+      }
+
+      // ---- Ground: a glow under the target, the grid of the graticule --------------------------------
+      const bg = ctx.createRadialGradient(W * 0.58, H * 0.66, 10, W * 0.58, H * 0.6, W * 0.7);
+      bg.addColorStop(0, '#12161c');
+      bg.addColorStop(0.5, '#0b0e12');
+      bg.addColorStop(1, '#06080a');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      const fog = (z) => Math.max(0, Math.min(1, 1.6 - z / 210));
+
+      ctx.lineWidth = 1;
+      for (let lon = -180; lon <= 180; lon += 15) {
+        ctx.beginPath();
+        let first = true;
+        for (let lat = -60; lat <= 84; lat += 2) {
+          const s = project(P(lon, lat));
+          if (!s) {
+            first = true;
+            continue;
+          }
+          if (first) ctx.moveTo(s[0], s[1]);
+          else ctx.lineTo(s[0], s[1]);
+          first = false;
+        }
+        ctx.strokeStyle = 'rgba(143,154,166,.07)';
+        ctx.stroke();
+      }
+      for (let lat = -60; lat <= 80; lat += 15) {
+        ctx.beginPath();
+        let first = true;
+        for (let lon = -180; lon <= 180; lon += 2) {
+          const s = project(P(lon, lat));
+          if (!s) {
+            first = true;
+            continue;
+          }
+          if (first) ctx.moveTo(s[0], s[1]);
+          else ctx.lineTo(s[0], s[1]);
+          first = false;
+        }
+        ctx.strokeStyle = 'rgba(143,154,166,.07)';
+        ctx.stroke();
+      }
+
+      // ---- The dots of the land ----------------------------------------------------------------------
+      const STEP = 0.75;
+      for (let lat = 82; lat >= -58; lat -= STEP) {
+        const row = Math.round((82 - lat) / STEP);
+        for (let lon = -180 + (row % 2 ? STEP / 2 : 0); lon < 180; lon += STEP) {
+          if (!isLand(lon, lat)) continue;
+          const s = project(P(lon, lat));
+          if (!s || s[0] < -20 || s[0] > W + 20 || s[1] < -20 || s[1] > H + 20) continue;
+          const a = fog(s[2]);
+          if (a <= 0.02) continue;
+          const near = Math.hypot(lon - LON0, lat - LAT0);
+          const warm = Math.max(0, 1 - near / 16);
+          const rad = Math.max(0.55, 120 / s[2]);
+          ctx.fillStyle =
+            warm > 0
+              ? `rgba(${Math.round(120 + 90 * warm)},${Math.round(134 + 60 * warm)},${Math.round(148 + 50 * warm)},${(0.5 + 0.4 * warm) * a})`
+              : `rgba(128,142,156,${0.5 * a})`;
+          ctx.beginPath();
+          ctx.ellipse(s[0], s[1], rad, rad * 0.62, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // ---- The attacks -----------------------------------------------------------------------------
+      const R = 13; // the dome, in degrees
+      const HY = 1.25; // and how much taller than wide
+      const sources = [
+        [-74, 40.7, 'red', 'SRC 03', '96K'],
+        [-122.4, 37.8, 'amber'],
+        [-46.6, -23.5, 'red', 'SRC 11', '41K'],
+        [-99.1, 19.4, 'amber'],
+        [-0.1, 51.5, 'amber'],
+        [2.3, 48.9, 'red'],
+        [13.4, 52.5, 'red'],
+        [37.6, 55.8, 'red'],
+        [30.5, 50.4, 'amber'],
+        [28.9, 41.0, 'red'],
+        [51.4, 35.7, 'red'],
+        [77.2, 28.6, 'red', 'SRC 05', '307K'],
+        [116.4, 39.9, 'red', 'SRC 04', '264K'],
+        [121.5, 31.2, 'amber'],
+        [126.9, 37.6, 'red'],
+        [106.8, -6.2, 'amber'],
+        [103.8, 1.35, 'red', 'SRC 09', '58K'],
+        [3.4, 6.5, 'red', 'SRC 12', '37K'],
+        [18.4, -33.9, 'amber'],
+        [-58.4, -34.6, 'amber'],
+        [55.3, 25.2, 'amber'],
+        [72.9, 19.1, 'red'],
+        [-79.4, 43.7, 'red'],
+        [-87.6, 41.9, 'amber'],
+        [4.9, 52.4, 'red'],
+        [21.0, 52.2, 'amber'],
+        [44.5, 40.2, 'red'],
+        [69.3, 41.3, 'amber'],
+        [100.5, 13.8, 'red'],
+      ];
+      const COL = { red: [255, 59, 74], amber: [255, 178, 30] };
+      const glow = (x, y, rad, rgb, a) => {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+        g.addColorStop(0, `rgba(${rgb},${a})`);
+        g.addColorStop(1, `rgba(${rgb},0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, rad, 0, Math.PI * 2);
+        ctx.fill();
+      };
+
+      const target = P(LON0, LAT0);
+      const labels = [];
+      ctx.globalCompositeOperation = 'lighter';
+      for (const [lon, lat, kind, name, count] of sources) {
+        const p0 = P(lon, lat);
+        const dist = Math.hypot(p0[0], p0[2]);
+        const h = Math.min(30, 3 + dist * 0.32);
+        const mid = [(p0[0] + target[0]) / 2, h * 2, (p0[2] + target[2]) / 2];
+        const at = (t) =>
+          [0, 1, 2].map((i) => (1 - t) ** 2 * p0[i] + 2 * (1 - t) * t * mid[i] + t * t * target[i]);
+        // Where the arc meets the dome.
+        let end = 1;
+        for (let t = 0; t <= 1; t += 0.002) {
+          const q = at(t);
+          if (Math.hypot(q[0], q[1] / HY, q[2]) < R) {
+            end = t;
+            break;
+          }
+        }
+        if (end < 0.08) continue;
+        const pts = [];
+        for (let t = 0; t <= end; t += end / 120) {
+          const s = project(at(t));
+          if (s) pts.push([...s, t / end]);
+        }
+        if (pts.length < 2) continue;
+        const rgb = COL[kind].join(',');
+        // A wide faint pass and a bright core that grows toward the impact.
+        for (const [width, alpha] of [
+          [7, 0.05],
+          [3.2, 0.12],
+          [1.4, 0.55],
+        ]) {
+          for (let i = 1; i < pts.length; i++) {
+            const k = pts[i][3];
+            ctx.strokeStyle = `rgba(${rgb},${alpha * (0.25 + 0.75 * k)})`;
+            ctx.lineWidth = width * (0.6 + 0.6 * k);
+            ctx.beginPath();
+            ctx.moveTo(pts[i - 1][0], pts[i - 1][1]);
+            ctx.lineTo(pts[i][0], pts[i][1]);
+            ctx.stroke();
+          }
+        }
+        // Packets along the arc.
+        for (const k of [0.32, 0.58, 0.81]) {
+          const s = pts[Math.floor(k * (pts.length - 1))];
+          glow(s[0], s[1], 6, rgb, 0.7);
+        }
+        // The impact on the dome.
+        const hit = pts[pts.length - 1];
+        glow(hit[0], hit[1], 18, rgb, 0.55);
+        glow(hit[0], hit[1], 5, '255,235,235', 0.9);
+        // The source: a node and its ring on the ground.
+        const s0 = project(p0);
+        if (s0) {
+          const sc = 60 / s0[2];
+          glow(s0[0], s0[1], 26 * sc + 6, rgb, 0.35);
+          ctx.strokeStyle = `rgba(${rgb},.65)`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(s0[0], s0[1], 14 * sc + 4, (14 * sc + 4) * 0.55, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          glow(s0[0], s0[1], 3.5 * sc + 2, '255,240,240', 0.95);
+          if (name && s0[0] > 120 && s0[0] < W - 160 && s0[1] > 150)
+            labels.push([s0[0], s0[1], name, count, kind]);
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over';
+
+      // ---- The dome over the data centres -----------------------------------------------------------
+      const domePt = (a, b) => [
+        R * Math.cos(b) * Math.cos(a),
+        R * HY * Math.sin(b),
+        R * Math.cos(b) * Math.sin(a),
+      ];
+      // Its body: a soft green-white glass.
+      const c0 = project([0, R * HY * 0.45, 0]);
+      const cTop = project([0, R * HY, 0]);
+      const cBase = project([R, 0, 0]);
+      const rad = Math.hypot(cBase[0] - c0[0], cBase[1] - c0[1]) * 1.05;
+      const body = ctx.createRadialGradient(c0[0], c0[1] + rad * 0.3, rad * 0.1, c0[0], c0[1], rad);
+      body.addColorStop(0, 'rgba(62,224,138,.10)');
+      body.addColorStop(0.75, 'rgba(62,224,138,.06)');
+      body.addColorStop(1, 'rgba(62,224,138,0)');
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.arc(c0[0], c0[1], rad, 0, Math.PI * 2);
+      ctx.fill();
+      // Its net.
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2;
+        ctx.beginPath();
+        for (let j = 0; j <= 24; j++) {
+          const s = project(domePt(a, ((j / 24) * Math.PI) / 2));
+          if (j) ctx.lineTo(s[0], s[1]);
+          else ctx.moveTo(s[0], s[1]);
+        }
+        ctx.strokeStyle = 'rgba(160,240,200,.30)';
+        ctx.stroke();
+      }
+      for (let j = 1; j <= 5; j++) {
+        const b = ((j / 6) * Math.PI) / 2;
+        ctx.beginPath();
+        for (let i = 0; i <= 72; i++) {
+          const s = project(domePt((i / 72) * Math.PI * 2, b));
+          if (i) ctx.lineTo(s[0], s[1]);
+          else ctx.moveTo(s[0], s[1]);
+        }
+        ctx.strokeStyle = 'rgba(160,240,200,.26)';
+        ctx.stroke();
+      }
+      // Its rim on the ground, and rings around it.
+      for (const [k, a, w] of [
+        [1, 0.75, 2.2],
+        [1.35, 0.25, 1.2],
+        [1.75, 0.14, 1],
+        [2.3, 0.08, 1],
+      ]) {
+        ctx.beginPath();
+        for (let i = 0; i <= 96; i++) {
+          const s = project(domePt((i / 96) * Math.PI * 2, 0).map((v) => v * k));
+          if (i) ctx.lineTo(s[0], s[1]);
+          else ctx.moveTo(s[0], s[1]);
+        }
+        ctx.strokeStyle = `rgba(62,224,138,${a})`;
+        ctx.lineWidth = w;
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      const core = project([0, 0, 0]);
+      glow(core[0], core[1], 46, '62,224,138', 0.35);
+      glow(core[0], core[1], 9, '230,255,240', 0.95);
+      // A beam up from the core.
+      const beam = ctx.createLinearGradient(core[0], core[1], cTop[0], cTop[1] - 40);
+      beam.addColorStop(0, 'rgba(160,255,200,.55)');
+      beam.addColorStop(1, 'rgba(160,255,200,0)');
+      ctx.strokeStyle = beam;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(core[0], core[1]);
+      ctx.lineTo(cTop[0], cTop[1] - 40);
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+
+      // ---- Labels ----------------------------------------------------------------------------------
+      const hud = document.getElementById('hud');
+      for (const [x, y, name, count] of labels) {
+        const el = document.createElement('div');
+        el.className = 'hud lab';
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.innerHTML = `${name} <b>${count}</b>`;
+        hud.append(el);
+      }
+      const dc = document.createElement('div');
+      dc.className = 'hud lab';
+      dc.style.left = cBase[0] + 64 + 'px';
+      dc.style.top = core[1] + 96 + 'px';
+      ctx.strokeStyle = 'rgba(159,240,196,.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(core[0], core[1]);
+      ctx.lineTo(cBase[0] + 40, core[1] + 74);
+      ctx.lineTo(cBase[0] + 260, core[1] + 74);
+      ctx.stroke();
+      dc.style.color = '#9ff0c4';
+      dc.innerHTML = 'DC-TLV · 0 breaches';
+      hud.append(dc);
+
+      document.documentElement.dataset.ready = 'true';
+    </script>
+  </body>
+</html>
