@@ -2,18 +2,14 @@
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Button, Icon, Skeleton, cx } from '@slidr/ui';
-import { Ai, Check } from '@slidr/ui/icons';
+import { Ai, Check, Terminal } from '@slidr/ui/icons';
 import type { HarnessDescriptor } from '../agent/agent';
 import type { ChatProblem } from '../agent/transcript';
 import { latestModels, modelEfforts, selectionIssue } from '../agent/harnessSetup';
+import { harnessLook, harnessName, installsWithNpm } from '../agent/harnessLook';
 import { setAgentSettings, useAgentSettings } from '../settings';
 import { useEditor } from '../shell';
 import { agentOf } from './runtime';
-
-export const harnessName = (harness: HarnessDescriptor) =>
-  ({ 'claude-code': 'Claude', 'codex-cli': 'Codex', 'copilot-cli': 'GitHub Copilot' })[
-    harness.id
-  ] ?? harness.name.replace(/\s+CLI\b/gi, '');
 
 export function useChatSetup(problem?: ChatProblem) {
   const agent = agentOf(useEditor());
@@ -215,14 +211,12 @@ export function ChatSetup({ setup }: { setup: ReturnType<typeof useChatSetup> })
                       dir="ltr"
                       className={cx(
                         'flex size-6 shrink-0 items-center justify-center rounded-small font-mono text-[11px] font-semibold',
-                        option.id === 'claude-code'
-                          ? 'bg-ui-tool-orange text-ui-tool-orange-fg'
-                          : option.id === 'codex-cli'
-                            ? 'bg-ui-tool-green text-ui-tool-green-fg'
-                            : 'bg-ui-tool-blue text-ui-tool-blue-fg',
+                        harnessLook(option.id)?.tone ?? 'bg-ui-tool-violet text-ui-tool-violet-fg',
                       )}
                     >
-                      {option.id === 'claude-code' ? '✳' : option.id === 'codex-cli' ? '>_' : 'GH'}
+                      {harnessLook(option.id)?.glyph ?? (
+                        <Icon icon={Terminal} className="size-3.5" />
+                      )}
                     </span>
                   )}
                   <span className="min-w-0 flex-1 break-words">
@@ -257,7 +251,14 @@ export function ChatSetup({ setup }: { setup: ReturnType<typeof useChatSetup> })
           {state?.busy && <p>{t(`setup.${state.busy}`)}</p>}
           {!state?.busy && status === 'not_installed' && (
             <>
-              <p>{t('setup.installDescription', { name: harnessName(descriptor) })}</p>
+              <p>
+                {t(
+                  installsWithNpm(descriptor.id)
+                    ? 'setup.installDescriptionNpm'
+                    : 'setup.installDescription',
+                  { name: harnessName(descriptor) },
+                )}
+              </p>
               <Button onClick={() => void agent.setup.run(descriptor.id, 'install')}>
                 {t('setup.install')}
               </Button>

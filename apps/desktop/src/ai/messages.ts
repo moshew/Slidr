@@ -18,6 +18,8 @@ export const he = {
     signingIn: 'השלימו את ההתחברות בחלון שנפתח. לאחר מכן נמשיך כאן.',
     installDescription:
       '{{name}} אינו מותקן במחשב. באישורכם, נוריד ונתקין אותו באמצעות Windows App Installer, ואז נמשיך כאן.',
+    installDescriptionNpm:
+      '{{name}} אינו מותקן במחשב. באישורכם, נתקין אותו באמצעות npm, ואם Node.js חסר נתקין אותו קודם באמצעות Windows App Installer. אחר כך נמשיך כאן.',
     install: 'אישור והתקנה',
     signInDescription: 'יש להתחבר לחשבון כדי לטעון את המודלים הזמינים.',
     signIn: 'התחברות לחשבון',
@@ -531,6 +533,8 @@ export const en = {
     signingIn: 'Complete sign-in in the window that opened. We’ll continue here afterwards.',
     installDescription:
       '{{name}} is not installed on this computer. With your approval, we’ll download and install it using Windows App Installer, then continue here.',
+    installDescriptionNpm:
+      '{{name}} is not installed on this computer. With your approval, we’ll install it with npm, installing Node.js first using Windows App Installer if it’s missing, then continue here.',
     install: 'Approve and install',
     signInDescription: 'Sign in to your account to load the available models.',
     signIn: 'Sign in',

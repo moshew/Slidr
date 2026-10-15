@@ -66,7 +66,8 @@ import { Gallery } from './Gallery';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
 import { ModelPicker } from './ModelPicker';
-import { ChatSetup, harnessName, useChatSetup } from './ChatSetup';
+import { ChatSetup, useChatSetup } from './ChatSetup';
+import { harnessName, installsWithNpm } from '../agent/harnessLook';
 import { OutlineCard } from './Outline';
 import { aiOf, navigateTo, setFollow, useAiPreferences } from './runtime';
 import { DECK } from './sessions';
@@ -366,7 +367,12 @@ function ProblemCard({ problem, setup }: { problem: ChatProblem; setup?: Setup }
           {fixed
             ? t('repair.fixedBody')
             : descriptor && kind === 'not_installed'
-              ? t('setup.installDescription', { name: harnessName(descriptor) })
+              ? t(
+                  installsWithNpm(descriptor.id)
+                    ? 'setup.installDescriptionNpm'
+                    : 'setup.installDescription',
+                  { name: harnessName(descriptor) },
+                )
               : t(`problem.${kind}.body`)}
         </p>
         {descriptor && state?.busy && (

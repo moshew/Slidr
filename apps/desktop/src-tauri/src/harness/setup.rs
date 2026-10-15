@@ -11,6 +11,7 @@ use tokio::{
 use super::{
     AgentError, AgentErrorKind, HarnessConnection, HarnessDescriptor, HarnessState, HarnessStatus,
     ModelOption, Result,
+    registry::one_shot::{self, Launch},
 };
 
 /// Include package-manager locations even if this app started before installation.
@@ -24,7 +25,9 @@ pub(crate) fn search_paths() -> Vec<PathBuf> {
         paths.push(PathBuf::from(local).join("Microsoft/WinGet/Links"));
     }
     if let Some(programs) = std::env::var_os("ProgramFiles") {
-        paths.push(PathBuf::from(programs).join("WinGet/Links"));
+        paths.push(PathBuf::from(&programs).join("WinGet/Links"));
+        // Node.js, for Gemini CLI, which npm installs.
+        paths.push(PathBuf::from(programs).join("nodejs"));
     }
     if let Some(roaming) = std::env::var_os("APPDATA") {
         paths.push(PathBuf::from(roaming).join("npm"));
@@ -46,16 +49,35 @@ pub(crate) fn claude_program() -> PathBuf {
         .unwrap_or_else(|| "claude".into())
 }
 
-fn program(id: &str) -> Result<PathBuf> {
+fn program(id: &str) -> Result<Launch> {
+    let missing = |name: &str| {
+        AgentError::new(
+            AgentErrorKind::NotInstalled,
+            format!("{name} was not found"),
+        )
+    };
     match id {
-        "claude-code" => Ok(claude_program()),
+        "claude-code" => Ok(Launch::new(claude_program())),
         "codex-cli" => crate::image_providers::codex_executable()
+            .map(Launch::new)
             .map_err(|error| AgentError::new(AgentErrorKind::NotInstalled, error)),
-        "copilot-cli" => super::registry::one_shot::copilot_executable().ok_or_else(|| {
-            AgentError::new(AgentErrorKind::NotInstalled, "Copilot CLI was not found")
-        }),
+        "copilot-cli" => one_shot::copilot_executable()
+            .map(Launch::new)
+            .ok_or_else(|| missing("Copilot CLI")),
+        "gemini-cli" => one_shot::gemini_launch().ok_or_else(|| missing("Gemini CLI")),
+        "grok-cli" => one_shot::grok_executable()
+            .map(Launch::new)
+            .ok_or_else(|| missing("Grok CLI")),
         _ => Err(AgentError::invalid_input("this harness has no CLI setup")),
     }
+}
+
+/// A command that starts the CLI `id`, as `launch` says, for setup.
+fn cli(id: &str, launch: &Launch) -> Command {
+    let mut command = command(&launch.program);
+    command.args(&launch.script);
+    one_shot::quiet(id, &mut command);
+    command
 }
 
 fn command(program: impl AsRef<std::ffi::OsStr>) -> Command {
@@ -199,32 +221,49 @@ impl Rpc {
         }
     }
     async fn call(&mut self, method: &str, params: Value) -> Result<Value> {
+        self.request(method, params).await?.map_err(|error| {
+            AgentError::new(
+                AgentErrorKind::ProcessExited,
+                error["message"]
+                    .as_str()
+                    .unwrap_or("CLI metadata request failed"),
+            )
+        })
+    }
+    /// The result of a request, or the JSON-RPC error the CLI answered with.
+    async fn request(
+        &mut self,
+        method: &str,
+        params: Value,
+    ) -> Result<std::result::Result<Value, Value>> {
         self.next_id += 1;
         let id = self.next_id;
         self.send(json!({"jsonrpc":"2.0", "id":id, "method":method, "params":params}))
             .await?;
         loop {
             let reply = self.read().await?;
-            if reply["id"] == id {
+            // A request of the CLI's own (ACP agents make some) may carry the same id.
+            if reply["id"] == id && reply.get("method").is_none() {
                 if let Some(error) = reply.get("error") {
-                    return Err(AgentError::new(
-                        AgentErrorKind::ProcessExited,
-                        error["message"]
-                            .as_str()
-                            .unwrap_or("CLI metadata request failed"),
-                    ));
+                    return Ok(Err(error.clone()));
                 }
-                return Ok(reply["result"].clone());
+                return Ok(Ok(reply["result"].clone()));
             }
         }
     }
 }
 
 async fn discover(id: &str) -> Result<Vec<ModelOption>> {
-    let mut cmd = command(program(id)?);
+    let mut cmd = cli(id, &program(id)?);
     // An empty working directory prevents project instructions/hooks from entering discovery.
-    let folder = std::env::temp_dir().join(format!("slidr-connect-{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir(&folder)
+    // Gemini CLI records every folder it is started in as a project of its own, so it is given
+    // the same one each time (one setup at a time per CLI).
+    let folder = std::env::temp_dir().join(if id == "gemini-cli" {
+        "slidr-connect-gemini".to_owned()
+    } else {
+        format!("slidr-connect-{}", uuid::Uuid::new_v4())
+    });
+    std::fs::create_dir_all(&folder)
         .map_err(|error| AgentError::io("create connection folder", &error))?;
     struct Folder(PathBuf);
     impl Drop for Folder {
@@ -233,13 +272,21 @@ async fn discover(id: &str) -> Result<Vec<ModelOption>> {
         }
     }
     let _folder = Folder(folder.clone());
-    cmd.current_dir(folder);
+    cmd.current_dir(&folder);
+    if id == "grok-cli" {
+        return grok_models(cmd).await;
+    }
     match id {
         "codex-cli" => {
             cmd.arg("app-server");
         }
         "copilot-cli" => {
             cmd.args(["--headless", "--stdio", "--no-auto-update"]);
+        }
+        "gemini-cli" => {
+            // ACP mode lists the models the account has on a new session. Naming a server keeps
+            // the user's own MCP servers from starting for it.
+            cmd.args(["--acp", "--allowed-mcp-server-names", "slidr"]);
         }
         "claude-code" => {
             cmd.args([
@@ -283,6 +330,16 @@ async fn discover(id: &str) -> Result<Vec<ModelOption>> {
                 let reply = rpc.call("models.list", json!({})).await?;
                 models = parse_models(id, &reply["models"]);
             }
+            "gemini-cli" => {
+                rpc.call("initialize", json!({"protocolVersion":1, "clientCapabilities":{}, "clientInfo":{"name":"slidr", "version":env!("CARGO_PKG_VERSION")}})).await?;
+                // Gemini CLI answers a new session without a usable account with -32000.
+                let session = rpc.request("session/new", json!({"cwd":folder, "mcpServers":[]})).await?;
+                let session = session.map_err(|error| AgentError::new(
+                    if error["code"] == -32000 { AgentErrorKind::NotLoggedIn } else { AgentErrorKind::ProcessExited },
+                    error["message"].as_str().unwrap_or("Gemini CLI could not start a session. Sign in and retry."),
+                ))?;
+                models = parse_models(id, &session["models"]["availableModels"]);
+            }
             _ => {
                 rpc.send(json!({"type":"control_request", "request_id":"slidr-models", "request":{"subtype":"initialize"}})).await?;
                 loop {
@@ -301,6 +358,82 @@ async fn discover(id: &str) -> Result<Vec<ModelOption>> {
     let _ = rpc.child.kill().await;
     let _ = rpc.child.wait().await;
     result
+}
+
+/// Grok CLI lists the models of the signed-in account with `grok models`, as text: a line about
+/// the account, then one model id a line, the default marked.
+async fn grok_models(mut cmd: Command) -> Result<Vec<ModelOption>> {
+    let output = cmd
+        .arg("models")
+        .stdin(Stdio::null())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|error| AgentError::io("list Grok models", &error))?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    if text.contains("not authenticated") {
+        return Err(AgentError::new(
+            AgentErrorKind::NotLoggedIn,
+            "Sign in to Grok CLI.",
+        ));
+    }
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        let error = error.trim();
+        return Err(AgentError::new(
+            if error.to_ascii_lowercase().contains("not signed in") {
+                AgentErrorKind::NotLoggedIn
+            } else {
+                AgentErrorKind::ProcessExited
+            },
+            if error.is_empty() {
+                format!("grok models exited with {}", output.status)
+            } else {
+                error.chars().take(3000).collect()
+            },
+        ));
+    }
+    Ok(parse_grok_models(&text))
+}
+
+fn parse_grok_models(text: &str) -> Vec<ModelOption> {
+    let mut models: Vec<ModelOption> = Vec::new();
+    let list = text
+        .split_once("Available models:")
+        .map_or("", |(_, list)| list);
+    for line in list.lines() {
+        let Some(id) = line
+            .trim()
+            .strip_prefix("* ")
+            .or_else(|| line.trim().strip_prefix("- "))
+        else {
+            continue;
+        };
+        let id = id.trim_end_matches("(default)").trim();
+        if id.is_empty() || models.iter().any(|model| model.id == id) {
+            continue;
+        }
+        models.push(ModelOption {
+            id: id.into(),
+            label: model_label(id),
+            effort_levels: Some(Vec::new()),
+        });
+    }
+    models
+}
+
+/// A label for a model the CLI names by its id only: `grok-4.6` reads "Grok 4.6", which is also
+/// how the model picker tells versions of one model apart.
+fn model_label(id: &str) -> String {
+    id.split('-')
+        .map(|word| {
+            let mut chars = word.chars();
+            chars.next().map_or_else(String::new, |first| {
+                first.to_uppercase().chain(chars).collect()
+            })
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn parse_models(harness: &str, value: &Value) -> Vec<ModelOption> {
@@ -325,6 +458,16 @@ fn parse_models(harness: &str, value: &Value) -> Vec<ModelOption> {
                     .or_else(|| model.pointer("/capabilities/supports/reasoning_effort"))
                     .unwrap_or(&Value::Null),
             ),
+            "gemini-cli" => {
+                // `auto…` lets Gemini CLI pick a model for each request; a model is chosen here.
+                if model["modelId"]
+                    .as_str()
+                    .is_some_and(|id| id.starts_with("auto"))
+                {
+                    continue;
+                }
+                (&model["modelId"], &model["name"], &Value::Null)
+            }
             _ => {
                 if model["value"] == "default" {
                     continue;
@@ -353,9 +496,15 @@ fn parse_models(harness: &str, value: &Value) -> Vec<ModelOption> {
             })
             .map(str::to_owned)
             .collect();
+        let label = match label.as_str() {
+            // Gemini CLI names most models by their id.
+            Some(label) if harness == "gemini-cli" && label == id => model_label(id),
+            Some(label) => label.into(),
+            None => id.into(),
+        };
         models.push(ModelOption {
             id: id.into(),
-            label: label.as_str().unwrap_or(id).into(),
+            label,
             effort_levels: Some(efforts),
         });
     }
@@ -368,6 +517,9 @@ pub async fn install(id: &str) -> Result<()> {
         "claude-code" => "Anthropic.ClaudeCode",
         "codex-cli" => "OpenAI.Codex",
         "copilot-cli" => "GitHub.Copilot",
+        // Gemini CLI is published on npm only: WinGet brings Node.js, and npm comes with it.
+        "gemini-cli" => "OpenJS.NodeJS.LTS",
+        "grok-cli" => "xAI.GrokBuild",
         _ => return Err(AgentError::invalid_input("unknown install package")),
     };
     if !cfg!(windows) {
@@ -376,39 +528,70 @@ pub async fn install(id: &str) -> Result<()> {
             "Automatic installation currently requires Windows. Install the CLI with its official installer, then retry.",
         ));
     }
-    let output = timeout(
-        Duration::from_secs(600),
-        command("winget.exe")
-            .args([
-                "install",
-                "--id",
-                package,
-                "--exact",
-                "--source",
-                "winget",
-                "--accept-source-agreements",
-                "--accept-package-agreements",
-                "--silent",
-                "--disable-interactivity",
-            ])
-            .stdin(Stdio::null())
-            .output(),
-    )
-    .await
-    .map_err(|_| {
-        AgentError::new(
-            AgentErrorKind::ProcessExited,
-            "Installation timed out. Check Windows App Installer and retry.",
-        )
-    })?
-    .map_err(|error| AgentError::io("run Windows App Installer (winget)", &error))?;
+    if id != "gemini-cli" {
+        return run_installer(command("winget.exe").args(winget_args(package))).await;
+    }
+    let npm = match npm_program() {
+        Some(npm) => npm,
+        None => {
+            run_installer(command("winget.exe").args(winget_args(package))).await?;
+            npm_program().ok_or_else(|| {
+                AgentError::new(
+                    AgentErrorKind::ProcessExited,
+                    "Node.js was installed, but npm was not found. Restart the app and retry.",
+                )
+            })?
+        }
+    };
+    run_installer(command(npm).args(["install", "--global", "@google/gemini-cli"])).await
+}
+
+fn winget_args(package: &str) -> [&str; 10] {
+    [
+        "install",
+        "--id",
+        package,
+        "--exact",
+        "--source",
+        "winget",
+        "--accept-source-agreements",
+        "--accept-package-agreements",
+        "--silent",
+        "--disable-interactivity",
+    ]
+}
+
+/// npm, from Node.js: `npm.cmd` on Windows, where the installer puts it in the Node.js folder.
+fn npm_program() -> Option<PathBuf> {
+    let name = if cfg!(windows) { "npm.cmd" } else { "npm" };
+    search_paths()
+        .into_iter()
+        .map(|dir| dir.join(name))
+        .find(|path| path.is_file())
+}
+
+async fn run_installer(cmd: &mut Command) -> Result<()> {
+    let output = timeout(Duration::from_secs(600), cmd.stdin(Stdio::null()).output())
+        .await
+        .map_err(|_| {
+            AgentError::new(
+                AgentErrorKind::ProcessExited,
+                "Installation timed out. Check Windows App Installer and retry.",
+            )
+        })?
+        .map_err(|error| AgentError::io("run the installer", &error))?;
     if !output.status.success() {
+        let report = if output.stdout.is_empty() {
+            &output.stderr
+        } else {
+            &output.stdout
+        };
         return Err(AgentError::new(
             AgentErrorKind::ProcessExited,
             format!(
                 "Installation failed ({}). {}",
                 output.status,
-                String::from_utf8_lossy(&output.stdout)
+                String::from_utf8_lossy(report)
                     .chars()
                     .take(3000)
                     .collect::<String>()
@@ -420,20 +603,30 @@ pub async fn install(id: &str) -> Result<()> {
 
 /// The user's Sign in action opens a visible terminal for interactive browser/device login.
 pub async fn login(id: &str) -> Result<()> {
-    let path = program(id)?;
+    let launch = program(id)?;
     let args = match id {
         "claude-code" => "auth login",
-        "codex-cli" | "copilot-cli" => "login",
+        "codex-cli" | "copilot-cli" | "grok-cli" => "login",
+        // Gemini CLI has no sign-in command: its interactive start offers the sign-in.
+        "gemini-cli" => "",
         _ => return Err(AgentError::invalid_input("unknown login command")),
     };
     #[cfg(windows)]
     {
-        let script = format!(
-            "& '{}' {}; exit $LASTEXITCODE",
-            path.to_string_lossy().replace('\'', "''"),
-            args
-        );
+        let quote =
+            |path: &std::path::Path| format!("'{}'", path.to_string_lossy().replace('\'', "''"));
+        let mut start = vec![quote(launch.program.as_path())];
+        if let Some(script) = &launch.script {
+            start.push(quote(script.as_path()));
+        }
+        let hint = if id == "gemini-cli" {
+            "Write-Host 'Choose Sign in with Google. When you are signed in, type /quit to return to Slidr.'; "
+        } else {
+            ""
+        };
+        let script = format!("{hint}& {} {}; exit $LASTEXITCODE", start.join(" "), args);
         let mut cmd = command("powershell.exe");
+        one_shot::quiet(id, &mut cmd);
         cmd.creation_flags(0x0000_0010)
             .args(["-NoProfile", "-Command", &script]);
         let status = timeout(Duration::from_secs(600), cmd.status())
@@ -455,10 +648,13 @@ pub async fn login(id: &str) -> Result<()> {
     }
     #[cfg(not(windows))]
     {
-        Err(AgentError::new(
-            AgentErrorKind::NotLoggedIn,
-            format!("Run {} {args} in a terminal, then retry.", path.display()),
-        ))
+        let program = launch.script.as_ref().unwrap_or(&launch.program).display();
+        let message = if args.is_empty() {
+            format!("Run {program} in a terminal and sign in, then retry.")
+        } else {
+            format!("Run {program} {args} in a terminal, then retry.")
+        };
+        Err(AgentError::new(AgentErrorKind::NotLoggedIn, message))
     }
 }
 
@@ -491,6 +687,30 @@ mod tests {
         );
         assert_eq!(models.len(), 1);
         assert_eq!(models[0].effort_levels.as_ref().unwrap(), &["ultra"]);
+        let models = parse_models(
+            "gemini-cli",
+            &json!([
+                {"modelId":"auto-gemini-3", "name":"Auto (Gemini 3)"}, {"modelId":"auto", "name":"Auto"},
+                {"modelId":"gemini-3.1-pro-preview", "name":"gemini-3.1-pro-preview"}, {"modelId":"gemini-2.5-flash", "name":"Gemini 2.5 Flash"}
+            ]),
+        );
+        let ids: Vec<_> = models.iter().map(|model| model.id.as_str()).collect();
+        assert_eq!(ids, ["gemini-3.1-pro-preview", "gemini-2.5-flash"]);
+        assert_eq!(models[0].label, "Gemini 3.1 Pro Preview");
+        assert_eq!(models[1].label, "Gemini 2.5 Flash");
+        assert_eq!(models[0].effort_levels, Some(Vec::new()));
+    }
+    #[test]
+    fn grok_models_are_read_from_its_listing() {
+        let models = parse_grok_models(
+            "You are logged in with grok.com.\n\nDefault model: grok-4.5\n\nAvailable models:\n  * grok-4.5 (default)\n  - grok-4.6\n  - grok-code-fast-1\n",
+        );
+        let ids: Vec<_> = models.iter().map(|model| model.id.as_str()).collect();
+        assert_eq!(ids, ["grok-4.5", "grok-4.6", "grok-code-fast-1"]);
+        assert_eq!(models[1].label, "Grok 4.6");
+        assert_eq!(models[2].label, "Grok Code Fast 1");
+        assert_eq!(models[0].effort_levels, Some(Vec::new()));
+        assert!(parse_grok_models("You are not authenticated.\n").is_empty());
     }
     #[tokio::test]
     #[ignore = "reads the installed CLIs and account metadata; does not generate a response"]

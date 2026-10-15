@@ -3,15 +3,18 @@ import { Button, Dialog, DialogContent } from '@slidr/ui';
 
 /**
  * The approval a CLI's installation needs before `HarnessSetup.run(id, 'install')`: asked for the
- * agent's harness, and for the CLI an image provider runs on.
+ * agent's harness, and for the CLI an image provider runs on. `npm`: the CLI is installed with
+ * npm, after Node.js when it is missing, and the approval says so.
  */
 export function InstallDialog({
   name,
+  npm = false,
   open,
   onClose,
   onApprove,
 }: {
   name: string | undefined;
+  npm?: boolean;
   open: boolean;
   onClose: () => void;
   onApprove: () => void;
@@ -21,7 +24,7 @@ export function InstallDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent
         title={t('agent.installTitle', { name })}
-        description={t('agent.installDescription', { name })}
+        description={t(npm ? 'agent.installDescriptionNpm' : 'agent.installDescription', { name })}
         closeLabel={t('keys.cancel')}
         footer={
           <>
