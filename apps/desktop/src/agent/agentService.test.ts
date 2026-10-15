@@ -1759,7 +1759,7 @@ describe('the model of the next turn (CHT-U06)', () => {
   const a = script([say('A1.'), done()], [say('A2.'), done()]);
   const b = script([say('B1.'), done()]);
 
-  it.each(['claude-code', 'codex-cli', 'copilot-cli'])(
+  it.each(['claude-code', 'codex-cli', 'copilot-cli', 'gemini-cli', 'grok-cli'])(
     '%s waits for explicit model and effort, then passes both to the session',
     async (harnessId) => {
       const settings: AgentSettings = { harnessId, qualityGate: false };
@@ -1880,7 +1880,7 @@ describe('the files of a message (CHT-U05)', () => {
     origin: 'upload' as const,
   };
 
-  it.each(['codex-cli', 'copilot-cli'])(
+  it.each(['codex-cli', 'copilot-cli', 'gemini-cli', 'grok-cli'])(
     'lets %s read a text attachment through its scoped app tool',
     async (harnessId) => {
       const read = vi.fn((_thread: string, _name: string, _offset: number) =>

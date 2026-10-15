@@ -4,6 +4,7 @@ import { RefreshCw, Terminal } from '@slidr/ui/icons';
 import { Button, cx, Field, Icon, Select, Skeleton, Switch } from '@slidr/ui';
 import { useStore } from 'zustand';
 import { latestModels, modelEfforts } from '../agent/harnessSetup';
+import { harnessLook, installsWithNpm } from '../agent/harnessLook';
 import type { HarnessDescriptor, HarnessState } from '../agent/agent';
 import { DEFAULT_OUTLINE } from '../agent/agentService';
 import { agentOf } from '../ai/runtime';
@@ -30,12 +31,7 @@ const stateTone: Record<HarnessState, StatusTone> = {
 
 /** The mark of a harness the app knows, as the chat's setup shows it; a terminal for others. */
 function HarnessMark({ id }: { id: string }) {
-  const known: Record<string, { glyph: string; tone: string }> = {
-    'claude-code': { glyph: '✳', tone: 'bg-ui-tool-orange text-ui-tool-orange-fg' },
-    'codex-cli': { glyph: '>_', tone: 'bg-ui-tool-green text-ui-tool-green-fg' },
-    'copilot-cli': { glyph: 'GH', tone: 'bg-ui-tool-blue text-ui-tool-blue-fg' },
-  };
-  const mark = known[id];
+  const mark = harnessLook(id);
   return (
     <span
       aria-hidden
@@ -198,6 +194,7 @@ export function AgentSection() {
       </SettingsGroup>
       <InstallDialog
         name={descriptor?.name}
+        npm={installsWithNpm(selectedId)}
         open={!!confirmInstall && confirmInstall === selectedId}
         onClose={() => setConfirmInstall(undefined)}
         onApprove={() => selectedId && void agent.setup.run(selectedId, 'install')}

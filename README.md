@@ -9,7 +9,7 @@ It is a Tauri app (Rust + React/TypeScript) for Windows 11, with a Hebrew and En
 ## The idea
 
 - **Two-thirds editor, one-third AI.** Tools on top, the slide in the middle, the filmstrip below; next to it **one AI chat**. Whatever you have selected (the slide on the stage, objects on it, words inside a text) goes to the agent with every message, so "make the picture more realistic" or "add another bullet to this slide" needs nothing more.
-- **An external agent, a single API.** The AI runs through a selectable CLI harness (Claude Code, Codex or GitHub Copilot) that reaches the deck through the Deck API the app defines.
+- **An external agent, a single API.** The AI runs through a selectable CLI harness (Claude Code, Codex, GitHub Copilot, Gemini or Grok) that reaches the deck through the Deck API the app defines.
 - **The model never limits the look.** A deck is an object model stored in a `.slidr` file, but any HTML/CSS is displayed as is. Converting HTML into editable objects must never change how a slide looks.
 - **HTML in, HTML out.** Export produces one self-contained HTML file that plays in any browser. Import accepts any HTML presentation: the agent explores the file and rebuilds it through the Deck API, with no per-format adapters.
 - **Designed by default.** Slides are fixed at 1920×1080. Design guidelines and a design lint hold the agent to modern, full-bleed layouts, and the app itself is held to the same bar.
@@ -50,7 +50,7 @@ In the app today:
 
 Working behind all this:
 
-- **Agent platform** — the harness layer with Claude Code, Codex and GitHub Copilot CLI adapters and a mock, the Deck API tool catalogue, the tool bridge that connects an external agent to it, native slide capture through WebView2, and the system prompt modules.
+- **Agent platform** — the harness layer with Claude Code, Codex, GitHub Copilot, Gemini and Grok CLI adapters ([ADR-096](docs/adr/ADR-096-gemini-and-grok-harnesses.md)) and a mock, the Deck API tool catalogue, the tool bridge that connects an external agent to it, native slide capture through WebView2, and the system prompt modules.
 - **HTML conversion** — the engine that turns an HTML slide into editable objects, with a fidelity guard that keeps the look unchanged. It serves the agent's own slides and the import.
 - **Evaluation set** — ten fixed requests that one command sends to the real app against the real CLI, with measurements and a review page where a person scores the decks.
 
@@ -75,7 +75,7 @@ Prerequisites:
 - Node.js 22 or later and pnpm 12.
 - Rust 1.90 or later with the MSVC toolchain (Visual Studio Build Tools, C++ workload), and `cargo` on the PATH.
 - Microsoft Edge, for the end-to-end tests.
-- One of Claude Code CLI, Codex CLI or GitHub Copilot CLI for the AI chat and HTML import. Select it in Settings → Agent: Slidr checks the connection, offers installation through Windows App Installer with your approval if missing, and opens sign-in if needed. It then reads the available models and each model's supported effort levels from the CLI. Choose a model and effort explicitly; the chat shows that choice. The rest of the editor works without a CLI.
+- One of Claude Code CLI, Codex CLI, GitHub Copilot CLI, Gemini CLI or Grok CLI for the AI chat and HTML import. Select it in Settings → Agent: Slidr checks the connection, offers installation through Windows App Installer with your approval if missing (Gemini CLI through npm, with Node.js from Windows App Installer if needed), and opens sign-in if needed. It then reads the available models and each model's supported effort levels from the CLI. Choose a model and effort explicitly; the chat shows that choice. The rest of the editor works without a CLI.
 - Optional: Codex CLI, logged in, for image generation with the default provider; an OpenAI, Unsplash or Pexels key, entered in the settings, for the other image provider and for stock photos.
 - The network, the first time the app or the dev server runs: templates, Elements content, pictures, icons and deck fonts come from the media library at https://slidr-media.pages.dev; what the app uses is kept on the machine, the rest stays on the site. See [media library](docs/media-library.md).
 

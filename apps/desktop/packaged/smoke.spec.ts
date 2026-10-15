@@ -44,6 +44,8 @@ test('the app starts on an empty deck, with no development hooks', async () => {
     'claude-code',
     'codex-cli',
     'copilot-cli',
+    'gemini-cli',
+    'grok-cli',
   ]);
 });
 

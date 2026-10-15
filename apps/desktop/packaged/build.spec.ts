@@ -187,6 +187,8 @@ test('the scripted harness is offered because it was asked for', async () => {
     'claude-code',
     'codex-cli',
     'copilot-cli',
+    'gemini-cli',
+    'grok-cli',
     'mock',
   ]);
 });

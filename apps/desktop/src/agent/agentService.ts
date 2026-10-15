@@ -12,8 +12,9 @@
  * ```
  *
  * It works on `AgentClient` and `ToolBridge`, which the app fills with the Tauri clients and
- * the tests with fakes (ADR-010, ADR-022). Codex and Copilot get one scoped attachment reader
- * beside the Deck API tools. The order above is the one ADR-026 sets out.
+ * the tests with fakes (ADR-010, ADR-022). Codex, Copilot, Gemini and Grok, which run without
+ * file tools of their own, get one scoped attachment reader beside the Deck API tools. The order
+ * above is the one ADR-026 sets out.
  */
 import {
   startTurn,
@@ -77,7 +78,7 @@ const ATTACHMENT_READ: BridgeTool = {
   },
 };
 
-const ATTACHMENT_HARNESSES = new Set(['codex-cli', 'copilot-cli']);
+const ATTACHMENT_HARNESSES = new Set(['codex-cli', 'copilot-cli', 'gemini-cli', 'grok-cli']);
 import type {
   AssistantEntry,
   AssistantPart,

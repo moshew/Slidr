@@ -21,6 +21,8 @@ pub fn builtin() -> Vec<Arc<dyn AgentHarness>> {
         vec![Arc::new(claude_code::ClaudeCodeHarness::new())];
     harnesses.push(Arc::new(one_shot::OneShotHarness::codex()));
     harnesses.push(Arc::new(one_shot::OneShotHarness::copilot()));
+    harnesses.push(Arc::new(one_shot::OneShotHarness::gemini()));
+    harnesses.push(Arc::new(one_shot::OneShotHarness::grok()));
     if cfg!(debug_assertions) || std::env::var_os(MOCK_ENV).is_some() {
         harnesses.push(Arc::new(MockHarness::builtin()));
     }

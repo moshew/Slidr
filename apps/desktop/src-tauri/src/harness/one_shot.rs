@@ -1,13 +1,16 @@
-//! Codex and GitHub Copilot adapters. Each turn is a non-interactive CLI invocation. Both CLIs
-//! persist a conversation ID, so stopping a turn also stops its process and the next turn can
-//! resume without leaving a background process behind.
+//! Codex, GitHub Copilot, Gemini and Grok adapters. Each turn is a non-interactive CLI
+//! invocation. Every one of these CLIs persists a conversation ID, so stopping a turn also stops
+//! its process and the next turn can resume without leaving a background process behind.
 
 use std::{
     collections::HashSet,
     io,
     path::{Path, PathBuf},
     process::Stdio,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -23,17 +26,25 @@ use tokio::{
 
 use crate::harness::{
     ATTACHMENTS, AgentError, AgentErrorKind, AgentEvent, AgentHarness, AgentSession, Capabilities,
-    EventSink, HarnessDescriptor, HarnessState, HarnessStatus, Result, SessionConfig, ToolSource,
-    TurnOutcome, UserTurn,
+    EventSink, HarnessDescriptor, HarnessState, HarnessStatus, Result, SessionConfig, ToolEndpoint,
+    ToolSource, TurnOutcome, UserTurn,
 };
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(15);
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+/// The MCP server name the app's tools are registered under, in every CLI's configuration.
+const SERVER: &str = "slidr";
+/// The environment variable that carries the tool endpoint's token to a CLI that reads it from
+/// its configuration, so the token is not written to disk.
+const TOKEN_ENV: &str = "SLIDR_MCP_TOKEN";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Kind {
     Codex,
     Copilot,
+    Gemini,
+    Grok,
 }
 
 impl Kind {
@@ -41,30 +52,135 @@ impl Kind {
         match self {
             Self::Codex => "Codex CLI",
             Self::Copilot => "GitHub Copilot CLI",
+            Self::Gemini => "Gemini CLI",
+            Self::Grok => "Grok CLI",
         }
     }
     fn id(self) -> &'static str {
         match self {
             Self::Codex => "codex-cli",
             Self::Copilot => "copilot-cli",
+            Self::Gemini => "gemini-cli",
+            Self::Grok => "grok-cli",
         }
     }
     fn login_hint(self) -> &'static str {
         match self {
             Self::Codex => "Run `codex login` in a terminal.",
             Self::Copilot => "Run `copilot login` in a terminal.",
+            Self::Gemini => "Run `gemini` in a terminal and sign in with Google.",
+            Self::Grok => "Run `grok login` in a terminal.",
         }
     }
-    fn executable(self) -> Result<PathBuf> {
+    fn launch(self) -> Result<Launch> {
+        let missing = |message: &str| AgentError::new(AgentErrorKind::NotInstalled, message);
         match self {
             Self::Codex => crate::image_providers::codex_executable()
-                .map_err(|message| AgentError::new(AgentErrorKind::NotInstalled, message)),
-            Self::Copilot => copilot_executable().ok_or_else(|| AgentError::new(
-                AgentErrorKind::NotInstalled,
-                "GitHub Copilot CLI was not found. Install it and run `copilot login` in a terminal.",
-            )),
+                .map(Launch::new)
+                .map_err(|message| missing(&message)),
+            Self::Copilot => copilot_executable().map(Launch::new).ok_or_else(|| {
+                missing("GitHub Copilot CLI was not found. Install it and run `copilot login` in a terminal.")
+            }),
+            Self::Gemini => gemini_launch().ok_or_else(|| {
+                missing("Gemini CLI was not found. Install it and run `gemini` in a terminal to sign in.")
+            }),
+            Self::Grok => grok_executable().map(Launch::new).ok_or_else(|| {
+                missing("Grok CLI was not found. Install it and run `grok login` in a terminal.")
+            }),
         }
     }
+    /// The CLI starts a new conversation under an ID the app chose, so the ID is known before the
+    /// first turn; Codex reports the ID of the conversation it started instead.
+    fn names_sessions(self) -> bool {
+        self != Self::Codex
+    }
+}
+
+/// How a CLI is started: its program and, for a CLI that is a Node.js script run by `node`
+/// itself, the script, which comes before the CLI's own arguments.
+#[derive(Debug, Clone)]
+pub(crate) struct Launch {
+    pub(crate) program: PathBuf,
+    pub(crate) script: Option<PathBuf>,
+}
+
+impl Launch {
+    pub(crate) fn new(program: PathBuf) -> Self {
+        Self {
+            program,
+            script: None,
+        }
+    }
+
+    /// A command that starts the CLI; its own arguments follow what this adds. It runs the CLI
+    /// quietly: no update check, and for Gemini no second process (see [`quiet`]).
+    pub(crate) fn command(&self, id: &str) -> Command {
+        let mut command = Command::new(&self.program);
+        command.args(&self.script);
+        quiet(id, &mut command);
+        command
+    }
+}
+
+/// What every start of a CLI is given. Gemini CLI otherwise starts itself again as a child
+/// process with more memory, which a stop would leave running; Grok checks for updates.
+pub(crate) fn quiet(id: &str, command: &mut Command) {
+    match id {
+        "gemini-cli" => {
+            command.env("GEMINI_CLI_NO_RELAUNCH", "true");
+        }
+        "grok-cli" => {
+            command.env("GROK_DISABLE_AUTOUPDATER", "1");
+        }
+        _ => {}
+    }
+}
+
+/// npm installs `gemini.cmd` on Windows, which runs the CLI's script with Node.js. Start Node.js
+/// on the script itself so interrupt stops the CLI, not only the batch file around it. Elsewhere
+/// `gemini` is the script itself, linked onto PATH, and is started as it is.
+pub(crate) fn gemini_launch() -> Option<Launch> {
+    let dirs = crate::harness::setup::search_paths();
+    for dir in &dirs {
+        if !cfg!(windows) {
+            let program = dir.join("gemini");
+            if program.is_file() {
+                return Some(Launch::new(program));
+            }
+            continue;
+        }
+        let script = dir
+            .join("node_modules")
+            .join("@google")
+            .join("gemini-cli")
+            .join("bundle")
+            .join("gemini.js");
+        if !dir.join("gemini.cmd").is_file() || !script.is_file() {
+            continue;
+        }
+        // The shim prefers the Node.js beside it, as npm writes it, and otherwise the one on PATH.
+        let node = std::iter::once(dir)
+            .chain(&dirs)
+            .map(|dir| dir.join("node.exe"))
+            .find(|node| node.is_file())?;
+        return Some(Launch {
+            program: node,
+            script: Some(script),
+        });
+    }
+    None
+}
+
+/// The official installers put `grok` in `~/.grok/bin` and add that to PATH, which this app sees
+/// only once restarted; WinGet links it into its own folder, which is searched as well.
+pub(crate) fn grok_executable() -> Option<PathBuf> {
+    let name = if cfg!(windows) { "grok.exe" } else { "grok" };
+    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"));
+    home.map(|home| PathBuf::from(home).join(".grok").join("bin"))
+        .into_iter()
+        .chain(crate::harness::setup::search_paths())
+        .map(|dir| dir.join(name))
+        .find(|path| path.is_file())
 }
 
 /// npm installs `copilot.cmd` on Windows and a `copilot` symlink elsewhere. Start the native
@@ -135,6 +251,12 @@ impl OneShotHarness {
             kind: Kind::Copilot,
         }
     }
+    pub fn gemini() -> Self {
+        Self { kind: Kind::Gemini }
+    }
+    pub fn grok() -> Self {
+        Self { kind: Kind::Grok }
+    }
 }
 
 #[async_trait]
@@ -144,12 +266,13 @@ impl AgentHarness for OneShotHarness {
             id: self.kind.id().into(),
             name: self.kind.name().into(),
             capabilities: Capabilities {
-                streaming: self.kind == Kind::Copilot,
+                streaming: self.kind != Kind::Codex,
                 resume: true,
                 interrupt: true,
                 image_input: true,
                 tool_endpoint: true,
-                thinking: true,
+                // Gemini CLI's headless stream carries no reasoning.
+                thinking: self.kind != Kind::Gemini,
             },
             models: Vec::new(),
             default_model: None,
@@ -164,11 +287,11 @@ impl AgentHarness for OneShotHarness {
             account: None,
             detail,
         };
-        let program = match self.kind.executable() {
-            Ok(program) => program,
+        let launch = match self.kind.launch() {
+            Ok(launch) => launch,
             Err(error) => return make(HarnessState::NotInstalled, None, Some(error.message)),
         };
-        let mut command = Command::new(program);
+        let mut command = launch.command(self.kind.id());
         command
             .arg("--version")
             .stdin(Stdio::null())
@@ -213,7 +336,7 @@ impl AgentHarness for OneShotHarness {
             }
         };
         if self.kind == Kind::Codex {
-            let mut login = Command::new(self.kind.executable().expect("program was found"));
+            let mut login = launch.command(self.kind.id());
             login
                 .args(["login", "status"])
                 .stdin(Stdio::null())
@@ -236,8 +359,9 @@ impl AgentHarness for OneShotHarness {
                 ),
             }
         } else {
-            // Copilot has no documented non-interactive login-status command. A failed prompt
-            // reports not_logged_in with the CLI's error text.
+            // Copilot, Gemini and Grok have no cheap non-interactive login-status command. Model
+            // discovery (`setup::connect`) asks for the account, and a failed prompt reports
+            // not_logged_in with the CLI's error text.
             make(HarnessState::Ready, version, None)
         }
     }
@@ -262,14 +386,14 @@ impl AgentHarness for OneShotHarness {
         tokio::fs::create_dir_all(&attachments)
             .await
             .map_err(|error| AgentError::io("create agent folder", &error))?;
-        if self.kind == Kind::Codex {
+        if matches!(self.kind, Kind::Codex | Kind::Gemini) {
             tokio::fs::write(config.workdir.join("system.md"), &config.system_prompt)
                 .await
-                .map_err(|error| AgentError::io("write Codex instructions", &error))?;
+                .map_err(|error| AgentError::io("write CLI instructions", &error))?;
         }
         if self.kind == Kind::Copilot {
             if let Some(endpoint) = &config.tool_endpoint {
-                let mcp = json!({ "mcpServers": { "slidr": {
+                let mcp = json!({ "mcpServers": { SERVER: {
                     "type": "http", "url": endpoint.url, "tools": ["*"],
                     "headers": { "Authorization": format!("Bearer {}", endpoint.token) },
                     "timeout": 600000, "deferTools": "never"
@@ -279,11 +403,37 @@ impl AgentHarness for OneShotHarness {
                     .map_err(|error| AgentError::io("write Copilot tool configuration", &error))?;
             }
         }
+        // Gemini and Grok read the configuration of the folder they work in, on top of the
+        // user's own. Written for every session, so a session without tools has none left over.
+        let folder_config = match self.kind {
+            Kind::Gemini => Some((
+                attachments.join(".gemini").join("settings.json"),
+                gemini_settings(config.tool_endpoint.as_ref(), config.web_access).to_string(),
+            )),
+            Kind::Grok => Some((
+                attachments.join(".grok").join("config.toml"),
+                grok_config(config.tool_endpoint.as_ref()),
+            )),
+            Kind::Codex | Kind::Copilot => None,
+        };
+        if let Some((path, text)) = folder_config {
+            if let Some(parent) = path.parent() {
+                tokio::fs::create_dir_all(parent)
+                    .await
+                    .map_err(|error| AgentError::io("create CLI configuration folder", &error))?;
+            }
+            tokio::fs::write(&path, text)
+                .await
+                .map_err(|error| AgentError::io("write CLI tool configuration", &error))?;
+        }
         let native = Arc::new(Mutex::new(config.resume.clone().or_else(|| {
-            (self.kind == Kind::Copilot).then(|| uuid::Uuid::new_v4().to_string())
+            self.kind
+                .names_sessions()
+                .then(|| uuid::Uuid::new_v4().to_string())
         })));
         Ok(Box::new(OneShotSession {
             kind: self.kind,
+            known: Arc::new(AtomicBool::new(config.resume.is_some())),
             config,
             sink,
             native,
@@ -291,6 +441,47 @@ impl AgentHarness for OneShotHarness {
             started: false,
         }))
     }
+}
+
+/// The settings Gemini CLI runs a session with: the app's tools and no built-in tool but web
+/// search and fetch when web access is on (the app's attachment reader stands in for its file
+/// tools), no subagents, skills or hooks of the user's, and the app's tools trusted, so they run
+/// without a confirmation nobody could give. The token stays in the environment (`TOKEN_ENV`).
+fn gemini_settings(endpoint: Option<&ToolEndpoint>, web_access: bool) -> Value {
+    // An allowlist: Gemini CLI denies every tool it does not name, MCP tools among them.
+    let mut core = vec![format!("mcp_{SERVER}_*")];
+    if web_access {
+        core.extend(["google_web_search".into(), "web_fetch".into()]);
+    }
+    let mut settings = json!({
+        "general": { "enableAutoUpdate": false, "enableAutoUpdateNotification": false },
+        "tools": { "core": core },
+        "experimental": { "enableAgents": false },
+        "skills": { "enabled": false },
+        "hooksConfig": { "enabled": false },
+    });
+    if let Some(endpoint) = endpoint {
+        settings["mcpServers"] = json!({ SERVER: {
+            "httpUrl": endpoint.url,
+            "headers": { "Authorization": format!("Bearer ${{{TOKEN_ENV}}}") },
+            "trust": true,
+            "timeout": 600000,
+        }});
+    }
+    settings
+}
+
+/// Grok CLI's tool server for a session, in its `config.toml`. The token stays in the environment
+/// (`TOKEN_ENV`), which Grok expands in `headers`.
+fn grok_config(endpoint: Option<&ToolEndpoint>) -> String {
+    let Some(endpoint) = endpoint else {
+        return String::new();
+    };
+    // A JSON string is a valid TOML basic string.
+    format!(
+        "[mcp_servers.{SERVER}]\nurl = {}\nheaders = {{ Authorization = \"Bearer ${{{TOKEN_ENV}}}\" }}\nstartup_timeout_sec = 30\ntool_timeout_sec = 600\n",
+        json!(endpoint.url)
+    )
 }
 
 struct Active {
@@ -303,6 +494,10 @@ struct OneShotSession {
     config: SessionConfig,
     sink: EventSink,
     native: Arc<Mutex<Option<String>>>,
+    /// Gemini and Grok have the conversation `native` names, so a turn resumes it rather than
+    /// creating it: a resumed session, or one a turn has reached the model in. They refuse to
+    /// create a conversation under an ID they already have, and to resume one they do not.
+    known: Arc<AtomicBool>,
     active: Option<Active>,
     started: bool,
 }
@@ -334,13 +529,22 @@ impl AgentSession for OneShotSession {
             model: self.config.model.clone(),
             effort: self.config.effort.clone(),
             native: Arc::clone(&self.native),
+            known: Arc::clone(&self.known),
             sink: self.sink.clone(),
             stop: Arc::clone(&stop),
             resume,
         };
-        if first && self.kind == Kind::Copilot {
+        // Copilot's conversation is there once named. Gemini's and Grok's is, for a resumed
+        // session; a new one is announced by the turn that reaches the model (`Mapper::reach`),
+        // as one that never does leaves nothing to resume.
+        let announce = match self.kind {
+            Kind::Copilot => true,
+            Kind::Gemini | Kind::Grok => self.known.load(Ordering::SeqCst),
+            Kind::Codex => false,
+        };
+        if first && announce {
             self.sink.emit(AgentEvent::SessionStarted {
-                native_session_id: self.native_session_id().expect("Copilot ID is allocated"),
+                native_session_id: self.native_session_id().expect("session ID is allocated"),
                 model: self.config.model.clone().unwrap_or_default(),
             });
         }
@@ -374,6 +578,10 @@ impl AgentSession for OneShotSession {
     }
 
     fn native_session_id(&self) -> Option<String> {
+        // A new Gemini or Grok conversation has its ID once a turn reached the model.
+        if matches!(self.kind, Kind::Gemini | Kind::Grok) && !self.known.load(Ordering::SeqCst) {
+            return None;
+        }
         self.native
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -385,14 +593,29 @@ struct Run {
     kind: Kind,
     workdir: PathBuf,
     system_prompt: String,
-    endpoint: Option<crate::harness::ToolEndpoint>,
+    endpoint: Option<ToolEndpoint>,
     web_access: bool,
     model: Option<String>,
     effort: Option<String>,
     native: Arc<Mutex<Option<String>>>,
+    known: Arc<AtomicBool>,
     sink: EventSink,
     stop: Arc<Notify>,
     resume: bool,
+}
+
+/// What a turn hands the CLI: text on standard input, or for Grok, which does not read its
+/// prompt from there, a file of ACP content blocks, removed once the turn is over.
+enum Prompt {
+    Stdin(String),
+    File(TurnFiles),
+}
+
+/// How one start of the CLI for a turn ended. `reached`: the turn got as far as the model, so the
+/// CLI keeps the conversation.
+struct Attempt {
+    outcome: std::result::Result<TurnOutcome, String>,
+    reached: bool,
 }
 
 impl Run {
@@ -420,29 +643,149 @@ impl Run {
         }
     }
 
+    /// The turn resumes a conversation the CLI has. For Codex and Copilot, any but the first
+    /// turn of a new session; for Gemini and Grok, what `known` says.
+    fn resuming(&self) -> bool {
+        match self.kind {
+            Kind::Codex | Kind::Copilot => self.resume,
+            Kind::Gemini | Kind::Grok => self.known.load(Ordering::SeqCst),
+        }
+    }
+
     async fn execute(&self, turn: UserTurn) -> Result<TurnOutcome> {
-        let program = self.kind.executable()?;
+        let launch = self.kind.launch()?;
         let attachments = self.workdir.join(ATTACHMENTS);
         let images = write_images(&attachments, &turn).await?;
-        let prompt = match self.kind {
-            Kind::Codex => [turn.context.as_deref().unwrap_or(""), &turn.text].join("\n\n"),
-            Kind::Copilot => format!(
+        let prompt = self.prompt(&turn, &images.0).await?;
+        let mut retried = false;
+        loop {
+            let attempt = self.attempt(&launch, &prompt, &images.0).await?;
+            if attempt.reached {
+                self.known.store(true, Ordering::SeqCst);
+            }
+            let message = match attempt.outcome {
+                Ok(outcome) => return self.finish(outcome),
+                Err(message) => message,
+            };
+            if !retried
+                && retry_fresh(
+                    self.kind,
+                    attempt.reached,
+                    self.known.load(Ordering::SeqCst),
+                    &message,
+                )
+            {
+                *self.native.lock().unwrap_or_else(|e| e.into_inner()) =
+                    Some(uuid::Uuid::new_v4().to_string());
+                retried = true;
+                continue;
+            }
+            let kind = classify_error(&message, self.resuming());
+            self.sink.emit(AgentEvent::Error {
+                kind,
+                message,
+                recoverable: kind != AgentErrorKind::ResumeFailed,
+            });
+            return Ok(TurnOutcome::Failed);
+        }
+    }
+
+    fn finish(&self, outcome: TurnOutcome) -> Result<TurnOutcome> {
+        if outcome == TurnOutcome::Completed
+            && self.kind == Kind::Codex
+            && self
+                .native
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .is_none()
+        {
+            return Err(AgentError::new(
+                AgentErrorKind::TurnFailed,
+                "Codex ended without a session ID",
+            ));
+        }
+        Ok(outcome)
+    }
+
+    async fn prompt(&self, turn: &UserTurn, images: &[PathBuf]) -> Result<Prompt> {
+        let context = turn.context.as_deref().unwrap_or("");
+        Ok(match self.kind {
+            Kind::Codex => Prompt::Stdin([context, &turn.text].join("\n\n")),
+            Kind::Copilot => Prompt::Stdin(format!(
                 "Slidr application instructions:\n{}\n\nCurrent context:\n{}\n\nUser request:\n{}",
-                self.system_prompt,
-                turn.context.as_deref().unwrap_or(""),
-                turn.text
-            ),
-        };
-        let mut command = Command::new(program);
+                self.system_prompt, context, turn.text
+            )),
+            // `@name` puts a file of the working directory into the message: the turn's images.
+            Kind::Gemini => {
+                let mut text = [context, &turn.text].join("\n\n");
+                let names: Vec<String> = images
+                    .iter()
+                    .filter_map(|path| path.file_name())
+                    .map(|name| format!("@{}", name.to_string_lossy()))
+                    .collect();
+                if !names.is_empty() {
+                    text.push_str("\n\n");
+                    text.push_str(&names.join(" "));
+                }
+                Prompt::Stdin(text)
+            }
+            // Grok takes the instructions on its command line only, which on Windows holds less
+            // than they are; like Copilot it is given them with the request. Its MCP tools are
+            // reached through its `use_tool`, under the server's name.
+            Kind::Grok => {
+                let tools = if self.endpoint.is_some() {
+                    format!(
+                        "\n\nThe Slidr tools these instructions name are on the MCP server `{SERVER}`: call one with use_tool and the tool's name prefixed by `{SERVER}__`."
+                    )
+                } else {
+                    String::new()
+                };
+                let text = format!(
+                    "Slidr application instructions:\n{}{tools}\n\nCurrent context:\n{}\n\nUser request:\n{}",
+                    self.system_prompt, context, turn.text
+                );
+                let mut blocks = vec![json!({ "type": "text", "text": text })];
+                for image in &turn.images {
+                    blocks.push(json!({
+                        "type": "image", "data": image.data, "mimeType": image.media_type
+                    }));
+                }
+                let path = self
+                    .workdir
+                    .join(format!("turn-{}.json", uuid::Uuid::new_v4().simple()));
+                let file = TurnFiles(vec![path.clone()]);
+                tokio::fs::write(&path, Value::Array(blocks).to_string())
+                    .await
+                    .map_err(|error| AgentError::io("write Grok prompt", &error))?;
+                Prompt::File(file)
+            }
+        })
+    }
+
+    async fn attempt(
+        &self,
+        launch: &Launch,
+        prompt: &Prompt,
+        images: &[PathBuf],
+    ) -> Result<Attempt> {
+        let mut command = launch.command(self.kind.id());
         command
-            .current_dir(&attachments)
-            .stdin(Stdio::piped())
+            .current_dir(self.workdir.join(ATTACHMENTS))
+            .stdin(match prompt {
+                Prompt::Stdin(_) => Stdio::piped(),
+                Prompt::File(_) => Stdio::null(),
+            })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true);
-        match self.kind {
-            Kind::Codex => self.codex_args(&mut command, &images.0),
-            Kind::Copilot => self.copilot_args(&mut command, &images.0),
+        match (self.kind, prompt) {
+            (Kind::Codex, _) => self.codex_args(&mut command, images),
+            (Kind::Copilot, _) => self.copilot_args(&mut command, images),
+            (Kind::Gemini, _) => self.gemini_args(&mut command),
+            (Kind::Grok, Prompt::File(file)) => self.grok_args(&mut command, &file.0[0]),
+            (Kind::Grok, Prompt::Stdin(_)) => {
+                return Err(AgentError::internal("Grok takes its prompt from a file"));
+            }
         }
         no_window(&mut command);
         let mut child = command.spawn().map_err(|error| match error.kind() {
@@ -452,10 +795,14 @@ impl Run {
             ),
             _ => AgentError::io(format!("start {}", self.kind.name()), &error),
         })?;
-        if let Some(mut stdin) = child.stdin.take() {
+        let interrupted = Attempt {
+            outcome: Ok(TurnOutcome::Interrupted),
+            reached: false,
+        };
+        if let (Some(mut stdin), Prompt::Stdin(text)) = (child.stdin.take(), prompt) {
             let write = async {
                 stdin
-                    .write_all(prompt.as_bytes())
+                    .write_all(text.as_bytes())
                     .await
                     .map_err(|error| AgentError::io("send CLI prompt", &error))?;
                 if self.kind == Kind::Copilot {
@@ -471,7 +818,7 @@ impl Run {
                 () = self.stop.notified() => {
                     let _ = child.start_kill();
                     let _ = child.wait().await;
-                    return Ok(TurnOutcome::Interrupted);
+                    return Ok(interrupted);
                 }
             }
         }
@@ -497,6 +844,8 @@ impl Run {
             self.sink.clone(),
             self.model.clone(),
         );
+        mapper.announce =
+            matches!(self.kind, Kind::Gemini | Kind::Grok) && !self.known.load(Ordering::SeqCst);
         let mut stopped = false;
         loop {
             tokio::select! {
@@ -517,37 +866,29 @@ impl Run {
             .await
             .map_err(|error| AgentError::io("wait for CLI", &error))?;
         let stderr = stderr.await.unwrap_or_default();
+        let reached = mapper.reached;
         if stopped {
-            return Ok(TurnOutcome::Interrupted);
+            return Ok(Attempt {
+                reached,
+                ..interrupted
+            });
         }
         if mapper.failed || !status.success() {
-            let message = mapper.error.unwrap_or_else(|| stderr.trim().to_owned());
+            let message = mapper.error.unwrap_or_else(|| clean_stderr(&stderr));
             let message = if message.is_empty() {
                 format!("{} exited with {status}", self.kind.name())
             } else {
                 message
             };
-            let kind = classify_error(&message, self.resume);
-            self.sink.emit(AgentEvent::Error {
-                kind,
-                message,
-                recoverable: kind != AgentErrorKind::ResumeFailed,
+            return Ok(Attempt {
+                outcome: Err(message),
+                reached,
             });
-            return Ok(TurnOutcome::Failed);
         }
-        if self.kind == Kind::Codex
-            && self
-                .native
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .is_none()
-        {
-            return Err(AgentError::new(
-                AgentErrorKind::TurnFailed,
-                "Codex ended without a session ID",
-            ));
-        }
-        Ok(TurnOutcome::Completed)
+        Ok(Attempt {
+            outcome: Ok(TurnOutcome::Completed),
+            reached,
+        })
     }
 
     fn codex_args(&self, command: &mut Command, images: &[PathBuf]) {
@@ -654,11 +995,99 @@ impl Run {
         }
         command.env("COPILOT_AUTO_UPDATE", "false");
     }
+
+    /// The conversation's ID, and the flag that resumes it or the one that creates it.
+    fn session_args(&self, command: &mut Command, resume_flag: &str, create_flag: &str) {
+        if let Some(native) = self
+            .native
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+        {
+            let flag = if self.known.load(Ordering::SeqCst) {
+                resume_flag
+            } else {
+                create_flag
+            };
+            command.args([flag, &native]);
+        }
+    }
+
+    fn gemini_args(&self, command: &mut Command) {
+        // `yolo` approves what the folder's settings (`gemini_settings`) allow, as nobody could.
+        command.args([
+            "--output-format",
+            "stream-json",
+            "--approval-mode",
+            "yolo",
+            "--allowed-mcp-server-names",
+            SERVER,
+        ]);
+        if let Some(model) = &self.model {
+            command.args(["--model", model]);
+        }
+        // Gemini CLI has no effort setting; its descriptor offers none.
+        self.session_args(command, "--resume", "--session-id");
+        // Trusts the folder for this run, so its settings apply, without marking it trusted.
+        // (`--skip-trust` comes too late for them: they are read before the arguments.)
+        command
+            .env("GEMINI_CLI_TRUST_WORKSPACE", "true")
+            .env("GEMINI_SYSTEM_MD", self.workdir.join("system.md"));
+        if let Some(endpoint) = &self.endpoint {
+            command.env(TOKEN_ENV, &endpoint.token);
+        }
+    }
+
+    fn grok_args(&self, command: &mut Command, prompt: &Path) {
+        command.arg("--prompt-file").arg(prompt);
+        command.arg("--cwd").arg(self.workdir.join(ATTACHMENTS));
+        // Only what is allowed below runs: the app's tools and, with web access, the web tools.
+        // The built-in tools are those two at most; without web access, none.
+        command.args([
+            "--output-format",
+            "streaming-json",
+            "--verbatim",
+            "--no-auto-update",
+            "--no-subagents",
+            "--no-plan",
+            "--permission-mode",
+            "dontAsk",
+            "--tools",
+            "web_search,web_fetch",
+        ]);
+        if self.web_access {
+            command.args(["--allow", "WebSearch", "--allow", "WebFetch"]);
+        } else {
+            command.args([
+                "--disallowed-tools",
+                "web_search,web_fetch",
+                "--disable-web-search",
+            ]);
+        }
+        if let Some(endpoint) = &self.endpoint {
+            command.arg("--allow").arg(format!("MCPTool({SERVER}__*)"));
+            command.env(TOKEN_ENV, &endpoint.token);
+        }
+        if let Some(model) = &self.model {
+            command.args(["--model", model]);
+        }
+        if let Some(effort) = &self.effort {
+            command.args(["--reasoning-effort", effort]);
+        }
+        self.session_args(command, "--resume", "--session-id");
+        // The folder's `config.toml` holds the app's tool server; Grok reads a folder's
+        // configuration only once the folder is trusted, which this turns off for this run.
+        // Cross-session memory would carry one deck's chats into another's.
+        command
+            .env("GROK_FOLDER_TRUST", "0")
+            .env("GROK_MEMORY", "0");
+    }
 }
 
-struct TurnImages(Vec<PathBuf>);
+/// Files a turn writes for the CLI, removed when the turn is over.
+struct TurnFiles(Vec<PathBuf>);
 
-impl Drop for TurnImages {
+impl Drop for TurnFiles {
     fn drop(&mut self) {
         for path in &self.0 {
             let _ = std::fs::remove_file(path);
@@ -666,8 +1095,8 @@ impl Drop for TurnImages {
     }
 }
 
-async fn write_images(dir: &Path, turn: &UserTurn) -> Result<TurnImages> {
-    let mut paths = TurnImages(Vec::new());
+async fn write_images(dir: &Path, turn: &UserTurn) -> Result<TurnFiles> {
+    let mut paths = TurnFiles(Vec::new());
     for image in &turn.images {
         let ext = match image.media_type.as_str() {
             "image/png" => "png",
@@ -700,18 +1129,51 @@ fn no_window(command: &mut Command) {
     }
 }
 
+/// A failed turn is started once more, as a new conversation under a new ID. Gemini and Grok
+/// refuse to create a conversation under an ID they already have, and a turn that failed after
+/// the CLI recorded the conversation, but before it reached the model, leaves one behind, which
+/// Gemini then also refuses to resume. Nothing of it reached the model or was announced, so
+/// nothing is lost, and the CLI refuses before anything runs, so nothing is done twice.
+fn retry_fresh(kind: Kind, reached: bool, known: bool, message: &str) -> bool {
+    matches!(kind, Kind::Gemini | Kind::Grok) && !reached && !known && session_taken(message)
+}
+
+/// Gemini or Grok refused to create a conversation under an ID it already has.
+fn session_taken(message: &str) -> bool {
+    let lower = message.to_ascii_lowercase();
+    lower.contains("session")
+        && (lower.contains("already exists") || lower.contains("already in use"))
+}
+
+/// What a CLI wrote to standard error, without the notices Gemini CLI prints on every run.
+fn clean_stderr(stderr: &str) -> String {
+    stderr
+        .lines()
+        .filter(|line| {
+            !line.contains("YOLO mode is enabled") && !line.contains("256-color support")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_owned()
+}
+
 fn classify_error(message: &str, resume: bool) -> AgentErrorKind {
     let lower = message.to_ascii_lowercase();
     if resume
         && (lower.contains("session not found")
             || lower.contains("no session found")
-            || lower.contains("unknown session"))
+            || lower.contains("unknown session")
+            || lower.contains("session does not exist")
+            || lower.contains("error resuming session"))
     {
         AgentErrorKind::ResumeFailed
     } else if lower.contains("not logged in")
+        || lower.contains("not signed in")
         || lower.contains("not authenticated")
         || lower.contains("no authentication")
         || lower.contains("login required")
+        || lower.contains("auth method")
     {
         AgentErrorKind::NotLoggedIn
     } else if lower.contains("rate limit")
@@ -735,8 +1197,15 @@ struct Mapper {
     model: Option<String>,
     started: bool,
     streamed: HashSet<String>,
+    /// Grok's tool calls that started and have not finished.
+    open: HashSet<String>,
     failed: bool,
     error: Option<String>,
+    /// The turn reached the model (Gemini and Grok): the CLI keeps the conversation.
+    reached: bool,
+    /// The conversation is new, and is announced (`session_started`) once the turn reaches the
+    /// model.
+    announce: bool,
 }
 
 impl Mapper {
@@ -753,9 +1222,30 @@ impl Mapper {
             model,
             started: false,
             streamed: HashSet::new(),
+            open: HashSet::new(),
             failed: false,
             error: None,
+            reached: false,
+            announce: false,
         }
+    }
+
+    /// The turn reached the model; a new conversation is there from now on.
+    fn reach(&mut self) {
+        if !self.reached
+            && self.announce
+            && let Some(id) = self
+                .native
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone()
+        {
+            self.sink.emit(AgentEvent::SessionStarted {
+                native_session_id: id,
+                model: self.model.clone().unwrap_or_default(),
+            });
+        }
+        self.reached = true;
     }
 
     fn line(&mut self, line: &str) {
@@ -765,6 +1255,8 @@ impl Mapper {
         match self.kind {
             Kind::Codex => self.codex(&value),
             Kind::Copilot => self.copilot(&value),
+            Kind::Gemini => self.gemini(&value),
+            Kind::Grok => self.grok(&value),
         }
     }
 
@@ -915,6 +1407,149 @@ impl Mapper {
     }
 }
 
+impl Mapper {
+    /// Gemini CLI's `stream-json`: `init`, `message`, `tool_use`, `tool_result`, `error` and a
+    /// last `result`. The app's tools are named `mcp_<server>_<tool>`.
+    fn gemini(&mut self, value: &Value) {
+        match value["type"].as_str() {
+            Some("message") if value["role"] == "assistant" => {
+                self.reach();
+                if let Some(text) = value["content"].as_str().filter(|text| !text.is_empty()) {
+                    self.sink.emit(AgentEvent::TextDelta { text: text.into() });
+                }
+            }
+            Some("tool_use") => {
+                self.reach();
+                let name = value["tool_name"].as_str().unwrap_or_default();
+                let app = name.strip_prefix(&format!("mcp_{SERVER}_"));
+                self.sink.emit(AgentEvent::ToolCallStarted {
+                    id: value["tool_id"].as_str().unwrap_or_default().into(),
+                    name: app.unwrap_or(name).into(),
+                    source: if app.is_some() {
+                        ToolSource::App
+                    } else {
+                        ToolSource::Harness
+                    },
+                    input: value["parameters"].clone(),
+                });
+            }
+            Some("tool_result") => {
+                let ok = value["status"] == "success";
+                self.sink.emit(AgentEvent::ToolCallFinished {
+                    id: value["tool_id"].as_str().unwrap_or_default().into(),
+                    ok,
+                    summary: summarize(if ok {
+                        &value["output"]
+                    } else {
+                        &value["error"]["message"]
+                    }),
+                });
+            }
+            Some("error") if value["severity"] == "error" => {
+                self.error = value["message"].as_str().map(str::to_owned);
+            }
+            Some("result") => {
+                if value["status"] == "error" {
+                    self.failed = true;
+                    if let Some(message) = value["error"]["message"].as_str() {
+                        self.error = Some(message.into());
+                    }
+                } else {
+                    self.reach();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Grok CLI's `streaming-json`, which follows ACP's session updates: `text`, `thought`,
+    /// `tool_call`, `tool_call_update`, `usage`, `error` and a last `end`. MCP tools are called
+    /// through its `use_tool`, and named `<server>__<tool>`.
+    fn grok(&mut self, value: &Value) {
+        match value["type"].as_str() {
+            Some("text") => {
+                self.reach();
+                if let Some(text) = value["data"].as_str().filter(|text| !text.is_empty()) {
+                    self.sink.emit(AgentEvent::TextDelta { text: text.into() });
+                }
+            }
+            Some("thought") => {
+                self.reach();
+                if let Some(text) = value["data"].as_str() {
+                    self.sink
+                        .emit(AgentEvent::ThinkingDelta { text: text.into() });
+                }
+            }
+            Some("tool_call") => {
+                self.reach();
+                let id = value["toolCallId"].as_str().unwrap_or_default().to_owned();
+                if !self.open.insert(id.clone()) {
+                    return;
+                }
+                let mut name = value["toolName"]
+                    .as_str()
+                    .or_else(|| value["title"].as_str())
+                    .unwrap_or_default();
+                let mut input = &value["rawInput"];
+                if name == "use_tool"
+                    && let Some(tool) = input["tool_name"].as_str()
+                {
+                    name = tool;
+                    input = &value["rawInput"]["tool_input"];
+                }
+                let app = name.strip_prefix(&format!("{SERVER}__"));
+                self.sink.emit(AgentEvent::ToolCallStarted {
+                    id,
+                    name: app.unwrap_or(name).into(),
+                    source: if app.is_some() {
+                        ToolSource::App
+                    } else {
+                        ToolSource::Harness
+                    },
+                    input: input.clone(),
+                });
+            }
+            Some("tool_call_update") => {
+                let status = value["status"].as_str();
+                if !matches!(status, Some("completed" | "failed")) {
+                    return;
+                }
+                let id = value["toolCallId"].as_str().unwrap_or_default();
+                if !self.open.remove(id) {
+                    return;
+                }
+                let summary = if value["rawOutput"].is_null() {
+                    content_text(&value["content"])
+                } else {
+                    summarize(&value["rawOutput"])
+                };
+                self.sink.emit(AgentEvent::ToolCallFinished {
+                    id: id.into(),
+                    ok: status == Some("completed"),
+                    summary,
+                });
+            }
+            Some("usage" | "end") => self.reach(),
+            Some("error") => {
+                self.failed = true;
+                self.error = value["message"].as_str().map(str::to_owned);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The text of ACP tool-call content: `[{ "type": "content", "content": { "type": "text", … } }]`.
+fn content_text(content: &Value) -> String {
+    let text: Vec<&str> = content
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item["content"]["text"].as_str())
+        .collect();
+    text.join("\n").chars().take(300).collect()
+}
+
 fn summarize(value: &Value) -> String {
     let text = match value {
         Value::String(text) => text.clone(),
@@ -988,6 +1623,290 @@ mod tests {
             classify_error("No authentication information found", false),
             AgentErrorKind::NotLoggedIn
         );
+        assert_eq!(
+            classify_error(
+                "Error resuming session: No previous sessions found for this project.",
+                true
+            ),
+            AgentErrorKind::ResumeFailed
+        );
+        assert_eq!(
+            classify_error("Session does not exist", true),
+            AgentErrorKind::ResumeFailed
+        );
+        assert_eq!(
+            classify_error("Not signed in. Run `grok login` to authenticate.", false),
+            AgentErrorKind::NotLoggedIn
+        );
+        assert_eq!(
+            classify_error(
+                "Please set an Auth method in your settings.json or specify GEMINI_API_KEY",
+                false
+            ),
+            AgentErrorKind::NotLoggedIn
+        );
+        assert!(session_taken(
+            "Error starting session: Session ID \"x\" already exists. Use --resume to resume it."
+        ));
+        assert!(!session_taken("Session does not exist"));
+        let taken = "Error: Session ID 0b6f5d8e-1111-4222-8333-944445555666 is already in use.";
+        assert!(retry_fresh(Kind::Grok, false, false, taken));
+        assert!(retry_fresh(
+            Kind::Gemini,
+            false,
+            false,
+            "Error starting session: Session ID \"x\" already exists. Use --resume to resume it."
+        ));
+        // Not when the turn reached the model, the turn already resumed, or for another CLI.
+        assert!(!retry_fresh(Kind::Grok, true, false, taken));
+        assert!(!retry_fresh(Kind::Grok, false, true, taken));
+        assert!(!retry_fresh(Kind::Copilot, false, false, taken));
+        assert!(!retry_fresh(Kind::Gemini, false, false, "Quota exceeded"));
+        assert_eq!(
+            clean_stderr(
+                "YOLO mode is enabled. All tool calls will be automatically approved.\nBoom\n"
+            ),
+            "Boom"
+        );
+    }
+
+    #[test]
+    fn maps_gemini_stream_with_app_tool() {
+        let (sink, mut events) = EventSink::channel();
+        let mut mapper = Mapper::new(Kind::Gemini, Arc::new(Mutex::new(None)), sink, None);
+        mapper.line(r#"{"type":"init","session_id":"abc","model":"gemini-2.5-pro"}"#);
+        mapper.line(r#"{"type":"message","role":"user","content":"Make a slide"}"#);
+        assert!(!mapper.reached);
+        mapper.line(r#"{"type":"tool_use","tool_name":"mcp_slidr_slide_create","tool_id":"t1","parameters":{"title":"A"}}"#);
+        mapper
+            .line(r#"{"type":"tool_result","tool_id":"t1","status":"success","output":"created"}"#);
+        mapper.line(r#"{"type":"tool_use","tool_name":"google_web_search","tool_id":"t2","parameters":{"query":"q"}}"#);
+        mapper.line(r#"{"type":"tool_result","tool_id":"t2","status":"error","error":{"type":"X","message":"offline"}}"#);
+        mapper.line(r#"{"type":"message","role":"assistant","content":"Done","delta":true}"#);
+        mapper.line(r#"{"type":"result","status":"success","stats":{}}"#);
+        assert!(matches!(events.try_recv(), Ok(AgentEvent::ToolCallStarted {
+            name, source: ToolSource::App, input, ..
+        }) if name == "slide_create" && input["title"] == "A"));
+        assert!(
+            matches!(events.try_recv(), Ok(AgentEvent::ToolCallFinished { ok: true, summary, .. }) if summary == "created")
+        );
+        assert!(matches!(events.try_recv(), Ok(AgentEvent::ToolCallStarted {
+            name, source: ToolSource::Harness, ..
+        }) if name == "google_web_search"));
+        assert!(
+            matches!(events.try_recv(), Ok(AgentEvent::ToolCallFinished { ok: false, summary, .. }) if summary == "offline")
+        );
+        assert!(matches!(events.try_recv(), Ok(AgentEvent::TextDelta { text }) if text == "Done"));
+        assert!(events.try_recv().is_err());
+        assert!(mapper.reached && !mapper.failed);
+    }
+
+    #[test]
+    fn a_new_gemini_or_grok_conversation_is_announced_once_it_reaches_the_model() {
+        for (kind, first, second) in [
+            (
+                Kind::Gemini,
+                r#"{"type":"init","session_id":"id-1","model":"m"}"#,
+                r#"{"type":"message","role":"assistant","content":"Hi","delta":true}"#,
+            ),
+            (
+                Kind::Grok,
+                r#"{"type":"available_commands","tools":[]}"#,
+                r#"{"type":"text","data":"Hi"}"#,
+            ),
+        ] {
+            let (sink, mut events) = EventSink::channel();
+            let native = Arc::new(Mutex::new(Some("id-1".to_owned())));
+            let mut mapper = Mapper::new(kind, native, sink, Some("m".into()));
+            mapper.announce = true;
+            mapper.line(first);
+            assert!(events.try_recv().is_err(), "{kind:?}");
+            mapper.line(second);
+            mapper.line(second);
+            assert!(matches!(events.try_recv(), Ok(AgentEvent::SessionStarted {
+                native_session_id, model
+            }) if native_session_id == "id-1" && model == "m"));
+            assert!(matches!(
+                events.try_recv(),
+                Ok(AgentEvent::TextDelta { .. })
+            ));
+            assert!(matches!(
+                events.try_recv(),
+                Ok(AgentEvent::TextDelta { .. })
+            ));
+            assert!(events.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn gemini_failure_keeps_its_message() {
+        let (sink, _events) = EventSink::channel();
+        let mut mapper = Mapper::new(Kind::Gemini, Arc::new(Mutex::new(None)), sink, None);
+        mapper.line(r#"{"type":"error","severity":"warning","message":"Loop detected"}"#);
+        mapper.line(r#"{"type":"error","severity":"error","message":"The model returned an empty response."}"#);
+        mapper.line(r#"{"type":"result","status":"error"}"#);
+        assert!(mapper.failed && !mapper.reached);
+        assert_eq!(
+            mapper.error.as_deref(),
+            Some("The model returned an empty response.")
+        );
+    }
+
+    #[test]
+    fn maps_grok_stream_through_use_tool() {
+        let (sink, mut events) = EventSink::channel();
+        let mut mapper = Mapper::new(Kind::Grok, Arc::new(Mutex::new(None)), sink, None);
+        mapper.line(r#"{"type":"thought","data":"Planning"}"#);
+        mapper.line(r#"{"type":"tool_call","toolCallId":"c1","toolName":"use_tool","kind":"other","status":"pending","rawInput":{"tool_name":"slidr__slide_create","tool_input":{"title":"A"}}}"#);
+        mapper.line(r#"{"type":"tool_call","toolCallId":"c1","toolName":"use_tool","status":"in_progress","rawInput":{}}"#);
+        mapper.line(r#"{"type":"tool_call_update","toolCallId":"c1","status":"in_progress"}"#);
+        mapper.line(r#"{"type":"tool_call_update","toolCallId":"c1","status":"completed","content":[{"type":"content","content":{"type":"text","text":"created"}}]}"#);
+        mapper.line(r#"{"type":"tool_call_update","toolCallId":"c1","status":"completed","rawOutput":{"again":true}}"#);
+        mapper.line(r#"{"type":"tool_call","toolCallId":"c2","toolName":"web_search","status":"in_progress","rawInput":{"query":"q"}}"#);
+        mapper.line(r#"{"type":"tool_call_update","toolCallId":"c2","status":"failed","rawOutput":"blocked"}"#);
+        mapper.line(r#"{"type":"text","data":"Done"}"#);
+        mapper.line(r#"{"type":"end","stopReason":"end_turn","sessionId":"s"}"#);
+        assert!(
+            matches!(events.try_recv(), Ok(AgentEvent::ThinkingDelta { text }) if text == "Planning")
+        );
+        assert!(matches!(events.try_recv(), Ok(AgentEvent::ToolCallStarted {
+            id, name, source: ToolSource::App, input
+        }) if id == "c1" && name == "slide_create" && input["title"] == "A"));
+        assert!(
+            matches!(events.try_recv(), Ok(AgentEvent::ToolCallFinished { id, ok: true, summary }) if id == "c1" && summary == "created")
+        );
+        assert!(matches!(events.try_recv(), Ok(AgentEvent::ToolCallStarted {
+            name, source: ToolSource::Harness, ..
+        }) if name == "web_search"));
+        assert!(
+            matches!(events.try_recv(), Ok(AgentEvent::ToolCallFinished { ok: false, summary, .. }) if summary == "blocked")
+        );
+        assert!(matches!(events.try_recv(), Ok(AgentEvent::TextDelta { text }) if text == "Done"));
+        assert!(events.try_recv().is_err());
+        assert!(mapper.reached && !mapper.failed);
+
+        let (sink, _events) = EventSink::channel();
+        let mut mapper = Mapper::new(Kind::Grok, Arc::new(Mutex::new(None)), sink, None);
+        mapper.line(r#"{"type":"error","message":"Not signed in."}"#);
+        assert!(mapper.failed && !mapper.reached);
+        assert_eq!(mapper.error.as_deref(), Some("Not signed in."));
+    }
+
+    #[test]
+    fn gemini_and_grok_configuration_names_the_server_without_its_token() {
+        let endpoint = ToolEndpoint {
+            url: "http://127.0.0.1:4100/mcp".into(),
+            token: "secret".into(),
+        };
+        let settings = gemini_settings(Some(&endpoint), true);
+        let server = &settings["mcpServers"]["slidr"];
+        assert_eq!(server["httpUrl"], "http://127.0.0.1:4100/mcp");
+        assert_eq!(
+            server["headers"]["Authorization"],
+            "Bearer ${SLIDR_MCP_TOKEN}"
+        );
+        assert_eq!(server["trust"], true);
+        assert_eq!(
+            settings["tools"]["core"],
+            json!(["mcp_slidr_*", "google_web_search", "web_fetch"])
+        );
+        let offline = gemini_settings(None, false);
+        assert_eq!(offline["tools"]["core"], json!(["mcp_slidr_*"]));
+        assert!(offline.get("mcpServers").is_none());
+        assert!(!settings.to_string().contains("secret"));
+
+        let toml = grok_config(Some(&endpoint));
+        assert!(toml.starts_with("[mcp_servers.slidr]\n"));
+        assert!(toml.contains("url = \"http://127.0.0.1:4100/mcp\""));
+        assert!(toml.contains("Authorization = \"Bearer ${SLIDR_MCP_TOKEN}\""));
+        assert!(!toml.contains("secret"));
+        assert!(grok_config(None).is_empty());
+    }
+
+    fn test_run(kind: Kind, known: bool, web_access: bool) -> Run {
+        Run {
+            kind,
+            workdir: PathBuf::from("work"),
+            system_prompt: String::new(),
+            endpoint: Some(ToolEndpoint {
+                url: "http://127.0.0.1:4100/mcp".into(),
+                token: "secret".into(),
+            }),
+            web_access,
+            model: Some("model-a".into()),
+            effort: None,
+            native: Arc::new(Mutex::new(Some("id-1".into()))),
+            known: Arc::new(AtomicBool::new(known)),
+            sink: EventSink::new(|_| {}),
+            stop: Arc::new(Notify::new()),
+            resume: false,
+        }
+    }
+
+    fn args(command: &Command) -> Vec<String> {
+        command
+            .as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    fn has_pair(args: &[String], flag: &str, value: &str) -> bool {
+        args.windows(2)
+            .any(|pair| pair[0] == flag && pair[1] == value)
+    }
+
+    #[test]
+    fn gemini_and_grok_create_their_conversation_then_resume_it() {
+        for kind in [Kind::Gemini, Kind::Grok] {
+            let mut command = Command::new("cli");
+            let run = test_run(kind, false, true);
+            match kind {
+                Kind::Gemini => run.gemini_args(&mut command),
+                _ => run.grok_args(&mut command, Path::new("turn.json")),
+            }
+            let created = args(&command);
+            assert!(has_pair(&created, "--session-id", "id-1"), "{created:?}");
+            assert!(!created.contains(&"--resume".to_owned()));
+            run.known.store(true, Ordering::SeqCst);
+            let mut command = Command::new("cli");
+            match kind {
+                Kind::Gemini => run.gemini_args(&mut command),
+                _ => run.grok_args(&mut command, Path::new("turn.json")),
+            }
+            let resumed = args(&command);
+            assert!(has_pair(&resumed, "--resume", "id-1"), "{resumed:?}");
+            assert!(has_pair(&resumed, "--model", "model-a"));
+            assert!(!resumed.iter().any(|arg| arg.contains("secret")));
+            let token = command
+                .as_std()
+                .get_envs()
+                .find(|(key, _)| *key == TOKEN_ENV)
+                .and_then(|(_, value)| value);
+            assert_eq!(token, Some(std::ffi::OsStr::new("secret")));
+        }
+    }
+
+    #[test]
+    fn grok_runs_only_the_app_tools_and_the_web_tools_it_is_allowed() {
+        let mut command = Command::new("grok");
+        test_run(Kind::Grok, false, true).grok_args(&mut command, Path::new("turn.json"));
+        let online = args(&command);
+        assert!(has_pair(&online, "--permission-mode", "dontAsk"));
+        assert!(has_pair(&online, "--allow", "MCPTool(slidr__*)"));
+        assert!(has_pair(&online, "--allow", "WebFetch"));
+        assert!(has_pair(&online, "--prompt-file", "turn.json"));
+        assert!(!online.contains(&"--disable-web-search".to_owned()));
+        let mut command = Command::new("grok");
+        test_run(Kind::Grok, false, false).grok_args(&mut command, Path::new("turn.json"));
+        let offline = args(&command);
+        assert!(has_pair(
+            &offline,
+            "--disallowed-tools",
+            "web_search,web_fetch"
+        ));
+        assert!(offline.contains(&"--disable-web-search".to_owned()));
+        assert!(!offline.contains(&"WebFetch".to_owned()));
     }
 
     async fn real_tool_round_trip(
@@ -1019,10 +1938,7 @@ mod tests {
         }))?;
         let endpoint = bridge.open(vec![tool]).await?;
         let root = tempfile::tempdir()?;
-        let harness = match kind {
-            Kind::Codex => OneShotHarness::codex(),
-            Kind::Copilot => OneShotHarness::copilot(),
-        };
+        let harness = OneShotHarness { kind };
         let manager = HarnessManager::new(root.path().into(), vec![Arc::new(harness)]);
         let mut config = SessionConfig::new(
             Scope::Deck,
@@ -1144,5 +2060,17 @@ mod tests {
     #[ignore = "runs the real GitHub Copilot CLI on the owner's subscription"]
     async fn real_copilot_calls_app_tool() -> std::result::Result<(), Box<dyn std::error::Error>> {
         real_tool_round_trip(Kind::Copilot).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "runs the real Gemini CLI on the owner's Google account"]
+    async fn real_gemini_calls_app_tool() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        real_tool_round_trip(Kind::Gemini).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "runs the real Grok CLI on the owner's xAI account"]
+    async fn real_grok_calls_app_tool() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        real_tool_round_trip(Kind::Grok).await
     }
 }

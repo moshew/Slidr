@@ -63,11 +63,29 @@ async function fixtures(page: Page, models?: ModelOption[]) {
         defaultModel: null,
         effortLevels: [],
       },
+      {
+        id: 'gemini-cli',
+        name: 'Gemini CLI',
+        capabilities,
+        models: [],
+        defaultModel: null,
+        effortLevels: [],
+      },
+      {
+        id: 'grok-cli',
+        name: 'Grok CLI',
+        capabilities,
+        models: [],
+        defaultModel: null,
+        effortLevels: [],
+      },
     ];
     const states: Record<string, HarnessStatus['state']> = {
       'claude-code': 'ready',
       'codex-cli': 'ready',
       'copilot-cli': 'not_installed',
+      'gemini-cli': 'not_installed',
+      'grok-cli': 'not_logged_in',
     };
     descriptors.push({
       id: 'mock',
@@ -239,6 +257,54 @@ test('chat handles installation, sign-in and a model without effort', async ({ p
   );
   await expect(page.getByTestId('model-picker')).toHaveAttribute('data-effort', '');
 });
+
+test('Gemini installs with npm once approved, and Grok signs in before its models load', async ({
+  page,
+}) => {
+  await openApp(page, { lang: 'en' });
+  await fixtures(page);
+  const harness = page.getByRole('combobox', { name: 'Harness', exact: true });
+  await harness.click();
+  await page.getByRole('option', { name: 'Gemini CLI', exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-connected-harness', 'gemini-cli');
+  await expect(page.getByTestId('harness-connection')).toContainText('not installed');
+  await page.getByRole('button', { name: 'Install…', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('with npm');
+  await expect(page.getByRole('dialog')).toContainText('Node.js');
+  await page.getByRole('button', { name: 'Approve and install', exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-installed-harness', 'gemini-cli');
+  await expect(page.getByTestId('harness-connection')).toContainText('Sign in to your account');
+  await harness.click();
+  await page.getByRole('option', { name: 'Grok CLI', exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-connected-harness', 'grok-cli');
+  await expect(page.getByTestId('harness-connection')).toContainText('Sign in to your account');
+  await expect(page.getByRole('combobox', { name: 'Model', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-logged-in-harness', 'grok-cli');
+  await page.getByRole('combobox', { name: 'Model', exact: true }).click();
+  await page.getByRole('option', { name: 'Simple model', exact: true }).click();
+  await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
+  await expect(page.getByTestId('model-picker')).toHaveAttribute('data-model', 'grok-cli-simple');
+});
+
+for (const lang of ['he', 'en'] as const) {
+  test(`the chat offers Gemini and Grok beside the other harnesses in ${lang}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang });
+    await fixtures(page);
+    await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
+    const setup = page.getByTestId('chat-setup');
+    for (const name of ['Claude', 'Codex', 'GitHub Copilot', 'Gemini', 'Grok'])
+      await expect(setup.getByRole('radio', { name, exact: true })).toBeVisible();
+    await page.screenshot({ path: `test-results/harness-choice-${lang}.png` });
+    await setup.getByRole('radio', { name: 'Gemini', exact: true }).check();
+    await setup.getByRole('button', { name: lang === 'he' ? 'המשך' : 'Continue' }).click();
+    await expect(setup).toContainText('npm');
+    await expect(setup).toContainText('Node.js');
+    await page.screenshot({ path: `test-results/harness-gemini-install-${lang}.png` });
+  });
+}
 
 for (const outcome of ['ready', 'not_logged_in', 'model_missing', 'error', 'list_error'] as const) {
   test(`saved chat checks only after a request: ${outcome}`, async ({ page }) => {
