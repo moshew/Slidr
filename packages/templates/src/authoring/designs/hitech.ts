@@ -473,6 +473,112 @@ function cfp(lang: Lang): Slide {
   ]);
 }
 
+// ---------------------------------------------------------------------------------------------
+// m-modelrelease: results. A Hebrew-first language model: an aleph of ink points whose top rises
+// away as amber tokens, on warm paper; the benchmarks against the last version, drawn as bars.
+
+/** The aleph picture (1000x1000 page pixels) in the English slide. It is never mirrored: a letter. */
+const ALEPH_PIC = { x: 900, y: 0, w: 1040, h: 1040 };
+
+function modelrelease(lang: Lang): Slide {
+  const he = lang === 'he';
+  const t = looks(he ? 'Noto Sans Hebrew' : 'Inter');
+  const ink = '#15183A';
+  const indigo = '#3A3FD6';
+  const orange = '#D9480F';
+  const grey = '#5B5E70';
+  const old = '#CBC6BB';
+  const copy = he
+    ? {
+        kicker: 'השקת מודל  ·  משקלים פתוחים',
+        title: ['סלע 2 חושב', 'קודם כול בעברית.'],
+        lead: ['70 מיליארד פרמטרים ו־4 טריליון טוקנים של אימון,', 'שליש מהם בעברית. חופשי לשימוש מחקרי.'],
+        legend: ['סלע 2', 'סלע 1'],
+        rows: ['שאלות בעברית', 'הסקה', 'קוד', 'מתמטיקה'],
+        button: 'לקריאת המאמר  ←',
+        note: ['API ומשקלים', 'מ־3.2.2027'],
+      }
+    : {
+        kicker: 'MODEL RELEASE  ·  OPEN WEIGHTS',
+        title: ['Sela 2 reasons', 'in Hebrew first.'],
+        lead: ['70 billion parameters, 4 trillion training tokens,', 'a third of them in Hebrew. Free for research.'],
+        legend: ['Sela 2', 'Sela 1'],
+        rows: ['Hebrew QA', 'Reasoning', 'Code', 'Math'],
+        button: 'Read the paper  →',
+        note: ['API and weights', 'from 3.2.2027'],
+      };
+  const scores = [
+    [89.2, 74.6],
+    [84.7, 70.1],
+    [78.3, 63.9],
+    [81.5, 66.2],
+  ] as const;
+  const bar = { x: 330, w: 420 };
+  const rowEls = scores.flatMap(([now, before], i) => {
+    const y = 604 + i * 74;
+    return [
+      textBox({ frame: at(lang, 120, y + 2, 200, 40), lines: [copy.rows[i]!], look: t(26, 600, ink), lang }),
+      shape({ frame: at(lang, bar.x, y + 10, Math.round((bar.w * now) / 100), 16), fill: fill(indigo), round: 0.5 }),
+      shape({ frame: at(lang, bar.x, y + 36, Math.round((bar.w * before) / 100), 8), fill: fill(old), round: 0.5 }),
+      textBox({
+        frame: at(lang, 770, y - 4, 110, 36),
+        lines: [String(now)],
+        look: t(28, 800, ink),
+        lang,
+        dir: 'ltr',
+        align: he ? 'end' : 'start',
+      }),
+      textBox({
+        frame: at(lang, 770, y + 32, 110, 36),
+        lines: [String(before)],
+        look: t(24, 500, grey),
+        lang,
+        dir: 'ltr',
+        align: he ? 'end' : 'start',
+      }),
+    ];
+  });
+  return slide({ fill: radial(he ? 0.25 : 0.75, 0.5, ['#FFFDF8', 0], ['#F6F3EC', 0.6], ['#EDE8DE', 1]) }, [
+    // a faint baseline grid, as on graph paper, behind the letter
+    art(
+      { x: 0, y: 0, w: 1920, h: 1080 },
+      svg(
+        lang,
+        1920,
+        1080,
+        '<defs><pattern id="mr-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#15183A" stroke-opacity=".05" stroke-width="1.5"/></pattern><radialGradient id="mr-fade" cx=".72" cy=".55" r=".45"><stop offset=".3" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><mask id="mr-mask"><rect width="1920" height="1080" fill="url(#mr-fade)"/></mask></defs><rect width="1920" height="1080" fill="url(#mr-grid)" mask="url(#mr-mask)"/>',
+      ),
+    ),
+    picture(
+      { x: he ? 1920 - ALEPH_PIC.x - ALEPH_PIC.w : ALEPH_PIC.x, y: ALEPH_PIC.y, w: ALEPH_PIC.w, h: ALEPH_PIC.h },
+      'The letter aleph made of points, its top rising away as tokens',
+    ),
+    textBox({ frame: at(lang, 120, 104, 800, 40), lines: [copy.kicker], look: t(24, 700, '#B53A08', he ? 1 : 3), lang }),
+    textBox({
+      frame: at(lang, 112, 146, 860, 236),
+      lines: [[piece(copy.title[0]!, t(100, 800, ink, -3))], [piece(copy.title[1]!, t(100, 800, orange, -3))]],
+      look: t(100, 800, ink, -3),
+      lang,
+      lineHeight: 1.05,
+    }),
+    textBox({ frame: at(lang, 120, 400, 800, 92), lines: copy.lead, look: t(28, 400, grey), lang, lineHeight: 1.45 }),
+    shape({ frame: at(lang, 120, 547, 22, 22), fill: fill(indigo), round: 0.2 }),
+    textBox({ frame: at(lang, 154, 538, 150, 40), lines: [copy.legend[0]!], look: t(24, 600, ink), lang }),
+    shape({ frame: at(lang, 304, 547, 22, 22), fill: fill(old), round: 0.2 }),
+    textBox({ frame: at(lang, 338, 538, 150, 40), lines: [copy.legend[1]!], look: t(24, 500, grey), lang }),
+    shape({ frame: at(lang, 120, 590, 760, 1.5), fill: fill(ink, 0.15) }),
+    ...rowEls,
+    shape({
+      frame: at(lang, 120, 916, 330, 80),
+      fill: fill(ink),
+      round: 0.5,
+      shadow: { x: 0, y: 14, blur: 32, color: '#15183A', alpha: 0.25 },
+      label: { text: copy.button, look: t(28, 700, '#FFFFFF'), lang },
+    }),
+    textBox({ frame: at(lang, 484, 916, 360, 80), lines: copy.note, look: t(24, 500, grey), lang, lineHeight: 1.3 }),
+  ]);
+}
+
 export const designs: DesignEntry[] = [
   {
     id: 'm-hackathon',
@@ -505,5 +611,13 @@ export const designs: DesignEntry[] = [
     subject: [1440, 690],
     he: cfp('he'),
     en: cfp('en'),
+  },
+  {
+    id: 'm-modelrelease',
+    group: 'hitech',
+    name: { he: 'השקת מודל AI', en: 'AI model release' },
+    subject: [1420, 700],
+    he: modelrelease('he'),
+    en: modelrelease('en'),
   },
 ];

@@ -23,10 +23,28 @@ import {
 import { techPictures } from './pictures';
 import own from './pictures/mutzar.json';
 
-/** The pictures of the sample: this template's own manifest, read directly as well as through the folder's. */
-const pictures: Record<string, AssetMeta> = {
+/**
+ * The pictures of the sample, by name: this template's own manifest, read directly as well as
+ * through the folder's (a dev server that started before the manifest existed does not see it
+ * in the folder's).
+ */
+const manifest: Record<string, AssetMeta> = {
   ...techPictures,
   ...(own as Record<string, AssetMeta>),
+};
+
+function picture(name: string): AssetMeta {
+  const asset = manifest[name];
+  if (!asset) throw new Error(`mutzar: no picture "${name}" in pictures/mutzar.json`);
+  return asset;
+}
+
+const pictures = {
+  builderHe: picture('mutzarBuilderHe'),
+  builderEn: picture('mutzarBuilderEn'),
+  heroHe: picture('mutzarHeroHe'),
+  heroEn: picture('mutzarHeroEn'),
+  team: [1, 2, 3, 4].map((n) => picture(`mutzarTeam${n}`)),
 };
 
 /**
@@ -1665,12 +1683,7 @@ const ADOPTION = [12, 21, 38, 74, 118, 162];
 const TABLE_COLS = [508, 352, 352, 408];
 const TABLE_ROW = 96;
 
-const TEAM_PICTURES = () => [
-  { assetId: pictures.mutzarTeam1.id },
-  { assetId: pictures.mutzarTeam2.id },
-  { assetId: pictures.mutzarTeam3.id },
-  { assetId: pictures.mutzarTeam4.id },
-];
+const TEAM_PICTURES = () => pictures.team.map((asset) => ({ assetId: asset.id }));
 
 const sampleHe: SampleSlide[] = [
   {
@@ -1751,7 +1764,7 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: text('הבונה החדש'),
       title: text('בונה תהליכים', 'שכל הצוות מבין'),
-      image: { assetId: pictures.mutzarBuilderHe.id },
+      image: { assetId: pictures.builderHe.id },
       subtitle: [text('גוררים ומחברים'), text('AI שמציע את הצעד הבא'), text('בדיקה לפני פרסום')],
       body: [
         text('כל שלב הוא כרטיס על הקנבס. מותחים חץ, והנתונים עוברים לבד.'),
@@ -1874,7 +1887,7 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_mutzar_full_image',
     name: 'מסך הבית',
     content: {
-      image: { assetId: pictures.mutzarHeroHe.id },
+      image: { assetId: pictures.heroHe.id },
       caption: text('מסך הבית החדש'),
       title: text('לוח בקרה אחד', 'לכל התפעול'),
       body: text('הזמנות, מלאי, ספקים ופניות בזמן אמת, על מסך אחד שכל הצוות רואה.'),
@@ -2011,7 +2024,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: text('The new builder'),
       title: text('A builder the whole', 'team understands'),
-      image: { assetId: pictures.mutzarBuilderEn.id },
+      image: { assetId: pictures.builderEn.id },
       subtitle: [text('Drag and connect'), text('AI drafts the flow'), text('Test, then publish')],
       body: [
         text('Each step is a card. Draw an arrow, and the data flows.'),
@@ -2140,7 +2153,7 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_mutzar_full_image',
     name: 'Home screen',
     content: {
-      image: { assetId: pictures.mutzarHeroEn.id },
+      image: { assetId: pictures.heroEn.id },
       caption: text('The new home screen'),
       title: text('One board for', 'all of operations'),
       body: text(
@@ -2212,14 +2225,11 @@ export function mutzarTemplate(): Template {
     layouts: drawn,
     flipped: flipped(drawn),
     assets: assetTable([
-      pictures.mutzarBuilderHe,
-      pictures.mutzarBuilderEn,
-      pictures.mutzarHeroHe,
-      pictures.mutzarHeroEn,
-      pictures.mutzarTeam1,
-      pictures.mutzarTeam2,
-      pictures.mutzarTeam3,
-      pictures.mutzarTeam4,
+      pictures.builderHe,
+      pictures.builderEn,
+      pictures.heroHe,
+      pictures.heroEn,
+      ...pictures.team,
     ]),
   };
   template.sample = sampleSlides(template, sampleHe);
