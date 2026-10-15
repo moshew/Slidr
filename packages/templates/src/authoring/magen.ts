@@ -21,7 +21,7 @@ import {
   token,
   type SampleSlide,
 } from '../builtin/kit';
-import { techPictures as pictures } from './pictures';
+import { picture } from './pictures';
 
 /**
  * Magen (shield): the slide is the wall screen of a security operations centre at night. A
@@ -111,7 +111,6 @@ const BG = '#0a0c10';
 const PANEL = '#141920';
 /** Steel the theme has no token for: they stay themselves on every variant. */
 const STEEL_LIGHT = '#c3ccd6';
-const STEEL_DARK = '#2a323c';
 /** The black of a redaction bar. */
 const VOID = '#020304';
 
@@ -125,7 +124,7 @@ const PAINT = {
   [PANEL]: token('surface'),
 };
 
-const MONO = "font-family=\"'JetBrains Mono', ui-monospace, monospace\"";
+const MONO = 'font-family="\'JetBrains Mono\', ui-monospace, monospace"';
 
 /**
  * The drawings that hold letters: the mirror of a left-to-right deck turns them back, and takes
@@ -151,7 +150,15 @@ const svg = (w: number, h: number, body: string) =>
  * by: `hug` is that edge in the right-to-left drawing, and the other one in the mirror.
  */
 const word =
-  (w: number, h: number, base: number, size: number, body: string, hug: 'start' | 'end', attrs = '') =>
+  (
+    w: number,
+    h: number,
+    base: number,
+    size: number,
+    body: string,
+    hug: 'start' | 'end',
+    attrs = '',
+  ) =>
   (dir: Dir) => {
     const right = (hug === 'start') === (dir === 'rtl');
     return svg(
@@ -176,7 +183,7 @@ function seeded(seed: number) {
 // What the layouts share
 
 /** The margin of both sides, and the width between them. */
-const M = 104;
+const M = 96;
 const WIDTH = 1920 - 2 * M;
 
 const PANEL_FILL = solid(token('surface'));
@@ -185,22 +192,37 @@ const HAIR = solid(token('text', 0.1));
 const STEEL_HAIR = solid(token('muted', 0.28));
 
 /** The four corners of a box, as the brackets of a sight: `arm` long, inside the box. */
-function cornerPath(w: number, h: number, arm: number, i: number, only: 'all' | 'bottom' | 'top' = 'all') {
+function cornerPath(
+  w: number,
+  h: number,
+  arm: number,
+  i: number,
+  only: 'all' | 'bottom' | 'top' = 'all',
+) {
   const top = `M${i} ${i + arm}V${i}H${i + arm}M${w - i - arm} ${i}H${w - i}V${i + arm}`;
   const bottom = `M${w - i} ${h - i - arm}V${h - i}H${w - i - arm}M${i + arm} ${h - i}H${i}V${h - i - arm}`;
   return only === 'top' ? top : only === 'bottom' ? bottom : top + bottom;
 }
 
-function brackets(
-  id: string,
-  frame: Frame,
-  { color = STEEL, opacity = 0.6, arm = 28, width = 2, only = 'all' as 'all' | 'bottom' | 'top' } = {},
-): Element {
+interface Sight {
+  color?: string;
+  opacity?: number;
+  arm?: number;
+  width?: number;
+  only?: 'all' | 'bottom' | 'top';
+}
+
+function brackets(id: string, frame: Frame, sight: Sight = {}): Element {
+  const { color = STEEL, opacity = 0.6, arm = 28, width = 2, only = 'all' } = sight;
   const { w, h } = frame;
   return drawing(
     id,
     frame,
-    svg(w, h, `<path d="${cornerPath(w, h, arm, width / 2, only)}" stroke="${color}" stroke-opacity="${opacity}" stroke-width="${width}"/>`),
+    svg(
+      w,
+      h,
+      `<path d="${cornerPath(w, h, arm, width / 2, only)}" stroke="${color}" stroke-opacity="${opacity}" stroke-width="${width}"/>`,
+    ),
     PAINT,
   );
 }
@@ -233,7 +255,11 @@ const reticle = (id: string, frame: Frame) =>
   drawing(
     id,
     frame,
-    svg(22, 22, `<path d="${cornerPath(22, 22, 7, 1)}" stroke="${STEEL}" stroke-width="2"/><rect x="7" y="7" width="8" height="8" fill="${RED}"/>`),
+    svg(
+      22,
+      22,
+      `<path d="${cornerPath(22, 22, 7, 1)}" stroke="${STEEL}" stroke-width="2"/><rect x="7" y="7" width="8" height="8" fill="${RED}"/>`,
+    ),
     PAINT,
   );
 
@@ -243,13 +269,10 @@ const KEYHOLE = (color: string) =>
   `<circle cx="20" cy="19.6" r="5.2" fill="${color}"/><path d="M17.4 22.6h5.2l1.7 9.6h-8.6z" fill="${color}"/>`;
 
 const mark = (id: string, frame: Frame) =>
-  drawing(
-    id,
-    frame,
-    svg(40, 46, `<path d="${SHIELD_PATH}" fill="${RED}"/>${KEYHOLE(BG)}`),
-    PAINT,
-    { role: 'logo', name: 'logo' },
-  );
+  drawing(id, frame, svg(40, 46, `<path d="${SHIELD_PATH}" fill="${RED}"/>${KEYHOLE(BG)}`), PAINT, {
+    role: 'logo',
+    name: 'logo',
+  });
 
 /** A ruler: a hairline with ticks, the first stretch of it red (drawn for right to left). */
 function ruler(id: string, frame: Frame, lead = 160): Element {
@@ -262,13 +285,17 @@ function ruler(id: string, frame: Frame, lead = 160): Element {
   return drawing(
     id,
     frame,
-    svg(w, h, `<path d="M0 .5H${w}" stroke="${STEEL}" stroke-opacity=".3"/>${ticks}<rect x="${w - lead}" y="0" width="${lead}" height="2.5" fill="${RED}"/>`),
+    svg(
+      w,
+      h,
+      `<path d="M0 .5H${w}" stroke="${STEEL}" stroke-opacity=".3"/>${ticks}<rect x="${w - lead}" y="0" width="${lead}" height="2.5" fill="${RED}"/>`,
+    ),
     PAINT,
   );
 }
 
 /** The kicker after its sight and the title under it. */
-function head(name: string, width = 1300, lines = 1) {
+function head(name: string, width = 1520, lines = 1) {
   return {
     placeholders: [
       place('p_kicker', 'caption', at(M + 38, 100, Math.min(900, width - 38), 34), 'caption'),
@@ -291,7 +318,11 @@ function foot(name: string) {
       drawing(
         `d_magen_${name}_folio`,
         atEnd(M, 950, 116, 48),
-        svg(116, 48, `<path d="M14 2H3v44h11M102 2h11v44h-11" stroke="${STEEL}" stroke-opacity=".7" stroke-width="2"/>`),
+        svg(
+          116,
+          48,
+          `<path d="M14 2H3v44h11M102 2h11v44h-11" stroke="${STEEL}" stroke-opacity=".7" stroke-width="2"/>`,
+        ),
         PAINT,
       ),
       pageNumber(`d_magen_${name}_number`, atEnd(M + 16, 958, 84, 34), 'caption', {
@@ -316,6 +347,9 @@ const glow = (id: string, frame: Frame, color: 'primary' | 'accent' | 'muted', a
     kind: 'radial',
     stops: [
       { color: token(color, alpha), at: 0 },
+      { color: token(color, alpha * 0.45), at: 0.34 },
+      // The ellipse is inscribed in the box, and the gradient reaches its farthest corner.
+      { color: token(color, 0), at: 0.68 },
       { color: token(color, 0), at: 1 },
     ],
   });
@@ -390,7 +424,10 @@ function radarGrid(): string {
   const c = RADAR / 2;
   const R = c - 10;
   const rings = [R, R * 0.8, R * 0.6, R * 0.4, R * 0.2]
-    .map((r, i) => `<circle cx="${c}" cy="${c}" r="${r1(r)}" stroke="${STEEL}" stroke-opacity="${i === 0 ? 0.42 : 0.2}" stroke-width="${i === 0 ? 2 : 1.2}"/>`)
+    .map(
+      (r, i) =>
+        `<circle cx="${c}" cy="${c}" r="${r1(r)}" stroke="${STEEL}" stroke-opacity="${i === 0 ? 0.42 : 0.2}" stroke-width="${i === 0 ? 2 : 1.2}"/>`,
+    )
     .join('');
   const dashed = `<circle cx="${c}" cy="${c}" r="${r1(R * 0.7)}" stroke="${STEEL}" stroke-opacity=".16" stroke-dasharray="3 7"/>`;
   const ticks = Array.from({ length: 180 }, (_, i) => {
@@ -441,13 +478,64 @@ const radarLabels = (dir: Dir) => {
     .join('');
   const names = BLIPS.filter((b) => b.label)
     .map(({ a, r, color, size, label }) => {
+      // Beside the blip, on the side that faces the middle of the slide.
       const [bx, y] = polar(c, a, r);
-      const x = dir === 'rtl' ? bx : RADAR - bx;
-      return `<text x="${r1(x + size * 2.6 + 10)}" y="${r1(y - size * 2.6 - 4)}" ${MONO} font-size="15" font-weight="600" fill="${color === STEEL_LIGHT ? STEEL : color}">${label}</text>`;
+      const gap = size * 2.6 + 10;
+      const x = dir === 'rtl' ? bx + gap : RADAR - bx - gap;
+      return `<text x="${r1(x)}" y="${r1(y - size * 2.6 - 4)}" text-anchor="${dir === 'rtl' ? 'start' : 'end'}" ${MONO} font-size="15" font-weight="600" fill="${color === STEEL_LIGHT ? STEEL : color}">${label}</text>`;
     })
     .join('');
   return svg(RADAR, RADAR, bearings + names);
 };
+
+/**
+ * A quarter of a radar from the corner of the end side: rings, the ticks of its rim, a sweep and
+ * two blips. Drawn for right to left, where that corner is the bottom left.
+ */
+function radarQuarter(size: number): string {
+  const cy = size;
+  const at = (a: number, r: number): [number, number] => [
+    r * Math.cos((a * Math.PI) / 180),
+    cy + r * Math.sin((a * Math.PI) / 180),
+  ];
+  const R = size - 12;
+  const rings = [0.2, 0.4, 0.6, 0.8, 1]
+    .map(
+      (k, i) =>
+        `<path d="M${r1(R * k)} ${cy}A${r1(R * k)} ${r1(R * k)} 0 0 0 0 ${r1(cy - R * k)}" stroke="${STEEL}" stroke-opacity="${i === 4 ? 0.34 : 0.16}" stroke-width="${i === 4 ? 1.6 : 1}"/>`,
+    )
+    .join('');
+  const ticks = Array.from({ length: 46 }, (_, i) => {
+    const a = -i * 2;
+    const len = i % 15 === 0 ? 20 : i % 5 === 0 ? 11 : 5;
+    const [x1, y1] = at(a, R);
+    const [x2, y2] = at(a, R - len);
+    return `<path d="M${r1(x1)} ${r1(y1)}L${r1(x2)} ${r1(y2)}" stroke="${STEEL}" stroke-opacity="${i % 5 === 0 ? 0.45 : 0.25}"/>`;
+  }).join('');
+  const lead = -38;
+  const trail = Array.from({ length: 14 }, (_, i) => {
+    const a1 = lead - (i + 1) * 2.2;
+    const a0 = lead - i * 2.2;
+    const [x0, y0] = at(a0, R);
+    const [x1, y1] = at(a1, R);
+    return `<path d="M0 ${cy}L${r1(x0)} ${r1(y0)}A${R} ${R} 0 0 0 ${r1(x1)} ${r1(y1)}Z" fill="${RED}" fill-opacity="${r1(0.11 * (1 - i / 14) * 100) / 100}"/>`;
+  }).join('');
+  const [ex, ey] = at(lead, R);
+  const blip = (a: number, r: number, color: string) => {
+    const [x, y] = at(a, r);
+    return `<circle cx="${r1(x)}" cy="${r1(y)}" r="7" fill="${color}"/><circle cx="${r1(x)}" cy="${r1(y)}" r="17" stroke="${color}" stroke-opacity=".5" stroke-width="1.5"/>`;
+  };
+  return svg(
+    size,
+    size,
+    rings +
+      ticks +
+      trail +
+      `<path d="M0 ${cy}L${r1(ex)} ${r1(ey)}" stroke="${RED}" stroke-opacity=".8" stroke-width="2"/>` +
+      blip(-52, 360, RED) +
+      blip(-20, 560, AMBER),
+  );
+}
 
 /** The segmented meter of a threat level, read in the slide's direction. */
 function meter(dir: Dir, w: number, lit: number, n = 25): string {
@@ -485,7 +573,16 @@ function sparkline(id: string, frame: Frame, seed: number, color = STEEL): Eleme
     const v = 0.35 + 0.4 * Math.sin(i / 2.4 + seed) * 0.5 + rnd() * 0.35;
     return `${r1((i / (n - 1)) * (w - 4) + 2)},${r1(h - 2 - v * (h - 6))}`;
   }).join(' ');
-  return drawing(id, frame, svg(w, h, `<polyline points="${pts}" stroke="${color}" stroke-opacity=".7" stroke-width="2" stroke-linejoin="round"/>`), PAINT);
+  return drawing(
+    id,
+    frame,
+    svg(
+      w,
+      h,
+      `<polyline points="${pts}" stroke="${color}" stroke-opacity=".7" stroke-width="2" stroke-linejoin="round"/>`,
+    ),
+    PAINT,
+  );
 }
 
 /** An audio wave: the line of a recorded voice. */
@@ -510,7 +607,10 @@ function hexBadge(id: string, frame: Frame, label: string, color = RED): Element
   const cx = w / 2;
   const s = h / 2 - 2;
   const pts = [-90, -30, 30, 90, 150, 210]
-    .map((a) => `${r1(cx + s * Math.cos((a * Math.PI) / 180))},${r1(h / 2 + s * Math.sin((a * Math.PI) / 180))}`)
+    .map(
+      (a) =>
+        `${r1(cx + s * Math.cos((a * Math.PI) / 180))},${r1(h / 2 + s * Math.sin((a * Math.PI) / 180))}`,
+    )
     .join(' ');
   return lettered(
     id,
@@ -532,7 +632,11 @@ function padlock(id: string, frame: Frame, open: boolean, color: string): Elemen
   return drawing(
     id,
     frame,
-    svg(36, 40, `${shackle}<rect x="4" y="19" width="28" height="19" rx="3" fill="${color}" fill-opacity=".18" stroke="${color}" stroke-width="2.6"/><rect x="16.5" y="25" width="3" height="7" rx="1.5" fill="${color}"/>`),
+    svg(
+      36,
+      40,
+      `${shackle}<rect x="4" y="19" width="28" height="19" rx="3" fill="${color}" fill-opacity=".18" stroke="${color}" stroke-width="2.6"/><rect x="16.5" y="25" width="3" height="7" rx="1.5" fill="${color}"/>`,
+    ),
     PAINT,
   );
 }
@@ -542,7 +646,11 @@ const chevron = (id: string, frame: Frame, color = RED) =>
   drawing(
     id,
     frame,
-    svg(frame.w, frame.h, `<path d="M${frame.w - 5} 4 5 ${frame.h / 2}l${frame.w - 10} ${frame.h / 2 - 4}" stroke="${color}" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter"/>`),
+    svg(
+      frame.w,
+      frame.h,
+      `<path d="M${frame.w - 5} 4 5 ${frame.h / 2}l${frame.w - 10} ${frame.h / 2 - 4}" stroke="${color}" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter"/>`,
+    ),
     PAINT,
   );
 
@@ -551,9 +659,81 @@ const warning = (id: string, frame: Frame) =>
   drawing(
     id,
     frame,
-    svg(38, 34, `<path d="M19 2 36.5 32h-35z" fill="${AMBER}" fill-opacity=".14" stroke="${AMBER}" stroke-width="2.4" stroke-linejoin="round"/><path d="M19 12v9" stroke="${AMBER}" stroke-width="3" stroke-linecap="round"/><circle cx="19" cy="26.6" r="1.9" fill="${AMBER}"/>`),
+    svg(
+      38,
+      34,
+      `<path d="M19 2 36.5 32h-35z" fill="${AMBER}" fill-opacity=".14" stroke="${AMBER}" stroke-width="2.4" stroke-linejoin="round"/><path d="M19 12v9" stroke="${AMBER}" stroke-width="3" stroke-linecap="round"/><circle cx="19" cy="26.6" r="1.9" fill="${AMBER}"/>`,
+    ),
     PAINT,
   );
+
+/**
+ * A small network of hosts: exposed, with a broken perimeter and attacks reaching three of them,
+ * or shielded, inside a hexagon where the same attacks stop. In a box of 340 by 180.
+ */
+function network(exposed: boolean): string {
+  const nodes: [number, number][] = [
+    [170, 92],
+    [96, 60],
+    [244, 56],
+    [104, 132],
+    [238, 130],
+    [170, 30],
+    [170, 154],
+  ];
+  const edges = [
+    [0, 1],
+    [0, 2],
+    [0, 3],
+    [0, 4],
+    [0, 5],
+    [0, 6],
+    [1, 5],
+    [5, 2],
+    [3, 6],
+    [6, 4],
+  ];
+  const hit = new Set(exposed ? [1, 2, 4] : []);
+  const lines = edges
+    .map(([i, j]) => {
+      const [x1, y1] = nodes[i!]!;
+      const [x2, y2] = nodes[j!]!;
+      return `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="${STEEL}" stroke-opacity=".45" stroke-width="1.5"/>`;
+    })
+    .join('');
+  const dots = nodes
+    .map(([x, y], i) => {
+      const color = hit.has(i) ? RED : i === 0 ? (exposed ? STEEL_LIGHT : GREEN) : STEEL_LIGHT;
+      const halo = hit.has(i)
+        ? `<circle cx="${x}" cy="${y}" r="14" stroke="${RED}" stroke-opacity=".55" stroke-width="1.5"/>`
+        : '';
+      return `${halo}<circle cx="${x}" cy="${y}" r="${i === 0 ? 8 : 6}" fill="${BG}" stroke="${color}" stroke-width="2.4"/>`;
+    })
+    .join('');
+  // Attacks from outside: to a host, or to the wall.
+  const attacks: [number, number, number][] = [
+    [8, 14, 1],
+    [334, 10, 2],
+    [334, 176, 4],
+  ];
+  const hex = '170,6 318,47 318,133 170,174 22,133 22,47';
+  const arrows = attacks
+    .map(([x, y, n]) => {
+      const [tx, ty] = nodes[n]!;
+      const k = exposed ? 0.86 : 0.42;
+      const ex = x + (tx - x) * k;
+      const ey = y + (ty - y) * k;
+      const end = exposed
+        ? ''
+        : `<path d="M${r1(ex - 7)} ${r1(ey - 7)}l14 14M${r1(ex + 7)} ${r1(ey - 7)}l-14 14" stroke="${RED}" stroke-width="2.4"/>`;
+      return `<path d="M${x} ${y}L${r1(ex)} ${r1(ey)}" stroke="${RED}" stroke-opacity=".8" stroke-width="2" stroke-dasharray="6 5"/>${end}`;
+    })
+    .join('');
+  const wall = exposed
+    ? `<polygon points="${hex}" stroke="${RED}" stroke-opacity=".5" stroke-width="2" stroke-dasharray="26 18"/>`
+    : `<polygon points="${hex}" fill="${GREEN}" fill-opacity=".06" stroke="${GREEN}" stroke-opacity=".85" stroke-width="2.4"/>`;
+  return svg(340, 180, wall + lines + arrows + dots);
+}
 
 /** A barcode, as on the foot of an access badge. */
 function barcode(id: string, frame: Frame, seed: number): Element {
@@ -606,28 +786,33 @@ function trace(w: number, h: number, nodes: number[]): string {
 
 /** The incident log beside the quote, with what may not be read blacked out. */
 function redactedLog(w: number, h: number): string {
-  const rows: [string, string, [number, number][]][] = [
-    ['03:12:44', 'EDR alert R-4417 · FIN-WS-0231', []],
-    ['03:12:46', 'enc.exe spawned by ██████████', [[17, 10]]],
-    ['03:12:51', 'host isolated · vlan 0', []],
-    ['03:13:02', 'session of ████████ closed', [[11, 8]]],
-    ['03:13:20', 'credentials revoked · AD', []],
-    ['03:14:08', 'hash ██████████ MALICIOUS', [[5, 10]]],
-    ['03:16:02', 'forensic image · 64%', []],
-    ['03:21:37', 'source ███.███.██.██', [[7, 13]]],
-    ['03:22:10', 'ticket INC-2026-1209 · P1', []],
-    ['03:40:55', 'sweep: 14 hosts, 0 encrypted', []],
-    ['04:02:12', 'note: ████████ ██████', [[6, 15]]],
-    ['07:24:40', 'restored from backup ✓', []],
+  // What is blacked out is written as blocks: each run of them, with what lies between, is a bar.
+  const rows: [string, string][] = [
+    ['03:12:44', 'EDR alert R-4417 · FIN-WS-0231'],
+    ['03:12:46', 'enc.exe spawned by ██████████'],
+    ['03:12:51', 'host isolated · vlan 0'],
+    ['03:13:02', 'session of ████████ closed'],
+    ['03:13:20', 'credentials revoked · AD'],
+    ['03:14:08', 'hash ██████████ MALICIOUS'],
+    ['03:16:02', 'forensic image · 64%'],
+    ['03:21:37', 'source ███.███.██.██'],
+    ['03:22:10', 'ticket INC-2026-1209 · P1'],
+    ['03:40:55', 'sweep: 14 hosts, 0 encrypted'],
+    ['04:02:12', 'note: ████████ ██████'],
+    ['07:24:40', 'restored from backup ✓'],
   ];
   const step = 42;
   const top = 96;
   const cw = 8.4;
   const body = rows
-    .map(([time, line, cuts], i) => {
+    .map(([time, line], i) => {
       const y = top + i * step;
+      const cuts = [...line.matchAll(/█[█ .]*█|█/g)].map((m) => [m.index, m[0].length] as const);
       const bars = cuts
-        .map(([from, len]) => `<rect x="${r1(104 + from * cw - 1)}" y="${y - 14}" width="${r1(len * cw + 2)}" height="19" fill="${VOID}"/>`)
+        .map(
+          ([from, len]) =>
+            `<rect x="${r1(104 + from * cw - 1)}" y="${y - 14}" width="${r1(len * cw + 2)}" height="19" fill="${VOID}"/>`,
+        )
         .join('');
       const clean = line.replace(/█/g, ' ');
       return (
@@ -654,11 +839,18 @@ function redactedLog(w: number, h: number): string {
 // ---------------------------------------------------------------------------------------------
 // The layouts, drawn right-to-left
 
-const columns4 = [M, 538, 972, 1406];
-const team4 = [M, 536, 968, 1400];
-const cards3 = [M, 688, 1272];
-const steps5 = [M, 453, 802, 1151, 1500];
-const rows3 = [306, 502, 698];
+/** Columns across the width: four of a timeline, four badges, three cards, five steps. */
+const COL4 = 414;
+const columns4 = [M, M + 438, M + 876, M + 1314];
+const BADGE = 420;
+const team4 = [M, M + 436, M + 872, M + 1308];
+const CARD = 550;
+const cards3 = [M, M + 589, M + 1178];
+const STEP = 320;
+const steps5 = [M, M + 352, M + 704, M + 1056, M + 1408];
+/** The two panels of a comparison. */
+const SIDE = 844;
+const rows3 = [318, 510, 702];
 const stats3 = [262, 478, 694];
 const lines3 = [520, 638, 756];
 
@@ -685,7 +877,12 @@ function layouts(): Layout[] {
       ],
       decorations: [
         glow('d_magen_hero_glow', atEnd(-420, -260, 1700, 1600), 'primary', 0.1),
-        hexMesh('d_magen_hero_mesh', at(0, 0, 900, 420), { x: 900, y: 0, r: 760 }, { opacity: 0.16 }),
+        hexMesh(
+          'd_magen_hero_mesh',
+          at(0, 0, 900, 420),
+          { x: 900, y: 0, r: 760 },
+          { opacity: 0.16 },
+        ),
         rect('d_magen_hero_sweep', heroRadar, sweepFill(), {
           geometry: { kind: 'preset', preset: 'ellipse' },
         }),
@@ -707,16 +904,27 @@ function layouts(): Layout[] {
       name: 'Section',
       archetype: 'section',
       placeholders: [
-        place('p_number', 'number', atEnd(hexagon.cx - 190, hexagon.cy - 110, 380, 220), 'display', {
-          align: 'center',
-          vAlign: 'middle',
-        }),
+        place(
+          'p_number',
+          'number',
+          atEnd(hexagon.cx - 190, hexagon.cy - 110, 380, 220),
+          'display',
+          {
+            align: 'center',
+            vAlign: 'middle',
+          },
+        ),
         place('p_kicker', 'caption', at(M + 38, 352, 760, 34), 'caption'),
-        place('p_title', 'title', at(M, 400, 900, 250), 'display'),
+        place('p_title', 'title', at(M, 400, 900, 250), 'display', { vAlign: 'middle' }),
         place('p_subtitle', 'subtitle', at(M, 676, 860, 140), 'heading'),
       ],
       decorations: [
-        glow('d_magen_section_glow', atEnd(hexagon.cx - 520, hexagon.cy - 520, 1040, 1040), 'primary', 0.12),
+        glow(
+          'd_magen_section_glow',
+          atEnd(hexagon.cx - 520, hexagon.cy - 520, 1040, 1040),
+          'primary',
+          0.12,
+        ),
         hexMesh(
           'd_magen_section_mesh',
           atEnd(0, 0, 1060, 1080),
@@ -725,17 +933,22 @@ function layouts(): Layout[] {
             k: 0.62,
             opacity: 0.3,
             cells: [
-              [2, 1, 1, AMBER],
-              [13, 7, 0, RED],
-              [15, 2, 1, STEEL_LIGHT],
-              [3, 8, 1, STEEL_LIGHT],
+              [24, 4, 1, RED],
+              [5, 13, 1, AMBER],
+              [3, 3, 0, STEEL_LIGHT],
+              [22, 12, 0, STEEL_LIGHT],
+              [9, 15, 0, RED],
             ],
           },
         ),
         drawing(
           'd_magen_section_cross',
           atEnd(0, 0, 1000, 1080),
-          svg(1000, 1080, `<path d="M0 ${hexagon.cy}H1000M${hexagon.cx} 0V1080" stroke="${STEEL}" stroke-opacity=".22" stroke-dasharray="4 8"/>`),
+          svg(
+            1000,
+            1080,
+            `<path d="M0 ${hexagon.cy}H1000M${hexagon.cx} 0V1080" stroke="${STEEL}" stroke-opacity=".22" stroke-dasharray="4 8"/>`,
+          ),
           PAINT,
         ),
         drawing(
@@ -748,7 +961,10 @@ function layouts(): Layout[] {
               const c = { x: hexW / 2, y: hexagon.s };
               const poly = (s: number) =>
                 [-90, -30, 30, 90, 150, 210]
-                  .map((a) => `${r1(c.x + s * Math.cos((a * Math.PI) / 180))},${r1(c.y + s * Math.sin((a * Math.PI) / 180))}`)
+                  .map(
+                    (a) =>
+                      `${r1(c.x + s * Math.cos((a * Math.PI) / 180))},${r1(c.y + s * Math.sin((a * Math.PI) / 180))}`,
+                  )
                   .join(' ');
               return (
                 `<polygon points="${poly(hexagon.s - 3)}" fill="${BG}" fill-opacity=".86" stroke="${RED}" stroke-width="5"/>` +
@@ -774,7 +990,7 @@ function layouts(): Layout[] {
       name: 'Big number',
       archetype: 'bigNumber',
       placeholders: [
-        ...head('big_number', 1100).placeholders,
+        ...head('big_number').placeholders,
         place('p_number', 'number', at(M, 262, 1000, 140), 'display'),
         place('p_label', 'subtitle', at(M, 498, 1000, 53), 'heading'),
         place('p_body', 'body', at(M, 562, 960, 135), 'body'),
@@ -786,7 +1002,7 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...chrome('big_number'),
-        ...head('big_number', 1100).decorations,
+        ...head('big_number').decorations,
         lettered('d_magen_big_number_meter', at(M, 420, 1000, 60), (dir) => meter(dir, 1000, 14)),
         rect('d_magen_big_number_rule', at(M, 734, 1000, 1), HAIR),
         lettered(
@@ -819,7 +1035,11 @@ function layouts(): Layout[] {
             atEnd(M + 44, top + 20, 120, 24),
             word(120, 24, 17, 14, `KPI-0${i + 1}`, 'end', `fill="${STEEL}" letter-spacing="1"`),
           ),
-          sparkline(`d_magen_big_number_spark${i + 1}`, atEnd(M + 24, top + 132, 150, 40), 7 + i * 13),
+          sparkline(
+            `d_magen_big_number_spark${i + 1}`,
+            atEnd(M + 24, top + 54, 140, 40),
+            7 + i * 13,
+          ),
         ]),
         ...foot('big_number').decorations,
       ],
@@ -829,9 +1049,9 @@ function layouts(): Layout[] {
       name: 'Quote',
       archetype: 'quote',
       placeholders: [
-        place('p_quote', 'quote', at(M + 56, 208, 1180, 420), 'title', { vAlign: 'middle' }),
-        place('p_attribution', 'attribution', at(M + 56, 676, 1000, 53), 'heading'),
-        place('p_caption', 'caption', at(M + 56, 734, 1000, 68), 'caption'),
+        place('p_quote', 'quote', at(M + 58, 208, 1180, 420), 'title', { vAlign: 'middle' }),
+        place('p_attribution', 'attribution', at(M + 58, 676, 1060, 53), 'heading'),
+        place('p_caption', 'caption', at(M + 58, 734, 1060, 68), 'caption'),
         ...foot('quote').placeholders,
       ],
       decorations: [
@@ -851,9 +1071,12 @@ function layouts(): Layout[] {
         ),
         rect('d_magen_quote_bar', at(M, 228, 6, 380), RED_FILL),
         rect('d_magen_quote_bar_tail', at(M, 616, 6, 60), STEEL_HAIR),
-        waveform('d_magen_quote_wave', at(M + 56, 836, 760, 60)),
+        waveform('d_magen_quote_wave', at(M + 58, 836, 760, 60)),
         lettered('d_magen_quote_log', atEnd(M, 196, 420, 680), redactedLog(420, 680)),
-        brackets('d_magen_quote_log_corner', atEnd(M - 10, 186, 440, 700), { opacity: 0.55, arm: 22 }),
+        brackets('d_magen_quote_log_corner', atEnd(M - 10, 186, 440, 700), {
+          opacity: 0.55,
+          arm: 22,
+        }),
         ...foot('quote').decorations,
       ],
     },
@@ -867,38 +1090,50 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...chrome('text'),
-        hexMesh('d_magen_text_mesh', atEnd(0, 520, 820, 560), { x: 0, y: 560, r: 700 }, { opacity: 0.2 }),
-        reticle('d_magen_text_reticle', at(62, 162, 22, 22)),
-        rect('d_magen_text_margin', at(72, 262, 2, 600), STEEL_HAIR),
-        rect('d_magen_text_margin_lead', at(71, 262, 4, 90), RED_FILL),
-        lettered(
-          'd_magen_text_strip',
-          at(M, 918, WIDTH, 30),
-          (dir) => {
-            const w = WIDTH;
-            const cells: [string, number][] = [
-              ['DISTRIBUTION: BOARD', 0],
-              ['REF', 10],
-              ['RETENTION 7Y', 0],
-              ['OWNER', 14],
-            ];
-            let x = 0;
-            const parts: string[] = [];
-            for (const [label, redact] of cells) {
-              parts.push(`<text x="${x}" y="21" ${MONO} font-size="15" letter-spacing="1" fill="${STEEL}">${label}</text>`);
-              x += label.length * 10.2 + 12;
-              if (redact) {
-                parts.push(`<rect x="${r1(x)}" y="5" width="${redact * 10}" height="20" fill="${VOID}" stroke="${STEEL}" stroke-opacity=".25"/>`);
-                x += redact * 10 + 12;
-              }
-              parts.push(`<text x="${r1(x)}" y="21" ${MONO} font-size="15" fill="${STEEL}" fill-opacity=".5">//</text>`);
-              x += 40;
-            }
-            const run = x - 40;
-            const shift = dir === 'rtl' ? w - run : 0;
-            return svg(w, 30, `<g transform="translate(${r1(shift)} 0)">${parts.slice(0, -1).join('')}</g>`);
-          },
+        hexMesh(
+          'd_magen_text_mesh',
+          atEnd(0, 440, 900, 640),
+          { x: 0, y: 640, r: 820 },
+          { opacity: 0.18 },
         ),
+        drawing('d_magen_text_radar', atEnd(0, 330, 750, 750), radarQuarter(750), PAINT),
+        reticle('d_magen_text_reticle', at(54, 162, 22, 22)),
+        rect('d_magen_text_margin', at(64, 262, 2, 600), STEEL_HAIR),
+        rect('d_magen_text_margin_lead', at(63, 262, 4, 90), RED_FILL),
+        lettered('d_magen_text_strip', at(M, 918, WIDTH, 30), (dir) => {
+          const w = WIDTH;
+          const cells: [string, number][] = [
+            ['DISTRIBUTION: BOARD', 0],
+            ['REF', 10],
+            ['RETENTION 7Y', 0],
+            ['OWNER', 14],
+          ];
+          let x = 0;
+          const parts: string[] = [];
+          for (const [label, redact] of cells) {
+            parts.push(
+              `<text x="${x}" y="21" ${MONO} font-size="15" letter-spacing="1" fill="${STEEL}">${label}</text>`,
+            );
+            x += label.length * 10.2 + 12;
+            if (redact) {
+              parts.push(
+                `<rect x="${r1(x)}" y="6" width="${redact * 10}" height="18" fill="${VOID}"/>`,
+              );
+              x += redact * 10 + 12;
+            }
+            parts.push(
+              `<text x="${r1(x)}" y="21" ${MONO} font-size="15" fill="${STEEL}" fill-opacity=".5">//</text>`,
+            );
+            x += 40;
+          }
+          const run = x - 40;
+          const shift = dir === 'rtl' ? w - run : 0;
+          return svg(
+            w,
+            30,
+            `<g transform="translate(${r1(shift)} 0)"><rect x="-16" y="0" width="${r1(run + 32)}" height="30" fill="${PANEL}"/>${parts.slice(0, -1).join('')}</g>`,
+          );
+        }),
       ],
     },
     {
@@ -918,20 +1153,27 @@ function layouts(): Layout[] {
         ...chrome('text_image'),
         ...head('text_image', 900, 2).decorations,
         rect('d_magen_text_image_mat', atEnd(M + 8, 158, 724, 744), solid(token('surface', 0.6))),
-        brackets('d_magen_text_image_sight', atEnd(M, 150, 740, 760), { color: RED, opacity: 0.9, arm: 34, width: 3 }),
+        brackets('d_magen_text_image_sight', atEnd(M, 150, 740, 760), {
+          color: RED,
+          opacity: 0.9,
+          arm: 34,
+          width: 3,
+        }),
         lettered(
           'd_magen_text_image_feed',
           atEnd(M + 20, 120, 700, 24),
           svg(
             700,
             24,
-            `<text x="0" y="17" ${MONO} font-size="15" letter-spacing="1" fill="${STEEL}">FEED-01 · SOC CONSOLE · 1400×1440</text>` +
+            `<text x="0" y="17" ${MONO} font-size="15" letter-spacing="1" fill="${STEEL}">FEED-01 · SOC CONSOLE · SHIFT C</text>` +
               `<text x="700" y="17" text-anchor="end" ${MONO} font-size="15" font-weight="700" letter-spacing="1" fill="${RED}">● LIVE</text>`,
           ),
         ),
         ...rows3.flatMap((top, i) => [
           hexBadge(`d_magen_text_image_badge${i + 1}`, at(M, top - 2, 54, 60), `0${i + 1}`),
-          ...(i < 2 ? [rect(`d_magen_text_image_link${i + 1}`, at(M + 26, top + 66, 2, 128), STEEL_HAIR)] : []),
+          ...(i < 2
+            ? [rect(`d_magen_text_image_link${i + 1}`, at(M + 26, top + 66, 2, 128), STEEL_HAIR)]
+            : []),
         ]),
         ...foot('text_image').decorations,
       ],
@@ -965,11 +1207,11 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...cards3.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 96, 284, 416, 68), 'caption', {
+          place(`p_card${i + 1}_note`, 'caption', at(start + 104, 284, CARD - 136, 68), 'caption', {
             vAlign: 'middle',
           }),
-          place(`p_card${i + 1}`, 'subtitle', at(start + 32, 372, 480, 106), 'heading'),
-          place(`p_card${i + 1}_body`, 'body', at(start + 32, 486, 480, 210), 'body'),
+          place(`p_card${i + 1}`, 'subtitle', at(start + 38, 372, CARD - 70, 106), 'heading'),
+          place(`p_card${i + 1}_body`, 'body', at(start + 38, 486, CARD - 70, 210), 'body'),
         ]),
         place('p_takeaway', 'body', at(M + 76, 800, 1620, 90), 'body', { vAlign: 'middle' }),
         ...foot('cards').placeholders,
@@ -986,16 +1228,50 @@ function layouts(): Layout[] {
               `<rect x="${294 - (k + 1) * 24 - k * 6}" y="0" width="24" height="10" fill="${k < lit ? color : STEEL}" fill-opacity="${k < lit ? 0.9 : 0.18}"/>`,
           ).join('');
           return [
-            panel(`d_magen_cards_card${i + 1}`, at(start, 262, 544, 500)),
-            rect(`d_magen_cards_card${i + 1}_top`, at(start, 262, 180, 3), solid(i === 2 ? token('muted') : token(i ? 'secondary' : 'primary'))),
-            brackets(`d_magen_cards_card${i + 1}_corner`, at(start - 6, 256, 556, 512), { opacity: 0.5, arm: 16 }),
-            hexBadge(`d_magen_cards_card${i + 1}_node`, at(start + 32, 288, 52, 58), `0${i + 1}`, color),
-            rect(`d_magen_cards_card${i + 1}_rule`, at(start + 32, 708, 480, 1), HAIR),
-            drawing(`d_magen_cards_card${i + 1}_level`, at(start + 32, 728, 294, 10), svg(294, 10, cells), PAINT),
+            panel(`d_magen_cards_card${i + 1}`, at(start, 262, CARD, 500)),
+            hexMesh(
+              `d_magen_cards_card${i + 1}_mesh`,
+              atEnd(1920 - start - CARD + 1, 500, 330, 200),
+              { x: 0, y: 200, r: 340 },
+              {
+                k: 0.48,
+                opacity: 0.3,
+              },
+            ),
+            rect(
+              `d_magen_cards_card${i + 1}_top`,
+              at(start, 262, 180, 3),
+              solid(i === 2 ? token('muted') : token(i ? 'secondary' : 'primary')),
+            ),
+            brackets(`d_magen_cards_card${i + 1}_corner`, at(start - 6, 256, CARD + 12, 512), {
+              opacity: 0.5,
+              arm: 16,
+            }),
+            hexBadge(
+              `d_magen_cards_card${i + 1}_node`,
+              at(start + 38, 288, 52, 58),
+              `0${i + 1}`,
+              color,
+            ),
+            rect(`d_magen_cards_card${i + 1}_rule`, at(start + 38, 708, CARD - 70, 1), HAIR),
+            drawing(
+              `d_magen_cards_card${i + 1}_level`,
+              at(start + 38, 728, 294, 10),
+              svg(294, 10, cells),
+              PAINT,
+            ),
             lettered(
               `d_magen_cards_card${i + 1}_id`,
-              at(start + 352, 722, 160, 22),
-              word(160, 22, 16, 14, `THREAT-0${i + 1}`, 'end', `fill="${STEEL}" letter-spacing="1"`),
+              at(start + CARD - 192, 722, 160, 22),
+              word(
+                160,
+                22,
+                16,
+                14,
+                `THREAT-0${i + 1}`,
+                'end',
+                `fill="${STEEL}" letter-spacing="1"`,
+              ),
             ),
           ];
         }),
@@ -1012,11 +1288,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('timeline').placeholders,
         ...columns4.flatMap((start, i) => [
-          place(`p_when${i + 1}`, 'number', at(start, 272, 410, 79), 'title', { vAlign: 'bottom' }),
-          place(`p_what${i + 1}`, 'subtitle', at(start, 540, 380, 106), 'heading'),
-          place(`p_what${i + 1}_body`, 'body', at(start, 652, 380, 170), 'caption'),
+          place(`p_when${i + 1}`, 'number', at(start, 272, COL4, 79), 'title', {
+            vAlign: 'bottom',
+          }),
+          place(`p_what${i + 1}`, 'subtitle', at(start, 540, COL4 - 30, 106), 'heading'),
+          place(`p_what${i + 1}_body`, 'body', at(start, 652, COL4 - 30, 170), 'caption'),
         ]),
-        place('p_note', 'caption', at(M, 862, WIDTH, 34), 'caption'),
+        place('p_note', 'caption', at(M, 852, WIDTH, 68), 'caption'),
         ...foot('timeline').placeholders,
       ],
       decorations: [
@@ -1037,9 +1315,14 @@ function layouts(): Layout[] {
         }),
         ...columns4.flatMap((start, i) => [
           {
-            ...rect(`d_magen_timeline_node${i + 1}`, at(start + 4, 432, 20, 20), solid(token((['primary', 'secondary', 'secondary', 'accent'] as const)[i]!)), {
-              effects: { radius: 2 },
-            }),
+            ...rect(
+              `d_magen_timeline_node${i + 1}`,
+              at(start + 4, 432, 20, 20),
+              solid(token((['primary', 'secondary', 'secondary', 'accent'] as const)[i]!)),
+              {
+                effects: { radius: 2 },
+              },
+            ),
             rotation: 45,
           },
           rect(`d_magen_timeline_drop${i + 1}`, at(start + 13, 466, 2, 58), STEEL_HAIR),
@@ -1054,9 +1337,9 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...steps5.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start, 346, 316, 106), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start, 460, 316, 136), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start, 632, 316, 79), 'title', {
+          place(`p_step${i + 1}`, 'subtitle', at(start, 452, STEP, 106), 'heading'),
+          place(`p_step${i + 1}_body`, 'caption', at(start, 564, STEP, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start, 336, STEP, 79), 'title', {
             color: token(PHASE_TOKENS[i]!),
           }),
         ]),
@@ -1068,17 +1351,34 @@ function layouts(): Layout[] {
         ...head('process').decorations,
         ...steps5.flatMap((start, i) => {
           const color = PHASES[i]!;
-          const w = 334;
+          const w = STEP;
           const h = 54;
           const pts =
             i === 0
-              ? [[18, 1], [w - 1, 1], [w - 1, h - 1], [18, h - 1], [1, h / 2]]
-              : [[18, 1], [w - 1, 1], [w - 19, h / 2], [w - 1, h - 1], [18, h - 1], [1, h / 2]];
+              ? [
+                  [18, 1],
+                  [w - 1, 1],
+                  [w - 1, h - 1],
+                  [18, h - 1],
+                  [1, h / 2],
+                ]
+              : [
+                  [18, 1],
+                  [w - 1, 1],
+                  [w - 19, h / 2],
+                  [w - 1, h - 1],
+                  [18, h - 1],
+                  [1, h / 2],
+                ];
           return [
             drawing(
               `d_magen_process_phase${i + 1}`,
               at(start, 262, w, h),
-              svg(w, h, `<polygon points="${pts.map((p) => p.join(',')).join(' ')}" fill="${color}" fill-opacity=".14" stroke="${color}" stroke-opacity=".75" stroke-width="2"/>`),
+              svg(
+                w,
+                h,
+                `<polygon points="${pts.map((p) => p.join(',')).join(' ')}" fill="${color}" fill-opacity=".14" stroke="${color}" stroke-opacity=".75" stroke-width="2"/>`,
+              ),
               PAINT,
             ),
             lettered(
@@ -1086,10 +1386,31 @@ function layouts(): Layout[] {
               at(start + 26, 274, 70, 30),
               word(70, 30, 22, 18, `0${i + 1}`, 'start', `font-weight="700" fill="${color}"`),
             ),
-            rect(`d_magen_process_rule${i + 1}`, at(start, 616, 316, 1), HAIR),
-            rect(`d_magen_process_rule${i + 1}_lead`, at(start, 615, 48, 3), solid(token(PHASE_TOKENS[i]!))),
+            rect(`d_magen_process_rule${i + 1}`, at(start, 432, STEP, 1), HAIR),
+            rect(
+              `d_magen_process_rule${i + 1}_lead`,
+              at(start, 431, 48, 3),
+              solid(token(PHASE_TOKENS[i]!)),
+            ),
           ];
         }),
+        drawing(
+          'd_magen_process_flow',
+          at(M, 728, WIDTH, 24),
+          svg(
+            WIDTH,
+            24,
+            `<path d="M0 12H${WIDTH}" stroke="${STEEL}" stroke-opacity=".35" stroke-dasharray="2 8"/>` +
+              steps5
+                .map((start, i) => {
+                  const x = WIDTH - (start - M) - 6;
+                  return `<rect x="${x - 6}" y="6" width="12" height="12" transform="rotate(45 ${x} 12)" fill="${PHASES[i]}"/>`;
+                })
+                .join('') +
+              `<path d="M14 4 4 12l10 8" stroke="${STEEL}" stroke-opacity=".7" stroke-width="2"/>`,
+          ),
+          PAINT,
+        ),
         panel('d_magen_process_bar', at(M, 790, WIDTH, 110)),
         rect('d_magen_process_bar_edge', at(M, 790, 4, 110), RED_FILL),
         chevron('d_magen_process_prompt', at(M + 28, 828, 22, 34)),
@@ -1105,12 +1426,12 @@ function layouts(): Layout[] {
         ...(
           [
             ['before', M],
-            ['after', M + 876],
+            ['after', M + SIDE + 40],
           ] as const
         ).flatMap(([side, start]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 76, 288, 700, 34), 'caption'),
-          place(`p_${side}`, 'subtitle', at(start + 40, 342, 756, 106), 'heading'),
-          place(`p_${side}_body`, 'body', at(start + 40, 470, 756, 400), 'body'),
+          place(`p_${side}_tag`, 'caption', at(start + 76, 288, SIDE - 114, 34), 'caption'),
+          place(`p_${side}`, 'subtitle', at(start + 38, 342, SIDE - 76, 106), 'heading'),
+          place(`p_${side}_body`, 'body', at(start + 38, 456, SIDE - 76, 400), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1120,36 +1441,28 @@ function layouts(): Layout[] {
         ...(
           [
             ['before', M, RED, 'primary', true],
-            ['after', M + 876, GREEN, 'accent', false],
+            ['after', M + SIDE + 40, GREEN, 'accent', false],
           ] as const
         ).flatMap(([side, start, color, tone, open]) => [
-          panel(`d_magen_comparison_${side}`, at(start, 262, 836, 640)),
-          rect(`d_magen_comparison_${side}_top`, at(start, 262, 836, 3), solid(token(tone))),
-          rect(`d_magen_comparison_${side}_head`, at(start, 265, 836, 68), solid(token(tone, 0.07))),
+          panel(`d_magen_comparison_${side}`, at(start, 262, SIDE, 640)),
+          rect(`d_magen_comparison_${side}_top`, at(start, 262, SIDE, 3), solid(token(tone))),
+          rect(
+            `d_magen_comparison_${side}_head`,
+            at(start, 265, SIDE, 68),
+            solid(token(tone, 0.07)),
+          ),
           padlock(`d_magen_comparison_${side}_lock`, at(start + 26, 282, 32, 36), open, color),
-          open
-            ? drawing(
-                `d_magen_comparison_${side}_hatch`,
-                atEnd(1920 - start - 836, 742, 300, 160),
-                svg(
-                  300,
-                  160,
-                  `<defs><pattern id="hz" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="22" fill="${RED}"/></pattern>` +
-                    `<linearGradient id="hf" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/></linearGradient>` +
-                    `<mask id="hm"><rect width="300" height="160" fill="url(#hf)"/></mask></defs>` +
-                    `<rect width="300" height="160" fill="url(#hz)" opacity=".16" mask="url(#hm)"/>`,
-                ),
-                PAINT,
-              )
-            : hexMesh(`d_magen_comparison_${side}_mesh`, atEnd(1920 - start - 836, 662, 380, 240), { x: 0, y: 240, r: 380 }, {
-                k: 0.5,
-                opacity: 0.35,
-              }),
+          drawing(
+            `d_magen_comparison_${side}_net`,
+            atEnd(1920 - start - SIDE + 28, 706, 340, 180),
+            network(open),
+            PAINT,
+          ),
         ]),
-        dot('d_magen_comparison_way', at(M + 836 + 20 - 30, 556, 60, 60), solid(token('bg')), {
+        dot('d_magen_comparison_way', at(M + SIDE + 20 - 30, 556, 60, 60), solid(token('bg')), {
           stroke: { color: token('muted', 0.5), width: 2 },
         }),
-        chevron('d_magen_comparison_way_arrow', at(M + 836 + 20 - 8, 572, 18, 28), STEEL_LIGHT),
+        chevron('d_magen_comparison_way_arrow', at(M + SIDE + 20 - 8, 572, 18, 28), STEEL_LIGHT),
         ...foot('comparison').decorations,
       ],
     },
@@ -1158,7 +1471,7 @@ function layouts(): Layout[] {
       name: 'Chart',
       archetype: 'chart',
       placeholders: [
-        ...head('chart', 1100).placeholders,
+        ...head('chart').placeholders,
         place('p_chart', 'chart', at(M + 30, 336, 1060, 540)),
         place('p_stat1', 'number', atEnd(M, 262, 520, 130), 'display', { color: token('primary') }),
         place('p_stat1_body', 'body', atEnd(M, 396, 520, 128), 'body'),
@@ -1169,34 +1482,45 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...chrome('chart'),
-        ...head('chart', 1100).decorations,
+        ...head('chart').decorations,
         panel('d_magen_chart_panel', at(M, 262, 1120, 640)),
         drawing(
           'd_magen_chart_scan',
           at(M, 318, 1120, 584),
-          svg(1120, 584, `<defs><pattern id="sl" width="8" height="4" patternUnits="userSpaceOnUse"><rect width="8" height="1" fill="${INK}"/></pattern></defs><rect width="1120" height="584" fill="url(#sl)" opacity=".035"/>`),
+          svg(
+            1120,
+            584,
+            `<defs><pattern id="sl" width="8" height="4" patternUnits="userSpaceOnUse"><rect width="8" height="1" fill="${INK}"/></pattern></defs><rect width="1120" height="584" fill="url(#sl)" opacity=".035"/>`,
+          ),
           PAINT,
         ),
         rect('d_magen_chart_panel_rule', at(M, 318, 1120, 1), HAIR),
-        lettered(
-          'd_magen_chart_panel_head',
-          at(M + 24, 276, 1072, 28),
-          (dir) => {
-            const live = `<tspan fill="${RED}">●</tspan><tspan fill="${STEEL}">&#160;&#160;LIVE&#160;FEED&#160;·&#160;SIEM</tspan>`;
-            const toggles = ['1D', '7D', '30D', '12M']
-              .map((t, i) => {
-                const x = i * 58;
-                const on = i === 3;
-                return `<rect x="${x}" y="2" width="50" height="24" fill="${on ? RED : STEEL}" fill-opacity="${on ? 0.16 : 0.06}" stroke="${on ? RED : STEEL}" stroke-opacity="${on ? 0.7 : 0.25}"/><text x="${x + 25}" y="19" text-anchor="middle" ${MONO} font-size="13" font-weight="${on ? 700 : 500}" fill="${on ? RED : STEEL}">${t}</text>`;
-              })
-              .join('');
-            const tw = 4 * 58 - 8;
-            return dir === 'rtl'
-              ? svg(1072, 28, `<text x="1072" y="20" text-anchor="end" ${MONO} font-size="15" letter-spacing="1">${live}</text>${toggles}`)
-              : svg(1072, 28, `<text x="0" y="20" ${MONO} font-size="15" letter-spacing="1">${live}</text><g transform="translate(${1072 - tw} 0)">${toggles}</g>`);
-          },
-        ),
-        brackets('d_magen_chart_stats_sight', atEnd(M - 22, 250, 564, 652), { opacity: 0.4, arm: 22 }),
+        lettered('d_magen_chart_panel_head', at(M + 24, 276, 1072, 28), (dir) => {
+          const live = `<tspan fill="${RED}">●</tspan><tspan fill="${STEEL}">&#160;&#160;LIVE&#160;FEED&#160;·&#160;SIEM</tspan>`;
+          const toggles = ['1D', '7D', '30D', '12M']
+            .map((t, i) => {
+              const x = i * 58;
+              const on = i === 3;
+              return `<rect x="${x}" y="2" width="50" height="24" fill="${on ? RED : STEEL}" fill-opacity="${on ? 0.16 : 0.06}" stroke="${on ? RED : STEEL}" stroke-opacity="${on ? 0.7 : 0.25}"/><text x="${x + 25}" y="19" text-anchor="middle" ${MONO} font-size="13" font-weight="${on ? 700 : 500}" fill="${on ? RED : STEEL}">${t}</text>`;
+            })
+            .join('');
+          const tw = 4 * 58 - 8;
+          return dir === 'rtl'
+            ? svg(
+                1072,
+                28,
+                `<text x="1072" y="20" text-anchor="end" ${MONO} font-size="15" letter-spacing="1">${live}</text>${toggles}`,
+              )
+            : svg(
+                1072,
+                28,
+                `<text x="0" y="20" ${MONO} font-size="15" letter-spacing="1">${live}</text><g transform="translate(${1072 - tw} 0)">${toggles}</g>`,
+              );
+        }),
+        brackets('d_magen_chart_stats_sight', atEnd(M - 22, 250, 564, 652), {
+          opacity: 0.4,
+          arm: 22,
+        }),
         rect('d_magen_chart_divider', atEnd(M, 540, 520, 1), HAIR),
         rect('d_magen_chart_divider_lead', atEnd(M + 520 - 64, 539, 64, 3), STEEL_HAIR),
         ...foot('chart').decorations,
@@ -1215,28 +1539,29 @@ function layouts(): Layout[] {
       decorations: [
         ...chrome('table'),
         ...head('table', 1240).decorations,
-        brackets('d_magen_table_sight', at(M - 18, 232, WIDTH + 36, 642), { color: RED, opacity: 0.8, arm: 26, width: 2 }),
-        lettered(
-          'd_magen_table_key',
-          atEnd(M, 168, 440, 30),
-          (dir) => {
-            const keys: [string, string][] = [
-              ['CRIT', RED],
-              ['HIGH', AMBER],
-              ['MED', STEEL_LIGHT],
-              ['LOW', STEEL],
-            ];
-            const w = 440;
-            const step = 106;
-            const parts = keys
-              .map(([k, c], i) => {
-                const x = dir === 'rtl' ? w - (i + 1) * step + 8 : i * step;
-                return `<rect x="${x}" y="3" width="98" height="24" fill="${c}" fill-opacity=".12" stroke="${c}" stroke-opacity=".6"/><rect x="${x + 10}" y="11" width="8" height="8" fill="${c}"/><text x="${x + 58}" y="20" text-anchor="middle" ${MONO} font-size="13" font-weight="700" letter-spacing="1" fill="${c}">${k}</text>`;
-              })
-              .join('');
-            return svg(w, 30, parts);
-          },
-        ),
+        brackets('d_magen_table_sight', at(M - 18, 232, WIDTH + 36, 642), {
+          color: RED,
+          opacity: 0.8,
+          arm: 26,
+          width: 2,
+        }),
+        lettered('d_magen_table_key', atEnd(M, 168, 440, 30), (dir) => {
+          const keys: [string, string][] = [
+            ['CRIT', RED],
+            ['HIGH', AMBER],
+            ['MED', STEEL_LIGHT],
+            ['LOW', STEEL],
+          ];
+          const w = 440;
+          const step = 106;
+          const parts = keys
+            .map(([k, c], i) => {
+              const x = dir === 'rtl' ? w - (i + 1) * step + 8 : i * step;
+              return `<rect x="${x}" y="3" width="98" height="24" fill="${c}" fill-opacity=".12" stroke="${c}" stroke-opacity=".6"/><rect x="${x + 10}" y="11" width="8" height="8" fill="${c}"/><text x="${x + 58}" y="20" text-anchor="middle" ${MONO} font-size="13" font-weight="700" letter-spacing="1" fill="${c}">${k}</text>`;
+            })
+            .join('');
+          return svg(w, 30, parts);
+        }),
         ...foot('table').decorations,
       ],
     },
@@ -1247,12 +1572,18 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('team').placeholders,
         ...team4.flatMap((start, i) => [
-          place(`p_person${i + 1}_photo`, 'image', at(start + 10, 290, 396, 372)),
-          place(`p_person${i + 1}`, 'subtitle', at(start + 10, 680, 396, 53), 'heading'),
-          place(`p_person${i + 1}_role`, 'caption', at(start + 10, 734, 396, 34), 'caption', {
-            color: token('primary'),
-          }),
-          place(`p_person${i + 1}_body`, 'body', at(start + 10, 772, 396, 102), 'caption'),
+          place(`p_person${i + 1}_photo`, 'image', at(start + 10, 290, BADGE - 20, 372)),
+          place(`p_person${i + 1}`, 'subtitle', at(start + 10, 680, BADGE - 20, 53), 'heading'),
+          place(
+            `p_person${i + 1}_role`,
+            'caption',
+            at(start + 10, 734, BADGE - 20, 34),
+            'caption',
+            {
+              color: token('primary'),
+            },
+          ),
+          place(`p_person${i + 1}_body`, 'body', at(start + 10, 772, BADGE - 20, 102), 'caption'),
         ]),
         ...foot('team').placeholders,
       ],
@@ -1260,19 +1591,45 @@ function layouts(): Layout[] {
         ...chrome('team'),
         ...head('team').decorations,
         ...team4.flatMap((start, i) => [
-          panel(`d_magen_team_badge${i + 1}`, at(start, 238, 416, 666)),
-          rect(`d_magen_team_badge${i + 1}_slot`, at(start + 178, 252, 60, 12), solid(token('bg')), {
-            effects: { radius: 6 },
-            stroke: { color: token('muted', 0.4), width: 1 },
-          }),
+          panel(`d_magen_team_badge${i + 1}`, at(start, 238, BADGE, 666)),
+          rect(
+            `d_magen_team_badge${i + 1}_slot`,
+            at(start + BADGE / 2 - 30, 252, 60, 12),
+            solid(token('bg')),
+            {
+              effects: { radius: 6 },
+              stroke: { color: token('muted', 0.4), width: 1 },
+            },
+          ),
           lettered(
             `d_magen_team_badge${i + 1}_id`,
             at(start + 10, 250, 150, 22),
-            word(150, 22, 16, 13, `SOC-0${i + 1} · L${4 - Math.min(i, 2)}`, 'start', `fill="${STEEL}" letter-spacing="1"`),
+            word(
+              150,
+              22,
+              16,
+              13,
+              `SOC-0${i + 1} · L${4 - Math.min(i, 2)}`,
+              'start',
+              `fill="${STEEL}" letter-spacing="1"`,
+            ),
           ),
-          dot(`d_magen_team_badge${i + 1}_led`, at(start + 380, 256, 10, 10), solid(token('accent'))),
-          brackets(`d_magen_team_photo${i + 1}_sight`, at(start + 2, 282, 412, 388), { color: RED, opacity: 0.85, arm: 20, width: 2 }),
-          barcode(`d_magen_team_badge${i + 1}_code`, at(start + 286, 882, 120, 12), 5 + i * 7),
+          dot(
+            `d_magen_team_badge${i + 1}_led`,
+            at(start + BADGE - 36, 256, 10, 10),
+            solid(token('accent')),
+          ),
+          brackets(`d_magen_team_photo${i + 1}_sight`, at(start + 2, 282, BADGE - 4, 388), {
+            color: RED,
+            opacity: 0.85,
+            arm: 20,
+            width: 2,
+          }),
+          barcode(
+            `d_magen_team_badge${i + 1}_code`,
+            at(start + BADGE - 130, 882, 120, 12),
+            5 + i * 7,
+          ),
         ]),
         ...foot('team').decorations,
       ],
@@ -1298,8 +1655,12 @@ function layouts(): Layout[] {
             1160,
             1080,
             [200, 330, 460, 590, 720]
-              .map((r, i) => `<circle cx="580" cy="453" r="${r}" stroke="${STEEL}" stroke-opacity="${0.24 - i * 0.04}" ${i === 1 ? 'stroke-dasharray="3 7"' : ''}/>`)
-              .join('') + `<path d="M580 0V1080M0 453H1160" stroke="${STEEL}" stroke-opacity=".1"/>`,
+              .map(
+                (r, i) =>
+                  `<circle cx="580" cy="453" r="${r}" stroke="${STEEL}" stroke-opacity="${0.24 - i * 0.04}" ${i === 1 ? 'stroke-dasharray="3 7"' : ''}/>`,
+              )
+              .join('') +
+              `<path d="M580 0V1080M0 453H1160" stroke="${STEEL}" stroke-opacity=".1"/>`,
           ),
           PAINT,
         ),
@@ -1315,15 +1676,23 @@ function layouts(): Layout[] {
               `<g clip-path="url(#cc)"><rect width="440" height="506" fill="${BG}"/><rect width="440" height="506" fill="url(#cf)"/><rect width="440" height="506" fill="url(#cs)" opacity=".3"/></g>` +
               `<path transform="scale(11)" d="${SHIELD_PATH}" stroke="${RED}" stroke-width=".55"/>` +
               `<path transform="translate(40 46) scale(9)" d="${SHIELD_PATH}" stroke="${RED}" stroke-opacity=".4" stroke-width=".22"/>` +
-              `<g transform="scale(11)">${KEYHOLE(RED)}</g>`,
+              `<g transform="translate(102 69) scale(5.9)">${KEYHOLE(RED)}</g><circle cx="220" cy="215" r="74" stroke="${RED}" stroke-opacity=".5" stroke-width="2"/><circle cx="220" cy="215" r="92" stroke="${RED}" stroke-opacity=".2" stroke-dasharray="4 6"/>`,
           ),
           PAINT,
         ),
-        brackets('d_magen_closing_lock', atEnd(240, 160, 560, 586), { color: STEEL, opacity: 0.55, arm: 36 }),
+        brackets('d_magen_closing_lock', atEnd(240, 160, 560, 586), {
+          color: STEEL,
+          opacity: 0.55,
+          arm: 36,
+        }),
         lettered(
           'd_magen_closing_status',
           atEnd(240, 772, 560, 30),
-          svg(560, 30, `<text x="280" y="21" text-anchor="middle" ${MONO} font-size="16" font-weight="700" letter-spacing="3" fill="${GREEN}">● SHIELD ACTIVE</text>`),
+          svg(
+            560,
+            30,
+            `<text x="280" y="21" text-anchor="middle" ${MONO} font-size="16" font-weight="700" letter-spacing="3" fill="${GREEN}">● SHIELD ACTIVE</text>`,
+          ),
         ),
         slideFrame('closing'),
         tlp('closing', 'CLEAR'),
@@ -1335,7 +1704,11 @@ function layouts(): Layout[] {
         drawing(
           'd_magen_closing_mail',
           at(M, 906, 26, 26),
-          svg(26, 26, `<path d="M13 2 23 5.6v7.2c0 5.6-4 9.6-10 11.2C7 22.4 3 18.4 3 12.8V5.6z" stroke="${RED}" stroke-width="2.2"/><path d="M8.6 12.8l3 3 5.6-6" stroke="${RED}" stroke-width="2.2"/>`),
+          svg(
+            26,
+            26,
+            `<path d="M13 2 23 5.6v7.2c0 5.6-4 9.6-10 11.2C7 22.4 3 18.4 3 12.8V5.6z" stroke="${RED}" stroke-width="2.2"/><path d="M8.6 12.8l3 3 5.6-6" stroke="${RED}" stroke-width="2.2"/>`,
+          ),
           PAINT,
         ),
       ],
@@ -1371,7 +1744,7 @@ function flipped(drawn: readonly Layout[]): Layout[] {
         if (!READABLE.has(decoration.id) || decoration.type !== 'svg') return decoration;
         const { flipH: _flipH, ...rest } = decoration;
         const ltr = READABLE.get(decoration.id);
-        return (ltr ? { ...rest, markup: ltr } : rest) as Element;
+        return ltr ? { ...rest, markup: ltr } : rest;
       }),
     };
   });
@@ -1380,9 +1753,18 @@ function flipped(drawn: readonly Layout[]): Layout[] {
 // ---------------------------------------------------------------------------------------------
 // The sample: the annual security review of a bank's SOC, presented to the board in January 2027
 
+const pictures = {
+  magenTriage: picture('magenTriage'),
+  magenThreatmap: picture('magenThreatmap'),
+  magenTeam1: picture('magenTeam1'),
+  magenTeam2: picture('magenTeam2'),
+  magenTeam3: picture('magenTeam3'),
+  magenTeam4: picture('magenTeam4'),
+};
+
 const FOOTER_HE = text('בנק תבור · סקירת אבטחה שנתית 2026');
 const FOOTER_EN = text('Tavor Bank · Annual Security Review 2026');
-const TABLE_COLS = [400, 300, 300, 300, 412];
+const TABLE_COLS = [404, 300, 300, 300, 424];
 const TABLE_ROW = 80;
 /** Attacks blocked, in thousands a month: 4.22 million in the year. */
 const BLOCKED = [281, 296, 322, 305, 341, 330, 356, 372, 349, 388, 421, 459];
@@ -1394,7 +1776,7 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [text('מרכז ניטור האבטחה · בנק תבור'), text('ישיבת הדירקטוריון · 18.01.2027')],
       title: text('שנה בלי', 'פריצה אחת'),
-      subtitle: text('סקירת האבטחה של 2026: מה ניסה להיכנס, מה עצר אותו, ומה הלאה'),
+      subtitle: text('סקירת האבטחה השנתית: מה ניסה להיכנס ב-2026, ומה עצר אותו'),
     },
   },
   {
@@ -1418,6 +1800,7 @@ const sampleHe: SampleSlide[] = [
           ...bullets(
             'מה ניסה לתקוף אותנו, ואיך זה נבלם',
             'מה למדנו מתרגיל הכופרה בדצמבר',
+            'איפה אנחנו עדיין חשופים',
             'על מה כדאי להשקיע את תקציב 2027',
           ).paragraphs,
         ],
@@ -1445,13 +1828,13 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_magen_cards',
     name: 'שלושה איומים',
     content: {
-      caption: [text('מה ניסה להיכנס'), text('MITRE T1566'), text('MITRE T1486'), text('MITRE T1498')],
-      title: text('שלושה איומים שהובילו את השנה'),
+      caption: [text('האיומים'), text('MITRE T1566'), text('MITRE T1486'), text('MITRE T1498')],
+      title: text('שלושת האיומים של השנה'),
       subtitle: [text('דיוג ממוקד'), text('כופרה'), text('מניעת שירות')],
       body: [
         text('1.9 מיליון הודעות נחסמו. 14 עובדים לחצו, ואף חשבון לא נפרץ.'),
-        text('שלושה ניסיונות אמיתיים נעצרו לפני ההצפנה, ועוד תרגיל אחד.'),
-        text('שיא של 380 גיגה-ביט לשנייה, והאפליקציה לא נפלה אפילו לדקה.'),
+        text('שלושה ניסיונות אמיתיים נעצרו לפני שהספיקו להצפין.'),
+        text('שיא של 380 גיגה-ביט לשנייה. האפליקציה לא נפלה לרגע.'),
         text('הדיוג נשאר הדרך הראשונה פנימה, ולכן 2027 מתחילה באנשים.'),
       ],
       footer: FOOTER_HE,
@@ -1477,14 +1860,17 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_magen_timeline',
     name: 'תרגיל הכופרה',
     content: {
-      caption: [text('תרגיל כופרה · 9 בדצמבר 2026'), text('היעד היה 24 שעות לשחזור. סיימנו כמעט 20 שעות לפניו.')],
+      caption: [
+        text('תרגיל כופרה · 9 בדצמבר 2026'),
+        text('היעד היה 24 שעות לשחזור, וסיימנו כמעט 20 שעות לפניו.'),
+      ],
       title: text('מההתראה לשחזור ב-4:12 שעות'),
       number: [text('T+00:00'), text('T+00:04'), text('T+00:38'), text('T+04:12')],
       subtitle: [text('זיהוי'), text('בידוד'), text('ניקוי'), text('שחזור')],
       body: [
         text('המערכת זיהתה הצפנה חשודה בתחנה במחלקת הכספים.'),
         text('המחשב נותק, והסיסמאות של המשתמש הוחלפו.'),
-        text('הקובץ הזדוני הוסר מכל 14 המחשבים שנחשפו.'),
+        text('הנוזקה נמחקה מכל 14 המחשבים.'),
         text('השירות חזר מגיבוי נקי ומאומת.'),
       ],
       footer: FOOTER_HE,
@@ -1502,7 +1888,7 @@ const sampleHe: SampleSlide[] = [
         text('חזרה מגיבוי נקי'),
         text('תחקיר תוך שבוע'),
       ],
-      title: text('חמישה שלבים, אותו סדר בכל אירוע'),
+      title: text('חמישה שלבים, בכל אירוע'),
       subtitle: [text('זיהוי'), text('בלימה'), text('ניקוי'), text('התאוששות'), text('לקחים')],
       number: [text('1 דק׳'), text('15 דק׳'), text('4 שע׳'), text('24 שע׳'), text('7 ימים')],
       body: text('לכל שלב יש זמן יעד, והצוות מתאמן עליו בכל רבעון.'),
@@ -1517,8 +1903,16 @@ const sampleHe: SampleSlide[] = [
       title: text('משטח התקיפה, שנה אחרי'),
       subtitle: [text('1,140 שירותים חשופים'), text('86 שירותים חשופים')],
       body: [
-        bullets('חשבונות ניהול בלי אימות דו-שלבי', 'שרתים ישנים בלי עדכוני אבטחה', 'ספקים עם גישה קבועה לרשת'),
-        bullets('אימות דו-שלבי לכל 3,200 העובדים', 'כל השרתים מתעדכנים תוך 72 שעות', 'ספקים נכנסים לפי בקשה, לזמן קצוב'),
+        bullets(
+          'חשבונות ניהול בלי אימות דו-שלבי',
+          'שרתים ישנים בלי עדכוני אבטחה',
+          'ספקים עם גישה קבועה לרשת',
+        ),
+        bullets(
+          'אימות דו-שלבי לכל 3,200 העובדים',
+          'כל השרתים מתעדכנים תוך 72 שעות',
+          'ספקים נכנסים לפי בקשה, לזמן קצוב',
+        ),
       ],
       footer: FOOTER_HE,
     },
@@ -1529,15 +1923,31 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [text('מה נחסם'), text('נתוני ה-SIEM של הבנק, ינואר עד דצמבר 2026.')],
       title: text('ניסיונות תקיפה שנחסמו, בכל חודש'),
-      number: [text('+38%'), text('99.97%')],
-      body: [text('יותר ניסיונות מאשר ב-2025, בעיקר דיוג ובוטים.'), text('נחסמו אוטומטית, בלי שאדם נגע בהם.')],
+      number: [text('+38%'), text('99.9%')],
+      body: [
+        text('יותר ניסיונות תקיפה מאשר ב-2025, רובם הודעות דיוג ובוטים.'),
+        text('נחסמו אוטומטית, בלי שאדם נגע בהם.'),
+      ],
       footer: FOOTER_HE,
     },
     chart: {
       chartType: 'column',
       title: 'אלפי ניסיונות בחודש',
       data: {
-        categories: ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'],
+        categories: [
+          'ינו׳',
+          'פבר׳',
+          'מרץ',
+          'אפר׳',
+          'מאי',
+          'יוני',
+          'יולי',
+          'אוג׳',
+          'ספט׳',
+          'אוק׳',
+          'נוב׳',
+          'דצמ׳',
+        ],
         series: [{ name: 'אלפים', values: BLOCKED }],
       },
     },
@@ -1577,7 +1987,9 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_magen_quote',
     name: 'ציטוט',
     content: {
-      quote: text('בשלוש בלילה המערכת בודדה את המחשב לפני שהוצפן קובץ אחד. כשהגעתי למסך, נשאר לי רק לכתוב את הדוח.'),
+      quote: text(
+        'בשלוש בלילה המערכת בודדה את המחשב לפני שהוצפן קובץ אחד. כשהגעתי למסך, נשאר לי רק לכתוב את הדוח.',
+      ),
       attribution: text('תמר גולן'),
       caption: text('אנליסטית בכירה, משמרת לילה'),
       footer: FOOTER_HE,
@@ -1587,7 +1999,13 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_magen_team',
     name: 'הצוות',
     content: {
-      caption: [text('הצוות'), text('CISO'), text('ראש ה-SOC'), text('מודיעין איומים'), text('תגובה לאירועים')],
+      caption: [
+        text('הצוות'),
+        text('CISO'),
+        text('ראש ה-SOC'),
+        text('מודיעין איומים'),
+        text('תגובה לאירועים'),
+      ],
       title: text('מי שומר על הבנק בלילה'),
       image: [
         { assetId: pictures.magenTeam1.id },
@@ -1598,9 +2016,9 @@ const sampleHe: SampleSlide[] = [
       subtitle: [text('מיכל אדלר'), text('רון ברק'), text('יואב שטרן'), text('נועה שחר')],
       body: [
         text('מובילה את אסטרטגיית האבטחה ומדווחת לדירקטוריון.'),
-        text('מנהל 28 אנליסטים בשש משמרות, 24/7.'),
-        text('עוקב אחרי קבוצות התקיפה שמכוונות לבנקים.'),
-        text('הובילה את תרגיל הכופרה מהזיהוי ועד השחזור.'),
+        text('מנהל 28 אנליסטים בשש משמרות.'),
+        text('עוקב אחרי הקבוצות שתוקפות בנקים.'),
+        text('הובילה את תרגיל הכופרה בדצמבר.'),
       ],
       footer: FOOTER_HE,
     },
@@ -1625,19 +2043,22 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_magen_hero',
     name: 'Opening',
     content: {
-      caption: [text('Security Operations Center · Tavor Bank'), text('Board meeting · 18 January 2027')],
+      caption: [
+        text('Security Operations Center · Tavor Bank'),
+        text('Board meeting · 18 January 2027'),
+      ],
       title: text('Not one', 'breach'),
-      subtitle: text('The 2026 security review: what tried to get in, what stopped it, and what comes next'),
+      subtitle: text('Our 2026 security review: what tried to get in, and what stopped it'),
     },
   },
   {
     layout: 'l_magen_section',
-    name: 'The year in numbers',
+    name: 'The numbers',
     content: {
       number: text('01'),
       caption: text('Part one'),
-      title: text('The year in numbers'),
-      subtitle: text('What tried to get in, and what stopped it on the way.'),
+      title: text('The numbers'),
+      subtitle: text('What tried to get in, and what stopped it.'),
     },
   },
   {
@@ -1651,6 +2072,7 @@ const sampleEn: SampleSlide[] = [
           ...bullets(
             'What attacked us, and how it was stopped',
             'What the December ransomware drill taught us',
+            'Where we are still exposed',
             'Where the 2027 budget should go',
           ).paragraphs,
         ],
@@ -1667,7 +2089,7 @@ const sampleEn: SampleSlide[] = [
         text('Average time to detect'),
         text('Average time to contain'),
       ],
-      title: text('What we stopped at the gate'),
+      title: text('Stopped at the gate'),
       number: [text('4.2M'), text('0'), text('42 s'), text('11 min')],
       subtitle: text('Attack attempts blocked in 2026'),
       body: text('About 11,500 a day, most of them stopped automatically before anyone saw them.'),
@@ -1678,14 +2100,14 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_magen_cards',
     name: 'Three threats',
     content: {
-      caption: [text('What tried to get in'), text('MITRE T1566'), text('MITRE T1486'), text('MITRE T1498')],
-      title: text('Three threats that led the year'),
+      caption: [text('The threats'), text('MITRE T1566'), text('MITRE T1486'), text('MITRE T1498')],
+      title: text('The year’s three threats'),
       subtitle: [text('Targeted phishing'), text('Ransomware'), text('Denial of service')],
       body: [
-        text('1.9 million emails blocked. 14 staff clicked; no account was taken.'),
-        text('Three real attempts stopped before encryption, and one drill.'),
-        text('A peak of 380 Gbps, and the app did not go down for a minute.'),
-        text('Phishing is still the first way in, so 2027 starts with people.'),
+        text('1.9M emails blocked; 14 staff clicked, and no account fell.'),
+        text('Three real attempts stopped before encryption.'),
+        text('A 380 Gbps peak. The app stayed up throughout.'),
+        text('Phishing is still the way in, so 2027 starts with people.'),
       ],
       footer: FOOTER_EN,
     },
@@ -1700,7 +2122,7 @@ const sampleEn: SampleSlide[] = [
       subtitle: [text('Watching 24/7'), text('Automatic triage'), text('Isolation in one click')],
       body: [
         text('Six shifts, 412 sensors, and an analyst on every critical alert.'),
-        text('97% of alerts close on their own. Analysts handle the 3% that matter.'),
+        text('97% of alerts close on their own, so analysts can focus on the 3% that matter.'),
         text('A suspect machine is cut off within seconds, no sign-off needed.'),
       ],
       footer: FOOTER_EN,
@@ -1710,15 +2132,18 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_magen_timeline',
     name: 'The ransomware drill',
     content: {
-      caption: [text('Ransomware drill · 9 December 2026'), text('The target was 24 hours to recovery. We finished almost 20 hours early.')],
-      title: text('From alert to recovery in 4 h 12 min'),
+      caption: [
+        text('Ransomware drill · 9 December 2026'),
+        text('Target: 24 hours to recover. We beat it by almost 20.'),
+      ],
+      title: text('Alert to recovery: 4 h 12 min'),
       number: [text('T+00:00'), text('T+00:04'), text('T+00:38'), text('T+04:12')],
       subtitle: [text('Detect'), text('Isolate'), text('Eradicate'), text('Recover')],
       body: [
-        text('EDR flags suspicious encryption on a finance PC.'),
-        text('The host is cut off and the user’s passwords reset.'),
-        text('The payload is removed from all 14 exposed machines.'),
-        text('Service is restored from a clean, verified backup.'),
+        text('EDR flags encryption on a PC.'),
+        text('The PC is cut off the network.'),
+        text('Payload wiped from 14 PCs.'),
+        text('Back from a verified backup.'),
       ],
       footer: FOOTER_EN,
     },
@@ -1729,16 +2154,22 @@ const sampleEn: SampleSlide[] = [
     content: {
       caption: [
         text('The response playbook'),
-        text('An alert from any sensor'),
-        text('Cut off from the network'),
+        text('Any sensor raises it'),
+        text('Off the network'),
         text('Remove and patch'),
-        text('Back from a clean backup'),
-        text('A review within a week'),
+        text('From a clean backup'),
+        text('A review in a week'),
       ],
-      title: text('Five steps, in the same order every time'),
-      subtitle: [text('Detect'), text('Contain'), text('Eradicate'), text('Recover'), text('Learn')],
+      title: text('Five steps, every incident'),
+      subtitle: [
+        text('Detect'),
+        text('Contain'),
+        text('Eradicate'),
+        text('Recover'),
+        text('Learn'),
+      ],
       number: [text('1 min'), text('15 min'), text('4 h'), text('24 h'), text('7 days')],
-      body: text('Every step has a target time, and the team drills it every quarter.'),
+      body: text('Each step has a target time, drilled every quarter.'),
       footer: FOOTER_EN,
     },
   },
@@ -1750,8 +2181,16 @@ const sampleEn: SampleSlide[] = [
       title: text('The attack surface, a year later'),
       subtitle: [text('1,140 exposed services'), text('86 exposed services')],
       body: [
-        bullets('Admin accounts without two-factor sign-in', 'Old servers with no security updates', 'Suppliers with standing network access'),
-        bullets('Two-factor sign-in for all 3,200 staff', 'Every server patched within 72 hours', 'Supplier access on request, for a set time'),
+        bullets(
+          'Admin accounts without two-factor sign-in',
+          'Old servers with no security updates',
+          'Suppliers with standing access',
+        ),
+        bullets(
+          'Two-factor sign-in for all 3,200 staff',
+          'Every server patched within 72 hours',
+          'Supplier access on request, for a set time',
+        ),
       ],
       footer: FOOTER_EN,
     },
@@ -1760,17 +2199,33 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_magen_chart',
     name: 'What was blocked',
     content: {
-      caption: [text('What was blocked'), text('The bank’s SIEM data, January to December 2026.')],
-      title: text('Attack attempts blocked, month by month'),
-      number: [text('+38%'), text('99.97%')],
-      body: [text('More attempts than in 2025, mostly phishing and bots.'), text('Blocked automatically, untouched by people.')],
+      caption: [text('What was blocked'), text('SIEM data, January–December 2026.')],
+      title: text('Attacks blocked, month by month'),
+      number: [text('+38%'), text('99.9%')],
+      body: [
+        text('More attempts than in 2025, most of them phishing emails and bots.'),
+        text('Blocked with no human touch.'),
+      ],
       footer: FOOTER_EN,
     },
     chart: {
       chartType: 'column',
       title: 'Thousands of attempts a month',
       data: {
-        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        categories: [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ],
         series: [{ name: 'Thousands', values: BLOCKED }],
       },
     },
@@ -1779,7 +2234,10 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_magen_table',
     name: 'Vulnerabilities',
     content: {
-      caption: [text('Vulnerabilities'), text('Monthly scans and an external penetration test, November 2026.')],
+      caption: [
+        text('Vulnerabilities'),
+        text('Monthly scans and an external penetration test, November 2026.'),
+      ],
       title: text('What we found, and what is fixed'),
       footer: FOOTER_EN,
     },
@@ -1810,7 +2268,9 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_magen_quote',
     name: 'Quote',
     content: {
-      quote: text('At 3 a.m. the system isolated the machine before a single file was encrypted. By the time I reached the screen, only the report was left.'),
+      quote: text(
+        'At 3 a.m. the system isolated the machine before a single file was encrypted. By the time I reached the screen, only the report was left.',
+      ),
       attribution: text('Tamar Golan'),
       caption: text('Senior analyst, night shift'),
       footer: FOOTER_EN,
@@ -1820,7 +2280,13 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_magen_team',
     name: 'The team',
     content: {
-      caption: [text('The team'), text('CISO'), text('SOC Lead'), text('Threat Intel'), text('Response Lead')],
+      caption: [
+        text('The team'),
+        text('CISO'),
+        text('SOC Lead'),
+        text('Threat Intel'),
+        text('Response Lead'),
+      ],
       title: text('Who guards the bank at night'),
       image: [
         { assetId: pictures.magenTeam1.id },
@@ -1831,9 +2297,9 @@ const sampleEn: SampleSlide[] = [
       subtitle: [text('Michal Adler'), text('Ron Barak'), text('Yoav Stern'), text('Noa Shahar')],
       body: [
         text('Leads the security strategy and reports to the board.'),
-        text('Runs 28 analysts across six shifts, 24/7.'),
+        text('Runs 28 analysts across six shifts.'),
         text('Tracks the attack groups that target banks.'),
-        text('Led the ransomware drill from detection to recovery.'),
+        text('Led the ransomware drill.'),
       ],
       footer: FOOTER_EN,
     },

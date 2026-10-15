@@ -7,8 +7,9 @@
 <style>
   html, body { margin: 0; width: 1200px; height: 1000px; overflow: hidden; background: transparent; }
   body { font-family: 'Inter', sans-serif; perspective: 2200px; perspective-origin: 40% 45%; }
+  .lights { position: absolute; inset: 0; -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 98%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 98%); }
   .light { position: absolute; border-radius: 50%; filter: blur(70px); }
-  .stage { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(-20deg) rotateX(9deg) rotateZ(-2deg); }
+  .stage { position: absolute; inset: 0; transform-style: preserve-3d; transform: translate(20px, -20px) scale(.86) rotateY(-24deg) rotateX(11deg) rotateZ(-2.5deg); }
   .card { position: absolute; border-radius: 26px; transform-style: preserve-3d; overflow: hidden; }
   .dark { background: linear-gradient(160deg, rgba(30,32,52,.94), rgba(14,15,28,.96)); border: 1.5px solid rgba(255,255,255,.12);
           box-shadow: 0 60px 120px -20px rgba(28,22,90,.45), 0 20px 40px -10px rgba(10,10,30,.35), inset 0 1px 0 rgba(255,255,255,.12); }
@@ -27,14 +28,16 @@
 </style>
 </head>
 <body>
-  <!-- the coloured light the glass sits in -->
-  <div class="light" style="left:230px; top:150px; width:620px; height:560px; background: radial-gradient(circle at 40% 40%, #8B7BFF, rgba(139,123,255,0) 70%); opacity:.85"></div>
-  <div class="light" style="left:560px; top:430px; width:560px; height:460px; background: radial-gradient(circle at 50% 50%, #FF8A5B, rgba(255,138,91,0) 70%); opacity:.75"></div>
-  <div class="light" style="left:120px; top:560px; width:460px; height:380px; background: radial-gradient(circle at 50% 50%, #3DD6C6, rgba(61,214,198,0) 70%); opacity:.6"></div>
+  <!-- the coloured light the glass sits in, fading out well before the edges of the picture -->
+  <div class="lights">
+    <div class="light" style="left:250px; top:120px; width:700px; height:600px; background: radial-gradient(circle at 45% 45%, #7B6BFF, rgba(123,107,255,0) 68%); opacity:.95"></div>
+    <div class="light" style="left:560px; top:400px; width:560px; height:480px; background: radial-gradient(circle at 50% 50%, #FF7A59, rgba(255,122,89,0) 68%); opacity:.9"></div>
+    <div class="light" style="left:140px; top:520px; width:500px; height:400px; background: radial-gradient(circle at 50% 50%, #2DD4BF, rgba(45,212,191,0) 68%); opacity:.75"></div>
+  </div>
 
   <div class="stage">
     <!-- the response, behind -->
-    <div class="card glass" style="left:640px; top:70px; width:470px; height:400px; transform: translateZ(-260px); filter: blur(1.2px);">
+    <div class="card glass" style="left:700px; top:40px; width:470px; height:380px; transform: translateZ(-300px); filter: blur(1.4px);">
       <div style="display:flex; align-items:center; gap:14px; padding:26px 30px 6px;">
         <span class="pill" style="background:#DDF7E8; color:#11804A">● 200 OK</span>
         <span style="font:600 19px 'JetBrains Mono'; color:#4A4F72">38 ms</span>

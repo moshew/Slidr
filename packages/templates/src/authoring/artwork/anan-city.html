@@ -12,8 +12,8 @@
   #canvas, #labels { position: absolute; inset: 0; }
   /* The sky over the far side: the map fades into it. */
   #haze { position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(180deg, rgba(243,247,252,.92) 0%, rgba(243,247,252,.35) 18%, rgba(243,247,252,0) 34%),
-      linear-gradient(90deg, rgba(243,247,252,.75) 0%, rgba(243,247,252,0) 12%, rgba(243,247,252,0) 88%, rgba(243,247,252,.75) 100%); }
+    background: linear-gradient(180deg, rgba(243,247,252,.9) 0%, rgba(243,247,252,.3) 12%, rgba(243,247,252,0) 24%),
+      radial-gradient(70% 95% at 50% 62%, rgba(243,247,252,0) 45%, rgba(243,247,252,.62) 100%); }
 </style>
 <script>document.documentElement.dataset.wait = 'true';</script>
 <script type="importmap">{"imports": {
@@ -28,6 +28,10 @@
 <script type="module">
   import { C, CHIP_CSS, stage, ground, block, server, database, dashed, packet, plate, cloud, chip } from './anan-iso.js';
   document.getElementById('chips').textContent = CHIP_CSS;
+
+  // Drawn after the page has loaded: a large picture takes longer than a page load may.
+  setTimeout(draw, 0);
+  function draw() {
 
   const W = 1920, H = 690;
   const st = stage({ width: W, height: H, view: 11.2, target: [2.6, 0.7, 2.6], light: [3.2, 6.4, -9] });
@@ -52,11 +56,12 @@
     }
   }
 
-  // The account: a dashed boundary around the edge and its three regions.
+  // The account: a pale field under the edge and its three regions, with a dashed boundary.
   {
     const a = -0.7, b = STEP + SIZE + 0.7;
+    block(scene, [a, 0, a], [b - a, b - a, 0.05], '#dceafb', 0.04);
     for (const [p, q] of [[[a, 0, a], [b, 0, a]], [[b, 0, a], [b, 0, b]], [[b, 0, b], [a, 0, b]], [[a, 0, b], [a, 0, a]]]) {
-      dashed(scene, p, q, { color: C.blue, width: 0.05, dash: 0.1, gap: 0.16, head: false, lift: 0.004 });
+      dashed(scene, p, q, { color: C.blue, width: 0.05, dash: 0.1, gap: 0.16, head: false, lift: 0.06 });
     }
   }
 
@@ -70,7 +75,7 @@
       const b = di ? [n.x - 0.05, 0, cz] : [cx, 0, n.z - 0.05];
       const near = Math.abs(c.i) + Math.abs(c.j) <= 2;
       dashed(scene, a, b, { color: C.blue, width: near ? 0.06 : 0.045, dash: 0.15, gap: 0.12, head: near });
-      if (near && rnd() < 0.8) packet(scene, [(a[0] + b[0]) / 2, 0.12, (a[2] + b[2]) / 2], rnd() < 0.5 ? C.orange : C.blue, 0.07);
+      if (near && rnd() < 0.8) packet(scene, [(a[0] + b[0]) / 2, 0.12, (a[2] + b[2]) / 2], rnd() < 0.5 ? C.orange : C.blue, 0.08, false);
     }
   }
 
@@ -92,7 +97,8 @@
       continue;
     }
     // A service: one of a few kinds, as a city has.
-    const kind = pick(['servers', 'servers', 'db', 'mixed', 'low', 'tower']);
+    const ring = Math.max(Math.abs(c.i - 0.5), Math.abs(c.j - 0.5));
+    const kind = ring > 2.5 ? pick(['low', 'low', 'servers', 'db', 'mixed']) : pick(['servers', 'servers', 'db', 'mixed', 'low', 'tower']);
     const far = Math.abs(c.x - c.z) > 14 || c.x + c.z < -6 ? 0.65 : 0.85;
     if (kind === 'servers') {
       for (const [ox, oz] of [[0.35, 0.35], [1.25, 0.35], [0.35, 1.25]]) {
@@ -105,7 +111,7 @@
     } else if (kind === 'mixed') {
       server(scene, [x + 0.35, y, z + 0.35], [0.6, 0.6, (0.8 + rnd() * 0.6) * far]);
       database(scene, [x + 1.7, y, z + 0.75], 0.32, 0.6);
-      block(scene, [x + 0.45, y, z + 1.5], [0.7, 0.7, 0.22], rnd() < 0.15 ? C.orange : C.white, 0.05);
+      block(scene, [x + 0.45, y, z + 1.5], [0.7, 0.7, 0.22], C.white, 0.05);
     } else if (kind === 'low') {
       for (const [ox, oz] of [[0.3, 0.3], [1.0, 0.3], [0.3, 1.0], [1.0, 1.0], [1.7, 1.0], [1.0, 1.7]]) {
         if (rnd() < 0.3) continue;
@@ -117,9 +123,9 @@
   }
 
   // Clouds over the city, and the users' cloud over the edge, with their traffic coming down.
-  cloud(scene, [1.25, 3.4, 1.25], 1.05);
-  dashed(scene, [1.25, 2.95, 1.25], [1.25, 0.95, 1.25], { color: C.orange, width: 0.06, dash: 0.15, gap: 0.11 });
-  packet(scene, [1.25, 1.8, 1.25]);
+  cloud(scene, [1.25, 2.95, 1.25], 1.2);
+  dashed(scene, [1.25, 2.45, 1.25], [1.25, 0.95, 1.25], { color: C.orange, width: 0.06, dash: 0.15, gap: 0.11 });
+  packet(scene, [1.25, 1.7, 1.25], C.orange, 0.09, false);
   for (const [cx, cy, cz, s] of [[-7.5, 3.6, 5.5, 0.8], [8.5, 3.9, -6.0, 0.9], [-12, 3.4, -2, 0.7], [11, 3.2, 3.5, 0.65], [2.5, 4.4, -9.5, 0.7]]) {
     cloud(scene, [cx, cy, cz], s);
   }
@@ -130,8 +136,9 @@
   chip(st, corner(1, 1, 1, 1), 'il-central-1', { sub: 'Tel Aviv', below: true, dy: 18 });
   chip(st, corner(1, 0, 1, 0.3), 'eu-central-1', { sub: 'Frankfurt', below: true, dy: 18 });
   chip(st, corner(0, 1, 0.3, 1), 'eu-west-1', { sub: 'Ireland', below: true, dy: 18 });
-  chip(st, [SIZE / 2, 0.95, SIZE / 2], 'global edge', { light: C.blue, dy: -8 });
+  chip(st, [SIZE + 0.35, 0.3, -0.35], 'global edge', { light: C.blue, dy: -6 });
   document.documentElement.dataset.ready = 'true';
+  }
 </script>
 </body>
 </html>

@@ -49,15 +49,15 @@ export const mutzarTheme: Theme = {
     surface: '#ffffff',
     text: '#18171d',
     muted: '#66636d',
-    primary: '#f4512f',
-    secondary: '#6f5ef0',
-    accent: '#12a073',
-    chart: ['#f4512f', '#6f5ef0', '#12a073', '#ffb547', '#18171d', '#a8a4ad'],
+    primary: '#201e2a',
+    secondary: '#f4512f',
+    accent: '#6f5ef0',
+    chart: ['#f4512f', '#6f5ef0', '#12a073', '#ffb547', '#201e2a', '#a8a4ad'],
   },
-  // Rubik's round Hebrew with Manrope's Latin and figures for what is said aloud, Assistant with
-  // Inter for what is read: the faces of a product's own interface.
+  // Rubik's round Hebrew with DM Sans for the Latin and the figures of what is said aloud, and
+  // Assistant with Inter for what is read: the faces of a product's own interface.
   fonts: {
-    heading: { he: 'Rubik', latin: 'Manrope' },
+    heading: { he: 'Rubik', latin: 'DM Sans' },
     body: { he: 'Assistant', latin: 'Inter' },
   },
   textStyles: {
@@ -93,8 +93,8 @@ export const mutzarTheme: Theme = {
         kind: 'radial',
         center: { x: 0, y: 0 },
         stops: [
-          { color: { token: 'primary', alpha: 0.1 }, at: 0 },
-          { color: { token: 'primary', alpha: 0 }, at: 0.75 },
+          { color: { token: 'secondary', alpha: 0.1 }, at: 0 },
+          { color: { token: 'secondary', alpha: 0 }, at: 0.75 },
         ],
       },
     },
@@ -106,21 +106,23 @@ export const mutzarTheme: Theme = {
 
 const CORAL = '#f4512f';
 const VIOLET = '#6f5ef0';
-const MINT = '#12a073';
 const INK = '#18171d';
 const MUTED = '#66636d';
 const CANVAS = '#f6f4ef';
 const WHITE = '#ffffff';
-/** Colours the theme has no token for: the fourth cursor, the window's lights, a key's edge. */
+/**
+ * Colours the theme has no token for: the green of what succeeded, the fourth cursor, the
+ * window's lights, a key's edge.
+ */
+const MINT = '#12a073';
 const AMBER = '#ffb547';
 const LIGHTS = ['#ff5f57', '#febc2e', '#28c840'] as const;
 const KEY_EDGE = '#e4ded3';
 const MASK = '#fefefe';
 
 const PAINT = {
-  [CORAL]: token('primary'),
-  [VIOLET]: token('secondary'),
-  [MINT]: token('accent'),
+  [CORAL]: token('secondary'),
+  [VIOLET]: token('accent'),
   [INK]: token('text'),
   [MUTED]: token('muted'),
   [CANVAS]: token('bg'),
@@ -153,6 +155,13 @@ function lettered(id: string, frame: Frame, markup: string | ((dir: Dir) => stri
   return drawing(id, frame, rtl, PAINT);
 }
 
+/**
+ * A drawing that has no direction of its own: an icon, a check, a key's glyph. The mirror of a
+ * left-to-right deck moves it to the other side and leaves it as it is; only what points the
+ * way the slide reads (an arrow, a switch, a cursor, a line of time) is drawn turned.
+ */
+const still = (id: string, frame: Frame, markup: string) => lettered(id, frame, markup);
+
 /** Where a box `bw` wide whose start edge is `s` from the start of a drawing `w` wide begins. */
 const bx = (dir: Dir, w: number, s: number, bw = 0) => (dir === 'rtl' ? w - s - bw : s);
 
@@ -171,7 +180,7 @@ function say(
   anchor: 'start' | 'middle' | 'end' = 'start',
 ): string {
   const t = esc(typeof words === 'string' ? words : dir === 'rtl' ? words.he : words.en);
-  const x = anchor === 'middle' ? s : dir === 'rtl' ? w - s : s;
+  const x = dir === 'rtl' ? w - s : s;
   const d = dir === 'rtl' ? 'direction="rtl" ' : '';
   return `<text x="${x}" y="${y}" ${d}text-anchor="${anchor}" ${UI} font-size="${size}" ${attrs}>${t}</text>`;
 }
@@ -226,8 +235,8 @@ const HAIR = { color: token('text', 0.08), width: 1.5 };
 const LIFT: Shadow = { x: 0, y: 26, blur: 64, color: { value: '#3b2414', alpha: 0.11 } };
 const LIFT_SM: Shadow = { x: 0, y: 10, blur: 26, color: { value: '#3b2414', alpha: 0.1 } };
 const WHITE_FILL = solid(token('surface'));
-const INK_FILL = solid(token('text'));
-const CORAL_FILL = solid(token('primary'));
+const CORAL_FILL = solid(token('secondary'));
+const PRIMARY_FILL = solid(token('primary'));
 
 /** The board: a grid of dots, fading out away from the middle. */
 function board(name: string): Element {
@@ -258,6 +267,17 @@ function glow(id: string, frame: Frame, color: string, alpha: number): Element {
 /** A white panel of the interface, lifted off the board. */
 const panel = (id: string, frame: Frame, radius = 24, shadow: Shadow = LIFT) =>
   rect(id, frame, WHITE_FILL, { stroke: HAIR, effects: { radius, shadow } });
+
+/**
+ * Panels side by side: every shadow first, then every face over them, so no panel's shadow falls
+ * across its neighbour.
+ */
+function panels(items: [id: string, frame: Frame][], radius: number, shadow: Shadow = LIFT_SM): Element[] {
+  return [
+    ...items.map(([id, frame]) => rect(`${id}_shadow`, frame, WHITE_FILL, { effects: { radius, shadow } })),
+    ...items.map(([id, frame]) => rect(id, frame, WHITE_FILL, { stroke: HAIR, effects: { radius } })),
+  ];
+}
 
 /**
  * A browser window: the panel, its bar with the lights at the start and the address in the
@@ -309,13 +329,13 @@ function cursor(id: string, top: [number, number], color: string, name: Words, i
 function keycap(id: string, frame: Frame, glyph: (cx: number, cy: number, s: number) => string, tilt = 0): Element {
   const { w, h } = frame;
   // Room for the shadow, and for the corners of a tilted key.
-  const pad = Math.round(24 + Math.abs(Math.sin((tilt * Math.PI) / 180)) * 0.5 * Math.max(w, h));
+  const pad = Math.round(Math.max(w, h) * (0.11 + Math.abs(Math.sin((tilt * Math.PI) / 180)) * 0.5));
   const kw = w - 2 * pad;
   const kh = h - 2 * pad;
   const r = Math.min(kw, kh) * 0.2;
   const face = kh - kh * 0.1;
   const body =
-    `<defs><filter id="s" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="${kh * 0.07}" stdDeviation="${kh * 0.06}" flood-color="#3b2414" flood-opacity=".18"/></filter>` +
+    `<defs><filter id="s" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="${kh * 0.05}" stdDeviation="${kh * 0.035}" flood-color="#3b2414" flood-opacity=".2"/></filter>` +
     `<linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${WHITE}"/><stop offset="1" stop-color="#f7f5f1"/></linearGradient></defs>` +
     `<g transform="rotate(${tilt} ${w / 2} ${h / 2})" filter="url(#s)">` +
     `<rect x="${pad}" y="${pad}" width="${kw}" height="${kh}" rx="${r}" fill="${KEY_EDGE}"/>` +
@@ -328,7 +348,7 @@ function keycap(id: string, frame: Frame, glyph: (cx: number, cy: number, s: num
 const keyIcon = (name: Icon, color = INK) => (cx: number, cy: number, s: number) =>
   icon(name, cx - s * 0.2, cy - s * 0.2, s * 0.4, color, 2.1);
 const keyLetter = (letter: string) => (cx: number, cy: number, s: number) =>
-  `<text x="${cx}" y="${cy + s * 0.15}" text-anchor="middle" font-family="Manrope, Inter, sans-serif" font-weight="600" font-size="${s * 0.42}" fill="${INK}">${letter}</text>`;
+  `<text x="${cx}" y="${cy + s * 0.15}" text-anchor="middle" font-family="'DM Sans', Inter, sans-serif" font-weight="600" font-size="${s * 0.42}" fill="${INK}">${letter}</text>`;
 
 /** A switch: on (coral, the knob at the end side) or off. */
 function toggle(id: string, frame: Frame, on: boolean): Element {
@@ -357,7 +377,7 @@ function badge(id: string, frame: Frame, words: Words, color: string, filled = f
 /** A square of colour with a white icon in it: the mark of a feature or a step. */
 function tile(id: string, frame: Frame, name: Icon, color: string, soft = false): Element {
   const s = frame.w;
-  return drawing(
+  return still(
     id,
     frame,
     svg(
@@ -366,7 +386,6 @@ function tile(id: string, frame: Frame, name: Icon, color: string, soft = false)
       `<rect width="${s}" height="${s}" rx="${s * 0.28}" fill="${color}" fill-opacity="${soft ? 0.13 : 1}"/>` +
         icon(name, s * 0.24, s * 0.24, s * 0.52, soft ? color : WHITE, 2.1),
     ),
-    PAINT,
   );
 }
 
@@ -378,7 +397,7 @@ function toast(name: string, frame: Frame, message: Words, link: Words): Element
       w,
       h,
       `<circle cx="${bx(dir, w, 38)}" cy="${h / 2}" r="16" fill="${MINT}"/>` +
-        `<path d="M${bx(dir, w, 38) - 7} ${h / 2}l4.6 4.6 9-9" transform="${dir === 'rtl' ? `translate(${2 * bx(dir, w, 38)} 0) scale(-1 1)` : ''}" stroke="${WHITE}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<path d="M${bx(dir, w, 38) - 7} ${h / 2}l4.6 4.6 9-9" stroke="${WHITE}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
         say(dir, w, 68, h / 2 + 7, 19, message, `font-weight="600" fill="${INK}"`) +
         say(dir, w, w - 24, h / 2 + 7, 17, link, `font-weight="600" fill="${CORAL}"`, 'end'),
     );
@@ -408,7 +427,7 @@ const mark = (id: string, frame: Frame) =>
   );
 
 /** Who else is on the board, and the share button, at the top of the end side. */
-function presence(name: string): Element {
+function presence(name: string, frame: Frame = atEnd(END, 94, 248, 48)): Element {
   const w = 248;
   const h = 48;
   const people: [string, Words][] = [
@@ -432,7 +451,7 @@ function presence(name: string): Element {
         `<rect x="${bx(dir, w, 124, 124)}" y="4" width="124" height="40" rx="20" fill="${INK}"/>` +
         say(dir, w, 186, 30, 17, w2('שיתוף', 'Share'), `font-weight="600" fill="${WHITE}"`, 'middle'),
     );
-  return lettered(`d_mutzar_${name}_presence`, atEnd(END, 94, w, h), draw);
+  return lettered(`d_mutzar_${name}_presence`, frame, draw);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -456,7 +475,7 @@ function head(name: string, width = 1180, lines = 1) {
 
 function liveDot(name: string, top: number): Element[] {
   return [
-    dot(`d_mutzar_${name}_live_halo`, at(START - 3, top + 4, 26, 26), solid(token('primary', 0.18))),
+    dot(`d_mutzar_${name}_live_halo`, at(START - 3, top + 4, 26, 26), solid(token('secondary', 0.18))),
     dot(`d_mutzar_${name}_live`, at(START + 3, top + 10, 14, 14), CORAL_FILL),
   ];
 }
@@ -514,6 +533,45 @@ function areaChart(id: string, frame: Frame): Element {
   return drawing(id, frame, svg(w, h, body), PAINT);
 }
 
+/**
+ * The way a piece of work takes, drawn at the foot of the comparison: by hand a line that loops
+ * back on itself on its way, automated a straight run with its data on it and a check at the
+ * end. Drawn for right to left: it starts at the right.
+ */
+function workPath(id: string, frame: Frame, tidy: boolean): Element {
+  const { w, h } = frame;
+  const y = h / 2;
+  const x0 = w - 14;
+  const x1 = 14;
+  // The way runs from the start side to the end side; the check at its end stays a check.
+  const turn = (dir: Dir, body: string) => (dir === 'rtl' ? body : `<g transform="translate(${w} 0) scale(-1 1)">${body}</g>`);
+  const end = (dir: Dir) => (dir === 'rtl' ? x1 + 10 : w - x1 - 10);
+  if (tidy) {
+    const line =
+      `<path d="M${x0} ${y}H${x1 + 24}" stroke="${CORAL}" stroke-width="3.5" stroke-linecap="round"/>` +
+      `<circle cx="${x0}" cy="${y}" r="7" fill="${CORAL}"/>` +
+      [0.28, 0.5, 0.72].map((t) => `<circle cx="${x0 - t * (x0 - x1)}" cy="${y}" r="5" fill="${WHITE}"/>`).join('');
+    return lettered(id, frame, (dir) =>
+      svg(w, h, turn(dir, line) + `<circle cx="${end(dir)}" cy="${y}" r="15" fill="${MINT}"/>` + icon('check', end(dir) - 9, y - 9, 18, WHITE, 3)),
+    );
+  }
+  // A prolate trochoid: where its swing is wider than its step, it loops back on itself.
+  const turns = 5;
+  const pts = Array.from({ length: 401 }, (_, i) => {
+    const t = i / 400;
+    const th = t * Math.PI * 2 * turns;
+    const reach = Math.sin(Math.PI * t) ** 0.4 * (1 + 0.25 * Math.sin(t * 13));
+    const x = x0 - t * (x0 - x1) - 50 * reach * Math.sin(th);
+    const yy = y - 19 * reach * Math.cos(th) + 6 * reach;
+    return `${i ? 'L' : 'M'}${x.toFixed(1)} ${yy.toFixed(1)}`;
+  }).join('');
+  const body =
+    `<path d="${pts}" stroke="${INK}" stroke-opacity=".32" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<circle cx="${x0}" cy="${y}" r="7" fill="${INK}" fill-opacity=".35"/>` +
+    `<circle cx="${x1}" cy="${y}" r="7" fill="${WHITE}" stroke="${INK}" stroke-opacity=".35" stroke-width="2.5"/>`;
+  return drawing(id, frame, svg(w, h, body), PAINT);
+}
+
 /** A person's silhouette in a round avatar with a warm gradient. */
 function avatar(id: string, frame: Frame): Element {
   const s = frame.w;
@@ -543,8 +601,8 @@ const PEOPLE = [CORAL, VIOLET, MINT, AMBER] as const;
 const NAMES: Words[] = [w2('נועה', 'Noa'), w2('יואב', 'Yoav'), w2('איתן', 'Eitan'), w2('מאיה', 'Maya')];
 
 function layouts(): Layout[] {
-  const palette = at(START, 214, 1180, 668);
-  const textWindow = atEnd(END, 96, 740, 836);
+  const palette = at(START, 250, 1180, 668);
+  const textWindow = atEnd(END, 96, 676, 836);
   const shot = { x: 96, y: 96, w: 1728, h: 568 };
   return [
     {
@@ -552,37 +610,32 @@ function layouts(): Layout[] {
       name: 'Hero',
       archetype: 'hero',
       placeholders: [
-        place('p_kicker', 'caption', at(START + 104, 151, 780, 34), 'caption'),
-        place('p_title', 'title', at(START + 124, 244, 1010, 240), 'display'),
-        place('p_subtitle', 'subtitle', at(START + 132, 560, 850, 140), 'heading', { vAlign: 'middle' }),
-        place('p_meta', 'caption', at(START + 44, 826, 720, 34), 'caption'),
+        place('p_kicker', 'caption', at(START + 104, 187, 780, 34), 'caption'),
+        place('p_title', 'title', at(START + 124, 280, 1010, 240), 'display'),
+        place('p_subtitle', 'subtitle', at(START + 132, 596, 850, 140), 'heading', { vAlign: 'middle' }),
+        place('p_meta', 'caption', at(START + 44, 862, 720, 34), 'caption'),
       ],
       decorations: [
         board('hero'),
-        glow('d_mutzar_hero_glow', atEnd(-260, 80, 1100, 980), CORAL, 0.2),
-        glow('d_mutzar_hero_glow2', at(380, -120, 1000, 640), VIOLET, 0.1),
-        badge('d_mutzar_hero_new', at(START, 150, 86, 36), w2('חדש', 'NEW'), CORAL, true),
+        glow('d_mutzar_hero_glow', atEnd(0, 60, 1000, 1020), CORAL, 0.22),
+        glow('d_mutzar_hero_glow2', at(380, 0, 1000, 560), VIOLET, 0.1),
+        badge('d_mutzar_hero_new', at(START, 186, 86, 36), w2('חדש', 'NEW'), CORAL, true),
         rect('d_mutzar_hero_palette', palette, WHITE_FILL, {
           stroke: HAIR,
           effects: { radius: 30, shadow: { x: 0, y: 40, blur: 90, color: { value: '#3b2414', alpha: 0.14 } } },
         }),
-        drawing(
-          'd_mutzar_hero_search',
-          at(START + 40, 272, 60, 60),
-          svg(60, 60, icon('search', 6, 6, 48, CORAL, 2.4)),
-          PAINT,
-        ),
-        rect('d_mutzar_hero_rule', at(START, 506, 1180, 1), solid(token('text', 0.08))),
-        lettered('d_mutzar_hero_group', at(START + 44, 516, 400, 26), (dir) =>
+        still('d_mutzar_hero_search', at(START + 40, 308, 60, 60), svg(60, 60, icon('search', 6, 6, 48, CORAL, 2.4))),
+        rect('d_mutzar_hero_rule', at(START, 542, 1180, 1), solid(token('text', 0.08))),
+        lettered('d_mutzar_hero_group', at(START + 44, 552, 400, 26), (dir) =>
           svg(400, 26, say(dir, 400, 0, 19, 16, w2('הצעות', 'SUGGESTED'), `font-weight="600" letter-spacing="${dir === 'rtl' ? 0 : 1.2}" fill="${MUTED}"`)),
         ),
-        rect('d_mutzar_hero_selected', at(START + 20, 546, 1140, 168), solid(token('primary', 0.07)), {
+        rect('d_mutzar_hero_selected', at(START + 20, 582, 1140, 168), solid(token('secondary', 0.07)), {
           effects: { radius: 18 },
         }),
-        rect('d_mutzar_hero_selected_bar', at(START + 20, 570, 5, 120), CORAL_FILL, { effects: { radius: 3 } }),
-        tile('d_mutzar_hero_selected_icon', at(START + 48, 598, 64, 64), 'sparkles', CORAL),
-        keycap('d_mutzar_hero_enter', at(START + 1048, 590, 104, 92), keyIcon('enter')),
-        lettered('d_mutzar_hero_row', at(START + 20, 724, 1140, 64), (dir) =>
+        rect('d_mutzar_hero_selected_bar', at(START + 20, 606, 5, 120), CORAL_FILL, { effects: { radius: 3 } }),
+        tile('d_mutzar_hero_selected_icon', at(START + 48, 634, 64, 64), 'sparkles', CORAL),
+        keycap('d_mutzar_hero_enter', at(START + 1044, 622, 112, 100), keyIcon('enter')),
+        lettered('d_mutzar_hero_row', at(START + 20, 760, 1140, 64), (dir) =>
           svg(
             1140,
             64,
@@ -599,8 +652,8 @@ function layouts(): Layout[] {
               `<text x="${bx(dir, 1140, 1140 - 64 + 18)}" y="38.5" text-anchor="middle" ${UI} font-size="17" font-weight="600" fill="${MUTED}">I</text>`,
           ),
         ),
-        rect('d_mutzar_hero_foot_rule', at(START, 802, 1180, 1), solid(token('text', 0.08))),
-        lettered('d_mutzar_hero_hints', at(START + 800, 828, 356, 30), (dir) => {
+        rect('d_mutzar_hero_foot_rule', at(START, 838, 1180, 1), solid(token('text', 0.08))),
+        lettered('d_mutzar_hero_hints', at(START + 800, 864, 356, 30), (dir) => {
           const w = 356;
           const key = (s: number, kw: number, glyph: string) =>
             `<rect x="${bx(dir, w, s, kw)}" y="1" width="${kw}" height="28" rx="7" fill="${CANVAS}" stroke="${INK}" stroke-opacity=".1"/>` +
@@ -616,11 +669,11 @@ function layouts(): Layout[] {
               key(w - 44, 44, 'esc'),
           );
         }),
-        keycap('d_mutzar_hero_cmd', atEnd(140, 236, 290, 290), keyIcon('command'), -9),
-        keycap('d_mutzar_hero_k', atEnd(318, 318, 290, 290), keyLetter('K'), 7),
-        cursor('d_mutzar_hero_cursor1', [1920 - 640, 300], CORAL, NAMES[0]!),
-        cursor('d_mutzar_hero_cursor2', [1920 - 300, 600], VIOLET, NAMES[1]!),
-        ...toast('hero', atEnd(110, 690, 450, 76), w2('גרסה 2.0 באוויר', 'Version 2.0 is live'), w2('לצפייה', 'View')),
+        keycap('d_mutzar_hero_cmd', atEnd(120, 250, 320, 320), keyIcon('command'), -9),
+        keycap('d_mutzar_hero_k', atEnd(310, 346, 320, 320), keyLetter('K'), 7),
+        cursor('d_mutzar_hero_cursor1', [1920 - 640, 336], CORAL, NAMES[0]!),
+        cursor('d_mutzar_hero_cursor2', [1920 - 384, 628], VIOLET, NAMES[1]!),
+        ...toast('hero', atEnd(110, 740, 450, 76), w2('גרסה 2.0 באוויר', 'Version 2.0 is live'), w2('לצפייה', 'View')),
       ],
     },
     {
@@ -628,10 +681,10 @@ function layouts(): Layout[] {
       name: 'Section',
       archetype: 'section',
       placeholders: [
-        place('p_number', 'number', atEnd(270, 408, 360, 180), 'display', {
+        place('p_number', 'number', atEnd(270, 400, 360, 180), 'display', {
           align: 'center',
           vAlign: 'middle',
-          color: token('primary'),
+          color: token('secondary'),
         }),
         place('p_kicker', 'caption', at(START + 30, 334, 760, 34), 'caption'),
         place('p_title', 'title', at(START, 380, 960, 240), 'display'),
@@ -639,21 +692,16 @@ function layouts(): Layout[] {
       ],
       decorations: [
         board('section'),
-        glow('d_mutzar_section_glow', atEnd(40, 160, 840, 760), CORAL, 0.16),
+        glow('d_mutzar_section_glow', atEnd(20, 120, 880, 820), CORAL, 0.16),
         ...liveDot('section', 334),
-        keycap('d_mutzar_section_key', atEnd(194, 274, 512, 472), () => ''),
-        lettered('d_mutzar_section_legend', atEnd(254, 322, 392, 30), (dir) =>
+        keycap('d_mutzar_section_key', atEnd(150, 232, 600, 560), () => ''),
+        lettered('d_mutzar_section_legend', atEnd(256, 336, 388, 30), (dir) =>
           svg(392, 30, say(dir, 392, 8, 22, 18, w2('פרק', 'PART'), `font-weight="600" letter-spacing="${dir === 'rtl' ? 0 : 1.5}" fill="${MUTED}"`)),
         ),
-        drawing(
-          'd_mutzar_section_legend_mark',
-          atEnd(262, 650, 40, 40),
-          svg(40, 40, icon('enter', 6, 6, 28, MUTED, 2)),
-          PAINT,
-        ),
-        keycap('d_mutzar_section_cmd', atEnd(90, 150, 190, 190), keyIcon('command'), -12),
-        keycap('d_mutzar_section_k', atEnd(610, 690, 180, 170), keyLetter('K'), 10),
-        cursor('d_mutzar_section_cursor', [1920 - 610, 640], MINT, NAMES[3]!),
+        still('d_mutzar_section_legend_mark', atEnd(262, 618, 40, 40), svg(40, 40, icon('enter', 6, 6, 28, MUTED, 2))),
+        keycap('d_mutzar_section_cmd', atEnd(70, 130, 220, 220), keyIcon('command'), -12),
+        keycap('d_mutzar_section_k', atEnd(600, 700, 200, 190), keyLetter('K'), 10),
+        cursor('d_mutzar_section_cursor', [1920 - 596, 650], MINT, NAMES[3]!),
       ],
     },
     {
@@ -662,12 +710,12 @@ function layouts(): Layout[] {
       archetype: 'bigNumber',
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START + 48, 314, 820, 124), 'display', { color: token('primary') }),
-        place('p_label', 'subtitle', at(START + 48, 444, 820, 53), 'heading'),
-        place('p_body', 'body', at(START + 48, 506, 800, 135), 'body'),
+        place('p_number', 'number', at(START + 48, 314, 920, 124), 'display', { color: token('secondary') }),
+        place('p_label', 'subtitle', at(START + 48, 444, 920, 53), 'heading'),
+        place('p_body', 'body', at(START + 48, 506, 900, 135), 'body'),
         ...cards3.flatMap((start, i) => [
           place(`p_stat${i + 1}`, 'number', at(start + 104, 724, 404, 79), 'title'),
-          place(`p_stat${i + 1}_label`, 'caption', at(start + 28, 810, 480, 68), 'caption'),
+          place(`p_stat${i + 1}_label`, 'caption', at(start + 30, 810, 478, 68), 'caption'),
         ]),
         ...foot('big_number').placeholders,
       ],
@@ -676,10 +724,10 @@ function layouts(): Layout[] {
         ...head('big_number').decorations,
         presence('big_number'),
         ...browser('big_number', at(START, 236, WIDTH, 450), 'zrima.app/insights'),
-        areaChart('d_mutzar_big_number_curve', atEnd(END + 36, 316, 760, 340)),
+        areaChart('d_mutzar_big_number_curve', atEnd(END + 36, 316, 640, 340)),
+        ...panels(cards3.map((start, i) => [`d_mutzar_big_number_tile${i + 1}`, at(start, 708, 536, 196)]), 20),
         ...cards3.flatMap((start, i) => [
-          panel(`d_mutzar_big_number_tile${i + 1}`, at(start, 708, 536, 196), 20, LIFT_SM),
-          tile(`d_mutzar_big_number_icon${i + 1}`, at(start + 28, 736, 56, 56), (['users', 'clock', 'shield'] as const)[i]!, [CORAL, VIOLET, MINT][i]!, true),
+          tile(`d_mutzar_big_number_icon${i + 1}`, at(start + 30, 736, 56, 56), (['users', 'clock', 'shield'] as const)[i]!, [CORAL, VIOLET, MINT][i]!, true),
         ]),
         ...foot('big_number').decorations,
       ],
@@ -689,14 +737,14 @@ function layouts(): Layout[] {
       name: 'Quote',
       archetype: 'quote',
       placeholders: [
-        place('p_quote', 'quote', at(START + 128, 366, 1424, 360), 'title'),
+        place('p_quote', 'quote', at(START + 128, 366, 1424, 360), 'title', { vAlign: 'middle' }),
         place('p_attribution', 'attribution', at(START + 228, 220, 1000, 53), 'heading'),
         place('p_caption', 'caption', at(START + 228, 274, 1000, 68), 'caption'),
         ...foot('quote').placeholders,
       ],
       decorations: [
         board('quote'),
-        glow('d_mutzar_quote_glow', atEnd(-200, 500, 900, 700), VIOLET, 0.12),
+        glow('d_mutzar_quote_glow', atEnd(0, 460, 900, 620), VIOLET, 0.12),
         panel('d_mutzar_quote_card', at(START + 80, 176, 1520, 700), 30),
         avatar('d_mutzar_quote_avatar', at(START + 128, 220, 76, 76)),
         lettered('d_mutzar_quote_tools', atEnd(240, 228, 240, 44), (dir) =>
@@ -727,6 +775,7 @@ function layouts(): Layout[] {
               icon('send', bx(dir, 1424, 1424 - 25) - 10, 15, 20, WHITE, 2.6),
           ),
         ),
+        // The comment's pin on the board, its point towards the card.
         drawing(
           'd_mutzar_quote_pin',
           at(START + 4, 128, 84, 92),
@@ -734,13 +783,13 @@ function layouts(): Layout[] {
             84,
             92,
             `<defs><filter id="p" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#3b2414" flood-opacity=".2"/></filter></defs>` +
-              `<path d="M42 86C42 86 4 82 4 44a38 38 0 1 1 76 0c0 30-26 42-38 42z" transform="translate(84 0) scale(-1 1)" fill="${WHITE}" filter="url(#p)"/>` +
-              `<circle cx="42" cy="44" r="29" fill="${VIOLET}"/>` +
-              icon('page', 28, 30, 28, WHITE, 2.2),
+              `<path d="M42 86C42 86 4 82 4 44a38 38 0 1 1 76 0c0 30-26 42-38 42z" fill="${WHITE}" filter="url(#p)"/>` +
+              `<circle cx="42" cy="44" r="29" fill="${VIOLET}"/>`,
           ),
           PAINT,
         ),
-        cursor('d_mutzar_quote_cursor', [START + 128 + 74, 790], VIOLET, NAMES[2]!),
+        still('d_mutzar_quote_pin_icon', at(START + 4 + 28, 128 + 30, 28, 28), svg(28, 28, icon('page', 0, 0, 28, WHITE, 2.2))),
+        cursor('d_mutzar_quote_cursor', [1920 - 300, 264], VIOLET, NAMES[2]!),
         ...foot('quote').decorations,
       ],
     },
@@ -749,15 +798,29 @@ function layouts(): Layout[] {
       name: 'Text',
       archetype: 'text',
       placeholders: [
-        place('p_title', 'title', at(START + 116, 162, 1300, 70), 'title'),
-        place('p_body', 'body', at(START + 36, 286, 1590, 640), 'body'),
+        place('p_title', 'title', at(START + 30, 258, 1400, 70), 'title'),
+        place('p_body', 'body', at(START + 30, 372, WIDTH - 60, 566), 'body'),
       ],
       decorations: [
         board('text'),
         ...browser('text', at(START - 24, 64, WIDTH + 48, 920), 'zrima.app/docs/launch-night'),
-        tile('d_mutzar_text_icon', at(START + 36, 164, 62, 62), 'page', CORAL, true),
-        rect('d_mutzar_text_rule', at(START + 36, 256, WIDTH - 72, 1), solid(token('text', 0.08))),
-        cursor('d_mutzar_text_cursor', [1920 - 268, 930], MINT, NAMES[3]!),
+        // The page's cover, and its icon standing on the cover's edge.
+        rect('d_mutzar_text_cover', at(START - 23, 117, WIDTH + 46, 84), {
+          kind: 'linear',
+          angle: 90,
+          stops: [
+            { color: token('secondary', 0.26), at: 0 },
+            { color: token('secondary', 0.1), at: 0.55 },
+            { color: token('accent', 0.16), at: 1 },
+          ],
+        }),
+        rect('d_mutzar_text_icon_box', at(START + 30, 160, 80, 80), WHITE_FILL, {
+          stroke: HAIR,
+          effects: { radius: 20, shadow: LIFT_SM },
+        }),
+        still('d_mutzar_text_icon', at(START + 46, 176, 48, 48), svg(48, 48, icon('page', 4, 4, 40, CORAL, 2))),
+        rect('d_mutzar_text_rule', at(START + 30, 350, WIDTH - 60, 1), solid(token('text', 0.08))),
+        presence('text', atEnd(END - 24 + 14, 66, 248, 48)),
       ],
     },
     {
@@ -765,20 +828,19 @@ function layouts(): Layout[] {
       name: 'Text and image',
       archetype: 'textImage',
       placeholders: [
-        ...head('text_image', 860, 2).placeholders,
-        place('p_image', 'image', atEnd(END + 12, 148, 716, 772)),
+        ...head('text_image', 920, 2).placeholders,
+        place('p_image', 'image', atEnd(END + 12, 148, 652, 772)),
         ...rows3.flatMap((top, i) => [
-          place(`p_point${i + 1}`, 'subtitle', at(START + 92, top, 768, 53), 'heading'),
-          place(`p_point${i + 1}_body`, 'body', at(START + 92, top + 56, 768, 132), 'body'),
+          place(`p_point${i + 1}`, 'subtitle', at(START + 84, top, 880, 53), 'heading'),
+          place(`p_point${i + 1}_body`, 'body', at(START + 84, top + 56, 880, 132), 'body'),
         ]),
         ...foot('text_image').placeholders,
       ],
       decorations: [
         board('text_image'),
-        ...head('text_image', 860, 2).decorations,
+        ...head('text_image', 920, 2).decorations,
         ...browser('text_image', textWindow, 'zrima.app/builder'),
-        ...rows3.map((top, i) => toggle(`d_mutzar_text_image_switch${i + 1}`, at(START, top + 8, 68, 38), true)),
-        cursor('d_mutzar_text_image_cursor', [1920 - 330, 924], VIOLET, NAMES[2]!),
+        ...rows3.map((top, i) => toggle(`d_mutzar_text_image_switch${i + 1}`, at(START, top + 8, 64, 36), true)),
         ...foot('text_image').decorations,
       ],
     },
@@ -801,7 +863,7 @@ function layouts(): Layout[] {
           effects: { shadow: LIFT },
         }),
         rect('d_mutzar_full_image_selection', { x: 86, y: 86, w: 1748, h: 588 }, { kind: 'none' }, {
-          stroke: { color: token('primary'), width: 2.5 },
+          stroke: { color: token('secondary'), width: 2.5 },
         }),
         ...[
           [79, 79],
@@ -810,7 +872,7 @@ function layouts(): Layout[] {
           [1827, 667],
         ].map(([x, y], i) =>
           rect(`d_mutzar_full_image_handle${i + 1}`, { x: x!, y: y!, w: 14, h: 14 }, WHITE_FILL, {
-            stroke: { color: token('primary'), width: 2.5 },
+            stroke: { color: token('secondary'), width: 2.5 },
           }),
         ),
         lettered('d_mutzar_full_image_label', at(96, 46, 420, 30), (dir) =>
@@ -835,9 +897,9 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...cards3.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 28, 352, 480, 68), 'caption'),
-          place(`p_card${i + 1}`, 'subtitle', at(start + 28, 424, 480, 100), 'heading'),
-          place(`p_card${i + 1}_body`, 'body', at(start + 28, 530, 480, 210), 'body'),
+          place(`p_card${i + 1}_note`, 'caption', at(start + 30, 352, 476, 68), 'caption'),
+          place(`p_card${i + 1}`, 'subtitle', at(start + 30, 424, 476, 100), 'heading'),
+          place(`p_card${i + 1}_body`, 'body', at(start + 30, 530, 476, 210), 'body'),
         ]),
         place('p_takeaway', 'body', at(START + 96, 798, WIDTH - 130, 90), 'body', { vAlign: 'middle' }),
         ...foot('cards').placeholders,
@@ -846,9 +908,9 @@ function layouts(): Layout[] {
         board('cards'),
         ...head('cards').decorations,
         presence('cards'),
+        ...panels(cards3.map((start, i) => [`d_mutzar_cards_card${i + 1}`, at(start, 244, 536, 522)]), 24),
         ...cards3.flatMap((start, i) => [
-          panel(`d_mutzar_cards_card${i + 1}`, at(start, 244, 536, 522), 24),
-          tile(`d_mutzar_cards_icon${i + 1}`, at(start + 28, 272, 60, 60), (['sparkles', 'plug', 'shield'] as const)[i]!, [CORAL, VIOLET, MINT][i]!),
+          tile(`d_mutzar_cards_icon${i + 1}`, at(start + 30, 272, 60, 60), (['sparkles', 'plug', 'shield'] as const)[i]!, [CORAL, VIOLET, MINT][i]!),
           badge(
             `d_mutzar_cards_badge${i + 1}`,
             at(start + 104, 286, 92, 32),
@@ -856,17 +918,16 @@ function layouts(): Layout[] {
             i === 2 ? VIOLET : CORAL,
           ),
           toggle(`d_mutzar_cards_switch${i + 1}`, at(start + 536 - 28 - 76, 282, 76, 40), true),
-          rect(`d_mutzar_cards_rule${i + 1}`, at(start + 28, 340, 480, 1), solid(token('text', 0.07))),
+          rect(`d_mutzar_cards_rule${i + 1}`, at(start + 30, 340, 476, 1), solid(token('text', 0.07))),
         ]),
-        rect('d_mutzar_cards_banner', at(START, 790, WIDTH, 106), solid(token('primary', 0.07)), {
+        rect('d_mutzar_cards_banner', at(START, 790, WIDTH, 106), solid(token('secondary', 0.07)), {
           effects: { radius: 20 },
         }),
         rect('d_mutzar_cards_banner_bar', at(START, 812, 5, 62), CORAL_FILL, { effects: { radius: 3 } }),
-        drawing(
+        still(
           'd_mutzar_cards_banner_icon',
           at(START + 30, 819, 48, 48),
           svg(48, 48, `<circle cx="24" cy="24" r="23" fill="${CORAL}"/>${icon('bolt', 12, 12, 24, WHITE, 2.2)}`),
-          PAINT,
         ),
         ...foot('cards').decorations,
       ],
@@ -879,8 +940,8 @@ function layouts(): Layout[] {
         ...head('timeline').placeholders,
         ...columns4.flatMap((start, i) => [
           place(`p_when${i + 1}`, 'number', at(start, 290, 390, 79), 'title', { vAlign: 'bottom' }),
-          place(`p_what${i + 1}`, 'subtitle', at(start + 28, 476, 340, 106), 'heading'),
-          place(`p_what${i + 1}_body`, 'body', at(start + 28, 588, 340, 170), 'caption'),
+          place(`p_what${i + 1}`, 'subtitle', at(start + 30, 476, 338, 106), 'heading'),
+          place(`p_what${i + 1}_body`, 'body', at(start + 30, 588, 338, 170), 'caption'),
         ]),
         place('p_note', 'caption', at(START + 30, 836, WIDTH - 30, 34), 'caption'),
         ...foot('timeline').placeholders,
@@ -893,7 +954,8 @@ function layouts(): Layout[] {
           effects: { radius: 5 },
         }),
         rect('d_mutzar_timeline_progress', at(START, 398, 449, 10), CORAL_FILL, { effects: { radius: 5 } }),
-        dot('d_mutzar_timeline_halo', at(START + 429 - 12, 371, 64, 64), solid(token('primary', 0.16))),
+        ...panels(columns4.map((start, i) => [`d_mutzar_timeline_card${i + 1}`, at(start, 452, 390, 330)]), 22),
+        dot('d_mutzar_timeline_halo', at(START + 429 - 12, 371, 64, 64), solid(token('secondary', 0.16))),
         ...columns4.flatMap((start, i) => {
           const badges: [Words, string][] = [
             [w2('זמין', 'GA'), MINT],
@@ -904,14 +966,12 @@ function layouts(): Layout[] {
           const [words, color] = badges[i]!;
           return [
             badge(`d_mutzar_timeline_badge${i + 1}`, at(start, 250, i === 1 ? 150 : 104, 34), words, color, i === 1),
-            panel(`d_mutzar_timeline_card${i + 1}`, at(start, 452, 390, 330), 22, LIFT_SM),
-            rect(`d_mutzar_timeline_stem${i + 1}`, at(start + 18, 420, 4, 32), solid(token(i < 2 ? 'primary' : 'text', i < 2 ? 1 : 0.14))),
+            rect(`d_mutzar_timeline_stem${i + 1}`, at(start + 18, 420, 4, 32), solid(token(i < 2 ? 'secondary' : 'text', i < 2 ? 1 : 0.14))),
             i < 2
-              ? drawing(
+              ? still(
                   `d_mutzar_timeline_node${i + 1}`,
                   at(start, 383, 40, 40),
                   svg(40, 40, `<circle cx="20" cy="20" r="18" fill="${CORAL}" stroke="${WHITE}" stroke-width="${i === 1 ? 4 : 0}"/>${icon('check', 9, 9, 22, WHITE, 3)}`),
-                  PAINT,
                 )
               : drawing(
                   `d_mutzar_timeline_node${i + 1}`,
@@ -932,10 +992,10 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...steps5.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start + 28, 408, 296, 106), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start + 28, 516, 296, 136), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start + 28, 676, 296, 79), 'title', {
-            color: token('primary'),
+          place(`p_step${i + 1}`, 'subtitle', at(start + 30, 408, 302, 106), 'heading'),
+          place(`p_step${i + 1}_body`, 'caption', at(start + 30, 516, 302, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start + 30, 676, 302, 79), 'title', {
+            color: token('secondary'),
           }),
         ]),
         place('p_summary', 'body', at(START + 100, 822, WIDTH - 140, 90), 'body', { vAlign: 'middle' }),
@@ -946,7 +1006,7 @@ function layouts(): Layout[] {
         ...head('process').decorations,
         presence('process'),
         panel('d_mutzar_process_panel', at(START, 236, WIDTH, 556), 26),
-        lettered('d_mutzar_process_progress_label', at(START + 36, 256, 600, 34), (dir) =>
+        lettered('d_mutzar_process_progress_label', at(START + 30, 256, 600, 34), (dir) =>
           svg(600, 34, say(dir, 600, 0, 24, 19, w2('הקמת סביבת העבודה · 4 מתוך 5', 'Workspace setup · 4 of 5'), `font-weight="600" fill="${INK}"`)),
         ),
         rect('d_mutzar_process_progress_track', atEnd(END + 36, 266, 560, 12), solid(token('text', 0.08)), {
@@ -958,15 +1018,14 @@ function layouts(): Layout[] {
         rect('d_mutzar_process_rule', at(START, 308, WIDTH, 1), solid(token('text', 0.07))),
         ...steps5.flatMap((start, i) => [
           i < 4
-            ? drawing(
+            ? still(
                 `d_mutzar_process_dot${i + 1}`,
-                at(start + 28, 334, 52, 52),
+                at(start + 30, 334, 52, 52),
                 svg(52, 52, `<circle cx="26" cy="26" r="24" fill="${CORAL}"/>${icon('check', 14, 14, 24, WHITE, 3)}`),
-                PAINT,
               )
             : drawing(
                 `d_mutzar_process_dot${i + 1}`,
-                at(start + 28, 334, 52, 52),
+                at(start + 30, 334, 52, 52),
                 svg(52, 52, `<circle cx="26" cy="26" r="22" fill="${WHITE}" stroke="${CORAL}" stroke-width="4"/><circle cx="26" cy="26" r="8" fill="${CORAL}"/>`),
                 PAINT,
               ),
@@ -974,11 +1033,11 @@ function layouts(): Layout[] {
             ? [
                 rect(
                   `d_mutzar_process_link${i + 1}`,
-                  at(start + 96, 358, 336 - 84, 4),
-                  i < 3 ? CORAL_FILL : solid(token('primary', 0.3)),
+                  at(start + 98, 358, 336 - 86, 4),
+                  i < 3 ? CORAL_FILL : solid(token('secondary', 0.3)),
                   { effects: { radius: 2 } },
                 ),
-                rect(`d_mutzar_process_divider${i + 1}`, at(start + 336 - 6, 418, 1, 330), solid(token('text', 0.07))),
+                rect(`d_mutzar_process_divider${i + 1}`, at(start + 334, 418, 1, 330), solid(token('text', 0.07))),
               ]
             : []),
         ]),
@@ -986,11 +1045,10 @@ function layouts(): Layout[] {
           stroke: HAIR,
           effects: { radius: 22, shadow: LIFT_SM },
         }),
-        drawing(
+        still(
           'd_mutzar_process_toast_check',
           at(START + 32, 843, 48, 48),
           svg(48, 48, `<circle cx="24" cy="24" r="23" fill="${MINT}"/>${icon('check', 12, 12, 24, WHITE, 3)}`),
-          PAINT,
         ),
         ...foot('process').decorations,
       ],
@@ -1007,9 +1065,9 @@ function layouts(): Layout[] {
             ['after', START + 860, token('surface')],
           ] as const
         ).flatMap(([side, start, color]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 132, 280, 650, 34), 'caption', color ? { color: token('surface', 0.78) } : {}),
-          place(`p_${side}`, 'subtitle', at(start + 36, 348, 748, 106), 'heading', color ? { color } : {}),
-          place(`p_${side}_body`, 'body', at(start + 36, 470, 748, 400), 'body', color ? { color } : {}),
+          place(`p_${side}_tag`, 'caption', at(start + 126, 280, 660, 34), 'caption', color ? { color: token('surface', 0.78) } : {}),
+          place(`p_${side}`, 'subtitle', at(start + 30, 348, 760, 106), 'heading', color ? { color } : {}),
+          place(`p_${side}_body`, 'body', at(start + 30, 470, 760, 350), 'body', color ? { color } : {}),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1017,14 +1075,17 @@ function layouts(): Layout[] {
         board('comparison'),
         ...head('comparison').decorations,
         presence('comparison'),
-        panel('d_mutzar_comparison_before', at(START, 240, 820, 666), 28, LIFT_SM),
-        toggle('d_mutzar_comparison_before_switch', at(START + 36, 278, 76, 40), false),
-        rect('d_mutzar_comparison_after', at(START + 860, 240, 820, 666), INK_FILL, {
-          effects: { radius: 28, shadow: { x: 0, y: 30, blur: 70, color: { token: 'primary', alpha: 0.28 } } },
+        // The card of the automated way first: its coral glow goes under the other card.
+        rect('d_mutzar_comparison_after', at(START + 860, 240, 820, 666), PRIMARY_FILL, {
+          effects: { radius: 28, shadow: { x: 0, y: 30, blur: 70, color: { token: 'secondary', alpha: 0.3 } } },
         }),
-        toggle('d_mutzar_comparison_after_switch', at(START + 896, 278, 76, 40), true),
-        rect('d_mutzar_comparison_after_rule', at(START + 896, 330, 748, 1), solid(token('surface', 0.12))),
-        rect('d_mutzar_comparison_before_rule', at(START + 36, 330, 748, 1), solid(token('text', 0.07))),
+        panel('d_mutzar_comparison_before', at(START, 240, 820, 666), 28, LIFT_SM),
+        toggle('d_mutzar_comparison_before_switch', at(START + 30, 278, 76, 40), false),
+        toggle('d_mutzar_comparison_after_switch', at(START + 890, 278, 76, 40), true),
+        rect('d_mutzar_comparison_after_rule', at(START + 890, 330, 760, 1), solid(token('surface', 0.12))),
+        rect('d_mutzar_comparison_before_rule', at(START + 30, 330, 760, 1), solid(token('text', 0.07))),
+        workPath('d_mutzar_comparison_before_path', at(START + 30, 828, 760, 60), false),
+        workPath('d_mutzar_comparison_after_path', at(START + 890, 828, 760, 60), true),
         drawing(
           'd_mutzar_comparison_switch',
           at(START + 808, 541, 64, 64),
@@ -1046,10 +1107,10 @@ function layouts(): Layout[] {
       archetype: 'chart',
       placeholders: [
         ...head('chart').placeholders,
-        place('p_chart', 'chart', at(START + 24, 352, 1032, 560)),
-        place('p_stat1', 'number', atEnd(END, 256, 540, 124), 'display', { color: token('primary') }),
+        place('p_chart', 'chart', at(START + 30, 352, 1020, 560)),
+        place('p_stat1', 'number', atEnd(END, 256, 540, 124), 'display', { color: token('secondary') }),
         place('p_stat1_body', 'body', atEnd(END, 384, 540, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END, 580, 540, 124), 'display', { color: token('secondary') }),
+        place('p_stat2', 'number', atEnd(END, 580, 540, 124), 'display', { color: token('accent') }),
         place('p_stat2_body', 'body', atEnd(END, 708, 540, 100), 'body'),
         place('p_source', 'caption', atEnd(END, 850, 540, 68), 'caption'),
         ...foot('chart').placeholders,
@@ -1058,7 +1119,7 @@ function layouts(): Layout[] {
         board('chart'),
         ...head('chart').decorations,
         ...browser('chart', at(START, 236, 1080, 690), 'zrima.app/insights/adoption'),
-        lettered('d_mutzar_chart_range', at(START + 28, 300, 380, 40), (dir) => {
+        lettered('d_mutzar_chart_range', at(START + 30, 300, 380, 40), (dir) => {
           const w = 380;
           const opts = [w2('חודש', 'Month'), w2('רבעון', 'Quarter'), w2('שנה', 'Year')];
           return svg(
@@ -1069,8 +1130,13 @@ function layouts(): Layout[] {
               opts.map((o, i) => say(dir, w, 64 + i * 124, 26, 16, o, `font-weight="600" fill="${i ? MUTED : INK}"`, 'middle')).join(''),
           );
         }),
-        panel('d_mutzar_chart_stat1', atEnd(100, 236, 580, 300), 24, LIFT_SM),
-        panel('d_mutzar_chart_stat2', atEnd(100, 560, 580, 270), 24, LIFT_SM),
+        ...panels(
+          [
+            ['d_mutzar_chart_stat1', atEnd(100, 236, 580, 300)],
+            ['d_mutzar_chart_stat2', atEnd(100, 560, 580, 270)],
+          ],
+          24,
+        ),
         ...foot('chart').decorations,
       ],
     },
@@ -1080,7 +1146,7 @@ function layouts(): Layout[] {
       archetype: 'table',
       placeholders: [
         ...head('table').placeholders,
-        place('p_table', 'table', at(START + 24, 278, WIDTH - 48, 612)),
+        place('p_table', 'table', at(START + 30, 278, WIDTH - 60, 612)),
         place('p_note', 'caption', at(START + 30, 914, WIDTH - 30, 34), 'caption'),
         ...foot('table').placeholders,
       ],
@@ -1117,12 +1183,12 @@ function layouts(): Layout[] {
         ...head('team').placeholders,
         ...columns4.flatMap((start, i) => [
           place(`p_person${i + 1}_photo`, 'image', at(start + 14, 250, 366, 340)),
-          place(`p_person${i + 1}`, 'subtitle', at(start + 44, 612, 326, 52), 'heading', {
+          place(`p_person${i + 1}`, 'subtitle', at(start + 30, 612, 344, 52), 'heading', {
             vAlign: 'middle',
             color: token(i === 1 ? 'surface' : 'text'),
           }),
-          place(`p_person${i + 1}_role`, 'caption', at(start + 14, 682, 366, 34), 'caption'),
-          place(`p_person${i + 1}_body`, 'body', at(start + 14, 720, 366, 102), 'caption'),
+          place(`p_person${i + 1}_role`, 'caption', at(start + 14, 682, 376, 34), 'caption'),
+          place(`p_person${i + 1}_body`, 'body', at(start + 14, 720, 376, 136), 'caption'),
         ]),
         ...foot('team').placeholders,
       ],
@@ -1130,8 +1196,8 @@ function layouts(): Layout[] {
         board('team'),
         ...head('team').decorations,
         presence('team'),
+        ...panels(columns4.map((start, i) => [`d_mutzar_team_card${i + 1}`, at(start, 236, 394, 636)]), 26),
         ...columns4.flatMap((start, i) => [
-          panel(`d_mutzar_team_card${i + 1}`, at(start, 236, 394, 610), 26, LIFT_SM),
           rect(`d_mutzar_team_tag${i + 1}`, at(start + 14, 608, 366, 60), solid({ value: PEOPLE[i]! }), {
             effects: { radius: 14 },
           }),
@@ -1153,28 +1219,29 @@ function layouts(): Layout[] {
         place('p_kicker', 'caption', at(START + 30, 150, 760, 34), 'caption'),
         place('p_title', 'title', at(START, 196, 1000, 240), 'display'),
         ...buttons3.map((top, i) =>
-          place(`p_line${i + 1}`, 'body', at(START + 40, top + 6, 720, 92), 'body', {
+          place(`p_line${i + 1}`, 'body', at(START + 40, top + 6, 750, 92), 'body', {
             vAlign: 'middle',
             ...(i === 0 ? { color: token('surface') } : {}),
           }),
         ),
-        place('p_contact', 'caption', at(START + 46, 862, 800, 34), 'caption'),
+        place('p_contact', 'caption', at(START + 40, 862, 800, 34), 'caption'),
       ],
       decorations: [
         board('closing'),
-        glow('d_mutzar_closing_glow', atEnd(-240, 120, 1100, 900), CORAL, 0.18),
+        glow('d_mutzar_closing_glow', atEnd(0, 140, 1000, 900), CORAL, 0.2),
         ...liveDot('closing', 150),
         ...buttons3.flatMap((top, i) => [
           rect(
             `d_mutzar_closing_button${i + 1}`,
             at(START, top, 860, 104),
-            i === 0 ? INK_FILL : i === 1 ? WHITE_FILL : solid(token('primary', 0.1)),
+            i === 0 ? PRIMARY_FILL : i === 1 ? WHITE_FILL : solid(token('secondary', 0.1)),
             {
               ...(i === 1 ? { stroke: { color: token('text', 0.14), width: 1.5 } } : {}),
               effects: { radius: 52, ...(i === 0 ? { shadow: { x: 0, y: 16, blur: 36, color: { value: '#3b2414', alpha: 0.22 } } } : {}) },
             },
           ),
-          drawing(
+          // The arrow of the first button points the way the slide reads; the others have no way.
+          (i === 0 ? (id: string, frame: Frame, markup: string) => drawing(id, frame, markup, PAINT) : still)(
             `d_mutzar_closing_button${i + 1}_icon`,
             at(START + 860 - 30 - 48, top + 28, 48, 48),
             svg(
@@ -1183,16 +1250,15 @@ function layouts(): Layout[] {
               `<circle cx="24" cy="24" r="23" fill="${i === 0 ? CORAL : i === 1 ? INK : CORAL}" fill-opacity="${i === 1 ? 0.06 : 1}"/>` +
                 icon((['arrow', 'play', 'tag'] as const)[i]!, 12, 12, 24, i === 1 ? INK : WHITE, 2.4),
             ),
-            PAINT,
           ),
         ]),
-        drawing('d_mutzar_closing_mail', at(START, 864, 32, 30), svg(32, 30, icon('mail', 2, 1, 28, CORAL, 2.2)), PAINT),
-        keycap('d_mutzar_closing_cmd', atEnd(170, 300, 270, 270), keyIcon('command'), -8),
-        keycap('d_mutzar_closing_enter', atEnd(380, 390, 270, 250), keyIcon('enter', CORAL), 6),
-        ...toast('closing', atEnd(130, 170, 470, 76), w2('התהליך פורסם', 'Workflow published'), w2('פתיחה', 'Open')),
-        cursor('d_mutzar_closing_cursor', [START + 860 - 78, 540], VIOLET, NAMES[1]!),
-        dot('d_mutzar_closing_click', at(START + 860 - 78 - 22, 518, 44, 44), { kind: 'none' }, {
-          stroke: { color: token('secondary', 0.5), width: 2.5 },
+        still('d_mutzar_closing_mail', at(START, 864, 32, 30), svg(32, 30, icon('mail', 2, 1, 28, CORAL, 2.2))),
+        keycap('d_mutzar_closing_cmd', atEnd(150, 360, 320, 320), keyIcon('command'), -8),
+        keycap('d_mutzar_closing_enter', atEnd(380, 470, 320, 300), keyIcon('enter', CORAL), 6),
+        ...toast('closing', atEnd(150, 236, 470, 76), w2('התהליך פורסם', 'Workflow published'), w2('פתיחה', 'Open')),
+        cursor('d_mutzar_closing_cursor', [START + 860 - 78, 526], VIOLET, NAMES[1]!),
+        dot('d_mutzar_closing_click', at(START + 860 - 78 - 22, 504, 44, 44), { kind: 'none' }, {
+          stroke: { color: token('accent', 0.5), width: 2.5 },
         }),
       ],
     },
@@ -1221,10 +1287,10 @@ function flipped(drawn: readonly Layout[]): Layout[] {
 // ---------------------------------------------------------------------------------------------
 // The sample: the launch night of Zrima 2.0, workflow automation for operations teams
 
-const FOOTER_HE = text('Zrima 2.0 · ערב ההשקה · דצמבר 2026');
-const FOOTER_EN = text('Zrima 2.0 · Launch night · December 2026');
+const FOOTER_HE = text('Zrima 2.0 · ערב ההשקה');
+const FOOTER_EN = text('Zrima 2.0 · Launch night');
 const ADOPTION = [12, 21, 38, 74, 118, 162];
-const TABLE_COLS = [520, 352, 352, 408];
+const TABLE_COLS = [508, 352, 352, 408];
 const TABLE_ROW = 96;
 
 const TEAM_PICTURES = () => [
@@ -1250,7 +1316,7 @@ const sampleHe: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('חלק ראשון'),
-      title: text('מה חדש ב-2.0'),
+      title: text('מה חדש', 'בגרסה 2.0'),
       subtitle: text('שלוש יכולות שביקשתם, ואחת שלא ציפיתם לה.'),
     },
   },
@@ -1293,13 +1359,13 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_mutzar_cards',
     name: 'שלוש יכולות',
     content: {
-      caption: [text('שלוש יכולות חדשות'), text('אוטומציה'), text('חיבורים'), text('אבטחה')],
-      title: text('מה נכנס לגרסה 2.0'),
+      caption: [text('מה חדש'), text('אוטומציה'), text('חיבורים'), text('אבטחה')],
+      title: text('שלוש יכולות חדשות'),
       subtitle: [text('סוכני AI'), text('400 חיבורים'), text('הרשאות לכל שלב')],
       body: [
         text('סוכן שמסווג פניות חוזרות, עונה עליהן ומעביר לאדם כשצריך.'),
-        text('מהנהלת החשבונות ועד המחסן: חיבור חדש לוקח שתי דקות, בלי קוד.'),
-        text('כל שלב רץ בהרשאות המינימליות, וכל פעולה נרשמת ביומן.'),
+        text('מהנהלת החשבונות ועד המחסן: חיבור חדש בשתי דקות, בלי קוד.'),
+        text('כל שלב מקבל רק את ההרשאות שהוא צריך, וכל פעולה נרשמת.'),
         text('שלושתן זמינות מהערב לכל הלקוחות, בלי תוספת מחיר.'),
       ],
       footer: FOOTER_HE,
@@ -1314,9 +1380,9 @@ const sampleHe: SampleSlide[] = [
       image: { assetId: pictures.mutzarBuilderHe.id },
       subtitle: [text('גוררים ומחברים'), text('AI שמציע את הצעד הבא'), text('בדיקה לפני פרסום')],
       body: [
-        text('כל שלב הוא כרטיס על הקנבס. מותחים חץ, והנתונים עוברים לבד בין המערכות.'),
+        text('כל שלב הוא כרטיס על הקנבס. מותחים חץ, והנתונים עוברים לבד.'),
         text('מתארים במילים מה צריך לקרות, ו-Zrima בונה טיוטה של התהליך.'),
-        text('מריצים על נתונים אמיתיים בסביבה סגורה, ורק אז מעלים לאוויר.'),
+        text('מריצים על נתונים אמיתיים בסביבה סגורה, ואז מעלים לאוויר.'),
       ],
       footer: FOOTER_HE,
     },
@@ -1325,15 +1391,15 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_mutzar_timeline',
     name: 'מפת הדרכים',
     content: {
-      caption: [text('מפת הדרכים'), text('התאריכים של 2.1 ו-3.0 הם יעד, ועשויים להשתנות.')],
+      caption: [text('מפת הדרכים'), text('התאריכים של 2.1 ו-3.0 הם יעד, ועוד עשויים לזוז.')],
       title: text('מ-1.0 ועד 3.0'),
       number: [text('v1.0'), text('v2.0'), text('v2.1'), text('v3.0')],
       subtitle: [text('הבסיס'), text('בונה חדש ו-AI'), text('אפליקציה לנייד'), text('תהליכים בין חברות')],
       body: [
-        text('2025: ארבעים חיבורים ותהליכים פשוטים לצוותים קטנים.'),
+        text('2025: ארבעים חיבורים ותהליכים פשוטים.'),
         text('דצמבר 2026: הבונה, סוכני AI ו-400 חיבורים.'),
-        text('פברואר 2027: אישורים והתראות מהטלפון, בבטא פתוחה.'),
-        text('סוף 2027: ספקים ולקוחות שותפים לאותו תהליך.'),
+        text('פברואר 2027: אישורים והתראות מהטלפון.'),
+        text('סוף 2027: ספקים ולקוחות באותו תהליך.'),
       ],
       footer: FOOTER_HE,
     },
@@ -1344,15 +1410,15 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [
         text('מהרשמה לאוטומציה'),
-        text('חשבון חינם, בלי כרטיס אשראי'),
-        text('מחברים את המערכות שכבר יש'),
+        text('חינם, בלי כרטיס אשראי'),
+        text('מחברים את המערכות הקיימות'),
         text('כל אחד עם ההרשאות שלו'),
-        text('בוחרים תבנית או מתארים במילים'),
-        text('סיכום שבועי של הזמן שנחסך'),
+        text('תבנית מוכנה, או תיאור במילים'),
+        text('כמה שעות נחסכו השבוע'),
       ],
       title: text('רבע שעה עד התהליך הראשון'),
       subtitle: [text('הרשמה'), text('חיבור'), text('הזמנת הצוות'), text('אוטומציה'), text('דוח')],
-      number: [text('1 דק׳'), text('3 דק׳'), text('1 דק׳'), text('10 דק׳'), text('כל שבוע')],
+      number: [text('1 דק׳'), text('3 דק׳'), text('1 דק׳'), text('10 דק׳'), text('שבועי')],
       body: text('ממוצע הבטא: רבע שעה מההרשמה ועד התהליך הראשון שרץ לבד.'),
       footer: FOOTER_HE,
     },
@@ -1384,7 +1450,7 @@ const sampleHe: SampleSlide[] = [
     name: 'אימוץ',
     content: {
       caption: [text('אימוץ'), text('נתוני השימוש של Zrima, יוני עד נובמבר 2026.')],
-      title: text('תהליכים פעילים, באלפים'),
+      title: text('צוותים לא רק נרשמו, הם נשארו'),
       number: [text('×13'), text('92%')],
       body: [text('גידול בתהליכים הפעילים מאז תחילת הבטא ביוני.'), text('מהצוותים עדיין פעילים אחרי 60 יום.')],
       footer: FOOTER_HE,
@@ -1487,7 +1553,7 @@ const sampleEn: SampleSlide[] = [
     content: {
       number: text('01'),
       caption: text('Part one'),
-      title: text("What's new in 2.0"),
+      title: text("What's new", 'in version 2.0'),
       subtitle: text("Three things you asked for, and one you didn't see coming."),
     },
   },
@@ -1522,7 +1588,7 @@ const sampleEn: SampleSlide[] = [
       title: text('The beta in numbers'),
       number: [text('1.8M'), text('4,200'), text('−63%'), text('99.98%')],
       subtitle: text('Workflows run in beta, hands-free'),
-      body: text('Teams built 14 workflows on average in their first week, then let them run.'),
+      body: text('In their first week, teams built 14 workflows on average, then let them run on their own.'),
       footer: FOOTER_EN,
     },
   },
@@ -1530,14 +1596,14 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_mutzar_cards',
     name: 'Three capabilities',
     content: {
-      caption: [text('Three new capabilities'), text('Automation'), text('Integrations'), text('Security')],
-      title: text("What's in version 2.0"),
+      caption: [text("What's new"), text('Automation'), text('Integrations'), text('Security')],
+      title: text('Three new capabilities'),
       subtitle: [text('AI agents'), text('400 integrations'), text('Per-step access')],
       body: [
-        text('An agent that sorts repeat requests, answers them, and hands off to a person.'),
-        text('From finance to the warehouse: a new connection takes two minutes, no code.'),
-        text('Each step runs with the least access it needs, and every action is logged.'),
-        text('All three are live tonight for every customer, at no extra cost.'),
+        text('Sorts repeat requests, answers, and hands off to a person.'),
+        text('Finance to warehouse: a new connection takes two minutes.'),
+        text('The least access for each step, and every action logged.'),
+        text('All three are live tonight, at no extra cost.'),
       ],
       footer: FOOTER_EN,
     },
@@ -1549,11 +1615,11 @@ const sampleEn: SampleSlide[] = [
       caption: text('The new builder'),
       title: text('A builder the whole', 'team understands'),
       image: { assetId: pictures.mutzarBuilderEn.id },
-      subtitle: [text('Drag and connect'), text('AI drafts the next step'), text('Test before you publish')],
+      subtitle: [text('Drag and connect'), text('AI drafts the flow'), text('Test, then publish')],
       body: [
-        text('Every step is a card on the canvas. Draw an arrow, and data flows between your tools.'),
-        text('Describe what should happen, and Zrima drafts the workflow for you.'),
-        text('Run it on real data in a sandbox, and only then take it live.'),
+        text('Each step is a card on the canvas. Draw an arrow, and the data flows.'),
+        text('Describe the outcome, and Zrima drafts the workflow.'),
+        text('Run it on real data in a sandbox, then go live.'),
       ],
       footer: FOOTER_EN,
     },
@@ -1562,15 +1628,15 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_mutzar_timeline',
     name: 'Roadmap',
     content: {
-      caption: [text('Roadmap'), text('Dates for 2.1 and 3.0 are targets and may change.')],
+      caption: [text('Roadmap'), text('The dates of 2.1 and 3.0 are targets.')],
       title: text('From 1.0 to 3.0'),
       number: [text('v1.0'), text('v2.0'), text('v2.1'), text('v3.0')],
-      subtitle: [text('The foundation'), text('New builder and AI'), text('Mobile app'), text('Cross-company flows')],
+      subtitle: [text('Foundation'), text('Builder and AI'), text('Mobile app'), text('Cross-company flows')],
       body: [
-        text('2025: forty integrations and simple flows for small teams.'),
-        text('December 2026: the builder, AI agents and 400 integrations.'),
-        text('February 2027: approvals and alerts on your phone, in open beta.'),
-        text('Late 2027: suppliers and customers share one workflow.'),
+        text('2025: forty integrations, simple flows.'),
+        text('Dec 2026: the builder, AI agents, 400 integrations.'),
+        text('Feb 2027: approvals and alerts by phone.'),
+        text('Late 2027: suppliers and customers in one flow.'),
       ],
       footer: FOOTER_EN,
     },
@@ -1580,17 +1646,17 @@ const sampleEn: SampleSlide[] = [
     name: 'Onboarding',
     content: {
       caption: [
-        text('From sign-up to automation'),
-        text('A free account, no card needed'),
-        text('Link the tools you already use'),
-        text('Everyone with their own access'),
-        text('Pick a template, or describe it'),
-        text('A weekly summary of time saved'),
+        text('Onboarding'),
+        text('Free, no card needed'),
+        text('Link your tools'),
+        text("Everyone's own access"),
+        text('A template, or plain words'),
+        text('Hours saved, every week'),
       ],
-      title: text('Fifteen minutes to your first flow'),
+      title: text('Fifteen minutes to a first flow'),
       subtitle: [text('Sign up'), text('Connect'), text('Invite'), text('Automate'), text('Report')],
       number: [text('1 min'), text('3 min'), text('1 min'), text('10 min'), text('Weekly')],
-      body: text('Beta average: fifteen minutes from sign-up to a first workflow running on its own.'),
+      body: text('Beta average: fifteen minutes to a first live workflow.'),
       footer: FOOTER_EN,
     },
   },
@@ -1604,11 +1670,11 @@ const sampleEn: SampleSlide[] = [
       body: [
         bullets(
           'Details copied by hand between tools',
-          'Chasing approvals by phone and email',
+          'Chasing approvals by phone',
           'Mistakes found at month-end close',
         ),
         bullets(
-          'Data moves between tools on its own',
+          'Data moves between tools by itself',
           'One-tap approval, right from the alert',
           'Exceptions caught the moment they happen',
         ),
@@ -1621,7 +1687,7 @@ const sampleEn: SampleSlide[] = [
     name: 'Adoption',
     content: {
       caption: [text('Adoption'), text('Zrima usage data, June to November 2026.')],
-      title: text('Active workflows, in thousands'),
+      title: text('Teams signed up, and stayed'),
       number: [text('×13'), text('92%')],
       body: [text('Growth in active workflows since the beta began in June.'), text('Of teams still active after 60 days.')],
       footer: FOOTER_EN,
@@ -1685,10 +1751,10 @@ const sampleEn: SampleSlide[] = [
       image: TEAM_PICTURES(),
       subtitle: [text('Noa Barak'), text('Yoav Landau'), text('Eitan Segev'), text('Maya Carmi')],
       body: [
-        text('Ran operations at three logistics firms before Zrima.'),
-        text('Built the engine that runs two million workflows a day.'),
-        text('Leads the new builder and the AI agents.'),
-        text('Designed 2.0 together with forty operations teams.'),
+        text('Ran operations at three logistics firms.'),
+        text('Built the engine behind two million runs a day.'),
+        text('Leads the builder and the AI agents.'),
+        text('Designed 2.0 with forty operations teams.'),
       ],
       footer: FOOTER_EN,
     },

@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!-- The picture of m-modelrelease: a form of thought, rings of ink-dark points lifted into hills, the
+     highest of them lit amber, with depth of field, on a transparent ground.
+     node <scratchpad>/hitech/render.mjs m-modelrelease.html out.png 1000 1000 2 -->
+<style>
+  html, body { margin: 0; overflow: hidden; background: transparent; }
+  canvas { display: block; }
+</style>
+<script>document.documentElement.dataset.wait = 'true';</script>
+<script type="importmap">{"imports": {
+  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+}}</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { renderAccumulated } from './hitech-render.js';
+
+const W = innerWidth, H = innerHeight;
+const Q = new URLSearchParams(location.search);
+const num = (k, d) => (Q.has(k) ? Q.get(k).split(',').map(Number) : d);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(W, H);
+renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.NoToneMapping;
+document.body.append(renderer.domElement);
+const scene = new THREE.Scene();
+
+let seed = 11;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(2 * Math.PI * rnd());
+
+// a smooth field over the sphere: rotation about a tilted axis, bent by two slow waves
+const positions = [], colors = [], sizes = [], alphas = [];
+const INK = new THREE.Color(num('ink', [0x161a3a])[0]);
+const INDIGO = new THREE.Color(0x3b3fd8);
+const AMBER = new THREE.Color(0xff7a1a);
+function add(p, color, size, alpha) {
+  positions.push(p.x, p.y, p.z);
+  colors.push(color.r, color.g, color.b);
+  sizes.push(size);
+  alphas.push(alpha);
+}
+
+// a smooth field of hills over the sphere, from a few crossed waves
+function hills(d) {
+  const { x, y, z } = d;
+  return (
+    Math.sin(2.1 * x + 1.2) * Math.sin(1.7 * y + 0.4) * Math.sin(2.4 * z + 2.2) +
+    0.55 * Math.sin(4.3 * x - 0.6 * y + 0.9) * Math.cos(3.7 * z + 1.1 * y) +
+    0.3 * Math.sin(7.1 * y + 2.0 * z) * Math.cos(6.3 * x - 0.5)
+  );
+}
+
+// rings of dots round the sphere, each lifted by the hills: a surface of contour lines
+const rings = num("rings", [56])[0];
+const AMP = num("amp", [0.15])[0];
+const spacing = num('spacing', [0.006])[0];
+for (let i = 0; i < rings; i++) {
+  const theta = (Math.PI * (i + 0.5)) / rings;
+  const n = Math.max(6, Math.floor((2 * Math.PI * Math.sin(theta)) / spacing));
+  for (let j = 0; j < n; j++) {
+    const phi = (2 * Math.PI * j) / n + i * 0.37;
+    const d = new THREE.Vector3(Math.sin(theta) * Math.cos(phi), Math.cos(theta), Math.sin(theta) * Math.sin(phi));
+    const h = hills(d);
+    const p = d.clone().multiplyScalar(1 + AMP * h);
+    const lit = THREE.MathUtils.smoothstep(h, 0.62, 0.95);
+    const color = INK.clone().lerp(INDIGO, THREE.MathUtils.clamp(0.5 + h * 0.5, 0, 1) * 0.7).lerp(AMBER, lit);
+    add(p, color, 1.15 + lit * 0.9, 0.5 + 0.45 * Math.max(lit, THREE.MathUtils.clamp(h, 0, 1) * 0.6));
+  }
+}
+// a few sparks just off the surface over the highest hills
+for (let i = 0; i < 1400; i++) {
+  const d = new THREE.Vector3(gauss(), gauss(), gauss()).normalize();
+  const h = hills(d);
+  if (h < 0.7) continue;
+  add(d.multiplyScalar(1 + AMP * h + 0.04 + rnd() * 0.12), AMBER, 1.4 + rnd() * 1.2, 0.35 + rnd() * 0.4);
+}
+
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+geo.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+geo.setAttribute('alpha', new THREE.Float32BufferAttribute(alphas, 1));
+const scale = num('dot', [2.4])[0] * devicePixelRatio;
+const mat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { scale: { value: scale } },
+  vertexShader: `attribute float size; attribute float alpha; attribute vec3 color; uniform float scale;
+    varying vec3 vColor; varying float vAlpha;
+    void main() {
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      // nearer points are larger and darker; the far side of the sphere fades into the paper
+      float depth = clamp((-mv.z - 3.2) / 2.2, 0.0, 1.0);
+      vColor = color;
+      vAlpha = alpha * mix(1.0, 0.16, depth);
+      gl_PointSize = size * scale * (4.2 / -mv.z);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `varying vec3 vColor; varying float vAlpha;
+    void main() { vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5) discard;
+      gl_FragColor = vec4(vColor, vAlpha * smoothstep(0.5, 0.2, d)); }`,
+});
+const cloud = new THREE.Points(geo, mat);
+cloud.rotation.set(...num('rot', [1.1, 0.2, 0.4]));
+scene.add(cloud);
+
+const camera = new THREE.PerspectiveCamera(num('fov', [30])[0], W / H, 0.1, 100);
+camera.position.set(0, 0, num('dist', [5.1])[0]);
+camera.lookAt(0, 0, 0);
+
+await renderAccumulated(renderer, scene, camera, {
+  frames: num('frames', [24])[0],
+  focus: new THREE.Vector3(0, 0, num('focus', [0.6])[0]),
+  aperture: num('ap', [0.03])[0],
+});
+document.documentElement.dataset.ready = 'true';
+</script>
+</body>
+</html>

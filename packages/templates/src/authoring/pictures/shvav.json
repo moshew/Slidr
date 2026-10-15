@@ -42,5 +42,27 @@
     "height": 614,
     "origin": "ai",
     "name": "shvav-team-4.webp"
+  },
+  "shvavBoard": {
+    "id": "e135c78e3ed7cf1e7940bad4ef4cbaec663d3bab9c7fe2ba205a1ab8b41aeb41",
+    "file": "e135c78e3ed7cf1e7940bad4ef4cbaec663d3bab9c7fe2ba205a1ab8b41aeb41.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 55188,
+    "width": 1400,
+    "height": 1600,
+    "origin": "import",
+    "name": "shvav-board.webp"
+  },
+  "shvavLine": {
+    "id": "923b65669b29fce9ca8ae08bb2399678b6ef11f8767453fcb84ecfa659ec98e2",
+    "file": "923b65669b29fce9ca8ae08bb2399678b6ef11f8767453fcb84ecfa659ec98e2.webp",
+    "mime": "image/webp",
+    "kind": "image",
+    "bytes": 111780,
+    "width": 3840,
+    "height": 1280,
+    "origin": "import",
+    "name": "shvav-line.webp"
   }
 }

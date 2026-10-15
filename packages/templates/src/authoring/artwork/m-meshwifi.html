@@ -1,134 +1,275 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8" />
-<!-- The picture of m-meshwifi: three white mesh Wi-Fi nodes on a transparent ground.
+  <head>
+    <meta charset="utf-8" />
+    <!-- The picture of m-meshwifi: three white mesh Wi-Fi nodes on a transparent ground.
      node tools/render-art.mjs m-meshwifi.html out.png 1160 920 2 -->
-<style>html, body { margin: 0; width: 1160px; height: 920px; overflow: hidden; background: transparent; }</style>
-<script>document.documentElement.dataset.wait = 'true';</script>
-<script type="importmap">{"imports": {
-  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
-  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
-}}</script>
-</head>
-<body>
-<script type="module">
-import { THREE, studio, softboxes, contactShadow, shadowGround, canvasTexture, grain, squircleLathe, squircleCurve, anchors, done } from './techproduct-studio.js';
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 1160px;
+        height: 920px;
+        overflow: hidden;
+        background: transparent;
+      }
+    </style>
+    <script>
+      document.documentElement.dataset.wait = 'true';
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+          "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <script type="module">
+      import {
+        THREE,
+        studio,
+        softboxes,
+        contactShadow,
+        shadowGround,
+        canvasTexture,
+        grain,
+        squircleLathe,
+        squircleCurve,
+        anchors,
+        done,
+      } from './techproduct-studio.js';
 
-const W = 1160, H = 920;
-const { renderer, scene, camera } = studio({ width: W, height: H, fov: 18, exposure: 1.18, tone: 'neutral' });
-scene.environment = softboxes(renderer, {
-  top: '#e2e5ea', horizon: '#a9adb4', bottom: '#55575d', power: 0.9,
-  panels: [
-    { at: [-7, 7, 6], size: [6, 6], power: 3.4 },
-    { at: [8, 3, 2], size: [1.6, 8], power: 2.4, color: '#e6efff' },
-    { at: [0, 10, -4], size: [8, 3], power: 1.4 },
-  ],
-});
+      const W = 1160,
+        H = 920;
+      const { renderer, scene, camera } = studio({
+        width: W,
+        height: H,
+        fov: 18,
+        exposure: 1.18,
+        tone: 'neutral',
+      });
+      scene.environment = softboxes(renderer, {
+        top: '#e2e5ea',
+        horizon: '#a9adb4',
+        bottom: '#55575d',
+        power: 0.9,
+        panels: [
+          { at: [-7, 7, 6], size: [6, 6], power: 3.4 },
+          { at: [8, 3, 2], size: [1.6, 8], power: 2.4, color: '#e6efff' },
+          { at: [0, 10, -4], size: [8, 3], power: 1.4 },
+        ],
+      });
 
-camera.position.set(0.3, 3.0, 10.4);
-camera.lookAt(0.05, 0.86, -0.2);
+      camera.position.set(0.3, 3.0, 10.4);
+      camera.lookAt(0.05, 0.86, -0.2);
 
-const key = new THREE.DirectionalLight('#fffaf2', 1.7);
-key.position.set(-4, 10, 5);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-key.shadow.camera.left = -5; key.shadow.camera.right = 5; key.shadow.camera.top = 5; key.shadow.camera.bottom = -5;
-key.shadow.radius = 16; key.shadow.bias = -0.0005; key.shadow.normalBias = 0.02;
-scene.add(key);
-const rim = new THREE.DirectionalLight('#d8e6ff', 0.6);
-rim.position.set(7, 4, -3);
-scene.add(rim);
+      const key = new THREE.DirectionalLight('#fffaf2', 1.7);
+      key.position.set(-4, 10, 5);
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      key.shadow.camera.left = -5;
+      key.shadow.camera.right = 5;
+      key.shadow.camera.top = 5;
+      key.shadow.camera.bottom = -5;
+      key.shadow.radius = 16;
+      key.shadow.bias = -0.0005;
+      key.shadow.normalBias = 0.02;
+      scene.add(key);
+      const rim = new THREE.DirectionalLight('#d8e6ff', 0.6);
+      rim.position.set(7, 4, -3);
+      scene.add(rim);
 
-// The matte white shell, with a fine grain in its roughness.
-const rough = grain(512, { base: 140, spread: 30, seed: 11 });
-rough.repeat.set(5, 5);
-const S = 0.46, HT = 1.62;
-function profile() {
-  const p = [[0, 0.04], [0.86, 0.04], [0.9, 0.0]];
-  for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + (i / 10) * (Math.PI / 2); p.push([0.9 + Math.cos(a) * 0.1, 0.1 + Math.sin(a) * 0.1]); }
-  p.push([1.0, HT - 0.24]);
-  for (let i = 0; i <= 18; i++) { const a = (i / 18) * (Math.PI / 2); p.push([0.76 + Math.cos(a) * 0.24, HT - 0.24 + Math.sin(a) * 0.11]); }
-  for (let i = 1; i <= 8; i++) { const r = 0.76 * (1 - i / 8); p.push([r, HT - 0.13 + 0.025 * (1 - (r / 0.76) ** 2)]); }
-  return p;
-}
-const PROFILE = profile();
-// Where a height on the straight side falls in the lathe's v.
-const lengths = [0];
-for (let i = 1; i < PROFILE.length; i++) lengths.push(lengths[i - 1] + Math.hypot(PROFILE[i][0] - PROFILE[i - 1][0], PROFILE[i][1] - PROFILE[i - 1][1]));
-const total = lengths[lengths.length - 1];
-const sideStart = PROFILE.findIndex(([r, y]) => r >= 0.9999);
-const vAt = (y) => (lengths[sideStart] + (y - PROFILE[sideStart][1])) / total;
-// A band of fine vents low on the body, and the status light above it, in the lathe's uv (u around, v up).
-const vents = canvasTexture(4096, 1024, (ctx, w, h) => {
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#000000';
-  const v0 = vAt(0.15), v1 = vAt(0.36), rows = 8;
-  for (let r = 0; r < rows; r++) {
-    const y = h * (1 - (v0 + ((v1 - v0) * r) / (rows - 1)));
-    const n = 236;
-    for (let i = 0; i < n; i++) {
-      const x = ((i + (r % 2) * 0.5) / n) * w;
-      ctx.beginPath(); ctx.ellipse(x, y, 2.6, 3.6, 0, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-}, { srgb: false });
-const ventColor = canvasTexture(4096, 1024, (ctx, w, h) => {
-  ctx.drawImage(vents.image, 0, 0);
-  const img = ctx.getImageData(0, 0, w, h);
-  for (let i = 0; i < img.data.length; i += 4) { const v = 150 + img.data[i] * (105 / 255); img.data[i] = img.data[i + 1] = v; img.data[i + 2] = v + 2; }
-  ctx.putImageData(img, 0, 0);
-});
-const shell = new THREE.MeshPhysicalMaterial({ color: '#f7f7f5', map: ventColor, bumpMap: vents, bumpScale: 1.4, roughness: 0.5, roughnessMap: rough, clearcoat: 0.35, clearcoatRoughness: 0.32, sheen: 0.3, sheenRoughness: 0.7, sheenColor: '#ffffff' });
-const foot = new THREE.MeshStandardMaterial({ color: '#c7c8cb', roughness: 0.8 });
-const glow = new THREE.MeshStandardMaterial({ color: '#c8f0ff', emissive: '#4cc8ff', emissiveIntensity: 4.0, toneMapped: false });
-const groove = new THREE.MeshStandardMaterial({ color: '#cfe6f2', roughness: 0.5, emissive: '#7fd8ff', emissiveIntensity: 0.25 });
+      // The matte white shell, with a fine grain in its roughness.
+      const rough = grain(512, { base: 140, spread: 30, seed: 11 });
+      rough.repeat.set(5, 5);
+      const S = 0.46,
+        HT = 1.62;
+      function profile() {
+        const p = [
+          [0, 0.04],
+          [0.86, 0.04],
+          [0.9, 0.0],
+        ];
+        for (let i = 0; i <= 10; i++) {
+          const a = -Math.PI / 2 + (i / 10) * (Math.PI / 2);
+          p.push([0.9 + Math.cos(a) * 0.1, 0.1 + Math.sin(a) * 0.1]);
+        }
+        p.push([1.0, HT - 0.24]);
+        for (let i = 0; i <= 18; i++) {
+          const a = (i / 18) * (Math.PI / 2);
+          p.push([0.76 + Math.cos(a) * 0.24, HT - 0.24 + Math.sin(a) * 0.11]);
+        }
+        for (let i = 1; i <= 8; i++) {
+          const r = 0.76 * (1 - i / 8);
+          p.push([r, HT - 0.13 + 0.025 * (1 - (r / 0.76) ** 2)]);
+        }
+        return p;
+      }
+      const PROFILE = profile();
+      // Where a height on the straight side falls in the lathe's v.
+      const lengths = [0];
+      for (let i = 1; i < PROFILE.length; i++)
+        lengths.push(
+          lengths[i - 1] +
+            Math.hypot(PROFILE[i][0] - PROFILE[i - 1][0], PROFILE[i][1] - PROFILE[i - 1][1]),
+        );
+      const total = lengths[lengths.length - 1];
+      const sideStart = PROFILE.findIndex(([r, y]) => r >= 0.9999);
+      const vAt = (y) => (lengths[sideStart] + (y - PROFILE[sideStart][1])) / total;
+      // A band of fine vents low on the body, and the status light above it, in the lathe's uv (u around, v up).
+      const vents = canvasTexture(
+        4096,
+        1024,
+        (ctx, w, h) => {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = '#000000';
+          const v0 = vAt(0.15),
+            v1 = vAt(0.36),
+            rows = 8;
+          for (let r = 0; r < rows; r++) {
+            const y = h * (1 - (v0 + ((v1 - v0) * r) / (rows - 1)));
+            const n = 236;
+            for (let i = 0; i < n; i++) {
+              const x = ((i + (r % 2) * 0.5) / n) * w;
+              ctx.beginPath();
+              ctx.ellipse(x, y, 2.6, 3.6, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        },
+        { srgb: false },
+      );
+      const ventColor = canvasTexture(4096, 1024, (ctx, w, h) => {
+        ctx.drawImage(vents.image, 0, 0);
+        const img = ctx.getImageData(0, 0, w, h);
+        for (let i = 0; i < img.data.length; i += 4) {
+          const v = 150 + img.data[i] * (105 / 255);
+          img.data[i] = img.data[i + 1] = v;
+          img.data[i + 2] = v + 2;
+        }
+        ctx.putImageData(img, 0, 0);
+      });
+      const shell = new THREE.MeshPhysicalMaterial({
+        color: '#f7f7f5',
+        map: ventColor,
+        bumpMap: vents,
+        bumpScale: 1.4,
+        roughness: 0.5,
+        roughnessMap: rough,
+        clearcoat: 0.35,
+        clearcoatRoughness: 0.32,
+        sheen: 0.3,
+        sheenRoughness: 0.7,
+        sheenColor: '#ffffff',
+      });
+      const foot = new THREE.MeshStandardMaterial({ color: '#c7c8cb', roughness: 0.8 });
+      const glow = new THREE.MeshStandardMaterial({
+        color: '#c8f0ff',
+        emissive: '#4cc8ff',
+        emissiveIntensity: 4.0,
+        toneMapped: false,
+      });
+      const groove = new THREE.MeshStandardMaterial({
+        color: '#cfe6f2',
+        roughness: 0.5,
+        emissive: '#7fd8ff',
+        emissiveIntensity: 0.25,
+      });
 
-const bodyGeo = squircleLathe(PROFILE, { n: 4.2, sx: S, sz: S, segments: 220 });
-const ringY = HT - 0.13 + 0.025 * (1 - (0.62 / 0.76) ** 2);
-const ringGeo = new THREE.TubeGeometry(squircleCurve(0.62, ringY, { n: 4.2, sx: S, sz: S }), 256, 0.015, 12, true);
-const grooveGeo = new THREE.TubeGeometry(squircleCurve(0.62, ringY + 0.001, { n: 4.2, sx: S, sz: S }), 256, 0.026, 12, true);
+      const bodyGeo = squircleLathe(PROFILE, { n: 4.2, sx: S, sz: S, segments: 220 });
+      const ringY = HT - 0.13 + 0.025 * (1 - (0.62 / 0.76) ** 2);
+      const ringGeo = new THREE.TubeGeometry(
+        squircleCurve(0.62, ringY, { n: 4.2, sx: S, sz: S }),
+        256,
+        0.015,
+        12,
+        true,
+      );
+      const grooveGeo = new THREE.TubeGeometry(
+        squircleCurve(0.62, ringY + 0.001, { n: 4.2, sx: S, sz: S }),
+        256,
+        0.026,
+        12,
+        true,
+      );
 
-function node(x, z, turn) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(bodyGeo, shell);
-  body.castShadow = true; body.receiveShadow = true;
-  const ringBed = new THREE.Mesh(grooveGeo, groove);
-  ringBed.scale.y = 0.4; ringBed.position.y = ringY * 0.6;
-  const ring = new THREE.Mesh(ringGeo, glow);
-  ring.position.y = 0.006;
-  const led = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.045, 6, 16), glow);
-  led.rotation.z = Math.PI / 2;
-  // The front of the section (angle 90° in the lathe) faces +z.
-  led.position.set(0, 0.62, S * 1.0 + 0.002);
-  g.add(body, ringBed, ring, led);
-  g.position.set(x, 0, z);
-  g.rotation.y = turn;
-  scene.add(g);
-  return g;
-}
-const NODES = [[0.0, 0.55, 0.42], [-1.12, -0.75, 0.62], [1.2, -1.55, 0.3]];
-for (const [x, z, turn] of NODES) node(x, z, turn);
+      function node(x, z, turn) {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(bodyGeo, shell);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        const ringBed = new THREE.Mesh(grooveGeo, groove);
+        ringBed.scale.y = 0.4;
+        ringBed.position.y = ringY * 0.6;
+        const ring = new THREE.Mesh(ringGeo, glow);
+        ring.position.y = 0.006;
+        const led = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.045, 6, 16), glow);
+        led.rotation.z = Math.PI / 2;
+        // The front of the section (angle 90° in the lathe) faces +z.
+        led.position.set(0, 0.62, S * 1.0 + 0.002);
+        g.add(body, ringBed, ring, led);
+        g.position.set(x, 0, z);
+        g.rotation.y = turn;
+        scene.add(g);
+        return g;
+      }
+      const NODES = [
+        [0.0, 0.55, 0.42],
+        [-1.12, -0.75, 0.62],
+        [1.2, -1.55, 0.3],
+      ];
+      for (const [x, z, turn] of NODES) node(x, z, turn);
 
-const ground = shadowGround({ opacity: 0.13, center: [0.1, -0.4], fade: [1.6, 2.5] });
-scene.add(ground);
+      const ground = shadowGround({ opacity: 0.13, center: [0.1, -0.4], fade: [1.6, 2.5] });
+      scene.add(ground);
 
-const contact = contactShadow(renderer, scene, { width: 8, depth: 8, height: 0.5, blur: 1.6, darkness: 2.2, opacity: 0.8 });
-const ambient = contactShadow(renderer, scene, { width: 6, depth: 5.4, z: -0.4, height: 2.4, blur: 6, darkness: 0.8, opacity: 0.42 });
-contact.plane.position.y = 0.001; ambient.plane.position.y = 0.0005;
-ground.visible = false;
-ambient.plane.visible = false; contact.update(); contact.plane.visible = false; ambient.update(); contact.plane.visible = true;
-ground.visible = true;
+      const contact = contactShadow(renderer, scene, {
+        width: 8,
+        depth: 8,
+        height: 0.5,
+        blur: 1.6,
+        darkness: 2.2,
+        opacity: 0.8,
+      });
+      const ambient = contactShadow(renderer, scene, {
+        width: 6,
+        depth: 5.4,
+        z: -0.4,
+        height: 2.4,
+        blur: 6,
+        darkness: 0.8,
+        opacity: 0.42,
+      });
+      contact.plane.position.y = 0.001;
+      ambient.plane.position.y = 0.0005;
+      ground.visible = false;
+      ambient.plane.visible = false;
+      contact.update();
+      contact.plane.visible = false;
+      ambient.update();
+      contact.plane.visible = true;
+      ground.visible = true;
 
-renderer.render(scene, camera);
-const points = {};
-NODES.forEach(([x, z], i) => { points[`top${i}`] = [x, HT, z]; points[`base${i}`] = [x, 0, z]; points[`mid${i}`] = [x, HT / 2, z]; });
-for (const [i, [x, z]] of NODES.entries()) for (const r of [0.7, 1.05, 1.45]) {
-  points[`ring${i}_${r}_l`] = [x - r, 0, z]; points[`ring${i}_${r}_r`] = [x + r, 0, z];
-  points[`ring${i}_${r}_b`] = [x, 0, z - r]; points[`ring${i}_${r}_f`] = [x, 0, z + r];
-}
-anchors(camera, W, H, points);
-done();
-</script>
-</body>
+      renderer.render(scene, camera);
+      const points = {};
+      NODES.forEach(([x, z], i) => {
+        points[`top${i}`] = [x, HT, z];
+        points[`base${i}`] = [x, 0, z];
+        points[`mid${i}`] = [x, HT / 2, z];
+      });
+      for (const [i, [x, z]] of NODES.entries())
+        for (const r of [0.7, 1.05, 1.45]) {
+          points[`ring${i}_${r}_l`] = [x - r, 0, z];
+          points[`ring${i}_${r}_r`] = [x + r, 0, z];
+          points[`ring${i}_${r}_b`] = [x, 0, z - r];
+          points[`ring${i}_${r}_f`] = [x, 0, z + r];
+        }
+      anchors(camera, W, H, points);
+      done();
+    </script>
+  </body>
 </html>

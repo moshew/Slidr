@@ -127,7 +127,7 @@ const zFace = bodyD / 2 + 0.12;
 digits.forEach((d, i) => {
   const x = slotX[i];
   const mat = cardMaterial(d);
-  const last = i === 3;
+  const last = Q.has('flip') && i === 3;
   const top = flap(topGeo, last ? cardMaterial('9') : mat);
   const bottom = flap(bottomGeo, mat);
   top.position.set(x, bodyH / 2, zFace);
@@ -171,7 +171,7 @@ for (const fx of [-5.2, 5.2]) {
   clock.add(foot);
 }
 clock.position.y = 0.18;
-clock.rotation.y = num('rot', [-0.38])[0];
+clock.rotation.y = num('rot', [0.2])[0];
 
 // --- ground ---------------------------------------------------------------------------------------
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShadowMaterial({ opacity: num('shadow', [0.42])[0], color: 0x050c38 }));
@@ -210,15 +210,15 @@ fill.position.set(6, 4, 14);
 scene.add(rim, fill, new THREE.HemisphereLight(0xffffff, 0x3a4aa8, 0.3));
 
 // --- camera ----------------------------------------------------------------------------------------
-const camera = new THREE.PerspectiveCamera(num('fov', [24])[0], W / H, 0.1, 200);
-camera.position.set(...num('cam', [-6, 7.5, 26]));
-camera.lookAt(...num('look', [0.4, 2.1, 0]));
+const camera = new THREE.PerspectiveCamera(num('fov', [30])[0], W / H, 0.1, 200);
+camera.position.set(...num('cam', [-8, 8.5, 15]));
+camera.lookAt(...num('look', [-1.1, 1.9, 0]));
 
 const t0 = performance.now();
 await renderAccumulated(renderer, scene, camera, {
   frames: num('frames', [28])[0],
-  focus: new THREE.Vector3(...num('focus', [1.5, 2.2, 1])),
-  aperture: num('ap', [0.18])[0],
+  focus: new THREE.Vector3(...num('focus', [-2.6, 2.3, 1.8])),
+  aperture: num('ap', [0.22])[0],
   lights: [key],
   lightRadius: num('lr', [2.2])[0],
   onFrame: (i) => console.log('frame', i, Math.round(performance.now() - t0)),

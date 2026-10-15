@@ -1,0 +1,233 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<!-- The picture of m-cfp: an empty lectern with a gooseneck microphone on a round stage, in a
+     spotlight whose beam falls from above, on a transparent ground.
+     node <scratchpad>/hitech/render.mjs m-cfp.html out.png 1000 1100 2 -->
+<style>
+  html, body { margin: 0; overflow: hidden; background: transparent; }
+  canvas { display: block; }
+</style>
+<script>document.documentElement.dataset.wait = 'true';</script>
+<script type="importmap">{"imports": {
+  "three": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/build/three.module.js",
+  "three/addons/": "/tmp/claude-0/-home-user-Slidr/47879b34-d1cb-5c54-8cd5-146df1bb4f61/scratchpad/lib/node_modules/three/examples/jsm/"
+}}</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { renderAccumulated } from './hitech-render.js';
+
+const W = innerWidth, H = innerHeight;
+const Q = new URLSearchParams(location.search);
+const num = (k, d) => (Q.has(k) ? Q.get(k).split(',').map(Number) : d);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(W, H);
+renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = num('exp', [1.0])[0];
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+document.body.append(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = num('env', [0.22])[0];
+
+// walnut: warm stripes with a little noise
+function walnut() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5a3420';
+  g.fillRect(0, 0, 512, 512);
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+  for (let i = 0; i < 140; i++) {
+    const x = rnd() * 512, w = 1 + rnd() * 5;
+    g.fillStyle = `rgba(${rnd() > 0.5 ? '30,16,8' : '140,88,52'},${0.12 + rnd() * 0.25})`;
+    g.beginPath();
+    g.moveTo(x, 0);
+    for (let y = 0; y <= 512; y += 16) g.lineTo(x + Math.sin(y / 60 + i) * 6 + (rnd() - 0.5) * 2, y);
+    g.lineTo(x + w, 512);
+    g.lineTo(x + w, 0);
+    g.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+const wood = new THREE.MeshPhysicalMaterial({ map: walnut(), roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.25 });
+const cream = new THREE.MeshPhysicalMaterial({ color: 0xf1e9dc, roughness: 0.35, clearcoat: 0.5, clearcoatRoughness: 0.25, sheen: 0.4, sheenColor: 0xffe2c8 });
+const black = new THREE.MeshStandardMaterial({ color: 0x141214, roughness: 0.4, metalness: 0.4 });
+const brass = new THREE.MeshStandardMaterial({ color: 0xd9a656, roughness: 0.25, metalness: 1 });
+
+// --- the stage -------------------------------------------------------------------------------------
+const stage = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.8, 0.26, 128), new THREE.MeshPhysicalMaterial({ color: 0x1d1517, roughness: 0.32, clearcoat: 0.5, clearcoatRoughness: 0.3 }));
+stage.position.y = -0.13;
+stage.receiveShadow = true;
+scene.add(stage);
+// a warm strip of light around its edge
+const strip = new THREE.Mesh(new THREE.TorusGeometry(1.785, 0.012, 8, 200), new THREE.MeshBasicMaterial({ color: 0xffc98a }));
+strip.rotation.x = Math.PI / 2;
+strip.position.y = -0.03;
+scene.add(strip);
+
+// --- the lectern --------------------------------------------------------------------------------------
+const lectern = new THREE.Group();
+scene.add(lectern);
+{
+  // the body: narrower at the foot, a slanted desk on top
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.22, 0); shape.lineTo(0.22, 0); shape.lineTo(0.3, 1.08); shape.lineTo(-0.3, 1.08); shape.lineTo(-0.22, 0);
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.4, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 4 }), cream);
+  body.geometry.translate(0, 0, -0.2);
+  body.castShadow = body.receiveShadow = true;
+  lectern.add(body);
+  // the walnut front panel, inset
+  const pshape = new THREE.Shape();
+  pshape.moveTo(-0.17, 0.12); pshape.lineTo(0.17, 0.12); pshape.lineTo(0.235, 0.98); pshape.lineTo(-0.235, 0.98); pshape.lineTo(-0.17, 0.12);
+  const panelGeo = new THREE.ShapeGeometry(pshape);
+  const uv = panelGeo.attributes.uv, pp = panelGeo.attributes.position;
+  for (let i = 0; i < pp.count; i++) uv.setXY(i, pp.getX(i) * 1.2 + 0.5, pp.getY(i) * 1.2);
+  const panel = new THREE.Mesh(panelGeo, wood);
+  panel.position.z = 0.222;
+  panel.receiveShadow = true;
+  lectern.add(panel);
+  // a brass emblem: a ring with a dot
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.009, 16, 64), brass);
+  ring.position.set(0, 0.72, 0.232);
+  lectern.add(ring);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 24, 16), brass);
+  dot.position.set(0, 0.72, 0.232);
+  lectern.add(dot);
+  // brass trim up the two front edges
+  for (const sx of [-1, 1]) {
+    const trim = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.06, 12), brass);
+    trim.position.set(sx * 0.26, 0.54, 0.222);
+    trim.rotation.z = sx * -Math.atan(0.08 / 1.08);
+    lectern.add(trim);
+  }
+  // a glass of water
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.03, 0.12, 32, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.28, clearcoat: 1, side: THREE.DoubleSide }));
+  glass.position.set(0.24, 1.2, 0.12);
+  lectern.add(glass);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.029, 0.075, 32), new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, roughness: 0.05, transparent: true, opacity: 0.35 }));
+  water.position.set(0.24, 1.18, 0.12);
+  lectern.add(water);
+  // the desk
+  const desk = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.045, 0.52, 4, 0.015), wood);
+  desk.position.set(0, 1.12, 0.0);
+  desk.rotation.x = 0.26;
+  desk.castShadow = desk.receiveShadow = true;
+  lectern.add(desk);
+  // a lip that holds the notes
+  const lip = new THREE.Mesh(new RoundedBoxGeometry(0.72, 0.035, 0.03, 3, 0.01), wood);
+  lip.position.set(0, 1.09, 0.255);
+  lip.rotation.x = 0.26;
+  lectern.add(lip);
+  // notes on the desk
+  const notes = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.006, 0.4), new THREE.MeshStandardMaterial({ color: 0xf7f2e8, roughness: 0.8 }));
+  notes.position.set(-0.1, 1.15, 0.03);
+  notes.rotation.set(0.26, 0.08, 0);
+  notes.castShadow = true;
+  lectern.add(notes);
+  // a gooseneck microphone, its light on
+  const neck = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.22, 1.16, -0.12), new THREE.Vector3(0.24, 1.32, -0.08), new THREE.Vector3(0.2, 1.46, 0.05), new THREE.Vector3(0.12, 1.52, 0.2),
+  ]);
+  const gooseneck = new THREE.Mesh(new THREE.TubeGeometry(neck, 64, 0.011, 12), black);
+  gooseneck.castShadow = true;
+  lectern.add(gooseneck);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.03, 32), black);
+  base.position.set(0.22, 1.16, -0.12);
+  base.rotation.x = 0.26;
+  lectern.add(base);
+  const end = neck.getPoint(1), dir = neck.getTangent(1);
+  const headGeo = new THREE.CylinderGeometry(0.022, 0.016, 0.1, 32);
+  headGeo.rotateX(Math.PI / 2);
+  const head = new THREE.Mesh(headGeo, black);
+  head.position.copy(end).addScaledVector(dir, 0.04);
+  head.lookAt(end.clone().addScaledVector(dir, 1));
+  head.castShadow = true;
+  lectern.add(head);
+  const light = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 12, 48), new THREE.MeshBasicMaterial({ color: 0xff3b30 }));
+  light.position.copy(end).addScaledVector(dir, 0.085);
+  light.lookAt(end.clone().addScaledVector(dir, 1));
+  lectern.add(light);
+}
+lectern.rotation.y = num('rot', [0.32])[0];
+lectern.scale.setScalar(num('scale', [1.12])[0]);
+
+// --- light: a spot from above, and its beam in the haze ---------------------------------------------
+const spotPos = new THREE.Vector3(...num('spot', [-0.6, 6.5, 1.4]));
+const spot = new THREE.SpotLight(0xfff1dc, num('power', [260])[0], 20, 0.3, 0.55, 1.6);
+spot.position.copy(spotPos);
+spot.target.position.set(0, 0.4, 0.1);
+spot.castShadow = true;
+spot.shadow.mapSize.set(2048, 2048);
+spot.shadow.bias = -0.0004;
+scene.add(spot, spot.target);
+const rim = new THREE.DirectionalLight(0xffb27a, num('rim', [0.7])[0]);
+rim.position.set(3, 3, -4);
+const fill = new THREE.DirectionalLight(0xffd9d0, 0.25);
+fill.position.set(-3, 2, 5);
+scene.add(rim, fill);
+
+{
+  // the beam: a cone, brightest along its axis, fading toward its sides and its foot
+  const len = spotPos.distanceTo(spot.target.position);
+  const geo = new THREE.CylinderGeometry(0.06, num("beamr", [1.15])[0], len, 96, 1, true);
+  geo.translate(0, -len / 2, 0);
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { color: { value: new THREE.Color(0xfff0d8) }, strength: { value: num('beam', [0.17])[0] } },
+    vertexShader: `varying vec3 vN; varying vec3 vV; varying float vH;
+      void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - wp.xyz); vH = -position.y; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `uniform vec3 color; uniform float strength; uniform float len; varying vec3 vN; varying vec3 vV; varying float vH;
+      void main() { float side = pow(abs(dot(normalize(vN), normalize(vV))), 2.2); float along = smoothstep(0.0, 0.25, vH / ${len.toFixed(3)}) * (1.0 - smoothstep(0.75, 1.0, vH / ${len.toFixed(3)}) * 0.6);
+        gl_FragColor = vec4(color, side * along * strength); }`,
+  });
+  const beam = new THREE.Mesh(geo, mat);
+  beam.position.copy(spotPos);
+  beam.lookAt(spot.target.position);
+  beam.rotateX(-Math.PI / 2);
+  beam.renderOrder = 5;
+  scene.add(beam);
+  // dust in the beam
+  let seed = 3;
+  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+  const pts = [];
+  const axis = spot.target.position.clone().sub(spotPos).normalize();
+  const ortho1 = new THREE.Vector3(1, 0, 0).cross(axis).normalize(), ortho2 = axis.clone().cross(ortho1);
+  for (let i = 0; i < 260; i++) {
+    const t = 0.2 + rnd() * 0.75, rad = Math.sqrt(rnd()) * 1.6 * t, a = rnd() * Math.PI * 2;
+    pts.push(spotPos.clone().addScaledVector(axis, t * len).addScaledVector(ortho1, Math.cos(a) * rad).addScaledVector(ortho2, Math.sin(a) * rad));
+  }
+  const dust = new THREE.Points(new THREE.BufferGeometry().setFromPoints(pts), new THREE.PointsMaterial({ color: 0xfff3e0, size: 0.012, transparent: true, opacity: 0.55, depthWrite: false }));
+  scene.add(dust);
+}
+
+const camera = new THREE.PerspectiveCamera(num('fov', [30])[0], W / H, 0.1, 100);
+camera.position.set(...num('cam', [-2.0, 1.7, 7.4]));
+camera.lookAt(...num('look', [0, 1.15, 0]));
+
+await renderAccumulated(renderer, scene, camera, {
+  frames: num('frames', [28])[0],
+  focus: new THREE.Vector3(...num('focus', [0, 1.0, 0.1])),
+  aperture: num('ap', [0.04])[0],
+  lights: [spot],
+  lightRadius: num('lr', [0.25])[0],
+});
+document.documentElement.dataset.ready = 'true';
+</script>
+</body>
+</html>

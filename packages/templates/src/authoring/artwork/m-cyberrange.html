@@ -11,8 +11,8 @@
   html, body { margin: 0; width: 1560px; height: 640px; overflow: hidden; background: transparent; }
   body { font-family: 'Space Grotesk', sans-serif; color: #e9eaf0; perspective: 1700px; perspective-origin: 50% -30%; }
   .glow { position: absolute; inset: 0; background:
-    radial-gradient(42% 70% at 22% 62%, rgba(255, 70, 70, .30), transparent 70%),
-    radial-gradient(42% 70% at 78% 62%, rgba(60, 130, 255, .30), transparent 70%); filter: blur(10px); }
+    radial-gradient(34% 64% at 27% 66%, rgba(255, 70, 70, .30), transparent 70%),
+    radial-gradient(34% 64% at 73% 66%, rgba(60, 130, 255, .30), transparent 70%); filter: blur(10px); }
   .board { position: absolute; left: 120px; top: 40px; width: 1320px; height: 860px; transform: rotateX(24deg); transform-origin: 50% 0;
     background: linear-gradient(180deg, #17181f, #111218); border-radius: 26px; border: 1px solid #2b2d3a;
     box-shadow: 0 0 0 1px rgba(255,255,255,.04) inset, 0 40px 90px rgba(0,0,0,.55); overflow: hidden; }
@@ -21,7 +21,7 @@
   .title { font-weight: 700; font-size: 22px; letter-spacing: 1px; }
   .muted { color: #8d90a3; }
   .mono { font-family: 'JetBrains Mono', monospace; }
-  .live { padding: 6px 14px; border-radius: 999px; background: rgba(255, 77, 77, .14); color: #ff6b6b; font-size: 16px; font-weight: 700; letter-spacing: 1.5px; }
+  .live { white-space: nowrap; padding: 6px 14px; border-radius: 999px; background: rgba(255, 77, 77, .14); color: #ff6b6b; font-size: 16px; font-weight: 700; letter-spacing: 1.5px; }
   .score { margin-left: auto; display: flex; align-items: center; gap: 14px; }
   .team { display: flex; align-items: baseline; gap: 10px; padding: 8px 16px; border-radius: 12px; }
   .team b { font-size: 30px; font-weight: 700; }
@@ -45,7 +45,7 @@
   <div class="bar">
     <div class="dot" style="background:#ff5f57"></div><div class="dot" style="background:#febc2e"></div><div class="dot" style="background:#28c840"></div>
     <div class="title">RANGE&nbsp;27</div>
-    <div class="muted mono" style="font-size:17px">city-replica · water + power + hospital</div>
+    <div class="muted mono" style="font-size:17px;white-space:nowrap">city replica · water · power</div>
     <div class="live">● LIVE · DAY 2 · 14:32</div>
     <div class="score">
       <div class="team" style="background:rgba(255,77,77,.12)"><span style="color:#ff6b6b">RED</span><b class="mono" style="color:#ff8a8a">1,860</b></div>
@@ -56,7 +56,7 @@
   <div class="grid">
     <div class="map">
       <div class="legend"><span><i style="background:#ff4d4d"></i>compromised</span><span><i style="background:#3d8bff"></i>contained</span><span><i style="background:#5c5f72"></i>clean</span></div>
-      <svg width="1020" height="780" viewBox="0 0 1020 780" style="position:absolute;left:0;top:0">
+      <svg width="950" height="726" viewBox="0 0 1020 780" style="position:absolute;left:0;top:0">
         <defs>
           <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.4" fill="#2a2c38"/></pattern>
           <filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>

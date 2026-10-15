@@ -23,7 +23,7 @@
 <script type="module">
   import * as THREE from 'three';
   import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-  import { renderWithFocus } from './shvav-dof.js';
+  import { freeze, renderWithFocus } from './shvav-dof.js';
   import { buildBoard } from './shvav-board.js';
 
   const W = 700, H = 800;
@@ -84,6 +84,7 @@
     radius: 0.35,
     threshold: Number(params.get('th') ?? 3),
   });
+  await freeze(renderer, W, H);
   document.documentElement.dataset.ready = 'true';
 </script>
 </body>

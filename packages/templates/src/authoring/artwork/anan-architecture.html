@@ -35,6 +35,10 @@
   import { C, CHIP_CSS, stage, ground, block, server, database, dashed, packet, plate, cloud, chip } from './anan-iso.js';
   document.getElementById('chips').textContent = CHIP_CSS;
 
+  // Drawn after the page has loaded: a large picture takes longer than a page load may.
+  setTimeout(draw, 0);
+  function draw() {
+
   const W = 760, H = 750;
   const st = stage({ width: W, height: H, view: 10.2, target: [2.55, 0.95, 2.55], light: [3.2, 6.4, -9] });
   const { scene } = st;
@@ -125,6 +129,7 @@
   document.getElementById('labels').append(p95);
 
   document.documentElement.dataset.ready = 'true';
+  }
 </script>
 </body>
 </html>

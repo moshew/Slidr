@@ -24,7 +24,7 @@
 <script type="module">
   import * as THREE from 'three';
   import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-  import { renderWithFocus } from './shvav-dof.js';
+  import { freeze, renderWithFocus } from './shvav-dof.js';
   import { BOARD, buildBoard } from './shvav-board.js';
 
   const W = 1920, H = 640;
@@ -172,6 +172,7 @@
     bloom: num('bl', 0.6),
     threshold: num('th', 3),
   });
+  await freeze(renderer, W, H);
   document.documentElement.dataset.ready = 'true';
 </script>
 </body>

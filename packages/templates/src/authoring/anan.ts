@@ -45,10 +45,10 @@ export const ananTheme: Theme = {
     surface: '#ffffff',
     text: '#0c1a33',
     muted: '#55667f',
-    primary: '#1a7fe8',
+    primary: '#0f6cdc',
     secondary: '#13b3a5',
     accent: '#ff7a29',
-    chart: ['#1a7fe8', '#13b3a5', '#ff7a29', '#0c1a33', '#8dbcf2', '#55667f'],
+    chart: ['#0f6cdc', '#13b3a5', '#ff7a29', '#0c1a33', '#8dbcf2', '#55667f'],
   },
   // A geometric face for the titles (Rubik's Hebrew, Manrope's Latin and figures), a plain one
   // for the reading (Heebo's Hebrew) with the same Latin, so figures and spaces match throughout.
@@ -112,7 +112,7 @@ export const ananTheme: Theme = {
 
 const NAVY = '#0c1a33';
 const MUTED = '#55667f';
-const BLUE = '#1a7fe8';
+const BLUE = '#0f6cdc';
 const TEAL = '#13b3a5';
 const ORANGE = '#ff7a29';
 const WHITE = '#ffffff';
@@ -227,12 +227,37 @@ class Scene {
     readonly k = 1,
   ) {}
 
+  /** The extent of what has been drawn, in the scene's own coordinates. */
+  private box0 = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+
+  private grow(X: number, Y: number, r = 0) {
+    const b = this.box0;
+    b.x0 = Math.min(b.x0, X - r);
+    b.x1 = Math.max(b.x1, X + r);
+    b.y0 = Math.min(b.y0, Y - r);
+    b.y1 = Math.max(b.y1, Y + r);
+  }
+
   xy([x, y, z]: P3): [number, number] {
     return [this.ox + (x - y) * COS * this.k, this.oy + ((x + y) / 2 - z) * this.k];
   }
 
-  private pt(p: P3) {
+  /** Makes room for something drawn by hand around a point. */
+  extent(p: P3, r = 0) {
     const [X, Y] = this.xy(p);
+    this.grow(X, Y, r);
+    return [X, Y] as const;
+  }
+
+  /** A point that is drawn: it counts toward the extent of the scene. */
+  private xyd(p: P3): [number, number] {
+    const [X, Y] = this.xy(p);
+    this.grow(X, Y);
+    return [X, Y];
+  }
+
+  private pt(p: P3) {
+    const [X, Y] = this.xyd(p);
     return `${r1(X)} ${r1(Y)}`;
   }
 
@@ -351,6 +376,8 @@ class Scene {
     const rx = r * Math.SQRT2 * COS * this.k;
     const ry = r * Math.SQRT2 * 0.5 * this.k;
     const [L, R] = [r1(X - rx), r1(X + rx)];
+    this.grow(X - rx, Yb + ry);
+    this.grow(X + rx, Yt - ry);
     const side = `M${L} ${r1(Yb)}L${L} ${r1(Yt)}A${r1(rx)} ${r1(ry)} 0 0 0 ${R} ${r1(Yt)}L${R} ${r1(Yb)}A${r1(rx)} ${r1(ry)} 0 0 1 ${L} ${r1(Yb)}Z`;
     const body = this.def(
       (id) =>
@@ -416,6 +443,7 @@ class Scene {
   /** A packet of traffic on its way, at a point. */
   packet(p: P3, color = ORANGE, size = 6) {
     const [X, Y] = this.xy(p);
+    this.grow(X, Y, size * 2 * this.k);
     this.raw(
       `<circle cx="${r1(X)}" cy="${r1(Y)}" r="${r1(size * 2 * this.k)}" fill="${color}" fill-opacity=".18"/>` +
         `<circle cx="${r1(X)}" cy="${r1(Y)}" r="${r1(size * this.k)}" fill="${color}"/>`,
@@ -426,6 +454,8 @@ class Scene {
   /** A cloud, standing in the scene, its foot at a point. */
   cloud(p: P3, width: number) {
     const [X, Y] = this.xy(p);
+    this.grow(X - width * this.k * 0.5, Y - width * this.k * 0.48);
+    this.grow(X + width * this.k * 0.5, Y + width * this.k * 0.2);
     this.raw(cloudShape(X, Y, width * this.k, (m) => this.def(m)));
     return this;
   }
@@ -433,12 +463,40 @@ class Scene {
   /** A healthy badge over a point: a green disc with a tick. */
   ok(p: P3, size = 13) {
     const [X, Y] = this.xy(p);
+    this.grow(X, Y, size * 1.75 * this.k);
     this.raw(tick(X, Y, size * this.k));
     return this;
   }
 
   svg(w: number, h: number) {
     return svg(w, h, (this.defs.length ? `<defs>${this.defs.join('')}</defs>` : '') + this.parts.join(''));
+  }
+
+  /**
+   * How the scene is set into a box: scaled to fit inside the padding (never past `max`) and
+   * placed by `ax`, `ay` (0 start, 0.5 middle, 1 end of the free room on each axis).
+   */
+  fitting(w: number, h: number, pad = 8, max = 4, ax = 0.5, ay = 0.5) {
+    const b = this.box0;
+    const scale = Math.min(max, (w - 2 * pad) / (b.x1 - b.x0), (h - 2 * pad) / (b.y1 - b.y0));
+    const tx = pad + (w - 2 * pad - (b.x1 - b.x0) * scale) * ax - b.x0 * scale;
+    const ty = pad + (h - 2 * pad - (b.y1 - b.y0) * scale) * ay - b.y0 * scale;
+    return {
+      scale,
+      map: ([X, Y]: [number, number]): [number, number] => [tx + X * scale, ty + Y * scale],
+      markup: () =>
+        svg(
+          w,
+          h,
+          (this.defs.length ? `<defs>${this.defs.join('')}</defs>` : '') +
+            `<g transform="translate(${r1(tx)} ${r1(ty)}) scale(${Math.round(scale * 1000) / 1000})">${this.parts.join('')}</g>`,
+        ),
+    };
+  }
+
+  /** The scene fitted into a box. */
+  fit(w: number, h: number, pad = 8, max = 4, ax = 0.5, ay = 0.5) {
+    return this.fitting(w, h, pad, max, ax, ay).markup();
   }
 }
 
@@ -488,22 +546,40 @@ function cloudShape(X: number, Y: number, w: number, def: (m: (id: string) => st
 // ---------------------------------------------------------------------------------------------
 // The console's chrome
 
-/** A pill of the console: a status light and a name in mono (a region, a service). */
-function chipMarkup(label: string, light: string = GREEN, rest: { size?: number; ink?: string; fill?: string } = {}) {
-  const { size = 19, ink = NAVY, fill = WHITE } = rest;
-  const h = Math.round(size * 1.8);
+/**
+ * A pill of the console: a status light and a name in mono (a region, a service). With a
+ * pointer, a small notch at the middle of its top, as a label of a diagram points at its thing.
+ */
+function chipMarkup(
+  label: string,
+  light: string = GREEN,
+  rest: { size?: number; ink?: string; fill?: string; pointer?: boolean } = {},
+) {
+  const { size = 19, ink = NAVY, fill = WHITE, pointer = false } = rest;
+  const ph = Math.round(size * 1.8);
+  const top = pointer ? 9 : 0;
+  const h = ph + top + 2;
   const w = Math.round(38 + label.length * size * 0.6 + 16);
+  const notch = pointer
+    ? `<path d="M${w / 2 - 9} ${top + 1.5}L${w / 2} ${top - 7.5}L${w / 2 + 9} ${top + 1.5}" fill="${fill}" stroke="${NAVY}" stroke-opacity=".14" stroke-width="1.5" stroke-linejoin="round"/>`
+    : '';
   const body =
-    `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${(h - 2) / 2}" fill="${fill}" stroke="${NAVY}" stroke-opacity=".14" stroke-width="1.5"/>` +
-    `<circle cx="${h / 2 + 2}" cy="${h / 2}" r="${size * 0.5}" fill="${light}" fill-opacity=".2"/>` +
-    `<circle cx="${h / 2 + 2}" cy="${h / 2}" r="${size * 0.27}" fill="${light}"/>` +
-    `<text x="${h / 2 + 14}" y="${h / 2 + size * 0.36}" ${MONO} font-size="${size}" font-weight="500" fill="${ink}">${label}</text>`;
+    `<rect x="1" y="${top + 1}" width="${w - 2}" height="${ph - 2}" rx="${(ph - 2) / 2}" fill="${fill}" stroke="${NAVY}" stroke-opacity=".14" stroke-width="1.5"/>` +
+    notch +
+    (pointer ? `<path d="M${w / 2 - 8} ${top + 2.2}H${w / 2 + 8}" stroke="${fill}" stroke-width="2.4"/>` : '') +
+    `<circle cx="${ph / 2 + 2}" cy="${top + ph / 2}" r="${size * 0.5}" fill="${light}" fill-opacity=".2"/>` +
+    `<circle cx="${ph / 2 + 2}" cy="${top + ph / 2}" r="${size * 0.27}" fill="${light}"/>` +
+    `<text x="${ph / 2 + 14}" y="${r1(top + ph / 2 + size * 0.36)}" ${MONO} font-size="${size}" font-weight="500" fill="${ink}">${label}</text>`;
   return { w, h, markup: svg(w, h, body) };
 }
 
-/** A chip whose middle is at (cx, top) of the slide, as drawn for right to left. */
-function chip(id: string, cx: number, top: number, label: string, light: string = GREEN, size = 19): Element {
-  const { w, h, markup } = chipMarkup(label, light, { size });
+/**
+ * A chip whose middle is at `cx` of the slide, as drawn for right to left: its top at `top`, or,
+ * with a pointer, the tip of its notch there.
+ */
+function chip(id: string, cx: number, top: number, label: string, rest: { light?: string; size?: number; pointer?: boolean } = {}): Element {
+  const { light = GREEN, size = 19, pointer = false } = rest;
+  const { w, h, markup } = chipMarkup(label, light, { size, pointer });
   return lettered(id, { x: Math.round(cx - w / 2), y: Math.round(top), w, h }, markup);
 }
 
@@ -626,18 +702,22 @@ function lattice(id: string, frame: Frame, alpha = 0.3): Element {
 // ---------------------------------------------------------------------------------------------
 // The scenes
 
-/** The opening: an edge under a cloud, and three regions fanned out from it. */
-function heroScene() {
-  const s = new Scene(470, 318, 0.9);
-  // The account: a faint plate with a dashed boundary, everything stands on it.
+/** The account a scene stands in: a faint field with a dashed boundary on the ground. */
+function account(s: Scene, a: number, b: number) {
   s.raw(
     `<path d="${s.d([
-      [-50, -50, 0],
-      [575, -50, 0],
-      [575, 575, 0],
-      [-50, 575, 0],
-    ])}" fill="${BLUE}" fill-opacity=".05" stroke="${BLUE}" stroke-opacity=".35" stroke-width="1.6" stroke-dasharray="3 7" stroke-linecap="round"/>`,
+      [a, a, 0],
+      [b, a, 0],
+      [b, b, 0],
+      [a, b, 0],
+    ])}" fill="${BLUE}" fill-opacity=".05" stroke="${BLUE}" stroke-opacity=".38" stroke-width="1.8" stroke-dasharray="3 8" stroke-linecap="round"/>`,
   );
+}
+
+/** The opening: an edge under the users' cloud, and three regions fanned out from it. */
+function heroScene() {
+  const s = new Scene(0, 0, 1);
+  account(s, -46, 566);
   // Shadows first, then the plates and what stands on them, from the back.
   s.shadow(20, 20, 0, 140, 140, 40);
   for (const [x, y] of [
@@ -645,13 +725,13 @@ function heroScene() {
     [300, 0],
     [300, 300],
   ] as const) {
-    s.shadow(x, y, 0, 220, 220, 46);
+    s.shadow(x, y, 0, 220, 220, 50);
   }
   // The edge.
   s.plate(20, 20, 0, 140, 140, 14);
-  s.shadow(52, 52, 14, 76, 76, 34, 0.12);
-  s.box(52, 52, 14, 76, 76, 30, LOOK.blue);
-  s.box(66, 66, 44, 48, 48, 14, LOOK.sky);
+  s.shadow(50, 50, 14, 80, 80, 34, 0.12);
+  s.box(50, 50, 14, 80, 80, 32, LOOK.blue);
+  s.box(64, 64, 46, 52, 52, 14, LOOK.sky);
   // Connectors from the edge to each region, with traffic on them.
   s.link([
     [90, 160, 14],
@@ -667,379 +747,403 @@ function heroScene() {
   ]);
   s.packet([90, 232, 14]);
   s.packet([232, 232, 14]);
-  s.packet([228, 90, 14], BLUE, 5);
+  s.packet([226, 90, 14], BLUE, 5);
 
   // eu-west-1, to the end side: two servers and a database.
   s.plate(0, 300, 0, 220, 220, 14);
-  s.shadow(36, 330, 14, 56, 56, 70);
-  s.shadow(116, 330, 14, 56, 56, 50);
-  s.cylinderShadow(72, 455, 14, 30, 40);
-  s.server(36, 330, 14, 56, 56, 104);
-  s.server(116, 330, 14, 56, 56, 74, LOOK.sky);
-  s.cylinder(72, 455, 14, 30, 64, TEAL, 2);
-  s.cylinder(160, 455, 14, 24, 40, BLUE, 1);
+  s.shadow(36, 330, 14, 56, 56, 80);
+  s.shadow(116, 330, 14, 56, 56, 58);
+  s.cylinderShadow(72, 455, 14, 30, 44);
+  s.server(36, 330, 14, 56, 56, 112);
+  s.server(116, 330, 14, 56, 56, 80, LOOK.sky);
+  s.cylinder(72, 455, 14, 30, 66, TEAL, 2);
+  s.cylinder(160, 458, 14, 24, 42, TEAL, 1);
 
   // eu-central-1, to the start side.
   s.plate(300, 0, 0, 220, 220, 14);
-  s.shadow(330, 36, 14, 56, 56, 56);
-  s.cylinderShadow(455, 72, 14, 30, 40);
-  s.server(330, 36, 14, 56, 56, 84, LOOK.sky);
-  s.server(330, 116, 14, 56, 56, 104);
-  s.cylinder(455, 72, 14, 30, 64, TEAL, 2);
-  s.box(430, 140, 14, 52, 52, 22, LOOK.white);
-  s.box(440, 150, 36, 32, 32, 16, LOOK.orange);
+  s.shadow(330, 36, 14, 56, 56, 64);
+  s.shadow(330, 116, 14, 56, 56, 80);
+  s.cylinderShadow(455, 72, 14, 30, 44);
+  s.server(330, 36, 14, 56, 56, 90, LOOK.sky);
+  s.server(330, 116, 14, 56, 56, 112);
+  s.cylinder(455, 72, 14, 30, 66, TEAL, 2);
+  s.box(428, 140, 14, 56, 56, 22, LOOK.white);
+  s.box(440, 152, 36, 32, 32, 18, LOOK.orange);
 
   // il-central-1, in front: the busiest.
   s.plate(300, 300, 0, 220, 220, 14);
-  s.shadow(330, 330, 14, 56, 56, 74);
-  s.shadow(410, 330, 14, 56, 56, 60);
-  s.cylinderShadow(360, 458, 14, 30, 40);
-  s.server(330, 330, 14, 56, 56, 124);
-  s.server(410, 330, 14, 56, 56, 96, LOOK.sky);
-  s.cylinder(360, 458, 14, 30, 70, TEAL, 2);
-  s.cylinder(455, 458, 14, 30, 70, TEAL, 2);
+  s.shadow(330, 330, 14, 56, 56, 90);
+  s.shadow(410, 330, 14, 56, 56, 70);
+  s.shadow(330, 410, 14, 56, 56, 56);
+  s.cylinderShadow(455, 458, 14, 30, 44);
+  s.server(330, 330, 14, 56, 56, 132);
+  s.server(410, 330, 14, 56, 56, 100, LOOK.sky);
+  s.server(330, 410, 14, 56, 56, 74);
+  s.cylinder(455, 458, 14, 32, 76, TEAL, 2);
   // Replication between the databases.
   s.link(
     [
-      [102, 455, 52],
-      [330, 458, 52],
+      [102, 455, 54],
+      [423, 458, 54],
     ],
     TEAL,
-    { head: true, width: 2.2, dash: '3 6' },
+    { width: 2.2, dash: '3 6' },
   );
   s.link(
     [
-      [455, 102, 52],
-      [455, 428, 52],
+      [455, 102, 54],
+      [455, 426, 54],
     ],
     TEAL,
-    { head: true, width: 2.2, dash: '3 6' },
+    { width: 2.2, dash: '3 6' },
   );
-  s.packet([215, 456, 52], TEAL, 5);
-  s.packet([455, 265, 52], TEAL, 5);
+  s.packet([262, 456, 54], TEAL, 5);
+  s.packet([455, 262, 54], TEAL, 5);
 
   // The users, in a cloud over the edge, and their traffic coming down.
   s.link(
     [
-      [90, 90, 205],
-      [90, 90, 62],
+      [90, 90, 214],
+      [90, 90, 66],
     ],
     ORANGE,
     { width: 2.6 },
   );
-  s.packet([90, 90, 140]);
-  s.cloud([90, 90, 210], 230);
-  s.ok([110, 490, 150]);
-  s.ok([490, 110, 150]);
-  s.ok([480, 480, 150]);
+  s.packet([90, 90, 146]);
+  s.cloud([90, 90, 222], 250);
+  s.ok([100, 470, 160]);
+  s.ok([470, 100, 160]);
+  s.ok([470, 470, 168]);
   return s;
 }
 
 /** The section: a platform in three layers lifted apart, the edge over the services over data. */
 function stackScene() {
-  const s = new Scene(400, 470, 1);
-  const size = 270;
-  const levels = [0, 150, 300];
-  // The shadow of the whole stack on the ground.
-  s.shadow(0, 0, 0, size, size, 120, 0.12);
+  const s = new Scene(0, 0, 1);
+  const size = 250;
+  const levels = [0, 230, 460];
+  // The footprint of the stack on the ground, dashed: where the layers come down to.
+  s.raw(
+    `<path d="${s.d([
+      [0, 0, 0],
+      [size, 0, 0],
+      [size, size, 0],
+      [0, size, 0],
+    ])}" fill="${BLUE}" fill-opacity=".05" stroke="${BLUE}" stroke-opacity=".4" stroke-width="1.8" stroke-dasharray="3 8" stroke-linecap="round"/>`,
+  );
   for (const [i, z] of levels.entries()) {
-    const look = i === 2 ? LOOK.plate : LOOK.plate;
-    s.plate(0, 0, z, size, size, 18, BLUE, look);
-    const t = z + 18;
+    const zz = z + 30;
+    s.plate(0, 0, zz, size, size, 18, i === 0 ? TEAL : BLUE);
+    const t = zz + 18;
     if (i === 0) {
-      // Data: three databases.
       for (const [cx, cy] of [
-        [70, 80],
-        [170, 80],
-        [120, 190],
+        [70, 76],
+        [176, 76],
+        [124, 180],
       ] as const) {
-        s.cylinderShadow(cx, cy, t, 30, 34, 0.1);
+        s.cylinderShadow(cx, cy, t, 30, 30, 0.08);
       }
-      s.cylinder(70, 80, t, 30, 70, TEAL, 2);
-      s.cylinder(170, 80, t, 30, 70, TEAL, 2);
-      s.cylinder(120, 190, t, 30, 70, TEAL, 2);
+      s.cylinder(70, 76, t, 30, 66, TEAL, 2);
+      s.cylinder(176, 76, t, 30, 66, TEAL, 2);
+      s.cylinder(124, 180, t, 30, 66, TEAL, 2);
     } else if (i === 1) {
-      // Services: a grid of four, one of them new.
       for (const [x, y] of [
-        [40, 40],
-        [150, 40],
-        [40, 150],
-        [150, 150],
+        [36, 36],
+        [146, 36],
+        [36, 146],
+        [146, 146],
       ] as const) {
-        s.shadow(x, y, t, 70, 70, 30, 0.1);
+        s.shadow(x, y, t, 68, 68, 28, 0.08);
       }
-      s.server(40, 40, t, 70, 70, 62, LOOK.sky);
-      s.server(150, 40, t, 70, 70, 80);
-      s.server(40, 150, t, 70, 70, 80);
-      s.server(150, 150, t, 70, 70, 52, LOOK.orange, WHITE);
+      s.server(36, 36, t, 68, 68, 64, LOOK.sky);
+      s.server(146, 36, t, 68, 68, 84);
+      s.server(36, 146, t, 68, 68, 84);
+      s.server(146, 146, t, 68, 68, 56, LOOK.orange, WHITE);
     } else {
-      // The edge: a balancer under the cloud.
-      s.shadow(85, 85, t, 100, 100, 30, 0.1);
-      s.box(85, 85, t, 100, 100, 26, LOOK.blue);
-      s.box(105, 105, t + 26, 60, 60, 14, LOOK.sky);
+      s.shadow(75, 75, t, 100, 100, 30, 0.1);
+      s.box(75, 75, t, 100, 100, 28, LOOK.blue);
+      s.box(95, 95, t + 28, 60, 60, 14, LOOK.sky);
     }
   }
-  // The paths between the layers: from the corners, dashed, and traffic down the middle.
+  // The paths between the layers: dashed from the corners, and traffic down the middle.
   for (const [x, y] of [
     [size, size],
     [0, size],
     [size, 0],
   ] as const) {
-    s.link(
-      [
-        [x, y, 168],
-        [x, y, 22],
-      ],
-      BLUE,
-      { head: false, width: 1.8, dash: '3 6', opacity: 0.55 },
-    );
-    s.link(
-      [
-        [x, y, 318],
-        [x, y, 172],
-      ],
-      BLUE,
-      { head: false, width: 1.8, dash: '3 6', opacity: 0.55 },
-    );
+    for (const [from, to] of [
+      [0, 30],
+      [48, 260],
+      [278, 490],
+    ] as const) {
+      s.link(
+        [
+          [x, y, to],
+          [x, y, from],
+        ],
+        BLUE,
+        { head: false, width: 1.8, dash: '3 7', opacity: 0.5 },
+      );
+    }
   }
-  s.cloud([135, 135, 440], 210);
   s.link(
     [
-      [135, 135, 432],
-      [135, 135, 362],
+      [125, 125, 640],
+      [125, 125, 548],
     ],
     ORANGE,
     { width: 2.6 },
   );
+  s.packet([125, 125, 596]);
+  s.cloud([125, 125, 648], 230);
   return s;
 }
 
 /** The agenda: the old machine room below, the cloud above, and a block on its way up. */
 function migrationScene() {
-  const s = new Scene(330, 430, 0.92);
+  const s = new Scene(0, 0, 1);
   // The old room, at the start side, faded and dashed.
   s.raw(
     `<path d="${s.d([
-      [250, -40, 0],
-      [450, -40, 0],
-      [450, 160, 0],
-      [250, 160, 0],
-    ])}" fill="${NAVY}" fill-opacity=".04" stroke="${NAVY}" stroke-opacity=".3" stroke-width="1.6" stroke-dasharray="4 7"/>`,
+      [270, -30, 0],
+      [470, -30, 0],
+      [470, 170, 0],
+      [270, 170, 0],
+    ])}" fill="${NAVY}" fill-opacity=".04" stroke="${NAVY}" stroke-opacity=".3" stroke-width="1.8" stroke-dasharray="3 8" stroke-linecap="round"/>`,
   );
-  s.shadow(290, 0, 0, 60, 60, 70, 0.12);
-  s.shadow(370, 0, 0, 60, 60, 54, 0.12);
-  s.server(290, 0, 0, 60, 60, 120, LOOK.legacy, ORANGE);
-  s.server(370, 0, 0, 60, 60, 90, LOOK.legacy);
-  s.box(300, 90, 0, 50, 50, 26, LOOK.legacy);
-  // The new place, raised: a region plate with its services.
-  const z = 260;
+  s.shadow(300, 10, 0, 60, 60, 80, 0.12);
+  s.shadow(380, 10, 0, 60, 60, 60, 0.12);
+  s.server(300, 10, 0, 60, 60, 124, LOOK.legacy, ORANGE);
+  s.server(380, 10, 0, 60, 60, 92, LOOK.legacy);
+  s.box(310, 96, 0, 50, 50, 28, LOOK.legacy);
+  // The new place, raised over its footprint: a region plate with its services.
+  const z = 270;
+  const [px, py, pw] = [-40, 250, 230];
   s.raw(
-    `<ellipse cx="${r1(s.xy([0, 260, 0])[0])}" cy="${r1(s.xy([110, 370, 0])[1])}" rx="150" ry="40" fill="${BLUE}" fill-opacity=".08"/>`,
+    `<path d="${s.d([
+      [px, py, 0],
+      [px + pw, py, 0],
+      [px + pw, py + pw, 0],
+      [px, py + pw, 0],
+    ])}" fill="${BLUE}" fill-opacity=".06" stroke="${BLUE}" stroke-opacity=".4" stroke-width="1.8" stroke-dasharray="3 8" stroke-linecap="round"/>`,
   );
-  s.plate(-20, 240, z, 220, 220, 16);
-  s.shadow(10, 270, z + 16, 56, 56, 60, 0.1);
-  s.shadow(90, 270, z + 16, 56, 56, 40, 0.1);
-  s.server(10, 270, z + 16, 56, 56, 96);
-  s.server(90, 270, z + 16, 56, 56, 70, LOOK.sky);
-  s.cylinder(40, 400, z + 16, 28, 60, TEAL, 2);
-  s.cylinder(130, 400, z + 16, 28, 60, TEAL, 2);
-  s.cloud([60, 300, z + 150], 210);
-  // The way up: a dashed curve from the old room to the new plate, a block on it.
-  const [ax, ay] = s.xy([300, 60, 130]);
-  const [bx, by] = s.xy([180, 300, z + 30]);
-  const mx = (ax + bx) / 2 + 40;
-  const my = Math.min(ay, by) - 40;
+  for (const [x, y] of [
+    [px + pw, py],
+    [px + pw, py + pw],
+    [px, py + pw],
+  ] as const) {
+    s.link(
+      [
+        [x, y, z],
+        [x, y, 0],
+      ],
+      BLUE,
+      { head: false, width: 1.6, dash: '3 7', opacity: 0.45 },
+    );
+  }
+  s.plate(px, py, z, pw, pw, 18);
+  const t = z + 18;
+  s.shadow(px + 30, py + 30, t, 58, 58, 60, 0.1);
+  s.shadow(px + 112, py + 30, t, 58, 58, 44, 0.1);
+  s.server(px + 30, py + 30, t, 58, 58, 104);
+  s.server(px + 112, py + 30, t, 58, 58, 76, LOOK.sky);
+  s.cylinder(px + 62, py + 168, t, 30, 62, TEAL, 2);
+  s.cylinder(px + 160, py + 168, t, 30, 62, TEAL, 2);
+  s.cloud([px + 80, py + 60, t + 200], 220);
+  // The way up: a dashed curve from the old room to the new plate, a block in flight on it.
+  const [ax, ay] = s.xy([330, 40, 140]);
+  const [bx, by] = s.xy([px + pw + 30, py + pw / 2, t + 10]);
+  const mx = (ax + bx) / 2 + 30;
+  const my = Math.min(ay, by) - 70;
   s.raw(
-    `<path d="M${r1(ax)} ${r1(ay)}Q${r1(mx)} ${r1(my)} ${r1(bx)} ${r1(by)}" stroke="${ORANGE}" stroke-width="2.8" stroke-dasharray="8 8" stroke-linecap="round"/>`,
+    `<path d="M${r1(ax)} ${r1(ay)}Q${r1(mx)} ${r1(my)} ${r1(bx)} ${r1(by)}" stroke="${ORANGE}" stroke-width="3" stroke-dasharray="9 9" stroke-linecap="round"/>`,
   );
-  s.raw(arrowhead(mx, my, bx, by, ORANGE, 11));
+  s.raw(arrowhead(mx, my, bx, by, ORANGE, 13));
   const fx = 0.25 * ax + 0.5 * mx + 0.25 * bx;
   const fy = 0.25 * ay + 0.5 * my + 0.25 * by;
-  const flight = new Scene(fx, fy + 16, 0.92);
-  flight.box(-16, -16, 0, 32, 32, 32, LOOK.orange);
+  const flight = new Scene(fx, fy + 20, 1);
+  flight.box(-18, -18, 0, 36, 36, 36, LOOK.orange);
   s.raw(flight.svg(1, 1).replace(/^<svg[^>]*>|<\/svg>$/g, ''));
   return s;
 }
 
 /** The icon of a card: the gateway, the ledger, the risk engine. */
 function serviceIcon(kind: 'gateway' | 'ledger' | 'risk') {
-  const s = new Scene(244, 66, 0.82);
+  const s = new Scene(0, 0, 1);
   if (kind === 'gateway') {
     s.plate(-20, -20, 0, 150, 150, 10);
     s.shadow(20, 20, 10, 70, 70, 34, 0.12);
     s.box(20, 20, 10, 70, 70, 34, LOOK.blue);
     s.box(35, 35, 44, 40, 40, 12, LOOK.sky);
-    for (const [to, from] of [
+    for (const [from, to] of [
       [
-        [55, 190, 10],
-        [55, 92, 10],
+        [55, 132, 5],
+        [55, 196, 5],
       ],
       [
-        [190, 55, 10],
-        [92, 55, 10],
+        [132, 55, 5],
+        [196, 55, 5],
       ],
       [
-        [180, 180, 10],
-        [92, 92, 10],
+        [132, 132, 5],
+        [186, 186, 5],
       ],
     ] as const) {
-      s.link([from, to], BLUE, { width: 2.2 });
+      s.link([from, to], BLUE, { width: 2.4 });
     }
-    s.box(30, 200, 0, 50, 50, 26);
-    s.box(200, 30, 0, 50, 50, 26);
-    s.box(190, 190, 0, 50, 50, 26);
-    s.packet([55, 150, 10]);
+    s.box(30, 206, 0, 50, 50, 30);
+    s.box(206, 30, 0, 50, 50, 30);
+    s.box(196, 196, 0, 50, 50, 30, LOOK.sky);
+    s.packet([55, 166, 5]);
   } else if (kind === 'ledger') {
-    s.plate(-20, -20, 0, 260, 140, 10, TEAL);
-    for (const [i, x] of [20, 100, 180].entries()) {
-      s.cylinderShadow(x + 20, 50, 10, 28, 30, 0.1);
-      s.cylinder(x + 20, 50, 10, 28, i === 0 ? 74 : 60, TEAL, 2);
+    s.plate(-20, -20, 0, 280, 130, 10, TEAL);
+    for (const [i, x] of [20, 110, 200].entries()) {
+      s.cylinderShadow(x + 20, 45, 10, 30, 30, 0.1);
+      s.cylinder(x + 20, 45, 10, 30, i === 0 ? 84 : 66, TEAL, 2);
     }
     s.link(
       [
-        [62, 50, 44],
-        [118, 50, 44],
+        [64, 45, 48],
+        [126, 45, 48],
       ],
       TEAL,
-      { width: 2, dash: '3 5' },
+      { width: 2.2, dash: '3 5' },
     );
     s.link(
       [
-        [142, 50, 44],
-        [198, 50, 44],
+        [154, 45, 48],
+        [216, 45, 48],
       ],
       TEAL,
-      { width: 2, dash: '3 5' },
+      { width: 2.2, dash: '3 5' },
     );
-    s.packet([90, 50, 44], TEAL, 5);
+    s.packet([95, 45, 48], TEAL, 5);
   } else {
-    s.plate(-20, -20, 0, 210, 210, 10);
+    s.plate(-20, -20, 0, 200, 200, 10);
     for (const [x, y, h, look] of [
-      [10, 10, 44, LOOK.sky],
-      [90, 10, 64, LOOK.white],
-      [10, 90, 64, LOOK.white],
-      [90, 90, 40, LOOK.orange],
+      [10, 10, 46, LOOK.sky],
+      [92, 10, 70, LOOK.white],
+      [10, 92, 70, LOOK.white],
+      [92, 92, 42, LOOK.orange],
     ] as const) {
-      s.shadow(x, y, 10, 64, 64, 28, 0.1);
-      s.server(x, y, 10, 64, 64, h, look, look === LOOK.orange ? WHITE : GREEN);
+      s.shadow(x, y, 10, 66, 66, 30, 0.1);
+      s.server(x, y, 10, 66, 66, h, look, look === LOOK.orange ? WHITE : GREEN);
     }
   }
   return s;
 }
 
-/** A small icon of a step of the request's path. */
-function stepIcon(s: Scene, kind: number, x: number, y: number) {
+/** The icon of a step of a request's path: edge, balancer, service, ledger, replicas. */
+function stepIcon(kind: number) {
+  const s = new Scene(0, 0, 1);
+  const plate = (color = BLUE) => {
+    s.shadow(-10, -10, 0, 120, 120, 30, 0.1);
+    s.plate(-10, -10, 0, 120, 120, 12, color);
+  };
   if (kind === 0) {
-    s.plate(x - 10, y - 10, 0, 110, 110, 10);
-    s.shadow(x + 20, y + 20, 10, 50, 50, 26, 0.1);
-    s.box(x + 20, y + 20, 10, 50, 50, 16, LOOK.sky);
-    s.cloud([x + 45, y + 45, 80], 120);
-  } else if (kind === 1) {
-    s.plate(x - 10, y - 10, 0, 110, 110, 10);
-    s.shadow(x + 15, y + 15, 10, 60, 60, 26, 0.1);
-    s.box(x + 15, y + 15, 10, 60, 60, 30, LOOK.blue);
-    s.box(x + 27, y + 27, 40, 36, 36, 10, LOOK.sky);
-  } else if (kind === 2) {
-    s.plate(x - 10, y - 10, 0, 110, 110, 10);
-    s.shadow(x + 5, y + 10, 10, 40, 40, 40, 0.1);
-    s.shadow(x + 52, y + 10, 10, 40, 40, 30, 0.1);
-    s.server(x + 5, y + 10, 10, 40, 40, 74);
-    s.server(x + 52, y + 10, 10, 40, 40, 56, LOOK.sky);
-  } else if (kind === 3) {
-    s.plate(x - 10, y - 10, 0, 110, 110, 10, TEAL);
-    s.cylinderShadow(x + 45, y + 45, 10, 32, 30, 0.1);
-    s.cylinder(x + 45, y + 45, 10, 32, 76, TEAL, 2);
-  } else {
-    s.plate(x - 10, y - 10, 0, 110, 110, 10, TEAL);
-    for (const [cx, cy] of [
-      [x + 22, y + 22],
-      [x + 70, y + 22],
-      [x + 46, y + 70],
-    ] as const) {
-      s.cylinder(cx, cy, 10, 18, 40, TEAL, 1, false);
-    }
-  }
-}
-
-/** The rollout: four blocks of traffic growing from the canary to everyone. */
-function rolloutScene(width: number, centers: number[]) {
-  // A scene whose world runs along the screen: each block stands where its column is.
-  const s = new Scene(0, 196, 1);
-  const heights = [10, 38, 96, 170];
-  const blocks = centers.map((cx, i) => {
-    // From a screen x, the world point on the line x = -y + c at depth 0 that lands there.
-    const u = cx / (2 * COS);
-    return { x: u - 45, y: -u - 45, h: heights[i]! };
-  });
-  // The track they stand on: one long plate along the screen.
-  const ends = [blocks[0]!, blocks[blocks.length - 1]!];
-  const pad = 130;
-  const along = (b: { x: number; y: number }, t: number): P3 => [b.x + 45 + t, b.y + 45 - t, 0];
-  const a0 = along(ends[0], pad);
-  const a1 = along(ends[1], -pad);
-  const lane = 70;
-  s.raw(
-    `<path d="${s.d([
-      [a0[0] - lane, a0[1] - lane, 0],
-      [a0[0] + lane, a0[1] + lane, 0],
-      [a1[0] + lane, a1[1] + lane, 0],
-      [a1[0] - lane, a1[1] - lane, 0],
-    ])}" fill="${BLUE}" fill-opacity=".07" stroke="${BLUE}" stroke-opacity=".4" stroke-width="1.6" stroke-dasharray="3 7" stroke-linecap="round"/>`,
-  );
-  for (const [i, b] of blocks.entries()) {
-    s.shadow(b.x, b.y, 0, 90, 90, Math.max(18, b.h * 0.55), 0.13);
-    s.box(b.x - 10, b.y - 10, 0, 110, 110, 8, LOOK.plate);
-    s.server(b.x, b.y, 8, 90, 90, b.h, i === 0 ? LOOK.orange : i === 3 ? LOOK.blue : LOOK.sky, i === 0 ? WHITE : GREEN);
-  }
-  // The rise from one to the next, dashed, toward the end.
-  const tops = blocks.map((b) => s.xy([b.x + 45, b.y + 45, 8 + b.h + 40]));
-  for (let i = 0; i < tops.length - 1; i++) {
-    const [ax, ay] = tops[i]!;
-    const [bx, by] = tops[i + 1]!;
-    const mx = (ax + bx) / 2;
-    const my = Math.min(ay, by) - 34;
-    s.raw(
-      `<path d="M${r1(ax - 20)} ${r1(ay)}Q${r1(mx)} ${r1(my)} ${r1(bx + 26)} ${r1(by - 4)}" stroke="${i === 0 ? ORANGE : BLUE}" stroke-opacity=".85" stroke-width="2.4" stroke-dasharray="6 7" stroke-linecap="round"/>`,
+    plate();
+    s.shadow(22, 22, 12, 56, 56, 24, 0.1);
+    s.box(22, 22, 12, 56, 56, 18, LOOK.sky);
+    s.link(
+      [
+        [50, 50, 104],
+        [50, 50, 32],
+      ],
+      ORANGE,
+      { width: 2.4 },
     );
-    s.raw(arrowhead(mx, my, bx + 26, by - 4, i === 0 ? ORANGE : BLUE, 9));
+    s.cloud([50, 50, 110], 130);
+  } else if (kind === 1) {
+    plate();
+    s.shadow(16, 16, 12, 68, 68, 30, 0.1);
+    s.box(16, 16, 12, 68, 68, 34, LOOK.blue);
+    s.box(30, 30, 46, 40, 40, 12, LOOK.sky);
+  } else if (kind === 2) {
+    plate();
+    s.shadow(6, 10, 12, 42, 42, 46, 0.1);
+    s.shadow(56, 10, 12, 42, 42, 34, 0.1);
+    s.server(6, 10, 12, 42, 42, 86);
+    s.server(56, 10, 12, 42, 42, 62, LOOK.sky);
+    s.box(14, 64, 12, 30, 30, 18, LOOK.orange);
+  } else if (kind === 3) {
+    plate(TEAL);
+    s.cylinderShadow(50, 50, 12, 34, 30, 0.1);
+    s.cylinder(50, 50, 12, 34, 86, TEAL, 2);
+  } else {
+    plate(TEAL);
+    for (const [cx, cy] of [
+      [24, 24],
+      [76, 24],
+      [24, 76],
+    ] as const) {
+      s.cylinder(cx, cy, 12, 20, 46, TEAL, 1, false);
+    }
+    s.link(
+      [
+        [44, 24, 30],
+        [56, 24, 30],
+      ],
+      TEAL,
+      { width: 2, dash: '2 4', head: false },
+    );
+    s.link(
+      [
+        [24, 44, 30],
+        [24, 56, 30],
+      ],
+      TEAL,
+      { width: 2, dash: '2 4', head: false },
+    );
   }
-  return { s, width };
+  return s;
 }
 
-/** Before: one region with everything in it, and a warning. */
+/** A block of the rollout: the share of the traffic as its height, on its own plate. */
+function rolloutBlock(i: number) {
+  const s = new Scene(0, 0, 1);
+  const h = [12, 46, 104, 170][i]!;
+  s.shadow(-12, -12, 0, 124, 124, 34, 0.1);
+  s.plate(-12, -12, 0, 124, 124, 10, i === 0 ? ORANGE : BLUE);
+  s.shadow(0, 0, 10, 100, 100, Math.max(20, h * 0.55), 0.13);
+  s.server(0, 0, 10, 100, 100, h, i === 0 ? LOOK.orange : i === 3 ? LOOK.blue : LOOK.sky, i === 0 ? WHITE : GREEN);
+  return { s, top: s.xy([50, 50, 10 + h]) };
+}
+
+/** Before: one region with everything in it, a cold standby far off, and a warning. */
 function beforeScene() {
-  const s = new Scene(384, 34, 0.8);
-  s.shadow(0, 0, 0, 190, 190, 40, 0.12);
-  s.plate(0, 0, 0, 190, 190, 12, ORANGE);
-  s.shadow(25, 25, 12, 52, 52, 46, 0.1);
-  s.shadow(95, 25, 12, 52, 52, 36, 0.1);
-  s.server(25, 25, 12, 52, 52, 90);
-  s.server(95, 25, 12, 52, 52, 66, LOOK.sky);
-  s.cylinder(60, 140, 12, 28, 56, TEAL, 2);
-  s.cylinder(135, 140, 12, 22, 40, TEAL, 1);
-  // A cold standby, far off and greyed, with no traffic.
+  const s = new Scene(0, 0, 1);
+  s.shadow(0, 0, 0, 200, 200, 44, 0.12);
+  s.plate(0, 0, 0, 200, 200, 12, ORANGE);
+  s.shadow(28, 28, 12, 54, 54, 50, 0.1);
+  s.shadow(102, 28, 12, 54, 54, 40, 0.1);
+  s.server(28, 28, 12, 54, 54, 96);
+  s.server(102, 28, 12, 54, 54, 70, LOOK.sky);
+  s.cylinder(62, 148, 12, 28, 58, TEAL, 2);
+  s.cylinder(140, 148, 12, 22, 42, TEAL, 1);
+  // A cold standby, far off and grey, with no traffic to it.
   s.raw(
     `<path d="${s.d(
       [
-        [190, 95, 6],
-        [330, 95, 6],
+        [200, 100, 6],
+        [340, 100, 6],
       ],
       false,
-    )}" stroke="${NAVY}" stroke-opacity=".3" stroke-width="2" stroke-dasharray="3 7"/>`,
+    )}" stroke="${NAVY}" stroke-opacity=".3" stroke-width="2.2" stroke-dasharray="3 8" stroke-linecap="round"/>`,
   );
-  s.box(330, 50, 0, 90, 90, 10, LOOK.legacy);
-  s.box(350, 70, 10, 50, 50, 40, LOOK.legacy);
-  const [wx, wy] = s.xy([95, 95, 150]);
+  s.box(340, 55, 0, 90, 90, 10, LOOK.legacy);
+  s.box(360, 75, 10, 50, 50, 44, LOOK.legacy);
+  const [wx, wy] = s.xy([100, 100, 150]);
+  s.extent([100, 100, 150], 34);
   s.raw(
-    `<circle cx="${r1(wx)}" cy="${r1(wy)}" r="26" fill="${ORANGE}" fill-opacity=".18"/><circle cx="${r1(wx)}" cy="${r1(wy)}" r="15" fill="${ORANGE}"/>` +
-      `<path d="M${r1(wx)} ${r1(wy - 7)}v8" stroke="${WHITE}" stroke-width="3.4" stroke-linecap="round"/><circle cx="${r1(wx)}" cy="${r1(wy + 6.5)}" r="2.1" fill="${WHITE}"/>`,
+    `<circle cx="${r1(wx)}" cy="${r1(wy)}" r="34" fill="${ORANGE}" fill-opacity=".18"/><circle cx="${r1(wx)}" cy="${r1(wy)}" r="21" fill="${ORANGE}"/>` +
+      `<path d="M${r1(wx)} ${r1(wy - 10)}v11" stroke="${WHITE}" stroke-width="4.6" stroke-linecap="round"/><circle cx="${r1(wx)}" cy="${r1(wy + 9.5)}" r="2.8" fill="${WHITE}"/>`,
   );
   return s;
 }
 
 /** After: three regions, joined, each healthy. */
 function afterScene() {
-  const s = new Scene(384, 40, 0.62);
+  const s = new Scene(0, 0, 1);
   const plates: [number, number][] = [
     [0, 0],
     [0, 230],
@@ -1052,7 +1156,7 @@ function afterScene() {
       [80, 236, 12],
     ],
     BLUE,
-    { width: 2.4 },
+    { width: 2.6 },
   );
   s.link(
     [
@@ -1060,16 +1164,16 @@ function afterScene() {
       [236, 80, 12],
     ],
     BLUE,
-    { width: 2.4 },
+    { width: 2.6 },
   );
   s.link(
     [
-      [230, 310, 12],
-      [310, 310, 12],
-      [310, 236, 12],
+      [160, 300, 12],
+      [300, 300, 12],
+      [300, 166, 12],
     ],
     TEAL,
-    { width: 2.4, dash: '3 6' },
+    { width: 2.6, dash: '3 7' },
   );
   for (const [i, [x, y]] of plates.entries()) {
     s.plate(x, y, 0, 160, 160, 12);
@@ -1082,50 +1186,52 @@ function afterScene() {
   return s;
 }
 
-/** The close: the release has landed in every region. */
+/** The close: the release has landed on the platform, and every region is ticked. */
 function deployScene() {
-  const s = new Scene(430, 330, 0.9);
-  s.raw(
-    `<path d="${s.d([
-      [-40, -40, 0],
-      [520, -40, 0],
-      [520, 520, 0],
-      [-40, 520, 0],
-    ])}" fill="${BLUE}" fill-opacity=".05" stroke="${BLUE}" stroke-opacity=".35" stroke-width="1.6" stroke-dasharray="3 7" stroke-linecap="round"/>`,
-  );
-  s.shadow(0, 0, 0, 480, 480, 70, 0.12);
+  const s = new Scene(0, 0, 1);
+  account(s, -40, 520);
+  s.shadow(0, 0, 0, 480, 480, 70, 0.08);
   s.plate(0, 0, 0, 480, 480, 20);
   const t = 20;
-  // A row of services, each with the new release on top.
+  // The services, along the back, each with the new release.
   const spots: [number, number, number][] = [
-    [40, 40, 120],
-    [150, 40, 150],
-    [260, 40, 110],
-    [370, 40, 90],
-    [40, 150, 90],
-    [40, 260, 130],
-    [40, 370, 80],
+    [40, 40, 92],
+    [150, 40, 118],
+    [260, 40, 84],
+    [370, 40, 70],
+    [40, 150, 70],
+    [40, 260, 104],
+    [40, 370, 64],
   ];
   for (const [x, y, h] of spots) s.shadow(x, y, t, 70, 70, h * 0.5, 0.1);
   for (const [x, y, h] of spots) s.server(x, y, t, 70, 70, h, h > 120 ? LOOK.sky : LOOK.white);
-  s.cylinderShadow(330, 330, t, 44, 44, 0.1);
-  s.cylinder(250, 250, t, 44, 96, TEAL, 3);
-  s.cylinder(370, 250, t, 34, 70, TEAL, 2);
-  s.cylinder(250, 370, t, 34, 70, TEAL, 2);
+  s.cylinderShadow(370, 230, t, 38, 40, 0.1);
+  s.cylinderShadow(230, 370, t, 38, 40, 0.1);
+  s.cylinder(370, 230, t, 38, 84, TEAL, 3);
+  s.cylinder(230, 370, t, 38, 84, TEAL, 3);
+  s.shadow(340, 340, t, 100, 100, 40, 0.1);
   s.box(340, 340, t, 100, 100, 50, LOOK.blue);
-  s.box(360, 360, t + 50, 60, 60, 20, LOOK.orange);
-  // The release coming down from the cloud, and the ticks of every region.
+  s.box(360, 360, t + 50, 60, 60, 24, LOOK.orange);
+  // The release came down into its place: where it was, dashed, and the way down.
+  const g = t + 210;
+  s.raw(
+    `<path d="${s.d([
+      [360, 360, g + 24],
+      [420, 360, g + 24],
+      [420, 420, g + 24],
+      [360, 420, g + 24],
+    ])}M${s.xy([360, 420, g + 24]).map(r1).join(' ')}L${s.xy([360, 420, g]).map(r1).join(' ')}L${s.xy([420, 420, g]).map(r1).join(' ')}L${s.xy([420, 360, g]).map(r1).join(' ')}L${s.xy([420, 360, g + 24]).map(r1).join(' ')}M${s.xy([420, 420, g]).map(r1).join(' ')}L${s.xy([420, 420, g + 24]).map(r1).join(' ')}" stroke="${ORANGE}" stroke-width="2.2" stroke-dasharray="5 5" stroke-linejoin="round"/>`,
+  );
   s.link(
     [
-      [390, 390, 300],
-      [390, 390, 98],
+      [390, 390, g - 8],
+      [390, 390, t + 92],
     ],
     ORANGE,
     { width: 2.8 },
   );
-  s.packet([390, 390, 200]);
-  s.cloud([390, 390, 305], 250);
   for (const [x, y, h] of spots.filter((_, i) => i % 2 === 0)) s.ok([x + 35, y + 35, t + h + 34], 13);
+  s.ok([440, 440, t + 120], 16);
   return s;
 }
 
@@ -1176,10 +1282,10 @@ function trafficPanel(w: number, h: number) {
   const errorsTop = base + 62;
   const errors =
     `<text x="${x0}" y="${errorsTop + 6}" ${MONO} font-size="16" fill="${MUTED}">errors</text>` +
-    `<path d="M${x0 + 80} ${errorsTop}H${x1 - 120}" stroke="${GREEN}" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="M${x0 + 104} ${errorsTop}H${x1 - 84}" stroke="${GREEN}" stroke-width="3" stroke-linecap="round"/>` +
     `<text x="${x1}" y="${errorsTop + 6}" text-anchor="end" ${MONO} font-size="16" font-weight="700" fill="${NAVY}">0.00%</text>` +
     `<text x="${x0}" y="${errorsTop + 52}" ${MONO} font-size="16" fill="${MUTED}">declined</text>` +
-    `<path d="M${x0 + 80} ${errorsTop + 46}H${x1 - 120}" stroke="${GREEN}" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="M${x0 + 104} ${errorsTop + 46}H${x1 - 84}" stroke="${GREEN}" stroke-width="3" stroke-linecap="round"/>` +
     `<text x="${x1}" y="${errorsTop + 52}" text-anchor="end" ${MONO} font-size="16" font-weight="700" fill="${NAVY}">0</text>`;
   const header =
     `<circle cx="${x0 + 8}" cy="44" r="12" fill="${GREEN}" fill-opacity=".2"/><circle cx="${x0 + 8}" cy="44" r="6" fill="${GREEN}"/>` +
@@ -1235,6 +1341,8 @@ function uptimeStrip(w: number, dir: Dir) {
 function sparkline(kind: number) {
   const w = 170;
   const h = 96;
+  // Drawn for right to left, time running toward the end side: now is at the left, and the
+  // mirror of a left-to-right deck puts it at the right.
   if (kind === 0) {
     // Downtime: a flat line at zero over the night of the move.
     return svg(
@@ -1242,19 +1350,19 @@ function sparkline(kind: number) {
       h,
       `<path d="M4 70H166" stroke="${GREEN}" stroke-width="3.4" stroke-linecap="round"/>` +
         `<path d="M4 30H166" stroke="${NAVY}" stroke-opacity=".1" stroke-width="1.5" stroke-dasharray="3 6"/>` +
-        `<circle cx="166" cy="70" r="7" fill="${GREEN}"/><circle cx="166" cy="70" r="13" fill="${GREEN}" fill-opacity=".2"/>`,
+        `<circle cx="6" cy="70" r="7" fill="${GREEN}"/><circle cx="6" cy="70" r="13" fill="${GREEN}" fill-opacity=".2"/>`,
     );
   }
   if (kind === 1) {
     // Latency coming down.
     const pts = [20, 22, 19, 24, 21, 30, 44, 58, 63, 66, 64, 67];
-    const line = pts.map((v, i) => `${r1(4 + i * 14.6)} ${v + 6}`).join('L');
+    const line = pts.map((v, i) => `${r1(166 - i * 14.6)} ${v + 6}`).join('L');
     return svg(
       w,
       h,
-      `<path d="M${line}L164 ${h}L4 ${h}Z" fill="${BLUE}" fill-opacity=".1"/>` +
+      `<path d="M${line}L6 ${h}L166 ${h}Z" fill="${BLUE}" fill-opacity=".1"/>` +
         `<path d="M${line}" stroke="${BLUE}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>` +
-        `<circle cx="164.6" cy="73" r="6" fill="${BLUE}"/>`,
+        `<circle cx="5.4" cy="73" r="6" fill="${BLUE}"/>`,
     );
   }
   // Regions: three plates, lit.
@@ -1344,45 +1452,73 @@ const tiles3 = [262, 474, 686];
 const lines3 = [520, 630, 740];
 
 function layouts(): Layout[] {
-  const heroArt = atEnd(0, 50, 960, 960);
+  // The opening scene, and the chips of its regions where the scene puts them.
+  const heroArt = atEnd(24, 40, 890, 960);
   const hero = heroScene();
-  const stackArt = atEnd(40, 150, 800, 860);
-  const window = atEnd(END, 100, 780, 812);
-  const textArt = atEnd(40, 236, 640, 660);
-  const closingArt = atEnd(0, 70, 920, 840);
-  const icons = (name: string) =>
-    cards3.map((start, i) =>
-      art(
-        `d_anan_${name}_icon${i + 1}`,
-        at(start + 16, 278, 488, 168),
-        serviceIcon((['gateway', 'ledger', 'risk'] as const)[i]!).svg(488, 168),
-      ),
-    );
-  // The process: one scene across the slide, the icons in their columns.
-  const path = new Scene(0, 66, 0.86);
-  const iconAt = (start: number) => {
-    // The world point whose top lands at the middle of a column.
-    const cx = 1920 - start - 150 - START;
-    const u = cx / (2 * COS * 0.86);
-    return [u - 45, -u - 45] as const;
+  const heroFit = hero.fitting(heroArt.w, heroArt.h, 28, 4, 0.5, 0.55);
+  const pin = (p: P3) => {
+    const [X, Y] = heroFit.map(hero.xy(p));
+    return [heroArt.x + X, heroArt.y + Y] as const;
   };
-  for (const [i, start] of steps5.entries()) {
-    const [x, y] = iconAt(start);
-    path.shadow(x - 10, y - 10, 0, 110, 110, 30, 0.1);
-    stepIcon(path, i, x, y);
-  }
-  for (let i = 0; i < 4; i++) {
-    const [ax, ay] = iconAt(steps5[i]!);
-    const [bx, by] = iconAt(steps5[i + 1]!);
-    const from: P3 = [ax + 45 - 70, ay + 45 + 70, 5];
-    const to: P3 = [bx + 45 + 72, by + 45 - 72, 5];
-    path.link([from, to], i === 3 ? TEAL : BLUE, { width: 2.4, dash: i === 3 ? '3 6' : '7 7' });
-    if (i === 1) path.packet([(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, 5]);
-  }
-  const rollout = rolloutScene(
-    WIDTH,
-    columns4.map((start) => WIDTH - (start - START) - 196),
+
+  // The section's stack, and where its top layer is, for the callout of the number.
+  const stackArt = atEnd(24, 130, 780, 920);
+  const stack = stackScene();
+  const stackFit = stack.fitting(stackArt.w, stackArt.h, 20, 4, 0.42, 0.6);
+  const [cornerX, cornerY] = (() => {
+    const [X, Y] = stackFit.map(stack.xy([250, 0, 508]));
+    return [stackArt.x + X, stackArt.y + Y];
+  })();
+  const tag = atEnd(560, 108, 280, 176);
+
+  const textArt = atEnd(64, 170, 650, 720);
+  const migration = migrationScene();
+  const migrationFit = migration.fitting(textArt.w, textArt.h, 16, 4, 0.5, 0.5);
+  const label = (id: string, p: P3, text: string, light: string) => {
+    const [X, Y] = migrationFit.map(migration.xy(p));
+    return chip(id, textArt.x + X, textArt.y + Y + 12, text, { light, pointer: true, size: 17 });
+  };
+  const closingArt = atEnd(20, 60, 900, 820);
+  const window = atEnd(END, 100, 780, 812);
+
+  // The icons of the process and the blocks of the rollout share one scale a row.
+  const fitted = (scenes: Scene[], w: number, h: number, pad: number) => {
+    const scale = Math.min(...scenes.map((s) => s.fitting(w, h, pad).scale));
+    return scenes.map((s) => s.fitting(w, h, pad, scale, 1, 1));
+  };
+  const steps = steps5.map((_, i) => stepIcon(i));
+  const stepFits = fitted(steps, 210, 196, 6);
+  const blocks = columns4.map((_, i) => rolloutBlock(i));
+  const blockFits = fitted(
+    blocks.map((b) => b.s),
+    250,
+    270,
+    6,
   );
+  const stepFrame = (start: number) => at(start, 230, 210, 196);
+  const blockFrame = (start: number) => at(start, 226, 250, 270);
+  // The tops of the blocks, on the slide.
+  const tops = blocks.map((b, i) => {
+    const [X, Y] = blockFits[i]!.map(b.top);
+    const f = blockFrame(columns4[i]!);
+    return [f.x + X, f.y + Y] as const;
+  });
+  const rise = at(START, 200, WIDTH, 300);
+  const riseArcs = tops
+    .slice(0, -1)
+    .map(([ax, ay], i) => {
+      const [bx, by] = tops[i + 1]!;
+      const [x0, y0] = [ax - rise.x - 26, ay - rise.y - 10];
+      const [x1, y1] = [bx - rise.x + 34, by - rise.y - 6];
+      const [mx, my] = [(x0 + x1) / 2, Math.max(8, Math.min(y0, y1) - 46)];
+      const color = i === 0 ? ORANGE : BLUE;
+      return (
+        `<path d="M${r1(x0)} ${r1(y0)}Q${r1(mx)} ${r1(my)} ${r1(x1)} ${r1(y1)}" stroke="${color}" stroke-opacity=".85" stroke-width="2.6" stroke-dasharray="7 8" stroke-linecap="round"/>` +
+        arrowhead(mx, my, x1, y1, color, 11)
+      );
+    })
+    .join('');
+
   return [
     {
       id: 'l_anan_hero',
@@ -1395,7 +1531,17 @@ function layouts(): Layout[] {
         place('p_meta', 'caption', at(AFTER, 860, 760, 34), 'caption'),
       ],
       decorations: [
-        art('d_anan_hero_scene', heroArt, hero.svg(heroArt.w, heroArt.h)),
+        drawing('d_anan_hero_scene', heroArt, heroFit.markup(), PAINT),
+        ...(
+          [
+            ['eu-west-1', [96, 520, 0]],
+            ['eu-central-1', [520, 96, 0]],
+            ['il-central-1', [520, 520, 0]],
+          ] as const
+        ).map(([label, p], i) => {
+          const [x, y] = pin(p);
+          return chip(`d_anan_hero_chip${i + 1}`, x, y + 10, label, { pointer: true });
+        }),
         node('d_anan_hero_node', START, 266),
         art(
           'd_anan_hero_rule',
@@ -1408,16 +1554,6 @@ function layouts(): Layout[] {
           `<rect x="2" y="5" width="26" height="23" rx="5" stroke="${BLUE}" stroke-width="2.4"/><path d="M2 12h26M9 2v6M21 2v6" stroke="${BLUE}" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="20" r="2.6" fill="${ORANGE}"/>`,
         ),
         mark('d_anan_hero_mark', at(START, 96, 46, 50)),
-        ...(
-          [
-            ['eu-west-1', [40, 560, 40]],
-            ['eu-central-1', [560, 40, 40]],
-            ['il-central-1', [560, 560, -10]],
-          ] as const
-        ).map(([label, p], i) => {
-          const [X, Y] = hero.xy(p);
-          return chip(`d_anan_hero_chip${i + 1}`, heroArt.x + X, heroArt.y + Y, label);
-        }),
       ],
     },
     {
@@ -1425,7 +1561,7 @@ function layouts(): Layout[] {
       name: 'Section',
       archetype: 'section',
       placeholders: [
-        place('p_number', 'number', atEnd(530, 136, 250, 150), 'display', {
+        place('p_number', 'number', { ...tag, y: tag.y + 20, h: 136 }, 'display', {
           align: 'center',
           vAlign: 'middle',
           color: token('primary'),
@@ -1436,13 +1572,29 @@ function layouts(): Layout[] {
       ],
       decorations: [
         rect('d_anan_section_field', atEnd(0, 0, 880, 1080), solid(token('primary', 0.07))),
-        rect('d_anan_section_edge', atEnd(879, 0, 1, 1080), solid(token('primary', 0.22))),
-        art('d_anan_section_stack', stackArt, stackScene().svg(stackArt.w, stackArt.h)),
-        card('d_anan_section_tag', atEnd(510, 116, 290, 190), solid(token('surface')), 26),
+        rect('d_anan_section_edge', atEnd(879, 0, 1.5, 1080), solid(token('primary', 0.2))),
+        drawing('d_anan_section_stack', stackArt, stackFit.markup(), PAINT),
+        // The callout: from the tag of the part down to the top layer, as a diagram labels.
         art(
           'd_anan_section_leader',
-          atEnd(470, 290, 80, 120),
-          `<path d="M66 4V60Q66 80 46 80H14" stroke="${BLUE}" stroke-opacity=".6" stroke-width="2.2" stroke-dasharray="3 6" stroke-linecap="round"/><circle cx="66" cy="4" r="4.5" fill="${BLUE}"/><circle cx="10" cy="80" r="5.5" fill="${WHITE}" stroke="${BLUE}" stroke-width="2.4"/>`,
+          { x: cornerX - 8, y: tag.y + tag.h - 4, w: tag.x + tag.w / 2 - cornerX + 16, h: cornerY - (tag.y + tag.h) + 12 },
+          (() => {
+            const w = tag.x + tag.w / 2 - cornerX + 16;
+            const h = cornerY - (tag.y + tag.h) + 12;
+            return (
+              `<path d="M${w - 8} 4V${h - 22}Q${w - 8} ${h - 8} ${w - 22} ${h - 8}H14" stroke="${BLUE}" stroke-opacity=".6" stroke-width="2.2" stroke-dasharray="3 6" stroke-linecap="round"/>` +
+              `<circle cx="${w - 8}" cy="4" r="4" fill="${BLUE}"/><circle cx="8" cy="${h - 8}" r="6" fill="${WHITE}" stroke="${BLUE}" stroke-width="2.6"/>`
+            );
+          })(),
+        ),
+        card('d_anan_section_tag', tag, solid(token('surface')), 26),
+        lettered('d_anan_section_tag_label', { x: tag.x, y: tag.y + 14, w: tag.w, h: 26 }, (dir) =>
+          svg(
+            tag.w,
+            26,
+            `<text x="${dir === 'rtl' ? tag.w - 24 : 24}" y="19" text-anchor="${dir === 'rtl' ? 'end' : 'start'}" ${MONO} font-size="16" font-weight="600" letter-spacing="1" fill="${MUTED}">PART</text>` +
+              `<g fill="${BLUE}">${[0, 1, 2].map((i) => `<circle cx="${dir === 'rtl' ? 24 + i * 12 : tag.w - 24 - i * 12}" cy="13" r="3.4" fill-opacity="${1 - i * 0.3}"/>`).join('')}</g>`,
+          ),
         ),
         node('d_anan_section_node', START, 376),
         mark('d_anan_section_mark', at(START, 96, 46, 50)),
@@ -1454,20 +1606,20 @@ function layouts(): Layout[] {
       archetype: 'bigNumber',
       placeholders: [
         ...head('big_number').placeholders,
-        place('p_number', 'number', at(START, 262, 960, 135), 'display', { color: token('primary') }),
-        place('p_label', 'subtitle', at(START, 404, 960, 53), 'heading'),
-        place('p_body', 'body', at(START, 470, 900, 135), 'body'),
+        place('p_number', 'number', at(START, 262, 920, 135), 'display', { color: token('primary') }),
+        place('p_label', 'subtitle', at(START, 404, 920, 53), 'heading'),
+        place('p_body', 'body', at(START, 470, 880, 135), 'body'),
         ...tiles3.flatMap((top, i) => [
-          place(`p_stat${i + 1}`, 'number', atEnd(END + 206, top + 26, 390, 79), 'title'),
-          place(`p_stat${i + 1}_label`, 'caption', atEnd(END + 206, top + 108, 390, 68), 'caption'),
+          place(`p_stat${i + 1}`, 'number', atEnd(END + 206, top + 26, 450, 79), 'title'),
+          place(`p_stat${i + 1}_label`, 'caption', atEnd(END + 206, top + 108, 450, 68), 'caption'),
         ]),
         ...foot('big_number').placeholders,
       ],
       decorations: [
         ...head('big_number').decorations,
-        lettered('d_anan_big_number_days', at(START, 668, 960, 118), (dir) => uptimeStrip(960, dir)),
+        lettered('d_anan_big_number_days', at(START, 652, 920, 118), (dir) => uptimeStrip(920, dir)),
         ...tiles3.flatMap((top, i) => [
-          card(`d_anan_big_number_tile${i + 1}`, atEnd(END, top, 620, 192)),
+          card(`d_anan_big_number_tile${i + 1}`, atEnd(END, top, 680, 192)),
           drawing(`d_anan_big_number_spark${i + 1}`, atEnd(END + 22, top + 48, 170, 96), sparkline(i), PAINT),
           rect(`d_anan_big_number_rule${i + 1}`, atEnd(END + 190, top + 30, 1.5, 132), solid(token('text', 0.08))),
         ]),
@@ -1485,10 +1637,15 @@ function layouts(): Layout[] {
         ...foot('quote').placeholders,
       ],
       decorations: [
-        art(
+        // The marks open the quote as English sets them, in both directions.
+        lettered(
           'd_anan_quote_marks',
           at(START, 120, 116, 92),
-          `<path d="M116 4c-30 6-50 28-50 62v22h44V52H88c0-18 10-30 28-34Z" fill="${BLUE}"/><path d="M50 4C20 10 0 32 0 66v22h44V52H22c0-18 10-30 28-34Z" fill="${BLUE}" fill-opacity=".45"/>`,
+          svg(
+            116,
+            92,
+            `<path d="M116 4c-30 6-50 28-50 62v22h44V52H88c0-18 10-30 28-34Z" fill="${BLUE}"/><path d="M50 4C20 10 0 32 0 66v22h44V52H22c0-18 10-30 28-34Z" fill="${BLUE}" fill-opacity=".45"/>`,
+          ),
         ),
         art(
           'd_anan_quote_badge',
@@ -1505,12 +1662,13 @@ function layouts(): Layout[] {
       name: 'Text',
       archetype: 'text',
       placeholders: [
-        ...head('text').placeholders.filter((p) => p.role === 'title'),
+        place('p_title', 'title', at(START, 138, 1080, 74), 'title'),
         place('p_body', 'body', at(START, 262, 1080, 620), 'body'),
       ],
       decorations: [
-        node('d_anan_text_node', START, 160),
-        art('d_anan_text_scene', textArt, migrationScene().svg(textArt.w, textArt.h)),
+        drawing('d_anan_text_scene', textArt, migrationFit.markup(), PAINT),
+        label('d_anan_text_from', [470, 170, 0], 'on-prem', MUTED),
+        label('d_anan_text_to', [190, 480, 0], 'cloud', GREEN),
         ...foot('text', false).decorations,
       ],
     },
@@ -1535,23 +1693,21 @@ function layouts(): Layout[] {
         ),
         art(
           'd_anan_text_image_spine',
-          at(START + 30, rows3[0]! + 60, 8, rows3[2]! - rows3[0]! - 54),
-          `<path d="M4 4V${rows3[2]! - rows3[0]! - 58}" stroke="${BLUE}" stroke-opacity=".45" stroke-width="2.2" stroke-dasharray="3 7" stroke-linecap="round"/>`,
+          at(START + 31, rows3[0]! + 70, 8, rows3[2]! - rows3[0]! - 74),
+          `<path d="M4 4V${rows3[2]! - rows3[0]! - 78}" stroke="${BLUE}" stroke-opacity=".45" stroke-width="2.2" stroke-dasharray="3 7" stroke-linecap="round"/>`,
         ),
         ...rows3.map((top, i) => {
-          const s = new Scene(31, 46, 0.42);
+          const s = new Scene(0, 0, 1);
+          s.box(0, 0, 0, 60, 60, 10, LOOK.plate);
           if (i === 0) {
-            s.box(0, 0, 0, 60, 60, 10, LOOK.plate);
             s.server(14, 14, 10, 32, 32, 50, LOOK.blue, WHITE);
           } else if (i === 1) {
-            s.box(0, 0, 0, 60, 60, 10, LOOK.plate);
-            s.cylinder(30, 30, 10, 20, 56, TEAL, 2, false);
+            s.cylinder(30, 30, 10, 18, 52, TEAL, 2, false);
           } else {
-            s.box(0, 0, 0, 60, 60, 10, LOOK.plate);
-            s.box(14, 14, 10, 32, 32, 20, LOOK.orange);
-            s.cloud([30, 30, 70], 70);
+            s.box(16, 16, 10, 28, 28, 18, LOOK.orange);
+            s.cloud([30, 30, 64], 66);
           }
-          return art(`d_anan_text_image_icon${i + 1}`, at(START, top - 4, 62, 62), s.svg(62, 62));
+          return drawing(`d_anan_text_image_icon${i + 1}`, at(START, top - 8, 70, 70), s.fit(70, 70, 3), PAINT);
         }),
         ...foot('text_image').decorations,
       ],
@@ -1586,22 +1742,32 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards').placeholders,
         ...cards3.flatMap((start, i) => [
-          place(`p_card${i + 1}_note`, 'caption', at(start + 32, 458, 456, 34), 'caption'),
-          place(`p_card${i + 1}`, 'subtitle', at(start + 32, 500, 456, 96), 'heading'),
-          place(`p_card${i + 1}_body`, 'body', at(start + 32, 598, 456, 190), 'body'),
+          place(`p_card${i + 1}_note`, 'caption', at(start + 66, 444, 420, 34), 'caption'),
+          place(`p_card${i + 1}`, 'subtitle', at(start + 32, 496, 456, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_card${i + 1}_body`, 'body', at(start + 32, 600, 456, 190), 'body'),
         ]),
-        place('p_takeaway', 'body', at(AFTER, 826, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
+        place('p_takeaway', 'body', at(AFTER, 822, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
         ...foot('cards').placeholders,
       ],
       decorations: [
         ...head('cards').decorations,
         ...cards3.flatMap((start, i) => [
-          card(`d_anan_cards_card${i + 1}`, at(start, 262, 520, 548)),
-          rect(`d_anan_cards_stage${i + 1}`, at(start + 12, 274, 496, 172), STAGE, { effects: { radius: 14 } }),
-          lattice(`d_anan_cards_lattice${i + 1}`, at(start + 12, 274, 496, 172), 0.28),
+          card(`d_anan_cards_card${i + 1}`, at(start, 262, 520, 540)),
+          rect(`d_anan_cards_stage${i + 1}`, at(start + 12, 274, 496, 214), STAGE, { effects: { radius: 14 } }),
+          lattice(`d_anan_cards_lattice${i + 1}`, at(start + 12, 274, 496, 214), 0.28),
+          drawing(
+            `d_anan_cards_icon${i + 1}`,
+            at(start + 12, 280, 496, 160),
+            serviceIcon((['gateway', 'ledger', 'risk'] as const)[i]!).fit(496, 160, 12),
+            PAINT,
+          ),
+          art(
+            `d_anan_cards_light${i + 1}`,
+            at(start + 32, 449, 24, 24),
+            `<circle cx="12" cy="12" r="11" fill="${GREEN}" fill-opacity=".2"/><circle cx="12" cy="12" r="5.6" fill="${GREEN}"/>`,
+          ),
         ]),
-        ...icons('cards'),
-        node('d_anan_cards_takeaway_node', START, 858, TEAL),
+        node('d_anan_cards_takeaway_node', START, 854, TEAL),
         ...foot('cards').decorations,
       ],
     },
@@ -1612,17 +1778,20 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('timeline').placeholders,
         ...columns4.flatMap((start, i) => [
-          place(`p_when${i + 1}`, 'number', at(start, 514, 392, 79), 'title', { color: token('primary') }),
-          place(`p_what${i + 1}`, 'subtitle', at(start, 598, 380, 96), 'heading'),
-          place(`p_what${i + 1}_body`, 'body', at(start, 696, 380, 150), 'caption'),
+          place(`p_when${i + 1}`, 'number', at(start, 530, 392, 79), 'title', { color: token('primary') }),
+          place(`p_what${i + 1}`, 'subtitle', at(start, 612, 380, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_what${i + 1}_body`, 'body', at(start, 714, 380, 150), 'caption'),
         ]),
-        place('p_note', 'caption', at(AFTER, 872, WIDTH - 42, 34), 'caption'),
+        place('p_note', 'caption', at(AFTER, 880, WIDTH - 42, 34), 'caption'),
         ...foot('timeline').placeholders,
       ],
       decorations: [
         ...head('timeline').decorations,
-        art('d_anan_timeline_ramp', at(START, 240, WIDTH, 270), rollout.s.svg(WIDTH, 270)),
-        node('d_anan_timeline_note_node', START, 876, ORANGE),
+        art('d_anan_timeline_rise', rise, riseArcs),
+        ...columns4.map((start, i) =>
+          drawing(`d_anan_timeline_block${i + 1}`, blockFrame(start), blockFits[i]!.markup(), PAINT),
+        ),
+        node('d_anan_timeline_note_node', START, 884, ORANGE),
         ...foot('timeline').decorations,
       ],
     },
@@ -1633,19 +1802,31 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process').placeholders,
         ...steps5.flatMap((start, i) => [
-          place(`p_step${i + 1}`, 'subtitle', at(start, 438, 300, 96), 'heading'),
-          place(`p_step${i + 1}_body`, 'caption', at(start, 536, 300, 136), 'caption'),
-          place(`p_step${i + 1}_number`, 'number', at(start, 680, 300, 79), 'title', {
+          place(`p_step${i + 1}`, 'subtitle', at(start, 512, 300, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_step${i + 1}_body`, 'caption', at(start, 616, 300, 136), 'caption'),
+          place(`p_step${i + 1}_number`, 'number', at(start, 440, 300, 79), 'title', {
             color: token('primary'),
           }),
         ]),
-        place('p_summary', 'body', at(AFTER, 816, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
+        place('p_summary', 'body', at(AFTER, 800, WIDTH - 42, 90), 'body', { vAlign: 'middle' }),
         ...foot('process').placeholders,
       ],
       decorations: [
         ...head('process').decorations,
-        art('d_anan_process_path', at(START, 226, WIDTH, 200), path.svg(WIDTH, 200)),
-        // The budget of the time, hop by hop, in one bar under the figures.
+        ...steps5.map((start, i) =>
+          drawing(`d_anan_process_icon${i + 1}`, stepFrame(start), stepFits[i]!.markup(), PAINT),
+        ),
+        // The hops between the steps: dashed, the way the request goes.
+        ...steps5.slice(0, -1).map((start, i) =>
+          art(
+            `d_anan_process_hop${i + 1}`,
+            at(start + 222, 364, 341 - 222 - 10, 20),
+            `<path d="M${341 - 222 - 14} 10H14" stroke="${i === 3 ? TEAL : BLUE}" stroke-width="2.6" stroke-dasharray="${i === 3 ? '3 6' : '7 7'}" stroke-linecap="round"/>` +
+              arrowhead(30, 10, 4, 10, i === 3 ? TEAL : BLUE, 11) +
+              (i === 1 ? `<circle cx="${(341 - 232) / 2}" cy="10" r="12" fill="${ORANGE}" fill-opacity=".18"/><circle cx="${(341 - 232) / 2}" cy="10" r="6" fill="${ORANGE}"/>` : ''),
+          ),
+        ),
+        // The budget of the time, hop by hop, in one bar under the steps.
         ...(() => {
           const shares = [12, 3, 95, 70];
           const total = shares.reduce((a, b) => a + b, 0);
@@ -1654,15 +1835,15 @@ function layouts(): Layout[] {
             const w = Math.round(((WIDTH - 12) * v) / total);
             const el = rect(
               `d_anan_process_budget${i + 1}`,
-              at(start, 776, w - 4, 10),
-              solid(token(i === 2 ? 'primary' : i === 3 ? 'secondary' : 'primary', i === 2 || i === 3 ? 0.9 : 0.45)),
+              at(start, 772, w - 4, 10),
+              solid(token(i === 3 ? 'secondary' : 'primary', i === 2 || i === 3 ? 0.9 : 0.45)),
               { effects: { radius: 5 } },
             );
             start += w;
             return el;
           });
         })(),
-        node('d_anan_process_summary_node', START, 848, TEAL),
+        node('d_anan_process_summary_node', START, 832, TEAL),
         ...foot('process').decorations,
       ],
     },
@@ -1678,9 +1859,9 @@ function layouts(): Layout[] {
             ['after', START + 864],
           ] as const
         ).flatMap(([side, start]) => [
-          place(`p_${side}_tag`, 'caption', at(start + 72, 456, 690, 34), 'caption'),
-          place(`p_${side}`, 'subtitle', at(start + 40, 498, 720, 96), 'heading'),
-          place(`p_${side}_body`, 'body', at(start + 40, 600, 720, 290), 'body'),
+          place(`p_${side}_tag`, 'caption', at(start + 76, 460, 690, 34), 'caption'),
+          place(`p_${side}`, 'subtitle', at(start + 42, 512, 716, 96), 'heading', { vAlign: 'bottom' }),
+          place(`p_${side}_body`, 'body', at(start + 42, 614, 716, 270), 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1692,13 +1873,13 @@ function layouts(): Layout[] {
             ['after', START + 864, GREEN, afterScene()],
           ] as const
         ).flatMap(([side, start, light, scene]) => [
-          card(`d_anan_comparison_${side}`, at(start, 262, 800, 650)),
-          rect(`d_anan_comparison_${side}_stage`, at(start + 12, 274, 776, 160), STAGE, { effects: { radius: 14 } }),
-          lattice(`d_anan_comparison_${side}_lattice`, at(start + 12, 274, 776, 160), 0.26),
-          art(`d_anan_comparison_${side}_scene`, at(start + 12, 274, 776, 160), scene.svg(776, 160)),
+          card(`d_anan_comparison_${side}`, at(start, 262, 800, 638)),
+          rect(`d_anan_comparison_${side}_stage`, at(start + 12, 274, 776, 230), STAGE, { effects: { radius: 14 } }),
+          lattice(`d_anan_comparison_${side}_lattice`, at(start + 12, 274, 776, 230), 0.26),
+          drawing(`d_anan_comparison_${side}_scene`, at(start + 12, 278, 776, 178), scene.fit(776, 178, 8), PAINT),
           art(
             `d_anan_comparison_${side}_light`,
-            at(start + 40, 461, 24, 24),
+            at(start + 42, 465, 24, 24),
             `<circle cx="12" cy="12" r="11" fill="${light}" fill-opacity=".2"/><circle cx="12" cy="12" r="5.6" fill="${light}"/>`,
           ),
         ]),
@@ -1719,7 +1900,7 @@ function layouts(): Layout[] {
         place('p_chart', 'chart', at(START + 24, 336, 1052, 556)),
         place('p_stat1', 'number', atEnd(END, 262, 480, 135), 'display', { color: token('primary') }),
         place('p_stat1_body', 'body', atEnd(END, 400, 480, 135), 'body'),
-        place('p_stat2', 'number', atEnd(END, 566, 480, 135), 'display', { color: token('secondary') }),
+        place('p_stat2', 'number', atEnd(END, 566, 480, 135), 'display'),
         place('p_stat2_body', 'body', atEnd(END, 704, 480, 92), 'body'),
         place('p_source', 'caption', atEnd(END, 822, 480, 68), 'caption'),
         ...foot('chart').placeholders,
@@ -1732,6 +1913,16 @@ function layouts(): Layout[] {
         ),
         rect('d_anan_chart_bar_rule', at(START, 318, 1100, 1.5), solid(token('text', 0.08))),
         rect('d_anan_chart_divider', atEnd(END, 540, 480, 1.5), solid(token('text', 0.1))),
+        art(
+          'd_anan_chart_mark1',
+          atEnd(END + 480 + 18, 300, 14, 60),
+          `<rect x="2" width="10" height="60" rx="5" fill="${BLUE}"/>`,
+        ),
+        art(
+          'd_anan_chart_mark2',
+          atEnd(END + 480 + 18, 604, 14, 60),
+          `<rect x="2" width="10" height="60" rx="5" fill="${TEAL}"/>`,
+        ),
         ...foot('chart').decorations,
       ],
     },
@@ -1741,13 +1932,13 @@ function layouts(): Layout[] {
       archetype: 'table',
       placeholders: [
         ...head('table', 1100).placeholders,
-        place('p_table', 'table', at(START + 20, 262, WIDTH - 40, 612)),
+        place('p_table', 'table', at(START + 20, 246, WIDTH - 40, 612)),
         place('p_note', 'caption', at(AFTER, 884, 1500, 34), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: [
         ...head('table').decorations,
-        card('d_anan_table_panel', at(START, 246, WIDTH, 632)),
+        card('d_anan_table_panel', at(START, 232, WIDTH, 640)),
         lettered('d_anan_table_filters', atEnd(END, 150, 470, 46), (dir) => {
           const a = chipMarkup('window: 30d', BLUE, { size: 17 });
           const b = chipMarkup('regions: all', GREEN, { size: 17 });
@@ -1774,7 +1965,7 @@ function layouts(): Layout[] {
         ...team4.flatMap((start, i) => [
           place(`p_person${i + 1}_photo`, 'image', at(start, 262, 380, 340)),
           place(`p_person${i + 1}`, 'subtitle', at(start, 626, 380, 53), 'heading'),
-          place(`p_person${i + 1}_role`, 'caption', at(AFTER - START + start, 682, 338, 34), 'caption'),
+          place(`p_person${i + 1}_role`, 'caption', at(start + 42, 682, 338, 34), 'caption'),
           place(`p_person${i + 1}_body`, 'body', at(start, 722, 380, 102), 'caption'),
         ]),
         ...foot('team').placeholders,
@@ -1782,13 +1973,12 @@ function layouts(): Layout[] {
       decorations: [
         ...head('team').decorations,
         ...team4.flatMap((start, i) => [
-          // The long shadow of the picture, cast as the drawings cast theirs.
+          // The long shadow of the picture, cast toward the end and down as the drawings cast theirs.
           art(
             `d_anan_team_shadow${i + 1}`,
-            at(start - 10, 262, 420, 380),
-            `<defs><linearGradient id="s" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${NAVY}" stop-opacity=".14"/><stop offset="1" stop-color="${NAVY}" stop-opacity="0"/></linearGradient></defs>` +
-              `<path d="M40 0H10L-30 40V380H0L40 340Z" fill="url(#s)" transform="translate(0 0)"/>` +
-              `<path d="M40 340 0 380H380L410 350V340Z" fill="url(#s)"/>`,
+            at(start, 262, 440, 400),
+            `<defs><linearGradient id="s" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${NAVY}" stop-opacity=".1"/><stop offset=".7" stop-color="${NAVY}" stop-opacity="0"/></linearGradient></defs>` +
+              `<path d="M60 0 0 60V400H380L440 340V0Z" fill="url(#s)"/>`,
           ),
           rect(`d_anan_team_mat${i + 1}`, at(start - 8, 254, 396, 356), solid(token('surface')), {
             stroke: { color: token('text', 0.08), width: 1.5 },
@@ -1819,13 +2009,13 @@ function layouts(): Layout[] {
         place('p_kicker', 'caption', at(AFTER, 196, 760, 34), 'caption'),
         place('p_title', 'title', at(START, 246, 860, 262), 'display'),
         ...lines3.map((top, i) =>
-          place(`p_line${i + 1}`, 'body', at(START + 68, top, 760, 92), 'body', { vAlign: 'middle' }),
+          place(`p_line${i + 1}`, 'body', at(START + 66, top, 760, 92), 'body', { vAlign: 'middle' }),
         ),
         place('p_contact', 'caption', at(AFTER, 884, 820, 34), 'caption'),
       ],
       decorations: [
-        art('d_anan_closing_scene', closingArt, deployScene().svg(closingArt.w, closingArt.h)),
-        lettered('d_anan_closing_toast', atEnd(150, 744, 470, 270), deployToast(470, 270)),
+        drawing('d_anan_closing_scene', closingArt, deployScene().fit(closingArt.w, closingArt.h, 20, 4, 0.5, 0.35), PAINT),
+        lettered('d_anan_closing_toast', atEnd(110, 752, 470, 250), deployToast(470, 250)),
         node('d_anan_closing_node', START, 200),
         ...lines3.flatMap((top, i) => [
           art(`d_anan_closing_tick${i + 1}`, at(START, top + 24, 44, 44), tick(22, 22, 14)),
@@ -1868,8 +2058,8 @@ function flipped(drawn: readonly Layout[]): Layout[] {
 // ---------------------------------------------------------------------------------------------
 // The sample: a fintech's platform team on moving payments to three cloud regions
 
-const FOOTER_HE = text('Nativ Pay · סקירת ארכיטקטורה · ינואר 2027');
-const FOOTER_EN = text('Nativ Pay · Architecture review · January 2027');
+const FOOTER_HE = text('Nativ Pay · סקירת ארכיטקטורה');
+const FOOTER_EN = text('Nativ Pay · Architecture review');
 const TABLE_COLS = [384, 320, 300, 300, 320];
 const TABLE_ROW = 96;
 const P95 = [292, 286, 279, 241, 208, 180];
@@ -1881,7 +2071,7 @@ const sampleHe: SampleSlide[] = [
     content: {
       caption: [text('Nativ Pay · צוות הפלטפורמה'), text('סקירת ארכיטקטורה · 14 בינואר 2027')],
       title: text('תשלומים', 'בשלושה אזורים'),
-      subtitle: text('איך העברנו את ליבת התשלומים לענן רב־אזורי, בלי דקה אחת של השבתה'),
+      subtitle: text('איך העברנו את ליבת התשלומים לענן רב־אזורי,', 'בלי דקה אחת של השבתה'),
     },
   },
   {
@@ -1953,10 +2143,10 @@ const sampleHe: SampleSlide[] = [
       title: text('שלושת השירותים שעברו ראשונים'),
       subtitle: [text('שער התשלומים'), text('ספר החשבונות'), text('מנוע הסיכונים')],
       body: [
-        text('מקבל כל בקשה ומנתב אותה. עבר ראשון, כי אין לו מצב משלו.'),
-        text('מסד הנתונים של הכסף: כותב לשלושה אזורים ומאשר אחרי שניים.'),
-        text('בודק כל עסקה ב-40 מילישניות, עם אותו מודל בכל אזור.'),
-        text('39 השירותים האחרים עברו אחריהם באותה דרך, בשישה שבועות.'),
+        text('מנתב כל בקשה. אין לו מצב משלו, ולכן עבר ראשון.'),
+        text('הכסף עצמו: נכתב בשלושה אזורים ומאושר אחרי שניים.'),
+        text('בודק כל עסקה ב-40 מילישניות, באותו מודל בכל אזור.'),
+        text('39 השירותים האחרים עברו באותה דרך, בשישה שבועות.'),
       ],
       footer: FOOTER_HE,
     },
@@ -1965,15 +2155,15 @@ const sampleHe: SampleSlide[] = [
     layout: 'l_anan_timeline',
     name: 'המעבר',
     content: {
-      caption: [text('המעבר'), text('כל שלב נפתח רק אחרי 72 שעות שבהן כל יעדי השירות נשמרו.')],
+      caption: [text('המעבר'), text('כל שלב נפתח רק אחרי 72 שעות בתוך יעדי השירות.')],
       title: text('ארבעה שלבים, אפס השבתה'),
       number: [text('1%'), text('10%'), text('50%'), text('100%')],
       subtitle: [text('קנרי'), text('סוחרים קטנים'), text('חצי מהתעבורה'), text('כל התעבורה')],
       body: [
-        text('1 בדצמבר. עובדי החברה בלבד, עם חזרה אוטומטית בכל חריגה.'),
-        text('8 בדצמבר. 2,000 סוחרים, ושלושה מהם ביקשו להיות ראשונים.'),
-        text('15 בדצמבר. שני האזורים החדשים נושאים חצי מהתשלומים.'),
-        text('22 בדצמבר. האזור הוותיק הוא עכשיו אחד משלושה.'),
+        text('1 בדצמבר: עובדי החברה בלבד, עם חזרה אוטומטית.'),
+        text('8 בדצמבר: 2,000 סוחרים שביקשו להיות ראשונים.'),
+        text('15 בדצמבר: האזורים החדשים נושאים חצי מהתשלומים.'),
+        text('22 בדצמבר: שלושה אזורים, שווים.'),
       ],
       footer: FOOTER_HE,
     },
@@ -2005,8 +2195,8 @@ const sampleHe: SampleSlide[] = [
       title: text('מה השתנה בארכיטקטורה'),
       subtitle: [text('אזור ראשי וגיבוי קר'), text('שלושה אזורים פעילים')],
       body: [
-        bullets('מעבר לגיבוי לקח 4 שעות, ידנית', 'הגיבוי לא ראה תעבורה אמיתית', 'תקלה באזור עצרה את כל התשלומים'),
-        bullets('אזור שנופל יוצא מהניתוב תוך 30 שניות', 'כל אזור נושא תעבורה אמיתית כל יום', 'תקלה באזור אחד פוגעת בשליש לכל היותר'),
+        bullets('מעבר לגיבוי: 4 שעות, ידנית', 'הגיבוי לא ראה תעבורה אמיתית', 'תקלה אחת עצרה את כל התשלומים'),
+        bullets('אזור שנופל יוצא מהניתוב ב-30 שניות', 'כל אזור נושא תעבורה אמיתית', 'תקלה פוגעת בשליש לכל היותר'),
       ],
       footer: FOOTER_HE,
     },
@@ -2088,8 +2278,8 @@ const sampleHe: SampleSlide[] = [
       subtitle: [text('מיכל שגב'), text('יואב כרמי'), text('רותי אלון'), text('עידו נחום')],
       body: [
         text('הובילה את המעבר ואת ההחלטה על שלושה אזורים.'),
-        text('כתב את ספרי ההפעלה ואת החזרה האוטומטית.'),
-        text('סנכרנה את ספר החשבונות בין האזורים.'),
+        text('כתב את ספרי ההפעלה ואת מנגנון החזרה האוטומטית.'),
+        text('אחראית לסנכרון ספר החשבונות.'),
         text('בנה את הניתוב לפי בריאות בקצה.'),
       ],
       footer: FOOTER_HE,
@@ -2175,7 +2365,7 @@ const sampleEn: SampleSlide[] = [
       subtitle: [text('All active, all the time'), text('One ledger, in sync'), text('Routing by health')],
       body: [
         text('Every region takes live payments. No standby waits for a bad day.'),
-        text('Each payment is written to two regions before it is approved.'),
+        text('Each payment is saved in two regions first.'),
         text('The edge sends each request to the nearest healthy region, in seconds.'),
       ],
       footer: FOOTER_EN,
@@ -2185,14 +2375,14 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_anan_cards',
     name: 'What moved first',
     content: {
-      caption: [text('What moved first'), text('svc/gateway'), text('svc/ledger'), text('svc/risk')],
-      title: text('The first three services to move'),
+      caption: [text('Moved first'), text('svc/gateway'), text('svc/ledger'), text('svc/risk')],
+      title: text('The first three to move'),
       subtitle: [text('Payment gateway'), text('The ledger'), text('Risk engine')],
       body: [
-        text('Takes every request and routes it. It moved first: it keeps no state.'),
-        text('The database of the money: writes to three regions, confirms on two.'),
-        text('Scores every payment in 40 ms, with the same model in every region.'),
-        text('The other 39 services followed the same path in six weeks.'),
+        text('Routes every request. Stateless, so it went first.'),
+        text('The money itself: written to three regions, confirmed on two.'),
+        text('Scores each payment in 40 ms, in every region.'),
+        text('The other 39 services followed in six weeks.'),
       ],
       footer: FOOTER_EN,
     },
@@ -2201,15 +2391,15 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_anan_timeline',
     name: 'The move',
     content: {
-      caption: [text('The move'), text('Each stage opened only after 72 hours within every service target.')],
+      caption: [text('The move'), text('Every stage held its targets for 72 hours.')],
       title: text('Four stages, zero downtime'),
       number: [text('1%'), text('10%'), text('50%'), text('100%')],
-      subtitle: [text('Canary'), text('Small merchants'), text('Half the traffic'), text('All traffic')],
+      subtitle: [text('Canary'), text('Early merchants'), text('Half the traffic'), text('Everyone')],
       body: [
-        text('1 December. Our own staff only, with automatic rollback on any breach.'),
-        text('8 December. 2,000 merchants, three of whom asked to go first.'),
-        text('15 December. The two new regions carry half of all payments.'),
-        text('22 December. The old region is now one of three.'),
+        text('1 December: staff only, auto rollback.'),
+        text('8 December: 2,000 merchants who asked first.'),
+        text('15 December: the new regions carry half the load.'),
+        text('22 December: old region becomes one of three.'),
       ],
       footer: FOOTER_EN,
     },
@@ -2219,17 +2409,17 @@ const sampleEn: SampleSlide[] = [
     name: 'The path of a payment',
     content: {
       caption: [
-        text('The path of a payment'),
-        text('DNS and TLS near the user'),
-        text('Picks the nearest healthy region'),
-        text('Auth, risk and pricing'),
+        text("A payment's path"),
+        text('TLS near the user'),
+        text('Picks a healthy region'),
+        text('Auth, risk, pricing'),
         text('Written to two regions'),
-        text('A third copy, in the background'),
+        text('A third copy, async'),
       ],
       title: text('What happens in 180 ms'),
       subtitle: [text('Edge'), text('Load balancer'), text('Service'), text('Ledger'), text('Replication')],
       number: [text('12 ms'), text('3 ms'), text('95 ms'), text('70 ms'), text('0 ms')],
-      body: text('180 ms end to end at p95, against 290 before the move.'),
+      body: text('180 ms end to end at p95, down from 290 before the move.'),
       footer: FOOTER_EN,
     },
   },
@@ -2237,12 +2427,12 @@ const sampleEn: SampleSlide[] = [
     layout: 'l_anan_comparison',
     name: 'Before and after',
     content: {
-      caption: [text('Before and after'), text('Before · one region'), text('After · three regions')],
-      title: text('What changed in the architecture'),
-      subtitle: [text('A main region, a cold standby'), text('Three active regions')],
+      caption: [text('Architecture'), text('Before · one region'), text('After · three regions')],
+      title: text('One region, then three'),
+      subtitle: [text('Main region, cold standby'), text('Three active regions')],
       body: [
-        bullets('Failover took four hours, by hand', 'The standby never saw real traffic', 'One outage stopped every payment'),
-        bullets('A failing region leaves routing in 30 s', 'Every region carries real traffic daily', 'An outage touches a third at most'),
+        bullets('Failover: four hours, by hand', 'The standby never saw real traffic', 'One outage stopped every payment'),
+        bullets('Failed regions leave routing in 30 s', 'Every region carries live traffic', 'An outage hits a third at most'),
       ],
       footer: FOOTER_EN,
     },
@@ -2325,8 +2515,8 @@ const sampleEn: SampleSlide[] = [
       body: [
         text('Led the move and the call for three regions.'),
         text('Wrote the runbooks and the automatic rollback.'),
-        text('Kept the ledger in sync across the regions.'),
-        text('Built health-based routing at the edge.'),
+        text('Kept one ledger in sync.'),
+        text('Built the health-based routing.'),
       ],
       footer: FOOTER_EN,
     },

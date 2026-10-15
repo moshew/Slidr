@@ -235,11 +235,12 @@ export function dashed(scene, a, b, { color = C.blue, width = 0.05, dash = 0.16,
 }
 
 /** A packet of traffic: a small bright ball and its glow. */
-export function packet(scene, p, color = C.orange, size = 0.07) {
+export function packet(scene, p, color = C.orange, size = 0.07, glow = true) {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(size, 20, 14), mat(color, { emissive: color, emissiveIntensity: 0.7 }));
   ball.position.set(...p);
   ball.castShadow = true;
   scene.add(ball);
+  if (!glow) return;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 64;
   const g = canvas.getContext('2d');
@@ -248,10 +249,10 @@ export function packet(scene, p, color = C.orange, size = 0.07) {
   grad.addColorStop(1, color + '00');
   g.fillStyle = grad;
   g.fillRect(0, 0, 64, 64);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthWrite: false }));
-  glow.position.set(...p);
-  glow.scale.setScalar(size * 6);
-  (scene.userData.glows ?? scene).add(glow);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthWrite: false }));
+  halo.position.set(...p);
+  halo.scale.setScalar(size * 6);
+  (scene.userData.glows ?? scene).add(halo);
 }
 
 /** A region: a rounded plate with a dashed boundary inset on its top. */
@@ -288,10 +289,10 @@ export function cloud(scene, [x, y, z], s = 1) {
     ball.scale.y = 0.86;
     group.add(ball);
   }
-  // The flat foot of the cloud.
-  const foot = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.3, 48), white));
-  foot.scale.set(1.15, 1, 0.6);
-  foot.position.y = -0.3;
+  // The soft foot of the cloud.
+  const foot = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1.0, 40, 20), white));
+  foot.scale.set(1.12, 0.28, 0.62);
+  foot.position.y = -0.22;
   group.add(foot);
   group.position.set(x, y, z);
   group.scale.setScalar(s);

@@ -98,3 +98,13 @@ export function renderWithFocus(renderer, scene, camera, { focus, K = 24, maxR =
   composer.addPass(new OutputPass());
   composer.render();
 }
+
+/** Puts a still picture of the canvas in its place: a page of one image is quick to capture. */
+export async function freeze(renderer, w, h) {
+  const img = new Image();
+  img.src = renderer.domElement.toDataURL('image/png');
+  await img.decode();
+  img.style.cssText = `display:block;width:${w}px;height:${h}px`;
+  renderer.domElement.replaceWith(img);
+  renderer.dispose();
+}

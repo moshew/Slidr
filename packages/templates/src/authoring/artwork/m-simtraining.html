@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <!-- m-simtraining: a full-motion flight simulator for rescue helicopter crews, a white cockpit pod
      on a six-actuator motion platform, lit warm from the front like a hangar at dusk.
-     Transparent ground with a soft shadow. Render: node render-art.mjs m-simtraining.html out.png 1100 900 2 -->
+     Transparent ground with a soft shadow. Render: node render-art.mjs m-simtraining.html out.png 1300 900 2 -->
 <link rel="stylesheet" href="fonts.css" />
 <style>html, body { margin: 0; background: transparent; overflow: hidden; } canvas { display: block; }</style>
 <script>document.documentElement.dataset.wait = 'true';</script>
@@ -36,7 +36,7 @@ scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.75;
 
 const key = new THREE.DirectionalLight(0xffd2a8, 2.6); // low warm light from the hangar door
-key.position.set(-9, 7, 9);
+key.position.set(-8, 12, 9);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
 Object.assign(key.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 40 });
@@ -61,7 +61,6 @@ const chrome = new THREE.MeshPhysicalMaterial({ color: 0xe8eaec, metalness: 1, r
 const accent = new THREE.MeshPhysicalMaterial({ color: 0xff7a1a, metalness: 0, roughness: 0.35, clearcoat: 0.6 });
 const glass = new THREE.MeshPhysicalMaterial({ color: 0x0b1118, metalness: 0.2, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
 const rubber = new THREE.MeshPhysicalMaterial({ color: 0x17181a, metalness: 0, roughness: 0.85 });
-const lampMat = new THREE.MeshBasicMaterial({ color: 0xfff1d8 });
 
 const add = (g, m, parent = scene) => { const o = new THREE.Mesh(g, m); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o; };
 
@@ -176,15 +175,7 @@ const at = (m) => { m.position.y = 1.0; return m; };
     }
   }
   ctx.putImageData(img, 0, 0);
-  // the maker's mark behind the door, and the door handle
-  ctx.save();
-  ctx.translate(CW * 0.432, CH * 0.672);
-  ctx.scale(1 / 1.3, 1);
-  ctx.fillStyle = '#2a2d31';
-  ctx.font = '700 44px Manrope, Inter, sans-serif';
-  ctx.letterSpacing = '10px';
-  ctx.fillText('SKYRIG H6', 0, 0);
-  ctx.restore();
+  // the door handle (no lettering: the picture is mirrored for the Hebrew slide)
   ctx.fillStyle = '#2a2d31';
   ctx.beginPath(); ctx.roundRect(CW * 0.553, CH * 0.43, 46, 16, 8); ctx.fill();
   rctx.putImageData(rimg, 0, 0);
@@ -197,8 +188,7 @@ const at = (m) => { m.position.y = 1.0; return m; };
 {
 
 }
-// a status light and an antenna on the roof
-add(new THREE.SphereGeometry(0.055, 16, 12), lampMat, pod).position.set(0, 2.1, -0.7);
+// an antenna on the roof
 {
   const ant = add(new THREE.CylinderGeometry(0.02, 0.03, 0.4, 12), graphite, pod);
   ant.position.set(0.3, 2.22, -0.9);

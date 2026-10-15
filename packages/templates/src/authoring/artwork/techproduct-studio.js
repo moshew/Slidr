@@ -8,11 +8,20 @@ export { THREE };
 
 /** A renderer, a scene and a camera on a transparent ground, filling the page. */
 export function studio({ width, height, fov = 30, exposure = 1, tone = 'agx' } = {}) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    preserveDrawingBuffer: true,
+  });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(width, height);
   renderer.setClearColor(0x000000, 0);
-  renderer.toneMapping = tone === 'aces' ? THREE.ACESFilmicToneMapping : tone === 'neutral' ? THREE.NeutralToneMapping : THREE.AgXToneMapping;
+  renderer.toneMapping =
+    tone === 'aces'
+      ? THREE.ACESFilmicToneMapping
+      : tone === 'neutral'
+        ? THREE.NeutralToneMapping
+        : THREE.AgXToneMapping;
   renderer.toneMappingExposure = exposure;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
@@ -27,7 +36,10 @@ export function studio({ width, height, fov = 30, exposure = 1, tone = 'agx' } =
  * An environment of soft boxes: a dim room of a gradient and rectangular panels of light.
  * panels: [{ at: [x,y,z], size: [w,h], power, color }] facing the origin.
  */
-export function softboxes(renderer, { panels, top = '#3a3a3e', bottom = '#0d0d0f', horizon = '#202024', power = 1 }) {
+export function softboxes(
+  renderer,
+  { panels, top = '#3a3a3e', bottom = '#0d0d0f', horizon = '#202024', power = 1 },
+) {
   const env = new THREE.Scene();
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(50, 64, 32),
@@ -40,7 +52,8 @@ export function softboxes(renderer, { panels, top = '#3a3a3e', bottom = '#0d0d0f
         bottom: { value: new THREE.Color(bottom) },
         power: { value: power },
       },
-      vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      vertexShader:
+        'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader:
         'uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; uniform float power; varying vec3 vDir;' +
         'void main(){ float y = vDir.y; vec3 c = y > 0.0 ? mix(mid, top, smoothstep(0.0, 0.8, y)) : mix(mid, bottom, smoothstep(0.0, 0.5, -y)); gl_FragColor = vec4(c * power, 1.0); }',
@@ -49,8 +62,14 @@ export function softboxes(renderer, { panels, top = '#3a3a3e', bottom = '#0d0d0f
   env.add(sky);
   for (const p of panels) {
     const [w, h] = p.size;
-    const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(p.color ?? '#ffffff').multiplyScalar(p.power ?? 4), side: THREE.DoubleSide });
-    const panel = new THREE.Mesh(p.round ? new THREE.CircleGeometry(w / 2, 48) : new THREE.PlaneGeometry(w, h), material);
+    const material = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(p.color ?? '#ffffff').multiplyScalar(p.power ?? 4),
+      side: THREE.DoubleSide,
+    });
+    const panel = new THREE.Mesh(
+      p.round ? new THREE.CircleGeometry(w / 2, 48) : new THREE.PlaneGeometry(w, h),
+      material,
+    );
     panel.position.set(...p.at);
     panel.lookAt(0, p.lookY ?? 0, 0);
     env.add(panel);
@@ -65,7 +84,22 @@ export function softboxes(renderer, { panels, top = '#3a3a3e', bottom = '#0d0d0f
  * Soft contact shadows on a transparent ground (after three.js' contact-shadows example):
  * the scene seen from below as darkness, blurred twice, on a plane at `y`.
  */
-export function contactShadow(renderer, scene, { width = 4, depth = 4, y = 0, height = 1, blur = 3, darkness = 1, opacity = 0.8, resolution = 1024, x = 0, z = 0 } = {}) {
+export function contactShadow(
+  renderer,
+  scene,
+  {
+    width = 4,
+    depth = 4,
+    y = 0,
+    height = 1,
+    blur = 3,
+    darkness = 1,
+    opacity = 0.8,
+    resolution = 1024,
+    x = 0,
+    z = 0,
+  } = {},
+) {
   const group = new THREE.Group();
   group.position.set(x, y, z);
   scene.add(group);
@@ -79,7 +113,8 @@ export function contactShadow(renderer, scene, { width = 4, depth = 4, y = 0, he
     geometry,
     new THREE.ShaderMaterial({
       uniforms: { map: { value: target.texture }, opacity: { value: opacity } },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      vertexShader:
+        'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader:
         'uniform sampler2D map; uniform float opacity; varying vec2 vUv;' +
         'void main(){ float edge = 1.0 - smoothstep(0.3, 0.5, max(abs(vUv.x - 0.5), abs(vUv.y - 0.5))); vec4 t = texture2D(map, vUv); gl_FragColor = vec4(0.0, 0.0, 0.0, t.a * opacity * edge); }',
@@ -93,7 +128,14 @@ export function contactShadow(renderer, scene, { width = 4, depth = 4, y = 0, he
   const blurPlane = new THREE.Mesh(geometry);
   blurPlane.visible = false;
   group.add(blurPlane);
-  const camera = new THREE.OrthographicCamera(-width / 2, width / 2, depth / 2, -depth / 2, 0, height);
+  const camera = new THREE.OrthographicCamera(
+    -width / 2,
+    width / 2,
+    depth / 2,
+    -depth / 2,
+    0,
+    height,
+  );
   camera.rotation.x = Math.PI / 2;
   group.add(camera);
   const depthMaterial = new THREE.MeshDepthMaterial();
@@ -110,7 +152,8 @@ export function contactShadow(renderer, scene, { width = 4, depth = 4, y = 0, he
   const blurShader = (dir) =>
     new THREE.ShaderMaterial({
       uniforms: { tDiffuse: { value: null }, d: { value: 1 / 256 } },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      vertexShader:
+        'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader: `uniform sampler2D tDiffuse; uniform float d; varying vec2 vUv;
         void main(){ vec4 s = vec4(0.0);
           s += texture2D(tDiffuse, vUv + ${dir} * -4.0 * d) * 0.051;
@@ -186,11 +229,16 @@ export function squircleLathe(profile, { n = 4, sx = 1, sz = 1, segments = 192 }
   const section = [];
   for (let j = 0; j <= segments; j++) {
     const t = (j / segments) * Math.PI * 2;
-    const c = Math.cos(t), s = Math.sin(t);
+    const c = Math.cos(t),
+      s = Math.sin(t);
     section.push([sx * sgn(c) * Math.abs(c) ** e, sz * sgn(s) * Math.abs(s) ** e]);
   }
   const around = [0];
-  for (let j = 1; j <= segments; j++) around.push(around[j - 1] + Math.hypot(section[j][0] - section[j - 1][0], section[j][1] - section[j - 1][1]));
+  for (let j = 1; j <= segments; j++)
+    around.push(
+      around[j - 1] +
+        Math.hypot(section[j][0] - section[j - 1][0], section[j][1] - section[j - 1][1]),
+    );
   for (let i = 0; i < profile.length; i++) {
     const [r, y] = profile[i];
     for (let j = 0; j <= segments; j++) {
@@ -201,7 +249,10 @@ export function squircleLathe(profile, { n = 4, sx = 1, sz = 1, segments = 192 }
   const row = segments + 1;
   for (let i = 0; i < profile.length - 1; i++) {
     for (let j = 0; j < segments; j++) {
-      const a = i * row + j, b = a + 1, c = a + row, d = c + 1;
+      const a = i * row + j,
+        b = a + 1,
+        c = a + row,
+        d = c + 1;
       indices.push(a, c, b, b, c, d);
     }
   }
@@ -213,8 +264,11 @@ export function squircleLathe(profile, { n = 4, sx = 1, sz = 1, segments = 192 }
   // The seam at angle 0 gets the mean of its two sides' normals.
   const normal = geometry.attributes.normal;
   for (let i = 0; i < profile.length; i++) {
-    const a = i * row, b = a + segments;
-    const nx = (normal.getX(a) + normal.getX(b)) / 2, ny = (normal.getY(a) + normal.getY(b)) / 2, nz = (normal.getZ(a) + normal.getZ(b)) / 2;
+    const a = i * row,
+      b = a + segments;
+    const nx = (normal.getX(a) + normal.getX(b)) / 2,
+      ny = (normal.getY(a) + normal.getY(b)) / 2,
+      nz = (normal.getZ(a) + normal.getZ(b)) / 2;
     const l = Math.hypot(nx, ny, nz) || 1;
     normal.setXYZ(a, nx / l, ny / l, nz / l);
     normal.setXYZ(b, nx / l, ny / l, nz / l);
@@ -229,8 +283,11 @@ export function squircleCurve(r, y, { n = 4, sx = 1, sz = 1, points = 256 } = {}
   const pts = [];
   for (let j = 0; j < points; j++) {
     const t = (j / points) * Math.PI * 2;
-    const c = Math.cos(t), s = Math.sin(t);
-    pts.push(new THREE.Vector3(r * sx * sgn(c) * Math.abs(c) ** e, y, r * sz * sgn(s) * Math.abs(s) ** e));
+    const c = Math.cos(t),
+      s = Math.sin(t);
+    pts.push(
+      new THREE.Vector3(r * sx * sgn(c) * Math.abs(c) ** e, y, r * sz * sgn(s) * Math.abs(s) ** e),
+    );
   }
   return new THREE.CatmullRomCurve3(pts, true);
 }
@@ -239,16 +296,30 @@ export function squircleCurve(r, y, { n = 4, sx = 1, sz = 1, points = 256 } = {}
  * A ground that shows only the shadows cast on it, fading out between two distances from
  * `center` (x, z), so a long shadow never ends at an edge of the picture.
  */
-export function shadowGround({ opacity = 0.15, center = [0, 0], fade = [2, 3], y = 0, size = 30, vertical = false } = {}) {
+export function shadowGround({
+  opacity = 0.15,
+  center = [0, 0],
+  fade = [2, 3],
+  y = 0,
+  size = 30,
+  vertical = false,
+} = {}) {
   const material = new THREE.ShadowMaterial({ opacity });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.fadeCenter = { value: new THREE.Vector2(...center) };
     shader.uniforms.fadeRange = { value: new THREE.Vector2(...fade) };
-    shader.vertexShader = 'varying vec3 vWorld;\n' + shader.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n vWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-    shader.fragmentShader = 'uniform vec2 fadeCenter; uniform vec2 fadeRange; varying vec3 vWorld;\n' + shader.fragmentShader.replace(
-      'gl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) );',
-      `float fadeD = length(${vertical ? 'vWorld.xy' : 'vWorld.xz'} - fadeCenter); gl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) * (1.0 - smoothstep(fadeRange.x, fadeRange.y, fadeD)) );`,
-    );
+    shader.vertexShader =
+      'varying vec3 vWorld;\n' +
+      shader.vertexShader.replace(
+        '#include <worldpos_vertex>',
+        '#include <worldpos_vertex>\n vWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+      );
+    shader.fragmentShader =
+      'uniform vec2 fadeCenter; uniform vec2 fadeRange; varying vec3 vWorld;\n' +
+      shader.fragmentShader.replace(
+        'gl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) );',
+        `float fadeD = length(${vertical ? 'vWorld.xy' : 'vWorld.xz'} - fadeCenter); gl_FragColor = vec4( color, opacity * ( 1.0 - getShadowMask() ) * (1.0 - smoothstep(fadeRange.x, fadeRange.y, fadeD)) );`,
+      );
   };
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), material);
   if (!vertical) ground.rotation.x = -Math.PI / 2;
