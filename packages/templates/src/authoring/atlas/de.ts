@@ -4,7 +4,7 @@ export const de: AtlasCopy = {
   footer: 'Medwater · Jahresbericht 2026',
   hero: {
     name: 'Eröffnung',
-    org: 'Medwater · Allianz der Hafenstädte am Mittelmeer',
+    org: 'Medwater · Hafenstädte am Mittelmeer',
     title: ['Wasser', 'ohne Grenzen'],
     subtitle: ['Wie vierzehn Hafenstädte jeden Tropfen teilen, den sie zu sparen lernen'],
     meta: 'Partnerversammlung · Valencia · 18. März 2027',

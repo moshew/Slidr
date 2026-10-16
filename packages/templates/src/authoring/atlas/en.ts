@@ -4,8 +4,8 @@ export const en: AtlasCopy = {
   footer: 'Medwater · Annual report 2026',
   hero: {
     name: 'Opening',
-    org: 'Medwater · Alliance of Mediterranean port cities',
-    title: ['Water', 'without borders'],
+    org: 'Medwater · Mediterranean port cities',
+    title: ['Water without borders'],
     subtitle: ['How fourteen port cities share every drop they learn to save'],
     meta: 'Partners’ assembly · Valencia · 18 March 2027',
   },
@@ -32,7 +32,7 @@ export const en: AtlasCopy = {
     title: '2026 in four numbers',
     hero: {
       value: '41%',
-      label: 'of treated wastewater is now reused',
+      label: 'of treated wastewater reused',
       note: 'Up from 23% when the network began in 2023.',
     },
     others: [
@@ -44,7 +44,7 @@ export const en: AtlasCopy = {
   project: {
     name: 'Project of the year',
     kicker: 'Project of the year · Limassol',
-    title: ['A harbour that makes', 'its own water'],
+    title: 'A harbour that makes water',
     items: [
       [
         'Run on sunlight',

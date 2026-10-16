@@ -4,7 +4,7 @@ export const he: AtlasCopy = {
   footer: 'Medwater · דוח שנתי 2026',
   hero: {
     name: 'פתיחה',
-    org: 'Medwater · ברית ערי הנמל של הים התיכון',
+    org: 'Medwater · ערי הנמל של הים התיכון',
     title: ['מים', 'בלי גבולות'],
     subtitle: ['איך ארבע־עשרה ערי נמל חולקות', 'כל טיפה שהן לומדות לחסוך'],
     meta: 'כנס השותפים · ולנסיה · 18 במרץ 2027',
@@ -12,7 +12,7 @@ export const he: AtlasCopy = {
   section: {
     name: 'איפה אנחנו פועלים',
     part: 'חלק ראשון',
-    title: ['איפה', 'אנחנו פועלים'],
+    title: ['הנמלים שלנו'],
     subtitle: 'ארבעה־עשר נמלים, ים אחד משותף.',
   },
   agenda: {

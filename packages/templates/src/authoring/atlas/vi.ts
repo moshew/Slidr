@@ -4,7 +4,7 @@ export const vi: AtlasCopy = {
   footer: 'Medwater · Báo cáo thường niên 2026',
   hero: {
     name: 'Mở đầu',
-    org: 'Medwater · Liên minh các thành phố cảng Địa Trung Hải',
+    org: 'Medwater · Các cảng Địa Trung Hải',
     title: ['Nước', 'không biên giới'],
     subtitle: ['Mười bốn thành phố cảng chia sẻ từng giọt nước họ học cách tiết kiệm'],
     meta: 'Đại hội đối tác · Valencia · 18 tháng 3 năm 2027',

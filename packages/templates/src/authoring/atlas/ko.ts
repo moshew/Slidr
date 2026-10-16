@@ -4,7 +4,7 @@ export const ko: AtlasCopy = {
   footer: 'Medwater · 2026 연차 보고서',
   hero: {
     name: '오프닝',
-    org: 'Medwater · 지중해 항구 도시 연합',
+    org: 'Medwater · 지중해 항구 도시',
     title: ['국경을', '넘는 물'],
     subtitle: ['14개 항구 도시가 아끼는 법을 배운 물 한 방울까지 나누는 방법'],
     meta: '파트너 총회 · 발렌시아 · 2027년 3월 18일',

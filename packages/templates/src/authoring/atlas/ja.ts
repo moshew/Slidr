@@ -4,7 +4,7 @@ export const ja: AtlasCopy = {
   footer: 'Medwater · 2026年 年次報告',
   hero: {
     name: 'オープニング',
-    org: 'Medwater · 地中海港湾都市アライアンス',
+    org: 'Medwater · 地中海の港湾都市',
     title: ['国境を', '越える水'],
     subtitle: ['14の港湾都市は、節水で生まれた一滴一滴をどう分かち合っているのか'],
     meta: 'パートナー総会 · バレンシア · 2027年3月18日',

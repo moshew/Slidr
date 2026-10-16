@@ -4,7 +4,7 @@ export const it: AtlasCopy = {
   footer: 'Medwater · Rapporto annuale 2026',
   hero: {
     name: 'Apertura',
-    org: 'Medwater · Alleanza delle città portuali del Mediterraneo',
+    org: 'Medwater · Porti del Mediterraneo',
     title: ['Acqua', 'senza confini'],
     subtitle: [
       'Come quattordici città portuali condividono ogni goccia che imparano a risparmiare',

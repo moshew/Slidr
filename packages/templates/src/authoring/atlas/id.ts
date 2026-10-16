@@ -4,7 +4,7 @@ export const id: AtlasCopy = {
   footer: 'Medwater · Laporan tahunan 2026',
   hero: {
     name: 'Pembukaan',
-    org: 'Medwater · Aliansi kota pelabuhan Laut Tengah',
+    org: 'Medwater · Kota pelabuhan Laut Tengah',
     title: ['Air', 'tanpa batas'],
     subtitle: [
       'Cara empat belas kota pelabuhan berbagi setiap tetes yang mereka pelajari untuk dihemat',

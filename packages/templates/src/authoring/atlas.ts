@@ -782,7 +782,7 @@ function layouts(): Layout[] {
   const yAt = (x: number) => arcY((flight.w - 20 - x) / (flight.w - 40));
 
   // The transit line of the process.
-  const lineTop = 360;
+  const lineTop = 392;
   const stationX = steps5.map((s) => WIDTH - (s - START) - 150);
 
   return [
@@ -858,12 +858,12 @@ function layouts(): Layout[] {
           color: token('secondary'),
         }),
         place('p_label', 'subtitle', at(START, 494, 700, 96), 'heading'),
-        place('p_note', 'body', at(START, 610, 680, 128), 'body'),
+        place('p_note', 'body', at(START, 610, 680, 172), 'body'),
         ...[0, 1, 2].flatMap((i) => [
-          place(`p_number${i + 2}`, 'number', atEnd(END + 128, 330 + i * 190, 520, 70), 'title', {
+          place(`p_number${i + 2}`, 'number', atEnd(END + 128, 318 + i * 192, 520, 70), 'title', {
             color: token('primary'),
           }),
-          place(`p_label${i + 2}`, 'caption', atEnd(END + 128, 402 + i * 190, 520, 74), 'caption'),
+          place(`p_label${i + 2}`, 'caption', atEnd(END + 128, 390 + i * 192, 520, 104), 'caption'),
         ]),
         ...foot('big_number').placeholders,
       ],
@@ -892,7 +892,7 @@ function layouts(): Layout[] {
           ).join(''),
         ),
         ...[0, 1, 2].flatMap((i) => {
-          const y = 330 + i * 190;
+          const y = 318 + i * 192;
           const keys = [
             // A pin, a route, a hill: the three keys of the legend.
             pinGlyph(32, 26, 18),
@@ -905,7 +905,7 @@ function layouts(): Layout[] {
               ? [
                   rect(
                     `d_atlas_big_number_rule${i + 2}`,
-                    atEnd(END + 36, y + 162, 628, 1.5),
+                    atEnd(END + 36, y + 180, 628, 1.5),
                     solid(token('text', 0.1)),
                   ),
                 ]
@@ -924,7 +924,7 @@ function layouts(): Layout[] {
         place('p_attribution', 'attribution', atEnd(290, 536, 420, 50), 'heading', {
           vAlign: 'bottom',
         }),
-        place('p_caption', 'caption', atEnd(290, 598, 420, 74), 'caption', { vAlign: 'bottom' }),
+        place('p_caption', 'caption', atEnd(290, 604, 420, 140), 'caption', { vAlign: 'top' }),
         ...foot('quote').placeholders,
       ],
       decorations: [
@@ -959,12 +959,10 @@ function layouts(): Layout[] {
           0.18,
         ),
         art('d_atlas_quote_postmark', atEnd(390, 214, 300, 140), postmark(70, 70, 56, 4, 200)),
-        ...[0, 1, 2].map((i) =>
-          rect(
-            `d_atlas_quote_line${i + 1}`,
-            atEnd(290, 590 + i * 86, 420, 2),
-            solid(token('text', 0.22)),
-          ),
+        // The lines of the address: the attribution written on the first, the caption under it,
+        // and the last two left for the rest of the address.
+        ...[590, 778, 846].map((y, i) =>
+          rect(`d_atlas_quote_line${i + 1}`, atEnd(290, y, 420, 2), solid(token('text', 0.22))),
         ),
         ...foot('quote').decorations,
       ],
@@ -1013,8 +1011,8 @@ function layouts(): Layout[] {
         ...head('text_image', 960).placeholders,
         place('p_image', 'image', atEnd(END + 16, 156, 628, 728)),
         ...[0, 1, 2].flatMap((i) => [
-          place(`p_point${i + 1}`, 'subtitle', at(START + 80, 330 + i * 176, 860, 48), 'heading'),
-          place(`p_detail${i + 1}`, 'body', at(START + 80, 384 + i * 176, 860, 86), 'body'),
+          place(`p_point${i + 1}`, 'subtitle', at(START + 80, 314 + i * 182, 860, 48), 'heading'),
+          place(`p_detail${i + 1}`, 'body', at(START + 80, 366 + i * 182, 860, 126), 'body'),
         ]),
         ...foot('text_image').placeholders,
       ],
@@ -1041,11 +1039,11 @@ function layouts(): Layout[] {
         ),
         art(
           'd_atlas_text_image_thread',
-          at(START + 26, 380, 4, 360),
-          `<path d="M2 2V358" stroke="${VERMILION}" stroke-width="2.2" stroke-dasharray="2 8" stroke-linecap="round"/>`,
+          at(START + 26, 364, 4, 368),
+          `<path d="M2 2V366" stroke="${VERMILION}" stroke-width="2.2" stroke-dasharray="2 8" stroke-linecap="round"/>`,
         ),
         ...[0, 1, 2].map((i) =>
-          numberPin(`d_atlas_text_image_pin${i + 1}`, at(START, 326 + i * 176, 54, 54), i + 1),
+          numberPin(`d_atlas_text_image_pin${i + 1}`, at(START, 310 + i * 182, 54, 54), i + 1),
         ),
         ...foot('text_image').decorations,
       ],
@@ -1091,13 +1089,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('cards', 1100).placeholders,
         ...cards3.flatMap((s, i) => [
-          place(`p_label${i + 1}`, 'caption', at(s + 36, 510, 420, 36), 'caption', {
+          // The label sits on the card's title, whatever their lengths: a header over the text.
+          place(`p_label${i + 1}`, 'caption', at(s + 36, 486, 420, 70), 'caption', {
             color: token('primary'),
-          }),
-          place(`p_card${i + 1}_title`, 'subtitle', at(s + 36, 548, 420, 96), 'heading', {
             vAlign: 'bottom',
           }),
-          place(`p_card${i + 1}_body`, 'body', at(s + 36, 652, 420, 168), 'body'),
+          place(`p_card${i + 1}_title`, 'subtitle', at(s + 36, 556, 420, 96), 'heading'),
+          place(`p_card${i + 1}_body`, 'body', at(s + 36, 656, 420, 172), 'body'),
         ]),
         place('p_note', 'body', at(START, 878, 1400, 44), 'body'),
         ...foot('cards').placeholders,
@@ -1113,9 +1111,9 @@ function layouts(): Layout[] {
                 `d_atlas_cards_stamp${i + 1}`,
                 at(s, 290, 488, 556),
                 stamp(488, 556, colour, 20) +
-                  `<rect x="30" y="30" width="428" height="170" fill="${colour}" fill-opacity=".09"/>` +
+                  `<rect x="30" y="30" width="428" height="148" fill="${colour}" fill-opacity=".09"/>` +
                   contours(
-                    [{ x: 160, y: 116, rx: 112, ry: 56, seed: i * 1.9 + 0.5, levels: 6 }],
+                    [{ x: 160, y: 104, rx: 112, ry: 48, seed: i * 1.9 + 0.5, levels: 6 }],
                     colour,
                     0.3,
                     1.2,
@@ -1125,7 +1123,7 @@ function layouts(): Layout[] {
               22,
               0.14,
             ),
-            art(`d_atlas_cards_icon${i + 1}`, at(s + 50, 316, 170, 170), PICTOGRAMS[i]!(85, 88)),
+            art(`d_atlas_cards_icon${i + 1}`, at(s + 58, 312, 156, 156), PICTOGRAMS[i]!(78, 80)),
           ];
         }),
         ...foot('cards').decorations,
@@ -1144,7 +1142,7 @@ function layouts(): Layout[] {
           place(`p_stop${i + 1}`, 'subtitle', at(s, 588, 380, 96), 'heading', { vAlign: 'bottom' }),
           place(`p_stop${i + 1}_body`, 'body', at(s, 692, 380, 166), 'body'),
         ]),
-        place('p_note', 'caption', at(START + 38, 884, 1300, 36), 'caption'),
+        place('p_note', 'caption', at(START + 38, 880, 1300, 72), 'caption'),
         ...foot('timeline').placeholders,
       ],
       decorations: [
@@ -1167,7 +1165,7 @@ function layouts(): Layout[] {
         ),
         art(
           'd_atlas_timeline_note_pin',
-          at(START, 886, 24, 30),
+          at(START, 882, 24, 30),
           `<circle cx="12" cy="15" r="6" stroke="${VERMILION}" stroke-width="2.4"/>`,
         ),
         ...foot('timeline').decorations,
@@ -1180,17 +1178,18 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('process', 1100).placeholders,
         ...steps5.flatMap((s, i) => [
-          place(`p_station${i + 1}`, 'number', at(s + 150 - 46, lineTop + 14, 92, 64), 'heading', {
+          // The station's figure over it: a step's number, or a time, a share, a day.
+          place(`p_station${i + 1}`, 'number', at(s, 304, 300, 74), 'title', {
             align: 'center',
-            vAlign: 'middle',
-            color: token('text'),
+            vAlign: 'bottom',
+            color: i === 4 ? token('secondary') : token('primary'),
           }),
-          place(`p_step${i + 1}`, 'subtitle', at(s, 500, 300, 50), 'heading', { align: 'center' }),
-          place(`p_step${i + 1}_caption`, 'caption', at(s, 556, 300, 74), 'caption', {
+          place(`p_step${i + 1}`, 'subtitle', at(s, 470, 300, 96), 'heading', { align: 'center' }),
+          place(`p_step${i + 1}_caption`, 'caption', at(s, 568, 300, 108), 'caption', {
             align: 'center',
           }),
         ]),
-        place('p_note', 'body', at(START + 120, 738, 1360, 86), 'body', { vAlign: 'middle' }),
+        place('p_note', 'body', at(START + 120, 722, 1360, 140), 'body', { vAlign: 'middle' }),
         ...foot('process').placeholders,
       ],
       decorations: [
@@ -1198,22 +1197,22 @@ function layouts(): Layout[] {
         ...head('process', 1100).decorations,
         art(
           'd_atlas_process_line',
-          at(START, lineTop - 6, WIDTH, 104),
-          `<path d="M${r1(stationX[4]! - 120)} 52H${r1(stationX[4]! - 70)}" stroke="${OCEAN}" stroke-width="10" stroke-dasharray="10 8" stroke-opacity=".5"/>` +
-            `<path d="M${r1(stationX[4]!)} 52H${r1(stationX[0]!)}" stroke="${OCEAN}" stroke-width="10" stroke-linecap="round"/>` +
-            `<path d="M${r1(stationX[0]! + 70)} 52H${r1(stationX[0]! + 120)}" stroke="${OCEAN}" stroke-width="10" stroke-dasharray="10 8" stroke-opacity=".5"/>` +
+          at(START, lineTop, WIDTH, 60),
+          `<path d="M${r1(stationX[4]! - 110)} 30H${r1(stationX[4]! - 40)}" stroke="${OCEAN}" stroke-width="10" stroke-dasharray="10 8" stroke-opacity=".5"/>` +
+            `<path d="M${r1(stationX[4]!)} 30H${r1(stationX[0]!)}" stroke="${OCEAN}" stroke-width="10" stroke-linecap="round"/>` +
+            `<path d="M${r1(stationX[0]! + 40)} 30H${r1(stationX[0]! + 110)}" stroke="${OCEAN}" stroke-width="10" stroke-dasharray="10 8" stroke-opacity=".5"/>` +
             stationX
               .map((x, i) =>
                 i === 4
-                  ? `<circle cx="${r1(x)}" cy="52" r="46" fill="${WHITE}" stroke="${VERMILION}" stroke-width="8"/><circle cx="${r1(x)}" cy="52" r="34" stroke="${VERMILION}" stroke-width="2"/>`
-                  : `<circle cx="${r1(x)}" cy="52" r="46" fill="${WHITE}" stroke="${OCEAN}" stroke-width="8"/>`,
+                  ? `<circle cx="${r1(x)}" cy="30" r="25" fill="${WHITE}" stroke="${VERMILION}" stroke-width="7"/><circle cx="${r1(x)}" cy="30" r="9" fill="${VERMILION}"/>`
+                  : `<circle cx="${r1(x)}" cy="30" r="22" fill="${WHITE}" stroke="${OCEAN}" stroke-width="7"/><circle cx="${r1(x)}" cy="30" r="6" fill="${OCEAN}"/>`,
               )
               .join(''),
         ),
-        card('d_atlas_process_legend', at(START, 724, WIDTH, 114)),
+        card('d_atlas_process_legend', at(START, 708, WIDTH, 168)),
         art(
           'd_atlas_process_legend_key',
-          at(START + 30, 754, 60, 54),
+          at(START + 30, 765, 60, 54),
           `<path d="M2 27H58" stroke="${OCEAN}" stroke-width="8"/><circle cx="30" cy="27" r="16" fill="${WHITE}" stroke="${OCEAN}" stroke-width="6"/>`,
         ),
         ...foot('process').decorations,
@@ -1234,7 +1233,7 @@ function layouts(): Layout[] {
           place(
             `p_${side}_label`,
             'caption',
-            { x: f.x + 40, y: f.y + 266, w: 700, h: 36 },
+            { x: f.x + 40, y: f.y + 232, w: 700, h: 36 },
             'caption',
             {
               color: side === 'after' ? token('secondary') : token('muted'),
@@ -1243,10 +1242,10 @@ function layouts(): Layout[] {
           place(
             `p_${side}_title`,
             'subtitle',
-            { x: f.x + 40, y: f.y + 306, w: 700, h: 50 },
+            { x: f.x + 40, y: f.y + 272, w: 700, h: 50 },
             'heading',
           ),
-          place(`p_${side}_body`, 'body', { x: f.x + 40, y: f.y + 364, w: 700, h: 200 }, 'body'),
+          place(`p_${side}_body`, 'body', { x: f.x + 40, y: f.y + 330, w: 700, h: 244 }, 'body'),
         ]),
         ...foot('comparison').placeholders,
       ],
@@ -1266,10 +1265,10 @@ function layouts(): Layout[] {
           ];
           return art(
             'd_atlas_comparison_alone',
-            at(START + 20, 316, 740, 230),
-            `<rect x="0" y="0" width="740" height="230" rx="8" fill="${INK}" fill-opacity=".04"/>` +
+            at(START + 20, 316, 740, 196),
+            `<rect x="0" y="0" width="740" height="196" rx="8" fill="${INK}" fill-opacity=".04"/>` +
               contours(
-                [{ x: 380, y: 130, rx: 330, ry: 90, seed: 1.1, levels: 4 }],
+                [{ x: 380, y: 104, rx: 320, ry: 74, seed: 1.1, levels: 4 }],
                 MUTED,
                 0.22,
                 1.1,
@@ -1302,10 +1301,10 @@ function layouts(): Layout[] {
           ];
           return art(
             'd_atlas_comparison_together',
-            atEnd(END + 20, 316, 740, 230),
-            `<rect x="0" y="0" width="740" height="230" rx="8" fill="${OCEAN}" fill-opacity=".07"/>` +
+            atEnd(END + 20, 316, 740, 196),
+            `<rect x="0" y="0" width="740" height="196" rx="8" fill="${OCEAN}" fill-opacity=".07"/>` +
               contours(
-                [{ x: 380, y: 130, rx: 330, ry: 90, seed: 1.1, levels: 4 }],
+                [{ x: 380, y: 104, rx: 320, ry: 74, seed: 1.1, levels: 4 }],
                 OCEAN,
                 0.22,
                 1.1,
@@ -1329,7 +1328,7 @@ function layouts(): Layout[] {
         })(),
         art(
           'd_atlas_comparison_arrow',
-          atEnd(926, 400, 68, 68),
+          atEnd(926, 380, 68, 68),
           `<circle cx="34" cy="34" r="32" fill="${WHITE}" stroke="${INK}" stroke-width="2"/><path d="M46 34H22M31 24L21 34L31 44" stroke="${VERMILION}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>`,
         ),
         ...foot('comparison').decorations,
@@ -1341,8 +1340,8 @@ function layouts(): Layout[] {
       archetype: 'chart',
       placeholders: [
         ...head('chart', 1080).placeholders,
-        place('p_chart', 'chart', at(START + 38, 316, 1004, 500)),
-        place('p_source', 'caption', at(START + 38, 834, 1004, 36), 'caption'),
+        place('p_chart', 'chart', at(START + 38, 312, 1004, 484)),
+        place('p_source', 'caption', at(START + 38, 804, 1004, 72), 'caption'),
         place('p_figure1', 'number', atEnd(END, 306, 480, 134), 'display', {
           color: token('primary'),
         }),
@@ -1367,17 +1366,17 @@ function layouts(): Layout[] {
       archetype: 'table',
       placeholders: [
         ...head('table', 1200).placeholders,
-        place('p_table', 'table', at(START + 38, 316, WIDTH - 76, 540)),
-        place('p_note', 'caption', at(START + 38, 896, 1300, 36), 'caption'),
+        place('p_table', 'table', at(START + 38, 292, WIDTH - 76, 594)),
+        place('p_note', 'caption', at(START + 38, 904, WIDTH - 38, 36), 'caption'),
         ...foot('table').placeholders,
       ],
       decorations: [
         neatline('d_atlas_table_frame', false),
         ...head('table', 1200).decorations,
-        card('d_atlas_table_panel', at(START, 290, WIDTH, 590)),
+        card('d_atlas_table_panel', at(START, 276, WIDTH, 618)),
         art(
           'd_atlas_table_band',
-          at(START, 290, WIDTH, 10),
+          at(START, 276, WIDTH, 10),
           Array.from({ length: 17 }, (_, i) =>
             i % 2
               ? ''
@@ -1386,7 +1385,7 @@ function layouts(): Layout[] {
         ),
         art(
           'd_atlas_table_note_pin',
-          at(START, 899, 24, 30),
+          at(START, 907, 24, 30),
           `<circle cx="12" cy="15" r="6" stroke="${VERMILION}" stroke-width="2.4"/>`,
         ),
         ...foot('table').decorations,
@@ -1399,12 +1398,13 @@ function layouts(): Layout[] {
       placeholders: [
         ...head('team', 1100).placeholders,
         ...team4.flatMap((s, i) => [
-          place(`p_photo${i + 1}`, 'image', at(s + 30, 318, 300, 340)),
-          place(`p_city${i + 1}`, 'caption', at(s, 714, 360, 36), 'caption', {
+          place(`p_photo${i + 1}`, 'image', at(s + 30, 308, 300, 320)),
+          place(`p_city${i + 1}`, 'caption', at(s, 688, 384, 70), 'caption', {
             color: token('primary'),
+            vAlign: 'bottom',
           }),
-          place(`p_name${i + 1}`, 'subtitle', at(s, 750, 360, 50), 'heading'),
-          place(`p_role${i + 1}`, 'body', at(s, 804, 384, 124), 'body'),
+          place(`p_name${i + 1}`, 'subtitle', at(s, 758, 384, 50), 'heading'),
+          place(`p_role${i + 1}`, 'body', at(s, 810, 384, 132), 'body'),
         ]),
         ...foot('team').placeholders,
       ],
@@ -1415,8 +1415,8 @@ function layouts(): Layout[] {
           lifted(
             art(
               `d_atlas_team_stamp${i + 1}`,
-              at(s, 288, 360, 400),
-              stamp(360, 400, [OCEAN, VERMILION, OCHRE, SEA][i]!, 22),
+              at(s, 280, 360, 376),
+              stamp(360, 376, [OCEAN, VERMILION, OCHRE, SEA][i]!, 22),
             ),
             10,
             22,
@@ -1424,7 +1424,7 @@ function layouts(): Layout[] {
           ),
           art(
             `d_atlas_team_postmark${i + 1}`,
-            at(s - 34, 652, 150, 76),
+            at(s - 34, 622, 150, 76),
             `<path d="M8 22q9 -8 18 0t18 0t18 0t18 0t18 0t18 0t18 0M8 38q9 -8 18 0t18 0t18 0t18 0t18 0t18 0t18 0M8 54q9 -8 18 0t18 0t18 0t18 0t18 0t18 0t18 0" stroke="${INK}" stroke-opacity=".42" stroke-width="2" stroke-linecap="round"/>`,
           ),
         ]),
@@ -1436,16 +1436,16 @@ function layouts(): Layout[] {
       name: 'Closing',
       archetype: 'closing',
       placeholders: [
-        place('p_kicker', 'caption', at(START + 38, 262, 820, 36), 'caption', {
+        place('p_kicker', 'caption', at(START + 38, 262, 900, 36), 'caption', {
           color: token('primary'),
         }),
         place('p_title', 'title', at(START, 308, 900, 252), 'display'),
         ...[0, 1, 2].map((i) =>
-          place(`p_line${i + 1}`, 'body', at(START + 56, 586 + i * 72, 840, 44), 'body', {
-            vAlign: 'middle',
+          place(`p_line${i + 1}`, 'body', at(START + 56, 582 + i * 92, 840, 84), 'body', {
+            vAlign: 'top',
           }),
         ),
-        place('p_meta', 'caption', at(START + 46, 846, 820, 36), 'caption'),
+        place('p_meta', 'caption', at(START + 46, 904, 900, 36), 'caption'),
       ],
       decorations: [
         neatline('d_atlas_closing_frame', true),
@@ -1454,7 +1454,7 @@ function layouts(): Layout[] {
         ...[0, 1, 2].map((i) =>
           art(
             `d_atlas_closing_key${i + 1}`,
-            at(START, 592 + i * 72, 34, 34),
+            at(START, 586 + i * 92, 34, 34),
             [
               pinGlyph(17, 12, 10),
               `<rect x="3" y="6" width="28" height="25" rx="4" stroke="${INK}" stroke-width="2.4"/><path d="M3 13H31M10 3V9M24 3V9" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><circle cx="23" cy="22" r="3" fill="${VERMILION}"/>`,
@@ -1464,7 +1464,7 @@ function layouts(): Layout[] {
         ),
         art(
           'd_atlas_closing_route',
-          at(START, 812, 840, 12),
+          at(START, 870, 840, 12),
           `<path d="M10 6H${840 - 14}" stroke="${VERMILION}" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round"/>` +
             `<circle cx="${840 - 7}" cy="6" r="5" fill="${VERMILION}"/><circle cx="6" cy="6" r="4.5" stroke="${VERMILION}" stroke-width="2"/>`,
         ),

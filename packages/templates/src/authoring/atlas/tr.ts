@@ -4,7 +4,7 @@ export const tr: AtlasCopy = {
   footer: 'Medwater · 2026 Yıllık Raporu',
   hero: {
     name: 'Açılış',
-    org: 'Medwater · Akdeniz Liman Kentleri İttifakı',
+    org: 'Medwater · Akdeniz liman kentleri',
     title: ['Sınır', 'tanımayan su'],
     subtitle: ['On dört liman kenti, tasarruf etmeyi öğrendiği her damlayı nasıl paylaşıyor'],
     meta: 'Ortaklar Meclisi · Valensiya · 18 Mart 2027',

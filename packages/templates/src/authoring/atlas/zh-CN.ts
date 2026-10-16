@@ -4,7 +4,7 @@ export const zhCN: AtlasCopy = {
   footer: 'Medwater · 2026 年度报告',
   hero: {
     name: '开场',
-    org: 'Medwater · 地中海港口城市联盟',
+    org: 'Medwater · 地中海港口城市',
     title: ['水，', '无国界'],
     subtitle: ['十四座港口城市如何分享学会节约的每一滴水'],
     meta: '伙伴大会 · 瓦伦西亚 · 2027 年 3 月 18 日',

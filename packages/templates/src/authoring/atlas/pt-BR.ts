@@ -4,7 +4,7 @@ export const ptBR: AtlasCopy = {
   footer: 'Medwater · Relatório anual 2026',
   hero: {
     name: 'Abertura',
-    org: 'Medwater · Aliança das cidades portuárias do Mediterrâneo',
+    org: 'Medwater · Portos do Mediterrâneo',
     title: ['Água', 'sem fronteiras'],
     subtitle: ['Como catorze cidades portuárias dividem cada gota que aprendem a economizar'],
     meta: 'Assembleia dos parceiros · Valência · 18 de março de 2027',
