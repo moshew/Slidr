@@ -1,6 +1,8 @@
-import { createDeck, type GroupElement } from '@slidr/model';
+import { BASE_LANGUAGES, createDeck, languageDir, type GroupElement } from '@slidr/model';
 import { useMemo, useState } from 'react';
 import type { DisplayLang as Lang } from '../api';
+import { useT } from '../i18n';
+import { isBase, LanguagePicker, nativeName } from '../languages';
 import { useWidth } from '../SlideView';
 import { cardSetsModule, messages, named } from './app';
 import { ElementPicture } from './Lazy';
@@ -16,7 +18,8 @@ const PAD = 44;
 /** The theme a set is drawn in here: a new deck's, as no deck is open. */
 const THEME = createDeck().theme;
 
-const metaOf = (lang: Lang) => ({ lang, dir: lang === 'he' ? ('rtl' as const) : ('ltr' as const) });
+/** A new deck in a language: its cards in Hebrew or in English, laid out in its direction. */
+const metaOf = (lang: Lang) => ({ lang, dir: languageDir(lang) });
 const nameOf = (id: string, lang: Lang) =>
   named(messages.elements, lang, 'cards', 'name', id) ?? id;
 
@@ -72,6 +75,7 @@ function CardDetail({
   onClose: () => void;
   onStep?: (by: -1 | 1) => void;
 }) {
+  const t = useT();
   const [lang, setLang] = useState<Lang>(initial);
   const most = cards.mostCards(id);
   const kinds = cards.cardKinds(id);
@@ -102,63 +106,52 @@ function CardDetail({
       }
       subtitle={
         <>
-          <span dir="ltr">{id}</span> · {kinds} סוגי כרטיסים · עד {most} כרטיסים בכרטסת
+          <span dir="ltr">{id}</span> · {t('libraryBrowse.cardsSubtitle', { kinds, most })}
         </>
       }
-      actions={
-        <div className="segmented" role="group" aria-label="שפה">
-          <button type="button" aria-pressed={lang === 'he'} onClick={() => setLang('he')}>
-            עברית
-          </button>
-          <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
-            English
-          </button>
-        </div>
-      }
+      actions={<LanguagePicker langs={BASE_LANGUAGES} lang={lang} onChange={setLang} />}
       onClose={onClose}
       onStep={onStep}
       side={
         <section>
-          <h3>פרטים</h3>
+          <h3>{t('libraryBrowse.details')}</h3>
           <dl className="facts">
-            <dt>מזהה</dt>
+            <dt>{t('libraryBrowse.id')}</dt>
             <dd dir="ltr">{id}</dd>
-            <dt>כרטסת חדשה</dt>
-            <dd>{cards.cardsOf(whole).length} כרטיסים</dd>
-            <dt>סוגים</dt>
+            <dt>{t('libraryBrowse.cardsNewSet')}</dt>
+            <dd>{t('libraryBrowse.cardsCount', { count: cards.cardsOf(whole).length })}</dd>
+            <dt>{t('libraryBrowse.cardsKinds')}</dt>
             <dd>{kinds}</dd>
-            <dt>הכי הרבה</dt>
+            <dt>{t('libraryBrowse.cardsMost')}</dt>
             <dd>{most}</dd>
-            <dt>קובץ</dt>
+            <dt>{t('libraryBrowse.file')}</dt>
             <dd dir="ltr">
               <a href={mediaUrl('elements/cards/catalog.json')} target="_blank" rel="noreferrer">
                 elements/cards/catalog.json
               </a>
             </dd>
           </dl>
-          <p className="muted small">
-            הכרטסת מצוירת בערכת הנושא של מצגת חדשה. בשקף היא מקבלת את הצבעים והגופנים של המצגת.
-          </p>
+          <p className="muted small">{t('libraryBrowse.cardsThemeNote')}</p>
         </section>
       }
     >
-      <h3>כרטסת חדשה, כפי שהיא נכנסת לשקף</h3>
+      <h3>{t('libraryBrowse.cardsNewSetHeading')}</h3>
       <CardPicture cards={cards} element={whole} lang={lang} />
-      <h3>סוגי הכרטיסים</h3>
+      <h3>{t('libraryBrowse.cardsKindsHeading')}</h3>
       <div className="thumbs">
         {samples.map((card, kind) => (
           <figure key={kind}>
             <CardPicture cards={cards} element={card} lang={lang} width={260} />
-            <figcaption>סוג {kind + 1}</figcaption>
+            <figcaption>{t('libraryBrowse.cardsKindN', { number: kind + 1 })}</figcaption>
           </figure>
         ))}
       </div>
-      <h3>בכל מספר כרטיסים</h3>
+      <h3>{t('libraryBrowse.cardsAnyCountHeading')}</h3>
       <div className="lib-grid">
         {counts.map(({ count, set }) => (
           <figure key={count} className="count-figure">
             <CardPicture cards={cards} element={set} lang={lang} />
-            <figcaption>{count} כרטיסים</figcaption>
+            <figcaption>{t('libraryBrowse.cardsCount', { count })}</figcaption>
           </figure>
         ))}
       </div>
@@ -178,14 +171,15 @@ export function Cards({
   query: string;
   lang: Lang;
 }) {
+  const t = useT();
   const read = useRead(cardSetsModule, []);
   const cards = read.value;
   const shown = useMemo(
     () =>
       (cards?.CARD_SETS ?? []).filter((id) =>
-        matches(query, id, nameOf(id, 'he'), nameOf(id, 'en')),
+        matches(query, id, nameOf(id, 'he'), nameOf(id, 'en'), nameOf(id, lang)),
       ),
-    [cards, query],
+    [cards, query, lang],
   );
   const sets = useMemo(() => {
     if (!cards) return [];
@@ -193,8 +187,17 @@ export function Cards({
     return shown.map((id) => ({ id, element: cards.newCardSet(id, reading) }));
   }, [cards, shown, lang]);
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!cards) return <p className="muted">טוען את הכרטסות…</p>;
-  if (cards.CARD_SETS.length === 0) return <p className="muted">בספרייה אין כרטסות.</p>;
+  if (!cards) return <p className="muted">{t('libraryBrowse.cardsLoading')}</p>;
+  if (cards.CARD_SETS.length === 0) return <p className="muted">{t('libraryBrowse.cardsEmpty')}</p>;
+  // The card sets are written in Hebrew and English only, and are shown in no other language.
+  if (!isBase(lang)) {
+    return (
+      <p className="muted">
+        {t('libraryBrowse.cardsOnlyHeEn')}
+        <bdi lang={lang}>{nativeName(lang)}</bdi>.
+      </p>
+    );
+  }
   const open = (id: string) => go({ section: 'cards', item: id });
   const opened = cards.CARD_SETS.find((id) => id === route.item);
 
@@ -207,9 +210,15 @@ export function Cards({
               <CardPicture cards={cards} element={element} lang={lang} />
             </span>
             <span className="lib-card-body">
-              <span className="lib-card-title">{nameOf(id, lang)}</span>
+              <span className="lib-card-title" lang={lang} dir={languageDir(lang)}>
+                {nameOf(id, lang)}
+              </span>
               <span className="lib-card-meta small muted">
-                <span dir="ltr">{id}</span> · {cards.cardKinds(id)} סוגים · עד {cards.mostCards(id)}
+                <span dir="ltr">{id}</span> ·{' '}
+                {t('libraryBrowse.cardsMeta', {
+                  kinds: cards.cardKinds(id),
+                  most: cards.mostCards(id),
+                })}
               </span>
             </span>
           </button>

@@ -1,9 +1,11 @@
 import { lazyMediaJson } from '@slidr/media-library';
 import {
+  contentLanguageOf,
   createDeck,
   createElement,
   createSlide,
   frameLayout,
+  LANGUAGE_SCRIPT,
   locateElement,
   normalizeAngle,
   plainText,
@@ -272,6 +274,28 @@ export function featuredFrames(all: readonly PhotoFrame[]): PhotoFrame[] {
     .filter((frame) => frame.featured !== undefined)
     .sort((a, b) => (a.featured ?? 0) - (b.featured ?? 0));
 }
+
+/** The scripts of the fonts' tags (`LANGUAGE_SCRIPT`) that are written in the Latin alphabet. */
+const LATIN = ['latin', 'vietnamese'];
+
+/**
+ * Whether an interface in `lang` offers a frame. The letters of an alphabet are offered in the
+ * languages written in it: the `hebrew` frames in Hebrew, the `latin` ones in the languages of
+ * the Latin alphabet, Vietnamese among them. A frame with words beside its picture, a magnet's
+ * captions and labels, is offered in Hebrew and English, the languages it is written in. Any
+ * other frame has no language and is offered in all of them.
+ */
+export function frameIn(frame: PhotoFrame, lang: string): boolean {
+  const own = contentLanguageOf(lang);
+  if (frame.group === 'hebrew') return own === 'he';
+  if (frame.group === 'latin') return own !== undefined && LATIN.includes(LANGUAGE_SCRIPT[own]);
+  const worded = frame.extras?.some((extra) => extra.kind !== 'sticker');
+  return !worded || own === 'he' || own === 'en';
+}
+
+/** The frames an interface in `lang` offers (`frameIn`), in their order. */
+export const framesIn = (all: readonly PhotoFrame[], lang: string): PhotoFrame[] =>
+  all.filter((frame) => frameIn(frame, lang));
 
 /** The frames that match every word of a query in Hebrew or English, best first. */
 export function searchFrames(all: readonly PhotoFrame[], query: string, count: number) {

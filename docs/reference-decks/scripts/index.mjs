@@ -75,6 +75,7 @@ const RULES = {
   L15: 'direction against the text',
   L16: 'no visual element',
   L17: 'empty band at the bottom',
+  L18: 'card taller than its content',
 };
 
 function chips(findings) {

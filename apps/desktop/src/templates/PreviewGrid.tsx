@@ -1,9 +1,9 @@
-import { CommandBus, type Deck, type Slide } from '@slidr/model';
+import { CommandBus, createDeck, type Deck, type Slide } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { showSlideNumber } from '@slidr/templates';
-import { cx } from '@slidr/ui';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../i18n';
 import type { LibraryEntry } from './library';
 import { madePreview, readyPreview, type TemplatePreview } from './previews';
 
@@ -53,17 +53,11 @@ export function useLaidOutSize(ref: RefObject<HTMLElement | null>): Size {
 /**
  * The columns and the width of a slide at which `count` slides of 16:9, each over its name,
  * fill a space without leaving it: of every number of columns, the one that draws them largest.
- * With a `hero`, the first slide takes two columns and two rows.
  */
-export function fit(
-  count: number,
-  { width, height }: Size,
-  hero = false,
-): { columns: number; thumb: number } {
-  const cells = hero ? count + 3 : count;
+export function fit(count: number, { width, height }: Size): { columns: number; thumb: number } {
   let best = { columns: 1, thumb: 0 };
-  for (let columns = hero ? 2 : 1; columns <= Math.max(cells, 2); columns += 1) {
-    const rows = Math.max(hero ? 2 : 1, Math.ceil(cells / columns));
+  for (let columns = 1; columns <= Math.max(count, 2); columns += 1) {
+    const rows = Math.max(1, Math.ceil(count / columns));
     const wide = (width - SLIDE_GAP * (columns - 1)) / columns;
     const tall = (((height - SLIDE_GAP * (rows - 1)) / rows - CAPTION) * 16) / 9;
     const thumb = Math.floor(Math.min(wide, tall));
@@ -82,6 +76,16 @@ export interface PreviewLayers {
   shown: Shown | null;
   leaving: Shown | null;
   entering: boolean;
+}
+
+/**
+ * The deck the library's templates are shown for in the editor: an empty one in the UI language
+ * and its direction, whatever the open deck is in (`useLanguage`), as on the welcome screen.
+ * The same deck until the language changes, so the previews are not made again.
+ */
+export function useLike(): Deck {
+  const lang = useLanguage();
+  return useMemo(() => createDeck({ lang }), [lang]);
 }
 
 /**
@@ -151,8 +155,7 @@ function numbered(deck: Deck, shown: boolean): Deck {
 /**
  * The slides of a template, laid out to fill a space; `leaving` while they fade away, `entering`
  * while they fade in over slides that were there. `numbers`: whether they show the slide number,
- * as the template has it when not given. With a `hero`, the first slide, the one a deck opens on,
- * is drawn at twice the size of the others. The card around it is drawn again as it opens; its
+ * as the template has it when not given. The card around them is drawn again as it opens; its
  * slides are not.
  */
 export const PreviewGrid = memo(function PreviewGrid({
@@ -161,22 +164,19 @@ export const PreviewGrid = memo(function PreviewGrid({
   leaving,
   entering = false,
   numbers,
-  hero = false,
 }: {
   shown: Shown;
   size: Size;
   leaving: boolean;
   entering?: boolean;
   numbers?: boolean;
-  hero?: boolean;
 }) {
   const { t } = useTranslation('templates');
   const deck = useMemo(
     () => (numbers === undefined ? shown.deck : numbered(shown.deck, numbers)),
     [shown.deck, numbers],
   );
-  const big = hero && deck.slides.length > 2;
-  const { columns, thumb } = fit(deck.slides.length, size, big);
+  const { columns, thumb } = fit(deck.slides.length, size);
   /** A slide is named by its layout: a built-in one by its archetype, in the UI's language. */
   const nameOf = (slide: Slide): string => {
     const layout = deck.layouts.find((candidate) => candidate.id === slide.layoutId);
@@ -188,37 +188,34 @@ export const PreviewGrid = memo(function PreviewGrid({
     <div
       data-leaving={leaving || undefined}
       data-entering={entering || undefined}
-      className="template-slides-grid absolute inset-0 grid grid-flow-dense place-content-center gap-4"
+      className="template-slides-grid absolute inset-0 grid place-content-center gap-4"
       style={{ gridTemplateColumns: `repeat(${columns}, ${thumb}px)` }}
     >
-      {deck.slides.map((slide, index) => {
-        const first = big && index === 0;
-        return (
-          <figure
-            key={slide.id}
-            data-testid={leaving ? undefined : 'template-slide'}
-            className={cx('flex min-w-0 flex-col gap-1.5', first && 'col-span-2 row-span-2')}
-          >
-            <div className="overflow-hidden rounded-inset shadow-slide">
-              {/* Its pictures are drawn with it, not a moment after. */}
-              <ScaledSlide
-                deck={deck}
-                slide={slide}
-                mode="thumbnail"
-                width={first ? thumb * 2 + SLIDE_GAP : thumb}
-                resolveAsset={shown.resolveAsset}
-                decoding="sync"
-              />
-            </div>
-            <figcaption className="flex h-4 min-w-0 items-baseline gap-1.5 px-0.5 text-xs leading-4 text-ui-fg-muted">
-              <span className="tabular-nums">{index + 1}</span>
-              <span dir="auto" className="min-w-0 truncate">
-                {nameOf(slide)}
-              </span>
-            </figcaption>
-          </figure>
-        );
-      })}
+      {deck.slides.map((slide, index) => (
+        <figure
+          key={slide.id}
+          data-testid={leaving ? undefined : 'template-slide'}
+          className="flex min-w-0 flex-col gap-1.5"
+        >
+          <div className="overflow-hidden rounded-inset shadow-slide">
+            {/* Its pictures are drawn with it, not a moment after. */}
+            <ScaledSlide
+              deck={deck}
+              slide={slide}
+              mode="thumbnail"
+              width={thumb}
+              resolveAsset={shown.resolveAsset}
+              decoding="sync"
+            />
+          </div>
+          <figcaption className="flex h-4 min-w-0 items-baseline gap-1.5 px-0.5 text-xs leading-4 text-ui-fg-muted">
+            <span className="tabular-nums">{index + 1}</span>
+            <span dir="auto" className="min-w-0 truncate">
+              {nameOf(slide)}
+            </span>
+          </figcaption>
+        </figure>
+      ))}
     </div>
   );
 });

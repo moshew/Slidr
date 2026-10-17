@@ -1,7 +1,9 @@
 """The instructions the studio builds its prompts from, read from the app, never copied:
 
 - the design guidelines and the HTML conventions the app gives its own design agent
-  (`packages/prompts`, through `management/web/tools/instructions.mjs`);
+  (`packages/prompts`), and the names and taglines of its built-in templates in Hebrew and
+  English (`apps/desktop/src/templates/messages.ts`), both through
+  `management/web/tools/instructions.mjs`;
 - the repository's design quality instruction (`AGENTS.md`);
 - the fonts of decks the media library offers (`fonts/catalog.json`).
 """
@@ -36,6 +38,7 @@ SYSTEM_FONTS = {"ja": "Yu Gothic", "ko": "Malgun Gothic", "zh-CN": "Microsoft Ya
 SOURCES = [
     REPO / "packages" / "prompts" / "src" / "design.ts",
     REPO / "packages" / "prompts" / "src" / "html.ts",
+    REPO / "apps" / "desktop" / "src" / "templates" / "messages.ts",
     REPO / "AGENTS.md",
 ]
 
@@ -107,7 +110,16 @@ class Instructions:
             if not isinstance(families, list) or not families:
                 raise InstructionsError("The library's font catalog lists no families.")
             self._fonts = [
-                {"family": f["family"], "scripts": list(f.get("scripts") or [])}
+                {
+                    "family": f["family"],
+                    "scripts": list(f.get("scripts") or []),
+                    **({"for": list(f["for"])} if isinstance(f.get("for"), list) else {}),
+                    **(
+                        {"counterparts": dict(f["counterparts"])}
+                        if isinstance(f.get("counterparts"), dict)
+                        else {}
+                    ),
+                }
                 for f in families
                 if isinstance(f, dict) and isinstance(f.get("family"), str)
             ]
@@ -120,29 +132,62 @@ def _has(font: dict, script: str) -> bool:
     return script in tags or (script == "latin" and not tags)
 
 
+def _own(font: dict, script: str) -> bool:
+    """The family is one of the script's own (`familyOfLanguage` in the model): it has the letters,
+    and was made for them or for Latin letters. A Hebrew family's Latin letters are for English
+    words in Hebrew text; a Japanese family's Cyrillic ones are no Russian font."""
+    made = font.get("for") or (font.get("scripts") or ["latin"])[:1]
+    return _has(font, script) and (script in made or "latin" in made)
+
+
+def _counterparts(fonts: list[dict], script: str) -> list[str]:
+    """`Family → counterpart` for each family made for Latin or Hebrew letters that has none of
+    the script's: the family the catalog names as closest to it in character."""
+    pairs = []
+    for font in fonts:
+        made = font.get("for") or (font.get("scripts") or ["latin"])[:1]
+        other = (font.get("counterparts") or {}).get(script)
+        if other and not _has(font, script) and ("latin" in made or "he" in made):
+            pairs.append(f"{font['family']} → {other}")
+    return pairs
+
+
 def fonts_text(fonts: list[dict], langs: Sequence[str]) -> str:
-    """The library's families by the letters they have, for the scripts of a request's
-    languages (the catalog's `scripts` tags), and how a file is set whose letters no family has:
-    Japanese, Korean and Chinese always, and any other the catalog tags no family with."""
+    """The library's families of each of a request's languages (made for its letters, or for Latin
+    ones and having its letters), the counterpart in each language of the families the English
+    file may use, and how a file is set whose letters no family has (an older catalog's)."""
     scripts: dict[str, list[str]] = {}
     for lang in langs:
         scripts.setdefault(SCRIPT[lang], []).append(lang)
     lines: list[str] = []
     bare: list[str] = []
+    counterparts: list[str] = []
     for script, of in scripts.items():
-        families = [f["family"] for f in fonts if _has(f, script)]
+        families = [f["family"] for f in fonts if _own(f, script)]
         lines.append(f"- {SCRIPT_NAMES[script]} ({files(of)}): {', '.join(families) or 'none'}")
         if not families:
             bare += of
+        elif script != "latin" and (pairs := _counterparts(fonts, script)):
+            counterparts.append(f"- In {files(of)}: {', '.join(pairs)}")
     text = (
         "## Fonts\n\n"
         "These are the fonts the app has; no other font will be there when a user inserts the "
-        "design. Name them exactly as written. By the letters they have:\n\n"
+        "design. Name them exactly as written. The families of each language, made for its "
+        "letters:\n\n"
         + "\n".join(lines)
-        + "\n\nSet the text of each file in a family that has its letters: Hebrew text in a family "
+        + "\n\nSet the text of each file in a family of its language: Hebrew text in a family "
         "with Hebrew. A left-to-right file may use a family without Hebrew for display type, paired "
         "with a Hebrew one in the Hebrew file."
     )
+    if counterparts:
+        text += (
+            "\n\nEach language keeps the design's character. Where the English file sets a text in "
+            "a family without the letters of another file, that file sets the same text in the "
+            "family's counterpart, the family of its letters closest to it in character (a serif "
+            "for a serif, a rounded face for a rounded one), at the same weight where the "
+            "counterpart has it and else the nearest it has. Never one family for every text of a "
+            "file because it has the letters. The counterparts:\n\n" + "\n".join(counterparts)
+        )
     if bare:
         # The generic family last: the browser then draws the letters the family lacks in the same
         # font when it converts the HTML as when the app draws the slide, which ends every run's

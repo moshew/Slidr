@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+import { switchLanguage } from './objects-helpers';
 import {
   card,
   collectErrors,
@@ -75,12 +76,7 @@ test('a new deck opens on the default template, and File > New does too', async 
   // After the layout's objects (ADR-094), an element for each placeholder.
   const hero = started.layouts.find((l) => l.id === 'l_zerem_hero')!;
   const seated = started.slides[0]!.elements.slice(hero.objects?.length ?? 0);
-  expect(seated.map((e) => e.role)).toEqual([
-    'caption',
-    'title',
-    'subtitle',
-    'caption',
-  ]);
+  expect(seated.map((e) => e.role)).toEqual(['caption', 'title', 'subtitle', 'caption']);
 
   // And File > New in the same window.
   await page.getByTestId('title-bar').getByRole('button', { name: 'קובץ' }).click();
@@ -358,5 +354,58 @@ test('the new fields of the theme read in English', async ({ page }) => {
   await openTextStyle(page, 'title');
   await expect(panel(page).getByRole('textbox', { name: 'Line height of Title' })).toBeVisible();
   await expect(panel(page).getByRole('button', { name: 'Variant 1' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('a language offers the templates written in it: in the panel, on the welcome screen and in Actions', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openTemplates(page);
+  const cards = panel(page).getByTestId('template-library').locator('[data-template]');
+  const idsOf = (shown: Locator, mark: string): Promise<string[]> =>
+    shown.evaluateAll((all, name) => all.map((one) => one.getAttribute(name) ?? ''), mark);
+  await expect(cards.first()).toBeVisible();
+  // Every sample is written in Hebrew: every template is offered.
+  const all = await idsOf(cards, 'data-template');
+  // The templates written in German, as the catalog of their samples has them.
+  const languages = await page.evaluate(async (path) => {
+    const samples = (await import(/* @vite-ignore */ path)) as {
+      sampleLanguages: () => Promise<Record<string, string[]>>;
+    };
+    return samples.sampleLanguages();
+  }, '/src/templates/samples.ts');
+  expect(Object.keys(languages).sort()).toEqual([...all].sort());
+  const german = all.filter((id) => languages[id]!.includes('de'));
+  expect(german.length).toBeGreaterThan(0);
+  expect(german.length).toBeLessThan(all.length);
+
+  // The slides of a template that is not written in German, spread as the language is switched,
+  // are closed with its card.
+  const notGerman = all.find((id) => !german.includes(id))!;
+  await card(page, notGerman).getByTestId('template-cover').click();
+  await expect(page.getByTestId('template-slides')).toBeVisible();
+  await switchLanguage(page, 'de');
+  await expect.poll(() => idsOf(cards, 'data-template')).toEqual(german);
+  await expect(page.getByTestId('template-slides')).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/templates/language-panel-de.png' });
+
+  // The template gallery of Actions.
+  await page.getByTestId('activity-bar').locator('[data-panel="actions"]').click();
+  const looks = page.locator('section[data-look="template"] [data-template]');
+  await expect.poll(() => idsOf(looks, 'data-template')).toEqual(german);
+
+  // The welcome screen, opened in German: its covers, and the count on the way to them.
+  await page.goto('/?welcome');
+  const way = page.getByTestId('welcome-template');
+  await expect(way).toContainText(String(german.length));
+  await way.click();
+  const covers = page.locator('[data-welcome-template]');
+  await expect.poll(() => idsOf(covers, 'data-welcome-template')).toEqual(german);
+  await page.screenshot({ path: 'test-results/templates/language-welcome-de.png' });
+
+  // Back in Hebrew, all of them again.
+  await switchLanguage(page, 'he');
+  await expect.poll(() => idsOf(covers, 'data-welcome-template')).toEqual(all);
   expect(errors).toEqual([]);
 });

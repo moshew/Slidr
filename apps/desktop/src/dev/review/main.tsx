@@ -3,8 +3,11 @@
  *   ?t=<template>&lang=<code>[&slide=<n>][&w=1920]     a template's sample deck, or one slide of it
  *   &src=library                                      the library's template, not one authored here
  *   ?d=<id,id,...>|all&src=managed|new&lang=<code>[&w=] ready-made slides
- * A language a sample or a design is not written in shows the English one, as the app does.
+ * Only what is written in the language: a design not written in it is left out, and a template
+ * whose sample is not written in it is not drawn, as the app offers them (ADR-103, ADR-104).
  *   &cols=<n>                                         columns of a sheet
+ *   &fallback=system                                  letters the theme's fonts lack in the
+ *                                                     system's faces, as before ADR-105
  * `window.__lines()` measures text against its boxes, `window.__lint()` runs the design check.
  */
 import { readMediaJson, mediaUrl } from '@slidr/media-library';
@@ -19,7 +22,7 @@ import {
   type Localized,
   type Slide,
 } from '@slidr/model';
-import { ScaledSlide } from '@slidr/renderer';
+import { ScaledSlide, setFontCounterparts } from '@slidr/renderer';
 import { builtInSamples, builtInTemplates, sampleDeck } from '@slidr/templates/builtin';
 import { authored } from '../../../../../packages/templates/src/authoring/registry';
 import { newDesigns } from '../../../../../packages/templates/src/authoring/designs/registry';
@@ -70,6 +73,7 @@ async function load(): Promise<Drawn[]> {
     const samples = own ? own.samples : builtInSamples[t];
     if (!template || !samples) throw new Error(`no template ${t}`);
     const written = pieceLanguage(samples, lang);
+    if (written !== lang) throw new Error(`the sample of ${t} is not written in ${lang}`);
     const deck = sampleDeck(template, samples[written]!, {
       lang: written,
       dir: languageDir(written),
@@ -83,9 +87,17 @@ async function load(): Promise<Drawn[]> {
   }
   const src = query.get('src') ?? 'new';
   const catalog: ManagedCatalog =
-    src === 'managed'
-      ? ((await readMediaJson<ManagedCatalog>('elements/designs/managed.json')) as ManagedCatalog)
+    src === 'managed' || src === 'library'
+      ? ((await readMediaJson<ManagedCatalog>(
+          src === 'library' ? 'elements/designs/index.json' : 'elements/designs/managed.json',
+        )) as ManagedCatalog)
       : newDesigns();
+  // The authored catalog keeps no sizes of its pictures: they are in `images/designs/sizes.json`,
+  // which the app reads too (`designAssets.ts`). Without them a cropped picture is drawn wrong.
+  if (src === 'library') {
+    catalog.sizes =
+      (await readMediaJson<Record<string, number[]>>('images/designs/sizes.json')) ?? {};
+  }
   const want = query.get('d') ?? 'all';
   const ids =
     want === 'all'
@@ -94,44 +106,46 @@ async function load(): Promise<Drawn[]> {
         ? catalog.groupIds[want.slice(6)]!
         : want.split(',');
   const urls = new Map<string, string>();
-  const drawn = ids.map((id) => {
-    const written = pieceLanguage(catalog.slides[id]!, lang);
-    const authoredSlide = catalog.slides[id]![written]!;
-    const slide = duplicateSlide(createDeck({ slides: [authoredSlide] }), authoredSlide.id).slide;
-    const deck = createDeck({ lang: written, slides: [slide] });
-    for (const [name, suffix] of [
-      ['__subject__', ''],
-      ['__backdrop__', '-bg'],
-    ] as const) {
-      const assetId = `pic-${id}${suffix}`;
-      let used = false;
-      for (const element of walkElements(slide.elements)) {
-        if (element.type === 'image' && element.assetId === name) {
-          element.assetId = assetId;
-          used = true;
+  const drawn = ids
+    .filter((id) => pieceLanguage(catalog.slides[id]!, lang) === lang)
+    .map((id) => {
+      const written = pieceLanguage(catalog.slides[id]!, lang);
+      const authoredSlide = catalog.slides[id]![written]!;
+      const slide = duplicateSlide(createDeck({ slides: [authoredSlide] }), authoredSlide.id).slide;
+      const deck = createDeck({ lang: written, slides: [slide] });
+      for (const [name, suffix] of [
+        ['__subject__', ''],
+        ['__backdrop__', '-bg'],
+      ] as const) {
+        const assetId = `pic-${id}${suffix}`;
+        let used = false;
+        for (const element of walkElements(slide.elements)) {
+          if (element.type === 'image' && element.assetId === name) {
+            element.assetId = assetId;
+            used = true;
+          }
         }
+        if (!used) continue;
+        const size = catalog.sizes?.[`${id}${suffix}`];
+        deck.assets[assetId] = {
+          id: assetId,
+          file: `${id}${suffix}.webp`,
+          mime: 'image/webp',
+          kind: 'image',
+          origin: 'import',
+          bytes: 0,
+          name: `${id}${suffix}.webp`,
+          ...(size ? { width: size[0], height: size[1] } : {}),
+        };
+        urls.set(
+          assetId,
+          src !== 'new'
+            ? mediaUrl(`images/designs/${id}${suffix}.webp`)
+            : (PICTURES[`designs/${id}${suffix}.webp`] ?? ''),
+        );
       }
-      if (!used) continue;
-      const size = catalog.sizes[`${id}${suffix}`];
-      deck.assets[assetId] = {
-        id: assetId,
-        file: `${id}${suffix}.webp`,
-        mime: 'image/webp',
-        kind: 'image',
-        origin: 'import',
-        bytes: 0,
-        name: `${id}${suffix}.webp`,
-        ...(size ? { width: size[0], height: size[1] } : {}),
-      };
-      urls.set(
-        assetId,
-        src === 'managed'
-          ? mediaUrl(`images/designs/${id}${suffix}.webp`)
-          : (PICTURES[`designs/${id}${suffix}.webp`] ?? ''),
-      );
-    }
-    return { key: id, deck, slide, subject: catalog.subjects?.[id] };
-  });
+      return { key: id, deck, slide, subject: catalog.subjects?.[id] };
+    });
   resolve = (asset) => urls.get(asset.id);
   return drawn;
 }
@@ -188,6 +202,7 @@ const hooks = window as unknown as {
 
 async function main() {
   registerBuiltinFonts();
+  if (query.get('fallback') === 'system') setFontCounterparts(() => undefined);
   const drawn = await load();
 
   hooks.__lines = () => {

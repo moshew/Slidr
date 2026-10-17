@@ -1,12 +1,15 @@
+import type { MessageKey } from '../i18n';
+
 /**
  * The parts of the media library the browser shows, in the order the app offers them, and the
  * files of each (docs/media-library.md), by which the overview counts them.
  */
 export interface Section {
   id: string;
-  name: string;
-  /** What it is, in a line. */
-  about: string;
+  /** The name, as a message to translate. */
+  nameKey: MessageKey;
+  /** What it is, in a line, as a message to translate. */
+  aboutKey: MessageKey;
   /** The places of its files: a folder ends with a slash. */
   paths: string[];
 }
@@ -14,68 +17,68 @@ export interface Section {
 export const SECTIONS: Section[] = [
   {
     id: 'designs',
-    name: 'עיצובים מוכנים',
-    about: 'השקפים המוכנים של Elements → עיצובים: הכתובים ביד ואלה שהסטודיו פרסם.',
+    nameKey: 'library.section.designs.name',
+    aboutKey: 'library.section.designs.about',
     paths: ['elements/designs/', 'images/designs/'],
   },
   {
     id: 'templates',
-    name: 'תבניות',
-    about: 'התבניות המובנות, עם מצגות הדוגמה שלהן בעברית ובאנגלית.',
+    nameKey: 'library.section.templates.name',
+    aboutKey: 'library.section.templates.about',
     paths: ['templates/', 'images/templates/'],
   },
   {
     id: 'cards',
-    name: 'ערכות כרטיסים',
-    about: 'ערכות הכרטיסים של Elements, בכל מספר כרטיסים ובשני הכיוונים.',
+    nameKey: 'library.section.cards.name',
+    aboutKey: 'library.section.cards.about',
     paths: ['elements/cards/'],
   },
   {
     id: 'frames',
-    name: 'מסגרות',
-    about: 'מסגרות התמונה ומגנטי האירועים, כפי שלוח Elements מציג אותם.',
+    nameKey: 'library.section.frames.name',
+    aboutKey: 'library.section.frames.about',
     paths: ['elements/catalogs/frames-catalog', 'images/frames/'],
   },
   {
     id: 'shapes',
-    name: 'צורות וקווים',
-    about: 'הצורות והקווים שהאפליקציה מציעה.',
+    nameKey: 'library.section.shapes.name',
+    aboutKey: 'library.section.shapes.about',
     paths: ['elements/catalogs/shapes.json'],
   },
   {
     id: 'graphics',
-    name: 'גרפיקה',
-    about: 'ערכות הגרפיקה, לפי סגנון.',
+    nameKey: 'library.section.graphics.name',
+    aboutKey: 'library.section.graphics.about',
     paths: ['elements/catalogs/graphics-catalog'],
   },
   {
     id: 'emoji',
-    name: "אימוג'י",
-    about: "האימוג'י, לפי קטגוריה.",
+    nameKey: 'library.section.emoji.name',
+    aboutKey: 'library.section.emoji.about',
     paths: ['elements/catalogs/emoji-catalog'],
   },
   {
     id: 'art',
-    name: 'איורים',
-    about: 'ערכות האיורים הצבעוניים, עם הרישיון של כל ערכה.',
+    nameKey: 'library.section.art.name',
+    aboutKey: 'library.section.art.about',
     paths: ['elements/art/'],
   },
   {
     id: 'icons',
-    name: 'אייקונים',
-    about: 'Lucide ו-Tabler, עם מילות החיפוש בעברית ובאנגלית.',
+    nameKey: 'library.section.icons.name',
+    aboutKey: 'library.section.icons.about',
     paths: ['icons/'],
   },
   {
     id: 'fonts',
-    name: 'גופנים',
-    about: 'הגופנים המובנים של מצגות, עם הרישיון של כל משפחה.',
+    nameKey: 'library.section.fonts.name',
+    aboutKey: 'library.section.fonts.about',
     paths: ['fonts/'],
   },
   {
     id: 'files',
-    name: 'כל הקבצים',
-    about: 'כל קובץ שפורסם, תיקייה אחר תיקייה, עם הגודל וה-SHA-256 שלו.',
+    nameKey: 'library.section.files.name',
+    aboutKey: 'library.section.files.about',
     paths: [''],
   },
 ];

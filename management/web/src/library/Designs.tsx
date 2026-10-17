@@ -1,6 +1,8 @@
 import type { AssetMeta } from '@slidr/model';
 import { useMemo, useState } from 'react';
 import type { DisplayLang as Lang, Variant } from '../api';
+import { useT } from '../i18n';
+import { isBase, LanguageNames, LanguagePicker, nativeName } from '../languages';
 import { designAssetsModule, designsModule, messages, named } from './app';
 import { DeckSlide } from './Lazy';
 import { manifest, mediaUrl, size } from './media';
@@ -94,6 +96,7 @@ function DesignDetail({
   onClose: () => void;
   onStep?: (by: -1 | 1) => void;
 }) {
+  const t = useT();
   const [lang, setLang] = useState<Lang>(initial);
   const managed = designs.MANAGED_DESIGN_IDS.has(id);
   const group = designs.DESIGN_GROUPS.find((g) => designs.designsOf(g).includes(id));
@@ -114,54 +117,48 @@ function DesignDetail({
       }
       subtitle={
         <>
-          <span dir="ltr">{id}</span> · {group ? groupNameOf(designs, group, 'he') : 'ללא קבוצה'} ·{' '}
-          {managed ? 'פורסם מהסטודיו (managed.json)' : 'נכתב ביד (index.json)'}
+          <span dir="ltr">{id}</span> ·{' '}
+          {group ? groupNameOf(designs, group, lang) : t('libraryBrowse.designNoGroup')} ·{' '}
+          {managed ? t('libraryBrowse.designPublished') : t('libraryBrowse.designHandWritten')}
         </>
       }
-      actions={
-        <div className="segmented" role="group" aria-label="שפה">
-          <button type="button" aria-pressed={lang === 'he'} onClick={() => setLang('he')}>
-            עברית
-          </button>
-          <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
-            English
-          </button>
-        </div>
-      }
+      actions={<LanguagePicker langs={languages} lang={lang} onChange={setLang} />}
       onClose={onClose}
       onStep={onStep}
       side={
         <>
           {variant && (
             <section className="approve-box">
-              <p className="small">העיצוב נוצר בסטודיו, ובקשת המקור עדיין פתוחה.</p>
+              <p className="small">{t('libraryBrowse.designFromStudio')}</p>
               <button type="button" onClick={() => onOpenVariant(variant)}>
-                פתח את ההצעה בסטודיו
+                {t('libraryBrowse.designOpenVariant')}
               </button>
             </section>
           )}
           <section>
-            <h3>פרטים</h3>
+            <h3>{t('libraryBrowse.details')}</h3>
             <dl className="facts">
-              <dt>מזהה</dt>
+              <dt>{t('libraryBrowse.id')}</dt>
               <dd dir="ltr">{id}</dd>
-              <dt>קבוצה</dt>
+              <dt>{t('libraryBrowse.group')}</dt>
               <dd>
-                {group ? `${groupNameOf(designs, group, 'he')} · ` : ''}
+                {group ? `${groupNameOf(designs, group, lang)} · ` : ''}
                 <span dir="ltr">{group ?? '—'}</span>
               </dd>
-              <dt>מקור</dt>
+              <dt>{t('libraryBrowse.designSource')}</dt>
               <dd dir="ltr">elements/designs/{managed ? 'managed.json' : 'index.json'}</dd>
-              <dt>שפות</dt>
-              <dd dir="ltr">{languages.join(', ')}</dd>
-              <dt>אלמנטים</dt>
+              <dt>{t('libraryBrowse.languages')}</dt>
+              <dd>
+                <LanguageNames langs={languages} />
+              </dd>
+              <dt>{t('libraryBrowse.designElements')}</dt>
               <dd>{slide.elements.length}</dd>
-              <dt>נקודת הנושא</dt>
+              <dt>{t('libraryBrowse.designSubjectPoint')}</dt>
               <dd dir="ltr">{subject ? `${subject[0]}, ${subject[1]}` : '—'}</dd>
             </dl>
           </section>
           <section>
-            <h3>תמונות</h3>
+            <h3>{t('libraryBrowse.designPictures')}</h3>
             <Picture asset={assets.previewAsset(id)} label="subject" />
             {backdrop && <Picture asset={backdrop} label="backdrop" />}
           </section>
@@ -169,12 +166,14 @@ function DesignDetail({
       }
     >
       <DesignView designs={designs} id={id} lang={lang} />
-      <h3>כך העיצוב נראה בגלריה ({THUMB} פיקסלים)</h3>
+      <h3>{t('libraryBrowse.designGalleryView', { size: THUMB })}</h3>
       <div className="thumbs">
-        {(['he', 'en'] as const).map((side) => (
+        {languages.map((side) => (
           <figure key={side}>
             <DesignView designs={designs} id={id} lang={side} width={THUMB} />
-            <figcaption>{side === 'he' ? 'עברית' : 'English'}</figcaption>
+            <figcaption lang={side} dir="auto">
+              {nativeName(side)}
+            </figcaption>
           </figure>
         ))}
       </div>
@@ -201,15 +200,18 @@ export function Designs({
   variants: Record<string, Variant>;
   onOpenVariant: (variant: Variant) => void;
 }) {
+  const t = useT();
   const read = useRead(load, []);
   const [source, setSource] = useState<Source>('all');
   const [designs, assets] = read.value ?? [];
+  // Only the designs written in the language shown: none is shown in English instead.
+  const writtenIn = (id: string) => designs?.designLanguages(id).includes(lang) ?? false;
 
   /** The studio's variant each published design came from, by design id. */
   const studioOf = useMemo(() => {
     const found = new Map<string, Variant>();
     for (const variant of Object.values(variants)) {
-      if (variant.published) found.set(variant.designId, variant);
+      if (variant.published && variant.designId) found.set(variant.designId, variant);
     }
     return found;
   }, [variants]);
@@ -223,34 +225,49 @@ export function Designs({
           const managed = designs.MANAGED_DESIGN_IDS.has(id);
           if (source === 'managed' && !managed) return false;
           if (source === 'authored' && managed) return false;
+          if (!designs.designLanguages(id).includes(lang)) return false;
           return matches(
             query,
             id,
             nameOf(designs, id, 'he'),
             nameOf(designs, id, 'en'),
+            nameOf(designs, id, lang),
             groupNameOf(designs, group, 'he'),
           );
         }),
       }),
     );
-  }, [designs, route.group, source, query]);
+  }, [designs, route.group, source, lang, query]);
   const listed = useMemo(() => groups.flatMap(({ ids }) => ids), [groups]);
 
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!designs || !assets) return <p className="muted">טוען את העיצובים…</p>;
+  if (!designs || !assets) return <p className="muted">{t('libraryBrowse.designsLoading')}</p>;
 
-  const managedCount = designs.MANAGED_DESIGN_IDS.size;
+  const written = designs.DESIGN_IDS.filter(writtenIn);
+  const managedCount = written.filter((id) => designs.MANAGED_DESIGN_IDS.has(id)).length;
   const open = (id: string) => go({ ...route, item: id });
 
   return (
     <>
+      {!isBase(lang) && (
+        <p className="muted small">
+          {t('libraryBrowse.designsWrittenIn', {
+            shown: written.length,
+            total: designs.DESIGN_IDS.length,
+          })}
+          <bdi lang={lang}>{nativeName(lang)}</bdi>.
+        </p>
+      )}
       <div className="lib-filters">
-        <div className="segmented" role="group" aria-label="מקור">
+        <div className="segmented" role="group" aria-label={t('libraryBrowse.designSource')}>
           {(
             [
-              ['all', `הכול · ${designs.DESIGN_IDS.length}`],
-              ['authored', `נכתבו ביד · ${designs.DESIGN_IDS.length - managedCount}`],
-              ['managed', `מהסטודיו · ${managedCount}`],
+              ['all', t('libraryBrowse.designFilterAll', { count: written.length })],
+              [
+                'authored',
+                t('libraryBrowse.designFilterAuthored', { count: written.length - managedCount }),
+              ],
+              ['managed', t('libraryBrowse.designFilterManaged', { count: managedCount })],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -263,70 +280,63 @@ export function Designs({
             </button>
           ))}
         </div>
-        <div className="chips" role="group" aria-label="קבוצה">
+        <div className="chips" role="group" aria-label={t('libraryBrowse.group')}>
           <button
             type="button"
             className="chip"
             aria-pressed={!route.group}
             onClick={() => go({ section: 'designs' })}
           >
-            כל הקבוצות
+            {t('libraryBrowse.designAllGroups')}
           </button>
-          {designs.DESIGN_GROUPS.map((group) => (
-            <button
-              type="button"
-              key={group}
-              className="chip"
-              aria-pressed={route.group === group}
-              onClick={() => go({ section: 'designs', group })}
-            >
-              {groupNameOf(designs, group, 'he')}{' '}
-              <span className="muted">{designs.designsOf(group).length}</span>
-            </button>
-          ))}
+          {designs.DESIGN_GROUPS.map((group) => {
+            const count = designs.designsOf(group).filter(writtenIn).length;
+            if (count === 0 && route.group !== group) return null;
+            return (
+              <button
+                type="button"
+                key={group}
+                className="chip"
+                aria-pressed={route.group === group}
+                onClick={() => go({ section: 'designs', group })}
+              >
+                {groupNameOf(designs, group, lang)} <span className="muted">{count}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {listed.length === 0 && <p className="muted">אין עיצובים שמתאימים לבחירה.</p>}
+      {listed.length === 0 && <p className="muted">{t('libraryBrowse.designsNone')}</p>}
       {groups
         .filter(({ ids }) => ids.length > 0)
         .map(({ group, ids }) => (
           <section key={group} className="lib-group">
             <h3>
-              {groupNameOf(designs, group, 'he')}{' '}
+              {groupNameOf(designs, group, lang)}{' '}
               <span className="muted small" dir="ltr">
                 {group} · {ids.length}
               </span>
             </h3>
             <div className="lib-grid">
-              {ids.map((id) => {
-                const managed = designs.MANAGED_DESIGN_IDS.has(id);
-                return (
-                  <button
-                    type="button"
-                    key={id}
-                    className="lib-card"
-                    onClick={() => open(id)}
-                    aria-label={`פתח את ${nameOf(designs, id, 'he')}`}
-                  >
-                    <DesignView designs={designs} id={id} lang={lang} lazy />
-                    <span className="lib-card-body">
-                      <span className="lib-card-title">{nameOf(designs, id, lang)}</span>
-                      <span className="lib-card-meta">
-                        <span dir="ltr" className="muted">
-                          {id}
-                        </span>
-                        {managed && <span className="badge approved">סטודיו</span>}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+              {/* A design is shown as its picture alone; its name is in its tooltip and its details. */}
+              {ids.map((id) => (
+                <button
+                  type="button"
+                  key={id}
+                  className="lib-card picture"
+                  onClick={() => open(id)}
+                  title={nameOf(designs, id, lang)}
+                  aria-label={t('libraryBrowse.designOpen', { name: nameOf(designs, id, 'he') })}
+                >
+                  <DesignView designs={designs} id={id} lang={lang} lazy />
+                </button>
+              ))}
             </div>
           </section>
         ))}
 
-      {route.item && designs.DESIGN_IDS.includes(route.item) && (
+      {route.item && designs.DESIGN_IDS.includes(route.item) && writtenIn(route.item) && (
         <DesignDetail
           key={route.item}
           designs={designs}

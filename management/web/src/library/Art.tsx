@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useT } from '../i18n';
 import { WhenSeen } from './Lazy';
 import { manifest, mediaJson, mediaUrl, size } from './media';
 import { ItemOverlay, stepper } from './Overlay';
@@ -66,6 +67,7 @@ function SetView({
   go: (route: LibraryRoute) => void;
   query: string;
 }) {
+  const t = useT();
   const art = useRead(() => readSet(set), [set]);
   const names = useMemo(
     () =>
@@ -75,7 +77,7 @@ function SetView({
     [art.value, query],
   );
   if (art.error) return <p className="error-text">{art.error}</p>;
-  if (!art.value) return <p className="muted">טוען את הערכה…</p>;
+  if (!art.value) return <p className="muted">{t('library.art.loadingSet')}</p>;
   const open = (name: string) => go({ section: 'art', group: set, item: name });
   const opened = route.item && art.value.icons[route.item] ? route.item : undefined;
 
@@ -83,7 +85,7 @@ function SetView({
     <>
       <nav className="crumbs">
         <button type="button" className="link" onClick={() => go({ section: 'art' })}>
-          כל הערכות
+          {t('library.art.allSets')}
         </button>
         <span dir="ltr">
           {' / '}
@@ -91,9 +93,9 @@ function SetView({
             {set}
           </a>
         </span>
-        <span className="muted small"> · {Object.keys(art.value.icons).length} איורים</span>
+        <span className="muted small"> · {t('library.art.count', { count: Object.keys(art.value.icons).length })}</span>
       </nav>
-      {names.length === 0 && <p className="muted">אין איורים שמתאימים לחיפוש.</p>}
+      {names.length === 0 && <p className="muted">{t('library.art.noMatch')}</p>}
       <Paged
         key={query}
         items={names}
@@ -115,7 +117,7 @@ function SetView({
           onStep={stepper(names, opened, open)}
           side={
             <section>
-              <h3>רישיון הערכה</h3>
+              <h3>{t('library.art.license')}</h3>
               <NoticeFacts path={`${FOLDER}${set}.notice.json`} />
             </section>
           }
@@ -137,10 +139,11 @@ export function Art({
   go: (route: LibraryRoute) => void;
   query: string;
 }) {
+  const t = useT();
   const sets = useRead(loadSets, []);
   if (route.group) return <SetView set={route.group} route={route} go={go} query={query} />;
   if (sets.error) return <p className="error-text">{sets.error}</p>;
-  if (!sets.value) return <p className="muted">טוען…</p>;
+  if (!sets.value) return <p className="muted">{t('library.loading')}</p>;
   const shown = sets.value.filter(({ id }) => matches(query, id));
 
   return (

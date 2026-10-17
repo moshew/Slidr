@@ -1,9 +1,14 @@
-"""The media library: what is published, and publishing approved designs to it.
+"""The media library: what is published, and publishing approved work to it.
 
 Designs the studio makes go to their own catalog, `elements/designs/managed.json`, with ids that
 start with `m-`, beside the authored `elements/designs/index.json`, which the studio never
 writes. The app reads both (docs/media-library.md). Their pictures are
 `images/designs/<id>.webp`, and their sizes are kept in managed.json.
+
+The samples of templates the studio writes go into the catalog of templates,
+`templates/catalog.json`, under `samples[<template>][<lang>]`: the author copy's catalog, which
+may hold an author's work that is not published yet, is the base, and nothing else of it changes
+(`templates.py`).
 
 Publishing goes through the repository's own `apps/desktop/scripts/media-publish.mjs`, from the
 author copy (`../Slidr-media`), so it keeps that script's staging, manifest and guards:
@@ -33,13 +38,23 @@ from PIL import Image
 
 from .config import REPO, Settings
 from .events import EventBus
-from .languages import BASE_LANGUAGES, CONTENT_LANGUAGES
+from .languages import BASE_LANGUAGES, CONTENT_LANGUAGES, NAMES
 from .programs import creation_flags, find_node
 from .render import render_dir
 from .store import Store, now, read_json, write_json
+from .templates import (
+    CATALOG as TEMPLATES,
+    TemplateError,
+    Templates,
+    catalog_changes,
+    encode_catalog,
+    merge_sample,
+)
 
 MANAGED = "elements/designs/managed.json"
 INDEX = "elements/designs/index.json"
+#: The largest file Cloudflare Pages serves (docs/media-library.md).
+FILE_LIMIT = 25 * 1024 * 1024
 PUBLISH_SCRIPT = REPO / "apps" / "desktop" / "scripts" / "media-publish.mjs"
 LOG_LIMIT = 600
 
@@ -127,10 +142,13 @@ def to_webp(png: Path) -> tuple[bytes, tuple[int, int]]:
 
 
 class Library:
-    def __init__(self, settings: Settings, store: Store, bus: EventBus) -> None:
+    def __init__(
+        self, settings: Settings, store: Store, bus: EventBus, templates: Templates | None = None
+    ) -> None:
         self.settings = settings
         self.store = store
         self.bus = bus
+        self.templates = templates
         self._known: tuple[float, dict] | None = None
         self.state: dict[str, Any] = self._idle()
         self._undo: list[tuple[Path, bytes | None]] = []
@@ -283,6 +301,76 @@ class Library:
         }
         return record, webp
 
+    async def _prepare_designs(self, variants: list[dict]) -> None:
+        """Writes approved designs into the managed catalog, which the studio alone writes: the
+        published one is the base."""
+        media = self.settings.media_dir
+        try:
+            catalog = await self.published_json(MANAGED)
+        except Exception as error:  # noqa: BLE001
+            raise LibraryError(f"Could not read the published {MANAGED}: {error}") from error
+        catalog = catalog if isinstance(catalog, dict) else empty_catalog()
+        self._log(f"The published managed catalog holds {len(catalog.get('slides') or {})} designs.")
+        for variant in variants:
+            record, webp = await asyncio.to_thread(self._design_record, variant)
+            self._write(media / "images" / "designs" / f"{record['id']}.webp", webp)
+            merge_design(catalog, record)
+            self._log(f"  {record['id']}: {record['name']['en']} → {record['group']} ({len(webp) // 1024} KB picture)")
+        self._write(
+            media / Path(*MANAGED.split("/")),
+            json.dumps(catalog, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+        )
+
+    def _sample_record(self, variant: dict) -> tuple[str, str, list]:
+        """A template's sample in one language, as its last render built it."""
+        work = self.store.work_dir(variant)
+        revision = (variant.get("render") or {}).get("revision")
+        result = read_json(render_dir(work, revision) / "result.json") if revision else None
+        where = f"{variant.get('templateId')} · {variant.get('lang')}"
+        if not isinstance(result, dict) or not result.get("publishable"):
+            raise LibraryError(f"{where}: its last render did not pass the checks.")
+        sample = result.get("sample")
+        if not isinstance(sample, list) or not sample:
+            raise LibraryError(f"{where}: its last render holds no sample.")
+        return variant["templateId"], variant["lang"], sample
+
+    async def _prepare_samples(self, variants: list[dict]) -> list[str]:
+        """Writes approved samples into the author copy's catalog of templates, which may hold
+        an author's work that is not published yet: that copy is the base, and nothing else of
+        it changes. Returns that work, part by part (`catalog_changes`): the report counts the
+        catalog as the studio's file, and this is what else the file sends."""
+        path = self.settings.media_dir / Path(*TEMPLATES.split("/"))
+        if not path.is_file():
+            raise LibraryError(f"The author copy has no {TEMPLATES}.")
+        catalog = await asyncio.to_thread(lambda: json.loads(path.read_text(encoding="utf-8")))
+        try:
+            published = await self.published_json(TEMPLATES)
+        except Exception:  # noqa: BLE001 - without it, the file's other changes are not listed
+            published = None
+            self._log(f"The published {TEMPLATES} could not be read: its other changes are not listed.")
+        ours = {(v.get("templateId"), v.get("lang")) for v in variants}
+        others = catalog_changes(catalog, published, ours)
+        if others:
+            self._log(f"{TEMPLATES} of the author copy also holds work that is not published yet:")
+            for change in others:
+                self._log(f"  {change.split(': ', 1)[1]}")
+        for variant in variants:
+            tid, lang, sample = self._sample_record(variant)
+            try:
+                merge_sample(catalog, tid, lang, sample)
+            except TemplateError as error:
+                raise LibraryError(str(error)) from error
+            self._log(f"  {tid}: the sample in {NAMES.get(lang, lang)} ({len(sample)} slides)")
+        data = await asyncio.to_thread(encode_catalog, catalog)
+        if len(data) > FILE_LIMIT:
+            raise LibraryError(
+                f"{TEMPLATES} would be {len(data) / 1024 / 1024:.1f} MB; Pages serves a file of at most "
+                f"{FILE_LIMIT // 1024 // 1024} MB."
+            )
+        self._write(path, data)
+        self._log(f"{TEMPLATES}: {len(data) / 1024 / 1024:.1f} MB.")
+        return others
+
     async def prepare(self, vids: list[str]) -> None:
         async with self._lock:
             if self.state["phase"] in ("preparing", "publishing"):
@@ -302,29 +390,22 @@ class Library:
             if not media.is_dir():
                 raise LibraryError(f"There is no author copy of the library at {media}.")
             await self._sync_missing()
-            try:
-                catalog = await self.published_json(MANAGED)
-            except Exception as error:  # noqa: BLE001
-                raise LibraryError(f"Could not read the published {MANAGED}: {error}") from error
-            catalog = catalog if isinstance(catalog, dict) else empty_catalog()
-            self._log(
-                f"The published managed catalog holds {len(catalog.get('slides') or {})} designs."
-            )
-            for variant in variants:
-                record, webp = await asyncio.to_thread(self._design_record, variant)
-                self._write(media / "images" / "designs" / f"{record['id']}.webp", webp)
-                merge_design(catalog, record)
-                self._log(f"  {record['id']}: {record['name']['en']} → {record['group']} ({len(webp) // 1024} KB picture)")
-            self._write(
-                media / Path(*MANAGED.split("/")),
-                json.dumps(catalog, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
-            )
+            designs = [v for v in variants if v.get("kind") != "template"]
+            samples = [v for v in variants if v.get("kind") == "template"]
+            ours: set[str] = set()
+            # Work inside a file of ours that is not ours: an author's unpublished changes.
+            inside: list[str] = []
+            if designs:
+                await self._prepare_designs(designs)
+                ours |= {MANAGED} | {f"images/designs/{v['designId']}.webp" for v in designs}
+            if samples:
+                inside = await self._prepare_samples(samples)
+                ours.add(TEMPLATES)
             report = await self._run_script(dry_run=True)
-            ours = {MANAGED} | {f"images/designs/{v['designId']}.webp" for v in variants}
             report["ours"] = sorted(ours)
             report["unexpected"] = sorted(
                 p for p in report.get("added", []) + report.get("changed", []) if p not in ours
-            )
+            ) + inside
             self._set(phase="prepared", report=report)
         except Exception as error:  # noqa: BLE001
             self._revert()
@@ -414,7 +495,9 @@ class Library:
                     self.store.log(variant, "publish", "Published to the media library.")
             self._undo = []
             self._known = None
-            self._log(f"Published: {len(self.state['items'])} designs are in the library.")
+            if self.templates:
+                self.templates.forget()
+            self._log(f"Published: {len(self.state['items'])} items are in the library.")
             self._set(phase="done", at=stamp)
         except Exception as error:  # noqa: BLE001
             self._revert()

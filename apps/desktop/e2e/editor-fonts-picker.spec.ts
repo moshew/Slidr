@@ -86,9 +86,34 @@ test('a plain page has no system fonts: the list is the library, with no heading
   await start(page, null);
   await button(page).click();
   await expect(options(page).first()).toHaveText(/Heebo/);
-  await expect(options(page).first()).toHaveAttribute('aria-setsize', '23');
+  // A Hebrew deck: the 23 families with Hebrew letters, then the 14 made for Latin ones only.
+  await expect(options(page).first()).toHaveAttribute('aria-setsize', '37');
   await expect(list(page).getByText('ספריית Slidr')).toHaveCount(0);
   await expect(list(page).getByText('במחשב הזה')).toHaveCount(0);
+  // A family made for other letters is not offered.
+  await search(page).fill('cairo');
+  await expect(options(page)).toHaveCount(0);
+});
+
+test('an Arabic deck is offered the fonts of Arabic and of English, with an Arabic sample', async ({
+  page,
+}) => {
+  await start(page, null);
+  await page.evaluate(() => {
+    const editor = window.slidr;
+    if (!editor) throw new Error('window.slidr is missing');
+    editor.bus.dispatch({ type: 'deck.setMeta', patch: { lang: 'ar' } });
+  });
+  await button(page).click();
+  // Those made for Arabic letters, and Rubik, made for them among others, come first.
+  await expect(options(page).first()).toHaveText(/Rubik/);
+  const mark = options(page).nth(1).getByRole('img', { name: 'תומך בערבית' });
+  await expect(mark).toHaveText('نمط الخط');
+  await search(page).fill('heebo');
+  await expect(options(page)).toHaveCount(0);
+  await search(page).fill('inter');
+  await expect(options(page)).toHaveCount(1);
+  await expect(options(page).getByRole('img')).toHaveCount(0);
 });
 
 test('the fonts of the computer are a section after the library, each listed once', async ({
@@ -97,17 +122,17 @@ test('the fonts of the computer are a section after the library, each listed onc
   await start(page, installed);
   await button(page).click();
 
-  // 23 of the library and 11 of the computer: `heebo` and `Inter` are the library's.
-  await expect(options(page).first()).toHaveAttribute('aria-setsize', '34');
+  // 37 of the library and 11 of the computer: `heebo` and `Inter` are the library's.
+  await expect(options(page).first()).toHaveAttribute('aria-setsize', '48');
   await expect(list(page).locator('li').first()).toHaveText('ספריית Slidr');
   await expect(options(page).first()).toHaveText(/Heebo/);
 
-  await scrollToLine(page, 20);
+  await scrollToLine(page, 34);
   const heading = list(page).getByText('במחשב הזה');
   await expect(heading).toBeVisible();
   const after = heading.locator('xpath=following-sibling::li[@role="option"]');
   await expect(after.first()).toHaveText(/Arial/);
-  await expect(after.first()).toHaveAttribute('aria-posinset', '24');
+  await expect(after.first()).toHaveAttribute('aria-posinset', '38');
   await expect(heading.locator('xpath=preceding-sibling::li[1]')).toHaveText('JetBrains Mono');
 
   await search(page).fill('heebo');
@@ -208,21 +233,21 @@ test('hundreds of families: the list draws the lines in view, and the keys reach
   );
   await start(page, many);
   await button(page).click();
-  await expect(options(page).first()).toHaveAttribute('aria-setsize', '423');
+  await expect(options(page).first()).toHaveAttribute('aria-setsize', '437');
   // Ten lines in view and four beyond: not four hundred.
   expect(await options(page).count()).toBeLessThan(25);
 
-  // The whole list is there to scroll through: 423 fonts and two equally tall headings.
+  // The whole list is there to scroll through: 437 fonts and two equally tall headings.
   const { height, rowHeight } = await list(page).evaluate((ul) => ({
     height: ul.scrollHeight,
     rowHeight: parseFloat(getComputedStyle(ul.querySelector('[role="option"]')!).height),
   }));
-  expect(height).toBe(425 * rowHeight);
+  expect(height).toBe(439 * rowHeight);
 
   // Arrows walk past what is drawn; the active font stays in view and is the one Enter takes.
   for (let i = 0; i < 40; i++) await search(page).press('ArrowDown');
   const active = list(page).locator('[data-active]');
-  await expect(active).toHaveText(/^Family 018/);
+  await expect(active).toHaveText(/^Family 004/);
   await expect(active).toBeInViewport({ ratio: 1 });
   await expect(search(page)).toHaveAttribute(
     'aria-activedescendant',
@@ -233,7 +258,7 @@ test('hundreds of families: the list draws the lines in view, and the keys reach
   await expect(list(page).getByText('ספריית Slidr')).toBeInViewport();
 
   // The wheel to the end: the last family is drawn, the first is not.
-  await scrollToLine(page, 425);
+  await scrollToLine(page, 439);
   await expect(options(page).last()).toHaveText(/^Family 400/);
   await expect(options(page).last()).toBeInViewport({ ratio: 1 });
   await expect(options(page).filter({ hasText: 'Heebo' })).toHaveCount(0);
@@ -277,7 +302,7 @@ for (const theme of ['light', 'dark'] as const) {
         await page.getByRole('dialog').screenshot({ path: out(`fonts-library-detail-${name}`) });
 
         // Where the library ends and the computer's fonts begin.
-        await scrollToLine(page, 20, look.all);
+        await scrollToLine(page, 34, look.all);
         await expect(list(page, look.all).getByText('Arial')).toBeVisible();
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(300);

@@ -28,7 +28,16 @@ export interface AtlasCopy {
   footer: string;
   hero: { name: string; org: string; title: string[]; subtitle: string[]; meta: string };
   section: { name: string; part: string; title: string[]; subtitle: string };
-  agenda: { name: string; title: Title; intro: string; items: string[] };
+  /**
+   * The text slide: a lead of two lines, given in its lines where the language may break
+   * anywhere, and four points, each one line that opens with a few words in bold.
+   */
+  agenda: {
+    name: string;
+    title: Title;
+    intro: Title;
+    items: [opening: string, rest: string][];
+  };
   figures: {
     name: string;
     kicker: string;

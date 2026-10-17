@@ -10,14 +10,18 @@ import {
   Slide,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
+import { builtinFaces, builtinFamilies } from '../fonts/builtinFonts.generated';
 import { previewAsset, previewBackdrop } from './designAssets';
+import { familyIn, fontShelf } from './designFonts';
 import {
   DESIGN_GROUPS,
   DESIGN_IDS,
   DESIGN_SUBJECTS,
   designGroupName,
+  designIn,
   designLanguages,
   designName,
+  designsIn,
   designsOf,
   designSlide,
   insertDesign,
@@ -75,6 +79,26 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
     }
   });
 
+  it('offers an interface only the designs drawn in its language', () => {
+    for (const lang of ['he', 'en']) {
+      expect(
+        DESIGN_IDS.filter((id) => designIn(id, lang)),
+        lang,
+      ).toEqual(DESIGN_IDS);
+    }
+    for (const lang of ['de', 'ar', 'ja', 'pt-BR']) {
+      const drawn = DESIGN_IDS.filter((id) => designLanguages(id).some((one) => one === lang));
+      expect(
+        DESIGN_IDS.filter((id) => designIn(id, lang)),
+        lang,
+      ).toEqual(drawn);
+      expect(
+        DESIGN_GROUPS.flatMap((group) => designsIn(group, lang)),
+        lang,
+      ).toEqual(drawn);
+    }
+  });
+
   it.skipIf(AUTHORED.length === 0)('ships the 296 authored designs, in 19 groups', () => {
     expect(AUTHORED).toHaveLength(296);
     expect(new Set(AUTHORED).size).toBe(296);
@@ -127,11 +151,28 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
         bytes: 100,
         origin: 'import' as const,
       };
-      const added = insertDesign(bus, selection, 'webinar', 'Webinar', 'Add designed slide', asset);
+      const added = insertDesign(
+        bus,
+        selection,
+        'webinar',
+        'en',
+        'Webinar',
+        'Add designed slide',
+        asset,
+      );
       expect(bus.deck.slides.map((slide) => slide.id)).toEqual([first.id, added.id, last.id]);
       expect(selection.getState().currentSlideId).toBe(added.id);
       expect(bus.deck.slides[1]!.elements.length).toBeGreaterThan(5);
       expect(bus.deck.assets[asset.id]).toEqual(asset);
+      // In the language the panel showed it in, not in the Hebrew of the deck.
+      const words = (slide: Slide) =>
+        slide.elements.flatMap((element) =>
+          (element.type === 'text' || element.type === 'shape') && element.content
+            ? [plainText(element.content)]
+            : [],
+        );
+      expect(words(bus.deck.slides[1]!)).toEqual(words(designSlide('webinar', 'en', asset.id)));
+      expect(words(bus.deck.slides[1]!)).not.toEqual(words(designSlide('webinar', 'he', asset.id)));
       bus.undo();
       expect(bus.deck.slides.map((slide) => slide.id)).toEqual([first.id, last.id]);
     },
@@ -150,6 +191,29 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
     }
   });
 
+  it.skipIf(builtinFamilies.length === 0)(
+    'sets each language but Hebrew and English in families of its own letters',
+    () => {
+      // What `scripts/design-fonts.mjs` leaves as it is: a family of the language, or a Latin one
+      // for a text without the language's letters.
+      const shelf = fontShelf({ families: builtinFamilies, faces: builtinFaces });
+      for (const [lang, id] of DRAWN) {
+        if (lang === 'he' || lang === 'en') continue;
+        for (const element of designSlide(id, lang, 'photo').elements) {
+          if (element.type !== 'text' && element.type !== 'shape') continue;
+          for (const paragraph of element.content?.paragraphs ?? []) {
+            for (const run of paragraph.runs) {
+              const font = run.marks?.font ?? '';
+              expect(familyIn(shelf, font, lang, run.text), `${lang}/${id}: "${run.text}"`).toBe(
+                font,
+              );
+            }
+          }
+        }
+      }
+    },
+  );
+
   it.skipIf(!has('concert'))(
     'adds the backdrop of a two-picture design with its subject, in the same undo step',
     () => {
@@ -164,7 +228,16 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
         origin: 'import' as const,
       });
       const [subject, backdrop] = [picture('a'), picture('b')];
-      const added = insertDesign(bus, selection, 'concert', 'Concert', 'Add', subject, backdrop);
+      const added = insertDesign(
+        bus,
+        selection,
+        'concert',
+        'he',
+        'Concert',
+        'Add',
+        subject,
+        backdrop,
+      );
       const images = added.elements.filter((element) => element.type === 'image');
       // The backdrop fills the slide and lies under the subject, which has a frame of its own.
       expect(images.map((image) => image.assetId)).toEqual([backdrop.id, subject.id]);
@@ -226,16 +299,34 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
     );
     Object.assign(subjects, DESIGN_SUBJECTS);
     expect(Object.keys(subjects).sort()).toEqual([...DESIGN_IDS].sort());
+    const under = (elements: Slide['elements'], at: number, y: number) =>
+      elements.findLast(
+        ({ frame }) =>
+          at >= frame.x && at <= frame.x + frame.w && y >= frame.y && y <= frame.y + frame.h,
+      );
     for (const [id, [x, y]] of Object.entries(subjects)) {
       for (const lang of designLanguages(id)) {
         // The point is on the English slide; a right-to-left slide is its mirror.
-        const at = languageDir(lang) === 'rtl' ? 1920 - x : x;
+        const rtl = languageDir(lang) === 'rtl';
+        let at = rtl ? 1920 - x : x;
+        let down = y;
         const slide = designSlide(id, lang, 'photo');
-        const top = slide.elements.findLast(
-          ({ frame }) =>
-            at >= frame.x && at <= frame.x + frame.w && y >= frame.y && y <= frame.y + frame.h,
-        );
-        expect(top?.type, `${lang}/${id}`).toBe('image');
+        // A language whose slide moved the picture moves the point with it: the red ball of
+        // `statement` closes its second line, wherever that line ends.
+        const source = designSlide(id, rtl ? 'he' : 'en', 'photo').elements;
+        const picture = under(source, at, down);
+        if (picture?.type === 'image' && lang !== 'he' && lang !== 'en') {
+          const images = (elements: Slide['elements']) =>
+            elements.filter((e) => e.type === 'image');
+          const moved =
+            slide.elements.find((e) => e.id === picture.id) ??
+            images(slide.elements)[images(source).indexOf(picture)];
+          if (moved) {
+            at += moved.frame.x - picture.frame.x;
+            down += moved.frame.y - picture.frame.y;
+          }
+        }
+        expect(under(slide.elements, at, down)?.type, `${lang}/${id}`).toBe('image');
       }
     }
   });

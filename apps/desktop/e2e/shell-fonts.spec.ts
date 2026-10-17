@@ -74,11 +74,12 @@ test('the section says where the fonts come from, and how many each source has',
     .locator('[data-font-source]')
     .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-font-source')));
   expect(order).toEqual(['mine', 'deck', 'library', 'system']);
-  // Nothing added yet, and a deck that carries no font; the library is the 23 of appendix B.
+  // Nothing added yet, and a deck that carries no font; the library is the 37 of appendix B a
+  // Hebrew deck is offered: those with Hebrew letters, and those made for Latin ones only.
   await expect(source(page, 'mine')).toHaveAttribute('data-count', '0');
   await expect(source(page, 'mine')).toContainText('עוד לא הוספתם גופן.');
   await expect(source(page, 'deck')).toHaveAttribute('data-count', '0');
-  await expect(source(page, 'library')).toHaveAttribute('data-count', '23');
+  await expect(source(page, 'library')).toHaveAttribute('data-count', '37');
 
   // A source opens to its fonts, and says what being from there means.
   await source(page, 'library')

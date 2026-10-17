@@ -6,7 +6,8 @@
  * frame and hands it the page's `@font-face` rules. A face is fetched only when text uses it, or
  * when a conversion asks for a family ahead of measuring, so nothing unused is downloaded.
  */
-import { hebrewFace, hebrewFaces } from '@slidr/renderer';
+import { familyForLetters, type FontFamilyEntry } from '@slidr/model';
+import { hebrewFace, hebrewFaces, setFontCounterparts } from '@slidr/renderer';
 
 export const MEDIA_URL = 'https://slidr-media.pages.dev/';
 
@@ -19,7 +20,7 @@ interface Face {
 }
 
 interface Catalog {
-  families: { family: string; scripts: string[] }[];
+  families: FontFamilyEntry[];
   faces: (Omit<Face, 'url'> & { path: string })[];
 }
 
@@ -44,6 +45,12 @@ export function registerLibraryFonts(): Promise<string[]> {
       url: `${MEDIA_URL}${path}`,
     }));
     for (const face of faces) families.add(face.family);
+    // A deck in a language its theme's fonts have no letters of draws them in their counterpart.
+    const byName = new Map(catalog.families.map((entry) => [entry.family.toLowerCase(), entry]));
+    setFontCounterparts((family, lang) => {
+      const entry = byName.get(family.toLowerCase());
+      return entry && familyForLetters(entry, lang);
+    });
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;

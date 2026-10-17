@@ -6,7 +6,9 @@
 // `<id>Samples` and `<id>Template`. The files are generator inputs and live beside those of the
 // first eighteen, in `Slidr-media/archive/templates-source/`. The catalog holds what they draw:
 // each template with the standard text layout and its Hebrew sample slides, and its sample deck
-// as content in Hebrew and in English.
+// as content in Hebrew and in English, and in any other language `<id>Samples` writes or the
+// catalog already holds (the management studio writes translations into the catalog itself): a
+// language the file does not write is kept, and checked against the layouts as they are now.
 //
 //   node scripts/export-templates.mjs <id> ...            write the templates into the catalog
 //   node scripts/export-templates.mjs --check <id> ...    compare, and write nothing
@@ -102,13 +104,15 @@ const DRAWN = [
 
 let failed = 0;
 try {
-  console.log(writePictures());
+  // `--check` writes nothing: the records of the pictures too are written only by an export.
+  if (!check) console.log(writePictures());
   const kit = await server.ssrLoadModule(join(builtin, 'kit.ts'));
   const { contractGaps } = await server.ssrLoadModule(join(builtin, 'contract.ts'));
   const { withStandardLayouts } = await server.ssrLoadModule(
     join(builtin, '..', 'standardLayouts.ts'),
   );
   const { Template } = await server.ssrLoadModule(join(builtin, '..', 'template.ts'));
+  const { CONTENT_LANGUAGES, languageDir } = await server.ssrLoadModule('@slidr/model');
 
   /** The sample of the text layout every template has: the app's own words. */
   const textSample = (template, lang) => {
@@ -175,6 +179,14 @@ try {
         return [lang, slides];
       }),
     );
+    // The other languages: those the file writes, else those the catalog holds (the management
+    // studio writes translations straight into it), so exporting a template again keeps them.
+    const held = catalog.samples[id] ?? {};
+    for (const lang of CONTENT_LANGUAGES) {
+      if (lang === 'he' || lang === 'en') continue;
+      const slides = samples[lang] ?? held[lang];
+      if (slides) content[lang] = slides;
+    }
 
     // What `builtin.test.ts` holds a template to, said here before anything is written.
     const problems = [];
@@ -193,6 +205,14 @@ try {
       }
       // A sample that the layouts cannot seat throws here, not in the app.
       kit.sampleSlides(template, content[lang], { dir: lang === 'he' ? 'rtl' : 'ltr', lang });
+    }
+    // A language kept from the catalog has to fit the layouts as they are drawn now.
+    for (const lang of Object.keys(content).filter((code) => code !== 'he' && code !== 'en')) {
+      try {
+        kit.sampleSlides(template, content[lang], { dir: languageDir(lang), lang });
+      } catch (error) {
+        problems.push(`the ${lang} sample no longer fits: ${error.message}`);
+      }
     }
     if (problems.length) {
       failed += problems.length;

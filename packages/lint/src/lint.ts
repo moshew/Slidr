@@ -13,7 +13,7 @@ import { rules } from './rules';
 import { drawingsIn } from './visual';
 
 /**
- * `agent`: the rules whose findings go back to the agent after every write (L01–L07, L13, L16;
+ * `agent`: the rules whose findings go back to the agent after every write (L01–L07, L13, L16, L18;
  * LNT-04, QG-03, QG-04). `all`: every rule, the user's design check included.
  */
 export type RuleSet = 'agent' | 'all';

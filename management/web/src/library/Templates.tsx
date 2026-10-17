@@ -3,6 +3,7 @@ import {
   createDeck,
   createElement,
   createSlide as blankSlide,
+  languageDir,
   richText,
   type AssetMeta,
   type Deck,
@@ -18,17 +19,30 @@ import {
 import { pictures } from '@slidr/templates/builtin/pictures';
 import { useEffect, useMemo, useState } from 'react';
 import type { DisplayLang as Lang } from '../api';
+import { useT } from '../i18n';
+import { isBase, LanguageNames, LanguagePicker, nativeName } from '../languages';
 import { messages, named, samplesModule, templatesModule } from './app';
 import { DeckSlide } from './Lazy';
 import { ItemOverlay, stepper } from './Overlay';
 import { matches, useRead, type LibraryRoute } from './shared';
 
-const dirOf = (lang: Lang) => (lang === 'he' ? 'rtl' : 'ltr');
+const dirOf = languageDir;
 
-/** The templates as the app's library holds them: in the published order, standard layouts in. */
+/**
+ * The templates as the app's library holds them: in the published order, standard layouts in,
+ * with the languages the sample of each is written in.
+ */
 const load = async () => {
-  const [{ builtIn }, files] = await Promise.all([templatesModule(), mediaFiles()]);
-  return { templates: builtIn.map((template) => withStandardLayouts(template)), files };
+  const [{ builtIn }, files, samples] = await Promise.all([
+    templatesModule(),
+    mediaFiles(),
+    samplesModule(),
+  ]);
+  return {
+    templates: builtIn.map((template) => withStandardLayouts(template)),
+    files,
+    languages: await samples.sampleLanguages(),
+  };
 };
 
 const nameOf = (template: Template, lang: Lang) =>
@@ -142,6 +156,7 @@ function Swatches({ template }: { template: Template }) {
 function TemplateDetail({
   template,
   lang: initial,
+  languages,
   slide: chosen,
   onSlide,
   onClose,
@@ -149,11 +164,14 @@ function TemplateDetail({
 }: {
   template: Template;
   lang: Lang;
+  /** The languages its sample is written in. */
+  languages: Lang[];
   slide: number;
   onSlide: (index: number) => void;
   onClose: () => void;
   onStep?: (by: -1 | 1) => void;
 }) {
+  const t = useT();
   const [lang, setLang] = useState<Lang>(initial);
   const sample = useRead(() => sampleOf(template, lang), [template, lang]);
   const deck = sample.value?.deck;
@@ -176,39 +194,41 @@ function TemplateDetail({
       }
       subtitle={taglineOf(template, 'he') ?? template.description}
       actions={
-        <div className="segmented" role="group" aria-label="שפה">
-          <button type="button" aria-pressed={lang === 'he'} onClick={() => setLang('he')}>
-            עברית
-          </button>
-          <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
-            English
-          </button>
-        </div>
+        // The sample only in the languages it is written in, as the app shows it.
+        <LanguagePicker
+          lang={lang}
+          onChange={setLang}
+          langs={languages.length > 0 ? languages : undefined}
+        />
       }
       onClose={onClose}
       onStep={onStep}
       side={
         <>
           <section>
-            <h3>פרטים</h3>
+            <h3>{t('libraryBrowse.details')}</h3>
             <dl className="facts">
-              <dt>מזהה</dt>
+              <dt>{t('libraryBrowse.id')}</dt>
               <dd dir="ltr">{template.theme.id}</dd>
-              <dt>כיוון</dt>
+              <dt>{t('libraryBrowse.templateDirection')}</dt>
               <dd dir="ltr">{template.dir}</dd>
               <dt>layouts</dt>
               <dd>{template.layouts.length}</dd>
-              <dt>שקפי דוגמה</dt>
+              <dt>{t('libraryBrowse.templateSampleSlides')}</dt>
               <dd>{deck ? deck.slides.length : '…'}</dd>
-              <dt>גופן כותרות</dt>
+              <dt>{t('libraryBrowse.templateSampleLanguages')}</dt>
+              <dd>
+                <LanguageNames langs={languages} />
+              </dd>
+              <dt>{t('libraryBrowse.templateHeadingFont')}</dt>
               <dd dir="ltr">
                 {fonts.heading.he} / {fonts.heading.latin}
               </dd>
-              <dt>גופן גוף</dt>
+              <dt>{t('libraryBrowse.templateBodyFont')}</dt>
               <dd dir="ltr">
                 {fonts.body.he} / {fonts.body.latin}
               </dd>
-              <dt>פינות</dt>
+              <dt>{t('libraryBrowse.templateCorners')}</dt>
               <dd dir="ltr">{template.theme.radius}px</dd>
             </dl>
             <p className="muted small" dir="ltr">
@@ -216,7 +236,7 @@ function TemplateDetail({
             </p>
           </section>
           <section>
-            <h3>צבעים</h3>
+            <h3>{t('libraryBrowse.templateColors')}</h3>
             <Swatches template={template} />
           </section>
           <section>
@@ -230,7 +250,7 @@ function TemplateDetail({
             </ul>
           </section>
           <section>
-            <h3>קבצים</h3>
+            <h3>{t('libraryBrowse.files')}</h3>
             <ul className="plain-list" dir="ltr">
               <li>
                 <a
@@ -249,12 +269,12 @@ function TemplateDetail({
     >
       {sample.error && <p className="error-text">{sample.error}</p>}
       {!sample.value && !sample.error && <div className="slide-empty working big" />}
-      {sample.value && !deck && <p className="muted">לתבנית אין מצגת דוגמה בשפה הזו.</p>}
+      {sample.value && !deck && <p className="muted">{t('libraryBrowse.templateNoSample')}</p>}
       {deck && current && (
         <>
           <DeckSlide deck={deck} slide={current} resolveAsset={sample.value?.resolve} />
           <p className="muted small">
-            שקף {index + 1} מתוך {deck.slides.length}
+            {t('libraryBrowse.templateSlideOf', { number: index + 1, total: deck.slides.length })}
             {current.name && ` · ${current.name}`}
           </p>
           <div className="filmstrip">
@@ -290,60 +310,101 @@ export function Templates({
   query: string;
   lang: Lang;
 }) {
+  const t = useT();
   const read = useRead(load, []);
+  // Only the templates whose sample is written in the language shown, as the app offers them
+  // (ADR-104); one with no sample, which the app shows in its own words, in every language.
+  const offered = useMemo(() => {
+    const languages = read.value?.languages ?? {};
+    return (read.value?.templates ?? []).filter(
+      (template) => languages[template.theme.id]?.includes(lang) ?? true,
+    );
+  }, [read.value, lang]);
   const shown = useMemo(
     () =>
-      (read.value?.templates ?? []).filter((template) =>
+      offered.filter((template) =>
         matches(
           query,
           template.theme.id,
           nameOf(template, 'he'),
           nameOf(template, 'en'),
+          nameOf(template, lang),
           taglineOf(template, 'he'),
+          taglineOf(template, lang),
           template.description,
         ),
       ),
-    [read.value, query],
+    [offered, lang, query],
   );
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!read.value) return <p className="muted">טוען את התבניות…</p>;
-  const { templates, files } = read.value;
+  if (!read.value) return <p className="muted">{t('libraryBrowse.templatesLoading')}</p>;
+  const { templates, files, languages } = read.value;
+  const languagesOf = (template: Template) => languages[template.theme.id] ?? [];
   const ids = shown.map((template) => template.theme.id);
   const open = (id: string) => go({ section: 'templates', item: id });
-  const opened = templates.find((template) => template.theme.id === route.item);
+  const opened = offered.find((template) => template.theme.id === route.item);
 
   return (
     <>
-      {shown.length === 0 && <p className="muted">אין תבניות שמתאימות לחיפוש.</p>}
+      {!isBase(lang) && (
+        <p className="muted small">
+          {t('libraryBrowse.templatesWrittenIn', {
+            shown: offered.length,
+            total: templates.length,
+          })}
+          <bdi lang={lang}>{nativeName(lang)}</bdi>.
+        </p>
+      )}
+      {shown.length === 0 && <p className="muted">{t('libraryBrowse.templatesNone')}</p>}
       <div className="lib-grid wide">
-        {shown.map((template) => (
-          <button
-            type="button"
-            key={template.theme.id}
-            className="lib-card"
-            onClick={() => open(template.theme.id)}
-          >
-            <Cover template={template} lang={lang} files={files} />
-            <span className="lib-card-body">
-              <span className="lib-card-title">
-                {nameOf(template, lang)}{' '}
-                <span className="muted" dir="ltr">
-                  {template.theme.id}
+        {shown.map((template) => {
+          // The words of a card read in their own language's direction; a tagline not yet
+          // translated falls back to the English description.
+          const tagline = taglineOf(template, lang);
+          return (
+            <button
+              type="button"
+              key={template.theme.id}
+              className="lib-card"
+              onClick={() => open(template.theme.id)}
+            >
+              <Cover template={template} lang={lang} files={files} />
+              <span className="lib-card-body">
+                <span className="lib-card-title">
+                  <span lang={lang} dir={dirOf(lang)}>
+                    {nameOf(template, lang)}
+                  </span>
+                  {/* Beside a name in another language, the English one: the id is in the detail. */}
+                  {lang !== 'en' && (
+                    <>
+                      {' '}
+                      <span className="muted" lang="en" dir="ltr">
+                        {nameOf(template, 'en')}
+                      </span>
+                    </>
+                  )}
+                </span>
+                <span
+                  className="muted small clamp"
+                  lang={tagline ? lang : 'en'}
+                  dir={tagline ? dirOf(lang) : 'ltr'}
+                >
+                  {tagline ?? template.description}
+                </span>
+                <span className="lib-card-meta small muted">
+                  {template.layouts.length} layouts
                 </span>
               </span>
-              <span className="muted small clamp">
-                {taglineOf(template, lang) ?? template.description}
-              </span>
-              <span className="lib-card-meta small muted">{template.layouts.length} layouts</span>
-            </span>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
       {opened && (
         <TemplateDetail
           key={opened.theme.id}
           template={opened}
           lang={lang}
+          languages={languagesOf(opened)}
           slide={route.slide ?? 0}
           onSlide={(index) => go({ ...route, slide: index })}
           onClose={() => go({ section: 'templates' })}

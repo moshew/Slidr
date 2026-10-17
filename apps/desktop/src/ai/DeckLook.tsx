@@ -5,11 +5,15 @@ import type { FontPair } from '@slidr/model';
 import { FittedSlide } from '@slidr/renderer';
 import { Check } from '@slidr/ui/icons';
 import { cx, Icon } from '@slidr/ui';
+import { useLanguage } from '../i18n';
 import { useDeck, useEditor, useElementSize } from '../shell';
 import { showPreview } from '../stage/preview';
 import { library } from '../templates/app';
 import { coverAsset, coverOf } from '../templates/covers';
 import type { LibraryEntry } from '../templates/library';
+import { templateName } from '../templates/names';
+import { useLike } from '../templates/PreviewGrid';
+import { useTemplatesIn } from '../templates/written';
 import {
   applyLook,
   fontChoices,
@@ -141,18 +145,16 @@ function CurrentMark() {
 
 function TemplateCard({ entry, trying }: { entry: LibraryEntry; trying: Trying }) {
   const { t } = useTranslation('ai');
-  const { bus } = useEditor();
   const { template, personal } = entry;
   const { id, name } = template.theme;
-  const lang = useDeck((s) => s.deck.meta.lang);
-  const dir = useDeck((s) => s.deck.meta.dir);
   const current = useDeck((s) => s.deck.theme.id === id);
   const look = useMemo<Look>(() => ({ kind: 'template', id }), [id]);
-  // The cover follows the deck's direction and language, not every edit of the deck.
+  // The cover is in the UI language and its direction, as in the Templates panel, and an edit
+  // of the deck does not draw it again.
+  const like = useLike();
   const cover = useMemo(
-    () => coverOf(library.forDeck(id, lang) ?? template, bus.deck),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [template, id, lang, dir],
+    () => coverOf(library.forDeck(id, like.meta.lang) ?? template, like),
+    [template, id, like],
   );
   // The cover fits its card by itself, so it is drawn with the panel ahead of time, and a card
   // drawn again as it becomes the current one does not draw its slide again.
@@ -202,11 +204,13 @@ function Templates({ trying }: { trying: Trying }) {
   const grid = useRef<HTMLDivElement>(null);
   const { width } = useElementSize(grid);
   const columns = columnsFor(TEMPLATE_COLUMNS, width);
-  const entries = useMemo(
+  const all = useMemo(
     () => library.entries(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [personal],
   );
+  // Only the templates written in the UI language, the language their covers are drawn in.
+  const { entries } = useTemplatesIn(all, useLanguage());
   return (
     <Section title={t('look.template.title')} name="template">
       <p className="px-2 pb-1.5 text-xs text-ui-fg-muted">{t('look.hint')}</p>
@@ -224,11 +228,15 @@ function Templates({ trying }: { trying: Trying }) {
 /* ---------------------------------------------------------------- the palettes */
 
 function PaletteCard({ palette, trying }: { palette: Palette; trying: Trying }) {
-  const { t } = useTranslation('ai');
+  const { t, i18n } = useTranslation('ai');
   const { colors } = palette;
   const look = useMemo<Look>(() => ({ kind: 'palette', colors }), [colors]);
   const current = useDeck((s) => isCurrent(s.deck.theme, look));
-  const name = palette.name ?? t(`look.palette.names.${palette.id}`);
+  // A template's palette is called what the template is in the UI's language.
+  const name =
+    palette.name === undefined
+      ? t(`look.palette.names.${palette.id}`)
+      : templateName({ id: palette.id.replace(/^template:/, ''), name: palette.name }, i18n.language);
   return (
     <button
       {...tryingProps(trying, look, t('look.palette.undo'), current)}

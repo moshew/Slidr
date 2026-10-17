@@ -8,7 +8,15 @@ import {
   Tooltip,
   type FontGroup,
   type FontOption,
+  type FontSample,
 } from '@slidr/ui';
+import {
+  contentLanguageOf,
+  familyForDeck,
+  familyOfLanguage,
+  LANGUAGE_SCRIPT,
+  type ContentLanguage,
+} from '@slidr/model';
 import { ChevronDown } from '@slidr/ui/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,20 +41,50 @@ export interface FontFieldProps {
   onCloseAutoFocus?: (event: Event) => void;
 }
 
-const builtin: FontOption[] = builtinFamilies.map(({ family, scripts }) => ({
-  family,
-  hebrew: (scripts as readonly string[]).includes('he'),
-}));
+/**
+ * A phrase in each language whose letters are not Latin, drawn beside the name of each face that
+ * has them: what the deck's text will look like.
+ */
+const SAMPLES: Partial<Record<ContentLanguage, string>> = {
+  he: 'סגנון הגופן',
+  ar: 'نمط الخط',
+  ru: 'Стиль шрифта',
+  vi: 'Kiểu phông chữ',
+  hi: 'फ़ॉन्ट की शैली',
+  ja: '書体の見本',
+  ko: '글꼴 스타일',
+  'zh-CN': '字体样式',
+};
 
 /** CSS finds a family whatever the case of its name, so one name in two cases is one font. */
 const nameOf = (family: string) => family.toLowerCase();
+
+/** Every family of the library, listed or not: one installed under the same name is the library's. */
+const libraryNames = new Set(builtinFamilies.map(({ family }) => nameOf(family)));
+
+/**
+ * The library's fonts for a deck in `lang`: its language's own first, then English's
+ * (`familyForDeck`); a family made for other letters is not offered. Each is marked when it has
+ * the letters of the deck's language.
+ */
+function libraryFor(lang: string): FontOption[] {
+  const own = contentLanguageOf(lang);
+  const script = own && LANGUAGE_SCRIPT[own];
+  const offered = builtinFamilies.filter((entry) => familyForDeck(entry, lang));
+  const first = own ? offered.filter((entry) => familyOfLanguage(entry, own)) : offered;
+  return [...new Set([...first, ...offered])].map(({ family, scripts }) => ({
+    family,
+    sample: script !== undefined && scripts.includes(script),
+  }));
+}
 
 /**
  * The fonts a deck can be set in, in the order of the list: the ones the deck carries as assets
  * (SPEC 5.7), the user's own (added in the settings screen), the built-in library, and the ones
  * installed on this computer (SPEC appendix B). A family is listed once, in the first of them
  * that has it: the deck's file or the library's is the one that draws it, whatever is installed
- * under the same name.
+ * under the same name. Of the library, the deck is offered the fonts of its language and of
+ * English. Of a font of the user's or the computer's, only whether it has Hebrew letters is known.
  */
 function useFontGroups(labels: {
   deck: string;
@@ -55,11 +93,14 @@ function useFontGroups(labels: {
   system: string;
 }): FontGroup[] {
   const assets = useDeck((s) => s.deck.assets);
+  const lang = useDeck((s) => s.deck.meta.lang);
   const own = useUserFonts();
   const installed = useSystemFonts();
   const { deck, mine, library, system } = labels;
   return useMemo(() => {
-    const known = new Set(builtin.map((f) => nameOf(f.family)));
+    const builtin = libraryFor(lang);
+    const hebrew = contentLanguageOf(lang) === 'he';
+    const known = new Set(libraryNames);
     const carried: FontOption[] = [];
     for (const asset of Object.values(assets)) {
       const family = asset.kind === 'font' ? asset.font?.family : undefined;
@@ -70,20 +111,40 @@ function useFontGroups(labels: {
     carried.sort((a, b) => a.family.localeCompare(b.family));
     // A family of several files (regular, bold) is one line; it has Hebrew when a file has.
     const added = new Map<string, FontOption>();
-    for (const { family, hebrew } of own) {
-      if (known.has(nameOf(family))) continue;
-      const listed = added.get(nameOf(family));
-      added.set(nameOf(family), { family, hebrew: hebrew || listed?.hebrew === true });
+    for (const font of own) {
+      if (known.has(nameOf(font.family))) continue;
+      const listed = added.get(nameOf(font.family));
+      const sample = hebrew && (font.hebrew || listed?.sample === true);
+      added.set(nameOf(font.family), { family: font.family, sample });
     }
     for (const name of added.keys()) known.add(name);
-    const onComputer = installed.filter((font) => !known.has(nameOf(font.family)));
+    const onComputer = installed
+      .filter((font) => !known.has(nameOf(font.family)))
+      .map(({ family, symbol, hebrew: letters }) => ({
+        family,
+        symbol,
+        sample: hebrew && letters,
+      }));
     return [
       { label: deck, fonts: carried },
       { label: mine, fonts: [...added.values()] },
       { label: library, fonts: builtin },
       { label: system, fonts: onComputer },
     ].filter((group) => group.fonts.length > 0);
-  }, [assets, own, installed, deck, mine, library, system]);
+  }, [assets, lang, own, installed, deck, mine, library, system]);
+}
+
+/** The phrase the picker draws in each face with the letters of a deck in `lang`, if any. */
+function useSample(lang: string): FontSample | undefined {
+  const { t, i18n } = useTranslation('controls');
+  const own = contentLanguageOf(lang);
+  const text = own && SAMPLES[own];
+  if (!own || !text) return undefined;
+  // Simplified Chinese by its script, not by the country it is written in.
+  const named = new Intl.DisplayNames([i18n.language], { type: 'language' }).of(
+    own === 'zh-CN' ? 'zh-Hans' : own,
+  );
+  return { text, lang: own, label: t('font.letters', { language: named ?? own }) };
 }
 
 /** A font family in a toolbar or a panel: a button that opens the font picker (TXT-02). */
@@ -105,6 +166,7 @@ export function FontField({
     library: t('font.library'),
     system: t('font.system'),
   });
+  const sample = useSample(useDeck((s) => s.deck.meta.lang));
   const recent = useRecent((s) => s.fonts);
   const shown = mixed ? t('mixed') : (value ?? fallback ?? '');
 
@@ -138,14 +200,13 @@ export function FontField({
       >
         <FontPicker
           groups={groups}
+          sample={sample}
           recent={recent}
           value={mixed ? null : (value ?? fallback ?? null)}
           labels={{
             search: t('font.search'),
             recent: t('font.recent'),
             all: t('font.all'),
-            hebrew: t('font.hebrew'),
-            hebrewPreview: t('font.hebrewPreview'),
             empty: t('font.empty'),
           }}
           onValueChange={(family) => {

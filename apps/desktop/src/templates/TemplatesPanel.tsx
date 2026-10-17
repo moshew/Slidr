@@ -43,6 +43,7 @@ import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import { FontField, useGestureTx } from '../controls';
+import { useLanguage } from '../i18n';
 import { IMAGE_FILES, pickFiles } from '../objects/insert';
 import { ask, useAssetResolver, useDeck, useEditor } from '../shell';
 import {
@@ -64,8 +65,10 @@ import { coverAsset, coverOf } from './covers';
 import type { LibraryEntry } from './library';
 import { templateName } from './names';
 import { readyPreview } from './previews';
+import { useLike } from './PreviewGrid';
 import { showTemplateSlides, templateSlides } from './TemplateSlides';
 import { BackgroundFields, ChartPalette, ShapeFields } from './ThemeLook';
+import { useTemplatesIn } from './written';
 
 /*
  * The Templates panel (WG7-T09 and the wiring of T04; THM-04, THM-05, THM-08): the library with
@@ -167,18 +170,17 @@ function TemplateCard({
 }) {
   const { t, i18n } = useTranslation('templates');
   const editor = useEditor();
-  // The cover follows the deck's direction and language, not every edit of the deck: an edit
-  // does not draw the cards again.
-  const lang = useDeck((s) => s.deck.meta.lang);
-  const dir = useDeck((s) => s.deck.meta.dir);
+  // The cover is in the UI language and its direction, whatever the open deck is in, and an edit
+  // of the deck does not draw the cards again.
+  const like = useLike();
   const { template, personal } = entry;
   const { theme } = template;
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const name = templateName(theme, i18n.language);
   const cover = useMemo(
-    () => coverOf(library.forDeck(theme.id, lang) ?? template, { meta: { lang, dir } }),
-    [template, theme.id, lang, dir],
+    () => coverOf(library.forDeck(theme.id, like.meta.lang) ?? template, like),
+    [template, theme.id, like],
   );
   // The same picture while the cover stays: a card drawn again for its ring or its mark does not
   // draw its slide again. It fits the card by itself, so it is drawn with the panel ahead of time;
@@ -247,8 +249,8 @@ function TemplateCard({
         aria-label={t('panel.preview', { name })}
         data-testid="template-cover"
         // The slides it opens are made while it is pointed at, so they are there when it is pressed.
-        onPointerEnter={() => void readyPreview(entry, editor.bus.deck)}
-        onFocus={() => void readyPreview(entry, editor.bus.deck)}
+        onPointerEnter={() => void readyPreview(entry, like)}
+        onFocus={() => void readyPreview(entry, like)}
         onClick={onToggle}
         className={cx(
           'relative block cursor-default overflow-hidden rounded-inset shadow-slide transition-shadow hover:shadow-raised',
@@ -316,11 +318,18 @@ function Library() {
   const open = useStore(templateSlides, (s) => s.id);
   // The slides are opened from here: they do not stay when the panel is gone.
   useEffect(() => () => showTemplateSlides(null), []);
-  const entries = useMemo(
+  const all = useMemo(
     () => library.entries(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [personal],
   );
+  // Only the templates written in the UI language. The slides of one the language was switched
+  // away from, spread as it was switched, are closed.
+  const { entries, pending } = useTemplatesIn(all, useLanguage());
+  const gone = open !== null && !pending && !entries.some((e) => e.template.theme.id === open);
+  useEffect(() => {
+    if (gone) showTemplateSlides(null);
+  }, [gone]);
   return (
     <Section title={t('panel.library')}>
       {/* Two cards to a row, each as wide as its picture. */}

@@ -18,10 +18,13 @@ import {
   cardKinds,
   cardPicture,
   cardSetOf,
+  cardSetsIn,
   cardsOf,
   mostCards,
   newCardSet,
+  readingIn,
   readingOf,
+  readingOfSet,
   roomOn,
   rowsOf,
   sampleCard,
@@ -322,6 +325,33 @@ describe.skipIf(CARD_SETS.length === 0)('the card sets of Elements', () => {
     expect(cardSetOf(cardsOf(set)[0])).toBeUndefined();
     expect(withCard(cardsOf(set)[0]!, 0, EN, ROOM)).toBeUndefined();
     expect(withCard(set, 99, EN, ROOM)).toBeUndefined();
+  });
+
+  it('is offered in Hebrew and English, the languages its words are written in', () => {
+    for (const lang of ['he', 'en', 'en-US']) expect(cardSetsIn(lang), lang).toEqual(CARD_SETS);
+    for (const lang of ['ar', 'de', 'pt-BR', 'zh-CN']) expect(cardSetsIn(lang), lang).toEqual([]);
+  });
+
+  it('reads back the reading a set was made in, which need not be the deck’s', () => {
+    expect(readingIn('he')).toEqual(HE);
+    expect(readingIn('en')).toEqual(EN);
+    // English words, the cards from the right: as a set has always gone into an Arabic deck.
+    expect(readingIn('ar')).toEqual({ he: false, rtl: true });
+    const readings: Reading[] = [HE, EN, { he: true, rtl: false }, { he: false, rtl: true }];
+    for (const id of CARD_SETS) {
+      for (const reading of readings) {
+        // The other way on both counts: what the set tells is what counts.
+        const other = { he: !reading.he, rtl: !reading.rtl };
+        expect(readingOfSet(onSlide(id, reading), other), `${id}`).toEqual(reading);
+        // A set of one card does not tell its side, only its words.
+        let one = onSlide(id, reading);
+        while (cardsOf(one).length > 1) one = withoutCard(one, cardsOf(one)[0]!.id, reading)!;
+        expect(readingOfSet(one, other), `${id}: one card`).toEqual({
+          he: reading.he,
+          rtl: other.rtl,
+        });
+      }
+    }
   });
 
   it('draws a set alone on a slide with room for its shadow, for its picture in the panel', () => {

@@ -228,7 +228,7 @@ export function detachFromTheme(slide: SlideModel, theme: Theme, lang: Lang): Sl
 /* ---------------------------------------------------------------- the contract */
 
 /** The words of a placeholder, in the languages a design may be made in. */
-const PLACEHOLDER = new RegExp(
+export const PLACEHOLDER = new RegExp(
   [
     'lorem ipsum',
     'placeholder',

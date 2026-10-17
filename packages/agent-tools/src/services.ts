@@ -144,7 +144,7 @@ export interface ConversionService {
 }
 
 export interface LintFinding {
-  /** `L01` ... `L16` (SPEC 9.2, QG-04). */
+  /** `L01` ... `L18` (SPEC 9.2, QG-04, ADR-042, ADR-099). */
   rule: string;
   severity: 'error' | 'warning' | 'info';
   slideId: string;
@@ -155,7 +155,7 @@ export interface LintFinding {
 /** WG7-T05: design lint. It measures the rendered DOM (LNT-02), hence async. */
 export interface LintService {
   /**
-   * `agent`: the rules returned after every write (L01–L07, L13, L16; LNT-04, QG-03, QG-04).
+   * `agent`: the rules returned after every write (L01–L07, L13, L16, L18; LNT-04, QG-03, QG-04).
    * `all`: every rule, for `slide_lint` and `deck_lint`.
    */
   lint(deck: Deck, slideIds: readonly string[], rules: 'agent' | 'all'): Promise<LintFinding[]>;

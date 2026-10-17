@@ -996,8 +996,7 @@
       "mine": "マイフォント",
       "library": "Slidr ライブラリ",
       "system": "このコンピューター",
-      "hebrew": "ヘブライ語対応",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "{{language}}対応",
       "empty": "その名前のフォントはありません"
     },
     "mixed": "混在"
@@ -1888,6 +1887,10 @@
         "title": "下部に空白の帯があります",
         "advice": "コンテンツの下に、スライドの 4 分の 1 以上の空白があります。コンテンツを下まで広げるか、拡大するか、中央に配置してください。"
       },
+      "L18": {
+        "title": "内容より背の高いカード",
+        "advice": "カードの 5 分の 1 以上が、内容の上か下で空白になっています。カードを内容に合わせて縮めるか、大きめの文字、画像、主要な数値で埋めてください。"
+      },
       "other": {
         "title": "デザインの指摘",
         "advice": "このバージョンのアプリでは認識できないルールです。"
@@ -2771,10 +2774,12 @@
       "blankBody": "既定のテンプレートのタイトルスライドから始めます。AI チャットも開いて準備ができています。",
       "load": "ファイルから読み込む",
       "loadBody": "Slidr ファイルはそのまま開き、HTML ファイルは編集可能なスライドとしてインポートします。",
-      "template": "テンプレートから作成",
+      "allTemplates": "すべてのテンプレート",
       "templateBody": "あらゆるトピックに合わせたデザイン済みテンプレート。選ぶ前にすべてのスライドを確認できます。",
       "noTemplates": "ライブラリにはまだテンプレートがありません。",
       "templates": "テンプレートを選択",
+      "templatesBack": "戻る",
+      "templateSlides": "{{name}} のスライド",
       "create": "プレゼンテーションを作成",
       "recent": "最近使ったファイル",
       "noRecentTitle": "最近使ったファイルはありません",
@@ -2981,30 +2986,31 @@
       "closeSlides": "テンプレートのスライドを閉じる"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "流れ",
+      "shvil": "小道",
+      "tzuk": "断崖",
+      "lavan": "白",
+      "layla": "夜",
+      "zohar": "輝き",
+      "migdal": "タワー",
+      "gan": "庭",
+      "nof": "風景",
+      "defus": "印刷",
+      "ariach": "タイル",
+      "bolet": "大胆",
+      "hod": "祝宴",
+      "sirtut": "青写真",
+      "ziv": "きらめき",
+      "shidur": "オンエア",
+      "bina": "ニューロン",
+      "mifgash": "つながり",
+      "kod": "コード",
+      "luach": "スプリント",
+      "anan": "空",
+      "magen": "番人",
+      "shvav": "回路",
+      "mutzar": "ローンチ",
+      "atlas": "アトラス"
     },
     "tagline": {
       "zerem": "深い夜の青に輝くターコイズ。躍動するテクノロジーのために",
@@ -3030,7 +3036,8 @@
       "anan": "澄んだ空とアイソメトリックな図解。クラウドへ向かうアーキテクチャのために",
       "magen": "ダークオリーブと警告のオレンジ。制御ディスプレイのような精密さで",
       "shvav": "基板のグリーンと銅。量産へ向かうハードウェアのために",
-      "mutzar": "プロダクトのウィンドウ、カーソル、通知。新バージョンのリリースのために"
+      "mutzar": "プロダクトのウィンドウ、カーソル、通知。新バージョンのリリースのために",
+      "atlas": "地図の紙に地球儀、航路、切手。あらゆる言語で、国境を越えるもののために"
     },
     "direction": {
       "title": "プレゼンテーションの方向",

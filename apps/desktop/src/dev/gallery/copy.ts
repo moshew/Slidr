@@ -102,10 +102,9 @@ export const copy = {
       all: 'כל הגופנים',
       library: 'ספריית Slidr',
       system: 'במחשב הזה',
-      hebrew: 'תומך בעברית',
-      hebrewPreview: 'סגנון הגופן',
       empty: 'לא נמצא גופן כזה',
     },
+    fontSample: { text: 'סגנון הגופן', lang: 'he', label: 'תומך בעברית' },
   },
   ltr: {
     lang: 'en',
@@ -215,10 +214,9 @@ export const copy = {
       all: 'All fonts',
       library: 'Slidr library',
       system: 'On this computer',
-      hebrew: 'Supports Hebrew',
-      hebrewPreview: 'סגנון הגופן',
       empty: 'No font by that name',
     },
+    fontSample: { text: 'סגנון הגופן', lang: 'he', label: 'Supports Hebrew' },
   },
 } as const;
 

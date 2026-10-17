@@ -95,6 +95,21 @@ def parse(codes: Iterable[str]) -> list[str]:
     return _ordered(found)
 
 
+def known(codes: Iterable[str]) -> list[str]:
+    """The languages of the registry among `codes` (in any case), each once, in the registry's
+    order, and nothing added: the languages a template's sample is to be written in. An unknown
+    code is an error."""
+    found: list[str] = []
+    for code in codes:
+        match = _BY_LOWER.get(str(code).strip().lower())
+        if not match:
+            raise ValueError(
+                f"Unknown language {code}; the languages are {', '.join(CONTENT_LANGUAGES)}."
+            )
+        found.append(match)
+    return [code for code in CONTENT_LANGUAGES if code in found]
+
+
 def chosen(*sources: object) -> list[str]:
     """The languages of a stored request or variant: the first list among `sources` that has
     any, read leniently (a code the registry does not know is left out), Hebrew and English

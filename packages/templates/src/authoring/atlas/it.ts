@@ -20,12 +20,13 @@ export const it: AtlasCopy = {
   agenda: {
     name: 'Ordine del giorno',
     title: 'Di cosa parliamo oggi',
-    intro: 'Venticinque minuti, poi le vostre domande:',
+    intro:
+      'Venticinque minuti su ciò che quattordici città portuali hanno imparato quest’anno sul riuso e sulla dissalazione dell’acqua, e su ciò che chiederemo poi a ogni partner. Poi le vostre domande.',
     items: [
-      'A che punto è la rete dopo tre anni',
-      'Il progetto dell’anno: un porto che produce la propria acqua',
-      'Come entra una nuova città, in cinque passi',
-      'Che cosa chiediamo a ogni partner nel 2027',
+      ['La rete: ', 'a che punto sono le quattordici città dopo tre anni di lavoro comune.'],
+      ['Il progetto dell’anno: ', 'un porto a Limassol che ora produce la propria acqua.'],
+      ['Come entrare: ', 'come una nuova città si unisce alla rete, in cinque passi.'],
+      ['L’anno che viene: ', 'che cosa chiediamo a ogni partner, ed entro quando.'],
     ],
   },
   figures: {

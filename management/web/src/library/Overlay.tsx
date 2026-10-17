@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { useT } from '../i18n';
 
 /**
  * An item of the library up close, over its section: the item's views, and beside them what it
@@ -22,6 +23,7 @@ export function ItemOverlay({
   /** Steps to the item before (-1) or after (1) this one, when there is one. */
   onStep?: (by: -1 | 1) => void;
 }) {
+  const t = useT();
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -53,21 +55,22 @@ export function ItemOverlay({
           <div className="actions">
             {actions}
             {onStep && (
-              <div className="segmented" role="group" aria-label="מעבר בין פריטים">
+              <div className="segmented" role="group" aria-label={t('library.overlay.stepLabel')}>
                 <button
                   type="button"
                   onClick={() => onStep(-1)}
-                  aria-label="הקודם"
-                  title="הקודם (→)"
+                  aria-label={t('library.overlay.previous')}
+                  title={t('library.overlay.previousTitle')}
                 >
                   →
                 </button>
-                <button type="button" onClick={() => onStep(1)} aria-label="הבא" title="הבא (←)">
+                <button type="button" onClick={() => onStep(1)} aria-label={t('library.overlay.next')}
+                  title={t('library.overlay.nextTitle')}>
                   ←
                 </button>
               </div>
             )}
-            <button type="button" className="ghost" onClick={onClose} aria-label="סגור">
+            <button type="button" className="ghost" onClick={onClose} aria-label={t('library.overlay.close')}>
               ✕
             </button>
           </div>

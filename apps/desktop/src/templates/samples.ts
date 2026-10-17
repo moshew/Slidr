@@ -8,7 +8,14 @@
  * nothing here imports `@slidr/templates/builtin`, whose catalog is read as it is imported.
  */
 import { mediaFiles, mediaUrl, requireMediaJson } from '@slidr/media-library';
-import { writtenIn, type AssetMeta, type Deck, type Localized } from '@slidr/model';
+import {
+  languagesOf,
+  writtenIn,
+  type AssetMeta,
+  type ContentLanguage,
+  type Deck,
+  type Localized,
+} from '@slidr/model';
 import type { Template } from '@slidr/templates';
 import { sampleDeck, type SampleSlide } from '@slidr/templates/builtin/kit';
 import { pictures } from '@slidr/templates/builtin/pictures';
@@ -48,6 +55,13 @@ function samples(): Promise<Samples> {
 /** Reads the catalog now, ahead of the first sample that is asked for. */
 export async function readSamples(): Promise<void> {
   await samples();
+}
+
+/** The languages each built-in template's sample is written in, by template id. */
+export async function sampleLanguages(): Promise<Record<string, ContentLanguage[]>> {
+  return Object.fromEntries(
+    Object.entries(await samples()).map(([id, written]) => [id, languagesOf(written)]),
+  );
 }
 
 /**

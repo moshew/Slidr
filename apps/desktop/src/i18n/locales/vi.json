@@ -996,8 +996,7 @@
       "mine": "Phông chữ của tôi",
       "library": "Thư viện Slidr",
       "system": "Trên máy tính này",
-      "hebrew": "Hỗ trợ tiếng Do Thái",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "Hỗ trợ {{language}}",
       "empty": "Không có phông chữ nào trùng tên"
     },
     "mixed": "Hỗn hợp"
@@ -1888,6 +1887,10 @@
         "title": "Khoảng trống ở phía dưới",
         "advice": "Từ một phần tư trang chiếu trở lên bị trống bên dưới nội dung. Hãy dàn nội dung xuống dưới, phóng to hoặc căn giữa nội dung."
       },
+      "L18": {
+        "title": "Thẻ cao hơn nội dung của nó",
+        "advice": "Từ một phần năm thẻ trở lên bị trống phía trên hoặc phía dưới nội dung. Hãy thu nhỏ thẻ cho vừa nội dung, hoặc lấp đầy bằng chữ lớn hơn, hình ảnh hay một con số nổi bật."
+      },
       "other": {
         "title": "Một vấn đề thiết kế",
         "advice": "Một quy tắc mà phiên bản ứng dụng này không nhận biết."
@@ -2771,10 +2774,12 @@
       "blankBody": "Một trang chiếu mở đầu theo mẫu mặc định, cùng khung trò chuyện với AI đã mở sẵn.",
       "load": "Mở từ tệp",
       "loadBody": "Tệp Slidr được mở nguyên trạng, còn tệp HTML được nhập thành các trang chiếu có thể chỉnh sửa.",
-      "template": "Tạo từ mẫu",
+      "allTemplates": "Tất cả mẫu",
       "templateBody": "Các mẫu được thiết kế sẵn cho mọi chủ đề. Xem từng trang chiếu trước khi chọn.",
       "noTemplates": "Thư viện chưa có mẫu nào.",
       "templates": "Chọn mẫu",
+      "templatesBack": "Quay lại",
+      "templateSlides": "Các trang chiếu của {{name}}",
       "create": "Tạo bản trình bày",
       "recent": "Tệp gần đây",
       "noRecentTitle": "Không có tệp gần đây",
@@ -2981,30 +2986,31 @@
       "closeSlides": "Đóng các trang chiếu của mẫu"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "Dòng chảy",
+      "shvil": "Lối mòn",
+      "tzuk": "Vách đá",
+      "lavan": "Trắng",
+      "layla": "Đêm",
+      "zohar": "Rạng rỡ",
+      "migdal": "Tòa tháp",
+      "gan": "Khu vườn",
+      "nof": "Phong cảnh",
+      "defus": "Bản in",
+      "ariach": "Ô gạch",
+      "bolet": "Nổi bật",
+      "hod": "Dạ tiệc",
+      "sirtut": "Bản vẽ",
+      "ziv": "Lấp lánh",
+      "shidur": "Lên sóng",
+      "bina": "Nơ-ron",
+      "mifgash": "Cùng nhau",
+      "kod": "Mã nguồn",
+      "luach": "Nước rút",
+      "anan": "Bầu trời",
+      "magen": "Lính gác",
+      "shvav": "Bo mạch",
+      "mutzar": "Ra mắt",
+      "atlas": "Tập bản đồ"
     },
     "tagline": {
       "zerem": "Công nghệ chuyển động, sắc ngọc lam rực sáng giữa đêm xanh thẳm",
@@ -3030,7 +3036,8 @@
       "anan": "Bầu trời trong và sơ đồ đẳng cự, cho kiến trúc đang tiến lên đám mây",
       "magen": "Xanh ô liu sẫm và cam cảnh báo, chính xác như một màn hình điều khiển",
       "shvav": "Xanh bảng mạch và ánh đồng, cho phần cứng đang trên đường vào sản xuất",
-      "mutzar": "Cửa sổ sản phẩm, con trỏ và thông báo, cho buổi ra mắt phiên bản mới"
+      "mutzar": "Cửa sổ sản phẩm, con trỏ và thông báo, cho buổi ra mắt phiên bản mới",
+      "atlas": "Quả địa cầu, tuyến đường và tem thư trên giấy bản đồ, bằng mọi ngôn ngữ, cho những gì vượt qua biên giới"
     },
     "direction": {
       "title": "Hướng bản trình bày",

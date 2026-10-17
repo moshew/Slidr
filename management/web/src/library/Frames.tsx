@@ -1,7 +1,9 @@
-import { createDeck, type AssetMeta } from '@slidr/model';
+import { BASE_LANGUAGES, createDeck, type AssetMeta } from '@slidr/model';
 import { pictures } from '@slidr/templates/builtin/pictures';
 import { useMemo, useState } from 'react';
 import type { DisplayLang as Lang } from '../api';
+import { useT } from '../i18n';
+import { LanguagePicker, nativeName } from '../languages';
 import { useWidth } from '../SlideView';
 import { framesModule, frameThumbsModule, messages, named } from './app';
 import { ElementPicture, WhenSeen } from './Lazy';
@@ -140,6 +142,7 @@ function FrameDetail({
   onClose: () => void;
   onStep?: (by: -1 | 1) => void;
 }) {
+  const t = useT();
   const [lang, setLang] = useState<Lang>(initial);
   const [photo, setPhoto] = useState(true);
   const [ref, width] = useWidth<HTMLDivElement>();
@@ -166,28 +169,22 @@ function FrameDetail({
       }
       subtitle={
         <>
-          <span dir="ltr">{frame.id}</span> · {groupName(frame.group, 'he')}
-          {frame.set && ` · ${setName(frame.set, 'he')}`}
+          <span dir="ltr">{frame.id}</span> · {groupName(frame.group, lang)}
+          {frame.set && ` · ${setName(frame.set, lang)}`}
         </>
       }
       actions={
         <>
-          <div className="segmented" role="group" aria-label="התמונה במסגרת">
+          <div className="segmented" role="group" aria-label={t('libraryCatalogs.frames.pictureInFrame')}>
             <button type="button" aria-pressed={photo} onClick={() => setPhoto(true)}>
-              צילום
+              {t('libraryCatalogs.frames.photo')}
             </button>
             <button type="button" aria-pressed={!photo} onClick={() => setPhoto(false)}>
-              נוף לדוגמה
+              {t('libraryCatalogs.frames.sampleLandscape')}
             </button>
           </div>
-          <div className="segmented" role="group" aria-label="שפה">
-            <button type="button" aria-pressed={lang === 'he'} onClick={() => setLang('he')}>
-              עברית
-            </button>
-            <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
-              English
-            </button>
-          </div>
+          {/* Only the words beside a picture have a language: a frame without them is the same in all. */}
+          {words > 0 && <LanguagePicker langs={BASE_LANGUAGES} lang={lang} onChange={setLang} />}
         </>
       }
       onClose={onClose}
@@ -195,42 +192,48 @@ function FrameDetail({
       side={
         <>
           <section>
-            <h3>פרטים</h3>
+            <h3>{t('libraryCatalogs.details')}</h3>
             <dl className="facts">
-              <dt>מזהה</dt>
+              <dt>{t('libraryCatalogs.id')}</dt>
               <dd dir="ltr">{frame.id}</dd>
-              <dt>קבוצה</dt>
+              <dt>{t('libraryCatalogs.group')}</dt>
               <dd>
-                {groupName(frame.group, 'he')} · <span dir="ltr">{frame.group}</span>
+                {groupName(frame.group, lang)} · <span dir="ltr">{frame.group}</span>
               </dd>
               {frame.set && (
                 <>
-                  <dt>סט מגנטים</dt>
+                  <dt>{t('libraryCatalogs.frames.magnetSet')}</dt>
                   <dd>
-                    {setName(frame.set, 'he')} · <span dir="ltr">{frame.set}</span>
+                    {setName(frame.set, lang)} · <span dir="ltr">{frame.set}</span>
                   </dd>
                 </>
               )}
-              <dt>גודל בשקף</dt>
+              <dt>{t('libraryCatalogs.frames.sizeOnSlide')}</dt>
               <dd dir="ltr">
                 {frame.size.w}×{frame.size.h}
               </dd>
-              <dt>חיתוך</dt>
+              <dt>{t('libraryCatalogs.frames.crop')}</dt>
               <dd dir="ltr">{frame.mask?.kind ?? 'none'}</dd>
-              <dt>איור</dt>
-              <dd>{frame.art ? 'יש' : 'אין'}</dd>
-              <dt>לצד התמונה</dt>
+              <dt>{t('libraryCatalogs.frames.art')}</dt>
+              <dd>{t(frame.art ? 'libraryCatalogs.frames.has' : 'libraryCatalogs.frames.hasNot')}</dd>
+              <dt>{t('libraryCatalogs.frames.besidePicture')}</dt>
               <dd>
-                {extras.length - words} מדבקות · {words} שורות מילים
+                {t('libraryCatalogs.frames.extras', { stickers: extras.length - words, words })}
               </dd>
-              <dt>צל</dt>
-              <dd>{frame.shadow ? 'יש' : 'אין'}</dd>
-              <dt>תלוי בערכת הנושא</dt>
-              <dd>{mod.followsTheme(frame) ? 'כן: נראית אחרת בכל מצגת' : 'לא'}</dd>
+              <dt>{t('libraryCatalogs.frames.shadow')}</dt>
+              <dd>{t(frame.shadow ? 'libraryCatalogs.frames.has' : 'libraryCatalogs.frames.hasNot')}</dd>
+              <dt>{t('libraryCatalogs.frames.followsTheme')}</dt>
+              <dd>
+                {t(
+                  mod.followsTheme(frame)
+                    ? 'libraryCatalogs.frames.followsThemeYes'
+                    : 'libraryCatalogs.frames.followsThemeNo',
+                )}
+              </dd>
               {frame.featured !== undefined && (
                 <>
-                  <dt>מומלצת</dt>
-                  <dd>מקום {frame.featured + 1}</dd>
+                  <dt>{t('libraryCatalogs.frames.featured')}</dt>
+                  <dd>{t('libraryCatalogs.frames.featuredPlace', { place: frame.featured + 1 })}</dd>
                 </>
               )}
               <dt>rev</dt>
@@ -239,7 +242,7 @@ function FrameDetail({
           </section>
           {ahead && (
             <section>
-              <h3>תמונות מוכנות</h3>
+              <h3>{t('libraryCatalogs.frames.readyPictures')}</h3>
               {(['he', 'en'] as const).map((side) => {
                 const path = `images/frames/${side}/${id}.webp`;
                 const current = thumbs.frameThumb(frame, side);
@@ -275,8 +278,13 @@ function FrameDetail({
         )}
       </div>
       <p className="muted small">
-        המסגרת כפי שהרנדרר של Slidr מצייר אותה בשקף, בערכת הנושא של מצגת חדשה
-        {photo ? ', עם צילום מהספרייה בתוכה' : ', עם הנוף שהלוח מציג במקום תמונה'}.
+        {t('libraryCatalogs.frames.caption')}
+        {t(
+          photo
+            ? 'libraryCatalogs.frames.captionWithPhoto'
+            : 'libraryCatalogs.frames.captionWithLandscape',
+        )}
+        .
       </p>
     </ItemOverlay>
   );
@@ -294,8 +302,14 @@ export function Frames({
   query: string;
   lang: Lang;
 }) {
+  const t = useT();
   const read = useRead(load, []);
-  const all = read.value?.all;
+  // The frames Elements offers in the language (`frameIn`): every frame without words, the
+  // letters of its alphabet, and the magnets only in Hebrew and English, which they are written in.
+  const all = useMemo(
+    () => read.value && read.value.frames.framesIn(read.value.all, lang),
+    [read.value, lang],
+  );
   const found = useMemo(() => {
     if (!read.value || !all) return [];
     const inGroup = all.filter((frame) => !route.group || frame.group === route.group);
@@ -307,7 +321,15 @@ export function Frames({
   }, [read.value, all, route.group, query]);
 
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!read.value || !all) return <p className="muted">טוען את המסגרות…</p>;
+  if (!read.value || !all) return <p className="muted">{t('libraryCatalogs.frames.loading')}</p>;
+  if (all.length === 0) {
+    return (
+      <p className="muted">
+        {t('libraryCatalogs.frames.noneIn')}
+        <bdi lang={lang}>{nativeName(lang)}</bdi>.
+      </p>
+    );
+  }
   const { frames: mod, thumbs } = read.value;
   const groups = mod.FRAME_GROUPS.filter((group) => all.some((frame) => frame.group === group));
   const ids = found.map((frame) => frame.id);
@@ -318,14 +340,14 @@ export function Frames({
   return (
     <>
       <div className="lib-filters">
-        <div className="chips" role="group" aria-label="קבוצה">
+        <div className="chips" role="group" aria-label={t('libraryCatalogs.group')}>
           <button
             type="button"
             className="chip"
             aria-pressed={!route.group}
             onClick={() => go({ section: 'frames' })}
           >
-            הכול <span className="muted">{all.length}</span>
+            {t('libraryCatalogs.all')} <span className="muted">{all.length}</span>
           </button>
           {groups.map((group) => (
             <button
@@ -335,13 +357,13 @@ export function Frames({
               aria-pressed={route.group === group}
               onClick={() => go({ section: 'frames', group })}
             >
-              {groupName(group, 'he')}{' '}
+              {groupName(group, lang)}{' '}
               <span className="muted">{all.filter((frame) => frame.group === group).length}</span>
             </button>
           ))}
         </div>
       </div>
-      {found.length === 0 && <p className="muted">אין מסגרות שמתאימות לבחירה.</p>}
+      {found.length === 0 && <p className="muted">{t('libraryCatalogs.frames.noMatch')}</p>}
       {(searching ? [undefined] : groups.filter((g) => !route.group || g === route.group)).map(
         (group) => {
           const list = group ? found.filter((frame) => frame.group === group) : found;
@@ -350,7 +372,7 @@ export function Frames({
             <section key={group ?? 'found'} className="lib-group">
               {group && (
                 <h3>
-                  {groupName(group, 'he')}{' '}
+                  {groupName(group, lang)}{' '}
                   <span className="muted small" dir="ltr">
                     {group} · {list.length}
                   </span>
@@ -367,7 +389,7 @@ export function Frames({
                   >
                     <FrameTile mod={mod} thumbs={thumbs} frame={frame} lang={lang} />
                     <span className="tile-label" dir="auto">
-                      {frame.label[lang]}
+                      {frame.label[lang === 'he' ? 'he' : 'en']}
                     </span>
                   </button>
                 ))}

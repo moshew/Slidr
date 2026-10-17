@@ -11,6 +11,7 @@ import {
   pageNumber,
   para,
   place,
+  points,
   rect,
   sampleSlides,
   solid,
@@ -18,6 +19,7 @@ import {
   text,
   token,
   type SampleSlide,
+  withObjects,
 } from '../builtin/kit';
 import { picture } from './pictures';
 
@@ -211,6 +213,36 @@ const art =
         (dir === 'rtl' ? geometry : `<g transform="matrix(-1 0 0 1 ${w} 0)">${geometry}</g>`) +
         letters(words, w, dir),
     );
+
+/**
+ * A part of a drawing of the whole board: what it draws, in slide pixels of a right-to-left
+ * slide, and the box on the slide that holds it.
+ */
+interface Part {
+  name: string;
+  box: Frame;
+  g: string;
+  words?: readonly Letter[];
+}
+
+/**
+ * The parts of a drawing of the whole board, each a drawing of its own in its box: the slide
+ * holds them apart (ADR-094), so the chip, a bus of traces or a mounting hole is picked, moved
+ * and deleted by itself, and a press on the bare board picks none of them. Each is drawn in the
+ * coordinates of the whole slide, its box a window on them, so the parts meet as they were drawn.
+ */
+function parts(layout: string, list: readonly Part[]): Element[] {
+  return list.map(({ name, box, g, words = [] }) =>
+    lettered(`d_shvav_${layout}_${name}`, box, (dir) => {
+      const x = dir === 'rtl' ? box.x : 1920 - box.x - box.w;
+      const geometry = dir === 'rtl' ? g : `<g transform="matrix(-1 0 0 1 1920 0)">${g}</g>`;
+      return (
+        `<svg viewBox="${x} ${box.y} ${box.w} ${box.h}" fill="none" direction="ltr" unicode-bidi="isolate">` +
+        `${DEFS}${geometry}${letters(words, 1920, dir)}</svg>`
+      );
+    }),
+  );
+}
 
 const f1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -557,13 +589,14 @@ function foot(name: string) {
 // ---------------------------------------------------------------------------------------------
 // The opening: the microcontroller, its fan-out, and the fingers of the edge connector
 
-function heroArt() {
+function heroArt(): Part[] {
   const cx = 400;
   const cy = 430;
   const s = 330;
   const pitch = (s * 0.84) / 11;
   const o = (i: number) => (i - 5.5) * pitch;
   let g = '';
+  let bus = '';
   // Left: every pin fans out to the edge, the outer ones bending most.
   for (let i = 0; i < 12; i++) {
     const y = cy + o(i);
@@ -640,7 +673,7 @@ function heroArt() {
     const b = 776 + (i - 8) * 22;
     const xd = xt + (b - y);
     if (i === 11) {
-      g += tr(
+      bus += tr(
         [
           [595, y],
           [xt, y],
@@ -652,7 +685,7 @@ function heroArt() {
       );
     } else {
       const xe = SX - 150 - (10 - i) * 46;
-      g +=
+      bus +=
         tr(
           [
             [595, y],
@@ -767,8 +800,8 @@ function heroArt() {
   g += qfp(cx, cy, s, 12) + brackets(cx - s / 2 - 46, cy - s / 2 - 46, s + 92, s + 92, 40);
   g += `<circle cx="${cx - s / 2 - 58}" cy="${cy - s / 2 - 58}" r="6" fill="${INK}" fill-opacity=".7"/>`;
   // The board's own marks: holes, fiducials, the kicker's and the meta line's test points.
-  g += mountHole(64, 64) + mountHole(1852, 1012) + fiducial(1858, 62) + fiducial(62, 934);
-  g +=
+  g += mountHole(64, 64) + fiducial(62, 934);
+  const kicker =
     tr(
       [
         [SX - 11, -10],
@@ -776,7 +809,7 @@ function heroArt() {
       ],
       { ...UNDER, op: 0.34, w: 5 },
     ) + testPoint(SX - 11, 303, 10);
-  g += testPoint(SX - 11, 901, 10);
+  bus += testPoint(SX - 11, 901, 10);
   const words: Letter[] = [
     {
       x: cx,
@@ -799,13 +832,25 @@ function heroArt() {
     { x: 104, y: 1010, t: 'J1', size: 22, anchor: 'end' },
     { x: 730, y: 940, t: 'C7 C8', size: 18, anchor: 'middle', op: 0.6 },
   ];
-  return art(1920, 1080, g, words);
+  // The bus runs under the chip's legs, as it was drawn before them.
+  return [
+    { name: 'bus', box: atEnd(585, 485, 1215, 430), g: bus },
+    { name: 'board', box: atEnd(0, 0, 850, 1080), g, words },
+    { name: 'kicker_net', box: atEnd(1766, 0, 30, 320), g: kicker },
+    ...corners(),
+  ];
 }
+
+/** The marks in the far corners of an opening board: a mounting hole and a fiducial. */
+const corners = (): Part[] => [
+  { name: 'hole', box: atEnd(1806, 966, 92, 92), g: mountHole(1852, 1012) },
+  { name: 'fiducial', box: atEnd(1836, 40, 44, 44), g: fiducial(1858, 62) },
+];
 
 // ---------------------------------------------------------------------------------------------
 // The number of a part, in a big package
 
-function sectionArt() {
+function sectionArt(): Part[] {
   const cx = 400;
   const cy = 540;
   const s = 400;
@@ -876,8 +921,8 @@ function sectionArt() {
   g += qfp(cx, cy, s, n, { len, w: 11 });
   g += brackets(cx - half - 50, cy - half - 50, s + 100, s + 100, 44);
   g += `<circle cx="${cx - half - 62}" cy="${cy - half - 62}" r="6" fill="${INK}" fill-opacity=".7"/>`;
-  g += mountHole(64, 64) + mountHole(1852, 1012) + fiducial(1858, 62) + fiducial(62, 1016);
-  g +=
+  g += mountHole(64, 64) + fiducial(62, 1016);
+  const kicker =
     tr(
       [
         [SX - 11, -10],
@@ -908,7 +953,11 @@ function sectionArt() {
     },
     { x: cx - half - 50, y: cy - half - 72, t: 'U2', size: 24, anchor: 'start' },
   ];
-  return art(1920, 1080, g, words);
+  return [
+    { name: 'chip', box: atEnd(0, 0, 800, 1080), g, words },
+    { name: 'kicker_net', box: atEnd(1766, 0, 30, 400), g: kicker },
+    ...corners(),
+  ];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -916,7 +965,7 @@ function sectionArt() {
 
 const STATS = [300, 510, 720];
 
-function bigNumberArt() {
+function bigNumberArt(): Part[] {
   const x = SX - 1040;
   const y = 344;
   const w = 1040;
@@ -939,15 +988,15 @@ function bigNumberArt() {
   g += soic(x, y, w, h, n);
   g += `<circle cx="${x + 30}" cy="${y + 30}" r="7" fill="#000000" fill-opacity=".5" stroke="#ffffff" stroke-opacity=".1"/>`;
   // The test points: on one trace down the side, which joins the foot's net.
-  g += tr(
+  let probes = tr(
     [
       [650, STATS[0]! + 40],
       [650, NET_Y],
     ],
     { ...BARE, w: 6 },
   );
-  for (const top of STATS) g += testPoint(650, top + 40, 13);
-  g += tr(
+  for (const top of STATS) probes += testPoint(650, top + 40, 13);
+  const kicker = tr(
     [
       [SX - 11, -10],
       [SX - 11, KICKER + 6],
@@ -967,9 +1016,20 @@ function bigNumberArt() {
     },
     { x: x + 52, y: y + h - 26, t: '2648 · A3', size: 18, fill: LASER, weight: 500 },
     { x: x - 12, y: y - 40, t: 'U1', size: 22, anchor: 'end' },
-    ...STATS.map((top, i) => ({ x: 674, y: top + 47, t: `TP${i + 1}`, size: 18, op: 0.75 })),
   ];
-  return art(1920, 1080, g, words);
+  const points = STATS.map((top, i) => ({
+    x: 674,
+    y: top + 47,
+    t: `TP${i + 1}`,
+    size: 18,
+    op: 0.75,
+  }));
+  return [
+    { name: 'chip', box: atEnd(700, 262, 1100, 366), g, words },
+    { name: 'kicker_net', box: atEnd(1766, 0, 30, 100), g: kicker },
+    // Last: the layout draws it after the foot (`l_shvav_big_number`).
+    { name: 'probes', box: atEnd(630, 320, 90, NET_Y + 10 - 320), g: probes, words: points },
+  ];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -990,7 +1050,7 @@ function teardrops(dir: Dir): string {
   return svg(120, 100, DEFS + one(32, 30, 24) + one(88, 30, 24));
 }
 
-function quoteArt() {
+function quoteArt(): Part[] {
   const x0 = 112;
   const y0 = 168;
   const x1 = 1808;
@@ -1039,7 +1099,7 @@ function quoteArt() {
       UNDER,
     ) + tented(x1 + 36, y0 - 106, 7);
   // A rule before the speaker: a short trace between two vias.
-  g +=
+  const rule =
     tr(
       [
         [SX - 196, 652],
@@ -1050,150 +1110,95 @@ function quoteArt() {
     goldVia(SX - 192, 652, 8) +
     goldVia(SX - 320, 652, 8);
   // The serial number of the board, in the corner of the block.
-  g += dataMatrix(x0 + 44, y1 - 44 - 112);
-  const words: Letter[] = [
-    { x: x1 - 116, y: y0 + 7, t: 'NOTE 1', size: 19, fill: BG, anchor: 'middle', weight: 700 },
-    { x: x0 + 44 + 112 + 18, y: y1 - 50, t: 'SN 2648-0417', size: 17, op: 0.6 },
-    { x: x0 + 44 + 112 + 18, y: y1 - 74, t: 'PCB-04L · 1.6', size: 17, op: 0.45 },
+  const serial = dataMatrix(x0 + 44, y1 - 44 - 112);
+  return [
+    {
+      name: 'block',
+      box: atEnd(0, 48, 1920, 864),
+      g,
+      words: [
+        { x: x1 - 116, y: y0 + 7, t: 'NOTE 1', size: 19, fill: BG, anchor: 'middle', weight: 700 },
+      ],
+    },
+    { name: 'rule', box: atEnd(SX - 334, 638, 156, 28), g: rule },
+    {
+      name: 'serial',
+      box: atEnd(x0 + 38, y1 - 162, 280, 124),
+      g: serial,
+      words: [
+        { x: x0 + 44 + 112 + 18, y: y1 - 50, t: 'SN 2648-0417', size: 17, op: 0.6 },
+        { x: x0 + 44 + 112 + 18, y: y1 - 74, t: 'PCB-04L · 1.6', size: 17, op: 0.45 },
+      ],
+    },
   ];
-  return art(1920, 1080, g, words);
 }
 
 // ---------------------------------------------------------------------------------------------
-// Beside the text: a radio module and its pinout
+// The text: a module from margin to margin, castellated down both sides
 
-const PINS_START = [
-  'GND',
-  '3V3',
-  'VBAT',
-  'EN',
-  'TX',
-  'RX',
-  'SDA',
-  'SCL',
-  'IRQ',
-  'WAKE',
-  'ADC0',
-  'GND',
-];
-const PINS_END = [
-  'GND',
-  'ANT',
-  'GND',
-  'MOSI',
-  'MISO',
-  'SCK',
-  'CS',
-  'PA8',
-  'PA9',
-  'SWDIO',
-  'SWCLK',
-  'GND',
-];
+/** The module of the text slide: from the start margin to the end one, down to over the foot. */
+const MODULE = at(START, 236, WIDTH, 690);
 
-function pinKind(name: string): 'gnd' | 'pwr' | 'bus' | 'io' {
-  if (name === 'GND') return 'gnd';
-  if (name === '3V3' || name === 'VBAT') return 'pwr';
-  if (['TX', 'RX', 'SDA', 'SCL', 'MOSI', 'MISO', 'SCK', 'CS', 'ANT'].includes(name)) return 'bus';
-  return 'io';
+/**
+ * The castellations of the module's two sides, half holes plated in gold down each edge, and
+ * the traces that run from every other one off the board; a part each side.
+ */
+function moduleSides(): Part[] {
+  const [l, r] = [MODULE.x, MODULE.x + MODULE.w];
+  const rows = Array.from({ length: 12 }, (_, k) => MODULE.y + 44 + k * 55);
+  const side = (x: number, out: number) => {
+    let g = '';
+    rows.forEach((y, j) => {
+      if (j % 3 !== 1)
+        g += tr(
+          [
+            [x + out * 14, y],
+            [out > 0 ? 1930 : -10, y],
+          ],
+          j % 2 ? UNDER : { ...BARE, w: 5, op: 0.6 },
+        );
+      g += `<rect x="${f1(out > 0 ? x - 4 : x - 16)}" y="${y - 11}" width="20" height="22" rx="2" fill="url(#au)"/>`;
+      g += `<circle cx="${x}" cy="${y}" r="11" fill="url(#au)"/><path d="M${x} ${y - 6}A6 6 0 0 ${out > 0 ? 0 : 1} ${x} ${y + 6}Z" fill="${HOLE}"/>`;
+    });
+    return g;
+  };
+  const top = rows[0]! - 14;
+  const height = rows[rows.length - 1]! + 14 - top;
+  return [
+    { name: 'castellations_start', box: atEnd(r - 18, top, 1920 - r + 18, height), g: side(r, 1) },
+    { name: 'castellations_end', box: atEnd(0, top, l + 18, height), g: side(l, -1) },
+  ];
 }
 
-function pinoutArt() {
-  const w = 700;
-  const [l, r, top, bottom] = [262, 482, 236, 846];
-  const ys = PINS_START.map((_, k) => top + 52 + k * 46);
-  // The module: its own board, castellated down both sides.
-  let g = `<rect x="${l}" y="${top}" width="${r - l}" height="${bottom - top}" rx="10" fill="#062619" stroke="${INK}" stroke-opacity=".18" stroke-width="1.5"/>`;
-  const words: Letter[] = [];
-  const tag = (x: number, y: number, name: string, side: 'start' | 'end') => {
-    const kind = pinKind(name);
-    const tw = 112;
-    const tx = side === 'end' ? x - tw : x;
-    const fill =
-      kind === 'gnd'
-        ? `fill="${INK}" fill-opacity=".88"`
-        : kind === 'pwr'
-          ? `fill="${GOLD}"`
-          : `fill="${BG}" stroke="${kind === 'bus' ? LIGHT : INK}" stroke-opacity="${kind === 'bus' ? 0.75 : 0.4}" stroke-width="2"`;
-    g += `<rect x="${tx}" y="${y - 15}" width="${tw}" height="30" rx="7" ${fill}/>`;
-    words.push({
-      x: tx + tw / 2,
-      y: y + 6,
-      t: name,
-      size: 16,
-      anchor: 'middle',
-      weight: 700,
-      fill: kind === 'gnd' || kind === 'pwr' ? BG : kind === 'bus' ? LIGHT : INK,
-      op: kind === 'io' ? 0.8 : 1,
-    });
-  };
-  for (const [k, y] of ys.entries()) {
-    for (const [x, out] of [
-      [l, -1],
-      [r, 1],
-    ] as const) {
-      g += `<rect x="${out > 0 ? x - 2 : x - 18}" y="${y - 10}" width="20" height="20" rx="2" fill="url(#au)"/>`;
-      g += `<circle cx="${x}" cy="${y}" r="10" fill="url(#au)"/><path d="M${x} ${y - 5}A5 5 0 0 ${out > 0 ? 0 : 1} ${x} ${y + 5}Z" fill="${HOLE}"/>`;
-      g += `<path d="M${x + out * 18} ${y}H${x + out * 32}" stroke="${INK}" stroke-opacity=".35" stroke-width="2"/>`;
-    }
-    tag(l - 32, y, PINS_START[k]!, 'end');
-    tag(r + 32, y, PINS_END[k]!, 'start');
-  }
-  // The antenna: a meander of bare copper in its keep-out, fed from the can.
-  let meander = `M${l + 30} 370V${top + 26}`;
-  for (let x = l + 30, k = 0; x < r - 40; x += 18, k++)
-    meander += `H${x + 18}V${k % 2 ? top + 26 : 350}`;
-  g += `<path d="${meander}" stroke="${GOLD}" stroke-opacity=".85" stroke-width="5" stroke-linejoin="round"/>`;
-  // The shield can over the radio, stamped, with the marking of the module.
-  g += `<rect x="${l + 18}" y="388" width="${r - l - 36}" height="292" rx="8" fill="url(#sn)"/>`;
-  g += `<rect x="${l + 30}" y="400" width="${r - l - 60}" height="268" rx="5" stroke="#8a908e" stroke-opacity=".8" stroke-width="2"/>`;
-  for (const [cx, cy] of [
-    [l + 42, 412],
-    [r - 42, 412],
-    [l + 42, 656],
-    [r - 42, 656],
-  ] as const)
-    g += `<circle cx="${cx}" cy="${cy}" r="4" fill="#8a908e"/>`;
-  // Below the can: the crystal, two passives and the status LED.
-  g +=
-    crystal(l + 66, 722, 64, 28) +
-    passive(r - 60, 708, 'cap', false, 30, 15) +
-    passive(r - 60, 740, 'res', false, 30, 15);
-  g += led((l + r) / 2, 800, 64);
-  g += `<circle cx="${l - 8}" cy="${top - 14}" r="6" fill="${INK}" fill-opacity=".75"/>`;
-  words.push(
-    {
-      x: (l + r) / 2,
-      y: 520,
-      t: 'SHVAV',
-      size: 30,
-      sans: true,
-      weight: 700,
-      fill: '#5d6461',
-      anchor: 'middle',
-      spacing: 5,
-    },
-    {
-      x: (l + r) / 2,
-      y: 556,
-      t: 'SV32-M · LoRa',
-      size: 17,
-      fill: '#5d6461',
-      anchor: 'middle',
-      weight: 600,
-    },
-    {
-      x: (l + r) / 2,
-      y: 584,
-      t: '868 MHz',
-      size: 17,
-      fill: '#5d6461',
-      anchor: 'middle',
-      weight: 600,
-    },
-    { x: r, y: top - 14, t: 'M1', size: 22, anchor: 'end' },
-  );
-  return art(w, 1080, g, words);
+/**
+ * The parts along the foot of the module, at its end corner and clear of the text: the crystal,
+ * two passives, the microcontroller, and the LED, lit, where the slide is now.
+ */
+function moduleParts(): Part {
+  const l = MODULE.x;
+  const y = MODULE.y + MODULE.h - 40;
+  const g =
+    `<path d="M${l + 36} ${y - 28}H${l + 420}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>` +
+    crystal(l + 84, y, 50, 22) +
+    passive(l + 150, y, 'cap', false, 30, 15) +
+    passive(l + 196, y, 'res', false, 30, 15) +
+    tr(
+      [
+        [l + 212, y],
+        [l + 246, y],
+      ],
+      { ...UNDER, w: 4 },
+    ) +
+    qfp(l + 276, y, 36, 6, { len: 6, w: 4 }) +
+    tr(
+      [
+        [l + 306, y],
+        [l + 350, y],
+      ],
+      { ...UNDER, w: 4 },
+    ) +
+    led(l + 376, y, 34);
+  return { name: 'parts', box: atEnd(l + 20, y - 38, 400, MODULE.y + MODULE.h - (y - 38)), g };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1202,9 +1207,10 @@ function pinoutArt() {
 const PHOTO = atEnd(END + 24, 120, 680, 790);
 
 function photoFrameArt() {
-  // In the drawing's own box, which reaches 64 past the picture on every side.
+  // In the drawing's own box, which reaches 64 past the picture on every side but the foot: it
+  // stops short of the foot of the slide, which frames every slide and is not the slide's.
   const w = 808;
-  const h = 918;
+  const h = 890;
   const [x0, y0, x1, y1] = [64, 64, 744, 854];
   let g = silkBox(x0 - 22, y0 - 22, x1 - x0 + 44, y1 - y0 + 44, 0.42);
   const k = 48;
@@ -1240,12 +1246,12 @@ const numberPad = (id: string, frame: Frame, n: number) =>
 // ---------------------------------------------------------------------------------------------
 // Under the full picture: the castellations of a module, the fingers of the edge
 
-function fullImageArt() {
-  let g = '';
+function fullImageArt(): Part[] {
+  let row = '';
   for (let x = SX - 11; x > -20; x -= 64) {
-    g += `<circle cx="${x}" cy="640" r="15" fill="url(#au)"/><circle cx="${x}" cy="640" r="6.5" fill="${HOLE}"/>`;
+    row += `<circle cx="${x}" cy="640" r="15" fill="url(#au)"/><circle cx="${x}" cy="640" r="6.5" fill="${HOLE}"/>`;
   }
-  g +=
+  const probe =
     tr(
       [
         [SX - 11, 655],
@@ -1253,7 +1259,7 @@ function fullImageArt() {
       ],
       BARE,
     ) + testPoint(SX - 11, 707, 10);
-  g +=
+  const via =
     tr(
       [
         [694, 700],
@@ -1263,14 +1269,23 @@ function fullImageArt() {
     ) +
     tented(694, 692, 8) +
     tented(694, 932, 8);
-  g += `<path d="M92 946H640" stroke="${INK}" stroke-opacity=".35" stroke-width="2.5" stroke-dasharray="10 8"/>`;
+  let edge = `<path d="M92 946H640" stroke="${INK}" stroke-opacity=".35" stroke-width="2.5" stroke-dasharray="10 8"/>`;
   for (let k = 0; k < 10; k++) {
     const fx = 114 + k * 56;
-    g += `<rect x="${fx - 18}" y="966" width="36" height="140" rx="7" fill="url(#au)"/><rect x="${fx - 12}" y="972" width="7" height="100" rx="3" fill="#ffffff" fill-opacity=".18"/>`;
+    edge += `<rect x="${fx - 18}" y="966" width="36" height="140" rx="7" fill="url(#au)"/><rect x="${fx - 12}" y="972" width="7" height="100" rx="3" fill="#ffffff" fill-opacity=".18"/>`;
   }
-  g += mountHole(1852, 1012);
-  const words: Letter[] = [{ x: 664, y: 1012, t: 'J1', size: 22 }];
-  return art(1920, 1080, g, words);
+  return [
+    { name: 'edge', box: atEnd(0, 622, 1800, 36), g: row },
+    { name: 'probe', box: atEnd(SX - 26, 648, 30, 74), g: probe },
+    { name: 'via', box: atEnd(678, 678, 32, 268), g: via },
+    {
+      name: 'fingers',
+      box: atEnd(88, 940, 612, 140),
+      g: edge,
+      words: [{ x: 664, y: 1012, t: 'J1', size: 22 }],
+    },
+    corners()[0]!,
+  ];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1279,11 +1294,12 @@ function fullImageArt() {
 const CARDS = [START, START + 588, START + 1176];
 const CARD = { w: 520, top: 286, h: 500 };
 
-function cardsArt() {
-  let g = '';
+function cardsArt(): Part[] {
   const rows = Array.from({ length: 8 }, (_, j) => CARD.top + 34 + j * 63);
   const edges = CARDS.map((s) => [1920 - s - CARD.w, 1920 - s] as const);
-  for (const [l, r] of edges) {
+  // What each module draws: its castellations here, the parts along its foot below.
+  const modules = edges.map(([l, r]) => {
+    let g = '';
     for (const y of rows) {
       for (const x of [l, r]) {
         const out = x === l ? -1 : 1;
@@ -1291,41 +1307,46 @@ function cardsArt() {
         g += `<circle cx="${x}" cy="${y}" r="11" fill="url(#au)"/><path d="M${x} ${y - 6}A6 6 0 0 ${out > 0 ? 0 : 1} ${x} ${y + 6}Z" fill="${HOLE}"/>`;
       }
     }
-    g += `<circle cx="${r - 22}" cy="${CARD.top + 18}" r="5.5" fill="${INK}" fill-opacity=".7"/>`;
-  }
+    return (
+      g + `<circle cx="${r - 22}" cy="${CARD.top + 18}" r="5.5" fill="${INK}" fill-opacity=".7"/>`
+    );
+  });
   // Between the modules, every other castellation is joined; the outer ones run off the board.
-  for (let k = 0; k < 2; k++) {
+  const joins = [0, 1].map((k) => {
     const from = edges[k]![0];
     const to = edges[k + 1]![1];
-    rows.forEach((y, j) => {
-      if (j % 2 === 0)
-        g += tr(
-          [
-            [from - 14, y],
-            [to + 14, y],
-          ],
-          { ...BARE, w: 6 },
-        );
-      else
-        g += tr(
-          [
-            [from - 14, y],
-            [from - 24, y + 10],
-          ],
-          UNDER,
-        );
-    });
-  }
+    return rows
+      .map((y, j) =>
+        j % 2 === 0
+          ? tr(
+              [
+                [from - 14, y],
+                [to + 14, y],
+              ],
+              { ...BARE, w: 6 },
+            )
+          : tr(
+              [
+                [from - 14, y],
+                [from - 24, y + 10],
+              ],
+              UNDER,
+            ),
+      )
+      .join('');
+  });
+  let lead = '';
+  let tail = '';
   rows.forEach((y, j) => {
     if (j % 3 !== 1) {
-      g += tr(
+      lead += tr(
         [
           [edges[0]![1] + 14, y],
           [1930, y],
         ],
         j % 2 ? UNDER : { ...BARE, w: 5, op: 0.6 },
       );
-      g += tr(
+      tail += tr(
         [
           [edges[2]![0] - 14, y],
           [-10, y],
@@ -1338,7 +1359,7 @@ function cardsArt() {
   // end and connector.
   for (const [k, [l, r]] of edges.entries()) {
     const y = CARD.top + CARD.h - 30;
-    g += `<path d="M${l + 36} ${y - 28}H${r - 36}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
+    let g = `<path d="M${l + 36} ${y - 28}H${r - 36}" stroke="${INK}" stroke-opacity=".14" stroke-width="2" stroke-dasharray="8 8"/>`;
     if (k === 0)
       g +=
         qfp(r - 80, y, 36, 6, { len: 6, w: 4 }) +
@@ -1362,8 +1383,23 @@ function cardsArt() {
       for (let j = 0; j < 4; j++)
         g += `<rect x="${r - 228 + j * 14}" y="${y + 18}" width="6" height="10" fill="url(#sn)"/>`;
     }
+    modules[k] += g;
   }
-  return g;
+  // The traces join over the castellations they run from.
+  return [
+    ...edges.map(([l], k) => ({
+      name: `castellations${k + 1}`,
+      box: atEnd(l - 18, 290, CARD.w + 36, 500),
+      g: modules[k]!,
+    })),
+    ...joins.map((g, k) => ({
+      name: `joins${k + 1}`,
+      box: atEnd(edges[k]![0] - 60, 312, 52, 466),
+      g,
+    })),
+    { name: 'net_start', box: atEnd(1800, 314, 120, 390), g: lead },
+    { name: 'net_end', box: atEnd(0, 314, 88, 390), g: tail },
+  ];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1372,7 +1408,7 @@ function cardsArt() {
 const COLUMNS = [START, START + 434, START + 868, START + 1302];
 const TRACE_Y = 456;
 
-function timelineArt(): string {
+function timelineArt(): Part[] {
   const xs = COLUMNS.map((s) => 1920 - s - 22);
   const pts: Pt[] = [[1930, TRACE_Y]];
   for (const [k, x] of xs.entries()) {
@@ -1402,7 +1438,7 @@ function timelineArt(): string {
       `<circle cx="${x}" cy="${TRACE_Y}" r="34" stroke="${INK}" stroke-opacity=".3" stroke-width="2.5"/>` +
       goldVia(x, TRACE_Y, 24);
   }
-  return svg(1920, 1080, DEFS + g);
+  return [{ name: 'trace', box: atEnd(0, TRACE_Y - 126, 1920, 252), g }];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1413,7 +1449,7 @@ const STEP = { w: 308, top: 288, h: 170 };
 
 const DESIGNATORS = ['X1', 'U2', 'U1', 'ANT1', ''];
 
-function processArt() {
+function processArt(): Part[] {
   const cy = STEP.top + STEP.h / 2;
   const S = `stroke="${INK}" stroke-opacity=".85" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"`;
   const symbols = [
@@ -1451,13 +1487,13 @@ function processArt() {
       `<path d="M${c} ${cy + 14}V${cy - 14}M${c - 11} ${cy - 3}L${c} ${cy - 14}L${c + 11} ${cy - 3}" stroke="${GOLD}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`,
   ];
   const reach = [8, 46, 47, 0, 52];
-  let g = '';
-  const words: Letter[] = [];
-  for (const [k, s] of STEPS.entries()) {
+  // What each step draws: its box, its symbol, the signal through it, the arrow on to the next.
+  return STEPS.map((s, k): Part => {
     const r = 1920 - s;
     const l = r - STEP.w;
     const c = (l + r) / 2;
-    g += silkBox(l, STEP.top, STEP.w, STEP.h, 0.38, 8);
+    const words: Letter[] = [];
+    let g = silkBox(l, STEP.top, STEP.w, STEP.h, 0.38, 8);
     // The signal in at the start side, out at the end side.
     if (k > 0 && k < 3)
       g += tr(
@@ -1510,8 +1546,13 @@ function processArt() {
       const gx = l - 20;
       g += `<path d="M${gx + 7} ${cy - 11}L${gx - 5} ${cy}L${gx + 7} ${cy + 11}" stroke="${GOLD}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
-  }
-  return art(1920, 1080, g, words);
+    return {
+      name: `step${k + 1}`,
+      box: atEnd(l - 30, STEP.top - 8, STEP.w + 38, STEP.h + 16),
+      g,
+      words,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1525,11 +1566,11 @@ const BOARD_TOP = 286;
 const BOARD_H = 640;
 const BOARD_W = 820;
 
-function comparisonArt(): string {
-  let g = '';
-  for (const [side, s] of SIDES) {
+function comparisonArt(): Part[] {
+  const boards = SIDES.map(([side, s]): Part => {
     const r = 1920 - s;
     const l = r - BOARD_W;
+    let g = '';
     for (const [x, y] of [
       [l + 32, BOARD_TOP + 32],
       [r - 32, BOARD_TOP + 32],
@@ -1579,11 +1620,16 @@ function comparisonArt(): string {
       g += passive(r - 330, y, 'cap', true, 30, 15) + passive(r - 374, y, 'cap', true, 30, 15);
       g += led(r - 470, y, 46);
     }
-  }
+    return {
+      name: `${side}_parts`,
+      box: atEnd(l - 4, BOARD_TOP - 4, BOARD_W + 8, BOARD_H + 8),
+      g,
+    };
+  });
   // Between the boards: from the old revision to the new one.
   const mid = 1920 - START - BOARD_W - 28;
   const y = BOARD_TOP + BOARD_H / 2;
-  g +=
+  const arrow =
     tr(
       [
         [mid + 22, y],
@@ -1592,7 +1638,7 @@ function comparisonArt(): string {
       BARE,
     ) +
     `<path d="M${mid - 2} ${y - 16}L${mid - 20} ${y}L${mid - 2} ${y + 16}" stroke="${GOLD}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`;
-  return svg(1920, 1080, DEFS + g);
+  return [...boards, { name: 'arrow', box: atEnd(mid - 28, y - 22, 58, 44), g: arrow }];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1794,7 +1840,7 @@ function layouts(): Layout[] {
         place('p_subtitle', 'subtitle', at(START, 600, 880, 134), 'heading'),
         place('p_meta', 'caption', at(START + 44, 884, 780, 34), 'caption'),
       ],
-      decorations: [lettered('d_shvav_hero_board', at(0, 0, 1920, 1080), heroArt())],
+      decorations: parts('hero', heroArt()),
     },
     {
       id: 'l_shvav_section',
@@ -1812,7 +1858,7 @@ function layouts(): Layout[] {
         place('p_title', 'title', at(START, 416, 900, 240), 'display', { vAlign: 'middle' }),
         place('p_subtitle', 'subtitle', at(START, 690, 860, 106), 'heading'),
       ],
-      decorations: [lettered('d_shvav_section_chip', at(0, 0, 1920, 1080), sectionArt())],
+      decorations: parts('section', sectionArt()),
     },
     {
       id: 'l_shvav_big_number',
@@ -1834,7 +1880,7 @@ function layouts(): Layout[] {
         ...foot('big_number').placeholders,
       ],
       decorations: [
-        lettered('d_shvav_big_number_chip', at(0, 0, 1920, 1080), bigNumberArt()),
+        ...parts('big_number', bigNumberArt().slice(0, -1)),
         drawing(
           'd_shvav_big_number_kicker_pad',
           at(START, KICKER + 6, 22, 22),
@@ -1842,6 +1888,10 @@ function layouts(): Layout[] {
           PAINT,
         ),
         ...foot('big_number').decorations,
+        // The trace of the test points runs on into the foot's net. Drawn after the foot, which
+        // is not then drawn over it, it is the slide's (ADR-094); cut at the foot, it would show
+        // the cut.
+        ...parts('big_number', bigNumberArt().slice(-1)),
       ],
     },
     {
@@ -1856,7 +1906,7 @@ function layouts(): Layout[] {
         ...foot('quote').placeholders,
       ],
       decorations: [
-        lettered('d_shvav_quote_block', at(0, 0, 1920, 1080), quoteArt()),
+        ...parts('quote', quoteArt()),
         lettered('d_shvav_quote_marks', at(START + 46, 232, 120, 100), teardrops),
         ...foot('quote').decorations,
       ],
@@ -1865,58 +1915,29 @@ function layouts(): Layout[] {
       id: 'l_shvav_text',
       name: 'Text',
       archetype: 'text',
-      background: ground(0.6, 0.45),
+      // The text is on a module from margin to margin, down to over the foot, from its top; its
+      // castellations run down both sides and its parts stand at the end corner of its foot.
+      background: ground(0.5, 0.42),
       placeholders: [
-        place('p_title', 'title', at(START, 124, 1300, 144), 'title'),
-        place('p_body', 'body', at(START, 282, 1080, 618), 'body'),
+        place('p_title', 'title', at(START, 116, WIDTH, 92), 'title'),
+        place('p_body', 'body', at(START + 64, MODULE.y + 56, WIDTH - 128, 536), 'body'),
       ],
       decorations: [
         drawing(
           'd_shvav_text_title_pad',
-          at(START - 54, 147, 22, 22),
+          at(START - 54, 151, 22, 22),
           svg(22, 22, DEFS + testPoint(11, 11, 10)),
           PAINT,
         ),
-        drawing(
-          'd_shvav_text_bus',
-          at(0, 0, 1920, 1080),
-          svg(
-            1920,
-            1080,
-            DEFS +
-              [395, 370, 345, 320]
-                .map((x, k) => {
-                  const y = 920 + k * 16;
-                  const e = 1500 + k * 60;
-                  return (
-                    tr(
-                      [
-                        [x, 846],
-                        [x, y - 20],
-                        [x + 20, y],
-                        [e, y],
-                      ],
-                      { ...UNDER, w: 5 },
-                    ) + tented(e + 8, y, 7)
-                  );
-                })
-                .join(''),
-          ),
-          PAINT,
-        ),
-        lettered('d_shvav_text_module', atEnd(0, 0, 700, 1080), pinoutArt()),
-        drawing(
-          'd_shvav_text_fiducial',
-          atEnd(36, 36, 40, 40),
-          svg(40, 40, DEFS + fiducial(20, 20)),
-          PAINT,
-        ),
-        drawing(
-          'd_shvav_text_hole',
-          at(28, 972, 80, 80),
-          svg(80, 80, DEFS + mountHole(40, 40)),
-          PAINT,
-        ),
+        rect('d_shvav_text_module', MODULE, solid(token('surface')), {
+          stroke: { color: token('text', 0.14), width: 1.5 },
+          effects: {
+            radius: 12,
+            shadow: { x: 0, y: 14, blur: 30, color: { value: '#01100a', alpha: 0.45 } },
+          },
+        }),
+        ...parts('text', [...moduleSides(), moduleParts()]),
+        ...foot('text').decorations,
       ],
     },
     {
@@ -1937,7 +1958,7 @@ function layouts(): Layout[] {
         ...head('text_image', 900, 2).decorations,
         lettered(
           'd_shvav_text_image_courtyard',
-          atEnd(END + 24 - 64, 120 - 64, 808, 918),
+          atEnd(END + 24 - 64, 120 - 64, 808, 890),
           photoFrameArt(),
         ),
         drawing(
@@ -1975,7 +1996,7 @@ function layouts(): Layout[] {
         place('p_title', 'title', at(START, 736, 1060, 148), 'title'),
         place('p_body', 'body', atEnd(END, 740, 560, 180), 'body'),
       ],
-      decorations: [lettered('d_shvav_full_image_edge', at(0, 0, 1920, 1080), fullImageArt())],
+      decorations: parts('full_image', fullImageArt()),
     },
     {
       id: 'l_shvav_cards',
@@ -2015,12 +2036,7 @@ function layouts(): Layout[] {
             },
           ),
         ),
-        drawing(
-          'd_shvav_cards_castellations',
-          at(0, 0, 1920, 1080),
-          svg(1920, 1080, DEFS + cardsArt()),
-          PAINT,
-        ),
+        ...parts('cards', cardsArt()),
         drawing(
           'd_shvav_cards_led',
           at(START - 22, 815, 92, 92),
@@ -2050,7 +2066,7 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...head('timeline').decorations,
-        drawing('d_shvav_timeline_trace', at(0, 0, 1920, 1080), timelineArt(), PAINT),
+        ...parts('timeline', timelineArt()),
         rect('d_shvav_timeline_rule', at(START, 842, WIDTH, 1.5), solid(token('text', 0.16))),
         ...foot('timeline').decorations,
       ],
@@ -2076,7 +2092,7 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...head('process').decorations,
-        lettered('d_shvav_process_chain', at(0, 0, 1920, 1080), processArt()),
+        ...parts('process', processArt()),
         drawing(
           'd_shvav_process_tp',
           at(START + 2, 859, 44, 44),
@@ -2116,7 +2132,7 @@ function layouts(): Layout[] {
             },
           ),
         ),
-        drawing('d_shvav_comparison_boards', at(0, 0, 1920, 1080), comparisonArt(), PAINT),
+        ...parts('comparison', comparisonArt()),
         ...foot('comparison').decorations,
       ],
     },
@@ -2165,8 +2181,10 @@ function layouts(): Layout[] {
       ],
       decorations: [
         ...head('table', 1400, 2, false).decorations,
-        drawing('d_shvav_table_tape', at(22, 0, 64, 1080), tapeArt(), PAINT),
         ...foot('table').decorations,
+        // The tape runs on through the foot. Drawn after it, which is not then drawn over it, the
+        // tape is the slide's (ADR-094); cut at the foot, it would show the cut.
+        drawing('d_shvav_table_tape', at(22, 0, 64, 1080), tapeArt(), PAINT),
       ],
     },
     {
@@ -2339,12 +2357,18 @@ const sampleHe: SampleSlide[] = [
       title: text('מה בסקירה'),
       body: {
         paragraphs: [
-          para('ארבע שאלות מחליטות אם עוברים ל-DVT באפריל:'),
-          ...bullets(
-            'האם תקציב ההספק מחזיק עשר שנים, גם בחורף קר',
-            'כמה עולה לוח אחד בכמות של 10,000 יחידות',
-            'מה למדנו מ-60 מונים שעובדים בשטח מינואר',
-            'מה עוד צריך לסגור לפני שמזמינים ייצור',
+          para(
+            'ארבע שאלות יקבעו אם WM-10 עובר ל-DVT באפריל. לכל אחת מהן יש בעלים בצוות, מספר שאפשר למדוד ותאריך שבו בודקים אותו, וכולן יקבלו תשובה עד סוף הסקירה, כדי שנוכל להחליט כבר היום.',
+            { spaceAfter: 36 },
+          ),
+          ...points(
+            [
+              ['הספק: ', 'האם התקציב מחזיק עשר שנים על סוללה אחת, גם בחורף קר?'],
+              ['עלות: ', 'כמה עולה לוח אחד בכמות של 10,000 יחידות, עם הרדיו והמארז.'],
+              ['השטח: ', 'מה למדנו מ-60 המונים שעובדים בשטח מאז ינואר.'],
+              ['ייצור: ', 'מה עוד צריך לסגור לפני שמזמינים את הסדרה הראשונה.'],
+            ],
+            { kind: 'number', mark: token('primary'), gap: 22 },
           ).paragraphs,
         ],
       },
@@ -2589,12 +2613,18 @@ const sampleEn: SampleSlide[] = [
       title: text('What this review covers'),
       body: {
         paragraphs: [
-          para('Four questions decide whether we move on to DVT in April:'),
-          ...bullets(
-            'Does the power budget hold ten years, even in winter',
-            'What one board costs at 10,000 units',
-            'What 60 meters in the field since January taught us',
-            'What is left to close before we order production',
+          para(
+            'Four questions decide whether WM-10 moves on to DVT in April. Each has an owner on the team and a number we can measure, and each gets its answer by the end of this review.',
+            { spaceAfter: 36 },
+          ),
+          ...points(
+            [
+              ['Power: ', 'does the budget hold ten years on one cell, even in a cold winter?'],
+              ['Cost: ', 'what one board costs at 10,000 units, with the radio and the case.'],
+              ['The field: ', 'what the 60 meters running since January have taught us.'],
+              ['Production: ', 'what is left to close before we order the first batch.'],
+            ],
+            { kind: 'number', mark: token('primary'), gap: 22 },
           ).paragraphs,
         ],
       },
@@ -2854,8 +2884,10 @@ export function shvavTemplate(): Template {
       pictures.shvavTeam4,
     ]),
   };
-  template.sample = sampleSlides(template, sampleHe);
-  return template;
+  // What makes up a slide is the slide's own, and the user changes it (ADR-094).
+  const finished = withObjects(template);
+  finished.sample = sampleSlides(finished, sampleHe);
+  return finished;
 }
 
 export const entry = { id: 'shvav', template: shvavTemplate, samples: shvavSamples };

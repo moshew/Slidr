@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import {
   addElement,
   currentSlide,
@@ -12,6 +12,7 @@ import {
   pngBytes,
   row,
   selected,
+  switchLanguage,
   undo,
   undoDepth,
 } from './objects-helpers';
@@ -495,12 +496,14 @@ test('frames are one collection in groups, and a click adds an empty frame', asy
   // Twenty frames first, then every group with its first rows.
   const featured = groups.locator('[data-group="featured"]');
   await expect(featured.locator('[data-frame]')).toHaveCount(20);
+  // An English interface has the English letters, not the Hebrew ones.
+  const inEnglish = FRAME_GROUPS.filter((group) => group !== 'hebrew');
   expect(
     await groups
       .locator('[data-group]')
       .evaluateAll((all) => all.map((one) => one.getAttribute('data-group'))),
-  ).toEqual(['featured', ...FRAME_GROUPS]);
-  for (const group of FRAME_GROUPS) {
+  ).toEqual(['featured', ...inEnglish]);
+  for (const group of inEnglish) {
     await expect(groups.locator(`[data-group="${group}"] [data-frame]`).first()).toBeVisible();
   }
 
@@ -532,20 +535,81 @@ test('frames are one collection in groups, and a click adds an empty frame', asy
   expect((await currentSlide(page)).elements).toHaveLength(2);
 
   // One group in full, under its own name alone, and back to all of them.
-  await groups.locator('[data-group="hebrew"]').getByRole('button', { name: 'Show all' }).click();
-  await expect(panel.getByTestId('frame-results').locator('[data-frame]')).toHaveCount(27);
-  await expect(panel.getByRole('heading')).toHaveText(['Hebrew letters']);
+  await groups.locator('[data-group="latin"]').getByRole('button', { name: 'Show all' }).click();
+  await expect(panel.getByTestId('frame-results').locator('[data-frame]')).toHaveCount(26);
+  await expect(panel.getByRole('heading')).toHaveText(['English letters']);
   // A search is of every group, so the collection has its name back while it is shown.
   await panel.getByTestId('frames-query').fill('heart');
   await expect(panel.getByRole('heading')).toHaveText(['Frames']);
   await panel.getByTestId('frames-query').fill('');
-  await expect(panel.getByRole('heading')).toHaveText(['Hebrew letters']);
+  await expect(panel.getByRole('heading')).toHaveText(['English letters']);
   await panel.getByRole('button', { name: 'Back to Frames' }).click();
   await expect(groups).toBeVisible();
   await expect(panel.getByRole('heading', { level: 3 })).toHaveText('Frames');
   // From the collection, the same button goes to the first screen.
   await panel.getByRole('button', { name: 'Back to collections' }).click();
   await expect(panel.getByTestId('element-collections')).toBeVisible();
+});
+
+/** The groups a collection shows, in their order. */
+const shownGroups = (within: Locator) =>
+  within
+    .locator('[data-group]')
+    .evaluateAll((all) => all.map((one) => one.getAttribute('data-group')));
+
+test('a switch of the language leaves only what is in the new one, and what has none', async ({
+  page,
+}) => {
+  const panel = await openElements(page, 'he');
+  await panel.locator('[data-collection="frames"]').click();
+  const groups = panel.getByTestId('frame-groups');
+  await expect(groups.locator('[data-group="hebrew"]')).toBeVisible();
+  expect(await shownGroups(groups)).toEqual([
+    'featured',
+    ...FRAME_GROUPS.filter((group) => group !== 'latin'),
+  ]);
+  // The Hebrew letters open in full as the interface is switched to English: they are gone.
+  await groups.locator('[data-group="hebrew"]').getByRole('button', { name: 'הצגת הכול' }).click();
+  await expect(panel.getByRole('heading')).toHaveText(['אותיות בעברית']);
+  await switchLanguage(page, 'en');
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveText('Frames');
+  expect(await shownGroups(groups)).toEqual([
+    'featured',
+    ...FRAME_GROUPS.filter((group) => group !== 'hebrew'),
+  ]);
+  await page.screenshot({ path: 'test-results/elements/language-frames-en.png' });
+
+  // German: the magnets and the card sets have Hebrew and English words only, and two designs
+  // are drawn in German. Shapes, graphics, emoji, icons and tables have no language.
+  await switchLanguage(page, 'de');
+  expect(await shownGroups(groups)).toEqual([
+    'featured',
+    ...FRAME_GROUPS.filter((group) => group !== 'hebrew' && group !== 'magnets'),
+  ]);
+  await panel.getByRole('button', { name: 'Zurück zu den Sammlungen' }).click();
+  const tiles = panel.locator('[data-collection]');
+  expect(
+    await tiles.evaluateAll((all) => all.map((tile) => tile.getAttribute('data-collection'))),
+  ).toEqual(COLLECTIONS.filter((id) => id !== 'cards'));
+  await page.screenshot({ path: 'test-results/elements/language-home-de.png' });
+  await panel.locator('[data-collection="designs"]').click();
+  // Each design is drawn as the slide it adds, in the language it is drawn in: German, each one.
+  const designs = panel.locator('[data-design]');
+  await expect(designs.first().locator('[data-slide-id]')).toBeVisible();
+  const shown = await designs.count();
+  expect(shown).toBeGreaterThan(0);
+  expect(shown).toBeLessThan(10);
+  for (const design of await designs.all()) {
+    await design.scrollIntoViewIfNeeded();
+    await expect(design.locator('[data-slide-id]')).toHaveAttribute('lang', 'de');
+  }
+  await page.screenshot({ path: 'test-results/elements/language-designs-de.png' });
+
+  // Back in Hebrew, everything Hebrew is there again.
+  await switchLanguage(page, 'he');
+  await expect(panel.locator('[data-group="deck"] [data-design]')).toHaveCount(4);
+  await panel.getByRole('button', { name: 'חזרה לאוספים' }).click();
+  await expect(tiles).toHaveCount(COLLECTIONS.length);
 });
 
 test('frames are found in Hebrew, and an empty frame takes a picture from the computer', async ({

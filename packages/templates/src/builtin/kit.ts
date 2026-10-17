@@ -200,7 +200,7 @@ function fitted(element: Element): Element {
  * of the slide with them, and a ground that covers the slide, which a press anywhere on the
  * slide would pick if the slide held it. A hidden decoration stays as it is.
  */
-function framesTheSlide(layout: Layout): (decoration: Element) => boolean {
+export function framesTheSlide(layout: Layout): (decoration: Element) => boolean {
   const master = (d: Element) =>
     d.role === 'logo' || d.role === 'slideNumber' || d.role === 'footer';
   const low = [
@@ -261,6 +261,32 @@ export function withObjects(template: Template): Template {
     layouts: template.layouts.map(split),
     ...(template.flipped ? { flipped: template.flipped.map(split) } : {}),
   };
+}
+
+/** Whether box `a` lies wholly within box `b`. */
+const within = (a: Frame, b: Frame) =>
+  a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+
+/**
+ * What layouts keep of their drawings that their slides should hold (ADR-094), by the id of the
+ * layout: when none of them gives its slide objects (the template did not go through
+ * `withObjects`), every decoration that does not frame the slide; otherwise one that stays only
+ * because a decoration drawn over it reaches into it. One that a decoration drawn over it stands
+ * on wholly stays as it should: the field under the foot, the card under the slide's number.
+ * The layouts of one direction at a time: those drawn for the other have the same ids.
+ */
+export function lockedDrawings(layouts: readonly Layout[]): Map<string, Element[]> {
+  const given = layouts.some((layout) => layout.objects?.length);
+  const locked = new Map<string, Element[]>();
+  for (const layout of layouts) {
+    const frames = framesTheSlide(layout);
+    const boxes = layout.decorations.map((d) => rotatedBounds(d.frame, d.rotation));
+    const drawings = layout.decorations.filter(
+      (d, i) => !frames(d) && (!given || !boxes.some((box, j) => j > i && within(box, boxes[i]!))),
+    );
+    if (drawings.length > 0) locked.set(layout.id, drawings);
+  }
+  return locked;
 }
 
 /**

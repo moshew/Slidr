@@ -18,12 +18,13 @@ export const de: AtlasCopy = {
   agenda: {
     name: 'Tagesordnung',
     title: 'Unsere Themen heute',
-    intro: 'Fünfundzwanzig Minuten, danach Ihre Fragen:',
+    intro:
+      'Fünfundzwanzig Minuten darüber, was vierzehn Hafenstädte dieses Jahr über Wiederverwendung und Entsalzung von Wasser gelernt haben und worum wir jeden Partner als Nächstes bitten. Danach Ihre Fragen.',
     items: [
-      'Wo das Netzwerk nach drei Jahren steht',
-      'Das Projekt des Jahres: ein Hafen, der sein eigenes Wasser macht',
-      'Wie eine neue Stadt beitritt, in fünf Schritten',
-      'Worum wir jeden Partner 2027 bitten',
+      ['Das Netzwerk: ', 'wo die vierzehn Städte nach drei Jahren Zusammenarbeit stehen.'],
+      ['Projekt des Jahres: ', 'ein Hafen in Limassol, der jetzt sein eigenes Wasser macht.'],
+      ['Beitritt: ', 'wie eine neue Stadt in fünf Schritten dazukommt.'],
+      ['Das kommende Jahr: ', 'worum wir jeden Partner bitten, und bis wann.'],
     ],
   },
   figures: {

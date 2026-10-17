@@ -249,6 +249,14 @@
   :root {
     color-scheme: light dark;
   }
+  /* The letters neither Inter nor Heebo has come from the system's faces (`system-ui`), which
+     Chromium picks by the page's language: Segoe UI for Arabic, Nirmala UI for Hindi, Malgun
+     Gothic and Microsoft YaHei UI for Korean and Chinese. For Japanese it picks Yu Gothic, whose
+     kana are a full em wide and set the words of a menu apart; Windows draws its own interface in
+     Yu Gothic UI, a quarter narrower. */
+  :root:lang(ja) {
+    --font-ui: 'Inter Variable', 'Heebo Variable', 'Yu Gothic UI', system-ui, sans-serif;
+  }
   [data-theme='light'] {
     color-scheme: light;
   }

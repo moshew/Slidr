@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { DisplayLang as Lang } from '../api';
+import { useLang, useT } from '../i18n';
 import { messages, named, stickersModule } from './app';
 import { mediaUrl } from './media';
 import { ItemOverlay, stepper } from './Overlay';
@@ -50,6 +51,8 @@ function StickerDetail({
   onClose: () => void;
   onStep?: (by: -1 | 1) => void;
 }) {
+  const t = useT();
+  const [lang] = useLang();
   const hebrewWords = [...sticker.nameTerms, ...sticker.tagTerms].filter(Boolean);
   return (
     <ItemOverlay
@@ -63,7 +66,7 @@ function StickerDetail({
       }
       subtitle={
         <>
-          <span dir="ltr">{sticker.id}</span> · {KINDS[kind].groupName(sticker.group, 'he')}
+          <span dir="ltr">{sticker.id}</span> · {KINDS[kind].groupName(sticker.group, lang)}
         </>
       }
       onClose={onClose}
@@ -71,11 +74,11 @@ function StickerDetail({
       side={
         <>
           <section>
-            <h3>פרטים</h3>
+            <h3>{t('libraryCatalogs.details')}</h3>
             <dl className="facts">
-              <dt>מזהה</dt>
+              <dt>{t('libraryCatalogs.id')}</dt>
               <dd dir="ltr">{sticker.id}</dd>
-              <dt>ערכת איורים</dt>
+              <dt>{t('libraryCatalogs.stickers.setOfArt')}</dt>
               <dd dir="ltr">
                 <a
                   href={mediaUrl(`elements/art/${sticker.set}.json`)}
@@ -86,22 +89,22 @@ function StickerDetail({
                 </a>{' '}
                 · {sticker.art}
               </dd>
-              <dt>מילים באנגלית</dt>
+              <dt>{t('libraryCatalogs.stickers.englishWords')}</dt>
               <dd dir="ltr">{[...sticker.nameWords, ...sticker.tagWords].join(', ') || '—'}</dd>
-              <dt>מילים בעברית</dt>
+              <dt>{t('libraryCatalogs.stickers.hebrewWords')}</dt>
               <dd>{hebrewWords.join(', ') || '—'}</dd>
-              <dt>קטלוג</dt>
+              <dt>{t('libraryCatalogs.stickers.catalog')}</dt>
               <dd dir="ltr">{KINDS[kind].catalog}</dd>
             </dl>
           </section>
           <section>
-            <h3>רישיון הערכה</h3>
+            <h3>{t('libraryCatalogs.stickers.kitLicense')}</h3>
             <NoticeFacts path={`elements/art/${sticker.set}.notice.json`} />
           </section>
         </>
       }
     >
-      {svg ? <DrawingStage svg={svg} /> : <p className="warn">הערכה כבר לא מציירת את האיור הזה.</p>}
+      {svg ? <DrawingStage svg={svg} /> : <p className="warn">{t('libraryCatalogs.stickers.kitGone')}</p>}
     </ItemOverlay>
   );
 }
@@ -120,6 +123,7 @@ export function Stickers({
   query: string;
   lang: Lang;
 }) {
+  const t = useT();
   const read = useRead(() => loadKind(kind), [kind]);
   const found = useMemo(() => {
     if (!read.value) return [];
@@ -130,7 +134,7 @@ export function Stickers({
   }, [read.value, route.group, query]);
 
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!read.value) return <p className="muted">טוען…</p>;
+  if (!read.value) return <p className="muted">{t('libraryCatalogs.loading')}</p>;
   const { mod, stickers, markup } = read.value;
   const groups = KINDS[kind].groups(mod);
   const ids = found.map((sticker) => sticker.id);
@@ -140,14 +144,14 @@ export function Stickers({
   return (
     <>
       <div className="lib-filters">
-        <div className="chips" role="group" aria-label="קבוצה">
+        <div className="chips" role="group" aria-label={t('libraryCatalogs.group')}>
           <button
             type="button"
             className="chip"
             aria-pressed={!route.group}
             onClick={() => go({ section: kind })}
           >
-            הכול <span className="muted">{stickers.length}</span>
+            {t('libraryCatalogs.all')} <span className="muted">{stickers.length}</span>
           </button>
           {groups.map((group) => (
             <button
@@ -157,13 +161,13 @@ export function Stickers({
               aria-pressed={route.group === group}
               onClick={() => go({ section: kind, group })}
             >
-              {KINDS[kind].groupName(group, 'he')}{' '}
+              {KINDS[kind].groupName(group, lang)}{' '}
               <span className="muted">{stickers.filter((s) => s.group === group).length}</span>
             </button>
           ))}
         </div>
       </div>
-      {found.length === 0 && <p className="muted">אין תוצאות.</p>}
+      {found.length === 0 && <p className="muted">{t('libraryCatalogs.stickers.noResults')}</p>}
       <Paged
         key={`${route.group}:${query}`}
         items={found}
@@ -177,7 +181,7 @@ export function Stickers({
           >
             <Markup svg={markup.get(sticker.id)} className="tile-art" />
             <span className="tile-label" dir="auto">
-              {sticker.label[lang]}
+              {sticker.label[lang === 'he' ? 'he' : 'en']}
             </span>
           </button>
         )}

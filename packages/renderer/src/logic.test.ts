@@ -14,6 +14,7 @@ import {
   hebrewFace,
   hebrewFaces,
   runFontStack,
+  setFontCounterparts,
   themeVariables,
 } from './theme';
 
@@ -49,6 +50,52 @@ describe('theme', () => {
       '"Heebo::hebrew", "Inter", "Heebo", sans-serif',
     );
     expect(fontStack({ he: 'Rubik', latin: 'Rubik' })).toBe('"Rubik", sans-serif');
+  });
+
+  it('gives a deck in another language the counterpart of its theme’s font in its letters', () => {
+    // As the app tells it from its library: Inter has no Arabic letters, Rubik has; Poppins has no
+    // Vietnamese ones, and its counterpart draws the whole of a Vietnamese text.
+    const letters: Record<string, Record<string, string>> = {
+      Inter: { ar: 'IBM Plex Sans Arabic', ja: 'Noto Sans JP', ru: 'Inter' },
+      Rubik: { ar: 'Rubik', ja: 'Zen Maru Gothic' },
+      Poppins: { vi: 'Be Vietnam Pro' },
+    };
+    setFontCounterparts((family, lang) => {
+      const other = letters[family]?.[lang];
+      return other ? { family: other, whole: lang === 'vi' && other !== family } : undefined;
+    });
+    try {
+      expect(fontStack({ he: 'Heebo', latin: 'Inter' }, 'ar')).toBe(
+        '"Heebo::hebrew", "Inter", "Heebo", "IBM Plex Sans Arabic", sans-serif',
+      );
+      expect(fontStack({ he: 'Heebo', latin: 'Poppins' }, 'vi')).toBe(
+        '"Heebo::hebrew", "Be Vietnam Pro", "Poppins", "Heebo", sans-serif',
+      );
+      expect(fontStack({ he: 'Poppins', latin: 'Poppins' }, 'vi')).toBe(
+        '"Be Vietnam Pro", "Poppins", sans-serif',
+      );
+      // A family that has the letters needs none; nor does a deck in Hebrew or of no language.
+      expect(fontStack({ he: 'Rubik', latin: 'Rubik' }, 'ar')).toBe('"Rubik", sans-serif');
+      expect(fontStack({ he: 'Heebo', latin: 'Inter' }, 'ru')).toBe(
+        '"Heebo::hebrew", "Inter", "Heebo", sans-serif',
+      );
+      expect(fontStack({ he: 'Heebo', latin: 'Inter' })).toBe(
+        '"Heebo::hebrew", "Inter", "Heebo", sans-serif',
+      );
+      // A Latin family the library does not know: the Hebrew family's counterpart.
+      expect(fontStack({ he: 'Rubik', latin: 'Calibri' }, 'ja')).toBe(
+        '"Rubik::hebrew", "Calibri", "Rubik", "Zen Maru Gothic", sans-serif',
+      );
+      const theme = referenceDeck().theme;
+      const inInter = {
+        ...theme,
+        fonts: { ...theme.fonts, body: { he: 'Heebo', latin: 'Inter' } },
+      };
+      expect(themeVariables(inInter, 'ar')['--font-body']).toContain('"IBM Plex Sans Arabic"');
+      expect(themeVariables(inInter, 'he')['--font-body']).not.toContain('Arabic');
+    } finally {
+      setFontCounterparts(() => undefined);
+    }
   });
 
   it('writes a generic family as the keyword it is, and any other family in quotes', () => {

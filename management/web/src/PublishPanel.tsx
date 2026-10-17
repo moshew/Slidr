@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, type PublishState, type ServerStatus, type Variant } from './api';
+import { LANGUAGE_NAMES } from '@slidr/model';
+import {
+  api,
+  isTemplate,
+  renderPicture,
+  type PublishState,
+  type ServerStatus,
+  type Variant,
+} from './api';
 import { PUBLISH_PHASE, time } from './labels';
 import { SlideView } from './SlideView';
+import { useT } from './i18n';
 
 function Paths({ title, paths, tone }: { title: string; paths: string[]; tone?: string }) {
   if (paths.length === 0) return null;
@@ -36,6 +45,7 @@ export function PublishPanel({
   onStatus: () => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [token, setToken] = useState('');
   const [error, setError] = useState<string>();
   const list = useRef<HTMLOListElement>(null);
@@ -65,11 +75,11 @@ export function PublishPanel({
   const busy = phase === 'preparing' || phase === 'publishing';
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="פרסום">
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={t('publish.dialogLabel')}>
       <div className="drawer">
         <header className="detail-head">
           <div>
-            <h2>פרסום לספריית המדיה</h2>
+            <h2>{t('publish.title')}</h2>
             <p className="muted small" dir="ltr">
               {status?.media.url} · Cloudflare Pages slidr-media
             </p>
@@ -78,7 +88,7 @@ export function PublishPanel({
             type="button"
             className="ghost"
             onClick={onClose}
-            aria-label="סגור"
+            aria-label={t('publish.close')}
             disabled={busy}
           >
             ✕
@@ -87,35 +97,62 @@ export function PublishPanel({
 
         <div className="drawer-body">
           <section>
-            <h3>{items.length ? `${items.length} עיצובים לפרסום` : 'אין עיצובים מאושרים'}</h3>
+            <h3>{items.length
+                ? t('publish.itemsToPublish', { count: items.length })
+                : t('publish.noApproved')}</h3>
             <div className="publish-items">
               {approved
                 .filter((variant) => items.includes(variant.id))
-                .map((variant) => (
-                  <figure key={variant.id}>
-                    <SlideView variant={variant} lang="he" width={192} />
-                    <figcaption>
-                      {variant.brief.name.he}
-                      <span className="muted" dir="ltr">
-                        {variant.designId}
-                      </span>
-                    </figcaption>
-                  </figure>
-                ))}
+                .map((variant) =>
+                  isTemplate(variant) && variant.lang ? (
+                    <figure key={variant.id}>
+                      <img
+                        className="slide-picture publish-thumb"
+                        src={renderPicture(variant, 's01-thumb')}
+                        alt=""
+                        width={192}
+                        height={108}
+                      />
+                      <figcaption>
+                        {variant.brief.name.he} ·{' '}
+                        <bdi lang={variant.lang}>{LANGUAGE_NAMES[variant.lang].native}</bdi>
+                        <span className="muted" dir="ltr">
+                          samples.{variant.templateId}.{variant.lang}
+                        </span>
+                      </figcaption>
+                    </figure>
+                  ) : (
+                    <figure key={variant.id}>
+                      <SlideView variant={variant} lang="he" width={192} />
+                      <figcaption>
+                        {variant.brief.name.he}
+                        <span className="muted" dir="ltr">
+                          {variant.designId}
+                        </span>
+                      </figcaption>
+                    </figure>
+                  ),
+                )}
             </div>
             <p className="muted small">
-              העיצובים נכנסים לקטלוג משלהם, <code>elements/designs/managed.json</code>, עם מזהים
-              שמתחילים ב-<code>m-</code>, לצד העיצובים שנכתבו ביד. הפרסום עובר דרך{' '}
-              <code>pnpm media:publish</code> של המאגר, מהעותק{' '}
+              {t('publish.noteDesigns1')}
+              <code>elements/designs/managed.json</code>
+              {t('publish.noteDesigns2')}
+              <code>m-</code>
+              {t('publish.noteDesigns3')}
+              <code>templates/catalog.json</code>
+              {t('publish.noteDesigns4')}
+              <code>pnpm media:publish</code>
+              {t('publish.noteDesigns5')}
               <code dir="ltr">{status?.media.dir}</code>.
             </p>
           </section>
 
           {!hasToken && (
             <section className="token">
-              <h3>מפתח Cloudflare</h3>
+              <h3>{t('publish.tokenTitle')}</h3>
               <p className="muted small">
-                מפתח API עם הרשאת Cloudflare Pages: Edit. נשמר בזיכרון של השרת בלבד, לא בדיסק.
+                {t('publish.tokenHelp')}
               </p>
               <div className="row">
                 <input
@@ -127,7 +164,7 @@ export function PublishPanel({
                   autoComplete="off"
                 />
                 <button type="button" disabled={token.trim().length < 20} onClick={saveToken}>
-                  שמור
+                  {t('publish.save')}
                 </button>
               </div>
             </section>
@@ -143,22 +180,26 @@ export function PublishPanel({
             {report && phase === 'prepared' && (
               <div className="report">
                 <p>
-                  מול הספרייה שפורסמה ({report.before} קבצים): {report.added.length} יתווספו,{' '}
-                  {report.changed.length} ישתנו, {report.removed.length} יוסרו. אחרי הפרסום יהיו בה{' '}
-                  {report.files} קבצים ({(report.bytes / 1024 / 1024).toFixed(1)} MB).
+                  {t('publish.reportSummary', {
+                    before: report.before,
+                    added: report.added.length,
+                    changed: report.changed.length,
+                    removed: report.removed.length,
+                    files: report.files,
+                    size: (report.bytes / 1024 / 1024).toFixed(1),
+                  })}
                 </p>
                 {report.unexpected.length > 0 && (
                   <p className="warn">
-                    שימו לב: {report.unexpected.length} קבצים ישתנו מעבר לעיצובים האלה — יש בעותק
-                    המקומי שינויים שלא פורסמו. בדקו את הרשימה לפני שתשלחו.
+                    {t('publish.unexpectedWarn', { count: report.unexpected.length })}
                   </p>
                 )}
                 {report.removed.length > 0 && (
-                  <p className="warn">{report.removed.length} קבצים שפורסמו יוסרו מהספרייה.</p>
+                  <p className="warn">{t('publish.removedWarn', { count: report.removed.length })}</p>
                 )}
-                <Paths title="יתווספו" paths={report.added} />
-                <Paths title="ישתנו" paths={report.changed} />
-                <Paths title="יוסרו" paths={report.removed} tone="danger" />
+                <Paths title={t('publish.pathsAdded')} paths={report.added} />
+                <Paths title={t('publish.pathsChanged')} paths={report.changed} />
+                <Paths title={t('publish.pathsRemoved')} paths={report.removed} tone="danger" />
               </div>
             )}
 
@@ -170,7 +211,7 @@ export function PublishPanel({
                   disabled={approved.length === 0}
                   onClick={() => void run(api.prepare(approved.map((variant) => variant.id)))}
                 >
-                  הכן פרסום ובדוק מה ישתנה
+                  {t('publish.prepare')}
                 </button>
               )}
               {phase === 'prepared' && (
@@ -182,29 +223,29 @@ export function PublishPanel({
                     onClick={() => {
                       if (
                         window.confirm(
-                          `לשלוח ${publish.items.length} עיצובים לספרייה ב-Cloudflare? הם יופיעו אצל כל משתמשי Slidr.`,
+                          t('publish.confirmSend', { count: publish.items.length }),
                         )
                       ) {
                         void run(api.confirm());
                       }
                     }}
                   >
-                    אשר ושלח ל-Cloudflare
+                    {t('publish.approveSend')}
                   </button>
                   <button type="button" onClick={() => void run(api.cancelPublish())}>
-                    בטל
+                    {t('publish.cancel')}
                   </button>
                 </>
               )}
             </div>
             {phase === 'prepared' && !hasToken && (
-              <p className="warn small">הזינו מפתח Cloudflare כדי לשלוח.</p>
+              <p className="warn small">{t('publish.needToken')}</p>
             )}
           </section>
 
           {publish.log.length > 0 && (
             <section className="log-box">
-              <h3>יומן</h3>
+              <h3>{t('publish.log')}</h3>
               <ol className="log" dir="ltr" ref={list}>
                 {publish.log.map((entry, i) => (
                   <li key={i}>

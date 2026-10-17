@@ -36,18 +36,48 @@ export function hebrewFaces<T extends { family: string; unicodeRange?: string }>
 }
 
 /**
+ * The family that draws a language's letters for text set in `family`: the family itself when it
+ * has them, else the counterpart the host's font library names (ADR-105); nothing for a family it
+ * does not know. `whole` when the counterpart draws the whole text and not only the letters the
+ * family lacks (an alphabet written beside Latin: Vietnamese, Russian). Set by the host once it
+ * has read its fonts (`setFontCounterparts`); until then, and in a host without a library, there
+ * is none.
+ */
+type Counterpart = (family: string, lang: string) => { family: string; whole: boolean } | undefined;
+let counterpartOf: Counterpart = () => undefined;
+
+/** Tells the renderer the counterparts of its host's fonts (see `fontStack`). */
+export function setFontCounterparts(counterpart: Counterpart): void {
+  counterpartOf = counterpart;
+}
+
+/**
  * A font family list where each script gets the face meant for it (SPEC 5.5). The Hebrew-only
  * face of the Hebrew family comes first and takes the Hebrew letters; then the Latin family, for
  * everything else; then the whole Hebrew family behind it. Without the first, a Latin family that
  * has Hebrew letters of its own (Rubik, Open Sans, Arial) would take the Hebrew text too. Where
  * nobody registered that face (a system font, a font that came as an asset) the name is skipped
  * and the Latin family comes first, which is right whenever it has no Hebrew.
+ *
+ * For a deck in another language (`lang`), the counterpart of the Latin family in that language's
+ * letters comes next, else the Hebrew family's: an Arabic deck in a theme of Inter draws its
+ * letters in IBM Plex Sans Arabic, a Japanese deck in a serif theme in Noto Serif JP, and not in
+ * whatever face the system has, while its Latin words and figures stay in the theme's family. A
+ * counterpart of the whole text (Vietnamese, Russian) comes before the Latin family instead. A
+ * family that has the letters needs none, and Hebrew has the pair's.
  */
-export function fontStack(pair: FontPair): string {
+export function fontStack(pair: FontPair, lang?: string): string {
   const names =
     pair.latin === pair.he
       ? [familyCss(pair.latin)]
       : [cssString(hebrewFace(pair.he)), familyCss(pair.latin), familyCss(pair.he)];
+  const other = lang
+    ? (counterpartOf(pair.latin, lang) ?? counterpartOf(pair.he, lang))
+    : undefined;
+  if (other && !names.includes(familyCss(other.family))) {
+    if (other.whole) names.splice(names.length === 1 ? 0 : 1, 0, familyCss(other.family));
+    else names.push(familyCss(other.family));
+  }
   return [...names, 'sans-serif'].join(', ');
 }
 
@@ -90,15 +120,15 @@ export function shadowCss(shadow: Shadow): string {
 /**
  * The theme as CSS custom properties, set on every slide root: `--color-*`, `--font-heading`,
  * `--font-body`, `--radius` and `--shadow`. This is the contract HTML written for a slide
- * relies on (SPEC 11.5, RND-08).
+ * relies on (SPEC 11.5, RND-08). The fonts are those of a deck in `lang` (`fontStack`).
  */
-export function themeVariables(theme: Theme): Record<string, string> {
+export function themeVariables(theme: Theme, lang?: string): Record<string, string> {
   const { chart, ...colors } = theme.colors;
   const vars: Record<string, string> = {};
   for (const [name, value] of Object.entries(colors)) vars[`--color-${name}`] = value;
   chart.forEach((value, i) => (vars[`--color-chart-${i + 1}`] = value));
-  vars['--font-heading'] = fontStack(theme.fonts.heading);
-  vars['--font-body'] = fontStack(theme.fonts.body);
+  vars['--font-heading'] = fontStack(theme.fonts.heading, lang);
+  vars['--font-body'] = fontStack(theme.fonts.body, lang);
   vars['--radius'] = `${theme.radius}px`;
   // The theme shadow may itself use a colour token; it resolves against the same root.
   vars['--shadow'] = shadowCss(theme.shadow);
@@ -106,8 +136,8 @@ export function themeVariables(theme: Theme): Record<string, string> {
 }
 
 /** The theme variables as a CSS declaration block, for documents that do not inherit them. */
-export function themeVariablesCss(theme: Theme): string {
-  return Object.entries(themeVariables(theme))
+export function themeVariablesCss(theme: Theme, lang?: string): string {
+  return Object.entries(themeVariables(theme, lang))
     .map(([name, value]) => `${name}: ${value};`)
     .join(' ');
 }

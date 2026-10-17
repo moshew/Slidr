@@ -53,9 +53,9 @@ const picture = (slideId: string): ToolResult => ({
 const box = () => createElement.shape({ frame: { x: 0, y: 0, w: 100, h: 100 } });
 
 describe('what holds a turn', () => {
-  it('is every error, and the three warnings the agent has to answer for', () => {
+  it('is every error, and the four warnings the agent has to answer for', () => {
     const held = ['L01', 'L02', 'L05', 'L06'].map((rule) => finding(rule, 'error'));
-    const demanded = ['L07', 'L13', 'L16'].map((rule) => finding(rule, 'warning'));
+    const demanded = ['L07', 'L13', 'L16', 'L18'].map((rule) => finding(rule, 'warning'));
     const advice = ['L03', 'L04'].map((rule) => finding(rule, 'warning'));
     expect([...held, ...demanded].every(holdsTurn)).toBe(true);
     expect(advice.some(holdsTurn)).toBe(false);

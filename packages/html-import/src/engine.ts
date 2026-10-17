@@ -500,7 +500,7 @@ export async function startConversion(root: Element, options: ConvertOptions): P
   // The theme as this browser computes it, read off a probe that carries its variables.
   const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none';
-  for (const [name, value] of Object.entries(themeVariables(deck.theme)))
+  for (const [name, value] of Object.entries(themeVariables(deck.theme, deck.meta.lang)))
     probe.style.setProperty(name, value);
   document.body.append(probe);
   const values = themeValues(

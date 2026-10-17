@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { api, isRunning, languagesOfVariant, type Lang, type Variant } from './api';
 import type { DesignResult } from './design';
 import { LOG_KIND, money, time } from './labels';
+import { useT } from './i18n';
+import { LanguagePicker } from './languages';
 import { StatusLine } from './RequestView';
 import { SlideView, useResult } from './SlideView';
 
@@ -10,12 +12,13 @@ const THUMB = 384;
 const nameOf = (lang: Lang) => LANGUAGE_NAMES[lang].native;
 
 function Findings({ result }: { result: DesignResult }) {
+  const t = useT();
   const rows: { lang: string; kind: string; text: string; severe: boolean }[] = [];
   const langs = languagesOf(result.langs);
   for (const issue of result.issues)
     rows.push({
-      lang: langs.length === 2 ? 'שתיהן' : 'כולן',
-      kind: 'חוזה',
+      lang: langs.length === 2 ? t('variant.langBoth') : t('variant.langAll'),
+      kind: t('variant.kindContract'),
       text: issue,
       severe: true,
     });
@@ -23,20 +26,22 @@ function Findings({ result }: { result: DesignResult }) {
     const side = result.langs[lang];
     if (!side) continue;
     const name = nameOf(lang);
-    if (side.error) rows.push({ lang: name, kind: 'המרה', text: side.error, severe: true });
+    if (side.error) rows.push({ lang: name, kind: t('variant.kindConversion'), text: side.error, severe: true });
     for (const issue of side.issues)
-      rows.push({ lang: name, kind: 'חוזה', text: issue, severe: true });
+      rows.push({ lang: name, kind: t('variant.kindContract'), text: issue, severe: true });
     for (const finding of side.findings) {
       rows.push({
         lang: name,
-        kind: `${finding.severity === 'error' ? 'שגיאה' : 'אזהרה'} ${finding.rule}`,
+        kind: t(finding.severity === 'error' ? 'variant.kindError' : 'variant.kindWarning', {
+          rule: finding.rule,
+        }),
         text: finding.message,
         severe: finding.severity === 'error',
       });
     }
   }
   if (rows.length === 0) {
-    return <p className="ok">בדיקת העיצוב של האפליקציה וחוזה הגלריה עברו ללא ממצאים.</p>;
+    return <p className="ok">{t('variant.findingsNone')}</p>;
   }
   return (
     <ul className="findings">
@@ -53,7 +58,7 @@ function Findings({ result }: { result: DesignResult }) {
   );
 }
 
-function Log({ variant }: { variant: Variant }) {
+export function Log({ variant }: { variant: Variant }) {
   const list = useRef<HTMLOListElement>(null);
   // The list follows its newest line; the panel around it stays where the person left it.
   useEffect(() => {
@@ -74,49 +79,6 @@ function Log({ variant }: { variant: Variant }) {
   );
 }
 
-/** The language shown: buttons for Hebrew and English, a list when there are more. */
-function LanguageSwitch({
-  langs,
-  lang,
-  onChange,
-}: {
-  langs: Lang[];
-  lang: Lang;
-  onChange: (lang: Lang) => void;
-}) {
-  if (langs.length > 2) {
-    return (
-      <select
-        value={lang}
-        onChange={(event) => onChange(event.target.value as Lang)}
-        aria-label="שפה"
-        lang={lang}
-      >
-        {langs.map((option) => (
-          <option key={option} value={option} lang={option}>
-            {nameOf(option)}
-          </option>
-        ))}
-      </select>
-    );
-  }
-  return (
-    <div className="segmented" role="group" aria-label="שפה">
-      {langs.map((option) => (
-        <button
-          type="button"
-          key={option}
-          lang={option}
-          aria-pressed={lang === option}
-          onClick={() => onChange(option)}
-        >
-          {nameOf(option)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /** One variant, up close: every language at full size and as the gallery's thumbnail. */
 export function VariantDetail({
   variant,
@@ -127,6 +89,7 @@ export function VariantDetail({
   lang: Lang;
   onClose: () => void;
 }) {
+  const t = useT();
   const [lang, setLang] = useState<Lang>(initial);
   const [feedback, setFeedback] = useState('');
   const [imageNote, setImageNote] = useState('');
@@ -136,6 +99,8 @@ export function VariantDetail({
   const running = isRunning(variant);
   const render = variant.render;
   const langs = languagesOfVariant(variant, result);
+  // A language the variant was not made in, chosen for the whole studio, shows its English.
+  const shown = langs.includes(lang) ? lang : 'en';
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -161,7 +126,7 @@ export function VariantDetail({
   const approve = () => {
     if (render && render.errors > 0) {
       const sure = window.confirm(
-        `בדיקת העיצוב מצאה ${render.errors} שגיאות. לאשר לפרסום בכל זאת?`,
+        t('variant.confirmApproveWithErrors', { count: render.errors }),
       );
       if (!sure) return;
     }
@@ -186,8 +151,8 @@ export function VariantDetail({
             </p>
           </div>
           <div className="actions">
-            <LanguageSwitch langs={langs} lang={lang} onChange={setLang} />
-            <button type="button" className="ghost" onClick={onClose} aria-label="סגור">
+            <LanguagePicker langs={langs} lang={shown} onChange={setLang} />
+            <button type="button" className="ghost" onClick={onClose} aria-label={t('variant.close')}>
               ✕
             </button>
           </div>
@@ -197,8 +162,8 @@ export function VariantDetail({
           <div className="stage">
             {render ? (
               <>
-                <SlideView variant={variant} lang={lang} result={result} />
-                <h3>כך זה ייראה בגלריה (384 פיקסלים)</h3>
+                <SlideView variant={variant} lang={shown} result={result} />
+                <h3>{t('variant.galleryPreview')}</h3>
                 <div className="thumbs">
                   {langs.map((side) => (
                     <figure key={side}>
@@ -210,15 +175,17 @@ export function VariantDetail({
                   ))}
                 </div>
                 <p className="muted small">
-                  ההמרה:{' '}
+                  {t('variant.conversion')}{' '}
                   {langs.map((side, i) => (
                     <span key={side}>
                       {i > 0 && ' · '}
                       <bdi lang={side}>{nameOf(side)}</bdi>{' '}
-                      {Math.round((render.editability[side] ?? 0) * 100)}% ניתן לעריכה
+                      {t('variant.editablePercent', {
+                        percent: Math.round((render.editability[side] ?? 0) * 100),
+                      })}
                     </span>
                   ))}
-                  . הרינדור והבדיקה נעשים עם המנוע, הרנדרר ובדיקת העיצוב של Slidr עצמה.
+                  {t('variant.renderNote')}
                 </p>
               </>
             ) : (
@@ -234,12 +201,12 @@ export function VariantDetail({
                 <StatusLine variant={variant} />
                 {running && (
                   <button type="button" onClick={() => void run(() => api.cancel(variant.id))}>
-                    עצור
+                    {t('variant.stop')}
                   </button>
                 )}
                 {(variant.status === 'failed' || variant.status === 'cancelled') && (
                   <button type="button" onClick={() => void run(() => api.retry(variant.id))}>
-                    נסה שוב
+                    {t('variant.retry')}
                   </button>
                 )}
               </div>
@@ -250,13 +217,13 @@ export function VariantDetail({
             <section className="approve-box">
               {variant.approved ? (
                 <>
-                  <p className="ok">העיצוב מאושר ויישלח בפרסום הבא.</p>
+                  <p className="ok">{t('variant.approvedNote')}</p>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void run(() => api.approve(variant.id, false))}
                   >
-                    בטל אישור
+                    {t('variant.unapprove')}
                   </button>
                 </>
               ) : (
@@ -267,11 +234,11 @@ export function VariantDetail({
                     disabled={busy || running || variant.status !== 'ready' || !render?.publishable}
                     onClick={approve}
                   >
-                    אשר לפרסום
+                    {t('variant.approve')}
                   </button>
                   {render && !render.publishable && (
                     <p className="warn small">
-                      העיצוב לא עומד בחוזה של הגלריה, ולכן אי אפשר לאשר אותו. בקשו תיקון.
+                      {t('variant.notPublishable')}
                     </p>
                   )}
                 </>
@@ -282,22 +249,22 @@ export function VariantDetail({
                 disabled={busy}
                 onClick={() => void run(() => api.discard(variant.id, !variant.discarded), onClose)}
               >
-                {variant.discarded ? 'החזר הצעה' : 'פסול הצעה'}
+                {variant.discarded ? t('variant.restore') : t('variant.discard')}
               </button>
             </section>
 
             <section>
-              <h3>ממצאים</h3>
-              {result ? <Findings result={result} /> : <p className="muted">אין עדיין רינדור.</p>}
+              <h3>{t('variant.findings')}</h3>
+              {result ? <Findings result={result} /> : <p className="muted">{t('variant.noRender')}</p>}
             </section>
 
             <section>
-              <h3>בקשת שינוי</h3>
+              <h3>{t('variant.changeRequest')}</h3>
               <textarea
                 rows={3}
                 value={feedback}
                 onChange={(event) => setFeedback(event.target.value)}
-                placeholder="למשל: הכותרת גדולה מדי בתמונה הממוזערת; העבירו את התאריך מעל הכפתור"
+                placeholder={t('variant.feedbackPlaceholder')}
               />
               <button
                 type="button"
@@ -309,16 +276,16 @@ export function VariantDetail({
                   )
                 }
               >
-                שלח ל-Claude
+                {t('variant.sendToClaude')}
               </button>
             </section>
 
             <section>
-              <h3>תמונה</h3>
+              <h3>{t('variant.image')}</h3>
               {variant.image && (
                 <details className="small">
                   <summary className="muted">
-                    {variant.image.width}×{variant.image.height} · התיאור שממנו נוצרה
+                    {variant.image.width}×{variant.image.height} · {t('variant.imagePromptSummary')}
                   </summary>
                   <p className="muted" dir="ltr">
                     {variant.image.prompt}
@@ -328,7 +295,7 @@ export function VariantDetail({
               <input
                 value={imageNote}
                 onChange={(event) => setImageNote(event.target.value)}
-                placeholder="שינוי בתמונה (ריק = תמונה חדשה מאותו תיאור)"
+                placeholder={t('variant.imageNotePlaceholder')}
               />
               <button
                 type="button"
@@ -340,12 +307,12 @@ export function VariantDetail({
                   )
                 }
               >
-                {imageNote.trim() ? 'שנה את התמונה' : 'תמונה חדשה'}
+                {imageNote.trim() ? t('variant.changeImage') : t('variant.newImage')}
               </button>
             </section>
 
             <details>
-              <summary>הקונספט</summary>
+              <summary>{t('variant.concept')}</summary>
               <p dir="auto">{variant.brief.concept}</p>
               <p dir="auto" className="muted small">
                 {variant.brief.art}
@@ -353,7 +320,7 @@ export function VariantDetail({
             </details>
 
             <section className="log-box">
-              <h3>יומן</h3>
+              <h3>{t('variant.log')}</h3>
               <Log variant={variant} />
             </section>
           </aside>

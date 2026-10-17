@@ -15,6 +15,7 @@ export {
   fontStack,
   hebrewFace,
   hebrewFaces,
+  setFontCounterparts,
   shadowCss,
   themeVariables,
   themeVariablesCss,

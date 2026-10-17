@@ -91,6 +91,11 @@ export interface ScrollAreaProps {
   /** The scrolling element and its scroll, for a list that draws only the part in view. */
   viewportRef?: Ref<HTMLDivElement>;
   onScroll?: UIEventHandler<HTMLDivElement>;
+  /**
+   * The name of the region, for content with nothing in it that takes the focus (pictures): the
+   * scrolling element then takes it, so the keyboard scrolls it too.
+   */
+  label?: string;
 }
 
 function Scrollbar({ orientation }: { orientation: 'vertical' | 'horizontal' }) {
@@ -116,14 +121,24 @@ export function ScrollArea({
   viewportClassName,
   viewportRef,
   onScroll,
+  label,
 }: ScrollAreaProps) {
   return (
     <RadixScrollArea.Root type={type} className={cx('relative overflow-hidden', className)}>
       <RadixScrollArea.Viewport
         ref={viewportRef}
         onScroll={onScroll}
-        // Radix lays the content out as a table, which defeats `truncate` in vertical lists.
-        className={cx('size-full', orientation === 'vertical' && '*:block!', viewportClassName)}
+        role={label ? 'region' : undefined}
+        aria-label={label}
+        tabIndex={label ? 0 : undefined}
+        // Radix lays the content out as a table, which defeats `truncate` in vertical lists. The
+        // ring of a focused region is drawn inside it, which clips what is outside.
+        className={cx(
+          'size-full',
+          orientation === 'vertical' && '*:block!',
+          label && '-outline-offset-2',
+          viewportClassName,
+        )}
       >
         {children}
       </RadixScrollArea.Viewport>

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { mirrorLayout } from '../mirror';
 import type { Template } from '../template';
 import { builtInAvailable, builtInTemplates, tzukTemplate } from './index';
-import { at, pageNumber, rect, solid, token, withObjects } from './kit';
+import { at, lockedDrawings, pageNumber, rect, solid, token, withObjects } from './kit';
 
 /* What of a built-in layout becomes the slide's own (`withObjects`, ADR-094). */
 
@@ -77,5 +77,28 @@ describe.skipIf(!builtInAvailable)('the objects of a built-in layout', () => {
       }
     }
     expect(masters).toEqual([]);
+  });
+});
+
+/* What a layout keeps that its slides should hold (`lockedDrawings`, ADR-094). */
+describe('the drawings a layout keeps', () => {
+  const card = rect('d_card', at(96, 260, 600, 560), solid(token('surface')));
+  const number = pageNumber('d_number', at(96, 961, 60, 34));
+  const given = (decorations: Element[]): Layout => ({ ...layout(decorations), objects: [card] });
+
+  it('are all that do not frame the slide, when no layout gives its slides objects', () => {
+    expect(ids(lockedDrawings([layout([card, number])]).get('l_test_cards'))).toEqual(['d_card']);
+  });
+
+  it('leave out what the slide number stands on', () => {
+    const plate = rect('d_plate', at(60, 900, 200, 120), solid(token('surface')));
+    expect(lockedDrawings([given([plate, number])]).size).toBe(0);
+  });
+
+  it('are what the foot only reaches into', () => {
+    const courtyard = rect('d_courtyard', at(96, 200, 600, 770), solid(token('surface')));
+    expect(ids(lockedDrawings([given([courtyard, number])]).get('l_test_cards'))).toEqual([
+      'd_courtyard',
+    ]);
   });
 });

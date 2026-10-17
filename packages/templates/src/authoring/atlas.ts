@@ -14,11 +14,10 @@ import {
   assetTable,
   at,
   atEnd,
-  bullets,
   drawing,
   pageNumber,
-  para,
   place,
+  points,
   rect,
   sampleSlides,
   solid,
@@ -26,6 +25,7 @@ import {
   text,
   token,
   type SampleSlide,
+  withObjects,
 } from '../builtin/kit';
 import { ATLAS_COPY, type AtlasCopy } from './atlas/copy';
 import { picture } from './pictures';
@@ -677,6 +677,9 @@ function foot(name: string, withFooter = true) {
   };
 }
 
+/** The sheet of the text slide: from margin to margin, down to over the foot. */
+const SHEET = at(START, 236, WIDTH, 684);
+
 /** A sheet of paper on the slide: a card. */
 const card = (id: string, frame: Frame, radius = 14) =>
   rect(id, frame, solid(token('surface')), {
@@ -971,36 +974,31 @@ function layouts(): Layout[] {
       id: 'l_atlas_text',
       name: 'Text',
       archetype: 'text',
+      // The text is on a sheet of paper from margin to margin, down to over the foot, from its
+      // top; a stamp and its postmark stand on the sheet's corner, beside the title.
       placeholders: [
-        ...head('text', 1040, 2, false).placeholders,
-        place('p_body', 'body', at(START, 290, 1000, 610), 'body', { vAlign: 'middle' }),
+        ...head('text', WIDTH - 300, 1, false).placeholders,
+        place('p_body', 'body', at(START + 64, SHEET.y + 56, WIDTH - 128, 560), 'body'),
       ],
       decorations: [
         neatline('d_atlas_text_frame', false),
-        ...head('text', 1040, 2, false).decorations,
-        card('d_atlas_text_inset', atEnd(END, 140, 520, 760)),
-        art(
-          'd_atlas_text_map',
-          atEnd(END + 26, 166, 468, 708),
-          `<rect x="1" y="1" width="466" height="706" stroke="${INK}" stroke-width="1.4"/>` +
-            `<rect x="9" y="9" width="450" height="690" fill="${OCEAN}" fill-opacity=".06"/>` +
-            contours(
-              [
-                { x: 150, y: 210, rx: 150, ry: 120, seed: 0.4, levels: 9 },
-                { x: 330, y: 470, rx: 120, ry: 150, seed: 2.6, levels: 8 },
-                { x: 120, y: 560, rx: 80, ry: 64, seed: 4.2, levels: 4 },
-              ],
-              OCEAN,
-              0.32,
-            ) +
-            `<path d="M96 600C150 520 120 430 200 380S330 330 300 230S380 120 410 90" stroke="${VERMILION}" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>` +
-            pinGlyph(96, 578, 13) +
-            pinGlyph(200, 358, 11) +
-            pinGlyph(300, 208, 11) +
-            pinGlyph(410, 68, 13) +
-            `<g transform="translate(400 600)"><circle r="34" fill="${WHITE}" stroke="${INK}" stroke-width="1.4"/>${rose(0, 0, 28, 13, 7)}</g>` +
-            `<g transform="translate(36 660)">${scaleBar(160)}</g>`,
+        ...head('text', WIDTH - 300, 1, false).decorations,
+        card('d_atlas_text_sheet', SHEET),
+        lifted(
+          art(
+            'd_atlas_text_stamp',
+            atEnd(END + 40, 120, 132, 160),
+            stamp(132, 160, OCEAN, 14) +
+              `<rect x="20" y="20" width="92" height="120" fill="${OCEAN}" fill-opacity=".08"/>` +
+              contours([{ x: 66, y: 84, rx: 38, ry: 48, seed: 1.3, levels: 5 }], OCEAN, 0.5, 1.2) +
+              pinGlyph(76, 68, 8),
+          ),
+          8,
+          16,
+          0.18,
         ),
+        art('d_atlas_text_postmark', atEnd(END + 128, 196, 220, 92), postmark(46, 46, 38, 4, 150)),
+        ...foot('text', false).decorations,
       ],
     },
     {
@@ -1568,8 +1566,11 @@ function drawSample(copy: AtlasCopy): SampleSlide[] {
         title: lines(copy.agenda.title),
         body: {
           paragraphs: [
-            para(copy.agenda.intro, { spaceAfter: 24 }),
-            ...bullets(...copy.agenda.items).paragraphs.map((p) => ({ ...p, spaceAfter: 18 })),
+            ...lines(copy.agenda.intro).paragraphs.map((p, i, all) =>
+              i === all.length - 1 ? { ...p, spaceAfter: 36 } : p,
+            ),
+            ...points(copy.agenda.items, { kind: 'number', mark: token('primary'), gap: 22 })
+              .paragraphs,
           ],
         },
       },
@@ -1762,8 +1763,10 @@ export function atlasTemplate(): Template {
     flipped: flipped(drawn),
     assets: assetTable([pictures.plant, pictures.coast, ...pictures.team]),
   };
-  template.sample = sampleSlides(template, atlasSamples.he);
-  return template;
+  // What makes up a slide is the slide's own, and the user changes it (ADR-094).
+  const finished = withObjects(template);
+  finished.sample = sampleSlides(finished, atlasSamples.he);
+  return finished;
 }
 
 export const entry = { id: 'atlas', template: atlasTemplate, samples: atlasSamples };

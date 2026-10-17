@@ -48,7 +48,7 @@ export function DocumentStartTools() {
     <div
       role="toolbar"
       aria-label={t('tools.documentTools')}
-      className="flex shrink-0 items-center gap-2"
+      className="flex shrink-0 items-center gap-2 ltr:ps-3"
     >
       <FileMenu />
       <div className="border-s border-ui-header-line ps-2">

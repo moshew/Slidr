@@ -1,9 +1,11 @@
 // Prints, as one JSON object, the instructions the app gives its design agent
-// (`packages/prompts`), so the management server builds its prompts from the app's own text and
-// never from a copy of it:
+// (`packages/prompts`), and the names it gives its built-in templates
+// (`apps/desktop/src/templates/messages.ts`), so the management server builds its prompts from the
+// app's own text and never from a copy of it:
 //
 //   node management/web/tools/instructions.mjs
-//   → { "design": "## Design guidelines …", "html": "## Writing a slide as HTML …", "sources": [...] }
+//   → { "design": "## Design guidelines …", "html": "## Writing a slide as HTML …",
+//       "templates": { "he": { "name": {…}, "tagline": {…} }, "en": {…} }, "sources": [...] }
 //
 // The modules are TypeScript that import the app's packages by name, so Vite loads them, as
 // `apps/desktop/scripts/export-designs.mjs` loads the design packs.
@@ -27,11 +29,20 @@ const server = await createServer({
 try {
   const { DESIGN } = await server.ssrLoadModule(join(prompts, 'src', 'design.ts'));
   const { HTML_CONVENTIONS } = await server.ssrLoadModule(join(prompts, 'src', 'html.ts'));
+  const words = await server.ssrLoadModule(
+    join(repo, 'apps', 'desktop', 'src', 'templates', 'messages.ts'),
+  );
+  const named = (table) => ({ name: table.name, tagline: table.tagline });
   process.stdout.write(
     JSON.stringify({
       design: DESIGN,
       html: HTML_CONVENTIONS,
-      sources: ['packages/prompts/src/design.ts', 'packages/prompts/src/html.ts'],
+      templates: { he: named(words.he), en: named(words.en) },
+      sources: [
+        'packages/prompts/src/design.ts',
+        'packages/prompts/src/html.ts',
+        'apps/desktop/src/templates/messages.ts',
+      ],
     }),
   );
 } finally {

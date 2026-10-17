@@ -11,6 +11,7 @@ import {
   pageNumber,
   para,
   place,
+  points,
   rect,
   sampleSlides,
   solid,
@@ -18,6 +19,7 @@ import {
   text,
   token,
   type SampleSlide,
+  withObjects,
 } from '../builtin/kit';
 import { picture } from './pictures';
 
@@ -745,8 +747,11 @@ function head(name: string, width = 1240, lines = 2) {
   };
 }
 
-/** The connector along the foot: a dashed line from node to node. */
-function footLine(id: string, top = 928) {
+/**
+ * The connector along the foot: a dashed line from node to node. It is the foot's, so it stands
+ * in the foot's band (24px above the mark), where it stays the layout's (ADR-094).
+ */
+function footLine(id: string, top = 932) {
   const w = WIDTH;
   return art(
     id,
@@ -1013,71 +1018,30 @@ function stackScene() {
   return s;
 }
 
-/** The agenda: the old machine room below, the cloud above, and a block on its way up. */
-function migrationScene() {
+/**
+ * The corner of the text slide's card: a region on its plate, a server and a database on it, and
+ * its cloud over it on a dashed line.
+ */
+function regionScene() {
   const s = new Scene(0, 0, 1);
-  // The old room, at the start side, faded and dashed.
-  s.raw(
-    `<path d="${s.d([
-      [270, -30, 0],
-      [470, -30, 0],
-      [470, 170, 0],
-      [270, 170, 0],
-    ])}" fill="${NAVY}" fill-opacity=".04" stroke="${NAVY}" stroke-opacity=".3" stroke-width="1.8" stroke-dasharray="3 8" stroke-linecap="round"/>`,
+  s.plate(0, 0, 0, 200, 200, 16);
+  s.shadow(30, 30, 16, 60, 60, 64, 0.1);
+  s.shadow(112, 30, 16, 60, 60, 46, 0.1);
+  s.server(30, 30, 16, 60, 60, 104);
+  s.server(112, 30, 16, 60, 60, 76, LOOK.sky);
+  s.cylinderShadow(70, 150, 16, 28, 28, 0.1);
+  s.cylinder(70, 150, 16, 28, 58, TEAL, 2);
+  s.cylinderShadow(150, 150, 16, 28, 28, 0.1);
+  s.cylinder(150, 150, 16, 28, 44, TEAL, 2);
+  s.link(
+    [
+      [100, 100, 236],
+      [100, 100, 150],
+    ],
+    BLUE,
+    { head: true, width: 2, dash: '3 7', opacity: 0.6 },
   );
-  s.shadow(300, 10, 0, 60, 60, 80, 0.12);
-  s.shadow(380, 10, 0, 60, 60, 60, 0.12);
-  s.server(300, 10, 0, 60, 60, 124, LOOK.legacy, ORANGE);
-  s.server(380, 10, 0, 60, 60, 92, LOOK.legacy);
-  s.box(310, 96, 0, 50, 50, 28, LOOK.legacy);
-  // The new place, raised over its footprint: a region plate with its services.
-  const z = 270;
-  const [px, py, pw] = [-40, 250, 230];
-  s.raw(
-    `<path d="${s.d([
-      [px, py, 0],
-      [px + pw, py, 0],
-      [px + pw, py + pw, 0],
-      [px, py + pw, 0],
-    ])}" fill="${BLUE}" fill-opacity=".06" stroke="${BLUE}" stroke-opacity=".4" stroke-width="1.8" stroke-dasharray="3 8" stroke-linecap="round"/>`,
-  );
-  for (const [x, y] of [
-    [px + pw, py],
-    [px + pw, py + pw],
-    [px, py + pw],
-  ] as const) {
-    s.link(
-      [
-        [x, y, z],
-        [x, y, 0],
-      ],
-      BLUE,
-      { head: false, width: 1.6, dash: '3 7', opacity: 0.45 },
-    );
-  }
-  s.plate(px, py, z, pw, pw, 18);
-  const t = z + 18;
-  s.shadow(px + 30, py + 30, t, 58, 58, 60, 0.1);
-  s.shadow(px + 112, py + 30, t, 58, 58, 44, 0.1);
-  s.server(px + 30, py + 30, t, 58, 58, 104);
-  s.server(px + 112, py + 30, t, 58, 58, 76, LOOK.sky);
-  s.cylinder(px + 62, py + 168, t, 30, 62, TEAL, 2);
-  s.cylinder(px + 160, py + 168, t, 30, 62, TEAL, 2);
-  s.cloud([px + 80, py + 60, t + 200], 220);
-  // The way up: a dashed curve from the old room to the new plate, a block in flight on it.
-  const [ax, ay] = s.xy([330, 40, 140]);
-  const [bx, by] = s.xy([px + pw + 30, py + pw / 2, t + 10]);
-  const mx = (ax + bx) / 2 + 30;
-  const my = Math.min(ay, by) - 70;
-  s.raw(
-    `<path d="M${r1(ax)} ${r1(ay)}Q${r1(mx)} ${r1(my)} ${r1(bx)} ${r1(by)}" stroke="${ORANGE}" stroke-width="3" stroke-dasharray="9 9" stroke-linecap="round"/>`,
-  );
-  s.raw(arrowhead(mx, my, bx, by, ORANGE, 13));
-  const fx = 0.25 * ax + 0.5 * mx + 0.25 * bx;
-  const fy = 0.25 * ay + 0.5 * my + 0.25 * by;
-  const flight = new Scene(fx, fy + 20, 1);
-  flight.box(-18, -18, 0, 36, 36, 36, LOOK.orange);
-  s.raw(flight.svg(1, 1).replace(/^<svg[^>]*>|<\/svg>$/g, ''));
+  s.cloud([100, 100, 262], 190);
   return s;
 }
 
@@ -1630,13 +1594,10 @@ function layouts(): Layout[] {
   })();
   const tag = atEnd(560, 108, 280, 176);
 
-  const textArt = atEnd(64, 170, 650, 720);
-  const migration = migrationScene();
-  const migrationFit = migration.fitting(textArt.w, textArt.h, 16, 4, 0.5, 0.5);
-  const label = (id: string, p: P3, text: string, light: string) => {
-    const [X, Y] = migrationFit.map(migration.xy(p));
-    return chip(id, textArt.x + X, textArt.y + Y + 12, text, { light, pointer: true, size: 17 });
-  };
+  // The text slide: the card from margin to margin, down to the foot's connector, and the body in
+  // it from its top; a small region stands on the card's corner, beside the title.
+  const textCard = at(START, 236, WIDTH, 666);
+  const textArt = atEnd(END, 54, 340, 236);
   const closingArt = atEnd(20, 60, 900, 820);
   const window = atEnd(END, 100, 780, 812);
 
@@ -1840,13 +1801,17 @@ function layouts(): Layout[] {
       name: 'Text',
       archetype: 'text',
       placeholders: [
-        place('p_title', 'title', at(START, 122, 1080, 148), 'title'),
-        place('p_body', 'body', at(START, 282, 1080, 610), 'body'),
+        place('p_title', 'title', at(START, 112, 1300, 92), 'title'),
+        place('p_body', 'body', at(START + 56, textCard.y + 56, WIDTH - 112, 560), 'body'),
       ],
       decorations: [
-        drawing('d_anan_text_scene', textArt, migrationFit.markup(), PAINT),
-        label('d_anan_text_from', [470, 170, 0], 'on-prem', MUTED),
-        label('d_anan_text_to', [190, 480, 0], 'cloud', GREEN),
+        card('d_anan_text_card', textCard),
+        drawing(
+          'd_anan_text_region',
+          textArt,
+          regionScene().fit(textArt.w, textArt.h, 6, 4, 0.5, 1),
+          PAINT,
+        ),
         ...foot('text', false).decorations,
       ],
     },
@@ -2313,12 +2278,18 @@ const sampleHe: SampleSlide[] = [
       title: text('על מה נדבר היום'),
       body: {
         paragraphs: [
-          para('עשרים דקות, ואחריהן שאלות:'),
-          ...bullets(
-            'למה אזור אחד כבר לא הספיק לנו',
-            'הארכיטקטורה: שלושה אזורים פעילים במקביל',
-            'המעבר בארבעה שלבים, בלי השבתה',
-            'מה זה עשה לזמינות, לזמן התגובה ולעלות',
+          para(
+            'עשרים דקות על הסיבה שאזור אחד הפסיק להספיק לליבת התשלומים, ועל הדרך שבה העברנו אותה לשלושה אזורים פעילים בלי דקה אחת של השבתה. אחר כך נשאיר זמן לכל השאלות שלכם.',
+            { spaceAfter: 36 },
+          ),
+          ...points(
+            [
+              ['למה עברנו: ', 'אזור אחד, ותקלה אחת בו עצרה את כל התשלומים.'],
+              ['הארכיטקטורה: ', 'שלושה אזורים פעילים, וכל אחד מהם נושא לבדו את כל העומס.'],
+              ['המעבר: ', 'ארבעה שלבים בדצמבר, וכל שלב הפיך בתוך דקות.'],
+              ['התוצאות: ', 'הזמינות, זמן התגובה ב-p95 והחשבון החודשי, לפני ואחרי.'],
+            ],
+            { kind: 'number', mark: token('primary'), gap: 22 },
           ).paragraphs,
         ],
       },
@@ -2575,12 +2546,18 @@ const sampleEn: SampleSlide[] = [
       title: text('What we will cover today'),
       body: {
         paragraphs: [
-          para('Twenty minutes, then questions:'),
-          ...bullets(
-            'Why one region was no longer enough',
-            'The architecture: three active regions',
-            'The move in four stages, with no downtime',
-            'What it did to uptime, latency and cost',
+          para(
+            'Twenty minutes on why one region stopped being enough for the payments core, and on how we moved it to three active regions without a minute of downtime. Then your questions.',
+            { spaceAfter: 36 },
+          ),
+          ...points(
+            [
+              ['Why we moved: ', 'one region, and a single outage there stopped every payment.'],
+              ['The architecture: ', 'three active regions, each able to carry the whole load.'],
+              ['The move: ', 'four stages in December, each one reversible within minutes.'],
+              ['The results: ', 'uptime, p95 latency and the monthly bill, before and after.'],
+            ],
+            { kind: 'number', mark: token('primary'), gap: 22 },
           ).paragraphs,
         ],
       },
@@ -2836,8 +2813,10 @@ export function ananTemplate(): Template {
       pictures.ananTeam4,
     ]),
   };
-  template.sample = sampleSlides(template, sampleHe);
-  return template;
+  // What makes up a slide is the slide's own, and the user changes it (ADR-094).
+  const finished = withObjects(template);
+  finished.sample = sampleSlides(finished, sampleHe);
+  return finished;
 }
 
 export const entry = { id: 'anan', template: ananTemplate, samples: ananSamples };

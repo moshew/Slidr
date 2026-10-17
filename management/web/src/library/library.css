@@ -113,7 +113,11 @@
 }
 
 .lib-search {
-  width: min(320px, 100%);
+  width: min(400px, 100%);
+}
+
+.language-note {
+  color: var(--accent);
 }
 
 .lib-filters {
@@ -204,6 +208,11 @@ button.chip[aria-pressed='true'] .muted {
   border-color: var(--accent);
   box-shadow: var(--shadow);
   transform: translateY(-2px);
+}
+
+/* A card that is its picture alone, with no words under it. */
+.lib-card.picture {
+  border-color: transparent;
 }
 
 .lib-card .slide-frame {

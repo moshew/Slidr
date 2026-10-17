@@ -3,26 +3,22 @@ import { useTranslation } from 'react-i18next';
 import { locateElement, type GroupElement } from '@slidr/model';
 import { Button, IconButton, Popover, PopoverContent, PopoverTrigger } from '@slidr/ui';
 import { SquareMinus, SquarePlus } from '@slidr/ui/icons';
+import { currentLanguage, useLanguage } from '../i18n';
 import { useCurrentSlide } from '../objects/target';
-import {
-  focusStage,
-  useDeck,
-  useEditor,
-  useElementSize,
-  useSelection,
-  type Editor,
-} from '../shell';
+import { focusStage, useEditor, useElementSize, useSelection, type Editor } from '../shell';
 import {
   cardKinds,
   cardSetOf,
   cardsOf,
   mostCards,
-  readingOf,
+  readingIn,
+  readingOfSet,
   roomOn,
   sampleCard,
   withCard,
   withoutCard,
   type CardSetId,
+  type Reading,
   type Room,
 } from './cardSets';
 import { CardPicture } from './CardSetsCollection';
@@ -83,21 +79,29 @@ function replace(editor: Editor, selected: Selected, next: GroupElement, label: 
   editor.selection.getState().selectElements([next.id]);
 }
 
+/**
+ * The reading a set on a slide goes on in: the one it was made in, which need not be the deck's,
+ * and what it cannot tell from the UI language, which a new set is made in.
+ */
+const readingOfOwn = (set: GroupElement, lang = currentLanguage()) =>
+  readingOfSet(set, readingIn(lang));
+
 function AddCard({ selected }: { selected: Selected }) {
   const { t } = useTranslation('elements');
   const editor = useEditor();
-  const meta = useDeck((s) => s.deck.meta);
+  const lang = useLanguage();
   const { id, set } = selected;
-  const kinds = useMemo(() => {
-    const reading = readingOf(meta);
-    return Array.from({ length: cardKinds(id) }, (_, kind) => sampleCard(id, kind, reading));
-  }, [id, meta]);
+  const reading = useMemo(() => readingOfOwn(set, lang), [set, lang]);
+  const kinds = useMemo(
+    () => Array.from({ length: cardKinds(id) }, (_, kind) => sampleCard(id, kind, reading)),
+    [id, reading],
+  );
   const count = cardsOf(set).length;
   const full = count >= mostCards(id);
 
   const add = (kind: number) => {
     const now = current(editor, selected);
-    const next = now && withCard(now.set, kind, readingOf(editor.bus.deck.meta), now.room);
+    const next = now && withCard(now.set, kind, readingOfOwn(now.set), now.room);
     if (next) replace(editor, selected, next, t('cards.history.add'));
   };
 
@@ -129,7 +133,7 @@ function AddCard({ selected }: { selected: Selected }) {
               : t('cards.room', { n: count, most: mostCards(id) })}
           </p>
           {/* The gallery stays open: adding one card after another is what it is for. */}
-          <Kinds cards={kinds} disabled={full} onPick={add} />
+          <Kinds cards={kinds} reading={reading} disabled={full} onPick={add} />
         </div>
       </PopoverContent>
     </Popover>
@@ -139,10 +143,12 @@ function AddCard({ selected }: { selected: Selected }) {
 /** The kinds of card a set can take, two in a row, each drawn as wide as its place. */
 function Kinds({
   cards,
+  reading,
   disabled,
   onPick,
 }: {
   cards: readonly GroupElement[];
+  reading: Reading;
   disabled: boolean;
   onPick: (kind: number) => void;
 }) {
@@ -163,7 +169,7 @@ function Kinds({
           className="flex min-h-10 cursor-default items-center justify-center rounded-control bg-ui-field p-1 transition-colors hover:bg-ui-hover active:bg-ui-pressed disabled:opacity-40"
           onClick={() => onPick(kind)}
         >
-          {picture > 0 && <CardPicture element={card} width={picture} />}
+          {picture > 0 && <CardPicture element={card} reading={reading} width={picture} />}
         </button>
       ))}
     </div>
@@ -184,8 +190,7 @@ function RemoveCard({ selected }: { selected: Selected }) {
       disabled={cardsOf(set).length < 2}
       onClick={() => {
         const now = current(editor, selected);
-        const next =
-          now && withoutCard(now.set, card.id, readingOf(editor.bus.deck.meta), now.room);
+        const next = now && withoutCard(now.set, card.id, readingOfOwn(now.set), now.room);
         if (!next) return;
         replace(editor, selected, next, t('cards.history.remove'));
         focusStage();

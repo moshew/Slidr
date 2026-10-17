@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from '
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Search } from '@slidr/ui/icons';
 import { Button, IconButton, Input, Skeleton, Tooltip } from '@slidr/ui';
+import { useLanguage, type Language } from '../i18n';
 import { findIcons, type FoundIcon } from '../media/icons/library';
 import { IconsTab } from '../media/IconsTab';
 import { insertIcon } from '../media/insert';
@@ -18,7 +19,9 @@ import {
   useLoaded,
   type OpenGroup,
 } from './collections';
-import { loadFrames, searchFrames } from './frames';
+import { CARD_SETS, cardSetsIn } from './cardSets';
+import { DESIGN_IDS, designIn } from './designs';
+import { framesIn, loadFrames, searchFrames } from './frames';
 import { FrameGrid, FramesCollection } from './FramesCollection';
 import { useRecentStickers, type RecentSticker } from './recent';
 import { CardSetsCollection } from './CardSetsCollection';
@@ -34,7 +37,10 @@ import { COLLECTIONS, CollectionTile, FrameThumbDefs, type CollectionId } from '
  * its place.
  */
 export function ElementsPanel() {
-  const [collection, setCollection] = useState<CollectionId | 'recent' | null>(null);
+  const [chosen, setCollection] = useState<CollectionId | 'recent' | null>(null);
+  // A collection the language was switched away from, open as it was switched, is closed.
+  const lang = useLanguage();
+  const collection = chosen === 'recent' || (chosen && offered(chosen, lang)) ? chosen : null;
   return (
     <div className="@container flex flex-col" data-testid="elements-panel">
       <Drill screen={collection ?? 'home'} depth={collection ? 1 : 0} className="flex flex-col">
@@ -50,11 +56,23 @@ export function ElementsPanel() {
 
 /* ---------------------------------------------------------------- the first screen */
 
+/**
+ * Whether an interface in `lang` offers a collection: it does not when every piece of it is in
+ * other languages. Shapes, graphics, emoji, icons and tables have no language, and the frames
+ * have some that have none. Without the media library a collection is offered, and says so.
+ */
+function offered(id: CollectionId, lang: Language): boolean {
+  if (id === 'designs') return DESIGN_IDS.length === 0 || DESIGN_IDS.some((d) => designIn(d, lang));
+  if (id === 'cards') return CARD_SETS.length === 0 || cardSetsIn(lang).length > 0;
+  return true;
+}
+
 /** How long the search waits after the last key before it looks. */
 const PAUSE_MS = 150;
 
 function Home({ onOpen }: { onOpen: (id: CollectionId | 'recent') => void }) {
   const { t } = useTranslation('elements');
+  const lang = useLanguage();
   const [text, setText] = useState('');
   const [query, setQuery] = useState('');
   useEffect(() => {
@@ -79,7 +97,7 @@ function Home({ onOpen }: { onOpen: (id: CollectionId | 'recent') => void }) {
           <Recent onShowAll={() => onOpen('recent')} />
           <Section title={t('browse')}>
             <div className="grid grid-cols-4 gap-x-1 gap-y-2" data-testid="element-collections">
-              {COLLECTIONS.map((id) => (
+              {COLLECTIONS.filter((id) => offered(id, lang)).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -156,9 +174,10 @@ function AllRecent() {
 /** How many of each kind the search of the first screen shows. */
 const FOUND = { graphics: 18, frames: 12, emoji: 24, icons: 24 };
 
-/** What a query finds across the collections that are searched by word. */
+/** What a query finds across the collections that are searched by word, in the UI language. */
 function Found({ query }: { query: string }) {
   const { t } = useTranslation('elements');
+  const lang = useLanguage();
   const allGraphics = useLoaded(loadGraphics);
   const allFrames = useLoaded(loadFrames);
   const allEmoji = useLoaded(loadEmoji);
@@ -179,8 +198,9 @@ function Found({ query }: { query: string }) {
     [allGraphics, query],
   );
   const frames = useMemo(
-    () => (Array.isArray(allFrames) ? searchFrames(allFrames, query, FOUND.frames) : []),
-    [allFrames, query],
+    () =>
+      Array.isArray(allFrames) ? searchFrames(framesIn(allFrames, lang), query, FOUND.frames) : [],
+    [allFrames, query, lang],
   );
   const emoji = useMemo(
     () => (Array.isArray(allEmoji) ? searchStickers(allEmoji, query, FOUND.emoji) : []),

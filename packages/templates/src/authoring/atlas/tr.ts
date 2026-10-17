@@ -18,12 +18,13 @@ export const tr: AtlasCopy = {
   agenda: {
     name: 'Gündem',
     title: 'Bugünün gündemi',
-    intro: 'Yirmi beş dakika, ardından sorularınız:',
+    intro:
+      'On dört liman kentinin bu yıl suyun yeniden kullanımı ve tuzdan arındırılması üzerine öğrendiklerine ve sırada her ortaktan ne isteyeceğimize ayrılmış yirmi beş dakika. Ardından sorularınız.',
     items: [
-      'Üç yılın sonunda ağ nerede duruyor',
-      'Yılın projesi: kendi suyunu üreten bir liman',
-      'Yeni bir kent beş adımda nasıl katılır',
-      '2027’de her ortaktan ne istiyoruz',
+      ['Ağ: ', 'on dört kent, üç yıllık ortak çalışmanın sonunda nerede duruyor.'],
+      ['Yılın projesi: ', 'artık kendi suyunu üreten Limasol’daki liman.'],
+      ['Katılım: ', 'yeni bir kent ağa beş adımda nasıl katılır.'],
+      ['Önümüzdeki yıl: ', 'her ortaktan ne istiyoruz ve ne zamana kadar.'],
     ],
   },
   figures: {

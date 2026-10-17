@@ -57,7 +57,7 @@ export const L07: Rule = {
       {
         elementIds: [],
         // Rounded down, so a share just short of the bar never reads as meeting it.
-        message: `The content covers ${Math.floor(share * 100)}% of the content area: its bounding box is ${describeBox(bounds)}, and ${need}. Enlarge or spread out the content, or add a visual element, so the slide is filled.`,
+        message: `The content covers ${Math.floor(share * 100)}% of the content area: its bounding box is ${describeBox(bounds)}, and ${need}. Enlarge or spread out the content, or add a visual element, so the slide is filled. A card stretched taller than what it holds does not fill it.`,
       },
     ];
   },

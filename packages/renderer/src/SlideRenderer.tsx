@@ -62,6 +62,19 @@ export interface SlideRendererProps {
 }
 
 /**
+ * Where a deck's lines may break, by its language. Japanese breaks between its phrases
+ * (`auto-phrase`) and Korean between its words, at the spaces it writes (`keep-all`): a browser
+ * otherwise breaks them between any two characters, and split a name or a word in the samples. A
+ * word longer than its line still breaks rather than run out of its box.
+ */
+function wordBreak(lang: string): CSSProperties {
+  const code = lang.toLowerCase();
+  if (code.startsWith('ja')) return { wordBreak: 'auto-phrase', overflowWrap: 'break-word' };
+  if (code.startsWith('ko')) return { wordBreak: 'keep-all', overflowWrap: 'break-word' };
+  return {};
+}
+
+/**
  * A slide as DOM at its logical size, 1920x1080 (SPEC 7). It does not scale itself: the Stage,
  * the thumbnails and the presenter put it in a scaled container (see `ScaledSlide`).
  *
@@ -126,7 +139,7 @@ export function SlideRenderer({
       decoding,
     ],
   );
-  const vars = useMemo(() => themeVariables(theme), [theme]);
+  const vars = useMemo(() => themeVariables(theme, meta.lang), [theme, meta.lang]);
   const fontFaces = useMemo(
     () => (resolveAsset ? deckFontFaces(assets, resolveAsset) : ''),
     [assets, resolveAsset],
@@ -195,6 +208,10 @@ export function SlideRenderer({
           textIndent: 0,
           textTransform: 'none',
           whiteSpace: 'normal',
+          // Japanese and Chinese lines open with no small kana, prolonged sound mark or closing
+          // punctuation (kinsoku): `normal` let ッ and ー open a line in the Japanese samples.
+          lineBreak: 'strict',
+          ...wordBreak(meta.lang),
           color: colorCss(body.color),
           ...style,
         }}

@@ -58,8 +58,7 @@ export const LANGUAGE_NAMES: Record<ContentLanguage, { native: string; english: 
 
 /**
  * The letters each language is written in, by the tag a family of the media library's fonts
- * carries for them (`fonts/catalog.json`). No family of the library has Japanese, Korean or
- * Chinese letters: those are set in the fonts of the system.
+ * carries for them (`fonts/catalog.json`).
  */
 export const LANGUAGE_SCRIPT: Record<ContentLanguage, string> = {
   he: 'he',
@@ -79,6 +78,63 @@ export const LANGUAGE_SCRIPT: Record<ContentLanguage, string> = {
   ko: 'korean',
   'zh-CN': 'chinese',
 };
+
+/** A family of the media library's fonts, as `fonts/catalog.json` lists it. */
+export interface FontFamilyEntry {
+  family: string;
+  /** The letters it has, by the tags of `LANGUAGE_SCRIPT`. */
+  scripts: readonly string[];
+  /** The letters it was made for. A catalog written before it had them lists those first. */
+  for?: readonly string[];
+  /** For each script it has no letters of, the family closest to it in character that has them. */
+  counterparts?: Readonly<Partial<Record<string, string>>>;
+  /** The weight its one face looks to the eye, where that is not its number (Secular One: 700). */
+  looks?: number;
+}
+
+/**
+ * The family is one of a language's own: it has the language's letters, and was made for them,
+ * or for Latin letters, whose families carry the Cyrillic and Vietnamese ones too. A Hebrew family
+ * has Latin letters for the English words of a Hebrew text, and so is no family of English's; a
+ * Japanese one has Cyrillic letters, and is none of Russian's.
+ */
+export function familyOfLanguage(entry: FontFamilyEntry, lang: ContentLanguage): boolean {
+  const script = LANGUAGE_SCRIPT[lang];
+  const made = entry.for ?? entry.scripts.slice(0, 1);
+  return entry.scripts.includes(script) && (made.includes(script) || made.includes('latin'));
+}
+
+/**
+ * The families the font lists offer a deck in `lang`: its language's own, and English's. A deck in
+ * a language no content is written in is offered every one.
+ */
+export function familyForDeck(entry: FontFamilyEntry, lang: string): boolean {
+  const own = contentLanguageOf(lang);
+  return !own || familyOfLanguage(entry, own) || familyOfLanguage(entry, 'en');
+}
+
+/** The scripts written as alphabets beside Latin, whose families made for Latin carry them too. */
+const BESIDE_LATIN = new Set(['cyrillic', 'vietnamese']);
+
+/**
+ * The family that draws the letters of a deck in `lang` for text set in `entry`: the family itself
+ * when it has them, else its counterpart in them. `whole` when the counterpart is to draw the whole
+ * text and not only the letters the family lacks: Vietnamese is Latin letters with marks, and a
+ * word set half in one face and half in another reads as broken; a Russian text keeps one face
+ * for its Cyrillic and its Latin, as its designs do. None for Hebrew, which a theme's font pair
+ * gives a family of its own, and for a language no content is written in.
+ */
+export function familyForLetters(
+  entry: FontFamilyEntry,
+  lang: string,
+): { family: string; whole: boolean } | undefined {
+  const own = contentLanguageOf(lang);
+  if (!own || own === 'he') return undefined;
+  const script = LANGUAGE_SCRIPT[own];
+  if (entry.scripts.includes(script)) return { family: entry.family, whole: false };
+  const other = entry.counterparts?.[script];
+  return other ? { family: other, whole: BESIDE_LATIN.has(script) } : undefined;
+}
 
 /** Old codes some systems still give, by the code of today. */
 const RENAMED: Record<string, string> = { iw: 'he', in: 'id' };

@@ -997,8 +997,7 @@
       "mine": "Yazı tiplerim",
       "library": "Slidr kitaplığı",
       "system": "Bu bilgisayarda",
-      "hebrew": "İbranice destekler",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "Desteklenen dil: {{language}}",
       "empty": "Bu adda yazı tipi yok"
     },
     "mixed": "Karışık"
@@ -1894,6 +1893,10 @@
         "title": "Altta boş bir şerit",
         "advice": "İçeriğin altında slaytın dörtte biri veya daha fazlası boş. İçeriği aşağıya doğru yayın, büyütün ya da ortalayın."
       },
+      "L18": {
+        "title": "İçeriğinden uzun bir kart",
+        "advice": "Kartın beşte biri veya daha fazlası içeriğin üstünde ya da altında boş. Kartı içeriğine göre küçültün ya da doldurun: daha büyük yazı, bir görsel veya öne çıkan bir sayı."
+      },
       "other": {
         "title": "Bir tasarım bulgusu",
         "advice": "Uygulamanın bu sürümünün tanımadığı bir kural."
@@ -2777,10 +2780,12 @@
       "blankBody": "Varsayılan şablonda bir açılış slaytı; yapay zekâ sohbeti açık ve hazır.",
       "load": "Dosyadan yükle",
       "loadBody": "Slidr dosyası olduğu gibi açılır; HTML dosyası ise düzenlenebilir slaytlar olarak içeri aktarılır.",
-      "template": "Şablondan oluştur",
+      "allTemplates": "Tüm şablonlar",
       "templateBody": "Her konu için tasarlanmış şablonlar. Seçmeden önce tüm slaytları görün.",
       "noTemplates": "Kitaplıkta henüz şablon yok.",
       "templates": "Şablon seçin",
+      "templatesBack": "Geri",
+      "templateSlides": "{{name}} slaytları",
       "create": "Sunu oluştur",
       "recent": "Son kullanılan dosyalar",
       "noRecentTitle": "Son kullanılan dosya yok",
@@ -2987,30 +2992,31 @@
       "closeSlides": "Şablonun slaytlarını kapat"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
+      "zerem": "Akış",
+      "shvil": "Patika",
+      "tzuk": "Uçurum",
+      "lavan": "Beyaz",
+      "layla": "Gece",
+      "zohar": "Parıltı",
+      "migdal": "Kule",
+      "gan": "Bahçe",
+      "nof": "Manzara",
+      "defus": "Baskı",
+      "ariach": "Karo",
+      "bolet": "Cesur",
+      "hod": "Gala",
+      "sirtut": "Plan",
+      "ziv": "Yansıma",
+      "shidur": "Yayında",
+      "bina": "Nöron",
+      "mifgash": "Birlikte",
       "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "luach": "Sprint",
+      "anan": "Gökyüzü",
+      "magen": "Nöbetçi",
+      "shvav": "Devre",
+      "mutzar": "Lansman",
+      "atlas": "Atlas"
     },
     "tagline": {
       "zerem": "Hareket halindeki teknoloji: koyu mavi bir gecede parlayan turkuaz",
@@ -3036,7 +3042,8 @@
       "anan": "Açık gökyüzü ve izometrik diyagramlar; buluta taşınan mimari için",
       "magen": "Koyu zeytin yeşili ve uyarıcı turuncu; bir kontrol ekranının hassasiyetiyle",
       "shvav": "Devre kartı yeşili ve bakır; üretime hazırlanan donanım için",
-      "mutzar": "Ürün pencereleri, imleçler ve bildirimler; yeni bir sürümün lansmanı için"
+      "mutzar": "Ürün pencereleri, imleçler ve bildirimler; yeni bir sürümün lansmanı için",
+      "atlas": "Harita kâğıdı üzerinde bir küre, rotalar ve posta pulları; her dilde, sınırları aşan her şey için"
     },
     "direction": {
       "title": "Sunu yönü",

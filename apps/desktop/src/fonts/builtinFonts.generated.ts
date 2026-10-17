@@ -1,4 +1,5 @@
 import { mediaUrl, readMediaJson } from '@slidr/media-library';
+import type { FontFamilyEntry } from '@slidr/model';
 
 /*
  * The built-in fonts of decks (SPEC appendix B): the catalog of the media library
@@ -20,7 +21,7 @@ interface MediaFace extends Omit<BuiltinFace, 'url'> {
 }
 
 interface Catalog {
-  families: { family: string; scripts: string[] }[];
+  families: FontFamilyEntry[];
   faces: MediaFace[];
 }
 

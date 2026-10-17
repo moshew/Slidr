@@ -1,5 +1,5 @@
-// Converts and renders one variant of a design in a headless browser, through the studio's render
-// page (render.html), and keeps what it drew:
+// Converts and renders one variant in a headless browser, through the studio's render page
+// (render.html), and keeps every view the page drew (`[data-snap]`). For a design:
 //
 //   node management/web/tools/snap.mjs --url <render page URL> --out <folder> [--channel msedge]
 //
@@ -7,6 +7,9 @@
 //                               (he-full.png, en-full.png, ar-full.png, zh-CN-full.png…)
 //   <folder>/<lang>-thumb.png   the gallery's thumbnail, 384 px wide
 //   <folder>/result.json        the slides, findings, conversion notes, subject point
+//
+// For a template's sample in one language: `s01-full.png`, `s01-thumb.png`… for each slide,
+// `sheet.png` with all of them small, and `result.json` with the findings slide by slide.
 //
 // The page's conversion engine compares its result with the HTML it converts, by pictures of the
 // page: this script gives it real ones (`window.__slidrCapture`), as the app's capture window

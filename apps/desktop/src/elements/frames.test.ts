@@ -28,6 +28,7 @@ import {
   framePatch,
   frameRev,
   frameSizeOn,
+  framesIn,
   framesOf,
   freshFrame,
   magnetCard,
@@ -74,6 +75,22 @@ describe.skipIf(!catalog)('the catalogue of frames', () => {
     expect(featured).toHaveLength(20);
     expect(featured.filter((one) => one.art).length).toBeGreaterThan(5);
     expect(featured.filter((one) => !one.art).length).toBeGreaterThan(5);
+  });
+
+  it('offers an interface the frames of its language and those that have none', () => {
+    const groupsIn = (lang: string) => [...new Set(framesIn(frames, lang).map((one) => one.group))];
+    const without = (...gone: string[]) => FRAME_GROUPS.filter((group) => !gone.includes(group));
+    expect(groupsIn('he')).toEqual(without('latin'));
+    expect(groupsIn('en')).toEqual(without('hebrew'));
+    // The words beside a magnet are Hebrew and English; the Latin letters are German letters too.
+    expect(groupsIn('de')).toEqual(without('hebrew', 'magnets'));
+    expect(groupsIn('vi')).toEqual(without('hebrew', 'magnets'));
+    expect(groupsIn('ar')).toEqual(without('hebrew', 'latin', 'magnets'));
+    expect(groupsIn('zh-CN')).toEqual(without('hebrew', 'latin', 'magnets'));
+    // The frames shown first have no language.
+    for (const lang of ['he', 'en', 'ru', 'ja']) {
+      expect(featuredFrames(framesIn(frames, lang)), lang).toEqual(featuredFrames(frames));
+    }
   });
 
   it('has every letter of both alphabets, and every digit', () => {

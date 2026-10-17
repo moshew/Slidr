@@ -38,8 +38,13 @@ language on the review page (`lang=<code>`), at full size and as a thumbnail.
 From `packages/templates`:
 
 ```sh
-node src/authoring/tools/run-ts.mjs src/authoring/check.ts anan    # structure, contract, contrast
+node src/authoring/tools/run-ts.mjs src/authoring/check.ts anan    # structure, contract, contrast, what the slides hold
 ```
+
+What a layout draws is the slide's own (ADR-094): a template goes through `withObjects` before its
+sample is drawn, draws a scene as its parts rather than as one drawing the size of the slide, and
+keeps its drawings clear of the foot. The check fails a template whose layouts keep their drawings,
+and lists the grounds that stay, to look at.
 
 To look at it, stage a copy of the library and bring up the servers, then take screenshots of the
 review page (`apps/desktop/dev/review.html`):

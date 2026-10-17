@@ -81,6 +81,7 @@ import {
   type ButtonVariant,
   type Dir,
 } from '@slidr/ui';
+import { familyForDeck } from '@slidr/model';
 import { builtinFamilies } from '../../fonts';
 import { copy, type Copy } from './copy';
 
@@ -811,19 +812,19 @@ function ColorDemo({ c }: { c: Copy }) {
   );
 }
 
-const galleryFonts = builtinFamilies.map(({ family, scripts }) => ({
-  family,
-  hebrew: (scripts as readonly string[]).includes('he'),
-}));
+/** The library's fonts as a Hebrew deck is offered them. */
+const galleryFonts = builtinFamilies
+  .filter((entry) => familyForDeck(entry, 'he'))
+  .map(({ family, scripts }) => ({ family, sample: scripts.includes('he') }));
 
 /** A few of the fonts Windows ships, as the app would list the installed ones. */
 const installedFonts = [
-  { family: 'Arial', hebrew: true },
-  { family: 'Courier New', hebrew: true },
-  { family: 'David', hebrew: true },
+  { family: 'Arial', sample: true },
+  { family: 'Courier New', sample: true },
+  { family: 'David', sample: true },
   { family: 'Georgia' },
-  { family: 'Segoe UI', hebrew: true },
-  { family: 'Times New Roman', hebrew: true },
+  { family: 'Segoe UI', sample: true },
+  { family: 'Times New Roman', sample: true },
   { family: 'Wingdings', symbol: true },
 ];
 
@@ -836,6 +837,7 @@ function FontDemo({ c }: { c: Copy }) {
           { label: c.font.library, fonts: galleryFonts },
           { label: c.font.system, fonts: installedFonts },
         ]}
+        sample={c.fontSample}
         recent={['Rubik', 'Inter']}
         value={family}
         onValueChange={setFamily}

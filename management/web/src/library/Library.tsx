@@ -1,5 +1,8 @@
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { DisplayLang as Lang, Variant } from '../api';
+import { useLang, useT, type Translate } from '../i18n';
+import { isBase, nativeName } from '../languages';
+import { hasWords, loadWords } from './app';
 import { FileFacts, FilePreview, Files } from './Files';
 import { Fonts } from './Fonts';
 import { WhenSeen } from './Lazy';
@@ -26,6 +29,18 @@ const IconsPeek = lazy(() => import('./Icons').then((m) => ({ default: m.IconsPe
 export type { LibraryRoute };
 
 const OVERVIEW = 'overview';
+
+/** The parts whose names are searched in the language shown too, from the app's translations. */
+const TRANSLATED = new Set(['designs', 'templates', 'cards', 'shapes']);
+
+/** What the search of a part reads: paths, or names in Hebrew, English and the language shown. */
+function searchHint(section: string, lang: Lang, t: Translate): string {
+  if (section === 'files') return t('library.searchPath');
+  if (TRANSLATED.has(section) && !isBase(lang)) {
+    return t('library.searchInLanguage', { language: nativeName(lang) });
+  }
+  return t('library.searchDefault');
+}
 
 function totals(read: Manifest | undefined, section: Section) {
   let count = 0;
@@ -103,9 +118,10 @@ function Peek({ section, read }: { section: Section; read?: Manifest }) {
   );
 }
 
-const files = (count: number) => (count === 1 ? 'קובץ אחד' : `${count} קבצים`);
-
 function Overview({ go }: { go: (route: LibraryRoute) => void }) {
+  const t = useT();
+  const files = (count: number) =>
+    count === 1 ? t('library.fileOne') : t('library.fileMany', { count });
   const read = useRead(manifest, []);
   return (
     <div className="lib-grid overview">
@@ -122,10 +138,12 @@ function Overview({ go }: { go: (route: LibraryRoute) => void }) {
               <Peek section={section} read={read.value} />
             </WhenSeen>
             <span className="lib-card-body">
-              <span className="lib-card-title">{section.name}</span>
-              <span className="muted small">{section.about}</span>
+              <span className="lib-card-title">{t(section.nameKey)}</span>
+              <span className="muted small">{t(section.aboutKey)}</span>
               <span className="lib-card-meta small muted">
-                {read.value ? `${files(count)} · ${size(bytes)}` : '…'}
+                {read.value
+                  ? t('library.filesAndSize', { files: files(count), size: size(bytes) })
+                  : '…'}
               </span>
             </span>
           </button>
@@ -135,16 +153,16 @@ function Overview({ go }: { go: (route: LibraryRoute) => void }) {
   );
 }
 
-const published = (when?: string) =>
+const published = (t: Translate, locale: string, when?: string) =>
   when
-    ? new Date(when).toLocaleString('he-IL', {
+    ? new Date(when).toLocaleString(locale, {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
       })
-    : 'לא ידוע';
+    : t('library.publishedUnknown');
 
 /**
  * The media library as it is published: each of its parts, drawn as the app draws it, and every
@@ -166,8 +184,20 @@ export function Library({
   serverUrl?: string;
   onOpenVariant: (variant: Variant) => void;
 }) {
+  const t = useT();
+  const [uiLang] = useLang();
   const read = useRead(manifest, []);
   const section = sectionOf(route.section);
+  // A language is shown once the app's words in it are read; until then, the one before.
+  const [shown, setShown] = useState<Lang>(() => (hasWords(lang) ? lang : 'en'));
+  useEffect(() => {
+    let live = true;
+    const show = () => live && setShown(lang);
+    loadWords(lang).then(show, show);
+    return () => {
+      live = false;
+    };
+  }, [lang]);
   // What was searched for, in the part it was typed in: another part starts without it.
   const [search, setSearch] = useState({ section: route.section, text: '' });
   const query = search.section === route.section ? search.text : '';
@@ -178,7 +208,7 @@ export function Library({
   const other =
     serverUrl && serverUrl.replace(/\/?$/, '/') !== MEDIA_LIBRARY_URL ? serverUrl : undefined;
 
-  const props = { route, go, query, lang };
+  const props = { route, go, query, lang: shown };
   let content: ReactNode;
   switch (section?.id) {
     case 'designs':
@@ -220,14 +250,17 @@ export function Library({
 
   return (
     <div className="library">
-      <aside className="lib-nav" aria-label="חלקי הספרייה">
+      <aside className="lib-nav" aria-label={t('library.navLabel')}>
         <div className="lib-nav-head">
-          <h2>ספריית המדיה</h2>
+          <h2>{t('library.title')}</h2>
           <p className="muted small">
-            פורסמה: {published(read.value?.published)}
+            {t('library.publishedAt', { when: published(t, uiLang, read.value?.published) })}
             <br />
             {read.value
-              ? `${Object.keys(read.value.files).length} קבצים · ${size(totalBytes)}`
+              ? t('library.filesAndSize', {
+                  files: t('library.fileMany', { count: Object.keys(read.value.files).length }),
+                  size: size(totalBytes),
+                })
               : '…'}
           </p>
           <a className="small" href={MEDIA_LIBRARY_URL} target="_blank" rel="noreferrer" dir="ltr">
@@ -235,7 +268,7 @@ export function Library({
           </a>
           {other && (
             <p className="warn small">
-              השרת מפרסם ל-<span dir="ltr">{other}</span>; כאן מוצגת הספרייה שהאפליקציה קוראת.
+              {t('library.otherServer', { url: '\u2066' + other + '\u2069' })}
             </p>
           )}
         </div>
@@ -245,7 +278,7 @@ export function Library({
             aria-current={!section ? 'page' : undefined}
             onClick={() => go({ section: OVERVIEW })}
           >
-            סקירה
+            {t('library.overview')}
           </button>
           {SECTIONS.map((entry) => (
             <button
@@ -254,7 +287,7 @@ export function Library({
               aria-current={section?.id === entry.id ? 'page' : undefined}
               onClick={() => go({ section: entry.id })}
             >
-              {entry.name}
+              {t(entry.nameKey)}
             </button>
           ))}
         </nav>
@@ -262,19 +295,18 @@ export function Library({
           type="button"
           className="ghost small"
           onClick={() => location.reload()}
-          title="קורא שוב את הספרייה כפי שהיא מפורסמת עכשיו"
+          title={t('library.reloadHint')}
         >
-          ↻ רענון
+          {t('library.reload')}
         </button>
       </aside>
 
       <div className="lib-main">
         <header className="lib-head">
           <div>
-            <h2>{section?.name ?? 'סקירה'}</h2>
+            <h2>{section ? t(section.nameKey) : t('library.overview')}</h2>
             <p className="muted small">
-              {section?.about ??
-                'מה שהאפליקציה קוראת מהספרייה, חלק אחר חלק, מצויר במנוע ובקוד של האפליקציה עצמה.'}
+              {section ? t(section.aboutKey) : t('library.overviewAbout')}
             </p>
           </div>
           {section && (
@@ -283,13 +315,13 @@ export function Library({
               className="lib-search"
               value={query}
               onChange={(event) => setSearch({ section: route.section, text: event.target.value })}
-              placeholder={section.id === 'files' ? 'חיפוש לפי נתיב…' : 'חיפוש בעברית או באנגלית…'}
-              aria-label="חיפוש"
+              placeholder={searchHint(section.id, shown, t)}
+              aria-label={t('library.searchLabel')}
             />
           )}
         </header>
-        {read.error && <p className="error-text">לא ניתן לקרוא את הספרייה: {read.error}</p>}
-        <Suspense fallback={<p className="muted">טוען…</p>}>{content}</Suspense>
+        {read.error && <p className="error-text">{t('library.readFailed', { error: read.error })}</p>}
+        <Suspense fallback={<p className="muted">{t('library.loading')}</p>}>{content}</Suspense>
       </div>
 
       {section?.id === 'files' && route.item && (

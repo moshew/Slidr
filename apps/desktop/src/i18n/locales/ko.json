@@ -996,8 +996,7 @@
       "mine": "내 글꼴",
       "library": "Slidr 라이브러리",
       "system": "이 컴퓨터",
-      "hebrew": "히브리어 지원",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "{{language}} 지원",
       "empty": "해당 이름의 글꼴이 없습니다"
     },
     "mixed": "혼합"
@@ -1888,6 +1887,10 @@
         "title": "아래쪽의 빈 공간",
         "advice": "콘텐츠 아래로 슬라이드의 4분의 1 이상이 비어 있습니다. 콘텐츠를 아래로 넓게 배치하거나, 키우거나, 가운데에 맞추세요."
       },
+      "L18": {
+        "title": "내용보다 높은 카드",
+        "advice": "콘텐츠 위나 아래로 카드의 5분의 1 이상이 비어 있습니다. 카드를 내용에 맞게 줄이거나, 더 큰 글자, 이미지, 핵심 수치로 채우세요."
+      },
       "other": {
         "title": "디자인 문제",
         "advice": "이 버전의 앱에서 인식하지 못하는 규칙입니다."
@@ -2771,10 +2774,12 @@
       "blankBody": "기본 템플릿의 시작 슬라이드와 바로 사용할 수 있는 AI 채팅으로 시작합니다.",
       "load": "파일에서 열기",
       "loadBody": "Slidr 파일은 그대로 열리고, HTML 파일은 편집할 수 있는 슬라이드로 가져옵니다.",
-      "template": "템플릿으로 만들기",
+      "allTemplates": "모든 템플릿",
       "templateBody": "모든 주제에 맞게 디자인된 템플릿입니다. 선택하기 전에 모든 슬라이드를 미리 볼 수 있습니다.",
       "noTemplates": "라이브러리에 아직 템플릿이 없습니다.",
       "templates": "템플릿 선택",
+      "templatesBack": "뒤로",
+      "templateSlides": "{{name}}의 슬라이드",
       "create": "프레젠테이션 만들기",
       "recent": "최근 파일",
       "noRecentTitle": "최근 파일 없음",
@@ -2981,30 +2986,31 @@
       "closeSlides": "템플릿 슬라이드 닫기"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "흐름",
+      "shvil": "오솔길",
+      "tzuk": "절벽",
+      "lavan": "흰색",
+      "layla": "밤",
+      "zohar": "광채",
+      "migdal": "타워",
+      "gan": "정원",
+      "nof": "풍경",
+      "defus": "인쇄",
+      "ariach": "타일",
+      "bolet": "강렬",
+      "hod": "갈라",
+      "sirtut": "청사진",
+      "ziv": "반짝임",
+      "shidur": "온에어",
+      "bina": "뉴런",
+      "mifgash": "함께",
+      "kod": "코드",
+      "luach": "스프린트",
+      "anan": "하늘",
+      "magen": "파수꾼",
+      "shvav": "회로",
+      "mutzar": "론칭",
+      "atlas": "아틀라스"
     },
     "tagline": {
       "zerem": "짙푸른 밤에 청록빛이 빛나는, 움직이는 기술",
@@ -3030,7 +3036,8 @@
       "anan": "맑은 하늘과 아이소메트릭 다이어그램, 클라우드로 향하는 아키텍처를 위해",
       "magen": "짙은 올리브와 경고의 주황, 관제 화면처럼 정밀하게",
       "shvav": "회로 기판의 초록과 구리, 양산을 앞둔 하드웨어를 위해",
-      "mutzar": "제품 화면, 커서, 알림, 새 버전 출시를 위해"
+      "mutzar": "제품 화면, 커서, 알림, 새 버전 출시를 위해",
+      "atlas": "지도 종이 위의 지구본, 경로, 우표. 모든 언어로, 국경을 넘는 이야기를 위해"
     },
     "direction": {
       "title": "프레젠테이션 쓰기 방향",

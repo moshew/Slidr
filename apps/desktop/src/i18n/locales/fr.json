@@ -998,8 +998,7 @@
       "mine": "Mes polices",
       "library": "Bibliothèque Slidr",
       "system": "Sur cet ordinateur",
-      "hebrew": "Prend en charge l’hébreu",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "Prend en charge : {{language}}",
       "empty": "Aucune police de ce nom"
     },
     "mixed": "Mixte"
@@ -1900,6 +1899,10 @@
         "title": "Une bande vide en bas",
         "advice": "Un quart de la diapositive ou plus est vide sous le contenu. Étendez le contenu vers le bas, agrandissez-le ou centrez-le."
       },
+      "L18": {
+        "title": "Une carte plus haute que son contenu",
+        "advice": "Un cinquième de la carte ou plus est vide au-dessus ou au-dessous du contenu. Réduisez la carte à son contenu, ou remplissez-la : texte plus grand, image ou chiffre clé."
+      },
       "other": {
         "title": "Un problème de design",
         "advice": "Une règle que cette version de l’application ne connaît pas."
@@ -2783,10 +2786,12 @@
       "blankBody": "Une diapositive d’ouverture dans le modèle par défaut, avec la conversation IA ouverte et prête.",
       "load": "Charger un fichier",
       "loadBody": "Un fichier Slidr s’ouvre tel quel, et un fichier HTML est importé sous forme de diapositives modifiables.",
-      "template": "Créer à partir d’un modèle",
+      "allTemplates": "Tous les modèles",
       "templateBody": "Des modèles conçus pour tous les sujets. Découvrez chaque diapositive avant de choisir.",
       "noTemplates": "La bibliothèque ne contient encore aucun modèle.",
       "templates": "Choisir un modèle",
+      "templatesBack": "Retour",
+      "templateSlides": "Les diapositives de {{name}}",
       "create": "Créer la présentation",
       "recent": "Fichiers récents",
       "noRecentTitle": "Aucun fichier récent",
@@ -2993,30 +2998,31 @@
       "closeSlides": "Fermer les diapositives du modèle"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "Courant",
+      "shvil": "Sentier",
+      "tzuk": "Falaise",
+      "lavan": "Blanc",
+      "layla": "Nuit",
+      "zohar": "Éclat",
+      "migdal": "Tour",
+      "gan": "Jardin",
+      "nof": "Paysage",
+      "defus": "Presse",
+      "ariach": "Tuile",
+      "bolet": "Audace",
+      "hod": "Gala",
+      "sirtut": "Plan",
+      "ziv": "Reflet",
+      "shidur": "À l’antenne",
+      "bina": "Neurone",
+      "mifgash": "Ensemble",
+      "kod": "Code",
+      "luach": "Sprint",
+      "anan": "Ciel",
+      "magen": "Sentinelle",
+      "shvav": "Circuit",
+      "mutzar": "Lancement",
+      "atlas": "Atlas"
     },
     "tagline": {
       "zerem": "La technologie en mouvement, un turquoise lumineux sur une nuit bleu profond",
@@ -3042,7 +3048,8 @@
       "anan": "Un ciel dégagé et des schémas isométriques, pour une architecture en route vers le cloud",
       "magen": "Un vert olive sombre et un orange d’alerte, avec la précision d’un écran de contrôle",
       "shvav": "Le vert d’un circuit imprimé et le cuivre, pour du matériel en route vers la production",
-      "mutzar": "Fenêtres de produit, curseurs et notifications, pour le lancement d’une nouvelle version"
+      "mutzar": "Fenêtres de produit, curseurs et notifications, pour le lancement d’une nouvelle version",
+      "atlas": "Un globe, des itinéraires et des timbres-poste sur papier de carte, dans toutes les langues, pour ce qui traverse les frontières"
     },
     "direction": {
       "title": "Sens de la présentation",

@@ -18,12 +18,13 @@ export const ptBR: AtlasCopy = {
   agenda: {
     name: 'Pauta',
     title: 'O que vamos ver hoje',
-    intro: 'Vinte e cinco minutos e, depois, suas perguntas:',
+    intro:
+      'Vinte e cinco minutos sobre o que catorze cidades portuárias aprenderam este ano sobre reúso e dessalinização da água, e sobre o que vamos pedir a cada parceiro daqui em diante. Depois, suas perguntas.',
     items: [
-      'Onde a rede está depois de três anos',
-      'O projeto do ano: um porto que produz a própria água',
-      'Como uma cidade nova entra, em cinco passos',
-      'O que pedimos a cada parceiro em 2027',
+      ['A rede: ', 'onde as catorze cidades estão depois de três anos de trabalho conjunto.'],
+      ['O projeto do ano: ', 'um porto em Limassol que agora produz a própria água.'],
+      ['Como entrar: ', 'como uma cidade nova entra na rede, em cinco passos.'],
+      ['O próximo ano: ', 'o que pedimos a cada parceiro, e até quando.'],
     ],
   },
   figures: {

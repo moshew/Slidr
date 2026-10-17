@@ -1,3 +1,4 @@
+import { familyForDeck } from '@slidr/model';
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, cx, Icon, IconButton, ScrollArea } from '@slidr/ui';
@@ -138,6 +139,7 @@ export function FontsSection() {
   const { t } = useTranslation('fonts');
   const mine = useUserFonts();
   const assets = useDeck((s) => s.deck.assets);
+  const lang = useDeck((s) => s.deck.meta.lang);
   const installed = useSystemFonts();
   const [open, setOpen] = useState<Elsewhere | null>(null);
   const [adding, setAdding] = useState(false);
@@ -152,7 +154,11 @@ export function FontsSection() {
       ),
     [assets],
   );
-  const library = useMemo(() => builtinFamilies.map(({ family }) => family), []);
+  // As the font picker offers them to the open deck: its language's and English's.
+  const library = useMemo(
+    () => builtinFamilies.filter((entry) => familyForDeck(entry, lang)).map(({ family }) => family),
+    [lang],
+  );
   const system = useMemo(() => installed.map(({ family }) => family), [installed]);
   const toggle = (source: Elsewhere) => () => setOpen((now) => (now === source ? null : source));
 

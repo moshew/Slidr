@@ -89,6 +89,10 @@ const SAME_ROW = 0.02;
 const FOLLOWS = 2.5;
 /** Room left beside a one-line text in a shape, so that a box measured to its glyphs cannot wrap. */
 const SLACK = 2;
+/** How far from the glyphs of a text what stands beside it may be, in heights of its glyphs. */
+const NEAR = 2;
+/** How wide the one line of a text that marks a row may be, in heights of its glyphs. */
+const MARK = 3;
 
 const right = (f: Frame) => f.x + f.w;
 const bottom = (f: Frame) => f.y + f.h;
@@ -322,20 +326,37 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
   };
 
   /**
-   * What stands beside a text, on its lines: its number in a circle, its icon. Texts that
-   * each have one of their own are the rows of a list, and stay texts of their own: as the
-   * paragraphs of one box, a line more in one row would push every row after it away from
-   * what stands beside it. A title with a badge and the lines under it are still one text.
+   * A text that marks a row rather than says something: one short line, a number or a year,
+   * no wider than a few of its glyphs are tall.
+   */
+  const mark = (item: Item): boolean => {
+    const own = lines.get(item);
+    if (item.element.type !== 'text' || own?.length !== 1) return false;
+    return own[0]!.right - own[0]!.left <= MARK * glyphs(own[0]!);
+  };
+
+  /**
+   * What stands beside a text, on its lines and close to them: its number in a circle, its
+   * icon, its number set as a text of its own. Texts that each have one of their own are the
+   * rows of a list, and stay texts of their own: as the paragraphs of one box, a line more in
+   * one row would push every row after it away from what stands beside it. A title with a
+   * badge and the lines under it are still one text. A picture across the slide from the
+   * text, or a dot at its edge, stands beside nothing; nor does the next column of words.
    */
   const beside = (member: Member, siblings: readonly Part[]): Part[] => {
     const top = member.lines[0]!.top;
     const end = member.lines[member.lines.length - 1]!.bottom;
     const left = Math.min(...member.lines.map((l) => l.left));
     const far = Math.max(...member.lines.map((l) => l.right));
+    const near = NEAR * Math.max(...member.lines.map(glyphs));
     return siblings.filter((part) => {
-      if (part === member.part || (!part.group && part.item.element.type === 'text')) return false;
+      if (part === member.part) return false;
+      if (!part.group && part.item.element.type === 'text') {
+        if (!mark(part.item) && !mark(member.item)) return false;
+      }
       const box = extent(part);
       if (Math.min(right(box), far) - Math.max(box.x, left) > 0.5) return false;
+      if (Math.max(box.x - far, left - right(box)) > near) return false;
       const shared = Math.min(bottom(box), end) - Math.max(box.y, top);
       return shared > 0.5 * Math.min(box.h, end - top);
     });
@@ -470,9 +491,10 @@ export function compose(flat: readonly Item[], ctx: ComposeContext): Composition
       const open = runs
         .filter((run) => {
           if (!follows(run[run.length - 1]!, member)) return false;
-          // Rows that each have something of their own beside them are rows.
+          // Rows that each have something of their own beside them are rows, and the row a text
+          // starts does not take in the lines above it either: they would push it off its mark.
           const had = new Set(run.flatMap((m) => beside(m, parts)));
-          if (had.size > 0 && beside(member, parts).some((part) => !had.has(part))) return false;
+          if (beside(member, parts).some((part) => !had.has(part))) return false;
           const longer = [...run, member];
           const box = boxOf(longer);
           return box !== undefined && alone(longer, box, parts);

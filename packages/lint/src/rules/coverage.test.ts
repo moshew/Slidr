@@ -38,7 +38,7 @@ describe('L07: content that covers too little of the slide', () => {
         slideId: 's_1',
         elementIds: [],
         message:
-          'The content covers 9% of the content area: its bounding box is x 1314..1760, y 140..466, and at least 60% of the content area (the 1728x920px inside the safe margins) is required. Enlarge or spread out the content, or add a visual element, so the slide is filled.',
+          'The content covers 9% of the content area: its bounding box is x 1314..1760, y 140..466, and at least 60% of the content area (the 1728x920px inside the safe margins) is required. Enlarge or spread out the content, or add a visual element, so the slide is filled. A card stretched taller than what it holds does not fill it.',
       },
     ]);
   });

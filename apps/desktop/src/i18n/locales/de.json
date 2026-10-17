@@ -997,8 +997,7 @@
       "mine": "Meine Schriftarten",
       "library": "Slidr-Bibliothek",
       "system": "Auf diesem Computer",
-      "hebrew": "Unterstützt Hebräisch",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "Unterstützt {{language}}",
       "empty": "Keine Schriftart mit diesem Namen"
     },
     "mixed": "Gemischt"
@@ -1894,6 +1893,10 @@
         "title": "Leerer Streifen am unteren Rand",
         "advice": "Ein Viertel der Folie oder mehr ist unter dem Inhalt leer. Verteilen Sie den Inhalt nach unten, vergrößern Sie ihn oder zentrieren Sie ihn."
       },
+      "L18": {
+        "title": "Eine Karte, höher als ihr Inhalt",
+        "advice": "Ein Fünftel der Karte oder mehr ist über oder unter dem Inhalt leer. Verkleinern Sie die Karte auf ihren Inhalt oder füllen Sie sie: größere Schrift, ein Bild oder eine Kennzahl."
+      },
       "other": {
         "title": "Ein Designbefund",
         "advice": "Eine Regel, die diese Version der App nicht kennt."
@@ -2777,10 +2780,12 @@
       "blankBody": "Eine Eröffnungsfolie in der Standardvorlage, mit geöffnetem und bereitem KI-Chat.",
       "load": "Aus Datei laden",
       "loadBody": "Eine Slidr-Datei wird unverändert geöffnet, eine HTML-Datei als bearbeitbare Folien importiert.",
-      "template": "Aus Vorlage erstellen",
+      "allTemplates": "Alle Vorlagen",
       "templateBody": "Gestaltete Vorlagen für jedes Thema. Sehen Sie sich alle Folien an, bevor Sie sich entscheiden.",
       "noTemplates": "Die Bibliothek enthält noch keine Vorlagen.",
       "templates": "Vorlage auswählen",
+      "templatesBack": "Zurück",
+      "templateSlides": "Die Folien von {{name}}",
       "create": "Präsentation erstellen",
       "recent": "Zuletzt verwendete Dateien",
       "noRecentTitle": "Keine zuletzt verwendeten Dateien",
@@ -2987,30 +2992,31 @@
       "closeSlides": "Folien der Vorlage schließen"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "Strom",
+      "shvil": "Pfad",
+      "tzuk": "Klippe",
+      "lavan": "Weiß",
+      "layla": "Nacht",
+      "zohar": "Glanz",
+      "migdal": "Turm",
+      "gan": "Garten",
+      "nof": "Landschaft",
+      "defus": "Druck",
+      "ariach": "Kachel",
+      "bolet": "Markant",
+      "hod": "Gala",
+      "sirtut": "Bauplan",
+      "ziv": "Schimmer",
+      "shidur": "Auf Sendung",
+      "bina": "Neuron",
+      "mifgash": "Gemeinsam",
+      "kod": "Code",
+      "luach": "Sprint",
+      "anan": "Himmel",
+      "magen": "Wächter",
+      "shvav": "Platine",
+      "mutzar": "Startschuss",
+      "atlas": "Atlas"
     },
     "tagline": {
       "zerem": "Technik in Bewegung: Türkis, das in tiefblauer Nacht leuchtet",
@@ -3036,7 +3042,8 @@
       "anan": "Klarer Himmel und isometrische Diagramme – für Architektur auf dem Weg in die Cloud",
       "magen": "Dunkles Oliv und alarmierendes Orange, mit der Präzision eines Kontrolldisplays",
       "shvav": "Platinengrün und Kupfer – für Hardware auf dem Weg in die Serienfertigung",
-      "mutzar": "Produktfenster, Mauszeiger und Benachrichtigungen – für den Launch einer neuen Version"
+      "mutzar": "Produktfenster, Mauszeiger und Benachrichtigungen – für den Launch einer neuen Version",
+      "atlas": "Ein Globus, Routen und Briefmarken auf Landkartenpapier, in jeder Sprache – für alles, was Grenzen überschreitet"
     },
     "direction": {
       "title": "Richtung der Präsentation",

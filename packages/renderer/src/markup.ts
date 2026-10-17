@@ -244,7 +244,7 @@ export function frameDocument(
   }
   const body = ctx.theme.textStyles.body;
   const base = [
-    `:root { ${themeVariablesCss(ctx.theme)} }`,
+    `:root { ${themeVariablesCss(ctx.theme, ctx.lang)} }`,
     `html, body { margin: 0; padding: 0; width: ${size.w}px; height: ${size.h}px; overflow: hidden; background: transparent; }`,
     `body { font-family: var(--font-body); font-size: ${body.size}px; line-height: ${body.lineHeight}; color: ${colorCss(body.color)}; }`,
   ].join('\n');

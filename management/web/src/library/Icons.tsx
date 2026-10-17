@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
+import { useT } from '../i18n';
 import type { DisplayLang as Lang } from '../api';
+import type { MessageKey } from '../i18n';
 import { iconSearchModule, iconsModule } from './app';
 import { mediaUrl } from './media';
 import { ItemOverlay, stepper } from './Overlay';
@@ -17,10 +19,15 @@ const load = async () => {
 };
 
 /** The sets as the icon panel offers them: two line sets, and Tabler's filled icons. */
-const SETS = [
+const SETS: {
+  id: string;
+  name?: string;
+  nameKey?: MessageKey;
+  of: (icon: IconEntry) => boolean;
+}[] = [
   { id: 'lucide', name: 'Lucide', of: (icon: IconEntry) => icon.set === 'lucide' },
   { id: 'tabler', name: 'Tabler', of: (icon: IconEntry) => icon.set === 'tabler' && !icon.filled },
-  { id: 'tabler-filled', name: 'Tabler מלא', of: (icon: IconEntry) => icon.filled },
+  { id: 'tabler-filled', nameKey: 'library.icons.tablerFilled', of: (icon: IconEntry) => icon.filled },
 ];
 
 const FILES: Record<string, string[]> = {
@@ -62,6 +69,7 @@ function IconDetail({
   onClose: () => void;
   onStep?: (by: -1 | 1) => void;
 }) {
+  const t = useT();
   const svg = useRead(() => icons.iconMarkup(icon.id), [icons, icon.id]);
   const set = SETS.find((s) => s.of(icon));
   // The dictionary's Hebrew for the icon's words, as people type them.
@@ -72,7 +80,7 @@ function IconDetail({
       title={<span dir="ltr">{icon.name}</span>}
       subtitle={
         <>
-          <span dir="ltr">{icon.id}</span> · {set?.name}
+          <span dir="ltr">{icon.id}</span> · {set?.nameKey ? t(set.nameKey) : set?.name}
         </>
       }
       onClose={onClose}
@@ -80,21 +88,21 @@ function IconDetail({
       side={
         <>
           <section>
-            <h3>פרטים</h3>
+            <h3>{t('library.icons.details')}</h3>
             <dl className="facts">
               <dt>data-icon</dt>
               <dd dir="ltr">
                 <code>{icon.id}</code>
               </dd>
-              <dt>סגנון</dt>
-              <dd>{icon.filled ? 'מלא' : 'קווי'}</dd>
-              <dt>שם</dt>
+              <dt>{t('library.icons.style')}</dt>
+              <dd>{icon.filled ? t('library.icons.filled') : t('library.icons.outline')}</dd>
+              <dt>{t('library.icons.name')}</dt>
               <dd dir="ltr">{icon.nameWords.join(' ')}</dd>
-              <dt>תגיות</dt>
+              <dt>{t('library.icons.tags')}</dt>
               <dd dir="ltr">{icon.tagWords.join(', ') || '—'}</dd>
-              <dt>בעברית</dt>
+              <dt>{t('library.icons.inHebrew')}</dt>
               <dd>{inHebrew.join(', ') || '—'}</dd>
-              <dt>קבצים</dt>
+              <dt>{t('library.icons.files')}</dt>
               <dd dir="ltr">
                 {(FILES[set?.id ?? ''] ?? []).map((path) => (
                   <a
@@ -133,6 +141,7 @@ export function Icons({
   query: string;
   lang: Lang;
 }) {
+  const t = useT();
   const read = useRead(load, []);
   const set = SETS.find((s) => s.id === route.group);
   const found = useMemo(() => {
@@ -145,7 +154,7 @@ export function Icons({
   }, [read.value, set, query]);
 
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!read.value) return <p className="muted">טוען את האייקונים…</p>;
+  if (!read.value) return <p className="muted">{t('library.icons.loading')}</p>;
   const { icons, index, hebrew } = read.value;
   const ids = found.map((icon) => icon.id);
   const open = (id: string) => go({ ...route, item: id });
@@ -154,14 +163,14 @@ export function Icons({
   return (
     <>
       <div className="lib-filters">
-        <div className="chips" role="group" aria-label="ערכה">
+        <div className="chips" role="group" aria-label={t('library.icons.setLabel')}>
           <button
             type="button"
             className="chip"
             aria-pressed={!route.group}
             onClick={() => go({ section: 'icons' })}
           >
-            הכול <span className="muted">{index.length}</span>
+            {t('library.icons.all')} <span className="muted">{index.length}</span>
           </button>
           {SETS.map((s) => (
             <button
@@ -171,12 +180,12 @@ export function Icons({
               aria-pressed={route.group === s.id}
               onClick={() => go({ section: 'icons', group: s.id })}
             >
-              {s.name} <span className="muted">{index.filter(s.of).length}</span>
+              {s.nameKey ? t(s.nameKey) : s.name} <span className="muted">{index.filter(s.of).length}</span>
             </button>
           ))}
         </div>
       </div>
-      {found.length === 0 && <p className="muted">אין אייקונים שמתאימים לחיפוש.</p>}
+      {found.length === 0 && <p className="muted">{t('library.icons.noMatch')}</p>}
       <Paged
         key={`${route.group}:${query}`}
         items={found}

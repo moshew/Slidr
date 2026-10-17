@@ -15,6 +15,7 @@ import {
   en as templatesEn,
 } from '../../../../apps/desktop/src/templates/messages';
 import type { DisplayLang as Lang } from '../api';
+import { isBase } from '../languages';
 
 export const designsModule = () => import('../../../../apps/desktop/src/elements/designs');
 export const designAssetsModule = () =>
@@ -29,19 +30,49 @@ export const stickersModule = () => import('../../../../apps/desktop/src/element
 export const iconsModule = () => import('../../../../apps/desktop/src/media/icons/library');
 export const iconSearchModule = () => import('../../../../apps/desktop/src/media/icons/search');
 
-/** The app's words for the content of the library, in both languages of the studio. */
-export const messages = {
+type Words = Partial<Record<Lang, unknown>>;
+
+/**
+ * The app's words for the content of the library: Hebrew and English, and each other language
+ * once `loadWords` has read it.
+ */
+export const messages: Record<'elements' | 'objects' | 'templates', Words> = {
   elements: { he: elementsHe, en: elementsEn },
   objects: { he: objectsHe, en: objectsEn },
   templates: { he: templatesHe, en: templatesEn },
 };
 
-/** A name the app's messages give, by key, in a language; undefined when they give none. */
-export function named(table: Record<Lang, unknown>, lang: Lang, ...path: string[]) {
-  let at: unknown = table[lang];
+/** The app's translations, every namespace of a language in one file, read when it is chosen. */
+const translations = import.meta.glob<Record<string, unknown>>(
+  '../../../../apps/desktop/src/i18n/locales/*.json',
+  { import: 'default' },
+);
+
+/** Whether the app's words in a language are at hand. */
+export const hasWords = (lang: Lang) => messages.elements[lang] !== undefined;
+
+/** Reads the app's words in a language; a language the app has no translation for has none. */
+export async function loadWords(lang: Lang): Promise<void> {
+  if (hasWords(lang)) return;
+  const read = Object.entries(translations).find(([path]) => path.endsWith(`/${lang}.json`))?.[1];
+  const namespaces = read ? await read() : {};
+  for (const [namespace, table] of Object.entries(messages)) {
+    table[lang] = namespaces[namespace] ?? {};
+  }
+}
+
+function lookup(at: unknown, path: string[]) {
   for (const key of path) {
     if (typeof at !== 'object' || at === null) return undefined;
     at = (at as Record<string, unknown>)[key];
   }
   return typeof at === 'string' ? at : undefined;
+}
+
+/**
+ * A name the app's messages give, by key, in a language; undefined when they give none. A
+ * translation without the name gives the English one, as the app does.
+ */
+export function named(table: Words, lang: Lang, ...path: string[]) {
+  return lookup(table[lang], path) ?? (isBase(lang) ? undefined : lookup(table.en, path));
 }

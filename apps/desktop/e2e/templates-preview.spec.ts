@@ -136,8 +136,8 @@ for (const theme of ['light', 'dark'] as const) {
         await page.setViewportSize(viewport);
         await openTemplates(page, { lang, theme });
         for (const [id, name] of [
-          ['ariach', lang === 'he' ? 'אריח' : 'Ariach'],
-          ['shvil', lang === 'he' ? 'שביל' : 'Shvil'],
+          ['ariach', lang === 'he' ? 'אריח' : 'Tile'],
+          ['shvil', lang === 'he' ? 'שביל' : 'Trail'],
         ] as const) {
           await cover(page, id).click();
           await expect(slides(page)).toHaveAccessibleName(new RegExp(name));

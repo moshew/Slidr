@@ -998,8 +998,7 @@
       "mine": "Minhas fontes",
       "library": "Biblioteca do Slidr",
       "system": "Neste computador",
-      "hebrew": "Compatível com hebraico",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "Suporta {{language}}",
       "empty": "Nenhuma fonte com esse nome"
     },
     "mixed": "Misto"
@@ -1900,6 +1899,10 @@
         "title": "Faixa vazia na parte inferior",
         "advice": "Um quarto do slide ou mais está vazio abaixo do conteúdo. Distribua o conteúdo para baixo, aumente-o ou centralize-o."
       },
+      "L18": {
+        "title": "Cartão mais alto que o conteúdo",
+        "advice": "Um quinto do cartão ou mais está vazio acima ou abaixo do conteúdo. Ajuste o cartão ao conteúdo ou preencha-o: texto maior, uma imagem ou um número de destaque."
+      },
       "other": {
         "title": "Apontamento de design",
         "advice": "Uma regra que esta versão do aplicativo não conhece."
@@ -2783,10 +2786,12 @@
       "blankBody": "Um slide de abertura no modelo padrão, com o chat de IA aberto e pronto.",
       "load": "Carregar de um arquivo",
       "loadBody": "Um arquivo do Slidr abre como está, e um arquivo HTML é importado como slides editáveis.",
-      "template": "Criar a partir de um modelo",
+      "allTemplates": "Todos os modelos",
       "templateBody": "Modelos profissionais para todos os assuntos. Veja cada slide antes de escolher.",
       "noTemplates": "A biblioteca ainda não tem modelos.",
       "templates": "Escolha um modelo",
+      "templatesBack": "Voltar",
+      "templateSlides": "Os slides de {{name}}",
       "create": "Criar apresentação",
       "recent": "Arquivos recentes",
       "noRecentTitle": "Nenhum arquivo recente",
@@ -2993,30 +2998,31 @@
       "closeSlides": "Fechar os slides do modelo"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "Fluxo",
+      "shvil": "Trilha",
+      "tzuk": "Penhasco",
+      "lavan": "Branco",
+      "layla": "Noite",
+      "zohar": "Brilho",
+      "migdal": "Torre",
+      "gan": "Jardim",
+      "nof": "Paisagem",
+      "defus": "Impressão",
+      "ariach": "Mosaico",
+      "bolet": "Ousado",
+      "hod": "Gala",
+      "sirtut": "Planta",
+      "ziv": "Reflexo",
+      "shidur": "No ar",
+      "bina": "Neurônio",
+      "mifgash": "Juntos",
+      "kod": "Código",
+      "luach": "Sprint",
+      "anan": "Céu",
+      "magen": "Sentinela",
+      "shvav": "Circuito",
+      "mutzar": "Lançamento",
+      "atlas": "Atlas"
     },
     "tagline": {
       "zerem": "Tecnologia em movimento, turquesa brilhando em uma noite azul-profunda",
@@ -3042,7 +3048,8 @@
       "anan": "Céu limpo e diagramas isométricos, para uma arquitetura a caminho da nuvem",
       "magen": "Verde-oliva escuro e laranja de alerta, com a precisão de uma tela de controle",
       "shvav": "Verde de placa de circuito e cobre, para um hardware a caminho da produção",
-      "mutzar": "Janelas de produto, cursores e notificações, para o lançamento de uma nova versão"
+      "mutzar": "Janelas de produto, cursores e notificações, para o lançamento de uma nova versão",
+      "atlas": "Um globo, rotas e selos postais sobre papel de mapa, em todos os idiomas, para o que atravessa fronteiras"
     },
     "direction": {
       "title": "Direção da apresentação",

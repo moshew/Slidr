@@ -13,7 +13,7 @@ import { applyLibraryTemplate, showNumber } from './actions';
 import { library } from './app';
 import type { LibraryEntry } from './library';
 import { templateName, templateTagline } from './names';
-import { PreviewGrid, useLaidOutSize, usePreviewLayers } from './PreviewGrid';
+import { PreviewGrid, useLaidOutSize, useLike, usePreviewLayers } from './PreviewGrid';
 
 /*
  * The slides that show a template, spread over the editor: for a built-in template its sample
@@ -66,15 +66,15 @@ function Slides({
 }) {
   const { t, i18n } = useTranslation('templates');
   const editor = useEditor();
-  const like = useDeck((s) => s.deck);
-  const current = like.theme.id === entry.template.theme.id;
+  const deck = useDeck((s) => s.deck);
+  const current = deck.theme.id === entry.template.theme.id;
   const space = useRef<HTMLDivElement>(null);
   const size = useLaidOutSize(space);
   // Whether the card had opened when the slides came: those that come into it after it opened
   // fade in; the first come in with it.
   const wasOpened = useRef(false);
-  // The preview follows the deck's direction and language, not every edit of the deck.
-  const { shown, leaving, entering } = usePreviewLayers(entry, like, wasOpened);
+  // The slides are in the UI language and its direction, as the cover is, not the deck's.
+  const { shown, leaving, entering } = usePreviewLayers(entry, useLike(), wasOpened);
   // The first slides are put in the card while it is not seen yet, and it opens once their charts
   // are drawn too: a chart's library draws it a moment after its slide. A card whose slides are
   // slow to come opens without them.
@@ -112,11 +112,11 @@ function Slides({
   // Whether the slides show their number once the template is applied: as the deck has it, until
   // the user chooses. On the template the deck is already on, the choice is the deck's own, and
   // takes effect at once. A template that draws no number offers no choice.
-  const [numbers, setNumbers] = useState(() => !slideNumberHidden(like));
+  const [numbers, setNumbers] = useState(() => !slideNumberHidden(deck));
   const drawsNumber = entry.template.layouts.some((layout) =>
     layout.decorations.some((decoration) => decoration.role === 'slideNumber'),
   );
-  const shownNumbers = current ? !slideNumberHidden(like) : numbers;
+  const shownNumbers = current ? !slideNumberHidden(deck) : numbers;
   const chooseNumbers = (on: boolean) => {
     setNumbers(on);
     if (current) showNumber(editor, on, t('undo.number'));

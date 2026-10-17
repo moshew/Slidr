@@ -20,12 +20,13 @@ export const id: AtlasCopy = {
   agenda: {
     name: 'Agenda',
     title: 'Agenda hari ini',
-    intro: 'Dua puluh lima menit, lalu sesi tanya jawab:',
+    intro:
+      'Dua puluh lima menit tentang apa yang dipelajari empat belas kota pelabuhan tahun ini soal penggunaan ulang dan desalinasi air, serta apa yang akan kami minta dari setiap mitra berikutnya. Lalu sesi tanya jawab.',
     items: [
-      'Posisi jaringan setelah tiga tahun',
-      'Proyek tahun ini: pelabuhan yang membuat airnya sendiri',
-      'Cara kota baru bergabung, dalam lima langkah',
-      'Yang kami minta dari setiap mitra pada 2027',
+      ['Jaringan: ', 'posisi empat belas kota setelah tiga tahun bekerja bersama.'],
+      ['Proyek tahun ini: ', 'pelabuhan di Limassol yang kini membuat airnya sendiri.'],
+      ['Bergabung: ', 'cara kota baru bergabung dengan jaringan, dalam lima langkah.'],
+      ['Tahun depan: ', 'apa yang kami minta dari setiap mitra, dan kapan tenggatnya.'],
     ],
   },
   figures: {

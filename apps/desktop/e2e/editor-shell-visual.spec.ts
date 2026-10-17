@@ -43,8 +43,8 @@ for (const theme of themes) {
         await page.addInitScript((l) => localStorage.setItem('slidr.language', l), lang);
         await page.goto('/?welcome');
         await expect(page.getByTestId('welcome')).toBeVisible();
-        // The fan of covers over "Create from template" is drawn before the picture is taken.
-        await expect(page.locator('.welcome-fan-card .slidr-slide')).toHaveCount(3);
+        // The covers in the row of slides are drawn before the picture is taken.
+        await expect(page.locator('.welcome-tile-art .slidr-slide')).toHaveCount(3);
         await settle(page);
         await page.screenshot({ path: out(`welcome-${tag}`) });
 

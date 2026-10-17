@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -12,7 +13,7 @@ import pytest
 from PIL import Image
 from pydantic import ValidationError
 
-from slidr_manager import claude_cli, codex_cli, languages, prompts
+from slidr_manager import claude_cli, codex_cli, languages, prompts, template_prompts, templates
 from slidr_manager.app import NewRequest
 from slidr_manager.config import REPO, Settings
 from slidr_manager.events import EventBus
@@ -20,6 +21,7 @@ from slidr_manager.instructions import Instructions
 from slidr_manager.library import Library, LibraryError, empty_catalog, merge_design, to_webp
 from slidr_manager.pipeline import Studio, StudioError, has_errors, slugify, unique_id, watched
 from slidr_manager.store import Store, write_json
+from slidr_manager.templates import Templates
 
 BASE = ["he", "en"]
 
@@ -234,10 +236,17 @@ def test_findings_and_renders_of_every_chosen_language_reach_the_prompts():
 
 
 FONTS = [
-    {"family": "Heebo", "scripts": ["he", "latin"]},
-    {"family": "Rubik", "scripts": ["he", "latin", "cyrillic", "arabic"]},
-    {"family": "Inter", "scripts": ["latin", "cyrillic", "vietnamese"]},
-    {"family": "Poppins", "scripts": ["latin", "devanagari"]},
+    {"family": "Heebo", "scripts": ["he", "latin"], "for": ["he"],
+     "counterparts": {"arabic": "Cairo", "cyrillic": "Inter"}},
+    {"family": "Rubik", "scripts": ["he", "latin", "cyrillic", "arabic"], "for": ["he", "latin", "arabic"]},
+    {"family": "Inter", "scripts": ["latin", "cyrillic", "vietnamese"], "for": ["latin"],
+     "counterparts": {"he": "Heebo", "arabic": "Cairo", "devanagari": "Poppins"}},
+    {"family": "Playfair Display", "scripts": ["latin", "cyrillic"], "for": ["latin"],
+     "counterparts": {"he": "Frank Ruhl Libre", "arabic": "Amiri", "devanagari": "Poppins"}},
+    {"family": "Poppins", "scripts": ["latin", "devanagari"], "for": ["latin", "devanagari"]},
+    {"family": "Cairo", "scripts": ["latin", "arabic"], "for": ["arabic"],
+     "counterparts": {"he": "Rubik", "cyrillic": "Inter"}},
+    {"family": "Noto Sans JP", "scripts": ["latin", "cyrillic", "japanese"], "for": ["japanese"]},
 ]
 APP = {"design": "## Design guidelines\nDG", "html": "## Writing a slide as HTML\nHC"}
 
@@ -245,8 +254,9 @@ APP = {"design": "## Design guidelines\nDG", "html": "## Writing a slide as HTML
 def test_system_prompt_carries_the_apps_instructions():
     fonts = [{"family": "Heebo", "scripts": ["he", "latin"]}, {"family": "Inter", "scripts": ["latin"]}]
     text = prompts.system_prompt(APP, "QUALITY", fonts, BASE, with_html=True)
+    # A catalog that does not say what a family is made for lists a family's own letters first.
     for part in ("QUALITY", "DG", "HC", "data-asset=\"__subject__\"", "Hebrew (`he.html`): Heebo",
-                 "Latin (`en.html`): Heebo, Inter"):
+                 "Latin (`en.html`): Inter"):
         assert part in text
     plan = prompts.system_prompt(APP, "QUALITY", fonts, BASE, with_html=False)
     assert "HC" not in plan and "## This folder" not in plan
@@ -274,12 +284,21 @@ def test_prompts_name_exactly_the_files_of_the_chosen_languages(langs: list[str]
 
 def test_fonts_by_the_letters_of_the_chosen_languages():
     text = prompts.system_prompt(APP, "Q", FONTS, ["he", "en", "ar", "ru", "hi", "ja", "ko"], with_html=True)
-    assert "- Arabic (`ar.html`): Rubik" in text
-    assert "- Cyrillic (`ru.html`): Rubik, Inter" in text
+    # A family of a language is made for its letters, or for Latin ones and has its letters.
+    assert "- Hebrew (`he.html`): Heebo, Rubik" in text
+    assert "- Latin (`en.html`): Rubik, Inter, Playfair Display, Poppins" in text
+    assert "- Arabic (`ar.html`): Rubik, Cairo" in text
+    assert "- Cyrillic (`ru.html`): Rubik, Inter, Playfair Display" in text
     assert "- Devanagari (`hi.html`): Poppins" in text
-    assert "- Japanese (`ja.html`): none" in text
-    assert "No family of the library has Japanese or Korean letters. In `ja.html` and `ko.html`" in text
-    assert "Yu Gothic for Japanese and Malgun Gothic for Korean" in text
+    assert "- Japanese (`ja.html`): Noto Sans JP" in text
+    # The families the English file may use, by their counterparts in each language.
+    assert "- In `ar.html`: Heebo → Cairo, Inter → Cairo, Playfair Display → Amiri" in text
+    assert "- In `he.html`: Inter → Heebo, Playfair Display → Frank Ruhl Libre" in text
+    assert "- In `hi.html`: Inter → Poppins, Playfair Display → Poppins" in text
+    assert "Never one family for every text of a file" in text
+    assert "- Korean (`ko.html`): none" in text
+    assert "No family of the library has Korean letters. In `ko.html`" in text
+    assert "Malgun Gothic for Korean" in text and "Yu Gothic" not in text
     # A family of the library, then the generic family the app's runs end in: nothing else.
     assert "`font-family: 'Inter', sans-serif`" in text and "Name no system font" in text
     assert "Nirmala UI" not in text
@@ -362,12 +381,15 @@ def test_a_request_is_made_in_hebrew_and_english_unless_more_are_chosen():
 # ---------------------------------------------------------------- variants in more languages
 
 
-def _studio(tmp_path: Path) -> tuple[Studio, Store, Library]:
+def _studio(tmp_path: Path, media: Path | None = None) -> tuple[Studio, Store, Library]:
     settings = Settings(data=tmp_path)
+    if media is not None:
+        settings.media_dir = media
     bus = EventBus()
     store = Store(settings.requests_dir, bus)
-    library = Library(settings, store, bus)
-    return Studio(settings, store, Instructions(settings), library), store, library
+    templates = Templates(settings)
+    library = Library(settings, store, bus, templates)
+    return Studio(settings, store, Instructions(settings), library, templates), store, library
 
 
 BRIEF = {"id": "m-x", "name": {"he": "שם", "en": "Name"}, "group": "g", "groupName": {"he": "ק", "en": "G"}}
@@ -389,7 +411,7 @@ def test_a_variant_is_rendered_in_the_languages_of_its_request(tmp_path: Path):
     data = studio.render_input(variant["id"])
     assert data["languages"] == ["he", "en", "ar", "ja"]
     assert list(data["html"]) == ["he", "en", "ar", "ja"] and "日本語" in data["html"]["ja"]
-    assert watched(data["languages"]) == ["he.html", "en.html", "ar.html", "ja.html", "brief.json"]
+    assert watched(variant, data["languages"]) == ["he.html", "en.html", "ar.html", "ja.html", "brief.json"]
 
 
 def test_a_variant_from_before_the_choice_is_hebrew_and_english(tmp_path: Path):

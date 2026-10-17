@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useT } from '../i18n';
 import { mediaJson } from './media';
 import { useRead } from './shared';
 
@@ -12,7 +13,7 @@ export function Markup({ svg, className }: { svg: string | undefined; className?
   return <span className={className} dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
-/** A grid of many tiles, shown a page at a time. */
+/** A grid of many tiles, shown a page at a time: the next page comes as the end comes near. */
 export function Paged<T>({
   items,
   render,
@@ -23,14 +24,25 @@ export function Paged<T>({
   className?: string;
 }) {
   const [shown, setShown] = useState(PAGE);
+  const end = useRef<HTMLDivElement>(null);
+  const more = items.length > shown;
+  useEffect(() => {
+    const element = end.current;
+    if (!element || !more) return;
+    // Observed afresh after each page: an end still in sight after one page brings the next.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setShown(shown + PAGE);
+      },
+      { rootMargin: '0px 0px 800px 0px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [shown, more]);
   return (
     <>
       <div className={className}>{items.slice(0, shown).map(render)}</div>
-      {items.length > shown && (
-        <button type="button" className="link" onClick={() => setShown(shown + PAGE * 2)}>
-          הצג עוד ({items.length - shown} נוספים)
-        </button>
-      )}
+      {more && <div ref={end} aria-hidden />}
     </>
   );
 }
@@ -46,9 +58,10 @@ interface Notice {
 
 /** The licence notice published beside a file of the library (`<name>.notice.json`). */
 export function NoticeFacts({ path }: { path: string }) {
+  const t = useT();
   const notice = useRead(() => mediaJson<Notice>(path), [path]);
-  if (notice.error) return <p className="muted small">אין הודעת רישיון ({path}).</p>;
-  if (!notice.value) return <p className="muted small">טוען…</p>;
+  if (notice.error) return <p className="muted small">{t('library.svg.noNotice', { path })}</p>;
+  if (!notice.value) return <p className="muted small">{t('library.loading')}</p>;
   return (
     <>
       <dl className="facts" dir="ltr">
@@ -77,7 +90,7 @@ export function NoticeFacts({ path }: { path: string }) {
       </dl>
       {notice.value.text && (
         <details>
-          <summary>נוסח הרישיון</summary>
+          <summary>{t('library.svg.licenseText')}</summary>
           <pre className="file-text small" dir="ltr">
             {notice.value.text}
           </pre>

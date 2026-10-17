@@ -39,6 +39,13 @@ export const DESIGN = `## Design guidelines
 
 A slide is read in a few seconds by someone also listening to a speaker. Use the surface deliberately. The title and text layouts intentionally leave open space; other slides need a clear visual composition.
 
+**The bar: stunning, not just tidy**
+- A deck should impress at first sight: art-directed, striking and memorable, like the keynote of a product launch or the work of a leading studio. Clean and correct is the floor, not the goal. A flat background, a title and a few boxes is a wireframe, even when every check passes.
+- Before the first slide, give the deck a visual concept drawn from its subject: a mood, a palette with one confident accent, and a signature motif (a shape, a line, a glow, a way of cropping photos) that returns on every slide and binds them together.
+- Every slide has one bold move as its focal point: a headline or a number at display size, a dramatic full-bleed crop, an illustration or diagram drawn for this content, a composition with real depth.
+- A style the user names (futuristic, neon, glassmorphism, brutalism, 3D, corporate) is carried through in full, with its signature techniques, so it is recognisable at a glance; asked for several, give each slide its own. A business deck impresses by precision: KPI figures at display size, a chart with the series that matters highlighted, tables with rhythm.
+- Ambition never costs legibility: decoration stays clear of text and faces, contrast still passes, and the hierarchy still reads in one second.
+
 **Canvas and grid**
 - The canvas is 1920×1080. Text stays inside the safe margins, 96px at the sides and 80px at the top and bottom, which leaves a content area of 1728×920: projectors and video calls crop edges, and text against an edge looks like a mistake.
 - Lay content out on a 12-column grid with 24px gutters. The base spacing unit is 8px and every gap is a multiple of it. Regular spacing is most of what makes a slide look deliberate.
@@ -47,7 +54,7 @@ A slide is read in a few seconds by someone also listening to a speaker. Use the
 **Using the surface**
 - Except for the intentionally sparse title and text layouts, content fills the content area: the bounding box of meaningful elements covers at least 70% of it.
 - No dead zone. An empty quarter of the slide with no design intent behind it is a flaw: white space is a decision, not a remainder.
-- Fill by composing, not by stretching. A card taller than what it holds, its lower half empty, is a dead zone with a border around it; so is content pushed up under the title with a third of the slide bare below it. Give each block the height its content needs, then use the room that is left: larger type and numbers, a second row, a supporting visual, or the whole block centred in the space under the title. A quick test: under a title at the top, the content should end within about 100px of the bottom margin (near y 900 to 1000), or sit centred in that space on purpose.
+- Fill by composing, not by stretching. A card taller than what it holds is a dead zone with a border around it; so is content pushed up under the title with a third of the slide bare below it. Never give cards a fixed height that reaches for the bottom margin: a card is as tall as its content and padding. Plan the room first: an icon, a heading and two lines stand about 350px tall and leave half the slide. Fill it with content: larger type and numbers, a picture or a key figure in each card, a second row, a supporting visual, or the block centred under the title. Cards of a line or two may need no boxes. Under a title at the top, the content itself, not an empty box, should reach near y 900, or sit centred in that space on purpose.
 - Balance: the visual centre of gravity is near the centre of the slide, unless the layout is asymmetric on purpose and a counterweight balances it.
 - Images fill their frames (cover). They do not sit small in the middle of empty space.
 
@@ -68,7 +75,7 @@ A slide is read in a few seconds by someone also listening to a speaker. Use the
 **A modern visual language**
 - Big, bold titles. Big images, preferably full-bleed, with a darkening overlay that keeps the text on them readable.
 - Colour discipline, 60/30/10: background, surfaces, accent. One accent colour, used sparingly, so that it still means something where it appears.
-- Depth: cards with one consistent radius and a soft shadow, subtle gradients, decorative shapes at low opacity.
+- Depth, in layers: a background with life in it (a photo, a gradient field, a subtle pattern), a middle layer of shapes, glows, lines or glass panels, and the content on top. CSS has the tools: layered gradients, \`backdrop-filter: blur()\` for glass, glows with \`box-shadow\` and \`drop-shadow()\`, \`mix-blend-mode\`, \`clip-path\` and \`mask-image\` for shaped photos and fades, \`transform\` for angle and perspective (on shapes and pictures, not text), oversized or outlined type, inline SVG illustration. Use them for the concept, not as a sampler. Cards share one radius and one soft shadow.
 - One style of icons and one style of images for the whole deck (the deck's \`image_style\`).
 - Variety: no more than two consecutive slides of the same archetype.
 
@@ -95,5 +102,5 @@ A slide may go without a visual element (an image, a chart, an icon, a meaningfu
 - Does the hierarchy read in one second: title, main point, details?
 - Do imagery, typography and purposeful layers carry the message at the reference's level of detail?
 - Is the text short enough to read from a distance?
-- Is it publication-ready, distinct and written with original copy?
+- Would it impress at first sight, and is it publication-ready, distinct and written with original copy?
 - At full size and thumbnail, are direction, alignment, crops and clipping correct?`;

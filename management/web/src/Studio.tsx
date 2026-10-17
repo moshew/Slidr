@@ -1,10 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { api, isRunning, useStudio, type DisplayLang, type ServerStatus } from './api';
+import { api, isRunning, isTemplate, useStudio, type ServerStatus } from './api';
+import { useLang, useT } from './i18n';
+import { LanguagePicker } from './languages';
 import type { LibraryRoute } from './library/shared';
 import './library/library.css';
 import { PublishPanel } from './PublishPanel';
 import { RequestForm } from './RequestForm';
 import { RequestView } from './RequestView';
+import { TemplateVariantDetail } from './TemplateVariantDetail';
 import { VariantDetail } from './VariantDetail';
 
 // The browser of the published library, loaded when it is first opened.
@@ -57,6 +60,7 @@ function hashOf(route: Route): string {
 }
 
 function Programs({ status }: { status?: ServerStatus }) {
+  const t = useT();
   if (!status) return null;
   return (
     <div className="programs">
@@ -71,7 +75,7 @@ function Programs({ status }: { status?: ServerStatus }) {
       ))}
       {!status.media.exists && (
         <span className="chip bad" title={status.media.dir}>
-          ○ עותק הספרייה
+          ○ {t('shell.mediaCopyMissing')}
         </span>
       )}
     </div>
@@ -83,8 +87,9 @@ export function Studio() {
   const studio = useStudio();
   const [route, setRoute] = useState(readHash);
   const openVariant = route.variant;
-  // Every design is made in Hebrew and English; one made in more shows them in its detail view.
-  const [lang, setLang] = useState<DisplayLang>('he');
+  // Every design is made in Hebrew and English; a language it lacks shows none of it.
+  const [lang, setLang] = useLang();
+  const t = useT();
   const [status, setStatus] = useState<ServerStatus>();
   const [publishing, setPublishing] = useState(false);
 
@@ -141,37 +146,34 @@ export function Studio() {
           </span>
           <div>
             <h1>Slidr Studio</h1>
-            <p>עיצובים מוכנים ל-Elements · Claude, Codex ו-Cloudflare</p>
+            <p>{t('shell.subtitle')}</p>
           </div>
         </div>
         <div className="topbar-actions">
           <Programs status={status} />
-          {!studio.connected && <span className="chip bad">מנותק מהשרת</span>}
-          <div className="segmented" role="group" aria-label="שפת התצוגה">
-            <button type="button" aria-pressed={lang === 'he'} onClick={() => setLang('he')}>
-              עברית
-            </button>
-            <button type="button" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
-              English
-            </button>
-          </div>
+          {!studio.connected && <span className="chip bad">{t('shell.disconnected')}</span>}
+          <LanguagePicker lang={lang} onChange={setLang} label={t('shell.displayLanguage')} />
           <button
             type="button"
             className={approved.length || publishBusy ? 'primary' : ''}
             onClick={() => setPublishing(true)}
           >
-            {publishBusy ? 'מפרסם…' : `פרסום${approved.length ? ` · ${approved.length}` : ''}`}
+            {publishBusy
+              ? t('shell.publishing')
+              : approved.length
+                ? t('shell.publishCount', { count: approved.length })
+                : t('shell.publish')}
           </button>
         </div>
       </header>
 
-      <nav className="tabs" aria-label="בקשות">
+      <nav className="tabs" aria-label={t('shell.requestsTabs')}>
         <button
           type="button"
           className="tab library-tab"
           aria-current={route.lib ? 'page' : undefined}
           onClick={() => go({ tab: LIBRARY, lib: { section: 'overview' } })}
-          title="מה שפורסם בספריית המדיה"
+          title={t('shell.libraryTitle')}
         >
           <svg aria-hidden viewBox="0 0 24 24" className="tab-icon">
             <path
@@ -183,7 +185,7 @@ export function Studio() {
               strokeLinejoin="round"
             />
           </svg>
-          ספרייה
+          {t('shell.library')}
         </button>
         <span className="tabs-divider" aria-hidden />
         {requests.map((request) => {
@@ -219,13 +221,13 @@ export function Studio() {
           aria-current={tab === NEW ? 'page' : undefined}
           onClick={() => go({ tab: NEW })}
         >
-          + בקשה חדשה
+          {t('shell.newRequest')}
         </button>
       </nav>
 
       <main>
         {route.lib ? (
-          <Suspense fallback={<p className="muted">טוען את הספרייה…</p>}>
+          <Suspense fallback={<p className="muted">{t('shell.loadingLibrary')}</p>}>
             <Library
               route={route.lib}
               go={(lib) => go({ tab: LIBRARY, lib })}
@@ -236,7 +238,7 @@ export function Studio() {
             />
           </Suspense>
         ) : !studio.loaded ? (
-          <p className="muted">טוען…</p>
+          <p className="muted">{t('shell.loading')}</p>
         ) : tab === NEW || !active ? (
           <RequestForm onCreated={(request) => go({ tab: request.id })} />
         ) : (
@@ -251,14 +253,21 @@ export function Studio() {
         )}
       </main>
 
-      {detail && (
-        <VariantDetail
-          key={detail.id}
-          variant={detail}
-          lang={lang}
-          onClose={() => go({ tab: detail.requestId })}
-        />
-      )}
+      {detail &&
+        (isTemplate(detail) ? (
+          <TemplateVariantDetail
+            key={detail.id}
+            variant={detail}
+            onClose={() => go({ tab: detail.requestId })}
+          />
+        ) : (
+          <VariantDetail
+            key={detail.id}
+            variant={detail}
+            lang={lang}
+            onClose={() => go({ tab: detail.requestId })}
+          />
+        ))}
       {publishing && (
         <PublishPanel
           publish={studio.publish}

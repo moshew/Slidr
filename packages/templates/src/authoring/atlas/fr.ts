@@ -23,12 +23,13 @@ export const fr: AtlasCopy = {
   agenda: {
     name: 'Ordre du jour',
     title: 'Au programme aujourd’hui',
-    intro: `Vingt-cinq minutes, puis vos questions${N}:`,
+    intro:
+      'Vingt-cinq minutes sur ce que quatorze villes portuaires ont appris cette année sur la réutilisation et le dessalement de l’eau, et sur ce que nous demanderons ensuite à chaque partenaire. Puis vos questions.',
     items: [
-      'Où en est le réseau après trois ans',
-      `Le projet de l’année${N}: un port qui produit sa propre eau`,
-      'Comment une nouvelle ville nous rejoint, en cinq étapes',
-      'Ce que nous demandons à chaque partenaire en 2027',
+      [`Le réseau${N}: `, 'où en sont les quatorze villes après trois ans de travail commun.'],
+      [`Le projet de l’année${N}: `, 'un port de Limassol qui produit désormais sa propre eau.'],
+      [`Nous rejoindre${N}: `, 'comment une nouvelle ville entre dans le réseau, en cinq étapes.'],
+      [`L’année à venir${N}: `, 'ce que nous demandons à chaque partenaire, et pour quand.'],
     ],
   },
   figures: {

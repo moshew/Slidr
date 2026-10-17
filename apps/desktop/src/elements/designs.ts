@@ -5,6 +5,7 @@ import {
   languagesOf,
   pieceLanguage,
   walkElements,
+  writtenIn,
   type AssetMeta,
   type ContentLanguage,
   type Command,
@@ -55,6 +56,14 @@ export function designLanguages(id: DesignId): ContentLanguage[] {
   return languagesOf(catalog.slides[id] ?? {});
 }
 
+/** Whether a design is drawn in `lang`: an interface in that language offers only those. */
+export const designIn = (id: DesignId, lang: string): boolean =>
+  writtenIn(catalog.slides[id] ?? {}, lang) !== undefined;
+
+/** The designs of a group drawn in `lang`, in their order. */
+export const designsIn = (group: DesignGroup, lang: string): DesignId[] =>
+  designsOf(group).filter((id) => designIn(id, lang));
+
 /**
  * The language a deck in `lang` gets a design in: its own when the design is drawn in it, else
  * English, drawn left to right as it was composed.
@@ -92,11 +101,15 @@ export function designPreview(id: DesignId, lang: string) {
   return { slide, deck, resolveAsset: designAssetUrl };
 }
 
-/** Adds the imported pictures and a fresh slide together, in one undo step. */
+/**
+ * Adds the imported pictures and a fresh slide together, in one undo step. The slide is the
+ * design in `lang`, the language it was shown in, which need not be the deck's.
+ */
 export function insertDesign(
   bus: CommandBus,
   selection: SelectionStore,
   id: DesignId,
+  lang: string,
   name: string,
   historyLabel: string,
   asset: AssetMeta,
@@ -104,7 +117,7 @@ export function insertDesign(
 ): Slide {
   const current = selection.getState().currentSlideId;
   const position = bus.deck.slides.findIndex((candidate) => candidate.id === current);
-  const added = designSlide(id, bus.deck.meta.lang, asset.id, backdrop?.id);
+  const added = designSlide(id, lang, asset.id, backdrop?.id);
   added.name = name;
   const pictures = backdrop && backdrop.id !== asset.id ? [asset, backdrop] : [asset];
   const commands: Command[] = [

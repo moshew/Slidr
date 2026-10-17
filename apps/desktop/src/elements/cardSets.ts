@@ -4,7 +4,10 @@ import {
   createDeck,
   createElement,
   createSlide,
+  languageDir,
   newId,
+  plainText,
+  walkElements,
   type Deck,
   type Direction,
   type Element,
@@ -27,6 +30,8 @@ export const readingOf = (meta: { lang: string; dir: Direction }): Reading => ({
   he: meta.lang.toLowerCase().startsWith('he'),
   rtl: meta.dir === 'rtl',
 });
+/** The reading of a new set in a language: its words, and its cards from the side it reads from. */
+export const readingIn = (lang: string): Reading => readingOf({ lang, dir: languageDir(lang) });
 
 interface CardSetDesign {
   starts: number;
@@ -55,6 +60,12 @@ export type CardSetId = 'pop' | 'steps' | 'stats' | 'plans' | 'voices';
 export const CARD_SETS: readonly CardSetId[] = catalog.order.filter(
   (id): id is CardSetId => typeof id === 'string' && id in catalog.designs,
 );
+/**
+ * The sets an interface in `lang` offers. The words of every set are Hebrew and English (the
+ * `he-` and `en-` variants), so an interface in another language offers none.
+ */
+export const cardSetsIn = (lang: string): readonly CardSetId[] =>
+  ['he', 'en'].includes(lang.toLowerCase().split('-')[0]!) ? CARD_SETS : [];
 
 const whole = ({ w, h }: Size): Frame => ({ x: 0, y: 0, w, h });
 const widthFor = (count: number, design: MediaDesign): number => {
@@ -195,6 +206,30 @@ export function cardSetOf(element: Element | undefined): CardSetId | undefined {
 /** The cards of a set, in reading order: the groups in it. */
 export const cardsOf = (set: GroupElement): GroupElement[] =>
   set.children.filter((child): child is GroupElement => child.type === 'group');
+
+const HEBREW = /\p{Script=Hebrew}/u;
+
+/**
+ * The reading a set on a slide was made in, which need not be the deck's: a set goes on in the
+ * UI language. Its words are Hebrew when a word of it is, and its cards start on the right when
+ * its first card is right of its second. What a set cannot tell, a set with no words or with one
+ * card a row, is taken from `fallback`.
+ */
+export function readingOfSet(set: GroupElement, fallback: Reading): Reading {
+  const words = [...walkElements(set.children)]
+    .map((element) =>
+      (element.type === 'text' || element.type === 'shape') && element.content
+        ? plainText(element.content)
+        : '',
+    )
+    .join('');
+  const [first, second] = cardsOf(set);
+  const inRow = first && second && Math.abs(first.frame.y - second.frame.y) < 0.5;
+  return {
+    he: words.trim() ? HEBREW.test(words) : fallback.he,
+    rtl: inRow ? first.frame.x > second.frame.x : fallback.rtl,
+  };
+}
 
 /** How many different cards a design has, and the most a set of it holds. */
 export const cardKinds = (id: CardSetId): number => DESIGNS[id].kinds;

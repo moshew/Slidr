@@ -1,7 +1,8 @@
-import { createDeck, createSlide, type Element } from '@slidr/model';
+import { createDeck, createSlide, languageDir, type Element } from '@slidr/model';
 import { useMemo } from 'react';
 import type { DisplayLang as Lang } from '../api';
 import { messages, named, shapesModule } from './app';
+import { useT } from '../i18n';
 import { DeckSlide } from './Lazy';
 import { mediaUrl } from './media';
 import { ItemOverlay, stepper } from './Overlay';
@@ -56,7 +57,7 @@ function LineGlyph({ mod, kind }: { mod: ShapesMod; kind: string }) {
 /** The shape or line as it goes onto a slide of a new deck: in the middle, in the theme's colours. */
 function OnSlide({ mod, item, lang }: { mod: ShapesMod; item: string; lang: Lang }) {
   const drawn = useMemo(() => {
-    const dir = lang === 'he' ? ('rtl' as const) : ('ltr' as const);
+    const dir = languageDir(lang);
     const element: Element = item.startsWith(LINE)
       ? mod.newLine(item.slice(LINE.length) as Parameters<ShapesMod['newLine']>[0], SLIDE, [], dir)
       : mod.newShape(item, SLIDE);
@@ -86,28 +87,35 @@ export function Shapes({
   query: string;
   lang: Lang;
 }) {
+  const t = useT();
   const read = useRead(shapesModule, []);
   const mod = read.value;
   const groups = useMemo(() => {
     if (!mod) return [];
     const shapes = mod.shapeLibrary().map(({ group, presets }) => ({
       group: String(group),
-      name: groupName(group, 'he'),
+      name: groupName(group, lang),
       items: presets.filter((preset) =>
-        matches(query, preset, shapeName(preset, 'he'), shapeName(preset, 'en')),
+        matches(
+          query,
+          preset,
+          shapeName(preset, 'he'),
+          shapeName(preset, 'en'),
+          shapeName(preset, lang),
+        ),
       ),
     }));
     const lines = {
       group: 'lines',
-      name: named(messages.elements, 'he', 'lines') ?? 'קווים',
+      name: named(messages.elements, 'he', 'lines') ?? t('libraryBrowse.shapesLines'),
       items: mod.LINE_KINDS.filter((kind) =>
-        matches(query, kind, lineName(kind, 'he'), lineName(kind, 'en')),
+        matches(query, kind, lineName(kind, 'he'), lineName(kind, 'en'), lineName(kind, lang)),
       ).map((kind) => LINE + kind),
     };
     return [...shapes, lines];
-  }, [mod, query]);
+  }, [mod, query, lang, t]);
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!mod) return <p className="muted">טוען את הצורות…</p>;
+  if (!mod) return <p className="muted">{t('libraryBrowse.shapesLoading')}</p>;
   const listed = groups.flatMap(({ items }) => items);
   const open = (item: string) => go({ section: 'shapes', item });
   const nameOf = (item: string, l: Lang) =>
@@ -164,7 +172,7 @@ export function Shapes({
           onStep={stepper(listed, opened, open)}
           side={
             <section>
-              <h3>בספרייה</h3>
+              <h3>{t('libraryBrowse.shapesInLibrary')}</h3>
               <span className="tile-glyph big">
                 {opened.startsWith(LINE) ? (
                   <LineGlyph mod={mod} kind={opened.slice(LINE.length)} />
@@ -174,10 +182,10 @@ export function Shapes({
               </span>
               <p className="muted small">
                 {opened.startsWith(LINE)
-                  ? 'קו נכנס בכיוון הקריאה של המצגת: חץ במצגת בעברית מצביע שמאלה.'
+                  ? t('libraryBrowse.shapesLineNote')
                   : mod.isOpenPreset(opened)
-                    ? 'צורה פתוחה: קו מתאר בצבע הטקסט של ערכת הנושא.'
-                    : 'צורה סגורה: מילוי בצבע הראשי של ערכת הנושא.'}
+                    ? t('libraryBrowse.shapesOpenNote')
+                    : t('libraryBrowse.shapesClosedNote')}
               </p>
               <p className="small" dir="ltr">
                 <a
@@ -191,7 +199,7 @@ export function Shapes({
             </section>
           }
         >
-          <h3>כפי שהיא נכנסת לשקף של מצגת חדשה</h3>
+          <h3>{t('libraryBrowse.shapesOnSlideHeading')}</h3>
           <OnSlide mod={mod} item={opened} lang={lang} />
         </ItemOverlay>
       )}

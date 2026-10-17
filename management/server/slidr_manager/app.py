@@ -4,41 +4,56 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from . import programs
 from .config import Settings
 from .events import EventBus
 from .instructions import Instructions
-from .languages import BASE_LANGUAGES, parse as parse_languages
+from .languages import BASE_LANGUAGES, known as known_languages, parse as parse_languages
 from .library import Library, LibraryError
 from .pipeline import Studio, StudioError
 from .render import render_dir
 from .store import Store, read_json
+from .templates import TemplateError, Templates
 
 MODELS = {"", "fable", "opus", "sonnet", "haiku"}
 EFFORTS = {"", "low", "medium", "high", "xhigh", "max"}
 
 
 class NewRequest(BaseModel):
-    prompt: str = Field(min_length=3, max_length=4000)
+    #: What to make, in words: a design's description, a template request's instructions
+    #: (optional), or any request for the studio to read (`kind` "auto").
+    prompt: str = Field(default="", max_length=4000)
+    #: `design`, `template` (the sample of `templateId` in `languages`), or `auto`: Claude reads
+    #: the prompt and makes it one of the two.
+    kind: Literal["auto", "design", "template"] = "design"
+    templateId: str = Field(default="", max_length=40)
     count: int = Field(default=3, ge=1, le=6)
     group: str = Field(default="", max_length=40)
     model: str = ""
     effort: str = ""
     reviewRounds: int = Field(default=2, ge=0, le=3)
-    #: The languages the designs are made in: Hebrew and English always (added when left out),
-    #: and any other content language asked for; none asked for means Hebrew and English only.
-    #: A code the registry does not know is refused.
+    #: A design's languages: Hebrew and English always (added when left out), and any other
+    #: content language asked for; none asked for means Hebrew and English only. A template's:
+    #: exactly the languages to write its sample in. A code the registry does not know is refused.
     languages: list[str] = Field(default_factory=lambda: list(BASE_LANGUAGES), max_length=64)
 
     @field_validator("languages")
     @classmethod
     def _known_languages(cls, value: list[str]) -> list[str]:
-        return parse_languages(value)
+        return known_languages(value)
+
+    @model_validator(mode="after")
+    def _design_languages(self) -> "NewRequest":
+        # A design, or a request that may become one, is made in Hebrew and English always.
+        if self.kind != "template":
+            self.languages = parse_languages(self.languages)
+        return self
 
 
 class More(BaseModel):
@@ -72,8 +87,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     store = Store(settings.requests_dir, bus)
     store.load()
     instructions = Instructions(settings)
-    library = Library(settings, store, bus)
-    studio = Studio(settings, store, instructions, library)
+    templates = Templates(settings)
+    library = Library(settings, store, bus, templates)
+    studio = Studio(settings, store, instructions, library, templates)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -122,6 +138,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def known(fresh: bool = False) -> dict:
         return await library.known(fresh)
 
+    @app.get("/api/templates")
+    async def template_listing(fresh: bool = False) -> dict:
+        """The built-in templates, with the languages each sample is written in and lacks."""
+        if fresh:
+            templates.forget()
+        try:
+            return {"templates": await studio.template_listing()}
+        except TemplateError as error:
+            raise fail(error, 502)
+
     @app.get("/api/events")
     async def events(request: Request) -> StreamingResponse:
         queue = bus.subscribe()
@@ -153,9 +179,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if body.model not in MODELS or body.effort not in EFFORTS:
             raise fail(ValueError("Unknown model or effort."))
         data = body.model_dump()
-        data["kind"] = "design"
         data["prompt"] = data["prompt"].strip()
         data["title"] = " ".join(data["prompt"].split())[:48]
+        if body.kind == "template":
+            try:
+                listing = await studio.template_listing()
+            except TemplateError as error:
+                raise fail(error, 502)
+            entry = next((t for t in listing if t["id"] == body.templateId), None)
+            if entry is None:
+                raise fail(ValueError(f"The library has no template {body.templateId!r}."))
+            if not body.languages:
+                raise fail(ValueError("Name at least one language to write the sample in."))
+            data["instructions"] = data["prompt"]
+            shown = ", ".join(body.languages) if len(body.languages) <= 3 else f"{len(body.languages)} שפות"
+            data["title"] = f"{entry['name']['he']} · {shown}"
+            data.pop("group")
+            data.pop("count")
+        else:
+            if len(data["prompt"]) < 3:
+                raise fail(ValueError("Say what to make."))
+            data.pop("templateId")
         return studio.start_request(data)
 
     @app.post("/api/requests/{rid}/more")

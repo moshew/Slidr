@@ -4,6 +4,7 @@ import type { AssetMeta, ImageElement, Theme } from '@slidr/model';
 import { SlideRenderer } from '@slidr/renderer';
 import { Replace, Search } from '@slidr/ui/icons';
 import { Button, cx, Icon, Input, Tooltip } from '@slidr/ui';
+import { useLanguage } from '../i18n';
 import { useSelectedPicture } from '../media/replace';
 import type { Target } from '../objects/target';
 import { tell, useDeck, useEditor, useElementSize } from '../shell';
@@ -22,6 +23,7 @@ import {
   FRAME_GROUPS,
   frameOutline,
   framePreview,
+  framesIn,
   loadFrames,
   MAGNET_SETS,
   SAMPLE_PHOTO,
@@ -54,8 +56,7 @@ const PREVIEW_ROWS = 2;
  * picture is drawn by the renderer too, once it comes near the visible part of the panel.
  */
 export function FrameThumb({ frame }: { frame: PhotoFrame }) {
-  const lang = useDeck((s) => s.deck.meta.lang);
-  const picture = frameThumb(frame, lang);
+  const picture = frameThumb(frame, useLanguage());
   if (picture) return <PictureThumb picture={picture} />;
   if (!drawnWhole(frame)) return <OutlineThumb frame={frame} />;
   return frame.extras?.length ? <LateDrawnThumb frame={frame} /> : <DrawnThumb frame={frame} />;
@@ -126,7 +127,7 @@ const samplePhoto = (asset: AssetMeta) =>
 /** The thumbnail of a frame the renderer draws: as large as fits the tile it is in. */
 function DrawnThumb({ frame }: { frame: PhotoFrame }) {
   const theme = useDeck((s) => s.deck.theme);
-  const lang = useDeck((s) => s.deck.meta.lang);
+  const lang = useLanguage();
   const tile = useRef<HTMLDivElement>(null);
   const { width, height } = useElementSize(tile);
   const fit = Math.floor(Math.min(width, (height * frame.size.w) / frame.size.h));
@@ -180,6 +181,7 @@ function FrameButton({
 }) {
   const { t, i18n } = useTranslation('elements');
   const editor = useEditor();
+  const lang = useLanguage();
   const name = i18n.language.startsWith('he') ? frame.label.he : frame.label.en;
   return (
     <Tooltip content={name}>
@@ -188,8 +190,8 @@ function FrameButton({
         aria-label={t(picture ? 'frames.reframe' : 'insert', { name })}
         data-frame={frame.id}
         onClick={() => {
-          if (picture) void framePicture(editor, picture, frame);
-          else if (!insertFrame(editor, frame)) void tell(t('media:noSlide'));
+          if (picture) void framePicture(editor, picture, frame, lang);
+          else if (!insertFrame(editor, frame, lang)) void tell(t('media:noSlide'));
         }}
         className={cx(
           'flex aspect-square w-full cursor-default items-center justify-center rounded-control p-2 transition-colors',
@@ -207,7 +209,7 @@ function FrameButton({
   );
 }
 
-/** The alphabet and the digits of English read from the left, in a Hebrew interface too. */
+/** The digits, and the Latin alphabet, read from the left in an interface read from the right. */
 const fromLeft = (group: FrameGroup) => group === 'latin' || group === 'digits';
 
 /** The groups whose frames are whole designs, looked at larger: two in a row to begin with. */
@@ -344,26 +346,33 @@ function SelectionHint() {
 
 /**
  * The photo frames: the best of them and every group's first rows, one group in full under its
- * own name, or what a search found.
+ * own name, or what a search found. Only the frames of the UI language, and those that have no
+ * language (`frameIn`): a group with none of them is not shown.
  */
 export function FramesCollection() {
   const { t } = useTranslation('elements');
   const all = useLoaded(loadFrames);
+  const lang = useLanguage();
   const [query, setQuery] = useState('');
-  const [group, setGroup] = useState<FrameGroup>();
+  const [chosen, setGroup] = useState<FrameGroup>();
 
-  const frames = Array.isArray(all) ? all : undefined;
+  const frames = useMemo(() => (Array.isArray(all) ? framesIn(all, lang) : undefined), [all, lang]);
   const featured = useMemo(() => featuredFrames(frames ?? []), [frames]);
   const byGroup = useMemo(
-    () => FRAME_GROUPS.map((id) => ({ id, frames: (frames ?? []).filter((f) => f.group === id) })),
+    () =>
+      FRAME_GROUPS.map((id) => ({
+        id,
+        frames: (frames ?? []).filter((f) => f.group === id),
+      })).filter((one) => one.frames.length > 0),
     [frames],
   );
+  // A group the language was switched away from, open as it was switched, is no longer shown.
+  const group = byGroup.some(({ id }) => id === chosen) ? chosen : undefined;
   const found = useMemo(
     () => (frames && query.trim() ? searchFrames(frames, query, MOST_FOUND) : undefined),
     [frames, query],
   );
   // The magnets are shown from pictures, which are at hand before their group is opened.
-  const lang = useDeck((s) => s.deck.meta.lang);
   const magnets = byGroup.find(({ id }) => id === 'magnets')?.frames;
   useEffect(
     () => (magnets?.length ? prepareFrameThumbs(magnets, lang) : undefined),
@@ -409,9 +418,11 @@ export function FramesCollection() {
             />
           ) : (
             <div className="flex flex-col gap-4" data-testid="frame-groups">
-              <Section title={t('frames.featured')} data-group="featured">
-                <FrameGrid frames={featured} label={t('frames.featured')} />
-              </Section>
+              {featured.length > 0 && (
+                <Section title={t('frames.featured')} data-group="featured">
+                  <FrameGrid frames={featured} label={t('frames.featured')} />
+                </Section>
+              )}
               {byGroup.map(({ id, frames: ofGroup }) => (
                 <GroupPreview key={id} group={id} frames={ofGroup} onShowAll={() => setGroup(id)} />
               ))}

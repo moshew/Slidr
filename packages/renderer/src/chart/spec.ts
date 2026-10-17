@@ -150,9 +150,9 @@ export function chartSpec(element: ChartSource, { theme, dir, lang }: ChartSpecC
       bg: colors.bg,
     },
     font: {
-      family: fontStack(fonts[textStyles.caption.font]),
+      family: fontStack(fonts[textStyles.caption.font], lang),
       size: textStyles.caption.size,
-      titleFamily: fontStack(fonts[textStyles.heading.font]),
+      titleFamily: fontStack(fonts[textStyles.heading.font], lang),
       titleSize: textStyles.body.size,
       titleWeight: textStyles.heading.weight,
     },

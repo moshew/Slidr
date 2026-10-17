@@ -996,8 +996,7 @@
       "mine": "Font saya",
       "library": "Pustaka Slidr",
       "system": "Di komputer ini",
-      "hebrew": "Mendukung bahasa Ibrani",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "Mendukung {{language}}",
       "empty": "Tidak ada font dengan nama itu"
     },
     "mixed": "Campuran"
@@ -1888,6 +1887,10 @@
         "title": "Ruang kosong di bagian bawah",
         "advice": "Seperempat slide atau lebih kosong di bawah konten. Sebarkan konten ke bawah, perbesar, atau posisikan di tengah."
       },
+      "L18": {
+        "title": "Kartu lebih tinggi dari isinya",
+        "advice": "Seperlima kartu atau lebih kosong di atas atau di bawah konten. Perkecil kartu agar pas dengan isinya, atau isi kartu itu: teks lebih besar, gambar, atau angka utama."
+      },
       "other": {
         "title": "Temuan desain",
         "advice": "Aturan yang tidak dikenal oleh versi aplikasi ini."
@@ -2771,10 +2774,12 @@
       "blankBody": "Slide pembuka dengan templat default, lengkap dengan obrolan AI yang terbuka dan siap digunakan.",
       "load": "Muat dari file",
       "loadBody": "File Slidr dibuka apa adanya, dan file HTML diimpor sebagai slide yang dapat diedit.",
-      "template": "Buat dari templat",
+      "allTemplates": "Semua templat",
       "templateBody": "Templat berdesain untuk setiap topik. Lihat setiap slide sebelum memilih.",
       "noTemplates": "Pustaka belum memiliki templat.",
       "templates": "Pilih templat",
+      "templatesBack": "Kembali",
+      "templateSlides": "Slide {{name}}",
       "create": "Buat presentasi",
       "recent": "File terbaru",
       "noRecentTitle": "Tidak ada file terbaru",
@@ -2981,30 +2986,31 @@
       "closeSlides": "Tutup slide templat"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "Arus",
+      "shvil": "Jalur",
+      "tzuk": "Tebing",
+      "lavan": "Putih",
+      "layla": "Malam",
+      "zohar": "Cahaya",
+      "migdal": "Menara",
+      "gan": "Taman",
+      "nof": "Pemandangan",
+      "defus": "Cetak",
+      "ariach": "Ubin",
+      "bolet": "Mencolok",
+      "hod": "Gala",
+      "sirtut": "Cetak Biru",
+      "ziv": "Kilau",
+      "shidur": "Mengudara",
+      "bina": "Neuron",
+      "mifgash": "Bersama",
+      "kod": "Kode",
+      "luach": "Sprint",
+      "anan": "Langit",
+      "magen": "Penjaga",
+      "shvav": "Sirkuit",
+      "mutzar": "Peluncuran",
+      "atlas": "Atlas"
     },
     "tagline": {
       "zerem": "Teknologi yang bergerak, toska menyala di malam biru pekat",
@@ -3030,7 +3036,8 @@
       "anan": "Langit cerah dan diagram isometrik, untuk arsitektur yang sedang menuju cloud",
       "magen": "Zaitun gelap dan jingga siaga, dengan presisi layar kendali",
       "shvav": "Hijau papan sirkuit dan tembaga, untuk perangkat keras yang menuju produksi",
-      "mutzar": "Jendela produk, kursor, dan notifikasi, untuk peluncuran versi baru"
+      "mutzar": "Jendela produk, kursor, dan notifikasi, untuk peluncuran versi baru",
+      "atlas": "Bola dunia, rute, dan perangko di atas kertas peta, dalam setiap bahasa, untuk apa pun yang melintasi batas negara"
     },
     "direction": {
       "title": "Arah presentasi",

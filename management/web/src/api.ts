@@ -2,13 +2,18 @@
  * The studio's state, as the server keeps it, and the calls that change it. The server pushes
  * every change over server-sent events; a page that reconnects reads the whole state again.
  */
-import { BASE_LANGUAGES, languagesOf, type BaseLanguage } from '@slidr/model';
+import { BASE_LANGUAGES, languagesOf } from '@slidr/model';
 import { useSyncExternalStore } from 'react';
 import type { DesignResult, Lang } from './design';
+import type { TemplateResult } from './template';
 
 export type { Lang } from './design';
-/** The languages the studio shows its designs in by default, and names them in. */
-export type DisplayLang = BaseLanguage;
+/**
+ * The language the studio shows its designs and the library in: any content language. The
+ * library shows only the pieces written in it; the studio shows a variant not made in it in
+ * English, as the app gives it to a deck in that language.
+ */
+export type DisplayLang = Lang;
 /** A name in the gallery: in Hebrew and English, whatever languages the design is made in. */
 export type Named = { he: string; en: string };
 
@@ -21,23 +26,48 @@ export function languagesOfVariant(variant: Variant, result?: DesignResult): Lan
   return result ? languagesOf(result.langs) : [...BASE_LANGUAGES];
 }
 
+/**
+ * What a request makes: designs for the gallery, or the sample of a built-in template in
+ * languages. `auto` is a request in words that the server is still reading; it becomes one of
+ * the two. A request from before there were kinds is a design.
+ */
+export type RequestKind = 'design' | 'template' | 'auto';
+
 export interface StudioRequest {
   id: string;
   createdAt: number;
   updatedAt: number;
   status: 'planning' | 'ready' | 'failed' | 'cancelled';
+  kind?: RequestKind;
   prompt: string;
   title: string;
-  count: number;
-  group: string;
+  count?: number;
+  group?: string;
   model: string;
   effort: string;
   reviewRounds: number;
-  /** Hebrew and English, and the other languages asked for; none on a request from before. */
+  /**
+   * A design's: Hebrew and English, and the other languages asked for; none on a request from
+   * before. A template's: the languages its sample is written in, a variant each.
+   */
   languages?: Lang[];
+  /** A template request's template, and what the person asked beyond writing it. */
+  templateId?: string;
+  instructions?: string;
+  /** How the server read a request in words. */
+  route?: { kind: string; reason: string };
   variantIds: string[];
   error: string | null;
   cost: number;
+}
+
+/** A built-in template, with the languages its sample is written in and those it lacks. */
+export interface TemplateInfo {
+  id: string;
+  name: Named;
+  tagline: Named;
+  languages: Lang[];
+  missing: Lang[];
 }
 
 export interface LogEntry {
@@ -53,15 +83,23 @@ export interface Variant {
   id: string;
   requestId: string;
   index: number;
-  designId: string;
+  /** A design (the default, and every variant from before there were kinds), or a template's
+   * sample in one language (`lang`, `templateId`), which has no design id. */
+  kind?: 'design' | 'template';
+  designId: string | null;
+  templateId?: string;
+  lang?: Lang;
+  /** A design's concept; a template variant's task, whose `name` is the template's. */
   brief: {
-    id: string;
+    id?: string;
     name: Named;
-    group: string;
-    groupName: Partial<Named>;
+    group?: string;
+    groupName?: Partial<Named>;
     concept?: string;
     art?: string;
-    image: { prompt: string; aspect: string };
+    image?: { prompt: string; aspect: string };
+    instructions?: string;
+    rewrite?: boolean;
   };
   /** The languages it is made in, its request's; none on a variant from before (`languagesOfVariant`). */
   languages?: Lang[];
@@ -244,8 +282,12 @@ export function useStudio(): State {
 export const api = {
   status: () => call<ServerStatus>('/api/status'),
   library: (fresh = false) => call<LibraryInfo>(`/api/library${fresh ? '?fresh=true' : ''}`),
+  templates: (fresh = false) =>
+    call<{ templates: TemplateInfo[] }>(`/api/templates${fresh ? '?fresh=true' : ''}`),
   newRequest: (body: {
+    kind: RequestKind;
     prompt: string;
+    templateId?: string;
     count: number;
     group: string;
     model: string;
@@ -289,3 +331,23 @@ export function renderResult(vid: string, revision: number): Promise<DesignResul
 
 export const pictureUrl = (variant: Variant) =>
   `/api/variants/${variant.id}/files/subject.png?r=${variant.render?.imageRevision ?? variant.imageRevision}`;
+
+export const isTemplate = (variant: Variant) => variant.kind === 'template';
+
+/** A picture of a template variant's last render: `sheet`, `s01-full`, `s01-thumb`… */
+export const renderPicture = (variant: Variant, name: string) =>
+  `/api/variants/${variant.id}/files/renders/r${variant.render?.revision ?? 0}/${name}.png`;
+
+const templateResults = new Map<string, Promise<TemplateResult>>();
+
+/** The findings of a template variant's render, slide by slide, read once per revision. */
+export function templateResult(vid: string, revision: number): Promise<TemplateResult> {
+  const key = `${vid}:${revision}`;
+  let pending = templateResults.get(key);
+  if (!pending) {
+    pending = call<TemplateResult>(`/api/variants/${vid}/result`);
+    pending.catch(() => templateResults.delete(key));
+    templateResults.set(key, pending);
+  }
+  return pending;
+}

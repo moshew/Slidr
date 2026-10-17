@@ -148,6 +148,11 @@ export const he = {
       advice:
         'רבע מהשקף ויותר נשאר ריק מתחת לתוכן. אפשר לפרוס את התוכן, להגדיל אותו או למרכז אותו.',
     },
+    L18: {
+      title: 'כרטיס גבוה מהתוכן שלו',
+      advice:
+        'חמישית מהכרטיס או יותר ריקה מעל התוכן או מתחתיו. אפשר להקטין את הכרטיס לגובה התוכן, או למלא אותו: טקסט גדול יותר, תמונה או נתון בולט.',
+    },
     other: { title: 'ממצא עיצוב', advice: 'כלל שהגרסה הזו של האפליקציה אינה מכירה.' },
   },
 };
@@ -305,6 +310,11 @@ export const en: typeof he = {
       title: 'An empty band at the bottom',
       advice:
         'A quarter of the slide or more is empty under the content. Spread the content down, enlarge it, or centre it.',
+    },
+    L18: {
+      title: 'A card taller than what it holds',
+      advice:
+        'A fifth of the card or more is empty above or below its content. Shrink the card to fit, or fill it: larger type, a picture or a key figure.',
     },
     other: { title: 'A design finding', advice: 'A rule this version of the app does not know.' },
   },

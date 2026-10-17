@@ -350,7 +350,7 @@ test('the welcome screen', async ({ page }) => {
   await expect(welcome).toBeVisible();
   const survey = new Survey(page, IN_ALL);
   await survey.audit('the welcome screen');
-  // With the templates shown, which "Create from template" opens.
+  // With the templates shown, which "All templates" opens.
   const more = welcome.locator('button[aria-expanded="false"]');
   if ((await more.count()) > 0) {
     await more.first().click();

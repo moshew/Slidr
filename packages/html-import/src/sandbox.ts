@@ -192,7 +192,7 @@ export async function openSandbox(html: string, options: SandboxOptions): Promis
 
   const body = deck.theme.textStyles.body;
   const base = [
-    `:root { ${themeVariablesCss(deck.theme)} }`,
+    `:root { ${themeVariablesCss(deck.theme, deck.meta.lang)} }`,
     // The slide's box, whatever the HTML says about its page.
     `html, body { margin: 0 !important; width: ${size.w}px !important; height: ${size.h}px !important; overflow: hidden !important; box-sizing: border-box !important; }`,
     'html { background: transparent; }',

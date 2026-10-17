@@ -3,7 +3,8 @@ import { Button, Input } from '@slidr/ui';
 import { Search } from '@slidr/ui/icons';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { focusStage, tell, useDeck, useEditor, useElementSize } from '../shell';
+import { useLanguage } from '../i18n';
+import { focusStage, tell, useEditor, useElementSize } from '../shell';
 import { Drill, NothingFound, Section, useOpenGroup } from './collections';
 import { designAssetFile, designBackdropFile } from './designAssets';
 import {
@@ -12,7 +13,7 @@ import {
   designGroupName,
   designName,
   designPreview,
-  designsOf,
+  designsIn,
   insertDesign,
   type DesignGroup,
   type DesignId,
@@ -57,7 +58,7 @@ function DesignTile({
 }) {
   const { t } = useTranslation('elements');
   const names = useDesignNames();
-  const lang = useDeck((state) => state.deck.meta.lang);
+  const lang = useLanguage();
   const [tile, near] = useNear<HTMLButtonElement>();
   const picture = useRef<HTMLSpanElement>(null);
   const { width } = useElementSize(picture);
@@ -115,25 +116,36 @@ function DesignList({
 
 /**
  * Ready compositions, by what they are for: the first of every group, one group in full under
- * its own name, or what a search of their names found.
+ * its own name, or what a search of their names found. Only the designs drawn in the UI
+ * language (`designIn`): a group with none of them is not shown.
  */
 export function DesignsCollection() {
   const { t } = useTranslation('elements');
   const names = useDesignNames();
   const editor = useEditor();
+  const lang = useLanguage();
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
-  const [group, setGroup] = useState<DesignGroup>();
+  const [chosen, setGroup] = useState<DesignGroup>();
 
+  const groups = useMemo(
+    () =>
+      DESIGN_GROUPS.map((id) => ({ id, ids: designsIn(id, lang) })).filter(
+        (one) => one.ids.length > 0,
+      ),
+    [lang],
+  );
+  // A group the language was switched away from, open as it was switched, is no longer shown.
+  const group = groups.find(({ id }) => id === chosen);
   const found = useMemo(() => {
     const wanted = query.trim().toLowerCase();
     if (!wanted) return undefined;
-    return DESIGN_IDS.filter(
-      (id) => id.includes(wanted) || names.design(id).toLowerCase().includes(wanted),
+    return groups.flatMap(({ ids }) =>
+      ids.filter((id) => id.includes(wanted) || names.design(id).toLowerCase().includes(wanted)),
     );
-  }, [query, names]);
+  }, [query, names, groups]);
   // One group in full has the header of the panel: its name, and the way back to all of them.
-  const opened = found ? undefined : group;
+  const opened = found ? undefined : group?.id;
   const showGroups = useCallback(() => setGroup(undefined), []);
   useOpenGroup(opened && names.group(opened), showGroups);
 
@@ -148,6 +160,7 @@ export function DesignsCollection() {
           editor.bus,
           editor.selection,
           id,
+          lang,
           names.design(id),
           t('designs.history'),
           asset,
@@ -189,16 +202,11 @@ export function DesignsCollection() {
           <DesignList ids={found} testId="design-results" busy={busy} onChoose={choose} />
         )
       ) : (
-        <Drill screen={group ?? 'groups'} depth={group ? 1 : 0} className="flex flex-col gap-4">
+        <Drill screen={group?.id ?? 'groups'} depth={group ? 1 : 0} className="flex flex-col gap-4">
           {group ? (
-            <DesignList
-              ids={designsOf(group)}
-              testId="design-results"
-              busy={busy}
-              onChoose={choose}
-            />
+            <DesignList ids={group.ids} testId="design-results" busy={busy} onChoose={choose} />
           ) : (
-            DESIGN_GROUPS.map((id) => (
+            groups.map(({ id, ids }) => (
               <Section
                 key={id}
                 title={names.group(id)}
@@ -209,7 +217,7 @@ export function DesignsCollection() {
                   </Button>
                 }
               >
-                <DesignList ids={designsOf(id).slice(0, PREVIEW)} busy={busy} onChoose={choose} />
+                <DesignList ids={ids.slice(0, PREVIEW)} busy={busy} onChoose={choose} />
               </Section>
             ))
           )}

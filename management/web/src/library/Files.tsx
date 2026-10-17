@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useT } from '../i18n';
 import { manifest, mediaText, mediaUrl, size, type Manifest } from './media';
 import { useRead, type LibraryRoute } from './shared';
 
@@ -49,6 +50,7 @@ const TEXT_LIMIT = 400_000;
 const PRETTY_LIMIT = 12 * 1024 * 1024;
 
 function FontSample({ path }: { path: string }) {
+  const t = useT();
   const family = useMemo(() => `slidr-file-${path.replace(/\W/g, '-')}`, [path]);
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   useEffect(() => {
@@ -61,7 +63,7 @@ function FontSample({ path }: { path: string }) {
       () => setState('failed'),
     );
   }, [family, path]);
-  if (state === 'failed') return <p className="error-text">לא ניתן לקרוא את הגופן.</p>;
+  if (state === 'failed') return <p className="error-text">{t('library.files.fontFailed')}</p>;
   return (
     <div
       className="font-sample"
@@ -74,9 +76,10 @@ function FontSample({ path }: { path: string }) {
 }
 
 function TextFile({ path, bytes }: { path: string; bytes: number }) {
+  const t = useT();
   const text = useRead(() => mediaText(path), [path]);
   if (text.error) return <p className="error-text">{text.error}</p>;
-  if (text.value === undefined) return <p className="muted">טוען…</p>;
+  if (text.value === undefined) return <p className="muted">{t('library.loading')}</p>;
   let shown = text.value;
   if (extension(path) === 'json' && bytes <= PRETTY_LIMIT) {
     try {
@@ -90,7 +93,7 @@ function TextFile({ path, bytes }: { path: string; bytes: number }) {
     <>
       {cut && (
         <p className="warn small">
-          מוצגת רק תחילת הקובץ (<bdi>{size(bytes)}</bdi>). הקובץ כולו בקישור שבצד.
+          {t('library.files.cutOff', { size: size(bytes) })}
         </p>
       )}
       <pre className="file-text" dir="ltr">
@@ -108,6 +111,7 @@ export function FilePreview({
   path: string;
   file?: { size: number; sha256: string };
 }) {
+  const t = useT();
   const kind = extension(path);
   return (
     <div className="file-preview">
@@ -128,7 +132,7 @@ export function FilePreview({
       ) : TEXTS.has(kind) ? (
         <TextFile path={path} bytes={file?.size ?? 0} />
       ) : (
-        <p className="muted">אין תצוגה לסוג הקובץ הזה.</p>
+        <p className="muted">{t('library.files.noPreview')}</p>
       )}
     </div>
   );
@@ -173,10 +177,11 @@ export function Files({
   go: (route: LibraryRoute) => void;
   query: string;
 }) {
+  const t = useT();
   const read = useRead(manifest, []);
   const root = useMemo(() => (read.value ? tree(read.value) : undefined), [read.value]);
   if (read.error) return <p className="error-text">{read.error}</p>;
-  if (!root || !read.value) return <p className="muted">טוען…</p>;
+  if (!root || !read.value) return <p className="muted">{t('library.loading')}</p>;
 
   const files = read.value.files;
   const needle = query.trim().toLowerCase();
@@ -192,8 +197,8 @@ export function Files({
             </button>
           </li>
         ))}
-        {found.length === 0 && <li className="muted">אין קבצים שמתאימים לחיפוש.</li>}
-        {found.length > 500 && <li className="muted">ועוד {found.length - 500}…</li>}
+        {found.length === 0 && <li className="muted">{t('library.files.noMatch')}</li>}
+        {found.length > 500 && <li className="muted">{t('library.files.andMore', { count: found.length - 500 })}</li>}
       </ul>
     );
   }
@@ -208,7 +213,7 @@ export function Files({
 
   return (
     <div className="files">
-      <nav className="crumbs" dir="ltr" aria-label="תיקייה">
+      <nav className="crumbs" dir="ltr" aria-label={t('library.files.folderLabel')}>
         <button type="button" className="link" onClick={() => go({ section: 'files' })}>
           /
         </button>
@@ -237,7 +242,7 @@ export function Files({
               >
                 <span className="file-name">{sub.name}/</span>
                 <span className="muted">
-                  {sub.count} files · {size(sub.bytes)}
+                  {t('library.filesAndSize', { files: t('library.files.folderCount', { count: sub.count }), size: size(sub.bytes) })}
                 </span>
               </button>
             </li>

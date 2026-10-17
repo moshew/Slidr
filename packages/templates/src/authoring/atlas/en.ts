@@ -18,12 +18,13 @@ export const en: AtlasCopy = {
   agenda: {
     name: 'Agenda',
     title: 'On today’s agenda',
-    intro: 'Twenty-five minutes, then your questions:',
+    intro:
+      'Twenty-five minutes on what fourteen port cities learned this year about reusing and desalinating water, and on what we will ask of every partner next. Then your questions.',
     items: [
-      'Where the network stands after three years',
-      'The project of the year: a harbour that makes its own water',
-      'How a new city joins, in five steps',
-      'What we ask of every partner in 2027',
+      ['The network: ', 'where the fourteen cities stand after three years of working together.'],
+      ['Project of the year: ', 'a harbour in Limassol that now makes its own water.'],
+      ['Joining: ', 'how a new city joins the network, in five steps.'],
+      ['The year ahead: ', 'what we ask of every partner, and by when.'],
     ],
   },
   figures: {

@@ -14,8 +14,9 @@ import { entry, type Part } from './entry';
 
 /**
  * The families the app ships (SPEC appendix B), which are the only fonts a theme may name: a
- * slide is drawn without network access. `apps/desktop/src/templates/fonts.test.ts` holds this
- * list to the app's own.
+ * slide is drawn without network access. A theme's font pair is a Hebrew family and a Latin one,
+ * so the families made for other letters (Arabic, Devanagari, Japanese…) are not listed here.
+ * `apps/desktop/src/templates/fonts.test.ts` holds this list to the app's own.
  */
 export const TEMPLATE_FONTS = {
   /** Families with Hebrew and Latin letters. */
@@ -25,15 +26,24 @@ export const TEMPLATE_FONTS = {
     'Assistant',
     'Noto Sans Hebrew',
     'IBM Plex Sans Hebrew',
+    'Miriam Libre',
     'Open Sans',
+    'Arimo',
     'Alef',
     'Varela Round',
+    'Fredoka',
     'Frank Ruhl Libre',
     'David Libre',
     'Noto Serif Hebrew',
+    'Tinos',
+    'Bona Nova',
+    'Bellefair',
     'Secular One',
     'Suez One',
     'Karantina',
+    'Amatic SC',
+    'Playpen Sans Hebrew',
+    'Cousine',
   ],
   /** Families with Latin letters and no Hebrew. */
   latin: [
@@ -42,7 +52,12 @@ export const TEMPLATE_FONTS = {
     'Montserrat',
     'Manrope',
     'DM Sans',
+    'Be Vietnam Pro',
     'Space Grotesk',
+    'Golos Text',
+    'Unbounded',
+    'Oswald',
+    'Lora',
     'Playfair Display',
     'DM Serif Display',
     'JetBrains Mono',

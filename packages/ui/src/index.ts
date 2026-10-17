@@ -74,6 +74,7 @@ export {
   type FontOption,
   type FontPickerLabels,
   type FontPickerProps,
+  type FontSample,
 } from './components/font-picker';
 export { parseHex, toHex, type Rgba } from './color';
 export {

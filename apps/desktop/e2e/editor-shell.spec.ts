@@ -317,7 +317,12 @@ test('a template is picked by its slides, and starts a deck that is set in it', 
   await expect(way).toBeFocused();
 
   await way.click();
-  // The picked cover has the focus, and the arrows walk the covers as they stand: from the right.
+  // The picked cover has the focus, and the arrows walk the covers: down the rail, and in the
+  // reading direction, from the right.
+  await expect(covers.first()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(covers.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowUp');
   await expect(covers.first()).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await expect(covers.nth(1)).toBeFocused();
@@ -342,6 +347,56 @@ test('a template is picked by its slides, and starts a deck that is set in it', 
   expect(deck.slides).toBe(1);
   expect(deck.layouts).toBeGreaterThan(3);
   await expect(page.getByTestId('chat-input')).toBeFocused();
+});
+
+test('the templates fill the screen once the page scrolled to them, and only Back leaves them', async ({
+  page,
+}) => {
+  // With motion, as most users have it: the page scrolls down to the templates, then stops.
+  await page.addInitScript(() => localStorage.setItem('slidr.language', 'he'));
+  await page.goto('/?welcome');
+  await expect(welcome(page)).toBeVisible();
+  const way = page.getByTestId('welcome-template');
+  const showroom = page.getByTestId('welcome-templates');
+  const filled = page.locator('.welcome-page[data-filled]');
+  await way.click();
+  await expect(filled).toHaveCount(1);
+  // As large as the screen, inside the page's margin; the rest of the page is folded away.
+  const screen = (await welcome(page).boundingBox())!;
+  const box = (await showroom.boundingBox())!;
+  expect(Math.abs(box.y - (screen.y + 32))).toBeLessThan(2);
+  expect(Math.abs(box.y + box.height - (screen.y + screen.height - 32))).toBeLessThan(2);
+  expect(Math.abs(box.width - (screen.width - 64))).toBeLessThan(2);
+  await expect(way).toBeHidden();
+  await expect(page.getByTestId('welcome-load')).toBeHidden();
+  // No wheel brings the page back.
+  await page.mouse.move(box.x + box.width / 2, box.y + 40);
+  await page.mouse.wheel(0, -2000);
+  await page.waitForTimeout(400);
+  expect((await showroom.boundingBox())!.y).toBeCloseTo(box.y, 0);
+
+  // Back closes them, at the top of the page.
+  await page.getByTestId('welcome-templates-back').click();
+  await expect(showroom).toHaveCount(0);
+  await expect(filled).toHaveCount(0);
+  await expect(way).toBeInViewport();
+  await expect(page.getByTestId('welcome-load')).toBeVisible();
+
+  // A cover of the row opens them on its template, and fills the screen again. From the keyboard,
+  // Back and Esc put the focus back on the way to them.
+  const tile = welcome(page).locator('.welcome-tile').nth(1);
+  const name = await tile.locator('span[dir="auto"]').first().textContent();
+  await tile.click();
+  await expect(filled).toHaveCount(1);
+  await expect(page.getByTestId('welcome-template-name')).toHaveText(name!);
+  await page.getByTestId('welcome-templates-back').press('Enter');
+  await expect(showroom).toHaveCount(0);
+  await expect(way).toBeFocused();
+  await way.click();
+  await expect(filled).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(showroom).toHaveCount(0);
+  await expect(way).toBeFocused();
 });
 
 test('"Load from file" and "Import HTML" ask for the file at once', async ({ page }) => {

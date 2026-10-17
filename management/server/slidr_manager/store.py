@@ -1,16 +1,23 @@
 """Requests (the studio's tabs) and their variants, kept as JSON files.
 
 ```text
-<data>/requests/<rid>/request.json          the request: prompt, options, languages, plan, variants
-<data>/requests/<rid>/plan/                 the planning call's folder
-<data>/requests/<rid>/<vid>/state.json      a variant: languages, stage, log, renders, approval
-<data>/requests/<rid>/<vid>/work/           Claude's folder: brief.json, an HTML file for each
-                                            language (he.html, en.html, ar.html…), subject.png,
-                                            renders/r<n>/ (renders and the conversion)
+<data>/requests/<rid>/request.json          the request: kind, prompt, options, languages, plan,
+                                            variants
+<data>/requests/<rid>/plan/                 the folder of the planning call (and of the call that
+                                            reads a request in words)
+<data>/requests/<rid>/<vid>/state.json      a variant: kind, languages, stage, log, renders, approval
+<data>/requests/<rid>/<vid>/work/           Claude's folder. A design: brief.json, an HTML file for
+                                            each language (he.html, en.html, ar.html…),
+                                            subject.png. A template's sample in one language:
+                                            brief.json, template.md, en.json, he.json, <lang>.json
+                                            (templates.py). Both: renders/r<n>/
 ```
 
-A request's `languages` are those its designs are made in (`languages.py`); a request or variant
-stored before there was a choice has none, and is made in Hebrew and English.
+A request's `kind` is `design`, or `template` (the sample of a built-in template, written in
+languages: a variant a language). A request stored before there were kinds is a design. A design
+request's `languages` are those its designs are made in (`languages.py`); a request or variant
+stored before there was a choice has none, and is made in Hebrew and English. A template
+request's `languages` are the languages its sample is written in, a variant each.
 
 State files are outside the folder Claude works in, so nothing it writes can change them.
 """
@@ -131,13 +138,16 @@ class Store:
 
     # ------------------------------------------------------------------ variants
 
-    def create_variant(self, request: dict, index: int, brief: dict) -> dict:
+    def create_variant(self, request: dict, index: int, brief: dict, **fields: Any) -> dict:
+        """A variant of a request: a design (the default), or, with `kind="template"`, the
+        sample of a template in one language (`lang`, `templateId`), which has no design id."""
         vid = new_id("v")
         variant = {
             "id": vid,
             "requestId": request["id"],
             "index": index,
-            "designId": brief["id"],
+            "kind": "design",
+            "designId": brief.get("id"),
             "brief": brief,
             "languages": languages.chosen(request.get("languages")),
             "status": "queued",
@@ -155,6 +165,7 @@ class Store:
             "cost": 0.0,
             "createdAt": now(),
             "updatedAt": now(),
+            **fields,
         }
         self.variants[vid] = variant
         request["variantIds"].append(vid)
@@ -177,5 +188,5 @@ class Store:
         return {
             v["designId"]
             for v in self.variants.values()
-            if v["id"] != exclude and v.get("status") != "cancelled"
+            if v["id"] != exclude and v.get("status") != "cancelled" and isinstance(v.get("designId"), str)
         }

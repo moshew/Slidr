@@ -50,6 +50,11 @@ describe('the system prompt, by scope', () => {
 
   it('sets a visual quality bar and requires rendered review of designed slides', () => {
     expect(DESIGN).toContain('publication-ready, distinct and written with original copy');
+    // The bar is a deck that impresses (ADR-100), not one that only passes the checks.
+    expect(DESIGN).toContain('**The bar: stunning, not just tidy**');
+    expect(DESIGN).toContain('is a wireframe, even when every check passes');
+    expect(DESIGN).toContain('Would it impress at first sight');
+    expect(full('deck')).toContain("Plan before you build: the deck's visual concept");
     expect(DESIGN).toContain('At full size and thumbnail');
     expect(DESIGN).toContain('crops and clipping correct');
   });
@@ -313,13 +318,18 @@ describe('size', () => {
   // options, and every session hears of the selected text and of `text_replace`. A sixth, by
   // 300, for two sentences on cards (ADR-073): a card's shadow is written as `box-shadow`, and
   // nothing on a card has a role, since either one written otherwise leaves the card in pieces.
+  // A seventh, by 250, for cards stretched to fill the slide (ADR-099): the guidelines say how
+  // tall a card of an icon, a heading and two lines stands and what fills the room it leaves,
+  // and the design check names the card taller than what it holds. An eighth, by 1,900, for the
+  // bar of the guidelines (ADR-100): a deck that impresses at first sight, its visual concept,
+  // the bold move of each slide, a named style carried through, and the CSS that builds depth.
   const LIMITS: Record<ScopeKind, number> = {
-    deck: 44_300,
-    slide: 33_050,
-    object: 23_000,
+    deck: 46_450,
+    slide: 35_200,
+    object: 25_150,
     // With the five import tools in the catalogue the import module shows its capture step,
     // and it says what the isolated page is not (ADR-036).
-    import: 45_300,
+    import: 47_450,
   };
 
   it.each(SCOPES)('a %s prompt stays within its budget', (scope) => {

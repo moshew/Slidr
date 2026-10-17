@@ -1,5 +1,5 @@
 import i18n, { type Resource } from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import { initReactI18next, useTranslation } from 'react-i18next';
 import { en } from './en';
 import { he, type Messages } from './he';
 
@@ -153,6 +153,16 @@ i18n.on('languageChanged', applyToDocument);
 
 export function currentLanguage(): Language {
   return isLanguage(i18n.language) ? i18n.language : 'en';
+}
+
+/**
+ * The UI language, for a component, which is drawn again when it changes. The ready-made content
+ * of the panels is offered in it, whatever language the open deck is in: the templates, the
+ * designs, the frames and the card sets are shown, and go onto a slide, in the language chosen.
+ */
+export function useLanguage(): Language {
+  const { i18n: current } = useTranslation();
+  return isLanguage(current.language) ? current.language : 'en';
 }
 
 /** Switches the UI language live and remembers it. */

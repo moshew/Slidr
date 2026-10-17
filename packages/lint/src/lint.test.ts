@@ -16,9 +16,9 @@ function findingsOf(deck: Deck): Record<string, string[]> {
 }
 
 describe('rule sets', () => {
-  it('has the nine rules that go back to the agent (LNT-04, QG-03, QG-04)', () => {
+  it('has the ten rules that go back to the agent (LNT-04, QG-03, QG-04, ADR-099)', () => {
     const agent = rules.filter((rule) => rule.agent).map((rule) => rule.id);
-    expect(agent).toEqual(['L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L13', 'L16']);
+    expect(agent).toEqual(['L01', 'L02', 'L03', 'L04', 'L05', 'L06', 'L07', 'L13', 'L16', 'L18']);
   });
 
   it('keeps the rest for the user: the other rules, and what three of them see in a chart', () => {
@@ -63,8 +63,10 @@ describe('rule sets', () => {
       L14: 'info',
       L15: 'warning',
       L16: 'warning',
-      // Not of SPEC 9.2: the empty band at the bottom, which ADR-042 asked for.
+      // Not of SPEC 9.2: the empty band at the bottom, which ADR-042 asked for, and the card
+      // taller than what it holds, which ADR-099 asked for.
       L17: 'warning',
+      L18: 'warning',
     });
   });
 });

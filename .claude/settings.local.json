@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node scripts/export-templates.mjs:*)",
+      "Bash(node --env-file=.env apps/desktop/scripts/media-publish.mjs:*)"
+    ]
+  }
+}

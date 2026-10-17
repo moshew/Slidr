@@ -8,8 +8,8 @@ import { Input } from './input';
 export interface FontOption {
   /** The family name, as CSS and the deck use it. */
   family: string;
-  /** The face has Hebrew letters. */
-  hebrew?: boolean;
+  /** The face has the letters of the list's sample (`FontPickerProps.sample`). */
+  sample?: boolean;
   /** A symbol font: it draws pictures in place of letters, so its name is set in the UI font. */
   symbol?: boolean;
 }
@@ -26,17 +26,27 @@ export interface FontPickerLabels {
   recent: string;
   /** The accessible name of the whole list. */
   all: string;
-  /** The accessible name of the Hebrew mark, e.g. "Supports Hebrew". */
-  hebrew: string;
-  /** A Hebrew phrase drawn in each family that supports Hebrew. */
-  hebrewPreview: string;
   /** Shown when the search matches nothing. */
   empty: string;
+}
+
+/**
+ * A phrase in the language of the text the fonts are for, drawn beside the name of each face
+ * that has its letters: "סגנון הגופן" for a Hebrew deck, "نمط الخط" for an Arabic one.
+ */
+export interface FontSample {
+  text: string;
+  /** Its language tag. */
+  lang: string;
+  /** Its accessible name, e.g. "Supports Hebrew". */
+  label: string;
 }
 
 export interface FontPickerProps {
   /** The fonts, group after group. A heading is shown once the list has more than one part. */
   groups: readonly FontGroup[];
+  /** The phrase drawn in the faces marked `sample`; none, and no face shows one. */
+  sample?: FontSample;
   /** Families used lately, most recent first. */
   recent?: readonly string[];
   value: string | null;
@@ -71,8 +81,9 @@ const quoted = (family: string) => `"${family.replace(/["\\]/g, '\\$&')}"`;
 
 /**
  * The font list (TXT-02): search, the fonts used lately, every name drawn in its own face, and a
- * mark on the faces that have Hebrew. It is the content of a popover or a panel. The search field
- * keeps the focus; Up, Down and Enter work the list from it, and the search looks in every group.
+ * sample of the text's language in the faces that have its letters. It is the content of a
+ * popover or a panel. The search field keeps the focus; Up, Down and Enter work the list from it,
+ * and the search looks in every group.
  *
  * Only the lines in view are drawn. A name in its own face costs the loading of that font, and a
  * computer has hundreds of them: drawn all at once, the list took two seconds to appear. Every
@@ -80,6 +91,7 @@ const quoted = (family: string) => `"${family.replace(/["\\]/g, '\\$&')}"`;
  */
 export function FontPicker({
   groups,
+  sample,
   recent = NO_RECENT,
   value,
   onValueChange,
@@ -194,7 +206,7 @@ export function FontPicker({
         </li>
       );
     }
-    const { family, hebrew, symbol } = line.font;
+    const { family, symbol } = line.font;
     const selected = family === value;
     return (
       <li
@@ -227,15 +239,16 @@ export function FontPicker({
         >
           {family}
         </span>
-        {hebrew && !symbol && (
+        {sample && line.font.sample && !symbol && (
           <span
             role="img"
-            aria-label={labels.hebrew}
-            dir="rtl"
+            aria-label={sample.label}
+            lang={sample.lang}
+            dir="auto"
             style={{ fontFamily: quoted(family) }}
             className="shrink-0 text-lg whitespace-nowrap text-ui-fg-muted"
           >
-            {labels.hebrewPreview}
+            {sample.text}
           </span>
         )}
       </li>

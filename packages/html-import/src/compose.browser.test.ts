@@ -149,6 +149,38 @@ describe('texts that follow one another', () => {
     expect(texts(card.slide.elements)[0]!.content.paragraphs).toHaveLength(2);
   });
 
+  it('stay the rows of a list when each has its number beside it as a text', async () => {
+    const row = (n: string, title: string, words: string) =>
+      `<div style="display:flex;gap:32px;align-items:flex-start"><div style="width:64px;flex:none;font-size:44px;font-weight:700;color:#f59e0b;line-height:1.1">${n}</div><div style="width:684px"><div style="font-size:40px;font-weight:600;line-height:1.2">${title}</div><div style="font-size:28px;color:#475569;line-height:1.45">${words}</div></div></div>`;
+    // A picture across the slide, and a dot at its edge in the line of the first row's words:
+    // neither stands beside the words, and neither cuts a row in two.
+    const r = await convert(`<div style="${SLIDE}">
+      <div style="position:absolute;left:1000px;top:0;width:920px;height:1080px;border-radius:540px 0 0 540px;background:#1e293b"></div>
+      <div style="position:absolute;left:948px;top:516px;width:24px;height:24px;border-radius:50%;background:#f59e0b"></div>
+      <div style="position:absolute;left:96px;top:450px;width:780px;display:flex;flex-direction:column;gap:40px">
+        ${row('01', 'Adaptive paths', 'Content adjusts to what each student already knows.')}${row('02', 'Self-paced mastery', 'Move on when ready, not when the calendar says.')}${row('03', 'Early signals', 'Teachers see who is stuck before they fall behind.')}
+      </div>
+    </div>`);
+    // A number, then its title with the line under it, three times: no row took in the next,
+    // and no number the one under it.
+    expect(texts(r.slide.elements).map((t) => plainText(t.content))).toEqual([
+      '01',
+      'Adaptive paths\nContent adjusts to what each student already knows.',
+      '02',
+      'Self-paced mastery\nMove on when ready, not when the calendar says.',
+      '03',
+      'Early signals\nTeachers see who is stuck before they fall behind.',
+    ]);
+    // Two columns of words close together are two texts, each of its paragraphs.
+    const column = (left: number, words: string[]) =>
+      `<div style="position:absolute;left:${left}px;top:300px;width:700px">${words.map((w) => `<p style="margin:0 0 24px;font-size:30px;line-height:1.4">${w}</p>`).join('')}</div>`;
+    const columns = await convert(`<div style="${SLIDE}">
+      ${column(160, ['Feedback arrives while the work is still fresh.', 'Every learner gets a tutor that never tires.'])}
+      ${column(900, ['Answers come without the reasoning behind them.', 'What a pupil shares has to be kept safe.'])}
+    </div>`);
+    expect(texts(columns.slide.elements).map((t) => t.content.paragraphs.length)).toEqual([2, 2]);
+  });
+
   it('stay as the walk left them when the composition is not asked for', async () => {
     const html = `<div style="${SLIDE}">
       <h2 style="position:absolute;left:160px;top:140px;margin:0;font-size:56px;line-height:1.2">Two texts</h2>

@@ -41,10 +41,10 @@ if (!existsSync(join(root, 'templates')) && !existsSync(join(root, 'elements')))
 
 const read = (file, fallback) =>
   existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : fallback;
-const write = (file, value) => {
+const write = (file, value, { compact = false } = {}) => {
   if (dry) return;
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+  writeFileSync(file, compact ? JSON.stringify(value) : `${JSON.stringify(value, null, 2)}\n`);
 };
 const copyAll = (from, to) => {
   if (!existsSync(from)) return 0;
@@ -77,7 +77,8 @@ if (tech) {
     catalog.samples[id] = tech.samples[id];
   }
   Object.assign(catalog.pictures, tech.pictures);
-  write(file, catalog);
+  // As export-templates.mjs writes it: indented, the catalog would pass the 25 MB Pages serves.
+  write(file, catalog, { compact: true });
   const pictures = copyAll(join(here, 'images', 'templates'), join(root, 'images', 'templates'));
   console.log(
     `templates/catalog.json: ${added.length} added (${added.join(', ') || '-'}), ` +

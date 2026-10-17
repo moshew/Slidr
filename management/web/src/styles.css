@@ -20,6 +20,12 @@
   background: var(--bg);
 }
 
+/* Japanese in the face Windows draws its own interface in: the fallback, Yu Gothic, sets kana a
+   full em wide (as in the app, packages/ui/src/theme.css). */
+:root:lang(ja) {
+  font-family: Heebo, 'Segoe UI', 'Yu Gothic UI', system-ui, sans-serif;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #151412;
@@ -266,6 +272,35 @@ code {
 .segmented button[aria-pressed='true'] {
   background: var(--text);
   color: var(--surface);
+}
+
+.segmented select {
+  width: auto;
+  border: none;
+  border-inline-start: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+.segmented select.chosen {
+  background: var(--text);
+  color: var(--surface);
+}
+
+.segmented select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.language-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.7rem;
+}
+
+.language-names bdi {
+  white-space: nowrap;
 }
 
 .tabs {
@@ -878,4 +913,77 @@ details summary {
   .overlay {
     padding: 0;
   }
+}
+
+/* Template requests (RequestForm, RequestView, VariantDetail) */
+
+.language.written {
+  border-style: dashed;
+}
+
+.language-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.slide-picture {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.route {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.publish-thumb {
+  width: 192px;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+.sample-slide {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sample-slide .slide-picture {
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.sample-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.6rem;
+}
+
+.sample-thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: none;
+  text-align: start;
+  overflow: hidden;
+}
+
+.sample-thumb.current {
+  border-color: var(--accent);
+}
+
+.sample-thumb-label {
+  font-size: 0.75rem;
+  padding: 0 0.3rem 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

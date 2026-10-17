@@ -34,6 +34,26 @@ export async function openApp(page: Page, { lang = 'he', theme = 'light' }: Open
   await expect(page.getByTestId('stage-frame')).toBeVisible();
 }
 
+/**
+ * Switches the language of the UI as the settings do, by the app's own function: of the module
+ * the page loaded, whose address has a query after a hot update. Another address would be a
+ * second module, which would set up the languages again without the strings of the panels.
+ */
+export async function switchLanguage(page: Page, language: string): Promise<void> {
+  await page.evaluate(async (to) => {
+    const path =
+      performance
+        .getEntriesByType('resource')
+        .map((entry) => entry.name)
+        .find((name) => /\/src\/i18n\/index\.ts(\?|$)/.test(name)) ?? '/src/i18n/index.ts';
+    const i18n = (await import(/* @vite-ignore */ path)) as {
+      setLanguage: (language: string) => Promise<void>;
+    };
+    await i18n.setLanguage(to);
+  }, language);
+  await expect(page.locator('html')).toHaveAttribute('lang', language);
+}
+
 export const row = (page: Page) => page.getByTestId('top-tools-b');
 
 /** An element as the Stage draws it (the filmstrip thumbnail draws it too). */

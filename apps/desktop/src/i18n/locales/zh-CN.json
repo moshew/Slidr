@@ -996,8 +996,7 @@
       "mine": "我的字体",
       "library": "Slidr 字体库",
       "system": "此电脑上",
-      "hebrew": "支持希伯来语",
-      "hebrewPreview": "סגנון הגופן",
+      "letters": "支持{{language}}",
       "empty": "没有该名称的字体"
     },
     "mixed": "混合"
@@ -1888,6 +1887,10 @@
         "title": "底部有空白带",
         "advice": "内容下方有四分之一或更多的幻灯片区域是空白的。请将内容向下分散、放大或居中。"
       },
+      "L18": {
+        "title": "卡片高于其内容",
+        "advice": "卡片在内容上方或下方有五分之一或更多是空白的。请将卡片缩小到与内容相符，或用更大的文字、图片或关键数字填满它。"
+      },
       "other": {
         "title": "设计问题",
         "advice": "此版本的应用无法识别的规则。"
@@ -2771,10 +2774,12 @@
       "blankBody": "一张使用默认模板的开场幻灯片，AI 对话已打开并准备就绪。",
       "load": "从文件加载",
       "loadBody": "Slidr 文件会原样打开，HTML 文件则会导入为可编辑的幻灯片。",
-      "template": "从模板创建",
+      "allTemplates": "全部模板",
       "templateBody": "适合各种主题的精美模板。选择前可预览每一张幻灯片。",
       "noTemplates": "模板库中还没有模板。",
       "templates": "选择模板",
+      "templatesBack": "返回",
+      "templateSlides": "{{name}} 的幻灯片",
       "create": "创建演示文稿",
       "recent": "最近使用的文件",
       "noRecentTitle": "没有最近使用的文件",
@@ -2981,30 +2986,31 @@
       "closeSlides": "关闭模板幻灯片"
     },
     "name": {
-      "zerem": "Zerem",
-      "shvil": "Shvil",
-      "tzuk": "Tzuk",
-      "lavan": "Lavan",
-      "layla": "Layla",
-      "zohar": "Zohar",
-      "migdal": "Migdal",
-      "gan": "Gan",
-      "nof": "Nof",
-      "defus": "Defus",
-      "ariach": "Ariach",
-      "bolet": "Bolet",
-      "hod": "Hod",
-      "sirtut": "Sirtut",
-      "ziv": "Ziv",
-      "shidur": "Shidur",
-      "bina": "Bina",
-      "mifgash": "Mifgash",
-      "kod": "Kod",
-      "luach": "Luach",
-      "anan": "Anan",
-      "magen": "Magen",
-      "shvav": "Shvav",
-      "mutzar": "Mutzar"
+      "zerem": "溪流",
+      "shvil": "小径",
+      "tzuk": "悬崖",
+      "lavan": "纯白",
+      "layla": "夜",
+      "zohar": "光耀",
+      "migdal": "大厦",
+      "gan": "花园",
+      "nof": "风景",
+      "defus": "印刷",
+      "ariach": "色块",
+      "bolet": "醒目",
+      "hod": "盛典",
+      "sirtut": "蓝图",
+      "ziv": "流光",
+      "shidur": "直播",
+      "bina": "神经元",
+      "mifgash": "相聚",
+      "kod": "代码",
+      "luach": "冲刺",
+      "anan": "天空",
+      "magen": "哨兵",
+      "shvav": "电路",
+      "mutzar": "首发",
+      "atlas": "地图集"
     },
     "tagline": {
       "zerem": "动感科技：深蓝夜色中闪耀的青绿光芒",
@@ -3030,7 +3036,8 @@
       "anan": "晴朗的天空与等距示意图，献给迈向云端的架构",
       "magen": "深橄榄色与警示橙，兼具控制显示屏般的精准",
       "shvav": "电路板绿与铜色，献给即将投产的硬件",
-      "mutzar": "产品窗口、光标与通知，献给新版本的发布"
+      "mutzar": "产品窗口、光标与通知，献给新版本的发布",
+      "atlas": "地图纸上的地球仪、航线与邮票，以每一种语言，献给跨越国界的事物"
     },
     "direction": {
       "title": "演示文稿方向",

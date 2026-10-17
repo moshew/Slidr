@@ -16,9 +16,10 @@ export const GATE_ROUNDS = 2;
 
 /**
  * Findings that are warnings to a reader of the lint panel and demands to the agent: coverage
- * and text load (QG-03), and a slide with no visual element (QG-04).
+ * and text load (QG-03), a slide with no visual element (QG-04), and a card taller than what it
+ * holds, the coverage the agent got by stretching (ADR-099).
  */
-const DEMANDED = new Set(['L07', 'L13', 'L16']);
+const DEMANDED = new Set(['L07', 'L13', 'L16', 'L18']);
 
 /** Whether a turn may not end with this finding (QG-02 to QG-04). */
 export function holdsTurn(finding: LintFinding): boolean {
