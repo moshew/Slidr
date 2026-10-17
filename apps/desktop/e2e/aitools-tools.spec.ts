@@ -350,17 +350,17 @@ test('the status bar says what the agent is doing, and the actions wait for it',
   await addTitle(page);
   const status = page.getByTestId('status-agent');
   await expect(status).toHaveAttribute('data-state', 'idle');
-  await expect(status).toHaveText('ה-Agent לא פעיל');
+  await expect(status).toHaveText('הסוכן לא פעיל');
 
   await openTool(page, 'chat');
   await input(page).fill('ניסוחים אחרים');
   await input(page).press('Enter');
   await expect(status).toHaveAttribute('data-state', 'working');
-  await expect(status).toContainText('ה-Agent עובד');
+  await expect(status).toContainText('הסוכן עובד');
   // While the turn runs, the actions are off.
   await openTool(page, 'actions');
   await expect(page.locator('[data-action="text.shorten"]')).toBeDisabled();
-  await expect(page.getByTestId('ai-actions')).toContainText('ה-Agent באמצע תור');
+  await expect(page.getByTestId('ai-actions')).toContainText('הסוכן באמצע תור');
 
   await expect(status).toHaveAttribute('data-state', 'idle', { timeout: 15_000 });
   await expect(page.locator('[data-action="text.shorten"]')).toBeEnabled();

@@ -343,7 +343,7 @@ function reviewHtml(runDir) {
 <body>
 <main>
   <h1>סט ההערכה · <span dir="ltr">${escapeHtml(summary.run)}</span></h1>
-  <p class="lead">כל שקף של כל מצגת שה-Agent בנה בהרצה הזאת (מודל: ${escapeHtml(summary.model ?? '')}, תמונות: ${escapeHtml(summary.images ?? '')}). תן לכל מצגת ציון חזותי מ-1 עד 5; הציון נשמר מיד. לחיצה על שקף פותחת אותו בגודל מלא, וריחוף על השורה שמתחתיו מציג את ממצאי ה-lint במלואם.</p>
+  <p class="lead">כל שקף של כל מצגת שהסוכן בנה בהרצה הזאת (מודל: ${escapeHtml(summary.model ?? '')}, תמונות: ${escapeHtml(summary.images ?? '')}). תן לכל מצגת ציון חזותי מ-1 עד 5; הציון נשמר מיד. לחיצה על שקף פותחת אותו בגודל מלא, וריחוף על השורה שמתחתיו מציג את ממצאי ה-lint במלואם.</p>
   <p class="chips">
     ${chip('מצגות', t.requests)}
     ${chip('שקפים', t.slides)}

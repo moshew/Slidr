@@ -7,6 +7,7 @@ import {
   menu,
   menuItem,
   openSub,
+  openWeights,
   rect,
   shot,
 } from './format-helpers';
@@ -32,7 +33,6 @@ const WORDS = {
     fill: 'מילוי',
     outline: 'קו מתאר',
     solid: 'רציף',
-    weight: 'משקל',
     pasteAs: 'הדבקה מיוחדת',
     pasteText: 'הדבקת טקסט',
     paste: 'הדבקה',
@@ -44,7 +44,6 @@ const WORDS = {
     fill: 'Fill',
     outline: 'Outline',
     solid: 'Solid',
-    weight: 'Weight',
     pasteAs: 'Paste special',
     pasteText: 'Paste text',
     paste: 'Paste',
@@ -149,14 +148,14 @@ for (const look of [HE_LIGHT, EN_DARK]) {
           runs: [
             {
               text: look.lang === 'he' ? 'משקלים של גופן' : 'The weights of a font',
-              marks: { font: 'Alef', weight: 600, size: 72 },
+              // A family of a regular and a bold face, offered to a deck in either language.
+              marks: { font: 'Tinos', weight: 600, size: 72 },
             },
           ],
         },
       ]),
     ]);
-    await row(page).getByRole('combobox', { name: WORDS[look.lang].weight }).click();
-    await expect(page.getByRole('option').first()).toBeVisible();
+    await openWeights(page, 'Tinos', look.lang);
     await page.screenshot({ path: shot(name('weights-of-the-font', look)) });
   });
 }

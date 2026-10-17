@@ -247,7 +247,8 @@ test('hundreds of families: the list draws the lines in view, and the keys reach
   // Arrows walk past what is drawn; the active font stays in view and is the one Enter takes.
   for (let i = 0; i < 40; i++) await search(page).press('ArrowDown');
   const active = list(page).locator('[data-active]');
-  await expect(active).toHaveText(/^Family 004/);
+  // The families with Hebrew letters (every third, from the first) come first: 001, 004, 007, 010.
+  await expect(active).toHaveText(/^Family 010/);
   await expect(active).toBeInViewport({ ratio: 1 });
   await expect(search(page)).toHaveAttribute(
     'aria-activedescendant',
@@ -259,7 +260,8 @@ test('hundreds of families: the list draws the lines in view, and the keys reach
 
   // The wheel to the end: the last family is drawn, the first is not.
   await scrollToLine(page, 439);
-  await expect(options(page).last()).toHaveText(/^Family 400/);
+  // Family 400 has Hebrew letters, and is with them; 399 is the last of those without.
+  await expect(options(page).last()).toHaveText(/^Family 399/);
   await expect(options(page).last()).toBeInViewport({ ratio: 1 });
   await expect(options(page).filter({ hasText: 'Heebo' })).toHaveCount(0);
   expect(await options(page).count()).toBeLessThan(25);

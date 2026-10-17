@@ -64,7 +64,7 @@ export function SeveralTextTool({ kind }: ContextToolProps) {
               <BoldTool />
               <ItalicTool />
               <UnderlineTool />
-              <MoreTool kind={kind} />
+              <MoreTool />
               <ColorTool />
               <HighlightTool />
             </Line>

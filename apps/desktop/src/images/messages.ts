@@ -9,7 +9,7 @@ import type { Messages } from '../i18n/he';
 export const he = {
   settings: {
     title: 'תמונות AI',
-    hint: 'מי יוצר את התמונות: בכלים של האפליקציה ובכלים של ה-Agent.',
+    hint: 'מי יוצר את התמונות: בכלים של האפליקציה ובכלים של הסוכן.',
     providers: 'ספק התמונות',
     forProvider: 'ההגדרות של {{name}}',
     chooseFailed: 'הספק לא הוחלף. נסו שוב.',

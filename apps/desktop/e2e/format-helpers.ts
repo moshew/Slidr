@@ -181,3 +181,48 @@ export async function fakeClipboard(
     };
   }, data);
 }
+
+const WEIGHT_WORDS = {
+  he: { font: 'גופן', search: 'חיפוש גופן', weights: (font: string) => `המשקלים של ${font}` },
+  en: { font: 'Font', search: 'Search fonts', weights: (font: string) => `Weights of ${font}` },
+};
+
+/**
+ * The weights of a font (TXT-03), a submenu of the font list: opens the list from the row, finds
+ * the font in it and opens its weights. Gives the submenu.
+ */
+export async function openWeights(
+  page: Page,
+  font: string,
+  lang: 'he' | 'en' = 'he',
+): Promise<Locator> {
+  const words = WEIGHT_WORDS[lang];
+  await row(page).getByRole('button', { name: words.font, exact: true }).click();
+  await page.getByRole('combobox', { name: words.search }).fill(font);
+  await page
+    .getByRole('button', { name: words.weights(font) })
+    .first()
+    .click();
+  const list = page.getByRole('listbox', { name: words.weights(font) });
+  await expect(list).toBeVisible();
+  return list;
+}
+
+/** Chooses a weight of a font by its name, from the row. */
+export async function chooseWeight(page: Page, font: string, weight: string): Promise<void> {
+  const list = await openWeights(page, font);
+  await list.getByRole('option', { name: weight, exact: true }).click();
+  await expect(list).toHaveCount(0);
+}
+
+/** The weight the submenu of a font marks as the text's; null when the text's is mixed. */
+export async function shownWeight(page: Page, font: string): Promise<string | null> {
+  const list = await openWeights(page, font);
+  const marked = list.locator('[role="option"][aria-selected="true"]');
+  const name = (await marked.count()) > 0 ? await marked.textContent() : null;
+  // The submenu, then the list.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(list).toHaveCount(0);
+  return name;
+}

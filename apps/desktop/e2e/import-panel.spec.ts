@@ -45,7 +45,7 @@ test('imports a file: plan, approval, slides, report, and the chat goes on', asy
   expect(
     await approve.evaluate((node) => node.previousElementSibling?.getAttribute('data-testid')),
   ).toBe('chat-assistant');
-  await expect(approve).toContainText('ה-Agent מחכה לאישור התוכנית');
+  await expect(approve).toContainText('הסוכן מחכה לאישור התוכנית');
 
   await approve.getByRole('button').click();
   await turnsDone(page, 2);

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { editor, LAPTOP, onStage, open, row, tool } from './editor-text-helpers';
+import { editor, onStage, open, row, tool } from './editor-text-helpers';
 import {
   addText,
   caret,
@@ -235,11 +235,16 @@ test.describe('update the style to match', () => {
   });
 });
 
-test.describe('at 1366x768 the style, the highlight and the direction are inside other tools', () => {
+/*
+ * The narrowest window (1280, `tauri.conf.json`): the row has no room for every tool. At 1366 it
+ * has, now that the weight is in the font list.
+ */
+const NARROWEST = { width: 1280, height: 768 } as const;
+
+test.describe('in the narrowest window the style, the highlight and the direction are inside other tools', () => {
   test.beforeEach(async ({ page }) => {
-    await page.setViewportSize(LAPTOP);
+    await page.setViewportSize(NARROWEST);
     await select(page, ID);
-    await expect(tool(page, 'משקל')).toHaveCount(0);
   });
 
   test('the style and "update the style" are in the "more" popover', async ({ page }) => {

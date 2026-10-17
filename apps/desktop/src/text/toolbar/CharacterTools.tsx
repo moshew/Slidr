@@ -7,7 +7,6 @@ import {
   Icon,
   IconButton,
   NumberField,
-  Select,
 } from '@slidr/ui';
 import {
   Baseline,
@@ -24,23 +23,14 @@ import {
   Superscript,
   Underline,
 } from '@slidr/ui/icons';
-import { useRef, type FocusEvent, type KeyboardEvent } from 'react';
+import { useRef, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ColorField,
-  drawnWeight,
-  FontField,
-  NAMED_WEIGHTS,
-  useFontWeights,
-  useGestureTx,
-} from '../../controls';
-import type { ContextToolProps } from '../../shell';
+import { ColorField, FontField, NAMED_WEIGHTS, useGestureTx } from '../../controls';
 import { changeMarks, clearFormatting, toggleBold, toggleMark } from '../actions';
 import { isMixed, orNull, patchMarks, type MarksPatch } from '../format';
 import {
   CLEAR_KEYS,
   closeToText,
-  inSeveralRow,
   keepFocus,
   PopoverTool,
   returnFocus,
@@ -54,7 +44,10 @@ import {
 } from './shared';
 import { StyleRows } from './StyleTools';
 
-/* Row B for text, the character tools (WG4-T03): font, size, weight, B / I / U, more, colours. */
+/*
+ * Row B for text, the character tools (WG4-T03): font and its weight, size, B / I / U, more,
+ * colours.
+ */
 
 /** Sets marks on the target, as one undo step named "Format text". */
 function useSetMarks(text: Text | null): (patch: MarksPatch, txId?: string) => void {
@@ -64,8 +57,16 @@ function useSetMarks(text: Text | null): (patch: MarksPatch, txId?: string) => v
   };
 }
 
-/* ---------------------------------------------------------------- font, size, weight */
+/* ---------------------------------------------------------------- font, size */
 
+const isNamed = (weight: number): weight is (typeof NAMED_WEIGHTS)[number] =>
+  (NAMED_WEIGHTS as readonly number[]).includes(weight);
+
+/**
+ * The font, and its weight: each font of the list opens a submenu of the weights it really has
+ * (TXT-03), so a weight the font lacks is not offered. A weight has a name when it is one of the
+ * nine, and is its number otherwise (350, or a weight between the names of a variable font).
+ */
 export function FontTool() {
   const { t } = useTranslation('text');
   const anchor = useRef<HTMLSpanElement>(null);
@@ -87,6 +88,13 @@ export function FontTool() {
           mixed={font !== undefined && isMixed(font)}
           className={compact ? 'w-24' : 'w-28'}
           onChange={(next) => setMarks({ font: next })}
+          weight={{
+            value: orNull(text.format.weight),
+            label: (value) => (isNamed(value) ? t(`weights.${value}`) : String(value)),
+            // The font is set only when it is another: one from the text style stays the style's.
+            onChange: (next, weight) =>
+              setMarks(next === (family ?? undefined) ? { weight } : { font: next, weight }),
+          }}
           onCloseAutoFocus={closeToText}
         />
       )}
@@ -161,68 +169,6 @@ export function SizeTool() {
   );
 }
 
-const isNamed = (weight: number): weight is (typeof NAMED_WEIGHTS)[number] =>
-  (NAMED_WEIGHTS as readonly number[]).includes(weight);
-
-/**
- * The weight as a choice among the weights the font of the text has: a weight the font lacks is
- * not offered, and text that asks for one shows the weight it is drawn in (bold at 700, in a font
- * whose heaviest face is 600, reads "semibold"). A weight has a name when it is one of the nine,
- * and is its number otherwise (350, or a weight between the names of a variable font). Text in
- * several fonts, or in a font nothing is known of, is offered all nine.
- */
-function WeightSelect({
-  text,
-  variant,
-  className,
-}: {
-  text: Text;
-  variant: 'field' | 'ghost';
-  className: string;
-}) {
-  const { t } = useTranslation('text');
-  const setMarks = useSetMarks(text);
-  const family = useFontWeights(orNull(text.format.font));
-  const weight = orNull(text.format.weight);
-  const drawn = weight !== null && family ? drawnWeight(family, weight) : weight;
-  const offered: readonly number[] = family?.offered ?? NAMED_WEIGHTS;
-  const label = (value: number) => (isNamed(value) ? t(`weights.${value}`) : String(value));
-  return (
-    <Select
-      variant={variant}
-      size="sm"
-      aria-label={t('weight')}
-      className={className}
-      options={offered.map((value) => ({ value: String(value), label: label(value) }))}
-      value={drawn !== null && offered.includes(drawn) ? String(drawn) : null}
-      placeholder={drawn === null ? t('mixed') : label(drawn)}
-      onValueChange={(next) => setMarks({ weight: Number(next) })}
-    />
-  );
-}
-
-/**
- * The select hands the focus back to its own button when it closes, and has no hook to say
- * otherwise. Focus that arrives from nowhere is that hand-back, and goes on to the text; focus
- * that arrives from another control (Tab) stays.
- */
-function onSelectFocus(event: FocusEvent): void {
-  if (event.relatedTarget === null && event.target.getAttribute('role') === 'combobox')
-    returnFocus();
-}
-
-/** In the row when there is room; otherwise in the "more" popover. */
-export function WeightTool() {
-  const compact = useCompact();
-  const text = useText();
-  if (!text || compact) return null;
-  return (
-    <span className="inline-flex" onFocus={onSelectFocus}>
-      <WeightSelect text={text} variant="ghost" className="w-24" />
-    </span>
-  );
-}
-
 /* ---------------------------------------------------------------- B, I, U, more */
 
 export function BoldTool() {
@@ -276,11 +222,10 @@ export function UnderlineTool() {
 
 /**
  * Strikethrough, super / subscript, case, letter spacing and "clear formatting"; and when the row
- * is tight, what has no room in it: the weight, the highlight colour and the text style. The row
- * of several elements holds the arrange tools too and never has room for the weight, and the row
- * of a group has the text tools of that row.
+ * is tight, what has no room in it: the highlight colour and the text style. The weight is in the
+ * font's list.
  */
-export function MoreTool({ kind }: Partial<ContextToolProps>) {
+export function MoreTool() {
   const { t } = useTranslation('text');
   const compact = useCompact();
   const text = useText();
@@ -349,11 +294,6 @@ export function MoreTool({ kind }: Partial<ContextToolProps>) {
           onValueChange={(next) => setMarks({ letterSpacing: next === 0 ? null : next }, burst())}
         />
       </Row>
-      {(compact || inSeveralRow(kind)) && (
-        <Row label={t('weight')}>
-          <WeightSelect text={text} variant="field" className="w-36" />
-        </Row>
-      )}
       {compact && (
         <>
           <Row label={t('highlight')}>

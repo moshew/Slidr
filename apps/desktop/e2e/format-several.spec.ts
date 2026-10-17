@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { ShapeElement, TextElement } from '@slidr/model';
-import { addSelected, box, elementOf, rect, rowOverflow } from './format-helpers';
+import { addSelected, box, elementOf, rect, rowOverflow, shownWeight } from './format-helpers';
 import { line, openApp, pageProblems, row, steps, undo } from './objects-helpers';
 import { para } from './text-helpers';
 
@@ -142,18 +142,21 @@ test.describe('several text boxes', () => {
     expect((await runs(page, 't_part'))[1]?.marks).toEqual({ italic: true });
   });
 
-  test('"clear formatting" clears every box, and the weight is in "more"', async ({ page }) => {
+  test('"clear formatting" clears every box, and the weight is in the font list', async ({
+    page,
+  }) => {
     await addSelected(page, boxes);
+    // 400, 700 and 400: no weight is marked.
+    expect(await shownWeight(page, 'Heebo')).toBeNull();
     const more = await open(page, 'עוד עיצוב תווים');
-    // 400, 700 and 400: no weight is shown.
-    await expect(more.getByRole('combobox', { name: 'משקל' })).toHaveText('מעורב');
     expect(await steps(page, () => more.getByRole('button', { name: 'ניקוי עיצוב' }).click())).toBe(
       1,
     );
     for (const id of ids) {
       for (const run of await runs(page, id)) expect(run.marks).toBeUndefined();
     }
-    await expect(more.getByRole('combobox', { name: 'משקל' })).toHaveText('רגיל');
+    await page.keyboard.press('Escape');
+    expect(await shownWeight(page, 'Heebo')).toBe('רגיל');
   });
 
   test('boxes that grow with their text get their new height in the same undo step', async ({

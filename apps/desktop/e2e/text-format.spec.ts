@@ -15,6 +15,7 @@ import {
   setSelection,
   steps,
 } from './text-helpers';
+import { chooseWeight, shownWeight } from './format-helpers';
 
 /*
  * Formatting text from row B and from the keyboard (WG4-T03, T04, T05; ADR-013), in the app:
@@ -73,7 +74,7 @@ test.describe('a selected text box: the tools format all of its text', () => {
     // The body style of the basic theme: Heebo for Hebrew, 30px, regular.
     await expect(tool(page, 'גופן')).toHaveText('Heebo');
     await expect(row(page).getByRole('textbox', { name: 'גודל גופן' })).toHaveValue('30');
-    await expect(row(page).getByRole('combobox', { name: 'משקל' })).toHaveText('רגיל');
+    expect(await shownWeight(page, 'Heebo')).toBe('רגיל');
     await expect(tool(page, 'מודגש')).toHaveAttribute('aria-pressed', 'false');
     // Both paragraphs resolve to different directions, but the alignment is one: start.
     await expect(tool(page, 'יישור')).toHaveAttribute('data-align', 'start');
@@ -118,11 +119,7 @@ test.describe('a selected text box: the tools format all of its text', () => {
   });
 
   test('weight, and what "bold" means against it', async ({ page }) => {
-    const weight = row(page).getByRole('combobox', { name: 'משקל' });
-    await oneUndoStep(page, ID, async () => {
-      await weight.click();
-      await page.getByRole('option', { name: 'בינוני', exact: true }).click();
-    });
+    await oneUndoStep(page, ID, () => chooseWeight(page, 'Heebo', 'בינוני'));
     expect(await marks(page)).toEqual([[{ weight: 500 }], [{ weight: 500 }]]);
     await expect(page.getByTestId('stage-surface')).toBeFocused();
 
@@ -130,7 +127,7 @@ test.describe('a selected text box: the tools format all of its text', () => {
     await oneUndoStep(page, ID, () => tool(page, 'מודגש').click());
     expect(await marks(page)).toEqual([[{ weight: 700 }], [{ weight: 700 }]]);
     await expect(tool(page, 'מודגש')).toHaveAttribute('aria-pressed', 'true');
-    await expect(weight).toHaveText('מודגש');
+    expect(await shownWeight(page, 'Heebo')).toBe('מודגש');
     await tool(page, 'מודגש').click();
     expect(await marks(page)).toEqual([[undefined], [undefined]]);
   });
@@ -505,8 +502,7 @@ test.describe('inside the text editor: the tools format the selection', () => {
     await expectStillEditing(page);
 
     await oneUndoStep(page, ID, async () => {
-      await row(page).getByRole('combobox', { name: 'משקל' }).click();
-      await page.getByRole('option', { name: 'דק', exact: true }).click();
+      await chooseWeight(page, 'Rubik', 'דק');
       await expect(editor(page)).toBeFocused();
     });
     await expectStillEditing(page);
@@ -633,7 +629,7 @@ test.describe('inside the text editor: the tools format the selection', () => {
     await size.press('Enter');
     await page.keyboard.press('Control+a');
     await expect(size).toHaveValue('');
-    await expect(row(page).getByRole('combobox', { name: 'משקל' })).toHaveText('מעורב');
+    expect(await shownWeight(page, 'Heebo')).toBeNull();
     await expect(tool(page, 'מודגש')).toHaveAttribute('aria-pressed', 'false');
     // Bold on a part-bold selection makes all of it bold.
     await tool(page, 'מודגש').click();
@@ -920,7 +916,8 @@ test.describe('row B for text, for the design gate', () => {
           await page.screenshot({ path: out(`row-b-${name}`), clip });
 
           const he = lang === 'he';
-          const compact = viewport.width < 1500;
+          // The row takes its compact layout when the full one has no room: at 1366 it has.
+          const compact = (await tool(page, he ? 'רשימה' : 'List').count()) > 0;
           const popovers = [
             ['more', he ? 'עוד עיצוב תווים' : 'More character formatting'],
             [

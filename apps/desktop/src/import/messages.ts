@@ -38,7 +38,7 @@ export const he = {
     removeFailed: 'קובץ המקור לא הוסר',
   },
   approve: {
-    waiting: 'ה-Agent מחכה לאישור התוכנית',
+    waiting: 'הסוכן מחכה לאישור התוכנית',
     action: 'אישור והמשך',
   },
   report: {

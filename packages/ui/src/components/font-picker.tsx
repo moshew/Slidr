@@ -1,9 +1,11 @@
 import { useCallback, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { Check, Search } from 'lucide-react';
+import { Direction, Popover as RadixPopover } from 'radix-ui';
+import { Check, ChevronRight, Search } from 'lucide-react';
 import { cx } from '../cx';
 import { ScrollArea } from './feedback';
 import { Icon } from './icon';
 import { Input } from './input';
+import { usePortalContainer } from './provider';
 
 export interface FontOption {
   /** The family name, as CSS and the deck use it. */
@@ -20,6 +22,13 @@ export interface FontGroup {
   fonts: readonly FontOption[];
 }
 
+/** The weights a family has, for its submenu: "Light", "Regular", "Bold". */
+export interface FontWeights {
+  options: readonly { value: number; label: string }[];
+  /** The weight the text is drawn in, when the text is in this family. */
+  current: number | null;
+}
+
 /** The picker's strings; the design system has no language of its own. */
 export interface FontPickerLabels {
   search: string;
@@ -28,6 +37,8 @@ export interface FontPickerLabels {
   all: string;
   /** Shown when the search matches nothing. */
   empty: string;
+  /** The accessible name of a font's weights: "Weights of Heebo". */
+  weights?: (family: string) => string;
 }
 
 /**
@@ -51,6 +62,13 @@ export interface FontPickerProps {
   recent?: readonly string[];
   value: string | null;
   onValueChange: (family: string) => void;
+  /**
+   * The weights of a family. A family of more than one has an arrow, on the font the pointer or
+   * the arrow keys are on and on the chosen one, that opens a submenu of them.
+   */
+  weightsOf?: (family: string) => FontWeights | null;
+  /** A weight chosen in a family's submenu: the family and the weight together. */
+  onWeightChange?: (family: string, weight: number) => void;
   /** Puts the caret in the search field when the picker appears. On by default. */
   autoFocus?: boolean;
   labels: FontPickerLabels;
@@ -76,6 +94,16 @@ function fontRowHeight(): number {
   return parseFloat(token) || 44;
 }
 
+/** The submenu of a font's weights: whose, and which of them the arrow keys are on. */
+interface Sub {
+  family: string;
+  row: number;
+  weights: FontWeights;
+  active: number;
+  /** The line it opens beside. */
+  anchor: HTMLElement;
+}
+
 /** A family name as a CSS string. */
 const quoted = (family: string) => `"${family.replace(/["\\]/g, '\\$&')}"`;
 
@@ -95,6 +123,8 @@ export function FontPicker({
   recent = NO_RECENT,
   value,
   onValueChange,
+  weightsOf,
+  onWeightChange,
   autoFocus = true,
   labels,
   className,
@@ -106,6 +136,33 @@ export function FontPicker({
   const [lineHeight] = useState(fontRowHeight);
   /** The first line in view, and how many lines the list shows. */
   const [view, setView] = useState({ first: 0, count: IN_VIEW });
+  const [sub, setSub] = useState<Sub | null>(null);
+  const rtl = Direction.useDirection() === 'rtl';
+  const portal = usePortalContainer();
+
+  /** A family's weights, when it has more than one to choose from. */
+  const choices = (family: string): FontWeights | null => {
+    if (!weightsOf || !onWeightChange) return null;
+    const weights = weightsOf(family);
+    return weights && weights.options.length > 1 ? weights : null;
+  };
+  /** Opens the weights of the font on a line, beside it. */
+  const openSub = (family: string, row: number, anchor: HTMLElement | null) => {
+    const weights = choices(family);
+    if (!weights || !anchor || (sub?.family === family && sub.row === row)) return;
+    // The keys start on the text's weight, or on the one nearest to regular.
+    const target = weights.current ?? 400;
+    const distance = (i: number) => Math.abs((weights.options[i]?.value ?? 0) - target);
+    const active = weights.options.reduce(
+      (best, _, i) => (distance(i) < distance(best) ? i : best),
+      0,
+    );
+    setSub({ family, row, weights, anchor, active });
+  };
+  const chooseWeight = (family: string, weight: number) => {
+    setSub(null);
+    onWeightChange?.(family, weight);
+  };
 
   const { lines, rows } = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -180,6 +237,37 @@ export function FontPicker({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const inward = rtl ? 'ArrowLeft' : 'ArrowRight';
+    const outward = rtl ? 'ArrowRight' : 'ArrowLeft';
+    if (sub) {
+      // The submenu has the arrows and Enter while it is open; Esc closes it (its own layer).
+      const { options } = sub.weights;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        setSub({ ...sub, active: Math.max(0, Math.min(options.length - 1, sub.active + step)) });
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        const option = options[sub.active];
+        if (option) chooseWeight(sub.family, option.value);
+      } else if (event.key === outward) {
+        event.preventDefault();
+        setSub(null);
+      }
+      return;
+    }
+    // The arrow toward the end of the line opens the weights once the caret is at the end of the
+    // search; before that, it moves the caret.
+    const { selectionStart, selectionEnd, value: typed } = event.currentTarget;
+    const atEnd = selectionStart === typed.length && selectionEnd === typed.length;
+    if (event.key === inward && atEnd && activeLine && 'font' in activeLine) {
+      const anchor = document.getElementById(`${listId}-${activeLine.row}`);
+      if (anchor && choices(activeLine.font.family)) {
+        event.preventDefault();
+        openSub(activeLine.font.family, activeLine.row, anchor);
+      }
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const next = Math.max(
@@ -208,6 +296,9 @@ export function FontPicker({
     }
     const { family, symbol } = line.font;
     const selected = family === value;
+    const opened = sub?.family === family && sub.row === line.row;
+    // Only the lines that show the arrow ask for their weights: a list has hundreds of fonts.
+    const weights = selected || line.row === activeRow || opened ? choices(family) : null;
     return (
       <li
         key={line.key}
@@ -218,10 +309,17 @@ export function FontPicker({
         aria-setsize={rows.length}
         aria-posinset={line.row + 1}
         data-active={line.row === activeRow || undefined}
-        onPointerMove={() => setActive(line.row)}
+        aria-haspopup={weights ? 'listbox' : undefined}
+        aria-expanded={weights ? opened : undefined}
+        onPointerMove={() => {
+          setActive(line.row);
+          // Another font: the weights of the last one go.
+          if (sub && !opened) setSub(null);
+        }}
         onClick={() => onValueChange(family)}
         className={cx(
-          'relative flex h-font-row cursor-default items-center gap-2 rounded-inset ps-8 pe-3 select-none',
+          'relative flex h-font-row cursor-default items-center gap-2 rounded-inset ps-8 select-none',
+          weights ? 'pe-1' : 'pe-3',
           selected
             ? 'bg-ui-accent-soft data-active:bg-ui-accent-soft-hover'
             : 'data-active:bg-ui-hover',
@@ -251,9 +349,32 @@ export function FontPicker({
             {sample.text}
           </span>
         )}
+        {weights && (
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={labels.weights?.(family) ?? family}
+            // The search keeps the focus.
+            onMouseDown={(event) => event.preventDefault()}
+            onPointerEnter={(event) => openSub(family, line.row, event.currentTarget.parentElement)}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (opened) setSub(null);
+              else openSub(family, line.row, event.currentTarget.parentElement);
+            }}
+            className={cx(
+              'ms-auto inline-flex size-7 shrink-0 cursor-default items-center justify-center rounded-small text-ui-fg-muted transition-colors hover:bg-ui-hover hover:text-ui-fg',
+              opened && 'bg-ui-hover text-ui-fg',
+            )}
+          >
+            <Icon icon={ChevronRight} mirror />
+          </button>
+        )}
       </li>
     );
   };
+
+  const subId = `${listId}-weights`;
 
   return (
     <div className={cx('flex min-h-0 flex-col gap-2', className)}>
@@ -265,9 +386,11 @@ export function FontPicker({
         aria-controls={listId}
         // Only a font that is drawn can be pointed at: a scroll may leave the active one behind.
         aria-activedescendant={
-          activeAt !== undefined && activeAt >= from && activeAt < to
-            ? `${listId}-${activeRow}`
-            : undefined
+          sub
+            ? `${subId}-${sub.active}`
+            : activeAt !== undefined && activeAt >= from && activeAt < to
+              ? `${listId}-${activeRow}`
+              : undefined
         }
         aria-label={labels.search}
         placeholder={labels.search}
@@ -275,6 +398,7 @@ export function FontPicker({
         onChange={(event) => {
           setQuery(event.target.value);
           setActive(0);
+          setSub(null);
           // Another list: it starts at its top.
           if (viewport.current) viewport.current.scrollTop = 0;
           setView((was) => (was.first === 0 ? was : { ...was, first: 0 }));
@@ -285,7 +409,11 @@ export function FontPicker({
         type="always"
         className="-mx-1 h-font-list max-h-[max(var(--spacing-font-row),calc(var(--radix-popover-content-available-height,100vh)-var(--spacing-control)-8*var(--spacing)))]"
         viewportRef={attach}
-        onScroll={(event) => look(event.currentTarget)}
+        onScroll={(event) => {
+          look(event.currentTarget);
+          // Its line moves away from it.
+          if (sub) setSub(null);
+        }}
       >
         <ul
           id={listId}
@@ -306,6 +434,59 @@ export function FontPicker({
           )}
         </ul>
       </ScrollArea>
+      {sub && (
+        <RadixPopover.Root open onOpenChange={(open) => !open && setSub(null)}>
+          <RadixPopover.Anchor virtualRef={{ current: sub.anchor }} />
+          <RadixPopover.Portal container={portal}>
+            <RadixPopover.Content
+              side={rtl ? 'left' : 'right'}
+              align="start"
+              sideOffset={6}
+              collisionPadding={8}
+              // The search keeps the focus, and its keys work the submenu.
+              onOpenAutoFocus={(event) => event.preventDefault()}
+              onCloseAutoFocus={(event) => event.preventDefault()}
+              // A press on its own line is the arrow's, which opens and closes it.
+              onInteractOutside={(event) => {
+                if (sub.anchor.contains(event.target as Node)) event.preventDefault();
+              }}
+              className="z-50 min-w-menu rounded-panel border border-ui-line bg-ui-raised p-1 text-sm text-ui-fg shadow-overlay animate-overlay-in"
+            >
+              <ul id={subId} role="listbox" aria-label={labels.weights?.(sub.family) ?? sub.family}>
+                {sub.weights.options.map((option, i) => {
+                  const checked = option.value === sub.weights.current;
+                  return (
+                    <li
+                      key={option.value}
+                      id={`${subId}-${i}`}
+                      role="option"
+                      aria-selected={checked}
+                      data-active={i === sub.active || undefined}
+                      onPointerMove={() => i !== sub.active && setSub({ ...sub, active: i })}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => chooseWeight(sub.family, option.value)}
+                      className="relative flex h-control cursor-default items-center rounded-control ps-8 pe-3 select-none data-active:bg-ui-hover"
+                    >
+                      {checked && (
+                        <span className="absolute start-2 inline-flex size-4 items-center justify-center text-ui-accent-fg">
+                          <Icon icon={Check} />
+                        </span>
+                      )}
+                      {/* Each weight drawn in itself, as each font is drawn in its face. */}
+                      <span
+                        style={{ fontFamily: quoted(sub.family), fontWeight: option.value }}
+                        className="truncate"
+                      >
+                        {option.label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </RadixPopover.Content>
+          </RadixPopover.Portal>
+        </RadixPopover.Root>
+      )}
     </div>
   );
 }

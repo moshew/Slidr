@@ -10,6 +10,19 @@ function registeredFaces(): FaceWeight[] {
 }
 
 /**
+ * The weights of any family, for a list of them (the font picker's submenus): `fontWeights` over
+ * the faces the page has when `open` turns on.
+ */
+export function useWeightsOf(open: boolean): (family: string) => FamilyWeights | null {
+  const assets = useDeck((s) => s.deck.assets);
+  const installed = useSystemFonts();
+  return useMemo(() => {
+    const registered = open ? registeredFaces() : [];
+    return (family: string) => fontWeights(family, { registered, assets, installed });
+  }, [open, assets, installed]);
+}
+
+/**
  * The weights of a family, for a component: `fontWeights` over the page, the deck and the
  * computer. Null while the family is not known, and for no family (text in several fonts).
  */

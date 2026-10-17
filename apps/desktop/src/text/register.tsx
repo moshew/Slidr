@@ -36,7 +36,6 @@ import {
   MoreTool,
   SizeTool,
   UnderlineTool,
-  WeightTool,
 } from './toolbar/CharacterTools';
 import { TextEffectsTool } from './toolbar/EffectsTool';
 import { linksText, LinkTool, requestLink } from './toolbar/LinkTool';
@@ -74,7 +73,6 @@ const tools = [
   { id: 'text.style', group: 'font', order: 9, render: StyleTool },
   { id: 'text.font', group: 'font', order: 10, render: FontTool },
   { id: 'text.size', group: 'font', order: 11, render: SizeTool },
-  { id: 'text.weight', group: 'font', order: 12, render: WeightTool },
   { id: 'text.bold', group: 'marks', order: 20, render: BoldTool },
   { id: 'text.italic', group: 'marks', order: 21, render: ItalicTool },
   { id: 'text.underline', group: 'marks', order: 22, render: UnderlineTool },
@@ -97,7 +95,7 @@ for (const tool of tools) registerContextTool({ ...tool, kinds: ['text'] });
  * is a text box or a shape with text, the row also holds the text tools that make sense for all
  * of them at once, after the arrange tools (10 to 40) and before the look they share (200). A
  * value they do not share is shown as mixed, and a change is one undo step for all of them. The
- * weight is in "more" (which also holds "clear formatting"): the row has no room for it.
+ * weight is in the font's list, as in the row of one text.
  *
  * One selected group has the same tools, for the texts inside it (`resolveTarget`): a card of a
  * converted slide is a group, and bold, size, colour and the text style are wanted on it as on

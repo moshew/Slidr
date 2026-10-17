@@ -31,6 +31,7 @@ export const he = {
     system: 'במחשב הזה',
     letters: 'תומך ב{{language}}',
     empty: 'לא נמצא גופן כזה',
+    weights: 'המשקלים של {{family}}',
   },
   mixed: 'מעורב',
 } as const;
@@ -65,6 +66,7 @@ export const en: Messages<typeof he> = {
     system: 'On this computer',
     letters: 'Supports {{language}}',
     empty: 'No font by that name',
+    weights: 'Weights of {{family}}',
   },
   mixed: 'Mixed',
 };

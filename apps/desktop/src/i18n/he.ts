@@ -109,7 +109,7 @@ export const he = {
     resize: 'שינוי רוחב הפאנל',
     actions: 'פעולות',
     chatEmptyTitle: "הצ'אט עוד לא מחובר",
-    chatEmptyBody: 'כאן תבקשו שינויים מה-Agent ותראו אותם קורים על השקף.',
+    chatEmptyBody: 'כאן תבקשו שינויים מהסוכן ותראו אותם קורים על השקף.',
     actionsEmptyTitle: 'אין פעולות עדיין',
     actionsEmptyBody: 'פעולות מהירות לכלי הזה יופיעו כאן.',
     soonTitle: 'עוד לא זמין',
@@ -135,7 +135,7 @@ export const he = {
     unsaved: 'לא נשמר',
     saving: 'שומר…',
     neverSaved: 'עוד לא נשמר',
-    agentIdle: 'ה-Agent לא פעיל',
+    agentIdle: 'הסוכן לא פעיל',
     lintNone: 'אין ממצאי עיצוב',
   },
   stage: {

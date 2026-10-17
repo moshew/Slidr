@@ -9,6 +9,7 @@ import {
   type FontGroup,
   type FontOption,
   type FontSample,
+  type FontWeights,
 } from '@slidr/ui';
 import {
   contentLanguageOf,
@@ -22,7 +23,9 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { builtinFamilies, useSystemFonts, useUserFonts } from '../fonts';
 import { useDeck } from '../shell';
+import { drawnWeight, familyWeights } from './fontWeights';
 import { rememberFont, useRecent } from './recent';
+import { useWeightsOf } from './useFontWeights';
 
 export interface FontFieldProps {
   /** The family; null when the text takes its font from its style. */
@@ -39,6 +42,17 @@ export interface FontFieldProps {
   className?: string;
   /** Where the focus goes when the picker closes, e.g. back to the text editor. */
   onCloseAutoFocus?: (event: Event) => void;
+  /**
+   * The weight of the text (TXT-03). Given, each font of the list that has several weights opens a
+   * submenu of them, and a weight chosen there sets the font and the weight together.
+   */
+  weight?: {
+    /** The weight the text asks for; null when it is mixed. */
+    value: number | null;
+    /** A weight's name: "Bold", or its number. */
+    label: (weight: number) => string;
+    onChange: (family: string, weight: number) => void;
+  };
 }
 
 /**
@@ -127,12 +141,21 @@ function useFontGroups(labels: {
       }));
     return [
       { label: deck, fonts: carried },
-      { label: mine, fonts: [...added.values()] },
+      { label: mine, fonts: lettersFirst([...added.values()]) },
       { label: library, fonts: builtin },
-      { label: system, fonts: onComputer },
+      { label: system, fonts: lettersFirst(onComputer) },
     ].filter((group) => group.fonts.length > 0);
   }, [assets, lang, own, installed, deck, mine, library, system]);
 }
+
+/** A family nothing is known of draws every weight, as far as the list can tell. */
+const ANY_WEIGHT = familyWeights([[100, 900]]);
+
+/** The fonts that have the letters of the deck's language before the ones that do not. */
+const lettersFirst = (fonts: FontOption[]): FontOption[] => [
+  ...fonts.filter((font) => font.sample),
+  ...fonts.filter((font) => !font.sample),
+];
 
 /** The phrase the picker draws in each face with the letters of a deck in `lang`, if any. */
 function useSample(lang: string): FontSample | undefined {
@@ -157,6 +180,7 @@ export function FontField({
   size = 'md',
   className,
   onCloseAutoFocus,
+  weight,
 }: FontFieldProps) {
   const { t } = useTranslation('controls');
   const [open, setOpen] = useState(false);
@@ -169,6 +193,20 @@ export function FontField({
   const sample = useSample(useDeck((s) => s.deck.meta.lang));
   const recent = useRecent((s) => s.fonts);
   const shown = mixed ? t('mixed') : (value ?? fallback ?? '');
+  const chosen = mixed ? null : (value ?? fallback ?? null);
+  const weightsOf = useWeightsOf(open && weight !== undefined);
+  const weightsOfFamily = (family: string): FontWeights | null => {
+    if (!weight) return null;
+    // A font nothing is known of has no arrow, unless the text is in it: it is offered all nine.
+    const known = weightsOf(family) ?? (family === chosen ? ANY_WEIGHT : null);
+    if (!known) return null;
+    return {
+      options: known.offered.map((each) => ({ value: each, label: weight.label(each) })),
+      // The weight the text is drawn in, in its own font: bold reads "semibold" in a font whose
+      // heaviest face is 600.
+      current: family === chosen && weight.value !== null ? drawnWeight(known, weight.value) : null,
+    };
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -202,13 +240,23 @@ export function FontField({
           groups={groups}
           sample={sample}
           recent={recent}
-          value={mixed ? null : (value ?? fallback ?? null)}
+          value={chosen}
           labels={{
             search: t('font.search'),
             recent: t('font.recent'),
             all: t('font.all'),
             empty: t('font.empty'),
+            weights: (family) => t('font.weights', { family }),
           }}
+          weightsOf={weight ? weightsOfFamily : undefined}
+          onWeightChange={
+            weight &&
+            ((family, next) => {
+              rememberFont(family);
+              weight.onChange(family, next);
+              setOpen(false);
+            })
+          }
           onValueChange={(family) => {
             rememberFont(family);
             onChange(family);

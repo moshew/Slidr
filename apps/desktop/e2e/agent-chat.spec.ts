@@ -105,7 +105,7 @@ test('the design check sends the agent back, as a folded line, until the slide i
 
   const gate = turn.getByTestId('gate-line');
   await expect(gate).toHaveCount(1);
-  await expect(gate).toContainText('בדיקת העיצוב החזירה את ה-Agent לתיקון');
+  await expect(gate).toContainText('בדיקת העיצוב החזירה את הסוכן לתיקון');
   // Folded by default; unfolded, it says what was sent back, in the user's words.
   await expect(gate.getByText('תוכן חורג מהשקף')).toHaveCount(0);
   await gate.getByRole('button').first().click();
