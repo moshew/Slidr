@@ -14,8 +14,8 @@ The committed baseline is `fdb2036` (2026-10-08). The table covers the commits f
 | Editor design refresh | `6026d0d` | [Design refresh plan](design-refresh/PLAN.md) and [spec](design-refresh/SPEC.md). |
 | Local `slides/` ignored | `ea5fd81` | Repository housekeeping; no product behavior. |
 | Template-specific title/text layouts | `10f782f` | [ADR-076](adr/ADR-076-template-layouts.md). |
-| Generated packaged media and image `smartFrame` | `dcda014` | [ADR-074](adr/ADR-074-packaged-media-library.md). Verify packaged resources. |
-| File-menu export and serialized packaged templates | `abc5243` | [ADR-074](adr/ADR-074-packaged-media-library.md) and [design refresh spec](design-refresh/SPEC.md). |
+| Generated packaged media and image `smartFrame` | `dcda014` | [ADR-074](adr/ADR-074-packaged-media-library.md). The packaging was superseded by [ADR-090](adr/ADR-090-media-library-on-the-web.md) (the library on the web). |
+| File-menu export and serialized packaged templates | `abc5243` | [ADR-074](adr/ADR-074-packaged-media-library.md) and [design refresh spec](design-refresh/SPEC.md); the templates are now read from the library ([ADR-090](adr/ADR-090-media-library-on-the-web.md)). |
 | Elements browser, graphics/emoji stickers, expanded motion presets | `fdb2036` | [ADR-075](adr/ADR-075-elements-and-presets.md). |
 | Import as an AI conversation | Working tree | [ADR-077](adr/ADR-077-import-conversation.md). The old import panel is removed in the working tree. |
 | Image-edge crop, active text-frame handles, compact creation/alignment controls | Working tree | [ADR-078](adr/ADR-078-stage-editing-refinements.md). |
@@ -33,11 +33,11 @@ The merge commit `25d32f6` adds no separate feature to this list. Historical ADR
 | Model, commands, storage | Typed deck model, validated commands, grouped undo/redo, `.slidr` workspace persistence. | Keep old-deck migration, autosave recovery, and command-history tests green. |
 | Renderer and Stage | One DOM renderer for editing, thumbnails, capture, presentation, and export; editable objects, groups, crop, text, tables, and charts. | Review the current image and text-handle changes across zoom, RTL, and group transforms. |
 | Shell and design | Token-based bilingual UI; document actions, creation row, Elements, contextual toolbar, status zoom, and responsive panels. | Recheck focus order, keyboard use, narrow windows, and light/dark rendering after working-tree changes. |
-| Templates and design check | 17 built-in templates, personal templates, layout fallback, design lint and fixes. | Test all built-ins and packaged serialized templates, including Hebrew/English and mirrored layouts. |
+| Templates and design check | 17 built-in templates, personal templates, layout fallback, design lint and fixes. | Test all built-ins as the published library serves them, including Hebrew/English and mirrored layouts. |
 | AI and images | One AI chat, Deck API, restricted CLI harness, per-turn context, saved conversations, providers, variations, and agent quality gate. | Validate saved-deck attachments, cancellation, document ownership, and configured-provider paths. |
-| HTML import/export | Isolated agent-led import with fidelity guard; self-contained HTML export using the shared renderer/runtime. | Test current chat-based import, interrupted recovery, packaged media, export parity, and offline output. |
+| HTML import/export | Isolated agent-led import with fidelity guard; self-contained HTML export using the shared renderer/runtime. | Test current chat-based import, interrupted recovery, the media library online and from its cache, export parity, and offline output. |
 | Motion and presentation | Shared runtime, animation timeline, transition presets, presentation mode. | Check the new transition settings placement and full picker/playback/export parity. |
-| Packaging and safety | CSP, window/IPC boundaries, read-only bundled media, packaged-app suites. | Build and inspect the generated `media/` directory and run packaged Windows gates. |
+| Packaging and safety | CSP, window/IPC boundaries, the read-only media library on the web, packaged-app suites, the release workflow and the updater. | Run the packaged Windows gates, install the release's installer by hand, and update an installed release to the next one. |
 
 The milestone names M0–M7 and workgroups WG0–WG13 in earlier plans are historical delivery organization. M1–M7 code has been integrated into the product; a milestone's old test count does not certify the present working tree. [ADR-070](adr/ADR-070-remaining-p1.md) records the last P1 implementation pass, and [ADR-071](adr/ADR-071-bug-hunt-fixes.md) records its bug-hunt pass.
 
@@ -48,7 +48,7 @@ The milestone names M0–M7 and workgroups WG0–WG13 in earlier plans are histo
 3. Agent tools are protocol-independent TypeScript functions; Rust handles restricted processes, storage, media, networking, and transport boundaries ([ADR-010](adr/ADR-010-agent-harness.md), [ADR-022](adr/ADR-022-mcp-bridge.md)).
 4. HTML conversion proposes editable elements, measures fidelity against renderer output, and retains HTML for regions it cannot reproduce faithfully ([ADR-017](adr/ADR-017-html-conversion-engine.md)). Imported content runs in an isolated webview ([ADR-036](adr/ADR-036-html-import.md)).
 5. Product strings, keyboard behavior, text direction, and layout work in Hebrew and English. Deck direction is separate from shell direction.
-6. Built-in resources generated during packaging stay outside the source bundle and are served through the read-only media boundary ([ADR-074](adr/ADR-074-packaged-media-library.md)).
+6. Built-in content is a media library published apart from the app, read by the Rust core and served to pages through the read-only `media` protocol; nothing of it is in the installer ([ADR-090](adr/ADR-090-media-library-on-the-web.md)).
 
 ## 4. Completion criteria for the current work
 

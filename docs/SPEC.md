@@ -22,7 +22,7 @@ The committed Elements browser offers shapes, graphics, emoji, icons, photos, cl
 
 **Working tree:** Elements gains a Designs collection with 250 complete, editable slide compositions, shown in sixteen groups by what they are for, with a search of their names. Choosing one inserts a new slide after the current slide in one undo step. Shapes and lines gain richer, direction-aware tile previews. See [ADR-079](adr/ADR-079-elements-designs.md).
 
-Built-in icons, template images, fonts, and serialized templates are generated into a packaged `media/` resource beside the executable and served read-only in WebView2. Development imports the source resources. A saved deck's assets remain its own workspace assets. Optional image `smartFrame` metadata defines a decorative image opening; its artwork keeps its size when the image is resized, and the opening takes up the change ([ADR-086](adr/ADR-086-frames-keep-their-artwork.md)). See [ADR-074](adr/ADR-074-packaged-media-library.md).
+Built-in templates and their images, the content of Elements, icons, and deck fonts are a media library published on the web (`https://slidr-media.pages.dev`), not part of the app or its installer. The Rust core reads it on demand, checks every file against the library's manifest, keeps what was used in a local cache so it stays available offline, and serves it read-only to WebView2 through the `media` protocol ([ADR-090](adr/ADR-090-media-library-on-the-web.md)). A saved deck's assets remain its own workspace assets. Optional image `smartFrame` metadata defines a decorative image opening; its artwork keeps its size when the image is resized, and the opening takes up the change ([ADR-086](adr/ADR-086-frames-keep-their-artwork.md)). [ADR-074](adr/ADR-074-packaged-media-library.md), which packaged the library beside the executable, is superseded.
 
 ## 4. Templates, layout, and design quality
 
@@ -58,7 +58,7 @@ An imported HTML file runs in a disposable isolated webview with limited IPC and
 
 ## 8. Security, performance, and verification
 
-Deck HTML, SVG, CSS, and imported files must remain inside rendering and import boundaries. The desktop app enforces CSP and limited window capabilities; packaged media is read-only; native networking and secret storage stay in Rust. The release should preserve capture, editor, presentation, and export parity while honoring offline output. See [ADR-066](adr/ADR-066-packaging-and-hardening.md), [ADR-071](adr/ADR-071-bug-hunt-fixes.md), and [ADR-074](adr/ADR-074-packaged-media-library.md).
+Deck HTML, SVG, CSS, and imported files must remain inside rendering and import boundaries. The desktop app enforces CSP and limited window capabilities; the media library is read-only and reached only through Rust; native networking and secret storage stay in Rust. The release should preserve capture, editor, presentation, and export parity while honoring offline output. See [ADR-066](adr/ADR-066-packaging-and-hardening.md), [ADR-071](adr/ADR-071-bug-hunt-fixes.md), and [ADR-090](adr/ADR-090-media-library-on-the-web.md).
 
 Verification spans pure model/runtime tests, TypeScript checks, browser E2E in both UI directions, visual baselines, real Tauri checks for native features, and packaged Windows checks. The [PLAN](PLAN.md) lists the current worktree gates. Historical ADR test counts describe their original runs only; this documentation update did not rerun the application suites.
 

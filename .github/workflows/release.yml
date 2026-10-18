@@ -49,10 +49,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The build makes no signature of the updater's (no `createUpdaterArtifacts`), so a build on
+      # any machine needs no key; it is made below, once SignPath has signed.
       - name: Build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm --filter @slidr/desktop tauri build
 
       - name: Collect the installer

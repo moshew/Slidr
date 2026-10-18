@@ -46,7 +46,7 @@ In the app today:
 - **HTML import** — open any HTML presentation; the agent explores the file in a hidden window with no network and six permitted commands, shows a plan, and captures the slides into a plain deck of its own, with a count of the slides captured out of those planned and a report of what became editable and what stayed HTML. The deck file keeps the source file and the record of the import, so the report comes back when the file is reopened, and a button removes the source. An import that was cut (Stop, a dead agent process, a crash) continues from what was captured. The motion of the file comes along: the transition into each slide, matched to the nearest one the app has, and the entrances on it with the file's own keyframes, durations and delays; build steps that wait for a click come in as clicks when the agent marks them ([ADR-092](docs/adr/ADR-092-motion-by-default-and-imported-motion.md)).
 - **Animations, present mode, export** — an animations panel and transitions, full-screen presenting on the current display, and export of one self-contained HTML file: images re-encoded, fonts cut down to the characters in use and written once, animations, live charts and links included, media inside the file or in a folder beside it. A black or white screen holds the show (auto-advance, media, a step that is playing), and after the last step an end screen comes up. A link in a show or in an exported file is reached with Tab and followed with Enter, and only web, mail and phone addresses are opened; in the app's own show a mail or phone link is drawn as plain text, because the window is permitted to open web addresses only. A slide the agent makes moves by default: it comes in with the deck's transition (a fade in a new deck), and what is on it after the title enters in reading order as it opens, unless the agent chose otherwise ([ADR-092](docs/adr/ADR-092-motion-by-default-and-imported-motion.md)).
 - **Free markup stays a picture** ([ADR-071](docs/adr/ADR-071-bug-hunt-fixes.md)) — what a deck holds as free markup or free CSS (an SVG, an HTML object, a slide's CSS) is drawn and does nothing else, whoever wrote it, in the editor, in a show and in the exported file. An `svg` object is drawn in a shadow root of its own, a slide's CSS cannot restyle the editor or another slide, and the export checks what it wrote: it parses the file as a browser will and compares it with what was drawn.
-- **Packaged build** — `tauri build` makes a Windows executable and an unsigned NSIS installer. Every page runs under a strict content policy, the main window holds only the permissions it uses, failures of files, disk and agent are recovered from in plain words, and the seven performance targets of the spec are met on an idle machine.
+- **Packaged build** — `tauri build` makes a Windows executable and an NSIS installer; the [Release workflow](.github/workflows/release.yml) signs it and publishes it, and an installed copy updates itself from the newest release. The media library is not in the installer: the app reads it from the web and keeps what it used ([docs/media-library.md](docs/media-library.md)). Every page runs under a strict content policy, the main window holds only the permissions it uses, failures of files, disk and agent are recovered from in plain words, and the seven performance targets of the spec are met on an idle machine.
 
 Working behind all this:
 
@@ -151,9 +151,30 @@ SLIDR_PERF=1 pnpm exec playwright test -c packaged/playwright.config.ts --projec
 SLIDR_REAL_AGENT=1 pnpm exec playwright test -c packaged/playwright.config.ts --project=agent  # against the real Claude Code CLI; costs money
 ```
 
-The app's identifier is compiled into the binary and decides the data folder. Built with that `--config`, the app keeps its data in `%APPDATA%\slidr.app.hardening`, and the suites refuse a binary without the test identifier. A build without `--config` is the real app and writes to your own `%APPDATA%\slidr.app`. The installer is unsigned and has not been run.
+The app's identifier is compiled into the binary and decides the data folder. Built with that `--config`, the app keeps its data in `%APPDATA%\slidr.app.hardening`, and the suites refuse a binary without the test identifier. A build without `--config` is the real app and writes to your own `%APPDATA%\slidr.app`. An installer built on your machine is unsigned; only the Release workflow signs.
 
 The identifier was renamed from `dev.slidr.app` to `slidr.app`. Rebuild the executable for the new name to take effect. Existing data and credential-store entries are not migrated: the new build starts with fresh preferences, and saved API keys must be entered again. Saved `.slidr` files outside the app data directories can still be opened. After closing Slidr, `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\clear-cache.ps1` from the repository root deletes both the new and legacy Local/Roaming data directories, including recovery workspaces; add `-WhatIf` to preview without deleting anything. Credential Manager entries are not deleted by this script.
+
+### Releases
+
+A release is a tag `v<version>` on `main`. From the repository root:
+
+```sh
+pnpm release --dry-run   # what would happen; changes nothing
+pnpm release             # tag the version the app has now and push the tag
+pnpm release --bump      # raise the version by 0.1.0 first (0.1.0 → 0.2.0), in a commit of its own
+```
+
+`release.mjs` refuses unless the three files that carry the version agree (`apps/desktop/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`), the tree is clean, `main` is level with `origin/main`, and the tag is new. The tag runs the [Release workflow](.github/workflows/release.yml) (about 15 minutes, less with its cache): it builds the installer, has SignPath sign it, signs it for the updater, writes `latest.json`, and makes a **draft** release with the three files. Download the installer from the draft, install it, and check it, then publish the draft (its edit page, or `gh release edit v<version> --draft=false --latest`). Only a published release reaches the updater.
+
+The repository's settings hold what the workflow needs:
+
+- the secret `TAURI_SIGNING_PRIVATE_KEY`, the private key of the updater, whose public half is in `tauri.conf.json` (`plugins.updater.pubkey`); the author keeps the file, `%USERPROFILE%\.tauri\slidr-updater.key`. Lost, it cannot be replaced: installed copies accept only updates signed with it.
+- for SignPath, the secret `SIGNPATH_API_TOKEN` and the variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_SIGNING_POLICY_SLUG` and `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG`. Without them the step is skipped and the installer goes out unsigned.
+
+The updater (`src-tauri/src/updates.rs`) looks for `latest.json` of the newest release when the app starts, downloads the installer in the background, checks its signature, and installs it quietly when the app closes. A debug build and a build under another identifier never look.
+
+The installer carries no media. Before a release whose templates, designs or fonts changed, publish the library first (`pnpm media:publish`, [docs/media-library.md](docs/media-library.md)).
 
 ### The evaluation set
 

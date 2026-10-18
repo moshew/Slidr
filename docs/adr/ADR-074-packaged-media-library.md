@@ -1,6 +1,6 @@
 # ADR-074 — Package built-in media beside the executable
 
-Status: Implemented in `dcda014` and extended in `abc5243` on 2026-10-08. This record describes the committed code in `HEAD`.
+Status: Superseded by [ADR-090](ADR-090-media-library-on-the-web.md) on 2026-10-15: the library is a site on the web, and nothing of it is built into the app or installed beside it. Implemented in `dcda014` and extended in `abc5243` on 2026-10-08.
 
 ## Context
 
