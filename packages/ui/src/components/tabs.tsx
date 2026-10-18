@@ -70,6 +70,55 @@ export function TabsTile({
   );
 }
 
+/**
+ * Tabs listed down the side of a dialog, as a window of properties lists its pages: each an
+ * icon beside its name, the active one in the accent's soft tint. For more topics than a row of
+ * tiles holds, or names too long for a tile.
+ */
+export function TabsSideList({
+  className,
+  ...props
+}: ComponentPropsWithRef<typeof RadixTabs.List>) {
+  return <RadixTabs.List className={cx('flex flex-col gap-0.5', className)} {...props} />;
+}
+
+export function TabsSideItem({
+  icon,
+  label,
+  iconClassName,
+  className,
+  ...props
+}: Omit<ComponentPropsWithRef<typeof RadixTabs.Trigger>, 'children'> & {
+  icon: LucideIcon;
+  /** The item's words, and its accessible name. */
+  label: string;
+  /** The colours of the icon's mark, e.g. a tool's tint. Without it the icon stands alone. */
+  iconClassName?: string;
+}) {
+  return (
+    <RadixTabs.Trigger
+      className={cx(
+        'flex h-control w-full min-w-0 cursor-default items-center gap-2.5 rounded-control px-1.5 text-start text-sm text-ui-fg-muted transition-colors select-none',
+        'hover:bg-ui-hover hover:text-ui-fg active:bg-ui-pressed focus-visible:outline-offset-0 disabled:text-ui-fg-subtle',
+        'data-[state=active]:bg-ui-accent-soft data-[state=active]:font-medium data-[state=active]:text-ui-fg',
+        className,
+      )}
+      {...props}
+    >
+      <span
+        aria-hidden
+        className={cx(
+          'flex size-6 shrink-0 items-center justify-center rounded-inset',
+          iconClassName,
+        )}
+      >
+        <Icon icon={icon} />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+    </RadixTabs.Trigger>
+  );
+}
+
 export function TabsContent({
   className,
   ...props

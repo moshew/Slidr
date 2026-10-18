@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { collectErrors, input, openTool, panel } from './aitools-helpers';
+import { closeProperties, openProperties } from './templates-helpers';
 import {
   deck,
   fontCard,
@@ -250,12 +251,11 @@ test('a personal template is offered with its colours, and trying it shows its l
 }) => {
   const errors = collectErrors(page);
   await openLook(page);
-  // The user's own template, made in the Templates panel: the deck's look with a logo and a
+  // The user's own template, made in the deck's properties: the deck's look with a logo and a
   // colour of theirs.
-  await page.getByTestId('activity-bar').locator('[data-panel="templates"]').click();
-  const templates = page.getByTestId('templates-panel');
+  const properties = await openProperties(page, 'logo');
   const chooser = page.waitForEvent('filechooser');
-  await page.getByTestId('logo-choose').click();
+  await properties.getByTestId('logo-choose').click();
   await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_1X1 });
   await expect
     .poll(async () => Object.keys((await deck(page)).assets).length, { timeout: 10_000 })
@@ -266,9 +266,11 @@ test('a personal template is offered with its colours, and trying it shows its l
       patch: { colors: { primary: '#ff5a36' } },
     });
   });
-  await templates.getByRole('textbox', { name: 'שם התבנית' }).fill('המותג שלנו');
-  await templates.getByRole('button', { name: 'שמירה', exact: true }).click();
-  await expect(templates.getByRole('status')).toContainText('נשמרה');
+  await openProperties(page, 'save');
+  await properties.getByRole('textbox', { name: 'שם התבנית' }).fill('המותג שלנו');
+  await properties.getByRole('button', { name: 'שמירה', exact: true }).click();
+  await expect(properties.getByRole('status')).toContainText('נשמרה');
+  await closeProperties(page);
   const mine = (await deck(page)).theme.id;
   expect(mine).toMatch(/^personal_/);
 

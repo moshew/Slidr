@@ -2,8 +2,6 @@
 export const he = {
   panel: {
     title: 'תבניות',
-    library: 'ספריית התבניות',
-    thisDeck: 'העיצוב של המצגת הזו',
     current: 'במצגת הזו',
     apply: 'החלה על המצגת',
     slideNumbers: 'מיספור שקפים',
@@ -80,6 +78,15 @@ export const he = {
     shvav: 'ירוק של מעגל מודפס ונחושת, לחומרה שיוצאת לייצור',
     mutzar: 'חלונות של מוצר, סמנים והתראות, להשקה של גרסה חדשה',
     atlas: 'גלובוס, מסלולים ובולי דואר על נייר של מפה, בכל השפות, למה שחוצה גבולות',
+  },
+  properties: {
+    title: 'מאפייני המצגת',
+    general: 'כללי',
+    name: 'כותרת',
+    nameHint: 'מופיעה בקבצים האחרונים ובשם של קובץ הייצוא. שם הקובץ השמור לא משתנה.',
+    language: 'שפה',
+    languageHint: 'השפה שהמצגת נכתבה בה. כדי להחליף אותה, אפשר לבקש מהסוכן לתרגם את המצגת.',
+    close: 'סגירה',
   },
   direction: {
     title: 'כיוון המצגת',
@@ -207,6 +214,7 @@ export const he = {
   undo: {
     apply: 'החלפת תבנית',
     direction: 'שינוי כיוון המצגת',
+    title: 'שינוי כותרת המצגת',
     color: 'שינוי צבע בתבנית',
     font: 'שינוי גופן בתבנית',
     style: 'שינוי סגנון טקסט',
@@ -275,8 +283,6 @@ export const he = {
 export const en: typeof he = {
   panel: {
     title: 'Templates',
-    library: 'Template library',
-    thisDeck: 'The design of this deck',
     current: 'In this deck',
     apply: 'Apply to the deck',
     slideNumbers: 'Slide numbering',
@@ -352,6 +358,17 @@ export const en: typeof he = {
     mutzar: 'Product windows, cursors and notifications, for the launch of a new version',
     atlas:
       'A globe, routes and postage stamps on map paper, in every language, for what crosses borders',
+  },
+  properties: {
+    title: 'Presentation properties',
+    general: 'General',
+    name: 'Title',
+    nameHint:
+      'Shown in recent files and used to name exported files. The saved file keeps its name.',
+    language: 'Language',
+    languageHint:
+      'The language the presentation is written in. To change it, ask the agent to translate the presentation.',
+    close: 'Close',
   },
   direction: {
     title: 'Deck direction',
@@ -480,6 +497,7 @@ export const en: typeof he = {
   undo: {
     apply: 'Switch template',
     direction: 'Change the deck direction',
+    title: 'Change the presentation title',
     color: 'Change a template colour',
     font: 'Change a template font',
     style: 'Change a text style',

@@ -2534,6 +2534,7 @@
       "save": "Enregistrer",
       "saveAs": "Enregistrer sous…",
       "find": "Rechercher et remplacer…",
+      "properties": "Propriétés de la présentation…",
       "filter": "Présentation Slidr",
       "filterAll": "Tous les fichiers pris en charge par Slidr",
       "unsavedTitle": "Enregistrer les modifications apportées à « {{name}} » ?",
@@ -2965,8 +2966,6 @@
   "templates": {
     "panel": {
       "title": "Modèles",
-      "library": "Bibliothèque de modèles",
-      "thisDeck": "Le design de cette présentation",
       "current": "Dans cette présentation",
       "apply": "Appliquer à la présentation",
       "slideNumbers": "Numérotation des diapositives",
@@ -3040,6 +3039,15 @@
       "shvav": "Le vert d’un circuit imprimé et le cuivre, pour du matériel en route vers la production",
       "mutzar": "Fenêtres de produit, curseurs et notifications, pour le lancement d’une nouvelle version",
       "atlas": "Un globe, des itinéraires et des timbres-poste sur papier de carte, dans toutes les langues, pour ce qui traverse les frontières"
+    },
+    "properties": {
+      "title": "Propriétés de la présentation",
+      "general": "Général",
+      "name": "Titre",
+      "nameHint": "Affiché dans les fichiers récents et utilisé pour nommer les fichiers exportés. Le fichier enregistré garde son nom.",
+      "language": "Langue",
+      "languageHint": "La langue dans laquelle la présentation est rédigée. Pour la changer, demandez à l’agent de traduire la présentation.",
+      "close": "Fermer"
     },
     "direction": {
       "title": "Sens de la présentation",
@@ -3166,6 +3174,7 @@
     "undo": {
       "apply": "Changer de modèle",
       "direction": "Modifier le sens de la présentation",
+      "title": "Modifier le titre de la présentation",
       "color": "Modifier une couleur du modèle",
       "font": "Modifier une police du modèle",
       "style": "Modifier un style de texte",

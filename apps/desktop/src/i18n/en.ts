@@ -25,6 +25,7 @@ export const en: Messages<typeof he> = {
     save: 'Save',
     saveAs: 'Save as…',
     find: 'Find and replace…',
+    properties: 'Presentation properties…',
     filter: 'Slidr presentation',
     filterAll: 'All files Slidr can load',
     unsavedTitle: 'Save changes to “{{name}}”?',

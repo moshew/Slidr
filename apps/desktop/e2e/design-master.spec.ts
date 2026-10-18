@@ -2,10 +2,11 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import {
   card,
+  closeProperties,
   collectErrors,
   deck,
+  openProperties,
   openTemplates,
-  panel,
   settle,
   undo,
   undoSteps,
@@ -24,7 +25,7 @@ async function addSlide(page: Page, layout: string): Promise<void> {
 
 const onStage = (page: Page, selector: string) => page.getByTestId('stage-frame').locator(selector);
 
-test('the slide number counts the slides, and the panel hides it and shows it again', async ({
+test("the slide number counts the slides, and the deck's properties hide it and show it again", async ({
   page,
 }) => {
   const errors = collectErrors(page);
@@ -45,7 +46,7 @@ test('the slide number counts the slides, and the panel hides it and shows it ag
   await expect(number).toHaveText('2');
 
   const steps = await undoSteps(page);
-  const row = panel(page).getByTestId('master-number');
+  const row = (await openProperties(page, 'master')).getByTestId('master-number');
   await expect(row).toContainText('מוצג בשקפי התוכן');
   await row.getByRole('button', { name: 'הסתרת מספר השקף' }).click();
   await expect(number).toHaveCount(0);
@@ -66,7 +67,7 @@ test('the footer of the deck is on every slide with a place for one, and stays w
   // The slide's own footer is empty, and says on the Stage what it is for.
   const hint = onStage(page, '[data-placeholder-hint="footer"]');
   await expect(hint).toHaveCount(1);
-  const field = panel(page).getByTestId('master-footer');
+  const field = (await openProperties(page, 'master')).getByTestId('master-footer');
   await field.fill('זרם · סקירת ארכיטקטורה');
   await field.press('Enter');
   const footer = onStage(page, '[data-decoration-id^="d_footer_"]');
@@ -76,6 +77,8 @@ test('the footer of the deck is on every slide with a place for one, and stays w
   // empty placeholders of the slide keep theirs.
   await expect(hint).toHaveCount(0);
   await expect(onStage(page, '[data-placeholder-hint="title"]')).toHaveCount(1);
+
+  await closeProperties(page);
 
   // A slide that writes a footer of its own shows its own in the same place.
   const own = (await deck(page)).slides[1]!.elements.find((e) => e.role === 'footer')!;
@@ -98,6 +101,7 @@ test('the footer of the deck is on every slide with a place for one, and stays w
   await page.getByTestId('template-slides-apply').click();
   await expect(card(page, 'tzuk')).toHaveAttribute('data-current', 'true');
   await expect(footer).toHaveText('זרם · סקירת ארכיטקטורה');
+  await openProperties(page, 'master');
   await expect(field).toHaveValue('זרם · סקירת ארכיטקטורה');
   // One undo takes the switch back, the footer with it still on the first template.
   await undo(page);
@@ -138,13 +142,18 @@ test('a template is applied without the slide number when its button is let up',
   );
   expect(numbered.length).toBeGreaterThan(0);
   expect(numbered.every((decoration) => decoration.hidden)).toBe(true);
-  await expect(panel(page).getByTestId('master-number')).toContainText('מוסתר');
+  await expect((await openProperties(page, 'master')).getByTestId('master-number')).toContainText(
+    'מוסתר',
+  );
+  await closeProperties(page);
 
   // On the template the deck is on, the button is the deck's own: it shows the number at once.
   await card(page, 'zerem').getByTestId('template-cover').click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await toggle.click();
-  await expect(panel(page).getByTestId('master-number')).toContainText('מוצג בשקפי התוכן');
+  await expect((await openProperties(page, 'master')).getByTestId('master-number')).toContainText(
+    'מוצג בשקפי התוכן',
+  );
   await expect(numbers.first()).toBeVisible();
   expect(await undoSteps(page)).toBe(steps + 2);
   expect(errors).toEqual([]);
@@ -168,12 +177,13 @@ for (const { lang, theme, viewport, name } of [
     await page.screenshot({ path: out(`template-numbers-off-${name}`) });
   });
 
-  test(`the master components in the panel, and on a slide ${name}`, async ({ page }) => {
+  test(`the master components in the deck's properties, and on a slide ${name}`, async ({
+    page,
+  }) => {
     await page.setViewportSize(viewport);
     await openTemplates(page, { lang, theme, defaultTemplate: 'tzuk' });
     await addSlide(page, 'l_tzuk_cards');
-    const field = panel(page).getByTestId('master-footer');
-    await field.scrollIntoViewIfNeeded();
+    const field = (await openProperties(page, 'master')).getByTestId('master-footer');
     await field.fill(lang === 'he' ? 'צוק רובוטיקה · רבעון שלישי 2026' : 'Tzuk Robotics · Q3 2026');
     await field.press('Enter');
     await settle(page);

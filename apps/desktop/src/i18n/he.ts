@@ -27,6 +27,7 @@ export const he = {
     save: 'שמירה',
     saveAs: 'שמירה בשם…',
     find: 'חיפוש והחלפה…',
+    properties: 'מאפייני המצגת…',
     filter: 'מצגת Slidr',
     filterAll: 'כל הקבצים שאפשר לטעון',
     unsavedTitle: 'לשמור את השינויים ב"{{name}}"?',

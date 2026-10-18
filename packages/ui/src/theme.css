@@ -115,6 +115,7 @@
   --spacing-menu: 224px; /* the minimum width of a menu */
   --spacing-dialog: 440px;
   --spacing-dialog-wide: 720px; /* a dialog with a slide or a picture in it */
+  --spacing-dialog-body: min(520px, calc(100vh - 200px)); /* a dialog's pages, that scroll */
   --spacing-popover: 288px;
   --spacing-font-picker: 360px;
   --spacing-font-row: 44px;

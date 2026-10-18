@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
+  FileCog,
   FilePlus,
   FileInput,
   FolderOpen,
@@ -170,6 +171,8 @@ function FileMenu() {
   // So is HTML import: it asks for the file, and about the open document if it has work.
   const runImport = useAction('import');
   const runExport = useAction('export');
+  // And the deck's properties are the templates area's: the direction turns the layouts too.
+  const runProperties = useAction('deckProperties');
 
   return (
     <DropdownMenu
@@ -277,6 +280,22 @@ function FileMenu() {
               }}
             >
               {t('file.find')}
+            </DropdownMenuItem>
+          </>
+        )}
+        {runProperties && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              icon={FileCog}
+              data-testid="file-properties"
+              onSelect={() => {
+                // The dialog takes the keyboard; closing the menu must leave it there.
+                focusTaken.current = true;
+                runProperties();
+              }}
+            >
+              {t('file.properties')}
             </DropdownMenuItem>
           </>
         )}

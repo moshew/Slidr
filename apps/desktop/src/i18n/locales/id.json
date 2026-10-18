@@ -2522,6 +2522,7 @@
       "save": "Simpan",
       "saveAs": "Simpan sebagai…",
       "find": "Temukan dan ganti…",
+      "properties": "Properti presentasi…",
       "filter": "Presentasi Slidr",
       "filterAll": "Semua file yang dapat dimuat Slidr",
       "unsavedTitle": "Simpan perubahan pada “{{name}}”?",
@@ -2953,8 +2954,6 @@
   "templates": {
     "panel": {
       "title": "Templat",
-      "library": "Pustaka templat",
-      "thisDeck": "Desain presentasi ini",
       "current": "Di presentasi ini",
       "apply": "Terapkan ke presentasi",
       "slideNumbers": "Penomoran slide",
@@ -3028,6 +3027,15 @@
       "shvav": "Hijau papan sirkuit dan tembaga, untuk perangkat keras yang menuju produksi",
       "mutzar": "Jendela produk, kursor, dan notifikasi, untuk peluncuran versi baru",
       "atlas": "Bola dunia, rute, dan perangko di atas kertas peta, dalam setiap bahasa, untuk apa pun yang melintasi batas negara"
+    },
+    "properties": {
+      "title": "Properti presentasi",
+      "general": "Umum",
+      "name": "Judul",
+      "nameHint": "Ditampilkan di file terbaru dan dipakai untuk menamai file ekspor. Nama file yang disimpan tidak berubah.",
+      "language": "Bahasa",
+      "languageHint": "Bahasa yang digunakan dalam presentasi. Untuk mengubahnya, minta agen menerjemahkan presentasi.",
+      "close": "Tutup"
     },
     "direction": {
       "title": "Arah presentasi",
@@ -3154,6 +3162,7 @@
     "undo": {
       "apply": "Ganti templat",
       "direction": "Ubah arah presentasi",
+      "title": "Ubah judul presentasi",
       "color": "Ubah warna templat",
       "font": "Ubah font templat",
       "style": "Ubah gaya teks",

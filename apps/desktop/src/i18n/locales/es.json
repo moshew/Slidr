@@ -2534,6 +2534,7 @@
       "save": "Guardar",
       "saveAs": "Guardar como…",
       "find": "Buscar y reemplazar…",
+      "properties": "Propiedades de la presentación…",
       "filter": "Presentación de Slidr",
       "filterAll": "Todos los archivos que Slidr puede cargar",
       "unsavedTitle": "¿Quieres guardar los cambios en “{{name}}”?",
@@ -2965,8 +2966,6 @@
   "templates": {
     "panel": {
       "title": "Plantillas",
-      "library": "Biblioteca de plantillas",
-      "thisDeck": "El diseño de esta presentación",
       "current": "En esta presentación",
       "apply": "Aplicar a la presentación",
       "slideNumbers": "Numeración de diapositivas",
@@ -3040,6 +3039,15 @@
       "shvav": "Verde de placa de circuito y cobre, para hardware rumbo a la producción",
       "mutzar": "Ventanas de producto, cursores y notificaciones, para el lanzamiento de una nueva versión",
       "atlas": "Un globo terráqueo, rutas y sellos postales sobre papel de mapa, en todos los idiomas, para lo que cruza fronteras"
+    },
+    "properties": {
+      "title": "Propiedades de la presentación",
+      "general": "General",
+      "name": "Título",
+      "nameHint": "Aparece en los archivos recientes y da nombre a los archivos exportados. El archivo guardado conserva su nombre.",
+      "language": "Idioma",
+      "languageHint": "El idioma en que está escrita la presentación. Para cambiarlo, pide al agente que traduzca la presentación.",
+      "close": "Cerrar"
     },
     "direction": {
       "title": "Dirección de la presentación",
@@ -3166,6 +3174,7 @@
     "undo": {
       "apply": "Cambiar de plantilla",
       "direction": "Cambiar la dirección de la presentación",
+      "title": "Cambiar el título de la presentación",
       "color": "Cambiar un color de la plantilla",
       "font": "Cambiar una fuente de la plantilla",
       "style": "Cambiar un estilo de texto",

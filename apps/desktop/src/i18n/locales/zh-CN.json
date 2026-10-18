@@ -2522,6 +2522,7 @@
       "save": "保存",
       "saveAs": "另存为…",
       "find": "查找和替换…",
+      "properties": "演示文稿属性…",
       "filter": "Slidr 演示文稿",
       "filterAll": "Slidr 可加载的所有文件",
       "unsavedTitle": "是否保存对“{{name}}”的更改？",
@@ -2953,8 +2954,6 @@
   "templates": {
     "panel": {
       "title": "模板",
-      "library": "模板库",
-      "thisDeck": "此演示文稿的设计",
       "current": "此演示文稿中",
       "apply": "应用到演示文稿",
       "slideNumbers": "幻灯片编号",
@@ -3028,6 +3027,15 @@
       "shvav": "电路板绿与铜色，献给即将投产的硬件",
       "mutzar": "产品窗口、光标与通知，献给新版本的发布",
       "atlas": "地图纸上的地球仪、航线与邮票，以每一种语言，献给跨越国界的事物"
+    },
+    "properties": {
+      "title": "演示文稿属性",
+      "general": "常规",
+      "name": "标题",
+      "nameHint": "显示在最近使用的文件中，并用于命名导出的文件。已保存文件的名称不变。",
+      "language": "语言",
+      "languageHint": "演示文稿所用的语言。如需更改，请让智能体翻译演示文稿。",
+      "close": "关闭"
     },
     "direction": {
       "title": "演示文稿方向",
@@ -3154,6 +3162,7 @@
     "undo": {
       "apply": "切换模板",
       "direction": "更改演示文稿方向",
+      "title": "更改演示文稿标题",
       "color": "更改模板颜色",
       "font": "更改模板字体",
       "style": "更改文本样式",

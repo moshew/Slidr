@@ -2,8 +2,10 @@ import { expect, test, type Locator } from '@playwright/test';
 import { switchLanguage } from './objects-helpers';
 import {
   card,
+  closeProperties,
   collectErrors,
   deck,
+  openProperties,
   openTemplates,
   openTextStyle,
   panel,
@@ -126,7 +128,10 @@ test('the direction control turns the deck, layouts and slides, in one step', as
   expect(before.meta.dir).toBe('rtl');
   const titleBefore = before.slides[0]!.elements.find((e) => e.role === 'title')!.frame;
 
-  await panel(page).getByRole('radio', { name: 'שמאל לימין' }).click();
+  // The direction is a property of the deck, in its dialog from the File menu.
+  const dialog = await openProperties(page);
+  await dialog.getByRole('radio', { name: 'שמאל לימין' }).click();
+  await closeProperties(page);
   const after = await deck(page);
   expect(after.meta.dir).toBe('ltr');
   const titleAfter = after.slides[0]!.elements.find((e) => e.role === 'title')!.frame;
@@ -144,7 +149,8 @@ test('editing the theme changes the deck, each edit one undo step', async ({ pag
   await openTemplates(page, { defaultTemplate: 'zerem' });
 
   // A colour, typed as hex: one step however many keys it took.
-  await panel(page).locator('[data-theme-color="primary"]').click();
+  const dialog = await openProperties(page, 'colors');
+  await dialog.locator('[data-theme-color="primary"]').click();
   const hex = page.getByRole('textbox', { name: 'קוד הצבע' });
   await hex.fill('#ff3366');
   await hex.press('Enter');
@@ -153,10 +159,11 @@ test('editing the theme changes the deck, each edit one undo step', async ({ pag
   expect(await undoSteps(page)).toBe(1);
 
   // A text style: its row shows the size and the weight, and opens the fields.
-  const title = panel(page).locator('[data-text-style="title"]');
+  await openProperties(page, 'styles');
+  const title = dialog.locator('[data-text-style="title"]');
   await expect(title.getByRole('button')).toContainText('72 · מודגש');
   await openTextStyle(page, 'title');
-  const size = panel(page).getByRole('textbox', { name: 'גודל של כותרת', exact: true });
+  const size = dialog.getByRole('textbox', { name: 'גודל של כותרת', exact: true });
   await size.fill('80');
   await size.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.textStyles.title.size).toBe(80);
@@ -164,7 +171,8 @@ test('editing the theme changes the deck, each edit one undo step', async ({ pag
   expect(await undoSteps(page)).toBe(2);
 
   // A font.
-  await panel(page).getByRole('button', { name: 'גופן הכותרות בעברית' }).click();
+  await openProperties(page, 'fonts');
+  await dialog.getByRole('button', { name: 'גופן הכותרות בעברית' }).click();
   await page.getByRole('option', { name: 'Rubik' }).first().click();
   await expect.poll(async () => (await deck(page)).theme.fonts.heading.he).toBe('Rubik');
   expect((await deck(page)).theme.fonts.heading.latin).toBe('Space Grotesk');
@@ -185,8 +193,9 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
   const errors = collectErrors(page);
   await openTemplates(page, { defaultTemplate: 'zerem' });
 
+  const dialog = await openProperties(page, 'logo');
   const chooser = page.waitForEvent('filechooser');
-  await page.getByTestId('logo-choose').click();
+  await dialog.getByTestId('logo-choose').click();
   await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_1X1 });
   await expect
     .poll(async () => Object.keys((await deck(page)).assets).length, { timeout: 10_000 })
@@ -199,10 +208,12 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
   expect(await undoSteps(page)).toBe(1);
 
   // Save it all as a personal template, and make it the default.
-  await panel(page).getByRole('textbox', { name: 'שם התבנית' }).fill('התבנית של החברה');
-  await panel(page).getByRole('checkbox', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
-  await panel(page).getByRole('button', { name: 'שמירה', exact: true }).click();
-  await expect(panel(page).getByRole('status')).toContainText('התבנית "התבנית של החברה" נשמרה');
+  await openProperties(page, 'save');
+  await dialog.getByRole('textbox', { name: 'שם התבנית' }).fill('התבנית של החברה');
+  await dialog.getByRole('checkbox', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
+  await dialog.getByRole('button', { name: 'שמירה', exact: true }).click();
+  await expect(dialog.getByRole('status')).toContainText('התבנית "התבנית של החברה" נשמרה');
+  await closeProperties(page);
 
   const saved = await deck(page);
   expect(saved.theme.name).toBe('התבנית של החברה');
@@ -232,8 +243,10 @@ test('a logo replaces the mark on every layout, and a personal template keeps it
 test('the panel reads in English, with no missing string', async ({ page }) => {
   const errors = collectErrors(page);
   await openTemplates(page, { lang: 'en', defaultTemplate: 'zerem' });
-  await expect(panel(page)).toContainText('Template library');
-  await expect(panel(page)).toContainText('Save as a personal template');
+  await expect(
+    panel(page).getByRole('button', { name: /^Show the slides of the template "/ }).first(),
+  ).toBeVisible();
+  await expect(await openProperties(page)).toContainText('Save as a personal template');
   expect((await deck(page)).meta.dir).toBe('ltr');
   expect((await deck(page)).layouts.map((l) => l.name)).toContain('Timeline');
   expect(errors).toEqual([]);
@@ -252,19 +265,20 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
   };
 
   // A colour of the chart palette, typed as hex; then one more colour, and one less.
-  await panel(page).getByTestId('chart-color').first().click();
+  const dialog = await openProperties(page, 'colors');
+  await dialog.getByTestId('chart-color').first().click();
   const hex = page.getByRole('textbox', { name: 'קוד הצבע' });
   await hex.fill('#123456');
   await hex.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.colors.chart[0]).toBe('#123456');
   await page.keyboard.press('Escape');
   await step();
-  await panel(page).getByTestId('chart-add').click();
+  await dialog.getByTestId('chart-add').click();
   await expect
     .poll(async () => (await deck(page)).theme.colors.chart)
     .toHaveLength(before.colors.chart.length + 1);
   await step();
-  await panel(page).getByTestId('chart-color').last().click();
+  await dialog.getByTestId('chart-color').last().click();
   await page.getByTestId('chart-remove').click();
   await expect
     .poll(async () => (await deck(page)).theme.colors.chart)
@@ -274,29 +288,30 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
 
   // The line height and the letter spacing of a text style.
   await openTextStyle(page, 'title');
-  const lineHeight = panel(page).getByRole('textbox', { name: 'גובה השורה של כותרת', exact: true });
+  const lineHeight = dialog.getByRole('textbox', { name: 'גובה השורה של כותרת', exact: true });
   await lineHeight.fill('1.3');
   await lineHeight.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.textStyles.title.lineHeight).toBe(1.3);
   await step();
-  const spacing = panel(page).getByRole('textbox', { name: 'ריווח האותיות של כותרת', exact: true });
+  const spacing = dialog.getByRole('textbox', { name: 'ריווח האותיות של כותרת', exact: true });
   await spacing.fill('2.5');
   await spacing.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.textStyles.title.letterSpacing).toBe(2.5);
   await step();
 
   // The corners and the shadow.
-  const radius = panel(page).getByRole('textbox', { name: 'עיגול פינות', exact: true });
+  await openProperties(page, 'shape');
+  const radius = dialog.getByRole('textbox', { name: 'עיגול פינות', exact: true });
   await radius.fill('20');
   await radius.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.radius).toBe(20);
   // The sample card above the fields is drawn at half the size of the slide.
-  await expect(panel(page).getByTestId('shape-sample').locator('div')).toHaveCSS(
+  await expect(dialog.getByTestId('shape-sample').locator('div')).toHaveCSS(
     'border-radius',
     '10px',
   );
   await step();
-  const down = panel(page).getByRole('textbox', { name: 'הזזת הצל לגובה' });
+  const down = dialog.getByRole('textbox', { name: 'הזזת הצל לגובה' });
   await down.fill('8');
   await down.press('Enter');
   await expect.poll(async () => (await deck(page)).theme.shadow.y).toBe(8);
@@ -315,12 +330,13 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
     });
   });
   steps += 1;
+  await openProperties(page, 'backgrounds');
   // A variant is drawn as the slide will be, by the renderer itself (an empty slide that has
   // this background), not as its fill alone: a dimmed photo and a veiled ground show as they are.
   await expect(
-    panel(page).getByTestId('theme-variant').first().locator('[data-slide-id="s_swatch"]'),
+    dialog.getByTestId('theme-variant').first().locator('[data-slide-id="s_swatch"]'),
   ).toHaveCount(1);
-  await panel(page).getByTestId('theme-variant').first().click();
+  await dialog.getByTestId('theme-variant').first().click();
   await page.getByTestId('theme-background-editor').getByRole('radio', { name: 'הדרגתי' }).click();
   await expect
     .poll(async () => (await deck(page)).theme.backgroundVariants[0]!.fill.kind)
@@ -329,12 +345,12 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
   expect(shown.slides[0]!.background).toEqual(shown.theme.backgroundVariants[0]);
   await page.keyboard.press('Escape');
   await step();
-  await panel(page).getByTestId('variant-add').click();
+  await dialog.getByTestId('variant-add').click();
   await expect
     .poll(async () => (await deck(page)).theme.backgroundVariants)
     .toHaveLength(variants + 1);
   await step();
-  await panel(page).getByTestId('theme-variant').last().click();
+  await dialog.getByTestId('theme-variant').last().click();
   await page.getByTestId('variant-remove').click();
   await expect.poll(async () => (await deck(page)).theme.backgroundVariants).toHaveLength(variants);
   await step();
@@ -348,12 +364,15 @@ test('the chart palette, line height, spacing, corners, shadow and backgrounds o
 test('the new fields of the theme read in English', async ({ page }) => {
   const errors = collectErrors(page);
   await openTemplates(page, { lang: 'en', defaultTemplate: 'zerem' });
-  await expect(panel(page)).toContainText('Chart palette');
-  await expect(panel(page)).toContainText('Corners and shadow');
-  await expect(panel(page)).toContainText('Background variants');
+  const dialog = await openProperties(page, 'colors');
+  await expect(dialog).toContainText('Chart palette');
+  await openProperties(page, 'shape');
+  await expect(dialog).toContainText('Corners and shadow');
+  await openProperties(page, 'backgrounds');
+  await expect(dialog).toContainText('Background variants');
+  await expect(dialog.getByRole('button', { name: 'Variant 1' })).toBeVisible();
   await openTextStyle(page, 'title');
-  await expect(panel(page).getByRole('textbox', { name: 'Line height of Title' })).toBeVisible();
-  await expect(panel(page).getByRole('button', { name: 'Variant 1' })).toBeVisible();
+  await expect(dialog.getByRole('textbox', { name: 'Line height of Title' })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

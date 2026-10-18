@@ -1,6 +1,8 @@
 import { Palette } from '@slidr/ui/icons';
 import { registerMessages } from '../i18n';
 import {
+  getEditor,
+  registerAction,
   registerContextTool,
   registerPanel,
   registerStageLayer,
@@ -11,6 +13,7 @@ import { startDeck, supplyAssets } from './actions';
 import { drafts, library } from './app';
 import { LayoutTool } from './LayoutTool';
 import { en, he } from './messages';
+import { openDeckProperties } from './openProperties';
 import { preloadTemplateFonts } from './preload';
 import { readSamplesAhead } from './previews';
 import { TemplatesPanel } from './TemplatesPanel';
@@ -33,6 +36,9 @@ registerPanel({
   icon: Palette,
   content: TemplatesPanel,
 });
+
+// The File menu's "Presentation properties": the deck's title, language and direction.
+registerAction('deckProperties', () => openDeckProperties(getEditor()));
 
 // The slides that show a template of the library, spread over the Stage.
 registerStageLayer({ id: 'templates.slides', render: TemplateSlidesLayer });

@@ -1,6 +1,15 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { card, collectErrors, deck, openTemplates, panel, settle } from './templates-helpers';
+import {
+  card,
+  closeProperties,
+  collectErrors,
+  deck,
+  openProperties,
+  openTemplates,
+  panel,
+  settle,
+} from './templates-helpers';
 
 /* A personal template that exists (THM-05): another name, and an update in place. */
 
@@ -12,10 +21,12 @@ test('a personal template is renamed, and updated in place from the open deck', 
 }) => {
   const errors = collectErrors(page);
   await openTemplates(page, { defaultTemplate: 'zerem' });
-  await panel(page).getByRole('textbox', { name: 'שם התבנית', exact: true }).fill('החברה שלי');
-  await panel(page).getByRole('checkbox', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
-  await panel(page).getByRole('button', { name: 'שמירה', exact: true }).click();
-  await expect(panel(page).getByRole('status')).toContainText('התבנית "החברה שלי" נשמרה');
+  const dialog = await openProperties(page, 'save');
+  await dialog.getByRole('textbox', { name: 'שם התבנית', exact: true }).fill('החברה שלי');
+  await dialog.getByRole('checkbox', { name: 'לקבוע כברירת מחדל למצגות חדשות' }).click();
+  await dialog.getByRole('button', { name: 'שמירה', exact: true }).click();
+  await expect(dialog.getByRole('status')).toContainText('התבנית "החברה שלי" נשמרה');
+  await closeProperties(page);
   const id = (await deck(page)).theme.id;
   const mine = card(page, id);
 
@@ -62,12 +73,13 @@ for (const { lang, theme, viewport, name } of [
     await page.setViewportSize(viewport);
     await openTemplates(page, { lang, theme, defaultTemplate: 'tzuk' });
     const he = lang === 'he';
-    await panel(page)
+    const dialog = await openProperties(page, 'save');
+    await dialog
       .getByRole('textbox', { name: he ? 'שם התבנית' : 'Template name', exact: true })
       .fill(he ? 'החברה שלי' : 'My company');
-    await panel(page)
-      .getByRole('button', { name: he ? 'שמירה' : 'Save', exact: true })
-      .click();
+    await dialog.getByRole('button', { name: he ? 'שמירה' : 'Save', exact: true }).click();
+    await expect(dialog.getByRole('status')).toContainText(he ? 'נשמרה' : 'saved');
+    await closeProperties(page);
     const mine = panel(page).locator('[data-template^="personal_"]');
     await expect(mine).toHaveCount(1);
     await mine.scrollIntoViewIfNeeded();

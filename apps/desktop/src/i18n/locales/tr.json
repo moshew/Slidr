@@ -2528,6 +2528,7 @@
       "save": "Kaydet",
       "saveAs": "Farklı kaydet…",
       "find": "Bul ve değiştir…",
+      "properties": "Sunu özellikleri…",
       "filter": "Slidr sunusu",
       "filterAll": "Slidr ile açılabilen tüm dosyalar",
       "unsavedTitle": "“{{name}}” dosyasındaki değişiklikler kaydedilsin mi?",
@@ -2959,8 +2960,6 @@
   "templates": {
     "panel": {
       "title": "Şablonlar",
-      "library": "Şablon kitaplığı",
-      "thisDeck": "Bu sununun tasarımı",
       "current": "Bu sunuda",
       "apply": "Sunuya uygula",
       "slideNumbers": "Slayt numaralandırma",
@@ -3034,6 +3033,15 @@
       "shvav": "Devre kartı yeşili ve bakır; üretime hazırlanan donanım için",
       "mutzar": "Ürün pencereleri, imleçler ve bildirimler; yeni bir sürümün lansmanı için",
       "atlas": "Harita kâğıdı üzerinde bir küre, rotalar ve posta pulları; her dilde, sınırları aşan her şey için"
+    },
+    "properties": {
+      "title": "Sunu özellikleri",
+      "general": "Genel",
+      "name": "Başlık",
+      "nameHint": "Son dosyalarda görünür ve dışa aktarılan dosyaların adında kullanılır. Kaydedilen dosyanın adı değişmez.",
+      "language": "Dil",
+      "languageHint": "Sununun yazıldığı dil. Değiştirmek için temsilciden sunuyu çevirmesini isteyin.",
+      "close": "Kapat"
     },
     "direction": {
       "title": "Sunu yönü",
@@ -3160,6 +3168,7 @@
     "undo": {
       "apply": "Şablon değiştirme",
       "direction": "Sunu yönünü değiştirme",
+      "title": "Sunu başlığını değiştir",
       "color": "Şablon rengini değiştirme",
       "font": "Şablon yazı tipini değiştirme",
       "style": "Metin stilini değiştirme",

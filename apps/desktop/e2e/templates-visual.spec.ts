@@ -1,6 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { card, openTemplates, panel, settle } from './templates-helpers';
+import {
+  card,
+  closeProperties,
+  openProperties,
+  openTemplates,
+  panel,
+  settle,
+} from './templates-helpers';
 
 /*
  * Screenshots of the Templates panel and of what it does to a deck, for the design gate
@@ -32,13 +39,13 @@ for (const theme of themes) {
         await expect(card(page, 'zerem')).toHaveAttribute('data-current', 'true');
         await settle(page);
         await page.screenshot({ path: out(`panel-${name}`) });
-        // The lower half: fonts, text styles, logo, saving.
-        await panel(page)
-          .getByRole('button', { name: /לוגו|logo/i })
-          .first()
-          .scrollIntoViewIfNeeded();
+        // The design of the deck, in its properties: what it is, and its fonts.
+        await openProperties(page, 'general');
         await settle(page);
-        await page.screenshot({ path: out(`panel-lower-${name}`) });
+        await page.screenshot({ path: out(`properties-${name}`) });
+        await openProperties(page, 'fonts');
+        await settle(page);
+        await page.screenshot({ path: out(`properties-fonts-${name}`) });
       });
     }
   }
@@ -67,7 +74,7 @@ for (const { lang, theme, viewport, name } of states) {
   test(`the colour picker of the theme ${name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openTemplates(page, { lang, theme, defaultTemplate: 'zerem' });
-    await panel(page).locator('[data-theme-color="primary"]').click();
+    await (await openProperties(page, 'colors')).locator('[data-theme-color="primary"]').click();
     await settle(page);
     await page.screenshot({ path: out(`color-${name}`) });
   });
@@ -75,18 +82,24 @@ for (const { lang, theme, viewport, name } of states) {
   test(`a personal template with a logo, and deleting it ${name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openTemplates(page, { lang, theme, defaultTemplate: 'zerem' });
+    const dialog = await openProperties(page, 'logo');
     const chooser = page.waitForEvent('filechooser');
-    await page.getByTestId('logo-choose').click();
+    await dialog.getByTestId('logo-choose').click();
     await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PNG_LOGO });
-    await expect(page.getByTestId('logo-preview').locator('img')).toHaveCount(1);
-    await panel(page)
+    await expect(dialog.getByTestId('logo-preview').locator('img')).toHaveCount(1);
+    await openProperties(page, 'save');
+    await dialog
       .getByRole('textbox')
       .last()
       .fill(lang === 'he' ? 'התבנית של החברה' : 'Company template');
-    await panel(page).getByRole('button').last().click();
-    await expect(panel(page).locator('[data-template^="personal_"]')).toBeVisible();
+    await dialog
+      .getByRole('button', { name: lang === 'he' ? 'שמירה' : 'Save', exact: true })
+      .click();
+    await expect(dialog.getByRole('status')).toContainText(lang === 'he' ? 'נשמרה' : 'saved');
     await settle(page);
     await page.screenshot({ path: out(`saved-${name}`) });
+    await closeProperties(page);
+    await expect(panel(page).locator('[data-template^="personal_"]')).toBeVisible();
     await panel(page).locator('[data-template^="personal_"]').scrollIntoViewIfNeeded();
     await settle(page);
     await page.screenshot({ path: out(`personal-${name}`) });

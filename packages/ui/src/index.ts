@@ -37,6 +37,8 @@ export {
   Tabs,
   TabsContent,
   TabsList,
+  TabsSideItem,
+  TabsSideList,
   TabsTile,
   TabsTileList,
   TabsTrigger,

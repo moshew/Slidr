@@ -202,6 +202,7 @@ export type ToolAction =
   | 'present'
   | 'export'
   | 'import'
+  | 'deckProperties'
   | 'transition';
 
 /** What a row A button opens instead of acting at once, e.g. the shape library. */

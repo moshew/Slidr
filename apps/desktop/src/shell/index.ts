@@ -28,6 +28,7 @@ export { selectionKind, elementKind, elementDisplayKind, type SelectionKind } fr
 export { StatusItem } from './StatusBar';
 export { PanelActions } from './ToolPanel';
 export {
+  EditorProvider,
   getEditor,
   setNewDeck,
   useDeck,

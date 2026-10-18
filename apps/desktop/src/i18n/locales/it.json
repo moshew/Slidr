@@ -2534,6 +2534,7 @@
       "save": "Salva",
       "saveAs": "Salva con nome…",
       "find": "Trova e sostituisci…",
+      "properties": "Proprietà della presentazione…",
       "filter": "Presentazione Slidr",
       "filterAll": "Tutti i file supportati da Slidr",
       "unsavedTitle": "Salvare le modifiche a “{{name}}”?",
@@ -2965,8 +2966,6 @@
   "templates": {
     "panel": {
       "title": "Modelli",
-      "library": "Libreria modelli",
-      "thisDeck": "Il design di questa presentazione",
       "current": "In questa presentazione",
       "apply": "Applica alla presentazione",
       "slideNumbers": "Numerazione diapositive",
@@ -3040,6 +3039,15 @@
       "shvav": "Il verde dei circuiti stampati e il rame, per un hardware pronto ad andare in produzione",
       "mutzar": "Finestre di prodotto, cursori e notifiche, per il lancio di una nuova versione",
       "atlas": "Un mappamondo, rotte e francobolli su carta geografica, in ogni lingua, per ciò che attraversa i confini"
+    },
+    "properties": {
+      "title": "Proprietà della presentazione",
+      "general": "Generale",
+      "name": "Titolo",
+      "nameHint": "Compare nei file recenti e dà il nome ai file esportati. Il file salvato mantiene il suo nome.",
+      "language": "Lingua",
+      "languageHint": "La lingua in cui è scritta la presentazione. Per cambiarla, chiedi all’agente di tradurre la presentazione.",
+      "close": "Chiudi"
     },
     "direction": {
       "title": "Direzione della presentazione",
@@ -3166,6 +3174,7 @@
     "undo": {
       "apply": "Cambia modello",
       "direction": "Cambia la direzione della presentazione",
+      "title": "Modifica il titolo della presentazione",
       "color": "Cambia un colore del modello",
       "font": "Cambia un font del modello",
       "style": "Cambia uno stile di testo",

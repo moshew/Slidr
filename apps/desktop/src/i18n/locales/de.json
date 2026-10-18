@@ -2528,6 +2528,7 @@
       "save": "Speichern",
       "saveAs": "Speichern unter…",
       "find": "Suchen und ersetzen…",
+      "properties": "Präsentationseigenschaften…",
       "filter": "Slidr-Präsentation",
       "filterAll": "Alle Dateien, die Slidr laden kann",
       "unsavedTitle": "Änderungen an „{{name}}“ speichern?",
@@ -2959,8 +2960,6 @@
   "templates": {
     "panel": {
       "title": "Vorlagen",
-      "library": "Vorlagenbibliothek",
-      "thisDeck": "Design dieser Präsentation",
       "current": "In dieser Präsentation",
       "apply": "Auf Präsentation anwenden",
       "slideNumbers": "Foliennummerierung",
@@ -3034,6 +3033,15 @@
       "shvav": "Platinengrün und Kupfer – für Hardware auf dem Weg in die Serienfertigung",
       "mutzar": "Produktfenster, Mauszeiger und Benachrichtigungen – für den Launch einer neuen Version",
       "atlas": "Ein Globus, Routen und Briefmarken auf Landkartenpapier, in jeder Sprache – für alles, was Grenzen überschreitet"
+    },
+    "properties": {
+      "title": "Präsentationseigenschaften",
+      "general": "Allgemein",
+      "name": "Titel",
+      "nameHint": "Wird in den zuletzt verwendeten Dateien angezeigt und benennt exportierte Dateien. Die gespeicherte Datei behält ihren Namen.",
+      "language": "Sprache",
+      "languageHint": "Die Sprache, in der die Präsentation geschrieben ist. Um sie zu ändern, bitte den Agenten, die Präsentation zu übersetzen.",
+      "close": "Schließen"
     },
     "direction": {
       "title": "Richtung der Präsentation",
@@ -3160,6 +3168,7 @@
     "undo": {
       "apply": "Vorlage wechseln",
       "direction": "Richtung der Präsentation ändern",
+      "title": "Titel der Präsentation ändern",
       "color": "Vorlagenfarbe ändern",
       "font": "Vorlagenschriftart ändern",
       "style": "Textstil ändern",

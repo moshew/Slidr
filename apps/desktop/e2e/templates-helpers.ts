@@ -45,9 +45,34 @@ export const panel = (page: Page): Locator => page.getByTestId('templates-panel'
 export const card = (page: Page, id: string): Locator =>
   panel(page).locator(`[data-template="${id}"]`);
 
+/** The deck's properties: the dialog of the File menu that holds the design of the deck. */
+export const properties = (page: Page): Locator => page.getByTestId('deck-properties');
+
+/** Opens the deck's properties, unless they are open, on one of their pages. */
+export async function openProperties(page: Page, tab = 'general'): Promise<Locator> {
+  const dialog = properties(page);
+  if (!(await dialog.isVisible())) {
+    await page.getByTestId('file-menu-trigger').click();
+    await page.getByTestId('file-properties').click();
+    await expect(dialog).toBeVisible();
+  }
+  await dialog.locator(`[data-properties-tab="${tab}"]`).click();
+  return dialog;
+}
+
+/** Closes the deck's properties. */
+export async function closeProperties(page: Page): Promise<void> {
+  await properties(page)
+    .getByRole('button', { name: /^(סגירה|Close)$/ })
+    .last()
+    .click();
+  await expect(properties(page)).toBeHidden();
+}
+
 /** Opens the fields of a text style of the theme: they are under the style's row. */
 export async function openTextStyle(page: Page, style: string): Promise<void> {
-  await panel(page).locator(`[data-text-style="${style}"]`).getByRole('button').click();
+  const dialog = await openProperties(page, 'styles');
+  await dialog.locator(`[data-text-style="${style}"]`).getByRole('button').click();
 }
 
 /** The deck as the editor holds it. */

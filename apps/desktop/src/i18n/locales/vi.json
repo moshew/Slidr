@@ -2522,6 +2522,7 @@
       "save": "Lưu",
       "saveAs": "Lưu thành…",
       "find": "Tìm và thay thế…",
+      "properties": "Thuộc tính bản trình bày…",
       "filter": "Bản trình bày Slidr",
       "filterAll": "Tất cả tệp Slidr có thể mở",
       "unsavedTitle": "Lưu thay đổi cho “{{name}}”?",
@@ -2953,8 +2954,6 @@
   "templates": {
     "panel": {
       "title": "Mẫu",
-      "library": "Thư viện mẫu",
-      "thisDeck": "Thiết kế của bản trình bày này",
       "current": "Trong bản trình bày này",
       "apply": "Áp dụng cho bản trình bày",
       "slideNumbers": "Đánh số trang chiếu",
@@ -3028,6 +3027,15 @@
       "shvav": "Xanh bảng mạch và ánh đồng, cho phần cứng đang trên đường vào sản xuất",
       "mutzar": "Cửa sổ sản phẩm, con trỏ và thông báo, cho buổi ra mắt phiên bản mới",
       "atlas": "Quả địa cầu, tuyến đường và tem thư trên giấy bản đồ, bằng mọi ngôn ngữ, cho những gì vượt qua biên giới"
+    },
+    "properties": {
+      "title": "Thuộc tính bản trình bày",
+      "general": "Chung",
+      "name": "Tiêu đề",
+      "nameHint": "Hiển thị trong tệp gần đây và dùng để đặt tên tệp xuất. Tệp đã lưu giữ nguyên tên.",
+      "language": "Ngôn ngữ",
+      "languageHint": "Ngôn ngữ của bản trình bày. Để đổi, hãy nhờ tác tử dịch bản trình bày.",
+      "close": "Đóng"
     },
     "direction": {
       "title": "Hướng bản trình bày",
@@ -3154,6 +3162,7 @@
     "undo": {
       "apply": "Đổi mẫu",
       "direction": "Đổi hướng bản trình bày",
+      "title": "Đổi tiêu đề bản trình bày",
       "color": "Đổi một màu của mẫu",
       "font": "Đổi một phông chữ của mẫu",
       "style": "Đổi một kiểu văn bản",
