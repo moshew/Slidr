@@ -64,7 +64,30 @@ Publishing stages the published folders, writes the files `templates/` takes fro
 
 A file of the library is at most 25 MB, the limit of Pages.
 
-A development build and the dev server read another copy when `SLIDR_MEDIA_URL` names one: a preview deployment, or a server on this machine. A release build reads the published library.
+A development build and the dev server read another copy when `SLIDR_MEDIA_URL` names one: a preview deployment, or a server on this machine. A release build reads the published library, unless its installation names another (below).
+
+## A library of your own
+
+An installed app reads the library from another address when a file beside `slidr.exe`, `media-library.json`, names one: `{ "url": "https://media.example.org/slidr/" }`. The released installer writes that file, so a copy served elsewhere needs no build of the app ([ADR-107](adr/ADR-107-a-library-of-your-own.md)):
+
+```bat
+Slidr_0.1.0_x64-setup.exe /S /MEDIA="https://media.example.org/slidr/"
+```
+
+Without a command line, a `media-library.json` beside the installer does the same: the installer copies it. A folder with the two is an installation that reads that copy. `/MEDIA=` wins over the file, and `/MEDIA=` with nothing after it takes the file away, back to the published library. An installation with neither keeps the address it had, so the app's own updates keep it; uninstalling takes it away. An administrator may also write the file by hand; the app reads it when it next starts.
+
+Keep the address in quotes. Unquoted, a part of its path that begins like one of the installer's own options turns that option on too (`/public/` is `/P`, passive; `/reports/` is `/R`, restart). cmd.exe and deployment tools pass the quotes on. PowerShell keeps them only inside one string: `Start-Process .\Slidr_0.1.0_x64-setup.exe -ArgumentList '/S /MEDIA="https://media.example.org/slidr/"'`.
+
+The copy is any static site with the layout above, over HTTPS (plain HTTP only on `localhost`). It needs `manifest.json` at its root and every file at its path. A file it does not have is answered 404, not a page with 200, and a redirect stays on its host. The app reads it from Rust, so it needs no CORS. `_headers` and `404.html` are for Pages, and another server may ignore them. To make one from the published library:
+
+```sh
+pnpm media:pull --to ../my-media                                        # the published library
+pnpm media:publish --from ../my-media --out ../my-media-site --dry-run  # staged as a site; nothing is deployed
+```
+
+Then upload `../my-media-site` to the server. A copy changed as above is staged the same way. The dry run still compares the copy with the published library: a copy that holds less than half of it is reported as blocked, which does not matter here, since nothing is deployed. Publishing (`pnpm media:publish`, the studio) deploys only to Pages. The dev server and the studio read such a copy with `SLIDR_MEDIA_URL`.
+
+On a machine that ran Slidr before, the manifest of the old address stands until the new one is read, when the app starts online. What is cached is kept by its hash, so a file both libraries have is not fetched again.
 
 ## Designs made by the management tool
 

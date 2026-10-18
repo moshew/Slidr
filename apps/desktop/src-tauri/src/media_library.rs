@@ -51,8 +51,16 @@ pub const SCHEME: &str = "media";
 pub const DEFAULT_URL: &str = "https://slidr-media.pages.dev/";
 
 /// A development build may be pointed at another copy of the library: a preview deployment of
-/// the site (HTTPS), or a stand-in on this machine. A release build reads the published one.
+/// the site (HTTPS), or a stand-in on this machine.
 const VARIABLE: &str = "SLIDR_MEDIA_URL";
+
+/// An installed app may be pointed at another copy of the library, one its users serve
+/// themselves, by this file beside its executable: `{ "url": "https://media.example.org/" }`.
+/// The installer writes it from `/MEDIA=<url>`, or from a file of that name beside the installer
+/// (`windows/hooks.nsh`), so the released installer serves any copy without a build of its own;
+/// an administrator may also write it by hand. It is not a setting of the app: whoever can write beside the executable can replace
+/// the executable too.
+const ADDRESS_FILE: &str = "media-library.json";
 
 /// The file that lists the library.
 const MANIFEST: &str = "manifest.json";
@@ -139,17 +147,40 @@ pub struct MediaLibrary {
     refreshed: watch::Sender<bool>,
 }
 
-/// Where the library is read from: the published site, or in a development build the copy
-/// [`VARIABLE`] names (HTTPS anywhere, plain HTTP only on this machine).
+/// Where the library is read from: in a development build the copy [`VARIABLE`] names, else the
+/// copy [`ADDRESS_FILE`] beside the executable names, else the published site.
 pub fn base_url() -> Option<Url> {
     if cfg!(debug_assertions)
         && let Ok(value) = std::env::var(VARIABLE)
-        && let Some(url) = folder_url(&value)
-        && (url.scheme() == "https" || (url.scheme() == "http" && net::is_loopback(&url)))
+        && let Some(url) = copy_url(&value)
     {
         return Some(url);
     }
-    folder_url(DEFAULT_URL)
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().and_then(installed_url))
+        .or_else(|| folder_url(DEFAULT_URL))
+}
+
+/// The copy of the library that [`ADDRESS_FILE`] in `dir` names. None without the file, or for
+/// one that does not name an address the library may be read from: the published site stands.
+fn installed_url(dir: &Path) -> Option<Url> {
+    #[derive(Deserialize)]
+    struct Address {
+        url: String,
+    }
+    let text = std::fs::read(dir.join(ADDRESS_FILE)).ok()?;
+    // As Notepad may save it.
+    let text = text.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&text);
+    let address: Address = serde_json::from_slice(text).ok()?;
+    copy_url(&address.url)
+}
+
+/// `value` as the address of a copy of the library: HTTPS anywhere, plain HTTP only on this
+/// machine.
+fn copy_url(value: &str) -> Option<Url> {
+    folder_url(value)
+        .filter(|url| url.scheme() == "https" || (url.scheme() == "http" && net::is_loopback(url)))
 }
 
 /// `value` as the URL of a folder: ending with a slash, so a path joins under it.
@@ -801,5 +832,42 @@ mod tests {
             folder.as_deref(),
             Some("https://preview.slidr-media.pages.dev/")
         );
+    }
+
+    #[test]
+    fn an_installation_may_name_a_copy_of_its_own() -> std::io::Result<()> {
+        let dir = tempfile::tempdir()?;
+        assert_eq!(installed_url(dir.path()), None);
+        let named = |text: &[u8]| -> std::io::Result<Option<String>> {
+            std::fs::write(dir.path().join(ADDRESS_FILE), text)?;
+            Ok(installed_url(dir.path()).map(String::from))
+        };
+        for (text, url) in [
+            (
+                br#"{ "url": "https://media.example.org/slidr" }"#.as_slice(),
+                "https://media.example.org/slidr/",
+            ),
+            (
+                b"\xEF\xBB\xBF{\"url\":\"https://media.example.org/\"}",
+                "https://media.example.org/",
+            ),
+            (
+                br#"{"url":"http://127.0.0.1:8080/"}"#,
+                "http://127.0.0.1:8080/",
+            ),
+        ] {
+            assert_eq!(named(text)?.as_deref(), Some(url), "{url}");
+        }
+        // Not plain HTTP across the network, nor what is not an address.
+        for text in [
+            br#"{"url":"http://media.example.org/"}"#.as_slice(),
+            br#"{"url":"file:///C:/media/"}"#,
+            br#"{"url":""}"#,
+            b"https://media.example.org/",
+            b"{}",
+        ] {
+            assert_eq!(named(text)?, None, "{}", String::from_utf8_lossy(text));
+        }
+        Ok(())
     }
 }
