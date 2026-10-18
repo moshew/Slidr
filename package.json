@@ -21,6 +21,7 @@
     "e2e": "pnpm --filter @slidr/desktop e2e",
     "media:publish": "node apps/desktop/scripts/media-publish.mjs",
     "media:pull": "node apps/desktop/scripts/media-pull.mjs",
+    "release": "node release.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
     "check:all": "pnpm check && pnpm check:rust"
