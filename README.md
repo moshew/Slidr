@@ -248,6 +248,29 @@ The design documents are written in Hebrew.
   - [ADR-071](docs/adr/ADR-071-bug-hunt-fixes.md) — The fixes of the bug hunt, in nine tracks: the life of a document and its storage, the agent under the chat, the AI panels, HTML import, editing by hand, the boundary between a deck and the page that draws it, templates and the design check, changing the template of a deck the agent drew, and five defects seen in other tracks' files
   - [ADR-072](docs/adr/ADR-072-one-ai-chat.md) — One AI chat: the slide and object tools removed, and what is selected (words in a text too) goes to the agent with every message
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+The Windows installer on the [releases page](https://github.com/moshew/Slidr/releases) is built from this repository by the [Release workflow](.github/workflows/release.yml) and signed there; no binary built elsewhere is signed.
+
+- Committers and reviewers: [moshew](https://github.com/moshew)
+- Approvers: [moshew](https://github.com/moshew)
+
+Every signing request is approved by hand. Every member of the team uses multi-factor authentication on GitHub and on SignPath.
+
+## Privacy policy
+
+Slidr has no account, collects no telemetry, and sends nothing to its authors. It connects to other systems only for what the user asks of it:
+
+- **Updates** — it asks [GitHub](https://github.com) whether a newer release exists ([GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)).
+- **Media library** — templates, designs, fonts and pictures are downloaded from `slidr-media.pages.dev`, hosted by Cloudflare ([Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/)).
+- **Stock photos** — a search sends its words to [Unsplash](https://unsplash.com/privacy) or [Pexels](https://www.pexels.com/privacy-policy/), with the user's own key.
+- **Images by AI** — the prompt goes to [OpenAI](https://openai.com/policies/privacy-policy/), with the user's own key.
+- **The AI chat** — the deck and the messages go to the agent CLI the user picked (Claude Code, Codex or GitHub Copilot CLI), under that service's terms and privacy policy.
+
+Each of these can be left unused: without a key the stock and image services are never called, and the chat runs only when the user writes to it.
+
 ## License
 
 Copyright © 2026 Moshe Waisman. Slidr is free software under the [GNU Affero General Public License, version 3](LICENSE) (`AGPL-3.0-only`): it may be used, studied, changed and shared, also commercially, as long as whoever distributes a changed version, or lets others use one over a network, offers its full source under the same license. For a license without those terms, ask the author. The software it is built on, and the content of the media library, keep their own licenses (`THIRD-PARTY-NOTICES.txt`, and the notices the licences dialog shows).
