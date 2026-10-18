@@ -1050,7 +1050,6 @@
       "cards": "Insérer un jeu de cartes"
     },
     "collection": {
-      "designs": "Designs",
       "cards": "Jeux de cartes",
       "shapes": "Formes",
       "graphics": "Illustrations",
@@ -1060,6 +1059,9 @@
       "tables": "Tableaux"
     },
     "designs": {
+      "title": "Diapositives prêtes",
+      "caption": "Diapos",
+      "none": "Il n’y a pas encore de diapositives prêtes dans cette langue.",
       "hint": "Choisissez un design pour ajouter une diapositive complète. Son texte et ses formes restent modifiables.",
       "insert": "Ajouter la diapositive conçue : {{name}}",
       "history": "Ajouter une diapositive conçue",
@@ -1372,8 +1374,8 @@
         "productmgmt": "Gestion de produit",
         "defense": "Technologies de défense"
       },
-      "search": "Rechercher des designs",
-      "searchPlaceholder": "Rechercher des designs…"
+      "search": "Rechercher des diapositives prêtes",
+      "searchPlaceholder": "Rechercher des diapositives prêtes…"
     },
     "cards": {
       "hint": "Cliquez sur un jeu de cartes pour l’ajouter à la diapositive. Tant que le jeu est sélectionné, vous pouvez ajouter d’autres cartes depuis la barre d’outils.",

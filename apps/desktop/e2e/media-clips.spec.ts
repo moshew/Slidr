@@ -130,7 +130,7 @@ test('the Media tab and Elements grid fit in Hebrew at the narrow panel width', 
     await collections.evaluateAll((items) =>
       items.map((item) => item.getAttribute('data-collection')),
     ),
-  ).toEqual(['designs', 'shapes', 'graphics', 'emoji', 'icons', 'frames', 'tables']);
+  ).toEqual(['cards', 'shapes', 'graphics', 'emoji', 'icons', 'frames', 'tables']);
   await page.screenshot({
     path: fileURLToPath(new URL('../test-results/media/elements-he-280.png', import.meta.url)),
   });

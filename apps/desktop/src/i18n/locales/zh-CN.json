@@ -1042,7 +1042,6 @@
       "cards": "插入卡片组"
     },
     "collection": {
-      "designs": "设计",
       "cards": "卡片组",
       "shapes": "形状",
       "graphics": "图形",
@@ -1052,6 +1051,9 @@
       "tables": "表格"
     },
     "designs": {
+      "title": "现成幻灯片",
+      "caption": "幻灯片",
+      "none": "此语言暂无现成幻灯片。",
       "hint": "选择一种设计即可添加一整张幻灯片，其中的文本和形状仍可编辑。",
       "insert": "添加设计好的幻灯片：{{name}}",
       "history": "添加设计好的幻灯片",
@@ -1364,8 +1366,8 @@
         "productmgmt": "产品管理",
         "defense": "国防科技"
       },
-      "search": "搜索设计",
-      "searchPlaceholder": "搜索设计…"
+      "search": "搜索现成幻灯片",
+      "searchPlaceholder": "搜索现成幻灯片…"
     },
     "cards": {
       "hint": "单击卡片组即可将其添加到幻灯片。选中卡片组后，可从工具栏添加更多卡片。",

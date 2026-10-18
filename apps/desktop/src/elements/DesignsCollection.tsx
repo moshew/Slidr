@@ -1,11 +1,18 @@
 import { ScaledSlide } from '@slidr/renderer';
-import { Button, Input } from '@slidr/ui';
-import { Search } from '@slidr/ui/icons';
+import { Button, IconButton, Input } from '@slidr/ui';
+import { ArrowLeft, Search } from '@slidr/ui/icons';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../i18n';
 import { focusStage, tell, useEditor, useElementSize } from '../shell';
-import { Drill, NothingFound, Section, useOpenGroup } from './collections';
+import {
+  Drill,
+  NothingFound,
+  OpenGroupContext,
+  Section,
+  useOpenGroup,
+  type OpenGroup,
+} from './collections';
 import { designAssetFile, designBackdropFile } from './designAssets';
 import {
   DESIGN_GROUPS,
@@ -115,6 +122,42 @@ function DesignList({
 }
 
 /**
+ * The Ready slides panel (ADR-106): the designs, out of Elements, since a click on one adds a
+ * slide where every piece of Elements goes on the slide that is open. The title bar of the shell
+ * names the panel; while one group is opened in full, a header under it names the group and
+ * leads back to all of them.
+ */
+export function DesignsPanel() {
+  const { t } = useTranslation('elements');
+  const [group, setGroup] = useState<OpenGroup>();
+  return (
+    <OpenGroupContext value={setGroup}>
+      <div className="@container flex flex-col" data-testid="designs-panel">
+        {group && (
+          <div className="sticky top-0 z-10 flex items-center gap-1 bg-ui-panel px-2 pt-2 pb-1">
+            <IconButton
+              icon={ArrowLeft}
+              mirror
+              label={t('backTo', { name: t('designs.title') })}
+              onClick={group.onBack}
+            />
+            <h3
+              key={group.title}
+              className="min-w-0 flex-1 animate-fade-in truncate text-md font-semibold text-ui-fg"
+            >
+              {group.title}
+            </h3>
+          </div>
+        )}
+        <div className="flex flex-col gap-4 px-4 pt-3 pb-6">
+          <DesignsCollection />
+        </div>
+      </div>
+    </OpenGroupContext>
+  );
+}
+
+/**
  * Ready compositions, by what they are for: the first of every group, one group in full under
  * its own name, or what a search of their names found. Only the designs drawn in the UI
  * language (`designIn`): a group with none of them is not shown.
@@ -175,11 +218,12 @@ export function DesignsCollection() {
     })();
   };
 
-  if (DESIGN_IDS.length === 0) {
-    // The designs are read from the media library: without it there are none to offer.
+  if (DESIGN_IDS.length === 0 || groups.length === 0) {
+    // The designs are read from the media library: without it there are none to offer. With it,
+    // a language may have none drawn in it yet.
     return (
       <p className="py-8 text-center text-sm text-ui-fg-muted" data-testid="elements-designs">
-        {t('loadFailed')}
+        {t(DESIGN_IDS.length === 0 ? 'loadFailed' : 'designs.none')}
       </p>
     );
   }

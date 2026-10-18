@@ -1,5 +1,6 @@
 {
   "identifier": "slidr.app.hardening",
+  "bundle": { "createUpdaterArtifacts": false },
   "build": {
     "devUrl": "http://localhost:1571",
     "beforeDevCommand": "pnpm exec vite --port 1571 --strictPort"

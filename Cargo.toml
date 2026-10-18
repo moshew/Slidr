@@ -7,7 +7,7 @@ exclude = ["spikes"]
 [workspace.package]
 edition = "2024"
 rust-version = "1.90"
-license = "UNLICENSED"
+license = "AGPL-3.0-only"
 
 [workspace.lints.rust]
 # `deny`, not `forbid`: the slide capture and the import window's network block call WebView2

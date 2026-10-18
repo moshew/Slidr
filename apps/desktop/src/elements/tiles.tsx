@@ -8,7 +8,6 @@ import { cx } from '@slidr/ui';
  */
 
 export const COLLECTIONS = [
-  'designs',
   'cards',
   'shapes',
   'graphics',
@@ -47,19 +46,6 @@ const SMALL_CARDS: readonly (readonly [x: number, y: number, tone: string])[] = 
 ];
 
 const TILES: Record<CollectionId, TileArt> = {
-  designs: {
-    front: ['#84ccf5', '#3367db'],
-    back: ['#ffcf79', '#ed7653'],
-    art: () => (
-      <>
-        <rect x="27" y="31" width="48" height="39" rx="4" fill={WHITE} />
-        <rect x="31" y="35" width="41" height="31" rx="2" fill="#b8e9e8" />
-        <circle cx="57" cy="44" r="6" fill="#fbbf24" />
-        <path d="m31 65 14-17 8 9 5-5 15 13Z" fill="#1f7777" />
-        <path d="M35 74h31" stroke={WHITE} strokeWidth="3" strokeLinecap="round" />
-      </>
-    ),
-  },
   cards: {
     front: ['#f0abfc', '#c026d3'],
     back: ['#fde68a', '#f59e0b'],

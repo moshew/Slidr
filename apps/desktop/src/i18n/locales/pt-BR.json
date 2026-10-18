@@ -1050,7 +1050,6 @@
       "cards": "Inserir conjunto de cartões"
     },
     "collection": {
-      "designs": "Designs",
       "cards": "Conjuntos de cartões",
       "shapes": "Formas",
       "graphics": "Ilustrações",
@@ -1060,6 +1059,9 @@
       "tables": "Tabelas"
     },
     "designs": {
+      "title": "Slides prontos",
+      "caption": "Slides",
+      "none": "Ainda não há slides prontos neste idioma.",
       "hint": "Escolha um design para adicionar um slide completo. O texto e as formas dele continuam editáveis.",
       "insert": "Adicionar slide com design: {{name}}",
       "history": "Adicionar slide com design",
@@ -1372,8 +1374,8 @@
         "productmgmt": "Gestão de produto",
         "defense": "Tecnologia de defesa"
       },
-      "search": "Pesquisar designs",
-      "searchPlaceholder": "Pesquisar designs…"
+      "search": "Pesquisar slides prontos",
+      "searchPlaceholder": "Pesquisar slides prontos…"
     },
     "cards": {
       "hint": "Clique em um conjunto de cartões para adicioná-lo ao slide. Com o conjunto selecionado, você pode adicionar mais cartões pela barra de ferramentas.",

@@ -1046,7 +1046,6 @@
       "cards": "Kartenset einfügen"
     },
     "collection": {
-      "designs": "Designs",
       "cards": "Kartensets",
       "shapes": "Formen",
       "graphics": "Grafiken",
@@ -1056,6 +1055,9 @@
       "tables": "Tabellen"
     },
     "designs": {
+      "title": "Fertige Folien",
+      "caption": "Folien",
+      "none": "In dieser Sprache gibt es noch keine fertigen Folien.",
       "hint": "Wählen Sie ein Design, um eine komplette Folie hinzuzufügen. Text und Formen bleiben bearbeitbar.",
       "insert": "Gestaltete Folie hinzufügen: {{name}}",
       "history": "Gestaltete Folie hinzufügen",
@@ -1368,8 +1370,8 @@
         "productmgmt": "Produktmanagement",
         "defense": "Verteidigungstechnik"
       },
-      "search": "Designs suchen",
-      "searchPlaceholder": "Designs suchen…"
+      "search": "Fertige Folien suchen",
+      "searchPlaceholder": "Fertige Folien suchen…"
     },
     "cards": {
       "hint": "Klicken Sie auf ein Kartenset, um es zur Folie hinzuzufügen. Solange das Set ausgewählt ist, fügen Sie über die Symbolleiste weitere Karten hinzu.",

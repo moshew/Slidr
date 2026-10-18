@@ -1046,7 +1046,6 @@
       "cards": "Kart seti ekleme"
     },
     "collection": {
-      "designs": "Tasarımlar",
       "cards": "Kart setleri",
       "shapes": "Şekiller",
       "graphics": "Çizimler",
@@ -1056,6 +1055,9 @@
       "tables": "Tablolar"
     },
     "designs": {
+      "title": "Hazır slaytlar",
+      "caption": "Slaytlar",
+      "none": "Bu dilde henüz hazır slayt yok.",
       "hint": "Eksiksiz bir slayt eklemek için bir tasarım seçin. Metni ve şekilleri düzenlenebilir kalır.",
       "insert": "Tasarlanmış slayt ekle: {{name}}",
       "history": "Tasarlanmış slayt ekleme",
@@ -1368,8 +1370,8 @@
         "productmgmt": "Ürün yönetimi",
         "defense": "Savunma teknolojisi"
       },
-      "search": "Tasarımlarda ara",
-      "searchPlaceholder": "Tasarım arayın…"
+      "search": "Hazır slaytlarda ara",
+      "searchPlaceholder": "Hazır slaytlarda ara…"
     },
     "cards": {
       "hint": "Slayta eklemek için bir kart setine tıklayın. Set seçiliyken araç çubuğundan başka kartlar da eklenebilir.",

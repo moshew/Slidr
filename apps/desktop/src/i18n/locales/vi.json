@@ -1042,7 +1042,6 @@
       "cards": "Chèn bộ thẻ"
     },
     "collection": {
-      "designs": "Thiết kế",
       "cards": "Bộ thẻ",
       "shapes": "Hình dạng",
       "graphics": "Đồ họa",
@@ -1052,6 +1051,9 @@
       "tables": "Bảng"
     },
     "designs": {
+      "title": "Trang chiếu có sẵn",
+      "caption": "Slide",
+      "none": "Chưa có trang chiếu có sẵn nào bằng ngôn ngữ này.",
       "hint": "Chọn một thiết kế để thêm trọn vẹn một trang chiếu. Văn bản và hình dạng trong đó vẫn chỉnh sửa được.",
       "insert": "Thêm trang chiếu thiết kế sẵn: {{name}}",
       "history": "Thêm trang chiếu thiết kế sẵn",
@@ -1364,8 +1366,8 @@
         "productmgmt": "Quản lý sản phẩm",
         "defense": "Công nghệ quốc phòng"
       },
-      "search": "Tìm thiết kế",
-      "searchPlaceholder": "Tìm thiết kế…"
+      "search": "Tìm trang chiếu có sẵn",
+      "searchPlaceholder": "Tìm trang chiếu có sẵn…"
     },
     "cards": {
       "hint": "Bấm vào một bộ thẻ để thêm vào trang chiếu. Khi bộ thẻ đang được chọn, bạn có thể thêm thẻ từ thanh công cụ.",

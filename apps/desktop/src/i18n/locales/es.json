@@ -1050,7 +1050,6 @@
       "cards": "Insertar conjunto de tarjetas"
     },
     "collection": {
-      "designs": "Diseños",
       "cards": "Conjuntos de tarjetas",
       "shapes": "Formas",
       "graphics": "Gráficos",
@@ -1060,6 +1059,9 @@
       "tables": "Tablas"
     },
     "designs": {
+      "title": "Diapositivas listas",
+      "caption": "Diapos",
+      "none": "Todavía no hay diapositivas listas en este idioma.",
       "hint": "Elige un diseño para agregar una diapositiva completa. Su texto y sus formas siguen siendo editables.",
       "insert": "Agregar diapositiva diseñada: {{name}}",
       "history": "Agregar diapositiva diseñada",
@@ -1372,8 +1374,8 @@
         "productmgmt": "Gestión de producto",
         "defense": "Tecnología de defensa"
       },
-      "search": "Buscar diseños",
-      "searchPlaceholder": "Buscar diseños…"
+      "search": "Buscar diapositivas listas",
+      "searchPlaceholder": "Buscar diapositivas listas…"
     },
     "cards": {
       "hint": "Haz clic en un conjunto de tarjetas para agregarlo a la diapositiva. Mientras el conjunto está seleccionado, puedes agregar más tarjetas desde la barra de herramientas.",

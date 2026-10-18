@@ -222,7 +222,7 @@ function Library() {
 
 export function TemplatesPanel() {
   return (
-    <div className="@container flex flex-col gap-6 px-4 pt-1 pb-6" data-testid="templates-panel">
+    <div className="@container flex flex-col gap-6 px-4 pt-3 pb-6" data-testid="templates-panel">
       <Library />
     </div>
   );

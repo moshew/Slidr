@@ -1,0 +1,115 @@
+# A release of Slidr: pushing a tag `v<version>` builds the Windows installer, signs it, and
+# puts it in a draft GitHub release with the `latest.json` the app's updater reads
+# (apps/desktop/src-tauri/src/updates.rs). The updater sees a release only once it is published,
+# so the draft is the last check.
+#
+# Two signatures, each with its own secret:
+# - Authenticode, by SignPath Foundation, so Windows trusts the installer. Until the project is
+#   approved there, the variable SIGNPATH_ORGANIZATION_ID is unset and the installer goes out
+#   unsigned.
+# - The updater's, with the key whose public half is in tauri.conf.json (TAURI_SIGNING_PRIVATE_KEY
+#   and its password). It is made last, over the installer as SignPath returned it, since signing
+#   changes the bytes.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: The tag names the version of the app
+        run: |
+          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME, the app is $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter @slidr/desktop tauri build
+
+      - name: Collect the installer
+        run: |
+          mkdir -p out
+          cp "target/release/bundle/nsis/Slidr_${VERSION}_x64-setup.exe" out/
+
+      - name: Upload for signing
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned
+          path: out/Slidr_${{ env.VERSION }}_x64-setup.exe
+          if-no-files-found: error
+
+      - name: Sign with SignPath
+        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: out
+
+      - name: Sign for the updater
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm --filter @slidr/desktop tauri signer sign "$PWD/out/Slidr_${VERSION}_x64-setup.exe"
+
+      - name: Write latest.json
+        run: |
+          node -e '
+            const fs = require("fs");
+            const { VERSION, GITHUB_REPOSITORY, GITHUB_REF_NAME } = process.env;
+            const file = `Slidr_${VERSION}_x64-setup.exe`;
+            fs.writeFileSync("out/latest.json", JSON.stringify({
+              version: VERSION,
+              pub_date: new Date().toISOString(),
+              platforms: {
+                "windows-x86_64": {
+                  signature: fs.readFileSync(`out/${file}.sig`, "utf8").trim(),
+                  url: `https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${file}`,
+                },
+              },
+            }, null, 2));
+          '
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --title "Slidr $VERSION" --generate-notes \
+            "out/Slidr_${VERSION}_x64-setup.exe" \
+            "out/Slidr_${VERSION}_x64-setup.exe.sig" \
+            out/latest.json

@@ -20,20 +20,18 @@ import {
   type OpenGroup,
 } from './collections';
 import { CARD_SETS, cardSetsIn } from './cardSets';
-import { DESIGN_IDS, designIn } from './designs';
 import { framesIn, loadFrames, searchFrames } from './frames';
 import { FrameGrid, FramesCollection } from './FramesCollection';
 import { useRecentStickers, type RecentSticker } from './recent';
 import { CardSetsCollection } from './CardSetsCollection';
-import { DesignsCollection } from './DesignsCollection';
 import { StickerButton, StickerGrid, useColumns } from './StickerGrid';
 import { loadEmoji, loadGraphics, searchStickers } from './stickers';
 import { COLLECTIONS, CollectionTile, FrameThumbDefs, type CollectionId } from './tiles';
 
 /**
  * Elements: everything that can be put on a slide, by kind. The first screen offers the
- * collections (designs, card sets, shapes, graphics, emoji, icons, frames, tables),
- * what was used lately, and one search over the drawings of all of them; a collection opens in
+ * collections (card sets, shapes, graphics, emoji, icons, frames, tables), what was
+ * used lately, and one search over the drawings of all of them; a collection opens in
  * its place.
  */
 export function ElementsPanel() {
@@ -62,7 +60,6 @@ export function ElementsPanel() {
  * have some that have none. Without the media library a collection is offered, and says so.
  */
 function offered(id: CollectionId, lang: Language): boolean {
-  if (id === 'designs') return DESIGN_IDS.length === 0 || DESIGN_IDS.some((d) => designIn(d, lang));
   if (id === 'cards') return CARD_SETS.length === 0 || cardSetsIn(lang).length > 0;
   return true;
 }
@@ -277,7 +274,6 @@ function FoundIcons({ icons }: { icons: readonly FoundIcon[] }) {
 /** What each collection shows. */
 const views: Record<CollectionId | 'recent', () => ReactNode> = {
   recent: () => <AllRecent />,
-  designs: () => <DesignsCollection />,
   cards: () => <CardSetsCollection />,
   shapes: () => <ShapesCollection />,
   graphics: () => <GraphicsCollection />,

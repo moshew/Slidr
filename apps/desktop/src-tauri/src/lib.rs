@@ -18,6 +18,7 @@ mod show_screen;
 mod stock;
 mod storage;
 mod templates;
+mod updates;
 // The tool bridge. Its folder is the one place that names the protocol it speaks to agents
 // (API-02); the rest of the crate knows it by what it does.
 #[path = "mcp_bridge/mod.rs"]
@@ -37,6 +38,8 @@ pub fn run() {
         // A link that leaves the app opens in the browser of the system. The capability allows
         // `open_url` for http and https addresses and nothing else of the plugin.
         .plugin(tauri_plugin_opener::init())
+        // Updates of the app: found and downloaded while it runs, installed when it exits.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         // The icons, the templates and their photographs, the decks' fonts and the content of
         // Elements: the media library, published on the web and kept on this machine.
         .register_asynchronous_uri_scheme_protocol(
@@ -70,6 +73,7 @@ pub fn run() {
             app.manage(Arc::new(image_process::ImageProcessService::new(
                 image_process::places(app)?,
             )));
+            updates::start(app.handle());
             Ok(())
         })
         .on_window_event(capture::on_window_event)
@@ -160,8 +164,13 @@ pub fn run() {
             image_process::ipc::image_upscale_status,
             show_screen::show_screen_set,
         ]))
-        .run(tauri::generate_context!())
-        .expect("failed to start the Slidr application");
+        .build(tauri::generate_context!())
+        .expect("failed to start the Slidr application")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                updates::install_pending(app);
+            }
+        });
 }
 
 /// The media library, read from the web into a cache of this machine's own: not of the roaming

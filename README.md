@@ -250,4 +250,4 @@ The design documents are written in Hebrew.
 
 ## License
 
-No license has been granted. The packages are private and the crates are marked `UNLICENSED`.
+Copyright © 2026 Moshe Waisman. Slidr is free software under the [GNU Affero General Public License, version 3](LICENSE) (`AGPL-3.0-only`): it may be used, studied, changed and shared, also commercially, as long as whoever distributes a changed version, or lets others use one over a network, offers its full source under the same license. For a license without those terms, ask the author. The software it is built on, and the content of the media library, keep their own licenses (`THIRD-PARTY-NOTICES.txt`, and the notices the licences dialog shows).

@@ -1042,7 +1042,6 @@
       "cards": "Sisipkan set kartu"
     },
     "collection": {
-      "designs": "Desain",
       "cards": "Set kartu",
       "shapes": "Bentuk",
       "graphics": "Grafik",
@@ -1052,6 +1051,9 @@
       "tables": "Tabel"
     },
     "designs": {
+      "title": "Slide siap pakai",
+      "caption": "Slide",
+      "none": "Belum ada slide siap pakai dalam bahasa ini.",
       "hint": "Pilih desain untuk menambahkan slide yang lengkap. Teks dan bentuknya tetap dapat diedit.",
       "insert": "Tambahkan slide berdesain: {{name}}",
       "history": "Tambahkan slide berdesain",
@@ -1364,8 +1366,8 @@
         "productmgmt": "Manajemen produk",
         "defense": "Teknologi pertahanan"
       },
-      "search": "Cari desain",
-      "searchPlaceholder": "Cari desain…"
+      "search": "Cari slide siap pakai",
+      "searchPlaceholder": "Cari slide siap pakai…"
     },
     "cards": {
       "hint": "Klik set kartu untuk menambahkannya ke slide. Selama set dipilih, kartu lain dapat ditambahkan dari bilah alat.",

@@ -12,6 +12,7 @@ const captions: Record<string, string> = {
   notes: 'navigation.notes',
   ai: 'navigation.ai',
   templates: 'navigation.templates',
+  designs: 'elements:designs.caption',
   animations: 'navigation.animations',
   transitions: 'navigation.transitions',
   settings: 'navigation.settings',

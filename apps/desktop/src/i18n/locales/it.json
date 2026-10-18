@@ -1050,7 +1050,6 @@
       "cards": "Inserisci set di schede"
     },
     "collection": {
-      "designs": "Design",
       "cards": "Set di schede",
       "shapes": "Forme",
       "graphics": "Grafiche",
@@ -1060,6 +1059,9 @@
       "tables": "Tabelle"
     },
     "designs": {
+      "title": "Diapositive pronte",
+      "caption": "Slide",
+      "none": "Non ci sono ancora diapositive pronte in questa lingua.",
       "hint": "Scegli un design per aggiungere una diapositiva completa. Testo e forme restano modificabili.",
       "insert": "Aggiungi diapositiva pronta: {{name}}",
       "history": "Aggiungi diapositiva pronta",
@@ -1372,8 +1374,8 @@
         "productmgmt": "Gestione del prodotto",
         "defense": "Tecnologie per la difesa"
       },
-      "search": "Cerca design",
-      "searchPlaceholder": "Cerca design…"
+      "search": "Cerca diapositive pronte",
+      "searchPlaceholder": "Cerca diapositive pronte…"
     },
     "cards": {
       "hint": "Fai clic su un set di schede per aggiungerlo alla diapositiva. Quando il set è selezionato, puoi aggiungere altre schede dalla barra degli strumenti.",

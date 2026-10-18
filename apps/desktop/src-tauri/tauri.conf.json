@@ -52,6 +52,14 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAxMzUwN0Y5NDZERjlFQzcKUldUSG50OUcrUWMxQWI5aWgyYnBWV25sRXV5TVloNXVYYnRjMnRxS2hjalk3SGVUVlpKRkdwRjUK",
+      "endpoints": ["https://github.com/moshew/Slidr/releases/latest/download/latest.json"],
+      "windows": { "installMode": "quiet" }
+    }
   }
 }

@@ -32,16 +32,7 @@ import { shapePresets } from '@slidr/renderer';
  * selected, as one undo step.
  */
 
-const COLLECTIONS = [
-  'designs',
-  'cards',
-  'shapes',
-  'graphics',
-  'emoji',
-  'icons',
-  'frames',
-  'tables',
-];
+const COLLECTIONS = ['cards', 'shapes', 'graphics', 'emoji', 'icons', 'frames', 'tables'];
 
 /** The groups of photo frames, in the order the collection shows them. */
 const FRAME_GROUPS = [
@@ -74,6 +65,15 @@ async function openElements(page: Parameters<typeof openApp>[0], lang: 'he' | 'e
   return panel;
 }
 
+/** The Ready slides panel: the designs, each a whole slide, out of Elements (ADR-106). */
+async function openDesigns(page: Parameters<typeof openApp>[0]) {
+  await openApp(page, { lang: 'en' });
+  await page.getByTestId('activity-bar').locator('[data-panel="designs"]').click();
+  const panel = page.getByTestId('designs-panel');
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
 test('the first screen offers the collections by kind, each with a name', async ({ page }) => {
   const panel = await openElements(page);
   const tiles = panel.locator('[data-collection]');
@@ -81,16 +81,7 @@ test('the first screen offers the collections by kind, each with a name', async 
   expect(
     await tiles.evaluateAll((all) => all.map((tile) => tile.getAttribute('data-collection'))),
   ).toEqual(COLLECTIONS);
-  for (const name of [
-    'Designs',
-    'Card sets',
-    'Shapes',
-    'Graphics',
-    'Emoji',
-    'Icons',
-    'Frames',
-    'Tables',
-  ]) {
+  for (const name of ['Card sets', 'Shapes', 'Graphics', 'Emoji', 'Icons', 'Frames', 'Tables']) {
     await expect(panel.getByRole('button', { name, exact: true })).toBeVisible();
   }
   // Nothing was used yet, so nothing is offered again.
@@ -98,8 +89,8 @@ test('the first screen offers the collections by kind, each with a name', async 
 });
 
 test('designs are shown by group, found by name, and add an editable slide', async ({ page }) => {
-  const panel = await openElements(page);
-  await panel.locator('[data-collection="designs"]').click();
+  const panel = await openDesigns(page);
+  await expect(page.locator('[data-panel="designs"] h2')).toHaveText('Ready slides');
   // The first screen: the nineteen groups, each with its first four designs, as finished slides.
   const designs = panel.locator('[data-design]');
   await expect(panel.locator('[data-group]')).toHaveCount(19);
@@ -109,9 +100,9 @@ test('designs are shown by group, found by name, and add an editable slide', asy
   // One group in full, under its own name alone, and back to all of them.
   await panel.locator('[data-group="deck"]').getByRole('button', { name: 'Show all' }).click();
   await expect(panel.getByTestId('design-results').locator('[data-design]')).toHaveCount(32);
-  await expect(panel.getByRole('heading')).toHaveText(['Presentation slides']);
-  await panel.getByRole('button', { name: 'Back to Designs' }).click();
-  await expect(panel.getByRole('heading', { level: 3 })).toHaveText('Designs');
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveText('Presentation slides');
+  await panel.getByRole('button', { name: 'Back to Ready slides' }).click();
+  await expect(panel.getByRole('heading', { level: 3 })).toHaveCount(0);
   await expect(designs).toHaveCount(76);
 
   // A search of the names, in every group at once.
@@ -158,24 +149,36 @@ test('a level that is opened comes in from the end, the one gone back to from th
   // The first screen is there with the panel: it does not move in.
   await expect(levels.first()).not.toHaveAttribute('data-way');
 
-  await panel.locator('[data-collection="designs"]').click();
+  await panel.locator('[data-collection="frames"]').click();
   await expect(levels.first()).toHaveAttribute('data-way', 'deeper');
+  await panel.locator('[data-group="composed"]').getByRole('button', { name: 'Show all' }).click();
+  await expect(levels.last()).toHaveAttribute('data-way', 'deeper');
+  await panel.getByRole('button', { name: 'Back to Frames' }).click();
+  await expect(levels.last()).toHaveAttribute('data-way', 'back');
+  await panel.getByRole('button', { name: 'Back to collections' }).click();
+  await expect(levels).toHaveCount(1);
+  await expect(levels.first()).toHaveAttribute('data-way', 'back');
+});
+
+test('a group of designs comes in from the end, and a search takes the place of the list', async ({
+  page,
+}) => {
+  const panel = await openDesigns(page);
+  const levels = panel.locator('.elements-drill');
+  await expect(levels.first()).not.toHaveAttribute('data-way');
   await panel.locator('[data-group="deck"]').getByRole('button', { name: 'Show all' }).click();
   await expect(levels.last()).toHaveAttribute('data-way', 'deeper');
 
   // What a search found, and the group again once it is cleared, take the place of the list
   // where it is: no level was opened or left.
   await panel.getByTestId('designs-query').fill('invitation');
-  await expect(levels).toHaveCount(1);
+  await expect(levels).toHaveCount(0);
   await panel.getByTestId('designs-query').fill('');
   await expect(panel.getByTestId('design-results').locator('[data-design]')).toHaveCount(32);
   await expect(levels.last()).not.toHaveAttribute('data-way');
 
-  await panel.getByRole('button', { name: 'Back to Designs' }).click();
+  await panel.getByRole('button', { name: 'Back to Ready slides' }).click();
   await expect(levels.last()).toHaveAttribute('data-way', 'back');
-  await panel.getByRole('button', { name: 'Back to collections' }).click();
-  await expect(levels).toHaveCount(1);
-  await expect(levels.first()).toHaveAttribute('data-way', 'back');
 });
 
 test('a group opens at the top of the panel, and the groups are back where they were left', async ({
@@ -579,8 +582,8 @@ test('a switch of the language leaves only what is in the new one, and what has 
   ]);
   await page.screenshot({ path: 'test-results/elements/language-frames-en.png' });
 
-  // German: the magnets and the card sets have Hebrew and English words only, and two designs
-  // are drawn in German. Shapes, graphics, emoji, icons and tables have no language.
+  // German: the magnets and the card sets have Hebrew and English words only. Shapes, graphics,
+  // emoji, icons and tables have no language.
   await switchLanguage(page, 'de');
   expect(await shownGroups(groups)).toEqual([
     'featured',
@@ -592,13 +595,13 @@ test('a switch of the language leaves only what is in the new one, and what has 
     await tiles.evaluateAll((all) => all.map((tile) => tile.getAttribute('data-collection'))),
   ).toEqual(COLLECTIONS.filter((id) => id !== 'cards'));
   await page.screenshot({ path: 'test-results/elements/language-home-de.png' });
-  await panel.locator('[data-collection="designs"]').click();
-  // Each design is drawn as the slide it adds, in the language it is drawn in: German, each one.
-  const designs = panel.locator('[data-design]');
+  // A few designs are drawn in German, in their own panel: each as the slide it adds, in German.
+  await page.getByTestId('activity-bar').locator('[data-panel="designs"]').click();
+  const ready = page.getByTestId('designs-panel');
+  const designs = ready.locator('[data-design]');
   await expect(designs.first().locator('[data-slide-id]')).toBeVisible();
   const shown = await designs.count();
   expect(shown).toBeGreaterThan(0);
-  expect(shown).toBeLessThan(10);
   for (const design of await designs.all()) {
     await design.scrollIntoViewIfNeeded();
     await expect(design.locator('[data-slide-id]')).toHaveAttribute('lang', 'de');
@@ -607,8 +610,8 @@ test('a switch of the language leaves only what is in the new one, and what has 
 
   // Back in Hebrew, everything Hebrew is there again.
   await switchLanguage(page, 'he');
-  await expect(panel.locator('[data-group="deck"] [data-design]')).toHaveCount(4);
-  await panel.getByRole('button', { name: 'חזרה לאוספים' }).click();
+  await expect(ready.locator('[data-group="deck"] [data-design]')).toHaveCount(4);
+  await page.getByTestId('activity-bar').locator('[data-panel="elements"]').click();
   await expect(tiles).toHaveCount(COLLECTIONS.length);
 });
 

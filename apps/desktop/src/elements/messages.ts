@@ -20,7 +20,6 @@ export const he = {
     cards: 'הוספת כרטסת',
   },
   collection: {
-    designs: 'עיצובים',
     cards: 'כרטסות',
     shapes: 'צורות',
     graphics: 'גרפיקות',
@@ -30,6 +29,9 @@ export const he = {
     tables: 'טבלאות',
   },
   designs: {
+    title: 'שקפים מוכנים',
+    caption: 'שקפים',
+    none: 'אין עדיין שקפים מוכנים בשפה הזו.',
     hint: 'לחצו על עיצוב כדי להוסיף שקף מוכן למצגת. אפשר לערוך את הטקסט והצורות אחר כך.',
     insert: 'הוספת שקף מעוצב: {{name}}',
     history: 'הוספת שקף מעוצב',
@@ -342,8 +344,8 @@ export const he = {
       productmgmt: 'ניהול מוצר',
       defense: 'Defence-tech',
     },
-    search: 'חיפוש עיצובים',
-    searchPlaceholder: 'חיפוש עיצובים…',
+    search: 'חיפוש שקפים מוכנים',
+    searchPlaceholder: 'חיפוש שקפים מוכנים…',
   },
   cards: {
     hint: 'לחיצה על כרטסת מוסיפה אותה לשקף. כשהכרטסת מסומנת, אפשר להוסיף לה כרטיסים מסרגל הכלים.',
@@ -454,7 +456,6 @@ export const en: Messages<typeof he> = {
     cards: 'Insert card set',
   },
   collection: {
-    designs: 'Designs',
     cards: 'Card sets',
     shapes: 'Shapes',
     graphics: 'Graphics',
@@ -464,6 +465,9 @@ export const en: Messages<typeof he> = {
     tables: 'Tables',
   },
   designs: {
+    title: 'Ready slides',
+    caption: 'Slides',
+    none: 'There are no ready slides in this language yet.',
     hint: 'Choose a design to add a complete slide. Its text and shapes remain editable.',
     insert: 'Add designed slide: {{name}}',
     history: 'Add designed slide',
@@ -776,8 +780,8 @@ export const en: Messages<typeof he> = {
       productmgmt: 'Product management',
       defense: 'Defence-tech',
     },
-    search: 'Search designs',
-    searchPlaceholder: 'Search designs…',
+    search: 'Search ready slides',
+    searchPlaceholder: 'Search ready slides…',
   },
   cards: {
     hint: 'Click a card set to add it to the slide. While the set is selected, more cards are added from the toolbar.',
