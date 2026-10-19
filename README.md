@@ -293,7 +293,7 @@ Every signing request is approved by hand. Every member of the team uses multi-f
 Slidr has no account, collects no telemetry, and sends nothing to its authors. It connects to other systems only for what the user asks of it:
 
 - **Updates** — it asks [GitHub](https://github.com) whether a newer release exists ([GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)).
-- **Media library** — templates, designs, fonts and pictures are downloaded from `slidr-media.pages.dev`, hosted by Cloudflare ([Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/)).
+- **Media library** — templates, designs, fonts and pictures are downloaded from `slidr-media.pages.dev`, hosted by Cloudflare ([Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/)), or from the address the installation names ([a library of your own](docs/media-library.md#a-library-of-your-own)).
 - **Stock photos** — a search sends its words to [Unsplash](https://unsplash.com/privacy) or [Pexels](https://www.pexels.com/privacy-policy/), with the user's own key.
 - **Images by AI** — the prompt goes to [OpenAI](https://openai.com/policies/privacy-policy/), with the user's own key.
 - **The AI chat** — the deck and the messages go to the agent CLI the user picked (Claude Code, Codex or GitHub Copilot CLI), under that service's terms and privacy policy.

@@ -51,8 +51,16 @@ pub const SCHEME: &str = "media";
 pub const DEFAULT_URL: &str = "https://slidr-media.pages.dev/";
 
 /// A development build may be pointed at another copy of the library: a preview deployment of
-/// the site (HTTPS), or a stand-in on this machine. A release build reads the published one.
+/// the site (HTTPS), or a stand-in on this machine.
 const VARIABLE: &str = "SLIDR_MEDIA_URL";
+
+/// An installed app may be pointed at another copy of the library, one its users serve
+/// themselves, by this file beside its executable: `{ "url": "https://media.example.org/" }`.
+/// The installer writes it from `/MEDIA=<url>`, or from a file of that name beside the installer
+/// (`windows/hooks.nsh`), so the released installer serves any copy without a build of its own;
+/// an administrator may also write it by hand. It is not a setting of the app: whoever can write beside the executable can replace
+/// the executable too.
+const ADDRESS_FILE: &str = "media-library.json";
 
 /// The file that lists the library.
 const MANIFEST: &str = "manifest.json";
@@ -139,17 +147,114 @@ pub struct MediaLibrary {
     refreshed: watch::Sender<bool>,
 }
 
-/// Where the library is read from: the published site, or in a development build the copy
-/// [`VARIABLE`] names (HTTPS anywhere, plain HTTP only on this machine).
+/// Where the library is read from: in a development build the copy [`VARIABLE`] names, else as
+/// the organization's policy or the installation says ([`resolve_base`]). None: the app has no
+/// library.
 pub fn base_url() -> Option<Url> {
     if cfg!(debug_assertions)
         && let Ok(value) = std::env::var(VARIABLE)
-        && let Some(url) = folder_url(&value)
-        && (url.scheme() == "https" || (url.scheme() == "http" && net::is_loopback(&url)))
+        && let Some(url) = copy_url(&value)
     {
         return Some(url);
     }
-    folder_url(DEFAULT_URL)
+    let exe = std::env::current_exe().ok();
+    resolve_base(
+        policy_url().as_deref(),
+        exe.as_deref().and_then(Path::parent),
+    )
+}
+
+/// The library an installed app reads: the copy a central policy names, else the one the
+/// installation's own file names ([`installed_base`]), else the published site. A policy value
+/// that names no address the app may read gives no library, as [`installed_base`] does for its
+/// file: the administrator chose a copy, and the app does not go round the choice to the site.
+fn resolve_base(policy: Option<&str>, dir: Option<&Path>) -> Option<Url> {
+    if let Some(value) = policy {
+        return copy_url(value);
+    }
+    match dir {
+        Some(dir) => installed_base(dir),
+        None => folder_url(DEFAULT_URL),
+    }
+}
+
+/// The address an organization's policy sets, above the installation's own file: `MediaLibraryUrl`
+/// under `HKLM\SOFTWARE\Policies\Slidr`, else the same under `HKCU`. Set once for the domain by
+/// GPO or Intune, it points every machine's app at the organization's copy, and the machines run
+/// the released installer unchanged (docs/media-library.md). None when neither value is set, so
+/// the file decides; only on Windows is there such a policy.
+#[cfg(windows)]
+fn policy_url() -> Option<String> {
+    use windows::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER]
+        .into_iter()
+        .find_map(read_policy_value)
+}
+
+/// The string `MediaLibraryUrl` under `SOFTWARE\Policies\Slidr` of `root`, if it is one. None
+/// when the key or value is absent, is not a string, or is longer than any address may be.
+#[cfg(windows)]
+fn read_policy_value(root: windows::Win32::System::Registry::HKEY) -> Option<String> {
+    use windows::Win32::System::Registry::{RRF_RT_REG_SZ, RegGetValueW};
+    use windows::core::w;
+
+    // An address is at most 1024 chars (`installed_base`); a longer value is not one of ours.
+    let mut buffer = [0u16; 1200];
+    let mut size = size_of_val(&buffer) as u32;
+    // SAFETY: the key and value names are static wide strings; `buffer` and `size` are a matching
+    // pair, and `RRF_RT_REG_SZ` writes only a null-terminated string of UTF-16 into it.
+    let status = unsafe {
+        RegGetValueW(
+            root,
+            w!("SOFTWARE\\Policies\\Slidr"),
+            w!("MediaLibraryUrl"),
+            RRF_RT_REG_SZ,
+            None,
+            Some(buffer.as_mut_ptr().cast()),
+            Some(&mut size),
+        )
+    };
+    if status.is_err() {
+        return None;
+    }
+    // `size` is the byte count, including the null the call wrote; the string is before it.
+    let len = (size as usize / 2).saturating_sub(1).min(buffer.len());
+    Some(String::from_utf16_lossy(&buffer[..len]))
+}
+
+#[cfg(not(windows))]
+fn policy_url() -> Option<String> {
+    None
+}
+
+/// The library an app installed in `dir` reads: the published site, unless [`ADDRESS_FILE`] is
+/// there; then the copy it names. A file that names none the app may read (one that cannot be
+/// read, is not JSON, has no `url`, or one that is not HTTPS) leaves the app with no library at
+/// all, never with the published one: on a closed network a call to it would look like an attempt
+/// to get out.
+fn installed_base(dir: &Path) -> Option<Url> {
+    #[derive(Deserialize)]
+    struct Address {
+        url: String,
+    }
+    let text = match std::fs::read(dir.join(ADDRESS_FILE)) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return folder_url(DEFAULT_URL);
+        }
+        Err(_) => return None,
+    };
+    // As Notepad may save it.
+    let text = text.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&text);
+    let address: Address = serde_json::from_slice(text).ok()?;
+    copy_url(&address.url)
+}
+
+/// `value` as the address of a copy of the library: HTTPS anywhere, plain HTTP only on this
+/// machine.
+fn copy_url(value: &str) -> Option<Url> {
+    folder_url(value)
+        .filter(|url| url.scheme() == "https" || (url.scheme() == "http" && net::is_loopback(url)))
 }
 
 /// `value` as the URL of a folder: ending with a slash, so a path joins under it.
@@ -801,5 +906,80 @@ mod tests {
             folder.as_deref(),
             Some("https://preview.slidr-media.pages.dev/")
         );
+    }
+
+    #[test]
+    fn an_installation_may_name_a_copy_of_its_own() -> std::io::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let base = |dir: &Path| installed_base(dir).map(String::from);
+        assert_eq!(base(dir.path()).as_deref(), Some(DEFAULT_URL));
+        let named = |text: &[u8]| -> std::io::Result<Option<String>> {
+            std::fs::write(dir.path().join(ADDRESS_FILE), text)?;
+            Ok(base(dir.path()))
+        };
+        for (text, url) in [
+            (
+                br#"{ "url": "https://media.example.org/slidr" }"#.as_slice(),
+                "https://media.example.org/slidr/",
+            ),
+            (
+                b"\xEF\xBB\xBF{\"url\":\"https://media.example.org/\"}",
+                "https://media.example.org/",
+            ),
+            (
+                br#"{"url":"http://127.0.0.1:8080/"}"#,
+                "http://127.0.0.1:8080/",
+            ),
+        ] {
+            assert_eq!(named(text)?.as_deref(), Some(url), "{url}");
+        }
+        // Not plain HTTP across the network, nor what is not an address: no library at all, and
+        // not the published one.
+        for text in [
+            br#"{"url":"http://media.example.org/"}"#.as_slice(),
+            br#"{"url":"file:///C:/media/"}"#,
+            br#"{"url":""}"#,
+            b"https://media.example.org/",
+            b"{}",
+            b"",
+        ] {
+            assert_eq!(named(text)?, None, "{}", String::from_utf8_lossy(text));
+        }
+        // Nor a file that cannot be read.
+        let folder = tempfile::tempdir()?;
+        std::fs::create_dir(folder.path().join(ADDRESS_FILE))?;
+        assert_eq!(base(folder.path()), None);
+        Ok(())
+    }
+
+    #[test]
+    fn a_policy_is_read_above_the_installation_file() -> std::io::Result<()> {
+        let dir = tempfile::tempdir()?;
+        std::fs::write(
+            dir.path().join(ADDRESS_FILE),
+            br#"{"url":"https://from-the-file.example.org/"}"#,
+        )?;
+        let base = |policy: Option<&str>| resolve_base(policy, Some(dir.path())).map(String::from);
+
+        // No policy: the file decides.
+        assert_eq!(
+            base(None).as_deref(),
+            Some("https://from-the-file.example.org/")
+        );
+        // A policy overrides the file.
+        assert_eq!(
+            base(Some("https://from-the-policy.example.org")).as_deref(),
+            Some("https://from-the-policy.example.org/"),
+        );
+        // A policy that is no address the app may read gives no library, not the file nor the site.
+        for value in ["http://from-the-policy.example.org/", ""] {
+            assert_eq!(base(Some(value)), None, "{value}");
+        }
+        // With neither a policy nor a place to read a file, the published site.
+        assert_eq!(
+            resolve_base(None, None).map(String::from).as_deref(),
+            Some(DEFAULT_URL)
+        );
+        Ok(())
     }
 }
