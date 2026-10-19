@@ -24,7 +24,7 @@ import {
 import { picture } from './pictures';
 
 /**
- * Shvav (שבב, a chip): the slide is a printed circuit board. A deep solder-mask green ground,
+ * Shvav (Hebrew for a chip): the slide is a printed circuit board. A deep solder-mask green ground,
  * lit from the middle; copper traces that route around the content at 45 degrees, tented vias
  * under the mask, and the gold of what the mask leaves bare: pads, test points, fiducials,
  * mounting holes, the fingers of an edge connector. The lettering of the board is silkscreen

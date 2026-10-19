@@ -289,7 +289,7 @@ Slidr is a desktop presentation editor, and the studio makes the ready-made cont
 The kinds the studio makes:
 
 - `design`: ready-made slides for Elements → Designs (an invitation, an announcement, a marketing slide, a slide for an event or a course, a video thumbnail, a greeting…), each from a concept, a picture and HTML. A request that describes a slide or a design to make is a design.
-- `template`: the sample deck of one of the built-in templates, written in languages. Translating a template ("translate Mifgash into German", "תרגם את תבנית מפגש לכל השפות שחסרות לה") is this kind; so is rewriting the sample of a template in a language it has ("make the Hebrew sample of Atlas about a travel agency"). The template's layouts, colours and pictures stay as they are.
+- `template`: the sample deck of one of the built-in templates, written in languages. Translating a template ("translate Mifgash into German", "translate the Mifgash template into every language it lacks") is this kind; so is rewriting the sample of a template in a language it has ("make the Hebrew sample of Atlas about a travel agency"). The template's layouts, colours and pictures stay as they are.
 - `unsupported`: anything else: a new template from nothing, a template's layouts or colours, card sets, event frames, shapes, graphics, icons, emoji, fonts. Say why in `reason`, in the request's language, and what the studio can do instead."""
 
 
@@ -326,5 +326,5 @@ The content languages of the app: {langs}.
 
 Answer with:
 - `kind`, and `reason`: one sentence on what you understood, in the request's language.
-- For a template: `templateId`; `languages`, the languages to write its sample in (for "every language it lacks", exactly the languages its sample is not yet written in; a rewrite names a language it has); `instructions`, what the person asks beyond the translation, in their words, or an empty string; and `title`, a short name for the request in Hebrew (the template's Hebrew name and what is done, such as "מפגש · 14 שפות").
+- For a template: `templateId`; `languages`, the languages to write its sample in (for "every language it lacks", exactly the languages its sample is not yet written in; a rewrite names a language it has); `instructions`, what the person asks beyond the translation, in their words, or an empty string; and `title`, a short name for the request in English (the template's English name and what is done, such as "Mifgash · 14 languages").
 - For a design, nothing more."""

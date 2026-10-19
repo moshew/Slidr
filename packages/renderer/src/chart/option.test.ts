@@ -425,7 +425,7 @@ describe('the corners of the bars', () => {
     return series(chartOption(themed, still)).map((bar) => (bar.itemStyle as Part).borderRadius);
   };
 
-  // ADR-069, ממצא 1: the bars were drawn with 3px corners whatever the theme said, so a
+  // ADR-069, finding 1: the bars were drawn with 3px corners whatever the theme said, so a
   // template with square corners got rounded columns.
   it('are square in a theme with square corners', () => {
     expect(corners(0)).toEqual([0, 0]);

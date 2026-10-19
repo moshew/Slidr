@@ -4,7 +4,7 @@ Status: Implemented in the 2026-10-16 working tree; **not committed** at the tim
 
 ## Request
 
-"כאשר עוברים שפה הצג רק את האלמנטים באותה שפה (מלבד גופנים, אייקונים, וכו' שאינם תלויי שפה)" — when the language is switched, show only the elements in that language, apart from fonts, icons and the like, which do not depend on a language.
+"When the language is switched, show only the elements in that language, apart from fonts, icons and the like, which do not depend on a language."
 
 ## Context
 

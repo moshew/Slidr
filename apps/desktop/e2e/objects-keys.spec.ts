@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { addElement, openApp, pageProblems, row, shape } from './objects-helpers';
 
 /*
- * The keyboard in the popovers of row B (ADR-060, "ממצאים בשכבות של אחרים"): Esc closes the
+ * The keyboard in the popovers of row B (ADR-060, "Findings in other layers"): Esc closes the
  * colour picker, and the next Esc closes the popover it was opened from. A tooltip that the
  * focus brought back to the swatch used to take that Esc for itself.
  */

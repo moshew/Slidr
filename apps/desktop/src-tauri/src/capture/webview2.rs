@@ -1,6 +1,6 @@
 //! The WebView2 DevTools protocol, from Rust: `ICoreWebView2::CallDevToolsProtocolMethod` on the
 //! capture window. COM calls in windows-rs are `unsafe`, so this file is the one place the app
-//! allows it (ADR-003, "מחיר").
+//! allows it (ADR-003, "Cost").
 
 use std::{
     sync::{Arc, Mutex, PoisonError},

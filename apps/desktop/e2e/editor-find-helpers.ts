@@ -40,7 +40,7 @@ const cell = (text: string) => ({ content: { paragraphs: [para(text)] } });
 export const WORD = 'רבעון';
 
 /**
- * Three slides with "רבעון" on each:
+ * Three slides with the Hebrew word for "quarter" on each:
  * - the first: a title where the word crosses three runs and carries a prefix letter, and a body
  *   of two paragraphs (three matches, one of them a whole word);
  * - the second: a card inside a group, a table with the word in two cells, and speaker notes

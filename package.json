@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "audit:language": "node scripts/audit-language.mjs",
     "test": "vitest run",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "e2e": "pnpm --filter @slidr/desktop e2e",

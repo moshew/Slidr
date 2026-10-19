@@ -19,11 +19,13 @@ import {
   invert,
   isTranslation,
   multiply,
+  onTextLines,
   resolveHit,
   resolvePress,
   screenTransform,
   slideBounds,
   snapCandidates,
+  textLines,
   validScope,
 } from './space';
 
@@ -245,13 +247,18 @@ describe('resolvePress', () => {
     }
   });
 
-  it('goes straight into a text box inside a group, anywhere on its frame', () => {
+  it('goes straight into a text box inside a group, where its text is', () => {
     const inside = { scope: ['card'], id: 'title', edit: true };
     expect(press(['card', 'title'])).toEqual({ scope: [], id: 'card', inside });
-    // Whether the pointer is on the letters is a question for shapes only.
-    expect(press(['card', 'title'], [], [], offText).inside).toEqual(inside);
     // The group being selected already changes nothing: the text comes before the child.
     expect(press(['card', 'title'], [], ['card']).inside).toEqual(inside);
+    // Beside its lines the box is an object of the card, as a shape is off its text.
+    expect(press(['card', 'title'], [], [], offText).inside).toEqual({ ...inside, edit: false });
+    expect(press(['card', 'title'], ['card'], [], offText)).toEqual({
+      scope: ['card'],
+      id: 'title',
+      inside: { ...inside, edit: false },
+    });
   });
 
   it('goes into the text of a shape only where its text is', () => {
@@ -321,6 +328,9 @@ describe('resolvePress', () => {
     });
     expect(press(['label'], [], ['label']).inside).toEqual({ scope: [], id: 'label', edit: true });
     expect(press(['label'], [], [], offText)).toEqual({ scope: [], id: 'label' });
+    // Beside the lines of a text box, the press takes the box, as off the text of a shape.
+    expect(press(['solo'], [], [], offText)).toEqual({ scope: [], id: 'solo' });
+    expect(press(['solo'], [], ['solo'], offText)).toEqual({ scope: [], id: 'solo' });
     // Also on the way out of a group that was entered.
     expect(press(['solo'], ['card', 'row'])).toEqual(solo);
   });
@@ -357,6 +367,50 @@ describe('resolvePress', () => {
     // Between the children, on the group's own box.
     expect(press(['card'], [], ['card']).inside).toBeUndefined();
     expect(press(['card', 'fixed'], [], ['card']).inside).toBeUndefined();
+  });
+});
+
+describe('textLines and onTextLines', () => {
+  // Two lines of a paragraph, the second short, then a gap of a paragraph and a third line. The
+  // first line has a run in a bigger size, and its own box for the bullet before it.
+  const boxes = [
+    { x: 40, y: 10, w: 200, h: 30 },
+    { x: 240, y: 4, w: 160, h: 40 },
+    { x: 10, y: 12, w: 14, h: 26 },
+    { x: 40, y: 50, w: 120, h: 30 },
+    { x: 40, y: 120, w: 300, h: 30 },
+  ];
+  const lines = textLines(boxes);
+
+  it('makes one line of the boxes at one height, from its first letter to its last', () => {
+    expect(lines).toEqual([
+      { x: 10, y: 4, w: 390, h: 40 },
+      { x: 40, y: 50, w: 120, h: 30 },
+      { x: 40, y: 120, w: 300, h: 30 },
+    ]);
+    expect(textLines([])).toEqual([]);
+  });
+
+  it('is on the text over its lines and between them, and not beside a short line', () => {
+    const on = (x: number, y: number) => onTextLines(lines, { x, y }, 2);
+    expect(on(300, 20)).toBe(true);
+    expect(on(12, 20)).toBe(true);
+    // Between the lines, and between the paragraphs: the line reaches halfway to the next one.
+    expect(on(100, 47)).toBe(true);
+    expect(on(100, 95)).toBe(true);
+    expect(on(100, 110)).toBe(true);
+    // Beside the short line, also in the gap under it, and beside the bullet.
+    expect(on(300, 65)).toBe(false);
+    expect(on(300, 95)).toBe(false);
+    expect(on(5, 130)).toBe(false);
+    // Within the slack of the edges, and no further.
+    expect(on(162, 65)).toBe(true);
+    expect(on(163, 65)).toBe(false);
+    expect(on(100, 2)).toBe(true);
+    expect(on(100, 1)).toBe(false);
+    expect(on(100, 152)).toBe(true);
+    expect(on(100, 153)).toBe(false);
+    expect(onTextLines([], { x: 0, y: 0 }, 2)).toBe(false);
   });
 });
 

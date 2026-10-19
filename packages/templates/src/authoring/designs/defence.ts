@@ -1,4 +1,4 @@
-// Ready-made slides of the `defence` topic (דיפנס־טק), second set: five slides of five kinds, all
+// Ready-made slides of the `defence` topic (defence tech), second set: five slides of five kinds, all
 // on protective, civil-facing technology. A product with its concept drawn round it (m-antijam), a
 // scene through the product's own eyes (m-thermal), a system on a map (m-meshradio), an event
 // invitation (m-cyberrange) and a training product (m-simtraining). Each picture is a render of

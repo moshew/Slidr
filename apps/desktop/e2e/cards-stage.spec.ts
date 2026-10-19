@@ -81,6 +81,22 @@ async function center(page: Page, selector: string) {
   return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
 }
 
+/** The middle of the second letter of an element's text, where it is drawn. */
+async function letter(page: Page, id: string) {
+  return surface(page)
+    .locator(`${el(id)} p`)
+    .first()
+    .evaluate((paragraph) => {
+      const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+      const node = walker.nextNode()!;
+      const range = document.createRange();
+      range.setStart(node, 1);
+      range.setEnd(node, 2);
+      const rect = range.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    });
+}
+
 async function stageScale(page: Page) {
   const frame = await page.getByTestId('stage-frame').boundingBox();
   return frame!.width / 1920;
@@ -137,19 +153,20 @@ test('over text inside a group the frame is the text own, and the cursor is the 
   page,
 }) => {
   const scale = await stageScale(page);
-  // A text box is its text all over its frame.
-  await expectOver(page, await center(page, el('g_card_title')), 'g_card_title', 'text');
+  // A text box is its text where its lines are.
+  await expectOver(page, await letter(page, 'g_card_title'), 'g_card_title', 'text');
   await expect(surface(page).locator('[data-hovered-group="g_card"]')).toHaveCSS(
     'outline-style',
     'dashed',
   );
   await page.screenshot({ path: 'test-results/stage/card-text-hover.png' });
+  // Beside and under them it is the box, an object of the card like the others.
   const title = await box(page, el('g_card_title'));
   await expectOver(
     page,
     { x: title.x + title.width - 4, y: title.y + title.height - 4 },
     'g_card_title',
-    'text',
+    'move',
   );
   // Bare background belongs to the card; foreground objects have their own hover frame.
   await expectOver(page, await bare(page), 'g_card', 'move');
@@ -162,8 +179,9 @@ test('over text inside a group the frame is the text own, and the cursor is the 
   const middle = { x: panel.x + panel.width / 2, y: panel.y + panel.height / 2 };
   await expectOver(page, middle, 'g_card_panel', 'text');
   await expectOver(page, { x: middle.x, y: panel.y + 24 * scale }, 'g_card_panel', 'move');
-  // The block of the text is as wide as the shape lets its lines be.
-  await expectOver(page, { x: panel.x + 30 * scale, y: middle.y }, 'g_card_panel', 'text');
+  // The text is as wide as its line, and not as the block of its paragraphs: beside the word,
+  // at its height, is the shape.
+  await expectOver(page, { x: panel.x + 30 * scale, y: middle.y }, 'g_card_panel', 'move');
 
   // At any depth: the tag is in a group that is in the card.
   await expectOver(page, await center(page, el('g_card_tag')), 'g_card_tag', 'text');
@@ -179,8 +197,8 @@ test('over text inside a group the frame is the text own, and the cursor is the 
   };
   await expectOver(page, off, 'g_tilt_panel', 'move');
 
-  // A standalone text box has a text cursor too.
-  await expectOver(page, await center(page, el('e_solo')), 'e_solo', 'text');
+  // A standalone text box has a text cursor too, on its letters.
+  await expectOver(page, await letter(page, 'e_solo'), 'e_solo', 'text');
   await expectOver(page, await center(page, el('e_solo_shape')), 'e_solo_shape', 'text');
   // Nothing was pressed: nothing is selected and nothing is edited.
   expect(await state(page)).toMatchObject({ selected: [], editing: null });

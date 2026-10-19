@@ -32,7 +32,7 @@ describe('the keys of the text editor', () => {
   });
 
   it('are read as the shell reads a shortcut: by the letter, and by the place on a Hebrew layout', () => {
-    // A Hebrew layout types נ on the key of B.
+    // A Hebrew layout types nun on the key of B.
     expect(editorCommand(press({ key: 'נ', code: 'KeyB', ctrlKey: true }))).toBe('bold');
     // QWERTZ: the key marked Z is where QWERTY has Y.
     expect(editorCommand(press({ key: 'z', code: 'KeyY', ctrlKey: true }))).toBe('undo');

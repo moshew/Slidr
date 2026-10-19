@@ -66,7 +66,7 @@ const two: RichText = {
 
 describe('a marks change in the editor', () => {
   it('goes to the selected text only, splitting a run where the selection ends', () => {
-    // "לום ע": from the second letter of the first word to the first of the second.
+    // From the second letter of the first Hebrew word to the first letter of the second.
     const state = stateOf(two, 2, 7);
     expect(applied(state, changeMarksTr(state, patchMarks({ italic: true }))).paragraphs).toEqual([
       p([{ text: 'ש' }, { text: 'לום ע', marks: { italic: true } }, { text: 'ולם' }]),
@@ -153,7 +153,7 @@ describe('a change to a stretch of the text that is not the selection', () => {
   };
 
   it('finds the word the caret is in or beside, in Hebrew and in Latin text', () => {
-    // "אחת": positions 1 to 4, from either end and from inside.
+    // The Hebrew word for "one": positions 1 to 4, from either end and from inside.
     for (const at of [1, 2, 4]) expect(wordRange(stateOf(rich, at))).toEqual({ from: 1, to: 4 });
     expect(wordRange(stateOf(rich, 6))).toEqual({ from: 5, to: 9 });
     expect(wordRange(stateOf(rich, 20))).toEqual({ from: 16, to: 22 });

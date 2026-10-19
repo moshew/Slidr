@@ -4,8 +4,8 @@
  * THIS FILE IS THE ONE PLACE WHERE THE PROMPT STATES THE CONVENTIONS. They are owned by the
  * conversion engine (`packages/html-import`, WG9A): what the engine reads, the agent must be
  * told here, and nothing more. When the engine changes an attribute or the shape of a value,
- * change this text with it. It was reconciled with the engine's list in ADR-017 ("המוסכמות
- * שהמנוע מכבד").
+ * change this text with it. It was reconciled with the engine's list in ADR-017 ("Conventions
+ * the engine respects").
  *
  * What is derived, so it cannot drift:
  * - the values of `data-archetype` are the model's `Archetype` (through `ARCHETYPES`);

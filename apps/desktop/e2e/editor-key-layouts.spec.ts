@@ -54,7 +54,7 @@ test('Ctrl+A selects every object on AZERTY by the key marked A, and on Hebrew b
   await press(page, 'a', 'KeyQ', { ctrl: true });
   await expect.poll(() => selected(page)).toEqual(ALL);
 
-  // On a Hebrew layout the letter is ש, and the place decides.
+  // On a Hebrew layout the letter is shin, and the place decides.
   await select(page, []);
   await focusStage(page);
   await press(page, 'ש', 'KeyA', { ctrl: true });
@@ -75,7 +75,7 @@ test('in a table, Ctrl+A on AZERTY selects every cell, and AltGr types a letter 
   await press(page, 'a', 'KeyQ', { ctrl: true });
   await expectSelection(page, id, [0, 0], [1, 1]);
 
-  // Polish: AltGr+A types ą, with Ctrl and Alt down. It is typed into the cell, not Ctrl+A.
+  // Polish: AltGr+A types an a with ogonek, with Ctrl and Alt down. It types into the cell.
   await selectCell(page, id, 1, 1);
   await press(page, 'ą', 'KeyA', { ctrl: true, alt: true, altGraph: true });
   await expect.poll(() => typingCell(page)).toBe('1,1');

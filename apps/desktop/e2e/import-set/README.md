@@ -25,12 +25,12 @@ Slide titles are the text of the slide's heading, in order.
 
 ### handwritten.html (6 slides)
 
-1. גינה קהילתית ברחוב הדקל (title, subtitle, date line)
-2. למה גינה קהילתית? (5 bullets)
-3. המגרש: היום ואחרי ההקמה (two columns, "המצב היום" and "אחרי ההקמה", 4 bullets each)
-4. No heading: a quote, "״הילדים שלי לא ידעו שעגבנייה גדלה על שיח…״", attributed to רונית אברהמי
-5. תקציב ההקמה (table: 3 columns, a header row, 5 rows and a total row, 22,000)
-6. מצטרפים? (closing)
+1. Community garden on HaDekel Street (title, subtitle, date line)
+2. Why a community garden? (5 bullets)
+3. The site: today and after construction (two columns, "Current state" and "After construction", 4 bullets each)
+4. No heading: a quote, "My children did not know that a tomato grows on a bush…", attributed to Ronit Avrahami
+5. Setup budget (table: 3 columns, a header row, 5 rows and a total row, 22,000)
+6. Will you join? (closing)
 
 Not slide content: the `n / 6` counter. Forward is the left arrow (also PageDown, Space), back is
 the right arrow. Everything should become editable.

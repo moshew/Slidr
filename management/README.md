@@ -17,9 +17,9 @@ The status chips at the top of the studio say which of them it found and whether
 
 Each request is a tab, and requests run side by side. A tab keeps working while another is open, and survives a restart of the server. A request is one of:
 
-- **A design** (עיצוב מוכן): ready-made slides for the gallery, below.
-- **A template's sample** (דוגמה של תבנית): the sample deck of a built-in template, written in languages. See [Template samples](#template-samples).
-- **Read automatically** (זיהוי אוטומטי, the default): a request in words, such as "תרגם את תבנית מפגש לכל השפות שהיא עדיין לא תומכת בהן". One structured Claude call (`template_prompts.route_*`) reads it with the list of templates (their names in Hebrew and English from the app's messages, and the languages each sample is and is not written in) and makes it one of the two: here the template `mifgash` in its fourteen missing languages. A request for anything the studio does not make yet (a new template, its layouts or colours, card sets, frames, shapes, graphics, icons, fonts) stops with the reason, in the request's language, and what the studio can do instead.
+- **A design**: ready-made slides for the gallery, below.
+- **A template's sample**: the sample deck of a built-in template, written in languages. See [Template samples](#template-samples).
+- **Read automatically** (the default): a request in words, such as "translate the Mifgash template into every language it does not support yet". One structured Claude call (`template_prompts.route_*`) reads it with the list of templates (their names in Hebrew and English from the app's messages, and the languages each sample is and is not written in) and makes it one of the two: here the template `mifgash` in its fourteen missing languages. A request for anything the studio does not make yet (a new template, its layouts or colours, card sets, frames, shapes, graphics, icons, fonts) stops with the reason, in the request's language, and what the studio can do instead.
 
 ## What happens to a design request
 
@@ -59,7 +59,7 @@ A template request names a built-in template and the languages to write its samp
 
 Publishing has two steps, and nothing reaches Cloudflare before the second.
 
-1. **Prepare** (the "פרסום" panel):
+1. **Prepare** (the "Publish" panel):
    - The studio copies into the author copy of the library (`../Slidr-media`, or `SLIDR_MEDIA_DIR`) any published files that copy lacks. A file the copy already has is never touched.
    - It writes the approved designs into the copy: `elements/designs/managed.json` and `images/designs/<id>.webp`; and the approved template samples into its `templates/catalog.json`.
    - It runs `apps/desktop/scripts/media-publish.mjs --dry-run --report`, the repository's own publishing script, with its staging, manifest and guards.
@@ -74,7 +74,7 @@ Publishing needs a Cloudflare API token with Pages edit rights. Give it in the p
 
 ## The library
 
-The "ספרייה" tab shows the media library as it is published, as every installed app reads it. It only reads: changing the library goes through publishing. The page reads the site directly (`@slidr/media-library`), and the server takes no part.
+The "Library" tab shows the media library as it is published, as every installed app reads it. It only reads: changing the library goes through publishing. The page reads the site directly (`@slidr/media-library`), and the server takes no part.
 
 - **Overview.** Each part of the library, with its number of files and their size, and the date the library was published.
 - **Parts.** Ready-made designs, templates, card sets, frames, shapes and lines, graphics, emoji, art sets, icons and fonts. Each is read and drawn by the app's own code in `apps/desktop/src` (`web/src/library/app.ts` names the modules): the same catalogs, names, renderer and search in Hebrew and English. A part is loaded when it is opened.
@@ -91,7 +91,7 @@ The "ספרייה" tab shows the media library as it is published, as every inst
 
 - **All files.** Every file of the manifest, folder by folder, with its size and SHA-256. Pictures, JSON, fonts and the reference decks open in place.
 
-The library is read once each time the page is loaded; "רענון" reads it again.
+The library is read once each time the page is loaded; "Refresh" reads it again.
 
 ## Settings
 

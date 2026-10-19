@@ -331,7 +331,7 @@ test('whole word and match case narrow the search, in Hebrew and in Latin text',
   const matchCase = page.getByTestId('find-match-case');
   await find(page, WORD);
   await expect(count(page)).toHaveText('9');
-  // "הרבעון" and "ברבעון" are other words.
+  // The Hebrew forms meaning "the quarter" and "in the quarter" are other words.
   await wholeWord.click();
   await expect(wholeWord).toHaveAttribute('aria-pressed', 'true');
   await expect(count(page)).toHaveText('6');

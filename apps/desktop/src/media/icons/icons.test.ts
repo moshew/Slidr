@@ -91,7 +91,7 @@ describe.skipIf(!hebrew)('search', () => {
     expect(ids('חץ ימינה', 1)).toEqual(['lucide:arrow-right']);
     expect(ids('חץ ימינה', 8)).toContain('tabler:arrow-right');
     expect(ids('מנעול', 1)).toEqual(['lucide:lock']);
-    // A whole term beats a word of a longer one: a house before a hospital ("בית חולים").
+    // A whole term beats a word of a longer one: Hebrew for "house" before "hospital".
     expect(ids('בית', 1)).toEqual(['lucide:house']);
     expect(ids('כוכב', 1)).toEqual(['lucide:star']);
     expect(ids('לוח שנה', 1)).toEqual(['lucide:calendar']);

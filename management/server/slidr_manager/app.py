@@ -192,8 +192,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if not body.languages:
                 raise fail(ValueError("Name at least one language to write the sample in."))
             data["instructions"] = data["prompt"]
-            shown = ", ".join(body.languages) if len(body.languages) <= 3 else f"{len(body.languages)} שפות"
-            data["title"] = f"{entry['name']['he']} · {shown}"
+            shown = ", ".join(body.languages) if len(body.languages) <= 3 else f"{len(body.languages)} languages"
+            data["title"] = f"{entry['name']['en']} · {shown}"
             data.pop("group")
             data.pop("count")
         else:

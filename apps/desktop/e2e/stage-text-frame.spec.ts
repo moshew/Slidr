@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { elements, frames, openApp, undoSteps } from './arrange-helpers';
+import { elements, frames, openApp, selected as selection, undoSteps } from './arrange-helpers';
 import { addText, caret, edit, editingId, para, plain, select } from './text-helpers';
 
 /*
@@ -7,6 +7,8 @@ import { addText, caret, edit, editingId, para, plain, select } from './text-hel
  * the editor's, so the box is held by its frame: the handles size it and the edge of the frame
  * moves it, and the text stays open under both. The box that the "Text" button of the toolbar
  * adds is typed in at once, and is put in its place by the same frame before its first word.
+ * As in PowerPoint, the text is only where its lines are: beside a short line and under the last
+ * one, the box is taken as by its frame, whether its text is open or not.
  */
 
 const ID = 'e_t';
@@ -23,9 +25,9 @@ async function onEdge(page: Page): Promise<{ x: number; y: number }> {
 }
 
 /** A point near the leading edge of an actual rendered character. */
-async function textPoint(page: Page, line: number, offset: number) {
+async function textPoint(page: Page, line: number, offset: number, id = ID) {
   return surface(page)
-    .locator(`[data-element-id="${ID}"] p`)
+    .locator(`[data-element-id="${id}"] p`)
     .nth(line)
     .evaluate((paragraph, index) => {
       const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
@@ -45,6 +47,27 @@ async function textPoint(page: Page, line: number, offset: number) {
         y: rect.top + rect.height / 2,
       };
     }, offset);
+}
+
+/** A point in the box beside the end of its first line, 30px in from the far side of the box. */
+async function beside(page: Page, id = ID) {
+  return surface(page)
+    .locator(`[data-element-id="${id}"]`)
+    .evaluate((root) => {
+      const paragraph = root.querySelector('p')!;
+      const range = document.createRange();
+      range.selectNodeContents(paragraph);
+      const line = range.getClientRects()[0]!;
+      const box = root.getBoundingClientRect();
+      const rtl = getComputedStyle(paragraph).direction === 'rtl';
+      return { x: rtl ? box.left + 30 : box.right - 30, y: line.top + line.height / 2 };
+    });
+}
+
+/** A point in the box under its last line, 30px above the bottom of the box. */
+async function under(page: Page, id = ID) {
+  const box = (await surface(page).locator(`[data-element-id="${id}"]`).boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height - 30 };
 }
 
 /** Drags at the pace of a hand: the Stage draws a drag once a frame. */
@@ -83,8 +106,16 @@ test('a new text box uses editing and frame cursors in Hebrew and English', asyn
     await page.keyboard.type(text);
     const [box] = await elements(page);
     await expect.poll(() => plain(page, box!.id)).toBe(text);
-    await editor(page).locator('p').hover();
+    // Now that the line has letters, the text is where they are, and beside them is the box.
+    const letters = async () => {
+      const on = await textPoint(page, 0, 1, box!.id);
+      await page.mouse.move(on.x, on.y);
+    };
+    await letters();
     await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
+    const off = await beside(page, box!.id);
+    await page.mouse.move(off.x, off.y);
+    await expect(editor(page).locator('p')).toHaveCSS('cursor', 'move');
     // The frame still moves the box, and its handles still resize it.
     const at = await onEdge(page);
     await page.mouse.move(at.x, at.y);
@@ -92,7 +123,7 @@ test('a new text box uses editing and frame cursors in Hebrew and English', asyn
     const handle = surface(page).locator('[data-handle="se"]');
     await handle.hover();
     await expect(handle).toHaveCSS('cursor', 'nwse-resize');
-    await editor(page).locator('p').hover();
+    await letters();
     await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
     await expect(editor(page)).toBeFocused();
     // Ending editing keeps a text cursor, including without another pointer movement.
@@ -100,20 +131,24 @@ test('a new text box uses editing and frame cursors in Hebrew and English', asyn
     await expect(editor(page)).toHaveCount(0);
     await expect(surface(page)).toHaveCSS('cursor', 'text');
     const paragraph = surface(page).locator(`[data-element-id="${box!.id}"] p`);
-    await paragraph.hover();
+    await letters();
     await expect(paragraph).toHaveCSS('cursor', 'text');
+    await page.mouse.move(off.x, off.y);
+    await expect(paragraph).toHaveCSS('cursor', 'move');
     // Reopening the same box uses the editing cursor too.
     await page.keyboard.press('Enter');
     await expect(editor(page)).toBeFocused();
-    await editor(page).locator('p').hover();
+    await letters();
     await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
     // The text cursor also appears when the box is no longer selected.
     await page.keyboard.press('Escape');
     const bounds = (await paragraph.boundingBox())!;
     await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height + 60);
     await expect(surface(page).locator('[data-handle]')).toHaveCount(0);
-    await paragraph.hover();
+    await letters();
     await expect(paragraph).toHaveCSS('cursor', 'text');
+    await page.mouse.move(off.x, off.y);
+    await expect(paragraph).toHaveCSS('cursor', 'move');
     expect(await editingId(page)).toBeNull();
   }
 });
@@ -229,9 +264,8 @@ test('holding and dragging inside a text box enters editing immediately and keep
   page,
 }) => {
   await addText(page, ID, [para('Welcome to the workshop')], { frame: FRAME });
-  const paragraph = (await surface(page).locator(`[data-element-id="${ID}"] p`).boundingBox())!;
   const steps = await undoSteps(page);
-  const at = { x: paragraph.x + paragraph.width / 2, y: paragraph.y + paragraph.height / 2 };
+  const at = await textPoint(page, 0, 12);
   await page.mouse.move(at.x, at.y);
   await expect(surface(page)).toHaveCSS('cursor', 'text');
   await page.mouse.down();
@@ -276,6 +310,84 @@ test('Escape during an opening text drag ends selection tracking and leaves the 
   expect(await plain(page, ID)).toBe('Welcome to the workshop');
   expect(errors).toEqual([]);
 });
+
+for (const lang of ['en', 'he'] as const) {
+  test(`beside and under its text, an idle box is taken as by its frame (${lang})`, async ({
+    page,
+  }) => {
+    if (lang === 'he') await openApp(page, { lang });
+    const line = lang === 'he' ? 'ברוכים הבאים' : 'Welcome';
+    await addText(page, ID, [para(line)], { frame: FRAME });
+    const steps = await undoSteps(page);
+    const on = await textPoint(page, 0, 2);
+    await page.mouse.move(on.x, on.y);
+    await expect(surface(page)).toHaveCSS('cursor', 'text');
+    // Beside the line and under it: the box, with the frame of a hovered box around it.
+    for (const at of [await beside(page), await under(page)]) {
+      await page.mouse.move(at.x, at.y);
+      await expect(surface(page)).toHaveCSS('cursor', 'move');
+      await expect(edge(page)).toHaveCount(4);
+    }
+    // A click there selects the box, and does not open its text.
+    const off = await beside(page);
+    await page.mouse.click(off.x, off.y);
+    expect(await selection(page)).toEqual([ID]);
+    await expect(editor(page)).toHaveCount(0);
+    expect(await editingId(page)).toBeNull();
+    // A drag from there moves the box, in one undo step, and the text stays as it was.
+    await drag(page, await under(page), { x: 120, y: 90 });
+    const moved = await frameOf(page, ID);
+    expect(moved.x).toBeGreaterThan(FRAME.x + 100);
+    expect(moved.y).toBeGreaterThan(FRAME.y + 80);
+    expect([moved.w, moved.h]).toEqual([FRAME.w, FRAME.h]);
+    expect(await undoSteps(page)).toBe(steps + 1);
+    expect(await editingId(page)).toBeNull();
+    // A double-click there opens the text, as a double-click on a shape does.
+    const again = await beside(page);
+    await page.mouse.dblclick(again.x, again.y);
+    await expect(editor(page)).toBeFocused();
+    expect(await editingId(page)).toBe(ID);
+    expect(await plain(page, ID)).toBe(line);
+  });
+
+  test(`beside and under its lines, the box that is typed in moves, and its text stays open (${lang})`, async ({
+    page,
+  }) => {
+    if (lang === 'he') await openApp(page, { lang });
+    const line = lang === 'he' ? 'ברוכים הבאים' : 'Welcome';
+    await addText(page, ID, [para(line)], { frame: FRAME });
+    await edit(page, ID);
+    const off = await beside(page);
+    await page.mouse.move(off.x, off.y);
+    await expect(editor(page).locator('p')).toHaveCSS('cursor', 'move');
+    const on = await textPoint(page, 0, 2);
+    await page.mouse.move(on.x, on.y);
+    await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
+    const steps = await undoSteps(page);
+    const before = await caret(page);
+    // A click beside the line leaves the caret where it was.
+    await page.mouse.click(off.x, off.y);
+    await expect(editor(page)).toBeFocused();
+    expect(await editingId(page)).toBe(ID);
+    expect(await caret(page)).toEqual(before);
+    expect(await frameOf(page, ID)).toEqual(FRAME);
+    expect(await undoSteps(page)).toBe(steps);
+    // A drag beside the line, and one under it, move the box: one undo step each.
+    await drag(page, off, { x: 120, y: 90 });
+    await drag(page, await under(page), { x: -60, y: 40 });
+    const moved = await frameOf(page, ID);
+    expect(moved.x).toBeGreaterThan(FRAME.x + 40);
+    expect(moved.y).toBeGreaterThan(FRAME.y + 110);
+    expect([moved.w, moved.h]).toEqual([FRAME.w, FRAME.h]);
+    expect(await undoSteps(page)).toBe(steps + 2);
+    // The keyboard is back in the text, with the caret where it was.
+    expect(await editingId(page)).toBe(ID);
+    await expect(editor(page)).toBeFocused();
+    expect(await caret(page)).toEqual(before);
+    await page.keyboard.type('!');
+    await expect.poll(() => plain(page, ID)).toBe(`${line}!`);
+  });
+}
 
 for (const selected of [false, true]) {
   test(`the frame of an idle text box has a move cursor and moves the box (${selected ? 'selected' : 'hovered'})`, async ({

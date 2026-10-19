@@ -1,7 +1,7 @@
 /**
  * The strings of the export dialog. English has the same keys (`registerMessages` checks). A
  * count has a string for one and a string for more, chosen by the code (`counted`): Hebrew has a
- * form for two as well, and "2 שקפים" reads right without one.
+ * form for two as well, and the Hebrew for "2 slides" reads right without one.
  */
 export const he = {
   title: 'ייצוא ל-HTML',

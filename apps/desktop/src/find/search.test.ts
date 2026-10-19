@@ -66,8 +66,8 @@ describe('findInText', () => {
   });
 
   it('keeps the place in the text when folding the case changes its length', () => {
-    // "İ" folds to two characters, so everything after it sits two places further in the folded
-    // text than in the text itself.
+    // Capital dotted I folds to two characters, so everything after it sits two places further
+    // in the folded text than in the text itself.
     const text = 'İİ izmir';
     expect(text.toLowerCase().length).toBe(text.length + 2);
     expect(ranges(text, 'IZMIR')).toEqual([[3, 8]]);
@@ -84,7 +84,7 @@ describe('findInText', () => {
   });
 
   it('never finds a part of a character', () => {
-    // "ß" folds to "ss": one "s" is half of it.
+    // Sharp s folds to "ss": one "s" is half of it.
     expect(ranges('ß', 's')).toEqual([]);
     expect(found('Maße', 'ss')).toEqual(['ß']);
     expect(found('Maße', 'sse')).toEqual(['ße']);

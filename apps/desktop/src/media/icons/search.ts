@@ -5,7 +5,7 @@
  *
  * An icon's words are the parts of its name (`arrow-big-down`) and the tags its set gives it.
  * The Hebrew dictionary maps an English word to the Hebrew a user would type for it, so an
- * icon's Hebrew tags are the translations of its own words: "חץ" finds every arrow.
+ * icon's Hebrew tags are the translations of its own words: Hebrew for "arrow" finds every arrow.
  */
 
 export type IconSet = 'lucide' | 'tabler';
@@ -18,9 +18,9 @@ export interface SearchWords {
   nameWords: readonly string[];
   /** The set's tags, as single words. */
   tagWords: readonly string[];
-  /** Hebrew for the name's words, normalised for comparing: whole terms ("בית חולימ"). */
+  /** Hebrew for the name's words, normalised for comparing: whole terms (such as "hospital"). */
   nameTerms: readonly string[];
-  /** The single words of those terms ("בית", "חולימ"): a weaker match than a whole term. */
+  /** The single words of those terms (such as "house", "sick"): a weaker match than a whole term. */
   nameHebrew: readonly string[];
   /** Hebrew for the tags: whole terms, then their single words. */
   tagTerms: readonly string[];
@@ -55,7 +55,7 @@ const FINALS: Record<string, string> = { ך: 'כ', ם: 'מ', ן: 'נ', ף: 'פ',
 
 /**
  * Text as the search compares it: lower case, without niqqud and without the geresh of loan
- * words, and with final letters as ordinary ones, so "ציפ" finds what "צ׳יפ" and "צ'יפ" ask for.
+ * words, and with final letters as ordinary ones, so loanwords match with or without a geresh.
  */
 export function normalize(text: string): string {
   return text
@@ -80,14 +80,14 @@ const PREFIXES = 'הובלמשכ';
 
 /**
  * What a Hebrew word may stand for in the index: itself, itself without an attached prefix
- * ("הבית" for "בית"), and without a plural ending ("חצים" for "חץ"). The looser forms count
- * for less.
+ * (the Hebrew for "the house" also matches "house"), and without a plural ending. The looser
+ * forms count for less.
  */
 function hebrewForms(word: string): string[] {
   const forms = [word];
   if (word.length > 3 && PREFIXES.includes(word[0]!)) forms.push(word.slice(1));
-  // After normalising, the plural endings are "ימ" and "ות". A plural of four letters has a
-  // singular of two ("חצימ" for "חצ"), as many common nouns do.
+  // After normalising, the plural endings are the Hebrew suffixes "im" and "ot". A plural of
+  // four letters can have a singular of two, as many common nouns do.
   for (const form of [...forms]) {
     if (form.length >= 4 && (form.endsWith('ימ') || form.endsWith('ות'))) {
       forms.push(form.slice(0, -2));
@@ -182,7 +182,7 @@ export function hebrewToEnglish(hebrew: HebrewTags): Map<string, string> {
 export function englishQuery(query: string, english: ReadonlyMap<string, string>): string | null {
   const words = wordsOf(query);
   if (!words.some(isHebrew)) return null;
-  // The whole phrase first: "לוח שנה" is one thing.
+  // The whole phrase first: the two Hebrew words for "calendar" are one thing.
   const phrase = english.get(words.join(' '));
   if (phrase) return phrase;
   const translated: string[] = [];
@@ -211,8 +211,8 @@ function score(icon: SearchWords, word: string): number {
   if (isHebrew(word)) {
     let best = 0;
     hebrewForms(word).forEach((form, i) => {
-      // A whole term of the name ("בית" for a house), then a word of one ("בית" in "בית
-      // חולים"), then the same for the tags; then the beginning of a word.
+      // A whole term of the name (Hebrew for "house"), then a word of one (the same word in
+      // Hebrew for "hospital"), then the same for the tags; then the beginning of a word.
       const weight = i === 0 ? 1 : 0.4;
       if (icon.nameTerms.includes(form)) best = Math.max(best, 80 * weight);
       else if (icon.nameHebrew.includes(form)) best = Math.max(best, 60 * weight);

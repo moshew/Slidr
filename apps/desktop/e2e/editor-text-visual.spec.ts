@@ -152,7 +152,7 @@ for (const theme of themes) {
 
         // The link tool, in the editor: an address that is refused, and the list of slides.
         await edit(page, ID);
-        // "האתר שלנו" of the second line.
+        // The Hebrew phrase meaning "our website" on the second line.
         await setSelection(page, 25, 34);
         await expectRowFits(page);
         await tool(page, words.link).click();

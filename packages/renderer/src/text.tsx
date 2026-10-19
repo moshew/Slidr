@@ -116,8 +116,8 @@ export interface TextDefaults {
  * The side the lines of a paragraph are aligned to. `start` and `end` are sides of the
  * paragraph's own direction, as in CSS. In a table cell (`alignTo`) a `dir: auto` paragraph
  * takes them from the table instead: its text still reads its own way, but it sits on the side
- * its column starts from. So a column of a Hebrew table has one edge, whether a cell says "רבעון"
- * or "Q1". A paragraph with a direction of its own keeps its own sides.
+ * its column starts from. So a column of a Hebrew table has one edge, whether a cell says
+ * Hebrew for "Quarter" or "Q1". A paragraph with a direction of its own keeps its own sides.
  */
 function alignment(p: Paragraph, defaults: TextDefaults): CSSProperties['textAlign'] {
   const { align } = p;

@@ -132,7 +132,7 @@ function pageDiagnostics(): DiagnosticsSource {
             id: 'toolu_01',
             name: 'slide_create_from_html',
             source: 'app',
-            input: { name: 'פתיחה', html: '<div data-archetype="hero">…</div>' },
+            input: { name: 'Opening', html: '<div data-archetype="hero">…</div>' },
           },
         },
         {

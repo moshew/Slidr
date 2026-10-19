@@ -459,7 +459,7 @@ test.describe('a selected text box: the tools format all of its text', () => {
 });
 
 test.describe('inside the text editor: the tools format the selection', () => {
-  /** Edits the box and selects the first paragraph: "שלום עולם". */
+  /** Edits the box and selects the first paragraph: Hebrew for "Hello world". */
   async function editFirstLine(page: Page) {
     await edit(page, ID);
     await setSelection(page, 1, 10);

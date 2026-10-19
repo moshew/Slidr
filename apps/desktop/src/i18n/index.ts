@@ -53,7 +53,7 @@ const names: Record<Language, { native: string; english: string }> = {
   ja: { native: '日本語', english: 'Japanese' },
 };
 
-/** A language as it calls itself: "Français", "עברית". */
+/** A language's name in its own language, such as French or Hebrew. */
 export const nativeName = (language: Language): string => names[language].native;
 
 /** A language in English, the way the agent is told which language to answer in. */

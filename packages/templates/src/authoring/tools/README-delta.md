@@ -3,14 +3,14 @@
 This folder adds to the Slidr media library:
 
 - **Four templates** (`templates/catalog.tech.json`, pictures in `images/templates/`):
-  - **Anan** (ענן): cloud and DevOps architecture.
-  - **Shvav** (שבב): hardware, IoT and chips.
-  - **Mutzar** (מוצר): software product launches.
-  - **Atlas** (אטלס): a modern atlas for what crosses borders, its sample written in all sixteen
+  - **Anan** (Cloud): cloud and DevOps architecture.
+  - **Shvav** (Chip): hardware, IoT and chips.
+  - **Mutzar** (Product): software product launches.
+  - **Atlas**: a modern atlas for what crosses borders, its sample written in all sixteen
     languages of the app.
 - **Seventeen ready-made slides** (`elements/designs/managed.tech.json`, pictures in
-  `images/designs/`): five each for the topics הייטק, מוצר טכנולוגי and דיפנס־טק, and two in all
-  sixteen languages, a night market (אוכל ומסעדות) and a panorama train (טיולים ותיירות).
+  `images/designs/`): five each for the topics High-tech, Tech products and Defence tech, and two in all
+  sixteen languages, a night market (Food & restaurants) and a panorama train (Travel & tourism).
 
 Atlas and its two neighbours need the fonts catalog regenerated in the same copy of the library,
 for their Arabic, Cyrillic, Vietnamese and Devanagari letters

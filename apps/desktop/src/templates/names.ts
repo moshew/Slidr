@@ -2,7 +2,7 @@ import type { Theme } from '@slidr/model';
 import { i18n } from '../i18n';
 
 /**
- * What a template is called in a language: a built-in one has a name in each ("Layla", "לילה"),
+ * What a template is called in a language: a built-in one has a name in each ("Layla" in English),
  * a personal one the name its owner gave it.
  */
 export function templateName(theme: Pick<Theme, 'id' | 'name'>, lang: string): string {

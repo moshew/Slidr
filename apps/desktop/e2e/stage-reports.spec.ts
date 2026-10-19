@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { addBoxes, openApp, select } from './arrange-helpers';
 
 /*
- * Two reports of ADR-066 ("ממצאים בשכבות של אחרים", 6 and 7) that nobody had confirmed: the
+ * Two reports of ADR-066 ("Findings in other layers", 6 and 7) that nobody had confirmed: the
  * Filmstrip and the vertical wheel, and an object dragged under the Tool Panel.
  */
 

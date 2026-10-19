@@ -102,7 +102,7 @@ test.describe('clear formatting', () => {
     await page.keyboard.press('Control+z');
 
     await edit(page, SOURCE);
-    // "כות": the first three letters.
+    // The first three letters of the Hebrew title.
     await setSelection(page, 1, 4);
     await oneUndoStep(page, SOURCE, () => page.keyboard.press('Control+\\'));
     expect((await runs(page, SOURCE))[0]).toEqual([
@@ -222,7 +222,7 @@ test.describe('the format painter', () => {
     // The paragraph the selection touches took the paragraph format; the other did not.
     expect((await paragraphs(page, TARGET)).map((p) => p.align)).toEqual(['start', 'center']);
 
-    // A plain click paints the word under it: "ראשונה" (positions 6 to 12).
+    // A plain click paints the word under it: Hebrew for "first" (positions 6 to 12).
     const at = await coords(page, 8);
     await page.mouse.click(at.x, at.y);
     await expect.poll(() => steps(page)).toBe(before + 2);

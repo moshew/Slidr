@@ -345,8 +345,9 @@ export function TextEditor({
         attributes: {
           'data-text-editor': '',
           spellcheck: 'false',
-          style:
-            'outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: auto; cursor: text;',
+          // On the slide the Stage says where the text is and where its box is (`onTextOf`):
+          // beside the lines the cursor is the box's. A table cell is the editor's all over.
+          style: `outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: auto; cursor: ${cell ? 'text' : 'inherit'};`,
         },
       },
       onSelectionUpdate: ({ transaction }) => {

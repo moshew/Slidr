@@ -4,7 +4,7 @@ Status: Implemented in the 2026-10-16 working tree; **not committed** at the tim
 
 ## Request
 
-"גם בסטודיו וגם באפליקציה - עבור שפה נתונה, הצג רק את התבניות שכתובות בה" — in the studio and in the app, for a given language, show only the templates written in it.
+"In the studio and in the app, for a given language, show only the templates written in it."
 
 ## Context
 

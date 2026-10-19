@@ -30,7 +30,7 @@ describe('a Ctrl shortcut of the Stage', () => {
 
   it('needs Ctrl, and a character typed with AltGr is not one', () => {
     expect(isCtrlLetter(press('a', 'KeyA'), 'a')).toBe(false);
-    // Polish: AltGr+A types ą, and Windows reports Ctrl and Alt with it.
+    // Polish: AltGr+A types an a with ogonek, and Windows reports Ctrl and Alt with it.
     const ogonek = press('ą', 'KeyA', { ctrl: true, alt: true, altGraph: true });
     expect(isCtrlLetter(ogonek, 'a')).toBe(false);
     expect(withAltGraph(ogonek)).toBe(true);

@@ -32,7 +32,7 @@ const address = (page: Page) => page.getByRole('textbox', { name: 'כתובת' }
 const apply = (page: Page) => page.getByRole('button', { name: 'החלה', exact: true });
 const runs = async (page: Page) => (await paragraphs(page, ID))[0]?.runs;
 
-/** The text "ראו את האתר שלנו ואת השקף הבא" on the first slide, and a second slide after it. */
+/** Hebrew for "See our website and the next slide" on the first slide, and a second slide after it. */
 async function deck(page: Page) {
   await addText(page, ID, [para('ראו את האתר שלנו ואת השקף הבא')], {
     frame: { x: 160, y: 200, w: 1600, h: 200 },
@@ -72,7 +72,7 @@ test.describe('the link tool', () => {
     page,
   }) => {
     await edit(page, ID);
-    // "האתר שלנו": positions 8 to 17.
+    // The Hebrew phrase meaning "our website": positions 8 to 17.
     await setSelection(page, 8, 17);
     await expect(linkButton(page)).toHaveAttribute('data-linked', 'false');
     const after = await oneUndoStep(page, ID, async () => {
@@ -134,7 +134,7 @@ test.describe('the link tool', () => {
     page,
   }) => {
     await edit(page, ID);
-    // Inside "האתר".
+    // Inside the Hebrew word for "the website".
     await setSelection(page, 10);
     await page.keyboard.press('Control+k');
     await page.keyboard.type('example.com');
@@ -194,7 +194,7 @@ test.describe('the link tool', () => {
 
   test('links to a slide, chosen by its number and title', async ({ page }) => {
     await edit(page, ID);
-    // "השקף הבא": positions 22 to 30.
+    // The Hebrew phrase meaning "the next slide": positions 22 to 30.
     await setSelection(page, 22, 30);
     const after = await oneUndoStep(page, ID, async () => {
       await linkButton(page).click();

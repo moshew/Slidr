@@ -43,7 +43,7 @@ export interface FontPickerLabels {
 
 /**
  * A phrase in the language of the text the fonts are for, drawn beside the name of each face
- * that has its letters: "סגנון הגופן" for a Hebrew deck, "نمط الخط" for an Arabic one.
+ * that has its letters: a localized "Font style" sample for a Hebrew or Arabic deck.
  */
 export interface FontSample {
   text: string;

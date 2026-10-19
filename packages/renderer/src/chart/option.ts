@@ -50,9 +50,9 @@ function startsRtl(text: string): boolean {
 /**
  * A label as the chart draws it. The chart is laid out left to right whatever the deck's
  * direction, because the library places text by its left and right ends; a label that starts
- * with a right-to-left letter is isolated as right-to-left text, so that "מכירות Q1" keeps its
- * reading order and a closing bracket stays at its end. Numbers are left as they are, and read
- * from left to right (SPEC 5.4).
+ * with a right-to-left letter is isolated as right-to-left text, so that Hebrew for "Sales Q1"
+ * keeps its reading order and a closing bracket stays at its end. Numbers are left as they are,
+ * and read from left to right (SPEC 5.4).
  */
 export function label(text: string): string {
   return startsRtl(text) ? `${RLI}${text}${PDI}` : text;

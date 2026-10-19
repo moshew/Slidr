@@ -2,7 +2,7 @@ import { BASE_LANGUAGES, CONTENT_LANGUAGES, LANGUAGE_NAMES } from '@slidr/model'
 import type { Lang } from './design';
 import { useT } from './i18n';
 
-/** A language as it calls itself: "Deutsch", "עברית". */
+/** A language's name in its own language, such as German or Hebrew. */
 export const nativeName = (lang: Lang) => LANGUAGE_NAMES[lang].native;
 
 /** Whether every piece is written in a language: Hebrew and English. */
@@ -42,7 +42,11 @@ export function LanguagePicker({
   const others = langs.filter((option) => !isBase(option));
   const other = others.includes(lang);
   return (
-    <div className="segmented language-picker" role="group" aria-label={label ?? t('shell.language')}>
+    <div
+      className="segmented language-picker"
+      role="group"
+      aria-label={label ?? t('shell.language')}
+    >
       {base.map((option) => (
         <button
           type="button"
@@ -63,7 +67,9 @@ export function LanguagePicker({
           lang={other ? lang : undefined}
         >
           <option value="" hidden>
-            {base.length ? t('shell.moreLanguages', { count: others.length }) : t('shell.languageEllipsis')}
+            {base.length
+              ? t('shell.moreLanguages', { count: others.length })
+              : t('shell.languageEllipsis')}
           </option>
           {others.map((option) => (
             <option key={option} value={option} lang={option}>

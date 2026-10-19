@@ -4,7 +4,7 @@ Status: Implemented in the 2026-10-18 working tree; **not committed** at the tim
 
 ## Request
 
-"התלבטות: האם נכון להוציא את 'עיצובים' מחוץ ל'אלמנטים' (למשל לטאב עצמאי, אולי בשם אחר)", then "בצע".
+"Would it make sense to move Designs out of Elements, for example into a separate tab, perhaps with a different name?", then "Do it."
 
 ## Context
 
@@ -15,7 +15,7 @@ Status: Implemented in the 2026-10-18 working tree; **not committed** at the tim
 ## Decision
 
 - **A panel of its own**, `designs` in the `tools` slot at order −1.5: after Templates (the look of the whole deck) and before Elements (what goes on the open slide). Its icon is `GalleryVerticalEnd`.
-- **The name is "שקפים מוכנים" / "Ready slides"**: it says what a click does. "Designs" collided with "בדיקת עיצוב" and did not say that a slide is added. The caption in the Activity Bar is "שקפים" / "Slides" (`elements:designs.caption`); the tooltip and the title bar carry the full name. Every translated language has both.
+- **The name is "Ready slides"**: it says what a click does. "Designs" collided with "Design check" and did not say that a slide is added. The caption in the Activity Bar is "Slides" (`elements:designs.caption`); the tooltip and the title bar carry the full name. Every translated language has both.
 - **`DesignsPanel`** (`DesignsCollection.tsx`) holds the collection as it was. The title bar of the shell names the panel; while one group is open in full, a header under it names the group and leads back (`backTo` with the panel's name), as the header of Elements did.
 - **Elements** loses the `designs` collection and its tile. Card sets stay: they go on the open slide.
 - A language with no design drawn in it shows a line saying so (`designs.none`), in place of the collection that ADR-103 left out of Elements' first screen.

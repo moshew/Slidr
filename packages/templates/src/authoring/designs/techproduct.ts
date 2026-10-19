@@ -1,4 +1,4 @@
-// Ready-made slides of the `techproduct` topic (מוצר טכנולוגי): five products, each in a slide of
+// Ready-made slides of the `techproduct` topic (tech products): five products, each in a slide of
 // its own kind. A launch (m-meshwifi), a feature highlight (m-homebattery), a pre-order
 // (m-keyboard), a comparison (m-passkey) and a spec sheet (m-ereader). Each picture is a render of
 // its own, on a transparent ground: `artwork/<id>.html` with `artwork/techproduct-studio.js`.

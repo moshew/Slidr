@@ -4,7 +4,7 @@ import { exportHtml } from './exportHtml';
 
 // The number a slide shows in an exported file is its number in the deck, as on the Stage and
 // in present mode: a range starts at the number of its first slide, and a hidden slide that is
-// left out still counts (ADR-063, "מה לא נבדק"; ADR-069).
+// left out still counts (ADR-063, "What was not tested"; ADR-069).
 
 const numbered = (id: string, hidden = false) =>
   createSlide({

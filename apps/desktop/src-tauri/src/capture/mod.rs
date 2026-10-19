@@ -34,7 +34,7 @@
 
 #[cfg(windows)]
 #[allow(unsafe_code)]
-// The COM call into WebView2 (ADR-003, "מחיר"); `import_window/network.rs`,
+// The COM call into WebView2 (ADR-003, "Cost"); `import_window/network.rs`,
 // `fonts/directwrite.rs` and `show_screen/win32.rs` are the other three.
 mod webview2;
 

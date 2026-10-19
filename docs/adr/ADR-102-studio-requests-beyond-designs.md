@@ -4,7 +4,7 @@ Status: Implemented in the 2026-10-16 working tree; **not committed** and **not 
 
 ## Request
 
-The user asked that the management studio make every kind of element and template, not only designed slides, and gave an example of a request it should take: "תרגם את תבנית מפגש לכל השפות שהוא עדיין לא תומך בהן" (translate the Mifgash template into every language it does not support yet).
+The user asked that the management studio make every kind of element and template, not only designed slides, and gave an example of a request it should take: "translate the Mifgash template into every language it does not support yet".
 
 ## Context
 
@@ -31,13 +31,13 @@ The user asked that the management studio make every kind of element and templat
 
 - Unit tests of the server: 37 passed (24 before, 13 new in `tests/test_templates.py`): request validation, the listing, the digest, the fonts note, the work folder, the render input, the merge and its byte format, publishing into an author copy and putting it back, the catalog's unpublished work, inherited findings in the prompt.
 - The pages typecheck, and pass eslint and prettier.
-- The routing call, on the user's sentence: `template`, `mifgash`, exactly its fourteen missing languages, titled "מפגש · 14 שפות" ($0.05). A card-set request came back unsupported, with the reason in Hebrew; an invitation came back a design.
-- A real request in a scratch studio, "תרגם את תבנית מפגש לגרמנית", with one review round: routed, written, rendered (16 slides and the sheet), reviewed and fixed by Claude (it shortened a card title that ran into its text, and fixed lone words and split compounds), and left with no findings of its own; $2.78. The renders were looked at: German figures and times, names natural to German readers, no years, page numbers running on. Publishing was prepared against a copy of the author library: the dry run of `media-publish.mjs` changed `templates/catalog.json` alone, the merge added `samples.mifgash.de` and nothing else, and cancelling put the file back byte for byte.
+- The routing call, on the user's sentence: `template`, `mifgash`, exactly its fourteen missing languages, titled the Hebrew equivalent of "Mifgash · 14 languages" ($0.05). A card-set request came back unsupported, with the reason in Hebrew; an invitation came back a design.
+- A real request in a scratch studio, the Hebrew request "translate the Mifgash template into German", with one review round: routed, written, rendered (16 slides and the sheet), reviewed and fixed by Claude (it shortened a card title that ran into its text, and fixed lone words and split compounds), and left with no findings of its own; $2.78. The renders were looked at: German figures and times, names natural to German readers, no years, page numbers running on. Publishing was prepared against a copy of the author library: the dry run of `media-publish.mjs` changed `templates/catalog.json` alone, the merge added `samples.mifgash.de` and nothing else, and cancelling put the file back byte for byte.
 - A render of the English sample under a German variant: every design-check finding was matched to the English slide's, and the sample was refused as still English.
 
 ## Open for the user
 
-- **Run it.** The studio now takes "תרגם את תבנית מפגש לכל השפות שהוא עדיין לא תומך בהן". At about $2.8 a language with one review round, Mifgash's fourteen languages cost about $40, more with the default two rounds.
+- **Run it.** The studio now takes "translate the Mifgash template into every language it does not support yet". At about $2.8 a language with one review round, Mifgash's fourteen languages cost about $40, more with the default two rounds.
 - **Kinds not made yet:** new templates (theme, layouts, pictures), card sets, frames, shapes and graphics. Each needs its own folder layout, render, contract and merge, on the pattern of the template kind; the router names them as not made yet.
 - **The catalog's size.** It is 19 MB of the 25 MB Pages serves. A sample adds about 18 KB a language, so every template in all sixteen languages would pass the limit; the studio refuses such a publication, and the catalog would then have to be split.
 - **A stale record in the published library.** The published `templates/catalog.json` records ten pictures (Anan, Atlas, Mutzar, Shvav) with ids and sizes that are not those of the published picture files. An export of any template corrects them in the author copy, which then publishes them.

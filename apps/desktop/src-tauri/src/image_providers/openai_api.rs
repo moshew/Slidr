@@ -22,7 +22,7 @@
 //!
 //! The answers in `openai_api/` follow the service's documentation as read on 2026-10-04. Only
 //! the rejected key is a recording (it takes no account to get one); there was no key to record
-//! the rest with (ADR-051, "מה לא נבדק").
+//! the rest with (ADR-051, "What was not tested").
 
 use std::{sync::Arc, time::Duration};
 

@@ -209,7 +209,7 @@ export function SlideRenderer({
           textTransform: 'none',
           whiteSpace: 'normal',
           // Japanese and Chinese lines open with no small kana, prolonged sound mark or closing
-          // punctuation (kinsoku): `normal` let ッ and ー open a line in the Japanese samples.
+          // punctuation (kinsoku): `normal` let small tsu and the prolonged sound mark open a line.
           lineBreak: 'strict',
           ...wordBreak(meta.lang),
           color: colorCss(body.color),

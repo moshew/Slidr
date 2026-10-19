@@ -60,7 +60,7 @@ function forDecks(template: Template): Template {
   return rest;
 }
 
-/** What a layout of an archetype is called in a language: "Timeline", "ציר זמן". */
+/** What a layout of an archetype is called in a language: "Timeline" or its translation. */
 export type LayoutNamer = (archetype: Layout['archetype'], lang: string) => string;
 
 /** A template with its layouts named in a language: a built-in layout is named by its archetype. */

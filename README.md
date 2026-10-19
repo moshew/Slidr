@@ -106,7 +106,15 @@ pnpm check:rust   # rustfmt, Clippy, cargo test
 pnpm check:all    # both
 pnpm test:browser # unit tests that need a real browser (Vitest in headless Edge)
 pnpm e2e          # Playwright end-to-end and visual regression
+pnpm audit:language # non-English source text outside justified multilingual content
 ```
+
+The language audit scans Git-tracked and untracked, non-ignored text files. It reports non-ASCII
+letters outside translations, multilingual content, font samples, language processing and test
+fixtures. Keep code comments and documentation in English. Run `pnpm audit:language --all` to
+also inspect retained text and its reason, or add `--json` for a machine-readable report.
+The audit detects characters, so foreign-language text written only with ASCII letters still
+needs human review.
 
 The last full run on Windows that finished was in the middle of the `m8-finish` round, at `940c974` (five of its six feature tracks merged): 261 Rust tests, 239 browser tests, and 1,340 of 1,342 end-to-end tests; the two that failed pass on their own. The full run before it, on `main` at `05fc875` (2026-10-05, the merge of ADR-069), found two things that are fixed since: two modules whose names differ only in case, which Windows reads as one file (`61e0001`; a test now forbids such a pair), and a test that read a colour before its fade was over (`53abe48`).
 

@@ -318,7 +318,7 @@ test.describe('selection', () => {
     page,
   }) => {
     await open(page, [para(RTL_TEXT, { dir: 'rtl' })]);
-    // From inside the Hebrew word, over the space and into the English one: "ום wor".
+    // From the last two Hebrew letters, over the space and into the first three English letters.
     await setSelection(page, 3);
     const heads = await walk(page, 'Shift+ArrowLeft', 6, async () => (await caret(page)).head);
     expect(heads).toEqual(range(4, 9));
@@ -373,7 +373,7 @@ test.describe('selection', () => {
       const { from, to } = await caret(page);
       return RTL_TEXT.slice(from - 1, to - 1).trim();
     };
-    // The middle of "world", and the middle of "שוב".
+    // The middle of "world", and the middle of the Hebrew word for "again".
     await page.mouse.dblclick((boxes[7]!.left + boxes[7]!.right) / 2, y);
     await expect.poll(selected).toBe('world');
     await page.mouse.dblclick((boxes[12]!.left + boxes[12]!.right) / 2, y);
@@ -403,7 +403,7 @@ test.describe('how mixed text is drawn', () => {
     // Left to right: the "!" after the Hebrew word is at the far right.
     const ltr = await charBoxes(page, 1);
     for (let i = 0; i < 10; i++) expect(x(ltr, 10)).toBeGreaterThan(x(ltr, i));
-    // The Hebrew word reads from the right inside the English line: ש is to the right of ם.
+    // The Hebrew word reads from the right inside the English line: shin is right of final mem.
     expect(x(ltr, 6)).toBeGreaterThan(x(ltr, 9));
   });
 
@@ -416,7 +416,7 @@ test.describe('how mixed text is drawn', () => {
     // "1,250.50": the digits, the comma and the point run left to right as one number.
     const number = range(at('1,250.50'), at('1,250.50') + 7).map((i) => x(boxes, i));
     expect(number).toEqual([...number].sort((a, b) => a - b));
-    // The number sits between the words around it: left of "מחיר", right of "שקל".
+    // The number sits between the Hebrew words around it: left of "price", right of "shekel".
     expect(Math.max(...number)).toBeLessThan(x(boxes, at('מחיר') + 3));
     expect(Math.min(...number)).toBeGreaterThan(x(boxes, at('שקל')));
 
@@ -437,7 +437,7 @@ test.describe('how mixed text is drawn', () => {
     const text = 'ה-API עלה ל-production';
     await open(page, [para(text, { dir: 'rtl' })]);
     const boxes = await charBoxes(page);
-    // ה, then the hyphen, then API to their left, reading A, P, I from the left.
+    // Hebrew he, then the hyphen, then API to their left, reading A, P, I from the left.
     expect(x(boxes, 0)).toBeGreaterThan(x(boxes, 1));
     expect(x(boxes, 1)).toBeGreaterThan(x(boxes, 4));
     expect(x(boxes, 2)).toBeLessThan(x(boxes, 3));

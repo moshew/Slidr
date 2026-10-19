@@ -119,15 +119,19 @@ import { PlaceholderHint } from './PlaceholderHint';
 import {
   apply,
   applyVector,
+  boundsOf,
   elementMatrix,
   indexElements,
   invert,
   isTranslation,
+  multiply,
+  onTextLines,
   pathIds,
   resolveHit,
   resolvePress,
   slideBounds,
   snapCandidates,
+  textLines,
   tidy,
   validScope,
   type Inside,
@@ -204,7 +208,7 @@ const DRAG_PX = 3;
 const STAGE_EDGE_PX = 8;
 /** How near the stroke of a line the pointer has to be, in screen pixels. */
 const LINE_HIT_PX = 6;
-/** How far from the text of a shape the pointer is still on that text, in screen pixels. */
+/** How far from the text of a box or a shape the pointer is still on that text, in screen pixels. */
 const TEXT_SLACK_PX = 4;
 /** Safe margin and column grid the guides offer (STG-04): 5% of the width, 12 columns. */
 const SAFE_MARGIN = 96;
@@ -436,6 +440,8 @@ export function Stage({
    * two). The later ones go no further, so a double-click ends one level in, as it always did.
    */
   const wentIn = useRef<Inside | null>(null);
+  /** The press fell beside the lines of the text being edited: it is the box's, not the editor's. */
+  const besideText = useRef(false);
   /** Where the keyboard is beyond the selection: a crop handle, a point of a line, the walk. */
   const keys = useStore(stageKeys);
   /**
@@ -836,16 +842,21 @@ export function Stage({
   };
 
   /**
-   * The point is on the text of a shape: on the block of its paragraphs, which the renderer
-   * marks, or within a few screen pixels of it. The block is taken where it is laid out, in the
-   * shape's own box, so it is found in a turned or mirrored group as well.
+   * The point is on the text of a text box or a shape: on one of its lines, from its first letter
+   * to its last (`onTextLines`), or within a few screen pixels of them. Beside a short line and
+   * under the last one is the box, not its text. The letters are taken where they are drawn and
+   * brought into the element's own space. The block of the paragraphs, which the renderer marks,
+   * is taken where it is laid out in that space, and bounds them: in a turned group the box of a
+   * drawn letter is wider than the letter. A text without letters is its block, the empty line
+   * where it is typed.
    */
   const onTextOf = (shape: Located, p: Point): boolean => {
     const root = slideRoot.current?.querySelector<HTMLElement>(
       `[data-element-id="${CSS.escape(shape.element.id)}"]`,
     );
     const block = root?.querySelector<HTMLElement>('[data-slidr-text-block]');
-    if (!root || !block) return false;
+    const surface = container.current?.getBoundingClientRect();
+    if (!root || !block || !surface) return false;
     let left = 0;
     let top = 0;
     for (let node = block; node !== root;) {
@@ -855,14 +866,43 @@ export function Stage({
       if (!(parent instanceof HTMLElement) || !root.contains(parent)) return false;
       node = parent;
     }
-    const own = apply(invert(elementMatrix(shape)), p);
+    const toOwn = invert(elementMatrix(shape));
+    const own = apply(toOwn, p);
     const slack = TEXT_SLACK_PX / scale;
-    return (
-      own.x >= left - slack &&
-      own.x <= left + block.offsetWidth + slack &&
-      own.y >= top - slack &&
-      own.y <= top + block.offsetHeight + slack
-    );
+    if (
+      own.x < left - slack ||
+      own.x > left + block.offsetWidth + slack ||
+      own.y < top - slack ||
+      own.y > top + block.offsetHeight + slack
+    ) {
+      return false;
+    }
+    // A point of the window to the element's own space, through the slide (`toSlide`).
+    const fromWindow = multiply(toOwn, {
+      a: 1 / scale,
+      b: 0,
+      c: 0,
+      d: 1 / scale,
+      e: -(surface.left + origin.x) / scale,
+      f: -(surface.top + origin.y) / scale,
+    });
+    const boxes: Frame[] = [];
+    const range = document.createRange();
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      range.selectNodeContents(node);
+      for (const r of range.getClientRects()) {
+        if (r.width === 0 || r.height === 0) continue;
+        const drawn = [
+          { x: r.left, y: r.top },
+          { x: r.right, y: r.top },
+          { x: r.right, y: r.bottom },
+          { x: r.left, y: r.bottom },
+        ];
+        boxes.push(boundsOf(drawn.map((corner) => apply(fromWindow, corner))));
+      }
+    }
+    return boxes.length === 0 || onTextLines(textLines(boxes), own, slack);
   };
 
   /**
@@ -942,8 +982,16 @@ export function Stage({
       image?.element.type === 'image' && !image.element.assetId && !image.locked && !image.hidden
         ? imageId!
         : null;
-    // Inside the text editor the pointer is the editor's: caret, selection, drag-select.
-    if (isInEditor(e.target)) return;
+    // Inside the text editor the pointer is the editor's: caret, selection, drag-select. Beside
+    // the lines of the text it is the box's, as anywhere off the text (`onTextOf`): a plain press
+    // there takes the box, and the editor does not see it (`onMouseDownCapture`).
+    const plainPress = e.button === 0 && !e.shiftKey && !e.ctrlKey && !e.metaKey;
+    besideText.current =
+      plainPress &&
+      isInEditor(e.target) &&
+      (editing?.element.type === 'text' || editing?.element.type === 'shape') &&
+      !onTextOf(editing, toSlide(e.clientX, e.clientY));
+    if (isInEditor(e.target) && !besideText.current) return;
     if (e.button === 2) {
       // A right click is about what is under it: the host's menu acts on the selection, so an
       // element that is not selected yet becomes the selection, and the empty slide clears it.
@@ -989,8 +1037,15 @@ export function Stage({
       // A press anywhere else leaves crop mode, and then acts as it always does.
     }
     // A text box's frame moves the box, including before editing; an open editor stays open.
+    // So does the empty part of the box that is typed in, beside and under its lines.
     const handle = dataOf(e.target, 'handle');
-    const frameId = dataOf(e.target, 'move-frame');
+    const offTyping =
+      typing &&
+      plainPress &&
+      !handle &&
+      pickAt(e.clientX, e.clientY).at(-1) === typing.element.id &&
+      !onTextOf(typing, p);
+    const frameId = dataOf(e.target, 'move-frame') ?? (offTyping ? typing.element.id : undefined);
     const frame = frameId ? index.get(frameId) : undefined;
     const moveFrame =
       frame?.element.type === 'text' && !frame.locked && !frame.hidden ? frame : undefined;
@@ -1243,6 +1298,9 @@ export function Stage({
         setOverGroupChild(false);
         return;
       }
+      // A button held with no gesture of the Stage's is the text editor's drag, selecting text:
+      // the pointer keeps the cursor of the text it was pressed on, also beside the lines.
+      if (e.buttons !== 0) return;
       const frameId = dataOf(e.target, 'move-frame');
       const frame = frameId ? index.get(frameId) : undefined;
       if (frame && !frame.locked && !frame.hidden) {
@@ -2365,9 +2423,16 @@ export function Stage({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => endGesture(true)}
-      onMouseDown={(e) => {
+      onMouseDownCapture={(e) => {
         // The first press of a click, of a double-click or of more: none of them has gone in.
         if (e.detail <= 1) wentIn.current = null;
+        // A press beside the lines of the text being edited is the Stage's: the editor would put
+        // its caret there, or start a selection.
+        if (besideText.current) {
+          besideText.current = false;
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }}
       onDoubleClick={onDoubleClick}
       onWheel={onWheel}

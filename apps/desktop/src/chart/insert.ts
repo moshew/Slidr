@@ -32,8 +32,8 @@ export function chartFrame(deck: Deck): Frame {
 
 /**
  * The language the labels of a chart are written in: the deck's, not the UI's. A chart made in a
- * Hebrew deck says "סדרה 1" also when the app is in English. A deck in a language the app does
- * not have gets the English ones.
+ * Hebrew deck says "Series 1" in Hebrew even when the app is in English. A deck in a language
+ * the app does not have gets the English ones.
  */
 const labelLanguage = deckLanguage;
 

@@ -38,7 +38,7 @@ export function documentName(path: string | null, title: string): string {
 
 /**
  * Keeps the workspace id across a reload of the webview: Rust still holds the workspace as open,
- * so it is never offered for recovery, and the shell reopens it itself (ADR-007, "ל-WG3").
+ * so it is never offered for recovery, and the shell reopens it itself (ADR-007, "For WG3").
  */
 function rememberWorkspace(editor: Editor): void {
   try {

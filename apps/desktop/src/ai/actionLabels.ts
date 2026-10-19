@@ -35,7 +35,7 @@ export const TRANSLATION_LANGUAGE: Record<Language, LanguageName> = {
 
 /**
  * A choice in a list starts with a capital letter. The names of the languages and the tones are
- * written as they read inside a sentence ("Traduire en français"), lower case in many languages.
+ * written as they read inside a sentence ("Translate into French"), lower case in many languages.
  */
 export const listed = (word: string, lng: string): string =>
   word.charAt(0).toLocaleUpperCase(lng) + word.slice(1);

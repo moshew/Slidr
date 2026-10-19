@@ -177,10 +177,10 @@ function requestSection(result, runDir) {
   const sentBack = score.gate.rounds
     .map((round) => {
       const what = [
-        ...(round.unseen.length > 0 ? [`${round.unseen.length} שקפים שלא נצפו`] : []),
+        ...(round.unseen.length > 0 ? [`${round.unseen.length} unseen slides`] : []),
         ...round.findings.map((finding) => finding.rule),
       ].join(', ');
-      return `סבב ${round.round}: ${what}`;
+      return `Round ${round.round}: ${what}`;
     })
     .join(' · ');
   const slides = score.slides
@@ -190,8 +190,8 @@ function requestSection(result, runDir) {
       const notes = [
         slide.archetype,
         ...slide.findings.map((finding) => finding.rule),
-        ...(slide.editability < 1 ? [`עריכוּת ${percent(slide.editability, 1)}`] : []),
-        ...(slide.titleAndBullets ? ['כותרת ותבליטים על רקע ריק'] : []),
+        ...(slide.editability < 1 ? [`Editability ${percent(slide.editability, 1)}`] : []),
+        ...(slide.titleAndBullets ? ['Title and bullets on an empty background'] : []),
         ...(slide.emoji ? ['emoji'] : []),
       ].filter(Boolean);
       const titles = slide.findings.map((f) => `${f.rule}: ${f.message}`).join('\n');
@@ -203,28 +203,28 @@ function requestSection(result, runDir) {
     .join('\n');
   return `<section id="${request.id}" data-request="${request.id}">
   <header>
-    <h2>${escapeHtml(request.id)} <small>${escapeHtml(request.kind)} · ${escapeHtml(request.lang)}${result.template ? ` · תבנית: ${escapeHtml(result.template)}` : ''}</small></h2>
-    <div class="score" role="radiogroup" aria-label="ציון חזותי">
+    <h2>${escapeHtml(request.id)} <small>${escapeHtml(request.kind)} · ${escapeHtml(request.lang)}${result.template ? ` · Template: ${escapeHtml(result.template)}` : ''}</small></h2>
+    <div class="score" role="radiogroup" aria-label="Visual score">
       ${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="score-${request.id}" value="${n}"><span>${n}</span></label>`).join('')}
     </div>
   </header>
-  <details><summary>הבקשה</summary><pre dir="auto">${escapeHtml(request.prompt)}</pre></details>
+  <details><summary>Request</summary><pre dir="auto">${escapeHtml(request.prompt)}</pre></details>
   <p class="chips">
-    ${chip('שקפים', r.slides)}
-    ${chip('שגיאות lint', r.errors, r.errors > 0)}
-    ${chip('אזהרות', r.warnings)}
+    ${chip('Slides', r.slides)}
+    ${chip('Lint errors', r.errors, r.errors > 0)}
+    ${chip('Warnings', r.warnings)}
     ${rules ? `<span class="chip">${escapeHtml(rules)}</span>` : ''}
-    ${chip('עברו את השער בסבב הראשון', `${r.passedFirstRound}/${r.judged}`, r.passedFirstRound < r.judged)}
-    ${chip('שקפים נקיים בכתיבה הראשונה', `${r.cleanFirstWrite}/${r.written}`)}
-    ${chip('עריכוּת', percent(r.editability, 1), r.editability < 0.95)}
-    ${chip('כותרת ותבליטים על רקע ריק', r.titleAndBullets, r.titleAndBullets > 0)}
-    ${chip('שקפים עם emoji', r.emoji, r.emoji > 0)}
-    ${chip('תורות', r.turns)}
-    ${result.outcome === 'completed' ? '' : chip('סיום', result.outcome, true)}
+    ${chip('Passed the gate on the first round', `${r.passedFirstRound}/${r.judged}`, r.passedFirstRound < r.judged)}
+    ${chip('Clean slides on the first write', `${r.cleanFirstWrite}/${r.written}`)}
+    ${chip('Editability', percent(r.editability, 1), r.editability < 0.95)}
+    ${chip('Title and bullets on an empty background', r.titleAndBullets, r.titleAndBullets > 0)}
+    ${chip('Slides with emoji', r.emoji, r.emoji > 0)}
+    ${chip('Turns', r.turns)}
+    ${result.outcome === 'completed' ? '' : chip('Outcome', result.outcome, true)}
   </p>
-  ${sentBack ? `<p class="gate">השער החזיר: ${escapeHtml(sentBack)}</p>` : ''}
+  ${sentBack ? `<p class="gate">Gate feedback: ${escapeHtml(sentBack)}</p>` : ''}
   <div class="slides">${slides}</div>
-  <textarea placeholder="הערה (לא חובה)" data-note="${request.id}" dir="auto"></textarea>
+  <textarea placeholder="Note (optional)" data-note="${request.id}" dir="auto"></textarea>
 </section>`;
 }
 
@@ -292,11 +292,11 @@ function show() {
 }
 async function save() {
   show();
-  if (!served) { status.textContent = 'הדף נפתח כקובץ: הורד את הציונים ושמור אותם בתיקיית ההרצה'; return; }
+  if (!served) { status.textContent = 'Opened as a file: download the scores and save them in the run folder'; return; }
   try {
     const response = await fetch('scores', { method: 'PUT', body: JSON.stringify(state) });
-    status.textContent = response.ok ? 'נשמר' : 'השמירה נכשלה';
-  } catch { status.textContent = 'השמירה נכשלה: השרת לא רץ'; }
+    status.textContent = response.ok ? 'Saved' : 'Save failed';
+  } catch { status.textContent = 'Save failed: the server is not running'; }
 }
 for (const section of document.querySelectorAll('section[data-request]')) {
   const id = section.dataset.request;
@@ -333,35 +333,35 @@ function reviewHtml(runDir) {
     JSON.stringify(scores).replace(/</g, '\\u003c'),
   ).replace('__COUNT__', String(results.length));
   return `<!doctype html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>סט ההערכה · ${escapeHtml(summary.run)}</title>
+<title>Evaluation set · ${escapeHtml(summary.run)}</title>
 <style>${STYLE}</style>
 </head>
 <body>
 <main>
-  <h1>סט ההערכה · <span dir="ltr">${escapeHtml(summary.run)}</span></h1>
-  <p class="lead">כל שקף של כל מצגת שהסוכן בנה בהרצה הזאת (מודל: ${escapeHtml(summary.model ?? '')}, תמונות: ${escapeHtml(summary.images ?? '')}). תן לכל מצגת ציון חזותי מ-1 עד 5; הציון נשמר מיד. לחיצה על שקף פותחת אותו בגודל מלא, וריחוף על השורה שמתחתיו מציג את ממצאי ה-lint במלואם.</p>
+  <h1>Evaluation set · <span dir="ltr">${escapeHtml(summary.run)}</span></h1>
+  <p class="lead">Every slide of every deck the agent built in this run (model: ${escapeHtml(summary.model ?? '')}, images: ${escapeHtml(summary.images ?? '')}). Give each deck a visual score from 1 to 5; scores are saved immediately. Click a slide to open it at full size, or hover over its caption to see the full lint findings.</p>
   <p class="chips">
-    ${chip('מצגות', t.requests)}
-    ${chip('שקפים', t.slides)}
-    ${chip('שגיאות lint', t.errors, t.errors > 0)}
-    ${chip('אזהרות', t.warnings)}
-    ${chip('עברו את השער בסבב הראשון', `${t.passedFirstRound}/${t.judged} (${percent(t.passedFirstRound, t.judged)})`)}
-    ${chip('שקפים נקיים בכתיבה הראשונה', `${t.cleanFirstWrite}/${t.written}`)}
-    ${chip('עריכוּת', percent(t.editability, 1))}
-    ${chip('כותרת ותבליטים על רקע ריק', t.titleAndBullets, t.titleAndBullets > 0)}
-    ${chip('שקפים עם emoji', t.emoji, t.emoji > 0)}
+    ${chip('Decks', t.requests)}
+    ${chip('Slides', t.slides)}
+    ${chip('Lint errors', t.errors, t.errors > 0)}
+    ${chip('Warnings', t.warnings)}
+    ${chip('Passed the gate on the first round', `${t.passedFirstRound}/${t.judged} (${percent(t.passedFirstRound, t.judged)})`)}
+    ${chip('Clean slides on the first write', `${t.cleanFirstWrite}/${t.written}`)}
+    ${chip('Editability', percent(t.editability, 1))}
+    ${chip('Title and bullets on an empty background', t.titleAndBullets, t.titleAndBullets > 0)}
+    ${chip('Slides with emoji', t.emoji, t.emoji > 0)}
   </p>
   ${results.map((result) => requestSection(result, runDir)).join('\n')}
 </main>
 <div class="bar">
-  <span>ציון חזותי ממוצע: <b id="mean">–</b></span>
-  <span>דורגו: <b id="count"></b></span>
+  <span>Average visual score: <b id="mean">–</b></span>
+  <span>Scored: <b id="count"></b></span>
   <span id="status"></span>
-  <button id="download" type="button">הורד scores.json</button>
+  <button id="download" type="button">Download scores.json</button>
 </div>
 <script>${script}</script>
 </body>

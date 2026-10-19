@@ -221,12 +221,50 @@ export interface Press {
   inside?: Inside;
 }
 
-/** A text box is its text all over its frame; a shape only where its text is (`onText`). */
+/**
+ * A text box and a shape are their text only where the text is (`onText`), as in PowerPoint: the
+ * empty part of the box, beside a short line or under the last one, is the box itself.
+ */
 function holdsText(located: Located, onText: (shape: Located) => boolean): boolean {
   const { element } = located;
-  if (element.type === 'text') return true;
+  if (element.type === 'text') return onText(located);
   if (element.type !== 'shape' || !element.content) return false;
   return plainText(element.content).trim() !== '' && onText(located);
+}
+
+/**
+ * The lines of a text, from the boxes its letters are drawn in: one box per stretch of letters on
+ * a line, in the element's own space. Boxes at the same height are one line, from where its first
+ * letter starts to where its last one ends, whatever the size of each run. Top to bottom.
+ */
+export function textLines(boxes: readonly Frame[]): Frame[] {
+  const lines: Frame[] = [];
+  for (const box of [...boxes].sort((a, b) => a.y - b.y)) {
+    const middle = box.y + box.h / 2;
+    const at = lines.findIndex(
+      (line) =>
+        (middle >= line.y && middle <= line.y + line.h) ||
+        (line.y + line.h / 2 >= box.y && line.y + line.h / 2 <= box.y + box.h),
+    );
+    if (at < 0) lines.push(box);
+    else lines[at] = unionBounds([lines[at] as Frame, box]);
+  }
+  return lines.sort((a, b) => a.y - b.y);
+}
+
+/**
+ * The point is on one of the lines (`textLines`), or within `slack` of it. A line reaches halfway
+ * to the next one, so the pointer stays on the text between its lines and its paragraphs.
+ */
+export function onTextLines(lines: readonly Frame[], p: Point, slack: number): boolean {
+  return lines.some((line, i) => {
+    const before = lines[i - 1];
+    const after = lines[i + 1];
+    const bottom = line.y + line.h;
+    const top = before ? Math.min(line.y, (before.y + before.h + line.y) / 2) : line.y - slack;
+    const end = after ? Math.max(bottom, (bottom + after.y) / 2) : bottom + slack;
+    return p.y >= top && p.y <= end && p.x >= line.x - slack && p.x <= line.x + line.w + slack;
+  });
 }
 
 /**
@@ -234,16 +272,16 @@ function holdsText(located: Located, onText: (shape: Located) => boolean): boole
  * identifies editable text or a child reached directly. Text boxes open on press; other children
  * are entered on release when the press did not become a drag:
  *
- * - On a text box, or on the text of a shape, straight into editing it.
+ * - On the text of a text box or of a shape, straight into editing it.
  *   It is where the text is that counts. The text is the element `chain` ends in, the topmost
- *   one under the pointer, unless that one is locked or hidden. The empty part of a big shape
- *   is no text.
+ *   one under the pointer, unless that one is locked or hidden. The empty part of a big shape,
+ *   or of a text box, is no text: a press there takes the element, to select and move it.
  * - On an object lying on a card, straight to that object. The card's background stays the card.
  * - On a group that was the whole selection before the press, to the child under the pointer, one
  *   level in: a second click on a group does what a double-click on it does.
  *
  * `selected` is the selection before the press; `onText` says whether the pointer is on the text
- * of a shape, which only the drawing knows.
+ * of a text box or a shape, which only the drawing knows.
  */
 export function resolvePress(
   chain: readonly string[],

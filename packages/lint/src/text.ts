@@ -11,7 +11,8 @@ import {
 
 /**
  * Words as a reader counts them, in any script: runs of characters between spaces that hold a
- * letter or a digit. "ה-API" and a URL are one word each; a lone dash or bullet is none.
+ * letter or a digit. An API name with a Hebrew prefix and a URL are one word each; a lone dash
+ * or bullet is none.
  */
 export function countWords(text: string): number {
   return text.split(/\s+/).filter((token) => /[\p{L}\p{N}]/u.test(token)).length;

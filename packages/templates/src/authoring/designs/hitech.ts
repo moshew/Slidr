@@ -1,4 +1,4 @@
-// Ready-made slides of the `hitech` topic (הייטק), second set: five slides of five kinds. An
+// Ready-made slides of the `hitech` topic (high tech), second set: five slides of five kinds. An
 // invitation (m-hackathon), a launch (m-apilaunch), a programme with a price list (m-bugbounty), a
 // call for talks (m-cfp) and results (m-modelrelease). Each picture is a render of its own:
 // `artwork/<id>.html`, the 3D ones with `artwork/hitech-render.js`.
