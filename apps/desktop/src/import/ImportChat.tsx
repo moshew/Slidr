@@ -419,7 +419,7 @@ export function ImportChat({ file }: { file: string }) {
               className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-panel bg-ui-accent-soft px-3 py-2.5"
               data-testid="import-approve"
             >
-              <span className="min-w-[12rem] flex-1 text-sm text-ui-fg">{t('approve.waiting')}</span>
+              <span className="min-w-48 flex-1 text-sm text-ui-fg">{t('approve.waiting')}</span>
               <Button
                 className="shrink-0 whitespace-nowrap"
                 variant="primary"

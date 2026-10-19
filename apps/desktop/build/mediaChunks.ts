@@ -76,9 +76,16 @@ export default {
       headers['Cache-Control'] = 'no-store';
       return new Response('Catalog unavailable', { status: 502, headers });
     }
-    // Native piping avoids invoking JavaScript for every network chunk of a large catalog.
+    // Native piping avoids invoking JavaScript for every network chunk of a large catalog. In
+    // the Workers runtime a plain TransformStream is the standard one, which does run JavaScript
+    // for every chunk: on a catalog of 35 MB the Function ran out of its CPU time a megabyte or
+    // two in, and the body ended there, under a Content-Length of the whole. FixedLengthStream is
+    // the runtime's own byte stream, and holds the body to its length. (Node, where the Worker is
+    // tested, has no such stream.)
     // Keep the asynchronous copy alive after fetch returns the streaming response.
-    const body = new TransformStream();
+    const body = typeof FixedLengthStream === 'function'
+      ? new FixedLengthStream(entry.size)
+      : new TransformStream();
     const copying = (async () => {
       let next = 0;
       try {

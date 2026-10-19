@@ -8,7 +8,7 @@ import { addBoxes, frames, openApp, select, selected, THREE } from './arrange-he
  */
 
 const surface = (page: Page) => page.getByTestId('stage-surface');
-const rowA = (page: Page) => page.getByTestId('top-tools-a');
+const rowA = (page: Page) => page.getByTestId('top-tools-b');
 
 /** What has the keyboard: its name, and whether it is inside the layer the selector names. */
 const focused = (page: Page, layer = '[role="dialog"], [role="menu"]') =>

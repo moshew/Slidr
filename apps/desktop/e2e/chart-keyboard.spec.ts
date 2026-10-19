@@ -134,7 +134,7 @@ test('Enter on a button that has the focus still presses it, also with a chart s
     await page.mouse.click(box.x + 6, box.y + box.height - 6);
   };
   // Without a chart: a button of row A, reached with the keyboard.
-  const line = page.getByTestId('top-tools-a').getByRole('button', { name: 'Line', exact: true });
+  const line = page.getByTestId('top-tools-b').getByRole('button', { name: 'Line', exact: true });
   await line.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('line-library')).toBeVisible();

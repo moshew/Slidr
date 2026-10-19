@@ -998,7 +998,8 @@
       "library": "Slidr लाइब्रेरी",
       "system": "इस कंप्यूटर पर",
       "letters": "{{language}} समर्थित",
-      "empty": "इस नाम का कोई फ़ॉन्ट नहीं"
+      "empty": "इस नाम का कोई फ़ॉन्ट नहीं",
+      "weights": "{{family}} के भार"
     },
     "mixed": "मिश्रित"
   },
@@ -3325,15 +3326,40 @@
       "label": "सूची",
       "bullets": "बुलेट सूची",
       "numbers": "क्रमांकित सूची",
-      "options": "सूची विकल्प",
-      "level": "स्तर",
-      "outdent": "एक स्तर बाहर",
-      "indent": "एक स्तर अंदर",
-      "glyph": "बुलेट",
-      "glyphDefault": "मानक बुलेट",
-      "glyphCustom": "दूसरा बुलेट",
-      "glyphOther": "अन्य",
-      "color": "चिह्न का रंग"
+      "bulletsOptions": "बुलेट विकल्प",
+      "numbersOptions": "क्रमांकन विकल्प",
+      "none": "कोई नहीं",
+      "bulletStyle": {
+        "filledRound": "भरे हुए गोल बुलेट",
+        "hollowRound": "खोखले गोल बुलेट",
+        "filledSquare": "भरे हुए चौकोर बुलेट",
+        "hollowSquare": "खोखले चौकोर बुलेट",
+        "star": "तारे वाले बुलेट",
+        "arrow": "तीर वाले बुलेट",
+        "check": "सही के निशान वाले बुलेट"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "बुलेट और क्रमांकन…",
+      "dialogTitle": "बुलेट और क्रमांकन",
+      "bulletedTab": "बुलेट वाली",
+      "numberedTab": "क्रमांकित",
+      "size": "आकार",
+      "ofText": "पाठ का %",
+      "startAt": "यहाँ से शुरू करें",
+      "glyphCustom": "अपना बुलेट",
+      "glyphOther": "चिह्न",
+      "color": "रंग",
+      "ok": "ठीक है",
+      "cancel": "रद्द करें"
     },
     "spacing": {
       "label": "अंतराल",

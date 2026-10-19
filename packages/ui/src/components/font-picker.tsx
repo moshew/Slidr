@@ -407,7 +407,7 @@ export function FontPicker({
       />
       <ScrollArea
         type="always"
-        className="-mx-1 h-font-list max-h-[max(var(--spacing-font-row),calc(var(--radix-popover-content-available-height,100vh)-var(--spacing-control)-8*var(--spacing)))]"
+        className="-mx-1 h-font-list max-h-font-list-room"
         viewportRef={attach}
         onScroll={(event) => {
           look(event.currentTarget);

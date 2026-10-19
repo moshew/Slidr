@@ -18,7 +18,7 @@ import {
  * SHP-05). Every insert lands in the middle of the slide, ends selected, and is one undo step.
  */
 
-const rowA = (page: Page) => page.getByTestId('top-tools-a');
+const rowA = (page: Page) => page.getByTestId('top-tools-b');
 
 async function openShapes(page: Page) {
   await rowA(page).locator('[data-tool="insert.elements"]').click();

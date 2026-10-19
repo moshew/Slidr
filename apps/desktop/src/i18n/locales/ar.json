@@ -1002,7 +1002,8 @@
       "library": "مكتبة Slidr",
       "system": "على هذا الكمبيوتر",
       "letters": "يدعم {{language}}",
-      "empty": "لا يوجد خط بهذا الاسم"
+      "empty": "لا يوجد خط بهذا الاسم",
+      "weights": "أوزان {{family}}"
     },
     "mixed": "مختلط"
   },
@@ -3357,15 +3358,40 @@
       "label": "قائمة",
       "bullets": "قائمة نقطية",
       "numbers": "قائمة رقمية",
-      "options": "خيارات القائمة",
-      "level": "المستوى",
-      "outdent": "إنقاص المسافة البادئة",
-      "indent": "زيادة المسافة البادئة",
-      "glyph": "رمز التعداد",
-      "glyphDefault": "رمز التعداد القياسي",
-      "glyphCustom": "رمز تعداد آخر",
-      "glyphOther": "غير ذلك",
-      "color": "لون رمز التعداد"
+      "bulletsOptions": "خيارات التعداد النقطي",
+      "numbersOptions": "خيارات الترقيم",
+      "none": "بلا",
+      "bulletStyle": {
+        "filledRound": "رموز تعداد دائرية مصمتة",
+        "hollowRound": "رموز تعداد دائرية مجوفة",
+        "filledSquare": "رموز تعداد مربعة مصمتة",
+        "hollowSquare": "رموز تعداد مربعة مجوفة",
+        "star": "رموز تعداد نجمية",
+        "arrow": "رموز تعداد سهمية",
+        "check": "رموز تعداد بعلامة اختيار"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "التعداد النقطي والرقمي…",
+      "dialogTitle": "التعداد النقطي والرقمي",
+      "bulletedTab": "نقطي",
+      "numberedTab": "رقمي",
+      "size": "الحجم",
+      "ofText": "% من النص",
+      "startAt": "البدء من",
+      "glyphCustom": "رمز تعداد مخصص",
+      "glyphOther": "رمز",
+      "color": "اللون",
+      "ok": "موافق",
+      "cancel": "إلغاء"
     },
     "spacing": {
       "label": "التباعد",

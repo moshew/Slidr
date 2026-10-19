@@ -380,27 +380,18 @@
   /* ---------- Library: designs and frames ---------- */
   // The designs of Elements, drawn in the page's language where they are
   // written in it (Hebrew), and otherwise in English.
-  const ALL_IDS = [...new Set(window.SLIDR_DESIGNS.groups.flatMap((g) => g.ids))];
-  // A fixed shuffle, so the wall opens on a varied mix rather than one group.
-  const mixed = ALL_IDS.map((id, i) => ({ id, k: (i * 7919) % 337 })).sort((a, b) => a.k - b.k).map((x) => x.id);
-
   function renderDesigns(code) {
     const dir = code === 'he' ? 'he' : 'en';
-    // The wall: six columns of designs drifting up and down.
-    let html = '';
-    for (let c = 0; c < 6; c++) {
-      const list = Array.from({ length: 9 }, (_, i) => mixed[(c * 9 + i * 5 + c * 3) % mixed.length]);
-      const imgs = list.map((id) => `<img src="media/designs/${dir}/${id}.webp" alt="" loading="lazy" decoding="async" />`).join('');
-      html += `<div class="wall-col">${imgs}${imgs}</div>`;
-    }
-    document.querySelector('.wall-tilt').innerHTML = html;
-    let hero = '';
-    for (let c = 0; c < 5; c++) {
-      const list = Array.from({ length: 7 }, (_, i) => mixed[(c * 7 + i * 11 + 40) % mixed.length]);
-      const imgs = list.map((id) => `<img src="media/designs/${dir}/${id}.webp" alt="" decoding="async" />`).join('');
-      hero += `<div class="wall-col">${imgs}${imgs}</div>`;
-    }
-    document.querySelector('.hero-wall-tilt').innerHTML = hero;
+    // Columns of designs drifting up and down, each one twice so its loop has no seam.
+    const columns = (cols, lazy) =>
+      cols
+        .map((ids) => {
+          const imgs = ids.map((id) => `<img src="media/designs/${dir}/${id}.webp" alt=""${lazy ? ' loading="lazy"' : ''} decoding="async" />`).join('');
+          return `<div class="wall-col">${imgs}${imgs}</div>`;
+        })
+        .join('');
+    document.querySelector('.wall-tilt').innerHTML = columns(window.SLIDR_DESIGNS.wall, true);
+    document.querySelector('.hero-wall-tilt').innerHTML = columns(window.SLIDR_DESIGNS.hero, false);
   }
 
   // The library's counts run up when they come into view.

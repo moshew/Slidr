@@ -1000,7 +1000,8 @@
       "library": "Библиотека Slidr",
       "system": "На этом компьютере",
       "letters": "Поддерживает: {{language}}",
-      "empty": "Шрифт с таким названием не найден"
+      "empty": "Шрифт с таким названием не найден",
+      "weights": "Начертания {{family}}"
     },
     "mixed": "Разные"
   },
@@ -3341,15 +3342,40 @@
       "label": "Список",
       "bullets": "Маркированный список",
       "numbers": "Нумерованный список",
-      "options": "Параметры списка",
-      "level": "Уровень",
-      "outdent": "Уменьшить отступ",
-      "indent": "Увеличить отступ",
-      "glyph": "Маркер",
-      "glyphDefault": "Стандартный маркер",
-      "glyphCustom": "Другой маркер",
-      "glyphOther": "Другое",
-      "color": "Цвет маркера"
+      "bulletsOptions": "Параметры маркеров",
+      "numbersOptions": "Параметры нумерации",
+      "none": "Нет",
+      "bulletStyle": {
+        "filledRound": "Круглые закрашенные маркеры",
+        "hollowRound": "Круглые полые маркеры",
+        "filledSquare": "Квадратные закрашенные маркеры",
+        "hollowSquare": "Квадратные полые маркеры",
+        "star": "Маркеры-звёздочки",
+        "arrow": "Маркеры-стрелки",
+        "check": "Маркеры-галочки"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "Маркеры и нумерация…",
+      "dialogTitle": "Маркеры и нумерация",
+      "bulletedTab": "Маркированный",
+      "numberedTab": "Нумерованный",
+      "size": "Размер",
+      "ofText": "% от текста",
+      "startAt": "Начать с",
+      "glyphCustom": "Свой маркер",
+      "glyphOther": "Символ",
+      "color": "Цвет",
+      "ok": "ОК",
+      "cancel": "Отмена"
     },
     "spacing": {
       "label": "Интервалы",

@@ -998,7 +998,8 @@
       "library": "Slidr-Bibliothek",
       "system": "Auf diesem Computer",
       "letters": "Unterstützt {{language}}",
-      "empty": "Keine Schriftart mit diesem Namen"
+      "empty": "Keine Schriftart mit diesem Namen",
+      "weights": "Schriftschnitte von {{family}}"
     },
     "mixed": "Gemischt"
   },
@@ -3325,15 +3326,40 @@
       "label": "Liste",
       "bullets": "Aufzählung",
       "numbers": "Nummerierung",
-      "options": "Listenoptionen",
-      "level": "Ebene",
-      "outdent": "Einzug verkleinern",
-      "indent": "Einzug vergrößern",
-      "glyph": "Aufzählungszeichen",
-      "glyphDefault": "Standardzeichen",
-      "glyphCustom": "Anderes Zeichen",
-      "glyphOther": "Andere",
-      "color": "Farbe der Aufzählungszeichen"
+      "bulletsOptions": "Optionen für Aufzählungszeichen",
+      "numbersOptions": "Nummerierungsoptionen",
+      "none": "Ohne",
+      "bulletStyle": {
+        "filledRound": "Gefüllte runde Aufzählungszeichen",
+        "hollowRound": "Leere runde Aufzählungszeichen",
+        "filledSquare": "Gefüllte quadratische Aufzählungszeichen",
+        "hollowSquare": "Leere quadratische Aufzählungszeichen",
+        "star": "Stern-Aufzählungszeichen",
+        "arrow": "Pfeil-Aufzählungszeichen",
+        "check": "Häkchen-Aufzählungszeichen"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "Nummerierung und Aufzählungszeichen…",
+      "dialogTitle": "Nummerierung und Aufzählungszeichen",
+      "bulletedTab": "Aufzählung",
+      "numberedTab": "Nummerierung",
+      "size": "Größe",
+      "ofText": "% des Texts",
+      "startAt": "Beginnen bei",
+      "glyphCustom": "Eigenes Aufzählungszeichen",
+      "glyphOther": "Symbol",
+      "color": "Farbe",
+      "ok": "OK",
+      "cancel": "Abbrechen"
     },
     "spacing": {
       "label": "Abstand",

@@ -128,7 +128,7 @@ function Tile({
         onClick={onSelect}
         className={cx(
           'flex shrink-0 cursor-default flex-col justify-center rounded-small border bg-ui-field text-ui-fg transition-colors select-none',
-          large ? 'size-[72px] gap-2.5 px-2' : 'size-16 gap-2 px-2',
+          large ? 'size-18 gap-2.5 px-2' : 'size-16 gap-2 px-2',
           'hover:border-ui-accent hover:bg-ui-hover',
           selected ? 'border-ui-accent ring-1 ring-ui-accent' : 'border-ui-line-strong',
         )}

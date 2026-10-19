@@ -26,7 +26,7 @@ test.afterEach(({ page }) => {
 const TYPES = ['column', 'bar', 'line', 'area', 'pie', 'donut', 'scatter', 'radar'] as const;
 
 const insertButton = (page: Page, name: string) =>
-  page.getByTestId('top-tools-a').getByRole('button', { name, exact: true });
+  page.getByTestId('top-tools-b').getByRole('button', { name, exact: true });
 
 test('the Chart button opens a gallery of the eight types, named in Hebrew', async ({ page }) => {
   await openApp(page);

@@ -997,7 +997,8 @@
       "library": "Slidr ライブラリ",
       "system": "このコンピューター",
       "letters": "{{language}}対応",
-      "empty": "その名前のフォントはありません"
+      "empty": "その名前のフォントはありません",
+      "weights": "{{family}} のウェイト"
     },
     "mixed": "混在"
   },
@@ -3317,15 +3318,40 @@
       "label": "リスト",
       "bullets": "箇条書き",
       "numbers": "段落番号",
-      "options": "リストのオプション",
-      "level": "レベル",
-      "outdent": "インデントを減らす",
-      "indent": "インデントを増やす",
-      "glyph": "行頭文字",
-      "glyphDefault": "標準の行頭文字",
-      "glyphCustom": "別の行頭文字",
-      "glyphOther": "その他",
-      "color": "行頭文字の色"
+      "bulletsOptions": "箇条書きのオプション",
+      "numbersOptions": "段落番号のオプション",
+      "none": "なし",
+      "bulletStyle": {
+        "filledRound": "塗りつぶしの丸の行頭文字",
+        "hollowRound": "白抜きの丸の行頭文字",
+        "filledSquare": "塗りつぶしの四角の行頭文字",
+        "hollowSquare": "白抜きの四角の行頭文字",
+        "star": "星の行頭文字",
+        "arrow": "矢印の行頭文字",
+        "check": "チェックマークの行頭文字"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "箇条書きと段落番号…",
+      "dialogTitle": "箇条書きと段落番号",
+      "bulletedTab": "箇条書き",
+      "numberedTab": "段落番号",
+      "size": "サイズ",
+      "ofText": "%（文字に対して）",
+      "startAt": "開始番号",
+      "glyphCustom": "カスタムの行頭文字",
+      "glyphOther": "記号",
+      "color": "色",
+      "ok": "OK",
+      "cancel": "キャンセル"
     },
     "spacing": {
       "label": "間隔",

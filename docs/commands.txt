@@ -1,3 +1,14 @@
 build:
-$env:SLIDR_SIGN_CERT = "5C64DAC774694B59FE6427A4744A3434DDCC49F1"
 pnpm --filter @slidr/desktop tauri build
+
+
+run on terminal - C:\actions-runner\run.cmd
+release
+pnpm release [--bump]
+publish
+gh release edit v0.2.0 --draft=false --latest
+
+delete tag:
+git push --delete origin v0.2.0; git tag -d v0.2.0
+delete draft:
+gh release delete v0.2.0

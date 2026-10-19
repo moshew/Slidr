@@ -1,8 +1,8 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useId, useState } from 'react';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { Button, Icon, Skeleton, cx } from '@slidr/ui';
-import { Ai, Check, Terminal } from '@slidr/ui/icons';
+import { Button, ChoiceList, Icon, Skeleton, cx } from '@slidr/ui';
+import { Ai, Terminal } from '@slidr/ui/icons';
 import type { HarnessDescriptor } from '../agent/agent';
 import type { ChatProblem } from '../agent/transcript';
 import { latestModels, modelEfforts, selectionIssue } from '../agent/harnessSetup';
@@ -98,6 +98,7 @@ export function ChatSetup({ setup }: { setup: ReturnType<typeof useChatSetup> })
   const { t } = useTranslation('ai');
   const { agent, settings, harnesses, descriptor, state, failed } = setup;
   const [choice, setChoice] = useState('');
+  const formId = useId();
   const [editingHarness, setEditingHarness] = useState(false);
   const connection = state?.connection;
   const harness = connection?.harness;
@@ -160,7 +161,7 @@ export function ChatSetup({ setup }: { setup: ReturnType<typeof useChatSetup> })
           >
             <span
               className={cx(
-                'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px]',
+                'flex size-5 shrink-0 items-center justify-center rounded-full text-2xs',
                 item === step ? 'bg-ui-accent text-ui-on-accent' : 'bg-ui-field',
               )}
             >
@@ -188,46 +189,37 @@ export function ChatSetup({ setup }: { setup: ReturnType<typeof useChatSetup> })
           }}
         >
           <fieldset className="min-w-0">
-            <legend className="mb-2 text-sm font-medium">{t(`setup.${step}`)}</legend>
+            <legend id={`${formId}-legend`} className="mb-2 text-sm font-medium">
+              {t(`setup.${step}`)}
+            </legend>
             {/* One grouped list, not a card per option: the rows stay compact in the narrow panel. */}
-            <div className="divide-y divide-ui-line overflow-hidden rounded-control border border-ui-line">
-              {options.map((option) => (
-                <label
-                  key={option.id}
-                  className="relative flex min-h-10 cursor-pointer items-center gap-2.5 px-2.5 py-1.5 text-sm transition-colors hover:bg-ui-hover has-[:checked]:bg-ui-accent-soft has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-ui-focus"
-                >
-                  <input
-                    type="radio"
-                    name={`setup-${step}`}
-                    value={option.id}
-                    checked={choice === option.id}
-                    onChange={() => setChoice(option.id)}
-                    aria-label={option.label}
-                    className="absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0"
-                  />
-                  {step === 'harness' && (
-                    <span
-                      aria-hidden="true"
-                      dir="ltr"
-                      className={cx(
-                        'flex size-6 shrink-0 items-center justify-center rounded-small font-mono text-[11px] font-semibold',
-                        harnessLook(option.id)?.tone ?? 'bg-ui-tool-violet text-ui-tool-violet-fg',
-                      )}
-                    >
-                      {harnessLook(option.id)?.glyph ?? (
-                        <Icon icon={Terminal} className="size-3.5" />
-                      )}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1 break-words">
-                    <bdi>{option.label}</bdi>
-                  </span>
-                  {choice === option.id && (
-                    <Icon icon={Check} className="size-4 shrink-0 text-ui-accent-fg" />
-                  )}
-                </label>
-              ))}
-            </div>
+            <ChoiceList
+              aria-labelledby={`${formId}-legend`}
+              value={choice}
+              onValueChange={setChoice}
+              options={options.map((option) => ({
+                value: option.id,
+                label: option.label,
+                ...(step === 'harness'
+                  ? {
+                      start: (
+                        <span
+                          dir="ltr"
+                          className={cx(
+                            'flex size-6 shrink-0 items-center justify-center rounded-small font-mono text-2xs font-semibold',
+                            harnessLook(option.id)?.tone ??
+                              'bg-ui-tool-violet text-ui-tool-violet-fg',
+                          )}
+                        >
+                          {harnessLook(option.id)?.glyph ?? (
+                            <Icon icon={Terminal} className="size-3.5" />
+                          )}
+                        </span>
+                      ),
+                    }
+                  : {}),
+              }))}
+            />
           </fieldset>
           <div className="flex justify-end gap-2">
             {back}

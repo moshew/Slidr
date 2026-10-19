@@ -999,7 +999,8 @@
       "library": "Biblioteca de Slidr",
       "system": "En este equipo",
       "letters": "Admite {{language}}",
-      "empty": "No hay ninguna fuente con ese nombre"
+      "empty": "No hay ninguna fuente con ese nombre",
+      "weights": "Grosores de {{family}}"
     },
     "mixed": "Mixto"
   },
@@ -3333,15 +3334,40 @@
       "label": "Lista",
       "bullets": "Lista con viñetas",
       "numbers": "Lista numerada",
-      "options": "Opciones de lista",
-      "level": "Nivel",
-      "outdent": "Disminuir un nivel",
-      "indent": "Aumentar un nivel",
-      "glyph": "Viñeta",
-      "glyphDefault": "Viñeta estándar",
-      "glyphCustom": "Otra viñeta",
-      "glyphOther": "Otra",
-      "color": "Color del marcador"
+      "bulletsOptions": "Opciones de viñetas",
+      "numbersOptions": "Opciones de numeración",
+      "none": "Ninguna",
+      "bulletStyle": {
+        "filledRound": "Viñetas redondas rellenas",
+        "hollowRound": "Viñetas redondas huecas",
+        "filledSquare": "Viñetas cuadradas rellenas",
+        "hollowSquare": "Viñetas cuadradas huecas",
+        "star": "Viñetas de estrella",
+        "arrow": "Viñetas de flecha",
+        "check": "Viñetas de marca de verificación"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "Viñetas y numeración…",
+      "dialogTitle": "Viñetas y numeración",
+      "bulletedTab": "Con viñetas",
+      "numberedTab": "Numerada",
+      "size": "Tamaño",
+      "ofText": "% del texto",
+      "startAt": "Empezar en",
+      "glyphCustom": "Viñeta personalizada",
+      "glyphOther": "Símbolo",
+      "color": "Color",
+      "ok": "Aceptar",
+      "cancel": "Cancelar"
     },
     "spacing": {
       "label": "Espaciado",

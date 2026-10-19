@@ -229,6 +229,15 @@ test.describe('one chart, five uses (RND-01)', () => {
             browser,
             async (p) => {
               await inApp(p);
+              // What the strip draws on and around a thumbnail, its number, its marks, the ring of
+              // the current slide and the rounded corners, is the strip's and not the slide's:
+              // the picture is of the slide alone.
+              await p.addStyleTag({
+                content: [
+                  '[data-testid="slide-number"], [data-testid="slide-mark"] { visibility: hidden; }',
+                  '[data-testid="filmstrip"] [role="option"] > div { box-shadow: none !important; border-radius: 0 !important; }',
+                ].join('\n'),
+              });
               return p
                 .getByTestId('filmstrip')
                 .locator(`.slidr-slide[data-slide-id="${slide.id}"]`);

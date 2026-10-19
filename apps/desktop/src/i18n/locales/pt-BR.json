@@ -999,7 +999,8 @@
       "library": "Biblioteca do Slidr",
       "system": "Neste computador",
       "letters": "Suporta {{language}}",
-      "empty": "Nenhuma fonte com esse nome"
+      "empty": "Nenhuma fonte com esse nome",
+      "weights": "Pesos de {{family}}"
     },
     "mixed": "Misto"
   },
@@ -3333,15 +3334,40 @@
       "label": "Lista",
       "bullets": "Lista com marcadores",
       "numbers": "Lista numerada",
-      "options": "Opções de lista",
-      "level": "Nível",
-      "outdent": "Diminuir recuo",
-      "indent": "Aumentar recuo",
-      "glyph": "Marcador",
-      "glyphDefault": "Marcador padrão",
-      "glyphCustom": "Outro marcador",
-      "glyphOther": "Outro",
-      "color": "Cor do marcador"
+      "bulletsOptions": "Opções de marcadores",
+      "numbersOptions": "Opções de numeração",
+      "none": "Nenhum",
+      "bulletStyle": {
+        "filledRound": "Marcadores redondos cheios",
+        "hollowRound": "Marcadores redondos vazados",
+        "filledSquare": "Marcadores quadrados cheios",
+        "hollowSquare": "Marcadores quadrados vazados",
+        "star": "Marcadores de estrela",
+        "arrow": "Marcadores de seta",
+        "check": "Marcadores de marca de seleção"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "Marcadores e numeração…",
+      "dialogTitle": "Marcadores e numeração",
+      "bulletedTab": "Com marcadores",
+      "numberedTab": "Numerada",
+      "size": "Tamanho",
+      "ofText": "% do texto",
+      "startAt": "Começar em",
+      "glyphCustom": "Marcador personalizado",
+      "glyphOther": "Símbolo",
+      "color": "Cor",
+      "ok": "OK",
+      "cancel": "Cancelar"
     },
     "spacing": {
       "label": "Espaçamento",

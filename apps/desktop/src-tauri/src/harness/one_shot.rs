@@ -391,17 +391,17 @@ impl AgentHarness for OneShotHarness {
                 .await
                 .map_err(|error| AgentError::io("write CLI instructions", &error))?;
         }
-        if self.kind == Kind::Copilot {
-            if let Some(endpoint) = &config.tool_endpoint {
-                let mcp = json!({ "mcpServers": { SERVER: {
-                    "type": "http", "url": endpoint.url, "tools": ["*"],
-                    "headers": { "Authorization": format!("Bearer {}", endpoint.token) },
-                    "timeout": 600000, "deferTools": "never"
-                }}});
-                tokio::fs::write(config.workdir.join("copilot-mcp.json"), mcp.to_string())
-                    .await
-                    .map_err(|error| AgentError::io("write Copilot tool configuration", &error))?;
-            }
+        if self.kind == Kind::Copilot
+            && let Some(endpoint) = &config.tool_endpoint
+        {
+            let mcp = json!({ "mcpServers": { SERVER: {
+                "type": "http", "url": endpoint.url, "tools": ["*"],
+                "headers": { "Authorization": format!("Bearer {}", endpoint.token) },
+                "timeout": 600000, "deferTools": "never"
+            }}});
+            tokio::fs::write(config.workdir.join("copilot-mcp.json"), mcp.to_string())
+                .await
+                .map_err(|error| AgentError::io("write Copilot tool configuration", &error))?;
         }
         // Gemini and Grok read the configuration of the folder they work in, on top of the
         // user's own. Written for every session, so a session without tools has none left over.
@@ -934,15 +934,14 @@ impl Run {
         if let Some(effort) = &self.effort {
             command.args(["-c", &format!("model_reasoning_effort={}", json!(effort))]);
         }
-        if self.resume {
-            if let Some(native) = self
+        if self.resume
+            && let Some(native) = self
                 .native
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
                 .clone()
-            {
-                command.args(["resume", &native]);
-            }
+        {
+            command.args(["resume", &native]);
         }
         for image in images {
             command.arg("--image").arg(image);
@@ -1356,10 +1355,10 @@ impl Mapper {
             }
             Some("assistant.message") => {
                 let id = data["messageId"].as_str().unwrap_or_default();
-                if !self.streamed.contains(id) {
-                    if let Some(text) = data["content"].as_str() {
-                        self.sink.emit(AgentEvent::TextDelta { text: text.into() });
-                    }
+                if !self.streamed.contains(id)
+                    && let Some(text) = data["content"].as_str()
+                {
+                    self.sink.emit(AgentEvent::TextDelta { text: text.into() });
                 }
             }
             Some("assistant.reasoning_delta") => {
@@ -1590,7 +1589,10 @@ mod tests {
             Ok(AgentEvent::ToolCallFinished { ok: true, .. })
         ));
         assert!(matches!(events.try_recv(), Ok(AgentEvent::TextDelta { text }) if text == "Done"));
-        assert_eq!(id.lock().unwrap().as_deref(), Some("abc"));
+        assert_eq!(
+            id.lock().expect("the id is not poisoned").as_deref(),
+            Some("abc")
+        );
     }
 
     #[test]
@@ -1928,7 +1930,10 @@ mod tests {
                     },
                 )
             });
-            received.lock().unwrap().push(call);
+            received
+                .lock()
+                .expect("the calls are not poisoned")
+                .push(call);
             answered
         });
         let tool: ToolDef = serde_json::from_value(json!({
@@ -1985,10 +1990,13 @@ mod tests {
             ),
             "{seen:?}"
         );
-        let calls = calls.lock().unwrap();
-        assert_eq!(calls.len(), 1, "{seen:?}");
-        assert_eq!(calls[0].name, "deck_code_word");
-        assert_eq!(calls[0].input["deck"], "plan");
+        // In a block of its own: the guard is gone before the turns below are awaited.
+        {
+            let calls = calls.lock().map_err(|_| "the calls are poisoned")?;
+            assert_eq!(calls.len(), 1, "{seen:?}");
+            assert_eq!(calls[0].name, "deck_code_word");
+            assert_eq!(calls[0].input["deck"], "plan");
+        }
         assert!(
             seen.iter()
                 .any(|event| matches!(event, AgentEvent::ToolCallStarted {
@@ -2004,7 +2012,6 @@ mod tests {
             "{seen:?}"
         );
         assert!(seen.iter().any(|event| matches!(event, AgentEvent::TextDelta { text } if text.contains("HERON-4821"))), "{seen:?}");
-        drop(calls);
 
         let mut resumed = SessionConfig::new(
             Scope::Deck,

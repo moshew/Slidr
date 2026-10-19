@@ -1,0 +1,2298 @@
+{
+  "sold": [
+    "ALON IMMOBILIER",
+    {
+      "paragraphs": [["054-555-0136"]]
+    },
+    {
+      "paragraphs": [["VENDU!"]]
+    },
+    {
+      "paragraphs": [["7, rue HaZayit, Givatayim"]]
+    },
+    {
+      "paragraphs": [["Quatre pièces, deuxième étage"]]
+    },
+    {
+      "paragraphs": [["12"], ["jours de l’annonce"], ["à la signature"]]
+    },
+    {
+      "paragraphs": [["103%"], ["du prix demandé"]]
+    },
+    {
+      "paragraphs": [["Quelle est la valeur de votre maison aujourd’hui ?"]]
+    },
+    {
+      "paragraphs": [["Dana Alon, agent immobilier agréé"]]
+    },
+    {
+      "paragraphs": [["Estimation gratuite →"]]
+    }
+  ],
+  "mortgage": [
+    {
+      "paragraphs": [["CALCULATEUR HYPOTHÉCAIRE"]]
+    },
+    {
+      "paragraphs": [["Prix de la maison"]]
+    },
+    {
+      "paragraphs": [["$570,000"]]
+    },
+    {
+      "paragraphs": [["Acompte"]]
+    },
+    {
+      "paragraphs": [["25%"]]
+    },
+    {
+      "paragraphs": [["Durée du prêt"]]
+    },
+    {
+      "paragraphs": [["25 ans"]]
+    },
+    {
+      "paragraphs": [["VOTRE PAIEMENT MENSUEL"]]
+    },
+    {
+      "paragraphs": [["$2,030"]]
+    },
+    {
+      "paragraphs": [["un mois"]]
+    },
+    {
+      "paragraphs": [["À 3% d'intérêt annuel, avant assurance"]]
+    },
+    {
+      "paragraphs": [["URI SAGI • CONSEILS HYPOTHÉCAIRES"]]
+    },
+    {
+      "paragraphs": [["Combien"], ["paierez-vous"], ["par mois ?"]]
+    },
+    "Avant de signer à la banque,\nvérifiez auprès de nous.",
+    {
+      "paragraphs": [["03-555-0158"]]
+    },
+    {
+      "paragraphs": [["Premier rendez-vous gratuit"]]
+    }
+  ],
+  "forrent": [
+    {
+      "paragraphs": [["Salon"]]
+    },
+    {
+      "paragraphs": [["Cuisine"]]
+    },
+    {
+      "paragraphs": [["Chambre à coucher"]]
+    },
+    {
+      "paragraphs": [["Balcon"]]
+    },
+    {
+      "paragraphs": [["À LOUER • AUCUN FRAIS D'AGENT"]]
+    },
+    {
+      "paragraphs": [["2 chambres,"], ["rénové"]]
+    },
+    "9 rue Vital, Florentin\n730 pi2 • 2e étage sur 4",
+    {
+      "paragraphs": [["$1,750"], ["par mois, charges comprises"]]
+    },
+    {
+      "paragraphs": [["Meublé"]]
+    },
+    {
+      "paragraphs": [["Ascenseur"]]
+    },
+    {
+      "paragraphs": [["Chambre sécurisée"]]
+    },
+    "Animaux admis",
+    {
+      "paragraphs": [["Bail d'un an, avec possibilité de renouvellement"]]
+    },
+    {
+      "paragraphs": [["EMPLACEMENT"]]
+    },
+    {
+      "paragraphs": [["1 février 2027"]]
+    },
+    {
+      "paragraphs": [["Réservez une visite : 052-555-0147"]]
+    }
+  ],
+  "tailor": [
+    {
+      "paragraphs": [["Pantalon à ourlet"]]
+    },
+    {
+      "paragraphs": [["$12"]]
+    },
+    {
+      "paragraphs": [["Ajuster un costume"]]
+    },
+    {
+      "paragraphs": [["$65"]]
+    },
+    {
+      "paragraphs": [["Rentrez les manches"]]
+    },
+    {
+      "paragraphs": [["$18"]]
+    },
+    {
+      "paragraphs": [["Remplacer un zip"]]
+    },
+    {
+      "paragraphs": [["$16"]]
+    },
+    {
+      "paragraphs": [["SALLE DE TRAVAIL DE RUTH • DEPUIS 1994"]]
+    },
+    "Retouches",
+    "Chaque travail est épinglé sur vous,\ncousu à la main et vérifié deux fois.",
+    {
+      "paragraphs": [["Prêt dans"], ["48 heures"]]
+    },
+    {
+      "paragraphs": [["61 rue Herzl, Rehovot • 08-555-0139"]]
+    },
+    {
+      "paragraphs": [["Du dimanche au jeu : de 8 h 30 à 18 h • Le vendredi jusqu'à 13 h"]]
+    }
+  ],
+  "optician": [
+    {
+      "paragraphs": [
+        ["POUVEZ-VOUS"],
+        ["LIRE CECI ?"],
+        ["ET CETTE LIGNE AUSSI ?"],
+        ["SI VOUS AVEZ DU MAL À LIRE ICI,"],
+        ["IL EST TEMPS DE FAIRE CONTRÔLER VOTRE VUE."]
+      ]
+    },
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["2"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    {
+      "paragraphs": [["4"]]
+    },
+    {
+      "paragraphs": [["5"]]
+    },
+    {
+      "paragraphs": [["Optique Lavie"]]
+    },
+    {
+      "paragraphs": [["52, rue Sokolov, Herzliya • 09-555-0162"]]
+    },
+    "Un test de vue gratuit\navec chaque paire"
+  ],
+  "printshop": [
+    {
+      "paragraphs": [["A2"]]
+    },
+    "Affiche • 7 $\n420 × 594 mm",
+    {
+      "paragraphs": [["A3"]]
+    },
+    "Enseigne • 3\n297 $ × 420 mm",
+    {
+      "paragraphs": [["A4"]]
+    },
+    "Dépliant • 1,20\n$ 210 × 297 mm",
+    {
+      "paragraphs": [["A5"]]
+    },
+    "Dépliant • 0,60\n$ 148 × 210 mm",
+    {
+      "paragraphs": [["PRESSE OREN • IMPRESSION NUMÉRIQUE"]]
+    },
+    {
+      "paragraphs": [["Nous imprimons tout."]]
+    },
+    "Prêt demain",
+    "Un dossier envoyé avant midi est\nprêt à 9 heures le lendemain matin",
+    {
+      "paragraphs": [["PDF"]]
+    },
+    {
+      "paragraphs": [["TIFF"]]
+    },
+    {
+      "paragraphs": [["JPG"]]
+    },
+    {
+      "paragraphs": [["PNG"]]
+    },
+    {
+      "paragraphs": [["14, rue HaHaroshet, Kfar Saba"]]
+    },
+    {
+      "paragraphs": [["Du dimanche au jeudi de 8 h 00 à 18 h 00 • 09-555-0124"]]
+    }
+  ],
+  "combo": [
+    {
+      "paragraphs": [["+"]]
+    },
+    {
+      "paragraphs": [["+"]]
+    },
+    {
+      "paragraphs": [["="]]
+    },
+    {
+      "paragraphs": [["TOUS LES TROIS"], ["$", "16"], ["au lieu de 22$"]]
+    },
+    {
+      "paragraphs": [["Hamburger"]]
+    },
+    {
+      "paragraphs": [["Frites"]]
+    },
+    {
+      "paragraphs": [["Limonade"]]
+    },
+    {
+      "paragraphs": [["GAHELET • BAR À BURGERS"]]
+    },
+    {
+      "paragraphs": [["COMBO DÉJEUNER"]]
+    },
+    {
+      "paragraphs": [["DÉJEUNER UNIQUEMENT"]]
+    },
+    {
+      "paragraphs": [["Du dimanche au jeu • de 12h à 16h"]]
+    },
+    {
+      "paragraphs": [["7 onces de bœuf frais"]]
+    },
+    {
+      "paragraphs": [["Cheddar fondu"]]
+    },
+    {
+      "paragraphs": [["Un petit pain cuit ce matin"]]
+    },
+    {
+      "paragraphs": [["41, route d'Hébron, Beer Sheva"]]
+    }
+  ],
+  "reserve": [
+    {
+      "paragraphs": [["RÉSERVER UNE TABLE"]]
+    },
+    "Votre table\nvous attend",
+    "Hadas",
+    {
+      "paragraphs": [["CUISINE DE GALILÉE"]]
+    },
+    {
+      "paragraphs": [["OUVERT"]]
+    },
+    {
+      "paragraphs": [["Du dimanche au jeudi"]]
+    },
+    {
+      "paragraphs": [["18h à 23h"]]
+    },
+    {
+      "paragraphs": [["vendredi"]]
+    },
+    {
+      "paragraphs": [["10h00-15h00"]]
+    },
+    {
+      "paragraphs": [["RÉSERVATIONS"]]
+    },
+    {
+      "paragraphs": [["04-555-0136"]]
+    },
+    {
+      "paragraphs": [["hadas-kitchen.co.il"]]
+    },
+    {
+      "paragraphs": [["12 HaHalutzim, Rosh Pina"]]
+    },
+    {
+      "paragraphs": [["Vendredi midi : un brunch en Galilée"]]
+    }
+  ],
+  "vet": [
+    {
+      "paragraphs": [["DOSSIER DE VACCINATION"]]
+    },
+    {
+      "paragraphs": [["Mitzi"]]
+    },
+    {
+      "paragraphs": [["Dernier vaccin"]]
+    },
+    {
+      "paragraphs": [["15 novembre 2026"]]
+    },
+    {
+      "paragraphs": [["Le prochain est dû"]]
+    },
+    {
+      "paragraphs": [["15 novembre 2027"]]
+    },
+    {
+      "paragraphs": [["Clinique"]]
+    },
+    {
+      "paragraphs": [["Tail & Co., Raanana"]]
+    },
+    {
+      "paragraphs": [["TAIL & CO. • CLINIQUE VÉTÉRINAIRE"]]
+    },
+    "C'est l'heure\ndu vaccin annuel",
+    {
+      "paragraphs": [["Un an s’est écoulé depuis la dernière visite de Mitzi."]]
+    },
+    {
+      "paragraphs": [["HORAIRES D'OUVERTURE"]]
+    },
+    "Du dimanche au jeudi de 9 h 00 à 19 h\n00. Le vendredi de 8 h 00 à 13 h 00.",
+    "Vendredi :\nrendez-vous",
+    {
+      "paragraphs": [["Réservez une visite: 09-555-0171"]]
+    }
+  ],
+  "happyhour": [
+    {
+      "paragraphs": [["Vous commandez"]]
+    },
+    {
+      "paragraphs": [["Sur nous"]]
+    },
+    {
+      "paragraphs": [["MIRPESET • BAR SUR LE TOIT, HAIFA"], ["1+1"], ["sur chaque cocktail"]]
+    },
+    {
+      "paragraphs": [["HEUREUX HEURE"]]
+    },
+    {
+      "paragraphs": [["Du dimanche au jeudi • de 17h à 19h"]]
+    },
+    {
+      "paragraphs": [["Spritz à l'orange"]]
+    },
+    {
+      "paragraphs": [["$13"]]
+    },
+    {
+      "paragraphs": [["Margarita épicée"]]
+    },
+    {
+      "paragraphs": [["$14"]]
+    },
+    {
+      "paragraphs": [["Smash de gin au basilic"]]
+    },
+    {
+      "paragraphs": [["$13"]]
+    }
+  ],
+  "kidsmenu": [
+    {
+      "paragraphs": [["GINA BISTRO • POUR NOS PLUS PETITS CLIENTS"]]
+    },
+    {
+      "paragraphs": [["Menus enfants"]]
+    },
+    {
+      "paragraphs": [["Mini-escalopes"]]
+    },
+    {
+      "paragraphs": [["avec purée ou frites"]]
+    },
+    {
+      "paragraphs": [["$11"]]
+    },
+    {
+      "paragraphs": [["Pâtes à la sauce tomate"]]
+    },
+    {
+      "paragraphs": [["ou simplement, si vous demandez"]]
+    },
+    {
+      "paragraphs": [["$9"]]
+    },
+    {
+      "paragraphs": [["Pizzas pitas"]]
+    },
+    {
+      "paragraphs": [["fromage jaune et olives"]]
+    },
+    {
+      "paragraphs": [["$8"]]
+    },
+    {
+      "paragraphs": [["Chaque repas est accompagné d'une boisson et d'une surprise"]]
+    },
+    {
+      "paragraphs": [["Pour les parents : pas de noix en rien. Sans gluten sur demande."]]
+    }
+  ],
+  "coffee": [
+    {
+      "paragraphs": [["TELEM • TORréfacteurs"]]
+    },
+    {
+      "paragraphs": [["CAFÉ DU MOIS"]]
+    },
+    {
+      "paragraphs": [["Ethiopie Guji"]]
+    },
+    {
+      "paragraphs": [["ORIGINE"]]
+    },
+    {
+      "paragraphs": [["Shakiso, Guji"]]
+    },
+    {
+      "paragraphs": [["ALTITUDE"]]
+    },
+    {
+      "paragraphs": [["2 050 m"]]
+    },
+    {
+      "paragraphs": [["PROCESSUS"]]
+    },
+    {
+      "paragraphs": [["Naturel, séché au soleil"]]
+    },
+    {
+      "paragraphs": [["REMARQUES"]]
+    },
+    {
+      "paragraphs": [["Pêche • Jasmin • Miel"]]
+    },
+    {
+      "paragraphs": [["RÔTI"]]
+    },
+    {
+      "paragraphs": [["Rôti léger"]]
+    },
+    {
+      "paragraphs": [["$", "18"]]
+    },
+    {
+      "paragraphs": [["pour un sachet de 250 g"]]
+    },
+    {
+      "paragraphs": [["Rôti 3 janvier 2027"]]
+    }
+  ],
+  "catering": [
+    {
+      "paragraphs": [["TABLE LONGUE • BOUTIQUE RESTAURATION"]]
+    },
+    {
+      "paragraphs": [["Une nourriture qui amène les gens à table"]]
+    },
+    {
+      "paragraphs": [["Mariages • Journées familiales • Événements d'entreprise"]]
+    },
+    {
+      "paragraphs": [["Réservez une dégustation : 09-555-0177"]]
+    },
+    {
+      "paragraphs": [["JUSQU'À 30 PERSONNES"]]
+    },
+    {
+      "paragraphs": [["La table familiale"]]
+    },
+    {
+      "paragraphs": [["48 $ par invité"]]
+    },
+    {
+      "paragraphs": [["JUSQU'À 80 PERSONNES"]]
+    },
+    {
+      "paragraphs": [["La garden-party"]]
+    },
+    {
+      "paragraphs": [["42 $ par invité"]]
+    },
+    {
+      "paragraphs": [["JUSQU'À 200 PERSONNES"]]
+    },
+    {
+      "paragraphs": [["Le grand jour"]]
+    },
+    {
+      "paragraphs": [["36 $ par invité"]]
+    },
+    {
+      "paragraphs": [
+        [
+          "Dans chaque colis : personnel de service, vaisselle, mise en place de la table et nettoyage."
+        ]
+      ]
+    }
+  ],
+  "bakery": [
+    {
+      "paragraphs": [["BOULANGERIE SHIBOLET • ZICHRON YAAKOV"]]
+    },
+    {
+      "paragraphs": [["Au four ce matin"]]
+    },
+    {
+      "paragraphs": [["Du pain frais tous les jours, directement sorti du four en pierre."]]
+    },
+    {
+      "paragraphs": [["SORTIE DU FOUR"]]
+    },
+    {
+      "paragraphs": [["6:30"]]
+    },
+    {
+      "paragraphs": [["Croissants"]]
+    },
+    {
+      "paragraphs": [["8:00"]]
+    },
+    {
+      "paragraphs": [["Levain"]]
+    },
+    {
+      "paragraphs": [["11:00"]]
+    },
+    {
+      "paragraphs": [["Focaccia"]]
+    },
+    "Challah de Shabbat :\ncommande avant jeudi",
+    {
+      "paragraphs": [["18, rue HaGefen • du dimanche au vendredi à partir de 6 h 00"]]
+    }
+  ],
+  "cookingclass": [
+    {
+      "paragraphs": [["On pétrit d’abord…"]]
+    },
+    {
+      "paragraphs": [["Puis on roule…"]]
+    },
+    {
+      "paragraphs": [["Et puis on mange !"]]
+    },
+    {
+      "paragraphs": [["COURS DE CUISINE • STUDIO SOLET, JAFFA"]]
+    },
+    {
+      "paragraphs": [["Cours de pâtes fraîches"]]
+    },
+    "Seulement\n10 places",
+    {
+      "paragraphs": [["jeu. 11 mars 2027"]]
+    },
+    {
+      "paragraphs": [["18h30-21h30 • avec le chef Omer Lavi"]]
+    },
+    {
+      "paragraphs": [["Dîner et vin inclus"]]
+    },
+    {
+      "paragraphs": [["95$ par personne"]]
+    }
+  ],
+  "flightdeal": [
+    {
+      "paragraphs": [["CARTE D'EMBARQUEMENT"]]
+    },
+    {
+      "paragraphs": [["VOYAGES OFEK"]]
+    },
+    {
+      "paragraphs": [["TLV"], ["Tel-Aviv"]]
+    },
+    {
+      "paragraphs": [["ATH"], ["Athènes"]]
+    },
+    {
+      "paragraphs": [["Direct, deux heures"]]
+    },
+    {
+      "paragraphs": [["DÉPART"], ["jeu. 3 juin 2027"]]
+    },
+    {
+      "paragraphs": [["RETOUR"], ["lun. 7 juin 2027"]]
+    },
+    {
+      "paragraphs": [["BAGAGES"], ["Valise cabine incluse"]]
+    },
+    {
+      "paragraphs": [["ALLER-RETOUR"], ["$129"], ["par personne, avec taxes"]]
+    },
+    {
+      "paragraphs": [["OFFRE DE VOL"]]
+    },
+    {
+      "paragraphs": [["Un long week-end à Athènes"]]
+    },
+    {
+      "paragraphs": [["Les places sont limitées"]]
+    },
+    {
+      "paragraphs": [["Réservez maintenant : 03-555-0188"]]
+    }
+  ],
+  "cityguide": [
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["2"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    {
+      "paragraphs": [["4"]]
+    },
+    {
+      "paragraphs": [["5"]]
+    },
+    {
+      "paragraphs": [["UN GUIDE DU WEEK-END"]]
+    },
+    "48 heures\nà Lisbonne",
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["Une tarte à la crème tiède pour commencer"]]
+    },
+    {
+      "paragraphs": [["2"]]
+    },
+    {
+      "paragraphs": [["Le belvédère sur les toits"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    {
+      "paragraphs": [["Un trajet en tram 28"]]
+    },
+    {
+      "paragraphs": [["4"]]
+    },
+    {
+      "paragraphs": [["Déjeuner au marché"]]
+    },
+    {
+      "paragraphs": [["5"]]
+    },
+    {
+      "paragraphs": [["Coucher de soleil sur la rivière"]]
+    },
+    {
+      "paragraphs": [["CONSEIL"]]
+    },
+    {
+      "paragraphs": [["Bonnes chaussures : toute la ville est en montée."]]
+    },
+    {
+      "paragraphs": [["Économisez pour votre voyage"]]
+    }
+  ],
+  "naturepark": [
+    {
+      "paragraphs": [["RÉSERVE NATURELLE • HAUTE GALILÉE"]]
+    },
+    {
+      "paragraphs": [["Nahal Ayanot"]]
+    },
+    {
+      "paragraphs": [["Ouvert tous les jours, de 8h00 à 17h00 • Dernière entrée à 16h00"]]
+    },
+    {
+      "paragraphs": [["SENTIER"]]
+    },
+    {
+      "paragraphs": [["LONGUEUR"]]
+    },
+    {
+      "paragraphs": [["TEMPS"]]
+    },
+    {
+      "paragraphs": [["NIVEAU"]]
+    },
+    {
+      "paragraphs": [["Sentier des piscines"]]
+    },
+    {
+      "paragraphs": [["1,2km"]]
+    },
+    {
+      "paragraphs": [["40 minutes"]]
+    },
+    {
+      "paragraphs": [["Sentier des cascades"]]
+    },
+    {
+      "paragraphs": [["3,5km"]]
+    },
+    {
+      "paragraphs": [["2 heures"]]
+    },
+    {
+      "paragraphs": [["Sentier des falaises"]]
+    },
+    {
+      "paragraphs": [["6 km"]]
+    },
+    {
+      "paragraphs": [["4 heures"]]
+    },
+    {
+      "paragraphs": [["Entrée : 8 $ adultes • 4 $ enfants"]]
+    },
+    {
+      "paragraphs": [["Trois litres d'eau chacun"]]
+    },
+    {
+      "paragraphs": [["Pas de poubelles : réalisez-le"]]
+    }
+  ],
+  "trekprofile": [
+    {
+      "paragraphs": [["400"]]
+    },
+    {
+      "paragraphs": [["800"]]
+    },
+    {
+      "paragraphs": [["1,200"]]
+    },
+    {
+      "paragraphs": [["Jour 1"], ["16 km"], ["Camp de chêne"]]
+    },
+    {
+      "paragraphs": [["Jour 2"], ["18 km"], ["Camp de basalte"]]
+    },
+    {
+      "paragraphs": [["Jour 3"], ["15 km"], ["Camp de printemps"]]
+    },
+    {
+      "paragraphs": [["Jour 4"], ["13 km"], ["Vers Eagle Spring"]]
+    },
+    {
+      "paragraphs": [["RANDONNÉE GUIDÉE • PRINTEMPS 2027"]]
+    },
+    "La piste du Golan :\nquatre jours",
+    {
+      "paragraphs": [["62 km"], ["1 900 m de dénivelé"]]
+    },
+    {
+      "paragraphs": [["Saison : mars à mai"]]
+    },
+    {
+      "paragraphs": [["Guide : Omer Golan • 052-555-0164"]]
+    },
+    {
+      "paragraphs": [["Groupes jusqu'à 14 personnes"]]
+    }
+  ],
+  "dailyspecial": [
+    "dim.",
+    "lun.",
+    "mer.",
+    "jeu.",
+    "mar.",
+    "Plat du jour",
+    {
+      "paragraphs": [["PLAT DU MARDI • LE POT HOUSE"]]
+    },
+    "Tajine de poulet,\ncitron confit",
+    {
+      "paragraphs": [["Olives vertes, pois chiches et safran, sur couscous maison"]]
+    },
+    {
+      "paragraphs": [["$", "19"]]
+    },
+    {
+      "paragraphs": [["avec une salade et une boisson"]]
+    },
+    "dim.",
+    {
+      "paragraphs": [["Crème de poisson"]]
+    },
+    "lun.",
+    {
+      "paragraphs": [["Moussaka aux aubergines"]]
+    },
+    "mer.",
+    {
+      "paragraphs": [["Escalope viennoise"]]
+    },
+    "jeu.",
+    {
+      "paragraphs": [["Soupe Kubbeh à la betterave"]]
+    },
+    {
+      "paragraphs": [["Pendant que ça dure"]]
+    }
+  ],
+  "dive": [
+    {
+      "paragraphs": [["2 m"]]
+    },
+    {
+      "paragraphs": [["Poisson clown"]]
+    },
+    {
+      "paragraphs": [["6 m"]]
+    },
+    {
+      "paragraphs": [["Le récif"]]
+    },
+    {
+      "paragraphs": [["12 m"]]
+    },
+    {
+      "paragraphs": [["Une tortue de mer, avec de la chance"]]
+    },
+    {
+      "paragraphs": [["CLUB DE PLONGÉE ALMOG • EILAT"]]
+    },
+    {
+      "paragraphs": [["Votre première plongée"]]
+    },
+    {
+      "paragraphs": [["45 minutes"]]
+    },
+    {
+      "paragraphs": [["dans l'eau, en tête-à-tête"]]
+    },
+    {
+      "paragraphs": [["$89"]]
+    },
+    {
+      "paragraphs": [["tout l'équipement inclus"]]
+    },
+    {
+      "paragraphs": [["10 ans et plus"]]
+    },
+    {
+      "paragraphs": [["aucune expérience nécessaire"]]
+    },
+    {
+      "paragraphs": [["Livre : 08-555-0127"]]
+    }
+  ],
+  "climate": [
+    {
+      "paragraphs": [["34°"]]
+    },
+    "mai",
+    {
+      "paragraphs": [["33°"]]
+    },
+    "juin",
+    {
+      "paragraphs": [["33°"]]
+    },
+    "juil.",
+    {
+      "paragraphs": [["33°"]]
+    },
+    "août",
+    {
+      "paragraphs": [["32°"]]
+    },
+    "sept.",
+    {
+      "paragraphs": [["32°"]]
+    },
+    "oct.",
+    {
+      "paragraphs": [["32°"]]
+    },
+    "nov.",
+    {
+      "paragraphs": [["31°"]]
+    },
+    "déc.",
+    {
+      "paragraphs": [["32°"]]
+    },
+    "janv.",
+    {
+      "paragraphs": [["33°"]]
+    },
+    "févr.",
+    {
+      "paragraphs": [["34°"]]
+    },
+    "mars",
+    {
+      "paragraphs": [["35°"]]
+    },
+    "avr.",
+    {
+      "paragraphs": [["Meilleur : novembre à février"]]
+    },
+    {
+      "paragraphs": [["Saison des pluies : mai à octobre"]]
+    },
+    "Haute saison :\nréservez tôt",
+    {
+      "paragraphs": [["Le plus chaud"]]
+    },
+    {
+      "paragraphs": [["GUIDE DE SAISON • THAÏLANDE"]]
+    },
+    "Quand partir\nen Thaïlande",
+    {
+      "paragraphs": [["Température maximale diurne, °C"]]
+    },
+    {
+      "paragraphs": [["Combien de pluie tombe"]]
+    }
+  ],
+  "grouptour": [
+    {
+      "paragraphs": [["BULGARIE"], ["Sofia"], ["2 jours"]]
+    },
+    {
+      "paragraphs": [["MACÉDOINE NORD"], ["Skopje"], ["1 jour"]]
+    },
+    {
+      "paragraphs": [["MACÉDOINE NORD"], ["Ohrid"], ["2 jours"]]
+    },
+    {
+      "paragraphs": [["ALBANIE"], ["Tirana"], ["2 jours"]]
+    },
+    {
+      "paragraphs": [["MONTÉNÉGRO"], ["Kotor"], ["2 jours"]]
+    },
+    {
+      "paragraphs": [["VISITES NETIVIM • VISITE GUIDÉE"]]
+    },
+    "Les Balkans\nen 9 jours",
+    {
+      "paragraphs": [["DÉPARTS"]]
+    },
+    {
+      "paragraphs": [["dimanche 23 mai 2027"]]
+    },
+    {
+      "paragraphs": [["PRIX"]]
+    },
+    {
+      "paragraphs": [["1 790 $ chacun, chambre double"]]
+    },
+    {
+      "paragraphs": [["COMPREND"]]
+    },
+    {
+      "paragraphs": [["Vols, hôtels, demi-pension"]]
+    },
+    {
+      "paragraphs": [["guide israélien"]]
+    },
+    {
+      "paragraphs": [["Livre : 03-555-0171"]]
+    }
+  ],
+  "beachflags": [
+    {
+      "paragraphs": [["Mer calme"]]
+    },
+    {
+      "paragraphs": [["Drapeau blanc : entrez et profitez"]]
+    },
+    {
+      "paragraphs": [["Danger, prends garde"]]
+    },
+    {
+      "paragraphs": [["Drapeau rouge : restez près du rivage, jusqu’à la taille"]]
+    },
+    {
+      "paragraphs": [["Pas de natation"]]
+    },
+    {
+      "paragraphs": [["Drapeau noir : restez hors de l’eau"]]
+    },
+    {
+      "paragraphs": [["PALMS BEACH • ÉTÉ 2027"]]
+    },
+    {
+      "paragraphs": [["Lire le drapeau"]]
+    },
+    {
+      "paragraphs": [["Nagez uniquement à proximité d'un sauveteur"]]
+    },
+    {
+      "paragraphs": [["De mai à octobre • de 7 h à 18 h"]]
+    }
+  ],
+  "skitrip": [
+    {
+      "paragraphs": [["HIVER 2027 • BULGARIE"]]
+    },
+    "Semaine de\nski à Bansko",
+    {
+      "paragraphs": [["17 au 24 janvier 2027 • 7 nuits"]]
+    },
+    {
+      "paragraphs": [["Un hôtel 4 étoiles au pied des pistes, en demi-pension"]]
+    },
+    {
+      "paragraphs": [["Vol"]]
+    },
+    {
+      "paragraphs": [["Hôtel"]]
+    },
+    {
+      "paragraphs": [["Forfait de ski"]]
+    },
+    "Matériel",
+    {
+      "paragraphs": [["1 190 $ par personne"]]
+    },
+    {
+      "paragraphs": [["Réservez avant le 15 décembre 2026"]]
+    }
+  ],
+  "nutrition": [
+    {
+      "paragraphs": [["BAR À JUS ALEH"]]
+    },
+    "Que contient\nce smoothie ?",
+    {
+      "paragraphs": [["Cinq ingrédients, zéro surprise."]]
+    },
+    {
+      "paragraphs": [["Végétalien"]]
+    },
+    {
+      "paragraphs": [["Sans gluten"]]
+    },
+    {
+      "paragraphs": [["Sans sucre ajouté"]]
+    },
+    "7$ le\nverre",
+    "14 Marché du Carmel du dimanche\nau vendredi à partir de 7h00",
+    "Valeurs nutritionnelles",
+    {
+      "paragraphs": [["Shake vert"]]
+    },
+    {
+      "paragraphs": [["Taille de la portion"]]
+    },
+    {
+      "paragraphs": [["350 ml"]]
+    },
+    {
+      "paragraphs": [["Quantité par portion"]]
+    },
+    {
+      "paragraphs": [["Calories"]]
+    },
+    {
+      "paragraphs": [["210"]]
+    },
+    {
+      "paragraphs": [["Protéine"]]
+    },
+    {
+      "paragraphs": [["9g"]]
+    },
+    {
+      "paragraphs": [["Fibres alimentaires"]]
+    },
+    {
+      "paragraphs": [["7g"]]
+    },
+    {
+      "paragraphs": [["Sucres"]]
+    },
+    {
+      "paragraphs": [["18g"]]
+    },
+    {
+      "paragraphs": [["Sucres ajoutés"]]
+    },
+    {
+      "paragraphs": [["0g"]]
+    },
+    {
+      "paragraphs": [["INGRÉDIENTS"]]
+    },
+    "Épinards frais, kiwi, pomme\nverte, gingembre et menthe."
+  ],
+  "bracket": [
+    {
+      "paragraphs": [["Shahar • Omer"]]
+    },
+    {
+      "paragraphs": [["Noa • Tamar"]]
+    },
+    {
+      "paragraphs": [["Itaï • Gal"]]
+    },
+    {
+      "paragraphs": [["Roni • Dana"]]
+    },
+    {
+      "paragraphs": [["Demi-finale"]]
+    },
+    {
+      "paragraphs": [["Demi-finale"]]
+    },
+    {
+      "paragraphs": [["Yuval • Adi"]]
+    },
+    {
+      "paragraphs": [["Maya • Lia"]]
+    },
+    {
+      "paragraphs": [["Uri • Ben"]]
+    },
+    {
+      "paragraphs": [["Shani • Ella"]]
+    },
+    {
+      "paragraphs": [["Demi-finale"]]
+    },
+    {
+      "paragraphs": [["Demi-finale"]]
+    },
+    {
+      "paragraphs": [["La finale"], ["17h00 • Terrain 1"]]
+    },
+    {
+      "paragraphs": [["PREMIER PRIX"]]
+    },
+    {
+      "paragraphs": [["$800"]]
+    },
+    {
+      "paragraphs": [["et une paire de raquettes neuves"]]
+    },
+    {
+      "paragraphs": [["HAGIVA PADEL CLUB • ÉTÉ 2027"]]
+    },
+    "Open de padel\nd’été",
+    {
+      "paragraphs": [["vendredi 9 juillet 2027"]]
+    },
+    {
+      "paragraphs": [["À partir de 8h00 • Huit paires, quatre courts"]]
+    },
+    {
+      "paragraphs": [["Inscrivez-vous avant le 1er juillet"]]
+    }
+  ],
+  "finalscore": [
+    {
+      "paragraphs": [["Lions du Néguev"]]
+    },
+    {
+      "paragraphs": [["86"]]
+    },
+    {
+      "paragraphs": [["Étoiles de Galilée"]]
+    },
+    {
+      "paragraphs": [["79"]]
+    },
+    {
+      "paragraphs": [["FINALE"]]
+    },
+    {
+      "paragraphs": [["QUARTIERS"]]
+    },
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["2"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    {
+      "paragraphs": [["4"]]
+    },
+    {
+      "paragraphs": [["Lions"]]
+    },
+    {
+      "paragraphs": [["22"]]
+    },
+    {
+      "paragraphs": [["19"]]
+    },
+    {
+      "paragraphs": [["24"]]
+    },
+    {
+      "paragraphs": [["21"]]
+    },
+    {
+      "paragraphs": [["Étoiles"]]
+    },
+    {
+      "paragraphs": [["18"]]
+    },
+    {
+      "paragraphs": [["23"]]
+    },
+    {
+      "paragraphs": [["17"]]
+    },
+    {
+      "paragraphs": [["21"]]
+    },
+    {
+      "paragraphs": [["LIGUE FÉMININE • TOUR 14 • 12 JANVIER 2027"]]
+    },
+    {
+      "paragraphs": [["Une victoire à domicile"]]
+    },
+    {
+      "paragraphs": [["MEILLEUR BUTEUR"]]
+    },
+    {
+      "paragraphs": [["27"]]
+    },
+    {
+      "paragraphs": [["points"]]
+    },
+    {
+      "paragraphs": [["Noa Sagi"]]
+    },
+    {
+      "paragraphs": [["N°7, garde"]]
+    },
+    {
+      "paragraphs": [["PROCHAIN JEU"]]
+    },
+    {
+      "paragraphs": [["mar. 19 janvier 2027 • 20h30"]]
+    },
+    {
+      "paragraphs": [["contre Ashkelon Waves • Negev Arena, Beer Sheva"]]
+    },
+    {
+      "paragraphs": [["Billets à partir de 10$"]]
+    }
+  ],
+  "jersey": [
+    {
+      "paragraphs": [["VOTRE NOM"]]
+    },
+    {
+      "paragraphs": [["10"]]
+    },
+    {
+      "paragraphs": [["L'ÉCOLE DE FOOTBALL • SAISON 2027"]]
+    },
+    "Rejoignez\nl'équipe",
+    {
+      "paragraphs": [["Filles et garçons • 8 à 14 ans"]]
+    },
+    {
+      "paragraphs": [["Dimanche et mercredi • de 17h00 à 18h30"]]
+    },
+    {
+      "paragraphs": [["Terrain de Givat Alon, Raanana"]]
+    },
+    {
+      "paragraphs": [["60 $ par mois, chemise incluse"]]
+    },
+    {
+      "paragraphs": [["Pratique d'essai gratuite"]]
+    },
+    {
+      "paragraphs": [["Appelez Yoav : 052-555-0148"]]
+    }
+  ],
+  "heartday": [
+    {
+      "paragraphs": [["JOURNÉE CONTRÔLE CARDIAQUE • GRATUITE POUR TOUS LES RÉSIDENTS"]]
+    },
+    "Vérifiez\nvotre cœur",
+    {
+      "paragraphs": [["01"]]
+    },
+    {
+      "paragraphs": [["Pression artérielle"]]
+    },
+    {
+      "paragraphs": [["Une lecture de deux minutes"]]
+    },
+    {
+      "paragraphs": [["02"]]
+    },
+    {
+      "paragraphs": [["Glycémie"]]
+    },
+    {
+      "paragraphs": [["Une petite piqûre, une réponse instantanée"]]
+    },
+    {
+      "paragraphs": [["03"]]
+    },
+    {
+      "paragraphs": [["ECG"]]
+    },
+    {
+      "paragraphs": [["Une trace du rythme de votre cœur"]]
+    },
+    {
+      "paragraphs": [["mar. 16 février 2027"]]
+    },
+    {
+      "paragraphs": [["8 h 00 à 14 h 00 • Centre communautaire de Neve Gan"]]
+    },
+    {
+      "paragraphs": [["Pas de réservation, dix minutes"]]
+    }
+  ],
+  "sleep": [
+    {
+      "paragraphs": [["Une nuit, quatre étapes"]]
+    },
+    {
+      "paragraphs": [["7h de sommeil"]]
+    },
+    {
+      "paragraphs": [["Réveillé"]]
+    },
+    {
+      "paragraphs": [["Rêver"]]
+    },
+    {
+      "paragraphs": [["Sommeil léger"]]
+    },
+    {
+      "paragraphs": [["Sommeil profond"]]
+    },
+    {
+      "paragraphs": [["23h00"]]
+    },
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    {
+      "paragraphs": [["5"]]
+    },
+    {
+      "paragraphs": [["7h00"]]
+    },
+    {
+      "paragraphs": [["Trois vagues profondes et des rêves vers le matin."]]
+    },
+    {
+      "paragraphs": [["MIEUX SOMMEIL"]]
+    },
+    "Sept heures qui\nchangent tout",
+    {
+      "paragraphs": [["QUATRE PETITES HABITUDES"]]
+    },
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["Rendre la pièce sombre"]]
+    },
+    {
+      "paragraphs": [["2"]]
+    },
+    {
+      "paragraphs": [["Écrans éteints une heure avant"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    {
+      "paragraphs": [["Dernier café à 14h"]]
+    },
+    {
+      "paragraphs": [["4"]]
+    },
+    {
+      "paragraphs": [["Réveillez-vous en même temps"]]
+    }
+  ],
+  "challenge": [
+    {
+      "paragraphs": [["5"]]
+    },
+    {
+      "paragraphs": [["10"]]
+    },
+    {
+      "paragraphs": [["15"]]
+    },
+    {
+      "paragraphs": [["20"]]
+    },
+    {
+      "paragraphs": [["25"]]
+    },
+    {
+      "paragraphs": [["30"]]
+    },
+    {
+      "paragraphs": [["Terminé"]]
+    },
+    {
+      "paragraphs": [["Aujourd'hui"]]
+    },
+    {
+      "paragraphs": [["Prix"]]
+    },
+    {
+      "paragraphs": [["LE DÉFI MOUVEMENT • PRINTEMPS 2027"]]
+    },
+    {
+      "paragraphs": [["30"]]
+    },
+    "jours pour\nbouger",
+    "Dix minutes par jour. Une promenade, une\ndanse, un saut à la corde : tout compte.",
+    {
+      "paragraphs": [["NOUS COMMENÇONS"]]
+    },
+    {
+      "paragraphs": [["dimanche"]]
+    },
+    {
+      "paragraphs": [["7 mars 2027"]]
+    },
+    {
+      "paragraphs": [["#Move30"]]
+    }
+  ],
+  "mindfulness": [
+    {
+      "paragraphs": [["Inspirez • 4"]]
+    },
+    "Retenez l’air • 4",
+    {
+      "paragraphs": [["Expirez • 4"]]
+    },
+    "Retenez l’air • 4",
+    {
+      "paragraphs": [["UN ATELIER DE PLEINE CONSCIENCE • UNE SOIRÉE"]]
+    },
+    {
+      "paragraphs": [["Une pause"], ["pour respirer"]]
+    },
+    {
+      "paragraphs": [["Quatre secondes pour chaque côté du carré."]]
+    },
+    {
+      "paragraphs": [["Quand"]]
+    },
+    {
+      "paragraphs": [["Jeu. 11 mars 2027 • 19h00 à 21h00"]]
+    },
+    {
+      "paragraphs": [["Où"]]
+    },
+    {
+      "paragraphs": [["Studio Alon, 8 rue HaGefen, Karkur"]]
+    },
+    {
+      "paragraphs": [["Guider"]]
+    },
+    {
+      "paragraphs": [["Tamar Shalev"]]
+    },
+    {
+      "paragraphs": [["Prix"]]
+    },
+    {
+      "paragraphs": [["35$, thé et coussin inclus"]]
+    },
+    {
+      "paragraphs": [["Débutants bienvenus"]]
+    },
+    {
+      "paragraphs": [["Inscription : 052-555-0162"]]
+    }
+  ],
+  "cv": [
+    {
+      "paragraphs": [["CONTACTER"]]
+    },
+    {
+      "paragraphs": [["salut@yonatansagi.com"]]
+    },
+    {
+      "paragraphs": [["054-555-0147"]]
+    },
+    {
+      "paragraphs": [["Tel-Aviv"]]
+    },
+    {
+      "paragraphs": [["COMPÉTENCES"]]
+    },
+    {
+      "paragraphs": [["Stratégie produit"]]
+    },
+    {
+      "paragraphs": [["Analyse des données"]]
+    },
+    {
+      "paragraphs": [["Recherche d'utilisateurs"]]
+    },
+    {
+      "paragraphs": [["Direction d'équipe"]]
+    },
+    {
+      "paragraphs": [["YS"]]
+    },
+    {
+      "paragraphs": [["Yonatan Sagi"]]
+    },
+    {
+      "paragraphs": [["Chef de produit senior"]]
+    },
+    {
+      "paragraphs": [["EXPÉRIENCE"]]
+    },
+    {
+      "paragraphs": [["2023-maintenant"]]
+    },
+    {
+      "paragraphs": [["Chef de produit senior"]]
+    },
+    {
+      "paragraphs": [["Lumina • plateforme de paiement"]]
+    },
+    {
+      "paragraphs": [["Equipe de 12"]]
+    },
+    {
+      "paragraphs": [["2019–2023"]]
+    },
+    {
+      "paragraphs": [["Chef de produit"]]
+    },
+    {
+      "paragraphs": [["Greenroute • application de navigation"]]
+    },
+    "2 M d’utilisateurs",
+    {
+      "paragraphs": [["2015–2019"]]
+    },
+    {
+      "paragraphs": [["Analyste de données"]]
+    },
+    {
+      "paragraphs": [["Oren Labs • étude de marché"]]
+    },
+    {
+      "paragraphs": [["40 études"]]
+    },
+    {
+      "paragraphs": [["ÉDUCATION"]]
+    },
+    {
+      "paragraphs": [["B.Sc. Génie Industriel"]]
+    },
+    {
+      "paragraphs": [["Technion • 2015"]]
+    },
+    {
+      "paragraphs": [["LANGUES"]]
+    },
+    {
+      "paragraphs": [["Hébreu"]]
+    },
+    {
+      "paragraphs": [["Anglais"]]
+    },
+    {
+      "paragraphs": [["Espagnol"]]
+    }
+  ],
+  "posture": [
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["Écran à hauteur des yeux"]]
+    },
+    {
+      "paragraphs": [["Le bord supérieur rencontre votre regard"]]
+    },
+    {
+      "paragraphs": [["2"]]
+    },
+    {
+      "paragraphs": [["Coudes à 90°"]]
+    },
+    {
+      "paragraphs": [["Épaules lâches"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    {
+      "paragraphs": [["Dos pris en charge"]]
+    },
+    {
+      "paragraphs": [["Le bas du dos rencontre la chaise"]]
+    },
+    {
+      "paragraphs": [["4"]]
+    },
+    {
+      "paragraphs": [["Les pieds sur terre"]]
+    },
+    {
+      "paragraphs": [["Repose-pieds si besoin"]]
+    },
+    {
+      "paragraphs": [["30"]]
+    },
+    "Levez-vous toutes\nles demi-heures",
+    {
+      "paragraphs": [["Étirez-vous, puis revenez."]]
+    },
+    {
+      "paragraphs": [["ERGONOMIE DU BUREAU"]]
+    },
+    "Bien\ns’asseoir",
+    "Quatre vérifications\nrapides avant de commencer.",
+    {
+      "paragraphs": [["Voulez-vous que votre bureau soit vérifié ?"]]
+    },
+    {
+      "paragraphs": [["Vérification au bureau : ext. 214"]]
+    }
+  ],
+  "journal": [
+    {
+      "paragraphs": [["JOUR 4"]]
+    },
+    {
+      "paragraphs": [["jeu. 17 juin 2027"]]
+    },
+    {
+      "paragraphs": [["Sapa, Viêt Nam"]]
+    },
+    "Levé avant le lever du soleil, sortie\navec Mai, notre guide, vers les\nterrasses. La brume s'élevait de la\nvallée comme un rideau. Puis : vert.\nJe ne veux pas rentrer à la maison.",
+    {
+      "paragraphs": [["EN BREF"]]
+    },
+    {
+      "paragraphs": [["J'ai marché 14 km"]]
+    },
+    {
+      "paragraphs": [["A mangé du photo"]]
+    },
+    {
+      "paragraphs": [["Il a plu"]]
+    },
+    {
+      "paragraphs": [["Rizières en terrasses, 6h10"]]
+    },
+    {
+      "paragraphs": [["TRAIN DE NUIT"], ["Hanoï – Lao Cai"]]
+    },
+    "Voiture 6\nplaces 21"
+  ],
+  "portfolio": [
+    {
+      "paragraphs": [["Portfolio"], ["2027"]]
+    },
+    {
+      "paragraphs": [["Illustration, collage et conception d'impression"]]
+    },
+    {
+      "paragraphs": [["01"]]
+    },
+    {
+      "paragraphs": [["Illustration éditoriale et de livre"]]
+    },
+    {
+      "paragraphs": [["02"]]
+    },
+    {
+      "paragraphs": [["Affiches et pochettes de disques"]]
+    },
+    {
+      "paragraphs": [["03"]]
+    },
+    {
+      "paragraphs": [["Identités pour petites marques"]]
+    },
+    {
+      "paragraphs": [["Ouvert aux projets à partir d'avril 2027"]]
+    },
+    {
+      "paragraphs": [["Noga Barnéa"]]
+    },
+    {
+      "paragraphs": [["noga@barnea.studio"]]
+    },
+    {
+      "paragraphs": [["barnéa.studio"]]
+    },
+    {
+      "paragraphs": [["052-555-0193"]]
+    },
+    {
+      "paragraphs": [["PREUVE 03 • PRÊTE À IMPRIMER"]]
+    }
+  ],
+  "moodboard": [
+    {
+      "paragraphs": [["TABLEAU D'HUMEUR"]]
+    },
+    {
+      "paragraphs": [["84 m² • 3 pièces • printemps 2027"]]
+    },
+    "Un appartement\nà Neve Tzedek",
+    {
+      "paragraphs": [["chaud", "   naturel", "   calme"], ["Méditerranéenne"]]
+    },
+    "Matériaux : enduit minéral, chêne cérusé, lin\nlavé et carreaux de terre cuite faits main.",
+    {
+      "paragraphs": [["Lin"]]
+    },
+    {
+      "paragraphs": [["#E6DCCB"]]
+    },
+    {
+      "paragraphs": [["Argile"]]
+    },
+    {
+      "paragraphs": [["#B9552F"]]
+    },
+    {
+      "paragraphs": [["Laiton"]]
+    },
+    {
+      "paragraphs": [["#B8923F"]]
+    },
+    {
+      "paragraphs": [["Chêne"]]
+    },
+    {
+      "paragraphs": [["#C9A77C"]]
+    },
+    {
+      "paragraphs": [["Olivier"]]
+    },
+    {
+      "paragraphs": [["#6F7550"]]
+    }
+  ],
+  "bingo": [
+    {
+      "paragraphs": [["BINGO 2027"]]
+    },
+    "Courez\nun 5 km",
+    "Lire 12\nlivres",
+    "Apprendre\nà nager",
+    "Pas de sucre\npendant un mois",
+    "Cours de\npoterie",
+    "Parcourez le\nsentier d'Israël",
+    "Épargner\npour voyager",
+    "Dormir\n7 heures",
+    "Bénévole\nmensuel",
+    {
+      "paragraphs": [["CARTE DE NOA"]]
+    },
+    "Neuf objectifs,\nun an",
+    "Tamponnez un carré pour chaque\nobjectif que vous atteignez.",
+    {
+      "paragraphs": [["3 sur 9 tamponnés jusqu'à présent"]]
+    },
+    {
+      "paragraphs": [["Une rangée complète = un cadeau pour moi"]]
+    }
+  ],
+  "books": [
+    {
+      "paragraphs": [["Le jardin au-delà de la carte"]]
+    },
+    {
+      "paragraphs": [["Une théorie des petites choses"]]
+    },
+    {
+      "paragraphs": [["Lettres à ma sœur"]]
+    },
+    {
+      "paragraphs": [["Un hiver à Lisbonne"]]
+    },
+    {
+      "paragraphs": [["Calme, s'il te plaît"]]
+    },
+    {
+      "paragraphs": [["Comment faire pousser un citron"]]
+    },
+    {
+      "paragraphs": [["RÉCAPITULATIF DE LECTURE • 2027"]]
+    },
+    "Mon année\nde lecture",
+    {
+      "paragraphs": [["24"]]
+    },
+    {
+      "paragraphs": [["livres"]]
+    },
+    {
+      "paragraphs": [["7,310"]]
+    },
+    {
+      "paragraphs": [["pages"]]
+    },
+    {
+      "paragraphs": [["LIVRE DE L'ANNÉE"]]
+    },
+    "Le jardin au-delà\nde la carte",
+    {
+      "paragraphs": [["Lisez-le deux fois, dos à dos."]]
+    }
+  ],
+  "roots": [
+    {
+      "paragraphs": [["PROJET RACINES FAMILIALES"]]
+    },
+    {
+      "paragraphs": [["Ma famille"]]
+    },
+    {
+      "paragraphs": [["Trois générations, quatre pays, un arbre."]]
+    },
+    {
+      "paragraphs": [["Noam Mizrahi"]]
+    },
+    {
+      "paragraphs": [["7e année, lycée Alonim"]]
+    },
+    {
+      "paragraphs": [["Haïfa, 2027"]]
+    },
+    {
+      "paragraphs": [["Grand-père Yaakov"], ["Bagdad, 1941"]]
+    },
+    {
+      "paragraphs": [["Grand-mère Shoshana"], ["Jérusalem, 1944"]]
+    },
+    {
+      "paragraphs": [["Grand-père Ménahem"], ["Budapest, 1939"]]
+    },
+    {
+      "paragraphs": [["Grand-mère Esther"], ["Casablanca, 1943"]]
+    },
+    {
+      "paragraphs": [["Papa, Alon"], ["Haïfa, 1976"]]
+    },
+    {
+      "paragraphs": [["Maman, Dafna"], ["Beer Sheva, 1978"]]
+    },
+    {
+      "paragraphs": [["Moi, Noam"], ["Haïfa, 2014"]]
+    }
+  ],
+  "memorial": [
+    {
+      "paragraphs": [["EN MÉMOIRE D'AMOUR DE"]]
+    },
+    {
+      "paragraphs": [["Rivka Almog"]]
+    },
+    {
+      "paragraphs": [["1941–2026   •   5701–5786"]]
+    },
+    "Elle aimait les gens, les livres\net les anémones de février.",
+    {
+      "paragraphs": [["RASSEMBLEMENT COMMÉMORIAL, UN AN APRÈS"]]
+    },
+    "Dimanche 31 janvier 2027 23 Shevat\n5787, à 16h00 Rendez-vous à la\nporte du cimetière de Kiryat Tivon",
+    {
+      "paragraphs": [["La famille Almog"]]
+    }
+  ],
+  "uavspec": [
+    {
+      "paragraphs": [["EO + IR"]]
+    },
+    {
+      "paragraphs": [["ALT 120 m"]]
+    },
+    {
+      "paragraphs": [["420", " mm"]]
+    },
+    {
+      "paragraphs": [["MITZPE ROBOTIQUE • FICHE PRODUIT"]]
+    },
+    "Ayit 3",
+    {
+      "paragraphs": [
+        ["Drone d'observation autonome"],
+        ["Patrouille et recherche de périmètre, de jour comme de nuit"]
+      ]
+    },
+    {
+      "paragraphs": [["Temps de vol"]]
+    },
+    {
+      "paragraphs": [["55", " min"]]
+    },
+    {
+      "paragraphs": [["Plage de liens"]]
+    },
+    {
+      "paragraphs": [["12", " km"]]
+    },
+    {
+      "paragraphs": [["Masse au décollage"]]
+    },
+    {
+      "paragraphs": [["2.4", " kg"]]
+    },
+    {
+      "paragraphs": [["Caméra thermique"]]
+    },
+    {
+      "paragraphs": [["640×512"]]
+    },
+    {
+      "paragraphs": [["Évaluation d'entrée"]]
+    },
+    {
+      "paragraphs": [["IP54"]]
+    },
+    {
+      "paragraphs": [["Mise en place du terrain"]]
+    },
+    {
+      "paragraphs": [["90", " s"]]
+    },
+    {
+      "paragraphs": [["Recherche et sauvetage"]]
+    },
+    {
+      "paragraphs": [["Sécurité des sites"]]
+    },
+    {
+      "paragraphs": [["Surveillance des frontières"]]
+    },
+    {
+      "paragraphs": [["Réservez une démonstration sur le terrain"], ["demo@mitzpe-robotics.co.il"]]
+    }
+  ],
+  "conops": [
+    {
+      "paragraphs": [["Détecter"]]
+    },
+    {
+      "paragraphs": [["0–8", " s"]]
+    },
+    {
+      "paragraphs": [["Le radar et l'acoustique repèrent un drone inconnu"]]
+    },
+    {
+      "paragraphs": [["1"]]
+    },
+    {
+      "paragraphs": [["Identifier"]]
+    },
+    {
+      "paragraphs": [["8–25", " s"]]
+    },
+    {
+      "paragraphs": [["L'opérateur obtient une image thermique"]]
+    },
+    {
+      "paragraphs": [["2"]]
+    },
+    {
+      "paragraphs": [["Répondre"]]
+    },
+    {
+      "paragraphs": [["25–40", " s"]]
+    },
+    {
+      "paragraphs": [["Sécurité alertée, liaison drone bloquée"]]
+    },
+    {
+      "paragraphs": [["3"]]
+    },
+    "Site protégé",
+    {
+      "paragraphs": [["5 km"]]
+    },
+    {
+      "paragraphs": [["MIGDALOR • CONCEPT D'OPÉRATIONS"]]
+    },
+    {
+      "paragraphs": [["De la détection à la réponse"], ["en 40 secondes"]]
+    },
+    {
+      "paragraphs": [["360°"]]
+    },
+    {
+      "paragraphs": [["Couverture complète"], ["5 km autour du site"]]
+    },
+    {
+      "paragraphs": [["L'humain au courant à chaque étape"]]
+    }
+  ],
+  "readiness": [
+    {
+      "paragraphs": [["TRL 9 • OBJECTIF 2028"], ["Système éprouvé sur le terrain"]]
+    },
+    {
+      "paragraphs": [["TRL 7 • AUJOURD'HUI"], ["Démo opérationnelle"]]
+    },
+    {
+      "paragraphs": [["TRL4 • 2025"], ["Prouvé en laboratoire"]]
+    },
+    {
+      "paragraphs": [["TRL1 • 2022"], ["Sur papier"]]
+    },
+    {
+      "paragraphs": [["TRL 7"]]
+    },
+    {
+      "paragraphs": [["La série B finance la hausse"]]
+    },
+    {
+      "paragraphs": [["DÉTECTION INBAR • PRÉPARATION TECHNOLOGIQUE"]]
+    },
+    "Du laboratoire\nau terrain : où\nnous en sommes",
+    {
+      "paragraphs": [["DERNIER ESSAI"]]
+    },
+    {
+      "paragraphs": [["1,200"]]
+    },
+    {
+      "paragraphs": [["heures d'ouverture"]]
+    },
+    {
+      "paragraphs": [["94%"]]
+    },
+    {
+      "paragraphs": [["identification correcte"]]
+    },
+    {
+      "paragraphs": [["0"]]
+    },
+    {
+      "paragraphs": [["incidents de sécurité"]]
+    },
+    {
+      "paragraphs": [["TRL 9 dans les 18 mois"]]
+    }
+  ],
+  "expobooth": [
+    {
+      "paragraphs": [["B-14"]]
+    },
+    {
+      "paragraphs": [["SALLE 2"]]
+    },
+    {
+      "paragraphs": [["ENTREE"]]
+    },
+    {
+      "paragraphs": [["EXPO DÉFENSE ET RÉSILIENCE 2027"]]
+    },
+    {
+      "paragraphs": [["Retrouvez-nous"], ["au stand B-14"]]
+    },
+    "Shaked Autonomy • Parc des expositions",
+    {
+      "paragraphs": [["MAR"]]
+    },
+    {
+      "paragraphs": [["16"]]
+    },
+    {
+      "paragraphs": [["MER"]]
+    },
+    {
+      "paragraphs": [["17"]]
+    },
+    {
+      "paragraphs": [["JEU"]]
+    },
+    {
+      "paragraphs": [["18"]]
+    },
+    {
+      "paragraphs": [["Février 2027 • 10h-18h"]]
+    },
+    {
+      "paragraphs": [["AU STAND, TOUS LES JOURS"]]
+    },
+    {
+      "paragraphs": [["11 heures"]]
+    },
+    {
+      "paragraphs": [["Démo de recherche et de sauvetage en direct"]]
+    },
+    {
+      "paragraphs": [["14h"]]
+    },
+    {
+      "paragraphs": [["Discussion ouverte avec les ingénieurs"]]
+    },
+    {
+      "paragraphs": [["16h30"]]
+    },
+    {
+      "paragraphs": [["Un nouveau système est dévoilé"]]
+    },
+    {
+      "paragraphs": [["Réserver une réunion"]]
+    },
+    {
+      "paragraphs": [["expo@shaked.co.il"]]
+    }
+  ],
+  "layered": [
+    {
+      "paragraphs": [["Détecter", "   ", "8", " km"], ["Capteurs radar et RF"]]
+    },
+    {
+      "paragraphs": [["Identifier", "   ", "4", " km"], ["Caméra thermique, classification AI"]]
+    },
+    {
+      "paragraphs": [["Répondre", "   ", "1.5", " km"], ["Alerter, jammer et enregistrer"]]
+    },
+    {
+      "paragraphs": [["NOGA SYSTEMS • CONTRE-DRONE"]]
+    },
+    "Trois couches autour\nde chaque site",
+    "Chaque couche transmet la\nmenace à celui qui s'y trouve",
+    {
+      "paragraphs": [["24/7"]]
+    },
+    "actif par\ntous les temps",
+    {
+      "paragraphs": [["14"]]
+    },
+    "sites énergétiques\nprotégés aujourd'hui"
+  ],
+  "gridresilience": [
+    {
+      "paragraphs": [["Nouvel itinéraire"]]
+    },
+    {
+      "paragraphs": [["Coupe de nœud"]]
+    },
+    {
+      "paragraphs": [["MAAGAL • RÉSILIENCE DU RÉSEAU"]]
+    },
+    "Lorsqu'un nœud\néchoue, la grille\ntrouve un moyen",
+    {
+      "paragraphs": [["FORAGE, MARS 2027"], ["3 nœuds coupés en même temps"]]
+    },
+    {
+      "paragraphs": [["1.6", " s"], ["pour réacheminer"], ["l’électricité"]]
+    },
+    {
+      "paragraphs": [["0"], ["clients"], ["sans électricité"]]
+    },
+    {
+      "paragraphs": [["22"], ["nœuds"], ["surveillé"]]
+    },
+    {
+      "paragraphs": [["Surveillance automatique, reroutage, récupération"]]
+    }
+  ],
+  "rescue": [
+    "Retrouvé",
+    {
+      "paragraphs": [["Caméra thermique Ember 2, minute 33"]]
+    },
+    {
+      "paragraphs": [["SAHAR ROBOTIQUE • ÉTUDE DE CAS"]]
+    },
+    {
+      "paragraphs": [["38"]]
+    },
+    "minutes depuis l'appel\njusqu'à ce qu'il soit retrouvé",
+    {
+      "paragraphs": [["Un randonneur disparu, un sol rocheux, pas de lune"]]
+    },
+    {
+      "paragraphs": [["Pas d'hélicoptère, aucun risque pour l'équipage"]]
+    },
+    {
+      "paragraphs": [["00", " min"], ["Appel au centre"]]
+    },
+    {
+      "paragraphs": [["06", " min"], ["Drone aéroporté"]]
+    },
+    {
+      "paragraphs": [["21", " min"], ["2,4 km² recherchés"]]
+    },
+    {
+      "paragraphs": [["33", " min"], ["Signature thermique trouvée"]]
+    },
+    {
+      "paragraphs": [["38", " min"], ["Les sauveteurs l'atteignent"]]
+    }
+  ],
+  "dualuse": [
+    {
+      "paragraphs": [["Protection des frontières"], ["Surveiller de jour comme de nuit"]]
+    },
+    {
+      "paragraphs": [["Lutte contre les incendies"], ["Voit le feu à travers la fumée"]]
+    },
+    {
+      "paragraphs": [["Agriculture de précision"], ["Détection précoce du stress hydrique"]]
+    },
+    {
+      "paragraphs": [["Assurance qualité industrielle"], ["Détecte les pièces brûlantes"]]
+    },
+    {
+      "paragraphs": [["Recherche et sauvetage"], ["Trouve des gens dans le noir"]]
+    },
+    {
+      "paragraphs": [["‎640×512"]]
+    },
+    {
+      "paragraphs": [["18g"]]
+    },
+    {
+      "paragraphs": [["GALIN THERMIQUE • BREF INVESTISSEUR"]]
+    },
+    "Un noyau thermique,\ncinq marchés",
+    {
+      "paragraphs": [["Non refroidi et plus petit qu'une boîte d'allumettes"]]
+    },
+    {
+      "paragraphs": [["60%"], ["de nos revenus"], ["sont déjà civils"]]
+    },
+    {
+      "paragraphs": [["Civil"]]
+    },
+    {
+      "paragraphs": [["Défense"]]
+    }
+  ]
+}

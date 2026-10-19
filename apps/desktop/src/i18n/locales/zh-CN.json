@@ -997,7 +997,8 @@
       "library": "Slidr 字体库",
       "system": "此电脑上",
       "letters": "支持{{language}}",
-      "empty": "没有该名称的字体"
+      "empty": "没有该名称的字体",
+      "weights": "{{family}} 的字重"
     },
     "mixed": "混合"
   },
@@ -3317,15 +3318,40 @@
       "label": "列表",
       "bullets": "项目符号列表",
       "numbers": "编号列表",
-      "options": "列表选项",
-      "level": "级别",
-      "outdent": "减少缩进",
-      "indent": "增加缩进",
-      "glyph": "项目符号",
-      "glyphDefault": "标准项目符号",
-      "glyphCustom": "其他项目符号",
-      "glyphOther": "其他",
-      "color": "符号颜色"
+      "bulletsOptions": "项目符号选项",
+      "numbersOptions": "编号选项",
+      "none": "无",
+      "bulletStyle": {
+        "filledRound": "实心圆形项目符号",
+        "hollowRound": "空心圆形项目符号",
+        "filledSquare": "实心方形项目符号",
+        "hollowSquare": "空心方形项目符号",
+        "star": "星形项目符号",
+        "arrow": "箭头项目符号",
+        "check": "对勾项目符号"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "项目符号和编号…",
+      "dialogTitle": "项目符号和编号",
+      "bulletedTab": "项目符号",
+      "numberedTab": "编号",
+      "size": "大小",
+      "ofText": "%（相对于文字）",
+      "startAt": "起始编号",
+      "glyphCustom": "自定义项目符号",
+      "glyphOther": "符号",
+      "color": "颜色",
+      "ok": "确定",
+      "cancel": "取消"
     },
     "spacing": {
       "label": "间距",

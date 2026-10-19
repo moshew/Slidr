@@ -179,16 +179,25 @@ impl Rpc {
             .stderr(Stdio::null())
             .spawn()
             .map_err(|error| AgentError::io("connect to CLI", &error))?;
+        // Both were asked for as pipes above; a child without them is a bug of the spawn.
+        let input = child
+            .stdin
+            .take()
+            .ok_or_else(|| AgentError::internal("the CLI has no input pipe"))?;
+        let output = child
+            .stdout
+            .take()
+            .ok_or_else(|| AgentError::internal("the CLI has no output pipe"))?;
         Ok(Self {
-            input: child.stdin.take().unwrap(),
-            output: BufReader::new(child.stdout.take().unwrap()),
+            input,
+            output: BufReader::new(output),
             child,
             framed,
             next_id: 0,
         })
     }
     async fn send(&mut self, value: Value) -> Result<()> {
-        let bytes = serde_json::to_vec(&value).unwrap();
+        let bytes = serde_json::to_vec(&value).map_err(AgentError::internal)?;
         let mut wire = if self.framed {
             format!("Content-Length: {}\r\n\r\n", bytes.len()).into_bytes()
         } else {
@@ -705,8 +714,20 @@ mod tests {
             ]),
         );
         assert_eq!(models.len(), 2);
-        assert_eq!(models[0].effort_levels.as_ref().unwrap(), &["low", "ultra"]);
-        assert!(models[1].effort_levels.as_ref().unwrap().is_empty());
+        assert_eq!(
+            models[0]
+                .effort_levels
+                .as_deref()
+                .expect("its efforts are listed"),
+            ["low", "ultra"]
+        );
+        assert!(
+            models[1]
+                .effort_levels
+                .as_ref()
+                .expect("a model without efforts lists none")
+                .is_empty()
+        );
         let models = parse_models(
             "claude-code",
             &json!([
@@ -720,7 +741,13 @@ mod tests {
             &json!([{"model":"a", "supportedReasoningEfforts":[{"reasoningEffort":"ultra"}]}, {"model":"hidden", "hidden":true}]),
         );
         assert_eq!(models.len(), 1);
-        assert_eq!(models[0].effort_levels.as_ref().unwrap(), &["ultra"]);
+        assert_eq!(
+            models[0]
+                .effort_levels
+                .as_deref()
+                .expect("its efforts are listed"),
+            ["ultra"]
+        );
         let models = parse_models(
             "gemini-cli",
             &json!([
@@ -752,8 +779,8 @@ mod tests {
         let id = std::env::var("SLIDR_DISCOVER_HARNESS").expect("set SLIDR_DISCOVER_HARNESS");
         let models = timeout(Duration::from_secs(60), discover(&id))
             .await
-            .unwrap()
-            .unwrap();
+            .expect("the CLI answers within a minute")
+            .expect("the CLI lists its models");
         assert!(!models.is_empty());
         assert!(models.iter().all(|model| model.effort_levels.is_some()));
         println!("{}: {} models", id, models.len());

@@ -13,6 +13,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import next33Source from '../../scripts/design-locales/next-33/source.json';
 import next50Source from '../../scripts/design-locales/next-50/source.json';
+import next50bSource from '../../scripts/design-locales/next-50b/source.json';
 import { builtinFaces, builtinFamilies } from '../fonts/builtinFonts.generated';
 import { previewAsset, previewBackdrop } from './designAssets';
 import { familyIn, fontShelf } from './designFonts';
@@ -44,6 +45,23 @@ const DRAWN = DESIGN_IDS.flatMap((id) => designLanguages(id).map((lang) => [lang
 
 // The designs are content of the media library: without it there is nothing to test.
 describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
+  it('offers every ready-made slide in every application language', () => {
+    for (const id of DESIGN_IDS) {
+      expect(designLanguages(id), id).toEqual(CONTENT_LANGUAGES);
+      for (const lang of CONTENT_LANGUAGES) {
+        expect(designIn(id, lang), `${id}/${lang}`).toBe(true);
+      }
+    }
+  });
+  it('offers the second batch of 50 expanded designs in every application language', () => {
+    const ids = Object.keys(next50bSource);
+    expect(ids).toHaveLength(50);
+    for (const id of ids) {
+      expect(has(id), id).toBe(true);
+      expect(designLanguages(id), id).toEqual(CONTENT_LANGUAGES);
+      for (const lang of CONTENT_LANGUAGES) expect(designIn(id, lang), `${id}/${lang}`).toBe(true);
+    }
+  });
   it('offers the next 50 expanded designs in every application language', () => {
     const ids = Object.keys(next50Source);
     expect(ids).toHaveLength(50);

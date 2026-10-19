@@ -234,7 +234,7 @@ export function FontField({
       </Tooltip>
       <PopoverContent
         onCloseAutoFocus={onCloseAutoFocus}
-        className="w-font-picker! max-w-[calc(100vw-4*var(--spacing))] p-3!"
+        className="w-font-picker! max-w-in-window p-3!"
       >
         <FontPicker
           groups={groups}

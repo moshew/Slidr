@@ -28,7 +28,7 @@ const out = (name: string) =>
   fileURLToPath(new URL(`../test-results/cards/${name}.png`, import.meta.url));
 
 async function openShapes(page: Page) {
-  await page.getByTestId('top-tools-a').locator('[data-tool="insert.elements"]').click();
+  await page.getByTestId('top-tools-b').locator('[data-tool="insert.elements"]').click();
   const collection = page.getByTestId('elements-panel').locator('[data-collection="shapes"]');
   if (await collection.isVisible()) await collection.click();
   return page.getByTestId('elements-shapes');

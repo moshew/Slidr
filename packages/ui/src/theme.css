@@ -120,6 +120,8 @@
   --spacing-font-picker: 360px;
   --spacing-font-row: 44px;
   --spacing-font-list: 396px; /* nine font previews */
+  /* As wide as the window, short of a margin on either side: a popover that must not run off it. */
+  --spacing-in-window: calc(100vw - 4 * var(--spacing));
 
   /* Subtle corners for controls and floating surfaces, with smaller nested corners. */
   --radius-small: 4px;
@@ -232,6 +234,21 @@
 @custom-variant focus-visible (&:focus-visible, &[data-preview~='focus']);
 @custom-variant focus-within (&:focus-within, &[data-preview~='focus']);
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * The list of the font picker no taller than the popover has room for, under the search field and
+ * the popover's padding, and never shorter than one row. Read where it is drawn: the room is the
+ * popover's own variable, which Radix sets on the popover and not on the page.
+ */
+@utility max-h-font-list-room {
+  max-height: max(
+    var(--spacing-font-row),
+    calc(
+      var(--radix-popover-content-available-height, 100vh) - var(--spacing-control) - 8 *
+        var(--spacing)
+    )
+  );
+}
 
 /* The loading placeholder (Skeleton): a field-coloured block with a slow sheen. */
 @utility skeleton {

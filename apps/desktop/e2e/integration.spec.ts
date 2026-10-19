@@ -34,7 +34,7 @@ async function element<T extends Element = Element>(page: Page, id: string): Pro
 
 test('a shape from the library takes text, and row B follows the caret', async ({ page }) => {
   await openApp(page);
-  await page.getByTestId('top-tools-a').locator('[data-tool="insert.elements"]').click();
+  await page.getByTestId('top-tools-b').locator('[data-tool="insert.elements"]').click();
   await page.getByTestId('elements-panel').locator('[data-collection="shapes"]').click();
   await page
     .getByTestId('elements-shapes')

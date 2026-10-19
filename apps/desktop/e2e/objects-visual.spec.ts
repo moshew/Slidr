@@ -182,14 +182,14 @@ for (const theme of themes) {
           await shot(page, `popover-background-${id}`, 700);
           await page.keyboard.press('Escape');
 
-          await page.getByTestId('top-tools-a').locator('[data-tool="insert.elements"]').click();
+          await page.getByTestId('top-tools-b').locator('[data-tool="insert.elements"]').click();
           await page.getByTestId('elements-panel').locator('[data-collection="shapes"]').click();
           await expect(page.getByTestId('elements-shapes')).toBeVisible();
           await shot(page, `popover-shape-library-${id}`);
           await page.keyboard.press('Escape');
 
           await page
-            .getByTestId('top-tools-a')
+            .getByTestId('top-tools-b')
             .getByRole('button', { name: n.line, exact: true })
             .click();
           await expect(page.getByTestId('line-library')).toBeVisible();

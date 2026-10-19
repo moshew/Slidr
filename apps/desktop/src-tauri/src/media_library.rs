@@ -185,9 +185,12 @@ fn resolve_base(policy: Option<&str>, dir: Option<&Path>) -> Option<Url> {
 /// the file decides; only on Windows is there such a policy.
 #[cfg(windows)]
 fn policy_url() -> Option<String> {
-    [windows_registry::LOCAL_MACHINE, windows_registry::CURRENT_USER]
-        .into_iter()
-        .find_map(read_policy_value)
+    [
+        windows_registry::LOCAL_MACHINE,
+        windows_registry::CURRENT_USER,
+    ]
+    .into_iter()
+    .find_map(read_policy_value)
 }
 
 /// The string `MediaLibraryUrl` under `SOFTWARE\Policies\Slidr` of `root`, if it is one. None

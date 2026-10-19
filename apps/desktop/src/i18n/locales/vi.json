@@ -997,7 +997,8 @@
       "library": "Thư viện Slidr",
       "system": "Trên máy tính này",
       "letters": "Hỗ trợ {{language}}",
-      "empty": "Không có phông chữ nào trùng tên"
+      "empty": "Không có phông chữ nào trùng tên",
+      "weights": "Độ đậm của {{family}}"
     },
     "mixed": "Hỗn hợp"
   },
@@ -3317,15 +3318,40 @@
       "label": "Danh sách",
       "bullets": "Danh sách dấu đầu dòng",
       "numbers": "Danh sách đánh số",
-      "options": "Tùy chọn danh sách",
-      "level": "Cấp",
-      "outdent": "Lùi ra một cấp",
-      "indent": "Thụt vào một cấp",
-      "glyph": "Dấu đầu dòng",
-      "glyphDefault": "Dấu đầu dòng chuẩn",
-      "glyphCustom": "Dấu đầu dòng khác",
-      "glyphOther": "Khác",
-      "color": "Màu dấu đầu dòng"
+      "bulletsOptions": "Tùy chọn dấu đầu dòng",
+      "numbersOptions": "Tùy chọn đánh số",
+      "none": "Không có",
+      "bulletStyle": {
+        "filledRound": "Dấu đầu dòng tròn đặc",
+        "hollowRound": "Dấu đầu dòng tròn rỗng",
+        "filledSquare": "Dấu đầu dòng vuông đặc",
+        "hollowSquare": "Dấu đầu dòng vuông rỗng",
+        "star": "Dấu đầu dòng hình sao",
+        "arrow": "Dấu đầu dòng mũi tên",
+        "check": "Dấu đầu dòng dấu kiểm"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "Dấu đầu dòng và Đánh số…",
+      "dialogTitle": "Dấu đầu dòng và Đánh số",
+      "bulletedTab": "Dấu đầu dòng",
+      "numberedTab": "Đánh số",
+      "size": "Kích thước",
+      "ofText": "% so với chữ",
+      "startAt": "Bắt đầu từ",
+      "glyphCustom": "Dấu đầu dòng tùy chỉnh",
+      "glyphOther": "Ký hiệu",
+      "color": "Màu",
+      "ok": "OK",
+      "cancel": "Hủy"
     },
     "spacing": {
       "label": "Giãn cách",

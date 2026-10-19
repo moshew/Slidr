@@ -96,7 +96,10 @@ try {
             if (
               !Array.isArray(runs) ||
               runs.length !== original[p].runs.length ||
-              runs.some((text) => typeof text !== 'string' || !text.trim())
+              runs.some(
+                (text, r) =>
+                  typeof text !== 'string' || (!text.trim() && text !== original[p].runs[r]?.text),
+              )
             ) {
               throw new Error(`${id}/${lang}/${at}/${p}: translated runs do not match the source`);
             }
@@ -161,11 +164,23 @@ try {
         const factor = fits[lang]?.[id]?.[at] ?? 1;
         if (!(factor > 0 && factor <= 1)) throw new Error(`${id}/${lang}/${at}: invalid fit`);
         const lineHeight = strings[at]?.lineHeight;
+        const lineHeights = strings[at]?.lineHeights;
         if (lineHeight !== undefined && !(lineHeight >= 1 && lineHeight <= 2)) {
           throw new Error(`${id}/${lang}/${at}: invalid line height`);
         }
-        for (const p of element.content.paragraphs) {
-          if (lineHeight !== undefined) p.lineHeight = lineHeight;
+        if (
+          lineHeights !== undefined &&
+          (!Array.isArray(lineHeights) ||
+            lineHeights.length !== element.content.paragraphs.length ||
+            lineHeights.some((height) => !(height >= 0.8 && height <= 2)))
+        ) {
+          throw new Error(`${id}/${lang}/${at}: invalid paragraph line heights`);
+        }
+        for (const [pAt, p] of element.content.paragraphs.entries()) {
+          // Mixed display typography can give a large Latin numeral its original tight
+          // leading while leaving room for Arabic letters in the surrounding paragraphs.
+          const leading = lineHeights?.[pAt] ?? lineHeight;
+          if (leading !== undefined) p.lineHeight = leading;
           for (const run of p.runs) {
             // Connected scripts do not take the source's Latin display tracking.
             if (
@@ -192,11 +207,16 @@ try {
         element.frame = patch.frame;
         element.markup = patch.markup;
       }
-      // Shorten editable rules where a translated label needs more room. Pictures and
-      // text boxes retain their composition; only explicitly identified unworded shapes move.
+      // Move explicitly identified rules or text labels where the translated glyphs need
+      // different spacing (for example, the numbered rows of an optician's eye chart).
+      // Picture frames and worded shapes are outside this override's scope.
       for (const patch of frames[lang]?.[id] ?? []) {
         const element = localized.elements[patch.at];
-        if (element?.type !== 'shape' || element.content || element.id !== patch.id) {
+        if (
+          !element ||
+          (element.type !== 'text' && (element.type !== 'shape' || element.content)) ||
+          element.id !== patch.id
+        ) {
           throw new Error(`${id}/${lang}: framing source changed`);
         }
         element.frame = patch.frame;

@@ -997,7 +997,8 @@
       "library": "Pustaka Slidr",
       "system": "Di komputer ini",
       "letters": "Mendukung {{language}}",
-      "empty": "Tidak ada font dengan nama itu"
+      "empty": "Tidak ada font dengan nama itu",
+      "weights": "Ketebalan {{family}}"
     },
     "mixed": "Campuran"
   },
@@ -3317,15 +3318,40 @@
       "label": "Daftar",
       "bullets": "Daftar berpoin",
       "numbers": "Daftar bernomor",
-      "options": "Opsi daftar",
-      "level": "Tingkat",
-      "outdent": "Kurangi satu tingkat",
-      "indent": "Tambah satu tingkat",
-      "glyph": "Poin",
-      "glyphDefault": "Poin standar",
-      "glyphCustom": "Poin lain",
-      "glyphOther": "Lainnya",
-      "color": "Warna penanda"
+      "bulletsOptions": "Opsi poin",
+      "numbersOptions": "Opsi penomoran",
+      "none": "Tidak ada",
+      "bulletStyle": {
+        "filledRound": "Poin bulat penuh",
+        "hollowRound": "Poin bulat berongga",
+        "filledSquare": "Poin persegi penuh",
+        "hollowSquare": "Poin persegi berongga",
+        "star": "Poin bintang",
+        "arrow": "Poin panah",
+        "check": "Poin tanda centang"
+      },
+      "numberStyle": {
+        "decimal": "1. 2. 3.",
+        "decimal-paren": "1) 2) 3)",
+        "upper-roman": "I. II. III.",
+        "upper-alpha": "A. B. C.",
+        "lower-alpha-paren": "a) b) c)",
+        "lower-alpha": "a. b. c.",
+        "lower-roman": "i. ii. iii.",
+        "hebrew": "א. ב. ג."
+      },
+      "dialog": "Poin dan Penomoran…",
+      "dialogTitle": "Poin dan Penomoran",
+      "bulletedTab": "Berpoin",
+      "numberedTab": "Bernomor",
+      "size": "Ukuran",
+      "ofText": "% dari teks",
+      "startAt": "Mulai dari",
+      "glyphCustom": "Poin kustom",
+      "glyphOther": "Simbol",
+      "color": "Warna",
+      "ok": "OK",
+      "cancel": "Batal"
     },
     "spacing": {
       "label": "Spasi",

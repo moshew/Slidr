@@ -20,6 +20,17 @@ const output = resolve(option('--out', 'test-results/culture-localization'));
 const fontsFile = resolve(option('--fonts', join(output, 'fonts.json')));
 const sizesFile = resolve(option('--sizes', join(output, 'sizes.json')));
 const catalog = JSON.parse(readFileSync(catalogFile, 'utf8'));
+// Reuse captures only when the exact slide model that produced them is unchanged.
+const changedFrom = option('--changed-from');
+const previousCatalog = changedFrom
+  ? JSON.parse(readFileSync(resolve(changedFrom), 'utf8'))
+  : undefined;
+const needsCapture = (lang, id) =>
+  !previousCatalog ||
+  (!measureOnly &&
+    (!existsSync(join(output, 'full', lang, `${id}.png`)) ||
+      !existsSync(join(output, 'thumbnails', lang, `${id}.png`)))) ||
+  JSON.stringify(previousCatalog.slides?.[id]?.[lang]) !== JSON.stringify(catalog.slides[id][lang]);
 const locales = resolve(option('--locales', join(desktop, 'scripts', 'design-locales', 'culture')));
 const ids = Object.keys(JSON.parse(readFileSync(join(locales, 'source.json'), 'utf8')));
 const title = option('--title', 'Culture slides');
@@ -48,9 +59,12 @@ const cache = join(output, 'media');
 const fitsFile = join(locales, 'fit.json');
 const fits = JSON.parse(readFileSync(fitsFile, 'utf8'));
 const prior = (name) =>
-  (requested || selectedIds) && existsSync(join(output, name))
+  (requested || selectedIds || changedFrom) && existsSync(join(output, name))
     ? JSON.parse(readFileSync(join(output, name), 'utf8')).filter(
-        (entry) => !drawnLanguages.includes(entry.lang) || !capturedIds.includes(entry.id),
+        (entry) =>
+          !drawnLanguages.includes(entry.lang) ||
+          !capturedIds.includes(entry.id) ||
+          !needsCapture(entry.lang, entry.id),
       )
     : [];
 const findings = prior('findings.json');
@@ -228,7 +242,8 @@ try {
   for (const lang of boardsOnly ? [] : drawnLanguages) {
     mkdirSync(join(output, 'full', lang), { recursive: true });
     mkdirSync(join(output, 'thumbnails', lang), { recursive: true });
-    for (const id of capturedIds) {
+    const languageIds = capturedIds.filter((id) => needsCapture(lang, id));
+    for (const id of languageIds) {
       process.stdout.write(`  ${lang}/${id}\n`);
       await page.setViewportSize({ width: 1920, height: 1080 });
       await visit(`id=${id}&lang=${lang}&w=1920`);
@@ -277,7 +292,7 @@ try {
     if (args.includes('--fit')) writeFileSync(fitsFile, `${JSON.stringify(fits, null, 2)}\n`);
     writeFileSync(join(output, 'findings.json'), JSON.stringify(findings, null, 2));
     process.stdout.write(
-      `${lang}: ${capturedIds.length} slides ${measureOnly ? 'measured' : 'captured at both sizes'}\n`,
+      `${lang}: ${languageIds.length} slides ${measureOnly ? 'measured' : 'captured at both sizes'}\n`,
     );
   }
 

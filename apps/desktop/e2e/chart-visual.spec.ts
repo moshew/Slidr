@@ -68,7 +68,7 @@ for (const lang of ['he', 'en'] as const) {
 
       // The gallery of row A, before there is a chart.
       await page
-        .getByTestId('top-tools-a')
+        .getByTestId('top-tools-b')
         .getByRole('button', { name: names.chart, exact: true })
         .click();
       await expect(page.locator('[data-chart-type="radar"]')).toBeVisible();
@@ -187,7 +187,7 @@ test.describe('at 1366x768', () => {
         const name = `${lang}-${theme}-1366`;
 
         await page
-          .getByTestId('top-tools-a')
+          .getByTestId('top-tools-b')
           .getByRole('button', { name: names.chart, exact: true })
           .click();
         await expect(page.locator('[data-chart-type="radar"]')).toBeVisible();

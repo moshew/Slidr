@@ -33,11 +33,10 @@ const LOGO = `<?xml version="1.0" encoding="UTF-8"?>
   <image href="https://example.com/track.png" width="1" height="1"/>
 </svg>`;
 
-const rowA = (page: Page) => page.getByTestId('top-tools-a');
-
-async function insertLogo(page: Page, name = 'התמונה') {
+/** Inserts the logo from the "Add" tools of row B, which it shows while nothing is selected. */
+async function insertLogo(page: Page, name = 'תמונה') {
   const chooser = page.waitForEvent('filechooser');
-  await rowA(page).getByRole('button', { name }).click();
+  await row(page).getByRole('button', { name, exact: true }).click();
   await (
     await chooser
   ).setFiles({ name: 'logo.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(LOGO) });
