@@ -10,6 +10,8 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
+import { shallow } from 'zustand/shallow';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
 import type { LintFinding, SessionScope } from '@slidr/agent-tools';
 import {
   Ai,
@@ -206,8 +208,15 @@ function isRule(rule: string): rule is Exclude<keyof typeof he.rule, 'other'> {
 function ReportList({ report }: { report: GateReport }) {
   const { t } = useTranslation('ai');
   const editor = useEditor();
-  const deck = useDeck((s) => s.deck);
-  const numberOf = (slideId: string) => targetSlideNumber(deck, { slideId });
+  // The numbers of the report's slides, read after every change to the deck and drawn again only
+  // when one of them changes.
+  const slideIds = [...report.unseen, ...report.findings.map((finding) => finding.slideId)];
+  const numbers = useStoreWithEqualityFn(
+    editor.deck,
+    (s) => slideIds.map((slideId) => targetSlideNumber(s.deck, { slideId })),
+    shallow,
+  );
+  const numberOf = (slideId: string) => numbers[slideIds.indexOf(slideId)] ?? 0;
   const ruleName = (rule: string) => (isRule(rule) ? t(`rule.${rule}`) : t('rule.other', { rule }));
   const row = (key: string, target: ToolTarget, label: string, detail?: string) => (
     <li key={key}>
@@ -530,9 +539,10 @@ function UndoTurn({ txId, disabled }: { txId: string; disabled: boolean }) {
   const { t } = useTranslation('ai');
   const { agent, undone } = aiOf(useEditor());
   // Read again after every change to the deck: undo and redo move the turn off and on the stack.
-  useDeck((s) => s.revision);
+  // As a number, so the button is drawn again only when what it says changes: -1 without a turn.
+  const otherEdits = useDeck(() => agent.undoInfo(txId)?.otherEdits ?? -1);
   const wasUndone = useStore(undone, (s) => s.turns.has(txId));
-  const info = agent.undoInfo(txId);
+  const info = otherEdits < 0 ? undefined : { otherEdits };
   if (!info) {
     return wasUndone ? (
       <span className="self-start text-xs text-ui-fg-muted">{t('turn.undone')}</span>

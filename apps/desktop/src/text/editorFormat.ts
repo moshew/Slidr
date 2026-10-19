@@ -100,6 +100,9 @@ export function paragraphsRange(state: EditorState): TextRange {
   return { from: first.pos + 1, to: last.pos + last.node.nodeSize - 1 };
 }
 
+/** Made once: a segmenter is costly to make, and the word is asked for at every caret move. */
+let words: Intl.Segmenter | undefined;
+
 /**
  * The word the caret is in or beside, by the browser's own word breaking (Hebrew and Latin
  * alike). Null when the selection is not a caret, or the caret is not at a word.
@@ -110,7 +113,8 @@ export function wordRange(state: EditorState): TextRange | null {
   // One character for a line break, as it has one position.
   const text = $from.parent.textBetween(0, $from.parent.content.size, undefined, '\n');
   const offset = $from.parentOffset;
-  for (const part of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)) {
+  words ??= new Intl.Segmenter(undefined, { granularity: 'word' });
+  for (const part of words.segment(text)) {
     const end = part.index + part.segment.length;
     if (part.isWordLike && offset >= part.index && offset <= end)
       return { from: $from.start() + part.index, to: $from.start() + end };

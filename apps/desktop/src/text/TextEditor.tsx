@@ -15,7 +15,7 @@ import { Extension } from '@tiptap/core';
 import { Plugin, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 // By file, not through the shell's index: the index loads the Stage, which loads this editor.
 import { stageElement } from '../shell/stageDom';
 import { flipDirection, syncGrowHeight, toggleBold, toggleMark, type TextTarget } from './actions';
@@ -235,112 +235,129 @@ export function TextEditor({
   // A text box draws its text in a colour of its own where its layout gave it one.
   const ink = element.type === 'text' && element.color ? colorCss(element.color) : defaults?.color;
 
-  const editor = useEditor(
-    {
-      extensions: [
-        ...textExtensions({
-          // Paragraph styles read the theme when they draw; a theme change rebuilds the editor.
-          getTheme: () => theme,
-          styleRef: 'body',
-          wrap: element.type === 'text' ? (element.wrap ?? true) : true,
-          color: ink,
-          weight: defaults?.weight,
-          alignTo: defaults?.alignTo,
-        }),
-        Extension.create({
-          name: 'slidrKeys',
-          addKeyboardShortcuts() {
-            const ed = this.editor;
-            const own: Record<string, () => boolean> = {
-              Tab: () => shiftLevel(ed.state, ed.view.dispatch, 1),
-              'Shift-Tab': () => shiftLevel(ed.state, ed.view.dispatch, -1),
-              Enter: () => leaveEmptyListItem(ed.state, ed.view.dispatch),
-              'Shift-Enter': () => breakLine(ed.state, ed.view.dispatch),
-              Backspace: () => unlistAtStart(ed.state, ed.view.dispatch),
-              'Mod-ArrowLeft': () => wordMoveAtEdge(ed.view, 'left'),
-              'Mod-ArrowRight': () => wordMoveAtEdge(ed.view, 'right'),
-              'Shift-Mod-ArrowLeft': () => wordMoveAtEdge(ed.view, 'left'),
-              'Shift-Mod-ArrowRight': () => wordMoveAtEdge(ed.view, 'right'),
-              // All the text, from the start of its first line to the end of its last, as the
-              // menu selects it: what is typed over it keeps the first paragraph, with its
-              // direction and alignment, and the type the text was set in. The editor's own
-              // "select all" takes the paragraphs too, and what is typed then is bare.
-              'Mod-a': () => {
-                const { doc, tr } = ed.state;
-                ed.view.dispatch(
-                  tr.setSelection(TextSelection.create(doc, 1, doc.content.size - 1)),
-                );
-                return true;
-              },
-              Escape: () => {
-                exitRef.current();
-                return true;
-              },
-            };
-            // The host's keys come first; one that declines leaves the key to the editor.
-            const shortcuts = { ...own };
-            for (const name of Object.keys(keys ?? {})) {
-              shortcuts[name] = () =>
-                Boolean(keysRef.current?.[name]?.()) || (own[name]?.() ?? false);
-            }
-            return shortcuts;
-          },
-          addProseMirrorPlugins() {
-            const ed = this.editor;
-            const target = (): TextTarget => ({
-              kind: 'editor',
-              view: ed.view,
-              bus,
-              slideId,
-              element,
-            });
-            const ctx = (): FormatContext => ({ theme, dir: emptyDir() });
-            // The commands whose keys the user can move (`editorKeys.ts`): which key each is
-            // on is asked at every press, so they are no part of the fixed keymap above.
-            const commands: Record<EditorCommand, () => void> = {
-              undo: () => void bus.undo(),
-              redo: () => void bus.redo(),
-              bold: () => toggleBold(target(), ctx()),
-              italic: () => toggleMark(target(), ctx(), 'italic'),
-              underline: () => toggleMark(target(), ctx(), 'underline'),
-              // SPEC Appendix A: flips the direction of the paragraphs the selection touches.
-              direction: () => flipDirection(target(), ctx()),
-            };
-            return [
-              new Plugin({
-                props: {
-                  handleKeyDown(_view, event) {
-                    const command = editorCommand(event);
-                    if (!command) return false;
-                    commands[command]();
+  // What the editor is built from is read only when it is built, which is when the values it is
+  // built for change (the dependencies of `useEditor` below, and of these). Made for every
+  // render, for every letter typed, the sixteen extensions and the document of the whole text
+  // were made for nothing.
+  const weight = defaults?.weight;
+  const alignTo = defaults?.alignTo;
+  const extensions = useMemo(
+    () => [
+      ...textExtensions({
+        // Paragraph styles read the theme when they draw; a theme change rebuilds the editor.
+        getTheme: () => theme,
+        styleRef: 'body',
+        wrap: element.type === 'text' ? (element.wrap ?? true) : true,
+        color: ink,
+        weight,
+        alignTo,
+      }),
+      Extension.create({
+        name: 'slidrKeys',
+        addKeyboardShortcuts() {
+          const ed = this.editor;
+          const own: Record<string, () => boolean> = {
+            Tab: () => shiftLevel(ed.state, ed.view.dispatch, 1),
+            'Shift-Tab': () => shiftLevel(ed.state, ed.view.dispatch, -1),
+            Enter: () => leaveEmptyListItem(ed.state, ed.view.dispatch),
+            'Shift-Enter': () => breakLine(ed.state, ed.view.dispatch),
+            Backspace: () => unlistAtStart(ed.state, ed.view.dispatch),
+            'Mod-ArrowLeft': () => wordMoveAtEdge(ed.view, 'left'),
+            'Mod-ArrowRight': () => wordMoveAtEdge(ed.view, 'right'),
+            'Shift-Mod-ArrowLeft': () => wordMoveAtEdge(ed.view, 'left'),
+            'Shift-Mod-ArrowRight': () => wordMoveAtEdge(ed.view, 'right'),
+            // All the text, from the start of its first line to the end of its last, as the
+            // menu selects it: what is typed over it keeps the first paragraph, with its
+            // direction and alignment, and the type the text was set in. The editor's own
+            // "select all" takes the paragraphs too, and what is typed then is bare.
+            'Mod-a': () => {
+              const { doc, tr } = ed.state;
+              ed.view.dispatch(tr.setSelection(TextSelection.create(doc, 1, doc.content.size - 1)));
+              return true;
+            },
+            Escape: () => {
+              exitRef.current();
+              return true;
+            },
+          };
+          // The host's keys come first; one that declines leaves the key to the editor.
+          const shortcuts = { ...own };
+          for (const name of Object.keys(keys ?? {})) {
+            shortcuts[name] = () =>
+              Boolean(keysRef.current?.[name]?.()) || (own[name]?.() ?? false);
+          }
+          return shortcuts;
+        },
+        addProseMirrorPlugins() {
+          const ed = this.editor;
+          const target = (): TextTarget => ({
+            kind: 'editor',
+            view: ed.view,
+            bus,
+            slideId,
+            element,
+          });
+          const ctx = (): FormatContext => ({ theme, dir: emptyDir() });
+          // The commands whose keys the user can move (`editorKeys.ts`): which key each is
+          // on is asked at every press, so they are no part of the fixed keymap above.
+          const commands: Record<EditorCommand, () => void> = {
+            undo: () => void bus.undo(),
+            redo: () => void bus.redo(),
+            bold: () => toggleBold(target(), ctx()),
+            italic: () => toggleMark(target(), ctx(), 'italic'),
+            underline: () => toggleMark(target(), ctx(), 'underline'),
+            // SPEC Appendix A: flips the direction of the paragraphs the selection touches.
+            direction: () => flipDirection(target(), ctx()),
+          };
+          return [
+            new Plugin({
+              props: {
+                handleKeyDown(_view, event) {
+                  const command = editorCommand(event);
+                  if (!command) return false;
+                  commands[command]();
+                  return true;
+                },
+                handleDOMEvents: {
+                  // The browser has an undo and a bold of its own for editable text. Its
+                  // history is not the deck's (ADR-006, rule 3), and its formatting is no
+                  // mark of the model. Their keys are kept from it by the shell, also once
+                  // they are no longer the keys of the commands above (`shell/shortcuts.ts`);
+                  // this turns back the same asked for in any other way, where the browser
+                  // lets it be turned back (its own undo it does not).
+                  beforeinput(_view, event) {
+                    if (!/^(?:history|format)/.test(event.inputType)) return false;
+                    event.preventDefault();
                     return true;
                   },
-                  handleDOMEvents: {
-                    // The browser has an undo and a bold of its own for editable text. Its
-                    // history is not the deck's (ADR-006, rule 3), and its formatting is no
-                    // mark of the model. Their keys are kept from it by the shell, also once
-                    // they are no longer the keys of the commands above (`shell/shortcuts.ts`);
-                    // this turns back the same asked for in any other way, where the browser
-                    // lets it be turned back (its own undo it does not).
-                    beforeinput(_view, event) {
-                      if (!/^(?:history|format)/.test(event.inputType)) return false;
-                      event.preventDefault();
-                      return true;
-                    },
-                  },
                 },
-              }),
-              decorationsPlugin(emptyDir),
-              emptyLinePlugin(),
-              blurredSelectionPlugin(),
-              clipboardPlugin({ source: () => sourceContext(bus.deck), dir: emptyDir }),
-              rightClickPlugin(),
-              painterPlugin(() => ({ kind: 'editor', view: ed.view, bus, slideId, element })),
-            ];
-          },
-        }),
-      ],
-      content: richTextToDoc(shownText(element, cell)),
+              },
+            }),
+            decorationsPlugin(emptyDir),
+            emptyLinePlugin(),
+            blurredSelectionPlugin(),
+            clipboardPlugin({ source: () => sourceContext(bus.deck), dir: emptyDir }),
+            rightClickPlugin(),
+            painterPlugin(() => ({ kind: 'editor', view: ed.view, bus, slideId, element })),
+          ];
+        },
+      }),
+    ],
+    // The editor's own: what else the extensions hold is what it was when the editor was built.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme, ink, weight, alignTo],
+  );
+  const content = useMemo(
+    () => richTextToDoc(shownText(element, cell)),
+    // The same: an editor that is built takes the text as it is then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme, ink, weight, alignTo],
+  );
+
+  const editor = useEditor(
+    {
+      extensions,
+      content,
       editorProps: {
         attributes: {
           'data-text-editor': '',
@@ -445,7 +462,7 @@ export function TextEditor({
         kept.current = { anchor, head, focused: true };
       },
     },
-    [theme, ink, defaults?.weight, defaults?.alignTo],
+    [theme, ink, weight, alignTo],
   );
 
   useEffect(() => {

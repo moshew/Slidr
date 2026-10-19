@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import { locateElement, type Deck } from '@slidr/model';
+import type { Deck, Element, Slide } from '@slidr/model';
 import {
   BookOpen,
   Eye,
@@ -33,14 +33,49 @@ interface Call {
   target?: ToolTarget;
 }
 
+/*
+ * Every chip of a chat asks for the number of its slide after every change to the deck, and each
+ * one walking the slides, and the elements of each, was a walk for every chip of a long chat. What
+ * they ask is found once: where each slide is, for each deck, and which elements a slide holds, for
+ * each slide, which a change to another slide leaves the object it was (ADR-007).
+ */
+const slidePlaces = new WeakMap<Deck, Map<string, number>>();
+const slideElements = new WeakMap<Slide, Set<string>>();
+
+function placeOf(deck: Deck, slideId: string): number {
+  let places = slidePlaces.get(deck);
+  if (!places) {
+    places = new Map(deck.slides.map((slide, i) => [slide.id, i]));
+    slidePlaces.set(deck, places);
+  }
+  return places.get(slideId) ?? -1;
+}
+
+/** The ids of the elements of a slide, the ones inside groups too. */
+function elementsOf(slide: Slide): Set<string> {
+  let ids = slideElements.get(slide);
+  if (!ids) {
+    const found = new Set<string>();
+    const walk = (elements: readonly Element[]) => {
+      for (const element of elements) {
+        found.add(element.id);
+        if (element.type === 'group') walk(element.children);
+      }
+    };
+    walk(slide.elements);
+    ids = found;
+    slideElements.set(slide, ids);
+  }
+  return ids;
+}
+
 /** The number of the slide a call points at, from 1; 0 when it points at none that exists. */
 export function targetSlideNumber(deck: Deck, target: ToolTarget | undefined): number {
   if (!target) return 0;
+  if (target.slideId) return placeOf(deck, target.slideId) + 1;
   const ids = target.elementIds ?? [];
-  const index = target.slideId
-    ? deck.slides.findIndex((s) => s.id === target.slideId)
-    : deck.slides.findIndex((s) => ids.some((id) => locateElement(s.elements, id)));
-  return index + 1;
+  if (ids.length === 0) return 0;
+  return deck.slides.findIndex((slide) => ids.some((id) => elementsOf(slide).has(id))) + 1;
 }
 
 function isAppTool(name: string): name is keyof typeof he.tool {

@@ -139,17 +139,21 @@ export function StageRegion() {
     slideId ? s.deck.slides.findIndex((slide) => slide.id === slideId) + 1 : 0,
   );
   const total = useDeck((s) => s.deck.slides.length);
-  const selected = useDeck((s) => {
-    if (elementIds.length > 1)
-      return t('stage.selected', { what: t('selection.multiple', { n: elementIds.length }) });
+  // The name of the one selected element, read after every change to the deck; the words around
+  // it are put together after, once for each change of it and not for each change of the deck.
+  const selectedName = useDeck((s) => {
     const slide = slideId ? findSlide(s.deck, slideId) : undefined;
     const one = slide && elementIds.length === 1 ? findElement(slide, elementIds[0]!) : undefined;
-    return one
-      ? t('stage.selected', {
-          what: [t(`selection.${kind}`), one.name ?? layerSnippet(one)].filter(Boolean).join(' · '),
-        })
-      : '';
+    return one ? (one.name ?? layerSnippet(one) ?? '') : undefined;
   });
+  const selected =
+    elementIds.length > 1
+      ? t('stage.selected', { what: t('selection.multiple', { n: elementIds.length }) })
+      : selectedName !== undefined
+        ? t('stage.selected', {
+            what: [t(`selection.${kind}`), selectedName].filter(Boolean).join(' · '),
+          })
+        : '';
 
   return (
     <ContextMenu>

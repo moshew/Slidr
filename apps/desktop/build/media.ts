@@ -13,6 +13,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MEDIA_LIBRARY_URL } from '@slidr/media-library';
+import { catalogChunks } from './mediaChunks.ts';
 import type { Plugin } from 'vite';
 
 /*
@@ -300,18 +301,14 @@ export function stageLibrary(
       files.set(`templates/${path}`, Buffer.from(text));
     }
   }
-  for (const [path, bytes] of files) {
+  for (const path of files.keys()) {
     if (libraryPath(path) !== path) throw new Error(`Not a plain path for the library: ${path}`);
-    if (bytes.length > MAX_FILE_BYTES) {
-      throw new Error(
-        `${path} is ${bytes.length} bytes; Cloudflare Pages takes up to ${MAX_FILE_BYTES}.`,
-      );
-    }
   }
+  const physical = catalogChunks(files, MAX_FILE_BYTES);
   const manifest = manifestOf(files, published);
   rmSync(target, { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
-  for (const [path, bytes] of files) {
+  for (const [path, bytes] of physical) {
     const file = join(target, ...path.split('/'));
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, bytes);

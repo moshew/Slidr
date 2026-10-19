@@ -904,6 +904,35 @@ function LineView({ element: e }: { element: LineElement }) {
 // ---------------------------------------------------------------------------------------------
 // SVG
 
+/** How many cleaned pictures `preparedSvg` keeps. */
+const PREPARED_SVGS = 64;
+/** Cleaned pictures by their markup, and by their colours under it; the latest used last. */
+const preparedSvgs = new Map<string, Map<string, DocumentFragment>>();
+
+/**
+ * The picture of a markup cleaned and recoloured (`prepareSvg`), kept between the slides that
+ * draw it and between the times a slide is drawn: cleaning a large picture took milliseconds, and
+ * a step to another slide cleaned it again. The nodes kept here are not to be drawn or changed:
+ * whoever draws the picture draws a copy of them (`cloneNode`, the very nodes that were cleaned).
+ */
+function preparedSvg(markup: string, overrides: SvgElement['colorOverrides']): DocumentFragment {
+  const colours = overrides && Object.keys(overrides).length ? JSON.stringify(overrides) : '';
+  let byColours = preparedSvgs.get(markup);
+  if (byColours) preparedSvgs.delete(markup);
+  else byColours = new Map();
+  preparedSvgs.set(markup, byColours);
+  if (preparedSvgs.size > PREPARED_SVGS) {
+    const oldest = preparedSvgs.keys().next();
+    if (!oldest.done) preparedSvgs.delete(oldest.value);
+  }
+  let picture = byColours.get(colours);
+  if (!picture) {
+    picture = prepareSvg(markup, overrides);
+    byColours.set(colours, picture);
+  }
+  return picture;
+}
+
 /**
  * The picture of an `svg` element, in a shadow root of its own, like the content of an `html`
  * element. The nodes that were cleaned are the nodes that are drawn (`prepareSvg`); a stylesheet
@@ -921,10 +950,18 @@ function SvgPicture({ e, style }: { e: SvgElement; style: CSSProperties }) {
   } = e;
   // Cleaned and sized as the slide is drawn, so a slide drawn ahead and hidden (`Activity`) has
   // its pictures ready before it is shown, when only this effect runs.
+  const prepared = useMemo(
+    () => preparedSvg(markup ?? '', colorOverrides),
+    [markup, colorOverrides],
+  );
+  // Only a picture that stretches is drawn for the size of its frame: any other is scaled to it,
+  // and a resize leaves it as it is.
+  const sw = stretch ? w : 0;
+  const sh = stretch ? h : 0;
   const picture = useMemo(() => {
-    const prepared = prepareSvg(markup ?? '', colorOverrides);
-    return stretch ? stretchSvg(prepared, stretch, { w, h }) : prepared;
-  }, [markup, colorOverrides, stretch, w, h]);
+    const copy = prepared.cloneNode(true) as DocumentFragment;
+    return stretch ? stretchSvg(copy, stretch, { w: sw, h: sh }) : copy;
+  }, [prepared, stretch, sw, sh]);
   /** The picture the shadow root holds. */
   const drawn = useRef<DocumentFragment | null>(null);
   useLayoutEffect(() => {
@@ -1055,9 +1092,14 @@ function pairNodes(tree: Node, twin: Node, pairs = new WeakMap<Node, Node>()): W
 
 function FrameContent({ e, style }: { e: HtmlElement; style: CSSProperties }) {
   const ctx = useRenderContext();
+  // What the document is written from, and nothing else of the element: a new document loads the
+  // frame again and runs its scripts from the start, and a move gives the element a new object
+  // for every frame of the drag.
+  const { markup, styles } = e;
+  const { w, h } = e.natural ?? e.frame;
   const doc = useMemo(
-    () => frameDocument(e, ctx, e.natural ?? { w: e.frame.w, h: e.frame.h }),
-    [e, ctx],
+    () => frameDocument({ markup, styles }, ctx, { w, h }),
+    [markup, styles, ctx, w, h],
   );
   return (
     <iframe

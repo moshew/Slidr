@@ -366,7 +366,10 @@ describe('stepFrom', () => {
   });
 
   it('knows a match again after the deck changed elsewhere', () => {
-    const again = findMatches(deck, 'world', PLAIN);
+    // Every slide a new object, as a change leaves the slides it touched: the matches in them are
+    // found again, as new objects.
+    const changed = { ...deck, slides: deck.slides.map((slide) => ({ ...slide })) };
+    const again = findMatches(changed, 'world', PLAIN);
     expect(again[3]).not.toBe(matches[3]);
     expect(sameMatch(again[3]!, matches[3]!)).toBe(true);
     expect(sameMatch(again[3]!, matches[4]!)).toBe(false);

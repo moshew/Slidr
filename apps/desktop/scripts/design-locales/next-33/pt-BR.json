@@ -55,18 +55,7 @@
     "NOVIDADE NO BLOG · TRABALHANDO EM CASA",
     "Nº 27",
     {
-      "paragraphs": [
-        [
-          "Sua casa não é"
-        ],
-        [
-          "um escritório"
-        ],
-        [
-          "Essa é a ideia",
-          "."
-        ]
-      ]
+      "paragraphs": [["Sua casa não é"], ["um escritório"], ["Essa é a ideia", "."]]
     },
     "Sete pequenos hábitos que transformaram o trabalho\nna sala em uma rotina calma e constante.",
     "ML",
@@ -145,10 +134,10 @@
     "Dúvidas? Pergunte a Michal: 054-555-0133"
   ],
   "course": [
-    "$ 490 para\nmadrugador",
+    "$490\nAntecipado",
     "INSCRIÇÕES ABERTAS",
     "COORTE 12 • PRIMAVERA DE 2027",
-    "Marketing digital, zero\npara fazer campanha.",
+    "Marketing digital,\ndo zero à campanha.",
     "Um curso noturno prático para pessoas que desejam\nconstruir, executar e medir campanhas reais.",
     "12",
     "sessões",
@@ -208,7 +197,7 @@
     "Almoço e transporte incluídos",
     "Inscreva-se: 03-555-0142",
     "As vagas são limitadas",
-    "$520 por\nsessão"
+    "$520\npor temporada"
   ],
   "quiz": [
     "PERGUNTA 3 DE 10",
@@ -216,7 +205,7 @@
     "100 pontos",
     "Qual animal é\no mais rápido\nem terra?",
     "20",
-    "SEG",
+    "s",
     "A",
     "Leão",
     "B",
@@ -252,7 +241,7 @@
     "Parabéns aos nossos formandos!"
   ],
   "parents": [
-    "15\nminutos",
+    "15\nmin",
     "ESCOLA MÉDIA RIMONIM • PERÍODO DE INVERNO",
     "Noite dos Pais",
     "Terça-feira, 12 de janeiro de 2027",
@@ -280,7 +269,7 @@
     "Individual, mediante agendamento"
   ],
   "tutoring": [
-    "Aulas particulares\nde matemática",
+    "Aulas de\nmatemática",
     "7ª a 12ª séries • Preparação para exames em todos os níveis",
     "Michal Oren • Graduado em matemática • 8 anos de ensino",
     "$45",
@@ -297,7 +286,7 @@
     "Michal\n052-555-0187"
   ],
   "kindergarten": [
-    "Jardim de infância abalado",
+    "Jardim de infância Shaked",
     "De 3 a 6 anos",
     "As inscrições\npara 2027–28\nestão abertas!",
     "Domingo a quinta • 7h30 – 16h30",
@@ -310,11 +299,11 @@
   ],
   "certificate": [
     "Certificado de Excelência",
-    "É ORGULHOSAMENTE APRESENTADO A",
+    "CONCEDIDO A",
     "Maya Rosen",
     "Pelas excelentes realizações em ciências, pela\ncuriosidade sem fim e por ser um bom amigo o ano todo.",
     "30 de junho de 2027",
-    "Dra.",
+    "Dra. Ruth Avidan",
     "Diretor, Escola Alonim",
     "Noa Sharon",
     "Professor da turma, 6B"
@@ -322,8 +311,8 @@
   "volunteer": [
     "100\nmudas",
     "BEM-VINDOS A TODOS",
-    "Vamos plantar um\nbloco mais verde.",
-    "Uma manhã, cem mudas e uma nova horta\ncomunitária em nossa rua. Traga suas mãos.",
+    "Um bairro\nmais verde.",
+    "Cem mudas e uma nova horta comunitária na nossa rua.\nVenha plantar com a gente.",
     "Sexta-feira, 19 de março de 2027 • 8h30 ao meio-dia",
     "A horta comunitária, 4 Olive Street",
     "Conte comigo →",
@@ -332,7 +321,7 @@
   "donation": [
     "Arrecadação de fundos comunitários • NEVE OREN",
     "Um novo centro juvenil para Neve Oren",
-    "AUMENTADO ATÉ AGORA",
+    "ARRECADADO ATÉ AGORA",
     "$121,600",
     "76% da meta",
     "Meta: US$ 160.000",
@@ -346,10 +335,10 @@
     "A campanha termina em 31 de dezembro de 2026"
   ],
   "blooddrive": [
-    "UNIDADE DE SANGUE COMUNITÁRIA",
+    "CAMPANHA DE DOAÇÃO DE SANGUE",
     "Doe sangue,\nsalve vidas.",
     "3",
-    "Cada doação pode salvar\naté três vidas.",
+    "Uma doação de sangue\npode salvar até três vidas.",
     "Meia hora do seu dia.",
     "QUANDO",
     "Terça-feira, 16 de fevereiro de 2027 • 16h às 21h",
@@ -379,18 +368,18 @@
   "cleanup": [
     "DIA DE LIMPEZA COMUNITÁRIA",
     "Vamos limpar\na praia.",
-    "Uma manhã, malas cheias e costa limpa para\ntodos. Famílias e crianças são bem-vindas.",
+    "Uma manhã para deixar a praia limpa.\nFamílias e crianças são bem-vindas.",
     "Sexta-feira, 14 de maio de 2027",
     "8h às 11h",
     "Praia Carmel, Haifa",
     "O QUE TRAZER",
     "Chapéu, água, protetor solar e sapatos fechados",
     "Inscreva-se com Dana: 052-555-0171 • Encontro na cabana do salva-vidas",
-    "LUVAS E\nBOLSAS\nPOR NÓS"
+    "LUVAS E\nSACOS\nINCLUÍDOS"
   ],
   "adoption": [
     "RESGATE DE PEQUENAS PATAS",
-    "Dia da\nAdoção",
+    "Adote\num amigo",
     "Um novo melhor amigo está esperando.",
     "Sexta-feira, 5 de março de 2027",
     "10h – 14h",
@@ -402,7 +391,7 @@
   ],
   "swap": [
     "Troca de roupas",
-    "Traga um pedaço, leve um pedaço.",
+    "Traga uma peça de roupa e leve outra.",
     "Sexta-feira, 19 de fevereiro de 2027 • 9h30 às 13h",
     "Centro Comunitário Neve Oren, 12 Rimon Street",
     "TRÊS REGRAS SIMPLES",
@@ -412,8 +401,8 @@
     "Pendure-os no trilho, por tamanho",
     "3",
     "Pegue o que cabe. Não é necessário dinheiro",
-    "TUDO GRATUITO",
-    "As sobras são doadas"
+    "GRÁTIS",
+    "O restante será doado"
   ],
   "fooddrive": [
     "VOLUNTÁRIOS NEVE OREN • PÁSCOA 2027",
@@ -426,7 +415,7 @@
     "azeitona ou canola",
     "Comida para bebê",
     "fórmula e cereais",
-    "Nada aberto ou fora da data, por favor",
+    "Apenas produtos fechados e dentro da validade",
     "Entrega: centro comunitário • Mercearia Rimon",
     "Coleta até\n15 de abril"
   ],
@@ -436,7 +425,7 @@
     "Cinco cadeiras, dois anos de decisões sobre sua rua.",
     "TERÇA-FEIRA",
     "9 de março de 2027",
-    "PESQUISAS ABERTAS",
+    "HORÁRIO",
     "7h – 21h",
     "ONDE",
     "Centro Neve Oren",
@@ -457,9 +446,9 @@
     "CENTRO COMUNITÁRIO NEVE OREN",
     "QUARTA TEMPORADA • 2027/28",
     "FUTEBOL PARA VIZINHOS",
+    "LIGA DO",
     "BAIRRO",
-    "LIGA",
-    "7-A-SIDE • TODA SEXTA-FEIRA",
+    "FUTEBOL 7 • TODA SEXTA",
     "INÍCIO",
     "3 de setembro de 2027",
     "Sexta-feira • 16h",
@@ -492,14 +481,14 @@
     "Não é necessária reserva. Apenas passe por aqui.",
     "Veja pessoalmente.",
     "14 Oak Lane, Maple Grove",
-    "PREÇO PEDIDO",
+    "PREÇO DE VENDA",
     "$1,250,000"
   ],
   "menu": [
     "BISTRO TAMAR",
     "Dom a Qui • 12h às 16h • 04-555-0142",
     "Cardápio de almoço",
-    "Iniciantes",
+    "Entradas",
     "Sopa de lentilha",
     "$9",
     "cominho, limão",
@@ -509,7 +498,7 @@
     "Berinjela",
     "$10",
     "carbonizado, tahine, tomate",
-    "Rede elétrica",
+    "Pratos principais",
     "Schnitzel",
     "$19",
     "frango, purê amanteigado",
@@ -529,17 +518,17 @@
     "Sorvete de limão",
     "$7",
     "hortelã fresca",
-    "TRÊS CURSOS\n$29"
+    "TRÊS PRATOS\n$29"
   ],
   "cafe": [
-    "Seu décimo café é\npor nossa conta.",
+    "Seu décimo café\né por nossa conta.",
     "CARTÃO Nº 0417",
     "8",
     "9",
     "GRÁTIS",
     "Um selo para\ncada xícara. O\ndécimo é o\nnosso deleite.",
     "CARTÃO FIDELIDADE",
-    "Café Batido",
+    "Café Shaked",
     "ABERTO",
     "Dom a Qui, das 6h30 às 19h • Sexta, até 14h",
     "ENCONTRE-NOS",

@@ -55,18 +55,7 @@
     "NOVITÀ SUL BLOG · LAVORARE DA CASA",
     "N. 27",
     {
-      "paragraphs": [
-        [
-          "Casa non è"
-        ],
-        [
-          "un ufficio"
-        ],
-        [
-          "È proprio questo il punto",
-          "."
-        ]
-      ]
+      "paragraphs": [["Casa non è"], ["un ufficio"], ["È proprio questo il punto", "."]]
     },
     "Sette piccole abitudini che hanno trasformato il lavoro\ndal salotto in una routine tranquilla e costante.",
     "ML",
@@ -145,10 +134,10 @@
     "Domande? Chiedi a Michal: 054-555-0133"
   ],
   "course": [
-    "$490 per chi prenota\nin anticipo",
+    "$490\nPrezzo lancio",
     "LE ISCRIZIONI SONO APERTE",
     "COORTE 12 • PRIMAVERA 2027",
-    "Marketing digitale,\nzero campagne.",
+    "Marketing digitale,\nda zero alla campagna.",
     "Un corso serale pratico per persone che vogliono\ncostruire, gestire e misurare campagne reali.",
     "12",
     "sessioni",
@@ -208,7 +197,7 @@
     "Pranzo e trasporto inclusi",
     "Iscriviti: 03-555-0142",
     "I posti sono limitati",
-    "$520 a\nsessione"
+    "$520\nper turno"
   ],
   "quiz": [
     "DOMANDA 3 DI 10",
@@ -216,7 +205,7 @@
     "100 punti",
     "Quale animale è\nil più veloce\nsulla terra?",
     "20",
-    "SEC",
+    "s",
     "A",
     "Leone",
     "B",
@@ -252,7 +241,7 @@
     "Congratulazioni ai nostri diplomati!"
   ],
   "parents": [
-    "15\nminuti",
+    "15\nmin",
     "SCUOLA MEDIA DI RIMONIM • TERMINE INVERNALE",
     "Serata dei genitori",
     "Martedì 12 gennaio 2027",
@@ -280,7 +269,7 @@
     "Lezioni individuali, su appuntamento"
   ],
   "tutoring": [
-    "Lezioni private\ndi matematica",
+    "Ripetizioni\ndi matematica",
     "Classi 7–12 • Preparazione agli esami a tutti i livelli",
     "Michal Oren • Laureato in matematica • 8 anni di insegnamento",
     "$45",
@@ -297,7 +286,7 @@
     "Michal\n052-555-0187"
   ],
   "kindergarten": [
-    "Asilo scosso",
+    "Asilo Shaked",
     "Età 3–6",
     "Le iscrizioni per\nl'anno 2027–28\nsono aperte!",
     "Da domenica a giovedì • 7:30 – 16:30",
@@ -310,7 +299,7 @@
   ],
   "certificate": [
     "Certificato di Eccellenza",
-    "VIENE PRESENTATO CON ORGOGLIO",
+    "CONFERITO A",
     "Maya Rosen",
     "Per risultati eccezionali nella scienza, per la curiosità\ninfinita e per essere un buon amico tutto l'anno.",
     "30 giugno 2027",
@@ -320,10 +309,10 @@
     "Insegnante di classe, 6B"
   ],
   "volunteer": [
-    "100\nalberelli",
+    "100\npiantine",
     "TUTTI BENVENUTI",
-    "Piantiamo un\nblocco più verde.",
-    "Una mattina, cento alberelli e un nuovo orto\ncomunitario nella nostra strada. Porta le mani.",
+    "Un quartiere\npiù verde.",
+    "Cento piantine e un nuovo giardino per il quartiere.\nVieni a piantare insieme a noi.",
     "venerdì 19 marzo 2027 • 8:30-12:00",
     "L'orto comunitario, 4 Olive Street",
     "Contami →",
@@ -332,7 +321,7 @@
   "donation": [
     "RACCOLTA FONDI COMUNITARIA • NEVE OREN",
     "Un nuovo centro giovanile per Neve Oren",
-    "SOLLEVATO FINORA",
+    "RACCOLTO FINORA",
     "$121,600",
     "76% del gol",
     "Obiettivo: $ 160.000",
@@ -346,10 +335,10 @@
     "La campagna chiude il 31 dicembre 2026"
   ],
   "blooddrive": [
-    "RACCOLTA DEL SANGUE COMUNITARIO",
+    "DONAZIONE DI SANGUE",
     "Dona il sangue,\nsalva vite.",
     "3",
-    "Ogni donazione può\nsalvare fino a tre vite.",
+    "Una donazione di sangue\npuò salvare fino a tre vite.",
     "Mezz'ora della tua giornata.",
     "QUANDO",
     "Martedì 16 febbraio 2027 • 16:00-21:00",
@@ -379,18 +368,18 @@
   "cleanup": [
     "GIORNATA DI PULIZIA DELLA COMUNITÀ",
     "Puliamo la\nspiaggia.",
-    "Una mattina, borse piene e spiaggia pulita per\ntutti. Famiglie e bambini sono i benvenuti.",
+    "Una mattina per pulire la spiaggia insieme.\nFamiglie e bambini sono i benvenuti.",
     "Venerdì 14 maggio 2027",
     "8–11",
     "Carmel Beach, Haifa",
     "COSA PORTARE",
     "Cappello, acqua, crema solare e scarpe chiuse",
     "Iscriviti con Dana: 052-555-0171 • Incontro al rifugio del bagnino",
-    "GUANTI E\nBORSE\nOFFRIAMO NOI"
+    "GUANTI E\nSACCHI\nINCLUSI"
   ],
   "adoption": [
     "SALVATAGGIO DELLE PICCOLE ZAMPE",
-    "Giorno\ndell'adozione",
+    "Adotta\nun amico",
     "Un nuovo migliore amico ti sta aspettando.",
     "Venerdì 5 marzo 2027",
     "10:00 – 14:00",
@@ -402,7 +391,7 @@
   ],
   "swap": [
     "Scambio di vestiti",
-    "Porta un pezzo, prendi un pezzo.",
+    "Porta un capo e prendine un altro.",
     "venerdì 19 febbraio 2027 • 9:30-13:00",
     "Centro comunitario Neve Oren, 12 Rimon Street",
     "TRE SEMPLICI REGOLE",
@@ -412,12 +401,12 @@
     "Appendili al binario, in base alla dimensione",
     "3",
     "Prendi ciò che va bene. Non servono soldi",
-    "TUTTO GRATUITO",
-    "Gli avanzi vengono donati"
+    "GRATIS",
+    "Il resto sarà donato"
   ],
   "fooddrive": [
     "VOLONTARI NEVE OREN • PASQUA 2027",
-    "Colletta alimentare\nnatalizia",
+    "Raccolta di\nalimenti",
     "Cibo in scatola",
     "tonno, ceci, verdure",
     "Pasta e riso",
@@ -426,7 +415,7 @@
     "oliva o colza",
     "Alimenti per bambini",
     "formula e cereali",
-    "Niente è aperto o ha superato la data, per favore",
+    "Solo confezioni integre e non scadute",
     "Ritrovo: il centro comunitario • Negozio di generi alimentari Rimon",
     "Raccolta fino\nal 15 aprile"
   ],
@@ -436,7 +425,7 @@
     "Cinque posti, due anni di decisioni sulla tua strada.",
     "MARTEDÌ",
     "9 marzo 2027",
-    "SONDAGGI APERTI",
+    "ORARIO DI VOTO",
     "7:00 – 21:00",
     "DOVE",
     "Centro Neve Oren",
@@ -457,9 +446,9 @@
     "CENTRO COMUNITARIO NEVE OREN",
     "QUARTA STAGIONE • 2027/28",
     "CALCIO PER VICINI",
-    "QUARTIERE",
     "CAMPIONATO",
-    "7 A 7 • TUTTI I VENERDI",
+    "DI QUARTIERE",
+    "CALCIO A 7 • OGNI VENERDÌ",
     "CALCIO D'INIZIO",
     "3 settembre 2027",
     "venerdì • 16:00",
@@ -474,7 +463,7 @@
     "anni",
     "$180",
     "a squadra, stagione intera",
-    "Cercasi portieri!"
+    "Cerchiamo portieri!"
   ],
   "openhouse": [
     "APERTE",
@@ -492,7 +481,7 @@
     "Non è necessaria la prenotazione. Passa e basta.",
     "Guardalo di persona.",
     "14 Oak Lane, Maple Grove",
-    "PREZZO RICHIESTO",
+    "PREZZO DI VENDITA",
     "$1,250,000"
   ],
   "menu": [
@@ -509,7 +498,7 @@
     "Melanzane",
     "$10",
     "carbonizzato, tahini, pomodoro",
-    "Rete",
+    "Piatti principali",
     "Cotoletta",
     "$19",
     "pollo, purè al burro",
@@ -536,7 +525,7 @@
     "CARTA N. 0417",
     "8",
     "9",
-    "GRATUITO",
+    "GRATIS",
     "Un francobollo\nper ogni tazza.\nIl decimo è il\nnostro regalo.",
     "CARTA FEDELTÀ",
     "Caffè Shaked",

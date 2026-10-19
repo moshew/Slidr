@@ -183,6 +183,33 @@ const DEFAULT_LABELS: FilmstripLabels = {
   move: 'Move slides',
 };
 
+/**
+ * The labels, each said once for the same words. The strip asks for the label of every slide in
+ * view and of every gap between two each time it is drawn, and a label in the UI language is a
+ * lookup and a format of its own: some thirty five of them a frame.
+ */
+function rememberedLabels(labels: FilmstripLabels): FilmstripLabels {
+  const remember = <A extends (string | number)[]>(say: (...args: A) => string) => {
+    const said = new Map<string, string>();
+    return (...args: A): string => {
+      const key = args.join('\n');
+      let text = said.get(key);
+      if (text === undefined) {
+        text = say(...args);
+        said.set(key, text);
+      }
+      return text;
+    };
+  };
+  return {
+    ...labels,
+    slide: remember(labels.slide),
+    transitionInto: remember(labels.transitionInto),
+    addTransition: remember(labels.addTransition),
+    animations: remember(labels.animations),
+  };
+}
+
 interface Drag {
   pointerId: number;
   startX: number;
@@ -230,21 +257,7 @@ function SlideNumber({ index }: { index: number }) {
   );
 }
 
-const Thumb = memo(function Thumb({
-  deck,
-  slideIndex,
-  thumbWidth,
-  thumbHeight,
-  selected,
-  current,
-  walked,
-  resolveAsset,
-  label,
-  hiddenLabel,
-  transitionLabel,
-  animationsLabel,
-  mark,
-}: {
+interface ThumbProps {
   deck: Deck;
   slideIndex: number;
   thumbWidth: number;
@@ -259,7 +272,45 @@ const Thumb = memo(function Thumb({
   transitionLabel: string;
   animationsLabel: (count: number) => string;
   mark?: (slideId: string) => ReactNode;
-}) {
+}
+
+/**
+ * Whether a thumbnail is drawn the same. The deck is a new object with every change to any of
+ * its slides (ADR-007), and a thumbnail is drawn from its own slide, from what the deck lends
+ * every slide (as `SlideRenderer` has it), and from how many slides there are.
+ */
+function sameThumb(a: ThumbProps, b: ThumbProps): boolean {
+  const keys = Object.keys(a) as (keyof ThumbProps)[];
+  if (keys.length !== Object.keys(b).length) return false;
+  if (!keys.every((key) => key === 'deck' || a[key] === b[key])) return false;
+  const x = a.deck;
+  const y = b.deck;
+  return (
+    x.slides[a.slideIndex] === y.slides[b.slideIndex] &&
+    x.slides.length === y.slides.length &&
+    x.theme === y.theme &&
+    x.assets === y.assets &&
+    x.layouts === y.layouts &&
+    x.meta === y.meta &&
+    x.size === y.size
+  );
+}
+
+const Thumb = memo(function Thumb({
+  deck,
+  slideIndex,
+  thumbWidth,
+  thumbHeight,
+  selected,
+  current,
+  walked,
+  resolveAsset,
+  label,
+  hiddenLabel,
+  transitionLabel,
+  animationsLabel,
+  mark,
+}: ThumbProps) {
   const slide = deck.slides[slideIndex];
   if (!slide) return null;
   const markId = `filmstrip-mark-${slide.id}`;
@@ -371,7 +422,7 @@ const Thumb = memo(function Thumb({
       )}
     </div>
   );
-});
+}, sameThumb);
 
 /**
  * The transition into a slide, drawn where it plays (FLM-04): in the gap between the slide and
@@ -594,12 +645,13 @@ export function Filmstrip({
   selection,
   resolveAsset,
   clipboard,
-  labels = DEFAULT_LABELS,
+  labels: given = DEFAULT_LABELS,
   mark,
   onTransition,
   transitionGlyph,
   className,
 }: FilmstripProps) {
+  const labels = useMemo(() => rememberedLabels(given), [given]);
   /** The strip: it scrolls and takes the pointer. */
   const scroller = useRef<HTMLDivElement>(null);
   /** The list of slides in it: it takes the keyboard. */

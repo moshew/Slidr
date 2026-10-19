@@ -25,6 +25,8 @@ const expected = read(join(copyDir, 'source.json'));
 const fits = read(join(copyDir, 'fit.json'));
 const artFile = join(copyDir, 'art.json');
 const art = existsSync(artFile) ? read(artFile) : {};
+const framesFile = join(copyDir, 'frames.json');
+const frames = existsSync(framesFile) ? read(framesFile) : {};
 const textElements = (slide) => slide.elements.filter((element) => element.content?.paragraphs);
 const plain = (element) =>
   element.content.paragraphs.map((p) => p.runs.map((r) => r.text).join('')).join('\n');
@@ -158,7 +160,12 @@ try {
       textElements(localized).forEach((element, at) => {
         const factor = fits[lang]?.[id]?.[at] ?? 1;
         if (!(factor > 0 && factor <= 1)) throw new Error(`${id}/${lang}/${at}: invalid fit`);
+        const lineHeight = strings[at]?.lineHeight;
+        if (lineHeight !== undefined && !(lineHeight >= 1 && lineHeight <= 2)) {
+          throw new Error(`${id}/${lang}/${at}: invalid line height`);
+        }
         for (const p of element.content.paragraphs) {
+          if (lineHeight !== undefined) p.lineHeight = lineHeight;
           for (const run of p.runs) {
             // Connected scripts do not take the source's Latin display tracking.
             if (
@@ -184,6 +191,15 @@ try {
         }
         element.frame = patch.frame;
         element.markup = patch.markup;
+      }
+      // Shorten editable rules where a translated label needs more room. Pictures and
+      // text boxes retain their composition; only explicitly identified unworded shapes move.
+      for (const patch of frames[lang]?.[id] ?? []) {
+        const element = localized.elements[patch.at];
+        if (element?.type !== 'shape' || element.content || element.id !== patch.id) {
+          throw new Error(`${id}/${lang}: framing source changed`);
+        }
+        element.frame = patch.frame;
       }
       Slide.parse(localized);
       catalog.slides[id][lang] = localized;

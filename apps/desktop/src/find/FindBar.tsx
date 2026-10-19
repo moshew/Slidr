@@ -1,11 +1,4 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type KeyboardEvent,
-  type MouseEvent,
-} from 'react';
+import { useEffect, useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from 'zustand';
 import {
@@ -67,16 +60,14 @@ function OpenBar() {
   const { t } = useTranslation('find');
   const editor = useEditor();
   const session = useStore(findSession);
-  const deck = useDeck((s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
   const { replacing, query, replacement, matchCase, wholeWord, outcome, focusRequest } = session;
   const bar = useRef<HTMLDivElement>(null);
   const findField = useRef<HTMLInputElement>(null);
 
-  const matches = useMemo(
-    () => matchesIn(deck, { query, matchCase, wholeWord }),
-    [deck, query, matchCase, wholeWord],
-  );
+  // Found again after every change to the deck, and the same list while they stay the same
+  // (`matchesIn`): a drag or a letter typed elsewhere does not draw the bar again.
+  const matches = useDeck((s) => matchesIn(s.deck, { query, matchCase, wholeWord }));
   const current = standingOn(matches, session.current, slideId);
   const index = current ? matches.indexOf(current) : -1;
   const none = matches.length === 0;
@@ -89,10 +80,10 @@ function OpenBar() {
   }, [focusRequest]);
 
   // The marks on the Stage. They are painted once the slide is drawn, and again when the Stage
-  // draws text anew for a reason of its own: the text editor opens in a box, a preview of a
-  // proposed change comes and goes.
+  // draws text anew: a letter typed, the text editor opens in a box, a preview of a proposed
+  // change comes and goes. A frame dragged leaves the text, and the marks on it, as they were.
   useLayoutEffect(() => {
-    const paint = () => paintMatches(deck, slideId, matches, current);
+    const paint = () => paintMatches(editor.deck.getState().deck, slideId, matches, current);
     paint();
     const region = bar.current?.closest('section');
     if (!region) return;
@@ -107,7 +98,7 @@ function OpenBar() {
       observer.disconnect();
       cancelAnimationFrame(frame);
     };
-  }, [deck, slideId, matches, current]);
+  }, [editor, slideId, matches, current]);
   useEffect(() => clearMatches, []);
 
   const onKeyDown = (event: KeyboardEvent) => {

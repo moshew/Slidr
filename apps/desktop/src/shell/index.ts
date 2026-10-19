@@ -54,6 +54,7 @@ export { ask, tell, type DialogAction, type DialogRequest } from './dialogs';
 export { fitSlide, STAGE_MARGIN, type SlideFit } from './layout';
 export { reveal, scrollerOf, useElementSize } from './hooks';
 export { useAssetResolver } from './assets';
+export { useQuietDeck } from './quietDeck';
 export {
   focusStage,
   registerKeyboardHome,

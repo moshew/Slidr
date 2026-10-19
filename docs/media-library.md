@@ -62,7 +62,12 @@ pnpm media:publish                   # publish it (--from <dir>, --branch <name>
 
 Publishing stages the published folders, writes the files `templates/` takes from its catalog, writes the manifest, compares it with the published one and deploys with wrangler. It needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment. It stops when the copy is empty, or would take away more than half of the published files, unless `--force` is given: a copy that is not all there would otherwise empty the library of every installed app.
 
-A file of the library is at most 25 MB, the limit of Pages.
+Static assets are at most 25 MiB, the limit of Pages. A JSON catalog above that
+limit is staged as 10 MiB parts and a narrowly routed
+[Pages Function](https://developers.cloudflare.com/pages/functions/advanced-mode/). The Function
+streams the exact original bytes at the original catalog URL; its manifest entry,
+hash, client format and offline cache are unchanged. Other media requests stay
+static. The authoring copy still holds the ordinary complete JSON file.
 
 A development build and the dev server read another copy when `SLIDR_MEDIA_URL` names one: a preview deployment, or a server on this machine. A release build reads the published library, unless its installation names another (below).
 

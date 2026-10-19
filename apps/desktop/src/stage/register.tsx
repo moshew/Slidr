@@ -1,4 +1,11 @@
-import { findSlide, type ImageElement } from '@slidr/model';
+import {
+  findElement,
+  findSlide,
+  locateElement,
+  type Element,
+  type ImageElement,
+  type Slide,
+} from '@slidr/model';
 import { Button, IconButton, Select, Toggle } from '@slidr/ui';
 import { Check, Crop, RotateCcw } from '@slidr/ui/icons';
 import type { ComponentType } from 'react';
@@ -65,6 +72,38 @@ function useCropTarget(): CropTarget | undefined {
   return { slideId: slide.id, located, image, view, cropping: Boolean(view) && editingId === id };
 }
 
+/**
+ * Where the one selected image stands with cropping, as the crop button shows it: no image, an
+ * image that cannot be cropped (no picture of a known size, or locked), crop mode off or on. Read
+ * as a word, which a frame dragged leaves as it is: the tools do not read the image itself until
+ * crop mode is on.
+ */
+type CropState = 'none' | 'fixed' | 'off' | 'on';
+
+function useCropState(): CropState {
+  const slideId = useSelection((s) => s.currentSlideId);
+  const ids = useSelection((s) => s.selectedElementIds);
+  const editingId = useSelection((s) => s.editingElementId);
+  return useDeck((s) => {
+    const slide = slideId ? findSlide(s.deck, slideId) : undefined;
+    const id = ids.length === 1 ? ids[0] : undefined;
+    const image = slide && id ? findElement(slide, id) : undefined;
+    if (!slide || image?.type !== 'image') return 'none';
+    const asset = image.assetId ? s.deck.assets[image.assetId] : undefined;
+    if (!asset?.width || !asset.height || lockedOn(slide, image)) return 'fixed';
+    return editingId === id ? 'on' : 'off';
+  });
+}
+
+/** The element or a group around it is locked. */
+function lockedOn(slide: Slide, element: Element): boolean {
+  for (let at: Element | undefined = element; at;) {
+    if (at.locked) return true;
+    at = locateElement(slide.elements, at.id)?.parent;
+  }
+  return false;
+}
+
 /** Writes a crop to the image, and keeps the groups around it fitted to the new frame. */
 function applyCrop(editor: Editor, target: CropTarget, patch: Patch, txId?: string): void {
   const patches = refitPatches(target.located.path, new Map([[target.image.id, patch]]));
@@ -82,17 +121,18 @@ function applyCrop(editor: Editor, target: CropTarget, patch: Patch, txId?: stri
 function CropToggle() {
   const { t } = useTranslation('stage');
   const { selection } = useEditor();
-  const target = useCropTarget();
-  if (!target) return null;
+  const state = useCropState();
+  const id = useSelection((s) => s.selectedElementIds[0]);
+  if (state === 'none' || !id) return null;
   return (
     <Toggle
       icon={Crop}
       label={t('crop.toggle')}
       size="sm"
-      pressed={target.cropping}
-      disabled={!target.view}
+      pressed={state === 'on'}
+      disabled={state === 'fixed'}
       onPressedChange={(on) => {
-        if (on) selection.getState().startEditing(target.image.id);
+        if (on) selection.getState().startEditing(id);
         else selection.getState().stopEditing();
       }}
     />
@@ -102,6 +142,10 @@ function CropToggle() {
 const RATIOS: Partial<Record<CropPreset, number>> = { '1:1': 1, '4:3': 4 / 3, '16:9': 16 / 9 };
 
 function CropAspect() {
+  return useCropState() === 'on' ? <CropAspectChoice /> : null;
+}
+
+function CropAspectChoice() {
   const { t } = useTranslation('stage');
   const editor = useEditor();
   const target = useCropTarget();
@@ -141,6 +185,10 @@ function CropAspect() {
 }
 
 function CropReset() {
+  return useCropState() === 'on' ? <CropResetButton /> : null;
+}
+
+function CropResetButton() {
   const { t } = useTranslation('stage');
   const editor = useEditor();
   const target = useCropTarget();
@@ -167,8 +215,8 @@ function CropReset() {
 function CropDone() {
   const { t } = useTranslation('stage');
   const { selection } = useEditor();
-  const target = useCropTarget();
-  if (!target?.cropping) return null;
+  const state = useCropState();
+  if (state !== 'on') return null;
   return (
     <Button
       size="sm"

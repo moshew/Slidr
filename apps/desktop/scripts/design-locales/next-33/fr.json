@@ -55,18 +55,7 @@
     "NOUVEAUTÉ SUR LE BLOG · TRAVAIL À DOMICILE",
     "N°27",
     {
-      "paragraphs": [
-        [
-          "La maison,"
-        ],
-        [
-          "pas un bureau"
-        ],
-        [
-          "Et tant mieux",
-          "."
-        ]
-      ]
+      "paragraphs": [["La maison,"], ["pas un bureau"], ["Et tant mieux", "."]]
     },
     "Sept petites habitudes qui ont transformé le travail\ndepuis le salon en une routine calme et régulière.",
     "ML",
@@ -124,7 +113,7 @@
   ],
   "batmitzvah": [
     "VOUS ÊTES INVITÉ",
-    "Chez Mika",
+    "Mika",
     "12",
     "Bat Mitzvah",
     "Une soirée de musique, de danse et bien\ntrop de fleurs. Venez célébrer avec nous !",
@@ -145,10 +134,10 @@
     "Des questions ? Demandez à Michal : 054-555-0133"
   ],
   "course": [
-    "490 $ pour\nles lève-tôt",
+    "$490\nTarif réduit",
     "LES INSCRIPTIONS SONT OUVERTES",
     "COHORTE 12 • PRINTEMPS 2027",
-    "Marketing digital,\nzéro campagne.",
+    "Marketing digital,\nde zéro au concret.",
     "Un cours pratique du soir pour les personnes qui souhaitent\ncréer, exécuter et mesurer de véritables campagnes.",
     "12",
     "séances",
@@ -208,7 +197,7 @@
     "Déjeuner et transport inclus",
     "Inscription : 03-555-0142",
     "Places limitées",
-    "520 $ la\nséance"
+    "520 $\nle séjour"
   ],
   "quiz": [
     "QUESTION 3 SUR 10",
@@ -216,7 +205,7 @@
     "100 points",
     "Quel animal est\nle plus rapide\nsur terre ?",
     "20",
-    "SEC",
+    "s",
     "A",
     "Lion",
     "B",
@@ -252,7 +241,7 @@
     "Félicitations à nos diplômés !"
   ],
   "parents": [
-    "15\nminutes",
+    "15\nmin",
     "COLLÈGE RIMONIM • TERMES D'HIVER",
     "Soirée des parents",
     "mardi 12 janvier 2027",
@@ -280,7 +269,7 @@
     "En tête-à-tête, sur rendez-vous"
   ],
   "tutoring": [
-    "Cours particuliers\nde mathématiques",
+    "Soutien en\nmathématiques",
     "De la 7e à la 12e année • Préparation aux examens à tous les niveaux",
     "Michal Oren • Diplômé en mathématiques • 8 ans d'enseignement",
     "$45",
@@ -297,7 +286,7 @@
     "Michal\n052-555-0187"
   ],
   "kindergarten": [
-    "Maternelle secouée",
+    "École maternelle Shaked",
     "3 à 6 ans",
     "Les inscriptions\npour 2027-2028\nsont ouvertes !",
     "Du dimanche au jeudi • 7h30 – 16h30",
@@ -310,20 +299,20 @@
   ],
   "certificate": [
     "Certificat d'Excellence",
-    "EST FIÈREMENT PRÉSENTÉ À",
+    "DÉCERNÉ À",
     "Maya Rosen",
     "Pour des réalisations scientifiques exceptionnelles, pour une\ncuriosité sans fin et pour être un bon ami toute l'année.",
     "30 juin 2027",
-    "Dr Ruth Avidan",
+    "Dre Ruth Avidan",
     "Directeur de l'école Alonim",
     "Noa Sharon",
     "Professeur de classe, 6B"
   ],
   "volunteer": [
-    "100 jeunes\narbres",
+    "100\nplants",
     "BIENVENUE À TOUS",
-    "Plantons un bloc\nplus vert.",
-    "Un matin, une centaine de jeunes plants et un nouveau\njardin communautaire dans notre rue. Apportez vos mains.",
+    "Un quartier\nplus vert, ensemble.",
+    "Cent jeunes plants et un nouveau jardin pour le quartier.\nVenez mettre les mains dans la terre.",
     "Vendredi 19 mars 2027 • 8h30 – midi",
     "Le jardin communautaire, 4 rue Olive",
     "Comptez sur moi →",
@@ -332,7 +321,7 @@
   "donation": [
     "COLLECTE DE FONDS COMMUNAUTAIRE • NEVE OREN",
     "Un nouveau centre de jeunesse pour Neve Oren",
-    "ÉLEVÉ JUSQU'À CE JOUR",
+    "DONS COLLECTÉS",
     "$121,600",
     "76% de l'objectif",
     "Objectif : 160 000 $",
@@ -346,10 +335,10 @@
     "La campagne se clôture le 31 décembre 2026"
   ],
   "blooddrive": [
-    "COLLECTE DE SANG COMMUNAUTAIRE",
+    "DON DE SANG DANS LE QUARTIER",
     "Donnez du sang,\nsauvez des vies.",
     "3",
-    "Chaque don peut sauver\njusqu'à trois vies.",
+    "Un don de sang peut\nsauver jusqu’à trois vies.",
     "Une demi-heure de votre journée.",
     "QUAND",
     "Mardi 16 février 2027 • 16h à 21h",
@@ -379,18 +368,18 @@
   "cleanup": [
     "JOURNÉE DE NETTOYAGE COMMUNAUTAIRE",
     "Nettoyons\nla plage.",
-    "Un matin, des sacs pleins et un rivage propre pour tout le\nmonde. Les familles et les enfants sont les bienvenus.",
+    "Une matinée pour rendre la plage propre.\nLes familles et les enfants sont les bienvenus.",
     "vendredi 14 mai 2027",
     "de 8h à 11h",
     "Plage du Carmel, Haïfa",
     "QUE APPORTER",
     "Un chapeau, de l'eau, de la crème solaire et des chaussures fermées",
     "Inscription auprès de Dana : 052-555-0171 • Rendez-vous à la cabane des sauveteurs",
-    "GANTS ET\nSACS SUR\nNOUS"
+    "GANTS ET\nSACS FOURNIS"
   ],
   "adoption": [
     "SAUVETAGE DES PETITES PATTES",
-    "Jour\nd'adoption",
+    "Adoptez\nun ami",
     "Un nouveau meilleur ami attend.",
     "vendredi 5 mars 2027",
     "10h – 14h",
@@ -402,7 +391,7 @@
   ],
   "swap": [
     "Troc de vêtements",
-    "Apportez un morceau, prenez un morceau.",
+    "Apportez un vêtement, repartez avec un autre.",
     "Vendredi 19 février 2027 • 9h30 – 13h",
     "Centre communautaire Neve Oren, 12 rue Rimon",
     "TROIS RÈGLES SIMPLES",
@@ -412,8 +401,8 @@
     "Accrochez-les au rail, par taille",
     "3",
     "Prenez ce qui vous convient. Pas besoin d'argent",
-    "TOUT GRATUIT",
-    "Les restes sont donnés"
+    "GRATUIT",
+    "Le reste sera donné"
   ],
   "fooddrive": [
     "BÉNÉVOLES DE NEVE OREN • PÂQUE 2027",
@@ -426,7 +415,7 @@
     "olive ou canola",
     "Nourriture pour bébé",
     "formule et céréales",
-    "Rien n'est ouvert ou dépassé sa date, s'il vous plaît",
+    "Produits non ouverts et non périmés uniquement",
     "Dépôt : le centre communautaire • Épicerie Rimon",
     "Collecte jusqu'au\n15 avril"
   ],
@@ -436,7 +425,7 @@
     "Cinq sièges, deux ans de décisions concernant votre rue.",
     "MARDI",
     "9 mars 2027",
-    "SONDAGES OUVERTS",
+    "HORAIRES DU VOTE",
     "7h – 21h",
     "OÙ",
     "Centre Neve Oren",
@@ -457,14 +446,14 @@
     "CENTRE COMMUNAUTAIRE NEVE OREN",
     "SAISON QUATRE • 2027/28",
     "FOOTBALL POUR LES VOISINS",
+    "LIGUE DU",
     "QUARTIER",
-    "LIGUE",
-    "7-A-SIDE • TOUS LES VENDREDI",
+    "FOOT À 7 • CHAQUE VENDREDI",
     "COUP D'ENVOI",
     "3 septembre 2027",
     "vendredi • 16h",
     "Emplacement de l'école Alonim",
-    "INSCRIVEZ-VOUS PAR",
+    "INSCRIPTION AVANT",
     "15 août 2027",
     "Yoav : 052-555-0147",
     "Équipes et joueurs solo",
@@ -492,7 +481,7 @@
     "Aucune réservation nécessaire. Passez nous voir.",
     "Voyez-le en personne.",
     "14, allée Oak, Maple Grove",
-    "PRIX DEMANDÉ",
+    "PRIX DE VENTE",
     "$1,250,000"
   ],
   "menu": [
@@ -509,7 +498,7 @@
     "Aubergine",
     "$10",
     "carbonisé, tahini, tomate",
-    "Secteur",
+    "Plats",
     "Escalopes",
     "$19",
     "poulet, purée au beurre",
@@ -529,17 +518,17 @@
     "Sorbet citron",
     "$7",
     "menthe fraîche",
-    "TROIS\nCOURS 29$"
+    "TROIS PLATS\n$29"
   ],
   "cafe": [
-    "Votre dixième\ncafé est offert.",
+    "Le dixième café\nest offert.",
     "CARTE N°0417",
     "8",
     "9",
-    "GRATUIT",
+    "OFFERT",
     "Un tampon\npar café.\nLe dixième\nest offert.",
     "CARTE DE FIDÉLITÉ",
-    "Café Shaké",
+    "Café Shaked",
     "OUVERT",
     "du dimanche au jeu de 6 h 30 à 19 h • du vendredi jusqu'à 14 h",
     "TROUVEZ-NOUS",

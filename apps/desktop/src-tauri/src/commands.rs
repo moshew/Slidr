@@ -45,14 +45,23 @@ pub async fn storage_open(storage: Shared<'_>, path: PathBuf) -> Result<OpenedDe
     off_main(move || storage.open(&path)).await
 }
 
-/// `storage_write_deck({ workspaceId, deckJson, title })`: autosave.
+/// `storage_write_deck`: autosave. The body is the deck's JSON as raw UTF-8 bytes, as in
+/// [`asset_import_bytes`]: as a field of JSON arguments it was escaped, and parsed, a second time.
+/// The workspace id and the title travel as the headers `x-workspace-id` and `x-title`, the
+/// title percent-encoded (`encodeURIComponent`).
 #[tauri::command]
-pub async fn storage_write_deck(
-    storage: Shared<'_>,
-    workspace_id: String,
-    deck_json: String,
-    title: String,
-) -> Result<()> {
+pub async fn storage_write_deck(storage: Shared<'_>, request: Request<'_>) -> Result<()> {
+    let workspace_id = header(&request, "x-workspace-id")?
+        .ok_or_else(|| AppError::invalid_input("missing header x-workspace-id"))?;
+    let title = header(&request, "x-title")?.unwrap_or_default();
+    let bytes = match request.body() {
+        InvokeBody::Raw(bytes) => bytes.clone(),
+        // Where raw bodies are unavailable, the bytes come as a JSON array of numbers.
+        InvokeBody::Json(value) => serde_json::from_value(value.clone())
+            .map_err(|e| AppError::invalid_input(format!("the body is not bytes: {e}")))?,
+    };
+    let deck_json =
+        String::from_utf8(bytes).map_err(|_| AppError::invalid_input("the deck is not UTF-8"))?;
     let storage = Arc::clone(&storage);
     off_main(move || storage.write_deck(&workspace_id, &deck_json, &title)).await
 }

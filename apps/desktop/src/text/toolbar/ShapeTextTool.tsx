@@ -13,21 +13,25 @@ import { openText } from '../opening';
 export function ShapeTextTool() {
   const { t } = useTranslation('text');
   const { selection } = useEditor();
-  const deck = useDeck((s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
   const ids = useSelection((s) => s.selectedElementIds);
-  const slide = slideId ? findSlide(deck, slideId) : undefined;
-  const element = slide && ids.length === 1 && ids[0] ? findElement(slide, ids[0]) : undefined;
-  // Lines and SVGs are of the same kind of selection, and hold no text.
-  if (element?.type !== 'shape' || element.locked) return null;
-  const hasText = element.content ? plainText(element.content) !== '' : false;
+  const id = ids.length === 1 ? ids[0] : undefined;
+  // Read as what the button says, which a frame dragged leaves as it is: 'none' where there is no
+  // text to open (lines and SVGs are of the same kind of selection, and hold none).
+  const text = useDeck((s) => {
+    const slide = slideId ? findSlide(s.deck, slideId) : undefined;
+    const element = slide && id ? findElement(slide, id) : undefined;
+    if (element?.type !== 'shape' || element.locked) return 'none';
+    return element.content && plainText(element.content) !== '' ? 'edit' : 'add';
+  });
+  if (text === 'none' || !id) return null;
   return (
     <IconButton
       size="sm"
       icon={Type}
-      label={hasText ? t('shape.editText') : t('shape.addText')}
+      label={text === 'edit' ? t('shape.editText') : t('shape.addText')}
       shortcut="Enter"
-      onClick={() => openText(selection, element.id)}
+      onClick={() => openText(selection, id)}
     />
   );
 }

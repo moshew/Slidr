@@ -35,7 +35,7 @@
     "4",
     "Trồng và ấn xuống nhẹ nhàng",
     "5",
-    "Tưới nước giếng và đặt nơi có ánh sáng",
+    "Tưới đẫm nước và đặt ở nơi sáng",
     "Lưu lại\ncho cuối\ntuần",
     "Video 4 phút",
     "@gina.babayit"
@@ -55,18 +55,7 @@
     "MỚI TRÊN BLOG · LÀM VIỆC TẠI NHÀ",
     "Số 27",
     {
-      "paragraphs": [
-        [
-          "Nhà không phải"
-        ],
-        [
-          "văn phòng"
-        ],
-        [
-          "Đó mới là điều hay",
-          "."
-        ]
-      ]
+      "paragraphs": [["Nhà không phải"], ["văn phòng"], ["Đó mới là điều hay", "."]]
     },
     "Bảy thói quen nhỏ đã biến công việc ở phòng\nkhách thành một thói quen bình tĩnh, đều đặn.",
     "ML",
@@ -124,7 +113,7 @@
   ],
   "batmitzvah": [
     "BẠN ĐƯỢC MỜI",
-    "của Mika",
+    "Mika",
     "12",
     "Bát Mitzvah",
     "Một buổi tối của âm nhạc, khiêu vũ và quá\nnhiều hoa. Hãy đến và ăn mừng với chúng tôi!",
@@ -145,10 +134,10 @@
     "Câu hỏi? Hỏi Michal: 054-555-0133"
   ],
   "course": [
-    "$490 đặt\nmua sớm",
+    "$490\nĐăng ký sớm",
     "ĐĂNG KÝ ĐANG MỞ",
     "NHÓM 12 • MÙA XUÂN 2027",
-    "Tiếp thị kỹ thuật số,\nkhông cần đến chiến dịch.",
+    "Tiếp thị số,\ntừ đầu đến chiến dịch.",
     "Khóa học thực hành buổi tối dành cho những người muốn\nxây dựng, chạy và đo lường các chiến dịch thực tế.",
     "12",
     "buổi",
@@ -180,7 +169,7 @@
   ],
   "openday": [
     "TRƯỜNG ĐẠI HỌC KRAMIM",
-    "Ngày khai trương",
+    "Ngày trải nghiệm",
     "Thứ Sáu, ngày 12 tháng 3 năm 2027 • 9 giờ sáng – 1 giờ chiều",
     "Hãy đến gặp gỡ khuôn viên trường, các giảng viên và các khóa học.",
     "9:30 sáng",
@@ -208,7 +197,7 @@
     "Bao gồm bữa trưa và phương tiện di chuyển",
     "Đăng ký: 03-555-0142",
     "Số lượng có hạn",
-    "$520 một\nbuổi"
+    "$520\nmỗi đợt"
   ],
   "quiz": [
     "CÂU 3 TRÊN 10",
@@ -280,7 +269,7 @@
     "Trực tiếp, theo lịch hẹn"
   ],
   "tutoring": [
-    "Dạy kèm\ntoán riêng",
+    "Gia sư\nmôn toán",
     "Lớp 7–12 • Luyện thi mọi cấp độ",
     "Michal Oren • Tốt nghiệp chuyên ngành toán • 8 năm giảng dạy",
     "$45",
@@ -297,7 +286,7 @@
     "Michal\n052-555-0187"
   ],
   "kindergarten": [
-    "Trường mẫu giáo lắc",
+    "Trường mẫu giáo Shaked",
     "Độ tuổi 3–6",
     "Đăng ký cho\nnăm 2027–28\nđã mở!",
     "Chủ nhật đến thứ năm • 7:30 sáng – 4:30 chiều",
@@ -310,20 +299,20 @@
   ],
   "certificate": [
     "Chứng chỉ Xuất sắc",
-    "ĐƯỢC GIỚI THIỆU CHO",
+    "TRAO TẶNG",
     "Maya Rosen",
     "Vì thành tích xuất sắc trong khoa học, vì sự tò\nmò vô tận và là một người bạn tốt suốt cả năm.",
     "Ngày 30 tháng 6 năm 2027",
-    "Tiến sĩ Ruth Avidan",
+    "TS. Ruth Avidan",
     "Hiệu trưởng Trường Alonim",
     "Noa Sharon",
     "Giáo viên chủ nhiệm lớp 6B"
   ],
   "volunteer": [
-    "100 cây\ngiống",
+    "100\ncây non",
     "CHÀO MỪNG MỌI NGƯỜI",
-    "Hãy trồng một\nkhối xanh hơn.",
-    "Một buổi sáng, hàng trăm cây non và một khu vườn cộng\nđồng mới trên đường phố của chúng tôi. Đưa tay của bạn.",
+    "Cùng trồng cây,\nxanh khu phố.",
+    "Một trăm cây non và khu vườn chung mới cho phố mình.\nHãy cùng chung tay trồng cây.",
     "Thứ Sáu, ngày 19 tháng 3 năm 2027 • 8:30 sáng–trưa",
     "Vườn cộng đồng, 4 đường Olive",
     "Hãy tính tôi vào →",
@@ -332,7 +321,7 @@
   "donation": [
     "GÂY QUỸ CỘNG ĐỒNG • NEVE OREN",
     "Một trung tâm thanh thiếu niên mới cho Neve Oren",
-    "ĐĂNG NHẬP CHO ĐẾN NAY",
+    "ĐÃ QUYÊN GÓP",
     "$121,600",
     "76% mục tiêu",
     "Mục tiêu: 160.000 USD",
@@ -346,10 +335,10 @@
     "Chiến dịch kết thúc vào ngày 31/12/2026"
   ],
   "blooddrive": [
-    "TÌM MÁU CỘNG ĐỒNG",
+    "NGÀY HỘI HIẾN MÁU",
     "Hiến máu,\ncứu người.",
     "3",
-    "Mỗi khoản quyên góp có thể cứu\nđược tối đa ba mạng sống.",
+    "Một lần hiến máu có thể\ncứu đến ba người.",
     "Nửa giờ trong ngày của bạn.",
     "KHI NÀO",
     "Thứ Ba, ngày 16 tháng 2 năm 2027 • 4–9 giờ chiều",
@@ -379,18 +368,18 @@
   "cleanup": [
     "NGÀY DỌN DỌN CỘNG ĐỒNG",
     "Hãy làm sạch\nbãi biển.",
-    "Một buổi sáng đầy túi và bờ biển sạch sẽ cho mọi\nngười. Gia đình và trẻ em đều được chào đón.",
+    "Cùng dọn rác để bãi biển sạch đẹp.\nChào đón các gia đình và trẻ em.",
     "Thứ Sáu, ngày 14 tháng 5 năm 2027",
     "8–11 giờ sáng",
     "Bãi biển Carmel, Haifa",
     "NÊN MANG GÌ",
     "Mũ, nước, kem chống nắng và giày kín",
     "Đăng ký với Dana: 052-555-0171 • Gặp tại chòi cứu hộ",
-    "GĂNG TAY &\nTÚI XÁCH\nTRÊN HOA KỲ"
+    "CẤP GĂNG TAY\nVÀ TÚI RÁC"
   ],
   "adoption": [
     "CỨU CỨU BÀN CHÂN NHỎ",
-    "Ngày nhận\ncon nuôi",
+    "Đón bạn\nbốn chân",
     "Một người bạn thân mới đang chờ đợi.",
     "Thứ Sáu, ngày 5 tháng 3 năm 2027",
     "10 giờ sáng – 2 giờ chiều",
@@ -402,7 +391,7 @@
   ],
   "swap": [
     "Hoán đổi quần áo",
-    "Mang một mảnh, lấy một mảnh.",
+    "Mang một bộ đồ, đổi lấy một bộ khác.",
     "Thứ Sáu, ngày 19 tháng 2 năm 2027 • 9:30 sáng–1 giờ chiều",
     "Trung tâm cộng đồng Neve Oren, 12 phố Rimon",
     "BA QUY TẮC ĐƠN GIẢN",
@@ -412,12 +401,12 @@
     "Treo chúng trên thanh ray, theo kích cỡ",
     "3",
     "Hãy chọn những gì phù hợp. Không cần tiền",
-    "TẤT CẢ MIỄN PHÍ",
-    "Thức ăn thừa được tặng"
+    "MIỄN PHÍ",
+    "Đồ còn lại được tặng"
   ],
   "fooddrive": [
     "NEVE OREN TUYỆT VỜI • QUẢNG CÁO 2027",
-    "Chuyến đi ăn\nuống ngày lễ",
+    "Quyên góp\nthực phẩm",
     "Thực phẩm đóng hộp",
     "cá ngừ, đậu xanh, rau",
     "Mì ống và cơm",
@@ -426,7 +415,7 @@
     "ô liu hoặc cải dầu",
     "Thức ăn trẻ em",
     "công thức và ngũ cốc",
-    "Vui lòng không có gì mở hoặc quá ngày của nó",
+    "Chỉ nhận thực phẩm chưa mở và còn hạn sử dụng",
     "Điểm trả khách: trung tâm cộng đồng • Cửa hàng tạp hóa Rimon",
     "Thu đến hết\nngày 15/4"
   ],
@@ -436,7 +425,7 @@
     "Năm chỗ ngồi, hai năm quyết định về con phố của bạn.",
     "THỨ BA",
     "9/3/2027",
-    "BÌNH LUẬN MỞ",
+    "GIỜ BỎ PHIẾU",
     "07:00–21:00",
     "Ở ĐÂU",
     "Trung tâm Neve Oren",
@@ -457,14 +446,14 @@
     "TRUNG TÂM CỘNG ĐỒNG NEVE OREN",
     "MÙA BỐN • 2027/28",
     "BÓNG ĐÁ CHO HÀNG XÓM",
-    "KHU VỰC KHU VỰC",
-    "GIẢI ĐẤU",
-    "7-A-SIDE • THỨ SÁU HÀNG NGÀY",
+    "GIẢI BÓNG ĐÁ",
+    "KHU PHỐ",
+    "7 NGƯỜI • MỖI THỨ SÁU",
     "BẮT ĐẦU",
     "Ngày 3 tháng 9 năm 2027",
     "Thứ Sáu • 4 giờ chiều",
     "Sân trường Alonim",
-    "ĐĂNG KÝ BẰNG",
+    "ĐĂNG KÝ TRƯỚC",
     "Ngày 15 tháng 8 năm 2027",
     "Yoav: 052-555-0147",
     "Đội và người chơi solo",
@@ -474,7 +463,7 @@
     "tuổi",
     "$180",
     "một đội, cả mùa giải",
-    "Cần có thủ môn!"
+    "Tuyển thủ môn!"
   ],
   "openhouse": [
     "NHÀ MỞ",
@@ -509,7 +498,7 @@
     "Cà tím",
     "$10",
     "cháy, tahini, cà chua",
-    "Nguồn điện chính",
+    "Món chính",
     "Thịt lườn Schnitzel",
     "$19",
     "thịt gà, bơ nghiền",
@@ -529,17 +518,17 @@
     "Kem chanh",
     "$7",
     "bạc hà tươi",
-    "BA KHÓA\nHỌC $29"
+    "BA MÓN\n$29"
   ],
   "cafe": [
     "Ly cà phê thứ mười\nđược tặng miễn phí.",
     "THẺ SỐ 0417",
     "8",
     "9",
-    "MIỄN PHÍ",
+    "TẶNG",
     "Mỗi ly một dấu.\nĐủ mười dấu,\nnhận một ly\nmiễn phí.",
     "THẺ THÂN THÀNH",
-    "Café lắc",
+    "Cà phê Shaked",
     "MỞ",
     "Chủ Nhật–Thứ Năm 6:30 sáng–7 giờ tối • Thứ Sáu đến 2 giờ chiều",
     "TÌM CHÚNG TÔI",

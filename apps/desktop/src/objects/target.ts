@@ -10,6 +10,7 @@ import {
   type Slide,
 } from '@slidr/model';
 import { useMemo } from 'react';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
 import { useDeck, useEditor, useSelection } from '../shell';
 import { cardBox } from './card';
 
@@ -46,26 +47,75 @@ export function targetOf<T extends Element>(
   };
 }
 
+/**
+ * Fields of an element that row B does not draw from: where its box is, and its text. They change
+ * with every frame of a drag and every letter typed, and twenty tools drawn again for each of them
+ * cost the row a millisecond a frame. A tool that needs them reads them when it acts, from the
+ * deck as it is then (`Targets.update` does), or from a store of its own.
+ */
+const PASSING = new Set(['frame', 'content']);
+
+/** The two are the same element to the tools of row B, wherever its box is and whatever it says. */
+function sameToTools(a: Element, b: Element): boolean {
+  if (a === b) return true;
+  const x = a as unknown as Record<string, unknown>;
+  const y = b as unknown as Record<string, unknown>;
+  const keys = Object.keys(x);
+  if (keys.length !== Object.keys(y).length) return false;
+  return keys.every((key) => {
+    if (PASSING.has(key) || x[key] === y[key]) return true;
+    // A group moved or resized moves its children with it.
+    return key === 'children' && a.type === 'group' && b.type === 'group'
+      ? sameElements(a.children, b.children)
+      : false;
+  });
+}
+
+function sameElements(a: readonly Element[], b: readonly Element[]): boolean {
+  return a.length === b.length && a.every((element, i) => sameToTools(element, b[i]!));
+}
+
+/**
+ * Elements of the slide on the Stage, by their ids, as row B draws from them: the same objects
+ * while a change touches only their box or their text (`sameToTools`). Undefined when the slide
+ * does not hold every one of them.
+ */
+function useElementsOf(ids: readonly string[]): readonly Element[] | undefined {
+  const editor = useEditor();
+  const slideId = useSelection((s) => s.currentSlideId);
+  return useStoreWithEqualityFn(
+    editor.deck,
+    (s) => {
+      const slide = slideId ? s.deck.slides.find((one) => one.id === slideId) : undefined;
+      if (!slide || ids.length === 0) return undefined;
+      const elements = ids.flatMap((id) => findElement(slide, id) ?? []);
+      return elements.length === ids.length ? elements : undefined;
+    },
+    (a, b) => a === b || (a !== undefined && b !== undefined && sameElements(a, b)),
+  );
+}
+
+const NONE: readonly string[] = [];
+
 /** The one selected element of the slide on the Stage, when exactly one is selected. */
-function useSelected(): { slide: Slide; element: Element } | undefined {
-  const slide = useCurrentSlide();
+function useSelected(): { slideId: string; element: Element } | undefined {
+  const slideId = useSelection((s) => s.currentSlideId);
   const selected = useSelection((s) => s.selectedElementIds);
-  const elementId = selected.length === 1 ? selected[0] : undefined;
-  return useMemo(() => {
-    const element = slide && elementId ? findElement(slide, elementId) : undefined;
-    return slide && element ? { slide, element } : undefined;
-  }, [slide, elementId]);
+  const elements = useElementsOf(selected.length === 1 ? selected : NONE);
+  const element = elements?.[0];
+  return useMemo(() => (slideId && element ? { slideId, element } : undefined), [slideId, element]);
 }
 
 /**
  * The selected element, when exactly one is selected. Row B tools get only the kind of the
- * selection: they read the element here and draw nothing when they do not apply to it.
+ * selection: they read the element here and draw nothing when they do not apply to it. The element
+ * is the one the tools were last drawn for: its box and its text may have changed since.
  */
 export function useTarget(): Target | undefined {
   const { bus } = useEditor();
   const selected = useSelected();
   return useMemo(
-    () => selected && targetOf(bus, selected.slide.id, selected.element),
+    () => selected && targetOf(bus, selected.slideId, selected.element),
     [bus, selected],
   );
 }
@@ -82,7 +132,7 @@ export function useTargetIn<T extends Element>(
   const selected = useSelected();
   return useMemo(() => {
     const element = selected && pick(selected.element);
-    return selected && element ? targetOf(bus, selected.slide.id, element) : undefined;
+    return selected && element ? targetOf(bus, selected.slideId, element) : undefined;
   }, [bus, selected, pick]);
 }
 
@@ -96,7 +146,7 @@ export function useCardBox(): Target<ShapeElement> | undefined {
   const selected = useSelected();
   return useMemo(() => {
     const box = selected && cardBox(selected.element);
-    return box ? targetOf(bus, selected.slide.id, box) : undefined;
+    return box ? targetOf(bus, selected.slideId, box) : undefined;
   }, [bus, selected]);
 }
 
@@ -122,13 +172,11 @@ export interface Targets<T extends Element = Element> {
 /** The selected elements of the slide on the Stage; undefined when none is selected. */
 export function useTargets(): Targets | undefined {
   const { bus } = useEditor();
-  const slide = useCurrentSlide();
+  const slideId = useSelection((s) => s.currentSlideId);
   const selected = useSelection((s) => s.selectedElementIds);
+  const elements = useElementsOf(selected);
   return useMemo(() => {
-    if (!slide || selected.length === 0) return undefined;
-    const elements = selected.flatMap((id) => findElement(slide, id) ?? []);
-    if (elements.length !== selected.length) return undefined;
-    const slideId = slide.id;
+    if (!slideId || !elements) return undefined;
     return {
       slideId,
       elements,
@@ -144,7 +192,7 @@ export function useTargets(): Targets | undefined {
         if (first.length + commands.length > 0) bus.batch([...first, ...commands], options);
       },
     };
-  }, [bus, slide, selected]);
+  }, [bus, slideId, elements]);
 }
 
 /** Targets that are all of the given element types. */

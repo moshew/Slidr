@@ -263,21 +263,50 @@ export function* slideTexts(slide: Pick<Slide, 'elements' | 'notes'>): Generator
   if (slide.notes) yield { content: slide.notes, locked: false, hidden: false };
 }
 
+/**
+ * The matches of the last search in a slide, by the slide: a change makes a new object only of
+ * the slide it touched (ADR-007), so the search after it looks into that slide alone. The bar
+ * searches the deck again after every change, and that is every frame of a drag.
+ */
+const slideMatches = new WeakMap<Slide, { search: string; slide: number; matches: Match[] }>();
+
+/** The matches of a search in one slide, the `slide`-th of its deck. */
+function matchesInSlide(
+  { id: slideId, elements, notes }: Slide,
+  slide: number,
+  needle: string,
+  options: FindOptions,
+): Match[] {
+  const out: Match[] = [];
+  let text = 0;
+  for (const { content, ...holder } of slideTexts({ elements, notes })) {
+    for (const [paragraph, p] of content.paragraphs.entries()) {
+      for (const range of search(haystackOf(p), needle, options)) {
+        out.push({ slideId, ...holder, paragraph, ...range, slide, text });
+      }
+    }
+    text++;
+  }
+  return out;
+}
+
 /** Every match of `query` in the deck, in the order of the slides and of `slideTexts`. */
 export function findMatches(deck: Deck, query: string, options: FindOptions): Match[] {
   const out: Match[] = [];
   if (!query) return out;
   const needle = needleOf(query, options);
-  for (const [slide, { id: slideId, elements, notes }] of deck.slides.entries()) {
-    let text = 0;
-    for (const { content, ...holder } of slideTexts({ elements, notes })) {
-      for (const [paragraph, p] of content.paragraphs.entries()) {
-        for (const range of search(haystackOf(p), needle, options)) {
-          out.push({ slideId, ...holder, paragraph, ...range, slide, text });
-        }
-      }
-      text++;
+  const asked = `${options.matchCase} ${options.wholeWord} ${needle}`;
+  for (const [index, slide] of deck.slides.entries()) {
+    let known = slideMatches.get(slide);
+    if (known?.search !== asked || known.slide !== index) {
+      known = {
+        search: asked,
+        slide: index,
+        matches: matchesInSlide(slide, index, needle, options),
+      };
+      slideMatches.set(slide, known);
     }
+    for (const match of known.matches) out.push(match);
   }
   return out;
 }

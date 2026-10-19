@@ -2,7 +2,9 @@
   // Root-level config files and the test setup only. Each package and app has its own tsconfig.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // Configs import build modules that Node also loads directly in publishing scripts.
+    "allowImportingTsExtensions": true
   },
   "include": ["*.config.ts", "vitest.setup.ts"]
 }

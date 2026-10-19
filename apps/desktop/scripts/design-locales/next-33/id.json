@@ -55,18 +55,7 @@
     "BARU DI BLOG · BEKERJA DARI RUMAH",
     "No.27",
     {
-      "paragraphs": [
-        [
-          "Rumah bukan"
-        ],
-        [
-          "kantor"
-        ],
-        [
-          "Itulah intinya",
-          "."
-        ]
-      ]
+      "paragraphs": [["Rumah bukan"], ["kantor"], ["Itulah intinya", "."]]
     },
     "Tujuh kebiasaan kecil yang mengubah bekerja dari\nruang tamu menjadi rutinitas yang tenang dan mantap.",
     "ml",
@@ -124,9 +113,9 @@
   ],
   "batmitzvah": [
     "ANDA DIUNDANG",
-    "milik Mika",
+    "Mika",
     "12",
-    "Kelelawar Mitzvah",
+    "Bat Mitzvah",
     "Malam musik, tarian, dan terlalu banyak\nbunga. Datang dan rayakan bersama kami!",
     "Kamis, 4 Maret 2027",
     "19.00",
@@ -145,10 +134,10 @@
     "Pertanyaan? Tanya Mikhal : 054-555-0133"
   ],
   "course": [
-    "$490 pemesanan\nawal",
+    "$490\nDaftar awal",
     "PENDAFTARAN DIBUKA",
     "KELOMPOK 12 • MUSIM SEMI 2027",
-    "Pemasaran digital,\nnol untuk kampanye.",
+    "Pemasaran digital,\ndari nol hingga kampanye.",
     "Kursus praktis malam hari bagi orang-orang yang ingin\nmembangun, menjalankan, dan mengukur kampanye nyata.",
     "12",
     "sesi",
@@ -180,7 +169,7 @@
   ],
   "openday": [
     "KULIAH AKADEMIK KRAMIM",
-    "Hari buka",
+    "Jelajah kampus",
     "Jumat, 12 Maret 2027 • 09.00 – 13.00",
     "Datang dan temui kampus, dosen dan mata kuliah.",
     "09.30",
@@ -208,7 +197,7 @@
     "Termasuk makan siang dan transportasi",
     "Daftar: 03-555-0142",
     "Tempat terbatas",
-    "$520 per\nsesi"
+    "$520\nper periode"
   ],
   "quiz": [
     "PERTANYAAN 3 DARI 10",
@@ -216,7 +205,7 @@
     "100 poin",
     "Hewan apa\nyang tercepat\ndi darat?",
     "20",
-    "DETIK",
+    "dtk",
     "A",
     "Singa",
     "B",
@@ -297,7 +286,7 @@
     "Mikhal\n052-555-0187"
   ],
   "kindergarten": [
-    "TK Goyang",
+    "TK Shaked",
     "Usia 3–6 tahun",
     "Pendaftaran untuk\ntahun 2027–28\ntelah dibuka!",
     "Minggu hingga Kamis • 07.30 – 16.30",
@@ -310,20 +299,20 @@
   ],
   "certificate": [
     "Sertifikat Keunggulan",
-    "DENGAN BANGGA DISEDIAKAN KEPADA",
+    "DIBERIKAN KEPADA",
     "Maya Rosen",
     "Untuk pencapaian luar biasa dalam sains, atas rasa ingin tahu yang tak\nada habisnya, dan karena telah menjadi teman baik sepanjang tahun.",
     "30 Juni 2027",
-    "Dr.Rut Avidan",
+    "Dr. Ruth Avidan",
     "Kepala Sekolah, Sekolah Alonim",
     "Noa Sharon",
     "Guru kelas, 6B"
   ],
   "volunteer": [
-    "100\nanakan",
+    "100\nbibit",
     "SELAMAT DATANG SEMUANYA",
     "Hijaukan\nlingkungan kita.",
-    "Suatu pagi, seratus pohon muda dan taman\nkomunitas baru di jalan kami. Bawa tanganmu.",
+    "Seratus bibit untuk taman bersama di lingkungan kita.\nAyo menanam bersama.",
     "Jumat, 19 Maret 2027 • 08.30–siang",
     "Taman komunitas, 4 Olive Street",
     "Hitung saya →",
@@ -332,7 +321,7 @@
   "donation": [
     "PENGGALANGAN DANA MASYARAKAT • NEVE OREN",
     "Pusat pemuda baru untuk Neve Oren",
-    "DIBANGKITKAN SEJAUH INI",
+    "DANA TERKUMPUL",
     "$121,600",
     "76% dari sasaran",
     "Sasaran: $160.000",
@@ -346,10 +335,10 @@
     "Kampanye ditutup pada 31 Desember 2026"
   ],
   "blooddrive": [
-    "DRIVE DARAH KOMUNITAS",
+    "DONOR DARAH BERSAMA",
     "Berikan darah,\nselamatkan nyawa.",
     "3",
-    "Setiap donasi dapat menyelamatkan\nhingga tiga nyawa.",
+    "Satu kali donor darah\ndapat menyelamatkan tiga nyawa.",
     "Setengah jam dalam sehari Anda.",
     "KAPAN",
     "Selasa, 16 Februari 2027 • 16.00–21.00",
@@ -379,30 +368,30 @@
   "cleanup": [
     "HARI PEMBERSIHAN KOMUNITAS",
     "Ayo bersihkan\npantai.",
-    "Suatu pagi, tas penuh dan pantai bersih untuk\nsemua orang. Keluarga dan anak-anak dipersilakan.",
+    "Satu pagi untuk pantai yang bersih.\nKeluarga dan anak-anak dipersilakan.",
     "Jum, 14 Mei 2027",
     "8–11 pagi",
     "Pantai Carmel, Haifa",
     "APA YANG HARUS DIBAWA",
     "Topi, air, tabir surya, dan sepatu tertutup",
     "Daftar ke Dana: 052-555-0171 • Bertemu di pondok penjaga pantai",
-    "SARUNG\nTANGAN & TAS\nDI KAMI"
+    "SARUNG TANGAN\nDAN KANTONG\nDISEDIAKAN"
   ],
   "adoption": [
     "PENYELAMATAN CAKAR KECIL",
-    "Hari\nAdopsi",
+    "Adopsi\nsahabat",
     "Seorang sahabat baru sedang menunggu.",
     "Jum, 5 Maret 2027",
     "10 pagi – 2 siang",
     "Bell Garden, 3 Narcissus St, Rehovot",
-    "Every dog and cat is vaccinated and neutered.",
+    "Semua anjing dan kucing sudah divaksin dan disterilkan.",
     "052-555-0136",
     "Pertanyaan? Telepon dulu",
     "Adopsi, jangan\nberbelanja"
   ],
   "swap": [
     "Tukar Pakaian",
-    "Bawa sepotong, ambil sepotong.",
+    "Bawa satu pakaian, ambil satu pakaian.",
     "Jumat, 19 Februari 2027 • 09.30–13.00",
     "Pusat Komunitas Neve Oren, Jalan Rimon 12",
     "TIGA ATURAN SEDERHANA",
@@ -412,8 +401,8 @@
     "Gantungkan pada rel, berdasarkan ukurannya",
     "3",
     "Ambil yang cocok. Tidak perlu uang",
-    "SEMUA GRATIS",
-    "Sisanya disumbangkan"
+    "GRATIS",
+    "Sisanya didonasikan"
   ],
   "fooddrive": [
     "RELAWAN NEVE OREN • PASKAH 2027",
@@ -426,7 +415,7 @@
     "zaitun atau kanola",
     "Makanan bayi",
     "susu formula dan sereal",
-    "Tolong, tidak ada yang dibuka atau melewati tanggalnya",
+    "Hanya produk tersegel dan belum kedaluwarsa",
     "Pengantaran: pusat komunitas • Toko kelontong Rimon",
     "Pengumpulan\nhingga 15 April"
   ],
@@ -436,7 +425,7 @@
     "Lima kursi, dua tahun keputusan tentang jalan Anda.",
     "SELASA",
     "9 Maret 2027",
-    "POLLING DIBUKA",
+    "JAM BUKA",
     "07.00 – 21.00",
     "DIMANA",
     "Pusat Neve Oren",
@@ -457,14 +446,14 @@
     "PUSAT KOMUNITAS NEVE OREN",
     "MUSIM KEEMPAT • 28/2027",
     "SEPAKBOLA UNTUK TETANGGA",
-    "TETANGGA",
     "LIGA",
-    "7-A-SIDE • SETIAP HARI JUMAT",
+    "TETANGGA",
+    "7 LAWAN 7 • SETIAP JUMAT",
     "PEMULAAN",
     "3 September 2027",
     "Jumat • 16.00",
     "Lapangan Sekolah Alonim",
-    "DAFTAR OLEH",
+    "DAFTAR SEBELUM",
     "15 Agustus 2027",
     "Yoav: 052-555-0147",
     "Tim dan pemain solo",
@@ -474,7 +463,7 @@
     "tahun",
     "$180",
     "per tim, satu musim",
-    "Penjaga dicari!"
+    "Dicari penjaga gawang!"
   ],
   "openhouse": [
     "RUMAH TERBUKA",
@@ -492,14 +481,14 @@
     "Tidak perlu pemesanan. Mampir saja.",
     "Lihat langsung.",
     "14 Jalur Oak, Hutan Maple",
-    "HARGA YANG DIMINTA",
+    "HARGA JUAL",
     "$1,250,000"
   ],
   "menu": [
     "BISTRO TAMAR",
     "Minggu–Kamis • 12–16.00 • 04-555-0142",
     "Menu makan siang",
-    "Pemula",
+    "Pembuka",
     "Sup miju-miju",
     "$9",
     "jinten, lemon",
@@ -509,11 +498,11 @@
     "Terong",
     "$10",
     "hangus, tahini, tomat",
-    "Listrik",
+    "Hidangan utama",
     "Schnitzel",
     "$19",
-    "ayam, tumbuk mentega",
-    "Ikan air tawar",
+    "ayam, kentang tumbuk mentega",
+    "Ikan dorade",
     "$24",
     "mentega lemon",
     "Gnocchi",
@@ -529,17 +518,17 @@
     "Sorbet lemon",
     "$7",
     "daun mint segar",
-    "TIGA KURSUS\n$29"
+    "TIGA HIDANGAN\n$29"
   ],
   "cafe": [
-    "Kopi kesepuluh Anda\ngratis dari kami.",
+    "Kopi kesepuluh\ngratis dari kami.",
     "KARTU No.0417",
     "8",
     "9",
     "GRATIS",
     "Satu stempel untuk\nsetiap cangkir.\nYang kesepuluh adalah\nsuguhan kami.",
     "KARTU LOYALITAS",
-    "Kafe Kocok",
+    "Kafe Shaked",
     "BUKA",
     "Minggu–Kamis 06.30–19.00 • Jumat hingga pukul 14.00",
     "TEMUKAN KAMI",

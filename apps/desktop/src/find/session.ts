@@ -52,7 +52,29 @@ type Search = Pick<FindSession, 'query' | 'matchCase' | 'wholeWord'>;
 
 let last: (Search & { deck: Deck; matches: Match[] }) | undefined;
 
-/** The matches of a search in a deck. The last answer is kept: the bar and its keys ask alike. */
+/** The two lists hold the same matches, in the same places of the order of the search. */
+function sameMatches(a: readonly Match[], b: readonly Match[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((x, i) => {
+      const y = b[i]!;
+      return (
+        x === y ||
+        (sameMatch(x, y) &&
+          x.locked === y.locked &&
+          x.hidden === y.hidden &&
+          x.slide === y.slide &&
+          x.text === y.text)
+      );
+    })
+  );
+}
+
+/**
+ * The matches of a search in a deck. The last answer is kept: the bar and its keys ask alike. A
+ * change to the deck that leaves the matches as they were (a drag, a letter typed elsewhere) gets
+ * the list it had: the bar and the marks on the Stage are drawn again only for a change of them.
+ */
 export function matchesIn(deck: Deck, { query, matchCase, wholeWord }: Search): Match[] {
   if (
     last?.deck !== deck ||
@@ -60,8 +82,13 @@ export function matchesIn(deck: Deck, { query, matchCase, wholeWord }: Search): 
     last.matchCase !== matchCase ||
     last.wholeWord !== wholeWord
   ) {
-    const matches = findMatches(deck, query, { matchCase, wholeWord });
-    last = { deck, query, matchCase, wholeWord, matches };
+    const found = findMatches(deck, query, { matchCase, wholeWord });
+    const same =
+      last?.query === query &&
+      last.matchCase === matchCase &&
+      last.wholeWord === wholeWord &&
+      sameMatches(last.matches, found);
+    last = { deck, query, matchCase, wholeWord, matches: same && last ? last.matches : found };
   }
   return last.matches;
 }

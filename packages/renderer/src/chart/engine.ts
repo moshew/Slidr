@@ -36,6 +36,11 @@ register([
 export interface ChartHandle {
   /** Draws another spec in place of the one shown. */
   update: (spec: ChartSpec) => void;
+  /**
+   * Stretches the picture shown to the box of another size, until it is drawn at that size: a
+   * frame of a resize, between two drawings of the chart.
+   */
+  stretch?: (size: { w: number; h: number }) => void;
   dispose: () => void;
 }
 
@@ -110,9 +115,16 @@ export function mountChart(host: HTMLElement, spec: ChartSpec, live: boolean): C
     update(next) {
       const resized = next.w !== current.w || next.h !== current.h;
       current = next;
+      box.style.transform = '';
       if (resized) chart.resize({ width: next.w, height: next.h });
       if (shown === 'wait') draw('wait', { delay: HOLD_MS, duration: BUILD_MS });
       else draw('rest');
+    },
+    stretch({ w, h }) {
+      if (current.w <= 0 || current.h <= 0) return;
+      box.style.transformOrigin = '0 0';
+      box.style.transform =
+        w === current.w && h === current.h ? '' : `scale(${w / current.w}, ${h / current.h})`;
     },
     dispose() {
       chart.dispose();

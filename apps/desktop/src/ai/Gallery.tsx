@@ -5,7 +5,14 @@ import { findElement, findSlide, type Deck } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { Check, ChevronLeft, ChevronRight, CircleAlert, X } from '@slidr/ui/icons';
 import { cx, Icon, IconButton, ScrollArea, Skeleton } from '@slidr/ui';
-import { useAssetResolver, useDeck, useEditor, useElementSize, useSelection } from '../shell';
+import {
+  useAssetResolver,
+  useDeck,
+  useEditor,
+  useElementSize,
+  useQuietDeck,
+  useSelection,
+} from '../shell';
 import { historyOf, tryOn, type GalleryCard, type OptionSet } from './variations';
 import { MarkdownView } from './MarkdownView';
 import { he } from './messages';
@@ -31,14 +38,16 @@ const CARD_EDGE = 2 * (GAP + 1);
 function useOptionSets(): OptionSet[] {
   const { gallery } = aiOf(useEditor());
   const state = useStore(gallery.store);
-  const deck = useDeck((s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
-  const newest = state.sets.findLast(({ target }) => {
-    if (target.slideId !== slideId) return false;
-    // What the options were for may have been deleted since.
-    const slide = findSlide(deck, target.slideId);
-    return Boolean(slide && (!target.elementId || findElement(slide, target.elementId)));
-  });
+  // Read from the deck as the set it finds, which a letter typed or a frame dragged leaves as it is.
+  const newest = useDeck((s) =>
+    state.sets.findLast(({ target }) => {
+      if (target.slideId !== slideId) return false;
+      // What the options were for may have been deleted since.
+      const slide = findSlide(s.deck, target.slideId);
+      return Boolean(slide && (!target.elementId || findElement(slide, target.elementId)));
+    }),
+  );
   return newest ? historyOf(state, newest) : [];
 }
 
@@ -196,7 +205,9 @@ function OptionCard({
 }) {
   const { t } = useTranslation('ai');
   const { gallery } = aiOf(useEditor());
-  const deck = useDeck((s) => s.deck);
+  // A card draws its option on the deck, as the Filmstrip draws the slides: once a drag or typing
+  // is over, not at every frame and every letter.
+  const deck = useQuietDeck();
   const label = card.label || t('gallery.option', { n: index + 1 });
   const show = () => gallery.preview(set.id, index);
   const hide = () => gallery.preview(set.id, null);
@@ -306,9 +317,11 @@ function Options({ set, place }: { set: OptionSet; place: Place }) {
   const { gallery } = aiOf(editor);
   const grid = useRef<HTMLDivElement>(null);
   const { width } = useElementSize(grid);
-  // The pick shows as picked while its undo step stands: an undo takes the mark with it.
-  useDeck((s) => s.revision);
-  const picked = set.picked && editor.bus.transactionInfo(set.picked.txId) ? set.picked.index : -1;
+  // The pick shows as picked while its undo step stands: an undo takes the mark with it. Read
+  // after every change to the deck, as the number it is.
+  const picked = useDeck(() =>
+    set.picked && editor.bus.transactionInfo(set.picked.txId) ? set.picked.index : -1,
+  );
   // A preview does not outlive the cards it was shown from.
   useEffect(() => () => gallery.preview(set.id, null), [gallery, set.id]);
 

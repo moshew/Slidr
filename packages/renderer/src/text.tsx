@@ -496,10 +496,20 @@ export function textFillStyle(css: Record<string, string> | undefined): CSSPrope
 const V_ALIGN = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
 /** Smallest scale `shrink` goes down to; below it the text overflows instead. */
 const MIN_FIT = 0.25;
-/** The search for the zoom halves the range this many times. */
-const FIT_STEPS = 8;
+/** The zooms the search tells apart are steps 0 (`MIN_FIT`) to this one (1). */
+const FIT_TOP = 2 ** 8;
 /** The finest difference of zoom the search tells apart. */
-const FIT_STEP = (1 - MIN_FIT) / 2 ** FIT_STEPS;
+const FIT_STEP = (1 - MIN_FIT) / FIT_TOP;
+
+/**
+ * The zoom of a step, as it is written on the DOM: to three places, which is what an export
+ * keeps. The search measures the text at the very zoom it then leaves on it.
+ */
+const zoomAt = (step: number): number =>
+  step >= FIT_TOP ? 1 : Math.floor((MIN_FIT + step * FIT_STEP) * 1000) / 1000;
+
+/** The step each text was fitted at last, by the node that carries its zoom. */
+const fittedSteps = new WeakMap<HTMLElement, number>();
 
 function insetsStyle(padding: Insets | undefined): CSSProperties {
   if (!padding) return { padding: 0 };
@@ -522,36 +532,64 @@ export function shrinkToFit(box: HTMLElement, measure: HTMLElement, content: HTM
   const cs = getComputedStyle(box);
   const available =
     box.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
-  /** The zoom the text was fitted to last, as it stands on the DOM; 1 when it was never shrunk. */
-  const previous = parseFloat(content.style.zoom) || 1;
-  let result = 1;
+  let step = FIT_TOP;
   // No layout (a detached or hidden box) measures zero: leave the text as it is.
   if (available > 0) {
-    // Every call lays the box out again: the search below makes about ten of them.
-    const fits = (z: number) => {
-      content.style.zoom = z === 1 ? '' : String(z);
+    // Every call lays the box out again.
+    const fits = (at: number) => {
+      const zoom = zoomAt(at);
+      content.style.zoom = zoom === 1 ? '' : String(zoom);
       return measure.offsetHeight <= available + 0.5;
     };
-    // A text that was shrunk before is most often fitted again for one more letter: its zoom
-    // still holds, and the next finer zoom still does not. Two layouts settle it, where the
-    // search took ten for each keystroke.
-    if (previous < 1 && fits(previous) && !fits(Math.min(1, previous + FIT_STEP))) {
-      result = previous;
-    } else if (!fits(1)) {
-      let lo = MIN_FIT;
-      let hi = 1;
-      if (fits(lo)) {
-        for (let step = 0; step < FIT_STEPS; step++) {
-          const mid = (lo + hi) / 2;
-          if (fits(mid)) lo = mid;
-          else hi = mid;
-        }
-      }
-      result = Math.floor(lo * 1000) / 1000;
-    }
+    step = fittedStep(fits, fittedSteps.get(content));
+    fittedSteps.set(content, step);
   }
+  const result = zoomAt(step);
   content.style.zoom = result === 1 ? '' : String(result);
   return result;
+}
+
+/**
+ * The largest step at which the text fits, or 0 when it fits at none and overflows at the
+ * smallest zoom. A text is most often fitted again for one more letter, and its step still holds
+ * while the next one still does not: two layouts settle that, where the whole search takes ten.
+ * A text that no longer fits there (or now fits higher) is looked for from that step on, a step
+ * away and then twice as far each time, so a few letters more cost a few layouts and not ten.
+ */
+function fittedStep(fits: (step: number) => boolean, last: number | undefined): number {
+  if (last === undefined) {
+    if (fits(FIT_TOP)) return FIT_TOP;
+    return fits(0) ? largestFitting(fits, 0, FIT_TOP) : 0;
+  }
+  if (fits(last)) {
+    if (last === FIT_TOP || !fits(last + 1)) return last;
+    // Shorter text, or a larger box: up from the step after it.
+    let lo = last + 1;
+    for (let gap = 2; lo < FIT_TOP; gap *= 2) {
+      const next = Math.min(FIT_TOP, last + gap);
+      if (!fits(next)) return largestFitting(fits, lo, next);
+      lo = next;
+    }
+    return FIT_TOP;
+  }
+  // Longer text, or a smaller box: down from it.
+  let hi = last;
+  for (let gap = 1; hi > 0; gap *= 2) {
+    const next = Math.max(0, last - gap);
+    if (fits(next)) return largestFitting(fits, next, hi);
+    hi = next;
+  }
+  return 0;
+}
+
+/** Between a step at which the text fits (`lo`) and one at which it does not (`hi`). */
+function largestFitting(fits: (step: number) => boolean, lo: number, hi: number): number {
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (fits(mid)) lo = mid;
+    else hi = mid;
+  }
+  return lo;
 }
 
 /** Counts finished web-font loads, so text measured before its font arrived is measured again. */
@@ -604,8 +642,11 @@ export function TextBox({
   useLayoutEffect(() => {
     if (!box.current || !measure.current || !inner.current) return;
     if (shrink) {
+      // The box is as large as its frame whatever the zoom of the text in it: read before the
+      // fit writes a zoom, the size costs no layout of its own.
+      const size = { w: box.current.clientWidth, h: box.current.clientHeight };
       shrinkToFit(box.current, measure.current, inner.current);
-      fitted.current = { w: box.current.clientWidth, h: box.current.clientHeight };
+      fitted.current = size;
     } else inner.current.style.zoom = '';
     // The frame is among what the fit depends on: a resize gives the element a new frame and
     // leaves its text, its padding and the theme the objects they were (ADR-007).
@@ -616,11 +657,12 @@ export function TextBox({
     const el = box.current;
     if (!shrink || !el || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
+      const size = { w: el.clientWidth, h: el.clientHeight };
       const last = fitted.current;
-      if (last && last.w === el.clientWidth && last.h === el.clientHeight) return;
+      if (last && last.w === size.w && last.h === size.h) return;
       if (!measure.current || !inner.current) return;
       shrinkToFit(el, measure.current, inner.current);
-      fitted.current = { w: el.clientWidth, h: el.clientHeight };
+      fitted.current = size;
     });
     observer.observe(el);
     return () => observer.disconnect();

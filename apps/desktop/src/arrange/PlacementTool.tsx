@@ -1,4 +1,4 @@
-import { findSlide, newId } from '@slidr/model';
+import { findElement, findSlide, newId } from '@slidr/model';
 import {
   Icon,
   NumberField,
@@ -62,30 +62,23 @@ function Field({
   );
 }
 
+/** The user's choice of tying width to height, for one element. */
+type Tied = { id: string; on: boolean } | null;
+
 export function PlacementTool(_: ContextToolProps) {
   const { t } = useTranslation('arrange');
-  const { bus } = useEditor();
   const slideId = useSelection((s) => s.currentSlideId);
   const ids = useSelection((s) => s.selectedElementIds);
-  const slide = useDeck((s) => (slideId ? findSlide(s.deck, slideId) : undefined));
   const id = ids.length === 1 ? ids[0] : undefined;
-  const located = slide && id ? indexElements(slide.elements).get(id) : undefined;
+  // Only whether there is one element to place: a frame dragged or a letter typed does not draw
+  // the button again. The numbers are read by the fields, while they are open.
+  const found = useDeck((s) => {
+    const slide = slideId ? findSlide(s.deck, slideId) : undefined;
+    return Boolean(slide && id && findElement(slide, id));
+  });
   /** The user's choice of tying width to height; until they choose, it follows the element. */
-  const [tied, setTied] = useState<{ id: string; on: boolean } | null>(null);
-  if (!slide || !located) return null;
-  const { element, locked } = located;
-  const keep = tied?.id === element.id ? tied.on : keepsAspect(element);
-  const { frame } = element;
-
-  const set = (field: PlacementField, value: number) => {
-    const commands = placementCommands(slide, element.id, field, value, keep);
-    if (commands.length === 0) return;
-    const txId = newId('tx');
-    bus.batch(commands, { txId, label: t(`history.${field}`) });
-    // A text box that grows with its text is as tall as the text is in its new width, and never
-    // the height that was typed: the number in the field goes back to what is drawn.
-    if (field === 'w' || field === 'h') syncGrowHeights(bus, [element.id], txId);
-  };
+  const [tied, setTied] = useState<Tied>(null);
+  if (!slideId || !id || !found) return null;
 
   return (
     <Popover>
@@ -102,71 +95,107 @@ export function PlacementTool(_: ContextToolProps) {
         </PopoverTrigger>
       </Tooltip>
       <PopoverContent>
-        <div data-testid="placement-editor" className="flex flex-col gap-3">
-          {/* Numbers of the slide, which reads left to right whatever the UI's direction. */}
-          <div dir="ltr" className="flex gap-3">
-            <Field
-              label={t('placement.x')}
-              field="x"
-              value={Math.round(frame.x)}
-              unit="px"
-              disabled={locked}
-              onSet={set}
-            />
-            <Field
-              label={t('placement.y')}
-              field="y"
-              value={Math.round(frame.y)}
-              unit="px"
-              disabled={locked}
-              onSet={set}
-            />
-          </div>
-          <div dir="ltr" className="flex items-end gap-1.5">
-            <Field
-              label={t('placement.w')}
-              field="w"
-              value={Math.round(frame.w)}
-              unit="px"
-              min={MIN_SIDE}
-              disabled={locked || !sizable(element)}
-              onSet={set}
-            />
-            <Toggle
-              icon={Link2}
-              size="sm"
-              label={t('placement.keepAspect')}
-              pressed={keep}
-              disabled={locked || !sizable(element)}
-              data-testid="placement-keep"
-              onPressedChange={(on) => setTied({ id: element.id, on })}
-            />
-            <Field
-              label={t('placement.h')}
-              field="h"
-              value={Math.round(frame.h)}
-              unit="px"
-              min={MIN_SIDE}
-              disabled={locked || !sizable(element)}
-              onSet={set}
-            />
-          </div>
-          <div dir="ltr" className="flex gap-3">
-            <Field
-              label={t('placement.rotation')}
-              field="rotation"
-              value={shownRotation(element.rotation)}
-              unit="°"
-              disabled={locked}
-              onSet={set}
-            />
-            <div className="flex-1" />
-          </div>
-          {located.path.length > 0 && (
-            <p className="text-xs text-ui-fg-muted">{t('placement.inGroup')}</p>
-          )}
-        </div>
+        <PlacementFields slideId={slideId} id={id} tied={tied} onTie={setTied} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** The numbers of the element, as it is now. */
+function PlacementFields({
+  slideId,
+  id,
+  tied,
+  onTie,
+}: {
+  slideId: string;
+  id: string;
+  tied: Tied;
+  onTie: (tied: Tied) => void;
+}) {
+  const { t } = useTranslation('arrange');
+  const { bus } = useEditor();
+  const slide = useDeck((s) => findSlide(s.deck, slideId));
+  const located = slide ? indexElements(slide.elements).get(id) : undefined;
+  if (!slide || !located) return null;
+  const { element, locked } = located;
+  const keep = tied?.id === element.id ? tied.on : keepsAspect(element);
+  const { frame } = element;
+
+  const set = (field: PlacementField, value: number) => {
+    const commands = placementCommands(slide, element.id, field, value, keep);
+    if (commands.length === 0) return;
+    const txId = newId('tx');
+    bus.batch(commands, { txId, label: t(`history.${field}`) });
+    // A text box that grows with its text is as tall as the text is in its new width, and never
+    // the height that was typed: the number in the field goes back to what is drawn.
+    if (field === 'w' || field === 'h') syncGrowHeights(bus, [element.id], txId);
+  };
+
+  return (
+    <div data-testid="placement-editor" className="flex flex-col gap-3">
+      {/* Numbers of the slide, which reads left to right whatever the UI's direction. */}
+      <div dir="ltr" className="flex gap-3">
+        <Field
+          label={t('placement.x')}
+          field="x"
+          value={Math.round(frame.x)}
+          unit="px"
+          disabled={locked}
+          onSet={set}
+        />
+        <Field
+          label={t('placement.y')}
+          field="y"
+          value={Math.round(frame.y)}
+          unit="px"
+          disabled={locked}
+          onSet={set}
+        />
+      </div>
+      <div dir="ltr" className="flex items-end gap-1.5">
+        <Field
+          label={t('placement.w')}
+          field="w"
+          value={Math.round(frame.w)}
+          unit="px"
+          min={MIN_SIDE}
+          disabled={locked || !sizable(element)}
+          onSet={set}
+        />
+        <Toggle
+          icon={Link2}
+          size="sm"
+          label={t('placement.keepAspect')}
+          pressed={keep}
+          disabled={locked || !sizable(element)}
+          data-testid="placement-keep"
+          onPressedChange={(on) => onTie({ id: element.id, on })}
+        />
+        <Field
+          label={t('placement.h')}
+          field="h"
+          value={Math.round(frame.h)}
+          unit="px"
+          min={MIN_SIDE}
+          disabled={locked || !sizable(element)}
+          onSet={set}
+        />
+      </div>
+      <div dir="ltr" className="flex gap-3">
+        <Field
+          label={t('placement.rotation')}
+          field="rotation"
+          value={shownRotation(element.rotation)}
+          unit="°"
+          disabled={locked}
+          onSet={set}
+        />
+        <div className="flex-1" />
+      </div>
+      {located.path.length > 0 && (
+        <p className="text-xs text-ui-fg-muted">{t('placement.inGroup')}</p>
+      )}
+    </div>
   );
 }

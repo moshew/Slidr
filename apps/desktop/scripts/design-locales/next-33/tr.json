@@ -35,7 +35,7 @@
     "4",
     "Ekin ve yavaşça bastırın",
     "5",
-    "Kuyuyu sulayın ve ışık altına alın",
+    "Bolca sulayın ve aydınlık bir yere koyun",
     "Hafta\nsonuna\nsaklayın",
     "4 dk. video",
     "@gina.babayit"
@@ -55,18 +55,7 @@
     "BLOG'DA YENİ · EVDEN ÇALIŞMA",
     "Sayı 27",
     {
-      "paragraphs": [
-        [
-          "Ev, bir"
-        ],
-        [
-          "ofis değildir"
-        ],
-        [
-          "Mesele de bu",
-          "."
-        ]
-      ]
+      "paragraphs": [["Ev, bir"], ["ofis değildir"], ["Mesele de bu", "."]]
     },
     "Oturma odasında çalışmayı sakin ve istikrarlı\nbir rutine dönüştüren yedi küçük alışkanlık.",
     "ML",
@@ -124,7 +113,7 @@
   ],
   "batmitzvah": [
     "DAVETLİSİNİZ",
-    "Mika’nın",
+    "Mika",
     "12",
     "Bat Mitzvah",
     "Müzik, dans ve çok fazla çiçekle dolu\nbir akşam. Gelin ve bizimle kutlayın!",
@@ -140,15 +129,15 @@
     "Eski\nfotoğraflarınızı\ngetirin!",
     "2007 SINIFI BİRLİĞİ • DEKALIM YÜKSEK",
     "28 Ekim 2027 Per • 19:30",
-    "Okul bahçesinde, Ness Ziona\nBilet başına",
+    "Okul bahçesinde, Ness Ziona",
     "₪80 • Bağlantıdan kaydolun",
     "Sorularınız mı var? Michal'a sorun: 054-555-0133"
   ],
   "course": [
-    "$490 erken\nkayıt",
+    "$490\nErken kayıt",
     "KAYITLAR AÇIKTIR",
     "GRUP 12 • İLKBAHAR 2027",
-    "Dijital pazarlama,\nkampanyaya sıfır.",
+    "Dijital pazarlama:\nsıfırdan kampanyaya.",
     "Gerçek kampanyalar oluşturmak, yürütmek ve ölçmek\nisteyenler için uygulamalı bir akşam kursu.",
     "12",
     "seans",
@@ -180,7 +169,7 @@
   ],
   "openday": [
     "KRAMIM AKADEMİK KOLEJİ",
-    "Açık gün",
+    "Tanıtım günü",
     "12 Mart 2027 Cuma • 09.00 – 13.00",
     "Gelin kampüsle, öğretim elemanlarıyla ve kurslarla tanışın.",
     "09:30",
@@ -208,7 +197,7 @@
     "Öğle yemeği ve ulaşım dahil",
     "Kayıt ol: 03-555-0142",
     "Yerler sınırlıdır",
-    "Seans başına\n520$"
+    "$520\nbir dönem"
   ],
   "quiz": [
     "SORU 3/10",
@@ -216,7 +205,7 @@
     "100 puan",
     "Karadaki en\nhızlı hayvan\nhangisidir?",
     "20",
-    "SN",
+    "sn",
     "A",
     "Aslan",
     "B",
@@ -280,7 +269,7 @@
     "Birebir, randevu ile"
   ],
   "tutoring": [
-    "Özel matematik\nözel dersi",
+    "Matematik\nözel dersi",
     "7-12. Sınıflar • Her düzeyde sınav hazırlığı",
     "Michal Oren • Matematik mezunu • 8 yıllık öğretmenlik",
     "$45",
@@ -297,7 +286,7 @@
     "Michal\n052-555-0187"
   ],
   "kindergarten": [
-    "Sarsılmış Anaokulu",
+    "Shaked Anaokulu",
     "3-6 yaş arası",
     "2027–28\nkayıtları\naçıldı!",
     "Pazar'dan Perşembe'ye • 07:30 - 16:30",
@@ -310,7 +299,7 @@
   ],
   "certificate": [
     "Mükemmellik Sertifikası",
-    "GURURLA SUNULUR",
+    "TAKDİM EDİLİR",
     "Maya Rosen",
     "Bilimde üstün başarı için, sonsuz merak için ve\ntüm yıl boyunca iyi bir arkadaş olduğu için.",
     "30 Haziran 2027",
@@ -322,8 +311,8 @@
   "volunteer": [
     "100\nfidan",
     "HERKES HOŞGELDİNİZ",
-    "Daha yeşil bir\nblok dikelim.",
-    "Bir sabah sokağımızda yüz fidan ve yeni\nbir millet bahçesi. Ellerini getir.",
+    "Mahallemize\nyeşillik katalım.",
+    "Yüz fidanla sokağımıza yeni bir ortak bahçe kuralım.\nGelin, birlikte dikelim.",
     "19 Mart 2027 Cuma • 08:30 – öğlen",
     "Millet Bahçesi, 4 Zeytin Sokağı",
     "Beni de dahil edin →",
@@ -332,7 +321,7 @@
   "donation": [
     "TOPLULUK BAĞIŞ TOPLAMASI • NEVE ÖREN",
     "Neve Ören'e yeni gençlik merkezi",
-    "ŞİMDİYE KADAR YÜKSELTİLDİ",
+    "TOPLANAN BAĞIŞ",
     "$121,600",
     "Hedefin %76'sı",
     "Hedef: 160.000$",
@@ -346,10 +335,10 @@
     "Kampanya 31 Aralık 2026'da sona eriyor"
   ],
   "blooddrive": [
-    "TOPLULUK KAN DAĞITIMI",
+    "MAHALLEDE KAN BAĞIŞI",
     "Kan verin, hayat\nkurtarın.",
     "3",
-    "Her bağış üçe kadar\nhayat kurtarabilir.",
+    "Bir kan bağışı\nüç hayat kurtarabilir.",
     "Gününüzün yarım saati.",
     "NE ZAMAN",
     "16 Şubat 2027 Salı • 16.00–21.00",
@@ -379,18 +368,18 @@
   "cleanup": [
     "TOPLULUK TEMİZLİK GÜNÜ",
     "Sahili\ntemizleyelim.",
-    "Bir sabah herkese dolu çantalar ve temiz bir\nsahil. Aileler ve çocuklar hoş karşılanır.",
+    "Bir sabahı sahili temizlemeye ayıralım.\nAileler ve çocuklar da davetli.",
     "14 Mayıs 2027 Cum",
     "8–11 AM",
     "Carmel Plajı, Hayfa",
     "GETİRİLECEKLER",
     "Şapka, su, güneş kremi ve kapalı ayakkabılar",
     "Dana'ya kayıt olun: 052-555-0171 • Cankurtaran kulübesinde buluşun",
-    "ELDİVEN\n& ÇANTA\nBİZDE"
+    "ELDİVEN VE\nÇÖP TORBASI\nSAĞLANIR"
   ],
   "adoption": [
     "KÜÇÜK PENÇELERİN KURTARILMASI",
-    "Evlat Edinilme\nGünü",
+    "Bir dost\nsahiplen",
     "Yeni bir en iyi arkadaş bekliyor.",
     "5 Mart 2027 Cum",
     "10:00 – 14:00",
@@ -402,7 +391,7 @@
   ],
   "swap": [
     "Kıyafet Takası",
-    "Bir parça getir, bir parça al.",
+    "Bir giysi getir, bir giysi al.",
     "19 Şubat 2027 Cuma • 09:30–13:00",
     "Neve Oren Toplum Merkezi, 12 Rimon Caddesi",
     "ÜÇ BASİT KURAL",
@@ -412,12 +401,12 @@
     "Boyutlarına göre raylara asın",
     "3",
     "Uygun olanı alın. Paraya gerek yok",
-    "HEPSİ ÜCRETSİZ",
-    "Arta kalanlar bağışlanıyor"
+    "ÜCRETSİZ",
+    "Kalanlar bağışlanır"
   ],
   "fooddrive": [
     "NEVE ÖREN GÖNÜLLÜLERİ • Fısıh Bayramı 2027",
-    "Tatil yemeği\ngezisi",
+    "Bayram için\ngıda bağışı",
     "Konserve yiyecek",
     "ton balığı, nohut, sebzeler",
     "Makarna ve pilav",
@@ -426,7 +415,7 @@
     "zeytin veya kanola",
     "Bebek maması",
     "mama ve tahıllar",
-    "Açılmış veya tarihi geçmiş hiçbir şey yok lütfen",
+    "Yalnızca açılmamış ve tarihi geçmemiş ürünler",
     "Bırakma yeri: toplum merkezi • Rimon bakkal",
     "15 Nisan'a kadar\ntoplanıyor"
   ],
@@ -436,7 +425,7 @@
     "Beş koltuk, sokağınızla ilgili iki yıllık kararlar.",
     "SALI",
     "9 Mart 2027",
-    "ANKETLER AÇIK",
+    "OY VERME SAATİ",
     "07:00 – 21:00",
     "NEREDE",
     "Neve Ören Merkezi",
@@ -458,13 +447,13 @@
     "DÖRDÜNCÜ SEZON • 2027/28",
     "KOMŞULAR İÇİN FUTBOL",
     "MAHALLE",
-    "LİG",
-    "7'Lİ TAKIM • HER CUMA",
+    "LİGİ",
+    "7 KİŞİLİK • HER CUMA",
     "BAŞLAMA BAŞLAMASI",
     "3 Eyl 2027",
     "Cuma • 16:00",
     "Alonim Okulu sahası",
-    "KAYIT OL",
+    "SON KAYIT",
     "15 Ağu 2027",
     "Yoav: 052-555-0147",
     "Takımlar ve solo oyuncular",
@@ -474,7 +463,7 @@
     "yaşında",
     "$180",
     "bir takım, tüm sezon",
-    "Bekçi aranıyor!"
+    "Kaleci aranıyor!"
   ],
   "openhouse": [
     "AÇIK EV",
@@ -492,7 +481,7 @@
     "Rezervasyona gerek yok. Sadece uğrayın.",
     "Şahsen görün.",
     "14 Oak Lane, Maple Grove",
-    "FİYAT SORMAK",
+    "SATIŞ FİYATI",
     "$1,250,000"
   ],
   "menu": [
@@ -509,7 +498,7 @@
     "Patlıcan",
     "$10",
     "közlenmiş, tahin, domates",
-    "Şebeke",
+    "Ana yemekler",
     "Şnitzel",
     "$19",
     "tavuk, tereyağlı püre",
@@ -529,17 +518,17 @@
     "Limon şerbeti",
     "$7",
     "taze nane",
-    "ÜÇ KURS\n29$"
+    "ÜÇ TABAK\n$29"
   ],
   "cafe": [
-    "Onuncu kahveniz\nbizden.",
+    "Onuncu kahven\nbizden.",
     "KART NO: 0417",
     "8",
     "9",
-    "ÜCRETSİZ",
+    "İKRAM",
     "Her bardağa\nbir pul.\nOnuncu\nikramımızdır.",
     "SADAKAT KARTI",
-    "Sarsılmış Kafe",
+    "Shaked Kafe",
     "AÇIK",
     "Paz-Per 06:30–19:00 • Cum-14:00'e kadar",
     "BİZİ BULUN",

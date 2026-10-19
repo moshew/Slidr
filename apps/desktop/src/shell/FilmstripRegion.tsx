@@ -4,7 +4,8 @@ import { transitionGlyph } from '../animations/transitionGlyphs';
 import { canPaste, copySlides, cutSlides, pasteFromMemory } from '../arrange/clipboard';
 import { Filmstrip, type FilmstripClipboard, type FilmstripLabels } from '../stage/Filmstrip';
 import { useAssetResolver } from './assets';
-import { useDeck, useEditor } from './editor';
+import { useEditor } from './editor';
+import { useQuietDeck } from './quietDeck';
 import { useAction, useSlideMarks } from './registry';
 
 /**
@@ -22,7 +23,8 @@ export function FilmstripRegion() {
   const { t: tn } = useTranslation('animations');
   const editor = useEditor();
   const { bus, selection } = editor;
-  const deck = useDeck((s) => s.deck);
+  // The thumbnails follow a drag or typing when it is over, not at every frame and every letter.
+  const deck = useQuietDeck();
   const resolveAsset = useAssetResolver();
   const labels = useMemo<FilmstripLabels>(
     () => ({

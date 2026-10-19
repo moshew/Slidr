@@ -55,18 +55,7 @@
     "NOVEDAD EN EL BLOG · TRABAJANDO DESDE CASA",
     "N° 27",
     {
-      "paragraphs": [
-        [
-          "Tu casa no es"
-        ],
-        [
-          "una oficina"
-        ],
-        [
-          "Esa es la idea",
-          "."
-        ]
-      ]
+      "paragraphs": [["Tu casa no es"], ["una oficina"], ["Esa es la idea", "."]]
     },
     "Siete pequeños hábitos que convirtieron el trabajo\ndesde el salón en una rutina tranquila y constante.",
     "ML",
@@ -145,10 +134,10 @@
     "¿Preguntas? Pregúntale a Michal: 054-555-0133"
   ],
   "course": [
-    "$490 reserva\nanticipada",
+    "$490\nPrecio anticipado",
     "LA INSCRIPCIÓN ESTÁ ABIERTA",
     "COHORTE 12 • PRIMAVERA 2027",
-    "Marketing digital,\ncero a campaña.",
+    "Marketing digital,\nde cero a campaña.",
     "Un curso nocturno práctico para personas que\nquieran crear, ejecutar y medir campañas reales.",
     "12",
     "sesiones",
@@ -208,7 +197,7 @@
     "Almuerzo y transporte incluidos",
     "Regístrate: 03-555-0142",
     "Las plazas son limitadas",
-    "$520 la\nsesión"
+    "$520\npor turno"
   ],
   "quiz": [
     "PREGUNTA 3 DE 10",
@@ -216,7 +205,7 @@
     "100 puntos",
     "¿Qué animal es\nel más rápido\nen tierra?",
     "20",
-    "SEC",
+    "s",
     "A",
     "León",
     "B",
@@ -252,7 +241,7 @@
     "¡Felicitaciones a nuestros graduados!"
   ],
   "parents": [
-    "15\nminutos",
+    "15\nmin",
     "ESCUELA SECUNDARIA RIMONIM • TRIMESTRE DE INVIERNO",
     "Noche de padres",
     "Martes 12 de enero de 2027",
@@ -280,7 +269,7 @@
     "Individual, con cita previa"
   ],
   "tutoring": [
-    "Tutorías privadas\nde matemáticas",
+    "Clases de\nmatemáticas",
     "Grados 7 a 12 • Preparación para exámenes en todos los niveles",
     "Michal Oren • Graduada en Matemáticas • 8 años de docencia",
     "$45",
@@ -297,7 +286,7 @@
     "Mical\n052-555-0187"
   ],
   "kindergarten": [
-    "Jardín de infantes sacudido",
+    "Jardín infantil Shaked",
     "Edades 3 a 6",
     "¡La inscripción\npara 2027-28\nestá abierta!",
     "Domingo a Jueves • 7:30 AM – 4:30 PM",
@@ -310,20 +299,20 @@
   ],
   "certificate": [
     "Certificado de Excelencia",
-    "SE PRESENTA CON ORGULLO A",
+    "SE OTORGA A",
     "Maya Rosen",
     "Por logros sobresalientes en ciencia, por curiosidad\ninfinita y por ser un buen amigo durante todo el año.",
     "30 de junio de 2027",
-    "Dra. Ruth Avidán",
+    "Dra. Ruth Avidan",
     "Director, Escuela Alonim",
     "Noa Sharon",
     "Profesor de clase, 6B"
   ],
   "volunteer": [
-    "100\nretoños",
+    "100\nárboles",
     "TODOS BIENVENIDOS",
-    "Plantemos un\nbloque más verde.",
-    "Una mañana, cien árboles jóvenes y un nuevo jardín\ncomunitario en nuestra calle. Trae tus manos.",
+    "Un barrio\nmás verde.",
+    "Cien árboles jóvenes y un nuevo jardín para el barrio.\nVen a plantar con nosotros.",
     "Viernes 19 de marzo de 2027 • 8:30 a. m. – mediodía",
     "El jardín comunitario, 4 Olive Street",
     "Cuenta conmigo →",
@@ -332,7 +321,7 @@
   "donation": [
     "RECAUDACIÓN DE FONDOS COMUNITARIA • NEVE OREN",
     "Un nuevo centro juvenil para Neve Oren",
-    "LEVANTADO HASTA AHORA",
+    "RECAUDADO HASTA HOY",
     "$121,600",
     "76% del objetivo",
     "Meta: $160,000",
@@ -346,10 +335,10 @@
     "La campaña cierra el 31 de diciembre de 2026"
   ],
   "blooddrive": [
-    "COLECTA DE SANGRE COMUNITARIA",
+    "CAMPAÑA DE DONACIÓN DE SANGRE",
     "Dona sangre,\nsalva vidas.",
     "3",
-    "Cada donación puede\nsalvar hasta tres vidas.",
+    "Cada donación de sangre\npuede salvar hasta tres vidas.",
     "Media hora de tu día.",
     "CUANDO",
     "Martes 16 de febrero de 2027 • 4–9 p.m.",
@@ -379,18 +368,18 @@
   "cleanup": [
     "DÍA DE LIMPIEZA COMUNITARIA",
     "Limpiemos\nla playa.",
-    "Una mañana, maletas llenas y orilla limpia para\ntodos. Las familias y los niños son bienvenidos.",
+    "Una mañana para dejar la playa limpia.\n¡Ven en familia y con los peques!",
     "Viernes, 14 de mayo de 2027",
     "8 a 11 a.m.",
     "Playa del Carmelo, Haifa",
     "QUÉ LLEVAR",
     "Gorro, agua, bloqueador solar y calzado cerrado",
     "Regístrate con Dana: 052-555-0171 • Reúnete en la caseta de salvavidas",
-    "GUANTES Y\nBOLSAS POR\nCUENTA"
+    "GUANTES\nY BOLSAS\nGRATIS"
   ],
   "adoption": [
     "RESCATE DE PATAS PEQUEÑAS",
-    "Día de la\nAdopción",
+    "Adopta\nun amigo",
     "Un nuevo mejor amigo te está esperando.",
     "Viernes, 5 de marzo de 2027",
     "10 a.m. – 2 p.m.",
@@ -402,7 +391,7 @@
   ],
   "swap": [
     "Intercambio de ropa",
-    "Trae un trozo, toma un trozo.",
+    "Trae una prenda y llévate otra.",
     "Viernes 19 de febrero de 2027 • 9:30 a. m. a 1 p. m.",
     "Centro Comunitario Neve Oren, 12 Rimon Street",
     "TRES REGLAS SIMPLES",
@@ -412,8 +401,8 @@
     "Cuélgalos en el riel, por tamaño",
     "3",
     "Toma lo que te quede bien. No se necesita dinero",
-    "TODO GRATIS",
-    "Se donan las sobras"
+    "GRATIS",
+    "El resto se dona"
   ],
   "fooddrive": [
     "NEVE OREN VOLUNTARIOS • PASCUA 2027",
@@ -426,7 +415,7 @@
     "oliva o canola",
     "Comida para bebés",
     "fórmula y cereales",
-    "Nada abierto o pasado de fecha, por favor",
+    "Solo productos cerrados y dentro de fecha",
     "Devolución: el centro comunitario • Supermercado Rimon",
     "Recogida hasta\nel 15 de abril"
   ],
@@ -457,14 +446,14 @@
     "CENTRO COMUNITARIO NEVE OREN",
     "CUARTA TEMPORADA • 2027/28",
     "FÚTBOL PARA LOS VECINOS",
+    "LIGA DEL",
     "BARRIO",
-    "LIGA",
-    "7-A-SIDE • TODOS LOS VIERNES",
+    "FÚTBOL 7 • CADA VIERNES",
     "INICIO",
     "3 de septiembre de 2027",
     "viernes • 4 p.m.",
     "Campo de la escuela Alonim",
-    "REGÍSTRESE POR",
+    "INSCRIPCIÓN HASTA",
     "15 de agosto de 2027",
     "Yoav: 052-555-0147",
     "Equipos y jugadores en solitario",
@@ -474,7 +463,7 @@
     "años",
     "$180",
     "por equipo y temporada",
-    "¡Se buscan guardianes!"
+    "¡Buscamos porteros!"
   ],
   "openhouse": [
     "CASA ABIERTA",
@@ -492,7 +481,7 @@
     "No es necesario reservar. Sólo pasa por aquí.",
     "Véalo en persona.",
     "14 Oak Lane, Arce Grove",
-    "PRECIO DE SOLICITUD",
+    "PRECIO DE VENTA",
     "$1,250,000"
   ],
   "menu": [
@@ -509,7 +498,7 @@
     "Berenjena",
     "$10",
     "carbonizado, tahini, tomate",
-    "Red eléctrica",
+    "Platos principales",
     "Escalope",
     "$19",
     "pollo, puré de mantequilla",
@@ -529,17 +518,17 @@
     "Sorbete de limón",
     "$7",
     "menta fresca",
-    "TRES CURSOS\n$29"
+    "TRES PLATOS\n$29"
   ],
   "cafe": [
-    "Tu décimo café corre\npor nuestra cuenta.",
+    "Tu décimo café,\npor nuestra cuenta.",
     "TARJETA No. 0417",
     "8",
     "9",
     "GRATIS",
     "Un sello por\ncada taza. El\ndécimo es\nnuestro regalo.",
     "TARJETA DE FIDELIDAD",
-    "Café Batido",
+    "Café Shaked",
     "ABRIR",
     "Dom–jue 6:30–19:00 • Vie hasta las 14:00",
     "ENCUENTRANOS",

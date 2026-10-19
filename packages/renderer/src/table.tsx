@@ -1,12 +1,29 @@
-import type { Stroke, TableElement } from '@slidr/model';
+import type { Direction, Stroke, TableElement } from '@slidr/model';
 import { useRenderContext } from './context';
 import { num } from './css';
 import { fillStyle } from './fill';
 import { CELL_PADDING, cellLook, tableLayout } from './tableStyle';
-import { RichTextView } from './text';
+import { RichTextView, type TextDefaults } from './text';
 import { colorCss } from './theme';
 
 const V_ALIGN = { top: 'top', middle: 'middle', bottom: 'bottom' } as const;
+
+/**
+ * The defaults of the text of a cell, the same object for the same look: the text of a cell is
+ * memoised (`RichTextView`), and a new object for every cell made a drag of a table draw every
+ * cell's text again for every frame. A table's cells have a few looks between them.
+ */
+const cellDefaults = new Map<string, TextDefaults>();
+
+function defaultsOf(dir: Direction, text: Pick<TextDefaults, 'color' | 'weight'>): TextDefaults {
+  const key = `${dir} ${text.color ?? ''} ${text.weight ?? ''}`;
+  let known = cellDefaults.get(key);
+  if (!known) {
+    known = { styleRef: 'body', wrap: true, alignTo: dir, ...text };
+    cellDefaults.set(key, known);
+  }
+  return known;
+}
 
 function strokeCss(stroke: Stroke | undefined): string | undefined {
   if (!stroke || stroke.width <= 0) return undefined;
@@ -75,7 +92,7 @@ export function TableView({ element: e }: { element: TableElement }) {
                     <RichTextView
                       content={cell.content}
                       theme={ctx.theme}
-                      defaults={{ styleRef: 'body', wrap: true, alignTo: e.dir, ...look.text }}
+                      defaults={defaultsOf(e.dir, look.text)}
                       dir={e.dir}
                     />
                   )}

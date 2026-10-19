@@ -25,6 +25,19 @@ export interface ChartController {
 /** A font that has not loaded by now is not going to: the chart is drawn without it. */
 const FONT_TIMEOUT_MS = 3000;
 
+/**
+ * How soon after it was drawn a chart is drawn again for another size. A resize gives the chart a
+ * new size every frame, and drawing it took some 5 ms a frame: between two drawings the picture
+ * is stretched to the box (`ChartHandle.stretch`), and the size it ends at is drawn.
+ */
+const RESIZE_MS = 120;
+
+/** The two specs draw the same chart but for its size. */
+function onlyResized(a: ChartSpec, b: ChartSpec): boolean {
+  if (a.w === b.w && a.h === b.h) return false;
+  return JSON.stringify({ ...a, w: 0, h: 0 }) === JSON.stringify({ ...b, w: 0, h: 0 });
+}
+
 const pending = new Set<Promise<void>>();
 
 /**
@@ -78,6 +91,9 @@ export function chartController(
   const stopWatching = watchCues(host);
   let handle: ChartHandle | undefined;
   let wanted: ChartSpec | undefined;
+  /** The spec the picture shows, and when it was drawn. */
+  let drawn: ChartSpec | undefined;
+  let drawnAt = 0;
   let working = false;
   let disposed = false;
 
@@ -85,9 +101,15 @@ export function chartController(
   async function work(): Promise<void> {
     try {
       let engine: ChartEngine | undefined;
-      let drawn: ChartSpec | undefined;
       while (!disposed && wanted && wanted !== drawn) {
         const spec = wanted;
+        const wait = drawnAt + RESIZE_MS - performance.now();
+        if (handle?.stretch && drawn && wait > 0 && onlyResized(drawn, spec)) {
+          handle.stretch(spec);
+          // Then the size it has by then; `settle` waits for that drawing too.
+          await new Promise((resolve) => setTimeout(resolve, wait));
+          continue;
+        }
         const [loaded] = await Promise.all([
           engine ?? loadEngine(),
           loadFonts(host.ownerDocument, spec),
@@ -103,6 +125,7 @@ export function chartController(
         glyphCarrier(host, spec);
         delete host.dataset.slidrChartError;
         drawn = spec;
+        drawnAt = performance.now();
       }
     } catch (error) {
       // A chart that cannot be drawn leaves its box empty; the slide around it is still shown.
@@ -116,7 +139,10 @@ export function chartController(
   return {
     draw(spec) {
       wanted = spec;
-      if (working || disposed) return;
+      if (disposed) return;
+      // A frame of a resize while the chart waits to be drawn: the picture follows the box.
+      if (working && handle?.stretch && drawn && onlyResized(drawn, spec)) handle.stretch(spec);
+      if (working) return;
       working = true;
       const job = work();
       pending.add(job);

@@ -159,6 +159,24 @@ describe('a publication of the media library', () => {
     expect(() => stageLibrary(source, tempDir())).toThrow(/Cloudflare Pages takes up to/);
   });
 
+  it('stages a large JSON catalog behind its unchanged logical manifest entry', () => {
+    const source = tempDir();
+    const target = tempDir();
+    const text = JSON.stringify({ copy: 'a'.repeat(MAX_FILE_BYTES) });
+    write(source, 'elements/designs/index.json', text);
+    const manifest = stageLibrary(source, target);
+    expect(manifest.files['elements/designs/index.json']).toEqual({
+      size: Buffer.byteLength(text),
+      sha256: sha256(text),
+    });
+    expect(existsSync(join(target, 'elements/designs/index.json'))).toBe(false);
+    expect(existsSync(join(target, '_worker.js'))).toBe(true);
+    const routes = JSON.parse(readFileSync(join(target, '_routes.json'), 'utf8')) as {
+      include: string[];
+    };
+    expect(routes.include).toEqual(['/elements/designs/index.json']);
+  });
+
   it('says what it adds, changes and takes away', () => {
     const before: Manifest = manifestOf(
       new Map([

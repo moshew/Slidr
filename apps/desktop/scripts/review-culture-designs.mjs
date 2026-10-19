@@ -73,7 +73,7 @@ const server = await createServer({
   configFile: join(desktop, 'vite.config.ts'),
   root: desktop,
   logLevel: 'error',
-  server: { host: '127.0.0.1', port, strictPort: true, open: false },
+  server: { host: '127.0.0.1', port, strictPort: true, open: false, hmr: false, watch: null },
   plugins: [
     {
       name: 'culture-review-media',

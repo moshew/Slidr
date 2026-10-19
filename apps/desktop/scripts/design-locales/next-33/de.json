@@ -55,18 +55,7 @@
     "NEU IM BLOG · VON ZU HAUSE ARBEITEN",
     "Nr. 27",
     {
-      "paragraphs": [
-        [
-          "Zuhause ist"
-        ],
-        [
-          "kein Büro"
-        ],
-        [
-          "Genau darum geht es",
-          "."
-        ]
-      ]
+      "paragraphs": [["Zuhause ist"], ["kein Büro"], ["Genau darum geht es", "."]]
     },
     "Sieben kleine Gewohnheiten, die das Arbeiten im\nWohnzimmer zu einer ruhigen, festen Routine machten.",
     "ML",
@@ -145,10 +134,10 @@
     "Fragen? Fragen Sie Michal: 054-555-0133"
   ],
   "course": [
-    "$490\nFrühbucherpreis",
+    "$490\nFrühbucher",
     "DIE ANMELDUNG IST OFFEN",
     "KOHORTE 12 • FRÜHLING 2027",
-    "Digitales Marketing,\nkeine Kampagne.",
+    "Digitales Marketing.\nVon null zur Kampagne.",
     "Ein praktischer Abendkurs für Leute, die echte\nKampagnen erstellen, durchführen und messen möchten.",
     "12",
     "Sitzungen",
@@ -208,7 +197,7 @@
     "Mittagessen und Transport inklusive",
     "Anmeldung: 03-555-0142",
     "Die Plätze sind begrenzt",
-    "520 $ pro\nSitzung"
+    "$520\npro Durchgang"
   ],
   "quiz": [
     "FRAGE 3 VON 10",
@@ -252,7 +241,7 @@
     "Herzlichen Glückwunsch an unsere Absolventen!"
   ],
   "parents": [
-    "15\nMin",
+    "15\nMin.",
     "RIMONIM-MITTELSCHULE • WINTERTERM",
     "Elternabend",
     "Dienstag, 12. Januar 2027",
@@ -280,7 +269,7 @@
     "Einzelgespräch, nach Vereinbarung"
   ],
   "tutoring": [
-    "Private Nachhilfe\nin Mathematik",
+    "Mathe\nNachhilfe",
     "Klassen 7–12 • Prüfungsvorbereitung auf jedem Niveau",
     "Michal Oren • Absolvent der Mathematik • 8 Jahre Lehrtätigkeit",
     "$45",
@@ -297,7 +286,7 @@
     "Michal\n052-555-0187"
   ],
   "kindergarten": [
-    "Erschütterter Kindergarten",
+    "Kindergarten Shaked",
     "Alter 3–6",
     "Die Anmeldung\nfür 2027–28\nist offen!",
     "Sonntag bis Donnerstag • 7:30 – 16:30 Uhr",
@@ -310,7 +299,7 @@
   ],
   "certificate": [
     "Zertifikat für Exzellenz",
-    "WIRD STOLZ PRÄSENTIERT",
+    "VERLIEHEN AN",
     "Maya Rosen",
     "Für herausragende Leistungen in der Wissenschaft, für endlose Neugier\nund dafür, dass ich das ganze Jahr über ein guter Freund bin.",
     "30. Juni 2027",
@@ -322,8 +311,8 @@
   "volunteer": [
     "100\nSetzlinge",
     "ALLE SIND WILLKOMMEN",
-    "Ein grüneres\nViertel pflanzen.",
-    "Eines Morgens, hundert Setzlinge und ein neuer Gemeinschaftsgarten\nauf unserer Straße. Bringen Sie Ihre Hände mit.",
+    "Mehr Grün\nfür unser Viertel.",
+    "Hundert Setzlinge und ein neuer Garten für unser Viertel.\nPack mit an – gemeinsam schaffen wir das.",
     "Freitag, 19. März 2027 • 8:30–12:00 Uhr",
     "Der Gemeinschaftsgarten, 4 Olive Street",
     "Zähle mich ein →",
@@ -332,7 +321,7 @@
   "donation": [
     "GEMEINSCHAFTSPENDENAKTION • NEVE OREN",
     "Ein neues Jugendzentrum für Neve Oren",
-    "BISHER ERHÖHT",
+    "BISHER GESAMMELT",
     "$121,600",
     "76 % des Ziels",
     "Ziel: 160.000 $",
@@ -346,10 +335,10 @@
     "Die Aktion endet am 31. Dezember 2026"
   ],
   "blooddrive": [
-    "COMMUNITY BLOOD DRIVE",
+    "BLUTSPENDE IM VIERTEL",
     "Spenden Sie Blut,\nretten Sie Leben.",
     "3",
-    "Jede Spende kann bis\nzu drei Leben retten.",
+    "Eine Blutspende kann\nbis zu drei Leben retten.",
     "Eine halbe Stunde deines Tages.",
     "WANN",
     "Dienstag, 16. Februar 2027 • 16–21 Uhr",
@@ -377,20 +366,20 @@
     "Hausverwaltung: Ronit, 052-555-0142"
   ],
   "cleanup": [
-    "COMMUNITY CLEAN-UP DAY",
+    "GEMEINSAM DEN STRAND SÄUBERN",
     "Lasst uns den\nStrand säubern.",
-    "Ein Morgen, volle Taschen und ein sauberes Ufer\nfür alle. Familien und Kinder sind willkommen.",
+    "Ein Vormittag für einen sauberen Strand.\nFamilien und Kinder sind herzlich willkommen.",
     "Fr, 14. Mai 2027",
     "8–11 Uhr",
     "Carmel Beach, Haifa",
     "WAS SIE MITBRINGEN SOLLTEN",
     "Einen Hut, Wasser, Sonnencreme und geschlossene Schuhe",
     "Anmeldung bei Dana: 052-555-0171 • Treffen in der Rettungsschwimmerhütte",
-    "HANDSCHUHE\n& TASCHEN\nBEI UNS"
+    "HANDSCHUHE\n& MÜLLSÄCKE\nINKLUSIVE"
   ],
   "adoption": [
-    "LITTLE PAWS RESCUE",
-    "Adoptionstag",
+    "TIERHILFE KLEINE PFOTEN",
+    "Ein Tier.\nEin Zuhause.",
     "Ein neuer bester Freund wartet.",
     "Fr, 5. März 2027",
     "10 – 14 Uhr",
@@ -402,7 +391,7 @@
   ],
   "swap": [
     "Kleidertausch",
-    "Bring ein Stück, nimm ein Stück.",
+    "Bring ein Kleidungsstück, nimm eines mit.",
     "Freitag, 19. Februar 2027 • 9:30–13:00 Uhr",
     "Neve Oren Gemeindezentrum, 12 Rimon Street",
     "DREI EINFACHE REGELN",
@@ -412,8 +401,8 @@
     "Hängen Sie sie nach Größe sortiert an die Schiene",
     "3",
     "Nimm, was passt. Kein Geld nötig",
-    "ALLES KOSTENLOS",
-    "Reste werden gespendet"
+    "GRATIS",
+    "Rest wird gespendet"
   ],
   "fooddrive": [
     "NEVE OREN FREIWILLIGE • PASSAH 2027",
@@ -426,7 +415,7 @@
     "Oliven oder Raps",
     "Babynahrung",
     "Säuglingsnahrung und Cerealien",
-    "Bitte nichts geöffnet oder abgelaufen",
+    "Bitte nur ungeöffnete, haltbare Lebensmittel",
     "Abgabe: Gemeindezentrum • Rimon-Lebensmittelgeschäft",
     "Abholung bis\nzum 15. April"
   ],
@@ -436,7 +425,7 @@
     "Fünf Sitze, zwei Jahre Entscheidungen über Ihre Straße.",
     "DIENSTAG",
     "9. März 2027",
-    "UMFRAGE GEÖFFNET",
+    "WAHLZEIT",
     "7:00 – 21:00 Uhr",
     "WO",
     "Neve Oren Center",
@@ -459,12 +448,12 @@
     "FUSSBALL FÜR NACHBARN",
     "NACHBARSCHAFT",
     "LIGA",
-    "7-gegen-7 • JEDEN FREITAG",
+    "7 GEGEN 7 • JEDEN FREITAG",
     "START",
     "3. September 2027",
     "Freitag • 16 Uhr",
     "Stellplatz der Alonim-Schule",
-    "ANMELDEN VON",
+    "ANMELDEN BIS",
     "15. August 2027",
     "Yoav: 052-555-0147",
     "Teams und Einzelspieler",
@@ -474,7 +463,7 @@
     "Jahre alt",
     "$180",
     "ein Team, die ganze Saison",
-    "Keeper gesucht!"
+    "Torhüter gesucht!"
   ],
   "openhouse": [
     "Tag der offenen Tür",
@@ -492,7 +481,7 @@
     "Ohne Anmeldung. Einfach vorbeikommen.",
     "Sehen Sie es sich persönlich an.",
     "14 Oak Lane, Maple Grove",
-    "PREISANGEBOT",
+    "KAUFPREIS",
     "$1,250,000"
   ],
   "menu": [
@@ -509,7 +498,7 @@
     "Aubergine",
     "$10",
     "verkohlt, Tahini, Tomate",
-    "Netz",
+    "Hauptgerichte",
     "Schnitzel",
     "$19",
     "Hühnchen, Butterbrei",
@@ -529,17 +518,17 @@
     "Zitronensorbet",
     "$7",
     "frische Minze",
-    "DREI GÄNGE\n29 $"
+    "DREI GÄNGE\n$29"
   ],
   "cafe": [
-    "Dein zehnter Kaffee\ngeht auf uns.",
+    "Dein zehnter Kaffee\nist gratis.",
     "KARTE Nr. 0417",
     "8",
     "9",
-    "KOSTENLOS",
+    "GRATIS",
     "Ein Stempel\npro Kaffee.\nDer zehnte\nist gratis.",
     "TREUEKARTE",
-    "Geschütteltes Café",
+    "Café Shaked",
     "OFFEN",
     "So–Do 6:30–19:00 Uhr • Fr bis 14:00 Uhr",
     "FINDEN SIE UNS",

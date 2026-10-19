@@ -121,17 +121,21 @@ export function useShellShortcuts(editor: Editor): void {
       // would answer to a Ctrl+Alt shortcut: AltGr+C is a letter on a Polish layout.
       if (event.getModifierState('AltGraph')) return;
       const target = pressedOn(event);
-      const editable = isEditable(target);
       const keys = eventKeys(event);
       // On the welcome screen there is no editor to act on: only the File commands answer.
       const welcome = useShell.getState().welcome;
-      const elsewhere = belongsElsewhere(event, target);
+      // Where the key was pressed is asked only of a key that is some shortcut's: whether a
+      // dialog is open looks through the whole page, and most keys are letters typed.
+      let editable: boolean | undefined;
+      let elsewhere: boolean | undefined;
       let owned = false;
       let handled = false;
       for (const shortcut of known ? shortcutsOn(keys) : []) {
+        editable ??= isEditable(target);
         if (editable && shortcut.inText !== true) continue;
         if (welcome && shortcut.section !== 'file') continue;
         owned = true;
+        elsewhere ??= belongsElsewhere(event, target);
         if (elsewhere) continue;
         if (shortcut.run(editor, event) !== false) {
           handled = true;

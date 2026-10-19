@@ -231,7 +231,7 @@ export function frameScriptNonce(): string | undefined {
  * theme variables and the slide's base text style itself (RND-08).
  */
 export function frameDocument(
-  element: HtmlElement,
+  element: Pick<HtmlElement, 'markup' | 'styles'>,
   ctx: RenderContext,
   size: { w: number; h: number },
 ): string {

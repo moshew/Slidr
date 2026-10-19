@@ -44,8 +44,14 @@ async function call<T>(command: string, args?: InvokeArgs, headers?: Record<stri
 export const tauriStorage: Storage = {
   create: () => call<Workspace>('storage_new'),
   open: (path) => call<OpenedDeck>('storage_open', { path }),
+  // The deck goes as the raw request body, its bytes as they are. As a field of the arguments it
+  // was written out as JSON a second time, every quote of it escaped, and read back so in Rust:
+  // twice the work of the autosave, in one long task.
   writeDeck: async (workspaceId, deckJson, title) => {
-    await call('storage_write_deck', { workspaceId, deckJson, title });
+    await call('storage_write_deck', new TextEncoder().encode(deckJson), {
+      'x-workspace-id': workspaceId,
+      'x-title': encodeURIComponent(title),
+    });
   },
   save: (workspaceId, path, deckJson, title) =>
     call<SavedDeck>('storage_save', { workspaceId, path, deckJson, title }),
