@@ -1,0 +1,160 @@
+{
+  "possibility": [
+    "UNE PENSÉE POUR AUJOURD’HUI  /  01",
+    "Les grandes idées\nnaissent de peu.",
+    "Le premier pas n’a pas besoin d’être parfait.\nIl suffit de le faire.",
+    "COMMENCER AUJOURD’HUI  •  DÉCOUVRIR DEMAIN",
+    "01 / 10"
+  ],
+  "momentum": [
+    "CARNET D’IDÉES  /  02",
+    "Oser.\nAvancer.\nGrandir.",
+    "Tout changement qui compte commence\npar un petit instant de courage.",
+    "01",
+    "OSER",
+    "02",
+    "AVANCER",
+    "03",
+    "GRANDIR"
+  ],
+  "thumbnail": ["5 GROSSES ERREURS", "DÉVOILÉES", "NE RATEZ PAS LA N° 3 !", "DÉCOUVRONS-LES →"],
+  "podcast": [
+    "NOUVEL ÉPISODE",
+    "CONVERSATIONS DU MATIN",
+    "48",
+    "Pourquoi remet-on\ntout à plus tard ?",
+    "Avec la Dre Maya Ron, chercheuse sur les habitudes",
+    "Procrastination",
+    "Habitudes",
+    "Motivation",
+    "42:18",
+    "À écouter sur votre plateforme de podcasts"
+  ],
+  "poll": [
+    "PLAGE OU SOMMETS ?",
+    "PLAGE",
+    "SOMMETS",
+    "Sable, sel et couchers de soleil",
+    "Neige, silence et chocolat chaud",
+    "OU",
+    "Dites-nous en commentaire : PLAGE ou SOMMETS",
+    "@shvil.vanof"
+  ],
+  "travel": [
+    "DESTINATION DE LA SEMAINE",
+    "ITALIE  ·  MÉDITERRANÉE",
+    "@maya.bederech",
+    "SARDAIGNE",
+    "3 h 40 min",
+    "Vol direct depuis Tel Aviv",
+    "Mai–octobre",
+    "La meilleure saison",
+    "Dès 520 $",
+    "Par personne, vol et 3 nuits",
+    "À garder pour votre prochain voyage"
+  ],
+  "tip": [
+    "Lisez à voix haute\navant d’envoyer.\nL’oreille repère ce que\nl’œil laisse passer.",
+    "CHAQUE LUNDI",
+    "L’astuce de",
+    "la semaine",
+    "#12",
+    "Une astuce par semaine,\npour travailler mieux et plus sereinement.",
+    "Gardez et partagez",
+    "@avoda.hachama"
+  ],
+  "bts": [
+    "24",
+    "SAFETY FILM 400",
+    "24A",
+    "23A",
+    "25",
+    "JOUR DE TOURNAGE  ·  LA CAMPAGNE D’HIVER",
+    "DANS LES COULISSES",
+    "Le film complet sort le dimanche 17 janvier 2027",
+    "9",
+    "heures sur le plateau",
+    "3",
+    "lieux de tournage",
+    "1 240",
+    "images tournées"
+  ],
+  "didyouknow": [
+    "LE SAVIEZ-VOUS ?",
+    "LA SCIENCE EN UNE MINUTE  ·  N° 34",
+    "Une abeille visite environ",
+    "5 000",
+    "fleurs en une seule journée",
+    "Il faut environ deux millions de ces visites\npour remplir un seul pot de miel.",
+    "@mada.bedaka"
+  ],
+  "wedding": [
+    "AVEC LEURS FAMILLES",
+    "Maya & Daniel",
+    "JEUDI",
+    "17 juin 2027",
+    "À 19 H 30",
+    "The Garden House, Tel Aviv",
+    "ACCUEIL 19 H 30  •  CÉRÉMONIE 20 H 30",
+    "Réponse avant le 1er juin"
+  ],
+  "birthday": [
+    "TU ES INVITÉ !",
+    "Ella fête ses",
+    {
+      "runs": [
+        "7",
+        {
+          "text": " ans",
+          "scale": 0.3
+        }
+      ]
+    },
+    "Vendredi 12 mars 2027  •  16 h",
+    "Aire de jeux, 8 rue Palm, Ra’anana",
+    "Réponse avant le 5 mars"
+  ],
+  "savedate": [
+    "RÉSERVEZ LA DATE",
+    "09",
+    "16",
+    "27",
+    "Jeudi 16 septembre 2027",
+    "14 éloul 5787",
+    "Talia & Alon",
+    "se marient",
+    "L’INVITATION SUIVRA",
+    "JÉRUSALEM"
+  ],
+  "anniversary": [
+    "50",
+    "ans ensemble",
+    "1977–2027",
+    "Rachel & David",
+    "Pas de cadeaux, juste des câlins",
+    "UN DÎNER EN FAMILLE",
+    "Jeu. 26 août 2027  •  19 h 30",
+    "OÙ",
+    "Le jardin familial, Zichron Ya’akov",
+    "Avec amour, les enfants et petits-enfants"
+  ],
+  "expecting": [
+    "Daniel",
+    "Maya",
+    "?",
+    "UNE PETITE ANNONCE DE LA FAMILLE LEVI",
+    "Et un petit nouveau en route",
+    "Arrivée prévue en avril 2027",
+    "On a déjà fait de la place dans le meuble à chaussures."
+  ],
+  "workshop": [
+    "ATELIER CRÉATIF",
+    "Les idées\nprennent forme.",
+    "Deux heures de création, de nouveaux outils\net de belles rencontres autour de la table.",
+    "Collage",
+    "Couleur",
+    "Lettrage",
+    "Mardi 9 mars 2027  •  17 h–19 h",
+    "City Studio  •  12 places  •  45 $ matériel compris"
+  ]
+}

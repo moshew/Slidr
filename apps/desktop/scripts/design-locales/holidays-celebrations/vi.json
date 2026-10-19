@@ -1,0 +1,278 @@
+{
+  "roshhashana": [
+    "ROSH HASHANAH 5788",
+    "Năm mới tốt lành\nvà ngọt ngào",
+    "Chúc một năm mới tốt lành và ngọt ngào,\nđầy sức khỏe, niềm vui và khởi đầu mới.",
+    "Thân mến, gia đình Levi"
+  ],
+  "hanukkah": [
+    "HANUKKAH 5787",
+    {
+      "runs": ["Mừng lễ ", "Hanukkah"]
+    },
+    "Mong ánh sáng\ntràn ngập mái nhà\nvới hơi ấm và niềm vui.",
+    "Thân mến,\ngia đình Alon",
+    "CÙNG THẮP NẾN",
+    "Đêm thứ tám",
+    "Thứ Sáu, 11/12/2026",
+    "15:45  •  tại vườn nhà chúng tôi"
+  ],
+  "passover": [
+    "PESACH 5787",
+    "Mừng lễ Vượt Qua",
+    "Ngày lễ của tự do, mùa xuân và gia đình",
+    "Mời bạn cùng dự bàn tiệc Seder",
+    "Thứ Tư, 21/4/2027  •  19:00",
+    "Thân mến, gia đình Segev"
+  ],
+  "purim": [
+    "ĐÊM PURIM  •  THỨ HAI, 22/3/2027",
+    "PURIM",
+    "TIỆC HỘI",
+    "Mở cửa 21:30  •  Hangar 7, cảng Tel Aviv",
+    "Thi hóa trang lúc nửa đêm, nhảy múa tới bình minh",
+    "Vé 25 USD",
+    "NHỚ MẶC ĐỒ HÓA TRANG!",
+    "TRANG PHỤC ĐẸP NHẤT\n400 USD"
+  ],
+  "independence": [
+    "79",
+    "NĂM\nĐỘC LẬP",
+    "Mừng ngày Độc lập",
+    "Tiệc khu phố  •  Thứ Ba, 11/5/2027",
+    "Công viên Neve Gan, vào cửa miễn phí",
+    "20:30",
+    "Gian hàng ẩm thực và âm nhạc",
+    "21:00",
+    "Biểu diễn: The Neighbours",
+    "22:00",
+    "Pháo hoa trên công viên"
+  ],
+  "shavuot": [
+    "SHAVUOT 5787  •  HOA TRÁI ĐẦU MÙA",
+    "Mừng lễ\nShavuot",
+    "Chúc một mùa sung túc,\nvụ mùa bội thu và bàn ăn đầy ắp.",
+    "Thân mến, gia đình Barak",
+    "TIỆC TỐI VỚI CÁC MÓN TỪ SỮA",
+    "Thứ Năm, 10/6/2027  •  19:30",
+    "Trên sân hiên: bánh blintzes, bánh phô mai và vang trắng."
+  ],
+  "sukkot": [
+    "SUKKOT 5788",
+    {
+      "runs": ["Mừng lễ ", "Sukkot"]
+    },
+    "Mời đến ngồi trong lều sukkah",
+    "Một buổi tối dành cho hàng xóm, bạn bè và bất kỳ ai ghé qua.",
+    "NGÀY",
+    "Thứ Ba, 19/10/2027",
+    "GIỜ",
+    "19:00–22:00",
+    "ĐỊA ĐIỂM",
+    "8 phố Fig, Givatayim",
+    "CHƯƠNG TRÌNH",
+    "Ăn nhẹ và ca hát"
+  ],
+  "nye": [
+    "2027",
+    "Tiệc đón năm mới",
+    "Tạm biệt 2026 trên sân thượng,\nvới vang sủi và tầm nhìn ra biển.",
+    "NGÀY",
+    "Thứ Năm, 31/12/2026  •  mở cửa 22:00",
+    "ĐỊA ĐIỂM",
+    "Rooftop 12, cảng Jaffa",
+    "ÂM NHẠC",
+    "DJ Lia Noor  +  DJ Omer Tal",
+    "VÉ",
+    "38 USD, gồm đồ uống đầu tiên",
+    "NÂNG LY\nLÚC NỬA ĐÊM"
+  ],
+  "thankyou": [
+    "24/6\n2027",
+    "Cảm ơn",
+    "từ tận đáy lòng",
+    "Vì đã chung vui, ôm nhau và nhảy múa,\nvà làm nên một buổi tối không thể nào quên.",
+    "Noa & Itai",
+    "ĐÁM CƯỚI CỦA CHÚNG TÔI  •  24/6/2027"
+  ],
+  "mazaltov": [
+    "Chúc mừng!",
+    "Gửi Dana",
+    "với tấm bằng thạc sĩ\nkhoa học dữ liệu",
+    "Tự hào về bạn! Nhóm sản phẩm",
+    "Cùng\nnâng ly!",
+    "Thứ Năm\n1/7/2027",
+    "16:00  •  bếp tầng 3"
+  ],
+  "shabbat": [
+    "THỨ SÁU, 15/1/2027  •  7 SHEVAT 5787",
+    "Shabbat Shalom",
+    "Chúc ngày Shabbat an nghỉ và sáng trong,\nbên bàn ăn đầy những người bạn yêu thương.",
+    "GIỜ SHABBAT  •  TEL AVIV",
+    "Thắp nến",
+    "16:39",
+    "Thứ Sáu, 15/1",
+    "Kết thúc Shabbat",
+    "17:41",
+    "Thứ Bảy, 16/1",
+    "Thân mến, cộng đồng Shaarei Or"
+  ],
+  "tubishvat": [
+    "TU BISHVAT 5787  •  NĂM MỚI CỦA CÂY",
+    "Mừng lễ\nTu Bishvat",
+    "Cùng trồng cây: một buổi sáng cho cả gia đình",
+    "Chúng tôi chuẩn bị cây giống và xẻng",
+    "NGÀY",
+    "Thứ Sáu, 22/1/2027  •  9:00",
+    "ĐỊA ĐIỂM",
+    "Rừng nhỏ Shaked, làng Netaim",
+    "MANG THEO",
+    "Mũ và nước uống"
+  ],
+  "lagbaomer": [
+    "NGÀY\nThứ Hai, 24/5/2027  •  19:30",
+    "ĐỊA ĐIỂM\nBãi đất lớn cuối phố Rimon",
+    "MANG THEO\nKhoai tây, kẹo marshmallow, đàn ghi-ta",
+    "ĐÊM KHU PHỐ BÊN LỬA TRẠI  •  5787",
+    "Lửa trại\nLag BaOmer",
+    "Một xô nước cạnh mỗi đống lửa"
+  ],
+  "tubav": [
+    "THỨ TƯ  •  18/8/2027",
+    "15\nAv 5787",
+    "ĐÊM TU BEAV TRONG VƯỜN NHO",
+    "Mừng lễ\nTu BeAv",
+    "Vang từ thùng, nhạc sống\nvà hoàng hôn giữa những giàn nho.",
+    "Thứ Ba, 17/8/2027  •  20:00",
+    "Vườn nho Hagiva, thung lũng Ela",
+    "TRANG PHỤC: TRẮNG",
+    "Xác nhận: 054-555-0171"
+  ],
+  "familyday": [
+    "Ông",
+    "Bà",
+    "Anh chị em",
+    "Mẹ",
+    "Bố",
+    "và tôi",
+    "Mang một tấm ảnh\ntừ nhà",
+    "7/2\nChủ Nhật\n16:30",
+    "MẦM NON RIMON  •  30 SHEVAT 5787",
+    "Mừng Ngày\nGia đình",
+    "Buổi chiều cho bố mẹ, ông bà\nvà trẻ nhỏ: cùng làm album gia đình.",
+    "Mầm non Rimon, 5 phố HaZayit, Kfar Saba",
+    "Mời cả gia đình cùng đến!"
+  ],
+  "ramadan": [
+    "THÁNG RAMADAN  •  1448",
+    "Ramadan\nKareem",
+    "Một tháng phước lành, bình an, sẻ chia và ánh sáng",
+    "DỰ TIỆC IFTAR",
+    "Thứ Năm, 25/2/2027",
+    "Xả chay lúc mặt trời lặn, 17:34",
+    "Trung tâm cộng đồng Zeitim, Haifa",
+    "Thân mến, ban đại diện khu phố Zeitim"
+  ],
+  "christmas": [
+    "Giáng sinh\nan lành\nvà năm mới hạnh phúc\nđầy ánh sáng, hơi ấm và tiếng cười\nnhững tối dài quanh bàn ăn đông vui\nbạn cũ, chuyện mới và thêm một phần ăn\ncùng mọi điều bạn thầm ước dưới cây thông",
+    "Thân mến,\ngia đình Khoury",
+    "Thứ Sáu\n25/12/2026"
+  ],
+  "valentine": [
+    "O",
+    "X",
+    "X",
+    "O",
+    "O",
+    "X",
+    "Tình yêu chiến thắng",
+    "LỄ TÌNH NHÂN  •  CHỦ NHẬT, 14/2/2027",
+    "Bữa tối\ncho hai người",
+    "Ba món, một ly vang sủi\nvà chiếc bàn chỉ dành cho hai bạn.",
+    "₪390",
+    "mỗi cặp đôi",
+    "Bistro Vered, Jaffa",
+    "Đặt bàn: 03-555-0142"
+  ],
+  "womensday": [
+    "8",
+    "Tháng Ba\nNgày Quốc tế Phụ nữ",
+    "Cảm ơn mọi điều các bạn dẫn dắt tại đây",
+    "Vị trí bình đẳng ở mọi bàn họp, quanh năm",
+    "Hôm nay, xin dừng lại để nói lời tri ân",
+    "12:30",
+    "Thứ Hai, 8/3/2027",
+    "Trò chuyện và nâng ly",
+    "TS. Michal Oren về lãnh đạo bình đẳng",
+    "Phòng Gilboa, tầng 4"
+  ],
+  "winter": [
+    "CHÀO MÙA ĐÔNG",
+    "Cuối cùng cũng mưa",
+    "Ngoài trời mưa lớn, trong này ấm áp.\nGhé vào hong khô bên lò sưởi nhé.",
+    "Súp hôm nay: đậu lăng đỏ",
+    "Cà phê Tiltan\n12 phố HaGefen, Ramat Gan"
+  ],
+  "newborn": [
+    "LÀ MỘT BÉ GÁI!",
+    "Chào mừng,",
+    "Alma",
+    "12/1/2027",
+    "6:42",
+    "7 lb 4 oz",
+    "Thân thương, Neta & Itai và anh trai Yoav",
+    "MỜI ĐẾN GẶP BÉ",
+    "Thứ Sáu, 5/2/2027  •  10:30",
+    "Bữa brunch trong vườn ông bà, Pardes Hanna"
+  ],
+  "engagement": [
+    "TIỆC ĐÍNH HÔN",
+    "&",
+    "Yael",
+    "Omer",
+    "Mời cùng nâng ly với chúng tôi",
+    "Xác nhận trước 25/3  •  054-555-0188",
+    "đính hôn!",
+    "NGÀY",
+    "Thứ Năm, 8/4/2027  •  20:00",
+    "ĐỊA ĐIỂM",
+    "Sân thượng Palm House, Jaffa",
+    "TRANG PHỤC",
+    "Trang trọng, điểm sắc vàng"
+  ],
+  "housewarming": [
+    "Chỉ cần\nbạn đến",
+    "TIỆC TÂN GIA",
+    "Chúng tôi có\nnhà mới!",
+    "Cùng mang hơi ấm đến ngôi nhà",
+    "NGÀY",
+    "Thứ Sáu, 28/5/2027, từ 11:00",
+    "ĐỊA ĐIỂM",
+    "9 phố HaTe’ena, căn 4, Givatayim",
+    "CHƯƠNG TRÌNH",
+    "Brunch, âm nhạc và tham quan giữa những thùng đồ",
+    "Báo Dana & Yoav: 050-555-0164"
+  ],
+  "bachelorette": [
+    "CÔ DÂU ĐỒNG Ý. CHÚNG TA LÊN ĐƯỜNG!",
+    "SHIRA\nTIỆC ĐỘC THÂN",
+    "Một đêm. Không chú rể. Thật nhiều lấp lánh.",
+    "Thứ Năm, 8/7/2027",
+    "21:00",
+    "The Flamingo, cảng Tel Aviv",
+    "Trang phục: kim sa",
+    "Thông tin và xác nhận với Adi: 052-555-0117"
+  ],
+  "retirement": [
+    "Văn phòng mới của Yossi",
+    "TIỆC MỪNG NGHỈ HƯU",
+    "Sau",
+    "32",
+    "năm,",
+    "Yossi bắt đầu\nkỳ nghỉ thật dài",
+    "Thứ Tư, 30/6/2027  •  17:00",
+    "Trên sân thượng văn phòng, tầng 9",
+    "Mời cùng nâng ly",
+    "Góp quà: gặp Ruthie ở phòng Kế toán"
+  ]
+}

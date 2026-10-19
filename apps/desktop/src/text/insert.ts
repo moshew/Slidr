@@ -89,17 +89,21 @@ function forget(bus: CommandBus, slideId: string, elementId: string, txId: strin
 }
 
 /**
- * When editing of a new text box ends and nothing was typed, the box goes: an empty text box is
- * invisible, and would stay on the slide unnoticed. It leaves no trace in the history, and
- * neither does what was done to it alone; only when something else was changed in between is
- * removing it a step of its own, which can be undone.
+ * A new text box that is empty goes when it is let go: when it is neither typed in nor selected,
+ * however its typing ended (a key, a press on its frame or beside it) and however it came to be
+ * empty again. An empty text box is invisible, and would stay on the slide unnoticed. It leaves
+ * no trace in the history, and neither does what was done to it alone; only when something else
+ * was changed in between is removing it a step of its own, which can be undone.
  */
 function discardIfLeftEmpty({ bus, selection }: Editor, elementId: string, txId: string): void {
   const stop = selection.subscribe((state) => {
-    if (state.editingElementId === elementId) return;
-    stop();
+    if (state.editingElementId === elementId || state.selectedElementIds.includes(elementId)) {
+      return;
+    }
     const found = findElementInDeck(bus.deck, elementId);
-    if (!found || found.element.type !== 'text' || plainText(found.element.content) !== '') return;
+    if (!found || found.element.type !== 'text') return stop();
+    if (plainText(found.element.content) !== '') return;
+    stop();
     if (forget(bus, found.slide.id, elementId, txId)) return;
     bus.dispatch(
       { type: 'element.remove', slideId: found.slide.id, elementIds: [elementId] },

@@ -1,0 +1,278 @@
+{
+  "roshhashana": [
+    "ROSH HASHANAH 5788",
+    "Tahun yang baik\ndan manis",
+    "Semoga tahun baru ini baik dan manis,\npenuh kesehatan, sukacita, dan awal baru.",
+    "Salam sayang, keluarga Levi"
+  ],
+  "hanukkah": [
+    "HANUKKAH 5787",
+    {
+      "runs": ["Selamat ", "Hanukkah"]
+    },
+    "Semoga cahaya\nmemenuhi rumah Anda\ndengan kehangatan dan sukacita.",
+    "Salam sayang,\nkeluarga Alon",
+    "MENYALAKAN BERSAMA",
+    "Malam kedelapan",
+    "Jum, 11 Des 2026",
+    "15.45  •  di taman kami"
+  ],
+  "passover": [
+    "PESAKH 5787",
+    "Selamat Pesakh",
+    "Perayaan kebebasan, musim semi, dan keluarga",
+    "Bergabunglah di meja Seder kami",
+    "Rab, 21 April 2027  •  19.00",
+    "Salam sayang, keluarga Segev"
+  ],
+  "purim": [
+    "MALAM PURIM  •  SEN, 22 MARET 2027",
+    "PURIM",
+    "PESTA",
+    "Pintu dibuka 21.30  •  Hangar 7, Pelabuhan Tel Aviv",
+    "Lomba kostum tengah malam, menari hingga fajar",
+    "Tiket US$25",
+    "DATANG BERKOSTUM!",
+    "KOSTUM TERBAIK\nUS$400"
+  ],
+  "independence": [
+    "79",
+    "TAHUN\nKEMERDEKAAN",
+    "Selamat Hari Kemerdekaan",
+    "Pesta lingkungan  •  Sel, 11 Mei 2027",
+    "Taman Neve Gan, masuk gratis",
+    "20.30",
+    "Stan makanan dan musik",
+    "21.00",
+    "Pentas langsung: The Neighbours",
+    "22.00",
+    "Kembang api di atas taman"
+  ],
+  "shavuot": [
+    "SHAVUOT 5787  •  BUAH SULUNG",
+    "Selamat\nShavuot",
+    "Semoga musim ini berlimpah,\npanen berhasil, dan meja penuh hidangan.",
+    "Salam sayang, keluarga Barak",
+    "JAMUAN OLAHAN SUSU",
+    "Kam, 10 Juni 2027  •  19.30",
+    "Di teras kami: blintzes, kue keju, dan anggur putih."
+  ],
+  "sukkot": [
+    "SUKOT 5788",
+    {
+      "runs": ["Selamat ", "Sukot"]
+    },
+    "Mari duduk di pondok sukah kami",
+    "Malam terbuka bagi tetangga, teman, dan siapa pun yang lewat.",
+    "TANGGAL",
+    "Sel, 19 Oktober 2027",
+    "WAKTU",
+    "19.00–22.00",
+    "TEMPAT",
+    "Jalan Ara 8, Givatayim",
+    "ACARA",
+    "Kudapan dan bernyanyi"
+  ],
+  "nye": [
+    "2027",
+    "Pesta Tahun Baru",
+    "Melepas 2026 di atap,\ndengan minuman bersoda dan panorama laut.",
+    "TANGGAL",
+    "Kam, 31 Des 2026  •  buka 22.00",
+    "TEMPAT",
+    "Rooftop 12, Pelabuhan Jaffa",
+    "MUSIK",
+    "DJ Lia Noor  +  DJ Omer Tal",
+    "TIKET",
+    "US$38, termasuk minuman pertama",
+    "BERSULANG\nTENGAH MALAM"
+  ],
+  "thankyou": [
+    "24 JUN\n2027",
+    "Terima kasih",
+    "dari lubuk hati",
+    "Atas kebersamaan, pelukan, dan tarian kalian,\nyang menjadikan malam kami tak terlupakan.",
+    "Noa & Itai",
+    "PERNIKAHAN KAMI  •  24 JUNI 2027"
+  ],
+  "mazaltov": [
+    "Selamat!",
+    "Untuk Dana",
+    "atas gelar magister\nilmu data",
+    "Kami bangga padamu! Tim produk",
+    "Mari\nbersulang!",
+    "Kamis\n1 Juli 2027",
+    "16.00  •  dapur lantai 3"
+  ],
+  "shabbat": [
+    "JUMAT, 15 JANUARI 2027  •  7 SHEVAT 5787",
+    "Shabbat Shalom",
+    "Semoga Sabat penuh istirahat dan cahaya,\ndi meja bersama orang terkasih.",
+    "WAKTU SABAT  •  TEL AVIV",
+    "Menyalakan lilin",
+    "16.39",
+    "Jumat, 15 Januari",
+    "Sabat berakhir",
+    "17.41",
+    "Sabtu, 16 Januari",
+    "Salam sayang, komunitas Shaarei Or"
+  ],
+  "tubishvat": [
+    "TU BISHVAT 5787  •  TAHUN BARU PEPOHONAN",
+    "Selamat\nTu Bishvat",
+    "Ayo menanam: pagi ceria untuk seluruh keluarga",
+    "Bibit dan sekop kami sediakan",
+    "TANGGAL",
+    "Jum, 22 Jan 2027  •  09.00",
+    "TEMPAT",
+    "Hutan kecil Shaked, Moshav Netaim",
+    "BAWA",
+    "Topi dan air minum"
+  ],
+  "lagbaomer": [
+    "TANGGAL\nSen, 24 Mei 2027  •  19.30",
+    "TEMPAT\nLapangan besar di ujung Jalan Rimon",
+    "BAWA\nKentang, marshmallow, dan gitar",
+    "MALAM WARGA DI SEKITAR API  •  5787",
+    "Api unggun\nLag BaOmer",
+    "Satu ember air di dekat setiap api"
+  ],
+  "tubav": [
+    "RABU  •  18 AGU 2027",
+    "15\nAv 5787",
+    "MALAM TU BEAV DI KEBUN ANGGUR",
+    "Selamat\nTu BeAv",
+    "Anggur dari tong, musik langsung,\ndan senja di antara tanaman anggur.",
+    "Sel, 17 Agu 2027  •  20.00",
+    "Kebun Hagiva, Lembah Ela",
+    "BUSANA: PUTIH",
+    "Konfirmasi: 054-555-0171"
+  ],
+  "familyday": [
+    "Kakek",
+    "Nenek",
+    "Saudara",
+    "Ibu",
+    "Ayah",
+    "dan aku",
+    "Bawa satu foto\ndari rumah",
+    "7 Feb\nMinggu\n16.30",
+    "TK RIMON  •  30 SHEVAT 5787",
+    "Selamat\nHari Keluarga",
+    "Sore untuk orang tua, kakek nenek,\ndan anak: membuat album keluarga bersama.",
+    "TK Rimon, Jalan HaZayit 5, Kfar Saba",
+    "Ajak seluruh keluarga!"
+  ],
+  "ramadan": [
+    "BULAN RAMADAN  •  1448",
+    "Ramadan\nKareem",
+    "Bulan penuh berkah, damai, kedermawanan, dan cahaya",
+    "BUKA BERSAMA",
+    "Kam, 25 Feb 2027",
+    "Berbuka saat matahari terbenam, pukul 17.34",
+    "Pusat Komunitas Zeitim, Haifa",
+    "Salam hangat, pengurus lingkungan Zeitim"
+  ],
+  "christmas": [
+    "Selamat\nNatal\ndan tahun baru yang bahagia\npenuh cahaya, kehangatan, dan tawa\nmalam panjang di meja yang ramai\nsahabat lama, kisah baru, dan sepiring tambahan\nserta semua harapan lirih di bawah pohon Natal",
+    "Salam sayang,\nkeluarga Khoury",
+    "Jumat\n25 Desember 2026"
+  ],
+  "valentine": [
+    "O",
+    "X",
+    "X",
+    "O",
+    "O",
+    "X",
+    "Cinta menang",
+    "HARI VALENTINE  •  MIN, 14 FEB 2027",
+    "Makan malam\nberdua",
+    "Tiga hidangan, segelas anggur bersoda,\ndan meja khusus untuk kalian.",
+    "₪390",
+    "per pasangan",
+    "Bistro Vered, Jaffa",
+    "Reservasi: 03-555-0142"
+  ],
+  "womensday": [
+    "8",
+    "Maret\nHari Perempuan Internasional",
+    "Terima kasih atas kepemimpinan kalian di sini",
+    "Tempat setara di setiap meja, sepanjang tahun",
+    "Hari ini kami berhenti sejenak untuk mengatakannya",
+    "12.30",
+    "Sen, 8 Maret 2027",
+    "Diskusi dan bersulang",
+    "Dr. Michal Oren tentang kepemimpinan setara",
+    "Ruang Gilboa, lantai 4"
+  ],
+  "winter": [
+    "HALO, MUSIM DINGIN",
+    "Akhirnya hujan",
+    "Di luar hujan deras, di sini hangat.\nMari keringkan diri di dekat tungku.",
+    "Sup hari ini: lentil merah",
+    "Kafe Tiltan\nJalan HaGefen 12, Ramat Gan"
+  ],
+  "newborn": [
+    "BAYI PEREMPUAN!",
+    "Selamat datang,",
+    "Alma",
+    "12 Januari 2027",
+    "06.42",
+    "7 lb 4 oz",
+    "Salam sayang, Neta & Itai, dan kakak Yoav",
+    "MARI BERKENALAN",
+    "Jumat, 5 Februari 2027  •  10.30",
+    "Brunch di taman Kakek dan Nenek, Pardes Hanna"
+  ],
+  "engagement": [
+    "PESTA PERTUNANGAN",
+    "&",
+    "Yael",
+    "Omer",
+    "Mari bersulang bersama kami",
+    "Konfirmasi sebelum 25 Maret  •  054-555-0188",
+    "bertunangan!",
+    "TANGGAL",
+    "Kam, 8 April 2027  •  20.00",
+    "TEMPAT",
+    "Atap Palm House, Jaffa",
+    "BUSANA",
+    "Meriah dengan sentuhan emas"
+  ],
+  "housewarming": [
+    "Cukup\ndatang saja",
+    "SYUKURAN RUMAH BARU",
+    "Kami punya\nrumah baru!",
+    "Mari ramaikan rumah ini bersama",
+    "TANGGAL",
+    "Jumat, 28 Mei 2027, mulai 11.00",
+    "TEMPAT",
+    "Jalan HaTe’ena 9, Apt. 4, Givatayim",
+    "ACARA",
+    "Brunch, musik, dan tur di antara kardus",
+    "Konfirmasi ke Dana & Yoav: 050-555-0164"
+  ],
+  "bachelorette": [
+    "CALON PENGANTIN BILANG YA. KITA BILANG AYO!",
+    "SHIRA\nPESTA LAJANG",
+    "Satu malam. Tanpa mempelai pria. Penuh kilau.",
+    "Kam, 8 Juli 2027",
+    "21.00",
+    "The Flamingo, Pelabuhan Tel Aviv",
+    "Busana: payet",
+    "Info dan konfirmasi ke Adi: 052-555-0117"
+  ],
+  "retirement": [
+    "Kantor baru Yossi",
+    "PESTA PENSIUN",
+    "Setelah",
+    "32",
+    "tahun,",
+    "Yossi memulai\nlibur panjangnya",
+    "Rabu, 30 Juni 2027  •  17.00",
+    "Di atap kantor, lantai 9",
+    "Mari bersulang",
+    "Untuk patungan hadiah, hubungi Ruthie di Akuntansi"
+  ]
+}

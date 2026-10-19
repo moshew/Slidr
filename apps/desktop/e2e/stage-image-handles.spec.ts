@@ -348,3 +348,26 @@ test('a picture with bars is fitted to its frame again, and an empty frame just 
     frame: { ...pending.frame, y: pending.frame.y - 40, h: pending.frame.h + 40 },
   });
 });
+
+test('as in PowerPoint, a band just outside the frame of a selected element takes it and moves it', async ({
+  page,
+}) => {
+  await select(page, 'e_crop_plain');
+  const scale = await stageScale(page);
+  const before = await image(page, 'e_crop_plain');
+  const frame = await box(page, el('e_crop_plain'));
+  // 6px left of the frame, a quarter of the way down, clear of the handles.
+  const from = { x: frame.x - 6, y: frame.y + frame.height / 4 };
+  const at = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.getAttribute('data-move-frame'),
+    from,
+  );
+  expect(at).toBe('e_crop_plain');
+  const count = await steps(page);
+  await drag(page, from, { x: 40, y: 30 });
+  const after = await image(page, 'e_crop_plain');
+  expect(after.frame.x - before.frame.x).toBeCloseTo(40 / scale, 0);
+  expect(after.frame.y - before.frame.y).toBeCloseTo(30 / scale, 0);
+  expect([after.frame.w, after.frame.h]).toEqual([before.frame.w, before.frame.h]);
+  expect(await steps(page)).toBe(count + 1);
+});

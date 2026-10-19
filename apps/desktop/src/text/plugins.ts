@@ -1,5 +1,12 @@
 import { plainText, type Direction, type ListInfo, type Marks, type RichText } from '@slidr/model';
-import { colorCss, listMarkers, MARKER_EM, readsAsNumber, runStyle } from '@slidr/renderer';
+import {
+  colorCss,
+  listMarkers,
+  markerFontSize,
+  markerWidthEm,
+  readsAsNumber,
+  runStyle,
+} from '@slidr/renderer';
 import type { JSONContent } from '@tiptap/core';
 import { Slice, type Node as PmNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
@@ -67,14 +74,20 @@ export function decorationsPlugin(emptyDir: () => Direction): Plugin {
           const text = markers[i];
           if (list && text !== undefined) {
             const color = list.color ?? first?.color;
+            const size = markerFontSize(list, first?.size);
             const style = cssText({
               display: 'inline-block',
-              width: `${MARKER_EM}em`,
-              marginInlineStart: `-${MARKER_EM}em`,
+              // At least the column the indent leaves, and wider for a long or large marker, which then
+              // pushes its line's text along rather than running into it.
+              minWidth: `${markerWidthEm(list)}em`,
+              boxSizing: 'border-box',
+              paddingInlineEnd: '0.2em',
+              whiteSpace: 'nowrap',
+              marginInlineStart: `-${markerWidthEm(list)}em`,
               textIndent: 0,
               textAlign: 'start',
               textDecorationLine: 'none',
-              ...(first?.size !== undefined ? { fontSize: first.size } : {}),
+              ...(size !== undefined ? { fontSize: size } : {}),
               ...(color ? { color: colorCss(color) } : {}),
             });
             decorations.push(

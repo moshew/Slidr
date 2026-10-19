@@ -499,6 +499,32 @@ test('a marquee started inside an entered group selects its children only', asyn
   await expect(surface(page)).toHaveAttribute('data-entered', 'g_outer');
 });
 
+test('a click inside an entered group, beside its children, takes the group', async ({ page }) => {
+  const scale = await stageScale(page);
+  await enter(page, 'g_outer_box');
+  const edge = await box(page, el('g_outer_box'));
+  await page.mouse.click(edge.x + edge.width + 30 * scale, edge.y + 12 * scale);
+  // As its frame does, in PowerPoint: the group is the selection again, with its handles.
+  expect((await state(page)).selected).toEqual(['g_outer']);
+  await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
+  await expect(surface(page).locator('[data-outline="g_outer"]')).toBeVisible();
+  // The pointer moves the group from where it is, before it moves.
+  await expect(surface(page)).toHaveCSS('cursor', 'move');
+});
+
+test('a marquee inside an entered group that takes none of its children takes the group', async ({
+  page,
+}) => {
+  const scale = await stageScale(page);
+  await enter(page, 'g_outer_box');
+  const edge = await box(page, el('g_outer_box'));
+  // Along the gap between the box and the inner group, clear of both.
+  const gap = { x: edge.x + edge.width + 30 * scale, y: edge.y + 12 * scale };
+  await drag(page, gap, { x: 0, y: 20 * scale });
+  expect((await state(page)).selected).toEqual(['g_outer']);
+  await expect(surface(page)).not.toHaveAttribute('data-entered', /./);
+});
+
 test('resizing a group stretches everything in it, as one undo step', async ({ page }) => {
   const before = await element(page, 'g_plain');
   const scale = await stageScale(page);

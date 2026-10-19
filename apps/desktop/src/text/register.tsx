@@ -39,7 +39,8 @@ import {
 } from './toolbar/CharacterTools';
 import { TextEffectsTool } from './toolbar/EffectsTool';
 import { linksText, LinkTool, requestLink } from './toolbar/LinkTool';
-import { AlignTool, DirectionTool, ListTool, SpacingTool } from './toolbar/ParagraphTools';
+import { ListTool } from './toolbar/ListTools';
+import { AlignTool, DirectionTool, SpacingTool } from './toolbar/ParagraphTools';
 import {
   CLEAR_KEYS,
   formatContext,

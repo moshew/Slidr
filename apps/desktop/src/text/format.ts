@@ -1,6 +1,7 @@
 import type {
   Color,
   Direction,
+  ListFormat,
   ListInfo,
   Marks,
   Paragraph,
@@ -153,7 +154,12 @@ export function listChange(kind: ListInfo['kind'], on: boolean): ParagraphChange
     const previous = paragraph.list;
     const list: ListInfo = { kind, level: previous?.level ?? 0 };
     if (previous?.color) list.color = previous.color;
-    if (previous?.glyph && previous.kind === kind) list.glyph = previous.glyph;
+    if (previous?.size) list.size = previous.size;
+    if (previous?.kind === kind) {
+      if (previous.glyph) list.glyph = previous.glyph;
+      if (previous.format) list.format = previous.format;
+      if (previous.start) list.start = previous.start;
+    }
     return { ...rest, list };
   };
 }
@@ -167,10 +173,16 @@ export function levelChange(by: number): ParagraphChange {
   };
 }
 
-/** The bullet glyph and the marker colour of list items; `null` goes back to the default. */
+/**
+ * The look of the markers of list items: the bullet glyph, the numbering style, the number to
+ * start from, the colour and the size; `null` goes back to the default.
+ */
 export function listStyleChange(patch: {
   glyph?: string | null;
   color?: Color | null;
+  format?: ListFormat | null;
+  start?: number | null;
+  size?: number | null;
 }): ParagraphChange {
   return (paragraph) => {
     if (!paragraph.list) return paragraph;
@@ -286,6 +298,9 @@ export interface TextFormat {
   level: Value<number>;
   glyph: Value<string | null>;
   listColor: Value<Color | null>;
+  listFormat: Value<ListFormat | null>;
+  listStart: Value<number | null>;
+  listSize: Value<number | null>;
 }
 
 function common<T>(values: readonly T[]): Value<T> {
@@ -337,6 +352,9 @@ export function readFormat(sample: TextSample, ctx: FormatContext): TextFormat {
     level: lists.length ? common(lists.map((list) => list.level)) : 0,
     glyph: lists.length ? common(lists.map((list) => list.glyph ?? null)) : null,
     listColor: lists.length ? common(lists.map((list) => list.color ?? null)) : null,
+    listFormat: lists.length ? common(lists.map((list) => list.format ?? null)) : null,
+    listStart: lists.length ? common(lists.map((list) => list.start ?? null)) : null,
+    listSize: lists.length ? common(lists.map((list) => list.size ?? null)) : null,
   };
 }
 

@@ -109,9 +109,9 @@ import {
   Handles,
   Label,
   LineOverlay,
+  MoveFrame,
   Outline,
   screenBox,
-  TextMoveFrame,
   toScreen,
   type StageView,
 } from './overlays';
@@ -247,6 +247,8 @@ type Gesture =
       snapBoxes: Frame[];
       /** Where the press goes in if it is released where it began (`resolvePress`). */
       inside: Inside | undefined;
+      /** A box taken while it was typed in without letters: moved, never copied. */
+      noCopy?: boolean;
     }
   | {
       kind: 'resize';
@@ -300,7 +302,18 @@ type Gesture =
       view: CropView;
       handle: Handle;
     }
-  | { kind: 'marquee'; start: Point; current: Point; additive: string[]; scope: string[] }
+  | {
+      kind: 'marquee';
+      start: Point;
+      current: Point;
+      additive: string[];
+      scope: string[];
+      /**
+       * The entered group whose own box was pressed, between its children: a click there takes
+       * the group, as its frame does; a drag is a marquee among its children.
+       */
+      group?: string;
+    }
   | { kind: 'pan'; start: Point; pan: Point };
 
 function useElementSize(ref: RefObject<HTMLElement | null>): { w: number; h: number } {
@@ -610,10 +623,10 @@ export function Stage({
   useEffect(() => {
     if (editing?.element.type === 'html' && !htmlId) selection.getState().stopEditing();
   }, [editing, htmlId, selection]);
-  // The text box whose text is typed in. It keeps its frame: the handles size and turn it, and the
-  // text stays open under them. The edge of the frame moves it and ends the typing, as a press
-  // beside its lines does; while the box has no letters yet, the typing stays open under the
-  // edge too, so a new box is put in its place before its first word.
+  // The text box whose text is typed in. It keeps its frame: the handles size and turn it and the
+  // edge of the frame moves it, and each of them ends the typing, as a press beside its lines
+  // does (PowerPoint). A new box that has no letters stays while it is selected, and goes once it
+  // is let go (`discardIfLeftEmpty`).
   const typing = editing?.element.type === 'text' && !editing.locked ? editing : undefined;
   const wasHtml = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -847,8 +860,8 @@ export function Stage({
    * under the last one is the box, not its text. The letters are taken where they are drawn and
    * brought into the element's own space. The block of the paragraphs, which the renderer marks,
    * is taken where it is laid out in that space, and bounds them: in a turned group the box of a
-   * drawn letter is wider than the letter. A text without letters is its block, the empty line
-   * where it is typed.
+   * drawn letter is wider than the letter. An empty line is its text where the caret stands on it,
+   * as wide as half its height to either side: the rest of a new box is the box.
    */
   const onTextOf = (shape: Located, p: Point): boolean => {
     const root = slideRoot.current?.querySelector<HTMLElement>(
@@ -887,20 +900,28 @@ export function Stage({
       f: -(surface.top + origin.y) / scale,
     });
     const boxes: Frame[] = [];
+    const add = (r: { left: number; top: number; right: number; bottom: number }) => {
+      const drawn = [
+        { x: r.left, y: r.top },
+        { x: r.right, y: r.top },
+        { x: r.right, y: r.bottom },
+        { x: r.left, y: r.bottom },
+      ];
+      boxes.push(boundsOf(drawn.map((corner) => apply(fromWindow, corner))));
+    };
     const range = document.createRange();
     const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       range.selectNodeContents(node);
-      for (const r of range.getClientRects()) {
-        if (r.width === 0 || r.height === 0) continue;
-        const drawn = [
-          { x: r.left, y: r.top },
-          { x: r.right, y: r.top },
-          { x: r.right, y: r.bottom },
-          { x: r.left, y: r.bottom },
-        ];
-        boxes.push(boundsOf(drawn.map((corner) => apply(fromWindow, corner))));
-      }
+      for (const r of range.getClientRects()) if (r.width > 0 && r.height > 0) add(r);
+    }
+    // The break of an empty line is drawn where its caret stands, by its alignment.
+    for (const br of block.querySelectorAll('br')) {
+      if (br.closest('p, li')?.textContent !== '') continue;
+      const r = br.getClientRects()[0];
+      if (!r || r.height === 0) continue;
+      const half = r.height / 2;
+      add({ left: r.left - half, top: r.top, right: r.left + half, bottom: r.bottom });
     }
     return boxes.length === 0 || onTextLines(textLines(boxes), own, slack);
   };
@@ -1037,21 +1058,24 @@ export function Stage({
       }
       // A press anywhere else leaves crop mode, and then acts as it always does.
     }
-    // A text box's frame moves the box, including before editing. As in PowerPoint, a press on
-    // it ends the typing, as one beside the lines does: the box is moved as the selected object
-    // it is. Not while the box has no letters yet: a new box is put in its place before its
-    // first word, and would be gone the moment its typing ended.
+    // The band around a selected element's frame moves it, and a text box's also before editing. As in PowerPoint, a press on
+    // it ends the typing, as do a handle and a press beside the lines: the box is moved, sized or
+    // turned as the selected object it is. A new box without letters stays while it is selected
+    // (`discardIfLeftEmpty`): its empty part moves it as its frame does.
     const handle = dataOf(e.target, 'handle');
-    const frameId = dataOf(e.target, 'move-frame');
+    const blank =
+      typing?.element.type === 'text' && plainText(typing.element.content).trim() === '';
+    const offBlank =
+      blank &&
+      plainPress &&
+      !handle &&
+      pickAt(e.clientX, e.clientY).at(-1) === typing.element.id &&
+      !onTextOf(typing, p);
+    const frameId = dataOf(e.target, 'move-frame') ?? (offBlank ? typing.element.id : undefined);
     const frame = frameId ? index.get(frameId) : undefined;
-    const moveFrame =
-      frame?.element.type === 'text' && !frame.locked && !frame.hidden ? frame : undefined;
-    const keepEditing =
-      moveFrame !== undefined &&
-      moveFrame.element.id === editingId &&
-      moveFrame.element.type === 'text' &&
-      plainText(moveFrame.element.content).trim() === '';
-    if (editingId && !(typing && handle) && !keepEditing) selection.getState().stopEditing();
+    const moveFrame = frame && !isLine(frame) && !frame.locked && !frame.hidden ? frame : undefined;
+    const heldBlank = blank && (Boolean(handle) || offBlank || moveFrame?.element.id === editingId);
+    if (editingId) selection.getState().stopEditing();
     if (moveFrame) {
       const state = selection.getState();
       setEntered(pathIds(moveFrame));
@@ -1062,7 +1086,9 @@ export function Stage({
         txId: newId('tx'),
         start: p,
         moved: false,
-        duplicate: e.altKey && !keepEditing,
+        // The copy of a box that has no letters would be one more empty box.
+        duplicate: e.altKey && !heldBlank,
+        noCopy: heldBlank,
         restore: selection.getState().selectedElementIds,
         pendingSelection: undefined,
         items: [],
@@ -1242,7 +1268,10 @@ export function Stage({
     }
     const additive = e.shiftKey && within ? state.selectedElementIds : [];
     if (!additive.length) state.clearSelection();
-    begin({ kind: 'marquee', start: p, current: p, additive, scope: hitScope });
+    // No child of the innermost entered group is under the pointer, but the group's box is.
+    const inGroup = hitScope.at(-1);
+    const group = !e.shiftKey && inGroup && !index.get(inGroup)?.locked ? inGroup : undefined;
+    begin({ kind: 'marquee', start: p, current: p, additive, scope: hitScope, group });
   };
 
   /** The drag passed the threshold: copy the elements if Alt asks for it, and note where they are. */
@@ -1253,7 +1282,7 @@ export function Stage({
     setOverGroupChild(false);
     if (g.pendingSelection) selection.getState().selectElements([g.pendingSelection]);
     // A box that is typed in is moved, not copied: the copy would be of a text half written.
-    g.duplicate ||= alt && !typing;
+    g.duplicate ||= alt && !typing && !g.noCopy;
     let moving = movable(index);
     if (g.duplicate && moving.length) {
       const commands = duplicateElements(
@@ -1538,6 +1567,24 @@ export function Stage({
         DRAG_PX
     ) {
       onEmptyImageClick(slide.id, emptyImageId);
+    }
+    // A click on the box of an entered group, beside its children, takes the group: its frame
+    // is a selection's again, with its handles, and a drag moves it. So does a marquee from
+    // there that takes none of its children: the group is not left entered with nothing in it.
+    if (g?.kind === 'marquee' && g.group) {
+      const p = toSlide(e.clientX, e.clientY);
+      const click = Math.hypot(p.x - g.start.x, p.y - g.start.y) * scale < DRAG_PX;
+      if (click || selection.getState().selectedElementIds.length === 0) {
+        setEntered(g.scope.slice(0, -1));
+        selection.getState().selectElements([g.group]);
+        // The pointer is on the group now: it moves it from here, before the pointer moves.
+        if (click) {
+          setHover(g.group);
+          setOverText(false);
+          setOverGroupChild(false);
+        }
+      }
+      return;
     }
     // A press that never became a drag, and is let go where it began, is a click: it goes in,
     // unless the click before it in the same double-click already did. The distance is taken
@@ -2271,6 +2318,10 @@ export function Stage({
           ) : null;
         })}
         {enteredGroup ? <Outline located={enteredGroup} view={stageView} entered /> : null}
+        {enteredGroup && !enteredGroup.locked && !enteredGroup.hidden && !active ? (
+          // As in PowerPoint, the frame of the group the user is working in takes the group.
+          <MoveFrame located={enteredGroup} view={stageView} entered />
+        ) : null}
         {hoveredGroup ? <Outline located={hoveredGroup} view={stageView} hoveredGroup /> : null}
         {hovered ? (
           isLine(hovered) ? (
@@ -2279,9 +2330,7 @@ export function Stage({
             <Outline located={hovered} view={stageView} hover />
           )
         ) : null}
-        {hovered?.element.type === 'text' ? (
-          <TextMoveFrame located={hovered} view={stageView} />
-        ) : null}
+        {hovered?.element.type === 'text' ? <MoveFrame located={hovered} view={stageView} /> : null}
         {selectedLocated.map((located) =>
           located.element.id === croppingId ||
           located.element.id === hoveredGroup?.element.id ? null : isLine(located) ? (
@@ -2304,8 +2353,8 @@ export function Stage({
         )}
         {together ? (
           <>
-            <Outline located={together} view={stageView} dashed />
-            <Handles located={together} view={stageView} held={held?.handle} />
+            <Outline located={together} view={stageView} dashed pad={0} />
+            <Handles located={together} view={stageView} held={held?.handle} pad={0} />
           </>
         ) : selectedLocated.length > 1 ? (
           <div

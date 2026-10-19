@@ -33,8 +33,29 @@ export const ListInfo = z.strictObject({
   level: z.number().int().min(0).max(8),
   glyph: z.string().min(1).optional(),
   color: Color.optional(),
+  /**
+   * How a numbered item writes its number, as PowerPoint's numbering styles: `1.`, `1)`, `I.`,
+   * `A.`, `a)`, `a.`, `i.`, `א.`. Without it the style follows the level (`1.`, `a.`, `i.`).
+   */
+  format: z
+    .enum([
+      'decimal',
+      'decimal-paren',
+      'upper-roman',
+      'upper-alpha',
+      'lower-alpha-paren',
+      'lower-alpha',
+      'lower-roman',
+      'hebrew',
+    ])
+    .optional(),
+  /** The number a numbered list counts from, at the item that begins a level. */
+  start: z.number().int().min(1).max(9999).optional(),
+  /** The marker's size, in percent of the text's. */
+  size: z.number().int().min(25).max(400).optional(),
 });
 export type ListInfo = z.infer<typeof ListInfo>;
+export type ListFormat = NonNullable<ListInfo['format']>;
 
 export const Paragraph = z.strictObject({
   dir: z.enum(['rtl', 'ltr', 'auto']),

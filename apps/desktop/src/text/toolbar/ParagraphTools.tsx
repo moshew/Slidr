@@ -10,16 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
-  Input,
   NumberField,
   type LucideIcon,
 } from '@slidr/ui';
 import {
-  List,
   ListChevronsUpDown,
-  ListIndentDecrease,
-  ListIndentIncrease,
-  ListOrdered,
   PilcrowLeft,
   PilcrowRight,
   TextAlignCenter,
@@ -27,16 +22,11 @@ import {
   TextAlignJustify,
   TextAlignStart,
 } from '@slidr/ui/icons';
-import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ColorField, useGestureTx } from '../../controls';
 import type { ContextToolProps } from '../../shell';
 import { changeParagraphs } from '../actions';
 import {
   isMixed,
-  levelChange,
-  listChange,
-  listStyleChange,
   orNull,
   patchParagraph,
   type ParagraphChange,
@@ -48,7 +38,6 @@ import {
   keepFocus,
   PopoverTool,
   Row,
-  TextToggle,
   useBurstTx,
   useCompact,
   useText,
@@ -206,167 +195,6 @@ export function DirectionTool() {
         <DirectionChoices text={text} />
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-/* ---------------------------------------------------------------- lists */
-
-/** Bullets on offer; the standard bullet follows the level (the renderer's `•`, `◦`, `▪`). */
-const GLYPHS = ['•', '◦', '▪', '–', '✓', '★'];
-
-function ListToggles({ text }: { text: Text }) {
-  const { t } = useTranslation('text');
-  const change = useChange(text);
-  const { list } = text.format;
-  return (
-    <>
-      <TextToggle
-        icon={List}
-        className="rtl:-scale-x-100"
-        label={t('list.bullets')}
-        pressed={list === 'bullet'}
-        onPressedChange={(on) => change(listChange('bullet', on))}
-      />
-      <TextToggle
-        icon={ListOrdered}
-        className="rtl:-scale-x-100"
-        label={t('list.numbers')}
-        pressed={list === 'number'}
-        onPressedChange={(on) => change(listChange('number', on))}
-      />
-    </>
-  );
-}
-
-/** The level, the bullet and the marker colour of the list items in the target. */
-function ListOptions({ text }: { text: Text }) {
-  const { t } = useTranslation('text');
-  const change = useChange(text);
-  const tx = useGestureTx();
-  const { list, glyph, listColor } = text.format;
-  const none = list === null;
-  const [custom, setCustom] = useState<string | null>(null);
-  const colorSlot = useRef<HTMLSpanElement>(null);
-  const glyphValue = orNull(glyph);
-  const setGlyph = (next: string | null) => change(listStyleChange({ glyph: next }));
-
-  return (
-    <>
-      <Row label={t('list.level')}>
-        <IconButton
-          size="sm"
-          icon={ListIndentDecrease}
-          mirror
-          label={t('list.outdent')}
-          shortcut="Shift+Tab"
-          disabled={none}
-          onClick={() => change(levelChange(-1))}
-          onMouseDown={keepFocus}
-        />
-        <IconButton
-          size="sm"
-          icon={ListIndentIncrease}
-          mirror
-          label={t('list.indent')}
-          shortcut="Tab"
-          disabled={none}
-          onClick={() => change(levelChange(1))}
-          onMouseDown={keepFocus}
-        />
-      </Row>
-      {list !== 'number' && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-ui-fg-muted">{t('list.glyph')}</span>
-          <div className="flex items-center gap-0.5">
-            {GLYPHS.map((choice, i) => {
-              // The first choice is the standard bullet: no glyph of its own.
-              const value = i === 0 ? null : choice;
-              return (
-                <button
-                  key={choice}
-                  type="button"
-                  aria-label={i === 0 ? t('list.glyphDefault') : choice}
-                  aria-pressed={!none && !isMixed(glyph) && glyph === value}
-                  disabled={none}
-                  onMouseDown={keepFocus}
-                  onClick={() => setGlyph(value)}
-                  className={cx(
-                    'inline-flex size-control-sm shrink-0 cursor-default items-center justify-center rounded-control text-md text-ui-fg transition-colors select-none',
-                    'hover:bg-ui-hover active:bg-ui-pressed disabled:pointer-events-none disabled:text-ui-fg-subtle',
-                    'aria-pressed:bg-ui-accent-soft aria-pressed:text-ui-accent-fg',
-                  )}
-                >
-                  {choice}
-                </button>
-              );
-            })}
-            <Input
-              aria-label={t('list.glyphCustom')}
-              placeholder={t('list.glyphOther')}
-              className="ms-1.5 h-control-sm min-w-0 flex-1"
-              maxLength={3}
-              disabled={none}
-              value={custom ?? (glyphValue && !GLYPHS.includes(glyphValue) ? glyphValue : '')}
-              onChange={(event) => setCustom(event.target.value)}
-              onBlur={() => {
-                if (custom === null) return;
-                const next = custom.trim();
-                setCustom(null);
-                if (next !== (glyphValue ?? '')) setGlyph(next || null);
-              }}
-              onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
-            />
-          </div>
-        </div>
-      )}
-      <Row label={t('list.color')}>
-        <span ref={colorSlot} className="inline-flex size-control-sm">
-          {!none && (
-            <ColorField
-              size="sm"
-              label={t('list.color')}
-              value={orNull(listColor)}
-              mixed={isMixed(listColor)}
-              allowNone
-              onChange={(next) => {
-                change(listStyleChange({ color: next }), tx.id());
-                if (next === null) tx.end();
-              }}
-              onGestureEnd={tx.end}
-              onCloseAutoFocus={(event) => {
-                tx.end();
-                // Back to the popover this sits in, not to the swatch: a focused swatch shows its
-                // tooltip, and the next Esc would close that instead of the popover.
-                event.preventDefault();
-                colorSlot.current?.closest<HTMLElement>('[role="dialog"]')?.focus();
-              }}
-            />
-          )}
-        </span>
-      </Row>
-    </>
-  );
-}
-
-/**
- * One button for lists, as for alignment: its icon is the list the paragraph has now, and it opens
- * bullets, numbers and the list options.
- */
-export function ListTool() {
-  const { t } = useTranslation('text');
-  const text = useText();
-  if (!text) return null;
-  return (
-    <PopoverTool
-      label={t('list.label')}
-      icon={text.format.list === 'number' ? ListOrdered : List}
-      mirror
-    >
-      <Row label={t('list.label')}>
-        <ListToggles text={text} />
-      </Row>
-      <ListOptions text={text} />
-    </PopoverTool>
   );
 }
 

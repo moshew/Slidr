@@ -42,6 +42,11 @@ const BAR_MIN_PX = 8;
 const BAR_GAP_PX = 4;
 /** How far past what is drawn a handle still takes the pointer, on every side. */
 const GRIP_PX = 4;
+/**
+ * How far outside an element's frame the pointer still takes the element to move it, as the band
+ * around a selected object in PowerPoint.
+ */
+const MOVE_GRIP_PX = 8;
 const ROTATE_OFFSET_PX = 24;
 const ACCENT = 'var(--color-ui-accent)';
 const PANEL = 'var(--color-ui-panel)';
@@ -63,6 +68,26 @@ const FOCUS_RING = `0 0 0 2px ${PANEL}, 0 0 0 4px ${FOCUS}`;
 const TYPING_PAD_PX = 6;
 
 /**
+ * How far the frame of a group stands outside the box of its children, as in PowerPoint: the
+ * outline and handles of the group never lie on those of a child, so the group and each child in
+ * it can be told apart and taken on their own.
+ */
+export const GROUP_PAD_PX = 6;
+
+/**
+ * The band along the frame of a group the user is working inside: from a little within the
+ * frame to a little beyond it. It is drawn over the band of a selected child, so a child whose
+ * side is on the side of the group keeps its own band only next to its side.
+ */
+const GROUP_GRIP_IN_PX = 2;
+const GROUP_GRIP_OUT_PX = 6;
+
+/** How far an element's frame is drawn outside its box: a group's stands clear of its children. */
+export function framePad(located: Located): number {
+  return located.element.type === 'group' ? GROUP_PAD_PX : 0;
+}
+
+/**
  * A box of the element's size in screen pixels, laid over the element; `padX` and `padY` screen
  * pixels larger on their respective sides, in the element's own axes.
  */
@@ -74,13 +99,28 @@ function boxStyle(
   padY = padX,
 ): CSSProperties {
   const { w, h } = located.element.frame;
-  const placed = screenTransform(elementMatrix(located, flips), view.origin, view.scale);
+  const width = w * view.scale + 2 * padX;
+  const height = h * view.scale + 2 * padY;
+  const m = elementMatrix(located, flips);
+  // An upright box is placed by its edges, not moved there: the screen puts each edge of a laid
+  // out box on its own pixel, where a box that is moved is rounded by where it starts and how
+  // wide it is apart. While one edge is dragged, the other would step a pixel off and back.
+  if (m.a === 1 && m.b === 0 && m.c === 0 && m.d === 1) {
+    return {
+      position: 'absolute',
+      left: view.origin.x + m.e * view.scale - padX,
+      top: view.origin.y + m.f * view.scale - padY,
+      width,
+      height,
+    };
+  }
+  const placed = screenTransform(m, view.origin, view.scale);
   return {
     position: 'absolute',
     left: 0,
     top: 0,
-    width: w * view.scale + 2 * padX,
-    height: h * view.scale + 2 * padY,
+    width,
+    height,
     transformOrigin: '0 0',
     transform: padX || padY ? `${placed} translate(${-padX}px, ${-padY}px)` : placed,
   };
@@ -130,10 +170,13 @@ export function Outline({
   placeholder,
   walk,
   typing,
+  pad = framePad(located),
 }: {
   located: Located;
   view: StageView;
   hover?: boolean;
+  /** How far outside the element's box the frame is drawn (`framePad`). */
+  pad?: number;
   dashed?: boolean;
   /** A text box being edited: keep side room for its caret, with the normal box height. */
   typing?: boolean;
@@ -164,7 +207,7 @@ export function Outline({
     <div
       {...mark}
       style={{
-        ...boxStyle(located, view, false, typing ? TYPING_PAD_PX : 0, 0),
+        ...boxStyle(located, view, false, typing ? TYPING_PAD_PX : pad, typing ? 0 : pad),
         outline: walk
           ? `2px dotted ${FOCUS}`
           : `${hover || quiet ? 1 : 1.5}px ${dashed || quiet ? 'dashed' : 'solid'} ${ACCENT}`,
@@ -233,28 +276,47 @@ export function handleSize(
   return handle.x === 0 ? { w: long, h: BAR_THICK_PX } : { w: BAR_THICK_PX, h: long };
 }
 
-/** The text box's frame takes the pointer for moving; its interior is reserved for editing. */
-export function TextMoveFrame({
+/**
+ * The band around an element's frame takes the pointer for moving it. For a text box it is the
+ * only way to move it, its interior being reserved for editing.
+ */
+export function MoveFrame({
   located,
   view,
   typing,
+  pad = framePad(located),
+  entered,
 }: {
   located: Located;
   view: StageView;
   typing?: boolean;
+  /** How far outside the element's box its frame is drawn (`framePad`). */
+  pad?: number;
+  /**
+   * The group the user is working inside, around a selected child or none: a press on its frame
+   * takes the group, as in PowerPoint. Its band follows the frame, and does not reach in to the
+   * children, whose own bands lie there.
+   */
+  entered?: boolean;
 }) {
-  const padX = typing ? TYPING_PAD_PX : 0;
+  const padX = typing ? TYPING_PAD_PX : pad;
+  const padY = typing ? 0 : pad;
   const sw = located.element.frame.w * view.scale + 2 * padX;
-  const sh = located.element.frame.h * view.scale;
-  // Keep the targets outside the text, including the caret at the start of its first line.
+  const sh = located.element.frame.h * view.scale + 2 * padY;
+  // Keep the targets outside the text, including the caret at the start of its first line, and
+  // outside the children of a group: between them and the frame the band takes the group.
+  const g = entered ? GROUP_GRIP_OUT_PX : MOVE_GRIP_PX;
+  const ix = entered ? Math.min(padX, GROUP_GRIP_IN_PX) : padX;
+  const iy = entered ? Math.min(padY, GROUP_GRIP_IN_PX) : padY;
   const sides: CSSProperties[] = [
-    { left: -GRIP_PX, top: -GRIP_PX, width: sw + 2 * GRIP_PX, height: GRIP_PX },
-    { left: -GRIP_PX, top: sh, width: sw + 2 * GRIP_PX, height: GRIP_PX },
-    { left: -GRIP_PX, top: 0, width: padX + GRIP_PX, height: sh },
-    { left: sw - padX, top: 0, width: padX + GRIP_PX, height: sh },
+    { left: -g, top: -g, width: sw + 2 * g, height: g + iy },
+    { left: -g, top: sh - iy, width: sw + 2 * g, height: g + iy },
+    { left: -g, top: iy, width: ix + g, height: sh - 2 * iy },
+    { left: sw - ix, top: iy, width: ix + g, height: sh - 2 * iy },
   ];
+  // Over the band of a selected child, and under its handles.
   return (
-    <div style={boxStyle(located, view, false, padX, 0)}>
+    <div style={{ ...boxStyle(located, view, false, padX, padY), zIndex: entered ? 1 : undefined }}>
       {sides.map((side, i) => (
         <div
           key={i}
@@ -274,9 +336,12 @@ export function Handles({
   noRotate,
   held,
   typing,
+  pad = framePad(located),
 }: {
   located: Located;
   view: StageView;
+  /** How far outside the element's box its frame is drawn (`framePad`). */
+  pad?: number;
   /** A line has handles on its points instead of on its box. */
   rotateOnly?: boolean;
   /** Several elements together are resized, not turned. */
@@ -291,9 +356,10 @@ export function Handles({
   typing?: boolean;
 }) {
   const { w, h } = located.element.frame;
-  const padX = typing ? TYPING_PAD_PX : 0;
+  const padX = typing ? TYPING_PAD_PX : pad;
+  const padY = typing ? 0 : pad;
   const sw = w * view.scale + 2 * padX;
-  const sh = h * view.scale;
+  const sh = h * view.scale + 2 * padY;
   const matrix = elementMatrix(located);
   /** The handle the pointer is over. */
   const [over, setOver] = useState<string | null>(null);
@@ -341,10 +407,10 @@ export function Handles({
   };
   return (
     <>
-      {located.element.type === 'text' ? (
-        <TextMoveFrame located={located} view={view} typing={typing} />
-      ) : null}
-      <div style={boxStyle(located, view, false, padX, 0)}>
+      {rotateOnly || noRotate ? null : (
+        <MoveFrame located={located} view={view} typing={typing} pad={pad} />
+      )}
+      <div style={{ ...boxStyle(located, view, false, padX, padY), zIndex: 2 }}>
         {rotateOnly ? null : (Object.keys(HANDLES) as (keyof typeof HANDLES)[]).map(handle)}
         {noRotate ? null : (
           <div

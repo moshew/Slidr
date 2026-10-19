@@ -2,6 +2,7 @@ import type {
   Color,
   Direction,
   Insets,
+  ListFormat,
   ListInfo,
   Marks,
   Paragraph,
@@ -76,9 +77,65 @@ function roman(n: number): string {
   return s;
 }
 
-function numberLabel(n: number, level: number): string {
-  const kind = level % 3;
-  return `${kind === 0 ? n : kind === 1 ? alpha(n) : roman(n)}.`;
+/** Hebrew numerals: letters that add up to the number, with 15 and 16 as ט״ו and ט״ז. */
+function hebrew(n: number): string {
+  const ones = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  const tens = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ'];
+  const hundreds = ['', 'ק', 'ר', 'ש', 'ת', 'תק', 'תר', 'תש', 'תת', 'תתק'];
+  const v = n % 1000;
+  const rest = v % 100;
+  const low =
+    rest === 15 ? 'טו' : rest === 16 ? 'טז' : tens[Math.floor(rest / 10)]! + ones[rest % 10]!;
+  return hundreds[Math.floor(v / 100)]! + low || String(n);
+}
+
+/** The number of the `n`th item, written in a numbering style. */
+export function listNumber(n: number, format: ListFormat): string {
+  switch (format) {
+    case 'decimal':
+      return `${n}.`;
+    case 'decimal-paren':
+      return `${n})`;
+    case 'upper-roman':
+      return `${roman(n).toUpperCase()}.`;
+    case 'upper-alpha':
+      return `${alpha(n).toUpperCase()}.`;
+    case 'lower-alpha-paren':
+      return `${alpha(n)})`;
+    case 'lower-alpha':
+      return `${alpha(n)}.`;
+    case 'lower-roman':
+      return `${roman(n)}.`;
+    case 'hebrew':
+      return `${hebrew(n)}.`;
+  }
+}
+
+/** The style of a level without one of its own: `1.`, `a.`, `i.`, and again. */
+const LEVEL_FORMATS: readonly ListFormat[] = ['decimal', 'lower-alpha', 'lower-roman'];
+
+function numberLabel(n: number, list: ListInfo): string {
+  return listNumber(n, list.format ?? LEVEL_FORMATS[list.level % 3]!);
+}
+
+/**
+ * The font size of a list marker: the text's, or the size of the item's first run, times the
+ * list's `size`. Undefined leaves the marker at the size of its paragraph.
+ */
+/**
+ * The width of the marker column in em of the marker: `MARKER_EM` of the paragraph, so that a
+ * marker drawn larger or smaller (`size`) keeps the column the paragraph's indent leaves it.
+ */
+export function markerWidthEm(list: ListInfo): number {
+  return MARKER_EM / ((list.size ?? 100) / 100);
+}
+
+export function markerFontSize(
+  list: ListInfo,
+  runSize: number | undefined,
+): string | number | undefined {
+  if (list.size === undefined) return runSize;
+  return runSize !== undefined ? (runSize * list.size) / 100 : `${list.size / 100}em`;
 }
 
 /** The marker text of every list paragraph: numbering restarts after any non-list paragraph. */
@@ -95,9 +152,10 @@ export function listMarkers(paragraphs: readonly Paragraph[]): (string | undefin
       counters[list.level] = 0;
       return list.glyph ?? BULLETS[list.level % BULLETS.length];
     }
-    const n = (counters[list.level] ?? 0) + 1;
+    const previous = counters[list.level];
+    const n = previous ? previous + 1 : (list.start ?? 1);
     counters[list.level] = n;
-    return list.glyph ?? numberLabel(n, list.level);
+    return list.glyph ?? numberLabel(n, list);
   });
 }
 
@@ -289,7 +347,7 @@ function RunView({ run, role, ltr }: { run: Run; role: 'heading' | 'body'; ltr: 
 }
 
 function Marker({ text, list, firstRun }: { text: string; list: ListInfo; firstRun?: Run }) {
-  const size = firstRun?.marks?.size;
+  const size = markerFontSize(list, firstRun?.marks?.size);
   const color = list.color ?? firstRun?.marks?.color;
   return (
     <span
@@ -297,8 +355,13 @@ function Marker({ text, list, firstRun }: { text: string; list: ListInfo; firstR
       data-slidr-marker
       style={{
         display: 'inline-block',
-        width: `${MARKER_EM}em`,
-        marginInlineStart: `-${MARKER_EM}em`,
+        // At least the column the indent leaves, and wider for a long or large marker, which then
+        // pushes its line's text along rather than running into it.
+        minWidth: `${markerWidthEm(list)}em`,
+        boxSizing: 'border-box',
+        paddingInlineEnd: '0.2em',
+        whiteSpace: 'nowrap',
+        marginInlineStart: `-${markerWidthEm(list)}em`,
         textIndent: 0,
         textAlign: 'start',
         textDecorationLine: 'none',

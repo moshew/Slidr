@@ -1,4 +1,4 @@
-/* global document, window */
+/* global document, window, requestAnimationFrame */
 // Render the fifteen culture slides in every language, using the app's renderer and fonts.
 // All files stay under --out. Missing media is fetched from the published library into its cache.
 import { chromium } from '@playwright/test';
@@ -20,11 +20,20 @@ const output = resolve(option('--out', 'test-results/culture-localization'));
 const fontsFile = resolve(option('--fonts', join(output, 'fonts.json')));
 const sizesFile = resolve(option('--sizes', join(output, 'sizes.json')));
 const catalog = JSON.parse(readFileSync(catalogFile, 'utf8'));
-const ids = catalog.groupIds.culture;
+const locales = resolve(option('--locales', join(desktop, 'scripts', 'design-locales', 'culture')));
+const ids = Object.keys(JSON.parse(readFileSync(join(locales, 'source.json'), 'utf8')));
+const title = option('--title', 'Culture slides');
+const port = Number(option('--port', '1427'));
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid --port');
+const groups = catalog.groups.filter((group) =>
+  catalog.groupIds[group].some((id) => ids.includes(id)),
+);
 const reviewCatalog = JSON.stringify({
   ...catalog,
-  groups: ['culture'],
-  groupIds: { culture: ids },
+  groups,
+  groupIds: Object.fromEntries(
+    groups.map((group) => [group, catalog.groupIds[group].filter((id) => ids.includes(id))]),
+  ),
   slides: Object.fromEntries(ids.map((id) => [id, catalog.slides[id]])),
 });
 const languages = Object.keys(catalog.slides[ids[0]]);
@@ -33,10 +42,10 @@ const drawnLanguages = requested ? requested.split(',') : languages;
 const selectedIds = option('--ids');
 const capturedIds = selectedIds ? selectedIds.split(',') : ids;
 if (capturedIds.some((id) => !ids.includes(id))) throw new Error('--ids names an unknown design');
-const media = resolve(desktop, '..', '..', '..', 'Slidr-media');
+const media = resolve(option('--media', resolve(desktop, '..', '..', '..', 'Slidr-media')));
 const priorCache = join(desktop, 'node_modules', '.cache', 'slidr-media');
 const cache = join(output, 'media');
-const fitsFile = join(desktop, 'scripts', 'design-locales', 'culture', 'fit.json');
+const fitsFile = join(locales, 'fit.json');
 const fits = JSON.parse(readFileSync(fitsFile, 'utf8'));
 const prior = (name) =>
   (requested || selectedIds) && existsSync(join(output, name))
@@ -47,6 +56,7 @@ const prior = (name) =>
 const findings = prior('findings.json');
 const measurements = prior('measurements.json');
 const errors = [];
+const paragraphs = [];
 const mime = {
   '.json': 'application/json',
   '.woff2': 'font/woff2',
@@ -63,7 +73,7 @@ const server = await createServer({
   configFile: join(desktop, 'vite.config.ts'),
   root: desktop,
   logLevel: 'error',
-  server: { host: '127.0.0.1', port: 1427, strictPort: true, open: false },
+  server: { host: '127.0.0.1', port, strictPort: true, open: false },
   plugins: [
     {
       name: 'culture-review-media',
@@ -153,7 +163,7 @@ try {
     deviceScaleFactor: 1,
   });
   page.on('pageerror', (error) => errors.push(String(error)));
-  const base = 'http://127.0.0.1:1427';
+  const base = `http://127.0.0.1:${port}`;
   await page.goto(`${base}/dev/designs-review.html?id=${ids[0]}&lang=he&w=1920`, {
     waitUntil: 'domcontentloaded',
     timeout: 120_000,
@@ -192,6 +202,14 @@ try {
       throw new Error(await page.locator('body').innerText());
     }
     await page.evaluate(() => document.fonts.ready);
+    const expectedImages = catalog.slides[q.get('id')][q.get('lang')].elements.filter(
+      (element) => element.type === 'image',
+    ).length;
+    if (expectedImages)
+      await page
+        .locator('img')
+        .nth(expectedImages - 1)
+        .waitFor({ state: 'attached' });
     await page
       .locator('img')
       .evaluateAll((images) => Promise.all(images.map((img) => img.decode())));
@@ -202,6 +220,9 @@ try {
       );
     if (bad.length) throw new Error(`Missing pictures: ${bad.join(', ')}`);
     if (errors.length) throw new Error(errors.join('\n'));
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
   };
 
   for (const lang of boardsOnly ? [] : drawnLanguages) {
@@ -212,6 +233,19 @@ try {
       await page.setViewportSize({ width: 1920, height: 1080 });
       await visit(`id=${id}&lang=${lang}&w=1920`);
       const lines = await page.evaluate(() => window.__lines());
+      if (args.includes('--paragraphs')) {
+        const ink = await page.locator('[data-element-type="text"]').evaluateAll((elements) =>
+          elements.map((element) =>
+            Array.from(element.querySelectorAll('p')).map((p) => {
+              const range = document.createRange();
+              range.selectNodeContents(p);
+              const r = range.getBoundingClientRect();
+              return { x: r.x, y: r.y, w: r.width, h: r.height };
+            }),
+          ),
+        );
+        paragraphs.push({ id, lang, ink });
+      }
       const boxes = catalog.slides[id][lang].elements.filter(
         (element) => element.content?.paragraphs,
       );
@@ -259,6 +293,9 @@ try {
       await boardPage
         .locator('img')
         .evaluateAll((images) => Promise.all(images.map((img) => img.decode())));
+      await boardPage.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
       await boardPage.screenshot({ path: join(output, 'sheets', `${lang}.png`), fullPage: true });
     }
     await boardPage.setViewportSize({ width: 1920, height: 1140 });
@@ -277,6 +314,9 @@ try {
       await boardPage
         .locator('img')
         .evaluateAll((images) => Promise.all(images.map((img) => img.decode())));
+      await boardPage.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
       await boardPage.screenshot({
         path: join(output, 'boards', `${id}-${group.join('-')}.png`),
         fullPage: true,
@@ -288,12 +328,14 @@ try {
   if (!boardsOnly) {
     writeFileSync(join(output, 'measurements.json'), JSON.stringify(measurements, null, 2));
     writeFileSync(join(output, 'findings.json'), JSON.stringify(findings, null, 2));
+    if (args.includes('--paragraphs'))
+      writeFileSync(join(output, 'paragraphs.json'), JSON.stringify(paragraphs, null, 2));
   }
-  const html = `<!doctype html><meta charset="utf-8"><title>Culture slides · 16 languages</title>
+  const html = `<!doctype html><meta charset="utf-8"><title>${title} · 16 languages</title>
     <style>body{font:16px system-ui;margin:30px;background:#eee}nav{display:flex;gap:12px;flex-wrap:wrap}
     section{margin-top:32px}main{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
     img{width:100%;display:block}figure{margin:0}figcaption{padding:6px;background:white}</style>
-    <h1>15 culture and leisure slides · 16 languages</h1><p>Click a slide for the 1920 × 1080 original.
+    <h1>${title} · ${ids.length} designs · 16 languages</h1><p>Click a slide for the 1920 × 1080 original.
     Gallery captures are in thumbnails/. Full-size captures are in full/.</p>
     <nav>${languages.map((lang) => `<a href="#${lang}">${lang}</a>`).join('')}</nav>
     ${languages

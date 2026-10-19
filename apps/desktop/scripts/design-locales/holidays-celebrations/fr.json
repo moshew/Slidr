@@ -1,0 +1,278 @@
+{
+  "roshhashana": [
+    "ROCH HACHANA 5788",
+    "Une année belle\net douce",
+    "Nous vous souhaitons une belle et douce année,\npleine de santé, de joie et de nouveaux départs.",
+    "Avec amour, la famille Levi"
+  ],
+  "hanukkah": [
+    "HANOUCCA 5787",
+    {
+      "runs": ["Joyeuse ", "Hanoucca"]
+    },
+    "Que les lumières\nemplissent votre foyer\nde chaleur et de joie.",
+    "Avec amour,\nla famille Alon",
+    "ALLUMONS ENSEMBLE",
+    "Huitième soir",
+    "Ven. 11 déc. 2026",
+    "15 h 45  •  dans notre jardin"
+  ],
+  "passover": [
+    "PESSAH 5787",
+    "Joyeux Pessah",
+    "Une fête de liberté, de printemps et de famille",
+    "Rejoignez notre table du Séder",
+    "Mer. 21 avril 2027  •  19 h",
+    "Avec amour, la famille Segev"
+  ],
+  "purim": [
+    "NUIT DE POURIM  •  LUN. 22 MARS 2027",
+    "POURIM",
+    "LA FÊTE",
+    "Ouverture à 21 h 30  •  Hangar 7, port de Tel-Aviv",
+    "Concours de costumes à minuit, danse jusqu’à l’aube",
+    "Entrée 25 $",
+    "VENEZ DÉGUISÉS !",
+    "MEILLEUR COSTUME\n400 $"
+  ],
+  "independence": [
+    "79",
+    "ANS\nD’INDÉPENDANCE",
+    "Bonne fête de l’Indépendance",
+    "La fête du quartier  •  Mar. 11 mai 2027",
+    "Parc Neve Gan, entrée libre",
+    "20 h 30",
+    "Stands gourmands et musique",
+    "21 h",
+    "En concert : The Neighbours",
+    "22 h",
+    "Feu d’artifice au-dessus du parc"
+  ],
+  "shavuot": [
+    "CHAVOUOT 5787  •  PREMIERS FRUITS",
+    "Joyeux\nChavouot",
+    "Une saison d’abondance,\nune belle récolte et une table généreuse.",
+    "Avec amour, la famille Barak",
+    "DÎNER DE FÊTE AUTOUR DU LAIT",
+    "Jeu. 10 juin 2027  •  19 h 30",
+    "Sur notre terrasse : blintzes, gâteau au fromage et vin blanc."
+  ],
+  "sukkot": [
+    "SOUCCOT 5788",
+    {
+      "runs": ["Joyeux ", "Souccot"]
+    },
+    "Venez dans notre soucca",
+    "Une soirée ouverte aux voisins, aux amis et aux passants.",
+    "QUAND",
+    "Mar. 19 octobre 2027",
+    "HEURE",
+    "De 19 h à 22 h",
+    "OÙ",
+    "8 rue du Figuier, Givatayim",
+    "AU PROGRAMME",
+    "Collation et chansons"
+  ],
+  "nye": [
+    "2027",
+    "Soirée du Nouvel An",
+    "On quitte 2026 sur le toit,\navec des bulles et une vue sur la mer.",
+    "QUAND",
+    "Jeu. 31 déc. 2026  •  ouverture à 22 h",
+    "OÙ",
+    "Rooftop 12, port de Jaffa",
+    "MUSIQUE",
+    "DJ Lia Noor  +  DJ Omer Tal",
+    "BILLETS",
+    "38 $, première boisson comprise",
+    "UN TOAST\nÀ MINUIT"
+  ],
+  "thankyou": [
+    "24 JUIN\n2027",
+    "Merci",
+    "du fond du cœur",
+    "Pour votre présence, les câlins et les danses,\net pour avoir rendu notre soirée inoubliable.",
+    "Noa & Itai",
+    "NOTRE MARIAGE  •  24 JUIN 2027"
+  ],
+  "mazaltov": [
+    "Félicitations !",
+    "À Dana",
+    "pour ton master\nen science des données",
+    "Fiers de toi ! L’équipe produit",
+    "À ta\nsanté !",
+    "Jeudi\n1er juillet 2027",
+    "16 h  •  cuisine du 3e étage"
+  ],
+  "shabbat": [
+    "VENDREDI 15 JANVIER 2027  •  7 CHEVAT 5787",
+    "Chabbat Chalom",
+    "Un Chabbat de repos et de lumière,\nà une table entourée de ceux que vous aimez.",
+    "HORAIRES DE CHABBAT  •  TEL-AVIV",
+    "Allumage des bougies",
+    "16 h 39",
+    "Vendredi 15 janvier",
+    "Fin de Chabbat",
+    "17 h 41",
+    "Samedi 16 janvier",
+    "Avec amour, la communauté Shaarei Or"
+  ],
+  "tubishvat": [
+    "TOU BICHEVAT 5787  •  NOUVEL AN DES ARBRES",
+    "Joyeux\nTou Bichevat",
+    "Plantons ensemble : une matinée pour toute la famille",
+    "Nous fournissons les plants et les pelles",
+    "QUAND",
+    "Ven. 22 janv. 2027  •  9 h",
+    "OÙ",
+    "Bosquet Shaked, moshav Netaim",
+    "À APPORTER",
+    "Un chapeau et de l’eau"
+  ],
+  "lagbaomer": [
+    "QUAND\nLun. 24 mai 2027  •  19 h 30",
+    "OÙ\nLe grand terrain au bout de la rue Rimon",
+    "À APPORTER\nPommes de terre, guimauves, guitare",
+    "UNE SOIRÉE DE QUARTIER AUTOUR DU FEU  •  5787",
+    "Le feu de\nLag BaOmer",
+    "Un seau d’eau près de chaque feu"
+  ],
+  "tubav": [
+    "MERCREDI  •  18 AOÛT 2027",
+    "15\nAv 5787",
+    "UNE SOIRÉE DE TOU BEAV DANS LES VIGNES",
+    "Joyeux\nTou BeAv",
+    "Vin du fût, musique en direct\net coucher de soleil entre les vignes.",
+    "Mar. 17 août 2027  •  20 h",
+    "Vignoble Hagiva, vallée d’Ela",
+    "TENUE BLANCHE",
+    "Réponse : 054-555-0171"
+  ],
+  "familyday": [
+    "Papi",
+    "Mamie",
+    "Frères et sœurs",
+    "Maman",
+    "Papa",
+    "et moi",
+    "Apportez une photo\nde chez vous",
+    "7 fév.\nDimanche\n16 h 30",
+    "MATERNELLE RIMON  •  30 CHEVAT 5787",
+    "Bonne fête\nde la famille",
+    "Un après-midi pour parents, grands-parents\net enfants : créons un album de famille.",
+    "Maternelle Rimon, 5 rue HaZayit, Kfar Saba",
+    "Venez avec toute la famille !"
+  ],
+  "ramadan": [
+    "LE MOIS DE RAMADAN  •  1448",
+    "Ramadan\nKareem",
+    "Un mois béni de paix, de générosité et de lumière",
+    "IFTAR ENSEMBLE",
+    "Jeu. 25 fév. 2027",
+    "Rupture du jeûne au coucher du soleil, à 17 h 34",
+    "Centre communautaire Zeitim, Haïfa",
+    "Chaleureusement, le comité de quartier Zeitim"
+  ],
+  "christmas": [
+    "Joyeux\nNoël\net une très belle année\npleine de lumière, de chaleur et de rires\nde longues soirées autour d’une grande tablée\nde vieux amis, de nouveaux récits et une seconde part\net tous vos souhaits murmurés au pied du sapin",
+    "Avec amour,\nla famille Khoury",
+    "Vendredi\n25 décembre 2026"
+  ],
+  "valentine": [
+    "O",
+    "X",
+    "X",
+    "O",
+    "O",
+    "X",
+    "L’amour gagne",
+    "SAINT-VALENTIN  •  DIM. 14 FÉV. 2027",
+    "Dîner\npour deux",
+    "Trois plats, une coupe de vin pétillant\net une table rien que pour vous.",
+    "₪390",
+    "par couple",
+    "Bistro Vered, Jaffa",
+    "Réservations : 03-555-0142"
+  ],
+  "womensday": [
+    "8",
+    "Mars\nJournée internationale des femmes",
+    "Merci pour tout ce que vous faites avancer ici",
+    "Une place égale à chaque table, toute l’année",
+    "Aujourd’hui, prenons le temps de le dire",
+    "12 h 30",
+    "Lun. 8 mars 2027",
+    "Une conférence et un toast",
+    "Dr Michal Oren : diriger d’égal à égal",
+    "Salle Gilboa, 4e étage"
+  ],
+  "winter": [
+    "BONJOUR, L’HIVER",
+    "Enfin la pluie",
+    "Il pleut dehors, il fait bon ici.\nVenez vous sécher près du poêle.",
+    "Soupe du jour : lentilles corail",
+    "Café Tiltan\n12 rue HaGefen, Ramat Gan"
+  ],
+  "newborn": [
+    "C’EST UNE FILLE !",
+    "Bienvenue,",
+    "Alma",
+    "12 janvier 2027",
+    "6 h 42",
+    "7 lb 4 oz",
+    "Avec amour, Neta & Itai et le grand frère Yoav",
+    "VENEZ LA RENCONTRER",
+    "Vendredi 5 février 2027  •  10 h 30",
+    "Brunch au jardin de papi et mamie, Pardes Hanna"
+  ],
+  "engagement": [
+    "FÊTE DE FIANÇAILLES",
+    "&",
+    "Yael",
+    "Omer",
+    "Venez lever un verre avec nous",
+    "Réponse avant le 25 mars  •  054-555-0188",
+    "se fiancent !",
+    "QUAND",
+    "Jeu. 8 avril 2027  •  20 h",
+    "OÙ",
+    "Toit-terrasse du Palm House, Jaffa",
+    "TENUE",
+    "Festive, avec une touche d’or"
+  ],
+  "housewarming": [
+    "Venez\ncomme vous êtes",
+    "CRÉMAILLÈRE",
+    "Notre nouveau\nchez-nous !",
+    "Venez lui donner vie avec nous",
+    "QUAND",
+    "Vendredi 28 mai 2027, dès 11 h",
+    "OÙ",
+    "9 rue HaTe’ena, appt 4, Givatayim",
+    "LE PROGRAMME",
+    "Brunch, musique et visite entre les cartons",
+    "Réponse à Dana & Yoav : 050-555-0164"
+  ],
+  "bachelorette": [
+    "LA MARIÉE A DIT OUI. NOUS, ON DIT C’EST PARTI !",
+    "SHIRA\nSOIRÉE EVJF",
+    "Une nuit. Sans marié. Plein de paillettes.",
+    "Jeu. 8 juillet 2027",
+    "21 h",
+    "The Flamingo, port de Tel-Aviv",
+    "Tenue : paillettes",
+    "Infos et réponse auprès d’Adi : 052-555-0117"
+  ],
+  "retirement": [
+    "Le nouveau bureau de Yossi",
+    "DÉPART À LA RETRAITE",
+    "Après",
+    "32",
+    "ans,",
+    "Yossi part en\ngrandes vacances",
+    "Mercredi 30 juin 2027  •  17 h",
+    "Sur le toit des bureaux, au 9e étage",
+    "Venez lever un verre",
+    "Pour le cadeau, voyez Ruthie à la comptabilité"
+  ]
+}

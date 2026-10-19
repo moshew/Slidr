@@ -47,6 +47,9 @@ export {
 export {
   firstStrong,
   listMarkers,
+  listNumber,
+  markerFontSize,
+  markerWidthEm,
   paragraphDirection,
   paragraphStyle,
   readsAsNumber,

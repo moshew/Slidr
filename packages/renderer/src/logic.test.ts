@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-import { Deck, type Paragraph } from '@slidr/model';
+import { Deck, type ListFormat, type Paragraph } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import { cssPropertyName, passthroughStyle } from './css';
 import { imagePlacement, linePath } from './elements';
 import { referenceDeck } from './fixtures/referenceDeck';
 import { pathBounds, presetPath, scalePath, shapePresets, transformPath } from './geometry';
 import { normalizeColor, prepareSvg } from './markup';
-import { firstStrong, listMarkers, paragraphDirection, readsAsNumber } from './text';
+import { firstStrong, listMarkers, listNumber, paragraphDirection, readsAsNumber } from './text';
 import {
   colorCss,
   familyCss,
@@ -231,6 +231,19 @@ describe('lists', () => {
   it('uses a bullet per level, and a custom glyph when given', () => {
     const custom: Paragraph = { ...p('bullet'), list: { kind: 'bullet', level: 0, glyph: '→' } };
     expect(listMarkers([p('bullet'), p('bullet', 1), custom])).toEqual(['•', '◦', '→']);
+  });
+
+  it('writes numbers in the list format, counting from its start', () => {
+    const item = (format: ListFormat, start?: number): Paragraph => ({
+      ...p('number'),
+      list: { kind: 'number', level: 0, format, ...(start ? { start } : {}) },
+    });
+    expect(listMarkers([item('upper-roman', 3), item('upper-roman'), item('upper-roman')])).toEqual(
+      ['III.', 'IV.', 'V.'],
+    );
+    expect(listNumber(2, 'lower-alpha-paren')).toBe('b)');
+    expect(listNumber(15, 'hebrew')).toBe('טו.');
+    expect(listNumber(21, 'hebrew')).toBe('כא.');
   });
 });
 

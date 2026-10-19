@@ -4,7 +4,9 @@ import { addBoxes, elements, focusStage, openApp, THREE, undoSteps } from './arr
 /*
  * A new text box that is left without text is taken away again (ADR-013), and leaves nothing in
  * the history: not the box, and not what was done to it alone before it was left. Only when
- * something else was changed in between is taking it away a step of its own.
+ * something else was changed in between is taking it away a step of its own. As in PowerPoint,
+ * an empty box stays while it is selected: Esc ends its typing and leaves it selected, and it
+ * goes when it is let go, by a second Esc or a click elsewhere.
  */
 
 const editor = (page: Page) => page.locator('[data-text-editor]');
@@ -17,6 +19,12 @@ async function newBox(page: Page) {
   await expect(editor(page)).toBeFocused();
 }
 
+/** Ends the typing, and lets the box go. */
+async function leave(page: Page) {
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+}
+
 test.beforeEach(async ({ page }) => {
   await openApp(page, { lang: 'en' });
 });
@@ -24,6 +32,14 @@ test.beforeEach(async ({ page }) => {
 test('left empty at once, it leaves no step', async ({ page }) => {
   const steps = await undoSteps(page);
   await newBox(page);
+  // Out of its typing it is still selected, and stays.
+  await page.keyboard.press('Escape');
+  await expect(editor(page)).toHaveCount(0);
+  expect(await types(page)).toEqual(['text']);
+  expect(
+    await page.evaluate(() => window.slidr!.selection.getState().selectedElementIds),
+  ).toHaveLength(1);
+  // Let go, it goes.
   await page.keyboard.press('Escape');
   expect(await types(page)).toEqual([]);
   expect(await undoSteps(page)).toBe(steps);
@@ -37,7 +53,7 @@ test('a format key on its empty line leaves no step either, and nothing comes ba
   await newBox(page);
   await page.keyboard.press('Control+b');
   await page.keyboard.press('Control+i');
-  await page.keyboard.press('Escape');
+  await leave(page);
   expect(await types(page)).toEqual(['shape', 'shape', 'shape']);
   expect(await undoSteps(page)).toBe(steps);
   expect(await canRedo(page)).toBe(false);
@@ -53,7 +69,7 @@ test('text that was typed and deleted again goes with the box', async ({ page })
   await page.keyboard.type('abc');
   await page.waitForTimeout(700);
   for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace');
-  await page.keyboard.press('Escape');
+  await leave(page);
   expect(await types(page)).toEqual([]);
   expect(await undoSteps(page)).toBe(steps);
 });
@@ -66,13 +82,31 @@ test('typing that was undone is not left to be redone into a box that is gone', 
   await newBox(page);
   await page.keyboard.type('abc');
   await page.keyboard.press('Control+z');
-  await page.keyboard.press('Escape');
+  await leave(page);
   expect(await types(page)).toEqual([]);
   expect(await canRedo(page)).toBe(false);
   await focusStage(page);
   await page.keyboard.press('Control+y');
   expect(await types(page)).toEqual([]);
   expect(problems).toEqual([]);
+});
+
+test('text deleted after its typing ended takes the box away too, once it is let go', async ({
+  page,
+}) => {
+  const steps = await undoSteps(page);
+  await newBox(page);
+  await page.keyboard.type('abc');
+  await page.keyboard.press('Escape');
+  expect(await types(page)).toEqual(['text']);
+  // Opened again and emptied, it is an empty box like any other.
+  await page.keyboard.press('Enter');
+  await expect(editor(page)).toBeFocused();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Backspace');
+  await leave(page);
+  expect(await types(page)).toEqual([]);
+  expect(await undoSteps(page)).toBe(steps);
 });
 
 test('a box that has text stays, with its steps', async ({ page }) => {
@@ -101,7 +135,7 @@ test('when something else changed meanwhile, taking the empty box away is a step
       patch: { opacity: 0.5 },
     });
   });
-  await page.keyboard.press('Escape');
+  await leave(page);
   expect(await types(page)).toEqual(['shape', 'shape', 'shape']);
   // The box, the other change, and the box taken away: the other change is not undone for it.
   expect(await undoSteps(page)).toBe(steps + 3);

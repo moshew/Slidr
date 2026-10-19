@@ -1,0 +1,278 @@
+{
+  "roshhashana": [
+    "ROSH HASHANÁ 5788",
+    "Un año bueno\ny dulce",
+    "Os deseamos un año nuevo bueno y dulce,\nlleno de salud, alegría y nuevos comienzos.",
+    "Con cariño, la familia Levi"
+  ],
+  "hanukkah": [
+    "JANUCÁ 5787",
+    {
+      "runs": ["Feliz ", "Janucá"]
+    },
+    "Que las luces\nllenen vuestro hogar\nde calidez y alegría.",
+    "Con cariño,\nla familia Alon",
+    "ENCENDEMOS JUNTOS",
+    "Octava noche",
+    "Vie., 11 dic. 2026",
+    "15:45  •  en nuestro jardín"
+  ],
+  "passover": [
+    "PÉSAJ 5787",
+    "Feliz Pésaj",
+    "Una fiesta de libertad, primavera y familia",
+    "Os esperamos en nuestra mesa de Séder",
+    "Mié., 21 abril 2027  •  19:00",
+    "Con cariño, la familia Segev"
+  ],
+  "purim": [
+    "NOCHE DE PURIM  •  LUN., 22 MARZO 2027",
+    "PURIM",
+    "LA FIESTA",
+    "Apertura 21:30  •  Hangar 7, puerto de Tel Aviv",
+    "Concurso de disfraces a medianoche, baile hasta el amanecer",
+    "Entradas 25 $",
+    "¡VEN CON DISFRAZ!",
+    "MEJOR DISFRAZ\n400 $"
+  ],
+  "independence": [
+    "79",
+    "AÑOS DE\nINDEPENDENCIA",
+    "Feliz Día de la Independencia",
+    "La fiesta del barrio  •  Mar., 11 mayo 2027",
+    "Parque Neve Gan, entrada libre",
+    "20:30",
+    "Puestos de comida y música",
+    "21:00",
+    "En directo: The Neighbours",
+    "22:00",
+    "Fuegos artificiales sobre el parque"
+  ],
+  "shavuot": [
+    "SHAVUOT 5787  •  PRIMEROS FRUTOS",
+    "Feliz\nShavuot",
+    "Os deseamos una época de abundancia,\nbuena cosecha y una mesa llena.",
+    "Con cariño, la familia Barak",
+    "CENA FESTIVA CON LÁCTEOS",
+    "Jue., 10 junio 2027  •  19:30",
+    "En nuestra terraza: blintzes, tarta de queso y vino blanco."
+  ],
+  "sukkot": [
+    "SUCOT 5788",
+    {
+      "runs": ["Feliz ", "Sucot"]
+    },
+    "Ven a sentarte en nuestra sucá",
+    "Una velada abierta a vecinos, amigos y a quienes pasen por aquí.",
+    "CUÁNDO",
+    "Mar., 19 octubre 2027",
+    "HORA",
+    "De 19:00 a 22:00",
+    "DÓNDE",
+    "Calle de la Higuera 8, Givatayim",
+    "EL PLAN",
+    "Aperitivos y canciones"
+  ],
+  "nye": [
+    "2027",
+    "Fiesta de Nochevieja",
+    "Despedimos 2026 en la azotea,\ncon burbujas y vistas al mar.",
+    "CUÁNDO",
+    "Jue., 31 dic. 2026  •  apertura 22:00",
+    "DÓNDE",
+    "Rooftop 12, puerto de Jaffa",
+    "MÚSICA",
+    "DJ Lia Noor  +  DJ Omer Tal",
+    "ENTRADAS",
+    "38 $, primera bebida incluida",
+    "BRINDIS\nA MEDIANOCHE"
+  ],
+  "thankyou": [
+    "24 JUN.\n2027",
+    "Gracias",
+    "de todo corazón",
+    "Por celebrar con nosotros, los abrazos y los bailes,\ny por hacer de nuestra noche un recuerdo inolvidable.",
+    "Noa e Itai",
+    "NUESTRA BODA  •  24 JUNIO 2027"
+  ],
+  "mazaltov": [
+    "¡Felicidades!",
+    "Para Dana",
+    "por tu máster\nen ciencia de datos",
+    "¡Qué orgullo! El equipo de producto",
+    "¡Vamos\na brindar!",
+    "Jueves\n1 julio 2027",
+    "16:00  •  cocina de la 3.ª planta"
+  ],
+  "shabbat": [
+    "VIERNES, 15 ENERO 2027  •  7 SHEVAT 5787",
+    "Shabat Shalom",
+    "Un Shabat de descanso y luz,\nen una mesa con quienes más quieres.",
+    "HORARIOS DE SHABAT  •  TEL AVIV",
+    "Encendido de velas",
+    "16:39",
+    "Viernes, 15 enero",
+    "Fin del Shabat",
+    "17:41",
+    "Sábado, 16 enero",
+    "Con cariño, la comunidad Shaarei Or"
+  ],
+  "tubishvat": [
+    "TU BISHVAT 5787  •  AÑO NUEVO DE LOS ÁRBOLES",
+    "Feliz\nTu Bishvat",
+    "Planta con nosotros: una mañana para toda la familia",
+    "Ponemos los plantones y las palas",
+    "CUÁNDO",
+    "Vie., 22 ene. 2027  •  9:00",
+    "DÓNDE",
+    "Arboleda Shaked, moshav Netaim",
+    "QUÉ TRAER",
+    "Sombrero y agua"
+  ],
+  "lagbaomer": [
+    "CUÁNDO\nLun., 24 mayo 2027  •  19:30",
+    "DÓNDE\nEl gran campo al final de la calle Rimon",
+    "QUÉ TRAER\nPatatas, nubes de azúcar y una guitarra",
+    "UNA NOCHE DE BARRIO JUNTO AL FUEGO  •  5787",
+    "Hoguera de\nLag Baómer",
+    "Un cubo de agua junto a cada hoguera"
+  ],
+  "tubav": [
+    "MIÉRCOLES  •  18 AGO. 2027",
+    "15\nAv 5787",
+    "UNA VELADA DE TU BEAV EN EL VIÑEDO",
+    "Feliz\nTu Beav",
+    "Vino de barrica, música en directo\ny una puesta de sol entre las vides.",
+    "Mar., 17 ago. 2027  •  20:00",
+    "Viñedo Hagiva, valle de Elah",
+    "VESTIMENTA: BLANCO",
+    "Confirma: 054-555-0171"
+  ],
+  "familyday": [
+    "Abuelo",
+    "Abuela",
+    "Hermanos",
+    "Mamá",
+    "Papá",
+    "y yo",
+    "Trae una foto\nde casa",
+    "7 feb.\nDomingo\n16:30",
+    "ESCUELA INFANTIL RIMON  •  30 SHEVAT 5787",
+    "Feliz Día\nde la Familia",
+    "Una tarde para padres, abuelos\ny peques: creamos un álbum familiar.",
+    "Escuela infantil Rimon, HaZayit 5, Kfar Saba",
+    "¡Ven con toda la familia!"
+  ],
+  "ramadan": [
+    "EL MES DE RAMADÁN  •  1448",
+    "Ramadán\nKareem",
+    "Un mes bendecido de paz, generosidad y luz",
+    "VEN AL IFTAR",
+    "Jue., 25 feb. 2027",
+    "Rompemos el ayuno al atardecer, a las 17:34",
+    "Centro comunitario Zeitim, Haifa",
+    "Con afecto, la asociación vecinal de Zeitim"
+  ],
+  "christmas": [
+    "Feliz\nNavidad\ny un próspero año nuevo\nlleno de luz, calidez y risas\nlargas veladas alrededor de una mesa llena\nviejos amigos, nuevas historias y ganas de repetir\ny todo lo que deseaste en silencio bajo el árbol",
+    "Con cariño,\nla familia Khoury",
+    "Viernes\n25 diciembre 2026"
+  ],
+  "valentine": [
+    "O",
+    "X",
+    "X",
+    "O",
+    "O",
+    "X",
+    "El amor gana",
+    "SAN VALENTÍN  •  DOM., 14 FEB. 2027",
+    "Cena\npara dos",
+    "Tres platos, una copa de espumoso\ny una mesa solo para vosotros.",
+    "₪390",
+    "por pareja",
+    "Bistro Vered, Jaffa",
+    "Reservas: 03-555-0142"
+  ],
+  "womensday": [
+    "8",
+    "Marzo\nDía Internacional de la Mujer",
+    "Gracias por todo lo que lideráis aquí",
+    "Igualdad en cada mesa, todo el año",
+    "Hoy nos detenemos para daros las gracias",
+    "12:30",
+    "Lun., 8 marzo 2027",
+    "Una charla y un brindis",
+    "Dra. Michal Oren sobre liderazgo entre iguales",
+    "Sala Gilboa, 4.ª planta"
+  ],
+  "winter": [
+    "HOLA, INVIERNO",
+    "Por fin llueve",
+    "Fuera diluvia y aquí se está calentito.\nVen a secarte junto a la estufa.",
+    "Sopa del día: lentejas rojas",
+    "Café Tiltan\nHaGefen 12, Ramat Gan"
+  ],
+  "newborn": [
+    "¡ES UNA NIÑA!",
+    "Bienvenida,",
+    "Alma",
+    "12 enero 2027",
+    "6:42",
+    "7 lb 4 oz",
+    "Con cariño, Neta e Itai y su hermano mayor Yoav",
+    "VEN A CONOCERLA",
+    "Viernes, 5 febrero 2027  •  10:30",
+    "Brunch en el jardín de los abuelos, Pardes Hanna"
+  ],
+  "engagement": [
+    "FIESTA DE COMPROMISO",
+    "&",
+    "Yael",
+    "Omer",
+    "Ven a brindar con nosotros",
+    "Confirma antes del 25 marzo  •  054-555-0188",
+    "¡se comprometen!",
+    "CUÁNDO",
+    "Jue., 8 abril 2027  •  20:00",
+    "DÓNDE",
+    "Azotea de Palm House, Jaffa",
+    "VESTIMENTA",
+    "De fiesta, con un toque dorado"
+  ],
+  "housewarming": [
+    "Solo tenéis\nque venir",
+    "ESTRENAMOS CASA",
+    "¡Tenemos\nuna casa nueva!",
+    "Ven a darle vida con nosotros",
+    "CUÁNDO",
+    "Viernes, 28 mayo 2027, desde las 11:00",
+    "DÓNDE",
+    "HaTe’ena 9, piso 4, Givatayim",
+    "EL PLAN",
+    "Brunch, música y un paseo entre cajas",
+    "Confirma a Dana y Yoav: 050-555-0164"
+  ],
+  "bachelorette": [
+    "LA NOVIA DIJO SÍ. ¡NOSOTRAS, VÁMONOS!",
+    "SHIRA\nDESPEDIDA\nDE SOLTERA",
+    "Una noche. Sin novio. Mucha purpurina.",
+    "Jue., 8 julio 2027",
+    "21:00",
+    "The Flamingo, puerto de Tel Aviv",
+    "Vestimenta: lentejuelas",
+    "Información y confirmación con Adi: 052-555-0117"
+  ],
+  "retirement": [
+    "La nueva oficina de Yossi",
+    "FIESTA DE JUBILACIÓN",
+    "Tras",
+    "32",
+    "años,",
+    "Yossi se toma\nunas largas vacaciones",
+    "Miércoles, 30 junio 2027  •  17:00",
+    "En la azotea de la oficina, planta 9",
+    "Ven a brindar",
+    "Para el regalo, habla con Ruthie de Contabilidad"
+  ]
+}

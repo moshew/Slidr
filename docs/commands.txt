@@ -1,2 +1,3 @@
 build:
+$env:SLIDR_SIGN_CERT = "5C64DAC774694B59FE6427A4744A3434DDCC49F1"
 pnpm --filter @slidr/desktop tauri build

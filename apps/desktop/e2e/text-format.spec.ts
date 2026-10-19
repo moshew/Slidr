@@ -918,7 +918,8 @@ test.describe('row B for text, for the design gate', () => {
           const he = lang === 'he';
           const popovers = [
             ['more', he ? 'עוד עיצוב תווים' : 'More character formatting'],
-            ['list', he ? 'רשימה' : 'List'],
+            ['bullets', he ? 'אפשרויות תבליטים' : 'Bullet options'],
+            ['numbers', he ? 'אפשרויות מספור' : 'Numbering options'],
             ['spacing', he ? 'ריווח' : 'Spacing'],
             ['box', he ? 'תיבת הטקסט' : 'Text box'],
             ['color', he ? 'צבע טקסט' : 'Text colour'],

@@ -72,6 +72,19 @@ async function under(page: Page, id = ID) {
   return { x: box.x + box.width / 2, y: box.y + box.height - 30 };
 }
 
+/** Where the caret of an empty line stands, and a point of its box away from it. */
+async function emptyLine(page: Page, id: string) {
+  return surface(page)
+    .locator(`[data-element-id="${id}"]`)
+    .evaluate((root) => {
+      const line = root.querySelector('br')!.getClientRects()[0]!;
+      const box = root.getBoundingClientRect();
+      const y = line.top + line.height / 2;
+      const away = line.left < box.left + box.width / 2 ? box.right - 30 : box.left + 30;
+      return { caret: { x: line.left, y }, away: { x: away, y } };
+    });
+}
+
 /** Drags at the pace of a hand: the Stage draws a drag once a frame. */
 async function drag(
   page: Page,
@@ -100,10 +113,14 @@ test('a new text box uses editing and frame cursors in Hebrew and English', asyn
     if (lang === 'he') await openApp(page, { lang });
     await page.locator('[data-tool="insert.text"]').click();
     await expect(editor(page)).toBeFocused();
-    // The empty line and its unused width are editable.
-    await editor(page).locator('p').hover();
+    // The empty line is text where its caret stands; the rest of the box is the box.
+    const [added] = await elements(page);
+    const empty = await emptyLine(page, added!.id);
+    await page.mouse.move(empty.caret.x, empty.caret.y);
     await expect(editor(page)).toHaveCSS('cursor', 'text');
     await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
+    await page.mouse.move(empty.away.x, empty.away.y);
+    await expect(editor(page).locator('p')).toHaveCSS('cursor', 'move');
     const text = lang === 'he' ? 'שלום' : 'hello';
     await page.keyboard.type(text);
     const [box] = await elements(page);
@@ -477,7 +494,7 @@ test('the edge of the frame moves the box and ends the typing', async ({ page })
   expect(await plain(page, ID)).toBe('hello');
 });
 
-test('a handle sizes the box, and the text stays open', async ({ page }) => {
+test('a handle sizes or turns the box, and ends the typing', async ({ page }) => {
   await addText(page, ID, [para('hello')], { frame: FRAME });
   await edit(page, ID);
   const corner = (await surface(page).locator('[data-handle="se"]').boundingBox())!;
@@ -490,10 +507,43 @@ test('a handle sizes the box, and the text stays open', async ({ page }) => {
   expect([sized.x, sized.y]).toEqual([FRAME.x, FRAME.y]);
   expect(sized.w).toBeGreaterThan(FRAME.w + 80);
   expect(sized.h).toBeGreaterThan(FRAME.h + 50);
-  expect(await editingId(page)).toBe(ID);
+  await expect(editor(page)).toHaveCount(0);
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([ID]);
+  // The rotation handle as well.
+  await edit(page, ID);
+  const turn = (await surface(page).locator('[data-handle="rotate"]').boundingBox())!;
+  await drag(page, { x: turn.x + turn.width / 2, y: turn.y + turn.height / 2 }, { x: 80, y: 40 });
+  const rotation = await page.evaluate(
+    (id) =>
+      window.slidr!.bus.deck.slides.flatMap((slide) => slide.elements).find((e) => e.id === id)!
+        .rotation,
+    ID,
+  );
+  expect(rotation).not.toBe(0);
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([ID]);
+  expect(await plain(page, ID)).toBe('hello');
+});
+
+test('a handle of a new box sizes it and ends its typing; the box stays while selected', async ({
+  page,
+}) => {
+  await page.locator('[data-tool="insert.text"]').click();
   await expect(editor(page)).toBeFocused();
-  await page.keyboard.type('!');
-  await expect.poll(() => plain(page, ID)).toBe('hello!');
+  const [box] = await elements(page);
+  const added = await frameOf(page, box!.id);
+  const side = (await surface(page).locator('[data-handle="e"]').boundingBox())!;
+  await drag(page, { x: side.x + side.width / 2, y: side.y + side.height / 2 }, { x: 90, y: 0 });
+  expect((await frameOf(page, box!.id)).w).toBeGreaterThan(added.w + 50);
+  await expect(editor(page)).toHaveCount(0);
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([box!.id]);
+  // Opened again, it is typed in as any box.
+  await page.keyboard.press('Enter');
+  await expect(editor(page)).toBeFocused();
+  await page.keyboard.type('hi');
+  await expect.poll(() => plain(page, box!.id)).toBe('hi');
 });
 
 test('Alt on the edge of a new box moves it, and makes no copy of it', async ({ page }) => {
@@ -504,7 +554,8 @@ test('Alt on the edge of a new box moves it, and makes no copy of it', async ({ 
   await drag(page, await onEdge(page), { x: 120, y: 90 }, { alt: true });
   expect(await elements(page)).toHaveLength(1);
   expect((await frameOf(page, box!.id)).x).toBeGreaterThan(added.x + 100);
-  expect(await editingId(page)).toBe(box!.id);
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([box!.id]);
 });
 
 test('Esc during the drag puts the box back, and the box stays selected', async ({ page }) => {
@@ -537,21 +588,34 @@ test('a double-click on the edge does not go on to what lies under it', async ({
   expect(await editingId(page)).not.toBe('e_under');
 });
 
-test('a new box that was moved and left empty leaves nothing behind', async ({ page }) => {
+test('a new box that was moved and left empty leaves nothing behind once let go', async ({
+  page,
+}) => {
   const steps = await undoSteps(page);
   await page.locator('[data-tool="insert.text"]').click();
   await expect(editor(page)).toBeFocused();
   const [box] = await elements(page);
   const added = await frameOf(page, box!.id);
-  // Without letters, the whole box is the place to type in, and its edge leaves it open.
-  const inside = (await surface(page).locator(`[data-element-id="${box!.id}"]`).boundingBox())!;
-  await page.mouse.move(inside.x + inside.width - 20, inside.y + inside.height / 2);
-  await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
+  // The empty part of the box moves it, and ends its typing, as in PowerPoint. The box stays
+  // while it is selected.
+  const { away } = await emptyLine(page, box!.id);
+  await page.mouse.move(away.x, away.y);
+  await expect(editor(page).locator('p')).toHaveCSS('cursor', 'move');
+  await drag(page, away, { x: 0, y: 60 });
+  expect((await frameOf(page, box!.id)).y).toBeGreaterThan(added.y + 40);
+  await expect(editor(page)).toHaveCount(0);
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([box!.id]);
+  // So does its edge, also when the box was typed in again.
+  await page.keyboard.press('Enter');
+  await expect(editor(page)).toBeFocused();
   await drag(page, await onEdge(page), { x: -120, y: 90 });
   expect((await frameOf(page, box!.id)).x).toBeLessThan(added.x - 100);
-  await expect(editor(page)).toBeFocused();
+  expect(await editingId(page)).toBeNull();
+  expect(await elements(page)).toHaveLength(1);
+  // Let go, the empty box goes, and leaves nothing in the history.
   await page.keyboard.press('Escape');
-  expect(await elements(page)).toHaveLength(0);
+  await expect.poll(async () => (await elements(page)).length).toBe(0);
   expect(await undoSteps(page)).toBe(steps);
 });
 

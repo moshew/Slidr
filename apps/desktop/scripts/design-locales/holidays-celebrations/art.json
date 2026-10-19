@@ -1,0 +1,366 @@
+{
+  "ar": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_b332mwde",
+        "frame": {
+          "x": 482,
+          "y": 390,
+          "w": 188,
+          "h": 320
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"482 390 188 320\"><g><circle cx=\"658.8\" cy=\"401.5\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"607.1\" cy=\"482\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"585.2\" cy=\"555.9\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"493.9\" cy=\"628.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"500.3\" cy=\"698.6\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_auscw7xy",
+        "frame": {
+          "x": 1250,
+          "y": 390,
+          "w": 188,
+          "h": 320
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1250 390 188 320\"><g><circle cx=\"1261.2\" cy=\"401.5\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1312.9\" cy=\"482\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1334.8\" cy=\"555.9\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1426.1\" cy=\"628.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1419.8\" cy=\"698.6\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "de": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 244,
+          "y": 399,
+          "w": 310,
+          "h": 277
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"244 399 310 277\"><g><circle cx=\"462.2\" cy=\"410.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"542.9\" cy=\"482\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"523.5\" cy=\"544.4\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"298.3\" cy=\"605.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"255.3\" cy=\"664.7\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1366,
+          "y": 399,
+          "w": 310,
+          "h": 277
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1366 399 310 277\"><g><circle cx=\"1457.8\" cy=\"410.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1377.1\" cy=\"482\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1396.5\" cy=\"544.4\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1621.8\" cy=\"605.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1664.7\" cy=\"664.7\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "es": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 295,
+          "y": 397,
+          "w": 297,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"295 397 297 299\"><g><circle cx=\"518.9\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"580.3\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"402.9\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"306.3\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"380.6\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1328,
+          "y": 397,
+          "w": 297,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1328 397 297 299\"><g><circle cx=\"1401.1\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1339.7\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1517.1\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1613.7\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1539.4\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "fr": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 238,
+          "y": 397,
+          "w": 331,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"238 397 331 299\"><g><circle cx=\"557.7\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"406.5\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"361.5\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"249\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"358.6\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1351,
+          "y": 397,
+          "w": 331,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1351 397 331 299\"><g><circle cx=\"1362.3\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1513.5\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1558.5\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1671\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1561.4\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "it": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 259,
+          "y": 397,
+          "w": 361,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"259 397 361 299\"><g><circle cx=\"608.9\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"560.2\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"401.4\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"356.5\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"270.8\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1300,
+          "y": 397,
+          "w": 361,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1300 397 361 299\"><g><circle cx=\"1311.1\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1359.8\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1518.6\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1563.5\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1649.2\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "pt-BR": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 288,
+          "y": 397,
+          "w": 296,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"288 397 296 299\"><g><circle cx=\"572.7\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"567.1\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"413.6\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"299.5\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"317.8\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1336,
+          "y": 397,
+          "w": 296,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1336 397 296 299\"><g><circle cx=\"1347.3\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1352.8\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1506.4\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1620.5\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1602.2\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "ru": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 243,
+          "y": 397,
+          "w": 310,
+          "h": 288
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"243 397 310 288\"><g><circle cx=\"498.1\" cy=\"408.8\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"541.3\" cy=\"483.9\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"398\" cy=\"548.4\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"303.1\" cy=\"611.9\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"254\" cy=\"673.6\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1367,
+          "y": 397,
+          "w": 310,
+          "h": 288
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1367 397 310 288\"><g><circle cx=\"1421.9\" cy=\"408.8\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1378.7\" cy=\"483.9\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1522\" cy=\"548.4\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1616.9\" cy=\"611.9\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1666\" cy=\"673.6\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "tr": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 356,
+          "y": 397,
+          "w": 255,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"356 397 255 299\"><g><circle cx=\"599.3\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"489.1\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"487.1\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"367.4\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"400.2\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1309,
+          "y": 397,
+          "w": 255,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1309 397 255 299\"><g><circle cx=\"1320.7\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1430.9\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1432.8\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1552.6\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1519.8\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "vi": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 430,
+          "y": 408,
+          "w": 157,
+          "h": 325
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"430 408 157 325\"><g><circle cx=\"575.7\" cy=\"419.3\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"510.7\" cy=\"504\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"506.1\" cy=\"577.9\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"441.7\" cy=\"650.4\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"441.4\" cy=\"721.2\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1333,
+          "y": 408,
+          "w": 157,
+          "h": 325
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1333 408 157 325\"><g><circle cx=\"1344.3\" cy=\"419.3\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1409.3\" cy=\"504\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1413.9\" cy=\"577.9\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1478.3\" cy=\"650.4\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1478.6\" cy=\"721.2\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "id": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 296,
+          "y": 397,
+          "w": 213,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"296 397 213 299\"><g><circle cx=\"447.3\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"448\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"497.3\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"307.6\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"354.1\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1411,
+          "y": 397,
+          "w": 213,
+          "h": 299
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1411 397 213 299\"><g><circle cx=\"1472.7\" cy=\"408.2\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1472\" cy=\"485.5\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1422.6\" cy=\"554.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1612.4\" cy=\"620.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1565.9\" cy=\"684.8\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "hi": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 528,
+          "y": 408,
+          "w": 120,
+          "h": 330
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"528 408 120 330\"><g><circle cx=\"619\" cy=\"419\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"634.2\" cy=\"505\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"636.7\" cy=\"580.4\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"546.8\" cy=\"654.2\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"539.5\" cy=\"726.4\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1272,
+          "y": 408,
+          "w": 120,
+          "h": 330
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1272 408 120 330\"><g><circle cx=\"1301\" cy=\"419\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1285.8\" cy=\"505\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1283.3\" cy=\"580.4\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1373.2\" cy=\"654.2\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1380.5\" cy=\"726.4\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "ja": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 343,
+          "y": 409,
+          "w": 270,
+          "h": 300
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"343 409 270 300\"><g><circle cx=\"602\" cy=\"420.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"549.3\" cy=\"498\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"568.5\" cy=\"566.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"394\" cy=\"632.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"354\" cy=\"697.3\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1307,
+          "y": 409,
+          "w": 270,
+          "h": 300
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1307 409 270 300\"><g><circle cx=\"1318\" cy=\"420.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1370.7\" cy=\"498\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1351.5\" cy=\"566.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1526\" cy=\"632.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1566\" cy=\"697.3\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "ko": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 447,
+          "y": 409,
+          "w": 190,
+          "h": 300
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"447 409 190 300\"><g><circle cx=\"625.5\" cy=\"420.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"562.9\" cy=\"498\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"520\" cy=\"566.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"458.9\" cy=\"632.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"458.7\" cy=\"697.3\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1283,
+          "y": 409,
+          "w": 190,
+          "h": 300
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1283 409 190 300\"><g><circle cx=\"1294.5\" cy=\"420.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1357.1\" cy=\"498\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1400\" cy=\"566.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1461.1\" cy=\"632.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1461.3\" cy=\"697.3\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  },
+  "zh-CN": {
+    "christmas": [
+      {
+        "at": 7,
+        "id": "e_prsoh7dm",
+        "frame": {
+          "x": 467,
+          "y": 409,
+          "w": 254,
+          "h": 300
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"467 409 254 300\"><g><circle cx=\"710\" cy=\"420.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"607\" cy=\"498\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"596\" cy=\"566.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"478\" cy=\"632.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"484\" cy=\"697.3\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      },
+      {
+        "at": 8,
+        "id": "e_ljwa1yz6",
+        "frame": {
+          "x": 1199,
+          "y": 409,
+          "w": 254,
+          "h": 300
+        },
+        "markup": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"1199 409 254 300\"><g><circle cx=\"1210\" cy=\"420.6\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1313\" cy=\"498\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1324\" cy=\"566.1\" r=\"10\" fill=\"#b8232b\"/><circle cx=\"1442\" cy=\"632.6\" r=\"10\" fill=\"#e2a936\"/><circle cx=\"1436\" cy=\"697.3\" r=\"10\" fill=\"#b8232b\"/></g></svg>"
+      }
+    ]
+  }
+}
