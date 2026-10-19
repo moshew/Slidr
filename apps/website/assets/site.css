@@ -1539,23 +1539,20 @@ p {
 }
 .ent-grid {
   position: relative;
-}
-.ent-copy .sec-lead {
-  max-width: 1000px;
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 40px;
+  align-items: center;
 }
 .ent-copy .eyebrow {
   color: var(--gold);
 }
-.ent-copy .h2 {
-  font-size: clamp(40px, 5.6vw, 76px);
-}
 .pillars {
   list-style: none;
   padding: 0;
-  margin: 48px 0;
+  margin: 40px 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px 56px;
+  gap: 26px;
 }
 .pillars li {
   display: grid;
@@ -1754,13 +1751,10 @@ p {
   .player-window {
     order: -1;
   }
-  .lang-grid {
+  .lang-grid,
+  .ent-grid {
     grid-template-columns: 1fr;
     gap: 48px;
-  }
-  .pillars {
-    grid-template-columns: 1fr;
-    gap: 26px;
   }
   .bento {
     grid-template-columns: 1fr 1fr;
@@ -1940,9 +1934,6 @@ p {
 .enterprise {
   margin-top: 150px;
   padding-block: 130px 110px;
-}
-.ent-copy .h2 {
-  font-size: clamp(40px, 5.6vw, 76px);
 }
 .ent-stats {
   list-style: none;
@@ -2376,6 +2367,20 @@ p {
   width: calc(100% + 40px);
   max-width: 720px;
   justify-self: center;
+}
+/* On a wide screen the title keeps to one line, over the drawing's column if it must */
+@media (min-width: 1021px) {
+  .ent-copy .h2 {
+    width: max-content;
+    position: relative;
+    z-index: 1;
+  }
+}
+/* The drawing ends with the last point: above the button (52px) and the gap before it (40px),
+   less the empty foot of the drawing (36px) */
+.ent-grid .fortress {
+  align-self: end;
+  margin-bottom: 56px;
 }
 .fort {
   width: 100%;

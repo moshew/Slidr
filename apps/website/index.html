@@ -350,6 +350,140 @@
             </ul>
             <a class="btn btn-light reveal" href="https://github.com/moshew/Slidr" data-i18n="ent.cta">Plan an on-prem rollout</a>
           </div>
+
+          <figure class="fortress reveal" aria-hidden="true">
+            <svg viewBox="0 0 640 600" class="fort">
+              <defs>
+                <linearGradient id="fg-dome" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#5eead4" /><stop offset=".5" stop-color="#818cf8" /><stop offset="1" stop-color="#e879f9" />
+                </linearGradient>
+                <radialGradient id="fg-glow" cx=".5" cy=".75" r=".6">
+                  <stop offset="0" stop-color="#6366f1" stop-opacity=".55" /><stop offset=".6" stop-color="#6366f1" stop-opacity=".08" /><stop offset="1" stop-color="#6366f1" stop-opacity="0" />
+                </radialGradient>
+                <linearGradient id="fg-top" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#2a2f6b" /><stop offset="1" stop-color="#151838" />
+                </linearGradient>
+                <linearGradient id="fg-l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1f4a" /><stop offset="1" stop-color="#0b0d24" /></linearGradient>
+                <linearGradient id="fg-r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#242a63" /><stop offset="1" stop-color="#10132f" /></linearGradient>
+                <pattern id="fg-hex" width="28" height="48.5" patternUnits="userSpaceOnUse" patternTransform="scale(.9)">
+                  <path d="M14 0 28 8.08v16.17L14 32.33 0 24.25V8.08z M14 32.33V48.5" fill="none" stroke="#a5b4fc" stroke-width=".8" />
+                </pattern>
+                <clipPath id="fg-domeclip"><path d="M80 400 A240 300 0 0 1 560 400 A240 92 0 0 1 80 400 Z" /></clipPath>
+                <linearGradient id="fg-scan" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#a5f3fc" stop-opacity="0" /><stop offset=".5" stop-color="#a5f3fc" stop-opacity=".35" /><stop offset="1" stop-color="#a5f3fc" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+
+              <!-- ground glow and rings -->
+              <ellipse cx="320" cy="430" rx="300" ry="110" fill="url(#fg-glow)" />
+              <ellipse class="ring r1" cx="320" cy="430" rx="270" ry="96" />
+              <ellipse class="ring r2" cx="320" cy="430" rx="300" ry="108" />
+
+              <!-- the platform: an isometric slab -->
+              <path d="M320 330 L540 410 L320 490 L100 410 Z" fill="url(#fg-top)" stroke="#6d73d8" stroke-opacity=".6" />
+              <path d="M100 410 L320 490 L320 516 L100 436 Z" fill="url(#fg-l)" />
+              <path d="M540 410 L320 490 L320 516 L540 436 Z" fill="url(#fg-r)" />
+              <path class="edge-run" d="M320 330 L540 410 L320 490 L100 410 Z" />
+
+              <!-- the internal paths on the platform -->
+              <path id="fp1" class="lane" d="M320 410 L200 380" />
+              <path id="fp2" class="lane" d="M320 410 L440 380" />
+              <path id="fp3" class="lane" d="M320 410 L250 455" />
+              <path id="fp4" class="lane" d="M320 410 L395 455" />
+
+              <!-- server tower: approved models (left) -->
+              <g transform="translate(200 380)">
+                <path d="M-34 -12 L0 -26 L34 -12 L0 2 Z" fill="#3b3f8f" />
+                <path d="M-34 -12 L0 2 L0 -78 L-34 -92 Z" fill="#1d2152" />
+                <path d="M34 -12 L0 2 L0 -78 L34 -92 Z" fill="#2a2f73" />
+                <path d="M-34 -92 L0 -106 L34 -92 L0 -78 Z" fill="#4c52b8" />
+                <g class="leds"><circle cx="12" cy="-70" r="2.6" /><circle cx="12" cy="-52" r="2.6" /><circle cx="12" cy="-34" r="2.6" /><circle cx="22" cy="-74" r="2.6" /><circle cx="22" cy="-56" r="2.6" /><circle cx="22" cy="-38" r="2.6" /></g>
+                <path d="M4 -66 L30 -77 M4 -48 L30 -59 M4 -30 L30 -41" stroke="#6e75e0" stroke-opacity=".5" />
+              </g>
+              <!-- server: internal library (right) -->
+              <g transform="translate(440 380)">
+                <path d="M-34 -12 L0 -26 L34 -12 L0 2 Z" fill="#3b3f8f" />
+                <path d="M-34 -12 L0 2 L0 -60 L-34 -74 Z" fill="#1d2152" />
+                <path d="M34 -12 L0 2 L0 -60 L34 -74 Z" fill="#2a2f73" />
+                <path d="M-34 -74 L0 -88 L34 -74 L0 -60 Z" fill="#4c52b8" />
+                <g class="leds l2"><circle cx="12" cy="-52" r="2.6" /><circle cx="22" cy="-56" r="2.6" /><circle cx="12" cy="-34" r="2.6" /><circle cx="22" cy="-38" r="2.6" /></g>
+                <path d="M4 -48 L30 -59 M4 -30 L30 -41" stroke="#6e75e0" stroke-opacity=".5" />
+              </g>
+              <!-- laptops with real slides (front) -->
+              <g transform="translate(250 455)">
+                <path d="M-40 4 L0 -12 L40 4 L0 20 Z" fill="#2f3480" />
+                <g transform="matrix(1 -.4 0 1 -40 4)"><rect x="0" y="-52" width="80" height="50" rx="3" fill="#0b0d24" stroke="#8b92f0" stroke-opacity=".6" /><image href="media/edu/slide-01.webp" x="3" y="-49" width="74" height="42" preserveAspectRatio="xMidYMid slice" /></g>
+              </g>
+              <g transform="translate(395 455)">
+                <path d="M-40 4 L0 -12 L40 4 L0 20 Z" fill="#2f3480" />
+                <g transform="matrix(1 .4 0 1 -40 -12)"><rect x="0" y="-36" width="80" height="50" rx="3" fill="#0b0d24" stroke="#8b92f0" stroke-opacity=".6" /><image href="media/edu/slide-05.webp" x="3" y="-33" width="74" height="42" preserveAspectRatio="xMidYMid slice" /></g>
+              </g>
+
+              <!-- the core: Slidr -->
+              <g class="core" transform="translate(320 410)">
+                <ellipse rx="42" ry="16" fill="#6366f1" fill-opacity=".35" />
+                <ellipse class="core-pulse" rx="42" ry="16" />
+                <image href="favicon.svg" x="-30" y="-74" width="60" height="60" />
+              </g>
+
+              <!-- packets that stay inside -->
+              <circle r="4" class="pkt"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#fp1" /></animateMotion></circle>
+              <circle r="4" class="pkt"><animateMotion dur="2.6s" begin=".5s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#fp2" /></animateMotion></circle>
+              <circle r="4" class="pkt"><animateMotion dur="1.9s" begin="1s" repeatCount="indefinite"><mpath href="#fp3" /></animateMotion></circle>
+              <circle r="4" class="pkt"><animateMotion dur="2.4s" begin=".2s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#fp4" /></animateMotion></circle>
+
+              <!-- the dome -->
+              <g clip-path="url(#fg-domeclip)">
+                <rect x="80" y="90" width="480" height="420" fill="url(#fg-hex)" opacity=".16" />
+                <rect class="scan" x="80" y="90" width="480" height="70" fill="url(#fg-scan)" />
+              </g>
+              <path class="dome" d="M80 400 A240 300 0 0 1 560 400" />
+              <path class="dome-back" d="M80 400 A240 92 0 0 1 560 400" />
+              <path class="dome-front" d="M80 400 A240 92 0 0 0 560 400" />
+              <path class="dome-meridian" d="M320 100 A90 300 0 0 0 320 492" />
+              <path class="dome-meridian" d="M320 100 A90 300 0 0 1 320 492" />
+
+              <!-- threats from outside, stopped at the dome -->
+              <g class="cloud c-left" transform="translate(44 150)">
+                <path d="M10 30a14 14 0 0 1 2-28 18 18 0 0 1 34 4 12 12 0 0 1 4 24z" />
+              </g>
+              <g class="cloud c-right" transform="translate(546 120)">
+                <path d="M10 30a14 14 0 0 1 2-28 18 18 0 0 1 34 4 12 12 0 0 1 4 24z" />
+              </g>
+              <g class="cloud c-low" transform="translate(568 300)">
+                <path d="M10 30a14 14 0 0 1 2-28 18 18 0 0 1 34 4 12 12 0 0 1 4 24z" />
+              </g>
+              <path id="ft1" class="threat-path" d="M80 175 L150 220" />
+              <path id="ft2" class="threat-path" d="M560 150 L486 205" />
+              <path id="ft3" class="threat-path" d="M580 318 L540 322" />
+              <g>
+                <circle r="5" class="threat"><animateMotion dur="2.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.7;1" calcMode="linear"><mpath href="#ft1" /></animateMotion><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;.69;.71;1" dur="2.4s" repeatCount="indefinite" /></circle>
+                <circle cx="150" cy="220" class="impact"><animate attributeName="r" values="0;0;26" keyTimes="0;.7;1" dur="2.4s" repeatCount="indefinite" /><animate attributeName="opacity" values="0;.95;0" keyTimes="0;.7;1" dur="2.4s" repeatCount="indefinite" /></circle>
+              </g>
+              <g>
+                <circle r="5" class="threat"><animateMotion dur="2.9s" begin=".8s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.7;1" calcMode="linear"><mpath href="#ft2" /></animateMotion><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;.69;.71;1" dur="2.9s" begin=".8s" repeatCount="indefinite" /></circle>
+                <circle cx="486" cy="205" class="impact"><animate attributeName="r" values="0;0;26" keyTimes="0;.7;1" dur="2.9s" begin=".8s" repeatCount="indefinite" /><animate attributeName="opacity" values="0;.95;0" keyTimes="0;.7;1" dur="2.9s" begin=".8s" repeatCount="indefinite" /></circle>
+              </g>
+              <g>
+                <circle r="5" class="threat"><animateMotion dur="2.1s" begin="1.4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.7;1" calcMode="linear"><mpath href="#ft3" /></animateMotion><animate attributeName="opacity" values="1;1;0;0" keyTimes="0;.69;.71;1" dur="2.1s" begin="1.4s" repeatCount="indefinite" /></circle>
+                <circle cx="540" cy="322" class="impact"><animate attributeName="r" values="0;0;22" keyTimes="0;.7;1" dur="2.1s" begin="1.4s" repeatCount="indefinite" /><animate attributeName="opacity" values="0;.95;0" keyTimes="0;.7;1" dur="2.1s" begin="1.4s" repeatCount="indefinite" /></circle>
+              </g>
+
+              <!-- the lock on top -->
+              <g class="lock" transform="translate(320 100)">
+                <circle r="30" fill="#0b0d24" stroke="url(#fg-dome)" stroke-width="2" />
+                <path d="M-9 -2 v-6 a9 9 0 0 1 18 0 v6" fill="none" stroke="#ffd36b" stroke-width="3" stroke-linecap="round" />
+                <rect x="-13" y="-2" width="26" height="19" rx="4" fill="#ffc94d" />
+                <circle cy="6" r="2.6" fill="#1a1203" />
+              </g>
+            </svg>
+            <span class="f-tag ft-models" data-i18n="ent.d.models">Approved models</span>
+            <span class="f-tag ft-lib" data-i18n="ent.d.library">Internal library</span>
+            <span class="f-tag ft-core" data-i18n="ent.d.desktops">Slidr on every desk</span>
+            <span class="f-tag ft-net" data-i18n="ent.d.network">Your network</span>
+            <span class="f-block"><span class="x"></span><span data-i18n="ent.d.blocked">No telemetry out</span></span>
+            <span class="f-oss" dir="ltr">&lt;/&gt; AGPL-3.0</span>
+          </figure>
         </div>
         <div class="wrap">
           <ul class="ent-stats">
