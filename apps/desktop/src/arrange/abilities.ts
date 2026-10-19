@@ -39,6 +39,24 @@ const NONE: Abilities = {
   remove: false,
 };
 
+/** The two say the same of a selection: the tools would be drawn the same. */
+export function sameAbilities(a: Abilities, b: Abilities): boolean {
+  return (
+    a.count === b.count &&
+    a.align === b.align &&
+    a.distribute === b.distribute &&
+    a.toSlide === b.toSlide &&
+    a.group === b.group &&
+    a.ungroup === b.ungroup &&
+    a.allLocked === b.allLocked &&
+    a.remove === b.remove &&
+    a.order.front === b.order.front &&
+    a.order.forward === b.order.forward &&
+    a.order.backward === b.order.backward &&
+    a.order.back === b.order.back
+  );
+}
+
 /** The compose helpers refuse what they cannot do (other parents, too few elements) by throwing. */
 function works(compute: () => unknown): boolean {
   try {

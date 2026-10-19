@@ -13,9 +13,11 @@ import { ZoomMenu } from './ZoomMenu';
  */
 export function StatusBar() {
   const { t } = useTranslation();
-  const slides = useDeck((s) => s.deck.slides);
   const current = useSelection((s) => s.currentSlideId);
-  const index = slides.findIndex((s) => s.id === current);
+  // Two numbers, not the list of slides, which is new with every change to any slide: the bar
+  // and the items in it would be drawn again with every frame of a drag.
+  const total = useDeck((s) => s.deck.slides.length);
+  const index = useDeck((s) => s.deck.slides.findIndex((slide) => slide.id === current));
   const Agent = useStatusItem('agent');
   const Lint = useStatusItem('lint');
 
@@ -26,9 +28,7 @@ export function StatusBar() {
       className="flex h-statusbar shrink-0 items-center gap-5 border-t border-ui-line bg-ui-chrome px-3 text-xs text-ui-fg-muted"
     >
       <span data-testid="status-slide" className="tabular-nums">
-        {slides.length === 0
-          ? t('status.noSlides')
-          : t('status.slide', { current: index + 1, total: slides.length })}
+        {total === 0 ? t('status.noSlides') : t('status.slide', { current: index + 1, total })}
       </span>
       {/* The word is for a screen reader: a number alone does not say what it measures. */}
       <ZoomMenu />

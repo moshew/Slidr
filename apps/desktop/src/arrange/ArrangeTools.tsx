@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { findSlide, type AlignEdge, type DistributeAxis } from '@slidr/model';
 import {
@@ -40,15 +39,9 @@ import {
   IconButton,
   Tooltip,
 } from '@slidr/ui';
-import {
-  openPanel,
-  useDeck,
-  useEditor,
-  useSelection,
-  type ContextToolProps,
-  type Editor,
-} from '../shell';
-import { abilities, type Abilities } from './abilities';
+import { openPanel, useEditor, useSelection, type ContextToolProps, type Editor } from '../shell';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
+import { abilities, sameAbilities, type Abilities } from './abilities';
 import {
   align,
   distribute,
@@ -77,8 +70,13 @@ function useArrange(): { editor: Editor; can: Abilities } {
   const editor = useEditor();
   const slideId = useSelection((s) => s.currentSlideId);
   const ids = useSelection((s) => s.selectedElementIds);
-  const slide = useDeck((s) => (slideId ? findSlide(s.deck, slideId) : undefined));
-  const can = useMemo(() => abilities(slide, ids), [slide, ids]);
+  // Compared as values: the slide is a new object with every frame of a drag, and what the
+  // tools can do does not change with where the elements are.
+  const can = useStoreWithEqualityFn(
+    editor.deck,
+    (s) => abilities(slideId ? findSlide(s.deck, slideId) : undefined, ids),
+    sameAbilities,
+  );
   return { editor, can };
 }
 

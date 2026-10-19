@@ -1,5 +1,5 @@
 import type { Background, Fill } from '@slidr/model';
-import type { CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 import type { RenderContext } from './context';
 import { cssUrl, num } from './css';
 import { colorCss } from './theme';
@@ -85,7 +85,7 @@ export function FillLayer({
  * A slide background (SLD-03): the fill, then for photos a blur and a dimming veil, then the
  * overlay. A blurred layer is extended past the slide's edges, so the blur does not fade them.
  */
-export function BackgroundLayers({
+export const BackgroundLayers = memo(function BackgroundLayers({
   background,
   ctx,
 }: {
@@ -107,4 +107,4 @@ export function BackgroundLayers({
       {background.overlay ? <FillLayer fill={background.overlay} ctx={ctx} /> : null}
     </div>
   );
-}
+});
