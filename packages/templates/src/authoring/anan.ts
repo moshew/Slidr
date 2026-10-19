@@ -22,6 +22,7 @@ import {
   withObjects,
 } from '../builtin/kit';
 import { picture } from './pictures';
+import { technologySamples } from './technology/samples';
 
 const pictures = {
   ananArchitecture: picture('ananArchitecture'),
@@ -2792,7 +2793,7 @@ const sampleEn: SampleSlide[] = [
 ];
 
 /** The sample decks of the template, by language. */
-export const ananSamples = { he: sampleHe, en: sampleEn };
+export const ananSamples = technologySamples('anan', sampleHe, sampleEn);
 
 /** The Anan template: the theme, its layouts for both directions, and its sample deck. */
 export function ananTemplate(): Template {

@@ -207,7 +207,7 @@ test('over text inside a group the frame is the text own, and the cursor is the 
 test('clicking text keeps the group frame visible without selecting the group first', async ({
   page,
 }) => {
-  const title = await center(page, el('g_card_title'));
+  const title = await letter(page, 'g_card_title');
   await page.mouse.move(title.x, title.y);
   await expect(surface(page).locator('[data-hovered-group="g_card"]')).toBeVisible();
   await page.mouse.down();
@@ -300,7 +300,7 @@ test('a click on a text box inside a group edits it, with the caret where the cl
 });
 
 test('after editing text, the background selects and rotates the group', async ({ page }) => {
-  const title = await center(page, el('g_card_title'));
+  const title = await letter(page, 'g_card_title');
   await page.mouse.click(title.x, title.y);
   expect(await state(page)).toMatchObject({ selected: ['g_card_title'], editing: 'g_card_title' });
 
@@ -371,7 +371,7 @@ test('inside the card a click on another of its texts edits that one, and a drag
   page,
 }) => {
   const scale = await stageScale(page);
-  const title = await center(page, el('g_card_title'));
+  const title = await letter(page, 'g_card_title');
   await page.mouse.click(title.x, title.y);
   expect((await state(page)).editing).toBe('g_card_title');
   await expect(editor(page)).toBeFocused();
@@ -447,7 +447,7 @@ test('pressing a text box edits immediately; a drag from the card background mov
   const scale = await stageScale(page);
   const before = (await element(page, 'g_card'))!;
   const { steps } = await state(page);
-  const title = await center(page, el('g_card_title'));
+  const title = await letter(page, 'g_card_title');
   await page.mouse.move(title.x, title.y);
   await expect(surface(page)).toHaveCSS('cursor', 'text');
   await page.mouse.down();
@@ -544,7 +544,7 @@ test('a double-click on the card background enters it; text and standalone shape
   await page.keyboard.press('Escape');
 
   // A text box in no group opens its editor on a single click too.
-  const free = await center(page, el('e_solo'));
+  const free = await letter(page, 'e_solo');
   await page.mouse.click(free.x, free.y);
   expect(await state(page)).toMatchObject({ selected: ['e_solo'], editing: 'e_solo' });
   await expect(editor(page)).toBeFocused();

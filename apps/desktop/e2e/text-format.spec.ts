@@ -916,14 +916,9 @@ test.describe('row B for text, for the design gate', () => {
           await page.screenshot({ path: out(`row-b-${name}`), clip });
 
           const he = lang === 'he';
-          // The row takes its compact layout when the full one has no room: at 1366 it has.
-          const compact = (await tool(page, he ? 'רשימה' : 'List').count()) > 0;
           const popovers = [
             ['more', he ? 'עוד עיצוב תווים' : 'More character formatting'],
-            [
-              'list',
-              he ? (compact ? 'רשימה' : 'אפשרויות רשימה') : compact ? 'List' : 'List options',
-            ],
+            ['list', he ? 'רשימה' : 'List'],
             ['spacing', he ? 'ריווח' : 'Spacing'],
             ['box', he ? 'תיבת הטקסט' : 'Text box'],
             ['color', he ? 'צבע טקסט' : 'Text colour'],

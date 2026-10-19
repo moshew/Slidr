@@ -11,6 +11,7 @@
 import type { AssetMeta, Deck, Slide } from '@slidr/model';
 import { ScaledSlide } from '@slidr/renderer';
 import { StrictMode, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { settle } from '../../capture/settle';
 import { designAssetUrl } from '../../elements/designAssets';
@@ -21,8 +22,9 @@ import { lintSlides } from '../../lint/deckLint';
 const query = new URLSearchParams(location.search);
 const pack = query.get('pack');
 const lang = query.get('lang') ?? 'he';
-const width = Number(query.get('w') ?? 1920);
-const sheet = query.has('sheet');
+let width = Number(query.get('w') ?? 1920);
+let sheet = query.has('sheet');
+let columns = Number(query.get('cols') ?? 4);
 
 interface Drawn {
   id: string;
@@ -31,7 +33,7 @@ interface Drawn {
   subject?: [number, number];
 }
 
-async function load(): Promise<Drawn[]> {
+function load(): Drawn[] {
   const from = Number(query.get('from') ?? 0);
   const available = pack ? designsOf(pack) : DESIGN_IDS;
   const ids = sheet
@@ -65,7 +67,7 @@ function Page({ drawn }: { drawn: Drawn[] }) {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${query.get('cols') ?? 4}, ${width}px)`,
+        gridTemplateColumns: `repeat(${columns}, ${width}px)`,
         gap: 14,
         padding: 14,
         font: '600 15px system-ui',
@@ -93,11 +95,17 @@ const hooks = window as unknown as {
   __lines: () => unknown;
   __lint: () => Promise<unknown>;
   __subject: () => unknown;
+  __draw: (options: {
+    ids: string[];
+    lang: string;
+    width: number;
+    columns?: number;
+  }) => Promise<void>;
 };
 
-async function main() {
+function main() {
   registerBuiltinFonts();
-  const drawn = await load();
+  let drawn = load();
   hooks.__ids = drawn.map(({ id }) => id);
 
   /** Every element with words: the widest line and the content height against its box, in slide px. */
@@ -197,16 +205,41 @@ async function main() {
     };
   };
 
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <Page drawn={drawn} />
-    </StrictMode>,
-  );
+  const root = createRoot(document.getElementById('root')!);
+  const paint = () =>
+    root.render(
+      <StrictMode>
+        <Page drawn={drawn} />
+      </StrictMode>,
+    );
+  // Automated visual reviews can change the slide without downloading and parsing the entire
+  // media catalog again for every capture. The same renderer and settle checks still apply.
+  hooks.__draw = async (options) => {
+    document.documentElement.dataset.ready = '';
+    width = options.width;
+    sheet = options.ids.length > 1;
+    columns = options.columns ?? 4;
+    drawn = options.ids.map((id) => {
+      const { deck, slide } = designPreview(id, options.lang);
+      return { id, deck, slide, subject: DESIGN_SUBJECTS[id] };
+    });
+    hooks.__ids = options.ids;
+    flushSync(paint);
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+      setTimeout(resolve, 250);
+    });
+    await settle();
+    document.documentElement.dataset.ready = 'true';
+  };
+  paint();
 }
 
-main().catch((error: unknown) => {
+try {
+  main();
+} catch (error: unknown) {
   document.documentElement.dataset.ready = 'failed';
   document.body.textContent = String(
     error instanceof Error ? (error.stack ?? error.message) : error,
   );
-});
+}

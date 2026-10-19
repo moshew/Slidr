@@ -23,6 +23,7 @@ import {
   withObjects,
 } from '../builtin/kit';
 import { techPictures } from './pictures';
+import { technologySamples } from './technology/samples';
 import own from './pictures/mutzar.json';
 
 /**
@@ -2290,7 +2291,7 @@ const sampleEn: SampleSlide[] = [
 ];
 
 /** The sample decks of the template, by language. */
-export const mutzarSamples = { he: sampleHe, en: sampleEn };
+export const mutzarSamples = technologySamples('mutzar', sampleHe, sampleEn);
 
 /** The Mutzar template: the theme, its layouts for both directions, and its sample deck. */
 export function mutzarTemplate(): Template {

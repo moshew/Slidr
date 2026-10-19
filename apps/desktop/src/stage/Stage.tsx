@@ -610,10 +610,10 @@ export function Stage({
   useEffect(() => {
     if (editing?.element.type === 'html' && !htmlId) selection.getState().stopEditing();
   }, [editing, htmlId, selection]);
-  // The text box whose text is typed in. It keeps its frame: the handles size and turn it and the
-  // edge of the frame moves it, and the text stays open under all of them. A press on the text
-  // itself is the editor's, so without the frame the box could not be taken at all, and a new one
-  // could not be put in its place before its first word.
+  // The text box whose text is typed in. It keeps its frame: the handles size and turn it, and the
+  // text stays open under them. The edge of the frame moves it and ends the typing, as a press
+  // beside its lines does; while the box has no letters yet, the typing stays open under the
+  // edge too, so a new box is put in its place before its first word.
   const typing = editing?.element.type === 'text' && !editing.locked ? editing : undefined;
   const wasHtml = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -984,7 +984,8 @@ export function Stage({
         : null;
     // Inside the text editor the pointer is the editor's: caret, selection, drag-select. Beside
     // the lines of the text it is the box's, as anywhere off the text (`onTextOf`): a plain press
-    // there takes the box, and the editor does not see it (`onMouseDownCapture`).
+    // there ends the typing and takes the box, and the editor does not see it
+    // (`onMouseDownCapture`).
     const plainPress = e.button === 0 && !e.shiftKey && !e.ctrlKey && !e.metaKey;
     besideText.current =
       plainPress &&
@@ -1036,20 +1037,20 @@ export function Stage({
       }
       // A press anywhere else leaves crop mode, and then acts as it always does.
     }
-    // A text box's frame moves the box, including before editing; an open editor stays open.
-    // So does the empty part of the box that is typed in, beside and under its lines.
+    // A text box's frame moves the box, including before editing. As in PowerPoint, a press on
+    // it ends the typing, as one beside the lines does: the box is moved as the selected object
+    // it is. Not while the box has no letters yet: a new box is put in its place before its
+    // first word, and would be gone the moment its typing ended.
     const handle = dataOf(e.target, 'handle');
-    const offTyping =
-      typing &&
-      plainPress &&
-      !handle &&
-      pickAt(e.clientX, e.clientY).at(-1) === typing.element.id &&
-      !onTextOf(typing, p);
-    const frameId = dataOf(e.target, 'move-frame') ?? (offTyping ? typing.element.id : undefined);
+    const frameId = dataOf(e.target, 'move-frame');
     const frame = frameId ? index.get(frameId) : undefined;
     const moveFrame =
       frame?.element.type === 'text' && !frame.locked && !frame.hidden ? frame : undefined;
-    const keepEditing = moveFrame?.element.id === editingId;
+    const keepEditing =
+      moveFrame !== undefined &&
+      moveFrame.element.id === editingId &&
+      moveFrame.element.type === 'text' &&
+      plainText(moveFrame.element.content).trim() === '';
     if (editingId && !(typing && handle) && !keepEditing) selection.getState().stopEditing();
     if (moveFrame) {
       const state = selection.getState();
@@ -1564,8 +1565,11 @@ export function Stage({
       // the child it found there. On a text it ends in that text, also where the second press
       // fell beside the lines of the text and closed the editor again.
       const closed = went.edit && selection.getState().editingElementId !== went.id;
-      if (closed && pickAt(e.clientX, e.clientY).at(-1) === went.id) {
-        goInside(went, { x: e.clientX, y: e.clientY });
+      // The first click fell beside the lines of a text box, and took the box: the double-click
+      // opens its text, as it does on a box in no group.
+      const box = !went.edit && index.get(went.id)?.element.type === 'text';
+      if ((closed || box) && pickAt(e.clientX, e.clientY).at(-1) === went.id) {
+        goInside({ ...went, edit: true }, { x: e.clientX, y: e.clientY });
       }
       return;
     }

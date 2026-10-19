@@ -13,6 +13,9 @@ test-results/
 playwright-report/
 coverage/
 
+# Local visual review requested for the translated culture slides.
+/artifacts/culture-slides-16-languages/
+
 # Spike run output (measurements are copied into the ADRs)
 spikes/**/out/
 

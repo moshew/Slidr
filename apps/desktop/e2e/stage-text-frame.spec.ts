@@ -4,11 +4,13 @@ import { addText, caret, edit, editingId, para, plain, select } from './text-hel
 
 /*
  * The frame of a text box whose text is typed in (`Stage.tsx`, `typing`). A press on the text is
- * the editor's, so the box is held by its frame: the handles size it and the edge of the frame
- * moves it, and the text stays open under both. The box that the "Text" button of the toolbar
- * adds is typed in at once, and is put in its place by the same frame before its first word.
+ * the editor's, so the box is held by its frame: the handles size it, and the text stays open
+ * under them; the edge of the frame moves it and, as in PowerPoint, ends the typing. The box that
+ * the "Text" button of the toolbar adds is typed in at once, and is put in its place by the same
+ * frame before its first word: while it has no letters, its typing stays open under the edge.
  * As in PowerPoint, the text is only where its lines are: beside a short line and under the last
- * one, the box is taken as by its frame, whether its text is open or not.
+ * one is the box. A press there selects the box and a drag moves it, and when the text is open,
+ * the press ends the typing.
  */
 
 const ID = 'e_t';
@@ -350,7 +352,7 @@ for (const lang of ['en', 'he'] as const) {
     expect(await plain(page, ID)).toBe(line);
   });
 
-  test(`beside and under its lines, the box that is typed in moves, and its text stays open (${lang})`, async ({
+  test(`beside and under its lines, a click or a drag ends the typing and takes the box (${lang})`, async ({
     page,
   }) => {
     if (lang === 'he') await openApp(page, { lang });
@@ -364,28 +366,36 @@ for (const lang of ['en', 'he'] as const) {
     await page.mouse.move(on.x, on.y);
     await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
     const steps = await undoSteps(page);
-    const before = await caret(page);
-    // A click beside the line leaves the caret where it was.
+    // A click beside the line ends the typing, as in PowerPoint: the box is the selection, and
+    // the keys are the Stage's.
     await page.mouse.click(off.x, off.y);
-    await expect(editor(page)).toBeFocused();
-    expect(await editingId(page)).toBe(ID);
-    expect(await caret(page)).toEqual(before);
+    await expect(editor(page)).toHaveCount(0);
+    expect(await editingId(page)).toBeNull();
+    expect(await selection(page)).toEqual([ID]);
+    await expect(surface(page)).toBeFocused();
     expect(await frameOf(page, ID)).toEqual(FRAME);
     expect(await undoSteps(page)).toBe(steps);
-    // A drag beside the line, and one under it, move the box: one undo step each.
+    // So does a drag from there, which moves the box.
+    await edit(page, ID);
     await drag(page, off, { x: 120, y: 90 });
-    await drag(page, await under(page), { x: -60, y: 40 });
+    await expect(editor(page)).toHaveCount(0);
+    expect(await editingId(page)).toBeNull();
+    expect(await selection(page)).toEqual([ID]);
+    await expect(surface(page)).toBeFocused();
     const moved = await frameOf(page, ID);
-    expect(moved.x).toBeGreaterThan(FRAME.x + 40);
-    expect(moved.y).toBeGreaterThan(FRAME.y + 110);
+    expect(moved.x).toBeGreaterThan(FRAME.x + 100);
+    expect(moved.y).toBeGreaterThan(FRAME.y + 80);
     expect([moved.w, moved.h]).toEqual([FRAME.w, FRAME.h]);
+    expect(await undoSteps(page)).toBe(steps + 1);
+    // So does a drag from under the line.
+    await edit(page, ID);
+    await drag(page, await under(page), { x: -60, y: 40 });
+    await expect(editor(page)).toHaveCount(0);
+    expect(await editingId(page)).toBeNull();
+    expect(await selection(page)).toEqual([ID]);
+    expect((await frameOf(page, ID)).x).toBeLessThan(moved.x - 40);
     expect(await undoSteps(page)).toBe(steps + 2);
-    // The keyboard is back in the text, with the caret where it was.
-    expect(await editingId(page)).toBe(ID);
-    await expect(editor(page)).toBeFocused();
-    expect(await caret(page)).toEqual(before);
-    await page.keyboard.type('!');
-    await expect.poll(() => plain(page, ID)).toBe(`${line}!`);
+    expect(await plain(page, ID)).toBe(line);
   });
 }
 
@@ -442,7 +452,7 @@ test('the frame gives the caret side room and keeps the text box height', async 
   expect(nw.y + nw.height / 2).toBeCloseTo(outline.y, 0);
 });
 
-test('the edge of the frame moves the box, and the text stays open', async ({ page }) => {
+test('the edge of the frame moves the box and ends the typing', async ({ page }) => {
   await addText(page, ID, [para('hello')], { frame: FRAME });
   await edit(page, ID);
   const steps = await undoSteps(page);
@@ -452,11 +462,19 @@ test('the edge of the frame moves the box, and the text stays open', async ({ pa
   expect(moved.y).toBeGreaterThan(FRAME.y + 80);
   expect([moved.w, moved.h]).toEqual([FRAME.w, FRAME.h]);
   expect(await undoSteps(page)).toBe(steps + 1);
-  // The keyboard is back in the text, with the caret where it was.
-  expect(await editingId(page)).toBe(ID);
-  await expect(editor(page)).toBeFocused();
-  await page.keyboard.type(' world');
-  await expect.poll(() => plain(page, ID)).toBe('hello world');
+  // The box is the selection, and the keyboard the Stage's.
+  await expect(editor(page)).toHaveCount(0);
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([ID]);
+  await expect(surface(page)).toBeFocused();
+  // A click on the edge ends it as well, and leaves the box where it is.
+  await edit(page, ID);
+  const at = await onEdge(page);
+  await page.mouse.click(at.x, at.y);
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([ID]);
+  expect(await frameOf(page, ID)).toEqual(moved);
+  expect(await plain(page, ID)).toBe('hello');
 });
 
 test('a handle sizes the box, and the text stays open', async ({ page }) => {
@@ -478,16 +496,18 @@ test('a handle sizes the box, and the text stays open', async ({ page }) => {
   await expect.poll(() => plain(page, ID)).toBe('hello!');
 });
 
-test('Alt on the edge moves the box, and makes no copy of it', async ({ page }) => {
-  await addText(page, ID, [para('hello')], { frame: FRAME });
-  await edit(page, ID);
+test('Alt on the edge of a new box moves it, and makes no copy of it', async ({ page }) => {
+  await page.locator('[data-tool="insert.text"]').click();
+  await expect(editor(page)).toBeFocused();
+  const [box] = await elements(page);
+  const added = await frameOf(page, box!.id);
   await drag(page, await onEdge(page), { x: 120, y: 90 }, { alt: true });
   expect(await elements(page)).toHaveLength(1);
-  expect((await frameOf(page, ID)).x).toBeGreaterThan(FRAME.x + 100);
-  expect(await editingId(page)).toBe(ID);
+  expect((await frameOf(page, box!.id)).x).toBeGreaterThan(added.x + 100);
+  expect(await editingId(page)).toBe(box!.id);
 });
 
-test('Esc during the drag puts the box back, and the text stays open', async ({ page }) => {
+test('Esc during the drag puts the box back, and the box stays selected', async ({ page }) => {
   await addText(page, ID, [para('hello')], { frame: FRAME });
   await edit(page, ID);
   const steps = await undoSteps(page);
@@ -500,8 +520,8 @@ test('Esc during the drag puts the box back, and the text stays open', async ({ 
   await page.mouse.up();
   expect(await frameOf(page, ID)).toEqual(FRAME);
   expect(await undoSteps(page)).toBe(steps);
-  expect(await editingId(page)).toBe(ID);
-  await expect(editor(page)).toBeFocused();
+  expect(await editingId(page)).toBeNull();
+  expect(await selection(page)).toEqual([ID]);
 });
 
 test('a double-click on the edge does not go on to what lies under it', async ({ page }) => {
@@ -513,8 +533,8 @@ test('a double-click on the edge does not go on to what lies under it', async ({
   await edit(page, ID);
   const at = await onEdge(page);
   await page.mouse.dblclick(at.x, at.y - 2);
-  expect(await editingId(page)).toBe(ID);
-  await expect(editor(page)).toBeFocused();
+  expect(await selection(page)).toEqual([ID]);
+  expect(await editingId(page)).not.toBe('e_under');
 });
 
 test('a new box that was moved and left empty leaves nothing behind', async ({ page }) => {
@@ -523,6 +543,10 @@ test('a new box that was moved and left empty leaves nothing behind', async ({ p
   await expect(editor(page)).toBeFocused();
   const [box] = await elements(page);
   const added = await frameOf(page, box!.id);
+  // Without letters, the whole box is the place to type in, and its edge leaves it open.
+  const inside = (await surface(page).locator(`[data-element-id="${box!.id}"]`).boundingBox())!;
+  await page.mouse.move(inside.x + inside.width - 20, inside.y + inside.height / 2);
+  await expect(editor(page).locator('p')).toHaveCSS('cursor', 'text');
   await drag(page, await onEdge(page), { x: -120, y: 90 });
   expect((await frameOf(page, box!.id)).x).toBeLessThan(added.x - 100);
   await expect(editor(page)).toBeFocused();

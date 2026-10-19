@@ -29,9 +29,18 @@ Everything is written in Hebrew and English. A template's sample, and a design, 
 in any other language of `packages/model/src/languages.ts`, and only when it is asked for
 (`AGENTS.md`): a template's `samples` take a key a language, a design its other languages in
 `more`. A deck in a language a piece has gets it; any other gets the English one. Atlas
-(`atlas.ts`) and the designs of `designs/world.ts` are written in all sixteen; their drawings hold
+(`atlas.ts`), the three technology templates (`technology/`), and the designs of `designs/world.ts` are written in all sixteen; their drawings hold
 no words, and each run of a design names a family with the letters of its language. Look at each
 language on the review page (`lang=<code>`), at full size and as a thumbnail.
+
+`technology/<lang>.ts` holds the additional sample languages of Anan, Shvav and Mutzar.
+`technology/samples.ts` keeps their editable content, images and numeric data in the existing
+layouts. To add these samples to a library catalog while preserving its templates and base samples,
+run from `packages/templates`:
+
+```sh
+node src/authoring/tools/run-ts.mjs src/authoring/technology/export.ts <library>/templates/catalog.json
+```
 
 ## Working on a template
 

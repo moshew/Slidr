@@ -22,6 +22,7 @@ import {
   withObjects,
 } from '../builtin/kit';
 import { picture } from './pictures';
+import { technologySamples } from './technology/samples';
 
 /**
  * Shvav (Hebrew for a chip): the slide is a printed circuit board. A deep solder-mask green ground,
@@ -2863,7 +2864,7 @@ const sampleEn: SampleSlide[] = [
 ];
 
 /** The sample decks of the template, by language. */
-export const shvavSamples = { he: sampleHe, en: sampleEn };
+export const shvavSamples = technologySamples('shvav', sampleHe, sampleEn);
 
 /** The Shvav template: the theme, its layouts for both directions, and its sample deck. */
 export function shvavTemplate(): Template {

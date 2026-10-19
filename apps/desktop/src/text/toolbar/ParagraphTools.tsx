@@ -15,7 +15,6 @@ import {
   type LucideIcon,
 } from '@slidr/ui';
 import {
-  ChevronDown,
   List,
   ListChevronsUpDown,
   ListIndentDecrease,
@@ -349,29 +348,25 @@ function ListOptions({ text }: { text: Text }) {
   );
 }
 
-/** Bullets, numbers and a popover of list options; all of it in one popover when the row is tight. */
+/**
+ * One button for lists, as for alignment: its icon is the list the paragraph has now, and it opens
+ * bullets, numbers and the list options.
+ */
 export function ListTool() {
   const { t } = useTranslation('text');
-  const compact = useCompact();
   const text = useText();
   if (!text) return null;
-  if (compact) {
-    return (
-      <PopoverTool label={t('list.label')} icon={List} mirror>
-        <Row label={t('list.label')}>
-          <ListToggles text={text} />
-        </Row>
-        <ListOptions text={text} />
-      </PopoverTool>
-    );
-  }
   return (
-    <>
-      <ListToggles text={text} />
-      <PopoverTool label={t('list.options')} icon={ChevronDown}>
-        <ListOptions text={text} />
-      </PopoverTool>
-    </>
+    <PopoverTool
+      label={t('list.label')}
+      icon={text.format.list === 'number' ? ListOrdered : List}
+      mirror
+    >
+      <Row label={t('list.label')}>
+        <ListToggles text={text} />
+      </Row>
+      <ListOptions text={text} />
+    </PopoverTool>
   );
 }
 

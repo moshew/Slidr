@@ -34,12 +34,25 @@ export interface TechnologyCopy {
   table: { title: string; note: string; headers: string[]; labels: string[] };
   photo: Three;
   quote: [text: string, role: string];
-  team: { title: string; roles: Four };
+  team: { title: string; roles: Four; bios: Four };
   closing: { title: [string, string]; lines: Three };
 }
 
 export type TechnologyCopies = Record<Technology, TechnologyCopy>;
 
 export const TECHNOLOGY_COPY = {
-  ar, de, es, fr, it, 'pt-BR': ptBR, ru, tr, vi, id, hi, ja, ko, 'zh-CN': zhCN,
+  ar,
+  de,
+  es,
+  fr,
+  it,
+  'pt-BR': ptBR,
+  ru,
+  tr,
+  vi,
+  id,
+  hi,
+  ja,
+  ko,
+  'zh-CN': zhCN,
 } satisfies Record<TranslationLanguage, TechnologyCopies>;
