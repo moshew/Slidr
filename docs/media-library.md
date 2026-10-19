@@ -68,7 +68,21 @@ A development build and the dev server read another copy when `SLIDR_MEDIA_URL` 
 
 ## A library of your own
 
-An installed app reads the library from another address when a file beside `slidr.exe`, `media-library.json`, names one: `{ "url": "https://media.example.org/slidr/" }`. The released installer writes that file, so a copy served elsewhere needs no build of the app ([ADR-107](adr/ADR-107-a-library-of-your-own.md)):
+An installed app reads the library from an address the organization chooses, in place of the published one. It is set in one of two places, and nothing of the app is built again for it ([ADR-107](adr/ADR-107-a-library-of-your-own.md)). An organization sets a policy; a single installer carries the address itself.
+
+### A policy for the organization
+
+`HKLM\SOFTWARE\Policies\Slidr`, the string value `MediaLibraryUrl`, is the address every app on the machine reads. Set it once for the domain with Group Policy or Intune (or `HKCU` for one user), and the machines run the **released installer, unchanged and signed as it is**; the end user sets nothing and need not know where the library is. The app reads the policy each time it starts, so a change reaches every machine at its next start. `HKLM` comes before `HKCU`, and both before an installer's own file below.
+
+```powershell
+New-Item   -Path 'HKLM:\SOFTWARE\Policies\Slidr' -Force | Out-Null
+New-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Slidr' -Name MediaLibraryUrl `
+  -PropertyType String -Value 'https://media.example.org/slidr/' -Force
+```
+
+### An installer that carries the address
+
+An installed app also reads the library from a file beside `slidr.exe`, `media-library.json`: `{ "url": "https://media.example.org/slidr/" }`. The released installer writes that file, so a single installer that carries an address needs no build of the app:
 
 ```bat
 Slidr_0.1.0_x64-setup.exe /S /MEDIA="https://media.example.org/slidr/"
@@ -76,7 +90,7 @@ Slidr_0.1.0_x64-setup.exe /S /MEDIA="https://media.example.org/slidr/"
 
 Without a command line, a `media-library.json` beside the installer does the same: the installer copies it. A folder with the two is an installation that reads that copy. `/MEDIA=` wins over the file, and `/MEDIA=` with nothing after it takes the file away, back to the published library. An installation with neither keeps the address it had, so the app's own updates keep it; uninstalling takes it away. An administrator may also write the file by hand; the app reads it when it next starts.
 
-A file that names no address the app may read leaves it with no library at all, as in [Without the library](#without-the-library). That covers a file that cannot be read, is not JSON, or has no `url`, and an address that is not HTTPS (plain HTTP is allowed only on `localhost`). The app never falls back to the published library then: on a closed network, a call to it would look like an attempt to get out. Only an installation without the file reads the published library.
+A policy or a file that names no address the app may read leaves it with no library at all, as in [Without the library](#without-the-library). That covers a file that cannot be read, is not JSON, or has no `url`, and an address that is not HTTPS (plain HTTP is allowed only on `localhost`). The app never falls back to the published library then: the administrator chose a copy, and on a closed network a call to the published site would look like an attempt to get out. Only an installation with neither a policy nor a file reads the published library.
 
 Keep the address in quotes. Unquoted, a part of its path that begins like one of the installer's own options turns that option on too (`/public/` is `/P`, passive; `/reports/` is `/R`, restart). cmd.exe and deployment tools pass the quotes on. PowerShell keeps them only inside one string: `Start-Process .\Slidr_0.1.0_x64-setup.exe -ArgumentList '/S /MEDIA="https://media.example.org/slidr/"'`.
 
