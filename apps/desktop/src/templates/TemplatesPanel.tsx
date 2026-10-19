@@ -8,7 +8,7 @@ import { useLanguage } from '../i18n';
 import { ask, useDeck, useEditor } from '../shell';
 import { renameTemplate, updateTemplate } from './actions';
 import { library } from './app';
-import { coverAsset, coverOf } from './covers';
+import { coverAsset, libraryCover } from './covers';
 import type { LibraryEntry } from './library';
 import { templateName } from './names';
 import { readyPreview } from './previews';
@@ -45,10 +45,7 @@ function TemplateCard({
   const [busy, setBusy] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const name = templateName(theme, i18n.language);
-  const cover = useMemo(
-    () => coverOf(library.forDeck(theme.id, like.meta.lang) ?? template, like),
-    [template, theme.id, like],
-  );
+  const cover = libraryCover(template, like);
   // The same picture while the cover stays: a card drawn again for its ring or its mark does not
   // draw its slide again. It fits the card by itself, so it is drawn with the panel ahead of time;
   // its photograph is decoded with it, so the card does not appear first without it.

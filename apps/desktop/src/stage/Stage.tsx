@@ -1318,34 +1318,47 @@ export function Stage({
     gutter: GUTTER,
   });
 
+  /**
+   * What the pointer is over while no button is held: the hover frame and the cursor. Found once
+   * a frame, as a drag is followed: a mouse reports a move more often than the screen is drawn,
+   * and each finding asks the page what is under the point and measures the lines of a text.
+   */
+  const hoverAt = (clientX: number, clientY: number, target: EventTarget | null) => {
+    if (crop) {
+      const p = toSlide(clientX, clientY);
+      setOverCrop(inCropFrame(p) || onCropPicture(crop.box, crop.view, p));
+      setHover(undefined);
+      setOverGroupChild(false);
+      return;
+    }
+    const frameId = dataOf(target, 'move-frame');
+    const frame = frameId ? index.get(frameId) : undefined;
+    if (frame && !frame.locked && !frame.hidden) {
+      setHover(frame.element.id);
+      setOverText(false);
+      setOverGroupChild(false);
+      return;
+    }
+    const press = pressAt(clientX, clientY);
+    // Hover follows directly reached text and foreground objects.
+    const text = press.inside?.edit ? press.inside.id : undefined;
+    const id = press.inside?.id ?? press.id;
+    setHover(id && !index.get(id)?.locked ? id : undefined);
+    setOverText(text !== undefined);
+    setOverGroupChild(Boolean(press.inside && press.inside.id !== press.id));
+  };
+
   const onPointerMove = (e: PointerEvent) => {
     const g = gesture.current;
     if (!g) {
-      if (crop) {
-        const p = toSlide(e.clientX, e.clientY);
-        setOverCrop(inCropFrame(p) || onCropPicture(crop.box, crop.view, p));
-        setHover(undefined);
-        setOverGroupChild(false);
-        return;
-      }
       // A button held with no gesture of the Stage's is the text editor's drag, selecting text:
       // the pointer keeps the cursor of the text it was pressed on, also beside the lines.
-      if (e.buttons !== 0) return;
-      const frameId = dataOf(e.target, 'move-frame');
-      const frame = frameId ? index.get(frameId) : undefined;
-      if (frame && !frame.locked && !frame.hidden) {
-        setHover(frame.element.id);
-        setOverText(false);
-        setOverGroupChild(false);
-        return;
-      }
-      const press = pressAt(e.clientX, e.clientY);
-      // Hover follows directly reached text and foreground objects.
-      const text = press.inside?.edit ? press.inside.id : undefined;
-      const id = press.inside?.id ?? press.id;
-      setHover(id && !index.get(id)?.locked ? id : undefined);
-      setOverText(text !== undefined);
-      setOverGroupChild(Boolean(press.inside && press.inside.id !== press.id));
+      if (!crop && e.buttons !== 0) return;
+      const { clientX, clientY, target } = e;
+      schedule(() => {
+        // A press in the meantime began a gesture, which has the pointer now.
+        if (!gesture.current) hoverAt(clientX, clientY, target);
+      });
       return;
     }
     if (g.kind === 'pan') {
@@ -2499,6 +2512,11 @@ export function Stage({
       onDrop={onDrop}
       onPaste={onPaste}
       onPointerLeave={() => {
+        // A hover found for a move before the pointer left would come back after it.
+        if (!gesture.current && frame.current !== undefined) {
+          cancelAnimationFrame(frame.current);
+          frame.current = undefined;
+        }
         setHover(undefined);
         setOverText(false);
         setOverGroupChild(false);

@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { findElement, findSlide, plainText, type Element } from '@slidr/model';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
+import { shallow } from 'zustand/shallow';
+import { findElement, findSlide, plainText, type DeckState, type Element } from '@slidr/model';
 import {
   Layers,
   RectangleHorizontal,
@@ -8,7 +10,7 @@ import {
   type LucideIcon,
 } from '@slidr/ui/icons';
 import { cx, Icon } from '@slidr/ui';
-import { elementDisplayKind, useDeck, useEditor } from '../shell';
+import { elementDisplayKind, useEditor } from '../shell';
 import { navigateTo } from './runtime';
 import type { Focus } from './focus';
 
@@ -40,39 +42,60 @@ function elementLabel(element: Element): string | undefined {
   return undefined;
 }
 
+/**
+ * What the chip shows of the slide and of the one selected element, as values: the chip is drawn
+ * again when they change, not with every letter typed elsewhere on the slide.
+ */
+function shownOf(focus: Focus) {
+  return (state: DeckState) => {
+    const slide = focus.slideId ? findSlide(state.deck, focus.slideId) : undefined;
+    const one =
+      slide && focus.elementIds.length === 1
+        ? findElement(slide, focus.elementIds[0] ?? '')
+        : undefined;
+    return {
+      slideId: slide?.id,
+      slideName: slide?.name,
+      oneId: one?.id,
+      oneKind: one && elementDisplayKind(one),
+      oneLabel: one && elementLabel(one),
+    };
+  };
+}
+
 export function FocusChip({ focus }: { focus: Focus }) {
   const { t } = useTranslation('ai');
   const { t: ts } = useTranslation();
   const editor = useEditor();
-  const slide = useDeck((s) => (focus.slideId ? findSlide(s.deck, focus.slideId) : undefined));
-  const one =
-    slide && focus.elementIds.length === 1
-      ? findElement(slide, focus.elementIds[0] ?? '')
-      : undefined;
+  const { slideId, slideName, oneId, oneKind, oneLabel } = useStoreWithEqualityFn(
+    editor.deck,
+    shownOf(focus),
+    shallow,
+  );
 
   let view: View;
   if (focus.text) {
     view = { icon: TextCursorInput, label: t('focus.text'), detail: `“${quote(focus.text.text)}”` };
-  } else if (one) {
+  } else if (oneId) {
     view = {
       icon: SquareDashedMousePointer,
-      label: ts(`selection.${elementDisplayKind(one)}`),
-      detail: elementLabel(one),
-      onClick: () => navigateTo(editor, { slideId: slide?.id, elementIds: [one.id] }),
+      label: ts(`selection.${oneKind}`),
+      detail: oneLabel,
+      onClick: () => navigateTo(editor, { slideId, elementIds: [oneId] }),
     };
-  } else if (slide && focus.elementIds.length > 1) {
+  } else if (slideId && focus.elementIds.length > 1) {
     const ids = [...focus.elementIds];
     view = {
       icon: SquareDashedMousePointer,
       label: ts('selection.multiple', { n: ids.length }),
-      onClick: () => navigateTo(editor, { slideId: slide.id, elementIds: ids }),
+      onClick: () => navigateTo(editor, { slideId, elementIds: ids }),
     };
-  } else if (slide) {
+  } else if (slideId) {
     view = {
       icon: RectangleHorizontal,
       label: t('focus.slide', { n: focus.slideNumber }),
-      detail: slide.name,
-      onClick: () => navigateTo(editor, { slideId: slide.id }),
+      detail: slideName,
+      onClick: () => navigateTo(editor, { slideId }),
     };
   } else {
     view = { icon: Layers, label: t('focus.deck') };
@@ -85,7 +108,7 @@ export function FocusChip({ focus }: { focus: Focus }) {
         type="button"
         data-testid="focus-chip"
         data-focus={
-          focus.text ? 'text' : focus.elementIds.length > 0 ? 'object' : slide ? 'slide' : 'deck'
+          focus.text ? 'text' : focus.elementIds.length > 0 ? 'object' : slideId ? 'slide' : 'deck'
         }
         disabled={!view.onClick}
         title={view.onClick ? t('focus.show') : undefined}

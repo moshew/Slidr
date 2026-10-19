@@ -17,6 +17,8 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { PanelLeft } from '@slidr/ui/icons';
 import { cx, EmptyState, IconButton, ScrollArea } from '@slidr/ui';
+import { stageGestureActive } from '../stage/gesture';
+import { useEditor } from './editor';
 import { useWindowWidth } from './hooks';
 import { panelLimits, panelWidth } from './layout';
 import { usePanels, type PanelDefinition } from './registry';
@@ -181,21 +183,45 @@ function PanelHeader({
   );
 }
 
+/** How long the deck has to rest before the hidden panels are drawn. */
+const QUIET_MS = 1000;
+
 /**
- * Whether the app has had a quiet moment since it opened: the first idle time of the page, or a
- * few seconds, whichever comes first.
+ * Whether the app has had a quiet moment since it opened: the deck has not changed for a second,
+ * no gesture holds the Stage, and the page then had an idle time (or a few seconds went by).
+ *
+ * The panels drawn then are drawn at a low priority, and any update that comes first throws that
+ * drawing away and starts it over. A drag is an update a frame, and so is typing: begun in the
+ * middle of either, the drawing would be started over, and paid for, with every frame.
  */
 function useQuietMoment(): boolean {
+  const { bus } = useEditor();
   const [quiet, setQuiet] = useState(false);
   useEffect(() => {
+    if (quiet) return;
+    let timer: number | undefined;
+    let idle: number | undefined;
     const done = () => startTransition(() => setQuiet(true));
-    if (typeof requestIdleCallback !== 'function') {
-      const timer = window.setTimeout(done, 1000);
-      return () => window.clearTimeout(timer);
-    }
-    const id = requestIdleCallback(done, { timeout: 3000 });
-    return () => cancelIdleCallback(id);
-  }, []);
+    const stop = () => {
+      window.clearTimeout(timer);
+      if (idle !== undefined) cancelIdleCallback(idle);
+      idle = undefined;
+    };
+    const wait = () => {
+      stop();
+      timer = window.setTimeout(() => {
+        if (stageGestureActive()) return wait();
+        if (typeof requestIdleCallback !== 'function') return done();
+        idle = requestIdleCallback(done, { timeout: 3000 });
+      }, QUIET_MS);
+    };
+    wait();
+    const unsubscribe = bus.subscribe(wait);
+    return () => {
+      unsubscribe();
+      stop();
+    };
+  }, [bus, quiet]);
   return quiet;
 }
 

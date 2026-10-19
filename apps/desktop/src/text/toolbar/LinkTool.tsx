@@ -14,9 +14,11 @@ import {
 import { Link, Unlink } from '@slidr/ui/icons';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 import { useDeck, type ContextToolProps } from '../../shell';
 import { linkTarget, setLink, type TextTarget } from '../actions';
+import { activeEditor } from '../activeEditor';
 import { orNull } from '../format';
 import { linkedSlide, slideLink, typedLink } from '../paste';
 import { closeToText, keepFocus, LINK_KEYS, useCompact, useText, type Text } from './shared';
@@ -50,6 +52,17 @@ function currentLink(text: Text): { link: string | null; linkable: boolean } {
   if (target.kind !== 'editor') return { link: orNull(format.link), linkable: true };
   const range = linkTarget(target.view.state);
   return { link: range?.link ?? orNull(format.link), linkable: range !== null };
+}
+
+/**
+ * What the tool shows of the link, as a value a store can compare: whether there is text to link,
+ * and the link the popover is about. Neither is the format's alone: they follow the caret (in a
+ * link, in a word, or at neither) and, for a shape, whether it has text at all.
+ */
+function linkState(text: Text | null): string {
+  if (!text || !linksText(text.target)) return '';
+  const { link, linkable } = currentLink(text);
+  return `${linkable ? 1 : 0}${link ?? ''}`;
 }
 
 const TITLE_LENGTH = 40;
@@ -169,6 +182,10 @@ function LinkForm({ text, link, close }: { text: Text; link: string | null; clos
 export function LinkTool({ kind }: Partial<ContextToolProps>) {
   const { t } = useTranslation('text');
   const text = useText();
+  // The text is not drawn again for the caret: this tool follows it itself, and is drawn again
+  // only when what it shows of the link changes.
+  useStore(activeEditor, () => linkState(text));
+  useDeck(() => linkState(text));
   const compact = useCompact();
   const [open, setOpen] = useState(false);
   const current = text && linksText(text.target) ? currentLink(text) : null;

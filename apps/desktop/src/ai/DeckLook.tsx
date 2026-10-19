@@ -9,7 +9,7 @@ import { useLanguage } from '../i18n';
 import { useDeck, useEditor, useElementSize } from '../shell';
 import { showPreview } from '../stage/preview';
 import { library } from '../templates/app';
-import { coverAsset, coverOf } from '../templates/covers';
+import { coverAsset, libraryCover } from '../templates/covers';
 import type { LibraryEntry } from '../templates/library';
 import { templateName } from '../templates/names';
 import { useLike } from '../templates/PreviewGrid';
@@ -151,11 +151,7 @@ function TemplateCard({ entry, trying }: { entry: LibraryEntry; trying: Trying }
   const look = useMemo<Look>(() => ({ kind: 'template', id }), [id]);
   // The cover is in the UI language and its direction, as in the Templates panel, and an edit
   // of the deck does not draw it again.
-  const like = useLike();
-  const cover = useMemo(
-    () => coverOf(library.forDeck(id, like.meta.lang) ?? template, like),
-    [template, id, like],
-  );
+  const cover = libraryCover(template, useLike());
   // The cover fits its card by itself, so it is drawn with the panel ahead of time, and a card
   // drawn again as it becomes the current one does not draw its slide again.
   const picture = useMemo(
@@ -236,7 +232,10 @@ function PaletteCard({ palette, trying }: { palette: Palette; trying: Trying }) 
   const name =
     palette.name === undefined
       ? t(`look.palette.names.${palette.id}`)
-      : templateName({ id: palette.id.replace(/^template:/, ''), name: palette.name }, i18n.language);
+      : templateName(
+          { id: palette.id.replace(/^template:/, ''), name: palette.name },
+          i18n.language,
+        );
   return (
     <button
       {...tryingProps(trying, look, t('look.palette.undo'), current)}

@@ -112,9 +112,15 @@ function boxStyle(e: Element): CSSProperties {
 
 function TextView({ element: e }: { element: TextElement }) {
   const ctx = useRenderContext();
+  const { role, content } = e;
+  const { slideNumber } = ctx;
+  const text = useMemo(
+    () => (role === 'slideNumber' ? numberedText(content, slideNumber) : content),
+    [role, content, slideNumber],
+  );
   return (
     <TextBox
-      content={e.role === 'slideNumber' ? numberedText(e.content, ctx.slideNumber) : e.content}
+      content={text}
       vAlign={e.vAlign}
       padding={e.padding}
       autoFit={e.autoFit}

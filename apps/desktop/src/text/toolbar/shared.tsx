@@ -31,13 +31,12 @@ import {
   type RefObject,
   type SyntheticEvent,
 } from 'react';
-import { create, useStore } from 'zustand';
+import { create, type StoreApi } from 'zustand';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
 import {
   returnKeyboard,
   toolClosed,
-  useDeck,
   useEditor,
-  useSelection,
   type Editor,
   type SelectionKind,
 } from '../../shell';
@@ -45,6 +44,7 @@ import { formatOf, type TextHolder, type TextTarget } from '../actions';
 import { activeEditor, editorFor } from '../activeEditor';
 import { cellScope } from '../cellScope';
 import type { FormatContext, TextFormat } from '../format';
+import { sameValue } from '../richTextDoc';
 
 /* What the text tools of row B share: the target, the focus, and their layout. */
 
@@ -168,6 +168,11 @@ export function formatContext(
 }
 
 export interface Text {
+  /**
+   * What the tool acts on. Read when the tool acts, it is the text as it is then: a tool is not
+   * drawn again for every letter typed into its text or every frame of a drag (`useText`), and
+   * must not write back a text from before them.
+   */
   target: TextTarget;
   format: TextFormat;
   ctx: FormatContext;
@@ -175,16 +180,8 @@ export interface Text {
   editing: boolean;
 }
 
-/** The target and its current formatting, for a tool of row B. Follows the selection and the caret. */
-export function useText(): Text | null {
-  const editor = useEditor();
-  // Each of these changes what the target is or how it is formatted.
-  useDeck((s) => s.deck);
-  useSelection((s) => s.currentSlideId);
-  useSelection((s) => s.selectedElementIds);
-  useSelection((s) => s.editingElementId);
-  useStore(activeEditor, (s) => s.version);
-  useStore(cellScope, (s) => s.scope);
+/** The target and its formatting now, from the editor's stores. */
+function readText(editor: Editor): Text | null {
   const target = resolveTarget(editor);
   if (!target) return null;
   const ctx = formatContext(editor, target);
@@ -194,6 +191,127 @@ export function useText(): Text | null {
   const table = tableOf(target);
   if (table) format = { ...format, direction: table.dir };
   return { target, format, ctx, editing: target.kind === 'editor' };
+}
+
+/**
+ * Fields of an element the text tools do not show: its text, which they show through the format,
+ * and where its box is. They change with every letter typed and every frame of a drag.
+ */
+const PASSING = new Set(['content', 'cells', 'frame']);
+
+function sameHolder(a: Element, b: Element): boolean {
+  if (a === b) return true;
+  const x = a as unknown as Record<string, unknown>;
+  const y = b as unknown as Record<string, unknown>;
+  const keys = Object.keys(x);
+  if (keys.length !== Object.keys(y).length) return false;
+  return keys.every((key) => PASSING.has(key) || x[key] === y[key]);
+}
+
+/** The two targets are the same text to the tools, whatever it says and wherever its box is. */
+function sameTarget(a: TextTarget, b: TextTarget): boolean {
+  if (a.bus !== b.bus || a.slideId !== b.slideId) return false;
+  switch (a.kind) {
+    case 'editor':
+      return b.kind === 'editor' && a.view === b.view && sameHolder(a.element, b.element);
+    case 'element':
+      return b.kind === 'element' && sameHolder(a.element, b.element);
+    case 'cells':
+      return b.kind === 'cells' && sameHolder(a.element, b.element) && sameValue(a.cells, b.cells);
+    case 'elements':
+      return (
+        b.kind === 'elements' &&
+        a.elements.length === b.elements.length &&
+        a.elements.every((element, i) => element.id === b.elements[i]?.id)
+      );
+  }
+}
+
+/** The tools would be drawn the same for the two. */
+function sameText(a: Text | null, b: Text | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.editing === b.editing &&
+    a.ctx.theme === b.ctx.theme &&
+    a.ctx.dir === b.ctx.dir &&
+    a.ctx.color === b.ctx.color &&
+    a.ctx.styleRef === b.ctx.styleRef &&
+    sameTarget(a.target, b.target) &&
+    sameValue(a.format, b.format)
+  );
+}
+
+/**
+ * The text of the tools, read once for each change and shared by all of them: row B has about
+ * twenty, and each one reading it again was twenty walks of the selection for every frame.
+ */
+type TextSource = Pick<StoreApi<Text | null>, 'getState' | 'getInitialState' | 'subscribe'>;
+
+const sources = new WeakMap<Editor, TextSource>();
+
+function textSource(editor: Editor): TextSource {
+  const known = sources.get(editor);
+  if (known) return known;
+  /** What the text was read from last; each part changes what the target is or how it reads. */
+  let from: readonly unknown[] = [];
+  let text: Text | null = null;
+  const getState = () => {
+    const { currentSlideId, selectedElementIds, editingElementId } = editor.selection.getState();
+    const now = [
+      editor.bus.deck,
+      currentSlideId,
+      selectedElementIds,
+      editingElementId,
+      activeEditor.getState(),
+      cellScope.getState().scope,
+    ];
+    if (now.some((part, i) => part !== from[i])) {
+      from = now;
+      text = readText(editor);
+    }
+    return text;
+  };
+  const subscribe: TextSource['subscribe'] = (listener) => {
+    const changed = () => {
+      const before = text;
+      listener(getState(), before);
+    };
+    const stops = [
+      editor.deck.subscribe(changed),
+      editor.selection.subscribe(changed),
+      activeEditor.subscribe(changed),
+      cellScope.subscribe(changed),
+    ];
+    return () => stops.forEach((stop) => stop());
+  };
+  const source: TextSource = { getState, getInitialState: getState, subscribe };
+  sources.set(editor, source);
+  return source;
+}
+
+/**
+ * The target and its current formatting, for a tool of row B. Follows the selection and the caret.
+ * The tool is drawn again when what it shows changes: the format of the text, which text it is,
+ * and the settings of its box. Not for a letter that leaves the format as it was, nor for a frame
+ * of a drag; what it acts on is still the text as it is then (`Text.target`).
+ */
+export function useText(): Text | null {
+  const source = textSource(useEditor());
+  const shown = useStoreWithEqualityFn(source, (text) => text, sameText);
+  return useMemo(() => {
+    if (!shown) return null;
+    const { format, ctx, editing } = shown;
+    return {
+      format,
+      ctx,
+      editing,
+      get target() {
+        const now = source.getState();
+        return now && sameTarget(now.target, shown.target) ? now.target : shown.target;
+      },
+    };
+  }, [shown, source]);
 }
 
 /* ---------------------------------------------------------------- focus */

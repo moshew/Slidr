@@ -2,6 +2,7 @@ import { lintSlide, type LintFinding, type SlideMeasurements } from '@slidr/lint
 import {
   batchFitted,
   newId,
+  slideArchetype,
   type Command,
   type CommandBus,
   type Deck,
@@ -44,7 +45,27 @@ const keyOf = (deck: Deck, slide: Slide): Key => [
   deck.meta.lang,
   deck.size,
 ];
-const same = (a: Key, b: Key) => a.every((part, i) => part === b[i]);
+const same = (a: Key, b: Key) => a.length === b.length && a.every((part, i) => part === b[i]);
+
+/**
+ * What a slide's findings depend on beyond what it is drawn from: the slides around it, of which
+ * a rule reads the order and the kinds (L14, slides of one kind in a row). The same for every
+ * slide of a deck, and the same while slides are only edited.
+ */
+const orderOf = (deck: Deck): string =>
+  deck.slides
+    .map((slide) => `${slide.id}:${slide.hidden ? '-' : (slideArchetype(deck, slide) ?? '')}`)
+    .join(' ');
+
+/** Runs when the page is idle, or soon: returns what cancels it. */
+function whenIdle(run: () => void): () => void {
+  if (typeof requestIdleCallback !== 'function') {
+    const timer = setTimeout(run, 0);
+    return () => clearTimeout(timer);
+  }
+  const id = requestIdleCallback(run, { timeout: 2000 });
+  return () => cancelIdleCallback(id);
+}
 
 /** A new deck's lone empty canvas is a starting point, not a slide to review yet. */
 const isStarterCanvas = (deck: Deck, slide: Slide) =>
@@ -67,6 +88,16 @@ const attemptOf = (finding: LintFinding) => `${nameOf(finding)} ${JSON.stringify
 export const fixable = (finding: LintFinding) =>
   Boolean(finding.fix) && finding.severity !== 'info';
 
+export interface CheckOptions {
+  /** How long the deck has to rest before it is checked, in ms. */
+  rest?: number;
+  /**
+   * The user is in the middle of something a check would cut into: a gesture on the Stage, or
+   * typing. The deck that has rested is checked once this is over, and another rest has passed.
+   */
+  busy?: () => boolean;
+}
+
 export class DesignCheck {
   readonly state: StoreApi<CheckState> = createStore<CheckState>(() => ({
     findings: [],
@@ -77,33 +108,61 @@ export class DesignCheck {
   readonly #bus: CommandBus;
   readonly #measure: Measure;
   readonly #rest: number;
-  /** A slide is measured once for as long as nothing it is drawn from changes. */
-  readonly #measured = new Map<string, { key: Key; measured: SlideMeasurements }>();
+  readonly #busy: () => boolean;
+  /**
+   * A slide is measured once for as long as nothing it is drawn from changes, and its findings
+   * are found once for as long as neither that nor the order of the slides changes.
+   */
+  readonly #measured = new Map<
+    string,
+    { key: Key; measured: SlideMeasurements; found?: { order: string; findings: LintFinding[] } }
+  >();
   #running: Promise<void> | null = null;
   /** The deck state the last check failed on: it is not tried again until the deck changes. */
   #failedOn: Deck | null = null;
   #timer: ReturnType<typeof setTimeout> | undefined;
+  /** Cancels the check that waits for the page to be idle. */
+  #idle: (() => void) | undefined;
 
-  constructor(bus: CommandBus, measure: Measure, options: { rest?: number } = {}) {
+  constructor(bus: CommandBus, measure: Measure, options: CheckOptions = {}) {
     this.#bus = bus;
     this.#measure = measure;
     this.#rest = options.rest ?? REST_MS;
+    this.#busy = options.busy ?? (() => false);
   }
 
-  /** Follows the deck from now on: every change is checked once the deck has rested. */
+  /**
+   * Follows the deck from now on: every change is checked once the deck has rested, the user is
+   * not in the middle of a gesture or of typing, and the page is idle. A check draws the slides
+   * that changed again, out of sight, and measures them: work a frame of a drag cannot wait for.
+   */
   watch(): () => void {
+    const cancel = () => {
+      clearTimeout(this.#timer);
+      this.#idle?.();
+      this.#idle = undefined;
+    };
+    const wait = () => {
+      cancel();
+      this.#timer = setTimeout(() => {
+        if (this.#busy()) return wait();
+        this.#idle = whenIdle(() => {
+          this.#idle = undefined;
+          void this.check();
+        });
+      }, this.#rest);
+    };
     const due = () => {
       // Written only when it changes: every write wakes the status bar, and a drag is a change
       // a frame.
       if (!this.state.getState().pending) this.state.setState({ pending: true });
-      clearTimeout(this.#timer);
-      this.#timer = setTimeout(() => void this.check(), this.#rest);
+      wait();
     };
     due();
     const stop = this.#bus.subscribe(due);
     return () => {
       stop();
-      clearTimeout(this.#timer);
+      cancel();
     };
   }
 
@@ -129,6 +188,7 @@ export class DesignCheck {
     this.state.setState({ pending: true, failed: false });
     try {
       const findings: LintFinding[] = [];
+      const order = orderOf(deck);
       for (const slide of deck.slides) {
         // The deck moved on: what would be found is already out of date.
         if (this.#bus.deck !== deck) return;
@@ -141,7 +201,9 @@ export class DesignCheck {
           entry = { key, measured: await this.#measure(deck, slide) };
           this.#measured.set(slide.id, entry);
         }
-        findings.push(...lintSlide(deck, slide, entry.measured, 'all'));
+        if (entry.found?.order !== order)
+          entry.found = { order, findings: lintSlide(deck, slide, entry.measured, 'all') };
+        findings.push(...entry.found.findings);
       }
       const kept = new Set(deck.slides.map((slide) => slide.id));
       for (const id of this.#measured.keys()) if (!kept.has(id)) this.#measured.delete(id);

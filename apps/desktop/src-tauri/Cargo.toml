@@ -73,11 +73,13 @@ tract-linalg = { version = "0.23.8", features = ["multithread-mm"] }
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
 windows-core = "0.62"
-# The installed fonts (SPEC appendix B): DirectWrite's system font collection; the window itself,
-# to take the show to full screen in one quiet step; and the registry, for the media library an
-# organization's policy sets (media_library.rs). The crate and the version Tauri already builds,
-# with a few more of its features.
-windows = { version = "0.62", features = ["Win32_Graphics_DirectWrite", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_System_Registry", "Win32_UI_WindowsAndMessaging"] }
+# The installed fonts (SPEC appendix B): DirectWrite's system font collection; and the window
+# itself, to take the show to full screen in one quiet step. The crate and the version Tauri
+# already builds, with a few more of its features.
+windows = { version = "0.62", features = ["Win32_Graphics_DirectWrite", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }
+# The registry, for the media library an organization's policy sets (media_library.rs): the safe
+# wrapper of the same family, so the read takes no `unsafe`. The version hyper-util already builds.
+windows-registry = "0.6"
 
 [dev-dependencies]
 tempfile = "3.27.0"

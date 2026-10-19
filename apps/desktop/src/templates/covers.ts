@@ -94,3 +94,30 @@ export function coverOf(
   });
   return { deck: plain, slide };
 }
+
+type Cover = { deck: Deck; slide: Slide };
+
+/** The covers made so far: by the template of the library, then by language and direction. */
+const made = new WeakMap<Template, Map<string, Cover>>();
+
+/**
+ * The cover of a template of the library, as the panels show it: its layouts named in the
+ * language of `like` (`forDeck`). Made once for a template, a language and a direction, and kept
+ * while the library holds that template: a card drawn again, or a panel drawn ahead of time
+ * whose drawing was thrown away and started over, does not build the deck of its cover again.
+ */
+export function libraryCover(
+  template: Template,
+  like: { meta: Pick<Deck['meta'], 'lang' | 'dir'> },
+): Cover {
+  const { lang, dir } = like.meta;
+  let covers = made.get(template);
+  if (!covers) made.set(template, (covers = new Map<string, Cover>()));
+  const key = `${lang} ${dir}`;
+  let cover = covers.get(key);
+  if (!cover) {
+    cover = coverOf(library.forDeck(template.theme.id, lang) ?? template, like);
+    covers.set(key, cover);
+  }
+  return cover;
+}

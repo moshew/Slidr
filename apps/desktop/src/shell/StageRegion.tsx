@@ -17,7 +17,7 @@ import { layerSnippet } from '../arrange/layers';
 import { KeyboardStatus } from '../stage/KeyboardStatus';
 import { stagePreview } from '../stage/preview';
 import { SelectionToolbar } from '../stage/SelectionToolbar';
-import { Stage } from '../stage/Stage';
+import { Stage, type StageProps } from '../stage/Stage';
 import { useAgentMarks } from '../stage/useAgentMarks';
 import { useAssetResolver } from './assets';
 import { useDeck, useEditor, useSelection } from './editor';
@@ -61,12 +61,19 @@ function layerContextMenu(event: MouseEvent): void {
   event.preventDefault();
 }
 
+/**
+ * The Stage with the deck as it is now. The Stage draws the slide, and is drawn again with every
+ * change of the deck; the region around it, with its menu and its layers, is not.
+ */
+function DeckStage(props: Omit<StageProps, 'deck'>) {
+  return <Stage {...props} deck={useDeck((s) => s.deck)} />;
+}
+
 /** The Stage region (UI-03): the slide at the zoom the shell keeps, and direct manipulation. */
 export function StageRegion() {
   const { t, i18n } = useTranslation();
   const editor = useEditor();
   const { bus, selection } = editor;
-  const deck = useDeck((s) => s.deck);
   const zoom = useShell((s) => s.zoom);
   const marked = useAgentMarks(editor);
   const resolveAsset = useAssetResolver();
@@ -104,7 +111,7 @@ export function StageRegion() {
 
   // An empty placeholder says what it is for, in the language of the deck and not of the app:
   // the words stand where the deck's own text will be.
-  const deckLang = deck.meta.lang;
+  const deckLang = useDeck((s) => s.deck.meta.lang);
   const placeholderHint = useCallback(
     (element: TextElement) => {
       const key = `stage:hint.${element.role}`;
@@ -116,27 +123,33 @@ export function StageRegion() {
   );
 
   // The right click's menu (STG-06). The Stage has already made what was clicked the selection,
-  // so the menu is the one of the selection's kind; its parts come from the areas.
-  const kind = selectionKind(deck, slideId, elementIds, editingId);
+  // so the menu is the one of the selection's kind; its parts come from the areas. What the region
+  // reads of the deck is read as values: a letter typed or a frame dragged changes none of them.
+  const kind = useDeck((s) => selectionKind(s.deck, slideId, elementIds, editingId));
   /** The last right click was in text that is being edited: the menu is the text's. */
   const [menuInText, setMenuInText] = useState(false);
   const menu = useStageMenu(kind, menuInText);
-  const slide = slideId ? findSlide(deck, slideId) : undefined;
-  const editing = slide && editingId ? findElement(slide, editingId) : undefined;
   // While text is edited in place the right click is the text's own.
-  const editingText = editing !== undefined && TEXT_EDITED.has(editing.type);
-  const slideNumber = slide ? deck.slides.indexOf(slide) + 1 : 0;
-  const one = slide && elementIds.length === 1 ? findElement(slide, elementIds[0]!) : undefined;
-  const selected =
-    elementIds.length > 1
-      ? t('stage.selected', { what: t('selection.multiple', { n: elementIds.length }) })
-      : one
-        ? t('stage.selected', {
-            what: [t(`selection.${kind}`), one.name ?? layerSnippet(one)]
-              .filter(Boolean)
-              .join(' · '),
-          })
-        : '';
+  const editingText = useDeck((s) => {
+    const slide = slideId ? findSlide(s.deck, slideId) : undefined;
+    const editing = slide && editingId ? findElement(slide, editingId) : undefined;
+    return editing !== undefined && TEXT_EDITED.has(editing.type);
+  });
+  const slideNumber = useDeck((s) =>
+    slideId ? s.deck.slides.findIndex((slide) => slide.id === slideId) + 1 : 0,
+  );
+  const total = useDeck((s) => s.deck.slides.length);
+  const selected = useDeck((s) => {
+    if (elementIds.length > 1)
+      return t('stage.selected', { what: t('selection.multiple', { n: elementIds.length }) });
+    const slide = slideId ? findSlide(s.deck, slideId) : undefined;
+    const one = slide && elementIds.length === 1 ? findElement(slide, elementIds[0]!) : undefined;
+    return one
+      ? t('stage.selected', {
+          what: [t(`selection.${kind}`), one.name ?? layerSnippet(one)].filter(Boolean).join(' · '),
+        })
+      : '';
+  });
 
   return (
     <ContextMenu>
@@ -159,9 +172,8 @@ export function StageRegion() {
               if (editingText && !inText) layerContextMenu(event);
             }}
           >
-            <Stage
+            <DeckStage
               bus={bus}
-              deck={deck}
               selection={selection}
               zoom={zoom}
               onZoomChange={onZoomChange}
@@ -173,7 +185,7 @@ export function StageRegion() {
               selectionToolbar={<SelectionToolbar />}
               marked={marked}
               placeholderHint={placeholderHint}
-              label={t('stage.surface', { n: slideNumber, total: deck.slides.length })}
+              label={t('stage.surface', { n: slideNumber, total })}
               className="h-full w-full"
             />
             {/* What is selected, said by a screen reader as the selection changes (UI-06). */}

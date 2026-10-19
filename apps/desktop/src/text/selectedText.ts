@@ -1,6 +1,6 @@
 import { occurrenceAt, type TextSelection } from '@slidr/agent-tools';
 import type { Node as PmNode } from '@tiptap/pm/model';
-import { useStore } from 'zustand';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
 import { activeEditor, type ActiveEditor } from './activeEditor';
 
 /*
@@ -40,8 +40,28 @@ export function selectedText(): TextSelection | null {
   return textSelectionOf(activeEditor.getState().active);
 }
 
-/** The same, for a component: it draws again as the selection changes. */
+/** The two are the same words at the same place. */
+function sameSelection(a: TextSelection | null, b: TextSelection | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.slideId === b.slideId &&
+    a.elementId === b.elementId &&
+    a.cell?.row === b.cell?.row &&
+    a.cell?.col === b.cell?.col &&
+    a.text === b.text &&
+    a.occurrence === b.occurrence
+  );
+}
+
+/**
+ * The same, for a component: it draws again as the selected words change, not with every
+ * transaction of the editor (a letter typed, the caret moved), which leaves them as they were.
+ */
 export function useSelectedText(): TextSelection | null {
-  useStore(activeEditor, (state) => state.version);
-  return selectedText();
+  return useStoreWithEqualityFn(
+    activeEditor,
+    (state) => textSelectionOf(state.active),
+    sameSelection,
+  );
 }

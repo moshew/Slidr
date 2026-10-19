@@ -185,41 +185,19 @@ fn resolve_base(policy: Option<&str>, dir: Option<&Path>) -> Option<Url> {
 /// the file decides; only on Windows is there such a policy.
 #[cfg(windows)]
 fn policy_url() -> Option<String> {
-    use windows::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
-    [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER]
+    [windows_registry::LOCAL_MACHINE, windows_registry::CURRENT_USER]
         .into_iter()
         .find_map(read_policy_value)
 }
 
 /// The string `MediaLibraryUrl` under `SOFTWARE\Policies\Slidr` of `root`, if it is one. None
-/// when the key or value is absent, is not a string, or is longer than any address may be.
+/// when the key or value is absent or is not a string. Read through `windows-registry`, the safe
+/// wrapper of the `windows` crates, since the app keeps `unsafe` to its four places (Cargo.toml).
 #[cfg(windows)]
-fn read_policy_value(root: windows::Win32::System::Registry::HKEY) -> Option<String> {
-    use windows::Win32::System::Registry::{RRF_RT_REG_SZ, RegGetValueW};
-    use windows::core::w;
-
-    // An address is at most 1024 chars (`installed_base`); a longer value is not one of ours.
-    let mut buffer = [0u16; 1200];
-    let mut size = size_of_val(&buffer) as u32;
-    // SAFETY: the key and value names are static wide strings; `buffer` and `size` are a matching
-    // pair, and `RRF_RT_REG_SZ` writes only a null-terminated string of UTF-16 into it.
-    let status = unsafe {
-        RegGetValueW(
-            root,
-            w!("SOFTWARE\\Policies\\Slidr"),
-            w!("MediaLibraryUrl"),
-            RRF_RT_REG_SZ,
-            None,
-            Some(buffer.as_mut_ptr().cast()),
-            Some(&mut size),
-        )
-    };
-    if status.is_err() {
-        return None;
-    }
-    // `size` is the byte count, including the null the call wrote; the string is before it.
-    let len = (size as usize / 2).saturating_sub(1).min(buffer.len());
-    Some(String::from_utf16_lossy(&buffer[..len]))
+fn read_policy_value(root: &windows_registry::Key) -> Option<String> {
+    root.open(r"SOFTWARE\Policies\Slidr")
+        .and_then(|key| key.get_string("MediaLibraryUrl"))
+        .ok()
 }
 
 #[cfg(not(windows))]

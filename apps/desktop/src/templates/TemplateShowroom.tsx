@@ -4,7 +4,6 @@ import { Button, cx, Icon, ScrollArea, Spinner } from '@slidr/ui';
 import { ArrowLeft, Check, Sparkles } from '@slidr/ui/icons';
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -12,8 +11,7 @@ import {
   type Ref,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { library } from './app';
-import { coverAsset, coverOf } from './covers';
+import { coverAsset, libraryCover } from './covers';
 import type { LibraryEntry } from './library';
 import { templateName, templateTagline } from './names';
 import { fit, PreviewGrid, useLaidOutSize, usePreviewLayers } from './PreviewGrid';
@@ -63,10 +61,7 @@ function Cover({
   const { i18n } = useTranslation();
   const { template } = entry;
   const { theme } = template;
-  const cover = useMemo(
-    () => coverOf(library.forDeck(theme.id, like.meta.lang) ?? template, like),
-    [template, theme.id, like],
-  );
+  const cover = libraryCover(template, like);
   return (
     <button
       type="button"

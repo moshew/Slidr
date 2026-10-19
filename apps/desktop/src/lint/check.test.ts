@@ -131,6 +131,40 @@ describe('the design check of the open deck', () => {
     expect(rules(check)).toEqual(['s_off L09', 's_off L10']);
   });
 
+  it('waits while the user is in the middle of something, and checks once they are not', async () => {
+    const bus = new CommandBus(deck(), { validate: true });
+    const measure = vi.fn((_: Deck, slide: Slide) => Promise.resolve(measured(slide)));
+    let busy = true;
+    const check = new DesignCheck(bus, measure, { rest: 0, busy: () => busy });
+    const stop = check.watch();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(measure).not.toHaveBeenCalled();
+    expect(check.state.getState().pending).toBe(true);
+    busy = false;
+    await vi.waitFor(() => expect(check.state.getState().pending).toBe(false));
+    expect(rules(check)).toHaveLength(3);
+    stop();
+  });
+
+  it('finds the findings of a slide again only when it or the order of the slides changed', async () => {
+    const { bus, check } = setup();
+    await check.check();
+    const of = (slideId: string) =>
+      check.state.getState().findings.filter((finding) => finding.slideId === slideId);
+    const before = of('s_off');
+    expect(before).toHaveLength(3);
+    // Another slide changed: this one's findings are the ones found before.
+    bus.dispatch(updateElement('s_fine', 'e_1', { name: 'First card' }));
+    await check.check();
+    expect(of('s_off')).toEqual(before);
+    expect(of('s_off').every((finding, i) => finding === before[i])).toBe(true);
+    // The slides were put in another order: a rule reads it (L14), and they are found again.
+    bus.dispatch({ type: 'slide.move', slideIds: ['s_off'], toIndex: 0 });
+    await check.check();
+    expect(of('s_off')).toEqual(before);
+    expect(of('s_off').some((finding, i) => finding !== before[i])).toBe(true);
+  });
+
   it('fixes one finding as one step, and not once the deck has moved on', async () => {
     const { bus, check } = setup();
     const [near] = await check.check();

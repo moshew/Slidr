@@ -3,6 +3,7 @@ import {
   canReorder,
   distributeElements,
   locateElement,
+  normalizeAngle,
   type Element,
   type Slide,
   type ZOrderMove,
@@ -73,9 +74,52 @@ export function selectedElements(slide: Slide | undefined, ids: readonly string[
   return ids.flatMap((id) => locateElement(slide.elements, id)?.element ?? []);
 }
 
+/**
+ * What the abilities of a selection depend on in its slide: which elements there are, in which
+ * groups and in which order, which are locked, and how the groups are turned. Not where anything
+ * is: a drag gives the slide new elements with every frame, and changes none of this.
+ */
+function shapeOf(elements: readonly Element[]): string {
+  let shape = '';
+  for (const e of elements) {
+    shape += e.locked ? `${e.id}!,` : `${e.id},`;
+    if (e.type === 'group') {
+      const turned = normalizeAngle(e.rotation) !== 0 || e.flipH || e.flipV;
+      shape += `(${turned ? 't' : ''}${shapeOf(e.children)})`;
+    }
+  }
+  return shape;
+}
+
+/** The shapes of the lists of elements that cannot change any more. */
+const shapes = new WeakMap<readonly Element[], string>();
+
+function slideShape(slide: Slide): string {
+  const { elements } = slide;
+  if (!Object.isFrozen(elements)) return shapeOf(elements);
+  let shape = shapes.get(elements);
+  if (shape === undefined) shapes.set(elements, (shape = shapeOf(elements)));
+  return shape;
+}
+
+/** The abilities found last, and what they were found for. */
+let last: { key: string; can: Abilities } | undefined;
+
+/**
+ * What the arrange tools can do with the selection. Found once for a selection and the shape of
+ * its slide (`shapeOf`): every tool of the row asks, and asks again with every frame of a drag,
+ * and finding it tries the alignments and the distribution.
+ */
 export function abilities(slide: Slide | undefined, elementIds: readonly string[]): Abilities {
+  if (!slide || elementIds.length === 0) return NONE;
+  const key = `${slide.id} ${elementIds.join(' ')} ${slideShape(slide)}`;
+  if (last?.key !== key) last = { key, can: find(slide, elementIds) };
+  return last.can;
+}
+
+function find(slide: Slide, elementIds: readonly string[]): Abilities {
   const elements = selectedElements(slide, elementIds);
-  if (!slide || elements.length === 0) return NONE;
+  if (elements.length === 0) return NONE;
   const ids = elements.map((e) => e.id);
   const movable = elements.some((e) => !e.locked);
   const oneParent = works(() => alignElements(slide, ids, 'left', 'selection'));

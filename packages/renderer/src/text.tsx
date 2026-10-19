@@ -13,8 +13,10 @@ import type {
   Theme,
 } from '@slidr/model';
 import {
+  memo,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -390,8 +392,11 @@ function paragraphContent(p: Paragraph, role: 'heading' | 'body', ltr: boolean):
   return p.runs.map((run, i) => <RunView key={i} run={run} role={role} ltr={ltr} />);
 }
 
-/** The paragraphs of a rich text, without a box around them. */
-export function RichTextView({
+/**
+ * The paragraphs of a rich text, without a box around them. Memoised: an element that is moved or
+ * resized is drawn again, and its text, which is the object it was, is not.
+ */
+export const RichTextView = memo(function RichTextView({
   content,
   theme,
   defaults,
@@ -451,7 +456,7 @@ export function RichTextView({
     );
   }
   return <>{out}</>;
-}
+});
 
 /**
  * The text of a slide-number element (SLD-04): the number of the slide it is drawn on, in the
@@ -621,6 +626,11 @@ export function TextBox({
     return () => observer.disconnect();
   }, [shrink]);
   const grow = autoFit === 'growHeight';
+  // The same object while the settings stay, so the text is not drawn again with its box.
+  const defaults = useMemo<TextDefaults>(
+    () => ({ styleRef, wrap: wrap ?? true, ...(color ? { color: colorCss(color) } : {}) }),
+    [styleRef, wrap, color],
+  );
   return (
     <div
       ref={box}
@@ -642,16 +652,7 @@ export function TextBox({
           style={columns && columns > 1 ? { columnCount: columns, columnGap: 48 } : undefined}
         >
           {children ?? (
-            <RichTextView
-              content={content}
-              theme={ctx.theme}
-              defaults={{
-                styleRef,
-                wrap: wrap ?? true,
-                ...(color ? { color: colorCss(color) } : {}),
-              }}
-              dir={ctx.dir}
-            />
+            <RichTextView content={content} theme={ctx.theme} defaults={defaults} dir={ctx.dir} />
           )}
         </div>
       </div>
