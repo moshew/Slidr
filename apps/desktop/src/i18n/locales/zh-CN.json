@@ -2776,7 +2776,7 @@
       "create": "创建演示文稿",
       "recent": "最近使用的文件",
       "noRecentTitle": "没有最近使用的文件",
-      "noRecentBody": "你保存的演示文稿将在这里列出。",
+      "noRecentBody": "已保存的演示文稿会显示在这里。",
       "noStorage": "文件在应用中打开和保存，而不是在浏览器中。",
       "show": "欢迎屏幕",
       "back": "返回演示文稿"

@@ -284,7 +284,7 @@ export const en: Messages<typeof he> = {
     create: 'Create presentation',
     recent: 'Recent files',
     noRecentTitle: 'No recent files',
-    noRecentBody: 'Presentations you save will be listed here.',
+    noRecentBody: 'Saved presentations appear here.',
     noStorage: 'Files are opened and saved in the app itself, not in a browser.',
     show: 'Welcome screen',
     back: 'Back to the presentation',

@@ -2788,7 +2788,7 @@
       "create": "Criar apresentação",
       "recent": "Arquivos recentes",
       "noRecentTitle": "Nenhum arquivo recente",
-      "noRecentBody": "As apresentações que você salvar aparecerão aqui.",
+      "noRecentBody": "Apresentações salvas aparecem aqui.",
       "noStorage": "Os arquivos são abertos e salvos no próprio aplicativo, não em um navegador.",
       "show": "Tela de boas-vindas",
       "back": "Voltar à apresentação"

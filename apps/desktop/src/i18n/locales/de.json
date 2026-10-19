@@ -2782,7 +2782,7 @@
       "create": "Präsentation erstellen",
       "recent": "Zuletzt verwendete Dateien",
       "noRecentTitle": "Keine zuletzt verwendeten Dateien",
-      "noRecentBody": "Präsentationen, die Sie speichern, werden hier aufgeführt.",
+      "noRecentBody": "Gespeicherte Präsentationen erscheinen hier.",
       "noStorage": "Dateien werden in der App selbst geöffnet und gespeichert, nicht im Browser.",
       "show": "Startbildschirm",
       "back": "Zurück zur Präsentation"

@@ -2782,7 +2782,7 @@
       "create": "Sunu oluştur",
       "recent": "Son kullanılan dosyalar",
       "noRecentTitle": "Son kullanılan dosya yok",
-      "noRecentBody": "Kaydettiğiniz sunular burada listelenir.",
+      "noRecentBody": "Kaydedilen sunular burada görünür.",
       "noStorage": "Dosyalar tarayıcıda değil, uygulamanın kendisinde açılır ve kaydedilir.",
       "show": "Hoş geldiniz ekranı",
       "back": "Sunuya dön"

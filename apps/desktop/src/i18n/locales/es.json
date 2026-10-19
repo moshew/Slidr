@@ -2788,7 +2788,7 @@
       "create": "Crear presentación",
       "recent": "Archivos recientes",
       "noRecentTitle": "No hay archivos recientes",
-      "noRecentBody": "Aquí aparecerán las presentaciones que guardes.",
+      "noRecentBody": "Aquí verás tus presentaciones guardadas.",
       "noStorage": "Los archivos se abren y se guardan en la propia aplicación, no en un navegador.",
       "show": "Pantalla de bienvenida",
       "back": "Volver a la presentación"

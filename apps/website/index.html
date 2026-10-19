@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="meta.title">Slidr: describe the deck, watch it build</title>
+    <meta
+      name="description"
+      data-i18n-attr="content:meta.description"
+      content="Slidr is a presentation editor where AI is a full editing partner. Every slide it makes is real, editable objects. Free, open source, and ready to run inside your organisation."
+    />
+    <meta name="theme-color" content="#070815" />
+    <meta property="og:title" content="Slidr: describe the deck, watch it build" />
+    <meta property="og:image" content="media/edu/slide-01.webp" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      id="font-base"
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..800&display=swap"
+    />
+    <link id="font-script" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <!-- The aurora behind the whole page -->
+    <div class="aurora" aria-hidden="true">
+      <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+      <span class="grain"></span>
+    </div>
+
+    <header class="nav" id="top">
+      <div class="nav-inner">
+        <a class="brand" href="#top" dir="ltr" aria-label="Slidr">
+          <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+            <defs>
+              <linearGradient id="mk" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#087e8b" /><stop offset=".55" stop-color="#4c50c8" /><stop offset="1" stop-color="#8534d5" />
+              </linearGradient>
+              <path id="spark" d="M25.5 5.5Q26.38 10.12 31 11Q26.38 11.88 25.5 16.5Q24.62 11.88 20 11Q24.62 10.12 25.5 5.5Z" />
+              <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
+                <rect width="32" height="32" fill="#fff" />
+                <use href="#spark" fill="#000" stroke="#000" stroke-width="2.4" stroke-linejoin="round" />
+              </mask>
+            </defs>
+            <g mask="url(#cut)">
+              <rect x="3" y="6" width="18" height="13" rx="2.5" fill="#fff" fill-opacity=".5" />
+              <rect x="7" y="12" width="20" height="14" rx="3" fill="#fff" />
+              <rect x="10" y="16" width="9" height="2.5" rx="1.25" fill="url(#mk)" />
+              <rect x="10" y="20.5" width="6" height="2" rx="1" fill="#4c50c8" fill-opacity=".45" />
+            </g>
+            <use href="#spark" fill="#ffc94d" />
+          </svg>
+          <span>Slidr</span>
+        </a>
+        <nav class="links" aria-label="Main">
+          <a href="#product" data-i18n="nav.product">Product</a>
+          <a href="#models" data-i18n="nav.models">AI models</a>
+          <a class="nav-onprem" href="#enterprise"><span class="shield"></span><span data-i18n="nav.enterprise">On-prem</span></a>
+          <a href="#templates" data-i18n="nav.templates">Templates</a>
+          <a href="#library" data-i18n="nav.library">Library</a>
+        </nav>
+        <div class="nav-end">
+          <div class="lang">
+            <button class="lang-btn" type="button" aria-haspopup="listbox" aria-expanded="false" data-i18n-attr="aria-label:nav.language" aria-label="Language">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3z" /></svg>
+              <span class="lang-current">English</span>
+              <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            <ul class="lang-menu" role="listbox" hidden></ul>
+          </div>
+          <a class="btn btn-sm btn-light" href="https://github.com/moshew/Slidr/releases/latest" data-i18n="nav.download">Download</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="hero-bg" aria-hidden="true">
+          <div class="hero-wall"><div class="hero-wall-tilt"></div></div>
+          <div class="hero-veil"></div>
+          <div class="hero-spot"></div>
+        </div>
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="badge reveal"><span class="dot"></span><span data-i18n="hero.badge">Free and open source for Windows 11</span></p>
+            <h1 class="display reveal" data-i18n-html="hero.title">Describe the deck. <em>Watch it build.</em></h1>
+            <p class="lead reveal" data-i18n="hero.lead">Slidr turns a few lines of description into a deck that looks made by a design studio: real photos, charts and layouts, and every slide still yours to edit.</p>
+            <div class="actions reveal">
+              <a class="btn btn-primary" href="https://github.com/moshew/Slidr/releases/latest">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7.1L3 18.5zM11.5 12.5H21V21l-9.5-1.3z" /></svg>
+                <span data-i18n="hero.download">Download for Windows</span>
+              </a>
+              <a class="btn btn-ghost" href="#enterprise">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="stroke"><path d="M12 3 5 6v5c0 4.4 3 8.3 7 10 4-1.7 7-5.6 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>
+                <span data-i18n="hero.onprem">Deploy on-prem</span>
+              </a>
+            </div>
+            <ul class="trust reveal">
+              <li><span class="t-ico t-server"></span><span data-i18n="hero.trust1">Runs on-prem</span></li>
+              <li><span class="t-ico t-chip"></span><span data-i18n="hero.trust2">Your own AI models</span></li>
+              <li><span class="t-ico t-eye"></span><span data-i18n="hero.trust3">Zero telemetry</span></li>
+            </ul>
+          </div>
+
+          <div class="hero-demo" aria-hidden="true">
+            <div class="demo-deck"></div>
+            <div class="demo-prompt">
+              <span class="spark-ico"></span>
+              <span class="demo-text"><span class="typed" data-i18n="hero.prompt">Build a 9-slide plan: AI in our classrooms</span><span class="caret"></span></span>
+              <span class="demo-send"></span>
+            </div>
+            <div class="demo-status">
+              <span class="demo-spin"></span>
+              <span class="demo-bar"><i></i></span>
+              <span class="demo-count" dir="ltr"><b>0</b> / <span class="demo-total">9</span></span>
+            </div>
+            <div class="demo-pick"><button type="button" tabindex="-1"><i></i></button><button type="button" tabindex="-1"><i></i></button><button type="button" tabindex="-1"><i></i></button></div>
+            <div class="chip chip-b"><span class="ok"></span><span data-i18n="hero.chip2">No design issues</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- The app at work -->
+      <section class="stage-sec">
+        <h2 class="display-2 stage-title wrap reveal" data-i18n-html="stage.title">One line from you. <em>Nine slides from Slidr.</em></h2>
+        <div class="stage" aria-hidden="true">
+          <div class="stage-tilt">
+            <div class="window hero-window">
+              <video class="clip" src="media/clips/deck-tour.mp4" poster="media/clips/deck-tour.webp" muted loop playsinline preload="auto" autoplay></video>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Showcase -->
+      <section class="showcase wrap" id="product">
+        <header class="sec-head reveal">
+          <p class="eyebrow" data-i18n="show.eyebrow">Recorded in the app</p>
+          <h2 class="h2" data-i18n="show.title">From a sentence to the stage</h2>
+          <p class="sec-lead" data-i18n="show.lead">Nothing here is a mock-up. These clips were captured from Slidr itself.</p>
+        </header>
+        <div class="player reveal">
+          <ol class="chapters" role="tablist">
+            <li><button role="tab" aria-selected="true" data-clip="ai-build">
+              <span class="num">01</span>
+              <span class="ch-text"><strong data-i18n="show.c1.title">A brief becomes a whole deck</strong>
+              <span data-i18n="show.c1.body">Nine slides on AI in education, built live by the agent: it plans the story, makes the photos, writes every slide and checks the design.</span></span>
+              <span class="bar"><span></span></span>
+            </button></li>
+            <li><button role="tab" aria-selected="false" data-clip="ai-options">
+              <span class="num">02</span>
+              <span class="ch-text"><strong data-i18n="show.c2.title">Three designs, one click</strong>
+              <span data-i18n="show.c2.body">Ask for alternatives and get them as real slides. Hover to preview one on the stage, click to keep it.</span></span>
+              <span class="bar"><span></span></span>
+            </button></li>
+            <li><button role="tab" aria-selected="false" data-clip="templates">
+              <span class="num">03</span>
+              <span class="ch-text"><strong data-i18n="show.c3.title">Templates that look finished</strong>
+              <span data-i18n="show.c3.body">Art-directed templates, each with fourteen layouts in both directions, ready for the AI and for you.</span></span>
+              <span class="bar"><span></span></span>
+            </button></li>
+            <li><button role="tab" aria-selected="false" data-clip="present">
+              <span class="num">04</span>
+              <span class="ch-text"><strong data-i18n="show.c4.title">Present anywhere</strong>
+              <span data-i18n="show.c4.body">Full-screen shows with transitions and animations, or one self-contained HTML file that plays in any browser.</span></span>
+              <span class="bar"><span></span></span>
+            </button></li>
+          </ol>
+          <div class="window player-window">
+            <div class="player-screen">
+              <video class="clip" data-name="ai-build" src="media/clips/ai-build.mp4" poster="media/clips/ai-build.webp" muted playsinline preload="metadata"></video>
+              <video class="clip" data-name="ai-options" src="media/clips/ai-options.mp4" poster="media/clips/ai-options.webp" muted playsinline preload="none"></video>
+              <video class="clip" data-name="templates" src="media/clips/templates.mp4" poster="media/clips/templates.webp" muted playsinline preload="none"></video>
+              <video class="clip" data-name="present" src="media/clips/present.mp4" poster="media/clips/present.webp" muted playsinline preload="none"></video>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Editing -->
+      <section class="features wrap" id="edit">
+        <header class="sec-head reveal">
+          <p class="eyebrow" data-i18n="edit.eyebrow">Edit your way</p>
+          <h2 class="h2" data-i18n-html="edit.title">Fix it by hand, by chat, <em>or let it fix itself</em></h2>
+          <p class="sec-lead" data-i18n="edit.lead">Everything the AI makes stays yours to change. Drag, retype and restyle as in any editor, ask the chat for a change, or let the design check repair what it finds on its own.</p>
+        </header>
+        <div class="bento">
+          <article class="card c-select reveal">
+            <div class="art art-select" aria-hidden="true">
+              <img src="media/edu/slide-01.webp" alt="" />
+              <span class="sel-box"><i></i><i></i><i></i><i></i></span>
+              <span class="sel-chip">“AI in Our Classrooms”</span>
+            </div>
+            <h3 data-i18n="features.f1.title">It knows what you selected</h3>
+            <p data-i18n="features.f1.body">Select a slide, a photo or three words in a headline. Whatever you selected goes with your message, so “make this bolder” needs nothing more.</p>
+          </article>
+          <article class="card c-objects reveal">
+            <div class="art art-objects" aria-hidden="true">
+              <video data-lang-clip="objects" src="media/clips/objects-en.mp4" poster="media/clips/objects-en.webp" muted loop playsinline preload="none"></video>
+            </div>
+            <h3 data-i18n="features.f2.title">Objects, not pictures</h3>
+            <p data-i18n="features.f2.body">Every title, number and photo the AI places is an object you can move, restyle or delete.</p>
+          </article>
+          <article class="card c-check reveal">
+            <div class="art art-check" aria-hidden="true">
+              <span class="row"><i></i><b data-i18n="features.check1">Contrast</b><em>4.8:1</em></span>
+              <span class="row"><i></i><b data-i18n="features.check2">Overflow</b><em>0</em></span>
+              <span class="row"><i></i><b data-i18n="features.check3">Alignment</b><em>✓</em></span>
+            </div>
+            <h3 data-i18n="features.f3.title">Automatic design fixes</h3>
+            <p data-i18n="features.f3.body">Contrast, overflow and alignment are checked after every change, and the agent fixes what it finds.</p>
+          </article>
+          <article class="card c-html reveal">
+            <div class="art art-html" aria-hidden="true" dir="ltr">
+              <div class="code-win">
+                <span class="code-bar"><i></i><i></i><i></i><b>deck.html</b></span>
+                <code class="code-lines"
+                  ><span><em>&lt;section&gt;</em></span
+                  ><span>&nbsp;&nbsp;<em>&lt;h1&gt;</em></span
+                  ><span>&nbsp;&nbsp;&nbsp;&nbsp;AI in Our</span
+                  ><span>&nbsp;&nbsp;&nbsp;&nbsp;Classrooms</span
+                  ><span>&nbsp;&nbsp;<em>&lt;/h1&gt;</em></span
+                  ><span><em>&lt;/section&gt;</em></span></code
+                >
+              </div>
+              <span class="html-slide"><img src="media/edu/slide-01.webp" alt="" /></span>
+            </div>
+            <h3 data-i18n="features.f5.title">HTML in, HTML out</h3>
+            <p data-i18n="features.f5.body">Import any HTML presentation as editable slides. Export one file that plays anywhere, offline.</p>
+          </article>
+          <article class="card c-undo2 reveal">
+            <div class="art art-undo" aria-hidden="true">
+              <span class="turn turn-last">
+                <img src="media/edu/slide-06.webp" alt="" />
+                <b data-i18n="features.undo3">Redrew the timeline</b>
+                <span class="undo-btn"
+                  ><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg
+                  ><span data-i18n="features.undoBtn">Undo</span></span
+                >
+                <span class="cursor"></span>
+              </span>
+              <span class="turn">
+                <img src="media/edu/slide-05.webp" alt="" />
+                <b data-i18n="features.undo2">Added a chart of the pilot results</b>
+              </span>
+              <span class="turn">
+                <img src="media/edu/slide-01.webp" alt="" />
+                <b data-i18n="features.undo1">Built the deck, nine slides</b>
+              </span>
+            </div>
+            <h3 data-i18n="features.f6.title">Every turn can be undone</h3>
+            <p data-i18n="features.f6.body">Each AI turn is a single step in your history. One click takes it back.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Why Slidr: five advantages -->
+      <section class="why wrap">
+        <header class="sec-head why-head reveal">
+          <p class="eyebrow" data-i18n="why.eyebrow">Why Slidr</p>
+          <h2 class="h2" data-i18n-html="why.title">Five reasons to <em>switch</em></h2>
+        </header>
+        <ol class="why-nav reveal">
+          <li><a href="#models"><span>1</span><b data-i18n="why.n1">Your AI, no extra cost</b></a></li>
+          <li><a href="#enterprise"><span>2</span><b data-i18n="why.n2">Open source, on-prem</b></a></li>
+          <li><a href="#templates"><span>3</span><b data-i18n="why.n3">Ready templates</b></a></li>
+          <li><a href="#library"><span>4</span><b data-i18n="why.n4">A huge library</b></a></li>
+          <li><a href="#media"><span>5</span><b data-i18n="why.n5">Charts, video, motion</b></a></li>
+        </ol>
+      </section>
+
+      <!-- 1. Models -->
+      <section class="models wrap" id="models">
+        <div class="adv-num reveal" aria-hidden="true">01</div>
+        <header class="sec-head reveal">
+          <p class="eyebrow" data-i18n="ai.eyebrow">Your AI, no extra bill</p>
+          <h2 class="h2" data-i18n-html="ai.title">The best models, on the subscription <em>you already pay for</em></h2>
+          <p class="sec-lead" data-i18n="ai.lead">Slidr has no AI plan of its own to sell you. Sign in with the account you already have, or run models on your own machine. No command line: Slidr installs and connects everything for you.</p>
+        </header>
+        <ul class="model-grid" dir="ltr">
+          <li class="model reveal" style="--c1: #d97757; --c2: #f4b393">
+            <span class="m-logo" dir="ltr">A</span>
+            <div><b dir="ltr">Claude</b><small dir="ltr">Anthropic · Opus · Sonnet · Haiku</small></div>
+            <span class="m-plan" dir="ltr">Claude Pro · Max · Team</span>
+          </li>
+          <li class="model reveal" style="--c1: #10a37f; --c2: #7ee0c0">
+            <span class="m-logo" dir="ltr">◎</span>
+            <div><b dir="ltr">GPT</b><small dir="ltr">OpenAI · via Codex</small></div>
+            <span class="m-plan" dir="ltr">ChatGPT Plus · Pro</span>
+          </li>
+          <li class="model reveal" style="--c1: #8957e5; --c2: #c9a7ff">
+            <span class="m-logo" dir="ltr">⌘</span>
+            <div><b dir="ltr">GitHub Copilot</b><small dir="ltr">Claude · GPT · Gemini models</small></div>
+            <span class="m-plan" dir="ltr">Copilot Pro · Business</span>
+          </li>
+          <li class="model reveal" style="--c1: #4285f4; --c2: #a1c2fa">
+            <span class="m-logo" dir="ltr">✦</span>
+            <div><b dir="ltr">Gemini</b><small dir="ltr">Google · Pro · Flash</small></div>
+            <span class="m-plan" dir="ltr">Google account</span>
+          </li>
+          <li class="model reveal" style="--c1: #e5e7eb; --c2: #9ca3af">
+            <span class="m-logo" dir="ltr">X</span>
+            <div><b dir="ltr">Grok</b><small dir="ltr">xAI</small></div>
+            <span class="m-plan" dir="ltr">xAI account</span>
+          </li>
+          <li class="model model-local reveal" style="--c1: #ffc94d; --c2: #ffe08a">
+            <span class="m-logo m-local" aria-hidden="true"></span>
+            <div><b>Local models</b><small dir="ltr">Ollama · LM Studio · gpt&#8209;oss · Llama · Qwen</small></div>
+          </li>
+        </ul>
+        <ol class="ai-steps reveal">
+          <li><span>1</span><b data-i18n="ai.step1">Pick a model</b></li>
+          <li><span>2</span><b data-i18n="ai.step2">Sign in once</b></li>
+          <li><span>3</span><b data-i18n="ai.step3">Start creating</b></li>
+        </ol>
+      </section>
+
+      <!-- 2. Open source, on-prem -->
+      <section class="enterprise" id="enterprise">
+        <div class="wrap ent-grid">
+          <div class="ent-copy">
+            <div class="adv-num reveal" aria-hidden="true">02</div>
+            <header class="reveal">
+              <p class="eyebrow" data-i18n="ent.eyebrow">Open source · On-prem</p>
+              <h2 class="h2" data-i18n-html="ent.title">Runs inside <em>your</em> walls</h2>
+              <p class="sec-lead" data-i18n="ent.lead">Slidr runs on the desktop, with no accounts and no cloud of its own. Connect it to the models your organisation approved, and every deck, prompt and photo stays inside your network.</p>
+            </header>
+            <ul class="pillars">
+              <li class="reveal">
+                <span class="p-ico"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="2" /><rect x="4" y="14" width="16" height="6" rx="2" /><path d="M8 7h.01M8 17h.01" /></svg></span>
+                <div><h3 data-i18n="ent.p1.title">Your models, your gateway</h3><p data-i18n="ent.p1.body">The agent works with approved models: Azure, AWS, Google Cloud or your own server.</p></div>
+              </li>
+              <li class="reveal">
+                <span class="p-ico"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.4 3 8.3 7 10 4-1.7 7-5.6 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg></span>
+                <div><h3 data-i18n="ent.p2.title">Nothing leaves the network</h3><p data-i18n="ent.p2.body">No telemetry and no sign-in. Files and the agent’s work stay on the machine.</p></div>
+              </li>
+              <li class="reveal">
+                <span class="p-ico"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></svg></span>
+                <div><h3 data-i18n="ent.p3.title">Managed in-house, for everyone</h3><p data-i18n="ent.p3.body">A signed library and updates from an internal server, and central control of agents, models and languages.</p></div>
+              </li>
+              <li class="reveal">
+                <span class="p-ico"><svg viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" /></svg></span>
+                <div><h3 data-i18n="ent.p4.title">Open source you can audit</h3><p data-i18n="ent.p4.body">Licensed under AGPL-3.0: read every line and build it yourself.</p></div>
+              </li>
+            </ul>
+            <a class="btn btn-light reveal" href="https://github.com/moshew/Slidr" data-i18n="ent.cta">Plan an on-prem rollout</a>
+          </div>
+        </div>
+        <div class="wrap">
+          <ul class="ent-stats">
+            <li class="reveal"><strong data-i18n="ent.s1.value">0</strong><span data-i18n="ent.s1.label">bytes of telemetry sent out</span></li>
+            <li class="reveal"><strong data-i18n="ent.s2.value">100%</strong><span data-i18n="ent.s2.label">of decks, prompts and photos stay on your machines</span></li>
+            <li class="reveal"><strong data-i18n="ent.s3.value">5</strong><span data-i18n="ent.s3.label">AI agents to choose from, or models you host yourself</span></li>
+            <li class="reveal"><strong data-i18n="ent.s4.value">AGPL</strong><span data-i18n="ent.s4.label">open source: audit every line, build it yourself</span></li>
+          </ul>
+          <h3 class="steps-title reveal" data-i18n="ent.steps">A rollout in three steps</h3>
+          <ol class="steps">
+            <li class="reveal"><span class="step-n">1</span><h4 data-i18n="ent.step1.title">Install</h4><p data-i18n="ent.step1.body">A signed Windows installer that deploys silently with the tools you already use.</p></li>
+            <li class="reveal"><span class="step-n">2</span><h4 data-i18n="ent.step2.title">Connect</h4><p data-i18n="ent.step2.body">Point the agent at your approved model gateway, and the library at an internal mirror.</p></li>
+            <li class="reveal"><span class="step-n">3</span><h4 data-i18n="ent.step3.title">Brand</h4><p data-i18n="ent.step3.body">Have the agent draft your brand templates from your site and logo, then ship them to every desk.</p></li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 3. Templates -->
+      <section class="templates" id="templates">
+        <div class="wrap">
+          <div class="adv-num reveal" aria-hidden="true">03</div>
+          <header class="sec-head reveal">
+            <p class="eyebrow" data-i18n="templates.eyebrow">Templates</p>
+            <h2 class="h2" data-i18n-html="templates.title">Dozens of templates, <em>ready to go</em></h2>
+            <p class="sec-lead" data-i18n="templates.lead">Each template brings its own colours, fonts and fourteen layouts in both directions, so the AI starts from a finished look. Or let it draft one from your website, your logo or a deck you already have.</p>
+          </header>
+        </div>
+        <div class="marquee" aria-hidden="true">
+          <div class="track t1"></div>
+          <div class="track t2"></div>
+        </div>
+        <div class="wrap tpl-whole">
+          <h3 class="lib-sub reveal" data-i18n-html="templates.showcase">Open a template, and <em>every slide</em> is already there</h3>
+          <div class="window sc-window reveal">
+            <div class="sc-bar" aria-hidden="true"><i></i><i></i><i></i><span>Slidr</span></div>
+            <div class="sc-body">
+              <div class="sc-tabs" role="tablist"></div>
+              <div class="sc-main" role="tabpanel">
+                <p class="sc-head"><b class="sc-name"></b><span class="sc-tag"></span></p>
+                <ol class="sc-grid"></ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Library -->
+      <section class="library" id="library">
+        <div class="wrap">
+          <div class="adv-num reveal" aria-hidden="true">04</div>
+          <header class="sec-head reveal">
+            <p class="eyebrow" data-i18n="lib.eyebrow">The library</p>
+            <h2 class="h2" data-i18n-html="lib.title">A huge library, <em>tens&nbsp;of&nbsp;thousands</em> of pieces</h2>
+            <p class="sec-lead" data-i18n="lib.lead">Search in plain words and add it in one click: line icons, colour illustrations, stickers, photo frames and complete designed slides. Every piece is editable and saved inside your file.</p>
+          </header>
+          <ul class="lib-counts">
+            <li class="reveal"><strong data-count="8000" data-plus>8,000+</strong><span data-i18n="lib.c1">icons</span></li>
+            <li class="reveal"><strong data-count="10000" data-plus>10,000+</strong><span data-i18n="lib.c2">illustrations and emoji</span></li>
+            <li class="reveal"><strong data-count="600" data-plus>600+</strong><span data-i18n="lib.c3">photo frames and stickers</span></li>
+            <li class="reveal"><strong data-count="300" data-plus>300+</strong><span data-i18n="lib.c4">complete designed slides</span></li>
+          </ul>
+        </div>
+        <div class="lib-rails" aria-hidden="true">
+          <div class="rail rail-icons"><div class="rail-track"><img src="media/library/icons.svg" alt="" /><img src="media/library/icons.svg" alt="" /></div></div>
+          <div class="rail rail-art"><div class="rail-track"><img src="media/library/illustrations.svg" alt="" /><img src="media/library/illustrations.svg" alt="" /></div></div>
+          <div class="rail rail-stickers"><div class="rail-track"><img src="media/library/stickers.svg" alt="" /><img src="media/library/stickers.svg" alt="" /></div></div>
+        </div>
+        <div class="designs">
+          <div class="wrap">
+            <h3 class="lib-sub reveal" data-i18n-html="lib.designs">And <em>hundreds</em> of finished slides, for every occasion</h3>
+          </div>
+          <div class="wall" aria-hidden="true"><div class="wall-tilt"></div></div>
+        </div>
+      </section>
+
+      <!-- 5. Charts, video, animation -->
+      <section class="media wrap" id="media">
+        <div class="adv-num reveal" aria-hidden="true">05</div>
+        <header class="sec-head reveal">
+          <p class="eyebrow" data-i18n="media.eyebrow">Charts, video, motion</p>
+          <h2 class="h2" data-i18n-html="media.title">Slides that <em>move</em></h2>
+          <p class="sec-lead" data-i18n="media.lead">Live charts in your template’s colours, video and sound, animations on every object and transitions between slides. Present full screen, or send one file that plays anywhere.</p>
+        </header>
+        <div class="media-grid">
+          <div class="window media-window reveal">
+            <video class="clip" src="media/clips/present.mp4" poster="media/clips/present.webp" muted loop playsinline preload="none"></video>
+          </div>
+          <article class="card m-chart reveal">
+            <div class="art art-chart" aria-hidden="true">
+              <span style="--h: 38%"></span><span style="--h: 52%"></span><span style="--h: 45%"></span><span style="--h: 70%"></span><span style="--h: 64%"></span><span style="--h: 92%"></span>
+            </div>
+            <h3 data-i18n="media.c1.title">Live charts</h3>
+            <p data-i18n="media.c1.body">Eight chart types in your template’s colours, with data pasted from Excel.</p>
+          </article>
+          <article class="card m-video reveal">
+            <div class="art art-video" aria-hidden="true">
+              <img src="media/edu/slide-03.webp" alt="" />
+              <span class="play"></span>
+              <span class="scrub"><i></i></span>
+            </div>
+            <h3 data-i18n="media.c2.title">Video and sound</h3>
+            <p data-i18n="media.c2.body">mp4, webm and audio, trimmed, looped and played in the show.</p>
+          </article>
+          <article class="card m-anim reveal">
+            <div class="art art-anim" aria-hidden="true">
+              <span class="a1"></span><span class="a2"></span><span class="a3"></span>
+            </div>
+            <h3 data-i18n="media.c3.title">Animations and transitions</h3>
+            <p data-i18n="media.c3.body">Objects rise, fade and build step by step; slides move from one to the next.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Languages -->
+      <section class="languages wrap" id="languages">
+        <div class="lang-grid">
+          <div class="lang-copy reveal">
+            <p class="eyebrow" data-i18n="lang.eyebrow">Languages</p>
+            <h2 class="h2" data-i18n-html="lang.title">Right to left, left to right, <em>all the way through</em></h2>
+            <p class="sec-lead" data-i18n="lang.lead">The whole interface mirrors with its language, text direction is set per paragraph, and a line that mixes Hebrew and English simply works.</p>
+            <p class="lang-count"><strong>16</strong> <span data-i18n="lang.count">Languages in the interface and in ready-made content</span></p>
+            <ul class="lang-chips"></ul>
+          </div>
+          <div class="window lang-window reveal">
+            <video class="clip" src="media/clips/languages.mp4" poster="media/clips/languages.webp" muted loop playsinline preload="none"></video>
+          </div>
+        </div>
+      </section>
+
+      <!-- Final call to action -->
+      <section class="final wrap">
+        <div class="final-card reveal">
+          <div class="final-slides" aria-hidden="true">
+            <img src="media/edu/slide-01.webp" alt="" /><img src="media/edu/slide-05.webp" alt="" /><img src="media/edu/slide-09.webp" alt="" />
+          </div>
+          <h2 class="display-2" data-i18n-html="cta.title">Your next deck is <em>one sentence away</em></h2>
+          <p class="lead" data-i18n="cta.lead">Download Slidr for Windows 11. It is free, and it stays that way.</p>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://github.com/moshew/Slidr/releases/latest">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7.1L3 18.5zM11.5 12.5H21V21l-9.5-1.3z" /></svg>
+              <span data-i18n="cta.download">Download for Windows</span>
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/moshew/Slidr" data-i18n="cta.source">View the source on GitHub</a>
+          </div>
+        </div>
+        <div class="final-ent reveal">
+          <span class="fe-ico"></span>
+          <div>
+            <h3 data-i18n="cta.ent.title">Bringing Slidr to your organisation?</h3>
+            <p data-i18n="cta.ent.body">We will help you plan an on-prem rollout: your models, your library, your templates.</p>
+          </div>
+          <a class="btn btn-light" href="https://github.com/moshew/Slidr" data-i18n="cta.ent.button">Talk to us</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot wrap">
+      <div class="foot-brand">
+        <span class="brand" dir="ltr"><img src="favicon.svg" alt="" width="28" height="28" /><span>Slidr</span></span>
+        <p data-i18n="footer.tagline">Where your ideas take the stage.</p>
+      </div>
+      <nav class="foot-links">
+        <a href="https://github.com/moshew/Slidr/releases" data-i18n="footer.releases">Releases</a>
+        <a href="https://github.com/moshew/Slidr" data-i18n="footer.source">Source code</a>
+        <a href="https://github.com/moshew/Slidr#privacy-policy" data-i18n="footer.privacy">Privacy</a>
+      </nav>
+      <p class="foot-legal"><span dir="ltr">© 2026 Moshe Waisman</span> · <span data-i18n="footer.license">Free software under the GNU AGPL-3.0</span></p>
+    </footer>
+
+    <script src="assets/i18n/en.js"></script>
+    <script src="assets/designs.js"></script>
+    <script src="assets/showcase.js"></script>
+    <script src="assets/site.js"></script>
+  </body>
+</html>

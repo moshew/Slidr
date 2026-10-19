@@ -10,6 +10,7 @@
 //   --only <ids>       comma-separated request ids, or their leading numbers
 //   --label <name>     added to the run folder's name
 //   --images <id>      the image provider: mock (default) or codex-cli
+//   --effort <level>   the model's effort, one the harness lists for it (such as high)
 //   --max-images <n>   with a real provider: after n image jobs the run goes back to the mock (15)
 //   --no-gate          switch the design check off
 //   --template <id>    the template every request's deck starts on (a built-in one, such as
@@ -50,6 +51,7 @@ const POLL_MS = 2000;
 function parseArgs(argv) {
   const args = {
     model: 'sonnet',
+    effort: null,
     only: null,
     label: '',
     images: 'mock',
@@ -69,6 +71,7 @@ function parseArgs(argv) {
     };
     if (flag === '--model') args.model = value();
     else if (flag === '--only') args.only = value().split(',');
+    else if (flag === '--effort') args.effort = value();
     else if (flag === '--label') args.label = value();
     else if (flag === '--images') args.images = value();
     else if (flag === '--max-images') args.maxImages = Number(value());
@@ -241,6 +244,7 @@ async function runRequest(page, request, context) {
     settings: {
       harnessId: 'claude-code',
       model: args.model,
+      ...(args.effort ? { effort: args.effort } : {}),
       // Off for the set, so that two runs can be compared: nothing depends on what the web says.
       webAccess: false,
       qualityGate: args.gate,
@@ -353,7 +357,12 @@ async function main() {
       const [first] = requests;
       const template = templateOf(args, set, first);
       const { deckId } = await page.evaluate((options) => window.slidrEval.prepare(options), {
-        settings: { harnessId: 'claude-code', model: args.model, webAccess: false },
+        settings: {
+          harnessId: 'claude-code',
+          model: args.model,
+          ...(args.effort ? { effort: args.effort } : {}),
+          webAccess: false,
+        },
         imageProvider: 'mock',
         ...(first.base ? { base: first.base } : {}),
         ...(template ? { template } : {}),

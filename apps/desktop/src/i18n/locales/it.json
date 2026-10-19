@@ -2788,7 +2788,7 @@
       "create": "Crea presentazione",
       "recent": "File recenti",
       "noRecentTitle": "Nessun file recente",
-      "noRecentBody": "Le presentazioni che salvi verranno elencate qui.",
+      "noRecentBody": "Qui trovi le presentazioni salvate.",
       "noStorage": "I file vengono aperti e salvati nell'app stessa, non in un browser.",
       "show": "Schermata iniziale",
       "back": "Torna alla presentazione"
