@@ -9,9 +9,10 @@
 ; or with a media-library.json beside the installer, { "url": "https://media.example.org/slidr/" }.
 ; Either is written into media-library.json beside slidr.exe, which the app reads when it starts
 ; (src/media_library.rs); /MEDIA= wins over the file. /MEDIA= with no address takes the file away:
-; back to the published library. An install with neither leaves the file as it is, so an update,
-; which the app runs with /UPDATE alone, keeps the address. An uninstall takes it away, except the
-; one an update runs.
+; back to the published library. An address the app cannot read leaves it with no library at all,
+; never the published one. An install with neither leaves the file as it is, so an update, which
+; the app runs with /UPDATE alone, keeps the address. An uninstall takes it away, except the one an
+; update runs.
 ;
 ; The address is read here and not with GetOptions, which ends a value at the next "/": up to the
 ; next space, or between quotes. Quoted, it is also hidden from the GetOptions of Tauri's script,

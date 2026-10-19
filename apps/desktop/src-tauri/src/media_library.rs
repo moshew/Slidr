@@ -147,8 +147,8 @@ pub struct MediaLibrary {
     refreshed: watch::Sender<bool>,
 }
 
-/// Where the library is read from: in a development build the copy [`VARIABLE`] names, else the
-/// copy [`ADDRESS_FILE`] beside the executable names, else the published site.
+/// Where the library is read from: in a development build the copy [`VARIABLE`] names, else as
+/// the installation says ([`installed_base`]). None: the app has no library.
 pub fn base_url() -> Option<Url> {
     if cfg!(debug_assertions)
         && let Ok(value) = std::env::var(VARIABLE)
@@ -156,20 +156,30 @@ pub fn base_url() -> Option<Url> {
     {
         return Some(url);
     }
-    std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().and_then(installed_url))
-        .or_else(|| folder_url(DEFAULT_URL))
+    let exe = std::env::current_exe().ok();
+    match exe.as_deref().and_then(Path::parent) {
+        Some(dir) => installed_base(dir),
+        None => folder_url(DEFAULT_URL),
+    }
 }
 
-/// The copy of the library that [`ADDRESS_FILE`] in `dir` names. None without the file, or for
-/// one that does not name an address the library may be read from: the published site stands.
-fn installed_url(dir: &Path) -> Option<Url> {
+/// The library an app installed in `dir` reads: the published site, unless [`ADDRESS_FILE`] is
+/// there; then the copy it names. A file that names none the app may read (one that cannot be
+/// read, is not JSON, has no `url`, or one that is not HTTPS) leaves the app with no library at
+/// all, never with the published one: on a closed network a call to it would look like an attempt
+/// to get out.
+fn installed_base(dir: &Path) -> Option<Url> {
     #[derive(Deserialize)]
     struct Address {
         url: String,
     }
-    let text = std::fs::read(dir.join(ADDRESS_FILE)).ok()?;
+    let text = match std::fs::read(dir.join(ADDRESS_FILE)) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return folder_url(DEFAULT_URL);
+        }
+        Err(_) => return None,
+    };
     // As Notepad may save it.
     let text = text.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&text);
     let address: Address = serde_json::from_slice(text).ok()?;
@@ -837,10 +847,11 @@ mod tests {
     #[test]
     fn an_installation_may_name_a_copy_of_its_own() -> std::io::Result<()> {
         let dir = tempfile::tempdir()?;
-        assert_eq!(installed_url(dir.path()), None);
+        let base = |dir: &Path| installed_base(dir).map(String::from);
+        assert_eq!(base(dir.path()).as_deref(), Some(DEFAULT_URL));
         let named = |text: &[u8]| -> std::io::Result<Option<String>> {
             std::fs::write(dir.path().join(ADDRESS_FILE), text)?;
-            Ok(installed_url(dir.path()).map(String::from))
+            Ok(base(dir.path()))
         };
         for (text, url) in [
             (
@@ -858,16 +869,22 @@ mod tests {
         ] {
             assert_eq!(named(text)?.as_deref(), Some(url), "{url}");
         }
-        // Not plain HTTP across the network, nor what is not an address.
+        // Not plain HTTP across the network, nor what is not an address: no library at all, and
+        // not the published one.
         for text in [
             br#"{"url":"http://media.example.org/"}"#.as_slice(),
             br#"{"url":"file:///C:/media/"}"#,
             br#"{"url":""}"#,
             b"https://media.example.org/",
             b"{}",
+            b"",
         ] {
             assert_eq!(named(text)?, None, "{}", String::from_utf8_lossy(text));
         }
+        // Nor a file that cannot be read.
+        let folder = tempfile::tempdir()?;
+        std::fs::create_dir(folder.path().join(ADDRESS_FILE))?;
+        assert_eq!(base(folder.path()), None);
         Ok(())
     }
 }

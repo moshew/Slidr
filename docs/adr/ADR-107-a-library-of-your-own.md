@@ -4,7 +4,7 @@ Status: Implemented on 2026-10-18. It changes one rule of [ADR-090](ADR-090-medi
 
 ## Request
 
-"אני רוצה לאפשר למשתמש להפחית התקנה שמפנה את הספריה לכתובת שלו ולא לpages. איך הוא יכול לעשות זאת בלי לבנות הכל מחדש"
+"אני רוצה לאפשר למשתמש להפחית התקנה שמפנה את הספריה לכתובת שלו ולא לpages. איך הוא יכול לעשות זאת בלי לבנות הכל מחדש", then, of an address the app cannot use: "אני לא רוצה לאפשר זאת (בעיקר בסביבות סגורות, זה עלול להתפרש כניסיון לפרוץ החוצה). אם אי ספריה, להתנהל כאילו אין ספריה."
 
 ## Context
 
@@ -14,7 +14,7 @@ Status: Implemented on 2026-10-18. It changes one rule of [ADR-090](ADR-090-medi
 
 ## Decision
 
-- **A file beside the executable names the copy**: `media-library.json`, `{ "url": "https://…" }`. `base_url()` reads it when the app starts. The development variable comes first, then the file, then the published site. The rule of the variable holds here too: HTTPS, or plain HTTP only on this machine. The byte-order mark Notepad may write is skipped. A file that is not JSON, or names no address the app may read, leaves the published library standing.
+- **A file beside the executable names the copy**: `media-library.json`, `{ "url": "https://…" }`. `base_url()` reads it when the app starts. The development variable comes first, then the file, then the published site. The rule of the variable holds here too: HTTPS, or plain HTTP only on this machine. The byte-order mark Notepad may write is skipped. A file that names no address the app may read leaves the app with **no library at all**, as when the library was never published, and never with the published one: on a closed network a call to Pages would look like an attempt to get out. That covers a file that cannot be read, is not JSON, or has no `url`, and an address that is not HTTPS. `base_url()` answers `None`, so no library is set up, nothing is fetched, and the protocol answers every request as unavailable. Only an installation without the file reads the published library.
 - **The installer writes it** (`src-tauri/windows/hooks.nsh`, `bundle.windows.nsis.installerHooks`). It takes the address from `/MEDIA=<url>` on its command line, or else copies a `media-library.json` that lies beside it. `/MEDIA=` with no address removes the file. An install with neither leaves the file alone, so an update keeps the address. An uninstall removes the file, but not the uninstall an update runs.
 - **The address is parsed by hand, not with `GetOptions`.** `GetOptions` ends a value at the next `/`, so an address would come out as `https:`. The hook takes everything up to the next space, or between quotes.
 - **It is not a setting of the app.** Whoever can write beside the executable can replace the executable, so the file grants nothing new. The Settings dialog does not offer it.
@@ -27,7 +27,7 @@ Status: Implemented on 2026-10-18. It changes one rule of [ADR-090](ADR-090-medi
 
 ## Checks
 
-- Rust: `an_installation_may_name_a_copy_of_its_own`: an address with and without its final slash, with a byte-order mark, on the loopback; plain HTTP on the network, `file:`, an empty address, plain text and `{}` refused. All 14 tests of `media_library.rs` pass.
+- Rust: `an_installation_may_name_a_copy_of_its_own`: an address with and without its final slash, with a byte-order mark, on the loopback; plain HTTP on the network, `file:`, an empty address, plain text, `{}`, an empty file and a file that cannot be read give no library; no file gives the published one. All 14 tests of `media_library.rs` pass.
 - The hook was compiled with makensis 3.09 (amd64-unicode) into a stand-in of Tauri's script: its `Install` and `Uninstall` sections and `un.onInit`'s `/UPDATE`, with Tauri's `/P` check. It was run under wine 9: unquoted; quoted from cmd.exe, also with `/public/` in the path (passive stays off); the whole option quoted; lower case; followed by another option; no option and `/UPDATE` (kept); `/MEDIA=` (removed); the file beside the installer; both (`/MEDIA=` wins); the uninstall of an update (kept) and a plain uninstall (removed, folder gone).
 - Tauri's own installer: `tauri bundle --bundles nsis` (CLI 2.12, the hook included from `tauri.conf.json`) around a stand-in `slidr.exe`, run under 32-bit wine. Quoted with `/public/`, then `/S /UPDATE` and `/S` (kept), `/MEDIA=` (removed), the file beside the installer, unquoted, and the uninstaller (removed).
 - Not run: the app reading a copy, and the installer, on Windows.
