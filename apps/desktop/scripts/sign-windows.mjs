@@ -9,10 +9,11 @@
 //
 //   pnpm --filter @slidr/desktop tauri build
 //
-// On a machine without that certificate (CI, another developer's) the binary is left unsigned,
-// so a build still works. SLIDR_SIGN_CERT names another certificate by its thumbprint, which
-// must then sign, or `off` to sign nothing. SLIDR_SIGNTOOL names signtool.exe when it is not in
-// the newest Windows Kit; SLIDR_SIGN_TIMESTAMP another timestamp server.
+// On a machine without that certificate (another developer's, a runner of GitHub's) the binary is
+// left unsigned, so a build still works. SLIDR_SIGN_CERT names a certificate by its thumbprint,
+// which must then sign (the Release workflow names the project's), or `off` to sign nothing.
+// SLIDR_SIGNTOOL names signtool.exe when it is not in the newest Windows Kit;
+// SLIDR_SIGN_TIMESTAMP another timestamp server.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';

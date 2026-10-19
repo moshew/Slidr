@@ -3,13 +3,20 @@
 # (apps/desktop/src-tauri/src/updates.rs). The updater sees a release only once it is published,
 # so the draft is the last check.
 #
-# Two signatures, each with its own secret:
-# - Authenticode, by SignPath Foundation, so Windows trusts the installer. Until the project is
-#   approved there, the variable SIGNPATH_ORGANIZATION_ID is unset and the installer goes out
-#   unsigned.
+# Two signatures:
+# - Authenticode, with the project's certificate from Certum, so Windows trusts what it runs.
+#   `tauri build` signs the app's exe, the uninstaller and the installer with it
+#   (apps/desktop/scripts/sign-windows.mjs). The certificate's key is in Certum's cloud and only
+#   SimplySign Desktop, logged in with a code from the phone, opens it. No runner of GitHub's can,
+#   so the job runs on the author's machine: a self-hosted runner with the label `slidr-signing`.
 # - The updater's, with the key whose public half is in tauri.conf.json (TAURI_SIGNING_PRIVATE_KEY
-#   and its password). It is made last, over the installer as SignPath returned it, since signing
-#   changes the bytes.
+#   and its password). It is made last, over the signed installer, since signing changes the bytes.
+#
+# To release: log in to SimplySign Desktop, start the runner as yourself (`run.cmd` in its folder;
+# the certificate is in your own store, which a service of another account does not see), then
+# `pnpm release`. A job waits in the queue until the runner is up. The repository is public and a
+# job on the runner runs as you, so keep the runner up only while a release is made, and have
+# workflows of outside contributors wait for approval (Settings → Actions → General).
 name: Release
 
 on:
@@ -18,25 +25,37 @@ on:
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   windows:
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows, slidr-signing]
     timeout-minutes: 90
+    env:
+      # Named, the certificate must sign: a build that cannot fails instead of going out unsigned.
+      SLIDR_SIGN_CERT: 5C64DAC774694B59FE6427A4744A3434DDCC49F1
     defaults:
       run:
         shell: bash
     steps:
+      # Before the build, so a runner that cannot sign fails at once. The runner is the author's
+      # own machine, so the job builds with the Rust installed there and pnpm's warm store: the
+      # toolchain and cache actions would update the author's Rust and prune the cargo registry.
+      - name: This machine signs
+        shell: powershell
+        run: |
+          if (-not (Test-Path "Cert:\CurrentUser\My\$env:SLIDR_SIGN_CERT")) {
+            Write-Output "::error::The certificate is not in the store of $env:USERNAME. Is SimplySign Desktop logged in, and does the runner run as you?"
+            exit 1
+          }
+          # bash is Git's, not the launcher of WSL that Windows keeps in System32.
+          Join-Path (Split-Path (Split-Path (Get-Command git).Source)) bin | Add-Content $env:GITHUB_PATH
+
       - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: pnpm
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
 
       - name: The tag names the version of the app
         run: |
@@ -49,8 +68,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # The build makes no signature of the updater's (no `createUpdaterArtifacts`), so a build on
-      # any machine needs no key; it is made below, once SignPath has signed.
+      # The build signs with Authenticode as it goes, and makes no signature of the updater's (no
+      # `createUpdaterArtifacts`), so a build on any machine needs no key; it is made below.
       - name: Build
         run: pnpm --filter @slidr/desktop tauri build
 
@@ -58,27 +77,6 @@ jobs:
         run: |
           mkdir -p out
           cp "target/release/bundle/nsis/Slidr_${VERSION}_x64-setup.exe" out/
-
-      - name: Upload for signing
-        id: unsigned
-        uses: actions/upload-artifact@v4
-        with:
-          name: unsigned
-          path: out/Slidr_${{ env.VERSION }}_x64-setup.exe
-          if-no-files-found: error
-
-      - name: Sign with SignPath
-        if: vars.SIGNPATH_ORGANIZATION_ID != ''
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
-          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
-          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
-          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
-          wait-for-completion: true
-          output-artifact-directory: out
 
       - name: Sign for the updater
         env:

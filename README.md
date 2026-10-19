@@ -173,12 +173,12 @@ pnpm release             # tag the version the app has now and push the tag
 pnpm release --bump      # raise the version by 0.1.0 first (0.1.0 → 0.2.0), in a commit of its own
 ```
 
-`release.mjs` refuses unless the three files that carry the version agree (`apps/desktop/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`), the tree is clean, `main` is level with `origin/main`, and the tag is new. The tag runs the [Release workflow](.github/workflows/release.yml) (about 15 minutes, less with its cache): it builds the installer, has SignPath sign it, signs it for the updater, writes `latest.json`, and makes a **draft** release with the three files. Download the installer from the draft, install it, and check it, then publish the draft (its edit page, or `gh release edit v<version> --draft=false --latest`). Only a published release reaches the updater.
+`release.mjs` refuses unless the three files that carry the version agree (`apps/desktop/package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`), the tree is clean, `main` is level with `origin/main`, and the tag is new. The tag runs the [Release workflow](.github/workflows/release.yml) on the author's machine, so first log in to SimplySign Desktop and start the runner: it builds the installer, signing it and the binaries inside it with the project's certificate, signs it for the updater, writes `latest.json`, and makes a **draft** release with the three files. Download the installer from the draft, install it, and check it, then publish the draft (its edit page, or `gh release edit v<version> --draft=false --latest`). Only a published release reaches the updater.
 
 The repository's settings hold what the workflow needs:
 
 - the secret `TAURI_SIGNING_PRIVATE_KEY`, the private key of the updater, whose public half is in `tauri.conf.json` (`plugins.updater.pubkey`); the author keeps the file, `%USERPROFILE%\.tauri\slidr-updater.key`. Lost, it cannot be replaced: installed copies accept only updates signed with it.
-- for SignPath, the secret `SIGNPATH_API_TOKEN` and the variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_SIGNING_POLICY_SLUG` and `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG`. Without them the step is skipped and the installer goes out unsigned.
+- a self-hosted runner with the label `slidr-signing`, on the machine where SimplySign Desktop puts the Authenticode certificate in the author's store. The key is in Certum's cloud and only a SimplySign login with a code from the phone opens it, so no runner of GitHub's can sign. The runner runs as the author (`run.cmd`, not a service of another account), and only while a release is made: the repository is public, and outside contributors' workflows wait for approval.
 
 The updater (`src-tauri/src/updates.rs`) looks for `latest.json` of the newest release when the app starts, downloads the installer in the background, checks its signature, and installs it quietly when the app closes. A debug build and a build under another identifier never look.
 
@@ -279,14 +279,14 @@ The design documents are written in Hebrew.
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+The Windows binaries are signed with an Open Source Code Signing certificate from [Certum](https://www.certum.eu), issued to Moshe Waisman. Its key is in Certum's cloud (SimplySign), and every session that signs opens with a one-time code from the author's phone.
 
-The Windows installer on the [releases page](https://github.com/moshew/Slidr/releases) is built from this repository by the [Release workflow](.github/workflows/release.yml) and signed there; no binary built elsewhere is signed.
+The Windows installer on the [releases page](https://github.com/moshew/Slidr/releases) is built from this repository by the [Release workflow](.github/workflows/release.yml), on the author's machine, and signed there.
 
 - Committers and reviewers: [moshew](https://github.com/moshew)
 - Approvers: [moshew](https://github.com/moshew)
 
-Every signing request is approved by hand. Every member of the team uses multi-factor authentication on GitHub and on SignPath.
+Every member of the team uses multi-factor authentication on GitHub.
 
 ## Privacy policy
 
