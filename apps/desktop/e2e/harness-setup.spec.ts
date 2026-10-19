@@ -306,24 +306,29 @@ for (const lang of ['he', 'en'] as const) {
   });
 }
 
+/** A chat service whose CLI answers its checks only when the test releases them. */
+async function requestHarness(page: Page, outcome: RequestHarness.RequestOutcome) {
+  await page.getByTestId('activity-bar').locator('[data-panel="elements"]').click();
+  await page.evaluate(async (result) => {
+    const runtimePath =
+      performance
+        .getEntriesByType('resource')
+        .map((entry) => entry.name)
+        .findLast((name) => /\/src\/ai\/runtime\.ts(?:\?|$)/.test(name)) ?? '/src/ai/runtime.ts';
+    const fixturePath = '/e2e/harness-request-page.ts';
+    const { aiOf } = (await import(/* @vite-ignore */ runtimePath)) as typeof Runtime;
+    const { installRequestHarness } = (await import(
+      /* @vite-ignore */ fixturePath
+    )) as typeof RequestHarness;
+    await installRequestHarness(aiOf(window.slidr!), result);
+  }, outcome);
+}
+
 for (const outcome of ['ready', 'not_logged_in', 'model_missing', 'error', 'list_error'] as const) {
   test(`saved chat checks only after a request: ${outcome}`, async ({ page }) => {
     await openApp(page, { lang: 'en' });
     await fixtures(page);
-    await page.getByTestId('activity-bar').locator('[data-panel="elements"]').click();
-    await page.evaluate(async (result) => {
-      const runtimePath =
-        performance
-          .getEntriesByType('resource')
-          .map((entry) => entry.name)
-          .findLast((name) => /\/src\/ai\/runtime\.ts(?:\?|$)/.test(name)) ?? '/src/ai/runtime.ts';
-      const fixturePath = '/e2e/harness-request-page.ts';
-      const { aiOf } = (await import(/* @vite-ignore */ runtimePath)) as typeof Runtime;
-      const { installRequestHarness } = (await import(
-        /* @vite-ignore */ fixturePath
-      )) as typeof RequestHarness;
-      await installRequestHarness(aiOf(window.slidr!), result);
-    }, outcome);
+    await requestHarness(page, outcome);
     const ai = page.getByTestId('activity-bar').locator('[data-panel="ai"]');
     await ai.click();
     const input = page.getByTestId('chat-input');
@@ -372,6 +377,44 @@ for (const outcome of ['ready', 'not_logged_in', 'model_missing', 'error', 'list
           page.getByTestId('chat-setup').getByRole('radio', { name: 'Simple model' }),
         ).toBeVisible();
     }
+  });
+}
+
+for (const lang of ['he', 'en'] as const) {
+  test(`a signed-out agent put right in its card stays put right as the chat goes on in ${lang}`, async ({
+    page,
+  }) => {
+    await openApp(page, { lang });
+    await fixtures(page);
+    await requestHarness(page, 'not_logged_in');
+    await page.getByTestId('activity-bar').locator('[data-panel="ai"]').click();
+    const input = page.getByTestId('chat-input');
+    await input.fill(lang === 'he' ? 'שקף פתיחה לרבעון' : 'An opening slide for the quarter');
+    await input.press('Enter');
+    await page.evaluate(() => document.dispatchEvent(new Event('release-harnesses')));
+    await expect(page.locator('body')).toHaveAttribute('data-connection-checks', '1');
+    await page.evaluate(() => document.dispatchEvent(new Event('release-connection')));
+    const turns = page.getByTestId('chat-assistant');
+    const problem = turns.first().getByTestId('chat-problem');
+    await expect(problem).toHaveAttribute('data-kind', 'not_logged_in');
+    await expect(problem).not.toHaveAttribute('data-fixed');
+    await problem
+      .getByRole('button', { name: lang === 'he' ? 'התחברות לחשבון' : 'Sign in', exact: true })
+      .click();
+    await expect(problem).toHaveAttribute('data-fixed', 'true');
+    await expect(problem).toContainText(lang === 'he' ? 'הסוכן מוכן' : 'The agent is ready');
+
+    // Sending again does not bring the problem back to the card it was put right in.
+    await input.fill(lang === 'he' ? 'שקף פתיחה לרבעון' : 'An opening slide for the quarter');
+    await input.press('Enter');
+    await expect(turns.nth(1)).toHaveAttribute('data-outcome', 'completed');
+    await expect(turns.nth(1).getByTestId('chat-problem')).toHaveCount(0);
+    await expect(problem).toHaveAttribute('data-fixed', 'true');
+    await expect(problem).toContainText(lang === 'he' ? 'הסוכן מוכן' : 'The agent is ready');
+    await expect(problem.getByRole('button')).toHaveCount(0);
+    await page
+      .getByTestId('chat')
+      .screenshot({ path: `test-results/chat-problem-settled-${lang}.png` });
   });
 }
 

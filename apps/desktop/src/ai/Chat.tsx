@@ -323,11 +323,33 @@ const isSetupProblem = (entry: ChatEntry | undefined) =>
   entry?.type === 'assistant' && SETUP_PROBLEMS.includes(entry.problem?.kind ?? '');
 
 /**
+ * Whether the setup problem of the turn at `index` was put right: the conversation went on from
+ * it, and the next turn, once it has begun, did not meet one again.
+ */
+const settledAt = (entries: readonly ChatEntry[], index: number) => {
+  const after = entries.slice(index + 1);
+  return (
+    isSetupProblem(entries[index]) &&
+    after.length > 0 &&
+    !isSetupProblem(after.find((entry) => entry.type === 'assistant'))
+  );
+};
+
+/**
  * Why the agent could not run, and what to do about it (CHT-U09). With `setup`, the card of the
  * last turn, a missing or signed-out agent is put right here: installed, signed in, checked
- * again (the user may have fixed it meanwhile) or swapped for another agent.
+ * again (the user may have fixed it meanwhile) or swapped for another agent. A `settled` card
+ * stays as it was left, put right, once the conversation goes on from it.
  */
-function ProblemCard({ problem, setup }: { problem: ChatProblem; setup?: Setup }) {
+function ProblemCard({
+  problem,
+  setup,
+  settled = false,
+}: {
+  problem: ChatProblem;
+  setup?: Setup;
+  settled?: boolean;
+}) {
   const { t } = useTranslation('ai');
   const descriptor = SETUP_PROBLEMS.includes(problem.kind) ? setup?.descriptor : undefined;
   const state = descriptor ? setup?.state : undefined;
@@ -338,7 +360,7 @@ function ProblemCard({ problem, setup }: { problem: ChatProblem; setup?: Setup }
   const status = state?.connection?.status;
   // A connection kept from before the problem may still say "ready": then the problem is right.
   const live = status && (checked || status.state !== 'ready') ? status.state : undefined;
-  const fixed = live === 'ready' && !state?.error;
+  const fixed = settled || (live === 'ready' && !state?.error);
   const shown = fixed ? undefined : (live ?? problem.kind);
   const kind = shown && isProblemKind(shown) ? shown : 'other';
   const act = (work: Promise<unknown>) =>
@@ -552,6 +574,7 @@ function AssistantTurn({
   last,
   thread,
   setup,
+  settled,
   onRetry,
 }: {
   entry: AssistantEntry;
@@ -561,6 +584,8 @@ function AssistantTurn({
   thread: ChatThread;
   /** The chat's setup, for the turn whose problem can still be put right. */
   setup?: Setup;
+  /** The agent was put right after this turn's problem, and the conversation went on. */
+  settled: boolean;
   onRetry: () => void;
 }) {
   const { t } = useTranslation('ai');
@@ -590,7 +615,7 @@ function AssistantTurn({
           <GateLine key={`gate-${part.round}`} part={part} />
         ),
       )}
-      {entry.problem && <ProblemCard problem={entry.problem} setup={setup} />}
+      {entry.problem && <ProblemCard problem={entry.problem} setup={setup} settled={settled} />}
       {entry.remaining && <Remaining report={entry.remaining} disabled={busy} onRetry={onRetry} />}
       {entry.outcome === 'interrupted' && (
         <p className="flex items-center gap-1.5 text-xs text-ui-fg-muted">
@@ -947,6 +972,7 @@ export function Chat({
               last={index === state.entries.length - 1}
               thread={thread}
               setup={index === state.entries.length - 1 ? setup : undefined}
+              settled={settledAt(state.entries, index)}
               onRetry={() => void thread.retryFixes(entry.id)}
             />
           ),

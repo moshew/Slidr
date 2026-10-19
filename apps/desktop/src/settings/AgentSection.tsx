@@ -86,7 +86,7 @@ export function AgentSection() {
 
   if (failed) {
     return (
-      <p role="alert" className="text-sm text-ui-danger-fg">
+      <p className="text-sm text-ui-fg-muted">
         {t('agent.unavailable')}
       </p>
     );
@@ -97,8 +97,9 @@ export function AgentSection() {
   const harness = state?.connection?.harness;
   const status = state?.connection?.status;
   const ready = status?.state === 'ready' && !state?.busy;
-  // The program's own hint of a missing CLI says no more than the line above it, in English.
-  const detail = state?.error ?? (status?.state === 'not_installed' ? undefined : status?.detail);
+  // The program's own hint (a missing CLI, a sign-in) says no more than the line above it, in
+  // English; only a failed install or sign-in adds a line of its own.
+  const detail = state?.error;
   const selectedModel = harness?.models.find((model) => model.id === settings.model);
   const latest = latestModels(harness?.models ?? []);
   const efforts = harness ? modelEfforts(harness, settings.model) : [];
@@ -155,7 +156,7 @@ export function AgentSection() {
               {t(state?.busy ? `agent.${state.busy}` : `agent.${status?.state ?? 'unavailable'}`)}
             </p>
             {detail && (
-              <p role="alert" className="break-words text-xs text-ui-danger-fg" dir="auto">
+              <p className="break-words text-xs text-ui-fg-muted" dir="auto">
                 {detail}
               </p>
             )}

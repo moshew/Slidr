@@ -67,6 +67,8 @@ export async function installRequestHarness(runtime: AiRuntime, outcome: Request
   });
   document.body.dataset.harnessReads = '0';
   document.body.dataset.connectionChecks = '0';
+  // Signing in puts a signed-out CLI right: every check after it says "ready".
+  let signedIn = false;
   const client: AgentClient = {
     ...scripted.client,
     harnesses: () => {
@@ -77,7 +79,16 @@ export async function installRequestHarness(runtime: AiRuntime, outcome: Request
       document.body.dataset.connectionChecks = String(
         Number(document.body.dataset.connectionChecks) + 1,
       );
-      return pendingConnection;
+      return signedIn
+        ? Promise.resolve<HarnessConnection>({
+            ...connection,
+            status: { ...connection.status, state: 'ready' },
+          })
+        : pendingConnection;
+    },
+    login: () => {
+      signedIn = true;
+      return Promise.resolve();
     },
     start: (_id, thread, config, onEvent) => scripted.client.start('mock', thread, config, onEvent),
   };
