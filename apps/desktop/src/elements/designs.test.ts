@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   CommandBus,
+  CONTENT_LANGUAGES,
   createDeck,
   createSelectionStore,
   createSlide,
@@ -10,6 +11,7 @@ import {
   Slide,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
+import next33Source from '../../scripts/design-locales/next-33/source.json';
 import { builtinFaces, builtinFamilies } from '../fonts/builtinFonts.generated';
 import { previewAsset, previewBackdrop } from './designAssets';
 import { familyIn, fontShelf } from './designFonts';
@@ -41,6 +43,15 @@ const DRAWN = DESIGN_IDS.flatMap((id) => designLanguages(id).map((lang) => [lang
 
 // The designs are content of the media library: without it there is nothing to test.
 describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
+  it('offers the 33 expanded designs in every application language', () => {
+    const ids = Object.keys(next33Source);
+    expect(ids).toHaveLength(33);
+    for (const id of ids) {
+      expect(has(id), id).toBe(true);
+      expect(designLanguages(id), id).toEqual(CONTENT_LANGUAGES);
+      for (const lang of CONTENT_LANGUAGES) expect(designIn(id, lang), `${id}/${lang}`).toBe(true);
+    }
+  });
   it('ships valid slides with real, editable copy in each of their languages', () => {
     expect(new Set(DESIGN_IDS).size).toBe(DESIGN_IDS.length);
     for (const id of DESIGN_IDS) expect(designLanguages(id).slice(0, 2), id).toEqual(['he', 'en']);

@@ -84,6 +84,27 @@ try {
       if (strings.length !== boxes.length) throw new Error(`${id}/${lang}: wrong text count`);
       boxes.forEach((element, at) => {
         const original = element.content.paragraphs;
+        // Explicit paragraphs preserve styled punctuation and emphasis across display lines.
+        const paragraphs = strings[at]?.paragraphs;
+        if (paragraphs !== undefined) {
+          if (!Array.isArray(paragraphs) || paragraphs.length !== original.length) {
+            throw new Error(`${id}/${lang}/${at}: translated paragraphs do not match the source`);
+          }
+          element.content.paragraphs = paragraphs.map((runs, p) => {
+            if (
+              !Array.isArray(runs) ||
+              runs.length !== original[p].runs.length ||
+              runs.some((text) => typeof text !== 'string' || !text.trim())
+            ) {
+              throw new Error(`${id}/${lang}/${at}/${p}: translated runs do not match the source`);
+            }
+            return {
+              ...structuredClone(original[p]),
+              runs: runs.map((text, r) => ({ ...structuredClone(original[p].runs[r]), text })),
+            };
+          });
+          return;
+        }
         // Explicit runs retain emphasis, or give an age's unit a smaller size beside its numeral.
         const segments = strings[at]?.runs;
         if (segments !== undefined) {
