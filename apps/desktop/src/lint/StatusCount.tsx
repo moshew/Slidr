@@ -14,10 +14,15 @@ import { he } from './messages';
 export function StatusCount() {
   const { t } = useTranslation('lint');
   const editor = useEditor();
-  const deck = useDeck((s) => s.deck);
-  const { findings, pending, failed } = useStore(checkOf(editor).state);
-  const busy = useDeckChatBusy();
   const [open, setOpen] = useState(false);
+  // The deck is read for the list in the popover: while it is closed, a change to the deck (a
+  // frame of a drag) is nothing to the count, which follows the check.
+  const deck = useDeck((s) => (open ? s.deck : null));
+  const check = checkOf(editor).state;
+  const findings = useStore(check, (s) => s.findings);
+  const pending = useStore(check, (s) => s.pending);
+  const failed = useStore(check, (s) => s.failed);
+  const busy = useDeckChatBusy();
   const focusFinding = useRef(false);
   const issues = findings.filter((finding) => finding.severity !== 'info');
   const errors = issues.filter((finding) => finding.severity === 'error').length;
@@ -81,7 +86,7 @@ export function StatusCount() {
         <div role="status" data-testid="design-check-summary" data-pending={pending || undefined}>
           {failed ? t('panel.failed') : pending ? t('panel.checking') : label}
         </div>
-        {!failed && !pending && issues.length > 0 && (
+        {!failed && !pending && issues.length > 0 && deck && (
           <>
             <p className="text-xs text-ui-fg-muted">{t('status.choose')}</p>
             <ul className="flex flex-col gap-1">

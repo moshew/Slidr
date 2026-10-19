@@ -93,7 +93,9 @@ export class DesignCheck {
   /** Follows the deck from now on: every change is checked once the deck has rested. */
   watch(): () => void {
     const due = () => {
-      this.state.setState({ pending: true });
+      // Written only when it changes: every write wakes the status bar, and a drag is a change
+      // a frame.
+      if (!this.state.getState().pending) this.state.setState({ pending: true });
       clearTimeout(this.#timer);
       this.#timer = setTimeout(() => void this.check(), this.#rest);
     };

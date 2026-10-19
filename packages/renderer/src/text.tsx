@@ -491,6 +491,10 @@ export function textFillStyle(css: Record<string, string> | undefined): CSSPrope
 const V_ALIGN = { top: 'flex-start', middle: 'center', bottom: 'flex-end' } as const;
 /** Smallest scale `shrink` goes down to; below it the text overflows instead. */
 const MIN_FIT = 0.25;
+/** The search for the zoom halves the range this many times. */
+const FIT_STEPS = 8;
+/** The finest difference of zoom the search tells apart. */
+const FIT_STEP = (1 - MIN_FIT) / 2 ** FIT_STEPS;
 
 function insetsStyle(padding: Insets | undefined): CSSProperties {
   if (!padding) return { padding: 0 };
@@ -513,18 +517,26 @@ export function shrinkToFit(box: HTMLElement, measure: HTMLElement, content: HTM
   const cs = getComputedStyle(box);
   const available =
     box.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+  /** The zoom the text was fitted to last, as it stands on the DOM; 1 when it was never shrunk. */
+  const previous = parseFloat(content.style.zoom) || 1;
   let result = 1;
   // No layout (a detached or hidden box) measures zero: leave the text as it is.
   if (available > 0) {
+    // Every call lays the box out again: the search below makes about ten of them.
     const fits = (z: number) => {
       content.style.zoom = z === 1 ? '' : String(z);
       return measure.offsetHeight <= available + 0.5;
     };
-    if (!fits(1)) {
+    // A text that was shrunk before is most often fitted again for one more letter: its zoom
+    // still holds, and the next finer zoom still does not. Two layouts settle it, where the
+    // search took ten for each keystroke.
+    if (previous < 1 && fits(previous) && !fits(Math.min(1, previous + FIT_STEP))) {
+      result = previous;
+    } else if (!fits(1)) {
       let lo = MIN_FIT;
       let hi = 1;
       if (fits(lo)) {
-        for (let step = 0; step < 8; step++) {
+        for (let step = 0; step < FIT_STEPS; step++) {
           const mid = (lo + hi) / 2;
           if (fits(mid)) lo = mid;
           else hi = mid;

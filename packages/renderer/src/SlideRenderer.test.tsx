@@ -13,7 +13,7 @@ import {
   type ImageElement,
 } from '@slidr/model';
 import { allElementsDeck } from '@slidr/model/fixtures';
-import { act, type ReactNode } from 'react';
+import { act, type CSSProperties, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { referenceAssets, referenceDeck } from './fixtures/referenceDeck';
@@ -720,5 +720,40 @@ describe('SlideRenderer', () => {
     bus.dispatch(updateElement('s_all', 'e_shape', { rotation: 30 }));
     show(store.getState().deck);
     expect([...renders.keys()]).toEqual(['e_shape']);
+  });
+
+  it('draws nothing again for a change to another slide, or to the state around it', () => {
+    const bus = new CommandBus(allElementsDeck());
+    const store = createDeckStore(bus);
+    const renders = new Map<string, number>();
+    const slot = (element: Element, rendered: ReactNode) => {
+      renders.set(element.id, (renders.get(element.id) ?? 0) + 1);
+      return rendered;
+    };
+    const show = (deck: Deck, style?: CSSProperties) => {
+      const slide = deck.slides.find((s) => s.id === 's_all')!;
+      render(<SlideRenderer deck={deck} slide={slide} slot={slot} style={style} />);
+    };
+    show(store.getState().deck, { opacity: 1 });
+    renders.clear();
+    // Another slide of the deck changed: a thumbnail of this one has nothing to draw again.
+    bus.dispatch({
+      type: 'element.add',
+      slideId: 's_empty',
+      element: createElement.text({
+        id: 'e_other',
+        frame: { x: 0, y: 0, w: 100, h: 50 },
+        content: richText('Elsewhere'),
+      }),
+    });
+    show(store.getState().deck, { opacity: 1 });
+    expect(renders.size).toBe(0);
+    // The Stage draws its own state around the slide, with the same slide and the same style.
+    show(store.getState().deck, { opacity: 1 });
+    expect(renders.size).toBe(0);
+    // Its number changed: a slide-number text says something else.
+    bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's_first' }), index: 0 });
+    show(store.getState().deck, { opacity: 1 });
+    expect(renders.size).toBeGreaterThan(0);
   });
 });

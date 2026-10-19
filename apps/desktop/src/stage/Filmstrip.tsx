@@ -684,18 +684,17 @@ export function Filmstrip({
   }, []);
 
   // Keep the current slide in view when it changes (from the Stage, the agent, or the keyboard).
+  // By its place in the strip, not by the list of slides: the list is new with every change to
+  // any slide, and the reveal reads the strip's scroll position, which makes the browser lay the
+  // page out, once a frame through a drag.
+  const currentIndex = slides.findIndex((s) => s.id === currentId);
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
     // At once, not gliding, for whoever asked the system for less motion (UI-06).
     const still = el.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)');
-    revealSlide(
-      el,
-      slides.findIndex((s) => s.id === currentId),
-      still?.matches ? 'instant' : 'smooth',
-      thumbWidth,
-    );
-  }, [currentId, slides, thumbWidth]);
+    revealSlide(el, currentIndex, still?.matches ? 'instant' : 'smooth', thumbWidth);
+  }, [currentIndex, thumbWidth]);
   // And the slide the walk stands on: the keyboard is there, so it has to be seen.
   useEffect(() => {
     if (scroller.current) revealSlide(scroller.current, walkIndex, 'instant', thumbWidth);

@@ -1,5 +1,5 @@
 import type { Deck, Element, Slide } from '@slidr/model';
-import { useMemo, type CSSProperties } from 'react';
+import { memo, useMemo, type CSSProperties } from 'react';
 import {
   RenderContextValue,
   type AssetResolver,
@@ -83,7 +83,52 @@ function wordBreak(lang: string): CSSProperties {
  * The root carries the theme as CSS variables (RND-08) and the slide's own `css`, scoped to it
  * (RND-07).
  */
-export function SlideRenderer({
+export const SlideRenderer = memo(SlideRendererView, sameRender);
+
+/** The number of the slide in its deck, from 1; undefined for a slide the deck does not hold. */
+function numberOf(deck: Deck, slide: Slide): number | undefined {
+  const at = deck.slides.findIndex((s) => s.id === slide.id);
+  return at === -1 ? undefined : at + 1;
+}
+
+function sameStyle(a: CSSProperties | undefined, b: CSSProperties | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = Object.keys(a) as (keyof CSSProperties)[];
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+}
+
+/**
+ * Whether two sets of props draw the same slide. The model keeps the identity of what a change
+ * did not touch (ADR-007), so a slide is drawn again only when it, or what the deck lends it
+ * (the theme, the layouts, the assets, its number), has changed: the other slides of the deck
+ * change under a thumbnail with every edit, and the Stage's own state changes around its slide
+ * with every hover.
+ */
+function sameRender(a: SlideRendererProps, b: SlideRendererProps): boolean {
+  return (
+    a.slide === b.slide &&
+    a.deck.theme === b.deck.theme &&
+    a.deck.assets === b.deck.assets &&
+    a.deck.layouts === b.deck.layouts &&
+    a.deck.meta === b.deck.meta &&
+    a.deck.size === b.deck.size &&
+    numberOf(a.deck, a.slide) === numberOf(b.deck, b.slide) &&
+    a.mode === b.mode &&
+    a.resolveAsset === b.resolveAsset &&
+    a.slot === b.slot &&
+    a.textSlot === b.textSlot &&
+    a.cellSlot === b.cellSlot &&
+    a.htmlSlot === b.htmlSlot &&
+    a.scriptNonce === b.scriptNonce &&
+    a.opensLink === b.opensLink &&
+    a.decoding === b.decoding &&
+    a.className === b.className &&
+    sameStyle(a.style, b.style)
+  );
+}
+
+function SlideRendererView({
   deck,
   slide,
   mode = 'edit',
@@ -99,8 +144,7 @@ export function SlideRenderer({
   style,
 }: SlideRendererProps) {
   const { theme, assets, layouts, meta, size } = deck;
-  const at = deck.slides.findIndex((s) => s.id === slide.id);
-  const slideNumber = at === -1 ? undefined : at + 1;
+  const slideNumber = numberOf(deck, slide);
   const scriptNonce = (givenNonce ?? frameScriptNonce()) || undefined;
   const ctx = useMemo<RenderContext>(
     () => ({

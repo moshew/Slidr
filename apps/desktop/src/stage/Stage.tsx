@@ -2240,13 +2240,18 @@ export function Stage({
     [hinted],
   );
   const deckDir = deck.meta.dir;
+  // The slot is part of the renderer's context, which every element of the slide reads: it has
+  // to be the same function for as long as what it draws is the same, or a keystroke in one box
+  // and every frame of a drag would render all of them again. It keys on the slide's id, not on
+  // the slide, which is a new object with every change to it.
+  const slideId = slide?.id;
   const textSlot = useCallback<TextSlot>(
     (element) => {
-      if (element.id === editingId && slide) {
+      if (element.id === editingId && slideId) {
         return (
           <TextEditor
             bus={bus}
-            slideId={slide.id}
+            slideId={slideId}
             element={element}
             theme={deck.theme}
             caretAt={caretAt}
@@ -2259,10 +2264,9 @@ export function Stage({
         <PlaceholderHint element={element} theme={deck.theme} dir={deckDir} text={hint} />
       ) : undefined;
     },
-    [editingId, slide, bus, deck.theme, deckDir, caretAt, exitEditing, hints],
+    [editingId, slideId, bus, deck.theme, deckDir, caretAt, exitEditing, hints],
   );
   // The text of an `html` element is edited inside the element's own content (HTM-03).
-  const slideId = slide?.id;
   const stopEditing = useCallback(() => selection.getState().stopEditing(), [selection]);
   const htmlEditing = useMemo(
     () =>

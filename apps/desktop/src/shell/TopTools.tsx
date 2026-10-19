@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -135,11 +136,12 @@ function PopoverButton({
 /* ---------------------------------------------------------------- selection tools */
 
 function useSelectionKind() {
-  const deck = useDeck((s) => s.deck);
   const slideId = useSelection((s) => s.currentSlideId);
   const elementIds = useSelection((s) => s.selectedElementIds);
   const editingId = useSelection((s) => s.editingElementId);
-  return selectionKind(deck, slideId, elementIds, editingId);
+  // The kind is read inside the selector: the row, and with it every tool in it, is drawn again
+  // only when the kind changes, and not with every frame of a drag on the slide.
+  return useDeck((s) => selectionKind(s.deck, slideId, elementIds, editingId));
 }
 
 /** How much of the strip one press on its edge brings into view. */
@@ -264,8 +266,12 @@ function ToolStrip({
   );
 }
 
-/** One floating toolbar: insertion and slide tools, or the selected object's tools. */
-export function ContextTools() {
+/**
+ * One floating toolbar: insertion and slide tools, or the selected object's tools. Memoised, as
+ * it takes no props: the region around it is drawn again with every change to the deck (a frame
+ * of a drag), and the tools follow the deck and the selection by themselves.
+ */
+export const ContextTools = memo(function ContextTools() {
   const rows = useRef<HTMLDivElement>(null);
   useEffect(() => (rows.current ? watchToolFocus(rows.current) : undefined), []);
   return (
@@ -273,7 +279,7 @@ export function ContextTools() {
       <ContextToolsRow />
     </div>
   );
-}
+});
 
 function ContextToolsRow() {
   const { t } = useTranslation();
