@@ -77,16 +77,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Alles"
-        ],
-        [
-          "in einem Fall"
-        ]
-      ]
-    },
+    "Alles in\neinem Koffer",
     {
       "paragraphs": [
         [
@@ -158,16 +149,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Eingebettete Systeme"
-        ],
-        [
-          "Ingenieur"
-        ]
-      ]
-    },
+    "Ingenieur für\neingebettete Systeme",
     {
       "paragraphs": [
         [
@@ -182,16 +164,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Computer Vision"
-        ],
-        [
-          "Forscher"
-        ]
-      ]
-    },
+    "Computer-Vision-Forscher",
     {
       "paragraphs": [
         [
@@ -206,16 +179,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Feldtest"
-        ],
-        [
-          "Ingenieur"
-        ]
-      ]
-    },
+    "Feldtestingenieur",
     {
       "paragraphs": [
         [
@@ -244,29 +208,8 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Komm und baue"
-        ],
-        [
-          "was schützt"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Labor, Feld und Kunden"
-        ],
-        [
-          "in derselben Woche."
-        ],
-        [
-          "Ingenieure, die entscheiden."
-        ]
-      ]
-    },
+    "Komm und baue,\nwas schützt",
+    "Labor, Feld und Kunden\nin derselben Woche.\nIngenieure, die entscheiden.",
     {
       "paragraphs": [
         [
@@ -407,19 +350,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Ein winziger Satellit,"
-        ],
-        [
-          "ein frisches Bild"
-        ],
-        [
-          "alle 90 Minuten"
-        ]
-      ]
-    },
+    "Ein winziger Satellit,\nalle 90 Minuten\nein neues Bild",
     {
       "paragraphs": [
         [
@@ -495,19 +426,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Schlaf, Herz und Erholung, gemessen"
-        ],
-        [
-          "den ganzen Tag und die ganze Nacht. Kein Bildschirm, kein Summen,"
-        ],
-        [
-          "Kein Aufladen jede Nacht."
-        ]
-      ]
-    },
+    "Schlaf, Herz und Erholung, gemessen den ganzen\nTag und die ganze Nacht. Kein Bildschirm,\nkein Summen, kein Aufladen jede Nacht.",
     {
       "paragraphs": [
         [
@@ -579,21 +498,12 @@
           "Ihr Unternehmen"
         ],
         [
-          "bei a ",
+          "auf einen ",
           "Blick"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Verkauf, Lager und Marketing in einem"
-        ],
-        [
-          "Live-Dashboard. In zehn Minuten fertig."
-        ]
-      ]
-    },
+    "Vertrieb, Lagerbestand und Marketing in\neinem Live-Dashboard. In zehn Minuten fertig.",
     {
       "paragraphs": [
         [
@@ -622,16 +532,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "14 Tage,"
-        ],
-        [
-          "Keine Karte erforderlich"
-        ]
-      ]
-    }
+    "14 Tage, keine\nKarte erforderlich"
   ],
   "m-integrations": [
     {
@@ -683,16 +584,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Wird an die Werkzeuge angeschlossen"
-        ],
-        [
-          "Sie verwenden bereits"
-        ]
-      ]
-    },
+    "Lässt sich an die Tools anschließen,\ndie Sie bereits verwenden",
     {
       "paragraphs": [
         [
@@ -740,16 +632,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "500 Plätze für Teams, die Nova mitgestalten wollen"
-        ],
-        [
-          "Zunächst mit einem wöchentlichen Anruf bei unserem Produktteam."
-        ]
-      ]
-    },
+    "500 Plätze für Teams, die Nova zuerst gestalten möchten,\nmit einem wöchentlichen Anruf bei unserem Produktteam.",
     {
       "paragraphs": [
         [
@@ -818,36 +701,9 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Fragen Sie in einfachen Worten. Erhalten Sie Antworten,"
-        ],
-        [
-          "Diagramme und nächste Schritte in Sekunden."
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Welche Region wuchs am schnellsten?"
-        ],
-        [
-          "letztes Quartal?"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Der Norden wuchs um 34 %, angeführt von Nachbestellungen."
-        ],
-        [
-          "Hier ist die Aufteilung nach Monaten:"
-        ]
-      ]
-    },
+    "Fragen Sie in einfachen Worten. Erhalten Sie in\nSekundenschnelle Antworten, Diagramme und nächste Schritte.",
+    "Welche Region ist im letzten\nQuartal am schnellsten gewachsen?",
+    "Der Norden wuchs um 34 %, angeführt von\nNachbestellungen. Hier ist die Aufteilung nach Monaten:",
     {
       "paragraphs": [
         [
@@ -947,7 +803,7 @@
     {
       "paragraphs": [
         [
-          "DSGVO"
+          "GDPR"
         ]
       ]
     },
@@ -1023,16 +879,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Leicht genug"
-        ],
-        [
-          "nach oben tragen"
-        ]
-      ]
-    },
+    "Leicht genug, um es\nnach oben zu tragen",
     {
       "paragraphs": [
         [
@@ -1212,16 +1059,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Halo lernt, wenn Sie aufwachen, gehen und nach Hause kommen,"
-        ],
-        [
-          "und heizt nur, wenn es darauf ankommt."
-        ]
-      ]
-    },
+    "Halo lernt, wann Sie aufwachen, gehen und nach\nHause kommen, und heizt nur, wenn es darauf ankommt.",
     {
       "paragraphs": [
         [
@@ -1297,19 +1135,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Verteilen Sie Ihre Arbeit im Raum:"
-        ],
-        [
-          "Modelle, Anrufe und Notizen, alles"
-        ],
-        [
-          "in Reichweite."
-        ]
-      ]
-    },
+    "Verteilen Sie Ihre Arbeit\nim Raum: Modelle, Anrufe und\nNotizen, alles in Reichweite.",
     {
       "paragraphs": [
         [
@@ -1350,16 +1176,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Ein AESA-Radar, das in 15 Minuten einsatzbereit ist und erkennt"
-        ],
-        [
-          "Flugzeuge, Drohnen und Raketen in einem einzigen Bild."
-        ]
-      ]
-    },
+    "Ein AESA-Radar, das in 15 Minuten einsatzbereit ist und\nFlugzeuge, Drohnen und Raketen auf einem einzigen Bild erkennt.",
     {
       "paragraphs": [
         [
@@ -1435,16 +1252,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Luft, Land, Meer und Cyber verschmolzen zu einem Leben"
-        ],
-        [
-          "Betriebsbild, für jeden Kommandanten."
-        ]
-      ]
-    },
+    "Luft, Land, See und Cyber ​​verschmolzen zu\neinem Live-Einsatzbild für jeden Kommandanten.",
     {
       "paragraphs": [
         [
@@ -1485,27 +1293,15 @@
     {
       "paragraphs": [
         [
-          "Eine Konstellation"
+          "Ein Netzwerk"
         ],
         [
-          "von ",
+          "aus ",
           "48 Augen"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Radarsatelliten, die jedes Bild abbilden"
-        ],
-        [
-          "Punkt auf der Erde alle 20 Minuten,"
-        ],
-        [
-          "Tag oder Nacht, durch die Wolke."
-        ]
-      ]
-    },
+    "Radarsatelliten, die alle 20 Minuten\nTag und Nacht jeden Punkt auf der\nErde durch die Wolken fotografieren.",
     {
       "paragraphs": [
         [
@@ -1560,29 +1356,8 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "ALT 18.000 FT"
-        ],
-        [
-          "SPD 92 KN"
-        ],
-        [
-          "HDG 274°"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Eine langlebige ISR-Drohne für die Grenzpatrouille,"
-        ],
-        [
-          "Seewache und Katastrophenhilfe."
-        ]
-      ]
-    },
+    "ALT 18.000\nFT SPD 92\nKN HDG 274°",
+    "Eine langlebige ISR-Drohne für Grenzpatrouille,\nSeeüberwachung und Katastrophenhilfe.",
     {
       "paragraphs": [
         [
@@ -1604,16 +1379,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "LINK SATCOM"
-        ],
-        [
-          "CAM EO/IR"
-        ]
-      ]
-    }
+    "LINK SATCOM\nCAM EO/IR"
   ],
   "m-missionmap": [
     {
@@ -1682,16 +1448,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Gelände, Wetter und jedes Team auf einer Seite"
-        ],
-        [
-          "Live-Karte. Die Routen werden im Laufe der Suche aktualisiert."
-        ]
-      ]
-    },
+    "Gelände, Wetter und jedes Team auf einer Live-Karte.\nDie Routen werden im Laufe der Suche aktualisiert.",
     {
       "paragraphs": [
         [
@@ -1953,16 +1710,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Bildröhren der Generation 3+, die sich drehen lassen"
-        ],
-        [
-          "Sternenlicht in ein klares, scharfes Bild."
-        ]
-      ]
-    },
+    "Bildröhren der Generation 3+, die Sternenlicht\nin ein klares, scharfes Bild verwandeln.",
     {
       "paragraphs": [
         [
@@ -2024,16 +1772,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Eine Wärmebildkamera für Rettungsdrohnen. Es findet"
-        ],
-        [
-          "eine Person unter Bäumen oder im Rauch, 1,2 km entfernt."
-        ]
-      ]
-    },
+    "Eine Wärmebildkamera für Rettungsdrohnen. Es findet eine\nPerson unter Bäumen oder im Rauch in 1,2 km Entfernung.",
     {
       "paragraphs": [
         [
@@ -2145,24 +1884,15 @@
     {
       "paragraphs": [
         [
-          "Mehrschichtige Verteidigung"
+          "Mehrschichtiger Schutz"
         ],
         [
-          "dagegen ",
+          "gegen ",
           "feindliche Drohnen"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Radar, HF-Erkennung und eine stabilisierte Kamera"
-        ],
-        [
-          "Klassifizieren Sie jede Drohne am Himmel innerhalb von 3 Sekunden."
-        ]
-      ]
-    },
+    "Radar, HF-Sensorik und eine stabilisierte Kamera\nklassifizieren jede Drohne am Himmel innerhalb von 3 Sekunden.",
     {
       "paragraphs": [
         [
@@ -2189,16 +1919,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Ein 10-Zoll-Tablet, das Regen, Sand und Stürze übersteht"
-        ],
-        [
-          "auf Beton und hält eine ganze Schicht."
-        ]
-      ]
-    },
+    "Ein 10-Zoll-Tablet, das Regen, Sand und einen Sturz\nauf Beton übersteht und eine ganze Schicht durchhält.",
     {
       "paragraphs": [
         [
@@ -2265,19 +1986,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Sieben Elemente richten ihren blinden Fleck auf sie"
-        ],
-        [
-          "Störsender, also Schiffe, Flugzeuge und Stromnetze"
-        ],
-        [
-          "behalten sowohl ihre Position als auch ihre Uhr."
-        ]
-      ]
-    },
+    "Sieben Elemente richten ihren toten Winkel auf\nStörsender aus, sodass Schiffe, Flugzeuge und Stromnetze\nsowohl ihre Position als auch ihre Uhr behalten.",
     {
       "paragraphs": [
         [
@@ -2381,19 +2090,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Wenn die Mobilfunkmasten ausfallen, gehört das Team"
-        ],
-        [
-          "Funkgeräte verbinden sich von selbst und passieren"
-        ],
-        [
-          "Jeder Anruf über den Grat."
-        ]
-      ]
-    },
+    "Wenn die Mobilfunkmasten ausfallen, verbinden\nsich die Funkgeräte des Teams selbstständig und\nleiten jeden Anruf über den Bergrücken weiter.",
     {
       "paragraphs": [
         [
@@ -2511,19 +2208,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Drei kleine Knoten teilen sich ein Netzwerk,"
-        ],
-        [
-          "Das Schlafzimmer auf der anderen Seite erhält also das Gleiche"
-        ],
-        [
-          "Geschwindigkeit wie der Router."
-        ]
-      ]
-    },
+    "Drei kleine Knoten teilen sich ein Netzwerk,\nsodass das entfernte Schlafzimmer die gleiche\nGeschwindigkeit wie der Router erhält.",
     {
       "paragraphs": [
         [
@@ -2573,16 +2258,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Live von der Bühne"
-        ],
-        [
-          "19.1.2027  ·  19:00"
-        ]
-      ]
-    }
+    "Live von der Bühne\n19.1.2027 · 19:00 Uhr"
   ],
   "m-simtraining": [
     {
@@ -2602,16 +2278,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Ein voll bewegliches Cockpit für Rettungshubschrauber-Besatzungen:"
-        ],
-        [
-          "Nachtaufzüge, Seenotrettung und Motorausfälle."
-        ]
-      ]
-    },
+    "Ein voll bewegliches Cockpit für Rettungshubschrauberbesatzungen:\nNachthubschrauber, Seenotrettung und Triebwerksausfälle.",
     {
       "paragraphs": [
         [
@@ -2683,26 +2350,17 @@
     {
       "paragraphs": [
         [
-          "Angriff",
-          " eine Stadt."
+          "Greifen Sie",
+          " eine Stadt an."
         ],
         [
-          "Lernen Sie es ",
-          "verteidigen",
-          " eins."
+          "Lernen Sie, sie ",
+          "zu schützen",
+          "."
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "48 Stunden auf einer vollständigen Nachbildung der Wasser- und Stromnetze einer Stadt."
-        ],
-        [
-          "Fünf Verteidiger pro Team, gegen ein rotes Team, das niemals schläft."
-        ]
-      ]
-    },
+    "48 Stunden auf einer vollständigen Nachbildung der Wasser- und Stromnetze einer\nStadt. Fünf Verteidiger pro Team, gegen ein rotes Team, das niemals schläft.",
     {
       "paragraphs": [
         [
@@ -2736,16 +2394,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Speichert, was Ihre Panels mittags produzieren"
-        ],
-        [
-          "und leitet das Haus die ganze Nacht über."
-        ]
-      ]
-    },
+    "Speichert, was Ihre Panels mittags produzieren,\nund betreibt das Haus die ganze Nacht über.",
     {
       "paragraphs": [
         [
@@ -2753,16 +2402,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "noch gespeichert"
-        ],
-        [
-          "um 21:40 Uhr"
-        ]
-      ]
-    },
+    "noch um 21:40\nUhr gespeichert",
     {
       "paragraphs": [
         [
@@ -2898,16 +2538,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Eine Aluminiumplatte auf weichen Dichtungen, mit Silent"
-        ],
-        [
-          "taktile Schalter. Alle Ideen, kein Geklapper."
-        ]
-      ]
-    },
+    "Eine Aluminiumplatine auf weichen Dichtungen mit\ngeräuschlosen Tastschaltern. Alle Ideen, kein Geklapper.",
     {
       "paragraphs": [
         [
@@ -2983,16 +2614,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Tippen Sie hier, um sich anzumelden. Sie müssen nichts eingeben."
-        ],
-        [
-          "Nichts, was eine gefälschte Seite stehlen könnte."
-        ]
-      ]
-    },
+    "Tippen Sie hier, um sich anzumelden. Nichts zum Eintippen,\nnichts, was eine gefälschte Seite stehlen könnte.",
     {
       "paragraphs": [
         [
@@ -3003,7 +2625,7 @@
     {
       "paragraphs": [
         [
-          "DICHTUNG K2"
+          "SEAL K2"
         ]
       ]
     },

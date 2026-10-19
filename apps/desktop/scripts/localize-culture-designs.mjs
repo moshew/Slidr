@@ -27,7 +27,17 @@ const artFile = join(copyDir, 'art.json');
 const art = existsSync(artFile) ? read(artFile) : {};
 const framesFile = join(copyDir, 'frames.json');
 const frames = existsSync(framesFile) ? read(framesFile) : {};
-const textElements = (slide) => slide.elements.filter((element) => element.content?.paragraphs);
+const textElements = (slide) => {
+  const visit = (elements) =>
+    elements.flatMap((element) =>
+      element.type === 'group'
+        ? visit(element.children)
+        : element.content?.paragraphs
+          ? [element]
+          : [],
+    );
+  return visit(slide.elements);
+};
 const plain = (element) =>
   element.content.paragraphs.map((p) => p.runs.map((r) => r.text).join('')).join('\n');
 

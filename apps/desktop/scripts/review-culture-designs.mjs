@@ -58,6 +58,14 @@ const priorCache = join(desktop, 'node_modules', '.cache', 'slidr-media');
 const cache = join(output, 'media');
 const fitsFile = join(locales, 'fit.json');
 const fits = JSON.parse(readFileSync(fitsFile, 'utf8'));
+const textElements = (elements) =>
+  elements.flatMap((element) =>
+    element.type === 'group'
+      ? textElements(element.children)
+      : element.content?.paragraphs
+        ? [element]
+        : [],
+  );
 const prior = (name) =>
   (requested || selectedIds || changedFrom) && existsSync(join(output, name))
     ? JSON.parse(readFileSync(join(output, name), 'utf8')).filter(
@@ -261,9 +269,7 @@ try {
         );
         paragraphs.push({ id, lang, ink });
       }
-      const boxes = catalog.slides[id][lang].elements.filter(
-        (element) => element.content?.paragraphs,
-      );
+      const boxes = textElements(catalog.slides[id][lang].elements);
       if (lines.length !== boxes.length)
         throw new Error(`${id}/${lang}: text measurement count differs`);
       lines.forEach((line, at) => {

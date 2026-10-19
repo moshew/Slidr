@@ -77,16 +77,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Herşey"
-        ],
-        [
-          "bir durumda"
-        ]
-      ]
-    },
+    "Her şey tek\nbir durumda",
     {
       "paragraphs": [
         [
@@ -158,16 +149,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Gömülü sistemler"
-        ],
-        [
-          "mühendis"
-        ]
-      ]
-    },
+    "Gömülü sistem\nmühendisi",
     {
       "paragraphs": [
         [
@@ -182,16 +164,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Bilgisayar görüşü"
-        ],
-        [
-          "araştırmacı"
-        ]
-      ]
-    },
+    "Bilgisayarla görme\naraştırmacısı",
     {
       "paragraphs": [
         [
@@ -206,16 +179,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Saha testi"
-        ],
-        [
-          "mühendis"
-        ]
-      ]
-    },
+    "Saha test\nmühendisi",
     {
       "paragraphs": [
         [
@@ -244,29 +208,8 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Gel inşa et"
-        ],
-        [
-          "ne korur"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Laboratuvar, saha ve müşteriler"
-        ],
-        [
-          "aynı hafta içinde."
-        ],
-        [
-          "Karar veren mühendisler."
-        ]
-      ]
-    },
+    "Gelin, koruyanı\ninşa edin",
+    "Laboratuvar, saha ve\nmüşteriler aynı hafta içinde.\nKarar veren mühendisler.",
     {
       "paragraphs": [
         [
@@ -407,19 +350,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Küçücük bir uydu,"
-        ],
-        [
-          "yeni bir görüntü"
-        ],
-        [
-          "her 90 dakikada bir"
-        ]
-      ]
-    },
+    "Minik bir uydu,\nher 90 dakikada\nbir yeni görüntü",
     {
       "paragraphs": [
         [
@@ -495,19 +426,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Ölçülen uyku, kalp ve dinlenme"
-        ],
-        [
-          "bütün gün ve gece. Ekran yok, vızıltı yok,"
-        ],
-        [
-          "her gece şarj olmuyor."
-        ]
-      ]
-    },
+    "Uyku, kalp ve iyileşme, tüm gün ve\ngece boyunca ölçülür. Ekran yok,\nvızıltı yok, her gece şarj olmuyor.",
     {
       "paragraphs": [
         [
@@ -579,21 +498,12 @@
           "İşletmeniz"
         ],
         [
-          "bir ",
-          "bakış"
+          "tek ",
+          "bakışta"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Satış, stok ve pazarlama bir arada"
-        ],
-        [
-          "canlı kontrol paneli. On dakika içinde hazır."
-        ]
-      ]
-    },
+    "Tek bir canlı kontrol panelinde satış,\nstok ve pazarlama. On dakika içinde hazır.",
     {
       "paragraphs": [
         [
@@ -622,16 +532,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "14 gün,"
-        ],
-        [
-          "karta gerek yok"
-        ]
-      ]
-    }
+    "14 gün, karta\ngerek yok"
   ],
   "m-integrations": [
     {
@@ -683,16 +584,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Aletlere takılır"
-        ],
-        [
-          "zaten kullanıyorsun"
-        ]
-      ]
-    },
+    "Halihazırda kullandığınız\naraçlara takılır",
     {
       "paragraphs": [
         [
@@ -740,16 +632,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Nova'yı şekillendirmek isteyen takımlara 500 koltuk"
-        ],
-        [
-          "ilk olarak ürün ekibimizle haftalık bir görüşme yaparak."
-        ]
-      ]
-    },
+    "Ürün ekibimizle haftalık görüşme yaparak Nova'yı ilk\nönce şekillendirmek isteyen ekipler için 500 koltuk.",
     {
       "paragraphs": [
         [
@@ -932,16 +815,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Yeterince hafif"
-        ],
-        [
-          "üst kata taşımak"
-        ]
-      ]
-    },
+    "Üst kata taşıyabilecek\nkadar hafif",
     {
       "paragraphs": [
         [
@@ -1052,16 +926,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Halo ne zaman uyandığınızı, ayrıldığınızı ve eve döndüğünüzü öğrenir."
-        ],
-        [
-          "ve yalnızca önemli olduğunda ısınır."
-        ]
-      ]
-    },
+    "Halo ne zaman uyandığınızı, evden çıktığınızı ve eve\ngeldiğinizi öğrenir ve yalnızca önemli olduğunda ısınır.",
     {
       "paragraphs": [
         [
@@ -1109,36 +974,9 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Basit kelimelerle sorun. Yanıtları alın,"
-        ],
-        [
-          "saniyeler içinde grafikler ve sonraki adımlar."
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Hangi bölge en hızlı büyüdü"
-        ],
-        [
-          "son çeyrek?"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Kuzey, tekrarlanan siparişlerin öncülüğünde %34 büyüdü."
-        ],
-        [
-          "İşte aya göre dağılım:"
-        ]
-      ]
-    },
+    "Basit kelimelerle sorun. Yanıtlara, grafiklere\nve sonraki adımlara saniyeler içinde ulaşın.",
+    "Geçtiğimiz çeyrekte hangi\nbölge en hızlı büyüdü?",
+    "Kuzey, tekrarlanan siparişlerin öncülüğünde\n%34 büyüdü. İşte aya göre dağılım:",
     {
       "paragraphs": [
         [
@@ -1297,19 +1135,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Çalışmanızı odaya yayın:"
-        ],
-        [
-          "modeller, aramalar ve notlar, hepsi"
-        ],
-        [
-          "ulaşılabilecek mesafede."
-        ]
-      ]
-    },
+    "Çalışmanızı odaya yayın:\nmodeller, çağrılar ve\nnotlar elinizin altında.",
     {
       "paragraphs": [
         [
@@ -1343,29 +1169,8 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "ALT 18.000 FT"
-        ],
-        [
-          "SPD 92 KN"
-        ],
-        [
-          "SDG 274°"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Sınır devriyesi için uzun ömürlü bir ISR drone,"
-        ],
-        [
-          "denizcilik nöbeti ve afet müdahalesi."
-        ]
-      ]
-    },
+    "ALT 18.000\nFT SPD 92\nKN HDG 274°",
+    "Sınır devriyesi, deniz gözlemi ve afet\nmüdahalesi için uzun ömürlü bir ISR drone.",
     {
       "paragraphs": [
         [
@@ -1387,16 +1192,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "BAĞLANTI SATCOM"
-        ],
-        [
-          "CAM EO/IR"
-        ]
-      ]
-    }
+    "BAĞLANTI SATCOM\nKAMERA EO/IR"
   ],
   "m-radar": [
     {
@@ -1416,16 +1212,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "15 dakikada devreye giren ve gören bir AESA radarı"
-        ],
-        [
-          "uçaklar, dronlar ve roketler tek bir resimde."
-        ]
-      ]
-    },
+    "15 dakika içinde devreye giren ve uçakları, insansız hava\naraçlarını ve roketleri tek bir fotoğrafta gören bir AESA radarı.",
     {
       "paragraphs": [
         [
@@ -1550,16 +1337,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Arazi, hava durumu ve her takım bir arada"
-        ],
-        [
-          "canlı harita. Arama ilerledikçe rotalar güncellenir."
-        ]
-      ]
-    },
+    "Arazi, hava durumu ve her takım tek bir canlı\nharitada. Arama ilerledikçe rotalar güncellenir.",
     {
       "paragraphs": [
         [
@@ -1624,24 +1402,12 @@
           "Bir takımyıldız"
         ],
         [
-          "arasında ",
+          "tam ",
           "48 göz"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Herhangi bir görüntüyü görüntüleyen radar uyduları"
-        ],
-        [
-          "Her 20 dakikada bir Dünya'ya bir noktaya gelin,"
-        ],
-        [
-          "gündüz veya gece, bulutun içinden."
-        ]
-      ]
-    },
+    "Bulut aracılığıyla, gece veya gündüz, her\n20 dakikada bir Dünya üzerindeki herhangi\nbir noktayı görüntüleyen radar uyduları.",
     {
       "paragraphs": [
         [
@@ -1703,16 +1469,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Hava, kara, deniz ve siber tek bir canlıda birleşti"
-        ],
-        [
-          "Her komutan için operasyon resmi."
-        ]
-      ]
-    },
+    "Hava, kara, deniz ve siber, her komutan için tek\nbir canlı operasyon görüntüsünde birleştirildi.",
     {
       "paragraphs": [
         [
@@ -1970,21 +1727,12 @@
           "Katmanlı savunma"
         ],
         [
-          "karşı ",
-          "düşman dronları"
+          "düşman dronlarına ",
+          "karşı"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Radar, RF algılama ve stabilize edilmiş bir kamera"
-        ],
-        [
-          "Gökyüzündeki her drone'u 3 saniye içinde sınıflandırın."
-        ]
-      ]
-    },
+    "Gökyüzündeki her drone'u 3 saniye içinde\nsınıflandıran radar, RF algılama ve stabilize kamera.",
     {
       "paragraphs": [
         [
@@ -2011,16 +1759,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Dönen Gen 3+ görüntü tüpleri"
-        ],
-        [
-          "yıldız ışığını net ve keskin bir resme dönüştürür."
-        ]
-      ]
-    },
+    "Yıldız ışığını net, keskin bir resme\ndönüştüren Gen 3+ görüntü tüpleri.",
     {
       "paragraphs": [
         [
@@ -2103,19 +1842,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Baz istasyonları çöktüğünde ekip"
-        ],
-        [
-          "radyolar kendi kendilerine bağlanır ve geçer"
-        ],
-        [
-          "tepeden yapılan her çağrı."
-        ]
-      ]
-    },
+    "Baz istasyonları devre dışı kaldığında\nekibin telsizleri kendi başlarına bağlantı\nkuruyor ve her çağrıyı tepeden aktarıyor.",
     {
       "paragraphs": [
         [
@@ -2191,16 +1918,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Yağmura, kuma ve düşmeye dayanıklı 10 inçlik tablet"
-        ],
-        [
-          "betonun üzerine çıkar ve tam bir vardiya sürer."
-        ]
-      ]
-    },
+    "Yağmura, kuma ve betona düşmeye dayanıklı ve tüm\nvardiya boyunca dayanabilen 10 inçlik bir tablet.",
     {
       "paragraphs": [
         [
@@ -2267,16 +1985,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Kurtarma dronları için termal kamera. Bulur"
-        ],
-        [
-          "1,2 km uzakta ağaçların altında veya dumanın içinde bir kişi."
-        ]
-      ]
-    },
+    "Kurtarma dronları için termal kamera. 1,2 km uzakta\nağaçların altında veya dumanın içinde bir kişiyi buluyor.",
     {
       "paragraphs": [
         [
@@ -2374,19 +2083,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Yedi element kör noktalarını doğruya çeviriyor"
-        ],
-        [
-          "Karıştırıcılar, yani gemiler, uçaklar ve elektrik şebekeleri"
-        ],
-        [
-          "hem konumlarını hem de saatlerini koruyun."
-        ]
-      ]
-    },
+    "Yedi element kör noktalarını sinyal bozuculara\nçeviriyor, böylece gemiler, uçaklar ve elektrik\nşebekeleri hem konumlarını hem de saatlerini koruyor.",
     {
       "paragraphs": [
         [
@@ -2465,26 +2162,17 @@
     {
       "paragraphs": [
         [
-          "Saldırı",
-          " bir şehir."
+          "Bir şehre",
+          " saldırın."
         ],
         [
-          "Öğren ",
-          "savunmak",
-          " bir."
+          "Onu ",
+          "savunmayı",
+          " öğrenin."
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Bir şehrin su ve elektrik şebekelerinin tam kopyasında 48 saat."
-        ],
-        [
-          "Hiç uyumayan kırmızı bir takıma karşı takım başına beş defans oyuncusu."
-        ]
-      ]
-    },
+    "Bir şehrin su ve elektrik şebekelerinin tam kopyasında 48 saat. Hiç\nuyumayan kırmızı bir takıma karşı takım başına beş defans oyuncusu.",
     {
       "paragraphs": [
         [
@@ -2560,19 +2248,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Üç küçük düğüm bir ağı paylaşıyor,"
-        ],
-        [
-          "yani uzaktaki yatak odası da aynı oluyor"
-        ],
-        [
-          "yönlendirici olarak hız."
-        ]
-      ]
-    },
+    "Üç küçük düğüm bir ağı paylaşır,\nböylece uzaktaki yatak odası\nyönlendiriciyle aynı hızı alır.",
     {
       "paragraphs": [
         [
@@ -2622,16 +2298,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Sahneden canlı yayın"
-        ],
-        [
-          "19.1.2027  ·  19:00"
-        ]
-      ]
-    }
+    "Sahneden canlı yayın\n19.1.2027 · 19:00"
   ],
   "m-homebattery": [
     {
@@ -2651,16 +2318,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Panellerinizin öğle saatlerinde ne ürettiğini saklar"
-        ],
-        [
-          "ve gece boyunca evi yönetiyor."
-        ]
-      ]
-    },
+    "Panellerinizin öğlen ürettiği şeyleri\ndepolar ve gece boyunca evi yönetir.",
     {
       "paragraphs": [
         [
@@ -2668,16 +2326,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "hala saklanıyor"
-        ],
-        [
-          "21:40'da"
-        ]
-      ]
-    },
+    "21:40'ta hala\nsaklanıyor",
     {
       "paragraphs": [
         [
@@ -2813,16 +2462,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Kurtarma helikopteri ekipleri için tam hareketli bir kokpit:"
-        ],
-        [
-          "gece vinçleri, deniz kurtarmaları ve motor arızaları."
-        ]
-      ]
-    },
+    "Kurtarma helikopteri ekipleri için tam hareketli bir kokpit:\ngece vinçleri, deniz kurtarmaları ve motor arızaları.",
     {
       "paragraphs": [
         [
@@ -2905,16 +2545,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Oturum açmak için dokunun. Yazacak bir şey yok."
-        ],
-        [
-          "sahte bir sayfanın çalabileceği hiçbir şey yok."
-        ]
-      ]
-    },
+    "Oturum açmak için dokunun. Yazılacak bir şey yok,\nsahte bir sayfanın çalınması için hiçbir şey yok.",
     {
       "paragraphs": [
         [
@@ -2925,7 +2556,7 @@
     {
       "paragraphs": [
         [
-          "MÜHÜR K2"
+          "SEAL K2"
         ]
       ]
     },
@@ -3011,16 +2642,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Sessiz contalı, yumuşak contalı alüminyum levha"
-        ],
-        [
-          "dokunsal anahtarlar. Tüm fikirler, hiçbir gürültü."
-        ]
-      ]
-    },
+    "Sessiz dokunsal anahtarlara sahip, yumuşak contalı\nalüminyum panel. Tüm fikirler, hiçbir gürültü.",
     {
       "paragraphs": [
         [

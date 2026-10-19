@@ -14,16 +14,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Systèmes embarqués"
-        ],
-        [
-          "ingénieur"
-        ]
-      ]
-    },
+    "Ingénieur\nsystèmes embarqués",
     {
       "paragraphs": [
         [
@@ -38,16 +29,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Vision par ordinateur"
-        ],
-        [
-          "chercheur"
-        ]
-      ]
-    },
+    "Chercheur en vision\npar ordinateur",
     {
       "paragraphs": [
         [
@@ -62,16 +44,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Essai sur le terrain"
-        ],
-        [
-          "ingénieur"
-        ]
-      ]
-    },
+    "Ingénieur d'essais\nsur le terrain",
     {
       "paragraphs": [
         [
@@ -100,29 +73,8 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Venez construire"
-        ],
-        [
-          "ce qui protège"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Laboratoire, terrain et clients"
-        ],
-        [
-          "dans la même semaine."
-        ],
-        [
-          "Des ingénieurs qui décident."
-        ]
-      ]
-    },
+    "Venez construire\nce qui protège",
+    "Laboratoire, terrain et\nclients dans la même semaine.\nDes ingénieurs qui décident.",
     {
       "paragraphs": [
         [
@@ -223,16 +175,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Tout"
-        ],
-        [
-          "dans un cas"
-        ]
-      ]
-    },
+    "Tout dans\nun seul étui",
     {
       "paragraphs": [
         [
@@ -340,19 +283,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Un petit satellite,"
-        ],
-        [
-          "une nouvelle image"
-        ],
-        [
-          "toutes les 90 minutes"
-        ]
-      ]
-    },
+    "Un petit satellite,\nune nouvelle image\ntoutes les 90 minutes",
     {
       "paragraphs": [
         [
@@ -495,19 +426,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Sommeil, cœur et récupération, mesurés"
-        ],
-        [
-          "toute la journée et la nuit. Pas d'écran, pas de buzz,"
-        ],
-        [
-          "pas de recharge tous les soirs."
-        ]
-      ]
-    },
+    "Sommeil, cœur et récupération, mesurés toute\nla journée et la nuit. Pas d'écran, pas\nde buzz, pas de recharge tous les soirs.",
     {
       "paragraphs": [
         [
@@ -576,24 +495,15 @@
     {
       "paragraphs": [
         [
-          "Votre entreprise"
+          "Votre activité"
         ],
         [
-          "à un ",
-          "coup d'oeil"
+          "en un ",
+          "coup d’œil"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Ventes, stocks et marketing en un seul appareil"
-        ],
-        [
-          "tableau de bord en direct. Prêt en dix minutes."
-        ]
-      ]
-    },
+    "Ventes, stocks et marketing dans un seul\ntableau de bord en direct. Prêt en dix minutes.",
     {
       "paragraphs": [
         [
@@ -622,16 +532,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "14 jours,"
-        ],
-        [
-          "aucune carte n'est nécessaire"
-        ]
-      ]
-    }
+    "14 jours, aucune\ncarte nécessaire"
   ],
   "m-integrations": [
     {
@@ -683,16 +584,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Se branche sur les outils"
-        ],
-        [
-          "tu utilises déjà"
-        ]
-      ]
-    },
+    "Se connecte aux outils\nque vous utilisez déjà",
     {
       "paragraphs": [
         [
@@ -719,7 +611,7 @@
     {
       "paragraphs": [
         [
-          "NOUVELLE"
+          "NOVA"
         ]
       ]
     },
@@ -740,16 +632,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "500 places pour les équipes qui veulent façonner Nova"
-        ],
-        [
-          "tout d’abord, avec un appel hebdomadaire avec notre équipe produit."
-        ]
-      ]
-    },
+    "500 sièges pour les équipes qui souhaitent façonner Nova en\npremier, avec un appel hebdomadaire avec notre équipe produit.",
     {
       "paragraphs": [
         [
@@ -828,7 +711,7 @@
     {
       "paragraphs": [
         [
-          "SOC2"
+          "SOC 2"
         ]
       ]
     },
@@ -842,7 +725,7 @@
     {
       "paragraphs": [
         [
-          "OIN"
+          "ISO"
         ]
       ]
     },
@@ -856,7 +739,7 @@
     {
       "paragraphs": [
         [
-          "RGPD"
+          "GDPR"
         ]
       ]
     },
@@ -932,16 +815,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Assez léger"
-        ],
-        [
-          "porter à l'étage"
-        ]
-      ]
-    },
+    "Assez léger pour être\ntransporté à l'étage",
     {
       "paragraphs": [
         [
@@ -1038,36 +912,9 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Demandez avec des mots simples. Obtenez des réponses,"
-        ],
-        [
-          "graphiques et prochaines étapes en quelques secondes."
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Quelle région a connu la croissance la plus rapide"
-        ],
-        [
-          "le dernier trimestre ?"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Le Nord a enregistré une croissance de 34 %, tirée par les commandes répétées."
-        ],
-        [
-          "Voici la répartition par mois :"
-        ]
-      ]
-    },
+    "Demandez avec des mots simples. Obtenez des réponses, des\ngraphiques et les prochaines étapes en quelques secondes.",
+    "Quelle région a connu la croissance\nla plus rapide au dernier trimestre ?",
+    "Le Nord a enregistré une croissance de 34 %, tirée par\nles commandes répétées. Voici la répartition par mois :",
     {
       "paragraphs": [
         [
@@ -1143,16 +990,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Halo apprend quand vous vous réveillez, partez et rentrez à la maison,"
-        ],
-        [
-          "et ne chauffe que lorsque cela compte."
-        ]
-      ]
-    },
+    "Halo apprend quand vous vous réveillez, partez et rentrez\nchez vous, et chauffe uniquement lorsque cela compte.",
     {
       "paragraphs": [
         [
@@ -1297,19 +1135,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Répartissez votre travail dans la pièce :"
-        ],
-        [
-          "modèles, appels et notes, tous"
-        ],
-        [
-          "à portée de main."
-        ]
-      ]
-    },
+    "Répartissez votre travail dans\ntoute la pièce : modèles, appels\net notes, le tout à portée de main.",
     {
       "paragraphs": [
         [
@@ -1350,16 +1176,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Un radar AESA qui se déploie en 15 minutes et voit"
-        ],
-        [
-          "avions, drones et fusées sur une seule image."
-        ]
-      ]
-    },
+    "Un radar AESA qui se déploie en 15 minutes et voit les\navions, les drones et les fusées sur une seule image.",
     {
       "paragraphs": [
         [
@@ -1428,29 +1245,8 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "ALT 18 000 PI"
-        ],
-        [
-          "SPD 92KN"
-        ],
-        [
-          "HDG 274°"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Un drone ISR longue endurance pour la patrouille aux frontières,"
-        ],
-        [
-          "veille maritime et réponse aux catastrophes."
-        ]
-      ]
-    },
+    "ALT 18 000\nFT SPD 92\nKN HDG 274°",
+    "Un drone ISR longue endurance pour la patrouille des frontières,\nla surveillance maritime et la réponse aux catastrophes.",
     {
       "paragraphs": [
         [
@@ -1472,16 +1268,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "LIEN SATCOM"
-        ],
-        [
-          "CAM EO/IR"
-        ]
-      ]
-    }
+    "LIEN SATCOM\nCAM EO/IR"
   ],
   "m-satellite": [
     {
@@ -1502,19 +1289,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Des satellites radar qui imagent n'importe quel"
-        ],
-        [
-          "point sur Terre toutes les 20 minutes,"
-        ],
-        [
-          "de jour comme de nuit, à travers les nuages."
-        ]
-      ]
-    },
+    "Satellites radar qui imagent n'importe quel\npoint de la Terre toutes les 20 minutes, de\njour comme de nuit, à travers les nuages.",
     {
       "paragraphs": [
         [
@@ -1625,16 +1400,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Terrain, météo et toutes les équipes réunies"
-        ],
-        [
-          "carte en direct. Les itinéraires sont mis à jour au fur et à mesure de la recherche."
-        ]
-      ]
-    },
+    "Terrain, météo et chaque équipe sur une seule carte en direct. Les\nitinéraires sont mis à jour au fur et à mesure de la recherche.",
     {
       "paragraphs": [
         [
@@ -1703,16 +1469,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Air, terre, mer et cyber fusionnés en un seul live"
-        ],
-        [
-          "tableau opérationnel, pour chaque commandant."
-        ]
-      ]
-    },
+    "Air, terre, mer et cyber fusionnés en une seule image\nopérationnelle en direct, pour chaque commandant.",
     {
       "paragraphs": [
         [
@@ -1967,24 +1724,15 @@
     {
       "paragraphs": [
         [
-          "Défense en couches"
+          "Défense multicouche"
         ],
         [
-          "contre ",
+          "contre les ",
           "drones hostiles"
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Radar, détection RF et caméra stabilisée qui"
-        ],
-        [
-          "classez chaque drone dans le ciel en 3 secondes."
-        ]
-      ]
-    },
+    "Radar, détection RF et caméra stabilisée qui\nclassent chaque drone dans le ciel en 3 secondes.",
     {
       "paragraphs": [
         [
@@ -2011,16 +1759,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Tubes à image Gen 3+ qui tournent"
-        ],
-        [
-          "la lumière des étoiles en une image claire et nette."
-        ]
-      ]
-    },
+    "Tubes image Gen 3+ qui transforment la lumière\ndes étoiles en une image claire et nette.",
     {
       "paragraphs": [
         [
@@ -2082,16 +1821,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Une tablette de 10 pouces qui survit à la pluie, au sable et à une goutte"
-        ],
-        [
-          "sur béton et dure un quart de travail complet."
-        ]
-      ]
-    },
+    "Une tablette de 10 pouces qui survit à la pluie, au sable et à\nune chute sur le béton, et qui dure toute une journée de travail.",
     {
       "paragraphs": [
         [
@@ -2158,19 +1888,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Sept éléments tournent leurs angles morts vers"
-        ],
-        [
-          "brouilleurs, donc navires, avions et réseaux électriques"
-        ],
-        [
-          "conservent à la fois leur position et leur horloge."
-        ]
-      ]
-    },
+    "Sept éléments tournent leurs angles morts vers les\nbrouilleurs, afin que les navires, les avions et les réseaux\nélectriques conservent leur position et leur horloge.",
     {
       "paragraphs": [
         [
@@ -2253,16 +1971,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Une caméra thermique pour les drones de sauvetage. Il trouve"
-        ],
-        [
-          "une personne sous les arbres ou en fumée, à 1,2 km."
-        ]
-      ]
-    },
+    "Une caméra thermique pour les drones de sauvetage. Il trouve\nune personne sous les arbres ou dans la fumée, à 1,2 km.",
     {
       "paragraphs": [
         [
@@ -2381,19 +2090,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Lorsque les tours de téléphonie cellulaire sont en panne, l'équipe"
-        ],
-        [
-          "les radios se connectent toutes seules et passent"
-        ],
-        [
-          "chaque appel sur la crête."
-        ]
-      ]
-    },
+    "Lorsque les tours de téléphonie cellulaire sont\nen panne, les radios de l’équipe se connectent\nd’elles-mêmes et transmettent chaque appel via la crête.",
     {
       "paragraphs": [
         [
@@ -2469,16 +2166,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Stocke ce que font vos panneaux à midi"
-        ],
-        [
-          "et dirige la maison toute la nuit."
-        ]
-      ]
-    },
+    "Stocke ce que font vos panneaux à\nmidi et gère la maison toute la nuit.",
     {
       "paragraphs": [
         [
@@ -2486,16 +2174,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "toujours stocké"
-        ],
-        [
-          "à 21h40"
-        ]
-      ]
-    },
+    "toujours\nstocké à 21h40",
     {
       "paragraphs": [
         [
@@ -2631,16 +2310,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Un cockpit entièrement mobile pour les équipages d'hélicoptères de sauvetage :"
-        ],
-        [
-          "levages de nuit, sauvetages en mer et pannes de moteur."
-        ]
-      ]
-    },
+    "Un cockpit entièrement mobile pour les équipages d'hélicoptères de\nsauvetage : levages de nuit, sauvetages en mer et pannes moteur.",
     {
       "paragraphs": [
         [
@@ -2758,19 +2428,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Trois petits nœuds partagent un réseau,"
-        ],
-        [
-          "donc la chambre du fond est la même"
-        ],
-        [
-          "vitesse que le routeur."
-        ]
-      ]
-    },
+    "Trois petits nœuds partagent un réseau,\nde sorte que la chambre la plus éloignée\nbénéficie de la même vitesse que le routeur.",
     {
       "paragraphs": [
         [
@@ -2820,16 +2478,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "En direct de la scène"
-        ],
-        [
-          "19.1.2027  ·  19:00"
-        ]
-      ]
-    }
+    "En direct de la scène\n19.1.2027 · 19h00"
   ],
   "m-cyberrange": [
     {
@@ -2845,26 +2494,17 @@
     {
       "paragraphs": [
         [
-          "Attaque",
+          "Attaquez",
           " une ville."
         ],
         [
-          "Apprenez à ",
+          "Apprenez à la ",
           "défendre",
-          " un."
+          "."
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "48 heures sur une réplique complète des réseaux d’eau et d’électricité d’une ville."
-        ],
-        [
-          "Cinq défenseurs par équipe, contre une équipe rouge qui ne dort jamais."
-        ]
-      ]
-    },
+    "48 heures sur une réplique complète des réseaux d’eau et d’électricité d’une\nville. Cinq défenseurs par équipe, contre une équipe rouge qui ne dort jamais.",
     {
       "paragraphs": [
         [
@@ -2898,16 +2538,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Une planche en aluminium sur joints souples, avec silencieux"
-        ],
-        [
-          "interrupteurs tactiles. Toutes les idées, aucun bruit."
-        ]
-      ]
-    },
+    "Une carte en aluminium sur joints souples, avec des\ninterrupteurs tactiles silencieux. Toutes les idées, aucun bruit.",
     {
       "paragraphs": [
         [
@@ -2983,16 +2614,7 @@
         ]
       ]
     },
-    {
-      "paragraphs": [
-        [
-          "Appuyez pour vous connecter. Rien à saisir,"
-        ],
-        [
-          "rien à voler pour une fausse page."
-        ]
-      ]
-    },
+    "Appuyez pour vous connecter. Rien à\ntaper, rien à voler pour une fausse page.",
     {
       "paragraphs": [
         [
@@ -3003,7 +2625,7 @@
     {
       "paragraphs": [
         [
-          "JOINT K2"
+          "SEAL K2"
         ]
       ]
     },
