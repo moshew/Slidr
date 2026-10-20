@@ -392,6 +392,37 @@ test('the dialogs: the shortcut map and its editor, export, a question', async (
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('export-dialog')).toBeHidden();
 
+  // PowerPoint (ADR-108): the export's choices and its report, and the report of an import.
+  await page.getByTestId('file-menu-trigger').click();
+  await page.getByTestId('file-export-pptx').click();
+  const pptx = page.getByTestId('pptx-export-dialog');
+  await expect(pptx).toBeVisible();
+  await survey.audit('the PowerPoint export dialog');
+  await survey.popups('[data-testid="pptx-export-dialog"]', 'the PowerPoint export dialog');
+  await page.getByTestId('pptx-export-run').click();
+  await expect(pptx).toHaveAttribute('data-phase', 'done');
+  await survey.audit('the PowerPoint export report');
+  await page.keyboard.press('Escape');
+  await expect(pptx).toBeHidden();
+  await page.evaluate(async (path) => {
+    const open = (await import(/* @vite-ignore */ path)) as {
+      openImportReport: (report: unknown) => void;
+    };
+    open.openImportReport({
+      name: 'Quarterly review.pptx',
+      slides: 6,
+      warnings: [
+        { code: 'smartart', slide: 3 },
+        { code: 'chart-approximated', slide: 4, detail: 'bubble' },
+        { code: 'fonts', detail: 'Calibri, Cambria' },
+      ],
+    });
+  }, '/src/pptx/open.tsx');
+  await expect(page.getByTestId('pptx-import-report')).toBeVisible();
+  await survey.audit('the report of a PowerPoint import');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pptx-import-report')).toBeHidden();
+
   // A question of the app, as "unsaved changes" asks it.
   await page.evaluate(async (path) => {
     const dialogs = (await import(/* @vite-ignore */ path)) as {
@@ -411,7 +442,7 @@ test('the dialogs: the shortcut map and its editor, export, a question', async (
   await expect(page.getByRole('dialog')).toBeVisible();
   await survey.audit('a question of the app');
   await page.keyboard.press('Escape');
-  conclude(survey, 'dialogs', 6);
+  conclude(survey, 'dialogs', 9);
 });
 
 test('the menus of the Stage for every kind of selection, and the menu of the Filmstrip', async ({

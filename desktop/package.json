@@ -107,6 +107,7 @@
     "@slidr/lint": "workspace:*",
     "@slidr/media-library": "workspace:*",
     "@slidr/model": "workspace:*",
+    "@slidr/pptx": "workspace:*",
     "@slidr/prompts": "workspace:*",
     "@slidr/renderer": "workspace:*",
     "@slidr/runtime": "workspace:*",
