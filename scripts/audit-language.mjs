@@ -19,7 +19,7 @@ const groups = [
   ['Translations', /(?:^|\/)i18n\/|\/messages\.ts$/],
   [
     'Multilingual presentation content',
-    /^(?:packages\/templates\/src\/authoring\/(?:.*\.(?:ts|html)|tools\/merge-into-library\.mjs)|apps\/desktop\/scripts\/(?:frames-magnets\/.*|generate-frames-catalog\.mjs|export-templates\.mjs)|apps\/website\/assets\/showcase\.js)$/,
+    /^(?:packages\/templates\/src\/authoring\/(?:.*\.(?:ts|html)|tools\/merge-into-library\.mjs)|apps\/desktop\/scripts\/(?:frames-magnets\/.*|generate-frames-catalog\.mjs|export-templates\.mjs))$/,
   ],
   [
     'Language, RTL and UI test data',
@@ -44,7 +44,6 @@ const literals = new Map([
   ['apps/desktop/src/media/icons/search.ts', 'Hebrew normalization and inflection rules'],
   ['apps/desktop/src/find/search.ts', 'Unicode case-folding examples'],
   ['apps/desktop/src/stage/keys.ts', 'Non-English keyboard layout example'],
-  ['apps/website/assets/site.js', 'Native language names for the language picker'],
   ['management/web/src/design.ts', 'Reject placeholder text in every supported language'],
   ['management/web/src/library/Files.tsx', 'Hebrew glyph coverage preview'],
   ['management/web/src/library/Fonts.tsx', 'Font samples in each supported script'],
