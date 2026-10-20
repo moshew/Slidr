@@ -23,7 +23,7 @@ export interface DesignCatalog {
 }
 
 /**
- * The designs the management tool publishes, `elements/designs/managed.json`, apart from the
+ * The designs Slidr Studio publishes, `elements/designs/managed.json`, apart from the
  * authored catalog. Their ids start with `m-`; the file names them and their groups, and holds
  * the pixel sizes of their pictures, which `images/designs/sizes.json` does not.
  */

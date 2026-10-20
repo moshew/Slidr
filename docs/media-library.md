@@ -10,7 +10,7 @@ images/templates/*.webp        the photographs of the built-in templates
 images/designs/                the pictures of the ready-made slides, and sizes.json
 images/frames/                 the event magnets as the Elements panel shows them, and index.json
 elements/designs/index.json    the ready-made slides of Elements
-elements/designs/managed.json  the ready-made slides the management tool makes
+elements/designs/managed.json  the ready-made slides Slidr Studio makes
 elements/cards/catalog.json    the card sets
 elements/catalogs/             shapes, graphics, frames and emoji, with their notices
 elements/art/                  the drawings of the art sets, with their notices
@@ -110,9 +110,9 @@ Then upload `../my-media-site` to the server. A copy changed as above is staged 
 
 On a machine that ran Slidr before, the manifest of the old address stands until the new one is read, when the app starts online. What is cached is kept by its hash, so a file both libraries have is not fetched again.
 
-## Designs made by the management tool
+## Designs made by Slidr Studio
 
-The management tool (`management/`) publishes the designs it makes into a catalog of their own, `elements/designs/managed.json`, so that it never writes over the authored `index.json`. Their ids start with `m-`. Their pictures are `images/designs/<id>.webp` (and `<id>-bg.webp`) like the others, but their pixel sizes and their names in both languages are in `managed.json`, not in `sizes.json` or the app's messages.
+Slidr Studio ([slidrhq/studio](https://github.com/slidrhq/studio)) publishes the designs it makes into a catalog of their own, `elements/designs/managed.json`, so that it never writes over the authored `index.json`. Their ids start with `m-`. Their pictures are `images/designs/<id>.webp` (and `<id>-bg.webp`) like the others, but their pixel sizes and their names in both languages are in `managed.json`, not in `sizes.json` or the app's messages.
 
 A design's slide, and a template's sample, is written in Hebrew and in English, and may be written in any other language of `packages/model/src/languages.ts` (`slides[id].<code>`, `samples[template].<code>`). A deck gets the one in its own language, else the English one ([ADR-098](adr/ADR-098-content-in-every-language.md)). The fonts catalog tags each family with the scripts it ships (`he`, `latin`, `arabic`, `cyrillic`, `vietnamese`, `devanagari`, `japanese`, `korean`, `chinese`), the ones it was made for (`for`), and, for each script it lacks, its `counterparts`: the family of those letters closest to it in character. A deck's font lists offer the families of its language and of English (`familyForDeck`), and a design's text in another language is set in its source's family or that family's counterpart (`apps/desktop/scripts/design-fonts.mjs`, [ADR-105](adr/ADR-105-fonts-of-every-language.md)).
 

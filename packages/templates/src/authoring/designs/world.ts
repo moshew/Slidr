@@ -3,7 +3,7 @@
 // `tourism`). Each slide is drawn once, for left-to-right languages, and mirrored for Hebrew and
 // Arabic, its picture turned round with it; every run names a family with the letters of its
 // language (Japanese, Korean and Chinese fall back to the system's faces behind it). The pictures
-// were made for them with the Codex CLI, as the management studio makes its pictures.
+// were made for them with the Codex CLI, as Slidr Studio makes its pictures.
 import {
   CONTENT_LANGUAGES,
   languageDir,

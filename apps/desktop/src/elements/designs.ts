@@ -19,7 +19,7 @@ import { MANAGED_DESIGNS } from './managedDesigns';
 
 /**
  * The ready-made slides: the catalog of the media library (`elements/designs/index.json`), and
- * after it the designs the management tool publishes (`elements/designs/managed.json`). Slide
+ * after it the designs Slidr Studio publishes (`elements/designs/managed.json`). Slide
  * content is installed in media; this module only inserts it into a deck. Without the catalogs
  * the gallery has no designs to offer.
  */

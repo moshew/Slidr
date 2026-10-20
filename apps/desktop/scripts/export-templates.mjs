@@ -7,7 +7,7 @@
 // first eighteen, in `Slidr-media/archive/templates-source/`. The catalog holds what they draw:
 // each template with the standard text layout and its Hebrew sample slides, and its sample deck
 // as content in Hebrew and in English, and in any other language `<id>Samples` writes or the
-// catalog already holds (the management studio writes translations into the catalog itself): a
+// catalog already holds (Slidr Studio writes translations into the catalog itself): a
 // language the file does not write is kept, and checked against the layouts as they are now.
 //
 //   node scripts/export-templates.mjs <id> ...            write the templates into the catalog
@@ -179,8 +179,8 @@ try {
         return [lang, slides];
       }),
     );
-    // The other languages: those the file writes, else those the catalog holds (the management
-    // studio writes translations straight into it), so exporting a template again keeps them.
+    // The other languages: those the file writes, else those the catalog holds (Slidr Studio
+    // writes translations straight into it), so exporting a template again keeps them.
     const held = catalog.samples[id] ?? {};
     for (const lang of CONTENT_LANGUAGES) {
       if (lang === 'he' || lang === 'en') continue;
