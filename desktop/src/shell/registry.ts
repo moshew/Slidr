@@ -202,6 +202,8 @@ export type ToolAction =
   | 'present'
   | 'export'
   | 'import'
+  | 'exportPptx'
+  | 'importPptx'
   | 'deckProperties'
   | 'transition';
 

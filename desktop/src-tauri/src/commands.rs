@@ -170,8 +170,8 @@ fn header(request: &Request<'_>, name: &str) -> Result<Option<String>> {
 }
 
 /// `export_write_file`: writes an exported presentation to the place the user chose in the save
-/// dialog (WG9-T12). The body is the file's bytes, as in [`asset_import_bytes`]; the path travels
-/// percent-encoded in the header `x-file-path`.
+/// dialog (WG9-T12, ADR-108). The body is the file's bytes, as in [`asset_import_bytes`]; the
+/// path travels percent-encoded in the header `x-file-path`.
 #[tauri::command]
 pub async fn export_write_file(request: Request<'_>) -> Result<()> {
     let path = header(&request, "x-file-path")?
@@ -185,34 +185,81 @@ pub async fn export_write_file(request: Request<'_>) -> Result<()> {
     off_main(move || write_export(&path, &bytes)).await
 }
 
-/// The folder an exported file goes into. The path comes from the webview, so it is held to what
-/// an export is: an absolute path to an `.html` file. Anything else is refused.
-fn export_dir(path: &std::path::Path) -> Result<&std::path::Path> {
-    let html = path
-        .extension()
+/// What an export writes: a page of HTML, or a PowerPoint file.
+const EXPORTS: &[&str] = &["html", "htm", "pptx"];
+/// What the media of an export goes beside: a page of HTML. A PowerPoint file holds its own.
+const PAGES: &[&str] = &["html", "htm"];
+
+/// Whether a path names a file of one of the extensions, in any case.
+fn has_extension(path: &std::path::Path, extensions: &[&str]) -> bool {
+    path.extension()
         .and_then(|extension| extension.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case("html") || e.eq_ignore_ascii_case("htm"));
+        .is_some_and(|e| extensions.iter().any(|x| e.eq_ignore_ascii_case(x)))
+}
+
+/// The folder an exported file goes into. The path comes from the webview, so it is held to what
+/// an export is: an absolute path to a file of one of `extensions`. Anything else is refused.
+fn export_dir<'p>(path: &'p std::path::Path, extensions: &[&str]) -> Result<&'p std::path::Path> {
     path.parent()
-        .filter(|_| html && path.is_absolute())
+        .filter(|_| has_extension(path, extensions) && path.is_absolute())
         .ok_or_else(|| {
             AppError::invalid_input(format!(
-                "not an absolute path to an .html file: {}",
+                "not an absolute path to an {} file: {}",
+                extensions.join("/"),
                 path.display()
             ))
         })
 }
 
 /// Replaces the file at `path` with `bytes`, atomically. The path comes from the webview, so it
-/// is held to what an export is: an absolute path to an `.html` file.
+/// is held to what an export is: an absolute path to an `.html` or a `.pptx` file.
 fn write_export(path: &std::path::Path, bytes: &[u8]) -> Result<()> {
     use std::io::Write as _;
 
-    let dir = export_dir(path)?;
+    let dir = export_dir(path, EXPORTS)?;
     let temp = crate::storage::TempFile::new_in(dir).map_err(|e| AppError::path(path, &e))?;
     temp.file()
         .and_then(|mut file| file.write_all(bytes))
         .map_err(|e| AppError::io("write the exported file", &e))?;
     temp.persist(path).map_err(|e| AppError::path(path, &e))
+}
+
+/// The largest PowerPoint file [`pptx_read`] reads: the whole file goes to the webview, and a
+/// presentation larger than this is one of hours of video.
+const PPTX_LIMIT: u64 = 2 << 30;
+
+/// `pptx_read({ path })`: the bytes of a PowerPoint file the user chose to import (ADR-108). The
+/// answer is the raw bytes, not JSON. The path comes from the webview, so it is held to what an
+/// import is: an absolute path to a `.pptx` file.
+#[tauri::command]
+pub async fn pptx_read(path: PathBuf) -> Result<tauri::ipc::Response> {
+    off_main(move || read_pptx(&path))
+        .await
+        .map(tauri::ipc::Response::new)
+}
+
+fn read_pptx(path: &std::path::Path) -> Result<Vec<u8>> {
+    if !path.is_absolute() || !has_extension(path, &["pptx"]) {
+        return Err(AppError::invalid_input(format!(
+            "not an absolute path to a .pptx file: {}",
+            path.display()
+        )));
+    }
+    let meta = std::fs::metadata(path).map_err(|e| AppError::path(path, &e))?;
+    if !meta.is_file() {
+        return Err(AppError::invalid_input(format!(
+            "not a file: {}",
+            path.display()
+        )));
+    }
+    if meta.len() > PPTX_LIMIT {
+        return Err(AppError::invalid_input(format!(
+            "the presentation is larger than {} GiB: {}",
+            PPTX_LIMIT >> 30,
+            path.display()
+        )));
+    }
+    std::fs::read(path).map_err(|e| AppError::path(path, &e))
 }
 
 /// The video and audio of an export, in a folder beside the exported file (MED-05).
@@ -286,7 +333,7 @@ fn copy_export_media(
     path: &std::path::Path,
     files: &[String],
 ) -> Result<ExportedMedia> {
-    let dir = export_dir(path)?;
+    let dir = export_dir(path, PAGES)?;
     let folder = media_folder_name(path)?;
     if let Some(bad) = files.iter().find(|file| !is_asset_file_name(file)) {
         return Err(AppError::invalid_input(format!(
@@ -461,7 +508,7 @@ mod export_media_tests {
 
 #[cfg(test)]
 mod export_tests {
-    use super::write_export;
+    use super::{read_pptx, write_export};
     use crate::error::ErrorKind;
 
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
@@ -479,9 +526,24 @@ mod export_tests {
     }
 
     #[test]
+    fn a_powerpoint_file_is_written_too() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let target = dir.path().join("deck.PPTX");
+        write_export(&target, b"PK")?;
+        assert_eq!(std::fs::read(&target)?, b"PK");
+        Ok(())
+    }
+
+    #[test]
     fn only_an_absolute_html_path_is_written() -> TestResult {
         let dir = tempfile::tempdir()?;
-        for name in ["deck.slidr", "deck", "deck.html.exe"] {
+        for name in [
+            "deck.slidr",
+            "deck",
+            "deck.html.exe",
+            "deck.pptx.exe",
+            "deck.ppt",
+        ] {
             let Err(error) = write_export(&dir.path().join(name), b"x") else {
                 return Err(format!("{name} was written").into());
             };
@@ -502,6 +564,30 @@ mod export_tests {
             return Err("a file was written into a missing folder".into());
         };
         assert_eq!(error.kind, ErrorKind::NotFound);
+        Ok(())
+    }
+
+    #[test]
+    fn a_powerpoint_file_is_read_and_nothing_else_is() -> TestResult {
+        let dir = tempfile::tempdir()?;
+        let deck = dir.path().join("deck.pptx");
+        std::fs::write(&deck, b"PK\x03\x04")?;
+        assert_eq!(read_pptx(&deck)?, b"PK\x03\x04");
+        std::fs::write(dir.path().join("secret.txt"), b"secret")?;
+        for path in [
+            dir.path().join("secret.txt"),
+            dir.path().join("missing.pptx"),
+            std::path::PathBuf::from("deck.pptx"),
+        ] {
+            assert!(read_pptx(&path).is_err(), "{}", path.display());
+        }
+        let Err(error) = read_pptx(&dir.path().join("secret.txt")) else {
+            return Err("a text file was read".into());
+        };
+        assert_eq!(error.kind, ErrorKind::InvalidInput);
+        // A folder that is named like a presentation is not one.
+        std::fs::create_dir(dir.path().join("folder.pptx"))?;
+        assert!(read_pptx(&dir.path().join("folder.pptx")).is_err());
         Ok(())
     }
 }

@@ -4,7 +4,7 @@ import { describeFailure, describeMissingAssets } from '../document/failures';
 import type { RecentFile, RecoverableWorkspace, SavedDeck } from '../document/storage';
 import { currentLanguage, i18n } from '../i18n';
 import { ask, tell } from './dialogs';
-import type { Deck } from '@slidr/model';
+import type { AssetMeta, Deck } from '@slidr/model';
 import { newDeck, syncFileState, type Editor } from './editor';
 import type { FileImporter } from './registry';
 import { WORKSPACE_KEY } from './startup';
@@ -227,6 +227,39 @@ export async function newDocument(editor: Editor, start?: Deck): Promise<boolean
   }
   rememberWorkspace(editor);
   syncFileState(editor);
+  if (created) setWelcome(false);
+  return created;
+}
+
+/**
+ * A new document made from a file the app imports (a PowerPoint file, ADR-108). `build` makes
+ * the deck and stores the file's pictures and media with the new document, through the store
+ * it is given; the open document stays until the deck is ready, and stays when `build` throws,
+ * which the caller reports. False when the user kept the document that was open.
+ */
+export async function newDocumentFrom(
+  editor: Editor,
+  build: (store: (file: File) => Promise<AssetMeta>) => Promise<Deck>,
+): Promise<boolean> {
+  if (!(await confirmDiscard(editor))) return false;
+  const document = editor.document;
+  if (!document) {
+    const deck = await build((file) => editor.assets.import(file, 'import'));
+    setWelcome(false);
+    editor.bus.reset(deck);
+    return true;
+  }
+  editor.file.setState({ busy: 'opening' });
+  let created: boolean;
+  try {
+    created = await document.createFrom(
+      (store) => build(async (file) => store(file.name, new Uint8Array(await file.arrayBuffer()))),
+      replaceGuard(editor),
+    );
+  } finally {
+    rememberWorkspace(editor);
+    syncFileState(editor);
+  }
   if (created) setWelcome(false);
   return created;
 }
