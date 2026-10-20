@@ -591,7 +591,9 @@ async function uploadTags(kind, all, tags) {
     return;
   }
   failed += 1;
-  console.error(`  ${kind}: the library refused the tags (${made.status}): ${made.body?.message ?? ''}`);
+  console.error(
+    `  ${kind}: the library refused the tags (${made.status}): ${made.body?.message ?? ''}`,
+  );
   for (const issue of (made.body?.issues ?? []).slice(0, 20)) {
     console.error(`    ${issue.path}: ${issue.message}`);
   }
