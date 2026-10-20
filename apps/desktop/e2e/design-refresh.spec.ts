@@ -28,9 +28,7 @@ for (const lang of ['he', 'en'] as const) {
         await openApp(page, { lang, theme });
         await loadDeck(page, 'reference');
         const names =
-          lang === 'he'
-            ? { file: 'קובץ', text: 'תיבת טקסט', shape: 'צורה' }
-            : { file: 'File', text: 'Text box', shape: 'Shape' };
+          lang === 'he' ? { file: 'קובץ', text: 'תיבת טקסט' } : { file: 'File', text: 'Text box' };
         await expect(
           header(page).getByRole('button', { name: names.file, exact: true }),
         ).toBeVisible();
@@ -55,8 +53,9 @@ for (const lang of ['he', 'en'] as const) {
         expect(bar.height).toBe(44);
         const frame = (await page.getByTestId('stage-frame').boundingBox())!;
         expect(frame.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+        // A floating toolbar has the corners of a panel (docs/design-refresh/SPEC.md).
         expect(await context(page).evaluate((node) => getComputedStyle(node).borderRadius)).toBe(
-          '18px',
+          '8px',
         );
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
           viewport.width,
@@ -110,7 +109,7 @@ for (const lang of ['he', 'en'] as const) {
         ? {
             text: 'תיבת טקסט',
             undo: 'ביטול פעולה',
-            shape: 'צורה',
+            line: 'קו',
             zoom: 'זום',
             from: 'מאיפה להתחיל',
             current: 'הצגה מהשקף הנוכחי',
@@ -119,7 +118,7 @@ for (const lang of ['he', 'en'] as const) {
         : {
             text: 'Text box',
             undo: 'Undo',
-            shape: 'Shape',
+            line: 'Line',
             zoom: 'Zoom',
             from: 'Start from',
             current: 'Present from the current slide',
@@ -132,15 +131,16 @@ for (const lang of ['he', 'en'] as const) {
     await expect.poll(async () => (await elements(page)).length).toBe(before);
     await expect(stage(page)).toBeFocused();
 
-    const shape = creation(page).getByRole('button', { name: names.shape, exact: true });
+    // A creation tool that opens a popover: the keyboard goes into it and comes back.
+    const line = creation(page).getByRole('button', { name: names.line, exact: true });
     await page.keyboard.press('F6');
-    await shape.focus();
+    await line.focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.keyboard.press('Escape');
     if (await page.getByRole('dialog').count()) await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(shape).toBeFocused();
+    await expect(line).toBeFocused();
 
     await page.getByTestId('file-menu-trigger').click();
     await expect(page.getByRole('menu')).toBeVisible();

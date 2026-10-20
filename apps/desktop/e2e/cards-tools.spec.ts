@@ -27,7 +27,13 @@ import {
 const out = (name: string) =>
   fileURLToPath(new URL(`../test-results/cards/${name}.png`, import.meta.url));
 
+/**
+ * The shapes of the Elements panel. The panel stays open after an insert; row B offers to open it
+ * while nothing is selected.
+ */
 async function openShapes(page: Page) {
+  const library = page.getByTestId('elements-shapes');
+  if (await library.isVisible()) return library;
   await page.getByTestId('top-tools-b').locator('[data-tool="insert.elements"]').click();
   const collection = page.getByTestId('elements-panel').locator('[data-collection="shapes"]');
   if (await collection.isVisible()) await collection.click();

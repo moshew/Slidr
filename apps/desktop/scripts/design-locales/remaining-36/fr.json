@@ -1,2938 +1,1159 @@
 {
   "careers": [
+    "SOCHECH SYSTEMS",
     {
-      "paragraphs": [
-        [
-          "SYSTÈMES SOCHECH"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "3 RÔLES OUVERTS • INGÉNIERIE"
-        ]
-      ]
+      "paragraphs": [["3 RÔLES OUVERTS • INGÉNIERIE"]]
     },
     "Ingénieur\nsystèmes embarqués",
     {
-      "paragraphs": [
-        [
-          "Firmware pour capteurs de terrain"
-        ]
-      ]
+      "paragraphs": [["Firmware pour capteurs de terrain"]]
     },
     {
-      "paragraphs": [
-        [
-          "Équipe Capteurs"
-        ]
-      ]
+      "paragraphs": [["Équipe Capteurs"]]
     },
     "Chercheur en vision\npar ordinateur",
     {
-      "paragraphs": [
-        [
-          "Détection thermique en temps réel"
-        ]
-      ]
+      "paragraphs": [["Détection thermique en temps réel"]]
     },
     {
-      "paragraphs": [
-        [
-          "Équipe IA"
-        ]
-      ]
+      "paragraphs": [["Équipe IA"]]
     },
     "Ingénieur d'essais\nsur le terrain",
     {
-      "paragraphs": [
-        [
-          "Du laboratoire au terrain"
-        ]
-      ]
+      "paragraphs": [["Du laboratoire au terrain"]]
     },
     {
-      "paragraphs": [
-        [
-          "Équipe de déploiement"
-        ]
-      ]
+      "paragraphs": [["Équipe de déploiement"]]
     },
     {
-      "paragraphs": [
-        [
-          "Embauche"
-        ]
-      ]
+      "paragraphs": [["Embauche"]]
     },
-    {
-      "paragraphs": [
-        [
-          "CARRIÈRES • 2027"
-        ]
-      ]
-    },
+    "CAREERS · 2027",
     "Venez construire\nce qui protège",
     "Laboratoire, terrain et\nclients dans la même semaine.\nDes ingénieurs qui décident.",
     {
-      "paragraphs": [
-        [
-          "Parc scientifique, Givat Rimon • hybride"
-        ]
-      ]
+      "paragraphs": [["Parc scientifique, Givat Rimon • hybride"]]
     },
     {
-      "paragraphs": [
-        [
-          "Envoyez votre CV"
-        ]
-      ]
+      "paragraphs": [["Envoyez votre CV"]]
     },
     {
-      "paragraphs": [
-        [
-          "jobs@sochech.co.il"
-        ]
-      ]
+      "paragraphs": [["jobs@sochech.co.il"]]
     }
   ],
   "fieldkit": [
     {
-      "paragraphs": [
-        [
-          "01"
-        ]
-      ]
+      "paragraphs": [["01"]]
     },
     {
-      "paragraphs": [
-        [
-          "Drone de patrouille"
-        ]
-      ]
+      "paragraphs": [["Drone de patrouille"]]
     },
     {
-      "paragraphs": [
-        [
-          "02"
-        ]
-      ]
+      "paragraphs": [["02"]]
     },
     {
-      "paragraphs": [
-        [
-          "Contrôleur robuste"
-        ]
-      ]
+      "paragraphs": [["Contrôleur robuste"]]
     },
     {
-      "paragraphs": [
-        [
-          "03"
-        ]
-      ]
+      "paragraphs": [["03"]]
     },
     {
-      "paragraphs": [
-        [
-          "Antenne RF pliable"
-        ]
-      ]
+      "paragraphs": [["Antenne RF pliable"]]
     },
     {
-      "paragraphs": [
-        [
-          "04"
-        ]
-      ]
+      "paragraphs": [["04"]]
     },
     {
-      "paragraphs": [
-        [
-          "Chargeur de terrain"
-        ]
-      ]
+      "paragraphs": [["Chargeur de terrain"]]
     },
     {
-      "paragraphs": [
-        [
-          "05"
-        ]
-      ]
+      "paragraphs": [["05"]]
     },
     {
-      "paragraphs": [
-        [
-          "Deux batteries, 4 h"
-        ]
-      ]
+      "paragraphs": [["Deux batteries, 4 h"]]
+    },
+    "NAVAT SYSTEMS · KONAN 90",
+    "Tout dans\nune mallette",
+    {
+      "paragraphs": [["Un kit portable de détection de drones"]]
     },
     {
-      "paragraphs": [
-        [
-          "SYSTÈMES NAVATOIRES • KONAN 90"
-        ]
-      ]
-    },
-    "Tout dans\nun seul étui",
-    {
-      "paragraphs": [
-        [
-          "Un kit portable de détection de drones"
-        ]
-      ]
+      "paragraphs": [["90"]]
     },
     {
-      "paragraphs": [
-        [
-          "90"
-        ]
-      ]
+      "paragraphs": [["secondes"], ["d'ouvrir le dossier"], ["à un drone dans les airs"]]
     },
     {
-      "paragraphs": [
-        [
-          "secondes"
-        ],
-        [
-          "d'ouvrir le dossier"
-        ],
-        [
-          "à un drone dans les airs"
-        ]
-      ]
+      "paragraphs": [["14", " kg"], ["tout en"]]
     },
     {
-      "paragraphs": [
-        [
-          "14",
-          " kilos"
-        ],
-        [
-          "tout en"
-        ]
-      ]
+      "paragraphs": [["IP67"], ["étanche à l'eau et à la poussière"]]
     },
     {
-      "paragraphs": [
-        [
-          "IP67"
-        ],
-        [
-          "étanche à l'eau et à la poussière"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Se glisse dans le coffre de n'importe quelle voiture"
-        ]
-      ]
+      "paragraphs": [["Se glisse dans le coffre de n'importe quelle voiture"]]
     }
   ],
   "cubesat": [
     {
-      "paragraphs": [
-        [
-          "Altitude orbitale"
-        ],
-        [
-          "520",
-          " kilomètres"
-        ]
-      ]
+      "paragraphs": [["Altitude orbitale"], ["520", " km"]]
     },
     {
-      "paragraphs": [
-        [
-          "Messe"
-        ],
-        [
-          "8",
-          " kilos"
-        ]
-      ]
+      "paragraphs": [["Messe"], ["8", " kg"]]
     },
     {
-      "paragraphs": [
-        [
-          "Résolution"
-        ],
-        [
-          "3",
-          " m"
-        ]
-      ]
+      "paragraphs": [["Résolution"], ["3", " m"]]
     },
     {
-      "paragraphs": [
-        [
-          "Lancement prévu"
-        ],
-        [
-          "T3 2027"
-        ]
-      ]
+      "paragraphs": [["Lancement prévu"], ["T3 2027"]]
     },
-    {
-      "paragraphs": [
-        [
-          "ESPACE EFRONI • UN ŒIL EN ORBITE"
-        ]
-      ]
-    },
+    "EFRONI SPACE · UN ŒIL EN ORBITE",
     "Un petit satellite,\nune nouvelle image\ntoutes les 90 minutes",
     {
-      "paragraphs": [
-        [
-          "Le premier lot : 6 satellites"
-        ]
-      ]
+      "paragraphs": [["Le premier lot : 6 satellites"]]
     },
     {
-      "paragraphs": [
-        [
-          "Surveiller les incendies de forêt, les côtes et les frontières maritimes"
-        ]
-      ]
+      "paragraphs": [["Surveiller les incendies de forêt, les côtes et les frontières maritimes"]]
     }
   ],
   "swarm": [
+    "ZARZIR AUTONOMY · MANIFESTATION PUBLIQUE",
+    "128 drones,\nun opérateur",
     {
-      "paragraphs": [
-        [
-          "AUTONOMIE DE ZARZIR • MANIFESTATION PUBLIQUE"
-        ]
-      ]
+      "paragraphs": [["Chaque décision d'agir appartient à une personne"]]
+    },
+    {
+      "paragraphs": [["11", " min"], ["rechercher ensemble 6 km²"]]
+    },
+    {
+      "paragraphs": [["0"], ["stations au sol : elles partagent les tâches"]]
+    },
+    {
+      "paragraphs": [["20%"], ["des unités peuvent abandonner, et il continue à voler"]]
     },
     {
       "paragraphs": [
-        [
-          "128 drones,"
-        ],
-        [
-          "un opérateur"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Chaque décision d'agir appartient à une personne"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "11",
-          " min"
-        ],
-        [
-          "rechercher ensemble 6 km²"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "0"
-        ],
-        [
-          "stations au sol : elles partagent les tâches"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "20%"
-        ],
-        [
-          "des unités peuvent abandonner, et il continue à voler"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "jeu. 27 mai 2027 • 20h30"
-        ],
-        [
-          "Au-dessus de la mer, au large de la marina • zarzir.co.il/demo"
-        ]
+        ["jeu. 27 mai 2027 • 20h30"],
+        ["Au-dessus de la mer, au large de la marina • zarzir.co.il/demo"]
       ]
     }
   ],
   "m-smartring": [
     {
-      "paragraphs": [
-        [
-          "7"
-        ]
-      ]
+      "paragraphs": [["7"]]
     },
     {
-      "paragraphs": [
-        [
-          "jours avec une seule charge"
-        ]
-      ]
+      "paragraphs": [["jours avec une seule charge"]]
     },
     {
-      "paragraphs": [
-        [
-          "100 m"
-        ]
-      ]
+      "paragraphs": [["100 m"]]
     },
     {
-      "paragraphs": [
-        [
-          "résistant à l'eau"
-        ]
-      ]
+      "paragraphs": [["résistant à l'eau"]]
     },
     {
-      "paragraphs": [
-        [
-          "2,4 g"
-        ]
-      ]
+      "paragraphs": [["2.4 g"]]
     },
     {
-      "paragraphs": [
-        [
-          "coque en titane"
-        ]
-      ]
+      "paragraphs": [["coque en titane"]]
     },
-    {
-      "paragraphs": [
-        [
-          "ANNEAU ORBITE · GÉNÉRATION 2"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Votre santé,"
-        ],
-        [
-          "sur un doigt"
-        ]
-      ]
-    },
+    "ORBIT RING · GÉNÉRATION 2",
+    "Votre santé, sur\nun seul doigt",
     "Sommeil, cœur et récupération, mesurés toute\nla journée et la nuit. Pas d'écran, pas\nde buzz, pas de recharge tous les soirs.",
     {
-      "paragraphs": [
-        [
-          "$299"
-        ]
-      ]
+      "paragraphs": [["$299"]]
     },
     {
-      "paragraphs": [
-        [
-          "Expédié à partir du 15.2.2027"
-        ]
-      ]
+      "paragraphs": [["Expédié à partir du 15.2.2027"]]
     },
     {
-      "paragraphs": [
-        [
-          "Précommande"
-        ]
-      ]
+      "paragraphs": [["Précommande"]]
     }
   ],
   "m-saasdashboard": [
     {
-      "paragraphs": [
-        [
-          "Revenus ce mois-ci"
-        ]
-      ]
+      "paragraphs": [["Revenus ce mois-ci"]]
     },
     {
-      "paragraphs": [
-        [
-          "184 000 $"
-        ]
-      ]
+      "paragraphs": [["184 000 $"]]
     },
     {
-      "paragraphs": [
-        [
-          "▲ 18% par rapport au mois dernier"
-        ]
-      ]
+      "paragraphs": [["▲ 18% par rapport au mois dernier"]]
     },
     {
-      "paragraphs": [
-        [
-          "Utilisateurs actifs"
-        ]
-      ]
+      "paragraphs": [["Utilisateurs actifs"]]
     },
     {
-      "paragraphs": [
-        [
-          "12,480"
-        ]
-      ]
+      "paragraphs": [["12,480"]]
     },
     {
-      "paragraphs": [
-        [
-          "ANALYSE DU POULS"
-        ]
-      ]
+      "paragraphs": [["ANALYSE DU POULS"]]
     },
     {
-      "paragraphs": [
-        [
-          "Votre activité"
-        ],
-        [
-          "en un ",
-          "coup d’œil"
-        ]
-      ]
+      "paragraphs": [["Votre activité"], ["en un ", "coup d’œil"]]
     },
     "Ventes, stocks et marketing dans un seul\ntableau de bord en direct. Prêt en dix minutes.",
     {
-      "paragraphs": [
-        [
-          "Données en direct provenant de plus de 60 sources"
-        ]
-      ]
+      "paragraphs": [["Données en direct provenant de plus de 60 sources"]]
     },
     {
-      "paragraphs": [
-        [
-          "Alertes avant que les problèmes ne s'aggravent"
-        ]
-      ]
+      "paragraphs": [["Alertes avant que les problèmes ne s'aggravent"]]
     },
     {
-      "paragraphs": [
-        [
-          "Rapports que votre équipe lira"
-        ]
-      ]
+      "paragraphs": [["Rapports que votre équipe lira"]]
     },
     {
-      "paragraphs": [
-        [
-          "Commencer l'essai gratuit"
-        ]
-      ]
+      "paragraphs": [["Commencer l'essai gratuit"]]
     },
     "14 jours, aucune\ncarte nécessaire"
   ],
   "m-integrations": [
     {
-      "paragraphs": [
-        [
-          "120+ applications"
-        ]
-      ]
+      "paragraphs": [["120+ applications"]]
     },
     {
-      "paragraphs": [
-        [
-          "Calendrier"
-        ]
-      ]
+      "paragraphs": [["Calendrier"]]
     },
     {
-      "paragraphs": [
-        [
-          "GRC"
-        ]
-      ]
+      "paragraphs": [["GRC"]]
     },
     {
-      "paragraphs": [
-        [
-          "Paiements"
-        ]
-      ]
+      "paragraphs": [["Paiements"]]
     },
     {
-      "paragraphs": [
-        [
-          "Discussion en équipe"
-        ]
-      ]
+      "paragraphs": [["Discussion en équipe"]]
     },
     {
-      "paragraphs": [
-        [
-          "Stockage en nuage"
-        ]
-      ]
+      "paragraphs": [["Stockage en nuage"]]
     },
     {
-      "paragraphs": [
-        [
-          "Courriel"
-        ]
-      ]
+      "paragraphs": [["Courriel"]]
     },
     "Se connecte aux outils\nque vous utilisez déjà",
     {
-      "paragraphs": [
-        [
-          "Synchronisation bidirectionnelle · configuration en un clic · pas de code"
-        ]
-      ]
+      "paragraphs": [["Synchronisation bidirectionnelle · configuration en un clic · pas de code"]]
     }
   ],
   "m-privatebeta": [
     {
-      "paragraphs": [
-        [
-          "ACCÈS BÊTA"
-        ]
-      ]
+      "paragraphs": [["ACCÈS BÊTA"]]
     },
     {
-      "paragraphs": [
-        [
-          "N° 0042"
-        ]
-      ]
+      "paragraphs": [["N° 0042"]]
     },
     {
-      "paragraphs": [
-        [
-          "NOVA"
-        ]
-      ]
+      "paragraphs": [["NOVA"]]
     },
-    {
-      "paragraphs": [
-        [
-          "BÊTA PRIVÉE · SUR INVITATION"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Soyez le premier"
-        ],
-        [
-          "en ligne"
-        ]
-      ]
-    },
+    "PRIVATE BETA · SUR INVITATION",
+    "Soyez le\npremier en ligne",
     "500 sièges pour les équipes qui souhaitent façonner Nova en\npremier, avec un appel hebdomadaire avec notre équipe produit.",
     {
-      "paragraphs": [
-        [
-          "1"
-        ]
-      ]
+      "paragraphs": [["1"]]
     },
     {
-      "paragraphs": [
-        [
-          "Rejoignez la liste"
-        ]
-      ]
+      "paragraphs": [["Rejoignez la liste"]]
     },
     {
-      "paragraphs": [
-        [
-          "2"
-        ]
-      ]
+      "paragraphs": [["2"]]
     },
     {
-      "paragraphs": [
-        [
-          "Recevez une invitation"
-        ]
-      ]
+      "paragraphs": [["Recevez une invitation"]]
     },
     {
-      "paragraphs": [
-        [
-          "3"
-        ]
-      ]
+      "paragraphs": [["3"]]
     },
     {
-      "paragraphs": [
-        [
-          "Commencer à construire"
-        ]
-      ]
+      "paragraphs": [["Commencer à construire"]]
     },
     {
-      "paragraphs": [
-        [
-          "Rejoignez la liste d'attente"
-        ]
-      ]
+      "paragraphs": [["Rejoignez la liste d'attente"]]
     },
     {
-      "paragraphs": [
-        [
-          "Code d'invitation : NOVA-7KQ2"
-        ]
-      ]
+      "paragraphs": [["Code d'invitation : NOVA-7KQ2"]]
     }
   ],
   "m-securetrust": [
     {
-      "paragraphs": [
-        [
-          "CENTRE DE CONFIANCE"
-        ]
-      ]
+      "paragraphs": [["CENTRE DE CONFIANCE"]]
+    },
+    "La sécurité n'est pas une\nfonctionnalité. C'est la fondation.",
+    {
+      "paragraphs": [["SOC 2"]]
     },
     {
-      "paragraphs": [
-        [
-          "La sécurité n'est pas une fonctionnalité."
-        ],
-        [
-          "C'est la fondation."
-        ]
-      ]
+      "paragraphs": [["Type II"]]
     },
     {
-      "paragraphs": [
-        [
-          "SOC 2"
-        ]
-      ]
+      "paragraphs": [["ISO"]]
     },
     {
-      "paragraphs": [
-        [
-          "Type II"
-        ]
-      ]
+      "paragraphs": [["27001"]]
     },
     {
-      "paragraphs": [
-        [
-          "ISO"
-        ]
-      ]
+      "paragraphs": [["GDPR"]]
     },
     {
-      "paragraphs": [
-        [
-          "27001"
-        ]
-      ]
+      "paragraphs": [["UE"]]
     },
     {
-      "paragraphs": [
-        [
-          "GDPR"
-        ]
-      ]
+      "paragraphs": [["HIPAA"]]
     },
     {
-      "paragraphs": [
-        [
-          "UE"
-        ]
-      ]
+      "paragraphs": [["Santé"]]
     },
     {
-      "paragraphs": [
-        [
-          "HIPAA"
-        ]
-      ]
+      "paragraphs": [["Chiffrement AES-256 au repos et en transit"]]
     },
     {
-      "paragraphs": [
-        [
-          "Santé"
-        ]
-      ]
+      "paragraphs": [["Authentification unique et provisionnement automatique"]]
     },
     {
-      "paragraphs": [
-        [
-          "Chiffrement AES-256 au repos et en transit"
-        ]
-      ]
+      "paragraphs": [["Un test d'intrusion externe tous les trimestres"]]
     },
     {
-      "paragraphs": [
-        [
-          "Authentification unique et provisionnement automatique"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Un test d'intrusion externe tous les trimestres"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Lire le livre blanc complet sur la sécurité →"
-        ]
-      ]
+      "paragraphs": [["Lire le livre blanc complet sur la sécurité →"]]
     }
   ],
   "m-escooter": [
     {
-      "paragraphs": [
-        [
-          "1180 millimètres"
-        ]
-      ]
+      "paragraphs": [["1180 mm"]]
     },
     {
-      "paragraphs": [
-        [
-          "1230 millimètres"
-        ]
-      ]
+      "paragraphs": [["1230 mm"]]
     },
-    {
-      "paragraphs": [
-        [
-          "VOLT S2 · SPÉCIFICATIONS TECHNIQUES"
-        ]
-      ]
-    },
+    "VOLT S2 · SPÉCIFICATIONS TECHNIQUES",
     "Assez léger pour être\ntransporté à l'étage",
     {
-      "paragraphs": [
-        [
-          "Gamme"
-        ]
-      ]
+      "paragraphs": [["Gamme"]]
     },
     {
-      "paragraphs": [
-        [
-          "65km"
-        ]
-      ]
+      "paragraphs": [["65 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "Vitesse maximale"
-        ]
-      ]
+      "paragraphs": [["Vitesse maximale"]]
     },
     {
-      "paragraphs": [
-        [
-          "25km/h"
-        ]
-      ]
+      "paragraphs": [["25 km/h"]]
     },
     {
-      "paragraphs": [
-        [
-          "Poids"
-        ]
-      ]
+      "paragraphs": [["Poids"]]
     },
     {
-      "paragraphs": [
-        [
-          "16,8 kg"
-        ]
-      ]
+      "paragraphs": [["16.8 kg"]]
     },
     {
-      "paragraphs": [
-        [
-          "Charge complète"
-        ]
-      ]
+      "paragraphs": [["Charge complète"]]
     },
     {
-      "paragraphs": [
-        [
-          "3,5 heures"
-        ]
-      ]
+      "paragraphs": [["3.5 h"]]
     },
     {
-      "paragraphs": [
-        [
-          "Moteur"
-        ]
-      ]
+      "paragraphs": [["Moteur"]]
     },
     {
-      "paragraphs": [
-        [
-          "500 W"
-        ]
-      ]
+      "paragraphs": [["500 W"]]
     },
     {
-      "paragraphs": [
-        [
-          "$949"
-        ]
-      ]
+      "paragraphs": [["$949"]]
     },
     {
-      "paragraphs": [
-        [
-          "En stock 1.3.2027"
-        ]
-      ]
+      "paragraphs": [["En stock 1.3.2027"]]
     }
   ],
   "m-aicopilot": [
-    {
-      "paragraphs": [
-        [
-          "Rencontrez Atlas,"
-        ],
-        [
-          "votre copilote de données"
-        ]
-      ]
-    },
+    "Rencontrez Atlas, votre\ncopilote de données",
     "Demandez avec des mots simples. Obtenez des réponses, des\ngraphiques et les prochaines étapes en quelques secondes.",
     "Quelle région a connu la croissance\nla plus rapide au dernier trimestre ?",
     "Le Nord a enregistré une croissance de 34 %, tirée par\nles commandes répétées. Voici la répartition par mois :",
     {
-      "paragraphs": [
-        [
-          "janvier"
-        ]
-      ]
+      "paragraphs": [["janvier"]]
     },
     {
-      "paragraphs": [
-        [
-          "juin"
-        ]
-      ]
+      "paragraphs": [["juin"]]
     },
     {
-      "paragraphs": [
-        [
-          "+34%"
-        ]
-      ]
+      "paragraphs": [["+34%"]]
     },
     {
-      "paragraphs": [
-        [
-          "Afficher par produit"
-        ]
-      ]
+      "paragraphs": [["Afficher par produit"]]
     },
     {
-      "paragraphs": [
-        [
-          "Exporter vers des diapositives"
-        ]
-      ]
+      "paragraphs": [["Exporter vers des diapositives"]]
     },
     {
-      "paragraphs": [
-        [
-          "Demandez n’importe quoi sur vos données…"
-        ]
-      ]
+      "paragraphs": [["Demandez n’importe quoi sur vos données…"]]
     },
     {
-      "paragraphs": [
-        [
-          "→"
-        ]
-      ]
+      "paragraphs": [["→"]]
     }
   ],
   "m-smarthome": [
     {
-      "paragraphs": [
-        [
-          "21.5°"
-        ]
-      ]
+      "paragraphs": [["21.5°"]]
     },
     {
-      "paragraphs": [
-        [
-          "THERMOSTAT HALO"
-        ]
-      ]
+      "paragraphs": [["THERMOSTAT HALO"]]
     },
-    {
-      "paragraphs": [
-        [
-          "Le réconfort que"
-        ],
-        [
-          "t'apprend"
-        ]
-      ]
-    },
+    "Un confort qui\nvous comprend",
     "Halo apprend quand vous vous réveillez, partez et rentrez\nchez vous, et chauffe uniquement lorsque cela compte.",
     {
-      "paragraphs": [
-        [
-          "23%"
-        ]
-      ]
+      "paragraphs": [["23%"]]
     },
     {
-      "paragraphs": [
-        [
-          "factures de chauffage réduites"
-        ]
-      ]
+      "paragraphs": [["factures de chauffage réduites"]]
     },
     {
-      "paragraphs": [
-        [
-          "4 semaines"
-        ]
-      ]
+      "paragraphs": [["4 semaines"]]
     },
     {
-      "paragraphs": [
-        [
-          "pour apprendre votre routine"
-        ]
-      ]
+      "paragraphs": [["pour apprendre votre routine"]]
     },
     {
-      "paragraphs": [
-        [
-          "Voyez comment ça marche"
-        ]
-      ]
+      "paragraphs": [["Voyez comment ça marche"]]
     }
   ],
   "m-evcharge": [
     {
-      "paragraphs": [
-        [
-          "CHARGE RAPIDE VOLTA"
-        ]
-      ]
+      "paragraphs": [["CHARGE RAPIDE VOLTA"]]
     },
     {
-      "paragraphs": [
-        [
-          "De 10% à 80%"
-        ],
-        [
-          "dans ",
-          "18 minutes"
-        ]
-      ]
+      "paragraphs": [["De 10% à 80%"], ["dans ", "18 minutes"]]
     },
     {
-      "paragraphs": [
-        [
-          "0"
-        ]
-      ]
+      "paragraphs": [["0"]]
     },
     {
-      "paragraphs": [
-        [
-          "40 minutes"
-        ]
-      ]
+      "paragraphs": [["40 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "80% · 18 minutes"
-        ]
-      ]
+      "paragraphs": [["80% · 18 minutes"]]
     },
     {
-      "paragraphs": [
-        [
-          "10%"
-        ]
-      ]
+      "paragraphs": [["10%"]]
     },
     {
-      "paragraphs": [
-        [
-          "Jusqu'à 350 kW"
-        ]
-      ]
+      "paragraphs": [["Jusqu'à 350 kW"]]
     },
     {
-      "paragraphs": [
-        [
-          "Connecteur CCS2"
-        ]
-      ]
+      "paragraphs": [["Connecteur CCS2"]]
     },
     {
-      "paragraphs": [
-        [
-          "Payer dans l'application"
-        ]
-      ]
+      "paragraphs": [["Payer dans l'application"]]
     }
   ],
   "m-mixedreality": [
     {
-      "paragraphs": [
-        [
-          "Examen du modèle 3D"
-        ]
-      ]
+      "paragraphs": [["Examen du modèle 3D"]]
     },
     {
-      "paragraphs": [
-        [
-          "v.12"
-        ]
-      ]
+      "paragraphs": [["v.12"]]
     },
     {
-      "paragraphs": [
-        [
-          "Appel d'équipe · 4"
-        ]
-      ]
+      "paragraphs": [["Appel d'équipe · 4"]]
     },
     {
-      "paragraphs": [
-        [
-          "VISTA POUR LES ÉQUIPES"
-        ]
-      ]
+      "paragraphs": [["VISTA POUR LES ÉQUIPES"]]
     },
-    {
-      "paragraphs": [
-        [
-          "Travailler au-delà"
-        ],
-        [
-          "l'écran"
-        ]
-      ]
-    },
+    "Travaillez\nau-delà de l'écran",
     "Répartissez votre travail dans\ntoute la pièce : modèles, appels\net notes, le tout à portée de main.",
     {
-      "paragraphs": [
-        [
-          "Une toile sans fin"
-        ]
-      ]
+      "paragraphs": [["Une toile sans fin"]]
     },
     {
-      "paragraphs": [
-        [
-          "Suivi précis des mains"
-        ]
-      ]
+      "paragraphs": [["Suivi précis des mains"]]
     },
     {
-      "paragraphs": [
-        [
-          "Réservez une démo"
-        ]
-      ]
+      "paragraphs": [["Réservez une démo"]]
     }
   ],
   "m-radar": [
-    {
-      "paragraphs": [
-        [
-          "SENTINEL-X · RADAR MULTI-MISSIONS"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Voir 450 km."
-        ],
-        [
-          "Suivez 1 000 cibles."
-        ]
-      ]
-    },
+    "SENTINEL-X · RADAR MULTI-MISSIONS",
+    "Voir 450 km. Suivez\n1 000 cibles.",
     "Un radar AESA qui se déploie en 15 minutes et voit les\navions, les drones et les fusées sur une seule image.",
     {
-      "paragraphs": [
-        [
-          "450km"
-        ]
-      ]
+      "paragraphs": [["450 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "plage de détection"
-        ]
-      ]
+      "paragraphs": [["plage de détection"]]
     },
     {
-      "paragraphs": [
-        [
-          "360°"
-        ]
-      ]
+      "paragraphs": [["360°"]]
     },
     {
-      "paragraphs": [
-        [
-          "couverture complète"
-        ]
-      ]
+      "paragraphs": [["couverture complète"]]
     },
     {
-      "paragraphs": [
-        [
-          "15 minutes"
-        ]
-      ]
+      "paragraphs": [["15 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "déployer"
-        ]
-      ]
+      "paragraphs": [["déployer"]]
     },
     {
-      "paragraphs": [
-        [
-          "1,000"
-        ]
-      ]
+      "paragraphs": [["1,000"]]
     },
     {
-      "paragraphs": [
-        [
-          "pistes à la fois"
-        ]
-      ]
+      "paragraphs": [["pistes à la fois"]]
     }
   ],
   "m-uav": [
-    {
-      "paragraphs": [
-        [
-          "30 heures en altitude."
-        ],
-        [
-          "Des yeux qui ne clignent jamais."
-        ]
-      ]
-    },
-    "ALT 18 000\nFT SPD 92\nKN HDG 274°",
+    "30 heures en altitude. Des\nyeux qui ne clignent jamais.",
+    "ALT  18,000 FT\nSPD  92 KN\nHDG  274°",
     "Un drone ISR longue endurance pour la patrouille des frontières,\nla surveillance maritime et la réponse aux catastrophes.",
     {
-      "paragraphs": [
-        [
-          "30h d'endurance"
-        ]
-      ]
+      "paragraphs": [["30h d'endurance"]]
     },
     {
-      "paragraphs": [
-        [
-          "Autonomie de 1 500 km"
-        ]
-      ]
+      "paragraphs": [["Autonomie de 1 500 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "EO/IR et radar"
-        ]
-      ]
+      "paragraphs": [["EO/IR et radar"]]
     },
-    "LIEN SATCOM\nCAM EO/IR"
+    "LINK  SATCOM\nCAM  EO/IR"
   ],
   "m-satellite": [
+    "ORBITA · INTELLIGENCE SPATIALE",
     {
-      "paragraphs": [
-        [
-          "ORBITA · INTELLIGENCE SPATIALE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Une constellation"
-        ],
-        [
-          "de ",
-          "48 yeux"
-        ]
-      ]
+      "paragraphs": [["Une constellation"], ["de ", "48 yeux"]]
     },
     "Satellites radar qui imagent n'importe quel\npoint de la Terre toutes les 20 minutes, de\njour comme de nuit, à travers les nuages.",
     {
-      "paragraphs": [
-        [
-          "48"
-        ]
-      ]
+      "paragraphs": [["48"]]
     },
     {
-      "paragraphs": [
-        [
-          "satellites en orbite"
-        ]
-      ]
+      "paragraphs": [["satellites en orbite"]]
     },
     {
-      "paragraphs": [
-        [
-          "20 minutes"
-        ]
-      ]
+      "paragraphs": [["20 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "entre les images"
-        ]
-      ]
+      "paragraphs": [["entre les images"]]
     },
     {
-      "paragraphs": [
-        [
-          "50 cm"
-        ]
-      ]
+      "paragraphs": [["50 cm"]]
     },
     {
-      "paragraphs": [
-        [
-          "résolution"
-        ]
-      ]
+      "paragraphs": [["résolution"]]
     }
   ],
   "m-missionmap": [
     {
-      "paragraphs": [
-        [
-          "QG"
-        ]
-      ]
+      "paragraphs": [["QG"]]
     },
     {
-      "paragraphs": [
-        [
-          "1"
-        ]
-      ]
+      "paragraphs": [["1"]]
     },
     {
-      "paragraphs": [
-        [
-          "2"
-        ]
-      ]
+      "paragraphs": [["2"]]
     },
     {
-      "paragraphs": [
-        [
-          "3"
-        ]
-      ]
+      "paragraphs": [["3"]]
     },
     {
-      "paragraphs": [
-        [
-          "Équipe 2"
-        ]
-      ]
+      "paragraphs": [["Équipe 2"]]
     },
     {
-      "paragraphs": [
-        [
-          "Zone de recherche A · 12 km²"
-        ]
-      ]
+      "paragraphs": [["Zone de recherche A · 12 km²"]]
     },
     {
-      "paragraphs": [
-        [
-          "Hélicoptère · 9 min"
-        ]
-      ]
+      "paragraphs": [["Hélicoptère · 9 min"]]
     },
-    {
-      "paragraphs": [
-        [
-          "PATHFINDER · PLANIFICATION DE MISSION"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Recherche et sauvetage,"
-        ],
-        [
-          "prévu en 40 secondes"
-        ]
-      ]
-    },
+    "PATHFINDER · PLANIFICATION DE MISSION",
+    "Recherche et sauvetage,\nplanifiés en 40 secondes",
     "Terrain, météo et chaque équipe sur une seule carte en direct. Les\nitinéraires sont mis à jour au fur et à mesure de la recherche.",
     {
-      "paragraphs": [
-        [
-          "4"
-        ]
-      ]
+      "paragraphs": [["4"]]
     },
     {
-      "paragraphs": [
-        [
-          "équipes sur le terrain"
-        ]
-      ]
+      "paragraphs": [["équipes sur le terrain"]]
     },
     {
-      "paragraphs": [
-        [
-          "38 km²"
-        ]
-      ]
+      "paragraphs": [["38 km²"]]
     },
     {
-      "paragraphs": [
-        [
-          "zone couverte"
-        ]
-      ]
+      "paragraphs": [["zone couverte"]]
     },
     {
-      "paragraphs": [
-        [
-          "9 minutes"
-        ]
-      ]
+      "paragraphs": [["9 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "à la première équipe"
-        ]
-      ]
+      "paragraphs": [["à la première équipe"]]
     },
     {
-      "paragraphs": [
-        [
-          "Demander une démo"
-        ]
-      ]
+      "paragraphs": [["Demander une démo"]]
     }
   ],
   "m-c2room": [
-    {
-      "paragraphs": [
-        [
-          "AEGIS C2 · COMMANDE ET CONTRÔLE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Une photo."
-        ],
-        [
-          "Chaque domaine."
-        ]
-      ]
-    },
+    "AEGIS C2 · COMMANDE ET CONTRÔLE",
+    "Une vue unifiée.\nTous les milieux.",
     "Air, terre, mer et cyber fusionnés en une seule image\nopérationnelle en direct, pour chaque commandant.",
-    {
-      "paragraphs": [
-        [
-          "AIR · 312 titres"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "TERRAIN · 48 unités"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "MER · 9 navires"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "CYBER · 3 alertes"
-        ]
-      ]
-    }
+    "AIR · 312 titres",
+    "LAND · 48 unités",
+    "SEA · 9 navires",
+    "CYBER · 3 alertes"
   ],
   "m-cyberdefense": [
+    "SHIELD SOC · CENTRE DE DÉFENSE 24h/24 et 7j/7",
+    "Chaque attaque détectée.\nLa plupart bloquées.",
     {
-      "paragraphs": [
-        [
-          "SHIELD SOC · CENTRE DE DÉFENSE 24h/24 et 7j/7"
-        ]
-      ]
+      "paragraphs": [["2,184,302"]]
     },
     {
-      "paragraphs": [
-        [
-          "Chaque attaque vue."
-        ],
-        [
-          "La plupart n’atterrissent jamais."
-        ]
-      ]
+      "paragraphs": [["attaques bloquées ce mois-ci"]]
     },
     {
-      "paragraphs": [
-        [
-          "2,184,302"
-        ]
-      ]
+      "paragraphs": [["38 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "attaques bloquées ce mois-ci"
-        ]
-      ]
+      "paragraphs": [["temps moyen pour détecter"]]
     },
     {
-      "paragraphs": [
-        [
-          "38 s"
-        ]
-      ]
+      "paragraphs": [["0"]]
     },
     {
-      "paragraphs": [
-        [
-          "temps moyen pour détecter"
-        ]
-      ]
+      "paragraphs": [["violations cette année"]]
     },
     {
-      "paragraphs": [
-        [
-          "0"
-        ]
-      ]
+      "paragraphs": [["14:02:11"]]
     },
     {
-      "paragraphs": [
-        [
-          "violations cette année"
-        ]
-      ]
+      "paragraphs": [["BLOQUÉ"]]
     },
     {
-      "paragraphs": [
-        [
-          "14:02:11"
-        ]
-      ]
+      "paragraphs": [["vague de phishing · finance"]]
     },
     {
-      "paragraphs": [
-        [
-          "BLOQUÉ"
-        ]
-      ]
+      "paragraphs": [["14:02:37"]]
     },
     {
-      "paragraphs": [
-        [
-          "vague de phishing · finance"
-        ]
-      ]
+      "paragraphs": [["CONTENU"]]
     },
     {
-      "paragraphs": [
-        [
-          "14:02:37"
-        ]
-      ]
+      "paragraphs": [["ransomware · un ordinateur portable"]]
     },
     {
-      "paragraphs": [
-        [
-          "CONTENU"
-        ]
-      ]
+      "paragraphs": [["14:03:05"]]
     },
     {
-      "paragraphs": [
-        [
-          "ransomware · un ordinateur portable"
-        ]
-      ]
+      "paragraphs": [["REGARDER"]]
     },
     {
-      "paragraphs": [
-        [
-          "14:03:05"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "REGARDER"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "scans de 3 pays"
-        ]
-      ]
+      "paragraphs": [["scans de 3 pays"]]
     }
   ],
   "m-defexpo": [
     {
-      "paragraphs": [
-        [
-          "B-214"
-        ]
-      ]
+      "paragraphs": [["B-214"]]
+    },
+    "DEFTECH EXPO 2027 · TEL AVIV",
+    {
+      "paragraphs": [["Retrouvez-nous"], ["au stand ", "B-214"]]
     },
     {
-      "paragraphs": [
-        [
-          "DEFTECH EXPO 2027 · TEL AVIV"
-        ]
-      ]
+      "paragraphs": [["17–19.3.2027"]]
     },
     {
-      "paragraphs": [
-        [
-          "Rencontrez-nous à"
-        ],
-        [
-          "stand ",
-          "B-214"
-        ]
-      ]
+      "paragraphs": [["Expo Tel Aviv, Pavillon 2 · 09h00-18h00"]]
     },
     {
-      "paragraphs": [
-        [
-          "17–19.3.2027"
-        ]
-      ]
+      "paragraphs": [["Démonstration de contre-drone en direct, tous les jours à 11h00"]]
     },
     {
-      "paragraphs": [
-        [
-          "Expo Tel Aviv, Pavillon 2 · 09h00-18h00"
-        ]
-      ]
+      "paragraphs": [["Pratique avec le robuste FieldPad T10"]]
     },
     {
-      "paragraphs": [
-        [
-          "Démonstration de contre-drone en direct, tous les jours à 11h00"
-        ]
-      ]
+      "paragraphs": [["Rencontres individuelles avec nos ingénieurs"]]
     },
     {
-      "paragraphs": [
-        [
-          "Pratique avec le robuste FieldPad T10"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Rencontres individuelles avec nos ingénieurs"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Réservez une réunion de 20 minutes"
-        ]
-      ]
+      "paragraphs": [["Réservez une réunion de 20 minutes"]]
     }
   ],
   "m-counteruas": [
+    "DETECT · 5 km",
+    "IDENTIFY · 3 km",
+    "DEFEAT · 1 km",
+    "SKYGUARD · CONTRE-UAS",
     {
-      "paragraphs": [
-        [
-          "DÉTECTION · 5 km"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "IDENTIFIER · 3 km"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "DÉFAITE · 1 km"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "SKYGUARD · CONTRE-UAS"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Défense multicouche"
-        ],
-        [
-          "contre les ",
-          "drones hostiles"
-        ]
-      ]
+      "paragraphs": [["Défense multicouche"], ["contre les ", "drones hostiles"]]
     },
     "Radar, détection RF et caméra stabilisée qui\nclassent chaque drone dans le ciel en 3 secondes.",
     {
-      "paragraphs": [
-        [
-          "Fonctionne de manière autonome, 24h/24 et 7j/7, par tous les temps"
-        ]
-      ]
+      "paragraphs": [["Fonctionne de manière autonome, 24h/24 et 7j/7, par tous les temps"]]
     }
   ],
   "m-nightvision": [
-    {
-      "paragraphs": [
-        [
-          "NOX-3 · VISION NOCTURNE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Posséder"
-        ],
-        [
-          "la nuit"
-        ]
-      ]
-    },
+    "NOX-3 · VISION NOCTURNE",
+    "Posséder\nla nuit",
     "Tubes image Gen 3+ qui transforment la lumière\ndes étoiles en une image claire et nette.",
     {
-      "paragraphs": [
-        [
-          "Résolution"
-        ]
-      ]
+      "paragraphs": [["Résolution"]]
+    },
+    "64 lp/mm",
+    {
+      "paragraphs": [["Durée de vie des tubes"]]
     },
     {
-      "paragraphs": [
-        [
-          "64 lp/mm"
-        ]
-      ]
+      "paragraphs": [["10,000 h"]]
     },
     {
-      "paragraphs": [
-        [
-          "Durée de vie des tubes"
-        ]
-      ]
+      "paragraphs": [["Poids"]]
     },
     {
-      "paragraphs": [
-        [
-          "10 000 heures"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Poids"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "390g"
-        ]
-      ]
+      "paragraphs": [["390 g"]]
     }
   ],
   "m-rugged": [
-    {
-      "paragraphs": [
-        [
-          "FIELDPAD T10 · TABLETTE ROBUSTE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Construit pour"
-        ],
-        [
-          "le terrain"
-        ]
-      ]
-    },
+    "FIELDPAD T10 · TABLETTE ROBUSTE",
+    "Conçu pour\nle terrain",
     "Une tablette de 10 pouces qui survit à la pluie, au sable et à\nune chute sur le béton, et qui dure toute une journée de travail.",
     {
-      "paragraphs": [
-        [
-          "IP67"
-        ],
-        [
-          "pluie et poussière"
-        ]
-      ]
+      "paragraphs": [["IP67"], ["pluie et poussière"]]
     },
     {
-      "paragraphs": [
-        [
-          "1,8 m"
-        ],
-        [
-          "essai de chute"
-        ]
-      ]
+      "paragraphs": [["1.8 m"], ["essai de chute"]]
     },
     {
-      "paragraphs": [
-        [
-          "−33/60°"
-        ],
-        [
-          "plage de travail"
-        ]
-      ]
+      "paragraphs": [["−33/60°"], ["plage de travail"]]
     },
     {
-      "paragraphs": [
-        [
-          "12 heures"
-        ],
-        [
-          "une batterie"
-        ]
-      ]
+      "paragraphs": [["12 h"], ["une batterie"]]
     },
     {
-      "paragraphs": [
-        [
-          "Demander un essai sur le terrain"
-        ]
-      ]
+      "paragraphs": [["Demander un essai sur le terrain"]]
     }
   ],
   "m-antijam": [
-    {
-      "paragraphs": [
-        [
-          "ANCRE A7 · ANTENNE GNSS ANTI-BOURRAGE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "GPS bloqué."
-        ],
-        [
-          "Toujours en bonne voie."
-        ]
-      ]
-    },
+    "ANCHOR A7 · ANTENNE GNSS ANTI-BOURRAGE",
+    "GPS bloqué. Toujours\nen bonne voie.",
     "Sept éléments tournent leurs angles morts vers les\nbrouilleurs, afin que les navires, les avions et les réseaux\nélectriques conservent leur position et leur horloge.",
     {
-      "paragraphs": [
-        [
-          "6"
-        ]
-      ]
+      "paragraphs": [["6"]]
     },
     {
-      "paragraphs": [
-        [
-          "brouilleurs annulés immédiatement"
-        ]
-      ]
+      "paragraphs": [["brouilleurs annulés immédiatement"]]
     },
     {
-      "paragraphs": [
-        [
-          "40 dB"
-        ]
-      ]
+      "paragraphs": [["40 dB"]]
     },
     {
-      "paragraphs": [
-        [
-          "protection supplémentaire"
-        ]
-      ]
+      "paragraphs": [["protection supplémentaire"]]
     },
     {
-      "paragraphs": [
-        [
-          "4"
-        ]
-      ]
+      "paragraphs": [["4"]]
     },
     {
-      "paragraphs": [
-        [
-          "systèmes satellitaires"
-        ]
-      ]
+      "paragraphs": [["systèmes satellitaires"]]
     },
     {
-      "paragraphs": [
-        [
-          "1,2kg"
-        ]
-      ]
+      "paragraphs": [["1.2 kg"]]
     },
     {
-      "paragraphs": [
-        [
-          "scellé IP67"
-        ]
-      ]
+      "paragraphs": [["scellé IP67"]]
     },
     {
-      "paragraphs": [
-        [
-          "Obtenez la fiche technique"
-        ]
-      ]
+      "paragraphs": [["Obtenez la fiche technique"]]
     }
   ],
   "m-thermal": [
-    {
-      "paragraphs": [
-        [
-          "EMBER T640 · CAMÉRA DE RECHERCHE THERMIQUE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "L'obscurité se cache."
-        ],
-        [
-          "Ce n’est pas le cas de la chaleur."
-        ]
-      ]
-    },
+    "EMBER T640 · CAMÉRA DE RECHERCHE THERMIQUE",
+    "L’obscurité dissimule.\nLa chaleur révèle.",
     "Une caméra thermique pour les drones de sauvetage. Il trouve\nune personne sous les arbres ou dans la fumée, à 1,2 km.",
     {
-      "paragraphs": [
-        [
-          "1,2km"
-        ]
-      ]
+      "paragraphs": [["1.2 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "repérer une personne"
-        ]
-      ]
+      "paragraphs": [["repérer une personne"]]
     },
     {
-      "paragraphs": [
-        [
-          "640×512"
-        ]
-      ]
+      "paragraphs": [["640×512"]]
     },
     {
-      "paragraphs": [
-        [
-          "pixels thermiques"
-        ]
-      ]
+      "paragraphs": [["pixels thermiques"]]
     },
     {
-      "paragraphs": [
-        [
-          "<40 mK"
-        ]
-      ]
+      "paragraphs": [["<40 mK"]]
     },
     {
-      "paragraphs": [
-        [
-          "sensibilité"
-        ]
-      ]
+      "paragraphs": [["sensibilité"]]
     },
     {
-      "paragraphs": [
-        [
-          "Réservez une démo nocturne"
-        ]
-      ]
+      "paragraphs": [["Réservez une démo nocturne"]]
     },
     {
-      "paragraphs": [
-        [
-          "Démonstrations nocturnes du 14.1.2027"
-        ]
-      ]
+      "paragraphs": [["Démonstrations nocturnes du 14.1.2027"]]
     },
     {
-      "paragraphs": [
-        [
-          "PERSONNE",
-          "  36,4 °C"
-        ]
-      ]
+      "paragraphs": [["PERSONNE", "  36,4 °C"]]
     },
     {
-      "paragraphs": [
-        [
-          "36°C"
-        ]
-      ]
+      "paragraphs": [["36°C"]]
     },
     {
-      "paragraphs": [
-        [
-          "−2 °C"
-        ]
-      ]
+      "paragraphs": [["−2°C"]]
     }
   ],
   "m-meshradio": [
     {
-      "paragraphs": [
-        [
-          "Camp de base"
-        ]
-      ]
+      "paragraphs": [["Camp de base"]]
     },
     {
-      "paragraphs": [
-        [
-          "Relais de drones"
-        ]
-      ]
+      "paragraphs": [["Relais de drones"]]
     },
     {
-      "paragraphs": [
-        [
-          "Équipe derrière la crête"
-        ]
-      ]
+      "paragraphs": [["Équipe derrière la crête"]]
     },
-    {
-      "paragraphs": [
-        [
-          "MESHLINK R4 · RADIO MAILLE DE SAUVETAGE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Chaque radio"
-        ],
-        [
-          "est une tour."
-        ]
-      ]
-    },
+    "MESHLINK R4 · RADIO MAILLE DE SAUVETAGE",
+    "Chaque radio\ndevient un relais.",
     "Lorsque les tours de téléphonie cellulaire sont\nen panne, les radios de l’équipe se connectent\nd’elles-mêmes et transmettent chaque appel via la crête.",
     {
-      "paragraphs": [
-        [
-          "64"
-        ]
-      ]
+      "paragraphs": [["64"]]
     },
     {
-      "paragraphs": [
-        [
-          "radios par maille"
-        ]
-      ]
+      "paragraphs": [["radios par maille"]]
     },
     {
-      "paragraphs": [
-        [
-          "12km"
-        ]
-      ]
+      "paragraphs": [["12 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "entre les radios"
-        ]
-      ]
+      "paragraphs": [["entre les radios"]]
     },
     {
-      "paragraphs": [
-        [
-          "2 s"
-        ]
-      ]
+      "paragraphs": [["2 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "rediriger"
-        ]
-      ]
+      "paragraphs": [["rediriger"]]
     },
     {
-      "paragraphs": [
-        [
-          "Planifier un test sur le terrain"
-        ]
-      ]
+      "paragraphs": [["Planifier un test sur le terrain"]]
     },
     {
-      "paragraphs": [
-        [
-          "Expédition mars 2027"
-        ]
-      ]
+      "paragraphs": [["Expédition mars 2027"]]
     }
   ],
   "m-homebattery": [
-    {
-      "paragraphs": [
-        [
-          "CRÉPUSCULE 13 · BATTERIE MAISON"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Soleil,"
-        ],
-        [
-          "après la tombée de la nuit"
-        ]
-      ]
-    },
+    "DUSK 13 · BATTERIE MAISON",
+    "Soleil, après la\ntombée de la nuit",
     "Stocke ce que font vos panneaux à\nmidi et gère la maison toute la nuit.",
     {
-      "paragraphs": [
-        [
-          "82%"
-        ]
-      ]
+      "paragraphs": [["82%"]]
     },
     "toujours\nstocké à 21h40",
     {
-      "paragraphs": [
-        [
-          "21:40"
-        ]
-      ]
+      "paragraphs": [["21:40"]]
     },
     {
-      "paragraphs": [
-        [
-          "Solaire"
-        ]
-      ]
+      "paragraphs": [["Solaire"]]
     },
     {
-      "paragraphs": [
-        [
-          "Batterie"
-        ]
-      ]
+      "paragraphs": [["Batterie"]]
     },
     {
-      "paragraphs": [
-        [
-          "06:00"
-        ]
-      ]
+      "paragraphs": [["06:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "12:00"
-        ]
-      ]
+      "paragraphs": [["12:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "18:00"
-        ]
-      ]
+      "paragraphs": [["18:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "24:00"
-        ]
-      ]
+      "paragraphs": [["24:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "06:00"
-        ]
-      ]
+      "paragraphs": [["06:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "13.5",
-          " kWh"
-        ]
-      ]
+      "paragraphs": [["13.5", " kWh"]]
     },
     {
-      "paragraphs": [
-        [
-          "stockage"
-        ]
-      ]
+      "paragraphs": [["stockage"]]
     },
     {
-      "paragraphs": [
-        [
-          "7",
-          " kW"
-        ]
-      ]
+      "paragraphs": [["7", " kW"]]
     },
     {
-      "paragraphs": [
-        [
-          "puissance de pointe"
-        ]
-      ]
+      "paragraphs": [["puissance de pointe"]]
     },
     {
-      "paragraphs": [
-        [
-          "92",
-          "%"
-        ]
-      ]
+      "paragraphs": [["92", "%"]]
     },
     {
-      "paragraphs": [
-        [
-          "efficacité"
-        ]
-      ]
+      "paragraphs": [["efficacité"]]
     },
     {
-      "paragraphs": [
-        [
-          "10",
-          " années"
-        ]
-      ]
+      "paragraphs": [["10", " années"]]
     },
     {
-      "paragraphs": [
-        [
-          "garantie"
-        ]
-      ]
+      "paragraphs": [["garantie"]]
     }
   ],
   "m-simtraining": [
-    {
-      "paragraphs": [
-        [
-          "SKYRIG H6 · SIMULATEUR DE MOUVEMENT COMPLET"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Volez la tempête."
-        ],
-        [
-          "Restez ancré."
-        ]
-      ]
-    },
+    "SKYRIG H6 · SIMULATEUR DE MOUVEMENT COMPLET",
+    "Volez dans la tempête.\nRestez au sol.",
     "Un cockpit entièrement mobile pour les équipages d'hélicoptères de\nsauvetage : levages de nuit, sauvetages en mer et pannes moteur.",
+    "6 DOF",
     {
-      "paragraphs": [
-        [
-          "6 degrés de liberté"
-        ]
-      ]
+      "paragraphs": [["mouvement complet"]]
     },
     {
-      "paragraphs": [
-        [
-          "mouvement complet"
-        ]
-      ]
+      "paragraphs": [["220°"]]
     },
     {
-      "paragraphs": [
-        [
-          "220°"
-        ]
-      ]
+      "paragraphs": [["champ de vision"]]
     },
     {
-      "paragraphs": [
-        [
-          "champ de vision"
-        ]
-      ]
+      "paragraphs": [["300+"]]
     },
     {
-      "paragraphs": [
-        [
-          "300+"
-        ]
-      ]
+      "paragraphs": [["scénarios de sauvetage"]]
     },
     {
-      "paragraphs": [
-        [
-          "scénarios de sauvetage"
-        ]
-      ]
+      "paragraphs": [["Réservez une journée de formation"]]
     },
     {
-      "paragraphs": [
-        [
-          "Réservez une journée de formation"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Centre de formation de Haïfa, à partir de février 2027"
-        ]
-      ]
+      "paragraphs": [["Centre de formation de Haïfa, à partir de février 2027"]]
     }
   ],
   "m-meshwifi": [
     {
-      "paragraphs": [
-        [
-          "Salon"
-        ]
-      ]
+      "paragraphs": [["Salon"]]
     },
     {
-      "paragraphs": [
-        [
-          "2,1 Gbit/s"
-        ]
-      ]
+      "paragraphs": [["2.1 Gbps"]]
     },
     {
-      "paragraphs": [
-        [
-          "Étude"
-        ]
-      ]
+      "paragraphs": [["Étude"]]
     },
     {
-      "paragraphs": [
-        [
-          "2,0 Gbit/s"
-        ]
-      ]
+      "paragraphs": [["2.0 Gbps"]]
     },
     {
-      "paragraphs": [
-        [
-          "Chambre d'enfants"
-        ]
-      ]
+      "paragraphs": [["Chambre d'enfants"]]
     },
     {
-      "paragraphs": [
-        [
-          "1,9 Gbit/s"
-        ]
-      ]
+      "paragraphs": [["1.9 Gbps"]]
     },
-    {
-      "paragraphs": [
-        [
-          "AUVENT MAILLE · WI-FI 7"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Wi-Fi rapide"
-        ],
-        [
-          "dans chaque pièce"
-        ]
-      ]
-    },
+    "CANOPY MESH · WI-FI 7",
+    "Wi-Fi rapide\ndans chaque pièce",
     "Trois petits nœuds partagent un réseau,\nde sorte que la chambre la plus éloignée\nbénéficie de la même vitesse que le routeur.",
     {
-      "paragraphs": [
-        [
-          "450 m²"
-        ]
-      ]
+      "paragraphs": [["450 m²"]]
     },
     {
-      "paragraphs": [
-        [
-          "couverture"
-        ]
-      ]
+      "paragraphs": [["couverture"]]
     },
     {
-      "paragraphs": [
-        [
-          "5,8 Gbit/s"
-        ]
-      ]
+      "paragraphs": [["5.8 Gbps"]]
     },
     {
-      "paragraphs": [
-        [
-          "vitesse maximale"
-        ]
-      ]
+      "paragraphs": [["vitesse maximale"]]
     },
     {
-      "paragraphs": [
-        [
-          "200"
-        ]
-      ]
+      "paragraphs": [["200"]]
     },
     {
-      "paragraphs": [
-        [
-          "appareils à la fois"
-        ]
-      ]
+      "paragraphs": [["appareils à la fois"]]
     },
     {
-      "paragraphs": [
-        [
-          "Regardez le lancement"
-        ]
-      ]
+      "paragraphs": [["Regardez le lancement"]]
     },
     "En direct de la scène\n19.1.2027 · 19h00"
   ],
   "m-cyberrange": [
     {
-      "paragraphs": [
-        [
-          "GAMME 27 ·  ",
-          "ÉQUIPE ROUGE",
-          "  CONTRE  ",
-          "ÉQUIPE BLEUE"
-        ]
-      ]
+      "paragraphs": [["GAMME 27 ·  ", "ÉQUIPE ROUGE", "  CONTRE  ", "ÉQUIPE BLEUE"]]
     },
     {
       "paragraphs": [
-        [
-          "Attaquez",
-          " une ville."
-        ],
-        [
-          "Apprenez à la ",
-          "défendre",
-          "."
-        ]
+        ["Attaquez", " une ville."],
+        ["Apprenez à la ", "défendre", "."]
       ]
     },
     "48 heures sur une réplique complète des réseaux d’eau et d’électricité d’une\nville. Cinq défenseurs par équipe, contre une équipe rouge qui ne dort jamais.",
     {
-      "paragraphs": [
-        [
-          "10–11.3.2027 · Beer Sheva"
-        ]
-      ]
+      "paragraphs": [["10–11.3.2027 · Beer Sheva"]]
     },
     {
-      "paragraphs": [
-        [
-          "Inscrire une équipe"
-        ]
-      ]
+      "paragraphs": [["Inscrire une équipe"]]
     }
   ],
   "m-keyboard": [
-    {
-      "paragraphs": [
-        [
-          "FERRO 75 · PRÉCOMMANDE"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Touches silencieuses,"
-        ],
-        [
-          "des idées bruyantes."
-        ]
-      ]
-    },
+    "FERRO 75 · PRÉCOMMANDE",
+    "Touches silencieuses,\nidées bruyantes.",
     "Une carte en aluminium sur joints souples, avec des\ninterrupteurs tactiles silencieux. Toutes les idées, aucun bruit.",
     {
-      "paragraphs": [
-        [
-          "$189"
-        ]
-      ]
+      "paragraphs": [["$189"]]
     },
     {
-      "paragraphs": [
-        [
-          "Expédié à partir du 3.3.2027"
-        ]
-      ]
+      "paragraphs": [["Expédié à partir du 3.3.2027"]]
     },
     {
-      "paragraphs": [
-        [
-          "Précommande"
-        ]
-      ]
+      "paragraphs": [["Précommande"]]
     },
     {
-      "paragraphs": [
-        [
-          "75% · 84 touches"
-        ]
-      ]
+      "paragraphs": [["75% · 84 touches"]]
     },
     {
-      "paragraphs": [
-        [
-          "Interrupteurs tactiles silencieux"
-        ]
-      ]
+      "paragraphs": [["Interrupteurs tactiles silencieux"]]
     },
     {
-      "paragraphs": [
-        [
-          "Prises remplaçables à chaud"
-        ]
-      ]
+      "paragraphs": [["Prises remplaçables à chaud"]]
     },
     {
-      "paragraphs": [
-        [
-          "Bluetooth + 2,4 GHz"
-        ]
-      ]
+      "paragraphs": [["Bluetooth + 2,4 GHz"]]
     }
   ],
   "m-passkey": [
     {
-      "paragraphs": [
-        [
-          "Du noir pour votre porte-clés, de l'ivoire pour le tiroir."
-        ]
-      ]
+      "paragraphs": [["Du noir pour votre porte-clés, de l'ivoire pour le tiroir."]]
     },
-    {
-      "paragraphs": [
-        [
-          "SEAL K2 · MESSAGE MATÉRIEL"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Une touche bat"
-        ],
-        [
-          "chaque mot de passe"
-        ]
-      ]
-    },
+    "SEAL K2 · MESSAGE MATÉRIEL",
+    "Un geste remplace\ntous les mots de passe",
     "Appuyez pour vous connecter. Rien à\ntaper, rien à voler pour une fausse page.",
     {
-      "paragraphs": [
-        [
-          "Mot de passe + SMS"
-        ]
-      ]
+      "paragraphs": [["Mot de passe + SMS"]]
     },
     {
-      "paragraphs": [
-        [
-          "SEAL K2"
-        ]
-      ]
+      "paragraphs": [["SEAL K2"]]
     },
     {
-      "paragraphs": [
-        [
-          "Arrête le phishing"
-        ]
-      ]
+      "paragraphs": [["Arrête le phishing"]]
     },
     {
-      "paragraphs": [
-        [
-          "Heure de connexion"
-        ]
-      ]
+      "paragraphs": [["Heure de connexion"]]
     },
     {
-      "paragraphs": [
-        [
-          "25 s"
-        ]
-      ]
+      "paragraphs": [["25 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "2 s"
-        ]
-      ]
+      "paragraphs": [["2 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "Se souvenir"
-        ]
-      ]
+      "paragraphs": [["Se souvenir"]]
     },
     {
-      "paragraphs": [
-        [
-          "14 mots de passe"
-        ]
-      ]
+      "paragraphs": [["14 mots de passe"]]
     },
     {
-      "paragraphs": [
-        [
-          "Rien"
-        ]
-      ]
+      "paragraphs": [["Rien"]]
     },
     {
-      "paragraphs": [
-        [
-          "Fonctionne sans téléphone"
-        ]
-      ]
+      "paragraphs": [["Fonctionne sans téléphone"]]
     },
     {
-      "paragraphs": [
-        [
-          "À partir de 39 $ · fonctionne avec plus de 1 200 applications"
-        ]
-      ]
+      "paragraphs": [["À partir de 39 $ · fonctionne avec plus de 1 200 applications"]]
     }
   ],
   "m-ereader": [
+    "FOLIO 7 · SPÉCIFICATIONS TECHNIQUES",
     {
-      "paragraphs": [
-        [
-          "FOLIO 7 · SPÉCIFICATIONS TECHNIQUES"
-        ]
-      ]
+      "paragraphs": [["Toute une bibliothèque, ", "en 182 grammes"]]
     },
     {
-      "paragraphs": [
-        [
-          "Toute une bibliothèque, ",
-          "en 182 grammes"
-        ]
-      ]
+      "paragraphs": [["ÉCRAN"]]
     },
     {
-      "paragraphs": [
-        [
-          "ÉCRAN"
-        ]
-      ]
+      "paragraphs": [["7″ · 300 ppp"]]
     },
     {
-      "paragraphs": [
-        [
-          "7″ · 300 ppp"
-        ]
-      ]
+      "paragraphs": [["CLÉS PAGE-TOURNANTES"]]
     },
     {
-      "paragraphs": [
-        [
-          "CLÉS PAGE-TOURNANTES"
-        ]
-      ]
+      "paragraphs": [["2, sur la poignée"]]
     },
     {
-      "paragraphs": [
-        [
-          "2, sur la poignée"
-        ]
-      ]
+      "paragraphs": [["BATTERIE"]]
     },
     {
-      "paragraphs": [
-        [
-          "BATTERIE"
-        ]
-      ]
+      "paragraphs": [["8 semaines"]]
     },
     {
-      "paragraphs": [
-        [
-          "8 semaines"
-        ]
-      ]
+      "paragraphs": [["POIDS"]]
     },
     {
-      "paragraphs": [
-        [
-          "POIDS"
-        ]
-      ]
+      "paragraphs": [["182 g"]]
     },
     {
-      "paragraphs": [
-        [
-          "182 g"
-        ]
-      ]
+      "paragraphs": [["ÉPAISSEUR"]]
     },
     {
-      "paragraphs": [
-        [
-          "ÉPAISSEUR"
-        ]
-      ]
+      "paragraphs": [["6.2 mm"]]
     },
     {
-      "paragraphs": [
-        [
-          "6,2 mm"
-        ]
-      ]
+      "paragraphs": [["IMPERMÉABLE"]]
     },
     {
-      "paragraphs": [
-        [
-          "IMPERMÉABLE"
-        ]
-      ]
+      "paragraphs": [["IPX8"]]
     },
     {
-      "paragraphs": [
-        [
-          "IPX8"
-        ]
-      ]
+      "paragraphs": [["$169"]]
     },
     {
-      "paragraphs": [
-        [
-          "$169"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "En magasin le 4.3.2027"
-        ]
-      ]
+      "paragraphs": [["En magasin le 4.3.2027"]]
     }
   ],
   "m-poetry-cafe-window": [
     {
-      "paragraphs": [
-        [
-          "Lancement de livre · Poésie & café"
-        ]
-      ]
+      "paragraphs": [["Lancement de livre · Poésie & café"]],
+      "lineHeight": 1.4
+    },
+    {
+      "paragraphs": [["Une ville de\nMousse"]],
+      "lineHeight": 1.4
     },
     {
       "paragraphs": [
-        [
-          "Une ville de\nMousse"
-        ]
-      ]
+        ["Des poèmes sur les matins de Tel-Aviv, les balcons et ce qui reste au fond de la tasse."]
+      ],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Des poèmes sur les matins de Tel-Aviv, les balcons et ce qui reste au fond de la tasse."
-        ]
-      ]
+      "paragraphs": [["La première collection de Noga Almog"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "La première collection de Noga Almog"
-        ]
-      ]
+      "paragraphs": [["Jour"], ["mercredi"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Jour"
-        ],
-        [
-          "mercredi"
-        ]
-      ]
+      "paragraphs": [["Heure"], ["20h00"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Heure"
-        ],
-        [
-          "20h00"
-        ]
-      ]
+      "paragraphs": [["Lieu"], ["Café HaGefen"], ["Boulevard Rothschild, Tel-Aviv"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Lieu"
-        ],
-        [
-          "Café HaGefen"
-        ],
-        [
-          "Boulevard Rothschild, Tel-Aviv"
-        ]
-      ]
+      "paragraphs": [["Lecture ouverte, dédicace et gâteau chaud à la levure"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Lecture ouverte, dédicace et gâteau chaud à la levure"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "Entrée gratuite · RSVP par message"
-        ]
-      ]
+      "paragraphs": [["Entrée gratuite · RSVP par message"]],
+      "lineHeight": 1.4
     }
   ],
   "m-sourdough-thumb": [
     {
-      "paragraphs": [
-        [
-          "JUSTE"
-        ],
-        [
-          "4"
-        ],
-        [
-          "INGRÉDIENTS"
-        ]
-      ]
+      "paragraphs": [["JUSTE"], ["4"], ["INGRÉDIENTS"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Le guide complet étape par étape"
-        ]
-      ]
+      "paragraphs": [["Le guide complet étape par étape"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Levain\nÀ partir de zéro"
-        ]
-      ]
+      "runs": ["Pain au levain\nPas à pas"],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Votre premier pain,\navec une croûte qui crépite"
-        ]
-      ]
+      "paragraphs": [["Votre premier pain,\navec une croûte qui crépite"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "Farine · Eau · Sel · Patience"
-        ]
-      ]
+      "paragraphs": [["Farine · Eau · Sel · Patience"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "32:40"
-        ]
-      ]
+      "paragraphs": [["32:40"]],
+      "lineHeight": 1.4
     }
   ]
 }

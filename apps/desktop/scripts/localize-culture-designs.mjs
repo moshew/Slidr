@@ -164,8 +164,17 @@ try {
       if (['ar', 'vi', 'hi', 'ja', 'ko', 'zh-CN'].includes(lang)) {
         const leading = lang === 'hi' ? 1.5 : lang === 'vi' ? 1.4 : 1.2;
         for (const element of textElements(localized)) {
-          if (element.content.paragraphs.length < 2) continue;
           for (const paragraph of element.content.paragraphs) {
+            // A single paragraph can contain authored line breaks too. Even one line
+            // needs its script's ascenders and descenders inside the editable frame.
+            if (
+              !paragraph.runs.some((run) =>
+                /[\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u00c0-\u024f\u1e00-\u1eff]/u.test(
+                  run.text,
+                ),
+              )
+            )
+              continue;
             paragraph.lineHeight = Math.max(paragraph.lineHeight ?? leading, leading);
           }
         }

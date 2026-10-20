@@ -101,9 +101,9 @@ for (const theme of themes) {
         await page.waitForTimeout(250);
         await expectRowFits(page);
 
+        // The row and the popovers under it: the tools are one row now (row A is gone).
         const bar = (await row(page).boundingBox())!;
-        const tools = (await page.getByTestId('top-tools-a').boundingBox())!;
-        const clip = { x: bar.x, y: tools.y, width: bar.width, height: 470 };
+        const clip = { x: bar.x, y: bar.y, width: bar.width, height: 470 };
         const picture = (key: string) => page.screenshot({ path: shot(`${key}-${name}`), clip });
         await picture('row');
 

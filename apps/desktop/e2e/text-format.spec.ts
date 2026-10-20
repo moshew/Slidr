@@ -802,11 +802,11 @@ test.describe('inserting a text box', () => {
       window.slidr!.bus.deck.slides[0]!.elements.filter((e) => e.type === 'text').map((e) => e.id),
     );
 
-  test('the Text button of row A adds a box in the middle and starts editing it', async ({
+  test('the Text button of row B adds a box in the middle and starts editing it', async ({
     page,
   }) => {
     const before = await steps(page);
-    await page.getByTestId('top-tools-a').getByRole('button', { name: 'טקסט' }).click();
+    await page.getByTestId('top-tools-b').getByRole('button', { name: 'טקסט' }).click();
     await expect(editor(page)).toBeFocused();
     const ids = await texts(page);
     expect(ids).toHaveLength(2);

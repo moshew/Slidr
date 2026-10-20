@@ -147,6 +147,9 @@ test('every type of the gallery inserts a chart of that type, and it is drawn', 
 test('a second chart does not hide the first', async ({ page }) => {
   await openApp(page, { lang: 'en' });
   for (const type of ['column', 'pie']) {
+    // Row B offers the insert buttons while nothing is selected: the first chart is let go of,
+    // as Esc or a press beside it would.
+    await page.evaluate(() => window.slidr!.selection.getState().selectElements([]));
     await insertButton(page, 'Chart').click();
     await page.locator(`[data-chart-type="${type}"]`).click();
   }

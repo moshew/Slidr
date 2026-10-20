@@ -104,7 +104,8 @@ export function BackgroundTool() {
           icon={PaintBucket}
           label={t('background.title')}
           size="sm"
-          className="[&_svg]:size-[18px]"
+          // As strong as the insert tools beside it (`TopTools.tsx`): one row of slide tools.
+          className="enabled:text-ui-fg [&_svg]:size-[18px]"
         />
       </PopoverTrigger>
       <PopoverContent>

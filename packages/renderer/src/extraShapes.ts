@@ -136,15 +136,17 @@ for (const direction of directions)
     });
   }
 
+// The side the tail is on first, then where along it: a tail at the bottom near the left and
+// one on the left near the bottom are two shapes, and the Hebrew named both "on the left, below".
 const tails = [
-  { id: 'BottomLeft', en: 'bottom left', he: 'משמאל למטה', side: 'bottom', pos: 0.25 },
-  { id: 'BottomRight', en: 'bottom right', he: 'מימין למטה', side: 'bottom', pos: 0.75 },
-  { id: 'TopLeft', en: 'top left', he: 'משמאל למעלה', side: 'top', pos: 0.25 },
-  { id: 'TopRight', en: 'top right', he: 'מימין למעלה', side: 'top', pos: 0.75 },
-  { id: 'LeftTop', en: 'left top', he: 'משמאל למעלה', side: 'left', pos: 0.25 },
-  { id: 'LeftBottom', en: 'left bottom', he: 'משמאל למטה', side: 'left', pos: 0.75 },
-  { id: 'RightTop', en: 'right top', he: 'מימין למעלה', side: 'right', pos: 0.25 },
-  { id: 'RightBottom', en: 'right bottom', he: 'מימין למטה', side: 'right', pos: 0.75 },
+  { id: 'BottomLeft', en: 'bottom left', he: 'בתחתית, משמאל', side: 'bottom', pos: 0.25 },
+  { id: 'BottomRight', en: 'bottom right', he: 'בתחתית, מימין', side: 'bottom', pos: 0.75 },
+  { id: 'TopLeft', en: 'top left', he: 'בראש, משמאל', side: 'top', pos: 0.25 },
+  { id: 'TopRight', en: 'top right', he: 'בראש, מימין', side: 'top', pos: 0.75 },
+  { id: 'LeftTop', en: 'left top', he: 'בצד שמאל, למעלה', side: 'left', pos: 0.25 },
+  { id: 'LeftBottom', en: 'left bottom', he: 'בצד שמאל, למטה', side: 'left', pos: 0.75 },
+  { id: 'RightTop', en: 'right top', he: 'בצד ימין, למעלה', side: 'right', pos: 0.25 },
+  { id: 'RightBottom', en: 'right bottom', he: 'בצד ימין, למטה', side: 'right', pos: 0.75 },
 ] as const;
 for (const tail of tails)
   for (const rounded of [false, true]) {

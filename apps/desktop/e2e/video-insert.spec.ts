@@ -24,13 +24,13 @@ import {
 } from './video-helpers';
 
 /*
- * Taking a local video or audio file in (MED-01): the Insert media button of row A, and a file
+ * Taking a local video or audio file in (MED-01): the Insert media button of row B, and a file
  * dropped on the Stage. The plain browser of these tests reads the files into memory; in the app
  * the same button uses Tauri's file dialog and copies by path, which only the real window shows.
  */
 
 const insertButton = (page: Page) =>
-  page.getByTestId('top-tools-a').getByRole('button', { name: 'וידאו או אודיו' });
+  page.getByTestId('top-tools-b').getByRole('button', { name: 'וידאו או אודיו' });
 
 const redo = (page: Page) => page.evaluate(() => window.slidr!.bus.redo());
 
@@ -142,6 +142,8 @@ test('the same file twice is one asset and two clips', async ({ page }) => {
   const media = await testMedia(page);
   await choose(page, [{ ...VIDEO_FILE, buffer: media.video }]);
   await expect(row(page)).toHaveAttribute('data-selection', 'media');
+  // Row B offers the insert buttons while nothing is selected: the first clip is let go of.
+  await page.evaluate(() => window.slidr!.selection.getState().selectElements([]));
   await choose(page, [{ ...VIDEO_FILE, buffer: media.video }]);
   await expect.poll(async () => (await currentSlide(page)).elements.length).toBe(2);
   expect(Object.keys((await deck(page)).assets)).toHaveLength(1);

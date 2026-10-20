@@ -48,7 +48,7 @@ function chrome(page: Page) {
     spinner.remove();
     const surfaces = Array.from(
       document.querySelectorAll<HTMLElement>(
-        '[data-testid="top-tools-a"], [data-testid="top-tools-a"] button, [data-testid="top-tools-b"], [data-testid="window-controls"], [data-testid="stage-surface"]',
+        '[data-testid="top-tools-b"], [data-testid="top-tools-b"] button, [data-testid="window-controls"], [data-testid="stage-surface"]',
       ),
       (el) => {
         const style = getComputedStyle(el);
@@ -110,11 +110,15 @@ test('the editor keeps its own look whatever the CSS and the markup of a deck sa
     hasScripts: false,
   });
   await expect(onStage(page, 'e_hostile_svg').locator('[data-slidr-svg]')).toBeAttached();
+  // Row B shows the tools of what is selected, and an added element is: it is measured with
+  // nothing selected, as it was at the start, so only what the deck could do to it differs.
+  await page.evaluate(() => window.slidr!.selection.getState().selectElements([]));
+  await expect(page.getByTestId('top-tools-b')).toHaveAttribute('data-selection', 'none');
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(300);
 
   expect(await chrome(page)).toEqual(before);
-  await expect(page.getByTestId('top-tools-a')).toBeVisible();
+  await expect(page.getByTestId('top-tools-b')).toBeVisible();
 
   // The control: the same names loose in the page, where a deck's rules used to end up, do
   // change the editor. So the comparison above looks at what it should.
@@ -163,7 +167,12 @@ test('the CSS of a slide and the stylesheet of a picture style what they belong 
     .toBe('rgb(255, 0, 0)');
   expect(await box.evaluate((el) => el.getAnimations().length)).toBe(1);
   // The picture is drawn on the Stage and in the Filmstrip, each copy with its own stylesheet.
-  const marks = page.locator('[data-element-id="e_picture"] [data-slidr-svg] rect.mark');
+  // Those two only: the design check draws the slide off the screen for a moment to measure it,
+  // and a third copy found then is gone before it can be read.
+  const mark = '[data-element-id="e_picture"] [data-slidr-svg] rect.mark';
+  const marks = page.locator(
+    `[data-testid="stage-frame"] ${mark}, [data-testid="filmstrip"] ${mark}`,
+  );
   await expect(marks).toHaveCount(2);
   for (const mark of await marks.all()) {
     expect(await mark.evaluate((el) => getComputedStyle(el).fill)).toBe('rgb(10, 120, 60)');

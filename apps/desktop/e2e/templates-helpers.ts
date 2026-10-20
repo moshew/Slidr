@@ -100,3 +100,17 @@ export async function settle(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(300);
 }
+
+/**
+ * How many templates are built in: as many as the media library's catalog holds, as the dev
+ * server serves it. Not a number of the spec: templates reach the library without a release.
+ */
+export async function builtInCount(page: Page): Promise<number> {
+  const count = await page.evaluate(async () => {
+    const answer = await fetch('/media-library/templates/catalog.json');
+    const catalog = (await answer.json()) as { templates?: unknown[] };
+    return catalog.templates?.length ?? 0;
+  });
+  expect(count, 'the library has templates').toBeGreaterThan(0);
+  return count;
+}

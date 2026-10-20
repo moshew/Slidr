@@ -179,7 +179,10 @@ test('an old saved panel width resets to the compact default once', async ({ pag
   await waitForPanelWidth(page, 360);
   expect(
     await page.evaluate(() => {
-      const saved = JSON.parse(localStorage.getItem('slidr.shell')!);
+      const saved = JSON.parse(localStorage.getItem('slidr.shell')!) as {
+        version: number;
+        state: { panelShare: unknown };
+      };
       return { version: saved.version, share: saved.state.panelShare };
     }),
   ).toEqual({ version: 4, share: null });
@@ -222,7 +225,7 @@ test('Ctrl+1 and Ctrl+L open the one AI chat (ADR-072)', async ({ page }) => {
   await expect(page.getByTestId('focus-chip')).toContainText('שקף 1');
   await page.getByRole('button', { name: 'שכבות' }).click();
   await expect(
-    page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }),
+    page.getByTestId('top-tools-b').getByRole('button', { name: "צ'אט AI" }),
   ).toHaveCount(0);
   await page.keyboard.press('Control+l');
   await expect(page.getByRole('heading', { name: "צ'אט AI" })).toBeVisible();

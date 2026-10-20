@@ -14,14 +14,19 @@ import {
 } from './objects-helpers';
 
 /*
- * The Insert buttons of row A for pictures, shapes and lines (WG5-T01, T04, T05: IMG-01, SHP-01,
- * SHP-05). Every insert lands in the middle of the slide, ends selected, and is one undo step.
+ * The Insert buttons of row B (while nothing is selected) for pictures, shapes and lines (WG5-T01,
+ * T04, T05: IMG-01, SHP-01, SHP-05). Every insert lands in the middle of the slide, ends selected,
+ * and is one undo step.
  */
 
-const rowA = (page: Page) => page.getByTestId('top-tools-b');
-
+/**
+ * The shapes of the Elements panel. The panel stays open after an insert; row B offers to open it
+ * while nothing is selected.
+ */
 async function openShapes(page: Page) {
-  await rowA(page).locator('[data-tool="insert.elements"]').click();
+  const library = page.getByTestId('elements-shapes');
+  if (await library.isVisible()) return library;
+  await row(page).locator('[data-tool="insert.elements"]').click();
   const panel = page.getByTestId('elements-panel');
   const collection = panel.locator('[data-collection="shapes"]');
   if (await collection.isVisible()) await collection.click();
@@ -95,7 +100,8 @@ test.describe('shapes', () => {
     await openApp(page, { lang: 'en' });
     const library = await openShapes(page);
     await expect(library.getByRole('group', { name: 'Speech bubbles' })).toBeVisible();
-    await library.getByRole('button', { name: '5-point star' }).click();
+    // Exactly: "15-point star" holds the same words.
+    await library.getByRole('button', { name: '5-point star', exact: true }).click();
     expect((await selected<ShapeElement>(page)).geometry).toEqual({
       kind: 'preset',
       preset: 'star5',
@@ -136,7 +142,7 @@ test.describe('lines', () => {
     }) => {
       await openApp(page);
       const before = await undoDepth(page);
-      await rowA(page).getByRole('button', { name: 'קו', exact: true }).click();
+      await row(page).getByRole('button', { name: 'קו', exact: true }).click();
       const library = page.getByTestId('line-library');
       await expect(library.getByRole('button')).toHaveCount(5);
       await library.getByRole('button', { name: kind.name, exact: true }).click();
@@ -167,7 +173,7 @@ test.describe('lines', () => {
 
   test('in an English deck a new arrow points right', async ({ page }) => {
     await openApp(page, { lang: 'en' });
-    await rowA(page).getByRole('button', { name: 'Line', exact: true }).click();
+    await row(page).getByRole('button', { name: 'Line', exact: true }).click();
     await page
       .getByTestId('line-library')
       .getByRole('button', { name: 'Arrow', exact: true })
@@ -192,7 +198,7 @@ test.describe('pictures', () => {
     const bytes = await pngBytes(page);
     const before = await undoDepth(page);
     const chooser = page.waitForEvent('filechooser');
-    await rowA(page).getByRole('button', { name: 'תמונה' }).click();
+    await row(page).getByRole('button', { name: 'תמונה' }).click();
     const dialog = await chooser;
     expect(dialog.isMultiple()).toBe(true);
     await dialog.setFiles({ name: 'harbour.png', mimeType: 'image/png', buffer: bytes });
@@ -228,7 +234,7 @@ test.describe('pictures', () => {
     const second = await pngBytes(page, ['#0f9d8a', '#e5484d'], [400, 600]);
     const before = await undoDepth(page);
     const chooser = page.waitForEvent('filechooser');
-    await rowA(page).getByRole('button', { name: 'תמונה' }).click();
+    await row(page).getByRole('button', { name: 'תמונה' }).click();
     await (
       await chooser
     ).setFiles([
@@ -248,7 +254,7 @@ test.describe('pictures', () => {
   test('cancelling the file dialog changes nothing', async ({ page }) => {
     const before = await undoDepth(page);
     const chooser = page.waitForEvent('filechooser');
-    await rowA(page).getByRole('button', { name: 'תמונה' }).click();
+    await row(page).getByRole('button', { name: 'תמונה' }).click();
     await (await chooser).setFiles([]);
     await page.waitForTimeout(200);
     expect(await undoDepth(page)).toBe(before);

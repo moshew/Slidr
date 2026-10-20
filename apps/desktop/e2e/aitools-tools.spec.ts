@@ -76,7 +76,7 @@ test('one AI tool, with no duplicate chat buttons in the editor', async ({ page 
 
   // The creation and context toolbars have no duplicate chat buttons.
   await expect(
-    page.getByTestId('top-tools-a').getByRole('button', { name: "צ'אט AI" }),
+    page.getByTestId('top-tools-b').getByRole('button', { name: "צ'אט AI" }),
   ).toHaveCount(0);
   await expect(
     page.getByTestId('top-tools-b').getByRole('button', { name: /שאלו את ה-AI/ }),

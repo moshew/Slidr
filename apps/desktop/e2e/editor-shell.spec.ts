@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addBoxes, openApp, select, selected, THREE, undo, undoSteps } from './arrange-helpers';
+import { builtInCount } from './templates-helpers';
 
 /*
  * The shell's P1 work (WG3-T07, T09, T11): the shortcut map (UI-06), the welcome screen (DOC-05),
@@ -305,11 +306,11 @@ test('a template is picked by its slides, and starts a deck that is set in it', 
   await openWelcome(page);
   const way = page.getByTestId('welcome-template');
   const covers = welcome(page).locator('[data-welcome-template]');
-  // The templates come when they are asked for: all of the built-in eighteen.
+  // The templates come when they are asked for: all of the built-in ones.
   await expect(covers).toHaveCount(0);
   await way.click();
   await expect(way).toHaveAttribute('aria-expanded', 'true');
-  await expect(covers).toHaveCount(18);
+  await expect(covers).toHaveCount(await builtInCount(page));
   // Esc folds them away, and the focus goes back to the way that opened them.
   await page.keyboard.press('Escape');
   await expect(covers).toHaveCount(0);
@@ -361,12 +362,16 @@ test('the templates fill the screen once the page scrolled to them, and only Bac
   const filled = page.locator('.welcome-page[data-filled]');
   await way.click();
   await expect(filled).toHaveCount(1);
-  // As large as the screen, inside the page's margin; the rest of the page is folded away.
+  // As tall as the screen inside the page's margin, and as wide as its slides make it, no wider
+  // than the screen inside that margin, in the middle; the rest of the page is folded away.
   const screen = (await welcome(page).boundingBox())!;
   const box = (await showroom.boundingBox())!;
   expect(Math.abs(box.y - (screen.y + 32))).toBeLessThan(2);
   expect(Math.abs(box.y + box.height - (screen.y + screen.height - 32))).toBeLessThan(2);
-  expect(Math.abs(box.width - (screen.width - 64))).toBeLessThan(2);
+  expect(box.width).toBeLessThanOrEqual(screen.width - 64 + 1);
+  const before = box.x - screen.x;
+  const after = screen.x + screen.width - (box.x + box.width);
+  expect(Math.abs(before - after)).toBeLessThan(2);
   await expect(way).toBeHidden();
   await expect(page.getByTestId('welcome-load')).toBeHidden();
   // No wheel brings the page back.

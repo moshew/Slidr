@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { openApp } from './arrange-helpers';
+import { builtInCount } from './templates-helpers';
 
 /*
  * Screenshots for the design gate (DSN-09) of the shell's P1 screens: the welcome screen (DOC-05),
@@ -50,7 +51,7 @@ for (const theme of themes) {
 
         // The templates, with every slide of the one that is picked.
         await page.getByTestId('welcome-template').click();
-        await expect(page.locator('[data-welcome-template]')).toHaveCount(18);
+        await expect(page.locator('[data-welcome-template]')).toHaveCount(await builtInCount(page));
         await expect(page.getByTestId('template-slide').first()).toBeVisible();
         await settle(page);
         await page.screenshot({ path: out(`welcome-templates-${tag}`) });

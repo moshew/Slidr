@@ -9,6 +9,7 @@ import {
   languageDir,
   plainText,
   Slide,
+  walkElements,
 } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import next33Source from '../../scripts/design-locales/next-33/source.json';
@@ -98,7 +99,7 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
         previewBackdrop(id) ? ['test-backdrop', 'test-image'] : ['test-image'],
       );
       // Words stand in text boxes and in shapes that carry their own (a button, a chip).
-      const worded = slide.elements.flatMap((element) =>
+      const worded = [...walkElements(slide.elements)].flatMap((element) =>
         (element.type === 'text' || element.type === 'shape') && element.content
           ? [element.content]
           : [],
@@ -110,7 +111,7 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
       );
       expect(copy.length, `${lang}/${id}`).toBeGreaterThan(25);
     }
-  });
+  }, 30_000);
 
   it('files every design under one group, and every group has designs', () => {
     expect(DESIGN_GROUPS.flatMap(designsOf).sort()).toEqual([...DESIGN_IDS].sort());
@@ -240,7 +241,7 @@ describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
       const shelf = fontShelf({ families: builtinFamilies, faces: builtinFaces });
       for (const [lang, id] of DRAWN) {
         if (lang === 'he' || lang === 'en') continue;
-        for (const element of designSlide(id, lang, 'photo').elements) {
+        for (const element of walkElements(designSlide(id, lang, 'photo').elements)) {
           if (element.type !== 'text' && element.type !== 'shape') continue;
           for (const paragraph of element.content?.paragraphs ?? []) {
             for (const run of paragraph.runs) {

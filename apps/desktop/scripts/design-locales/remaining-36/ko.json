@@ -1,2926 +1,1157 @@
 {
   "fieldkit": [
     {
-      "paragraphs": [
-        [
-          "01"
-        ]
-      ]
+      "paragraphs": [["01"]]
     },
     {
-      "paragraphs": [
-        [
-          "순찰 드론"
-        ]
-      ]
+      "paragraphs": [["순찰 드론"]]
     },
     {
-      "paragraphs": [
-        [
-          "02"
-        ]
-      ]
+      "paragraphs": [["02"]]
     },
     {
-      "paragraphs": [
-        [
-          "견고한 컨트롤러"
-        ]
-      ]
+      "paragraphs": [["견고한 컨트롤러"]]
     },
     {
-      "paragraphs": [
-        [
-          "03"
-        ]
-      ]
+      "paragraphs": [["03"]]
     },
     {
-      "paragraphs": [
-        [
-          "접이식 RF 안테나"
-        ]
-      ]
+      "paragraphs": [["접이식 RF 안테나"]]
     },
     {
-      "paragraphs": [
-        [
-          "04"
-        ]
-      ]
+      "paragraphs": [["04"]]
     },
     {
-      "paragraphs": [
-        [
-          "현장 충전기"
-        ]
-      ]
+      "paragraphs": [["현장 충전기"]]
     },
     {
-      "paragraphs": [
-        [
-          "05"
-        ]
-      ]
+      "paragraphs": [["05"]]
     },
     {
-      "paragraphs": [
-        [
-          "배터리 2개, 4시간"
-        ]
-      ]
+      "paragraphs": [["배터리 2개, 4시간"]]
+    },
+    "NAVAT SYSTEMS · KONAN 90",
+    "모든 장비를\n하나의 케이스에",
+    {
+      "paragraphs": [["휴대용 드론 탐지 키트"]]
     },
     {
-      "paragraphs": [
-        [
-          "NAVAT 시스템 • KONAN 90"
-        ]
-      ]
-    },
-    "하나의 케이스에 모든\n것이 들어있습니다",
-    {
-      "paragraphs": [
-        [
-          "휴대용 드론 탐지 키트"
-        ]
-      ]
+      "paragraphs": [["90"]]
     },
     {
-      "paragraphs": [
-        [
-          "90"
-        ]
-      ]
+      "paragraphs": [["초"], ["케이스 오픈부터"], ["공중에 떠 있는 드론에게"]]
     },
     {
-      "paragraphs": [
-        [
-          "초"
-        ],
-        [
-          "케이스 오픈부터"
-        ],
-        [
-          "공중에 떠 있는 드론에게"
-        ]
-      ]
+      "paragraphs": [["14", " kg"], ["올인"]]
     },
     {
-      "paragraphs": [
-        [
-          "14",
-          " kg"
-        ],
-        [
-          "올인"
-        ]
-      ]
+      "paragraphs": [["IP67"], ["물과 먼지가 밀봉된"]]
     },
     {
-      "paragraphs": [
-        [
-          "IP67"
-        ],
-        [
-          "물과 먼지가 밀봉된"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "모든 자동차의 트렁크에 맞습니다."
-        ]
-      ]
+      "paragraphs": [["모든 자동차의 트렁크에 맞습니다."]]
     }
   ],
   "cubesat": [
     {
-      "paragraphs": [
-        [
-          "궤도 고도"
-        ],
-        [
-          "520",
-          " km"
-        ]
-      ]
+      "paragraphs": [["궤도 고도"], ["520", " km"]]
     },
     {
-      "paragraphs": [
-        [
-          "질량"
-        ],
-        [
-          "8",
-          " kg"
-        ]
-      ]
+      "paragraphs": [["질량"], ["8", " kg"]]
     },
     {
-      "paragraphs": [
-        [
-          "해상도"
-        ],
-        [
-          "3",
-          " 엠"
-        ]
-      ]
+      "paragraphs": [["해상도"], ["3", " m"]]
     },
     {
-      "paragraphs": [
-        [
-          "출시 예정"
-        ],
-        [
-          "2027년 3분기"
-        ]
-      ]
+      "paragraphs": [["출시 예정"], ["2027년 3분기"]]
     },
-    {
-      "paragraphs": [
-        [
-          "EFRONI 공간 • 궤도에 있는 눈"
-        ]
-      ]
-    },
+    "EFRONI SPACE · 궤도에 있는 눈",
     "작은 위성, 90\n분마다 새로운\n이미지 제공",
     {
-      "paragraphs": [
-        [
-          "첫 번째 배치: 위성 6개"
-        ]
-      ]
+      "paragraphs": [["첫 번째 배치: 위성 6개"]]
     },
     {
-      "paragraphs": [
-        [
-          "산불, 해안선, 바다 경계 관찰"
-        ]
-      ]
+      "paragraphs": [["산불, 해안선, 바다 경계 관찰"]]
     }
   ],
   "careers": [
+    "SOCHECH SYSTEMS",
     {
-      "paragraphs": [
-        [
-          "소체크 시스템"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "3가지 직무 • 엔지니어링"
-        ]
-      ]
+      "paragraphs": [["3가지 직무 • 엔지니어링"]]
     },
     "임베디드\n시스템 엔지니어",
     {
-      "paragraphs": [
-        [
-          "필드 센서용 펌웨어"
-        ]
-      ]
+      "paragraphs": [["필드 센서용 펌웨어"]]
     },
     {
-      "paragraphs": [
-        [
-          "센서팀"
-        ]
-      ]
+      "paragraphs": [["센서팀"]]
     },
     "컴퓨터\n비전 연구원",
     {
-      "paragraphs": [
-        [
-          "실시간 열 감지"
-        ]
-      ]
+      "paragraphs": [["실시간 열 감지"]]
     },
     {
-      "paragraphs": [
-        [
-          "AI팀"
-        ]
-      ]
+      "paragraphs": [["AI팀"]]
     },
     "현장 테스트\n엔지니어",
     {
-      "paragraphs": [
-        [
-          "연구실에서 현장까지"
-        ]
-      ]
+      "paragraphs": [["연구실에서 현장까지"]]
     },
     {
-      "paragraphs": [
-        [
-          "배포팀"
-        ]
-      ]
+      "paragraphs": [["배포팀"]]
     },
     {
-      "paragraphs": [
-        [
-          "채용"
-        ]
-      ]
+      "paragraphs": [["채용"]]
     },
-    {
-      "paragraphs": [
-        [
-          "채용 • 2027"
-        ]
-      ]
-    },
+    "CAREERS · 2027",
     "와서 보호하는\n것을 구축하세요",
-    "실험실, 현장 및 고객이\n같은 주에 가능합니다.\n결정하는 엔지니어.",
+    "우리를 지키는 기술을\n함께 만드세요",
     {
-      "paragraphs": [
-        [
-          "사이언스 파크, 기바트 리몬 • 하이브리드"
-        ]
-      ]
+      "paragraphs": [["사이언스 파크, 기바트 리몬 • 하이브리드"]]
     },
     {
-      "paragraphs": [
-        [
-          "이력서 보내기"
-        ]
-      ]
+      "paragraphs": [["이력서 보내기"]]
     },
     {
-      "paragraphs": [
-        [
-          "jobs@sochech.co.il"
-        ]
-      ]
+      "paragraphs": [["jobs@sochech.co.il"]]
     }
   ],
   "swarm": [
+    "ZARZIR AUTONOMY · 공개 시위",
+    "드론 128대,\n운영자 1명",
     {
-      "paragraphs": [
-        [
-          "자르지르(ZARZIR) 자율성 • 공개 시위"
-        ]
-      ]
+      "paragraphs": [["행동에 대한 모든 결정은 개인에게 달려 있습니다"]]
+    },
+    {
+      "paragraphs": [["11", " min"], ["6km²를 함께 검색하려면"]]
+    },
+    {
+      "paragraphs": [["0"], ["지상국: 작업을 공유합니다."]]
+    },
+    {
+      "paragraphs": [["20%"], ["유닛 중 일부가 떨어져 나갈 수 있으며 계속해서 날아갑니다."]]
     },
     {
       "paragraphs": [
-        [
-          "드론 128대,"
-        ],
-        [
-          "운영자 1명"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "행동에 대한 모든 결정은 개인에게 달려 있습니다"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "11",
-          " 분"
-        ],
-        [
-          "6km²를 함께 검색하려면"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "0"
-        ],
-        [
-          "지상국: 작업을 공유합니다."
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "20%"
-        ],
-        [
-          "유닛 중 일부가 떨어져 나갈 수 있으며 계속해서 날아갑니다."
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "2027년 5월 27일 목요일 • 오후 8시 30분"
-        ],
-        [
-          "바다 너머, 정박지 • zarzir.co.il/demo"
-        ]
+        ["2027년 5월 27일 목요일 • 오후 8시 30분"],
+        ["바다 너머, 정박지 • zarzir.co.il/demo"]
       ]
     }
   ],
   "m-integrations": [
     {
-      "paragraphs": [
-        [
-          "120개 이상의 앱"
-        ]
-      ]
+      "paragraphs": [["120개 이상의 앱"]]
     },
     {
-      "paragraphs": [
-        [
-          "달력"
-        ]
-      ]
+      "paragraphs": [["달력"]]
     },
     {
-      "paragraphs": [
-        [
-          "CRM"
-        ]
-      ]
+      "paragraphs": [["CRM"]]
     },
     {
-      "paragraphs": [
-        [
-          "결제"
-        ]
-      ]
+      "paragraphs": [["결제"]]
     },
     {
-      "paragraphs": [
-        [
-          "팀 채팅"
-        ]
-      ]
+      "paragraphs": [["팀 채팅"]]
     },
     {
-      "paragraphs": [
-        [
-          "클라우드 스토리지"
-        ]
-      ]
+      "paragraphs": [["클라우드 스토리지"]]
     },
     {
-      "paragraphs": [
-        [
-          "이메일"
-        ]
-      ]
+      "paragraphs": [["이메일"]]
     },
     "이미 사용하고\n있는 도구에 연결",
     {
-      "paragraphs": [
-        [
-          "양방향 동기화 · 원클릭 설정 · 코드 없음"
-        ]
-      ]
+      "paragraphs": [["양방향 동기화 · 원클릭 설정 · 코드 없음"]]
     }
   ],
   "m-saasdashboard": [
     {
-      "paragraphs": [
-        [
-          "이번달 수익"
-        ]
-      ]
+      "paragraphs": [["이번달 수익"]]
     },
     {
-      "paragraphs": [
-        [
-          "$184,000"
-        ]
-      ]
+      "paragraphs": [["$184,000"]]
     },
     {
-      "paragraphs": [
-        [
-          "▲ 지난달 대비 18%"
-        ]
-      ]
+      "paragraphs": [["▲ 지난달 대비 18%"]]
     },
     {
-      "paragraphs": [
-        [
-          "활성 사용자"
-        ]
-      ]
+      "paragraphs": [["활성 사용자"]]
     },
     {
-      "paragraphs": [
-        [
-          "12,480"
-        ]
-      ]
+      "paragraphs": [["12,480"]]
     },
     {
-      "paragraphs": [
-        [
-          "펄스 분석"
-        ]
-      ]
+      "paragraphs": [["펄스 분석"]]
     },
     {
-      "paragraphs": [
-        [
-          "비즈니스 현황을"
-        ],
-        [
-          "한눈에 ",
-          "확인"
-        ]
-      ]
+      "paragraphs": [["비즈니스 현황을"], ["한눈에 ", "확인"]]
     },
     "하나의 라이브 대시보드에서 판매, 재고 및 마케팅을\n수행할 수 있습니다. 10분 안에 준비됩니다.",
     {
-      "paragraphs": [
-        [
-          "60개 이상의 소스에서 얻은 실시간 데이터"
-        ]
-      ]
+      "paragraphs": [["60개 이상의 소스에서 얻은 실시간 데이터"]]
     },
     {
-      "paragraphs": [
-        [
-          "문제가 커지기 전에 경고"
-        ]
-      ]
+      "paragraphs": [["문제가 커지기 전에 경고"]]
     },
     {
-      "paragraphs": [
-        [
-          "팀이 읽을 보고서"
-        ]
-      ]
+      "paragraphs": [["팀이 읽을 보고서"]]
     },
     {
-      "paragraphs": [
-        [
-          "무료 평가판 시작"
-        ]
-      ]
+      "paragraphs": [["무료 평가판 시작"]]
     },
     "14일, 카드\n필요 없음"
   ],
   "m-smartring": [
     {
-      "paragraphs": [
-        [
-          "7"
-        ]
-      ]
+      "paragraphs": [["7"]]
     },
     {
-      "paragraphs": [
-        [
-          "한 번의 충전으로 며칠"
-        ]
-      ]
+      "paragraphs": [["한 번의 충전으로 며칠"]]
     },
     {
-      "paragraphs": [
-        [
-          "100m"
-        ]
-      ]
+      "paragraphs": [["100 m"]]
     },
     {
-      "paragraphs": [
-        [
-          "방수"
-        ]
-      ]
+      "paragraphs": [["방수"]]
     },
     {
-      "paragraphs": [
-        [
-          "2.4g"
-        ]
-      ]
+      "paragraphs": [["2.4 g"]]
     },
     {
-      "paragraphs": [
-        [
-          "티타늄 쉘"
-        ]
-      ]
+      "paragraphs": [["티타늄 쉘"]]
     },
-    {
-      "paragraphs": [
-        [
-          "궤도 링 · 2세대"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "당신의 건강,"
-        ],
-        [
-          "한 손가락에"
-        ]
-      ]
-    },
+    "ORBIT RING · 2세대",
+    "당신의 건강을\n손가락 하나로",
     "수면, 심장 및 회복을 밤낮으로\n측정합니다. 화면도 없고, 윙윙거리는\n소리도 없고, 매일 밤 충전도 안 됩니다.",
     {
-      "paragraphs": [
-        [
-          "$299"
-        ]
-      ]
+      "paragraphs": [["$299"]]
     },
     {
-      "paragraphs": [
-        [
-          "2027년 2월 15일부터 배송"
-        ]
-      ]
+      "paragraphs": [["2027년 2월 15일부터 배송"]]
     },
     {
-      "paragraphs": [
-        [
-          "선주문"
-        ]
-      ]
+      "paragraphs": [["선주문"]]
     }
   ],
   "m-privatebeta": [
     {
-      "paragraphs": [
-        [
-          "베타 액세스"
-        ]
-      ]
+      "paragraphs": [["베타 액세스"]]
     },
     {
-      "paragraphs": [
-        [
-          "번호 0042"
-        ]
-      ]
+      "paragraphs": [["번호 0042"]]
     },
     {
-      "paragraphs": [
-        [
-          "NOVA"
-        ]
-      ]
+      "paragraphs": [["NOVA"]]
     },
-    {
-      "paragraphs": [
-        [
-          "비공개 베타 · 초대에 의한"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "첫 번째가 되세요"
-        ],
-        [
-          "줄을 서서"
-        ]
-      ]
-    },
+    "PRIVATE BETA · 초대에 의한",
+    "가장 먼저\n경험하세요",
     "Nova를 먼저 구성하려는 팀을 위한 500석.\n제품 팀과의 주간 통화를 통해 제공됩니다.",
     {
-      "paragraphs": [
-        [
-          "1"
-        ]
-      ]
+      "paragraphs": [["1"]]
     },
     {
-      "paragraphs": [
-        [
-          "목록에 가입하세요"
-        ]
-      ]
+      "paragraphs": [["목록에 가입하세요"]]
     },
     {
-      "paragraphs": [
-        [
-          "2"
-        ]
-      ]
+      "paragraphs": [["2"]]
     },
     {
-      "paragraphs": [
-        [
-          "초대장 받기"
-        ]
-      ]
+      "paragraphs": [["초대장 받기"]]
     },
     {
-      "paragraphs": [
-        [
-          "3"
-        ]
-      ]
+      "paragraphs": [["3"]]
     },
     {
-      "paragraphs": [
-        [
-          "건축 시작"
-        ]
-      ]
+      "paragraphs": [["건축 시작"]]
     },
     {
-      "paragraphs": [
-        [
-          "대기자 명단에 등록"
-        ]
-      ]
+      "paragraphs": [["대기자 명단에 등록"]]
     },
     {
-      "paragraphs": [
-        [
-          "초대 코드: NOVA-7KQ2"
-        ]
-      ]
+      "paragraphs": [["초대 코드: NOVA-7KQ2"]]
     }
   ],
   "m-aicopilot": [
-    {
-      "paragraphs": [
-        [
-          "아틀라스를 만나보세요,"
-        ],
-        [
-          "귀하의 데이터 부조종사"
-        ]
-      ]
-    },
+    "데이터 부조종사인\nAtlas를 만나보세요",
     "쉬운 말로 물어보세요. 단 몇 초 만에\n답변, 차트, 다음 단계를 얻을 수 있습니다.",
     "지난 분기에 어느 지역이\n가장 빠르게 성장했습니까?",
     "북부는 재주문을 이끌며 34% 성장했다.\n월별 분할은 다음과 같습니다.",
     {
-      "paragraphs": [
-        [
-          "1월"
-        ]
-      ]
+      "paragraphs": [["1월"]]
     },
     {
-      "paragraphs": [
-        [
-          "준"
-        ]
-      ]
+      "paragraphs": [["준"]]
     },
     {
-      "paragraphs": [
-        [
-          "+34%"
-        ]
-      ]
+      "paragraphs": [["+34%"]]
     },
     {
-      "paragraphs": [
-        [
-          "제품별로 표시"
-        ]
-      ]
+      "paragraphs": [["제품별로 표시"]]
     },
     {
-      "paragraphs": [
-        [
-          "슬라이드로 내보내기"
-        ]
-      ]
+      "paragraphs": [["슬라이드로 내보내기"]]
     },
     {
-      "paragraphs": [
-        [
-          "데이터에 관해 무엇이든 물어보세요…"
-        ]
-      ]
+      "paragraphs": [["데이터에 관해 무엇이든 물어보세요…"]]
     },
     {
-      "paragraphs": [
-        [
-          "→"
-        ]
-      ]
+      "paragraphs": [["→"]]
     }
   ],
   "m-escooter": [
     {
-      "paragraphs": [
-        [
-          "1180mm"
-        ]
-      ]
+      "paragraphs": [["1180 mm"]]
     },
     {
-      "paragraphs": [
-        [
-          "1230mm"
-        ]
-      ]
+      "paragraphs": [["1230 mm"]]
     },
-    {
-      "paragraphs": [
-        [
-          "VOLT S2 · 기술 사양"
-        ]
-      ]
-    },
+    "VOLT S2 · 기술 사양",
     "위층으로 들고 다닐\n수 있을 만큼 가벼움",
     {
-      "paragraphs": [
-        [
-          "범위"
-        ]
-      ]
+      "paragraphs": [["범위"]]
     },
     {
-      "paragraphs": [
-        [
-          "65km"
-        ]
-      ]
+      "paragraphs": [["65 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "최고 속도"
-        ]
-      ]
+      "paragraphs": [["최고 속도"]]
     },
     {
-      "paragraphs": [
-        [
-          "25km/h"
-        ]
-      ]
+      "paragraphs": [["25 km/h"]]
     },
     {
-      "paragraphs": [
-        [
-          "무게"
-        ]
-      ]
+      "paragraphs": [["무게"]]
     },
     {
-      "paragraphs": [
-        [
-          "16.8kg"
-        ]
-      ]
+      "paragraphs": [["16.8 kg"]]
     },
     {
-      "paragraphs": [
-        [
-          "완전 충전"
-        ]
-      ]
+      "paragraphs": [["완전 충전"]]
     },
     {
-      "paragraphs": [
-        [
-          "3.5시간"
-        ]
-      ]
+      "paragraphs": [["3.5 h"]]
     },
     {
-      "paragraphs": [
-        [
-          "모터"
-        ]
-      ]
+      "paragraphs": [["모터"]]
     },
     {
-      "paragraphs": [
-        [
-          "500W"
-        ]
-      ]
+      "paragraphs": [["500 W"]]
     },
     {
-      "paragraphs": [
-        [
-          "$949"
-        ]
-      ]
+      "paragraphs": [["$949"]]
     },
     {
-      "paragraphs": [
-        [
-          "재고 있음 2027년 1월 3일"
-        ]
-      ]
+      "paragraphs": [["재고 있음 2027년 1월 3일"]]
     }
   ],
   "m-securetrust": [
     {
-      "paragraphs": [
-        [
-          "신뢰 센터"
-        ]
-      ]
+      "paragraphs": [["신뢰 센터"]]
+    },
+    "보안은 기능이\n아닙니다. 기초입니다.",
+    {
+      "paragraphs": [["SOC 2"]]
     },
     {
-      "paragraphs": [
-        [
-          "보안은 기능이 아닙니다."
-        ],
-        [
-          "기초입니다."
-        ]
-      ]
+      "paragraphs": [["유형 II"]]
     },
     {
-      "paragraphs": [
-        [
-          "SOC 2"
-        ]
-      ]
+      "paragraphs": [["ISO"]]
     },
     {
-      "paragraphs": [
-        [
-          "유형 II"
-        ]
-      ]
+      "paragraphs": [["27001"]]
     },
     {
-      "paragraphs": [
-        [
-          "ISO"
-        ]
-      ]
+      "paragraphs": [["GDPR"]]
     },
     {
-      "paragraphs": [
-        [
-          "27001"
-        ]
-      ]
+      "paragraphs": [["EU"]]
     },
     {
-      "paragraphs": [
-        [
-          "GDPR"
-        ]
-      ]
+      "paragraphs": [["HIPAA"]]
     },
     {
-      "paragraphs": [
-        [
-          "EU"
-        ]
-      ]
+      "paragraphs": [["건강"]]
     },
     {
-      "paragraphs": [
-        [
-          "HIPAA"
-        ]
-      ]
+      "paragraphs": [["저장 및 전송 중 AES-256 암호화"]]
     },
     {
-      "paragraphs": [
-        [
-          "건강"
-        ]
-      ]
+      "paragraphs": [["Single Sign-On 및 자동 프로비저닝"]]
     },
     {
-      "paragraphs": [
-        [
-          "저장 및 전송 중 AES-256 암호화"
-        ]
-      ]
+      "paragraphs": [["분기별 외부 침투 테스트"]]
     },
     {
-      "paragraphs": [
-        [
-          "Single Sign-On 및 자동 프로비저닝"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "분기별 외부 침투 테스트"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "전체 보안 백서 읽기 →"
-        ]
-      ]
+      "paragraphs": [["전체 보안 백서 읽기 →"]]
     }
   ],
   "m-evcharge": [
     {
-      "paragraphs": [
-        [
-          "볼타 고속 충전"
-        ]
-      ]
+      "paragraphs": [["볼타 고속 충전"]]
     },
     {
-      "paragraphs": [
-        [
-          "10%에서 80%까지"
-        ],
-        [
-          "안으로 ",
-          "18분"
-        ]
-      ]
+      "paragraphs": [["10%에서 80%까지"], ["안으로 ", "18분"]]
     },
     {
-      "paragraphs": [
-        [
-          "0"
-        ]
-      ]
+      "paragraphs": [["0"]]
     },
     {
-      "paragraphs": [
-        [
-          "40분"
-        ]
-      ]
+      "paragraphs": [["40 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "80% · 18분"
-        ]
-      ]
+      "paragraphs": [["80% · 18분"]]
     },
     {
-      "paragraphs": [
-        [
-          "10%"
-        ]
-      ]
+      "paragraphs": [["10%"]]
     },
     {
-      "paragraphs": [
-        [
-          "최대 350kW"
-        ]
-      ]
+      "paragraphs": [["최대 350kW"]]
     },
     {
-      "paragraphs": [
-        [
-          "CCS2 커넥터"
-        ]
-      ]
+      "paragraphs": [["CCS2 커넥터"]]
     },
     {
-      "paragraphs": [
-        [
-          "앱에서 결제"
-        ]
-      ]
+      "paragraphs": [["앱에서 결제"]]
     }
   ],
   "m-mixedreality": [
     {
-      "paragraphs": [
-        [
-          "3D 모델 검토"
-        ]
-      ]
+      "paragraphs": [["3D 모델 검토"]]
     },
     {
-      "paragraphs": [
-        [
-          "12절"
-        ]
-      ]
+      "paragraphs": [["12절"]]
     },
     {
-      "paragraphs": [
-        [
-          "팀콜 · 4"
-        ]
-      ]
+      "paragraphs": [["팀콜 · 4"]]
     },
     {
-      "paragraphs": [
-        [
-          "팀을 위한 VISTA"
-        ]
-      ]
+      "paragraphs": [["팀을 위한 VISTA"]]
     },
-    {
-      "paragraphs": [
-        [
-          "그 이상의 일"
-        ],
-        [
-          "화면"
-        ]
-      ]
-    },
+    "화면 너머로\n펼쳐지는 업무",
     "모델, 통화, 메모 등\n모든 작업을 회의실\n전체에 분산시키세요.",
     {
-      "paragraphs": [
-        [
-          "끝없는 캔버스"
-        ]
-      ]
+      "paragraphs": [["끝없는 캔버스"]]
     },
     {
-      "paragraphs": [
-        [
-          "정확한 손 추적"
-        ]
-      ]
+      "paragraphs": [["정확한 손 추적"]]
     },
     {
-      "paragraphs": [
-        [
-          "데모 예약"
-        ]
-      ]
+      "paragraphs": [["데모 예약"]]
     }
   ],
   "m-smarthome": [
     {
-      "paragraphs": [
-        [
-          "21.5°"
-        ]
-      ]
+      "paragraphs": [["21.5°"]]
     },
     {
-      "paragraphs": [
-        [
-          "헤일로 온도조절기"
-        ]
-      ]
+      "paragraphs": [["헤일로 온도조절기"]]
     },
-    {
-      "paragraphs": [
-        [
-          "편안함"
-        ],
-        [
-          "당신을 배웁니다"
-        ]
-      ]
-    },
+    "생활을 배우는\n편안함",
     "Halo는 사용자가 잠에서 깨어나 집에 돌아올 때를\n학습하고 중요한 경우에만 난방을 제공합니다.",
     {
-      "paragraphs": [
-        [
-          "23%"
-        ]
-      ]
+      "paragraphs": [["23%"]]
     },
     {
-      "paragraphs": [
-        [
-          "난방비 절감"
-        ]
-      ]
+      "paragraphs": [["난방비 절감"]]
     },
     {
-      "paragraphs": [
-        [
-          "4주"
-        ]
-      ]
+      "paragraphs": [["4주"]]
     },
     {
-      "paragraphs": [
-        [
-          "당신의 일상을 배우기 위해"
-        ]
-      ]
+      "paragraphs": [["당신의 일상을 배우기 위해"]]
     },
     {
-      "paragraphs": [
-        [
-          "작동 방식 보기"
-        ]
-      ]
+      "paragraphs": [["작동 방식 보기"]]
     }
   ],
   "m-missionmap": [
     {
-      "paragraphs": [
-        [
-          "본사"
-        ]
-      ]
+      "paragraphs": [["본사"]]
     },
     {
-      "paragraphs": [
-        [
-          "1"
-        ]
-      ]
+      "paragraphs": [["1"]]
     },
     {
-      "paragraphs": [
-        [
-          "2"
-        ]
-      ]
+      "paragraphs": [["2"]]
     },
     {
-      "paragraphs": [
-        [
-          "3"
-        ]
-      ]
+      "paragraphs": [["3"]]
     },
     {
-      "paragraphs": [
-        [
-          "팀 2"
-        ]
-      ]
+      "paragraphs": [["팀 2"]]
     },
     {
-      "paragraphs": [
-        [
-          "검색 영역 A · 12km²"
-        ]
-      ]
+      "paragraphs": [["검색 영역 A · 12km²"]]
     },
     {
-      "paragraphs": [
-        [
-          "헬리콥터 · 9분"
-        ]
-      ]
+      "paragraphs": [["헬리콥터 · 9분"]]
     },
-    {
-      "paragraphs": [
-        [
-          "패스파인더 · 임무 계획"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "수색 및 구조,"
-        ],
-        [
-          "40초 후에 예정된"
-        ]
-      ]
-    },
+    "PATHFINDER · 임무 계획",
+    "40초 만에 계획된\n수색 및 구조",
     "지형, 날씨, 모든 팀이 하나의 실시간 지도에 표시됩니다.\n검색이 진행됨에 따라 경로가 업데이트됩니다.",
     {
-      "paragraphs": [
-        [
-          "4"
-        ]
-      ]
+      "paragraphs": [["4"]]
     },
     {
-      "paragraphs": [
-        [
-          "현장의 팀"
-        ]
-      ]
+      "paragraphs": [["현장의 팀"]]
     },
     {
-      "paragraphs": [
-        [
-          "38km²"
-        ]
-      ]
+      "paragraphs": [["38 km²"]]
     },
     {
-      "paragraphs": [
-        [
-          "덮힌 지역"
-        ]
-      ]
+      "paragraphs": [["덮힌 지역"]]
     },
     {
-      "paragraphs": [
-        [
-          "9분"
-        ]
-      ]
+      "paragraphs": [["9 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "첫 번째 팀에"
-        ]
-      ]
+      "paragraphs": [["첫 번째 팀에"]]
     },
     {
-      "paragraphs": [
-        [
-          "데모 요청"
-        ]
-      ]
+      "paragraphs": [["데모 요청"]]
     }
   ],
   "m-satellite": [
+    "ORBITA · 우주 지능",
     {
-      "paragraphs": [
-        [
-          "궤도 · 우주 지능"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "하늘을 지켜보는"
-        ],
-        [
-          "48개의 ",
-          "눈"
-        ]
-      ]
+      "paragraphs": [["하늘을 지켜보는"], ["48개의 ", "눈"]]
     },
     "낮이든 밤이든 20분마다 구름을\n통해 지구상의 모든 지점을\n이미지화하는 레이더 위성입니다.",
     {
-      "paragraphs": [
-        [
-          "48"
-        ]
-      ]
+      "paragraphs": [["48"]]
     },
     {
-      "paragraphs": [
-        [
-          "궤도에 있는 위성"
-        ]
-      ]
+      "paragraphs": [["궤도에 있는 위성"]]
     },
     {
-      "paragraphs": [
-        [
-          "20분"
-        ]
-      ]
+      "paragraphs": [["20 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "이미지 사이"
-        ]
-      ]
+      "paragraphs": [["이미지 사이"]]
     },
     {
-      "paragraphs": [
-        [
-          "50cm"
-        ]
-      ]
+      "paragraphs": [["50 cm"]]
     },
     {
-      "paragraphs": [
-        [
-          "해상도"
-        ]
-      ]
+      "paragraphs": [["해상도"]]
     }
   ],
   "m-radar": [
-    {
-      "paragraphs": [
-        [
-          "SENTINEL-X · 다중 임무 레이더"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "450km를 참조하십시오."
-        ],
-        [
-          "1,000개의 목표를 추적하세요."
-        ]
-      ]
-    },
+    "SENTINEL-X · 다중 임무 레이더",
+    "450km까지 탐지.\n1,000개 표적 추적.",
     "15분 안에 배치되고 항공기, 드론, 로켓을 한\n장의 사진에서 볼 수 있는 AESA 레이더 1개.",
     {
-      "paragraphs": [
-        [
-          "450km"
-        ]
-      ]
+      "paragraphs": [["450 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "감지 범위"
-        ]
-      ]
+      "paragraphs": [["감지 범위"]]
     },
     {
-      "paragraphs": [
-        [
-          "360°"
-        ]
-      ]
+      "paragraphs": [["360°"]]
     },
     {
-      "paragraphs": [
-        [
-          "전체 범위"
-        ]
-      ]
+      "paragraphs": [["전체 범위"]]
     },
     {
-      "paragraphs": [
-        [
-          "15분"
-        ]
-      ]
+      "paragraphs": [["15 min"]]
     },
     {
-      "paragraphs": [
-        [
-          "배포하다"
-        ]
-      ]
+      "paragraphs": [["배포하다"]]
     },
     {
-      "paragraphs": [
-        [
-          "1,000"
-        ]
-      ]
+      "paragraphs": [["1,000"]]
     },
     {
-      "paragraphs": [
-        [
-          "한 번에 트랙"
-        ]
-      ]
+      "paragraphs": [["한 번에 트랙"]]
     }
   ],
   "m-uav": [
-    {
-      "paragraphs": [
-        [
-          "30시간 이상."
-        ],
-        [
-          "절대 깜빡이지 않는 눈."
-        ]
-      ]
-    },
-    "ALT 18,000\nFT SPD 92\nKN HDG 274°",
+    "30시간 이상. 절대\n깜빡이지 않는 눈.",
+    "ALT  18,000 FT\nSPD  92 KN\nHDG  274°",
     "국경 순찰, 해상 감시 및 재난 대응을\n위한 장기 내구성 ISR 드론입니다.",
     {
-      "paragraphs": [
-        [
-          "30시간 지구력"
-        ]
-      ]
+      "paragraphs": [["30시간 지구력"]]
     },
     {
-      "paragraphs": [
-        [
-          "사거리 1,500km"
-        ]
-      ]
+      "paragraphs": [["사거리 1,500km"]]
     },
     {
-      "paragraphs": [
-        [
-          "EO/IR 및 레이더"
-        ]
-      ]
+      "paragraphs": [["EO/IR 및 레이더"]]
     },
-    "위성통신 캠\nEO/IR 연결"
+    "LINK  SATCOM\nCAM  EO/IR"
   ],
   "m-cyberdefense": [
+    "SHIELD SOC · 방어 센터 24/7",
+    "모든 공격을 탐지.\n대부분은 사전 차단.",
     {
-      "paragraphs": [
-        [
-          "SHIELD SOC · 방어 센터 24/7"
-        ]
-      ]
+      "paragraphs": [["2,184,302"]]
     },
     {
-      "paragraphs": [
-        [
-          "모든 공격이 보입니다."
-        ],
-        [
-          "대부분은 착륙하지 않습니다."
-        ]
-      ]
+      "paragraphs": [["이번 달에 차단된 공격"]]
     },
     {
-      "paragraphs": [
-        [
-          "2,184,302"
-        ]
-      ]
+      "paragraphs": [["38 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "이번 달에 차단된 공격"
-        ]
-      ]
+      "paragraphs": [["평균 감지 시간"]]
     },
     {
-      "paragraphs": [
-        [
-          "38초"
-        ]
-      ]
+      "paragraphs": [["0"]]
     },
     {
-      "paragraphs": [
-        [
-          "평균 감지 시간"
-        ]
-      ]
+      "paragraphs": [["올해 위반"]]
     },
     {
-      "paragraphs": [
-        [
-          "0"
-        ]
-      ]
+      "paragraphs": [["14:02:11"]]
     },
     {
-      "paragraphs": [
-        [
-          "올해 위반"
-        ]
-      ]
+      "paragraphs": [["차단됨"]]
     },
     {
-      "paragraphs": [
-        [
-          "14:02:11"
-        ]
-      ]
+      "paragraphs": [["피싱파·금융"]]
     },
     {
-      "paragraphs": [
-        [
-          "차단됨"
-        ]
-      ]
+      "paragraphs": [["14:02:37"]]
     },
     {
-      "paragraphs": [
-        [
-          "피싱파·금융"
-        ]
-      ]
+      "paragraphs": [["포함됨"]]
     },
     {
-      "paragraphs": [
-        [
-          "14:02:37"
-        ]
-      ]
+      "paragraphs": [["랜섬웨어 · 노트북 1대"]]
     },
     {
-      "paragraphs": [
-        [
-          "포함됨"
-        ]
-      ]
+      "paragraphs": [["14:03:05"]]
     },
     {
-      "paragraphs": [
-        [
-          "랜섬웨어 · 노트북 1대"
-        ]
-      ]
+      "paragraphs": [["보고있다"]]
     },
     {
-      "paragraphs": [
-        [
-          "14:03:05"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "보고있다"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "3개국에서 스캔"
-        ]
-      ]
+      "paragraphs": [["3개국에서 스캔"]]
     }
   ],
   "m-c2room": [
-    {
-      "paragraphs": [
-        [
-          "AEGIS C2 · 명령 및 제어"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "사진 한 장."
-        ],
-        [
-          "모든 도메인."
-        ]
-      ]
-    },
+    "AEGIS C2 · 명령 및 제어",
+    "하나의 작전 상황도.\n모든 영역을 통합.",
     "모든 지휘관을 위해 공중, 육지, 바다, 사이버가\n하나의 실시간 작전 상황으로 융합되었습니다.",
-    {
-      "paragraphs": [
-        [
-          "AIR · 312트랙"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "LAND · 48세대"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "SEA·9척"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "CYBER · 경고 3개"
-        ]
-      ]
-    }
+    "AIR · 312트랙",
+    "LAND · 48세대",
+    "SEA · 9척",
+    "CYBER · 경고 3개"
   ],
   "m-counteruas": [
+    "DETECT · 5km",
+    "IDENTIFY · 3km",
+    "DEFEAT · 1km",
+    "SKYGUARD · 카운터-UAS",
     {
-      "paragraphs": [
-        [
-          "감지 · 5km"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "식별 · 3km"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "패배 · 1km"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "스카이가드 · 카운터-UAS"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "적대 드론을 막는"
-        ],
-        [
-          "다층 ",
-          "방어"
-        ]
-      ]
+      "paragraphs": [["적대 드론을 막는"], ["다층 ", "방어"]]
     },
     "레이더, RF 감지 및 안정화된 카메라로 하늘에\n떠 있는 모든 드론을 3초 이내에 분류합니다.",
     {
-      "paragraphs": [
-        [
-          "날씨에 관계없이 연중무휴 24시간 자율적으로 작동"
-        ]
-      ]
+      "paragraphs": [["날씨에 관계없이 연중무휴 24시간 자율적으로 작동"]]
     }
   ],
   "m-defexpo": [
     {
-      "paragraphs": [
-        [
-          "B-214"
-        ]
-      ]
+      "paragraphs": [["B-214"]]
+    },
+    "DEFTECH EXPO 2027 · 텔아비브",
+    {
+      "paragraphs": [["현장에서 만나요"], ["부스 ", "B-214"]]
     },
     {
-      "paragraphs": [
-        [
-          "DEFTECH EXPO 2027 · 텔아비브"
-        ]
-      ]
+      "paragraphs": [["17–19.3.2027"]]
     },
     {
-      "paragraphs": [
-        [
-          "우리를 만나세요"
-        ],
-        [
-          "부스 ",
-          "B-214"
-        ]
-      ]
+      "paragraphs": [["엑스포 텔아비브, 파빌리온 2 · 09:00–18:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "17–19.3.2027"
-        ]
-      ]
+      "paragraphs": [["라이브 카운터 드론 데모, 매일 11:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "엑스포 텔아비브, 파빌리온 2 · 09:00–18:00"
-        ]
-      ]
+      "paragraphs": [["견고한 FieldPad T10 실습"]]
     },
     {
-      "paragraphs": [
-        [
-          "라이브 카운터 드론 데모, 매일 11:00"
-        ]
-      ]
+      "paragraphs": [["엔지니어들과의 일대일 미팅"]]
     },
     {
-      "paragraphs": [
-        [
-          "견고한 FieldPad T10 실습"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "엔지니어들과의 일대일 미팅"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "20분 회의 예약하기"
-        ]
-      ]
+      "paragraphs": [["20분 회의 예약하기"]]
     }
   ],
   "m-nightvision": [
-    {
-      "paragraphs": [
-        [
-          "NOX-3 · 나이트 비전"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "소유"
-        ],
-        [
-          "밤"
-        ]
-      ]
-    },
+    "NOX-3 · 나이트 비전",
+    "밤을\n소유하세요",
     "별빛을 깨끗하고 선명한 영상으로\n바꾸는 Gen 3+ 이미지 튜브.",
     {
-      "paragraphs": [
-        [
-          "해상도"
-        ]
-      ]
+      "paragraphs": [["해상도"]]
+    },
+    "64 lp/mm",
+    {
+      "paragraphs": [["튜브 수명"]]
     },
     {
-      "paragraphs": [
-        [
-          "64lp/mm"
-        ]
-      ]
+      "paragraphs": [["10,000 h"]]
     },
     {
-      "paragraphs": [
-        [
-          "튜브 수명"
-        ]
-      ]
+      "paragraphs": [["무게"]]
     },
     {
-      "paragraphs": [
-        [
-          "10,000시간"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "무게"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "390g"
-        ]
-      ]
+      "paragraphs": [["390 g"]]
     }
   ],
   "m-thermal": [
-    {
-      "paragraphs": [
-        [
-          "EMBER T640 · 열 검색 카메라"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "어둠이 숨어 있습니다."
-        ],
-        [
-          "열은 그렇지 않습니다."
-        ]
-      ]
-    },
+    "EMBER T640 · 열 검색 카메라",
+    "어둠이 가려도\n열은 드러납니다.",
     "구조 드론용 열화상 카메라. 1.2km 떨어진\n나무 밑이나 연기 속에서 사람을 발견합니다.",
     {
-      "paragraphs": [
-        [
-          "1.2km"
-        ]
-      ]
+      "paragraphs": [["1.2 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "사람을 발견하다"
-        ]
-      ]
+      "paragraphs": [["사람을 발견하다"]]
     },
     {
-      "paragraphs": [
-        [
-          "640×512"
-        ]
-      ]
+      "paragraphs": [["640×512"]]
     },
     {
-      "paragraphs": [
-        [
-          "열 픽셀"
-        ]
-      ]
+      "paragraphs": [["열 픽셀"]]
     },
     {
-      "paragraphs": [
-        [
-          "<40mK"
-        ]
-      ]
+      "paragraphs": [["<40 mK"]]
     },
     {
-      "paragraphs": [
-        [
-          "감도"
-        ]
-      ]
+      "paragraphs": [["감도"]]
     },
     {
-      "paragraphs": [
-        [
-          "야간 데모 예약"
-        ]
-      ]
+      "paragraphs": [["야간 데모 예약"]]
     },
     {
-      "paragraphs": [
-        [
-          "2027년 1월 14일의 야간 데모"
-        ]
-      ]
+      "paragraphs": [["2027년 1월 14일의 야간 데모"]]
     },
     {
-      "paragraphs": [
-        [
-          "사람",
-          "  36.4°C"
-        ]
-      ]
+      "paragraphs": [["사람", "  36.4°C"]]
     },
     {
-      "paragraphs": [
-        [
-          "36°C"
-        ]
-      ]
+      "paragraphs": [["36°C"]]
     },
     {
-      "paragraphs": [
-        [
-          "-2°C"
-        ]
-      ]
+      "paragraphs": [["−2°C"]]
     }
   ],
   "m-rugged": [
-    {
-      "paragraphs": [
-        [
-          "FIELDPAD T10 · 러기드 태블릿"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "다음을 위해 제작됨"
-        ],
-        [
-          "들판"
-        ]
-      ]
-    },
+    "FIELDPAD T10 · 러기드 태블릿",
+    "거친 현장을 위해\n태어난 태블릿",
     "비, 모래, 콘크리트에 떨어뜨려도 견딜 수 있고\n근무 시간 내내 지속되는 10인치 태블릿입니다.",
     {
-      "paragraphs": [
-        [
-          "IP67"
-        ],
-        [
-          "비와 먼지"
-        ]
-      ]
+      "paragraphs": [["IP67"], ["비와 먼지"]]
     },
     {
-      "paragraphs": [
-        [
-          "1.8m"
-        ],
-        [
-          "낙하 테스트"
-        ]
-      ]
+      "paragraphs": [["1.8 m"], ["낙하 테스트"]]
     },
     {
-      "paragraphs": [
-        [
-          "−33/60°"
-        ],
-        [
-          "작업 범위"
-        ]
-      ]
+      "paragraphs": [["−33/60°"], ["작업 범위"]]
     },
     {
-      "paragraphs": [
-        [
-          "12시간"
-        ],
-        [
-          "배터리 1개"
-        ]
-      ]
+      "paragraphs": [["12 h"], ["배터리 1개"]]
     },
     {
-      "paragraphs": [
-        [
-          "현장 평가판 요청"
-        ]
-      ]
+      "paragraphs": [["현장 평가판 요청"]]
     }
   ],
   "m-meshradio": [
     {
-      "paragraphs": [
-        [
-          "베이스캠프"
-        ]
-      ]
+      "paragraphs": [["베이스캠프"]]
     },
     {
-      "paragraphs": [
-        [
-          "드론 릴레이"
-        ]
-      ]
+      "paragraphs": [["드론 릴레이"]]
     },
     {
-      "paragraphs": [
-        [
-          "능선 뒤의 팀"
-        ]
-      ]
+      "paragraphs": [["능선 뒤의 팀"]]
     },
-    {
-      "paragraphs": [
-        [
-          "MESHLINK R4 · RESCUE 메시 라디오"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "모든 라디오"
-        ],
-        [
-          "타워다."
-        ]
-      ]
-    },
+    "MESHLINK R4 · RESCUE 메시 라디오",
+    "모든 무전기가\n중계탑이 됩니다.",
     "기지국이 다운되면 팀의 무전기가\n자체적으로 연결되어 모든\n통화를 능선 너머로 전달합니다.",
     {
-      "paragraphs": [
-        [
-          "64"
-        ]
-      ]
+      "paragraphs": [["64"]]
     },
     {
-      "paragraphs": [
-        [
-          "메시당 라디오"
-        ]
-      ]
+      "paragraphs": [["메시당 라디오"]]
     },
     {
-      "paragraphs": [
-        [
-          "12km"
-        ]
-      ]
+      "paragraphs": [["12 km"]]
     },
     {
-      "paragraphs": [
-        [
-          "라디오 사이"
-        ]
-      ]
+      "paragraphs": [["라디오 사이"]]
     },
     {
-      "paragraphs": [
-        [
-          "2초"
-        ]
-      ]
+      "paragraphs": [["2 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "경로를 변경하다"
-        ]
-      ]
+      "paragraphs": [["경로를 변경하다"]]
     },
     {
-      "paragraphs": [
-        [
-          "현장 테스트 계획"
-        ]
-      ]
+      "paragraphs": [["현장 테스트 계획"]]
     },
     {
-      "paragraphs": [
-        [
-          "2027년 3월 배송"
-        ]
-      ]
+      "paragraphs": [["2027년 3월 배송"]]
     }
   ],
   "m-antijam": [
-    {
-      "paragraphs": [
-        [
-          "앵커 A7 · 안티잼 GNSS 안테나"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "GPS가 걸렸습니다."
-        ],
-        [
-          "아직 진행 중입니다."
-        ]
-      ]
-    },
+    "ANCHOR A7 · 안티잼 GNSS 안테나",
+    "GPS 교란에도\n항로는 그대로.",
     "일곱 가지 요소가 사각지대를 방해\n전파 쪽으로 바꾸므로 선박, 항공기 및\n전력망이 위치와 시계를 모두 유지합니다.",
     {
-      "paragraphs": [
-        [
-          "6"
-        ]
-      ]
+      "paragraphs": [["6"]]
     },
     {
-      "paragraphs": [
-        [
-          "재머가 즉시 무효화됨"
-        ]
-      ]
+      "paragraphs": [["재머가 즉시 무효화됨"]]
     },
     {
-      "paragraphs": [
-        [
-          "40dB"
-        ]
-      ]
+      "paragraphs": [["40 dB"]]
     },
     {
-      "paragraphs": [
-        [
-          "추가 보호"
-        ]
-      ]
+      "paragraphs": [["추가 보호"]]
     },
     {
-      "paragraphs": [
-        [
-          "4"
-        ]
-      ]
+      "paragraphs": [["4"]]
     },
     {
-      "paragraphs": [
-        [
-          "위성 시스템"
-        ]
-      ]
+      "paragraphs": [["위성 시스템"]]
     },
     {
-      "paragraphs": [
-        [
-          "1.2kg"
-        ]
-      ]
+      "paragraphs": [["1.2 kg"]]
     },
     {
-      "paragraphs": [
-        [
-          "IP67로 밀봉됨"
-        ]
-      ]
+      "paragraphs": [["IP67로 밀봉됨"]]
     },
     {
-      "paragraphs": [
-        [
-          "데이터시트 받기"
-        ]
-      ]
+      "paragraphs": [["데이터시트 받기"]]
     }
   ],
   "m-cyberrange": [
     {
-      "paragraphs": [
-        [
-          "범위 27 ·  ",
-          "레드팀",
-          "  VS  ",
-          "블루팀"
-        ]
-      ]
+      "paragraphs": [["범위 27 ·  ", "레드팀", "  VS  ", "블루팀"]]
     },
     {
       "paragraphs": [
-        [
-          "도시를",
-          " 공격하세요."
-        ],
-        [
-          "도시를 ",
-          "지키는 법을",
-          " 배우세요."
-        ]
+        ["도시를", " 공격하세요."],
+        ["도시를 ", "지키는 법을", " 배우세요."]
       ]
     },
     "도시의 수자원 및 전력망 전체를 48시간 동안 복제합니다. 한\n팀에 5명의 수비수가 잠들지 않는 레드팀을 상대로 합니다.",
     {
-      "paragraphs": [
-        [
-          "2027년 10월 ~ 11월 3일 · 브엘세바"
-        ]
-      ]
+      "paragraphs": [["2027년 10월 ~ 11월 3일 · 브엘세바"]]
     },
     {
-      "paragraphs": [
-        [
-          "팀 등록"
-        ]
-      ]
+      "paragraphs": [["팀 등록"]]
     }
   ],
   "m-simtraining": [
-    {
-      "paragraphs": [
-        [
-          "SKYRIG H6 · 풀모션 시뮬레이터"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "폭풍을 날려보세요."
-        ],
-        [
-          "접지 상태를 유지하세요."
-        ]
-      ]
-    },
+    "SKYRIG H6 · 풀모션 시뮬레이터",
+    "폭풍 속 비행을\n지상에서 훈련하세요.",
     "구조 헬리콥터 승무원을 위한 풀모션 조종석:\n야간 호이스트, 해상 구조 및 엔진 고장.",
+    "6 DOF",
     {
-      "paragraphs": [
-        [
-          "6자유도"
-        ]
-      ]
+      "paragraphs": [["풀 모션"]]
     },
     {
-      "paragraphs": [
-        [
-          "풀 모션"
-        ]
-      ]
+      "paragraphs": [["220°"]]
     },
     {
-      "paragraphs": [
-        [
-          "220°"
-        ]
-      ]
+      "paragraphs": [["시야"]]
     },
     {
-      "paragraphs": [
-        [
-          "시야"
-        ]
-      ]
+      "paragraphs": [["300+"]]
     },
     {
-      "paragraphs": [
-        [
-          "300+"
-        ]
-      ]
+      "paragraphs": [["구조 시나리오"]]
     },
     {
-      "paragraphs": [
-        [
-          "구조 시나리오"
-        ]
-      ]
+      "paragraphs": [["훈련일 예약"]]
     },
     {
-      "paragraphs": [
-        [
-          "훈련일 예약"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "하이파 훈련 센터, 2027년 2월부터"
-        ]
-      ]
+      "paragraphs": [["하이파 훈련 센터, 2027년 2월부터"]]
     }
   ],
   "m-keyboard": [
-    {
-      "paragraphs": [
-        [
-          "페로 75 · 사전 주문"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "조용한 열쇠,"
-        ],
-        [
-          "시끄러운 아이디어."
-        ]
-      ]
-    },
+    "FERRO 75 · 사전 주문",
+    "조용한 키,\n대담한 아이디어.",
     "부드러운 개스킷에 알루미늄 보드가 있고 조용한 촉각\n스위치가 있습니다. 모든 아이디어, 덜거덕거림 없음.",
     {
-      "paragraphs": [
-        [
-          "$189"
-        ]
-      ]
+      "paragraphs": [["$189"]]
     },
     {
-      "paragraphs": [
-        [
-          "2027년 3월 3일부터 배송"
-        ]
-      ]
+      "paragraphs": [["2027년 3월 3일부터 배송"]]
     },
     {
-      "paragraphs": [
-        [
-          "선주문"
-        ]
-      ]
+      "paragraphs": [["선주문"]]
     },
     {
-      "paragraphs": [
-        [
-          "75% · 84개 키"
-        ]
-      ]
+      "paragraphs": [["75% · 84개 키"]]
     },
     {
-      "paragraphs": [
-        [
-          "조용한 촉각 스위치"
-        ]
-      ]
+      "paragraphs": [["조용한 촉각 스위치"]]
     },
     {
-      "paragraphs": [
-        [
-          "핫스왑 소켓"
-        ]
-      ]
+      "paragraphs": [["핫스왑 소켓"]]
     },
     {
-      "paragraphs": [
-        [
-          "블루투스 + 2.4GHz"
-        ]
-      ]
+      "paragraphs": [["블루투스 + 2.4GHz"]]
     }
   ],
   "m-homebattery": [
-    {
-      "paragraphs": [
-        [
-          "DUSK 13 · 홈 배터리"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "햇빛,"
-        ],
-        [
-          "어두워진 후에"
-        ]
-      ]
-    },
+    "DUSK 13 · 홈 배터리",
+    "햇빛,\n어두워진 후",
     "정오에 패널이 만드는 것을\n저장하고 밤새도록 집을 운영합니다.",
     {
-      "paragraphs": [
-        [
-          "82%"
-        ]
-      ]
+      "paragraphs": [["82%"]]
     },
     "여전히 21:40에\n저장되어 있습니다",
     {
-      "paragraphs": [
-        [
-          "21:40"
-        ]
-      ]
+      "paragraphs": [["21:40"]]
     },
     {
-      "paragraphs": [
-        [
-          "태양광"
-        ]
-      ]
+      "paragraphs": [["태양광"]]
     },
     {
-      "paragraphs": [
-        [
-          "배터리"
-        ]
-      ]
+      "paragraphs": [["배터리"]]
     },
     {
-      "paragraphs": [
-        [
-          "06:00"
-        ]
-      ]
+      "paragraphs": [["06:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "12:00"
-        ]
-      ]
+      "paragraphs": [["12:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "18:00"
-        ]
-      ]
+      "paragraphs": [["18:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "24:00"
-        ]
-      ]
+      "paragraphs": [["24:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "06:00"
-        ]
-      ]
+      "paragraphs": [["06:00"]]
     },
     {
-      "paragraphs": [
-        [
-          "13.5",
-          " kWh"
-        ]
-      ]
+      "paragraphs": [["13.5", " kWh"]]
     },
     {
-      "paragraphs": [
-        [
-          "저장"
-        ]
-      ]
+      "paragraphs": [["저장"]]
     },
     {
-      "paragraphs": [
-        [
-          "7",
-          " kW"
-        ]
-      ]
+      "paragraphs": [["7", " kW"]]
     },
     {
-      "paragraphs": [
-        [
-          "피크 전력"
-        ]
-      ]
+      "paragraphs": [["피크 전력"]]
     },
     {
-      "paragraphs": [
-        [
-          "92",
-          "%"
-        ]
-      ]
+      "paragraphs": [["92", "%"]]
     },
     {
-      "paragraphs": [
-        [
-          "효율성"
-        ]
-      ]
+      "paragraphs": [["효율성"]]
     },
     {
-      "paragraphs": [
-        [
-          "10",
-          " 년"
-        ]
-      ]
+      "paragraphs": [["10", " 년"]]
     },
     {
-      "paragraphs": [
-        [
-          "보증"
-        ]
-      ]
+      "paragraphs": [["보증"]]
     }
   ],
   "m-meshwifi": [
     {
-      "paragraphs": [
-        [
-          "거실"
-        ]
-      ]
+      "paragraphs": [["거실"]]
     },
     {
-      "paragraphs": [
-        [
-          "2.1Gbps"
-        ]
-      ]
+      "paragraphs": [["2.1 Gbps"]]
     },
     {
-      "paragraphs": [
-        [
-          "연구"
-        ]
-      ]
+      "paragraphs": [["연구"]]
     },
     {
-      "paragraphs": [
-        [
-          "2.0Gbps"
-        ]
-      ]
+      "paragraphs": [["2.0 Gbps"]]
     },
     {
-      "paragraphs": [
-        [
-          "키즈룸"
-        ]
-      ]
+      "paragraphs": [["키즈룸"]]
     },
     {
-      "paragraphs": [
-        [
-          "1.9Gbps"
-        ]
-      ]
+      "paragraphs": [["1.9 Gbps"]]
     },
-    {
-      "paragraphs": [
-        [
-          "캐노피 메쉬 · WI-FI 7"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "빠른 Wi-Fi"
-        ],
-        [
-          "모든 방에"
-        ]
-      ]
-    },
+    "CANOPY MESH · WI-FI 7",
+    "모든 객실에서 빠른\nWi-Fi 이용 가능",
     "세 개의 작은 노드가 하나의\n네트워크를 공유하므로 먼 침실은\n라우터와 동일한 속도를 얻습니다.",
     {
-      "paragraphs": [
-        [
-          "450m²"
-        ]
-      ]
+      "paragraphs": [["450 m²"]]
     },
     {
-      "paragraphs": [
-        [
-          "적용 범위"
-        ]
-      ]
+      "paragraphs": [["적용 범위"]]
     },
     {
-      "paragraphs": [
-        [
-          "5.8Gbps"
-        ]
-      ]
+      "paragraphs": [["5.8 Gbps"]]
     },
     {
-      "paragraphs": [
-        [
-          "최고 속도"
-        ]
-      ]
+      "paragraphs": [["최고 속도"]]
     },
     {
-      "paragraphs": [
-        [
-          "200"
-        ]
-      ]
+      "paragraphs": [["200"]]
     },
     {
-      "paragraphs": [
-        [
-          "장치를 한 번에"
-        ]
-      ]
+      "paragraphs": [["장치를 한 번에"]]
     },
     {
-      "paragraphs": [
-        [
-          "출시를 지켜보세요"
-        ]
-      ]
+      "paragraphs": [["출시를 지켜보세요"]]
     },
     "무대 라이브 2027년\n1월 19일 · 19:00"
   ],
   "m-passkey": [
     {
-      "paragraphs": [
-        [
-          "열쇠고리에는 블랙, 서랍에는 아이보리."
-        ]
-      ]
+      "paragraphs": [["열쇠고리에는 블랙, 서랍에는 아이보리."]]
     },
-    {
-      "paragraphs": [
-        [
-          "SEAL K2 · 하드웨어 패스키"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "원터치 비트"
-        ],
-        [
-          "모든 비밀번호"
-        ]
-      ]
-    },
+    "SEAL K2 · 하드웨어 패스키",
+    "한 번의 터치로\n비밀번호를 대신하다",
     "탭하여 로그인하세요. 입력할 것도 없고,\n가짜 페이지가 도용할 것도 없습니다.",
     {
-      "paragraphs": [
-        [
-          "비밀번호 + SMS"
-        ]
-      ]
+      "paragraphs": [["비밀번호 + SMS"]]
     },
     {
-      "paragraphs": [
-        [
-          "SEAL K2"
-        ]
-      ]
+      "paragraphs": [["SEAL K2"]]
     },
     {
-      "paragraphs": [
-        [
-          "피싱 차단"
-        ]
-      ]
+      "paragraphs": [["피싱 차단"]]
     },
     {
-      "paragraphs": [
-        [
-          "로그인 시간"
-        ]
-      ]
+      "paragraphs": [["로그인 시간"]]
     },
     {
-      "paragraphs": [
-        [
-          "25초"
-        ]
-      ]
+      "paragraphs": [["25 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "2초"
-        ]
-      ]
+      "paragraphs": [["2 s"]]
     },
     {
-      "paragraphs": [
-        [
-          "기억하다"
-        ]
-      ]
+      "paragraphs": [["기억하다"]]
     },
     {
-      "paragraphs": [
-        [
-          "14개의 비밀번호"
-        ]
-      ]
+      "paragraphs": [["14개의 비밀번호"]]
     },
     {
-      "paragraphs": [
-        [
-          "아무것도"
-        ]
-      ]
+      "paragraphs": [["아무것도"]]
     },
     {
-      "paragraphs": [
-        [
-          "전화 없이도 작동"
-        ]
-      ]
+      "paragraphs": [["전화 없이도 작동"]]
     },
     {
-      "paragraphs": [
-        [
-          "최저 39달러 · 1,200개 이상의 앱과 호환"
-        ]
-      ]
+      "paragraphs": [["최저 39달러 · 1,200개 이상의 앱과 호환"]]
     }
   ],
   "m-sourdough-thumb": [
     {
-      "paragraphs": [
-        [
-          "그냥"
-        ],
-        [
-          "4"
-        ],
-        [
-          "성분"
-        ]
-      ]
+      "paragraphs": [["그냥"], ["4"], ["성분"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "전체 단계별 가이드"
-        ]
-      ]
-    },
-    "사워도우\n처음부터 만들기",
-    "첫 번째 빵,\n바삭하게 갈라지는 크러스트",
-    {
-      "paragraphs": [
-        [
-          "밀가루·물·소금·인내"
-        ]
-      ]
+      "paragraphs": [["전체 단계별 가이드"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "32:40"
-        ]
-      ]
+      "runs": ["사워도우\n처음부터 만들기"],
+      "lineHeight": 1.4
+    },
+    {
+      "runs": ["첫 번째 빵,\n바삭하게 갈라지는 크러스트"],
+      "lineHeight": 1.4
+    },
+    {
+      "paragraphs": [["밀가루·물·소금·인내"]],
+      "lineHeight": 1.4
+    },
+    {
+      "paragraphs": [["32:40"]],
+      "lineHeight": 1.4
     }
   ],
   "m-ereader": [
+    "FOLIO 7 · 기술 사양",
     {
-      "paragraphs": [
-        [
-          "FOLIO 7 · 기술 사양"
-        ]
-      ]
+      "paragraphs": [["도서관 전체, ", "182그램에"]]
     },
     {
-      "paragraphs": [
-        [
-          "도서관 전체, ",
-          "182그램에"
-        ]
-      ]
+      "paragraphs": [["화면"]]
     },
     {
-      "paragraphs": [
-        [
-          "화면"
-        ]
-      ]
+      "paragraphs": [["7인치 · 300ppi"]]
     },
     {
-      "paragraphs": [
-        [
-          "7인치 · 300ppi"
-        ]
-      ]
+      "paragraphs": [["페이지 전환 키"]]
     },
     {
-      "paragraphs": [
-        [
-          "페이지 전환 키"
-        ]
-      ]
+      "paragraphs": [["2, 그립에"]]
     },
     {
-      "paragraphs": [
-        [
-          "2, 그립에"
-        ]
-      ]
+      "paragraphs": [["배터리"]]
     },
     {
-      "paragraphs": [
-        [
-          "배터리"
-        ]
-      ]
+      "paragraphs": [["8주"]]
     },
     {
-      "paragraphs": [
-        [
-          "8주"
-        ]
-      ]
+      "paragraphs": [["무게"]]
     },
     {
-      "paragraphs": [
-        [
-          "무게"
-        ]
-      ]
+      "paragraphs": [["182 g"]]
     },
     {
-      "paragraphs": [
-        [
-          "182g"
-        ]
-      ]
+      "paragraphs": [["두께"]]
     },
     {
-      "paragraphs": [
-        [
-          "두께"
-        ]
-      ]
+      "paragraphs": [["6.2 mm"]]
     },
     {
-      "paragraphs": [
-        [
-          "6.2mm"
-        ]
-      ]
+      "paragraphs": [["방수"]]
     },
     {
-      "paragraphs": [
-        [
-          "방수"
-        ]
-      ]
+      "paragraphs": [["IPX8"]]
     },
     {
-      "paragraphs": [
-        [
-          "IPX8"
-        ]
-      ]
+      "paragraphs": [["$169"]]
     },
     {
-      "paragraphs": [
-        [
-          "$169"
-        ]
-      ]
-    },
-    {
-      "paragraphs": [
-        [
-          "2027년 4월 3일 매장에서"
-        ]
-      ]
+      "paragraphs": [["2027년 4월 3일 매장에서"]]
     }
   ],
   "m-poetry-cafe-window": [
     {
-      "paragraphs": [
-        [
-          "도서 출시 · 시와 커피"
-        ]
-      ]
+      "paragraphs": [["도서 출시 · 시와 커피"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "도시\n거품"
-        ]
-      ]
+      "paragraphs": [["도시\n거품"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "텔아비브의 아침, 발코니, 컵 바닥에 남은 것에 대한 시입니다."
-        ]
-      ]
+      "paragraphs": [["텔아비브의 아침, 발코니, 컵 바닥에 남은 것에 대한 시입니다."]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "노가 알모그(Noga Almog)의 데뷔 컬렉션"
-        ]
-      ]
+      "paragraphs": [["노가 알모그(Noga Almog)의 데뷔 컬렉션"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "일"
-        ],
-        [
-          "수요일"
-        ]
-      ]
+      "paragraphs": [["일"], ["수요일"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "시간"
-        ],
-        [
-          "오후 8시"
-        ]
-      ]
+      "paragraphs": [["시간"], ["오후 8시"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "장소"
-        ],
-        [
-          "카페 하게펜"
-        ],
-        [
-          "로스차일드 대로, 텔아비브"
-        ]
-      ]
+      "paragraphs": [["장소"], ["카페 하게펜"], ["로스차일드 대로, 텔아비브"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "공개 독서, 도서 사인회 및 따뜻한 이스트 케이크"
-        ]
-      ]
+      "paragraphs": [["공개 독서, 도서 사인회 및 따뜻한 이스트 케이크"]],
+      "lineHeight": 1.4
     },
     {
-      "paragraphs": [
-        [
-          "무료 입장 · 메시지로 회신"
-        ]
-      ]
+      "paragraphs": [["무료 입장 · 메시지로 회신"]],
+      "lineHeight": 1.4
     }
   ]
 }

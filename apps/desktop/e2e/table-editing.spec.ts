@@ -72,11 +72,11 @@ async function expectSelected(page: Page, id: string, cells: [number, number][])
   }).toPass({ timeout: 3000 });
 }
 
-test('row A inserts a table of the picked size and starts typing in its first cell', async ({
+test('row B inserts a table of the picked size and starts typing in its first cell', async ({
   page,
 }) => {
   await openApp(page);
-  await page.getByTestId('top-tools-a').getByRole('button', { name: 'טבלה' }).click();
+  await page.getByTestId('top-tools-b').getByRole('button', { name: 'טבלה' }).click();
   const grid = page.getByRole('grid');
   await grid.locator('[data-rows="3"][data-cols="4"]').hover();
   await expect(page.getByTestId('table-insert-size')).toHaveText('4 עמודות × 3 שורות');
