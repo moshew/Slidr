@@ -574,7 +574,7 @@ async function uploadTags(kind, all, tags) {
     console.error(
       `  ${kind}: the tags of ${accepted.body.uploads[0].id} were accepted and wait to be published; nothing is sent.`,
     );
-    failed += 1;
+    unsent += 1;
     return;
   }
   for (const { id } of waiting.body.uploads) {
@@ -590,7 +590,7 @@ async function uploadTags(kind, all, tags) {
     console.log(`  ${kind}: the tags of ${count} items wait as ${made.body.id}`);
     return;
   }
-  failed += 1;
+  unsent += 1;
   console.error(
     `  ${kind}: the library refused the tags (${made.status}): ${made.body?.message ?? ''}`,
   );
@@ -603,6 +603,8 @@ async function uploadTags(kind, all, tags) {
 
 let spent = 0;
 let failed = 0;
+/** The kinds whose tags the library did not take. */
+let unsent = 0;
 for (const kind of kinds) {
   const all = items[kind]();
   const tags = readTags(kind);
@@ -660,6 +662,9 @@ async function tagAll(kind, all, tags, wanted) {
 await browser?.close();
 rmSync(sheets, { recursive: true, force: true });
 console.log(
-  `Done. The calls cost $${spent.toFixed(2)}${failed ? `; ${failed} items have no tags` : ''}.`,
+  `Done. The calls cost $${spent.toFixed(2)}` +
+    (failed ? `; ${failed} items have no tags` : '') +
+    (unsent ? `; the tags of ${unsent} kinds were not sent` : '') +
+    '.',
 );
-process.exit(failed > 0 ? 1 : 0);
+process.exit(failed + unsent > 0 ? 1 : 0);
