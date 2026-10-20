@@ -33,7 +33,7 @@ import {
   MANAGED_DESIGN_IDS,
 } from './designs';
 
-/** The designs of `elements/designs/index.json`, and those the management tool publishes. */
+/** The designs of `elements/designs/index.json`, and those Slidr Studio publishes. */
 const AUTHORED = DESIGN_IDS.filter((id) => !MANAGED_DESIGN_IDS.has(id));
 const MANAGED = DESIGN_IDS.filter((id) => MANAGED_DESIGN_IDS.has(id));
 /** The groups of the authored catalog: those with an authored design. */

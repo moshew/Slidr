@@ -32,7 +32,7 @@ const PREVIEW = 4;
 
 /**
  * The names of designs and of their groups, in the language of the interface: the app's own,
- * else the one `managed.json` gives a design of the management tool, else the id. A name that
+ * else the one `managed.json` gives a design of Slidr Studio, else the id. A name that
  * neither has is reported as a missing string.
  */
 function useDesignNames() {

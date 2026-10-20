@@ -2,7 +2,7 @@ import { readMediaJson } from '@slidr/media-library';
 import { managedSize, type ManagedDesignCatalog } from './designCatalog';
 
 /**
- * The designs the management tool publishes, `elements/designs/managed.json` (docs/media-library.md),
+ * The designs Slidr Studio publishes, `elements/designs/managed.json` (docs/media-library.md),
  * read once for the catalog (`designs.ts`) and for the sizes of their pictures (`designAssets.ts`).
  * Without the file there are none.
  */

@@ -3,7 +3,7 @@
 // A design is drawn in the gallery from its bundled file, before any deck has imported it, and
 // a picture that is cropped (one face of a sheet of four) can only be drawn from a record that
 // knows its size. `designs.test.ts` fails when a picture and this table disagree: run this again
-// after adding or replacing a picture. The pictures of the designs the management tool publishes
+// after adding or replacing a picture. The pictures of the designs Slidr Studio publishes
 // (`m-<id>.webp`) are not listed: their sizes are in `elements/designs/managed.json`.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
