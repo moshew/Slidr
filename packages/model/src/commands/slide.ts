@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { allElementIds, walkElements } from '../queries';
+import { hasElementId, walkElements } from '../queries';
 import { AnimationStep, Archetype, Background, Id, RichText, Slide, Transition } from '../schema';
 import {
   applyFields,
@@ -23,10 +23,9 @@ export const slideAdd = defineCommand(
     if (slide.layoutId && !before.layouts.some((l) => l.id === slide.layoutId)) {
       throw new CommandError('not_found', `Layout "${slide.layoutId}" does not exist.`);
     }
-    const taken = allElementIds(before);
     const own = new Set<string>();
     for (const element of walkElements(slide.elements)) {
-      if (taken.has(element.id) || own.has(element.id)) {
+      if (own.has(element.id) || hasElementId(before, element.id)) {
         throw new CommandError('conflict', `Element id "${element.id}" is already in use.`);
       }
       own.add(element.id);

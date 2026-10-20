@@ -125,7 +125,10 @@ function applyHistoryPatches(deck: Deck, patches: readonly Patch[]): Deck {
   });
 }
 
-/** What one command changed: its patches, and the patches that take them back. */
+/**
+ * What one draft changed: its patches, and the patches that take them back. A draft is one
+ * command, or a run of element updates (see `batch`).
+ */
 interface Change {
   forward: readonly Patch[];
   backward: readonly Patch[];
@@ -262,17 +265,30 @@ export class CommandBus {
     const types: CommandType[] = [];
     const touched = new Touched();
 
-    for (const input of commands) {
-      const command = parseCommand(input);
-      const apply = commandDefs[command.type].apply as Apply;
+    const parsed = commands.map(parseCommand);
+    for (let start = 0; start < parsed.length;) {
+      // Updates of elements that follow one another are applied in one draft. A drag of many
+      // elements, or a resize of a group and its parts, is an update for each of them, a frame,
+      // and a draft of the deck for each made a frame of 40 elements in 200 slides take 3 ms
+      // in the model alone, five times what one draft takes.
+      // Only updates: a command that reads the deck as it was before it (`baseDeck`, for the ids
+      // that are taken) has a draft of its own, or it would miss what the ones before it did.
+      let end = start + 1;
+      if (parsed[start]?.type === 'element.update') {
+        while (parsed[end]?.type === 'element.update') end++;
+      }
+      const run = parsed.slice(start, end);
       const [next, forward, backward] = produceWithPatches(deck, (draft) => {
-        apply(draft, command, touched);
+        for (const command of run) {
+          (commandDefs[command.type].apply as Apply)(draft, command, touched);
+        }
       });
       deck = next;
       patches.push(...forward);
       inversePatches.unshift(...backward);
       changes.push({ forward, backward });
-      types.push(command.type);
+      for (const command of run) types.push(command.type);
+      start = end;
     }
 
     const affected = touched.toAffected();

@@ -80,6 +80,37 @@ describe('CommandBus', () => {
     ).toThrow(/already in use/);
   });
 
+  it('applies updates that follow one another in one draft, each on what the one before it did', () => {
+    const other = createSlide({ id: 's2', elements: [rect('z')] });
+    const bus = new CommandBus(createDeck({ slides: [...freshDeck().slides, other] }), {
+      validate: true,
+    });
+    const before = bus.deck;
+    bus.batch([move('a', 1), move('b', 3), move('a', 2)]);
+    expect([xOf(bus, 'a'), xOf(bus, 'b')]).toEqual([2, 3]);
+    // One draft: one patch for each place, however many times it was written.
+    expect(bus.undoStack[0]!.patches).toHaveLength(2);
+    expect(bus.undoStack[0]!.commands).toHaveLength(3);
+    expect(bus.deck.slides[1]).toBe(other);
+    bus.undo();
+    expect(bus.deck).toEqual(before);
+    bus.redo();
+    expect([xOf(bus, 'a'), xOf(bus, 'b')]).toEqual([2, 3]);
+
+    // Runs of updates around other commands: each sees what came before it.
+    bus.batch([
+      move('a', 4),
+      { type: 'element.add', slideId: 's1', element: rect('c') },
+      move('c', 5),
+      move('a', 6),
+    ]);
+    expect([xOf(bus, 'a'), xOf(bus, 'c')]).toEqual([6, 5]);
+    expect(() => bus.batch([move('a', 7), move('gone', 7)])).toThrow(CommandError);
+    expect(xOf(bus, 'a')).toBe(6);
+    bus.undo();
+    expect([xOf(bus, 'a'), findElement(bus.deck.slides[0]!, 'c')]).toEqual([2, undefined]);
+  });
+
   it('records nothing for a command that changes nothing', () => {
     const bus = new CommandBus(freshDeck());
     const listener = vi.fn();

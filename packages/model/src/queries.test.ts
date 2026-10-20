@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CommandBus } from './bus';
 import { updateElement } from './commands';
 import { createDeck, createElement, createSlide } from './factories';
-import { findElement, locateElement } from './queries';
+import { findElement, hasElementId, locateElement } from './queries';
 import type { Deck, Element } from './schema';
 
 const box = (id: string, x = 0): Element =>
@@ -98,5 +98,25 @@ describe('locateElement', () => {
     list.unshift(box('z'));
     expect(locateElement(list, 'z')?.index).toBe(0);
     expect(locateElement(list, 'a')?.index).toBe(1);
+  });
+});
+
+describe('hasElementId', () => {
+  it('knows the ids of every slide, in groups too, as the deck changes', () => {
+    const bus = new CommandBus(deck());
+    bus.dispatch({ type: 'slide.add', slide: createSlide({ id: 's2', elements: [box('e')] }) });
+    for (const id of ['a', 'b', 'g', 'e']) expect(hasElementId(bus.deck, id)).toBe(true);
+    expect(hasElementId(bus.deck, 'x')).toBe(false);
+    bus.dispatch({ type: 'element.add', slideId: 's2', element: box('x') });
+    bus.dispatch({ type: 'element.remove', slideId: 's1', elementIds: ['g'] });
+    expect(hasElementId(bus.deck, 'x')).toBe(true);
+    expect(hasElementId(bus.deck, 'b')).toBe(false);
+    bus.undo();
+    expect(hasElementId(bus.deck, 'b')).toBe(true);
+    // A deck that is not frozen yet, as a command's draft or a test builds it.
+    const open = deck();
+    expect(hasElementId(open, 'c')).toBe(true);
+    open.slides[0]!.elements.push(box('late'));
+    expect(hasElementId(open, 'late')).toBe(true);
   });
 });

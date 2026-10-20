@@ -34,18 +34,53 @@ const REST_MS = 500;
 /** Fixes one "fix all" may apply: each is followed by a check, and none may loop. */
 const MAX_FIXES = 200;
 
-/** What a slide's measurements depend on. The model keeps the identity of what did not change. */
+/**
+ * What a slide's measurements depend on, but for the assets of the deck (`assetsReach`). The
+ * model keeps the identity of what did not change.
+ */
 type Key = readonly unknown[];
 const keyOf = (deck: Deck, slide: Slide): Key => [
   slide,
   deck.theme,
   deck.layouts,
-  deck.assets,
   deck.meta.dir,
   deck.meta.lang,
   deck.size,
 ];
 const same = (a: Key, b: Key) => a.length === b.length && a.every((part, i) => part === b[i]);
+
+type Assets = Deck['assets'];
+
+/**
+ * The assets whose records differ between two tables: the ids of those added, removed or changed,
+ * or `fonts` when a font is among them. The deck declares all its fonts on every slide, and one
+ * that comes or goes may set any text anew.
+ */
+function changedAssets(before: Assets, after: Assets): ReadonlySet<string> | 'fonts' {
+  const changed = new Set<string>();
+  for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    const was = before[id];
+    const is = after[id];
+    if (was === is) continue;
+    if (was?.kind === 'font' || is?.kind === 'font') return 'fonts';
+    changed.add(id);
+  }
+  return changed;
+}
+
+/**
+ * Whether a change of these assets reaches a slide: one of them is named in the slide, in its
+ * layout or in the theme. An asset is named by its id, anywhere in the data, as for
+ * `referencedAssetIds`. The deck's whole table was once part of every slide's key, and a picture
+ * put on one slide measured all the others again: on 200 slides, seconds of work.
+ */
+function assetsReach(deck: Deck, slide: Slide, changed: ReadonlySet<string> | 'fonts'): boolean {
+  if (changed === 'fonts') return true;
+  if (changed.size === 0) return false;
+  const layout = slide.layoutId ? deck.layouts.find((l) => l.id === slide.layoutId) : undefined;
+  const data = JSON.stringify([slide, layout, deck.theme]);
+  return [...changed].some((id) => data.includes(id));
+}
 
 /**
  * What a slide's findings depend on beyond what it is drawn from: the slides around it, of which
@@ -115,7 +150,13 @@ export class DesignCheck {
    */
   readonly #measured = new Map<
     string,
-    { key: Key; measured: SlideMeasurements; found?: { order: string; findings: LintFinding[] } }
+    {
+      key: Key;
+      /** The assets the slide was measured with, or a later table that draws it the same. */
+      assets: Assets;
+      measured: SlideMeasurements;
+      found?: { order: string; findings: LintFinding[] };
+    }
   >();
   #running: Promise<void> | null = null;
   /** The deck state the last check failed on: it is not tried again until the deck changes. */
@@ -189,6 +230,9 @@ export class DesignCheck {
     try {
       const findings: LintFinding[] = [];
       const order = orderOf(deck);
+      /** What changed in the assets since each table the slides were measured with. */
+      const changes = new Map<Assets, ReadonlySet<string> | 'fonts'>();
+      let drawn = 0;
       for (const slide of deck.slides) {
         // The deck moved on: what would be found is already out of date.
         if (this.#bus.deck !== deck) return;
@@ -197,8 +241,22 @@ export class DesignCheck {
         if (isStarterCanvas(deck, slide)) continue;
         const key = keyOf(deck, slide);
         let entry = this.#measured.get(slide.id);
-        if (!entry || !same(entry.key, key)) {
-          entry = { key, measured: await this.#measure(deck, slide) };
+        if (entry && same(entry.key, key) && entry.assets !== deck.assets) {
+          let changed = changes.get(entry.assets);
+          if (!changed) {
+            changed = changedAssets(entry.assets, deck.assets);
+            changes.set(entry.assets, changed);
+          }
+          if (!assetsReach(deck, slide, changed)) entry.assets = deck.assets;
+        }
+        if (!entry || !same(entry.key, key) || entry.assets !== deck.assets) {
+          // Each slide drawn out of sight is a long task: the next one waits for a moment the
+          // page has nothing else to do, so a check of many slides does not hold up the pointer.
+          if (drawn++ > 0) {
+            await new Promise<void>((resolve) => whenIdle(resolve));
+            if (this.#bus.deck !== deck) return;
+          }
+          entry = { key, assets: deck.assets, measured: await this.#measure(deck, slide) };
           this.#measured.set(slide.id, entry);
         }
         if (entry.found?.order !== order)

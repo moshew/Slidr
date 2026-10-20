@@ -1,7 +1,7 @@
 import { current, isDraft } from 'immer';
 import { z } from 'zod';
 import { frameCenter, normalizeAngle, rotatedBounds, rotateVector, unionBounds } from '../geometry';
-import { allElementIds, walkElements } from '../queries';
+import { hasElementId, walkElements } from '../queries';
 import { Element, elementSchemas, Id, RichText } from '../schema';
 import type { GroupElement, Slide } from '../schema';
 import {
@@ -53,12 +53,13 @@ export const elementAdd = defineCommand(
   }),
   (deck, { slideId, element, parentId, index }, touched) => {
     const slide = requireSlide(deck, slideId);
-    const taken = allElementIds(baseDeck(deck));
+    const before = baseDeck(deck);
+    const own = new Set<string>();
     for (const added of walkElements([element])) {
-      if (taken.has(added.id)) {
+      if (own.has(added.id) || hasElementId(before, added.id)) {
         throw new CommandError('conflict', `Element id "${added.id}" is already in use.`);
       }
-      taken.add(added.id);
+      own.add(added.id);
     }
     const target = parentId ? requireGroup(slide, parentId).element.children : slide.elements;
     target.splice(clampIndex(index, target.length), 0, element);
@@ -127,13 +128,15 @@ export const elementReplace = defineCommand(
     const { element, siblings, index } = requireElement(slide, elementId);
     const replaced = new Set<string>();
     for (const inside of walkElements([element])) replaced.add(inside.id);
-    const taken = allElementIds(baseDeck(deck));
-    for (const id of replaced) taken.delete(id);
+    const before = baseDeck(deck);
+    const own = new Set<string>();
     for (const added of walkElements(elements)) {
-      if (taken.has(added.id)) {
+      // The ids of what is replaced are free to be taken again.
+      const taken = !replaced.has(added.id) && hasElementId(before, added.id);
+      if (own.has(added.id) || taken) {
         throw new CommandError('conflict', `Element id "${added.id}" is already in use.`);
       }
-      taken.add(added.id);
+      own.add(added.id);
     }
     siblings.splice(index, 1, ...elements);
     if (slide.timeline.some((step) => replaced.has(step.elementId))) {
@@ -248,7 +251,7 @@ export const elementGroup = defineCommand(
   }),
   (deck, { slideId, elementIds, groupId, name }, touched) => {
     const slide = requireSlide(deck, slideId);
-    if (allElementIds(baseDeck(deck)).has(groupId)) {
+    if (hasElementId(baseDeck(deck), groupId)) {
       throw new CommandError('conflict', `Element id "${groupId}" is already in use.`);
     }
     const { siblings, parent } = commonSiblings(slide, elementIds);

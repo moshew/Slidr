@@ -1,3 +1,4 @@
+import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
 import cases from '../assetFileNames.cases.json';
 import { CommandBus } from '../bus';
@@ -13,6 +14,7 @@ import {
   type CommandOf,
   type CommandType,
 } from './index';
+import { requireSlide } from './core';
 
 const covered = new Set<CommandType>();
 
@@ -426,6 +428,26 @@ describe('element commands', () => {
       slides: [createSlide({ id: 's1', elements: [rect('a')] }), createSlide({ id: 's2' })],
     });
     rejects(start, { type: 'element.add', slideId: 's2', element: rect('a') }, 'conflict');
+    // Inside a group, and inside the element that is added.
+    const grouped = createDeck({
+      slides: [
+        createSlide({
+          id: 's1',
+          elements: [createElement.group({ id: 'g', frame: box(0, 0), children: [rect('in')] })],
+        }),
+        createSlide({ id: 's2' }),
+      ],
+    });
+    rejects(grouped, { type: 'element.add', slideId: 's2', element: rect('in') }, 'conflict');
+    const twice = createElement.group({ id: 'g2', frame: box(0, 0), children: [rect('g2')] });
+    rejects(grouped, { type: 'element.add', slideId: 's2', element: twice }, 'conflict');
+    // An id that a removal let go of can be taken again, in the same batch.
+    const bus = new CommandBus(start, { validate: true });
+    bus.batch([
+      { type: 'element.remove', slideId: 's1', elementIds: ['a'] },
+      { type: 'element.add', slideId: 's2', element: rect('a') },
+    ]);
+    expect(findElement(findSlide(bus.deck, 's2')!, 'a')).toBeDefined();
     rejects(start, { type: 'element.add', slideId: 's9', element: rect('b') }, 'not_found');
     rejects(
       start,
@@ -808,5 +830,20 @@ describe('the command catalogue', () => {
   // Keep this last: it checks that every command above had an undo/redo test.
   it('has an undo/redo test for every command', () => {
     expect([...covered].sort()).toEqual(Object.keys(commandDefs).sort());
+  });
+});
+
+describe('requireSlide', () => {
+  it('finds a slide of a draft, also after the draft moved and removed slides', () => {
+    const start = createDeck({ slides: [createSlide({ id: 's1' }), createSlide({ id: 's2' })] });
+    produce(start, (draft) => {
+      expect(requireSlide(draft, 's2').id).toBe('s2');
+      draft.slides.reverse();
+      expect(requireSlide(draft, 's1').id).toBe('s1');
+      expect(requireSlide(draft, 's1')).toBe(draft.slides[1]);
+      draft.slides.splice(0, 1);
+      expect(() => requireSlide(draft, 's2')).toThrow(CommandError);
+      expect(() => requireSlide(draft, 's9')).toThrow(CommandError);
+    });
   });
 });

@@ -134,7 +134,15 @@ export function baseDeck(deck: Deck): Deck {
 }
 
 export function requireSlide(deck: Deck, slideId: string): Slide {
-  const slide = deck.slides.find((s) => s.id === slideId);
+  // Looked for in the list as it was, and read from the draft at that place alone: a search
+  // through the draft makes a draft of every slide it passes, and a command on the last slide of
+  // 200 paid for 200 of them. A command that has moved slides already is looked for again.
+  const list = deck.slides;
+  const plain = isDraft(list) ? (original(list) ?? list) : list;
+  const at = plain.findIndex((s) => s.id === slideId);
+  const there = at >= 0 ? list[at] : undefined;
+  if (there?.id === slideId) return there;
+  const slide = list.find((s) => s.id === slideId);
   if (!slide) throw new CommandError('not_found', `Slide "${slideId}" does not exist.`);
   return slide;
 }

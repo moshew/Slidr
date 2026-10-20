@@ -117,6 +117,41 @@ describe('the design check of the open deck', () => {
     expect(measure).toHaveBeenCalledTimes(5);
   });
 
+  it('measures again only the slides an asset that changed is drawn on', async () => {
+    const asset = (id: string, kind: 'image' | 'font' = 'image') => ({
+      id,
+      file: `${id}.${kind === 'font' ? 'woff2' : 'png'}`,
+      mime: kind === 'font' ? 'font/woff2' : 'image/png',
+      kind,
+      bytes: 10,
+      origin: 'upload' as const,
+    });
+    const photo = 'a'.repeat(64);
+    const start = deck();
+    // The second slide shows a picture whose file the deck does not have yet.
+    start.slides[1]!.elements.push(
+      createElement.image({ id: 'e_photo', frame: { x: 0, y: 0, w: 10, h: 10 }, assetId: photo }),
+    );
+    const { bus, check, measure } = setup(start);
+    await check.check();
+    expect(measure).toHaveBeenCalledTimes(2);
+    // A picture nothing shows yet, and then its removal, reach no slide.
+    bus.dispatch({ type: 'asset.add', asset: asset('b'.repeat(64)) });
+    await check.check();
+    bus.dispatch({ type: 'asset.remove', assetIds: ['b'.repeat(64)] });
+    await check.check();
+    expect(measure).toHaveBeenCalledTimes(2);
+    // The picture the second slide waits for.
+    bus.dispatch({ type: 'asset.add', asset: asset(photo) });
+    await check.check();
+    expect(measure).toHaveBeenCalledTimes(3);
+    expect(measure.mock.calls[2]![1].id).toBe('s_off');
+    // A font may set the text of any slide anew.
+    bus.dispatch({ type: 'asset.add', asset: asset('c'.repeat(64), 'font') });
+    await check.check();
+    expect(measure).toHaveBeenCalledTimes(5);
+  });
+
   it('follows the deck once it is watched', async () => {
     const { bus, check } = setup();
     const stop = check.watch();
