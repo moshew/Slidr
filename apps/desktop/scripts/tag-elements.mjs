@@ -17,6 +17,14 @@
 //   node apps/desktop/scripts/tag-elements.mjs --again-all          write every tag again
 //   node apps/desktop/scripts/tag-elements.mjs --limit 40           at most 40 items of each kind
 //   node apps/desktop/scripts/tag-elements.mjs --dry-run            say what would be tagged
+//   node apps/desktop/scripts/tag-elements.mjs --upload <url>       and send them to the library
+//
+// The tags reach the library through its upload API, never by publishing the author copy:
+// `--upload https://library.slidr.workers.dev` (or `http://127.0.0.1:5176`, the page's dev server)
+// sends each kind's tags as one upload of `tag`, which the library checks against what it
+// publishes and keeps until an editor accepts it (the library's README, "Search tags").
+// LIBRARY_KEY is the program's key, as the Worker's `LIBRARY_KEYS` names it. With nothing left to
+// tag, `--upload` only sends what the author copy has.
 //
 // --from <dir> is another author copy (../Slidr-media by default), --model and --effort are the
 // CLI's (opus, low), --jobs the batches that run at once (4). CLAUDE_PATH names the CLI when it is
@@ -25,7 +33,7 @@
 // `birthday`. The designs Slidr Studio publishes come with their tags (`managed.json`); one
 // published before the studio wrote them is tagged here.
 //
-// Run it after a generator adds to a catalogue (and after `pnpm media:pull`), then publish.
+// Run it after a generator adds to a catalogue (and after `pnpm media:pull`), with `--upload`.
 // `src/media/icons/tags.test.ts` fails while a published item has no tags.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -52,6 +60,12 @@ const LIMIT = Number(flag('--limit') ?? Infinity);
 const DRY = args.includes('--dry-run');
 const AGAIN_ALL = args.includes('--again-all');
 const AGAIN = new Set(list(flag('--again')));
+/** The library's page, whose API takes the tags (`--upload`), and the program's key to it. */
+const UPLOAD = flag('--upload');
+const KEY = process.env.LIBRARY_KEY;
+if (UPLOAD && !KEY && !DRY) {
+  throw new Error("--upload sends the tags with the library's key for programs: set LIBRARY_KEY.");
+}
 /** The kinds in the order a run tags them: the fewest and most looked for first. */
 const KINDS = ['designs', 'cards', 'shapes', 'frames', 'graphics', 'emoji', 'icons'];
 const chosen = list(flag('--kinds'));
@@ -518,6 +532,71 @@ function writeTags(kind, all, tags) {
   renameSync(`${file}.tmp`, file);
 }
 
+/* ---------------------------------------------------------------- into the library */
+
+/**
+ * Sends the tags of a kind to the library through its API, as one upload of `tag` (the library's
+ * README, "Search tags"): every item that has tags, each under its key, in Hebrew and English.
+ * One upload of a kind's tags waits at a time: one that waits is withdrawn and sent again, and one
+ * that was accepted is left to be published first. What the library finds wrong is said, item by
+ * item; nothing of it is sent then.
+ */
+async function uploadTags(kind, all, tags) {
+  const base = UPLOAD.replace(/\/+$/, '');
+  const headers = { Authorization: `Bearer ${KEY}` };
+  const call = async (path, init = {}) => {
+    const answer = await fetch(`${base}${path}`, {
+      ...init,
+      headers: { ...headers, ...init.headers },
+    });
+    const body = answer.status === 204 ? undefined : await answer.json().catch(() => undefined);
+    return { status: answer.status, body };
+  };
+  const languages = { he: { tags: {} }, en: { tags: {} } };
+  for (const { key } of all) {
+    if (!tags[key]) continue;
+    languages.he.tags[key] = tags[key].he;
+    languages.en.tags[key] = tags[key].en;
+  }
+  const count = Object.keys(languages.he.tags).length;
+  if (count === 0) return;
+  if (DRY) {
+    console.log(`  ${kind}: would upload the tags of ${count} items to ${base}`);
+    return;
+  }
+  const query = `?type=${kind}&action=tag&target=${kind}`;
+  const waiting = await call(`/api/uploads${query}&status=pending`);
+  const accepted = await call(`/api/uploads${query}&status=accepted`);
+  if (waiting.status !== 200 || accepted.status !== 200) {
+    throw new Error(`${base} answered ${waiting.status}: ${waiting.body?.message ?? ''}`);
+  }
+  if (accepted.body.uploads.length > 0) {
+    console.error(
+      `  ${kind}: the tags of ${accepted.body.uploads[0].id} were accepted and wait to be published; nothing is sent.`,
+    );
+    failed += 1;
+    return;
+  }
+  for (const { id } of waiting.body.uploads) {
+    await call(`/api/uploads/${id}`, { method: 'DELETE' });
+    console.log(`  ${kind}: the waiting upload ${id} is withdrawn for these tags`);
+  }
+  const made = await call('/api/uploads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: kind, action: 'tag', id: kind, languages }),
+  });
+  if (made.status === 201) {
+    console.log(`  ${kind}: the tags of ${count} items wait as ${made.body.id}`);
+    return;
+  }
+  failed += 1;
+  console.error(`  ${kind}: the library refused the tags (${made.status}): ${made.body?.message ?? ''}`);
+  for (const issue of (made.body?.issues ?? []).slice(0, 20)) {
+    console.error(`    ${issue.path}: ${issue.message}`);
+  }
+}
+
 /* ---------------------------------------------------------------- the run */
 
 let spent = 0;
@@ -533,11 +612,13 @@ for (const kind of kinds) {
     `${kind}: ${all.length} items, ${tagged} tagged, ${wanted.length} to tag now` +
       (dropped.length > 0 ? `, ${dropped.length} no longer in the catalogue` : ''),
   );
-  if (DRY || wanted.length === 0) {
-    if (!DRY && dropped.length > 0) writeTags(kind, all, tags);
-    continue;
-  }
+  if (!DRY && wanted.length > 0) await tagAll(kind, all, tags, wanted);
+  else if (!DRY && dropped.length > 0) writeTags(kind, all, tags);
+  if (UPLOAD) await uploadTags(kind, all, tags);
+}
 
+/** Asks Claude for the tags of what is wanted, and keeps them in the kind's file batch by batch. */
+async function tagAll(kind, all, tags, wanted) {
   const size = BATCH[kind];
   let left = wanted;
   // A second round asks again for what the first left out.
