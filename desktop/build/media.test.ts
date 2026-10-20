@@ -114,6 +114,7 @@ describe('a publication of the media library', () => {
     const target = tempDir();
     write(source, 'icons/hebrew.json', '{}');
     write(source, 'fonts/heebo/heebo-latin.woff2', 'font');
+    write(source, 'tags/emoji.json', '{"version":1,"tags":{}}');
     write(
       source,
       'templates/catalog.json',
@@ -130,6 +131,7 @@ describe('a publication of the media library', () => {
     expect(Object.keys(manifest.files)).toEqual([
       'fonts/heebo/heebo-latin.woff2',
       'icons/hebrew.json',
+      'tags/emoji.json',
       'templates/catalog.json',
       'templates/index.json',
       'templates/pictures.json',

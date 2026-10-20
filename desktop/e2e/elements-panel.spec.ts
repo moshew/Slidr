@@ -408,10 +408,15 @@ for (const lang of ['en', 'he'] as const) {
   });
 }
 
-test('one search on the first screen finds graphics, frames, emoji and icons', async ({ page }) => {
+test('one search on the first screen finds shapes, graphics, frames, emoji, icons and card sets', async ({
+  page,
+}) => {
   const panel = await openElements(page, 'he');
   await panel.getByTestId('elements-query').fill('לב');
   const found = panel.getByTestId('elements-found');
+  // The shapes come first: a query that names one wants it.
+  await expect(found.locator('[data-group]').first()).toHaveAttribute('data-group', 'shapes');
+  await expect(found.locator('[data-group="shapes"] [data-shape="shape:heart"]')).toBeVisible();
   await expect(found.locator('[data-group="graphics"] [data-sticker]').first()).toBeVisible();
   await expect(found.locator('[data-group="frames"] [data-frame="frame:heart"]')).toBeVisible();
   // A group is drawn once it comes into view: with nine frames found, the emoji are a scroll away.
@@ -423,6 +428,15 @@ test('one search on the first screen finds graphics, frames, emoji and icons', a
 
   await found.locator('[data-icon="lucide:heart"]').click();
   expect((await selected<SvgElement>(page)).name).toBe('lucide:heart');
+  await found.locator('[data-shape="shape:heart"]').click();
+  expect((await selected<ShapeElement>(page)).geometry).toEqual({
+    kind: 'preset',
+    preset: 'heart',
+  });
+
+  // A card set is found by its name, and goes on the slide as the collection puts it there.
+  await panel.getByTestId('elements-query').fill('שלבים');
+  await expect(found.locator('[data-group="cards"] [data-card-set="steps"]')).toBeVisible();
 
   await panel.getByTestId('elements-query').fill('');
   await expect(panel.locator('[data-collection]')).toHaveCount(COLLECTIONS.length);

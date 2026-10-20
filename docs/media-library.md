@@ -14,6 +14,7 @@ elements/designs/managed.json  the ready-made slides Slidr Studio makes
 elements/cards/catalog.json    the card sets
 elements/catalogs/             shapes, graphics, frames and emoji, with their notices
 elements/art/                  the drawings of the art sets, with their notices
+tags/<kind>.json               the search tags of the icons, graphics, emoji, frames, shapes, card sets and designs
 templates/catalog.json         the built-in templates with their samples, as authored
 templates/index.json           their ids in the order they are shown       (written on publishing)
 templates/<id>/template.json   each of them as a deck takes it              (written on publishing)
@@ -53,6 +54,21 @@ Authors keep a copy of the library in a folder, by default `../Slidr-media` besi
 A ready-made slide is written in a pack file under `elements/source/design-packs/` and put into `elements/designs/index.json` by `desktop/scripts/export-designs.mjs`. A built-in template is written as `archive/templates-source/<id>.ts`, beside the files the first eighteen were made from, and put into `templates/catalog.json` (with `templates/index.json` and `templates/<id>/template.json`) by `desktop/scripts/export-templates.mjs`. Each script's header lists the steps for adding one.
 
 The photo frames are written into `elements/catalogs/frames-catalog.json` by `desktop/scripts/generate-frames-catalog.mjs`. The Elements panel shows an event magnet from a small picture of it, `images/frames/<language>/<frame>.webp`, which `desktop/scripts/generate-frames-thumbs.mjs` makes of the renderer's own drawing: run it after the catalogue is written. A magnet whose picture is of an earlier drawing is drawn live in the panel until then, and `frames.test.ts` fails.
+
+### Search tags
+
+Everything Elements and Ready slides offer is searched by its names and by its tags: words in Hebrew and in English for what it shows, what it is for, and the occasions and themes it suits, so "יום הולדת" finds the birthday invitation, the cake, the balloons and the birthday magnets ([ADR-108](adr/ADR-108-search-tags.md)). They are in `tags/`, a file a kind (`icons`, `graphics`, `emoji`, `frames`, `shapes`, `cards`, `designs`), each an item a line under the key its catalog gives it:
+
+```json
+{
+  "version": 1,
+  "tags": {
+    "fluent-emoji:balloon": { "en": ["balloon", "party", "birthday"], "he": ["בלון", "מסיבה", "יום הולדת"] }
+  }
+}
+```
+
+Claude writes them: `desktop/scripts/tag-elements.mjs` gives it each item with what the catalogs say of it (its names, the words its set gives it, a design's text) and, for a graphic, a picture of the drawing, and checks every answer. It tags what has no tags yet, so run it after a generator adds to a catalog; `--again <key,...>` writes an item's tags again. It needs the Claude Code CLI, signed in. A design of Slidr Studio comes with its tags, in `managed.json` (below). `src/media/icons/tags.test.ts` fails while an item of a kind the library tags has none. Without the files, the app finds everything by its names, as before.
 
 ```sh
 pnpm media:pull                      # the published library into ../Slidr-media (--to <dir>)
@@ -112,7 +128,7 @@ On a machine that ran Slidr before, the manifest of the old address stands until
 
 ## Designs made by Slidr Studio
 
-Slidr Studio ([slidrhq/studio](https://github.com/slidrhq/studio)) publishes the designs it makes into a catalog of their own, `elements/designs/managed.json`, so that it never writes over the authored `index.json`. Their ids start with `m-`. Their pictures are `images/designs/<id>.webp` (and `<id>-bg.webp`) like the others, but their pixel sizes and their names in both languages are in `managed.json`, not in `sizes.json` or the app's messages.
+Slidr Studio ([slidrhq/studio](https://github.com/slidrhq/studio)) publishes the designs it makes into a catalog of their own, `elements/designs/managed.json`, so that it never writes over the authored `index.json`. Their ids start with `m-`. Their pictures are `images/designs/<id>.webp` (and `<id>-bg.webp`) like the others, but their pixel sizes, their names in both languages and their search tags (`tags`, written by Claude as it plans the design) are in `managed.json`, not in `sizes.json`, the app's messages or `tags/designs.json`. The app finds a design by the tags of both files.
 
 A design's slide, and a template's sample, is written in Hebrew and in English, and may be written in any other language of `packages/model/src/languages.ts` (`slides[id].<code>`, `samples[template].<code>`). A deck gets the one in its own language, else the English one ([ADR-098](adr/ADR-098-content-in-every-language.md)). The fonts catalog tags each family with the scripts it ships (`he`, `latin`, `arabic`, `cyrillic`, `vietnamese`, `devanagari`, `japanese`, `korean`, `chinese`), the ones it was made for (`for`), and, for each script it lacks, its `counterparts`: the family of those letters closest to it in character. A deck's font lists offer the families of its language and of English (`familyForDeck`), and a design's text in another language is set in its source's family or that family's counterpart (`desktop/scripts/design-fonts.mjs`, [ADR-105](adr/ADR-105-fonts-of-every-language.md)).
 

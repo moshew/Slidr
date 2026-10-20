@@ -35,8 +35,16 @@ import {
   Skeleton,
   Tooltip,
 } from '@slidr/ui';
+import { searchTags } from '../media/icons/library';
+import {
+  searchIcons,
+  withTags,
+  wordsOf,
+  type SearchWords,
+  type TagsOf,
+} from '../media/icons/search';
 import { insertCard, insertLine, insertShape } from '../objects/insert';
-import { LINE_KINDS, shapeLibrary } from '../objects/shapes';
+import { LINE_KINDS, shapeLibrary, type LineKind } from '../objects/shapes';
 import { scrollerOf, useDeck, useEditor } from '../shell';
 import { insertTable } from '../table/insert';
 import { TableInsert } from '../table/TableInsert';
@@ -483,20 +491,137 @@ function ShapeTiles({
   );
 }
 
+/** A piece of the Shapes collection as its search finds it. */
+export interface FoundShape extends SearchWords {
+  /** `shape:<preset>`, `line:<kind>` or `card`: its key in the library's tags too. */
+  id: string;
+  /** What it is called in the language of the interface. */
+  name: string;
+}
+
+/** The name of a preset in a language: its own, the app's, else the preset. */
+function useShapeNames() {
+  const { t, i18n } = useTranslation('objects');
+  return useCallback(
+    (preset: string, lng: string = i18n.language) => {
+      const extra = extraShapes[preset];
+      if (extra) return lng.startsWith('he') ? extra.he : extra.en;
+      return i18n.exists(`objects:shape.${preset}`, { lng })
+        ? t(`shape.${preset}`, { lng })
+        : preset;
+    },
+    [t, i18n],
+  );
+}
+
+/**
+ * Every shape, line and the card, with the words they are found by: their names and the name of
+ * their group in Hebrew and English (a query for "arrows" finds every arrow), and the library's
+ * tags (`tags/shapes.json`). Undefined while the tags are read.
+ */
+export function useShapeIndex(): readonly FoundShape[] | undefined {
+  const { t, i18n } = useTranslation('objects');
+  const { t: own } = useTranslation('elements');
+  const nameOf = useShapeNames();
+  const tags = useLoaded(shapeTags);
+  return useMemo(() => {
+    if (tags === undefined) return undefined;
+    const tagged: TagsOf = tags === 'failed' ? {} : tags;
+    const piece = (id: string, name: (lng: string) => string, group: (lng: string) => string) => {
+      const nameHebrew = wordsOf(name('he'));
+      const words: FoundShape = {
+        id,
+        name: name(i18n.language),
+        filled: false,
+        nameWords: wordsOf(name('en')),
+        tagWords: [],
+        nameTerms: [nameHebrew.join(' ')],
+        nameHebrew,
+        tagTerms: [],
+        tagHebrew: [],
+      };
+      return withTags(withTags(words, { en: [group('en')], he: [group('he')] }), tagged[id]);
+    };
+    return [
+      ...shapeLibrary().flatMap(({ group, presets }) =>
+        presets.map((preset) =>
+          piece(
+            `shape:${preset}`,
+            (lng) => nameOf(preset, lng),
+            (lng) => t(`library.${group}`, { lng }),
+          ),
+        ),
+      ),
+      ...LINE_KINDS.map((kind) =>
+        piece(
+          `line:${kind}`,
+          (lng) => t(`line.${kind}`, { lng }),
+          (lng) => own('lines', { lng }),
+        ),
+      ),
+      piece(
+        'card',
+        (lng) => t('card.title', { lng }),
+        (lng) => t('library.cards', { lng }),
+      ),
+    ];
+  }, [tags, t, own, i18n.language, nameOf]);
+}
+
+const shapeTags = () => searchTags('shapes');
+
+/** The pieces of the Shapes collection that match every word of a query, best first. */
+export function searchShapes(index: readonly FoundShape[], query: string, count: number) {
+  return searchIcons(index, query, { count });
+}
+
+/** What a search found of the Shapes collection, each a tile that adds it to the slide. */
+export function FoundShapes({ shapes }: { shapes: readonly FoundShape[] }) {
+  const editor = useEditor();
+  const rtl = useDeck((s) => s.deck.meta.dir === 'rtl');
+  return (
+    <div
+      className="element-grid"
+      data-size="shape"
+      style={{ rowGap: 'calc(var(--spacing) * 2)' }}
+      data-testid="elements-found-shapes"
+    >
+      <ShapeInks />
+      {shapes.map(({ id, name }) => {
+        const [kind, key = ''] = id.split(':');
+        const add = () => {
+          if (kind === 'shape') insertShape(editor, key);
+          else if (kind === 'line') insertLine(editor, key as LineKind);
+          else insertCard(editor);
+        };
+        return (
+          <Tooltip key={id} content={name}>
+            <button type="button" aria-label={name} data-shape={id} className={tile} onClick={add}>
+              {kind === 'shape' ? (
+                <ShapeArt preset={key} className={tileArt} />
+              ) : kind === 'line' ? (
+                <LineArt kind={key as LineKind} flip={rtl} className={tileArt} />
+              ) : (
+                <CardArt ink="violet" flip={rtl} className={tileArt} />
+              )}
+            </button>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
+}
+
 /** The shape library, the lines and the card. */
 export function ShapesCollection() {
   const editor = useEditor();
-  const { t, i18n } = useTranslation('objects');
+  const { t } = useTranslation('objects');
   const { t: own } = useTranslation('elements');
   const groups = useMemo(() => shapeLibrary(), []);
   // A new line and the words of a new card run in the deck's reading direction, and so do
   // their pictures.
   const rtl = useDeck((s) => s.deck.meta.dir === 'rtl');
-  const nameOf = (preset: string) => {
-    const extra = extraShapes[preset];
-    if (extra) return i18n.language.startsWith('he') ? extra.he : extra.en;
-    return i18n.exists(`objects:shape.${preset}`) ? t(`shape.${preset}`) : preset;
-  };
+  const nameOf = useShapeNames();
   return (
     <div className="element-grid" data-size="shape" data-testid="elements-shapes">
       <ShapeInks />

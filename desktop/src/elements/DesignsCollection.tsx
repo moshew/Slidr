@@ -10,10 +10,12 @@ import {
   NothingFound,
   OpenGroupContext,
   Section,
+  useLoaded,
   useOpenGroup,
   type OpenGroup,
 } from './collections';
 import { designAssetFile, designBackdropFile } from './designAssets';
+import { designWords, searchDesigns } from './designCatalog';
 import {
   DESIGN_GROUPS,
   DESIGN_IDS,
@@ -22,6 +24,7 @@ import {
   designPreview,
   designsIn,
   insertDesign,
+  loadDesignTags,
   type DesignGroup,
   type DesignId,
 } from './designs';
@@ -31,20 +34,23 @@ import { useNear } from './StickerGrid';
 const PREVIEW = 4;
 
 /**
- * The names of designs and of their groups, in the language of the interface: the app's own,
- * else the one `managed.json` gives a design of Slidr Studio, else the id. A name that
- * neither has is reported as a missing string.
+ * The names of designs and of their groups, in the language of the interface or in `lng`: the
+ * app's own, else the one `managed.json` gives a design of Slidr Studio, else the id. A name
+ * that neither has is reported as a missing string.
  */
 function useDesignNames() {
   const { t, i18n } = useTranslation('elements');
   const lang = i18n.language;
   return useMemo(() => {
-    const named = (key: string, managed: string | undefined, id: string) =>
-      i18n.exists(key, { ns: 'elements' }) ? t(key) : (managed ?? t(key, { defaultValue: id }));
+    const named = (key: string, managed: string | undefined, id: string, lng: string) =>
+      i18n.exists(key, { ns: 'elements', lng })
+        ? t(key, { lng })
+        : (managed ?? t(key, { lng, defaultValue: id }));
     return {
-      design: (id: DesignId) => named(`designs.name.${id}`, designName(id, lang), id),
-      group: (group: DesignGroup) =>
-        named(`designs.group.${group}`, designGroupName(group, lang), group),
+      design: (id: DesignId, lng = lang) =>
+        named(`designs.name.${id}`, designName(id, lng), id, lng),
+      group: (group: DesignGroup, lng = lang) =>
+        named(`designs.group.${group}`, designGroupName(group, lng), group, lng),
     };
   }, [t, i18n, lang]);
 }
@@ -159,14 +165,17 @@ export function DesignsPanel() {
 
 /**
  * Ready compositions, by what they are for: the first of every group, one group in full under
- * its own name, or what a search of their names found. Only the designs drawn in the UI
- * language (`designIn`): a group with none of them is not shown.
+ * its own name, or what a search found. Only the designs drawn in the UI language (`designIn`):
+ * a group with none of them is not shown. The search reads Hebrew and English, in the names of
+ * the designs and of their groups and in their tags, best first; after those come the designs
+ * whose name in the UI language holds the query as typed.
  */
 export function DesignsCollection() {
   const { t } = useTranslation('elements');
   const names = useDesignNames();
   const editor = useEditor();
   const lang = useLanguage();
+  const tags = useLoaded(loadDesignTags);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [chosen, setGroup] = useState<DesignGroup>();
@@ -180,13 +189,35 @@ export function DesignsCollection() {
   );
   // A group the language was switched away from, open as it was switched, is no longer shown.
   const group = groups.find(({ id }) => id === chosen);
+  const index = useMemo(
+    () =>
+      groups.flatMap(({ id: group, ids }) => {
+        const groupName = { he: names.group(group, 'he'), en: names.group(group, 'en') };
+        return ids.map((id) =>
+          designWords(
+            id,
+            { he: names.design(id, 'he'), en: names.design(id, 'en') },
+            groupName,
+            tags && tags !== 'failed' ? tags[id] : undefined,
+          ),
+        );
+      }),
+    [groups, names, tags],
+  );
   const found = useMemo(() => {
     const wanted = query.trim().toLowerCase();
     if (!wanted) return undefined;
-    return groups.flatMap(({ ids }) =>
-      ids.filter((id) => id.includes(wanted) || names.design(id).toLowerCase().includes(wanted)),
+    const best = searchDesigns(index, query);
+    const taken = new Set(best);
+    const named = groups.flatMap(({ ids }) =>
+      ids.filter(
+        (id) =>
+          !taken.has(id) &&
+          (id.includes(wanted) || names.design(id).toLowerCase().includes(wanted)),
+      ),
     );
-  }, [query, names, groups]);
+    return [...best, ...named];
+  }, [query, names, groups, index]);
   // One group in full has the header of the panel: its name, and the way back to all of them.
   const opened = found ? undefined : group?.id;
   const showGroups = useCallback(() => setGroup(undefined), []);

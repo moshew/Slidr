@@ -9,6 +9,7 @@ import { insertIcon } from '../media/insert';
 import { tell, useEditor } from '../shell';
 import {
   EmojiCollection,
+  FoundShapes,
   GraphicsCollection,
   Drill,
   NothingFound,
@@ -16,14 +17,21 @@ import {
   Section,
   ShapesCollection,
   TablesCollection,
+  searchShapes,
   useLoaded,
+  useShapeIndex,
   type OpenGroup,
 } from './collections';
 import { CARD_SETS, cardSetsIn } from './cardSets';
 import { framesIn, loadFrames, searchFrames } from './frames';
 import { FrameGrid, FramesCollection } from './FramesCollection';
 import { useRecentStickers, type RecentSticker } from './recent';
-import { CardSetsCollection } from './CardSetsCollection';
+import {
+  CardSetList,
+  CardSetsCollection,
+  searchCardSets,
+  useCardSetIndex,
+} from './CardSetsCollection';
 import { StickerButton, StickerGrid, useColumns } from './StickerGrid';
 import { loadEmoji, loadGraphics, searchStickers } from './stickers';
 import { COLLECTIONS, CollectionTile, FrameThumbDefs, type CollectionId } from './tiles';
@@ -169,12 +177,18 @@ function AllRecent() {
 }
 
 /** How many of each kind the search of the first screen shows. */
-const FOUND = { graphics: 18, frames: 12, emoji: 24, icons: 24 };
+const FOUND = { shapes: 12, graphics: 18, frames: 12, emoji: 24, icons: 24, cards: 3 };
 
-/** What a query finds across the collections that are searched by word, in the UI language. */
+/**
+ * What a query finds across the collections, in the UI language: by the names of what they hold
+ * and the library's tags, in Hebrew and English. The shapes come first, since a query that names
+ * one wants it; the card sets last, each a slide drawn in small.
+ */
 function Found({ query }: { query: string }) {
   const { t } = useTranslation('elements');
   const lang = useLanguage();
+  const allShapes = useShapeIndex();
+  const allCardSets = useCardSetIndex();
   const allGraphics = useLoaded(loadGraphics);
   const allFrames = useLoaded(loadFrames);
   const allEmoji = useLoaded(loadEmoji);
@@ -203,10 +217,18 @@ function Found({ query }: { query: string }) {
     () => (Array.isArray(allEmoji) ? searchStickers(allEmoji, query, FOUND.emoji) : []),
     [allEmoji, query],
   );
+  const shapes = useMemo(
+    () => (allShapes ? searchShapes(allShapes, query, FOUND.shapes) : []),
+    [allShapes, query],
+  );
+  const cardSets = useMemo(
+    () => (allCardSets ? searchCardSets(allCardSets, query).slice(0, FOUND.cards) : []),
+    [allCardSets, query],
+  );
 
   // The icons found for an earlier query are not this query's.
   const foundIcons = icons?.query === query ? icons.icons : undefined;
-  if (!allGraphics || !allFrames || !allEmoji || !foundIcons) {
+  if (!allShapes || !allCardSets || !allGraphics || !allFrames || !allEmoji || !foundIcons) {
     return (
       <div className="element-grid" data-size="graphic" aria-busy>
         {Array.from({ length: 12 }, (_, index) => (
@@ -215,11 +237,21 @@ function Found({ query }: { query: string }) {
       </div>
     );
   }
-  if (graphics.length + frames.length + emoji.length + foundIcons.length === 0) {
-    return <NothingFound />;
-  }
+  const count =
+    shapes.length +
+    graphics.length +
+    frames.length +
+    emoji.length +
+    foundIcons.length +
+    cardSets.length;
+  if (count === 0) return <NothingFound />;
   return (
     <div className="flex flex-col gap-5" data-testid="elements-found">
+      {shapes.length > 0 && (
+        <Section title={t('collection.shapes')} data-group="shapes">
+          <FoundShapes shapes={shapes} />
+        </Section>
+      )}
       {graphics.length > 0 && (
         <Section title={t('collection.graphics')} data-group="graphics">
           <StickerGrid stickers={graphics} size="graphic" label={t('collection.graphics')} />
@@ -239,6 +271,11 @@ function Found({ query }: { query: string }) {
       {foundIcons.length > 0 && (
         <Section title={t('collection.icons')} data-group="icons">
           <FoundIcons icons={foundIcons} />
+        </Section>
+      )}
+      {cardSets.length > 0 && (
+        <Section title={t('collection.cards')} data-group="cards">
+          <CardSetList ids={cardSets} />
         </Section>
       )}
     </div>
