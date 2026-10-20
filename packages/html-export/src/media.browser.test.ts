@@ -6,7 +6,7 @@ import { exportHtml } from './exportHtml';
 
 // A deck with a real video and a real sound, exported in the engine WebView2 uses: what goes
 // into the file, and what stays beside it (MED-05). How the file then plays is the business of
-// the end-to-end suite (apps/desktop/e2e/video-present.spec.ts), which opens it from the disk.
+// the end-to-end suite (desktop/e2e/video-present.spec.ts), which opens it from the disk.
 
 const VIDEO = 'a'.repeat(64);
 const SOUND = 'b'.repeat(64);

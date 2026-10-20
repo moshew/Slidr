@@ -14,7 +14,7 @@ examples/
 spikes/
 
 # Decks the HTML import is tested on: kept as their authors (or tools) wrote them.
-apps/desktop/e2e/import-set/**/*.html
+desktop/e2e/import-set/**/*.html
 
 # The media library of the packaged app: written by a build
-apps/desktop/src-tauri/media/*/
+desktop/src-tauri/media/*/

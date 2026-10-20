@@ -13,7 +13,7 @@ Created: 2026-10-07. Updated: 2026-10-09. Requirements: [SPEC.md](SPEC.md).
 | 5. First verification | Focused E2E, design rules, accessibility, color/language combinations, screenshots, frontend build | Reported in the original 2026-10-07 run; see details below |
 | 6. File and Elements follow-up | Move Export into the File menu and add the Elements browser | Committed in `abc5243` and `fdb2036`; see [ADR-075](../adr/ADR-075-elements-and-presets.md) |
 
-The first verification reported 106 unit tests, 63 passing tests in the final focused E2E run, 11 new design-refresh E2E cases, and eight screenshots under ignored `apps/desktop/test-results/design-refresh/`. It used Edge and a simulated backend. Those counts describe that run, not a fresh check of today's working tree. The frontend build completed; a packaged installer and real Tauri visual review were not part of that run.
+The first verification reported 106 unit tests, 63 passing tests in the final focused E2E run, 11 new design-refresh E2E cases, and eight screenshots under ignored `desktop/test-results/design-refresh/`. It used Edge and a simulated backend. Those counts describe that run, not a fresh check of today's working tree. The frontend build completed; a packaged installer and real Tauri visual review were not part of that run.
 
 ## Current working-tree follow-up
 

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["apps/desktop/src-tauri"]
+members = ["desktop/src-tauri"]
 # Feasibility spikes are standalone crates with their own lockfile and lints.
 exclude = ["spikes"]
 

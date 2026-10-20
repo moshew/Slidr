@@ -16,9 +16,9 @@ export default defineConfig({
   test: {
     include: [
       'packages/*/src/**/*.test.{ts,tsx}',
-      'apps/*/src/**/*.test.{ts,tsx}',
-      'apps/*/eval/**/*.test.{ts,tsx}',
-      'apps/*/build/**/*.test.{ts,tsx}',
+      'desktop/src/**/*.test.{ts,tsx}',
+      'desktop/eval/**/*.test.{ts,tsx}',
+      'desktop/build/**/*.test.{ts,tsx}',
     ],
     // As on a Hebrew system, so that the UI starts in Hebrew (vitest.setup.ts).
     setupFiles: ['./vitest.setup.ts'],

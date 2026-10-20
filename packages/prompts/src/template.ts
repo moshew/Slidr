@@ -16,7 +16,7 @@ import { entry, type Part } from './entry';
  * The families the app ships (SPEC appendix B), which are the only fonts a theme may name: a
  * slide is drawn without network access. A theme's font pair is a Hebrew family and a Latin one,
  * so the families made for other letters (Arabic, Devanagari, Japanese…) are not listed here.
- * `apps/desktop/src/templates/fonts.test.ts` holds this list to the app's own.
+ * `desktop/src/templates/fonts.test.ts` holds this list to the app's own.
  */
 export const TEMPLATE_FONTS = {
   /** Families with Hebrew and Latin letters. */
@@ -71,7 +71,7 @@ type Seats = Partial<Record<PlaceholderRole, number>>;
  * The roles each archetype is drawn with in the app's own templates, and how many of each
  * (ADR-039). A deck that moves from one template to another finds a place for its content where
  * both draw the same roles. This package cannot read the templates' own contract (SPEC 14.2), so
- * `apps/desktop/src/templates/roleContract.test.ts` holds these to `ROLE_CONTRACT`.
+ * `desktop/src/templates/roleContract.test.ts` holds these to `ROLE_CONTRACT`.
  */
 export const TEMPLATE_ROLES: Record<Drawn, Seats> = {
   hero: { caption: 2, title: 1, subtitle: 1 },

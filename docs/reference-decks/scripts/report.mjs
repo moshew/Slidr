@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectRoot } from './decks.mjs';
 
-const results = join(projectRoot, 'apps', 'desktop', 'test-results', 'templates');
+const results = join(projectRoot, 'desktop', 'test-results', 'templates');
 const args = process.argv.slice(2);
 const brief = args.includes('brief');
 const summary = args.includes('summary');

@@ -12,7 +12,7 @@ import { subsetFonts, type SubsetRequest } from './fontsSubset';
 // the same pixels, so the same glyphs, kerning, mark positions and hinting. That holds for a
 // static font, and for a variable one at the default of its weight axis; a static font cut from
 // a variable one at another weight is held to be close. Other engines: the end-to-end suite
-// (apps/desktop/e2e/runtime-export-fonts.spec.ts).
+// (desktop/e2e/runtime-export-fonts.spec.ts).
 
 const HEBREW = 'U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F';
 const HEBREW_ONLY = 'U+0590-05FF,U+20AA,U+FB1D-FB4F';

@@ -6,7 +6,7 @@ Status: Implemented in the 2026-10-16 working tree; **not committed** and **not 
 
 For the support of more languages: one template in every language, two designed slides in every language, and for now no event frames (magnets) beyond Hebrew and English. The instructions, both those of a session in this repository and those of the management studio, are to keep Hebrew and English as the default and make another language only when a request chooses it.
 
-"Every language" is the sixteen of the interface that another session was adding at the same time (`apps/desktop/src/i18n`): Hebrew, English, Arabic, German, Spanish, French, Italian, Brazilian Portuguese, Russian, Turkish, Vietnamese, Indonesian, Hindi, Japanese, Korean and Simplified Chinese.
+"Every language" is the sixteen of the interface that another session was adding at the same time (`desktop/src/i18n`): Hebrew, English, Arabic, German, Spanish, French, Italian, Brazilian Portuguese, Russian, Turkish, Vietnamese, Indonesian, Hindi, Japanese, Korean and Simplified Chinese.
 
 ## Context
 
@@ -17,7 +17,7 @@ For the support of more languages: one template in every language, two designed 
 
 ## Decision
 
-- **One registry of content languages**, `packages/model/src/languages.ts`: the codes, their direction, their names, the script tag their letters need, and `Localized<T>` (`he` and `en` required, the others optional). `apps/desktop/src/templates/contentLanguages.test.ts` holds it to the interface's languages.
+- **One registry of content languages**, `packages/model/src/languages.ts`: the codes, their direction, their names, the script tag their letters need, and `Localized<T>` (`he` and `en` required, the others optional). `desktop/src/templates/contentLanguages.test.ts` holds it to the interface's languages.
 - **A deck gets a piece in its own language when the piece is written in it, else the English one, drawn left to right as it was written** (`writtenIn`, `pieceLanguage`, `inLanguage`). This is the rule the other session had given the template samples; the designs follow it too. Hebrew and English stay required in every piece.
 - **Samples and designs keep every language.** `builtInSamples`, the design catalog (`designCatalog.ts`, `designs.ts`), the authoring registry and kit (`DesignEntry.more`), `check.ts`, the review page and the tests read whatever languages a piece has. The contract tests run each design in each of its languages (the subject point mirrored for a right-to-left one) and each template sample in each of its languages (`acceptance.ts`).
 - **Event frames stay in Hebrew and English.** Nothing of `frames.ts` changed.

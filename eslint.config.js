@@ -36,7 +36,7 @@ export default tseslint.config(
   },
 
   {
-    files: ['**/*.tsx', 'apps/desktop/src/**/*.ts', 'packages/{renderer,ui}/src/**/*.ts'],
+    files: ['**/*.tsx', 'desktop/src/**/*.ts', 'packages/{renderer,ui}/src/**/*.ts'],
     plugins: { 'react-hooks': reactHooks },
     languageOptions: { globals: globals.browser },
     rules: reactHooks.configs.recommended.rules,
@@ -50,7 +50,7 @@ export default tseslint.config(
   // Development scripts that drive the running app over the DevTools protocol: Node, with code
   // for the app's pages inside.
   {
-    files: ['apps/desktop/scripts/import/**/*.mjs'],
+    files: ['desktop/scripts/import/**/*.mjs'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 

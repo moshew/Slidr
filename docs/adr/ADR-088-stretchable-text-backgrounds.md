@@ -37,5 +37,5 @@ text backgrounds with the frame, while keeping text editable and retaining the s
   fractional-zoom seams and the vertical surfboard growing along the wrong axis. The final
   measurements report no overflowing text or unintended changes to the opposite frame dimension.
 - Pool and birthday magnets export to HTML and render offline with no external requests or page
-  errors. Review files are under `apps/desktop/test-results/text-backgrounds/`.
+  errors. Review files are under `desktop/test-results/text-backgrounds/`.
 - Desktop TypeScript and ESLint checks pass.

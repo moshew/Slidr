@@ -26,6 +26,6 @@ The content the app offers (built-in templates and their photographs, the design
 ## Checks
 
 - Rust: 13 tests in `media_library.rs` against a stand-in site on this machine (cache, offline, unreachable, never published, empty, a new publication, bytes that do not match, only what is asked for fetched, traversal refused).
-- `packages/media-library/src/index.test.ts`, `apps/desktop/build/media.test.ts` (staging, manifest, template files, the dev server's reader with and without the site).
+- `packages/media-library/src/index.test.ts`, `desktop/build/media.test.ts` (staging, manifest, template files, the dev server's reader with and without the site).
 - The unit suite runs against the published site: 2,640 pass, 106 are skipped for content not yet published; the 4 failures are those of `HEAD` before this change (`designRules` twice, the size of the tool listing, the runtime bundle's hash).
-- `apps/desktop/packaged/build.spec.ts` was changed to the new model and not run.
+- `desktop/packaged/build.spec.ts` was changed to the new model and not run.

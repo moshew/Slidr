@@ -3,7 +3,7 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 const base = process.env.SLIDR_REVIEW_URL ?? 'http://localhost:1421';
-const out = 'apps/desktop/test-results/frames-wide';
+const out = 'desktop/test-results/frames-wide';
 await mkdir(`${out}/full`, { recursive: true });
 const browser = await chromium.launch({ channel: 'msedge' });
 try {

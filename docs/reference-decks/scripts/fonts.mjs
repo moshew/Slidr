@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const modules = join(repo, 'apps', 'desktop', 'node_modules');
+const modules = join(repo, 'desktop', 'node_modules');
 
 /** The family name decks and templates use -> its @fontsource package: the built-in library. */
 const PACKAGES = {

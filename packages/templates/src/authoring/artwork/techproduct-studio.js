@@ -412,7 +412,7 @@ export function anchors(camera, width, height, points) {
   console.log('anchors ' + JSON.stringify(out));
 }
 
-const FONTS = '/home/user/Slidr/apps/desktop/node_modules/';
+const FONTS = '/home/user/Slidr/desktop/node_modules/';
 /** Loads a font of the app's own for drawing on a canvas: `space-grotesk`, `inter`, ... */
 export async function loadFont(family, path, weight = '100 900') {
   const face = new FontFace(family, `url(${FONTS}${path})`, { weight });

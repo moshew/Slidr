@@ -203,7 +203,7 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@26.6.3)(@vitest/browser-playwright@5.0.3)(@vitest/ui@5.0.3)(happy-dom@20.14.5)(vite@8.3.2(@types/node@26.6.3)(jiti@2.7.0))
 
-  apps/desktop:
+  desktop:
     dependencies:
       '@codemirror/commands':
         specifier: ^6.11.1
@@ -468,37 +468,37 @@ importers:
         version: 1.2.5
       '@slidr/agent-tools':
         specifier: workspace:*
-        version: link:../../packages/agent-tools
+        version: link:../packages/agent-tools
       '@slidr/html-export':
         specifier: workspace:*
-        version: link:../../packages/html-export
+        version: link:../packages/html-export
       '@slidr/html-import':
         specifier: workspace:*
-        version: link:../../packages/html-import
+        version: link:../packages/html-import
       '@slidr/lint':
         specifier: workspace:*
-        version: link:../../packages/lint
+        version: link:../packages/lint
       '@slidr/media-library':
         specifier: workspace:*
-        version: link:../../packages/media-library
+        version: link:../packages/media-library
       '@slidr/model':
         specifier: workspace:*
-        version: link:../../packages/model
+        version: link:../packages/model
       '@slidr/prompts':
         specifier: workspace:*
-        version: link:../../packages/prompts
+        version: link:../packages/prompts
       '@slidr/renderer':
         specifier: workspace:*
-        version: link:../../packages/renderer
+        version: link:../packages/renderer
       '@slidr/runtime':
         specifier: workspace:*
-        version: link:../../packages/runtime
+        version: link:../packages/runtime
       '@slidr/templates':
         specifier: workspace:*
-        version: link:../../packages/templates
+        version: link:../packages/templates
       '@slidr/ui':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../packages/ui
       '@tauri-apps/api':
         specifier: ^2.12.1
         version: 2.12.1

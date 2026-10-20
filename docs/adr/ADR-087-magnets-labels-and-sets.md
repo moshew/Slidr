@@ -24,7 +24,7 @@ The user asked for ninety more magnets, a hundred in all, and for designs that a
   - Every magnet is 7 by 5, lying or upright, as the first ten were.
 - **Generated pictures are stickers and textures, carried in the markup.** A cut-out ornament (watercolour flowers, the symbols of a holiday, the characters of a children's theme) is a sticker whose SVG holds the picture as WebP data (`kit.picture`), and a texture (kraft paper, cork, foil) is a pattern of the card that repeats (`kit.tile`), so a larger card has more of it and none is stretched. The renderer's rules for pictures already allow raster data inside an SVG. One call to the image tool gives four cut-outs (a sheet of two by two, each cut to its own box). A numeral, a word or a flag is never generated: an age is a caption, so it is changed.
   - The alternative, the pictures as assets of the deck (as a ready-made design imports its picture), would keep a deck smaller, but a group may then hold several images (`framedPicture` takes the one image of the group for the photograph), adding a frame would wait for an import, and the card's own textures could not use it at all. It stays open.
-- **The catalogue and the pictures are in the media library**, by the user's decision of the same night: `Slidr-media/elements/catalogs/frames-catalog.json` is what the generator writes and the app reads, and the generated pictures are sources in `Slidr-media/elements/source/frames/pictures/`. The generator and the files of magnets are scripts of the app and stay in `apps/desktop/scripts`.
+- **The catalogue and the pictures are in the media library**, by the user's decision of the same night: `Slidr-media/elements/catalogs/frames-catalog.json` is what the generator writes and the app reads, and the generated pictures are sources in `Slidr-media/elements/source/frames/pictures/`. The generator and the files of magnets are scripts of the app and stay in `desktop/scripts`.
 - `generate-frames-catalog.mjs` takes `--magnets a,b` (only those files of magnets) and `--out file` (the catalogue is written there, and the app's is left alone), so a file is looked at while it is drawn.
 
 ## Also changed on the way
@@ -45,7 +45,7 @@ The user asked for ninety more magnets, a hundred in all, and for designs that a
 
 ## Open for the user
 
-- **The design of the hundred** has not been judged by the user. The sheets are in `apps/desktop/test-results/frames/work/all/` (`set-<set>-he.png`, `set-<set>-en-p5.png`, `thumbs-<lang>-<theme>.png`).
+- **The design of the hundred** has not been judged by the user. The sheets are in `desktop/test-results/frames/work/all/` (`set-<set>-he.png`, `set-<set>-en-p5.png`, `thumbs-<lang>-<theme>.png`).
 - **Weight.** The catalogue went from 0.8 MB to 10.2 MB: 8.2 MB of it is 110 generated pictures as data. It is read when the frames are first shown. A magnet with three pictures puts 200 to 250 kB of markup into the deck it is added to. If that is too much: pictures as deck assets (see above), smaller pictures, or fewer of them.
 - **The holidays**: whether fourteen is the wish, and whether the four that are not Jewish holidays (New Year's Eve, a day of love, Christmas, Eid al-Fitr) belong.
 - **A garland or bunting keeps its size**, as every sticker does: on a much wider magnet it stays at the middle, or its two halves part to the corners (Christmas, family day, camping). A sticker that repeats along an edge would need a new kind of extra.

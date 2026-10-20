@@ -14,7 +14,7 @@ This folder adds to the Slidr media library:
 
 Atlas and its two neighbours need the fonts catalog regenerated in the same copy of the library,
 for their Arabic, Cyrillic, Vietnamese and Devanagari letters
-(`SLIDR_MEDIA_DIR=../Slidr-media node apps/desktop/scripts/gen-builtin-fonts.mjs`).
+(`SLIDR_MEDIA_DIR=../Slidr-media node desktop/scripts/gen-builtin-fonts.mjs`).
 
 ## Adding them to the library
 
@@ -33,7 +33,7 @@ with their samples and the pictures of the samples. It adds the slides to
 library is replaced in place, so running the script again changes nothing more. Nothing else in
 the library is touched.
 
-The app shows the templates' names and taglines from `apps/desktop/src/templates/messages.ts`.
+The app shows the templates' names and taglines from `desktop/src/templates/messages.ts`.
 They are on the branch this package came with.
 
 ## Sources

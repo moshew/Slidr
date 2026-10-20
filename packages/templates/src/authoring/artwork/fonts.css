@@ -1,37 +1,37 @@
 /* The fonts of the artwork pages, from the packages the app installs. */
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('../../../../../apps/desktop/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2')
+  src: url('../../../../../desktop/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2')
     format('woff2');
   font-weight: 100 900;
 }
 @font-face {
   font-family: 'Inter';
-  src: url('../../../../../apps/desktop/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
+  src: url('../../../../../desktop/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
     format('woff2');
   font-weight: 100 900;
 }
 @font-face {
   font-family: 'Manrope';
-  src: url('../../../../../apps/desktop/node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2')
+  src: url('../../../../../desktop/node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2')
     format('woff2');
   font-weight: 200 800;
 }
 @font-face {
   font-family: 'Space Grotesk';
-  src: url('../../../../../apps/desktop/node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2')
+  src: url('../../../../../desktop/node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2')
     format('woff2');
   font-weight: 300 700;
 }
 @font-face {
   font-family: 'Plex Hebrew';
-  src: url('../../../../../apps/desktop/node_modules/@fontsource/ibm-plex-sans-hebrew/files/ibm-plex-sans-hebrew-hebrew-400-normal.woff2')
+  src: url('../../../../../desktop/node_modules/@fontsource/ibm-plex-sans-hebrew/files/ibm-plex-sans-hebrew-hebrew-400-normal.woff2')
     format('woff2');
   font-weight: 400;
 }
 @font-face {
   font-family: 'Plex Hebrew';
-  src: url('../../../../../apps/desktop/node_modules/@fontsource/ibm-plex-sans-hebrew/files/ibm-plex-sans-hebrew-hebrew-600-normal.woff2')
+  src: url('../../../../../desktop/node_modules/@fontsource/ibm-plex-sans-hebrew/files/ibm-plex-sans-hebrew-hebrew-600-normal.woff2')
     format('woff2');
   font-weight: 600;
 }

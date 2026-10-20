@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const pkg = fileURLToPath(new URL('../../../', import.meta.url));
-const app = fileURLToPath(new URL('../../../../../apps/desktop/package.json', import.meta.url));
+const app = fileURLToPath(new URL('../../../../../desktop/package.json', import.meta.url));
 // A path is imported as a URL: on Windows a bare path reads as a URL whose scheme is its drive.
 const { createServer } = await import(pathToFileURL(createRequire(app).resolve('vite')).href);
 const [entry, ...args] = process.argv.slice(2);

@@ -12,7 +12,7 @@ import { renderSlideOffscreen } from './offscreen';
 
 // Text effects in a real engine (TXT-11): a gradient fill, an outline and a shadow of text are
 // CSS of the element (`css`, SPEC 5.9), written by the app's text effects tool
-// (apps/desktop/src/text/effects.ts). Here the records it writes are drawn and looked at, pixel
+// (desktop/src/text/effects.ts). Here the records it writes are drawn and looked at, pixel
 // by pixel: on a text box, and on the text of a shape.
 
 const FRAME = { x: 100, y: 100, w: 1200, h: 300 };

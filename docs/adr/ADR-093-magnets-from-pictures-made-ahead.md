@@ -41,7 +41,7 @@ No arrangement of that work makes it short. A hundred whole designs do not have 
 
 ## Open for the user
 
-- **After the magnets are changed, the pictures are made again**: `node scripts/generate-frames-thumbs.mjs`, from `apps/desktop`, about two minutes. `generate-frames-catalog.mjs` says so when it is done.
+- **After the magnets are changed, the pictures are made again**: `node scripts/generate-frames-thumbs.mjs`, from `desktop`, about two minutes. `generate-frames-catalog.mjs` says so when it is done.
 - **The pictures are in the media library, outside git**, like the catalogue they are made of.
 - **A running dev server learns of pictures that are new by name only when `frameThumbs.ts` is loaded again** (a restart, or a save of that file): the list of the files is read when the module is. Pictures that were made again under the names they had need nothing.
 - **In a very wide panel on a dense screen** a picture is drawn larger than it is (above about 210 pixels of width at twice the density) and is slightly soft there.

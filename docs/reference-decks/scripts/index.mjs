@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { deckFiles, readDeck, projectRoot, root } from './decks.mjs';
 import { ALL_WEIGHTS, fontFaces } from './fonts.mjs';
 
-const results = join(projectRoot, 'apps', 'desktop', 'test-results', 'templates');
+const results = join(projectRoot, 'desktop', 'test-results', 'templates');
 const readJson = (file) =>
   existsSync(join(results, file)) ? JSON.parse(readFileSync(join(results, file), 'utf8')) : null;
 

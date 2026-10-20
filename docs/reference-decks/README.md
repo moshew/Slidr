@@ -38,7 +38,7 @@ One HTML file per deck, with no scripts and no external URLs. Its `<head>` holds
 The `<body>` holds one `<section class="slide" id="sNN" data-archetype="…">` per slide, each inside
 a `<div class="frame">` that belongs to the page. A slide with the `deck` stylesheet in front of it
 is exactly the HTML an agent hands to `slide_create_from_html`, so the decks double as input for
-the conversion engine (`apps/desktop/src/templates/referenceDecks.browser.test.ts`).
+the conversion engine (`desktop/src/templates/referenceDecks.browser.test.ts`).
 
 ## How the slides are written
 
@@ -92,9 +92,9 @@ Run from the repository root.
 - `node docs/reference-decks/scripts/build.mjs [deck …]` embeds the fonts, writes the asset ids
   and rebuilds `index.html`.
 - `node docs/reference-decks/scripts/shots.mjs [deck …]` takes a picture of every slide and a
-  contact sheet per deck into `apps/desktop/test-results/templates/reference/` (not in git).
+  contact sheet per deck into `desktop/test-results/templates/reference/` (not in git).
 - `pnpm test:browser` runs the decks through the conversion engine and the lint and writes
-  `apps/desktop/test-results/templates/reference-report.json`;
+  `desktop/test-results/templates/reference-report.json`;
   `node docs/reference-decks/scripts/report.mjs` prints it. The same run writes
   `rebuilt-report.json` beside it: the sample deck of every template as the renderer draws it,
   which is what `index.html` is built from.
@@ -106,14 +106,14 @@ Run from the repository root.
 
 A template is one file. To change one, or to draw a new one:
 
-1. Put a test file beside `apps/desktop/src/templates/acceptance.ts`, named
+1. Put a test file beside `desktop/src/templates/acceptance.ts`, named
    `<id>.draft.browser.test.ts`, that calls `acceptDraft('<id>', <id>Template(), <id>Samples)`.
    It is not committed.
-2. `pnpm exec vitest run --config vitest.browser.config.ts apps/desktop/src/templates/<id>.draft.browser.test.ts`
+2. `pnpm exec vitest run --config vitest.browser.config.ts desktop/src/templates/<id>.draft.browser.test.ts`
    tries the template alone: the role contract, the lint on every layout in Hebrew and in English
    (no error, and no "no visual" or "too empty" warning either), and every sample deck of the
    library moved to it and back.
-3. Each run leaves pictures under `apps/desktop/test-results/design/templates/` (not in git): a
+3. Each run leaves pictures under `desktop/test-results/design/templates/` (not in git): a
    contact sheet of the sample in each language, every slide at full size, each library deck on
    the template, and `<id>.findings.json` with every finding, warnings and notes included.
 4. `pnpm test:browser` and the build script then refresh `index.html`.

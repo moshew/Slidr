@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { markHeadings, persistMediaState } from './render';
 
 // What an export does to the slides after the renderer drew them. Drawing itself, and the size of
-// pictures, need layout: those are tested in a browser (apps/desktop/e2e/runtime-export.spec.ts).
+// pictures, need layout: those are tested in a browser (desktop/e2e/runtime-export.spec.ts).
 
 function host(html: string): HTMLElement {
   const el = document.createElement('div');

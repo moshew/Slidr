@@ -1,7 +1,7 @@
 import { createDeck, type Theme } from '@slidr/model';
 import { it } from 'vitest';
 import { page } from 'vitest/browser';
-import { cardBox } from '../../../apps/desktop/src/objects/card';
+import { cardBox } from '../../../desktop/src/objects/card';
 import fixture from './card-variants.fixture.json';
 import { convertHtml } from './service';
 import { testHost } from './testing';

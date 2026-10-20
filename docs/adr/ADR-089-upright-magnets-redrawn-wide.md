@@ -36,13 +36,13 @@ One builder redrew the thirtieth as the worked example; five builders redrew the
 
 ## Open for the user
 
-- **The six sharper pictures are not in the media library yet.** They were cut again from the sheets they came from, at the size they are drawn at now, and are in `apps/desktop/test-results/frames/wide/recut/` (six WebP files, 780 kB against 440 kB). Replacing the files of `Slidr-media/elements/source/frames/pictures/` was refused to the agent, as the library is not under version control: copy them over the six of the same names and run `node scripts/generate-frames-catalog.mjs` from `apps/desktop`.
+- **The six sharper pictures are not in the media library yet.** They were cut again from the sheets they came from, at the size they are drawn at now, and are in `desktop/test-results/frames/wide/recut/` (six WebP files, 780 kB against 440 kB). Replacing the files of `Slidr-media/elements/source/frames/pictures/` was refused to the agent, as the library is not under version control: copy them over the six of the same names and run `node scripts/generate-frames-catalog.mjs` from `desktop`.
 - **The 74 lying magnets have words in the slide's margins.** Since a magnet covers the slide, the design check reports L03 on 66 of them (236 findings over the two languages), 7 to 83 pixels past the safe area, with a fix that would move a caption off its plate. They look right; the rule is what disagrees. Either the words of a frame that covers the slide are counted as part of its artwork, or the lying magnets are gone over as well.
 - **The design check gives false contrast findings on a magnet with two plates or more.** Every stretchable plate draws itself through the same ids (`slidr-stretch-source…`), each in a shadow root of its own. The picture the check samples what is under a text from (`paintBackdrop` in `packages/renderer/src/measure.ts`) copies all of them into one document, where the ids collide and every plate is drawn as the first. Its fix would recolour words that read well. It is not of this round and was not changed.
 - **Windows wider than 2:1.** Nine of the 26 keep a window that runs the width of the slide over a band, 2.2:1 to 2.5:1 (party, prom, discharge, toast, first day, festival, Hanukkah, black and gold, kraft), as most lying magnets do.
 - **What a builder changed from its direction:** the stamp of the sixtieth and of the newspaper stands on the top left corner of the photograph, not the right (in the middle third a label lengthens); the masthead of the magazine is white on a shade over the photograph, not ink; the arch of Eid is an ogee; the three lines of the discharge are one block beside a bar.
 - **A magnet that is on a slide already keeps the artwork it has.** Clicking the magnet again in the panel gives the one of now.
-- The tools of the round are in `apps/desktop/test-results/frames/tools/wide/` (a review page, `render.mjs`, the brief), with the catalogue as it was (`wide/backup/`) and the renders (`wide/app/`, `wide/<file>/`). They are not in git.
+- The tools of the round are in `desktop/test-results/frames/tools/wide/` (a review page, `render.mjs`, the brief), with the catalogue as it was (`wide/backup/`) and the renders (`wide/app/`, `wide/<file>/`). They are not in git.
 
 ## Follow-up, 2026-10-11
 
@@ -52,7 +52,7 @@ The user looked at the 26 in the app and found most of the conversions poor: "th
 - **Hanukkah:** the hanukkiah stood over the middle of the photograph's foot, where people are. It stands over the lower corner at the end now, the dreidel beside the sufganiya, and the line of words holds the middle of the foot at a size that reads.
 - The other 21 were looked at again and left as they are.
 - `AGENTS.md` says now that every frame is drawn at 16:9, 1920×1080, and how the photograph and the words share it. **The 74 lying magnets are still cards of 7 by 5** whose window takes up the rest of the slide; they were not redrawn in this round.
-- The five were rendered from the app's catalogue in both languages at full size, in the four other sizes and as thumbnails, and looked at; the check prints `ok` for all ten renders. The catalogue as it was is in `apps/desktop/test-results/frames/wide/backup/frames-catalog.before-round3.json`.
+- The five were rendered from the app's catalogue in both languages at full size, in the four other sizes and as thumbnails, and looked at; the check prints `ok` for all ten renders. The catalogue as it was is in `desktop/test-results/frames/wide/backup/frames-catalog.before-round3.json`.
 
 ## Withdrawn, 2026-10-11
 

@@ -14,7 +14,7 @@ Status: Implemented in the 2026-10-16 working tree; **not committed** at the tim
 
 ## Decision
 
-- **The app offers a built-in template only when its sample is written in the UI language** (`offeredIn`, `useTemplatesIn` in `apps/desktop/src/templates/written.ts`): the Templates panel, the welcome screen (its row, its count and its showroom), and the template gallery of Actions. It follows the UI language, live.
+- **The app offers a built-in template only when its sample is written in the UI language** (`offeredIn`, `useTemplatesIn` in `desktop/src/templates/written.ts`): the Templates panel, the welcome screen (its row, its count and its showroom), and the template gallery of Actions. It follows the UI language, live.
   - A personal template is offered in every language: it has no sample, and is shown in the app's own words for each role. So is a built-in template the catalog has no sample of.
   - The languages come from the catalog of the samples, which is large and read when the app is idle (`readSamplesAhead`). Hebrew and English do not wait for it. In another language the built-in templates come once it is read; until then only the personal ones are shown.
   - The slides of a template the language was switched away from, spread over the Stage, are closed.

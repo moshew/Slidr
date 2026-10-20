@@ -1,12 +1,12 @@
 # A release of Slidr: pushing a tag `v<version>` builds the Windows installer, signs it, and
 # puts it in a draft GitHub release with the `latest.json` the app's updater reads
-# (apps/desktop/src-tauri/src/updates.rs). The updater sees a release only once it is published,
+# (desktop/src-tauri/src/updates.rs). The updater sees a release only once it is published,
 # so the draft is the last check.
 #
 # Two signatures:
 # - Authenticode, with the project's certificate from Certum, so Windows trusts what it runs.
 #   `tauri build` signs the app's exe, the uninstaller and the installer with it
-#   (apps/desktop/scripts/sign-windows.mjs). The certificate's key is in Certum's cloud and only
+#   (desktop/scripts/sign-windows.mjs). The certificate's key is in Certum's cloud and only
 #   SimplySign Desktop, logged in with a code from the phone, opens it. No runner of GitHub's can,
 #   so the job runs on the author's machine: a self-hosted runner with the label `slidr-signing`.
 # - The updater's, with the key whose public half is in tauri.conf.json (TAURI_SIGNING_PRIVATE_KEY
@@ -59,7 +59,7 @@ jobs:
 
       - name: The tag names the version of the app
         run: |
-          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          version=$(node -p "require('./desktop/src-tauri/tauri.conf.json').version")
           if [ "v$version" != "$GITHUB_REF_NAME" ]; then
             echo "::error::The tag is $GITHUB_REF_NAME, the app is $version"
             exit 1

@@ -15,4 +15,4 @@ The committed application has one general AI chat but still opens HTML import in
 
 ## Limits and verification
 
-The file remains isolated during capture; showing its conversation in the AI panel does not grant the deck session file access. The report is still computed from import state and deck measurements, not from the agent's prose. The working tree changes tests in `apps/desktop/src/import/flow.test.ts`, `apps/desktop/src/ai/sessions.test.ts`, and import/AI E2E files. These tests have not been run as part of this documentation update, so the record describes the implementation visible in the working tree rather than a verified release.
+The file remains isolated during capture; showing its conversation in the AI panel does not grant the deck session file access. The report is still computed from import state and deck measurements, not from the agent's prose. The working tree changes tests in `desktop/src/import/flow.test.ts`, `desktop/src/ai/sessions.test.ts`, and import/AI E2E files. These tests have not been run as part of this documentation update, so the record describes the implementation visible in the working tree rather than a verified release.

@@ -8,7 +8,7 @@ render, check and package them. The app does not read this folder. It reads the 
 
 Kod and Magen, the other technology templates of the library, are written in the author's copy
 of the library (`archive/templates-source/`) and put into its catalog by
-`apps/desktop/scripts/export-templates.mjs`, not here: a template of that id authored here would
+`desktop/scripts/export-templates.mjs`, not here: a template of that id authored here would
 take their place when merged.
 
 | Path                                   | What it is                                                                                                                               |
@@ -56,7 +56,7 @@ keeps its drawings clear of the foot. The check fails a template whose layouts k
 and lists the grounds that stay, to look at.
 
 To look at it, stage a copy of the library and bring up the servers, then take screenshots of the
-review page (`apps/desktop/dev/review.html`):
+review page (`desktop/dev/review.html`):
 
 ```sh
 node src/authoring/tools/stage.mjs ../../../Slidr-media /tmp/slidr-site
@@ -71,7 +71,7 @@ then record it with `tools/pictures.py <id>-<name> <out.png>` for a template, or
 `tools/design-picture.py <id> <out.png>` for a design. Portraits take a colour treatment
 with `tools/tone.py`.
 
-The acceptance tests of the app (`apps/desktop/src/templates/acceptance.ts`, `acceptDraft`) are the
+The acceptance tests of the app (`desktop/src/templates/acceptance.ts`, `acceptDraft`) are the
 final word on a template: run them against the library with the template merged into it.
 
 ## Into the library

@@ -1,4 +1,4 @@
-// Screenshots of the review page (apps/desktop/dev/review.html) on the dev server:
+// Screenshots of the review page (desktop/dev/review.html) on the dev server:
 //   node tools/shot.mjs <out.png> "<query>" [<out.png> "<query>" ...]
 // With SLIDR_CHECK=1 it also writes <out>.json: text that leaves its box, the design check's
 // findings, and for designs what covers their subject. `CHROMIUM_PATH` names a browser other than

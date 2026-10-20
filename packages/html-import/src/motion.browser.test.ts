@@ -2,7 +2,7 @@
  * Motion carried over by an import (SPEC 13.3), in a real browser: the page is watched while a
  * slide comes in, and the slide keeps the transition and the entrances the file played, with
  * the file's own keyframes and timing. The deck is one of the import test set
- * (`apps/desktop/e2e/import-set/canvas-animations.html`): slide 4 cross-fades in over 0.35 s,
+ * (`desktop/e2e/import-set/canvas-animations.html`): slide 4 cross-fades in over 0.35 s,
  * its heading slides in from the left, and four cards rise one after another.
  */
 import { createDeck, walkElements, type Element, type Slide } from '@slidr/model';
@@ -19,7 +19,7 @@ interface ViteMeta {
 }
 const [CANVAS] = Object.values(
   (import.meta as unknown as ViteMeta).glob(
-    '../../../apps/desktop/e2e/import-set/canvas-animations.html',
+    '../../../desktop/e2e/import-set/canvas-animations.html',
     { query: '?raw', import: 'default', eager: true },
   ),
 );

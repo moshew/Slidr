@@ -2,7 +2,7 @@
 //   node docs/reference-decks/scripts/shots.mjs [deck ...]      the decks
 //   node docs/reference-decks/scripts/shots.mjs index [deck ...] the index page, deck by deck
 // Each slide at 1920x1080 and one contact sheet per deck, under
-// apps/desktop/test-results/templates/reference/.
+// desktop/test-results/templates/reference/.
 /* global document */
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { deckFiles, readDeck, projectRoot, root } from './decks.mjs';
 
-const out = join(projectRoot, 'apps', 'desktop', 'test-results', 'templates', 'reference');
+const out = join(projectRoot, 'desktop', 'test-results', 'templates', 'reference');
 mkdirSync(out, { recursive: true });
 const args = process.argv.slice(2);
 const index = args[0] === 'index';

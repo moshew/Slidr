@@ -5,8 +5,8 @@
 //   node release.mjs --bump       raises it by 0.1.0 first (0.1.0 → 0.2.0), in a commit of its own
 //   node release.mjs --dry-run    says what it would do, and does nothing
 //
-// The version is in three files, and they must agree: apps/desktop/package.json,
-// apps/desktop/src-tauri/tauri.conf.json and apps/desktop/src-tauri/Cargo.toml (and Cargo.lock
+// The version is in three files, and they must agree: desktop/package.json,
+// desktop/src-tauri/tauri.conf.json and desktop/src-tauri/Cargo.toml (and Cargo.lock
 // with it). The release is made from `main` as it is on GitHub, so the tree must be clean and
 // level with origin/main: commit what belongs in the release first.
 import { execFileSync } from 'node:child_process';
@@ -19,9 +19,9 @@ const unknown = args.filter((arg) => !['--bump', '--dry-run'].includes(arg));
 if (unknown.length > 0) fail(`Unknown option: ${unknown.join(' ')}`);
 
 const FILES = {
-  package: 'apps/desktop/package.json',
-  tauri: 'apps/desktop/src-tauri/tauri.conf.json',
-  cargo: 'apps/desktop/src-tauri/Cargo.toml',
+  package: 'desktop/package.json',
+  tauri: 'desktop/src-tauri/tauri.conf.json',
+  cargo: 'desktop/src-tauri/Cargo.toml',
   lock: 'Cargo.lock',
 };
 

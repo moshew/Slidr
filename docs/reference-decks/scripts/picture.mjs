@@ -18,7 +18,7 @@
 //   --circle X,Y,R keep only what lies inside this circle of the source picture, in its pixels,
 //                  and make the rest transparent (a plate seen from above); use with --trim
 // Every generation uses the ChatGPT plan's quota. Each run is written to
-// apps/desktop/test-results/design/templates/pictures/ledger.json (not in git), with the PNG
+// desktop/test-results/design/templates/pictures/ledger.json (not in git), with the PNG
 // as it came. The picture records in Slidr-media/templates/catalog.json are written again.
 /* global document, Image */
 import { spawn } from 'node:child_process';
@@ -68,7 +68,7 @@ const [columns, rows] = (grid ?? '1x1').split('x').map(Number);
 
 const work = workDir
   ? resolve(workDir)
-  : join(projectRoot, 'apps', 'desktop', 'test-results', 'design', 'templates', 'pictures');
+  : join(projectRoot, 'desktop', 'test-results', 'design', 'templates', 'pictures');
 mkdirSync(work, { recursive: true });
 const ledgerFile = join(work, 'ledger.json');
 

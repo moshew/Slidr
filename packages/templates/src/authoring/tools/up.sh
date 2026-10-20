@@ -4,7 +4,7 @@
 #   SITE=<folder written by tools/stage.mjs> tools/up.sh
 set -u
 SITE=${SITE:?set SITE to a folder staged by tools/stage.mjs}
-APP=$(cd "$(dirname "$0")/../../../../../apps/desktop" && pwd)
+APP=$(cd "$(dirname "$0")/../../../../../desktop" && pwd)
 LOGS=${LOGS:-$SITE/..}
 if ! curl -s -o /dev/null http://127.0.0.1:8790/manifest.json; then
   (cd "$SITE" && nohup python3 -m http.server 8790 --bind 127.0.0.1 > "$LOGS/site-server.log" 2>&1 &)
