@@ -281,7 +281,7 @@ The design documents are written in Hebrew.
 
 The Windows binaries are signed with an Open Source Code Signing certificate from [Certum](https://www.certum.eu), issued to Moshe Waisman. Its key is in Certum's cloud (SimplySign), and every session that signs opens with a one-time code from the author's phone.
 
-The Windows installer on the [releases page](https://github.com/moshew/Slidr/releases) is built from this repository by the [Release workflow](.github/workflows/release.yml), on the author's machine, and signed there.
+The Windows installer on the [releases page](https://github.com/slidrhq/app/releases) is built from this repository by the [Release workflow](.github/workflows/release.yml), on the author's machine, and signed there.
 
 - Committers and reviewers: [moshew](https://github.com/moshew)
 - Approvers: [moshew](https://github.com/moshew)

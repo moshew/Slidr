@@ -113,5 +113,5 @@ console.log(
     ? 'Nothing was changed.'
     : `Pushed ${tag}. The build waits for the runner on your machine: start it (run.cmd) and keep\n` +
         'SimplySign Desktop logged in. Publish the draft release when it is ready:\n' +
-        '  https://github.com/moshew/Slidr/releases',
+        '  https://github.com/slidrhq/app/releases',
 );

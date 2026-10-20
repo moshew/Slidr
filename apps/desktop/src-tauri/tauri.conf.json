@@ -61,7 +61,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAxMzUwN0Y5NDZERjlFQzcKUldUSG50OUcrUWMxQWI5aWgyYnBWV25sRXV5TVloNXVYYnRjMnRxS2hjalk3SGVUVlpKRkdwRjUK",
-      "endpoints": ["https://github.com/moshew/Slidr/releases/latest/download/latest.json"],
+      "endpoints": ["https://github.com/slidrhq/app/releases/latest/download/latest.json"],
       "windows": { "installMode": "quiet" }
     }
   }
