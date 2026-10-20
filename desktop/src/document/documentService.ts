@@ -130,6 +130,39 @@ export class DocumentService {
   }
 
   /**
+   * Starts a new, unsaved document from a file of another kind (a PowerPoint file, ADR-108).
+   * `build` gets a store for the new document's files, puts the file's pictures and media in it
+   * and returns the deck; the open document stays until then, and stays when `build` fails or
+   * `mayReplace` keeps it. The deck counts as unsaved: it is in no `.slidr` file yet.
+   */
+  async createFrom(
+    build: (store: (name: string, bytes: Uint8Array) => Promise<AssetMeta>) => Promise<Deck>,
+    mayReplace?: ReplaceGuard,
+  ): Promise<boolean> {
+    const workspace = await this.#storage.create();
+    let deck: Deck;
+    try {
+      deck = await build(async (name, bytes) =>
+        toAssetMeta(
+          await this.#storage.importAssetBytes(workspace.id, name, bytes),
+          'import',
+          name,
+        ),
+      );
+    } catch (error) {
+      await this.#discard(workspace.id);
+      throw error;
+    }
+    if (mayReplace && !(await mayReplace())) {
+      await this.#discard(workspace.id);
+      return false;
+    }
+    this.#replace(workspace, deck, true);
+    this.#scheduleAutosave();
+    return true;
+  }
+
+  /**
    * Opens a `.slidr` file. A file from an older version is migrated, after a copy of the
    * original is put aside (DOC-04). `kept` when `mayReplace` kept the open document instead.
    */

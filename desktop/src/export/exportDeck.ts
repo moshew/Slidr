@@ -102,14 +102,22 @@ export function mediaFolderName(fileName: string): string {
 // eslint-disable-next-line no-control-regex
 const UNSAFE = /[<>:"/\\|?*\x00-\x1f]/g;
 
-/** The name an export is offered under: the document's, else the deck's title, else `fallback`. */
-export function exportFileName(path: string | null, title: string, fallback: string): string {
+/**
+ * The name an export is offered under: the document's, else the deck's title, else `fallback`,
+ * with the extension of the file it is (`html`, or `pptx` for PowerPoint, ADR-108).
+ */
+export function exportFileName(
+  path: string | null,
+  title: string,
+  fallback: string,
+  extension = 'html',
+): string {
   const fromPath = path
     ?.split(/[\\/]/)
     .at(-1)
     ?.replace(/\.slidr$/i, '');
   const name = (fromPath || title).replace(UNSAFE, ' ').replace(/\s+/g, ' ').trim();
-  return `${name || fallback}.html`;
+  return `${name || fallback}.${extension}`;
 }
 
 /** A size as a person reads it: `820 B`, `41 kB`, `2.4 MB`. */
@@ -139,14 +147,16 @@ export type Destination = { kind: 'file'; path: string } | { kind: 'download'; n
 export async function chooseDestination(
   name: string,
   filterName: string,
+  extension = 'html',
 ): Promise<Destination | undefined> {
   if (!isTauri()) return { kind: 'download', name };
   const chosen = await saveDialog({
     defaultPath: name,
-    filters: [{ name: filterName, extensions: ['html'] }],
+    filters: [{ name: filterName, extensions: [extension] }],
   });
   if (!chosen) return undefined;
-  return { kind: 'file', path: /\.html?$/i.test(chosen) ? chosen : `${chosen}.html` };
+  const typed = extension === 'html' ? /\.html?$/i : new RegExp(`\\.${extension}$`, 'i');
+  return { kind: 'file', path: typed.test(chosen) ? chosen : `${chosen}.${extension}` };
 }
 
 /** An asset's bytes, from where the renderer loads it; undefined when the file is not at hand. */
@@ -188,16 +198,24 @@ function download(blob: Blob, name: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** Writes the file out. Rejects with the reason when it could not be written. */
-export async function writeExport(destination: Destination, html: string): Promise<void> {
+/**
+ * Writes the file out: a page of HTML, or the bytes of another kind of file (`type`). Rejects
+ * with the reason when it could not be written.
+ */
+export async function writeExport(
+  destination: Destination,
+  content: string | Uint8Array<ArrayBuffer>,
+  type = 'text/html',
+): Promise<void> {
+  const bytes = typeof content === 'string' ? new TextEncoder().encode(content) : content;
   if (destination.kind === 'file') {
     // The bytes go as the raw request body; the path travels as a header (see `commands.rs`).
-    await invoke('export_write_file', new TextEncoder().encode(html), {
+    await invoke('export_write_file', bytes, {
       headers: { 'x-file-path': encodeURIComponent(destination.path) },
     });
     return;
   }
-  download(new Blob([html], { type: 'text/html' }), destination.name);
+  download(new Blob([bytes], { type }), destination.name);
 }
 
 /** The media folder of an export: its name, and the files that could not be put in it. */

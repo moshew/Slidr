@@ -93,6 +93,7 @@ pub fn run() {
             commands::asset_import_file,
             commands::asset_import_bytes,
             commands::export_write_file,
+            commands::pptx_read,
             image_providers::ipc::image_providers,
             image_providers::ipc::image_probe,
             image_providers::ipc::image_default_provider,

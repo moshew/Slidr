@@ -171,6 +171,9 @@ function FileMenu() {
   // So is HTML import: it asks for the file, and about the open document if it has work.
   const runImport = useAction('import');
   const runExport = useAction('export');
+  // And PowerPoint files, in both directions (ADR-108).
+  const runImportPptx = useAction('importPptx');
+  const runExportPptx = useAction('exportPptx');
   // And the deck's properties are the templates area's: the direction turns the layouts too.
   const runProperties = useAction('deckProperties');
 
@@ -256,6 +259,15 @@ function FileMenu() {
             {t('file.importHtml')}
           </DropdownMenuItem>
         )}
+        {runImportPptx && (
+          <DropdownMenuItem
+            data-testid="file-import-pptx"
+            className="ps-8"
+            onSelect={runImportPptx}
+          >
+            {t('file.importPptx')}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           icon={Share}
           disabled={!runExport}
@@ -266,6 +278,17 @@ function FileMenu() {
           }}
         >
           {t('file.exportHtml')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          data-testid="file-export-pptx"
+          className="ps-8"
+          disabled={!runExportPptx}
+          onSelect={() => {
+            focusTaken.current = true;
+            runExportPptx?.();
+          }}
+        >
+          {t('file.exportPptx')}
         </DropdownMenuItem>
         {find && (
           <>
