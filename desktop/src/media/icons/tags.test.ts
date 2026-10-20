@@ -59,6 +59,40 @@ describe('tags', () => {
     expect(found([heart, chevron], 'שלבים')).toEqual(['chevron', 'heart']);
   });
 
+  it('keeps translated tags and searches native words, accents and unspaced phrases', () => {
+    const tags = tagsOf({
+      balloon: {
+        en: ['balloon'],
+        he: ['בלון'],
+        fr: ['fête anniversaire'],
+        ar: ['عيد ميلاد'],
+        de: ['Geburtstag'],
+        hi: ['जन्मदिन की पार्टी'],
+        ja: ['誕生日パーティー'],
+        ko: ['생일 파티'],
+        'zh-CN': ['生日派对'],
+        unknown: ['ignored'],
+      },
+    });
+    expect(tags.balloon?.fr).toEqual(['fête anniversaire']);
+    expect(tags.balloon).not.toHaveProperty('unknown');
+    const index = [withTags(thing('balloon', 'balloon', 'בלונ'), tags.balloon)];
+    for (const query of [
+      'fete',
+      'عيد ميلاد',
+      'geburtstag',
+      'जन्मदिन',
+      'पार्टी',
+      'パーティー',
+      '생일',
+      '派对',
+    ]) {
+      expect(found(index, query), query).toEqual(['balloon']);
+    }
+    expect(found(index, 'पर्टी')).toEqual([]);
+    expect(found(index, 'ハーティー')).toEqual([]);
+  });
+
   it('are taken from a file only as lists of words', () => {
     expect(tagsOf({ a: { en: ['x', 3], he: 'y' }, b: null, c: { he: ['ז'] } })).toEqual({
       a: { en: ['x'], he: [] },

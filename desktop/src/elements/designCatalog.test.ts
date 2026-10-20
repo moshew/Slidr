@@ -144,10 +144,17 @@ describe('the catalog of designs', () => {
     expect(tagged.tags.has('wedding')).toBe(false);
     expect(mergeCatalogs(authored, managed).tags.size).toBe(0);
     const all = designTagsOf(
-      { 'm-garden-wedding': { he: ['גן'], en: ['garden', 'wedding'] }, concert: { en: ['music'] } },
+      {
+        'm-garden-wedding': { he: ['גן'], en: ['garden', 'wedding'], fr: ['mariage'] },
+        concert: { en: ['music'] },
+      },
       tagged.tags,
     );
-    expect(all['m-garden-wedding']).toEqual({ he: ['חתונה', 'גן'], en: ['wedding', 'garden'] });
+    expect(all['m-garden-wedding']).toEqual({
+      he: ['חתונה', 'גן'],
+      en: ['wedding', 'garden'],
+      fr: ['mariage'],
+    });
     expect(all.concert).toEqual({ en: ['music'] });
   });
 

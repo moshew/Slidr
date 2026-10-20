@@ -232,8 +232,8 @@ const items = {
     const taken = new Set(all.map(({ key }) => key));
     for (const group of managed.groups ?? []) {
       for (const id of managed.groupIds?.[group] ?? []) {
-        // A design of the studio that came with its tags keeps them; an authored id wins.
-        if (taken.has(id) || !managed.slides?.[id] || managed.tags?.[id]) continue;
+        // Tags already supplied by the studio are read by readTags; an authored id wins.
+        if (taken.has(id) || !managed.slides?.[id]) continue;
         taken.add(id);
         all.push(
           one(
@@ -517,8 +517,13 @@ const fileOf = (kind) => join(media, 'tags', `${kind}.json`);
 
 function readTags(kind) {
   const file = fileOf(kind);
-  if (!existsSync(file)) return {};
-  return JSON.parse(readFileSync(file, 'utf8')).tags ?? {};
+  const tags = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).tags ?? {}) : {};
+  if (kind !== 'designs') return tags;
+  const managed = read('elements/designs/managed.json').tags ?? {};
+  for (const [key, own] of Object.entries(managed)) {
+    tags[key] = { ...own, ...tags[key] };
+  }
+  return tags;
 }
 
 /** The tags of a kind in its catalogue's order, an item a line; what the catalogue lost is left out. */
@@ -555,8 +560,10 @@ async function uploadTags(kind, all, tags) {
   const languages = { he: { tags: {} }, en: { tags: {} } };
   for (const { key } of all) {
     if (!tags[key]) continue;
-    languages.he.tags[key] = tags[key].he;
-    languages.en.tags[key] = tags[key].en;
+    for (const [lang, words] of Object.entries(tags[key])) {
+      languages[lang] ??= { tags: {} };
+      languages[lang].tags[key] = words;
+    }
   }
   const count = Object.keys(languages.he.tags).length;
   if (count === 0) return;

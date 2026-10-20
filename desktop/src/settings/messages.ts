@@ -13,7 +13,7 @@ export const he = {
       description: 'המראה של האפליקציה ושפת הממשק.',
     },
     agent: {
-      tab: 'Agent',
+      tab: 'סוכן',
       title: 'הסוכן',
       description: 'החיבור, המודל שכל שיחה מתחילה בו, ומה מותר לו לעשות בדרך.',
     },
