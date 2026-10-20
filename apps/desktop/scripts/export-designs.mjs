@@ -25,8 +25,9 @@
 // To add a design: write it in a pack file, put its picture in `Slidr-media/images/designs/`
 // as `<id>.webp` (and `<id>-bg.webp`), run this script, then `node scripts/design-asset-sizes.mjs`,
 // and give it a name in both `designs.name` blocks of `src/elements/messages.ts` (and its group
-// one in `designs.group`, if the group is new). `src/elements/designs.test.ts` counts the designs
-// and the groups. Run from apps/desktop.
+// one in `designs.group`, if the group is new), then give it its search tags with
+// `node scripts/tag-elements.mjs --kinds designs`. `src/elements/designs.test.ts` counts the
+// designs and the groups. Run from apps/desktop.
 //
 // With --managed the packs go to the managed catalog, `elements/designs/managed.json`, beside the
 // authored one (src/elements/designCatalog.ts): each id takes the prefix `m-`, and so does its

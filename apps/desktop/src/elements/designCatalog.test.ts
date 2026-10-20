@@ -1,6 +1,7 @@
 import { createSlide } from '@slidr/model';
 import { describe, expect, it } from 'vitest';
 import {
+  designTagsOf,
   localName,
   managedSize,
   mergeCatalogs,
@@ -128,6 +129,26 @@ describe('the catalog of designs', () => {
       slides: {},
     });
     expect(sneaky.groups).toEqual([]);
+  });
+
+  it('takes the tags of the managed designs it keeps, with the library’s', () => {
+    const tagged = mergeCatalogs(authored, {
+      ...managed,
+      tags: {
+        'm-garden-wedding': { he: ['חתונה', 7], en: ['wedding'] },
+        // The authored design of this id is kept, without the managed one's tags.
+        wedding: { he: ['אחר'], en: ['other'] },
+      } as unknown as ManagedDesignCatalog['tags'],
+    });
+    expect(tagged.tags.get('m-garden-wedding')).toEqual({ he: ['חתונה'], en: ['wedding'] });
+    expect(tagged.tags.has('wedding')).toBe(false);
+    expect(mergeCatalogs(authored, managed).tags.size).toBe(0);
+    const all = designTagsOf(
+      { 'm-garden-wedding': { he: ['גן'], en: ['garden', 'wedding'] }, concert: { en: ['music'] } },
+      tagged.tags,
+    );
+    expect(all['m-garden-wedding']).toEqual({ he: ['חתונה', 'גן'], en: ['wedding', 'garden'] });
+    expect(all.concert).toEqual({ en: ['music'] });
   });
 
   it('knows the sizes of the managed pictures', () => {
