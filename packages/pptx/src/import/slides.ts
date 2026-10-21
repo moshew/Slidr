@@ -436,7 +436,7 @@ export class SlideImporter {
     const bgPr = child(bg, 'p:bgPr');
     if (bgPr) {
       const fillEl = children(bgPr).find((c) => c.name.endsWith('Fill'));
-      const fill = readFill(fillEl, colors, picture);
+      const fill = readFill(fillEl, colors, picture, undefined, SLIDE);
       if (fill?.kind === 'image')
         return { fill: { ...fill, fit: fill.fit === 'tile' ? 'tile' : 'cover' } };
       return fill ? { fill } : undefined;
@@ -448,7 +448,7 @@ export class SlideImporter {
       const styled = list[idx >= 1000 ? idx - 1001 : idx - 1];
       const color = children(ref)[0];
       const ph = color ? readColor(color, colors) : undefined;
-      const fill = readFill(styled, ph ? { ...colors, ph } : colors, picture);
+      const fill = readFill(styled, ph ? { ...colors, ph } : colors, picture, undefined, SLIDE);
       if (fill) return { fill };
       if (ph) return { fill: { kind: 'solid', color: ph.color } };
     }
@@ -751,6 +751,9 @@ export class SlideImporter {
 }
 
 const round = (v: number) => Math.round(v * 100) / 100;
+
+/** What a background covers: the whole slide. */
+const SLIDE = { w: 1920, h: 1080 };
 
 const path_ = (xml: XmlElement) => path(xml, 'p:cSld', 'p:spTree');
 

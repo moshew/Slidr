@@ -1,5 +1,12 @@
 import type { Direction, Paragraph, TextStyleRef, Theme } from '@slidr/model';
-import { LEVEL_EM, MARKER_EM, paragraphStyle, runStyle } from '@slidr/renderer';
+import {
+  LEVEL_EM,
+  LINED_STYLE,
+  MARKER_EM,
+  OUTLINED_STYLE,
+  paragraphStyle,
+  runStyle,
+} from '@slidr/renderer';
 import { Mark, Node, type AnyExtension } from '@tiptap/core';
 import type { CSSProperties } from 'react';
 import { linkedSlide, safeLink } from './paste';
@@ -136,7 +143,17 @@ function markExtension(type: MarkType) {
           0,
         ];
       }
-      return ['span', { style: cssText(runStyle({ [type]: value }, 'body')) }, 0];
+      const style = runStyle({ [type]: value }, 'body');
+      // A line under or through the text is drawn as the renderer draws it: by a box without
+      // the outline of the letters, which the letters inside it take back (`TEXT_STROKE_WIDTH`).
+      if (type === 'underline' || type === 'strike') {
+        return [
+          'span',
+          { style: cssText({ ...style, ...LINED_STYLE }) },
+          ['span', { style: cssText(OUTLINED_STYLE) }, 0],
+        ];
+      }
+      return ['span', { style: cssText(style) }, 0];
     },
   });
 }

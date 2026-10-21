@@ -8,6 +8,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   changes,
   contentType,
+  designFiles,
+  libraryFiles,
   libraryPath,
   libraryReader,
   manifestOf,
@@ -104,6 +106,111 @@ describe('the built-in templates as files of the media library', () => {
     expect(JSON.parse(files.get('zerem/template.json')!)).toEqual({
       theme: { id: 'zerem' },
       layouts: [{ id: 'l1' }],
+    });
+  });
+});
+
+describe('the designs as files of the media library', () => {
+  const authored = {
+    groups: ['deck'],
+    groupIds: { deck: ['cover', 'quote'] },
+    subjects: { cover: [10, 20] },
+    slides: {
+      cover: { he: { id: 'c-he' }, en: { id: 'c-en' }, de: { id: 'c-de' } },
+      quote: { he: { id: 'q-he' }, en: { id: 'q-en' } },
+    },
+  };
+  const managed = {
+    version: 1,
+    groups: ['deck'],
+    groupIds: { deck: ['m-card', 'cover'] },
+    names: { 'm-card': { he: 'כרטיס', en: 'Card' } },
+    slides: { 'm-card': { en: { id: 'm-en' } }, cover: { en: { id: 'other' } } },
+  };
+  const library = (changes: Record<string, string> = {}) =>
+    new Map(
+      Object.entries({
+        'elements/designs/index.json': JSON.stringify(authored),
+        'elements/designs/managed.json': JSON.stringify(managed),
+        'images/designs/cover.webp': 'cover',
+        'images/designs/m-card.webp': 'card',
+        ...changes,
+      }).map(([path, text]) => [path, Buffer.from(text)]),
+    );
+  const read = (files: Map<string, string>, path: string): unknown => JSON.parse(files.get(path)!);
+  interface Revs {
+    from: Record<string, string>;
+    designs: Record<string, Record<string, string>>;
+  }
+  const revsOf = (files: Map<string, string>) => read(files, 'revs.json') as Revs;
+
+  it('are each catalog in each of its languages, with what it was made from', () => {
+    const files = designFiles(library());
+    expect([...files.keys()].sort()).toEqual([
+      'de/index.json',
+      'en/index.json',
+      'en/managed.json',
+      'he/index.json',
+      'revs.json',
+    ]);
+    expect(read(files, 'de/index.json')).toEqual({
+      ...authored,
+      slides: { cover: { de: { id: 'c-de' } } },
+      languages: { cover: ['he', 'en', 'de'], quote: ['he', 'en'] },
+      from: { 'elements/designs/index.json': sha256(JSON.stringify(authored)) },
+    });
+    expect(read(files, 'en/managed.json')).toMatchObject({
+      version: 1,
+      names: managed.names,
+      slides: { 'm-card': { en: { id: 'm-en' } }, cover: { en: { id: 'other' } } },
+      from: { 'elements/designs/managed.json': sha256(JSON.stringify(managed)) },
+    });
+  });
+
+  it('give each design a word in each language that changes with its slide or its picture', () => {
+    const revs = revsOf(designFiles(library()));
+    expect(Object.keys(revs.designs).sort()).toEqual(['de', 'en', 'he']);
+    expect(Object.keys(revs.designs.en!).sort()).toEqual(['cover', 'm-card', 'quote']);
+    expect(revs.from).toEqual({
+      'elements/designs/index.json': sha256(JSON.stringify(authored)),
+      'elements/designs/managed.json': sha256(JSON.stringify(managed)),
+      'images/designs/cover.webp': sha256('cover'),
+      'images/designs/m-card.webp': sha256('card'),
+    });
+
+    const picture = revsOf(designFiles(library({ 'images/designs/cover.webp': 'new' })));
+    expect(picture.designs.en!.cover).not.toBe(revs.designs.en!.cover);
+    expect(picture.designs.en!.quote).toBe(revs.designs.en!.quote);
+    const edited = { ...authored, slides: { ...authored.slides, quote: { en: { id: 'q2' } } } };
+    const slide = revsOf(
+      designFiles(library({ 'elements/designs/index.json': JSON.stringify(edited) })),
+    );
+    expect(slide.designs.en!.quote).not.toBe(revs.designs.en!.quote);
+    expect(slide.designs.en!.cover).toBe(revs.designs.en!.cover);
+  });
+
+  it('are made again on publishing, in place of those a pulled copy holds', () => {
+    const source = tempDir();
+    write(source, 'elements/designs/index.json', JSON.stringify(authored));
+    // As `pnpm media:pull` leaves them: of an earlier catalog, and of a language it no longer has.
+    write(source, 'elements/designs/he/index.json', '{"from":{}}');
+    write(source, 'elements/designs/fr/index.json', '{"from":{}}');
+    write(source, 'elements/designs/revs.json', '{"from":{}}');
+    const files = libraryFiles(source);
+    expect([...files.keys()].filter((path) => path.startsWith('elements/designs/')).sort()).toEqual(
+      [
+        'elements/designs/de/index.json',
+        'elements/designs/en/index.json',
+        'elements/designs/he/index.json',
+        'elements/designs/index.json',
+        'elements/designs/revs.json',
+      ],
+    );
+    const he = JSON.parse(files.get('elements/designs/he/index.json')!.toString()) as {
+      from: unknown;
+    };
+    expect(he.from).toEqual({
+      'elements/designs/index.json': sha256(JSON.stringify(authored)),
     });
   });
 });

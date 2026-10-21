@@ -129,6 +129,26 @@ test('an outline is drawn around the letters, behind them', async () => {
   expect(kept).toBeLessThan(1.03);
 });
 
+test('a line under outlined letters is drawn in the colour of the text, not of the outline', async () => {
+  const green = (r: number, g: number, b: number) => g > 150 && r < 90 && b < 90;
+  const outline = { '-webkit-text-stroke': '12px rgb(0, 200, 0)' };
+  const underlined: RichText = richText('MMMMMMMM', {
+    align: 'center',
+    marks: { size: 200, weight: 900, underline: true },
+  });
+  const lined = await draw(
+    createElement.text({ id: 'e_text', frame: FRAME, content: underlined, css: outline }),
+    () => null,
+  );
+  const bare = await draw(text(outline), () => null);
+  // Chromium draws a line in the outline's colour when the box that draws it has an outline:
+  // here a green bar. The line is the text's dark, and the letters keep their outline.
+  expect(lined.pixels.where(dark).length - bare.pixels.where(dark).length).toBeGreaterThan(3000);
+  const greener = lined.pixels.where(green).length / bare.pixels.where(green).length;
+  expect(greener).toBeGreaterThan(0.9);
+  expect(greener).toBeLessThan(1.1);
+});
+
 test('a shadow is drawn where its offset puts it, in a colour of the theme', async () => {
   const { pixels, dom } = await draw(
     text({ 'text-shadow': '40px 30px 0px var(--color-primary)' }),

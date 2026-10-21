@@ -16,12 +16,14 @@ import next33Source from '../../scripts/design-locales/next-33/source.json';
 import next50Source from '../../scripts/design-locales/next-50/source.json';
 import next50bSource from '../../scripts/design-locales/next-50b/source.json';
 import { builtinFaces, builtinFamilies } from '../fonts/builtinFonts.generated';
-import { previewAsset, previewBackdrop } from './designAssets';
 import { familyIn, fontShelf } from './designFonts';
-import {
-  DESIGN_GROUPS,
-  DESIGN_IDS,
-  DESIGN_SUBJECTS,
+import { loadAllDesigns, loadDesigns } from './designs';
+
+const {
+  groups: DESIGN_GROUPS,
+  ids: DESIGN_IDS,
+  subjects: DESIGN_SUBJECTS,
+  managed: MANAGED_DESIGN_IDS,
   designGroupName,
   designIn,
   designLanguages,
@@ -30,8 +32,9 @@ import {
   designsOf,
   designSlide,
   insertDesign,
-  MANAGED_DESIGN_IDS,
-} from './designs';
+  previewAsset,
+  previewBackdrop,
+} = await loadAllDesigns();
 
 /** The designs of `elements/designs/index.json`, and those Slidr Studio publishes. */
 const AUTHORED = DESIGN_IDS.filter((id) => !MANAGED_DESIGN_IDS.has(id));
@@ -44,8 +47,34 @@ const has = (id: string) => DESIGN_IDS.includes(id);
 /** Every design in every language it is drawn in. */
 const DRAWN = DESIGN_IDS.flatMap((id) => designLanguages(id).map((lang) => [lang, id] as const));
 
+/** The words of a slide's text and shapes, in their order. */
+const textOf = (slide: Slide) =>
+  [...walkElements(slide.elements)].flatMap((element) =>
+    (element.type === 'text' || element.type === 'shape') && element.content
+      ? [plainText(element.content)]
+      : [],
+  );
+
 // The designs are content of the media library: without it there is nothing to test.
 describe.skipIf(DESIGN_IDS.length === 0)('Elements designs', () => {
+  it('are read in each language as the whole catalogs have them (ADR-109)', async () => {
+    for (const lang of CONTENT_LANGUAGES) {
+      const own = await loadDesigns(lang);
+      const drawn = DESIGN_IDS.filter((id) => designIn(id, lang));
+      expect(own.ids, lang).toEqual(drawn);
+      expect([...own.managed].sort(), lang).toEqual(
+        drawn.filter((id) => MANAGED_DESIGN_IDS.has(id)).sort(),
+      );
+      for (const id of drawn) {
+        expect(own.designLanguages(id), `${id}/${lang}`).toEqual(designLanguages(id));
+        expect(textOf(own.designSlide(id, lang, 'a')), `${id}/${lang}`).toEqual(
+          textOf(designSlide(id, lang, 'a')),
+        );
+        expect(own.previewAsset(id), `${id}/${lang}`).toEqual(previewAsset(id));
+      }
+    }
+  }, 120_000);
+
   it('offers every ready-made slide in every application language', () => {
     for (const id of DESIGN_IDS) {
       expect(designLanguages(id), id).toEqual(CONTENT_LANGUAGES);

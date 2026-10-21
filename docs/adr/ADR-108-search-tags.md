@@ -1,6 +1,6 @@
 # ADR-108 — Search tags for everything in the library, written by Claude
 
-Status: Implemented on 2026-10-20, with the upload API of Slidr Library (branch `upload-tags` of slidrhq/library) and the studio's Publish panel. It adds to the search of icons (SHP-07, GEN-09), and to the searches of Elements ([ADR-075](ADR-075-elements-and-presets.md)) and of Ready slides ([ADR-106](ADR-106-ready-slides-panel.md)).
+Status: Implemented on 2026-10-20, with the upload API of Slidr Library (branch `upload-tags` of slidrhq/library) and the studio's Publish panel. The publication of the accepted uploads, still to come below, is [ADR-110](ADR-110-library-published-through-its-api.md). It adds to the search of icons (SHP-07, GEN-09), and to the searches of Elements ([ADR-075](ADR-075-elements-and-presets.md)) and of Ready slides ([ADR-106](ADR-106-ready-slides-panel.md)).
 
 ## Request
 

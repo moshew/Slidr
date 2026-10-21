@@ -40,6 +40,7 @@ import {
   hasText,
   readBody,
   readParagraphs,
+  withMargin,
   type LevelProps,
   type ListStyle,
   type ReadText,
@@ -188,6 +189,7 @@ function shapeFill(
   style: XmlElement | undefined,
   ctx: PartContext,
   group: Fill | undefined,
+  box: Frame,
 ): Fill | undefined {
   const own =
     fillElementOf(spPr) ??
@@ -196,14 +198,14 @@ function shapeFill(
       .map((s) => fillElementOf(s))
       .find(Boolean);
   const picture = (blip: { rId: string }) => ctx.pictures.get(blip.rId);
-  if (own) return readFill(own, ctx.colors, picture, group);
+  if (own) return readFill(own, ctx.colors, picture, group, box);
   const ref = child(style, 'a:fillRef');
   const idx = intAttr(ref, 'idx') ?? 0;
   if (!ref || idx === 0) return undefined;
   const theme = ctx.importer.theme;
   const list = idx >= 1000 ? theme.bgFills : theme.fills;
   const styled = list[idx >= 1000 ? idx - 1001 : idx - 1] ?? list[0];
-  return styled ? readFill(styled, refColors(ref, ctx.colors), picture, group) : undefined;
+  return styled ? readFill(styled, refColors(ref, ctx.colors), picture, group, box) : undefined;
 }
 
 function shapeOutline(
@@ -263,6 +265,7 @@ function textContext(ctx: PartContext, style: XmlElement | undefined): TextConte
     pxPerPt: ctx.importer.pxPerEmu * 12700,
     link: (rId, action) => ctx.importer.linkTarget(ctx.rels, rId, action),
     ...(attr(fontRef, 'idx') === 'major' ? { fontRef: 'major' as const } : {}),
+    styleSize: (ref) => ctx.importer.deckTheme.textStyles[ref].size,
   };
 }
 
@@ -283,25 +286,38 @@ function fontRefStyle(fontRef: XmlElement): ListStyle {
 
 /**
  * The outline and the shadow of a text's letters as the CSS the model keeps them as (TXT-11):
- * `-webkit-text-stroke` and `text-shadow`.
+ * `-webkit-text-stroke` and `text-shadow`; and a line under or through it drawn as PowerPoint
+ * draws it, across the letters that reach below it rather than broken around them.
  */
-function glyphCss(
-  glyphs: ReadText['glyphs'],
-  ctx: PartContext,
-): Record<string, string> | undefined {
+function textCss(read: ReadText, ctx: PartContext): Record<string, string> | undefined {
+  const { glyphs, content } = read;
   const css: Record<string, string> = {};
+  const lined = content.paragraphs.some((p) =>
+    p.runs.some((r) => r.marks?.underline || r.marks?.strike),
+  );
+  if (lined) css['text-decoration-skip-ink'] = 'none';
   if (glyphs.ln) {
     const outline = readOutline([glyphs.ln], ctx.colors, ctx.importer.pxPerEmu);
-    if (outline.stroke) {
+    // PowerPoint draws the outline on the edge of the letters, over their fill: the stroke is
+    // drawn after the fill (no `paint-order`). Drawn first, the fill's shadow also covered it
+    // on the side the shadow falls.
+    if (outline.stroke)
       css['-webkit-text-stroke'] = `${outline.stroke.width}px ${colorCss(outline.stroke.color)}`;
-      css['paint-order'] = 'stroke fill';
-    }
   }
+  const shadows: string[] = [];
   const shadow = glyphs.effects
     ? readShadow(glyphs.effects, ctx.colors, ctx.importer.pxPerEmu)
     : undefined;
   if (shadow)
-    css['text-shadow'] = `${shadow.x}px ${shadow.y}px ${shadow.blur}px ${colorCss(shadow.color)}`;
+    shadows.push(`${shadow.x}px ${shadow.y}px ${shadow.blur}px ${colorCss(shadow.color)}`);
+  // A glow is a soft halo of a colour around the letters: a shadow under them, blurred as far.
+  const glow = child(glyphs.effects, 'a:glow');
+  const glowColor = glow ? readColor(glow, ctx.colors)?.color : undefined;
+  if (glow && glowColor) {
+    const radius = Math.round((intAttr(glow, 'rad') ?? 0) * ctx.importer.pxPerEmu * 100) / 100;
+    if (radius > 0) shadows.push(`0px 0px ${radius}px ${colorCss(glowColor)}`);
+  }
+  if (shadows.length) css['text-shadow'] = shadows.join(', ');
   return Object.keys(css).length ? css : undefined;
 }
 
@@ -354,7 +370,7 @@ function readSp(
   const role = type ? ROLES[type] : undefined;
   const prstGeom = inheritedChild(spPr, inherited.spPr, 'a:prstGeom', 'a:custGeom');
   const prst = prstGeom?.name === 'a:prstGeom' ? (attr(prstGeom, 'prst') ?? 'rect') : undefined;
-  const fill = shapeFill(spPr, inherited.spPr, style, ctx, group);
+  const fill = shapeFill(spPr, inherited.spPr, style, ctx, group, box.frame);
   const outline = shapeOutline(spPr, inherited.spPr, style, ctx);
   const shadow = shapeShadow(spPr, inherited.spPr, style, ctx);
   const effects = shadow ? { effects: { shadow } } : {};
@@ -410,7 +426,8 @@ function readSp(
     ? inherited.lists
     : [...ctx.otherStyles, ...(fontRef ? [fontRefStyle(fontRef)] : [])];
   const styleRef = role === 'title' ? ('title' as const) : undefined;
-  const readText = () => readParagraphs(txBody, lists, textContext(ctx, style), styleRef);
+  const readText = () =>
+    readParagraphs(txBody, lists, textContext(ctx, style), styleRef, body.padding);
   if (body.vertical) ctx.importer.warn('vertical-text', ctx.slide);
   // Text written top to bottom is drawn as a box turned a quarter, its sides swapped.
   const turned = (frame: Frame, rotation: number) => {
@@ -423,8 +440,9 @@ function readSp(
     };
   };
   const textElement = () => {
-    const { content, glyphs } = readText();
-    const css = glyphCss(glyphs, ctx);
+    const read = readText();
+    const { content, margin } = read;
+    const css = textCss(read, ctx);
     const place = turned(common.frame, common.rotation);
     return createElement.text({
       ...common,
@@ -434,7 +452,7 @@ function readSp(
       content,
       autoFit: body.autoFit,
       vAlign: body.vAlign,
-      padding: body.padding,
+      padding: withMargin(body.padding, margin),
       ...(body.wrap ? {} : { wrap: false }),
       ...(body.columns ? { columns: body.columns } : {}),
       ...(css ? { css } : {}),
@@ -464,10 +482,10 @@ function readSp(
   if (!text) return [shape];
   if (body.vAlign === 'middle' && !body.vertical && body.autoFit !== 'growHeight') {
     // Text in the middle of a shape is the shape's own.
-    const { content, glyphs } = readText();
-    shape.content = content;
-    shape.padding = body.padding;
-    const css = glyphCss(glyphs, ctx);
+    const read = readText();
+    shape.content = read.content;
+    shape.padding = withMargin(body.padding, read.margin);
+    const css = textCss(read, ctx);
     if (css) shape.css = css;
     return [shape];
   }
@@ -770,6 +788,7 @@ async function readGroup(
     ctx.colors,
     (b) => ctx.pictures.get(b.rId),
     group,
+    box.frame,
   );
   const elements = await readTree(grp, ctx, inner, groupFill ?? group);
   if (elements.length === 0) return [];

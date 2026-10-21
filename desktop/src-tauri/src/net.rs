@@ -95,7 +95,10 @@ pub mod testing {
         Router,
         body::{Body, to_bytes},
         extract::Request,
-        http::{StatusCode, header::CONTENT_TYPE},
+        http::{
+            StatusCode,
+            header::{CONTENT_ENCODING, CONTENT_TYPE},
+        },
         response::Response,
     };
 
@@ -121,6 +124,8 @@ pub mod testing {
     pub struct Reply {
         status: u16,
         content_type: &'static str,
+        /// The `Content-Encoding` of the body, when it is compressed.
+        encoding: Option<&'static str>,
         body: Vec<u8>,
         delay: Duration,
     }
@@ -136,8 +141,17 @@ pub mod testing {
             Self {
                 status,
                 content_type,
+                encoding: None,
                 body: body.into(),
                 delay: Duration::ZERO,
+            }
+        }
+
+        /// The same answer, its body compressed as `encoding` says (`gzip`, `br`).
+        pub fn encoded(self, encoding: &'static str) -> Self {
+            Self {
+                encoding: Some(encoding),
+                ..self
             }
         }
 
@@ -216,6 +230,9 @@ pub mod testing {
                         StatusCode::from_u16(reply.status).unwrap_or(StatusCode::OK);
                     if let Ok(value) = reply.content_type.parse() {
                         response.headers_mut().insert(CONTENT_TYPE, value);
+                    }
+                    if let Some(Ok(value)) = reply.encoding.map(str::parse) {
+                        response.headers_mut().insert(CONTENT_ENCODING, value);
                     }
                     response
                 }

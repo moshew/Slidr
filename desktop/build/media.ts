@@ -230,6 +230,93 @@ export function templateFiles(catalog: TemplateCatalog): Map<string, string> {
   return files;
 }
 
+/** The catalogs of the designs, in the order the app lists them: an id of both is the authored one. */
+export const DESIGN_CATALOGS = ['index.json', 'managed.json'] as const;
+
+/**
+ * How the pictures of the designs made ahead are drawn (`scripts/generate-design-thumbs.mjs`): a
+ * new number puts every one of them out of date, and the galleries draw the designs again until
+ * the script has run.
+ */
+export const DESIGN_DRAWING = 1;
+
+/** The files `designFiles` writes, which a copy pulled from the site holds as they were. */
+const DESIGN_FILE = /^elements\/designs\/(?:[^/]+\/(?:index|managed)\.json|revs\.json)$/;
+
+/** A key of a catalog's slides that names a language: `he`, `pt-BR`, `zh-CN`. */
+const LANGUAGE = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,4})?$/;
+
+const sha256 = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
+
+/**
+ * The files the library's publisher writes into `elements/designs/` from the catalogs of the
+ * designs (ADR-109), by their place in that folder. A gallery shows the designs of one language,
+ * and a catalog holds every language: so each is written again for each language,
+ * `<language>/index.json` and `<language>/managed.json`, the catalog with the slides of that
+ * language alone, the languages every design is drawn in (`languages`) and the hash of the file
+ * it was made from (`from`).
+ *
+ * `revs.json` gives each design in each language a word, of its slide and its pictures: a picture
+ * of a design made ahead is of a word (`images/designs/thumbs/index.json`), and is shown only
+ * while the design has that word. It says what it was made from too, the catalogs and the
+ * pictures. A reader takes none of these files when what they were made from is not what the
+ * manifest names: a copy pulled from the site holds them as they were, and a publisher that does
+ * not write them would publish them beside a newer catalog.
+ */
+export function designFiles(files: ReadonlyMap<string, Buffer>): Map<string, string> {
+  const written = new Map<string, string>();
+  const from: Record<string, string> = {};
+  const revs: Record<string, Record<string, string>> = {};
+  const listed = new Set<string>();
+  for (const name of DESIGN_CATALOGS) {
+    const path = `elements/designs/${name}`;
+    const bytes = files.get(path);
+    if (!bytes) continue;
+    from[path] = sha256(bytes);
+    const catalog = JSON.parse(bytes.toString('utf8')) as Record<string, unknown>;
+    const slides = Object.entries(
+      (catalog.slides ?? {}) as Record<string, Record<string, unknown> | null>,
+    ).filter((entry): entry is [string, Record<string, unknown>] => {
+      const variants = entry[1];
+      return variants !== null && typeof variants === 'object';
+    });
+
+    const languages: Record<string, string[]> = {};
+    const ofLanguage = new Map<string, Record<string, Record<string, unknown>>>();
+    for (const [id, variants] of slides) {
+      languages[id] = Object.keys(variants).filter((lang) => LANGUAGE.test(lang));
+      for (const lang of languages[id]) {
+        let own = ofLanguage.get(lang);
+        if (!own) ofLanguage.set(lang, (own = {}));
+        own[id] = { [lang]: variants[lang] };
+      }
+    }
+    for (const [lang, own] of ofLanguage) {
+      const one = { ...catalog, slides: own, languages, from: { [path]: from[path] } };
+      written.set(`${lang}/${name}`, JSON.stringify(one));
+    }
+
+    for (const [id, variants] of slides) {
+      if (listed.has(id)) continue;
+      listed.add(id);
+      const pictures = [`images/designs/${id}.webp`, `images/designs/${id}-bg.webp`].map(
+        (picture) => {
+          const kept = files.get(picture);
+          if (!kept) return null;
+          from[picture] = sha256(kept);
+          return from[picture];
+        },
+      );
+      for (const lang of languages[id] ?? []) {
+        const drawn = JSON.stringify([DESIGN_DRAWING, variants[lang], pictures]);
+        (revs[lang] ??= {})[id] = sha256(drawn).slice(0, 16);
+      }
+    }
+  }
+  if (listed.size > 0) written.set('revs.json', JSON.stringify({ from, designs: revs }));
+  return written;
+}
+
 export interface ManifestEntry {
   size: number;
   sha256: string;
@@ -283,15 +370,10 @@ const SITE_FILES: Record<string, string> = {
 };
 
 /**
- * Writes the site of the library from an author's copy (`source`) into `target`, which is
- * emptied first: the published folders, the template files made from the catalog, the manifest
- * of them all, and the files of the site. Returns the manifest.
+ * The files of the library as an author's copy (`source`) publishes them, by their place in it:
+ * the published folders, and the files made from the catalogs of the templates and the designs.
  */
-export function stageLibrary(
-  source: string,
-  target: string,
-  published = new Date().toISOString(),
-): Manifest {
+export function libraryFiles(source: string): Map<string, Buffer> {
   const files = new Map<string, Buffer>();
   for (const folder of PUBLISHED_FOLDERS) filesUnder(join(source, folder), folder, files);
   const catalog = files.get('templates/catalog.json');
@@ -302,9 +384,27 @@ export function stageLibrary(
       files.set(`templates/${path}`, Buffer.from(text));
     }
   }
+  for (const path of [...files.keys()]) if (DESIGN_FILE.test(path)) files.delete(path);
+  for (const [path, text] of designFiles(files)) {
+    files.set(`elements/designs/${path}`, Buffer.from(text));
+  }
   for (const path of files.keys()) {
     if (libraryPath(path) !== path) throw new Error(`Not a plain path for the library: ${path}`);
   }
+  return files;
+}
+
+/**
+ * Writes the site of the library from an author's copy (`source`) into `target`, which is
+ * emptied first: the files it publishes (`libraryFiles`), the manifest of them all, and the files
+ * of the site. Returns the manifest.
+ */
+export function stageLibrary(
+  source: string,
+  target: string,
+  published = new Date().toISOString(),
+): Manifest {
+  const files = libraryFiles(source);
   const physical = catalogChunks(files, MAX_FILE_BYTES);
   const manifest = manifestOf(files, published);
   rmSync(target, { recursive: true, force: true });

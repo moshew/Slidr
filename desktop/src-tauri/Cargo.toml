@@ -53,9 +53,11 @@ axum = { version = "0.8.9", default-features = false, features = ["tokio", "http
 # API keys in the credential store of the operating system (SEC-04, ADR-051): the Windows
 # Credential Manager, the macOS Keychain, the Secret Service on Linux.
 keyring = "4.2"
-# HTTPS for what is a web API (ADR-051): images made with the user's key, stock photos.
-# TLS is the operating system's (SChannel on Windows), so no TLS library is built; HTTP/1 only.
-reqwest = { version = "0.13.5", default-features = false, features = ["native-tls", "json", "multipart", "query", "system-proxy"] }
+# HTTPS for what is a web API (ADR-051): images made with the user's key, stock photos; and the
+# media library. TLS is the operating system's (SChannel on Windows), so no TLS library is built;
+# HTTP/1 only. Answers come compressed when the server compresses them: Pages sends a catalog of
+# the library in brotli, a twentieth of its size, and another server may send gzip (ADR-109).
+reqwest = { version = "0.13.5", default-features = false, features = ["native-tls", "json", "multipart", "query", "system-proxy", "gzip", "brotli"] }
 # Decodes, scales and encodes pictures for an edit that keeps the pixels outside its mask (ADR-051).
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 # The pictures an image API returns inside JSON; and, on Windows, the PNG of a slide capture.

@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { exportPptx } from './export';
 import { importPptx, PptxReadError } from './import';
 import { markedPicture, memoryStore } from './testing';
-import { writeZip } from './zip';
+import { readZip, writeZip } from './zip';
 
 /*
  * The import (ADR-108): a file another tool wrote, read into a deck; and a deck sent out to
@@ -378,5 +378,132 @@ describe('a deck sent to PowerPoint and read back', () => {
     expect(video.poster && 'assetId' in video.poster).toBe(true);
     const audio = flat(back.slides[0]!.elements).find((e) => e.type === 'audio');
     expect(audio?.type).toBe('audio');
+  });
+});
+
+describe('text read as PowerPoint lays it out', () => {
+  /** A file of one slide with these shapes on it, on the master and the theme an export writes. */
+  async function slideWith(shapes: string): Promise<Uint8Array> {
+    const deck = createDeck({ lang: 'en' });
+    deck.slides = [createSlide()];
+    const out = await exportPptx(deck, { loadAsset: () => Promise.reject(new Error('none')) });
+    const files = [];
+    for (const entry of readZip(out.bytes).values()) {
+      let data = await entry.read();
+      if (entry.name === 'ppt/slides/slide1.xml') {
+        const xml = new TextDecoder().decode(data).replace('</p:spTree>', `${shapes}</p:spTree>`);
+        data = new TextEncoder().encode(xml);
+      }
+      files.push({ name: entry.name, data });
+    }
+    return writeZip(files);
+  }
+
+  const BOX =
+    '<a:xfrm><a:off x="0" y="0"/><a:ext cx="6096000" cy="3429000"/></a:xfrm>' +
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>';
+
+  /** A text box of these paragraphs. */
+  const textBox = (paragraphs: string) =>
+    `<p:sp><p:nvSpPr><p:cNvPr id="10" name="Text"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
+    `<p:spPr>${BOX}<a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>` +
+    `${paragraphs}</p:txBody></p:sp>`;
+
+  const paragraph = (pPr: string, rPr: string, text: string) =>
+    `<a:p>${pPr}<a:r><a:rPr lang="he-IL" ${rPr}/><a:t>${text}</a:t></a:r></a:p>`;
+
+  async function read(shapes: string) {
+    const { store } = memoryStore();
+    const { deck } = await importPptx(await slideWith(shapes), { storeAsset: store });
+    expect(Deck.safeParse(deck).success).toBe(true);
+    return { deck, element: deck.slides[0]!.elements[0]! };
+  }
+
+  it('keeps the margin of the paragraphs as padding, on the side they begin from', async () => {
+    const { element } = await read(
+      textBox(
+        paragraph('<a:pPr marL="228600" rtl="1"/>', 'sz="2000"', 'אחת') +
+          paragraph('<a:pPr marL="457200" rtl="1"/>', 'sz="2000"', 'שתיים') +
+          paragraph('<a:pPr marL="228600" indent="228600" rtl="1"/>', 'sz="2000"', 'שלוש'),
+      ),
+    );
+    if (element.type !== 'text') throw new Error('not text');
+    // 228600 EMU are 36 px: the margin all three have is the box's, on the right of Hebrew.
+    expect(element.padding).toMatchObject({ left: 14.4, right: 50.4 });
+    // What one has beyond it begins its first line further in.
+    expect(element.content.paragraphs.map((p) => p.indent)).toEqual([undefined, 36, 36]);
+  });
+
+  it('begins the text of a list item where PowerPoint does, past its markers', async () => {
+    const { deck, element } = await read(
+      textBox(
+        paragraph(
+          '<a:pPr marL="893763" indent="-712788"><a:buFont typeface="Arial"/><a:buAutoNum type="arabicPeriod"/></a:pPr>',
+          'sz="4200"',
+          'One',
+        ),
+      ),
+    );
+    if (element.type !== 'text') throw new Error('not text');
+    expect(element.content.paragraphs[0]!.list).toMatchObject({ kind: 'number' });
+    // The renderer begins an item's text a column of markers in, in the size of the style.
+    const column = 1.25 * deck.theme.textStyles.body.size;
+    expect(element.padding!.left).toBeCloseTo(14.4 + 893763 / 6350 - column, 1);
+  });
+
+  it('spaces lines by the size of their text, not by the size of their style', async () => {
+    const spacing = '<a:pPr><a:lnSpc><a:spcPct val="100000"/></a:lnSpc></a:pPr>';
+    const { deck, element } = await read(
+      textBox(paragraph(spacing, 'sz="1000"', 'Small') + paragraph(spacing, 'sz="8000"', 'Big')),
+    );
+    if (element.type !== 'text') throw new Error('not text');
+    const style = deck.theme.textStyles.body.size;
+    expect(style).toBeGreaterThan(20);
+    const [small, big] = element.content.paragraphs;
+    // CSS lays a line out by the style's size as well; the line height is a multiple of it.
+    expect(small!.lineHeight! * style).toBeCloseTo(1.2 * 20, 1);
+    expect(big!.lineHeight).toBeCloseTo(1.2, 3);
+  });
+
+  it('leaves out the space before the first paragraph of a box, as PowerPoint does', async () => {
+    const before = '<a:pPr><a:spcBef><a:spcPts val="1000"/></a:spcBef></a:pPr>';
+    const { element } = await read(
+      textBox(paragraph(before, 'sz="2000"', 'One') + paragraph(before, 'sz="2000"', 'Two')),
+    );
+    if (element.type !== 'text') throw new Error('not text');
+    expect(element.content.paragraphs.map((p) => p.spaceBefore)).toEqual([undefined, 20]);
+  });
+
+  it('draws an outline over the letters, a glow around them, and an unbroken underline', async () => {
+    const look =
+      'sz="4000" u="sng"><a:ln w="12700"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:ln>' +
+      '<a:effectLst><a:glow rad="101600"><a:srgbClr val="808080"/></a:glow>' +
+      '<a:outerShdw dist="38100" dir="2700000"><a:srgbClr val="000000"/></a:outerShdw></a:effectLst>' +
+      '</a:rPr><a:t>Lined</a:t></a:r></a:p>';
+    const { element } = await read(textBox(`<a:p><a:r><a:rPr lang="en-US" ${look}`));
+    if (element.type !== 'text') throw new Error('not text');
+    expect(element.css).toEqual({
+      'text-decoration-skip-ink': 'none',
+      '-webkit-text-stroke': '2px #ffffff',
+      'text-shadow': '4.24px 4.24px 0px #000000, 0px 0px 16px #808080',
+    });
+  });
+
+  it('turns a scaled gradient as the box stretches it, from corner to corner', async () => {
+    const shape = (scaled: number) =>
+      `<p:sp><p:nvSpPr><p:cNvPr id="11" name="Ground"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>` +
+      `<a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="6858000"/></a:xfrm>` +
+      `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:gradFill><a:gsLst>` +
+      `<a:gs pos="0"><a:srgbClr val="FF0000"/></a:gs><a:gs pos="100000"><a:srgbClr val="0000FF"/></a:gs>` +
+      `</a:gsLst><a:lin ang="2700000" scaled="${scaled}"/></a:gradFill></p:spPr></p:sp>`;
+    const angle = async (scaled: number) => {
+      const { element } = await read(shape(scaled));
+      if (element.type !== 'shape' || element.fill.kind !== 'linear')
+        throw new Error('no gradient');
+      return element.fill.angle;
+    };
+    expect(await angle(0)).toBe(135);
+    // At 45° of the box as a square: across the 16:9 box, to its far corner.
+    expect(await angle(1)).toBeCloseTo(90 + (Math.atan(1920 / 1080) * 180) / Math.PI, 1);
   });
 });

@@ -2,7 +2,13 @@ import { createElement, type Element, type Fill, type Stroke, type TableCell } f
 import { attr, boolAttr, child, children, intAttr, parseXml, type XmlElement } from '../xml';
 import { readFill, readOutline } from './drawing';
 import type { PartContext } from './shapes';
-import { readParagraphs, type LevelProps, type ListStyle } from './text';
+import {
+  readParagraphs,
+  withMargin,
+  type LevelProps,
+  type ListStyle,
+  type TextContext,
+} from './text';
 
 /*
  * A table: its grid, its merged cells, and the look of each cell as PowerPoint draws it, its
@@ -238,20 +244,29 @@ export function readTable(
           },
         };
         const styleList: ListStyle = Array.from({ length: 9 }, () => styleLevel);
-        const tc2 = {
+        const tc2: TextContext = {
           colors: ctx.colors,
           theme: ctx.importer.theme,
           pxPerPt: pxPerEmu * 12700,
           link: (rId: string, action: string | undefined) =>
             ctx.importer.linkTarget(ctx.rels, rId, action),
+          styleSize: (ref) => ctx.importer.deckTheme.textStyles[ref].size,
         };
-        const { content } = readParagraphs(
+        const inset = (name: string, fallback: number) =>
+          Math.round((intAttr(tcPr, name) ?? fallback) * pxPerEmu * 100) / 100;
+        const padding = {
+          left: inset('marL', 91440),
+          right: inset('marR', 91440),
+          top: inset('marT', 45720),
+          bottom: inset('marB', 45720),
+        };
+        const { content, margin } = readParagraphs(
           child(tc, 'a:txBody'),
           [...ctx.otherStyles, styleList],
           tc2,
+          undefined,
+          padding,
         );
-        const margin = (name: string, fallback: number) =>
-          Math.round((intAttr(tcPr, name) ?? fallback) * pxPerEmu * 100) / 100;
         const anchor = attr(tcPr, 'anchor');
         const cell: TableCell = {
           content: merged ? { paragraphs: [] } : content,
@@ -265,12 +280,7 @@ export function readTable(
             : anchor === 'b'
               ? { vAlign: 'bottom' as const }
               : {}),
-          padding: {
-            left: margin('marL', 91440),
-            right: margin('marR', 91440),
-            top: margin('marT', 45720),
-            bottom: margin('marB', 45720),
-          },
+          padding: withMargin(padding, margin),
         };
         row.push(cell);
       });

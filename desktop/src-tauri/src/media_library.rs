@@ -665,6 +665,53 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_file_comes_compressed_and_is_kept_as_itself() -> std::io::Result<()> {
+        let file = br#"{"designs":"compressed"}"#;
+        // The same file, as gzip compresses it.
+        const GZIPPED: &[u8] = &[
+            0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0xab, 0x56, 0x4a, 0x49,
+            0x2d, 0xce, 0x4c, 0xcf, 0x2b, 0x56, 0xb2, 0x52, 0x4a, 0xce, 0xcf, 0x2d, 0x28, 0x4a,
+            0x2d, 0x2e, 0x4e, 0x4d, 0x51, 0xaa, 0x05, 0x00, 0x57, 0x0d, 0x51, 0x8a, 0x18, 0x00,
+            0x00, 0x00,
+        ];
+        let files = BTreeMap::from([("elements/designs/index.json".to_owned(), file.to_vec())]);
+        let manifest = manifest_of(files.iter());
+        // Compressed for a client that says it reads gzip, as Pages does.
+        let server = serve(move |seen: &Seen| {
+            if seen.path == "/manifest.json" {
+                return Reply::json(200, manifest.clone());
+            }
+            match seen.header("accept-encoding") {
+                Some(accepted) if accepted.contains("gzip") => {
+                    Reply::json(200, GZIPPED).encoded("gzip")
+                }
+                _ => Reply::json(200, file.to_vec()),
+            }
+        })
+        .await?;
+        let dir = tempfile::tempdir()?;
+        let library = MediaLibrary::new(url(&server.base), dir.path().to_path_buf());
+        assert_eq!(library.refresh().await, Refresh::Changed);
+
+        let catalog = get(
+            &library,
+            "http://media.localhost/elements/designs/index.json",
+        )
+        .await;
+        assert_eq!(catalog.status(), StatusCode::OK);
+        assert_eq!(catalog.body(), file);
+        assert!(kept(dir.path(), file));
+        let asked = server
+            .seen()
+            .into_iter()
+            .find(|seen| seen.path == "/elements/designs/index.json")
+            .and_then(|seen| seen.header("accept-encoding"))
+            .unwrap_or_default();
+        assert!(asked.contains("br") && asked.contains("gzip"), "{asked}");
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn the_pages_read_the_manifest_the_app_goes_by() -> std::io::Result<()> {
         let site = Site::new(&[("icons/hebrew.json", b"{}")]).await?;
         let dir = tempfile::tempdir()?;

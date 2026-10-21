@@ -80,12 +80,12 @@ describe('the catalog of designs', () => {
       'm-garden-wedding',
     ]);
     expect([...merged.managed].sort()).toEqual(['m-garden-wedding', 'm-street-party']);
-    expect(merged.slides['m-garden-wedding']?.en.name).toBe('m-garden-wedding-en');
+    expect(merged.slides['m-garden-wedding']?.en?.name).toBe('m-garden-wedding-en');
   });
 
   it('keeps the authored design where both catalogs have an id', () => {
     const merged = mergeCatalogs(authored, managed);
-    expect(merged.slides.wedding?.he.name).toBe('wedding-he');
+    expect(merged.slides.wedding?.he?.name).toBe('wedding-he');
     expect(merged.groupIds.events!.filter((id) => id === 'wedding')).toHaveLength(1);
     expect(merged.managed.has('wedding')).toBe(false);
     expect(merged.subjects.wedding).toEqual([1500, 600]);

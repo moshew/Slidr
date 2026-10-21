@@ -87,6 +87,8 @@ export function decorationsPlugin(emptyDir: () => Direction): Plugin {
               textIndent: 0,
               textAlign: 'start',
               textDecorationLine: 'none',
+              // As the renderer's marker: the item's text spaces its lines.
+              lineHeight: 0,
               ...(size !== undefined ? { fontSize: size } : {}),
               ...(color ? { color: colorCss(color) } : {}),
             });

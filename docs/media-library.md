@@ -1,6 +1,6 @@
 # Media library
 
-The content the app offers is a library published apart from the app: the built-in templates and their photographs, the designs, card sets, shapes, graphics, frames, emoji and art of Elements, the icon sets and the fonts of decks. It is a static site on Cloudflare Pages, **https://slidr-media.pages.dev** (project `slidr-media`), and the app reads it while it runs. Nothing of it is built into the app or installed with it ([ADR-090](adr/ADR-090-media-library-on-the-web.md)).
+The content the app offers is a library published apart from the app: the built-in templates and their photographs, the designs, card sets, shapes, graphics, frames, emoji and art of Elements, the icon sets and the fonts of decks. It is a site on the web, **https://slidr-media.pages.dev** (the Pages project `slidr-media`), and the app reads it while it runs. Nothing of it is built into the app or installed with it ([ADR-090](adr/ADR-090-media-library-on-the-web.md)). It lives in the R2 bucket of [Slidr Library](https://github.com/slidrhq/library)'s Worker, which serves it at `/media/`, and the Pages project forwards every request there; everything published reaches it through the library's API ([ADR-110](adr/ADR-110-library-published-through-its-api.md); the library's README, "Publishing the uploads"). Until that is set up, the Pages project is the static site it was.
 
 ```text
 manifest.json                  every file below: its size and SHA-256
@@ -8,9 +8,12 @@ fonts/catalog.json             the built-in fonts of decks, and fonts/<family>/*
 icons/                         the Lucide and Tabler sets, their search words, hebrew.json
 images/templates/*.webp        the photographs of the built-in templates
 images/designs/                the pictures of the ready-made slides, and sizes.json
+images/designs/thumbs/         each ready-made slide as the galleries show it, by width and language, and index.json
 images/frames/                 the event magnets as the Elements panel shows them, and index.json
 elements/designs/index.json    the ready-made slides of Elements
 elements/designs/managed.json  the ready-made slides Slidr Studio makes
+elements/designs/<language>/   both of them, with the slides of that language alone   (written on publishing)
+elements/designs/revs.json     a word for each ready-made slide in each language       (written on publishing)
 elements/cards/catalog.json    the card sets
 elements/catalogs/             shapes, graphics, frames and emoji, with their notices
 elements/art/                  the drawings of the art sets, with their notices
@@ -49,9 +52,13 @@ The unit tests that check the library's content (templates, designs, card sets, 
 
 ## Changing it
 
-Authors keep a copy of the library in a folder, by default `../Slidr-media` beside the repository, with two more folders that are not published: `elements/source` (the inputs of the generators) and `archive`. The generators in `desktop/scripts` write into that copy.
+What comes from outside the app comes through Slidr Library's upload API, and nothing of it needs a copy: Slidr Studio's designs and samples, and the search tags (below). An editor accepts each upload on the library's page, and a publication writes it into the library (`POST /api/publish`).
+
+What the app's generators make is written in an author's copy of the library, by default `../Slidr-media` beside the repository, with two more folders that are not published: `elements/source` (the inputs of the generators) and `archive`. The generators in `desktop/scripts` write into that copy, and `pnpm media:publish` publishes it (below).
 
 A ready-made slide is written in a pack file under `elements/source/design-packs/` and put into `elements/designs/index.json` by `desktop/scripts/export-designs.mjs`. A built-in template is written as `archive/templates-source/<id>.ts`, beside the files the first eighteen were made from, and put into `templates/catalog.json` (with `templates/index.json` and `templates/<id>/template.json`) by `desktop/scripts/export-templates.mjs`. Each script's header lists the steps for adding one.
+
+A gallery of ready-made slides reads them in its own language, `elements/designs/<language>/index.json` and `managed.json`, which publishing writes from the two catalogs: one language is a sixteenth of them ([ADR-109](adr/ADR-109-ready-slides-by-language-and-as-pictures.md)). It shows each design as a picture made ahead, `images/designs/thumbs/<width>/<language>/<design>.webp` at 320 and 640 pixels wide, which `desktop/scripts/generate-design-thumbs.mjs` makes of the renderer's own drawing: run it after a design or its picture changed, before publishing. Each picture is of a word of its design, of its slide and its pictures, which publishing writes into `elements/designs/revs.json`; a design whose word is not its picture's is drawn live until the script runs again. A change to how the renderer draws, or to a font, changes no word: raise `DESIGN_DRAWING` in `desktop/build/media.ts` and run the script with `--all`.
 
 The photo frames are written into `elements/catalogs/frames-catalog.json` by `desktop/scripts/generate-frames-catalog.mjs`. The Elements panel shows an event magnet from a small picture of it, `images/frames/<language>/<frame>.webp`, which `desktop/scripts/generate-frames-thumbs.mjs` makes of the renderer's own drawing: run it after the catalogue is written. A magnet whose picture is of an earlier drawing is drawn live in the panel until then, and `frames.test.ts` fails.
 
@@ -68,21 +75,23 @@ Everything Elements and Ready slides offer is searched by its names and by its t
 }
 ```
 
-Claude writes them: `desktop/scripts/tag-elements.mjs` gives it each item with what the catalogs say of it (its names, the words its set gives it, a design's text) and, for a graphic, a picture of the drawing, and checks every answer. It tags what has no tags yet, so run it after a generator adds to a catalog; `--again <key,...>` writes an item's tags again. It needs the Claude Code CLI, signed in. It keeps the tags in the author copy, which is where it goes on from the next time.
+Claude writes them: `desktop/scripts/tag-elements.mjs` gives it each item with what the catalogs say of it (its names, the words its set gives it, a design's text) and, for a graphic, a picture of the drawing, and checks every answer. It tags what has no tags yet, so run it after a generator's catalog is published; `--again <key,...>` writes an item's tags again. It needs the Claude Code CLI, signed in. It reads the published library, with no copy of it, and keeps the tags it writes in `desktop/.tags/<kind>.json` (`--work <dir>`), which a first run starts from the published tags, and where it goes on from the next time; `--from <dir>` reads an author's copy and keeps them in its `tags/`, as before.
 
-The search also reads tags in all the other `CONTENT_LANGUAGES`. Run `node desktop/scripts/translate-tags.mjs --from <author-copy>` to translate existing English tags into the other fourteen languages, using the Hebrew tags and item keys for context. `--languages fr,ja` limits a run; `--dry-run` reports what remains. Distinct phrases are translated once per language, with progress kept in `archive/tag-translations.json`; an incomplete run leaves the source files unchanged and can be resumed. Both `tags/` and the tags in `managed.json` are included. English and Hebrew are preserved. The upload script sends every language present, and the library accepts these languages for the `tag` action. All supplied languages must tag the same item keys.
+The search also reads tags in all the other `CONTENT_LANGUAGES`. Run `node desktop/scripts/translate-tags.mjs` to translate existing English tags into the other fourteen languages, using the Hebrew tags and item keys for context. `--languages fr,ja` limits a run; `--dry-run` reports what remains. Distinct phrases are translated once per language, with progress kept in `desktop/.tags/translations.json`; an incomplete run leaves the source files unchanged and can be resumed. Both the tags of `desktop/.tags/` (or the published `tags/`) and the designs' own in `managed.json` are included; `--from <author-copy>` reads and writes a copy instead. English and Hebrew are preserved. The upload script sends every language present, and the library accepts these languages for the `tag` action. All supplied languages must tag the same item keys.
 
-The tags reach the library through the upload API of [Slidr Library](https://github.com/slidrhq/library) (its README, "Uploading"), not by publishing the author copy: `--upload <the library's page>` with `LIBRARY_KEY`, the program's key, sends each kind's tags as one upload of `tag`. The library checks each against what it publishes (every key an item of the kind, every list of tags in its language's letters) and keeps it until an editor accepts it; publishing the accepted uploads merges them into `tags/`. A new design comes with its tags in its own upload (`designs: add` takes them, and refuses a design without them), as Slidr Studio sends its designs; publishing writes them into `managed.json` (below). `src/media/icons/tags.test.ts` fails while an item of a kind the library tags has none. Without the files, the app finds everything by its names, as before.
+The tags reach the library through the upload API of [Slidr Library](https://github.com/slidrhq/library) (its README, "Uploading"), not by publishing the author copy: `--upload <the library's page>` with `LIBRARY_KEY`, the program's key, sends each kind's tags as one upload of `tag`. The library checks each against what it publishes (every key an item of the kind, every list of tags in its language's letters) and keeps it until an editor accepts it. A publication (`POST /api/publish`, from the library's page or Slidr Studio's Publish panel) merges each accepted one into `tags/<kind>.json` of the library itself, where an item named takes these tags and the others keep theirs, and marks the upload published. A new design comes with its tags in its own upload (`designs: add` takes them, and refuses a design without them), as Slidr Studio sends its designs; publishing writes them into `managed.json` (below). `src/media/icons/tags.test.ts` fails while an item of a kind the library tags has none. Without the files, the app finds everything by its names, as before.
 
 ```sh
 pnpm media:pull                      # the published library into ../Slidr-media (--to <dir>)
-pnpm media:publish --dry-run         # stage ../Slidr-media and say what would change
-pnpm media:publish                   # publish it (--from <dir>, --branch <name> for a preview)
+pnpm media:publish --dry-run         # say what would change
+pnpm media:publish                   # publish it (--from <dir>)
 ```
 
-Publishing stages the published folders, writes the files `templates/` takes from its catalog, writes the manifest, compares it with the published one and deploys with wrangler. It needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment. It stops when the copy is empty, or would take away more than half of the published files, unless `--force` is given: a copy that is not all there would otherwise empty the library of every installed app.
+Publishing reads the published folders of the copy and writes the files `templates/` takes from its catalog (and those of the designs, ADR-109). Once the library lives in the Worker's bucket (the site answers `X-Slidr-Library: live`), it publishes through Slidr Library's API ([ADR-110](adr/ADR-110-library-published-through-its-api.md)): it sends only the files the author changed since the copy was pulled, each with the hash it was changed from, and the library writes them unless it changed one of them meanwhile (a published upload), which is a conflict: pull, and publish again. Every file the author did not change stays as the library has it. `pnpm media:pull` keeps the manifest it pulled in the copy (`.published-manifest.json`) for this; a copy without it is published only with `--force`, as a whole. It needs `LIBRARY_KEY`, a key of the Worker's `LIBRARY_KEYS`; `--library <url>` and `--site <url>` name a dev server of the library. Nothing is deployed.
 
-Static assets are at most 25 MiB, the limit of Pages. A JSON catalog above that
+Before that, publishing stages the site, writes the manifest, compares it with the published one and deploys with wrangler (`--branch <name>` for a preview); it needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment. Either way it stops when the copy is empty, or would take away more than half of the published files, unless `--force` is given: a copy that is not all there would otherwise empty the library of every installed app.
+
+Static assets of Pages are at most 25 MiB. A JSON catalog above that
 limit is staged as 10 MiB parts and a narrowly routed
 [Pages Function](https://developers.cloudflare.com/pages/functions/advanced-mode/). The Function
 streams the exact original bytes at the original catalog URL; its manifest entry,
@@ -138,7 +147,7 @@ A design's slide, and a template's sample, is written in Hebrew and in English, 
 
 The app reads `managed.json` after `index.json` and puts its designs after the authored ones: in a group the authored catalog has, after its designs; in a group of their own, after the authored groups. Where both have an id, the authored design is kept.
 
-A publication is the whole library, from one copy. An author who publishes from another copy pulls first: `pnpm media:pull` adds what the copy lacks, so the managed designs are not taken away. Pull before changing anything, since it also puts the published bytes back over a file that differs.
+An author's publication sends only what the author changed since the pull, so it never takes away a design published from an upload. Pull before changing anything, since a pull puts the published bytes back over a file that differs.
 
 ## Licences
 

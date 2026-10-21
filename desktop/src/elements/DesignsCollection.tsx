@@ -1,7 +1,7 @@
 import { ScaledSlide } from '@slidr/renderer';
-import { Button, IconButton, Input } from '@slidr/ui';
+import { Button, IconButton, Input, Skeleton } from '@slidr/ui';
 import { ArrowLeft, Search } from '@slidr/ui/icons';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Suspense, use, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../i18n';
 import { focusStage, tell, useEditor, useElementSize } from '../shell';
@@ -16,29 +16,44 @@ import {
 } from './collections';
 import { designAssetFile, designBackdropFile } from './designAssets';
 import { designWords, searchDesigns } from './designCatalog';
-import {
-  DESIGN_GROUPS,
-  DESIGN_IDS,
-  designGroupName,
-  designName,
-  designPreview,
-  designsIn,
-  insertDesign,
-  loadDesignTags,
-  type DesignGroup,
-  type DesignId,
-} from './designs';
+import { loadDesigns, type DesignGroup, type DesignId, type Designs } from './designs';
+import { loadDesignThumbs, type FindDesignThumb } from './designThumbs';
 import { useNear } from './StickerGrid';
 
 /** How many designs of a group the overview shows. */
 const PREVIEW = 4;
+
+/** The designs of a language, and the pictures made of them. */
+interface Gallery {
+  designs: Designs;
+  thumb: FindDesignThumb;
+}
+
+const galleries = new Map<string, Promise<Gallery>>();
+
+/**
+ * The gallery of a language, read once and kept (ADR-109). It is asked for as the panel is drawn,
+ * not in an effect: a panel not yet opened is drawn hidden at a quiet moment, and runs no effects,
+ * so the designs are read then and are there when it is opened.
+ */
+function galleryIn(lang: string): Promise<Gallery> {
+  let gallery = galleries.get(lang);
+  if (!gallery) {
+    gallery = Promise.all([loadDesigns(lang), loadDesignThumbs()]).then(([designs, thumb]) => ({
+      designs,
+      thumb,
+    }));
+    galleries.set(lang, gallery);
+  }
+  return gallery;
+}
 
 /**
  * The names of designs and of their groups, in the language of the interface or in `lng`: the
  * app's own, else the one `managed.json` gives a design of Slidr Studio, else the id. A name
  * that neither has is reported as a missing string.
  */
-function useDesignNames() {
+function useDesignNames(designs: Designs) {
   const { t, i18n } = useTranslation('elements');
   const lang = i18n.language;
   return useMemo(() => {
@@ -48,34 +63,43 @@ function useDesignNames() {
         : (managed ?? t(key, { lng, defaultValue: id }));
     return {
       design: (id: DesignId, lng = lang) =>
-        named(`designs.name.${id}`, designName(id, lng), id, lng),
+        named(`designs.name.${id}`, designs.designName(id, lng), id, lng),
       group: (group: DesignGroup, lng = lang) =>
-        named(`designs.group.${group}`, designGroupName(group, lng), group, lng),
+        named(`designs.group.${group}`, designs.designGroupName(group, lng), group, lng),
     };
-  }, [t, i18n, lang]);
+  }, [t, i18n, lang, designs]);
 }
 
 /**
- * One design: a click adds a new slide after the current one, in one undo step. The slide is
- * drawn live, and only once the tile has come near the visible part of the panel: a design is a
- * whole slide with a large picture, and there are many.
+ * One design: a click adds a new slide after the current one, in one undo step. It is shown once
+ * the tile has come near the visible part of the panel, as the picture made of it ahead; a design
+ * that has none, or has changed since, is drawn live: a whole slide with a large picture.
  */
 function DesignTile({
+  designs,
+  thumb,
   id,
   busy,
   onChoose,
 }: {
+  designs: Designs;
+  thumb: FindDesignThumb;
   id: DesignId;
   busy: boolean;
   onChoose: (id: DesignId) => void;
 }) {
   const { t } = useTranslation('elements');
-  const names = useDesignNames();
+  const names = useDesignNames(designs);
   const lang = useLanguage();
   const [tile, near] = useNear<HTMLButtonElement>();
   const picture = useRef<HTMLSpanElement>(null);
   const { width } = useElementSize(picture);
-  const preview = useMemo(() => (near ? designPreview(id, lang) : undefined), [near, id, lang]);
+  const drawnIn = designs.designLanguage(id, lang);
+  const made = useMemo(() => thumb(id, drawnIn), [thumb, id, drawnIn]);
+  const preview = useMemo(
+    () => (near && !made ? designs.designPreview(id, lang) : undefined),
+    [near, made, designs, id, lang],
+  );
   const name = names.design(id);
   return (
     <button
@@ -92,14 +116,29 @@ function DesignTile({
         aria-hidden
         className="block aspect-video w-full overflow-hidden rounded-inset shadow-sm transition-shadow group-hover:shadow-floating"
       >
-        {preview && width > 0 && (
-          <ScaledSlide
-            deck={preview.deck}
-            slide={preview.slide}
-            width={Math.floor(width)}
-            mode="thumbnail"
-            resolveAsset={preview.resolveAsset}
+        {near && made && width > 0 ? (
+          <img
+            src={made.src}
+            srcSet={made.srcSet}
+            sizes={`${Math.floor(width)}px`}
+            lang={drawnIn}
+            data-design-picture
+            alt=""
+            draggable={false}
+            decoding="async"
+            className="block size-full"
           />
+        ) : (
+          preview &&
+          width > 0 && (
+            <ScaledSlide
+              deck={preview.deck}
+              slide={preview.slide}
+              width={Math.floor(width)}
+              mode="thumbnail"
+              resolveAsset={preview.resolveAsset}
+            />
+          )
         )}
       </span>
       <span className="px-1 pb-0.5 text-xs leading-4 font-semibold text-ui-fg">{name}</span>
@@ -115,6 +154,8 @@ function DesignList({
 }: {
   ids: readonly DesignId[];
   testId?: string;
+  designs: Designs;
+  thumb: FindDesignThumb;
   busy: boolean;
   onChoose: (id: DesignId) => void;
 }) {
@@ -156,10 +197,23 @@ export function DesignsPanel() {
           </div>
         )}
         <div className="flex flex-col gap-4 px-4 pt-3 pb-6">
-          <DesignsCollection />
+          <Suspense fallback={<DesignsLoading />}>
+            <DesignsCollection />
+          </Suspense>
         </div>
       </div>
     </OpenGroupContext>
+  );
+}
+
+/** The gallery while its designs are read: the tiles of a group, empty. */
+function DesignsLoading() {
+  return (
+    <div className="grid grid-cols-2 gap-2" aria-busy data-testid="designs-loading">
+      {Array.from({ length: PREVIEW * 2 }, (_, index) => (
+        <Skeleton key={index} className="aspect-video rounded-inset" />
+      ))}
+    </div>
   );
 }
 
@@ -172,20 +226,21 @@ export function DesignsPanel() {
  */
 export function DesignsCollection() {
   const { t } = useTranslation('elements');
-  const names = useDesignNames();
   const editor = useEditor();
   const lang = useLanguage();
-  const tags = useLoaded(loadDesignTags);
+  const { designs, thumb } = use(galleryIn(lang));
+  const names = useDesignNames(designs);
+  const tags = useLoaded(designs.loadDesignTags);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [chosen, setGroup] = useState<DesignGroup>();
 
   const groups = useMemo(
     () =>
-      DESIGN_GROUPS.map((id) => ({ id, ids: designsIn(id, lang) })).filter(
-        (one) => one.ids.length > 0,
-      ),
-    [lang],
+      designs.groups
+        .map((id) => ({ id, ids: designs.designsIn(id, lang) }))
+        .filter((one) => one.ids.length > 0),
+    [designs, lang],
   );
   // A group the language was switched away from, open as it was switched, is no longer shown.
   const group = groups.find(({ id }) => id === chosen);
@@ -230,7 +285,7 @@ export function DesignsCollection() {
         const asset = await editor.assets.import(await designAssetFile(id), 'import');
         const backdropFile = await designBackdropFile(id);
         const backdrop = backdropFile && (await editor.assets.import(backdropFile, 'import'));
-        insertDesign(
+        designs.insertDesign(
           editor.bus,
           editor.selection,
           id,
@@ -249,12 +304,12 @@ export function DesignsCollection() {
     })();
   };
 
-  if (DESIGN_IDS.length === 0 || groups.length === 0) {
+  if (designs.ids.length === 0 || groups.length === 0) {
     // The designs are read from the media library: without it there are none to offer. With it,
     // a language may have none drawn in it yet.
     return (
       <p className="py-8 text-center text-sm text-ui-fg-muted" data-testid="elements-designs">
-        {t(DESIGN_IDS.length === 0 ? 'loadFailed' : 'designs.none')}
+        {t(designs.ids.length === 0 ? 'loadFailed' : 'designs.none')}
       </p>
     );
   }
@@ -274,12 +329,26 @@ export function DesignsCollection() {
         found.length === 0 ? (
           <NothingFound />
         ) : (
-          <DesignList ids={found} testId="design-results" busy={busy} onChoose={choose} />
+          <DesignList
+            ids={found}
+            testId="design-results"
+            designs={designs}
+            thumb={thumb}
+            busy={busy}
+            onChoose={choose}
+          />
         )
       ) : (
         <Drill screen={group?.id ?? 'groups'} depth={group ? 1 : 0} className="flex flex-col gap-4">
           {group ? (
-            <DesignList ids={group.ids} testId="design-results" busy={busy} onChoose={choose} />
+            <DesignList
+              ids={group.ids}
+              testId="design-results"
+              designs={designs}
+              thumb={thumb}
+              busy={busy}
+              onChoose={choose}
+            />
           ) : (
             groups.map(({ id, ids }) => (
               <Section
@@ -292,7 +361,13 @@ export function DesignsCollection() {
                   </Button>
                 }
               >
-                <DesignList ids={ids.slice(0, PREVIEW)} busy={busy} onChoose={choose} />
+                <DesignList
+                  ids={ids.slice(0, PREVIEW)}
+                  designs={designs}
+                  thumb={thumb}
+                  busy={busy}
+                  onChoose={choose}
+                />
               </Section>
             ))
           )}

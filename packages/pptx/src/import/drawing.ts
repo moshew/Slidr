@@ -8,7 +8,7 @@ import {
   type ColorTransform,
   type Rgba,
 } from '../color';
-import { attr, child, children, intAttr, path, type XmlElement } from '../xml';
+import { attr, boolAttr, child, children, intAttr, path, type XmlElement } from '../xml';
 
 /*
  * DrawingML read into the model: the theme, colours with their transforms, fills, outlines and
@@ -322,6 +322,8 @@ export function readFill(
   ctx: ColorContext,
   picture: (blip: BlipRef) => string | undefined,
   group?: Fill,
+  /** The size of what the fill covers, which a gradient of a scaled angle is stretched to. */
+  box?: { w: number; h: number },
 ): Fill | undefined {
   if (!fill) return undefined;
   switch (fill.name) {
@@ -406,7 +408,14 @@ export function readFill(
           },
         };
       }
-      const ang = (intAttr(child(fill, 'a:lin'), 'ang') ?? 0) / 60000;
+      const lin = child(fill, 'a:lin');
+      let ang = (intAttr(lin, 'ang') ?? 0) / 60000;
+      // A scaled angle is the angle in the box as a square: stretched to the box, it turns, and
+      // a gradient at 45° runs from corner to corner.
+      if (boolAttr(lin, 'scaled') && box && box.w > 0 && box.h > 0) {
+        const r = (ang * Math.PI) / 180;
+        ang = ((Math.atan2(Math.sin(r) / box.h, Math.cos(r) / box.w) * 180) / Math.PI + 360) % 360;
+      }
       return {
         kind: 'linear',
         angle: Math.round(((ang + 90) % 360) * 100) / 100,

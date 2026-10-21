@@ -15,10 +15,11 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { settle } from '../../capture/settle';
 import { designAssetUrl } from '../../elements/designAssets';
-import { DESIGN_IDS, DESIGN_SUBJECTS, designPreview, designsOf } from '../../elements/designs';
+import { loadAllDesigns } from '../../elements/designs';
 import { registerBuiltinFonts } from '../../fonts';
 import { lintSlides } from '../../lint/deckLint';
 
+const designs = await loadAllDesigns();
 const query = new URLSearchParams(location.search);
 const pack = query.get('pack');
 const lang = query.get('lang') ?? 'he';
@@ -35,13 +36,13 @@ interface Drawn {
 
 function load(): Drawn[] {
   const from = Number(query.get('from') ?? 0);
-  const available = pack ? designsOf(pack) : DESIGN_IDS;
+  const available = pack ? designs.designsOf(pack) : designs.ids;
   const ids = sheet
     ? available.slice(from, from + Number(query.get('count') ?? 30))
     : [query.get('id') ?? available[0]!];
   return ids.map((id) => {
-    const { deck, slide } = designPreview(id, lang);
-    return { id, deck, slide, subject: DESIGN_SUBJECTS[id] };
+    const { deck, slide } = designs.designPreview(id, lang);
+    return { id, deck, slide, subject: designs.subjects[id] };
   });
 }
 
@@ -220,8 +221,8 @@ function main() {
     sheet = options.ids.length > 1;
     columns = options.columns ?? 4;
     drawn = options.ids.map((id) => {
-      const { deck, slide } = designPreview(id, options.lang);
-      return { id, deck, slide, subject: DESIGN_SUBJECTS[id] };
+      const { deck, slide } = designs.designPreview(id, options.lang);
+      return { id, deck, slide, subject: designs.subjects[id] };
     });
     hooks.__ids = options.ids;
     flushSync(paint);

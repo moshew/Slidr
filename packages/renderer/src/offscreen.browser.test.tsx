@@ -76,6 +76,31 @@ test('paints nothing, also of content that says it is visible', async () => {
   }
 });
 
+test('is not held up by a picture elsewhere in the page that never loads', async () => {
+  // The editor's media panel lists the deck's pictures lazily. While the panel is hidden they are
+  // never shown, so they never load, and decoding them never settles: the slide is waited for
+  // alone, not the page around it.
+  const panel = document.createElement('div');
+  panel.style.display = 'none';
+  const picture = document.createElement('img');
+  picture.loading = 'lazy';
+  picture.src = URL.createObjectURL(
+    new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: 'image/png' }),
+  );
+  panel.append(picture);
+  document.body.append(panel);
+  try {
+    const deck = hebrewDeck();
+    const started = performance.now();
+    const offscreen = await renderSlideOffscreen({ deck, slide: deck.slides[0]! });
+    expect(performance.now() - started).toBeLessThan(5_000);
+    offscreen.dispose();
+  } finally {
+    panel.remove();
+    URL.revokeObjectURL(picture.src);
+  }
+});
+
 test('settles in a window that gets no frames, as a minimized one', async () => {
   const frames = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(0);
   try {

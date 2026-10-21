@@ -9,6 +9,7 @@ slides/
 **/src-tauri/gen/
 
 # Test output
+/test/
 test-results/
 playwright-report/
 coverage/
@@ -38,3 +39,6 @@ desktop/src-tauri/models/
 
 # The media library of the packaged app: written by `pnpm build` (desktop/build/media.ts)
 desktop/src-tauri/media/*/
+
+# The search tags tag-elements.mjs and translate-tags.mjs write, until they are uploaded (docs/media-library.md)
+desktop/.tags/

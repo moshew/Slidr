@@ -1,7 +1,11 @@
-// Writes the search tags of the media library (docs/media-library.md, ADR-108): `tags/<kind>.json`
-// in the author copy, words in Hebrew and in English for every icon, graphic, emoji, frame, shape,
-// card set and ready-made slide, by which the app and the library's page find them beside their
-// names. "יום הולדת" then finds the birthday invitation, the cake, the balloons and the magnets.
+// Writes the search tags of the media library (docs/media-library.md, ADR-108): words in Hebrew
+// and in English for every icon, graphic, emoji, frame, shape, card set and ready-made slide, by
+// which the app and the library's page find them beside their names, `tags/<kind>.json` of the
+// library. "יום הולדת" then finds the birthday invitation, the cake, the balloons and the magnets.
+//
+// It reads the published library (no copy of it is needed), and keeps the tags it writes in a
+// folder of its own, `desktop/.tags/<kind>.json` (`--work <dir>`), which a first run starts from
+// the published tags; `--upload` sends them to the library through its API.
 //
 // Claude writes them, through the Claude Code CLI (`claude`, signed in, as Slidr Studio uses it):
 // the items of a kind go in numbered batches, each with what the catalogues say of it (its names,
@@ -24,16 +28,19 @@
 // sends each kind's tags as one upload of `tag`, which the library checks against what it
 // publishes and keeps until an editor accepts it (the library's README, "Search tags").
 // LIBRARY_KEY is the program's key, as the Worker's `LIBRARY_KEYS` names it. With nothing left to
-// tag, `--upload` only sends what the author copy has.
+// tag, `--upload` only sends what the folder has. Once accepted, the tags are published through
+// the library's API too (its README, "Publishing the uploads").
 //
-// --from <dir> is another author copy (../Slidr-media by default), --model and --effort are the
+// --site <url> reads another site than the published library (`http://127.0.0.1:5176/media/`, the
+// library's dev server); --from <dir> reads an author's copy instead, and keeps the tags in its
+// `tags/`, as before the library was published through its API. --model and --effort are the
 // CLI's (opus, low), --jobs the batches that run at once (4). CLAUDE_PATH names the CLI when it is
 // not on the PATH. A key is what the kind's catalogue calls the item: `lucide:cake`,
 // `fluent-emoji:balloon`, `birthday-cake`, `magnet-birthday`, `shape:rightArrow`, `steps`,
 // `birthday`. The designs Slidr Studio publishes come with their tags (`managed.json`); one
 // published before the studio wrote them is tagged here.
 //
-// Run it after a generator adds to a catalogue (and after `pnpm media:pull`), with `--upload`.
+// Run it after a generator's catalogue is published, with `--upload`.
 // `src/media/icons/tags.test.ts` fails while a published item has no tags.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -43,6 +50,7 @@ import { fileURLToPath } from 'node:url';
 import { he as elementsHe, en as elementsEn } from '../src/elements/messages.ts';
 import { he as objectsHe, en as objectsEn } from '../src/objects/messages.ts';
 import { extraShapes } from '../../packages/renderer/src/extraShapes.ts';
+import { MEDIA_LIBRARY_URL } from '../../packages/media-library/src/index.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -52,7 +60,11 @@ const flag = (name) => {
 };
 const list = (value) => (value ? value.split(',').map((item) => item.trim()) : []);
 
-const media = resolve(flag('--from') ?? join(here, '..', '..', '..', 'Slidr-media'));
+/** An author's copy to read the library from (--from); without one, the published library. */
+const media = flag('--from') ? resolve(flag('--from')) : undefined;
+const SITE = (flag('--site') ?? MEDIA_LIBRARY_URL).replace(/\/*$/, '/');
+/** Where the tags are kept between runs: the copy's `tags/`, or a folder of the script's own. */
+const work = resolve(flag('--work') ?? (media ? join(media, 'tags') : join(here, '..', '.tags')));
 const MODEL = flag('--model') ?? 'opus';
 const EFFORT = flag('--effort') ?? 'low';
 const JOBS = Number(flag('--jobs') ?? 4);
@@ -74,10 +86,53 @@ for (const kind of chosen) {
 }
 const kinds = chosen.length > 0 ? chosen : KINDS;
 
-const read = (path) => JSON.parse(readFileSync(join(media, ...path.split('/')), 'utf8'));
-if (!existsSync(join(media, 'manifest.json')) && !existsSync(join(media, 'elements'))) {
-  throw new Error(`${media} is not an author copy of the library: run pnpm media:pull first.`);
+/** The files of the published library a run reads, by their paths; read once, at the start. */
+const published = new Map();
+/** The files each kind is told of. */
+const NEEDS = {
+  icons: ['icons/lucide/tags.json', 'icons/tabler/icons.json'],
+  graphics: ['elements/catalogs/graphics-catalog.json'],
+  emoji: ['elements/catalogs/emoji-catalog.json'],
+  frames: ['elements/catalogs/frames-catalog.json'],
+  shapes: ['elements/catalogs/shapes.json'],
+  cards: ['elements/cards/catalog.json'],
+  designs: ['elements/designs/index.json', 'elements/designs/managed.json'],
+};
+if (media) {
+  if (!existsSync(join(media, 'manifest.json')) && !existsSync(join(media, 'elements'))) {
+    throw new Error(`${media} is not an author copy of the library: run pnpm media:pull first.`);
+  }
+} else {
+  const fetchJson = async (path) => {
+    const url = SITE + path.split('/').map(encodeURIComponent).join('/');
+    const answer = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } });
+    if (!answer.ok) throw new Error(`${url} answered ${answer.status}.`);
+    return answer.json();
+  };
+  const manifest = await fetchJson('manifest.json');
+  const files = manifest.files ?? {};
+  const wanted = new Set(kinds.flatMap((kind) => [...NEEDS[kind], `tags/${kind}.json`]));
+  // A graphic is drawn from its art set.
+  if (kinds.includes('graphics')) {
+    for (const path of Object.keys(files))
+      if (/^elements\/art\/[^/]+\.json$/.test(path)) wanted.add(path);
+  }
+  const paths = [...wanted].filter((path) => Object.hasOwn(files, path));
+  for (let at = 0; at < paths.length; at += 6) {
+    const batch = paths.slice(at, at + 6);
+    const contents = await Promise.all(batch.map(fetchJson));
+    batch.forEach((path, i) => published.set(path, contents[i]));
+  }
+  console.log(
+    `Read ${published.size} files of the library published ${manifest.published} (${SITE}).`,
+  );
 }
+
+const read = (path) => {
+  if (media) return JSON.parse(readFileSync(join(media, ...path.split('/')), 'utf8'));
+  if (!published.has(path)) throw new Error(`The published library has no ${path}.`);
+  return published.get(path);
+};
 
 /* ---------------------------------------------------------------- what each kind holds */
 
@@ -513,11 +568,16 @@ async function tag(kind, batch) {
 
 /* ---------------------------------------------------------------- the files */
 
-const fileOf = (kind) => join(media, 'tags', `${kind}.json`);
+const fileOf = (kind) => join(work, `${kind}.json`);
 
+/** The tags of a kind: as this folder keeps them, or else as the library publishes them. */
 function readTags(kind) {
   const file = fileOf(kind);
-  const tags = existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')).tags ?? {}) : {};
+  const tags = existsSync(file)
+    ? (JSON.parse(readFileSync(file, 'utf8')).tags ?? {})
+    : media
+      ? {}
+      : { ...(published.get(`tags/${kind}.json`)?.tags ?? {}) };
   if (kind !== 'designs') return tags;
   const managed = read('elements/designs/managed.json').tags ?? {};
   for (const [key, own] of Object.entries(managed)) {

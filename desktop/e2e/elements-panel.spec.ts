@@ -91,11 +91,12 @@ test('the first screen offers the collections by kind, each with a name', async 
 test('designs are shown by group, found by name, and add an editable slide', async ({ page }) => {
   const panel = await openDesigns(page);
   await expect(page.locator('[data-panel="designs"] h2')).toHaveText('Ready slides');
-  // The first screen: the nineteen groups, each with its first four designs, as finished slides.
+  // The first screen: the nineteen groups, each with its first four designs, as finished slides:
+  // the picture made of each ahead, or the slide drawn live where it has none (ADR-109).
   const designs = panel.locator('[data-design]');
   await expect(panel.locator('[data-group]')).toHaveCount(19);
   await expect(designs).toHaveCount(76);
-  await expect(designs.first().locator('[data-slide-id]')).toBeVisible();
+  await expect(designs.first().locator('[data-slide-id], [data-design-picture]')).toBeVisible();
 
   // One group in full, under its own name alone, and back to all of them.
   await panel.locator('[data-group="deck"]').getByRole('button', { name: 'Show all' }).click();
@@ -613,12 +614,15 @@ test('a switch of the language leaves only what is in the new one, and what has 
   await page.getByTestId('activity-bar').locator('[data-panel="designs"]').click();
   const ready = page.getByTestId('designs-panel');
   const designs = ready.locator('[data-design]');
-  await expect(designs.first().locator('[data-slide-id]')).toBeVisible();
+  await expect(designs.first().locator('[data-slide-id], [data-design-picture]')).toBeVisible();
   const shown = await designs.count();
   expect(shown).toBeGreaterThan(0);
   for (const design of await designs.all()) {
     await design.scrollIntoViewIfNeeded();
-    await expect(design.locator('[data-slide-id]')).toHaveAttribute('lang', 'de');
+    await expect(design.locator('[data-slide-id], [data-design-picture]')).toHaveAttribute(
+      'lang',
+      'de',
+    );
   }
   await page.screenshot({ path: 'test-results/elements/language-designs-de.png' });
 

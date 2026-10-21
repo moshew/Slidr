@@ -1,4 +1,14 @@
-import type { Color, Insets, ListInfo, Marks, Paragraph, RichText, Run } from '@slidr/model';
+import type {
+  Color,
+  Insets,
+  ListInfo,
+  Marks,
+  Paragraph,
+  RichText,
+  Run,
+  TextStyleRef,
+} from '@slidr/model';
+import { LEVEL_EM, MARKER_EM } from '@slidr/renderer';
 import { attr, boolAttr, child, children, intAttr, textOf, type XmlElement } from '../xml';
 import { readColor, type ColorContext, type ThemeInfo } from './drawing';
 
@@ -144,6 +154,8 @@ export interface TextContext {
   link: (rId: string, action: string | undefined) => string | undefined;
   /** The font a shape style says (`minor`, `major`). */
   fontRef?: 'minor' | 'major';
+  /** The size of a text style of the deck's theme, in slide pixels. */
+  styleSize?: (ref: TextStyleRef) => number;
 }
 
 /** The size of text nobody says a size of: 18pt. */
@@ -351,6 +363,20 @@ export interface ReadText {
    * has them for all the text of a box (TXT-11), as CSS of its element.
    */
   glyphs: { ln?: XmlElement; effects?: XmlElement };
+  /**
+   * How much further from the start side of the box the text begins in PowerPoint than the
+   * renderer begins it: the paragraphs' left margin (`marL`), less the column a list's markers
+   * already take. The model has no margin of a paragraph, so the box's padding takes it
+   * (`withMargin`). Undefined when the paragraphs run both ways.
+   */
+  margin?: { side: 'left' | 'right'; px: number };
+}
+
+/** A box's padding with the text's margin added on its side; never below nothing. */
+export function withMargin(padding: Insets, margin: ReadText['margin']): Insets {
+  if (!margin?.px) return padding;
+  const side = margin.side;
+  return { ...padding, [side]: Math.max(0, Math.round((padding[side] + margin.px) * 100) / 100) };
 }
 
 /**
@@ -362,11 +388,16 @@ export function readParagraphs(
   inherited: readonly ListStyle[],
   tc: TextContext,
   styleRef?: Paragraph['styleRef'],
+  /** The padding of the box, which a negative `margin` takes no more than. */
+  padding?: Insets,
 ): ReadText {
   const own = readListStyle(child(txBody, 'a:lstStyle'));
   const paragraphs: Paragraph[] = [];
   let rtl = false;
   let glyphs: ReadText['glyphs'] | undefined;
+  const px = (emu: number) => Math.round(emu * (tc.pxPerPt / 12700) * 100) / 100;
+  /** Where each paragraph's text begins in PowerPoint, past where the renderer begins it. */
+  const starts: { start: number; indent: number; text: boolean }[] = [];
   for (const p of children(txBody, 'a:p')) {
     const pPr = child(p, 'a:pPr');
     const level = Math.min(8, Math.max(0, intAttr(pPr, 'lvl') ?? 0));
@@ -422,12 +453,20 @@ export function readParagraphs(
     );
     const paragraph: Paragraph = { dir, align, runs: merged };
     if (styleRef) paragraph.styleRef = styleRef;
+    // PowerPoint spaces the lines by the size of their text; CSS by that and by the size of the
+    // paragraph's text style (the strut of its lines), whichever is larger. The line height is
+    // the multiple of the larger that gives PowerPoint's spacing, as the export reads it
+    // (`largestSize`): text smaller than its style is not spaced as the style.
+    const strut = tc.styleSize?.(styleRef ?? 'body') ?? 0;
     const pct = intAttr(child(props.lnSpc, 'a:spcPct'), 'val');
     const pts = intAttr(child(props.lnSpc, 'a:spcPts'), 'val');
-    if (pct !== undefined) paragraph.lineHeight = Math.round((pct / 100000) * SINGLE * 1000) / 1000;
-    else if (pts !== undefined && largest > 0) {
-      paragraph.lineHeight = Math.round((((pts / 100) * tc.pxPerPt) / largest) * 1000) / 1000;
-    } else paragraph.lineHeight = SINGLE;
+    const pitch =
+      pct !== undefined
+        ? (pct / 100000) * SINGLE * largest
+        : pts !== undefined
+          ? (pts / 100) * tc.pxPerPt
+          : SINGLE * largest;
+    paragraph.lineHeight = Math.round((pitch / Math.max(largest, strut)) * 1000) / 1000;
     if (paragraph.lineHeight <= 0) paragraph.lineHeight = SINGLE;
     const before = spacing(props.spcBef, largest, tc.pxPerPt);
     if (before) paragraph.spaceBefore = before;
@@ -435,12 +474,35 @@ export function readParagraphs(
     if (after) paragraph.spaceAfter = after;
     const list = listOf(level, props, tc, merged[0]?.marks?.color);
     if (list) paragraph.list = list;
-    else if (props.indent && !props.marL) {
-      paragraph.indent = Math.round(props.indent * (tc.pxPerPt / 12700) * 100) / 100;
-    }
+    const text = merged.some((r) => r.text.trim() !== '');
+    // An item's text begins a column of markers in from the start, in its style's size.
+    const column = list ? (level * LEVEL_EM + MARKER_EM) * strut : 0;
+    starts.push({ start: px(props.marL ?? 0) - column, indent: px(props.indent ?? 0), text });
     paragraphs.push(paragraph);
   }
-  return { content: { paragraphs }, rtl, glyphs: glyphs ?? {} };
+  // PowerPoint leaves out the space before the first paragraph of a box.
+  if (paragraphs[0]) delete paragraphs[0].spaceBefore;
+  // The margin all the paragraphs have is the box's; what one has beyond it, its first line's.
+  const shown = paragraphs.filter((_, i) => starts[i]!.text);
+  const dirs = new Set(shown.map((p) => p.dir));
+  let margin: ReadText['margin'];
+  if (tc.styleSize && dirs.size === 1) {
+    const side = dirs.has('rtl') ? 'right' : 'left';
+    const least = Math.min(...starts.filter((s) => s.text).map((s) => s.start));
+    const common = Math.max(least, -(padding?.[side] ?? 0));
+    if (Math.abs(common) >= 0.5) margin = { side, px: Math.round(common * 100) / 100 };
+    for (const [i, p] of paragraphs.entries()) {
+      const { start, indent } = starts[i]!;
+      const first = Math.round((start - (margin?.px ?? 0) + indent) * 100) / 100;
+      if (!p.list && first) p.indent = first;
+    }
+  } else {
+    for (const [i, p] of paragraphs.entries()) {
+      const { start, indent } = starts[i]!;
+      if (!p.list && indent && !start) p.indent = indent;
+    }
+  }
+  return { content: { paragraphs }, rtl, glyphs: glyphs ?? {}, ...(margin ? { margin } : {}) };
 }
 
 /** The box text is laid out in. */

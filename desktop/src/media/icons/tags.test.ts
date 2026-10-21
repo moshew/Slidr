@@ -2,7 +2,7 @@ import { readMediaJson } from '@slidr/media-library';
 import { describe, expect, it } from 'vitest';
 import { CARD_SETS } from '../../elements/cardSets';
 import { designWords, searchDesigns } from '../../elements/designCatalog';
-import { DESIGN_GROUPS, designsOf, loadDesignTags } from '../../elements/designs';
+import { loadAllDesigns } from '../../elements/designs';
 import { he as elementsHe, en as elementsEn } from '../../elements/messages';
 import { loadEmoji, loadGraphics, searchStickers } from '../../elements/stickers';
 import { LINE_KINDS, shapeLibrary } from '../../objects/shapes';
@@ -14,6 +14,8 @@ import { searchIcons, withTags, type SearchWords, type TagsOf } from './search';
  * and, in the library as it is published, that every thing of each kind has them and that they
  * find what a user looks for. A kind the library has no tags of yet is skipped.
  */
+
+const { groups: DESIGN_GROUPS, designsOf, loadDesignTags } = await loadAllDesigns();
 
 const thing = (id: string, en: string, he: string): SearchWords & { id: string } => ({
   id,
